@@ -169,8 +169,13 @@ class Daemon : public XIdleObserver,
   // SessionStateChanged D-Bus signals.
   void OnSessionStateChange(const char* state, const char* user);
 
-  bool OnPowerButtonDownMetric(const base::Time& now);
-  bool OnPowerButtonUpMetric(const base::Time& now);
+  // Handles a signal from powerm describing a power or lock button event.
+  // Parses |message|, notifies |power_button_handler_|, and sends metrics.
+  void OnButtonEvent(DBusMessage* message);
+
+  // Sends metrics in response to the power button being pressed or released.
+  // Called by OnButtonEvent().
+  void SendPowerButtonMetric(bool down, const base::TimeTicks& timestamp);
 
   void StartCleanShutdown();
   void Shutdown();
@@ -336,7 +341,7 @@ class Daemon : public XIdleObserver,
   time_t battery_time_to_empty_metric_last_;
 
   // Timestamp of the last time power button is down.
-  base::Time last_power_button_down_timestamp_;
+  base::TimeTicks last_power_button_down_timestamp_;
 
   // Timestamp of the last idle event.
   base::TimeTicks last_idle_event_timestamp_;

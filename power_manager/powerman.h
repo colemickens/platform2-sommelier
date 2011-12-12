@@ -39,10 +39,10 @@ class PowerManDaemon {
 
   enum LidState {
     LID_STATE_CLOSED,
-    LID_STATE_OPENED
+    LID_STATE_OPENED,
   };
 
-  inline LidState GetLidState(int value) {
+  inline static LidState GetLidState(int value) {
     // value == 0 is open. value == 1 is closed.
     return value == 0 ? LID_STATE_OPENED : LID_STATE_CLOSED;
   }
@@ -50,10 +50,10 @@ class PowerManDaemon {
   enum ButtonState {
     BUTTON_UP = 0,
     BUTTON_DOWN,
-    BUTTON_REPEAT
+    BUTTON_REPEAT,
   };
 
-  inline ButtonState GetButtonState(int value) {
+  inline static ButtonState GetButtonState(int value) {
     // value == 0 is button up. value == 1 is button down.
     // value == 2 is key repeat.
     return static_cast<ButtonState>(value);
@@ -78,11 +78,18 @@ class PowerManDaemon {
 
   bool CancelDBusRequest();
 
-  enum SessionManagerState { kSessionStarted, kSessionStopping,
-                             kSessionStopped };
+  enum SessionManagerState {
+    kSessionStarted,
+    kSessionStopping,
+    kSessionStopped,
+  };
 
-  enum PowerManagerState { kPowerManagerUnknown, kPowerManagerAlive,
-                           kPowerManagerDead };
+  enum PowerManagerState {
+    kPowerManagerUnknown,
+    kPowerManagerAlive,
+    kPowerManagerDead,
+  };
+
   // Handler for NameOwnerChanged dbus messages.  See dbus-specification
   // at dbus.freedesktop.org for complete details of arguments
   static void DBusNameOwnerChangedHandler(
@@ -120,6 +127,12 @@ class PowerManDaemon {
   bool SendMetric(const std::string& name, int sample,
                   int min, int max, int nbuckets);
 
+  // Emits a D-Bus signal announcing that the power or lock button has been
+  // pressed or released.  |button_name| should be kPowerButtonName or
+  // kLockButtonName from service_constants.h.
+  void SendButtonEventSignal(const std::string& button_name,
+                             ButtonState state);
+
   // Restart, shutdown, and suspend the system.
   void Restart();
   void Shutdown();
@@ -140,8 +153,6 @@ class PowerManDaemon {
   LidState lidstate_;
   MetricsLibraryInterface* metrics_lib_;
   BacklightInterface* backlight_;
-  ButtonState power_button_state_;
-  ButtonState lock_button_state_;
   int64 retry_suspend_ms_;
   int64 retry_suspend_attempts_;
   int retry_suspend_count_;

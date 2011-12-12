@@ -111,30 +111,28 @@ void SendSignalToSessionManager(const char* signal) {
 // A utility function to send a signal to the lower power daemon (powerm).
 void SendSignalToPowerM(const char* signal_name) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              "/",
+                              kPowerManagerServicePath,
                               kRootPowerManagerInterface);
-  DBusMessage* signal = ::dbus_message_new_signal(
-      "/",
-      kRootPowerManagerInterface,
-      signal_name);
+  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                kRootPowerManagerInterface,
+                                                signal_name);
   CHECK(signal);
-  ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  ::dbus_message_unref(signal);
+  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_message_unref(signal);
 }
 
 // A utility function to send a signal to upper power daemon (powerd).
 void SendSignalToPowerD(const char* signal_name) {
-  LOG(INFO) << "Sending signal '" << signal_name << "' to PowerManager:";
+  LOG(INFO) << "Sending signal '" << signal_name << "' to PowerManager";
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              "/",
+                              kPowerManagerServicePath,
                               kPowerManagerInterface);
-  DBusMessage* signal = ::dbus_message_new_signal(
-      "/",
-      kPowerManagerInterface,
-      signal_name);
+  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                kPowerManagerInterface,
+                                                signal_name);
   CHECK(signal);
-  ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  ::dbus_message_unref(signal);
+  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_message_unref(signal);
 }
 
 void CreateStatusFile(const FilePath& file) {

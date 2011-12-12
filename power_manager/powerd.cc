@@ -575,23 +575,9 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     daemon->SetActive();
     daemon->suspender_.CancelSuspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kPowerButtonDown)) {
-    LOG(INFO) << "Power Button Down event";
-    daemon->OnPowerButtonDownMetric(base::Time::Now());
-    daemon->power_button_handler_->HandlePowerButtonDown();
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kPowerButtonUp)) {
-    LOG(INFO) << "Power Button Up event";
-    daemon->OnPowerButtonUpMetric(base::Time::Now());
-    daemon->power_button_handler_->HandlePowerButtonUp();
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kLockButtonDown)) {
-    LOG(INFO) << "Lock Button Down event";
-    daemon->power_button_handler_->HandleLockButtonDown();
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kLockButtonUp)) {
-    LOG(INFO) << "Lock Button Up event";
-    daemon->power_button_handler_->HandleLockButtonUp();
+                                    kButtonEventSignal)) {
+    LOG(INFO) << "Button event";
+    daemon->OnButtonEvent(message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kDecreaseScreenBrightness)) {
     LOG(INFO) << "Decrease screen brightness request.";
@@ -869,42 +855,68 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
   }
 }
 
-bool Daemon::OnPowerButtonDownMetric(const base::Time& now) {
-  bool ret = true;
-  if (!last_power_button_down_timestamp_.is_null()) {
-    LOG(WARNING) << "More than one button down event without "
-                 << "button up events";
-    ret = false;
+void Daemon::OnButtonEvent(DBusMessage* message) {
+  DBusError error;
+  dbus_error_init(&error);
+  const char* button_name = NULL;
+  dbus_bool_t down = FALSE;
+  dbus_int64_t timestamp = 0;
+  if (!dbus_message_get_args(message, &error,
+                             DBUS_TYPE_STRING, &button_name,
+                             DBUS_TYPE_BOOLEAN, &down,
+                             DBUS_TYPE_INT64, &timestamp,
+                             DBUS_TYPE_INVALID)) {
+    LOG(ERROR) << "Unable to process button event: "
+               << error.name << " (" << error.message << ")";
+    dbus_error_free(&error);
+    return;
   }
 
-  last_power_button_down_timestamp_ = now;
-  return ret;
+  if (strcmp(button_name, kPowerButtonName) == 0) {
+    if (down)
+      power_button_handler_->HandlePowerButtonDown();
+    else
+      power_button_handler_->HandlePowerButtonUp();
+
+    // TODO: Use |timestamp| instead if libbase/libchrome ever gets updated to a
+    // recent-enough version that base::TimeTicks::FromInternalValue() is
+    // available: http://crosbug.com/16623
+    SendPowerButtonMetric(down, base::TimeTicks::Now());
+  } else if (strcmp(button_name, kLockButtonName) == 0) {
+    if (down)
+      power_button_handler_->HandleLockButtonDown();
+    else
+      power_button_handler_->HandleLockButtonUp();
+  } else {
+    NOTREACHED() << "Unhandled button '" << button_name << "'";
+  }
 }
 
-bool Daemon::OnPowerButtonUpMetric(const base::Time& now) {
-  bool ret = true;
-  if (last_power_button_down_timestamp_.is_null()) {
-    LOG(WARNING) << "Power button up event without timestamp for "
-                 << "last power button down event";
-    ret = false;
-  } else if (last_power_button_down_timestamp_ > now) {
-    LOG(WARNING) << "Timing messed up that power button down is "
-                 << "earlier than power button up";
-    ret = false;
+void Daemon::SendPowerButtonMetric(bool down,
+                                   const base::TimeTicks& timestamp) {
+  if (down) {
+    if (!last_power_button_down_timestamp_.is_null())
+      LOG(ERROR) << "Got power-button-down event while button was already down";
+    last_power_button_down_timestamp_ = timestamp;
   } else {
-    base::TimeDelta delta = now - last_power_button_down_timestamp_;
+    if (last_power_button_down_timestamp_.is_null()) {
+      LOG(ERROR) << "Got power-button-up event while button was already up";
+      return;
+    }
+    base::TimeDelta delta = timestamp - last_power_button_down_timestamp_;
+    if (delta.InMilliseconds() < 0) {
+      LOG(ERROR) << "Negative duration between power button events";
+      return;
+    }
+    last_power_button_down_timestamp_ = base::TimeTicks();
     if (!SendMetric(kMetricPowerButtonDownTimeName,
                     delta.InMilliseconds(),
                     kMetricPowerButtonDownTimeMin,
                     kMetricPowerButtonDownTimeMax,
                     kMetricPowerButtonDownTimeBuckets)) {
-      LOG(WARNING) << "Could not send kMetricPowerButtonDownTime";
-      ret = false;
+      LOG(ERROR) << "Could not send " << kMetricPowerButtonDownTimeName;
     }
   }
-  // Always clear the timestmp of the last button down event.
-  last_power_button_down_timestamp_ = base::Time();
-  return ret;
 }
 
 void Daemon::Shutdown() {

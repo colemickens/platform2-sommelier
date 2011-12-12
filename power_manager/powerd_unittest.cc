@@ -625,24 +625,29 @@ TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
 }
 
 TEST_F(DaemonTest, PowerButtonDownMetric) {
-    EXPECT_FALSE(daemon_.OnPowerButtonUpMetric(base::Time::Now()));
-    EXPECT_TRUE(daemon_.OnPowerButtonDownMetric(base::Time::Now()));
+  // We should ignore a button release that wasn't preceded by a press.
+  daemon_.SendPowerButtonMetric(false, base::TimeTicks::Now());
 
-    const base::Time before_down_time = base::Time::Now();
-    const base::Time down_time = before_down_time +
-        base::TimeDelta::FromMilliseconds(kPowerButtonInterval);
-    const base::Time up_time = down_time +
-        base::TimeDelta::FromMilliseconds(kPowerButtonInterval);
-    EXPECT_FALSE(daemon_.OnPowerButtonDownMetric(down_time));
-    EXPECT_FALSE(daemon_.OnPowerButtonUpMetric(before_down_time));
+  // Presses that are followed by additional presses should also be ignored.
+  daemon_.SendPowerButtonMetric(true, base::TimeTicks::Now());
 
-    EXPECT_TRUE(daemon_.OnPowerButtonDownMetric(down_time));
-    ExpectMetric(kMetricPowerButtonDownTimeName,
-                 (up_time - down_time).InMilliseconds(),
-                 kMetricPowerButtonDownTimeMin,
-                 kMetricPowerButtonDownTimeMax,
-                 kMetricPowerButtonDownTimeBuckets);
-    EXPECT_TRUE(daemon_.OnPowerButtonUpMetric(up_time));
+  // We should ignore series of events with negative durations.
+  const base::TimeTicks before_down_time = base::TimeTicks::Now();
+  const base::TimeTicks down_time = before_down_time +
+      base::TimeDelta::FromMilliseconds(kPowerButtonInterval);
+  const base::TimeTicks up_time = down_time +
+      base::TimeDelta::FromMilliseconds(kPowerButtonInterval);
+  daemon_.SendPowerButtonMetric(true, down_time);
+  daemon_.SendPowerButtonMetric(false, before_down_time);
+
+  // Send a regular sequence of events and check that the duration is reported.
+  daemon_.SendPowerButtonMetric(true, down_time);
+  ExpectMetric(kMetricPowerButtonDownTimeName,
+               (up_time - down_time).InMilliseconds(),
+               kMetricPowerButtonDownTimeMin,
+               kMetricPowerButtonDownTimeMax,
+               kMetricPowerButtonDownTimeBuckets);
+  daemon_.SendPowerButtonMetric(false, up_time);
 }
 
 }  // namespace power_manager
