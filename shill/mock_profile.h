@@ -21,9 +21,11 @@ class MockProfile : public Profile {
               const std::string &identifier);
   virtual ~MockProfile();
 
-  MOCK_METHOD1(GetStoragePath, bool(FilePath *filepath));
+  MOCK_METHOD1(AdoptService, bool(const ServiceRefPtr &service));
+  MOCK_METHOD1(AbandonService, bool(const ServiceRefPtr &service));
   MOCK_METHOD1(ConfigureService,  bool(const ServiceRefPtr &service));
   MOCK_METHOD1(ConfigureDevice, bool(const DeviceRefPtr &device));
+  MOCK_METHOD1(GetStoragePath, bool(FilePath *filepath));
   MOCK_METHOD0(Save, bool());
 
  private:

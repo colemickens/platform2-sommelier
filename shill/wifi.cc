@@ -353,6 +353,10 @@ void WiFi::DisconnectFrom(WiFiService *service) {
         || current_service_.get() != pending_service_.get());
 }
 
+bool WiFi::IsIdle() {
+  return !current_service_ && !pending_service_;
+}
+
 // To avoid creating duplicate services, call FindServiceForEndpoint
 // before calling this method.
 WiFiServiceRefPtr WiFi::CreateServiceForEndpoint(const WiFiEndpoint &endpoint,

@@ -38,6 +38,7 @@ class WiFiService : public Service {
   virtual void Disconnect(Error *error);
 
   virtual bool TechnologyIs(const Technology::Identifier type) const;
+  virtual bool IsAutoConnectable();
 
   virtual void AddEndpoint(WiFiEndpointConstRefPtr endpoint);
   virtual void RemoveEndpoint(WiFiEndpointConstRefPtr endpoint);

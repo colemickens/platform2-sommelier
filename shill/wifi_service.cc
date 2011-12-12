@@ -132,6 +132,12 @@ bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
   return wifi_->TechnologyIs(type);
 }
 
+bool WiFiService::IsAutoConnectable() {
+  // TODO(quiche): Need to also handle the case where there might be
+  // another service that has posted a Connect task.  crosbug.com/24276
+  return connectable() && wifi_->IsIdle();
+}
+
 void WiFiService::AddEndpoint(WiFiEndpointConstRefPtr endpoint) {
   DCHECK(endpoint->ssid() == ssid());
   endpoints_.insert(endpoint);

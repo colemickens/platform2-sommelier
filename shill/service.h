@@ -105,6 +105,12 @@ class Service : public base::RefCounted<Service> {
 
   virtual bool IsActive(Error *error);
 
+  // Returns whether this service is in a state conducive to auto-connect.
+  // This should include any tests used for computing connectable(),
+  // as well as other critera such as whether the device associated with
+  // this service is busy with another connection.
+  virtual bool IsAutoConnectable() { return connectable(); }
+
   virtual ConnectState state() const { return state_; }
   // Updates the state of the Service and alerts the manager.  Also
   // clears |failure_| if the new state isn't a failure.

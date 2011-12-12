@@ -49,6 +49,7 @@ using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::StrEq;
+using ::testing::StrictMock;
 using ::testing::Test;
 
 class ManagerTest : public PropertyStoreTest {
@@ -947,6 +948,31 @@ TEST_F(ManagerTest, UpdateServiceConnected) {
   // SortServices test. (crosbug.com/23370)
   EXPECT_TRUE(mock_service->favorite());
   EXPECT_TRUE(mock_service->auto_connect());
+}
+
+TEST_F(ManagerTest, SaveSuccessfulService) {
+  scoped_refptr<MockProfile> profile(
+      new StrictMock<MockProfile>(control_interface(), manager(), ""));
+  AdoptProfile(manager(), profile);
+  scoped_refptr<MockService> service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+
+  // Re-cast this back to a ServiceRefPtr, so EXPECT arguments work correctly.
+  ServiceRefPtr expect_service(service.get());
+
+  EXPECT_CALL(*profile.get(), ConfigureService(expect_service))
+      .WillOnce(Return(false));
+  manager()->RegisterService(service);
+
+  EXPECT_CALL(*service.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*profile.get(), AdoptService(expect_service))
+      .WillOnce(Return(true));
+  manager()->UpdateService(service);
 }
 
 }  // namespace shill

@@ -239,6 +239,8 @@ void Manager::PushProfile(const string &name, Error *error) {
        it != devices_.end(); ++it) {
     profile->ConfigureDevice(*it);
   }
+
+  SortServices();
 }
 
 void Manager::PopProfileInternal() {
@@ -260,6 +262,7 @@ void Manager::PopProfileInternal() {
       }
     }
   }
+  SortServices();
 }
 
 void Manager::PopProfile(const string &name, Error *error) {
@@ -299,6 +302,12 @@ const ProfileRefPtr &Manager::ActiveProfile() {
 bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
                                    const ProfileRefPtr &destination) {
   const ProfileRefPtr from = to_move->profile();
+  VLOG(2) << "Moving service "
+          << to_move->UniqueName()
+          << " to profile "
+          << destination->GetFriendlyName()
+          << " from "
+          << from->GetFriendlyName();
   return destination->AdoptService(to_move) &&
       from->AbandonService(to_move);
 }
@@ -408,8 +417,16 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
             << " failure: "
             << Service::ConnectFailureToString(to_update->failure());
   LOG(INFO) << "IsConnected(): " << to_update->IsConnected();
-  if (to_update->IsConnected())
+  if (to_update->IsConnected()) {
     to_update->MakeFavorite();
+    if (to_update->profile().get() == ephemeral_profile_.get()) {
+      if (profiles_.empty()) {
+        LOG(ERROR) << "Cannot assign profile to service: no profiles exist!";
+      } else {
+        MoveServiceToProfile(to_update, profiles_.back());
+      }
+    }
+  }
   SortServices();
 }
 
@@ -482,6 +499,16 @@ void Manager::SortServices() {
     }
     if (services_[0]->connection().get()) {
       services_[0]->connection()->SetIsDefault(true);
+    }
+  }
+
+  // Perform auto-connect.
+  for (it = services_.begin(); it != services_.end(); ++it) {
+    if ((*it)->auto_connect() && (*it)->IsAutoConnectable()) {
+      Error error;
+      (*it)->Connect(&error);
+      // We intentionally ignore the error returned by Connect() here since it
+      // should not prevent us from trying to connect a different service.
     }
   }
 }
