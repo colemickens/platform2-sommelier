@@ -59,8 +59,10 @@ void Ethernet::Start() {
 }
 
 void Ethernet::Stop() {
-  manager()->DeregisterService(service_);
-  service_ = NULL;
+  if (service_) {
+    manager()->DeregisterService(service_);
+    service_ = NULL;
+  }
   Device::Stop();
 }
 
