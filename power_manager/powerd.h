@@ -327,7 +327,11 @@ class Daemon : public XIdleObserver,
   Suspender suspender_;
   FilePath run_dir_;
   PowerSupply power_supply_;
+#if !defined(USE_AURA)
+  // In Aura builds, Chrome listens for notifications about power button events
+  // from powerm and handles them itself.
   scoped_ptr<PowerButtonHandler> power_button_handler_;
+#endif
   base::Time session_start_;
 
   // Timestamp the last generated battery discharge rate metric.

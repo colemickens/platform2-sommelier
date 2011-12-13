@@ -41,6 +41,11 @@ if int(ARGUMENTS.get('is_desktop', 0)):
 if int(ARGUMENTS.get('has_als', 0)):
   base_env.Append(CPPDEFINES=['HAS_ALS'])
 
+use_aura = False
+if int(ARGUMENTS.get('aura', 0)):
+  base_env.Append(CPPDEFINES=['USE_AURA'])
+  use_aura = True
+
 # Fix issue with scons not passing some vars through the environment.
 for key in Split('SYSROOT'):
   if key in os.environ:
@@ -103,10 +108,12 @@ powerd_env.ParseConfig(
 
 
 powerd_sources = Split(''' audio_detector.cc \
-  file_tagger.cc power_button_handler.cc powerd.cc powerd_metrics.cc
-  screen_locker.cc suspender.cc video_detector.cc metrics_constants.cc
-  monitor_reconfigure.cc power_supply.cc resolution_selector.cc
+  file_tagger.cc powerd.cc powerd_metrics.cc screen_locker.cc suspender.cc
+  video_detector.cc metrics_constants.cc monitor_reconfigure.cc power_supply.cc
+  resolution_selector.cc
 ''')
+if not use_aura:
+  powerd_sources.append('power_button_handler.cc')
 util_lib = powerd_env.Library('util_lib', ['util.cc', 'inotify.cc']);
 powerd_lib = powerd_env.Library('powerd_lib', powerd_sources)
 powerd = powerd_env.Program('powerd',

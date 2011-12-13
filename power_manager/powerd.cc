@@ -24,11 +24,14 @@
 #include "power_manager/audio_detector_interface.h"
 #include "power_manager/metrics_constants.h"
 #include "power_manager/monitor_reconfigure.h"
-#include "power_manager/power_button_handler.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_supply.h"
 #include "power_manager/video_detector_interface.h"
 #include "power_manager/util.h"
+
+#if !defined(USE_AURA)
+#include "power_manager/power_button_handler.h"
+#endif
 
 using std::map;
 using std::max;
@@ -90,7 +93,9 @@ Daemon::Daemon(BacklightController* backlight_controller,
       suspender_(&locker_, &file_tagger_),
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath)),
+#if !defined(USE_AURA)
       power_button_handler_(new PowerButtonHandler(this)),
+#endif
       battery_discharge_rate_metric_last_(0),
       battery_remaining_charge_metric_last_(0),
       battery_time_to_empty_metric_last_(0),
@@ -546,7 +551,9 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                                          kScreenIsLockedMethod)) {
     LOG(INFO) << "ScreenIsLocked event";
     daemon->locker_.set_locked(true);
+#if !defined(USE_AURA)
     daemon->power_button_handler_->HandleScreenLocked();
+#endif
     daemon->suspender_.CheckSuspend();
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                     kScreenIsUnlockedMethod)) {
@@ -873,20 +880,23 @@ void Daemon::OnButtonEvent(DBusMessage* message) {
   }
 
   if (strcmp(button_name, kPowerButtonName) == 0) {
+#if !defined(USE_AURA)
     if (down)
       power_button_handler_->HandlePowerButtonDown();
     else
       power_button_handler_->HandlePowerButtonUp();
-
+#endif
     // TODO: Use |timestamp| instead if libbase/libchrome ever gets updated to a
     // recent-enough version that base::TimeTicks::FromInternalValue() is
     // available: http://crosbug.com/16623
     SendPowerButtonMetric(down, base::TimeTicks::Now());
   } else if (strcmp(button_name, kLockButtonName) == 0) {
+#if !defined(USE_AURA)
     if (down)
       power_button_handler_->HandleLockButtonDown();
     else
       power_button_handler_->HandleLockButtonUp();
+#endif
   } else {
     NOTREACHED() << "Unhandled button '" << button_name << "'";
   }
