@@ -20,13 +20,16 @@
 #include "login_manager/child_job.h"
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_child_process.h"
+#include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
+#include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_system_utils.h"
 
 using ::testing::AnyNumber;
 using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::_;
 
 namespace login_manager {
@@ -290,6 +293,31 @@ TEST_F(SessionManagerProcessTest, KeygenTest) {
   int32 file_size = 0;
   EXPECT_TRUE(utils.EnsureAndReturnSafeFileSize(key_file_path, &file_size));
   EXPECT_GT(file_size, 0);
+}
+
+TEST_F(SessionManagerProcessTest, KeygenExitTest) {
+  MockChildJob* normal_job = new MockChildJob;
+  InitManager(normal_job, NULL);
+  manager_->test_api().set_child_pid(0, kDummyPid);
+
+  ScopedTempDir tmpdir;
+  FilePath key_file_path;
+  ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
+  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir.path(),
+                                                  &key_file_path));
+  std::string key_file_name(key_file_path.value());
+
+  MockKeyGenerator* key_gen = new MockKeyGenerator;
+  manager_->test_api().set_keygen(key_gen);
+  EXPECT_CALL(*key_gen, temporary_key_filename())
+      .WillOnce(ReturnRef(key_file_name));
+  EXPECT_CALL(*device_policy_service_, ValidateAndStoreOwnerKey(_, _))
+      .WillOnce(Return(true));
+
+  SessionManagerService::HandleKeygenExit(kDummyPid,
+                                          PackStatus(0),
+                                          manager_.get());
+  EXPECT_FALSE(file_util::PathExists(key_file_path));
 }
 
 // Test that we avoid killing jobs that return true from their ShouldNeverKill()

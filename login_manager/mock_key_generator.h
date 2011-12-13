@@ -7,6 +7,8 @@
 
 #include "login_manager/key_generator.h"
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 namespace login_manager {
@@ -18,6 +20,7 @@ class MockKeyGenerator : public KeyGenerator {
   MockKeyGenerator();
   virtual ~MockKeyGenerator();
   MOCK_METHOD2(Start, bool(uid_t, SessionManagerService*));
+  MOCK_CONST_METHOD0(temporary_key_filename, const std::string&(void));
 };
 }  // namespace login_manager
 

@@ -19,7 +19,11 @@ const char KeyGenerator::kKeygenExecutable[] = "/sbin/keygen";
 // static
 const char KeyGenerator::kTemporaryKeyFilename[] = "key.pub";
 
-KeyGenerator::KeyGenerator(SystemUtils *utils) : utils_(utils) {}
+KeyGenerator::KeyGenerator(SystemUtils *utils)
+    : utils_(utils),
+      temporary_key_filename_(file_util::GetHomeDir().AppendASCII(
+          kTemporaryKeyFilename).value()) {
+}
 
 KeyGenerator::~KeyGenerator() {}
 
@@ -30,8 +34,7 @@ bool KeyGenerator::Start(uid_t uid,
     LOG(INFO) << "Creating keygen job";
     std::vector<std::string> keygen_argv;
     keygen_argv.push_back(kKeygenExecutable);
-    keygen_argv.push_back(
-        file_util::GetHomeDir().AppendASCII(kTemporaryKeyFilename).value());
+    keygen_argv.push_back(temporary_key_filename_);
     keygen_job_.reset(new ChildJob(keygen_argv, &utils));
   }
 

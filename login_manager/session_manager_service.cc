@@ -615,10 +615,10 @@ void SessionManagerService::HandleKeygenExit(GPid pid,
 
   if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
     std::string key;
-    file_util::ReadFileToString(
-        FilePath(file_util::GetHomeDir().AppendASCII(
-            KeyGenerator::kTemporaryKeyFilename)),
-        &key);
+    FilePath key_file(manager->gen_->temporary_key_filename());
+    file_util::ReadFileToString(key_file, &key);
+    PLOG_IF(WARNING, !file_util::Delete(key_file, false)) << "Can't delete "
+                                                          << key_file.value();
     manager->device_policy_->ValidateAndStoreOwnerKey(manager->current_user_,
                                                       key);
   } else {
