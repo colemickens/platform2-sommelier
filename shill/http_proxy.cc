@@ -20,6 +20,7 @@
 #include <base/stringprintf.h>
 
 #include "shill/async_connection.h"
+#include "shill/connection.h"
 #include "shill/dns_client.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
@@ -46,12 +47,9 @@ const char HTTPProxy::kHTTPURLPrefix[] = "http://";
 const char HTTPProxy::kHTTPVersionPrefix[] = " HTTP/1";
 const char HTTPProxy::kInternalErrorMsg[] = "Proxy Failed: Internal Error";
 
-
-HTTPProxy::HTTPProxy(const std::string &interface_name,
-                     const std::vector<std::string> &dns_servers)
+HTTPProxy::HTTPProxy(ConnectionRefPtr connection)
     : state_(kStateIdle),
-      interface_name_(interface_name),
-      dns_servers_(dns_servers),
+      connection_(connection),
       accept_callback_(NewCallback(this, &HTTPProxy::AcceptClient)),
       connect_completion_callback_(
           NewCallback(this, &HTTPProxy::OnConnectCompletion)),
@@ -70,6 +68,7 @@ HTTPProxy::HTTPProxy(const std::string &interface_name,
       client_socket_(-1),
       server_port_(kDefaultServerPort),
       server_socket_(-1),
+      is_route_requested_(false),
       idle_timeout_(NULL) { }
 
 HTTPProxy::~HTTPProxy() {
@@ -115,14 +114,14 @@ bool HTTPProxy::Start(EventDispatcher *dispatcher,
                                      accept_callback_.get()));
   dispatcher_ = dispatcher;
   dns_client_.reset(new DNSClient(IPAddress::kFamilyIPv4,
-                                  interface_name_,
-                                  dns_servers_,
+                                  connection_->interface_name(),
+                                  connection_->dns_servers(),
                                   kDNSTimeoutSeconds * 1000,
                                   dispatcher,
                                   dns_client_callback_.get()));
   proxy_port_ = ntohs(addr.sin_port);
   server_async_connection_.reset(
-      new AsyncConnection(interface_name_, dispatcher, sockets,
+      new AsyncConnection(connection_->interface_name(), dispatcher, sockets,
                           connect_completion_callback_.get()));
   sockets_ = sockets;
   state_ = kStateWaitConnection;
@@ -279,6 +278,9 @@ bool HTTPProxy::ParseClientRequest() {
   } else {
     server_hostname_ = host;
   }
+
+  connection_->RequestRouting();
+  is_route_requested_ = true;
 
   IPAddress addr(IPAddress::kFamilyIPv4);
   if (addr.SetAddressFromString(server_hostname_)) {
@@ -574,6 +576,10 @@ void HTTPProxy::StartTransmit() {
 void HTTPProxy::StopClient() {
   VLOG(3) << "In " << __func__;
 
+  if (is_route_requested_) {
+    connection_->ReleaseRouting();
+    is_route_requested_ = false;
+  }
   write_client_handler_.reset();
   read_client_handler_.reset();
   if (client_socket_ != -1) {

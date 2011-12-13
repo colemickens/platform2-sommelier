@@ -79,6 +79,14 @@ class Device : public base::RefCounted<Device> {
   virtual void EnableIPv6();
   virtual void EnableIPv6Privacy();
 
+  // Request the removal of reverse-path filtering for this interface.
+  // This will allow packets destined for this interface to be accepted,
+  // even if this is not the default route for such a packet to arrive.
+  virtual void DisableReversePathFilter();
+
+  // Request reverse-path filtering for this interface.
+  virtual void EnableReversePathFilter();
+
   // Returns true if the selected service on the device (if any) is connected.
   // Returns false if there is no selected service, or if the selected service
   // is not connected.
@@ -181,6 +189,9 @@ class Device : public base::RefCounted<Device> {
   static const char kIPFlagDisableIPv6[];
   static const char kIPFlagUseTempAddr[];
   static const char kIPFlagUseTempAddrUsedAndDefault[];
+  static const char kIPFlagReversePathFilter[];
+  static const char kIPFlagReversePathFilterEnabled[];
+  static const char kIPFlagReversePathFilterLooseMode[];
   static const char kStoragePowered[];
   static const char kStorageIPConfigs[];
 

@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <linux/rtnetlink.h>
 
+#include <string>
 #include <vector>
 
 #include <base/memory/scoped_ptr.h>
@@ -14,12 +15,14 @@
 #include "shill/connection.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_control.h"
+#include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_resolver.h"
 #include "shill/mock_routing_table.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/routing_table_entry.h"
 
+using std::string;
 using std::vector;
 using testing::_;
 using testing::NiceMock;
@@ -57,10 +60,7 @@ class ConnectionTest : public Test {
         ipconfig_(new IPConfig(&control_, kTestDeviceName0)) {}
 
   virtual void SetUp() {
-    connection_->resolver_ = &resolver_;
-    connection_->routing_table_ = &routing_table_;
-    connection_->rtnl_handler_ = &rtnl_handler_;
-
+    ReplaceSingletons(connection_);
     IPConfig::Properties properties;
     properties.address = kIPAddress0;
     properties.gateway = kGatewayAddress0;
@@ -77,6 +77,12 @@ class ConnectionTest : public Test {
     EXPECT_CALL(*device_info_, FlushAddresses(kTestDeviceInterfaceIndex0));
   }
 
+  void ReplaceSingletons(ConnectionRefPtr connection) {
+    connection->resolver_ = &resolver_;
+    connection->routing_table_ = &routing_table_;
+    connection->rtnl_handler_ = &rtnl_handler_;
+  }
+
  protected:
   scoped_ptr<StrictMock<MockDeviceInfo> > device_info_;
   ConnectionRefPtr connection_;
@@ -91,6 +97,7 @@ TEST_F(ConnectionTest, InitState) {
   EXPECT_EQ(kTestDeviceInterfaceIndex0, connection_->interface_index_);
   EXPECT_EQ(kTestDeviceName0, connection_->interface_name_);
   EXPECT_FALSE(connection_->is_default());
+  EXPECT_FALSE(connection_->routing_request_count_);
 }
 
 TEST_F(ConnectionTest, AddConfig) {
@@ -123,7 +130,7 @@ TEST_F(ConnectionTest, AddConfig) {
 TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                                Connection::kDefaultMetric));
-  vector<std::string> empty_list;
+  vector<string> empty_list;
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
   connection_->SetIsDefault(true);
 
@@ -135,6 +142,40 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(resolver_, SetDNSFromIPConfig(ipconfig_));
 
   connection_->UpdateFromIPConfig(ipconfig_);
+}
+
+TEST_F(ConnectionTest, RouteRequest) {
+  {
+    ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
+                                               kTestDeviceName0,
+                                               device_info_.get()));
+    ReplaceSingletons(connection);
+    scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
+        &control_,
+        reinterpret_cast<EventDispatcher *>(NULL),
+        reinterpret_cast<Manager *>(NULL),
+        kTestDeviceName0,
+        string(),
+        kTestDeviceInterfaceIndex0));
+    EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
+        .WillRepeatedly(Return(device));
+    EXPECT_CALL(*device.get(), DisableReversePathFilter()).Times(1);
+    connection->RequestRouting();
+    connection->RequestRouting();
+
+    // The first release should only decrement the reference counter.
+    connection->ReleaseRouting();
+
+    // Another release will re-enable reverse-path filter.
+    EXPECT_CALL(*device.get(), EnableReversePathFilter());
+    EXPECT_CALL(routing_table_, FlushCache());
+    connection->ReleaseRouting();
+
+    // The destructor will remove the routes and addresses.
+    EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+    EXPECT_CALL(*device_info_.get(),
+                FlushAddresses(kTestDeviceInterfaceIndex0));
+  }
 }
 
 TEST_F(ConnectionTest, Destructor) {

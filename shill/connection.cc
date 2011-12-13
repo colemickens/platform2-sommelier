@@ -25,6 +25,7 @@ Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        const DeviceInfo *device_info)
     : is_default_(false),
+      routing_request_count_(0),
       interface_index_(interface_index),
       interface_name_(interface_name),
       device_info_(device_info),
@@ -37,6 +38,7 @@ Connection::Connection(int interface_index,
 Connection::~Connection() {
   VLOG(2) << __func__;
 
+  DCHECK(!routing_request_count_);
   routing_table_->FlushRoutes(interface_index_);
   device_info_->FlushAddresses(interface_index_);
 }
@@ -88,6 +90,35 @@ void Connection::SetIsDefault(bool is_default) {
   }
 
   is_default_ = is_default;
+}
+
+void Connection::RequestRouting() {
+  if (routing_request_count_++ == 0) {
+    DeviceRefPtr device = device_info_->GetDevice(interface_index_);
+    DCHECK(device.get());
+    if (!device.get()) {
+      LOG(ERROR) << "Device is NULL!";
+      return;
+    }
+    device->DisableReversePathFilter();
+  }
+}
+
+void Connection::ReleaseRouting() {
+  DCHECK(routing_request_count_ > 0);
+  if (--routing_request_count_ == 0) {
+    DeviceRefPtr device = device_info_->GetDevice(interface_index_);
+    DCHECK(device.get());
+    if (!device.get()) {
+      LOG(ERROR) << "Device is NULL!";
+      return;
+    }
+    device->EnableReversePathFilter();
+
+    // Clear any cached routes that might have accumulated while reverse-path
+    // filtering was disabled.
+    routing_table_->FlushCache();
+  }
 }
 
 uint32 Connection::GetMetric(bool is_default) {

@@ -38,8 +38,16 @@ class Connection : public base::RefCounted<Connection> {
   bool is_default() const { return is_default_; }
   virtual void SetIsDefault(bool is_default);
 
-  const std::string &interface_name() const { return interface_name_; }
-  const std::vector<std::string> &dns_servers() const { return dns_servers_; }
+  virtual const std::string &interface_name() const { return interface_name_; }
+  virtual const std::vector<std::string> &dns_servers() const {
+    return dns_servers_;
+  }
+
+  // Request to accept traffic routed to this connection even if it is not
+  // the default.  This request is ref-counted so the caller must call
+  // ReleaseRouting() when they no longer need this facility.
+  virtual void RequestRouting();
+  virtual void ReleaseRouting();
 
  private:
   friend class ConnectionTest;
@@ -54,6 +62,7 @@ class Connection : public base::RefCounted<Connection> {
   uint32 GetMetric(bool is_default);
 
   bool is_default_;
+  int routing_request_count_;
   int interface_index_;
   const std::string interface_name_;
   std::vector<std::string> dns_servers_;

@@ -19,6 +19,10 @@ class MockConnection : public Connection {
 
   MOCK_METHOD1(UpdateFromIPConfig, void(const IPConfigRefPtr &config));
   MOCK_METHOD1(SetIsDefault, void(bool is_default));
+  MOCK_METHOD0(RequestRouting, void());
+  MOCK_METHOD0(ReleaseRouting, void());
+  MOCK_CONST_METHOD0(interface_name, const std::string &());
+  MOCK_CONST_METHOD0(dns_servers, const std::vector<std::string> &());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockConnection);

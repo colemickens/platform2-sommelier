@@ -50,8 +50,7 @@ class HTTPProxy {
     kStateFlushResponse,
   };
 
-  HTTPProxy(const std::string &interface_name,
-            const std::vector<std::string> &dns_servers);
+  explicit HTTPProxy(ConnectionRefPtr connection);
   virtual ~HTTPProxy();
 
   // Start HTTP proxy.
@@ -111,8 +110,7 @@ class HTTPProxy {
 
   // State held for the lifetime of the proxy.
   State state_;
-  const std::string interface_name_;
-  std::vector<std::string> dns_servers_;
+  ConnectionRefPtr connection_;
   scoped_ptr<Callback1<int>::Type> accept_callback_;
   scoped_ptr<Callback2<bool, int>::Type> connect_completion_callback_;
   scoped_ptr<Callback1<bool>::Type> dns_client_callback_;
@@ -136,6 +134,7 @@ class HTTPProxy {
   std::string client_version_;
   int server_port_;
   int server_socket_;
+  bool is_route_requested_;
   CancelableTask *idle_timeout_;
   std::vector<std::string> client_headers_;
   std::string server_hostname_;

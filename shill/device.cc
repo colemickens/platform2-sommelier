@@ -52,6 +52,12 @@ const char Device::kIPFlagDisableIPv6[] = "disable_ipv6";
 const char Device::kIPFlagUseTempAddr[] = "use_tempaddr";
 // static
 const char Device::kIPFlagUseTempAddrUsedAndDefault[] = "2";
+// static
+const char Device::kIPFlagReversePathFilter[] = "rp_filter";
+// static
+const char Device::kIPFlagReversePathFilterEnabled[] = "1";
+// static
+const char Device::kIPFlagReversePathFilterLooseMode[] = "2";
 
 // static
 const char Device::kStoragePowered[] = "Powered";
@@ -214,6 +220,18 @@ void Device::EnableIPv6Privacy() {
             kIPFlagUseTempAddrUsedAndDefault);
 }
 
+void Device::DisableReversePathFilter() {
+  // TODO(pstew): Current kernel doesn't offer reverse-path filtering flag
+  // for IPv6.  crosbug.com/24228
+  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagReversePathFilter,
+            kIPFlagReversePathFilterLooseMode);
+}
+
+void Device::EnableReversePathFilter() {
+  SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagReversePathFilter,
+            kIPFlagReversePathFilterEnabled);
+}
+
 bool Device::IsConnected() const {
   if (selected_service_)
     return selected_service_->IsConnected();
@@ -328,10 +346,10 @@ void Device::CreateConnection() {
 
 void Device::DestroyConnection() {
   VLOG(2) << __func__;
-  connection_ = NULL;
   if (selected_service_.get()) {
     selected_service_->SetConnection(NULL);
   }
+  connection_ = NULL;
 }
 
 void Device::SelectService(const ServiceRefPtr &service) {

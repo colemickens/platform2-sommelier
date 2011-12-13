@@ -34,6 +34,8 @@ class MockDevice : public Device {
   MOCK_METHOD0(DisableIPv6, void());
   MOCK_METHOD0(EnableIPv6, void());
   MOCK_METHOD0(EnableIPv6Privacy, void());
+  MOCK_METHOD0(DisableReversePathFilter, void());
+  MOCK_METHOD0(EnableReversePathFilter, void());
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
 
  private:

@@ -53,7 +53,7 @@ class DeviceInfo {
   // messages, and registers it with the manager.
   void RegisterDevice(const DeviceRefPtr &device);
 
-  DeviceRefPtr GetDevice(int interface_index) const;
+  virtual DeviceRefPtr GetDevice(int interface_index) const;
   virtual bool GetMACAddress(int interface_index, ByteString *address) const;
   virtual bool GetFlags(int interface_index, unsigned int *flags) const;
   virtual bool GetAddresses(int interface_index,

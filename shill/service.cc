@@ -320,8 +320,7 @@ void Service::MakeFavorite() {
 
 void Service::SetConnection(ConnectionRefPtr connection) {
   if (connection.get()) {
-    http_proxy_.reset(new HTTPProxy(connection->interface_name(),
-                                    connection->dns_servers()));
+    http_proxy_.reset(new HTTPProxy(connection));
     http_proxy_->Start(dispatcher_, &sockets_);
   } else {
     http_proxy_.reset();

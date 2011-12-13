@@ -28,6 +28,7 @@ class MockRoutingTable : public RoutingTable {
                                      const IPConfigRefPtr &ipconfig,
                                      uint32 metric));
   MOCK_METHOD1(FlushRoutes, void(int interface_index));
+  MOCK_METHOD0(FlushCache, bool());
   MOCK_METHOD1(ResetTable, void(int interface_index));
   MOCK_METHOD2(SetDefaultMetric, void(int interface_index, uint32 metric));
 

@@ -14,6 +14,9 @@
 
 #include "shill/ip_address.h"
 #include "shill/mock_async_connection.h"
+#include "shill/mock_connection.h"
+#include "shill/mock_control.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_dns_client.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_sockets.h"
@@ -25,6 +28,7 @@ using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::Invoke;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnArg;
 using ::testing::ReturnNew;
@@ -82,11 +86,23 @@ MATCHER_P(IsIPAddress, address, "") {
 class HTTPProxyTest : public Test {
  public:
   HTTPProxyTest()
-      : server_async_connection_(NULL),
+      : interface_name_(kInterfaceName),
+        server_async_connection_(NULL),
         dns_servers_(kDNSServers, kDNSServers + 2),
         dns_client_(NULL),
-        proxy_(kInterfaceName, dns_servers_) { }
+        device_info_(new NiceMock<MockDeviceInfo>(
+            &control_,
+            reinterpret_cast<EventDispatcher*>(NULL),
+            reinterpret_cast<Manager*>(NULL))),
+        connection_(new StrictMock<MockConnection>(device_info_.get())),
+        proxy_(connection_) { }
  protected:
+  virtual void SetUp() {
+    EXPECT_CALL(*connection_.get(), interface_name())
+        .WillRepeatedly(ReturnRef(interface_name_));
+    EXPECT_CALL(*connection_.get(), dns_servers())
+        .WillRepeatedly(ReturnRef(dns_servers_));
+  }
   virtual void TearDown() {
     if (proxy_.sockets_) {
       ExpectStop();
@@ -152,9 +168,11 @@ class HTTPProxyTest : public Test {
     EXPECT_FALSE(proxy_.write_client_handler_.get());
     EXPECT_FALSE(proxy_.read_server_handler_.get());
     EXPECT_FALSE(proxy_.write_server_handler_.get());
+    EXPECT_FALSE(proxy_.is_route_requested_);
   }
   void ExpectReset() {
     EXPECT_FALSE(proxy_.accept_handler_.get());
+    EXPECT_EQ(proxy_.connection_.get(), connection_.get());
     EXPECT_FALSE(proxy_.dispatcher_);
     EXPECT_FALSE(proxy_.dns_client_.get());
     EXPECT_EQ(-1, proxy_.proxy_port_);
@@ -188,6 +206,9 @@ class HTTPProxyTest : public Test {
      if (server_async_connection_) {
        EXPECT_CALL(*server_async_connection_, Stop())
            .Times(AtLeast(1));
+     }
+     if (proxy_.is_route_requested_) {
+       EXPECT_CALL(*connection_.get(), ReleaseRouting());
      }
    }
    void ExpectClientInput(int fd) {
@@ -291,13 +312,18 @@ class HTTPProxyTest : public Test {
         .WillOnce(ReturnNew<IOHandler>());
     ExpectRepeatedInputTimeout();
   }
-
   void ExpectTunnelClose() {
     EXPECT_CALL(sockets(), Close(kClientFD))
         .WillOnce(Return(0));
     EXPECT_CALL(sockets(), Close(kServerFD))
         .WillOnce(Return(0));
     ExpectStop();
+  }
+  void ExpectRouteRequest() {
+    EXPECT_CALL(*connection_.get(), RequestRouting());
+  }
+  void ExpectRouteRelease() {
+    EXPECT_CALL(*connection_.get(), ReleaseRouting());
   }
 
   // Callers for various private routines in the proxy
@@ -369,6 +395,7 @@ class HTTPProxyTest : public Test {
   void SetupConnectWithRequest(const string &url, const string &http_version,
                                const string &extra_lines) {
     ExpectDNSRequest("www.chromium.org", true);
+    ExpectRouteRequest();
     ReadFromClient(CreateRequest(url, http_version, extra_lines));
     IPAddress addr(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(addr.SetAddressFromString(kServerAddress));
@@ -393,12 +420,16 @@ class HTTPProxyTest : public Test {
   }
 
  private:
+  const string interface_name_;
   // Owned by the HTTPProxy, but tracked here for EXPECT().
   StrictMock<MockAsyncConnection> *server_async_connection_;
   vector<string> dns_servers_;
   // Owned by the HTTPProxy, but tracked here for EXPECT().
   StrictMock<MockDNSClient> *dns_client_;
   MockEventDispatcher dispatcher_;
+  MockControl control_;
+  scoped_ptr<MockDeviceInfo> device_info_;
+  scoped_refptr<MockConnection> connection_;
   HTTPProxy proxy_;
   StrictMock<MockSockets> sockets_;
 };
@@ -553,6 +584,7 @@ TEST_F(HTTPProxyTest, TooManyColonsInHost) {
 
 TEST_F(HTTPProxyTest, DNSRequestFailure) {
   SetupClient();
+  ExpectRouteRequest();
   ExpectDNSRequest("www.chromium.org", false);
   ExpectClientResult();
   ReadFromClient(CreateRequest("/", "1.1", "Host: www.chromium.org:40506"));
@@ -561,6 +593,7 @@ TEST_F(HTTPProxyTest, DNSRequestFailure) {
 
 TEST_F(HTTPProxyTest, DNSRequestDelayedFailure) {
   SetupClient();
+  ExpectRouteRequest();
   ExpectDNSRequest("www.chromium.org", true);
   ReadFromClient(CreateRequest("/", "1.1", "Host: www.chromium.org:40506"));
   ExpectClientResult();
@@ -573,6 +606,7 @@ TEST_F(HTTPProxyTest, DNSRequestDelayedFailure) {
 
 TEST_F(HTTPProxyTest, TrailingClientData) {
   SetupClient();
+  ExpectRouteRequest();
   ExpectDNSRequest("www.chromium.org", true);
   const string trailing_data("Trailing client data");
   ReadFromClient(CreateRequest("/", "1.1", "Host: www.chromium.org:40506") +
@@ -584,6 +618,7 @@ TEST_F(HTTPProxyTest, TrailingClientData) {
 
 TEST_F(HTTPProxyTest, LineContinuation) {
   SetupClient();
+  ExpectRouteRequest();
   ExpectDNSRequest("www.chromium.org", true);
   string text_to_keep("X-Long-Header: this is one line\r\n"
                       "\tand this is another");
@@ -598,6 +633,7 @@ TEST_F(HTTPProxyTest, LineContinuation) {
 //      continuation.
 TEST_F(HTTPProxyTest, LineContinuationRemoval) {
   SetupClient();
+  ExpectRouteRequest();
   ExpectDNSRequest("www.chromium.org", true);
   string text_to_remove("remove this text please");
   ReadFromClient(CreateRequest("http://www.chromium.org/", "1.1",
@@ -634,6 +670,7 @@ TEST_F(HTTPProxyTest, ConnectIPAddresss) {
   SetupClient();
   ExpectSyncConnect(kServerAddress, 999);
   ExpectRepeatedServerOutput();
+  ExpectRouteRequest();
   ReadFromClient(CreateRequest("/", "1.1",
                                StringPrintf("Host: %s:999", kServerAddress)));
   EXPECT_EQ(HTTPProxy::kStateTunnelData, GetProxyState());
@@ -730,6 +767,7 @@ TEST_F(HTTPProxyTest, StopClient) {
       .WillOnce(Return(0));
   EXPECT_CALL(sockets(), Close(kServerFD))
       .WillOnce(Return(0));
+  ExpectRouteRelease();
   StopClient();
   ExpectClientReset();
   EXPECT_EQ(HTTPProxy::kStateWaitConnection, GetProxyState());

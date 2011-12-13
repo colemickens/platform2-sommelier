@@ -36,10 +36,10 @@ class RoutingTable {
   virtual void Start();
   virtual void Stop();
 
-  // Add an entry to the routing table
+  // Add an entry to the routing table.
   virtual bool AddRoute(int interface_index, const RoutingTableEntry &entry);
 
-  // Get the default route associated with an interface of a given addr family
+  // Get the default route associated with an interface of a given addr family.
   virtual bool GetDefaultRoute(int interface_index,
                                IPAddress::Family family,
                                RoutingTableEntry *entry);
@@ -49,13 +49,16 @@ class RoutingTable {
                                const IPConfigRefPtr &ipconfig,
                                uint32 metric);
 
-  // Remove all routes associated with interface
+  // Remove all routes associated with interface.
   virtual void FlushRoutes(int interface_index);
 
-  // Reset local state for this interface
+  // Flush the routing cache for all interfaces.
+  virtual bool FlushCache();
+
+  // Reset local state for this interface.
   virtual void ResetTable(int interface_index);
 
-  // Set the metric (priority) on existing default routes for an interface
+  // Set the metric (priority) on existing default routes for an interface.
   virtual void SetDefaultMetric(int interface_index, uint32 metric);
 
  protected:
@@ -73,13 +76,12 @@ class RoutingTable {
   void ReplaceMetric(uint32 interface_index,
                      const RoutingTableEntry &entry,
                      uint32 metric);
-  bool FlushCache();
 
   static const char kRouteFlushPath4[];
   static const char kRouteFlushPath6[];
 
   base::hash_map<int, std::vector<RoutingTableEntry> > tables_; // NOLINT
-  // NOLINT above: hash_map from base, no need to #include <hash_map>
+  // NOLINT above: hash_map from base, no need to #include <hash_map>.
 
   scoped_ptr<Callback1<const RTNLMessage &>::Type> route_callback_;
   scoped_ptr<RTNLListener> route_listener_;

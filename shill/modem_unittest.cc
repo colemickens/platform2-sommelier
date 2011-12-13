@@ -164,6 +164,8 @@ TEST_F(ModemTest, CreateCellularDevice) {
   EXPECT_CALL(info_, GetMACAddress(kTestInterfaceIndex, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(expected_address), Return(true)))
       .WillOnce(DoAll(SetArgumentPointee<1>(expected_address), Return(true)));
+  EXPECT_CALL(info_, GetDevice(kTestInterfaceIndex))
+      .WillRepeatedly(Return(modem_.device_));
   EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&info_));
 
   modem_.CreateCellularDevice(props);
