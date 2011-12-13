@@ -8,6 +8,7 @@
 
 #include "base/logging.h"
 #include "power_manager/metrics_constants.h"
+#include "power_manager/metrics_store.h"
 
 using base::TimeDelta;
 using base::TimeTicks;
@@ -210,6 +211,61 @@ bool Daemon::GenerateLengthOfSessionMetric(const base::Time& now,
                     kMetricLengthOfSessionMin,
                     kMetricLengthOfSessionMax,
                     kMetricLengthOfSessionBuckets);
+}
+
+bool Daemon::GenerateNumOfSessionsPerChargeMetric(MetricsStore* store) {
+  CHECK(store != NULL);
+  if (metrics_store_.IsBroken()) {
+    LOG(ERROR) << "Metrics store is in bad state, so could not generate number "
+               << "of sessions per charge";
+    return false;
+  }
+
+  int sample = store->GetNumOfSessionsPerChargeMetric();
+  if (sample == 0) {
+    LOG(INFO) << "A spurious call to GenerateNumOfSessionsPerChargeMetric has "
+              << "occurred or we changed state at the login screen";
+    return true;
+  }
+
+  if (sample > kMetricNumOfSessionsPerChargeMax) {
+    LOG(INFO) << "Clamping NumberOfSessionsPerCharge to "
+              << kMetricNumOfSessionsPerChargeMax;
+    sample = kMetricNumOfSessionsPerChargeMax;
+  }
+
+  store->ResetNumOfSessionsPerChargeMetric();
+  return SendMetric(kMetricNumOfSessionsPerChargeName,
+                    sample,
+                    kMetricNumOfSessionsPerChargeMin,
+                    kMetricNumOfSessionsPerChargeMax,
+                    kMetricNumOfSessionsPerChargeBuckets);
+}
+
+void Daemon::HandleNumOfSessionsPerChargeOnSetPlugged(
+    MetricsStore* metrics_store,
+    const PluggedState& plugged_state) {
+  CHECK(metrics_store != NULL);
+  if (plugged_state == kPowerConnected) {
+    LOG_IF(ERROR, !GenerateNumOfSessionsPerChargeMetric(metrics_store))
+        << "Failed to send NumOfSessionsPerCharge metrics";
+  }
+  else if (plugged_state == kPowerDisconnected) {
+    int count = metrics_store->GetNumOfSessionsPerChargeMetric();
+    switch (count) {
+      case 1:
+        break;
+      case 0:
+        metrics_store->IncrementNumOfSessionsPerChargeMetric();
+        break;
+      default:
+        LOG(ERROR) << "NumOfSessionPerCharge counter was in a weird state with "
+                   << "value " << count;
+        metrics_store->ResetNumOfSessionsPerChargeMetric();
+        metrics_store->IncrementNumOfSessionsPerChargeMetric();
+        break;
+    }
+  }
 }
 
 bool Daemon::SendMetric(const std::string& name, int sample,

@@ -26,6 +26,7 @@
 #include "power_manager/backlight_interface.h"
 #include "power_manager/file_tagger.h"
 #include "power_manager/inotify.h"
+#include "power_manager/metrics_store.h"
 #include "power_manager/power_prefs.h"
 #include "power_manager/power_supply.h"
 #include "power_manager/screen_locker.h"
@@ -113,6 +114,7 @@ class Daemon : public XIdleObserver,
   FRIEND_TEST(DaemonTest, GenerateLengthOfSessionMetricOverflow);
   FRIEND_TEST(DaemonTest, GenerateLengthOfSessionMetricUnderflow);
   FRIEND_TEST(DaemonTest, GenerateMetricsOnPowerEvent);
+  FRIEND_TEST(DaemonTest, GenerateNumOfSessionsPerChargeMetric);
   FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
   FRIEND_TEST(DaemonTest,
               GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow);
@@ -123,6 +125,7 @@ class Daemon : public XIdleObserver,
               GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow);
   FRIEND_TEST(DaemonTest,
               GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow);
+  FRIEND_TEST(DaemonTest, HandleNumOfSessionsPerChargeOnSetPlugged);
   FRIEND_TEST(DaemonTest, PowerButtonDownMetric);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
   FRIEND_TEST(DaemonTest, SendMetric);
@@ -267,10 +270,22 @@ class Daemon : public XIdleObserver,
   bool GenerateUserBrightnessAdjustmentsPerSessionMetric(
     const BacklightController& backlight);
 
-  // Generates length of session session UMA metric sample. Returns true if a
+  // Generates length of session UMA metric sample. Returns true if a
   // sample was sent to UMA, false otherwise.
   bool GenerateLengthOfSessionMetric(const base::Time& now,
                                      const base::Time& start);
+
+  // Generates number of sessions per charge UMA metric sample if the current
+  // stored value is greater then 0. The stored value being 0 are spurious and
+  // shouldn't be occuring, since they indicate we are on AC. Returns true if
+  // a sample was sent to UMA or a 0 is silently ignored, false otherwise.
+  bool GenerateNumOfSessionsPerChargeMetric(MetricsStore* store);
+
+  // Utility method used on plugged state change to do the right thing wrt to
+  // the NumberOfSessionsPerCharge Metric.
+  void HandleNumOfSessionsPerChargeOnSetPlugged(
+      MetricsStore* metrics_store,
+      const PluggedState& plugged_state);
 
   // Sends a regular (exponential) histogram sample to Chrome for
   // transport to UMA. Returns true on success. See
@@ -393,6 +408,9 @@ class Daemon : public XIdleObserver,
   // Whether the left/right ctrl key is down.
   bool left_ctrl_down_;
   bool right_ctrl_down_;
+
+  // Persistent storage for metrics that need to exist for more then one session
+  MetricsStore metrics_store_;
 };
 
 }  // namespace power_manager

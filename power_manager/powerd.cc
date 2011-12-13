@@ -129,6 +129,10 @@ void Daemon::Init() {
   CHECK(idle_.Init(this));
   prefs_->StartPrefWatching(&(PrefChangeHandler), this);
   MetricInit();
+  LOG_IF(ERROR, (!metrics_store_.Init()))
+      << "Unable to initialize metrics store, so we are going to drop number of"
+      << " sessions per charge data";
+
   if (!DPMSCapable(GDK_DISPLAY())) {
     LOG(WARNING) << "X Server not DPMS capable";
   } else {
@@ -242,6 +246,11 @@ void Daemon::Run() {
 void Daemon::SetPlugged(bool plugged) {
   if (plugged == plugged_state_)
     return;
+
+  HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
+                                           plugged ?
+                                           kPowerConnected :
+                                           kPowerDisconnected);
 
   // If we are moving from kPowerUknown then we don't know how long the device
   // has been on AC for and thus our metric would not tell us anything about the
@@ -1036,6 +1045,10 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
     LOG_IF(ERROR,
            (!GenerateBatteryRemainingAtStartOfSessionMetric(power_status_)))
         << "Start Started: Unable to generate battery remaining metric!";
+
+    if (plugged_state_ == kPowerDisconnected)
+      metrics_store_.IncrementNumOfSessionsPerChargeMetric();
+
     current_user_ = user;
     session_start_ = base::Time::Now();
     DLOG(INFO) << "Session started for "
