@@ -32,14 +32,12 @@ base_env['CPPFLAGS'].extend(Split(extra_cppflags))
 # First button push enables lock screen. Second button push shuts down.
 # New : power button supports proper release signal. Long button press to shut
 # down.
-if int(ARGUMENTS.get('new_power_button', 0)):
+if ARGUMENTS.get('POWER_BUTTON', '').lower() == 'new':
   base_env.Append(CPPDEFINES=['NEW_POWER_BUTTON'])
 if int(ARGUMENTS.get('lockvt', 0)):
   base_env.Append(CPPDEFINES=['SUSPEND_LOCK_VT'])
 if int(ARGUMENTS.get('is_desktop', 0)):
   base_env.Append(CPPDEFINES=['IS_DESKTOP'])
-if int(ARGUMENTS.get('has_als', 0)):
-  base_env.Append(CPPDEFINES=['HAS_ALS'])
 
 # Fix issue with scons not passing some vars through the environment.
 for key in Split('SYSROOT'):
