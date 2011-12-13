@@ -185,12 +185,14 @@ TEST_F(BacklightControllerTest, NotifyObserver) {
   EXPECT_EQ(controller_.local_brightness(), observer.changes()[0].first);
   EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].second);
 
+#ifndef IS_DESKTOP
   // Dim the backlight.
   observer.Clear();
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(controller_.local_brightness(), observer.changes()[0].first);
   EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].second);
+#endif
 }
 
 }  // namespace power_manager
