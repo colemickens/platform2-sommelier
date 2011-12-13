@@ -8,7 +8,6 @@
 #include <sys/types.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <gdk/gdk.h>
-#include <libudev.h>
 
 #include "base/file_path.h"
 #include "base/time.h"
@@ -19,13 +18,9 @@
 
 namespace power_manager {
 
-class BacklightInterface;
-
 class PowerManDaemon {
  public:
-  PowerManDaemon(PowerPrefs* prefs,
-                 MetricsLibraryInterface* metrics_lib,
-                 BacklightInterface* backlight,
+  PowerManDaemon(PowerPrefs* prefs, MetricsLibraryInterface* metrics_lib,
                  const FilePath& run_dir);
   virtual ~PowerManDaemon();
 
@@ -110,9 +105,6 @@ class PowerManDaemon {
                     const char *interface,
                     const char *member);
   void AddDBusMatch(DBusConnection *connection, const char *interface);
-  void AddDBusMethod(DBusConnection *connection,
-                     const char *interface,
-                     const char *path);
   // Register the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 
@@ -152,7 +144,6 @@ class PowerManDaemon {
   PowerPrefs* prefs_;
   LidState lidstate_;
   MetricsLibraryInterface* metrics_lib_;
-  BacklightInterface* backlight_;
   int64 retry_suspend_ms_;
   int64 retry_suspend_attempts_;
   int retry_suspend_count_;

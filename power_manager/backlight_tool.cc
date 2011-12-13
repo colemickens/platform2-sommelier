@@ -8,13 +8,8 @@
 #include <cstdio>
 
 #include "base/logging.h"
-#include "power_manager/power_constants.h"
-
-#ifdef IS_DESKTOP
-#include "power_manager/external_backlight.h"
-#else
 #include "power_manager/backlight.h"
-#endif
+#include "power_manager/power_constants.h"
 
 DEFINE_bool(get_brightness, false, "Get current brightness level.");
 DEFINE_bool(get_max_brightness, false, "Get max brightness level.");
@@ -26,14 +21,9 @@ int main(int argc, char* argv[]) {
   CHECK(argc == 1) << "Unexpected arguments. Try --help";
   CHECK(!FLAGS_get_brightness || !FLAGS_get_max_brightness) <<
       "-get_brightness and -get_max_brightness are mutually exclusive";
-#ifdef IS_DESKTOP
-  power_manager::ExternalBacklight backlight;
-  CHECK(backlight.Init());
-#else
   power_manager::Backlight backlight;
   CHECK(backlight.Init(FilePath(power_manager::kBacklightPath),
                        power_manager::kBacklightPattern));
-#endif
   if (FLAGS_get_brightness || FLAGS_get_max_brightness) {
     int64 level, max;
     CHECK(backlight.GetBrightness(&level, &max));

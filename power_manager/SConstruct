@@ -57,16 +57,11 @@ xidle_example = xidle_env.Program('xidle-example',
 Default(xidle_example)
 
 # Build backlight tool
+backlight = gdk_env.Library('backlight',
+                            ['ambient_light_sensor.cc', 'backlight.cc',
+                             'power_constants.cc'])
 backlight_env = gdk_env.Clone()
-backlight_env.Append(LIBS=Split('base rt pthread gflags \
-  chromeos pthread dl metrics X11 Xrandr udev'))
-backlight_env.ParseConfig(
-  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1')
-backlight = backlight_env.Library('backlight',
-                                  ['ambient_light_sensor.cc', 'backlight.cc',
-                                   'external_backlight.cc',
-                                   'external_backlight_client.cc',
-                                   'power_constants.cc'])
+backlight_env.Append(LIBS=Split('base rt pthread gflags'))
 backlight_tool = backlight_env.Program('backlight-tool',
                                        ['backlight_tool.cc', backlight])
 Default(backlight_tool)
@@ -94,7 +89,6 @@ powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
 
-
 powerd_sources = Split(''' audio_detector.cc \
   file_tagger.cc power_button_handler.cc powerd.cc powerd_metrics.cc
   screen_locker.cc suspender.cc video_detector.cc metrics_constants.cc
@@ -113,8 +107,7 @@ powerman_env.Append(LIBS=Split('base chromeos gflags pthread metrics udev X11'))
 powerman_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
-powerman_sources = ['powerman.cc', 'external_backlight.cc',
-                    'input.cc', 'powerman_metrics.cc']
+powerman_sources = ['powerman.cc', 'input.cc', 'powerman_metrics.cc']
 powerman_lib = powerman_env.Library('powerman_lib', powerman_sources)
 powerman = powerman_env.Program('powerm', ['powerman_main.cc', powerman_lib,
                                            power_prefs, util_lib])
