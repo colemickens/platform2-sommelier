@@ -50,6 +50,10 @@ gdk_env.ParseConfig(os.environ['PKG_CONFIG'] + ' --cflags --libs gdk-2.0')
 
 # Build example xidle program
 xidle_env = gdk_env.Clone()
+# WARNING! Dear person who thinks these library dependencies should be in
+# the alphabetical order. No, you are wrong. Do not attempt to change the
+# order without copious testing. In particular, the 'chromeos' dependency
+# should appear before 'base' or bad things happen.
 xidle_env.Append(LIBS=Split('base rt X11 pthread Xext'))
 xidle = xidle_env.Library('xidle', ['xidle.cc', 'xsync.cc'])
 xidle_example = xidle_env.Program('xidle-example',
@@ -103,7 +107,7 @@ Default(powerd)
 
 # Build privileged power daemon
 powerman_env = gdk_env.Clone()
-powerman_env.Append(LIBS=Split('base chromeos gflags pthread metrics udev X11'))
+powerman_env.Append(LIBS=Split('chromeos base gflags pthread metrics udev X11'))
 powerman_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
@@ -116,7 +120,7 @@ Default(powerman)
 
 # Build sample suspend delay client
 suspend_delay_sample_env = powerman_env.Clone()
-suspend_delay_sample_env.Append(LIBS=Split('base chromeos pthread gflags'))
+suspend_delay_sample_env.Append(LIBS=Split('chromeos base pthread gflags'))
 suspend_delay_sample_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
