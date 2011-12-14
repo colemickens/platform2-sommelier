@@ -45,12 +45,12 @@ void SetupLogging() {
 }
 
 // This callback will be invoked once there is a new device event that
-// should be processed by the Daemon::ProcessNextDeviceEvent().
+// should be processed by the Daemon::ProcessDeviceEvents().
 gboolean DeviceEventCallback(GIOChannel* source,
                              GIOCondition condition,
                              gpointer data) {
   Daemon* daemon = reinterpret_cast<Daemon*>(data);
-  daemon->ProcessNextDeviceEvent();
+  daemon->ProcessDeviceEvents();
   // This function should always return true so that the main loop
   // continues to select on device event file descriptor.
   return true;

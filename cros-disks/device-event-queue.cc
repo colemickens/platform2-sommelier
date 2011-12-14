@@ -4,13 +4,9 @@
 
 #include "cros-disks/device-event-queue.h"
 
-#include <list>
-
 #include <base/logging.h>
 
 #include "cros-disks/device-event.h"
-
-using std::list;
 
 namespace cros_disks {
 
@@ -31,8 +27,8 @@ void DeviceEventQueue::Add(const DeviceEvent& event) {
       event.event_type == DeviceEvent::kDeviceScanned)
     return;
 
-  for (list<DeviceEvent>::iterator last_event_iterator = events_.begin();
-      last_event_iterator != events_.end(); ++last_event_iterator) {
+  for (DeviceEventList::iterator last_event_iterator = events_.begin();
+       last_event_iterator != events_.end(); ++last_event_iterator) {
     const DeviceEvent& last_event = *last_event_iterator;
 
     // Skip an unrelated event.
@@ -48,22 +44,21 @@ void DeviceEventQueue::Add(const DeviceEvent& event) {
     }
 
     // Discard a Removed event and its last related event, which is an
-    // Added/AddedAfterRemoved/Changed event. Note that the last related event
-    // cannot be a Removed event as that is already handled by the code above.
+    // Added/Changed event. Note that the last related event cannot be
+    // a Removed event as that is already handled by the code above.
     if (event.event_type == DeviceEvent::kDeviceRemoved ||
         event.event_type == DeviceEvent::kDiskRemoved) {
       CHECK(last_event.event_type != DeviceEvent::kDeviceRemoved &&
-          last_event.event_type != DeviceEvent::kDiskRemoved)
-        << "Last event should not be a Removed event";
+            last_event.event_type != DeviceEvent::kDiskRemoved)
+          << "Last event should not be a Removed event";
       events_.erase(last_event_iterator);
       return;
     }
 
-    // Discard a DiskChanged event if a related DiskAdded /
-    // DiskAddedAfterRemoved event is already in the queue.
+    // Discard a DiskChanged event if a related DiskAdded event is already
+    // in the queue.
     if (event.event_type == DeviceEvent::kDiskChanged &&
-        (last_event.event_type == DeviceEvent::kDiskAdded ||
-         last_event.event_type == DeviceEvent::kDiskAddedAfterRemoved))
+        last_event.event_type == DeviceEvent::kDiskAdded)
       return;
   }
 

@@ -4,14 +4,11 @@
 
 #include <algorithm>
 #include <string>
-#include <list>
 
 #include <gtest/gtest.h>
 
 #include "cros-disks/device-event.h"
 #include "cros-disks/device-event-queue.h"
-
-using std::list;
 
 namespace cros_disks {
 
@@ -33,7 +30,7 @@ class DeviceEventQueueTest : public ::testing::Test {
   }
 
   DeviceEventQueue queue_;
-  list<DeviceEvent> expected_events_;
+  DeviceEventList expected_events_;
 };
 
 TEST_F(DeviceEventQueueTest, Constructor) {
@@ -177,21 +174,6 @@ TEST_F(DeviceEventQueueTest, AddDiskAddedAndDiskChanged) {
   EXPECT_TRUE(VerifyDeviceEventQueue());
 }
 
-TEST_F(DeviceEventQueueTest, AddDiskAddedAfterRemovedAndDiskChanged) {
-  // A DiskChanged event is discarded if a DiskAddedAfterRemoved event
-  // of the same same device path is in the queue
-  queue_.Add(DeviceEvent(DeviceEvent::kDiskAddedAfterRemoved, "d1"));
-  queue_.Add(DeviceEvent(DeviceEvent::kDiskChanged, "d1"));
-  expected_events_.push_front(
-      DeviceEvent(DeviceEvent::kDiskAddedAfterRemoved, "d1"));
-  EXPECT_TRUE(VerifyDeviceEventQueue());
-
-  queue_.Add(DeviceEvent(DeviceEvent::kDiskAdded, "d2"));
-  queue_.Add(DeviceEvent(DeviceEvent::kDiskChanged, "d1"));
-  expected_events_.push_front(DeviceEvent(DeviceEvent::kDiskAdded, "d2"));
-  EXPECT_TRUE(VerifyDeviceEventQueue());
-}
-
 TEST_F(DeviceEventQueueTest, AddDiskChangedAndDiskRemoved) {
   // A DiskChanged event followed by a DiskRemoved event
   // of the same device path are both discarded
@@ -213,20 +195,6 @@ TEST_F(DeviceEventQueueTest, AddDiskRemovedAndDiskAdded) {
   queue_.Add(DeviceEvent(DeviceEvent::kDiskAdded, "d1"));
   expected_events_.push_front(DeviceEvent(DeviceEvent::kDiskRemoved, "d1"));
   expected_events_.push_front(DeviceEvent(DeviceEvent::kDiskAdded, "d1"));
-  EXPECT_TRUE(VerifyDeviceEventQueue());
-}
-
-TEST_F(DeviceEventQueueTest, AddDiskAddedAfterRemovedAndDiskRemoved) {
-  // A DiskAddedAfterRemoved event followed by a DiskRemoved event of the
-  // same device path are both discarded
-  queue_.Add(DeviceEvent(DeviceEvent::kDiskAddedAfterRemoved, "d1"));
-  queue_.Add(DeviceEvent(DeviceEvent::kDiskRemoved, "d1"));
-  EXPECT_TRUE(VerifyDeviceEventQueue());
-
-  queue_.Add(DeviceEvent(DeviceEvent::kDiskAddedAfterRemoved, "d1"));
-  queue_.Add(DeviceEvent(DeviceEvent::kDiskRemoved, "d2"));
-  queue_.Add(DeviceEvent(DeviceEvent::kDiskRemoved, "d1"));
-  expected_events_.push_front(DeviceEvent(DeviceEvent::kDiskRemoved, "d2"));
   EXPECT_TRUE(VerifyDeviceEventQueue());
 }
 

@@ -5,8 +5,6 @@
 #ifndef CROS_DISKS_DEVICE_EVENT_QUEUE_H_
 #define CROS_DISKS_DEVICE_EVENT_QUEUE_H_
 
-#include <list>
-
 #include <base/basictypes.h>
 
 #include "cros-disks/device-event.h"
@@ -40,14 +38,13 @@ class DeviceEventQueue {
   // 2) If a DeviceRemoved event is seen after a DeviceAdded event with
   //    the same device path, both events are discarded as if the device
   //    has not been added.
-  // 3) If a DiskRemoved event is seen after a DiskAdded, DiskChanged,
-  //    or DiskAddedAfterRemoved event with the same device path, both
-  //    events are discarded as if the device has not been added.
-  // 4) A DiskChanged event is discarded if a DiskAdded or
-  //    DiskAddedAfterRemoved is already in the queue. This is because
-  //    both events are deferred and thus the DiskChanged event, which
-  //    signals some property changes in the disk, can be absorbed
-  //    into the DiskAdded or DiskAddedAfterRemoved event.
+  // 3) If a DiskRemoved event is seen after a DiskAdded or DiskChanged
+  //    event with the same device path, both events are discarded as if
+  //    the device has not been added.
+  // 4) A DiskChanged event is discarded if a DiskAdded event is already
+  //    in the queue. This is because both events are deferred and thus
+  //    the DiskChanged event, which signals some property changes in the
+  //    disk, can be absorbed into the DiskAdded event.
   void Add(const DeviceEvent& event);
 
   // Returns a pointer to the oldest device event at the head of event
@@ -55,12 +52,12 @@ class DeviceEventQueue {
   // invalid upon the next Remove call.
   const DeviceEvent* Head() const;
 
-  const std::list<DeviceEvent>& events() const { return events_; }
+  const DeviceEventList& events() const { return events_; }
 
  private:
   // A list of events in the event queue.
   // The latest event is inserted at the beginning of the list.
-  std::list<DeviceEvent> events_;
+  DeviceEventList events_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceEventQueue);
 };

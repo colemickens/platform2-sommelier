@@ -13,7 +13,6 @@ bool DeviceEvent::operator==(const DeviceEvent& event) const {
 bool DeviceEvent::IsDiskEvent() const {
   switch (event_type) {
     case kDiskAdded:
-    case kDiskAddedAfterRemoved:
     case kDiskChanged:
     case kDiskRemoved:
       return true;

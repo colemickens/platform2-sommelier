@@ -25,7 +25,6 @@ class Disk;
 class Filesystem;
 class Mounter;
 class Platform;
-class UdevDevice;
 
 // The DiskManager is responsible for reading device state from udev.
 // Said changes could be the result of a udev notification or a synchronous
@@ -67,9 +66,9 @@ class DiskManager : public MountManager,
   virtual std::vector<Disk> EnumerateDisks() const;
 
   // Implements the DeviceEventSourceInterface interface to read the changes
-  // from udev and converts the changes into a device event. Returns false on
+  // from udev and converts the changes into device events. Returns false on
   // error or if not device event is available. Must be called to clear the fd.
-  bool GetDeviceEvent(DeviceEvent* event);
+  bool GetDeviceEvents(DeviceEventList* events);
 
   // Gets a Disk object that corresponds to a given device file.
   bool GetDiskByDevicePath(const std::string& device_path, Disk *disk) const;
@@ -113,13 +112,13 @@ class DiskManager : public MountManager,
   // Otherwise, it returns NULL.
   const Filesystem* GetFilesystem(const std::string& filesystem_type) const;
 
-  // Determines a device/disk event from a udev block device change.
-  DeviceEvent::EventType ProcessBlockDeviceEvent(UdevDevice* device,
-                                                 const char *action);
+  // Determines one or more device/disk events from a udev block device change.
+  void ProcessBlockDeviceEvents(struct udev_device* device, const char *action,
+                                DeviceEventList* events);
 
-  // Determines a device/disk event from a udev SCSI device change.
-  DeviceEvent::EventType ProcessScsiDeviceEvent(UdevDevice* device,
-                                                const char *action);
+  // Determines one or more device/disk events from a udev SCSI device change.
+  void ProcessScsiDeviceEvents(struct udev_device* device, const char *action,
+                               DeviceEventList* events);
 
   // The root udev object.
   mutable struct udev* udev_;
@@ -133,8 +132,9 @@ class DiskManager : public MountManager,
   // A set of device sysfs paths detected by the udev monitor.
   std::set<std::string> devices_detected_;
 
-  // A set of disk sysfs paths detected by the udev monitor.
-  std::set<std::string> disks_detected_;
+  // A mapping from a sysfs path of a disk, detected by the udev monitor,
+  // to a set of sysfs paths of the immediate children of the disk.
+  std::map<std::string, std::set<std::string> > disks_detected_;
 
   // A set of supported filesystems indexed by filesystem type.
   std::map<std::string, Filesystem> filesystems_;

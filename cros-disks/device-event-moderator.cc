@@ -58,13 +58,19 @@ void DeviceEventModerator::OnSessionStopped(const string& user) {
   is_event_queued_ = true;
 }
 
-void DeviceEventModerator::ProcessNextDeviceEvent() {
-  DeviceEvent event;
-  if (event_source_->GetDeviceEvent(&event)) {
+void DeviceEventModerator::ProcessDeviceEvents() {
+  DeviceEventList events;
+  if (event_source_->GetDeviceEvents(&events)) {
     if (is_event_queued_) {
-      event_queue_.Add(event);
+      for (DeviceEventList::const_iterator event_iter = events.begin();
+           event_iter != events.end(); ++event_iter) {
+        event_queue_.Add(*event_iter);
+      }
     } else {
-      event_dispatcher_->DispatchDeviceEvent(event);
+      for (DeviceEventList::const_iterator event_iter = events.begin();
+           event_iter != events.end(); ++event_iter) {
+        event_dispatcher_->DispatchDeviceEvent(*event_iter);
+      }
     }
   }
 }

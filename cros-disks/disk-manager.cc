@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/stl_util-inl.h>
 #include <base/string_util.h>
 
 #include "cros-disks/disk.h"
@@ -112,15 +113,13 @@ vector<Disk> DiskManager::EnumerateDisks() const {
   return disks;
 }
 
-DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
-    UdevDevice* device, const char* action) {
-  CHECK(device) << "Invalid udev device object";
-
-  DeviceEvent::EventType event_type = DeviceEvent::kIgnored;
-  string device_path = device->NativePath();
+void DiskManager::ProcessBlockDeviceEvents(
+    struct udev_device* dev, const char* action, DeviceEventList* events) {
+  UdevDevice device(dev);
 
   bool disk_added = false;
   bool disk_removed = false;
+  bool child_disk_removed = false;
   if (strcmp(action, kUdevAddAction) == 0) {
     disk_added = true;
   } else if (strcmp(action, kUdevRemoveAction) == 0) {
@@ -129,64 +128,74 @@ DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
     // For removable devices like CD-ROM, an eject request event
     // is treated as disk removal, while a media change event with
     // media available is treated as disk insertion.
-    if (device->IsPropertyTrue(kPropertyDiskEjectRequest)) {
+    if (device.IsPropertyTrue(kPropertyDiskEjectRequest)) {
       disk_removed = true;
-    } else if (device->IsPropertyTrue(kPropertyDiskMediaChange)) {
-      if (device->IsMediaAvailable()) {
+    } else if (device.IsPropertyTrue(kPropertyDiskMediaChange)) {
+      if (device.IsMediaAvailable()) {
         disk_added = true;
+      } else {
+        child_disk_removed = true;
       }
     }
   }
 
+  string device_path = device.NativePath();
   if (disk_added) {
-    if (device->IsAutoMountable()) {
-      set<string>::const_iterator disk_iter =
-          disks_detected_.find(device_path);
-      if (disk_iter != disks_detected_.end()) {
+    if (device.IsAutoMountable()) {
+      if (ContainsKey(disks_detected_, device_path)) {
         // Disk already exists, so remove it and then add it again.
-        event_type = DeviceEvent::kDiskAddedAfterRemoved;
+        events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, device_path));
       } else {
-        disks_detected_.insert(device_path);
-        event_type = DeviceEvent::kDiskAdded;
+        disks_detected_[device_path] = set<string>();
+
+        // Add the disk as a child of its parent if the parent is already
+        // added to |disks_detected_|.
+        struct udev_device* parent = udev_device_get_parent(dev);
+        if (parent) {
+          string parent_device_path = UdevDevice(parent).NativePath();
+          if (ContainsKey(disks_detected_, parent_device_path)) {
+            disks_detected_[parent_device_path].insert(device_path);
+          }
+        }
       }
+      events->push_back(DeviceEvent(DeviceEvent::kDiskAdded, device_path));
     }
   } else if (disk_removed) {
     disks_detected_.erase(device_path);
-    event_type = DeviceEvent::kDiskRemoved;
+    events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, device_path));
+  } else if (child_disk_removed) {
+    if (ContainsKey(disks_detected_, device_path)) {
+      set<string>& child_disks = disks_detected_[device_path];
+      for (set<string>::const_iterator child_iter = child_disks.begin();
+           child_iter != child_disks.end(); ++child_iter) {
+        events->push_back(DeviceEvent(DeviceEvent::kDiskRemoved, *child_iter));
+      }
+    }
   }
-  return event_type;
 }
 
-DeviceEvent::EventType DiskManager::ProcessScsiDeviceEvent(
-    UdevDevice* device, const char* action) {
-  CHECK(device) << "Invalid udev device object";
-
-  DeviceEvent::EventType event_type = DeviceEvent::kIgnored;
-  string device_path = device->NativePath();
-
-  set<string>::const_iterator device_iter;
+void DiskManager::ProcessScsiDeviceEvents(
+    struct udev_device* dev, const char* action, DeviceEventList* events) {
+  string device_path = UdevDevice(dev).NativePath();
   if (strcmp(action, kUdevAddAction) == 0) {
-    device_iter = devices_detected_.find(device_path);
-    if (device_iter != devices_detected_.end()) {
-      event_type = DeviceEvent::kDeviceScanned;
+    if (ContainsKey(devices_detected_, device_path)) {
+      events->push_back(DeviceEvent(DeviceEvent::kDeviceScanned, device_path));
     } else {
       devices_detected_.insert(device_path);
-      event_type = DeviceEvent::kDeviceAdded;
+      events->push_back(DeviceEvent(DeviceEvent::kDeviceAdded, device_path));
     }
   } else if (strcmp(action, kUdevRemoveAction) == 0) {
-    device_iter = devices_detected_.find(device_path);
-    if (device_iter != devices_detected_.end()) {
-      devices_detected_.erase(device_iter);
-      event_type = DeviceEvent::kDeviceRemoved;
+    if (ContainsKey(devices_detected_, device_path)) {
+      devices_detected_.erase(device_path);
+      events->push_back(DeviceEvent(DeviceEvent::kDeviceRemoved, device_path));
     }
   }
-  return event_type;
 }
 
-bool DiskManager::GetDeviceEvent(DeviceEvent* event) {
+bool DiskManager::GetDeviceEvents(DeviceEventList* events) {
   struct udev_device *dev = udev_monitor_receive_device(udev_monitor_);
   CHECK(dev) << "Unknown udev device";
-  CHECK(event) << "Invalid device event object";
+  CHECK(events) << "Invalid device event list";
   LOG(INFO) << "Got Device";
   LOG(INFO) << "   Syspath: " << udev_device_get_syspath(dev);
   LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
@@ -202,16 +211,12 @@ bool DiskManager::GetDeviceEvent(DeviceEvent* event) {
     return false;
   }
 
-  event->device_path = sys_path;
-  event->event_type = DeviceEvent::kIgnored;
-
-  UdevDevice udev(dev);
   // udev_monitor_ only monitors block or scsi device changes, so
   // subsystem is either "block" or "scsi".
   if (strcmp(subsystem, kBlockSubsystem) == 0) {
-    event->event_type = ProcessBlockDeviceEvent(&udev, action);
+    ProcessBlockDeviceEvents(dev, action, events);
   } else {  // strcmp(subsystem, kScsiSubsystem) == 0
-    event->event_type = ProcessScsiDeviceEvent(&udev, action);
+    ProcessScsiDeviceEvents(dev, action, events);
   }
 
   udev_device_unref(dev);

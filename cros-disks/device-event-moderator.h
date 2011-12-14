@@ -54,8 +54,8 @@ class DeviceEventModerator : public PowerManagerObserverInterface,
   // the event when the session has been stopped.
   virtual void OnSessionStopped(const std::string& user);
 
-  // Process the next available device event from the event source.
-  void ProcessNextDeviceEvent();
+  // Process the available device events from the event source.
+  void ProcessDeviceEvents();
 
   bool is_event_queued() const { return is_event_queued_; }
 

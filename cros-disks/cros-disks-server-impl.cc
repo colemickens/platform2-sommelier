@@ -207,10 +207,6 @@ void CrosDisksServer::DispatchDeviceEvent(const DeviceEvent& event) {
     case DeviceEvent::kDiskAdded:
       DiskAdded(event.device_path);
       break;
-    case DeviceEvent::kDiskAddedAfterRemoved:
-      DiskRemoved(event.device_path);
-      DiskAdded(event.device_path);
-      break;
     case DeviceEvent::kDiskChanged:
       DiskChanged(event.device_path);
       break;

@@ -5,18 +5,18 @@
 #ifndef CROS_DISKS_DEVICE_EVENT_SOURCE_INTERFACE_H_
 #define CROS_DISKS_DEVICE_EVENT_SOURCE_INTERFACE_H_
 
-namespace cros_disks {
+#include "cros-disks/device-event.h"
 
-class DeviceEvent;
+namespace cros_disks {
 
 // An interface class for producing device events.
 class DeviceEventSourceInterface {
  public:
   virtual ~DeviceEventSourceInterface() {}
 
-  // Implemented by a derived class to return the next available device event
-  // in |event|. Returns false on error or if not device event is available.
-  virtual bool GetDeviceEvent(DeviceEvent* event) = 0;
+  // Implemented by a derived class to return the available device events
+  // in |events|. Returns false on error.
+  virtual bool GetDeviceEvents(DeviceEventList* events) = 0;
 };
 
 }  // namespace cros_disks

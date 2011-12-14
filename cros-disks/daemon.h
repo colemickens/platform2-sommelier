@@ -30,8 +30,8 @@ class Daemon {
   // Returns a file descriptor for monitoring device events.
   int GetDeviceEventDescriptor() const;
 
-  // Processes the next available device event.
-  void ProcessNextDeviceEvent();
+  // Processes the available device events.
+  void ProcessDeviceEvents();
 
  private:
   Metrics metrics_;

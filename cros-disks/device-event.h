@@ -5,6 +5,7 @@
 #ifndef CROS_DISKS_DEVICE_EVENT_H_
 #define CROS_DISKS_DEVICE_EVENT_H_
 
+#include <list>
 #include <string>
 
 namespace cros_disks {
@@ -17,7 +18,6 @@ struct DeviceEvent {
     kDeviceScanned,
     kDeviceRemoved,
     kDiskAdded,
-    kDiskAddedAfterRemoved,
     kDiskChanged,
     kDiskRemoved,
   };
@@ -35,13 +35,14 @@ struct DeviceEvent {
   // DeviceEventModeratorTest.
   bool operator==(const DeviceEvent& event) const;
 
-  // Returns true if the event type is DiskAdded, DiskAddedAfterRemoved,
-  // DiskChanged or DiskRemoved.
+  // Returns true if the event type is DiskAdded, DiskChanged or DiskRemoved.
   bool IsDiskEvent() const;
 
   EventType event_type;
   std::string device_path;
 };
+
+typedef std::list<DeviceEvent> DeviceEventList;
 
 }  // namespace cros_disks
 

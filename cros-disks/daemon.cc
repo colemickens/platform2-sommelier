@@ -45,8 +45,8 @@ int Daemon::GetDeviceEventDescriptor() const {
   return disk_manager_.udev_monitor_fd();
 }
 
-void Daemon::ProcessNextDeviceEvent() {
-  event_moderator_.ProcessNextDeviceEvent();
+void Daemon::ProcessDeviceEvents() {
+  event_moderator_.ProcessDeviceEvents();
 }
 
 }  // namespace cros_disks
