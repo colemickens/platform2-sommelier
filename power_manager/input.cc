@@ -319,7 +319,7 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
   rd = read(fd, ev, sizeof(struct input_event) * 64);
   if (rd < (int) sizeof(struct input_event)) {
     LOG(ERROR) << "failed reading";
-    return false;
+    return true;
   }
   if (!input->handler_)
     return true;
