@@ -273,6 +273,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStoragePriority[];
   static const char kStorageProxyConfig[];
   static const char kStorageSaveCredentials[];
+  static const char kStorageType[];
   static const char kStorageUIData[];
 
   virtual std::string GetDeviceRpcId(Error *error) = 0;

@@ -75,6 +75,10 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
 
   static const char kStorageHiddenSSID[];
+  static const char kStorageMode[];
+  static const char kStoragePassphrase[];
+  static const char kStorageSecurity[];
+  static const char kStorageSSID[];
 
   void HelpRegisterDerivedString(
       PropertyStore *store,

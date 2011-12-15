@@ -33,6 +33,10 @@ using std::vector;
 namespace shill {
 
 const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";
+const char WiFiService::kStorageMode[] = "WiFi.Mode";
+const char WiFiService::kStoragePassphrase[] = "Passphrase";
+const char WiFiService::kStorageSecurity[] = "WiFi.Security";
+const char WiFiService::kStorageSSID[] = "SSID";
 
 WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
@@ -171,8 +175,10 @@ void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
     error->Populate(Error::kNotSupported);
   }
 
-  if (error->IsSuccess())
+  if (error->IsSuccess()) {
     passphrase_ = passphrase;
+    need_passphrase_ = false;
+  }
 
   UpdateConnectable();
 }
@@ -215,8 +221,19 @@ bool WiFiService::Load(StoreInterface *storage) {
   // Load properties specific to WiFi services.
   storage->GetBool(id, kStorageHiddenSSID, &hidden_ssid_);
 
-  // TODO(quiche): Load Passphrase property, ensure that UpdateConnectable
-  // is called (maybe via SetPassphrase). (crosbug.com/23467)
+  // NB: mode, security and ssid parameters are never read in from
+  // Load() as they are provided from the scan.
+
+  string passphrase;
+  if (storage->GetCryptedString(id, kStoragePassphrase, &passphrase)) {
+    Error error;
+    SetPassphrase(passphrase, &error);
+    if (!error.IsSuccess()) {
+      LOG(ERROR) << "Passphrase could not be set: "
+                 << Error::GetName(error.type());
+    }
+  }
+
   return true;
 }
 
@@ -228,7 +245,11 @@ bool WiFiService::Save(StoreInterface *storage) {
 
   // Save properties specific to WiFi services.
   const string id = GetStorageIdentifier();
-  storage->SetBool(id, kStorageHiddenSSID, &hidden_ssid_);
+  storage->SetBool(id, kStorageHiddenSSID, hidden_ssid_);
+  storage->SetString(id, kStorageMode, mode_);
+  storage->SetCryptedString(id, kStoragePassphrase, passphrase_);
+  storage->SetString(id, kStorageSecurity, security_);
+  storage->SetString(id, kStorageSSID, hex_ssid_);
 
   // TODO(quiche): Save Passphrase property. (crosbug.com/23467)
   return true;

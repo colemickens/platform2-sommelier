@@ -61,6 +61,7 @@ const char Service::kStorageName[] = "Name";
 const char Service::kStoragePriority[] = "Priority";
 const char Service::kStorageProxyConfig[] = "ProxyConfig";
 const char Service::kStorageSaveCredentials[] = "SaveCredentials";
+const char Service::kStorageType[] = "Type";
 const char Service::kStorageUIData[] = "UIData";
 
 // static
@@ -265,6 +266,8 @@ void Service::Unload() {
 
 bool Service::Save(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
+
+  storage->SetString(id, kStorageType, GetTechnologyString(NULL));
 
   // TODO(petkov): We could choose to simplify the saving code by removing most
   // conditionals thus saving even default values.
