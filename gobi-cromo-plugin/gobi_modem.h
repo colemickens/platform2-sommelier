@@ -222,6 +222,9 @@ class GobiModem
                             StrengthMap *interface_to_strength,
                             DBus::Error& error);
 
+  // Read power state from the modem; update Enabled and mm_state_
+  void GetPowerState();
+
   virtual void RegisterCallbacks();
   void ResetModem(DBus::Error& error);
 

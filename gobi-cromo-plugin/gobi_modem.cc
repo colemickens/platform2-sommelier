@@ -444,6 +444,19 @@ bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error,
     }
     LogGobiInformation();
 
+    /* Check the Enabled state again after API connect.  The cached
+     * value may be stale.  This can happen if the RF Enable pin was
+     * pulled low and a SetPower call was made, but failed with 1083.
+     * When the pin voltage changes the modem will be enabled, but
+     * because this plugin does not maintain a connection to the GOBI
+     * API, there will be no callback to inform it of the change in
+     * power state.
+     */
+    GetPowerState();
+    if (Enabled()) {
+      return false;
+    }
+
     ULONG rc = sdk_->SetPower(gobi::kOnline);
     metrics_lib_->SendEnumToUMA(METRIC_BASE_NAME "SetPower",
                                 QCErrorToMetricIndex(rc),
@@ -1241,20 +1254,7 @@ void GobiModem::GetSignalStrengthDbm(int& output,
   output = max_strength;
 }
 
-// Set properties for which a connection to the SDK is required
-// to obtain the needed information. If this is called before
-// the modem is enabled, we connect to the SDK, get the properties
-// we need, and then disconnect from the SDK. Otherwise, we
-// stay connected.
-void GobiModem::SetModemProperties() {
-  DBus::Error error;
-
-  ApiConnect(error);
-  if (error.is_set()) {
-    Type = MM_MODEM_TYPE_CDMA;
-    return;
-  }
-
+void GobiModem::GetPowerState() {
   ULONG power_mode;
   ULONG rc = sdk_->GetPower(&power_mode);
   if (rc != 0)
@@ -1269,7 +1269,25 @@ void GobiModem::SetModemProperties() {
       State = mm_state_ = MM_MODEM_STATE_DISABLED;
     }
   }
+}
 
+// Set properties for which a connection to the SDK is required
+// to obtain the needed information. If this is called before
+// the modem is enabled, we connect to the SDK, get the properties
+// we need, and then disconnect from the SDK. Otherwise, we
+// stay connected.
+void GobiModem::SetModemProperties() {
+  DBus::Error error;
+
+  ApiConnect(error);
+  if (error.is_set()) {
+    Type = MM_MODEM_TYPE_CDMA;
+    return;
+  }
+
+  GetPowerState();
+
+  ULONG rc;
   ULONG u1, u2, u3, u4;
   BYTE radioInterfaces[10];
   ULONG numRadioInterfaces = sizeof(radioInterfaces)/sizeof(BYTE);
