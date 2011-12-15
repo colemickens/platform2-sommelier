@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -113,6 +113,8 @@ uint32_t ChapsServiceImpl::GetTokenInfo(uint32_t slot_id,
   }
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount())
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->IsTokenPresent(slot_id),
+                          CKR_TOKEN_NOT_PRESENT);
   CK_TOKEN_INFO token_info;
   slot_manager_->GetTokenInfo(slot_id, &token_info);
   *label =
@@ -150,6 +152,8 @@ uint32_t ChapsServiceImpl::GetMechanismList(
                           CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount())
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->IsTokenPresent(slot_id),
+                          CKR_TOKEN_NOT_PRESENT);
   const MechanismMap* mechanism_info = slot_manager_->GetMechanismInfo(slot_id);
   CHECK(mechanism_info);
   for (MechanismMapIterator it = mechanism_info->begin();
@@ -169,6 +173,8 @@ uint32_t ChapsServiceImpl::GetMechanismInfo(uint32_t slot_id,
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount())
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->IsTokenPresent(slot_id),
+                          CKR_TOKEN_NOT_PRESENT);
   const MechanismMap* mechanism_info = slot_manager_->GetMechanismInfo(slot_id);
   CHECK(mechanism_info);
   MechanismMapIterator it = mechanism_info->find(mechanism_type);
@@ -242,6 +248,8 @@ uint32_t ChapsServiceImpl::CloseSession(uint32_t session_id) {
 uint32_t ChapsServiceImpl::CloseAllSessions(uint32_t slot_id) {
   if (static_cast<int>(slot_id) >= slot_manager_->GetSlotCount())
     LOG_CK_RV_AND_RETURN(CKR_SLOT_ID_INVALID);
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->IsTokenPresent(slot_id),
+                          CKR_TOKEN_NOT_PRESENT);
   slot_manager_->CloseAllSessions(slot_id);
   return CKR_OK;
 }

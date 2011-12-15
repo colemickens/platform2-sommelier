@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -137,6 +137,9 @@ TEST_F(TestService, GetTokenInfo) {
   test_info.flags = 17;
   EXPECT_CALL(slot_manager_, GetSlotCount())
     .WillRepeatedly(Return(2));
+  EXPECT_CALL(slot_manager_, IsTokenPresent(_))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(slot_manager_, GetTokenInfo(0, _))
     .WillRepeatedly(SetArgumentPointee<1>(test_info));
 
@@ -208,6 +211,27 @@ TEST_F(TestService, GetTokenInfo) {
                                    &hardware_version_minor,
                                    &firmware_version_major,
                                    &firmware_version_minor));
+  EXPECT_EQ(CKR_TOKEN_NOT_PRESENT,
+            service_->GetTokenInfo(0,
+                                   &label,
+                                   &manufacturer_id,
+                                   &model,
+                                   &serial_number,
+                                   &flags,
+                                   &max_session_count,
+                                   &session_count,
+                                   &max_session_count_rw,
+                                   &session_count_rw,
+                                   &max_pin_len,
+                                   &min_pin_len,
+                                   &total_public_memory,
+                                   &free_public_memory,
+                                   &total_private_memory,
+                                   &free_private_memory,
+                                   &hardware_version_major,
+                                   &hardware_version_minor,
+                                   &firmware_version_major,
+                                   &firmware_version_minor));
   // Try the normal case.
   EXPECT_EQ(CKR_OK, service_->GetTokenInfo(0,
                                            &label,
@@ -239,6 +263,9 @@ TEST_F(TestService, GetMechanismList) {
   test_list[123UL] = test_info;
   EXPECT_CALL(slot_manager_, GetSlotCount())
     .WillRepeatedly(Return(2));
+  EXPECT_CALL(slot_manager_, IsTokenPresent(_))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(slot_manager_, GetMechanismInfo(0))
     .WillRepeatedly(Return(&test_list));
   // Try bad arguments.
@@ -246,6 +273,7 @@ TEST_F(TestService, GetMechanismList) {
   // Try invalid slot ID.
   vector<uint32_t> output;
   EXPECT_EQ(CKR_SLOT_ID_INVALID, service_->GetMechanismList(2, &output));
+  EXPECT_EQ(CKR_TOKEN_NOT_PRESENT, service_->GetMechanismList(0, &output));
   // Try the normal case.
   ASSERT_EQ(CKR_OK, service_->GetMechanismList(0, &output));
   ASSERT_EQ(output.size(), 1);
@@ -260,6 +288,9 @@ TEST_F(TestService, GetMechanismInfo) {
   test_list[123UL] = test_info;
   EXPECT_CALL(slot_manager_, GetSlotCount())
     .WillRepeatedly(Return(2));
+  EXPECT_CALL(slot_manager_, IsTokenPresent(_))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(slot_manager_, GetMechanismInfo(0))
     .WillRepeatedly(Return(&test_list));
   uint32_t min_key, max_key, flags;
@@ -273,6 +304,8 @@ TEST_F(TestService, GetMechanismInfo) {
   // Try invalid slot ID.
   EXPECT_EQ(CKR_SLOT_ID_INVALID,
             service_->GetMechanismInfo(2, 123, &min_key, &max_key, &flags));
+  EXPECT_EQ(CKR_TOKEN_NOT_PRESENT,
+            service_->GetMechanismInfo(0, 123, &min_key, &max_key, &flags));
   // Try the normal case.
   ASSERT_EQ(CKR_OK,
             service_->GetMechanismInfo(0, 123, &min_key, &max_key, &flags));
@@ -338,8 +371,12 @@ TEST_F(TestService, CloseSession) {
 TEST_F(TestService, CloseAllSessions) {
   EXPECT_CALL(slot_manager_, GetSlotCount())
     .WillRepeatedly(Return(2));
+  EXPECT_CALL(slot_manager_, IsTokenPresent(_))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(slot_manager_, CloseAllSessions(1));
   EXPECT_EQ(CKR_SLOT_ID_INVALID, service_->CloseAllSessions(2));
+  EXPECT_EQ(CKR_TOKEN_NOT_PRESENT, service_->CloseAllSessions(1));
   EXPECT_EQ(CKR_OK, service_->CloseAllSessions(1));
 }
 
