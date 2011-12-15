@@ -14,10 +14,10 @@ class Technology {
   enum Identifier {
     kEthernet,
     kWifi,
+    kWiFiMonitor,
     kCellular,
     kBlacklisted,
     kUnknown,
-    kNumTechnologies
   };
 
   static Identifier IdentifierFromName(const std::string &name);

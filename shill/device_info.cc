@@ -21,6 +21,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util-inl.h>
+#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 
@@ -48,6 +49,8 @@ const char DeviceInfo::kInterfaceUevent[] = "/sys/class/net/%s/uevent";
 const char DeviceInfo::kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
 // static
 const char DeviceInfo::kInterfaceDriver[] = "/sys/class/net/%s/device/driver";
+// static
+const char DeviceInfo::kInterfaceType[] = "/sys/class/net/%s/type";
 // static
 const char *DeviceInfo::kModemDrivers[] = {
     "gobi",
@@ -119,6 +122,17 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   if (contents.find(kInterfaceUeventWifiSignature) != string::npos) {
     VLOG(2) << StringPrintf("%s: device %s has wifi signature in uevent file",
                             __func__, iface_name.c_str());
+    FilePath type_file(StringPrintf(kInterfaceType, iface_name.c_str()));
+    string type_string;
+    int type_val = 0;
+    if (file_util::ReadFileToString(type_file, &type_string) &&
+        TrimString(type_string, "\n", &type_string) &&
+        base::StringToInt(type_string, &type_val) &&
+        type_val == ARPHRD_IEEE80211_RADIOTAP) {
+      VLOG(2) << StringPrintf("%s: wifi device %s is in monitor mode",
+                              __func__, iface_name.c_str());
+      return Technology::kWiFiMonitor;
+    }
     return Technology::kWifi;
   }
 

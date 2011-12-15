@@ -76,6 +76,7 @@ class DeviceInfo {
   static const char kInterfaceUevent[];
   static const char kInterfaceUeventWifiSignature[];
   static const char kInterfaceDriver[];
+  static const char kInterfaceType[];
   static const char *kModemDrivers[];
   static const char kInterfaceIPv6Privacy[];
 
