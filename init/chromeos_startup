@@ -139,9 +139,6 @@ if ! crossystem "fwupdate_tries?0" "mainfw_type?normal" &&
 
   # Special updating rules for legacy systems.
   case "$(mosys platform name 2>/dev/null)" in
-    Mario )
-      tries=0  # Prevents any unexpected updates on CR48.
-      ;;
     Alex | ZGB )
       if [ "$(crossystem mainfw_type)" = developer ]; then
         tries=0  # Prevents updates if we're in developer mode
