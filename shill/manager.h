@@ -79,10 +79,12 @@ class Manager {
   // Set up the profile list starting with a default profile along with
   // an (optional) list of startup profiles.
   void InitializeProfiles();
-  // Create a profile.  This does not affect the profile stack.
-  void CreateProfile(const std::string &name, Error *error);
+  // Create a profile.  This does not affect the profile stack.  Returns
+  // the RPC path of the created profile in |path|.
+  void CreateProfile(const std::string &name, std::string *path, Error *error);
   // Pushes existing profile with name |name| onto stack of managed profiles.
-  void PushProfile(const std::string &name, Error *error);
+  // Returns the RPC path of the pushed profile in |path|.
+  void PushProfile(const std::string &name, std::string *path, Error *error);
   // Pops profile named |name| off the top of the stack of managed profiles.
   void PopProfile(const std::string &name, Error *error);
   // Remove the active profile.

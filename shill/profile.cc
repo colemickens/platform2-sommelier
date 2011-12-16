@@ -105,6 +105,10 @@ string Profile::GetFriendlyName() {
 }
 
 string Profile::GetRpcIdentifier() {
+  if (!adaptor_.get()) {
+    // NB: This condition happens in unit tests.
+    return string();
+  }
   return adaptor_->GetRpcIdentifier();
 }
 

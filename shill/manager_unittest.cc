@@ -140,7 +140,8 @@ class ManagerTest : public PropertyStoreTest {
 
   Error::Type TestCreateProfile(Manager *manager, const string &name) {
     Error error;
-    manager->CreateProfile(name, &error);
+    string path;
+    manager->CreateProfile(name, &path, &error);
     return error.type();
   }
 
@@ -158,7 +159,8 @@ class ManagerTest : public PropertyStoreTest {
 
   Error::Type TestPushProfile(Manager *manager, const string &name) {
     Error error;
-    manager->PushProfile(name, &error);
+    string path;
+    manager->PushProfile(name, &path, &error);
     return error.type();
   }
  protected:

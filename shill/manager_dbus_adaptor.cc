@@ -101,10 +101,12 @@ string ManagerDBusAdaptor::GetState(::DBus::Error &/*error*/) {
 }
 
 ::DBus::Path ManagerDBusAdaptor::CreateProfile(const string &name,
-                                               ::DBus::Error &/*error*/) {
-  NOTIMPLEMENTED();
-  // TODO(quiche): implement this
-  return ::DBus::Path("/" + name);
+                                               ::DBus::Error &error) {
+  Error e;
+  string path;
+  manager_->CreateProfile(name, &path, &e);
+  e.ToDBusError(&error);
+  return ::DBus::Path(path);
 }
 
 void ManagerDBusAdaptor::RemoveProfile(const string &/*name*/,
@@ -112,17 +114,25 @@ void ManagerDBusAdaptor::RemoveProfile(const string &/*name*/,
 }
 
 ::DBus::Path ManagerDBusAdaptor::PushProfile(const std::string &name,
-                                             ::DBus::Error &/*error*/) {
-  NOTIMPLEMENTED();
-  // TODO(quiche): implement this
-  return ::DBus::Path("/" + name);
+                                             ::DBus::Error &error) {
+  Error e;
+  string path;
+  manager_->PushProfile(name, &path, &e);
+  e.ToDBusError(&error);
+  return ::DBus::Path(path);
 }
 
-void ManagerDBusAdaptor::PopProfile(const std::string &,
-                                    ::DBus::Error &/*error*/) {
+void ManagerDBusAdaptor::PopProfile(const std::string &name,
+                                    ::DBus::Error &error) {
+  Error e;
+  manager_->PopProfile(name, &e);
+  e.ToDBusError(&error);
 }
 
-void ManagerDBusAdaptor::PopAnyProfile(::DBus::Error &/*error*/) {
+void ManagerDBusAdaptor::PopAnyProfile(::DBus::Error &error) {
+  Error e;
+  manager_->PopAnyProfile(&e);
+  e.ToDBusError(&error);
 }
 
 void ManagerDBusAdaptor::RequestScan(const string &technology,

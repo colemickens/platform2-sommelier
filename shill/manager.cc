@@ -155,12 +155,13 @@ void Manager::InitializeProfiles() {
                                          props_));
   CHECK(profiles_[0]->InitStorage(glib_, Profile::kCreateOrOpenExisting, NULL));
   Error error;
+  string path;
   for (vector<string>::iterator it = startup_profiles_.begin();
        it != startup_profiles_.end(); ++it)
-    PushProfile(*it, &error);
+    PushProfile(*it, &path, &error);
 }
 
-void Manager::CreateProfile(const string &name, Error *error) {
+void Manager::CreateProfile(const string &name, string *path, Error *error) {
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -171,8 +172,9 @@ void Manager::CreateProfile(const string &name, Error *error) {
                                     this,
                                     ident,
                                     user_storage_format_,
-                                    false));
+                                    connect_profiles_to_rpc_));
   if (!profile->InitStorage(glib_, Profile::kCreateNew, error)) {
+    // |error| will have been populated by InitStorage().
     return;
   }
 
@@ -182,9 +184,11 @@ void Manager::CreateProfile(const string &name, Error *error) {
                           "Profile name " + name + " could not be saved");
     return;
   }
+
+  *path = profile->GetRpcIdentifier();
 }
 
-void Manager::PushProfile(const string &name, Error *error) {
+void Manager::PushProfile(const string &name, string *path, Error *error) {
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -222,6 +226,7 @@ void Manager::PushProfile(const string &name, Error *error) {
                                     user_storage_format_,
                                     connect_profiles_to_rpc_));
   if (!profile->InitStorage(glib_, Profile::kOpenExisting, error)) {
+    // |error| will have been populated by InitStorage().
     return;
   }
 
@@ -240,6 +245,7 @@ void Manager::PushProfile(const string &name, Error *error) {
     profile->ConfigureDevice(*it);
   }
 
+  *path = profile->GetRpcIdentifier();
   SortServices();
 }
 
