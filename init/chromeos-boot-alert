@@ -276,7 +276,7 @@ mode_dev_fwcheck() {
   # TODO(hungte) Replace this by a "compatible list" in updater if such request
   # becomes a common feature.
   case "$(mosys platform name 2>/dev/null):$ecid" in
-    "ZGB:0.14" | "Alex:00VFA616 " )
+    "ZGB:0.14" | "Alex:00VFA616" )
       TARGET_ECID="$ecid"
       ;;
   esac
