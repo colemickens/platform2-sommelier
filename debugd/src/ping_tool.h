@@ -11,11 +11,13 @@
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 
+#include "subprocess_tool.h"
+
 namespace debugd {
 
 class ProcessWithId;
 
-class PingTool {
+class PingTool : public SubprocessTool {
  public:
   PingTool();
   ~PingTool();
@@ -24,10 +26,6 @@ class PingTool {
                     const std::string& destination,
                     const std::map<std::string, DBus::Variant>& options,
                     DBus::Error& error);
-  void Stop(const std::string& handle, DBus::Error& error);
- private:
-  std::map<std::string, ProcessWithId*> processes_;
-  DISALLOW_COPY_AND_ASSIGN(PingTool);
 };
 
 };  // namespace debugd

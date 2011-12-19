@@ -21,7 +21,7 @@ small_tests: $(OUT)testrunner
 RM_ON_CLEAN += debugd
 
 TOOLS:= $(patsubst %,%_tool.o,ping)
-OBJS := $(patsubst %,$(OUT)%,debug_daemon.o process_with_id.o $(TOOLS))
+OBJS := $(patsubst %,$(OUT)%,debug_daemon.o process_with_id.o subprocess_tool.o $(TOOLS))
 TESTOBJS := $(patsubst %,$(OUT)%,process_with_id_test.o)
 
 $(OUT)debugd: $(OUT)main.o $(OBJS)

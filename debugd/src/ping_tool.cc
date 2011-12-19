@@ -7,18 +7,13 @@
 #include <map>
 #include <string>
 
-#include <dbus-c++/dbus.h>
-#include <signal.h>
-
 #include "process_with_id.h"
 
 namespace debugd {
 
-const char* kErrorNoSuchProcess =
-    "org.chromium.debugd.error.NoSuchProcess";
 const char* kPing = "/bin/ping";
 
-PingTool::PingTool() { }
+PingTool::PingTool() : SubprocessTool() { }
 PingTool::~PingTool() { }
 
 std::string PingTool::Start(const DBus::FileDescriptor& outfd,
@@ -26,8 +21,8 @@ std::string PingTool::Start(const DBus::FileDescriptor& outfd,
                             const std::map<std::string, DBus::Variant>&
                                 options,
                             DBus::Error& error) {
-  ProcessWithId* p = new ProcessWithId();
-  if (!p->Init() || processes_.count(p->id()) == 1)
+  ProcessWithId* p = CreateProcess();
+  if (!p)
     return "";
   p->AddArg(kPing);
   if (options.count("count") == 1) {
@@ -53,22 +48,9 @@ std::string PingTool::Start(const DBus::FileDescriptor& outfd,
   p->AddArg(destination);
   p->BindFd(outfd.get(), STDOUT_FILENO);
   p->BindFd(outfd.get(), STDERR_FILENO);
-  processes_[p->id()] = p;
   LOG(INFO) << "ping: running process id: " << p->id();
   p->Start();
   return p->id();
-}
-
-void PingTool::Stop(const std::string& handle, DBus::Error& error) {
-  if (processes_.count(handle) != 1) {
-    error.set(kErrorNoSuchProcess, handle.c_str());
-    return;
-  }
-  ProcessWithId* p = processes_[handle];
-  p->Kill(SIGKILL, 0);  // no timeout
-  p->Wait();
-  processes_.erase(handle);
-  delete p;
 }
 
 };  // namespace debugd
