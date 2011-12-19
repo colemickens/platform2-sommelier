@@ -46,5 +46,39 @@
         running pings.
       </arg>
     </method>
+    <method name="TracePathStart">
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send output to.
+        </tp:docstring>
+      </arg>
+      <arg name="destination" type="s" direction="in">
+        <tp:docstring>
+          Destination host[/port] to trace a path to.
+        </tp:docstring>
+      </arg>
+      <arg name="options" type="a{sv}" direction="in">
+        <tp:docstring>
+          Options to pass to the tracepath command:
+            numeric (bool): Print numeric remote hosts.
+          Unrecognized keys return a DBus error and print no output to the
+          supplied file descriptor.
+        </tp:docstring>
+      </arg>
+      <arg name="handle" type="s" direction="out">
+        <tp:docstring>
+          Opaque handle for this ping.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="TracePathStop">
+      <tp:docstring>
+        Stops a running tracepath.
+      </tp:docstring>
+      <arg name="handle" type="s" direction="in">
+        Handle to the tracepath to stop. If an empty string is passed, stops all
+        running tracepaths.
+      </arg>
+    </method>
   </interface>
 </node>
