@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,9 +7,6 @@
 #include <errno.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <signal.h>
-#include <unistd.h>
-
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
@@ -23,6 +20,7 @@
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
+#include "login_manager/mock_metrics.h"
 #include "login_manager/mock_system_utils.h"
 
 using ::testing::AnyNumber;
@@ -40,12 +38,7 @@ class SessionManagerProcessTest : public SessionManagerTest {
  public:
   SessionManagerProcessTest() {}
 
-  virtual ~SessionManagerProcessTest() {
-    FilePath uptime(kUptimeFile);
-    FilePath disk(kDiskFile);
-    file_util::Delete(uptime, false);
-    file_util::Delete(disk, false);
-  }
+  virtual ~SessionManagerProcessTest() {}
 
  protected:
   static const char kUptimeFile[];
@@ -77,11 +70,18 @@ class SessionManagerProcessTest : public SessionManagerTest {
   }
 
   // Creates one job and a manager for it, running it |child_runs| times.
+  // Returns the job for further mocking.
   MockChildJob* CreateMockJobWithRestartPolicy(RestartPolicy child_runs) {
     MockChildJob* job = new MockChildJob();
     InitManager(job, NULL);
     SetFileCheckerPolicy(child_runs);
     return job;
+  }
+
+  // Creates one job and a manager for it, running it |child_runs| times.
+  void InitManagerWithRestartPolicy(RestartPolicy child_runs) {
+    InitManager(new MockChildJob(), NULL);
+    SetFileCheckerPolicy(child_runs);
   }
 
   int PackStatus(int status) { return __W_EXITCODE(status, 0); }
@@ -98,7 +98,7 @@ const int SessionManagerProcessTest::kExit = 1;
 const int SessionManagerProcessTest::kDummyPid2 = kDummyPid + 1;
 
 TEST_F(SessionManagerProcessTest, NoLoopTest) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(NEVER);
+  InitManagerWithRestartPolicy(NEVER);
   SimpleRunManager();
 }
 
@@ -265,33 +265,6 @@ TEST_F(SessionManagerProcessTest, MustStopChild) {
   SimpleRunManager();
 }
 
-TEST_F(SessionManagerProcessTest, KeygenTest) {
-  FilePath key_file_path(tmpdir_.path().AppendASCII("foo.pub"));
-
-  int pid = fork();
-  if (pid == 0) {
-    execl("./keygen", "./keygen", key_file_path.value().c_str(), NULL);
-    exit(255);
-  }
-  int status;
-  while (waitpid(pid, &status, 0) == -1 && errno == EINTR)
-    ;
-
-  DLOG(INFO) << "exited waitpid. " << pid << "\n"
-             << "  WIFSIGNALED is " << WIFSIGNALED(status) << "\n"
-             << "  WTERMSIG is " << WTERMSIG(status) << "\n"
-             << "  WIFEXITED is " << WIFEXITED(status) << "\n"
-             << "  WEXITSTATUS is " << WEXITSTATUS(status);
-
-  EXPECT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) == 0);
-  EXPECT_TRUE(file_util::PathExists(key_file_path));
-
-  SystemUtils utils;
-  int32 file_size = 0;
-  EXPECT_TRUE(utils.EnsureAndReturnSafeFileSize(key_file_path, &file_size));
-  EXPECT_GT(file_size, 0);
-}
-
 TEST_F(SessionManagerProcessTest, KeygenExitTest) {
   MockChildJob* normal_job = new MockChildJob;
   InitManager(normal_job, NULL);
@@ -355,10 +328,6 @@ TEST_F(SessionManagerProcessTest, HonorShouldNeverKill) {
 }
 
 TEST_F(SessionManagerProcessTest, StatsRecorded) {
-  FilePath uptime(kUptimeFile);
-  FilePath disk(kDiskFile);
-  file_util::Delete(uptime, false);
-  file_util::Delete(disk, false);
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
@@ -369,10 +338,11 @@ TEST_F(SessionManagerProcessTest, StatsRecorded) {
   EXPECT_CALL(utils_, fork())
       .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
                       Return(proc.pid())));
+
+  EXPECT_CALL(*metrics_, RecordStats("chrome-exec")).Times(1);
+
   SimpleRunManager();
   DLOG(INFO) << "Finished the run!";
-  EXPECT_TRUE(file_util::PathExists(uptime));
-  EXPECT_TRUE(file_util::PathExists(disk));
 }
 
 TEST_F(SessionManagerProcessTest, EnableChromeTesting) {
@@ -384,8 +354,8 @@ TEST_F(SessionManagerProcessTest, EnableChromeTesting) {
   MockUtils();
 
   // DBus arrays are null-terminated.
-  char* args1[] = {"--repeat-arg", "--one-time-arg", NULL};
-  char* args2[] = {"--dummy", "--repeat-arg", NULL};
+  const char* args1[] = {"--repeat-arg", "--one-time-arg", NULL};
+  const char* args2[] = {"--dummy", "--repeat-arg", NULL};
   gchar* testing_path = NULL;
   gchar* file_path = NULL;
 

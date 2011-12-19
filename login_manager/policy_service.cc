@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,7 +12,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/task.h>
 
-#include "login_manager/bindings/device_management_backend.pb.h"
+#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/owner_key.h"
 #include "login_manager/policy_store.h"
@@ -83,7 +83,8 @@ bool PolicyService::Retrieve(std::vector<uint8>* policy_blob) {
   policy_blob->resize(policy.ByteSize());
   uint8* start = vector_as_array(policy_blob);
   uint8* end = policy.SerializeWithCachedSizesToArray(start);
-  return (end - start == policy_blob->size());
+  return (end - start >= 0 &&
+          static_cast<size_t>(end - start) == policy_blob->size());
 }
 
 bool PolicyService::PersistPolicySync() {

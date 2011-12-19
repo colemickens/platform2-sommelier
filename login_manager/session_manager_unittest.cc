@@ -88,10 +88,10 @@ void SessionManagerTest::InitManager(MockChildJob* job1, MockChildJob* job2) {
   manager_ = new SessionManagerService(jobs, &real_utils_);
   manager_->set_file_checker(file_checker_);
   manager_->set_mitigator(mitigator_);
-  manager_->set_metrics(metrics_);
   manager_->test_api().set_exit_on_child_done(true);
   manager_->test_api().set_upstart_signal_emitter(upstart_);
   manager_->test_api().set_device_policy_service(device_policy_service_);
+  manager_->test_api().set_login_metrics(metrics_);
 }
 
 void SessionManagerTest::SimpleRunManager() {

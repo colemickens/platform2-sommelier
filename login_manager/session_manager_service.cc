@@ -34,9 +34,8 @@
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
-#include <metrics/bootstat.h>
 
-#include "login_manager/bindings/device_management_backend.pb.h"
+#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
 #include "login_manager/interface.h"
 #include "login_manager/key_generator.h"
@@ -48,7 +47,7 @@
 // modifying the files afterward.
 namespace login_manager {  // NOLINT
 namespace gobject {  // NOLINT
-#include "login_manager/bindings/server.h"
+#include "login_manager/server.h"
 }  // namespace gobject
 }  // namespace login_manager
 
@@ -419,7 +418,7 @@ bool SessionManagerService::Shutdown() {
 }
 
 void SessionManagerService::RunChildren() {
-  bootstat_log("chrome-exec");
+  login_metrics_->RecordStats("chrome-exec");
   for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
     ChildJobInterface* child_job = child_jobs_[i_child];
     LOG(INFO) << "Running child " << child_job->GetName() << "...";
@@ -479,7 +478,7 @@ void SessionManagerService::AllowGracefulExit() {
 
 gboolean SessionManagerService::EmitLoginPromptReady(gboolean* OUT_emitted,
                                                      GError** error) {
-  bootstat_log("login-prompt-ready");
+  login_metrics_->RecordStats("login-prompt-ready");
   // TODO(derat): Stop emitting this signal once no one's listening for it.
   // Jobs that want to run after we're done booting should wait for
   // login-prompt-visible or boot-complete.
@@ -489,14 +488,14 @@ gboolean SessionManagerService::EmitLoginPromptReady(gboolean* OUT_emitted,
 }
 
 gboolean SessionManagerService::EmitLoginPromptVisible(GError** error) {
-  bootstat_log("login-prompt-visible");
+  login_metrics_->RecordStats("login-prompt-visible");
   system_->BroadcastSignalNoArgs(session_manager_,
                                  signals_[kSignalLoginPromptVisible]);
   return upstart_signal_emitter_->EmitSignal("login-prompt-visible", "", error);
 }
 
 gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
-                                                    gchar** extra_arguments,
+                                                    const gchar** extra_args,
                                                     gchar** OUT_filepath,
                                                     GError** error) {
   // Check to see if we already have Chrome testing enabled.
@@ -540,9 +539,9 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
 
     std::vector<std::string> extra_argument_vector;
     // Create extra argument vector.
-    while (*extra_arguments != NULL) {
-      extra_argument_vector.push_back(*extra_arguments);
-      ++extra_arguments;
+    while (*extra_args != NULL) {
+      extra_argument_vector.push_back(*extra_args);
+      ++extra_args;
     }
     // Add testing channel argument to extra arguments.
     std::string testing_argument = kTestingChannelFlag;
@@ -1016,7 +1015,7 @@ gboolean SessionManagerService::ValidateAndCacheUserEmail(
 }
 
 int SessionManagerService::FindChildByPid(int pid) {
-  for (int i = 0; i < child_pids_.size(); ++i) {
+  for (vector<int>::size_type i = 0; i < child_pids_.size(); ++i) {
     if (child_pids_[i] == pid)
       return i;
   }
@@ -1026,7 +1025,7 @@ int SessionManagerService::FindChildByPid(int pid) {
 void SessionManagerService::CleanupChildren(int timeout) {
   vector<pair<int, uid_t> > pids_to_kill;
 
-  for (size_t i = 0; i < child_pids_.size(); ++i) {
+  for (vector<int>::size_type i = 0; i < child_pids_.size(); ++i) {
     const int pid = child_pids_[i];
     if (pid < 0)
       continue;

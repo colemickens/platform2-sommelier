@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,7 +21,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
 
-#include "login_manager/bindings/device_management_backend.pb.h"
+#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/mock_child_job.h"
@@ -142,6 +142,7 @@ class SessionManagerDBusTest : public SessionManagerTest {
 
   // Creates one job and initializes |manager_| with it, using the flag-file
   // mechanism to ensure that it only runs once.
+  // Returns a pointer to the fake job for further mocking purposes.
   MockChildJob* CreateTrivialMockJob() {
     MockChildJob* job = new MockChildJob();
     InitManager(job, NULL);
@@ -149,6 +150,15 @@ class SessionManagerDBusTest : public SessionManagerTest {
         .Times(AnyNumber())
         .WillOnce(Return(true));
     return job;
+  }
+
+  // Creates one job and initializes |manager_| with it, using the flag-file
+  // mechanism to ensure that it only runs once.
+  void TrivialInitManager() {
+    InitManager(new MockChildJob(), NULL);
+    EXPECT_CALL(*file_checker_, exists())
+        .Times(AnyNumber())
+        .WillOnce(Return(true));
   }
 
   // Caller takes ownership.
@@ -165,7 +175,7 @@ class SessionManagerDBusTest : public SessionManagerTest {
 };
 
 TEST_F(SessionManagerDBusTest, SessionNotStartedCleanup) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
@@ -179,7 +189,7 @@ TEST_F(SessionManagerDBusTest, SessionNotStartedCleanup) {
 }
 
 TEST_F(SessionManagerDBusTest, SessionNotStartedSlowKillCleanup) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
@@ -283,7 +293,7 @@ TEST_F(SessionManagerDBusTest, StartSessionNew) {
 }
 
 TEST_F(SessionManagerDBusTest, StartSessionInvalidUser) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   gboolean out;
   gchar email[] = "user";
   gchar nothing[] = "";
@@ -296,7 +306,7 @@ TEST_F(SessionManagerDBusTest, StartSessionInvalidUser) {
 }
 
 TEST_F(SessionManagerDBusTest, StartSessionDevicePolicyFailure) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
@@ -352,14 +362,14 @@ TEST_F(SessionManagerDBusTest, StartSessionRemovesMachineInfo) {
 }
 
 TEST_F(SessionManagerDBusTest, StopSession) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   gboolean out;
   gchar nothing[] = "";
   manager_->StopSession(nothing, &out, NULL);
 }
 
 TEST_F(SessionManagerDBusTest, SetOwnerKeyShouldFail) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   EXPECT_CALL(utils_,
               SendStatusSignalToChromium(
                   StrEq(chromium::kOwnerKeySetSignal), false))
@@ -376,7 +386,7 @@ TEST_F(SessionManagerDBusTest, SetOwnerKeyShouldFail) {
 }
 
 TEST_F(SessionManagerDBusTest, StorePolicyNoSession) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   const std::string fake_policy("fake policy");
   GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
   ExpectStorePolicy(device_policy_service_,
@@ -389,7 +399,7 @@ TEST_F(SessionManagerDBusTest, StorePolicyNoSession) {
 }
 
 TEST_F(SessionManagerDBusTest, StorePolicySessionStarted) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   manager_->test_api().set_session_started(true, "user@somewhere");
   const std::string fake_policy("fake policy");
   GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
@@ -401,7 +411,7 @@ TEST_F(SessionManagerDBusTest, StorePolicySessionStarted) {
 }
 
 TEST_F(SessionManagerDBusTest, RetrievePolicy) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   const std::string fake_policy("fake policy");
   const std::vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
   EXPECT_CALL(*device_policy_service_, Retrieve(_))
@@ -418,7 +428,7 @@ TEST_F(SessionManagerDBusTest, RetrievePolicy) {
 }
 
 TEST_F(SessionManagerDBusTest, RestartJobUnknownPid) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   MockUtils();
   manager_->test_api().set_child_pid(0, kDummyPid);
 
@@ -460,7 +470,7 @@ TEST_F(SessionManagerDBusTest, RestartJob) {
 }
 
 TEST_F(SessionManagerDBusTest, RestartJobWrongPid) {
-  MockChildJob* job = CreateTrivialMockJob();
+  TrivialInitManager();
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   gboolean out;

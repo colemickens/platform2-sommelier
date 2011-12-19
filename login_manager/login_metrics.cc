@@ -7,6 +7,7 @@
 #include "login_manager/login_metrics.h"
 
 #include <base/file_util.h>
+#include <metrics/bootstat.h>
 #include <metrics/metrics_library.h>
 
 namespace login_manager {
@@ -33,6 +34,13 @@ const int LoginMetrics::kMaxPolicyFilesValue = 64;
 // static
 const char LoginMetrics::kLoginMetricsFlagFile[] = "per_boot_flag";
 
+// static
+int LoginMetrics::PolicyFilesStatusCode(const PolicyFilesStatus& status) {
+  return (status.owner_key_file_state * 16      /* 4^2 */ +
+          status.policy_file_state * 4          /* 4^1 */ +
+          status.defunct_prefs_file_state * 1   /* 4^0 */);
+}
+
 LoginMetrics::LoginMetrics(const FilePath& per_boot_flag_dir)
     : per_boot_flag_file_(per_boot_flag_dir.Append(kLoginMetricsFlagFile)) {
   metrics_lib_.Init();
@@ -57,11 +65,8 @@ bool LoginMetrics::SendPolicyFilesStatus(const PolicyFilesStatus& status) {
   return false;
 }
 
-// static
-int LoginMetrics::PolicyFilesStatusCode(const PolicyFilesStatus& status) {
-  return (status.owner_key_file_state * 16      /* 4^2 */ +
-          status.policy_file_state * 4          /* 4^1 */ +
-          status.defunct_prefs_file_state * 1   /* 4^0 */);
+void LoginMetrics::RecordStats(const char* tag) {
+  bootstat_log(tag);
 }
 
 // Code for incognito, owner and any other user are 0, 1 and 2

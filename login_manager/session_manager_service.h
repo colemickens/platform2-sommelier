@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -86,6 +86,9 @@ class SessionManagerService
     void set_keygen(KeyGenerator* gen) {
       session_manager_service_->gen_.reset(gen);
     }
+    void set_login_metrics(LoginMetrics* metrics) {
+      session_manager_service_->login_metrics_.reset(metrics);
+    }
     // Sets whether the the manager exits when a child finishes.
     void set_exit_on_child_done(bool do_exit) {
       session_manager_service_->exit_on_child_done_ = do_exit;
@@ -147,11 +150,6 @@ class SessionManagerService
   // Takes ownership of |file_checker|.
   void set_file_checker(FileChecker* file_checker) {
     file_checker_.reset(file_checker);
-  }
-
-  // Takes ownership of |metrics|.
-  void set_metrics(LoginMetrics* metrics) {
-    login_metrics_.reset(metrics);
   }
 
   // Takes ownership of |mitigator|.
@@ -224,10 +222,10 @@ class SessionManagerService
   // for testing is returned in OUT_filepath.
   // If force_relaunch is true, Chrome will be restarted with each
   // invocation. Otherwise, it will only be restarted on the first invocation.
-  // The extra_arguments parameter can include any additional arguments
+  // The extra_args parameter can include any additional arguments
   // that need to be passed to Chrome on subsequent launches.
   gboolean EnableChromeTesting(gboolean force_relaunch,
-                               gchar** extra_arguments,
+                               const gchar** extra_args,
                                gchar** OUT_filepath,
                                GError** error);
 

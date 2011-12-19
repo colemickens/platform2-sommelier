@@ -62,6 +62,9 @@ public:
   // Returns true if stats are sent.
   virtual bool SendPolicyFilesStatus(const PolicyFilesStatus& status);
 
+  // Record a stat called |tag| via the bootstat library.
+  virtual void RecordStats(const char* tag);
+
  private:
   friend class LoginMetricsTest;
 

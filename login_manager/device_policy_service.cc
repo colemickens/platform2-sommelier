@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,8 +10,8 @@
 #include <base/message_loop_proxy.h>
 #include <base/task.h>
 
-#include "login_manager/bindings/chrome_device_policy.pb.h"
-#include "login_manager/bindings/device_management_backend.pb.h"
+#include "login_manager/chrome_device_policy.pb.h"
+#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
@@ -196,8 +196,10 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   for (RepeatedPtrField<string>::const_iterator it = whitelist.begin();
        it != whitelist.end();
        ++it) {
-    if (on_list = (current_user == *it))
+    if (current_user == *it) {
+      on_list = true;
       break;
+    }
   }
   if (poldata.has_username() && poldata.username() == current_user &&
       on_list &&

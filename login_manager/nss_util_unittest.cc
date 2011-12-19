@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,7 +29,7 @@ class NssUtilTest : public ::testing::Test {
 
 TEST_F(NssUtilTest, FindFromPublicKey) {
   // Create a keypair, which will put the keys in the user's NSSDB.
-  scoped_ptr<RSAPrivateKey> key_pair(RSAPrivateKey::Create(256));
+  scoped_ptr<RSAPrivateKey> key_pair(RSAPrivateKey::CreateSensitive(256));
   ASSERT_NE(key_pair.get(), reinterpret_cast<RSAPrivateKey*>(NULL));
 
   std::vector<uint8> public_key;

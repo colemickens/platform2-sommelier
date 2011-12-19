@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,12 +12,12 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 
+#include "login_manager/keygen_worker.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/owner_key.h"
 #include "login_manager/system_utils.h"
 
 using std::string;
-using std::vector;
 using login_manager::NssUtil;
 using login_manager::OwnerKey;
 
@@ -46,20 +46,5 @@ int main(int argc, char* argv[]) {
   if (cl->args().size() != 1) {
     LOG(FATAL) << "Usage: keygen /path/to/output_file";
   }
-  FilePath key_file(cl->args()[0]);
-  scoped_ptr<NssUtil> nss(NssUtil::Create());
-  scoped_ptr<OwnerKey> key(new OwnerKey(key_file));
-  if (!key->PopulateFromDiskIfPossible())
-    return 1;
-  if (!nss->OpenUserDB())
-    PLOG(FATAL) << "Could not open/create user NSS DB";
-  LOG(INFO) << "Generating Owner key.";
-  scoped_ptr<crypto::RSAPrivateKey> pair(nss->GenerateKeyPair());
-  if (pair.get()) {
-    if (!key->PopulateFromKeypair(pair.get()))
-      return 1;
-    LOG(INFO) << "Writing Owner key to " << key_file.value();
-    return (key->Persist() ? 0 : 1);
-  }
-  LOG(FATAL) << "Could not generate owner key!";
+  return login_manager::keygen::generate(cl->args()[0]);
 }

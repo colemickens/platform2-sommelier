@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,7 +10,7 @@
 #include <base/basictypes.h>
 #include <base/file_path.h>
 
-#include "login_manager/bindings/device_management_backend.pb.h"
+#include "login_manager/device_management_backend.pb.h"
 
 namespace login_manager {
 class OwnerKey;

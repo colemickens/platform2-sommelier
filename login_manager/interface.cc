@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -63,7 +63,7 @@ gboolean session_manager_emit_login_prompt_visible(SessionManager* self,
 }
 gboolean session_manager_enable_chrome_testing(SessionManager* self,
                                                gboolean force_relaunch,
-                                               gchar** extra_arguments,
+                                               const gchar** extra_arguments,
                                                gchar** OUT_filepath,
                                                GError** error) {
   SESSION_MANAGER_WRAP_METHOD(EnableChromeTesting,
