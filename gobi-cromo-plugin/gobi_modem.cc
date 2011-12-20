@@ -576,6 +576,11 @@ DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GobiModem::GetIP4Config(
 }
 
 void GobiModem::FactoryReset(const std::string& code, DBus::Error& error) {
+  ScopedApiConnection connection(*this);
+  connection.ApiConnect(error);
+  if (error.is_set())
+    return;
+
   LOG(INFO) << "ResetToFactoryDefaults";
   ULONG rc = sdk_->ResetToFactoryDefaults(const_cast<CHAR *>(code.c_str()));
   ENSURE_SDK_SUCCESS(ResetToFactoryDefaults, rc, kSdkError);
