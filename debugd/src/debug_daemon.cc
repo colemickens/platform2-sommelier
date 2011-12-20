@@ -20,6 +20,7 @@ DebugDaemon::DebugDaemon(DBus::Connection* connection,
 bool DebugDaemon::Init() {
   ping_tool_ = new PingTool();
   tracepath_tool_ = new TracePathTool();
+  route_tool_ = new RouteTool();
   try {
     // TODO(ellyjones): Remove this when crosbug.com/23964 is fixed
     dbus_->request_name(kDebugDaemonService);
@@ -63,6 +64,13 @@ std::string DebugDaemon::TracePathStart(const DBus::FileDescriptor& outfd,
 
 void DebugDaemon::TracePathStop(const std::string& handle, DBus::Error& error) {
   return tracepath_tool_->Stop(handle, error);
+}
+
+std::vector<std::string> DebugDaemon::GetRoutes(const std::map<std::string,
+                                                               DBus::Variant>&
+                                                    options,
+                                                DBus::Error& error) {
+  return route_tool_->GetRoutes(options, error);
 }
 
 };  // namespace debugd

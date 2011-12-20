@@ -12,6 +12,7 @@
 
 #include "bindings/org.chromium.debugd.h"
 #include "ping_tool.h"
+#include "route_tool.h"
 #include "tracepath_tool.h"
 
 namespace debugd {
@@ -42,11 +43,16 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                                                     DBus::Variant>& options,
                                      DBus::Error& error);
   virtual void TracePathStop(const std::string& handle, DBus::Error& error);
+  virtual std::vector<std::string> GetRoutes(const std::map<std::string,
+                                                            DBus::Variant>&
+                                                 options,
+                                             DBus::Error& error);
 
  private:
   DBus::Connection* dbus_;
   DBus::BusDispatcher* dispatcher_;
   PingTool* ping_tool_;
+  RouteTool* route_tool_;
   TracePathTool *tracepath_tool_;
 };
 

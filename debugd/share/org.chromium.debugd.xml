@@ -76,8 +76,27 @@
         Stops a running tracepath.
       </tp:docstring>
       <arg name="handle" type="s" direction="in">
-        Handle to the tracepath to stop. If an empty string is passed, stops all
-        running tracepaths.
+        <tp:docstring>
+          Handle to the tracepath to stop. If an empty string is passed, stops
+          all running tracepaths.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetRoutes">
+      <tp:docstring>
+        Returns the routing table.
+      </tp:docstring>
+      <arg name="options" type="a{sv}" direction="in">
+        <tp:docstring>
+          Options:
+            numeric (bool): Use numeric remote hosts.
+            v6 (bool): Use ipv6.
+        </tp:docstring>
+      </arg>
+      <arg name="result" type="as" direction="out">
+        <tp:docstring>
+          The list of routes.
+        </tp:docstring>
       </arg>
     </method>
   </interface>

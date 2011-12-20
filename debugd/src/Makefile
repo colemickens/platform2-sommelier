@@ -19,8 +19,8 @@ install:
 tests: override NEEDS_MOUNTS = 1
 tests: TEST(CXX_BINARY(testrunner))
 
-TOOLS:= $(patsubst %,%_tool.o,ping tracepath)
-OBJS := debug_daemon.o process_with_id.o subprocess_tool.o $(TOOLS)
+TOOLS:= $(patsubst %,%_tool.o,ping route subprocess tracepath)
+OBJS := debug_daemon.o process_with_id.o process_with_output.o $(TOOLS)
 TESTOBJS := process_with_id_test.o
 
 CXX_BINARY(debugd): main.o $(OBJS)
