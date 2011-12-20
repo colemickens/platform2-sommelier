@@ -14,7 +14,7 @@ CLIENT_ID,/usr/share/userfeedback/scripts/get_log "/home/chronos/Consent To Send
 LOGDATE,/bin/date
 Xorg.0.log,/usr/share/userfeedback/scripts/get_log /var/log/Xorg.0.log
 bios_info,/usr/share/userfeedback/scripts/get_log /var/log/bios_info.txt
-bios_log,cat /sys/firmware/log | /usr/share/userfeedback/scripts/get_log /dev/stdin
+bios_log,cat /sys/firmware/log | /usr/share/userfeedback/scripts/get_log /dev/stdin 2000
 boot_times,/usr/share/userfeedback/scripts/get_log /tmp/boot-times-sent
 chrome_log,/usr/share/userfeedback/scripts/get_log /home/chronos/user/chrome,ascii
 chrome_system_log,/usr/share/userfeedback/scripts/get_log /var/log/chrome/chrome,ascii
