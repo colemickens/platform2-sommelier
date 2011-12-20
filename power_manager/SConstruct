@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -112,7 +112,7 @@ powerd_env.ParseConfig(
 powerd_sources = Split(''' audio_detector.cc \
   file_tagger.cc powerd.cc powerd_metrics.cc screen_locker.cc suspender.cc
   video_detector.cc metrics_constants.cc monitor_reconfigure.cc power_supply.cc
-  resolution_selector.cc
+  resolution_selector.cc rolling_average.cc
 ''')
 if not use_aura:
   powerd_sources.append('power_button_handler.cc')
@@ -172,8 +172,8 @@ tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 powerd_unittest_env = powerd_env.Clone()
 powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
 deps = [testrunner, 'powerd_unittest.cc', 'backlight_controller_unittest.cc',
-        powerd_lib, util_lib, xidle, backlight_controller, backlight,
-        power_prefs]
+        'rolling_average_unittest.cc', powerd_lib, util_lib, xidle,
+        backlight_controller, backlight, power_prefs]
 tests.append(powerd_unittest_env.Program('powerd_unittest', deps))
 file_tagger_unittest_env = powerd_env.Clone()
 file_tagger_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
