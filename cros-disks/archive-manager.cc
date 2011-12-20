@@ -46,6 +46,7 @@ const char kAVFSSeccompFilterPolicyFile[] =
     "/opt/google/cros-disks/avfsd-seccomp.policy";
 const char kAVFSMountProgram[] = "/usr/bin/avfsd";
 const char kAVFSRootDirectory[] = "/var/run/avfsroot";
+const char kAVFSLogFile[] = "/var/run/avfsroot/avfs.log";
 const char kAVFSMediaDirectory[] = "/var/run/avfsroot/media";
 const char kAVFSUserFileDirectory[] = "/var/run/avfsroot/user";
 const char kMediaDirectory[] = "/media";
@@ -195,6 +196,14 @@ bool ArchiveManager::StartAVFS() {
     platform()->RemoveEmptyDirectory(kAVFSRootDirectory);
     return false;
   }
+
+  // Set the AVFS_LOGFILE environment variable so that the AVFS daemon
+  // writes log messages to a file instead of syslog. Otherwise, writing
+  // to syslog may trigger the socket/connect/send system calls, which are
+  // disabled by the seccomp filters policy file. This only affects the
+  // child processes spawned by cros-disks and does not persist after
+  // cros-disks restarts.
+  setenv("AVFS_LOGFILE", kAVFSLogFile, 1);
 
   avfs_started_ = true;
   for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
