@@ -274,7 +274,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-device-policy \
             --enable-gview \
             --enable-logging \
-            --enable-nacl \
             --enable-smooth-scrolling \
             --log-level=1 \
             --login-manager \
