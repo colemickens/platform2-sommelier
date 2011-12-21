@@ -564,6 +564,13 @@ cmd_network_diag(){
   /usr/bin/network_diagnostics
 }
 
+debugd() {
+  method="$1"; shift
+  dbus-send --system --print-reply --fixed --dest=org.chromium.debugd \
+      /org/chromium/debugd "org.chromium.debugd.$method" "$@"
+}
+
+
 cmd_ping() {
   local option="dict:string:variant:"
 
@@ -624,14 +631,11 @@ cmd_ping() {
     echo "Can't create fifo at $fifo"
     return 1
   fi
-  dbus-send --system --print-reply --fixed --dest=org.chromium.debugd \
-       /org/chromium/debugd org.chromium.debugd.PingStart "fd:1" \
-       "string:$dest" "$option" 2>&1 > "$fifo" &
+  debugd PingStart "fd:1" "string:$dest" "$option" 2>&1 > "$fifo" &
   read pid < "$fifo"
   echo "pid: $pid"
   (while read line; do echo "$line"; done) < "$fifo"
-  dbus-send --system --print-reply --fixed --dest=org.chromium.debugd \
-      /org/chromium/debugd org.chromium.debugd.PingStop "string:$pid"
+  debugd PingStop "string:$pid"
   if [ $? -ne 0 ]; then
     echo "Can't stop ping"
     return 1
@@ -674,14 +678,14 @@ cmd_shill_manager() {
 }
 
 cmd_route() {
-  local option=""
+  local option="dict:string:variant:"
 
   # NB: use printf to avoid echo interpreting -n
   while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
     if [ "$1" = "-n" ]; then
-      option="$option -n"
+      option="${option}numeric,boolean:true,"
     elif [ "$1" = "-6" ]; then
-      option="$option -6"
+      option="${option}v6,boolean:true,"
     else
       echo "Unknown option: $1"
       return 1
@@ -689,8 +693,9 @@ cmd_route() {
 
     shift
   done
+  option=$(echo "$option" | sed 's/,$//')
 
-  /sbin/route $option
+  debugd GetRoutes "$option"
 }
 
 cmd_tracepath() {
