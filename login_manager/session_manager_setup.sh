@@ -211,7 +211,9 @@ PKCS11_FLAGS=--load-opencryptoki
 if [ "$(uname -m)" != "armv7l" ] ; then
   ACCELERATED_FLAGS="--enable-accelerated-layers"
 else
-  ACCELERATED_FLAGS="--use-gl=egl --ppapi-flash-args=enable-hardware-decoder=1"
+  ACCELERATED_FLAGS="--use-gl=egl \
+                     --ppapi-flash-args=enable-hardware-decoder=1 \
+                     --force-compositing-mode"
 fi
 
 # If screensaver use isn't disabled, set screensaver.
