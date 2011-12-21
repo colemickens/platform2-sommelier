@@ -5,9 +5,14 @@
 #ifndef CHAPS_OBJECT_H
 #define CHAPS_OBJECT_H
 
-#include "chaps/attributes.h"
+#include <map>
+#include <string>
+
+#include "pkcs11/cryptoki.h"
 
 namespace chaps {
+
+typedef std::map<CK_ATTRIBUTE_TYPE, std::string> AttributeMap;
 
 // Object is the interface for a PKCS #11 object.  This component manages all
 // object attributes and provides query and modify access to attributes
@@ -18,6 +23,20 @@ class Object {
   // Returns a general indicator of the object's size. This size will be at
   // least as large as the combined size of the object's attribute values.
   virtual int GetSize() const = 0;
+  // Returns the object class. If the CKA_CLASS attribute does not exist, the
+  // return value is undefined.
+  virtual CK_OBJECT_CLASS GetObjectClass() const = 0;
+  // Returns the value of the CKA_TOKEN attribute.
+  virtual bool IsTokenObject() const = 0;
+  // Returns the value of the CKA_MODIFIABLE attribute.
+  virtual bool IsModifiable() const = 0;
+  // Returns the value of the CKA_PRIVATE attribute.
+  virtual bool IsPrivate() const = 0;
+  // Validates that the object is consistent and complete.
+  virtual CK_RV Validate() = 0;
+  // Copies attributes from another object and validates the combination of
+  // existing attributes and copied attributes forms a consistent object.
+  virtual CK_RV CopyAndValidate(const Object* original) = 0;
   // Provides PKCS #11 attribute values according to the semantics described in
   // PKCS #11 v2.20: 11.7 - C_GetAttributeValue (p. 133).
   virtual CK_RV GetAttributes(CK_ATTRIBUTE_PTR attributes,
@@ -27,10 +46,31 @@ class Object {
   // (p. 135).
   virtual CK_RV SetAttributes(const CK_ATTRIBUTE_PTR attributes,
                               int num_attributes) = 0;
-  // Provides a convenient way to query a boolean attribute. If the attribute
-  // does not exist or is not valid, 'default_value' is returned.
+  // Returns true if the a value for the attribute exists.
+  virtual bool IsAttributePresent(CK_ATTRIBUTE_TYPE type) const = 0;
+  // Queries a boolean attribute. If the attribute does not exist or is not
+  // valid, 'default_value' is returned.
   virtual bool GetAttributeBool(CK_ATTRIBUTE_TYPE type,
                                 bool default_value) const = 0;
+  // Sets a boolean attribute. Policies will not be enforced (e.g. CKA_LOCAL can
+  // be set using this method even though a user cannot set this attribute).
+  virtual void SetAttributeBool(CK_ATTRIBUTE_TYPE type, bool value) = 0;
+  // Queries an integral attribute. If the attribute does not exist or is not
+  // valid, 'default_value' is returned.
+  virtual int GetAttributeInt(CK_ATTRIBUTE_TYPE type,
+                              int default_value) const = 0;
+  // Sets an integral attribute. Policies will not be enforced.
+  virtual void SetAttributeInt(CK_ATTRIBUTE_TYPE type, int value) = 0;
+  // Queries an attribute value as a string.
+  virtual std::string GetAttributeString(CK_ATTRIBUTE_TYPE type) const = 0;
+  // Sets an attribute as a string. Policies will not be enforced.
+  virtual void SetAttributeString(CK_ATTRIBUTE_TYPE type,
+                                  const std::string& value) = 0;
+  // Removes an attribute. This is not the same as setting an attribute value to
+  // the empty string.
+  virtual void RemoveAttribute(CK_ATTRIBUTE_TYPE type) = 0;
+  // Provides a read-only map of all existing attributes.
+  virtual const AttributeMap* GetAttributeMap() const = 0;
 };
 
 }  // namespace

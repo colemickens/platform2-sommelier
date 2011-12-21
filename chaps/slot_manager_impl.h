@@ -67,7 +67,8 @@ class SlotManagerImpl : public SlotManager, public LoginEventListener {
   TPMUtility* tpm_utility_;
 
   void GetDefaultInfo(CK_SLOT_INFO* slot_info, CK_TOKEN_INFO* token_info);
-  bool InitializeKeyHierarchy(ObjectPool* object_pool,
+  bool InitializeKeyHierarchy(int slot_id,
+                              ObjectPool* object_pool,
                               const std::string& auth_data,
                               std::string* user_key);
   int FindEmptySlot();

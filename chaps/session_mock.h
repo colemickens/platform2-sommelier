@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,38 +19,35 @@ namespace chaps {
 
 class SessionMock : public Session {
  public:
-  SessionMock() {}
+  SessionMock();
+  virtual ~SessionMock();
+
   MOCK_CONST_METHOD0(GetSlot, int ());
   MOCK_CONST_METHOD0(GetState, CK_STATE ());
   MOCK_CONST_METHOD0(IsReadOnly, bool ());
   MOCK_CONST_METHOD1(IsOperationActive, bool (OperationType));
   MOCK_METHOD3(CreateObject, CK_RV (const CK_ATTRIBUTE_PTR,
                                     int,
-                                    CK_OBJECT_HANDLE*));
+                                    int*));
   MOCK_METHOD4(CopyObject, CK_RV (const CK_ATTRIBUTE_PTR,
                                   int,
-                                  CK_OBJECT_HANDLE,
-                                  CK_OBJECT_HANDLE*));
-  MOCK_METHOD1(DestroyObject, CK_RV (CK_OBJECT_HANDLE));
-  MOCK_METHOD2(GetObject, bool (CK_OBJECT_HANDLE, Object**));
+                                  int,
+                                  int*));
+  MOCK_METHOD1(DestroyObject, CK_RV (int));
+  MOCK_METHOD2(GetObject, bool (int, Object**));
   MOCK_METHOD2(FindObjectsInit, CK_RV (const CK_ATTRIBUTE_PTR, int));
-  MOCK_METHOD2(FindObjects, CK_RV (int, std::vector<CK_OBJECT_HANDLE>*));
+  MOCK_METHOD2(FindObjects, CK_RV (int, std::vector<int>*));
   MOCK_METHOD0(FindObjectsFinal, CK_RV ());
   MOCK_METHOD4(OperationInit, CK_RV (OperationType,
                                      CK_MECHANISM_TYPE,
                                      const std::string&,
-                                     const Object&));
-  MOCK_METHOD3(OperationInit, CK_RV (OperationType,
-                                     CK_MECHANISM_TYPE,
-                                     const std::string&));
+                                     Object*));
   MOCK_METHOD4(OperationUpdate, CK_RV (OperationType,
                                        const std::string&,
                                        int*,
                                        std::string*));
-  MOCK_METHOD2(OperationUpdate, CK_RV (OperationType,
-                                       const std::string&));
   MOCK_METHOD3(OperationFinal, CK_RV (OperationType, int*, std::string*));
-  MOCK_METHOD2(OperationFinal, CK_RV (OperationType, const std::string&));
+  MOCK_METHOD1(VerifyFinal, CK_RV (const std::string&));
   MOCK_METHOD4(OperationSinglePart, CK_RV (OperationType,
                                            const std::string&,
                                            int*,
@@ -59,17 +56,17 @@ class SessionMock : public Session {
                                    const std::string&,
                                    const CK_ATTRIBUTE_PTR,
                                    int,
-                                   CK_OBJECT_HANDLE*));
+                                   int*));
   MOCK_METHOD8(GenerateKeyPair, CK_RV (CK_MECHANISM_TYPE,
                                        const std::string&,
                                        const CK_ATTRIBUTE_PTR,
                                        int,
                                        const CK_ATTRIBUTE_PTR,
                                        int,
-                                       CK_OBJECT_HANDLE*,
-                                       CK_OBJECT_HANDLE*));
-  MOCK_METHOD1(SeedRandom, void (const std::string&));
-  MOCK_METHOD2(GenerateRandom, void (int, std::string*));
+                                       int*,
+                                       int*));
+  MOCK_METHOD1(SeedRandom, CK_RV (const std::string&));
+  MOCK_METHOD2(GenerateRandom, CK_RV (int, std::string*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SessionMock);

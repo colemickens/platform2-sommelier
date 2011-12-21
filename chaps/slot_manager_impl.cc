@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,11 +9,13 @@
 
 #include <map>
 #include <string>
+#include <tr1/memory>
 #include <vector>
 
 #include <base/basictypes.h>
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
+#include <openssl/rand.h>
 
 #include "chaps/chaps_utility.h"
 #include "chaps/session.h"
@@ -85,6 +87,10 @@ SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory, TPMUtility* tpm_utility)
       tpm_utility_(tpm_utility) {}
 
 SlotManagerImpl::~SlotManagerImpl() {
+  for (size_t i = 0; i < slot_list_.size(); ++i) {
+    // Unload any keys that have been loaded in the TPM.
+    tpm_utility_->UnloadKeysForSlot(i);
+  }
 }
 
 bool SlotManagerImpl::Init() {
@@ -95,6 +101,11 @@ bool SlotManagerImpl::Init() {
     mechanism_info_[kDefaultMechanismInfo[i].type] =
         kDefaultMechanismInfo[i].info;
   }
+  // Mix in some random bytes from the TPM to the openssl prng.
+  // TODO(dkrahn): crosbug.com/25435 - Evaluate whether to use the TPM RNG.
+  string random;
+  if (tpm_utility_->GenerateRandom(128, &random))
+    RAND_seed(ConvertStringToByteBuffer(random.data()), random.length());
   // Default semantics are to always start with two slots.  One 'system' slot
   // which always has a token available, and one 'user' slot which will have no
   // token until a login event is received.
@@ -204,6 +215,7 @@ void SlotManagerImpl::OnLogin(const string& path, const string& auth_data) {
   shared_ptr<ObjectPool> object_pool(factory_->CreatePersistentObjectPool(
       path + "/" + kDefaultTokenFile));
   CHECK(object_pool.get());
+  int slot_id = FindEmptySlot();
   string auth_key_blob;
   string encrypted_master_key;
   string master_key;
@@ -211,7 +223,8 @@ void SlotManagerImpl::OnLogin(const string& path, const string& auth_data) {
       !object_pool->GetInternalBlob(kEncryptedMasterKey,
                                     &encrypted_master_key)) {
     LOG(INFO) << "Initializing key hierarchy for token at " << path;
-    if (!InitializeKeyHierarchy(object_pool.get(),
+    if (!InitializeKeyHierarchy(slot_id,
+                                object_pool.get(),
                                 auth_data,
                                 &master_key)) {
       LOG(ERROR) << "Failed to initialize key hierarchy at " << path;
@@ -227,8 +240,7 @@ void SlotManagerImpl::OnLogin(const string& path, const string& auth_data) {
     }
   }
   object_pool->SetKey(master_key);
-  // Insert the new token into a slot.
-  int slot_id = FindEmptySlot();
+  // Insert the new token into the empty slot.
   slot_list_[slot_id].token_object_pool_ = object_pool;
   slot_list_[slot_id].slot_info_.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = slot_id;
@@ -241,6 +253,7 @@ void SlotManagerImpl::OnLogout(const string& path) {
     return;
   }
   int slot_id = path_slot_map_[path];
+  tpm_utility_->UnloadKeysForSlot(slot_id);
   CloseAllSessions(slot_id);
   slot_list_[slot_id].token_object_pool_.reset();
   slot_list_[slot_id].slot_info_.flags &= ~CKF_TOKEN_PRESENT;
@@ -326,7 +339,8 @@ void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,
   token_info->firmwareVersion = kDefaultVersion;
 }
 
-bool SlotManagerImpl::InitializeKeyHierarchy(ObjectPool* object_pool,
+bool SlotManagerImpl::InitializeKeyHierarchy(int slot_id,
+                                             ObjectPool* object_pool,
                                              const string& auth_data,
                                              string* master_key) {
   if (!tpm_utility_->GenerateRandom(kUserKeySize, master_key)) {
@@ -334,13 +348,20 @@ bool SlotManagerImpl::InitializeKeyHierarchy(ObjectPool* object_pool,
     return false;
   }
   string auth_key_blob;
-  if (!tpm_utility_->GenerateKey(auth_data, &auth_key_blob)) {
+  int auth_key_handle;
+  const int key_size = 2048;
+  const string public_exponent("\x01\x00\x01", 3);
+  if (!tpm_utility_->GenerateKey(slot_id,
+                                 key_size,
+                                 public_exponent,
+                                 auth_data,
+                                 &auth_key_blob,
+                                 &auth_key_handle)) {
     LOG(ERROR) << "Failed to generate user authentication key.";
     return false;
   }
   string encrypted_master_key;
-  if (!tpm_utility_->Bind(auth_key_blob,
-                          auth_data,
+  if (!tpm_utility_->Bind(auth_key_handle,
                           *master_key,
                           &encrypted_master_key)) {
     LOG(ERROR) << "Failed to bind user encryption key.";

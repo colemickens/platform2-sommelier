@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -18,7 +19,9 @@ namespace chaps {
 
 class SlotManagerMock : public SlotManager {
  public:
-  SlotManagerMock() {}
+  SlotManagerMock();
+  virtual ~SlotManagerMock();
+
   MOCK_CONST_METHOD0(GetSlotCount, int ());
   MOCK_METHOD0(AddSlot, int ());
   MOCK_CONST_METHOD1(IsTokenPresent, bool (int));

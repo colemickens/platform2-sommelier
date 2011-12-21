@@ -26,6 +26,7 @@ namespace chaps {
 
 static const string kAuthData("000000");
 static const string kNewAuthData("111111");
+static const string kDefaultPubExp("\x01\x00\x01", 3);
 
 static ObjectPool* CreateObjectPoolMock() {
   ObjectPoolMock* op = new ObjectPoolMock();
@@ -47,6 +48,7 @@ static ObjectPool* CreateObjectPoolMock() {
 }
 
 static void ConfigureTPMUtility(TPMUtilityMock* tpm) {
+  EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
   EXPECT_CALL(*tpm, Authenticate(kAuthData,
                                  string("auth_key_blob"),
                                  string("encrypted_master_key"),
@@ -63,15 +65,15 @@ static void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, GenerateRandom(_, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(string("master_key")),
                             Return(true)));
-  EXPECT_CALL(*tpm, GenerateKey(kAuthData, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(string("auth_key_blob")),
+  EXPECT_CALL(*tpm, GenerateKey(1, 2048, kDefaultPubExp, kAuthData, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<4>(string("auth_key_blob")),
+                            SetArgumentPointee<5>(1),
                             Return(true)));
-  EXPECT_CALL(*tpm, Bind(string("auth_key_blob"),
-                         kAuthData,
+  EXPECT_CALL(*tpm, Bind(1,
                          string("master_key"),
                          _))
       .WillRepeatedly(
-          DoAll(SetArgumentPointee<3>(string("encrypted_master_key")),
+          DoAll(SetArgumentPointee<2>(string("encrypted_master_key")),
                 Return(true)));
 }
 

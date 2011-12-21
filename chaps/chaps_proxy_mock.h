@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,12 +22,8 @@ extern void DisableMockProxy();
 // ChapsProxyMock is a mock of ChapsInterface
 class ChapsProxyMock : public ChapsInterface {
 public:
-  ChapsProxyMock(bool is_initialized) {
-    EnableMockProxy(this, is_initialized);
-  }
-  virtual ~ChapsProxyMock() {
-    DisableMockProxy();
-  }
+  ChapsProxyMock(bool is_initialized);
+  virtual ~ChapsProxyMock();
 
   MOCK_METHOD2(GetSlotList, uint32_t (bool, std::vector<uint32_t>*));
   MOCK_METHOD8(GetSlotInfo, uint32_t (uint32_t,

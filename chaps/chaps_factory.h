@@ -5,12 +5,13 @@
 #ifndef CHAPS_CHAPS_FACTORY_H
 #define CHAPS_CHAPS_FACTORY_H
 
-#include "chaps/session.h"
+#include <string>
 
 namespace chaps {
 
-class Session;
+class Object;
 class ObjectPool;
+class Session;
 class TPMUtility;
 
 // ChapsFactory is a factory for a number of interfaces in the Chaps
@@ -23,8 +24,10 @@ class ChapsFactory {
                                  ObjectPool* token_object_pool,
                                  TPMUtility* tpm_utility,
                                  bool is_read_only) = 0;
+  virtual ObjectPool* CreateObjectPool() = 0;
   virtual ObjectPool* CreatePersistentObjectPool(
       const std::string& file_name) = 0;
+  virtual Object* CreateObject() = 0;
 };
 
 }  // namespace

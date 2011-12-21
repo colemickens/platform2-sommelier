@@ -8,10 +8,13 @@
 #include <string>
 #include <vector>
 
-#include "chaps/object.h"
+#include <base/basictypes.h>
+
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
+
+class Object;
 
 enum OperationType {
   kEncrypt,
@@ -19,6 +22,7 @@ enum OperationType {
   kDigest,
   kSign,
   kVerify,
+  kNumOperationTypes
 };
 
 // Session is the interface for a PKCS #11 session.  This component is
@@ -36,17 +40,17 @@ class Session {
   // Object management (see PKCS #11 v2.20: 11.7).
   virtual CK_RV CreateObject(const CK_ATTRIBUTE_PTR attributes,
                              int num_attributes,
-                             CK_OBJECT_HANDLE* new_object_handle) = 0;
+                             int* new_object_handle) = 0;
   virtual CK_RV CopyObject(const CK_ATTRIBUTE_PTR attributes,
                            int num_attributes,
-                           CK_OBJECT_HANDLE object_handle,
-                           CK_OBJECT_HANDLE* new_object_handle) = 0;
-  virtual CK_RV DestroyObject(CK_OBJECT_HANDLE object_handle) = 0;
-  virtual bool GetObject(CK_OBJECT_HANDLE object_handle, Object** object) = 0;
+                           int object_handle,
+                           int* new_object_handle) = 0;
+  virtual CK_RV DestroyObject(int object_handle) = 0;
+  virtual bool GetObject(int object_handle, Object** object) = 0;
   virtual CK_RV FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
                                 int num_attributes) = 0;
   virtual CK_RV FindObjects(int max_object_count,
-                            std::vector<CK_OBJECT_HANDLE>* object_handles) = 0;
+                            std::vector<int>* object_handles) = 0;
   virtual CK_RV FindObjectsFinal() = 0;
   // Cryptographic operations (encrypt, decrypt, digest, sign, verify). See
   // PKCS #11 v2.20: 11.8 through 11.12 for details on these operations. See
@@ -60,24 +64,39 @@ class Session {
   //                appropriate maximum in order to receive the output. All
   //                input will be ignored until the output has been received by
   //                the caller.
+  //
+  // OperationInit - Initializes a cryptographic operation for this session
+  //                 (like C_EncryptInit for an encrypt operation).
+  //   operation - The operation type to be initialized. Only one operation of a
+  //               given type may be active at a given time (like PKCS #11).
+  //   mechanism - The PKCS #11 mechanism to be executed.
+  //   key - The key to use for the operation (may be NULL only if the operation
+  //         does not use a key (e.g. Digest).
   virtual CK_RV OperationInit(OperationType operation,
                               CK_MECHANISM_TYPE mechanism,
                               const std::string& mechanism_parameter,
-                              const Object& key) = 0;
-  virtual CK_RV OperationInit(OperationType operation,
-                              CK_MECHANISM_TYPE mechanism,
-                              const std::string& mechanism_parameter) = 0;
+                              Object* key) = 0;
+  // Continues an operation that is already active (like C_EncryptUpdate). If
+  // the operation does not provide output (e.g. C_DigestUpdate),
+  // required_out_length and data_out may be NULL. If the operation does produce
+  // output then these parameters must not be NULL (even if none is expected
+  // this iteration).
   virtual CK_RV OperationUpdate(OperationType operation,
                                 const std::string& data_in,
                                 int* required_out_length,
                                 std::string* data_out) = 0;
-  virtual CK_RV OperationUpdate(OperationType operation,
-                                const std::string& data_in) = 0;
+  // Finalizes an operation for which all input has been provided (like
+  // C_EncryptFinal. The required_out_length and data_out parameters must not be
+  // NULL. Verify operations must use VerifyFinal.
   virtual CK_RV OperationFinal(OperationType operation,
                                int* required_out_length,
                                std::string* data_out) = 0;
-  virtual CK_RV OperationFinal(OperationType operation,
-                               const std::string& data_in) = 0;
+  // Finalizes a signature verification operation (like C_VerifyFinal).
+  virtual CK_RV VerifyFinal(const std::string& signature) = 0;
+  // Performs an entire operation in a single step (like C_Encrypt). This is
+  // like calling OperationUpdate followed by OperationFinal but with combined
+  // output semantics (i.e. buffer-too-small case will return total output size
+  // for both steps).
   virtual CK_RV OperationSinglePart(OperationType operation,
                                     const std::string& data_in,
                                     int* required_out_length,
@@ -87,18 +106,18 @@ class Session {
                             const std::string& mechanism_parameter,
                             const CK_ATTRIBUTE_PTR attributes,
                             int num_attributes,
-                            CK_OBJECT_HANDLE* new_key_handle) = 0;
+                            int* new_key_handle) = 0;
   virtual CK_RV GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
                                 const std::string& mechanism_parameter,
                                 const CK_ATTRIBUTE_PTR public_attributes,
                                 int num_public_attributes,
                                 const CK_ATTRIBUTE_PTR private_attributes,
                                 int num_private_attributes,
-                                CK_OBJECT_HANDLE* new_public_key_handle,
-                                CK_OBJECT_HANDLE* new_private_key_handle) = 0;
+                                int* new_public_key_handle,
+                                int* new_private_key_handle) = 0;
   // Random number generation (see PKCS #11 v2.20: 11.15).
-  virtual void SeedRandom(const std::string& seed) = 0;
-  virtual void GenerateRandom(int num_bytes, std::string* random_data) = 0;
+  virtual CK_RV SeedRandom(const std::string& seed) = 0;
+  virtual CK_RV GenerateRandom(int num_bytes, std::string* random_data) = 0;
 };
 
 }  // namespace

@@ -7,12 +7,23 @@
 
 #include "chaps/chaps_factory.h"
 
+#include <base/basictypes.h>
+#include <gmock/gmock.h>
+
 namespace chaps {
 
 class ChapsFactoryMock : public ChapsFactory {
  public:
+  ChapsFactoryMock();
+  virtual ~ChapsFactoryMock();
+
   MOCK_METHOD4(CreateSession, Session*(int, ObjectPool*, TPMUtility*, bool));
   MOCK_METHOD1(CreatePersistentObjectPool, ObjectPool*(const std::string&));
+  MOCK_METHOD0(CreateObjectPool, ObjectPool*());
+  MOCK_METHOD0(CreateObject, Object*());
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ChapsFactoryMock);
 };
 
 }  // namespace chaps

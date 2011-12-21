@@ -5,7 +5,12 @@
 #ifndef CHAPS_OBJECT_POOL_H
 #define CHAPS_OBJECT_POOL_H
 
+#include <string>
+#include <vector>
+
 namespace chaps {
+
+class Object;
 
 // An ObjectPool instance manages a collection of objects.  A persistent object
 // pool is backed by a database where all object data and object-related
@@ -16,7 +21,8 @@ class ObjectPool {
   virtual ~ObjectPool() {}
   // These methods get and set internal persistent blobs. These internal blobs
   // are for use by Chaps. PKCS #11 applications will not see these when
-  // searching for objects.
+  // searching for objects. Only persistent implementations need to support
+  // internal blobs.
   //   blob_id - The value of this identifier must be managed by the caller.
   //             Only one blob can be set per blob_id (i.e. a subsequent call
   //             to SetInternalBlob with the same blob_id will overwrite the
@@ -27,6 +33,12 @@ class ObjectPool {
   // relevant if the pool is persistent; an object pool has no obligation to
   // encrypt object data in memory.
   virtual void SetKey(const std::string& key) = 0;
+  virtual bool Insert(const Object* object) = 0;
+  virtual bool Delete(const Object* object) = 0;
+  // Finds all objects matching the search template and appends them to the
+  // supplied vector.
+  virtual bool Find(const Object* search_template,
+                    std::vector<Object*>* matching_objects) = 0;
 };
 
 }  // namespace

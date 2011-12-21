@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -73,6 +73,8 @@ static CK_RV HandlePKCS11Output(CK_RV result,
     memcpy(out_buffer, &output.front(), output.size());
   } else {
     *out_buffer_length = static_cast<CK_ULONG>(output_length);
+    if (result == CKR_BUFFER_TOO_SMALL)
+      result = CKR_OK;
   }
   return result;
 }
@@ -1504,4 +1506,3 @@ CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE hSession) {
 CK_RV C_CancelFunction(CK_SESSION_HANDLE hSession) {
   return CKR_FUNCTION_NOT_PARALLEL;
 }
-

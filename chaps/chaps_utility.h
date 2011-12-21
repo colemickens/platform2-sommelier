@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -110,10 +110,16 @@ inline std::string ConvertByteBufferToString(CK_BYTE_PTR buffer,
   return std::string(reinterpret_cast<char*>(buffer), buffer_size);
 }
 
-// This functions converts a string to a CK_UTF8CHAR_PTR which points to the
+// This function converts a C string to a CK_UTF8CHAR_PTR which points to the
 // same buffer.
 inline CK_UTF8CHAR_PTR ConvertStringToCharBuffer(const char* str) {
   return reinterpret_cast<CK_UTF8CHAR_PTR>(const_cast<char*>(str));
+}
+
+// This function converts a C string to a uint8_t* which points to the same
+// buffer.
+inline uint8_t* ConvertStringToByteBuffer(const char* str) {
+  return reinterpret_cast<uint8_t*>(const_cast<char*>(str));
 }
 
 // This function changes the container class for an array of bytes from string
