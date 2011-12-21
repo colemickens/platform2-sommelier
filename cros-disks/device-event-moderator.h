@@ -15,7 +15,6 @@
 
 namespace cros_disks {
 
-class DeviceEvent;
 class DeviceEventDispatcherInterface;
 class DeviceEventSourceInterface;
 

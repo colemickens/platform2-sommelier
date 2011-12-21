@@ -18,11 +18,12 @@
 namespace cros_disks {
 
 class ArchiveManager;
-class DeviceEvent;
 class DiskManager;
 class FormatManager;
 class MountManager;
 class Platform;
+
+struct DeviceEvent;
 
 // The d-bus server for the cros-disks daemon.
 //

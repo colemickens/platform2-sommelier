@@ -9,7 +9,7 @@
 
 namespace cros_disks {
 
-class DeviceEvent;
+struct DeviceEvent;
 
 // An interface class for dispatching device events.
 class DeviceEventDispatcherInterface {
