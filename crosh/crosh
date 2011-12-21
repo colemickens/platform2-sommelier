@@ -570,7 +570,6 @@ debugd() {
       /org/chromium/debugd "org.chromium.debugd.$method" "$@"
 }
 
-
 cmd_ping() {
   local option="dict:string:variant:"
 
@@ -699,12 +698,12 @@ cmd_route() {
 }
 
 cmd_tracepath() {
-  local option=""
+  local option="dict:string:variant:"
 
   # NB: use printf to avoid echo interpreting -n
   while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
     if [ "$1" = "-n" ]; then
-      option="$option -n"
+      option="${option}numeric,boolean:true,"
     else
       echo "Unknown option: $1"
       return 1
@@ -713,12 +712,39 @@ cmd_tracepath() {
     shift
   done
 
+  option=$(echo "$option" | sed 's/,$//')
+
   if [ -z "$1" ]; then
     echo "Missing parameter: destination"
     return 1
   fi
 
-  /usr/sbin/tracepath $option "$1"
+  # We want C-c to terminate the running tracepath so that the UI stays the same.
+  # Therefore, create a fifo to direct the output of the tracepath to, and have a
+  # subshell read from the fifo and emit to stdout. When the subshell ends (at a
+  # C-c), we stop the tracepath and clean up the fifo.
+  # TODO(ellyjones): factor this (and the similar code in cmd_ping) out somehow
+  # no way to mktemp a fifo, so make a dir to hold it instead
+  dir=$(mktemp -d "/tmp/crosh-tracepath-XXXXXXXXXX")
+  if [ $? -ne 0 ]; then
+    echo "Can't create temporary directory"
+    return 1
+  fi
+  fifo="${dir}/fifo"
+  if ! mkfifo "$fifo"; then
+    echo "Can't create fifo at $fifo"
+    return 1
+  fi
+  debugd TracePathStart "fd:1" "string:$1" "$option" 2>&1 > "$fifo" &
+  read pid < "$fifo"
+  echo "pid: $pid"
+  (while read line; do echo "$line"; done) < "$fifo"
+  debugd TracePathStop "string:$pid"
+  if [ $? -ne 0 ]; then
+    echo "Can't stop tracepath"
+    return 1
+  fi
+  rm -rf "$dir"
 }
 
 cmd_top() {
