@@ -48,12 +48,16 @@ void GobiCdmaModem::GetCdmaRegistrationState(ULONG* cdma_1x_state,
                                      &w1, &w2, sizeof(netname), netname);
   if (rc != 0) {
     // All errors are treated as if the modem is not yet registered.
-    *cdma_1x_state = 0;
-    *cdma_evdo_state = 0;
-    *roaming_state = 0;
+    *cdma_1x_state = gobi::kUnregistered;
+    *cdma_evdo_state = gobi::kUnregistered;
+    *roaming_state = gobi::kRoaming;  // Should not matter
     return;
   }
 
+  // There is no guarantee that both interfaces will be included in
+  // the array, so assume not registered.
+  *cdma_1x_state = gobi::kUnregistered;
+  *cdma_evdo_state = gobi::kUnregistered;
   for (int i = 0; i < num_radio_interfaces; i++) {
     if (radio_interfaces[i] == gobi::kRfiCdma1xRtt)
       *cdma_1x_state = reg_state;
