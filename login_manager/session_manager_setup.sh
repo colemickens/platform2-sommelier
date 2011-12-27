@@ -283,6 +283,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --scroll-pixels=3 \
             --user-data-dir="$DATA_DIR" \
             --webui-login \
+            --no-protector \
             "$REGISTER_PLUGINS" \
             ${TOUCH_UI_FLAGS} \
             ${ACCELERATED_FLAGS} \
