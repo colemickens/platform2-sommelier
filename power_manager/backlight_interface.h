@@ -9,34 +9,20 @@
 
 namespace power_manager {
 
-// Interface for getting and setting the level of the backlight.
-//
-// Example usage:
-//   class Backlight : public BacklightInterface {
-//     ...
-//   };
-//   power_manager::Backlight backlight;
-//   int64 level, max;
-//   if (backlight.Init() && backlight.GetBrightness(&level, &max)) {
-//     std::cout << "Current brightness level is "
-//               << level << " out of " << max << "\n";
-//   } else {
-//     std::cout << "Cannot get brightness level\n";
-//   }
-
+// Interface for getting and setting the backlight level from hardware.
 class BacklightInterface {
  public:
-  // Set |level| to the current brightness level of the backlight, and set
-  // |max| to the max brightness level of the backlight. The minimum brightness
-  // level of the backlight is zero.
-  //
-  // On success, return true; otherwise return false.
-  virtual bool GetBrightness(int64* level, int64* max) = 0;
+  // Get the maximum brightness level (in an an arbitrary device-specific range;
+  // note that 0 is always the minimum allowable value, though).  This value
+  // never changes.  Returns false on failure.
+  virtual bool GetMaxBrightnessLevel(int64* max_level) = 0;
 
-  // Set the backlight to the specified brightness |level|.
-  //
-  // On success, return true; otherwise return false.
-  virtual bool SetBrightness(int64 level) = 0;
+  // Get the current brightness level (in an an arbitrary device-specific
+  // range).  Returns false on failure.
+  virtual bool GetCurrentBrightnessLevel(int64* current_level) = 0;
+
+  // Set the backlight to |level|.  Returns false on failure.
+  virtual bool SetBrightnessLevel(int64 level) = 0;
 
  protected:
   virtual ~BacklightInterface() {}

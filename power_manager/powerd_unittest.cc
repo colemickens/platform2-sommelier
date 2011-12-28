@@ -62,9 +62,11 @@ class DaemonTest : public Test {
     EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
     EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
     EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
-    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+    EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
-                              SetArgumentPointee<1>(kMaxBrightness),
+                              Return(true)));
+    EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
+        .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightness),
                               Return(true)));
     prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightness);
     prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightness);

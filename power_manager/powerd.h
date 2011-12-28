@@ -78,7 +78,7 @@ class Daemon : public XIdleObserver,
   virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms);
 
   // Overridden from BacklightControllerObserver:
-  virtual void OnBrightnessChanged(double brightness_level,
+  virtual void OnBrightnessChanged(double brightness_percent,
                                    BrightnessChangeCause cause);
 
  private:

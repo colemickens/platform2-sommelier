@@ -28,9 +28,9 @@ namespace power_manager {
 //                                                      BACKLIGHT_ACTIVE);
 //
 //   // BacklightController receives light sensor events in its
-//   // SetAlsBrightnessLevel() method:
-//   void BacklightController::SetAlsBrightnessLevel(int64 level) {
-//     LOG(INFO) << "Light sensor sets an als offset of " << level;
+//   // SetAlsBrightnessOffsetPercent() method:
+//   void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
+//     LOG(INFO) << "Light sensor sets an als offset of " << percent
 //   }
 
 class AmbientLightSensor {

@@ -132,7 +132,7 @@ void Daemon::Init() {
   OnPowerEvent(this, power_status_);
   file_tagger_.Init();
   backlight_controller_->set_observer(this);
-  backlight_controller_->SetMinimumBrightness(min_backlight_percent_);
+  backlight_controller_->SetMinimumBrightnessPercent(min_backlight_percent_);
   monitor_reconfigure_->SetProjectionCallback(
       &AdjustIdleTimeoutsForProjectionThunk, this);
 }
@@ -455,10 +455,10 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     SetIdleOffset(0, kIdleNormal);
 }
 
-void Daemon::OnBrightnessChanged(double brightness_level,
+void Daemon::OnBrightnessChanged(double brightness_percent,
                                  BrightnessChangeCause cause) {
-  dbus_int32_t brightness_level_int =
-      static_cast<dbus_int32_t>(round(brightness_level));
+  dbus_int32_t brightness_percent_int =
+      static_cast<dbus_int32_t>(round(brightness_percent));
 
   dbus_bool_t user_initiated = FALSE;
   switch (cause) {
@@ -480,7 +480,7 @@ void Daemon::OnBrightnessChanged(double brightness_level,
                                                 kBrightnessChangedSignal);
   CHECK(signal);
   dbus_message_append_args(signal,
-                           DBUS_TYPE_INT32, &brightness_level_int,
+                           DBUS_TYPE_INT32, &brightness_percent_int,
                            DBUS_TYPE_BOOLEAN, &user_initiated,
                            DBUS_TYPE_INVALID);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);

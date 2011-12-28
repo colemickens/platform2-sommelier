@@ -62,10 +62,10 @@ void Daemon::GenerateMetricsOnPowerEvent(const PowerStatus& info) {
 }
 
 gboolean Daemon::GenerateBacklightLevelMetric() {
-  double level;
+  double percent;
   if (backlight_controller_->state() == BACKLIGHT_ACTIVE &&
-      backlight_controller_->GetCurrentBrightness(&level)) {
-    SendEnumMetricWithPowerState(kMetricBacklightLevelName, lround(level),
+      backlight_controller_->GetCurrentBrightnessPercent(&percent)) {
+    SendEnumMetricWithPowerState(kMetricBacklightLevelName, lround(percent),
                                  kMetricBacklightLevelMax);
   }
   return true;

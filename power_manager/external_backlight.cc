@@ -174,32 +174,15 @@ bool ExternalBacklight::Init() {
   return true;
 }
 
-bool ExternalBacklight::GetBrightness(int64* level, int64* max_level) {
-  CHECK(level);
-  CHECK(max_level);
-  if (!HasValidHandle()) {
-    // If there is no valid i2c handle, return some dummy values.  Since display
-    // devices may be added at anytime, we don't want to return a failure just
-    // because there is no device found.
-    LOG(WARNING) << "No valid display device handle available, returning "
-                 << "dummy values.";
-    *level = 0;
-    *max_level = 1;
-    return true;
-  }
-
-  uint8 level8 = 0;
-  uint8 max_level8 = 0;
-  if (!DDCRead(i2c_handle_, kDDCBrightnessIndex, &level8, &max_level8)) {
-    LOG(WARNING) << "DDC read failed.";
-    return false;
-  }
-  *level = static_cast<int64>(level8);
-  *max_level = static_cast<int64>(max_level8);
-  return true;
+bool ExternalBacklight::GetMaxBrightnessLevel(int64* max_level) {
+  return ReadBrightnessLevels(NULL, max_level);
 }
 
-bool ExternalBacklight::SetBrightness(int64 level) {
+bool ExternalBacklight::GetCurrentBrightnessLevel(int64* current_level) {
+  return ReadBrightnessLevels(current_level, NULL);
+}
+
+bool ExternalBacklight::SetBrightnessLevel(int64 level) {
   if (!HasValidHandle()) {
     LOG(ERROR) << "No valid display device handle available.";
     return false;
@@ -320,9 +303,8 @@ gboolean ExternalBacklight::ScanForDisplays() {
 }
 
 void ExternalBacklight::SendDisplayChangedSignal() {
-  int64 level;
-  int64 max_level;
-  if (!GetBrightness(&level, &max_level))
+  int64 current_level = 0, max_level = 0;
+  if (!ReadBrightnessLevels(&current_level, &max_level))
     return;
 
   DBusConnection* connection = dbus_g_connection_get_connection(
@@ -336,11 +318,41 @@ void ExternalBacklight::SendDisplayChangedSignal() {
                                                 kExternalBacklightUpdate);
   CHECK(signal);
   dbus_message_append_args(signal,
-                           DBUS_TYPE_INT64, &level,
+                           DBUS_TYPE_INT64, &current_level,
                            DBUS_TYPE_INT64, &max_level,
                            DBUS_TYPE_INVALID);
   if (!dbus_connection_send(connection, signal, NULL))
     LOG(ERROR) << "Failed to send signal.";
+}
+
+bool ExternalBacklight::ReadBrightnessLevels(int64* current_level,
+                                             int64* max_level) {
+  if (!HasValidHandle()) {
+    // If there is no valid i2c handle, return some dummy values.  Since display
+    // devices may be added at anytime, we don't want to return a failure just
+    // because there is no device found.
+    LOG(WARNING) << "No valid display device handle available, returning "
+                 << "dummy values.";
+    if (current_level)
+      *current_level = 0;
+    if (max_level)
+      *max_level = 1;
+    return true;
+  }
+
+  uint8 current_level8 = 0;
+  uint8 max_level8 = 0;
+  if (!DDCRead(i2c_handle_, kDDCBrightnessIndex,
+               &current_level8, &max_level8)) {
+    LOG(WARNING) << "DDC read failed.";
+    return false;
+  }
+
+  if (current_level)
+    *current_level = static_cast<int64>(current_level8);
+  if (max_level)
+    *max_level = static_cast<int64>(max_level8);
+  return true;
 }
 
 }  // namespace power_manager

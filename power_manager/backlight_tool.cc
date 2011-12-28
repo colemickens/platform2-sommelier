@@ -34,15 +34,17 @@ int main(int argc, char* argv[]) {
   CHECK(backlight.Init(FilePath(power_manager::kBacklightPath),
                        power_manager::kBacklightPattern));
 #endif
-  if (FLAGS_get_brightness || FLAGS_get_max_brightness) {
-    int64 level, max;
-    CHECK(backlight.GetBrightness(&level, &max));
-    if (FLAGS_get_brightness)
-      printf("%" PRIi64 "\n", level);
-    else if (FLAGS_get_max_brightness)
-      printf("%" PRIi64 "\n", max);
+  if (FLAGS_get_brightness) {
+    int64 level = 0;
+    CHECK(backlight.GetCurrentBrightnessLevel(&level));
+    printf("%" PRIi64 "\n", level);
+  }
+  if (FLAGS_get_max_brightness) {
+    int64 max = 0;
+    CHECK(backlight.GetMaxBrightnessLevel(&max));
+    printf("%" PRIi64 "\n", max);
   }
   if (FLAGS_set_brightness >= 0)
-    CHECK(backlight.SetBrightness(FLAGS_set_brightness));
+    CHECK(backlight.SetBrightnessLevel(FLAGS_set_brightness));
   return 0;
 }

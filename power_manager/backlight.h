@@ -43,19 +43,33 @@ class Backlight : public BacklightInterface {
   bool Init(const FilePath& base_path, const FilePath::StringType& pattern);
 
   // Overridden from BacklightInterface:
-  virtual bool GetBrightness(int64* level, int64* max);
-  virtual bool SetBrightness(int64 level);
+  virtual bool GetMaxBrightnessLevel(int64* max_level);
+  virtual bool GetCurrentBrightnessLevel(int64* current_level);
+  virtual bool SetBrightnessLevel(int64 level);
 
  private:
-  // Look for the existence of required files and return the granularity of
-  // the given backlight interface directory path.
-  int64 CheckBacklightFiles(const FilePath& dir_path);
+  // Generate FilePaths within |dir_path| for reading and writing brightness
+  // information.
+  static void GetBacklightFilePaths(const FilePath& dir_path,
+                                    FilePath* actual_brightness_path,
+                                    FilePath* brightness_path,
+                                    FilePath* max_brightness_path);
+
+  // Look for the existence of required files and return the max brightness.
+  // Returns 0 if necessary files are missing.
+  static int64 CheckBacklightFiles(const FilePath& dir_path);
+
+  // Read the value from |path| to |level|.  Returns false on failure.
+  static bool ReadBrightnessLevelFromFile(const FilePath& path, int64* level);
 
   // Paths to the actual_brightness, brightness, and max_brightness files
   // under /sys/class/backlight.
   FilePath actual_brightness_path_;
   FilePath brightness_path_;
   FilePath max_brightness_path_;
+
+  // Cached maximum brightness level.
+  int64 max_brightness_level_;
 
   DISALLOW_COPY_AND_ASSIGN(Backlight);
 };

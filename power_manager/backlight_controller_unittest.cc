@@ -52,9 +52,9 @@ class MockObserver : public BacklightControllerObserver {
   }
 
   // BacklightControllerObserver implementation:
-  virtual void OnBrightnessChanged(double brightness_level,
+  virtual void OnBrightnessChanged(double brightness_percent,
                                    BrightnessChangeCause cause) {
-    changes_.push_back(make_pair(brightness_level, cause));
+    changes_.push_back(make_pair(brightness_percent, cause));
   }
 
  private:
@@ -74,9 +74,11 @@ class BacklightControllerTest : public ::testing::Test {
   }
 
   virtual void SetUp() {
-    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+    EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
-                              SetArgumentPointee<1>(kMaxBrightness),
+                              Return(true)));
+    EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
+        .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightness),
                               Return(true)));
     prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightness);
     prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightness);
@@ -94,65 +96,65 @@ TEST_F(BacklightControllerTest, IncreaseBrightness) {
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(false));
 #ifdef HAS_ALS
-  EXPECT_EQ(kDefaultBrightness, controller_.local_brightness());
+  EXPECT_EQ(kDefaultBrightness, controller_.target_percent());
 #else
-  EXPECT_EQ(kUnpluggedBrightness, controller_.local_brightness());
+  EXPECT_EQ(kUnpluggedBrightness, controller_.target_percent());
 #endif // defined(HAS_ALS)
 
-  double old_local_brightness = controller_.local_brightness();
+  double old_percent = controller_.target_percent();
   controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
   // Check that the first step increases the brightness; within the loop
   // will just ensure that the brightness never decreases.
-  EXPECT_GT(controller_.local_brightness(), old_local_brightness);
+  EXPECT_GT(controller_.target_percent(), old_percent);
 
   for (int i = 0; i < kStepsToHitLimit; ++i) {
-    old_local_brightness = controller_.local_brightness();
+    old_percent = controller_.target_percent();
     controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
-    EXPECT_GE(controller_.local_brightness(), old_local_brightness);
+    EXPECT_GE(controller_.target_percent(), old_percent);
   }
 
-  EXPECT_EQ(kMaxBrightness, controller_.local_brightness());
+  EXPECT_EQ(kMaxBrightness, controller_.target_percent());
 }
 
 TEST_F(BacklightControllerTest, DecreaseBrightness) {
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
 #ifdef HAS_ALS
-  EXPECT_EQ(kDefaultBrightness, controller_.local_brightness());
+  EXPECT_EQ(kDefaultBrightness, controller_.target_percent());
 #else
-  EXPECT_EQ(kPluggedBrightness, controller_.local_brightness());
+  EXPECT_EQ(kPluggedBrightness, controller_.target_percent());
 #endif // defined(HAS_ALS)
 
-  double old_local_brightness = controller_.local_brightness();
+  double old_percent = controller_.target_percent();
   controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
   // Check that the first step decreases the brightness; within the loop
   // will just ensure that the brightness never increases.
-  EXPECT_LT(controller_.local_brightness(), old_local_brightness);
+  EXPECT_LT(controller_.target_percent(), old_percent);
 
   for (int i = 0; i < kStepsToHitLimit; ++i) {
-    old_local_brightness = controller_.local_brightness();
+    old_percent = controller_.target_percent();
     controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
-    EXPECT_LE(controller_.local_brightness(), old_local_brightness);
+    EXPECT_LE(controller_.target_percent(), old_percent);
   }
 
   // Backlight should now be off.
-  EXPECT_EQ(0, controller_.local_brightness());
+  EXPECT_EQ(0, controller_.target_percent());
 }
 
 TEST_F(BacklightControllerTest, DecreaseBrightnessDisallowOff) {
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
 #ifdef HAS_ALS
-  EXPECT_EQ(kDefaultBrightness, controller_.local_brightness());
+  EXPECT_EQ(kDefaultBrightness, controller_.target_percent());
 #else
-  EXPECT_EQ(kPluggedBrightness, controller_.local_brightness());
+  EXPECT_EQ(kPluggedBrightness, controller_.target_percent());
 #endif // defined(HAS_ALS)
 
   for (int i = 0; i < kStepsToHitLimit; ++i)
     controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
 
   // Backlight must still be on.
-  EXPECT_GT(controller_.local_brightness(), 0);
+  EXPECT_GT(controller_.target_percent(), 0);
 }
 
 // Test that BacklightController notifies its observer in response to brightness
@@ -161,7 +163,7 @@ TEST_F(BacklightControllerTest, NotifyObserver) {
   // Set an initial state.
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(false));
-  controller_.SetAlsBrightnessLevel(16);
+  controller_.SetAlsBrightnessOffsetPercent(16);
 
   MockObserver observer;
   controller_.set_observer(&observer);
@@ -170,31 +172,33 @@ TEST_F(BacklightControllerTest, NotifyObserver) {
   observer.Clear();
   controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
-  EXPECT_EQ(controller_.local_brightness(), observer.changes()[0].first);
+  EXPECT_EQ(controller_.target_percent(),
+            observer.changes()[0].first);
   EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].second);
 
   // Decrease the brightness.
   observer.Clear();
   controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
-  EXPECT_EQ(controller_.local_brightness(), observer.changes()[0].first);
+  EXPECT_EQ(controller_.target_percent(),
+            observer.changes()[0].first);
   EXPECT_EQ(BRIGHTNESS_CHANGE_USER_INITIATED, observer.changes()[0].second);
 
   // Send enough ambient light sensor samples to trigger a brightness change.
   observer.Clear();
-  double old_brightness = controller_.local_brightness();
+  double old_percent = controller_.target_percent();
   for (int i = 0; i < 10; ++i)
-    controller_.SetAlsBrightnessLevel(32);
-  ASSERT_NE(old_brightness, controller_.local_brightness());
+    controller_.SetAlsBrightnessOffsetPercent(32);
+  ASSERT_NE(old_percent, controller_.target_percent());
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
-  EXPECT_EQ(controller_.local_brightness(), observer.changes()[0].first);
+  EXPECT_EQ(controller_.target_percent(), observer.changes()[0].first);
   EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].second);
 
   // Plug the device in.
   observer.Clear();
   ASSERT_TRUE(controller_.OnPlugEvent(true));
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
-  EXPECT_EQ(controller_.local_brightness(), observer.changes()[0].first);
+  EXPECT_EQ(controller_.target_percent(), observer.changes()[0].first);
   EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].second);
 
 #ifndef IS_DESKTOP
@@ -202,7 +206,7 @@ TEST_F(BacklightControllerTest, NotifyObserver) {
   observer.Clear();
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
-  EXPECT_EQ(controller_.local_brightness(), observer.changes()[0].first);
+  EXPECT_EQ(controller_.target_percent(), observer.changes()[0].first);
   EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].second);
 #endif
 }

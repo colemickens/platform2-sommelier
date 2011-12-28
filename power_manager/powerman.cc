@@ -263,15 +263,18 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   } else if (dbus_message_is_method_call(message, kRootPowerManagerInterface,
                                          kExternalBacklightGetMethod)) {
     LOG(INFO) << "External backlight get brightness method call.";
-    int64 level = 0;
+    int64 current_level = 0;
     int64 max_level = 0;
     dbus_bool_t result = FALSE;
-    if (daemon->backlight_)
-      result = daemon->backlight_->GetBrightness(&level, &max_level);
+    if (daemon->backlight_) {
+      result = daemon->backlight_->GetCurrentBrightnessLevel(&current_level) &&
+               daemon->backlight_->GetMaxBrightnessLevel(&max_level);
+    }
+
     DBusMessage *reply = dbus_message_new_method_return(message);
     CHECK(reply);
     dbus_message_append_args(reply,
-                             DBUS_TYPE_INT64, &level,
+                             DBUS_TYPE_INT64, &current_level,
                              DBUS_TYPE_INT64, &max_level,
                              DBUS_TYPE_BOOLEAN, &result,
                              DBUS_TYPE_INVALID);
@@ -293,7 +296,7 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
       return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
     if (daemon->backlight_)
-      daemon->backlight_->SetBrightness(level);
+      daemon->backlight_->SetBrightnessLevel(level);
     return DBUS_HANDLER_RESULT_HANDLED;
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;

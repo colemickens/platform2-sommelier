@@ -29,8 +29,9 @@ class ExternalBacklight : public BacklightInterface {
   bool Init();
 
   // Overridden from BacklightInterface:
-  virtual bool GetBrightness(int64* level, int64* max);
-  virtual bool SetBrightness(int64 level);
+  virtual bool GetMaxBrightnessLevel(int64* max_level);
+  virtual bool GetCurrentBrightnessLevel(int64* current_level);
+  virtual bool SetBrightnessLevel(int64 level);
 
  private:
   // Handles i2c and display  udev events.
@@ -49,6 +50,10 @@ class ExternalBacklight : public BacklightInterface {
 
   // Indicates that there is a valid display device handle.
   bool HasValidHandle() { return (i2c_handle_ >= 0); }
+
+  // Reads the current and maximum brightness levels into the supplied pointers.
+  // Either pointer can be NULL.
+  bool ReadBrightnessLevels(int64* current_level, int64* max_level);
 
   std::string i2c_path_;
   int i2c_handle_;

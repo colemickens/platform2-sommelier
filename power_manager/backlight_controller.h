@@ -53,16 +53,21 @@ enum BrightnessChangeCause {
 // Interface for observing changes made by the backlight controller.
 class BacklightControllerObserver {
  public:
-  // Invoked when the brightness level is changed.  |brightness_level| is the
+  // Invoked when the brightness level is changed.  |brightness_percent| is the
   // current brightness in the range [0, 100].
-  virtual void OnBrightnessChanged(double brightness_level,
+  virtual void OnBrightnessChanged(double brightness_percent,
                                    BrightnessChangeCause cause) {}
 
  protected:
   ~BacklightControllerObserver() {}
 };
 
-// Control the backlight.
+// Controls the backlight.
+//
+// In the context of this class, "percent" refers to a double-precision
+// brightness percentage in the range [0.0, 100.0] (where 0 indicates a
+// fully-off backlight), while "level" refers to a 64-bit hardware-specific
+// brightness in the range [0, max-brightness-per-sysfs].
 class BacklightController {
  public:
   BacklightController(BacklightInterface* backlight,
@@ -74,38 +79,17 @@ class BacklightController {
     observer_ = observer;
   }
 
-  double plugged_brightness_offset() const {
-    return plugged_brightness_offset_;
-  }
-  void set_plugged_brightness_offset(double offset) {
-    plugged_brightness_offset_ = offset;
-  }
-
-  double unplugged_brightness_offset() const {
-    return unplugged_brightness_offset_;
-  }
-  void set_unplugged_brightness_offset(double offset) {
-    unplugged_brightness_offset_ = offset;
-  }
-
-  double local_brightness() const { return local_brightness_; }
-
+  double target_percent() const { return target_percent_; }
   PowerState state() const { return state_; }
-
   int als_adjustment_count() const { return als_adjustment_count_; }
-
   int user_adjustment_count() const { return user_adjustment_count_; }
 
   // Initialize the object.
   bool Init();
 
-  // Get the current brightness of the backlight, as a percentage.
-  bool GetCurrentBrightness(double* level);
-
-  // Get the intended brightness of the backlight, as a percentage.  Intended
-  // brightness is the destination brightness during a transition.  Once the
-  // transition completes, this equals the current brightness.
-  bool GetTargetBrightness(double* level);
+  // Get the current brightness of the backlight in the range [0, 100].
+  // We may be in the process of smoothly transitioning to a different level.
+  bool GetCurrentBrightnessPercent(double* percent);
 
   // Increase the brightness level of the backlight by one level.
   void IncreaseBrightness(BrightnessChangeCause cause);
@@ -118,18 +102,19 @@ class BacklightController {
   void DecreaseBrightness(bool allow_off, BrightnessChangeCause cause);
 
   // Turn the backlight on or off.  Returns true if the state was successfully
-  // changed, and false otherwise.
+  // changed.
   bool SetPowerState(PowerState state);
 
   // Mark the computer as plugged or unplugged, and adjust the brightness
-
   // appropriately.  Returns true if the brightness was changed and false
   // otherwise.
   bool OnPlugEvent(bool is_plugged);
 
-  void SetAlsBrightnessLevel(int64 level);
+  // Update the brightness offset that is applied based on the current amount of
+  // ambient light.
+  void SetAlsBrightnessOffsetPercent(double percent);
 
-  void SetMinimumBrightness(int64 level);
+  void SetMinimumBrightnessPercent(double percent);
 
   // Returns whether the user has manually turned backlight down to zero.
   bool IsBacklightActiveOff();
@@ -140,20 +125,20 @@ class BacklightController {
   FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric);
 
-  // Clamp |value| to fit between 0 and 100.
-  double Clamp(double value);
+  // Clamp |percent| to fit between 0 and 100.
+  double Clamp(double percent);
 
-  // Clamp |value| to fit between |min_percent_| and 100.
-  double ClampToMin(double value);
+  // Clamp |percent| to fit between |min_percent_| and 100.
+  double ClampToMin(double percent);
 
-  // Converts between [0, 100] and [0, |max_|] brightness scales.
-  double RawBrightnessToLocalBrightness(int64 raw_level);
-  int64 LocalBrightnessToRawBrightness(double local_level);
+  // Converts between [0, 100] and [0, |max_level_|] brightness scales.
+  double LevelToPercent(int64 level);
+  int64 PercentToLevel(double percent);
 
   void ReadPrefs();
   void WritePrefs();
 
-  // Determine whether backlight controller has been initialized
+  // Determine whether backlight controller has been initialized.
   bool IsInitialized();
 
   // Write brightness based on current settings.
@@ -200,11 +185,11 @@ class BacklightController {
   // Indicate whether ALS value has been read before.
   bool has_seen_als_event_;
 
-  // The brightness offset recommended by the light sensor.
-  int64 als_brightness_level_;
+  // The brightness offset recommended by the ambient light sensor.
+  double als_offset_percent_;
 
   // Prevent small light sensor changes from updating the backlight.
-  int64 als_hysteresis_level_;
+  double als_hysteresis_percent_;
 
   // Also apply temporal hysteresis to light sensor samples.
   AlsHysteresisState als_temporal_state_;
@@ -217,13 +202,14 @@ class BacklightController {
   int user_adjustment_count_;
 
   // User adjustable brightness offset when AC plugged.
-  double plugged_brightness_offset_;
+  double plugged_offset_percent_;
 
   // User adjustable brightness offset when AC unplugged.
-  double unplugged_brightness_offset_;
+  double unplugged_offset_percent_;
 
-  // Pointer to currently in-use user brightness offset.
-  double* brightness_offset_;
+  // Pointer to currently in-use user brightness offset: either
+  // |plugged_offset_percent_|, |unplugged_offset_percent_|, or NULL.
+  double* current_offset_percent_;
 
   // Backlight power state, used to distinguish between various cases.
   // Backlight nonzero, backlight zero, backlight idle-dimmed, etc.
@@ -232,14 +218,14 @@ class BacklightController {
   // Whether the computer is plugged in.
   PluggedState plugged_state_;
 
-  // Current system brightness, on local [0, 100] scale.
-  double local_brightness_;
+  // Target brightness in the range [0, 100].
+  double target_percent_;
 
-  // Min and max raw brightness for backlight object.
-  int64 min_;
-  int64 max_;
+  // Min and max raw brightness levels for |backlight_|.
+  int64 min_level_;
+  int64 max_level_;
 
-  // Minimum and maximum brightness as a percentage.
+  // Minimum and maximum brightness in the range [0, 100].
   double min_percent_;
   double max_percent_;
 
@@ -250,7 +236,7 @@ class BacklightController {
   bool is_initialized_;
 
   // The destination hardware brightness used for brightness transitions.
-  int64 target_raw_brightness_;
+  int64 target_level_;
 
   // Flag to indicate whether there is an active brightness transition going on.
   bool is_in_transition_;

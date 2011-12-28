@@ -38,11 +38,13 @@ class PlugDimmerTest : public Test {
         backlight_ctl_(&backlight_, &prefs_),
         current_brightness_(0),
         target_brightness_(0) {
-    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+    EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(current_brightness_),
-                              SetArgumentPointee<1>(kMaxBrightness),
                               Return(true)));
-    EXPECT_CALL(backlight_, SetBrightness(_))
+    EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
+        .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightness),
+                              Return(true)));
+    EXPECT_CALL(backlight_, SetBrightnessLevel(_))
         .WillRepeatedly(DoAll(SaveArg<0>(&current_brightness_),
                               SaveArg<0>(&target_brightness_),
                               Return(true)));
@@ -65,16 +67,16 @@ class PlugDimmerTest : public Test {
 // the computer is plugged and unplugged.
 TEST_F(PlugDimmerTest, TestPlug) {
   backlight_ctl_.OnPlugEvent(false);
-  EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+  EXPECT_CALL(backlight_, SetBrightnessLevel(kUnpluggedBrightness))
       .WillRepeatedly(Return(true));
   backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE);
-  EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
+  EXPECT_CALL(backlight_, SetBrightnessLevel(kPluggedBrightness))
       .WillRepeatedly(Return(true));
   backlight_ctl_.OnPlugEvent(true);
-  EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+  EXPECT_CALL(backlight_, SetBrightnessLevel(kUnpluggedBrightness))
       .WillRepeatedly(Return(true));
   backlight_ctl_.OnPlugEvent(false);
-  EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
+  EXPECT_CALL(backlight_, SetBrightnessLevel(kPluggedBrightness))
       .WillRepeatedly(Return(true));
   backlight_ctl_.OnPlugEvent(true);
 }
@@ -83,16 +85,16 @@ TEST_F(PlugDimmerTest, TestPlug) {
 // the computer is unplugged and plugged.
 TEST_F(PlugDimmerTest, TestUnplug) {
   backlight_ctl_.OnPlugEvent(true);
-  EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
+  EXPECT_CALL(backlight_, SetBrightnessLevel(kPluggedBrightness))
       .WillRepeatedly(Return(true));
   backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE);
-  EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+  EXPECT_CALL(backlight_, SetBrightnessLevel(kUnpluggedBrightness))
       .WillRepeatedly(Return(true));
   backlight_ctl_.OnPlugEvent(false);
-  EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
+  EXPECT_CALL(backlight_, SetBrightnessLevel(kPluggedBrightness))
       .WillRepeatedly(Return(true));
   backlight_ctl_.OnPlugEvent(true);
-  EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+  EXPECT_CALL(backlight_, SetBrightnessLevel(kUnpluggedBrightness))
       .WillRepeatedly(Return(true));
   backlight_ctl_.OnPlugEvent(false);
 }
@@ -101,7 +103,7 @@ TEST_F(PlugDimmerTest, TestUnplug) {
 // when we receive duplicate plug events.
 TEST_F(PlugDimmerTest, TestDuplicatePlugEvent) {
   backlight_ctl_.OnPlugEvent(false);
-  EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+  EXPECT_CALL(backlight_, SetBrightnessLevel(kUnpluggedBrightness))
       .Times(0);
   backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE);
   backlight_ctl_.OnPlugEvent(false);

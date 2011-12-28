@@ -13,8 +13,9 @@ namespace power_manager {
 
 class MockBacklight : public BacklightInterface {
  public:
-  MOCK_METHOD2(GetBrightness, bool(int64* level, int64* max));
-  MOCK_METHOD1(SetBrightness, bool(int64 level));
+  MOCK_METHOD1(GetCurrentBrightnessLevel, bool(int64* current_level));
+  MOCK_METHOD1(GetMaxBrightnessLevel, bool(int64* max_level));
+  MOCK_METHOD1(SetBrightnessLevel, bool(int64 level));
 };
 
 }  // namespace power_manager

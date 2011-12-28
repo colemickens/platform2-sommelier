@@ -103,7 +103,7 @@ gboolean AmbientLightSensor::ReadAls() {
     int luxval = atoi(buffer);
     int64 level = Tsl2563LuxToLevel(luxval);
     if (controller_)
-      controller_->SetAlsBrightnessLevel(level);
+      controller_->SetAlsBrightnessOffsetPercent(level);
     last_level_ = level;
   }
   return true;
