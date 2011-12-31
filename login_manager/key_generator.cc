@@ -30,6 +30,10 @@ KeyGenerator::~KeyGenerator() {}
 bool KeyGenerator::Start(uid_t uid,
                          SessionManagerService* manager) {
   SystemUtils utils;
+  if (!file_util::Delete(FilePath(temporary_key_filename_), false)) {
+    PLOG(ERROR) << "Old keygen state still present; can't generate keys: ";
+    return false;
+  }
   if (!keygen_job_.get()) {
     LOG(INFO) << "Creating keygen job";
     std::vector<std::string> keygen_argv;
