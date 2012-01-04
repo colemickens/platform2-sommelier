@@ -43,6 +43,14 @@
 #     for the tests target to trigger an automated test run.
 #   - CLEAN(file_or_dir) dependency can be added to 'clean'.
 #
+# If source code is being generated, rules will need to be registered for
+# compiling the objects.  This can be done by adding one of the following
+# to the Makefile:
+#   - For C source files
+#     $(eval $(call add_object_rules,sub/dir/gen_a.o sub/dir/gen_b.o,CC,c))
+#   - For C++ source files
+#     $(eval $(call add_object_rules,sub/dir/gen_a.o sub/dir/gen_b.o,CXX,cc))
+#
 # Exported targets meant to have prerequisites added to:
 #  - all - Your desired targets should be given
 #  - tests - Any TEST(test_binary) targets should be given
@@ -475,21 +483,20 @@ CXX_OBJECTS = $(patsubst $(SRC)/%.cc,%.o,$(wildcard $(SRC)/*.cc))
 # MODULE_C_OBJECTS, is because it scopes the behavior to the given target which
 # ensures we get a relative directory offset from $(OUT) which otherwise would
 # not match without further magic on a per-subdirectory basis.
-$(C_OBJECTS): %.o: $(SRC)/%.c
-	$(QUIET)mkdir -p "$(dir $@)"
-	$(call OBJECT_PATTERN_implementation,CC,\
-          $(basename $@).pie,$(CFLAGS) $(OBJ_PIE_FLAG))
-	$(call OBJECT_PATTERN_implementation,CC,\
-          $(basename $@).pic,$(CFLAGS) -fPIC)
-	$(QUIET)touch "$@"
 
-$(CXX_OBJECTS): %.o: $(SRC)/%.cc
-	$(QUIET)mkdir -p "$(dir $@)"
-	$(call OBJECT_PATTERN_implementation,CXX,\
-          $(basename $@).pie,$(CXXFLAGS) $(OBJ_PIE_FLAG))
-	$(call OBJECT_PATTERN_implementation,CXX,\
-          $(basename $@).pic,$(CXXFLAGS) -fPIC)
-	$(QUIET)touch "$@"
+# Creates object file rules. Call with eval.
+# $(1) list of .o files
+# $(2) source type (CC or CXX)
+# $(3) source suffix (cc or c)
+define add_object_rules
+$(1): %.o: $(SRC)/%.$(3)
+	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(call OBJECT_PATTERN_implementation,$(2),\
+          $$(basename $$@).pie,$$(CXXFLAGS) $$(OBJ_PIE_FLAG))
+	$$(call OBJECT_PATTERN_implementation,$(2),\
+          $$(basename $$@).pic,$$(CXXFLAGS) -fPIC)
+	$$(QUIET)touch "$$@"
+endef
 
 define OBJECT_PATTERN_implementation
   @$(ECHO) "$(1)		$(subst $(SRC)/,,$<) -> $(2).o"
@@ -501,6 +508,10 @@ define OBJECT_PATTERN_implementation
   $(QUIET)sed -i -e :j -e '$$!N;s|\\\s*\n| |;tj' \
     -e 's|^\(.*\s*:\s*\)\(.*\)$$|\1 $$\(wildcard \2\)|' $(2).d
 endef
+
+# Now actually register handlers for C(XX)_OBJECTS.
+$(eval $(call add_object_rules,$(C_OBJECTS),CC,c))
+$(eval $(call add_object_rules,$(CXX_OBJECTS),CXX,cc))
 
 # Disable default pattern rules to help avoid leakage.
 # These may already be handled by '-r', but let's keep it to be safe.
@@ -751,22 +762,11 @@ MODULE_CXX_OBJECTS = $(patsubst $(SRC)/$(MODULE)/%.cc,$(MODULE)/%.o,\
   $(wildcard $(SRC)/$(MODULE)/*.cc))
 $(eval $(MODULE_NAME)_CXX_OBJECTS ?= $(MODULE_CXX_OBJECTS))
 
-# TODO(wad) Try to split the .*.o into pre-reqs
 # Note, $(MODULE) is implicit in the path to the %.c.
 # See $(C_OBJECTS) for more details.
-$(MODULE_C_OBJECTS): %.o: $(SRC)/%.c
-	$(QUIET)mkdir -p "$(dir $@)"
-	$(call OBJECT_PATTERN_implementation,CC,\
-          $(basename $@).pie,$(CFLAGS) $(OBJ_PIE_FLAG))
-	$(call OBJECT_PATTERN_implementation,CC,$(basename $@).pic,$(CFLAGS) -fPIC)
-	$(QUIET)touch $@
-
-$(MODULE_CXX_OBJECTS): %.o: $(SRC)/%.cc
-	$(QUIET)mkdir -p "$(dir $@)"
-	$(call OBJECT_PATTERN_implementation,CXX,\
-$(basename $@).pie,$(CXXFLAGS) $(OBJ_PIE_FLAG))
-	$(call OBJECT_PATTERN_implementation,CXX,$(basename $@).pic,$(CXXFLAGS) -fPIC)
-	$(QUIET)touch "$@"
+# Register rules for the module objects.
+$(eval $(call add_object_rules,$(MODULE_C_OBJECTS),CC,c))
+$(eval $(call add_object_rules,$(MODULE_CXX_OBJECTS),CXX,cc))
 
 # Continue recursive inclusion of module.mk files
 SUBMODULE_DIRS = $(wildcard $(SRC)/$(MODULE)/*/module.mk)
