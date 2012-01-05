@@ -23,6 +23,7 @@
 #include "chromeos/glib/object.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/backlight_controller.h"
+#include "power_manager/backlight_interface.h"
 #include "power_manager/file_tagger.h"
 #include "power_manager/inotify.h"
 #include "power_manager/power_prefs.h"
@@ -49,6 +50,7 @@ class Daemon : public XIdleObserver,
          VideoDetectorInterface* video_detector,
          AudioDetectorInterface* audio_detector,
          MonitorReconfigure* monitor_reconfigure,
+         BacklightInterface* keyboard_backlight,
          const FilePath& run_dir);
   ~Daemon();
 
@@ -78,7 +80,13 @@ class Daemon : public XIdleObserver,
   virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms);
 
   // Overridden from BacklightControllerObserver:
-  virtual void OnBrightnessChanged(double brightness_percent,
+  virtual void OnScreenBrightnessChanged(double brightness_percent,
+                                         BrightnessChangeCause cause);
+
+  // Intended to override KeyboardBacklightControllerObserver once it exists
+  // ...for now, called privately by DecreaseKeyboardBrightness() /
+  // IncreaseKeyboardBrightness()
+  void OnKeyboardBrightnessChanged(double brightness_percent,
                                    BrightnessChangeCause cause);
 
  private:
@@ -124,6 +132,15 @@ class Daemon : public XIdleObserver,
 
   // Updates our idle state based on the provided |idle_time_ms|
   void SetIdleState(int64 idle_time_ms);
+
+  // Decrease / increase the keyboard brightness; direction should be +1 for
+  // increase and -1 for decrease.
+  void AdjustKeyboardBrightness(int direction);
+
+  // Shared code between keyboard and screen brightness changed handling
+  void OnBrightnessChanged(double brightness_percent,
+                           BrightnessChangeCause cause,
+                           const std::string& signal_name);
 
   // Sets up idle timers, adding the provided offset to all timeouts
   // starting with the state provided except the locking timeout.
@@ -298,6 +315,7 @@ class Daemon : public XIdleObserver,
   AudioDetectorInterface* audio_detector_;
   XIdle idle_;
   MonitorReconfigure* monitor_reconfigure_;
+  BacklightInterface* keyboard_backlight_;
   double low_battery_suspend_percent_;
   bool clean_shutdown_initiated_;
   bool low_battery_;

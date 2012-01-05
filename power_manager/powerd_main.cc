@@ -109,6 +109,9 @@ int main(int argc, char* argv[]) {
   power_manager::AmbientLightSensor als(&backlight_ctl);
   if (!als.Init())
     LOG(WARNING) << "Cannot initialize light sensor";
+  power_manager::Backlight keylight;
+  keylight.Init(FilePath(power_manager::kKeyboardBacklightPath),
+                power_manager::kKeyboardBacklightPattern);
   MetricsLibrary metrics_lib;
   power_manager::VideoDetector video_detector;
   video_detector.Init();
@@ -125,6 +128,7 @@ int main(int argc, char* argv[]) {
                                &video_detector,
                                &audio_detector,
                                &monitor_reconfigure,
+                               &keylight,
                                run_dir);
 
   daemon.Init();

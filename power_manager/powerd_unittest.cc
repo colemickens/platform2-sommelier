@@ -55,7 +55,8 @@ class DaemonTest : public Test {
       : prefs_(FilePath("."), FilePath(".")),
         backlight_ctl_(&backlight_, &prefs_),
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
-                &audio_detector_, &monitor_reconfigure_, FilePath(".")) {}
+                &audio_detector_, &monitor_reconfigure_, &keylight_,
+                FilePath(".")) {}
 
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor.
@@ -233,6 +234,7 @@ class DaemonTest : public Test {
   PowerPrefs prefs_;
   PowerStatus status_;
   BacklightController backlight_ctl_;
+  StrictMock<MockBacklight> keylight_;
 
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;

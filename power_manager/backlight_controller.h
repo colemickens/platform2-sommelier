@@ -55,8 +55,8 @@ class BacklightControllerObserver {
  public:
   // Invoked when the brightness level is changed.  |brightness_percent| is the
   // current brightness in the range [0, 100].
-  virtual void OnBrightnessChanged(double brightness_percent,
-                                   BrightnessChangeCause cause) {}
+  virtual void OnScreenBrightnessChanged(double brightness_percent,
+                                         BrightnessChangeCause cause) {}
 
  protected:
   ~BacklightControllerObserver() {}
