@@ -40,6 +40,8 @@ if int(ARGUMENTS.get('is_desktop', 0)):
   base_env.Append(CPPDEFINES=['IS_DESKTOP'])
 if int(ARGUMENTS.get('has_als', 0)):
   base_env.Append(CPPDEFINES=['HAS_ALS'])
+if int(ARGUMENTS.get('has_keyboard_backlight', 0)):
+  base_env.Append(CPPDEFINES=['HAS_KEYBOARD_BACKLIGHT'])
 
 use_aura = False
 if int(ARGUMENTS.get('aura', 0)):

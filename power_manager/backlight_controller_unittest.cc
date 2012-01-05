@@ -52,8 +52,8 @@ class MockObserver : public BacklightControllerObserver {
   }
 
   // BacklightControllerObserver implementation:
-  virtual void OnBrightnessChanged(double brightness_percent,
-                                   BrightnessChangeCause cause) {
+  virtual void OnScreenBrightnessChanged(double brightness_percent,
+                                         BrightnessChangeCause cause) {
     changes_.push_back(make_pair(brightness_percent, cause));
   }
 

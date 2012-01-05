@@ -14,9 +14,11 @@
 
 #include "base/command_line.h"
 #include "base/logging.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/string_util.h"
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/audio_detector.h"
+#include "power_manager/backlight.h"
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
@@ -24,8 +26,6 @@
 
 #ifdef IS_DESKTOP
 #include "power_manager/external_backlight_client.h"
-#else
-#include "power_manager/backlight.h"
 #endif
 
 #ifndef VCSID
@@ -109,6 +109,15 @@ int main(int argc, char* argv[]) {
   power_manager::AmbientLightSensor als(&backlight_ctl);
   if (!als.Init())
     LOG(WARNING) << "Cannot initialize light sensor";
+  scoped_ptr<power_manager::Backlight> keylight;
+#ifdef HAS_KEYBOARD_BACKLIGHT
+  keylight.reset(new power_manager::Backlight());
+  if (!keylight->Init(FilePath(power_manager::kKeyboardBacklightPath),
+                      power_manager::kKeyboardBacklightPattern)) {
+    keylight.reset();
+    LOG(WARNING) << "Cannot initialize keyboard backlight";
+  }
+#endif
   MetricsLibrary metrics_lib;
   power_manager::VideoDetector video_detector;
   video_detector.Init();
@@ -125,6 +134,7 @@ int main(int argc, char* argv[]) {
                                &video_detector,
                                &audio_detector,
                                &monitor_reconfigure,
+                               keylight.get(),
                                run_dir);
 
   daemon.Init();
