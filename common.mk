@@ -489,12 +489,18 @@ CXX_OBJECTS = $(patsubst $(SRC)/%.cc,%.o,$(wildcard $(SRC)/*.cc))
 # $(2) source type (CC or CXX)
 # $(3) source suffix (cc or c)
 define add_object_rules
-$(1): %.o: $(SRC)/%.$(3)
+$(patsubst %.o,%.pie.o,$(1)): %.pie.o: $(SRC)/%.$(3)
 	$$(QUIET)mkdir -p "$$(dir $$@)"
 	$$(call OBJECT_PATTERN_implementation,$(2),\
-          $$(basename $$@).pie,$$(CXXFLAGS) $$(OBJ_PIE_FLAG))
+          $$(basename $$@),$$(CXXFLAGS) $$(OBJ_PIE_FLAG))
+
+$(patsubst %.o,%.pic.o,$(1)): %.pic.o: $(SRC)/%.$(3)
+	$$(QUIET)mkdir -p "$$(dir $$@)"
 	$$(call OBJECT_PATTERN_implementation,$(2),\
-          $$(basename $$@).pic,$$(CXXFLAGS) -fPIC)
+          $$(basename $$@),$$(CXXFLAGS) -fPIC)
+
+$(1): %.o: %.pic.o %.pie.o
+	$$(QUIET)mkdir -p "$$(dir $$@)"
 	$$(QUIET)touch "$$@"
 endef
 
