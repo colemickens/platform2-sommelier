@@ -112,11 +112,19 @@ TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
   metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConfiguring);
 }
 
-TEST_F(MetricsTest, WiFiServiceChannel) {
+TEST_F(MetricsTest, WiFiServicePostReady) {
   EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Channel",
                                       Metrics::kWiFiChannel2412,
                                       Metrics::kMetricNetworkChannelMax));
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.PhyMode",
+                                      Metrics::kWiFiNetworkPhyMode11a,
+                                      Metrics::kWiFiNetworkPhyModeMax));
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Security",
+                                      Metrics::kWiFiSecurityWep,
+                                      Metrics::kWiFiSecurityMax));
   wifi_service_->frequency_ = 2412;
+  wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
+  wifi_service_->security_ = flimflam::kSecurityWep;
   metrics_.RegisterService(wifi_service_);
   metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateReady);
 }

@@ -75,8 +75,37 @@ class Metrics {
     kWiFiChannelMax
   };
 
+  enum WiFiNetworkPhyMode {
+    kWiFiNetworkPhyModeUndef = 0,    // Unknown/undefined
+    kWiFiNetworkPhyMode11a = 1,      // 802.11a
+    kWiFiNetworkPhyMode11b = 2,      // 802.11b
+    kWiFiNetworkPhyMode11g = 3,      // 802.11g
+    kWiFiNetworkPhyMode11n = 4,      // 802.11n
+    kWiFiNetworkPhyModeHalf = 5,     // PSB Half-width
+    kWiFiNetworkPhyModeQuarter = 6,  // PSB Quarter-width
+    kWiFiNetworkPhyModeTurbo = 7,    // Atheros Turbo mode
+
+    kWiFiNetworkPhyModeMax
+  };
+
+  enum WiFiSecurity {
+    kWiFiSecurityUnknown = 0,
+    kWiFiSecurityNone = 1,
+    kWiFiSecurityWep = 2,
+    kWiFiSecurityWpa = 3,
+    kWiFiSecurityRsn = 4,
+    kWiFiSecurity8021x = 5,
+    kWiFiSecurityPsk = 6,
+
+    kWiFiSecurityMax
+  };
+
   static const char kMetricNetworkChannel[];
   static const int kMetricNetworkChannelMax;
+  static const char kMetricNetworkPhyMode[];
+  static const int kMetricNetworkPhyModeMax;
+  static const char kMetricNetworkSecurity[];
+  static const int kMetricNetworkSecurityMax;
   static const char kMetricNetworkServiceErrors[];
   static const int kMetricNetworkServiceErrorsMax;
   static const char kMetricTimeToConfigMilliseconds[];
@@ -94,6 +123,9 @@ class Metrics {
 
   // Converts the WiFi frequency into the associated UMA channel enumerator.
   static WiFiChannel WiFiFrequencyToChannel(uint16 frequency);
+
+  // Converts a flimflam security string into its UMA security enumerator.
+  static WiFiSecurity WiFiSecurityStringToEnum(const std::string &security);
 
   // Registers a service with this object so it can use the timers to track
   // state transition metrics.

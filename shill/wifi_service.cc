@@ -299,6 +299,22 @@ void WiFiService::SendPostReadyStateMetrics() const {
                                    technology()),
       Metrics::WiFiFrequencyToChannel(frequency_),
       Metrics::kMetricNetworkChannelMax);
+
+  DCHECK(physical_mode_ < Metrics::kWiFiNetworkPhyModeMax);
+  metrics()->SendEnumToUMA(
+      metrics()->GetFullMetricName(Metrics::kMetricNetworkPhyMode,
+                                   technology()),
+      static_cast<Metrics::WiFiNetworkPhyMode>(physical_mode_),
+      Metrics::kWiFiNetworkPhyModeMax);
+
+  Metrics::WiFiSecurity security_uma =
+      Metrics::WiFiSecurityStringToEnum(security_);
+  DCHECK(security_uma != Metrics::kWiFiSecurityUnknown);
+  metrics()->SendEnumToUMA(
+      metrics()->GetFullMetricName(Metrics::kMetricNetworkSecurity,
+                                   technology()),
+      security_uma,
+      Metrics::kMetricNetworkSecurityMax);
 }
 
 // private methods

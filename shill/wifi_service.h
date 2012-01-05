@@ -77,7 +77,7 @@ class WiFiService : public Service {
 
  private:
   friend class WiFiServiceSecurityTest;
-  FRIEND_TEST(MetricsTest, WiFiServiceChannel);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);

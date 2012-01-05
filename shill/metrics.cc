@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include <base/logging.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/wifi_service.h"
 
@@ -21,6 +22,10 @@ static base::LazyInstance<Metrics> g_metrics(base::LINKER_INITIALIZED);
 // static
 const char Metrics::kMetricNetworkChannel[] = "Network.Shill.%s.Channel";
 const int Metrics::kMetricNetworkChannelMax = Metrics::kWiFiChannelMax;
+const char Metrics::kMetricNetworkPhyMode[] = "Network.Shill.%s.PhyMode";
+const int Metrics::kMetricNetworkPhyModeMax = Metrics::kWiFiNetworkPhyModeMax;
+const char Metrics::kMetricNetworkSecurity[] = "Network.Shill.%s.Security";
+const int Metrics::kMetricNetworkSecurityMax = Metrics::kWiFiSecurityMax;
 const char Metrics::kMetricNetworkServiceErrors[] =
     "Network.Shill.ServiceErrors";
 const int Metrics::kMetricNetworkServiceErrorsMax = Service::kFailureMax;
@@ -111,6 +116,26 @@ Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16 frequency) {
     VLOG(3) << "map " << frequency << " to " << channel;
 
   return channel;
+}
+
+// static
+Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
+    const std::string &security) {
+  if (security == flimflam::kSecurityNone) {
+    return kWiFiSecurityNone;
+  } else if (security == flimflam::kSecurityWep) {
+    return kWiFiSecurityWep;
+  } else if (security == flimflam::kSecurityWpa) {
+    return kWiFiSecurityWpa;
+  } else if (security == flimflam::kSecurityRsn) {
+    return kWiFiSecurityRsn;
+  } else if (security == flimflam::kSecurity8021x) {
+    return kWiFiSecurity8021x;
+  } else if (security == flimflam::kSecurityPsk) {
+    return kWiFiSecurityPsk;
+  } else {
+    return kWiFiSecurityUnknown;
+  }
 }
 
 void Metrics::RegisterService(const Service *service) {
