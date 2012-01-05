@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -13,13 +13,10 @@ CXXFLAGS += -I$(OUT)		# for bindings
 
 all: CXX_BINARY(debugd)
 
-install:
-	cp $(OUT)debugd ..
-
 tests: override NEEDS_MOUNTS = 1
 tests: TEST(CXX_BINARY(testrunner))
 
-TOOLS:= $(patsubst %,%_tool.o,ping route subprocess tracepath)
+TOOLS := $(patsubst %,%_tool.o,modem_status ping route subprocess tracepath)
 OBJS := debug_daemon.o process_with_id.o process_with_output.o $(TOOLS)
 TESTOBJS := process_with_id_test.o
 
@@ -29,9 +26,17 @@ CXX_BINARY(testrunner): testrunner.o $(OBJS) $(TESTOBJS)
 	$(call cxx_binary,-lgtest -lminijail -lchromeos -lbase)
 clean: CXX_BINARY(debugd)
 
-main.o: $(OUT)bindings/org.chromium.debugd.h
-debug_daemon.o: $(OUT)bindings/org.chromium.debugd.h
+main.o.depends: $(OUT)adaptors/org.chromium.debugd.h
+debug_daemon.o.depends: $(OUT)adaptors/org.chromium.debugd.h
 
-$(OUT)bindings/%.h: share/%.xml
+vpath org.chromium.debugd.xml share
+vpath org.%.xml $(SYSROOT)/usr/share/dbus-1/interfaces
+
+$(OUT)adaptors/%.h: %.xml
 	mkdir -p $(dir $@)
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@
+
+$(OUT)proxies/%.h: %.xml
+	mkdir -p $(dir $@)
+	$(DBUSXX_XML2CPP) $^ --proxy=$@
+

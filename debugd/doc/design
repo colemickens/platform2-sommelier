@@ -53,7 +53,9 @@ Detailed Design:
 	debugd starts up, it creates a new tmpfs, visible only to it and its
 	descendants, and mounts it at </mnt/debugd>. Each of the helper programs
 	is then launched, and can spool information into the tmpfs as desired,
-	presumably for collection by some method inside debugd.
+	presumably for collection by some method inside debugd. Some helpers are
+	launched as needed instead of running persistently. Helper sources live
+	in </src/helpers>.
 
 	Files stored in the tmpfs can be written as json. Doing so makes it
 	easier to write helpers, since a utility function is available for
@@ -61,6 +63,30 @@ Detailed Design:
 	are unsuitable for this because they are not self-describing; we would
 	need to compile separate protobuf deserializers for each method into
 	debugd and choose which one to use for each file.
+
+Returning Complex Datastructures:
+	Some methods have to return data structures that are not simple (for
+	example, the 'GetModemStatus' method). For these methods, we have three
+	choices for moving the complex data structure across DBus:
+	1) Transport them in DBus' wire format directly.
+		P: No conversions needed in debugd
+		P: Everyone talking to us implicitly speaks it
+		C: Chrome needs to turn DBus wire format into its internal Value
+		   type for use/display
+	2) Transport them as protocol buffers.
+		P: Typesafe on the wire
+		C: Need to convert DBus to protobuf in debugd
+		C: Need a C/C++ helper for crosh to print these
+		C: Chrome needs to turn these into its internal Value type
+	3) Transport them as JSON.
+		P: Chrome can serialize/deserialize natively.
+		P: Human-readable; can be shown directly to user by crosh
+		P: Parseable from Javascript; can manipulate it from an
+		   extension.
+		C: Typesafe only at endpoints
+		C: Need to convert DBus to JSON in debugd
+	We use JSON; although it makes more work for debugd, it makes it easier
+	for Chrome and crosh to use debugd.
 
 Security Considerations:
 	This daemon will have its own attack surface which we need to take care

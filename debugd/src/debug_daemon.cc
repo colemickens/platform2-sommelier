@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,6 +21,7 @@ bool DebugDaemon::Init() {
   ping_tool_ = new PingTool();
   tracepath_tool_ = new TracePathTool();
   route_tool_ = new RouteTool();
+  modem_status_tool_ = new ModemStatusTool();
   try {
     // TODO(ellyjones): Remove this when crosbug.com/23964 is fixed
     dbus_->request_name(kDebugDaemonService);
@@ -71,6 +72,10 @@ std::vector<std::string> DebugDaemon::GetRoutes(const std::map<std::string,
                                                     options,
                                                 DBus::Error& error) {
   return route_tool_->GetRoutes(options, error);
+}
+
+std::string DebugDaemon::GetModemStatus(DBus::Error& error) { // NOLINT dbuscxx
+  return modem_status_tool_->GetModemStatus(error);
 }
 
 };  // namespace debugd

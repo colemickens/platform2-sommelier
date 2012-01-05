@@ -99,5 +99,16 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="GetModemStatus">
+      <tp:docstring>
+        Returns modem information as a JSON string. See the design document for
+        a rationale.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        <tp:docstring>
+          Modem information as a JSON string.
+        </tp:docstring>
+      </arg>
+    </method>
   </interface>
 </node>

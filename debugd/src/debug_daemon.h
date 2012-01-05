@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,7 +10,8 @@
 
 #include <dbus-c++/dbus.h>
 
-#include "bindings/org.chromium.debugd.h"
+#include "adaptors/org.chromium.debugd.h"
+#include "modem_status_tool.h"
 #include "ping_tool.h"
 #include "route_tool.h"
 #include "tracepath_tool.h"
@@ -47,6 +48,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                                                             DBus::Variant>&
                                                  options,
                                              DBus::Error& error);
+  virtual std::string GetModemStatus(DBus::Error& error); // NOLINT dbuscxx
 
  private:
   DBus::Connection* dbus_;
@@ -54,6 +56,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   PingTool* ping_tool_;
   RouteTool* route_tool_;
   TracePathTool *tracepath_tool_;
+  ModemStatusTool* modem_status_tool_;
 };
 
 };  // namespace debugd
