@@ -20,7 +20,7 @@ class ResolutionSelector {
   // A single mode supported by a device, equivalent to the XRRModeInfo
   // struct.
   struct Mode {
-    Mode(int width, int height, std::string name, int id);
+    Mode(int width, int height, std::string name, int id, bool preferred);
     Mode();
 
     // Mode's dimensions.
@@ -33,6 +33,9 @@ class ResolutionSelector {
 
     // The mode id, used for setting this mode.
     unsigned id;
+
+    // Whether this is a preferred mode.
+    bool preferred;
   };
 
   // Maximum screen size for the external output at which we assume that
@@ -46,11 +49,20 @@ class ResolutionSelector {
   ~ResolutionSelector();
 
   // Comparator used to sort Mode objects.
-  // Returns true if |mode_a| has more pixels than |mode_b| and false otherwise.
+  // Returns true if |mode_a| has more pixels than |mode_b| and false if
+  // |mode_a| has less pixels than |mode_b|.  In the case of a tie, will
+  // return true if |mode_a| is preferred and |mode_b| is not.  Returns
+  // false otherwise.  In other words, in the case of the same number of
+  // pixels, preferred modes are considered "greater" than nonpreferred modes.
   class ModeResolutionComparator {
    public:
     bool operator()(const Mode& mode_a, const Mode& mode_b) const {
-      return mode_a.width * mode_a.height > mode_b.width * mode_b.height;
+      if (mode_a.width * mode_a.height > mode_b.width * mode_b.height)
+        return true;
+      else if (mode_a.width * mode_a.height < mode_b.width * mode_b.height)
+        return false;
+      else
+        return mode_a.preferred > mode_b.preferred;
     }
   };
 

@@ -328,7 +328,7 @@ void MonitorReconfigure::SortModesByResolution(
               << " (xid " << mode->id << ")";
     modes_out->push_back(
         ResolutionSelector::Mode(mode->width, mode->height, mode->name,
-                                 mode->id));
+                                 mode->id, i < output_info->npreferred));
   }
 
   sort(modes_out->begin(), modes_out->end(),

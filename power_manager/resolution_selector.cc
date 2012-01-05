@@ -12,18 +12,25 @@ using std::vector;
 
 const int ResolutionSelector::kMaxProjectorPixels = 1280 * 720;
 
-ResolutionSelector::Mode::Mode(int width, int height, std::string name, int id)
+ResolutionSelector::Mode::Mode(
+    int width,
+    int height,
+    std::string name,
+    int id,
+    bool preferred)
     : width(width),
       height(height),
       name(name),
-      id(id) {
+      id(id),
+      preferred(preferred) {
 }
 
 ResolutionSelector::Mode::Mode()
     : width(0),
       height(0),
       name(""),
-      id(0) {
+      id(0),
+      preferred(false) {
 }
 
 ResolutionSelector::ResolutionSelector() {
