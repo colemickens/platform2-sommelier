@@ -86,9 +86,9 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     }
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
     link_up_ = false;
+    DestroyIPConfig();
     manager()->DeregisterService(service_);
     SelectService(NULL);
-    DestroyIPConfig();
   }
 }
 
