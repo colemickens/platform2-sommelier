@@ -117,6 +117,8 @@ class Daemon : public XIdleObserver,
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected);
   FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
   FRIEND_TEST(DaemonTest, GenerateLengthOfSessionMetric);
+  FRIEND_TEST(DaemonTest, GenerateLengthOfSessionMetricOverflow);
+  FRIEND_TEST(DaemonTest, GenerateLengthOfSessionMetricUnderflow);
   FRIEND_TEST(DaemonTest, GenerateMetricsOnPowerEvent);
   FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric);

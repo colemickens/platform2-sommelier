@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -219,8 +219,20 @@ bool Daemon::GenerateUserBrightnessAdjustmentsPerSessionMetric(
 
 bool Daemon::GenerateLengthOfSessionMetric(const base::Time& now,
                                            const base::Time& start) {
+  int session_length = (now - start).InSeconds();
+  if (session_length < 0) {
+    LOG(ERROR) << "Calculation for length of session returned a negative value";
+
+    return false;
+  } else if (session_length > kMetricLengthOfSessionMax) {
+    LOG(INFO) << "Clamping LengthOfSession metric to "
+              << kMetricLengthOfSessionMax;
+
+    session_length = kMetricLengthOfSessionMax;
+  }
+
   return SendMetric(kMetricLengthOfSessionName,
-                    (now - start).InSeconds(),
+                    session_length,
                     kMetricLengthOfSessionMin,
                     kMetricLengthOfSessionMax,
                     kMetricLengthOfSessionBuckets);

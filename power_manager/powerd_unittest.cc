@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -442,6 +442,22 @@ TEST_F(DaemonTest, GenerateLengthOfSessionMetric) {
 
   ExpectLengthOfSessionMetric(kSessionLength);
   EXPECT_TRUE(daemon_.GenerateLengthOfSessionMetric(now, start));
+}
+
+TEST_F(DaemonTest, GenerateLengthOfSessionMetricOverflow) {
+  base::Time now = base::Time::Now();
+  base::Time start = now - base::TimeDelta::FromSeconds(
+      kMetricLengthOfSessionMax + kSessionLength);
+
+  ExpectLengthOfSessionMetric(kMetricLengthOfSessionMax);
+  EXPECT_TRUE(daemon_.GenerateLengthOfSessionMetric(now, start));
+}
+
+TEST_F(DaemonTest, GenerateLengthOfSessionMetricUnderflow) {
+  base::Time now = base::Time::Now();
+  base::Time start = now + base::TimeDelta::FromSeconds(kSessionLength);
+
+  EXPECT_FALSE(daemon_.GenerateLengthOfSessionMetric(now, start));
 }
 
 TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval) {
