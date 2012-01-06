@@ -19,7 +19,8 @@ namespace power_manager {
 // Example usage:
 //   power_manager::Backlight backlight;
 //   int64 level, max;
-//   if (backlight.Init() && backlight.GetBrightness(&level, &max)) {
+//   if (backlight.Init() && backlight.GetCurrentBrightnessLevel(&level)
+//                        && backlight.GetMaxBrightnessLevel(&max)) {
 //     std::cout << "Current brightness level is "
 //               << level << " out of " << max << "\n";
 //   } else {

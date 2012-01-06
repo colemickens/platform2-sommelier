@@ -33,15 +33,19 @@ bool ExternalBacklightClient::Init() {
   return GetActualBrightness(&level_, &max_level_);
 }
 
-bool ExternalBacklightClient::GetBrightness(int64* level, int64* max_level) {
-  CHECK(level);
+bool ExternalBacklightClient::GetMaxBrightnessLevel(int64* max_level) {
   CHECK(max_level);
-  *level = level_;
   *max_level = max_level_;
   return true;
 }
 
-bool ExternalBacklightClient::SetBrightness(int64 level) {
+bool ExternalBacklightClient::GetCurrentBrightnessLevel(int64* current_level ) {
+  CHECK(current_level);
+  *current_level = level_;
+  return true;
+}
+
+bool ExternalBacklightClient::SetBrightnessLevel(int64 level) {
   if (level > max_level_ || level < 0) {
     LOG(ERROR) << "SetBrightness level " << level << " is invalid.";
     return false;
