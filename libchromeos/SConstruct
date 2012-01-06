@@ -32,7 +32,7 @@ for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
 # glib and dbug environment
 env.ParseConfig(
     os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 glib-2.0 dbus-glib-1' +
-                               ' libchrome')
+                               ' dbus-c++-1 libchrome')
 env.StaticLibrary('chromeos', SOURCES)
 
 # Unit test
@@ -57,6 +57,7 @@ for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
 # get the version we just built, not what was previously installed.
 unittest_sources =['chromeos/glib/object_unittest.cc',
                    'chromeos/process_test.cc',
+                   'chromeos/utility_test.cc',
                    'libchromeos.a']
 unittest_main = ['testrunner.cc']
 unittest_cmd = env_test.Program('unittests',

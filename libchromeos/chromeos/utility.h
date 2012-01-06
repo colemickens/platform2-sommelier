@@ -5,9 +5,33 @@
 #ifndef CHROMEOS_UTILITY_H_
 #define CHROMEOS_UTILITY_H_
 
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
+
+#include <base/values.h>
+
+// Be VERY CAREFUL when touching this. It is include-order-sensitive.
+// This library (libchromeos) is built with -fno-exceptions, but dbus-c++ uses
+// exceptions heavily. In dbus-c++/types.h, there are overloaded operators for
+// accessing DBus::MessageIters, which causes compilation to fail when they're
+// included into libchromeos. Therefore, define away the throws in the header
+// file, so that:
+//    throw Foo();
+// becomes:
+//    abort(), Foo();
+// The comma keeps the resulting expression one statement (which makes unbraced
+// if statements work properly).
+//
+// The extra twist is that dbus-c++/error.h has some incompatible uses of throw
+// (like the throw annotation on method declarations), so we explicitly include
+// dbus-c++/error.h first so its include guards will have been set, then include
+// dbus-c++/types.h.
+#include <dbus-c++/error.h>
+#define throw abort(),
+#include <dbus-c++/types.h>
+#undef throw
 
 // For use in a switch statement to return the string from a label. Like:
 // const char* CommandToName(CommandType command) {
@@ -54,6 +78,34 @@ void* SecureMemset(void *v, int c, size_t n);
 // 1 if they don't. Time taken to perform the comparison is only dependent on
 // [n] and not on the relationship of the match between [s1] and [s2].
 int SafeMemcmp(const void* s1, const void* s2, size_t n);
+
+// Convert a DBus message into a Value.
+//
+// Parameters
+//  message - Message to convert.
+//  value - Result pointer.
+// Returns
+//  True if conversion succeeded, false if it didn't.
+bool DBusMessageToValue(DBus::Message& message, Value** v);
+
+// Convert a DBus message iterator a Value.
+//
+// Parameters
+//  message - Message to convert.
+//  value - Result pointer.
+// Returns
+//  True if conversion succeeded, false if it didn't.
+bool DBusMessageIterToValue(DBus::MessageIter& message, Value** v);
+
+// Convert a DBus property map to a Value.
+//
+// Parameters
+//  message - Message to convert.
+//  value - Result pointer.
+// Returns
+//  True if conversion succeeded, false if it didn't.
+bool DBusPropertyMapToValue(std::map<std::string, DBus::Variant>&
+                            properties, Value** v);
 
 }  // namespace chromeos
 
