@@ -57,6 +57,11 @@ class Manager {
   bool MoveServiceToProfile(const ServiceRefPtr &to_move,
                             const ProfileRefPtr &destination);
 
+  // Called via RPC call on Service (|to_set|) to set the "Profile" property.
+  void SetProfileForService(const ServiceRefPtr &to_set,
+                            const std::string &profile,
+                            Error *error);
+
   void RegisterDevice(const DeviceRefPtr &to_manage);
   void DeregisterDevice(const DeviceRefPtr &to_forget);
 

@@ -309,9 +309,8 @@ class Service : public base::RefCounted<Service> {
 
   virtual std::string GetDeviceRpcId(Error *error) = 0;
 
-  std::string GetProfileRpcId(Error */*error*/) {
-    return "";  // Will need to call Profile to get this.
-  }
+  std::string GetProfileRpcId(Error *error);
+  void SetProfileRpcId(const std::string &profile, Error *error);
 
   // Returns TCP port of service's HTTP proxy in host order.
   uint16 GetHTTPProxyPort(Error *error);

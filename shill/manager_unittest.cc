@@ -458,6 +458,50 @@ TEST_F(ManagerTest, MoveService) {
   manager.Stop();
 }
 
+TEST_F(ManagerTest, SetProfileForService) {
+  scoped_refptr<MockProfile> profile0(
+      new MockProfile(control_interface(), manager(), ""));
+  string profile_name0("profile0");
+  EXPECT_CALL(*profile0, GetRpcIdentifier())
+      .WillRepeatedly(Return(profile_name0));
+  AdoptProfile(manager(), profile0);
+  scoped_refptr<MockService> service(new MockService(control_interface(),
+                                                     dispatcher(),
+                                                     manager()));
+  service->set_profile(profile0);
+
+  {
+    Error error;
+    manager()->SetProfileForService(service, "foo", &error);
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+    EXPECT_EQ("Unknown Profile requested for Service", error.message());
+  }
+
+  {
+    Error error;
+    manager()->SetProfileForService(service, profile_name0, &error);
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+    EXPECT_EQ("Service is already connected to this profile", error.message());
+  }
+
+  scoped_refptr<MockProfile> profile1(
+      new MockProfile(control_interface(), manager(), ""));
+  string profile_name1("profile1");
+  EXPECT_CALL(*profile1, GetRpcIdentifier())
+      .WillRepeatedly(Return(profile_name1));
+  AdoptProfile(manager(), profile1);
+
+  {
+    Error error;
+    EXPECT_CALL(*profile1, AdoptService(_))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*profile0, AbandonService(_))
+        .WillOnce(Return(true));
+    manager()->SetProfileForService(service, profile_name1, &error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+}
+
 TEST_F(ManagerTest, CreateProfile) {
   // It's much easier to use real Glib here since we want the storage
   // side-effects.

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -60,7 +60,7 @@ class Profile : public base::RefCounted<Profile> {
 
   std::string GetFriendlyName();
 
-  std::string GetRpcIdentifier();
+  virtual std::string GetRpcIdentifier();
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }

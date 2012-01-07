@@ -144,7 +144,7 @@ Service::Service(ControlInterface *control_interface,
   store_.RegisterInt32(flimflam::kPriorityProperty, &priority_);
   HelpRegisterDerivedString(flimflam::kProfileProperty,
                             &Service::GetProfileRpcId,
-                            NULL);
+                            &Service::SetProfileRpcId);
   store_.RegisterString(flimflam::kProxyConfigProperty, &proxy_config_);
   // TODO(cmasone): Create VPN Service with this property
   // store_.RegisterConstStringmap(flimflam::kProviderProperty, &provider_);
@@ -605,6 +605,19 @@ const string &Service::GetEAPKeyManagement() const {
 
 void Service::SetEAPKeyManagement(const string &key_management) {
   eap_.key_management = key_management;
+}
+
+string Service::GetProfileRpcId(Error *error) {
+  if (!profile_) {
+    // This happens in some unit tests where profile_ is not set.
+    error->Populate(Error::kNotFound);
+    return "";
+  }
+  return profile_->GetRpcIdentifier();
+}
+
+void Service::SetProfileRpcId(const string &profile, Error *error) {
+  manager_->SetProfileForService(this, profile, error);
 }
 
 uint16 Service::GetHTTPProxyPort(Error */*error*/) {

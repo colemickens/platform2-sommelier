@@ -321,6 +321,27 @@ bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
       from->AbandonService(to_move);
 }
 
+void Manager::SetProfileForService(const ServiceRefPtr &to_set,
+                                   const string &profile_rpcid,
+                                   Error *error) {
+  for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
+       it != profiles_.end();
+       ++it) {
+    if (profile_rpcid == (*it)->GetRpcIdentifier()) {
+      if (to_set->profile().get() == it->get()) {
+        Error::PopulateAndLog(error, Error::kInvalidArguments,
+                              "Service is already connected to this profile");
+      } else if (!MoveServiceToProfile(to_set, *it)) {
+        Error::PopulateAndLog(error, Error::kInternalError,
+                              "Unable to move service to profile");
+      }
+      return;
+    }
+  }
+  Error::PopulateAndLog(error, Error::kInvalidArguments,
+                        "Unknown Profile requested for Service");
+}
+
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {

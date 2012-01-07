@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,6 +25,7 @@ class MockProfile : public Profile {
   MOCK_METHOD1(AbandonService, bool(const ServiceRefPtr &service));
   MOCK_METHOD1(ConfigureService,  bool(const ServiceRefPtr &service));
   MOCK_METHOD1(ConfigureDevice, bool(const DeviceRefPtr &device));
+  MOCK_METHOD0(GetRpcIdentifier, std::string());
   MOCK_METHOD1(GetStoragePath, bool(FilePath *filepath));
   MOCK_METHOD0(Save, bool());
 
