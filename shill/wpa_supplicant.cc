@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,9 +30,12 @@ const char kInterfaceStateScanning[]       = "scanning";
 const char kKeyManagementMethodSuffixEAP[] = "-eap";
 const char kKeyManagementMethodSuffixPSK[] = "-psk";
 const char kKeyModeNone[]           = "NONE";
+const char kNetworkBgscanMethodLearn[] = "learn";
+const char kNetworkBgscanMethodSimple[] = "simple";
 const char kNetworkModeInfrastructure[] = "infrastructure";
 const char kNetworkModeAdHoc[]       = "ad-hoc";
 const char kNetworkModeAccessPoint[] = "ap";
+const char kNetworkPropertyBgscan[] = "bgscan";
 const char kNetworkPropertyMode[]   = "mode";
 const char kNetworkPropertyScanSSID[] = "scan_ssid";
 const char kNetworkPropertySSID[]   = "ssid";

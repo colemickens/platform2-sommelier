@@ -86,13 +86,6 @@ TEST_F(WiFiPropertyTest, Contains) {
 TEST_F(WiFiPropertyTest, Dispatch) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                            flimflam::kBgscanMethodProperty,
-                                            PropertyStoreTest::kStringV,
-                                            &error));
-  }
-  {
-    ::DBus::Error error;
     EXPECT_TRUE(DBusAdaptor::DispatchOnType(
         device_->mutable_store(),
         flimflam::kBgscanSignalThresholdProperty,
@@ -114,6 +107,27 @@ TEST_F(WiFiPropertyTest, Dispatch) {
                                              PropertyStoreTest::kBoolV,
                                              &error));
     EXPECT_EQ(invalid_args(), error.name());
+  }
+}
+
+TEST_F(WiFiPropertyTest, BgscanMethod) {
+  {
+    ::DBus::Error error;
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+        device_->mutable_store(),
+        flimflam::kBgscanMethodProperty,
+        DBusAdaptor::StringToVariant(
+            wpa_supplicant::kNetworkBgscanMethodSimple),
+        &error));
+  }
+
+  {
+    ::DBus::Error error;
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(
+        device_->mutable_store(),
+        flimflam::kBgscanMethodProperty,
+        DBusAdaptor::StringToVariant("not a real scan method"),
+        &error));
   }
 }
 
@@ -1293,6 +1307,22 @@ TEST_F(WiFiMainTest, IsIdle) {
   service->AddEndpoint(ap);
   service->AutoConnect();
   EXPECT_FALSE(wifi()->IsIdle());
+}
+
+MATCHER(WiFiAddedArgs, "") {
+  return ContainsKey(arg, wpa_supplicant::kNetworkPropertyScanSSID) &&
+      ContainsKey(arg, wpa_supplicant::kNetworkPropertyBgscan);
+}
+
+TEST_F(WiFiMainTest, AddNetworkArgs) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  WiFiService *service(GetServices().begin()->get());
+  EXPECT_CALL(supplicant_interface_proxy, AddNetwork(WiFiAddedArgs()));
+  InitiateConnect(service);
 }
 
 }  // namespace shill

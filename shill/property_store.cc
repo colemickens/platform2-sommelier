@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -289,6 +289,11 @@ void PropertyStore::RegisterWriteOnlyUint16(const string &name, uint16 *prop) {
 void PropertyStore::RegisterDerivedBool(const std::string &name,
                                         const BoolAccessor &accessor) {
   bool_properties_[name] = accessor;
+}
+
+void PropertyStore::RegisterDerivedInt32(const std::string &name,
+                                         const Int32Accessor &accessor) {
+  int32_properties_[name] = accessor;
 }
 
 void PropertyStore::RegisterDerivedString(const std::string &name,

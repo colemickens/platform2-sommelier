@@ -71,6 +71,10 @@ class WiFi : public Device {
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<WiFiService *, std::string> ReverseServiceMap;
 
+  static const char *kDefaultBgscanMethod;
+  static const uint16 kDefaultBgscanShortIntervalSeconds;
+  static const int32 kDefaultBgscanSignalThresholdDbm;
+  static const uint16 kDefaultScanIntervalSeconds;
   static const char kManagerErrorPassphraseRequired[];
   static const char kManagerErrorSSIDTooLong[];
   static const char kManagerErrorSSIDTooShort[];
@@ -80,6 +84,20 @@ class WiFi : public Device {
   static const char kManagerErrorUnsupportedServiceType[];
   static const char kManagerErrorUnsupportedServiceMode[];
   static const char kInterfaceStateUnknown[];
+
+  std::string CreateBgscanConfigString();
+  std::string GetBgscanMethod(Error */* error */) { return bgscan_method_; }
+  uint16 GetBgscanShortInterval(Error */* error */) {
+    return bgscan_short_interval_seconds_;
+  }
+  int32 GetBgscanSignalThreshold(Error */* error */) {
+    return bgscan_signal_threshold_dbm_;
+  }
+  uint16 GetScanInterval(Error */* error */) { return scan_interval_seconds_; }
+  void SetBgscanMethod(const std::string &method, Error *error);
+  void SetBgscanShortInterval(const uint16 &seconds, Error *error);
+  void SetBgscanSignalThreshold(const int32 &dbm, Error *error);
+  void SetScanInterval(const uint16 &seconds, Error *error);
 
   WiFiServiceRefPtr CreateServiceForEndpoint(
       const WiFiEndpoint &endpoint, bool hidden_ssid);
@@ -102,6 +120,22 @@ class WiFi : public Device {
   void ScanDoneTask();
   void ScanTask();
   void StateChanged(const std::string &new_state);
+
+  void HelpRegisterDerivedInt32(
+      PropertyStore *store,
+      const std::string &name,
+      int32(WiFi::*get)(Error *error),
+      void(WiFi::*set)(const int32 &value, Error *error));
+  void HelpRegisterDerivedString(
+      PropertyStore *store,
+      const std::string &name,
+      std::string(WiFi::*get)(Error *error),
+      void(WiFi::*set)(const std::string &value, Error *error));
+  void HelpRegisterDerivedUint16(
+      PropertyStore *store,
+      const std::string &name,
+      uint16(WiFi::*get)(Error *error),
+      void(WiFi::*set)(const uint16 &value, Error *error));
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
@@ -130,10 +164,10 @@ class WiFi : public Device {
 
   // Properties
   std::string bgscan_method_;
-  uint16 bgscan_short_interval_;
-  int32 bgscan_signal_threshold_;
+  uint16 bgscan_short_interval_seconds_;
+  int32 bgscan_signal_threshold_dbm_;
   bool scan_pending_;
-  uint16 scan_interval_;
+  uint16 scan_interval_seconds_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

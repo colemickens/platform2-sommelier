@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -69,14 +69,16 @@ map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(
   return properties;
 }
 
-void DeviceDBusAdaptor::SetProperty(const string& name,
-                                    const ::DBus::Variant& value,
+void DeviceDBusAdaptor::SetProperty(const string &name,
+                                    const ::DBus::Variant &value,
                                     ::DBus::Error &error) {
   DBusAdaptor::DispatchOnType(device_->mutable_store(), name, value, &error);
 }
 
-void DeviceDBusAdaptor::ClearProperty(const std::string& ,
+void DeviceDBusAdaptor::ClearProperty(const std::string &name,
                                       ::DBus::Error &/*error*/) {
+  NOTIMPLEMENTED() << " Ignoring request to clear " << name
+                   << " property of Device " << device_->FriendlyName();
 }
 
 void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {

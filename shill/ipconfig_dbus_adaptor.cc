@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -77,8 +77,12 @@ void IPConfigDBusAdaptor::SetProperty(const string &name,
   }
 }
 
-void IPConfigDBusAdaptor::ClearProperty(const std::string& /*name*/,
+void IPConfigDBusAdaptor::ClearProperty(const std::string &name,
                                         ::DBus::Error &/*error*/) {
+  NOTIMPLEMENTED() << " Ignoring request to clear " << name
+                   << " property of IPConfig " << ipconfig_->serial()
+                   << " (associated with Device " << ipconfig_->device_name()
+                   << ")";
 }
 
 void IPConfigDBusAdaptor::Remove(::DBus::Error &/*error*/) {

@@ -31,6 +31,7 @@
 #include "shill/ieee80211.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
+#include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/store_interface.h"
 #include "shill/supplicant_interface_proxy_interface.h"
@@ -49,7 +50,11 @@ using std::vector;
 namespace shill {
 
 // statics
-//
+const char *WiFi::kDefaultBgscanMethod =
+    wpa_supplicant::kNetworkBgscanMethodSimple;
+const uint16 WiFi::kDefaultBgscanShortIntervalSeconds = 30;
+const int32 WiFi::kDefaultBgscanSignalThresholdDbm = -50;
+const uint16 WiFi::kDefaultScanIntervalSeconds = 180;
 // Note that WiFi generates some manager-level errors, because it implements
 // the Manager.GetWiFiService flimflam API. The API is implemented here,
 // rather than in manager, to keep WiFi-specific logic in the right place.
@@ -84,23 +89,34 @@ WiFi::WiFi(ControlInterface *control_interface,
       link_up_(false),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
-      bgscan_short_interval_(0),
-      bgscan_signal_threshold_(0),
+      bgscan_method_(kDefaultBgscanMethod),
+      bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
+      bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_pending_(false),
-      scan_interval_(0) {
+      scan_interval_seconds_(kDefaultScanIntervalSeconds) {
   PropertyStore *store = this->mutable_store();
-  store->RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
-  store->RegisterUint16(flimflam::kBgscanShortIntervalProperty,
-                 &bgscan_short_interval_);
-  store->RegisterInt32(flimflam::kBgscanSignalThresholdProperty,
-                &bgscan_signal_threshold_);
+  HelpRegisterDerivedString(store,
+                            flimflam::kBgscanMethodProperty,
+                            &WiFi::GetBgscanMethod,
+                            &WiFi::SetBgscanMethod);
+  HelpRegisterDerivedUint16(store,
+                            flimflam::kBgscanShortIntervalProperty,
+                            &WiFi::GetBgscanShortInterval,
+                            &WiFi::SetBgscanShortInterval);
+  HelpRegisterDerivedInt32(store,
+                           flimflam::kBgscanSignalThresholdProperty,
+                           &WiFi::GetBgscanSignalThreshold,
+                           &WiFi::SetBgscanSignalThreshold);
 
   // TODO(quiche): Decide if scan_pending_ is close enough to
   // "currently scanning" that we don't care, or if we want to track
   // scan pending/currently scanning/no scan scheduled as a tri-state
   // kind of thing.
   store->RegisterConstBool(flimflam::kScanningProperty, &scan_pending_);
-  store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
+  HelpRegisterDerivedUint16(store,
+                            flimflam::kScanIntervalProperty,
+                            &WiFi::GetScanInterval,
+                            &WiFi::SetScanInterval);
   VLOG(2) << "WiFi device " << link_name() << " initialized.";
 }
 
@@ -203,9 +219,9 @@ bool WiFi::TechnologyIs(const Technology::Identifier type) const {
 }
 
 bool WiFi::IsConnectingTo(const WiFiService &service) const {
-  return pending_service_ == &service
-      || (current_service_ == &service
-          && service.state() != Service::kStateConnected);
+  return pending_service_ == &service ||
+      (current_service_ == &service &&
+       service.state() != Service::kStateConnected);
 }
 
 void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
@@ -290,6 +306,8 @@ void WiFi::ConnectTo(WiFiService *service,
     const uint32_t scan_ssid = 1;  // "True": Use directed probe.
     service_params[wpa_supplicant::kNetworkPropertyScanSSID].writer().
         append_uint32(scan_ssid);
+    service_params[wpa_supplicant::kNetworkPropertyBgscan].writer().
+        append_string(CreateBgscanConfigString().c_str());
     network_path =
         supplicant_interface_proxy_->AddNetwork(service_params);
     rpcid_by_service_[service] = network_path;
@@ -364,12 +382,59 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     current_service_ = NULL;
   }
 
-  CHECK(current_service_ == NULL
-        || current_service_.get() != pending_service_.get());
+  CHECK(current_service_ == NULL ||
+        current_service_.get() != pending_service_.get());
 }
 
 bool WiFi::IsIdle() const {
   return !current_service_ && !pending_service_;
+}
+
+string WiFi::CreateBgscanConfigString() {
+  return StringPrintf("%s:%d:%d:%d",
+                      bgscan_method_.c_str(),
+                      bgscan_short_interval_seconds_,
+                      bgscan_signal_threshold_dbm_,
+                      scan_interval_seconds_);
+}
+
+void WiFi::SetBgscanMethod(const string &method, Error *error) {
+  if (method != wpa_supplicant::kNetworkBgscanMethodSimple &&
+      method != wpa_supplicant::kNetworkBgscanMethodLearn) {
+    const string error_message =
+        StringPrintf("Unrecognized bgscan method %s", method.c_str());
+    LOG(WARNING) << error_message;
+    error->Populate(Error::kInvalidArguments, error_message);
+    return;
+  }
+
+  bgscan_method_ = method;
+  // We do not update kNetworkPropertyBgscan for |pending_service_| or
+  // |current_service_|, because supplicant does not allow for
+  // reconfiguration without disconnect and reconnect.
+}
+
+void WiFi::SetBgscanShortInterval(const uint16 &seconds, Error */*error*/) {
+  bgscan_short_interval_seconds_ = seconds;
+  // We do not update kNetworkPropertyBgscan for |pending_service_| or
+  // |current_service_|, because supplicant does not allow for
+  // reconfiguration without disconnect and reconnect.
+}
+
+void WiFi::SetBgscanSignalThreshold(const int32 &dbm, Error */*error*/) {
+  bgscan_signal_threshold_dbm_ = dbm;
+  // We do not update kNetworkPropertyBgscan for |pending_service_| or
+  // |current_service_|, because supplicant does not allow for
+  // reconfiguration without disconnect and reconnect.
+}
+
+void WiFi::SetScanInterval(const uint16 &seconds, Error */*error*/) {
+  scan_interval_seconds_ = seconds;
+  // We do not update |pending_service_| or |current_service_|, because
+  // supplicant does not allow for reconfiguration without disconnect
+  // and reconnect.
+
+  // TODO(quiche): Update scan timer. crosbug.com/24337
 }
 
 // To avoid creating duplicate services, call FindServiceForEndpoint
@@ -1004,6 +1069,36 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
   // TODO(quiche): Apply any other configuration parameters.
 
   return service;
+}
+
+void WiFi::HelpRegisterDerivedInt32(
+    PropertyStore *store,
+    const string &name,
+    int32(WiFi::*get)(Error *error),
+    void(WiFi::*set)(const int32 &value, Error *error)) {
+  store->RegisterDerivedInt32(
+      name,
+      Int32Accessor(new CustomAccessor<WiFi, int32>(this, get, set)));
+}
+
+void WiFi::HelpRegisterDerivedString(
+    PropertyStore *store,
+    const string &name,
+    string(WiFi::*get)(Error *error),
+    void(WiFi::*set)(const string &value, Error *error)) {
+  store->RegisterDerivedString(
+      name,
+      StringAccessor(new CustomAccessor<WiFi, string>(this, get, set)));
+}
+
+void WiFi::HelpRegisterDerivedUint16(
+    PropertyStore *store,
+    const string &name,
+    uint16(WiFi::*get)(Error *error),
+    void(WiFi::*set)(const uint16 &value, Error *error)) {
+  store->RegisterDerivedUint16(
+      name,
+      Uint16Accessor(new CustomAccessor<WiFi, uint16>(this, get, set)));
 }
 
 }  // namespace shill

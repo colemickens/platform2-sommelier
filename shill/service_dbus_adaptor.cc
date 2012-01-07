@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -58,14 +58,17 @@ map<string, ::DBus::Variant> ServiceDBusAdaptor::GetProperties(
   return properties;
 }
 
-void ServiceDBusAdaptor::SetProperty(const string& name,
-                                     const ::DBus::Variant& value,
+void ServiceDBusAdaptor::SetProperty(const string &name,
+                                     const ::DBus::Variant &value,
                                      ::DBus::Error &error) {
   DBusAdaptor::DispatchOnType(service_->mutable_store(), name, value, &error);
 }
 
-void ServiceDBusAdaptor::ClearProperty(const string& ,
+void ServiceDBusAdaptor::ClearProperty(const string &name,
                                        ::DBus::Error &/*error*/) {
+  NOTIMPLEMENTED() << " Ignorning request to clear " << name
+                   << " property of Service " << service_->UniqueName()
+                   << " (aka " << service_->friendly_name() << ")";
 }
 
 void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
