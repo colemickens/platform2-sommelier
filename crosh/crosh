@@ -30,18 +30,6 @@ fi
 # Please keep the help text in alphabetical order!
 #
 HELP='
- enterprise_ca_approve [--allow-self-signed] <url>
-  Approve an enterprise certificate authority.  The <url> option should be
-  an http or https url to your enterprise Certificate Authority in PEM
-  format.  This CA will be used to validate the signature of an enterprise
-  policy extension.
-
-  If the --allow-self-signed option is provided, then you may provide a self
-  signed CA.  Use this only if you are certain of the source of the CA.
-
- enterprise_ca_disapprove
-  Remove a previously approved enterprise certificate authority.
-
  exit
   Exit crosh.
 
@@ -430,43 +418,6 @@ cmd_ssh_forget_host() {
   local trimmed="$(awk -v I="$hostno" 'NR != I { print }' "$known_hosts")"
   echo "$trimmed" > "$known_hosts"
   chmod 644 "$known_hosts"
-}
-
-cmd_enterprise_ca_approve() {
-  local option=""
-
-  while [ "$(echo "$1" | cut -c1-2)" = "--" ]; do
-    if [ "$1" = "--allow-self-signed" ]; then
-      option="$option --allow_self_signed"
-    elif [ "$1" = "--allow-chaining" ]; then
-      # This option allows enterprise extensions which are signed by
-      # certificates that chain to this one.  Because we're not currently
-      # doing any key usage checks, this can be pretty risky.  If you're not
-      # sure that you need this, don't use it.
-      option="$option --allow_chaining"
-    else
-      echo "Unknown option: $1"
-      return 1
-    fi
-
-    shift
-  done
-
-  if [ -z "$1" ]; then
-    echo "Missing parameter: url"
-    return 1
-  fi
-
-  /usr/sbin/entdwife.sh -c approve $option -C "$1"
-  if dbus-send --system --type=method_call --print-reply \
-      --dest=org.chromium.SessionManager /org/chromium/SessionManager \
-      org.chromium.SessionManagerInterface.RestartEntd | grep -q error; then
-    echo "Please log out and then log back in to use this CA."
-  fi
-}
-
-cmd_enterprise_ca_disapprove() {
-  /usr/sbin/entdwife.sh -c disapprove
 }
 
 cmd_experimental_storage() {
