@@ -8,6 +8,8 @@
 
 #include "utilities.h"
 
+namespace cromo {
+
 static const uint8_t kMsgTypeMask          = 0x03;
 static const uint8_t kMsgTypeDeliver       = 0x00;
 // udhi is "User Data Header Indicator"
@@ -56,8 +58,8 @@ static std::string SemiOctetsToBcdString(const uint8_t* octets,
   std::string bcd;
 
   for (int i = 0; i < num_octets; ++i) {
-    char first = NibbleToChar(octets[i] & 0xf);
-    char second = NibbleToChar((octets[i] >> 4) & 0xf);
+    const char first = NibbleToChar(octets[i] & 0xf);
+    const char second = NibbleToChar((octets[i] >> 4) & 0xf);
 
     if (first != '\0')
       bcd += first;
@@ -67,8 +69,9 @@ static std::string SemiOctetsToBcdString(const uint8_t* octets,
   return bcd;
 }
 
-std::string DecodeAddress(const uint8_t *octets, uint8_t type, int num_octets)
-{
+static std::string DecodeAddress(const uint8_t* octets,
+                                 uint8_t type,
+                                 int num_octets) {
   std::string addr;
 
   if ((type & kTypeOfAddrNumMask) != kTypeOfAddrNumAlpha) {
@@ -76,116 +79,194 @@ std::string DecodeAddress(const uint8_t *octets, uint8_t type, int num_octets)
     if ((type & kTypeOfAddrNumMask) == kTypeOfAddrNumIntl)
       addr = "+" + addr;
   } else {
-    size_t datalen = (num_octets * 8) / 7;
+    const size_t datalen = (num_octets * 8) / 7;
     addr = utilities::Gsm7ToUtf8String(octets, datalen, 0);
   }
   return addr;
 }
 
-SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
-                                                       size_t pdu_len,
-                                                       int index) {
-  // Make sure the PDU is of a valid size
-  if (pdu_len < kMinPduLen) {
-    LOG(INFO) << "PDU too short: have " << pdu_len << " need " << kMinPduLen;
-    return NULL;
+// Helper class to make it easy to extract successive bytes and byte
+// ranges from a binary buffer.
+class Bytes {
+ public:
+  Bytes(const uint8_t* pdu, int len) : pdu_(pdu), len_(len), offset_(0) {}
+
+  // Return the number of bytes remaining to be consumed.
+  int BytesLeft() const {
+    return len_ - offset_;
   }
 
-#if 0
-  {
-    std::string hexpdu;
-    const char *hex="0123456789abcdef";
-    for (unsigned int i = 0 ; i < pdu_len ; i++) {
-      hexpdu += hex[pdu[i] >> 4];
-      hexpdu += hex[pdu[i] & 0xf];
+  // Return the next byte, or 0 if the buffer has been consumed.
+  // Advances the internal pointer by one.
+  uint8_t NextByte() {
+    if (BytesLeft() >= 1)
+      return pdu_[offset_++];
+    else
+      return 0;
+  }
+
+  // Return a pointer to the next N bytes, or NULL if there aren't that many.
+  // Advances the internal pointer by N if successful.
+  const uint8_t *NextBytes(int n) {
+    if (BytesLeft() >= n) {
+      const uint8_t *bytes = pdu_ + offset_;
+      offset_ += n;
+      return bytes;
+    } else {
+      return NULL;
     }
-    LOG(INFO) << "PDU: " << hexpdu;
-  }
-#endif
-
-  // Format of message:
-  //
-  //  1 octet  - length of SMSC information in octets, including type field
-  //  1 octet  - type of address of SMSC (value 0x91 is international E.164)
-  //  variable - SMSC address
-  //  1 octet  - first octet of SMS-DELIVER (value = 0x04)
-  //  1 octet  - length of sender address in decimal digits (semi-octets)
-  //  1 octet  - type of sender address (value 0x91 is international E.164)
-  //  variable - sender address
-  //  1 octet  - protocol identifier
-  //  1 octet  - data coding scheme
-  //  7 octets - SMSC timestamp
-  //  1 octet  - user data length (in septets for GSM7, else octets)
-  //  variable (0 or more octets) user data header
-  //  variable - user data (body of message)
-
-  // Do a bunch of validity tests first so we can bail out early
-  // if we're not able to handle the PDU. We first check the validity
-  // of all length fields and make sure the PDU length is consistent
-  // with those values.
-
-  uint8_t smsc_addr_num_octets = pdu[0];
-  uint8_t variable_length_items = smsc_addr_num_octets;
-
-  if (pdu_len < variable_length_items + kMinPduLen) {
-    LOG(INFO) << "PDU too short: have " << pdu_len << " need "
-              << variable_length_items + kMinPduLen;
-    return NULL;
   }
 
-  // where in the PDU the actual SMS protocol message begins
-  uint8_t msg_start_offset = 1 + smsc_addr_num_octets;
-  uint8_t sender_addr_num_digits = pdu[msg_start_offset + 1];
+ private:
+  // Buffer of bytes.
+  const uint8_t *pdu_;
+  // Length of the buffer.
+  const int len_;
+  // Current position in the buffer.
+  int offset_;
+};
+
+// Format of message:
+//
+//  1 octet  - length of SMSC information in octets, including type field
+//  1 octet  - type of address of SMSC (value 0x91 is international E.164)
+//  variable - SMSC address
+//  1 octet  - first octet of SMS-DELIVER (value = 0x04)
+//  1 octet  - length of sender address in decimal digits (semi-octets)
+//  1 octet  - type of sender address (value 0x91 is international E.164)
+//  variable - sender address
+//  1 octet  - protocol identifier
+//  1 octet  - data coding scheme
+//  7 octets - SMSC timestamp
+//  1 octet  - user data length (in septets for GSM7, else octets)
+//  variable (0 or more octets) user data header
+//  variable - user data (body of message)
+
+static bool parse_smsc_address(Bytes* bytes, std::string* smsc_address) {
+  if (bytes->BytesLeft() < 2) {
+    LOG(ERROR) << "PDU truncated in SMSC address header";
+    return false;
+  }
+  const int smsc_addr_num_octets = bytes->NextByte() - 1;
+  const int smsc_addr_type = bytes->NextByte();
+  if (bytes->BytesLeft() < smsc_addr_num_octets) {
+    LOG(ERROR) << "PDU truncated in SMSC address";
+    return false;
+  }
+  *smsc_address = DecodeAddress(bytes->NextBytes(smsc_addr_num_octets),
+                                smsc_addr_type,
+                                smsc_addr_num_octets);
+  return true;
+}
+
+static bool parse_sender_address(Bytes* bytes, std::string* sender_address) {
+  if (bytes->BytesLeft() < 2) {
+    LOG(ERROR) << "PDU truncated in sender address header";
+    return false;
+  }
+  const int sender_addr_num_digits = bytes->NextByte();
   // round the sender address length up to an even number of semi-octets,
   // and thus an integral number of octets
-  uint8_t sender_addr_num_octets = (sender_addr_num_digits + 1) >> 1;
-  variable_length_items += sender_addr_num_octets;
-  if (pdu_len < variable_length_items + kMinPduLen) {
-    LOG(INFO) << "PDU too short: have " << pdu_len << " need "
-              << variable_length_items + kMinPduLen;
-    return NULL;
+  const int sender_addr_num_octets = (sender_addr_num_digits + 1) >> 1;
+  const int sender_addr_type = bytes->NextByte();
+  if (bytes->BytesLeft() < sender_addr_num_octets) {
+    LOG(ERROR) << "PDU truncated in sender address";
+    return false;
   }
+  *sender_address = DecodeAddress(bytes->NextBytes(sender_addr_num_octets),
+                                  sender_addr_type,
+                                  sender_addr_num_octets);
+  return true;
+}
 
-  uint8_t tp_pid_offset = msg_start_offset + 3 + sender_addr_num_octets;
-  uint8_t user_data_len_offset = tp_pid_offset + 2 + kSmscTimestampLen;
-  uint8_t user_data_num_septets = pdu[user_data_len_offset];
-  variable_length_items += (7 * (user_data_num_septets + 1 )) / 8;
-
-  if (pdu_len < variable_length_items + kMinPduLen) {
-    LOG(INFO) << "PDU too short: have " << pdu_len << " need "
-              << variable_length_items + kMinPduLen;
-    return NULL;
+static bool parse_timestamp(Bytes* bytes, std::string* timestamp) {
+  if (bytes->BytesLeft() < kSmscTimestampLen) {
+    LOG(ERROR) << "PDU truncated in timestamp";
+    return false;
   }
+  *timestamp = SemiOctetsToBcdString(bytes->NextBytes(kSmscTimestampLen - 1),
+                                     kSmscTimestampLen - 1);
+  // The last two semi-octets of the timestamp indicate an offset from
+  // GMT, where bit 3 of the first semi-octet is interpreted as a sign bit
+  const int tzoff_octet = bytes->NextByte();
+  const char sign = (tzoff_octet & 0x8) ? '-' : '+';
+  *timestamp += sign;
+  const int quarter_hours = (tzoff_octet & 0x7) * 10 +
+      ((tzoff_octet >> 4) & 0xf);
+  *timestamp += (quarter_hours / 40) + '0';
+  *timestamp += (quarter_hours / 4) % 10 + '0';
 
-  uint8_t smsc_addr_type = pdu[1];
+  return true;
+}
 
-  // we only handle SMS-DELIVER messages
-  if ((pdu[msg_start_offset] & kMsgTypeMask) != kMsgTypeDeliver) {
-    LOG(INFO) << "Unhandled message type: have "
-              << std::hex << (int)(pdu[msg_start_offset] & kMsgTypeMask)
-              << " need " << std::hex << (int)kMsgTypeDeliver;
-    return NULL;
+static bool parse_user_data_header(Bytes* bytes,
+                                   int flags,
+                                   int user_data_len,
+                                   int* user_data_header_len,
+                                   int* part_reference,
+                                   int* part_sequence,
+                                   int* part_count) {
+  *part_reference = 0;
+  *part_sequence = 1;
+  *part_count = 1;
+
+  *user_data_header_len = 0;
+  if ((flags & kTpUdhi) == 0)
+    return true;
+
+  *user_data_header_len = bytes->NextByte() + 1;  // Include the length itself
+  if (*user_data_header_len == 0)
+    return true;
+  if (bytes->BytesLeft() < *user_data_header_len) {
+    LOG(ERROR) << "PDU truncated in user data header";
+    return false;
   }
+  // The user data is made up of a number of information elements,
+  // which are each composed of an ID octet, a length octet, and the data.
+  // The length octet is the length of the data, not of the entire element.
+  for (int ie_offset = 1;
+       ie_offset < *user_data_header_len; ) {
+    int ie_id = bytes->NextByte();
+    int ie_len = bytes->NextByte();
+    if (ie_id == kConcatenatedSms8bit && ie_len == 3) {
+      *part_reference = bytes->NextByte();
+      *part_count = bytes->NextByte();
+      *part_sequence = bytes->NextByte();
+    } else if (ie_id == kConcatenatedSms16bit && ie_len == 4) {
+      *part_reference = bytes->NextByte() << 8;
+      *part_reference |= bytes->NextByte();
+      *part_count = bytes->NextByte();
+      *part_sequence = bytes->NextByte();
+    } else {
+      // Unknown information elements are simply skipped.
+      bytes->NextBytes(ie_len);
+    }
+    ie_offset += ie_len + 2;
+  }
+  return true;
+}
 
-  uint8_t sender_addr_type = pdu[msg_start_offset + 2];
+static bool parse_text(Bytes* bytes,
+                       int user_data_len,
+                       int user_data_header_len,
+                       int data_coding_scheme,
+                       std::string* text) {
+  enum {kDcsUnknown, kDcsGsm7, kDcsUcs2, kDcs8bit} scheme = kDcsUnknown;
 
-  uint8_t dcs = pdu[tp_pid_offset+1];
-  enum {dcs_unknown, dcs_gsm7, dcs_ucs2, dcs_8bit} scheme = dcs_unknown;
-
-  switch ((dcs >> 4) & 0xf) {
+  switch ((data_coding_scheme >> 4) & 0xf) {
     // General data coding group
     case 0: case 1:
     case 2: case 3:
-      switch (dcs & 0x0c) {
+      switch (data_coding_scheme & 0x0c) {
         case 0x8:
-          scheme = dcs_ucs2;
+          scheme = kDcsUcs2;
           break;
         case 0:
-        case 0xc:    // reserved - spec says to treat it as default alphabet
-          scheme = dcs_gsm7;
+        case 0xc:  // reserved - spec says to treat it as default alphabet
+          scheme = kDcsGsm7;
           break;
         case 0x4:
-          scheme = dcs_8bit;
+          scheme = kDcs8bit;
           break;
       }
       break;
@@ -193,151 +274,153 @@ SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
     // Message waiting group (default alphabet)
     case 0xc:
     case 0xd:
-      scheme = dcs_gsm7;
+      scheme = kDcsGsm7;
       break;
 
     // Message waiting group (UCS2 alphabet)
     case 0xe:
-      scheme = dcs_ucs2;
+      scheme = kDcsUcs2;
       break;
 
     // Data coding/message class group
     case 0xf:
-      switch (dcs & 0x04) {
+      switch (data_coding_scheme & 0x04) {
         case 0:
-          scheme = dcs_gsm7;
+          scheme = kDcsGsm7;
           break;
         case 0x4:
-          scheme = dcs_8bit;
+          scheme = kDcs8bit;
           break;
       }
       break;
 
     // Reserved coding group values - spec says to treat it as default alphabet
     default:
-      scheme = dcs_gsm7;
+      scheme = kDcsGsm7;
       break;
   }
 
-  if (scheme == dcs_unknown) {
-    LOG(INFO) << "Unhandled data coding scheme: " << std::hex << (int)dcs;
-    return NULL;
+  if (scheme == kDcsUnknown) {
+    LOG(WARNING) << "Unhandled data coding scheme: " << std::hex
+                 << data_coding_scheme;
+    return false;
   }
 
-  std::string smsc_addr = DecodeAddress(&pdu[2],
-                                        smsc_addr_type,
-                                        smsc_addr_num_octets - 1);
-  std::string sender_addr = DecodeAddress(&pdu[msg_start_offset + 3],
-                                          sender_addr_type,
-                                          sender_addr_num_octets);
-
-  std::string msg_text;
-  size_t num_data_octets;
-  size_t data_octets_available;
-
-  data_octets_available = pdu_len - (user_data_len_offset + 1);
-
-  if (scheme == dcs_gsm7)
-    num_data_octets = (pdu[user_data_len_offset] * 7 + 7)/8;
-  else if (scheme == dcs_ucs2)
-    num_data_octets = pdu[user_data_len_offset];
-  else
-    num_data_octets = pdu[user_data_len_offset];
-
-  if (data_octets_available < num_data_octets) {
-    LOG(INFO) << "Specified user data length (" << num_data_octets
-              << ") exceeds data available";
-    return NULL;
-  }
-
-  uint8_t user_data_header_len = 0;
-  uint8_t msg_body_offset = user_data_len_offset + 1;
-  uint8_t user_data_offset = user_data_len_offset+1;
-  size_t user_data_len = pdu[user_data_len_offset];
-  uint8_t bit_offset = 0;
-
-  uint16_t part_reference = 0;
-  uint8_t part_sequence = 1;
-  uint8_t part_count = 1;
-
-  if ((pdu[msg_start_offset] & kTpUdhi) == kTpUdhi)
-    user_data_header_len = pdu[user_data_offset] + 1;
-
-  if (user_data_header_len != 0) {
-    // Parse the user data headers
-    for (int offset = msg_body_offset + 1;
-         offset < msg_body_offset + user_data_header_len; ) {
-      // Information element ID and length
-      int ie_id = pdu[offset++];
-      int ie_len = pdu[offset++];
-      LOG(INFO) << "Information element type " << ie_id
-                << " len " << ie_len;
-      if (ie_id == kConcatenatedSms8bit && ie_len == 3) {
-        part_reference = pdu[offset];
-        part_count = pdu[offset + 1];
-        part_sequence = pdu[offset + 2];
-        LOG(INFO) << "ref " << (int)part_reference
-                  << " count " << (int)part_count
-                  << " seq " << (int)part_sequence;
-      } else if (ie_id == kConcatenatedSms16bit && ie_len == 4) {
-        part_reference = (pdu[offset] << 8) | pdu[offset + 1];
-        part_count = pdu[offset + 2];
-        part_sequence = pdu[offset + 3];
-        LOG(INFO) << "ref " << (int)part_reference
-                  << " count " << (int)part_count
-                  << " seq " << (int)part_sequence;
-      }
-      offset += ie_len;
-    }
-    msg_body_offset += user_data_header_len;
-  }
-
-  if (scheme == dcs_gsm7) {
+  if (scheme == kDcsGsm7) {
+    int bit_offset = 0;
     if (user_data_header_len != 0) {
-      size_t len_adjust = (user_data_header_len * 8 + 6) / 7;
+      const int len_adjust = (user_data_header_len * 8 + 6) / 7;
       user_data_len -= len_adjust;
       bit_offset = len_adjust * 7 - user_data_header_len * 8;
     }
-    msg_text = utilities::Gsm7ToUtf8String(&pdu[msg_body_offset],
-                                           user_data_len,
-                                           bit_offset);
-  } else if (scheme == dcs_ucs2) {
+    const int user_data_octets = (user_data_len * 7 + bit_offset + 7) / 8;
+    if (bytes->BytesLeft() < user_data_octets) {
+      LOG(ERROR) << "PDU truncated in message text - needed "
+                 << user_data_octets << " bytes, had "
+                 << bytes->BytesLeft();
+      return false;
+    }
+    *text = utilities::Gsm7ToUtf8String(bytes->NextBytes(user_data_octets),
+                                        user_data_len,
+                                        bit_offset);
+  } else if (scheme == kDcsUcs2) {
     user_data_len -= user_data_header_len;
-    msg_text = utilities::Ucs2ToUtf8String(&pdu[msg_body_offset],
-                                           user_data_len);
+    if (bytes->BytesLeft() < user_data_len) {
+      LOG(ERROR) << "PDU truncated in message text - needed "
+                 << user_data_len << " bytes, had "
+                 << bytes->BytesLeft();
+      return false;
+    }
+    *text = utilities::Ucs2ToUtf8String(bytes->NextBytes(user_data_len),
+                                        user_data_len);
   } else {  // 8-bit data: just copy it as-is
     user_data_len -= user_data_header_len;
-    msg_text.assign(reinterpret_cast<const char *>(&pdu[msg_body_offset]),
-                    user_data_len);
+    if (bytes->BytesLeft() < user_data_len) {
+      LOG(ERROR) << "PDU truncated in message text - needed "
+                 << user_data_len << " bytes, had "
+                 << bytes->BytesLeft();
+      return false;
+    }
+    text->assign(reinterpret_cast<const char*>(bytes->NextBytes(user_data_len)),
+                 user_data_len);
+  }
+  return true;
+}
+
+
+SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
+                                                       size_t pdu_len,
+                                                       int index) {
+  if (false) {  // Change to true for debug logging of PDU data
+    std::string hexpdu;
+    static const char kHexDigits[]="0123456789abcdef";
+    for (unsigned int i = 0 ; i < pdu_len ; i++) {
+      hexpdu += kHexDigits[pdu[i] >> 4];
+      hexpdu += kHexDigits[pdu[i] & 0xf];
+    }
+    LOG(INFO) << "PDU: " << hexpdu;
   }
 
-  std::string sc_timestamp = SemiOctetsToBcdString(&pdu[tp_pid_offset+2],
-                                                   kSmscTimestampLen-1);
-  // The last two semi-octets of the timestamp indicate an offset from
-  // GMT, where bit 3 of the first semi-octet is interpreted as a sign bit
-  uint8_t tzoff_octet = pdu[tp_pid_offset+1+kSmscTimestampLen];
-  char sign = (tzoff_octet & 0x8) ? '-' : '+';
-  sc_timestamp += sign;
-  int quarter_hours = (tzoff_octet & 0x7) * 10 + ((tzoff_octet >> 4) & 0xf);
-  sc_timestamp += (quarter_hours / 40) + '0';
-  sc_timestamp += (quarter_hours / 4) % 10 + '0';
+  if (pdu_len < kMinPduLen) {
+    LOG(ERROR) << "PDU too short - needed at least " << kMinPduLen
+               << " bytes, had " << pdu_len;
+    return NULL;
+  }
 
-  return new SmsMessageFragment(smsc_addr, sender_addr, sc_timestamp, msg_text,
+  Bytes bytes(pdu, pdu_len);
+
+
+  std::string smsc_address;
+  if (!parse_smsc_address(&bytes, &smsc_address))
+    return NULL;
+
+  const int flags = bytes.NextByte();
+  // we only handle SMS-DELIVER messages
+  if ((flags & kMsgTypeMask) != kMsgTypeDeliver) {
+    LOG(WARNING) << "Unhandled message type: have "
+                 << std::hex << static_cast<int>(flags & kMsgTypeMask)
+                 << " need " << std::hex << static_cast<int>(kMsgTypeDeliver);
+    return NULL;
+  }
+
+  std::string sender_address;
+  if (!parse_sender_address(&bytes, &sender_address))
+    return NULL;
+  bytes.NextByte();  // skip over the protocol byte
+  const int data_coding_scheme = bytes.NextByte();
+  std::string sc_timestamp;
+  if (!parse_timestamp(&bytes, &sc_timestamp))
+      return NULL;
+  const int user_data_len = bytes.NextByte();
+  int user_data_header_len;
+  int part_reference, part_sequence, part_count;
+  if (!parse_user_data_header(&bytes, flags, user_data_len,
+                              &user_data_header_len,
+                              &part_reference, &part_sequence, &part_count))
+    return NULL;
+
+  std::string message_text;
+  if (!parse_text(&bytes, user_data_len, user_data_header_len,
+                  data_coding_scheme, &message_text))
+    return NULL;
+
+  return new SmsMessageFragment(smsc_address,
+                                sender_address,
+                                sc_timestamp,
+                                message_text,
                                 part_reference, part_sequence, part_count,
                                 index);
 }
 
-SmsMessage::SmsMessage(SmsMessageFragment *base) :
-    base_(base),
-    num_remaining_parts_(base->part_count() - 1),
-    fragments_(base->part_count())
-{
+SmsMessage::SmsMessage(SmsMessageFragment* base)
+    : base_(base),
+      num_remaining_parts_(base->part_count() - 1),
+      fragments_(base->part_count()) {
   fragments_[base->part_sequence() - 1] = base;
   LOG(INFO) << "Created new message with base ref " << base->part_reference();
 }
 
-void SmsMessage::add(SmsMessageFragment *sms)
-{
+void SmsMessage::AddFragment(SmsMessageFragment* sms) {
   if (sms->part_reference() != base_->part_reference()) {
     LOG(WARNING) << "Attempt to add SMS part with reference "
                  << sms->part_reference()
@@ -359,39 +442,37 @@ void SmsMessage::add(SmsMessageFragment *sms)
   fragments_[sequence - 1] = sms;
 }
 
-bool SmsMessage::is_complete()
-{
+bool SmsMessage::IsComplete() const {
   return num_remaining_parts_ == 0;
 }
 
-std::string& SmsMessage::text()
-{
+const std::string& SmsMessage::GetMessageText() {
   // This could be more clever about not recomputing if the message is complete.
   composite_text_.clear();
 
-  for (int i = 0 ; i < base_->part_count(); i++)
+  for (int i = 0; i < base_->part_count(); i++) {
     if (fragments_[i] != NULL)
       composite_text_ += fragments_[i]->text();
+  }
 
   return composite_text_;
 }
 
-std::vector<int> SmsMessage::index_list()
-{
-  std::vector<int> ret;
-  for (std::vector<SmsMessageFragment *>::iterator it = fragments_.begin();
+std::vector<int>* SmsMessage::MessageIndexList() const {
+  std::vector<int>* ret = new std::vector<int>();
+  for (std::vector<SmsMessageFragment*>::const_iterator it =
+           fragments_.begin();
        it != fragments_.end();
        ++it) {
     if (*it != NULL)
-      ret.push_back((*it)->index());
+      ret->push_back((*it)->index());
   }
 
   return ret;
 }
 
-SmsMessage::~SmsMessage()
-{
-  for (std::vector<SmsMessageFragment *>::iterator it = fragments_.begin();
+SmsMessage::~SmsMessage() {
+  for (std::vector<SmsMessageFragment*>::iterator it = fragments_.begin();
        it != fragments_.end();
        ++it) {
     if (*it != NULL) {
@@ -400,3 +481,5 @@ SmsMessage::~SmsMessage()
     }
   }
 }
+
+}  // namespace cromo

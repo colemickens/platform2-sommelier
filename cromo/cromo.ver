@@ -8,11 +8,6 @@
     HookTable::*;
     ModemHandler::*;
     utilities::*;
-    # The CreateFragment func takes a size_t, so we can't encode the type
-    # explicitly (linker doesn't know what "size_t" is, and it will change
-    # between "unsigned int" and "unsigned long" based on target).
-    SmsMessageFragment::CreateFragment*;
-    "SmsMessage::is_complete()";
-    SmsCache::*;
+    cromo::*;
   };
 };

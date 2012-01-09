@@ -3,16 +3,19 @@
 // found in the LICENSE file.
 // Unit tests for SMS message creation
 
-#include "sms_message.h"
-
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-// TODO(ers) Added more negative test cases
+#include "sms_message.h"
+
+// TODO(ers) Add more negative test cases
+
+namespace cromo {
+namespace {
 
 TEST(CreateSmsMessage, SimpleMessage) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07,       // length of SMSC info
     0x91,       // type of address of SMSC (E.164)
     0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,  // SMSC address
@@ -27,8 +30,8 @@ TEST(CreateSmsMessage, SimpleMessage) {
     // TP-UD user data:
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
-  SmsMessageFragment* frag = SmsMessageFragment::CreateFragment(pdu,
-                                                                sizeof(pdu),
+  SmsMessageFragment* frag = SmsMessageFragment::CreateFragment(kPdu,
+                                                                sizeof(kPdu),
                                                                 1);
 
   ASSERT_TRUE(NULL != frag);
@@ -45,13 +48,13 @@ TEST(CreateSmsMessage, SimpleMessage) {
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
-  EXPECT_EQ("hellohello", sms->text());
+  EXPECT_EQ("hellohello", sms->GetMessageText());
   EXPECT_EQ(1, sms->index());
-  EXPECT_TRUE(sms->is_complete());
+  EXPECT_TRUE(sms->IsComplete());
 }
 
 TEST(CreateSmsMessage, ExtendedChars) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07,       // length of SMSC info
     0x91,       // type of address of SMSC (E.164)
     0x21, 0x04, 0x44, 0x29, 0x61, 0xf4,  // SMSC address
@@ -79,8 +82,8 @@ TEST(CreateSmsMessage, ExtendedChars) {
     0x0e, 0xba, 0x97, 0xd9, 0x6c, 0x17
   };
 
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12404492164", sms->smsc_address());
@@ -93,7 +96,7 @@ TEST(CreateSmsMessage, ExtendedChars) {
 }
 
 TEST(CreateSmsMessage, AlphaSenderAndUcs2Text) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07, 0x91, 0x97, 0x30, 0x07, 0x11, 0x11, 0xf1,
     0x04, 0x14, 0xd0, 0x49, 0x37, 0xbd, 0x2c, 0x77,
     0x97, 0xe9, 0xd3, 0xe6, 0x14, 0x00, 0x08, 0x11,
@@ -101,8 +104,8 @@ TEST(CreateSmsMessage, AlphaSenderAndUcs2Text) {
     0x42, 0x04, 0x35, 0x04, 0x41, 0x04, 0x42
   };
 
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+79037011111", sms->smsc_address());
@@ -114,8 +117,8 @@ TEST(CreateSmsMessage, AlphaSenderAndUcs2Text) {
 }
 
 TEST(CreateSmsMessage, NonzeroPid) {
-  /* pid is nonzero (00 -> ff) */
-  static const uint8_t pdu[] = {
+  // pid is nonzero (00 -> ff)
+  static const uint8_t kPdu[] = {
     0x07,       // length of SMSC info
     0x91,       // type of address of SMSC (E.164)
     0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,  // SMSC address
@@ -131,8 +134,8 @@ TEST(CreateSmsMessage, NonzeroPid) {
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
 
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
@@ -144,8 +147,8 @@ TEST(CreateSmsMessage, NonzeroPid) {
 }
 
 TEST(CreateSmsMessage, MoreMessagesBitClear) {
-  /* TP-MMS is clear (04 -> 00) */
-  static const uint8_t pdu[] = {
+  // TP-MMS is clear (04 -> 00)
+  static const uint8_t kPdu[] = {
     0x07,       // length of SMSC info
     0x91,       // type of address of SMSC (E.164)
     0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,  // SMSC address
@@ -161,8 +164,8 @@ TEST(CreateSmsMessage, MoreMessagesBitClear) {
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
 
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
@@ -174,7 +177,7 @@ TEST(CreateSmsMessage, MoreMessagesBitClear) {
 }
 
 TEST(CreateSmsMessage, TimeZoneOffsetGreaterThanTen) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07,       // length of SMSC info
     0x91,       // type of address of SMSC (E.164)
     0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,  // SMSC address
@@ -189,8 +192,8 @@ TEST(CreateSmsMessage, TimeZoneOffsetGreaterThanTen) {
     // TP-UD user data:
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
@@ -202,7 +205,7 @@ TEST(CreateSmsMessage, TimeZoneOffsetGreaterThanTen) {
 }
 
 TEST(CreateSmsMessage, NegativeTimeZoneOffset) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07,       // length of SMSC info
     0x91,       // type of address of SMSC (E.164)
     0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,  // SMSC address
@@ -217,8 +220,8 @@ TEST(CreateSmsMessage, NegativeTimeZoneOffset) {
     // TP-UD user data:
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
@@ -230,8 +233,8 @@ TEST(CreateSmsMessage, NegativeTimeZoneOffset) {
 }
 
 TEST(CreateSmsMessage, NationalSenderNumber) {
-  /* number is natl (91 -> 81) */
-  static const uint8_t pdu[] = {
+  // number is natl (91 -> 81)
+  static const uint8_t kPdu[] = {
     0x07, 0x91, 0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,
     0x04, 0x0b, 0x81, 0x81, 0x00, 0x55, 0x15, 0x12,
     0xf2, 0x00, 0x00, 0x11, 0x10, 0x10, 0x21, 0x43,
@@ -239,24 +242,24 @@ TEST(CreateSmsMessage, NationalSenderNumber) {
     0x97, 0xd9, 0xec, 0x37
   };
 
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
-  EXPECT_EQ("18005551212", sms->sender_address()); /* no plus */
+  EXPECT_EQ("18005551212", sms->sender_address());  // no plus
   EXPECT_EQ("110101123456+00", sms->timestamp());
   EXPECT_EQ("hellohello", sms->text());
   EXPECT_EQ(1, sms->index());
   EXPECT_EQ(1, sms->part_count());
 }
 
-static const char expected_8bit_data[] = {
+static const char kExpected8bitData[] = {
   0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37, 0xde
 };
 
 TEST(CreateSmsMessage, 8BitData) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07, 0x91, 0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,
     0x04, 0x0b, 0x91, 0x81, 0x00, 0x55, 0x15, 0x12,
     0xf2, 0x00, 0x04, 0x11, 0x10, 0x10, 0x21, 0x43,
@@ -264,20 +267,20 @@ TEST(CreateSmsMessage, 8BitData) {
     0x97, 0xd9, 0xec, 0x37, 0xde
   };
 
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
-  EXPECT_EQ(expected_8bit_data, sms->text());
+  EXPECT_EQ(kExpected8bitData, sms->text());
   EXPECT_EQ(1, sms->index());
   EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, InsufficientUserData) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07,       // length of SMSC info
     0x91,       // type of address of SMSC (E.164)
     0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,  // SMSC address
@@ -293,25 +296,25 @@ TEST(CreateSmsMessage, InsufficientUserData) {
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
 
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   EXPECT_TRUE(NULL == sms);
 }
 
 TEST(CreateSmsMessage, GroupFDataCodingScheme) {
-  static const uint8_t pdu[] = {
-    0x07,       // length of SMSC info
-    0x91,       // type of address of SMSC (E.164)
+  static const uint8_t kPdu[] = {
+    0x07,        // length of SMSC info
+    0x91,        // type of address of SMSC (E.164)
     0x33, 0x06, 0x09, 0x10, 0x93, 0xF0,  // SMSC address (+33 60 90 01 39 0)
-    0x04,       // SMS-DELIVER
-    0x04,       // address length
-    0x85,       // type of address
-    0x81, 0x00, // sender address (1800)
-    0x00,       // TP-PID protocol identifier
-    0xF1,       // TP-DCS data coding scheme
+    0x04,        // SMS-DELIVER
+    0x04,        // address length
+    0x85,        // type of address
+    0x81, 0x00,  // sender address (1800)
+    0x00,        // TP-PID protocol identifier
+    0xF1,        // TP-DCS data coding scheme
     0x11, 0x60, 0x42, 0x31, 0x80, 0x51, 0x80,   // timestamp 11-06-24 13:08:51
-    0xA0,       // TP-UDL user data length (160)
+    0xA0,        // TP-UDL user data length (160)
     // Content:
     0x49,
     0xB7, 0xF9, 0x0D, 0x9A, 0x1A, 0xA5, 0xA0, 0x16,
@@ -334,8 +337,8 @@ TEST(CreateSmsMessage, GroupFDataCodingScheme) {
     0xCA, 0xD9, 0x66
   };
 
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+33609001390", sms->smsc_address());
@@ -350,7 +353,7 @@ TEST(CreateSmsMessage, GroupFDataCodingScheme) {
 }
 
 TEST(CreateSmsMessage, GroupF8BitDataCodingScheme) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07, 0x91, 0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,
     0x04, 0x0b, 0x91, 0x81, 0x00, 0x55, 0x15, 0x12,
     0xf2, 0x00, 0xf4, 0x11, 0x10, 0x10, 0x21, 0x43,
@@ -358,20 +361,20 @@ TEST(CreateSmsMessage, GroupF8BitDataCodingScheme) {
     0x97, 0xd9, 0xec, 0x37, 0xde
   };
 
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
-  EXPECT_EQ(expected_8bit_data, sms->text());
+  EXPECT_EQ(kExpected8bitData, sms->text());
   EXPECT_EQ(1, sms->index());
   EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, ReservedCodingScheme) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07,       // length of SMSC info
     0x91,       // type of address of SMSC (E.164)
     0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,  // SMSC address
@@ -386,8 +389,8 @@ TEST(CreateSmsMessage, ReservedCodingScheme) {
     // TP-UD user data:
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
 
   ASSERT_TRUE(NULL != sms);
@@ -400,7 +403,7 @@ TEST(CreateSmsMessage, ReservedCodingScheme) {
 }
 
 TEST(CreateSmsMessage, UserDataHeaderWithFillBits) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07,       // length of SMSC info
     0x91,       // type of address of SMSC (E.164)
     0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,  // SMSC address
@@ -419,8 +422,8 @@ TEST(CreateSmsMessage, UserDataHeaderWithFillBits) {
     // TP-UD user data (first byte has 3 fill bits):
     0x40, 0x97, 0xd9, 0xec, 0x37, 0xba, 0xcc, 0x66, 0xbf, 0x01
   };
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
 
   ASSERT_TRUE(NULL != sms);
@@ -433,7 +436,7 @@ TEST(CreateSmsMessage, UserDataHeaderWithFillBits) {
 }
 
 TEST(CreateSmsMessage, UserDataHeaderNoFillBits) {
-  static const uint8_t pdu[] = {
+  static const uint8_t kPdu[] = {
     0x07,       // length of SMSC info
     0x91,       // type of address of SMSC (E.164)
     0x13, 0x56, 0x13, 0x13, 0x13, 0xf6,
@@ -469,8 +472,8 @@ TEST(CreateSmsMessage, UserDataHeaderNoFillBits) {
     0x2d, 0x4e, 0x97, 0xd9, 0xa0, 0xb4, 0x9b, 0x5e,
     0x96, 0xbb, 0xcb
   };
-  SmsMessageFragment* frag = SmsMessageFragment::CreateFragment(pdu,
-                                                                sizeof(pdu),
+  SmsMessageFragment* frag = SmsMessageFragment::CreateFragment(kPdu,
+                                                                sizeof(kPdu),
                                                                 1);
 
   ASSERT_TRUE(NULL != frag);
@@ -491,13 +494,13 @@ TEST(CreateSmsMessage, UserDataHeaderNoFillBits) {
   EXPECT_EQ("110629233219+02", sms->timestamp());
   EXPECT_EQ("Welkom, bel om uw Voicemail te beluisteren naar +31612001233"
             " (PrePay: *100*1233#). Voicemail ontvangen is altijd gratis."
-            " Voor gebruik van mobiel interne", sms->text());
-  EXPECT_FALSE(sms->is_complete());
+            " Voor gebruik van mobiel interne", sms->GetMessageText());
+  EXPECT_FALSE(sms->IsComplete());
   EXPECT_EQ(0x0010, sms->part_reference());
 }
 
 TEST(CreateSmsMessage, TwoPart) {
-  static const uint8_t pdu1[] = {
+  static const uint8_t kPdu1[] = {
     0x07, 0x91, 0x41, 0x40, 0x54, 0x05, 0x10, 0xf0,
     0x44, 0x0b, 0x91, 0x61, 0x71, 0x05, 0x64, 0x29,
     0xf5, 0x00, 0x00, 0x11, 0x01, 0x52, 0x41, 0x04,
@@ -521,7 +524,7 @@ TEST(CreateSmsMessage, TwoPart) {
     0xe9, 0x39, 0xe8, 0xed, 0x66, 0xe7, 0x41
   };
 
-  static const uint8_t pdu2[] = {
+  static const uint8_t kPdu2[] = {
     0x07, 0x91, 0x41, 0x40, 0x54, 0x05, 0x10, 0xf1,
     0x44, 0x0b, 0x91, 0x61, 0x71, 0x05, 0x64, 0x29,
     0xf5, 0x00, 0x00, 0x11, 0x01, 0x52, 0x41, 0x04,
@@ -531,15 +534,15 @@ TEST(CreateSmsMessage, TwoPart) {
     0xf3, 0x79, 0xf8, 0x5c, 0x06,
   };
 
-  SmsMessageFragment* frag1 = SmsMessageFragment::CreateFragment(pdu1,
-                                                                 sizeof(pdu1),
+  SmsMessageFragment* frag1 = SmsMessageFragment::CreateFragment(kPdu1,
+                                                                 sizeof(kPdu1),
                                                                  1);
 
   ASSERT_TRUE(NULL != frag1);
   EXPECT_EQ("+14044550010", frag1->smsc_address());
   EXPECT_EQ("+16175046925", frag1->sender_address());
   EXPECT_EQ("111025144014-07", frag1->timestamp());
-  const char *frag1_text =
+  const char frag1_text[] =
       "This is a test.\n"
       "A what? A test. This is only a test.\n"
       " This is a test.\n"
@@ -552,8 +555,8 @@ TEST(CreateSmsMessage, TwoPart) {
   EXPECT_EQ(2, frag1->part_count());
   EXPECT_EQ(1, frag1->part_sequence());
 
-  SmsMessageFragment* frag2 = SmsMessageFragment::CreateFragment(pdu2,
-                                                                 sizeof(pdu2),
+  SmsMessageFragment* frag2 = SmsMessageFragment::CreateFragment(kPdu2,
+                                                                 sizeof(kPdu2),
                                                                  2);
   ASSERT_TRUE(NULL != frag2);
   EXPECT_EQ("+14044550011", frag2->smsc_address());
@@ -568,58 +571,58 @@ TEST(CreateSmsMessage, TwoPart) {
   SmsMessage* sms = new SmsMessage(frag1);
 
   ASSERT_TRUE(NULL != sms);
-  EXPECT_FALSE(sms->is_complete());
+  EXPECT_FALSE(sms->IsComplete());
 
-  sms->add(frag2);
+  sms->AddFragment(frag2);
   EXPECT_EQ("+14044550010", sms->smsc_address());
   EXPECT_EQ("+16175046925", sms->sender_address());
   EXPECT_EQ("111025144014-07", sms->timestamp());
-  const char *sms_text =
+  const char sms_text[] =
       "This is a test.\n"
       "A what? A test. This is only a test.\n"
       " This is a test.\n"
       "A what? A test. This is only a test.\n"
       " This is a test.\n"
       "A what? A test. This is only a test. Second message";
-  EXPECT_EQ(sms_text, sms->text());
+  EXPECT_EQ(sms_text, sms->GetMessageText());
   EXPECT_EQ(1, sms->index());
   EXPECT_EQ(156, sms->part_reference());
-  EXPECT_TRUE(sms->is_complete());
+  EXPECT_TRUE(sms->IsComplete());
 
   SmsMessage* sms2 = new SmsMessage(frag2);
   ASSERT_TRUE(NULL != sms2);
-  EXPECT_FALSE(sms2->is_complete());
+  EXPECT_FALSE(sms2->IsComplete());
 
-  sms2->add(frag1);
+  sms2->AddFragment(frag1);
   EXPECT_EQ("+14044550011", sms2->smsc_address());
   EXPECT_EQ("+16175046925", sms2->sender_address());
   EXPECT_EQ("111025144015-07", sms2->timestamp());
-  EXPECT_EQ(sms_text, sms2->text());
+  EXPECT_EQ(sms_text, sms2->GetMessageText());
   EXPECT_EQ(2, sms2->index());
   EXPECT_EQ(156, sms2->part_reference());
-  EXPECT_TRUE(sms2->is_complete());
+  EXPECT_TRUE(sms2->IsComplete());
 }
 
 
 TEST(CreateSmsMessage, NonIntlSMSC) {
-  static const uint8_t pdu[] = {
-    0x03,       // length of SMSC info
-    0x80,       // type of address of SMSC (unknown)
-    0x98, 0x06, // SMSC address
-    0x04,       // SMS-DELIVER
-    0x04,       // sender address length
-    0x80,       // type of sender address (unknown)
-    0x98, 0x06, // sender address
-    0x00,       // TP-PID protocol identifier
-    0xf0,       // TP-DCS data coding scheme
-    0x21, 0x20, 0x11, 0x12, 0x74, 0x12, 0x00, // TP-SCTS timestamp
-    0x0a,       // TP-UDL user data length
+  static const uint8_t kPdu[] = {
+    0x03,        // length of SMSC info
+    0x80,        // type of address of SMSC (unknown)
+    0x98, 0x06,  // SMSC address
+    0x04,        // SMS-DELIVER
+    0x04,        // sender address length
+    0x80,        // type of sender address (unknown)
+    0x98, 0x06,  // sender address
+    0x00,        // TP-PID protocol identifier
+    0xf0,        // TP-DCS data coding scheme
+    0x21, 0x20, 0x11, 0x12, 0x74, 0x12, 0x00,  // TP-SCTS timestamp
+    0x0a,        // TP-UDL user data length
     // TP-UD user data:
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
 
-  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
-                                                               sizeof(pdu),
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(kPdu,
+                                                               sizeof(kPdu),
                                                                1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("8960", sms->smsc_address());
@@ -630,6 +633,8 @@ TEST(CreateSmsMessage, NonIntlSMSC) {
   EXPECT_EQ(1, sms->part_count());
 }
 
+}  // namespace
+}  // namespace cromo
 
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
