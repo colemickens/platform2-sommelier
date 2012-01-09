@@ -283,10 +283,6 @@ class SessionManagerService
                       gboolean* OUT_done,
                       GError** error);
 
-  // Restarts (or starts if stopped) the entd upstart job.  Returns if
-  // start was successful.
-  gboolean RestartEntd(GError** error);
-
   // Manage per-session services, which die when the session ends.
   gboolean StartSessionService(gchar *name, gboolean *OUT_done, GError **error);
   gboolean StopSessionService(gchar *name, gboolean *OUT_done, GError **error);

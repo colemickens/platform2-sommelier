@@ -173,10 +173,6 @@ gboolean session_manager_restart_job(SessionManager *self,
                                      GError **error) {
   SESSION_MANAGER_WRAP_METHOD(RestartJob, pid, arguments, OUT_done, error);
 }
-gboolean session_manager_restart_entd(SessionManager *self,
-                                      GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(RestartEntd, error);
-}
 
 gboolean session_manager_start_session_service(SessionManager *self,
                                                gchar *name,
