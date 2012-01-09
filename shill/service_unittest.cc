@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,9 +29,11 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::AtLeast;
+using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
 using testing::StrictMock;
+using testing::SetArgumentPointee;
 using testing::Test;
 
 namespace shill {
@@ -201,6 +203,25 @@ TEST_F(ServiceTest, Save) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
   EXPECT_TRUE(service_->Save(&storage));
+}
+
+TEST_F(ServiceTest, Unload) {
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
+  static const string string_value("value");
+  EXPECT_CALL(storage, GetString(storage_id_, _, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(string_value), Return(true)));
+  ASSERT_TRUE(service_->Load(&storage));
+  // TODO(pstew): A single string property in the service is tested as
+  // a sentinel that properties are being set and reset at the rit times.
+  // However, since property load/store is essentially a manual process,
+  // it is error prone and should either be exhaustively unit-tested or
+  // a generic framework for registering loaded/stored properties should
+  // be created. crosbug.com/24859
+  EXPECT_EQ(string_value, service_->ui_data_);
+  service_->Unload();
+  EXPECT_EQ(string(""), service_->ui_data_);
 }
 
 TEST_F(ServiceTest, State) {

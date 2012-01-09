@@ -255,13 +255,9 @@ bool Service::Load(StoreInterface *storage) {
 
   // TODO(petkov): Load these:
 
-  // "Name"
-  // "WiFi.HiddenSSID"
-  // "SSID"
   // "Failure"
   // "Modified"
   // "LastAttempt"
-  // WiFiService: "Passphrase"
   // "APN"
   // "LastGoodAPN"
 
@@ -272,11 +268,14 @@ bool Service::Load(StoreInterface *storage) {
 
 void Service::Unload() {
   auto_connect_ = false;
+  check_portal_ = kCheckPortalAuto;
   favorite_ = false;
-  // TODO(pstew): Call a centralized function to purge all profile-set
-  // state.  This should be called both from Load() and Unload() since
-  // even in Load() profiles aren't cumulative -- they're exclusive.
-  // crosbug.com/22946
+  priority_ = kPriorityNone;
+  proxy_config_ = "";
+  save_credentials_ = true;
+  ui_data_ = "";
+
+  UnloadEapCredentials();
 }
 
 bool Service::Save(StoreInterface *storage) {
@@ -597,6 +596,24 @@ void Service::SaveEapCredentials(StoreInterface *storage, const string &id) {
              eap_.key_management,
              false,
              true);
+}
+
+void Service::UnloadEapCredentials() {
+  eap_.identity = "";
+  eap_.eap = "";
+  eap_.inner_eap = "";
+  eap_.anonymous_identity = "";
+  eap_.client_cert = "";
+  eap_.cert_id = "";
+  eap_.private_key = "";
+  eap_.private_key_password = "";
+  eap_.key_id = "";
+  eap_.ca_cert = "";
+  eap_.ca_cert_id = "";
+  eap_.use_system_cas = false;
+  eap_.pin = "";
+  eap_.password = "";
+  eap_.key_management = "";
 }
 
 const string &Service::GetEAPKeyManagement() const {

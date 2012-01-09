@@ -263,6 +263,7 @@ class Service : public base::RefCounted<Service> {
 
   void LoadEapCredentials(StoreInterface *storage, const std::string &id);
   void SaveEapCredentials(StoreInterface *storage, const std::string &id);
+  void UnloadEapCredentials();
 
   // Property accessors reserved for subclasses
   EventDispatcher *dispatcher() const { return dispatcher_; }
@@ -281,6 +282,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SaveStringCrypted);
   FRIEND_TEST(ServiceTest, SaveStringDontSave);
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
+  FRIEND_TEST(ServiceTest, Unload);
 
   static const char kStorageAutoConnect[];
   static const char kStorageCheckPortal[];

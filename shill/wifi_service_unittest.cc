@@ -36,6 +36,7 @@ using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
+using ::testing::StrNe;
 
 class WiFiServiceTest : public PropertyStoreTest {
  public:
@@ -429,6 +430,44 @@ TEST_F(WiFiServiceSecurityTest, LoadMapping) {
   EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityWep,
                               flimflam::kSecurityPsk,
                               false));
+}
+
+TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
+  vector<uint8_t> ssid(5);
+  ssid.push_back(0xff);
+
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityPsk,
+                                              false);
+  NiceMock<MockStore> mock_store;
+  const string storage_id = service->GetStorageIdentifier();
+  EXPECT_CALL(mock_store, ContainsGroup(StrEq(storage_id)))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_store, GetBool(_, _, _))
+      .WillRepeatedly(Return(false));
+  const string passphrase = "passphrase";
+  EXPECT_CALL(mock_store,
+              GetCryptedString(StrEq(storage_id),
+                               WiFiService::kStoragePassphrase, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(passphrase), Return(true)));
+  EXPECT_CALL(mock_store,
+              GetCryptedString(StrEq(storage_id),
+                               StrNe(WiFiService::kStoragePassphrase), _))
+      .WillRepeatedly(Return(false));
+  EXPECT_TRUE(service->need_passphrase_);
+  EXPECT_TRUE(service->Load(&mock_store));
+  EXPECT_EQ(passphrase, service->passphrase_);
+  EXPECT_TRUE(service->connectable());
+  EXPECT_FALSE(service->need_passphrase_);
+  service->Unload();
+  EXPECT_EQ(string(""), service->passphrase_);
+  EXPECT_FALSE(service->connectable());
+  EXPECT_TRUE(service->need_passphrase_);
 }
 
 TEST_F(WiFiServiceTest, ParseStorageIdentifier) {

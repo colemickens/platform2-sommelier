@@ -87,19 +87,14 @@ WiFiService::WiFiService(ControlInterface *control_interface,
     // XXX needs_passpharse_ = false ?
   } else if (security_ == flimflam::kSecurityPsk) {
     SetEAPKeyManagement("WPA-PSK");
-    need_passphrase_ = true;
   } else if (security_ == flimflam::kSecurityRsn) {
     SetEAPKeyManagement("WPA-PSK");
-    need_passphrase_ = true;
   } else if (security_ == flimflam::kSecurityWpa) {
     SetEAPKeyManagement("WPA-PSK");
-    need_passphrase_ = true;
   } else if (security_ == flimflam::kSecurityWep) {
     SetEAPKeyManagement("NONE");
-    need_passphrase_ = true;
   } else if (security_ == flimflam::kSecurityNone) {
     SetEAPKeyManagement("NONE");
-    need_passphrase_ = false;
   } else {
     LOG(ERROR) << "unsupported security method " << security_;
   }
@@ -201,7 +196,6 @@ void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
 
   if (error->IsSuccess()) {
     passphrase_ = passphrase;
-    need_passphrase_ = false;
   }
 
   UpdateConnectable();
@@ -275,6 +269,13 @@ bool WiFiService::Save(StoreInterface *storage) {
 
   // TODO(quiche): Save Passphrase property. (crosbug.com/23467)
   return true;
+}
+
+void WiFiService::Unload() {
+  Service::Unload();
+  hidden_ssid_ = false;
+  passphrase_ = "";
+  UpdateConnectable();
 }
 
 bool WiFiService::IsSecurityMatch(const string &security) const {
@@ -394,16 +395,17 @@ string WiFiService::GetDeviceRpcId(Error */*error*/) {
 void WiFiService::UpdateConnectable() {
   if (security_ == flimflam::kSecurityNone) {
     DCHECK(passphrase_.empty());
-    set_connectable(true);
+    need_passphrase_ = false;
   } else if (security_ == flimflam::kSecurityWep ||
       security_ == flimflam::kSecurityWpa ||
       security_ == flimflam::kSecurityPsk ||
       security_ == flimflam::kSecurityRsn) {
-    set_connectable(!passphrase_.empty());
+    need_passphrase_ = passphrase_.empty();
   } else {
     // TODO(quiche): Handle connectability for 802.1x. (crosbug.com/23466)
-    set_connectable(false);
+    need_passphrase_ = true;
   }
+  set_connectable(!need_passphrase_);
 }
 
 // static
