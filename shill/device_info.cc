@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -205,7 +205,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
       case Technology::kCellular:
         // Cellular devices are managed by ModemInfo.
         VLOG(2) << "Cellular link " << link_name << " at index " << dev_index
-                << " ignored.";
+                << " -- notifying ModemInfo.";
+        manager_->modem_info()->OnDeviceInfoAvailable(link_name);
         return;
       case Technology::kEthernet:
         device = new Ethernet(control_interface_, dispatcher_, manager_,

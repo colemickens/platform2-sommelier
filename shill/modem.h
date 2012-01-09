@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -44,12 +44,14 @@ class Modem : public DBusPropertiesProxyDelegate {
   // Cellular device.
   void Init();
 
+  void OnDeviceInfoAvailable(const std::string &link_name);
+
  private:
   friend class ModemManagerTest;
   friend class ModemTest;
   FRIEND_TEST(ModemManagerTest, Connect);
   FRIEND_TEST(ModemManagerTest, AddRemoveModem);
-  FRIEND_TEST(ModemTest, CreateCellularDevice);
+  FRIEND_TEST(ModemTest, CreateDeviceFromProperties);
   FRIEND_TEST(ModemTest, Init);
 
   static const char kPropertyLinkName[];
@@ -62,7 +64,8 @@ class Modem : public DBusPropertiesProxyDelegate {
   // Creates and registers a Cellular device in |device_| based on
   // ModemManager.Modem's |properties|. The device may not be created if the
   // properties are invalid.
-  void CreateCellularDevice(const DBusPropertiesMap &properties);
+  void CreateDeviceFromProperties(const DBusPropertiesMap &properties);
+  void CreateDevice();
 
   // Signal callbacks inherited from DBusPropertiesProxyDelegate.
   virtual void OnDBusPropertiesChanged(
@@ -90,6 +93,8 @@ class Modem : public DBusPropertiesProxyDelegate {
   EventDispatcher *dispatcher_;
   Manager *manager_;
   mobile_provider_db *provider_db_;
+  std::string link_name_;
+  bool pending_device_info_;
 
   DISALLOW_COPY_AND_ASSIGN(Modem);
 };

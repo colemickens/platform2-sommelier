@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -32,10 +32,14 @@ class ModemInfo {
   void Start();
   void Stop();
 
+  void OnDeviceInfoAvailable(const std::string &link_name);
+
  private:
   friend class ModemInfoTest;
   FRIEND_TEST(ModemInfoTest, RegisterModemManager);
   FRIEND_TEST(ModemInfoTest, StartStop);
+
+  typedef ScopedVector<ModemManager> ModemManagers;
 
   static const char kCromoService[];
   static const char kCromoPath[];
@@ -45,7 +49,7 @@ class ModemInfo {
   void RegisterModemManager(const std::string &service,
                             const std::string &path);
 
-  ScopedVector<ModemManager> modem_managers_;
+  ModemManagers modem_managers_;
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;

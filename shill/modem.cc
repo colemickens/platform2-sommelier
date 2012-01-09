@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -36,7 +36,8 @@ Modem::Modem(const std::string &owner,
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       manager_(manager),
-      provider_db_(provider_db) {
+      provider_db_(provider_db),
+      pending_device_info_(false) {
   LOG(INFO) << "Modem created: " << owner << " at " << path;
 }
 
@@ -57,15 +58,31 @@ void Modem::InitTask() {
 
   dbus_properties_proxy_.reset(
       proxy_factory_->CreateDBusPropertiesProxy(this, path_, owner_));
+  CreateDevice();
+}
 
+void Modem::OnDeviceInfoAvailable(const string &link_name) {
+  VLOG(2) << __func__;
+  if (pending_device_info_ && link_name_ == link_name) {
+    pending_device_info_ = false;
+    CreateDevice();
+  }
+}
+
+void Modem::CreateDevice() {
+  VLOG(2) << __func__;
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   DBusPropertiesMap properties =
       dbus_properties_proxy_->GetAll(MM_MODEM_INTERFACE);
-  CreateCellularDevice(properties);
+  CreateDeviceFromProperties(properties);
 }
 
-void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
+void Modem::CreateDeviceFromProperties(const DBusPropertiesMap &properties) {
   VLOG(2) << __func__;
+  if (device_.get()) {
+    return;
+  }
+
   uint32 ip_method = kuint32max;
   if (!DBusProperties::GetUint32(properties, kPropertyIPMethod, &ip_method) ||
       ip_method != MM_MODEM_IP_METHOD_DHCP) {
@@ -73,13 +90,14 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
     return;
   }
 
-  string link_name;
-  if (!DBusProperties::GetString(properties, kPropertyLinkName, &link_name)) {
+  if (!DBusProperties::GetString(properties, kPropertyLinkName, &link_name_)) {
     LOG(ERROR) << "Unable to create cellular device without a link name.";
     return;
   }
+  // TODO(petkov): Get the interface index from DeviceInfo, similar to the MAC
+  // address below.
   int interface_index =
-      RTNLHandler::GetInstance()->GetInterfaceIndex(link_name);
+      RTNLHandler::GetInstance()->GetInterfaceIndex(link_name_);
   if (interface_index < 0) {
     LOG(ERROR) << "Unable to create cellular device -- no interface index.";
     return;
@@ -88,9 +106,8 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
   ByteString address_bytes;
   if (!manager_->device_info()->GetMACAddress(interface_index,
                                               &address_bytes)) {
-    // TODO(petkov): ensure that DeviceInfo has heard about this device before
-    //               we go ahead and try to add it.
-    LOG(ERROR) << "Unable to create cellular device without a hardware addr.";
+    LOG(WARNING) << "No hardware address, device creation pending device info.";
+    pending_device_info_ = true;
     return;
   }
 
@@ -109,12 +126,12 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
       return;
   }
 
-  LOG(INFO) << "Creating a cellular device on link " << link_name
+  LOG(INFO) << "Creating a cellular device on link " << link_name_
             << " interface index " << interface_index << ".";
   device_ = new Cellular(control_interface_,
                          dispatcher_,
                          manager_,
-                         link_name,
+                         link_name_,
                          address_bytes.HexEncode(),
                          interface_index,
                          type,

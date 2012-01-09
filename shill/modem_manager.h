@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -50,6 +50,8 @@ class ModemManager {
 
   // Removes a modem on |path|.
   void RemoveModem(const std::string &path);
+
+  void OnDeviceInfoAvailable(const std::string &link_name);
 
  private:
   friend class ModemManagerTest;

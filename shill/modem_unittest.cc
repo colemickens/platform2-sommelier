@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -130,21 +130,21 @@ TEST_F(ModemTest, Init) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(ModemTest, CreateCellularDevice) {
+TEST_F(ModemTest, CreateDeviceFromProperties) {
   DBusPropertiesMap props;
 
-  modem_.CreateCellularDevice(props);
+  modem_.CreateDeviceFromProperties(props);
   EXPECT_FALSE(modem_.device_.get());
 
   props[Modem::kPropertyIPMethod].writer().append_uint32(
       MM_MODEM_IP_METHOD_PPP);
-  modem_.CreateCellularDevice(props);
+  modem_.CreateDeviceFromProperties(props);
   EXPECT_FALSE(modem_.device_.get());
 
   props.erase(Modem::kPropertyIPMethod);
   props[Modem::kPropertyIPMethod].writer().append_uint32(
       MM_MODEM_IP_METHOD_DHCP);
-  modem_.CreateCellularDevice(props);
+  modem_.CreateDeviceFromProperties(props);
   EXPECT_FALSE(modem_.device_.get());
 
   static const char kLinkName[] = "usb0";
@@ -168,7 +168,7 @@ TEST_F(ModemTest, CreateCellularDevice) {
       .WillRepeatedly(Return(modem_.device_));
   EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&info_));
 
-  modem_.CreateCellularDevice(props);
+  modem_.CreateDeviceFromProperties(props);
   EXPECT_FALSE(modem_.device_.get());
 
   props[Modem::kPropertyType].writer().append_uint32(MM_MODEM_TYPE_GSM);
@@ -180,7 +180,7 @@ TEST_F(ModemTest, CreateCellularDevice) {
       kLockType);
   props[CellularCapabilityGSM::kPropertyUnlockRetries].writer().append_uint32(
       kRetries);
-  modem_.CreateCellularDevice(props);
+  modem_.CreateDeviceFromProperties(props);
   ASSERT_TRUE(modem_.device_.get());
   EXPECT_EQ(kLinkName, modem_.device_->link_name());
   EXPECT_EQ(kTestInterfaceIndex, modem_.device_->interface_index());

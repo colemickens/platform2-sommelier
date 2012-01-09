@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -48,6 +48,13 @@ void ModemInfo::Stop() {
   mobile_provider_close_db(provider_db_);
   provider_db_ = NULL;
   modem_managers_.reset();
+}
+
+void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
+  for (ModemManagers::iterator it = modem_managers_.begin();
+       it != modem_managers_.end(); ++it) {
+    (*it)->OnDeviceInfoAvailable(link_name);
+  }
 }
 
 void ModemInfo::RegisterModemManager(const string &service,

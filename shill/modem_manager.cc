@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -95,7 +95,7 @@ void ModemManager::OnVanish(GDBusConnection */*connection*/,
   manager->Disconnect();
 }
 
-void ModemManager::AddModem(const std::string &path) {
+void ModemManager::AddModem(const string &path) {
   LOG(INFO) << "Add modem: " << path;
   CHECK(!owner_.empty());
   if (ContainsKey(modems_, path)) {
@@ -112,10 +112,16 @@ void ModemManager::AddModem(const std::string &path) {
   modem->Init();
 }
 
-void ModemManager::RemoveModem(const std::string &path) {
+void ModemManager::RemoveModem(const string &path) {
   LOG(INFO) << "Remove modem: " << path;
   CHECK(!owner_.empty());
   modems_.erase(path);
+}
+
+void ModemManager::OnDeviceInfoAvailable(const string &link_name) {
+  for (Modems::iterator it = modems_.begin(); it != modems_.end(); ++it) {
+    it->second->OnDeviceInfoAvailable(link_name);
+  }
 }
 
 }  // namespace shill
