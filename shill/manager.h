@@ -27,7 +27,6 @@ namespace shill {
 class ControlInterface;
 class Error;
 class EventDispatcher;
-class GLib;
 class ManagerAdaptorInterface;
 class Metrics;
 
@@ -171,6 +170,9 @@ class Manager {
   bool OrderServices(ServiceRefPtr a, ServiceRefPtr b);
   void SortServices();
   bool MatchProfileWithService(const ServiceRefPtr &service);
+
+  // For unit testing.
+  void set_metrics(Metrics *metrics) { metrics_ = metrics; }
 
   EventDispatcher *dispatcher_;
   ScopedRunnableMethodFactory<Manager> task_factory_;

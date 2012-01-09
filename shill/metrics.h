@@ -108,12 +108,19 @@ class Metrics {
   static const int kMetricNetworkSecurityMax;
   static const char kMetricNetworkServiceErrors[];
   static const int kMetricNetworkServiceErrorsMax;
+  static const char kMetricTimeOnlineSeconds[];
+  static const int kMetricTimeOnlineSecondsMax;
+  static const int kMetricTimeOnlineSecondsMin;
+  static const int kMetricTimeOnlineSecondsNumBuckets;
   static const char kMetricTimeToConfigMilliseconds[];
+  static const char kMetricTimeToDropSeconds[];
+  static const int kMetricTimeToDropSecondsMax;
+  static const int kMetricTimeToDropSecondsMin;
   static const char kMetricTimeToJoinMilliseconds[];
   static const char kMetricTimeToOnlineMilliseconds[];
   static const char kMetricTimeToPortalMilliseconds[];
-  static const int kTimerHistogramMaxMilliseconds;
-  static const int kTimerHistogramMinMilliseconds;
+  static const int kTimerHistogramMillisecondsMax;
+  static const int kTimerHistogramMillisecondsMin;
   static const int kTimerHistogramNumBuckets;
 
   Metrics();
@@ -146,7 +153,7 @@ class Metrics {
 
   // Notifies this object that the default service has changed.
   // |service| is the new default service.
-  void NotifyDefaultServiceChanged(const Service *service);
+  virtual void NotifyDefaultServiceChanged(const Service *service);
 
   // Notifies this object that |service| state has changed.
   virtual void NotifyServiceStateChanged(const Service *service,
@@ -163,6 +170,10 @@ class Metrics {
   // Sends linear histogram data to UMA.
   bool SendEnumToUMA(const std::string &name, int sample, int max);
 
+  // Send histogram data to UMA.
+  bool SendToUMA(const std::string &name, int sample, int min, int max,
+                 int num_buckets);
+
  private:
   friend struct base::DefaultLazyInstanceTraits<Metrics>;
   friend class MetricsTest;
@@ -172,6 +183,7 @@ class Metrics {
   FRIEND_TEST(MetricsTest, ServiceFailure);
   FRIEND_TEST(MetricsTest, WiFiServiceChannel);
   FRIEND_TEST(MetricsTest, FrequencyToChannel);
+  FRIEND_TEST(MetricsTest, TimeOnlineTimeToDrop);
 
   typedef ScopedVector<chromeos_metrics::TimerReporter> TimerReporters;
   typedef std::list<chromeos_metrics::TimerReporter *> TimerReportersList;
@@ -214,6 +226,12 @@ class Metrics {
 
   // For unit test purposes.
   void set_library(MetricsLibraryInterface *library);
+  void set_time_online_timer(chromeos_metrics::Timer *timer) {
+    time_online_timer_.reset(timer);  // Passes ownership
+  }
+  void set_time_to_drop_timer(chromeos_metrics::Timer *timer) {
+    time_to_drop_timer_.reset(timer);  // Passes ownership
+  }
 
   // |library_| points to |metrics_library_| when shill runs normally.
   // However, in order to allow for unit testing, we point |library_| to a
@@ -221,6 +239,10 @@ class Metrics {
   MetricsLibrary metrics_library_;
   MetricsLibraryInterface *library_;
   ServiceMetricsLookupMap services_metrics_;
+  Technology::Identifier last_default_technology_;
+  bool was_online_;
+  scoped_ptr<chromeos_metrics::Timer> time_online_timer_;
+  scoped_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };

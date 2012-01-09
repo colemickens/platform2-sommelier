@@ -28,6 +28,7 @@
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -990,6 +991,9 @@ TEST_F(ManagerTest, SortServices) {
 }
 
 TEST_F(ManagerTest, SortServicesWithConnection) {
+  MockMetrics mock_metrics;
+  manager()->set_metrics(&mock_metrics);
+
   scoped_refptr<MockService> mock_service0(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
@@ -1013,14 +1017,17 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   mock_service1->connection_ = mock_connection1;
 
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   manager()->SortServices();
 
   mock_service1->set_priority(1);
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(false));
   EXPECT_CALL(*mock_connection1.get(), SetIsDefault(true));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service1.get()));
   manager()->SortServices();
 
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   mock_service1->connection_ = NULL;
   manager()->DeregisterService(mock_service1);
 

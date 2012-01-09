@@ -31,11 +31,12 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/key_file_store.h"
-#include "shill/service_sorter.h"
+#include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/resolver.h"
 #include "shill/service.h"
+#include "shill/service_sorter.h"
 #include "shill/wifi.h"
 #include "shill/wifi_service.h"
 
@@ -529,10 +530,11 @@ void Manager::HelpRegisterDerivedStrings(
 
 void Manager::SortServices() {
   VLOG(4) << "In " << __func__;
-  ConnectionRefPtr default_connection;
+  ServiceRefPtr default_service;
+
   if (!services_.empty()) {
-    // Keep track of the connection that was last considered default.
-    default_connection = services_[0]->connection();
+    // Keep track of the service that was last considered default.
+    default_service = services_[0];
   }
   sort(services_.begin(), services_.end(), ServiceSorter(technology_order_));
 
@@ -553,13 +555,17 @@ void Manager::SortServices() {
                               DefaultTechnology(&error));
 
   if (!services_.empty()) {
+    ConnectionRefPtr default_connection = default_service->connection();
     if (default_connection.get() &&
         (services_[0]->connection().get() != default_connection.get())) {
       default_connection->SetIsDefault(false);
+      default_service = NULL;
     }
     if (services_[0]->connection().get()) {
       services_[0]->connection()->SetIsDefault(true);
+      default_service = services_[0];
     }
+    metrics_->NotifyDefaultServiceChanged(default_service);
   }
 
   AutoConnect();

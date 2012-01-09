@@ -29,6 +29,15 @@ const int Metrics::kMetricNetworkSecurityMax = Metrics::kWiFiSecurityMax;
 const char Metrics::kMetricNetworkServiceErrors[] =
     "Network.Shill.ServiceErrors";
 const int Metrics::kMetricNetworkServiceErrorsMax = Service::kFailureMax;
+
+const char Metrics::kMetricTimeOnlineSeconds[] = "Network.Shill.%s.TimeOnline";
+const int Metrics::kMetricTimeOnlineSecondsMax = 8 * 60 * 60;  // 8 hours
+const int Metrics::kMetricTimeOnlineSecondsMin = 1;
+
+const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";;
+const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
+const int Metrics::kMetricTimeToDropSecondsMin = 1;
+
 const char Metrics::kMetricTimeToConfigMilliseconds[] =
     "Network.Shill.%s.TimeToConfig";
 const char Metrics::kMetricTimeToJoinMilliseconds[] =
@@ -37,8 +46,8 @@ const char Metrics::kMetricTimeToOnlineMilliseconds[] =
     "Network.Shill.%s.TimeToOnline";
 const char Metrics::kMetricTimeToPortalMilliseconds[] =
     "Network.Shill.%s.TimeToPortal";
-const int Metrics::kTimerHistogramMaxMilliseconds = 45 * 1000;
-const int Metrics::kTimerHistogramMinMilliseconds = 1;
+const int Metrics::kTimerHistogramMillisecondsMax = 45 * 1000;
+const int Metrics::kTimerHistogramMillisecondsMin = 1;
 const int Metrics::kTimerHistogramNumBuckets = 50;
 
 // static
@@ -57,7 +66,12 @@ const uint16 Metrics::kWiFiFrequency5700 = 5700;
 const uint16 Metrics::kWiFiFrequency5745 = 5745;
 const uint16 Metrics::kWiFiFrequency5825 = 5825;
 
-Metrics::Metrics() : library_(&metrics_library_) {
+Metrics::Metrics()
+    : library_(&metrics_library_),
+      last_default_technology_(Technology::kUnknown),
+      was_online_(false),
+      time_online_timer_(new chromeos_metrics::Timer),
+      time_to_drop_timer_(new chromeos_metrics::Timer) {
   metrics_library_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
@@ -160,17 +174,55 @@ void Metrics::AddServiceStateTransitionTimer(
   CHECK(start_state < stop_state);
   chromeos_metrics::TimerReporter *timer =
       new chromeos_metrics::TimerReporter(histogram_name,
-                                          kTimerHistogramMinMilliseconds,
-                                          kTimerHistogramMaxMilliseconds,
+                                          kTimerHistogramMillisecondsMin,
+                                          kTimerHistogramMillisecondsMax,
                                           kTimerHistogramNumBuckets);
   service_metrics->timers.push_back(timer);  // passes ownership.
   service_metrics->start_on_state[start_state].push_back(timer);
   service_metrics->stop_on_state[stop_state].push_back(timer);
 }
 
-void Metrics::NotifyDefaultServiceChanged(const Service */*service*/) {
-  // TODO(thieule): Handle the case when the default service has changed.
-  // crosbug.com/24438
+void Metrics::NotifyDefaultServiceChanged(const Service *service) {
+  base::TimeDelta elapsed_seconds;
+
+  Technology::Identifier technology = (service) ? service->technology() :
+                                                  Technology::kUnknown;
+  if (technology != last_default_technology_) {
+    if (last_default_technology_ != Technology::kUnknown) {
+      string histogram = GetFullMetricName(kMetricTimeOnlineSeconds,
+                                           last_default_technology_);
+      time_online_timer_->GetElapsedTime(&elapsed_seconds);
+      SendToUMA(histogram,
+                elapsed_seconds.InSeconds(),
+                kMetricTimeOnlineSecondsMin,
+                kMetricTimeOnlineSecondsMax,
+                kTimerHistogramNumBuckets);
+    }
+    last_default_technology_ = technology;
+    time_online_timer_->Start();
+  }
+
+  // TODO(thieule): Ignore changes when suspending.
+  // crosbug.com/24440
+
+  // Ignore changes that are not online/offline transitions; e.g.
+  // switching between wired and wireless.  TimeToDrop measures
+  // time online regardless of how we are connected.
+  if ((service == NULL && !was_online_) || (service != NULL && was_online_))
+    return;
+
+  if (service == NULL) {
+    time_to_drop_timer_->GetElapsedTime(&elapsed_seconds);
+    SendToUMA(kMetricTimeToDropSeconds,
+              elapsed_seconds.InSeconds(),
+              kMetricTimeToDropSecondsMin,
+              kMetricTimeToDropSecondsMax,
+              kTimerHistogramNumBuckets);
+  } else {
+    time_to_drop_timer_->Start();
+  }
+
+  was_online_ = (service != NULL);
 }
 
 void Metrics::NotifyServiceStateChanged(const Service *service,
@@ -213,6 +265,11 @@ void Metrics::NotifyPower() {
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {
   return library_->SendEnumToUMA(name, sample, max);
+}
+
+bool Metrics::SendToUMA(const string &name, int sample, int min, int max,
+                        int num_buckets) {
+  return library_->SendToUMA(name, sample, min, max, num_buckets);
 }
 
 void Metrics::InitializeCommonServiceMetrics(const Service *service) {

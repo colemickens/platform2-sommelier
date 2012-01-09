@@ -6,7 +6,7 @@
 
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/metrics_library_mock.h>
-#include <metrics/timer.h>
+#include <metrics/timer_mock.h>
 
 #include "shill/mock_service.h"
 #include "shill/mock_wifi_service.h"
@@ -62,8 +62,8 @@ class MetricsTest : public PropertyStoreTest {
 TEST_F(MetricsTest, TimeToConfig) {
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToConfig",
                                   Ge(0),
-                                  Metrics::kTimerHistogramMinMilliseconds,
-                                  Metrics::kTimerHistogramMaxMilliseconds,
+                                  Metrics::kTimerHistogramMillisecondsMin,
+                                  Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
   metrics_.RegisterService(service_);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateConfiguring);
@@ -73,8 +73,8 @@ TEST_F(MetricsTest, TimeToConfig) {
 TEST_F(MetricsTest, TimeToPortal) {
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToPortal",
                                   Ge(0),
-                                  Metrics::kTimerHistogramMinMilliseconds,
-                                  Metrics::kTimerHistogramMaxMilliseconds,
+                                  Metrics::kTimerHistogramMillisecondsMin,
+                                  Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
   metrics_.RegisterService(service_);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateReady);
@@ -84,8 +84,8 @@ TEST_F(MetricsTest, TimeToPortal) {
 TEST_F(MetricsTest, TimeToOnline) {
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Unknown.TimeToOnline",
                                   Ge(0),
-                                  Metrics::kTimerHistogramMinMilliseconds,
-                                  Metrics::kTimerHistogramMaxMilliseconds,
+                                  Metrics::kTimerHistogramMillisecondsMin,
+                                  Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
   metrics_.RegisterService(service_);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateReady);
@@ -105,8 +105,8 @@ TEST_F(MetricsTest, ServiceFailure) {
 TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeToJoin",
                                   Ge(0),
-                                  Metrics::kTimerHistogramMinMilliseconds,
-                                  Metrics::kTimerHistogramMaxMilliseconds,
+                                  Metrics::kTimerHistogramMillisecondsMin,
+                                  Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
   metrics_.RegisterService(wifi_service_);
   metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateAssociating);
@@ -158,6 +158,45 @@ TEST_F(MetricsTest, FrequencyToChannel) {
   EXPECT_EQ(Metrics::kWiFiChannelUndef, metrics_.WiFiFrequencyToChannel(5746));
   EXPECT_EQ(Metrics::kWiFiChannel5825, metrics_.WiFiFrequencyToChannel(5825));
   EXPECT_EQ(Metrics::kWiFiChannelUndef, metrics_.WiFiFrequencyToChannel(5826));
+}
+
+TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
+  chromeos_metrics::TimerMock *mock_time_online_timer =
+      new chromeos_metrics::TimerMock;
+  metrics_.set_time_online_timer(mock_time_online_timer);
+  chromeos_metrics::TimerMock *mock_time_to_drop_timer =
+      new chromeos_metrics::TimerMock;
+  metrics_.set_time_to_drop_timer(mock_time_to_drop_timer);
+  EXPECT_CALL(*service_.get(), technology()).
+      WillOnce(Return(Technology::kEthernet));
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Ethernet.TimeOnline",
+                                  Ge(0),
+                                  Metrics::kMetricTimeOnlineSecondsMin,
+                                  Metrics::kMetricTimeOnlineSecondsMax,
+                                  Metrics::kTimerHistogramNumBuckets));
+  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricTimeToDropSeconds,
+                                  Ge(0),
+                                  Metrics::kMetricTimeToDropSecondsMin,
+                                  Metrics::kMetricTimeToDropSecondsMax,
+                                  Metrics::kTimerHistogramNumBuckets)).Times(0);
+  EXPECT_CALL(*mock_time_online_timer, Start()).Times(2);
+  EXPECT_CALL(*mock_time_to_drop_timer, Start());
+  metrics_.NotifyDefaultServiceChanged(service_);
+  metrics_.NotifyDefaultServiceChanged(wifi_service_);
+
+  EXPECT_CALL(*mock_time_online_timer, Start());
+  EXPECT_CALL(*mock_time_to_drop_timer, Start()).Times(0);
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeOnline",
+                                  Ge(0),
+                                  Metrics::kMetricTimeOnlineSecondsMin,
+                                  Metrics::kMetricTimeOnlineSecondsMax,
+                                  Metrics::kTimerHistogramNumBuckets));
+  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricTimeToDropSeconds,
+                                  Ge(0),
+                                  Metrics::kMetricTimeToDropSecondsMin,
+                                  Metrics::kMetricTimeToDropSecondsMax,
+                                  Metrics::kTimerHistogramNumBuckets));
+  metrics_.NotifyDefaultServiceChanged(NULL);
 }
 
 }  // namespace shill
