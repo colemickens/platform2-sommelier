@@ -436,6 +436,22 @@ TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
   }
 }
 
+TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow) {
+  backlight_ctl_.als_adjustment_count_ =
+      kMetricNumberOfAlsAdjustmentsPerSessionMax + 100 ;
+  ExpectNumberOfAlsAdjustmentsPerSessionMetric(
+      kMetricNumberOfAlsAdjustmentsPerSessionMax);
+  EXPECT_TRUE(
+      daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
+          backlight_ctl_));
+}
+
+TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow) {
+  backlight_ctl_.als_adjustment_count_ = -100;
+  EXPECT_FALSE(daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
+            backlight_ctl_));
+}
+
 TEST_F(DaemonTest, GenerateLengthOfSessionMetric) {
   base::Time now = base::Time::Now();
   base::Time start = now - base::TimeDelta::FromSeconds(kSessionLength);

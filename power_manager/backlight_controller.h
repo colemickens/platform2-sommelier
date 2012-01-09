@@ -121,6 +121,10 @@ class BacklightController {
   friend class DaemonTest;
   FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
   FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
+  FRIEND_TEST(DaemonTest,
+              GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow);
+  FRIEND_TEST(DaemonTest,
+              GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow);
   FRIEND_TEST(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric);
 
   // Clamp |percent| to fit between LevelToPercent(min_visible_level_) and 100.

@@ -200,8 +200,20 @@ bool Daemon::GenerateBatteryRemainingAtStartOfSessionMetric(
 
 bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric(
     const BacklightController& backlight) {
+  int num_of_adjustments = backlight.als_adjustment_count();
+
+  if (num_of_adjustments < 0) {
+    LOG(ERROR) <<
+        "Generated negative value for NumberOfAlsAdjustmentsPerSession Metrics";
+    return false;
+  } else if (num_of_adjustments > kMetricNumberOfAlsAdjustmentsPerSessionMax) {
+    LOG(INFO) << "Clamping value for NumberOfAlsAdjustmentsPerSession to "
+              << kMetricNumberOfAlsAdjustmentsPerSessionMax;
+    num_of_adjustments = kMetricNumberOfAlsAdjustmentsPerSessionMax;
+  }
+
   return SendMetric(kMetricNumberOfAlsAdjustmentsPerSessionName,
-                    backlight.als_adjustment_count(),
+                    num_of_adjustments,
                     kMetricNumberOfAlsAdjustmentsPerSessionMin,
                     kMetricNumberOfAlsAdjustmentsPerSessionMax,
                     kMetricNumberOfAlsAdjustmentsPerSessionBuckets);
