@@ -16,18 +16,22 @@
 
 namespace {
 
+// Minimum and maximum valid values for percentages.
+const double kMinPercent = 0.0;
+const double kMaxPercent = 100.0;
+
 // Set brightness to this value when going into idle-induced dim state.
 const double kIdleBrightnessPercent = 10;
 
 // Minimum allowed brightness during startup.
 const double kMinInitialBrightnessPercent = 10;
 
-// Gradually change backlight level to new brightness by breaking up the
-// transition into N steps, where N = kBacklightNumSteps.
-const int kBacklightNumSteps = 8;
+// Gradually animate backlight level to new brightness by breaking up the
+// transition into this many steps.
+const int kBacklightAnimationFrames = 8;
 
-// Time between backlight adjustment steps, in milliseconds.
-const int kBacklightStepTimeMS = 30;
+// Time between backlight animation frames, in milliseconds.
+const int kBacklightAnimationMs = 30;
 
 // Maximum number of brightness adjustment steps.
 const int64 kMaxBrightnessSteps = 16;
@@ -70,21 +74,19 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       light_sensor_(NULL),
       observer_(NULL),
       has_seen_als_event_(false),
-      als_offset_percent_(0),
-      als_hysteresis_percent_(0),
+      als_offset_percent_(0.0),
+      als_hysteresis_percent_(0.0),
       als_temporal_state_(ALS_HYST_IMMEDIATE),
       als_adjustment_count_(0),
       user_adjustment_count_(0),
-      plugged_offset_percent_(-1),
-      unplugged_offset_percent_(-1),
+      plugged_offset_percent_(0.0),
+      unplugged_offset_percent_(0.0),
       current_offset_percent_(NULL),
       state_(BACKLIGHT_UNINITIALIZED),
       plugged_state_(kPowerUnknown),
-      target_percent_(0),
-      min_level_(0),
-      max_level_(-1),
-      min_percent_(0.),
-      max_percent_(100.),
+      target_percent_(0.0),
+      max_level_(0),
+      min_visible_level_(0),
       num_steps_(kMaxBrightnessSteps),
       is_initialized_(false),
       target_level_(0),
@@ -105,8 +107,6 @@ bool BacklightController::Init() {
   num_steps_ = std::max(static_cast<int64>(1),
                         std::min(kMaxBrightnessSteps, max_level_));
 
-  // Make sure the min-max brightness range is valid.
-  CHECK(max_percent_ - min_percent_ > 0);
   return true;
 }
 
@@ -123,11 +123,10 @@ bool BacklightController::GetCurrentBrightnessPercent(double* percent) {
 void BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
   if (!IsInitialized())
     return;
-  int64 current_level;
-  backlight_->GetCurrentBrightnessLevel(&current_level);
+
   // Determine the adjustment step size.
-  double step_size = (max_percent_ - min_percent_) / num_steps_;
-  double new_percent = ClampToMin(target_percent_ + step_size);
+  double step_size = (kMaxPercent - kMinPercent) / num_steps_;
+  double new_percent = ClampPercentToVisibleRange(target_percent_ + step_size);
 
   if (new_percent != target_percent_) {
     // Allow large swing in |current_offset_percent_| for absolute brightness
@@ -143,16 +142,12 @@ void BacklightController::DecreaseBrightness(bool allow_off,
   if (!IsInitialized())
     return;
 
-  int64 current_level;
-  backlight_->GetCurrentBrightnessLevel(&current_level);
-  double step_size = (max_percent_ - min_percent_) / num_steps_;
-
-  // Lower backlight to the next step, turn it off if already at the minimum.
-  double new_percent;
-  if (target_percent_ > min_percent_)
-    new_percent = ClampToMin(target_percent_ - step_size);
-  else
-    new_percent = 0;
+  // Lower the backlight to the next step, turning it off if it was already at
+  // the minimum visible level.
+  double step_size = (kMaxPercent - kMinPercent) / num_steps_;
+  double new_percent =
+      (PercentToLevel(target_percent_) <= min_visible_level_) ? 0.0 :
+      ClampPercentToVisibleRange(target_percent_ - step_size);
 
   if (new_percent != target_percent_ && (allow_off || new_percent > 0)) {
     // Allow large swing in |current_offset_percent_| for absolute brightness
@@ -201,7 +196,7 @@ bool BacklightController::SetPowerState(PowerState new_state) {
 
   // Do not go to dim if backlight is already dimmed.
   if (new_state == BACKLIGHT_DIM &&
-      target_percent_ < ClampToMin(kIdleBrightnessPercent))
+      target_percent_ < ClampPercentToVisibleRange(kIdleBrightnessPercent))
     new_state = BACKLIGHT_ALREADY_DIMMED;
 
   if (light_sensor_)
@@ -337,49 +332,47 @@ void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
   }
 }
 
-void BacklightController::SetMinimumBrightnessPercent(double percent) {
-  min_percent_ = percent;
-  min_level_ = PercentToLevel(percent);
-}
-
 bool BacklightController::IsBacklightActiveOff() {
   return state_ == BACKLIGHT_ACTIVE && target_percent_ == 0;
 }
 
-double BacklightController::Clamp(double percent) {
-  return std::min(max_percent_, std::max(0., percent));
-}
-
-double BacklightController::ClampToMin(double percent) {
-  return std::min(max_percent_, std::max(min_percent_, percent));
+double BacklightController::ClampPercentToVisibleRange(double percent) {
+  return std::min(kMaxPercent,
+                  std::max(LevelToPercent(min_visible_level_), percent));
 }
 
 double BacklightController::LevelToPercent(int64 raw_level) {
-  return max_percent_ * raw_level / max_level_;
+  return kMaxPercent * raw_level / max_level_;
 }
 
 int64 BacklightController::PercentToLevel(double local_percent) {
-  return lround(local_percent * max_level_ / max_percent_);
+  return lround(local_percent * max_level_ / kMaxPercent);
 }
 
 void BacklightController::ReadPrefs() {
+  if (!prefs_->GetInt64(kMinBacklightLevel, &min_visible_level_))
+    min_visible_level_ = 0;
+  CHECK_GE(min_visible_level_, 0);
+  min_visible_level_ = std::min(min_visible_level_, max_level_);
+
   CHECK(prefs_->GetDouble(kPluggedBrightnessOffset, &plugged_offset_percent_));
   CHECK(prefs_->GetDouble(kUnpluggedBrightnessOffset,
-                         &unplugged_offset_percent_));
-  CHECK(plugged_offset_percent_ >= -max_percent_);
-  CHECK(plugged_offset_percent_ <= max_percent_);
-  CHECK(unplugged_offset_percent_ >= -max_percent_);
-  CHECK(unplugged_offset_percent_ <= max_percent_);
+                          &unplugged_offset_percent_));
+  CHECK_GE(plugged_offset_percent_, -kMaxPercent);
+  CHECK_LE(plugged_offset_percent_, kMaxPercent);
+  CHECK_GE(unplugged_offset_percent_, -kMaxPercent);
+  CHECK_LE(unplugged_offset_percent_, kMaxPercent);
 
   // Adjust brightness offset values to make sure that the backlight is not
   // initially set to too low of a level.
-  double min_starting_brightness =
-      std::max(kMinInitialBrightnessPercent, min_percent_);
-  if (als_offset_percent_ + plugged_offset_percent_ < min_starting_brightness)
-    plugged_offset_percent_ = min_starting_brightness - als_offset_percent_;
-  if (als_offset_percent_ + unplugged_offset_percent_ <
-      min_starting_brightness)
-    unplugged_offset_percent_ = min_starting_brightness - als_offset_percent_;
+  double min_starting_percent =
+      ClampPercentToVisibleRange(kMinInitialBrightnessPercent);
+  plugged_offset_percent_ =
+      std::max(min_starting_percent - als_offset_percent_,
+               plugged_offset_percent_);
+  unplugged_offset_percent_ =
+      std::max(min_starting_percent - als_offset_percent_,
+               unplugged_offset_percent_);
 }
 
 void BacklightController::WritePrefs() {
@@ -409,16 +402,18 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
 
   double old_percent = target_percent_;
   if (state_ == BACKLIGHT_ACTIVE || state_ == BACKLIGHT_ALREADY_DIMMED) {
+    double new_percent = als_offset_percent_ + *current_offset_percent_;
     target_percent_ =
-        ClampToMin(als_offset_percent_ + *current_offset_percent_);
+        (new_percent <= 0.001) ? 0.0 : ClampPercentToVisibleRange(new_percent);
+
     // Do not turn off backlight if this is a "soft" adjustment -- e.g. due to
     // ALS change.
     // Also, do not turn off the backlight if it has been dimmed and idled.
     if (!adjust_brightness_offset || state_ == BACKLIGHT_ALREADY_DIMMED) {
-      if (target_percent_ == 0 && old_percent > 0)
-        target_percent_ = 1;
-      else if (target_percent_ > 0 && old_percent == 0)
-        target_percent_ = 0;
+      if (target_percent_ == 0.0 && old_percent > 0.0)
+        target_percent_ = LevelToPercent(min_visible_level_);
+      else if (target_percent_ > 0.0 && old_percent == 0.0)
+        target_percent_ = 0.0;
     }
     // Adjust offset in case brightness was changed.
     if (adjust_brightness_offset)
@@ -427,13 +422,13 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
     // When in dimmed state, set to dim level only if it results in a reduction
     // of system brightness.  Also, make sure idle brightness is not lower than
     // the minimum brightness.
-    if (old_percent > ClampToMin(kIdleBrightnessPercent)) {
-      target_percent_ = ClampToMin(kIdleBrightnessPercent);
+    if (old_percent > ClampPercentToVisibleRange(kIdleBrightnessPercent)) {
+      target_percent_ = ClampPercentToVisibleRange(kIdleBrightnessPercent);
     } else {
       LOG(INFO) << "Not dimming because backlight is already dim.";
       // Even if the brightness is below the dim level, make sure it is not
       // below the minimum brightness.
-      target_percent_ = ClampToMin(target_percent_);
+      target_percent_ = ClampPercentToVisibleRange(target_percent_);
     }
   } else if (state_ == BACKLIGHT_IDLE_OFF || state_ == BACKLIGHT_SUSPENDED) {
     target_percent_ = 0;
@@ -476,11 +471,12 @@ bool BacklightController::SetBrightnessGradual(int64 target_level) {
   LOG(INFO) << "Setting to new target brightness " << target_level;
   is_in_transition_ = true;
   int64 previous_level = current_level;
-  for (int i = 0; i < kBacklightNumSteps; ++i) {
-    int64 step_level = current_level + diff * (i + 1) / kBacklightNumSteps;
+  for (int i = 0; i < kBacklightAnimationFrames; ++i) {
+    int64 step_level =
+        current_level + diff * (i + 1) / kBacklightAnimationFrames;
     if (step_level == previous_level)
       continue;
-    g_timeout_add(i * kBacklightStepTimeMS, SetBrightnessHardThunk,
+    g_timeout_add(i * kBacklightAnimationMs, SetBrightnessHardThunk,
                   CreateSetBrightnessHardArgs(this, step_level, target_level));
     previous_level = step_level;
   }

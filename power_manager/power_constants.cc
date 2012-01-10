@@ -25,7 +25,7 @@ const char kRetrySuspendMs[] = "retry_suspend_ms";
 const char kRetrySuspendAttempts[] = "retry_suspend_attempts";
 const char kPluggedSuspendMs[] = "plugged_suspend_ms";
 const char kUseXScreenSaver[] = "use_xscreensaver";
-const char kMinBacklightPercent[] = "min_backlight_percent";
+const char kMinBacklightLevel[] = "min_backlight_level";
 
 // The minimum delta between timers when we want to give a user time to react.
 const char kReactMs[] = "react_ms";

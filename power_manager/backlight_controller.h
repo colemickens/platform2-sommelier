@@ -114,8 +114,6 @@ class BacklightController {
   // ambient light.
   void SetAlsBrightnessOffsetPercent(double percent);
 
-  void SetMinimumBrightnessPercent(double percent);
-
   // Returns whether the user has manually turned backlight down to zero.
   bool IsBacklightActiveOff();
 
@@ -125,11 +123,8 @@ class BacklightController {
   FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric);
 
-  // Clamp |percent| to fit between 0 and 100.
-  double Clamp(double percent);
-
-  // Clamp |percent| to fit between |min_percent_| and 100.
-  double ClampToMin(double percent);
+  // Clamp |percent| to fit between LevelToPercent(min_visible_level_) and 100.
+  double ClampPercentToVisibleRange(double percent);
 
   // Converts between [0, 100] and [0, |max_level_|] brightness scales.
   double LevelToPercent(int64 level);
@@ -221,13 +216,18 @@ class BacklightController {
   // Target brightness in the range [0, 100].
   double target_percent_;
 
-  // Min and max raw brightness levels for |backlight_|.
-  int64 min_level_;
+  // Maximum raw brightness level for |backlight_| (0 is assumed to be the
+  // minimum, with the backlight turned off).
   int64 max_level_;
 
-  // Minimum and maximum brightness in the range [0, 100].
-  double min_percent_;
-  double max_percent_;
+  // Minimum raw brightness level that we'll stop at before turning the
+  // backlight off entirely when adjusting the brightness down.  Note that we
+  // can still quickly animate through lower (still technically visible) levels
+  // while transitioning to the off state; this is the minimum level that we'll
+  // use in the steady state while the backlight is on.
+  //
+  // If this feature isn't being used, then this is just 0.
+  int64 min_visible_level_;
 
   // Number of brightness adjustment steps.
   int64 num_steps_;

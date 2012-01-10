@@ -336,7 +336,6 @@ class Daemon : public XIdleObserver,
   int64 suspend_ms_;
   int64 lock_ms_;
   int64 offset_ms_;
-  int64 min_backlight_percent_;
   bool enforce_lock_;
   bool lock_on_idle_suspend_;
   bool use_xscreensaver_;
