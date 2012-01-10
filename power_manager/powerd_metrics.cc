@@ -221,9 +221,19 @@ bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric(
 
 bool Daemon::GenerateUserBrightnessAdjustmentsPerSessionMetric(
     const BacklightController& backlight) {
+  int adjustment_count = backlight.user_adjustment_count();
+
+  if (adjustment_count < 0) {
+    LOG(ERROR) << "Calculation for user brightness adjustments per session "
+               << "returned a negative value";
+    return false;
+  } else if (adjustment_count > kMetricUserBrightnessAdjustmentsPerSessionMax) {
+    adjustment_count = kMetricUserBrightnessAdjustmentsPerSessionMax;
+  }
+
   return SendMetricWithPowerState(
       kMetricUserBrightnessAdjustmentsPerSessionName,
-      backlight.user_adjustment_count(),
+      adjustment_count,
       kMetricUserBrightnessAdjustmentsPerSessionMin,
       kMetricUserBrightnessAdjustmentsPerSessionMax,
       kMetricUserBrightnessAdjustmentsPerSessionBuckets);

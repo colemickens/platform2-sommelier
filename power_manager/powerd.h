@@ -126,6 +126,10 @@ class Daemon : public XIdleObserver,
   FRIEND_TEST(DaemonTest,
               GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow);
   FRIEND_TEST(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric);
+  FRIEND_TEST(DaemonTest,
+              GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow);
+  FRIEND_TEST(DaemonTest,
+              GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow);
   FRIEND_TEST(DaemonTest, PowerButtonDownMetric);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
   FRIEND_TEST(DaemonTest, SendMetric);

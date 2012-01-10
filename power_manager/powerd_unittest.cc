@@ -46,6 +46,7 @@ static const int64 kUnpluggedOff = kPluggedOff;
 static const int64 kUnpluggedSuspend = kPluggedSuspend;
 static const int64 kPowerButtonInterval = 20;
 static const int kSessionLength = 5;
+static const int kAdjustmentsOffset = 100;
 
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 
@@ -438,7 +439,7 @@ TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
 
 TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow) {
   backlight_ctl_.als_adjustment_count_ =
-      kMetricNumberOfAlsAdjustmentsPerSessionMax + 100 ;
+      kMetricNumberOfAlsAdjustmentsPerSessionMax + kAdjustmentsOffset;
   ExpectNumberOfAlsAdjustmentsPerSessionMetric(
       kMetricNumberOfAlsAdjustmentsPerSessionMax);
   EXPECT_TRUE(
@@ -447,7 +448,7 @@ TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow) {
 }
 
 TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow) {
-  backlight_ctl_.als_adjustment_count_ = -100;
+  backlight_ctl_.als_adjustment_count_ = -kAdjustmentsOffset;
   EXPECT_FALSE(daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
             backlight_ctl_));
 }
@@ -505,11 +506,11 @@ TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
   int expected_percentage = round(status_.battery_percentage);
   ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
 
-  backlight_ctl_.als_adjustment_count_ = 10;
+  backlight_ctl_.als_adjustment_count_ = kAdjustmentsOffset;
   ExpectNumberOfAlsAdjustmentsPerSessionMetric(
       backlight_ctl_.als_adjustment_count_);
 
-  backlight_ctl_.user_adjustment_count_ = 10;
+  backlight_ctl_.user_adjustment_count_ = kAdjustmentsOffset;
   ExpectUserBrightnessAdjustmentsPerSessionMetric(
       backlight_ctl_.user_adjustment_count_);
 
@@ -582,7 +583,7 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
 }
 
 TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric) {
-  backlight_ctl_.user_adjustment_count_ = 10;
+  backlight_ctl_.user_adjustment_count_ = kAdjustmentsOffset;
 
   daemon_.plugged_state_ = kPowerConnected;
   ExpectUserBrightnessAdjustmentsPerSessionMetric(
@@ -599,6 +600,23 @@ TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric) {
   daemon_.plugged_state_ = kPowerUnknown;
   ExpectUserBrightnessAdjustmentsPerSessionMetric(
       backlight_ctl_.user_adjustment_count_);
+  EXPECT_FALSE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
+      backlight_ctl_));
+}
+
+TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow) {
+  backlight_ctl_.user_adjustment_count_ =
+      kMetricUserBrightnessAdjustmentsPerSessionMax + kAdjustmentsOffset;
+  daemon_.plugged_state_ = kPowerConnected;
+  ExpectUserBrightnessAdjustmentsPerSessionMetric(
+      kMetricUserBrightnessAdjustmentsPerSessionMax);
+  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
+      backlight_ctl_));
+}
+
+TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow) {
+  backlight_ctl_.user_adjustment_count_ = -kAdjustmentsOffset;
+  daemon_.plugged_state_ = kPowerConnected;
   EXPECT_FALSE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
       backlight_ctl_));
 }
