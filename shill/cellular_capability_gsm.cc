@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <base/stl_util-inl.h>
 #include <base/string_number_conversions.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
@@ -20,6 +21,9 @@ using std::make_pair;
 using std::string;
 
 namespace shill {
+
+// static
+unsigned int CellularCapabilityGSM::friendly_service_name_id_ = 0;
 
 const char CellularCapabilityGSM::kNetworkPropertyAccessTechnology[] =
     "access-tech";
@@ -177,6 +181,24 @@ void CellularCapabilityGSM::GetProperties() {
   uint32 tech = network_proxy_->AccessTechnology();
   SetAccessTechnology(tech);
   VLOG(2) << "GSM AccessTechnology: " << tech;
+}
+
+string CellularCapabilityGSM::CreateFriendlyServiceName() {
+  VLOG(2) << __func__;
+  if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME &&
+      !cellular()->home_provider().GetName().empty()) {
+    return cellular()->home_provider().GetName();
+  }
+  if (!serving_operator_.GetName().empty()) {
+    return serving_operator_.GetName();
+  }
+  if (!cellular()->carrier().empty()) {
+    return cellular()->carrier();
+  }
+  if (!serving_operator_.GetCode().empty()) {
+    return "cellular_" + serving_operator_.GetCode();
+  }
+  return base::StringPrintf("GSMNetwork%u", friendly_service_name_id_++);
 }
 
 void CellularCapabilityGSM::SetHomeProvider() {

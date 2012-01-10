@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,7 +17,17 @@ namespace shill {
 class CellularServiceTest : public testing::Test {
  public:
   CellularServiceTest()
-      : service_(new CellularService(&control_, NULL, NULL, NULL)),
+      : device_(new Cellular(&control_,
+                             NULL,
+                             NULL,
+                             "usb0",
+                             "00:01:02:03:04:05",
+                             3,
+                             Cellular::kTypeGSM,
+                             "",
+                             "",
+                             NULL)),
+        service_(new CellularService(&control_, NULL, NULL, device_)),
         adaptor_(NULL) {}
 
   virtual ~CellularServiceTest() {
@@ -31,6 +41,7 @@ class CellularServiceTest : public testing::Test {
 
  protected:
   NiceMockControl control_;
+  CellularRefPtr device_;
   CellularServiceRefPtr service_;
   NiceMock<ServiceMockAdaptor> *adaptor_;  // Owned by |service_|.
 };
@@ -51,6 +62,13 @@ TEST_F(CellularServiceTest, SetRoamingState) {
   service_->SetRoamingState(flimflam::kRoamingStateHome);
   EXPECT_EQ(flimflam::kRoamingStateHome, service_->roaming_state());
   service_->SetRoamingState(flimflam::kRoamingStateHome);
+}
+
+TEST_F(CellularServiceTest, FriendlyName) {
+  static const char kCarrier[] = "Cellular Carrier";
+  device_->carrier_ = kCarrier;
+  service_ = new CellularService(&control_, NULL, NULL, device_);
+  EXPECT_EQ(kCarrier, service_->friendly_name());
 }
 
 }  // namespace shill

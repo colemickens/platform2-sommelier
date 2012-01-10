@@ -41,6 +41,8 @@ CellularService::CellularService(ControlInterface *control_interface,
                                 &serving_operator_.ToDict());
   store->RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
   store->RegisterConstString(flimflam::kUsageURLProperty, &usage_url_);
+
+  set_friendly_name(device->CreateFriendlyServiceName());
 }
 
 CellularService::~CellularService() { }
@@ -61,6 +63,7 @@ bool CellularService::TechnologyIs(const Technology::Identifier type) const {
 }
 
 string CellularService::GetStorageIdentifier() const {
+  // TODO(petkov): Fix the return value (crosbug.com/24952).
   string id = base::StringPrintf("%s_%s_%s",
                                  kServiceType,
                                  cellular_->address().c_str(),

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -263,6 +263,15 @@ TEST_F(CellularCapabilityCDMATest, GetRegistrationState) {
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
             capability_->registration_state_evdo());
   ASSERT_TRUE(cellular_->service().get());
+}
+
+TEST_F(CellularCapabilityCDMATest, CreateFriendlyServiceName) {
+  CellularCapabilityCDMA::friendly_service_name_id_ = 0;
+  EXPECT_EQ("CDMANetwork0", capability_->CreateFriendlyServiceName());
+  EXPECT_EQ("CDMANetwork1", capability_->CreateFriendlyServiceName());
+  static const char kTestCarrier[] = "A Carrier";
+  cellular_->carrier_ = kTestCarrier;
+  EXPECT_EQ(kTestCarrier, capability_->CreateFriendlyServiceName());
 }
 
 }  // namespace shill

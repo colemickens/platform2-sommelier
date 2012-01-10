@@ -419,4 +419,9 @@ void Cellular::set_home_provider(const Operator &oper) {
   home_provider_.CopyFrom(oper);
 }
 
+string Cellular::CreateFriendlyServiceName() {
+  VLOG(2) << __func__;
+  return capability_.get() ? capability_->CreateFriendlyServiceName() : "";
+}
+
 }  // namespace shill

@@ -40,6 +40,7 @@ class CellularCapabilityGSM : public CellularCapability,
   virtual void Register();
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
   virtual bool IsRegistered();
+  virtual std::string CreateFriendlyServiceName();
   virtual void RequirePIN(
       const std::string &pin, bool require, ReturnerInterface *returner);
   virtual void EnterPIN(const std::string &pin, ReturnerInterface *returner);
@@ -66,6 +67,7 @@ class CellularCapabilityGSM : public CellularCapability,
 
  private:
   friend class CellularCapabilityGSMTest;
+  FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityGSMTest, InitAPNList);
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResult);
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResultProviderLookup);
@@ -157,6 +159,8 @@ class CellularCapabilityGSM : public CellularCapability,
   uint16 scan_interval_;
   SimLockStatus sim_lock_status_;
   Stringmaps apn_list_;
+
+  static unsigned int friendly_service_name_id_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityGSM);
 };

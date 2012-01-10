@@ -61,6 +61,8 @@ class CellularCapability {
 
   virtual void GetRegistrationState() = 0;
 
+  virtual std::string CreateFriendlyServiceName() = 0;
+
   // PIN management. The default implementation fails by returning an error.
   virtual void RequirePIN(
       const std::string &pin, bool require, ReturnerInterface *returner);

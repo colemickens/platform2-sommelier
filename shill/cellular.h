@@ -119,6 +119,8 @@ class Cellular : public Device,
 
   static std::string GetStateString(State state);
 
+  std::string CreateFriendlyServiceName();
+
   State state() const { return state_; }
 
   void set_modem_state(ModemState state) { modem_state_ = state; }
@@ -128,6 +130,8 @@ class Cellular : public Device,
 
   const std::string &dbus_owner() const { return dbus_owner_; }
   const std::string &dbus_path() const { return dbus_path_; }
+
+  const std::string &carrier() const { return carrier_; }
 
   const Operator &home_provider() const { return home_provider_; }
   void set_home_provider(const Operator &oper);
@@ -179,6 +183,9 @@ class Cellular : public Device,
   friend class CellularCapabilityCDMATest;
   friend class CellularCapabilityGSMTest;
   friend class ModemTest;
+  FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
+  FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
+  FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetModemInfo);

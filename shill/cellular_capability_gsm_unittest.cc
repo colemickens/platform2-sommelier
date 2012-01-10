@@ -403,4 +403,23 @@ TEST_F(CellularCapabilityGSMTest, GetRoamingStateString) {
             capability_->GetRoamingStateString());
 }
 
+TEST_F(CellularCapabilityGSMTest, CreateFriendlyServiceName) {
+  CellularCapabilityGSM::friendly_service_name_id_ = 0;
+  EXPECT_EQ("GSMNetwork0", capability_->CreateFriendlyServiceName());
+  EXPECT_EQ("GSMNetwork1", capability_->CreateFriendlyServiceName());
+  capability_->serving_operator_.SetCode("1234");
+  EXPECT_EQ("cellular_1234", capability_->CreateFriendlyServiceName());
+  static const char kTestCarrier[] = "A GSM Carrier";
+  cellular_->carrier_ = kTestCarrier;
+  EXPECT_EQ(kTestCarrier, capability_->CreateFriendlyServiceName());
+  static const char kTestOperator[] = "A GSM Operator";
+  capability_->serving_operator_.SetName(kTestOperator);
+  EXPECT_EQ(kTestOperator, capability_->CreateFriendlyServiceName());
+  static const char kHomeProvider[] = "The GSM Home Provider";
+  cellular_->home_provider_.SetName(kHomeProvider);
+  EXPECT_EQ(kTestOperator, capability_->CreateFriendlyServiceName());
+  capability_->registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
+  EXPECT_EQ(kHomeProvider, capability_->CreateFriendlyServiceName());
+}
+
 }  // namespace shill

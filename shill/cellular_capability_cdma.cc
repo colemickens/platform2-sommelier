@@ -1,10 +1,11 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "shill/cellular_capability_cdma.h"
 
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
 
@@ -15,6 +16,9 @@
 using std::string;
 
 namespace shill {
+
+// static
+unsigned int CellularCapabilityCDMA::friendly_service_name_id_ = 0;
 
 const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 
@@ -211,6 +215,14 @@ void CellularCapabilityCDMA::GetRegistrationState() {
   VLOG(2) << "CDMA Registration: 1x(" << registration_state_1x_
           << ") EVDO(" << registration_state_evdo_ << ")";
   cellular()->HandleNewRegistrationState();
+}
+
+string CellularCapabilityCDMA::CreateFriendlyServiceName() {
+  VLOG(2) << __func__;
+  if (!cellular()->carrier().empty()) {
+    return cellular()->carrier();
+  }
+  return base::StringPrintf("CDMANetwork%u", friendly_service_name_id_++);
 }
 
 void CellularCapabilityCDMA::UpdateServingOperator() {

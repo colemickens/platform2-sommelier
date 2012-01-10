@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -28,6 +28,7 @@ class CellularCapabilityCDMA : public CellularCapability,
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void Activate(const std::string &carrier, Error *error);
   virtual bool IsRegistered();
+  virtual std::string CreateFriendlyServiceName();
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void GetSignalQuality();
@@ -45,6 +46,7 @@ class CellularCapabilityCDMA : public CellularCapability,
 
  private:
   friend class CellularCapabilityCDMATest;
+  FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityCDMATest, GetActivationStateString);
   FRIEND_TEST(CellularCapabilityCDMATest, GetActivationErrorString);
   FRIEND_TEST(CellularTest, CreateService);
@@ -80,6 +82,8 @@ class CellularCapabilityCDMA : public CellularCapability,
   uint16 prl_version_;
   std::string payment_url_;
   std::string usage_url_;
+
+  static unsigned int friendly_service_name_id_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityCDMA);
 };
