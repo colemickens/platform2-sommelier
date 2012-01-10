@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -41,13 +41,17 @@ using ::testing::Test;
 namespace shill {
 
 namespace {
-const char kBadHeader[] = "BLAH\r\n";
+const char kBadHeaderMissingURL[] = "BLAH\r\n";
+const char kBadHeaderMissingVersion[] = "BLAH http://hostname\r\n";
 const char kBadHostnameLine[] = "GET HTTP/1.1 http://hostname\r\n";
 const char kBasicGetHeader[] = "GET / HTTP/1.1\r\n";
 const char kBasicGetHeaderWithURL[] =
     "GET http://www.chromium.org/ HTTP/1.1\r\n";
 const char kBasicGetHeaderWithURLNoTrailingSlash[] =
     "GET http://www.chromium.org HTTP/1.1\r\n";
+const char kConnectQuery[] =
+    "CONNECT 10.10.10.10:443 HTTP/1.1\r\n"
+    "Host: 10.10.10.10:443\r\n\r\n";
 const char kQueryTemplate[] = "GET %s HTTP/%s\r\n%s"
     "User-Agent: Mozilla/5.0 (X11; CrOS i686 1299.0.2011) "
     "AppleWebKit/535.8 (KHTML, like Gecko) Chrome/17.0.936.0 Safari/535.8\r\n"
@@ -75,6 +79,7 @@ const int kProxyFD = 10203;
 const int kServerFD = 10204;
 const int kClientFD = 10205;
 const int kServerPort = 40506;
+const int kConnectPort = 443;
 }  // namespace {}
 
 MATCHER_P(IsIPAddress, address, "") {
@@ -243,13 +248,16 @@ class HTTPProxyTest : public Test {
   void ExpectTransactionTimeout() {
     ExpectTimeout(HTTPProxy::kTransactionTimeoutSeconds);
   }
+  void ExpectInClientResponse(const string &response_data) {
+    string server_data(reinterpret_cast<char *>(proxy_.server_data_.GetData()),
+                       proxy_.server_data_.GetLength());
+    EXPECT_NE(string::npos, server_data.find(response_data));
+  }
   void ExpectClientError(int code, const string &error) {
     EXPECT_EQ(HTTPProxy::kStateFlushResponse, GetProxyState());
     string status_line = StringPrintf("HTTP/1.1 %d ERROR", code);
-    string server_data(reinterpret_cast<char *>(proxy_.server_data_.GetData()),
-                       proxy_.server_data_.GetLength());
-    EXPECT_NE(string::npos, server_data.find(status_line));
-    EXPECT_NE(string::npos, server_data.find(error));
+    ExpectInClientResponse(status_line);
+    ExpectInClientResponse(error);
   }
   void ExpectClientInternalError() {
     ExpectClientError(500, HTTPProxy::kInternalErrorMsg);
@@ -281,12 +289,15 @@ class HTTPProxyTest : public Test {
         .WillOnce(DoAll(Invoke(this, &HTTPProxyTest::InvokeSyncConnect),
                         Return(true)));
   }
-  void ExpectClientResult() {
+  void ExpectClientData() {
     EXPECT_CALL(dispatcher(),
                 CreateReadyHandler(kClientFD,
                                    IOHandler::kModeOutput,
                                    proxy_.write_client_callback_.get()))
         .WillOnce(ReturnNew<IOHandler>());
+  }
+  void ExpectClientResult() {
+    ExpectClientData();
     ExpectInputTimeout();
   }
   void ExpectServerInput() {
@@ -527,10 +538,17 @@ TEST_F(HTTPProxyTest, SendClientError) {
   EXPECT_EQ(HTTPProxy::kStateWaitConnection, GetProxyState());
 }
 
-TEST_F(HTTPProxyTest, ReadBadFirstLine) {
+TEST_F(HTTPProxyTest, ReadMissingURL) {
   SetupClient();
   ExpectClientResult();
-  ReadFromClient(kBadHeader);
+  ReadFromClient(kBadHeaderMissingURL);
+  ExpectClientError(501, "Server could not parse HTTP method");
+}
+
+TEST_F(HTTPProxyTest, ReadMissingVersion) {
+  SetupClient();
+  ExpectClientResult();
+  ReadFromClient(kBadHeaderMissingVersion);
   ExpectClientError(501, "Server only accepts HTTP/1.x requests");
 }
 
@@ -678,6 +696,18 @@ TEST_F(HTTPProxyTest, ConnectIPAddresss) {
 
 TEST_F(HTTPProxyTest, ConnectAsyncConnectSuccess) {
   SetupConnectComplete();
+}
+
+TEST_F(HTTPProxyTest, HTTPConnectMethod) {
+  SetupClient();
+  ExpectAsyncConnect(kServerAddress, kConnectPort, true);
+  ExpectConnectTimeout();
+  ExpectRouteRequest();
+  ReadFromClient(kConnectQuery);
+  ExpectRepeatedInputTimeout();
+  ExpectClientData();
+  OnConnectCompletion(true, kServerFD);
+  ExpectInClientResponse("HTTP/1.1 200 OK\r\n\r\n");
 }
 
 TEST_F(HTTPProxyTest, TunnelData) {

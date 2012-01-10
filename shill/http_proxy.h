@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -83,6 +83,8 @@ class HTTPProxy {
   // Timeout for whole transaction.
   static const int kTransactionTimeoutSeconds;
 
+  static const char kHTTPMethodConnect[];
+  static const char kHTTPMethodTerminator[];
   static const char kHTTPURLDelimiters[];
   static const char kHTTPURLPrefix[];
   static const char kHTTPVersionPrefix[];
@@ -97,9 +99,13 @@ class HTTPProxy {
   bool ProcessLastHeaderLine();
   bool ReadClientHeaders(InputData *data);
   bool ReadClientHostname(std::string *header);
+  bool ReadClientHTTPMethod(std::string *header);
   bool ReadClientHTTPVersion(std::string *header);
   void ReadFromClient(InputData *data);
   void ReadFromServer(InputData *data);
+  void SetClientResponse(int code, const std::string &type,
+                         const std::string &content_type,
+                         const std::string &message);
   void SendClientError(int code, const std::string &error);
   void StartIdleTimeout();
   void StartReceive();
@@ -131,6 +137,7 @@ class HTTPProxy {
 
   // State held while proxy is started and a transaction is active.
   int client_socket_;
+  std::string client_method_;
   std::string client_version_;
   int server_port_;
   int server_socket_;

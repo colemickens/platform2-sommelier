@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -42,6 +42,8 @@ const size_t HTTPProxy::kMaxHeaderCount = 128;
 const size_t HTTPProxy::kMaxHeaderSize = 2048;
 const int HTTPProxy::kTransactionTimeoutSeconds = 600;
 
+const char HTTPProxy::kHTTPMethodConnect[] = "connect";
+const char HTTPProxy::kHTTPMethodTerminator[] = " ";
 const char HTTPProxy::kHTTPURLDelimiters[] = " /#?";
 const char HTTPProxy::kHTTPURLPrefix[] = "http://";
 const char HTTPProxy::kHTTPVersionPrefix[] = " HTTP/1";
@@ -207,6 +209,14 @@ void HTTPProxy::OnConnectCompletion(bool success, int fd) {
   }
   server_socket_ = fd;
   state_ = kStateTunnelData;
+
+  // If this was a "CONNECT" request, notify the client that the connection
+  // has been established by sending an "OK" response.
+  if (LowerCaseEqualsASCII(client_method_, kHTTPMethodConnect)) {
+    SetClientResponse(200, "OK", "", "");
+    StartReceive();
+  }
+
   StartTransmit();
 }
 
@@ -245,11 +255,13 @@ bool HTTPProxy::ParseClientRequest() {
 
   // Assemble the request as it will be sent to the server.
   client_data_.Clear();
-  for (vector<string>::iterator it = client_headers_.begin();
-       it != client_headers_.end(); ++it) {
-    client_data_.Append(ByteString(*it + "\r\n", false));
+  if (!LowerCaseEqualsASCII(client_method_, kHTTPMethodConnect)) {
+    for (vector<string>::iterator it = client_headers_.begin();
+         it != client_headers_.end(); ++it) {
+      client_data_.Append(ByteString(*it + "\r\n", false));
+    }
+    client_data_.Append(ByteString(string("\r\n"), false));
   }
-  client_data_.Append(ByteString(string("\r\n"), false));
 
   TrimWhitespaceASCII(host, TRIM_ALL, &host);
   if (host.empty()) {
@@ -314,7 +326,9 @@ bool HTTPProxy::ProcessLastHeaderLine() {
 
   // Is this is the first header line?
   if (client_headers_.size() == 1) {
-    if (!ReadClientHTTPVersion(header) || !ReadClientHostname(header)) {
+    if (!ReadClientHTTPMethod(header) ||
+        !ReadClientHTTPVersion(header) ||
+        !ReadClientHostname(header)) {
       return false;
     }
   }
@@ -409,6 +423,17 @@ bool HTTPProxy::ReadClientHostname(string *header) {
   return true;
 }
 
+bool HTTPProxy::ReadClientHTTPMethod(string *header) {
+  size_t method_end = header->find(kHTTPMethodTerminator);
+  if (method_end == string::npos || method_end == 0) {
+    LOG(ERROR) << "Could not parse HTTP method.  Line was: " << *header;
+    SendClientError(501, "Server could not parse HTTP method");
+    return false;
+  }
+  client_method_ = header->substr(0, method_end);
+  return true;
+}
+
 // Extract the HTTP version number from the first line of the client headers.
 // Returns true if found.
 bool HTTPProxy::ReadClientHTTPVersion(string *header) {
@@ -481,13 +506,25 @@ void HTTPProxy::ReadFromServer(InputData *data) {
 void HTTPProxy::SendClientError(int code, const string &error) {
   VLOG(3) << "In " << __func__;
   LOG(ERROR) << "Sending error " << error;
-
-  string error_msg = StringPrintf("HTTP/1.1 %d ERROR\r\n"
-                                  "Content-Type: text/plain\r\n\r\n"
-                                  "%s", code, error.c_str());
-  server_data_ = ByteString(error_msg, false);
+  SetClientResponse(code, "ERROR", "text/plain", error);
   state_ = kStateFlushResponse;
   StartTransmit();
+}
+
+// Create an HTTP response message to be sent to the client.
+void HTTPProxy::SetClientResponse(int code, const string &type,
+                                  const string &content_type,
+                                  const string &message) {
+  string content_line;
+  if (!message.empty() && !content_type.empty()) {
+    content_line = StringPrintf("Content-Type: %s\r\n", content_type.c_str());
+  }
+  string response = StringPrintf("HTTP/1.1 %d %s\r\n"
+                                 "%s\r\n"
+                                 "%s", code, type.c_str(),
+                                 content_line.c_str(),
+                                 message.c_str());
+  server_data_ = ByteString(response, false);
 }
 
 // Start a timeout for "the next event".  This timeout augments the overall
@@ -587,6 +624,7 @@ void HTTPProxy::StopClient() {
     client_socket_ = -1;
   }
   client_headers_.clear();
+  client_method_.clear();
   client_version_.clear();
   server_port_ = kDefaultServerPort;
   write_server_handler_.reset();
