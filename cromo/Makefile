@@ -45,13 +45,20 @@ XMLFILES := mm-mobile-error.xml \
             org.freedesktop.ModemManager.Modem.Gsm.SMS.xml \
             org.freedesktop.ModemManager.Modem.Gsm.Ussd.xml \
             org.freedesktop.ModemManager.Modem.Simple.xml \
-            org.freedesktop.ModemManager.xml \
-            org.freedesktop.DBus.Properties.xml
+            org.freedesktop.ModemManager.xml
+
+# Interfaces we pull from our own source tree instead of the system. The
+# ModemManager interface uses a method (MmPropertiesChanged) that doesn't appear
+# on the real org.freedesktop.DBus.Properties, so use a hacked local copy of
+# that interface instead of the system one.
+# TODO(ellyjones): Undo this hack, probably by making modemmanager and cromo use
+# PropertiesChanged instead of MmPropertiesChanged.
+LOCALXMLFILES := org.freedesktop.DBus.Properties.xml
 
 XMLPREFIX := \\(org.freedesktop.ModemManager\\|org.freedesktop.DBus\\)
 EMPTY := manager
 
-GLUE_HEADERS := $(foreach XML,$(XMLFILES), \
+GLUE_HEADERS := $(foreach XML,$(XMLFILES) $(LOCALXMLFILES), \
                   $(shell ./iface2header "$(XMLPREFIX)" \
                                          $(EMPTY) \
                                          $(XML)))
@@ -98,12 +105,20 @@ all : $(TARGETS)
 %unittest :
 	$(CXX) $^ $(LDLIBS_UNITTEST) -o $@
 
-glue: $(patsubst %,$(DBUSIFACEDIR)/%,$(XMLFILES))
+system-glue: $(patsubst %,$(DBUSIFACEDIR)/%,$(XMLFILES))
 	@for xml in $(XMLFILES); do \
 		hdr=$$(./iface2header "$(XMLPREFIX)" $(EMPTY) $$xml); \
 		echo "xml2cpp $$xml -> $$hdr"; \
 		$(DBUSXX_XML2CPP) $(DBUSIFACEDIR)/$$xml --adaptor=$$hdr; \
 	done
+local-glue: $(patsubst %,local-xml/%,$(LOCALXMLFILES))
+	@for xml in $(LOCALXMLFILES); do \
+		hdr=$$(./iface2header "$(XMLPREFIX)" $(EMPTY) $$xml); \
+		echo "xml2cpp[l] $$xml -> $$hdr"; \
+		$(DBUSXX_XML2CPP) local-xml/$$xml --adaptor=$$hdr; \
+	done
+
+glue: system-glue local-glue
 
 $(OBJS) cromo_server_unittest.o: glue
 $(dummy_OBJS): glue
