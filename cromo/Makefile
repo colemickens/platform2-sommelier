@@ -2,7 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-NM ?= nm
 PKG_CONFIG ?= pkg-config
 PC_DEPS = dbus-c++-1 gobject-2.0 gthread-2.0 libchromeos
 INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
@@ -11,10 +10,9 @@ CXXFLAGS += -Wall -Werror -g -O0 $($(*F)_CXXFLAGS)
 LDLIBS = $(shell $(PKG_CONFIG) --libs $(PC_DEPS)) -lgflags -lglog -ldl -lmetrics -lminijail
 LDLIBS_UNITTEST = $(LDLIBS) -lgtest
 
-LDFLAGS_CROMO = -Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=$(SYMFILE)
+LDFLAGS_CROMO = -Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=cromo.ver
 
 DBUSXX_XML2CPP = dbusxx-xml2cpp
-SYMFILE=symfile
 
 CROMO = cromo
 
@@ -122,7 +120,7 @@ glue: system-glue local-glue
 $(OBJS) cromo_server_unittest.o: glue
 $(dummy_OBJS): glue
 
-$(CROMO): $(OBJS) $(SYMFILE) $(LIBCROMO)
+$(CROMO): $(OBJS) $(LIBCROMO) cromo.ver
 	$(CXX) $(LDFLAGS_CROMO) $(OBJS) $(LDLIBS) -o $@
 
 $(LIBCROMO): cromo_server.o hooktable.o utilities.o modem_handler.o \
@@ -136,25 +134,6 @@ sms_cache_unittest: sms_cache_unittest.o $(LIBCROMO)
 
 dummy_modem.so: $(dummy_OBJS)
 	$(CXX) -shared -o $@ $^
-
-# Export symbols used by plugins
-KEEP_SYMS:= "_ZN11CromoServer \
-    _ZN9HookTable \
-    _ZN12ModemHandler \
-    _ZN9utilities \
-    _ZN18SmsMessageFragment14CreateFragment \
-    _ZN10SmsMessage11is_complete \
-    _ZN8SmsCache"
-
-$(SYMFILE): cromo_server.o hooktable.o modem_handler.o $(LIBCROMO)
-	@echo '{' >$@
-	@for sym in "$(KEEP_SYMS)"; do \
-	  $(NM) --defined-only $^ | grep "T $${sym}" \
-            | awk '{print "  "$$3";"}' >>$@ ; \
-	 done
-	@echo '};' >>$@
-	@echo Exported symbols
-	@cat $@
 
 EXPORT_HEADERS=$(GLUE_HEADERS) modem_handler.h cromo_server.h plugin.h \
                                hooktable.h carrier.h utilities.h modem.h \
