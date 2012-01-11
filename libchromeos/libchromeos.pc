@@ -1,0 +1,5 @@
+Name: libchromeos
+Description: chromeos base library
+Version: 0.0.0
+Requires: dbus-c++-1
+Libs: -lchromeos
