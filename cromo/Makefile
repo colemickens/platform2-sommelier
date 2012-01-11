@@ -4,12 +4,11 @@
 
 PKG_CONFIG ?= pkg-config
 INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags gobject-2.0 \
-	       dbus-1 dbus-glib-1 dbus-c++-1)
+	       dbus-c++-1 libchromeos)
 CPPFLAGS ?= $(INCLUDE_DIRS) $($(*F)_CPPFLAGS)
 CXXFLAGS += -Wall -Werror -g -O0 $($(*F)_CXXFLAGS)
 LDLIBS = $(shell $(PKG_CONFIG) --libs gobject-2.0 gthread-2.0 \
-	 dbus-1 dbus-glib-1 dbus-c++-1) -lgflags -lglog -ldl -lchromeos \
-	 -lmetrics -lminijail
+	 dbus-c++-1 libchromeos) -lgflags -lglog -ldl -lmetrics -lminijail
 LDLIBS_UNITTEST = $(LDLIBS) -lgtest
 
 LDFLAGS_CROMO = -Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=$(SYMFILE)
@@ -150,7 +149,7 @@ KEEP_SYMS:= "_ZN11CromoServer \
 $(SYMFILE): cromo_server.o hooktable.o modem_handler.o $(LIBCROMO)
 	@echo '{' >$@
 	@for sym in "$(KEEP_SYMS)"; do \
-	  nm --defined-only $^ | grep "T $${sym}" \
+	  $(NM) --defined-only $^ | grep "T $${sym}" \
             | awk '{print "  "$$3";"}' >>$@ ; \
 	 done
 	@echo '};' >>$@
