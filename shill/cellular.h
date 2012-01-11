@@ -209,6 +209,7 @@ class Cellular : public Device,
   void HandleNewRegistrationStateTask();
 
   void CreateService();
+  void DestroyService();
 
   // Signal callbacks inherited from ModemProxyDelegate.
   virtual void OnModemStateChanged(uint32 old_state,

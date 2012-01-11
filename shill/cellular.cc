@@ -170,8 +170,7 @@ void Cellular::Stop() {
   capability_->OnDeviceStopped();
   proxy_.reset();
   simple_proxy_.reset();
-  manager()->DeregisterService(service_);
-  service_ = NULL;  // Breaks a reference cycle.
+  DestroyService();
   SetState(kStateDisabled);
   Device::Stop();
 }
@@ -286,10 +285,7 @@ void Cellular::HandleNewRegistrationState() {
 void Cellular::HandleNewRegistrationStateTask() {
   VLOG(2) << __func__;
   if (!capability_->IsRegistered()) {
-    if (state_ == kStateLinked) {
-      manager()->DeregisterService(service_);
-    }
-    service_ = NULL;
+    DestroyService();
     if (state_ == kStateLinked ||
         state_ == kStateConnected ||
         state_ == kStateRegistered) {
@@ -326,6 +322,16 @@ void Cellular::CreateService() {
   service_ =
       new CellularService(control_interface(), dispatcher(), manager(), this);
   capability_->OnServiceCreated();
+}
+
+void Cellular::DestroyService() {
+  VLOG(2) << __func__;
+  DestroyIPConfig();
+  if (service_) {
+    manager()->DeregisterService(service_);
+    service_ = NULL;
+  }
+  SelectService(NULL);
 }
 
 bool Cellular::TechnologyIs(const Technology::Identifier type) const {
@@ -393,9 +399,7 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     }
   } else if ((flags & IFF_UP) == 0 && state_ == kStateLinked) {
     SetState(kStateConnected);
-    manager()->DeregisterService(service_);
-    SelectService(NULL);
-    DestroyIPConfig();
+    DestroyService();
   }
 }
 
