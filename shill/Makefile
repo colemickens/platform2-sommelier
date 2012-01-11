@@ -74,6 +74,7 @@ DBUS_BINDINGS = $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
 SHILL_OBJS = \
 	async_connection.o \
 	byte_string.o \
+	callback_list.o \
 	cellular.o \
 	cellular_capability.o \
 	cellular_capability_cdma.o \
@@ -157,6 +158,7 @@ TEST_BIN = shill_unittest
 TEST_OBJS = \
 	async_connection_unittest.o \
 	byte_string_unittest.o \
+	callback_list_unittest.o \
 	cellular_capability_cdma_unittest.o \
 	cellular_capability_gsm_unittest.o \
 	cellular_service_unittest.o \
@@ -183,6 +185,7 @@ TEST_OBJS = \
 	mock_adaptors.o \
 	mock_ares.o \
 	mock_async_connection.o \
+	mock_callback.o \
 	mock_connection.o \
 	mock_control.o \
 	mock_dbus_properties_proxy.o \
