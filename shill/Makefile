@@ -19,9 +19,9 @@ BASE_LIB_DIRS =
 
 LIBS = $(BASE_LIBS)
 INCLUDE_DIRS = $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags dbus-c++-1 \
-	glib-2.0 gdk-2.0 gtk+-2.0)
+	glib-2.0 gdk-2.0 gtk+-2.0 libchromeos)
 LIB_DIRS = $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs dbus-c++-1 glib-2.0 \
-	gdk-2.0 gtk+-2.0)
+	gdk-2.0 gtk+-2.0 libchromeos)
 
 TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 TEST_LIB_DIRS = $(LIB_DIRS)
