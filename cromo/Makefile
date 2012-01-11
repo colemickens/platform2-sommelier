@@ -4,13 +4,11 @@
 
 NM ?= nm
 PKG_CONFIG ?= pkg-config
-INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags gobject-2.0 \
-	       dbus-1 dbus-glib-1 dbus-c++-1)
+PC_DEPS = dbus-c++-1 gobject-2.0 gthread-2.0 libchromeos
+INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 CPPFLAGS ?= $(INCLUDE_DIRS) $($(*F)_CPPFLAGS)
 CXXFLAGS += -Wall -Werror -g -O0 $($(*F)_CXXFLAGS)
-LDLIBS = $(shell $(PKG_CONFIG) --libs gobject-2.0 gthread-2.0 \
-	 dbus-1 dbus-glib-1 dbus-c++-1) -lgflags -lglog -ldl -lchromeos \
-	 -lmetrics -lminijail
+LDLIBS = $(shell $(PKG_CONFIG) --libs $(PC_DEPS)) -lgflags -lglog -ldl -lmetrics -lminijail
 LDLIBS_UNITTEST = $(LDLIBS) -lgtest
 
 LDFLAGS_CROMO = -Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=$(SYMFILE)
