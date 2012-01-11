@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -61,15 +61,16 @@ class CellularCapability {
 
   virtual void GetRegistrationState() = 0;
 
-  // PIN management. The default implementation fails by populating |error|.
-  virtual void RequirePIN(const std::string &pin, bool require, Error *error);
+  // PIN management. The default implementation fails by returning an error.
+  virtual void RequirePIN(
+      const std::string &pin, bool require, ReturnerInterface *returner);
   virtual void EnterPIN(const std::string &pin, ReturnerInterface *returner);
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
-                          Error *error);
+                          ReturnerInterface *returner);
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
-                         Error *error);
+                         ReturnerInterface *returner);
 
   // Network scanning. The default implementation fails by populating |error|.
   virtual void Scan(Error *error);

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -239,8 +239,10 @@ void Cellular::RegisterOnNetwork(const string &network_id, Error *error) {
   capability_->RegisterOnNetwork(network_id, error);
 }
 
-void Cellular::RequirePIN(const string &pin, bool require, Error *error) {
-  capability_->RequirePIN(pin, require, error);
+void Cellular::RequirePIN(
+    const string &pin, bool require, ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
+  capability_->RequirePIN(pin, require, returner);
 }
 
 void Cellular::EnterPIN(const string &pin, ReturnerInterface *returner) {
@@ -248,14 +250,17 @@ void Cellular::EnterPIN(const string &pin, ReturnerInterface *returner) {
   capability_->EnterPIN(pin, returner);
 }
 
-void Cellular::UnblockPIN(
-    const string &unblock_code, const string &pin, Error *error) {
-  capability_->UnblockPIN(unblock_code, pin, error);
+void Cellular::UnblockPIN(const string &unblock_code,
+                          const string &pin,
+                          ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
+  capability_->UnblockPIN(unblock_code, pin, returner);
 }
 
 void Cellular::ChangePIN(
-    const string &old_pin, const string &new_pin, Error *error) {
-  capability_->ChangePIN(old_pin, new_pin, error);
+    const string &old_pin, const string &new_pin, ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
+  capability_->ChangePIN(old_pin, new_pin, returner);
 }
 
 void Cellular::Scan(Error *error) {

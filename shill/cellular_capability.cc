@@ -35,11 +35,12 @@ void CellularCapability::RegisterOnNetwork(
                         "Network registration not supported.");
 }
 
-void CellularCapability::RequirePIN(const string &/*pin*/,
-                                    bool /*require*/,
-                                    Error *error) {
+void CellularCapability::RequirePIN(
+    const string &/*pin*/, bool /*require*/, ReturnerInterface *returner) {
+  Error error;
   Error::PopulateAndLog(
-      error, Error::kNotSupported, "RequirePIN not supported.");
+      &error, Error::kNotSupported, "RequirePIN not supported.");
+  returner->ReturnError(error);
 }
 
 void CellularCapability::EnterPIN(const string &/*pin*/,
@@ -52,16 +53,20 @@ void CellularCapability::EnterPIN(const string &/*pin*/,
 
 void CellularCapability::UnblockPIN(const string &/*unblock_code*/,
                                     const string &/*pin*/,
-                                    Error *error) {
+                                    ReturnerInterface *returner) {
+  Error error;
   Error::PopulateAndLog(
-      error, Error::kNotSupported, "UnblockPIN not supported.");
+      &error, Error::kNotSupported, "UnblockPIN not supported.");
+  returner->ReturnError(error);
 }
 
 void CellularCapability::ChangePIN(const string &/*old_pin*/,
                                    const string &/*new_pin*/,
-                                   Error *error) {
+                                   ReturnerInterface *returner) {
+  Error error;
   Error::PopulateAndLog(
-      error, Error::kNotSupported, "ChangePIN not supported.");
+      &error, Error::kNotSupported, "ChangePIN not supported.");
+  returner->ReturnError(error);
 }
 
 void CellularCapability::Scan(Error *error) {

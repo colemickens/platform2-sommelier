@@ -180,31 +180,41 @@ void Device::RegisterOnNetwork(const std::string &/*network_id*/,
                         "Device doesn't support network registration.");
 }
 
-void Device::RequirePIN(const string &/*pin*/, bool /*require*/, Error *error) {
-  Error::PopulateAndLog(error, Error::kNotSupported,
-                        "Device doesn't support RequirePIN.");
+void Device::RequirePIN(
+    const string &/*pin*/, bool /*require*/, ReturnerInterface *returner) {
+  VLOG(2) << __func__;
+  Error error;
+  Error::PopulateAndLog(
+      &error, Error::kNotSupported, "Device doesn't support RequirePIN.");
+  returner->ReturnError(error);
 }
 
 void Device::EnterPIN(const string &/*pin*/, ReturnerInterface *returner) {
   VLOG(2) << __func__;
   Error error;
-  Error::PopulateAndLog(&error, Error::kNotSupported,
-                        "Device doesn't support EnterPIN.");
+  Error::PopulateAndLog(
+      &error, Error::kNotSupported, "Device doesn't support EnterPIN.");
   returner->ReturnError(error);
 }
 
 void Device::UnblockPIN(const string &/*unblock_code*/,
                         const string &/*pin*/,
-                        Error *error) {
-  Error::PopulateAndLog(error, Error::kNotSupported,
-                        "Device doesn't support UnblockPIN.");
+                        ReturnerInterface *returner) {
+  VLOG(2) << __func__;
+  Error error;
+  Error::PopulateAndLog(
+      &error, Error::kNotSupported, "Device doesn't support UnblockPIN.");
+  returner->ReturnError(error);
 }
 
 void Device::ChangePIN(const string &/*old_pin*/,
                        const string &/*new_pin*/,
-                       Error *error) {
-  Error::PopulateAndLog(error, Error::kNotSupported,
-                        "Device doesn't support ChangePIN.");
+                       ReturnerInterface *returner) {
+  VLOG(2) << __func__;
+  Error error;
+  Error::PopulateAndLog(
+      &error, Error::kNotSupported, "Device doesn't support ChangePIN.");
+  returner->ReturnError(error);
 }
 
 void Device::DisableIPv6() {

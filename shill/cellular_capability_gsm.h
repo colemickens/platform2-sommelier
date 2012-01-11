@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -40,14 +40,15 @@ class CellularCapabilityGSM : public CellularCapability,
   virtual void Register();
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
   virtual bool IsRegistered();
-  virtual void RequirePIN(const std::string &pin, bool require, Error *error);
+  virtual void RequirePIN(
+      const std::string &pin, bool require, ReturnerInterface *returner);
   virtual void EnterPIN(const std::string &pin, ReturnerInterface *returner);
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
-                          Error *error);
+                          ReturnerInterface *returner);
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
-                         Error *error);
+                         ReturnerInterface *returner);
   virtual void Scan(Error *error);
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
@@ -94,10 +95,15 @@ class CellularCapabilityGSM : public CellularCapability,
   static const char kPropertyAccessTechnology[];
 
   void RegisterOnNetworkTask(const std::string &network_id);
-  void RequirePINTask(const std::string &pin, bool require);
+  void RequirePINTask(
+      const std::string &pin, bool require, ReturnerInterface *returner);
   void EnterPINTask(const std::string &pin, ReturnerInterface *returner);
-  void UnblockPINTask(const std::string &unblock_code, const std::string &pin);
-  void ChangePINTask(const std::string &old_pin, const std::string &new_pin);
+  void UnblockPINTask(const std::string &unblock_code,
+                      const std::string &pin,
+                      ReturnerInterface *returner);
+  void ChangePINTask(const std::string &old_pin,
+                     const std::string &new_pin,
+                     ReturnerInterface *returner);
   void ScanTask();
 
   void SetAccessTechnology(uint32 access_technology);

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -321,18 +321,26 @@ void CellularCapabilityGSM::RegisterOnNetworkTask(const string &network_id) {
 }
 
 void CellularCapabilityGSM::RequirePIN(
-    const string &pin, bool require, Error */*error*/) {
-  VLOG(2) << __func__ << "(" << pin << ", " << require << ")";
+    const string &pin, bool require, ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
   // Defer because we may be in a dbus-c++ callback.
   dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(
-          &CellularCapabilityGSM::RequirePINTask, pin, require));
+          &CellularCapabilityGSM::RequirePINTask, pin, require, returner));
 }
 
-void CellularCapabilityGSM::RequirePINTask(const string &pin, bool require) {
-  VLOG(2) << __func__ << "(" << pin << ", " << require << ")";
+void CellularCapabilityGSM::RequirePINTask(
+    const string &pin, bool require, ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  card_proxy_->EnablePIN(pin, require);
+  try {
+    card_proxy_->EnablePIN(pin, require);
+  } catch (DBus::Error e) {
+    LOG(ERROR) << "EnablePIN failed: " << e.name() << "/" << e.message();
+    returner->ReturnError(Error(Error::kInternalError));
+    return;
+  }
+  returner->Return();
 }
 
 void CellularCapabilityGSM::EnterPIN(const string &pin,
@@ -358,36 +366,52 @@ void CellularCapabilityGSM::EnterPINTask(const string &pin,
   returner->Return();
 }
 
-void CellularCapabilityGSM::UnblockPIN(
-    const string &unblock_code, const string &pin, Error */*error*/) {
-  VLOG(2) << __func__ << "(" << unblock_code << ", " << pin << ")";
+void CellularCapabilityGSM::UnblockPIN(const string &unblock_code,
+                                       const string &pin,
+                                       ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
   // Defer because we may be in a dbus-c++ callback.
   dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(
-          &CellularCapabilityGSM::UnblockPINTask, unblock_code, pin));
+          &CellularCapabilityGSM::UnblockPINTask, unblock_code, pin, returner));
 }
 
-void CellularCapabilityGSM::UnblockPINTask(
-    const string &unblock_code, const string &pin) {
-  VLOG(2) << __func__ << "(" << unblock_code << ", " << pin << ")";
+void CellularCapabilityGSM::UnblockPINTask(const string &unblock_code,
+                                           const string &pin,
+                                           ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  card_proxy_->SendPUK(unblock_code, pin);
+  try {
+    card_proxy_->SendPUK(unblock_code, pin);
+  } catch (DBus::Error e) {
+    LOG(ERROR) << "SendPUK failed: " << e.name() << "/" << e.message();
+    returner->ReturnError(Error(Error::kInternalError));
+    return;
+  }
+  returner->Return();
 }
 
 void CellularCapabilityGSM::ChangePIN(
-    const string &old_pin, const string &new_pin, Error */*error*/) {
-  VLOG(2) << __func__ << "(" << old_pin << ", " << new_pin << ")";
+    const string &old_pin, const string &new_pin, ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
   // Defer because we may be in a dbus-c++ callback.
   dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(
-          &CellularCapabilityGSM::ChangePINTask, old_pin, new_pin));
+          &CellularCapabilityGSM::ChangePINTask, old_pin, new_pin, returner));
 }
 
 void CellularCapabilityGSM::ChangePINTask(
-    const string &old_pin, const string &new_pin) {
-  VLOG(2) << __func__ << "(" << old_pin << ", " << new_pin << ")";
+    const string &old_pin, const string &new_pin, ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  card_proxy_->ChangePIN(old_pin, new_pin);
+  try {
+    card_proxy_->ChangePIN(old_pin, new_pin);
+  } catch (DBus::Error e) {
+    LOG(ERROR) << "ChangePIN failed: " << e.name() << "/" << e.message();
+    returner->ReturnError(Error(Error::kInternalError));
+    return;
+  }
+  returner->Return();
 }
 
 void CellularCapabilityGSM::Scan(Error */*error*/) {

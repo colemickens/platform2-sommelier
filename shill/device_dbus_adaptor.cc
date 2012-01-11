@@ -99,35 +99,35 @@ void DeviceDBusAdaptor::Register(const string &network_id,
   e.ToDBusError(&error);
 }
 
-void DeviceDBusAdaptor::RequirePin(const string &pin,
-                                   const bool &require,
-                                   ::DBus::Error &error) {
-  Error e;
-  device_->RequirePIN(pin, require, &e);
-  e.ToDBusError(&error);
+void DeviceDBusAdaptor::RequirePin(
+    const string &pin, const bool &require, DBus::Error &error) {
+  VLOG(2) << __func__;
+  Returner *returner = Returner::Create(this);
+  device_->RequirePIN(pin, require, returner);
+  returner->DelayOrReturn(&error);
 }
 
-void DeviceDBusAdaptor::EnterPin(const string &pin, ::DBus::Error &error) {
+void DeviceDBusAdaptor::EnterPin(const string &pin, DBus::Error &error) {
   VLOG(2) << __func__;
   Returner *returner = Returner::Create(this);
   device_->EnterPIN(pin, returner);
   returner->DelayOrReturn(&error);
 }
 
-void DeviceDBusAdaptor::UnblockPin(const string &unblock_code,
-                                   const string &pin,
-                                   ::DBus::Error &error) {
-  Error e;
-  device_->UnblockPIN(unblock_code, pin, &e);
-  e.ToDBusError(&error);
+void DeviceDBusAdaptor::UnblockPin(
+    const string &unblock_code, const string &pin, DBus::Error &error) {
+  VLOG(2) << __func__;
+  Returner *returner = Returner::Create(this);
+  device_->UnblockPIN(unblock_code, pin, returner);
+  returner->DelayOrReturn(&error);
 }
 
-void DeviceDBusAdaptor::ChangePin(const string &old_pin,
-                                  const string &new_pin,
-                                  ::DBus::Error &error) {
-  Error e;
-  device_->ChangePIN(old_pin, new_pin, &e);
-  e.ToDBusError(&error);
+void DeviceDBusAdaptor::ChangePin(
+    const string &old_pin, const string &new_pin, DBus::Error &error) {
+  VLOG(2) << __func__;
+  Returner *returner = Returner::Create(this);
+  device_->ChangePIN(old_pin, new_pin, returner);
+  returner->DelayOrReturn(&error);
 }
 
 }  // namespace shill

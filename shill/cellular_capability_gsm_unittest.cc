@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -176,16 +176,16 @@ TEST_F(CellularCapabilityGSMTest, IsRegistered) {
 }
 
 TEST_F(CellularCapabilityGSMTest, RequirePIN) {
-  Error error;
   EXPECT_CALL(*card_proxy_, EnablePIN(kPIN, true));
-  capability_->RequirePIN(kPIN, true, &error);
-  EXPECT_TRUE(error.IsSuccess());
+  MockReturner returner;
+  EXPECT_CALL(returner, Return());
+  EXPECT_CALL(returner, ReturnError(_)).Times(0);
+  capability_->RequirePIN(kPIN, true, &returner);
   SetCardProxy();
   dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(CellularCapabilityGSMTest, EnterPIN) {
-  Error error;
   EXPECT_CALL(*card_proxy_, SendPIN(kPIN));
   MockReturner returner;
   EXPECT_CALL(returner, Return());
@@ -196,20 +196,22 @@ TEST_F(CellularCapabilityGSMTest, EnterPIN) {
 }
 
 TEST_F(CellularCapabilityGSMTest, UnblockPIN) {
-  Error error;
   EXPECT_CALL(*card_proxy_, SendPUK(kPUK, kPIN));
-  capability_->UnblockPIN(kPUK, kPIN, &error);
-  EXPECT_TRUE(error.IsSuccess());
+  MockReturner returner;
+  EXPECT_CALL(returner, Return());
+  EXPECT_CALL(returner, ReturnError(_)).Times(0);
+  capability_->UnblockPIN(kPUK, kPIN, &returner);
   SetCardProxy();
   dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(CellularCapabilityGSMTest, ChangePIN) {
   static const char kOldPIN[] = "1111";
-  Error error;
   EXPECT_CALL(*card_proxy_, ChangePIN(kOldPIN, kPIN));
-  capability_->ChangePIN(kOldPIN, kPIN, &error);
-  EXPECT_TRUE(error.IsSuccess());
+  MockReturner returner;
+  EXPECT_CALL(returner, Return());
+  EXPECT_CALL(returner, ReturnError(_)).Times(0);
+  capability_->ChangePIN(kOldPIN, kPIN, &returner);
   SetCardProxy();
   dispatcher_.DispatchPendingEvents();
 }
