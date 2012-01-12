@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -41,6 +41,8 @@ class MonitorReconfigure;
 class PowerButtonHandler;
 class VideoDetectorInterface;
 
+typedef std::vector<int64> IdleThresholds;
+
 class Daemon : public XIdleObserver,
                public BacklightControllerObserver {
  public:
@@ -73,6 +75,12 @@ class Daemon : public XIdleObserver,
   // On success, return true; otherwise return false. Used in idle API on
   // chrome side.
   bool GetIdleTime(int64* idle_time_ms);
+
+  // Add an idle threshold to notify on.
+  void AddIdleThreshold(int64 threshold);
+
+  // Notify chrome that an idle event happened.
+  void IdleEventNotify(int64 threshold);
 
   // If in the active-but-off state, turn up the brightness when user presses a
   // key so user can see that the screen has been locked.
@@ -380,6 +388,9 @@ class Daemon : public XIdleObserver,
   // and non-projecting timeouts.  Map keys are variable names found in
   // power_constants.h.
   std::map<std::string, int64> base_timeout_values_;
+
+  // List of thresholds to notify Chrome on.
+  IdleThresholds thresholds_;
 
   // Keep a local copy of power status reading from power_supply.  This way,
   // requests for each field of the power status can be read directly from

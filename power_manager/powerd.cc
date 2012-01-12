@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -404,6 +404,32 @@ bool Daemon::GetIdleTime(int64* idle_time_ms) {
   return idle_.GetIdleTime(idle_time_ms);
 }
 
+void Daemon::AddIdleThreshold(int64 threshold) {
+  if (threshold)
+    idle_.AddIdleTimeout(threshold);
+  thresholds_.push_back(threshold);
+}
+
+void Daemon::IdleEventNotify(int64 threshold) {
+  dbus_int64_t threshold_int =
+      static_cast<dbus_int64_t>(threshold);
+
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              kPowerManagerServicePath,
+                              kPowerManagerInterface);
+  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                kPowerManagerInterface,
+                                                threshold ?
+                                                    kIdleNotifySignal :
+                                                    kActiveNotifySignal);
+  CHECK(signal);
+  dbus_message_append_args(signal,
+                           DBUS_TYPE_INT64, &threshold_int,
+                           DBUS_TYPE_INVALID);
+  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_message_unref(signal);
+}
+
 void Daemon::BrightenScreenIfOff() {
   if (util::LoggedIn() && backlight_controller_->IsBacklightActiveOff())
     backlight_controller_->IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
@@ -451,6 +477,21 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   if (!is_idle && offset_ms_ != 0)
     SetIdleOffset(0, kIdleNormal);
 
+  // Notify once for each threshold.
+  IdleThresholds::iterator iter = thresholds_.begin();
+  while(iter != thresholds_.end()) {
+    // If we're idle and past a threshold, notify and erase the threshold.
+    if (is_idle && *iter != 0 && idle_time_ms >= *iter) {
+      IdleEventNotify(*iter);
+      iter = thresholds_.erase(iter);
+    // Else, if we just went active and the threshold is a check for active.
+    } else if (!is_idle && *iter == 0) {
+      IdleEventNotify(0);
+      iter = thresholds_.erase(iter);
+    } else {
+      ++iter;
+    }
+  }
 }
 
 void Daemon::AdjustKeyboardBrightness(int direction) {
@@ -678,6 +719,19 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
       // Other dbus clients may be interested in consuming this signal.
       return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kRequestIdleNotification)) {
+    LOG(INFO) << "Add an idle notification request.";
+    DBusError error;
+    dbus_error_init(&error);
+    int64 threshold = 0;
+    if (dbus_message_get_args(message, &error, DBUS_TYPE_INT64, &threshold,
+                              DBUS_TYPE_INVALID) == FALSE) {
+      LOG(WARNING) << "Trouble reading args of RequestIdleNotification event "
+                   << threshold;
+      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+    daemon->AddIdleThreshold(threshold);
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kCleanShutdown)) {
     LOG(INFO) << "Clean shutdown/restart event";
