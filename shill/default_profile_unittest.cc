@@ -25,7 +25,9 @@ using std::map;
 using std::string;
 using std::vector;
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::Return;
+using ::testing::SetArgumentPointee;
 
 namespace shill {
 
@@ -60,7 +62,7 @@ class DefaultProfileTest : public PropertyStoreTest {
   static const char kTestStoragePath[];
 
   GLib real_glib_;
-  ProfileRefPtr profile_;
+  scoped_refptr<DefaultProfile> profile_;
   scoped_refptr<MockDevice> device_;
   Manager::Properties properties_;
 };
@@ -116,6 +118,25 @@ TEST_F(DefaultProfileTest, Save) {
   manager()->RegisterDevice(device_);
   ASSERT_TRUE(profile_->Save());
   manager()->DeregisterDevice(device_);
+}
+
+TEST_F(DefaultProfileTest, LoadManagerProperties) {
+  scoped_ptr<MockStore> storage(new MockStore);
+  EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
+                                      DefaultProfile::kStorageOfflineMode,
+                                      _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(true)));
+  const string portal_list("technology1,technology2");
+  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
+                                        DefaultProfile::kStorageCheckPortalList,
+                                        _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(portal_list), Return(true)));
+  profile_->set_storage(storage.release());
+
+  Manager::Properties manager_props;
+  ASSERT_TRUE(profile_->LoadManagerProperties(&manager_props));
+  EXPECT_TRUE(manager_props.offline_mode);
+  EXPECT_EQ(portal_list, manager_props.check_portal_list);
 }
 
 TEST_F(DefaultProfileTest, GetStoragePath) {

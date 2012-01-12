@@ -49,6 +49,15 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
 
 DefaultProfile::~DefaultProfile() {}
 
+bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
+  storage()->GetBool(kStorageId, kStorageOfflineMode,
+                     &manager_props->offline_mode);
+  storage()->GetString(kStorageId,
+                       kStorageCheckPortalList,
+                       &manager_props->check_portal_list);
+  return true;
+}
+
 bool DefaultProfile::Save() {
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
   storage()->SetBool(kStorageId, kStorageOfflineMode, props_.offline_mode);

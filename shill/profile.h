@@ -124,9 +124,7 @@ class Profile : public base::RefCounted<Profile> {
   virtual bool GetStoragePath(FilePath *path);
 
  private:
-  friend class DefaultProfileTest;
   friend class ProfileAdaptorInterface;
-  FRIEND_TEST(DefaultProfileTest, GetStoragePath);
   FRIEND_TEST(ProfileTest, GetStoragePath);
   FRIEND_TEST(ProfileTest, IsValidIdentifierToken);
 

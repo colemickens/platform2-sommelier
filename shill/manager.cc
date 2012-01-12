@@ -151,11 +151,15 @@ void Manager::InitializeProfiles() {
   DCHECK(profiles_.empty());
   // The default profile must go first on the stack.
   CHECK(file_util::CreateDirectory(storage_path_)) << storage_path_.value();
-  profiles_.push_back(new DefaultProfile(control_interface_,
+  scoped_refptr<DefaultProfile>
+      default_profile(new DefaultProfile(control_interface_,
                                          this,
                                          storage_path_,
                                          props_));
-  CHECK(profiles_[0]->InitStorage(glib_, Profile::kCreateOrOpenExisting, NULL));
+  CHECK(default_profile->InitStorage(glib_, Profile::kCreateOrOpenExisting,
+                                     NULL));
+  CHECK(default_profile->LoadManagerProperties(&props_));
+  profiles_.push_back(default_profile.release());
   Error error;
   string path;
   for (vector<string>::iterator it = startup_profiles_.begin();

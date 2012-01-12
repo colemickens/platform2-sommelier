@@ -30,6 +30,9 @@ class DefaultProfile : public Profile {
                  const Manager::Properties &manager_props);
   virtual ~DefaultProfile();
 
+  // Loads global configuration into manager properties.
+  virtual bool LoadManagerProperties(Manager::Properties *manager_props);
+
   // Persists profile information, as well as that of discovered devices
   // and bound services, to disk.
   // Returns true on success, false on failure.
@@ -44,8 +47,10 @@ class DefaultProfile : public Profile {
   virtual bool GetStoragePath(FilePath *path);
 
  private:
-  FRIEND_TEST(DefaultProfileTest, Save);
+  friend class DefaultProfileTest;
   FRIEND_TEST(DefaultProfileTest, GetStoragePath);
+  FRIEND_TEST(DefaultProfileTest, LoadManagerProperties);
+  FRIEND_TEST(DefaultProfileTest, Save);
 
   static const char kDefaultId[];
   static const char kStorageId[];
