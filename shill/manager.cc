@@ -556,9 +556,9 @@ void Manager::AutoConnectTask() {
   }
 
   if (VLOG_IS_ON(4)) {
+    VLOG(4) << "Sorted service list: ";  // XXX check log
     for (vector<ServiceRefPtr>::const_iterator it = services_.begin();
          it != services_.end(); ++it) {
-      VLOG(4) << "Sorted service list: ";
       VLOG(4) << "Service " << (*it)->friendly_name()
               << " IsConnected: " << (*it)->IsConnected()
               << " IsConnecting: " << (*it)->IsConnecting()
@@ -577,7 +577,8 @@ void Manager::AutoConnectTask() {
   for (vector<ServiceRefPtr>::iterator it = services_.begin();
        it != services_.end(); ++it) {
     if ((*it)->auto_connect()) {
-      LOG(INFO) << "Initiating connect to " << (*it)->friendly_name() << ".";
+      LOG(INFO) << "Requesting autoconnect to service "
+                << (*it)->friendly_name() << ".";
       (*it)->AutoConnect();
     }
   }

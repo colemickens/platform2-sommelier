@@ -121,6 +121,8 @@ void WiFiService::AutoConnect() {
     //    useless work (one AutoConnect per Service), which blocks
     //    more timely work.
     ConnectTask();
+  } else {
+    LOG(INFO) << "Suppressed autoconnect to " << friendly_name();
   }
 }
 
