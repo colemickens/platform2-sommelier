@@ -34,8 +34,6 @@ const char kFuzzMs[] = "fuzz_ms";
 
 const char kBacklightPath[] = "/sys/class/backlight";
 const char kBacklightPattern[] = "*";
-const char kKeyboardBacklightPath[] = "/sys/class/leds";
-const char kKeyboardBacklightPattern[] = "*:kbd_backlight";
 
 // Interface names.
 const char kRootPowerManagerInterface[] = "org.chromium.RootPowerManager";

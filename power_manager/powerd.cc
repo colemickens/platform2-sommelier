@@ -75,7 +75,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
                VideoDetectorInterface* video_detector,
                AudioDetectorInterface* audio_detector,
                MonitorReconfigure* monitor_reconfigure,
-               BacklightInterface* keyboard_backlight,
                const FilePath& run_dir)
     : backlight_controller_(backlight_controller),
       prefs_(prefs),
@@ -83,7 +82,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       video_detector_(video_detector),
       audio_detector_(audio_detector),
       monitor_reconfigure_(monitor_reconfigure),
-      keyboard_backlight_(keyboard_backlight),
       low_battery_suspend_percent_(0),
       clean_shutdown_initiated_(false),
       low_battery_(false),
@@ -455,40 +453,10 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   SetIdleState(idle_time_ms);
   if (!is_idle && offset_ms_ != 0)
     SetIdleOffset(0, kIdleNormal);
-
-}
-
-void Daemon::AdjustKeyboardBrightness(int direction) {
-  // TODO(dianders): Implement the equivalent of backlight_controller for
-  // keyboard.  This function is a bit hacky until then.
-  const int64 kNumKeylightLevels = 16;
-  int64 level, max_level;
-
-  if (!keyboard_backlight_->GetMaxBrightnessLevel(&max_level) ||
-      !keyboard_backlight_->GetCurrentBrightnessLevel(&level)) {
-    LOG(WARNING) << "Failed to get keyboard backlight brightness";
-    return;
-  }
-
-  // Try to move by 1-step, handling corner cases:
-  // 1. kNumKeylightLevels > max_level
-  // 2. Step would take us less than 0 or more than max.
-  int64 step_size = max((int64)1, (max_level+1) / kNumKeylightLevels);
-  level = level + (direction * step_size);
-  level = max((int64)0, min(max_level, level));
-
-  if (!keyboard_backlight_->SetBrightnessLevel(level)) {
-    LOG(WARNING) << "Failed to set keyboard backlight brightness";
-    return;
-  }
-
-  OnKeyboardBrightnessChanged((100.0 * level) / max_level,
-                              BRIGHTNESS_CHANGE_USER_INITIATED);
 }
 
 void Daemon::OnBrightnessChanged(double brightness_percent,
-                                 BrightnessChangeCause cause,
-                                 const std::string& signal_name) {
+                                 BrightnessChangeCause cause) {
   dbus_int32_t brightness_percent_int =
       static_cast<dbus_int32_t>(round(brightness_percent));
 
@@ -509,7 +477,7 @@ void Daemon::OnBrightnessChanged(double brightness_percent,
                               kPowerManagerInterface);
   DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
                                                 kPowerManagerInterface,
-                                                signal_name.c_str());
+                                                kBrightnessChangedSignal);
   CHECK(signal);
   dbus_message_append_args(signal,
                            DBUS_TYPE_INT32, &brightness_percent_int,
@@ -517,17 +485,6 @@ void Daemon::OnBrightnessChanged(double brightness_percent,
                            DBUS_TYPE_INVALID);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   dbus_message_unref(signal);
-}
-
-void Daemon::OnScreenBrightnessChanged(double brightness_percent,
-                                       BrightnessChangeCause cause) {
-  OnBrightnessChanged(brightness_percent, cause, kBrightnessChangedSignal);
-}
-
-void Daemon::OnKeyboardBrightnessChanged(double brightness_percent,
-                                         BrightnessChangeCause cause) {
-  OnBrightnessChanged(brightness_percent, cause,
-                      kKeyboardBrightnessChangedSignal);
 }
 
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
@@ -655,16 +612,6 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                          kBrightnessUp,
                                          kBrightnessEnumMax);
-  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
-                                         kDecreaseKeyboardBrightness)) {
-    LOG(INFO) << "Decrease keyboard brightness request.";
-    daemon->AdjustKeyboardBrightness(-1);
-    // TODO(dianders): metric?
-  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
-                                         kIncreaseKeyboardBrightness)) {
-    LOG(INFO) << "Increase keyboard brightness request.";
-    daemon->AdjustKeyboardBrightness(1);
-    // TODO(dianders): metric?
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kGetIdleTime)) {
     LOG(INFO) << "Idle time request.";

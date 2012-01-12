@@ -446,7 +446,7 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
   if (SetBrightnessGradual(level)) {
     WritePrefs();
     if (observer_)
-      observer_->OnScreenBrightnessChanged(target_percent_, cause);
+      observer_->OnBrightnessChanged(target_percent_, cause);
   }
 
   return target_percent_ != old_percent;

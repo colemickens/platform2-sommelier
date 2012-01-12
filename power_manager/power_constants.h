@@ -31,8 +31,6 @@ extern const char kReactMs[];
 extern const char kFuzzMs[];
 extern const char kBacklightPath[];
 extern const char kBacklightPattern[];
-extern const char kKeyboardBacklightPath[];
-extern const char kKeyboardBacklightPattern[];
 
 // Interface names.
 extern const char kRootPowerManagerInterface[];
