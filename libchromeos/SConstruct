@@ -31,7 +31,8 @@ for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
 
 # glib and dbug environment
 env.ParseConfig(
-    os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 glib-2.0 dbus-glib-1')
+    os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 glib-2.0 dbus-glib-1' +
+                               ' libchrome')
 env.StaticLibrary('chromeos', SOURCES)
 
 # Unit test
@@ -44,7 +45,7 @@ if ARGUMENTS.get('debug', 0):
 env_test = env.Clone()
 
 env_test.Append(
-    LIBS = ['gtest', 'base', 'rt'],
+    LIBS = ['gtest', 'rt'],
     LIBPATH = ['.', '../third_party/chrome'],
   )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
@@ -81,7 +82,7 @@ POLICY_SOURCES=PROTO_SOURCES + \
 env = Environment(
     CPPPATH=[ '.' ],
     CCFLAGS=[ '-g' ],
-    LIBS = ['base', 'protobuf-lite'],
+    LIBS = ['protobuf-lite'],
     LIBPATH = ['.', '../third_party/chrome'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS CPPPATH LIBPATH'):
@@ -104,7 +105,7 @@ for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
     env['ENV'][key] = os.environ[key]
 
 env.StaticLibrary('policy', POLICY_SOURCES)
-env.ParseConfig(os.environ['PKG_CONFIG'] + ' --cflags --libs glib-2.0 openssl')
+env.ParseConfig(os.environ['PKG_CONFIG'] + ' --cflags --libs glib-2.0 libchrome openssl')
 env.SharedLibrary('policy', POLICY_SOURCES)
 
 # Prepare the test case as well

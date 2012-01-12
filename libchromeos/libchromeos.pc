@@ -1,5 +1,5 @@
 Name: libchromeos
 Description: chromeos base library
 Version: 0.0.0
-Requires: dbus-1 glib-2.0 dbus-glib-1 dbus-c++-1 openssl
+Requires: dbus-1 glib-2.0 dbus-glib-1 dbus-c++-1 libchrome openssl
 Libs: -lchromeos
