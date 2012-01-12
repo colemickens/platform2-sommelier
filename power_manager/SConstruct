@@ -55,7 +55,7 @@ for key in Split('SYSROOT'):
 base_env.Append(CPPPATH=['..'])
 
 gdk_env = base_env.Clone()
-gdk_env.ParseConfig(os.environ['PKG_CONFIG'] + ' --cflags --libs gdk-2.0')
+gdk_env.ParseConfig(os.environ['PKG_CONFIG'] + ' --cflags --libs gdk-2.0 libchromeos')
 
 # Build example xidle program
 xidle_env = gdk_env.Clone()
@@ -74,7 +74,7 @@ backlight_env = gdk_env.Clone()
 backlight_env.Append(LIBS=Split('chromeos base rt pthread gflags \
   pthread dl metrics X11 Xrandr udev'))
 backlight_env.ParseConfig(
-  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1')
+  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1 libchromeos')
 backlight = backlight_env.Library('backlight',
                                   ['ambient_light_sensor.cc', 'backlight.cc',
                                    'external_backlight.cc',
@@ -105,7 +105,7 @@ powerd_env = gdk_env.Clone()
 powerd_env.Append(LIBS=Split('chromeos base rt Xext \
     gflags pthread dl metrics X11 Xrandr udev'))
 powerd_env.ParseConfig(
-  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
+  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1 libchromeos'
 )
 
 
@@ -127,7 +127,7 @@ Default(powerd)
 powerman_env = gdk_env.Clone()
 powerman_env.Append(LIBS=Split('chromeos base gflags pthread metrics udev X11'))
 powerman_env.ParseConfig(
-  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
+  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1 libchromeos'
 )
 powerman_sources = ['powerman.cc', 'external_backlight.cc',
                     'input.cc', 'powerman_metrics.cc']
@@ -141,7 +141,7 @@ Default(powerman)
 suspend_delay_sample_env = powerman_env.Clone()
 suspend_delay_sample_env.Append(LIBS=Split('chromeos base pthread gflags'))
 suspend_delay_sample_env.ParseConfig(
-  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
+  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1 libchromeos'
 )
 suspend_delay_sample_sources = ['suspend_delay_sample.cc']
 suspend_delay_sample = suspend_delay_sample_env.Program('suspend_delay_sample',
