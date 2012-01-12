@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,8 +8,9 @@ namespace shill {
 
 MockDeviceInfo::MockDeviceInfo(ControlInterface *control_interface,
                                EventDispatcher *dispatcher,
+                               Metrics *metrics,
                                Manager *manager)
-    : DeviceInfo(control_interface, dispatcher, manager) {}
+    : DeviceInfo(control_interface, dispatcher, metrics, manager) {}
 
 MockDeviceInfo::~MockDeviceInfo() {}
 

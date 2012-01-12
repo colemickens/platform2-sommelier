@@ -22,6 +22,7 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 class Manager;
+class Metrics;
 class Modem;
 class ModemManagerProxyInterface;
 class ProxyFactory;
@@ -33,6 +34,7 @@ class ModemManager {
                const std::string &path,
                ControlInterface *control_interface,
                EventDispatcher *dispatcher,
+               Metrics *metrics,
                Manager *manager,
                GLib *glib,
                mobile_provider_db *provider_db);
@@ -95,6 +97,7 @@ class ModemManager {
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
+  Metrics *metrics_;
   Manager *manager_;
   GLib *glib_;
   mobile_provider_db *provider_db_;

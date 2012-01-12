@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -68,6 +68,7 @@ PropertyStoreTest::PropertyStoreTest()
       path_(dir_.CreateUniqueTempDir() ? dir_.path().value() : ""),
       manager_(control_interface(),
                dispatcher(),
+               metrics(),
                glib(),
                run_path(),
                storage_path(),

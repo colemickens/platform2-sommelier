@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -41,6 +41,7 @@ class ProfileTest : public PropertyStoreTest {
   MockService *CreateMockService() {
     return new StrictMock<MockService>(control_interface(),
                                        dispatcher(),
+                                       metrics(),
                                        manager());
   }
 
@@ -180,6 +181,7 @@ TEST_F(ProfileTest, ServiceManagement) {
 TEST_F(ProfileTest, ServiceConfigure) {
   ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
                                               dispatcher(),
+                                              metrics(),
                                               manager()));
   service1->set_priority(service1->priority() + 1);  // Change from default.
   ASSERT_TRUE(profile_->AdoptService(service1));
@@ -189,6 +191,7 @@ TEST_F(ProfileTest, ServiceConfigure) {
   // service; ensure that settings from |service1| wind up in |service2|.
   ServiceRefPtr service2(new ServiceUnderTest(control_interface(),
                                               dispatcher(),
+                                              metrics(),
                                               manager()));
   int32 orig_priority = service2->priority();
   ASSERT_TRUE(profile_->ConfigureService(service2));

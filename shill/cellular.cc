@@ -84,6 +84,7 @@ const Stringmap &Cellular::Operator::ToDict() const {
 
 Cellular::Cellular(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
+                   Metrics *metrics,
                    Manager *manager,
                    const string &link_name,
                    const string &address,
@@ -94,6 +95,7 @@ Cellular::Cellular(ControlInterface *control_interface,
                    mobile_provider_db *provider_db)
     : Device(control_interface,
              dispatcher,
+             metrics,
              manager,
              link_name,
              address,
@@ -320,7 +322,8 @@ void Cellular::CreateService() {
   VLOG(2) << __func__;
   CHECK(!service_.get());
   service_ =
-      new CellularService(control_interface(), dispatcher(), manager(), this);
+      new CellularService(control_interface(), dispatcher(), metrics(),
+                          manager(), this);
   capability_->OnServiceCreated();
 }
 

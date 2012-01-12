@@ -30,6 +30,7 @@ class WiFi : public Device {
  public:
   WiFi(ControlInterface *control_interface,
        EventDispatcher *dispatcher,
+       Metrics *metrics,
        Manager *manager,
        const std::string &link,
        const std::string &address,

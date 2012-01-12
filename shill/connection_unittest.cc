@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -52,6 +52,7 @@ class ConnectionTest : public Test {
       : device_info_(new StrictMock<MockDeviceInfo>(
             &control_,
             static_cast<EventDispatcher*>(NULL),
+            static_cast<Metrics*>(NULL),
             static_cast<Manager*>(NULL))),
         connection_(new Connection(
             kTestDeviceInterfaceIndex0,
@@ -153,6 +154,7 @@ TEST_F(ConnectionTest, RouteRequest) {
     scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
         &control_,
         reinterpret_cast<EventDispatcher *>(NULL),
+        reinterpret_cast<Metrics *>(NULL),
         reinterpret_cast<Manager *>(NULL),
         kTestDeviceName0,
         string(),

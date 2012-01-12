@@ -97,6 +97,7 @@ class Cellular : public Device,
   // "/org/chromium/ModemManager/Gobi/0").
   Cellular(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
+           Metrics *metrics,
            Manager *manager,
            const std::string &link_name,
            const std::string &address,

@@ -44,6 +44,7 @@ class WiFiServiceTest : public PropertyStoreTest {
       new NiceMock<MockWiFi>(
           control_interface(),
           dispatcher(),
+          metrics(),
           manager(),
           "wifi",
           fake_mac,
@@ -57,6 +58,7 @@ class WiFiServiceTest : public PropertyStoreTest {
     vector<uint8_t> ssid(1, 'a');
     WiFiServiceRefPtr service = new WiFiService(control_interface(),
                                                 dispatcher(),
+                                                metrics(),
                                                 manager(),
                                                 wifi(),
                                                 ssid,
@@ -87,6 +89,7 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
 
     return new WiFiService(control_interface(),
                            dispatcher(),
+                           metrics(),
                            manager(),
                            wifi(),
                            ssid,
@@ -152,6 +155,7 @@ TEST_F(WiFiServiceTest, StorageId) {
 
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
+                                                   metrics(),
                                                    manager(),
                                                    wifi(),
                                                    ssid,
@@ -176,6 +180,7 @@ TEST_F(WiFiServiceTest, PassphraseWriteOnly) {
   vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
+                                                   metrics(),
                                                    manager(),
                                                    wifi(),
                                                    ssid,
@@ -197,6 +202,7 @@ TEST_F(WiFiServiceTest, PassphraseSetPropertyValidation) {
   vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
+                                                   metrics(),
                                                    manager(),
                                                    wifi(),
                                                    ssid,
@@ -215,6 +221,7 @@ TEST_F(WiFiServiceTest, PassphraseSetPropertyOpenNetwork) {
   vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
+                                                   metrics(),
                                                    manager(),
                                                    wifi(),
                                                    ssid,
@@ -233,6 +240,7 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
   ssid.push_back(0xff);  // not a valid UTF-8 byte-sequence
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
+                                                   metrics(),
                                                    manager(),
                                                    wifi(),
                                                    ssid,
@@ -253,6 +261,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA) {
   vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
+                                                   metrics(),
                                                    manager(),
                                                    wifi(),
                                                    ssid,
@@ -268,6 +277,7 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
   vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
+                                                   metrics(),
                                                    manager(),
                                                    wifi(),
                                                    ssid,
@@ -283,6 +293,7 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
   vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
+                                                   metrics(),
                                                    manager(),
                                                    wifi(),
                                                    ssid,
@@ -330,6 +341,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWEP) {
   vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
+                                                   metrics(),
                                                    manager(),
                                                    wifi(),
                                                    ssid,
@@ -369,6 +381,7 @@ TEST_F(WiFiServiceTest, LoadHidden) {
 
   WiFiServiceRefPtr service = new WiFiService(control_interface(),
                                               dispatcher(),
+                                              metrics(),
                                               manager(),
                                               wifi(),
                                               ssid,
@@ -438,6 +451,7 @@ TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
 
   WiFiServiceRefPtr service = new WiFiService(control_interface(),
                                               dispatcher(),
+                                              metrics(),
                                               manager(),
                                               wifi(),
                                               ssid,
@@ -476,6 +490,7 @@ TEST_F(WiFiServiceTest, ParseStorageIdentifier) {
 
   WiFiServiceRefPtr service = new WiFiService(control_interface(),
                                               dispatcher(),
+                                              metrics(),
                                               manager(),
                                               wifi(),
                                               ssid,
@@ -522,6 +537,7 @@ TEST_F(WiFiServiceTest, IsAutoConnectable) {
   vector<uint8_t> ssid(1, 'a');
   WiFiServiceRefPtr service = new WiFiService(control_interface(),
                                               dispatcher(),
+                                              metrics(),
                                               manager(),
                                               wifi(),
                                               ssid,
@@ -553,6 +569,7 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   vector<uint8_t> ssid(1, 'a');
   WiFiServiceRefPtr service = new WiFiService(control_interface(),
                                               dispatcher(),
+                                              metrics(),
                                               manager(),
                                               wifi(),
                                               ssid,

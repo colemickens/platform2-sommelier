@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,6 +12,7 @@ class ControlInterface;
 class Error;
 class EventDispatcher;
 class Manager;
+class Metrics;
 
 // This is a simple Service subclass with all the pure-virutal methods stubbed
 class ServiceUnderTest : public Service {
@@ -21,6 +22,7 @@ class ServiceUnderTest : public Service {
 
   ServiceUnderTest(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
+                   Metrics *metrics,
                    Manager *manager);
   virtual ~ServiceUnderTest();
 

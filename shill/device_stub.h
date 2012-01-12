@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,19 +22,21 @@ class EventDispatcher;
 class Endpoint;
 class DeviceInfo;
 class Manager;
+class Metrics;
 
 // Non-functional Device subclass used for non-operable or blacklisted devices
 class DeviceStub : public Device {
  public:
   DeviceStub(ControlInterface *control_interface,
              EventDispatcher *dispatcher,
+             Metrics *metrics,
              Manager *manager,
              const std::string &link_name,
              const std::string &address,
              int interface_index,
              Technology::Identifier technology)
-      : Device(control_interface, dispatcher, manager, link_name, address,
-               interface_index, technology) {}
+      : Device(control_interface, dispatcher, metrics, manager, link_name,
+               address, interface_index, technology) {}
   void Start() {}
   void Stop() {}
   bool TechnologyIs(const Technology::Identifier type) const {

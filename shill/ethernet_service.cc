@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -32,9 +32,11 @@ const char EthernetService::kServiceType[] = "ethernet";
 
 EthernetService::EthernetService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
+                                 Metrics *metrics,
                                  Manager *manager,
                                  const EthernetRefPtr &device)
-    : Service(control_interface, dispatcher, manager, Technology::kEthernet),
+    : Service(control_interface, dispatcher, metrics, manager,
+              Technology::kEthernet),
       ethernet_(device) {
   set_connectable(true);
   set_auto_connect(true);

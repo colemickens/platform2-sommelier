@@ -12,6 +12,7 @@
 #include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/nice_mock_control.h"
 
@@ -26,6 +27,7 @@ class CellularCapabilityCDMATest : public testing::Test {
   CellularCapabilityCDMATest()
       : cellular_(new Cellular(&control_,
                                &dispatcher_,
+                               &metrics_,
                                NULL,
                                "",
                                "",
@@ -65,7 +67,7 @@ class CellularCapabilityCDMATest : public testing::Test {
 
   void SetService() {
     cellular_->service_ = new CellularService(
-        &control_, &dispatcher_, NULL, cellular_);
+        &control_, &dispatcher_, &metrics_, NULL, cellular_);
   }
 
   void SetDeviceState(Cellular::State state) {
@@ -74,6 +76,7 @@ class CellularCapabilityCDMATest : public testing::Test {
 
   NiceMockControl control_;
   EventDispatcher dispatcher_;
+  MockMetrics metrics_;
   CellularRefPtr cellular_;
   scoped_ptr<MockModemCDMAProxy> proxy_;
   CellularCapabilityCDMA *capability_;  // Owned by |cellular_|.

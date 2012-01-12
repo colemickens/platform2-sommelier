@@ -98,6 +98,7 @@ class HTTPProxyTest : public Test {
         device_info_(new NiceMock<MockDeviceInfo>(
             &control_,
             reinterpret_cast<EventDispatcher*>(NULL),
+            reinterpret_cast<Metrics*>(NULL),
             reinterpret_cast<Manager*>(NULL))),
         connection_(new StrictMock<MockConnection>(device_info_.get())),
         proxy_(connection_) { }

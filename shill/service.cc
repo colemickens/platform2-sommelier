@@ -70,6 +70,7 @@ unsigned int Service::serial_number_ = 0;
 
 Service::Service(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
+                 Metrics *metrics,
                  Manager *manager,
                  Technology::Identifier technology)
     : state_(kStateUnknown),
@@ -90,8 +91,8 @@ Service::Service(ControlInterface *control_interface,
       configured_(false),
       configuration_(NULL),
       adaptor_(control_interface->CreateServiceAdaptor(this)),
-      manager_(manager),
-      metrics_(Metrics::GetInstance()) {
+      metrics_(metrics),
+      manager_(manager) {
 
   store_.RegisterBool(flimflam::kAutoConnectProperty, &auto_connect_);
 

@@ -21,6 +21,7 @@ ModemManager::ModemManager(const string &service,
                            const string &path,
                            ControlInterface *control_interface,
                            EventDispatcher *dispatcher,
+                           Metrics *metrics,
                            Manager *manager,
                            GLib *glib,
                            mobile_provider_db *provider_db)
@@ -30,6 +31,7 @@ ModemManager::ModemManager(const string &service,
       watcher_id_(0),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
+      metrics_(metrics),
       manager_(manager),
       glib_(glib),
       provider_db_(provider_db) {}
@@ -106,6 +108,7 @@ void ModemManager::AddModem(const string &path) {
                                     path,
                                     control_interface_,
                                     dispatcher_,
+                                    metrics_,
                                     manager_,
                                     provider_db_));
   modems_[path] = modem;

@@ -26,6 +26,7 @@ class CellularService : public Service {
  public:
   CellularService(ControlInterface *control_interface,
                   EventDispatcher *dispatcher,
+                  Metrics *metrics,
                   Manager *manager,
                   const CellularRefPtr &device);
   virtual ~CellularService();

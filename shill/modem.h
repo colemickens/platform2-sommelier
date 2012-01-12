@@ -23,6 +23,7 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 class Manager;
+class Metrics;
 class ProxyFactory;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
@@ -36,6 +37,7 @@ class Modem : public DBusPropertiesProxyDelegate {
         const std::string &path,
         ControlInterface *control_interface,
         EventDispatcher *dispatcher,
+        Metrics *metrics,
         Manager *manager,
         mobile_provider_db *provider_db);
   ~Modem();
@@ -91,6 +93,7 @@ class Modem : public DBusPropertiesProxyDelegate {
   ScopedRunnableMethodFactory<Modem> task_factory_;
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
+  Metrics *metrics_;
   Manager *manager_;
   mobile_provider_db *provider_db_;
   std::string link_name_;

@@ -61,9 +61,11 @@ const char *DeviceInfo::kModemDrivers[] = {
 
 DeviceInfo::DeviceInfo(ControlInterface *control_interface,
                        EventDispatcher *dispatcher,
+                       Metrics *metrics,
                        Manager *manager)
     : control_interface_(control_interface),
       dispatcher_(dispatcher),
+      metrics_(metrics),
       manager_(manager),
       link_callback_(NewCallback(this, &DeviceInfo::LinkMsgHandler)),
       address_callback_(NewCallback(this, &DeviceInfo::AddressMsgHandler)),
@@ -209,18 +211,19 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
         manager_->modem_info()->OnDeviceInfoAvailable(link_name);
         return;
       case Technology::kEthernet:
-        device = new Ethernet(control_interface_, dispatcher_, manager_,
-                              link_name, address, dev_index);
+        device = new Ethernet(control_interface_, dispatcher_, metrics_,
+                              manager_, link_name, address, dev_index);
         device->EnableIPv6Privacy();
         break;
       case Technology::kWifi:
-        device = new WiFi(control_interface_, dispatcher_, manager_,
+        device = new WiFi(control_interface_, dispatcher_, metrics_, manager_,
                           link_name, address, dev_index);
         device->EnableIPv6Privacy();
         break;
       default:
-        device = new DeviceStub(control_interface_, dispatcher_, manager_,
-                                link_name, address, dev_index, technology);
+        device = new DeviceStub(control_interface_, dispatcher_, metrics_,
+                                manager_, link_name, address, dev_index,
+                                technology);
         break;
     }
     RegisterDevice(device);

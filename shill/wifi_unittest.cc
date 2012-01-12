@@ -33,6 +33,7 @@
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_store.h"
 #include "shill/mock_supplicant_interface_proxy.h"
@@ -70,7 +71,8 @@ namespace shill {
 class WiFiPropertyTest : public PropertyStoreTest {
  public:
   WiFiPropertyTest()
-      : device_(new WiFi(control_interface(), NULL, NULL, "wifi", "", 0)) {
+      : device_(new WiFi(control_interface(),
+                         NULL, NULL, NULL, "wifi", "", 0)) {
   }
   virtual ~WiFiPropertyTest() {}
 
@@ -134,9 +136,10 @@ TEST_F(WiFiPropertyTest, BgscanMethod) {
 class WiFiMainTest : public ::testing::TestWithParam<string> {
  public:
   WiFiMainTest()
-      : manager_(&control_interface_, NULL, &glib_),
+      : manager_(&control_interface_, NULL, &metrics_, &glib_),
         wifi_(new WiFi(&control_interface_,
                        &dispatcher_,
+                       &metrics_,
                        &manager_,
                        kDeviceName,
                        kDeviceAddress,
@@ -245,6 +248,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     return new MockWiFiService(
         &control_interface_,
         &dispatcher_,
+        &metrics_,
         &manager_,
         wifi_,
         ssid,
@@ -357,6 +361,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
 
  private:
   NiceMockControl control_interface_;
+  MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
   WiFiRefPtr wifi_;

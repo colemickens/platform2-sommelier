@@ -20,11 +20,13 @@ class ControlInterface;
 class EventDispatcher;
 class Error;
 class Manager;
+class Metrics;
 
 class WiFiService : public Service {
  public:
   WiFiService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
+              Metrics *metrics,
               Manager *manager,
               const WiFiRefPtr &device,
               const std::vector<uint8_t> &ssid,

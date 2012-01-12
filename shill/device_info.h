@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,6 +23,7 @@
 namespace shill {
 
 class Manager;
+class Metrics;
 class RTNLHandler;
 class RTNLMessage;
 
@@ -42,6 +43,7 @@ class DeviceInfo {
 
   DeviceInfo(ControlInterface *control_interface,
              EventDispatcher *dispatcher,
+             Metrics *metrics,
              Manager *manager);
   ~DeviceInfo();
 
@@ -94,6 +96,7 @@ class DeviceInfo {
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
+  Metrics *metrics_;
   Manager *manager_;
   std::map<int, Info> infos_;
   scoped_ptr<Callback1<const RTNLMessage &>::Type> link_callback_;

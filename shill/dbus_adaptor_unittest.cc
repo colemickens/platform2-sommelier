@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -56,12 +56,14 @@ class DBusAdaptorTest : public PropertyStoreTest {
         uint32_v_(DBusAdaptor::Uint32ToVariant(ex_uint32_)),
         device_(new MockDevice(control_interface(),
                                dispatcher(),
+                               metrics(),
                                manager(),
                                "mock",
                                "addr0",
                                0)),
         service_(new MockService(control_interface(),
                                  dispatcher(),
+                                 metrics(),
                                  manager())) {
     ex_bytearrays_.push_back(ByteArray());
     bytearrays_v_ = DBusAdaptor::ByteArraysToVariant(ex_bytearrays_);

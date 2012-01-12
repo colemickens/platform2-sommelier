@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,6 +21,7 @@
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
@@ -45,6 +46,7 @@ class CellularPropertyTest : public PropertyStoreTest {
  public:
   CellularPropertyTest()
       : device_(new Cellular(control_interface(),
+                             NULL,
                              NULL,
                              NULL,
                              "usb0",
@@ -96,8 +98,8 @@ TEST_F(CellularPropertyTest, Dispatch) {
 class CellularTest : public testing::Test {
  public:
   CellularTest()
-      : manager_(&control_interface_, &dispatcher_, &glib_),
-        device_info_(&control_interface_, &dispatcher_, &manager_),
+      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+        device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
         cdma_proxy_(new MockModemCDMAProxy()),
@@ -111,6 +113,7 @@ class CellularTest : public testing::Test {
                                         &glib_)),
         device_(new Cellular(&control_interface_,
                              &dispatcher_,
+                             &metrics_,
                              &manager_,
                              kTestDeviceName,
                              kTestDeviceAddress,
@@ -214,6 +217,7 @@ class CellularTest : public testing::Test {
 
   NiceMockControl control_interface_;
   EventDispatcher dispatcher_;
+  MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
   MockDeviceInfo device_info_;
@@ -443,7 +447,7 @@ TEST_F(CellularTest, Connect) {
 
   device_->state_ = Cellular::kStateRegistered;
   device_->service_ = new CellularService(
-      &control_interface_, &dispatcher_, &manager_, device_);
+      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
 
   device_->allow_roaming_ = false;
   device_->service_->roaming_state_ = flimflam::kRoamingStateRoaming;

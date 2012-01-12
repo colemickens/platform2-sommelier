@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -24,15 +24,18 @@ class MetricsTest : public PropertyStoreTest {
   MetricsTest()
       : service_(new MockService(control_interface(),
                                  dispatcher(),
+                                 &metrics_,
                                  manager())),
         wifi_(new WiFi(control_interface(),
                        dispatcher(),
+                       &metrics_,
                        manager(),
                        "wlan0",
                        "000102030405",
                        0)),
         wifi_service_(new MockWiFiService(control_interface(),
                                           dispatcher(),
+                                          &metrics_,
                                           manager(),
                                           wifi_,
                                           ssid_,
@@ -45,8 +48,6 @@ class MetricsTest : public PropertyStoreTest {
 
   virtual void SetUp() {
     metrics_.set_library(&library_);
-    service_->set_metrics(&metrics_);
-    wifi_service_->set_metrics(&metrics_);
   }
 
  protected:

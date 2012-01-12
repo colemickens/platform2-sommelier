@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/modem_info.h"
 #include "shill/modem_manager.h"
 
@@ -22,8 +23,9 @@ namespace shill {
 class ModemInfoTest : public Test {
  public:
   ModemInfoTest()
-      : manager_(&control_interface_, &dispatcher_, &glib_),
-        modem_info_(&control_interface_, &dispatcher_, &manager_, &glib_) {}
+      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+        modem_info_(&control_interface_, &dispatcher_, &metrics_, &manager_,
+                    &glib_) {}
 
  protected:
   static const char kTestMobileProviderDBPath[];
@@ -31,6 +33,7 @@ class ModemInfoTest : public Test {
   MockGLib glib_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
+  MockMetrics metrics_;
   MockManager manager_;
   ModemInfo modem_info_;
 };

@@ -22,9 +22,11 @@ const char CellularService::kServiceType[] = "cellular";
 
 CellularService::CellularService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
+                                 Metrics *metrics,
                                  Manager *manager,
                                  const CellularRefPtr &device)
-    : Service(control_interface, dispatcher, manager, Technology::kCellular),
+    : Service(control_interface, dispatcher, metrics, manager,
+              Technology::kCellular),
       cellular_(device) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kActivationStateProperty,

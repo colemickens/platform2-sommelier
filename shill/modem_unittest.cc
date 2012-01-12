@@ -19,6 +19,7 @@
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_sockets.h"
 #include "shill/modem.h"
 #include "shill/proxy_factory.h"
@@ -50,13 +51,14 @@ ACTION(SetInterfaceIndex) {
 class ModemTest : public Test {
  public:
   ModemTest()
-      : manager_(&control_interface_, &dispatcher_, &glib_),
+      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
         proxy_(new MockDBusPropertiesProxy()),
         proxy_factory_(this),
         modem_(kOwner,
                kPath,
                &control_interface_,
                &dispatcher_,
+               &metrics_,
                &manager_,
                NULL) {}
 
@@ -94,6 +96,7 @@ class ModemTest : public Test {
   MockGLib glib_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
+  MockMetrics metrics_;
   MockManager manager_;
   scoped_ptr<MockDBusPropertiesProxy> proxy_;
   TestProxyFactory proxy_factory_;
@@ -160,7 +163,7 @@ TEST_F(ModemTest, CreateDeviceFromProperties) {
       .WillRepeatedly(Return(0));
 
   ByteString expected_address(kAddress, arraysize(kAddress));
-  MockDeviceInfo info_(&control_interface_, &dispatcher_, &manager_);
+  MockDeviceInfo info_(&control_interface_, &dispatcher_, &metrics_, &manager_);
   EXPECT_CALL(info_, GetMACAddress(kTestInterfaceIndex, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(expected_address), Return(true)))
       .WillOnce(DoAll(SetArgumentPointee<1>(expected_address), Return(true)));

@@ -14,6 +14,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/nice_mock_control.h"
@@ -29,6 +30,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   CellularCapabilityGSMTest()
       : cellular_(new Cellular(&control_,
                                &dispatcher_,
+                               &metrics_,
                                NULL,
                                "",
                                "",
@@ -85,7 +87,7 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   void SetService() {
     cellular_->service_ = new CellularService(
-        &control_, &dispatcher_, NULL, cellular_);
+        &control_, &dispatcher_, &metrics_, NULL, cellular_);
   }
 
   void InitProviderDB() {
@@ -96,6 +98,7 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   NiceMockControl control_;
   EventDispatcher dispatcher_;
+  MockMetrics metrics_;
   CellularRefPtr cellular_;
   scoped_ptr<MockModemGSMCardProxy> card_proxy_;
   scoped_ptr<MockModemGSMNetworkProxy> network_proxy_;

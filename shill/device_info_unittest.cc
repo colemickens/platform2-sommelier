@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,6 +23,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_sockets.h"
 #include "shill/rtnl_message.h"
@@ -49,8 +50,8 @@ class TestEventDispatcher : public EventDispatcher {
 class DeviceInfoTest : public Test {
  public:
   DeviceInfoTest()
-      : manager_(&control_interface_, &dispatcher_, &glib_),
-        device_info_(&control_interface_, &dispatcher_, &manager_) {
+      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+        device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_) {
   }
 
   virtual void SetUp() {
@@ -80,6 +81,7 @@ class DeviceInfoTest : public Test {
 
   MockGLib glib_;
   MockControl control_interface_;
+  MockMetrics metrics_;
   StrictMock<MockManager> manager_;
   DeviceInfo device_info_;
   TestEventDispatcher dispatcher_;

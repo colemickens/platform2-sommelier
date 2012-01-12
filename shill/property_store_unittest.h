@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,6 +21,7 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_metrics.h"
 #include "shill/property_store.h"
 
 namespace shill {
@@ -54,6 +55,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   MockControl *control_interface() { return &control_interface_; }
   EventDispatcher *dispatcher() { return &dispatcher_; }
   MockGLib *glib() { return &glib_; }
+  MockMetrics *metrics() { return &metrics_; }
 
   const std::string &run_path() const { return path_; }
   const std::string &storage_path() const { return path_; }
@@ -70,6 +72,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   const std::string path_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
+  MockMetrics metrics_;
   MockGLib glib_;
   Manager manager_;
 };

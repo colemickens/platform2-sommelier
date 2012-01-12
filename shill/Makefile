@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -199,6 +199,7 @@ TEST_OBJS = \
 	mock_glib.o \
 	mock_ipconfig.o \
 	mock_manager.o \
+	mock_metrics.o \
 	mock_modem_cdma_proxy.o \
 	mock_modem_gsm_card_proxy.o \
 	mock_modem_gsm_network_proxy.o \

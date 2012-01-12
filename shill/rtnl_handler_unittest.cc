@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,6 +16,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_sockets.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_message.h"
@@ -54,7 +55,7 @@ class TestEventDispatcher : public EventDispatcher {
 class RTNLHandlerTest : public Test {
  public:
   RTNLHandlerTest()
-      : manager_(&control_interface_, &dispatcher_, &glib_),
+      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
         callback_(NewCallback(this, &RTNLHandlerTest::Callback)),
         task_factory_(this) {
   }
@@ -82,6 +83,7 @@ class RTNLHandlerTest : public Test {
   StrictMock<MockSockets> sockets_;
   MockGLib glib_;
   MockControl control_interface_;
+  MockMetrics metrics_;
   MockManager manager_;
   TestEventDispatcher dispatcher_;
   scoped_ptr<Callback1<const RTNLMessage &>::Type> callback_;

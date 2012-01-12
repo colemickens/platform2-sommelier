@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -49,6 +49,7 @@ class DeviceTest : public PropertyStoreTest {
  public:
   DeviceTest()
       : device_(new Device(control_interface(),
+                           NULL,
                            NULL,
                            NULL,
                            kDeviceName,
@@ -194,6 +195,7 @@ TEST_F(DeviceTest, SelectedService) {
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
                                   dispatcher(),
+                                  metrics(),
                                   manager()));
   device_->SelectService(service);
   EXPECT_TRUE(device_->selected_service_.get() == service.get());
@@ -222,6 +224,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
                                   dispatcher(),
+                                  metrics(),
                                   manager()));
   device_->SelectService(service);
   EXPECT_CALL(*service.get(), SetState(Service::kStateDisconnected));
@@ -233,6 +236,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(control_interface(),
                                   dispatcher(),
+                                  metrics(),
                                   manager()));
   device_->SelectService(service);
   device_->manager_ = manager();
@@ -248,6 +252,7 @@ TEST_F(DeviceTest, Stop) {
   scoped_refptr<MockService> service(
       new NiceMock<MockService>(&control_interface_,
                                 dispatcher(),
+                                metrics(),
                                 manager()));
   device_->SelectService(service);
 

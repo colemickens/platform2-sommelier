@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/sockets.h"
 
 namespace shill {
@@ -38,6 +39,7 @@ class Daemon {
 
   Config *config_;
   ControlInterface *control_;
+  Metrics metrics_;
   Manager manager_;
   EventDispatcher dispatcher_;
   Sockets sockets_;

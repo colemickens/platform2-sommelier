@@ -41,9 +41,10 @@ namespace shill {
 class ServiceTest : public PropertyStoreTest {
  public:
   ServiceTest()
-      : mock_manager_(control_interface(), dispatcher(), glib()),
+      : mock_manager_(control_interface(), dispatcher(), metrics(), glib()),
         service_(new ServiceUnderTest(control_interface(),
                                       dispatcher(),
+                                      metrics(),
                                       &mock_manager_)),
         storage_id_(ServiceUnderTest::kStorageId) {
   }

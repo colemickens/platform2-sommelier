@@ -41,13 +41,15 @@ const char WiFiService::kStorageSSID[] = "SSID";
 
 WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
+                         Metrics *metrics,
                          Manager *manager,
                          const WiFiRefPtr &device,
                          const vector<uint8_t> &ssid,
                          const string &mode,
                          const string &security,
                          bool hidden_ssid)
-    : Service(control_interface, dispatcher, manager, Technology::kWifi),
+    : Service(control_interface, dispatcher, metrics, manager,
+              Technology::kWifi),
       need_passphrase_(false),
       security_(security),
       mode_(mode),

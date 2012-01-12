@@ -57,6 +57,7 @@ class ManagerTest : public PropertyStoreTest {
   ManagerTest()
       : mock_wifi_(new NiceMock<MockWiFi>(control_interface(),
                                           dispatcher(),
+                                          metrics(),
                                           manager(),
                                           "wifi0",
                                           "addr4",
@@ -64,28 +65,33 @@ class ManagerTest : public PropertyStoreTest {
         device_info_(new NiceMock<MockDeviceInfo>(
             control_interface(),
             reinterpret_cast<EventDispatcher*>(NULL),
+            reinterpret_cast<Metrics*>(NULL),
             reinterpret_cast<Manager*>(NULL))),
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()) {
     mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
                                                      dispatcher(),
+                                                     metrics(),
                                                      manager(),
                                                      "null0",
                                                      "addr0",
                                                      0));
     mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
                                                      dispatcher(),
+                                                     metrics(),
                                                      manager(),
                                                      "null1",
                                                      "addr1",
                                                      1));
     mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
                                                      dispatcher(),
+                                                     metrics(),
                                                      manager(),
                                                      "null2",
                                                      "addr2",
                                                      2));
     mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
                                                      dispatcher(),
+                                                     metrics(),
                                                      manager(),
                                                      "null3",
                                                      "addr3",
@@ -170,6 +176,7 @@ class ManagerTest : public PropertyStoreTest {
   MockServiceRefPtr MakeAutoConnectableService() {
     MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
                                                           dispatcher(),
+                                                          metrics(),
                                                           manager());
     service->MakeFavorite();
     service->set_connectable(true);
@@ -258,6 +265,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
   GLib glib;
   Manager manager(control_interface(),
                   dispatcher(),
+                  metrics(),
                   &glib,
                   run_path(),
                   storage_path(),
@@ -269,10 +277,12 @@ TEST_F(ManagerTest, ServiceRegistration) {
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 &manager));
   scoped_refptr<MockService> mock_service2(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 &manager));
   string service1_name(mock_service->UniqueName());
   string service2_name(mock_service2->UniqueName());
@@ -306,6 +316,7 @@ TEST_F(ManagerTest, RegisterKnownService) {
   GLib glib;
   Manager manager(control_interface(),
                   dispatcher(),
+                  metrics(),
                   &glib,
                   run_path(),
                   storage_path(),
@@ -316,6 +327,7 @@ TEST_F(ManagerTest, RegisterKnownService) {
   {
     ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
                                                 dispatcher(),
+                                                metrics(),
                                                 &manager));
     ASSERT_TRUE(profile->AdoptService(service1));
     ASSERT_TRUE(profile->ContainsService(service1));
@@ -323,6 +335,7 @@ TEST_F(ManagerTest, RegisterKnownService) {
 
   ServiceRefPtr service2(new ServiceUnderTest(control_interface(),
                                               dispatcher(),
+                                              metrics(),
                                               &manager));
   manager.RegisterService(service2);
   EXPECT_EQ(service2->profile().get(), profile.get());
@@ -334,6 +347,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
   GLib glib;
   Manager manager(control_interface(),
                   dispatcher(),
+                  metrics(),
                   &glib,
                   run_path(),
                   storage_path(),
@@ -344,6 +358,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
   {
     ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
                                                 dispatcher(),
+                                                metrics(),
                                                 &manager));
     ASSERT_TRUE(profile->AdoptService(service1));
     ASSERT_TRUE(profile->ContainsService(service1));
@@ -351,6 +366,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
   scoped_refptr<MockService> mock_service2(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 &manager));
   EXPECT_CALL(*mock_service2.get(), GetStorageIdentifier())
       .WillRepeatedly(Return(mock_service2->UniqueName()));
@@ -367,6 +383,7 @@ TEST_F(ManagerTest, DeregisterUnregisteredService) {
   // So test that doing so doesn't cause a crash.
   MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
                                                         dispatcher(),
+                                                        metrics(),
                                                         manager());
   manager()->DeregisterService(service);
 }
@@ -420,12 +437,14 @@ TEST_F(ManagerTest, GetDevicesProperty) {
 TEST_F(ManagerTest, MoveService) {
   Manager manager(control_interface(),
                   dispatcher(),
+                  metrics(),
                   glib(),
                   run_path(),
                   storage_path(),
                   string());
   scoped_refptr<MockService> s2(new MockService(control_interface(),
                                                 dispatcher(),
+                                                metrics(),
                                                 &manager));
   // Inject an actual profile, backed by a fake StoreInterface
   {
@@ -467,6 +486,7 @@ TEST_F(ManagerTest, SetProfileForService) {
   AdoptProfile(manager(), profile0);
   scoped_refptr<MockService> service(new MockService(control_interface(),
                                                      dispatcher(),
+                                                     metrics(),
                                                      manager()));
   service->set_profile(profile0);
 
@@ -511,6 +531,7 @@ TEST_F(ManagerTest, CreateProfile) {
 
   Manager manager(control_interface(),
                   dispatcher(),
+                  metrics(),
                   &glib,
                   run_path(),
                   storage_path(),
@@ -541,6 +562,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Manager manager(control_interface(),
                   dispatcher(),
+                  metrics(),
                   &glib,
                   run_path(),
                   storage_path(),
@@ -580,6 +602,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   scoped_refptr<MockService> service(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 &manager));
   const char kServiceName[] = "service_storage_name";
   EXPECT_CALL(*service.get(), GetStorageIdentifier())
@@ -747,10 +770,12 @@ TEST_F(ManagerTest, SortServices) {
   scoped_refptr<MockService> mock_service0(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
   scoped_refptr<MockService> mock_service1(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
 
   manager()->RegisterService(mock_service0);
@@ -857,10 +882,12 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   scoped_refptr<MockService> mock_service0(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
   scoped_refptr<MockService> mock_service1(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
 
   scoped_refptr<MockConnection> mock_connection0(
@@ -893,6 +920,7 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 TEST_F(ManagerTest, AvailableTechnologies) {
   mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
                                                    dispatcher(),
+                                                   metrics(),
                                                    manager(),
                                                    "null4",
                                                    "addr4",
@@ -929,18 +957,22 @@ TEST_F(ManagerTest, ConnectedTechnologies) {
   scoped_refptr<MockService> connected_service1(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
   scoped_refptr<MockService> connected_service2(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
   scoped_refptr<MockService> disconnected_service1(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
   scoped_refptr<MockService> disconnected_service2(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
 
   ON_CALL(*connected_service1.get(), IsConnected())
@@ -988,10 +1020,12 @@ TEST_F(ManagerTest, DefaultTechnology) {
   scoped_refptr<MockService> connected_service(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
   scoped_refptr<MockService> disconnected_service(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
 
   // Connected. WiFi.
@@ -1022,6 +1056,7 @@ TEST_F(ManagerTest, DisconnectServicesOnStop) {
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
   manager()->RegisterService(mock_service);
   EXPECT_CALL(*mock_service.get(), Disconnect(_)).Times(1);
@@ -1032,6 +1067,7 @@ TEST_F(ManagerTest, UpdateServiceConnected) {
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
   manager()->RegisterService(mock_service);
   EXPECT_FALSE(mock_service->favorite());
@@ -1054,6 +1090,7 @@ TEST_F(ManagerTest, SaveSuccessfulService) {
   scoped_refptr<MockService> service(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
+                                metrics(),
                                 manager()));
 
   // Re-cast this back to a ServiceRefPtr, so EXPECT arguments work correctly.

@@ -22,6 +22,7 @@ class MockService : public Service {
   // A constructor for the Service object
   MockService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
+              Metrics *metrics,
               Manager *manager);
   virtual ~MockService();
 

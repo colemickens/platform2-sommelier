@@ -27,8 +27,9 @@ namespace shill {
 class ControlInterface;
 class Error;
 class EventDispatcher;
-class ManagerAdaptorInterface;
 class GLib;
+class ManagerAdaptorInterface;
+class Metrics;
 
 class Manager {
  public:
@@ -43,6 +44,7 @@ class Manager {
 
   Manager(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
+          Metrics *metrics,
           GLib *glib,
           const std::string &run_directory,
           const std::string &storage_directory,
@@ -169,6 +171,7 @@ class Manager {
   std::vector<ProfileRefPtr> profiles_;
   ProfileRefPtr ephemeral_profile_;
   ControlInterface *control_interface_;
+  Metrics *metrics_;
   GLib *glib_;
 
   // The priority order of technologies

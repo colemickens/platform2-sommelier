@@ -30,6 +30,7 @@ class Endpoint;
 class Error;
 class EventDispatcher;
 class Manager;
+class Metrics;
 class RTNLHandler;
 class ReturnerInterface;
 
@@ -40,6 +41,7 @@ class Device : public base::RefCounted<Device> {
   // A constructor for the Device object
   Device(ControlInterface *control_interface,
          EventDispatcher *dispatcher,
+         Metrics *metrics,
          Manager *manager,
          const std::string &link_name,
          const std::string &address,
@@ -175,6 +177,7 @@ class Device : public base::RefCounted<Device> {
 
   // Property getters reserved for subclasses
   ControlInterface *control_interface() const { return control_interface_; }
+  Metrics *metrics() const { return metrics_; }
   Manager *manager() const { return manager_; }
   bool running() const { return running_; }
 
@@ -227,6 +230,7 @@ class Device : public base::RefCounted<Device> {
   const std::string unique_id_;
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
+  Metrics *metrics_;
   Manager *manager_;
   IPConfigRefPtr ipconfig_;
   ConnectionRefPtr connection_;

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -116,10 +116,8 @@ class Metrics {
   static const int kTimerHistogramMinMilliseconds;
   static const int kTimerHistogramNumBuckets;
 
+  Metrics();
   virtual ~Metrics();
-
-  // This is a singleton -- use Metrics::GetInstance()->Foo()
-  static Metrics *GetInstance();
 
   // Converts the WiFi frequency into the associated UMA channel enumerator.
   static WiFiChannel WiFiFrequencyToChannel(uint16 frequency);
@@ -208,8 +206,6 @@ class Metrics {
   static const uint16 kWiFiFrequency5700;
   static const uint16 kWiFiFrequency5745;
   static const uint16 kWiFiFrequency5825;
-
-  Metrics();
 
   void InitializeCommonServiceMetrics(const Service *service);
   void UpdateServiceStateTransitionMetrics(ServiceMetrics *service_metrics,

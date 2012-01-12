@@ -73,12 +73,14 @@ const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
+           Metrics *metrics,
            Manager *manager,
            const string& link,
            const string &address,
            int interface_index)
     : Device(control_interface,
              dispatcher,
+             metrics,
              manager,
              link,
              address,
@@ -444,6 +446,7 @@ WiFiServiceRefPtr WiFi::CreateServiceForEndpoint(const WiFiEndpoint &endpoint,
   WiFiServiceRefPtr service =
       new WiFiService(control_interface(),
                       dispatcher(),
+                      metrics(),
                       manager(),
                       this,
                       endpoint.ssid(),
@@ -733,6 +736,7 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
     }
     WiFiServiceRefPtr service(new WiFiService(control_interface(),
                                               dispatcher(),
+                                              metrics(),
                                               manager(),
                                               this,
                                               ssid_bytes,
@@ -1044,6 +1048,7 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
   if (!service.get()) {
     service = new WiFiService(control_interface(),
                               dispatcher(),
+                              metrics(),
                               manager(),
                               this,
                               ssid_bytes,

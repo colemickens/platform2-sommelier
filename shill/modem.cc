@@ -27,6 +27,7 @@ Modem::Modem(const std::string &owner,
              const std::string &path,
              ControlInterface *control_interface,
              EventDispatcher *dispatcher,
+             Metrics *metrics,
              Manager *manager,
              mobile_provider_db *provider_db)
     : proxy_factory_(ProxyFactory::GetInstance()),
@@ -35,6 +36,7 @@ Modem::Modem(const std::string &owner,
       task_factory_(this),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
+      metrics_(metrics),
       manager_(manager),
       provider_db_(provider_db),
       pending_device_info_(false) {
@@ -130,6 +132,7 @@ void Modem::CreateDeviceFromProperties(const DBusPropertiesMap &properties) {
             << " interface index " << interface_index << ".";
   device_ = new Cellular(control_interface_,
                          dispatcher_,
+                         metrics_,
                          manager_,
                          link_name_,
                          address_bytes.HexEncode(),

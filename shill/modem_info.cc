@@ -21,10 +21,12 @@ const char ModemInfo::kMobileProviderDBPath[] =
 
 ModemInfo::ModemInfo(ControlInterface *control_interface,
                      EventDispatcher *dispatcher,
+                     Metrics *metrics,
                      Manager *manager,
                      GLib *glib)
     : control_interface_(control_interface),
       dispatcher_(dispatcher),
+      metrics_(metrics),
       manager_(manager),
       glib_(glib),
       provider_db_path_(kMobileProviderDBPath),
@@ -63,6 +65,7 @@ void ModemInfo::RegisterModemManager(const string &service,
                                            path,
                                            control_interface_,
                                            dispatcher_,
+                                           metrics_,
                                            manager_,
                                            glib_,
                                            provider_db_);

@@ -18,6 +18,7 @@ class ControlInterface;
 class EventDispatcher;
 class GLib;
 class Manager;
+class Metrics;
 class ModemManager;
 
 // Manages modem managers.
@@ -25,6 +26,7 @@ class ModemInfo {
  public:
   ModemInfo(ControlInterface *control_interface,
             EventDispatcher *dispatcher,
+            Metrics *metrics,
             Manager *manager,
             GLib *glib);
   ~ModemInfo();
@@ -53,6 +55,7 @@ class ModemInfo {
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
+  Metrics *metrics_;
   Manager *manager_;
   GLib *glib_;
 

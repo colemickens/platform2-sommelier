@@ -94,6 +94,7 @@ class Service : public base::RefCounted<Service> {
   // A constructor for the Service object
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
+          Metrics *metrics,
           Manager *manager,
           Technology::Identifier technology);
   virtual ~Service();
@@ -322,9 +323,6 @@ class Service : public base::RefCounted<Service> {
   // are, "decision" is populated with the boolean value of "a > b".
   static bool DecideBetween(int a, int b, bool *decision);
 
-  // For unit testing.
-  void set_metrics(Metrics *metrics) { metrics_ = metrics; }
-
   ConnectState state_;
   ConnectFailure failure_;
   bool auto_connect_;
@@ -354,9 +352,9 @@ class Service : public base::RefCounted<Service> {
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
   scoped_ptr<HTTPProxy> http_proxy_;
   ConnectionRefPtr connection_;
+  Metrics *metrics_;
   Manager *manager_;
   Sockets sockets_;
-  Metrics *metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

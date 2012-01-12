@@ -26,6 +26,7 @@ class MockWiFi : public WiFi {
  public:
   MockWiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
+           Metrics *metrics,
            Manager *manager,
            const std::string &link_name,
            const std::string &address,

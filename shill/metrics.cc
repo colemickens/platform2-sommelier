@@ -65,11 +65,6 @@ Metrics::Metrics() : library_(&metrics_library_) {
 Metrics::~Metrics() {}
 
 // static
-Metrics *Metrics::GetInstance() {
-  return g_metrics.Pointer();
-}
-
-// static
 Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16 frequency) {
   WiFiChannel channel = kWiFiChannelUndef;
   if (kWiFiFrequency2412 <= frequency && frequency <= kWiFiFrequency2472) {

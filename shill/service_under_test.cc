@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,8 +19,10 @@ const char ServiceUnderTest::kStorageId[] = "service";
 
 ServiceUnderTest::ServiceUnderTest(ControlInterface *control_interface,
                                    EventDispatcher *dispatcher,
+                                   Metrics *metrics,
                                    Manager *manager)
-    : Service(control_interface, dispatcher, manager, Technology::kUnknown) {
+    : Service(control_interface, dispatcher, metrics, manager,
+              Technology::kUnknown) {
 }
 
 ServiceUnderTest::~ServiceUnderTest() {}
