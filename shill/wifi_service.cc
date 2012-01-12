@@ -152,8 +152,8 @@ bool WiFiService::IsAutoConnectable() const {
       // (Needed because hidden Services may remain registered with
       // Manager even without visible Endpoints.)
       && HasEndpoints()
-      // Do not preempt other connections (whether pending, or
-      // connected).
+      // Do not preempt an existing connection (whether pending, or
+      // connected, and whether to this service, or another).
       && wifi_->IsIdle();
 }
 

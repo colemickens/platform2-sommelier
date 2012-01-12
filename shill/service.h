@@ -234,7 +234,7 @@ class Service : public base::RefCounted<Service> {
   // This should include any tests used for computing connectable(),
   // as well as other critera such as whether the device associated with
   // this service is busy with another connection.
-  virtual bool IsAutoConnectable() const { return connectable(); }
+  virtual bool IsAutoConnectable() const;
 
   void HelpRegisterDerivedBool(
       const std::string &name,
@@ -277,6 +277,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ServiceTest, Constructor);
+  FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, Save);
   FRIEND_TEST(ServiceTest, SaveString);
   FRIEND_TEST(ServiceTest, SaveStringCrypted);

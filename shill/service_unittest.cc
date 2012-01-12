@@ -276,4 +276,15 @@ TEST_F(ServiceTest, ReMakeFavorite) {
   EXPECT_FALSE(service_->auto_connect());
 }
 
+TEST_F(ServiceTest, IsAutoConnectable) {
+  service_->set_connectable(true);
+  EXPECT_TRUE(service_->IsAutoConnectable());
+
+  service_->SetState(Service::kStateConnected);
+  EXPECT_FALSE(service_->IsAutoConnectable());
+
+  service_->SetState(Service::kStateAssociating);
+  EXPECT_FALSE(service_->IsAutoConnectable());
+}
+
 }  // namespace shill

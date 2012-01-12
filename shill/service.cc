@@ -178,6 +178,8 @@ void Service::AutoConnect() {
   if (this->IsAutoConnectable()) {
     Error error;
     Connect(&error);
+  } else {
+    LOG(INFO) << "Suppressed autoconnect to " << friendly_name();
   }
 }
 
@@ -495,6 +497,10 @@ string Service::CalculateState(Error */*error*/) {
     default:
       return "";
   }
+}
+
+bool Service::IsAutoConnectable() const {
+  return connectable() && !IsConnected() && !IsConnecting();
 }
 
 void Service::HelpRegisterDerivedBool(
