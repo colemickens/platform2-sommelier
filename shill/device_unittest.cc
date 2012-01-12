@@ -139,6 +139,7 @@ TEST_F(DeviceTest, DestroyIPConfigNULL) {
 
 TEST_F(DeviceTest, AcquireIPConfig) {
   device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
+  device_->manager_ = manager();
   EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(device_->AcquireIPConfig());

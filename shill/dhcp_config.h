@@ -31,6 +31,7 @@ class DHCPConfig : public IPConfig {
              EventDispatcher *dispatcher,
              DHCPProvider *provider,
              const std::string &device_name,
+             const std::string &request_hostname,
              GLib *glib);
   virtual ~DHCPConfig();
 
@@ -61,6 +62,8 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, Restart);
   FRIEND_TEST(DHCPConfigTest, RestartNoClient);
   FRIEND_TEST(DHCPConfigTest, StartFail);
+  FRIEND_TEST(DHCPConfigTest, StartWithHostname);
+  FRIEND_TEST(DHCPConfigTest, StartWithoutHostname);
   FRIEND_TEST(DHCPConfigTest, StartSuccess);
   FRIEND_TEST(DHCPConfigTest, Stop);
   FRIEND_TEST(DHCPProviderTest, CreateConfig);
@@ -120,6 +123,10 @@ class DHCPConfig : public IPConfig {
   ProxyFactory *proxy_factory_;
 
   DHCPProvider *provider_;
+
+  // Hostname to be used in the request.  This will be passed to the DHCP
+  // server in the request.
+  std::string request_hostname_;
 
   // The PID of the spawned DHCP client. May be 0 if no client has been spawned
   // yet or the client has died.

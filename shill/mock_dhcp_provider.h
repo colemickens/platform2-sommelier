@@ -21,7 +21,8 @@ class MockDHCPProvider : public DHCPProvider {
   MockDHCPProvider();
   virtual ~MockDHCPProvider();
 
-  MOCK_METHOD1(CreateConfig, DHCPConfigRefPtr(const std::string &device_name));
+  MOCK_METHOD2(CreateConfig, DHCPConfigRefPtr(const std::string &device_name,
+                                              const std::string &host_name));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDHCPProvider);

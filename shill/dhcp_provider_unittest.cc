@@ -14,6 +14,7 @@ namespace shill {
 
 namespace {
 const char kDeviceName[] = "testdevicename";
+const char kHostName[] = "testhostname";
 }  // namespace {}
 
 class DHCPProviderTest : public Test {
@@ -30,7 +31,7 @@ class DHCPProviderTest : public Test {
 };
 
 TEST_F(DHCPProviderTest, CreateConfig) {
-  DHCPConfigRefPtr config = provider_->CreateConfig(kDeviceName);
+  DHCPConfigRefPtr config = provider_->CreateConfig(kDeviceName, kHostName);
   EXPECT_TRUE(config.get());
   EXPECT_EQ(&glib_, config->glib_);
   EXPECT_EQ(kDeviceName, config->device_name());

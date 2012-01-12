@@ -27,7 +27,7 @@ class ProxyFactory;
 // configurations for devices can be obtained through its CreateConfig
 // method. For example, a single DHCP configuration request can be initiated as:
 //
-// DHCPProvider::GetInstance()->CreateConfig(device_name)->Request();
+// DHCPProvider::GetInstance()->CreateConfig(device_name, host_name)->Request();
 class DHCPProvider {
  public:
   virtual ~DHCPProvider();
@@ -44,8 +44,11 @@ class DHCPProvider {
 
   // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
-  // DHCPConfig::Renew.
-  virtual DHCPConfigRefPtr CreateConfig(const std::string &device_name);
+  // DHCPConfig::Renew.  If |hostname| is not-empty, it is placed in the DHCP
+  // request to allow the server to map the request to a specific user-named
+  // origin.
+  virtual DHCPConfigRefPtr CreateConfig(const std::string &device_name,
+                                        const std::string &host_name);
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
   // NULL if |pid| is not bound to a configuration.

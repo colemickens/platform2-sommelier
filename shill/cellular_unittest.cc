@@ -110,6 +110,7 @@ class CellularTest : public testing::Test {
                                         &dispatcher_,
                                         &dhcp_provider_,
                                         kTestDeviceName,
+                                        "",
                                         &glib_)),
         device_(new Cellular(&control_interface_,
                              &dispatcher_,
@@ -362,7 +363,7 @@ TEST_F(CellularTest, StartLinked) {
           SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
           SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
   EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName))
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(manager_, UpdateService(_)).Times(2);

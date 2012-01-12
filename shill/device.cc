@@ -309,7 +309,7 @@ void Device::DestroyIPConfig() {
 bool Device::AcquireIPConfig() {
   DestroyIPConfig();
   EnableIPv6();
-  ipconfig_ = dhcp_provider_->CreateConfig(link_name_);
+  ipconfig_ = dhcp_provider_->CreateConfig(link_name_, manager_->GetHostName());
   ipconfig_->RegisterUpdateCallback(
       NewCallback(this, &Device::IPConfigUpdatedCallback));
   return ipconfig_->RequestIP();

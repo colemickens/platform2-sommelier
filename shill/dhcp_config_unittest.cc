@@ -30,6 +30,7 @@ namespace shill {
 
 namespace {
 const char kDeviceName[] = "eth0";
+const char kHostName[] = "hostname";
 }  // namespace {}
 
 class DHCPConfigTest : public PropertyStoreTest {
@@ -41,6 +42,7 @@ class DHCPConfigTest : public PropertyStoreTest {
                                dispatcher(),
                                DHCPProvider::GetInstance(),
                                kDeviceName,
+                               kHostName,
                                glib())) {}
 
   virtual void SetUp() {
@@ -150,6 +152,47 @@ TEST_F(DHCPConfigTest, StartFail) {
   EXPECT_CALL(*glib(), ChildWatchAdd(_, _, _)).Times(0);
   EXPECT_FALSE(config_->Start());
   EXPECT_EQ(0, config_->pid_);
+}
+
+MATCHER_P(IsDHCPCDArgs, has_hostname, "") {
+  if (string(arg[0]) != "/sbin/dhcpcd" ||
+      string(arg[1]) != "-B" ||
+      string(arg[2]) != kDeviceName) {
+    return false;
+  }
+
+  if (has_hostname) {
+    if (string(arg[3]) != "-h" ||
+        string(arg[4]) != kHostName ||
+        arg[5] != NULL) {
+      return false;
+    }
+  } else {
+      if (arg[3] != NULL) {
+        return false;
+      }
+  }
+
+  return true;
+}
+
+TEST_F(DHCPConfigTest, StartWithHostname) {
+  EXPECT_CALL(*glib(), SpawnAsync(_, IsDHCPCDArgs(true), _, _, _, _, _, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(config_->Start());
+}
+
+TEST_F(DHCPConfigTest, StartWithoutHostname) {
+  DHCPConfigRefPtr config(new DHCPConfig(&control_,
+                                         dispatcher(),
+                                         DHCPProvider::GetInstance(),
+                                         kDeviceName,
+                                         "",
+                                         glib()));
+
+  EXPECT_CALL(*glib(), SpawnAsync(_, IsDHCPCDArgs(false), _, _, _, _, _, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(config->Start());
 }
 
 namespace {

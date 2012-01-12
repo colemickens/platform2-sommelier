@@ -104,12 +104,16 @@ TEST_F(DefaultProfileTest, Save) {
                                         DefaultProfile::kDefaultId))
       .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
-                                        DefaultProfile::kStorageCheckPortalList,
+                                        DefaultProfile::kStorageHostName,
                                         ""))
       .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), SetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageOfflineMode,
                                       false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
+                                        DefaultProfile::kStorageCheckPortalList,
+                                        ""))
       .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), Flush()).WillOnce(Return(true));
 
@@ -123,6 +127,11 @@ TEST_F(DefaultProfileTest, Save) {
 
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
   scoped_ptr<MockStore> storage(new MockStore);
+  const string host_name("hostname");
+  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
+                                        DefaultProfile::kStorageHostName,
+                                        _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(host_name), Return(true)));
   EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageOfflineMode,
                                       _))
@@ -136,6 +145,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
 
   Manager::Properties manager_props;
   ASSERT_TRUE(profile_->LoadManagerProperties(&manager_props));
+  EXPECT_EQ(host_name, manager_props.host_name);
   EXPECT_TRUE(manager_props.offline_mode);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);
 }

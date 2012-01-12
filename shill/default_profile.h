@@ -55,6 +55,7 @@ class DefaultProfile : public Profile {
   static const char kDefaultId[];
   static const char kStorageId[];
   static const char kStorageCheckPortalList[];
+  static const char kStorageHostName[];
   static const char kStorageName[];
   static const char kStorageOfflineMode[];
 

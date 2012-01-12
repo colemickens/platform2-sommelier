@@ -40,6 +40,7 @@ class Manager {
     std::string check_portal_list;
     std::string country;
     std::string portal_url;
+    std::string host_name;
   };
 
   Manager(ControlInterface *control_interface,
@@ -113,6 +114,7 @@ class Manager {
   void set_startup_profiles(const std::vector<std::string> &startup_profiles) {
     startup_profiles_ = startup_profiles;
   }
+  virtual const std::string &GetHostName() { return props_.host_name; }
 
  private:
   friend class ManagerAdaptorInterface;

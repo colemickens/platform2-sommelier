@@ -20,6 +20,7 @@ class MockDHCPConfig : public DHCPConfig {
                  EventDispatcher *dispatcher,
                  DHCPProvider *provider,
                  const std::string &device_name,
+                 const std::string &request_host_name,
                  GLib *glib);
   virtual ~MockDHCPConfig();
 

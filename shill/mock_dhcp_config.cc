@@ -10,11 +10,13 @@ MockDHCPConfig::MockDHCPConfig(ControlInterface *control_interface,
                                EventDispatcher *dispatcher,
                                DHCPProvider *provider,
                                const std::string &device_name,
+                               const std::string &request_host_name,
                                GLib *glib)
     : DHCPConfig(control_interface,
                  dispatcher,
                  provider,
                  device_name,
+                 request_host_name,
                  glib) {}
 
 MockDHCPConfig::~MockDHCPConfig() {}

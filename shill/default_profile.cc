@@ -25,6 +25,8 @@ const char DefaultProfile::kStorageId[] = "global";
 // static
 const char DefaultProfile::kStorageCheckPortalList[] = "CheckPortalList";
 // static
+const char DefaultProfile::kStorageHostName[] = "HostName";
+// static
 const char DefaultProfile::kStorageName[] = "Name";
 // static
 const char DefaultProfile::kStorageOfflineMode[] = "OfflineMode";
@@ -50,6 +52,7 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
 DefaultProfile::~DefaultProfile() {}
 
 bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
+  storage()->GetString(kStorageId, kStorageHostName, &manager_props->host_name);
   storage()->GetBool(kStorageId, kStorageOfflineMode,
                      &manager_props->offline_mode);
   storage()->GetString(kStorageId,
@@ -59,6 +62,7 @@ bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
 }
 
 bool DefaultProfile::Save() {
+  storage()->SetString(kStorageId, kStorageHostName, props_.host_name);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
   storage()->SetBool(kStorageId, kStorageOfflineMode, props_.offline_mode);
   storage()->SetString(kStorageId,

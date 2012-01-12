@@ -48,10 +48,12 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
                        EventDispatcher *dispatcher,
                        DHCPProvider *provider,
                        const string &device_name,
+                       const string &request_hostname,
                        GLib *glib)
     : IPConfig(control_interface, device_name, kType),
       proxy_factory_(ProxyFactory::GetInstance()),
       provider_(provider),
+      request_hostname_(request_hostname),
       pid_(0),
       child_watch_tag_(0),
       root_("/"),
@@ -145,17 +147,20 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
 bool DHCPConfig::Start() {
   VLOG(2) << __func__ << ": " << device_name();
 
-  char *argv[4] = {
-    const_cast<char *>(kDHCPCDPath),
-    const_cast<char *>("-B"),  // foreground
-    const_cast<char *>(device_name().c_str()),
-    NULL
-  };
+  vector<char *> args;
+  args.push_back(const_cast<char *>(kDHCPCDPath));
+  args.push_back(const_cast<char *>("-B"));  // foreground
+  args.push_back(const_cast<char *>(device_name().c_str()));
+  if (!request_hostname_.empty()) {
+    args.push_back(const_cast<char *>("-h"));  // request hostname
+    args.push_back(const_cast<char *>(request_hostname_.c_str()));
+  }
+  args.push_back(NULL);
   char *envp[1] = { NULL };
 
   CHECK(!pid_);
   if (!glib_->SpawnAsync(NULL,
-                         argv,
+                         args.data(),
                          envp,
                          G_SPAWN_DO_NOT_REAP_CHILD,
                          NULL,

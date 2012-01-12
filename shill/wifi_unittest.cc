@@ -151,6 +151,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
                                         &dispatcher_,
                                         &dhcp_provider_,
                                         kDeviceName,
+                                        kHostName,
                                         &glib_)),
         proxy_factory_(this) {
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
@@ -371,6 +372,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
  protected:
   static const char kDeviceName[];
   static const char kDeviceAddress[];
+  static const char kHostName[];
   static const char kNetworkModeAdHoc[];
   static const char kNetworkModeInfrastructure[];
 
@@ -385,6 +387,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
 
 const char WiFiMainTest::kDeviceName[] = "wlan0";
 const char WiFiMainTest::kDeviceAddress[] = "000102030405";
+const char WiFiMainTest::kHostName[] = "hostname";
 const char WiFiMainTest::kNetworkModeAdHoc[] = "ad-hoc";
 const char WiFiMainTest::kNetworkModeInfrastructure[] = "infrastructure";
 
@@ -762,7 +765,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
 
 TEST_F(WiFiMainTest, LinkEvent) {
   EXPECT_FALSE(IsLinkUp());
-  EXPECT_CALL(dhcp_provider_, CreateConfig(_)).
+  EXPECT_CALL(dhcp_provider_, CreateConfig(_, _)).
       WillOnce(Return(dhcp_config_));
   ReportLinkUp();
 }
@@ -774,7 +777,7 @@ TEST_F(WiFiMainTest, Stop) {
     StartWiFi();
     ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
     ReportScanDone();
-    EXPECT_CALL(dhcp_provider_, CreateConfig(_)).
+    EXPECT_CALL(dhcp_provider_, CreateConfig(_, _)).
         WillOnce(Return(dhcp_config_));
     ReportLinkUp();
   }

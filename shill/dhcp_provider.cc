@@ -44,10 +44,11 @@ void DHCPProvider::Init(ControlInterface *control_interface,
   dispatcher_ = dispatcher;
 }
 
-DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name) {
+DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name,
+                                            const string &host_name) {
   VLOG(2) << __func__ << " device: " << device_name;
   return new DHCPConfig(
-      control_interface_, dispatcher_, this, device_name, glib_);
+      control_interface_, dispatcher_, this, device_name, host_name, glib_);
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {

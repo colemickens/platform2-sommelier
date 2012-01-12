@@ -93,6 +93,7 @@ Manager::Manager(ControlInterface *control_interface,
                              NULL);
   store_.RegisterBool(flimflam::kOfflineModeProperty, &props_.offline_mode);
   store_.RegisterString(flimflam::kPortalURLProperty, &props_.portal_url);
+  store_.RegisterString(shill::kHostNameProperty, &props_.host_name);
   HelpRegisterDerivedString(flimflam::kStateProperty,
                             &Manager::CalculateState,
                             NULL);
