@@ -112,7 +112,7 @@ void CellularCapabilityCDMA::HandleNewActivationState(uint32 error) {
   if (!cellular()->service().get()) {
     return;
   }
-  cellular()->service()->set_activation_state(
+  cellular()->service()->SetActivationState(
       GetActivationStateString(activation_state_));
   cellular()->service()->set_error(GetActivationErrorString(error));
 }

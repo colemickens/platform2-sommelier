@@ -76,6 +76,14 @@ string CellularService::GetDeviceRpcId(Error */*error*/) {
   return cellular_->GetRpcIdentifier();
 }
 
+void CellularService::SetActivationState(const string &state) {
+  if (state == activation_state_) {
+    return;
+  }
+  activation_state_ = state;
+  adaptor()->EmitStringChanged(flimflam::kActivationStateProperty, state);
+}
+
 void CellularService::SetNetworkTechnology(const string &technology) {
   if (technology == network_technology_) {
     return;

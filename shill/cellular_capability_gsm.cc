@@ -98,7 +98,7 @@ void CellularCapabilityGSM::OnDeviceStopped() {
 }
 
 void CellularCapabilityGSM::OnServiceCreated() {
-  cellular()->service()->set_activation_state(
+  cellular()->service()->SetActivationState(
       flimflam::kActivationStateActivated);
   UpdateServingOperator();
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -39,10 +39,8 @@ class CellularService : public Service {
   // cellular_<MAC>_<Service_Operator_Name>
   std::string GetStorageIdentifier() const;
 
+  void SetActivationState(const std::string &state);
   const std::string &activation_state() const { return activation_state_; }
-  void set_activation_state(const std::string &state) {
-    activation_state_ = state;
-  }
 
   uint8 strength() const { return strength_; }
   void set_strength(uint8 strength) { strength_ = strength; }
