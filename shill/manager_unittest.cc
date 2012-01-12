@@ -764,7 +764,7 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   // Two otherwise equal services should be reordered by strength
-  mock_service1->set_strength(1);
+  mock_service1->SetStrength(1);
   manager()->UpdateService(mock_service1);
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 

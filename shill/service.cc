@@ -157,7 +157,7 @@ Service::Service(ControlInterface *control_interface,
   HelpRegisterDerivedString(flimflam::kStateProperty,
                             &Service::CalculateState,
                             NULL);
-  // flimflam::kSignalStrengthProperty: Registered in WiFi/CellularService
+  store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
   store_.RegisterString(flimflam::kUIDataProperty, &ui_data_);
   // flimflam::kWifiAuthMode: Registered in WiFiService
   // flimflam::kWifiHiddenSsid: Registered in WiFiService
@@ -648,6 +648,14 @@ uint16 Service::GetHTTPProxyPort(Error */*error*/) {
     return static_cast<uint16>(http_proxy_->proxy_port());
   }
   return 0;
+}
+
+void Service::SetStrength(uint8 strength) {
+  if (strength == strength_) {
+    return;
+  }
+  strength_ = strength;
+  adaptor_->EmitUint8Changed(flimflam::kSignalStrengthProperty, strength);
 }
 
 }  // namespace shill

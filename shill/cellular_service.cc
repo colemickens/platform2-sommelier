@@ -25,7 +25,6 @@ CellularService::CellularService(ControlInterface *control_interface,
                                  Manager *manager,
                                  const CellularRefPtr &device)
     : Service(control_interface, dispatcher, manager, Technology::kCellular),
-      strength_(0),
       cellular_(device) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kActivationStateProperty,
@@ -39,7 +38,6 @@ CellularService::CellularService(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kRoamingStateProperty, &roaming_state_);
   store->RegisterConstStringmap(flimflam::kServingOperatorProperty,
                                 &serving_operator_.ToDict());
-  store->RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
   store->RegisterConstString(flimflam::kUsageURLProperty, &usage_url_);
 
   set_friendly_name(device->CreateFriendlyServiceName());

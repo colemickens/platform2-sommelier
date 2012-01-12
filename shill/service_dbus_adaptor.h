@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -35,11 +35,13 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
 
   // Implementation of ServiceAdaptorInterface.
   virtual const std::string &GetRpcIdentifier() { return path(); }
-  void UpdateConnected();
-  void EmitBoolChanged(const std::string& name, bool value);
-  void EmitUintChanged(const std::string& name, uint32 value);
-  void EmitIntChanged(const std::string& name, int value);
-  void EmitStringChanged(const std::string& name, const std::string& value);
+  virtual void UpdateConnected();
+  virtual void EmitBoolChanged(const std::string &name, bool value);
+  virtual void EmitUint8Changed(const std::string &name, uint8 value);
+  virtual void EmitUintChanged(const std::string &name, uint32 value);
+  virtual void EmitIntChanged(const std::string &name, int value);
+  virtual void EmitStringChanged(
+      const std::string& name, const std::string &value);
 
   // Implementation of Service_adaptor
   std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);

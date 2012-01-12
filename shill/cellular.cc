@@ -311,8 +311,8 @@ void Cellular::HandleNewRegistrationStateTask() {
 
 void Cellular::HandleNewSignalQuality(uint32 strength) {
   VLOG(2) << "Signal strength: " << strength;
-  if (service_.get()) {
-    service_->set_strength(strength);
+  if (service_) {
+    service_->SetStrength(strength);
   }
 }
 

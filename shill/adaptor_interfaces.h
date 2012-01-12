@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -109,6 +109,7 @@ class ServiceAdaptorInterface {
   virtual void UpdateConnected() = 0;
 
   virtual void EmitBoolChanged(const std::string &name, bool value) = 0;
+  virtual void EmitUint8Changed(const std::string &name, uint8 value) = 0;
   virtual void EmitUintChanged(const std::string &name, uint32 value) = 0;
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,

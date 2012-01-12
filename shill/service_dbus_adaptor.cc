@@ -32,21 +32,24 @@ ServiceDBusAdaptor::~ServiceDBusAdaptor() {
 
 void ServiceDBusAdaptor::UpdateConnected() {}
 
-void ServiceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
+void ServiceDBusAdaptor::EmitBoolChanged(const string &name, bool value) {
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
 }
 
-void ServiceDBusAdaptor::EmitUintChanged(const std::string& name,
-                                         uint32 value) {
+void ServiceDBusAdaptor::EmitUint8Changed(const string &name, uint8 value) {
+  PropertyChanged(name, DBusAdaptor::ByteToVariant(value));
+}
+
+void ServiceDBusAdaptor::EmitUintChanged(const string &name, uint32 value) {
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
-void ServiceDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
+void ServiceDBusAdaptor::EmitIntChanged(const string &name, int value) {
   PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
-void ServiceDBusAdaptor::EmitStringChanged(const std::string& name,
-                                           const std::string& value) {
+void ServiceDBusAdaptor::EmitStringChanged(const string &name,
+                                           const string &value) {
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 
 }

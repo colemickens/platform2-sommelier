@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -110,6 +110,7 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
 
   MOCK_METHOD0(UpdateConnected, void(void));
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
+  MOCK_METHOD2(EmitUint8Changed, void(const std::string&, uint8));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));

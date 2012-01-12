@@ -63,7 +63,6 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                             &WiFiService::SetPassphrase);
   store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
   store->RegisterConstString(flimflam::kSecurityProperty, &security_);
-  store->RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
 
   store->RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
   store->RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);

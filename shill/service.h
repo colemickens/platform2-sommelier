@@ -193,8 +193,8 @@ class Service : public base::RefCounted<Service> {
   int32 security_level() const { return security_level_; }
   void set_security_level(int32 security) { security_level_ = security; }
 
-  int32 strength() const { return strength_; }
-  void set_strength(int32 strength) { strength_ = strength; }
+  void SetStrength(uint8 strength);
+  uint8 strength() const { return strength_; }
 
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString(Error *error);
@@ -334,7 +334,7 @@ class Service : public base::RefCounted<Service> {
   bool favorite_;
   int32 priority_;
   int32 security_level_;
-  int32 strength_;
+  uint8 strength_;
   std::string proxy_config_;
   std::string ui_data_;
   bool save_credentials_;

@@ -42,9 +42,6 @@ class CellularService : public Service {
   void SetActivationState(const std::string &state);
   const std::string &activation_state() const { return activation_state_; }
 
-  uint8 strength() const { return strength_; }
-  void set_strength(uint8 strength) { strength_ = strength; }
-
   const std::string &payment_url() const { return payment_url_; }
   void set_payment_url(const std::string &url) { payment_url_ = url; }
 
@@ -76,7 +73,6 @@ class CellularService : public Service {
   std::string network_technology_;
   std::string roaming_state_;
   std::string payment_url_;
-  uint8 strength_;
   std::string usage_url_;
 
   std::map<std::string, std::string> apn_info_;
