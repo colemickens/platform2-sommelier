@@ -151,7 +151,11 @@ endif
 # variable.
 RUN_ONCE := 0
 MAKECMDGOALS ?= all
-_all %::
+# Keep the rules split as newer make does not allow them to be declared
+# on the same line.  But the way :: rules work, the _all here will also
+# invoke the %:: rule while retaining "_all" as the default.
+_all::
+%::
 	$(if $(filter 0,$(RUN_ONCE)), \
 	  $(QUIET)mkdir -p "$(OUT)" && \
 	  cd $(OUT) && \
