@@ -1,0 +1,60 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This file is used by CrosDisks to specify the seccomp filter policy for
+# sandboxing AVFS processes on x86-64 platforms.
+#
+read: 1
+write: 1
+open: 1
+close: 1
+stat: 1
+fstat: 1
+lstat: 1
+poll: 1
+lseek: 1
+mmap: 1
+mprotect: 1
+munmap: 1
+brk: 1
+rt_sigaction: 1
+rt_sigprocmask: 1
+rt_sigreturn: 1
+writev: 1
+access: 1
+madvise: 1
+dup2: 1
+pause: 1
+sendmsg: 1
+recvmsg: 1
+socketpair: 1
+setsockopt: 1
+getsockopt: 1
+clone: 1
+execve: 1
+exit: 1
+wait4: 1
+fcntl: 1
+getdents: 1
+chdir: 1
+fchdir: 1
+mkdir: 1
+rmdir: 1
+unlink: 1
+umask: 1
+gettimeofday: 1
+getuid: 1
+getgid: 1
+geteuid: 1
+setsid: 1
+setfsuid: 1
+setfsgid: 1
+getsid: 1
+arch_prctl: 1
+mount: 1
+time: 1
+futex: 1
+exit_group: 1
+tgkill: 1
+set_robust_list: 1
