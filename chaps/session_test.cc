@@ -52,8 +52,8 @@ static Object* CreateObjectMock() {
   o->SetupFake();
   EXPECT_CALL(*o, GetObjectClass()).Times(AnyNumber());
   EXPECT_CALL(*o, SetAttributes(_, _)).Times(AnyNumber());
-  EXPECT_CALL(*o, Validate()).WillRepeatedly(Return(CKR_OK));
-  EXPECT_CALL(*o, CopyAndValidate(_)).WillRepeatedly(Return(CKR_OK));
+  EXPECT_CALL(*o, FinalizeNewObject()).WillRepeatedly(Return(CKR_OK));
+  EXPECT_CALL(*o, Copy(_)).WillRepeatedly(Return(CKR_OK));
   EXPECT_CALL(*o, IsTokenObject()).Times(AnyNumber());
   EXPECT_CALL(*o, IsAttributePresent(_)).Times(AnyNumber());
   EXPECT_CALL(*o, GetAttributeString(_)).Times(AnyNumber());

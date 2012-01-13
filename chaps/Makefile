@@ -21,6 +21,7 @@ LDFLAGS += -lbase -lchromeos $(LIB_DIRS)
 COMMON = $(OUT)chaps_utility.o $(OUT)attributes.pb.o $(OUT)attributes.o
 MOCK = $(OUT)chaps_factory_mock.o \
        $(OUT)object_mock.o \
+       $(OUT)object_policy_mock.o \
        $(OUT)object_pool_mock.o \
        $(OUT)session_mock.o \
        $(OUT)slot_manager_mock.o \
@@ -57,7 +58,8 @@ $(OUT)chapsd: $(COMMON) \
               $(OUT)chaps_service_redirect.o \
               $(OUT)chaps_adaptor.o \
               $(OUT)slot_manager_impl.o \
-              $(OUT)session_impl.o
+              $(OUT)session_impl.o \
+              $(OUT)object_impl.o
 	$(call cxx_binary, -ldl)
 RM_ON_CLEAN += $(OUT)chapsd
 
@@ -101,6 +103,12 @@ $(OUT)session_test: $(COMMON) $(MOCK) \
 	$(call cxx_binary, -lgtest -lgmock)
 RM_ON_CLEAN += $(OUT)session_test
 
+$(OUT)object_test: $(COMMON) $(MOCK) \
+                    $(OUT)object_test.o \
+                    $(OUT)object_impl.o
+	$(call cxx_binary, -lgtest -lgmock)
+RM_ON_CLEAN += $(OUT)object_test
+
 # Some shortcuts
 all: $(OUT)libchaps.so $(OUT)chapsd
 
@@ -120,7 +128,8 @@ protobufs: attributes.pb.h
 tests: $(OUT)chaps_test \
        $(OUT)chaps_service_test \
        $(OUT)slot_manager_test \
-       $(OUT)session_test
+       $(OUT)session_test \
+       $(OUT)object_test
 
 live_tests: $(OUT)chapsd_test $(OUT)chaps_event_generator
 
@@ -131,6 +140,7 @@ runtests: tests
 	$(OUT)chaps_service_test
 	$(OUT)slot_manager_test
 	$(OUT)session_test
+	$(OUT)object_test
 # This will have to wait until it does not depend on opencryptoki.
 # For now this test must be run on a live system.
 #LD_LIBRARY_PATH=$(OUT) "$(OUT)chapsd_test"

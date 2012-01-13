@@ -14,12 +14,21 @@ namespace chaps {
 
 typedef std::map<CK_ATTRIBUTE_TYPE, std::string> AttributeMap;
 
+// Object policies can differ depending on the stage an object is at in its
+// lifecycle.
+enum ObjectStage {
+  kCreate,  // The object is being created.
+  kCopy,    // The object is being created as a copy of another object.
+  kModify   // The object already exists.
+};
+
 // Object is the interface for a PKCS #11 object.  This component manages all
 // object attributes and provides query and modify access to attributes
 // according to the current object policy.
 class Object {
  public:
   virtual ~Object() {}
+  virtual ObjectStage GetStage() const = 0;
   // Returns a general indicator of the object's size. This size will be at
   // least as large as the combined size of the object's attribute values.
   virtual int GetSize() const = 0;
@@ -32,22 +41,35 @@ class Object {
   virtual bool IsModifiable() const = 0;
   // Returns the value of the CKA_PRIVATE attribute.
   virtual bool IsPrivate() const = 0;
-  // Validates that the object is consistent and complete.
-  virtual CK_RV Validate() = 0;
-  // Copies attributes from another object and validates the combination of
-  // existing attributes and copied attributes forms a consistent object.
-  virtual CK_RV CopyAndValidate(const Object* original) = 0;
+  // Performs final tasks required when creating a new object:
+  // - Assigns a policy.
+  // - Validates that attributes set by the user are allowed to be set.
+  // - Validates attributes for consistency and completeness.
+  // - Set default values for attributes, if necessary.
+  // - Move the object into the kModify stage.
+  virtual CK_RV FinalizeNewObject() = 0;
+  // Copies attributes and policy from another object.
+  virtual CK_RV Copy(const Object* original) = 0;
   // Provides PKCS #11 attribute values according to the semantics described in
-  // PKCS #11 v2.20: 11.7 - C_GetAttributeValue (p. 133).
+  // PKCS #11 v2.20: 11.7 - C_GetAttributeValue (p. 133). If a policy exists it
+  // will be enforced.
   virtual CK_RV GetAttributes(CK_ATTRIBUTE_PTR attributes,
                               int num_attributes) const = 0;
   // Sets object attributes from a list of PKCS #11 attribute values according
   // to the semantics described in PKCS #11 v2.20: 11.7 - C_SetAttributeValue
-  // (p. 135).
+  // (p. 135). If a policy exists it will be enforced.
   virtual CK_RV SetAttributes(const CK_ATTRIBUTE_PTR attributes,
                               int num_attributes) = 0;
   // Returns true if the a value for the attribute exists.
   virtual bool IsAttributePresent(CK_ATTRIBUTE_TYPE type) const = 0;
+
+  // Note:
+  // Policy will not be enforced for the following methods. These methods are
+  // strictly for use within the PKCS #11 boundary. This allows Chaps code to
+  // view and modify attributes that cannot be viewed or modified from outside
+  // the PKCS #11 boundary. For example, setting CKA_LOCAL to true when a key is
+  // generated.
+
   // Queries a boolean attribute. If the attribute does not exist or is not
   // valid, 'default_value' is returned.
   virtual bool GetAttributeBool(CK_ATTRIBUTE_TYPE type,

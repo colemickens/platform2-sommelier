@@ -7,9 +7,12 @@
 
 #include <string>
 
+#include "pkcs11/cryptoki.h"
+
 namespace chaps {
 
 class Object;
+class ObjectPolicy;
 class ObjectPool;
 class Session;
 class TPMUtility;
@@ -28,6 +31,7 @@ class ChapsFactory {
   virtual ObjectPool* CreatePersistentObjectPool(
       const std::string& file_name) = 0;
   virtual Object* CreateObject() = 0;
+  virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) = 0;
 };
 
 }  // namespace

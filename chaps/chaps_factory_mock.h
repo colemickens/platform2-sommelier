@@ -21,6 +21,7 @@ class ChapsFactoryMock : public ChapsFactory {
   MOCK_METHOD1(CreatePersistentObjectPool, ObjectPool*(const std::string&));
   MOCK_METHOD0(CreateObjectPool, ObjectPool*());
   MOCK_METHOD0(CreateObject, Object*());
+  MOCK_METHOD1(CreateObjectPolicy, ObjectPolicy*(CK_OBJECT_CLASS));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ChapsFactoryMock);

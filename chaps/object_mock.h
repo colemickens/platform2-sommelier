@@ -22,14 +22,14 @@ class ObjectMock : public Object {
  public:
   ObjectMock();
   virtual ~ObjectMock();
-
+  MOCK_CONST_METHOD0(GetStage, ObjectStage ());
   MOCK_CONST_METHOD0(GetObjectClass, CK_OBJECT_CLASS ());
   MOCK_CONST_METHOD0(IsTokenObject, bool ());
   MOCK_CONST_METHOD0(IsModifiable, bool ());
   MOCK_CONST_METHOD0(IsPrivate, bool ());
   MOCK_CONST_METHOD0(GetSize, int ());
-  MOCK_METHOD0(Validate, CK_RV ());
-  MOCK_METHOD1(CopyAndValidate, CK_RV (const Object*));
+  MOCK_METHOD0(FinalizeNewObject, CK_RV ());
+  MOCK_METHOD1(Copy, CK_RV (const Object*));
   MOCK_CONST_METHOD2(GetAttributes, CK_RV (CK_ATTRIBUTE_PTR, int));
   MOCK_METHOD2(SetAttributes, CK_RV (const CK_ATTRIBUTE_PTR, int));
   MOCK_CONST_METHOD1(IsAttributePresent, bool (CK_ATTRIBUTE_TYPE));

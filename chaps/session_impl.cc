@@ -458,7 +458,7 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
   object->SetAttributeInt(CKA_KEY_TYPE, key_type);
   object->SetAttributeString(CKA_VALUE, key_material);
   object->SetAttributeBool(CKA_LOCAL, true);
-  result = object->Validate();
+  result = object->FinalizeNewObject();
   if (result != CKR_OK)
     return result;
   ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
@@ -540,10 +540,10 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   private_object->SetAttributeInt(CKA_KEY_TYPE, CKK_RSA);
   public_object->SetAttributeBool(CKA_LOCAL, true);
   private_object->SetAttributeBool(CKA_LOCAL, true);
-  result = public_object->Validate();
+  result = public_object->FinalizeNewObject();
   if (result != CKR_OK)
     return result;
-  result = private_object->Validate();
+  result = private_object->FinalizeNewObject();
   if (result != CKR_OK)
     return result;
   if (!pool->Insert(public_object.get()))
@@ -758,15 +758,20 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
   CHECK(attributes || num_attributes == 0);
   scoped_ptr<Object> object(factory_->CreateObject());
   CHECK(object.get());
-  CK_RV result = object->SetAttributes(attributes, num_attributes);
+  CK_RV result = CKR_OK;
+  if (copy_from_object) {
+    result = object->Copy(copy_from_object);
+    if (result != CKR_OK)
+      return result;
+  }
+  result = object->SetAttributes(attributes, num_attributes);
   if (result != CKR_OK)
     return result;
-  if (copy_from_object)
-    result = object->CopyAndValidate(copy_from_object);
-  else
-    result = object->Validate();
-  if (result != CKR_OK)
-    return result;
+  if (!copy_from_object) {
+    result = object->FinalizeNewObject();
+    if (result != CKR_OK)
+      return result;
+  }
   ObjectPool* pool = token_object_pool_;
   if (object->IsTokenObject()) {
     result = WrapPrivateKey(object.get());
