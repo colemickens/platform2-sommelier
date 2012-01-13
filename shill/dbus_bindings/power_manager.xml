@@ -10,5 +10,8 @@
     <signal name="SuspendDelay">
       <arg name="sequence_number" type="u"/>
     </signal>
+    <signal name="PowerStateChanged">
+      <arg name="new_power_state" type="s"/>
+    </signal>
   </interface>
 </node>

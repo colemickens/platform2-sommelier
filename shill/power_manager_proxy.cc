@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,7 +7,10 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
+using std::string;
+
 namespace shill {
+const char PowerManagerProxy::kRootPath[] = "/";
 
 PowerManagerProxy::PowerManagerProxy(PowerManagerProxyDelegate *delegate,
                                      DBus::Connection *connection)
@@ -22,7 +25,7 @@ void PowerManagerProxy::RegisterSuspendDelay(uint32 delay_ms) {
 PowerManagerProxy::Proxy::Proxy(PowerManagerProxyDelegate *delegate,
                                 DBus::Connection *connection)
     : DBus::ObjectProxy(*connection,
-                        power_manager::kPowerManagerServicePath,
+                        kRootPath,
                         power_manager::kPowerManagerServiceName),
       delegate_(delegate) {}
 
@@ -31,6 +34,25 @@ PowerManagerProxy::Proxy::~Proxy() {}
 void PowerManagerProxy::Proxy::SuspendDelay(const uint32_t &sequence_number) {
   VLOG(2) << __func__ << "(" << sequence_number << ")";
   delegate_->OnSuspendDelay(sequence_number);
+}
+
+void PowerManagerProxy::Proxy::PowerStateChanged(
+    const string &new_power_state) {
+  VLOG(2) << __func__ << "(" << new_power_state << ")";
+
+  PowerManagerProxyDelegate::SuspendState suspend_state;
+  if (new_power_state == "on") {
+    suspend_state = PowerManagerProxyDelegate::kOn;
+  } else if (new_power_state == "standby") {
+    suspend_state = PowerManagerProxyDelegate::kStandby;
+  } else if (new_power_state == "mem") {
+    suspend_state = PowerManagerProxyDelegate::kMem;
+  } else if (new_power_state == "disk") {
+    suspend_state = PowerManagerProxyDelegate::kDisk;
+  } else {
+    suspend_state = PowerManagerProxyDelegate::kUnknown;
+  }
+  delegate_->OnPowerStateChanged(suspend_state);
 }
 
 }  // namespace shill

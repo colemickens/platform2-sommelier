@@ -80,6 +80,8 @@ class ProxyFactory {
       const std::string &path,
       const std::string &service);
 
+  // The caller retains ownership of 'delegate'.  It must not be deleted before
+  // the proxy.
   virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
       PowerManagerProxyDelegate *delegate);
 

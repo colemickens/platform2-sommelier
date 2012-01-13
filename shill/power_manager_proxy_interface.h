@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,15 @@
 #include <base/basictypes.h>
 
 namespace shill {
+
+// This class provides events from the power manager.  To use this class, create
+// a subclass from PowerManagerProxyDelegate and implement its member functions.
+// Call ProxyFactory::CreatePowerManagerProxy() to create an instance of this
+// proxy, passing it a pointer to the delegate you created.  When an event from
+// the power manager is received, your delegate's member function will be
+// called. You retain ownership of the delegate and must ensure that the proxy
+// is deleted before the delegate.
+
 
 class PowerManagerProxyInterface {
  public:
@@ -29,6 +38,16 @@ class PowerManagerProxyInterface {
 // PowerManager signal delegate to be associated with the proxy.
 class PowerManagerProxyDelegate {
  public:
+  // Possible states broadcast from the powerd_suspend script.
+  enum SuspendState {
+    kOn,
+    kStandby,
+    kMem,
+    kDisk,
+    // Place new states above kUnknown.
+    kUnknown
+  };
+
   virtual ~PowerManagerProxyDelegate() {}
 
   // Broadcasted by PowerManager when it initiates suspend. RPC clients that
@@ -36,6 +55,10 @@ class PowerManagerProxyDelegate {
   // ready to suspend by sending a SuspendReady signal with the same
   // |sequence_number|.
   virtual void OnSuspendDelay(uint32 sequence_number) = 0;
+
+  // This method will be called when suspending or resuming.  |new_power_state|
+  // will be "kMem" when suspending (to memory), or "kOn" when resuming.
+  virtual void OnPowerStateChanged(SuspendState new_power_state) = 0;
 };
 
 }  // namespace shill
