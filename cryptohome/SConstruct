@@ -160,11 +160,8 @@ pkgconfig = os.environ.get('PKG_CONFIG', 'pkg-config')
 env['BUILDERS']['ProtocolBuffer'] = proto_builder
 
 env.Append(LIBPATH = ['.'])
-# This has to be separate - we don't want the lib flags for libchromeos, since
-# the order of libs on the command line is constrained. See the warning above.
-env.ParseConfig(pkgconfig + ' --cflags libchromeos')
 env.ParseConfig(pkgconfig + ' --cflags --libs ' \
-                'dbus-glib-1 glib-2.0 gdk-2.0 gtk+-2.0 nss')
+                'dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 gtk+-2.0 nss')
 env.ProtocolBuffer('vault_keyset.pb.cc', 'vault_keyset.proto')
 env.ProtocolBuffer('tpm_status.pb.cc', 'tpm_status.proto')
 env.ProtocolBuffer('install_attributes.pb.cc', 'install_attributes.proto')
