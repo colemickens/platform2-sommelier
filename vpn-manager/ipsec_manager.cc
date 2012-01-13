@@ -32,7 +32,7 @@ DEFINE_int32(ipsec_timeout, 30, "timeout for ipsec to be established");
 DEFINE_string(leftprotoport, "17/1701", "client protocol/port");
 DEFINE_bool(nat_traversal, true, "Enable NAT-T nat traversal");
 DEFINE_bool(pfs, false, "pfs");
-DEFINE_bool(rekey, false, "rekey");
+DEFINE_bool(rekey, true, "rekey");
 DEFINE_string(rightprotoport, "17/1701", "server protocol/port");
 DEFINE_string(type, "transport", "IPsec type (transport or tunnel)");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
