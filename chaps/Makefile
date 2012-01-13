@@ -11,9 +11,9 @@ PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 PROTOC = protoc
 
-PC_DEPS = dbus-c++-1 libchromeos protobuf
-INCLUDE_DIRS = -I$(OUT)include -I.. $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
-LIB_DIRS = -L$(OUT) $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+INCLUDE_DIRS = -I$(OUT)include -I.. \
+               $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-c++-1 protobuf)
+LIB_DIRS = -L$(OUT) $(shell $(PKG_CONFIG) --libs dbus-1 dbus-c++-1 protobuf)
 
 CXXFLAGS := $(INCLUDE_DIRS) $(CXXFLAGS)
 LDFLAGS += -lbase -lchromeos $(LIB_DIRS)
