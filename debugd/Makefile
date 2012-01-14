@@ -5,4 +5,4 @@
 # Stub makefile.
 
 $(filter-out _all,$(MAKECMDGOALS)) _all:
-	$(MAKE) -C src $(MAKEFLAGS) $(MAKECMDGOALS)
+	$(MAKE) -C src $(MAKECMDGOALS)
