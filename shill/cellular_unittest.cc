@@ -140,6 +140,7 @@ class CellularTest : public testing::Test {
   }
 
   virtual void TearDown() {
+    device_->state_ = Cellular::kStateDisabled;
     device_->capability_->proxy_factory_ = NULL;
     device_->proxy_factory_ = NULL;
     device_->Stop();
@@ -470,6 +471,22 @@ TEST_F(CellularTest, Connect) {
   EXPECT_CALL(*simple_proxy_, Connect(ContainsPhoneNumber())).Times(2);
   device_->simple_proxy_.reset(simple_proxy_.release());
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularTest, DisconnectModem) {
+  device_->DisconnectModem();
+  EXPECT_CALL(*proxy_, Disconnect()).Times(1);
+  device_->proxy_.reset(proxy_.release());
+  device_->state_ = Cellular::kStateConnected;
+  device_->DisconnectModem();
+}
+
+TEST_F(CellularTest, DisableModem) {
+  device_->DisableModem();
+  EXPECT_CALL(*proxy_, Enable(false)).Times(1);
+  device_->proxy_.reset(proxy_.release());
+  device_->state_ = Cellular::kStateRegistered;
+  device_->DisableModem();
 }
 
 }  // namespace shill

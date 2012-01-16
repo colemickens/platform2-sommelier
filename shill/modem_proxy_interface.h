@@ -20,6 +20,7 @@ class ModemProxyInterface {
   virtual ~ModemProxyInterface() {}
 
   virtual void Enable(const bool enable) = 0;
+  virtual void Disconnect() = 0;
   virtual Info GetInfo() = 0;
 };
 

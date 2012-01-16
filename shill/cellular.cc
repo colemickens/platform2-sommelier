@@ -170,10 +170,11 @@ void Cellular::Start() {
 
 void Cellular::Stop() {
   capability_->OnDeviceStopped();
+  DestroyService();
+  DisconnectModem();
+  DisableModem();
   proxy_.reset();
   simple_proxy_.reset();
-  DestroyService();
-  SetState(kStateDisabled);
   Device::Stop();
 }
 
@@ -208,6 +209,24 @@ void Cellular::EnableModem() {
     LOG(WARNING) << "Enable failed: " << e.what();
   }
   SetState(kStateEnabled);
+}
+
+void Cellular::DisableModem() {
+  VLOG(2) << __func__;
+  if (state_ == kStateDisabled) {
+    return;
+  }
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583). Note,
+  // however, that this is invoked by the Stop method, so some extra refactoring
+  // may be needed to prevent the device instance from being destroyed before
+  // the modem manager calls are complete. Maybe Disconnect and Disable need to
+  // be handled by the parent Modem class.
+  try {
+    proxy_->Enable(false);
+  } catch (const DBus::Error e) {
+    LOG(WARNING) << "Disable failed: " << e.what();
+  }
+  SetState(kStateDisabled);
 }
 
 void Cellular::GetModemStatus() {
@@ -372,6 +391,43 @@ void Cellular::ConnectTask(const DBusPropertiesMap &properties) {
   simple_proxy_->Connect(properties);
   SetState(kStateConnected);
   EstablishLink();
+}
+
+void Cellular::Disconnect(Error *error) {
+  VLOG(2) << __func__;
+  if (state_ != kStateConnected &&
+      state_ != kStateLinked) {
+    Error::PopulateAndLog(
+        error, Error::kInProgress, "Not connected; request ignored.");
+    return;
+  }
+  // Defer because we may be in a dbus-c++ callback.
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&Cellular::DisconnectTask));
+}
+
+void Cellular::DisconnectTask() {
+  VLOG(2) << __func__;
+  DisconnectModem();
+}
+
+void Cellular::DisconnectModem() {
+  VLOG(2) << __func__;
+  if (state_ != kStateConnected &&
+      state_ != kStateLinked) {
+    return;
+  }
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583). Note,
+  // however, that this is invoked by the Stop method, so some extra refactoring
+  // may be needed to prevent the device instance from being destroyed before
+  // the modem manager calls are complete. Maybe Disconnect and Disable need to
+  // be handled by the parent Modem class.
+  try {
+    proxy_->Disconnect();
+  } catch (const DBus::Error e) {
+    LOG(WARNING) << "Disconnect failed: " << e.what();
+  }
+  SetState(kStateRegistered);
 }
 
 void Cellular::EstablishLink() {

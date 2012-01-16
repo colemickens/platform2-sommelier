@@ -52,6 +52,11 @@ void CellularService::Connect(Error *error) {
   cellular_->Connect(error);
 }
 
+void CellularService::Disconnect(Error *error) {
+  Service::Disconnect(error);
+  cellular_->Disconnect(error);
+}
+
 void CellularService::ActivateCellularModem(const string &carrier,
                                             Error *error) {
   cellular_->Activate(carrier, error);

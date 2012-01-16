@@ -112,6 +112,10 @@ class Cellular : public Device,
   // failure, leaves it unchanged otherwise.
   void Connect(Error *error);
 
+  // Asynchronously disconnects the modem from the network. Populates |error| on
+  // failure, leaves it unchanged otherwise.
+  void Disconnect(Error *error);
+
   // Asynchronously activates the modem. Populates |error| on failure, leaves it
   // unchanged otherwise.
   void Activate(const std::string &carrier, Error *error);
@@ -189,6 +193,8 @@ class Cellular : public Device,
   FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
+  FRIEND_TEST(CellularTest, DisableModem);
+  FRIEND_TEST(CellularTest, DisconnectModem);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
   FRIEND_TEST(CellularTest, InitProxies);
@@ -200,6 +206,8 @@ class Cellular : public Device,
   void SetState(State state);
 
   void ConnectTask(const DBusPropertiesMap &properties);
+  void DisconnectTask();
+  void DisconnectModem();
 
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
@@ -209,6 +217,7 @@ class Cellular : public Device,
   void InitProxies();
 
   void EnableModem();
+  void DisableModem();
   void GetModemStatus();
 
   // Obtains modem's manufacturer, model ID, and hardware revision.
