@@ -65,7 +65,7 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService,
   ImageBurner* image_burner_;
   GMainLoop* main_loop_;
   guint signals_[kNumSignals];
-  int sent_signals_count_;
+  int64 amount_burnt_for_next_signal_;
   bool burning_;
   BurnerImpl* burner_impl_;
 };
@@ -73,4 +73,3 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService,
 }  // namespace imageburn
 
 #endif  // IMAGE_BURN_SERVICE_H_
-

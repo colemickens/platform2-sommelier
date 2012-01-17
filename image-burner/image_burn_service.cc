@@ -20,12 +20,16 @@
 namespace imageburn {
 #include "image-burner/bindings/server.h"
 
-// Every kSentSignalRatio IO operations, update signal will be emited.
-const int kSentSignalRatio = 256;
+namespace {
+// Update signal is emitted only when there is at least
+// |kProgressSignalInterval| bytes progress.
+const int kProgressSignalInterval = 100*1024;  // 100 KB
+}  // namespace
 
 ImageBurnService::ImageBurnService(BurnerImpl* burner_impl)
     : image_burner_(),
       main_loop_(NULL),
+      amount_burnt_for_next_signal_(0),
       burning_(false),
       burner_impl_(burner_impl) {
   LOG(INFO) << "Image Burn Service created";
@@ -112,7 +116,7 @@ gboolean ImageBurnService::BurnImageAsync(gchar* from_path, gchar* to_path,
 
   if (success) {
     dbus_g_method_return(context);
-    sent_signals_count_ = 0;
+    amount_burnt_for_next_signal_ = 0;
     burner_impl_->BurnImage(from_path, to_path);
     burning_ = false;
   } else {
@@ -154,16 +158,13 @@ void ImageBurnService::SendProgressSignal(int64 amount_burnt, int64 total_size,
                  << "initialized";
     return;
   }
-  // We send signal only once in kSentSignalRatio times.
-  if (sent_signals_count_) {
-    sent_signals_count_++;
-    if (sent_signals_count_ == kSentSignalRatio)
-      sent_signals_count_ = 0;
-    return;
+  // Send signal only when there is at least |kProgressSignalInterval| bytes
+  // progress.
+  if (amount_burnt >= amount_burnt_for_next_signal_) {
+    g_signal_emit(image_burner_, signals_[kSignalBurnUpdate], 0, target_path,
+                  amount_burnt, total_size);
+    amount_burnt_for_next_signal_ = amount_burnt + kProgressSignalInterval;
   }
-  g_signal_emit(image_burner_,
-                signals_[kSignalBurnUpdate],
-                0, target_path, amount_burnt, total_size);
 }
 
 void ImageBurnService::SetError(const std::string& message, GError** error) {
