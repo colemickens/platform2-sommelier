@@ -5,3 +5,6 @@
 *.la
 *.swp
 *.swo
+*_server_glue.h
+
+/cromo
