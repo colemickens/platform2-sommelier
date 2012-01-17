@@ -142,7 +142,7 @@ env.Append(
     # the alphabetical order. No, you are wrong. Do not attempt to change the
     # order without copious testing. In particular, the 'chromeos' dependency
     # should appear before 'base' or bad things happen.
-    LIBS = ['chromeos', 'base', 'rt', 'crypto', 'ecryptfs', 'event', 'keyutils',
+    LIBS = ['rt', 'crypto', 'ecryptfs', 'event', 'keyutils',
             'chaps', 'protobuf', 'pthread', 'scrypt', 'tspi', 'metrics'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
@@ -161,7 +161,8 @@ env['BUILDERS']['ProtocolBuffer'] = proto_builder
 
 env.Append(LIBPATH = ['.'])
 env.ParseConfig(pkgconfig + ' --cflags --libs ' \
-                'dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 gtk+-2.0 nss')
+                'dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 gtk+-2.0 libchrome' +
+                ' libchromeos nss')
 env.ProtocolBuffer('vault_keyset.pb.cc', 'vault_keyset.proto')
 env.ProtocolBuffer('tpm_status.pb.cc', 'tpm_status.proto')
 env.ProtocolBuffer('install_attributes.pb.cc', 'install_attributes.proto')
