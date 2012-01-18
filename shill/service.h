@@ -108,8 +108,10 @@ class Service : public base::RefCounted<Service> {
   // be called from a D-Bus signal handler context.
   virtual void AutoConnect();
   // Queue up a connection attempt.
-  virtual void Connect(Error *error) = 0;
-  virtual void Disconnect(Error *error) = 0;
+  virtual void Connect(Error *error);
+  // Disconnect this service. The service will not be eligible for
+  // auto-connect until a subsequent call to Connect, or Load.
+  virtual void Disconnect(Error *error);
 
   // The default implementation sets |error| to kInvalidArguments.
   virtual void ActivateCellularModem(const std::string &carrier, Error *error);
@@ -329,6 +331,7 @@ class Service : public base::RefCounted<Service> {
   std::string check_portal_;
   bool connectable_;
   std::string error_;
+  bool explicitly_disconnected_;
   bool favorite_;
   int32 priority_;
   int32 security_level_;

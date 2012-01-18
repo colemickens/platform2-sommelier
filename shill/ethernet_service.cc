@@ -44,10 +44,6 @@ EthernetService::EthernetService(ControlInterface *control_interface,
 
 EthernetService::~EthernetService() { }
 
-void EthernetService::Connect(Error */*error*/) { }
-
-void EthernetService::Disconnect(Error */*error*/) { }
-
 bool EthernetService::TechnologyIs(const Technology::Identifier type) const {
   return ethernet_->TechnologyIs(type);
 }

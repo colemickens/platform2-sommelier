@@ -135,8 +135,9 @@ void WiFiService::Connect(Error */*error*/) {
       task_factory_.NewRunnableMethod(&WiFiService::ConnectTask));
 }
 
-void WiFiService::Disconnect(Error */*error*/) {
+void WiFiService::Disconnect(Error *error) {
   LOG(INFO) << __func__;
+  Service::Disconnect(error);
   // Defer handling, since dbus-c++ does not permit us to send an
   // outbound request while processing an inbound one.
   dispatcher()->PostTask(
@@ -148,14 +149,14 @@ bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
 }
 
 bool WiFiService::IsAutoConnectable() const {
-  return connectable()
+  return Service::IsAutoConnectable() &&
       // Only auto-connect to Services which have visible Endpoints.
       // (Needed because hidden Services may remain registered with
       // Manager even without visible Endpoints.)
-      && HasEndpoints()
+      HasEndpoints() &&
       // Do not preempt an existing connection (whether pending, or
       // connected, and whether to this service, or another).
-      && wifi_->IsIdle();
+      wifi_->IsIdle();
 }
 
 bool WiFiService::IsConnecting() const {

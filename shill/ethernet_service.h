@@ -28,8 +28,6 @@ class EthernetService : public Service {
   ~EthernetService();
 
   // Inherited from Service.
-  virtual void Connect(Error *error);
-  virtual void Disconnect(Error *error);
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
   // ethernet_<MAC>

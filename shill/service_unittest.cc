@@ -281,6 +281,28 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   service_->set_connectable(true);
   EXPECT_TRUE(service_->IsAutoConnectable());
 
+  // We should not auto-connect to a Service that a user has
+  // deliberately disconnected.
+  Error error;
+  service_->Disconnect(&error);
+  EXPECT_FALSE(service_->IsAutoConnectable());
+
+  // But if the Service is reloaded, it is eligible for auto-connect
+  // again.
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_TRUE(service_->IsAutoConnectable());
+
+  // A deliberate Connect should also re-enable auto-connect.
+  service_->Disconnect(&error);
+  EXPECT_FALSE(service_->IsAutoConnectable());
+  service_->Connect(&error);
+  EXPECT_TRUE(service_->IsAutoConnectable());
+
+  // TODO(quiche): After we have resume handling in place, test that
+  // we re-enable auto-connect on resume. crosbug.com/25213
+
   service_->SetState(Service::kStateConnected);
   EXPECT_FALSE(service_->IsAutoConnectable());
 

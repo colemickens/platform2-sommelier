@@ -78,6 +78,7 @@ Service::Service(ControlInterface *control_interface,
       auto_connect_(false),
       check_portal_(kCheckPortalAuto),
       connectable_(false),
+      explicitly_disconnected_(false),
       favorite_(false),
       priority_(kPriorityNone),
       security_level_(0),
@@ -184,6 +185,14 @@ void Service::AutoConnect() {
   }
 }
 
+void Service::Connect(Error */*error*/) {
+  explicitly_disconnected_ = false;
+}
+
+void Service::Disconnect(Error */*error*/) {
+  explicitly_disconnected_ = true;
+}
+
 void Service::ActivateCellularModem(const string &/*carrier*/, Error *error) {
   const string kMessage = "Service doesn't support cellular modem activation.";
   LOG(ERROR) << kMessage;
@@ -264,6 +273,7 @@ bool Service::Load(StoreInterface *storage) {
   // "APN"
   // "LastGoodAPN"
 
+  explicitly_disconnected_ = false;
   favorite_ = true;
 
   return true;
@@ -501,7 +511,8 @@ string Service::CalculateState(Error */*error*/) {
 }
 
 bool Service::IsAutoConnectable() const {
-  return connectable() && !IsConnected() && !IsConnecting();
+  return connectable() && !IsConnected() && !IsConnecting() &&
+      !explicitly_disconnected_;
 }
 
 void Service::HelpRegisterDerivedBool(

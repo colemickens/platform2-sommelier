@@ -48,10 +48,9 @@ CellularService::CellularService(ControlInterface *control_interface,
 CellularService::~CellularService() { }
 
 void CellularService::Connect(Error *error) {
+  Service::Connect(error);
   cellular_->Connect(error);
 }
-
-void CellularService::Disconnect(Error */*error*/) { }
 
 void CellularService::ActivateCellularModem(const string &carrier,
                                             Error *error) {

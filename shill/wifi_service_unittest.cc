@@ -588,6 +588,10 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   EXPECT_TRUE(service->IsAutoConnectable());
   EXPECT_CALL(*wifi(), ConnectTo(_, _));
   service->AutoConnect();
+
+  Error error;
+  service->Disconnect(&error);
+  EXPECT_FALSE(service->IsAutoConnectable());
 }
 
 }  // namespace shill

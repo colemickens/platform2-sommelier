@@ -27,10 +27,6 @@ ServiceUnderTest::ServiceUnderTest(ControlInterface *control_interface,
 
 ServiceUnderTest::~ServiceUnderTest() {}
 
-void ServiceUnderTest::Connect(Error */*error*/) {}
-
-void ServiceUnderTest::Disconnect(Error */*error*/) {}
-
 string ServiceUnderTest::CalculateState(Error */*error*/) { return ""; }
 
 string ServiceUnderTest::GetRpcIdentifier() const {
