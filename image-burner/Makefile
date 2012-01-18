@@ -1,80 +1,46 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-XXFLAGS ?= -Wall -Werror -g
+CXXFLAGS ?= -Wall -Werror -g
 PKG_CONFIG ?= pkg-config
 
-BASE_LIBS = -lpthread -lrt -lchromeos -lbase -ldl -lrootdev
-LIBS = $(BASE_LIBS)
-UNITTEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
+PC_DEPS = dbus-1 dbus-glib-1 gobject-2.0 libchromeos
 
-INCLUDE_DIRS = -I.. \
-	$(shell $(PKG_CONFIG) --cflags gobject-2.0 dbus-1 dbus-glib-1 )
-LIB_DIRS = $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1 )
+INCLUDES = -I.. $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+LIBS += -lpthread -lrt -lrootdev $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+
+CXXFLAGS += $(INCLUDES)
 
 COMMON_OBJS = image_burner_utils.o image_burner_impl.o
-IMAGEBURN_COMMON_OBJS = $(COMMON_OBJS) image_burn_service.o  image_burner.o
+IMAGEBURN_OBJS = $(COMMON_OBJS) image_burn_service.o image_burner.o
+BINS = image_burner image_burner_tester unittest_runner
 
-DBUS_SOURCE = image_burner.xml
-DBUS_SOURCE_BASENAME = image_burner
-DBUS_SERVER = bindings/server.h
+all: $(BINS)
 
-DBUS_MARSHAL_LIST = marshal.list
-DBUS_MARSHAL_HEADER = marshal.h
+$(IMAGEBURN_OBJS) : bindings/server.h marshal.h
 
-IMAGEBURN_BIN = image_burner
-IMAGEBURN_OBJS = $(IMAGEBURN_COMMON_OBJS) image_burner_main.o
-
-BINDINGS_DIR = bindings
-
-all: $(IMAGEBURN_BIN) $(TESTER_BIN) $(UNITTEST_BIN)
-
-$(IMAGEBURN_OBJS) : $(DBUS_SERVER) $(DBUS_MARSHAL_HEADER)
-
-$(IMAGEBURN_BIN): $(IMAGEBURN_OBJS)
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(IMAGEBURN_OBJS) \
-	$(LIBS) $(LDFLAGS) -o $(IMAGEBURN_BIN)
+image_burner: $(IMAGEBURN_OBJS) image_burner_main.o
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
 .cc.o:
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
-$(BINDINGS_DIR):
-	mkdir -p $(BINDINGS_DIR)
+bindings/server.h: image_burner.xml
+	dbus-binding-tool --mode=glib-server --prefix=$(basename $^) $^ > $@
 
-$(DBUS_SERVER): $(DBUS_SOURCE) $(BINDINGS_DIR)
-	dbus-binding-tool --mode=glib-server \
-	--prefix=$(DBUS_SOURCE_BASENAME) $(DBUS_SOURCE) > $(DBUS_SERVER)
-
-$(DBUS_MARSHAL_HEADER) : $(DBUS_MARSHAL_LIST)
-	glib-genmarshal --header --body --prefix=image_burner \
-	$(DBUS_MARSHAL_LIST) > $(DBUS_MARSHAL_HEADER)
+marshal.h: marshal.list
+	glib-genmarshal --header --body --prefix=image_burner $^ > $@
 
 clean:
-	rm -rf *.o $(BINDINGS_DIR) $(DBUS_MARSHAL_HEADER)
+	rm -rf *.o $(BINDINGS_DIR)/* marshal.h $(BINS)
 
-UNITTEST_BIN = unittest_runner
+unittest_runner: unittest_runner.o image_burner_impl_unittest.o $(COMMON_OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LIBS) -lgmock -lgtest -o $@
 
-UNITTEST_OBJS = unittest_runner.o image_burner_impl_unittest.o \
-	image_burner_utils.o image_burner_impl.o
+image_burner_tester.o: bindings/client.h
+image_burner_tester: image_burner_tester.o
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
 
-$(UNITTEST_BIN): $(UNITTEST_OBJS)
-	$(CXX) $(CXXFLAGS) $(UNITTEST_OBJS) $(UNITTEST_LIBS) $(LDFLAGS) \
-	-o $(UNITTEST_BIN)
-
-#to be removed
-DBUS_CLIENT = bindings/client.h
-
-TESTER_BIN = image_burner_tester
-
-TESTER_OBJS = image_burner_tester.o
-
-$(TESTER_OBJS) : $(DBUS_CLIENT) $(DBUS_MARSHAL_SOURCE)
-
-$(TESTER_BIN): $(TESTER_OBJS)
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(TESTER_OBJS) \
-	$(BASE_LIBS) $(LDFLAGS) -o $(TESTER_BIN)
-
-$(DBUS_CLIENT): $(DBUS_SOURCE) $(BINDINGS_DIR)
-	dbus-binding-tool --mode=glib-client \
-	 --prefix=$(DBUS_SOURCE_BASENAME) $(DBUS_SOURCE) > $(DBUS_CLIENT)
+bindings/client.h: image_burner.xml
+	dbus-binding-tool --mode=glib-client --prefix=$(basename $^) $^ > $@
