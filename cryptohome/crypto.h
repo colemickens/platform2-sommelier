@@ -25,7 +25,6 @@ extern const unsigned int kDefaultPasswordRounds;
 
 class Crypto : public EntropySource {
  public:
-
   // PaddingScheme dictates the padding at the end of the ciphertext:
   //   kPaddingNone - Do not use padding.  The input plaintext must be a
   //     multiple of the crypto algorithm's block size.  This is used in the
@@ -307,6 +306,8 @@ class Crypto : public EntropySource {
     }
     return tpm_->IsConnected();
   }
+
+  static const int64 kSaltMax;
 
  private:
   // Converts a TPM error to a Crypto error

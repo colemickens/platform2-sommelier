@@ -12,6 +12,7 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
+#include <unistd.h>
 
 #include <base/file_util.h>
 #include <base/logging.h>
@@ -79,6 +80,9 @@ const unsigned int kDefaultPasswordRounds = 1337;
 // (FEK).  Larger than 128-bit has too great of a CPU overhead on unaccelerated
 // architectures.
 const unsigned int kDefaultAesKeySize = 32;
+
+// Maximum size of the salt file.
+const int64 Crypto::kSaltMax = (1 << 20);  // 1 MB
 
 Crypto::Crypto()
     : use_tpm_(false),
@@ -429,7 +433,7 @@ bool Crypto::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
   }
   if (!EVP_DecryptFinal_ex(&decryption_context, &local_plain_text[decrypt_size],
                            &final_size)) {
-    unsigned long err = ERR_get_error();
+    unsigned long err = ERR_get_error(); // NOLINT openssl types
     ERR_load_ERR_strings();
     ERR_load_crypto_strings();
 
@@ -572,8 +576,17 @@ void Crypto::PasskeyToKeysetKey(const chromeos::Blob& passkey,
 
 bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
                              bool force, SecureBlob* salt) const {
+  int64 file_len = 0;
+  if (file_util::PathExists(path)) {
+    if (!file_util::GetFileSize(path, &file_len)) {
+      LOG(ERROR) << "Can't get file len for " << path.value();
+      return false;
+    }
+  }
+
   SecureBlob local_salt;
-  if (force || !file_util::PathExists(path)) {
+  if (force || file_len == 0 || file_len > kSaltMax) {
+    LOG(ERROR) << "Creating new salt";
     // If this salt doesn't exist, automatically create it
     local_salt.resize(length);
     GetSecureRandom(static_cast<unsigned char*>(local_salt.data()),
@@ -585,24 +598,14 @@ bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
       LOG(ERROR) << "Could not write user salt";
       return false;
     }
+    sync();
   } else {
-    // Otherwise just load the contents of the salt
-    int64 file_size;
-    if (!file_util::GetFileSize(path, &file_size)) {
-      LOG(ERROR) << "Could not get size of " << path.value();
-      return false;
-    }
-    // Compare to the max of a 32-bit signed integer
-    if (file_size > static_cast<int64>(std::numeric_limits<int>::max())) {
-      LOG(ERROR) << "File " << path.value() << " is too large: " << file_size;
-      return false;
-    }
-    local_salt.resize(file_size);
-    unsigned int data_read = file_util::ReadFile(path,
+    local_salt.resize(file_len);
+    int data_read = file_util::ReadFile(path,
                                         static_cast<char*>(local_salt.data()),
                                         local_salt.size());
-    if (data_read != file_size) {
-      LOG(ERROR) << "Could not read entire file " << file_size;
+    if (data_read <= 0 || static_cast<int64>(data_read) != file_len) {
+      LOG(ERROR) << "Could not read entire file " << file_len;
       return false;
     }
   }
@@ -1119,4 +1122,4 @@ bool Crypto::EncryptVaultKeysetOld(const VaultKeyset& vault_keyset,
   return true;
 }
 
-} // namespace cryptohome
+}  // namespace cryptohome
