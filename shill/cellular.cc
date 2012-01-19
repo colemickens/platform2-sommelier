@@ -343,6 +343,7 @@ void Cellular::CreateService() {
   service_ =
       new CellularService(control_interface(), dispatcher(), metrics(),
                           manager(), this);
+  manager()->RegisterService(service_);
   capability_->OnServiceCreated();
 }
 
@@ -448,7 +449,6 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   if ((flags & IFF_UP) != 0 && state_ == kStateConnected) {
     LOG(INFO) << link_name() << " is up.";
     SetState(kStateLinked);
-    manager()->RegisterService(service_);
     // TODO(petkov): For GSM, remember the APN.
     if (AcquireIPConfig()) {
       SelectService(service_);

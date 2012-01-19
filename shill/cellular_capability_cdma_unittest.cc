@@ -12,6 +12,8 @@
 #include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/mock_glib.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/nice_mock_control.h"
@@ -25,10 +27,11 @@ namespace shill {
 class CellularCapabilityCDMATest : public testing::Test {
  public:
   CellularCapabilityCDMATest()
-      : cellular_(new Cellular(&control_,
+      : manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        cellular_(new Cellular(&control_,
                                &dispatcher_,
                                &metrics_,
-                               NULL,
+                               &manager_,
                                "",
                                "",
                                0,
@@ -67,7 +70,7 @@ class CellularCapabilityCDMATest : public testing::Test {
 
   void SetService() {
     cellular_->service_ = new CellularService(
-        &control_, &dispatcher_, &metrics_, NULL, cellular_);
+        &control_, &dispatcher_, &metrics_, &manager_, cellular_);
   }
 
   void SetDeviceState(Cellular::State state) {
@@ -76,6 +79,8 @@ class CellularCapabilityCDMATest : public testing::Test {
 
   NiceMockControl control_;
   EventDispatcher dispatcher_;
+  MockGLib glib_;
+  MockManager manager_;
   MockMetrics metrics_;
   CellularRefPtr cellular_;
   scoped_ptr<MockModemCDMAProxy> proxy_;
@@ -259,13 +264,14 @@ TEST_F(CellularCapabilityCDMATest, GetRegistrationState) {
           SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
   EXPECT_CALL(*proxy_, GetSignalQuality()).WillOnce(Return(90));
   SetProxy();
+  EXPECT_CALL(manager_, RegisterService(_));
   capability_->GetRegistrationState();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
             capability_->registration_state_1x());
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
             capability_->registration_state_evdo());
-  ASSERT_TRUE(cellular_->service().get());
+  EXPECT_TRUE(cellular_->service().get());
 }
 
 TEST_F(CellularCapabilityCDMATest, CreateFriendlyServiceName) {
