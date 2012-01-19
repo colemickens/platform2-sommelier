@@ -196,6 +196,20 @@ class DevicePolicyServiceTest : public ::testing::Test {
         .WillOnce(Invoke(this, &DevicePolicyServiceTest::RecordNewPolicy));
   }
 
+  void ExpectFailedInstallNewOwnerPolicy(Sequence sequence) {
+    Expectation get_policy =
+        EXPECT_CALL(*store_, Get())
+            .WillRepeatedly(ReturnRef(policy_proto_));
+    Expectation compare_keys =
+        EXPECT_CALL(*key_, Equals(_))
+            .WillRepeatedly(Return(false));
+    Expectation sign =
+        EXPECT_CALL(*key_, Sign(_, _, _))
+            .After(get_policy)
+            .WillOnce(DoAll(WithArg<2>(AssignVector(new_fake_sig_)),
+                            Return(false)));
+  }
+
   void ExpectPersistKeyAndPolicy() {
     Mock::VerifyAndClearExpectations(key_);
     Mock::VerifyAndClearExpectations(store_);
@@ -204,6 +218,15 @@ class DevicePolicyServiceTest : public ::testing::Test {
         .WillOnce(Return(true));
     EXPECT_CALL(*store_, Persist())
         .WillOnce(Return(true));
+    loop_.RunAllPending();
+  }
+
+  void ExpectNoPersistKeyAndPolicy() {
+    Mock::VerifyAndClearExpectations(key_);
+    Mock::VerifyAndClearExpectations(store_);
+
+    EXPECT_CALL(*key_, Persist()).Times(0);
+    EXPECT_CALL(*store_, Persist()).Times(0);
     loop_.RunAllPending();
   }
 
@@ -433,6 +456,23 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 
   ExpectPersistKeyAndPolicy();
+}
+
+TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
+  InitService(new KeyCheckUtil);
+
+  ExpectMitigating(true);
+
+  Sequence s;
+  ExpectGetPolicy(s, policy_proto_);
+  EXPECT_CALL(*key_, ClobberCompromisedKey(fake_key_vector_))
+      .InSequence(s)
+      .WillOnce(Return(true));
+  ExpectFailedInstallNewOwnerPolicy(s);
+
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
+
+  ExpectNoPersistKeyAndPolicy();
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {

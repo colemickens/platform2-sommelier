@@ -87,8 +87,8 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
       (mitigator_->Mitigating() && !key()->ClobberCompromisedKey(pub_key))) {
     return false;
   }
-  PersistKey();
   if (StoreOwnerProperties(current_user, &error)) {
+    PersistKey();
     PersistPolicy();
   } else {
     LOG(WARNING) << "Could not immediately store owner properties in policy";
