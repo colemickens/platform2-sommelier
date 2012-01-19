@@ -511,6 +511,11 @@ TEST_F(WiFiMainTest, ScanCompleted) {
       "bss2", "ssid2", "00:00:00:00:00:02", 2, kNetworkModeInfrastructure);
   ReportScanDone();
   EXPECT_EQ(3, GetServices().size());
+
+  ReportBSS("bss3", string(1, 0), "00:00:00:00:00:03", 3, kNetworkModeAdHoc);
+  EXPECT_EQ(4, GetEndpointMap().size());
+  EXPECT_EQ(3, GetServices().size());
+
 }
 
 TEST_F(WiFiMainTest, EndpointGroupingTogether) {

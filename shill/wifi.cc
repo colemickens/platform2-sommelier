@@ -787,6 +787,12 @@ void WiFi::BSSAddedTask(
     return;
   }
 
+  if (endpoint->ssid()[0] == 0) {
+    // Assume that an SSID starting with NULL is bogus/misconfigured,
+    // and filter it out.
+    return;
+  }
+
   WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
   if (service) {
     LOG(INFO) << "Assigned endpoint " << endpoint->bssid_string()
