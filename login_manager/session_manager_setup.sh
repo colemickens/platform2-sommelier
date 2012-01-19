@@ -278,6 +278,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-logging \
             --enable-onc-policy \
             --enable-smooth-scrolling \
+            --force-compositing-mode \
             --log-level=1 \
             --login-manager \
             --login-profile=user \
