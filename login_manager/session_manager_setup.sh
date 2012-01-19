@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -15,6 +15,27 @@ xauth -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE}
 # terminates once X is ready.
 ( trap 'exit 0' USR1 ; xstart.sh ${XAUTH_FILE} & wait ) &
 
+USE_FLAGS=$(cat /etc/session_manager_use_flags.txt)
+
+# Returns success if the USE flag passed as its sole parameter was defined.
+# New flags must be first be added to the ebuild file.
+use_flag_is_set() {
+  local flag i
+  flag="$1"
+  for i in $USE_FLAGS; do
+    if [ $i = "${flag}" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Returns success if we were built for the board passed as the sole parameter.
+# Not all boards are handled; see the ebuild file.
+is_board() {
+  use_flag_is_set "board_use_$1"
+}
+
 export USER=chronos
 export DATA_DIR=/home/${USER}
 export LOGIN_PROFILE_DIR=${DATA_DIR}/Default
@@ -27,7 +48,7 @@ export GTK_IM_MODULE=ibus
 # If used with Address Sanitizer, set the following flags to alter memory
 # allocations by glibc. Hopefully later, when ASAN matures, we will not need
 # any changes for it to run.
-if [ -f /root/.debug_with_asan ]; then
+if use_flag_is_set asan; then
   export G_SLICE=always-malloc
   export NSS_DISABLE_ARENA_FREE_LIST=1
   export NSS_DISABLE_UNLOAD=1
@@ -187,25 +208,28 @@ if [ -n "$REGISTER_PLUGINS" ]; then
   REGISTER_PLUGINS="--register-pepper-plugins=$REGISTER_PLUGINS"
 fi
 
-TOUCH_UI_FLAGS=
-if [ -f /root/.use_touchui ] ; then
-  # chrome://keyboard relies on experimental APIs.
-  TOUCH_UI_FLAGS="--enable-experimental-extension-apis --enable-sensors"
-  # Look to see if there are touch devices.
-  TOUCH_LIST_PATH=/etc/touch-devices
-  if [ -s $TOUCH_LIST_PATH ] ; then
-    DEVICE_LIST="$(cat $TOUCH_LIST_PATH)"
-    if [ "${DEVICE_LIST%%[,0-9]*}" = "" ] ; then
-      TOUCH_UI_FLAGS="$TOUCH_UI_FLAGS --touch-devices='$DEVICE_LIST'"
-    fi
+AURA_FLAGS=
+if use_flag_is_set aura; then
+  WM_SCRIPT=""
+
+  if use_flag_is_set is_desktop; then
+    AURA_FLAGS="$AURA_FLAGS --aura-window-mode=normal"
+  else
+    AURA_FLAGS="$AURA_FLAGS --aura-window-mode=compact"
+  fi
+
+  if ! use_flag_is_set new_power_button; then
+    AURA_FLAGS="$AURA_FLAGS --aura-legacy-power-button"
+  fi
+
+  # Force compact mode on Pine Trail devices.
+  # TODO(derat): Remove this flag once normal mode is supported on all devices,
+  # likely around M19.
+  if is_board x86-alex || is_board x86-alex_he || is_board x86-mario ||
+      is_board x86-zgb || is_board x86-zgb_he; then
+    AURA_FLAGS="$AURA_FLAGS --aura-force-compact-window-mode"
   fi
 fi
-
-if [ -f /root/.no_wm ]; then
-  WM_SCRIPT=""
-fi
-
-PKCS11_FLAGS=--load-opencryptoki
 
 # Use OpenGL acceleration flags except on ARM
 if [ "$(uname -m)" != "armv7l" ] ; then
@@ -279,6 +303,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-onc-policy \
             --enable-smooth-scrolling \
             --force-compositing-mode \
+            --load-opencryptoki \
             --log-level=1 \
             --login-manager \
             --login-profile=user \
@@ -289,10 +314,9 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --webui-login \
             --no-protector \
             "$REGISTER_PLUGINS" \
-            ${TOUCH_UI_FLAGS} \
             ${ACCELERATED_FLAGS} \
+            ${AURA_FLAGS} \
             ${FLASH_FLAGS} \
             ${SCREENSAVER_FLAG} \
             ${SKIP_OOBE} \
-            ${PKCS11_FLAGS} \
     ${WM_SCRIPT:+-- "${WM_SCRIPT}"}
