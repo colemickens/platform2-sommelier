@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+NM ?= nm
 PKG_CONFIG ?= pkg-config
 INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags gobject-2.0 \
 	       dbus-1 dbus-glib-1 dbus-c++-1)
@@ -150,7 +151,7 @@ KEEP_SYMS:= "_ZN11CromoServer \
 $(SYMFILE): cromo_server.o hooktable.o modem_handler.o $(LIBCROMO)
 	@echo '{' >$@
 	@for sym in "$(KEEP_SYMS)"; do \
-	  nm --defined-only $^ | grep "T $${sym}" \
+	  $(NM) --defined-only $^ | grep "T $${sym}" \
             | awk '{print "  "$$3";"}' >>$@ ; \
 	 done
 	@echo '};' >>$@
