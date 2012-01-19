@@ -56,6 +56,7 @@ const char *DeviceInfo::kModemDrivers[] = {
     "gobi",
     "QCUSBNet2k",
     "GobiNet",
+    "cdc_ether",
     NULL
 };
 
@@ -149,6 +150,9 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   string driver_name(driver_path.BaseName().value());
   // See if driver for this interface is in a list of known modem driver names
   for (int modem_idx = 0; kModemDrivers[modem_idx] != NULL; ++modem_idx) {
+    // TODO(ers) should have additional checks to make sure a cdc_ether
+    // device is really a modem. flimflam uses udev to make such checks,
+    // looking to see whether a ttyACM or ttyUSB device is associated.
     if (driver_name == kModemDrivers[modem_idx]) {
       VLOG(2) << StringPrintf("%s: device %s is matched with modem driver %s",
                               __func__, iface_name.c_str(),
