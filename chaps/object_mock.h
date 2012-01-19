@@ -85,7 +85,7 @@ class ObjectMock : public Object {
     return FakeGetAttributeBool(CKA_TOKEN, true);
   }
   bool FakeIsAttributePresent(CK_ATTRIBUTE_TYPE type) {
-    return !FakeGetAttributeString(type).empty();
+    return (attributes_.find(type) != attributes_.end());
   }
   bool FakeSetAttributes(const CK_ATTRIBUTE_PTR attr, int num_attr) {
     for (int i = 0; i < num_attr; ++i) {

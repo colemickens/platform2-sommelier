@@ -17,7 +17,7 @@ class ObjectPolicyMock : public ObjectPolicy {
   MOCK_METHOD1(IsReadAllowed,
       bool(CK_ATTRIBUTE_TYPE type));
   MOCK_METHOD2(IsModifyAllowed,
-      CK_RV(CK_ATTRIBUTE_TYPE type, const std::string& value));
+      bool(CK_ATTRIBUTE_TYPE type, const std::string& value));
   MOCK_METHOD0(IsObjectComplete,
       bool());
   MOCK_METHOD0(SetDefaultAttributes,

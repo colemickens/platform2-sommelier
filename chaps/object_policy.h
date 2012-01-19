@@ -19,8 +19,8 @@ class ObjectPolicy {
   virtual ~ObjectPolicy() {}
   virtual void Init(Object* object) = 0;
   virtual bool IsReadAllowed(CK_ATTRIBUTE_TYPE type) = 0;
-  virtual CK_RV IsModifyAllowed(CK_ATTRIBUTE_TYPE type,
-                                const std::string& value) = 0;
+  virtual bool IsModifyAllowed(CK_ATTRIBUTE_TYPE type,
+                               const std::string& value) = 0;
   virtual bool IsObjectComplete() = 0;
   virtual void SetDefaultAttributes() = 0;
 };

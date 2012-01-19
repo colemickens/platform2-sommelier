@@ -7,6 +7,7 @@
 
 #include "chaps/object.h"
 
+#include <set>
 #include <string>
 
 #include <base/basictypes.h>
@@ -52,9 +53,11 @@ class ObjectImpl : public Object {
   ChapsFactory* factory_;
   ObjectStage stage_;
   AttributeMap attributes_;
+  // Tracks attributes which have been set by the user.
+  std::set<CK_ATTRIBUTE_TYPE> external_attributes_;
   scoped_ptr<ObjectPolicy> policy_;
 
-  bool GetPolicyByClass();
+  bool SetPolicyByClass();
 
   DISALLOW_COPY_AND_ASSIGN(ObjectImpl);
 };

@@ -19,7 +19,8 @@ typedef std::map<CK_ATTRIBUTE_TYPE, std::string> AttributeMap;
 enum ObjectStage {
   kCreate,  // The object is being created.
   kCopy,    // The object is being created as a copy of another object.
-  kModify   // The object already exists.
+  kModify,  // The object already exists.
+  kNumObjectStages
 };
 
 // Object is the interface for a PKCS #11 object.  This component manages all

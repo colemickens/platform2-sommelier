@@ -38,7 +38,7 @@ class TestObject: public ::testing::Test {
     ObjectPolicyMock* policy = new ObjectPolicyMock();
     EXPECT_CALL(*policy, Init(_)).Times(AnyNumber());
     EXPECT_CALL(*policy, IsReadAllowed(_)).WillRepeatedly(Return(true));
-    EXPECT_CALL(*policy, IsModifyAllowed(_, _)).WillRepeatedly(Return(CKR_OK));
+    EXPECT_CALL(*policy, IsModifyAllowed(_, _)).WillRepeatedly(Return(true));
     EXPECT_CALL(*policy, IsObjectComplete()).WillRepeatedly(Return(true));
     EXPECT_CALL(*policy, SetDefaultAttributes()).Times(AnyNumber());
     return policy;
@@ -138,18 +138,23 @@ TEST_F(TestObject, FinalizeNewObject) {
   EXPECT_EQ(CKR_TEMPLATE_INCOMPLETE, object_->FinalizeNewObject());
   // Finalize after setting read-only attribute.
   EXPECT_CALL(*next_policy_, IsModifyAllowed(1, "test"))
-      .WillRepeatedly(Return(CKR_ATTRIBUTE_READ_ONLY));
-  object_->SetAttributeInt(CKA_CLASS, CKO_PUBLIC_KEY);
-  object_->SetAttributeString(1, "test");
-  object_->SetAttributeString(2, "test2");
+      .WillRepeatedly(Return(false));
+  CK_OBJECT_CLASS classval = CKO_PUBLIC_KEY;
+  CK_ATTRIBUTE attr[] = {
+    {CKA_CLASS, &classval, sizeof(classval)},
+    {1, (void*)"test", 4},
+    {2, (void*)"test2", 5}};
+  object_->SetAttributes(attr, 3);
   EXPECT_EQ(CKR_ATTRIBUTE_READ_ONLY, object_->FinalizeNewObject());
   // Finalize before object is complete.
   EXPECT_CALL(*next_policy_, IsModifyAllowed(1, "test"))
-      .WillRepeatedly(Return(CKR_ATTRIBUTE_READ_ONLY));
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*next_policy_, IsObjectComplete())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  object_->SetAttributeString(1, "test3");
+  CK_ATTRIBUTE attr2[] = {
+    {1, (void*)"test3", 5}};
+  object_->SetAttributes(attr2, 1);
   EXPECT_EQ(CKR_TEMPLATE_INCOMPLETE, object_->FinalizeNewObject());
   EXPECT_EQ(CKR_OK, object_->FinalizeNewObject());
 }
@@ -192,8 +197,8 @@ TEST_F(TestObject, SetAttributes) {
   EXPECT_EQ(CKR_OK, object_->FinalizeNewObject());
   // Attempt to modify read-only attributes.
   EXPECT_CALL(*policy_, IsModifyAllowed(_, _))
-      .WillOnce(Return(CKR_ATTRIBUTE_READ_ONLY))
-      .WillRepeatedly(Return(CKR_OK));
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
   EXPECT_EQ(CKR_ATTRIBUTE_READ_ONLY, object_->SetAttributes(templ, 1));
   // Mofify attributes successfully.
   EXPECT_EQ(CKR_OK, object_->SetAttributes(templ, 1));

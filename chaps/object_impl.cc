@@ -54,18 +54,17 @@ bool ObjectImpl::IsPrivate() const {
 }
 
 CK_RV ObjectImpl::FinalizeNewObject() {
-  if (!IsAttributePresent(CKA_CLASS)) {
-    LOG(ERROR) << "Missing object class attribute.";
+  if (!SetPolicyByClass())
     return CKR_TEMPLATE_INCOMPLETE;
-  }
-  policy_.reset(factory_->CreateObjectPolicy(GetObjectClass()));
-  CHECK(policy_.get());
-  policy_->Init(this);
   AttributeMap::iterator it;
   for (it = attributes_.begin(); it != attributes_.end(); ++it) {
-    CK_RV result = policy_->IsModifyAllowed(it->first, it->second);
-    if (result != CKR_OK)
-      return result;
+    // Only external attributes have this policy enforced.  Internally, we need
+    // to be able to set attributes like CKA_LOCAL which the user cannot.
+    if (external_attributes_.find(it->first) != external_attributes_.end()) {
+      if (!policy_->IsModifyAllowed(it->first, it->second)) {
+        return CKR_ATTRIBUTE_READ_ONLY;
+      }
+    }
   }
   policy_->SetDefaultAttributes();
   if (!policy_->IsObjectComplete())
@@ -77,6 +76,9 @@ CK_RV ObjectImpl::FinalizeNewObject() {
 CK_RV ObjectImpl::Copy(const Object* original) {
   stage_ = kCopy;
   attributes_ = *original->GetAttributeMap();
+  policy_.reset();
+  if (!SetPolicyByClass())
+    return CKR_TEMPLATE_INCOMPLETE;
   return CKR_OK;
 }
 
@@ -92,8 +94,6 @@ CK_RV ObjectImpl::GetAttributes(CK_ATTRIBUTE_PTR attributes,
       result = CKR_ATTRIBUTE_TYPE_INVALID;
       attributes[i].ulValueLen = -1;
     } else if (policy_.get() && !policy_->IsReadAllowed(attributes[i].type)) {
-      LOG(ERROR) << "Attribute is sensitive: "
-                 << AttributeToString(attributes[i].type);
       result = CKR_ATTRIBUTE_SENSITIVE;
       attributes[i].ulValueLen = -1;
     } else if (attributes[i].pValue == NULL) {
@@ -115,11 +115,15 @@ CK_RV ObjectImpl::SetAttributes(const CK_ATTRIBUTE_PTR attributes,
     string value(reinterpret_cast<const char*>(attributes[i].pValue),
                  attributes[i].ulValueLen);
     if (policy_.get()) {
-      CK_RV result = policy_->IsModifyAllowed(attributes[i].type, value);
-      if (result != CKR_OK)
-        return result;
+      if (!policy_->IsModifyAllowed(attributes[i].type, value))
+        return CKR_ATTRIBUTE_READ_ONLY;
     }
+    external_attributes_.insert(attributes[i].type);
     attributes_[attributes[i].type] = value;
+  }
+  if (policy_.get()) {
+    if (!policy_->IsObjectComplete())
+      return CKR_TEMPLATE_INCOMPLETE;
   }
   return CKR_OK;
 }
@@ -187,6 +191,17 @@ void ObjectImpl::RemoveAttribute(CK_ATTRIBUTE_TYPE type) {
 
 const AttributeMap* ObjectImpl::GetAttributeMap() const {
   return &attributes_;
+}
+
+bool ObjectImpl::SetPolicyByClass() {
+  if (!IsAttributePresent(CKA_CLASS)) {
+    LOG(ERROR) << "Missing object class attribute.";
+    return false;
+  }
+  policy_.reset(factory_->CreateObjectPolicy(GetObjectClass()));
+  CHECK(policy_.get());
+  policy_->Init(this);
+  return true;
 }
 
 }  // namespace chaps

@@ -59,7 +59,14 @@ $(OUT)chapsd: $(COMMON) \
               $(OUT)chaps_adaptor.o \
               $(OUT)slot_manager_impl.o \
               $(OUT)session_impl.o \
-              $(OUT)object_impl.o
+              $(OUT)object_impl.o \
+              $(OUT)object_policy_common.o \
+              $(OUT)object_policy_data.o \
+              $(OUT)object_policy_cert.o \
+              $(OUT)object_policy_key.o \
+              $(OUT)object_policy_public_key.o \
+              $(OUT)object_policy_private_key.o \
+              $(OUT)object_policy_secret_key.o
 	$(call cxx_binary, -ldl)
 RM_ON_CLEAN += $(OUT)chapsd
 
@@ -109,6 +116,18 @@ $(OUT)object_test: $(COMMON) $(MOCK) \
 	$(call cxx_binary, -lgtest -lgmock)
 RM_ON_CLEAN += $(OUT)object_test
 
+$(OUT)object_policy_test: $(COMMON) $(MOCK) \
+                          $(OUT)object_policy_test.o \
+                          $(OUT)object_policy_common.o \
+                          $(OUT)object_policy_data.o \
+                          $(OUT)object_policy_cert.o \
+                          $(OUT)object_policy_key.o \
+                          $(OUT)object_policy_public_key.o \
+                          $(OUT)object_policy_private_key.o \
+                          $(OUT)object_policy_secret_key.o
+	$(call cxx_binary, -lgtest -lgmock)
+RM_ON_CLEAN += $(OUT)object_policy_test
+
 # Some shortcuts
 all: $(OUT)libchaps.so $(OUT)chapsd
 
@@ -129,7 +148,8 @@ tests: $(OUT)chaps_test \
        $(OUT)chaps_service_test \
        $(OUT)slot_manager_test \
        $(OUT)session_test \
-       $(OUT)object_test
+       $(OUT)object_test \
+       $(OUT)object_policy_test
 
 live_tests: $(OUT)chapsd_test $(OUT)chaps_event_generator
 
@@ -141,6 +161,7 @@ runtests: tests
 	$(OUT)slot_manager_test
 	$(OUT)session_test
 	$(OUT)object_test
+	$(OUT)object_policy_test
 # This will have to wait until it does not depend on opencryptoki.
 # For now this test must be run on a live system.
 #LD_LIBRARY_PATH=$(OUT) "$(OUT)chapsd_test"

@@ -458,6 +458,7 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
   object->SetAttributeInt(CKA_KEY_TYPE, key_type);
   object->SetAttributeString(CKA_VALUE, key_material);
   object->SetAttributeBool(CKA_LOCAL, true);
+  object->SetAttributeInt(CKA_KEY_GEN_MECHANISM, mechanism);
   result = object->FinalizeNewObject();
   if (result != CKR_OK)
     return result;
@@ -540,6 +541,8 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   private_object->SetAttributeInt(CKA_KEY_TYPE, CKK_RSA);
   public_object->SetAttributeBool(CKA_LOCAL, true);
   private_object->SetAttributeBool(CKA_LOCAL, true);
+  public_object->SetAttributeInt(CKA_KEY_GEN_MECHANISM, mechanism);
+  private_object->SetAttributeInt(CKA_KEY_GEN_MECHANISM, mechanism);
   result = public_object->FinalizeNewObject();
   if (result != CKR_OK)
     return result;
@@ -549,7 +552,7 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   if (!pool->Insert(public_object.get()))
     return CKR_FUNCTION_FAILED;
   if (!pool->Insert(private_object.get())) {
-    pool->Delete(public_object.get());
+    pool->Delete(public_object.release());
     return CKR_FUNCTION_FAILED;
   }
   *new_public_key_handle = GetHandle(public_object.release());
