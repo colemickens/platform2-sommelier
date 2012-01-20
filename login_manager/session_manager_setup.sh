@@ -307,6 +307,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-gview \
             --enable-logging \
             --enable-onc-policy \
+            --enable-partial-swap \
             --enable-smooth-scrolling \
             --force-compositing-mode \
             --load-opencryptoki \
@@ -316,6 +317,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --no-first-run \
             --reload-killed-tabs \
             --scroll-pixels=3 \
+            --ui-enable-partial-swap \
             --user-data-dir="$DATA_DIR" \
             --webui-login \
             --no-protector \
