@@ -39,6 +39,10 @@
 #   - CXX_BINARY, CC_BINARY, CC_STATIC_BINARY, CXX_STATIC_BINARY
 #   - CXX_LIBRARY, CC_LIBRARY, CC_STATIC_LIBRARY, CXX_STATIC_LIBRARY
 #   - E.g., CXX_BINARY(mahbinary): foo.o
+#   - object.depends targets may be used when a prerequisite is required for an
+#     object file. Because object files result in multiple build artifacts to
+#     handle PIC and PIE weirdness. E.g.
+#       foo.o.depends: generated/dbus.h
 #   - TEST(binary) or TEST(CXX_BINARY(binary)) may be used as a prerequisite
 #     for the tests target to trigger an automated test run.
 #   - CLEAN(file_or_dir) dependency can be added to 'clean'.
@@ -448,6 +452,7 @@ clean: CLEAN(CC_STATIC_LIBRARY*)
 CC_STATIC_LIBARY(%):
 	$(error Typo alert! LIBARY != LIBRARY)
 
+
 TEST(%): % qemu_chroot_install
 	$(call TEST_implementation)
 .PHONY: TEST
@@ -492,16 +497,22 @@ CXX_OBJECTS = $(patsubst $(SRC)/%.cc,%.o,$(wildcard $(SRC)/*.cc))
 # $(1) list of .o files
 # $(2) source type (CC or CXX)
 # $(3) source suffix (cc or c)
+# $(4) source dir: _only_ if $(SRC). Leave blank for obj tree.
 define add_object_rules
-$(patsubst %.o,%.pie.o,$(1)): %.pie.o: $(SRC)/%.$(3)
+$(patsubst %.o,%.pie.o,$(1)): %.pie.o: $(4)%.$(3) %.o.depends
 	$$(QUIET)mkdir -p "$$(dir $$@)"
 	$$(call OBJECT_PATTERN_implementation,$(2),\
           $$(basename $$@),$$(CXXFLAGS) $$(OBJ_PIE_FLAG))
 
-$(patsubst %.o,%.pic.o,$(1)): %.pic.o: $(SRC)/%.$(3)
+$(patsubst %.o,%.pic.o,$(1)): %.pic.o: $(4)%.$(3) %.o.depends
 	$$(QUIET)mkdir -p "$$(dir $$@)"
 	$$(call OBJECT_PATTERN_implementation,$(2),\
           $$(basename $$@),$$(CXXFLAGS) -fPIC)
+
+# Placeholder for depends
+$(patsubst %.o,%.o.depends,$(1)):
+	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(QUIET)touch "$$@"
 
 $(1): %.o: %.pic.o %.pie.o
 	$$(QUIET)mkdir -p "$$(dir $$@)"
@@ -520,8 +531,8 @@ define OBJECT_PATTERN_implementation
 endef
 
 # Now actually register handlers for C(XX)_OBJECTS.
-$(eval $(call add_object_rules,$(C_OBJECTS),CC,c))
-$(eval $(call add_object_rules,$(CXX_OBJECTS),CXX,cc))
+$(eval $(call add_object_rules,$(C_OBJECTS),CC,c,$(SRC)/))
+$(eval $(call add_object_rules,$(CXX_OBJECTS),CXX,cc,$(SRC)/))
 
 # Disable default pattern rules to help avoid leakage.
 # These may already be handled by '-r', but let's keep it to be safe.
@@ -719,7 +730,7 @@ endef
 
 clean: qemu_clean
 clean: CLEAN($(OUT)*.d) CLEAN($(OUT)*.o) CLEAN($(OUT)*.debug)
-clean: CLEAN($(OUT)*.test)
+clean: CLEAN($(OUT)*.test) CLEAN($(OUT)*.depends)
 
 clean:
 	$(QUIET)# Always delete the containing directory last.
@@ -762,6 +773,7 @@ $(eval LD_DIRS := $(LD_DIRS):$(OUT)$(MODULE))
 # Add the defaults from this dir to rm_clean
 clean: CLEAN($(OUT)$(MODULE)/*.d) CLEAN($(OUT)$(MODULE)/*.o)
 clean: CLEAN($(OUT)$(MODULE)/*.debug) CLEAN($(OUT)$(MODULE)/*.test)
+clean: CLEAN($(OUT)$(MODULE)/*.depends)
 
 $(info + submodule: $(MODULE_NAME))
 # We must eval otherwise they may be dropped.
@@ -775,8 +787,8 @@ $(eval $(MODULE_NAME)_CXX_OBJECTS ?= $(MODULE_CXX_OBJECTS))
 # Note, $(MODULE) is implicit in the path to the %.c.
 # See $(C_OBJECTS) for more details.
 # Register rules for the module objects.
-$(eval $(call add_object_rules,$(MODULE_C_OBJECTS),CC,c))
-$(eval $(call add_object_rules,$(MODULE_CXX_OBJECTS),CXX,cc))
+$(eval $(call add_object_rules,$(MODULE_C_OBJECTS),CC,c,$(SRC)/))
+$(eval $(call add_object_rules,$(MODULE_CXX_OBJECTS),CXX,cc,$(SRC)/))
 
 # Continue recursive inclusion of module.mk files
 SUBMODULE_DIRS = $(wildcard $(SRC)/$(MODULE)/*/module.mk)

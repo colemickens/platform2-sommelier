@@ -36,13 +36,11 @@ cros-disks/cros-disks-server.h: GEN_DBUSXX(cros-disks/cros-disks-server.h)
 clean: CLEAN(cros-disks/cros-disks-server.h)
 
 # Require the header to be generated first.
-$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS)): \
-  cros-disks/cros-disks-server.h
+$(patsubst %.o,%.o.depends,$(CXX_OBJECTS)): cros-disks/cros-disks-server.h
+
 CXX_BINARY(disks): $(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS))
-# Set the header as a pre-req even for the objects.
 clean: CLEAN(disks)
 
-$(filter-out %main.o,$(CXX_OBJECTS)): cros-disks/cros-disks-server.h
 disks_testrunner: $(filter-out %main.o,$(CXX_OBJECTS))
 	$(call cxx_binary, -lgtest -lgmock)
 clean: CLEAN(disks_testrunner)
