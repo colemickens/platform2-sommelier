@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,6 +9,7 @@
 #include "shill/byte_string.h"
 #include "shill/ip_address.h"
 
+using std::string;
 using testing::Test;
 
 namespace shill {
@@ -33,9 +34,9 @@ const unsigned char kV6Address2[] = { 0x19, 0x80, 0x00, 0x00,
 class IPAddressTest : public Test {
  protected:
   void TestAddress(IPAddress::Family family,
-                   const std::string &good_string,
+                   const string &good_string,
                    const ByteString &good_bytes,
-                   const std::string &bad_string,
+                   const string &bad_string,
                    const ByteString &bad_bytes) {
     IPAddress good_addr(family);
 
@@ -46,6 +47,9 @@ class IPAddressTest : public Test {
     EXPECT_EQ(0, memcmp(good_addr.GetConstData(), good_bytes.GetConstData(),
                         good_bytes.GetLength()));
     EXPECT_TRUE(good_addr.address().Equals(good_bytes));
+    string address_string;
+    EXPECT_TRUE(good_addr.ToString(&address_string));
+    EXPECT_EQ(good_string, address_string);
 
     IPAddress good_addr_from_bytes(family, good_bytes);
     EXPECT_TRUE(good_addr.Equals(good_addr_from_bytes));
@@ -61,6 +65,7 @@ class IPAddressTest : public Test {
     EXPECT_FALSE(bad_addr_from_bytes.IsValid());
 
     EXPECT_FALSE(bad_addr.Equals(bad_addr_from_bytes));
+    EXPECT_FALSE(bad_addr.ToString(&address_string));
   }
 };
 

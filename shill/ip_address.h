@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -57,6 +57,11 @@ class IPAddress {
   // An uninitialized IPAddress is empty and invalid when constructed.
   // Use SetAddressToDefault() to set it to the default or "all-zeroes" address.
   void SetAddressToDefault();
+  // Return the string equivalent of the address.  Returns true if the
+  // conversion succeeds in which case |address_string| is set to the
+  // result.  Otherwise the function returns false and |address_string|
+  // is left unmodified.
+  bool ToString(std::string *address_string) const;
 
   bool Equals(const IPAddress &b) const {
     return family_ == b.family_ && address_.Equals(b.address_) &&

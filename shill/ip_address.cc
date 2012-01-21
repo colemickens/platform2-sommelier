@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,8 @@
 #include <string>
 
 #include "shill/byte_string.h"
+
+using std::string;
 
 namespace shill {
 
@@ -49,7 +51,7 @@ int IPAddress::GetAddressLength(Family family) {
   }
 }
 
-bool IPAddress::SetAddressFromString(const std::string &address_string) {
+bool IPAddress::SetAddressFromString(const string &address_string) {
   int address_length = GetAddressLength(family_);
 
   if (!address_length) {
@@ -66,6 +68,17 @@ bool IPAddress::SetAddressFromString(const std::string &address_string) {
 
 void IPAddress::SetAddressToDefault() {
   address_ = ByteString(GetAddressLength(family_));
+}
+
+bool IPAddress::ToString(string *address_string) const {
+  // Noting that INET6_ADDRSTRLEN > INET_ADDRSTRLEN
+  char address_buf[INET6_ADDRSTRLEN];
+  if (GetLength() != GetAddressLength(family_) ||
+      !inet_ntop(family_, GetConstData(), address_buf, sizeof(address_buf))) {
+    return false;
+  }
+  *address_string = address_buf;
+  return true;
 }
 
 }  // namespace shill

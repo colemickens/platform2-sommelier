@@ -108,6 +108,7 @@ SHILL_OBJS = \
 	glib_io_ready_handler.o \
 	glib_io_input_handler.o \
 	http_proxy.o \
+	http_request.o \
 	http_url.o \
 	ip_address.o \
 	ipconfig.o \
@@ -181,6 +182,7 @@ TEST_OBJS = \
 	dns_client_unittest.o \
 	error_unittest.o \
 	http_proxy_unittest.o \
+	http_request_unittest.o \
 	http_url_unittest.o \
 	ip_address_unittest.o \
 	ipconfig_unittest.o \
