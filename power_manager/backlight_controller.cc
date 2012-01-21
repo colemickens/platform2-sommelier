@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -129,10 +129,7 @@ void BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
   double new_percent = ClampPercentToVisibleRange(target_percent_ + step_size);
 
   if (new_percent != target_percent_) {
-    // Allow large swing in |current_offset_percent_| for absolute brightness
-    // outside of clamped brightness region.
-    double absolute_percent = als_offset_percent_ + *current_offset_percent_;
-    *current_offset_percent_ += new_percent - absolute_percent;
+    *current_offset_percent_ = new_percent - als_offset_percent_;
     WriteBrightness(true, cause);
   }
 }
@@ -150,21 +147,19 @@ void BacklightController::DecreaseBrightness(bool allow_off,
       ClampPercentToVisibleRange(target_percent_ - step_size);
 
   if (new_percent != target_percent_ && (allow_off || new_percent > 0)) {
-    // Allow large swing in |current_offset_percent_| for absolute brightness
-    // outside of clamped brightness region.
-    double absolute_percent = als_offset_percent_ + *current_offset_percent_;
-    *current_offset_percent_ += new_percent - absolute_percent;
+    *current_offset_percent_ = new_percent - als_offset_percent_;
     WriteBrightness(true, cause);
   }
 }
 
 bool BacklightController::SetPowerState(PowerState new_state) {
+  if (new_state == state_ || !is_initialized_)
+    return false;
+
   PowerState old_state = state_;
 #ifdef IS_DESKTOP
   state_ = new_state;
 #else
-  if (new_state == state_ || !is_initialized_)
-    return false;
   CHECK(new_state != BACKLIGHT_UNINITIALIZED);
 
   // If backlight is turned off, do not transition to dim or off states.
@@ -292,6 +287,7 @@ void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
   if (state_ == BACKLIGHT_IDLE_OFF || IsBacklightActiveOff())
     return;
 
+  percent = std::max(0.0, percent);
   als_offset_percent_ = percent;
   has_seen_als_event_ = true;
 
@@ -368,18 +364,14 @@ void BacklightController::ReadPrefs() {
   double min_starting_percent =
       ClampPercentToVisibleRange(kMinInitialBrightnessPercent);
   plugged_offset_percent_ =
-      std::max(min_starting_percent - als_offset_percent_,
-               plugged_offset_percent_);
+      std::max(min_starting_percent, plugged_offset_percent_);
   unplugged_offset_percent_ =
-      std::max(min_starting_percent - als_offset_percent_,
-               unplugged_offset_percent_);
+      std::max(min_starting_percent, unplugged_offset_percent_);
 }
 
 void BacklightController::WritePrefs() {
   if (!is_initialized_)
     return;
-  // Do not store brightness that falls below a particular threshold, so that
-  // when powerd restarts, the screen does not appear to be off.
   if (plugged_state_ == kPowerConnected)
     prefs_->SetDouble(kPluggedBrightnessOffset, plugged_offset_percent_);
   else if (plugged_state_ == kPowerDisconnected)

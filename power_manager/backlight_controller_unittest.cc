@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -222,25 +222,21 @@ TEST_F(BacklightControllerTest, MinBrightnessLevel) {
   ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller.OnPlugEvent(true));
 
-  // This needs to be larger than the number of steps needed to move across the
-  // full brightness range.
-  const int kNumAdjustments = 20;
-
   // Increase the brightness and check that we hit the max.
-  for (int i = 0; i < kNumAdjustments; ++i)
+  for (int i = 0; i < kStepsToHitLimit; ++i)
     controller.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
   EXPECT_DOUBLE_EQ(100.0, controller.target_percent());
 
   // Decrease the brightness with allow_off=false and check that we stop when we
   // get to the minimum level that we set in the pref.
-  for (int i = 0; i < kNumAdjustments; ++i)
+  for (int i = 0; i < kStepsToHitLimit; ++i)
     controller.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
   EXPECT_DOUBLE_EQ(static_cast<double>(kMinLevel) / kMaxBrightness * 100.0,
                    controller.target_percent());
 
   // Decrease again with allow_off=true and check that we turn the backlight
   // off.
-  for (int i = 0; i < kNumAdjustments; ++i)
+  for (int i = 0; i < kStepsToHitLimit; ++i)
     controller.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
   EXPECT_DOUBLE_EQ(0.0, controller.target_percent());
 }

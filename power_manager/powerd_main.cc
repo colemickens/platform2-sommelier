@@ -96,16 +96,17 @@ int main(int argc, char* argv[]) {
   gdk_init(&argc, &argv);
 #ifdef IS_DESKTOP
   power_manager::ExternalBacklightClient backlight;
-  LOG_IF(WARNING, !backlight.Init()) << "Cannot initialize backlight";
+  if (!backlight.Init())
+    LOG(WARNING) << "Cannot initialize backlight";
 #else
   power_manager::Backlight backlight;
-  LOG_IF(WARNING, !backlight.Init(FilePath(power_manager::kBacklightPath),
-                                  power_manager::kBacklightPattern))
-      << "Cannot initialize backlight";
+  if (!backlight.Init(FilePath(power_manager::kBacklightPath),
+                      power_manager::kBacklightPattern))
+    LOG(WARNING) << "Cannot initialize backlight";
 #endif
   power_manager::BacklightController backlight_ctl(&backlight, &prefs);
-  LOG_IF(WARNING, !backlight_ctl.Init()) << "Cannot initialize backlight "
-      "controller";
+  if (!backlight_ctl.Init())
+    LOG(WARNING) << "Cannot initialize backlight controller";
   power_manager::AmbientLightSensor als(&backlight_ctl, &prefs);
   if (!als.Init())
     LOG(WARNING) << "Cannot initialize light sensor";

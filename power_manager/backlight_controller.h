@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,11 +19,22 @@ class BacklightInterface;
 class PowerPrefsInterface;
 
 enum PowerState {
+  // User is active.
   BACKLIGHT_ACTIVE,
+
+  // Dimmed due to inactivity.
   BACKLIGHT_DIM,
+
+  // Got a request to go to BACKLIGHT_DIM while already at a lower level.
   BACKLIGHT_ALREADY_DIMMED,
+
+  // Turned backlight off due to inactivity.
   BACKLIGHT_IDLE_OFF,
+
+  // Machine is suspended.
   BACKLIGHT_SUSPENDED,
+
+  // State has not yet been set.
   BACKLIGHT_UNINITIALIZED
 };
 
@@ -144,10 +155,14 @@ class BacklightController {
   // Determine whether backlight controller has been initialized.
   bool IsInitialized();
 
-  // Write brightness based on current settings.
+  // Applies previously-configured brightness to the backlight and updates
+  // |target_percent_|.  In the active and already-dimmed states, the new
+  // brightness is the sum of |als_offset_percent_| and
+  // |*current_offset_percent_|.
+  //
   // Returns true if the brightness was changed and false otherwise.
-  // Set adjust_brightness_offset = true if the local brightness offset should
-  //   be set to a new value to permanently reflect the new brightness.
+  // If |adjust_brightness_offset| is true, |*current_offset_percent_| is
+  // updated (it can change due to clamping of the target brightness).
   bool WriteBrightness(bool adjust_brightness_offset,
                        BrightnessChangeCause cause);
 
@@ -188,7 +203,8 @@ class BacklightController {
   // Indicate whether ALS value has been read before.
   bool has_seen_als_event_;
 
-  // The brightness offset recommended by the ambient light sensor.
+  // The brightness offset recommended by the ambient light sensor.  Never
+  // negative.
   double als_offset_percent_;
 
   // Prevent small light sensor changes from updating the backlight.
