@@ -10,7 +10,7 @@ clean: CLEAN(component/generated_component_header.h)
 
 
 # Build a statically linked PIC library
-DEPENDS(component/component.o): component/generated_component_header.h
+component/component.o.depends: component/generated_component_header.h
 CXX_STATIC_LIBRARY(component/libcomponent.pic.a): component/component.o \
   component/subcomponent/subcomponent.o
 
