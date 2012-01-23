@@ -401,7 +401,8 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
     // Do not turn off backlight if this is a "soft" adjustment -- e.g. due to
     // ALS change.
     // Also, do not turn off the backlight if it has been dimmed and idled.
-    if (!adjust_brightness_offset || state_ == BACKLIGHT_ALREADY_DIMMED) {
+    if (state_ == BACKLIGHT_ALREADY_DIMMED ||
+        cause == BRIGHTNESS_CHANGE_AUTOMATED) {
       if (target_percent_ == 0.0 && old_percent > 0.0)
         target_percent_ = LevelToPercent(min_visible_level_);
       else if (target_percent_ > 0.0 && old_percent == 0.0)

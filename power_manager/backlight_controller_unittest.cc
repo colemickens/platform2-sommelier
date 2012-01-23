@@ -158,6 +158,21 @@ TEST_F(BacklightControllerTest, DecreaseBrightnessDisallowOff) {
   EXPECT_GT(controller_.target_percent(), 0);
 }
 
+TEST_F(BacklightControllerTest, DecreaseBrightnessDisallowOffAuto) {
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  ASSERT_TRUE(controller_.OnPlugEvent(true));
+
+  for (int i = 0; i < kStepsToHitLimit; ++i)
+    controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED);
+
+  // Backlight must still be on, even after a few state transitions.
+  EXPECT_GT(controller_.target_percent(), 0);
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
+  EXPECT_GT(controller_.target_percent(), 0);
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  EXPECT_GT(controller_.target_percent(), 0);
+}
+
 // Test that BacklightController notifies its observer in response to brightness
 // changes.
 TEST_F(BacklightControllerTest, NotifyObserver) {
