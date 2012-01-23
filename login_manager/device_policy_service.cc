@@ -13,6 +13,7 @@
 #include "login_manager/bindings/chrome_device_policy.pb.h"
 #include "login_manager/bindings/device_management_backend.pb.h"
 #include "login_manager/key_generator.h"
+#include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/owner_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
@@ -37,6 +38,7 @@ DevicePolicyService::~DevicePolicyService() {
 
 // static
 DevicePolicyService* DevicePolicyService::Create(
+    LoginMetrics* metrics,
     OwnerKeyLossMitigator* mitigator,
     const scoped_refptr<base::MessageLoopProxy>& main_loop) {
   NssUtil* nss = NssUtil::Create();
@@ -45,6 +47,7 @@ DevicePolicyService* DevicePolicyService::Create(
                                  new OwnerKey(nss->GetOwnerKeyFilePath()),
                                  main_loop,
                                  nss,
+                                 metrics,
                                  mitigator);
 }
 
@@ -102,10 +105,12 @@ DevicePolicyService::DevicePolicyService(
     OwnerKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
     NssUtil* nss,
+    LoginMetrics* metrics,
     OwnerKeyLossMitigator* mitigator)
     : PolicyService(policy_store, policy_key, main_loop),
       serial_recovery_flag_file_(serial_recovery_flag_file),
       nss_(nss),
+      metrics_(metrics),
       mitigator_(mitigator) {
 }
 
@@ -114,7 +119,11 @@ bool DevicePolicyService::KeyMissing() {
 }
 
 bool DevicePolicyService::Initialize() {
-  bool result = PolicyService::Initialize();
+  bool policy_success = true;
+  bool result = DoInitialize(&policy_success);
+
+  ReportPolicyFileMetrics(result, policy_success);
+
   UpdateSerialNumberRecoveryFlagFile();
   return result;
 }
@@ -129,6 +138,40 @@ bool DevicePolicyService::Store(const uint8* policy_blob,
     UpdateSerialNumberRecoveryFlagFile();
 
   return result;
+}
+
+void DevicePolicyService::ReportPolicyFileMetrics(bool key_success,
+                                                  bool policy_success) {
+  LoginMetrics::PolicyFilesStatus status;
+  if (!key_success) {  // Key load failed.
+    status.owner_key_file_state = LoginMetrics::MALFORMED;
+  } else {
+    if (key()->IsPopulated()) {
+      if (nss_->CheckPublicKeyBlob(key()->public_key_der()))
+        status.owner_key_file_state = LoginMetrics::GOOD;
+      else
+        status.owner_key_file_state = LoginMetrics::MALFORMED;
+    } else {
+      status.owner_key_file_state = LoginMetrics::NOT_PRESENT;
+    }
+  }
+
+  if (!policy_success) {
+    status.policy_file_state = LoginMetrics::MALFORMED;
+  } else {
+    std::string serialized;
+    if (!store()->Get().SerializeToString(&serialized))
+      status.policy_file_state = LoginMetrics::MALFORMED;
+    else if (serialized == "")
+      status.policy_file_state = LoginMetrics::NOT_PRESENT;
+    else
+      status.policy_file_state = LoginMetrics::GOOD;
+  }
+
+  if (store()->DefunctPrefsFilePresent())
+    status.defunct_prefs_file_state = LoginMetrics::GOOD;
+
+  metrics_->SendPolicyFilesStatus(status);
 }
 
 bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,

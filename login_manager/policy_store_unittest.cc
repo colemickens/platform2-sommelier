@@ -47,10 +47,14 @@ class PolicyStoreTest : public ::testing::Test {
   DISALLOW_COPY_AND_ASSIGN(PolicyStoreTest);
 };
 
+TEST_F(PolicyStoreTest, InitialEmptyStore) {
+  PolicyStore store(tmpfile_);
+  CheckExpectedPolicy(&store, em::PolicyFetchResponse());
+}
+
 TEST_F(PolicyStoreTest, CreateEmptyStore) {
   PolicyStore store(tmpfile_);
   ASSERT_TRUE(store.LoadOrCreate());  // Should create an empty policy.
-  std::string serialized;
   CheckExpectedPolicy(&store, em::PolicyFetchResponse());
 }
 

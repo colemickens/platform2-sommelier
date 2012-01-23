@@ -55,6 +55,9 @@ class NssUtil {
 
   virtual FilePath GetOwnerKeyFilePath() = 0;
 
+  // Returns true if |blob| is a validly encoded NSS SubjectPublicKeyInfo.
+  virtual bool CheckPublicKeyBlob(const std::vector<uint8>& blob) = 0;
+
   virtual bool Verify(const uint8* algorithm, int algorithm_len,
                       const uint8* signature, int signature_len,
                       const uint8* data, int data_len,

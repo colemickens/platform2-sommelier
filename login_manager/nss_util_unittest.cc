@@ -35,8 +35,15 @@ TEST_F(NssUtilTest, FindFromPublicKey) {
   std::vector<uint8> public_key;
   ASSERT_TRUE(key_pair->ExportPublicKey(&public_key));
 
+  EXPECT_TRUE(util_->CheckPublicKeyBlob(public_key));
+
   EXPECT_NE(util_->GetPrivateKey(public_key),
             reinterpret_cast<RSAPrivateKey*>(NULL));
+}
+
+TEST_F(NssUtilTest, RejectBadPublicKey) {
+  std::vector<uint8> public_key(10, 'a');
+  EXPECT_FALSE(util_->CheckPublicKeyBlob(public_key));
 }
 
 }  // namespace login_manager

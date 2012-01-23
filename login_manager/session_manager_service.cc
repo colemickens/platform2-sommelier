@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -182,6 +182,8 @@ const char SessionManagerService::kStopping[] = "stopping";
 // static
 const char SessionManagerService::kStopped[] = "stopped";
 // static
+const char SessionManagerService::kFlagFileDir[] = "/var/run/session_manager";
+// static
 const char *SessionManagerService::kValidSessionServices[] = {
   "tor",
   NULL
@@ -285,7 +287,15 @@ bool SessionManagerService::Initialize() {
   if (!Reset())
     return false;
 
-  device_policy_ = DevicePolicyService::Create(mitigator_.get(), message_loop_);
+  FilePath flag_file_dir(kFlagFileDir);
+  if (!file_util::CreateDirectory(flag_file_dir)) {
+    PLOG(ERROR) << "Cannot create flag file directory at " << kFlagFileDir;
+    return false;
+  }
+  login_metrics_.reset(new LoginMetrics(flag_file_dir));
+  device_policy_ = DevicePolicyService::Create(login_metrics_.get(),
+                                               mitigator_.get(),
+                                               message_loop_);
   device_policy_->set_delegate(this);
   return true;
 }
@@ -581,10 +591,9 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   // since the metrics library does not log events in guest mode).
   int dev_mode = system_->IsDevMode();
   if (dev_mode > -1) {
-    LoginMetrics login_metrics;
-    login_metrics.SendLoginUserType(dev_mode,
-                                    current_user_ == kIncognitoUser,
-                                    user_is_owner);
+    login_metrics_->SendLoginUserType(dev_mode,
+                                      current_user_ == kIncognitoUser,
+                                      user_is_owner);
   }
   *OUT_done =
       upstart_signal_emitter_->EmitSignal(

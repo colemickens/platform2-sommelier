@@ -13,6 +13,7 @@
 #include <crypto/rsa_private_key.h>
 #include <crypto/signature_creator.h>
 #include <crypto/signature_verifier.h>
+#include <keyhi.h>
 
 using crypto::RSAPrivateKey;
 
@@ -51,6 +52,8 @@ class NssUtilImpl : public NssUtil {
 
   FilePath GetOwnerKeyFilePath();
 
+  bool CheckPublicKeyBlob(const std::vector<uint8>& blob);
+
   bool Verify(const uint8* algorithm, int algorithm_len,
               const uint8* signature, int signature_len,
               const uint8* data, int data_len,
@@ -73,7 +76,6 @@ class NssUtilImpl : public NssUtil {
 NssUtil* NssUtil::Create() {
   if (!factory_) {
     return new NssUtilImpl;
-    crypto::EnsureNSSInit();
   } else {
     return factory_->CreateNssUtil();
   }
@@ -93,7 +95,9 @@ const uint16 NssUtilImpl::kKeySizeInBits = 2048;
 // static
 const char NssUtilImpl::kUserDbPath[] = "/home/chronos/user/.pki/nssdb/key4.db";
 
-NssUtilImpl::NssUtilImpl() {}
+NssUtilImpl::NssUtilImpl() {
+  crypto::EnsureNSSInit();
+}
 
 NssUtilImpl::~NssUtilImpl() {}
 
@@ -124,6 +128,23 @@ RSAPrivateKey* NssUtilImpl::GenerateKeyPair() {
 
 FilePath NssUtilImpl::GetOwnerKeyFilePath() {
   return FilePath(kOwnerKeyFile);
+}
+
+bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8>& blob) {
+  CERTSubjectPublicKeyInfo* spki = NULL;
+  SECItem spki_der;
+  spki_der.type = siBuffer;
+  spki_der.data = const_cast<uint8*>(&blob[0]);
+  spki_der.len = blob.size();
+  spki = SECKEY_DecodeDERSubjectPublicKeyInfo(&spki_der);
+  if (!spki)
+    return false;
+  SECKEYPublicKey* public_key = SECKEY_ExtractPublicKey(spki);
+  SECKEY_DestroySubjectPublicKeyInfo(spki);  // Done with spki.
+  if (!public_key)
+    return false;
+  SECKEY_DestroyPublicKey(public_key);
+  return true;
 }
 
 // This is pretty much just a blind passthrough, so I won't test it

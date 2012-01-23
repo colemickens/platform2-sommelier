@@ -1,11 +1,13 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 // This file handles the details of reporting user metrics related to login.
 
-#include "metrics/metrics_library.h"
 #include "login_manager/login_metrics.h"
+
+#include <base/file_util.h>
+#include <metrics/metrics_library.h>
 
 namespace login_manager {
 
@@ -22,16 +24,44 @@ const int LoginMetrics::kDevMode = 3;
 //static
 const int LoginMetrics::kMaxValue = 5;
 
-LoginMetrics::LoginMetrics() {}
+//static
+const char LoginMetrics::kLoginPolicyFilesMetric[] =
+    "Login.PolicyFilesStatePerBoot";
+//static
+const int LoginMetrics::kMaxPolicyFilesValue = 64;
+
+// static
+const char LoginMetrics::kLoginMetricsFlagFile[] = "per_boot_flag";
+
+LoginMetrics::LoginMetrics(const FilePath& per_boot_flag_dir)
+    : per_boot_flag_file_(per_boot_flag_dir.Append(kLoginMetricsFlagFile)) {
+  metrics_lib_.Init();
+}
 LoginMetrics::~LoginMetrics() {}
 
 void LoginMetrics::SendLoginUserType(bool dev_mode, bool incognito,
                                      bool owner) {
-  MetricsLibrary metrics_lib;
-  metrics_lib.Init();
   int uma_code = LoginUserTypeCode(dev_mode, incognito, owner);
-  metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, uma_code,
-                            kMaxValue);
+  metrics_lib_.SendEnumToUMA(kLoginUserTypeMetric, uma_code, kMaxValue);
+}
+
+bool LoginMetrics::SendPolicyFilesStatus(const PolicyFilesStatus& status) {
+  if (!file_util::PathExists(per_boot_flag_file_)) {
+    metrics_lib_.SendEnumToUMA(kLoginPolicyFilesMetric,
+                               LoginMetrics::PolicyFilesStatusCode(status),
+                               kMaxPolicyFilesValue);
+    bool created = file_util::WriteFile(per_boot_flag_file_, "", 0) == 0;
+    PLOG_IF(WARNING, !created) << "Can't touch " << per_boot_flag_file_.value();
+    return true;
+  }
+  return false;
+}
+
+// static
+int LoginMetrics::PolicyFilesStatusCode(const PolicyFilesStatus& status) {
+  return (status.owner_key_file_state * 16      /* 4^2 */ +
+          status.policy_file_state * 4          /* 4^1 */ +
+          status.defunct_prefs_file_state * 1   /* 4^0 */);
 }
 
 // Code for incognito, owner and any other user are 0, 1 and 2

@@ -22,6 +22,7 @@ namespace login_manager {
 class MockChildJob;
 class MockDevicePolicyService;
 class MockFileChecker;
+class MockMetrics;
 class MockMitigator;
 class MockUpstartSignalEmitter;
 
@@ -61,6 +62,7 @@ class SessionManagerTest : public ::testing::Test {
   SystemUtils real_utils_;
   MockSystemUtils utils_;
   MockFileChecker* file_checker_;
+  MockMetrics* metrics_;
   MockMitigator* mitigator_;
   MockUpstartSignalEmitter* upstart_;
   MockDevicePolicyService* device_policy_service_;

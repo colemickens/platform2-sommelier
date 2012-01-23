@@ -8,6 +8,7 @@
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
+#include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_owner_key.h"
 #include "login_manager/mock_policy_service.h"
@@ -34,15 +35,18 @@ MockChildJob::MockChildJob() {
 MockChildJob::~MockChildJob() {}
 
 MockDevicePolicyService::MockDevicePolicyService()
-  : DevicePolicyService(FilePath(""), NULL, NULL, NULL, NULL, NULL) {}
+    : DevicePolicyService(FilePath(""), NULL, NULL, NULL, NULL, NULL, NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
 
 MockFileChecker::MockFileChecker(std::string filename)
-  : FileChecker(filename) {}
+    : FileChecker(filename) {}
 MockFileChecker::~MockFileChecker() {}
 
 MockKeyGenerator::MockKeyGenerator() : KeyGenerator(NULL) {}
 MockKeyGenerator::~MockKeyGenerator() {}
+
+MockMetrics::MockMetrics() : LoginMetrics(FilePath("")) {}
+MockMetrics::~MockMetrics() {}
 
 MockMitigator::MockMitigator() {}
 MockMitigator::~MockMitigator() {}

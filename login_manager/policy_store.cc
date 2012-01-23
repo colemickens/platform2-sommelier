@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,9 +7,12 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 
+#include "login_manager/login_metrics.h"
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
+// static
+const char PolicyStore::kPrefsFileName[] = "preferences";
 
 PolicyStore::PolicyStore(const FilePath& policy_path)
     : policy_path_(policy_path) {
@@ -18,12 +21,17 @@ PolicyStore::PolicyStore(const FilePath& policy_path)
 PolicyStore::~PolicyStore() {
 }
 
+bool PolicyStore::DefunctPrefsFilePresent() {
+  return file_util::PathExists(policy_path_.DirName().Append(kPrefsFileName));
+}
+
 bool PolicyStore::LoadOrCreate() {
   if (!file_util::PathExists(policy_path_))
     return true;
+
   std::string polstr;
   if (!file_util::ReadFileToString(policy_path_, &polstr) || polstr.empty()) {
-    PLOG(ERROR) << "Could not read policy off disk";
+    PLOG(ERROR) << "Could not read policy off disk at " << policy_path_.value();
     return false;
   }
   if (!policy_.ParseFromString(polstr)) {

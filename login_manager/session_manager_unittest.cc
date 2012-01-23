@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,6 +17,7 @@
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
+#include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_upstart_signal_emitter.h"
 
@@ -44,6 +45,7 @@ const pid_t SessionManagerTest::kDummyPid = 4;
 SessionManagerTest::SessionManagerTest()
     : manager_(NULL),
       file_checker_(new MockFileChecker(kCheckedFile)),
+      metrics_(new MockMetrics),
       mitigator_(new MockMitigator),
       upstart_(new MockUpstartSignalEmitter),
       device_policy_service_(new MockDevicePolicyService),
@@ -53,6 +55,7 @@ SessionManagerTest::SessionManagerTest()
 SessionManagerTest::~SessionManagerTest() {
   if (must_destroy_mocks_) {
     delete file_checker_;
+    delete metrics_;
     delete mitigator_;
     delete upstart_;
   }
@@ -85,6 +88,7 @@ void SessionManagerTest::InitManager(MockChildJob* job1, MockChildJob* job2) {
   manager_ = new SessionManagerService(jobs, &real_utils_);
   manager_->set_file_checker(file_checker_);
   manager_->set_mitigator(mitigator_);
+  manager_->set_metrics(metrics_);
   manager_->test_api().set_exit_on_child_done(true);
   manager_->test_api().set_upstart_signal_emitter(upstart_);
   manager_->test_api().set_device_policy_service(device_policy_service_);

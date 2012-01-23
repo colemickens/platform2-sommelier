@@ -29,6 +29,7 @@
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
+#include "login_manager/mock_metrics.h"
 #include "login_manager/mock_system_utils.h"
 
 using ::testing::AnyNumber;
@@ -61,6 +62,7 @@ class SessionManagerDBusTest : public SessionManagerTest {
 
  protected:
   void ExpectSessionBoilerplate(const std::string& email_string,
+                                bool guest,
                                 bool for_owner,
                                 MockChildJob* job) {
     EXPECT_CALL(*job, StartSession(email_string))
@@ -74,6 +76,9 @@ class SessionManagerDBusTest : public SessionManagerTest {
     EXPECT_CALL(*device_policy_service_, KeyMissing())
         .WillOnce(Return(false));
 
+    EXPECT_CALL(*metrics_, SendLoginUserType(false, guest, for_owner))
+        .Times(1);
+
     EXPECT_CALL(utils_,
                 BroadcastSignal(_, _, SessionManagerService::kStarted, _))
         .Times(1);
@@ -81,13 +86,17 @@ class SessionManagerDBusTest : public SessionManagerTest {
         .WillOnce(Return(false));
   }
 
+  void ExpectGuestSession(const std::string& email_string, MockChildJob* job) {
+    ExpectSessionBoilerplate(email_string, true, false, job);
+  }
+
   void ExpectStartSession(const std::string& email_string, MockChildJob* job) {
-    ExpectSessionBoilerplate(email_string, false, job);
+    ExpectSessionBoilerplate(email_string, false, false, job);
   }
 
   void ExpectStartOwnerSession(const std::string& email_string) {
     MockChildJob* job = CreateTrivialMockJob();
-    ExpectSessionBoilerplate(email_string, true, job);
+    ExpectSessionBoilerplate(email_string, false, true, job);
   }
 
   void ExpectStartSessionUnowned(const std::string& email_string) {
@@ -436,7 +445,7 @@ TEST_F(SessionManagerDBusTest, RestartJob) {
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
   std::string email_string("");
-  ExpectStartSession(email_string, job);
+  ExpectGuestSession(email_string, job);
   MockUtils();
 
   MockChildProcess proc(kDummyPid, 0, manager_->test_api());

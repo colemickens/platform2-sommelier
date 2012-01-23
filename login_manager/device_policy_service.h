@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+ // Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,7 @@
 
 namespace login_manager {
 class KeyGenerator;
+class LoginMetrics;
 class NssUtil;
 class OwnerKeyLossMitigator;
 
@@ -30,6 +31,7 @@ class DevicePolicyService : public PolicyService {
 
   // Instantiates a regular (non-testing) device policy service instance.
   static DevicePolicyService* Create(
+      LoginMetrics* metrics,
       OwnerKeyLossMitigator* mitigator,
       const scoped_refptr<base::MessageLoopProxy>& main_loop);
 
@@ -57,6 +59,11 @@ class DevicePolicyService : public PolicyService {
   // Overriden from PolicyService to check the serial number recovery flag.
   // TODO(mnissler): Remove once bogus enterprise serials are fixed.
   virtual bool Initialize();
+
+  // Given info about whether we were able to load the Owner key and the
+  // device policy, report the state of these files via |metrics_|.
+  virtual void ReportPolicyFileMetrics(bool key_success, bool policy_success);
+
   virtual bool Store(const uint8* policy_blob,
                      uint32 len,
                      Completion* completion,
@@ -78,6 +85,7 @@ class DevicePolicyService : public PolicyService {
                       OwnerKey* policy_key,
                       const scoped_refptr<base::MessageLoopProxy>& main_loop,
                       NssUtil* nss,
+                      LoginMetrics* metrics,
                       OwnerKeyLossMitigator* mitigator);
 
   // Assuming the current user has access to the owner private key (read: is the
@@ -101,6 +109,7 @@ class DevicePolicyService : public PolicyService {
 
   const FilePath serial_recovery_flag_file_;
   scoped_ptr<NssUtil> nss_;
+  LoginMetrics* metrics_;
   OwnerKeyLossMitigator* mitigator_;
 
   DISALLOW_COPY_AND_ASSIGN(DevicePolicyService);

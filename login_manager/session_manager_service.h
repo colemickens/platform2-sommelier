@@ -29,6 +29,7 @@
 #include "login_manager/device_policy_service.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/key_generator.h"
+#include "login_manager/login_metrics.h"
 #include "login_manager/owner_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/system_utils.h"
@@ -146,6 +147,11 @@ class SessionManagerService
   // Takes ownership of |file_checker|.
   void set_file_checker(FileChecker* file_checker) {
     file_checker_.reset(file_checker);
+  }
+
+  // Takes ownership of |metrics|.
+  void set_metrics(LoginMetrics* metrics) {
+    login_metrics_.reset(metrics);
   }
 
   // Takes ownership of |mitigator|.
@@ -311,6 +317,9 @@ class SessionManagerService
   static const char kStopping[];
   static const char kStopped[];
 
+  // Directory in which per-boot metrics flag files will be stored.
+  static const char kFlagFileDir[];
+
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }
 
@@ -420,6 +429,7 @@ class SessionManagerService
 
   SystemUtils* system_;  // Owned by the caller.
   scoped_ptr<KeyGenerator> gen_;
+  scoped_ptr<LoginMetrics> login_metrics_;
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 
   bool session_started_;

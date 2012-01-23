@@ -12,6 +12,7 @@ class MockDevicePolicyService : public DevicePolicyService {
  public:
   MockDevicePolicyService();
   virtual ~MockDevicePolicyService();
+  MOCK_METHOD2(ReportPolicyFileMetrics, void(bool, bool));
   MOCK_METHOD0(Initialize, bool(void));
   MOCK_METHOD4(Store, bool(const uint8*, uint32, Completion*, int));
   MOCK_METHOD1(Retrieve, bool(std::vector<uint8>*));

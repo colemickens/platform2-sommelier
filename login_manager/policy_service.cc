@@ -57,17 +57,8 @@ PolicyService::~PolicyService() {
 }
 
 bool PolicyService::Initialize() {
-  if (!key()->PopulateFromDiskIfPossible()) {
-    LOG(ERROR) << "Failed to load policy key from disk.";
-    return false;
-  }
-
-  if (key()->IsPopulated()) {
-    if (!store()->LoadOrCreate())
-      LOG(ERROR) << "Failed to load policy data, continuing anyway.";
-  }
-
-  return true;
+  bool ignored = true;
+  return DoInitialize(&ignored);
 }
 
 bool PolicyService::Store(const uint8* policy_blob,
@@ -99,6 +90,21 @@ bool PolicyService::PersistPolicySync() {
   bool status = store()->Persist();
   OnPolicyPersisted(NULL, status);
   return status;
+}
+
+bool PolicyService::DoInitialize(bool* policy_success) {
+  DCHECK(policy_success);
+  bool key_load_failed = false;
+  if (!key()->PopulateFromDiskIfPossible()) {
+    LOG(ERROR) << "Failed to load policy key from disk.";
+    key_load_failed = true;
+  }
+
+  *policy_success = store()->LoadOrCreate();
+  if (!*policy_success)  // Non-fatal, so log, and keep going.
+    LOG(ERROR) << "Failed to load policy data, continuing anyway.";
+
+  return !key_load_failed;  // Key load failure is fatal.
 }
 
 void PolicyService::PersistKey() {

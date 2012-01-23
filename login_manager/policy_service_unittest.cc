@@ -175,8 +175,6 @@ const char PolicyServiceTest::kSignalFailure[] = "failure";
 TEST_F(PolicyServiceTest, Initialize) {
   EXPECT_CALL(*key_, PopulateFromDiskIfPossible())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key_, IsPopulated())
-      .WillOnce(Return(true));
   EXPECT_CALL(*store_, LoadOrCreate())
       .WillOnce(Return(true));
   EXPECT_TRUE(service_->Initialize());
