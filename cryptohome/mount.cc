@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -456,6 +456,9 @@ bool Mount::UnmountCryptohome() {
 
 bool Mount::RemoveCryptohome(const Credentials& credentials) {
   std::string user_dir = GetUserDirectory(credentials);
+  std::string username = credentials.GetFullUsernameString();
+  FilePath user_path = chromeos::cryptohome::home::GetUserPath(username);
+  FilePath root_path = chromeos::cryptohome::home::GetRootPath(username);
   CHECK(user_dir.length() > (shadow_root_.length() + 1));
 
   if (IsCryptohomeMountedForUser(credentials)) {
@@ -464,7 +467,9 @@ bool Mount::RemoveCryptohome(const Credentials& credentials) {
     }
   }
 
-  return file_util::Delete(FilePath(user_dir), true);
+  return file_util::Delete(FilePath(user_dir), true) &&
+         file_util::Delete(user_path, true) &&
+         file_util::Delete(root_path, true);
 }
 
 bool Mount::IsCryptohomeMounted() const {
