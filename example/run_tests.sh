@@ -21,6 +21,7 @@ pushd foo
 make -C ../ all
 make -C ../ tests
 stat project_test
+stat generated_header.h
 make -C ../ clean
 ((stat project_test && false) || true) 2>&1
 stat .dont_delete_on_clean
