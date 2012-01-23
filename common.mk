@@ -39,10 +39,10 @@
 #   - CXX_BINARY, CC_BINARY, CC_STATIC_BINARY, CXX_STATIC_BINARY
 #   - CXX_LIBRARY, CC_LIBRARY, CC_STATIC_LIBRARY, CXX_STATIC_LIBRARY
 #   - E.g., CXX_BINARY(mahbinary): foo.o
-#   - DEPENDS(object) may be used when a prerequisite is required for an object
-#     file. Because object files result in multiple build artifacts to handle
-#     PIC and PIE weirdness. E.g.,
-#       DEPENDS(foo.o): generated/dbus.h
+#   - object.depends targets may be used when a prerequisite is required for an
+#     object file. Because object files result in multiple build artifacts to
+#     handle PIC and PIE weirdness. E.g.
+#       foo.o.depends: generated/dbus.h
 #   - TEST(binary) or TEST(CXX_BINARY(binary)) may be used as a prerequisite
 #     for the tests target to trigger an automated test run.
 #   - CLEAN(file_or_dir) dependency can be added to 'clean'.
@@ -452,8 +452,6 @@ clean: CLEAN(CC_STATIC_LIBRARY*)
 CC_STATIC_LIBARY(%):
 	$(error Typo alert! LIBARY != LIBRARY)
 
-DEPEND(%):
-	$(error Typo alert! DEPEND != DEPENDS)
 
 TEST(%): % qemu_chroot_install
 	$(call TEST_implementation)
@@ -501,18 +499,20 @@ CXX_OBJECTS = $(patsubst $(SRC)/%.cc,%.o,$(wildcard $(SRC)/*.cc))
 # $(3) source suffix (cc or c)
 # $(4) source dir: _only_ if $(SRC). Leave blank for obj tree.
 define add_object_rules
-$(patsubst %.o,%.pie.o,$(1)): %.pie.o: $(4)%.$(3) DEPENDS($(1))
+$(patsubst %.o,%.pie.o,$(1)): %.pie.o: $(4)%.$(3) %.o.depends
 	$$(QUIET)mkdir -p "$$(dir $$@)"
 	$$(call OBJECT_PATTERN_implementation,$(2),\
           $$(basename $$@),$$(CXXFLAGS) $$(OBJ_PIE_FLAG))
 
-$(patsubst %.o,%.pic.o,$(1)): %.pic.o: $(4)%.$(3) DEPENDS($(1))
+$(patsubst %.o,%.pic.o,$(1)): %.pic.o: $(4)%.$(3) %.o.depends
 	$$(QUIET)mkdir -p "$$(dir $$@)"
 	$$(call OBJECT_PATTERN_implementation,$(2),\
           $$(basename $$@),$$(CXXFLAGS) -fPIC)
 
 # Placeholder for depends
-DEPENDS($(1)):
+$(patsubst %.o,%.o.depends,$(1)):
+	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(QUIET)touch "$$@"
 
 $(1): %.o: %.pic.o %.pie.o
 	$$(QUIET)mkdir -p "$$(dir $$@)"
