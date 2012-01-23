@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,8 @@
 #include <glib.h>
 
 #include "power_manager/backlight_controller.h"
+#include "power_manager/power_constants.h"
+#include "power_manager/power_prefs_interface.h"
 #include "power_manager/signal_callback.h"
 
 namespace power_manager {
@@ -35,7 +37,8 @@ namespace power_manager {
 
 class AmbientLightSensor {
  public:
-  explicit AmbientLightSensor(BacklightController* controller);
+  explicit AmbientLightSensor(BacklightController* controller,
+                              PowerPrefsInterface* prefs);
   ~AmbientLightSensor();
 
   // Initialize the AmbientLightSensor object.
@@ -60,6 +63,9 @@ class AmbientLightSensor {
 
   // Use this to send AmbientLightSensor events to BacklightController.
   BacklightController* controller_;
+
+  // Interface for saving preferences. Non-owned.
+  PowerPrefsInterface* prefs_;
 
   // This is the ambient light sensor file descriptor.
   int als_fd_;

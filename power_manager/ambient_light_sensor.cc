@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,8 +17,10 @@ namespace power_manager {
 // Period in which to poll the ambient light sensor.
 static const int kSensorPollPeriodMs = 1000;
 
-AmbientLightSensor::AmbientLightSensor(BacklightController* controller)
+AmbientLightSensor::AmbientLightSensor(BacklightController* controller,
+                                       PowerPrefsInterface* prefs)
     : controller_(controller),
+      prefs_(prefs),
       als_fd_(-1),
       last_level_(0),
       is_polling_(false),
@@ -50,6 +52,15 @@ bool AmbientLightSensor::DeferredInit() {
 }
 
 bool AmbientLightSensor::Init() {
+  int64 disable_als;
+  // TODO: In addition to disable_als, we should add another prefs file
+  // that allows polling ALS as usual but prevents backlight changes from
+  // happening. This will be useful for power and system profiling.
+  if (prefs_->GetInt64(kDisableALS, &disable_als) &&
+      disable_als) {
+    LOG(INFO) << "Not using ambient light sensor";
+    return false;
+  }
   if (controller_)
     controller_->set_light_sensor(this);
   return true;

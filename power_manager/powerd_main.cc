@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
   power_manager::BacklightController backlight_ctl(&backlight, &prefs);
   LOG_IF(WARNING, !backlight_ctl.Init()) << "Cannot initialize backlight "
       "controller";
-  power_manager::AmbientLightSensor als(&backlight_ctl);
+  power_manager::AmbientLightSensor als(&backlight_ctl, &prefs);
   if (!als.Init())
     LOG(WARNING) << "Cannot initialize light sensor";
   scoped_ptr<power_manager::Backlight> keylight;

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -33,6 +33,7 @@ extern const char kBacklightPath[];
 extern const char kBacklightPattern[];
 extern const char kKeyboardBacklightPath[];
 extern const char kKeyboardBacklightPattern[];
+extern const char kDisableALS[];
 
 // Interface names.
 extern const char kRootPowerManagerInterface[];

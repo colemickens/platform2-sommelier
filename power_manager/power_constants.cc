@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,6 +26,7 @@ const char kRetrySuspendAttempts[] = "retry_suspend_attempts";
 const char kPluggedSuspendMs[] = "plugged_suspend_ms";
 const char kUseXScreenSaver[] = "use_xscreensaver";
 const char kMinBacklightLevel[] = "min_backlight_level";
+const char kDisableALS[] = "disable_als";
 
 // The minimum delta between timers when we want to give a user time to react.
 const char kReactMs[] = "react_ms";
