@@ -208,6 +208,12 @@ if [ -n "$REGISTER_PLUGINS" ]; then
   REGISTER_PLUGINS="--register-pepper-plugins=$REGISTER_PLUGINS"
 fi
 
+# Desktop configurations may use keyboards without volume controls.
+SHOW_VOLUME_STATUS_FLAG=
+if use_flag_is_set is_desktop; then
+  SHOW_VOLUME_STATUS_FLAG="--show-volume-status"
+fi
+
 AURA_FLAGS=
 if use_flag_is_set aura; then
   WM_SCRIPT=""
@@ -318,5 +324,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${AURA_FLAGS} \
             ${FLASH_FLAGS} \
             ${SCREENSAVER_FLAG} \
+            ${SHOW_VOLUME_STATUS_FLAG} \
             ${SKIP_OOBE} \
     ${WM_SCRIPT:+-- "${WM_SCRIPT}"}
