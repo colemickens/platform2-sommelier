@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,6 +13,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/manager.h"
+#include "shill/portal_detector.h"
 #include "shill/store_interface.h"
 
 using std::vector;
@@ -30,6 +31,8 @@ const char DefaultProfile::kStorageHostName[] = "HostName";
 const char DefaultProfile::kStorageName[] = "Name";
 // static
 const char DefaultProfile::kStorageOfflineMode[] = "OfflineMode";
+// static
+const char DefaultProfile::kStoragePortalURL[] = "PortalURL";
 
 DefaultProfile::DefaultProfile(ControlInterface *control,
                                Manager *manager,
@@ -58,6 +61,10 @@ bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
   storage()->GetString(kStorageId,
                        kStorageCheckPortalList,
                        &manager_props->check_portal_list);
+  if (!storage()->GetString(kStorageId, kStoragePortalURL,
+                            &manager_props->portal_url)) {
+    manager_props->portal_url = PortalDetector::kDefaultURL;
+  }
   return true;
 }
 
@@ -68,6 +75,9 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStorageCheckPortalList,
                        props_.check_portal_list);
+  storage()->SetString(kStorageId,
+                       kStoragePortalURL,
+                       props_.portal_url);
   vector<DeviceRefPtr>::iterator it;
   for (it = manager()->devices_begin(); it != manager()->devices_end(); ++it) {
     if (!(*it)->Save(storage())) {

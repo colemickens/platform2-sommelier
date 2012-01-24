@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -49,6 +49,7 @@ class DefaultProfile : public Profile {
  private:
   friend class DefaultProfileTest;
   FRIEND_TEST(DefaultProfileTest, GetStoragePath);
+  FRIEND_TEST(DefaultProfileTest, LoadManagerDefaultProperties);
   FRIEND_TEST(DefaultProfileTest, LoadManagerProperties);
   FRIEND_TEST(DefaultProfileTest, Save);
 
@@ -58,6 +59,7 @@ class DefaultProfile : public Profile {
   static const char kStorageHostName[];
   static const char kStorageName[];
   static const char kStorageOfflineMode[];
+  static const char kStoragePortalURL[];
 
   const FilePath storage_path_;
   const Manager::Properties &props_;

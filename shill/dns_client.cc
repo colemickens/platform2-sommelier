@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -114,7 +114,7 @@ bool DNSClient::Start(const string &hostname) {
   }
 
   running_ = true;
-  time_->GetTimeOfDay(&resolver_state_->start_time_, NULL);
+  time_->GetTimeMonotonic(&resolver_state_->start_time_);
   error_.clear();
   ares_->GetHostByName(resolver_state_->channel, hostname.c_str(),
                        address_.family(), ReceiveDNSReplyCB, this);
@@ -283,7 +283,7 @@ bool DNSClient::RefreshHandles() {
   // Schedule timer event for the earlier of our timeout or one requested by
   // the resolver library.
   struct timeval now, elapsed_time, timeout_tv;
-  time_->GetTimeOfDay(&now, NULL);
+  time_->GetTimeMonotonic(&now);
   timersub(&now, &resolver_state_->start_time_, &elapsed_time);
   timeout_tv.tv_sec = timeout_ms_ / 1000;
   timeout_tv.tv_usec = (timeout_ms_ % 1000) * 1000;

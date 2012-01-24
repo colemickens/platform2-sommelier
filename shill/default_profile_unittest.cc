@@ -19,6 +19,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_store.h"
+#include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
 
 using std::map;
@@ -115,6 +116,10 @@ TEST_F(DefaultProfileTest, Save) {
                                         DefaultProfile::kStorageCheckPortalList,
                                         ""))
       .WillOnce(Return(true));
+  EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
+                                        DefaultProfile::kStoragePortalURL,
+                                        ""))
+      .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), Flush()).WillOnce(Return(true));
 
   EXPECT_CALL(*device_.get(), Save(storage.get())).WillOnce(Return(true));
@@ -123,6 +128,34 @@ TEST_F(DefaultProfileTest, Save) {
   manager()->RegisterDevice(device_);
   ASSERT_TRUE(profile_->Save());
   manager()->DeregisterDevice(device_);
+}
+
+TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
+  scoped_ptr<MockStore> storage(new MockStore);
+  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
+                                        DefaultProfile::kStorageHostName,
+                                        _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
+                                      DefaultProfile::kStorageOfflineMode,
+                                      _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
+                                        DefaultProfile::kStorageCheckPortalList,
+                                        _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
+                                        DefaultProfile::kStoragePortalURL,
+                                        _))
+      .WillOnce(Return(false));
+  profile_->set_storage(storage.release());
+
+  Manager::Properties manager_props;
+  ASSERT_TRUE(profile_->LoadManagerProperties(&manager_props));
+  EXPECT_EQ("", manager_props.host_name);
+  EXPECT_FALSE(manager_props.offline_mode);
+  EXPECT_EQ("", manager_props.check_portal_list);
+  EXPECT_EQ(PortalDetector::kDefaultURL, manager_props.portal_url);
 }
 
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
@@ -141,6 +174,11 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                                         DefaultProfile::kStorageCheckPortalList,
                                         _))
       .WillOnce(DoAll(SetArgumentPointee<2>(portal_list), Return(true)));
+  const string portal_url("http://www.chromium.org");
+  EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
+                                        DefaultProfile::kStoragePortalURL,
+                                        _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(portal_url), Return(true)));
   profile_->set_storage(storage.release());
 
   Manager::Properties manager_props;
@@ -148,6 +186,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_EQ(host_name, manager_props.host_name);
   EXPECT_TRUE(manager_props.offline_mode);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);
+  EXPECT_EQ(portal_url, manager_props.portal_url);
 }
 
 TEST_F(DefaultProfileTest, GetStoragePath) {

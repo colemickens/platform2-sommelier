@@ -66,15 +66,15 @@ class HTTPRequest {
   // This (Start) function returns a failure result if the request
   // failed during initialization, or kResultInProgress if the request
   // has started successfully and is now in progress.
-  Result Start(const HTTPURL &url,
-               Callback1<int>::Type *read_event_callback,
-               Callback1<Result>::Type *result_callback);
+  virtual Result Start(const HTTPURL &url,
+                       Callback1<int>::Type *read_event_callback,
+                       Callback1<Result>::Type *result_callback);
 
   // Stop the current HTTPRequest.  No callback is called as a side
   // effect of this function.
-  void Stop();
+  virtual void Stop();
 
-  const ByteString &response_data() const { return response_data_; }
+  virtual const ByteString &response_data() const { return response_data_; }
 
  private:
   friend class HTTPRequestTest;

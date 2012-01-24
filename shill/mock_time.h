@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,6 +17,7 @@ class MockTime : public Time {
   MockTime();
   virtual ~MockTime();
 
+  MOCK_METHOD1(GetTimeMonotonic, int(struct timeval *tv));
   MOCK_METHOD2(GetTimeOfDay, int(struct timeval *tv, struct timezone *tz));
 
  private:

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -63,7 +63,7 @@ class DNSClientTest : public Test {
   }
 
   virtual void SetUp() {
-    EXPECT_CALL(time_, GetTimeOfDay(_, _))
+    EXPECT_CALL(time_, GetTimeMonotonic(_))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
     SetInActive();
   }
@@ -79,7 +79,7 @@ class DNSClientTest : public Test {
   void AdvanceTime(int time_ms) {
     struct timeval adv_time = { time_ms/1000, (time_ms % 1000) * 1000 };
     timeradd(&time_val_, &adv_time, &time_val_);
-    EXPECT_CALL(time_, GetTimeOfDay(_, _))
+    EXPECT_CALL(time_, GetTimeMonotonic(_))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
   }
 
@@ -274,7 +274,7 @@ TEST_F(DNSClientTest, TimeoutFirstRefresh) {
   SetupRequest(kGoodName, kGoodServer);
   struct timeval init_time_val = time_val_;
   AdvanceTime(kAresTimeoutMS);
-  EXPECT_CALL(time_, GetTimeOfDay(_, _))
+  EXPECT_CALL(time_, GetTimeMonotonic(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(init_time_val), Return(0)))
       .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
   EXPECT_CALL(callback_target_, CallTarget(false));

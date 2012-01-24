@@ -142,6 +142,7 @@ SHILL_OBJS = \
 	modem_manager_proxy.o \
 	modem_proxy.o \
 	modem_simple_proxy.o \
+	portal_detector.o \
 	power_manager_proxy.o \
 	profile.o \
 	profile_dbus_adaptor.o \
@@ -220,6 +221,7 @@ TEST_OBJS = \
 	mock_dns_client.o \
 	mock_event_dispatcher.o \
 	mock_glib.o \
+	mock_http_request.o \
 	mock_ipconfig.o \
 	mock_manager.o \
 	mock_metrics.o \
@@ -247,6 +249,7 @@ TEST_OBJS = \
 	modem_manager_unittest.o \
 	modem_unittest.o \
 	nice_mock_control.o \
+	portal_detector_unittest.o \
 	profile_dbus_property_exporter_unittest.o \
 	profile_unittest.o \
 	property_accessor_unittest.o \
