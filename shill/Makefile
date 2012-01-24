@@ -268,8 +268,18 @@ $(TEST_BIN): CXXFLAGS += -DUNIT_TEST
 $(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ $(TEST_LIBS) -o $@
 
+.gitignore: Makefile
+	@echo .gitignore $(DBUS_BINDINGS) $(SHILL_BIN) $(TEST_BIN) \
+		$(SHILL_OBJS) $(SHILL_OBJS:.o=.d) \
+		$(SHILL_MAIN_OBJ) $(SHILL_MAIN_OBJ:.o=.d) \
+		$(TEST_OBJS) $(TEST_OBJS:.o=.d) \
+		$(CLEAN_FILES) \
+		| tr ' ' '\n' \
+		> .gitignore
+
 clean:
 	rm -rf \
+		.gitignore \
 		*.o \
 		*.d \
 		$(CLEAN_FILES) \
