@@ -30,6 +30,7 @@
 #include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/mock_device.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
@@ -137,6 +138,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
  public:
   WiFiMainTest()
       : manager_(&control_interface_, NULL, &metrics_, &glib_),
+        device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         wifi_(new WiFi(&control_interface_,
                        &dispatcher_,
                        &metrics_,
@@ -161,12 +163,19 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     // easy.
     ON_CALL(manager_, HasService(_)).
         WillByDefault(Return(true));
+
+    ON_CALL(dhcp_provider_, CreateConfig(_, _)).
+        WillByDefault(Return(dhcp_config_));
+    ON_CALL(*dhcp_config_.get(), RequestIP()).
+        WillByDefault(Return(true));
   }
 
   virtual void SetUp() {
     wifi_->proxy_factory_ = &proxy_factory_;
     static_cast<Device *>(wifi_)->rtnl_handler_ = &rtnl_handler_;
     wifi_->set_dhcp_provider(&dhcp_provider_);
+    ON_CALL(manager_, device_info()).
+        WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
   }
 
@@ -238,9 +247,6 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   void InitiateDisconnect(WiFiServiceRefPtr service) {
     wifi_->DisconnectFrom(service);
   }
-  bool IsLinkUp() {
-    return wifi_->link_up_;
-  }
   WiFiEndpointRefPtr MakeEndpoint(const string &ssid, const string &bssid) {
     return WiFiEndpoint::MakeOpenEndpoint(ssid, bssid);
   }
@@ -263,6 +269,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
                  const string &bssid,
                  int16_t signal_strength,
                  const char *mode);
+  void ReportIPConfigComplete() {
+    wifi_->IPConfigUpdatedCallback(dhcp_config_, true);
+  }
   void ReportLinkUp() {
     wifi_->LinkEvent(IFF_LOWER_UP, IFF_LOWER_UP);
   }
@@ -365,6 +374,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
+  MockDeviceInfo device_info_;
   WiFiRefPtr wifi_;
 
   // protected fields interspersed between private fields, due to
@@ -768,29 +778,13 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
   EXPECT_TRUE(GetCurrentService() == NULL);
 }
 
-TEST_F(WiFiMainTest, LinkEvent) {
-  EXPECT_FALSE(IsLinkUp());
-  EXPECT_CALL(dhcp_provider_, CreateConfig(_, _)).
-      WillOnce(Return(dhcp_config_));
-  ReportLinkUp();
-}
-
 TEST_F(WiFiMainTest, Stop) {
-  {
-    InSequence s;
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportScanDone();
 
-    StartWiFi();
-    ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
-    ReportScanDone();
-    EXPECT_CALL(dhcp_provider_, CreateConfig(_, _)).
-        WillOnce(Return(dhcp_config_));
-    ReportLinkUp();
-  }
-
-  {
-    EXPECT_CALL(*manager(), DeregisterService(_));
-    StopWiFi();
-  }
+  EXPECT_CALL(*manager(), DeregisterService(_));
+  StopWiFi();
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceOpen) {
@@ -1253,6 +1247,10 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
   EXPECT_EQ(service1.get(), GetCurrentService().get());
 
+  // Note that we deliberately omit intermediate supplicant states
+  // (e.g. kInterfaceStateAssociating), on the theory that they are
+  // unreliable. Specifically, they may be quashed if the association
+  // completes before supplicant flushes its changed properties.
   ReportCurrentBSSChanged("ap2");
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
   EXPECT_EQ(service2.get(), GetCurrentService().get());
@@ -1336,6 +1334,52 @@ TEST_F(WiFiMainTest, AddNetworkArgs) {
   WiFiService *service(GetServices().begin()->get());
   EXPECT_CALL(supplicant_interface_proxy, AddNetwork(WiFiAddedArgs()));
   InitiateConnect(service);
+}
+
+TEST_F(WiFiMainTest, StateAndIPIgnoreLinkEvent) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service = MakeMockService();
+  InitiateConnect(service);
+  EXPECT_CALL(*service.get(), SetState(_)).Times(0);
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
+  ReportLinkUp();
+
+  // Verify expectations now, because WiFi may cause |service| state
+  // changes during TearDown().
+  Mock::VerifyAndClearExpectations(service);
+}
+
+TEST_F(WiFiMainTest, SupplicantCompleted) {
+  WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
+
+  StartWiFi();
+  ReportBSS("ap", ap->ssid_string(), ap->bssid_string(), 0,
+            kNetworkModeInfrastructure);
+  InitiateConnect(service);
+
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP());
+  ReportCurrentBSSChanged("ap");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  EXPECT_EQ(Service::kStateConfiguring, service->state());
+}
+
+TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
+  WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
+
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP());
+  StartWiFi();
+  ReportBSS("ap", ap->ssid_string(), ap->bssid_string(), 0,
+            kNetworkModeInfrastructure);
+  InitiateConnect(service);
+  ReportCurrentBSSChanged("ap");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  ReportIPConfigComplete();
+  Mock::VerifyAndClearExpectations(service);
+
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
 }
 
 }  // namespace shill

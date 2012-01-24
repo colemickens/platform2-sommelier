@@ -88,7 +88,6 @@ WiFi::WiFi(ControlInterface *control_interface,
              Technology::kWifi),
       proxy_factory_(ProxyFactory::GetInstance()),
       task_factory_(this),
-      link_up_(false),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
       bgscan_method_(kDefaultBgscanMethod),
@@ -224,27 +223,6 @@ bool WiFi::IsConnectingTo(const WiFiService &service) const {
   return pending_service_ == &service ||
       (current_service_ == &service &&
        service.state() != Service::kStateConnected);
-}
-
-void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
-  // TODO(quiche): Figure out how to relate these events to supplicant
-  // events. E.g., may be we can ignore LinkEvent, in favor of events
-  // from SupplicantInterfaceProxy?
-  Device::LinkEvent(flags, change);
-  if ((flags & IFF_LOWER_UP) != 0 && !link_up_) {
-    LOG(INFO) << link_name() << " is up; should start L3!";
-    link_up_ = true;
-    if (AcquireIPConfig()) {
-      SetServiceState(Service::kStateConfiguring);
-    } else {
-      LOG(ERROR) << "Unable to acquire DHCP config.";
-    }
-  } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
-    LOG(INFO) << link_name() << " is down";
-    link_up_ = false;
-    // TODO(quiche): Attempt to reconnect to current SSID, another SSID,
-    // or initiate a scan.
-  }
 }
 
 void WiFi::BSSAdded(const ::DBus::Path &path,
@@ -931,7 +909,7 @@ void WiFi::StateChanged(const string &new_state) {
   // This policy is driven by the fact that the |pending_service_|
   // doesn't become the |current_service_| until wpa_supplicant
   // reports a CurrentBSS change to the |pending_service_|. And the
-  // CurrentBSS change won't we reported until the |pending_service_|
+  // CurrentBSS change won't be reported until the |pending_service_|
   // reaches the wpa_supplicant::kInterfaceStateCompleted state.
   affected_service =
       pending_service_.get() ? pending_service_.get() : current_service_.get();
@@ -941,18 +919,15 @@ void WiFi::StateChanged(const string &new_state) {
     return;
   }
 
-  if (new_state == wpa_supplicant::kInterfaceStateCompleted) {
-    // TODO(quiche): Check if we have a race with LinkEvent and/or
-    // IPConfigUpdatedCallback here.
-
-    // After 802.11 negotiation is Completed, we start Configuring
-    // IP connectivity.
-    affected_service->SetState(Service::kStateConfiguring);
+  if (new_state == wpa_supplicant::kInterfaceStateCompleted &&
+      !affected_service->IsConnected()) {
+    if (AcquireIPConfig()) {
+      LOG(INFO) << link_name() << " is up; should start L3!";
+      affected_service->SetState(Service::kStateConfiguring);
+    } else {
+      LOG(ERROR) << "Unable to acquire DHCP config.";
+    }
   } else if (new_state == wpa_supplicant::kInterfaceStateAssociated) {
-    // TODO(quiche): Resolve race with LinkEvent. It's possible for us
-    // to receive this state notification after LinkEvent. In that case,
-    // our state transitions are Associating -> Configuring ->
-    // Associating -> Configuring -> Ready. (crosbug.com/22831)
     affected_service->SetState(Service::kStateAssociating);
   } else if (new_state == wpa_supplicant::kInterfaceStateAuthenticating ||
              new_state == wpa_supplicant::kInterfaceStateAssociating ||

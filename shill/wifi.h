@@ -43,7 +43,6 @@ class WiFi : public Device {
   virtual void Scan(Error *error);
   virtual bool TechnologyIs(const Technology::Identifier type) const;
   virtual bool IsConnectingTo(const WiFiService &service) const;
-  virtual void LinkEvent(unsigned int flags, unsigned int change);
 
   // Called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
@@ -150,7 +149,6 @@ class WiFi : public Device {
   // Map from Services to the D-Bus path for the corresponding wpa_supplicant
   // Network.
   ReverseServiceMap rpcid_by_service_;
-  bool link_up_;
   std::vector<WiFiServiceRefPtr> services_;
   // The Service we are presently connected to. May be NULL is we're not
   // not connected to any Service.
