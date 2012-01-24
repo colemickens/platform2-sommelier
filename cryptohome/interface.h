@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #ifndef CRYPTOHOME_INTERFACE_H_
@@ -23,7 +23,9 @@ struct Cryptohome {
   GObject parent_instance;
   Service *service;  // pointer to implementing service.
 };
-struct CryptohomeClass { GObjectClass parent_class; };
+struct CryptohomeClass {
+  GObjectClass parent_class;
+};
 
 // cryptohome_get_type() is defined in interface.cc by the G_DEFINE_TYPE()
 // macro.  This macro defines a number of other GLib class system specific
@@ -67,6 +69,10 @@ gboolean cryptohome_get_system_salt(Cryptohome *self,
 gboolean cryptohome_is_mounted(Cryptohome *self,
                                gboolean *OUT_is_mounted,
                                GError **error);
+gboolean cryptohome_is_mounted_for_user(Cryptohome *self,
+                                        gchar *userid,
+                                        gboolean *OUT_is_mounted,
+                                        GError **error);
 gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,
                           gchar *key,

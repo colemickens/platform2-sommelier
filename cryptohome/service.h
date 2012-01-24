@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #ifndef CRYPTOHOME_SERVICE_H_
@@ -122,6 +122,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                gint *OUT_async_id,
                                GError **error);
   virtual gboolean GetSystemSalt(GArray **OUT_salt, GError **error);
+  virtual gboolean IsMountedForUser(gchar *user,
+                                    gboolean *OUT_is_mounted,
+                                    GError **error);
   virtual gboolean IsMounted(gboolean *OUT_is_mounted, GError **error);
   virtual gboolean Mount(gchar *user,
                          gchar *key,

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -60,7 +60,7 @@ class TimerCollection {
     kSyncGuestMountTimer,
     kTpmTakeOwnershipTimer,
     kPkcs11InitTimer,
-    kNumTimerTypes // For the number of timer types.
+    kNumTimerTypes  // For the number of timer types.
   };
 
   TimerCollection()
@@ -550,6 +550,14 @@ gboolean Service::IsMounted(gboolean *OUT_is_mounted, GError **error) {
   return TRUE;
 }
 
+gboolean Service::IsMountedForUser(gchar *userid,
+                                   gboolean *OUT_is_mounted,
+                                   GError **error) {
+  UsernamePasskey credentials(userid, SecureBlob("", 0));
+  *OUT_is_mounted = mount_->IsCryptohomeMountedForUser(credentials);
+  return TRUE;
+}
+
 gboolean Service::Mount(gchar *userid,
                         gchar *key,
                         gboolean create_if_missing,
@@ -664,7 +672,7 @@ gboolean Service::AsyncMount(gchar *userid,
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
 
   LOG(INFO) << "Asynced Mount() requested. Tracking request sequence id"
-            << " for later PKCS#11 initialization.";;
+            << " for later PKCS#11 initialization.";
   pkcs11_state_ = kUninitialized;
   async_mount_pkcs11_init_sequence_id_ = mount_task->sequence_id();
   return TRUE;
@@ -890,7 +898,7 @@ gboolean Service::InstallAttributesGet(gchar* name,
   chromeos::Blob value;
   *OUT_successful = install_attrs_->Get(name, &value);
   // TODO(wad) can g_array_new return NULL.
-  *OUT_value = g_array_new(false, false, sizeof(char));
+  *OUT_value = g_array_new(false, false, sizeof(value.front()));
   if (*OUT_successful)
     g_array_append_vals(*OUT_value, &value.front(), value.size());
   return TRUE;
@@ -977,7 +985,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
                                             obfuscated_user.c_str());
       FilePath vault_file(vault_path);
       base::PlatformFileInfo file_info;
-      if(!file_util::GetFileInfo(vault_file, &file_info)) {
+      if (!file_util::GetFileInfo(vault_file, &file_info)) {
         break;
       }
       SecureBlob contents;
@@ -1003,8 +1011,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
             cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED) ? "1" : "0"),
           exploded.month, exploded.day_of_month, exploded.year,
           exploded.hour, exploded.minute, exploded.second);
-
-    } while(false);
+    } while (false);
   }
   int install_attrs_size = install_attrs_->Count();
   std::string install_attrs_data("InstallAttributes Contents:\n");

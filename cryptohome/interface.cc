@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #include "interface.h"
@@ -105,6 +105,12 @@ gboolean cryptohome_is_mounted(Cryptohome *self,
                                gboolean *OUT_is_mounted,
                                GError **error) {
   CRYPTOHOME_WRAP_METHOD(IsMounted, OUT_is_mounted);
+}
+gboolean cryptohome_is_mounted_for_user(Cryptohome *self,
+                                        gchar *userid,
+                                        gboolean *OUT_is_mounted,
+                                        GError **error) {
+  CRYPTOHOME_WRAP_METHOD(IsMountedForUser, userid, OUT_is_mounted);
 }
 gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,
