@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,10 +20,11 @@ using std::vector;
 
 namespace chaps {
 
-// define const values
 const char* kChapsServicePath = "/org/chromium/Chaps";
 const char* kChapsServiceName = "org.chromium.Chaps";
 const size_t kTokenLabelSize = 32;
+const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
+const CK_ATTRIBUTE_TYPE kAuthDataAttribute = CKA_VENDOR_DEFINED + 2;
 
 const char* CK_RVToString(CK_RV value) {
   switch (value) {

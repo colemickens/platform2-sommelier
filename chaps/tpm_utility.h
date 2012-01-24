@@ -30,13 +30,15 @@ class TPMUtility {
   //                          key.
   //   master_key - Will be populated with the decrypted master key.
   // Returns true on success.
-  virtual bool Authenticate(const std::string& auth_data,
+  virtual bool Authenticate(int slot_id,
+                            const std::string& auth_data,
                             const std::string& auth_key_blob,
                             const std::string& encrypted_master_key,
                             std::string* master_key) = 0;
   // Changes authorization data for a user's authorization key. Returns true on
   // success.
-  virtual bool ChangeAuthData(const std::string& old_auth_data,
+  virtual bool ChangeAuthData(int slot_id,
+                              const std::string& old_auth_data,
                               const std::string& new_auth_data,
                               const std::string& old_auth_key_blob,
                               std::string* new_auth_key_blob) = 0;
@@ -102,22 +104,14 @@ class TPMUtility {
                        const std::string& key_blob,
                        const std::string& auth_data,
                        int* key_handle) = 0;
-  // Loads a public key into the TSS software layers. This key will not be
-  // loaded into the TPM. The supplied key handle can be used for Bind and
-  // Verify operations only. Returns true on success.
-  virtual bool LoadPublicKey(int slot,
-                             const std::string& public_exponent,
-                             const std::string& modulus,
-                             int* key_handle) = 0;
   // Unloads all keys loaded for a particular slot. All key handles for the
   // given slot will not be valid after this method returns.
   virtual void UnloadKeysForSlot(int slot) = 0;
   // Performs a 'bind' operation using the TSS_ES_RSAESPKCSV15 scheme. This
   // effectively performs PKCS #1 v1.5 RSA encryption (using PKCS #1 'type 2'
   // padding).
-  //   key_handle - The key handle, as provided by LoadKey, WrapKey,
-  //                GenerateKey, or LoadPublicKey. This may be a handle to a
-  //                public key.
+  //   key_handle - The key handle, as provided by LoadKey, WrapKey, or
+  //                GenerateKey.
   //   input - Data to be encrypted. The length of this data must not exceed
   //           'N - 11' where N is the length in bytes of the RSA key modulus.
   //   output - The encrypted data. The length will always match the length of
@@ -130,7 +124,7 @@ class TPMUtility {
   // effectively performs PKCS #1 v1.5 RSA decryption (using PKCS #1 'type 2'
   // padding).
   //   key_handle - The key handle, as provided by LoadKey, WrapKey or
-  //                GenerateKey. This must be a handle to a private key.
+  //                GenerateKey.
   //   input - Data to be encrypted. The length of this data must not exceed
   //           'N - 11' where N is the length in bytes of the RSA key modulus.
   //   output - The encrypted data. The length will always match the length of
@@ -141,7 +135,7 @@ class TPMUtility {
                       std::string* output) = 0;
   // Generates a digital signature using the TSS_SS_RSASSAPKCS1V15_DER scheme.
   //   key_handle - The key handle, as provided by LoadKey, WrapKey or
-  //                GenerateKey. This must be a handle to a private key.
+  //                GenerateKey.
   //   input - Must be a DER encoding of the DigestInfo value (see
   //           PKCS #1 v.2.1: 9.2).
   //   signature - Receives the generated signature. The signature length will
@@ -151,9 +145,8 @@ class TPMUtility {
                     const std::string& input,
                     std::string* signature) = 0;
   // Verifies a digital signature using the TSS_SS_RSASSAPKCS1V15_DER scheme.
-  //   key_handle - The key handle, as provided by LoadKey, WrapKey,
-  //                GenerateKey, or LoadPublicKey. This may be a handle to a
-  //                public key.
+  //   key_handle - The key handle, as provided by LoadKey, WrapKey, or
+  //                GenerateKey.
   //   input - Must be a DER encoding of the DigestInfo value (see
   //           PKCS #1 v.2.1: 9.2).
   //   signature - The digital signature to be verified.

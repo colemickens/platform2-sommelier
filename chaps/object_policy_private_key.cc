@@ -7,6 +7,7 @@
 #include <base/basictypes.h>
 #include <base/logging.h>
 
+#include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
 
 namespace chaps {
@@ -20,11 +21,13 @@ static const AttributePolicy kPrivateKeyPolicies[] = {
   {CKA_MODULUS, false, {false, false, true}, true},
   {CKA_PUBLIC_EXPONENT, false, {false, false, true}, true},
   {CKA_PRIVATE_EXPONENT, true, {false, false, true}, true},
-  {CKA_PRIME_1, true, {false, false, true}, true},
-  {CKA_PRIME_2, true, {false, false, true}, true},
-  {CKA_EXPONENT_1, true, {false, false, true}, true},
-  {CKA_EXPONENT_2, true, {false, false, true}, true},
-  {CKA_COEFFICIENT, true, {false, false, true}, true},
+  {CKA_PRIME_1, true, {false, false, true}, false},
+  {CKA_PRIME_2, true, {false, false, true}, false},
+  {CKA_EXPONENT_1, true, {false, false, true}, false},
+  {CKA_EXPONENT_2, true, {false, false, true}, false},
+  {CKA_COEFFICIENT, true, {false, false, true}, false},
+  {kKeyBlobAttribute, true, {true, true, true}, false},
+  {kAuthDataAttribute, true, {true, true, true}, false},
 };
 
 ObjectPolicyPrivateKey::ObjectPolicyPrivateKey() {

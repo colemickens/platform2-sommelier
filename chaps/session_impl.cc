@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <chromeos/utility.h>
 #include <openssl/bio.h>
 #include <openssl/des.h>
 #include <openssl/err.h>
@@ -18,6 +19,7 @@
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 
+#include "chaps/chaps.h"
 #include "chaps/chaps_factory.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/object.h"
@@ -39,8 +41,6 @@ static const int kMaxRSAOutputBytes = 256;
 static const int kMaxDigestOutputBytes = EVP_MAX_MD_SIZE;
 static const int kMinRSAKeyBits = 512;
 static const int kMaxRSAKeyBits = 2048;
-static const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
-static const CK_ATTRIBUTE_TYPE kAuthDataAttribute = CKA_VENDOR_DEFINED + 2;
 
 SessionImpl::SessionImpl(int slot_id,
                          ObjectPool* token_object_pool,
@@ -349,20 +349,13 @@ CK_RV SessionImpl::VerifyFinal(const string& signature) {
     // recomputed and literally compared.
     if (signature.length() != data_out.length())
       return CKR_SIGNATURE_LEN_RANGE;
-    if (signature != data_out)
+    if (0 != chromeos::SafeMemcmp(signature.data(),
+                                  data_out.data(),
+                                  signature.length()))
       return CKR_SIGNATURE_INVALID;
   } else {
-    // A valid signature is always the same length as the key modulus.
-    if (context->key_->GetAttributeString(CKA_MODULUS).length() !=
-        signature.length())
-      return CKR_SIGNATURE_LEN_RANGE;
     // The data_out contents will be the computed digest.
-    string der = GetDERDigestInfo(context->mechanism_);
-    int tpm_key_handle = 0;
-    if (!GetTPMKeyHandle(context->key_, &tpm_key_handle))
-      return CKR_FUNCTION_FAILED;
-    if (!tpm_utility_->Verify(tpm_key_handle, der + data_out, signature))
-      return CKR_SIGNATURE_INVALID;
+    return RSAVerify(context, data_out, signature);
   }
   return CKR_OK;
 }
@@ -924,15 +917,9 @@ CK_ATTRIBUTE_TYPE SessionImpl::GetRequiredKeyUsage(OperationType operation) {
 bool SessionImpl::GetTPMKeyHandle(const Object* key, int* key_handle) {
   map<const Object*, int>::iterator it = object_tpm_handle_map_.find(key);
   if (it == object_tpm_handle_map_.end()) {
-    CK_OBJECT_CLASS object_class = key->GetObjectClass();
-    if (object_class == CKO_PUBLIC_KEY) {
-      if (!tpm_utility_->LoadPublicKey(
-          slot_id_,
-          key->GetAttributeString(CKA_PUBLIC_EXPONENT),
-          key->GetAttributeString(CKA_MODULUS),
-          key_handle))
-        return false;
-    } else if (object_class == CKO_PRIVATE_KEY) {
+    // Only private keys are loaded into the TPM. All public key operations do
+    // not use the TPM (and use OpenSSL instead).
+    if (key->GetObjectClass() == CKO_PRIVATE_KEY) {
       if (!tpm_utility_->LoadKey(
           slot_id_,
           key->GetAttributeString(kKeyBlobAttribute),
@@ -1121,23 +1108,32 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
         ConvertStringToByteBuffer(context->data_.data()),
         buffer,
         rsa,
-        RSA_PKCS1_PADDING);
+        RSA_PKCS1_PADDING);  // Strips PKCS #1 type 2 padding.
     RSA_free(rsa);
     if (length == -1) {
       LOG(ERROR) << "RSA_private_decrypt failed: " << GetOpenSSLError();
       return false;
     }
-    context->data_ = string(reinterpret_cast<char*>(buffer), length);
+    context->data_ = ConvertByteBufferToString(buffer, length);
   }
   return true;
 }
 
 bool SessionImpl::RSAEncrypt(OperationContext* context) {
-  int tpm_key_handle = 0;
-  if (!GetTPMKeyHandle(context->key_, &tpm_key_handle))
+  RSA* rsa = CreateKeyFromObject(context->key_);
+  uint8_t buffer[kMaxRSAOutputBytes];
+  int length = RSA_public_encrypt(
+      context->data_.length(),
+      ConvertStringToByteBuffer(context->data_.data()),
+      buffer,
+      rsa,
+      RSA_PKCS1_PADDING);  // Adds PKCS #1 type 2 padding.
+  RSA_free(rsa);
+  if (length == -1) {
+    LOG(ERROR) << "RSA_public_encrypt failed: " << GetOpenSSLError();
     return false;
-  if (!tpm_utility_->Bind(tpm_key_handle, context->data_, &context->data_))
-    return false;
+  }
+  context->data_ = ConvertByteBufferToString(buffer, length);
   return true;
 }
 
@@ -1158,7 +1154,7 @@ bool SessionImpl::RSASign(OperationContext* context) {
         ConvertStringToByteBuffer(data_to_sign.data()),
         buffer,
         rsa,
-        RSA_PKCS1_PADDING);
+        RSA_PKCS1_PADDING);  // Adds PKCS #1 type 1 padding.
     RSA_free(rsa);
     if (length == -1) {
       LOG(ERROR) << "RSA_private_encrypt failed: " << GetOpenSSLError();
@@ -1168,6 +1164,32 @@ bool SessionImpl::RSASign(OperationContext* context) {
   }
   context->data_ = signature;
   return true;
+}
+
+CK_RV SessionImpl::RSAVerify(OperationContext* context,
+                             const string& digest,
+                             const string& signature) {
+  if (context->key_->GetAttributeString(CKA_MODULUS).length() !=
+      signature.length())
+    return CKR_SIGNATURE_LEN_RANGE;
+  RSA* rsa = CreateKeyFromObject(context->key_);
+  uint8_t buffer[kMaxRSAOutputBytes];
+  int length = RSA_public_decrypt(
+      signature.length(),
+      ConvertStringToByteBuffer(signature.data()),
+      buffer,
+      rsa,
+      RSA_PKCS1_PADDING);  // Strips PKCS #1 type 1 padding.
+  RSA_free(rsa);
+  if (length == -1) {
+    LOG(ERROR) << "RSA_public_decrypt failed: " << GetOpenSSLError();
+    return CKR_SIGNATURE_INVALID;
+  }
+  string signed_data = GetDERDigestInfo(context->mechanism_) + digest;
+  if (static_cast<size_t>(length) != signed_data.length() ||
+      0 != chromeos::SafeMemcmp(buffer, signed_data.data(), length))
+    return CKR_SIGNATURE_INVALID;
+  return CKR_OK;
 }
 
 CK_RV SessionImpl::WrapPrivateKey(Object* object) {

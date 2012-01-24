@@ -18,11 +18,13 @@ class TPMUtilityMock : public TPMUtility {
   virtual ~TPMUtilityMock();
 
   MOCK_METHOD1(Init, bool(const std::string&));
-  MOCK_METHOD4(Authenticate, bool(const std::string&,
+  MOCK_METHOD5(Authenticate, bool(int,
+                                  const std::string&,
                                   const std::string&,
                                   const std::string&,
                                   std::string*));
-  MOCK_METHOD4(ChangeAuthData, bool(const std::string&,
+  MOCK_METHOD5(ChangeAuthData, bool(int,
+                                    const std::string&,
                                     const std::string&,
                                     const std::string&,
                                     std::string*));
@@ -44,8 +46,6 @@ class TPMUtilityMock : public TPMUtility {
                              int*));
   MOCK_METHOD4(LoadKey, bool(int, const std::string&, const std::string&,
                              int*));
-  MOCK_METHOD4(LoadPublicKey, bool(int, const std::string&, const std::string&,
-                                   int*));
   MOCK_METHOD1(UnloadKeysForSlot, void(int));
   MOCK_METHOD3(Bind, bool(int, const std::string&, std::string*));
   MOCK_METHOD3(Unbind, bool(int, const std::string&, std::string*));

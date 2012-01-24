@@ -166,6 +166,9 @@ class SessionImpl : public Session {
   bool RSAEncrypt(OperationContext* context);
   bool RSADecrypt(OperationContext* context);
   bool RSASign(OperationContext* context);
+  CK_RV RSAVerify(OperationContext* context,
+                  const std::string& digest,
+                  const std::string& signature);
   // Wraps the given private key using the TPM and deletes all sensitive
   // attributes. This is called when a private key is imported. On success,
   // the private key can only be accessed by the TPM.

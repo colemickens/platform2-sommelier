@@ -70,61 +70,8 @@ static bool FakeRandom(int num_bytes, string* random) {
   return true;
 }
 
-static RSA* recent_key = NULL;
-static bool FakeLoadPublicKey(int slot,
-                              const string& public_exponent,
-                              const string& modulus,
-                              int* key_handle) {
-  if (recent_key)
-    RSA_free(recent_key);
-  recent_key = RSA_new();
-  CHECK(recent_key);
-  recent_key->e = BN_bin2bn((unsigned char*)public_exponent.data(),
-                            public_exponent.length(),
-                            NULL);
-  recent_key->n = BN_bin2bn((unsigned char*)modulus.data(),
-                            modulus.length(),
-                            NULL);
-  CHECK(recent_key->e && recent_key->n);
-  return true;
-}
-
-static bool FakeBind(int key_handle,
-                     const std::string& input,
-                     std::string* output) {
-  unsigned char buffer[256];
-  int length = RSA_public_encrypt(input.length(),
-                                  (unsigned char*)input.data(),
-                                  buffer,
-                                  recent_key,
-                                  RSA_PKCS1_PADDING);
-  if (length == -1)
-    return false;
-  *output = string((char*)buffer, length);
-  return true;
-}
-
-static bool FakeVerify(int key_handle,
-                       const std::string& input,
-                       const std::string& signature) {
-  unsigned char buffer[256];
-  int length = RSA_public_decrypt(signature.length(),
-                                  (unsigned char*)signature.data(),
-                                  buffer,
-                                  recent_key,
-                                  RSA_PKCS1_PADDING);
-  if (length == (int)input.length() &&
-      0 == memcmp(buffer, input.data(), length))
-    return true;
-  return false;
-}
-
 static void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, GenerateRandom(_, _)).WillRepeatedly(Invoke(FakeRandom));
-  EXPECT_CALL(*tpm, LoadPublicKey(1, _, _, _))
-      .WillRepeatedly(Invoke(FakeLoadPublicKey));
-  EXPECT_CALL(*tpm, Bind(_, _, _)).WillRepeatedly(Invoke(FakeBind));
-  EXPECT_CALL(*tpm, Verify(_, _, _)).WillRepeatedly(Invoke(FakeVerify));
 }
 
 // Test fixture for an initialized SessionImpl instance.

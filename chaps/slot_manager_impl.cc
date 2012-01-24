@@ -228,14 +228,17 @@ void SlotManagerImpl::OnLogin(const string& path, const string& auth_data) {
                                 auth_data,
                                 &master_key)) {
       LOG(ERROR) << "Failed to initialize key hierarchy at " << path;
+      tpm_utility_->UnloadKeysForSlot(slot_id);
       return;
     }
   } else {
-    if (!tpm_utility_->Authenticate(auth_data,
+    if (!tpm_utility_->Authenticate(slot_id,
+                                    auth_data,
                                     auth_key_blob,
                                     encrypted_master_key,
                                     &master_key)) {
       LOG(ERROR) << "Authentication failed for token at " << path;
+      tpm_utility_->UnloadKeysForSlot(slot_id);
       return;
     }
   }
@@ -267,32 +270,35 @@ void SlotManagerImpl::OnChangeAuthData(const string& path,
   // but if we're not, we won't start until a Login event comes in.
   ObjectPool* object_pool = NULL;
   scoped_ptr<ObjectPool> scoped_object_pool;
+  int slot_id = 0;
+  bool unload = false;
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
     object_pool = factory_->CreatePersistentObjectPool(
         path + "/" + kDefaultTokenFile);
     scoped_object_pool.reset(object_pool);
+    slot_id = FindEmptySlot();
+    unload = true;
   } else {
-    int slot_id = path_slot_map_[path];
+    slot_id = path_slot_map_[path];
     object_pool = slot_list_[slot_id].token_object_pool_.get();
   }
   CHECK(object_pool);
   string auth_key_blob;
+  string new_auth_key_blob;
   if (!object_pool->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob)) {
     LOG(INFO) << "Token not initialized; ignoring change auth data event.";
-    return;
-  }
-  string new_auth_key_blob;
-  if (!tpm_utility_->ChangeAuthData(old_auth_data,
-                                    new_auth_data,
-                                    auth_key_blob,
-                                    &new_auth_key_blob)) {
+  } else if (!tpm_utility_->ChangeAuthData(slot_id,
+                                           old_auth_data,
+                                           new_auth_data,
+                                           auth_key_blob,
+                                           &new_auth_key_blob)) {
     LOG(ERROR) << "Failed to change auth data for token at " << path;
-    return;
-  }
-  if (!object_pool->SetInternalBlob(kEncryptedAuthKey, new_auth_key_blob)) {
+  } else if (!object_pool->SetInternalBlob(kEncryptedAuthKey,
+                                           new_auth_key_blob)) {
     LOG(ERROR) << "Failed to write changed auth blob for token at " << path;
-    return;
   }
+  if (unload)
+    tpm_utility_->UnloadKeysForSlot(slot_id);
 }
 
 void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,
