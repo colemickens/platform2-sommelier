@@ -1,2 +1,5 @@
+*.d
+*.o
 build-opt/
 cros-disks-server.h
+/disks
