@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -58,6 +58,7 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_CONST_METHOD1(GetProxyPacUrl, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyBypassList, bool(std::string*));
   MOCK_CONST_METHOD1(GetReleaseChannel, bool(std::string*));
+  MOCK_CONST_METHOD1(GetOwner, bool(std::string*));
 
   MOCK_METHOD0(VerifyPolicyFiles, bool(void));
   MOCK_METHOD0(VerifyPolicySignature, bool(void));

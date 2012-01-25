@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -83,6 +83,11 @@ class DevicePolicyImpl : public DevicePolicy {
   // Returns true on success.
   virtual bool GetReleaseChannel(std::string* release_channel) const;
 
+  // Writes the name of the device owner in |owner|. For enterprise enrolled
+  // devices, this will be an empty string.
+  // Returns true on success.
+  virtual bool GetOwner(std::string* owner) const;
+
  protected:
   // Verifies that the policy files are owned by root and exist.
   virtual bool VerifyPolicyFiles();
@@ -95,6 +100,7 @@ class DevicePolicyImpl : public DevicePolicy {
   virtual bool VerifyPolicySignature();
 
   enterprise_management::PolicyFetchResponse policy_;
+  enterprise_management::PolicyData policy_data_;
   enterprise_management::ChromeDeviceSettingsProto device_policy_;
 
   DISALLOW_COPY_AND_ASSIGN(DevicePolicyImpl);

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -100,9 +100,8 @@ bool DevicePolicyImpl::LoadPolicy() {
     LOG(ERROR) << "Policy on disk could not be parsed!";
     return false;
   }
-  enterprise_management::PolicyData proto;
-  proto.ParseFromString(policy_.policy_data());
-  if (!proto.has_policy_value()) {
+  policy_data_.ParseFromString(policy_.policy_data());
+  if (!policy_data_.has_policy_value()) {
     LOG(ERROR) << "Policy on disk could not be parsed!";
     return false;
   }
@@ -113,7 +112,7 @@ bool DevicePolicyImpl::LoadPolicy() {
     return false;
   }
 
-  device_policy_.ParseFromString(proto.policy_value());
+  device_policy_.ParseFromString(policy_data_.policy_value());
   return true;
 }
 
@@ -271,6 +270,21 @@ bool DevicePolicyImpl::GetReleaseChannel(
     return false;
 
   *release_channel = proto.release_channel();
+  return true;
+}
+
+// Writes the name of the device owner in |owner|. For enterprise enrolled
+// devices, this will be an empty string.
+// Returns true on success.
+bool DevicePolicyImpl::GetOwner(std::string* owner) const {
+  // The device is enterprise enrolled iff a request token exists.
+  if (policy_data_.has_request_token()) {
+    *owner = "";
+    return true;
+  }
+  if (!policy_data_.has_username())
+    return false;
+  *owner = policy_data_.username();
   return true;
 }
 

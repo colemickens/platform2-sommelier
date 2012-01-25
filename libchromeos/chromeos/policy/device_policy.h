@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -82,6 +82,11 @@ class DevicePolicy {
   // Writes the value of the release channel policy in |release_channel|.
   // Returns true on success.
   virtual bool GetReleaseChannel(std::string* release_channel) const = 0;
+
+  // Writes the name of the device owner in |owner|. For enterprise enrolled
+  // devices, this will be an empty string.
+  // Returns true on success.
+  virtual bool GetOwner(std::string* owner) const = 0;
 
  private:
   // Verifies that the policy files are owned by root and exist.

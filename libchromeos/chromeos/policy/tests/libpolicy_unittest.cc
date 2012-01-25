@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -55,7 +55,7 @@ TEST(PolicyTest, DevicePolicyTest) {
   // Check if we can read out all fields of the sample protobuf.
   bool bool_value = true;
   ASSERT_TRUE(policy.GetGuestModeEnabled(&bool_value));
-  ASSERT_EQ(false, bool_value);
+  ASSERT_FALSE(bool_value);
 
   int int_value = -1;
   ASSERT_TRUE(policy.GetPolicyRefreshRate(&int_value));
@@ -63,19 +63,19 @@ TEST(PolicyTest, DevicePolicyTest) {
 
   bool_value = true;
   ASSERT_TRUE(policy.GetCameraEnabled(&bool_value));
-  ASSERT_EQ(false, bool_value);
+  ASSERT_FALSE(bool_value);
 
   bool_value = true;
   ASSERT_TRUE(policy.GetShowUserNames(&bool_value));
-  ASSERT_EQ(false, bool_value);
+  ASSERT_FALSE(bool_value);
 
   bool_value = true;
   ASSERT_TRUE(policy.GetDataRoamingEnabled(&bool_value));
-  ASSERT_EQ(false, bool_value);
+  ASSERT_FALSE(bool_value);
 
   bool_value = true;
   ASSERT_TRUE(policy.GetAllowNewUsers(&bool_value));
-  ASSERT_EQ(false, bool_value);
+  ASSERT_FALSE(bool_value);
 
   std::vector<std::string> list_value;
   ASSERT_TRUE(policy.GetUserWhitelist(&list_value));
@@ -97,8 +97,11 @@ TEST(PolicyTest, DevicePolicyTest) {
   ASSERT_TRUE(policy.GetProxyBypassList(&string_value));
   ASSERT_EQ("a, b, c", string_value);
 
+  ASSERT_TRUE(policy.GetOwner(&string_value));
+  ASSERT_EQ("", string_value);
+
   ASSERT_TRUE(policy.GetMetricsEnabled(&bool_value));
-  ASSERT_EQ(false, bool_value);
+  ASSERT_FALSE(bool_value);
 
   // Test one missing policy.
   ASSERT_FALSE(policy.GetReleaseChannel(&string_value));
