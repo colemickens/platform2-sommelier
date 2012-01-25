@@ -8,6 +8,42 @@ Help("""\
 Type: 'scons' to build and 'scons -c' to clean\
 """)
 
+# Borrowed from updater
+# Protobuffer compilation
+def ProtocolBufferEmitter(target, source, env):
+  """ Inputs:
+          target: list of targets to compile to
+          source: list of sources to compile
+          env: the scons environment in which we are compiling
+      Outputs:
+          target: the list of targets we'll emit
+          source: the list of sources we'll compile"""
+  output = str(source[0])
+  output = output[0:output.rfind('.proto')]
+  target = [
+    output + '.pb.cc',
+    output + '.pb.h',
+  ]
+  return target, source
+
+def ProtocolBufferGenerator(source, target, env, for_signature):
+  """ Inputs:
+          source: list of sources to process
+          target: list of targets to generate
+          env: scons environment in which we are working
+          for_signature: unused
+      Outputs: a list of commands to execute to generate the targets from
+               the sources."""
+  commands = [
+    '/usr/bin/protoc '
+    ' --proto_path=. ${SOURCES} --cpp_out=.']
+  return commands
+
+proto_builder = Builder(generator = ProtocolBufferGenerator,
+                        emitter = ProtocolBufferEmitter,
+                        single_source = 1,
+                        suffix = '.pb.cc')
+
 # Create a base environment including things that are likely to be common
 # to all of the objects in this directory. We pull in overrides from the
 # environment to enable cross-compile.
@@ -102,17 +138,25 @@ backlight_controller = gdk_env.Library('backlight_controller',
 power_prefs = gdk_env.Library('power_prefs', ['power_prefs.cc',
                                               'power_constants.cc'])
 powerd_env = gdk_env.Clone()
+powerd_env.Command('./power_supply_properties.proto',
+                   os.environ['SYSROOT'] +
+                   '/usr/include/chromeos/dbus/power_supply_properties.proto',
+                   Copy('$TARGET', '$SOURCE'))
+powerd_env['BUILDERS']['ProtocolBuffer'] = proto_builder
 powerd_env.Append(LIBS=Split('chromeos base rt Xext \
-    gflags pthread dl metrics X11 Xrandr udev'))
+    gflags pthread dl metrics X11 Xrandr udev protobuf'))
 powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1 libchromeos'
 )
-
-
-powerd_sources = Split(''' audio_detector.cc \
-  file_tagger.cc powerd.cc powerd_metrics.cc screen_locker.cc suspender.cc
-  video_detector.cc metrics_constants.cc monitor_reconfigure.cc power_supply.cc
-  resolution_selector.cc rolling_average.cc
+powerd_env.ProtocolBuffer('power_supply_properties.pb.cc',
+                          'power_supply_properties.proto')
+powerd_env.Depends('powerd.cc',
+                   'power_supply_properties.pb.cc')
+powerd_sources = Split(''' audio_detector.cc
+  power_supply_properties.pb.cc file_tagger.cc powerd.cc powerd_metrics.cc
+  screen_locker.cc suspender.cc video_detector.cc metrics_constants.cc
+  monitor_reconfigure.cc power_supply.cc resolution_selector.cc
+  rolling_average.cc
 ''')
 if not use_aura:
   powerd_sources.append('power_button_handler.cc')

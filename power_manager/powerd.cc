@@ -26,6 +26,7 @@
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_supply.h"
+#include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/video_detector_interface.h"
 #include "power_manager/util.h"
 
@@ -786,6 +787,42 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
         DBUS_TYPE_DOUBLE,  &status->battery_percentage,
         DBUS_TYPE_BOOLEAN, &battery_is_present,
         DBUS_TYPE_BOOLEAN, &battery_is_charged,
+        DBUS_TYPE_INVALID);
+
+    if (!dbus_connection_send(connection, reply, NULL)) {
+      LOG(WARNING) << "Failed to send reply message.";
+      // Other dbus clients may be interested in consuming this signal.
+      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+    return DBUS_HANDLER_RESULT_HANDLED;
+  } else if (dbus_message_is_method_call(message,
+                                         kPowerManagerInterface,
+                                         kGetPowerSupplyPropertiesMethod)) {
+    LOG(INFO) << "Power supply properties request";
+
+    PowerSupplyProperties protobuf;
+    PowerStatus* status = &daemon->power_status_;
+
+    protobuf.set_line_power_on(status->line_power_on);
+    protobuf.set_battery_energy(status->battery_energy);
+    protobuf.set_battery_energy_rate(status->battery_energy_rate);
+    protobuf.set_battery_voltage(status->battery_voltage);
+    protobuf.set_battery_time_to_empty(status->battery_time_to_empty);
+    protobuf.set_battery_time_to_full(status->battery_time_to_full);
+    protobuf.set_battery_percentage(status->battery_percentage);
+    protobuf.set_battery_is_present(status->battery_is_present);
+    protobuf.set_battery_is_charged(status->battery_state ==
+                                    BATTERY_STATE_FULLY_CHARGED);
+
+    DBusMessage *reply = dbus_message_new_method_return(message);
+    CHECK(reply != NULL);
+
+    std::string serialized_proto;
+    CHECK(protobuf.SerializeToString(&serialized_proto));
+    dbus_message_append_args(
+        reply,
+        DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+        serialized_proto.data(), serialized_proto.size(),
         DBUS_TYPE_INVALID);
 
     if (!dbus_connection_send(connection, reply, NULL)) {
