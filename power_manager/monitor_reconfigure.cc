@@ -219,7 +219,7 @@ void MonitorReconfigure::Run() {
                                      &screen_resolution));
 
   // Disable the backlight before resizing anything on the screen.
-  if (lcd_resolution.name.empty())
+  if (lcd_resolution.name.empty() || is_projecting_)
     backlight_ctl_->SetPowerState(BACKLIGHT_IDLE_OFF);
 
   // Grab the server during mode changes.
