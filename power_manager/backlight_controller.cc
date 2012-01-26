@@ -130,7 +130,7 @@ void BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
 
   if (new_percent != target_percent_) {
     *current_offset_percent_ = new_percent - als_offset_percent_;
-    WriteBrightness(true, cause);
+    WriteBrightness(true, cause, TRANSITION_GRADUAL);
   }
 }
 
@@ -148,7 +148,7 @@ void BacklightController::DecreaseBrightness(bool allow_off,
 
   if (new_percent != target_percent_ && (allow_off || new_percent > 0)) {
     *current_offset_percent_ = new_percent - als_offset_percent_;
-    WriteBrightness(true, cause);
+    WriteBrightness(true, cause, TRANSITION_GRADUAL);
   }
 }
 
@@ -171,23 +171,40 @@ bool BacklightController::SetPowerState(PowerState new_state) {
 
   state_ = new_state;
 
+  TransitionStyle style = TRANSITION_GRADUAL;
+  // Save the active backlight level if transitioning away from it.
+  // Restore the saved value if returning to active state.
+  if (old_state == BACKLIGHT_ACTIVE) {
+    last_active_offset_percent_ = *current_offset_percent_;
+  } else if (old_state != BACKLIGHT_UNINITIALIZED &&
+             new_state == BACKLIGHT_ACTIVE) {
+    double new_percent = ClampPercentToVisibleRange(
+        last_active_offset_percent_ + als_offset_percent_);
+    // TODO(sque): We want to prevent the brightness from coming up as zero on a
+    // resume.  However, whether the minimum should be the startup brightness
+    // minimum or another value has not been determined.
+    new_percent = std::max(new_percent, kMinInitialBrightnessPercent);
+    *current_offset_percent_ = new_percent - als_offset_percent_;
+    // If returning from suspend, force the backlight to zero to cancel out any
+    // kernel driver behavior that sets it to some other value.  This allows
+    // backlight controller to restore the backlight value from 0 to the saved
+    // active level.
+    if (old_state == BACKLIGHT_SUSPENDED)
+      style = TRANSITION_INSTANT;
+  }
+
+  bool write_brightness = true;
 #ifdef HAS_ALS
   // For the first time SetPowerState() is called (when the system just
-  // boots), if the ALS value has not been seen, skip the backlight
-  // adjustment.
-  if (old_state == BACKLIGHT_UNINITIALIZED) {
-    if (has_seen_als_event_) {
-      WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
-    } else {
-      LOG(INFO) << "First time SetPowerState() called, skip the backlight "
-                << "brightness adjustment since no ALS value available yet.";
-    }
-  } else {
-    WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
+  // boots), if the ALS value has not been seen, skip the backlight adjustment.
+  if (old_state == BACKLIGHT_UNINITIALIZED && !has_seen_als_event_) {
+    LOG(INFO) << "First time SetPowerState() called, skip the backlight "
+              << "brightness adjustment since no ALS value available yet.";
+    write_brightness = false;
   }
-#else
-  WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
 #endif // defined(HAS_ALS)
+  if (write_brightness)
+    WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, style);
 
   // Do not go to dim if backlight is already dimmed.
   if (new_state == BACKLIGHT_DIM &&
@@ -263,14 +280,15 @@ bool BacklightController::OnPlugEvent(bool is_plugged) {
   // if the ALS value has not been seen, skip the backlight adjustment.
   if (is_first_time) {
     if (has_seen_als_event_) {
-      return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
+      return WriteBrightness(
+        true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
     }
     LOG(INFO) << "First time OnPlugEvent() called, skip the backlight "
               << "brightness adjustment since no ALS value available yet.";
     return true;
   }
 #endif // defined(HAS_ALS)
-  return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
+  return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
 }
 
 void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
@@ -296,7 +314,7 @@ void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
     als_temporal_state_ = ALS_HYST_IDLE;
     als_adjustment_count_++;
     LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
-    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED);
+    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
     return;
   }
 
@@ -324,7 +342,7 @@ void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
     als_adjustment_count_++;
     LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
     // ALS adjustment should not change brightness offset.
-    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED);
+    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
   }
 }
 
@@ -385,7 +403,8 @@ bool BacklightController::IsInitialized() {
 }
 
 bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
-                                          BrightnessChangeCause cause) {
+                                          BrightnessChangeCause cause,
+                                          TransitionStyle style) {
   if (!IsInitialized())
     return false;
 
@@ -401,8 +420,12 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
     // Do not turn off backlight if this is a "soft" adjustment -- e.g. due to
     // ALS change.
     // Also, do not turn off the backlight if it has been dimmed and idled.
+    //
+    // Note that when adjusting during idle events, such as from screen-off or
+    // suspend to active, it's an automated change, but adjust_brightness_offset
+    // is allowed.  Brightness needs to be set from zero to nonzero.
     if (state_ == BACKLIGHT_ALREADY_DIMMED ||
-        cause == BRIGHTNESS_CHANGE_AUTOMATED) {
+        (!adjust_brightness_offset && cause == BRIGHTNESS_CHANGE_AUTOMATED)) {
       if (target_percent_ == 0.0 && old_percent > 0.0)
         target_percent_ = LevelToPercent(min_visible_level_);
       else if (target_percent_ > 0.0 && old_percent == 0.0)
@@ -431,7 +454,7 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
   int64 level = PercentToLevel(target_percent_);
   LOG(INFO) << "WriteBrightness: " << old_percent << "% -> "
             << target_percent_ << "%";
-  if (SetBrightnessGradual(level)) {
+  if (SetBrightness(level, style)) {
     WritePrefs();
     if (observer_)
       observer_->OnScreenBrightnessChanged(target_percent_, cause);
@@ -440,7 +463,8 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
   return target_percent_ != old_percent;
 }
 
-bool BacklightController::SetBrightnessGradual(int64 target_level) {
+bool BacklightController::SetBrightness(int64 target_level,
+                                        TransitionStyle style) {
   LOG(INFO) << "Attempting to set brightness to " << target_level;
   int64 current_level;
   backlight_->GetCurrentBrightnessLevel(&current_level);
@@ -461,6 +485,15 @@ bool BacklightController::SetBrightnessGradual(int64 target_level) {
   if (diff == 0)
     return true;
 
+  if (style == TRANSITION_INSTANT) {
+    SetBrightnessHard(target_level, target_level);
+    return true;
+  }
+
+  // else if (style == TRANSITION_GRADUAL)
+  // The following check will require this code to be updated should more styles
+  // be added in the future.
+  DCHECK_EQ(style, TRANSITION_GRADUAL);
   LOG(INFO) << "Setting to new target brightness " << target_level;
   is_in_transition_ = true;
   int64 previous_level = current_level;

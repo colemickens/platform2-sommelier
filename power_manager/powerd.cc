@@ -930,8 +930,8 @@ void Daemon::OnPowerStateChange(const char* state) {
  // on == resume via powerd_suspend
   if (g_str_equal(state, "on") == TRUE) {
     LOG(INFO) << "Resuming has commenced";
-    SetActive();
     HandleResume();
+    SetActive();
   } else {
     DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
   }
@@ -1054,6 +1054,9 @@ void Daemon::Suspend() {
   if (util::LoggedIn()) {
     power_supply_.SetSuspendState(true);
     suspender_.RequestSuspend();
+    // When going to suspend, notify the backlight controller so it will know to
+    // set the backlight correctly upon resume.
+    backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
   } else {
     LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
     OnRequestShutdown(true);  // notify_window_manager=true

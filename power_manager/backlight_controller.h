@@ -142,6 +142,12 @@ class BacklightController {
   FRIEND_TEST(DaemonTest,
               GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow);
 
+  // How to transition between brightness levels.
+  enum TransitionStyle {
+    TRANSITION_GRADUAL,
+    TRANSITION_INSTANT,
+  };
+
   // Clamp |percent| to fit between LevelToPercent(min_visible_level_) and 100.
   double ClampPercentToVisibleRange(double percent);
 
@@ -164,14 +170,15 @@ class BacklightController {
   // If |adjust_brightness_offset| is true, |*current_offset_percent_| is
   // updated (it can change due to clamping of the target brightness).
   bool WriteBrightness(bool adjust_brightness_offset,
-                       BrightnessChangeCause cause);
+                       BrightnessChangeCause cause,
+                       TransitionStyle style);
 
-  // Changes the brightness to |target_level| over time.  This is used for
-  // smoothing effects.
-  bool SetBrightnessGradual(int64 target_level);
+  // Changes the brightness to |target_level|.  Use style = TRANSITION_GRADUAL
+  // to change brightness with smoothing effects.
+  bool SetBrightness(int64 target_level, TransitionStyle style);
 
   // Callback function to set backlight brightness through the backlight
-  // interface.  This is used by SetBrightnessGradual to change the brightness
+  // interface.  This is used by SetBrightness to change the brightness
   // over a series of steps.
   //
   // Example:
@@ -229,6 +236,12 @@ class BacklightController {
   // Pointer to currently in-use user brightness offset: either
   // |plugged_offset_percent_|, |unplugged_offset_percent_|, or NULL.
   double* current_offset_percent_;
+
+  // The offset when the backlight was last in the active state.  It is taken
+  // from |*current_offset_percent| and does not include the ALS offset, which
+  // can vary between suspend and resume.  This is used to restore the backlight
+  // when returning to the active state.
+  double last_active_offset_percent_;
 
   // Backlight power state, used to distinguish between various cases.
   // Backlight nonzero, backlight zero, backlight idle-dimmed, etc.

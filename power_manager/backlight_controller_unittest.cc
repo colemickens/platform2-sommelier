@@ -80,6 +80,8 @@ class BacklightControllerTest : public ::testing::Test {
     EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightness),
                               Return(true)));
+    EXPECT_CALL(backlight_, SetBrightnessLevel(_))
+        .WillRepeatedly(Return(false));
     prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightness);
     prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightness);
     prefs_.SetInt64(kAlsBrightnessLevel, kAlsBrightness);
@@ -278,6 +280,35 @@ TEST_F(BacklightControllerTest, MinBrightnessLevelMatchesMax) {
   // Decrease again with allow_off=true.
   controller.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
   EXPECT_DOUBLE_EQ(0.0, controller.target_percent());
+}
+
+// Test the saved brightness level before and after suspend.
+TEST_F(BacklightControllerTest, SuspendBrightnessLevel) {
+  BacklightController controller(&backlight_, &prefs_);
+  ASSERT_TRUE(controller.Init());
+#ifdef HAS_ALS
+  // The controller avoids adjusting the brightness until it gets its first
+  // reading from the ambient light sensor.
+  controller.SetAlsBrightnessOffsetPercent(0.0);
+#endif
+  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
+  ASSERT_TRUE(controller.OnPlugEvent(true));
+  EXPECT_DOUBLE_EQ(kPluggedBrightness, controller.target_percent());
+
+  // Test suspend and resume.
+  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_SUSPENDED));
+  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
+  EXPECT_DOUBLE_EQ(kPluggedBrightness, controller.target_percent());
+
+  // Test idling into suspend state.
+  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_DIM));
+  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_IDLE_OFF));
+  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_SUSPENDED));
+  EXPECT_DOUBLE_EQ(0.0, controller.target_percent());
+
+  // Test resume.
+  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
+  EXPECT_DOUBLE_EQ(kPluggedBrightness, controller.target_percent());
 }
 
 }  // namespace power_manager
