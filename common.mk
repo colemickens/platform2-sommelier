@@ -730,7 +730,7 @@ endef
 
 clean: qemu_clean
 clean: CLEAN($(OUT)*.d) CLEAN($(OUT)*.o) CLEAN($(OUT)*.debug)
-clean: CLEAN($(OUT)*.test)
+clean: CLEAN($(OUT)*.test) CLEAN($(OUT)*.depends)
 
 clean:
 	$(QUIET)# Always delete the containing directory last.
@@ -773,6 +773,7 @@ $(eval LD_DIRS := $(LD_DIRS):$(OUT)$(MODULE))
 # Add the defaults from this dir to rm_clean
 clean: CLEAN($(OUT)$(MODULE)/*.d) CLEAN($(OUT)$(MODULE)/*.o)
 clean: CLEAN($(OUT)$(MODULE)/*.debug) CLEAN($(OUT)$(MODULE)/*.test)
+clean: CLEAN($(OUT)$(MODULE)/*.depends)
 
 $(info + submodule: $(MODULE_NAME))
 # We must eval otherwise they may be dropped.
