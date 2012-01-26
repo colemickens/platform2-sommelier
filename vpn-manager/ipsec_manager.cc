@@ -116,12 +116,7 @@ bool IpsecManager::Initialize(int ike_version,
       return false;
     }
     server_ca_file_ = server_ca_file;
-
-    // Do not require a server ID to be specified, but use it if so.
-    if (server_id.empty())
-      server_id_ = "%usepeercert";
-    else
-      server_id_ = server_id;
+    server_id_ = server_id;
 
     if (client_cert_slot.empty()) {
       client_cert_slot_ = kDefaultCertSlot;
@@ -294,6 +289,12 @@ std::string IpsecManager::FormatStarterConfigFile() {
   }
   AppendBoolSetting(&config, "nat_traversal", FLAGS_nat_traversal);
   AppendStringSetting(&config, "pkcs11module", PKCS11_LIB);
+  // If no server ID is specified, ignore the peer ID check in pluto
+  // so that it accepts either IP address or fully qualified domain name
+  // reported by the server (crosbug.com/24476).
+  if (server_id_.empty())
+    AppendBoolSetting(&config, "ignorepeeridcheck", true);
+
   config.append("conn managed\n");
   AppendStringSetting(&config, "ike", FLAGS_ike);
   AppendStringSetting(&config, "esp", FLAGS_esp);

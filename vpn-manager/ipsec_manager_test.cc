@@ -260,6 +260,7 @@ std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(bool debug) {
   expected.append(
       "\tnat_traversal=yes\n"
       "\tpkcs11module=\"/usr/lib/libchaps.so\"\n"
+      "\tignorepeeridcheck=yes\n"
       "conn managed\n"
       "\tike=\"3des-sha1-modp1024\"\n"
       "\tesp=\"aes128-sha1,3des-sha1,aes128-md5,3des-md5\"\n"
