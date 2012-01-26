@@ -591,7 +591,7 @@ TEST_F(ManagerTest, PushPopProfile) {
 
   Error error;
   // Active profile should be the last one we pushed.
-  EXPECT_EQ(kProfile1, "~" + manager.GetActiveProfileName(&error));
+  EXPECT_EQ(kProfile1, "~" + manager.ActiveProfile()->GetFriendlyName());
 
   // Make sure a profile name that doesn't exist fails.
   const char kProfile2Id[] = "profile2";
@@ -1107,6 +1107,26 @@ TEST_F(ManagerTest, SaveSuccessfulService) {
   EXPECT_CALL(*profile.get(), AdoptService(expect_service))
       .WillOnce(Return(true));
   manager()->UpdateService(service);
+}
+
+TEST_F(ManagerTest, EnumerateProfiles) {
+  vector<string> profile_paths;
+  for (size_t i = 0; i < 10; i++) {
+    scoped_refptr<MockProfile> profile(
+      new StrictMock<MockProfile>(control_interface(), manager(), ""));
+    profile_paths.push_back(base::StringPrintf("/profile/%d", i));
+    EXPECT_CALL(*profile.get(), GetRpcIdentifier())
+        .WillOnce(Return(profile_paths.back()));
+    AdoptProfile(manager(), profile);
+  }
+
+  Error error;
+  vector<string> returned_paths = manager()->EnumerateProfiles(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(profile_paths.size(), returned_paths.size());
+  for (size_t i = 0; i < profile_paths.size(); i++) {
+    EXPECT_EQ(profile_paths[i], returned_paths[i]);
+  }
 }
 
 TEST_F(ManagerTest, AutoConnectOnRegister) {

@@ -211,17 +211,27 @@ bool Profile::GetStoragePath(FilePath *path) {
 }
 
 vector<string> Profile::EnumerateAvailableServices(Error *error) {
-  // TOOD(quiche): This list should be based on the information we
-  // have about services, rather than the Manager's service
-  // list. (crosbug.com/23702)
-  return manager_->EnumerateAvailableServices(error);
+  // We should return the Manager's service list if this is the active profile.
+  if (manager_->IsActiveProfile(this)) {
+    return manager_->EnumerateAvailableServices(error);
+  } else {
+    return vector<string>();
+  }
 }
 
 vector<string> Profile::EnumerateEntries(Error */*error*/) {
-  // TODO(someone): Determine if we care about this wasteful copying; consider
-  // making GetGroups return a vector.
   set<string> groups(storage_->GetGroups());
-  return vector<string>(groups.begin(), groups.end());
+  vector<string> service_groups;
+
+  // Filter this list down to only entries that correspond
+  // to a technology.  (wifi_*, etc)
+  for (set<string>::iterator it = groups.begin();
+       it != groups.end(); ++it) {
+    if (Technology::IdentifierFromStorageGroup(*it) != Technology::kUnknown)
+      service_groups.push_back(*it);
+  }
+
+  return service_groups;
 }
 
 void Profile::HelpRegisterDerivedStrings(

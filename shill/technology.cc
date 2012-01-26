@@ -5,17 +5,20 @@
 #include "shill/technology.h"
 
 #include <string>
+#include <vector>
 
+#include <base/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace shill {
 
 using std::string;
+using std::vector;
 
 const char Technology::kUnknownName[] = "Unknown";
 
 // static
-Technology::Identifier Technology::IdentifierFromName(const std::string &name) {
+Technology::Identifier Technology::IdentifierFromName(const string &name) {
   if (name == flimflam::kTypeEthernet) {
     return kEthernet;
   } else if (name == flimflam::kTypeWifi) {
@@ -28,7 +31,7 @@ Technology::Identifier Technology::IdentifierFromName(const std::string &name) {
 }
 
 // static
-std::string Technology::NameFromIdentifier(Technology::Identifier id) {
+string Technology::NameFromIdentifier(Technology::Identifier id) {
   if (id == kEthernet) {
     return flimflam::kTypeEthernet;
   } else if (id == kWifi) {
@@ -38,6 +41,17 @@ std::string Technology::NameFromIdentifier(Technology::Identifier id) {
   } else {
     return kUnknownName;
   }
+}
+
+// static
+Technology::Identifier Technology::IdentifierFromStorageGroup(
+    const string &group) {
+  vector<string> group_parts;
+  base::SplitString(group, '_', &group_parts);
+  if (group_parts.empty()) {
+    return kUnknown;
+  }
+  return IdentifierFromName(group_parts[0]);
 }
 
 }  // namespace shill

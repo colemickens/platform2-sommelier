@@ -22,6 +22,7 @@ class Technology {
 
   static Identifier IdentifierFromName(const std::string &name);
   static std::string NameFromIdentifier(Identifier id);
+  static Identifier IdentifierFromStorageGroup(const std::string &group);
 
  private:
   static const char kUnknownName[];

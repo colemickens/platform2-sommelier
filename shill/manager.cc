@@ -71,7 +71,7 @@ Manager::Manager(ControlInterface *control_interface,
       metrics_(metrics),
       glib_(glib) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
-                            &Manager::GetActiveProfileName,
+                            &Manager::GetActiveProfileRpcIdentifier,
                             NULL);
   HelpRegisterDerivedStrings(flimflam::kAvailableTechnologiesProperty,
                              &Manager::AvailableTechnologies,
@@ -93,6 +93,9 @@ Manager::Manager(ControlInterface *control_interface,
                              NULL);
   store_.RegisterBool(flimflam::kOfflineModeProperty, &props_.offline_mode);
   store_.RegisterString(flimflam::kPortalURLProperty, &props_.portal_url);
+  HelpRegisterDerivedStrings(flimflam::kProfilesProperty,
+                             &Manager::EnumerateProfiles,
+                             NULL);
   store_.RegisterString(shill::kHostNameProperty, &props_.host_name);
   HelpRegisterDerivedString(flimflam::kStateProperty,
                             &Manager::CalculateState,
@@ -104,8 +107,6 @@ Manager::Manager(ControlInterface *control_interface,
                              &Manager::EnumerateWatchedServices,
                              NULL);
 
-  // TODO(cmasone): Wire these up once we actually put in profile support.
-  // known_properties_.push_back(flimflam::kProfilesProperty);
   VLOG(2) << "Manager initialized.";
 }
 
@@ -310,9 +311,14 @@ void Manager::PopAnyProfile(Error *error) {
   PopProfileInternal();
 }
 
-const ProfileRefPtr &Manager::ActiveProfile() {
+const ProfileRefPtr &Manager::ActiveProfile() const {
   DCHECK_NE(profiles_.size(), 0);
   return profiles_.back();
+}
+
+bool Manager::IsActiveProfile(const ProfileRefPtr &profile) const {
+  return (profiles_.size() > 0 &&
+          ActiveProfile().get() == profile.get());
 }
 
 bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
@@ -633,6 +639,16 @@ vector<string> Manager::EnumerateDevices(Error */*error*/) {
   return device_rpc_ids;
 }
 
+vector<string> Manager::EnumerateProfiles(Error */*error*/) {
+  vector<string> profile_rpc_ids;
+  for (vector<ProfileRefPtr>::const_iterator it = profiles_.begin();
+       it != profiles_.end();
+       ++it) {
+    profile_rpc_ids.push_back((*it)->GetRpcIdentifier());
+  }
+  return profile_rpc_ids;
+}
+
 vector<string> Manager::EnumerateAvailableServices(Error */*error*/) {
   vector<string> service_rpc_ids;
   for (vector<ServiceRefPtr>::const_iterator it = services_.begin();
@@ -648,8 +664,8 @@ vector<string> Manager::EnumerateWatchedServices(Error *error) {
   return EnumerateAvailableServices(error);
 }
 
-string Manager::GetActiveProfileName(Error */*error*/) {
-  return ActiveProfile()->GetFriendlyName();
+string Manager::GetActiveProfileRpcIdentifier(Error */*error*/) {
+  return ActiveProfile()->GetRpcIdentifier();
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)

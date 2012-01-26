@@ -56,7 +56,8 @@ class Manager {
   void Start();
   void Stop();
 
-  const ProfileRefPtr &ActiveProfile();
+  const ProfileRefPtr &ActiveProfile() const;
+  bool IsActiveProfile(const ProfileRefPtr &profile) const;
   bool MoveServiceToProfile(const ServiceRefPtr &to_move,
                             const ProfileRefPtr &destination);
 
@@ -119,13 +120,14 @@ class Manager {
  private:
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
-  FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
-  FRIEND_TEST(ManagerTest, PushPopProfile);
-  FRIEND_TEST(ManagerTest, SortServices);
-  FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
+  FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
+  FRIEND_TEST(ManagerTest, EnumerateProfiles);
+  FRIEND_TEST(ManagerTest, PushPopProfile);
+  FRIEND_TEST(ManagerTest, SortServices);
+  FRIEND_TEST(ManagerTest, SortServicesWithConnection);
 
   static const char kManagerErrorNoDevice[];
 
@@ -137,9 +139,10 @@ class Manager {
   std::string DefaultTechnology(Error *error);
   std::vector<std::string> EnabledTechnologies(Error *error);
   std::vector<std::string> EnumerateDevices(Error *error);
+  std::vector<std::string> EnumerateProfiles(Error *error);
   // TODO(cmasone): This should be implemented by filtering |services_|.
   std::vector<std::string> EnumerateWatchedServices(Error *error);
-  std::string GetActiveProfileName(Error *error);
+  std::string GetActiveProfileRpcIdentifier(Error *error);
 
   void HelpRegisterDerivedString(
       const std::string &name,

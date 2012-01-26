@@ -42,7 +42,7 @@ MockService::MockService(ControlInterface *control_interface,
 MockService::~MockService() {}
 
 bool MockService::FauxSave(StoreInterface *store) {
-  return store->SetString(UniqueName(), "dummy", "dummy");
+  return store->SetString(GetStorageIdentifier(), "dummy", "dummy");
 }
 
 }  // namespace shill

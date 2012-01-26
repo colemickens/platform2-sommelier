@@ -219,28 +219,33 @@ TEST_F(ProfileTest, Save) {
 TEST_F(ProfileTest, EntryEnumeration) {
   scoped_refptr<MockService> service1(CreateMockService());
   scoped_refptr<MockService> service2(CreateMockService());
+  string service1_storage_name = Technology::NameFromIdentifier(
+      Technology::kCellular) + "_1";
+  string service2_storage_name = Technology::NameFromIdentifier(
+      Technology::kCellular) + "_2";
   EXPECT_CALL(*service1.get(), Save(_))
       .WillRepeatedly(Invoke(service1.get(), &MockService::FauxSave));
   EXPECT_CALL(*service2.get(), Save(_))
       .WillRepeatedly(Invoke(service2.get(), &MockService::FauxSave));
+  EXPECT_CALL(*service1.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return(service1_storage_name));
+  EXPECT_CALL(*service2.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return(service2_storage_name));
 
   string service1_name(service1->UniqueName());
   string service2_name(service2->UniqueName());
 
-  Error error;
   ASSERT_TRUE(profile_->AdoptService(service1));
   ASSERT_TRUE(profile_->AdoptService(service2));
 
-  ASSERT_EQ(profile_->EnumerateEntries(&error).size(), 2);
+  Error error;
+  ASSERT_EQ(2, profile_->EnumerateEntries(&error).size());
 
   ASSERT_TRUE(profile_->AbandonService(service1));
-  ASSERT_EQ(profile_->EnumerateEntries(&error)[0], service2_name);
-
-  ASSERT_TRUE(profile_->AbandonService(service1));
-  ASSERT_EQ(profile_->EnumerateEntries(&error)[0], service2_name);
+  ASSERT_EQ(service2_storage_name, profile_->EnumerateEntries(&error)[0]);
 
   ASSERT_TRUE(profile_->AbandonService(service2));
-  ASSERT_EQ(profile_->EnumerateEntries(&error).size(), 0);
+  ASSERT_EQ(0, profile_->EnumerateEntries(&error).size());
 }
 
 TEST_F(ProfileTest, MatchesIdentifier) {
