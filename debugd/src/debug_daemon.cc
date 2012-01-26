@@ -18,10 +18,11 @@ DebugDaemon::DebugDaemon(DBus::Connection* connection,
     dbus_(connection), dispatcher_(dispatcher) { }
 
 bool DebugDaemon::Init() {
-  ping_tool_ = new PingTool();
-  tracepath_tool_ = new TracePathTool();
-  route_tool_ = new RouteTool();
   modem_status_tool_ = new ModemStatusTool();
+  network_status_tool_ = new NetworkStatusTool();
+  ping_tool_ = new PingTool();
+  route_tool_ = new RouteTool();
+  tracepath_tool_ = new TracePathTool();
   try {
     // TODO(ellyjones): Remove this when crosbug.com/23964 is fixed
     dbus_->request_name(kDebugDaemonService);
@@ -76,6 +77,10 @@ std::vector<std::string> DebugDaemon::GetRoutes(const std::map<std::string,
 
 std::string DebugDaemon::GetModemStatus(DBus::Error& error) { // NOLINT dbuscxx
   return modem_status_tool_->GetModemStatus(error);
+}
+
+std::string DebugDaemon::GetNetworkStatus(DBus::Error& error) { // NOLINT
+  return network_status_tool_->GetNetworkStatus(error);
 }
 
 };  // namespace debugd

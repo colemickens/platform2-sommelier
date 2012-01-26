@@ -12,6 +12,7 @@
 
 #include "adaptors/org.chromium.debugd.h"
 #include "modem_status_tool.h"
+#include "network_status_tool.h"
 #include "ping_tool.h"
 #include "route_tool.h"
 #include "tracepath_tool.h"
@@ -29,6 +30,23 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
 
   bool Init();
   void Run();
+
+  // Setters for tools - used for dependency injection in tests
+  void set_ping_tool(PingTool* tool) {
+    ping_tool_ = tool;
+  }
+  void set_route_tool(RouteTool* tool) {
+    route_tool_ = tool;
+  }
+  void set_tracepath_tool(TracePathTool* tool) {
+    tracepath_tool_ = tool;
+  }
+  void set_modem_status_tool(ModemStatusTool* tool) {
+    modem_status_tool_ = tool;
+  }
+  void set_network_status_tool(NetworkStatusTool* tool) {
+    network_status_tool_ = tool;
+  }
 
   // Public methods below this point are part of the DBus interface presented by
   // this object, and are documented in </share/org.chromium.debugd.xml>.
@@ -48,15 +66,18 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                                                             DBus::Variant>&
                                                  options,
                                              DBus::Error& error);
-  virtual std::string GetModemStatus(DBus::Error& error); // NOLINT dbuscxx
+  virtual std::string GetModemStatus(DBus::Error& error); // NOLINT
+  virtual std::string GetNetworkStatus(DBus::Error& error); // NOLINT
 
  private:
   DBus::Connection* dbus_;
   DBus::BusDispatcher* dispatcher_;
+
   PingTool* ping_tool_;
   RouteTool* route_tool_;
   TracePathTool *tracepath_tool_;
   ModemStatusTool* modem_status_tool_;
+  NetworkStatusTool* network_status_tool_;
 };
 
 };  // namespace debugd

@@ -110,5 +110,16 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="GetNetworkStatus">
+      <tp:docstring>
+        Returns network information as a JSON string. See the design document
+        for a rationale.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        <tp:docstring>
+          Network information as a JSON string.
+        </tp:docstring>
+      </arg>
+    </method>
   </interface>
 </node>
