@@ -105,14 +105,16 @@ class BacklightController : public BacklightInterfaceObserver {
   bool GetCurrentBrightnessPercent(double* percent);
 
   // Increase the brightness level of the backlight by one step.
-  void IncreaseBrightness(BrightnessChangeCause cause);
+  // Returns true if the brightness was changed, false otherwise.
+  bool IncreaseBrightness(BrightnessChangeCause cause);
 
   // Decrease the brightness level of the backlight by one step.
+  // Returns true if the brightness was changed, false otherwise.
   //
   // If |allow_off| is false, the backlight will never be entirely turned off.
   // This should be used with on-screen controls to prevent their becoming
   // impossible for the user to see.
-  void DecreaseBrightness(bool allow_off, BrightnessChangeCause cause);
+  bool DecreaseBrightness(bool allow_off, BrightnessChangeCause cause);
 
   // Turn the backlight on or off.  Returns true if the state was successfully
   // changed.

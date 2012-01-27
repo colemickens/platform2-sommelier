@@ -526,9 +526,9 @@ void Daemon::AdjustKeyboardBrightness(int direction) {
                               BRIGHTNESS_CHANGE_USER_INITIATED);
 }
 
-void Daemon::OnBrightnessChanged(double brightness_percent,
-                                 BrightnessChangeCause cause,
-                                 const std::string& signal_name) {
+void Daemon::SendBrightnessChangedSignal(double brightness_percent,
+                                         BrightnessChangeCause cause,
+                                         const std::string& signal_name) {
   dbus_int32_t brightness_percent_int =
       static_cast<dbus_int32_t>(round(brightness_percent));
 
@@ -561,13 +561,14 @@ void Daemon::OnBrightnessChanged(double brightness_percent,
 
 void Daemon::OnScreenBrightnessChanged(double brightness_percent,
                                        BrightnessChangeCause cause) {
-  OnBrightnessChanged(brightness_percent, cause, kBrightnessChangedSignal);
+  SendBrightnessChangedSignal(brightness_percent, cause,
+                              kBrightnessChangedSignal);
 }
 
 void Daemon::OnKeyboardBrightnessChanged(double brightness_percent,
                                          BrightnessChangeCause cause) {
-  OnBrightnessChanged(brightness_percent, cause,
-                      kKeyboardBrightnessChangedSignal);
+  SendBrightnessChangedSignal(brightness_percent, cause,
+                              kKeyboardBrightnessChangedSignal);
 }
 
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
@@ -682,19 +683,29 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                    << (dbus_error_is_set(&error) ? error.message
                                                  : "Unknown error");
     }
-    daemon->backlight_controller_->DecreaseBrightness(
-        allow_off, BRIGHTNESS_CHANGE_USER_INITIATED);
+    bool changed = daemon->backlight_controller_->DecreaseBrightness(allow_off,
+        BRIGHTNESS_CHANGE_USER_INITIATED);
     daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                          kBrightnessDown,
                                          kBrightnessEnumMax);
+    if (!changed)
+      daemon->SendBrightnessChangedSignal(
+          daemon->backlight_controller_->target_percent(),
+          BRIGHTNESS_CHANGE_USER_INITIATED,
+          kBrightnessChangedSignal);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kIncreaseScreenBrightness)) {
     LOG(INFO) << "Increase screen brightness request.";
-    daemon->backlight_controller_->IncreaseBrightness(
+    bool changed = daemon->backlight_controller_->IncreaseBrightness(
         BRIGHTNESS_CHANGE_USER_INITIATED);
     daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                          kBrightnessUp,
                                          kBrightnessEnumMax);
+    if (!changed)
+      daemon->SendBrightnessChangedSignal(
+          daemon->backlight_controller_->target_percent(),
+          BRIGHTNESS_CHANGE_USER_INITIATED,
+          kBrightnessChangedSignal);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kDecreaseKeyboardBrightness)) {
     LOG(INFO) << "Decrease keyboard brightness request.";

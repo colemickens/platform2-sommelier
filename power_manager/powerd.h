@@ -158,9 +158,9 @@ class Daemon : public XIdleObserver,
   void AdjustKeyboardBrightness(int direction);
 
   // Shared code between keyboard and screen brightness changed handling
-  void OnBrightnessChanged(double brightness_percent,
-                           BrightnessChangeCause cause,
-                           const std::string& signal_name);
+  void SendBrightnessChangedSignal(double brightness_percent,
+                                   BrightnessChangeCause cause,
+                                   const std::string& signal_name);
 
   // Sets up idle timers, adding the provided offset to all timeouts
   // starting with the state provided except the locking timeout.

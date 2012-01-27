@@ -140,25 +140,25 @@ bool BacklightController::GetCurrentBrightnessPercent(double* percent) {
   return true;
 }
 
-void BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
+bool BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
   if (!is_initialized_)
-    return;
+    return false;
 
   double new_percent =
       target_percent_ < LevelToPercent(min_visible_level_) - 0.001 ?
       LevelToPercent(min_visible_level_) :
       ClampPercentToVisibleRange(target_percent_ + step_percent_);
 
-  if (new_percent != target_percent_) {
-    *current_offset_percent_ = new_percent - als_offset_percent_;
-    WriteBrightness(true, cause, TRANSITION_GRADUAL);
-  }
+  if (new_percent == target_percent_)
+    return false;
+  *current_offset_percent_ = new_percent - als_offset_percent_;
+  return WriteBrightness(true, cause, TRANSITION_GRADUAL);
 }
 
-void BacklightController::DecreaseBrightness(bool allow_off,
+bool BacklightController::DecreaseBrightness(bool allow_off,
                                              BrightnessChangeCause cause) {
   if (!is_initialized_)
-    return;
+    return false;
 
   // Lower the backlight to the next step, turning it off if it was already at
   // the minimum visible level.
@@ -167,10 +167,10 @@ void BacklightController::DecreaseBrightness(bool allow_off,
       0.0 :
       ClampPercentToVisibleRange(target_percent_ - step_percent_);
 
-  if (new_percent != target_percent_ && (allow_off || new_percent > 0)) {
-    *current_offset_percent_ = new_percent - als_offset_percent_;
-    WriteBrightness(true, cause, TRANSITION_GRADUAL);
-  }
+  if (new_percent == target_percent_ || (!allow_off && new_percent == 0))
+    return false;
+  *current_offset_percent_ = new_percent - als_offset_percent_;
+  return WriteBrightness(true, cause, TRANSITION_GRADUAL);
 }
 
 bool BacklightController::SetPowerState(PowerState new_state) {
