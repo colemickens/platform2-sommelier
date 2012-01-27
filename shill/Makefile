@@ -192,7 +192,7 @@ TEST_OBJS = \
 	mock_adaptors.o \
 	mock_ares.o \
 	mock_async_connection.o \
-	mock_callback.o \
+	mock_callback_unittest.o \
 	mock_connection.o \
 	mock_control.o \
 	mock_dbus_properties_proxy.o \
