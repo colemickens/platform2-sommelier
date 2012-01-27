@@ -415,12 +415,11 @@ const char *Service::ConnectStateToString(const ConnectState &state) {
   return "Invalid";
 }
 
-
-// static
 string Service::GetTechnologyString(Error */*error*/) {
   return Technology::NameFromIdentifier(technology());
 }
 
+// static
 bool Service::DecideBetween(int a, int b, bool *decision) {
   if (a == b)
     return false;

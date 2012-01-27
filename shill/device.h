@@ -105,6 +105,7 @@ class Device : public base::RefCounted<Device> {
   const ConnectionRefPtr &connection() const { return connection_; }
   bool powered() const { return powered_; }
   virtual Technology::Identifier technology() const { return technology_; }
+  std::string GetTechnologyString(Error *error);
 
   const std::string &FriendlyName() const;
 
@@ -172,6 +173,10 @@ class Device : public base::RefCounted<Device> {
   // "failure")
   void SetServiceFailure(Service::ConnectFailure failure_state);
 
+  void HelpRegisterDerivedString(
+      const std::string &name,
+      std::string(Device::*get)(Error *),
+      void(Device::*set)(const std::string&, Error *));
   void HelpRegisterDerivedStrings(const std::string &name,
                                   Strings(Device::*get)(Error *),
                                   void(Device::*set)(const Strings&, Error *));

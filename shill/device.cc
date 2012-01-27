@@ -120,6 +120,10 @@ Device::Device(ControlInterface *control_interface,
                              NULL);
   store_.RegisterConstString(flimflam::kNameProperty, &link_name_);
   store_.RegisterBool(flimflam::kPoweredProperty, &powered_);
+  HelpRegisterDerivedString(flimflam::kTypeProperty,
+                            &Device::GetTechnologyString,
+                            NULL);
+
   // TODO(cmasone): Chrome doesn't use this...does anyone?
   // store_.RegisterConstBool(flimflam::kReconnectProperty, &reconnect_);
 
@@ -265,6 +269,10 @@ string Device::GetStorageIdentifier() {
   return id;
 }
 
+string Device::GetTechnologyString(Error */*error*/) {
+  return Technology::NameFromIdentifier(technology());
+}
+
 const string& Device::FriendlyName() const {
   return link_name_;
 }
@@ -315,6 +323,15 @@ bool Device::AcquireIPConfig() {
   ipconfig_->RegisterUpdateCallback(
       NewCallback(this, &Device::IPConfigUpdatedCallback));
   return ipconfig_->RequestIP();
+}
+
+void Device::HelpRegisterDerivedString(
+    const string &name,
+    string(Device::*get)(Error *error),
+    void(Device::*set)(const string &value, Error *error)) {
+  store_.RegisterDerivedString(
+      name,
+      StringAccessor(new CustomAccessor<Device, string>(this, get, set)));
 }
 
 void Device::HelpRegisterDerivedStrings(
