@@ -142,15 +142,22 @@ void GobiGsmModem::DataCapabilitiesHandler(BYTE num_data_caps,
   // a DataCapabilitiesHandler callback!
   GetGsmRegistrationInfo(&registration_status,
                          &operator_code, &operator_name, error);
-  if (registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE ||
-      registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING ||
-       registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_DENIED ||
-       registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN) {
-    RegistrationInfo(registration_status, operator_code, operator_name);
-    SetMmState(MM_MODEM_STATE_ENABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
-  } else {
-    SendNetworkTechnologySignal(
-        DataCapabilitiesToMmAccessTechnology(num_data_caps, data_caps));
+  switch(registration_status) {
+    case MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE:
+    case MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING:
+    case MM_MODEM_GSM_NETWORK_REG_STATUS_DENIED:
+      RegistrationInfo(registration_status, operator_code, operator_name);
+      SetMmState(MM_MODEM_STATE_ENABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+      break;
+    case MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN:
+      // Ignore the unknown state.  The registration state will
+      // eventually be reported as IDLE, SEACHING, DENIED, etc...
+      break;
+    case MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING:
+    case MM_MODEM_GSM_NETWORK_REG_STATUS_HOME:
+      SendNetworkTechnologySignal(
+          DataCapabilitiesToMmAccessTechnology(num_data_caps, data_caps));
+      break;
   }
 }
 
