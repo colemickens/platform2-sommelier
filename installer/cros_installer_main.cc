@@ -11,17 +11,25 @@
 
 using std::string;
 
+DEFINE_bool(postinst, false, "Run OS postinstall steps");
+DEFINE_bool(setimage, false, "Set the bootable image partition");
+
 DEFINE_string(setgoodkernel, "", "Mark current kernel partition as good");
 DEFINE_string(recovery, "", "Install OS from recovery installer");
-DEFINE_string(postinst, "", "Run OS postinstall steps");
 DEFINE_string(install, "", "Install ChromeOS");
-DEFINE_string(findrootfs, "", "Find rootfs partition");
-DEFINE_string(setimage, "", "Set the bootable image partition");
 DEFINE_string(getimage, "", "Get the bootable image partition");
 DEFINE_string(updatefirmware, "", "Update the firmware");
 
+DEFINE_string(destdevice, "", "Boot dev to update (Default:current root dev)");
+DEFINE_string(bootslot, "", "Boot Slot A|B");
+DEFINE_string(kernel_image, "", "Kernel partition to extract the config from");
+DEFINE_string(rootfs_image, "", "rootfs partition to update for vboot");
+DEFINE_string(src_version, "0.0.0.0", "Current OS version");
+
 // This is a place holder to invoke the backing scripts. Once all scripts have
 // been rewritten as library calls this command should be deleted.
+// If you are passing more than one command in cmdoptions you need it to be
+// space separated.
 int RunCommand(const string& filename, const string& cmdoptions) {
   int err = -1;
   int j = 0, i = 1;
@@ -80,22 +88,35 @@ int main(int argc, char** argv) {
     printf("recovery is set\n");
     cmd = "chromeos-recovery";
     cmdoptions = FLAGS_recovery;
-  } else if (FLAGS_postinst.empty() == false) {
+  } else if (FLAGS_postinst) {
     printf("postinst is set\n");
     cmd = "chromeos-postinst";
-    cmdoptions = FLAGS_postinst;
+    if (FLAGS_destdevice.empty()) {
+      printf("postinst requires --destdevice\n");
+      return -1;
+    }
+    if (FLAGS_src_version.empty() == false)
+      cmdoptions = " --src_version=" + FLAGS_src_version;
+    cmdoptions += " " + FLAGS_destdevice;
   } else if (FLAGS_install.empty() == false) {
     printf("install is set\n");
     cmd = "chromeos-install";
     cmdoptions = FLAGS_install;
-  } else if (FLAGS_findrootfs.empty() == false) {
-    printf("findrootfs is set\n");
-    cmd = "chromeos-findrootfs";
-    cmdoptions = FLAGS_findrootfs;
-  } else if (FLAGS_setimage.empty() == false) {
+  } else if (FLAGS_setimage) {
     printf("setimage is set\n");
     cmd = "chromeos-setimage";
-    cmdoptions = FLAGS_setimage;
+    if (FLAGS_destdevice.empty() == false) {
+      cmdoptions = " --dst=" + FLAGS_destdevice;
+    }
+    if (FLAGS_bootslot.empty() == false) {
+      cmdoptions += " --bootslot=" + FLAGS_bootslot;
+    }
+    if (FLAGS_kernel_image.empty() == false) {
+      cmdoptions += " --kernel_image=" + FLAGS_kernel_image;
+    }
+    if (FLAGS_rootfs_image.empty() == false) {
+      cmdoptions += " --rootfs_image=" + FLAGS_rootfs_image;
+    }
   } else if (FLAGS_updatefirmware.empty() == false) {
     printf("updatefirmware is set\n");
     cmd = "chromeos-firmwareupdate";
