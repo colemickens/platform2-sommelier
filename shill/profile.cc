@@ -149,6 +149,21 @@ bool Profile::ContainsService(const ServiceConstRefPtr &service) {
   return service->IsLoadableFrom(storage_.get());
 }
 
+void Profile::DeleteEntry(const std::string &entry_name, Error *error) {
+  if (!storage_->ContainsGroup(entry_name)) {
+    Error::PopulateAndLog(error, Error::kNotFound,
+        base::StringPrintf("Entry %s does not exist in profile",
+                           entry_name.c_str()));
+    return;
+  }
+  if (!manager_->HandleProfileEntryDeletion(this, entry_name)) {
+    // If HandleProfileEntryDeletion() returns succeeds, DeleteGroup()
+    // has already been called when AbandonService was called.
+    // Otherwise, we need to delete the group ourselves.
+    storage_->DeleteGroup(entry_name);
+  }
+}
+
 bool Profile::IsValidIdentifierToken(const string &token) {
   if (token.empty()) {
     return false;

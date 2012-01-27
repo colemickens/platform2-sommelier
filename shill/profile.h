@@ -91,6 +91,10 @@ class Profile : public base::RefCounted<Profile> {
   // return false.
   virtual bool ConfigureDevice(const DeviceRefPtr &device);
 
+  // Remove a named entry from the profile.  This includes detaching
+  // any service that uses this profile entry.
+  virtual void DeleteEntry(const std::string &entry_name, Error *error);
+
   // Return whether |service| can configure itself from the profile.
   bool ContainsService(const ServiceConstRefPtr &service);
 
@@ -125,6 +129,7 @@ class Profile : public base::RefCounted<Profile> {
 
  private:
   friend class ProfileAdaptorInterface;
+  FRIEND_TEST(ProfileTest, DeleteEntry);
   FRIEND_TEST(ProfileTest, GetStoragePath);
   FRIEND_TEST(ProfileTest, IsValidIdentifierToken);
 

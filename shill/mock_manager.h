@@ -27,6 +27,9 @@ class MockManager : public Manager {
   MOCK_METHOD1(RegisterService, void(const ServiceRefPtr &to_manage));
   MOCK_METHOD1(UpdateService, void(const ServiceRefPtr &to_update));
   MOCK_METHOD1(DeregisterService, void(const ServiceRefPtr &to_forget));
+  MOCK_METHOD2(HandleProfileEntryDeletion,
+               bool (const ProfileRefPtr &profile,
+                     const std::string &entry_name));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockManager);

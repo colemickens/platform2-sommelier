@@ -76,8 +76,11 @@ map<string, ::DBus::Variant> ProfileDBusAdaptor::GetEntry(
   return map<string, ::DBus::Variant>();
 }
 
-void ProfileDBusAdaptor::DeleteEntry(const std::string& /*name*/,
-                                     ::DBus::Error &/*error*/) {
+void ProfileDBusAdaptor::DeleteEntry(const std::string &name,
+                                     ::DBus::Error &error) {
+  Error e;
+  profile_->DeleteEntry(name, &e);
+  e.ToDBusError(&error);
 }
 
 }  // namespace shill

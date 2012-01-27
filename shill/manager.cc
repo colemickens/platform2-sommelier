@@ -264,19 +264,11 @@ void Manager::PopProfileInternal() {
   CHECK(!profiles_.empty());
   ProfileRefPtr active_profile = profiles_.back();
   profiles_.pop_back();
-  vector<ServiceRefPtr>::iterator s_it;
-  for (s_it = services_.begin(); s_it != services_.end(); ++s_it) {
-    if ((*s_it)->profile().get() == active_profile.get()) {
-      vector<ProfileRefPtr>::reverse_iterator p_it;
-      for (p_it = profiles_.rbegin(); p_it != profiles_.rend(); ++p_it) {
-        if ((*p_it)->ConfigureService(*s_it)) {
-          break;
-        }
-      }
-      if (p_it == profiles_.rend()) {
-        ephemeral_profile_->AdoptService(*s_it);
-        (*s_it)->Unload();
-      }
+  vector<ServiceRefPtr>::iterator it;
+  for (it = services_.begin(); it != services_.end(); ++it) {
+    if ((*it)->profile().get() == active_profile.get() &&
+        !MatchProfileWithService(*it)) {
+      (*it)->Unload();
     }
   }
   SortServices();
@@ -309,6 +301,23 @@ void Manager::PopAnyProfile(Error *error) {
     return;
   }
   PopProfileInternal();
+}
+
+bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr &profile,
+                                         const std::string &entry_name) {
+  bool moved_services = false;
+  for (vector<ServiceRefPtr>::iterator it = services_.begin();
+       it != services_.end(); ++it) {
+    if ((*it)->profile().get() == profile.get() &&
+        (*it)->GetStorageIdentifier() == entry_name) {
+      profile->AbandonService(*it);
+      if (!MatchProfileWithService(*it)) {
+        (*it)->Unload();
+      }
+      moved_services = true;
+    }
+  }
+  return moved_services;
 }
 
 const ProfileRefPtr &Manager::ActiveProfile() const {
@@ -421,16 +430,7 @@ void Manager::RegisterService(const ServiceRefPtr &to_manage) {
   VLOG(2) << "In " << __func__ << "(): Registering service "
           << to_manage->UniqueName();
 
-  bool configured = false;
-  for (vector<ProfileRefPtr>::reverse_iterator it = profiles_.rbegin();
-       !configured && it != profiles_.rend();
-       ++it) {
-    configured = (*it)->ConfigureService(to_manage);
-  }
-
-  // If not found, add it to the ephemeral profile
-  if (!configured)
-    ephemeral_profile_->AdoptService(to_manage);
+  MatchProfileWithService(to_manage);
 
   // Now add to OUR list.
   vector<ServiceRefPtr>::iterator it;
@@ -547,6 +547,20 @@ void Manager::SortServices() {
   }
 
   AutoConnect();
+}
+
+bool Manager::MatchProfileWithService(const ServiceRefPtr &service) {
+  vector<ProfileRefPtr>::reverse_iterator it;
+  for (it = profiles_.rbegin(); it != profiles_.rend(); ++it) {
+    if ((*it)->ConfigureService(service)) {
+      break;
+    }
+  }
+  if (it == profiles_.rend()) {
+    ephemeral_profile_->AdoptService(service);
+    return false;
+  }
+  return true;
 }
 
 void Manager::AutoConnect() {

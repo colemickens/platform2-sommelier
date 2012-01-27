@@ -116,6 +116,10 @@ class ManagerTest : public PropertyStoreTest {
     manager->profiles_.push_back(profile);
   }
 
+  ProfileRefPtr GetEphemeralProfile(Manager *manager) {
+    return manager->ephemeral_profile_;
+  }
+
   Profile *CreateProfileForManager(Manager *manager, GLib *glib) {
     Profile::Identifier id("rather", "irrelevant");
     scoped_ptr<Profile> profile(new Profile(control_interface(),
@@ -613,7 +617,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   // Add this service to the manager -- it should end up in the ephemeral
   // profile.
   manager.RegisterService(service);
-  ASSERT_EQ(manager.ephemeral_profile_, service->profile());
+  ASSERT_EQ(GetEphemeralProfile(&manager), service->profile());
 
   // Create storage for a profile that contains the service storage name.
   ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, kProfile2Id,
@@ -623,7 +627,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   // ephemeral profile to this new profile since it has an entry for
   // this service.
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile2));
-  EXPECT_NE(manager.ephemeral_profile_, service->profile());
+  EXPECT_NE(GetEphemeralProfile(&manager), service->profile());
   EXPECT_EQ(kProfile2, "~" + service->profile()->GetFriendlyName());
 
   // Insert another profile that should supersede ownership of the service.
@@ -650,7 +654,7 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
 
   // The service should now revert to the ephemeral profile.
-  EXPECT_EQ(manager.ephemeral_profile_, service->profile());
+  EXPECT_EQ(GetEphemeralProfile(&manager), service->profile());
 
   // Pop the remaining two services off the stack.
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
@@ -658,6 +662,113 @@ TEST_F(ManagerTest, PushPopProfile) {
 
   // Next pop should fail with "stack is empty".
   EXPECT_EQ(Error::kNotFound, TestPopAnyProfile(&manager));
+}
+
+// Use this matcher instead of passing RefPtrs directly into the arguments
+// of EXPECT_CALL() because otherwise we may create un-cleaned-up references at
+// system teardown.
+MATCHER_P(IsRefPtrTo, ref_address, "") {
+  return arg.get() == ref_address;
+}
+
+TEST_F(ManagerTest, HandleProfileEntryDeletion) {
+  MockServiceRefPtr s_not_in_profile(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  MockServiceRefPtr s_not_in_group(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  MockServiceRefPtr s_configure_fail(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  MockServiceRefPtr s_configure_succeed(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  string entry_name("entry_name");
+  EXPECT_CALL(*s_not_in_profile.get(), GetStorageIdentifier()).Times(0);
+  EXPECT_CALL(*s_not_in_group.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return("not_entry_name"));
+  EXPECT_CALL(*s_configure_fail.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return(entry_name));
+  EXPECT_CALL(*s_configure_succeed.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return(entry_name));
+
+  manager()->RegisterService(s_not_in_profile);
+  manager()->RegisterService(s_not_in_group);
+  manager()->RegisterService(s_configure_fail);
+  manager()->RegisterService(s_configure_succeed);
+
+  scoped_refptr<MockProfile> profile0(
+      new StrictMock<MockProfile>(control_interface(), manager(), ""));
+  scoped_refptr<MockProfile> profile1(
+      new StrictMock<MockProfile>(control_interface(), manager(), ""));
+
+  s_not_in_group->set_profile(profile1);
+  s_configure_fail->set_profile(profile1);
+  s_configure_succeed->set_profile(profile1);
+
+  AdoptProfile(manager(), profile0);
+  AdoptProfile(manager(), profile1);
+
+  // No services are a member of this profile.
+  EXPECT_FALSE(manager()->HandleProfileEntryDeletion(profile0, entry_name));
+
+  // No services that are members of this profile have this entry name.
+  EXPECT_FALSE(manager()->HandleProfileEntryDeletion(profile1, ""));
+
+  // Only services that are members of the profile and group will be abandoned.
+  EXPECT_CALL(*profile1.get(),
+              AbandonService(IsRefPtrTo(s_not_in_profile.get()))).Times(0);
+  EXPECT_CALL(*profile1.get(),
+              AbandonService(IsRefPtrTo(s_not_in_group.get()))).Times(0);
+  EXPECT_CALL(*profile1.get(),
+              AbandonService(IsRefPtrTo(s_configure_fail.get())))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*profile1.get(),
+              AbandonService(IsRefPtrTo(s_configure_succeed.get())))
+      .WillOnce(Return(true));
+
+  // Never allow services to re-join profile1.
+  EXPECT_CALL(*profile1.get(), ConfigureService(_))
+      .WillRepeatedly(Return(false));
+
+  // Only allow one of the members of the profile and group to successfully
+  // join profile0.
+  EXPECT_CALL(*profile0.get(),
+              ConfigureService(IsRefPtrTo(s_not_in_profile.get()))).Times(0);
+  EXPECT_CALL(*profile0.get(),
+              ConfigureService(IsRefPtrTo(s_not_in_group.get()))).Times(0);
+  EXPECT_CALL(*profile0.get(),
+              ConfigureService(IsRefPtrTo(s_configure_fail.get())))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*profile0.get(),
+              ConfigureService(IsRefPtrTo(s_configure_succeed.get())))
+      .WillOnce(Return(true));
+
+  // Expect the failed-to-configure service to have Unload() called on it.
+  EXPECT_CALL(*s_not_in_profile.get(), Unload()).Times(0);
+  EXPECT_CALL(*s_not_in_group.get(), Unload()).Times(0);
+  EXPECT_CALL(*s_configure_fail.get(), Unload()).Times(1);
+  EXPECT_CALL(*s_configure_succeed.get(), Unload()).Times(0);
+
+  EXPECT_TRUE(manager()->HandleProfileEntryDeletion(profile1, entry_name));
+
+  EXPECT_EQ(GetEphemeralProfile(manager()), s_not_in_profile->profile().get());
+  EXPECT_EQ(profile1, s_not_in_group->profile());
+  EXPECT_EQ(GetEphemeralProfile(manager()), s_configure_fail->profile());
+
+  // Since we are using a MockProfile, the profile does not actually change,
+  // since ConfigureService was not actually called on the service.
+  EXPECT_EQ(profile1, s_configure_succeed->profile());
 }
 
 TEST_F(ManagerTest, Dispatch) {

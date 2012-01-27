@@ -14,6 +14,7 @@
 
 #include "shill/glib.h"
 #include "shill/key_file_store.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -25,6 +26,7 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::Invoke;
+using testing::Mock;
 using testing::Return;
 using testing::SetArgumentPointee;
 using testing::StrictMock;
@@ -74,6 +76,53 @@ class ProfileTest : public PropertyStoreTest {
   GLib real_glib_;
   ProfileRefPtr profile_;
 };
+
+TEST_F(ProfileTest, DeleteEntry) {
+  scoped_ptr<MockManager> manager(new StrictMock<MockManager>(
+      control_interface(), dispatcher(), metrics(), glib()));
+  profile_->manager_ = manager.get();
+
+  MockStore *storage(new StrictMock<MockStore>());
+  profile_->storage_.reset(storage);  // Passes ownership
+  const string kEntryName("entry_name");
+
+  // If entry does not appear in storage, DeleteEntry() should return an error.
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
+      .WillOnce(Return(false));
+  {
+    Error error;
+    profile_->DeleteEntry(kEntryName, &error);
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
+
+  Mock::VerifyAndClearExpectations(storage);
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
+      .WillRepeatedly(Return(true));
+
+  // If HandleProfileEntryDeletion() returns false, Profile should call
+  // DeleteGroup() itself.
+  EXPECT_CALL(*manager.get(), HandleProfileEntryDeletion(_, kEntryName))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*storage, DeleteGroup(kEntryName))
+      .WillOnce(Return(true));
+  {
+    Error error;
+    profile_->DeleteEntry(kEntryName, &error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // If HandleProfileEntryDeletion() returns true, Profile should not call
+  // DeleteGroup() itself.
+  EXPECT_CALL(*manager.get(), HandleProfileEntryDeletion(_, kEntryName))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*storage, DeleteGroup(kEntryName))
+      .Times(0);
+  {
+    Error error;
+    profile_->DeleteEntry(kEntryName, &error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+}
 
 TEST_F(ProfileTest, IsValidIdentifierToken) {
   EXPECT_FALSE(Profile::IsValidIdentifierToken(""));

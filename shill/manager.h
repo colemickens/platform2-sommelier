@@ -102,6 +102,13 @@ class Manager {
   void PopProfile(const std::string &name, Error *error);
   // Remove the active profile.
   void PopAnyProfile(Error *error);
+  // Handle the event where a profile is about to remove a profile entry.
+  // Any Services that are dependent on this storage identifier will need
+  // to find new profiles.  Return true if any service has been moved to a new
+  // profile.  Any such services will have had the profile group removed from
+  // the profile.
+  virtual bool HandleProfileEntryDeletion(const ProfileRefPtr &profile,
+                                          const std::string &entry_name);
 
   virtual DeviceInfo *device_info() { return &device_info_; }
   ModemInfo *modem_info() { return &modem_info_; }
@@ -125,7 +132,6 @@ class Manager {
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
-  FRIEND_TEST(ManagerTest, PushPopProfile);
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
 
@@ -156,6 +162,7 @@ class Manager {
   void PopProfileInternal();
   bool OrderServices(ServiceRefPtr a, ServiceRefPtr b);
   void SortServices();
+  bool MatchProfileWithService(const ServiceRefPtr &service);
 
   EventDispatcher *dispatcher_;
   ScopedRunnableMethodFactory<Manager> task_factory_;
