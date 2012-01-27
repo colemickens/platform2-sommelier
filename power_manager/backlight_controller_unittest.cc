@@ -300,6 +300,9 @@ TEST_F(BacklightControllerTest, SuspendBrightnessLevel) {
   ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
   EXPECT_DOUBLE_EQ(kPluggedBrightness, controller.target_percent());
 
+#ifndef IS_DESKTOP
+  // This test is not done on desktops because the brightness does not get
+  // adjusted by SetPowerState() when idling.
   // Test idling into suspend state.
   ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_DIM));
   ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_IDLE_OFF));
@@ -309,6 +312,7 @@ TEST_F(BacklightControllerTest, SuspendBrightnessLevel) {
   // Test resume.
   ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
   EXPECT_DOUBLE_EQ(kPluggedBrightness, controller.target_percent());
+#endif // !defined(IS_DESKTOP)
 }
 
 }  // namespace power_manager
