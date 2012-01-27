@@ -1114,7 +1114,7 @@ TEST_F(ManagerTest, EnumerateProfiles) {
   for (size_t i = 0; i < 10; i++) {
     scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(control_interface(), manager(), ""));
-    profile_paths.push_back(base::StringPrintf("/profile/%d", i));
+    profile_paths.push_back(base::StringPrintf("/profile/%zd", i));
     EXPECT_CALL(*profile.get(), GetRpcIdentifier())
         .WillOnce(Return(profile_paths.back()));
     AdoptProfile(manager(), profile);
