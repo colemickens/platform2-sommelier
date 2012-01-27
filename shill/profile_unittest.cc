@@ -96,14 +96,16 @@ TEST_F(ProfileTest, DeleteEntry) {
   }
 
   Mock::VerifyAndClearExpectations(storage);
-  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
-      .WillRepeatedly(Return(true));
 
   // If HandleProfileEntryDeletion() returns false, Profile should call
   // DeleteGroup() itself.
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
+      .WillOnce(Return(true));
   EXPECT_CALL(*manager.get(), HandleProfileEntryDeletion(_, kEntryName))
       .WillOnce(Return(false));
   EXPECT_CALL(*storage, DeleteGroup(kEntryName))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*storage, Flush())
       .WillOnce(Return(true));
   {
     Error error;
@@ -111,12 +113,18 @@ TEST_F(ProfileTest, DeleteEntry) {
     EXPECT_TRUE(error.IsSuccess());
   }
 
+  Mock::VerifyAndClearExpectations(storage);
+
   // If HandleProfileEntryDeletion() returns true, Profile should not call
   // DeleteGroup() itself.
+  EXPECT_CALL(*storage, ContainsGroup(kEntryName))
+      .WillOnce(Return(true));
   EXPECT_CALL(*manager.get(), HandleProfileEntryDeletion(_, kEntryName))
       .WillOnce(Return(true));
   EXPECT_CALL(*storage, DeleteGroup(kEntryName))
       .Times(0);
+  EXPECT_CALL(*storage, Flush())
+      .WillOnce(Return(true));
   {
     Error error;
     profile_->DeleteEntry(kEntryName, &error);

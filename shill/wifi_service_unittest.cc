@@ -540,7 +540,7 @@ TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
   EXPECT_TRUE(service->need_passphrase_);
 }
 
-TEST_F(WiFiServiceTest, ParseStorageIdentifier) {
+TEST_F(WiFiServiceTest, ParseStorageIdentifierNone) {
   vector<uint8_t> ssid(5);
   ssid.push_back(0xff);
 
@@ -562,6 +562,32 @@ TEST_F(WiFiServiceTest, ParseStorageIdentifier) {
   EXPECT_EQ(StringToLowerASCII(string(fake_mac)), address);
   EXPECT_EQ(flimflam::kModeManaged, mode);
   EXPECT_EQ(flimflam::kSecurityNone, security);
+}
+
+TEST_F(WiFiServiceTest, ParseStorageIdentifier8021x) {
+  // Do a separate test for 802.1x, since kSecurity8021x contains a "_",
+  // which needs to be dealt with specially in the parser.
+  vector<uint8_t> ssid(5);
+  ssid.push_back(0xff);
+
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              metrics(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurity8021x,
+                                              false);
+  const string storage_id = service->GetStorageIdentifier();
+  string address;
+  string mode;
+  string security;
+  EXPECT_TRUE(service->ParseStorageIdentifier(storage_id, &address, &mode,
+                                              &security));
+  EXPECT_EQ(StringToLowerASCII(string(fake_mac)), address);
+  EXPECT_EQ(flimflam::kModeManaged, mode);
+  EXPECT_EQ(flimflam::kSecurity8021x, security);
 }
 
 TEST_F(WiFiServiceTest, Connectable) {

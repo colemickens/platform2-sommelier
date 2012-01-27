@@ -95,6 +95,10 @@ class Profile : public base::RefCounted<Profile> {
   // any service that uses this profile entry.
   virtual void DeleteEntry(const std::string &entry_name, Error *error);
 
+  // Return a service configured from the given profile entry.
+  virtual ServiceRefPtr GetServiceFromEntry(const std::string &entry_name,
+                                            Error *error);
+
   // Return whether |service| can configure itself from the profile.
   bool ContainsService(const ServiceConstRefPtr &service);
 
@@ -112,6 +116,10 @@ class Profile : public base::RefCounted<Profile> {
 
   // Returns whether |name| matches this Profile's |name_|.
   virtual bool MatchesIdentifier(const Identifier &name) const;
+
+  // Returns a read-only copy of the backing storage of the profile.
+  // TODO(pstew): Needed by ProfileDBusPropertyExporter crosbug.com/25813
+  const StoreInterface *GetConstStorage() const { return storage_.get(); }
 
  protected:
   // Protected getters

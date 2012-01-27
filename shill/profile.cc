@@ -162,6 +162,12 @@ void Profile::DeleteEntry(const std::string &entry_name, Error *error) {
     // Otherwise, we need to delete the group ourselves.
     storage_->DeleteGroup(entry_name);
   }
+  Save();
+}
+
+ServiceRefPtr Profile::GetServiceFromEntry(const std::string &entry_name,
+                                           Error *error) {
+  return manager_->GetServiceWithStorageIdentifier(this, entry_name, error);
 }
 
 bool Profile::IsValidIdentifierToken(const string &token) {

@@ -24,6 +24,14 @@ class Metrics;
 
 class WiFiService : public Service {
  public:
+  // TODO(pstew): Storage constants shouldn't need to be public
+  // crosbug.com/25813
+  static const char kStorageHiddenSSID[];
+  static const char kStorageMode[];
+  static const char kStoragePassphrase[];
+  static const char kStorageSecurity[];
+  static const char kStorageSSID[];
+
   WiFiService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
               Metrics *metrics,
@@ -96,12 +104,6 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
   FRIEND_TEST(WiFiServiceTest, Populate8021x);
-
-  static const char kStorageHiddenSSID[];
-  static const char kStorageMode[];
-  static const char kStoragePassphrase[];
-  static const char kStorageSecurity[];
-  static const char kStorageSSID[];
 
   void HelpRegisterDerivedString(
       PropertyStore *store,

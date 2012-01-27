@@ -587,12 +587,18 @@ bool WiFiService::ParseStorageIdentifier(const string &storage_name,
                                          string *security) {
   vector<string> wifi_parts;
   base::SplitString(storage_name, '_', &wifi_parts);
-  if (wifi_parts.size() != 5 || wifi_parts[0] != flimflam::kTypeWifi) {
+  if ((wifi_parts.size() != 5 && wifi_parts.size() != 6) ||
+      wifi_parts[0] != flimflam::kTypeWifi) {
     return false;
   }
   *address = wifi_parts[1];
   *mode = wifi_parts[3];
-  *security = wifi_parts[4];
+  if (wifi_parts.size() == 5) {
+    *security = wifi_parts[4];
+  } else {
+    // Account for security type "802_1x" which got split up above.
+    *security = wifi_parts[4] + "_" + wifi_parts[5];
+  }
   return true;
 }
 

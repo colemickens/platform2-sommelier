@@ -46,6 +46,35 @@ class Service : public base::RefCounted<Service> {
   static const char kCheckPortalFalse[];
   static const char kCheckPortalTrue[];
 
+  // TODO(pstew): Storage constants shouldn't need to be public
+  // crosbug.com/25813
+  static const char kStorageAutoConnect[];
+  static const char kStorageCheckPortal[];
+  static const char kStorageEapAnonymousIdentity[];
+  static const char kStorageEapCACert[];
+  static const char kStorageEapCACertID[];
+  static const char kStorageEapCertID[];
+  static const char kStorageEapClientCert[];
+  static const char kStorageEapEap[];
+  static const char kStorageEapIdentity[];
+  static const char kStorageEapInnerEap[];
+  static const char kStorageEapKeyID[];
+  static const char kStorageEapKeyManagement[];
+  static const char kStorageEapPIN[];
+  static const char kStorageEapPassword[];
+  static const char kStorageEapPrivateKey[];
+  static const char kStorageEapPrivateKeyPassword[];
+  static const char kStorageEapUseSystemCAs[];
+  static const char kStorageError[];
+  static const char kStorageFavorite[];
+  static const char kStorageGUID[];
+  static const char kStorageName[];
+  static const char kStoragePriority[];
+  static const char kStorageProxyConfig[];
+  static const char kStorageSaveCredentials[];
+  static const char kStorageType[];
+  static const char kStorageUIData[];
+
   enum ConnectFailure {
     kFailureUnknown,
     kFailureActivationFailure,
@@ -289,8 +318,8 @@ class Service : public base::RefCounted<Service> {
   Metrics *metrics() const { return metrics_; }
 
  private:
-  friend class ServiceAdaptorInterface;
   friend class MetricsTest;
+  friend class ServiceAdaptorInterface;
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ServiceTest, Constructor);
@@ -303,31 +332,6 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SaveStringDontSave);
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
   FRIEND_TEST(ServiceTest, Unload);
-
-  static const char kStorageAutoConnect[];
-  static const char kStorageCheckPortal[];
-  static const char kStorageEapAnonymousIdentity[];
-  static const char kStorageEapCACert[];
-  static const char kStorageEapCACertID[];
-  static const char kStorageEapCertID[];
-  static const char kStorageEapClientCert[];
-  static const char kStorageEapEap[];
-  static const char kStorageEapIdentity[];
-  static const char kStorageEapInnerEap[];
-  static const char kStorageEapKeyID[];
-  static const char kStorageEapKeyManagement[];
-  static const char kStorageEapPIN[];
-  static const char kStorageEapPassword[];
-  static const char kStorageEapPrivateKey[];
-  static const char kStorageEapPrivateKeyPassword[];
-  static const char kStorageEapUseSystemCAs[];
-  static const char kStorageFavorite[];
-  static const char kStorageName[];
-  static const char kStoragePriority[];
-  static const char kStorageProxyConfig[];
-  static const char kStorageSaveCredentials[];
-  static const char kStorageType[];
-  static const char kStorageUIData[];
 
   bool GetAutoConnect(Error *error);
   void SetAutoConnect(const bool &connect, Error *error);

@@ -320,6 +320,22 @@ bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr &profile,
   return moved_services;
 }
 
+ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
+    const ProfileRefPtr &profile, const std::string &entry_name, Error *error) {
+  for (vector<ServiceRefPtr>::iterator it = services_.begin();
+       it != services_.end(); ++it) {
+    if ((*it)->profile().get() == profile.get() &&
+        (*it)->GetStorageIdentifier() == entry_name) {
+      return *it;
+    }
+  }
+
+  Error::PopulateAndLog(error, Error::kNotFound,
+      base::StringPrintf("Entry %s is not registered in the manager",
+                         entry_name.c_str()));
+  return NULL;
+}
+
 const ProfileRefPtr &Manager::ActiveProfile() const {
   DCHECK_NE(profiles_.size(), 0);
   return profiles_.back();

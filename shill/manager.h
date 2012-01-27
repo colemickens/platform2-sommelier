@@ -109,6 +109,14 @@ class Manager {
   // the profile.
   virtual bool HandleProfileEntryDeletion(const ProfileRefPtr &profile,
                                           const std::string &entry_name);
+  // Find a service that is both the member of |profile| and has a
+  // storage identifier that matches |entry_name|.  This function is
+  // called by the Profile in order to return a profile entry's properties.
+  virtual ServiceRefPtr GetServiceWithStorageIdentifier(
+      const ProfileRefPtr &profile,
+      const std::string &entry_name,
+      Error *error);
+
 
   virtual DeviceInfo *device_info() { return &device_info_; }
   ModemInfo *modem_info() { return &modem_info_; }

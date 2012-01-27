@@ -26,7 +26,7 @@ class KeyFileStore : public StoreInterface {
   const FilePath &path() const { return path_; }
 
   // Returns true if the store exists and is non-empty.
-  bool IsNonEmpty();
+  bool IsNonEmpty() const;
 
   // Opens the store. Returns true on success. This method must be
   // invoked before using any of the getters or setters.
@@ -43,33 +43,33 @@ class KeyFileStore : public StoreInterface {
 
   // Inherited from StoreInterface.
   virtual bool Flush();
-  virtual std::set<std::string> GetGroups();
-  virtual std::set<std::string> GetGroupsWithKey(const std::string &key);
-  virtual bool ContainsGroup(const std::string &group);
+  virtual std::set<std::string> GetGroups() const;
+  virtual std::set<std::string> GetGroupsWithKey(const std::string &key) const;
+  virtual bool ContainsGroup(const std::string &group) const;
   virtual bool DeleteKey(const std::string &group, const std::string &key);
   virtual bool DeleteGroup(const std::string &group);
   virtual bool SetHeader(const std::string &header);
   virtual bool GetString(const std::string &group,
                          const std::string &key,
-                         std::string *value);
+                         std::string *value) const;
   virtual bool SetString(const std::string &group,
                          const std::string &key,
                          const std::string &value);
   virtual bool GetBool(const std::string &group,
                        const std::string &key,
-                       bool *value);
+                       bool *value) const;
   virtual bool SetBool(const std::string &group,
                        const std::string &key,
                        bool value);
   virtual bool GetInt(const std::string &group,
                       const std::string &key,
-                      int *value);
+                      int *value) const;
   virtual bool SetInt(const std::string &group,
                       const std::string &key,
                       int value);
   virtual bool GetStringList(const std::string &group,
                              const std::string &key,
-                             std::vector<std::string> *value);
+                             std::vector<std::string> *value) const;
   virtual bool SetStringList(const std::string &group,
                              const std::string &key,
                              const std::vector<std::string> &value);

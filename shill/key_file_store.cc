@@ -29,7 +29,7 @@ void KeyFileStore::ReleaseKeyFile() {
   }
 }
 
-bool KeyFileStore::IsNonEmpty() {
+bool KeyFileStore::IsNonEmpty() const {
   int64 file_size = 0;
   return file_util::GetFileSize(path_, &file_size) && file_size != 0;
 }
@@ -92,7 +92,7 @@ bool KeyFileStore::Flush() {
   return success;
 }
 
-set<string> KeyFileStore::GetGroups() {
+set<string> KeyFileStore::GetGroups() const {
   CHECK(key_file_);
   gsize length = 0;
   gchar **groups = glib_->KeyFileGetGroups(key_file_, &length);
@@ -107,7 +107,7 @@ set<string> KeyFileStore::GetGroups() {
 
 // Returns a set so that caller can easily test whether a particular group
 // is contained within this collection.
-set<string> KeyFileStore::GetGroupsWithKey(const string &key) {
+set<string> KeyFileStore::GetGroupsWithKey(const string &key) const {
   set<string> groups = GetGroups();
   set<string> groups_with_key;
   for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
@@ -118,7 +118,7 @@ set<string> KeyFileStore::GetGroupsWithKey(const string &key) {
   return groups_with_key;
 }
 
-bool KeyFileStore::ContainsGroup(const string &group) {
+bool KeyFileStore::ContainsGroup(const string &group) const {
   CHECK(key_file_);
   return glib_->KeyFileHasGroup(key_file_, group.c_str());
 }
@@ -160,7 +160,7 @@ bool KeyFileStore::SetHeader(const string &header) {
 
 bool KeyFileStore::GetString(const string &group,
                              const string &key,
-                             string *value) {
+                             string *value) const {
   CHECK(key_file_);
   GError *error = NULL;
   gchar *data =
@@ -187,7 +187,7 @@ bool KeyFileStore::SetString(const string &group,
 
 bool KeyFileStore::GetBool(const string &group,
                            const string &key,
-                           bool *value) {
+                           bool *value) const {
   CHECK(key_file_);
   GError *error = NULL;
   gboolean data =
@@ -212,7 +212,8 @@ bool KeyFileStore::SetBool(const string &group, const string &key, bool value) {
   return true;
 }
 
-bool KeyFileStore::GetInt(const string &group, const string &key, int *value) {
+bool KeyFileStore::GetInt(
+    const string &group, const string &key, int *value) const {
   CHECK(key_file_);
   GError *error = NULL;
   gint data =
@@ -236,7 +237,7 @@ bool KeyFileStore::SetInt(const string &group, const string &key, int value) {
 
 bool KeyFileStore::GetStringList(const string &group,
                                  const string &key,
-                                 vector<string> *value) {
+                                 vector<string> *value) const {
   CHECK(key_file_);
   gsize length = 0;
   GError *error = NULL;

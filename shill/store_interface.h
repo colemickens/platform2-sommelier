@@ -20,13 +20,14 @@ class StoreInterface {
   virtual bool Flush() = 0;
 
   // Returns a set of all groups contained in the store.
-  virtual std::set<std::string> GetGroups() = 0;
+  virtual std::set<std::string> GetGroups() const = 0;
 
   // Returns the names of all groups that contain the named |key|.
-  virtual std::set<std::string> GetGroupsWithKey(const std::string &key) = 0;
+  virtual std::set<std::string> GetGroupsWithKey(
+      const std::string &key) const = 0;
 
   // Returns true if the store contains |group|, false otherwise.
-  virtual bool ContainsGroup(const std::string &group) = 0;
+  virtual bool ContainsGroup(const std::string &group) const = 0;
 
   // Deletes |group|:|key|. Returns true on success.
   virtual bool DeleteKey(const std::string &group, const std::string &key) = 0;
@@ -42,7 +43,7 @@ class StoreInterface {
   // in the store).
   virtual bool GetString(const std::string &group,
                          const std::string &key,
-                         std::string *value) = 0;
+                         std::string *value) const = 0;
 
   // Associates |group|:|key| with a string |value|. Returns true on success,
   // false otherwise.
@@ -55,7 +56,7 @@ class StoreInterface {
   // present in the store).
   virtual bool GetBool(const std::string &group,
                        const std::string &key,
-                       bool *value) = 0;
+                       bool *value) const = 0;
 
   // Associates |group|:|key| with a boolean |value|. Returns true on success,
   // false otherwise.
@@ -68,7 +69,7 @@ class StoreInterface {
   // present in the store).
   virtual bool GetInt(const std::string &group,
                       const std::string &key,
-                      int *value) = 0;
+                      int *value) const = 0;
 
   // Associates |group|:|key| with an integer |value|. Returns true on success,
   // false otherwise.
@@ -81,7 +82,7 @@ class StoreInterface {
   // in the store).
   virtual bool GetStringList(const std::string &group,
                              const std::string &key,
-                             std::vector<std::string> *value) = 0;
+                             std::vector<std::string> *value) const = 0;
 
   // Associates |group|:|key| with a string list |value|. Returns true on
   // success, false otherwise.

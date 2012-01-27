@@ -13,6 +13,8 @@
 
 #include "shill/error.h"
 #include "shill/profile.h"
+#include "shill/profile_dbus_property_exporter.h"
+#include "shill/service.h"
 
 using std::map;
 using std::string;
@@ -71,9 +73,21 @@ void ProfileDBusAdaptor::SetProperty(const string &name,
 }
 
 map<string, ::DBus::Variant> ProfileDBusAdaptor::GetEntry(
-    const std::string& /*name*/,
-    ::DBus::Error &/*error*/) {
-  return map<string, ::DBus::Variant>();
+    const std::string &name,
+    ::DBus::Error &error) {
+  Error e;
+  ServiceRefPtr service = profile_->GetServiceFromEntry(name, &e);
+  map<string, ::DBus::Variant> properties;
+  if (e.IsSuccess()) {
+    DBusAdaptor::GetProperties(service->store(), &properties, &error);
+    return properties;
+  }
+
+  ProfileDBusPropertyExporter loader(profile_->GetConstStorage(), name);
+  if (!loader.LoadServiceProperties(&properties, &e)) {
+    e.ToDBusError(&error);
+  }
+  return properties;
 }
 
 void ProfileDBusAdaptor::DeleteEntry(const std::string &name,
