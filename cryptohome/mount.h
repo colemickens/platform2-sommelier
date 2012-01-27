@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,6 +17,8 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
 #include <gtest/gtest.h>
+#include <policy/device_policy.h>
+#include <policy/libpolicy.h>
 
 #include "credentials.h"
 #include "crypto.h"
@@ -180,16 +182,6 @@ class Mount : public EntropySource {
   // was enough.
   virtual bool DoAutomaticFreeDiskSpaceControl();
 
-  // Sets owner user. Called by Chrome during the login screen, before the first
-  // call to DoAutomaticFreeDiskSpaceControl().
-  //
-  // Parameters
-  //   username - login name of the owner user
-  //
-  // The Owner user is the logical owner of the device this is running on.
-  // It implies that the vault should not be deleted during Automatic recovery.
-  virtual void SetOwnerUser(const std::string& username);
-
   // Changes the group ownership and permissions on those directories inside
   // the cryptohome that need to be accessible by other system daemons
   virtual bool SetupGroupAccess() const;
@@ -321,11 +313,6 @@ class Mount : public EntropySource {
   // Manually clear the current logged-in user
   void reset_current_user_credentials() {
     current_user_->Reset();
-  }
-
-  // Get the owner user obfuscated hash
-  std::string owner_obfuscated_username() {
-    return owner_obfuscated_username_;
   }
 
   // Loads the contents of the specified file as a blob
@@ -498,6 +485,10 @@ class Mount : public EntropySource {
   //   credentials - The Credentials representing the user
   std::string GetMountedRootHomePath(const Credentials& credentials) const;
 
+  // Get the owner user's obfuscated hash. This is empty if the owner has not
+  // been set yet or the device is enterprise owned.
+  std::string GetObfuscatedOwner();
+
   // Set/get last access timestamp cache instance for test purposes.
   UserOldestActivityTimestampCache* user_timestamp_cache() const {
     return user_timestamp_;
@@ -520,6 +511,16 @@ class Mount : public EntropySource {
   }
   void set_old_user_last_activity_time(base::TimeDelta value) {
     old_user_last_activity_time_ = value;
+  }
+
+ protected:
+  FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
+  friend class MakeTests;
+  friend class MountTest;
+
+  // Used to override the policy provider for testing (takes ownership)
+  void set_policy_provider(policy::PolicyProvider* provider) {
+    policy_provider_.reset(provider);
   }
 
  private:
@@ -703,9 +704,8 @@ class Mount : public EntropySource {
   scoped_ptr<UserOldestActivityTimestampCache> default_user_timestamp_;
   UserOldestActivityTimestampCache* user_timestamp_;
 
-  // Owner user that we got from Chrome in the beginning. Empty if
-  // owner has not been received yet (or we have crashed).
-  std::string owner_obfuscated_username_;
+  // Used to retrieve the owner user.
+  scoped_ptr<policy::PolicyProvider> policy_provider_;
 
   // True if the machine is enterprise owned, false if not or we have
   // not discovered it in this session.

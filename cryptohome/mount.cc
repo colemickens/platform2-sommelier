@@ -735,7 +735,8 @@ bool Mount::DoAutomaticFreeDiskSpaceControl() {
 
   // Delete old users, the oldest first.
   // Don't delete anyone if we don't know who the owner is.
-  if (enterprise_owned_ || !owner_obfuscated_username_.empty()) {
+  string obfuscated_owner = GetObfuscatedOwner();
+  if (enterprise_owned_ || !obfuscated_owner.empty()) {
     const base::Time timestamp_threshold =
         base::Time::Now() - old_user_last_activity_time_;
     while (!user_timestamp_->oldest_known_timestamp().is_null() &&
@@ -743,7 +744,7 @@ bool Mount::DoAutomaticFreeDiskSpaceControl() {
       FilePath deleted_user_dir = user_timestamp_->RemoveOldestUser();
       if (!enterprise_owned_) {
         std::string obfuscated_username = deleted_user_dir.BaseName().value();
-        if (obfuscated_username == owner_obfuscated_username_) {
+        if (obfuscated_username == obfuscated_owner) {
           LOG(WARNING) << "Not deleting owner user " << obfuscated_username;
           continue;
         }
@@ -762,13 +763,6 @@ bool Mount::DoAutomaticFreeDiskSpaceControl() {
 
   // TODO(glotov): do further cleanup.
   return true;
-}
-
-void Mount::SetOwnerUser(const string& username) {
-  if (!username.empty()) {
-    owner_obfuscated_username_ = UsernamePasskey(
-        username.c_str(), chromeos::Blob()).GetObfuscatedUsername(system_salt_);
-  }
 }
 
 bool Mount::SetupGroupAccess() const {
@@ -1140,6 +1134,23 @@ string Mount::GetMountedUserHomePath(const Credentials& credentials) const {
 string Mount::GetMountedRootHomePath(const Credentials& credentials) const {
   return StringPrintf("%s/%s", GetUserMountDirectory(credentials).c_str(),
                       kRootHomeSuffix);
+}
+
+string Mount::GetObfuscatedOwner() {
+  if (!policy_provider_.get())
+    policy_provider_.reset(new policy::PolicyProvider());
+  else
+    policy_provider_->Reload();
+
+  string owner;
+  if (policy_provider_->device_policy_is_loaded())
+    policy_provider_->GetDevicePolicy().GetOwner(&owner);
+
+  if (!owner.empty()) {
+    return UsernamePasskey(owner.c_str(), chromeos::Blob())
+        .GetObfuscatedUsername(system_salt_);
+  }
+  return "";
 }
 
 void Mount::RecursiveCopy(const FilePath& destination,

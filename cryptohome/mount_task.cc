@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -133,14 +133,6 @@ void MountTaskAutomaticFreeDiskSpace::Run() {
     rc = mount_->DoAutomaticFreeDiskSpaceControl();
   }
   result()->set_return_status(rc);
-  MountTask::Notify();
-}
-
-void MountTaskSetOwnerUser::Run() {
-  result()->set_return_status(true);
-  if (mount_) {
-    mount_->SetOwnerUser(username_);
-  }
   MountTask::Notify();
 }
 

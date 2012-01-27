@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,6 +11,8 @@
 #include <base/logging.h>
 #include <base/string_util.h>
 #include <chromeos/utility.h>
+#include <policy/libpolicy.h>
+#include <policy/mock_device_policy.h>
 
 #include "crypto.h"
 #include "mock_platform.h"
@@ -84,6 +86,8 @@ void MakeTests::InitTestData(const std::string& image_dir,
       mount.set_skel_source(StringPrintf("%s/skel", image_dir.c_str()));
 
       mount.set_use_tpm(false);
+      mount.set_policy_provider(new policy::PolicyProvider(
+          new NiceMock<policy::MockDevicePolicy>));
       mount.set_fallback_to_scrypt(false);
       mount.Init();
 

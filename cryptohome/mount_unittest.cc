@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,8 @@
 #include <base/time.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
+#include <policy/libpolicy.h>
+#include <policy/mock_device_policy.h>
 
 #include "crypto.h"
 #include "secure_blob.h"
@@ -40,6 +42,12 @@ const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
 const char kHomeDir[] = "alt_test_home_dir";
 const char kUserDir[] = "user";
+
+ACTION_P2(SetOwner, owner_known, owner) {
+  if (owner_known)
+    *arg0 = owner;
+  return owner_known;
+}
 
 class MountTest : public ::testing::Test {
  public:
@@ -86,6 +94,15 @@ class MountTest : public ::testing::Test {
     blob->swap(local_wrapped_keyset);
   }
 
+  void set_owner(Mount* mount, bool owner_known, const string& owner) {
+    policy::MockDevicePolicy* device_policy = new policy::MockDevicePolicy();
+    EXPECT_CALL(*device_policy, LoadPolicy())
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*device_policy, GetOwner(_))
+        .WillRepeatedly(SetOwner(owner_known, owner));
+    mount->set_policy_provider(new policy::PolicyProvider(device_policy));
+  }
+
  protected:
   // Protected for trivial access
   chromeos::Blob system_salt_;
@@ -102,6 +119,7 @@ TEST_F(MountTest, BadInitTest) {
   mount.set_shadow_root("/dev/null");
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[0].password,
@@ -121,6 +139,7 @@ TEST_F(MountTest, GoodDecryptTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
   mount.set_fallback_to_scrypt(true);
 
   cryptohome::SecureBlob passkey;
@@ -141,6 +160,7 @@ TEST_F(MountTest, TestCredsDoesNotReSave) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
   mount.set_fallback_to_scrypt(true);
 
   cryptohome::SecureBlob passkey;
@@ -175,6 +195,7 @@ TEST_F(MountTest, CurrentCredentialsTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[3].password,
@@ -206,6 +227,7 @@ TEST_F(MountTest, BadDecryptTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey("bogus", system_salt_, &passkey);
@@ -223,6 +245,7 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
   mount.set_set_vault_ownership(false);
 
   // Test user at index 5 was not created by the test data
@@ -256,6 +279,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[6].password,
@@ -297,6 +321,7 @@ TEST_F(MountTest, MigrateTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   // Test user at index 7 was created using the old style
   cryptohome::SecureBlob passkey;
@@ -339,6 +364,7 @@ TEST_F(MountTest, SystemSaltTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   EXPECT_TRUE(mount.Init());
   chromeos::Blob system_salt;
@@ -357,6 +383,7 @@ TEST_F(MountTest, MountCryptohome) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -392,6 +419,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -438,6 +466,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -485,6 +514,7 @@ TEST_F(MountTest, RemoveSubdirectories) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -557,6 +587,7 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   mount.get_crypto()->set_tpm(&tpm);
   mount.set_shadow_root(kImageDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -646,6 +677,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  set_owner(&mount, false, "");
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -739,6 +771,7 @@ class DoAutomaticFreeDiskSpaceControlTest : public MountTest {
     mount_.get_crypto()->set_tpm(&tpm_);
     mount_.set_shadow_root(kAltImageDir);
     mount_.set_use_tpm(false);
+    set_owner(&mount_, false, "");
     mount_.set_platform(&platform_);
     EXPECT_TRUE(mount_.Init());
   }
@@ -840,7 +873,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoTimestamp) {
   // users had no oldest activity timestamp.
 
   // Setting owner so that old user may be deleted.
-  mount_.SetOwnerUser("owner@invalid.domain");
+  set_owner(&mount_, true, "owner@invalid.domain");
 
   // Verify that user timestamp cache must be not initialized by now.
   UserOldestActivityTimestampCache* user_timestamp =
@@ -900,7 +933,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanup) {
   // Remove old users, oldest first. Stops removing when disk space is enough.
 
   // Setting owner so that old user may be deleted.
-  mount_.SetOwnerUser("owner@invalid.domain");
+  set_owner(&mount_, true, "owner@invalid.domain");
 
   // Update cached users with following timestamps:
   // user[0] is old, user[1] is up to date, user[2] still have no timestamp,
@@ -951,7 +984,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
   SetUserTimestamp(mount_, 3, base::Time::Now() - kOldUserLastActivityTime * 2);
 
   // Setting owner so that old user may be deleted.
-  mount_.SetOwnerUser("owner@invalid.domain");
+  set_owner(&mount_, true, "owner@invalid.domain");
 
   // Now pretend we have lack of free space 2 times.
   // So at 1st Caches are deleted and then 1 oldest user is deleted.
@@ -978,9 +1011,8 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
   mount2->set_platform(&platform_);
   EXPECT_TRUE(mount2->Init());
 
-  // Setting owner so that old user may be deleted. Currently chrome
-  // will set it on nearest log in.
-  mount2->SetOwnerUser("owner@invalid.domain");
+  // Setting owner so that old user may be deleted.
+  set_owner(mount2.get(), true, "owner@invalid.domain");
 
   // Now pretend we have lack of free space at all times.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
@@ -1021,8 +1053,8 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoOwnerSet) {
 TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupEnterprise) {
   // Removes old users in enterprise mode.
 
-  // Setting owner so that old user may be deleted.
-  mount_.SetOwnerUser("owner@invalid.domain");
+  // Setting enterprise owned so that all users may be deleted.
+  set_owner(&mount_, true, "");
   mount_.set_enterprise_owned(true);
 
   // Update cached users with artificial timestamp: user[0] is old,
@@ -1049,7 +1081,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   // Do not remove currently mounted user and do remove it when unmounted.
 
   // Setting owner (user[3]) so that old user may be deleted.
-  mount_.SetOwnerUser("owner@invalid.domain");
+  set_owner(&mount_, true, "owner@invalid.domain");
 
   // Set all users old should one of them have a timestamp.
   mount_.set_old_user_last_activity_time(base::TimeDelta::FromMicroseconds(0));

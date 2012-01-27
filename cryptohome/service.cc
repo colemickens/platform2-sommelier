@@ -794,11 +794,16 @@ gboolean Service::AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
   return TRUE;
 }
 
+// The owner is determined using libpolicy now.
+// TODO(bartfab): This method is just a stub that reports success without
+// setting anything. This provides backwards compatibility until Chrome has
+// been modified to no longer issue D-Bus calls to AsyncSetOwnerUser().
+// See http://crbug.com/111328
 gboolean Service::AsyncSetOwnerUser(gchar *user,
                                     gint *OUT_async_id,
                                     GError **error) {
-  MountTaskSetOwnerUser* mount_task =
-      new MountTaskSetOwnerUser(this, mount_, user);
+  MountTask* mount_task = new MountTask(this, mount_, UsernamePasskey());
+  mount_task->result()->set_return_status(true);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
   return TRUE;
@@ -1076,7 +1081,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
       tpm_status.LastTpmError,
       user_data.c_str(),
       (mount_->IsCryptohomeMounted() ? "1" : "0"),
-      mount_->owner_obfuscated_username().c_str(),
+      mount_->GetObfuscatedOwner().c_str(),
       (mount_->enterprise_owned() ? "1" : "0"),
       (install_attrs_->is_initialized() ? "1" : "0"),
       install_attrs_->version(),

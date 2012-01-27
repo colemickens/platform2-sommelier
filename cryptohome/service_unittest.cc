@@ -1,4 +1,4 @@
-// Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -10,6 +10,8 @@
 #include <base/threading/platform_thread.h>
 #include <base/file_util.h>
 #include <gtest/gtest.h>
+#include <policy/libpolicy.h>
+#include <policy/mock_device_policy.h>
 
 #include "crypto.h"
 #include "make_tests.h"
@@ -101,6 +103,8 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  mount.set_policy_provider(new policy::PolicyProvider(
+      new NiceMock<policy::MockDevicePolicy>));
   mount.set_fallback_to_scrypt(true);
 
   ServiceSubclass service;

@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -186,6 +186,6 @@ env_path.Program('cryptohome-path', path_sources)
 
 # TODO(wad) we'll probably want a separate runner for client roundtrip tests
 env_tests = env.Clone()
-env_tests.Append(LIBS=['gtest', 'gmock'])
+env_tests.Append(LIBS=['gtest', 'gmock', 'policy'])
 # If the lib is linked, it will use the system search path.
 env_tests.Program('cryptohome_testrunner', test_sources + commonlib_sources)

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -358,24 +358,6 @@ class MountTaskAutomaticFreeDiskSpace : public MountTask {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountTaskAutomaticFreeDiskSpace);
-};
-
-// Implements asychronous setting owner user
-class MountTaskSetOwnerUser : public MountTask {
- public:
-  MountTaskSetOwnerUser(MountTaskObserver* observer,
-                        Mount* mount,
-                        const char* username)
-      : MountTask(observer, mount, UsernamePasskey()),
-        username_(username) {
-  }
-  virtual ~MountTaskSetOwnerUser() { }
-
-  virtual void Run();
-
- private:
-  const std::string username_;
-  DISALLOW_COPY_AND_ASSIGN(MountTaskSetOwnerUser);
 };
 
 // Implements asynchronous updating of the current user (if any)
