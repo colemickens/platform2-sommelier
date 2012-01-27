@@ -108,12 +108,15 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
   virtual ~ServiceMockAdaptor();
   virtual const std::string &GetRpcIdentifier();
 
-  MOCK_METHOD0(UpdateConnected, void(void));
-  MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
-  MOCK_METHOD2(EmitUint8Changed, void(const std::string&, uint8));
-  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
-  MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
-  MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
+  MOCK_METHOD0(UpdateConnected, void());
+  MOCK_METHOD2(EmitBoolChanged, void(const std::string &name, bool value));
+  MOCK_METHOD2(EmitUint8Changed, void(const std::string &name, uint8 value));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string &name, uint32 value));
+  MOCK_METHOD2(EmitIntChanged, void(const std::string &name, int value));
+  MOCK_METHOD2(EmitStringChanged,
+               void(const std::string &name, const std::string &value));
+  MOCK_METHOD2(EmitStringmapChanged,
+               void(const std::string &name, const Stringmap &value));
 
  private:
   const std::string rpc_id;

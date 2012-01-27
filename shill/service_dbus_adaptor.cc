@@ -51,7 +51,11 @@ void ServiceDBusAdaptor::EmitIntChanged(const string &name, int value) {
 void ServiceDBusAdaptor::EmitStringChanged(const string &name,
                                            const string &value) {
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
+}
 
+void ServiceDBusAdaptor::EmitStringmapChanged(const string &name,
+                                              const Stringmap &value) {
+  PropertyChanged(name, DBusAdaptor::StringmapToVariant(value));
 }
 
 map<string, ::DBus::Variant> ServiceDBusAdaptor::GetProperties(

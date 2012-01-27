@@ -12,6 +12,7 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_metrics.h"
 
+using testing::_;
 using testing::NiceMock;
 
 namespace shill {
@@ -74,6 +75,21 @@ TEST_F(CellularServiceTest, FriendlyName) {
   device_->capability_->carrier_ = kCarrier;
   service_ = new CellularService(&control_, NULL, &metrics_, NULL, device_);
   EXPECT_EQ(kCarrier, service_->friendly_name());
+}
+
+TEST_F(CellularServiceTest, SetServingOperator) {
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(flimflam::kServingOperatorProperty, _));
+  static const char kCode[] = "123456";
+  static const char kName[] = "Some Cellular Operator";
+  Cellular::Operator oper;
+  service_->SetServingOperator(oper);
+  oper.SetCode(kCode);
+  oper.SetName(kName);
+  service_->SetServingOperator(oper);
+  EXPECT_EQ(kCode, service_->serving_operator().GetCode());
+  EXPECT_EQ(kName, service_->serving_operator().GetName());
+  service_->SetServingOperator(oper);
 }
 
 }  // namespace shill

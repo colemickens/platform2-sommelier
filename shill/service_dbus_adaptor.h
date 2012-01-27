@@ -42,6 +42,8 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   virtual void EmitIntChanged(const std::string &name, int value);
   virtual void EmitStringChanged(
       const std::string& name, const std::string &value);
+  virtual void EmitStringmapChanged(const std::string &name,
+                                    const Stringmap &value);
 
   // Implementation of Service_adaptor
   std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);

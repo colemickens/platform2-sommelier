@@ -109,8 +109,13 @@ const Cellular::Operator &CellularService::serving_operator() const {
   return serving_operator_;
 }
 
-void CellularService::set_serving_operator(const Cellular::Operator &oper) {
+void CellularService::SetServingOperator(const Cellular::Operator &oper) {
+  if (serving_operator_.Equals(oper)) {
+    return;
+  }
   serving_operator_.CopyFrom(oper);
+  adaptor()->EmitStringmapChanged(flimflam::kServingOperatorProperty,
+                                  oper.ToDict());
 }
 
 }  // namespace shill

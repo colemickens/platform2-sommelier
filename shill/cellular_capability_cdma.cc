@@ -233,7 +233,7 @@ string CellularCapabilityCDMA::CreateFriendlyServiceName() {
 void CellularCapabilityCDMA::UpdateServingOperator() {
   VLOG(2) << __func__;
   if (cellular()->service().get()) {
-    cellular()->service()->set_serving_operator(cellular()->home_provider());
+    cellular()->service()->SetServingOperator(cellular()->home_provider());
   }
 }
 

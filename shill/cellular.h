@@ -69,6 +69,7 @@ class Cellular : public Device {
     ~Operator();
 
     void CopyFrom(const Operator &oper);
+    bool Equals(const Operator &oper) const { return dict_ == oper.dict_; }
 
     const std::string &GetName() const;
     void SetName(const std::string &name);

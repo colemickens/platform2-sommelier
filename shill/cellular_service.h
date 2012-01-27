@@ -50,8 +50,8 @@ class CellularService : public Service {
   const std::string &usage_url() const { return usage_url_; }
   void set_usage_url(const std::string &url) { usage_url_ = url; }
 
+  void SetServingOperator(const Cellular::Operator &oper);
   const Cellular::Operator &serving_operator() const;
-  void set_serving_operator(const Cellular::Operator &oper);
 
   // Sets network technology to |technology| and broadcasts the property change.
   void SetNetworkTechnology(const std::string &technology);

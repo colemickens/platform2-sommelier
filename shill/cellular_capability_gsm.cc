@@ -296,7 +296,7 @@ void CellularCapabilityGSM::UpdateOperatorInfo() {
 void CellularCapabilityGSM::UpdateServingOperator() {
   VLOG(2) << __func__;
   if (cellular()->service().get()) {
-    cellular()->service()->set_serving_operator(serving_operator_);
+    cellular()->service()->SetServingOperator(serving_operator_);
   }
 }
 

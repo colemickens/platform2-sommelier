@@ -114,6 +114,8 @@ class ServiceAdaptorInterface {
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value) = 0;
+  virtual void EmitStringmapChanged(const std::string &name,
+                                    const Stringmap &value) = 0;
 };
 
 // A ReturnerInterface instance (along with its ownership) is passed by the
