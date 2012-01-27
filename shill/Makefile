@@ -28,12 +28,7 @@ TEST_LIB_DIRS = $(LIB_DIRS)
 
 DBUS_BINDINGS_DIR = dbus_bindings
 
-DBUS_ADAPTOR_HEADERS = \
-	flimflam-device.h \
-	flimflam-ipconfig.h \
-	flimflam-manager.h \
-	flimflam-profile.h \
-	flimflam-service.h
+DBUS_ADAPTOR_HEADERS :=
 
 DBUS_PROXY_HEADERS = \
 	dbus-properties.h \
@@ -54,6 +49,16 @@ DBUS_BINDINGS_XML_SYSROOT = \
 	org.freedesktop.ModemManager.Modem.Gsm.Network>modem-gsm-network \
 	org.freedesktop.ModemManager.Modem.Simple>modem-simple
 
+# Rename local XML files with the names required by DBus to XML files with the
+# names required by the style guide, which will then be turned into generated
+# headers later.
+DBUS_BINDINGS_XML_LOCAL = \
+	org.chromium.flimflam.Device>flimflam-device \
+	org.chromium.flimflam.IPConfig>flimflam-ipconfig \
+	org.chromium.flimflam.Manager>flimflam-manager \
+	org.chromium.flimflam.Profile>flimflam-profile \
+	org.chromium.flimflam.Service>flimflam-service
+
 define ADD_BINDING
 $(eval _SOURCE = $(word 1,$(subst >, ,$(1))))
 $(eval _TARGET = $(word 2,$(subst >, ,$(1))))
@@ -64,7 +69,17 @@ $(DBUS_BINDINGS_DIR)/$(_TARGET).xml: \
 	cat $$< > $$@
 endef
 
+define ADD_LOCAL_BINDING
+$(eval _SOURCE = $(word 1,$(subst >, ,$(1))))
+$(eval _TARGET = $(word 2,$(subst >, ,$(1))))
+CLEAN_FILES += $(DBUS_BINDINGS_DIR)/$(_TARGET).xml
+DBUS_ADAPTOR_HEADERS += $(_TARGET).h
+$(DBUS_BINDINGS_DIR)/$(_TARGET).xml: $(DBUS_BINDINGS_DIR)/$(_SOURCE).xml
+	cp $$< $$@
+endef
+
 $(foreach b,$(DBUS_BINDINGS_XML_SYSROOT),$(eval $(call ADD_BINDING,$(b))))
+$(foreach b,$(DBUS_BINDINGS_XML_LOCAL),$(eval $(call ADD_LOCAL_BINDING,$(b))))
 
 DBUS_ADAPTOR_BINDINGS = \
 	$(addprefix $(DBUS_BINDINGS_DIR)/, $(DBUS_ADAPTOR_HEADERS))
