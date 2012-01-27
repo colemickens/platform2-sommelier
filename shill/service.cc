@@ -125,14 +125,18 @@ Service::Service(ControlInterface *control_interface,
   store_.RegisterString(flimflam::kEAPClientCertProperty, &eap_.client_cert);
   store_.RegisterString(flimflam::kEAPCertIDProperty, &eap_.cert_id);
   store_.RegisterString(flimflam::kEapPrivateKeyProperty, &eap_.private_key);
-  HelpRegisterDerivedString(flimflam::kEapPrivateKeyPasswordProperty, NULL,
-                            &Service::SetEAPPrivateKeyPassword);
+  HelpRegisterWriteOnlyDerivedString(flimflam::kEapPrivateKeyPasswordProperty,
+                                     &Service::SetEAPPrivateKeyPassword,
+                                     NULL,
+                                     &eap_.private_key_password);
   store_.RegisterString(flimflam::kEAPKeyIDProperty, &eap_.key_id);
   store_.RegisterString(flimflam::kEapCaCertProperty, &eap_.ca_cert);
   store_.RegisterString(flimflam::kEapCaCertIDProperty, &eap_.ca_cert_id);
   store_.RegisterString(flimflam::kEAPPINProperty, &eap_.pin);
-  HelpRegisterDerivedString(flimflam::kEapPasswordProperty, NULL,
-                            &Service::SetEAPPassword);
+  HelpRegisterWriteOnlyDerivedString(flimflam::kEapPasswordProperty,
+                                     &Service::SetEAPPassword,
+                                     NULL,
+                                     &eap_.password);
   store_.RegisterString(flimflam::kEapKeyMgmtProperty, &eap_.key_management);
   store_.RegisterBool(flimflam::kEapUseSystemCAsProperty, &eap_.use_system_cas);
 
@@ -597,6 +601,18 @@ void Service::HelpRegisterDerivedUint16(
   store_.RegisterDerivedUint16(
       name,
       Uint16Accessor(new CustomAccessor<Service, uint16>(this, get, set)));
+}
+
+void Service::HelpRegisterWriteOnlyDerivedString(
+    const string &name,
+    void(Service::*set)(const string &, Error *),
+    void(Service::*clear)(Error *),
+    const string *default_value) {
+  store_.RegisterDerivedString(
+      name,
+      StringAccessor(
+          new CustomWriteOnlyAccessor<Service, string>(
+              this, set, clear, default_value)));
 }
 
 void Service::SaveString(StoreInterface *storage,

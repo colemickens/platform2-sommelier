@@ -60,10 +60,10 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       ssid_(ssid) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kModeProperty, &mode_);
-  HelpRegisterDerivedString(store,
-                            flimflam::kPassphraseProperty,
-                            NULL,
-                            &WiFiService::SetPassphrase);
+  HelpRegisterWriteOnlyDerivedString(flimflam::kPassphraseProperty,
+                                     &WiFiService::SetPassphrase,
+                                     &WiFiService::ClearPassphrase,
+                                     NULL);
   store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
   store->RegisterConstString(flimflam::kSecurityProperty, &security_);
 
@@ -206,6 +206,13 @@ void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
   UpdateConnectable();
 }
 
+// ClearPassphrase is separate from SetPassphrase, because the default
+// value for |passphrase_| would not pass validation.
+void WiFiService::ClearPassphrase(Error */*error*/) {
+  passphrase_.clear();
+  UpdateConnectable();
+}
+
 bool WiFiService::IsLoadableFrom(StoreInterface *storage) const {
   return storage->ContainsGroup(GetGenericStorageIdentifier()) ||
       storage->ContainsGroup(GetSpecificStorageIdentifier());
@@ -335,14 +342,16 @@ void WiFiService::SendPostReadyStateMetrics() const {
 }
 
 // private methods
-void WiFiService::HelpRegisterDerivedString(
-    PropertyStore *store,
-    const std::string &name,
-    std::string(WiFiService::*get)(Error *),
-    void(WiFiService::*set)(const std::string&, Error *)) {
-  store->RegisterDerivedString(
+void WiFiService::HelpRegisterWriteOnlyDerivedString(
+    const string &name,
+    void(WiFiService::*set)(const string &, Error *),
+    void(WiFiService::*clear)(Error *),
+    const string *default_value) {
+  mutable_store()->RegisterDerivedString(
       name,
-      StringAccessor(new CustomAccessor<WiFiService, string>(this, get, set)));
+      StringAccessor(
+          new CustomWriteOnlyAccessor<WiFiService, string>(
+              this, set, clear, default_value)));
 }
 
 void WiFiService::ConnectTask() {

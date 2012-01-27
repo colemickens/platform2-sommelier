@@ -105,16 +105,19 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
   FRIEND_TEST(WiFiServiceTest, Populate8021x);
 
-  void HelpRegisterDerivedString(
-      PropertyStore *store,
+  // Override the base clase implementation, because we need to allow
+  // arguments that aren't base class methods.
+  void HelpRegisterWriteOnlyDerivedString(
       const std::string &name,
-      std::string(WiFiService::*get)(Error *error),
-      void(WiFiService::*set)(const std::string &value, Error *error));
+      void(WiFiService::*set)(const std::string &value, Error *error),
+      void(WiFiService::*clear)(Error *error),
+      const std::string *default_value);
 
   void ConnectTask();
   void DisconnectTask();
 
   std::string GetDeviceRpcId(Error *error);
+  void ClearPassphrase(Error *error);
   void UpdateConnectable();
 
   static void ValidateWEPPassphrase(const std::string &passphrase,

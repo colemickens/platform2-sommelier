@@ -280,6 +280,11 @@ class Service : public base::RefCounted<Service> {
   // this service is busy with another connection.
   virtual bool IsAutoConnectable() const;
 
+  // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
+  //
+  // Reads of the property will be handled by invoking |get|.
+  // Writes to the property will be handled by invoking |set|.
+  // Clearing the property will be handled by PropertyStore.
   void HelpRegisterDerivedBool(
       const std::string &name,
       bool(Service::*get)(Error *error),
@@ -292,6 +297,20 @@ class Service : public base::RefCounted<Service> {
       const std::string &name,
       uint16(Service::*get)(Error *error),
       void(Service::*set)(const uint16 &value, Error *error));
+  // Expose a property over RPC, with the name |name|.
+  //
+  // Reads of the property will be handled by invoking |get|.
+  // Writes to the property will be handled by invoking |set|.
+  //
+  // Clearing the property will be handled by invoking |clear|, or
+  // calling |set| with |default_value| (whichever is non-NULL).  It
+  // is an error to call this method with both |clear| and
+  // |default_value| non-NULL.
+  void HelpRegisterWriteOnlyDerivedString(
+      const std::string &name,
+      void(Service::*set)(const std::string &value, Error *error),
+      void(Service::*clear)(Error *error),
+      const std::string *default_value);
 
   ServiceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 

@@ -30,6 +30,8 @@ class AccessorInterface {
   AccessorInterface() {}
   virtual ~AccessorInterface() {}
 
+  // Reset the property to its default value. Sets |error| on failure.
+  virtual void Clear(Error *error) = 0;
   // Provides read-only access. Sets |error| on failure.
   virtual T Get(Error *error) = 0;
   // Attempts to set the wrapped value. Sets |error| on failure.
