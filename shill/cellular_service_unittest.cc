@@ -12,6 +12,7 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_metrics.h"
 
+using std::string;
 using testing::_;
 using testing::NiceMock;
 
@@ -25,7 +26,7 @@ class CellularServiceTest : public testing::Test {
                              &metrics_,
                              NULL,
                              "usb0",
-                             "00:01:02:03:04:05",
+                             kAddress,
                              3,
                              Cellular::kTypeGSM,
                              "",
@@ -45,12 +46,16 @@ class CellularServiceTest : public testing::Test {
   }
 
  protected:
+  static const char kAddress[];
+
   NiceMockControl control_;
   MockMetrics metrics_;
   CellularRefPtr device_;
   CellularServiceRefPtr service_;
   NiceMock<ServiceMockAdaptor> *adaptor_;  // Owned by |service_|.
 };
+
+const char CellularServiceTest::kAddress[] = "000102030405";
 
 TEST_F(CellularServiceTest, SetNetworkTechnology) {
   EXPECT_CALL(*adaptor_, EmitStringChanged(flimflam::kNetworkTechnologyProperty,
@@ -75,6 +80,13 @@ TEST_F(CellularServiceTest, FriendlyName) {
   device_->capability_->carrier_ = kCarrier;
   service_ = new CellularService(&control_, NULL, &metrics_, NULL, device_);
   EXPECT_EQ(kCarrier, service_->friendly_name());
+}
+
+TEST_F(CellularServiceTest, SetStorageIdentifier) {
+  EXPECT_EQ(string("cellular_") + kAddress + "_" + service_->friendly_name(),
+            service_->GetStorageIdentifier());
+  service_->SetStorageIdentifier("a b c");
+  EXPECT_EQ("a_b_c", service_->GetStorageIdentifier());
 }
 
 TEST_F(CellularServiceTest, SetServingOperator) {

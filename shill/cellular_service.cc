@@ -43,6 +43,7 @@ CellularService::CellularService(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kUsageURLProperty, &usage_url_);
 
   set_friendly_name(device->CreateFriendlyServiceName());
+  SetStorageIdentifier("cellular_" + device->address() + "_" + friendly_name());
 }
 
 CellularService::~CellularService() { }
@@ -66,14 +67,15 @@ bool CellularService::TechnologyIs(const Technology::Identifier type) const {
   return cellular_->TechnologyIs(type);
 }
 
+void CellularService::SetStorageIdentifier(const string &identifier) {
+  storage_identifier_ = identifier;
+  std::replace_if(storage_identifier_.begin(),
+                  storage_identifier_.end(),
+                  &Service::IllegalChar, '_');
+}
+
 string CellularService::GetStorageIdentifier() const {
-  // TODO(petkov): Fix the return value (crosbug.com/24952).
-  string id = base::StringPrintf("%s_%s_%s",
-                                 kServiceType,
-                                 cellular_->address().c_str(),
-                                 serving_operator_.GetName().c_str());
-  std::replace_if(id.begin(), id.end(), &Service::LegalChar, '_');
-  return id;
+  return storage_identifier_;
 }
 
 string CellularService::GetDeviceRpcId(Error */*error*/) {

@@ -273,8 +273,8 @@ void Cellular::CreateService() {
   service_ =
       new CellularService(control_interface(), dispatcher(), metrics(),
                           manager(), this);
-  manager()->RegisterService(service_);
   capability_->OnServiceCreated();
+  manager()->RegisterService(service_);
 }
 
 void Cellular::DestroyService() {

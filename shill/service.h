@@ -238,6 +238,9 @@ class Service : public base::RefCounted<Service> {
   // Returns true if a character is allowed to be in a service storage id.
   static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
 
+  // Returns true if a character is disallowed to be in a service storage id.
+  static bool IllegalChar(char a) { return !LegalChar(a); }
+
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
 
   virtual std::string CalculateState(Error *error);

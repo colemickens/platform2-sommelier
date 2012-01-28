@@ -19,6 +19,7 @@
 #include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/nice_mock_control.h"
 
+using std::string;
 using testing::_;
 using testing::NiceMock;
 using testing::Return;
@@ -55,7 +56,7 @@ class CellularCapabilityGSMTest : public testing::Test {
                                &metrics_,
                                NULL,
                                "",
-                               "",
+                               kAddress,
                                0,
                                Cellular::kTypeGSM,
                                "",
@@ -83,6 +84,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   }
 
  protected:
+  static const char kAddress[];
   static const char kTestMobileProviderDBPath[];
   static const char kTestNetwork[];
   static const char kTestCarrier[];
@@ -130,6 +132,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   mobile_provider_db *provider_db_;
 };
 
+const char CellularCapabilityGSMTest::kAddress[] = "1122334455";
 const char CellularCapabilityGSMTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
 const char CellularCapabilityGSMTest::kTestCarrier[] = "The Cellular Carrier";
@@ -485,6 +488,18 @@ TEST_F(CellularCapabilityGSMTest, CreateFriendlyServiceName) {
   EXPECT_EQ(kTestOperator, capability_->CreateFriendlyServiceName());
   capability_->registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
   EXPECT_EQ(kHomeProvider, capability_->CreateFriendlyServiceName());
+}
+
+TEST_F(CellularCapabilityGSMTest, SetStorageIdentifier) {
+  SetService();
+  capability_->OnServiceCreated();
+  EXPECT_EQ(string("cellular_") + kAddress + "_" +
+            cellular_->service()->friendly_name(),
+            cellular_->service()->GetStorageIdentifier());
+  capability_->imsi_ = kIMSI;
+  capability_->OnServiceCreated();
+  EXPECT_EQ(string("cellular_") + kAddress + "_" + kIMSI,
+            cellular_->service()->GetStorageIdentifier());
 }
 
 }  // namespace shill

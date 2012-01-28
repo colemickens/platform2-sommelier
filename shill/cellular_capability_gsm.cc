@@ -135,6 +135,11 @@ void CellularCapabilityGSM::StopModem() {
 }
 
 void CellularCapabilityGSM::OnServiceCreated() {
+  // If IMSI is available, base the service's storage identifier on it.
+  if (!imsi_.empty()) {
+    cellular()->service()->SetStorageIdentifier(
+        "cellular_" + cellular()->address() + "_" + imsi_);
+  }
   cellular()->service()->SetActivationState(
       flimflam::kActivationStateActivated);
   UpdateServingOperator();

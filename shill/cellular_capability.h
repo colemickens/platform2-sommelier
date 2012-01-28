@@ -180,6 +180,7 @@ class CellularCapability : public ModemProxyDelegate,
  private:
   friend class CellularTest;
   friend class CellularCapabilityTest;
+  FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateStatus);
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);

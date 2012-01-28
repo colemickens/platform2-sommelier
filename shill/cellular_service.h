@@ -38,8 +38,8 @@ class CellularService : public Service {
                                      ReturnerInterface *returner);
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
-  // cellular_<MAC>_<Service_Operator_Name>
-  std::string GetStorageIdentifier() const;
+  virtual std::string GetStorageIdentifier() const;
+  void SetStorageIdentifier(const std::string &identifier);
 
   void SetActivationState(const std::string &state);
   const std::string &activation_state() const { return activation_state_; }
@@ -79,6 +79,8 @@ class CellularService : public Service {
 
   std::map<std::string, std::string> apn_info_;
   std::map<std::string, std::string> last_good_apn_info_;
+
+  std::string storage_identifier_;
 
   CellularRefPtr cellular_;
 
