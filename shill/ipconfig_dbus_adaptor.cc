@@ -78,11 +78,8 @@ void IPConfigDBusAdaptor::SetProperty(const string &name,
 }
 
 void IPConfigDBusAdaptor::ClearProperty(const std::string &name,
-                                        ::DBus::Error &/*error*/) {
-  NOTIMPLEMENTED() << " Ignoring request to clear " << name
-                   << " property of IPConfig " << ipconfig_->serial()
-                   << " (associated with Device " << ipconfig_->device_name()
-                   << ")";
+                                        ::DBus::Error &error) {
+  DBusAdaptor::ClearProperty(ipconfig_->mutable_store(), name, &error);
 }
 
 void IPConfigDBusAdaptor::Remove(::DBus::Error &/*error*/) {

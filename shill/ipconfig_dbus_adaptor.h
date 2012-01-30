@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -48,8 +48,8 @@ class IPConfigDBusAdaptor : public org::chromium::flimflam::IPConfig_adaptor,
   virtual void SetProperty(const std::string &name,
                            const ::DBus::Variant &value,
                            ::DBus::Error &error);
+  virtual void ClearProperty(const std::string &name, ::DBus::Error &error);
   // TODO(cmasone): implement these stubs.
-  virtual void ClearProperty(const std::string& , ::DBus::Error &error);
   virtual void Remove(::DBus::Error &error);
   virtual void MoveBefore(const ::DBus::Path& , ::DBus::Error &error);
   virtual void MoveAfter(const ::DBus::Path& , ::DBus::Error &error);

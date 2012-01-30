@@ -38,6 +38,16 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool GetProperties(const PropertyStore &store,
                             std::map<std::string, ::DBus::Variant> *out,
                             ::DBus::Error *error);
+  // Look for a property with |name| in |store|. If found, reset the
+  // property to its "factory" value. If the property can not be
+  // found, or if it can not be cleared (e.g., because it is
+  // read-only), set |error| accordingly.
+  //
+  // Returns true if the property was found and cleared; returns false
+  // otherwise.
+  static bool ClearProperty(PropertyStore *store,
+                            const std::string &name,
+                            ::DBus::Error *error);
   static void ArgsToKeyValueStore(
       const std::map<std::string, ::DBus::Variant> &args,
       KeyValueStore *out,

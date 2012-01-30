@@ -756,4 +756,32 @@ TEST_F(WiFiServiceTest, Populate8021x) {
                            wpa_supplicant::kNetworkPropertyEapKeyId));
 }
 
+TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityWep,
+                                                   false);
+
+  EXPECT_EQ("", wifi_service->passphrase_);
+
+  ::DBus::Error error;
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+      wifi_service->mutable_store(),
+      flimflam::kPassphraseProperty,
+      DBusAdaptor::StringToVariant("0:abcde"),
+      &error));
+  EXPECT_EQ("0:abcde", wifi_service->passphrase_);
+
+  EXPECT_TRUE(DBusAdaptor::ClearProperty(wifi_service->mutable_store(),
+                                         flimflam::kPassphraseProperty,
+                                         &error));
+  EXPECT_EQ("", wifi_service->passphrase_);
+}
+
 }  // namespace shill

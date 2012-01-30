@@ -120,6 +120,38 @@ TEST_F(DeviceTest, Dispatch) {
   EXPECT_EQ(invalid_args(), error.name());
 }
 
+TEST_F(DeviceTest, ClearProperty) {
+  ::DBus::Error error;
+  EXPECT_TRUE(device_->powered());
+
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
+                                          flimflam::kPoweredProperty,
+                                          PropertyStoreTest::kBoolV,
+                                          &error));
+  EXPECT_FALSE(device_->powered());
+
+  EXPECT_TRUE(DBusAdaptor::ClearProperty(device_->mutable_store(),
+                                         flimflam::kPoweredProperty,
+                                         &error));
+  EXPECT_TRUE(device_->powered());
+}
+
+TEST_F(DeviceTest, ClearReadOnlyProperty) {
+  ::DBus::Error error;
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
+                                           flimflam::kAddressProperty,
+                                           PropertyStoreTest::kStringV,
+                                           &error));
+}
+
+TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
+  ::DBus::Error error;
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
+                                           flimflam::kIPConfigsProperty,
+                                           PropertyStoreTest::kStringsV,
+                                           &error));
+}
+
 TEST_F(DeviceTest, TechnologyIs) {
   EXPECT_FALSE(device_->TechnologyIs(Technology::kEthernet));
 }

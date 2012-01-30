@@ -81,9 +81,8 @@ void DeviceDBusAdaptor::SetProperty(const string &name,
 }
 
 void DeviceDBusAdaptor::ClearProperty(const std::string &name,
-                                      ::DBus::Error &/*error*/) {
-  NOTIMPLEMENTED() << " Ignoring request to clear " << name
-                   << " property of Device " << device_->FriendlyName();
+                                      ::DBus::Error &error) {
+  DBusAdaptor::ClearProperty(device_->mutable_store(), name, &error);
 }
 
 void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {

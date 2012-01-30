@@ -27,6 +27,8 @@ using std::map;
 using std::string;
 using std::vector;
 using ::testing::_;
+using ::testing::DoAll;
+using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::StrEq;
 using ::testing::Test;
@@ -195,6 +197,24 @@ TEST_F(DBusAdaptorTest, Dispatch) {
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", uint32_v_, &e8));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", stringmap_v_, &e9));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", byte_v_, &e10));
+}
+
+void SetError(const string &/*name*/, Error *error) {
+  error->Populate(Error::kInvalidProperty);
+}
+
+TEST_F(DBusAdaptorTest, ClearProperty) {
+  MockPropertyStore store;
+  ::DBus::Error e1, e2;
+
+  EXPECT_CALL(store, ClearProperty("valid property", _)).
+      WillOnce(Return(true));
+  EXPECT_CALL(store, ClearProperty("invalid property", _)).
+      WillOnce(DoAll(Invoke(SetError),
+                     Return(false)));
+  EXPECT_TRUE(DBusAdaptor::ClearProperty(&store, "valid property", &e1));
+  EXPECT_FALSE(DBusAdaptor::ClearProperty(&store, "invalid property", &e2));
+
 }
 
 TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {

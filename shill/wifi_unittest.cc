@@ -78,7 +78,7 @@ class WiFiPropertyTest : public PropertyStoreTest {
   virtual ~WiFiPropertyTest() {}
 
  protected:
-  DeviceRefPtr device_;
+  WiFiRefPtr device_;
 };
 
 TEST_F(WiFiPropertyTest, Contains) {
@@ -132,6 +132,25 @@ TEST_F(WiFiPropertyTest, BgscanMethod) {
         DBusAdaptor::StringToVariant("not a real scan method"),
         &error));
   }
+}
+
+TEST_F(WiFiPropertyTest, ClearDerivedProperty) {
+  EXPECT_NE(wpa_supplicant::kNetworkBgscanMethodLearn,
+            WiFi::kDefaultBgscanMethod);
+  EXPECT_EQ(WiFi::kDefaultBgscanMethod, device_->bgscan_method_);
+
+  ::DBus::Error error;
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+      device_->mutable_store(),
+      flimflam::kBgscanMethodProperty,
+      DBusAdaptor::StringToVariant(
+          wpa_supplicant::kNetworkBgscanMethodLearn),
+      &error));
+  EXPECT_EQ(wpa_supplicant::kNetworkBgscanMethodLearn, device_->bgscan_method_);
+
+  EXPECT_TRUE(DBusAdaptor::ClearProperty(
+      device_->mutable_store(), flimflam::kBgscanMethodProperty, &error));
+  EXPECT_EQ(WiFi::kDefaultBgscanMethod, device_->bgscan_method_);
 }
 
 class WiFiMainTest : public ::testing::TestWithParam<string> {

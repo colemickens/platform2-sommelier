@@ -94,6 +94,7 @@ class WiFiService : public Service {
   friend class WiFiServiceSecurityTest;
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
+  FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
   FRIEND_TEST(WiFiServiceTest, ConnectTask8021x);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskDynamicWEP);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskPSK);

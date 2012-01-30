@@ -68,6 +68,7 @@ class WiFi : public Device {
   friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
+  FRIEND_TEST(WiFiPropertyTest, ClearDerivedProperty);  // bgscan_method_
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<WiFiService *, std::string> ReverseServiceMap;

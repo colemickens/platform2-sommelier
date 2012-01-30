@@ -145,6 +145,20 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
 }
 
 // static
+bool DBusAdaptor::ClearProperty(PropertyStore *store,
+                                const string &name,
+                                ::DBus::Error *error) {
+  Error e;
+  store->ClearProperty(name, &e);
+
+  if (error != NULL) {
+    e.ToDBusError(error);
+  }
+
+  return e.IsSuccess();
+}
+
+// static
 void DBusAdaptor::ArgsToKeyValueStore(
     const map<string, ::DBus::Variant> &args,
     KeyValueStore *out,

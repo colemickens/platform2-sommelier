@@ -72,10 +72,8 @@ void ServiceDBusAdaptor::SetProperty(const string &name,
 }
 
 void ServiceDBusAdaptor::ClearProperty(const string &name,
-                                       ::DBus::Error &/*error*/) {
-  NOTIMPLEMENTED() << " Ignorning request to clear " << name
-                   << " property of Service " << service_->UniqueName()
-                   << " (aka " << service_->friendly_name() << ")";
+                                       ::DBus::Error &error) {
+  DBusAdaptor::ClearProperty(service_->mutable_store(), name, &error);
 }
 
 void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
