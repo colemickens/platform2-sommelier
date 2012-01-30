@@ -25,6 +25,7 @@ DEFINE_string(bootslot, "", "Boot Slot A|B");
 DEFINE_string(kernel_image, "", "Kernel partition to extract the config from");
 DEFINE_string(rootfs_image, "", "rootfs partition to update for vboot");
 DEFINE_string(src_version, "0.0.0.0", "Current OS version");
+DEFINE_string(sysroot, "", "Path to new sysroot/rootfs");
 
 // This is a place holder to invoke the backing scripts. Once all scripts have
 // been rewritten as library calls this command should be deleted.
@@ -35,10 +36,6 @@ int RunCommand(const string& filename, const string& cmdoptions) {
   int j = 0, i = 1;
   const int kCmdArgs = 8;
   char **argv = new char* [kCmdArgs+2];
-  FILE *fp;
-
-  string sbinfn = "/usr/sbin/" + filename;
-  string pwdfn = "./" + filename;
 
   CStringTokenizer t(cmdoptions.c_str(), cmdoptions.c_str() +
                      strlen(cmdoptions.c_str()), " ");
@@ -51,18 +48,8 @@ int RunCommand(const string& filename, const string& cmdoptions) {
     argv[i++] = strdup(t.token().c_str());
   }
   argv[i] = NULL;
-
-  // Temporary workaround to develop on your host chroot system
-  // See if the file exists
-  fp = fopen(sbinfn.c_str(), "r");
-  if (fp) {
-    argv[0] = strdup(sbinfn.c_str());
-    err = execv(sbinfn.c_str(), argv);
-    fclose(fp);
-  } else {
-    argv[0] = strdup(pwdfn.c_str());
-    err = execv(pwdfn.c_str(), argv);
-  }
+  argv[0] = strdup(filename.c_str());
+  err = execv(filename.c_str(), argv);
 
 cleanup:
   for (j = 0; j < i; j++) {
@@ -82,15 +69,15 @@ int main(int argc, char** argv) {
 
   if (FLAGS_setgoodkernel.empty() == false) {
     printf("Marking current partition as known good\n");
-    cmd = "chromeos-setgoodkernel";
+    cmd = "/usr/sbin/chromeos-setgoodkernel";
     cmdoptions = FLAGS_setgoodkernel;
   } else if (FLAGS_recovery.empty() == false) {
     printf("recovery is set\n");
-    cmd = "chromeos-recovery";
+    cmd = "/usr/sbin/chromeos-recovery";
     cmdoptions = FLAGS_recovery;
   } else if (FLAGS_postinst) {
     printf("postinst is set\n");
-    cmd = "chromeos-postinst";
+    cmd = "/usr/sbin/chromeos-postinst";
     if (FLAGS_destdevice.empty()) {
       printf("postinst requires --destdevice\n");
       return -1;
@@ -100,11 +87,11 @@ int main(int argc, char** argv) {
     cmdoptions += " " + FLAGS_destdevice;
   } else if (FLAGS_install.empty() == false) {
     printf("install is set\n");
-    cmd = "chromeos-install";
+    cmd = "/usr/sbin/chromeos-install";
     cmdoptions = FLAGS_install;
   } else if (FLAGS_setimage) {
     printf("setimage is set\n");
-    cmd = "chromeos-setimage";
+    cmd = "/usr/sbin/chromeos-setimage";
     if (FLAGS_destdevice.empty() == false) {
       cmdoptions = " --dst=" + FLAGS_destdevice;
     }
@@ -119,11 +106,11 @@ int main(int argc, char** argv) {
     }
   } else if (FLAGS_updatefirmware.empty() == false) {
     printf("updatefirmware is set\n");
-    cmd = "chromeos-firmwareupdate";
+    cmd = "/usr/sbin/chromeos-firmwareupdate";
     cmdoptions = FLAGS_updatefirmware;
   }
 
-  RunCommand(cmd, cmdoptions);
+  RunCommand(FLAGS_sysroot + cmd, cmdoptions);
 
   return 0;
 }

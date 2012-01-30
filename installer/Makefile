@@ -9,6 +9,7 @@ CXXFLAGS := -I$(SRC)/include $(CXXFLAGS)
 
 CXX_STATIC_BINARY(cros_installer): \
 		$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS)) \
+		$(shell $(CXX) -print-file-name=libbb.a) \
 		$(shell $(CXX) -print-file-name=libgflags_nothreads.a) \
 		$(shell $(CXX) -print-file-name=libbase.a) \
 		$(shell $(CXX) -print-file-name=libstdc++.a) \
@@ -22,6 +23,7 @@ cros_installer: CXX_STATIC_BINARY(cros_installer)
 
 CXX_BINARY(cros_installer_test): \
 		$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS)) \
+		$(shell $(CXX) -print-file-name=libbb.a) \
 		$(shell $(CXX) -print-file-name=libgflags_nothreads.a) \
 		$(shell $(CXX) -print-file-name=libstdc++.a) \
 		$(shell $(CXX) -print-file-name=libc.a)
