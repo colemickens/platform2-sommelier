@@ -143,6 +143,7 @@ SHILL_OBJS = \
 	modem_proxy.o \
 	modem_simple_proxy.o \
 	portal_detector.o \
+	power_manager.o \
 	power_manager_proxy.o \
 	profile.o \
 	profile_dbus_adaptor.o \
@@ -250,6 +251,7 @@ TEST_OBJS = \
 	modem_unittest.o \
 	nice_mock_control.o \
 	portal_detector_unittest.o \
+	power_manager_unittest.o \
 	profile_dbus_property_exporter_unittest.o \
 	profile_unittest.o \
 	property_accessor_unittest.o \
