@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -18,6 +19,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
+#include "shill/property_accessor.h"
 #include "shill/property_store.h"
 
 using std::map;
@@ -101,6 +103,113 @@ INSTANTIATE_TEST_CASE_P(
            PropertyStoreTest::kStringsV,
            PropertyStoreTest::kUint16V,
            PropertyStoreTest::kUint32V));
+
+template <typename T>
+class PropertyStoreTypedTest : public PropertyStoreTest {
+ protected:
+  void RegisterProperty(
+      PropertyStore &store, const string &name, T *storage);
+};
+
+typedef ::testing::Types<
+  bool, int16, int32, KeyValueStore, string, Stringmap, Stringmaps, Strings,
+  uint8, uint16, uint32> PropertyTypes;
+TYPED_TEST_CASE(PropertyStoreTypedTest, PropertyTypes);
+
+TYPED_TEST(PropertyStoreTypedTest, ClearProperty) {
+  PropertyStore store;
+  Error error;
+  TypeParam property;
+  RegisterProperty(store, "some property", &property);
+  EXPECT_TRUE(store.ClearProperty("some property", &error));
+}
+
+template<> void PropertyStoreTypedTest<bool>::RegisterProperty(
+    PropertyStore &store, const string &name, bool *storage) {
+  store.RegisterBool(name, storage);
+}
+
+template<> void PropertyStoreTypedTest<int16>::RegisterProperty(
+    PropertyStore &store, const string &name, int16 *storage) {
+  store.RegisterInt16(name, storage);
+}
+
+template<> void PropertyStoreTypedTest<int32>::RegisterProperty(
+    PropertyStore &store, const string &name, int32 *storage) {
+  store.RegisterInt32(name, storage);
+}
+
+template<> void PropertyStoreTypedTest<KeyValueStore>::RegisterProperty(
+    PropertyStore &store, const string &name, KeyValueStore *storage) {
+  // We use |RegisterDerivedKeyValueStore|, because there is no non-derived
+  // version. (And it's not clear that we'll need one, outside of this
+  // test.)
+  store.RegisterDerivedKeyValueStore(
+      name, KeyValueStoreAccessor(
+          new PropertyAccessor<KeyValueStore>(storage)));
+}
+
+template<> void PropertyStoreTypedTest<string>::RegisterProperty(
+    PropertyStore &store, const string &name, string *storage) {
+  store.RegisterString(name, storage);
+}
+
+template<> void PropertyStoreTypedTest<Stringmap>::RegisterProperty(
+    PropertyStore &store, const string &name, Stringmap *storage) {
+  store.RegisterStringmap(name, storage);
+}
+
+template<> void PropertyStoreTypedTest<Stringmaps>::RegisterProperty(
+    PropertyStore &store, const string &name, Stringmaps *storage) {
+  store.RegisterStringmaps(name, storage);
+}
+
+template<> void PropertyStoreTypedTest<Strings>::RegisterProperty(
+    PropertyStore &store, const string &name, Strings *storage) {
+  store.RegisterStrings(name, storage);
+}
+
+template<> void PropertyStoreTypedTest<uint8>::RegisterProperty(
+    PropertyStore &store, const string &name, uint8 *storage) {
+  store.RegisterUint8(name, storage);
+}
+
+template<> void PropertyStoreTypedTest<uint16>::RegisterProperty(
+    PropertyStore &store, const string &name, uint16 *storage) {
+  store.RegisterUint16(name, storage);
+}
+
+template<> void PropertyStoreTypedTest<uint32>::RegisterProperty(
+    PropertyStore &store, const string &name, uint32 *storage) {
+  store.RegisterUint32(name, storage);
+}
+
+TEST_F(PropertyStoreTest, ClearBoolProperty) {
+  // We exercise both possibilities for the default value here,
+  // to ensure that Clear actually resets the property based on
+  // the property's initial value (rather than the language's
+  // default value for the type).
+  static const bool kDefaults[] = {true, false};
+  for (size_t i = 0; i < arraysize(kDefaults); ++i) {
+    PropertyStore store;
+    Error error;
+
+    const bool default_value = kDefaults[i];
+    bool flag = default_value;
+    store.RegisterBool("some bool", &flag);
+
+    EXPECT_TRUE(store.ClearProperty("some bool", &error));
+    EXPECT_EQ(default_value, flag);
+  }
+}
+
+TEST_F(PropertyStoreTest, ClearPropertyNonexistent) {
+  PropertyStore store;
+  Error error;
+
+  EXPECT_FALSE(store.ClearProperty("", &error));
+  EXPECT_EQ(Error::kInvalidProperty, error.type());
+}
 
 TEST_F(PropertyStoreTest, SetStringmapsProperty) {
   PropertyStore store;

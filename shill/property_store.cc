@@ -96,6 +96,38 @@ bool PropertyStore::SetUint32Property(const std::string& name,
   return SetProperty(name, value, error, uint32_properties_, "a uint32");
 }
 
+bool PropertyStore::ClearProperty(const string &name, Error *error) {
+  VLOG(2) << "Clearing " << name << ".";
+
+  if (ContainsKey(bool_properties_, name)) {
+    bool_properties_[name]->Clear(error);
+  } else if (ContainsKey(int16_properties_, name)) {
+    int16_properties_[name]->Clear(error);
+  } else if (ContainsKey(int32_properties_, name)) {
+    int32_properties_[name]->Clear(error);
+  } else if (ContainsKey(key_value_store_properties_, name)) {
+    key_value_store_properties_[name]->Clear(error);
+  } else if (ContainsKey(string_properties_, name)) {
+    string_properties_[name]->Clear(error);
+  } else if (ContainsKey(stringmap_properties_, name)) {
+    stringmap_properties_[name]->Clear(error);
+  } else if (ContainsKey(stringmaps_properties_, name)) {
+    stringmaps_properties_[name]->Clear(error);
+  } else if (ContainsKey(strings_properties_, name)) {
+    strings_properties_[name]->Clear(error);
+  } else if (ContainsKey(uint8_properties_, name)) {
+    uint8_properties_[name]->Clear(error);
+  } else if (ContainsKey(uint16_properties_, name)) {
+    uint16_properties_[name]->Clear(error);
+  } else if (ContainsKey(uint32_properties_, name)) {
+    uint32_properties_[name]->Clear(error);
+  } else {
+    error->Populate(
+        Error::kInvalidProperty, "Property " + name + " does not exist.");
+  }
+  return error->IsSuccess();
+}
+
 ReadablePropertyConstIterator<bool> PropertyStore::GetBoolPropertiesIter()
     const {
   return ReadablePropertyConstIterator<bool>(bool_properties_);
@@ -154,173 +186,247 @@ ReadablePropertyConstIterator<uint32> PropertyStore::GetUint32PropertiesIter()
 }
 
 void PropertyStore::RegisterBool(const string &name, bool *prop) {
+  DCHECK(!Contains(name) || ContainsKey(bool_properties_, name))
+      << "(Already registered " << name << ")";
   bool_properties_[name] = BoolAccessor(new PropertyAccessor<bool>(prop));
 }
 
 void PropertyStore::RegisterConstBool(const string &name, const bool *prop) {
+  DCHECK(!Contains(name) || ContainsKey(bool_properties_, name))
+      << "(Already registered " << name << ")";
   bool_properties_[name] = BoolAccessor(new ConstPropertyAccessor<bool>(prop));
 }
 
 void PropertyStore::RegisterWriteOnlyBool(const string &name, bool *prop) {
+  DCHECK(!Contains(name) || ContainsKey(bool_properties_, name))
+      << "(Already registered " << name << ")";
   bool_properties_[name] = BoolAccessor(
       new WriteOnlyPropertyAccessor<bool>(prop));
 }
 
 void PropertyStore::RegisterInt16(const string &name, int16 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(int16_properties_, name))
+      << "(Already registered " << name << ")";
   int16_properties_[name] = Int16Accessor(new PropertyAccessor<int16>(prop));
 }
 
 void PropertyStore::RegisterConstInt16(const string &name, const int16 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(int16_properties_, name))
+      << "(Already registered " << name << ")";
   int16_properties_[name] =
       Int16Accessor(new ConstPropertyAccessor<int16>(prop));
 }
 
 void PropertyStore::RegisterWriteOnlyInt16(const string &name, int16 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(int16_properties_, name))
+      << "(Already registered " << name << ")";
   int16_properties_[name] =
       Int16Accessor(new WriteOnlyPropertyAccessor<int16>(prop));
 }
 void PropertyStore::RegisterInt32(const string &name, int32 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(int32_properties_, name))
+      << "(Already registered " << name << ")";
   int32_properties_[name] = Int32Accessor(new PropertyAccessor<int32>(prop));
 }
 
 void PropertyStore::RegisterConstInt32(const string &name, const int32 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(int32_properties_, name))
+      << "(Already registered " << name << ")";
   int32_properties_[name] =
       Int32Accessor(new ConstPropertyAccessor<int32>(prop));
 }
 
 void PropertyStore::RegisterWriteOnlyInt32(const string &name, int32 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(int32_properties_, name))
+      << "(Already registered " << name << ")";
   int32_properties_[name] =
       Int32Accessor(new WriteOnlyPropertyAccessor<int32>(prop));
 }
 
 void PropertyStore::RegisterString(const string &name, string *prop) {
+  DCHECK(!Contains(name) || ContainsKey(string_properties_, name))
+      << "(Already registered " << name << ")";
   string_properties_[name] = StringAccessor(new PropertyAccessor<string>(prop));
 }
 
 void PropertyStore::RegisterConstString(const string &name,
                                         const string *prop) {
+  DCHECK(!Contains(name) || ContainsKey(string_properties_, name))
+      << "(Already registered " << name << ")";
   string_properties_[name] =
       StringAccessor(new ConstPropertyAccessor<string>(prop));
 }
 
 void PropertyStore::RegisterWriteOnlyString(const string &name, string *prop) {
+  DCHECK(!Contains(name) || ContainsKey(string_properties_, name))
+      << "(Already registered " << name << ")";
   string_properties_[name] =
       StringAccessor(new WriteOnlyPropertyAccessor<string>(prop));
 }
 
 void PropertyStore::RegisterStringmap(const string &name, Stringmap *prop) {
+  DCHECK(!Contains(name) || ContainsKey(stringmap_properties_, name))
+      << "(Already registered " << name << ")";
   stringmap_properties_[name] =
       StringmapAccessor(new PropertyAccessor<Stringmap>(prop));
 }
 
 void PropertyStore::RegisterConstStringmap(const string &name,
                                            const Stringmap *prop) {
+  DCHECK(!Contains(name) || ContainsKey(stringmap_properties_, name))
+      << "(Already registered " << name << ")";
   stringmap_properties_[name] =
       StringmapAccessor(new ConstPropertyAccessor<Stringmap>(prop));
 }
 
 void PropertyStore::RegisterWriteOnlyStringmap(const string &name,
                                                Stringmap *prop) {
+  DCHECK(!Contains(name) || ContainsKey(stringmap_properties_, name))
+      << "(Already registered " << name << ")";
   stringmap_properties_[name] =
       StringmapAccessor(new WriteOnlyPropertyAccessor<Stringmap>(prop));
 }
 
 void PropertyStore::RegisterStringmaps(const string &name, Stringmaps *prop) {
+  DCHECK(!Contains(name) || ContainsKey(stringmaps_properties_, name))
+      << "(Already registered " << name << ")";
   stringmaps_properties_[name] =
       StringmapsAccessor(new PropertyAccessor<Stringmaps>(prop));
 }
 
 void PropertyStore::RegisterConstStringmaps(const string &name,
                                             const Stringmaps *prop) {
+  DCHECK(!Contains(name) || ContainsKey(stringmaps_properties_, name))
+      << "(Already registered " << name << ")";
   stringmaps_properties_[name] =
       StringmapsAccessor(new ConstPropertyAccessor<Stringmaps>(prop));
 }
 
 void PropertyStore::RegisterWriteOnlyStringmaps(const string &name,
                                                 Stringmaps *prop) {
+  DCHECK(!Contains(name) || ContainsKey(stringmaps_properties_, name))
+      << "(Already registered " << name << ")";
   stringmaps_properties_[name] =
       StringmapsAccessor(new WriteOnlyPropertyAccessor<Stringmaps>(prop));
 }
 
 void PropertyStore::RegisterStrings(const string &name, Strings *prop) {
+  DCHECK(!Contains(name) || ContainsKey(strings_properties_, name))
+      << "(Already registered " << name << ")";
   strings_properties_[name] =
       StringsAccessor(new PropertyAccessor<Strings>(prop));
 }
 
 void PropertyStore::RegisterConstStrings(const string &name,
                                          const Strings *prop) {
+  DCHECK(!Contains(name) || ContainsKey(strings_properties_, name))
+      << "(Already registered " << name << ")";
   strings_properties_[name] =
       StringsAccessor(new ConstPropertyAccessor<Strings>(prop));
 }
 
 void PropertyStore::RegisterWriteOnlyStrings(const string &name,
                                              Strings *prop) {
+  DCHECK(!Contains(name) || ContainsKey(strings_properties_, name))
+      << "(Already registered " << name << ")";
   strings_properties_[name] =
       StringsAccessor(new WriteOnlyPropertyAccessor<Strings>(prop));
 }
 
 void PropertyStore::RegisterUint8(const string &name, uint8 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(uint8_properties_, name))
+      << "(Already registered " << name << ")";
   uint8_properties_[name] = Uint8Accessor(new PropertyAccessor<uint8>(prop));
 }
 
 void PropertyStore::RegisterConstUint8(const string &name, const uint8 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(uint8_properties_, name))
+      << "(Already registered " << name << ")";
   uint8_properties_[name] =
       Uint8Accessor(new ConstPropertyAccessor<uint8>(prop));
 }
 
 void PropertyStore::RegisterWriteOnlyUint8(const string &name, uint8 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(uint8_properties_, name))
+      << "(Already registered " << name << ")";
   uint8_properties_[name] =
       Uint8Accessor(new WriteOnlyPropertyAccessor<uint8>(prop));
 }
 
 void PropertyStore::RegisterUint16(const std::string &name, uint16 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(uint16_properties_, name))
+      << "(Already registered " << name << ")";
   uint16_properties_[name] = Uint16Accessor(new PropertyAccessor<uint16>(prop));
+}
+
+void PropertyStore::RegisterUint32(const std::string &name, uint32 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(uint32_properties_, name))
+      << "(Already registered " << name << ")";
+  uint32_properties_[name] = Uint32Accessor(new PropertyAccessor<uint32>(prop));
 }
 
 void PropertyStore::RegisterConstUint16(const string &name,
                                         const uint16 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(uint16_properties_, name))
+      << "(Already registered " << name << ")";
   uint16_properties_[name] =
       Uint16Accessor(new ConstPropertyAccessor<uint16>(prop));
 }
 
 void PropertyStore::RegisterWriteOnlyUint16(const string &name, uint16 *prop) {
+  DCHECK(!Contains(name) || ContainsKey(uint16_properties_, name))
+      << "(Already registered " << name << ")";
   uint16_properties_[name] =
       Uint16Accessor(new WriteOnlyPropertyAccessor<uint16>(prop));
 }
 
 void PropertyStore::RegisterDerivedBool(const std::string &name,
                                         const BoolAccessor &accessor) {
+  DCHECK(!Contains(name) || ContainsKey(bool_properties_, name))
+      << "(Already registered " << name << ")";
   bool_properties_[name] = accessor;
 }
 
 void PropertyStore::RegisterDerivedInt32(const std::string &name,
                                          const Int32Accessor &accessor) {
+  DCHECK(!Contains(name) || ContainsKey(int32_properties_, name))
+      << "(Already registered " << name << ")";
   int32_properties_[name] = accessor;
 }
 
 void PropertyStore::RegisterDerivedKeyValueStore(
     const std::string &name,
     const KeyValueStoreAccessor &acc) {
+  DCHECK(!Contains(name) || ContainsKey(key_value_store_properties_, name))
+      << "(Already registered " << name << ")";
   key_value_store_properties_[name] = acc;
 }
 
 void PropertyStore::RegisterDerivedString(const std::string &name,
                                           const StringAccessor &accessor) {
+  DCHECK(!Contains(name) || ContainsKey(string_properties_, name))
+      << "(Already registered " << name << ")";
   string_properties_[name] = accessor;
 }
 
 void PropertyStore::RegisterDerivedStrings(const std::string &name,
                                            const StringsAccessor &accessor) {
+  DCHECK(!Contains(name) || ContainsKey(strings_properties_, name))
+      << "(Already registered " << name << ")";
   strings_properties_[name] = accessor;
 }
 
 void PropertyStore::RegisterDerivedStringmaps(const std::string &name,
                                               const StringmapsAccessor &acc) {
+  DCHECK(!Contains(name) || ContainsKey(stringmaps_properties_, name))
+      << "(Already registered " << name << ")";
   stringmaps_properties_[name] = acc;
 }
 
 void PropertyStore::RegisterDerivedUint16(const std::string &name,
                                           const Uint16Accessor &acc) {
+  DCHECK(!Contains(name) || ContainsKey(uint16_properties_, name))
+      << "(Already registered " << name << ")";
   uint16_properties_[name] = acc;
 }
 

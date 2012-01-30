@@ -68,6 +68,20 @@ class PropertyStore {
                                  uint32 value,
                                  Error *error);
 
+  // Clearing a property resets it to its "factory" value. This value
+  // is generally the value that it (the property) had when it was
+  // registered with PropertyStore.
+  //
+  // The exception to this rule is write-only derived properties. For
+  // such properties, the property owner explicitly provides a
+  // "factory" value at registration time. This is necessary because
+  // PropertyStore can't read the current value at registration time.
+  //
+  // |name| is the key used to access the property. If the property
+  // cannot be cleared, |error| is set, and the method returns false.
+  // Otherwrise, |error| is unchanged, and the method returns true.
+  virtual bool ClearProperty(const std::string &name, Error *error);
+
   // We do not provide methods for reading individual properties,
   // because we don't need them to implement the flimflam API. (The flimflam
   // API only allows fetching all properties at once -- not individual
@@ -88,6 +102,19 @@ class PropertyStore {
   ReadablePropertyConstIterator<uint16> GetUint16PropertiesIter() const;
   ReadablePropertyConstIterator<uint32> GetUint32PropertiesIter() const;
 
+  // Methods for registering a property.
+  //
+  // It is permitted to re-register a property (in which case the old
+  // binding is forgotten). However, the newly bound object must be of
+  // the same type.
+  //
+  // Note that types do not encode read-write permission.  Hence, it
+  // is possible to change permissions by rebinding a property to the
+  // same object.
+  //
+  // (Corollary of the rebinding-to-same-type restriction: a
+  // PropertyStore cannot hold two properties of the same name, but
+  // differing types.)
   void RegisterBool(const std::string &name, bool *prop);
   void RegisterConstBool(const std::string &name, const bool *prop);
   void RegisterWriteOnlyBool(const std::string &name, bool *prop);
@@ -97,6 +124,7 @@ class PropertyStore {
   void RegisterInt32(const std::string &name, int32 *prop);
   void RegisterConstInt32(const std::string &name, const int32 *prop);
   void RegisterWriteOnlyInt32(const std::string &name, int32 *prop);
+  void RegisterUint32(const std::string &name, uint32 *prop);
   void RegisterString(const std::string &name, std::string *prop);
   void RegisterConstString(const std::string &name, const std::string *prop);
   void RegisterWriteOnlyString(const std::string &name, std::string *prop);
