@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,8 +8,12 @@
 # simple wrapper that performs the minimal setup necessary to run
 # chromeos-chroot-postinst inside an install root chroot.
 
-MOUNTS=
 INSTALL_ROOT=$(dirname "$0")
+
+# ${INSTALL_ROOT}/usr/bin/cros_installer postinst  "$1" "${INSTALL_ROOT}"
+# exit $?
+
+MOUNTS=
 
 get_src_version() {
   grep ^CHROMEOS_RELEASE_VERSION= /etc/lsb-release | cut -d = -f 2-
