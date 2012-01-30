@@ -342,7 +342,6 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ServiceTest, Constructor);
-  FRIEND_TEST(ServiceTest, Dispatch);
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, Save);
@@ -350,6 +349,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SaveStringCrypted);
   FRIEND_TEST(ServiceTest, SaveStringDontSave);
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
+  FRIEND_TEST(ServiceTest, SetProperty);
   FRIEND_TEST(ServiceTest, Unload);
 
   bool GetAutoConnect(Error *error);

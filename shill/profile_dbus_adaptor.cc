@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -64,10 +64,10 @@ map<string, ::DBus::Variant> ProfileDBusAdaptor::GetProperties(
 void ProfileDBusAdaptor::SetProperty(const string &name,
                                      const ::DBus::Variant &value,
                                      ::DBus::Error &error) {
-  if (DBusAdaptor::DispatchOnType(profile_->mutable_store(),
-                                  name,
-                                  value,
-                                  &error)) {
+  if (DBusAdaptor::SetProperty(profile_->mutable_store(),
+                               name,
+                               value,
+                               &error)) {
     PropertyChanged(name, value);
   }
 }

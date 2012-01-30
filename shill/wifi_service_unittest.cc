@@ -771,7 +771,7 @@ TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {
   EXPECT_EQ("", wifi_service->passphrase_);
 
   ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+  EXPECT_TRUE(DBusAdaptor::SetProperty(
       wifi_service->mutable_store(),
       flimflam::kPassphraseProperty,
       DBusAdaptor::StringToVariant("0:abcde"),

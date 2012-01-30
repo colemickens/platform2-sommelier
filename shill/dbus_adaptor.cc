@@ -40,10 +40,10 @@ DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)
 DBusAdaptor::~DBusAdaptor() {}
 
 // static
-bool DBusAdaptor::DispatchOnType(PropertyStore *store,
-                                 const string &name,
-                                 const ::DBus::Variant &value,
-                                 ::DBus::Error *error) {
+bool DBusAdaptor::SetProperty(PropertyStore *store,
+                              const string &name,
+                              const ::DBus::Variant &value,
+                              ::DBus::Error *error) {
   Error e;
 
   if (DBusAdaptor::IsBool(value.signature()))

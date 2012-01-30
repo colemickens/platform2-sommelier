@@ -163,7 +163,7 @@ TEST_F(DBusAdaptorTest, Signatures) {
   EXPECT_FALSE(DBusAdaptor::IsStrings(string_v_.signature()));
 }
 
-TEST_F(DBusAdaptorTest, Dispatch) {
+TEST_F(DBusAdaptorTest, SetProperty) {
   MockPropertyStore store;
   ::DBus::Error e1, e2, e3, e4, e5, e6, e7, e8, e9, e10;
 
@@ -187,16 +187,16 @@ TEST_F(DBusAdaptorTest, Dispatch) {
   EXPECT_CALL(store, SetStringProperty("", StrEq(string_path), _))
       .WillOnce(Return(true));
 
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", bool_v_, &e1));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", path_v, &e2));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", string_v_, &e3));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", strings_v_, &e4));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", int16_v_, &e5));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", int32_v_, &e6));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", uint16_v_, &e7));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", uint32_v_, &e8));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", stringmap_v_, &e9));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", byte_v_, &e10));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", bool_v_, &e1));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", path_v, &e2));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", string_v_, &e3));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", strings_v_, &e4));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", int16_v_, &e5));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", int32_v_, &e6));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint16_v_, &e7));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint32_v_, &e8));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", stringmap_v_, &e9));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", byte_v_, &e10));
 }
 
 void SetError(const string &/*name*/, Error *error) {

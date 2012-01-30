@@ -86,7 +86,7 @@ TEST_P(PropertyStoreTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   PropertyStore store;
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&store, "", GetParam(), &error));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", GetParam(), &error));
   EXPECT_EQ(invalid_prop(), error.name());
 }
 
@@ -214,7 +214,7 @@ TEST_F(PropertyStoreTest, ClearPropertyNonexistent) {
 TEST_F(PropertyStoreTest, SetStringmapsProperty) {
   PropertyStore store;
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(
+  EXPECT_FALSE(DBusAdaptor::SetProperty(
       &store, "", PropertyStoreTest::kStringmapsV, &error));
   EXPECT_EQ(internal_error(), error.name());
 }

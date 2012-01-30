@@ -772,42 +772,42 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
   EXPECT_EQ(profile1, s_configure_succeed->profile());
 }
 
-TEST_F(ManagerTest, Dispatch) {
+TEST_F(ManagerTest, SetProperty) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager()->mutable_store(),
-                                            flimflam::kOfflineModeProperty,
-                                            PropertyStoreTest::kBoolV,
-                                            &error));
+    EXPECT_TRUE(DBusAdaptor::SetProperty(manager()->mutable_store(),
+                                         flimflam::kOfflineModeProperty,
+                                         PropertyStoreTest::kBoolV,
+                                         &error));
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager()->mutable_store(),
-                                            flimflam::kCountryProperty,
-                                            PropertyStoreTest::kStringV,
-                                            &error));
+    EXPECT_TRUE(DBusAdaptor::SetProperty(manager()->mutable_store(),
+                                         flimflam::kCountryProperty,
+                                         PropertyStoreTest::kStringV,
+                                         &error));
   }
   // Attempt to write with value of wrong type should return InvalidArgs.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager()->mutable_store(),
-                                             flimflam::kCountryProperty,
-                                             PropertyStoreTest::kBoolV,
-                                             &error));
+    EXPECT_FALSE(DBusAdaptor::SetProperty(manager()->mutable_store(),
+                                          flimflam::kCountryProperty,
+                                          PropertyStoreTest::kBoolV,
+                                          &error));
     EXPECT_EQ(invalid_args(), error.name());
   }
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager()->mutable_store(),
-                                             flimflam::kOfflineModeProperty,
-                                             PropertyStoreTest::kStringV,
-                                             &error));
+    EXPECT_FALSE(DBusAdaptor::SetProperty(manager()->mutable_store(),
+                                          flimflam::kOfflineModeProperty,
+                                          PropertyStoreTest::kStringV,
+                                          &error));
     EXPECT_EQ(invalid_args(), error.name());
   }
   // Attempt to write R/O property should return InvalidArgs.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(
+    EXPECT_FALSE(DBusAdaptor::SetProperty(
         manager()->mutable_store(),
         flimflam::kEnabledTechnologiesProperty,
         PropertyStoreTest::kStringsV,

@@ -77,7 +77,7 @@ map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(
 void DeviceDBusAdaptor::SetProperty(const string &name,
                                     const ::DBus::Variant &value,
                                     ::DBus::Error &error) {
-  DBusAdaptor::DispatchOnType(device_->mutable_store(), name, value, &error);
+  DBusAdaptor::SetProperty(device_->mutable_store(), name, value, &error);
 }
 
 void DeviceDBusAdaptor::ClearProperty(const std::string &name,

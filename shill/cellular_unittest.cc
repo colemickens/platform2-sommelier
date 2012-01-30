@@ -69,10 +69,10 @@ TEST_F(CellularPropertyTest, Contains) {
   EXPECT_FALSE(device_->store().Contains(""));
 }
 
-TEST_F(CellularPropertyTest, Dispatch) {
+TEST_F(CellularPropertyTest, SetProperty) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+    EXPECT_TRUE(DBusAdaptor::SetProperty(
         device_->mutable_store(),
         flimflam::kCellularAllowRoamingProperty,
         PropertyStoreTest::kBoolV,
@@ -81,18 +81,18 @@ TEST_F(CellularPropertyTest, Dispatch) {
   // Ensure that attempting to write a R/O property returns InvalidArgs error.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                             flimflam::kAddressProperty,
-                                             PropertyStoreTest::kStringV,
-                                             &error));
+    EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
+                                          flimflam::kAddressProperty,
+                                          PropertyStoreTest::kStringV,
+                                          &error));
     EXPECT_EQ(invalid_args(), error.name());
   }
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                             flimflam::kCarrierProperty,
-                                             PropertyStoreTest::kStringV,
-                                             &error));
+    EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
+                                          flimflam::kCarrierProperty,
+                                          PropertyStoreTest::kStringV,
+                                          &error));
     EXPECT_EQ(invalid_args(), error.name());
   }
 }

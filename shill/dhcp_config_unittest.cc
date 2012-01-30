@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -374,17 +374,17 @@ TEST_F(DHCPConfigTest, Stop) {
   EXPECT_CALL(*glib(), SpawnClosePID(kPID)).Times(1);  // Invoked by destructor.
 }
 
-TEST_F(DHCPConfigTest, Dispatch) {
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(config_->mutable_store(),
-                                          flimflam::kMtuProperty,
-                                          PropertyStoreTest::kInt32V,
-                                          NULL));
+TEST_F(DHCPConfigTest, SetProperty) {
+  EXPECT_TRUE(DBusAdaptor::SetProperty(config_->mutable_store(),
+                                       flimflam::kMtuProperty,
+                                       PropertyStoreTest::kInt32V,
+                                       NULL));
   ::DBus::Error error;
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(config_->mutable_store(),
-                                           flimflam::kAddressProperty,
-                                           PropertyStoreTest::kStringV,
-                                           &error));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(config_->mutable_store(),
+                                        flimflam::kAddressProperty,
+                                        PropertyStoreTest::kStringV,
+                                        &error));
   EXPECT_EQ(invalid_args(), error.name());
 }
 

@@ -105,18 +105,18 @@ TEST_F(DeviceTest, GetProperties) {
   }
 }
 
-TEST_F(DeviceTest, Dispatch) {
+TEST_F(DeviceTest, SetProperty) {
   ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                          flimflam::kPoweredProperty,
-                                          PropertyStoreTest::kBoolV,
-                                          &error));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(device_->mutable_store(),
+                                       flimflam::kPoweredProperty,
+                                       PropertyStoreTest::kBoolV,
+                                       &error));
 
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                           flimflam::kAddressProperty,
-                                           PropertyStoreTest::kStringV,
-                                           &error));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
+                                        flimflam::kAddressProperty,
+                                        PropertyStoreTest::kStringV,
+                                        &error));
   EXPECT_EQ(invalid_args(), error.name());
 }
 
@@ -124,10 +124,10 @@ TEST_F(DeviceTest, ClearProperty) {
   ::DBus::Error error;
   EXPECT_TRUE(device_->powered());
 
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                          flimflam::kPoweredProperty,
-                                          PropertyStoreTest::kBoolV,
-                                          &error));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(device_->mutable_store(),
+                                       flimflam::kPoweredProperty,
+                                       PropertyStoreTest::kBoolV,
+                                       &error));
   EXPECT_FALSE(device_->powered());
 
   EXPECT_TRUE(DBusAdaptor::ClearProperty(device_->mutable_store(),
@@ -138,18 +138,18 @@ TEST_F(DeviceTest, ClearProperty) {
 
 TEST_F(DeviceTest, ClearReadOnlyProperty) {
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                           flimflam::kAddressProperty,
-                                           PropertyStoreTest::kStringV,
-                                           &error));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
+                                        flimflam::kAddressProperty,
+                                        PropertyStoreTest::kStringV,
+                                        &error));
 }
 
 TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                           flimflam::kIPConfigsProperty,
-                                           PropertyStoreTest::kStringsV,
-                                           &error));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
+                                        flimflam::kIPConfigsProperty,
+                                        PropertyStoreTest::kStringsV,
+                                        &error));
 }
 
 TEST_F(DeviceTest, TechnologyIs) {

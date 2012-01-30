@@ -115,52 +115,52 @@ TEST_F(ServiceTest, GetProperties) {
   }
 }
 
-TEST_F(ServiceTest, Dispatch) {
+TEST_F(ServiceTest, SetProperty) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_->mutable_store(),
-                                            flimflam::kSaveCredentialsProperty,
-                                            PropertyStoreTest::kBoolV,
-                                            &error));
+    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                         flimflam::kSaveCredentialsProperty,
+                                         PropertyStoreTest::kBoolV,
+                                         &error));
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_->mutable_store(),
-                                            flimflam::kPriorityProperty,
-                                            PropertyStoreTest::kInt32V,
-                                            &error));
+    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                         flimflam::kPriorityProperty,
+                                         PropertyStoreTest::kInt32V,
+                                         &error));
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_->mutable_store(),
-                                            flimflam::kEAPEAPProperty,
-                                            PropertyStoreTest::kStringV,
-                                            &error));
+    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                         flimflam::kEAPEAPProperty,
+                                         PropertyStoreTest::kStringV,
+                                         &error));
   }
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_->mutable_store(),
-                                             flimflam::kFavoriteProperty,
-                                             PropertyStoreTest::kBoolV,
-                                             &error));
+    EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                          flimflam::kFavoriteProperty,
+                                          PropertyStoreTest::kBoolV,
+                                          &error));
     EXPECT_EQ(invalid_args(), error.name());
   }
   {
     ::DBus::Error error;
     service_->set_favorite(true);
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_->mutable_store(),
-                                            flimflam::kAutoConnectProperty,
-                                            PropertyStoreTest::kBoolV,
-                                            &error));
+    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                         flimflam::kAutoConnectProperty,
+                                         PropertyStoreTest::kBoolV,
+                                         &error));
   }
   {
     ::DBus::Error error;
     service_->set_favorite(false);
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_->mutable_store(),
-                                             flimflam::kAutoConnectProperty,
-                                             PropertyStoreTest::kBoolV,
-                                             &error));
+    EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                          flimflam::kAutoConnectProperty,
+                                          PropertyStoreTest::kBoolV,
+                                          &error));
     EXPECT_EQ(invalid_args(), error.name());
   }
 }

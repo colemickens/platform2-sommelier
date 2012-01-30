@@ -86,10 +86,10 @@ TEST_F(WiFiPropertyTest, Contains) {
   EXPECT_FALSE(device_->store().Contains(""));
 }
 
-TEST_F(WiFiPropertyTest, Dispatch) {
+TEST_F(WiFiPropertyTest, SetProperty) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+    EXPECT_TRUE(DBusAdaptor::SetProperty(
         device_->mutable_store(),
         flimflam::kBgscanSignalThresholdProperty,
         PropertyStoreTest::kInt32V,
@@ -97,26 +97,24 @@ TEST_F(WiFiPropertyTest, Dispatch) {
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                            flimflam::kScanIntervalProperty,
-                                            PropertyStoreTest::kUint16V,
-                                            &error));
+    EXPECT_TRUE(DBusAdaptor::SetProperty(device_->mutable_store(),
+                                         flimflam::kScanIntervalProperty,
+                                         PropertyStoreTest::kUint16V,
+                                         &error));
   }
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                             flimflam::kScanningProperty,
-                                             PropertyStoreTest::kBoolV,
-                                             &error));
+    EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
+                                          flimflam::kScanningProperty,
+                                          PropertyStoreTest::kBoolV,
+                                          &error));
     EXPECT_EQ(invalid_args(), error.name());
   }
-}
 
-TEST_F(WiFiPropertyTest, BgscanMethod) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+    EXPECT_TRUE(DBusAdaptor::SetProperty(
         device_->mutable_store(),
         flimflam::kBgscanMethodProperty,
         DBusAdaptor::StringToVariant(
@@ -126,7 +124,7 @@ TEST_F(WiFiPropertyTest, BgscanMethod) {
 
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(
+    EXPECT_FALSE(DBusAdaptor::SetProperty(
         device_->mutable_store(),
         flimflam::kBgscanMethodProperty,
         DBusAdaptor::StringToVariant("not a real scan method"),
@@ -140,7 +138,7 @@ TEST_F(WiFiPropertyTest, ClearDerivedProperty) {
   EXPECT_EQ(WiFi::kDefaultBgscanMethod, device_->bgscan_method_);
 
   ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+  EXPECT_TRUE(DBusAdaptor::SetProperty(
       device_->mutable_store(),
       flimflam::kBgscanMethodProperty,
       DBusAdaptor::StringToVariant(

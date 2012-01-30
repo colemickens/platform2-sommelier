@@ -31,10 +31,10 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   DBusAdaptor(DBus::Connection* conn, const std::string &object_path);
   virtual ~DBusAdaptor();
 
-  static bool DispatchOnType(PropertyStore *store,
-                             const std::string &name,
-                             const ::DBus::Variant &value,
-                             ::DBus::Error *error);
+  static bool SetProperty(PropertyStore *store,
+                          const std::string &name,
+                          const ::DBus::Variant &value,
+                          ::DBus::Error *error);
   static bool GetProperties(const PropertyStore &store,
                             std::map<std::string, ::DBus::Variant> *out,
                             ::DBus::Error *error);
