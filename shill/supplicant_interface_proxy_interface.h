@@ -27,6 +27,7 @@ class SupplicantInterfaceProxyInterface {
   virtual void Scan(
       const std::map<std::string, ::DBus::Variant> &args) = 0;
   virtual void SelectNetwork(const ::DBus::Path &network) = 0;
+  virtual void SetFastReauth(bool enabled) = 0;
 };
 
 }  // namespace shill

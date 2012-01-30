@@ -56,6 +56,10 @@ void SupplicantInterfaceProxy::SelectNetwork(const ::DBus::Path &network) {
   return proxy_.SelectNetwork(network);
 }
 
+void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
+  return proxy_.FastReauth(enabled);
+}
+
 // definitions for private class SupplicantInterfaceProxy::Proxy
 
 SupplicantInterfaceProxy::Proxy::Proxy(

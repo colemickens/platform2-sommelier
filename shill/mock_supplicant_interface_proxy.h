@@ -30,6 +30,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD1(Scan,
                void(const std::map<std::string, ::DBus::Variant> &args));
   MOCK_METHOD1(SelectNetwork, void(const ::DBus::Path &network));
+  MOCK_METHOD1(SetFastReauth, void(bool enabled));
 
  private:
   // wifi_ is not used explicitly but its presence here tests that WiFi::Stop

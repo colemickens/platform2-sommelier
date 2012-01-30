@@ -47,6 +47,7 @@
     <property name="Blobs" type="as" access="read"/>
     <property name="BSSs" type="ao" access="read"/>
     <property name="Networks" type="ao" access="read"/>
+    <property name="FastReauth" type="b" access="readwrite"/>
     <signal name="ScanDone">
       <arg name="success" type="b"/>
     </signal>

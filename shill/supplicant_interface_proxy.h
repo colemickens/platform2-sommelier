@@ -36,6 +36,7 @@ class SupplicantInterfaceProxy
   virtual void Scan(
       const std::map<std::string, ::DBus::Variant> &args);
   virtual void SelectNetwork(const ::DBus::Path &network);
+  virtual void SetFastReauth(bool enabled);
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1::Interface_proxy,
