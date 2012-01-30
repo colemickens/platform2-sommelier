@@ -156,9 +156,6 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                                    GError **error);
   virtual gboolean AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
                                                         GError **error);
-  virtual gboolean AsyncSetOwnerUser(gchar *user,
-                                     gint *OUT_async_id,
-                                     GError **error);
   virtual gboolean AsyncUpdateCurrentUserActivityTimestamp(gint time_shift_sec,
                                                            gint *OUT_async_id,
                                                            GError **error);

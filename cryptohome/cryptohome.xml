@@ -90,10 +90,6 @@
     <method name="AsyncDoAutomaticFreeDiskSpaceControl">
       <arg type="i" name="async_id" direction="out" />
     </method>
-    <method name="AsyncSetOwnerUser">
-      <arg type="s" name="username" direction="in" />
-      <arg type="i" name="async_id" direction="out" />
-    </method>
     <method name="AsyncUpdateCurrentUserActivityTimestamp">
       <arg type="i" name="time_shift_sec" direction="in" />
       <arg type="i" name="async_id" direction="out" />

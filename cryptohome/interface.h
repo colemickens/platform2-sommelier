@@ -113,11 +113,6 @@ gboolean cryptohome_async_do_automatic_free_disk_space_control(
     Cryptohome *self,
     gint *OUT_async_id,
     GError **error);
-gboolean cryptohome_async_set_owner_user(
-    Cryptohome *self,
-    gchar *userid,
-    gint *OUT_async_id,
-    GError **error);
 gboolean cryptohome_async_update_current_user_activity_timestamp(
     Cryptohome *self,
     gint time_shift_sec,
