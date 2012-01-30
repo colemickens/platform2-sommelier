@@ -281,6 +281,7 @@ void DiskManager::RegisterDefaultFilesystems() {
   // TODO(benchan): Perhaps these settings can be read from a config file.
   Filesystem vfat_fs("vfat");
   vfat_fs.set_accepts_user_and_group_id(true);
+  vfat_fs.AddExtraMountOption("flush");
   vfat_fs.AddExtraMountOption("shortname=mixed");
   vfat_fs.AddExtraMountOption("utf8");
   RegisterFilesystem(vfat_fs);
