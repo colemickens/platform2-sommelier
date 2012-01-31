@@ -46,7 +46,7 @@ ps,/bin/ps ux
 softwareupdate.log,/usr/share/userfeedback/scripts/get_log /var/log/softwareupdate.log
 syslog,/usr/share/userfeedback/scripts/getmsgs --last '2 hours' /var/log/messages
 touchpad,/opt/google/touchpad/tpcontrol status && cat /etc/gestures_version.txt
-touchpad_activity,tar cf - $(ls -1t /home/chronos/user/log/touchpad_activity_* | head -n 2 ) | uuencode -m touchpad_activity_log.tar
+touchpad_activity,/opt/google/touchpad/generate_userfeedback
 ui_log,/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST
 uname,/bin/uname -a
 update_engine.log,cat $(ls -1tr /var/log/update_engine | tail -5 | sed s.^./var/log/update_engine/.) | /usr/share/userfeedback/scripts/get_log /dev/stdin 2000
