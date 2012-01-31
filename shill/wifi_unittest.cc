@@ -269,6 +269,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
                  const string &bssid,
                  int16_t signal_strength,
                  const char *mode);
+  void ClearCachedCredentials() {
+    wifi_->ClearCachedCredentials();
+  }
   void ReportIPConfigComplete() {
     wifi_->IPConfigUpdatedCallback(dhcp_config_, true);
   }
@@ -1380,6 +1383,39 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
 
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+}
+
+TEST_F(WiFiMainTest, ClearCachedCredentials) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+
+  // Ensure call to the proxy is deferred.
+  EXPECT_CALL(supplicant_interface_proxy, ClearCachedCredentials())
+      .Times(0);
+  ClearCachedCredentials();
+
+  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy);
+
+  EXPECT_CALL(supplicant_interface_proxy, ClearCachedCredentials())
+      .Times(1);
+  dispatcher_.DispatchPendingEvents();
+
+  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy);
+
+  EXPECT_CALL(supplicant_interface_proxy, ClearCachedCredentials())
+      .Times(0);
+  ClearCachedCredentials();
+  ClearCachedCredentials();
+
+  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy);
+
+  // Ensure multiple calls to ClearCachedCredentials() results in only
+  // one call to the proxy.
+  EXPECT_CALL(supplicant_interface_proxy, ClearCachedCredentials())
+      .Times(1);
+  dispatcher_.DispatchPendingEvents();
 }
 
 }  // namespace shill

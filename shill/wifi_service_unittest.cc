@@ -540,6 +540,38 @@ TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
   EXPECT_TRUE(service->need_passphrase_);
 }
 
+TEST_F(WiFiServiceTest, UnloadAndClearCacheWep) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              metrics(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityWep,
+                                              false);
+  // A WEP network does not incur cached credentials.
+  EXPECT_CALL(*wifi(), ClearCachedCredentials()).Times(0);
+  service->Unload();
+}
+
+TEST_F(WiFiServiceTest, UnloadAndClearCache8021x) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              metrics(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurity8021x,
+                                              false);
+  // An 802.1x network should clear its cached credentials.
+  EXPECT_CALL(*wifi(), ClearCachedCredentials()).Times(1);
+  service->Unload();
+}
+
 TEST_F(WiFiServiceTest, ParseStorageIdentifierNone) {
   vector<uint8_t> ssid(5);
   ssid.push_back(0xff);

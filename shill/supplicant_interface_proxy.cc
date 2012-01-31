@@ -31,6 +31,10 @@ SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
   return proxy_.AddNetwork(args);
 }
 
+void SupplicantInterfaceProxy::ClearCachedCredentials() {
+  return proxy_.ClearCachedCredentials();
+}
+
 void SupplicantInterfaceProxy::Disconnect() {
   return proxy_.Disconnect();
 }

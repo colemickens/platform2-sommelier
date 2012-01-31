@@ -90,6 +90,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       task_factory_(this),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
+      clear_cached_credentials_pending_(false),
       bgscan_method_(kDefaultBgscanMethod),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
@@ -373,6 +374,19 @@ void WiFi::DisconnectFrom(WiFiService *service) {
 
 bool WiFi::IsIdle() const {
   return !current_service_ && !pending_service_;
+}
+
+void WiFi::ClearCachedCredentials() {
+  LOG(INFO) << __func__;
+
+  // Needs to send a D-Bus message, but may be called from D-Bus
+  // caller context (via Manager::PopProfile). So defer work
+  // to event loop.
+  if (!clear_cached_credentials_pending_) {
+    clear_cached_credentials_pending_ = true;
+    dispatcher()->PostTask(
+        task_factory_.NewRunnableMethod(&WiFi::ClearCachedCredentialsTask));
+  }
 }
 
 string WiFi::CreateBgscanConfigString() {
@@ -743,6 +757,11 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
   }
 
   return created_hidden_service;
+}
+
+void WiFi::ClearCachedCredentialsTask() {
+  supplicant_interface_proxy_->ClearCachedCredentials();
+  clear_cached_credentials_pending_ = false;
 }
 
 void WiFi::BSSAddedTask(

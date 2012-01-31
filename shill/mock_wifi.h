@@ -38,6 +38,7 @@ class MockWiFi : public WiFi {
   MOCK_METHOD1(Scan, void(Error *error));
   MOCK_METHOD2(GetService,
                WiFiServiceRefPtr(const KeyValueStore &args, Error *error));
+  MOCK_METHOD0(ClearCachedCredentials, void());
   MOCK_METHOD2(ConnectTo,
                void(WiFiService *service,
                     std::map<std::string, ::DBus::Variant> service_params));

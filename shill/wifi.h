@@ -59,6 +59,7 @@ class WiFi : public Device {
       std::map<std::string, ::DBus::Variant> service_params);
   virtual void DisconnectFrom(WiFiService *service);
   virtual bool IsIdle() const;
+  virtual void ClearCachedCredentials();
 
   // Called by Manager.
   virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
@@ -115,6 +116,7 @@ class WiFi : public Device {
   void BSSAddedTask(const ::DBus::Path &BSS,
                     const std::map<std::string, ::DBus::Variant> &properties);
   void BSSRemovedTask(const ::DBus::Path &BSS);
+  void ClearCachedCredentialsTask();
   void PropertiesChangedTask(
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDoneTask();
@@ -160,6 +162,8 @@ class WiFi : public Device {
   WiFiServiceRefPtr pending_service_;
   std::string supplicant_state_;
   std::string supplicant_bss_;
+  // Signifies that ClearCachedCredentialsTask() is pending.
+  bool clear_cached_credentials_pending_;
 
   // Properties
   std::string bgscan_method_;
