@@ -73,14 +73,14 @@ TEST(PropertyAccessorTest, SignedIntCorrectness) {
   {
     Error error;
     int32 expected_int32 = 127;
-    WriteOnlyPropertyAccessor<int32> accessor(&expected_int32);
+    WriteOnlyPropertyAccessor<int32> accessor(&int_store);
     accessor.Set(expected_int32, &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_int32, *accessor.property_);
     EXPECT_EQ(int32(), accessor.Get(&error));
     ASSERT_FALSE(error.IsSuccess());
 
-    expected_int32 = std::numeric_limits<int32>::max();
+    int_store = std::numeric_limits<int32>::max();
     EXPECT_EQ(std::numeric_limits<int32>::max(), *accessor.property_);
   }
   {
@@ -145,14 +145,14 @@ TEST(PropertyAccessorTest, UnsignedIntCorrectness) {
   {
     Error error;
     uint32 expected_uint32 = 127;
-    WriteOnlyPropertyAccessor<uint32> accessor(&expected_uint32);
+    WriteOnlyPropertyAccessor<uint32> accessor(&int_store);
     accessor.Set(expected_uint32, &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_uint32, *accessor.property_);
     EXPECT_EQ(uint32(), accessor.Get(&error));
     ASSERT_FALSE(error.IsSuccess());
 
-    expected_uint32 = std::numeric_limits<uint32>::max();
+    int_store = std::numeric_limits<uint32>::max();
     EXPECT_EQ(std::numeric_limits<uint32>::max(), *accessor.property_);
   }
   {
