@@ -84,7 +84,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
 
   // TODO(quiche): determine if it is okay to set EAP.KeyManagement for
   // a service that is not 802.1x.
-  if (security_ == flimflam::kSecurity8021x) {
+  if (Is8021x()) {
     // Passphrases are not mandatory for 802.1X.
     need_passphrase_ = false;
   } else if (security_ == flimflam::kSecurityPsk) {
@@ -341,8 +341,8 @@ void WiFiService::ConnectTask() {
   params[wpa_supplicant::kNetworkPropertyMode].writer().
       append_uint32(WiFiEndpoint::ModeStringToUint(mode_));
 
-  if (security_ == flimflam::kSecurity8021x) {
-    // If EAP key management is not set, set to a default.
+  if (Is8021x()) {
+    // Is EAP key management is not set, set to a default.
     if (GetEAPKeyManagement().empty())
       SetEAPKeyManagement("WPA-EAP");
     Populate8021xProperties(&params);
@@ -406,14 +406,14 @@ void WiFiService::UpdateConnectable() {
     DCHECK(passphrase_.empty());
     need_passphrase_ = false;
     is_connectable = true;
+  } else if (Is8021x()) {
+    is_connectable = Is8021xConnectable();
   } else if (security_ == flimflam::kSecurityWep ||
       security_ == flimflam::kSecurityWpa ||
       security_ == flimflam::kSecurityPsk ||
       security_ == flimflam::kSecurityRsn) {
     need_passphrase_ = passphrase_.empty();
     is_connectable = !need_passphrase_;
-  } else if (security_ == flimflam::kSecurity8021x) {
-    is_connectable = Is8021xConnectable();
   }
   set_connectable(is_connectable);
 }
@@ -617,6 +617,17 @@ string WiFiService::GetStorageIdentifierForSecurity(
 void WiFiService::set_eap(const EapCredentials &eap) {
   Service::set_eap(eap);
   UpdateConnectable();
+}
+
+bool WiFiService::Is8021x() const {
+  if (security_ == flimflam::kSecurity8021x)
+    return true;
+
+  // Dynamic WEP + 802.1x.
+  if (security_ == flimflam::kSecurityWep &&
+      GetEAPKeyManagement() == "IEEE8021X")
+    return true;
+  return false;
 }
 
 void WiFiService::Populate8021xProperties(

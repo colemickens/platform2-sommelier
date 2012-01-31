@@ -403,6 +403,35 @@ TEST_F(WiFiServiceTest, ConnectTaskWEP) {
   wifi_service->ConnectTask();
 }
 
+
+MATCHER(DynamicWEPArgs, "") {
+  return ContainsKey(arg, wpa_supplicant::kNetworkPropertyEapIdentity) &&
+      ContainsKey(arg, wpa_supplicant::kNetworkPropertyCaPath) &&
+      !ContainsKey(arg, wpa_supplicant::kPropertySecurityProtocol);
+}
+
+// Dynamic WEP + 802.1x.
+TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
+  vector<uint8_t> ssid(5);
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityWep,
+                                                   false);
+
+  Service::EapCredentials eap;
+  eap.key_management = "IEEE8021X";
+  eap.identity = "something";
+  wifi_service->set_eap(eap);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), DynamicWEPArgs()));
+  wifi_service->ConnectTask();
+}
+
 TEST_F(WiFiServiceTest, LoadHidden) {
   vector<uint8_t> ssid(5);
   ssid.push_back(0xff);
@@ -580,6 +609,9 @@ TEST_F(WiFiServiceTest, Connectable) {
   EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
   eap.password = "some password";
   EXPECT_TRUE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
+  // Dynamic WEP + 802.1X should be connectable under the same conditions.
+  eap.key_management = "IEEE8021X";
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWep, NULL, &eap));
 }
 
 TEST_F(WiFiServiceTest, IsAutoConnectable) {

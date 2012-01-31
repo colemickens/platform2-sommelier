@@ -87,10 +87,11 @@ class WiFiService : public Service {
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ConnectTask8021x);
-  FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
-  FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskDynamicWEP);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskPSK);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWEP);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
@@ -142,6 +143,9 @@ class WiFiService : public Service {
   std::string GetSpecificStorageIdentifier() const;
   std::string GetStorageIdentifierForSecurity(
       const std::string &security) const;
+
+  // Returns true if the wireless service uses 802.1x for key management.
+  bool Is8021x() const;
 
   // Populate the |params| map with available 802.1x EAP properties.
   void Populate8021xProperties(std::map<std::string, DBus::Variant> *params);
