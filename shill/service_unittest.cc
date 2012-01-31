@@ -35,6 +35,7 @@ using testing::Return;
 using testing::StrictMock;
 using testing::SetArgumentPointee;
 using testing::Test;
+using testing::Values;
 
 namespace shill {
 
@@ -329,5 +330,26 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   service_->SetState(Service::kStateAssociating);
   EXPECT_FALSE(service_->IsAutoConnectable());
 }
+
+// Make sure a property is registered as a write only property
+// by reading and comparing all string properties returned on the store.
+// Subtle: We need to convert the test argument back and forth between
+// string and ::DBus::Variant because this is the parameter type that
+// our supeclass (PropertyStoreTest) is declared with.
+class ReadOnlyServicePropertyTest : public ServiceTest {};
+TEST_P(ReadOnlyServicePropertyTest, PropertyWriteOnly) {
+  ReadablePropertyConstIterator<string> it =
+      (service_->store()).GetStringPropertiesIter();
+  string property(GetParam().reader().get_string());
+  for( ; !it.AtEnd(); it.Advance())
+    EXPECT_NE(it.Key(), property);
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ReadOnlyServicePropertyTestInstance,
+    ReadOnlyServicePropertyTest,
+    Values(
+        DBusAdaptor::StringToVariant(flimflam::kEapPrivateKeyPasswordProperty),
+        DBusAdaptor::StringToVariant(flimflam::kEapPasswordProperty)));
 
 }  // namespace shill

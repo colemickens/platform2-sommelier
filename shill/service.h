@@ -284,6 +284,8 @@ class Service : public base::RefCounted<Service> {
   EventDispatcher *dispatcher() const { return dispatcher_; }
   const std::string &GetEAPKeyManagement() const;
   void SetEAPKeyManagement(const std::string &key_management);
+  void SetEAPPassword(const std::string &password, Error *error);
+  void SetEAPPrivateKeyPassword(const std::string &password, Error *error);
   Metrics *metrics() const { return metrics_; }
 
  private:

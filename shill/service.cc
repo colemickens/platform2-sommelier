@@ -123,13 +123,14 @@ Service::Service(ControlInterface *control_interface,
   store_.RegisterString(flimflam::kEAPClientCertProperty, &eap_.client_cert);
   store_.RegisterString(flimflam::kEAPCertIDProperty, &eap_.cert_id);
   store_.RegisterString(flimflam::kEapPrivateKeyProperty, &eap_.private_key);
-  store_.RegisterString(flimflam::kEapPrivateKeyPasswordProperty,
-                        &eap_.private_key_password);
+  HelpRegisterDerivedString(flimflam::kEapPrivateKeyPasswordProperty, NULL,
+                            &Service::SetEAPPrivateKeyPassword);
   store_.RegisterString(flimflam::kEAPKeyIDProperty, &eap_.key_id);
   store_.RegisterString(flimflam::kEapCaCertProperty, &eap_.ca_cert);
   store_.RegisterString(flimflam::kEapCaCertIDProperty, &eap_.ca_cert_id);
   store_.RegisterString(flimflam::kEAPPINProperty, &eap_.pin);
-  store_.RegisterString(flimflam::kEapPasswordProperty, &eap_.password);
+  HelpRegisterDerivedString(flimflam::kEapPasswordProperty, NULL,
+                            &Service::SetEAPPassword);
   store_.RegisterString(flimflam::kEapKeyMgmtProperty, &eap_.key_management);
   store_.RegisterBool(flimflam::kEapUseSystemCAsProperty, &eap_.use_system_cas);
 
@@ -707,6 +708,15 @@ void Service::SetAutoConnect(const bool &connect, Error *error) {
   } else {
     error->Populate(Error::kInvalidArguments, "Property is read-only");
   }
+}
+
+void Service::SetEAPPassword(const string &password, Error */*error*/) {
+  eap_.password = password;
+}
+
+void Service::SetEAPPrivateKeyPassword(const string &password,
+                                       Error */*error*/) {
+  eap_.private_key_password = password;
 }
 
 string Service::GetProfileRpcId(Error *error) {
