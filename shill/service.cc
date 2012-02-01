@@ -95,7 +95,9 @@ Service::Service(ControlInterface *control_interface,
       metrics_(metrics),
       manager_(manager) {
 
-  store_.RegisterBool(flimflam::kAutoConnectProperty, &auto_connect_);
+  HelpRegisterDerivedBool(flimflam::kAutoConnectProperty,
+                          &Service::GetAutoConnect,
+                          &Service::SetAutoConnect);
 
   // flimflam::kActivationStateProperty: Registered in CellularService
   // flimflam::kCellularApnProperty: Registered in CellularService
@@ -693,6 +695,18 @@ const string &Service::GetEAPKeyManagement() const {
 
 void Service::SetEAPKeyManagement(const string &key_management) {
   eap_.key_management = key_management;
+}
+
+bool Service::GetAutoConnect(Error */*error*/) {
+  return auto_connect();
+}
+
+void Service::SetAutoConnect(const bool &connect, Error *error) {
+  if (favorite_) {
+    set_auto_connect(connect);
+  } else {
+    error->Populate(Error::kInvalidArguments, "Property is read-only");
+  }
 }
 
 string Service::GetProfileRpcId(Error *error) {

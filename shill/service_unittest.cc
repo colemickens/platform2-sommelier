@@ -79,6 +79,7 @@ TEST_F(ServiceTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     bool expected = true;
+    service_->set_favorite(true);
     service_->mutable_store()->SetBoolProperty(flimflam::kAutoConnectProperty,
                                                expected,
                                                &error);
@@ -140,6 +141,23 @@ TEST_F(ServiceTest, Dispatch) {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_->mutable_store(),
                                              flimflam::kFavoriteProperty,
+                                             PropertyStoreTest::kBoolV,
+                                             &error));
+    EXPECT_EQ(invalid_args(), error.name());
+  }
+  {
+    ::DBus::Error error;
+    service_->set_favorite(true);
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_->mutable_store(),
+                                            flimflam::kAutoConnectProperty,
+                                            PropertyStoreTest::kBoolV,
+                                            &error));
+  }
+  {
+    ::DBus::Error error;
+    service_->set_favorite(false);
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_->mutable_store(),
+                                             flimflam::kAutoConnectProperty,
                                              PropertyStoreTest::kBoolV,
                                              &error));
     EXPECT_EQ(invalid_args(), error.name());

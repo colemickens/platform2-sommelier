@@ -292,6 +292,8 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ServiceTest, Constructor);
+  FRIEND_TEST(ServiceTest, Dispatch);
+  FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, Save);
   FRIEND_TEST(ServiceTest, SaveString);
@@ -325,6 +327,9 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageType[];
   static const char kStorageUIData[];
 
+  bool GetAutoConnect(Error *error);
+  void SetAutoConnect(const bool &connect, Error *error);
+
   virtual std::string GetDeviceRpcId(Error *error) = 0;
 
   std::string GetProfileRpcId(Error *error);
@@ -336,6 +341,9 @@ class Service : public base::RefCounted<Service> {
   // Utility function that returns true if a is different from b.  When they
   // are, "decision" is populated with the boolean value of "a > b".
   static bool DecideBetween(int a, int b, bool *decision);
+
+  // For unit testing.
+  void set_favorite(bool favorite) { favorite_ = favorite; }
 
   ConnectState state_;
   ConnectFailure failure_;
