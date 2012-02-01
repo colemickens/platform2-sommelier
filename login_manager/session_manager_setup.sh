@@ -43,7 +43,6 @@ export LOGNAME=${USER}
 export SHELL=/bin/sh
 export HOME=${DATA_DIR}/user
 export DISPLAY=:0.0
-export GTK_IM_MODULE=ibus
 
 # If used with Address Sanitizer, set the following flags to alter memory
 # allocations by glibc. Hopefully later, when ASAN matures, we will not need
