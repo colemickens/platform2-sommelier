@@ -175,6 +175,7 @@ Service::Service()
       system_salt_(),
       default_mount_(new cryptohome::Mount()),
       mount_(default_mount_.get()),
+      tpm_(Tpm::GetSingleton()),
       default_tpm_init_(new TpmInit()),
       tpm_init_(default_tpm_init_.get()),
       default_pkcs11_init_(new Pkcs11Init()),
@@ -218,11 +219,10 @@ bool Service::Initialize() {
   // be called across multiple threads in parallel.
   InitializeInstallAttributes(false);
 
-  Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
   // TODO(wad) Determine if this should only be called if
   //           tpm->IsEnabled() is true.
-  if (tpm && initialize_tpm_) {
-    tpm_init_->set_tpm(tpm);
+  if (tpm_ && initialize_tpm_) {
+    tpm_init_->set_tpm(tpm_);
     tpm_init_->Init(this);
     if (!SeedUrandom()) {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
@@ -273,14 +273,13 @@ bool Service::Initialize() {
 }
 
 void Service::InitializeInstallAttributes(bool first_time) {
-  Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
   // Wait for ownership if there is a working TPM.
-  if (tpm && tpm->IsEnabled() && !tpm->IsOwned())
+  if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned())
     return;
 
   // The TPM owning instance may have changed since initialization.
   // InstallAttributes can handle a NULL or !IsEnabled Tpm object.
-  install_attrs_->SetTpm(tpm);
+  install_attrs_->SetTpm(tpm_);
 
   if (first_time)
     // TODO(wad) Go nuclear if PrepareSystem fails!
@@ -294,9 +293,8 @@ void Service::InitializeInstallAttributes(bool first_time) {
 }
 
 void Service::InitializePkcs11() {
-  Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
   // Wait for ownership if there is a working TPM.
-  if (tpm && tpm->IsEnabled() && !tpm->IsOwned()) {
+  if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned()) {
     LOG(WARNING) << "TPM was not owned. TPM initialization call back will"
                  << " handle PKCS#11 initialization.";
     pkcs11_state_ = kIsWaitingOnTPM;
@@ -947,13 +945,8 @@ gboolean Service::InstallAttributesIsFirstInstall(
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   Tpm::TpmStatusInfo tpm_status;
   mount_->get_crypto()->EnsureTpm(false);
-  Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
 
-  if (tpm) {
-    tpm->GetStatus(true, &tpm_status);
-  } else {
-    Tpm::GetSingleton()->GetStatus(true, &tpm_status);
-  }
+  tpm_->GetStatus(true, &tpm_status);
 
   if (tpm_init_) {
     tpm_status.Enabled = tpm_init_->IsTpmEnabled();
