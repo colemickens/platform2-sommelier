@@ -173,8 +173,6 @@ Service::Service()
     : loop_(NULL),
       cryptohome_(NULL),
       system_salt_(),
-      default_mount_(new cryptohome::Mount()),
-      mount_(default_mount_.get()),
       tpm_(Tpm::GetSingleton()),
       default_tpm_init_(new TpmInit()),
       tpm_init_(default_tpm_init_.get()),
@@ -213,6 +211,7 @@ bool Service::Initialize() {
   metrics_lib_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(&metrics_lib_);
 
+  mount_ = GetOrCreateMountForUser("");
   mount_->Init();
   // If the TPM is unowned or doesn't exist, it's safe for
   // this function to be called again. However, it shouldn't
@@ -1100,6 +1099,15 @@ void Service::DetectEnterpriseOwnership() const {
       value == true_value) {
     mount_->set_enterprise_owned(true);
   }
+}
+
+cryptohome::Mount* Service::GetOrCreateMountForUser(
+    const std::string& username) {
+  if (mounts_.count(username) == 1)
+    return mounts_[username];
+  cryptohome::Mount* m = new cryptohome::Mount();
+  mounts_[username] = m;
+  return m;
 }
 
 }  // namespace cryptohome

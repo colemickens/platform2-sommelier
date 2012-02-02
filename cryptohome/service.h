@@ -67,9 +67,6 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual GObject* service_object() const {
     return G_OBJECT(cryptohome_);
   }
-  virtual void set_mount(Mount* mount) {
-    mount_ = mount;
-  }
   virtual void set_tpm(Tpm* tpm) {
     tpm_ = tpm;
   }
@@ -87,6 +84,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
   }
   virtual void set_update_user_activity_period(int value) {
     update_user_activity_period_ = value;
+  }
+  virtual void set_mount_for_user(const std::string& username,
+                                  cryptohome::Mount* m) {
+    mounts_[username] = m;
   }
 
   // MountTaskObserver
@@ -220,11 +221,12 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual void DetectEnterpriseOwnership() const;
 
  private:
+  cryptohome::Mount* GetOrCreateMountForUser(const std::string& username);
+
   GMainLoop* loop_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome* cryptohome_;
   chromeos::Blob system_salt_;
-  scoped_ptr<cryptohome::Mount> default_mount_;
   cryptohome::Mount* mount_;
   // TPM doesn't use the scoped_ptr for default pattern, since the tpm is a
   // singleton - we don't want it getting destroyed when we are.
@@ -266,6 +268,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // during this user login. We use this not to report a same failure multiple
   // times.
   bool reported_pkcs11_init_fail_;
+
+  // Tracks Mount objects for each user by username.
+  std::map<const std::string, cryptohome::Mount*> mounts_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

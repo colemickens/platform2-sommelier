@@ -82,7 +82,7 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
       .WillOnce(Return(true));
 
   Service service;
-  service.set_mount(&mount);
+  service.set_mount_for_user("", &mount);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
@@ -108,7 +108,7 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   mount.set_fallback_to_scrypt(true);
 
   ServiceSubclass service;
-  service.set_mount(&mount);
+  service.set_mount_for_user("", &mount);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
@@ -149,7 +149,7 @@ TEST(Standalone, CheckAutoCleanupCallback) {
   // Checks that AutoCleanupCallback() is called periodically.
   NiceMock<MockMount> mount;
   Service service;
-  service.set_mount(&mount);
+  service.set_mount_for_user("", &mount);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
