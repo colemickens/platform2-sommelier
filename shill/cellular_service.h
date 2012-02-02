@@ -24,6 +24,32 @@ class Manager;
 
 class CellularService : public Service {
  public:
+  // Online payment portal.
+  class OLP {
+   public:
+    OLP();
+    ~OLP();
+
+    void CopyFrom(const OLP &olp);
+    bool Equals(const OLP &olp) const;
+
+    const std::string &GetURL() const;
+    void SetURL(const std::string &url);
+
+    const std::string &GetMethod() const;
+    void SetMethod(const std::string &method);
+
+    const std::string &GetPostData() const;
+    void SetPostData(const std::string &post_data);
+
+    const Stringmap &ToDict() const;
+
+   private:
+    Stringmap dict_;
+
+    DISALLOW_COPY_AND_ASSIGN(OLP);
+  };
+
   CellularService(ControlInterface *control_interface,
                   EventDispatcher *dispatcher,
                   Metrics *metrics,
@@ -44,11 +70,11 @@ class CellularService : public Service {
   void SetActivationState(const std::string &state);
   const std::string &activation_state() const { return activation_state_; }
 
-  const std::string &payment_url() const { return payment_url_; }
-  void set_payment_url(const std::string &url) { payment_url_ = url; }
+  void SetOLP(const OLP &olp);
+  const OLP &olp() const { return olp_; }
 
+  void SetUsageURL(const std::string &url);
   const std::string &usage_url() const { return usage_url_; }
-  void set_usage_url(const std::string &url) { usage_url_ = url; }
 
   void SetServingOperator(const Cellular::Operator &oper);
   const Cellular::Operator &serving_operator() const;
@@ -74,7 +100,7 @@ class CellularService : public Service {
   Cellular::Operator serving_operator_;
   std::string network_technology_;
   std::string roaming_state_;
-  std::string payment_url_;
+  OLP olp_;
   std::string usage_url_;
 
   std::map<std::string, std::string> apn_info_;

@@ -470,11 +470,11 @@ TEST_F(CellularTest, CreateService) {
   static const char kPaymentURL[] = "https://payment.url";
   static const char kUsageURL[] = "https://usage.url";
   device_->home_provider_.SetName(kTestCarrier);
-  GetCapabilityCDMA()->payment_url_ = kPaymentURL;
+  GetCapabilityCDMA()->olp_.SetURL(kPaymentURL);
   GetCapabilityCDMA()->usage_url_ = kUsageURL;
   device_->CreateService();
   ASSERT_TRUE(device_->service_.get());
-  EXPECT_EQ(kPaymentURL, device_->service_->payment_url());
+  EXPECT_EQ(kPaymentURL, device_->service_->olp().GetURL());
   EXPECT_EQ(kUsageURL, device_->service_->usage_url());
   EXPECT_EQ(kTestCarrier, device_->service_->serving_operator().GetName());
   EXPECT_TRUE(device_->service_->TechnologyIs(Technology::kCellular));

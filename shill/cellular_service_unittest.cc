@@ -104,4 +104,29 @@ TEST_F(CellularServiceTest, SetServingOperator) {
   service_->SetServingOperator(oper);
 }
 
+TEST_F(CellularServiceTest, SetOLP) {
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(flimflam::kPaymentPortalProperty, _));
+  static const char kURL[] = "payment.url";
+  static const char kMethod[] = "GET";
+  CellularService::OLP olp;
+  service_->SetOLP(olp);
+  olp.SetURL(kURL);
+  olp.SetMethod(kMethod);
+  service_->SetOLP(olp);
+  EXPECT_EQ(kURL, service_->olp().GetURL());
+  EXPECT_EQ(kMethod, service_->olp().GetMethod());
+  service_->SetOLP(olp);
+}
+
+TEST_F(CellularServiceTest, SetUsageURL) {
+  static const char kUsageURL[] = "usage.url";
+  EXPECT_CALL(*adaptor_, EmitStringChanged(flimflam::kUsageURLProperty,
+                                           kUsageURL));
+  EXPECT_TRUE(service_->usage_url().empty());
+  service_->SetUsageURL(kUsageURL);
+  EXPECT_EQ(kUsageURL, service_->usage_url());
+  service_->SetUsageURL(kUsageURL);
+}
+
 }  // namespace shill

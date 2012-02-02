@@ -167,8 +167,6 @@ class Cellular : public Device {
   void OnDisconnected();
   void OnDisconnectFailed();
 
-  static Error ConvertDBusError(const DBus::Error &dbus_error);
-
  private:
   friend class CellularTest;
   friend class CellularCapabilityTest;

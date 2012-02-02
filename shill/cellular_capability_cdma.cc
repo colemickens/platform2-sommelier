@@ -65,8 +65,8 @@ void CellularCapabilityCDMA::StopModem() {
 
 void CellularCapabilityCDMA::OnServiceCreated() {
   VLOG(2) << __func__;
-  cellular()->service()->set_payment_url(payment_url_);
-  cellular()->service()->set_usage_url(usage_url_);
+  cellular()->service()->SetOLP(olp_);
+  cellular()->service()->SetUsageURL(usage_url_);
   UpdateServingOperator();
   HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
 }
@@ -85,7 +85,16 @@ void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
   // TODO(petkov): For now, get the payment and usage URLs from ModemManager to
   // match flimflam. In the future, get these from an alternative source (e.g.,
   // database, carrier-specific properties, etc.).
-  DBusProperties::GetString(properties, "payment_url", &payment_url_);
+  string payment;
+  if (DBusProperties::GetString(properties, "payment_url", &payment)) {
+    olp_.SetURL(payment);
+  }
+  if (DBusProperties::GetString(properties, "payment_url_method", &payment)) {
+    olp_.SetMethod(payment);
+  }
+  if (DBusProperties::GetString(properties, "payment_url_postdata", &payment)) {
+    olp_.SetPostData(payment);
+  }
   DBusProperties::GetString(properties, "usage_url", &usage_url_);
 }
 
@@ -258,12 +267,22 @@ void CellularCapabilityCDMA::OnCDMAActivationStateChanged(
     uint32 activation_error,
     const DBusPropertiesMap &status_changes) {
   VLOG(2) << __func__;
-  string mdn;
   DBusProperties::GetString(status_changes, "mdn", &mdn_);
   DBusProperties::GetString(status_changes, "min", &min_);
-  if (DBusProperties::GetString(status_changes, "payment_url", &payment_url_) &&
-      cellular()->service().get()) {
-    cellular()->service()->set_payment_url(payment_url_);
+  string payment;
+  if (DBusProperties::GetString(status_changes, "payment_url", &payment)) {
+    olp_.SetURL(payment);
+  }
+  if (DBusProperties::GetString(
+          status_changes, "payment_url_method", &payment)) {
+    olp_.SetMethod(payment);
+  }
+  if (DBusProperties::GetString(
+          status_changes, "payment_url_postdata", &payment)) {
+    olp_.SetPostData(payment);
+  }
+  if (cellular()->service().get()) {
+    cellular()->service()->SetOLP(olp_);
   }
   activation_state_ = activation_state;
   HandleNewActivationState(activation_error);

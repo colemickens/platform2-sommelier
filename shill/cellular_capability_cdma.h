@@ -10,6 +10,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular_capability.h"
+#include "shill/cellular_service.h"
 #include "shill/modem_cdma_proxy_interface.h"
 
 namespace shill {
@@ -82,7 +83,7 @@ class CellularCapabilityCDMA : public CellularCapability,
   uint32 registration_state_evdo_;
   uint32 registration_state_1x_;
   uint16 prl_version_;
-  std::string payment_url_;
+  CellularService::OLP olp_;
   std::string usage_url_;
 
   static unsigned int friendly_service_name_id_;
