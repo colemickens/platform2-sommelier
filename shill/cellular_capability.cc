@@ -59,11 +59,14 @@ void CellularCapability::MultiStepAsyncCallHandler::PostNextTask() {
 CellularCapability::CellularCapability(Cellular *cellular,
                                        ProxyFactory *proxy_factory)
     : allow_roaming_(false),
+      scanning_supported_(false),
       cellular_(cellular),
       proxy_factory_(proxy_factory) {
   PropertyStore *store = cellular->mutable_store();
   store->RegisterConstString(flimflam::kCarrierProperty, &carrier_);
   store->RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
+  store->RegisterConstBool(flimflam::kSupportNetworkScanProperty,
+                           &scanning_supported_);
   store->RegisterConstString(flimflam::kEsnProperty, &esn_);
   store->RegisterConstString(flimflam::kFirmwareRevisionProperty,
                              &firmware_revision_);

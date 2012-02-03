@@ -61,6 +61,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
                                 NULL);
   store->RegisterConstStringmaps(flimflam::kCellularApnListProperty,
                                  &apn_list_);
+  scanning_supported_ = true;
 }
 
 StrIntPair CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {

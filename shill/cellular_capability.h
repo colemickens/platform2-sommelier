@@ -165,6 +165,7 @@ class CellularCapability : public ModemProxyDelegate,
 
   // Properties
   bool allow_roaming_;
+  bool scanning_supported_;
   std::string carrier_;
   std::string meid_;
   std::string imei_;
