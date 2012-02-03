@@ -13,14 +13,16 @@
 
 namespace chaps {
 
+class HandleGenerator;
 class Object;
 class ObjectPolicy;
 class ObjectPool;
+class ObjectStore;
 class Session;
 class TPMUtility;
 
 // ChapsFactory is a factory for a number of interfaces in the Chaps
-// environment.  Having this factory allows object implementations to be
+// environment. Having this factory allows object implementations to be
 // decoupled and allows the creation of mock objects.
 class ChapsFactory {
  public:
@@ -28,9 +30,11 @@ class ChapsFactory {
   virtual Session* CreateSession(int slot_id,
                                  ObjectPool* token_object_pool,
                                  TPMUtility* tpm_utility,
+                                 HandleGenerator* handle_generator,
                                  bool is_read_only) = 0;
-  virtual ObjectPool* CreateObjectPool() = 0;
-  virtual ObjectPool* CreatePersistentObjectPool(const FilePath& file_name) = 0;
+  virtual ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,
+                                       ObjectStore* store) = 0;
+  virtual ObjectStore* CreateObjectStore(const FilePath& file_name) = 0;
   virtual Object* CreateObject() = 0;
   virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) = 0;
 };

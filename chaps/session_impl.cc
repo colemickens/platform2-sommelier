@@ -46,6 +46,7 @@ SessionImpl::SessionImpl(int slot_id,
                          ObjectPool* token_object_pool,
                          TPMUtility* tpm_utility,
                          ChapsFactory* factory,
+                         HandleGenerator* handle_generator,
                          bool is_read_only)
     : factory_(factory),
       find_results_valid_(false),
@@ -57,7 +58,8 @@ SessionImpl::SessionImpl(int slot_id,
   CHECK(token_object_pool_);
   CHECK(tpm_utility_);
   CHECK(factory_);
-  session_object_pool_.reset(factory_->CreateObjectPool());
+  session_object_pool_.reset(factory_->CreateObjectPool(handle_generator,
+                                                        NULL));
   CHECK(session_object_pool_.get());
 }
 
@@ -94,7 +96,7 @@ CK_RV SessionImpl::CopyObject(const CK_ATTRIBUTE_PTR attributes,
                               int num_attributes,
                               int object_handle,
                               int* new_object_handle) {
-  Object* orig_object = NULL;
+  const Object* orig_object = NULL;
   if (!GetObject(object_handle, &orig_object))
     return CKR_OBJECT_HANDLE_INVALID;
   CHECK(orig_object);
@@ -105,7 +107,7 @@ CK_RV SessionImpl::CopyObject(const CK_ATTRIBUTE_PTR attributes,
 }
 
 CK_RV SessionImpl::DestroyObject(int object_handle) {
-  Object* object = NULL;
+  const Object* object = NULL;
   if (!GetObject(object_handle, &object))
     return CKR_OBJECT_HANDLE_INVALID;
   CHECK(object);
@@ -118,12 +120,23 @@ CK_RV SessionImpl::DestroyObject(int object_handle) {
   return CKR_OK;
 }
 
-bool SessionImpl::GetObject(int object_handle, Object** object) {
+bool SessionImpl::GetObject(int object_handle, const Object** object) {
   CHECK(object);
-  map<int, Object*>::iterator it = handle_object_map_.find(object_handle);
+  map<int, const Object*>::iterator it = handle_object_map_.find(object_handle);
   if (it == handle_object_map_.end())
     return false;
   *object = it->second;
+  return true;
+}
+
+bool SessionImpl::GetModifiableObject(int object_handle, Object** object) {
+  CHECK(object);
+  map<int, const Object*>::iterator it = handle_object_map_.find(object_handle);
+  if (it == handle_object_map_.end())
+    return false;
+  ObjectPool* pool = it->second->IsTokenObject() ? token_object_pool_
+      : session_object_pool_.get();
+  *object = pool->GetModifiableObject(it->second);
   return true;
 }
 
@@ -134,7 +147,7 @@ CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
   scoped_ptr<Object> search_template(factory_->CreateObject());
   CHECK(search_template.get());
   search_template->SetAttributes(attributes, num_attributes);
-  vector<Object*> objects;
+  vector<const Object*> objects;
   if (!search_template->IsAttributePresent(CKA_TOKEN) ||
       search_template->IsTokenObject()) {
     if (!token_object_pool_->Find(search_template.get(), &objects))
@@ -180,7 +193,7 @@ CK_RV SessionImpl::FindObjectsFinal() {
 CK_RV SessionImpl::OperationInit(OperationType operation,
                                  CK_MECHANISM_TYPE mechanism,
                                  const string& mechanism_parameter,
-                                 Object* key) {
+                                 const Object* key) {
   CHECK(operation < kNumOperationTypes);
   OperationContext* context = &operation_context_[operation];
   if (context->is_valid_) {
@@ -664,7 +677,7 @@ bool SessionImpl::IsValidMechanism(OperationType operation,
 CK_RV SessionImpl::CipherInit(bool is_encrypt,
                               CK_MECHANISM_TYPE mechanism,
                               const string& mechanism_parameter,
-                              Object* key) {
+                              const Object* key) {
   OperationType operation = is_encrypt ? kEncrypt : kDecrypt;
   EVP_CIPHER_CTX* context =
       &operation_context_[operation].cipher_context_;
@@ -872,7 +885,7 @@ string SessionImpl::GetDERDigestInfo(CK_MECHANISM_TYPE mechanism) {
   return string();
 }
 
-int SessionImpl::GetHandle(Object* object) {
+int SessionImpl::GetHandle(const Object* object) {
   map<const Object*, int>::iterator it = object_handle_map_.find(object);
   if (it == object_handle_map_.end()) {
     // Assign a new handle.

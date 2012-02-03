@@ -17,9 +17,13 @@ class ChapsFactoryMock : public ChapsFactory {
   ChapsFactoryMock();
   virtual ~ChapsFactoryMock();
 
-  MOCK_METHOD4(CreateSession, Session*(int, ObjectPool*, TPMUtility*, bool));
-  MOCK_METHOD1(CreatePersistentObjectPool, ObjectPool*(const FilePath&));
-  MOCK_METHOD0(CreateObjectPool, ObjectPool*());
+  MOCK_METHOD5(CreateSession, Session*(int,
+                                       ObjectPool*,
+                                       TPMUtility*,
+                                       HandleGenerator*,
+                                       bool));
+  MOCK_METHOD2(CreateObjectPool, ObjectPool*(HandleGenerator*, ObjectStore*));
+  MOCK_METHOD1(CreateObjectStore, ObjectStore*(const FilePath&));
   MOCK_METHOD0(CreateObject, Object*());
   MOCK_METHOD1(CreateObjectPolicy, ObjectPolicy*(CK_OBJECT_CLASS));
 

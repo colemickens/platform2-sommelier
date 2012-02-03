@@ -46,7 +46,8 @@ class Session {
                            int object_handle,
                            int* new_object_handle) = 0;
   virtual CK_RV DestroyObject(int object_handle) = 0;
-  virtual bool GetObject(int object_handle, Object** object) = 0;
+  virtual bool GetObject(int object_handle, const Object** object) = 0;
+  virtual bool GetModifiableObject(int object_handle, Object** object) = 0;
   virtual CK_RV FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
                                 int num_attributes) = 0;
   virtual CK_RV FindObjects(int max_object_count,
@@ -75,7 +76,7 @@ class Session {
   virtual CK_RV OperationInit(OperationType operation,
                               CK_MECHANISM_TYPE mechanism,
                               const std::string& mechanism_parameter,
-                              Object* key) = 0;
+                              const Object* key) = 0;
   // Continues an operation that is already active (like C_EncryptUpdate). If
   // the operation does not provide output (e.g. C_DigestUpdate),
   // required_out_length and data_out may be NULL. If the operation does produce

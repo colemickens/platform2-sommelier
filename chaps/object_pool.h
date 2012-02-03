@@ -15,7 +15,6 @@ class Object;
 // An ObjectPool instance manages a collection of objects.  A persistent object
 // pool is backed by a database where all object data and object-related
 // metadata is stored.
-// TODO(dkrahn): Fully define this interface.
 class ObjectPool {
  public:
   virtual ~ObjectPool() {}
@@ -33,12 +32,17 @@ class ObjectPool {
   // relevant if the pool is persistent; an object pool has no obligation to
   // encrypt object data in memory.
   virtual void SetKey(const std::string& key) = 0;
-  virtual bool Insert(const Object* object) = 0;
+  // This method takes ownership of the 'object' pointer on success.
+  virtual bool Insert(Object* object) = 0;
   virtual bool Delete(const Object* object) = 0;
   // Finds all objects matching the search template and appends them to the
   // supplied vector.
   virtual bool Find(const Object* search_template,
-                    std::vector<Object*>* matching_objects) = 0;
+                    std::vector<const Object*>* matching_objects) = 0;
+  // Returns a modifiable version of the given object.
+  virtual Object* GetModifiableObject(const Object* object) = 0;
+  // Flushes a modified object to persistent storage.
+  virtual bool Flush(const Object* object) = 0;
 };
 
 }  // namespace

@@ -94,6 +94,12 @@ class Object {
   virtual void RemoveAttribute(CK_ATTRIBUTE_TYPE type) = 0;
   // Provides a read-only map of all existing attributes.
   virtual const AttributeMap* GetAttributeMap() const = 0;
+  // Get / set handle as seen by PKCS #11 clients.
+  virtual int handle() const = 0;
+  virtual void set_handle(int handle) = 0;
+  // Get / set an identifier as designated by a store.
+  virtual int store_id() const = 0;
+  virtual void set_store_id(int store_id) = 0;
 };
 
 }  // namespace

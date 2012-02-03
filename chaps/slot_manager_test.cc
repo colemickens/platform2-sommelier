@@ -97,10 +97,13 @@ Session* CreateNewSession() {
 class TestSlotManager: public ::testing::Test {
  public:
   TestSlotManager() {
-    EXPECT_CALL(factory_, CreateSession(_, _, _, _))
+    EXPECT_CALL(factory_, CreateSession(_, _, _, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateNewSession));
-    EXPECT_CALL(factory_, CreatePersistentObjectPool(_))
+    EXPECT_CALL(factory_, CreateObjectPool(_, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
+    ObjectStore* null_store = NULL;
+    EXPECT_CALL(factory_, CreateObjectStore(_))
+        .WillRepeatedly(Return(null_store));
     ConfigureTPMUtility(&tpm_);
   }
   void SetUp() {
@@ -148,15 +151,18 @@ TEST(DeathTest, OutOfMemoryInit) {
   ConfigureTPMUtility(&tpm);
   ChapsFactoryMock factory;
   ObjectPool* null_pool = NULL;
-  EXPECT_CALL(factory, CreatePersistentObjectPool(_))
+  EXPECT_CALL(factory, CreateObjectPool(_, _))
       .WillRepeatedly(Return(null_pool));
+  ObjectStore* null_store = NULL;
+  EXPECT_CALL(factory, CreateObjectStore(_))
+      .WillRepeatedly(Return(null_store));
   SlotManagerImpl sm(&factory, &tpm);
   EXPECT_DEATH_IF_SUPPORTED(sm.Init(), "Check failed");
 }
 
 TEST_F(TestSlotManager_DeathTest, OutOfMemorySession) {
   Session* null_session = NULL;
-  EXPECT_CALL(factory_, CreateSession(_, _, _, _))
+  EXPECT_CALL(factory_, CreateSession(_, _, _, _, _))
       .WillRepeatedly(Return(null_session));
   EXPECT_DEATH_IF_SUPPORTED(slot_manager_->OpenSession(0, false),
                             "Check failed");

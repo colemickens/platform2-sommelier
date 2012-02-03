@@ -22,9 +22,11 @@ class ObjectPoolMock : public ObjectPool {
   MOCK_METHOD2(GetInternalBlob, bool (int, std::string*));
   MOCK_METHOD2(SetInternalBlob, bool (int, const std::string&));
   MOCK_METHOD1(SetKey, void (const std::string&));
-  MOCK_METHOD1(Insert, bool (const Object*));
+  MOCK_METHOD1(Insert, bool (Object*));
   MOCK_METHOD1(Delete, bool (const Object*));
-  MOCK_METHOD2(Find, bool (const Object*, std::vector<Object*>*));
+  MOCK_METHOD2(Find, bool (const Object*, std::vector<const Object*>*));
+  MOCK_METHOD1(GetModifiableObject, Object*(const Object*));
+  MOCK_METHOD1(Flush, bool(const Object*));
   void SetupFake() {
     ON_CALL(*this, Insert(testing::_))
         .WillByDefault(testing::Invoke(this, &ObjectPoolMock::FakeInsert));
@@ -34,19 +36,19 @@ class ObjectPoolMock : public ObjectPool {
         .WillByDefault(testing::Invoke(this, &ObjectPoolMock::FakeFind));
   }
  private:
-  bool FakeInsert(const Object* o) {
-    v_.push_back(const_cast<Object*>(o));
+  bool FakeInsert(Object* o) {
+    v_.push_back(o);
     return true;
   }
   bool FakeDelete(const Object* o) {
     return true;
   }
-  bool FakeFind(const Object* o, std::vector<Object*>* v) {
+  bool FakeFind(const Object* o, std::vector<const Object*>* v) {
     for (size_t i = 0; i < v_.size(); ++i)
       v->push_back(v_[i]);
     return true;
   }
-  std::vector<Object*> v_;
+  std::vector<const Object*> v_;
 
   DISALLOW_COPY_AND_ASSIGN(ObjectPoolMock);
 };

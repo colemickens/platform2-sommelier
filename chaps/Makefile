@@ -67,6 +67,7 @@ $(OUT)chapsd: $(COMMON) \
               $(OUT)object_policy_public_key.o \
               $(OUT)object_policy_private_key.o \
               $(OUT)object_policy_secret_key.o \
+              $(OUT)object_pool_impl.o \
               $(OUT)tpm_utility_impl.o
 	$(call cxx_binary, -ldl -ltspi)
 RM_ON_CLEAN += $(OUT)chapsd
@@ -129,6 +130,12 @@ $(OUT)object_policy_test: $(COMMON) $(MOCK) \
 	$(call cxx_binary, -lgtest -lgmock)
 RM_ON_CLEAN += $(OUT)object_policy_test
 
+$(OUT)object_pool_test: $(COMMON) $(MOCK) \
+                        $(OUT)object_pool_test.o \
+                        $(OUT)object_pool_impl.o
+	$(call cxx_binary, -lgtest -lgmock)
+RM_ON_CLEAN += $(OUT)object_pool_test
+
 $(OUT)tpm_utility_test: $(COMMON) $(MOCK) \
                         $(OUT)tpm_utility_test.o \
                         $(OUT)tpm_utility_impl.o
@@ -156,7 +163,8 @@ tests: $(OUT)chaps_test \
        $(OUT)slot_manager_test \
        $(OUT)session_test \
        $(OUT)object_test \
-       $(OUT)object_policy_test
+       $(OUT)object_policy_test \
+       $(OUT)object_pool_test
 
 live_tests: $(OUT)chapsd_test \
             $(OUT)chaps_event_generator \
@@ -171,3 +179,4 @@ runtests: tests
 	$(OUT)session_test
 	$(OUT)object_test
 	$(OUT)object_policy_test
+	$(OUT)object_pool_test

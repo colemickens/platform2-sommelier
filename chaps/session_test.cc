@@ -15,10 +15,11 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 
-#include "chaps_factory_mock.h"
-#include "object_pool_mock.h"
-#include "object_mock.h"
-#include "tpm_utility_mock.h"
+#include "chaps/chaps_factory_mock.h"
+#include "chaps/handle_generator_mock.h"
+#include "chaps/object_pool_mock.h"
+#include "chaps/object_mock.h"
+#include "chaps/tpm_utility_mock.h"
 
 using std::string;
 using std::vector;
@@ -80,15 +81,20 @@ class TestSession: public ::testing::Test {
   TestSession() {
     EXPECT_CALL(factory_, CreateObject())
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectMock));
-    EXPECT_CALL(factory_, CreateObjectPool())
+    EXPECT_CALL(factory_, CreateObjectPool(_, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
+    EXPECT_CALL(handle_generator_, CreateHandle())
+        .WillRepeatedly(Return(1));
     ConfigureObjectPool(&token_pool_);
     ConfigureTPMUtility(&tpm_);
   }
   void SetUp() {
-    session_.reset(new SessionImpl(1, &token_pool_, &tpm_, &factory_, false));
+    session_.reset(new SessionImpl(1, &token_pool_, &tpm_, &factory_,
+                                   &handle_generator_, false));
   }
-  void GenerateSecretKey(CK_MECHANISM_TYPE mechanism, int size, Object** obj) {
+  void GenerateSecretKey(CK_MECHANISM_TYPE mechanism,
+                         int size,
+                         const Object** obj) {
     CK_BBOOL no = CK_FALSE;
     CK_BBOOL yes = CK_TRUE;
     CK_ATTRIBUTE encdec_template[] = {
@@ -111,7 +117,7 @@ class TestSession: public ::testing::Test {
     ASSERT_TRUE(session_->GetObject(handle, obj));
   }
   void GenerateRSAKeyPair(bool signing, int size,
-                          Object** pub, Object** priv) {
+                          const Object** pub, const Object** priv) {
     CK_BBOOL no = CK_FALSE;
     CK_BBOOL yes = CK_TRUE;
     CK_BYTE pubexp[] = {1, 0, 1};
@@ -149,6 +155,7 @@ class TestSession: public ::testing::Test {
   ObjectPoolMock token_pool_;
   ChapsFactoryMock factory_;
   TPMUtilityMock tpm_;
+  HandleGeneratorMock handle_generator_;
   scoped_ptr<SessionImpl> session_;
 };
 
@@ -159,15 +166,23 @@ TEST(DeathTest, InvalidInit) {
   ObjectPoolMock pool;
   ChapsFactoryMock factory;
   TPMUtilityMock tpm;
+  HandleGeneratorMock handle_generator;
   SessionImpl* session;
+  EXPECT_CALL(factory, CreateObjectPool(_, _)).Times(AnyNumber());
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, NULL, &tpm, &factory, false),
+      session = new SessionImpl(1, NULL, &tpm, &factory, &handle_generator,
+                                false),
       "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, &pool, NULL, &factory, false),
+      session = new SessionImpl(1, &pool, NULL, &factory, &handle_generator,
+                                false),
       "Check failed");
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, &pool, &tpm, NULL, false),
+      session = new SessionImpl(1, &pool, &tpm, NULL, &handle_generator,
+                                false),
+      "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(
+      session = new SessionImpl(1, &pool, &tpm, &factory, NULL, false),
       "Check failed");
   (void)session;
 }
@@ -197,7 +212,7 @@ TEST_F(TestSession_DeathTest, InvalidArgs) {
                                                     NULL),
                             "Check failed");
   string s;
-  Object* o;
+  const Object* o;
   GenerateSecretKey(CKM_AES_KEY_GEN, 32, &o);
   ASSERT_EQ(CKR_OK, session_->OperationInit(kEncrypt, CKM_AES_ECB, "", o));
   EXPECT_DEATH_IF_SUPPORTED(session_->OperationUpdate(invalid_op, "", &i, &s),
@@ -222,12 +237,14 @@ TEST(DeathTest, OutOfMemoryInit) {
   ObjectPoolMock pool;
   TPMUtilityMock tpm;
   ChapsFactoryMock factory;
+  HandleGeneratorMock handle_generator;
   ObjectPool* null_pool = NULL;
-  EXPECT_CALL(factory, CreateObjectPool())
+  EXPECT_CALL(factory, CreateObjectPool(_, _))
       .WillRepeatedly(Return(null_pool));
   Session* session;
   EXPECT_DEATH_IF_SUPPORTED(
-      session = new SessionImpl(1, &pool, &tpm, &factory, false),
+      session = new SessionImpl(1, &pool, &tpm, &factory, &handle_generator,
+                                false),
       "Check failed");
   (void)session;
 }
@@ -262,7 +279,7 @@ TEST_F(TestSession, Objects) {
   // Create a new object.
   ASSERT_EQ(CKR_OK, session_->CreateObject(attr, 1, &handle));
   EXPECT_GT(handle, 0);
-  Object* o;
+  const Object* o;
   // Get the new object from the new handle.
   EXPECT_TRUE(session_->GetObject(handle, &o));
   int handle2 = 0;
@@ -302,7 +319,7 @@ TEST_F(TestSession, Objects) {
 
 // Test multi-part and single-part cipher operations.
 TEST_F(TestSession, Cipher) {
-  Object* key_object = NULL;
+  const Object* key_object = NULL;
   GenerateSecretKey(CKM_AES_KEY_GEN, 32, &key_object);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kEncrypt,
                                             CKM_AES_CBC_PAD,
@@ -375,7 +392,7 @@ TEST_F(TestSession, Digest) {
 
 // Test HMAC sign and verify operations.
 TEST_F(TestSession, HMAC) {
-  Object* key_object = NULL;
+  const Object* key_object = NULL;
   GenerateSecretKey(CKM_GENERIC_SECRET_KEY_GEN, 32, &key_object);
   string in(30, 'A');
   EXPECT_EQ(CKR_OK,
@@ -405,8 +422,8 @@ TEST_F(TestSession, HMAC) {
 
 // Test RSA PKCS #1 encryption.
 TEST_F(TestSession, RSAEncrypt) {
-  Object* pub = NULL;
-  Object* priv = NULL;
+  const Object* pub = NULL;
+  const Object* priv = NULL;
   GenerateRSAKeyPair(false, 1024, &pub, &priv);
   EXPECT_EQ(CKR_OK, session_->OperationInit(kEncrypt, CKM_RSA_PKCS, "", pub));
   string in(100, 'A');
@@ -431,8 +448,8 @@ TEST_F(TestSession, RSAEncrypt) {
 
 // Test RSA PKCS #1 sign / verify.
 TEST_F(TestSession, RSASign) {
-  Object* pub = NULL;
-  Object* priv = NULL;
+  const Object* pub = NULL;
+  const Object* priv = NULL;
   GenerateRSAKeyPair(true, 1024, &pub, &priv);
   // Sign / verify without a built-in hash.
   EXPECT_EQ(CKR_OK, session_->OperationInit(kSign, CKM_RSA_PKCS, "", priv));
@@ -467,7 +484,7 @@ TEST_F(TestSession, RSASign) {
 
 // Test that requests for unsupported mechanisms are handled correctly.
 TEST_F(TestSession, MechanismInvalid) {
-  Object* key = NULL;
+  const Object* key = NULL;
   // Use a valid key so that key errors don't mask mechanism errors.
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &key);
   // We don't support IDEA.
@@ -483,9 +500,9 @@ TEST_F(TestSession, MechanismInvalid) {
 
 // Test that operation / mechanism mismatches are handled correctly.
 TEST_F(TestSession, MechanismMismatch) {
-  Object* hmac = NULL;
+  const Object* hmac = NULL;
   GenerateSecretKey(CKM_GENERIC_SECRET_KEY_GEN, 16, &hmac);
-  Object* aes = NULL;
+  const Object* aes = NULL;
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &aes);
   // Encrypt with a sign/verify mechanism.
   EXPECT_EQ(CKR_MECHANISM_INVALID,
@@ -503,10 +520,10 @@ TEST_F(TestSession, MechanismMismatch) {
 
 // Test that mechanism / key type mismatches are handled correctly.
 TEST_F(TestSession, KeyTypeMismatch) {
-  Object* aes = NULL;
+  const Object* aes = NULL;
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &aes);
-  Object* rsapub = NULL;
-  Object* rsapriv = NULL;
+  const Object* rsapub = NULL;
+  const Object* rsapriv = NULL;
   GenerateRSAKeyPair(true, 512, &rsapub, &rsapriv);
   // DES3 with an AES key.
   EXPECT_EQ(CKR_KEY_TYPE_INCONSISTENT,
@@ -524,11 +541,11 @@ TEST_F(TestSession, KeyTypeMismatch) {
 
 // Test that key function permissions are correctly enforced.
 TEST_F(TestSession, KeyFunctionPermission) {
-  Object* encpub = NULL;
-  Object* encpriv = NULL;
+  const Object* encpub = NULL;
+  const Object* encpriv = NULL;
   GenerateRSAKeyPair(false, 512, &encpub, &encpriv);
-  Object* sigpub = NULL;
-  Object* sigpriv = NULL;
+  const Object* sigpub = NULL;
+  const Object* sigpriv = NULL;
   GenerateRSAKeyPair(true, 512, &sigpub, &sigpriv);
   // Try decrypting with a sign-only key.
   EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED,
@@ -540,11 +557,11 @@ TEST_F(TestSession, KeyFunctionPermission) {
 
 // Test that invalid mechanism parameters for ciphers are handled correctly.
 TEST_F(TestSession, BadIV) {
-  Object* aes = NULL;
+  const Object* aes = NULL;
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &aes);
-  Object* des = NULL;
+  const Object* des = NULL;
   GenerateSecretKey(CKM_DES_KEY_GEN, 16, &des);
-  Object* des3 = NULL;
+  const Object* des3 = NULL;
   GenerateSecretKey(CKM_DES3_KEY_GEN, 16, &des3);
   // AES expects 16 bytes and DES/DES3 expects 8 bytes.
   string bad_iv(7, 0);
@@ -559,17 +576,17 @@ TEST_F(TestSession, BadIV) {
 
 // Test that invalid key size ranges are handled correctly.
 TEST_F(TestSession, BadKeySize) {
-  Object* key = NULL;
+  const Object* key = NULL;
   GenerateSecretKey(CKM_AES_KEY_GEN, 16, &key);
   // AES keys can be 16, 24, or 32 bytes in length.
-  key->SetAttributeString(CKA_VALUE, string(33, 0));
+  const_cast<Object*>(key)->SetAttributeString(CKA_VALUE, string(33, 0));
   EXPECT_EQ(CKR_KEY_SIZE_RANGE,
             session_->OperationInit(kEncrypt, CKM_AES_ECB, "", key));
-  Object* pub = NULL;
-  Object* priv = NULL;
+  const Object* pub = NULL;
+  const Object* priv = NULL;
   GenerateRSAKeyPair(true, 512, &pub, &priv);
   // RSA keys can have a modulus size no smaller than 512.
-  priv->SetAttributeString(CKA_MODULUS, string(300, 0));
+  const_cast<Object*>(priv)->SetAttributeString(CKA_MODULUS, string(300, 0));
   EXPECT_EQ(CKR_KEY_SIZE_RANGE,
             session_->OperationInit(kSign, CKM_RSA_PKCS, "", priv));
 }
@@ -634,9 +651,9 @@ TEST_F(TestSession, BadAESGenerate) {
 TEST_F(TestSession, BadSignature) {
   string input(100, 'A');
   string signature(20, 0);
-  Object* hmac;
+  const Object* hmac;
   GenerateSecretKey(CKM_GENERIC_SECRET_KEY_GEN, 32, &hmac);
-  Object* rsapub, *rsapriv;
+  const Object* rsapub, *rsapriv;
   GenerateRSAKeyPair(true, 1024, &rsapub, &rsapriv);
   // HMAC with bad signature length.
   EXPECT_EQ(CKR_OK,

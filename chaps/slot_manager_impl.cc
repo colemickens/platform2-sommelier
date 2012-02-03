@@ -90,7 +90,7 @@ const struct MechanismInfo {
 
 SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory, TPMUtility* tpm_utility)
     : factory_(factory),
-      last_session_id_(0),
+      last_handle_(0),
       tpm_utility_(tpm_utility) {
   CHECK(factory_);
   CHECK(tpm_utility_);
@@ -167,11 +167,11 @@ int SlotManagerImpl::OpenSession(int slot_id, bool is_read_only) {
       slot_id,
       slot_list_[slot_id].token_object_pool.get(),
       tpm_utility_,
+      this,
       is_read_only));
   CHECK(session.get());
   // If we use this many sessions, we have a problem.
-  CHECK_LT(last_session_id_, INT_MAX);
-  int session_id = ++last_session_id_;
+  int session_id = CreateHandle();
   slot_list_[slot_id].sessions[session_id] = session;
   session_slot_map_[session_id] = slot_id;
   return session_id;
@@ -228,8 +228,9 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
     return;
   }
   // Setup the object pool and the key hierarchy.
-  shared_ptr<ObjectPool> object_pool(factory_->CreatePersistentObjectPool(
-      path.Append(kDefaultTokenFile)));
+  shared_ptr<ObjectPool> object_pool(
+      factory_->CreateObjectPool(this,
+          factory_->CreateObjectStore(path.Append(kDefaultTokenFile))));
   CHECK(object_pool.get());
   int slot_id = FindEmptySlot();
   string auth_key_blob;
@@ -289,8 +290,8 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
   int slot_id = 0;
   bool unload = false;
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
-    object_pool = factory_->CreatePersistentObjectPool(
-        path.Append(kDefaultTokenFile));
+    object_pool = factory_->CreateObjectPool(this, factory_->CreateObjectStore(
+        path.Append(kDefaultTokenFile)));
     scoped_object_pool.reset(object_pool);
     slot_id = FindEmptySlot();
     unload = true;
@@ -316,6 +317,12 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
   }
   if (unload)
     tpm_utility_->UnloadKeysForSlot(slot_id);
+}
+
+int SlotManagerImpl::CreateHandle() {
+  // If we use this many handles, we have a problem.
+  CHECK(last_handle_ < INT_MAX);
+  return ++last_handle_;
 }
 
 void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,

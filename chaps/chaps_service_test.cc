@@ -562,7 +562,7 @@ TEST_F(TestService, SetAttributeValue) {
   EXPECT_CALL(slot_manager_, GetSession(1, _))
     .WillOnce(Return(false))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
-  EXPECT_CALL(session_, GetObject(2, _))
+  EXPECT_CALL(session_, GetModifiableObject(2, _))
     .WillOnce(Return(false))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
   EXPECT_CALL(object_, SetAttributes(_, 1))
