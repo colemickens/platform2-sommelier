@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,23 +10,9 @@
 #include "power_manager/backlight_interface.h"
 #include "power_manager/signal_callback.h"
 
-typedef int gboolean;  // Forward declaration of bool type used by glib.
-
 namespace power_manager {
 
-// Get and set the brightness level of the display backlight.
-//
-// Example usage:
-//   power_manager::Backlight backlight;
-//   int64 level, max;
-//   if (backlight.Init() && backlight.GetCurrentBrightnessLevel(&level)
-//                        && backlight.GetMaxBrightnessLevel(&max)) {
-//     std::cout << "Current brightness level is "
-//               << level << " out of " << max << "\n";
-//   } else {
-//     std::cout << "Cannot get brightness level\n";
-//   }
-
+// Controls an LCD backlight via sysfs.
 class Backlight : public BacklightInterface {
  public:
   Backlight();

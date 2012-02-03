@@ -230,89 +230,128 @@ TEST_F(BacklightControllerTest, NotifyObserver) {
 }
 
 TEST_F(BacklightControllerTest, MinBrightnessLevel) {
-  // Set a minimum visible backlight level and then create a new controller
-  // that'll use it (prefs are read in Init()).
+  // Set a minimum visible backlight level and reinitialize to load it.
   const int kMinLevel = 10;
   prefs_.SetInt64(kMinBacklightLevel, kMinLevel);
-  BacklightController controller(&backlight_, &prefs_);
-  ASSERT_TRUE(controller.Init());
-  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
-  ASSERT_TRUE(controller.OnPlugEvent(true));
+  ASSERT_TRUE(controller_.Init());
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  ASSERT_TRUE(controller_.OnPlugEvent(true));
 
   // Increase the brightness and check that we hit the max.
   for (int i = 0; i < kStepsToHitLimit; ++i)
-    controller.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
-  EXPECT_DOUBLE_EQ(100.0, controller.target_percent());
+    controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(100.0, controller_.target_percent());
 
   // Decrease the brightness with allow_off=false and check that we stop when we
   // get to the minimum level that we set in the pref.
   for (int i = 0; i < kStepsToHitLimit; ++i)
-    controller.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
+    controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
   EXPECT_DOUBLE_EQ(static_cast<double>(kMinLevel) / kMaxBrightness * 100.0,
-                   controller.target_percent());
+                   controller_.target_percent());
 
   // Decrease again with allow_off=true and check that we turn the backlight
   // off.
   for (int i = 0; i < kStepsToHitLimit; ++i)
-    controller.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
-  EXPECT_DOUBLE_EQ(0.0, controller.target_percent());
+    controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(0.0, controller_.target_percent());
 }
 
 // Test the case where the minimum visible backlight level matches the maximum
 // level exposed by hardware.
 TEST_F(BacklightControllerTest, MinBrightnessLevelMatchesMax) {
   prefs_.SetInt64(kMinBacklightLevel, kMaxBrightness);
-  BacklightController controller(&backlight_, &prefs_);
-  ASSERT_TRUE(controller.Init());
+  ASSERT_TRUE(controller_.Init());
 #ifdef HAS_ALS
   // The controller avoids adjusting the brightness until it gets its first
   // reading from the ambient light sensor.
-  controller.SetAlsBrightnessOffsetPercent(0.0);
+  controller_.SetAlsBrightnessOffsetPercent(0.0);
 #endif
-  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
-  ASSERT_TRUE(controller.OnPlugEvent(true));
-  EXPECT_DOUBLE_EQ(100.0, controller.target_percent());
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  ASSERT_TRUE(controller_.OnPlugEvent(true));
+  EXPECT_DOUBLE_EQ(100.0, controller_.target_percent());
 
   // Decrease the brightness with allow_off=false.
-  controller.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
-  EXPECT_DOUBLE_EQ(100.0, controller.target_percent());
+  controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(100.0, controller_.target_percent());
 
   // Decrease again with allow_off=true.
-  controller.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
-  EXPECT_DOUBLE_EQ(0.0, controller.target_percent());
+  controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(0.0, controller_.target_percent());
 }
 
 // Test the saved brightness level before and after suspend.
 TEST_F(BacklightControllerTest, SuspendBrightnessLevel) {
-  BacklightController controller(&backlight_, &prefs_);
-  ASSERT_TRUE(controller.Init());
 #ifdef HAS_ALS
   // The controller avoids adjusting the brightness until it gets its first
   // reading from the ambient light sensor.
-  controller.SetAlsBrightnessOffsetPercent(0.0);
+  controller_.SetAlsBrightnessOffsetPercent(0.0);
 #endif
-  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
-  ASSERT_TRUE(controller.OnPlugEvent(true));
-  EXPECT_DOUBLE_EQ(kPluggedBrightness, controller.target_percent());
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  ASSERT_TRUE(controller_.OnPlugEvent(true));
+  EXPECT_DOUBLE_EQ(kPluggedBrightness, controller_.target_percent());
 
   // Test suspend and resume.
-  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_SUSPENDED));
-  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
-  EXPECT_DOUBLE_EQ(kPluggedBrightness, controller.target_percent());
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_SUSPENDED));
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  EXPECT_DOUBLE_EQ(kPluggedBrightness, controller_.target_percent());
 
 #ifndef IS_DESKTOP
   // This test is not done on desktops because the brightness does not get
   // adjusted by SetPowerState() when idling.
   // Test idling into suspend state.
-  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_DIM));
-  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_IDLE_OFF));
-  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_SUSPENDED));
-  EXPECT_DOUBLE_EQ(0.0, controller.target_percent());
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_IDLE_OFF));
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_SUSPENDED));
+  EXPECT_DOUBLE_EQ(0.0, controller_.target_percent());
 
   // Test resume.
-  ASSERT_TRUE(controller.SetPowerState(BACKLIGHT_ACTIVE));
-  EXPECT_DOUBLE_EQ(kPluggedBrightness, controller.target_percent());
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  EXPECT_DOUBLE_EQ(kPluggedBrightness, controller_.target_percent());
 #endif // !defined(IS_DESKTOP)
+}
+
+// Check that BacklightController reinitializes itself correctly when the
+// backlight device changes (i.e. a new monitor is connected).
+TEST_F(BacklightControllerTest, ChangeBacklightDevice) {
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  ASSERT_TRUE(controller_.OnPlugEvent(false));
+  for (int i = 0; i < kStepsToHitLimit; ++i)
+    controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(100.0, controller_.target_percent());
+
+  // Update the backlight to expose a [0, 1] range.
+  const int64 kNewMaxBrightness = 1;
+  EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
+      .WillRepeatedly(DoAll(SetArgumentPointee<0>(kNewMaxBrightness),
+                            Return(true)));
+  EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
+      .WillRepeatedly(DoAll(SetArgumentPointee<0>(kNewMaxBrightness),
+                            Return(true)));
+
+  // Check that there's a single step between 100% and 0%.
+  controller_.OnBacklightDeviceChanged();
+  EXPECT_DOUBLE_EQ(100.0, controller_.target_percent());
+  controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(100.0, controller_.target_percent());
+  controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(0.0, controller_.target_percent());
+  controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(100.0, controller_.target_percent());
+
+  // Make the backlight expose the original range again.
+  EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
+      .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightness),
+                            Return(true)));
+  EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
+      .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightness),
+                            Return(true)));
+
+  // We should permit more steps now.
+  controller_.OnBacklightDeviceChanged();
+  EXPECT_DOUBLE_EQ(100.0, controller_.target_percent());
+  controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_LT(controller_.target_percent(), 100.0);
+  EXPECT_GT(controller_.target_percent(), 0.0);
 }
 
 }  // namespace power_manager

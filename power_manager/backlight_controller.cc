@@ -10,7 +10,6 @@
 
 #include "base/logging.h"
 #include "power_manager/ambient_light_sensor.h"
-#include "power_manager/backlight_interface.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs_interface.h"
 
@@ -90,15 +89,22 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       num_steps_(kMaxBrightnessSteps),
       is_initialized_(false),
       target_level_(0),
-      is_in_transition_(false) {}
+      is_in_transition_(false) {
+  backlight_->set_observer(this);
+}
+
+BacklightController::~BacklightController() {
+  backlight_->set_observer(NULL);
+}
 
 bool BacklightController::Init() {
   if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
-      !backlight_->GetCurrentBrightnessLevel(&target_level_))
+      !backlight_->GetCurrentBrightnessLevel(&target_level_)) {
+    LOG(ERROR) << "Querying backlight during initialization failed";
     return false;
+  }
 
   ReadPrefs();
-  is_initialized_ = true;
   target_percent_ = LevelToPercent(target_level_);
 
   // If there are fewer steps than the max, adjust for it.
@@ -107,6 +113,10 @@ bool BacklightController::Init() {
   num_steps_ = std::max(static_cast<int64>(1),
                         std::min(kMaxBrightnessSteps, max_level_));
 
+  LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "
+            << num_steps_ << " step(s); current level is " << target_level_
+            << " (" << target_percent_ << "%)";
+  is_initialized_ = true;
   return true;
 }
 
@@ -350,6 +360,12 @@ bool BacklightController::IsBacklightActiveOff() {
   return state_ == BACKLIGHT_ACTIVE && target_percent_ == 0;
 }
 
+void BacklightController::OnBacklightDeviceChanged() {
+  LOG(INFO) << "Backlight device changed; reinitializing controller";
+  if (Init())
+    WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
+}
+
 double BacklightController::ClampPercentToVisibleRange(double percent) {
   return std::min(kMaxPercent,
                   std::max(LevelToPercent(min_visible_level_), percent));
@@ -465,11 +481,11 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
 
 bool BacklightController::SetBrightness(int64 target_level,
                                         TransitionStyle style) {
-  LOG(INFO) << "Attempting to set brightness to " << target_level;
-  int64 current_level;
+  int64 current_level = 0;
   backlight_->GetCurrentBrightnessLevel(&current_level);
-  LOG(INFO) << "Current actual brightness: " << current_level;
-  LOG(INFO) << "Current target brightness: " << target_level_;
+  LOG(INFO) << "Setting brightness level to " << target_level
+            << " (currently " << current_level << ", previous target was "
+            << target_level_ << ")";
 
   // If this is a redundant call (existing target level is the same as
   // new target level), ignore this call.
@@ -479,6 +495,7 @@ bool BacklightController::SetBrightness(int64 target_level,
   // Otherwise, set to the new target brightness. This will disable any
   // outstanding brightness transition to a different brightness.
   target_level_ = target_level;
+
   // If the current brightness happens to be at the new target brightness,
   // do not start a new transition.
   int64 diff = target_level - current_level;
@@ -494,7 +511,6 @@ bool BacklightController::SetBrightness(int64 target_level,
   // The following check will require this code to be updated should more styles
   // be added in the future.
   DCHECK_EQ(style, TRANSITION_GRADUAL);
-  LOG(INFO) << "Setting to new target brightness " << target_level;
   is_in_transition_ = true;
   int64 previous_level = current_level;
   for (int i = 0; i < kBacklightAnimationFrames; ++i) {

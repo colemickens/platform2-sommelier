@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -39,7 +39,7 @@ bool ExternalBacklightClient::GetMaxBrightnessLevel(int64* max_level) {
   return true;
 }
 
-bool ExternalBacklightClient::GetCurrentBrightnessLevel(int64* current_level ) {
+bool ExternalBacklightClient::GetCurrentBrightnessLevel(int64* current_level) {
   CHECK(current_level);
   *current_level = level_;
   return true;
@@ -114,19 +114,25 @@ bool ExternalBacklightClient::GetActualBrightness(int64* level,
 
 DBusHandlerResult ExternalBacklightClient::DBusMessageHandler(
     DBusConnection* /* connection */, DBusMessage* message, void* data) {
+  if (!dbus_message_is_signal(message,
+                              kPowerManagerInterface,
+                              kExternalBacklightUpdate))
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+  LOG(INFO) << "External backlight changed event";
   ExternalBacklightClient* client = static_cast<ExternalBacklightClient*>(data);
-  if (dbus_message_is_signal(message,
-                             kPowerManagerInterface,
-                             kExternalBacklightUpdate)) {
-    LOG(INFO) << "External backlight changed event";
-    DBusError error;
-    dbus_error_init(&error);
-    if (dbus_message_get_args(message, &error,
-                              DBUS_TYPE_INT64, &client->level_,
-                              DBUS_TYPE_INT64, &client->max_level_,
-                              DBUS_TYPE_INVALID) == FALSE)
-      LOG(ERROR) << "Failed to read arguments from signal: " << error.message;
+  DBusError error;
+  dbus_error_init(&error);
+  if (!dbus_message_get_args(message, &error,
+                             DBUS_TYPE_INT64, &client->level_,
+                             DBUS_TYPE_INT64, &client->max_level_,
+                             DBUS_TYPE_INVALID)) {
+    LOG(ERROR) << "Failed to read arguments from signal: " << error.message;
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
+
+  if (client->observer_)
+    client->observer_->OnBacklightDeviceChanged();
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 

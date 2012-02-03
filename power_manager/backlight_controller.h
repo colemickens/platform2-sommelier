@@ -8,6 +8,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "base/basictypes.h"
+#include "power_manager/backlight_interface.h"
 #include "power_manager/signal_callback.h"
 
 typedef int gboolean;
@@ -79,11 +80,11 @@ class BacklightControllerObserver {
 // brightness percentage in the range [0.0, 100.0] (where 0 indicates a
 // fully-off backlight), while "level" refers to a 64-bit hardware-specific
 // brightness in the range [0, max-brightness-per-sysfs].
-class BacklightController {
+class BacklightController : public BacklightInterfaceObserver {
  public:
   BacklightController(BacklightInterface* backlight,
                       PowerPrefsInterface* prefs);
-  virtual ~BacklightController() {}
+  virtual ~BacklightController();
 
   void set_light_sensor(AmbientLightSensor* als) { light_sensor_ = als; }
   void set_observer(BacklightControllerObserver* observer) {
@@ -95,17 +96,18 @@ class BacklightController {
   int als_adjustment_count() const { return als_adjustment_count_; }
   int user_adjustment_count() const { return user_adjustment_count_; }
 
-  // Initialize the object.
+  // Initialize the object.  Note that this method is also reinvoked when the
+  // backlight device changes.
   bool Init();
 
   // Get the current brightness of the backlight in the range [0, 100].
   // We may be in the process of smoothly transitioning to a different level.
   bool GetCurrentBrightnessPercent(double* percent);
 
-  // Increase the brightness level of the backlight by one level.
+  // Increase the brightness level of the backlight by one step.
   void IncreaseBrightness(BrightnessChangeCause cause);
 
-  // Decrease the brightness level of the backlight by one level.
+  // Decrease the brightness level of the backlight by one step.
   //
   // If |allow_off| is false, the backlight will never be entirely turned off.
   // This should be used with on-screen controls to prevent their becoming
@@ -127,6 +129,9 @@ class BacklightController {
 
   // Returns whether the user has manually turned backlight down to zero.
   bool IsBacklightActiveOff();
+
+  // BacklightInterfaceObserver implementation:
+  virtual void OnBacklightDeviceChanged();
 
  private:
   friend class DaemonTest;
