@@ -13,6 +13,7 @@
 #define CRYPTOHOME_MOUNT_H_
 
 #include <base/basictypes.h>
+#include <base/callback.h>
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
@@ -528,8 +529,8 @@ class Mount : public EntropySource {
   //
   // Parameters
   //   callback - Routine to invoke.
-  typedef void (Mount::*CryptohomeCallback)(const FilePath&);
-  void DoForEveryUnmountedCryptohome(CryptohomeCallback callback);
+  typedef base::Callback<void(const FilePath&)> CryptohomeCallback;
+  void DoForEveryUnmountedCryptohome(const CryptohomeCallback& cryptohome_cb);
 
   // Same as MountCryptohome but specifies if the cryptohome directory should be
   // recreated on a fatal error

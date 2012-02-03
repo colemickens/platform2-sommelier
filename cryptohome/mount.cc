@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+#include <base/bind.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
@@ -627,7 +628,8 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   return false;
 }
 
-void Mount::DoForEveryUnmountedCryptohome(CryptohomeCallback callback) {
+void Mount::DoForEveryUnmountedCryptohome(
+    const CryptohomeCallback& cryptohome_cb) {
   FilePath shadow_root(shadow_root_);
   file_util::FileEnumerator dir_enumerator(shadow_root, false,
       file_util::FileEnumerator::DIRECTORIES);
@@ -656,7 +658,7 @@ void Mount::DoForEveryUnmountedCryptohome(CryptohomeCallback callback) {
     if (platform_->IsDirectoryMountedWith(home_dir_, vault_path.value())) {
       continue;
     }
-    (this->*callback)(vault_path);
+    cryptohome_cb.Run(vault_path);
   }
 }
 
@@ -693,7 +695,8 @@ static void DeleteDirectoryContents(const FilePath& dir) {
 }
 
 void Mount::CleanUnmountedTrackedSubdirectories() {
-  DoForEveryUnmountedCryptohome(&Mount::DeleteTrackedDirsCallback);
+  DoForEveryUnmountedCryptohome(base::Bind(&Mount::DeleteTrackedDirsCallback,
+                                           base::Unretained(this)));
 }
 
 void Mount::DeleteCacheCallback(const FilePath& vault) {
@@ -720,7 +723,8 @@ bool Mount::DoAutomaticFreeDiskSpaceControl() {
     return false;
 
   // Clean Cache directories for every user (except current one).
-  DoForEveryUnmountedCryptohome(&Mount::DeleteCacheCallback);
+  DoForEveryUnmountedCryptohome(base::Bind(&Mount::DeleteCacheCallback,
+                                           base::Unretained(this)));
 
   if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
     return true;
@@ -730,7 +734,9 @@ bool Mount::DoAutomaticFreeDiskSpaceControl() {
   // updates (UpdateCurrentUserActivityTimestamp()).
   if (!user_timestamp_->initialized()) {
     user_timestamp_->Initialize();
-    DoForEveryUnmountedCryptohome(&Mount::AddUserTimestampToCacheCallback);
+    DoForEveryUnmountedCryptohome(base::Bind(
+        &Mount::AddUserTimestampToCacheCallback,
+        base::Unretained(this)));
   }
 
   // Delete old users, the oldest first.
