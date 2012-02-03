@@ -13,6 +13,7 @@
 #include <base/at_exit.h>
 #include <base/basictypes.h>
 #include <base/command_line.h>
+#include <base/file_path.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/string_number_conversions.h>
@@ -46,7 +47,7 @@ namespace switches {
 static const char kDisableChromeRestartFile[] = "disable-chrome-restart-file";
 // The default path to this file.
 static const char kDisableChromeRestartFileDefault[] =
-    "/tmp/disable_chrome_restart";
+    "/var/run/disable_chrome_restart";
 
 // Name of the flag specifying UID to be set for each managed job before
 // starting it.
@@ -135,7 +136,7 @@ int main(int argc, char* argv[]) {
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
   if (magic_chrome_file.empty())
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
-  manager->set_file_checker(new FileChecker(magic_chrome_file));
+  manager->set_file_checker(new FileChecker(FilePath(magic_chrome_file)));
   manager->set_mitigator(new RegenMitigator(new KeyGenerator(&system),
                                             uid_set,
                                             uid,
