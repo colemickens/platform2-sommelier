@@ -435,6 +435,8 @@ void CellularCapabilityGSM::OnScanCallback(const GSMScanResults &results,
        it != results.end(); ++it) {
     found_networks_.push_back(ParseScanResult(*it));
   }
+  cellular()->adaptor()->EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
+                                               found_networks_);
   CompleteOperation(call_handler);
 }
 

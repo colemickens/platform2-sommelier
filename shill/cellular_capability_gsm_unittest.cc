@@ -285,6 +285,14 @@ TEST_F(CellularCapabilityGSMTest, ChangePIN) {
   EXPECT_TRUE(GSMTestAsyncCallHandler::error().IsSuccess());
 }
 
+namespace {
+
+MATCHER(SizeIs2, "") {
+  return arg.size() == 2;
+}
+
+}  // namespace
+
 TEST_F(CellularCapabilityGSMTest, Scan) {
   static const char kID0[] = "123";
   static const char kID1[] = "456";
@@ -298,6 +306,9 @@ TEST_F(CellularCapabilityGSMTest, Scan) {
   results.push_back(GSMScanResult());
   results[1][CellularCapabilityGSM::kNetworkPropertyID] = kID1;
   capability_->found_networks_.resize(3, Stringmap());
+  EXPECT_CALL(*device_adaptor_,
+              EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
+                                    SizeIs2()));
   capability_->OnScanCallback(results, Error(), NULL);
   EXPECT_EQ(2, capability_->found_networks_.size());
   EXPECT_EQ(kID0,
