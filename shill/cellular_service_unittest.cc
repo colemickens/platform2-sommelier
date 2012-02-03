@@ -83,7 +83,8 @@ TEST_F(CellularServiceTest, FriendlyName) {
 }
 
 TEST_F(CellularServiceTest, SetStorageIdentifier) {
-  EXPECT_EQ(string("cellular_") + kAddress + "_" + service_->friendly_name(),
+  EXPECT_EQ(string(flimflam::kTypeCellular) + "_" +
+            kAddress + "_" + service_->friendly_name(),
             service_->GetStorageIdentifier());
   service_->SetStorageIdentifier("a b c");
   EXPECT_EQ("a_b_c", service_->GetStorageIdentifier());

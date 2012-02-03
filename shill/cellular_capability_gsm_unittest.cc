@@ -504,12 +504,12 @@ TEST_F(CellularCapabilityGSMTest, CreateFriendlyServiceName) {
 TEST_F(CellularCapabilityGSMTest, SetStorageIdentifier) {
   SetService();
   capability_->OnServiceCreated();
-  EXPECT_EQ(string("cellular_") + kAddress + "_" +
+  EXPECT_EQ(string(flimflam::kTypeCellular) + "_" + kAddress + "_" +
             cellular_->service()->friendly_name(),
             cellular_->service()->GetStorageIdentifier());
   capability_->imsi_ = kIMSI;
   capability_->OnServiceCreated();
-  EXPECT_EQ(string("cellular_") + kAddress + "_" + kIMSI,
+  EXPECT_EQ(string(flimflam::kTypeCellular) + "_" + kAddress + "_" + kIMSI,
             cellular_->service()->GetStorageIdentifier());
 }
 

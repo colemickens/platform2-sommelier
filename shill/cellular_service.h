@@ -91,8 +91,6 @@ class CellularService : public Service {
   friend class CellularServiceTest;
   FRIEND_TEST(CellularTest, Connect);
 
-  static const char kServiceType[];
-
   virtual std::string GetDeviceRpcId(Error *error);
 
   // Properties

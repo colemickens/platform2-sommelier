@@ -17,9 +17,6 @@ using std::string;
 
 namespace shill {
 
-// static
-const char CellularService::kServiceType[] = "cellular";
-
 // TODO(petkov): Add these to system_api/dbus/service_constants.h
 namespace {
 const char kKeyOLPURL[] = "url";
@@ -95,7 +92,8 @@ CellularService::CellularService(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kUsageURLProperty, &usage_url_);
 
   set_friendly_name(device->CreateFriendlyServiceName());
-  SetStorageIdentifier("cellular_" + device->address() + "_" + friendly_name());
+  SetStorageIdentifier(string(flimflam::kTypeCellular) + "_" +
+                       device->address() + "_" + friendly_name());
 }
 
 CellularService::~CellularService() { }
