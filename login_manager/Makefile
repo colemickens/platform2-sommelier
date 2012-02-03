@@ -8,15 +8,14 @@ include common.mk
 
 PKG_CONFIG ?= pkg-config
 
-INCLUDE_DIRS = -I.. $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-glib-1 glib-2.0 \
-	gdk-2.0 gtk+-2.0 nss)
-LIB_DIRS = $(shell $(PKG_CONFIG) --libs dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 \
-	gtk+-2.0 nss)
+BASE_VER = 85268
+PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 nss \
+	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CFLAGS := $(CFLAGS)
-CXXFLAGS := $(INCLUDE_DIRS) -DOS_CHROMEOS $(CXXFLAGS)
-LDFLAGS += -ldl -lpthread -lrt -levent -lchromeos -lbootstat -lchrome_crypto \
-	-lbase -lprotobuf-lite -lmetrics $(LIB_DIRS)
+CPPFLAGS += -I.. -DOS_CHROMEOS $(PC_CFLAGS)
+LDLIBS += -lbootstat -lchrome_crypto $(PC_LIBS) -lprotobuf-lite -lmetrics
 
 # Special logic for generating dbus service bindings.
 DBUS_SOURCE = session_manager.xml
