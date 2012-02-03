@@ -8,15 +8,19 @@ PROTOC ?= protoc
 GLIB_GENMARSHAL ?= glib-genmarshal
 DBUS_BINDING_TOOL ?= dbus-binding-tool
 
-export PKG_CONFIG_PATH
-# $(OUT)/.. is added for the generated files.
+PKG_CONFIG ?= pkg-config
+
+BASE_VER = 85268
+PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 nss \
+	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+
 CXXFLAGS += -Wall -Werror -fno-exceptions
-PC_DEPS := dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 gtk+-2.0 libchrome libchromeos \
-           nss
-CXXFLAGS += $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
-LDFLAGS += $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
-LDFLAGS += -lrt -lcrypto -lecryptfs -levent -lkeyutils -lchaps -lprotobuf \
-           -lpthread -lscrypt -ltspi -lmetrics -lpolicy
+CPPFLAGS += $(PC_CFLAGS)
+LDLIBS += -lpolicy-$(BASE_VER) -lmetrics $(PC_LIBS) \
+	-lcrypto -lecryptfs -levent -lkeyutils -lchaps -lprotobuf \
+	-lpthread -lscrypt -ltspi
 
 PROTOS := install_attributes tpm_status vault_keyset
 PB_HDRS := $(patsubst %,%.pb.h,$(PROTOS))
@@ -74,7 +78,7 @@ bindings/server.h: $(SRC)/cryptohome.xml
 CXX_BINARY(cryptohomed): $(SHARED_OBJS) cryptohomed.o
 CXX_BINARY(cryptohome): $(SHARED_OBJS) cryptohome.o
 CXX_BINARY(cryptohome-path): $(SHARED_OBJS) cryptohome-path.o
-CXX_BINARY(cryptohome_testrunner): LDFLAGS += -lgtest -lgmock -lpolicy
+CXX_BINARY(cryptohome_testrunner): LDLIBS += -lgtest -lgmock
 CXX_BINARY(cryptohome_testrunner): $(SHARED_OBJS) $(TEST_OBJS)
 
 clean: CLEAN(*.pb.cc) CLEAN(*.pb.h) CLEAN(cryptohomed)

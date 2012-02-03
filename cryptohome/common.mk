@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -261,12 +261,11 @@ endif
 #  CXXFLAGS := $(filter-out badflag,$(CXXFLAGS)) # Filter out a value
 # The same goes for CFLAGS.
 # TODO(wad) Moving to -fvisibility=internal by default would be nice too.
-CXXFLAGS := $(CXXFLAGS) -Wall -Werror -fstack-protector-all \
-  -fno-strict-aliasing -D_FORTIFY_SOURCE=2 -ggdb3 -Wa,--noexecstack -O1 \
-  -fvisibility=internal -Wformat=2
-CFLAGS := $(CFLAGS) -Wall -Werror -fstack-protector-all -fno-strict-aliasing \
-  -DFORTIFY_SOURCE=2 -ggdb3 -Wa,--noexecstack -O1 -fvisibility=internal \
-  -Wformat=2
+COMMON_CFLAGS := -Wall -Werror -fstack-protector-strong -fno-strict-aliasing \
+  -ggdb3 -Wa,--noexecstack -O1 -fvisibility=internal -Wformat=2
+CXXFLAGS += $(COMMON_CFLAGS)
+CFLAGS += $(COMMON_CFLAGS)
+CPPFLAGS += -D_FORTIFY_SOURCE=2
 
 ifeq ($(PROFILING),1)
   CFLAGS := -pg
@@ -326,10 +325,11 @@ define COMPILE_BINARY_implementation
   @$(ECHO) "LD$(1)		$(subst $(PWD)/,,$(TARGET_OR_MEMBER))"
   $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
   $(QUIET)$($(1)) $(COMPILE_PIE_FLAGS) -o $(TARGET_OR_MEMBER) \
+    $(2) $(LDFLAGS) \
     $(filter %.o %.a,$(^:.o=.pie.o)) \
     $(foreach so,$(filter %.so,$^),-L$(dir $(so)) \
                             -l$(patsubst lib%,%,$(basename $(notdir $(so))))) \
-    $(2) $(LDFLAGS)
+    $(LDLIBS)
   $(call conditional_strip)
   @$(ECHO) -n "BIN		"
   @$(ECHO) "$(COLOR_GREEN)$(subst $(PWD)/,,$(TARGET_OR_MEMBER))$(COLOR_RESET)"
@@ -349,13 +349,14 @@ define COMPILE_LIBRARY_implementation
   @$(ECHO) "SHARED$(1)	$(subst $(PWD)/,,$(TARGET_OR_MEMBER))"
   $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
   $(QUIET)$($(1)) -shared -Wl,-E -o $(TARGET_OR_MEMBER) \
+    $(2) $(LDFLAGS) \
     $(if $(filter %.a,$^),-Wl$(COMMA)--whole-archive,) \
     $(filter %.o ,$(^:.o=.pic.o)) \
     $(foreach a,$(filter %.a,$^),-L$(dir $(a)) \
                             -l$(patsubst lib%,%,$(basename $(notdir $(a))))) \
     $(foreach so,$(filter %.so,$^),-L$(dir $(so)) \
                             -l$(patsubst lib%,%,$(basename $(notdir $(so))))) \
-    $(2) $(LDFLAGS)
+    $(LDLIBS)
   $(call conditional_strip)
   @$(ECHO) -n "LIB		$(COLOR_GREEN)"
   @$(ECHO) "$(subst $(PWD)/,,$(TARGET_OR_MEMBER))$(COLOR_RESET)"
@@ -497,17 +498,18 @@ CXX_OBJECTS = $(patsubst $(SRC)/%.cc,%.o,$(wildcard $(SRC)/*.cc))
 # $(1) list of .o files
 # $(2) source type (CC or CXX)
 # $(3) source suffix (cc or c)
-# $(4) source dir: _only_ if $(SRC). Leave blank for obj tree.
+# $(4) compiler flag name (CFLAGS or CXXFLAGS)
+# $(5) source dir: _only_ if $(SRC). Leave blank for obj tree.
 define add_object_rules
-$(patsubst %.o,%.pie.o,$(1)): %.pie.o: $(4)%.$(3) %.o.depends
+$(patsubst %.o,%.pie.o,$(1)): %.pie.o: $(5)%.$(3) %.o.depends
 	$$(QUIET)mkdir -p "$$(dir $$@)"
 	$$(call OBJECT_PATTERN_implementation,$(2),\
-          $$(basename $$@),$$(CXXFLAGS) $$(OBJ_PIE_FLAG))
+          $$(basename $$@),$$($(4)) $$(CPPFLAGS) $$(OBJ_PIE_FLAG))
 
-$(patsubst %.o,%.pic.o,$(1)): %.pic.o: $(4)%.$(3) %.o.depends
+$(patsubst %.o,%.pic.o,$(1)): %.pic.o: $(5)%.$(3) %.o.depends
 	$$(QUIET)mkdir -p "$$(dir $$@)"
 	$$(call OBJECT_PATTERN_implementation,$(2),\
-          $$(basename $$@),$$(CXXFLAGS) -fPIC)
+          $$(basename $$@),$$($(4)) $$(CPPFLAGS) -fPIC)
 
 # Placeholder for depends
 $(patsubst %.o,%.o.depends,$(1)):
@@ -515,7 +517,6 @@ $(patsubst %.o,%.o.depends,$(1)):
 	$$(QUIET)touch "$$@"
 
 $(1): %.o: %.pic.o %.pie.o
-# $(1): %.o: %.pie.o
 	$$(QUIET)mkdir -p "$$(dir $$@)"
 	$$(QUIET)touch "$$@"
 endef
@@ -532,8 +533,8 @@ define OBJECT_PATTERN_implementation
 endef
 
 # Now actually register handlers for C(XX)_OBJECTS.
-$(eval $(call add_object_rules,$(C_OBJECTS),CC,c,$(SRC)/))
-$(eval $(call add_object_rules,$(CXX_OBJECTS),CXX,cc,$(SRC)/))
+$(eval $(call add_object_rules,$(C_OBJECTS),CC,c,CFLAGS,$(SRC)/))
+$(eval $(call add_object_rules,$(CXX_OBJECTS),CXX,cc,CXXFLAGS,$(SRC)/))
 
 # Disable default pattern rules to help avoid leakage.
 # These may already be handled by '-r', but let's keep it to be safe.
@@ -788,8 +789,8 @@ $(eval $(MODULE_NAME)_CXX_OBJECTS ?= $(MODULE_CXX_OBJECTS))
 # Note, $(MODULE) is implicit in the path to the %.c.
 # See $(C_OBJECTS) for more details.
 # Register rules for the module objects.
-$(eval $(call add_object_rules,$(MODULE_C_OBJECTS),CC,c,$(SRC)/))
-$(eval $(call add_object_rules,$(MODULE_CXX_OBJECTS),CXX,cc,$(SRC)/))
+$(eval $(call add_object_rules,$(MODULE_C_OBJECTS),CC,c,CFLAGS,$(SRC)/))
+$(eval $(call add_object_rules,$(MODULE_CXX_OBJECTS),CXX,cc,CXXFLAGS,$(SRC)/))
 
 # Continue recursive inclusion of module.mk files
 SUBMODULE_DIRS = $(wildcard $(SRC)/$(MODULE)/*/module.mk)
