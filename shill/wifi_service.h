@@ -54,6 +54,7 @@ class WiFiService : public Service {
   virtual void AddEndpoint(WiFiEndpointConstRefPtr endpoint);
   virtual void RemoveEndpoint(WiFiEndpointConstRefPtr endpoint);
   bool NumEndpoints() const { return endpoints_.size(); }
+  void NotifyCurrentEndpoint(const WiFiEndpoint &endpoint);
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
   std::string GetStorageIdentifier() const;
@@ -93,6 +94,7 @@ class WiFiService : public Service {
  private:
   friend class WiFiServiceSecurityTest;
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
+  FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
   FRIEND_TEST(WiFiServiceTest, ConnectTask8021x);

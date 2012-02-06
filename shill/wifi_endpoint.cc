@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,7 +21,8 @@ using std::vector;
 namespace shill {
 
 WiFiEndpoint::WiFiEndpoint(
-    const map<string, ::DBus::Variant> &properties) {
+    const map<string, ::DBus::Variant> &properties)
+    : frequency_(0) {
   // XXX will segfault on missing properties
   ssid_ =
       properties.find(wpa_supplicant::kBSSPropertySSID)->second.
@@ -32,6 +33,10 @@ WiFiEndpoint::WiFiEndpoint(
   signal_strength_ =
       properties.find(wpa_supplicant::kBSSPropertySignal)->second.
       reader().get_int16();
+  map<string, ::DBus::Variant>::const_iterator it =
+      properties.find(wpa_supplicant::kBSSPropertyFrequency);
+  if (it != properties.end())
+    frequency_ = it->second.reader().get_uint16();
   network_mode_ = ParseMode(
       properties.find(wpa_supplicant::kBSSPropertyMode)->second);
   security_mode_ = ParseSecurity(properties);
@@ -84,6 +89,10 @@ const string &WiFiEndpoint::bssid_hex() const {
 
 int16_t WiFiEndpoint::signal_strength() const {
   return signal_strength_;
+}
+
+uint16 WiFiEndpoint::frequency() const {
+  return frequency_;
 }
 
 const string &WiFiEndpoint::network_mode() const {

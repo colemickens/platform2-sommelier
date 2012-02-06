@@ -286,6 +286,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
                  const string &ssid,
                  const string &bssid,
                  int16_t signal_strength,
+                 uint16 frequency,
                  const char *mode);
   void ClearCachedCredentials() {
     wifi_->ClearCachedCredentials();
@@ -439,6 +440,7 @@ void WiFiMainTest::ReportBSS(const ::DBus::Path &bss_path,
                              const string &ssid,
                              const string &bssid,
                              int16_t signal_strength,
+                             uint16 frequency,
                              const char *mode) {
   map<string, ::DBus::Variant> bss_properties;
 
@@ -455,8 +457,11 @@ void WiFiMainTest::ReportBSS(const ::DBus::Path &bss_path,
     DBus::MessageIter writer(bss_properties["BSSID"].writer());
     writer << bssid_bytes;
   }
-  bss_properties["Signal"].writer().append_int16(signal_strength);
-  bss_properties["Mode"].writer().append_string(mode);
+  bss_properties[wpa_supplicant::kBSSPropertySignal].writer().
+      append_int16(signal_strength);
+  bss_properties[wpa_supplicant::kBSSPropertyFrequency].writer().
+      append_uint16(frequency);
+  bss_properties[wpa_supplicant::kBSSPropertyMode].writer().append_string(mode);
   wifi_->BSSAddedTask(bss_path, bss_properties);
 }
 
@@ -504,15 +509,32 @@ TEST_F(WiFiMainTest, StartClearsState) {
 TEST_F(WiFiMainTest, ScanResults) {
   EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   ReportBSS(
-      "bss1", "ssid1", "00:00:00:00:00:01", 1, kNetworkModeInfrastructure);
+      "bss1", "ssid1", "00:00:00:00:00:01", 1, 0, kNetworkModeInfrastructure);
   ReportBSS(
-      "bss2", "ssid2", "00:00:00:00:00:02", 2, kNetworkModeInfrastructure);
+      "bss2", "ssid2", "00:00:00:00:00:02", 2, 0, kNetworkModeInfrastructure);
   ReportBSS(
-      "bss3", "ssid3", "00:00:00:00:00:03", 3, kNetworkModeInfrastructure);
-  ReportBSS("bss4", "ssid4", "00:00:00:00:00:04", 4, kNetworkModeAdHoc);
-  EXPECT_EQ(5, GetEndpointMap().size());
+      "bss3", "ssid3", "00:00:00:00:00:03", 3, 0, kNetworkModeInfrastructure);
+  const uint16 frequency = 2412;
+  ReportBSS("bss4", "ssid4", "00:00:00:00:00:04", 4, frequency,
+            kNetworkModeAdHoc);
+
+  const WiFi::EndpointMap &endpoints_by_rpcid = GetEndpointMap();
+  EXPECT_EQ(5, endpoints_by_rpcid.size());
+
+  WiFi::EndpointMap::const_iterator i;
+  WiFiEndpointRefPtr endpoint;
+  for (i = endpoints_by_rpcid.begin();
+       i != endpoints_by_rpcid.end();
+       ++i) {
+    if (i->second->bssid_string() == "00:00:00:00:00:04")
+      break;
+  }
+  ASSERT_TRUE(i != endpoints_by_rpcid.end());
+  EXPECT_EQ(4, i->second->signal_strength());
+  EXPECT_EQ(frequency, i->second->frequency());
+  EXPECT_EQ("adhoc", i->second->network_mode());
 }
 
 TEST_F(WiFiMainTest, ScanResultsWithUpdates) {
@@ -520,14 +542,14 @@ TEST_F(WiFiMainTest, ScanResultsWithUpdates) {
   EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
   EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   ReportBSS(
-      "bss1", "ssid1", "00:00:00:00:00:01", 1, kNetworkModeInfrastructure);
+      "bss1", "ssid1", "00:00:00:00:00:01", 1, 0, kNetworkModeInfrastructure);
   ReportBSS(
-      "bss2", "ssid2", "00:00:00:00:00:02", 2, kNetworkModeInfrastructure);
+      "bss2", "ssid2", "00:00:00:00:00:02", 2, 0, kNetworkModeInfrastructure);
   ReportBSS(
-      "bss1", "ssid1", "00:00:00:00:00:01", 3, kNetworkModeInfrastructure);
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 4, kNetworkModeAdHoc);
+      "bss1", "ssid1", "00:00:00:00:00:01", 3, 0, kNetworkModeInfrastructure);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 4, 0, kNetworkModeAdHoc);
 
   const WiFi::EndpointMap &endpoints_by_rpcid = GetEndpointMap();
   EXPECT_EQ(3, endpoints_by_rpcid.size());
@@ -548,15 +570,15 @@ TEST_F(WiFiMainTest, ScanCompleted) {
   StartWiFi();
   EXPECT_CALL(*manager(), RegisterService(_))
       .Times(3);
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   ReportBSS(
-      "bss1", "ssid1", "00:00:00:00:00:01", 1, kNetworkModeInfrastructure);
+      "bss1", "ssid1", "00:00:00:00:00:01", 1, 0, kNetworkModeInfrastructure);
   ReportBSS(
-      "bss2", "ssid2", "00:00:00:00:00:02", 2, kNetworkModeInfrastructure);
+      "bss2", "ssid2", "00:00:00:00:00:02", 2, 0, kNetworkModeInfrastructure);
   ReportScanDone();
   EXPECT_EQ(3, GetServices().size());
 
-  ReportBSS("bss3", string(1, 0), "00:00:00:00:00:03", 3, kNetworkModeAdHoc);
+  ReportBSS("bss3", string(1, 0), "00:00:00:00:00:03", 3, 0, kNetworkModeAdHoc);
   EXPECT_EQ(4, GetEndpointMap().size());
   EXPECT_EQ(3, GetServices().size());
 
@@ -569,8 +591,8 @@ TEST_F(WiFiMainTest, EndpointGroupingTogether) {
   EXPECT_CALL(*manager(), RegisterService(_));
   EXPECT_CALL(*manager(), HasService(_));
   EXPECT_CALL(*manager(), UpdateService(_));
-  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
-  ReportBSS("bss1", "ssid", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid", "00:00:00:00:00:01", 0, 0, kNetworkModeAdHoc);
   ReportScanDone();
   EXPECT_EQ(1, GetServices().size());
 }
@@ -579,8 +601,8 @@ TEST_F(WiFiMainTest, EndpointGroupingDifferentSSID) {
   StartWiFi();
   EXPECT_CALL(*manager(), RegisterService(_))
       .Times(2);
-  ReportBSS("bss0", "ssid1", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
-  ReportBSS("bss1", "ssid2", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid1", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid2", "00:00:00:00:00:01", 0, 0, kNetworkModeAdHoc);
   ReportScanDone();
   EXPECT_EQ(2, GetServices().size());
 }
@@ -589,8 +611,9 @@ TEST_F(WiFiMainTest, EndpointGroupingDifferentMode) {
   StartWiFi();
   EXPECT_CALL(*manager(), RegisterService(_))
       .Times(2);
-  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
-  ReportBSS("bss1", "ssid", "00:00:00:00:00:01", 0, kNetworkModeInfrastructure);
+  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid", "00:00:00:00:00:01", 0, 0,
+            kNetworkModeInfrastructure);
   ReportScanDone();
   EXPECT_EQ(2, GetServices().size());
 }
@@ -605,7 +628,7 @@ TEST_F(WiFiMainTest, NonExistentBSSRemoved) {
 TEST_F(WiFiMainTest, LoneBSSRemoved) {
   EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   StartWiFi();
-  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   ReportScanDone();
   EXPECT_EQ(1, GetServices().size());
   EXPECT_TRUE(GetServices().front()->IsVisible());
@@ -618,7 +641,7 @@ TEST_F(WiFiMainTest, LoneBSSRemoved) {
 TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnected) {
   EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   StartWiFi();
-  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   ReportScanDone();
   ReportCurrentBSSChanged("bss0");
 
@@ -639,7 +662,8 @@ TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnectedToHidden) {
                       NULL, NULL, true, &e);
   EXPECT_EQ(1, GetServices().size());
 
-  ReportBSS("bss", "ssid", "00:00:00:00:00:01", 0, kNetworkModeInfrastructure);
+  ReportBSS("bss", "ssid", "00:00:00:00:00:01", 0, 0,
+            kNetworkModeInfrastructure);
   ReportScanDone();
   ReportCurrentBSSChanged("bss");
   EXPECT_EQ(1, GetServices().size());
@@ -658,8 +682,8 @@ TEST_F(WiFiMainTest, NonSolitaryBSSRemoved) {
   EXPECT_CALL(*manager(), HasService(_));
   EXPECT_CALL(*manager(), UpdateService(_));
   StartWiFi();
-  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
-  ReportBSS("bss1", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   ReportScanDone();
   EXPECT_EQ(1, GetServices().size());
   EXPECT_TRUE(GetServices().front()->IsVisible());
@@ -676,7 +700,7 @@ TEST_F(WiFiMainTest, Connect) {
       *supplicant_interface_proxy_;
 
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   ReportScanDone();
 
   {
@@ -699,7 +723,7 @@ TEST_F(WiFiMainTest, DisconnectPendingService) {
       *supplicant_interface_proxy_;
 
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   WiFiService *service(GetServices().begin()->get());
   InitiateConnect(service);
 
@@ -719,8 +743,8 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithCurrent) {
       *supplicant_interface_proxy_;
 
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
-  ReportBSS("bss1", "ssid1", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid1", "00:00:00:00:00:01", 0, 0, kNetworkModeAdHoc);
   WiFiService *service0(GetServices()[0].get());
   WiFiService *service1(GetServices()[1].get());
 
@@ -750,7 +774,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
       *supplicant_interface_proxy_;
 
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   WiFiService *service(GetServices().begin()->get());
   InitiateConnect(service);
   ReportCurrentBSSChanged("bss0");
@@ -774,8 +798,8 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
       *supplicant_interface_proxy_;
 
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
-  ReportBSS("bss1", "ssid1", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid1", "00:00:00:00:00:01", 0, 0, kNetworkModeAdHoc);
   WiFiService *service0(GetServices()[0].get());
   WiFiService *service1(GetServices()[1].get());
 
@@ -800,7 +824,7 @@ TEST_F(WiFiMainTest, DisconnectInvalidService) {
       *supplicant_interface_proxy_;
 
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   WiFiService *service(GetServices().begin()->get());
   EXPECT_CALL(supplicant_interface_proxy, Disconnect())
       .Times(0);
@@ -816,7 +840,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
       *supplicant_interface_proxy_;
 
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
 
   WiFiService *service(GetServices().begin()->get());
   DBus::Path fake_path("/fake/path");
@@ -841,7 +865,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
 TEST_F(WiFiMainTest, Stop) {
   EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   ReportScanDone();
 
   EXPECT_CALL(*manager(), DeregisterService(_));
@@ -1280,7 +1304,7 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToDisconnected) {
   // convenient for testing.
 
   StartWiFi();
-  ReportBSS("an_ap", ap->ssid_string(), ap->bssid_string(), 0,
+  ReportBSS("an_ap", ap->ssid_string(), ap->bssid_string(), 0, 0,
             kNetworkModeInfrastructure);
   InitiateConnect(service);
   EXPECT_EQ(service, GetPendingService().get());
@@ -1312,9 +1336,9 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
   // just convenient for testing.
 
   StartWiFi();
-  ReportBSS("ap1", ap1->ssid_string(), ap1->bssid_string(), 0,
+  ReportBSS("ap1", ap1->ssid_string(), ap1->bssid_string(), 0, 0,
             kNetworkModeInfrastructure);
-  ReportBSS("ap2", ap2->ssid_string(), ap2->bssid_string(), 0,
+  ReportBSS("ap2", ap2->ssid_string(), ap2->bssid_string(), 0, 0,
             kNetworkModeInfrastructure);
   InitiateConnect(service1);
   ReportCurrentBSSChanged("ap1");
@@ -1345,13 +1369,30 @@ TEST_F(WiFiMainTest, CurrentBSSChangeDisconnectedToConnected) {
   // convenient for testing.
 
   StartWiFi();
-  ReportBSS("an_ap", ap->ssid_string(), ap->bssid_string(), 0,
+  ReportBSS("an_ap", ap->ssid_string(), ap->bssid_string(), 0, 0,
             kNetworkModeInfrastructure);
   InitiateConnect(service);
   ReportCurrentBSSChanged("an_ap");
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
   EXPECT_EQ(service.get(), GetCurrentService().get());
   EXPECT_EQ(Service::kStateConfiguring, service->state());
+}
+
+TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
+  const uint16 frequency1 = 2412;
+  const uint16 frequency2 = 2442;
+  StartWiFi();
+  ReportBSS("bss1", "ssid1", "00:00:00:00:00:01", 1, frequency1,
+            kNetworkModeInfrastructure);
+  ReportBSS("bss2", "ssid1", "00:00:00:00:00:02", 1, frequency2,
+            kNetworkModeInfrastructure);
+  EXPECT_EQ(1, GetServices().size());
+  WiFiService *service(GetServices()[0].get());
+  InitiateConnect(service);
+  ReportCurrentBSSChanged("bss1");
+  EXPECT_EQ(frequency1, service->frequency_);
+  ReportCurrentBSSChanged("bss2");
+  EXPECT_EQ(frequency2, service->frequency_);
 }
 
 TEST_F(WiFiMainTest, ConfiguredServiceRegistration) {
@@ -1362,7 +1403,7 @@ TEST_F(WiFiMainTest, ConfiguredServiceRegistration) {
       .WillOnce(Return(false));
   GetOpenService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged, &e);
   EXPECT_CALL(*manager(), RegisterService(_));
-  ReportBSS("ap0", "an_ssid", "00:00:00:00:00:00", 0,
+  ReportBSS("ap0", "an_ssid", "00:00:00:00:00:00", 0, 0,
             kNetworkModeInfrastructure);
 }
 
@@ -1375,9 +1416,9 @@ TEST_F(WiFiMainTest, NewConnectPreemptsPending) {
   WiFiServiceRefPtr service2 = CreateServiceForEndpoint(*ap2);
 
   StartWiFi();
-  ReportBSS("ap1", ap1->ssid_string(), ap1->bssid_string(), 0,
+  ReportBSS("ap1", ap1->ssid_string(), ap1->bssid_string(), 0, 0,
             kNetworkModeInfrastructure);
-  ReportBSS("ap2", ap2->ssid_string(), ap2->bssid_string(), 0,
+  ReportBSS("ap2", ap2->ssid_string(), ap2->bssid_string(), 0, 0,
             kNetworkModeInfrastructure);
   InitiateConnect(service1);
   EXPECT_EQ(service1.get(), GetPendingService().get());
@@ -1411,7 +1452,7 @@ TEST_F(WiFiMainTest, AddNetworkArgs) {
       *supplicant_interface_proxy_;
 
   StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   WiFiService *service(GetServices().begin()->get());
   EXPECT_CALL(supplicant_interface_proxy, AddNetwork(WiFiAddedArgs()));
   InitiateConnect(service);
@@ -1439,7 +1480,7 @@ TEST_F(WiFiMainTest, SupplicantCompleted) {
   WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
 
   StartWiFi();
-  ReportBSS("ap", ap->ssid_string(), ap->bssid_string(), 0,
+  ReportBSS("ap", ap->ssid_string(), ap->bssid_string(), 0, 0,
             kNetworkModeInfrastructure);
   InitiateConnect(service);
 
@@ -1460,7 +1501,7 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
 
   StartWiFi();
-  ReportBSS("ap", ap->ssid_string(), ap->bssid_string(), 0,
+  ReportBSS("ap", ap->ssid_string(), ap->bssid_string(), 0, 0,
             kNetworkModeInfrastructure);
   InitiateConnect(service);
   ReportCurrentBSSChanged("ap");

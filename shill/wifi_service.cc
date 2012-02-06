@@ -55,6 +55,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       security_(security),
       mode_(mode),
       hidden_ssid_(hidden_ssid),
+      frequency_(0),
       task_factory_(this),
       wifi_(device),
       ssid_(ssid) {
@@ -170,6 +171,7 @@ bool WiFiService::IsConnecting() const {
 void WiFiService::AddEndpoint(WiFiEndpointConstRefPtr endpoint) {
   DCHECK(endpoint->ssid() == ssid());
   endpoints_.insert(endpoint);
+  // TODO: Track signal strength (crosbug.com/16786).
 }
 
 void WiFiService::RemoveEndpoint(WiFiEndpointConstRefPtr endpoint) {
@@ -182,6 +184,16 @@ void WiFiService::RemoveEndpoint(WiFiEndpointConstRefPtr endpoint) {
     return;
   }
   endpoints_.erase(i);
+}
+
+void WiFiService::NotifyCurrentEndpoint(const WiFiEndpoint &endpoint) {
+  DCHECK(endpoints_.find(&endpoint) != endpoints_.end());
+  frequency_ = endpoint.frequency();
+  // TODO: Copy BSSID here (crosbug.com/22377).
+  // TODO: Copy signal strength (crosbug.com/16786).
+  // TODO(thieule): Update these values when supplicant signals that they
+  // have changed.
+  // (crosbug.com/16786)
 }
 
 string WiFiService::GetStorageIdentifier() const {

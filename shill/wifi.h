@@ -67,6 +67,7 @@ class WiFi : public Device {
  private:
   friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
+  FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
   FRIEND_TEST(WiFiPropertyTest, ClearDerivedProperty);  // bgscan_method_
 

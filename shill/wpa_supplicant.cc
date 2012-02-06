@@ -8,8 +8,9 @@ namespace shill {
 
 namespace wpa_supplicant {
 const char kBSSPropertyBSSID[]      = "BSSID";
-const char kBSSPropertySSID[]       = "SSID";
+const char kBSSPropertyFrequency[]  = "Frequency";
 const char kBSSPropertyMode[]       = "Mode";
+const char kBSSPropertySSID[]       = "SSID";
 const char kBSSPropertySignal[]     = "Signal";
 // TODO(gauravsh): Make this path be a configurable option. crosbug.com/25661
 // Location of the system root CA certificates.

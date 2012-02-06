@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -34,6 +34,7 @@ class WiFiEndpoint : public Endpoint {
   const std::string &bssid_string() const;
   const std::string &bssid_hex() const;
   int16_t signal_strength() const;
+  uint16 frequency() const;
   const std::string &network_mode() const;
   const std::string &security_mode() const;
 
@@ -75,6 +76,7 @@ class WiFiEndpoint : public Endpoint {
   std::string bssid_string_;
   std::string bssid_hex_;
   int16_t signal_strength_;
+  uint16 frequency_;
   // network_mode_ and security_mode_ are represented as flimflam names
   // (not necessarily the same as wpa_supplicant names)
   std::string network_mode_;

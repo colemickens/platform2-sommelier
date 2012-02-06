@@ -556,6 +556,8 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
           << " roamed to Endpoint " << endpoint.bssid_string()
           << " (SSID " << endpoint.ssid_string() << ")";
 
+  service->NotifyCurrentEndpoint(endpoint);
+
   if (pending_service_.get() &&
       service.get() != pending_service_.get()) {
     // The Service we've roamed on to is not the one we asked for.
@@ -781,7 +783,8 @@ void WiFi::BSSAddedTask(
             << "ssid: " << endpoint->ssid_string() << ", "
             << "bssid: " << endpoint->bssid_string() << ", "
             << "signal: " << endpoint->signal_strength() << ", "
-            << "security: " << endpoint->security_mode();
+            << "security: " << endpoint->security_mode() << ", "
+            << "frequency: " << endpoint->frequency();
 
   if (endpoint->ssid_string().empty()) {
     // Don't bother trying to find or create a Service for an Endpoint

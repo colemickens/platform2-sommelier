@@ -11,8 +11,9 @@ namespace shill {
 
 namespace wpa_supplicant {
 extern const char kBSSPropertyBSSID[];
-extern const char kBSSPropertySSID[];
+extern const char kBSSPropertyFrequency[];
 extern const char kBSSPropertyMode[];
+extern const char kBSSPropertySSID[];
 extern const char kBSSPropertySignal[];
 extern const char kCaPath[];
 extern const char kCurrentBSSNull[];
