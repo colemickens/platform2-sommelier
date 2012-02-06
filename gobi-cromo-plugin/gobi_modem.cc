@@ -353,7 +353,11 @@ void GobiModem::Init() {
 }
 
 GobiModem::~GobiModem() {
-  CHECK(pending_enable_ == NULL);
+  if (pending_enable_ != NULL) {
+    // Despite the imminent destruction of the modem, pretend that the
+    // pending_enable succeeded.  It is a race anyway.
+    FinishEnable(DBus::Error());
+  }
   handler_->server().start_exit_hooks().Del(hooks_name_);
   handler_->server().exit_ok_hooks().Del(hooks_name_);
   handler_->server().UnregisterStartSuspend(hooks_name_);
