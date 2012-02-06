@@ -180,6 +180,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   }
 
   virtual void TearDown() {
+    EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
     wifi_->proxy_factory_ = NULL;
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
@@ -365,6 +366,15 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   MockManager *manager() {
     return &manager_;
   }
+
+  MockDeviceInfo *device_info() {
+    return &device_info_;
+  }
+
+  MockDHCPProvider *dhcp_provider() {
+    return &dhcp_provider_;
+  }
+
   const WiFiConstRefPtr wifi() const {
     return wifi_;
   }
@@ -475,6 +485,7 @@ TEST_F(WiFiMainTest, StartClearsState) {
 }
 
 TEST_F(WiFiMainTest, ScanResults) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   StartWiFi();
   ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportBSS(
@@ -488,6 +499,9 @@ TEST_F(WiFiMainTest, ScanResults) {
 }
 
 TEST_F(WiFiMainTest, ScanResultsWithUpdates) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   StartWiFi();
   ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportBSS(
@@ -536,6 +550,7 @@ TEST_F(WiFiMainTest, EndpointGroupingTogether) {
 
   InSequence s;
   EXPECT_CALL(*manager(), RegisterService(_));
+  EXPECT_CALL(*manager(), HasService(_));
   EXPECT_CALL(*manager(), UpdateService(_));
   ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportBSS("bss1", "ssid", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
@@ -571,6 +586,7 @@ TEST_F(WiFiMainTest, NonExistentBSSRemoved) {
 }
 
 TEST_F(WiFiMainTest, LoneBSSRemoved) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   StartWiFi();
   ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportScanDone();
@@ -583,6 +599,7 @@ TEST_F(WiFiMainTest, LoneBSSRemoved) {
 }
 
 TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnected) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   StartWiFi();
   ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportScanDone();
@@ -595,6 +612,8 @@ TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnected) {
 }
 
 TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnectedToHidden) {
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
   StartWiFi();
 
   Error e;
@@ -609,16 +628,18 @@ TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnectedToHidden) {
   EXPECT_EQ(1, GetServices().size());
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
-  EXPECT_CALL(*manager(), UpdateService(_));
   RemoveBSS("bss");
-  EXPECT_TRUE(manager()->HasService(service));
   EXPECT_EQ(1, GetServices().size());
   // Verify expectations now, because WiFi may call UpdateService when
   // WiFi is Stop()-ed (during TearDown()).
   Mock::VerifyAndClearExpectations(manager());
+  EXPECT_CALL(*manager(), DeregisterService(_)).Times(AnyNumber());
 }
 
 TEST_F(WiFiMainTest, NonSolitaryBSSRemoved) {
+  EXPECT_CALL(*manager(), RegisterService(_));
+  EXPECT_CALL(*manager(), HasService(_));
+  EXPECT_CALL(*manager(), UpdateService(_));
   StartWiFi();
   ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportBSS("bss1", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
@@ -633,6 +654,7 @@ TEST_F(WiFiMainTest, NonSolitaryBSSRemoved) {
 }
 
 TEST_F(WiFiMainTest, Connect) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
 
@@ -655,6 +677,7 @@ TEST_F(WiFiMainTest, Connect) {
 }
 
 TEST_F(WiFiMainTest, DisconnectPendingService) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
 
@@ -671,6 +694,10 @@ TEST_F(WiFiMainTest, DisconnectPendingService) {
 }
 
 TEST_F(WiFiMainTest, DisconnectPendingServiceWithCurrent) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
 
@@ -698,6 +725,10 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithCurrent) {
 }
 
 TEST_F(WiFiMainTest, DisconnectCurrentService) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
 
@@ -718,6 +749,10 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
 }
 
 TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
 
@@ -743,6 +778,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
 }
 
 TEST_F(WiFiMainTest, DisconnectInvalidService) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
 
@@ -755,6 +791,10 @@ TEST_F(WiFiMainTest, DisconnectInvalidService) {
 }
 
 TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
 
@@ -782,6 +822,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
 }
 
 TEST_F(WiFiMainTest, Stop) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   StartWiFi();
   ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportScanDone();
@@ -1126,23 +1167,27 @@ TEST_F(WiFiMainTest, StateChangeWithService) {
   // Verify expectations now, because WiFi may report other state changes
   // when WiFi is Stop()-ed (during TearDown()).
   Mock::VerifyAndClearExpectations(service.get());
+  EXPECT_CALL(*service.get(), SetState(_)).Times(AnyNumber());
 }
 
 TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   // Some backwards transitions should not trigger a Service state change.
   // Supplicant state should still be updated, however.
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService();
+  EXPECT_CALL(*service.get(), SetState(Service::kStateConfiguring));
   InitiateConnect(service);
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
-  EXPECT_CALL(*service.get(), SetState(_)).Times(0);
   ReportStateChanged(wpa_supplicant::kInterfaceStateAuthenticating);
   EXPECT_EQ(wpa_supplicant::kInterfaceStateAuthenticating,
             GetSupplicantState());
   // Verify expectations now, because WiFi may report other state changes
   // when WiFi is Stop()-ed (during TearDown()).
   Mock::VerifyAndClearExpectations(service.get());
+  EXPECT_CALL(*service.get(), SetState(_)).Times(AnyNumber());
 }
 
 TEST_F(WiFiMainTest, LoadHiddenServicesFailWithNoGroups) {
@@ -1194,6 +1239,7 @@ TEST_F(WiFiMainTest, LoadHiddenServicesFailWithFoundService) {
 }
 
 TEST_F(WiFiMainTest, LoadHiddenServicesSuccess) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   StrictMock<MockStore> storage;
   string ssid("an_ssid");
   string id;
@@ -1205,6 +1251,10 @@ TEST_F(WiFiMainTest, LoadHiddenServicesSuccess) {
 }
 
 TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToDisconnected) {
+  EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
   WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
 
@@ -1231,6 +1281,10 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToDisconnected) {
 }
 
 TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
+  EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   WiFiEndpointRefPtr ap1 = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
   WiFiEndpointRefPtr ap2 = MakeEndpoint("another_ssid", "01:02:03:04:05:06");
   WiFiServiceRefPtr service1 = CreateServiceForEndpoint(*ap1);
@@ -1262,6 +1316,10 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
 }
 
 TEST_F(WiFiMainTest, CurrentBSSChangeDisconnectedToConnected) {
+  EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
   WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
   WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
 
@@ -1292,6 +1350,8 @@ TEST_F(WiFiMainTest, ConfiguredServiceRegistration) {
 }
 
 TEST_F(WiFiMainTest, NewConnectPreemptsPending) {
+  EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   WiFiEndpointRefPtr ap1 = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
   WiFiEndpointRefPtr ap2 = MakeEndpoint("another_ssid", "01:02:03:04:05:06");
   WiFiServiceRefPtr service1 = CreateServiceForEndpoint(*ap1);
@@ -1329,6 +1389,7 @@ MATCHER(WiFiAddedArgs, "") {
 }
 
 TEST_F(WiFiMainTest, AddNetworkArgs) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
 
@@ -1350,9 +1411,13 @@ TEST_F(WiFiMainTest, StateAndIPIgnoreLinkEvent) {
   // Verify expectations now, because WiFi may cause |service| state
   // changes during TearDown().
   Mock::VerifyAndClearExpectations(service);
+  EXPECT_CALL(*service.get(), SetState(_)).Times(AnyNumber());
 }
 
 TEST_F(WiFiMainTest, SupplicantCompleted) {
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
   WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
   WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
 
@@ -1368,10 +1433,15 @@ TEST_F(WiFiMainTest, SupplicantCompleted) {
 }
 
 TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
+  EXPECT_CALL(*device_info(), FlushAddresses(_)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), device_info()).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
   WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
   WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
 
-  EXPECT_CALL(*dhcp_config_.get(), RequestIP());
   StartWiFi();
   ReportBSS("ap", ap->ssid_string(), ap->bssid_string(), 0,
             kNetworkModeInfrastructure);
