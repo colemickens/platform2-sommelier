@@ -34,6 +34,9 @@ class ModemGSMCardProxyInterface {
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
                          AsyncCallHandler *call_handler, int timeout) = 0;
+
+  // Properties.
+  virtual uint32 EnabledFacilityLocks() = 0;
 };
 
 // ModemManager.Modem.Gsm.Card callback delegate to be associated with the

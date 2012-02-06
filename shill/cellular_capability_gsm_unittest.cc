@@ -513,4 +513,29 @@ TEST_F(CellularCapabilityGSMTest, SetStorageIdentifier) {
             cellular_->service()->GetStorageIdentifier());
 }
 
+TEST_F(CellularCapabilityGSMTest, OnModemManagerPropertiesChanged) {
+  EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN, capability_->access_technology_);
+  EXPECT_FALSE(capability_->sim_lock_status_.enabled);
+  EXPECT_EQ("", capability_->sim_lock_status_.lock_type);
+  EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
+  DBusPropertiesMap props;
+  static const char kLockType[] = "sim-pin";
+  const int kRetries = 3;
+  props[CellularCapabilityGSM::kPropertyAccessTechnology].writer().
+      append_uint32(MM_MODEM_GSM_ACCESS_TECH_EDGE);
+  props[CellularCapabilityGSM::kPropertyEnabledFacilityLocks].writer().
+      append_uint32(MM_MODEM_GSM_FACILITY_SIM);
+  props[CellularCapabilityGSM::kPropertyUnlockRequired].writer().append_string(
+      kLockType);
+  props[CellularCapabilityGSM::kPropertyUnlockRetries].writer().append_uint32(
+      kRetries);
+  EXPECT_CALL(*device_adaptor_,
+              EmitKeyValueStoreChanged(flimflam::kSIMLockStatusProperty, _));
+  capability_->OnModemManagerPropertiesChanged(props);
+  EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_EDGE, capability_->access_technology_);
+  EXPECT_TRUE(capability_->sim_lock_status_.enabled);
+  EXPECT_EQ(kLockType, capability_->sim_lock_status_.lock_type);
+  EXPECT_EQ(kRetries, capability_->sim_lock_status_.retries_left);
+}
+
 }  // namespace shill

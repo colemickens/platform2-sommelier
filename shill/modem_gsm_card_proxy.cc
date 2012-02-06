@@ -56,6 +56,10 @@ void ModemGSMCardProxy::ChangePIN(const string &old_pin,
   proxy_.ChangePin(old_pin, new_pin, call_handler, timeout);
 }
 
+uint32 ModemGSMCardProxy::EnabledFacilityLocks() {
+  return proxy_.EnabledFacilityLocks();
+}
+
 ModemGSMCardProxy::Proxy::Proxy(ModemGSMCardProxyDelegate *delegate,
                                 DBus::Connection *connection,
                                 const string &path,

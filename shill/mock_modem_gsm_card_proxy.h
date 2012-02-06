@@ -33,6 +33,7 @@ class MockModemGSMCardProxy : public ModemGSMCardProxyInterface {
   MOCK_METHOD4(ChangePIN, void(const std::string &old_pin,
                                const std::string &new_pin,
                                AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD0(EnabledFacilityLocks, uint32());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemGSMCardProxy);

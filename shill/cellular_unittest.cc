@@ -388,6 +388,8 @@ TEST_F(CellularTest, StartGSMRegister) {
       .WillOnce(Invoke(this, &CellularTest::InvokeGetMSISDN));
   EXPECT_CALL(*gsm_network_proxy_, AccessTechnology())
       .WillOnce(Return(MM_MODEM_GSM_ACCESS_TECH_EDGE));
+  EXPECT_CALL(*gsm_card_proxy_, EnabledFacilityLocks())
+      .WillOnce(Return(MM_MODEM_GSM_FACILITY_SIM));
   EXPECT_CALL(*proxy_, GetModemInfo(_, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
   static const char kNetworkID[] = "22803";
@@ -400,12 +402,13 @@ TEST_F(CellularTest, StartGSMRegister) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(kIMEI, device_->capability_->imei_);
   EXPECT_EQ(kIMSI, device_->capability_->imsi_);
-  EXPECT_EQ(kTestCarrier, GetCapabilityGSM()->spn());
+  EXPECT_EQ(kTestCarrier, GetCapabilityGSM()->spn_);
   EXPECT_EQ(kMSISDN, device_->capability_->mdn_);
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
             device_->service_->network_technology());
+  EXPECT_TRUE(GetCapabilityGSM()->sim_lock_status_.enabled);
   EXPECT_EQ(kStrength, device_->service_->strength());
   EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->service_->roaming_state());
   EXPECT_EQ(kNetworkID, device_->service_->serving_operator().GetCode());

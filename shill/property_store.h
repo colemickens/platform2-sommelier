@@ -78,10 +78,11 @@ class PropertyStore {
   ReadablePropertyConstIterator<bool> GetBoolPropertiesIter() const;
   ReadablePropertyConstIterator<int16> GetInt16PropertiesIter() const;
   ReadablePropertyConstIterator<int32> GetInt32PropertiesIter() const;
+  ReadablePropertyConstIterator<KeyValueStore> GetKeyValueStorePropertiesIter(
+      ) const;
   ReadablePropertyConstIterator<std::string> GetStringPropertiesIter() const;
   ReadablePropertyConstIterator<Stringmap> GetStringmapPropertiesIter() const;
   ReadablePropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter() const;
-  ReadablePropertyConstIterator<StrIntPair> GetStrIntPairPropertiesIter() const;
   ReadablePropertyConstIterator<Strings> GetStringsPropertiesIter() const;
   ReadablePropertyConstIterator<uint8> GetUint8PropertiesIter() const;
   ReadablePropertyConstIterator<uint16> GetUint16PropertiesIter() const;
@@ -119,14 +120,14 @@ class PropertyStore {
                            const BoolAccessor &accessor);
   void RegisterDerivedInt32(const std::string &name,
                             const Int32Accessor &accessor);
+  void RegisterDerivedKeyValueStore(const std::string &name,
+                                    const KeyValueStoreAccessor &accessor);
   void RegisterDerivedString(const std::string &name,
                              const StringAccessor &accessor);
   void RegisterDerivedStringmaps(const std::string &name,
                                  const StringmapsAccessor &accessor);
   void RegisterDerivedStrings(const std::string &name,
                               const StringsAccessor &accessor);
-  void RegisterDerivedStrIntPair(const std::string &name,
-                                 const StrIntPairAccessor &accessor);
   void RegisterDerivedUint16(const std::string &name,
                              const Uint16Accessor &accessor);
 
@@ -144,11 +145,11 @@ class PropertyStore {
   std::map<std::string, BoolAccessor> bool_properties_;
   std::map<std::string, Int16Accessor> int16_properties_;
   std::map<std::string, Int32Accessor> int32_properties_;
+  std::map<std::string, KeyValueStoreAccessor> key_value_store_properties_;
   std::map<std::string, StringAccessor> string_properties_;
   std::map<std::string, StringmapAccessor> stringmap_properties_;
   std::map<std::string, StringmapsAccessor> stringmaps_properties_;
   std::map<std::string, StringsAccessor> strings_properties_;
-  std::map<std::string, StrIntPairAccessor> strintpair_properties_;
   std::map<std::string, Uint8Accessor> uint8_properties_;
   std::map<std::string, Uint16Accessor> uint16_properties_;
   std::map<std::string, Uint32Accessor> uint32_properties_;

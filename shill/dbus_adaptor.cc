@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -102,6 +102,12 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
     ReadablePropertyConstIterator<int32> it = store.GetInt32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = Int32ToVariant(it.Value(&e));
+  }
+  {
+    ReadablePropertyConstIterator<KeyValueStore> it =
+        store.GetKeyValueStorePropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance())
+      (*out)[it.Key()] = KeyValueStoreToVariant(it.Value(&e));
   }
   {
     ReadablePropertyConstIterator<string> it = store.GetStringPropertiesIter();
@@ -262,11 +268,13 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
-::DBus::Variant DBusAdaptor::StrIntPairToVariant(const StrIntPair &value) {
+::DBus::Variant DBusAdaptor::KeyValueStoreToVariant(
+    const KeyValueStore &value) {
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
-  writer << value.string_property();
-  writer << value.uint_property();
+  writer << value.string_properties();
+  writer << value.bool_properties();
+  writer << value.uint_properties();
   return v;
 }
 

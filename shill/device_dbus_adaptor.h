@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -43,6 +43,8 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
                                  const std::string& value);
   virtual void EmitStringmapsChanged(const std::string &name,
                                      const Stringmaps &value);
+  virtual void EmitKeyValueStoreChanged(const std::string &name,
+                                        const KeyValueStore &value);
 
   // Implementation of Device_adaptor.
   virtual std::map<std::string, ::DBus::Variant> GetProperties(

@@ -38,6 +38,7 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
                          AsyncCallHandler *call_handler, int timeout);
+  virtual uint32 EnabledFacilityLocks();
 
  private:
   class Proxy

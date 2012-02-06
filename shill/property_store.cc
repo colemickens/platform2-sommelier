@@ -29,10 +29,11 @@ bool PropertyStore::Contains(const std::string &prop) const {
   return (bool_properties_.find(prop) != bool_properties_.end() ||
           int16_properties_.find(prop) != int16_properties_.end() ||
           int32_properties_.find(prop) != int32_properties_.end() ||
+          (key_value_store_properties_.find(prop) !=
+           key_value_store_properties_.end()) ||
           string_properties_.find(prop) != string_properties_.end() ||
           stringmap_properties_.find(prop) != stringmap_properties_.end() ||
           stringmaps_properties_.find(prop) != stringmaps_properties_.end() ||
-          strintpair_properties_.find(prop) != strintpair_properties_.end() ||
           strings_properties_.find(prop) != strings_properties_.end() ||
           uint8_properties_.find(prop) != uint8_properties_.end() ||
           uint16_properties_.find(prop) != uint16_properties_.end() ||
@@ -110,6 +111,12 @@ ReadablePropertyConstIterator<int32> PropertyStore::GetInt32PropertiesIter()
   return ReadablePropertyConstIterator<int32>(int32_properties_);
 }
 
+ReadablePropertyConstIterator<KeyValueStore>
+PropertyStore::GetKeyValueStorePropertiesIter() const {
+  return
+      ReadablePropertyConstIterator<KeyValueStore>(key_value_store_properties_);
+}
+
 ReadablePropertyConstIterator<std::string>
 PropertyStore::GetStringPropertiesIter() const {
   return ReadablePropertyConstIterator<std::string>(string_properties_);
@@ -129,11 +136,6 @@ PropertyStore::GetStringmapsPropertiesIter()
 ReadablePropertyConstIterator<Strings> PropertyStore::GetStringsPropertiesIter()
     const {
   return ReadablePropertyConstIterator<Strings>(strings_properties_);
-}
-
-ReadablePropertyConstIterator<StrIntPair>
-PropertyStore::GetStrIntPairPropertiesIter() const {
-  return ReadablePropertyConstIterator<StrIntPair>(strintpair_properties_);
 }
 
 ReadablePropertyConstIterator<uint8> PropertyStore::GetUint8PropertiesIter()
@@ -296,6 +298,12 @@ void PropertyStore::RegisterDerivedInt32(const std::string &name,
   int32_properties_[name] = accessor;
 }
 
+void PropertyStore::RegisterDerivedKeyValueStore(
+    const std::string &name,
+    const KeyValueStoreAccessor &acc) {
+  key_value_store_properties_[name] = acc;
+}
+
 void PropertyStore::RegisterDerivedString(const std::string &name,
                                           const StringAccessor &accessor) {
   string_properties_[name] = accessor;
@@ -309,11 +317,6 @@ void PropertyStore::RegisterDerivedStrings(const std::string &name,
 void PropertyStore::RegisterDerivedStringmaps(const std::string &name,
                                               const StringmapsAccessor &acc) {
   stringmaps_properties_[name] = acc;
-}
-
-void PropertyStore::RegisterDerivedStrIntPair(const std::string &name,
-                                              const StrIntPairAccessor &acc) {
-  strintpair_properties_[name] = acc;
 }
 
 void PropertyStore::RegisterDerivedUint16(const std::string &name,

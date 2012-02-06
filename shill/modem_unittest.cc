@@ -179,6 +179,8 @@ TEST_F(ModemTest, CreateDeviceFromProperties) {
       Cellular::kModemStateDisabled);
   static const char kLockType[] = "sim-pin";
   const int kRetries = 2;
+  props[CellularCapabilityGSM::kPropertyEnabledFacilityLocks].writer().
+      append_uint32(MM_MODEM_GSM_FACILITY_SIM);
   props[CellularCapabilityGSM::kPropertyUnlockRequired].writer().append_string(
       kLockType);
   props[CellularCapabilityGSM::kPropertyUnlockRetries].writer().append_uint32(
@@ -188,8 +190,9 @@ TEST_F(ModemTest, CreateDeviceFromProperties) {
   EXPECT_EQ(kLinkName, modem_.device_->link_name());
   EXPECT_EQ(kTestInterfaceIndex, modem_.device_->interface_index());
   EXPECT_EQ(Cellular::kModemStateDisabled, modem_.device_->modem_state());
-  EXPECT_EQ(kLockType, GetCapabilityGSM()->sim_lock_type());
-  EXPECT_EQ(kRetries, GetCapabilityGSM()->sim_lock_retries_left());
+  EXPECT_TRUE(GetCapabilityGSM()->sim_lock_status_.enabled);
+  EXPECT_EQ(kLockType, GetCapabilityGSM()->sim_lock_status_.lock_type);
+  EXPECT_EQ(kRetries, GetCapabilityGSM()->sim_lock_status_.retries_left);
 
   vector<DeviceRefPtr> devices;
   manager_.FilterByTechnology(Technology::kCellular, &devices);

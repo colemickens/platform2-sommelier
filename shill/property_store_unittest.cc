@@ -20,7 +20,6 @@
 #include "shill/mock_control.h"
 #include "shill/property_store.h"
 
-using std::make_pair;
 using std::map;
 using std::string;
 using std::vector;
@@ -39,6 +38,9 @@ const ::DBus::Variant PropertyStoreTest::kInt16V =
 const ::DBus::Variant PropertyStoreTest::kInt32V =
     DBusAdaptor::Int32ToVariant(0);
 // static
+const ::DBus::Variant PropertyStoreTest::kKeyValueStoreV =
+    DBusAdaptor::KeyValueStoreToVariant(KeyValueStore());
+// static
 const ::DBus::Variant PropertyStoreTest::kStringV =
     DBusAdaptor::StringToVariant("");
 // static
@@ -50,10 +52,6 @@ const ::DBus::Variant PropertyStoreTest::kStringmapsV =
 // static
 const ::DBus::Variant PropertyStoreTest::kStringsV =
     DBusAdaptor::StringsToVariant(Strings(1, ""));
-// static
-const ::DBus::Variant PropertyStoreTest::kStrIntPairV =
-    DBusAdaptor::StrIntPairToVariant(StrIntPair(make_pair("", ""),
-                                                make_pair("", 12)));
 // static
 const ::DBus::Variant PropertyStoreTest::kUint16V =
     DBusAdaptor::Uint16ToVariant(0);
@@ -95,12 +93,12 @@ INSTANTIATE_TEST_CASE_P(
     PropertyStoreTest,
     Values(PropertyStoreTest::kBoolV,
            PropertyStoreTest::kByteV,
-           PropertyStoreTest::kStringV,
            PropertyStoreTest::kInt16V,
            PropertyStoreTest::kInt32V,
+           PropertyStoreTest::kKeyValueStoreV,
+           PropertyStoreTest::kStringV,
            PropertyStoreTest::kStringmapV,
            PropertyStoreTest::kStringsV,
-           PropertyStoreTest::kStrIntPairV,
            PropertyStoreTest::kUint16V,
            PropertyStoreTest::kUint32V));
 

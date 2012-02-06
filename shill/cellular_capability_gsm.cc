@@ -18,7 +18,6 @@
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 
-using std::make_pair;
 using std::string;
 
 namespace shill {
@@ -36,6 +35,8 @@ const char CellularCapabilityGSM::kNetworkPropertyStatus[] = "status";
 const char CellularCapabilityGSM::kPhoneNumber[] = "*99#";
 const char CellularCapabilityGSM::kPropertyAccessTechnology[] =
     "AccessTechnology";
+const char CellularCapabilityGSM::kPropertyEnabledFacilityLocks[] =
+    "EnabledFacilityLocks";
 const char CellularCapabilityGSM::kPropertyUnlockRequired[] = "UnlockRequired";
 const char CellularCapabilityGSM::kPropertyUnlockRetries[] = "UnlockRetries";
 
@@ -56,29 +57,33 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
                                  &found_networks_);
   store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
   store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
-  HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
-                                &CellularCapabilityGSM::SimLockStatusToProperty,
-                                NULL);
+  HelpRegisterDerivedKeyValueStore(
+      flimflam::kSIMLockStatusProperty,
+      &CellularCapabilityGSM::SimLockStatusToProperty,
+      NULL);
   store->RegisterConstStringmaps(flimflam::kCellularApnListProperty,
                                  &apn_list_);
   scanning_supported_ = true;
 }
 
-StrIntPair CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {
-  return StrIntPair(make_pair(flimflam::kSIMLockTypeProperty,
-                              sim_lock_status_.lock_type),
-                    make_pair(flimflam::kSIMLockRetriesLeftProperty,
-                              sim_lock_status_.retries_left));
+KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {
+  KeyValueStore status;
+  status.SetBool(flimflam::kSIMLockEnabledProperty, sim_lock_status_.enabled);
+  status.SetString(flimflam::kSIMLockTypeProperty, sim_lock_status_.lock_type);
+  status.SetUint(flimflam::kSIMLockRetriesLeftProperty,
+                 sim_lock_status_.retries_left);
+  return status;
 }
 
-void CellularCapabilityGSM::HelpRegisterDerivedStrIntPair(
+void CellularCapabilityGSM::HelpRegisterDerivedKeyValueStore(
     const string &name,
-    StrIntPair(CellularCapabilityGSM::*get)(Error *),
-    void(CellularCapabilityGSM::*set)(const StrIntPair &, Error *)) {
-  cellular()->mutable_store()->RegisterDerivedStrIntPair(
+    KeyValueStore(CellularCapabilityGSM::*get)(Error *error),
+    void(CellularCapabilityGSM::*set)(
+        const KeyValueStore &value, Error *error)) {
+  cellular()->mutable_store()->RegisterDerivedKeyValueStore(
       name,
-      StrIntPairAccessor(
-          new CustomAccessor<CellularCapabilityGSM, StrIntPair>(
+      KeyValueStoreAccessor(
+          new CustomAccessor<CellularCapabilityGSM, KeyValueStore>(
               this, get, set)));
 }
 
@@ -215,10 +220,17 @@ void CellularCapabilityGSM::GetRegistrationState(
 
 void CellularCapabilityGSM::GetProperties(AsyncCallHandler *call_handler) {
   VLOG(2) << __func__;
+
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   uint32 tech = network_proxy_->AccessTechnology();
   SetAccessTechnology(tech);
   VLOG(2) << "GSM AccessTechnology: " << tech;
+
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  uint32 locks = card_proxy_->EnabledFacilityLocks();
+  sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
+  VLOG(2) << "GSM EnabledFacilityLocks: " << locks;
+
   CompleteOperation(call_handler);
 }
 
@@ -561,10 +573,25 @@ void CellularCapabilityGSM::OnModemManagerPropertiesChanged(
                                 &access_technology)) {
     SetAccessTechnology(access_technology);
   }
-  DBusProperties::GetString(
-      properties, kPropertyUnlockRequired, &sim_lock_status_.lock_type);
-  DBusProperties::GetUint32(
-      properties, kPropertyUnlockRetries, &sim_lock_status_.retries_left);
+  bool emit = false;
+  uint32 locks = 0;
+  if (DBusProperties::GetUint32(
+          properties, kPropertyEnabledFacilityLocks, &locks)) {
+    sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
+    emit = true;
+  }
+  if (DBusProperties::GetString(
+          properties, kPropertyUnlockRequired, &sim_lock_status_.lock_type)) {
+    emit = true;
+  }
+  if (DBusProperties::GetUint32(
+          properties, kPropertyUnlockRetries, &sim_lock_status_.retries_left)) {
+    emit = true;
+  }
+  if (emit) {
+    cellular()->adaptor()->EmitKeyValueStoreChanged(
+        flimflam::kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
+  }
 }
 
 void CellularCapabilityGSM::OnGSMNetworkModeChanged(uint32 /*mode*/) {
