@@ -10,7 +10,11 @@ using std::string;
 
 namespace {
 
-const char kFallbackPresentationName[] = "Untitled";
+const char kUSBDriveName[] = "USB Drive";
+const char kSDCardName[] = "SD Card";
+const char kOpticalDiscName[] = "Optical Disc";
+const char kMobileDeviceName[] = "Mobile Device";
+const char kFallbackPresentationName[] = "External Drive";
 
 }  // namespace
 
@@ -42,16 +46,24 @@ Disk::~Disk() {
 }
 
 string Disk::GetPresentationName() const {
-  string name;
-  if (!label_.empty())
-    name = label_;
-  else if (!uuid_.empty())
-    name = uuid_;
-  else
-    name = kFallbackPresentationName;
+  if (!label_.empty()) {
+    string name = label_;
+    std::replace(name.begin(), name.end(), '/', '_');
+    return name;
+  }
 
-  std::replace(name.begin(), name.end(), '/', '_');
-  return name;
+  switch (media_type_) {
+    case DEVICE_MEDIA_USB:
+      return kUSBDriveName;
+    case DEVICE_MEDIA_SD:
+      return kSDCardName;
+    case DEVICE_MEDIA_OPTICAL_DISC:
+      return kOpticalDiscName;
+    case DEVICE_MEDIA_MOBILE:
+      return kMobileDeviceName;
+    default:
+      return kFallbackPresentationName;
+  }
 }
 
 DBusDisk Disk::ToDBusFormat() const {

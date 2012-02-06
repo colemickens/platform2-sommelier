@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util-inl.h>
+#include <base/string_util.h>
 #include <base/stringprintf.h>
 
 using std::string;
@@ -69,7 +70,7 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
     return true;
 
   for (unsigned suffix = 1; suffix <= max_suffix_to_retry; ++suffix) {
-    string fallback_path = base::StringPrintf("%s (%d)", path->c_str(), suffix);
+    string fallback_path = GetDirectoryFallbackName(*path, suffix);
     if (!ContainsKey(reserved_paths, fallback_path) &&
         CreateOrReuseEmptyDirectory(fallback_path)) {
       *path = fallback_path;
@@ -77,6 +78,14 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
     }
   }
   return false;
+}
+
+string Platform::GetDirectoryFallbackName(const string& path,
+                                          unsigned suffix) const {
+  if (!path.empty() && IsAsciiDigit(path[path.size() - 1]))
+    return base::StringPrintf("%s (%u)", path.c_str(), suffix);
+
+  return base::StringPrintf("%s %u", path.c_str(), suffix);
 }
 
 bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {

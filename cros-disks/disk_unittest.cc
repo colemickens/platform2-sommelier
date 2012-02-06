@@ -15,23 +15,8 @@ class DiskTest : public ::testing::Test {
   Disk disk_;
 };
 
-TEST_F(DiskTest, GetPresentationNameForDiskWithoutLabelOrUuid) {
-  EXPECT_EQ("Untitled", disk_.GetPresentationName());
-}
-
-TEST_F(DiskTest, GetPresentationNameForDiskWithLabelButNoUuid) {
+TEST_F(DiskTest, GetPresentationNameForDiskWithLabel) {
   disk_.set_label("My Disk");
-  EXPECT_EQ(disk_.label(), disk_.GetPresentationName());
-}
-
-TEST_F(DiskTest, GetPresentationNameForDiskWithUuidButNoLabel) {
-  disk_.set_uuid("1A2B-3C4D");
-  EXPECT_EQ(disk_.uuid(), disk_.GetPresentationName());
-}
-
-TEST_F(DiskTest, GetPresentationNameForDiskWithLabelAndUuid) {
-  disk_.set_label("My Disk");
-  disk_.set_uuid("1A2B-3C4D");
   EXPECT_EQ(disk_.label(), disk_.GetPresentationName());
 }
 
@@ -40,9 +25,20 @@ TEST_F(DiskTest, GetPresentationNameForDiskWithLabelWithSlashes) {
   EXPECT_EQ("This_Is_My_Disk", disk_.GetPresentationName());
 }
 
-TEST_F(DiskTest, GetPresentationNameForDiskWithUuidWithSlashes) {
-  disk_.set_uuid("1A/2B/3C/4D");
-  EXPECT_EQ("1A_2B_3C_4D", disk_.GetPresentationName());
+TEST_F(DiskTest, GetPresentationNameForDiskWithoutLabel) {
+  EXPECT_EQ("External Drive", disk_.GetPresentationName());
+
+  disk_.set_media_type(DEVICE_MEDIA_USB);
+  EXPECT_EQ("USB Drive", disk_.GetPresentationName());
+
+  disk_.set_media_type(DEVICE_MEDIA_SD);
+  EXPECT_EQ("SD Card", disk_.GetPresentationName());
+
+  disk_.set_media_type(DEVICE_MEDIA_OPTICAL_DISC);
+  EXPECT_EQ("Optical Disc", disk_.GetPresentationName());
+
+  disk_.set_media_type(DEVICE_MEDIA_MOBILE);
+  EXPECT_EQ("Mobile Device", disk_.GetPresentationName());
 }
 
 }  // namespace cros_disks

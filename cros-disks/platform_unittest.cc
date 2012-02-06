@@ -82,7 +82,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
   set<string> reserved_paths;
 
   // Nonexistent directory
-  FilePath new_dir = temp_dir.path().Append("test");
+  FilePath new_dir = temp_dir.path().Append("test1");
   string path = new_dir.value();
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 10, reserved_paths));
@@ -102,7 +102,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
       &path, 0, reserved_paths));
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 1, reserved_paths));
-  FilePath new_dir1 = temp_dir.path().Append("test (1)");
+  FilePath new_dir1 = temp_dir.path().Append("test1 (1)");
   EXPECT_EQ(new_dir1.value(), path);
 
   ASSERT_TRUE(file_util::CreateTemporaryFileInDir(new_dir1, &temp_file));
@@ -113,7 +113,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
       &path, 1, reserved_paths));
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 2, reserved_paths));
-  FilePath new_dir2 = temp_dir.path().Append("test (2)");
+  FilePath new_dir2 = temp_dir.path().Append("test1 (2)");
   EXPECT_EQ(new_dir2.value(), path);
 }
 
@@ -129,16 +129,21 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallbackAndReservedPaths) {
       &path, 0, reserved_paths));
   EXPECT_EQ(new_dir.value(), path);
 
-  reserved_paths.insert(temp_dir.path().Append("test (1)").value());
-  reserved_paths.insert(temp_dir.path().Append("test (2)").value());
+  reserved_paths.insert(temp_dir.path().Append("test 1").value());
+  reserved_paths.insert(temp_dir.path().Append("test 2").value());
   EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 2, reserved_paths));
   EXPECT_EQ(new_dir.value(), path);
 
-  FilePath expected_dir = temp_dir.path().Append("test (3)");
+  FilePath expected_dir = temp_dir.path().Append("test 3");
   EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
       &path, 3, reserved_paths));
   EXPECT_EQ(expected_dir.value(), path);
+}
+
+TEST_F(PlatformTest, GetDirectoryFallbackName) {
+  EXPECT_EQ("test 1", platform_.GetDirectoryFallbackName("test", 1));
+  EXPECT_EQ("test1 (1)", platform_.GetDirectoryFallbackName("test1", 1));
 }
 
 TEST_F(PlatformTest, GetGroupIdOfRoot) {

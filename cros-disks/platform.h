@@ -42,6 +42,12 @@ class Platform {
       std::string* path, unsigned max_suffix_to_retry,
       const std::set<std::string>& reserved_paths) const;
 
+  // Returns the fallback directory name of |path| using |suffix| as follows:
+  //   "|path| (|suffix|)" if |path| ends with a ASCII digit, or
+  //   "|path| |suffix|" otherwise.
+  std::string GetDirectoryFallbackName(const std::string& path,
+                                       unsigned suffix) const;
+
   // Gets the group ID of a given group name. Returns true on success.
   virtual bool GetGroupId(const std::string& group_name, gid_t* group_id) const;
 

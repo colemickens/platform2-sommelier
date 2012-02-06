@@ -31,8 +31,13 @@ class Disk {
   // Returns a presentation name of the disk, which can be used to name
   // the mount directory of the disk. The naming scheme is as follows:
   // (1) Use a non-empty label if the disk has one.
-  // (2) Otherwise, use a non-empty UUID if the disk has one.
-  // (3) Finally, use 'Untitled' as a fallback name.
+  // (2) Otherwise, use one of the following names based on the device
+  //     media type:
+  //     - USB drive
+  //     - SD card
+  //     - Optical disc
+  //     - Mobile device
+  //     - External drive (if the device media type is unknown)
   // Any forward slash '/' in the presentation name is replaced with an
   // underscore '_'.
   std::string GetPresentationName() const;
