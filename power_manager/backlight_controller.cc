@@ -443,7 +443,7 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
     if (state_ == BACKLIGHT_ALREADY_DIMMED ||
         (!adjust_brightness_offset && cause == BRIGHTNESS_CHANGE_AUTOMATED)) {
       if (target_percent_ == 0.0 && old_percent > 0.0)
-        target_percent_ = LevelToPercent(min_visible_level_);
+        target_percent_ = std::max(LevelToPercent(min_visible_level_), 1.0);
       else if (target_percent_ > 0.0 && old_percent == 0.0)
         target_percent_ = 0.0;
     }

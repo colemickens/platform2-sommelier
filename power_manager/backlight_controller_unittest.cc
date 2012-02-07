@@ -37,6 +37,10 @@ const int64 kAlsBrightness = 0;
 // always leave the brightness at a limit.
 const int kStepsToHitLimit = 20;
 
+// Number of ambient light sensor samples that should be supplied in order to
+// trigger an update to BacklightController's ALS offset.
+const int kAlsSamplesToTriggerAdjustment = 5;
+
 // Simple helper class that logs brightness changes for the NotifyObserver test.
 class MockObserver : public BacklightControllerObserver {
  public:
@@ -205,7 +209,7 @@ TEST_F(BacklightControllerTest, NotifyObserver) {
   // Send enough ambient light sensor samples to trigger a brightness change.
   observer.Clear();
   double old_percent = controller_.target_percent();
-  for (int i = 0; i < 10; ++i)
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
     controller_.SetAlsBrightnessOffsetPercent(32);
   ASSERT_NE(old_percent, controller_.target_percent());
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
@@ -227,6 +231,24 @@ TEST_F(BacklightControllerTest, NotifyObserver) {
   EXPECT_EQ(controller_.target_percent(), observer.changes()[0].first);
   EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].second);
 #endif
+}
+
+// Test that we don't drop the backlight level to 0 in response to automated
+// changes: http://crosbug.com/25995
+TEST_F(BacklightControllerTest, KeepBacklightOnAfterAutomatedChange) {
+  // Set the ALS offset to 100% and then manually lower the brightness as far as
+  // we can.
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  ASSERT_TRUE(controller_.OnPlugEvent(true));
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    controller_.SetAlsBrightnessOffsetPercent(100.0);
+  for (int i = 0; i < kStepsToHitLimit; ++i)
+    controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
+
+  // After we set the ALS offset to 0%, the backlight should still be on.
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    controller_.SetAlsBrightnessOffsetPercent(0.0);
+  EXPECT_GT(controller_.target_percent(), 0.0);
 }
 
 TEST_F(BacklightControllerTest, MinBrightnessLevel) {
