@@ -5,10 +5,11 @@
 include $(SRC)/common.mk
 
 define define_helper
-all: CXX_BINARY(helpers/$(1))
+all: CXX_BINARY($(basename $(1)))
 $(info define_helper: $(1))
-CXX_BINARY(helpers/$(1)): helpers/$(1).o
-	$$(call cxx_binary,-lbase -lchromeos)
+$(1).depends: $$(DBUSHDRS)
+CXX_BINARY($(basename $(1))): LDFLAGS += -lbase -lchromeos
+CXX_BINARY($(basename $(1))): $(1)
 # Please do not delete the newline at the end of define_helper. The text
 # produced by define_helper is smashed together by the $(eval) below without any
 # separator, so without the newline, we would end up with:
@@ -17,20 +18,17 @@ CXX_BINARY(helpers/$(1)): helpers/$(1).o
 
 endef
 
+MM_PROXIES := $(patsubst %,proxies/org.freedesktop.ModemManager%,.h \
+                .Modem.h .Modem.Simple.h)
+CM_PROXIES := $(patsubst %,proxies/org.chromium.flimflam.%.h, \
+                Device IPConfig Manager Profile Service)
+DBUSHDRS := $(MM_PROXIES) $(CM_PROXIES) \
+            proxies/org.freedesktop.DBus.Properties.h
+
 # Construct build rules for all of the helpers. For each helper h, define a rule
 # for CXX_BINARY(helpers/h), and make CXX_BINARY(helpers/h) a dependency of
 # 'all'.
 $(eval \
     $(foreach helper, \
-              $(wildcard $(SRC)/helpers/*.cc), \
-              $(call define_helper,$(notdir $(basename $(helper))))))
-
-MM_PROXIES := $(patsubst %,$(OUT)proxies/org.freedesktop.ModemManager%,.h \
-                .Modem.h .Modem.Simple.h)
-CM_PROXIES := $(patsubst %,$(OUT)proxies/org.chromium.flimflam.%.h, \
-                Device IPConfig Manager Profile Service)
-DBUSHDRS := $(MM_PROXIES) $(CM_PROXIES) \
-            $(OUT)proxies/org.freedesktop.DBus.Properties.h
-
-helpers/modem_status.o.depends: $(DBUSHDRS)
-helpers/network_status.o.depends: $(DBUSHDRS)
+              $(helpers_CXX_OBJECTS), \
+              $(call define_helper,$(helper))))

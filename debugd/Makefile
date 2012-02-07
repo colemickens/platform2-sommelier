@@ -4,5 +4,7 @@
 
 # Stub makefile.
 
+# Make sure a passed in OUT= isn't lost.
+OUT ?= $(PWD)/build-opt
 $(filter-out _all,$(MAKECMDGOALS)) _all:
-	$(MAKE) -C src $(MAKECMDGOALS)
+	$(MAKE) -C src $(MAKECMDGOALS) OUT=$(OUT)

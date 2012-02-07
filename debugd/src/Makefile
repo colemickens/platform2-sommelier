@@ -27,17 +27,14 @@ CXX_BINARY(testrunner): testrunner.o $(OBJS) $(TESTOBJS)
 	$(call cxx_binary,-lgtest -lminijail -lchromeos -lbase)
 clean: CXX_BINARY(debugd)
 
-main.o.depends: $(OUT)adaptors/org.chromium.debugd.h
-debug_daemon.o.depends: $(OUT)adaptors/org.chromium.debugd.h
-
-vpath org.chromium.debugd.xml share
-vpath org.%.xml $(SYSROOT)/usr/share/dbus-1/interfaces
-
-$(OUT)adaptors/%.h: %.xml
+adaptors/%.h: ../share/%.xml
 	mkdir -p $(dir $@)
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@
 
-$(OUT)proxies/%.h: %.xml
+proxies/%.h: $(SYSROOT)/usr/share/dbus-1/interfaces/%.xml
 	mkdir -p $(dir $@)
 	$(DBUSXX_XML2CPP) $^ --proxy=$@
+
+main.o.depends: adaptors/org.chromium.debugd.h
+debug_daemon.o.depends: adaptors/org.chromium.debugd.h
 
