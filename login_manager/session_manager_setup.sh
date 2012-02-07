@@ -218,7 +218,7 @@ if use_flag_is_set aura; then
   WM_SCRIPT=""
 
   if use_flag_is_set is_desktop; then
-    AURA_FLAGS="$AURA_FLAGS --aura-window-mode=normal"
+    AURA_FLAGS="$AURA_FLAGS --aura-window-mode=overlapping"
   else
     AURA_FLAGS="$AURA_FLAGS --aura-window-mode=compact"
   fi
@@ -228,8 +228,8 @@ if use_flag_is_set aura; then
   fi
 
   # Force compact mode on Pine Trail devices.
-  # TODO(derat): Remove this flag once normal mode is supported on all devices,
-  # likely around M19.
+  # TODO(derat): Remove this flag once overlapping mode is supported on all
+  # devices, likely around M19.
   if is_board x86-alex || is_board x86-alex_he || is_board x86-mario ||
       is_board x86-zgb || is_board x86-zgb_he; then
     AURA_FLAGS="$AURA_FLAGS --aura-force-compact-window-mode"
