@@ -26,7 +26,7 @@ extern const char kRetrySuspendMs[];
 extern const char kRetrySuspendAttempts[];
 extern const char kUseXScreenSaver[];
 extern const char kPluggedSuspendMs[];
-extern const char kMinBacklightLevel[];
+extern const char kMinVisibleBacklightLevel[];
 extern const char kReactMs[];
 extern const char kFuzzMs[];
 extern const char kBacklightPath[];

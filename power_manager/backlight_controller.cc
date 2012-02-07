@@ -20,10 +20,14 @@ const double kMinPercent = 0.0;
 const double kMaxPercent = 100.0;
 
 // Set brightness to this value when going into idle-induced dim state.
-const double kIdleBrightnessPercent = 10;
+const double kIdleBrightnessPercent = 10.0;
 
-// Minimum allowed brightness during startup.
-const double kMinInitialBrightnessPercent = 10;
+// Minimum brightness percentage that we'll remain at before turning the
+// backlight off entirely.  This is arbitrarily chosen but seems to be a
+// reasonable marginally-visible brightness for a darkened room on current
+// devices: http://crosbug.com/24569.  A higher level can be set via the
+// kMinVisibleBacklightLevel setting.
+const double kDefaultMinVisibleBrightnessPercent = 0.65;
 
 // Gradually animate backlight level to new brightness by breaking up the
 // transition into this many steps.
@@ -86,7 +90,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       target_percent_(0.0),
       max_level_(0),
       min_visible_level_(0),
-      num_steps_(kMaxBrightnessSteps),
+      step_percent_(1.0),
       is_initialized_(false),
       target_level_(0),
       is_in_transition_(false) {
@@ -107,14 +111,20 @@ bool BacklightController::Init() {
   ReadPrefs();
   target_percent_ = LevelToPercent(target_level_);
 
-  // If there are fewer steps than the max, adjust for it.
-  // TODO(sque): this is not ideal for some cases, such as max=17, where the
-  // steps will have a large spread.  Something we can work on in the future.
-  num_steps_ = std::max(static_cast<int64>(1),
-                        std::min(kMaxBrightnessSteps, max_level_));
+  if (max_level_ == min_visible_level_ || kMaxBrightnessSteps == 1) {
+    step_percent_ = 100.0;
+  } else {
+    // 1 is subtracted from kMaxBrightnessSteps to account for the step between
+    // |min_brightness_level_| and 0.
+    step_percent_ =
+        (kMaxPercent - LevelToPercent(min_visible_level_)) /
+        std::min(kMaxBrightnessSteps - 1, max_level_ - min_visible_level_);
+  }
+  CHECK_GT(step_percent_, 0.0);
 
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "
-            << num_steps_ << " step(s); current level is " << target_level_
+            << step_percent_ << "% step and minimum-visible level of "
+            << min_visible_level_ << "; current level is " << target_level_
             << " (" << target_percent_ << "%)";
   is_initialized_ = true;
   return true;
@@ -134,9 +144,10 @@ void BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
   if (!IsInitialized())
     return;
 
-  // Determine the adjustment step size.
-  double step_size = (kMaxPercent - kMinPercent) / num_steps_;
-  double new_percent = ClampPercentToVisibleRange(target_percent_ + step_size);
+  double new_percent =
+      target_percent_ < LevelToPercent(min_visible_level_) - 0.001 ?
+      LevelToPercent(min_visible_level_) :
+      ClampPercentToVisibleRange(target_percent_ + step_percent_);
 
   if (new_percent != target_percent_) {
     *current_offset_percent_ = new_percent - als_offset_percent_;
@@ -151,10 +162,10 @@ void BacklightController::DecreaseBrightness(bool allow_off,
 
   // Lower the backlight to the next step, turning it off if it was already at
   // the minimum visible level.
-  double step_size = (kMaxPercent - kMinPercent) / num_steps_;
   double new_percent =
-      (PercentToLevel(target_percent_) <= min_visible_level_) ? 0.0 :
-      ClampPercentToVisibleRange(target_percent_ - step_size);
+      target_percent_ <= LevelToPercent(min_visible_level_) + 0.001 ?
+      0.0 :
+      ClampPercentToVisibleRange(target_percent_ - step_percent_);
 
   if (new_percent != target_percent_ && (allow_off || new_percent > 0)) {
     *current_offset_percent_ = new_percent - als_offset_percent_;
@@ -190,10 +201,6 @@ bool BacklightController::SetPowerState(PowerState new_state) {
              new_state == BACKLIGHT_ACTIVE) {
     double new_percent = ClampPercentToVisibleRange(
         last_active_offset_percent_ + als_offset_percent_);
-    // TODO(sque): We want to prevent the brightness from coming up as zero on a
-    // resume.  However, whether the minimum should be the startup brightness
-    // minimum or another value has not been determined.
-    new_percent = std::max(new_percent, kMinInitialBrightnessPercent);
     *current_offset_percent_ = new_percent - als_offset_percent_;
     // If returning from suspend, force the backlight to zero to cancel out any
     // kernel driver behavior that sets it to some other value.  This allows
@@ -380,9 +387,11 @@ int64 BacklightController::PercentToLevel(double local_percent) {
 }
 
 void BacklightController::ReadPrefs() {
-  if (!prefs_->GetInt64(kMinBacklightLevel, &min_visible_level_))
-    min_visible_level_ = 0;
-  CHECK_GE(min_visible_level_, 0);
+  if (!prefs_->GetInt64(kMinVisibleBacklightLevel, &min_visible_level_))
+    min_visible_level_ = 1;
+  min_visible_level_ = std::max(
+      PercentToLevel(kDefaultMinVisibleBrightnessPercent), min_visible_level_);
+  CHECK_GT(min_visible_level_, 0);
   min_visible_level_ = std::min(min_visible_level_, max_level_);
 
   CHECK(prefs_->GetDouble(kPluggedBrightnessOffset, &plugged_offset_percent_));
@@ -393,14 +402,9 @@ void BacklightController::ReadPrefs() {
   CHECK_GE(unplugged_offset_percent_, -kMaxPercent);
   CHECK_LE(unplugged_offset_percent_, kMaxPercent);
 
-  // Adjust brightness offset values to make sure that the backlight is not
-  // initially set to too low of a level.
-  double min_starting_percent =
-      ClampPercentToVisibleRange(kMinInitialBrightnessPercent);
-  plugged_offset_percent_ =
-      std::max(min_starting_percent, plugged_offset_percent_);
-  unplugged_offset_percent_ =
-      std::max(min_starting_percent, unplugged_offset_percent_);
+  double min_percent = LevelToPercent(min_visible_level_);
+  plugged_offset_percent_ = std::max(min_percent, plugged_offset_percent_);
+  unplugged_offset_percent_ = std::max(min_percent, unplugged_offset_percent_);
 }
 
 void BacklightController::WritePrefs() {

@@ -89,7 +89,7 @@ class BacklightControllerTest : public ::testing::Test {
     prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightness);
     prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightness);
     prefs_.SetInt64(kAlsBrightnessLevel, kAlsBrightness);
-    prefs_.SetInt64(kMinBacklightLevel, 0);
+    prefs_.SetInt64(kMinVisibleBacklightLevel, 1);
     CHECK(controller_.Init());
   }
 
@@ -254,7 +254,9 @@ TEST_F(BacklightControllerTest, KeepBacklightOnAfterAutomatedChange) {
 TEST_F(BacklightControllerTest, MinBrightnessLevel) {
   // Set a minimum visible backlight level and reinitialize to load it.
   const int kMinLevel = 10;
-  prefs_.SetInt64(kMinBacklightLevel, kMinLevel);
+  const double kMinPercent =
+      static_cast<double>(kMinLevel) / kMaxBrightness * 100.0;
+  prefs_.SetInt64(kMinVisibleBacklightLevel, kMinLevel);
   ASSERT_TRUE(controller_.Init());
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
@@ -268,20 +270,41 @@ TEST_F(BacklightControllerTest, MinBrightnessLevel) {
   // get to the minimum level that we set in the pref.
   for (int i = 0; i < kStepsToHitLimit; ++i)
     controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
-  EXPECT_DOUBLE_EQ(static_cast<double>(kMinLevel) / kMaxBrightness * 100.0,
-                   controller_.target_percent());
+  EXPECT_DOUBLE_EQ(kMinPercent, controller_.target_percent());
 
   // Decrease again with allow_off=true and check that we turn the backlight
   // off.
   for (int i = 0; i < kStepsToHitLimit; ++i)
     controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
   EXPECT_DOUBLE_EQ(0.0, controller_.target_percent());
+
+  // Increase again and check that we go to the minimum level.
+  controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(kMinPercent, controller_.target_percent());
+
+  // Now set a lower minimum visible level and check that we don't overshoot it
+  // when increasing from the backlight-off state.
+  const int kNewMinLevel = 1;
+  const double kNewMinPercent =
+      static_cast<double>(kNewMinLevel) / kMaxBrightness * 100.0;
+  prefs_.SetInt64(kMinVisibleBacklightLevel, kNewMinLevel);
+  ASSERT_TRUE(controller_.Init());
+  for (int i = 0; i < kStepsToHitLimit; ++i)
+    controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(0.0, controller_.target_percent());
+  controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_DOUBLE_EQ(kNewMinPercent, controller_.target_percent());
+
+  // Sending another increase request should raise the brightness above the
+  // minimum visible level.
+  controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_GT(controller_.target_percent(), kNewMinPercent);
 }
 
 // Test the case where the minimum visible backlight level matches the maximum
 // level exposed by hardware.
 TEST_F(BacklightControllerTest, MinBrightnessLevelMatchesMax) {
-  prefs_.SetInt64(kMinBacklightLevel, kMaxBrightness);
+  prefs_.SetInt64(kMinVisibleBacklightLevel, kMaxBrightness);
   ASSERT_TRUE(controller_.Init());
 #ifdef HAS_ALS
   // The controller avoids adjusting the brightness until it gets its first

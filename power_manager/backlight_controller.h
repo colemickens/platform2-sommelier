@@ -267,12 +267,11 @@ class BacklightController : public BacklightInterfaceObserver {
   // can still quickly animate through lower (still technically visible) levels
   // while transitioning to the off state; this is the minimum level that we'll
   // use in the steady state while the backlight is on.
-  //
-  // If this feature isn't being used, then this is just 0.
   int64 min_visible_level_;
 
-  // Number of brightness adjustment steps.
-  int64 num_steps_;
+  // Percentage by which we offset the brightness in response to increase and
+  // decrease requests.
+  double step_percent_;
 
   // Flag is set if a backlight device exists.
   bool is_initialized_;
