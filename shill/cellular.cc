@@ -316,7 +316,12 @@ void Cellular::Connect(Error *error) {
 void Cellular::OnConnected() {
   VLOG(2) << __func__;
   SetState(kStateConnected);
-  EstablishLink();
+  if (!capability_->allow_roaming() &&
+      service_->roaming_state() == flimflam::kRoamingStateRoaming) {
+    Disconnect(NULL);
+  } else {
+    EstablishLink();
+  }
 }
 
 void Cellular::OnConnectFailed() {

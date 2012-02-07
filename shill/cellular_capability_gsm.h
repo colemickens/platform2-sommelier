@@ -62,6 +62,7 @@ class CellularCapabilityGSM : public CellularCapability,
   friend class CellularTest;
   friend class CellularCapabilityGSMTest;
   FRIEND_TEST(CellularTest, StartGSMRegister);
+  FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityGSMTest, CreateDeviceFromProperties);
   FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMEI);

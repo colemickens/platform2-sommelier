@@ -9,6 +9,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular.h"
 #include "shill/error.h"
+#include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 
 using base::Callback;
@@ -64,7 +65,9 @@ CellularCapability::CellularCapability(Cellular *cellular,
       proxy_factory_(proxy_factory) {
   PropertyStore *store = cellular->mutable_store();
   store->RegisterConstString(flimflam::kCarrierProperty, &carrier_);
-  store->RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
+  HelpRegisterDerivedBool(flimflam::kCellularAllowRoamingProperty,
+                          &CellularCapability::GetAllowRoaming,
+                          &CellularCapability::SetAllowRoaming);
   store->RegisterConstBool(flimflam::kSupportNetworkScanProperty,
                            &scanning_supported_);
   store->RegisterConstString(flimflam::kEsnProperty, &esn_);
@@ -82,6 +85,30 @@ CellularCapability::CellularCapability(Cellular *cellular,
 }
 
 CellularCapability::~CellularCapability() {}
+
+void CellularCapability::HelpRegisterDerivedBool(
+    const string &name,
+    bool(CellularCapability::*get)(Error *error),
+    void(CellularCapability::*set)(const bool &value, Error *error)) {
+  cellular()->mutable_store()->RegisterDerivedBool(
+      name,
+      BoolAccessor(
+          new CustomAccessor<CellularCapability, bool>(this, get, set)));
+}
+
+void CellularCapability::SetAllowRoaming(const bool &value, Error */*error*/) {
+  VLOG(2) << __func__ << "(" << allow_roaming_ << "->" << value << ")";
+  if (allow_roaming_ == value) {
+    return;
+  }
+  allow_roaming_ = value;
+  if (!value && GetRoamingStateString() == flimflam::kRoamingStateRoaming) {
+    Error error;
+    cellular()->Disconnect(&error);
+  }
+  cellular()->adaptor()->EmitBoolChanged(
+      flimflam::kCellularAllowRoamingProperty, value);
+}
 
 void CellularCapability::StartModem() {
   VLOG(2) << __func__;

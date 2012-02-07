@@ -23,6 +23,7 @@
 #include "shill/proxy_factory.h"
 
 using std::string;
+using testing::InSequence;
 using testing::NiceMock;
 
 namespace shill {
@@ -187,6 +188,34 @@ TEST_F(CellularCapabilityTest, EnableModemFail) {
   capability_->EnableModem(NULL);
   capability_->OnModemEnableCallback(Error(Error::kOperationFailed), NULL);
   EXPECT_EQ(Cellular::kStateDisabled, cellular_->state_);
+}
+
+TEST_F(CellularCapabilityTest, AllowRoaming) {
+  EXPECT_FALSE(capability_->GetAllowRoaming(NULL));
+  capability_->SetAllowRoaming(false, NULL);
+  EXPECT_FALSE(capability_->GetAllowRoaming(NULL));
+
+  {
+    InSequence seq;
+    EXPECT_CALL(*device_adaptor_, EmitBoolChanged(
+        flimflam::kCellularAllowRoamingProperty, true));
+    EXPECT_CALL(*device_adaptor_, EmitBoolChanged(
+        flimflam::kCellularAllowRoamingProperty, false));
+  }
+
+  cellular_->state_ = Cellular::kStateConnected;
+  dynamic_cast<CellularCapabilityGSM *>(capability_)->registration_state_ =
+      MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
+  capability_->SetAllowRoaming(true, NULL);
+  EXPECT_TRUE(capability_->GetAllowRoaming(NULL));
+  EXPECT_EQ(Cellular::kStateConnected, cellular_->state_);
+
+  EXPECT_CALL(*proxy_, Disconnect());
+  SetProxy();
+  cellular_->state_ = Cellular::kStateConnected;
+  capability_->SetAllowRoaming(false, NULL);
+  EXPECT_FALSE(capability_->GetAllowRoaming(NULL));
+  EXPECT_EQ(Cellular::kStateRegistered, cellular_->state_);
 }
 
 }  // namespace shill

@@ -183,6 +183,7 @@ class CellularCapability : public ModemProxyDelegate,
   friend class CellularCapabilityTest;
   FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateStatus);
+  FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
   FRIEND_TEST(CellularServiceTest, FriendlyName);
@@ -192,6 +193,14 @@ class CellularCapability : public ModemProxyDelegate,
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, DisconnectModem);
+
+  void HelpRegisterDerivedBool(
+      const std::string &name,
+      bool(CellularCapability::*get)(Error *error),
+      void(CellularCapability::*set)(const bool &value, Error *error));
+
+  bool GetAllowRoaming(Error */*error*/) { return allow_roaming_; }
+  void SetAllowRoaming(const bool &value, Error *error);
 
   Cellular *cellular_;
 
