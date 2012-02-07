@@ -196,6 +196,61 @@ bool DevicePolicyImpl::GetMetricsEnabled(bool* metrics_enabled) const {
   return true;
 }
 
+// Writes the value of ReportVersionInfo policy in |report_version_info|.
+// Returns true on success.
+bool DevicePolicyImpl::GetReportVersionInfo(bool* report_version_info) const {
+  if (!device_policy_.has_device_reporting())
+    return false;
+
+  const enterprise_management::DeviceReportingProto& proto =
+      device_policy_.device_reporting();
+  if (!proto.has_report_version_info())
+    return false;
+
+  *report_version_info = proto.report_version_info();
+  return true;
+}
+
+// Writes the value of ReportActivityTimes policy in |report_activity_times|.
+// Returns true on success.
+bool DevicePolicyImpl::GetReportActivityTimes(
+    bool* report_activity_times) const {
+  if (!device_policy_.has_device_reporting())
+    return false;
+
+  const enterprise_management::DeviceReportingProto& proto =
+      device_policy_.device_reporting();
+  if (!proto.has_report_activity_times())
+    return false;
+
+  *report_activity_times = proto.report_activity_times();
+  return true;
+}
+
+// Writes the value of ReportBootMode policy in |report_boot_mode|. Returns
+// true on success.
+bool DevicePolicyImpl::GetReportBootMode(bool* report_boot_mode) const {
+  if (!device_policy_.has_device_reporting())
+    return false;
+
+  const enterprise_management::DeviceReportingProto& proto =
+      device_policy_.device_reporting();
+  if (!proto.has_report_boot_mode())
+    return false;
+
+  *report_boot_mode = proto.report_boot_mode();
+  return true;
+}
+
+// Writes the value of the EphemeralUsers policy in |ephemeral_users|. Returns
+// true on success.
+bool DevicePolicyImpl::GetEphemeralUsers(bool* ephemeral_users) const {
+  if (!device_policy_.has_ephemeral_users())
+    return false;
+  *ephemeral_users = device_policy_.ephemeral_users().ephemeral_users();
+  return true;
+}
+
 // Writes the value of the ProxyMode policy in |proxy_mode|. Returns true on
 // success.
 bool DevicePolicyImpl::GetProxyMode(std::string* proxy_mode) const {
@@ -270,6 +325,22 @@ bool DevicePolicyImpl::GetReleaseChannel(
     return false;
 
   *release_channel = proto.release_channel();
+  return true;
+}
+
+// Writes the value of the OpenNetworkConfiguration policy in
+// |open_network_configuration|. Returns true on success.
+bool DevicePolicyImpl::GetOpenNetworkConfiguration(
+    std::string* open_network_configuration) const {
+  if (!device_policy_.has_open_network_configuration())
+    return false;
+
+  const enterprise_management::DeviceOpenNetworkConfigurationProto& proto =
+      device_policy_.open_network_configuration();
+  if (!proto.has_open_network_configuration())
+    return false;
+
+  *open_network_configuration = proto.open_network_configuration();
   return true;
 }
 

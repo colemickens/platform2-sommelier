@@ -53,11 +53,16 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_CONST_METHOD1(GetDataRoamingEnabled, bool(bool*));
   MOCK_CONST_METHOD1(GetAllowNewUsers, bool(bool*));
   MOCK_CONST_METHOD1(GetMetricsEnabled, bool(bool*));
+  MOCK_CONST_METHOD1(GetReportVersionInfo, bool(bool*));
+  MOCK_CONST_METHOD1(GetReportActivityTimes, bool(bool*));
+  MOCK_CONST_METHOD1(GetReportBootMode, bool(bool*));
+  MOCK_CONST_METHOD1(GetEphemeralUsers, bool(bool*));
   MOCK_CONST_METHOD1(GetProxyMode, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyServer, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyPacUrl, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyBypassList, bool(std::string*));
   MOCK_CONST_METHOD1(GetReleaseChannel, bool(std::string*));
+  MOCK_CONST_METHOD1(GetOpenNetworkConfiguration, bool(std::string*));
   MOCK_CONST_METHOD1(GetOwner, bool(std::string*));
 
   MOCK_METHOD0(VerifyPolicyFiles, bool(void));

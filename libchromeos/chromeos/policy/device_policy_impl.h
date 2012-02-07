@@ -63,6 +63,22 @@ class DevicePolicyImpl : public DevicePolicy {
   // on success.
   virtual bool GetMetricsEnabled(bool* metrics_enabled) const;
 
+  // Writes the value of ReportVersionInfo policy in |report_version_info|.
+  // Returns true on success.
+  virtual bool GetReportVersionInfo(bool* report_version_info) const;
+
+  // Writes the value of ReportActivityTimes policy in |report_activity_times|.
+  // Returns true on success.
+  virtual bool GetReportActivityTimes(bool* report_activity_times) const;
+
+  // Writes the value of ReportBootMode policy in |report_boot_mode|. Returns
+  // true on success.
+  virtual bool GetReportBootMode(bool* report_boot_mode) const;
+
+  // Writes the value of the EphemeralUsers policy in |ephemeral_users|. Returns
+  // true on success.
+  virtual bool GetEphemeralUsers(bool* ephemeral_users) const;
+
   // Writes the value of the ProxyMode policy in |proxy_mode|. Returns true on
   // success.
   virtual bool GetProxyMode(std::string* proxy_mode) const;
@@ -82,6 +98,11 @@ class DevicePolicyImpl : public DevicePolicy {
   // Writes the value of the release channel policy in |release channel|.
   // Returns true on success.
   virtual bool GetReleaseChannel(std::string* release_channel) const;
+
+  // Writes the value of the OpenNetworkConfiguration policy in
+  // |open_network_configuration|. Returns true on success.
+  virtual bool GetOpenNetworkConfiguration(
+      std::string* open_network_configuration) const;
 
   // Writes the name of the device owner in |owner|. For enterprise enrolled
   // devices, this will be an empty string.
