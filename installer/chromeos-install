@@ -497,8 +497,8 @@ loop_offset_cleanup
 #
 echo "Installing the stateful partition..."
 loop_offset_setup $DST $START_STATEFUL
+mount_on_loop_dev readwrite
 if [ -f "${ROOT}"/root/.dev_mode ]; then
-  mount_on_loop_dev readwrite
   DIRLIST="
       var/db/pkg
       var/lib/portage
@@ -512,8 +512,18 @@ if [ -f "${ROOT}"/root/.dev_mode ]; then
     sudo mkdir -p ${TMPMNT}/${PARENT}
     sudo cp -fpru "${ROOT}/mnt/stateful_partition/${DIR}" ${TMPMNT}/${DIR}
   done
-  umount_from_loop_dev
+elif crossystem 'devsw_boot?1' ; then
+  # The dev switch was on when we booted; we assume it will be on
+  # for the next boot.  We touch ".developer_mode" to avoid a
+  # pointless delay after reboot while chromeos_startup wipes an
+  # empty stateful partition.
+  #
+  # See chromeos_startup for the companion code that checks for this
+  # file.
+  #
+  touch ${TMPMNT}/.developer_mode
 fi
+umount_from_loop_dev
 loop_offset_cleanup
 
 # Force data to disk before we declare done.
