@@ -84,7 +84,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       user_adjustment_count_(0),
       plugged_offset_percent_(0.0),
       unplugged_offset_percent_(0.0),
-      current_offset_percent_(NULL),
+      current_offset_percent_(&plugged_offset_percent_),
       state_(BACKLIGHT_UNINITIALIZED),
       plugged_state_(kPowerUnknown),
       target_percent_(0.0),
@@ -141,7 +141,7 @@ bool BacklightController::GetCurrentBrightnessPercent(double* percent) {
 }
 
 void BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
-  if (!IsInitialized())
+  if (!is_initialized_)
     return;
 
   double new_percent =
@@ -157,7 +157,7 @@ void BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
 
 void BacklightController::DecreaseBrightness(bool allow_off,
                                              BrightnessChangeCause cause) {
-  if (!IsInitialized())
+  if (!is_initialized_)
     return;
 
   // Lower the backlight to the next step, turning it off if it was already at
@@ -255,7 +255,7 @@ bool BacklightController::SetPowerState(PowerState new_state) {
 }
 
 bool BacklightController::OnPlugEvent(bool is_plugged) {
-  if ((current_offset_percent_ && is_plugged == plugged_state_) ||
+  if ((is_plugged ? kPowerConnected : kPowerDisconnected) == plugged_state_ ||
       !is_initialized_)
     return false;
   bool is_first_time = (plugged_state_ == kPowerUnknown);
@@ -416,16 +416,10 @@ void BacklightController::WritePrefs() {
     prefs_->SetDouble(kUnpluggedBrightnessOffset, unplugged_offset_percent_);
 }
 
-bool BacklightController::IsInitialized() {
-  // |current_offset_percent_| will be initialized once polling of plugged
-  // event has occurred once.
-  return (is_initialized_ && current_offset_percent_);
-}
-
 bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
                                           BrightnessChangeCause cause,
                                           TransitionStyle style) {
-  if (!IsInitialized())
+  if (!is_initialized_)
     return false;
 
   if (cause == BRIGHTNESS_CHANGE_USER_INITIATED)
@@ -480,7 +474,7 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
       observer_->OnScreenBrightnessChanged(target_percent_, cause);
   }
 
-  return target_percent_ != old_percent;
+  return true;
 }
 
 bool BacklightController::SetBrightness(int64 target_level,
