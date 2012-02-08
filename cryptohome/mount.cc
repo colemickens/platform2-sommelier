@@ -43,9 +43,6 @@ const uid_t kMountOwnerUid = 0;
 const gid_t kMountOwnerGid = 0;
 // TODO(fes): Remove once UI for BWSI switches to MountGuest()
 const char kIncognitoUser[] = "incognito";
-// The length of a user's directory name in the shadow root (equal to the length
-// of the ascii version of a SHA1 hash)
-const unsigned int kUserDirNameLength = 40;
 // Encrypted files/directories in ecryptfs have file names that start with the
 // following constant.  When clearing tracked subdirectories, we ignore these
 // and only delete the pass-through directories.
@@ -200,7 +197,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
                                  MountError* mount_error) {
   current_user_->Reset();
 
-  std::string username = credentials.GetFullUsernameString();
+  string username = credentials.GetFullUsernameString();
   if (username.compare(kIncognitoUser) == 0) {
     // TODO(fes): Have guest set error conditions?
     if (mount_error) {
@@ -633,22 +630,9 @@ void Mount::DoForEveryUnmountedCryptohome(
       file_util::FileEnumerator::DIRECTORIES);
   for (FilePath next_path = dir_enumerator.Next(); !next_path.empty();
        next_path = dir_enumerator.Next()) {
-    FilePath dir_name = next_path.BaseName();
-    string str_dir_name = dir_name.value();
-    if (str_dir_name.length() != kUserDirNameLength) {
+    const std::string str_dir_name = next_path.BaseName().value();
+    if (!chromeos::cryptohome::home::IsSanitizedUserName(str_dir_name))
       continue;
-    }
-    bool valid_name = true;
-    for (string::const_iterator itr = str_dir_name.begin();
-          itr < str_dir_name.end(); ++itr) {
-      if (!isxdigit(*itr)) {
-        valid_name = false;
-        break;
-      }
-    }
-    if (!valid_name) {
-      continue;
-    }
     const FilePath vault_path = next_path.Append(kVaultDir);
     if (!file_util::DirectoryExists(vault_path)) {
       continue;
