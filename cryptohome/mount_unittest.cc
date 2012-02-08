@@ -256,7 +256,7 @@ TEST_F(MountTest, CreateCryptohomeTest) {
 
   EXPECT_TRUE(mount.Init());
   bool created;
-  ASSERT_TRUE(mount.EnsureCryptohome(up, Mount::MountArgs(), &created));
+  ASSERT_TRUE(mount.EnsureCryptohome(up, &created));
   ASSERT_TRUE(created);
 
   FilePath image_dir(kImageDir);

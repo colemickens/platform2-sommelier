@@ -120,7 +120,6 @@ class Mount : public EntropySource {
   //     should be ensured.
   //   created (OUT) - Whether the cryptohome was created
   virtual bool EnsureCryptohome(const Credentials& credentials,
-                                const MountArgs& mount_args,
                                 bool* created) const;
 
   // Checks if the cryptohome vault exists for the given credentials
@@ -135,8 +134,7 @@ class Mount : public EntropySource {
   // Parameters
   //   credentials - The Credentials representing the user whose cryptohome
   //     should be created.
-  virtual bool CreateCryptohome(const Credentials& credentials,
-                                const MountArgs& mount_args) const;
+  virtual bool CreateCryptohome(const Credentials& credentials) const;
 
   // Creates the the tracked subdirectories in a user's cryptohome
   // If the cryptohome did not have tracked directories, but had them untracked,
@@ -385,26 +383,20 @@ class Mount : public EntropySource {
   // Cache the old key file and salt file during migration
   //
   // Parameters
-  //   credentials - The user credentials to cache the files for
   //   files - The file names to cache
-  bool CacheOldFiles(const Credentials& credentials,
-                     std::vector<std::string>& files) const;
+  bool CacheOldFiles(std::vector<std::string>& files) const;
 
   // Move the cached files back to the original files
   //
   // Parameters
-  //   credentials - The user credentials to un-cache the files for
   //   files - The file names to un-cache
-  bool RevertCacheFiles(const Credentials& credentials,
-                        std::vector<std::string>& files) const;
+  bool RevertCacheFiles(std::vector<std::string>& files) const;
 
   // Remove the cached files for the user
   //
   // Parameters
-  //   credentials - The user credentials to remove the files for
   //   files - The file names to remove
-  bool DeleteCacheFiles(const Credentials& credentials,
-                        std::vector<std::string>& files) const;
+  bool DeleteCacheFiles(std::vector<std::string>& files) const;
 
   // Gets the directory in the shadow root where the user's salt, key, and vault
   // are stored.
@@ -661,7 +653,7 @@ class Mount : public EntropySource {
   std::string mount_point_;
 
   // Where to store the system salt and user salt/key/vault.  Defaults to
-  // /home/chronos/shadow
+  // /home/.shadow
   std::string shadow_root_;
 
   // Where the skeleton for the user's cryptohome is copied from

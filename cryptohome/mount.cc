@@ -140,7 +140,6 @@ bool Mount::Init() {
 }
 
 bool Mount::EnsureCryptohome(const Credentials& credentials,
-                             const Mount::MountArgs& mount_args,
                              bool* created) const {
   // If the user has an old-style cryptohome, delete it
   FilePath old_image_path(StringPrintf("%s/image",
@@ -156,7 +155,7 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
   if (!file_util::DirectoryExists(vault_path)) {
     // If the vault directory doesn't exist, then create the cryptohome from
     // scratch
-    bool result = CreateCryptohome(credentials, mount_args);
+    bool result = CreateCryptohome(credentials);
     if (created) {
       *created = result;
     }
@@ -218,7 +217,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   bool created = false;
-  if (!EnsureCryptohome(credentials, mount_args, &created)) {
+  if (!EnsureCryptohome(credentials, &created)) {
     LOG(ERROR) << "Error creating cryptohome.";
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
@@ -482,8 +481,7 @@ bool Mount::IsCryptohomeMountedForUser(const Credentials& credentials) const {
                                            GetUserVaultPath(credentials));
 }
 
-bool Mount::CreateCryptohome(const Credentials& credentials,
-                             const Mount::MountArgs& mount_args) const {
+bool Mount::CreateCryptohome(const Credentials& credentials) const {
   int original_mask = platform_->SetMask(kDefaultUmask);
 
   // Create the user's entry in the shadow root
@@ -995,21 +993,21 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
   std::vector<std::string> files(2);
   files[0] = GetUserSaltFile(credentials);
   files[1] = GetUserKeyFile(credentials);
-  if (!CacheOldFiles(credentials, files)) {
+  if (!CacheOldFiles(files)) {
     LOG(ERROR) << "Couldn't cache old key material.";
     return false;
   }
   if (!AddVaultKeyset(credentials, vault_keyset, serialized)) {
     LOG(ERROR) << "Couldn't add keyset.";
-    RevertCacheFiles(credentials, files);
+    RevertCacheFiles(files);
     return false;
   }
   if (!StoreVaultKeyset(credentials, *serialized)) {
     LOG(ERROR) << "Write to master key failed";
-    RevertCacheFiles(credentials, files);
+    RevertCacheFiles(files);
     return false;
   }
-  DeleteCacheFiles(credentials, files);
+  DeleteCacheFiles(files);
   return true;
 }
 
@@ -1295,8 +1293,7 @@ bool Mount::RemoveOldFiles(const Credentials& credentials) const {
   return true;
 }
 
-bool Mount::CacheOldFiles(const Credentials& credentials,
-                          std::vector<std::string>& files) const {
+bool Mount::CacheOldFiles(std::vector<std::string>& files) const {
   for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
@@ -1314,8 +1311,7 @@ bool Mount::CacheOldFiles(const Credentials& credentials,
   return true;
 }
 
-bool Mount::RevertCacheFiles(const Credentials& credentials,
-                             std::vector<std::string>& files) const {
+bool Mount::RevertCacheFiles(std::vector<std::string>& files) const {
   for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
@@ -1328,8 +1324,7 @@ bool Mount::RevertCacheFiles(const Credentials& credentials,
   return true;
 }
 
-bool Mount::DeleteCacheFiles(const Credentials& credentials,
-                             std::vector<std::string>& files) const {
+bool Mount::DeleteCacheFiles(std::vector<std::string>& files) const {
   for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));

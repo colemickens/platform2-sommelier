@@ -97,8 +97,7 @@ void MakeTests::InitTestData(const std::string& image_dir,
                                             &passkey);
       UsernamePasskey up(test_users[i].username, passkey);
       bool created;
-      Mount::MountArgs mount_args;
-      mount.EnsureCryptohome(up, mount_args, &created);
+      mount.EnsureCryptohome(up, &created);
 
       if (test_users[i].use_old_format) {
         VaultKeyset vault_keyset;
