@@ -51,7 +51,7 @@ void MountTask::Signal()
 
 void MountTaskMount::Run() {
   if (mount_) {
-    Mount::MountError code = Mount::MOUNT_ERROR_NONE;
+    MountError code = MOUNT_ERROR_NONE;
     bool status = mount_->MountCryptohome(credentials_,
                                           mount_args_,
                                           &code);

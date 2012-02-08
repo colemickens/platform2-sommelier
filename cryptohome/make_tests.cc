@@ -103,7 +103,7 @@ void MakeTests::InitTestData(const std::string& image_dir,
       if (test_users[i].use_old_format) {
         VaultKeyset vault_keyset;
         SerializedVaultKeyset serialized;
-        cryptohome::Mount::MountError error;
+        cryptohome::MountError error;
         if (mount.DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
                                      &error)) {
           mount.RemoveOldFiles(up);

@@ -45,7 +45,7 @@ class MountTaskResult : public CryptohomeEventBase {
   MountTaskResult()
       : sequence_id_(-1),
         return_status_(false),
-        return_code_(Mount::MOUNT_ERROR_NONE),
+        return_code_(MOUNT_ERROR_NONE),
         event_name_(kMountTaskResultEventType) { }
 
   // Constructor which sets an alternative event name. Useful
@@ -53,7 +53,7 @@ class MountTaskResult : public CryptohomeEventBase {
   MountTaskResult(const char* event_name)
       : sequence_id_(-1),
         return_status_(false),
-        return_code_(Mount::MOUNT_ERROR_NONE),
+        return_code_(MOUNT_ERROR_NONE),
         event_name_(event_name) { }
 
   // Copy constructor is necessary for inserting MountTaskResult into the events
@@ -87,12 +87,12 @@ class MountTaskResult : public CryptohomeEventBase {
   }
 
   // Get the MountError for applicable calls (Mount, MountGuest)
-  Mount::MountError return_code() const {
+  MountError return_code() const {
     return return_code_;
   }
 
   // Set the MountError for applicable calls (Mount, MountGuest)
-  void set_return_code(Mount::MountError value) {
+  void set_return_code(MountError value) {
     return_code_ = value;
   }
 
@@ -111,7 +111,7 @@ class MountTaskResult : public CryptohomeEventBase {
  private:
   int sequence_id_;
   bool return_status_;
-  Mount::MountError return_code_;
+  MountError return_code_;
   const char* event_name_;
 };
 

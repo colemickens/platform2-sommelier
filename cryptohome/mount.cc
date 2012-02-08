@@ -897,16 +897,16 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
         switch (crypto_error) {
           case Crypto::CE_TPM_FATAL:
           case Crypto::CE_OTHER_FATAL:
-            *error = Mount::MOUNT_ERROR_FATAL;
+            *error = MOUNT_ERROR_FATAL;
             break;
           case Crypto::CE_TPM_COMM_ERROR:
-            *error = Mount::MOUNT_ERROR_TPM_COMM_ERROR;
+            *error = MOUNT_ERROR_TPM_COMM_ERROR;
             break;
           case Crypto::CE_TPM_DEFEND_LOCK:
-            *error = Mount::MOUNT_ERROR_TPM_DEFEND_LOCK;
+            *error = MOUNT_ERROR_TPM_DEFEND_LOCK;
             break;
           default:
-            *error = Mount::MOUNT_ERROR_KEY_FAILURE;
+            *error = MOUNT_ERROR_KEY_FAILURE;
             break;
         }
       }
@@ -1463,7 +1463,7 @@ bool Mount::DecryptVaultKeysetOld(const Credentials& credentials,
   // Attempt to unwrap the master key with the passkey key
   if (!crypto_->DecryptVaultKeysetOld(cipher_text, keyset_key, vault_keyset)) {
     if (error) {
-      *error = Mount::MOUNT_ERROR_KEY_FAILURE;
+      *error = MOUNT_ERROR_KEY_FAILURE;
     }
     return false;
   }

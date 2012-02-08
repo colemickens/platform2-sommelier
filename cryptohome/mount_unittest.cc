@@ -298,7 +298,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   // Call DecryptVaultKeyset first, allowing migration (the test data is not
   // scrypt nor TPM wrapped) to a scrypt-wrapped keyset
   VaultKeyset vault_keyset;
-  Mount::MountError error;
+  MountError error;
   ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
                                        &error));
 
@@ -339,7 +339,7 @@ TEST_F(MountTest, MigrateTest) {
   // scrypt nor TPM wrapped) to a scrypt-wrapped keyset
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
-  Mount::MountError error;
+  MountError error;
   ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
                                        &error));
 
@@ -400,7 +400,7 @@ TEST_F(MountTest, MountCryptohome) {
   EXPECT_CALL(platform, Bind(_, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountError error;
+  MountError error;
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   FilePath image_dir(kImageDir);
@@ -433,7 +433,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
 
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
-  Mount::MountError error;
+  MountError error;
   ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
                                        &error));
 
@@ -487,9 +487,9 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
 
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = false;
-  Mount::MountError error;
+  MountError error;
   ASSERT_FALSE(mount.MountCryptohome(up, mount_args, &error));
-  ASSERT_EQ(Mount::MOUNT_ERROR_USER_DOES_NOT_EXIST, error);
+  ASSERT_EQ(MOUNT_ERROR_USER_DOES_NOT_EXIST, error);
 
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
@@ -533,7 +533,7 @@ TEST_F(MountTest, RemoveSubdirectories) {
   EXPECT_CALL(platform, Unmount(_, _, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountError error;
+  MountError error;
   EXPECT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   FilePath image_dir(kImageDir);
@@ -636,7 +636,7 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, Bind(_, _))
       .WillRepeatedly(Return(true));
-  Mount::MountError error;
+  MountError error;
   EXPECT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   // Check that vault path now have pass-through version of tracked dirs.
@@ -690,7 +690,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   UsernamePasskey up(kDefaultUsers[9].username, passkey);
 
   // Mount()
-  Mount::MountError error;
+  MountError error;
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform, Bind(_, _))
@@ -1088,7 +1088,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   SetUserTimestamp(mount_, 3, base::Time::Now() - kOldUserLastActivityTime);
 
   // Mount() user[0].
-  Mount::MountError error;
+  MountError error;
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))

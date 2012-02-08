@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -76,7 +76,7 @@ TEST_F(MountTaskTest, ResultCopyConstructorTest) {
 
   result1.set_sequence_id(1337);
   result1.set_return_status(true);
-  result1.set_return_code(Mount::MOUNT_ERROR_FATAL);
+  result1.set_return_code(MOUNT_ERROR_FATAL);
 
   MountTaskResult result2(result1);
 
@@ -90,7 +90,7 @@ TEST_F(MountTaskTest, ResultEqualsTest) {
 
   result1.set_sequence_id(1337);
   result1.set_return_status(true);
-  result1.set_return_code(Mount::MOUNT_ERROR_FATAL);
+  result1.set_return_code(MOUNT_ERROR_FATAL);
 
   MountTaskResult result2;
   result2 = result1;

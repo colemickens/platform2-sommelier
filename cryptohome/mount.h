@@ -17,6 +17,7 @@
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
@@ -64,17 +65,6 @@ const int64 kEnoughFreeSpace = 1LL << 30;  // 1G bytes
 // the directory's crypto key.
 class Mount : public EntropySource {
  public:
-  enum MountError {
-    MOUNT_ERROR_NONE = 0,
-    MOUNT_ERROR_FATAL = 1 << 0,
-    MOUNT_ERROR_KEY_FAILURE = 1 << 1,
-    MOUNT_ERROR_MOUNT_POINT_BUSY = 1 << 2,
-    MOUNT_ERROR_TPM_COMM_ERROR = 1 << 3,
-    MOUNT_ERROR_TPM_DEFEND_LOCK = 1 << 4,
-    MOUNT_ERROR_USER_DOES_NOT_EXIST = 1 << 5,
-    MOUNT_ERROR_RECREATED = 1 << 31,
-  };
-
   struct MountArgs {
     bool create_if_missing;
 

@@ -576,13 +576,13 @@ gboolean Service::Mount(gchar *userid,
       // mount request. InitializePkcs11() will detect and re-initialize if
       // necessary.
       InitializePkcs11();
-      *OUT_error_code = Mount::MOUNT_ERROR_NONE;
+      *OUT_error_code = MOUNT_ERROR_NONE;
       *OUT_result = TRUE;
       return TRUE;
     } else {
       if (!mount_->UnmountCryptohome()) {
         LOG(ERROR) << "Could not unmount cryptohome from previous user";
-        *OUT_error_code = Mount::MOUNT_ERROR_MOUNT_POINT_BUSY;
+        *OUT_error_code = MOUNT_ERROR_MOUNT_POINT_BUSY;
         *OUT_result = FALSE;
         return TRUE;
       }
@@ -633,7 +633,7 @@ gboolean Service::AsyncMount(gchar *userid,
     if (mount_->IsCryptohomeMountedForUser(credentials)) {
       LOG(INFO) << "Cryptohome already mounted for this user";
       MountTaskNop* mount_task = new MountTaskNop(this);
-      mount_task->result()->set_return_code(Mount::MOUNT_ERROR_NONE);
+      mount_task->result()->set_return_code(MOUNT_ERROR_NONE);
       mount_task->result()->set_return_status(true);
       *OUT_async_id = mount_task->sequence_id();
       mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
@@ -645,7 +645,7 @@ gboolean Service::AsyncMount(gchar *userid,
         LOG(ERROR) << "Could not unmount cryptohome from previous user";
         MountTaskNop* mount_task = new MountTaskNop(this);
         mount_task->result()->set_return_code(
-            Mount::MOUNT_ERROR_MOUNT_POINT_BUSY);
+            MOUNT_ERROR_MOUNT_POINT_BUSY);
         mount_task->result()->set_return_status(false);
         *OUT_async_id = mount_task->sequence_id();
         mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
@@ -681,7 +681,7 @@ gboolean Service::MountGuest(gint *OUT_error_code,
   if (mount_->IsCryptohomeMounted()) {
     if (!mount_->UnmountCryptohome()) {
       LOG(ERROR) << "Could not unmount cryptohome from previous user";
-      *OUT_error_code = Mount::MOUNT_ERROR_MOUNT_POINT_BUSY;
+      *OUT_error_code = MOUNT_ERROR_MOUNT_POINT_BUSY;
       *OUT_result = FALSE;
       return TRUE;
     }
@@ -711,7 +711,7 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
       LOG(ERROR) << "Could not unmount cryptohome from previous user";
       MountTaskNop* mount_task = new MountTaskNop(this);
       mount_task->result()->set_return_code(
-          Mount::MOUNT_ERROR_MOUNT_POINT_BUSY);
+          MOUNT_ERROR_MOUNT_POINT_BUSY);
       mount_task->result()->set_return_status(false);
       *OUT_async_id = mount_task->sequence_id();
       mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
