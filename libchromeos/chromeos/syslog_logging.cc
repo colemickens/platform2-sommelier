@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,6 +30,7 @@ static std::string s_accumulated;
 static bool s_accumulate;
 static bool s_log_to_syslog;
 static bool s_log_to_stderr;
+static bool s_log_header;
 
 static bool HandleMessage(int severity,
                           const char* file,
@@ -59,7 +60,12 @@ static bool HandleMessage(int severity,
       break;
   }
 
-  const char* str = message.c_str() + message_start;
+  const char *str;
+  if (s_log_header) {
+    str = message.c_str();
+  } else {
+    str = message.c_str() + message_start;
+  }
 
   if (s_log_to_syslog)
     syslog(severity, "%s", str);
@@ -78,6 +84,7 @@ void InitLog(int init_flags) {
   logging::SetLogMessageHandler(HandleMessage);
   s_log_to_syslog = (init_flags & kLogToSyslog) != 0;
   s_log_to_stderr = (init_flags & kLogToStderr) != 0;
+  s_log_header = (init_flags & kLogHeader) != 0;
 }
 void OpenLog(const char* ident, bool log_pid) {
   s_ident = ident;
