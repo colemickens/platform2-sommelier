@@ -9,6 +9,10 @@
 # Lines starting with # will be ignored.
 #
 # Arguments will be included
+# N.B.: don't assume the path on Linux is the same as the path on ChromeOS.
+# Simple example: it's /bin/lsmod on ChromeOS and /sbin/lsmod on Linux.
+# Further, the path at present is /bin:/usr/bin:/usr/bin/X11
+# so (e.g.) lspci needs the full path.
 
 CLIENT_ID,/usr/share/userfeedback/scripts/get_log "/home/chronos/Consent To Send Stats"
 LOGDATE,/bin/date
@@ -17,13 +21,13 @@ alsa_controls,/usr/bin/amixer contents
 bios_info,/usr/share/userfeedback/scripts/get_log /var/log/bios_info.txt
 bios_log,cat /sys/firmware/log | /usr/share/userfeedback/scripts/get_log /dev/stdin 2000
 boot_times,/usr/share/userfeedback/scripts/get_log /tmp/boot-times-sent
-chrome_log,/usr/share/userfeedback/scripts/get_log /home/chronos/user/chrome,ascii
+chrome_log,/usr/share/userfeedback/scripts/get_log /home/chronos/user/log/chrome,ascii
 chrome_system_log,/usr/share/userfeedback/scripts/get_log /var/log/chrome/chrome,ascii
-chromeos-wm.LATEST,/usr/share/userfeedback/scripts/get_log /home/chronos/user/log/chromeos-wm.LATEST
 cpu,uname -p
 cpuinfo,cat /proc/cpuinfo
 dmesg,/bin/dmesg
 ec_info,/usr/share/userfeedback/scripts/get_log /var/log/ec_info.txt
+env,set
 font_info,/usr/share/userfeedback/scripts/font_info
 hardware_class,crossystem hwid
 hostname,hostname
@@ -31,9 +35,9 @@ hw_platform,uname -i
 ifconfig,/sbin/ifconfig -a
 login-times,/usr/share/userfeedback/scripts/get_log /home/chronos/user/login-times
 logout-times,/usr/share/userfeedback/scripts/get_log /home/chronos/user/logout-times
-lsmod,/sbin/lsmod
+lsmod,lsmod
 lspci,/usr/sbin/lspci
-lsusb,/usr/sbin/lsusb
+lsusb,lsusb
 meminfo,cat /proc/meminfo
 memory_spd_info,/usr/share/userfeedback/scripts/get_log /var/log/memory_spd_info.txt
 mm-status,/usr/share/userfeedback/scripts/mm-status
@@ -42,10 +46,11 @@ network-services,/usr/bin/connectivity show services
 power-supply-info,power-supply-info
 powerd.LATEST,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerd.LATEST
 powerd.out,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerd.out
+powerm.LATEST,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerm.LATEST
+powerm.out,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerm.out
 ps,/bin/ps ux
-softwareupdate.log,/usr/share/userfeedback/scripts/get_log /var/log/softwareupdate.log
 syslog,/usr/share/userfeedback/scripts/getmsgs --last '2 hours' /var/log/messages
-touchpad,/opt/google/touchpad/tpcontrol status && cat /etc/gestures_version.txt
+touchpad,/opt/google/touchpad/tpcontrol status
 touchpad_activity,/opt/google/touchpad/generate_userfeedback
 ui_log,/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST
 uname,/bin/uname -a
