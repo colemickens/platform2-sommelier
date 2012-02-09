@@ -714,7 +714,13 @@ SmsMessageFragment* GobiGsmModem::GetSms(int index, DBus::Error& error)
   LOG(INFO) << "GetSms: " << "tag " << tag << " format " << format
             << " size " << size;
 
-  return SmsMessageFragment::CreateFragment(message, size, index);
+  SmsMessageFragment *fragment =
+      SmsMessageFragment::CreateFragment(message, size, index);
+  if (fragment == NULL) {
+    error.set(kInvalidArgumentError, "Couldn't decode PDU");
+    LOG(WARNING) << "Couldn't decode PDU";
+  }
+  return fragment;
 }
 
 void GobiGsmModem::DeleteSms(int index, DBus::Error& error)
