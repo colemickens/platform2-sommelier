@@ -84,6 +84,15 @@
 		<signal name="StateChanged">
 			<arg type="s"/>
 		</signal>
+		<method name="GetDebugTags">
+			<arg type="s" direction="out"/>
+		</method>
+		<method name="SetDebugTags">
+			<arg type="s" direction="in"/>
+		</method>
+		<method name="ListDebugTags">
+			<arg type="s" direction="out"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

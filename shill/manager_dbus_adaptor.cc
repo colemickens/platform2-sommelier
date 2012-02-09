@@ -220,4 +220,16 @@ void ManagerDBusAdaptor::SetServiceOrder(const string &order,
   e.ToDBusError(&error);
 }
 
+std::string ManagerDBusAdaptor::GetDebugTags(::DBus::Error &/*error*/) {
+  return "";
+}
+
+void ManagerDBusAdaptor::SetDebugTags(const std::string &/*tags*/,
+                                      ::DBus::Error &/*error*/) {
+}
+
+std::string ManagerDBusAdaptor::ListDebugTags(::DBus::Error &/*error*/) {
+  return "";
+}
+
 }  // namespace shill

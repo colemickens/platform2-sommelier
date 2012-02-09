@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -80,6 +80,10 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
 
   std::string GetServiceOrder(::DBus::Error &error);
   void SetServiceOrder(const std::string &, ::DBus::Error &error);
+
+  std::string GetDebugTags(::DBus::Error &error);
+  void SetDebugTags(const std::string &tags, ::DBus::Error &error);
+  std::string ListDebugTags(::DBus::Error &error);
 
  private:
   Manager *manager_;
