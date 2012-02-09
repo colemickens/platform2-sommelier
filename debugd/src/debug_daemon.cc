@@ -19,6 +19,7 @@ DebugDaemon::DebugDaemon(DBus::Connection* connection,
 
 bool DebugDaemon::Init() {
   debug_logs_tool_ = new DebugLogsTool();
+  debug_mode_tool_ = new DebugModeTool(dbus_);
   modem_status_tool_ = new ModemStatusTool();
   network_status_tool_ = new NetworkStatusTool();
   ping_tool_ = new PingTool();
@@ -87,6 +88,12 @@ std::string DebugDaemon::GetNetworkStatus(DBus::Error& error) { // NOLINT
 void DebugDaemon::GetDebugLogs(const DBus::FileDescriptor& fd,
                                 DBus::Error& error) {
   debug_logs_tool_->GetDebugLogs(fd, error);
+}
+
+void DebugDaemon::SetDebugMode(const std::string& subsystem,
+                               DBus::Error& error) {
+  debug_mode_tool_->SetDebugMode(subsystem, &error);
+  return;
 }
 
 };  // namespace debugd

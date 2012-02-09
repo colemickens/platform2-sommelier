@@ -16,8 +16,8 @@ all: CXX_BINARY(debugd)
 tests: override NEEDS_MOUNTS = 1
 tests: TEST(CXX_BINARY(testrunner))
 
-TOOLS := $(patsubst %,%_tool.o,debug_logs modem_status network_status ping route \
-           subprocess tracepath)
+TOOLS := $(patsubst %,%_tool.o,debug_logs debug_mode modem_status \
+           network_status ping route subprocess tracepath)
 OBJS := debug_daemon.o process_with_id.o process_with_output.o $(TOOLS)
 TESTOBJS := process_with_id_test.o
 
@@ -37,4 +37,6 @@ proxies/%.h: $(SYSROOT)/usr/share/dbus-1/interfaces/%.xml
 
 main.o.depends: adaptors/org.chromium.debugd.h
 debug_daemon.o.depends: adaptors/org.chromium.debugd.h
-
+debug_mode_tool.o.depends: proxies/org.chromium.flimflam.Manager.h \
+                           proxies/org.freedesktop.DBus.Properties.h \
+                           proxies/org.freedesktop.ModemManager.h

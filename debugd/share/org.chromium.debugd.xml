@@ -132,5 +132,16 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="SetDebugMode">
+      <tp:docstring>
+        Enables or disables debug mode for a specified subsystem.
+      </tp:docstring>
+      <arg name="subsystem" type="s" direction="in">
+        <tp:docstring>
+          Subsystem to change the debug mode of. One of "cellular", "wifi",
+          "ethernet" or "none".
+        </tp:docstring>
+      </arg>
+    </method>
   </interface>
 </node>

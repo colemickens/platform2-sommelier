@@ -12,6 +12,7 @@
 
 #include "adaptors/org.chromium.debugd.h"
 #include "debug_logs_tool.h"
+#include "debug_mode_tool.h"
 #include "modem_status_tool.h"
 #include "network_status_tool.h"
 #include "ping_tool.h"
@@ -27,10 +28,10 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                     public DBus::IntrospectableAdaptor {
  public:
   DebugDaemon(DBus::Connection* connection, DBus::BusDispatcher* dispatcher);
-  ~DebugDaemon();
+  virtual ~DebugDaemon();
 
-  bool Init();
-  void Run();
+  virtual bool Init();
+  virtual void Run();
 
   // Setters for tools - used for dependency injection in tests
   void set_debug_logs_tool(DebugLogsTool* tool) {
@@ -74,17 +75,19 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   virtual std::string GetNetworkStatus(DBus::Error& error); // NOLINT
   virtual void GetDebugLogs(const DBus::FileDescriptor& fd,
                             DBus::Error& error);
+  virtual void SetDebugMode(const std::string& subsystem, DBus::Error& error);
 
  private:
   DBus::Connection* dbus_;
   DBus::BusDispatcher* dispatcher_;
 
   DebugLogsTool* debug_logs_tool_;
+  DebugModeTool* debug_mode_tool_;
+  ModemStatusTool* modem_status_tool_;
+  NetworkStatusTool* network_status_tool_;
   PingTool* ping_tool_;
   RouteTool* route_tool_;
   TracePathTool *tracepath_tool_;
-  ModemStatusTool* modem_status_tool_;
-  NetworkStatusTool* network_status_tool_;
 };
 
 };  // namespace debugd
