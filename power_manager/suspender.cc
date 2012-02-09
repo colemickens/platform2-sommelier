@@ -35,7 +35,8 @@ Suspender::Suspender(ScreenLocker* locker, FileTagger* file_tagger)
       suspend_delay_timeout_ms_(0),
       suspend_delays_outstanding_(0),
       suspend_requested_(false),
-      suspend_sequence_number_(0) {}
+      suspend_sequence_number_(0),
+      wakeup_count_valid_(false) {}
 
 void Suspender::Init(const FilePath& run_dir) {
   user_active_file_ = run_dir.Append(kUserActiveFile);
@@ -46,6 +47,14 @@ void Suspender::RequestSuspend() {
   unsigned int timeout_ms;
   suspend_requested_ = true;
   suspend_delays_outstanding_ = suspend_delays_.size();
+  wakeup_count_=0;
+  wakeup_count_valid_=false;
+  if (util::GetWakeupCount(&wakeup_count_)) {
+    wakeup_count_valid_=true;
+  } else {
+    LOG(ERROR) << "Could not get wakeup_count prior to suspend.";
+    wakeup_count_valid_=false;
+  }
   // Use current time for sequence number.
   suspend_sequence_number_ = TimeTicks::Now().ToInternalValue() / 1000;
   BroadcastSignalToClients(kSuspendDelay, suspend_sequence_number_);
@@ -236,7 +245,11 @@ void Suspender::RegisterDBusMessageHandler() {
 void Suspender::Suspend() {
   util::RemoveStatusFile(user_active_file_);
   file_tagger_->HandleSuspendEvent();
-  util::SendSignalToPowerM(kSuspendSignal);
+  if (wakeup_count_valid_) {
+    util::SendSignalToPowerM(kSuspendSignal,wakeup_count_);
+  } else {
+    util::SendSignalToPowerM(kSuspendSignal);
+  }
 }
 
 gboolean Suspender::CheckSuspendTimeout(unsigned int sequence_num) {

@@ -11,9 +11,12 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <gdk/gdkx.h>
 
+#include "base/basictypes.h"
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/string_number_conversions.h"
+#include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/power_constants.h"
@@ -28,6 +31,8 @@ const char kWindowManagerSelectionName[] = "WM_S0";
 // sent to the Chrome OS window manager.  This is hardcoded in the window
 // manager.
 const char kWindowManagerMessageTypeName[] = "_CHROME_WM_MESSAGE";
+
+const char kWakeupCountPath[] = "/sys/power/wakeup_count";
 
 }  // namespace
 
@@ -121,6 +126,23 @@ void SendSignalToPowerM(const char* signal_name) {
   dbus_message_unref(signal);
 }
 
+// A utility function to send a signal and uint32 to the lower
+// power daemon (powerm).
+void SendSignalToPowerM(const char* signal_name, uint32 value) {
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              kPowerManagerServicePath,
+                              kRootPowerManagerInterface);
+  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                kRootPowerManagerInterface,
+                                                signal_name);
+  CHECK(signal);
+  dbus_message_append_args(signal,
+                           DBUS_TYPE_UINT32, &value,
+                           DBUS_TYPE_INVALID);
+  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_message_unref(signal);
+}
+
 // A utility function to send a signal to upper power daemon (powerd).
 void SendSignalToPowerD(const char* signal_name) {
   LOG(INFO) << "Sending signal '" << signal_name << "' to PowerManager";
@@ -196,6 +218,23 @@ bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,
     return false;
   }
   return true;
+}
+
+bool GetWakeupCount(unsigned int *value) {
+  int64 temp_value;
+  FilePath path(kWakeupCountPath);
+  std::string buf;
+  if (file_util::ReadFileToString(path, &buf)) {
+    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+    if (base::StringToInt64(buf, &temp_value)) {
+      *value = static_cast<unsigned int>(temp_value);
+      return true;
+    } else {
+      LOG(ERROR) << "Garbage found in " << path.value();
+    }
+  }
+  LOG(INFO) << "Could not read " << path.value();
+  return false;
 }
 
 }  // namespace util

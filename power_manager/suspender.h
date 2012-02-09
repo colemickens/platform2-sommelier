@@ -100,6 +100,10 @@ class Suspender {
   typedef std::map<std::string, uint32> SuspendList;
   SuspendList suspend_delays_;
 
+  // Number of wake events received at start of current suspend operation
+  unsigned int wakeup_count_;
+  bool wakeup_count_valid_;
+
   DISALLOW_COPY_AND_ASSIGN(Suspender);
 };
 

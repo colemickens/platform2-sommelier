@@ -162,7 +162,11 @@ class PowerManDaemon {
   // Restart, shutdown, and suspend the system.
   void Restart();
   void Shutdown();
-  void Suspend();
+  // Suspend(unsigned int, bool) is the real function. The other three redirect
+  void Suspend(unsigned int wakeup_count, bool wakeup_count_valid);
+  void Suspend(); // call suspend ignoring wakeup_count
+  void Suspend(unsigned int wakeup_count); // pass in explicit wakeup_count
+  void Suspend(DBusMessage* message); // get wakeup_count value from dbus
 
   // Lock and unlock virtual terminal switching.
   void LockVTSwitch();

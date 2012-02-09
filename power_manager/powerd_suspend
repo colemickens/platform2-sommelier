@@ -8,9 +8,22 @@
 
 DEFINE_boolean test $FLAGS_FALSE "support power_Resume test" t
 DEFINE_boolean cancel $FLAGS_FALSE "cancel suspend, but send resume signal" c
+DEFINE_integer wakeup_count -1 \
+    "wakeup event count from start of shutdown. -1 to disable" w
 
 log_msg() {
-    logger -t "powerd_suspend[${PPID}]" $1
+    logger -t "powerd_suspend[${PPID}]" $@
+}
+
+# Check pm_wakeup_events status and return success to cancel the suspend
+suspend_pm_wakeup_cancel() {
+    if [ "${FLAGS_wakeup_count}" -eq -1 ] ||
+       echo "${FLAGS_wakeup_count}" > "/sys/power/wakeup_count"; then
+        return 1;
+    else
+        log_msg "Aborting suspend, wake event received"
+        return 0;
+    fi
 }
 
 # these files are created by powerm | powerd and their existence means
@@ -18,7 +31,8 @@ log_msg() {
 suspend_cancel() {
     if [ $FLAGS_cancel -eq $FLAGS_TRUE ] ||
        [ -e "/var/run/power_manager/lid_opened" ] ||
-       [ -e "/var/run/power_manager/chronos/user_active" ]; then
+       [ -e "/var/run/power_manager/chronos/user_active" ] ||
+       suspend_pm_wakeup_cancel; then
         cancel=1
         return 0
     else

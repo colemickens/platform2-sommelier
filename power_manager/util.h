@@ -9,6 +9,7 @@
 
 #include <dbus/dbus-glib-lowlevel.h>
 
+#include "base/basictypes.h"
 #include "cros/chromeos_wm_ipc_enums.h"
 
 class FilePath;
@@ -27,6 +28,7 @@ void SendSignalToSessionManager(const char* signal);
 
 // Send a message |signal| to the privileged power daemon.
 void SendSignalToPowerM(const char* signal);
+void SendSignalToPowerM(const char* signal, uint32 value);
 
 // Send a message |signal| to the unprivileged power daemon.
 void SendSignalToPowerD(const char* signal);
@@ -41,6 +43,9 @@ void RemoveStatusFile(const FilePath& file);
 // Send an X ClientEvent message to the window manager.
 bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,
                                 int first_param);
+
+// Get the current wakeup count from sysfs
+bool GetWakeupCount(unsigned int *value);
 
 }  // namespace util
 }  // namespace power_manager

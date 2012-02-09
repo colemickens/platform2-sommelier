@@ -107,17 +107,25 @@ void PowerManDaemon::Run() {
 
 gboolean PowerManDaemon::CheckLidClosed(unsigned int lid_id,
                                         unsigned int powerd_id) {
+  unsigned int wakeup_count;
   // Same lid closed event and powerd state has changed.
   if ((lidstate_ == LID_STATE_CLOSED) && (lid_id_ == lid_id) &&
       ((powerd_state_ != kPowerManagerAlive) || (powerd_id_ != powerd_id))) {
     LOG(INFO) << "Forced suspend, powerd unstable with pending suspend";
-    Suspend();
+    if (!util::GetWakeupCount(&wakeup_count)) {
+      LOG(ERROR) << "Could not get wakeup count trying to suspend";
+      Suspend();
+    } else {
+      Suspend(wakeup_count);
+    }
   }
   // lid closed events will re-trigger if necessary so always false return.
   return false;
 }
 
 gboolean PowerManDaemon::RetrySuspend(unsigned int lid_id) {
+  unsigned int wakeup_count;
+
   if (lidstate_ == LID_STATE_CLOSED) {
     if (lid_id_ == lid_id) {
       retry_suspend_count_++;
@@ -126,7 +134,12 @@ gboolean PowerManDaemon::RetrySuspend(unsigned int lid_id) {
         Shutdown();
       } else {
         LOG(WARNING) << "Retry suspend " << retry_suspend_count_;
-        Suspend();
+        if (!util::GetWakeupCount(&wakeup_count)) {
+          LOG(ERROR) << "Could not get wakeup count retrying suspend";
+          Suspend();
+        } else {
+          Suspend(wakeup_count);
+        }
       }
     } else {
       LOG(INFO) << "Retry suspend sequence number changed, retry delayed";
@@ -259,8 +272,8 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-void PowerManDaemon::HandleSuspendSignal(DBusMessage*) {
-  Suspend();
+void PowerManDaemon::HandleSuspendSignal(DBusMessage* message) {
+  Suspend(message);
 }
 
 void PowerManDaemon::HandleShutdownSignal(DBusMessage*) {
@@ -539,16 +552,28 @@ void PowerManDaemon::Restart() {
   util::Launch("shutdown -r now");
 }
 
-void PowerManDaemon::Suspend() {
-  LOG(INFO) << "Launching Suspend";
+void PowerManDaemon::Suspend(unsigned int wakeup_count,
+                             bool wakeup_count_valid) {
+  char suspend_cmd[60];
 
+  LOG(INFO) << "Launching Suspend";
   if ((suspend_pid_ > 0) && !kill(-suspend_pid_, 0)) {
     LOG(ERROR) << "Previous retry suspend pid:"
                << suspend_pid_ << " is still running";
   }
-
   g_timeout_add_seconds(retry_suspend_ms_ / 1000, RetrySuspendThunk,
                         CreateRetrySuspendArgs(this, lid_id_));
+
+  // create command line
+  if (wakeup_count_valid && snprintf(suspend_cmd,sizeof(suspend_cmd),
+                                     "powerd_suspend --wakeup_count %d",
+                                     wakeup_count) == sizeof(suspend_cmd)) {
+    LOG(ERROR) << "Command line exceeded size limit: "
+               << sizeof(suspend_cmd);
+    // We shouldn't ever exceed 60 chars (leaves 40 chars for the int)
+    // If we do, exit out and let the retry handle it
+    return;
+  }
 
 #ifdef SUSPEND_LOCK_VT
   LockVTSwitch();     // Do not let suspend change the console terminal.
@@ -563,8 +588,13 @@ void PowerManDaemon::Suspend() {
     setsid();
     if (fork() == 0) {
       wait(NULL);
-      exit(CancelDBusRequest() ? system("powerd_suspend --cancel")
-                               : system("powerd_suspend"));
+      if (CancelDBusRequest()) {
+        exit(system("powerd_suspend --cancel"));
+      } else if (wakeup_count_valid) {
+        exit(system(suspend_cmd));
+      } else {
+        exit(system("powerd_suspend"));
+      }
     } else {
       exit(0);
     }
@@ -573,6 +603,30 @@ void PowerManDaemon::Suspend() {
     waitpid(pid, NULL, 0);
   } else {
     LOG(ERROR) << "Fork for suspend failed";
+  }
+}
+
+void PowerManDaemon::Suspend() {
+  Suspend(0,false);
+}
+
+void PowerManDaemon::Suspend(unsigned int wakeup_count) {
+  Suspend(wakeup_count,true);
+}
+
+void PowerManDaemon::Suspend(DBusMessage* message) {
+  unsigned int wakeup_count;
+  DBusError error;
+  dbus_error_init(&error);
+  if (!dbus_message_get_args(message, &error,
+                             DBUS_TYPE_UINT32, &wakeup_count,
+                             DBUS_TYPE_INVALID)) {
+    LOG(ERROR) << "Suspend message missing wakeup_count: "
+               << error.name << " (" << error.message << ")";
+    dbus_error_free(&error);
+    Suspend();
+  } else {
+    Suspend(wakeup_count);
   }
 }
 
