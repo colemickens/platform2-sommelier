@@ -217,12 +217,6 @@ AURA_FLAGS=
 if use_flag_is_set aura; then
   WM_SCRIPT=""
 
-  if use_flag_is_set is_desktop; then
-    AURA_FLAGS="$AURA_FLAGS --aura-window-mode=overlapping"
-  else
-    AURA_FLAGS="$AURA_FLAGS --aura-window-mode=compact"
-  fi
-
   if ! use_flag_is_set new_power_button; then
     AURA_FLAGS="$AURA_FLAGS --aura-legacy-power-button"
   fi
