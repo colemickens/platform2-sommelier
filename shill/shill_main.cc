@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -74,6 +74,7 @@ static const char kHelpMessage[] = "\n"
 void SetupLogging(bool foreground) {
   int log_flags = 0;
   log_flags |= chromeos::kLogToSyslog;
+  log_flags |= chromeos::kLogHeader;
   if (foreground) {
     log_flags |= chromeos::kLogToStderr;
   }
