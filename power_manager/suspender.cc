@@ -321,7 +321,9 @@ void Suspender::BroadcastSignalToClients(const char* signal_name,
       power_manager::kPowerManagerInterface,
       signal_name);
   CHECK(signal);
-  dbus_message_append_args(signal, DBUS_TYPE_UINT32, &payload);
+  dbus_message_append_args(signal,
+                           DBUS_TYPE_UINT32, &payload,
+                           DBUS_TYPE_INVALID);
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   ::dbus_message_unref(signal);
 }
