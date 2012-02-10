@@ -287,6 +287,13 @@ diag_arp () {
   return 1
 }
 
+show_routes () {
+  netstat -nr
+  echo "Raw routing tables:"
+  cat /proc/net/route
+  cat /proc/net/ipv6_route
+}
+
 # Make sure we have a route to each host
 diag_route () {
   fn_enter ${FUNCNAME} $*
@@ -304,7 +311,7 @@ diag_route () {
     fi
   done
 
-  fn_enter_once ${FUNCNAME}_table && netstat -nr
+  fn_enter_once ${FUNCNAME}_table && show_routes
 
   return ${failures}
 }
@@ -564,6 +571,7 @@ diag_connectivity () {
   local ip=$(get_host_addr $host)
   if [ -z "${ip}" ] ; then
     fail "Could not lookup host ${host}"
+    diag_route
     diag_nameservers
     return 1
   fi
@@ -844,6 +852,10 @@ main () {
         --link)
           default_run=no
           diag_linkall
+          ;;
+        --route)
+          default_run=no
+          diag_route
           ;;
         --no-log)
           : # Handled below before starting main
