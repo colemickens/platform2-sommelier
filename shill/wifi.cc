@@ -268,7 +268,7 @@ void WiFi::ScanDone() {
 
 void WiFi::ConnectTo(WiFiService *service,
                      map<string, DBus::Variant> service_params) {
-  CHECK(service);
+  CHECK(service) << "Can't connect to NULL service.";
   DBus::Path network_path;
 
   // TODO(quiche): Handle cases where already connected.
@@ -778,8 +778,8 @@ void WiFi::BSSAddedTask(
   // means that if an AP reuses the same BSSID for multiple SSIDs, we
   // lose.
   WiFiEndpointRefPtr endpoint(new WiFiEndpoint(properties));
-  endpoint_by_rpcid_[path] = endpoint;
   LOG(INFO) << "Found endpoint. "
+            << "RPC path: " << path << ", "
             << "ssid: " << endpoint->ssid_string() << ", "
             << "bssid: " << endpoint->bssid_string() << ", "
             << "signal: " << endpoint->signal_strength() << ", "
@@ -810,16 +810,18 @@ void WiFi::BSSAddedTask(
       DCHECK_EQ(1, service->NumEndpoints());  // Expect registered by now if >1.
       manager()->RegisterService(service);
     }
-
-    return;
+  } else {
+    const bool hidden_ssid = false;
+    service = CreateServiceForEndpoint(*endpoint, hidden_ssid);
+    LOG(INFO) << "New service " << service->GetRpcIdentifier()
+              << " (" << service->friendly_name() << ")";
+    service->AddEndpoint(endpoint);
+    manager()->RegisterService(service);
   }
 
-  const bool hidden_ssid = false;
-  service = CreateServiceForEndpoint(*endpoint, hidden_ssid);
-  LOG(INFO) << "New service " << service->GetRpcIdentifier()
-            << " (" << service->friendly_name() << ")";
-  service->AddEndpoint(endpoint);
-  manager()->RegisterService(service);
+  // Do this last, to maintain the invariant that any Endpoint we
+  // know about has a corresponding Service.
+  endpoint_by_rpcid_[path] = endpoint;
 }
 
 void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
@@ -835,14 +837,10 @@ void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
   CHECK(endpoint);
   endpoint_by_rpcid_.erase(i);
 
-  if (endpoint->ssid_string().empty()) {
-    // In BSSAdded, we don't create Services for Endpoints with empty
-    // SSIDs. So don't bother looking for a Service to update.
-    return;
-  }
-
   WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
-  CHECK(service);
+  CHECK(service) << "Can't find Service for Endpoint "
+                 << path << " "
+                 << "(with BSSID " << endpoint->bssid_string() << ").";
   VLOG(2) << "Removing Endpoint " << endpoint->bssid_string()
           << " from Service " << service->friendly_name();
   service->RemoveEndpoint(endpoint);

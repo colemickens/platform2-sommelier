@@ -578,10 +578,15 @@ TEST_F(WiFiMainTest, ScanCompleted) {
   ReportScanDone();
   EXPECT_EQ(3, GetServices().size());
 
+  // BSSes with SSIDs that start with NULL should be filtered.
   ReportBSS("bss3", string(1, 0), "00:00:00:00:00:03", 3, 0, kNetworkModeAdHoc);
-  EXPECT_EQ(4, GetEndpointMap().size());
+  EXPECT_EQ(3, GetEndpointMap().size());
   EXPECT_EQ(3, GetServices().size());
 
+  // BSSes with empty SSIDs should be filtered.
+  ReportBSS("bss3", string(), "00:00:00:00:00:03", 3, 0, kNetworkModeAdHoc);
+  EXPECT_EQ(3, GetEndpointMap().size());
+  EXPECT_EQ(3, GetServices().size());
 }
 
 TEST_F(WiFiMainTest, EndpointGroupingTogether) {
@@ -622,6 +627,22 @@ TEST_F(WiFiMainTest, NonExistentBSSRemoved) {
   // Removal of non-existent BSS should not cause a crash.
   StartWiFi();
   RemoveBSS("bss0");
+  EXPECT_EQ(0, GetServices().size());
+}
+
+TEST_F(WiFiMainTest, BSSWithEmptySSIDRemoved) {
+  // Removal of BSS with an empty SSID should not cause a crash.
+  ReportBSS("bss", string(), "00:00:00:00:00:01", 0, 0, kNetworkModeAdHoc);
+  StartWiFi();
+  RemoveBSS("bss");
+  EXPECT_EQ(0, GetServices().size());
+}
+
+TEST_F(WiFiMainTest, BSSWithNullSSIDRemoved) {
+  // Removal of BSS with a NULL SSID should not cause a crash.
+  ReportBSS("bss", string(1, 0), "00:00:00:00:00:01", 0, 0, kNetworkModeAdHoc);
+  StartWiFi();
+  RemoveBSS("bss");
   EXPECT_EQ(0, GetServices().size());
 }
 
