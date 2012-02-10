@@ -67,6 +67,21 @@ static std::string SemiOctetsToBcdString(const uint8_t* octets,
   return bcd;
 }
 
+std::string DecodeAddress(const uint8_t *octets, uint8_t type, int num_octets)
+{
+  std::string addr;
+
+  if ((type & kTypeOfAddrNumMask) != kTypeOfAddrNumAlpha) {
+    addr = SemiOctetsToBcdString(octets, num_octets);
+    if ((type & kTypeOfAddrNumMask) == kTypeOfAddrNumIntl)
+      addr = "+" + addr;
+  } else {
+    size_t datalen = (num_octets * 8) / 7;
+    addr = utilities::Gsm7ToUtf8String(octets, datalen, 0);
+  }
+  return addr;
+}
+
 SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
                                                        size_t pdu_len,
                                                        int index) {
@@ -142,19 +157,13 @@ SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
     return NULL;
   }
 
-  // smsc number format must be international, E.164
-  if (pdu[1] != kTypeOfAddrIntlE164) {
-    LOG(INFO) << "Invalid SMSC address format: have "
-              << std::hex << (int)pdu[1] << " need "
-              << std::hex << kTypeOfAddrIntlE164;
-    return NULL;
-  }
+  uint8_t smsc_addr_type = pdu[1];
 
   // we only handle SMS-DELIVER messages
   if ((pdu[msg_start_offset] & kMsgTypeMask) != kMsgTypeDeliver) {
     LOG(INFO) << "Unhandled message type: have "
               << std::hex << (int)(pdu[msg_start_offset] & kMsgTypeMask)
-              << " need " << std::hex << kMsgTypeDeliver;
+              << " need " << std::hex << (int)kMsgTypeDeliver;
     return NULL;
   }
 
@@ -215,20 +224,12 @@ SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
     return NULL;
   }
 
-  std::string smsc_addr = "+" + SemiOctetsToBcdString(&pdu[2],
-                                                      smsc_addr_num_octets-1);
-  std::string sender_addr;
-  if ((sender_addr_type & kTypeOfAddrNumMask) != kTypeOfAddrNumAlpha) {
-    sender_addr = SemiOctetsToBcdString(&pdu[msg_start_offset+3],
-                                        sender_addr_num_octets);
-    if ((sender_addr_type & kTypeOfAddrNumMask) == kTypeOfAddrNumIntl) {
-      sender_addr = "+" + sender_addr;
-    }
-  } else {
-    size_t datalen = (sender_addr_num_digits * 4) / 7;
-    sender_addr = utilities::Gsm7ToUtf8String(&pdu[msg_start_offset+3],
-                                              datalen, 0);
-  }
+  std::string smsc_addr = DecodeAddress(&pdu[2],
+                                        smsc_addr_type,
+                                        smsc_addr_num_octets - 1);
+  std::string sender_addr = DecodeAddress(&pdu[msg_start_offset + 3],
+                                          sender_addr_type,
+                                          sender_addr_num_octets);
 
   std::string msg_text;
   size_t num_data_octets;

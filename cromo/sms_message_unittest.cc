@@ -601,6 +601,36 @@ TEST(CreateSmsMessage, TwoPart) {
 }
 
 
+TEST(CreateSmsMessage, NonIntlSMSC) {
+  static const uint8_t pdu[] = {
+    0x03,       // length of SMSC info
+    0x80,       // type of address of SMSC (unknown)
+    0x98, 0x06, // SMSC address
+    0x04,       // SMS-DELIVER
+    0x04,       // sender address length
+    0x80,       // type of sender address (unknown)
+    0x98, 0x06, // sender address
+    0x00,       // TP-PID protocol identifier
+    0xf0,       // TP-DCS data coding scheme
+    0x21, 0x20, 0x11, 0x12, 0x74, 0x12, 0x00, // TP-SCTS timestamp
+    0x0a,       // TP-UDL user data length
+    // TP-UD user data:
+    0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
+  };
+
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
+  ASSERT_TRUE(NULL != sms);
+  EXPECT_EQ("8960", sms->smsc_address());
+  EXPECT_EQ("8960", sms->sender_address());
+  EXPECT_EQ("120211214721+00", sms->timestamp());
+  EXPECT_EQ("hellohello", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
+}
+
+
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::InitGoogleLogging(argv[0]);
