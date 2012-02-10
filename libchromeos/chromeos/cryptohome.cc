@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,9 @@
 
 #include <openssl/sha.h>
 
+#include <cstring>
 #include <limits>
+#include <vector>
 
 #include <base/file_util.h>
 #include <base/string_number_conversions.h>
@@ -16,19 +18,19 @@ namespace chromeos {
 namespace cryptohome {
 namespace home {
 
-static const char *kUserHomePrefix = "/home/user/";
-static const char *kRootHomePrefix = "/home/root/";
-static const char *kSystemSaltPath = "/home/.shadow/salt";
+static char g_user_home_prefix[PATH_MAX] = "/home/user/";
+static char g_root_home_prefix[PATH_MAX] = "/home/root/";
+static char g_system_salt_path[PATH_MAX] = "/home/.shadow/salt";
 
 static std::string* salt = NULL;
 
 static bool EnsureSystemSaltIsLoaded() {
   if (salt && !salt->empty())
     return true;
-  FilePath salt_path(kSystemSaltPath);
+  FilePath salt_path(g_system_salt_path);
   int64 file_size;
   if (!file_util::GetFileSize(salt_path, &file_size)) {
-    PLOG(ERROR) << "Could not get size of system salt: " <<  kSystemSaltPath;
+    PLOG(ERROR) << "Could not get size of system salt: " <<  g_system_salt_path;
     return false;
   }
   if (file_size > static_cast<int64>(std::numeric_limits<int>::max())) {
@@ -46,7 +48,8 @@ static bool EnsureSystemSaltIsLoaded() {
     return false;
   }
 
-  salt = new std::string();
+  if (!salt)
+    salt = new std::string();
   salt->assign(&buf.front(), file_size);
   return true;
 }
@@ -62,17 +65,25 @@ std::string SanitizeUserName(const std::string& username) {
   return base::HexEncode(binmd, sizeof(binmd));
 }
 
+FilePath GetUserPathPrefix() {
+  return FilePath(g_user_home_prefix);
+}
+
+FilePath GetRootPathPrefix() {
+  return FilePath(g_root_home_prefix);
+}
+
 FilePath GetUserPath(const std::string& username) {
   if (!EnsureSystemSaltIsLoaded())
     return FilePath("");
-  return FilePath(base::StringPrintf("%s%s", kUserHomePrefix,
+  return FilePath(base::StringPrintf("%s%s", g_user_home_prefix,
                                      SanitizeUserName(username).c_str()));
 }
 
 FilePath GetRootPath(const std::string& username) {
   if (!EnsureSystemSaltIsLoaded())
     return FilePath("");
-  return FilePath(base::StringPrintf("%s%s", kRootHomePrefix,
+  return FilePath(base::StringPrintf("%s%s", g_root_home_prefix,
                                      SanitizeUserName(username).c_str()));
 }
 
@@ -80,6 +91,30 @@ FilePath GetDaemonPath(const std::string& username, const std::string& daemon) {
   if (!EnsureSystemSaltIsLoaded())
     return FilePath("");
   return GetRootPath(username).Append(daemon);
+}
+
+bool IsSanitizedUserName(const std::string& sanitized) {
+  std::vector<uint8> bytes;
+  return (sanitized.length() == 2 * SHA_DIGEST_LENGTH) &&
+      base::HexStringToBytes(sanitized, &bytes);
+}
+
+void SetUserHomePrefix(const std::string& prefix) {
+  if (prefix.length() < sizeof(g_user_home_prefix))
+    strcpy(g_user_home_prefix, prefix.c_str());
+}
+
+void SetRootHomePrefix(const std::string& prefix) {
+  if (prefix.length() < sizeof(g_root_home_prefix))
+    strcpy(g_root_home_prefix, prefix.c_str());
+}
+
+void SetSystemSaltPath(const std::string& path) {
+  if (path.length() < sizeof(g_system_salt_path)) {
+    strcpy(g_system_salt_path, path.c_str());
+    delete salt;
+    salt = NULL;
+  }
 }
 
 } // namespace home
