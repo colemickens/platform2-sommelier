@@ -14,7 +14,6 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus.h>
-#include <glib.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
@@ -76,7 +75,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
   string ssid_string(
       reinterpret_cast<const char *>(ssid_.data()), ssid_.size());
-  if (SanitizeSSID(&ssid_string)) {
+  if (WiFi::SanitizeSSID(&ssid_string)) {
     // WifiHexSsid property should only be present if Name property
     // has been munged.
     store->RegisterConstString(flimflam::kWifiHexSsid, &hex_ssid_);
@@ -582,24 +581,6 @@ bool WiFiService::CheckWEPPrefix(const string &passphrase, Error *error) {
     error->Populate(Error::kInvalidPassphrase);
     return false;
   }
-}
-
-// static
-bool WiFiService::SanitizeSSID(string *ssid) {
-  CHECK(ssid);
-
-  size_t ssid_len = ssid->length();
-  size_t i;
-  bool changed = false;
-
-  for (i=0; i < ssid_len; ++i) {
-    if (!g_ascii_isprint((*ssid)[i])) {
-      (*ssid)[i] = '?';
-      changed = true;
-    }
-  }
-
-  return changed;
 }
 
 // static

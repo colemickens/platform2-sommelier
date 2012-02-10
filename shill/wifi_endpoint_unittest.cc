@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,6 +13,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "shill/refptr_types.h"
 #include "shill/wpa_supplicant.h"
 
 using std::map;
@@ -133,6 +134,12 @@ TEST_F(WiFiEndpointTest, ParseSecurityWEP) {
 TEST_F(WiFiEndpointTest, ParseSecurityNone) {
   map<string, ::DBus::Variant> top_params;
   EXPECT_STREQ(flimflam::kSecurityNone, ParseSecurity(top_params));
+}
+
+TEST_F(WiFiEndpointTest, SSIDWithNull) {
+  WiFiEndpointRefPtr endpoint =
+      WiFiEndpoint::MakeOpenEndpoint(string(1, 0), "00:00:00:00:00:01");
+  EXPECT_EQ("?", endpoint->ssid_string());
 }
 
 }  // namespace shill

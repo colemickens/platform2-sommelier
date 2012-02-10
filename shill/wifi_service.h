@@ -135,10 +135,6 @@ class WiFiService : public Service {
   static bool CheckWEPKeyIndex(const std::string &passphrase, Error *error);
   static bool CheckWEPPrefix(const std::string &passphrase, Error *error);
 
-  // replace non-ASCII characters with '?'. return true if one or more
-  // characters were changed
-  static bool SanitizeSSID(std::string *ssid);
-
   // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
   // This function maps them all into "psk".
   static std::string GetSecurityClass(const std::string &security);

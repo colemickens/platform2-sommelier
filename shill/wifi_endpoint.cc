@@ -11,6 +11,7 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/wifi.h"
 #include "shill/wpa_supplicant.h"
 
 using std::map;
@@ -46,6 +47,7 @@ WiFiEndpoint::WiFiEndpoint(
   }
 
   ssid_string_ = string(ssid_.begin(), ssid_.end());
+  WiFi::SanitizeSSID(&ssid_string_);
   ssid_hex_ = base::HexEncode(&(*ssid_.begin()), ssid_.size());
   bssid_string_ = StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
                                bssid_[0], bssid_[1], bssid_[2],

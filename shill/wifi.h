@@ -64,6 +64,11 @@ class WiFi : public Device {
   // Called by Manager.
   virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
 
+  // Utility, used by WiFiService and WiFiEndpoint.
+  // Replace non-ASCII characters with '?'. Return true if one or more
+  // characters were changed.
+  static bool SanitizeSSID(std::string *ssid);
+
  private:
   friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown

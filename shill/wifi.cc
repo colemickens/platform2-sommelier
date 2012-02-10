@@ -21,6 +21,7 @@
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <glib.h>
 
 #include "shill/control_interface.h"
 #include "shill/dbus_adaptor.h"
@@ -1089,6 +1090,24 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
   // TODO(quiche): Apply any other configuration parameters.
 
   return service;
+}
+
+// static
+bool WiFi::SanitizeSSID(string *ssid) {
+  CHECK(ssid);
+
+  size_t ssid_len = ssid->length();
+  size_t i;
+  bool changed = false;
+
+  for (i=0; i < ssid_len; ++i) {
+    if (!g_ascii_isprint((*ssid)[i])) {
+      (*ssid)[i] = '?';
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 void WiFi::HelpRegisterDerivedInt32(
