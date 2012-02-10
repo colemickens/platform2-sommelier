@@ -93,7 +93,7 @@ void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
 
 ::DBus::Path DeviceDBusAdaptor::AddIPConfig(const string& ,
                                             ::DBus::Error &/*error*/) {
-  return ::DBus::Path();
+  return "/";
 }
 
 void DeviceDBusAdaptor::Register(const string &network_id,
