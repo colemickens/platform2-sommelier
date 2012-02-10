@@ -9,7 +9,9 @@ namespace shill {
 namespace wpa_supplicant {
 const char kBSSPropertyBSSID[]      = "BSSID";
 const char kBSSPropertyFrequency[]  = "Frequency";
+const char kBSSPropertyIEs[]        = "IEs";
 const char kBSSPropertyMode[]       = "Mode";
+const char kBSSPropertyRates[]      = "Rates";
 const char kBSSPropertySSID[]       = "SSID";
 const char kBSSPropertySignal[]     = "Signal";
 // TODO(gauravsh): Make this path be a configurable option. crosbug.com/25661

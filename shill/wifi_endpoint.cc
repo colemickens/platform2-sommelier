@@ -11,6 +11,7 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/ieee80211.h"
 #include "shill/wifi.h"
 #include "shill/wpa_supplicant.h"
 
@@ -38,6 +39,7 @@ WiFiEndpoint::WiFiEndpoint(
       properties.find(wpa_supplicant::kBSSPropertyFrequency);
   if (it != properties.end())
     frequency_ = it->second.reader().get_uint16();
+  physical_mode_ = DeterminePhyMode(properties, frequency_);
   network_mode_ = ParseMode(
       properties.find(wpa_supplicant::kBSSPropertyMode)->second);
   security_mode_ = ParseSecurity(properties);
@@ -95,6 +97,10 @@ int16_t WiFiEndpoint::signal_strength() const {
 
 uint16 WiFiEndpoint::frequency() const {
   return frequency_;
+}
+
+uint16 WiFiEndpoint::physical_mode() const {
+  return physical_mode_;
 }
 
 const string &WiFiEndpoint::network_mode() const {
@@ -209,6 +215,66 @@ void WiFiEndpoint::ParseKeyManagementMethods(
       key_management_methods->insert(kKeyManagementPSK);
     }
   }
+}
+
+// static
+Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyMode(
+    const map<string, ::DBus::Variant> &properties, uint16 frequency) {
+  uint32_t max_rate = 0;
+  map<string, ::DBus::Variant>::const_iterator it =
+      properties.find(wpa_supplicant::kBSSPropertyRates);
+  if (it != properties.end()) {
+    vector<uint32_t> rates = it->second.operator vector<uint32_t>();
+    if (rates.size() > 0)
+      max_rate = rates[0];  // Rates are sorted in descending order
+  }
+
+  Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+  it = properties.find(wpa_supplicant::kBSSPropertyIEs);
+  if (it != properties.end()) {
+    phy_mode = ParseIEsForPhyMode(it->second.operator vector<uint8_t>());
+    if (phy_mode != Metrics::kWiFiNetworkPhyModeUndef)
+      return phy_mode;
+  }
+
+  if (frequency < 3000) {
+    // 2.4GHz legacy, check for tx rate for 11b-only
+    // (note 22M is valid)
+    if (max_rate < 24000000)
+      phy_mode = Metrics::kWiFiNetworkPhyMode11b;
+    else
+      phy_mode = Metrics::kWiFiNetworkPhyMode11g;
+  } else {
+    phy_mode = Metrics::kWiFiNetworkPhyMode11a;
+  }
+
+  return phy_mode;
+}
+
+// static
+Metrics::WiFiNetworkPhyMode WiFiEndpoint::ParseIEsForPhyMode(
+    const vector<uint8_t> &ies) {
+  // Format of an information element:
+  //    1       1           3           1 - 252
+  // +------+--------+------------+----------------+
+  // | Type | Length | OUI        | Data           |
+  // +------+--------+------------+----------------+
+  Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+  vector<uint8_t>::const_iterator it;
+  for (it = ies.begin();
+       it + 1 < ies.end();  // +1 to ensure Length field is in valid memory
+       it += 2 + *(it + 1)) {
+    if (*it == IEEE_80211::kElemIdErp) {
+      phy_mode = Metrics::kWiFiNetworkPhyMode11g;
+      continue;  // NB: Continue to check for HT
+    }
+    if (*it == IEEE_80211::kElemIdHTCap || *it == IEEE_80211::kElemIdHTInfo) {
+      phy_mode = Metrics::kWiFiNetworkPhyMode11n;
+      break;
+    }
+  }
+
+  return phy_mode;
 }
 
 }  // namespace shill

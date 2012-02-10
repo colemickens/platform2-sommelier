@@ -8,6 +8,10 @@
 namespace shill {
 
 namespace IEEE_80211 {
+const uint8_t kElemIdErp = 42;
+const uint8_t kElemIdHTCap = 45;
+const uint8_t kElemIdHTInfo = 61;
+
 const unsigned int kMaxSSIDLen = 32;
 
 const unsigned int kWEP40AsciiLen = 5;

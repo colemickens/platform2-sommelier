@@ -16,6 +16,7 @@
 
 #include "shill/endpoint.h"
 #include "shill/event_dispatcher.h"
+#include "shill/metrics.h"
 
 namespace shill {
 
@@ -35,6 +36,7 @@ class WiFiEndpoint : public Endpoint {
   const std::string &bssid_hex() const;
   int16_t signal_strength() const;
   uint16 frequency() const;
+  uint16 physical_mode() const;
   const std::string &network_mode() const;
   const std::string &security_mode() const;
 
@@ -47,6 +49,7 @@ class WiFiEndpoint : public Endpoint {
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsPSK);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK);
+  FRIEND_TEST(WiFiEndpointTest, DeterminePhyMode);
 
   enum KeyManagement {
     kKeyManagement802_1x,
@@ -68,6 +71,15 @@ class WiFiEndpoint : public Endpoint {
   static void ParseKeyManagementMethods(
       const std::map<std::string, ::DBus::Variant> &security_method_properties,
       std::set<KeyManagement> *key_management_methods);
+  // Determine the negotiated operating mode for the channel by looking at
+  // the information elements, frequency and data rates.  The information
+  // elements and data rates live in |properties|.
+  static Metrics::WiFiNetworkPhyMode DeterminePhyMode(
+      const std::map<std::string, ::DBus::Variant> &properties,
+      uint16 frequency);
+  // Parse information elements to determine the physical mode.
+  static Metrics::WiFiNetworkPhyMode ParseIEsForPhyMode(
+      const std::vector<uint8_t> &ies);
 
   // TODO(quiche): make const?
   std::vector<uint8_t> ssid_;
@@ -78,6 +90,7 @@ class WiFiEndpoint : public Endpoint {
   std::string bssid_hex_;
   int16_t signal_strength_;
   uint16 frequency_;
+  uint16 physical_mode_;
   // network_mode_ and security_mode_ are represented as flimflam names
   // (not necessarily the same as wpa_supplicant names)
   std::string network_mode_;

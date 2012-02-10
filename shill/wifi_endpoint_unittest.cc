@@ -13,6 +13,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "shill/ieee80211.h"
 #include "shill/refptr_types.h"
 #include "shill/wpa_supplicant.h"
 
@@ -68,6 +69,13 @@ class WiFiEndpointTest : public Test {
   const char *ParseSecurity(
     const map<string, ::DBus::Variant> &properties) {
     return WiFiEndpoint::ParseSecurity(properties);
+  }
+
+  void AddIE(uint8_t type, vector<uint8_t> *ies) {
+    ies->push_back(type);           // type
+    ies->push_back(4);              // length
+    ies->insert(ies->end(), 3, 0);  // OUI
+    ies->push_back(0);              // data
   }
 };
 
@@ -140,6 +148,73 @@ TEST_F(WiFiEndpointTest, SSIDWithNull) {
   WiFiEndpointRefPtr endpoint =
       WiFiEndpoint::MakeOpenEndpoint(string(1, 0), "00:00:00:00:00:01");
   EXPECT_EQ("?", endpoint->ssid_string());
+}
+
+TEST_F(WiFiEndpointTest, DeterminePhyMode) {
+  {
+    map<string, ::DBus::Variant> properties;
+    vector<uint8_t> ies;
+    AddIE(IEEE_80211::kElemIdErp, &ies);
+    ::DBus::MessageIter writer =
+        properties[wpa_supplicant::kBSSPropertyIEs].writer();
+    writer << ies;
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11g,
+              WiFiEndpoint::DeterminePhyMode(properties, 2400));
+  }
+  {
+    map<string, ::DBus::Variant> properties;
+    vector<uint8_t> ies;
+    AddIE(IEEE_80211::kElemIdHTCap, &ies);
+    ::DBus::MessageIter writer =
+        properties[wpa_supplicant::kBSSPropertyIEs].writer();
+    writer << ies;
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n,
+              WiFiEndpoint::DeterminePhyMode(properties, 2400));
+  }
+  {
+    map<string, ::DBus::Variant> properties;
+    vector<uint8_t> ies;
+    AddIE(IEEE_80211::kElemIdHTInfo, &ies);
+    ::DBus::MessageIter writer =
+        properties[wpa_supplicant::kBSSPropertyIEs].writer();
+    writer << ies;
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n,
+              WiFiEndpoint::DeterminePhyMode(properties, 2400));
+  }
+  {
+    map<string, ::DBus::Variant> properties;
+    vector<uint8_t> ies;
+    AddIE(IEEE_80211::kElemIdErp, &ies);
+    AddIE(IEEE_80211::kElemIdHTCap, &ies);
+    ::DBus::MessageIter writer =
+        properties[wpa_supplicant::kBSSPropertyIEs].writer();
+    writer << ies;
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n,
+              WiFiEndpoint::DeterminePhyMode(properties, 2400));
+  }
+  {
+    map<string, ::DBus::Variant> properties;
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11a,
+              WiFiEndpoint::DeterminePhyMode(properties, 3200));
+  }
+  {
+    map<string, ::DBus::Variant> properties;
+    vector<uint32_t> rates(1, 22000000);
+    ::DBus::MessageIter writer =
+        properties[wpa_supplicant::kBSSPropertyRates].writer();
+    writer << rates;
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11b,
+              WiFiEndpoint::DeterminePhyMode(properties, 2400));
+  }
+  {
+    map<string, ::DBus::Variant> properties;
+    vector<uint32_t> rates(1, 54000000);
+    ::DBus::MessageIter writer =
+        properties[wpa_supplicant::kBSSPropertyRates].writer();
+    writer << rates;
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11g,
+              WiFiEndpoint::DeterminePhyMode(properties, 2400));
+  }
 }
 
 }  // namespace shill
