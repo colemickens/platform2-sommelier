@@ -195,6 +195,13 @@ void WiFiService::NotifyCurrentEndpoint(const WiFiEndpoint &endpoint) {
   // (crosbug.com/16786)
 }
 
+void WiFiService::NotifyEndpointUpdated(const WiFiEndpoint &endpoint) {
+  DCHECK(endpoints_.find(&endpoint) != endpoints_.end());
+  // TODO(quiche): If this is the connected endpoint, or the "representative"
+  // endpoint (when the service is disconnected), then update signal and
+  // frequency. crosbug.com/16786
+}
+
 string WiFiService::GetStorageIdentifier() const {
   return storage_identifier_;
 }

@@ -186,9 +186,12 @@ void WiFi::Stop() {
   for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
        ++it) {
+    VLOG(3) << "WiFi " << link_name() << " deregistering service "
+            << (*it)->friendly_name();
     manager()->DeregisterService(*it);
   }
   services_.clear();                  // breaks reference cycles
+  current_service_ = NULL;            // breaks a reference cycle
   pending_service_ = NULL;            // breaks a reference cycle
 
   Device::Stop();
@@ -388,6 +391,15 @@ void WiFi::ClearCachedCredentials() {
     clear_cached_credentials_pending_ = true;
     dispatcher()->PostTask(
         task_factory_.NewRunnableMethod(&WiFi::ClearCachedCredentialsTask));
+  }
+}
+
+void WiFi::NotifyEndpointChanged(const WiFiEndpoint &endpoint) {
+  WiFiService *service = FindServiceForEndpoint(endpoint);
+  DCHECK(service);
+  if (service) {
+    service->NotifyEndpointUpdated(endpoint);
+    return;
   }
 }
 
@@ -772,15 +784,11 @@ void WiFi::ClearCachedCredentialsTask() {
 void WiFi::BSSAddedTask(
     const ::DBus::Path &path,
     const map<string, ::DBus::Variant> &properties) {
-  // TODO(quiche): Write test to verify correct behavior in the case
-  // where we get multiple BSSAdded events for a single endpoint.
-  // (Old Endpoint's refcount should fall to zero, and old Endpoint
-  // should be destroyed.)
-  //
   // Note: we assume that BSSIDs are unique across endpoints. This
   // means that if an AP reuses the same BSSID for multiple SSIDs, we
   // lose.
-  WiFiEndpointRefPtr endpoint(new WiFiEndpoint(properties));
+  WiFiEndpointRefPtr endpoint(
+      new WiFiEndpoint(proxy_factory_, this, path, properties));
   LOG(INFO) << "Found endpoint. "
             << "RPC path: " << path << ", "
             << "ssid: " << endpoint->ssid_string() << ", "
@@ -824,7 +832,13 @@ void WiFi::BSSAddedTask(
 
   // Do this last, to maintain the invariant that any Endpoint we
   // know about has a corresponding Service.
+  //
+  // TODO(quiche): Write test to verify correct behavior in the case
+  // where we get multiple BSSAdded events for a single endpoint.
+  // (Old Endpoint's refcount should fall to zero, and old Endpoint
+  // should be destroyed.)
   endpoint_by_rpcid_[path] = endpoint;
+  endpoint->Start();
 }
 
 void WiFi::BSSRemovedTask(const ::DBus::Path &path) {

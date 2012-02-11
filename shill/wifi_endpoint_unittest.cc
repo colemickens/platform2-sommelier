@@ -11,9 +11,12 @@
 
 #include <base/stl_util-inl.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/ieee80211.h"
+#include "shill/mock_wifi.h"
+#include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
 #include "shill/wpa_supplicant.h"
 
@@ -21,14 +24,22 @@ using std::map;
 using std::set;
 using std::string;
 using std::vector;
-
-using ::testing::Test;
+using ::testing::_;
+using ::testing::NiceMock;
 
 namespace shill {
 
-class WiFiEndpointTest : public Test {
+class WiFiEndpointTest : public PropertyStoreTest {
  public:
-  WiFiEndpointTest() {}
+  WiFiEndpointTest() : wifi_(
+      new NiceMock<MockWiFi>(
+          control_interface(),
+          dispatcher(),
+          metrics(),
+          manager(),
+          "wifi",
+          "aabbccddeeff",  // fake mac
+          0)) {}
   virtual ~WiFiEndpointTest() {}
 
  protected:
@@ -77,6 +88,18 @@ class WiFiEndpointTest : public Test {
     ies->insert(ies->end(), 3, 0);  // OUI
     ies->push_back(0);              // data
   }
+
+  WiFiEndpoint *MakeOpenEndpoint(ProxyFactory *proxy_factory,
+                                 const WiFiRefPtr &wifi,
+                                 const std::string &ssid,
+                                 const std::string &bssid) {
+    return WiFiEndpoint::MakeOpenEndpoint(proxy_factory, wifi, ssid, bssid);
+  }
+
+  scoped_refptr<MockWiFi> wifi() { return wifi_; }
+
+ private:
+  scoped_refptr<MockWiFi> wifi_;
 };
 
 TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAP) {
@@ -146,7 +169,7 @@ TEST_F(WiFiEndpointTest, ParseSecurityNone) {
 
 TEST_F(WiFiEndpointTest, SSIDWithNull) {
   WiFiEndpointRefPtr endpoint =
-      WiFiEndpoint::MakeOpenEndpoint(string(1, 0), "00:00:00:00:00:01");
+      MakeOpenEndpoint(NULL, NULL, string(1, 0), "00:00:00:00:00:01");
   EXPECT_EQ("?", endpoint->ssid_string());
 }
 
@@ -215,6 +238,23 @@ TEST_F(WiFiEndpointTest, DeterminePhyMode) {
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11g,
               WiFiEndpoint::DeterminePhyMode(properties, 2400));
   }
+}
+
+TEST_F(WiFiEndpointTest, PropertiesChanged) {
+  WiFiEndpointRefPtr endpoint =
+      MakeOpenEndpoint(NULL, wifi(), "ssid", "00:00:00:00:00:01");
+  map<string, ::DBus::Variant> changed_properties;
+  ::DBus::MessageIter writer;
+  int16_t signal_strength = 10;
+
+  EXPECT_NE(signal_strength, endpoint->signal_strength());
+  writer =
+      changed_properties[wpa_supplicant::kBSSPropertySignal].writer();
+  writer << signal_strength;
+
+  EXPECT_CALL(*wifi(), NotifyEndpointChanged(_));
+  endpoint->PropertiesChanged(changed_properties);
+  EXPECT_EQ(signal_strength, endpoint->signal_strength());
 }
 
 }  // namespace shill

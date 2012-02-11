@@ -61,6 +61,9 @@ class WiFi : public Device {
   virtual bool IsIdle() const;
   virtual void ClearCachedCredentials();
 
+  // Called by WiFiEndpoint.
+  virtual void NotifyEndpointChanged(const WiFiEndpoint &endpoint);
+
   // Called by Manager.
   virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
 

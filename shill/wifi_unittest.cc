@@ -37,6 +37,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_store.h"
+#include "shill/mock_supplicant_bss_proxy.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
 #include "shill/mock_wifi_service.h"
@@ -57,6 +58,7 @@ using ::testing::AnyNumber;
 using ::testing::DefaultValue;
 using ::testing::DoAll;
 using ::testing::InSequence;
+using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -166,6 +168,8 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>(wifi_)),
+        supplicant_bss_proxy_(
+            new NiceMock<MockSupplicantBSSProxy>()),
         dhcp_config_(new MockDHCPConfig(&control_interface_,
                                         &dispatcher_,
                                         &dhcp_provider_,
@@ -194,10 +198,14 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     ON_CALL(manager_, device_info()).
         WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
+    EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
   }
 
   virtual void TearDown() {
     EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
+    if (supplicant_bss_proxy_.get()) {
+      EXPECT_CALL(*supplicant_bss_proxy_, Die());
+    }
     wifi_->proxy_factory_ = NULL;
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
@@ -211,7 +219,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
 
   class TestProxyFactory : public ProxyFactory {
    public:
-    explicit TestProxyFactory(WiFiMainTest *test) : test_(test) {}
+    explicit TestProxyFactory(WiFiMainTest *test);
 
     virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
         const char */*dbus_path*/, const char */*dbus_addr*/) {
@@ -225,7 +233,20 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
       return test_->supplicant_interface_proxy_.release();
     }
 
+    MOCK_METHOD3(CreateSupplicantBSSProxy,
+                 SupplicantBSSProxyInterface *(
+                     WiFiEndpoint *wifi_endpoint,
+                     const DBus::Path &object_path,
+                     const char *dbus_addr));
+
    private:
+    SupplicantBSSProxyInterface *CreateSupplicantBSSProxyInternal(
+        WiFiEndpoint */*wifi_endpoint*/,
+        const DBus::Path &/*object_path*/,
+        const char */*dbus_addr*/) {
+      return test_->supplicant_bss_proxy_.release();
+    }
+
     WiFiMainTest *test_;
   };
 
@@ -266,7 +287,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     wifi_->DisconnectFrom(service);
   }
   WiFiEndpointRefPtr MakeEndpoint(const string &ssid, const string &bssid) {
-    return WiFiEndpoint::MakeOpenEndpoint(ssid, bssid);
+    return WiFiEndpoint::MakeOpenEndpoint(&proxy_factory_, NULL, ssid, bssid);
   }
   MockWiFiServiceRefPtr MakeMockService() {
     vector<uint8_t> ssid(1, 'a');
@@ -397,6 +418,10 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     return wifi_;
   }
 
+  TestProxyFactory *proxy_factory() {
+    return &proxy_factory_;
+  }
+
   EventDispatcher dispatcher_;
   NiceMock<MockRTNLHandler> rtnl_handler_;
 
@@ -419,6 +444,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
 
   scoped_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
   scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
+  scoped_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
 
@@ -463,6 +489,14 @@ void WiFiMainTest::ReportBSS(const ::DBus::Path &bss_path,
       append_uint16(frequency);
   bss_properties[wpa_supplicant::kBSSPropertyMode].writer().append_string(mode);
   wifi_->BSSAddedTask(bss_path, bss_properties);
+}
+
+WiFiMainTest::TestProxyFactory::TestProxyFactory(WiFiMainTest *test)
+    : test_(test) {
+  EXPECT_CALL(*this, CreateSupplicantBSSProxy(_, _, _)).Times(AnyNumber());
+  ON_CALL(*this, CreateSupplicantBSSProxy(_, _, _))
+      .WillByDefault(
+          Invoke(this, (&TestProxyFactory::CreateSupplicantBSSProxyInternal)));
 }
 
 TEST_F(WiFiMainTest, ProxiesSetUpDuringStart) {
@@ -1400,6 +1434,10 @@ TEST_F(WiFiMainTest, CurrentBSSChangeDisconnectedToConnected) {
 }
 
 TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
+
   const uint16 frequency1 = 2412;
   const uint16 frequency2 = 2442;
   StartWiFi();
@@ -1565,6 +1603,33 @@ TEST_F(WiFiMainTest, ClearCachedCredentials) {
   EXPECT_CALL(supplicant_interface_proxy, ClearCachedCredentials())
       .Times(1);
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, BSSAddedCreatesBSSProxy) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+  // TODO(quiche): Consider using a factory for WiFiEndpoints, so that
+  // we can test the interaction between WiFi and WiFiEndpoint. (Right
+  // now, we're testing across multiple layers.)
+  EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
+  EXPECT_CALL(*proxy_factory(), CreateSupplicantBSSProxy(_, _, _));
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+}
+
+TEST_F(WiFiMainTest, BSSRemovedDestroysBSSProxy) {
+  // TODO(quiche): As for BSSAddedCreatesBSSProxy, consider using a
+  // factory for WiFiEndpoints.
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+
+  // Get the pointer before we transfer ownership.
+  MockSupplicantBSSProxy *proxy = supplicant_bss_proxy_.get();
+  EXPECT_CALL(*proxy, Die());
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+  RemoveBSS("bss0");
+  // Check this now, to make sure RemoveBSS killed the proxy (rather
+  // than TearDown).
+  Mock::VerifyAndClearExpectations(proxy);
 }
 
 }  // namespace shill

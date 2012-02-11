@@ -12,7 +12,10 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/ieee80211.h"
+#include "shill/proxy_factory.h"
+#include "shill/supplicant_bss_proxy_interface.h"
 #include "shill/wifi.h"
+#include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
 using std::map;
@@ -22,9 +25,14 @@ using std::vector;
 
 namespace shill {
 
-WiFiEndpoint::WiFiEndpoint(
-    const map<string, ::DBus::Variant> &properties)
-    : frequency_(0) {
+WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
+                           const WiFiRefPtr &device,
+                           const string &rpc_id,
+                           const map<string, ::DBus::Variant> &properties)
+    : frequency_(0),
+      proxy_factory_(proxy_factory),
+      device_(device),
+      rpc_id_(rpc_id) {
   // XXX will segfault on missing properties
   ssid_ =
       properties.find(wpa_supplicant::kBSSPropertySSID)->second.
@@ -58,6 +66,25 @@ WiFiEndpoint::WiFiEndpoint(
 }
 
 WiFiEndpoint::~WiFiEndpoint() {}
+
+void WiFiEndpoint::Start() {
+  supplicant_bss_proxy_.reset(
+      proxy_factory_->CreateSupplicantBSSProxy(
+          this, rpc_id_, wpa_supplicant::kDBusAddr));
+}
+
+void WiFiEndpoint::PropertiesChanged(
+    const map<string, ::DBus::Variant> &properties) {
+  LOG(INFO) << __func__;
+  map<string, ::DBus::Variant>::const_iterator properties_it =
+      properties.find(wpa_supplicant::kBSSPropertySignal);
+  if (properties_it != properties.end()) {
+    signal_strength_ = properties_it->second.reader().get_int16();
+    VLOG(2) << "WiFiEndpoint " << bssid_string_ << " signal is now "
+            << signal_strength_;
+    device_->NotifyEndpointChanged(*this);
+  }
+}
 
 // static
 uint32_t WiFiEndpoint::ModeStringToUint(const std::string &mode_string) {
@@ -112,8 +139,10 @@ const string &WiFiEndpoint::security_mode() const {
 }
 
 // static
-WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(
-    const string &ssid, const string &bssid) {
+WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
+                                             const WiFiRefPtr &wifi,
+                                             const string &ssid,
+                                             const string &bssid) {
   map <string, ::DBus::Variant> args;
   ::DBus::MessageIter writer;
 
@@ -132,7 +161,8 @@ WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(
       wpa_supplicant::kNetworkModeInfrastructure);
   // We indicate this is an open BSS by leaving out all security properties.
 
-  return new WiFiEndpoint(args);
+  return new WiFiEndpoint(
+      proxy_factory, wifi, bssid, args); // |bssid| fakes an RPC ID
 }
 
 // static

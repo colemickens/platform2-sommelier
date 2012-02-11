@@ -33,6 +33,7 @@ class ModemSimpleProxyDelegate;
 class ModemSimpleProxyInterface;
 class PowerManagerProxyDelegate;
 class PowerManagerProxyInterface;
+class SupplicantBSSProxyInterface;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 
@@ -91,6 +92,12 @@ class ProxyFactory {
 
   virtual SupplicantInterfaceProxyInterface *CreateSupplicantInterfaceProxy(
       const WiFiRefPtr &wifi,
+      const DBus::Path &object_path,
+      const char *dbus_addr);
+
+  // See comment in supplicant_bss_proxy.h, about bare pointer.
+  virtual SupplicantBSSProxyInterface *CreateSupplicantBSSProxy(
+      WiFiEndpoint *wifi_endpoint,
       const DBus::Path &object_path,
       const char *dbus_addr);
 

@@ -163,6 +163,7 @@ SHILL_OBJS = \
 	shill_test_config.o \
 	shill_time.o \
 	sockets.o \
+	supplicant_bss_proxy.o \
 	supplicant_interface_proxy.o \
 	supplicant_process_proxy.o \
 	technology.o \
@@ -241,6 +242,7 @@ TEST_OBJS = \
 	mock_service.o \
 	mock_sockets.o \
 	mock_store.o \
+	mock_supplicant_bss_proxy.o \
 	mock_supplicant_interface_proxy.o \
 	mock_supplicant_process_proxy.o \
 	mock_time.o \

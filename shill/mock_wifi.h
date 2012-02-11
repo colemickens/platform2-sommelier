@@ -14,6 +14,7 @@
 #include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi.h"
+#include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
 
 namespace shill {
@@ -43,6 +44,7 @@ class MockWiFi : public WiFi {
                void(WiFiService *service,
                     std::map<std::string, ::DBus::Variant> service_params));
   MOCK_CONST_METHOD0(IsIdle, bool());
+  MOCK_METHOD1(NotifyEndpointChanged, void(const WiFiEndpoint &endpoint));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFi);

@@ -54,7 +54,11 @@ class WiFiService : public Service {
   virtual void AddEndpoint(WiFiEndpointConstRefPtr endpoint);
   virtual void RemoveEndpoint(WiFiEndpointConstRefPtr endpoint);
   bool NumEndpoints() const { return endpoints_.size(); }
+  // Called to update the identity of the currently connected endpoint.
   void NotifyCurrentEndpoint(const WiFiEndpoint &endpoint);
+  // Called to inform of changes in the properties of an endpoint.
+  // (Not necessarily the currently connected endpoint.)
+  void NotifyEndpointUpdated(const WiFiEndpoint &endpoint);
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
   std::string GetStorageIdentifier() const;

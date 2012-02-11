@@ -17,13 +17,30 @@
 #include "shill/endpoint.h"
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
+#include "shill/refptr_types.h"
 
 namespace shill {
 
+class ProxyFactory;
+class SupplicantBSSProxyInterface;
+
 class WiFiEndpoint : public Endpoint {
  public:
-  WiFiEndpoint(const std::map<std::string, ::DBus::Variant> &properties);
+  WiFiEndpoint(ProxyFactory *proxy_factory,
+               const WiFiRefPtr &device,
+               const std::string &rpc_id,
+               const std::map<std::string, ::DBus::Variant> &properties);
   virtual ~WiFiEndpoint();
+
+  // Set up RPC channel. Broken out from the ctor, so that WiFi can
+  // look over the Endpoint details before commiting to setting up
+  // RPC.
+  virtual void Start();
+
+  // Called by SupplicantBSSProxy, in response to events from
+  // wpa_supplicant.
+  void PropertiesChanged(
+      const std::map<std::string, ::DBus::Variant> &properties);
 
   // Maps mode strings from flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h, to uints used by supplicant
@@ -44,7 +61,6 @@ class WiFiEndpoint : public Endpoint {
   friend class WiFiEndpointTest;
   friend class WiFiMainTest;  // for MakeOpenEndpoint
   friend class WiFiServiceTest;  // for MakeOpenEndpoint
-  FRIEND_TEST(WiFiEndpointTest, SSIDWithNull);  // for MakeOpenEndpoint
   // these test cases need access to the KeyManagement enum
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsPSK);
@@ -57,8 +73,10 @@ class WiFiEndpoint : public Endpoint {
   };
 
   // Build a simple WiFiEndpoint, for testing purposes.
-  static WiFiEndpoint *MakeOpenEndpoint(
-      const std::string &ssid, const std::string &bssid);
+  static WiFiEndpoint *MakeOpenEndpoint(ProxyFactory *proxy_factory,
+                                        const WiFiRefPtr &wifi,
+                                        const std::string &ssid,
+                                        const std::string &bssid);
   // Maps mode strings from supplicant into flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h
   static const char *ParseMode(const std::string &mode_string);
@@ -66,7 +84,7 @@ class WiFiEndpoint : public Endpoint {
   // security property value, as defined in chromeos/dbus/service_constants.h
   static const char *ParseSecurity(
       const std::map<std::string, ::DBus::Variant> &properties);
-  // Parses and Endpoint's properties' "RSN" or "WPA" sub-dictionary, to
+  // Parses an Endpoint's properties' "RSN" or "WPA" sub-dictionary, to
   // identify supported key management methods (802.1x or PSK).
   static void ParseKeyManagementMethods(
       const std::map<std::string, ::DBus::Variant> &security_method_properties,
@@ -95,6 +113,11 @@ class WiFiEndpoint : public Endpoint {
   // (not necessarily the same as wpa_supplicant names)
   std::string network_mode_;
   std::string security_mode_;
+
+  ProxyFactory *proxy_factory_;
+  WiFiRefPtr device_;
+  std::string rpc_id_;
+  scoped_ptr<SupplicantBSSProxyInterface> supplicant_bss_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFiEndpoint);
 };

@@ -28,8 +28,6 @@
 using std::map;
 using std::string;
 using std::vector;
-
-namespace shill {
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::NiceMock;
@@ -37,6 +35,8 @@ using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrNe;
+
+namespace shill {
 
 class WiFiServiceTest : public PropertyStoreTest {
  public:
@@ -74,7 +74,7 @@ class WiFiServiceTest : public PropertyStoreTest {
     return service->connectable();
   }
   WiFiEndpoint *MakeEndpoint(const string &ssid, const string &bssid) {
-    return WiFiEndpoint::MakeOpenEndpoint(ssid, bssid);
+    return WiFiEndpoint::MakeOpenEndpoint(NULL, NULL, ssid, bssid);
   }
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
 

@@ -15,6 +15,7 @@
 #include "shill/modem_proxy.h"
 #include "shill/modem_simple_proxy.h"
 #include "shill/power_manager_proxy.h"
+#include "shill/supplicant_bss_proxy.h"
 #include "shill/supplicant_interface_proxy.h"
 #include "shill/supplicant_process_proxy.h"
 
@@ -107,6 +108,14 @@ SupplicantInterfaceProxyInterface *ProxyFactory::CreateSupplicantInterfaceProxy(
                                       connection(),
                                       object_path,
                                       dbus_addr);
+}
+
+SupplicantBSSProxyInterface *ProxyFactory::CreateSupplicantBSSProxy(
+    WiFiEndpoint *wifi_endpoint,
+    const DBus::Path &object_path,
+    const char *dbus_addr) {
+  return new SupplicantBSSProxy(
+      wifi_endpoint, connection(), object_path, dbus_addr);
 }
 
 DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const string &service) {
