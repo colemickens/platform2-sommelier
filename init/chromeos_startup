@@ -303,10 +303,6 @@ mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 # gone through setuid.
 echo 2 > /proc/sys/fs/suid_dumpable
 
-# Temporarily disable ptrace restrictions.
-# TODO(keescook): crosbug.com/25087
-echo 0 > /proc/sys/kernel/yama/ptrace_scope
-
 # Check for extra steps needed for OOBE.  These steps are expensive
 # so they only happen once; when OOBE is complete the OOBE_COMPLETE
 # file gets created to block this code from running again.
