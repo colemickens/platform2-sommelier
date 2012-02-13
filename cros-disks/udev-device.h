@@ -90,6 +90,10 @@ class UdevDevice {
   Disk ToDisk();
 
  private:
+  // Returns |str| if |str| is a valid UTF8 string (determined by
+  // base::IsStringUTF8) or an empty string otherwise.
+  static std::string EnsureUTF8String(const std::string& str);
+
   // Checks if a string contains a "1" (as Boolean true).
   bool IsValueBooleanTrue(const char *value) const;
 
@@ -97,6 +101,7 @@ class UdevDevice {
 
   blkid_cache blkid_cache_;
 
+  FRIEND_TEST(UdevDeviceTest, EnsureUTF8String);
   FRIEND_TEST(UdevDeviceTest, IsValueBooleanTrue);
 
   DISALLOW_COPY_AND_ASSIGN(UdevDevice);

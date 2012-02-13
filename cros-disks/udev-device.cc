@@ -69,6 +69,10 @@ UdevDevice::~UdevDevice() {
   udev_device_unref(dev_);
 }
 
+string UdevDevice::EnsureUTF8String(const string& str) {
+  return IsStringUTF8(str) ? str : "";
+}
+
 bool UdevDevice::IsValueBooleanTrue(const char *value) const {
   return value && strcmp(value, "1") == 0;
 }
@@ -336,11 +340,16 @@ Disk UdevDevice::ToDisk() {
   disk.set_is_on_boot_device(IsOnBootDevice());
   disk.set_is_virtual(IsVirtual());
   disk.set_media_type(GetDeviceMediaType());
-  disk.set_drive_model(GetProperty(kPropertyModel));
   disk.set_filesystem_type(GetPropertyFromBlkId(kPropertyBlkIdFilesystemType));
   disk.set_uuid(GetPropertyFromBlkId(kPropertyBlkIdFilesystemUUID));
-  disk.set_label(GetPropertyFromBlkId(kPropertyBlkIdFilesystemLabel));
   disk.set_native_path(NativePath());
+
+  // Drive model and filesystem label may not be UTF-8 encoded, so we
+  // need to ensure that they are either set to a valid UTF-8 string or
+  // an empty string before later passed to a DBus message iterator.
+  disk.set_drive_model(EnsureUTF8String(GetProperty(kPropertyModel)));
+  disk.set_label(
+      EnsureUTF8String(GetPropertyFromBlkId(kPropertyBlkIdFilesystemLabel)));
 
   const char *dev_file = udev_device_get_devnode(dev_);
   if (dev_file)

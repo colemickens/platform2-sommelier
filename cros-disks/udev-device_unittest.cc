@@ -103,6 +103,14 @@ struct udev_device* UdevDeviceTest::boot_device_ = NULL;
 struct udev_device* UdevDeviceTest::loop_device_ = NULL;
 struct udev_device* UdevDeviceTest::mounted_device_ = NULL;
 
+TEST_F(UdevDeviceTest, EnsureUTF8String) {
+  // Valid UTF8
+  EXPECT_EQ("ascii", UdevDevice::EnsureUTF8String("ascii"));
+  EXPECT_EQ("\xc2\x81", UdevDevice::EnsureUTF8String("\xc2\x81"));
+  // Invalid UTF8: overlong sequences
+  EXPECT_EQ("", UdevDevice::EnsureUTF8String("\xc0\x80"));  // U+0000
+}
+
 TEST_F(UdevDeviceTest, IsValueBooleanTrue) {
   if (mounted_device_) {
     UdevDevice device(mounted_device_);
