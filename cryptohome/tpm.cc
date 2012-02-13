@@ -15,15 +15,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
 
 #include "crypto.h"
 #include "mount.h"
 #include "platform.h"
-#include "scoped_tss_type.h"
 
 using base::PlatformThread;
+using trousers::ScopedTssContext;
+using trousers::ScopedTssKey;
+using trousers::ScopedTssMemory;
+using trousers::ScopedTssNvStore;
+using trousers::ScopedTssPcrs;
+using trousers::ScopedTssPolicy;
 
 namespace cryptohome {
 
