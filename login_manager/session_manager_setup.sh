@@ -300,6 +300,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-gview \
             --enable-logging \
             --enable-onc-policy \
+            --enable-partial-swap \
             --enable-smooth-scrolling \
             --enterprise-enrollment-initial-modulus=0 \
             --enterprise-enrollment-modulus-limit=0 \
@@ -311,6 +312,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --no-first-run \
             --reload-killed-tabs \
             --scroll-pixels=3 \
+            --ui-enable-partial-swap \
             --user-data-dir="$DATA_DIR" \
             --webui-login \
             --no-protector \
