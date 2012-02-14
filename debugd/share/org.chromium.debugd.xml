@@ -121,5 +121,16 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="GetDebugLogs">
+      <tp:docstring>
+        Packages up system logs into a .tar.gz and returns it over the supplied
+        file descriptor.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to emit the .tar.gz file over.
+        </tp:docstring>
+      </arg>
+    </method>
   </interface>
 </node>

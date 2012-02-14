@@ -11,6 +11,7 @@
 #include <dbus-c++/dbus.h>
 
 #include "adaptors/org.chromium.debugd.h"
+#include "debug_logs_tool.h"
 #include "modem_status_tool.h"
 #include "network_status_tool.h"
 #include "ping_tool.h"
@@ -32,6 +33,9 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   void Run();
 
   // Setters for tools - used for dependency injection in tests
+  void set_debug_logs_tool(DebugLogsTool* tool) {
+    debug_logs_tool_ = tool;
+  }
   void set_ping_tool(PingTool* tool) {
     ping_tool_ = tool;
   }
@@ -68,11 +72,14 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                                              DBus::Error& error);
   virtual std::string GetModemStatus(DBus::Error& error); // NOLINT
   virtual std::string GetNetworkStatus(DBus::Error& error); // NOLINT
+  virtual void GetDebugLogs(const DBus::FileDescriptor& fd,
+                            DBus::Error& error);
 
  private:
   DBus::Connection* dbus_;
   DBus::BusDispatcher* dispatcher_;
 
+  DebugLogsTool* debug_logs_tool_;
   PingTool* ping_tool_;
   RouteTool* route_tool_;
   TracePathTool *tracepath_tool_;
