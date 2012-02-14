@@ -31,6 +31,7 @@
 #include "shill/key_value_store.h"
 #include "shill/ieee80211.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -509,6 +510,7 @@ void WiFi::HandleDisconnect() {
   // TODO(quiche): If we initated the disconnect, we should probably
   // go to the idle state instead. crosbug.com/24700
   affected_service->SetFailure(Service::kFailureUnknown);
+  metrics()->NotifyServiceDisconnect(affected_service);
 
   if (affected_service == pending_service_.get()) {
     // The attempt to connect to |pending_service_| failed. Clear

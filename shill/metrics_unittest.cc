@@ -199,4 +199,26 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   metrics_.NotifyDefaultServiceChanged(NULL);
 }
 
+TEST_F(MetricsTest, Disconnect) {
+  EXPECT_CALL(*service_.get(), technology()).
+      WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*service_.get(), explicitly_disconnected()).
+      WillOnce(Return(false));
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect",
+                                  false,
+                                  Metrics::kMetricDisconnectMin,
+                                  Metrics::kMetricDisconnectMax,
+                                  Metrics::kMetricDisconnectNumBuckets));
+  metrics_.NotifyServiceDisconnect(service_);
+
+  EXPECT_CALL(*service_.get(), explicitly_disconnected()).
+      WillOnce(Return(true));
+  EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect",
+                                  true,
+                                  Metrics::kMetricDisconnectMin,
+                                  Metrics::kMetricDisconnectMax,
+                                  Metrics::kMetricDisconnectNumBuckets));
+  metrics_.NotifyServiceDisconnect(service_);
+}
+
 }  // namespace shill

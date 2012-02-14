@@ -20,6 +20,11 @@ namespace shill {
 static base::LazyInstance<Metrics> g_metrics(base::LINKER_INITIALIZED);
 
 // static
+const char Metrics::kMetricDisconnect[] = "Network.Shill.%s.Disconnect";
+const int Metrics::kMetricDisconnectMax = 1;
+const int Metrics::kMetricDisconnectMin = 0;
+const int Metrics::kMetricDisconnectNumBuckets = 2;
+
 const char Metrics::kMetricNetworkChannel[] = "Network.Shill.%s.Channel";
 const int Metrics::kMetricNetworkChannelMax = Metrics::kWiFiChannelMax;
 const char Metrics::kMetricNetworkPhyMode[] = "Network.Shill.%s.PhyMode";
@@ -252,10 +257,14 @@ string Metrics::GetFullMetricName(const char *metric_name,
   return base::StringPrintf(metric_name, technology.c_str());
 }
 
-void Metrics::NotifyServiceDisconnect(const Service */*service*/,
-                                      bool /*manual_disconnect*/) {
-  // TODO(thieule): Handle service disconnects.
-  // crosbug.com/23253
+void Metrics::NotifyServiceDisconnect(const Service *service) {
+  Technology::Identifier technology = service->technology();
+  string histogram = GetFullMetricName(kMetricDisconnect, technology);
+  SendToUMA(histogram,
+            service->explicitly_disconnected(),
+            kMetricDisconnectMin,
+            kMetricDisconnectMax,
+            kMetricDisconnectNumBuckets);
 }
 
 void Metrics::NotifyPower() {

@@ -100,6 +100,10 @@ class Metrics {
     kWiFiSecurityMax
   };
 
+  static const char kMetricDisconnect[];
+  static const int kMetricDisconnectMax;
+  static const int kMetricDisconnectMin;
+  static const int kMetricDisconnectNumBuckets;
   static const char kMetricNetworkChannel[];
   static const int kMetricNetworkChannelMax;
   static const char kMetricNetworkPhyMode[];
@@ -159,10 +163,8 @@ class Metrics {
   virtual void NotifyServiceStateChanged(const Service *service,
                                          Service::ConnectState new_state);
 
-  // Notifies this object that |service| has been disconnected and whether
-  // the disconnect was requested by the user or not.
-  void NotifyServiceDisconnect(const Service *service,
-                               bool manual_disconnect);
+  // Notifies this object that |service| has been disconnected.
+  void NotifyServiceDisconnect(const Service *service);
 
   // Notifies this object of a power management event.
   void NotifyPower();

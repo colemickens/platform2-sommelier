@@ -220,6 +220,10 @@ class Service : public base::RefCounted<Service> {
   bool connectable() const { return connectable_; }
   void set_connectable(bool connectable);
 
+  virtual bool explicitly_disconnected() const {
+    return explicitly_disconnected_;
+  }
+
   bool favorite() const { return favorite_; }
   // Setter is deliberately omitted; use MakeFavorite.
 
