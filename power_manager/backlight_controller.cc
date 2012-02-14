@@ -19,15 +19,20 @@ namespace {
 const double kMinPercent = 0.0;
 const double kMaxPercent = 100.0;
 
-// Set brightness to this value when going into idle-induced dim state.
-const double kIdleBrightnessPercent = 10.0;
+// When going into the idle-induced dim state, the backlight dims to this
+// fraction (in the range [0.0, 1.0]) of its maximum brightness level.  This is
+// a fraction rather than a percent so it won't change if
+// kDefaultLevelToPercentExponent is modified.
+const double kIdleBrightnessFraction = 0.1;
 
-// Minimum brightness percentage that we'll remain at before turning the
-// backlight off entirely.  This is arbitrarily chosen but seems to be a
-// reasonable marginally-visible brightness for a darkened room on current
-// devices: http://crosbug.com/24569.  A higher level can be set via the
-// kMinVisibleBacklightLevel setting.
-const double kDefaultMinVisibleBrightnessPercent = 0.65;
+// Minimum brightness, as a fraction of the maximum level in the range [0.0,
+// 1.0], that we'll remain at before turning the backlight off entirely.  This
+// is arbitrarily chosen but seems to be a reasonable marginally-visible
+// brightness for a darkened room on current devices: http://crosbug.com/24569.
+// A higher level can be set via the kMinVisibleBacklightLevel setting.  This is
+// a fraction rather than a percent so it won't change if
+// kDefaultLevelToPercentExponent is modified.
+const double kDefaultMinVisibleBrightnessFraction = 0.0065;
 
 // Gradually animate backlight level to new brightness by breaking up the
 // transition into this many steps.
@@ -44,6 +49,15 @@ const int kAlsHystSamples = 4;
 
 // Backlight change (in %) required to overcome light sensor level hysteresis.
 const int kAlsHystPercent = 5;
+
+// Value for |level_to_percent_exponent_|, assuming that at least
+// |kMinLevelsForNonLinearScale| brightness levels are available -- if not, we
+// just use 1.0 to give us a linear scale.
+const double kDefaultLevelToPercentExponent = 0.5;
+
+// Minimum number of brightness levels needed before we use a non-linear mapping
+// between levels and percents.
+const double kMinLevelsForNonLinearMapping = 100;
 
 // String names for power states.
 const char* PowerStateToString(power_manager::PowerState state) {
@@ -91,6 +105,8 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       max_level_(0),
       min_visible_level_(0),
       step_percent_(1.0),
+      idle_brightness_percent_(kIdleBrightnessFraction * 100.0),
+      level_to_percent_exponent_(kDefaultLevelToPercentExponent),
       is_initialized_(false),
       target_level_(0),
       is_in_transition_(false) {
@@ -121,6 +137,14 @@ bool BacklightController::Init() {
         std::min(kMaxBrightnessSteps - 1, max_level_ - min_visible_level_);
   }
   CHECK_GT(step_percent_, 0.0);
+
+  level_to_percent_exponent_ =
+      max_level_ >= kMinLevelsForNonLinearMapping ?
+          kDefaultLevelToPercentExponent :
+          1.0;
+
+  idle_brightness_percent_ = ClampPercentToVisibleRange(
+      LevelToPercent(lround(kIdleBrightnessFraction * max_level_)));
 
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "
             << step_percent_ << "% step and minimum-visible level of "
@@ -224,8 +248,7 @@ bool BacklightController::SetPowerState(PowerState new_state) {
     WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, style);
 
   // Do not go to dim if backlight is already dimmed.
-  if (new_state == BACKLIGHT_DIM &&
-      target_percent_ < ClampPercentToVisibleRange(kIdleBrightnessPercent))
+  if (new_state == BACKLIGHT_DIM && target_percent_ < idle_brightness_percent_)
     new_state = BACKLIGHT_ALREADY_DIMMED;
 
   if (light_sensor_)
@@ -368,11 +391,14 @@ bool BacklightController::IsBacklightActiveOff() {
 }
 
 double BacklightController::LevelToPercent(int64 raw_level) {
-  return kMaxPercent * raw_level / max_level_;
+  return kMaxPercent *
+      pow(static_cast<double>(raw_level) / max_level_,
+          level_to_percent_exponent_);
 }
 
-int64 BacklightController::PercentToLevel(double local_percent) {
-  return lround(local_percent * max_level_ / kMaxPercent);
+int64 BacklightController::PercentToLevel(double percent) {
+  return lround(pow(percent / kMaxPercent, 1.0 / level_to_percent_exponent_) *
+                max_level_);
 }
 
 void BacklightController::OnBacklightDeviceChanged() {
@@ -390,7 +416,9 @@ void BacklightController::ReadPrefs() {
   if (!prefs_->GetInt64(kMinVisibleBacklightLevel, &min_visible_level_))
     min_visible_level_ = 1;
   min_visible_level_ = std::max(
-      PercentToLevel(kDefaultMinVisibleBrightnessPercent), min_visible_level_);
+      static_cast<int64>(
+          lround(kDefaultMinVisibleBrightnessFraction * max_level_)),
+      min_visible_level_);
   CHECK_GT(min_visible_level_, 0);
   min_visible_level_ = std::min(min_visible_level_, max_level_);
 
@@ -452,8 +480,8 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
     // When in dimmed state, set to dim level only if it results in a reduction
     // of system brightness.  Also, make sure idle brightness is not lower than
     // the minimum brightness.
-    if (old_percent > ClampPercentToVisibleRange(kIdleBrightnessPercent)) {
-      target_percent_ = ClampPercentToVisibleRange(kIdleBrightnessPercent);
+    if (old_percent > idle_brightness_percent_) {
+      target_percent_ = idle_brightness_percent_;
     } else {
       LOG(INFO) << "Not dimming because backlight is already dim.";
       // Even if the brightness is below the dim level, make sure it is not

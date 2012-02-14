@@ -272,6 +272,15 @@ class BacklightController : public BacklightInterfaceObserver {
   // decrease requests.
   double step_percent_;
 
+  // Percentage, in the range [0.0, 100.0], to which we dim the backlight on
+  // idle.
+  double idle_brightness_percent_;
+
+  // Brightness level fractions (e.g. 140/200) are raised to this power when
+  // converting them to percents.  A value below 1.0 gives us more granularity
+  // at the lower end of the range and less at the upper end.
+  double level_to_percent_exponent_;
+
   // Flag is set if a backlight device exists.
   bool is_initialized_;
 

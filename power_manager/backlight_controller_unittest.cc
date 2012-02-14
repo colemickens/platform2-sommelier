@@ -400,4 +400,47 @@ TEST_F(BacklightControllerTest, ChangeBacklightDevice) {
   EXPECT_GT(controller_.target_percent(), 0.0);
 }
 
+// Test that we use a linear mapping between brightness levels and percentages
+// when a small range of levels is exposed by the hardware and that we use a
+// non-linear mapping when a large range is exposed.
+TEST_F(BacklightControllerTest, NonLinearMapping) {
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  ASSERT_TRUE(controller_.OnPlugEvent(false));
+
+  // Update the backlight to expose a tiny range of levels.  There should be a
+  // linear mapping between levels and percentages.
+  const int64 kSmallMaxBrightnessLevel = 10;
+  EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
+      .WillRepeatedly(DoAll(SetArgumentPointee<0>(kSmallMaxBrightnessLevel),
+                            Return(true)));
+  EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
+      .WillRepeatedly(DoAll(SetArgumentPointee<0>(kSmallMaxBrightnessLevel),
+                            Return(true)));
+
+  controller_.OnBacklightDeviceChanged();
+  for (int i = 0; i <= kSmallMaxBrightnessLevel; ++i) {
+    double percent = 100.0 * i / kSmallMaxBrightnessLevel;
+    EXPECT_DOUBLE_EQ(percent, controller_.LevelToPercent(i));
+    EXPECT_EQ(static_cast<int64>(i), controller_.PercentToLevel(percent));
+  }
+
+  // With a large range, we should provide more granularity at the bottom end.
+  const int64 kLargeMaxBrightnessLevel = 1000;
+  EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
+      .WillRepeatedly(DoAll(SetArgumentPointee<0>(kLargeMaxBrightnessLevel),
+                            Return(true)));
+  EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
+      .WillRepeatedly(DoAll(SetArgumentPointee<0>(kLargeMaxBrightnessLevel),
+                            Return(true)));
+  controller_.OnBacklightDeviceChanged();
+
+  EXPECT_DOUBLE_EQ(0.0, controller_.LevelToPercent(0));
+  EXPECT_GT(controller_.LevelToPercent(kLargeMaxBrightnessLevel / 2), 50.0);
+  EXPECT_DOUBLE_EQ(100.0, controller_.LevelToPercent(kLargeMaxBrightnessLevel));
+
+  EXPECT_EQ(0, controller_.PercentToLevel(0.0));
+  EXPECT_LT(controller_.PercentToLevel(50.0), kLargeMaxBrightnessLevel / 2);
+  EXPECT_EQ(kLargeMaxBrightnessLevel, controller_.PercentToLevel(100.0));
+}
+
 }  // namespace power_manager
