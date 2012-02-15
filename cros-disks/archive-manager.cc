@@ -153,7 +153,18 @@ bool ArchiveManager::IsFileExtensionSupported(
 
 void ArchiveManager::RegisterDefaultFileExtensions() {
   // TODO(benchan): Perhaps these settings can be read from a config file.
+
+  // zip
   RegisterFileExtension("zip");
+  // tar
+  RegisterFileExtension("tar");
+  // All variants of bzip2-compessed tar
+  RegisterFileExtension("tar.bz2");
+  RegisterFileExtension("tbz");
+  RegisterFileExtension("tbz2");
+  // All variants of gzip-compessed tar
+  RegisterFileExtension("tar.gz");
+  RegisterFileExtension("tgz");
 }
 
 void ArchiveManager::RegisterFileExtension(const string& extension) {

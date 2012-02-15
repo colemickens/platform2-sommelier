@@ -34,7 +34,10 @@ class Metrics {
   enum ArchiveType {
     kArchiveUnknown = 0,
     kArchiveZip = 1,
-    kArchiveMaxValue = 2,
+    kArchiveTar = 2,
+    kArchiveTarBzip2 = 3,
+    kArchiveTarGzip = 4,
+    kArchiveMaxValue = 5,
   };
 
   enum FilesystemType {

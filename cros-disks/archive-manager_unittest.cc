@@ -117,6 +117,12 @@ TEST_F(ArchiveManagerTest, GetFileExtension) {
   EXPECT_EQ("zip", manager_.GetFileExtension("test.ZIP"));
   EXPECT_EQ("zip", manager_.GetFileExtension("/tmp/test.zip"));
   EXPECT_EQ("rar", manager_.GetFileExtension("/tmp/test.rar"));
+  EXPECT_EQ("tar", manager_.GetFileExtension("/tmp/test.tar"));
+  EXPECT_EQ("tar.gz", manager_.GetFileExtension("/tmp/test.tar.gz"));
+  EXPECT_EQ("tgz", manager_.GetFileExtension("/tmp/test.tgz"));
+  EXPECT_EQ("tar.bz2", manager_.GetFileExtension("/tmp/test.tar.bz2"));
+  EXPECT_EQ("tbz", manager_.GetFileExtension("/tmp/test.tbz"));
+  EXPECT_EQ("tbz2", manager_.GetFileExtension("/tmp/test.tbz2"));
 }
 
 TEST_F(ArchiveManagerTest, GetAVFSPath) {
