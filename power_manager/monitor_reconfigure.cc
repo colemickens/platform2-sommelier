@@ -59,7 +59,7 @@ bool MonitorReconfigure::Init() {
   XRRQueryVersion(GDK_DISPLAY(), &rr_major_version, &rr_minor_version);
   XRRSelectInput(GDK_DISPLAY(),
                  DefaultRootWindow(GDK_DISPLAY()),
-                 RRScreenChangeNotifyMask);
+                 RRScreenChangeNotifyMask | RROutputChangeNotifyMask);
 
   gdk_window_add_filter(NULL, GdkEventFilterThunk, this);
   LOG(INFO) << "XRandr event filter added";
@@ -360,7 +360,33 @@ bool MonitorReconfigure::SetScreenResolution(
 GdkFilterReturn MonitorReconfigure::GdkEventFilter(GdkXEvent* gxevent,
                                                    GdkEvent*) {
   XEvent* xevent = static_cast<XEvent*>(gxevent);
-  if (xevent->type == rr_event_base_ + RRScreenChangeNotify) {
+  XRRNotifyEvent *aevent = reinterpret_cast<XRRNotifyEvent*>(xevent);
+
+  if (xevent->type == rr_event_base_ + RRScreenChangeNotify ||
+      xevent->type == rr_event_base_ + RRNotify) {
+    switch (xevent->type - rr_event_base_) {
+      case RRScreenChangeNotify:
+        LOG(INFO) << "Receive RRScreenChangeNotify event.";
+        XRRUpdateConfiguration(xevent);
+        break;
+      case RRNotify:
+        switch (aevent->subtype) {
+          case RRNotify_OutputChange:
+            LOG(INFO) << "Receive RRNotify_OutputChange event.";
+            break;
+          case RRNotify_CrtcChange:
+            LOG(INFO) << "Receive RRNotify_CrtcChange event.";
+            break;
+          case RRNotify_OutputProperty:
+            LOG(INFO) << "Receive RRNotify_OutputProperty event.";
+            break;
+          default:
+            LOG(INFO) << "Receive Unknown RRNotify event.";
+        }
+        break;
+      default:
+        LOG(INFO) << "Receive Unknown GDK event.";
+    }
     Run();
     // Remove this event so that no other program acts upon it.
     return GDK_FILTER_REMOVE;
