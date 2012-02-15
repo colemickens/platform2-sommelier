@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -59,6 +59,10 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
   if (!domain_search.empty()) {
     lines.push_back("search " + JoinString(domain_search, ' '));
   }
+
+  // Send queries one-at-a-time, rather than parallelizing IPv4
+  // and IPv6 queries for a single host.
+  lines.push_back("options single-request");
 
   // Newline at end of file
   lines.push_back("");

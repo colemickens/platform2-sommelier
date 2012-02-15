@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -28,7 +28,8 @@ const char kSearchDomain1[] = "google.com";
 const char kExpectedOutput[] =
   "nameserver 8.8.8.8\n"
   "nameserver 8.8.9.9\n"
-  "search chromium.org google.com\n";
+  "search chromium.org google.com\n"
+  "options single-request\n";
 }  // namespace {}
 
 class ResolverTest : public Test {
