@@ -66,7 +66,7 @@ bool XIdle::Init(XIdleObserver* observer) {
 }
 
 bool XIdle::AddIdleTimeout(int64 idle_timeout_ms) {
-  DCHECK_NE(idle_counter_, 0);
+  DCHECK_NE(idle_counter_, static_cast<XSyncCounter>(0));
   DCHECK_GT(idle_timeout_ms, 1);
 
   if (idle_timeout_ms < min_timeout_) {
@@ -94,7 +94,7 @@ bool XIdle::AddIdleTimeout(int64 idle_timeout_ms) {
 }
 
 bool XIdle::GetIdleTime(int64* idle_time_ms) {
-  DCHECK_NE(idle_counter_, 0);
+  DCHECK_NE(idle_counter_, static_cast<XSyncCounter>(0));
   return xsync_->QueryCounterInt64(idle_counter_, idle_time_ms);
 }
 
