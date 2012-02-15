@@ -59,6 +59,9 @@ const struct TrackedDir {
   {kDownloadsDir, true},
 };
 const char kVaultDir[] = "vault";
+const char kEphemeralDir[] = "ephemeralfs";
+const char kEphemeralMountType[] = "tmpfs";
+const char kEphemeralMountPerms[] = "mode=0700";
 const base::TimeDelta kOldUserLastActivityTime = base::TimeDelta::FromDays(92);
 
 const char kDefaultEcryptfsCryptoAlg[] = "aes";
@@ -148,7 +151,8 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
     return false;
   }
   // Now check for the presence of a vault directory
-  FilePath vault_path(GetUserVaultPath(credentials));
+  FilePath vault_path(GetUserVaultPath(
+      credentials.GetObfuscatedUsername(system_salt_)));
   if (!file_util::DirectoryExists(vault_path)) {
     // If the vault directory doesn't exist, then create the cryptohome from
     // scratch
@@ -166,7 +170,8 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
 
 bool Mount::DoesCryptohomeExist(const Credentials& credentials) const {
   // Check for the presence of a vault directory
-  FilePath vault_path(GetUserVaultPath(credentials));
+  FilePath vault_path(GetUserVaultPath(
+      credentials.GetObfuscatedUsername(system_salt_)));
   return file_util::DirectoryExists(vault_path);
 }
 
@@ -204,6 +209,35 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       *mount_error = MOUNT_ERROR_NONE;
     }
     return MountGuestCryptohome();
+  }
+
+  ReloadDevicePolicy();
+  bool ephemeral_users = AreEphemeralUsersEnabled();
+  const string obfuscated_owner = GetObfuscatedOwner();
+  if (ephemeral_users)
+    RemoveNonOwnerCryptohomes();
+
+  // Mount an ephemeral cryptohome if the ephemeral users policy is enabled and
+  // the user is not the device owner.
+  if (ephemeral_users &&
+      (enterprise_owned_ || !obfuscated_owner.empty()) &&
+      (credentials.GetObfuscatedUsername(system_salt_) != obfuscated_owner)) {
+    if (!mount_args.create_if_missing) {
+      LOG(ERROR) << "An ephemeral cryptohome can only be mounted when its "
+                 << "creation on-the-fly is allowed.";
+      *mount_error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
+      return false;
+    }
+
+    if (!MountEphemeralCryptohome(credentials)) {
+      RemoveCryptohome(credentials);
+      *mount_error = MOUNT_ERROR_FATAL;
+      return false;
+    }
+
+    current_user_->SetUser(credentials);
+    *mount_error = MOUNT_ERROR_NONE;
+    return true;
   }
 
   if (!mount_args.create_if_missing && !DoesCryptohomeExist(credentials)) {
@@ -288,7 +322,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // /home/user/$hash: owned by chronos
   // /home/root/$hash: owned by root
 
-  string vault_path = GetUserVaultPath(credentials);
+  string vault_path = GetUserVaultPath(
+      credentials.GetObfuscatedUsername(system_salt_));
   // Create vault_path/user as a passthrough directory, move all the (encrypted)
   // contents of vault_path into vault_path/user, create vault_path/root.
   MigrateToUserHome(vault_path);
@@ -373,6 +408,77 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   return true;
 }
 
+bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
+  const string username = credentials.GetFullUsernameString();
+  const string path = GetUserEphemeralPath(
+      credentials.GetObfuscatedUsername(system_salt_));
+  const string user_multi_home =
+      chromeos::cryptohome::home::GetUserPath(username).value();
+  const string root_multi_home =
+      chromeos::cryptohome::home::GetRootPath(username).value();
+  if (!EnsureUserMountPoints(credentials))
+    return false;
+  if (!MountForUser(current_user_,
+                    path,
+                    user_multi_home,
+                    kEphemeralMountType,
+                    kEphemeralMountPerms)) {
+    LOG(ERROR) << "Mount of ephemeral user home at " << user_multi_home
+               << "failed: " << errno;
+    return false;
+  }
+  if (!MountForUser(current_user_,
+                    path,
+                    root_multi_home,
+                    kEphemeralMountType,
+                    kEphemeralMountPerms)) {
+    LOG(ERROR) << "Mount of ephemeral root home at " << root_multi_home
+               << "failed: " << errno;
+    UnmountAllForUser(current_user_);
+    return false;
+  }
+  if (!BindForUser(current_user_, user_multi_home, home_dir_)) {
+    LOG(ERROR) << "Bind mount of ephemeral user home from " << user_multi_home
+               << " to " << home_dir_ << " failed: " << errno;
+    UnmountAllForUser(current_user_);
+    return false;
+  }
+  return SetUpEphemeralCryptohome(user_multi_home);
+}
+
+bool Mount::SetUpEphemeralCryptohome(const std::string& home_dir) {
+  if (set_vault_ownership_) {
+    if (!platform_->SetOwnership(home_dir, default_user_, default_group_)) {
+      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
+                 << default_group_ << ") of path: " << home_dir;
+      UnmountAllForUser(current_user_);
+      return false;
+    }
+  }
+  CopySkeleton();
+
+  // Create the Downloads directory if it does not exist so that it can later be
+  // made group accessible when SetupGroupAccess() is called.
+  FilePath downloads_path = FilePath(home_dir).Append(kDownloadsDir);
+  if (!file_util::DirectoryExists(downloads_path)) {
+    if (!file_util::CreateDirectory(downloads_path) ||
+        !platform_->SetOwnership(downloads_path.value(),
+                                 default_user_, default_group_)) {
+      LOG(ERROR) << "Couldn't create user Downloads directory: "
+                 << downloads_path.value();
+      UnmountAllForUser(current_user_);
+      return false;
+    }
+  }
+
+  if (!SetupGroupAccess()) {
+    UnmountAllForUser(current_user_);
+    return false;
+  }
+
+  return true;
+}
+
 bool Mount::MountForUser(UserSession *user, const std::string& src,
                          const std::string& dest, const std::string& type,
                          const std::string& options) {
@@ -440,9 +546,45 @@ void Mount::ForceUnmount(const std::string& mount_point) {
   }
 }
 
+void Mount::RemoveNonOwnerCryptohomesCallback(const FilePath& vault) {
+  if (vault != FilePath(GetUserVaultPath(GetObfuscatedOwner())))
+    file_util::Delete(vault.DirName(), true);
+}
+
+void Mount::RemoveNonOwnerDirectories(const FilePath& prefix) {
+  file_util::FileEnumerator dir_enumerator(prefix, false,
+      file_util::FileEnumerator::DIRECTORIES);
+  for (FilePath next_path = dir_enumerator.Next(); !next_path.empty();
+       next_path = dir_enumerator.Next()) {
+    const std::string str_dir_name = next_path.BaseName().value();
+    if (!base::strcasecmp(str_dir_name.c_str(), GetObfuscatedOwner().c_str()))
+      continue; // Skip the owner's directory.
+    if (!chromeos::cryptohome::home::IsSanitizedUserName(str_dir_name))
+      continue; // Skip any directory whose name is not an obfuscated user name.
+    if (platform_->IsDirectoryMounted(next_path.value()))
+      continue; // Skip any directory that is currently mounted.
+    platform_->DeleteFile(next_path.value(), true);
+  }
+}
+
+void Mount::RemoveNonOwnerCryptohomes() {
+  if (!enterprise_owned_ && GetObfuscatedOwner().empty())
+    return;
+
+  DoForEveryUnmountedCryptohome(base::Bind(
+      &Mount::RemoveNonOwnerCryptohomesCallback,
+      base::Unretained(this)));
+  RemoveNonOwnerDirectories(chromeos::cryptohome::home::GetUserPathPrefix());
+  RemoveNonOwnerDirectories(chromeos::cryptohome::home::GetRootPathPrefix());
+}
+
 bool Mount::UnmountCryptohome() {
   UnmountAllForUser(current_user_);
-  UpdateCurrentUserActivityTimestamp(0);
+  ReloadDevicePolicy();
+  if (AreEphemeralUsersEnabled())
+    RemoveNonOwnerCryptohomes();
+  else
+    UpdateCurrentUserActivityTimestamp(0);
   current_user_->Reset();
 
   // Clear the user keyring if the unmount was successful
@@ -474,8 +616,20 @@ bool Mount::IsCryptohomeMounted() const {
 }
 
 bool Mount::IsCryptohomeMountedForUser(const Credentials& credentials) const {
-  return platform_->IsDirectoryMountedWith(home_dir_,
-                                           GetUserVaultPath(credentials));
+  const std::string obfuscated_owner =
+      credentials.GetObfuscatedUsername(system_salt_);
+  return (platform_->IsDirectoryMountedWith(
+              home_dir_,
+              GetUserVaultPath(obfuscated_owner)) ||
+          platform_->IsDirectoryMountedWith(
+              home_dir_,
+              GetUserEphemeralPath(obfuscated_owner)));
+}
+
+bool Mount::IsVaultMountedForUser(const Credentials& credentials) const {
+  return platform_->IsDirectoryMountedWith(
+      home_dir_,
+      GetUserVaultPath(credentials.GetObfuscatedUsername(system_salt_)));
 }
 
 bool Mount::CreateCryptohome(const Credentials& credentials) const {
@@ -499,7 +653,8 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
   }
 
   // Create the user's vault.
-  std::string vault_path = GetUserVaultPath(credentials);
+  std::string vault_path = GetUserVaultPath(
+      credentials.GetObfuscatedUsername(system_salt_));
   if (!platform_->CreateDirectory(vault_path)) {
     LOG(ERROR) << "Couldn't create vault path: " << vault_path.c_str();
     platform_->SetMask(original_mask);
@@ -516,9 +671,8 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   const int original_mask = platform_->SetMask(kDefaultUmask);
 
   // Add the subdirectories if they do not exist.
-  const FilePath dest = FilePath(
-                            VaultPathToUserPath(
-                                GetUserVaultPath(credentials)));
+  const FilePath dest = FilePath(VaultPathToUserPath(
+      GetUserVaultPath(credentials.GetObfuscatedUsername(system_salt_))));
   const FilePath source = FilePath(GetMountedUserHomePath(credentials));
   if (!file_util::DirectoryExists(dest)) {
     LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
@@ -623,6 +777,13 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   return false;
 }
 
+void Mount::EnsureDevicePolicyLoaded(bool force_reload) {
+  if (!policy_provider_.get())
+    policy_provider_.reset(new policy::PolicyProvider());
+  else if (force_reload)
+    policy_provider_->Reload();
+}
+
 void Mount::DoForEveryUnmountedCryptohome(
     const CryptohomeCallback& cryptohome_cb) {
   FilePath shadow_root(shadow_root_);
@@ -704,6 +865,15 @@ bool Mount::DoAutomaticFreeDiskSpaceControl() {
   if (platform_->AmountOfFreeDiskSpace(home_dir_) > kMinFreeSpace)
     return false;
 
+  ReloadDevicePolicy();
+
+  // If ephemeral users are enabled, remove all cryptohomes except those
+  // currently mounted or belonging to the owner.
+  if (AreEphemeralUsersEnabled()) {
+    RemoveNonOwnerCryptohomes();
+    return (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace);
+  }
+
   // Clean Cache directories for every user (except current one).
   DoForEveryUnmountedCryptohome(base::Bind(&Mount::DeleteCacheCallback,
                                            base::Unretained(this)));
@@ -770,13 +940,19 @@ bool Mount::SetupGroupAccess() const {
   return true;
 }
 
-bool Mount::TestCredentials(const Credentials& credentials) const {
+bool Mount::TestCredentials(const Credentials& credentials) {
   // If the current logged in user matches, use the UserSession to verify the
   // credentials.  This is less costly than a trip to the TPM, and only verifies
   // a user during their logged in session.
   if (current_user_->CheckUser(credentials)) {
     return current_user_->Verify(credentials);
   }
+  // If ephemeral users are enabled, allow a check against the cryptohome for
+  // the owner only.
+  ReloadDevicePolicy();
+  if (AreEphemeralUsersEnabled() &&
+      (credentials.GetObfuscatedUsername(system_salt_) != GetObfuscatedOwner()))
+    return false;
   MountError mount_error;
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
@@ -1028,42 +1204,12 @@ bool Mount::MountGuestCryptohome() {
   current_user_->Reset();
 
   // Attempt to mount guestfs
-  if (!MountForUser(current_user_, "guestfs", home_dir_, "tmpfs",
-                    "mode=0700")) {
+  if (!MountForUser(current_user_, "guestfs", home_dir_, kEphemeralMountType,
+                    kEphemeralMountPerms)) {
     LOG(ERROR) << "Cryptohome mount failed: " << errno << " for guestfs";
     return false;
   }
-  if (set_vault_ownership_) {
-    if (!platform_->SetOwnership(home_dir_, default_user_, default_group_)) {
-      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                 << default_group_ << ") of guestfs path: "
-                 << home_dir_;
-      UnmountAllForUser(current_user_);
-      return false;
-    }
-  }
-  CopySkeleton();
-
-  // Create the Downloads directory if it does not exist so that it can
-  // later be made group accessible when SetupGroupAccess() is called.
-  FilePath downloads_path = FilePath(home_dir_).Append(kDownloadsDir);
-  if (!file_util::DirectoryExists(downloads_path)) {
-    if (!file_util::CreateDirectory(downloads_path) ||
-        !platform_->SetOwnership(downloads_path.value(),
-                                 default_user_, default_group_)) {
-      LOG(ERROR) << "Couldn't create user Downloads directory: "
-                 << downloads_path.value();
-      UnmountAllForUser(current_user_);
-      return false;
-    }
-  }
-
-  if (!SetupGroupAccess()) {
-    UnmountAllForUser(current_user_);
-    return false;
-  }
-
-  return true;
+  return SetUpEphemeralCryptohome(home_dir_);
 }
 
 string Mount::GetUserDirectory(const Credentials& credentials) const {
@@ -1093,10 +1239,14 @@ string Mount::GetUserKeyFileForUser(const string& obfuscated_username) const {
                       obfuscated_username.c_str());
 }
 
-string Mount::GetUserVaultPath(const Credentials& credentials) const {
+string Mount::GetUserEphemeralPath(const string& obfuscated_username) const {
+  return StringPrintf("%s/%s", kEphemeralDir, obfuscated_username.c_str());
+}
+
+string Mount::GetUserVaultPath(const std::string& obfuscated_username) const {
   return StringPrintf("%s/%s/%s",
                       shadow_root_.c_str(),
-                      credentials.GetObfuscatedUsername(system_salt_).c_str(),
+                      obfuscated_username.c_str(),
                       kVaultDir);
 }
 
@@ -1125,11 +1275,7 @@ string Mount::GetMountedRootHomePath(const Credentials& credentials) const {
 }
 
 string Mount::GetObfuscatedOwner() {
-  if (!policy_provider_.get())
-    policy_provider_.reset(new policy::PolicyProvider());
-  else
-    policy_provider_->Reload();
-
+  EnsureDevicePolicyLoaded(false);
   string owner;
   if (policy_provider_->device_policy_is_loaded())
     policy_provider_->GetDevicePolicy().GetOwner(&owner);
@@ -1139,6 +1285,19 @@ string Mount::GetObfuscatedOwner() {
         .GetObfuscatedUsername(system_salt_);
   }
   return "";
+}
+
+bool Mount::AreEphemeralUsersEnabled() {
+  EnsureDevicePolicyLoaded(false);
+  // If the policy cannot be loaded, default to non-ephemeral users.
+  bool ephemeral_users = false;
+  if (policy_provider_->device_policy_is_loaded())
+    policy_provider_->GetDevicePolicy().GetEphemeralUsers(&ephemeral_users);
+  return ephemeral_users;
+}
+
+void Mount::ReloadDevicePolicy() {
+  EnsureDevicePolicyLoaded(true);
 }
 
 void Mount::RecursiveCopy(const FilePath& destination,
@@ -1454,10 +1613,9 @@ bool Mount::EnsureDirHasOwner(const FilePath& fp, uid_t final_uid,
                               gid_t final_gid) const {
   std::vector<std::string> path_parts;
   fp.GetComponents(&path_parts);
-  FilePath check_path("/");
-  // Note that since check_path starts off at /, we don't want to re-append /,
-  // which is path_parts[0]. Also, Append() DCHECKs if you pass it an absolute
-  // path, which / is.
+  // The path given should be absolute to that its first part is /. This is not
+  // actually checked so that relative paths can be used during testing.
+  FilePath check_path(path_parts[0]);
   for (size_t i = 1; i < path_parts.size(); i++) {
     check_path = check_path.Append(path_parts[i]);
     bool last = (i == (path_parts.size() - 1));

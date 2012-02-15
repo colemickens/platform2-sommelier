@@ -1015,6 +1015,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
     }
   }
 
+  mount_->ReloadDevicePolicy();
   *OUT_status = g_strdup_printf(
       "TPM Status:\n"
       "  Enabled.........................: %s\n"

@@ -11,11 +11,13 @@
 #include <string.h>  // For memset(), memcpy()
 #include <stdlib.h>
 #include <sys/types.h>
+#include <vector>
 
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/time.h>
+#include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
@@ -49,6 +51,11 @@ ACTION_P2(SetOwner, owner_known, owner) {
   return owner_known;
 }
 
+ACTION_P(SetEphemeralUsers, ephemeral_users) {
+  *arg0 = ephemeral_users;
+  return true;
+}
+
 class MountTest : public ::testing::Test {
  public:
   MountTest() { }
@@ -72,6 +79,7 @@ class MountTest : public ::testing::Test {
     char* buf = new char[file_size];
     int data_read = file_util::ReadFile(path, buf, file_size);
     system_salt_.assign(buf, buf + data_read);
+    chromeos::cryptohome::home::SetSystemSaltPath(path.value());
     delete buf;
   }
 
@@ -94,12 +102,17 @@ class MountTest : public ::testing::Test {
     blob->swap(local_wrapped_keyset);
   }
 
-  void set_owner(Mount* mount, bool owner_known, const string& owner) {
+  void set_policy(Mount* mount,
+                  bool owner_known,
+                  const string& owner,
+                  bool ephemeral_users) {
     policy::MockDevicePolicy* device_policy = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy, LoadPolicy())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*device_policy, GetOwner(_))
         .WillRepeatedly(SetOwner(owner_known, owner));
+    EXPECT_CALL(*device_policy, GetEphemeralUsers(_))
+        .WillRepeatedly(SetEphemeralUsers(ephemeral_users));
     mount->set_policy_provider(new policy::PolicyProvider(device_policy));
   }
 
@@ -119,7 +132,7 @@ TEST_F(MountTest, BadInitTest) {
   mount.set_shadow_root("/dev/null");
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[0].password,
@@ -139,7 +152,7 @@ TEST_F(MountTest, GoodDecryptTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
   mount.set_fallback_to_scrypt(true);
 
   cryptohome::SecureBlob passkey;
@@ -160,7 +173,7 @@ TEST_F(MountTest, TestCredsDoesNotReSave) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
   mount.set_fallback_to_scrypt(true);
 
   cryptohome::SecureBlob passkey;
@@ -195,7 +208,7 @@ TEST_F(MountTest, CurrentCredentialsTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[3].password,
@@ -227,7 +240,7 @@ TEST_F(MountTest, BadDecryptTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey("bogus", system_salt_, &passkey);
@@ -245,8 +258,11 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
   mount.set_set_vault_ownership(false);
+
+  NiceMock<MockPlatform> platform;
+  mount.set_platform(&platform);
 
   // Test user at index 5 was not created by the test data
   cryptohome::SecureBlob passkey;
@@ -279,7 +295,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[6].password,
@@ -321,7 +337,7 @@ TEST_F(MountTest, MigrateTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   // Test user at index 7 was created using the old style
   cryptohome::SecureBlob passkey;
@@ -364,7 +380,7 @@ TEST_F(MountTest, SystemSaltTest) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   EXPECT_TRUE(mount.Init());
   chromeos::Blob system_salt;
@@ -383,7 +399,7 @@ TEST_F(MountTest, MountCryptohome) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -419,7 +435,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -466,7 +482,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -514,7 +530,7 @@ TEST_F(MountTest, RemoveSubdirectories) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -587,7 +603,7 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   mount.get_crypto()->set_tpm(&tpm);
   mount.set_shadow_root(kImageDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -677,7 +693,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
-  set_owner(&mount, false, "");
+  set_policy(&mount, false, "", false);
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -734,7 +750,25 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
             serialized2.has_last_activity_timestamp());
 }
 
-// Users for testing automatic disk cleanup.
+// Test setup that initially has no cryptohomes.
+const TestUserInfo kNoUsers[] = {
+  {"user0@invalid.domain", "zero", false, false},
+  {"user1@invalid.domain", "odin", false, false},
+  {"user2@invalid.domain", "dwaa", false, false},
+  {"owner@invalid.domain", "1234", false, false},
+};
+const int kNoUserCount = arraysize(kNoUsers);
+
+// Test setup that initially has a cryptohome for the owner only.
+const TestUserInfo kOwnerOnlyUsers[] = {
+  {"user0@invalid.domain", "zero", false, false},
+  {"user1@invalid.domain", "odin", false, false},
+  {"user2@invalid.domain", "dwaa", false, false},
+  {"owner@invalid.domain", "1234", true, false},
+};
+const int kOwnerOnlyUserCount = arraysize(kOwnerOnlyUsers);
+
+// Test setup that initially has cryptohomes for all users.
 const TestUserInfo kAlternateUsers[] = {
   {"user0@invalid.domain", "zero", true, false},
   {"user1@invalid.domain", "odin", true, false},
@@ -742,27 +776,30 @@ const TestUserInfo kAlternateUsers[] = {
   {"owner@invalid.domain", "1234", true, false},
 };
 const int kAlternateUserCount = arraysize(kAlternateUsers);
+
+// Alternative shadow root directory used for tests adding or removing users.
+// This shadow root is recreated before each test.
 const char kAltImageDir[] = "alt_test_image_dir";
 
-// Checks DoAutomaticFreeDiskSpaceControl() to act in different situations when
-// free disk space is low.
-class DoAutomaticFreeDiskSpaceControlTest : public MountTest {
+class AltImageTest : public MountTest {
  public:
-  DoAutomaticFreeDiskSpaceControlTest() { }
+  AltImageTest() { }
 
-  void SetUp() {
+  void SetUp(const TestUserInfo *users, int user_count) {
     // Set up fresh users.
     cryptohome::MakeTests make_tests;
-    make_tests.InitTestData(kAltImageDir, kAlternateUsers, kAlternateUserCount);
+    make_tests.InitTestData(kAltImageDir, users, user_count);
     MountTest::SetUp();
     LoadSystemSalt(kAltImageDir);
     FilePath root_dir(kAltImageDir);
-    for (int user = 0; user != kAlternateUserCount; user++) {
+    image_path_.reset(new FilePath[user_count]);
+    username_passkey_.reset(new UsernamePasskey[user_count]);
+    for (int user = 0; user != user_count; user++) {
       cryptohome::SecureBlob passkey;
-      cryptohome::Crypto::PasswordToPasskey(kAlternateUsers[user].password,
+      cryptohome::Crypto::PasswordToPasskey(users[user].password,
                                             system_salt_, &passkey);
       username_passkey_[user].Assign(
-          UsernamePasskey(kAlternateUsers[user].username, passkey));
+          UsernamePasskey(users[user].username, passkey));
       image_path_[user] = root_dir.Append(
           username_passkey_[user].GetObfuscatedUsername(system_salt_));
     }
@@ -771,9 +808,30 @@ class DoAutomaticFreeDiskSpaceControlTest : public MountTest {
     mount_.get_crypto()->set_tpm(&tpm_);
     mount_.set_shadow_root(kAltImageDir);
     mount_.set_use_tpm(false);
-    set_owner(&mount_, false, "");
+    set_policy(&mount_, false, "", false);
     mount_.set_platform(&platform_);
     EXPECT_TRUE(mount_.Init());
+  }
+
+ protected:
+  Mount mount_;
+  NiceMock<MockTpm> tpm_;
+  NiceMock<MockPlatform> platform_;
+  scoped_array<FilePath> image_path_;
+  scoped_array<UsernamePasskey> username_passkey_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(AltImageTest);
+};
+
+// Checks DoAutomaticFreeDiskSpaceControl() to act in different situations when
+// free disk space is low.
+class DoAutomaticFreeDiskSpaceControlTest : public AltImageTest {
+ public:
+  DoAutomaticFreeDiskSpaceControlTest() { }
+
+  void SetUp() {
+    AltImageTest::SetUp(kAlternateUsers, kAlternateUserCount);
   }
 
   bool StoreSerializedKeyset(
@@ -800,13 +858,6 @@ class DoAutomaticFreeDiskSpaceControlTest : public MountTest {
     serialized.set_last_activity_timestamp(timestamp.ToInternalValue());
     return StoreSerializedKeyset(key_file, serialized);
   }
-
- protected:
-  Mount mount_;
-  NiceMock<MockTpm> tpm_;
-  NiceMock<MockPlatform> platform_;
-  FilePath image_path_[kAlternateUserCount];
-  UsernamePasskey username_passkey_[kAlternateUserCount];
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DoAutomaticFreeDiskSpaceControlTest);
@@ -873,7 +924,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoTimestamp) {
   // users had no oldest activity timestamp.
 
   // Setting owner so that old user may be deleted.
-  set_owner(&mount_, true, "owner@invalid.domain");
+  set_policy(&mount_, true, "owner@invalid.domain", false);
 
   // Verify that user timestamp cache must be not initialized by now.
   UserOldestActivityTimestampCache* user_timestamp =
@@ -933,7 +984,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanup) {
   // Remove old users, oldest first. Stops removing when disk space is enough.
 
   // Setting owner so that old user may be deleted.
-  set_owner(&mount_, true, "owner@invalid.domain");
+  set_policy(&mount_, true, "owner@invalid.domain", false);
 
   // Update cached users with following timestamps:
   // user[0] is old, user[1] is up to date, user[2] still have no timestamp,
@@ -984,7 +1035,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
   SetUserTimestamp(mount_, 3, base::Time::Now() - kOldUserLastActivityTime * 2);
 
   // Setting owner so that old user may be deleted.
-  set_owner(&mount_, true, "owner@invalid.domain");
+  set_policy(&mount_, true, "owner@invalid.domain", false);
 
   // Now pretend we have lack of free space 2 times.
   // So at 1st Caches are deleted and then 1 oldest user is deleted.
@@ -1012,7 +1063,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
   EXPECT_TRUE(mount2->Init());
 
   // Setting owner so that old user may be deleted.
-  set_owner(mount2.get(), true, "owner@invalid.domain");
+  set_policy(mount2.get(), true, "owner@invalid.domain", false);
 
   // Now pretend we have lack of free space at all times.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
@@ -1024,6 +1075,23 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
   // User[1] should not be deleted because it is up to date.
   EXPECT_FALSE(file_util::PathExists(image_path_[0]));
   EXPECT_TRUE(file_util::PathExists(image_path_[1]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[2]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[3]));
+}
+
+TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupEphemeral) {
+  // When ephemeral users are enabled, all users except owner should be removed.
+  set_policy(&mount_, true, "owner@invalid.domain", true);
+
+  // Pretend we have lack of free space.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillOnce(Return(kEnoughFreeSpace));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // All users except for user[3], who is the owner, should be deleted.
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[1]));
   EXPECT_FALSE(file_util::PathExists(image_path_[2]));
   EXPECT_TRUE(file_util::PathExists(image_path_[3]));
 }
@@ -1054,7 +1122,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupEnterprise) {
   // Removes old users in enterprise mode.
 
   // Setting enterprise owned so that all users may be deleted.
-  set_owner(&mount_, true, "");
+  set_policy(&mount_, true, "", false);
   mount_.set_enterprise_owned(true);
 
   // Update cached users with artificial timestamp: user[0] is old,
@@ -1081,7 +1149,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   // Do not remove currently mounted user and do remove it when unmounted.
 
   // Setting owner (user[3]) so that old user may be deleted.
-  set_owner(&mount_, true, "owner@invalid.domain");
+  set_policy(&mount_, true, "owner@invalid.domain", false);
 
   // Set all users old should one of them have a timestamp.
   mount_.set_old_user_last_activity_time(base::TimeDelta::FromMicroseconds(0));
@@ -1172,6 +1240,7 @@ TEST_F(MountTest, MountForUserOrderingTest) {
   std::string dest0 = "/dest/foo";
   std::string dest1 = "/dest/bar";
   std::string dest2 = "/dest/baz";
+
   EXPECT_CALL(platform, Mount(src, dest0, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform, Bind(src, dest1))
@@ -1190,6 +1259,284 @@ TEST_F(MountTest, MountForUserOrderingTest) {
   EXPECT_TRUE(mount.MountForUser(&session, src, dest2, "", ""));
   mount.UnmountAllForUser(&session);
   EXPECT_FALSE(mount.UnmountForUser(&session));
+}
+
+class EphemeralTest : public AltImageTest {
+ public:
+  EphemeralTest() { }
+
+  void SetUp(const TestUserInfo *users, int user_count) {
+    AltImageTest::SetUp(users, user_count);
+    user_path_.reset(new FilePath[user_count]);
+    root_path_.reset(new FilePath[user_count]);
+    for (int user = 0; user != user_count; user++) {
+      const string username = users[user].username;
+      user_path_[user] = chromeos::cryptohome::home::GetUserPath(username);
+      root_path_[user] = chromeos::cryptohome::home::GetRootPath(username);
+      if (users[user].create)
+        mount_.EnsureUserMountPoints(username_passkey_[user]);
+    }
+  }
+
+ protected:
+  scoped_array<FilePath> user_path_;
+  scoped_array<FilePath> root_path_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(EphemeralTest);
+};
+
+class EphemeralNoUserSystemTest : public EphemeralTest {
+ public:
+  EphemeralNoUserSystemTest() { }
+
+  void SetUp() {
+    EphemeralTest::SetUp(kNoUsers, kNoUserCount);
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(EphemeralNoUserSystemTest);
+};
+
+TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
+  // Checks that when a device is not enterprise enrolled and does not have a
+  // known owner, a regular vault is created and mounted.
+  set_policy(&mount_, false, "", true);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  MountError error;
+  ASSERT_TRUE(mount_.MountCryptohome(username_passkey_[0],
+                                     mount_args,
+                                     &error));
+
+  EXPECT_TRUE(file_util::PathExists(user_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(root_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[0]));
+}
+
+TEST_F(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
+  // Checks that when a device is enterprise enrolled, a tmpfs cryptohome is
+  // mounted and no regular vault is created.
+  set_policy(&mount_, false, "", true);
+  mount_.set_enterprise_owned(true);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  MountError error;
+  ASSERT_TRUE(mount_.MountCryptohome(username_passkey_[0],
+                                     mount_args,
+                                     &error));
+
+  EXPECT_TRUE(file_util::PathExists(user_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(root_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+}
+
+class EphemeralOwnerOnlySystemTest : public EphemeralTest {
+ public:
+  EphemeralOwnerOnlySystemTest() { }
+
+  void SetUp() {
+    EphemeralTest::SetUp(kOwnerOnlyUsers, kOwnerOnlyUserCount);
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(EphemeralOwnerOnlySystemTest);
+};
+
+TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
+  // Checks that when a device is not enterprise enrolled and has a known owner,
+  // a tmpfs cryptohome is mounted and no regular vault is created.
+  set_policy(&mount_, true, "owner@invalid.domain", true);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  MountError error;
+  ASSERT_TRUE(mount_.MountCryptohome(username_passkey_[0],
+                                     mount_args,
+                                     &error));
+
+  EXPECT_TRUE(file_util::PathExists(user_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(root_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+}
+
+class EphemeralExistingUserSystemTest : public EphemeralTest {
+ public:
+  EphemeralExistingUserSystemTest() { }
+
+  void SetUp() {
+    EphemeralTest::SetUp(kAlternateUsers, kAlternateUserCount);
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(EphemeralExistingUserSystemTest);
+};
+
+TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
+  // Checks that when a device is not enterprise enrolled and does not have a
+  // known owner, no stale cryptohomes are removed while mounting.
+  set_policy(&mount_, false, "", true);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  MountError error;
+  ASSERT_TRUE(mount_.MountCryptohome(username_passkey_[0],
+                                     mount_args,
+                                     &error));
+
+  for (int user = 0; user != kAlternateUserCount; user++) {
+    EXPECT_TRUE(file_util::PathExists(user_path_[user]));
+    EXPECT_TRUE(file_util::PathExists(root_path_[user]));
+    EXPECT_TRUE(file_util::PathExists(image_path_[user]));
+  }
+}
+
+TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
+  // Checks that when a device is enterprise enrolled, all stale cryptohomes are
+  // removed while mounting.
+  set_policy(&mount_, false, "", true);
+  mount_.set_enterprise_owned(true);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  MountError error;
+  ASSERT_TRUE(mount_.MountCryptohome(username_passkey_[0],
+                                     mount_args,
+                                     &error));
+
+  EXPECT_TRUE(file_util::PathExists(user_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(root_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+  for (int user = 1; user != kAlternateUserCount; user++) {
+    EXPECT_FALSE(file_util::PathExists(user_path_[user]));
+    EXPECT_FALSE(file_util::PathExists(root_path_[user]));
+    EXPECT_FALSE(file_util::PathExists(image_path_[user]));
+  }
+}
+
+TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
+  // Checks that when a device is not enterprise enrolled and has a known owner,
+  // all stale cryptohomes are removed while mounting.
+  set_policy(&mount_, true, "owner@invalid.domain", true);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  MountError error;
+  ASSERT_TRUE(mount_.MountCryptohome(username_passkey_[0],
+                                     mount_args,
+                                     &error));
+
+  EXPECT_TRUE(file_util::PathExists(user_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(root_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+  for (int user = 1; user != kAlternateUserCount; user++) {
+    if (username_passkey_[user].GetFullUsernameString() ==
+        "owner@invalid.domain") {
+      // The owner's cryptohome and mount points should have been preserved.
+      EXPECT_TRUE(file_util::PathExists(user_path_[user]));
+      EXPECT_TRUE(file_util::PathExists(root_path_[user]));
+      EXPECT_TRUE(file_util::PathExists(image_path_[user]));
+    } else {
+      EXPECT_FALSE(file_util::PathExists(user_path_[user]));
+      EXPECT_FALSE(file_util::PathExists(root_path_[user]));
+      EXPECT_FALSE(file_util::PathExists(image_path_[user]));
+    }
+  }
+}
+
+TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownUnmountNoRemoveTest) {
+  // Checks that when a device is not enterprise enrolled and does not have a
+  // known owner, no stale cryptohomes are removed while unmounting.
+  set_policy(&mount_, false, "", true);
+
+  ASSERT_TRUE(mount_.UnmountCryptohome());
+
+  for (int user = 0; user != kAlternateUserCount; user++) {
+    EXPECT_TRUE(file_util::PathExists(user_path_[user]));
+    EXPECT_TRUE(file_util::PathExists(root_path_[user]));
+    EXPECT_TRUE(file_util::PathExists(image_path_[user]));
+  }
+}
+
+TEST_F(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
+  // Checks that when a device is enterprise enrolled, all stale cryptohomes are
+  // removed while unmounting.
+  set_policy(&mount_, false, "", true);
+  mount_.set_enterprise_owned(true);
+
+  ASSERT_TRUE(mount_.UnmountCryptohome());
+
+  for (int user = 0; user != kAlternateUserCount; user++) {
+    EXPECT_FALSE(file_util::PathExists(user_path_[user]));
+    EXPECT_FALSE(file_util::PathExists(root_path_[user]));
+    EXPECT_FALSE(file_util::PathExists(image_path_[user]));
+  }
+}
+
+TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
+  // Checks that when a device is not enterprise enrolled and has a known owner,
+  // all stale cryptohomes are removed while unmounting.
+  set_policy(&mount_, true, "owner@invalid.domain", true);
+
+  ASSERT_TRUE(mount_.UnmountCryptohome());
+
+  for (int user = 0; user != kAlternateUserCount; user++) {
+    if (username_passkey_[user].GetFullUsernameString() ==
+        "owner@invalid.domain") {
+      // The owner's cryptohome and mount points should have been preserved.
+      EXPECT_TRUE(file_util::PathExists(user_path_[user]));
+      EXPECT_TRUE(file_util::PathExists(root_path_[user]));
+      EXPECT_TRUE(file_util::PathExists(image_path_[user]));
+    } else {
+      EXPECT_FALSE(file_util::PathExists(user_path_[user]));
+      EXPECT_FALSE(file_util::PathExists(root_path_[user]));
+      EXPECT_FALSE(file_util::PathExists(image_path_[user]));
+    }
+  }
 }
 
 }  // namespace cryptohome

@@ -50,6 +50,8 @@ extern const char kCacheDir[];
 extern const char kDownloadsDir[];
 // Name of the vault directory.
 extern const char kVaultDir[];
+// File system type for ephemeral mounts.
+extern const char kEphemeralMountType[];
 // Time delta of last user's activity to be considered as old.
 extern const base::TimeDelta kOldUserLastActivityTime;
 
@@ -105,12 +107,19 @@ class Mount : public EntropySource {
   // Checks if the mount point currently has a mount
   virtual bool IsCryptohomeMounted() const;
 
-  // Checks if the mount point currently has a mount, and if that mount is for
-  // the specified credentials
+  // Checks whether the mount point currently has a cryptohome mounted for the
+  // specified credentials.
   //
   // Parameters
-  //   credentials - The Credentials for which to test the mount point
+  //   credentials - The credentials for which to test the mount point.
   virtual bool IsCryptohomeMountedForUser(const Credentials& credentials) const;
+
+  // Checks whether the mount point currently has a cryptohome mounted for the
+  // specified credentials that is backed by a vault.
+  //
+  // Parameters
+  //   credentials - The credentials for which to test the mount point.
+  virtual bool IsVaultMountedForUser(const Credentials& credentials) const;
 
   // Checks if the cryptohome vault exists for the given credentials and creates
   // it if not (calls CreateCryptohome).
@@ -189,7 +198,7 @@ class Mount : public EntropySource {
   //
   // Parameters
   //   credentials - The Credentials to attempt to decrypt the key with
-  virtual bool TestCredentials(const Credentials& credentials) const;
+  virtual bool TestCredentials(const Credentials& credentials);
 
   // Migrages a user's vault key from one passkey to another
   //
@@ -432,11 +441,18 @@ class Mount : public EntropySource {
   //   credentials - The Credentials representing the user
   std::string GetUserSaltFile(const Credentials& credentials) const;
 
+  // Gets the directory representing the user's ephemeral cryptohome.
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the credentials.
+  std::string GetUserEphemeralPath(
+      const std::string& obfuscated_username) const;
+
   // Gets the user's vault directory
   //
   // Parameters
-  //   credentials - The Credentials representing the user
-  std::string GetUserVaultPath(const Credentials& credentials) const;
+  //   obfuscated_username - Obfuscated username field of the credentials.
+  std::string GetUserVaultPath(const std::string& obfuscated_username) const;
 
   // Gets the directory to mount the user's cryptohome at
   //
@@ -470,7 +486,18 @@ class Mount : public EntropySource {
 
   // Get the owner user's obfuscated hash. This is empty if the owner has not
   // been set yet or the device is enterprise owned.
+  // The value is cached. It is the caller's responsibility to invoke
+  // ReloadDevicePolicy() whenever a refresh of the cache is desired.
   std::string GetObfuscatedOwner();
+
+  // Returns the state of the ephemeral users policy. Defaults to non-ephemeral
+  // users by returning false if the policy cannot be loaded.
+  // The value is cached. It is the caller's responsibility to invoke
+  // ReloadDevicePolicy() whenever a refresh of the cache is desired.
+  bool AreEphemeralUsersEnabled();
+
+  // Reloads the device policy.
+  void ReloadDevicePolicy();
 
   // Set/get last access timestamp cache instance for test purposes.
   UserOldestActivityTimestampCache* user_timestamp_cache() const {
@@ -500,6 +527,7 @@ class Mount : public EntropySource {
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
   friend class MakeTests;
   friend class MountTest;
+  friend class EphemeralTest;
 
   // Used to override the policy provider for testing (takes ownership)
   void set_policy_provider(policy::PolicyProvider* provider) {
@@ -507,6 +535,12 @@ class Mount : public EntropySource {
   }
 
  private:
+  // Ensures that the device policy is loaded.
+  //
+  // Parameters
+  //   force_reload - Whether to force a reload to pick up any policy changes.
+  void EnsureDevicePolicyLoaded(bool force_reload);
+
   // Invokes given callback for every unmounted cryptohome
   //
   // Parameters
@@ -529,6 +563,20 @@ class Mount : public EntropySource {
                                     const MountArgs& mount_args,
                                     bool recreate_decrypt_fatal,
                                     MountError* error);
+
+  // Mounts and populates an ephemeral cryptohome backed by tmpfs for the given
+  // user.
+  //
+  // Parameters
+  //   credentials - The credentials representing the user.
+  bool MountEphemeralCryptohome(const Credentials& credentials);
+
+  // Sets up a freshly mounted ephemeral cryptohome by adjusting its permissions
+  // and populating it with a skeleton directory and file structure.
+  //
+  // Parameters
+  //   home_dir - The path at which the user's cryptohome has been mounted.
+  bool SetUpEphemeralCryptohome(const std::string& home_dir);
 
   // Recursively copies directory contents to the destination if the destination
   // file does not exist.  Sets ownership to the default_user_
@@ -632,6 +680,24 @@ class Mount : public EntropySource {
   // Parameters
   //   mount_point - Mount point to unmount
   void ForceUnmount(const std::string& mount_point);
+
+  // Deletes a given cryptohome unless it is currently mounted or belongs to the
+  // owner.
+  //
+  // Parameters
+  //   vault - The path to the vault inside the cryptohome to delete.
+  void RemoveNonOwnerCryptohomesCallback(const FilePath& vault);
+
+  // Deletes all directories under |prefix| whose names are obfuscated usernames
+  // except those currently mounted or matching the owner's obfuscated username.
+  //
+  // Parameters
+  //   prefix - The prefix under which to delete.
+  void RemoveNonOwnerDirectories(const FilePath& prefix);
+
+  // Removes the cryptohome directories and mount points except those currently
+  // mounted or belonging to the owner.
+  void RemoveNonOwnerCryptohomes();
 
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.

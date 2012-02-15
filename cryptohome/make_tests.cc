@@ -10,6 +10,7 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/string_util.h>
+#include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
@@ -49,6 +50,8 @@ const TestUserInfo kDefaultUsers[] = {
   {"testuser13@invalid.domain", "thirteen", true, false},
 };
 const size_t kDefaultUserCount = arraysize(kDefaultUsers);
+const char kUserHomeDir[] = "test_user_home";
+const char kRootHomeDir[] = "test_root_home";
 
 MakeTests::MakeTests() {
 }
@@ -56,11 +59,15 @@ MakeTests::MakeTests() {
 void MakeTests::InitTestData(const std::string& image_dir,
                              const TestUserInfo* test_users,
                              size_t test_user_count) {
-  if (file_util::PathExists(FilePath(image_dir))) {
-    file_util::Delete(FilePath(image_dir), true);
-  }
+  FilePath user_dir(kUserHomeDir);
+  FilePath root_dir(kRootHomeDir);
+  file_util::Delete(FilePath(image_dir), true);
+  file_util::Delete(user_dir, true);
+  file_util::Delete(root_dir, true);
 
   file_util::CreateDirectory(FilePath(image_dir));
+  file_util::CreateDirectory(user_dir);
+  file_util::CreateDirectory(root_dir);
 
   std::string skeleton_path = StringPrintf("%s/skel/sub_path",
                                            image_dir.c_str());
@@ -73,6 +80,10 @@ void MakeTests::InitTestData(const std::string& image_dir,
   SecureBlob salt;
   FilePath salt_path(StringPrintf("%s/salt", image_dir.c_str()));
   crypto.GetOrCreateSalt(salt_path, 16, true, &salt);
+
+  chromeos::cryptohome::home::SetUserHomePrefix(user_dir.value() + "/");
+  chromeos::cryptohome::home::SetRootHomePrefix(root_dir.value() + "/");
+  chromeos::cryptohome::home::SetSystemSaltPath(salt_path.value());
 
   // Create the user credentials
   for (unsigned int i = 0; i < test_user_count; i++) {

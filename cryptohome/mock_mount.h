@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,7 +17,7 @@ class MockMount : public Mount {
   MockMount() {}
   ~MockMount() {}
   MOCK_METHOD0(Init, bool());
-  MOCK_CONST_METHOD1(TestCredentials, bool(const Credentials&));
+  MOCK_METHOD1(TestCredentials, bool(const Credentials&));
   MOCK_METHOD3(MountCryptohome, bool(const Credentials&,
                                            const Mount::MountArgs&,
                                            MountError*));

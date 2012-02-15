@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -54,7 +54,7 @@ class MockPlatform : public Platform {
   MOCK_CONST_METHOD1(AmountOfFreeDiskSpace, int64(const std::string&));
   MOCK_METHOD2(Symlink, bool(const std::string&, const std::string&));
   MOCK_METHOD1(FileExists, bool(const std::string&));
-  MOCK_METHOD1(DeleteFile, bool(const std::string&));
+  MOCK_METHOD2(Stat, bool(const std::string&, struct stat*));
   MOCK_METHOD2(ReadFile, bool(const std::string&, chromeos::Blob*));
   MOCK_METHOD2(WriteFile, bool(const std::string&, const chromeos::Blob&));
   MOCK_CONST_METHOD0(GetCurrentTime, base::Time());
