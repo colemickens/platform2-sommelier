@@ -51,8 +51,8 @@ ACTION_P2(SetOwner, owner_known, owner) {
   return owner_known;
 }
 
-ACTION_P(SetEphemeralUsers, ephemeral_users) {
-  *arg0 = ephemeral_users;
+ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
+  *arg0 = ephemeral_users_enabled;
   return true;
 }
 
@@ -105,14 +105,14 @@ class MountTest : public ::testing::Test {
   void set_policy(Mount* mount,
                   bool owner_known,
                   const string& owner,
-                  bool ephemeral_users) {
+                  bool ephemeral_users_enabled) {
     policy::MockDevicePolicy* device_policy = new policy::MockDevicePolicy();
     EXPECT_CALL(*device_policy, LoadPolicy())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*device_policy, GetOwner(_))
         .WillRepeatedly(SetOwner(owner_known, owner));
-    EXPECT_CALL(*device_policy, GetEphemeralUsers(_))
-        .WillRepeatedly(SetEphemeralUsers(ephemeral_users));
+    EXPECT_CALL(*device_policy, GetEphemeralUsersEnabled(_))
+        .WillRepeatedly(SetEphemeralUsersEnabled(ephemeral_users_enabled));
     mount->set_policy_provider(new policy::PolicyProvider(device_policy));
   }
 

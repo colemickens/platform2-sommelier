@@ -1290,10 +1290,11 @@ string Mount::GetObfuscatedOwner() {
 bool Mount::AreEphemeralUsersEnabled() {
   EnsureDevicePolicyLoaded(false);
   // If the policy cannot be loaded, default to non-ephemeral users.
-  bool ephemeral_users = false;
+  bool ephemeral_users_enabled = false;
   if (policy_provider_->device_policy_is_loaded())
-    policy_provider_->GetDevicePolicy().GetEphemeralUsers(&ephemeral_users);
-  return ephemeral_users;
+    policy_provider_->GetDevicePolicy().GetEphemeralUsersEnabled(
+        &ephemeral_users_enabled);
+  return ephemeral_users_enabled;
 }
 
 void Mount::ReloadDevicePolicy() {
