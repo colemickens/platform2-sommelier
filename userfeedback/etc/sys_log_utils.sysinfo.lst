@@ -59,3 +59,4 @@ verified boot,/usr/share/userfeedback/scripts/get_log /var/log/debug_vboot_noisy
 vpd_2.0,/usr/share/userfeedback/scripts/get_log /var/log/vpd_2.0.txt
 setxkbmap,/usr/bin/setxkbmap -print -query
 wifi_status,/usr/bin/network_diagnostics --wifi --no-log
+xrandr,/usr/bin/xrandr --verbose
