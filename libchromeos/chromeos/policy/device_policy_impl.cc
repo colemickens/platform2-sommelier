@@ -242,12 +242,14 @@ bool DevicePolicyImpl::GetReportBootMode(bool* report_boot_mode) const {
   return true;
 }
 
-// Writes the value of the EphemeralUsers policy in |ephemeral_users|. Returns
-// true on success.
-bool DevicePolicyImpl::GetEphemeralUsers(bool* ephemeral_users) const {
-  if (!device_policy_.has_ephemeral_users())
+// Writes the value of the EphemeralUsersEnabled policy in
+// |ephemeral_users_enabled|. Returns true on success.
+bool DevicePolicyImpl::GetEphemeralUsersEnabled(
+    bool* ephemeral_users_enabled) const {
+  if (!device_policy_.has_ephemeral_users_enabled())
     return false;
-  *ephemeral_users = device_policy_.ephemeral_users().ephemeral_users();
+  *ephemeral_users_enabled =
+      device_policy_.ephemeral_users_enabled().ephemeral_users_enabled();
   return true;
 }
 

@@ -75,9 +75,9 @@ class DevicePolicyImpl : public DevicePolicy {
   // true on success.
   virtual bool GetReportBootMode(bool* report_boot_mode) const;
 
-  // Writes the value of the EphemeralUsers policy in |ephemeral_users|. Returns
-  // true on success.
-  virtual bool GetEphemeralUsers(bool* ephemeral_users) const;
+  // Writes the value of the EphemeralUsersEnabled policy in
+  // |ephemeral_users_enabled|. Returns true on success.
+  virtual bool GetEphemeralUsersEnabled(bool* ephemeral_users_enabled) const;
 
   // Writes the value of the ProxyMode policy in |proxy_mode|. Returns true on
   // success.

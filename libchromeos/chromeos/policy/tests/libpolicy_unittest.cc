@@ -106,7 +106,7 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_FALSE(bool_value);
 
   bool_value = true;
-  ASSERT_TRUE(policy.GetEphemeralUsers(&bool_value));
+  ASSERT_TRUE(policy.GetEphemeralUsersEnabled(&bool_value));
   ASSERT_FALSE(bool_value);
 
   std::string string_value;
@@ -167,7 +167,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   ASSERT_FALSE(policy.GetReportVersionInfo(&bool_value));
   ASSERT_FALSE(policy.GetReportActivityTimes(&bool_value));
   ASSERT_FALSE(policy.GetReportBootMode(&bool_value));
-  ASSERT_FALSE(policy.GetEphemeralUsers(&bool_value));
+  ASSERT_FALSE(policy.GetEphemeralUsersEnabled(&bool_value));
   ASSERT_FALSE(policy.GetProxyMode(&string_value));
   ASSERT_FALSE(policy.GetProxyServer(&string_value));
   ASSERT_FALSE(policy.GetProxyPacUrl(&string_value));

@@ -56,7 +56,7 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_CONST_METHOD1(GetReportVersionInfo, bool(bool*));
   MOCK_CONST_METHOD1(GetReportActivityTimes, bool(bool*));
   MOCK_CONST_METHOD1(GetReportBootMode, bool(bool*));
-  MOCK_CONST_METHOD1(GetEphemeralUsers, bool(bool*));
+  MOCK_CONST_METHOD1(GetEphemeralUsersEnabled, bool(bool*));
   MOCK_CONST_METHOD1(GetProxyMode, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyServer, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyPacUrl, bool(std::string*));
