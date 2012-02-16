@@ -15,13 +15,14 @@ BUILDDIR = build
 
 # libevent, gdk and gtk-2.0 are needed to leverage chrome's MessageLoop
 # TODO(cmasone): explore if newer versions of libbase let us avoid this.
-BASE_LIBS = -levent -lcares -lmobile-provider -lmetrics
+BASE_LIBS = -lcares -lmobile-provider -lmetrics
 BASE_INCLUDE_DIRS = -iquote.. -iquote $(BUILDDIR)
 BASE_LIB_DIRS =
 
 LIBS = $(BASE_LIBS)
-PC_DEPS = dbus-c++-1 glib-2.0 libchrome libchromeos gdk-2.0 gtk+-2.0 \
-	  gio-2.0
+BASE_VER = 85268
+PC_DEPS = dbus-c++-1 glib-2.0 gio-2.0 libchrome-$(BASE_VER) \
+	libchromeos-$(BASE_VER)
 INCLUDE_DIRS := $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 LIB_DIRS := $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
