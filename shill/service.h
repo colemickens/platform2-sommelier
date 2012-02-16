@@ -236,7 +236,10 @@ class Service : public base::RefCounted<Service> {
   void set_security_level(int32 security) { security_level_ = security; }
 
   void SetStrength(uint8 strength);
-  uint8 strength() const { return strength_; }
+
+  // uint8 streams out as a char. Coerce to a larger type, so that
+  // it prints as a number.
+  uint16 strength() const { return strength_; }
 
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString(Error *error);
@@ -343,6 +346,7 @@ class Service : public base::RefCounted<Service> {
  private:
   friend class MetricsTest;
   friend class ServiceAdaptorInterface;
+  friend class WiFiServiceTest;
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ServiceTest, Constructor);

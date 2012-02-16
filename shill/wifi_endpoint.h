@@ -66,6 +66,7 @@ class WiFiEndpoint : public Endpoint {
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsPSK);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK);
   FRIEND_TEST(WiFiEndpointTest, DeterminePhyMode);
+  FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, EndpointModified);
 
   enum KeyManagement {
     kKeyManagement802_1x,
@@ -76,7 +77,9 @@ class WiFiEndpoint : public Endpoint {
   static WiFiEndpoint *MakeOpenEndpoint(ProxyFactory *proxy_factory,
                                         const WiFiRefPtr &wifi,
                                         const std::string &ssid,
-                                        const std::string &bssid);
+                                        const std::string &bssid,
+                                        uint16 frequency,
+                                        int16 signal_dbm);
   // Maps mode strings from supplicant into flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h
   static const char *ParseMode(const std::string &mode_string);
@@ -106,7 +109,7 @@ class WiFiEndpoint : public Endpoint {
   std::string ssid_hex_;
   std::string bssid_string_;
   std::string bssid_hex_;
-  int16_t signal_strength_;
+  int16 signal_strength_;
   uint16 frequency_;
   uint16 physical_mode_;
   // network_mode_ and security_mode_ are represented as flimflam names

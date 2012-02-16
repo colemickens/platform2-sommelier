@@ -51,11 +51,14 @@ class WiFiService : public Service {
   virtual bool TechnologyIs(const Technology::Identifier type) const;
   virtual bool IsConnecting() const;
 
-  virtual void AddEndpoint(WiFiEndpointConstRefPtr endpoint);
-  virtual void RemoveEndpoint(WiFiEndpointConstRefPtr endpoint);
+  virtual void AddEndpoint(const WiFiEndpointConstRefPtr endpoint);
+  virtual void RemoveEndpoint(const WiFiEndpointConstRefPtr endpoint);
   bool NumEndpoints() const { return endpoints_.size(); }
+
   // Called to update the identity of the currently connected endpoint.
-  void NotifyCurrentEndpoint(const WiFiEndpoint &endpoint);
+  // To indicate that there is no currently connect endpoint, call with
+  // |endpoint| set to NULL.
+  void NotifyCurrentEndpoint(const WiFiEndpoint *endpoint);
   // Called to inform of changes in the properties of an endpoint.
   // (Not necessarily the currently connected endpoint.)
   void NotifyEndpointUpdated(const WiFiEndpoint &endpoint);
@@ -97,6 +100,7 @@ class WiFiService : public Service {
 
  private:
   friend class WiFiServiceSecurityTest;
+  friend class WiFiServiceUpdateFromEndpointsTest;  // SignalToStrength
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
@@ -111,6 +115,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
   FRIEND_TEST(WiFiServiceTest, Populate8021x);
+  FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
 
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
@@ -126,6 +131,7 @@ class WiFiService : public Service {
   std::string GetDeviceRpcId(Error *error);
   void ClearPassphrase(Error *error);
   void UpdateConnectable();
+  void UpdateFromEndpoints();
 
   static void ValidateWEPPassphrase(const std::string &passphrase,
                                     Error *error);
@@ -138,6 +144,9 @@ class WiFiService : public Service {
   static bool CheckWEPIsHex(const std::string &passphrase, Error *error);
   static bool CheckWEPKeyIndex(const std::string &passphrase, Error *error);
   static bool CheckWEPPrefix(const std::string &passphrase, Error *error);
+
+  // Maps a signal value, in dBm, to a "strength" value, from 0-100.
+  static uint8 SignalToStrength(int16 signal_dbm);
 
   // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
   // This function maps them all into "psk".
@@ -172,9 +181,13 @@ class WiFiService : public Service {
   std::string hex_ssid_;
   std::string storage_identifier_;
 
+  // Track whether or not we've warned about large signal values.
+  // Used to avoid spamming the log.
+  static bool logged_signal_warning;
   ScopedRunnableMethodFactory<WiFiService> task_factory_;
   WiFiRefPtr wifi_;
   std::set<WiFiEndpointConstRefPtr> endpoints_;
+  WiFiEndpointConstRefPtr current_endpoint_;
   const std::vector<uint8_t> ssid_;
   DISALLOW_COPY_AND_ASSIGN(WiFiService);
 };

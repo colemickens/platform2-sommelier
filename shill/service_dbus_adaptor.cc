@@ -40,6 +40,10 @@ void ServiceDBusAdaptor::EmitUint8Changed(const string &name, uint8 value) {
   PropertyChanged(name, DBusAdaptor::ByteToVariant(value));
 }
 
+void ServiceDBusAdaptor::EmitUint16Changed(const string &name, uint16 value) {
+  PropertyChanged(name, DBusAdaptor::Uint16ToVariant(value));
+}
+
 void ServiceDBusAdaptor::EmitUintChanged(const string &name, uint32 value) {
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }

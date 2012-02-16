@@ -287,7 +287,8 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     wifi_->DisconnectFrom(service);
   }
   WiFiEndpointRefPtr MakeEndpoint(const string &ssid, const string &bssid) {
-    return WiFiEndpoint::MakeOpenEndpoint(&proxy_factory_, NULL, ssid, bssid);
+    return WiFiEndpoint::MakeOpenEndpoint(
+        &proxy_factory_, NULL, ssid, bssid, 0, 0);
   }
   MockWiFiServiceRefPtr MakeMockService() {
     vector<uint8_t> ssid(1, 'a');

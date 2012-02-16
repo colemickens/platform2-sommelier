@@ -15,6 +15,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus.h>
 
+#include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/error.h"
@@ -38,6 +39,7 @@ const char WiFiService::kStorageMode[] = "WiFi.Mode";
 const char WiFiService::kStoragePassphrase[] = "Passphrase";
 const char WiFiService::kStorageSecurity[] = "WiFi.Security";
 const char WiFiService::kStorageSSID[] = "SSID";
+bool WiFiService::logged_signal_warning = false;
 
 WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
@@ -167,13 +169,13 @@ bool WiFiService::IsConnecting() const {
   return wifi_->IsConnectingTo(*this);
 }
 
-void WiFiService::AddEndpoint(WiFiEndpointConstRefPtr endpoint) {
+void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr endpoint) {
   DCHECK(endpoint->ssid() == ssid());
   endpoints_.insert(endpoint);
-  // TODO: Track signal strength (crosbug.com/16786).
+  UpdateFromEndpoints();
 }
 
-void WiFiService::RemoveEndpoint(WiFiEndpointConstRefPtr endpoint) {
+void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr endpoint) {
   set<WiFiEndpointConstRefPtr>::iterator i = endpoints_.find(endpoint);
   DCHECK(i != endpoints_.end());
   if (i == endpoints_.end()) {
@@ -183,23 +185,21 @@ void WiFiService::RemoveEndpoint(WiFiEndpointConstRefPtr endpoint) {
     return;
   }
   endpoints_.erase(i);
+  if (current_endpoint_ == endpoint) {
+    current_endpoint_ = NULL;
+  }
+  UpdateFromEndpoints();
 }
 
-void WiFiService::NotifyCurrentEndpoint(const WiFiEndpoint &endpoint) {
-  DCHECK(endpoints_.find(&endpoint) != endpoints_.end());
-  frequency_ = endpoint.frequency();
-  // TODO: Copy BSSID here (crosbug.com/22377).
-  // TODO: Copy signal strength (crosbug.com/16786).
-  // TODO(thieule): Update these values when supplicant signals that they
-  // have changed.
-  // (crosbug.com/16786)
+void WiFiService::NotifyCurrentEndpoint(const WiFiEndpoint *endpoint) {
+  DCHECK(!endpoint || (endpoints_.find(endpoint) != endpoints_.end()));
+  current_endpoint_ = endpoint;
+  UpdateFromEndpoints();
 }
 
 void WiFiService::NotifyEndpointUpdated(const WiFiEndpoint &endpoint) {
   DCHECK(endpoints_.find(&endpoint) != endpoints_.end());
-  // TODO(quiche): If this is the connected endpoint, or the "representative"
-  // endpoint (when the service is disconnected), then update signal and
-  // frequency. crosbug.com/16786
+  UpdateFromEndpoints();
 }
 
 string WiFiService::GetStorageIdentifier() const {
@@ -456,6 +456,40 @@ void WiFiService::UpdateConnectable() {
   set_connectable(is_connectable);
 }
 
+void WiFiService::UpdateFromEndpoints() {
+  const WiFiEndpoint *representative_endpoint = NULL;
+
+  if (current_endpoint_) {
+    // TODO: Copy BSSID here (crosbug.com/22377).
+    representative_endpoint = current_endpoint_;
+  } else  {
+    int16 best_signal = std::numeric_limits<int16>::min();
+    for (set<WiFiEndpointConstRefPtr>::iterator i = endpoints_.begin();
+         i != endpoints_.end(); ++i) {
+      if ((*i)->signal_strength() >= best_signal) {
+        best_signal = (*i)->signal_strength();
+        representative_endpoint = *i;
+      }
+    }
+  }
+
+  uint16 frequency;
+  int16 signal;
+  if (!representative_endpoint) {
+    frequency = 0;
+    signal = std::numeric_limits<int16>::min();
+  } else {
+    frequency = representative_endpoint->frequency();
+    signal = representative_endpoint->signal_strength();
+  }
+
+  if (frequency_ != frequency) {
+    frequency_ = frequency;
+    adaptor()->EmitUint16Changed(flimflam::kWifiFrequency, frequency_);
+  }
+  SetStrength(SignalToStrength(signal));
+}
+
 // static
 void WiFiService::ValidateWEPPassphrase(const std::string &passphrase,
                                         Error *error) {
@@ -620,6 +654,28 @@ bool WiFiService::ParseStorageIdentifier(const string &storage_name,
     *security = wifi_parts[4] + "_" + wifi_parts[5];
   }
   return true;
+}
+
+// static
+uint8 WiFiService::SignalToStrength(int16 signal_dbm) {
+  int16 strength;
+  if (signal_dbm > 0) {
+    if (!logged_signal_warning) {
+      LOG(WARNING) << "Signal strength is suspiciously high. "
+                   << "Assuming value " << signal_dbm << " is not in dBm.";
+      logged_signal_warning = true;
+    }
+    strength = signal_dbm;
+  } else {
+    strength = 120 + signal_dbm;  // Call -20dBm "perfect".
+  }
+
+  if (strength > 100) {
+    strength = 100;
+  } else if (strength < 0) {
+    strength = 0;
+  }
+  return strength;
 }
 
 string WiFiService::GetGenericStorageIdentifier() const {

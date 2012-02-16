@@ -142,7 +142,9 @@ const string &WiFiEndpoint::security_mode() const {
 WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
                                              const WiFiRefPtr &wifi,
                                              const string &ssid,
-                                             const string &bssid) {
+                                             const string &bssid,
+                                             uint16 frequency,
+                                             int16 signal_dbm) {
   map <string, ::DBus::Variant> args;
   ::DBus::MessageIter writer;
 
@@ -156,7 +158,8 @@ WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
   writer = args[wpa_supplicant::kBSSPropertyBSSID].writer();
   writer << bssid_bytes;
 
-  args[wpa_supplicant::kBSSPropertySignal].writer().append_int16(0);
+  args[wpa_supplicant::kBSSPropertySignal].writer().append_int16(signal_dbm);
+  args[wpa_supplicant::kBSSPropertyFrequency].writer().append_uint16(frequency);
   args[wpa_supplicant::kBSSPropertyMode].writer().append_string(
       wpa_supplicant::kNetworkModeInfrastructure);
   // We indicate this is an open BSS by leaving out all security properties.

@@ -112,6 +112,7 @@ class ServiceAdaptorInterface {
 
   virtual void EmitBoolChanged(const std::string &name, bool value) = 0;
   virtual void EmitUint8Changed(const std::string &name, uint8 value) = 0;
+  virtual void EmitUint16Changed(const std::string &name, uint16 value) = 0;
   virtual void EmitUintChanged(const std::string &name, uint32 value) = 0;
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,

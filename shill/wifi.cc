@@ -522,6 +522,7 @@ void WiFi::HandleDisconnect() {
   // TODO(quiche): If we initated the disconnect, we should probably
   // go to the idle state instead. crosbug.com/24700
   affected_service->SetFailure(Service::kFailureUnknown);
+  affected_service->NotifyCurrentEndpoint(NULL);
   metrics()->NotifyServiceDisconnect(affected_service);
 
   if (affected_service == pending_service_.get()) {
@@ -571,7 +572,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
           << " roamed to Endpoint " << endpoint.bssid_string()
           << " (SSID " << endpoint.ssid_string() << ")";
 
-  service->NotifyCurrentEndpoint(endpoint);
+  service->NotifyCurrentEndpoint(&endpoint);
 
   if (pending_service_.get() &&
       service.get() != pending_service_.get()) {

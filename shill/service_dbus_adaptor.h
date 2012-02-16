@@ -38,10 +38,11 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   virtual void UpdateConnected();
   virtual void EmitBoolChanged(const std::string &name, bool value);
   virtual void EmitUint8Changed(const std::string &name, uint8 value);
+  virtual void EmitUint16Changed(const std::string &name, uint16 value);
   virtual void EmitUintChanged(const std::string &name, uint32 value);
   virtual void EmitIntChanged(const std::string &name, int value);
   virtual void EmitStringChanged(
-      const std::string& name, const std::string &value);
+      const std::string &name, const std::string &value);
   virtual void EmitStringmapChanged(const std::string &name,
                                     const Stringmap &value);
 

@@ -29,7 +29,9 @@ using std::map;
 using std::string;
 using std::vector;
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::DoAll;
+using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
@@ -53,6 +55,7 @@ class WiFiServiceTest : public PropertyStoreTest {
 
  protected:
   static const char fake_mac[];
+
   bool CheckConnectable(const std::string &security, const char *passphrase,
                         Service::EapCredentials *eap) {
     Error error;
@@ -73,8 +76,24 @@ class WiFiServiceTest : public PropertyStoreTest {
     }
     return service->connectable();
   }
-  WiFiEndpoint *MakeEndpoint(const string &ssid, const string &bssid) {
-    return WiFiEndpoint::MakeOpenEndpoint(NULL, NULL, ssid, bssid);
+  WiFiEndpoint *MakeEndpoint(const string &ssid, const string &bssid,
+                             uint16 frequency, int16 signal_dbm) {
+    return WiFiEndpoint::MakeOpenEndpoint(
+        NULL, NULL, ssid, bssid, frequency, signal_dbm);
+  }
+  WiFiService *MakeGenericService() {
+    return new WiFiService(control_interface(),
+                           dispatcher(),
+                           metrics(),
+                           manager(),
+                           wifi(),
+                           vector<uint8_t>(),
+                           flimflam::kModeManaged,
+                           flimflam::kSecurityWep,
+                           false);
+  }
+  ServiceMockAdaptor *GetAdaptor(WiFiService *service) {
+    return dynamic_cast<ServiceMockAdaptor *>(service->adaptor());
   }
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
 
@@ -152,6 +171,43 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
     }
   }
 };
+
+class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
+ public:
+  WiFiServiceUpdateFromEndpointsTest()
+      : kOkEndpointStrength(WiFiService::SignalToStrength(kOkEndpointSignal)),
+        kBadEndpointStrength(WiFiService::SignalToStrength(kBadEndpointSignal)),
+        kGoodEndpointStrength(
+            WiFiService::SignalToStrength(kGoodEndpointSignal)),
+        service(MakeGenericService()),
+        adaptor(*GetAdaptor(service)) {
+    ok_endpoint = MakeEndpoint(
+        "", "00:00:00:00:01", kOkEndpointFrequency, kOkEndpointSignal);
+    good_endpoint = MakeEndpoint(
+        "", "00:00:00:00:02", kGoodEndpointFrequency, kGoodEndpointSignal);
+    bad_endpoint = MakeEndpoint(
+        "", "00:00:00:00:03", kBadEndpointFrequency, kBadEndpointSignal);
+  }
+
+ protected:
+  static const uint16 kOkEndpointFrequency = 2422;
+  static const uint16 kBadEndpointFrequency = 2417;
+  static const uint16 kGoodEndpointFrequency = 2412;
+  static const int16 kOkEndpointSignal = -50;
+  static const int16 kBadEndpointSignal = -75;
+  static const int16 kGoodEndpointSignal = -25;
+  // Can't be both static and const (because initialization requires a
+  // function call). So choose to be just const.
+  const uint8 kOkEndpointStrength;
+  const uint8 kBadEndpointStrength;
+  const uint8 kGoodEndpointStrength;
+  WiFiEndpointRefPtr ok_endpoint;
+  WiFiEndpointRefPtr bad_endpoint;
+  WiFiEndpointRefPtr good_endpoint;
+  WiFiServiceRefPtr service;
+  ServiceMockAdaptor &adaptor;
+};
+
 
 TEST_F(WiFiServiceTest, StorageId) {
   vector<uint8_t> ssid(5);
@@ -688,7 +744,7 @@ TEST_F(WiFiServiceTest, IsAutoConnectable) {
   EXPECT_FALSE(service->HasEndpoints());
   EXPECT_FALSE(service->IsAutoConnectable());
 
-  WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0);
   service->AddEndpoint(endpoint);
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(true));
@@ -720,7 +776,7 @@ TEST_F(WiFiServiceTest, AutoConnect) {
       .Times(0);
   service->AutoConnect();
 
-  WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0);
   service->AddEndpoint(endpoint);
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(true));
@@ -782,6 +838,163 @@ TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {
                                          flimflam::kPassphraseProperty,
                                          &error));
   EXPECT_EQ("", wifi_service->passphrase_);
+}
+
+TEST_F(WiFiServiceTest, SignalToStrength) {
+  // Verify that our mapping is sane, in the sense that it preserves ordering.
+  // We break the test into two domains, because we assume that positive
+  // values aren't actually in dBm.
+  for (int16 i = std::numeric_limits<int16>::min(); i < 0; ++i) {
+    int16 current_mapped = WiFiService::SignalToStrength(i);
+    int16 next_mapped =  WiFiService::SignalToStrength(i+1);
+    EXPECT_LE(current_mapped, next_mapped)
+        << "(original values " << i << " " << i+1 << ")";
+    EXPECT_GE(current_mapped, 0);
+    EXPECT_LE(current_mapped, 100);
+  }
+  for (int16 i = 1; i < std::numeric_limits<int16>::max(); ++i) {
+    int16 current_mapped = WiFiService::SignalToStrength(i);
+    int16 next_mapped =  WiFiService::SignalToStrength(i+1);
+    EXPECT_LE(current_mapped, next_mapped)
+        << "(original values " << i << " " << i+1 << ")";
+    EXPECT_GE(current_mapped, 0);
+    EXPECT_LE(current_mapped, 100);
+  }
+}
+
+TEST_F(WiFiServiceUpdateFromEndpointsTest, Strengths) {
+  // If the chosen signal values don't map to distinct strength
+  // values, then we can't expect our other tests to pass. So verify
+  // their distinctness.
+  EXPECT_TRUE(kOkEndpointStrength != kBadEndpointStrength);
+  EXPECT_TRUE(kOkEndpointStrength != kGoodEndpointStrength);
+  EXPECT_TRUE(kGoodEndpointStrength != kBadEndpointStrength);
+}
+
+TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
+  // Initial endpoint updates values.
+  EXPECT_CALL(adaptor, EmitUint16Changed(
+      flimflam::kWifiFrequency, kOkEndpointFrequency));
+  EXPECT_CALL(adaptor,EmitUint8Changed(
+      flimflam::kSignalStrengthProperty, kOkEndpointStrength));
+  service->AddEndpoint(ok_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Endpoint with stronger signal updates values.
+  EXPECT_CALL(adaptor, EmitUint16Changed(
+      flimflam::kWifiFrequency, kGoodEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitUint8Changed(
+      flimflam::kSignalStrengthProperty, kGoodEndpointStrength));
+  service->AddEndpoint(good_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Endpoint with lower signal does not change values.
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+  service->AddEndpoint(bad_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Removing non-optimal endpoint does not change values.
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+  service->RemoveEndpoint(bad_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Removing optimal endpoint updates values.
+  EXPECT_CALL(adaptor, EmitUint16Changed(
+      flimflam::kWifiFrequency, kOkEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitUint8Changed(
+      flimflam::kSignalStrengthProperty, kOkEndpointStrength));
+  service->RemoveEndpoint(good_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Removing last endpoint updates values (and doesn't crash).
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _));
+  EXPECT_CALL(adaptor, EmitUint8Changed(flimflam::kSignalStrengthProperty, _));
+  service->RemoveEndpoint(ok_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+}
+
+TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
+  EXPECT_CALL(adaptor, EmitUint16Changed(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitUint8Changed(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
+  service->AddEndpoint(bad_endpoint);
+  service->AddEndpoint(ok_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Setting current endpoint forces adoption of its values, even if it
+  // doesn't have the highest signal.
+  EXPECT_CALL(adaptor, EmitUint16Changed(
+      flimflam::kWifiFrequency, kBadEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitUint8Changed(
+      flimflam::kSignalStrengthProperty, kBadEndpointStrength));
+  service->NotifyCurrentEndpoint(bad_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Adding a better endpoint doesn't matter, when current endpoint is set.
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+  service->AddEndpoint(good_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Removing a better endpoint doesn't matter, when current endpoint is set.
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+  service->RemoveEndpoint(good_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Removing the current endpoint is safe and sane.
+  EXPECT_CALL(adaptor, EmitUint16Changed(
+      flimflam::kWifiFrequency, kOkEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitUint8Changed(
+      flimflam::kSignalStrengthProperty, kOkEndpointStrength));
+  service->RemoveEndpoint(bad_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Clearing the current endpoint (without removing it) is also safe and sane.
+  service->NotifyCurrentEndpoint(ok_endpoint);
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+  service->NotifyCurrentEndpoint(NULL);
+  Mock::VerifyAndClearExpectations(&adaptor);
+}
+
+TEST_F(WiFiServiceUpdateFromEndpointsTest, EndpointModified) {
+  EXPECT_CALL(adaptor, EmitUint16Changed(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitUint8Changed(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
+  service->AddEndpoint(ok_endpoint);
+  service->AddEndpoint(good_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Updating sub-optimal Endpoint doesn't update Service.
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor,
+              EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+  ok_endpoint->signal_strength_ = (kOkEndpointSignal + kGoodEndpointSignal) / 2;
+  service->NotifyEndpointUpdated(*ok_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Updating optimal Endpoint updates appropriate Service property.
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint8Changed(flimflam::kSignalStrengthProperty, _));
+  good_endpoint->signal_strength_ = kGoodEndpointSignal + 1;
+  service->NotifyEndpointUpdated(*good_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Change in optimal Endpoint updates Service properties.
+  EXPECT_CALL(adaptor, EmitUint16Changed(
+      flimflam::kWifiFrequency, kOkEndpointFrequency));
+  EXPECT_CALL(adaptor, EmitUint8Changed(flimflam::kSignalStrengthProperty, _));
+  ok_endpoint->signal_strength_ = kGoodEndpointSignal + 2;
+  service->NotifyEndpointUpdated(*ok_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
 }
 
 }  // namespace shill

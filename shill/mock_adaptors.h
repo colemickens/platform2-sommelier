@@ -114,6 +114,7 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
   MOCK_METHOD0(UpdateConnected, void());
   MOCK_METHOD2(EmitBoolChanged, void(const std::string &name, bool value));
   MOCK_METHOD2(EmitUint8Changed, void(const std::string &name, uint8 value));
+  MOCK_METHOD2(EmitUint16Changed, void(const std::string &name, uint16 value));
   MOCK_METHOD2(EmitUintChanged, void(const std::string &name, uint32 value));
   MOCK_METHOD2(EmitIntChanged, void(const std::string &name, int value));
   MOCK_METHOD2(EmitStringChanged,
