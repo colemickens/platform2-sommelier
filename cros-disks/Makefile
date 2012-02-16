@@ -20,16 +20,14 @@ GEN_DBUSXX(%):
            mkdir -p "$(dir $(TARGET_OR_MEMBER))" && \
            $(DBUSXX_XML2CPP) $< --adaptor=$(TARGET_OR_MEMBER))
 
-PC_DEPS = dbus-c++-1 glib-2.0 libchromeos
-INCLUDE_DIRS = -I$(SRC)/include -I$(SRC)/.. -I$(SRC) -I$(OUT) \
-	-I$(OUT)cros-disks \
-	$(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
-LIB_DIRS = $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+PC_DEPS = dbus-c++-1 glib-2.0 libchrome libchromeos
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CFLAGS := $(CFLAGS)
-CXXFLAGS := $(INCLUDE_DIRS) $(CXXFLAGS)
-LDFLAGS += -lbase -lblkid -lgflags -lmetrics -lminijail -lparted \
-	-lrootdev -ludev $(LIB_DIRS)
+CPPFLAGS += -I$(SRC)/include -I$(SRC)/.. -I$(SRC) -I$(OUT) \
+	-I$(OUT)cros-disks $(PC_CFLAGS)
+LDLIBS += -lblkid -lgflags -lmetrics -lminijail -lparted \
+	-lrootdev -ludev $(PC_LIBS)
 
 GEN_DBUSXX(cros-disks/cros-disks-server.h): $(SRC)/cros-disks.xml
 cros-disks/cros-disks-server.h: GEN_DBUSXX(cros-disks/cros-disks-server.h)
