@@ -18,11 +18,11 @@ TEST_BINS = \
 	l2tp_manager_test \
 	service_manager_test
 
-LDCONFIG = \
-	$(shell $(PKG_CONFIG) --libs libchromeos openssl)
+PC_DEPS = libchrome libchromeos openssl
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-# -lglib-2.0 is needed by libbase.a now.
-COMMON_LIBS = -lchromeos -lbase -lpthread -lglib-2.0 -lgflags -lrt $(LDCONFIG)
+COMMON_LIBS = -lgflags $(PC_LIBS)
 
 TEST_LIBS = $(COMMON_LIBS) -lgtest -lgmock
 INCLUDE_DIRS = -I..
@@ -32,7 +32,7 @@ CXXFLAGS += -Wall -Werror -DIPSEC_STARTER=\"$(IPSEC_STARTER)\" \
 	-DIPSEC_UPDOWN=\"$(IPSEC_UPDOWN)\" \
 	-DL2TPD=\"$(L2TPD)\" \
 	-DPKCS11_LIB=\"$(PKCS11_LIB)\" \
-	$(shell $(PKG_CONFIG) --cflags libchromeos openssl)
+	$(PC_CFLAGS)
 
 all: $(BINS)
 
