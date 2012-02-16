@@ -10,7 +10,7 @@
 
 #include <base/file_path.h>
 #include <base/logging.h>
-#include <base/stl_util-inl.h>
+#include <base/stl_util.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>

@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 
-#include <base/callback_old.h>
+#include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/task.h>
+#include <base/memory/weak_ptr.h>
 
 #include "shill/byte_string.h"
 #include "shill/refptr_types.h"
@@ -70,8 +70,8 @@ class HTTPRequest {
   // has started successfully and is now in progress.
   virtual Result Start(
       const HTTPURL &url,
-      Callback1<const ByteString &>::Type *read_event_callback,
-      Callback2<Result, const ByteString &>::Type *result_callback);
+      const base::Callback<void(const ByteString &)> &read_event_callback,
+      const base::Callback<void(Result, const ByteString &)> &result_callback);
 
   // Stop the current HTTPRequest.  No callback is called as a side
   // effect of this function.
@@ -107,14 +107,13 @@ class HTTPRequest {
   EventDispatcher *dispatcher_;
   Sockets *sockets_;
 
-  scoped_ptr<Callback2<bool, int>::Type> connect_completion_callback_;
-  scoped_ptr<Callback2<const Error &, const IPAddress &>::Type>
-      dns_client_callback_;
-  scoped_ptr<Callback1<InputData *>::Type> read_server_callback_;
-  scoped_ptr<Callback1<int>::Type> write_server_callback_;
-  Callback2<Result, const ByteString &>::Type *result_callback_;
-  Callback1<const ByteString &>::Type *read_event_callback_;
-  ScopedRunnableMethodFactory<HTTPRequest> task_factory_;
+  base::WeakPtrFactory<HTTPRequest> weak_ptr_factory_;
+  base::Callback<void(bool, int)> connect_completion_callback_;
+  base::Callback<void(const Error &, const IPAddress &)> dns_client_callback_;
+  base::Callback<void(InputData *)> read_server_callback_;
+  base::Callback<void(int)> write_server_callback_;
+  base::Callback<void(Result, const ByteString &)> result_callback_;
+  base::Callback<void(const ByteString &)> read_event_callback_;
   scoped_ptr<IOHandler> read_server_handler_;
   scoped_ptr<IOHandler> write_server_handler_;
   scoped_ptr<DNSClient> dns_client_;

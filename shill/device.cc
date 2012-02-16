@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
@@ -35,6 +36,8 @@
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 
+using base::Bind;
+using base::Unretained;
 using base::StringPrintf;
 using std::string;
 using std::vector;
@@ -87,7 +90,7 @@ Device::Device(ControlInterface *control_interface,
       manager_(manager),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
       portal_detector_callback_(
-          NewCallback(this, &Device::PortalDetectorCallback)),
+          Bind(&Device::PortalDetectorCallback, Unretained(this))),
       technology_(technology),
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
@@ -325,8 +328,7 @@ bool Device::AcquireIPConfig() {
   DestroyIPConfig();
   EnableIPv6();
   ipconfig_ = dhcp_provider_->CreateConfig(link_name_, manager_->GetHostName());
-  ipconfig_->RegisterUpdateCallback(
-      NewCallback(this, &Device::OnIPConfigUpdated));
+  ipconfig_->RegisterUpdateCallback(Bind(&Device::OnIPConfigUpdated, this));
   return ipconfig_->RequestIP();
 }
 
@@ -512,7 +514,7 @@ bool Device::StartPortalDetection() {
 
   portal_detector_.reset(new PortalDetector(connection_,
                                             dispatcher_,
-                                            portal_detector_callback_.get()));
+                                            portal_detector_callback_));
   if (!portal_detector_->Start(manager_->GetPortalCheckURL())) {
     LOG(ERROR) << "Device " << FriendlyName()
                << ": Portal detection failed to start: likely bad URL: "

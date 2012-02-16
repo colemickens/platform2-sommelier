@@ -54,7 +54,7 @@ size_t IPAddress::GetAddressLength(Family family) {
 }
 
 // static
-int IPAddress::GetPrefixLengthFromMask(Family family, const string &mask) {
+size_t IPAddress::GetPrefixLengthFromMask(Family family, const string &mask) {
   switch (family) {
     case kFamilyIPv4: {
       in_addr_t mask_val = inet_network(mask.c_str());

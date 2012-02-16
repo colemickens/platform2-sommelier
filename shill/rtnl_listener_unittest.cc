@@ -5,7 +5,7 @@
 #include <sys/socket.h>
 #include <linux/netlink.h>
 
-#include <base/callback_old.h>
+#include <base/bind.h>
 #include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -14,6 +14,9 @@
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
 
+using base::Bind;
+using base::Callback;
+using base::Unretained;
 using testing::_;
 using testing::A;
 using testing::Test;
@@ -23,20 +26,21 @@ namespace shill {
 class RTNLListenerTest : public Test {
  public:
   RTNLListenerTest()
-      : callback_(NewCallback(this, &RTNLListenerTest::Callback)) {}
+      : callback_(Bind(&RTNLListenerTest::ListenerCallback,
+                       Unretained(this))) {}
 
-  MOCK_METHOD1(Callback, void(const RTNLMessage &));
+  MOCK_METHOD1(ListenerCallback, void(const RTNLMessage &));
 
  protected:
-  scoped_ptr<Callback1<const RTNLMessage &>::Type> callback_;
+  Callback<void(const RTNLMessage &)> callback_;
 };
 
 TEST_F(RTNLListenerTest, NoRun) {
   {
-    RTNLListener listener(RTNLHandler::kRequestAddr, callback_.get());
+    RTNLListener listener(RTNLHandler::kRequestAddr, callback_);
     EXPECT_EQ(1, RTNLHandler::GetInstance()->listeners_.size());
     RTNLMessage message;
-    EXPECT_CALL(*this, Callback(_)).Times(0);
+    EXPECT_CALL(*this, ListenerCallback(_)).Times(0);
     listener.NotifyEvent(RTNLHandler::kRequestLink, message);
   }
   EXPECT_EQ(0, RTNLHandler::GetInstance()->listeners_.size());
@@ -46,10 +50,10 @@ TEST_F(RTNLListenerTest, Run) {
   {
     RTNLListener listener(
         RTNLHandler::kRequestLink | RTNLHandler::kRequestAddr,
-        callback_.get());
+        callback_);
     EXPECT_EQ(1, RTNLHandler::GetInstance()->listeners_.size());
     RTNLMessage message;
-    EXPECT_CALL(*this, Callback(A<const RTNLMessage &>())).Times(1);
+    EXPECT_CALL(*this, ListenerCallback(A<const RTNLMessage &>())).Times(1);
     listener.NotifyEvent(RTNLHandler::kRequestLink, message);
   }
   EXPECT_EQ(0, RTNLHandler::GetInstance()->listeners_.size());

@@ -4,6 +4,7 @@
 
 #include "shill/cellular_capability_cdma.h"
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -13,6 +14,7 @@
 #include "shill/cellular_service.h"
 #include "shill/proxy_factory.h"
 
+using base::Bind;
 using std::string;
 
 namespace shill {
@@ -25,7 +27,7 @@ const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
                                                ProxyFactory *proxy_factory)
     : CellularCapability(cellular, proxy_factory),
-      task_factory_(this),
+      weak_ptr_factory_(this),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       registration_state_evdo_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       registration_state_1x_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
@@ -44,16 +46,16 @@ void CellularCapabilityCDMA::StartModem()
 
   MultiStepAsyncCallHandler *call_handler =
       new MultiStepAsyncCallHandler(cellular()->dispatcher());
-  call_handler->AddTask(task_factory_.NewRunnableMethod(
-      &CellularCapabilityCDMA::EnableModem, call_handler));
-  call_handler->AddTask(task_factory_.NewRunnableMethod(
-      &CellularCapabilityCDMA::GetModemStatus, call_handler));
-  call_handler->AddTask(task_factory_.NewRunnableMethod(
-      &CellularCapabilityCDMA::GetMEID, call_handler));
-  call_handler->AddTask(task_factory_.NewRunnableMethod(
-      &CellularCapabilityCDMA::GetModemInfo, call_handler));
-  call_handler->AddTask(task_factory_.NewRunnableMethod(
-      &CellularCapabilityCDMA::GetRegistrationState, call_handler));
+  call_handler->AddTask(Bind(&CellularCapabilityCDMA::EnableModem,
+                              weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(Bind(&CellularCapabilityCDMA::GetModemStatus,
+                              weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(Bind(&CellularCapabilityCDMA::GetMEID,
+                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(Bind(&CellularCapabilityCDMA::GetModemInfo,
+                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(Bind(&CellularCapabilityCDMA::GetRegistrationState,
+                             weak_ptr_factory_.GetWeakPtr(), call_handler));
   call_handler->PostNextTask();
 }
 

@@ -88,6 +88,10 @@ MATCHER_P(IsIPAddress, address, "") {
   return ip_address.Equals(arg);
 }
 
+MATCHER_P(CallbackEq, callback, "") {
+  return arg.Equals(callback);
+}
+
 class HTTPProxyTest : public Test {
  public:
   HTTPProxyTest()
@@ -165,7 +169,7 @@ class HTTPProxyTest : public Test {
     EXPECT_TRUE(proxy_.client_version_.empty());
     EXPECT_EQ(HTTPProxy::kDefaultServerPort, proxy_.server_port_);
     EXPECT_EQ(-1, proxy_.server_socket_);
-    EXPECT_FALSE(proxy_.idle_timeout_);
+    EXPECT_TRUE(proxy_.idle_timeout_.IsCancelled());
     EXPECT_TRUE(proxy_.client_headers_.empty());
     EXPECT_TRUE(proxy_.server_hostname_.empty());
     EXPECT_TRUE(proxy_.client_data_.IsEmpty());
@@ -199,9 +203,10 @@ class HTTPProxyTest : public Test {
         .WillOnce(Return(0));
     EXPECT_CALL(sockets(), Listen(kProxyFD, _))
         .WillOnce(Return(0));
-    EXPECT_CALL(dispatcher_, CreateReadyHandler(kProxyFD,
-                                                IOHandler::kModeInput,
-                                                proxy_.accept_callback_.get()))
+    EXPECT_CALL(dispatcher_,
+                CreateReadyHandler(kProxyFD,
+                                   IOHandler::kModeInput,
+                                   CallbackEq(proxy_.accept_callback_)))
         .WillOnce(ReturnNew<IOHandler>());
   }
   void ExpectStop() {
@@ -223,7 +228,8 @@ class HTTPProxyTest : public Test {
     EXPECT_CALL(sockets(), SetNonBlocking(fd))
         .WillOnce(Return(0));
     EXPECT_CALL(dispatcher(),
-                CreateInputHandler(fd, proxy_.read_client_callback_.get()))
+                CreateInputHandler(fd,
+                                   CallbackEq(proxy_.read_client_callback_)))
         .WillOnce(ReturnNew<IOHandler>());
     ExpectTransactionTimeout();
     ExpectClientHeaderTimeout();
@@ -290,7 +296,7 @@ class HTTPProxyTest : public Test {
     EXPECT_CALL(dispatcher(),
                 CreateReadyHandler(kClientFD,
                                    IOHandler::kModeOutput,
-                                   proxy_.write_client_callback_.get()))
+                                   CallbackEq(proxy_.write_client_callback_)))
         .WillOnce(ReturnNew<IOHandler>());
   }
   void ExpectClientResult() {
@@ -300,7 +306,7 @@ class HTTPProxyTest : public Test {
   void ExpectServerInput() {
     EXPECT_CALL(dispatcher(),
                 CreateInputHandler(kServerFD,
-                                   proxy_.read_server_callback_.get()))
+                                   CallbackEq(proxy_.read_server_callback_)))
         .WillOnce(ReturnNew<IOHandler>());
     ExpectInputTimeout();
   }
@@ -308,15 +314,14 @@ class HTTPProxyTest : public Test {
     EXPECT_CALL(dispatcher(),
                 CreateReadyHandler(kServerFD,
                                    IOHandler::kModeOutput,
-                                   proxy_.write_server_callback_.get()))
+                                   CallbackEq(proxy_.write_server_callback_)))
         .WillOnce(ReturnNew<IOHandler>());
     ExpectInputTimeout();
   }
   void ExpectRepeatedServerOutput() {
     EXPECT_CALL(dispatcher(),
-                CreateReadyHandler(kServerFD,
-                                   IOHandler::kModeOutput,
-                                   proxy_.write_server_callback_.get()))
+                CreateReadyHandler(kServerFD, IOHandler::kModeOutput,
+                                   CallbackEq(proxy_.write_server_callback_)))
         .WillOnce(ReturnNew<IOHandler>());
     ExpectRepeatedInputTimeout();
   }

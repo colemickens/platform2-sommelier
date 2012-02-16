@@ -5,9 +5,9 @@
 #include "shill/resolver.h"
 
 #include <base/file_util.h>
-#include <base/stl_util-inl.h>
+#include <base/scoped_temp_dir.h>
+#include <base/stl_util.h>
 #include <base/stringprintf.h>
-#include <base/memory/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "shill/ipconfig.h"

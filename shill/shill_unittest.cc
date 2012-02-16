@@ -4,7 +4,8 @@
 
 #include <stdint.h>
 
-#include <base/callback_old.h>
+#include <base/bind.h>
+#include <base/cancelable_callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop_proxy.h>
@@ -21,6 +22,11 @@
 #include "shill/mock_routing_table.h"
 #include "shill/shill_daemon.h"
 #include "shill/shill_test_config.h"
+
+using base::Bind;
+using base::Callback;
+using base::CancelableClosure;
+using base::WeakPtrFactory;
 
 using ::testing::Expectation;
 using ::testing::Gt;
@@ -40,22 +46,21 @@ class MockEventDispatchTester {
         callback_count_(0),
         got_data_(false),
         got_ready_(false),
-        data_callback_(NULL),
         input_handler_(NULL),
         tester_factory_(this) {
   }
 
   void ScheduleFailSafe() {
     // Set up a failsafe, so the test still exits even if something goes
-    // wrong.  The Factory owns the RunnableMethod, but we get a pointer to it.
-    failsafe_ = tester_factory_.NewRunnableMethod(
-        &MockEventDispatchTester::StopDispatcher);
-    dispatcher_->PostDelayedTask(failsafe_, 100);
+    // wrong.
+    failsafe_.Reset(Bind(&MockEventDispatchTester::StopDispatcher,
+                         tester_factory_.GetWeakPtr()));
+    dispatcher_->PostDelayedTask(failsafe_.callback(), 100);
   }
 
   void ScheduleTimedTasks() {
     dispatcher_->PostDelayedTask(
-        tester_factory_.NewRunnableMethod(&MockEventDispatchTester::Trigger),
+        Bind(&MockEventDispatchTester::Trigger, tester_factory_.GetWeakPtr()),
         10);
   }
 
@@ -63,16 +68,16 @@ class MockEventDispatchTester {
     ++callback_count_;
     if (!triggered_) {
       dispatcher_->PostTask(
-          tester_factory_.NewRunnableMethod(
-              &MockEventDispatchTester::RescheduleUnlessTriggered));
+          Bind(&MockEventDispatchTester::RescheduleUnlessTriggered,
+               tester_factory_.GetWeakPtr()));
     } else {
-      failsafe_->Cancel();
+      failsafe_.Cancel();
       StopDispatcher();
     }
   }
 
   void StopDispatcher() {
-    dispatcher_->PostTask(new MessageLoop::QuitTask);
+    dispatcher_->PostTask(MessageLoop::QuitClosure());
   }
 
   void Trigger() {
@@ -94,10 +99,10 @@ class MockEventDispatchTester {
   bool GetData() { return got_data_; }
 
   void ListenIO(int fd) {
-    data_callback_.reset(
-        NewCallback(this, &MockEventDispatchTester::HandleData));
+    data_callback_ = Bind(&MockEventDispatchTester::HandleData,
+                          tester_factory_.GetWeakPtr());
     input_handler_.reset(
-        dispatcher_->CreateInputHandler(fd, data_callback_.get()));
+        dispatcher_->CreateInputHandler(fd, data_callback_));
   }
 
   void StopListenIO() {
@@ -128,8 +133,10 @@ class MockEventDispatchTester {
     } else {
       // Restart Ready events after 10 millisecond delay.
       callback_count_++;
-      dispatcher_->PostDelayedTask(tester_factory_.NewRunnableMethod(
-          &MockEventDispatchTester::RestartReady), 10);
+      dispatcher_->PostDelayedTask(
+          Bind(&MockEventDispatchTester::RestartReady,
+               tester_factory_.GetWeakPtr()),
+          10);
     }
   }
 
@@ -139,11 +146,11 @@ class MockEventDispatchTester {
   }
 
   void ListenReady(int fd) {
-    ready_callback_.reset(
-        NewCallback(this, &MockEventDispatchTester::HandleReady));
+    ready_callback_ = Bind(&MockEventDispatchTester::HandleReady,
+                           tester_factory_.GetWeakPtr());
     input_handler_.reset(
         dispatcher_->CreateReadyHandler(fd, IOHandler::kModeInput,
-                                        ready_callback_.get()));
+                                        ready_callback_));
   }
 
   void StopListenReady() {
@@ -160,11 +167,11 @@ class MockEventDispatchTester {
   int callback_count_;
   bool got_data_;
   bool got_ready_;
-  scoped_ptr<Callback1<InputData*>::Type> data_callback_;
-  scoped_ptr<Callback1<int>::Type> ready_callback_;
+  Callback<void(InputData*)> data_callback_;
+  Callback<void(int)> ready_callback_;
   scoped_ptr<IOHandler> input_handler_;
-  ScopedRunnableMethodFactory<MockEventDispatchTester> tester_factory_;
-  CancelableTask* failsafe_;
+  WeakPtrFactory<MockEventDispatchTester> tester_factory_;
+  CancelableClosure failsafe_;
 };
 
 class ShillDaemonTest : public Test {
@@ -178,8 +185,7 @@ class ShillDaemonTest : public Test {
         device_info_(daemon_.control_, dispatcher_, &daemon_.metrics_,
                      daemon_.manager_.get()),
         dispatcher_(&daemon_.dispatcher_),
-        dispatcher_test_(dispatcher_),
-        factory_(this) {
+        dispatcher_test_(dispatcher_) {
   }
   virtual ~ShillDaemonTest() {}
   virtual void SetUp() {
@@ -208,7 +214,6 @@ class ShillDaemonTest : public Test {
   DeviceInfo device_info_;
   EventDispatcher *dispatcher_;
   StrictMock<MockEventDispatchTester> dispatcher_test_;
-  ScopedRunnableMethodFactory<ShillDaemonTest> factory_;
 };
 
 

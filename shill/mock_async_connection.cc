@@ -9,7 +9,7 @@
 namespace shill {
 
 MockAsyncConnection::MockAsyncConnection()
-    : AsyncConnection("", NULL, NULL, NULL) {}
+    : AsyncConnection("", NULL, NULL, base::Callback<void(bool, int)>()) {}
 
 MockAsyncConnection::~MockAsyncConnection() {}
 

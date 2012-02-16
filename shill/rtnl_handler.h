@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback_old.h>
+#include <base/callback.h>
 #include <base/hash_tables.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
@@ -136,7 +136,7 @@ class RTNLHandler {
   uint32_t last_dump_sequence_;
 
   std::vector<RTNLListener *> listeners_;
-  scoped_ptr<Callback1<InputData *>::Type> rtnl_callback_;
+  base::Callback<void(InputData *)> rtnl_callback_;
   scoped_ptr<IOHandler> rtnl_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLHandler);

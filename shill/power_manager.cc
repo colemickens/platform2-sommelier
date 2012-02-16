@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/logging.h>
-#include <base/stl_util-inl.h>
+#include <base/stl_util.h>
 
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/proxy_factory.h"
@@ -22,11 +22,10 @@ PowerManager::PowerManager(ProxyFactory *proxy_factory)
 }
 
 PowerManager::~PowerManager() {
-  STLDeleteValues(&state_change_callbacks_);
 }
 
 void PowerManager::AddStateChangeCallback(const string &key,
-                                          PowerStateCallback *callback) {
+                                          const PowerStateCallback &callback) {
   VLOG(2) << __func__ << " key " << key;
   if (ContainsKey(state_change_callbacks_, key)) {
     LOG(DFATAL) << "Inserting duplicate key " << key;
@@ -42,7 +41,6 @@ void PowerManager::RemoveStateChangeCallback(const string &key) {
                                                     << key;
   StateChangeCallbackMap::iterator it = state_change_callbacks_.find(key);
   if (it != state_change_callbacks_.end()) {
-    delete it->second;
     state_change_callbacks_.erase(it);
   }
 }
@@ -56,7 +54,7 @@ void PowerManager::OnPowerStateChanged(SuspendState new_power_state) {
   for (StateChangeCallbackMap::const_iterator it =
            state_change_callbacks_.begin();
        it != state_change_callbacks_.end(); ++it) {
-    it->second->Run(new_power_state);
+    it->second.Run(new_power_state);
   }
 }
 

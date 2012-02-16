@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/task.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dbus_properties.h"
@@ -218,8 +217,6 @@ class Cellular : public Device {
   mobile_provider_db *provider_db_;
 
   CellularServiceRefPtr service_;
-
-  ScopedRunnableMethodFactory<Cellular> task_factory_;
 
   // Properties
   Operator home_provider_;

@@ -11,6 +11,7 @@
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -32,7 +33,7 @@ class EventDispatcher;
 class ManagerAdaptorInterface;
 class Metrics;
 
-class Manager {
+class Manager : public base::SupportsWeakPtr<Manager> {
  public:
   struct Properties {
    public:
@@ -207,7 +208,6 @@ class Manager {
   }
 
   EventDispatcher *dispatcher_;
-  ScopedRunnableMethodFactory<Manager> task_factory_;
   const FilePath run_path_;
   const FilePath storage_path_;
   const std::string user_storage_format_;

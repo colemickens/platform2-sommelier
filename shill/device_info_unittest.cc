@@ -10,11 +10,10 @@
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <linux/rtnetlink.h>
 
-#include <base/callback_old.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop.h>
-#include <base/stl_util-inl.h>
+#include <base/stl_util.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -28,6 +27,7 @@
 #include "shill/mock_sockets.h"
 #include "shill/rtnl_message.h"
 
+using base::Callback;
 using std::map;
 using std::string;
 using std::vector;
@@ -42,7 +42,7 @@ class TestEventDispatcher : public EventDispatcher {
  public:
   virtual IOHandler *CreateInputHandler(
       int /*fd*/,
-      Callback1<InputData*>::Type */*callback*/) {
+      const Callback<void(InputData*)> &/*callback*/) {
     return NULL;
   }
 };

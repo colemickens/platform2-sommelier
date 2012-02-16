@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
 #include <base/string_number_conversions.h>
@@ -28,6 +29,7 @@
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
+using base::Bind;
 using std::set;
 using std::string;
 using std::vector;
@@ -61,7 +63,6 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       hidden_ssid_(hidden_ssid),
       frequency_(0),
       physical_mode_(0),
-      task_factory_(this),
       wifi_(device),
       ssid_(ssid) {
   PropertyStore *store = this->mutable_store();
@@ -140,8 +141,7 @@ void WiFiService::Connect(Error */*error*/) {
   LOG(INFO) << "In " << __func__ << "():";
   // Defer handling, since dbus-c++ does not permit us to send an
   // outbound request while processing an inbound one.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(&WiFiService::ConnectTask));
+  dispatcher()->PostTask(Bind(&WiFiService::ConnectTask, this));
 }
 
 void WiFiService::Disconnect(Error *error) {
@@ -149,8 +149,7 @@ void WiFiService::Disconnect(Error *error) {
   Service::Disconnect(error);
   // Defer handling, since dbus-c++ does not permit us to send an
   // outbound request while processing an inbound one.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(&WiFiService::DisconnectTask));
+  dispatcher()->PostTask(Bind(&WiFiService::DisconnectTask, this));
 }
 
 bool WiFiService::TechnologyIs(const Technology::Identifier type) const {

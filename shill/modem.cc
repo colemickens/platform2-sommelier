@@ -4,6 +4,7 @@
 
 #include "shill/modem.h"
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <mm/mm-modem.h>
 
@@ -12,6 +13,7 @@
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
 
+using base::Bind;
 using std::string;
 using std::vector;
 
@@ -33,7 +35,6 @@ Modem::Modem(const std::string &owner,
     : proxy_factory_(ProxyFactory::GetInstance()),
       owner_(owner),
       path_(path),
-      task_factory_(this),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
@@ -55,7 +56,7 @@ void Modem::Init() {
 
   // Defer device creation because dbus-c++ doesn't allow registration of new
   // D-Bus objects in the context of a D-Bus signal handler.
-  dispatcher_->PostTask(task_factory_.NewRunnableMethod(&Modem::InitTask));
+  dispatcher_->PostTask(Bind(&Modem::InitTask, AsWeakPtr()));
 }
 
 void Modem::InitTask() {

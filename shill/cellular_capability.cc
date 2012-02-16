@@ -13,6 +13,7 @@
 #include "shill/proxy_factory.h"
 
 using base::Callback;
+using base::Closure;
 using std::string;
 
 namespace shill {
@@ -34,7 +35,8 @@ CellularCapability::MultiStepAsyncCallHandler::MultiStepAsyncCallHandler(
 CellularCapability::MultiStepAsyncCallHandler::~MultiStepAsyncCallHandler() {
 }
 
-void CellularCapability::MultiStepAsyncCallHandler::AddTask(Task *task) {
+void CellularCapability::MultiStepAsyncCallHandler::AddTask(
+    const Closure &task) {
   tasks_.push_back(task);
 }
 
@@ -52,8 +54,8 @@ void CellularCapability::MultiStepAsyncCallHandler::PostNextTask() {
   VLOG(2) << __func__ << ": " << tasks_.size() << " remaining actions";
   if (tasks_.empty())
     return;
-  Task *task = tasks_[0];
-  tasks_.weak_erase(tasks_.begin());
+  Closure task = tasks_[0];
+  tasks_.erase(tasks_.begin());
   dispatcher_->PostTask(task);
 }
 

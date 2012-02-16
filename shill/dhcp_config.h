@@ -7,7 +7,7 @@
 
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/task.h>
+#include <base/memory/weak_ptr.h>
 #include <dbus-c++/types.h>
 #include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -23,7 +23,7 @@ class EventDispatcher;
 class GLib;
 class ProxyFactory;
 
-class DHCPConfig : public IPConfig {
+class DHCPConfig : public IPConfig, public base::SupportsWeakPtr<DHCPConfig> {
  public:
   typedef std::map<std::string, DBus::Variant> Configuration;
 
@@ -145,7 +145,6 @@ class DHCPConfig : public IPConfig {
   // Root file path, used for testing.
   FilePath root_;
 
-  ScopedRunnableMethodFactory<DHCPConfig> task_factory_;
   EventDispatcher *dispatcher_;
   GLib *glib_;
 

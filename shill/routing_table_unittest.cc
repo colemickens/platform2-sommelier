@@ -6,7 +6,7 @@
 #include <linux/rtnetlink.h>
 
 #include <base/logging.h>
-#include <base/stl_util-inl.h>
+#include <base/stl_util.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -18,6 +18,7 @@
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_message.h"
 
+using base::Callback;
 using testing::_;
 using testing::Return;
 using testing::Test;
@@ -28,7 +29,7 @@ class TestEventDispatcher : public EventDispatcher {
  public:
   virtual IOHandler *CreateInputHandler(
       int /*fd*/,
-      Callback1<InputData*>::Type */*callback*/) {
+      const Callback<void(InputData*)> &/*callback*/) {
     return NULL;
   }
 };

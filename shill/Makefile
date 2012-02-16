@@ -20,7 +20,7 @@ BASE_INCLUDE_DIRS = -iquote.. -iquote $(BUILDDIR)
 BASE_LIB_DIRS =
 
 LIBS = $(BASE_LIBS)
-BASE_VER = 85268
+BASE_VER = 125070
 PC_DEPS = dbus-c++-1 glib-2.0 gio-2.0 libchrome-$(BASE_VER) \
 	libchromeos-$(BASE_VER)
 INCLUDE_DIRS := $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
@@ -101,7 +101,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	async_call_handler.o \
 	async_connection.o \
 	byte_string.o \
-	callback_list.o \
 	cellular.o \
 	cellular_capability.o \
 	cellular_capability_cdma.o \
@@ -169,6 +168,8 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	proxy_factory.o \
 	routing_table.o \
 	resolver.o \
+	rpc_task.o \
+	rpc_task_dbus_adaptor.o \
 	rtnl_handler.o \
 	rtnl_listener.o \
 	rtnl_message.o \
@@ -183,8 +184,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	supplicant_bss_proxy.o \
 	supplicant_interface_proxy.o \
 	supplicant_process_proxy.o \
-	rpc_task.o \
-	rpc_task_dbus_adaptor.o \
 	technology.o \
 	vpn.o \
 	vpn_provider.o \
@@ -204,7 +203,6 @@ TEST_BIN = shill_unittest
 TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	async_connection_unittest.o \
 	byte_string_unittest.o \
-	callback_list_unittest.o \
 	cellular_capability_cdma_unittest.o \
 	cellular_capability_gsm_unittest.o \
 	cellular_capability_unittest.o \
@@ -234,7 +232,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_adaptors.o \
 	mock_ares.o \
 	mock_async_connection.o \
-	mock_callback_unittest.o \
 	mock_connection.o \
 	mock_control.o \
 	mock_dbus_properties_proxy.o \

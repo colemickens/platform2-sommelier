@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback_old.h>
+#include <base/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
@@ -73,7 +73,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // configurations. The callback's second argument is set to false if IP
   // configuration failed.
   void RegisterUpdateCallback(
-      Callback2<const IPConfigRefPtr&, bool>::Type *callback);
+      const base::Callback<void(const IPConfigRefPtr&, bool)> &callback);
 
   void set_properties(const Properties &props) { properties_ = props; }
   const Properties &properties() const { return properties_; }
@@ -125,7 +125,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   const uint serial_;
   scoped_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
-  scoped_ptr<Callback2<const IPConfigRefPtr&, bool>::Type> update_callback_;
+  base::Callback<void(const IPConfigRefPtr&, bool)> update_callback_;
 
   void Init();
 
