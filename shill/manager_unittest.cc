@@ -9,8 +9,8 @@
 #include <glib.h>
 
 #include <base/logging.h>
-#include <base/memory/scoped_temp_dir.h>
-#include <base/stl_util-inl.h>
+#include <base/scoped_temp_dir.h>
+#include <base/stl_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>

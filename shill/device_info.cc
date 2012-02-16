@@ -20,11 +20,11 @@
 
 #include <string>
 
-#include <base/callback_old.h>
+#include <base/bind.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/stl_util-inl.h>
+#include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
@@ -40,6 +40,8 @@
 #include "shill/service.h"
 #include "shill/wifi.h"
 
+using base::Bind;
+using base::Unretained;
 using std::map;
 using std::string;
 using std::vector;
@@ -75,8 +77,8 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
       dispatcher_(dispatcher),
       metrics_(metrics),
       manager_(manager),
-      link_callback_(NewCallback(this, &DeviceInfo::LinkMsgHandler)),
-      address_callback_(NewCallback(this, &DeviceInfo::AddressMsgHandler)),
+      link_callback_(Bind(&DeviceInfo::LinkMsgHandler, Unretained(this))),
+      address_callback_(Bind(&DeviceInfo::AddressMsgHandler, Unretained(this))),
       link_listener_(NULL),
       address_listener_(NULL),
       rtnl_handler_(RTNLHandler::GetInstance()) {
@@ -90,9 +92,9 @@ void DeviceInfo::AddDeviceToBlackList(const string &device_name) {
 
 void DeviceInfo::Start() {
   link_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestLink, link_callback_.get()));
+      new RTNLListener(RTNLHandler::kRequestLink, link_callback_));
   address_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestAddr, address_callback_.get()));
+      new RTNLListener(RTNLHandler::kRequestAddr, address_callback_));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink |
                              RTNLHandler::kRequestAddr);
 }

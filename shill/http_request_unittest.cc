@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/stringprintf.h>
 #include <gtest/gtest.h>
 
@@ -22,7 +23,10 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_sockets.h"
 
+using base::Bind;
+using base::Callback;
 using base::StringPrintf;
+using base::Unretained;
 using std::string;
 using std::vector;
 using ::testing::_;
@@ -66,6 +70,10 @@ MATCHER_P(ByteStringMatches, byte_string, "") {
   return byte_string.Equals(arg);
 }
 
+MATCHER_P(CallbackEq, callback, "") {
+  return arg.Equals(callback);
+}
+
 class HTTPRequestTest : public Test {
  public:
   HTTPRequestTest()
@@ -84,25 +92,24 @@ class HTTPRequestTest : public Test {
    public:
     CallbackTarget()
         : read_event_callback_(
-              NewCallback(this, &CallbackTarget::ReadEventCallTarget)),
+              Bind(&CallbackTarget::ReadEventCallTarget, Unretained(this))),
           result_callback_(
-              NewCallback(this, &CallbackTarget::ResultCallTarget)) {}
+              Bind(&CallbackTarget::ResultCallTarget, Unretained(this))) {}
 
     MOCK_METHOD1(ReadEventCallTarget, void(const ByteString &response_data));
     MOCK_METHOD2(ResultCallTarget, void(HTTPRequest::Result result,
                                         const ByteString &response_data));
-    Callback1<const ByteString &>::Type *read_event_callback() {
-      return read_event_callback_.get();
+    const Callback<void(const ByteString &)> &read_event_callback() {
+      return read_event_callback_;
     }
-    Callback2<HTTPRequest::Result,
-        const ByteString &>::Type *result_callback() {
-      return result_callback_.get();
+    const Callback<void(HTTPRequest::Result,
+                        const ByteString &)> &result_callback() {
+      return result_callback_;
     }
 
    private:
-    scoped_ptr<Callback1<const ByteString &>::Type> read_event_callback_;
-    scoped_ptr<Callback2<HTTPRequest::Result, const ByteString &>::Type>
-        result_callback_;
+    Callback<void(const ByteString &)> read_event_callback_;
+    Callback<void(HTTPRequest::Result, const ByteString &)> result_callback_;
   };
 
   virtual void SetUp() {
@@ -144,9 +151,9 @@ class HTTPRequestTest : public Test {
     EXPECT_EQ(connection_.get(), request_->connection_.get());
     EXPECT_EQ(&dispatcher_, request_->dispatcher_);
     EXPECT_EQ(&sockets_, request_->sockets_);
-    EXPECT_FALSE(request_->result_callback_);
-    EXPECT_FALSE(request_->read_event_callback_);
-    EXPECT_TRUE(request_->task_factory_.empty());
+    EXPECT_TRUE(request_->result_callback_.is_null());
+    EXPECT_TRUE(request_->read_event_callback_.is_null());
+    EXPECT_FALSE(request_->weak_ptr_factory_.HasWeakPtrs());
     EXPECT_FALSE(request_->read_server_handler_.get());
     EXPECT_FALSE(request_->write_server_handler_.get());
     EXPECT_EQ(dns_client_, request_->dns_client_.get());
@@ -217,15 +224,15 @@ class HTTPRequestTest : public Test {
   void ExpectMonitorServerInput() {
     EXPECT_CALL(dispatcher_,
                 CreateInputHandler(kServerFD,
-                                   request_->read_server_callback_.get()))
+                                   CallbackEq(request_->read_server_callback_)))
         .WillOnce(ReturnNew<IOHandler>());
     ExpectSetInputTimeout();
   }
   void ExpectMonitorServerOutput() {
     EXPECT_CALL(dispatcher_,
-                CreateReadyHandler(kServerFD,
-                                   IOHandler::kModeOutput,
-                                   request_->write_server_callback_.get()))
+                CreateReadyHandler(
+                    kServerFD, IOHandler::kModeOutput,
+                    CallbackEq(request_->write_server_callback_)))
         .WillOnce(ReturnNew<IOHandler>());
     ExpectSetInputTimeout();
   }

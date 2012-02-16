@@ -191,7 +191,6 @@ class WiFiService : public Service {
   // Track whether or not we've warned about large signal values.
   // Used to avoid spamming the log.
   static bool logged_signal_warning;
-  ScopedRunnableMethodFactory<WiFiService> task_factory_;
   WiFiRefPtr wifi_;
   std::set<WiFiEndpointConstRefPtr> endpoints_;
   WiFiEndpointConstRefPtr current_endpoint_;

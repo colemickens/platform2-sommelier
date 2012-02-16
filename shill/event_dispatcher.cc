@@ -7,17 +7,21 @@
 #include <stdio.h>
 #include <glib.h>
 
-#include <base/callback_old.h>
+#include <base/callback.h>
+#include <base/location.h>
 #include <base/message_loop_proxy.h>
 
 #include "shill/glib_io_input_handler.h"
 #include "shill/glib_io_ready_handler.h"
 
+using base::Callback;
+using base::Closure;
+
 namespace shill {
 
 EventDispatcher::EventDispatcher()
     : dont_use_directly_(new MessageLoopForUI),
-      message_loop_proxy_(base::MessageLoopProxy::CreateForCurrentThread()) {
+      message_loop_proxy_(base::MessageLoopProxy::current()) {
 }
 
 EventDispatcher::~EventDispatcher() {}
@@ -30,17 +34,17 @@ void EventDispatcher::DispatchPendingEvents() {
   MessageLoop::current()->RunAllPending();
 }
 
-bool EventDispatcher::PostTask(Task *task) {
+bool EventDispatcher::PostTask(const Closure &task) {
   return message_loop_proxy_->PostTask(FROM_HERE, task);
 }
 
-bool EventDispatcher::PostDelayedTask(Task *task, int64 delay_ms) {
+bool EventDispatcher::PostDelayedTask(const Closure &task, int64 delay_ms) {
   return message_loop_proxy_->PostDelayedTask(FROM_HERE, task, delay_ms);
 }
 
 IOHandler *EventDispatcher::CreateInputHandler(
     int fd,
-    Callback1<InputData *>::Type *callback) {
+    const Callback<void(InputData *)> &callback) {
   IOHandler *handler = new GlibIOInputHandler(fd, callback);
   handler->Start();
   return handler;
@@ -49,7 +53,7 @@ IOHandler *EventDispatcher::CreateInputHandler(
 IOHandler *EventDispatcher::CreateReadyHandler(
     int fd,
     IOHandler::ReadyMode mode,
-    Callback1<int>::Type *callback) {
+    const Callback<void(int)> &callback) {
   IOHandler *handler = new GlibIOReadyHandler(fd, mode, callback);
   handler->Start();
   return handler;

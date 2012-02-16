@@ -15,8 +15,9 @@ using std::string;
 
 namespace shill {
 
-static base::LazyInstance<DHCPProvider> g_dhcp_provider(
-    base::LINKER_INITIALIZED);
+// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
+// because of http://crbug.com/114828
+static base::LazyInstance<DHCPProvider> g_dhcp_provider = {0, {{0}} };
 
 DHCPProvider::DHCPProvider()
     : proxy_factory_(ProxyFactory::GetInstance()),

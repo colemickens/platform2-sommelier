@@ -8,12 +8,16 @@
 
 #include <vector>
 
+#include <base/bind.h>
 #include <gtest/gtest.h>
 
 #include "shill/ip_address.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_sockets.h"
 
+using base::Bind;
+using base::Callback;
+using base::Unretained;
 using std::string;
 using ::testing::_;
 using ::testing::Return;
@@ -53,22 +57,24 @@ class AsyncConnectionTest : public Test {
   class ConnectCallbackTarget {
    public:
     ConnectCallbackTarget()
-        : callback_(NewCallback(this, &ConnectCallbackTarget::CallTarget)) {}
+        : callback_(Bind(&ConnectCallbackTarget::CallTarget,
+                         Unretained(this))) {}
 
     MOCK_METHOD2(CallTarget, void(bool success, int fd));
-    Callback2<bool, int>::Type *callback() { return callback_.get(); }
+    const Callback<void(bool, int)> &callback() { return callback_; }
 
    private:
-    scoped_ptr<Callback2<bool, int>::Type> callback_;
+    Callback<void(bool, int)> callback_;
   };
 
   void ExpectReset() {
     EXPECT_STREQ(kInterfaceName, async_connection_.interface_name_.c_str());
     EXPECT_EQ(&dispatcher_, async_connection_.dispatcher_);
     EXPECT_EQ(&sockets_, async_connection_.sockets_);
-    EXPECT_EQ(callback_target_.callback(), async_connection_.callback_);
+    EXPECT_TRUE(callback_target_.callback().
+                Equals(async_connection_.callback_));
     EXPECT_EQ(-1, async_connection_.fd_);
-    EXPECT_TRUE(async_connection_.connect_completion_callback_.get());
+    EXPECT_FALSE(async_connection_.connect_completion_callback_.is_null());
     EXPECT_FALSE(async_connection_.connect_completion_handler_.get());
   }
 
@@ -79,13 +85,12 @@ class AsyncConnectionTest : public Test {
         .WillOnce(Return(0));
     EXPECT_CALL(sockets_, BindToDevice(kSocketFD, StrEq(kInterfaceName)))
         .WillOnce(Return(0));
-     EXPECT_CALL(sockets(), Connect(kSocketFD, _, _))
-         .WillOnce(Return(-1));
-     EXPECT_CALL(sockets_, Error())
+    EXPECT_CALL(sockets(), Connect(kSocketFD, _, _))
+        .WillOnce(Return(-1));
+    EXPECT_CALL(sockets_, Error())
         .WillOnce(Return(EINPROGRESS));
-    EXPECT_CALL(dispatcher(), CreateReadyHandler(kSocketFD,
-                                                 IOHandler::kModeOutput,
-                                                 connect_completion_callback()))
+    EXPECT_CALL(dispatcher(),
+                CreateReadyHandler(kSocketFD, IOHandler::kModeOutput, _))
         .WillOnce(ReturnNew<IOHandler>());
     EXPECT_TRUE(async_connection().Start(address_, kConnectPort));
   }
@@ -101,9 +106,6 @@ class AsyncConnectionTest : public Test {
   void set_fd(int fd) { async_connection_.fd_ = fd; }
   StrictMock<ConnectCallbackTarget> &callback_target() {
     return callback_target_;
-  }
-  Callback1<int>::Type *connect_completion_callback() {
-    return async_connection_.connect_completion_callback_.get();
   }
 
  private:
@@ -199,9 +201,7 @@ TEST_F(AsyncConnectionTest, SynchronousStart) {
                                   sizeof(struct sockaddr_in)))
       .WillOnce(Return(-1));
   EXPECT_CALL(dispatcher(),
-              CreateReadyHandler(kSocketFD,
-                                 IOHandler::kModeOutput,
-                                 connect_completion_callback()))
+              CreateReadyHandler(kSocketFD, IOHandler::kModeOutput, _))
         .WillOnce(ReturnNew<IOHandler>());
   EXPECT_CALL(sockets(), Error())
       .WillOnce(Return(EINPROGRESS));

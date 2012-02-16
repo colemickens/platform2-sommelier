@@ -44,7 +44,7 @@ class IPAddress {
 
   // Returns the prefix length given an address |family| and a |mask|. For
   // example, returns 24 for an IPv4 mask 255.255.255.0.
-  static int GetPrefixLengthFromMask(Family family, const std::string &mask);
+  static size_t GetPrefixLengthFromMask(Family family, const std::string &mask);
 
   // Returns the name of an address family.
   static std::string GetAddressFamilyName(Family family);

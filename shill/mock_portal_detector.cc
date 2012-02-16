@@ -9,7 +9,7 @@
 namespace shill {
 
 MockPortalDetector::MockPortalDetector(ConnectionRefPtr connection)
-    : PortalDetector(connection, NULL, NULL) {}
+    : PortalDetector(connection, NULL, base::Callback<void(const Result&)>()) {}
 
 MockPortalDetector::~MockPortalDetector() {}
 

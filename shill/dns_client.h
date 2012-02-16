@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-#include <base/callback_old.h>
+#include <base/callback.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/task.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/error.h"
@@ -29,7 +29,7 @@ struct DNSClientState;
 // Implements a DNS resolution client that can run asynchronously.
 class DNSClient {
  public:
-  typedef Callback2<const Error &, const IPAddress &>::Type ClientCallback;
+  typedef base::Callback<void(const Error &, const IPAddress &)> ClientCallback;
 
   static const int kDefaultTimeoutMS;
   static const char kErrorNoData[];
@@ -48,7 +48,7 @@ class DNSClient {
             const std::vector<std::string> &dns_servers,
             int timeout_ms,
             EventDispatcher *dispatcher,
-            ClientCallback *callback);
+            const ClientCallback &callback);
   virtual ~DNSClient();
 
   // Returns true if the DNS client started successfully, false otherwise.
@@ -79,13 +79,13 @@ class DNSClient {
   std::string interface_name_;
   std::vector<std::string> dns_servers_;
   EventDispatcher *dispatcher_;
-  ClientCallback *callback_;
+  ClientCallback callback_;
   int timeout_ms_;
   bool running_;
   scoped_ptr<DNSClientState> resolver_state_;
-  scoped_ptr<Callback1<int>::Type> read_callback_;
-  scoped_ptr<Callback1<int>::Type> write_callback_;
-  ScopedRunnableMethodFactory<DNSClient> task_factory_;
+  base::WeakPtrFactory<DNSClient> weak_ptr_factory_;
+  base::Callback<void(int)> read_callback_;
+  base::Callback<void(int)> write_callback_;
   Ares *ares_;
   Time *time_;
 

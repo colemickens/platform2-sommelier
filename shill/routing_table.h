@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback_old.h>
+#include <base/callback.h>
 #include <base/hash_tables.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
@@ -103,7 +103,7 @@ class RoutingTable {
   base::hash_map<int, std::vector<RoutingTableEntry> > tables_; // NOLINT
   // NOLINT above: hash_map from base, no need to #include <hash_map>.
 
-  scoped_ptr<Callback1<const RTNLMessage &>::Type> route_callback_;
+  base::Callback<void(const RTNLMessage &)> route_callback_;
   scoped_ptr<RTNLListener> route_listener_;
   std::queue<uint32> route_query_sequences_;
 

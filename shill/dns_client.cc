@@ -15,12 +15,16 @@
 #include <tr1/memory>
 #include <vector>
 
-#include <base/stl_util-inl.h>
+#include <base/bind.h>
+#include <base/bind_helpers.h>
+#include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 
 #include "shill/shill_ares.h"
 #include "shill/shill_time.h"
 
+using base::Bind;
+using base::Unretained;
 using std::map;
 using std::set;
 using std::string;
@@ -53,7 +57,7 @@ DNSClient::DNSClient(IPAddress::Family family,
                      const vector<string> &dns_servers,
                      int timeout_ms,
                      EventDispatcher *dispatcher,
-                     ClientCallback *callback)
+                     const ClientCallback &callback)
     : address_(IPAddress(family)),
       interface_name_(interface_name),
       dns_servers_(dns_servers),
@@ -62,9 +66,9 @@ DNSClient::DNSClient(IPAddress::Family family,
       timeout_ms_(timeout_ms),
       running_(false),
       resolver_state_(NULL),
-      read_callback_(NewCallback(this, &DNSClient::HandleDNSRead)),
-      write_callback_(NewCallback(this, &DNSClient::HandleDNSWrite)),
-      task_factory_(this),
+      weak_ptr_factory_(this),
+      read_callback_(Bind(&DNSClient::HandleDNSRead, Unretained(this))),
+      write_callback_(Bind(&DNSClient::HandleDNSWrite, Unretained(this))),
       ares_(Ares::GetInstance()),
       time_(Time::GetInstance()) {}
 
@@ -140,7 +144,7 @@ void DNSClient::Stop() {
   }
 
   running_ = false;
-  task_factory_.RevokeAll();
+  weak_ptr_factory_.InvalidateWeakPtrs();
   error_.Reset();
   address_.SetAddressToDefault();
   ares_->Destroy(resolver_state_->channel);
@@ -166,7 +170,7 @@ void DNSClient::HandleCompletion() {
     error_.Reset();
     address_.SetAddressToDefault();
   }
-  callback_->Run(error, address);
+  callback_.Run(error, address);
 }
 
 void DNSClient::HandleDNSRead(int fd) {
@@ -191,9 +195,9 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
   }
   VLOG(3) << "In " << __func__;
   running_ = false;
-  task_factory_.RevokeAll();
-  dispatcher_->PostTask(task_factory_.NewRunnableMethod(
-      &DNSClient::HandleCompletion));
+  weak_ptr_factory_.InvalidateWeakPtrs();
+  dispatcher_->PostTask(Bind(&DNSClient::HandleCompletion,
+                             weak_ptr_factory_.GetWeakPtr()));
 
   if (status == ARES_SUCCESS &&
       hostent != NULL &&
@@ -278,7 +282,7 @@ bool DNSClient::RefreshHandles() {
             std::tr1::shared_ptr<IOHandler> (
                 dispatcher_->CreateReadyHandler(sockets[i],
                                                 IOHandler::kModeInput,
-                                                read_callback_.get()));
+                                                read_callback_));
       }
     }
     if (ARES_GETSOCK_WRITABLE(action_bits, i)) {
@@ -289,7 +293,7 @@ bool DNSClient::RefreshHandles() {
             std::tr1::shared_ptr<IOHandler> (
                 dispatcher_->CreateReadyHandler(sockets[i],
                                                 IOHandler::kModeOutput,
-                                                write_callback_.get()));
+                                                write_callback_));
       }
     }
   }
@@ -307,7 +311,7 @@ bool DNSClient::RefreshHandles() {
   timersub(&now, &resolver_state_->start_time_, &elapsed_time);
   timeout_tv.tv_sec = timeout_ms_ / 1000;
   timeout_tv.tv_usec = (timeout_ms_ % 1000) * 1000;
-  task_factory_.RevokeAll();
+  weak_ptr_factory_.InvalidateWeakPtrs();
 
   if (timercmp(&elapsed_time, &timeout_tv, >=)) {
     // There are 3 cases of interest:
@@ -322,8 +326,8 @@ bool DNSClient::RefreshHandles() {
     //    in the posted task.
     running_ = false;
     error_.Populate(Error::kOperationTimeout, kErrorTimedOut);
-    dispatcher_->PostTask(task_factory_.NewRunnableMethod(
-        &DNSClient::HandleCompletion));
+    dispatcher_->PostTask(Bind(&DNSClient::HandleCompletion,
+                               weak_ptr_factory_.GetWeakPtr()));
     return false;
   } else {
     struct timeval max, ret_tv;
@@ -331,7 +335,7 @@ bool DNSClient::RefreshHandles() {
     struct timeval *tv = ares_->Timeout(resolver_state_->channel,
                                         &max, &ret_tv);
     dispatcher_->PostDelayedTask(
-        task_factory_.NewRunnableMethod(&DNSClient::HandleTimeout),
+        Bind(&DNSClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()),
         tv->tv_sec * 1000 + tv->tv_usec / 1000);
   }
 

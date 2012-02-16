@@ -5,7 +5,7 @@
 #ifndef SHILL_RTNL_LISTENER_
 #define SHILL_RTNL_LISTENER_
 
-#include <base/callback_old.h>
+#include <base/callback.h>
 
 namespace shill {
 
@@ -14,14 +14,14 @@ class RTNLMessage;
 class RTNLListener {
  public:
   RTNLListener(int listen_flags,
-               Callback1<const RTNLMessage &>::Type *callback);
+               const base::Callback<void(const RTNLMessage &)> &callback);
   ~RTNLListener();
 
   void NotifyEvent(int type, const RTNLMessage &msg);
 
  private:
   int listen_flags_;
-  Callback1<const RTNLMessage &>::Type *callback_;
+  base::Callback<void(const RTNLMessage &)> callback_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLListener);
 };

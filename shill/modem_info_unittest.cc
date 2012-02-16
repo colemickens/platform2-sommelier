@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/stl_util-inl.h>
+#include <base/stl_util.h>
 #include <gtest/gtest.h>
 #include <mobile_provider.h>
 

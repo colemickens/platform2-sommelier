@@ -16,6 +16,7 @@
 #include <linux/rtnetlink.h>
 #include <fcntl.h>
 
+#include <base/bind.h>
 #include <base/logging.h>
 
 #include "shill/event_dispatcher.h"
@@ -27,12 +28,15 @@
 #include "shill/rtnl_message.h"
 #include "shill/sockets.h"
 
+using base::Bind;
+using base::Unretained;
 using std::string;
 
 namespace shill {
 
-static base::LazyInstance<RTNLHandler> g_rtnl_handler(
-    base::LINKER_INITIALIZED);
+// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
+// because of http://crbug.com/114828
+static base::LazyInstance<RTNLHandler> g_rtnl_handler = {0, {{0}}};
 
 RTNLHandler::RTNLHandler()
     : sockets_(NULL),
@@ -41,7 +45,7 @@ RTNLHandler::RTNLHandler()
       request_flags_(0),
       request_sequence_(0),
       last_dump_sequence_(0),
-      rtnl_callback_(NewCallback(this, &RTNLHandler::ParseRTNL)) {
+      rtnl_callback_(Bind(&RTNLHandler::ParseRTNL, Unretained(this))) {
   VLOG(2) << "RTNLHandler created";
 }
 
@@ -82,7 +86,7 @@ void RTNLHandler::Start(EventDispatcher *dispatcher, Sockets *sockets) {
   }
 
   rtnl_handler_.reset(dispatcher->CreateInputHandler(rtnl_socket_,
-                                                     rtnl_callback_.get()));
+                                                     rtnl_callback_));
   sockets_ = sockets;
 
   NextRequest(last_dump_sequence_);

@@ -160,7 +160,6 @@ class WiFi : public Device {
   ProxyFactory *proxy_factory_;
   Time *time_;
 
-  ScopedRunnableMethodFactory<WiFi> task_factory_;
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   scoped_ptr<SupplicantInterfaceProxyInterface> supplicant_interface_proxy_;
   // The rpcid used as the key is wpa_supplicant's D-Bus path for the

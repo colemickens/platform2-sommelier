@@ -59,7 +59,7 @@ void Daemon::Run() {
 }
 
 void Daemon::Quit() {
-  dispatcher_.PostTask(new MessageLoop::QuitTask);
+  dispatcher_.PostTask(MessageLoop::QuitClosure());
 }
 
 void Daemon::Start() {

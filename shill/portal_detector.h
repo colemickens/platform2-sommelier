@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 
-#include <base/callback_old.h>
+#include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/task.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/http_request.h"
@@ -75,7 +75,7 @@ class PortalDetector {
 
   PortalDetector(ConnectionRefPtr connection,
                  EventDispatcher *dispatcher,
-                 Callback1<const Result&>::Type *callback);
+                 const base::Callback<void(const Result&)> &callback);
   virtual ~PortalDetector();
 
   // Start a portal detection test.  Returns true if |url_string| correctly
@@ -144,13 +144,13 @@ class PortalDetector {
   struct timeval attempt_start_time_;
   ConnectionRefPtr connection_;
   EventDispatcher *dispatcher_;
-  Callback1<const Result &>::Type *portal_result_callback_;
+  base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
+  base::Callback<void(const Result &)> portal_result_callback_;
   scoped_ptr<HTTPRequest> request_;
-  scoped_ptr<Callback1<const ByteString &>::Type> request_read_callback_;
-  scoped_ptr<Callback2<HTTPRequest::Result, const ByteString &>::Type>
+  base::Callback<void(const ByteString &)> request_read_callback_;
+  base::Callback<void(HTTPRequest::Result, const ByteString &)>
       request_result_callback_;
   Sockets sockets_;
-  ScopedRunnableMethodFactory<PortalDetector> task_factory_;
   Time *time_;
   HTTPURL url_;
 

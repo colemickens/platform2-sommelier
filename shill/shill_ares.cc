@@ -6,7 +6,9 @@
 
 namespace shill {
 
-static base::LazyInstance<Ares> g_ares(base::LINKER_INITIALIZED);
+// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
+// because of http://crbug.com/114828
+static base::LazyInstance<Ares> g_ares = {0, {{0}}};
 
 Ares::Ares() { }
 

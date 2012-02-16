@@ -19,22 +19,22 @@
 //   };
 //   Foo foo;
 //   PowerManager power_manager(ProxyFactory::GetInstance());
-//   PowerManager::PowerStateCallback *cb =
-//     NewCallback(&foo, &Foo::HandleStateChange);
+//   PowerManager::PowerStateCallback cb = Bind(&Foo::HandleStateChange, &foo);
 //   power_manager.AddStateChangeCallback("foo_key", cb);
 //
+//   Note that depending on the definition of Foo, "&foo" may need to appear
+//   inside an appropriate wrapper, such as base::Unretained.
+//
 // Whenever the power state changes, foo.HandleStateChange() is called with the
-// new state passed in.  To unregister:
+// new state passed in. To unregister:
 //
 //   power_manager.RemoveStateChangeCallback("foo_key");
-//
-// The callback is owned by PowerManager and is deleted when removed.
 
 #include <map>
 #include <string>
 
-#include <base/callback_old.h>
-#include <base/scoped_ptr.h>
+#include <base/callback.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "shill/power_manager_proxy_interface.h"
 
@@ -51,7 +51,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   // look like this:
   //
   //   void HandlePowerStateChange(PowerStateCallbacks::SuspendState);
-  typedef Callback1<SuspendState>::Type PowerStateCallback;
+  typedef base::Callback<void(SuspendState)> PowerStateCallback;
 
   // |proxy_factory| creates the PowerManagerProxy.  Usually this is
   // ProxyFactory::GetInstance().  Use a fake for testing.
@@ -67,10 +67,9 @@ class PowerManager : public PowerManagerProxyDelegate {
 
   // Registers a power state change callback with the power manager.  When a
   // power state change occurs, this callback will be called with the new power
-  // state as its argument.  |key| must be unique.  Ownership of |callback| is
-  // passed to this class.
+  // state as its argument.  |key| must be unique.
   virtual void AddStateChangeCallback(const std::string &key,
-                                      PowerStateCallback *callback);
+                                      const PowerStateCallback &callback);
 
   // Unregisters a callback identified by |key|.  The callback must have been
   // previously registered and not yet removed.  The callback is deleted.
@@ -79,7 +78,7 @@ class PowerManager : public PowerManagerProxyDelegate {
   // TODO(gmorain): Add registration for the OnSuspendDelay event.
 
  private:
-  typedef std::map<const std::string, PowerStateCallback *>
+  typedef std::map<const std::string, PowerStateCallback>
     StateChangeCallbackMap;
 
   // The power manager proxy created by this class.  It dispatches the inherited

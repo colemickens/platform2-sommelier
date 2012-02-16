@@ -24,8 +24,9 @@ using std::string;
 
 namespace shill {
 
-static base::LazyInstance<ProxyFactory> g_proxy_factory(
-    base::LINKER_INITIALIZED);
+// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
+// because of http://crbug.com/114828
+static base::LazyInstance<ProxyFactory> g_proxy_factory = {0, {{0}}};
 
 ProxyFactory::ProxyFactory() {}
 
