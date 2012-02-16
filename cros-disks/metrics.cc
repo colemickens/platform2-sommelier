@@ -36,6 +36,7 @@ void Metrics::InitializeArchiveTypeMap() {
   archive_type_map_["tbz2"] = kArchiveTarBzip2;
   archive_type_map_["tar.gz"] = kArchiveTarGzip;
   archive_type_map_["tgz"] = kArchiveTarGzip;
+  archive_type_map_["rar"] = kArchiveRar;
 }
 
 void Metrics::InitializeFilesystemTypeMap() {

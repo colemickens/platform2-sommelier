@@ -175,6 +175,8 @@ void ArchiveManager::RegisterDefaultFileExtensions() {
   // All variants of gzip-compessed tar
   RegisterFileExtension("tar.gz");
   RegisterFileExtension("tgz");
+  // rar
+  RegisterFileExtension("rar");
 }
 
 void ArchiveManager::RegisterFileExtension(const string& extension) {

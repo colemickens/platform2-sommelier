@@ -21,6 +21,8 @@ brk: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
+# Allow ioctl(cmd==TCGETS) for isatty check in unrar code.
+ioctl: cmd==0x5401
 writev: 1
 access: 1
 madvise: 1

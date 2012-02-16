@@ -23,6 +23,8 @@ access: 1
 mkdir: 1
 rmdir: 1
 brk: 1
+# Allow ioctl(cmd==TCGETS) for isatty check in unrar code.
+ioctl: cmd==0x5401
 umask: 1
 dup2: 1
 setsid: 1
