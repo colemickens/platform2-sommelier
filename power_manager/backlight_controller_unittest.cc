@@ -31,7 +31,6 @@ const int64 kDefaultBrightnessLevel = 50;
 const int64 kMaxBrightnessLevel = 100;
 const double kPluggedBrightnessPercent = 70.0;
 const double kUnpluggedBrightnessPercent = 30.0;
-const int64 kAlsBrightness = 0;
 
 // Repeating either increase or decrease brightness this many times should
 // always leave the brightness at a limit.
@@ -88,7 +87,6 @@ class BacklightControllerTest : public ::testing::Test {
         .WillRepeatedly(Return(false));
     prefs_.SetDouble(kPluggedBrightnessOffset, kPluggedBrightnessPercent);
     prefs_.SetDouble(kUnpluggedBrightnessOffset, kUnpluggedBrightnessPercent);
-    prefs_.SetInt64(kAlsBrightnessLevel, kAlsBrightness);
     prefs_.SetInt64(kMinVisibleBacklightLevel, 1);
     CHECK(controller_.Init());
   }
