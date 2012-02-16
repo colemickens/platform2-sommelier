@@ -85,6 +85,8 @@ Device::Device(ControlInterface *control_interface,
       metrics_(metrics),
       manager_(manager),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
+      portal_detector_callback_(
+          NewCallback(this, &Device::PortalDetectorCallback)),
       technology_(technology),
       dhcp_provider_(DHCPProvider::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
@@ -358,6 +360,10 @@ void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,
     // time we report the state change to the manager, the service
     // has its connection.
     SetServiceState(Service::kStateConnected);
+    // Subtle: Start portal detection after transitioning the service
+    // to the Connected state because this call may immediately transition
+    // to the Online state.
+    StartPortalDetection();
   } else {
     // TODO(pstew): This logic gets more complex when multiple IPConfig types
     // are run in parallel (e.g. DHCP and DHCP6)
@@ -377,6 +383,7 @@ void Device::CreateConnection() {
 
 void Device::DestroyConnection() {
   VLOG(2) << __func__;
+  StopPortalDetection();
   if (selected_service_.get()) {
     selected_service_->SetConnection(NULL);
   }
@@ -445,6 +452,88 @@ bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
     return false;
   }
   return true;
+}
+
+bool Device::StartPortalDetection() {
+  if (!manager_->IsPortalDetectionEnabled(technology())) {
+    // If portal detection is disabled for this technology, immediately set
+    // the service state to "Online".
+    VLOG(2) << "Device " << FriendlyName()
+            << ": portal detection is disabled; marking service online.";
+    portal_detector_.reset();
+    SetServiceConnectedState(Service::kStateOnline);
+    return false;
+  }
+
+  DCHECK(selected_service_.get());
+  if (selected_service_->HasProxyConfig()) {
+    // Services with HTTP proxy configurations should not be checked by the
+    // connection manager, since we don't have the ability to evaluate
+    // arbitrary proxy configs and their possible credentials.
+    VLOG(2) << "Device " << FriendlyName()
+            << ": service has proxy config;  marking it online.";
+    portal_detector_.reset();
+    SetServiceConnectedState(Service::kStateOnline);
+    return false;
+  }
+
+  portal_detector_.reset(new PortalDetector(connection_,
+                                            dispatcher_,
+                                            portal_detector_callback_.get()));
+  if (!portal_detector_->Start(manager_->GetPortalCheckURL())) {
+    LOG(ERROR) << "Device " << FriendlyName()
+               << ": Portal detection failed to start: likely bad URL: "
+               << manager_->GetPortalCheckURL();
+    SetServiceConnectedState(Service::kStateOnline);
+    return false;
+  }
+
+  VLOG(2) << "Device " << FriendlyName() << ": portal detection has started.";
+  return true;
+}
+
+void Device::StopPortalDetection() {
+  VLOG(2) << "Device " << FriendlyName() << ": portal detection has stopped.";
+  portal_detector_.reset();
+}
+
+void Device::SetServiceConnectedState(Service::ConnectState state) {
+  DCHECK(selected_service_.get());
+
+  if (!selected_service_.get()) {
+    LOG(ERROR) << FriendlyName() << ": "
+               << "Portal detection completed but no selected service exists!";
+    return;
+  }
+
+  if (!selected_service_->IsConnected()) {
+    LOG(ERROR) << FriendlyName() << ": "
+               << "Portal detection completed but selected service "
+               << selected_service_->UniqueName()
+               << " is in non-connected state.";
+    return;
+  }
+
+  SetServiceState(state);
+}
+
+void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
+  if (!result.final) {
+    VLOG(2) << "Device " << FriendlyName()
+            << ": received non-final status: "
+            << PortalDetector::StatusToString(result.status);
+    return;
+  }
+
+  VLOG(2) << "Device " << FriendlyName()
+          << ": received final status: "
+          << PortalDetector::StatusToString(result.status);
+
+  if (result.status == PortalDetector::kStatusSuccess) {
+    SetServiceConnectedState(Service::kStateOnline);
+  } else {
+    SetServiceConnectedState(Service::kStatePortal);
+  }
 }
 
 vector<string> Device::AvailableIPConfigs(Error */*error*/) {

@@ -216,7 +216,7 @@ void PortalDetector::StartAttemptTask() {
   time_->GetTimeMonotonic(&attempt_start_time_);
   ++attempt_count_;
 
-  LOG(INFO) << StringPrintf("Portal detection starting attempt %d of %d\n",
+  LOG(INFO) << StringPrintf("Portal detection starting attempt %d of %d",
                             attempt_count_, kMaxRequestAttempts);
 
   HTTPRequest::Result result =

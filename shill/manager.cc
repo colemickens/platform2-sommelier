@@ -8,15 +8,12 @@
 #include <stdio.h>
 
 #include <algorithm>
-#include <map>
 #include <string>
 #include <vector>
 
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <base/stl_util-inl.h>
-#include <base/string_split.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -40,7 +37,6 @@
 #include "shill/wifi.h"
 #include "shill/wifi_service.h"
 
-using std::map;
 using std::set;
 using std::string;
 using std::vector;
@@ -344,6 +340,16 @@ ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
       base::StringPrintf("Entry %s is not registered in the manager",
                          entry_name.c_str()));
   return NULL;
+}
+
+bool Manager::IsPortalDetectionEnabled(Technology::Identifier tech) {
+  Error error;
+  vector<Technology::Identifier> portal_technologies;
+  return Technology::GetTechnologyVectorFromString(props_.check_portal_list,
+                                                   &portal_technologies,
+                                                   &error) &&
+      std::find(portal_technologies.begin(), portal_technologies.end(),
+                tech) != portal_technologies.end();
 }
 
 const ProfileRefPtr &Manager::ActiveProfile() const {
@@ -771,30 +777,9 @@ string Manager::GetTechnologyOrder() {
 
 void Manager::SetTechnologyOrder(const string &order, Error *error) {
   vector<Technology::Identifier> new_order;
-  map<Technology::Identifier, bool> seen;
-
   VLOG(2) << "Setting technology order to " << order;
-  vector<string> order_parts;
-  base::SplitString(order, ',', &order_parts);
-
-  for (vector<string>::iterator it = order_parts.begin();
-       it != order_parts.end();
-       ++it) {
-    Technology::Identifier identifier = Technology::IdentifierFromName(*it);
-
-    if (identifier == Technology::kUnknown) {
-      Error::PopulateAndLog(error, Error::kInvalidArguments,
-                            *it + " is an unknown technology name");
-      return;
-    }
-
-    if (ContainsKey(seen, identifier)) {
-      Error::PopulateAndLog(error, Error::kInvalidArguments,
-                            *it + " is duplicated in the list");
-      return;
-    }
-    seen[identifier] = true;
-    new_order.push_back(identifier);
+  if (!Technology::GetTechnologyVectorFromString(order, &new_order, error)) {
+    return;
   }
 
   technology_order_ = new_order;

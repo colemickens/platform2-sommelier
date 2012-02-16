@@ -247,13 +247,6 @@ void Service::SetState(ConnectState state) {
   manager_->UpdateService(this);
   metrics_->NotifyServiceStateChanged(this, state);
   Error error;
-  if (state == kStateConnected) {
-    // TODO(quiche): After we have portal detection in place, CalculateState
-    // should map kStateConnected to kStateReady. At that point, we should
-    // remove this. crosbug.com/23318.
-    adaptor_->EmitStringChanged(
-        flimflam::kStateProperty, flimflam::kStateReady);
-  }
   adaptor_->EmitStringChanged(flimflam::kStateProperty, CalculateState(&error));
 }
 
@@ -479,8 +472,6 @@ const char *Service::ConnectStateToString(const ConnectState &state) {
       return "Connected";
     case kStateDisconnected:
       return "Disconnected";
-    case kStateReady:
-      return "Ready";
     case kStatePortal:
       return "Portal";
     case kStateFailure:
@@ -580,13 +571,13 @@ string Service::CalculateState(Error */*error*/) {
     case kStateConfiguring:
       return flimflam::kStateConfiguration;
     case kStateConnected:
-      // TODO(gauravsh): Until portal handling is implemented, go to "online"
-      // instead of "ready" state. crosbug.com/23318
-      return flimflam::kStateOnline;
+      return flimflam::kStateReady;
     case kStateDisconnected:
       return flimflam::kStateDisconnect;
     case kStateFailure:
       return flimflam::kStateFailure;
+    case kStatePortal:
+      return flimflam::kStatePortal;
     case kStateOnline:
       return flimflam::kStateOnline;
     case kStateUnknown:

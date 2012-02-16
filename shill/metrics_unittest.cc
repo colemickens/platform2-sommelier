@@ -67,7 +67,7 @@ TEST_F(MetricsTest, TimeToConfig) {
                                   Metrics::kTimerHistogramNumBuckets));
   metrics_.RegisterService(service_);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateConfiguring);
-  metrics_.NotifyServiceStateChanged(service_, Service::kStateReady);
+  metrics_.NotifyServiceStateChanged(service_, Service::kStateConnected);
 }
 
 TEST_F(MetricsTest, TimeToPortal) {
@@ -77,7 +77,7 @@ TEST_F(MetricsTest, TimeToPortal) {
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
   metrics_.RegisterService(service_);
-  metrics_.NotifyServiceStateChanged(service_, Service::kStateReady);
+  metrics_.NotifyServiceStateChanged(service_, Service::kStateConnected);
   metrics_.NotifyServiceStateChanged(service_, Service::kStatePortal);
 }
 
@@ -88,7 +88,7 @@ TEST_F(MetricsTest, TimeToOnline) {
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
   metrics_.RegisterService(service_);
-  metrics_.NotifyServiceStateChanged(service_, Service::kStateReady);
+  metrics_.NotifyServiceStateChanged(service_, Service::kStateConnected);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateOnline);
 }
 
@@ -127,7 +127,7 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   wifi_service_->security_ = flimflam::kSecurityWep;
   metrics_.RegisterService(wifi_service_);
-  metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateReady);
+  metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConnected);
 }
 
 TEST_F(MetricsTest, FrequencyToChannel) {

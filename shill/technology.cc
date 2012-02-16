@@ -1,17 +1,22 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "shill/technology.h"
 
+#include <set>
 #include <string>
 #include <vector>
 
+#include <base/stl_util-inl.h>
 #include <base/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/error.h"
+
 namespace shill {
 
+using std::set;
 using std::string;
 using std::vector;
 
@@ -52,6 +57,38 @@ Technology::Identifier Technology::IdentifierFromStorageGroup(
     return kUnknown;
   }
   return IdentifierFromName(group_parts[0]);
+}
+
+// static
+bool Technology::GetTechnologyVectorFromString(
+    const string &technologies_string,
+    vector<Identifier> *technologies_vector,
+    Error *error) {
+  vector<string> technology_parts;
+  base::SplitString(technologies_string, ',', &technology_parts);
+  set<Technology::Identifier> seen;
+
+  for (vector<string>::iterator it = technology_parts.begin();
+       it != technology_parts.end();
+       ++it) {
+    Technology::Identifier identifier = Technology::IdentifierFromName(*it);
+
+    if (identifier == Technology::kUnknown) {
+      Error::PopulateAndLog(error, Error::kInvalidArguments,
+                            *it + " is an unknown technology name");
+      return false;
+    }
+
+    if (ContainsKey(seen, identifier)) {
+      Error::PopulateAndLog(error, Error::kInvalidArguments,
+                            *it + " is duplicated in the list");
+      return false;
+    }
+    seen.insert(identifier);
+    technologies_vector->push_back(identifier);
+  }
+
+  return true;
 }
 
 }  // namespace shill

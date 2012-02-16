@@ -244,7 +244,7 @@ void Metrics::NotifyServiceStateChanged(const Service *service,
   if (new_state == Service::kStateFailure)
     SendServiceFailure(service);
 
-  if (new_state != Service::kStateReady)
+  if (new_state != Service::kStateConnected)
     return;
 
   service->SendPostReadyStateMetrics();
@@ -289,18 +289,18 @@ void Metrics::InitializeCommonServiceMetrics(const Service *service) {
       service,
       histogram,
       Service::kStateConfiguring,
-      Service::kStateReady);
+      Service::kStateConnected);
   histogram = GetFullMetricName(kMetricTimeToPortalMilliseconds, technology);
   AddServiceStateTransitionTimer(
       service,
       histogram,
-      Service::kStateReady,
+      Service::kStateConnected,
       Service::kStatePortal);
   histogram = GetFullMetricName(kMetricTimeToOnlineMilliseconds, technology);
   AddServiceStateTransitionTimer(
       service,
       histogram,
-      Service::kStateReady,
+      Service::kStateConnected,
       Service::kStateOnline);
 }
 

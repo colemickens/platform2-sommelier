@@ -16,6 +16,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
 #include "shill/ipconfig.h"
+#include "shill/portal_detector.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -136,8 +137,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
   FRIEND_TEST(DeviceTest, GetProperties);
-  FRIEND_TEST(DeviceTest, IPConfigUpdatedFailure);
-  FRIEND_TEST(DeviceTest, IPConfigUpdatedSuccess);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, Stop);
@@ -172,6 +171,21 @@ class Device : public base::RefCounted<Device> {
   // Set the failure of the selected service (implicitly sets the state to
   // "failure")
   void SetServiceFailure(Service::ConnectFailure failure_state);
+
+  // Called by the Portal Detector whenever a trial completes.  Device
+  // subclasses that choose unique mappings from portal results to connected
+  // states can override this method in order to do so.
+  virtual void PortalDetectorCallback(const PortalDetector::Result &result);
+
+  // Initiate portal detection, if enabled for this device type.
+  bool StartPortalDetection();
+
+  // Stop portal detection if it is running.
+  void StopPortalDetection();
+
+  // Set the state of the selected service, with checks to make sure
+  // the service is already in a connected state before doing so.
+  void SetServiceConnectedState(Service::ConnectState state);
 
   void HelpRegisterDerivedString(
       const std::string &name,
@@ -241,6 +255,9 @@ class Device : public base::RefCounted<Device> {
   IPConfigRefPtr ipconfig_;
   ConnectionRefPtr connection_;
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
+  scoped_ptr<PortalDetector> portal_detector_;
+  scoped_ptr<Callback1<const PortalDetector::Result &>::Type>
+              portal_detector_callback_;
   Technology::Identifier technology_;
 
   // Maintain a reference to the connected / connecting service

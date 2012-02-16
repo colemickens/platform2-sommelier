@@ -178,6 +178,8 @@ class WiFiService : public Service {
   std::string auth_mode_;
   bool hidden_ssid_;
   uint16 frequency_;
+  // TODO(quiche): I noticed this is not hooked up to anything.  In fact, it
+  // was undefined until now. crosbug.com/26490
   uint16 physical_mode_;
   std::string hex_ssid_;
   std::string storage_identifier_;

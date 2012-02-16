@@ -46,6 +46,7 @@ class MockService : public Service {
   MOCK_METHOD0(Unload, void());
   MOCK_METHOD1(Save, bool(StoreInterface *store_interface));
   MOCK_METHOD0(SaveToCurrentProfile, bool());
+  MOCK_CONST_METHOD0(HasProxyConfig, bool());
   MOCK_METHOD1(SetConnection, void(ConnectionRefPtr connection));
   MOCK_CONST_METHOD0(explicitly_disconnected, bool());
   MOCK_CONST_METHOD0(technology, Technology::Identifier());

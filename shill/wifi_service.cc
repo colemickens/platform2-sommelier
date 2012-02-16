@@ -57,6 +57,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       mode_(mode),
       hidden_ssid_(hidden_ssid),
       frequency_(0),
+      physical_mode_(0),
       task_factory_(this),
       wifi_(device),
       ssid_(ssid) {

@@ -116,6 +116,12 @@ class Manager {
       const std::string &entry_name,
       Error *error);
 
+  // Return whether a technology is marked as enabled for portal detection.
+  virtual bool IsPortalDetectionEnabled(Technology::Identifier tech);
+
+  virtual const std::string &GetPortalCheckURL() const {
+    return props_.portal_url;
+  }
 
   virtual DeviceInfo *device_info() { return &device_info_; }
   ModemInfo *modem_info() { return &modem_info_; }

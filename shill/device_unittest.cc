@@ -20,15 +20,18 @@
 #include "shill/dbus_adaptor.h"
 #include "shill/dhcp_provider.h"
 #include "shill/event_dispatcher.h"
-#include "shill/manager.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
+#include "shill/mock_connection.h"
 #include "shill/mock_device.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_ipconfig.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
+#include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/technology.h"
 
@@ -39,6 +42,7 @@ using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::StrictMock;
 using ::testing::Test;
 using ::testing::Values;
@@ -49,9 +53,9 @@ class DeviceTest : public PropertyStoreTest {
  public:
   DeviceTest()
       : device_(new Device(control_interface(),
+                           dispatcher(),
                            NULL,
-                           NULL,
-                           NULL,
+                           manager(),
                            kDeviceName,
                            kDeviceAddress,
                            0,
@@ -68,6 +72,29 @@ class DeviceTest : public PropertyStoreTest {
  protected:
   static const char kDeviceName[];
   static const char kDeviceAddress[];
+
+  void IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig, bool success) {
+    device_->IPConfigUpdatedCallback(ipconfig, success);
+  }
+
+  void SelectService(const ServiceRefPtr service) {
+    device_->SelectService(service);
+  }
+
+  bool StartPortalDetection() { return device_->StartPortalDetection(); }
+  void StopPortalDetection() { device_->StopPortalDetection(); }
+
+  void PortalDetectorCallback(const PortalDetector::Result &result) {
+    device_->PortalDetectorCallback(result);
+  }
+
+  void SetManager(Manager *manager) {
+    device_->manager_ = manager;
+  }
+
+  void SetConnection(ConnectionRefPtr connection) {
+    device_->connection_ = connection;
+  }
 
   MockControl control_interface_;
   DeviceRefPtr device_;
@@ -171,7 +198,6 @@ TEST_F(DeviceTest, DestroyIPConfigNULL) {
 
 TEST_F(DeviceTest, AcquireIPConfig) {
   device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
-  device_->manager_ = manager();
   EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(device_->AcquireIPConfig());
@@ -230,7 +256,7 @@ TEST_F(DeviceTest, SelectedService) {
                                   dispatcher(),
                                   metrics(),
                                   manager()));
-  device_->SelectService(service);
+  SelectService(service);
   EXPECT_TRUE(device_->selected_service_.get() == service.get());
 
   EXPECT_CALL(*service.get(), SetState(Service::kStateConfiguring));
@@ -243,14 +269,14 @@ TEST_F(DeviceTest, SelectedService) {
     .WillOnce(Return(Service::kStateUnknown));
   EXPECT_CALL(*service.get(), SetState(Service::kStateIdle));
   EXPECT_CALL(*service.get(), SetConnection(IsNullRefPtr()));
-  device_->SelectService(NULL);
+  SelectService(NULL);
 
   // A service in the "Failure" state should not be reset to "Idle"
-  device_->SelectService(service);
+  SelectService(service);
   EXPECT_CALL(*service.get(), state())
     .WillOnce(Return(Service::kStateFailure));
   EXPECT_CALL(*service.get(), SetConnection(IsNullRefPtr()));
-  device_->SelectService(NULL);
+  SelectService(NULL);
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedFailure) {
@@ -259,10 +285,10 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
                                   dispatcher(),
                                   metrics(),
                                   manager()));
-  device_->SelectService(service);
+  SelectService(service);
   EXPECT_CALL(*service.get(), SetState(Service::kStateDisconnected));
   EXPECT_CALL(*service.get(), SetConnection(IsNullRefPtr()));
-  device_->IPConfigUpdatedCallback(NULL, false);
+  IPConfigUpdatedCallback(NULL, false);
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
@@ -271,13 +297,15 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
                                   dispatcher(),
                                   metrics(),
                                   manager()));
-  device_->SelectService(service);
-  device_->manager_ = manager();
+  SelectService(service);
   scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
   EXPECT_CALL(*service.get(), SetState(Service::kStateConnected));
+  EXPECT_CALL(*service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
   EXPECT_CALL(*service.get(), SetConnection(NotNullRefPtr()));
-  device_->IPConfigUpdatedCallback(ipconfig.get(), true);
+  IPConfigUpdatedCallback(ipconfig.get(), true);
 }
 
 TEST_F(DeviceTest, Stop) {
@@ -287,7 +315,7 @@ TEST_F(DeviceTest, Stop) {
                                 dispatcher(),
                                 metrics(),
                                 manager()));
-  device_->SelectService(service);
+  SelectService(service);
 
   EXPECT_CALL(*service.get(), state()).
       WillRepeatedly(Return(Service::kStateConnected));
@@ -298,6 +326,167 @@ TEST_F(DeviceTest, Stop) {
 
   EXPECT_FALSE(device_->ipconfig_.get());
   EXPECT_FALSE(device_->selected_service_.get());
+}
+
+TEST_F(DeviceTest, PortalDetectionDisabled) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  EXPECT_CALL(*service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  StrictMock<MockManager> manager(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  glib());
+  SetManager(&manager);
+  EXPECT_CALL(manager, IsPortalDetectionEnabled(device_->technology()))
+      .WillOnce(Return(false));
+  SelectService(service);
+  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
+  EXPECT_FALSE(StartPortalDetection());
+}
+
+TEST_F(DeviceTest, PortalDetectionProxyConfig) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  EXPECT_CALL(*service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service.get(), HasProxyConfig())
+      .WillOnce(Return(true));
+  SelectService(service);
+  StrictMock<MockManager> manager(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  glib());
+  EXPECT_CALL(manager, IsPortalDetectionEnabled(device_->technology()))
+      .WillOnce(Return(true));
+  SetManager(&manager);
+  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
+  EXPECT_FALSE(StartPortalDetection());
+}
+
+TEST_F(DeviceTest, PortalDetectionBadUrl) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  EXPECT_CALL(*service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service.get(), HasProxyConfig())
+      .WillOnce(Return(false));
+  SelectService(service);
+  StrictMock<MockManager> manager(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  glib());
+  EXPECT_CALL(manager, IsPortalDetectionEnabled(device_->technology()))
+      .WillOnce(Return(true));
+  const string portal_url;
+  EXPECT_CALL(manager, GetPortalCheckURL())
+      .WillRepeatedly(ReturnRef(portal_url));
+  SetManager(&manager);
+  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
+  EXPECT_FALSE(StartPortalDetection());
+}
+
+TEST_F(DeviceTest, PortalDetectionStart) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  EXPECT_CALL(*service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service.get(), HasProxyConfig())
+      .WillOnce(Return(false));
+  SelectService(service);
+  StrictMock<MockManager> manager(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  glib());
+  EXPECT_CALL(manager, IsPortalDetectionEnabled(device_->technology()))
+      .WillOnce(Return(true));
+  const string portal_url(PortalDetector::kDefaultURL);
+  EXPECT_CALL(manager, GetPortalCheckURL())
+      .WillRepeatedly(ReturnRef(portal_url));
+  SetManager(&manager);
+  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline))
+      .Times(0);
+  scoped_ptr<MockDeviceInfo> device_info(
+      new NiceMock<MockDeviceInfo>(
+          control_interface(),
+          reinterpret_cast<EventDispatcher *>(NULL),
+          reinterpret_cast<Metrics *>(NULL),
+          reinterpret_cast<Manager *>(NULL)));
+  scoped_refptr<MockConnection> connection(
+      new NiceMock<MockConnection>(device_info.get()));
+  const string kInterfaceName("int0");
+  EXPECT_CALL(*connection.get(), interface_name())
+              .WillRepeatedly(ReturnRef(kInterfaceName));
+  const vector<string> kDNSServers;
+  EXPECT_CALL(*connection.get(), dns_servers())
+              .WillRepeatedly(ReturnRef(kDNSServers));
+  SetConnection(connection.get());
+  EXPECT_TRUE(StartPortalDetection());
+
+  // Drop all references to device_info before it falls out of scope.
+  SetConnection(NULL);
+  StopPortalDetection();
+}
+
+TEST_F(DeviceTest, PortalDetectionNonFinal) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  EXPECT_CALL(*service.get(), IsConnected())
+      .Times(0);
+  EXPECT_CALL(*service.get(), SetState(_))
+      .Times(0);
+  SelectService(service);
+  PortalDetectorCallback(PortalDetector::Result(
+      PortalDetector::kPhaseUnknown,
+      PortalDetector::kStatusFailure,
+      false));
+}
+
+TEST_F(DeviceTest, PortalDetectionFailure) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  EXPECT_CALL(*service.get(), IsConnected())
+      .WillOnce(Return(true));
+  SelectService(service);
+  EXPECT_CALL(*service.get(), SetState(Service::kStatePortal));
+  PortalDetectorCallback(PortalDetector::Result(
+      PortalDetector::kPhaseUnknown,
+      PortalDetector::kStatusFailure,
+      true));
+}
+
+TEST_F(DeviceTest, PortalDetectionSuccess) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  EXPECT_CALL(*service.get(), IsConnected())
+      .WillOnce(Return(true));
+  SelectService(service);
+  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
+  PortalDetectorCallback(PortalDetector::Result(
+      PortalDetector::kPhaseUnknown,
+      PortalDetector::kStatusSuccess,
+      true));
 }
 
 }  // namespace shill

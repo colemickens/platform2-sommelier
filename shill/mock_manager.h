@@ -30,6 +30,8 @@ class MockManager : public Manager {
   MOCK_METHOD2(HandleProfileEntryDeletion,
                bool (const ProfileRefPtr &profile,
                      const std::string &entry_name));
+  MOCK_METHOD1(IsPortalDetectionEnabled, bool(Technology::Identifier tech));
+  MOCK_CONST_METHOD0(GetPortalCheckURL, const std::string &());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockManager);

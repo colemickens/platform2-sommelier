@@ -98,7 +98,6 @@ class Service : public base::RefCounted<Service> {
     kStateConfiguring,
     kStateConnected,
     kStateDisconnected,
-    kStateReady,
     kStatePortal,
     kStateFailure,
     kStateOnline
@@ -161,7 +160,10 @@ class Service : public base::RefCounted<Service> {
   virtual void SetState(ConnectState state);
 
   // State utility functions
-  virtual bool IsConnected() const { return state() == kStateConnected; }
+  virtual bool IsConnected() const {
+    return state() == kStateConnected || state() == kStatePortal ||
+        state() == kStateOnline;
+  }
   virtual bool IsConnecting() const {
     return state() == kStateAssociating || state() == kStateConfiguring;
   }
@@ -201,6 +203,9 @@ class Service : public base::RefCounted<Service> {
   // Returns true if the service RPC identifier should be part of the
   // manager's advertised services list, false otherwise.
   virtual bool IsVisible() const { return true; }
+
+  // Returns true if there is a proxy configuration set on this service.
+  virtual bool HasProxyConfig() const { return !proxy_config_.empty(); }
 
   virtual void MakeFavorite();
 
