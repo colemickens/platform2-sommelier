@@ -2,11 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-include common.mk
+BASE_VER = 85268
 
 DBUSXX_XML2CPP ?= dbusxx-xml2cpp
-CXXFLAGS += $(shell $(PKG_CONFIG) --cflags dbus-c++-1 glib-2.0)
-LDFLAGS += $(shell $(PKG_CONFIG) --libs dbus-c++-1 glib-2.0)
+PKG_CONFIG ?= pkg-config
+PC_DEPS = dbus-1 dbus-c++-1 libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+CXXFLAGS += $(PC_CFLAGS)
+LIB_DIRS += $(PC_LIBS)
+
+# Need this to come after the PC_* flags since our
+# sub-module.mk files utilize them.
+include common.mk
 
 CXXFLAGS += -fvisibility=hidden
 CXXFLAGS += -I$(OUT)		# for bindings
@@ -22,9 +30,9 @@ OBJS := debug_daemon.o process_with_id.o process_with_output.o $(TOOLS)
 TESTOBJS := process_with_id_test.o
 
 CXX_BINARY(debugd): main.o $(OBJS)
-	$(call cxx_binary,-lminijail -lchromeos -lbase)
+	$(call cxx_binary,-lminijail $(PC_LIBS))
 CXX_BINARY(testrunner): testrunner.o $(OBJS) $(TESTOBJS)
-	$(call cxx_binary,-lgtest -lminijail -lchromeos -lbase)
+	$(call cxx_binary,-lgtest -lminijail $(PC_LIBS))
 clean: CXX_BINARY(debugd)
 
 adaptors/%.h: ../share/%.xml

@@ -8,7 +8,7 @@ define define_helper
 all: CXX_BINARY($(basename $(1)))
 $(info define_helper: $(1))
 $(1).depends: $$(DBUSHDRS)
-CXX_BINARY($(basename $(1))): LDFLAGS += -lbase -lchromeos
+CXX_BINARY($(basename $(1))): LDFLAGS += $(PC_LIBS)
 CXX_BINARY($(basename $(1))): $(1)
 # Please do not delete the newline at the end of define_helper. The text
 # produced by define_helper is smashed together by the $(eval) below without any
