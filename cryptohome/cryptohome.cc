@@ -825,7 +825,7 @@ int main(int argc, char **argv) {
       switches::kActions[switches::ACTION_PKCS11_INIT],
       action.c_str())) {
     cryptohome::Pkcs11Init pkcs11_init;
-    if (!pkcs11_init.InitializeOpencryptoki())
+    if (!pkcs11_init.InitializePkcs11())
       return 1;
     if (!pkcs11_init.IsUserTokenBroken()) {
       printf("PKCS#11 token looks OK! Not reinitializing.");
@@ -852,7 +852,7 @@ int main(int argc, char **argv) {
     WaitForTPMOwnership(proxy);
     // Attempt "forced" Pkcs#11 initialization.
     cryptohome::Pkcs11Init pkcs11_init;
-    if (!pkcs11_init.InitializeOpencryptoki())
+    if (!pkcs11_init.InitializePkcs11())
       return 1;
     return !pkcs11_init.InitializeToken();
   } else if (!strcmp(

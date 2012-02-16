@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,13 +23,14 @@ namespace cryptohome {
 
 class Pkcs11Init {
  public:
-  Pkcs11Init() : is_opencryptoki_ready_(false), is_initialized_(false),
+  Pkcs11Init() : is_pkcs11_ready_(false), is_initialized_(false),
                  pkcs11_group_id_(0), access_group_id_(0),
                  chronos_user_id_(0), chronos_group_id_(0),
                  default_platform_(new Platform),
                  platform_(default_platform_.get()),
                  default_process_(new chromeos::ProcessImpl),
-                 process_(default_process_.get()) { }
+                 process_(default_process_.get()),
+                 is_chaps_enabled_(platform_->FileExists(kChapsEnabledFile)) { }
   virtual ~Pkcs11Init() { }
 
   virtual void GetTpmTokenInfo(gchar **OUT_label,
@@ -39,47 +40,25 @@ class Pkcs11Init {
                                       gchar **OUT_label,
                                       gchar **OUT_user_pin);
 
-  // Initialize
-  virtual bool InitializeOpencryptoki();
+  // Initializes the PKCS #11 library.
+  virtual bool InitializePkcs11();
 
-  // Initialize PKCS#11 tokens and setup SO and User PINs. This always clobbers
+  // Initialize PKCS #11 tokens and setup SO and User PINs. This always clobbers
   // an existing token. Check the token using IsUserTokenBroken() before calling
-  // this method to ensure existing tokens are not destroyed. The OpenCryptoki
-  // subsystem must have been already initialized or this will
-  // fail.
+  // this method to ensure existing tokens are not destroyed. The PKCS #11
+  // subsystem must have been already initialized or this will fail.
   virtual bool InitializeToken();
-
-  // Configures the TPM as a PKCS#11 token on slot 0.
-  virtual bool ConfigureTPMAsToken();
-
-  // Start the PKCS#11 slot daemon.
-  virtual bool StartPkcs11Daemon();
-
-  // Configure the TPM token with our default SO and User PINs. Will return
-  // false on failure.
-  virtual bool SetUserTokenPins();
-
-  // Returns false whenever the /var/lib/opencryptoki directory is known to
-  // be invalid and needs to be set up again.
-  virtual bool IsOpencryptokiDirectoryValid();
-
-  // Sets up the necessary opencryptoki directories (/var/lib/opencryptoki/
-  // {,tpm}), symlinks (under /var/lib/opencryptoki/tpm) and sets the
-  // appropriate permissions.
-  virtual bool SetupOpencryptokiDirectory();
-
-  // Remove the user's token dir. Useful when token directory is found to be
-  // corrupted.
-  virtual bool RemoveUserTokenDir();
 
   // Sets up the necessary user token directories (in /home/chronos/user/.tpm)
   // and sets the appropriate permissions.
   virtual bool SetupUserTokenDirectory();
 
-  // Sets ownership and permissions on NVTOK.DAT, PUBLIC_ROOT_KEY.pem,
-  // and PRIVATE_ROOT_KEY.pem in the user token directory, and files under
-  // the token objects directory.
-  virtual bool SetUserTokenFilePermissions();
+  // Remove the user's token dir. Useful when token directory is found to be
+  // corrupted.
+  virtual bool RemoveUserTokenDir();
+
+  // Ensures all sensitive files have been removed from the token directory.
+  virtual bool SanitizeTokenDirectory();
 
   // Check if the User's PKCS#11 token is valid.
   virtual bool IsUserTokenBroken();
@@ -90,8 +69,32 @@ class Pkcs11Init {
   // the initialized file.
   virtual bool SetInitialized(bool status);
 
-  // Ensures all sensitive files have been removed from the token directory.
-  virtual bool SanitizeTokenDirectory();
+  // Initializes the Opencryptoki subsystem.
+  virtual bool InitializeOpencryptoki();
+
+  // Start the Opencryptoki PKCS#11 slot daemon.
+  virtual bool StartOpencryptokiDaemon();
+
+  // Returns false whenever the /var/lib/opencryptoki directory is known to
+  // be invalid and needs to be set up again.
+  virtual bool IsOpencryptokiDirectoryValid();
+
+  // Sets up the necessary opencryptoki directories (/var/lib/opencryptoki/
+  // {,tpm}), symlinks (under /var/lib/opencryptoki/tpm) and sets the
+  // appropriate permissions.
+  virtual bool SetupOpencryptokiDirectory();
+
+  // Configure the TPM token with our default SO and User PINs. Will return
+  // false on failure.
+  virtual bool SetOpencryptokiUserTokenPins();
+
+  // Sets ownership and permissions on NVTOK.DAT, PUBLIC_ROOT_KEY.pem,
+  // and PRIVATE_ROOT_KEY.pem in the user token directory, and files under
+  // the token objects directory.
+  virtual bool SetOpencryptokiUserTokenFilePermissions();
+
+  // Configures the TPM as a PKCS#11 token on slot 0.
+  virtual bool ConfigureTPMAsOpencryptokiToken();
 
   static const CK_SLOT_ID kDefaultTpmSlotId;
   static const CK_ULONG kMaxPinLen;
@@ -115,7 +118,8 @@ class Pkcs11Init {
   static const char* kSymlinkSources[];
   static const char* kSensitiveTokenFiles[];
 
-  static const std::string kPkcs11InitializedFile;
+  static const char* kPkcs11InitializedFile;
+  static const char* kChapsEnabledFile;
 
  private:
   // Set the PIN on |slot_id| for user |user| to |new_pin| of length
@@ -129,9 +133,8 @@ class Pkcs11Init {
   // the actual token label.
   bool CheckTokenInSlot(CK_SLOT_ID slot_id, const CK_CHAR* expected_label);
 
-  // Tracks if the openCryptoki is ready, including whether the PKCS#11 slot
-  // daemon was started.
-  bool is_opencryptoki_ready_;
+  // Tracks if the PKCS #11 library is ready.
+  bool is_pkcs11_ready_;
 
   // Tracks if PKCS#11 initialization completed.
   bool is_initialized_;
@@ -146,6 +149,10 @@ class Pkcs11Init {
 
   scoped_ptr<chromeos::ProcessImpl> default_process_;
   chromeos::ProcessImpl* process_;
+
+  // Tracks if the Chaps PKCS #11 implementation is in use instead of
+  // Opencryptoki.
+  bool is_chaps_enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(Pkcs11Init);
 };

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -62,8 +62,11 @@ const char* Pkcs11Init::kSensitiveTokenFiles[] = {
 
 // This file in the user's cryptohome signifies that Pkcs11 initialization
 // was completed for the user.
-const std::string Pkcs11Init::kPkcs11InitializedFile =
+const char* Pkcs11Init::kPkcs11InitializedFile =
     "/home/chronos/user/.tpm/.isinitialized";
+
+// This file enables chaps in place of opencryptoki.
+const char* Pkcs11Init::kChapsEnabledFile = "/home/chronos/.enable_chaps";
 
 extern const char* kTpmOwnedFile;
 extern const char kDefaultSharedUser[];
@@ -90,6 +93,17 @@ void Pkcs11Init::GetTpmTokenInfoForUser(gchar *username,
   // TODO(ellyjones): make this work for real, perhaps? crosbug.com/22127
   *OUT_label = g_strdup(reinterpret_cast<const gchar *>(kDefaultLabel));
   *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultUserPin));
+}
+
+bool Pkcs11Init::InitializePkcs11() {
+  if (is_chaps_enabled_) {
+    LOG(INFO) << "Chaps is enabled.";
+  } else {
+    if (!InitializeOpencryptoki())
+      return false;
+  }
+  is_pkcs11_ready_ = true;
+  return true;
 }
 
 bool Pkcs11Init::InitializeOpencryptoki() {
@@ -125,15 +139,15 @@ bool Pkcs11Init::InitializeOpencryptoki() {
       !SetupOpencryptokiDirectory())
     return false;
 
-  if(!ConfigureTPMAsToken())
+  if(!ConfigureTPMAsOpencryptokiToken())
     return false;
 
   // Slot daemon can only be started after the opencryptoki directory has
   // correctly been setup and the TPM is initialized to be used as the slot 0
   // token.
-  if (!StartPkcs11Daemon())
+  if (!StartOpencryptokiDaemon())
     return false;
-  // Wait for chapsd to respawn.  Normally, it is running by now so this should
+  // Wait for chapsd to respawn. Normally, it is running by now so this should
   // be quick.
   std::vector<pid_t> pids;
   int waited = 0;
@@ -145,53 +159,55 @@ bool Pkcs11Init::InitializeOpencryptoki() {
     pids.clear();
     platform_->GetPidsByName(kChapsdProcessName, &pids);
   }
-
-  is_opencryptoki_ready_ = true;
   return true;
 }
 
 bool Pkcs11Init::InitializeToken() {
   LOG(INFO) << "User token will be initialized.";
-  if (!is_opencryptoki_ready_) {
-    LOG(ERROR) << "Opencryptoki subsystem is not ready. Did you call "
-               << "InitializeOpencryptoki?";
+  if (!is_pkcs11_ready_) {
+    LOG(ERROR) << "PKCS #11 subsystem is not ready. Did you call "
+               << "InitializePkcs11()?";
     return false;
   }
 
   if (!SetupUserTokenDirectory())
     return false;
 
-  // PIN initialization needs to be performed as chronos:pkcs11.
-  uid_t saved_uid;
-  gid_t saved_gid;
-  if (!platform_->SetProcessId(chronos_user_id_, pkcs11_group_id_, &saved_uid,
-                               &saved_gid))
-    return false;
-  bool success = SetUserTokenPins() && SetUserTokenFilePermissions();
-  // Although sensitive files should no longer be created, sanitize as a fail-
-  // safe.
-  if (!SanitizeTokenDirectory())
-    success = false;
-  if (!SetInitialized(success))
-    success = false;
-  if (!platform_->SetProcessId(saved_uid, saved_gid, NULL, NULL))
-    return false;
-  // This is needed to ensure that contents of the files created by
-  // opencryptoki during initialization get flushed to the underlying storage
-  // subsystem. Due to delayed writeback, a system crash at this point may
-  // leave these files in a corrupted state. Opencryptoki does not handle
-  // this quite that gracefully.
-  platform_->Sync();
-  if (success) {
-    // The initialization process can leave chapsd in a security-officer state.
-    // We want to start it in a fresh state for normal use.
-    if (platform_->TerminatePidsByName(kChapsdProcessName, false))
-      LOG(INFO) << "Terminated " << kChapsdProcessName;
+  if (!is_chaps_enabled_) {
+    // PIN initialization needs to be performed as chronos:pkcs11.
+    uid_t saved_uid;
+    gid_t saved_gid;
+    if (!platform_->SetProcessId(chronos_user_id_, pkcs11_group_id_, &saved_uid,
+                                 &saved_gid))
+      return false;
+    bool success = SetOpencryptokiUserTokenPins() &&
+        SetOpencryptokiUserTokenFilePermissions();
+    // Although sensitive files should no longer be created, sanitize as a fail-
+    // safe.
+    if (!SanitizeTokenDirectory())
+      success = false;
+    if (!SetInitialized(success))
+      success = false;
+    if (!platform_->SetProcessId(saved_uid, saved_gid, NULL, NULL))
+      return false;
+    // This is needed to ensure that contents of the files created by
+    // opencryptoki during initialization get flushed to the underlying storage
+    // subsystem. Due to delayed writeback, a system crash at this point may
+    // leave these files in a corrupted state. Opencryptoki does not handle
+    // this quite that gracefully.
+    platform_->Sync();
+    if (success) {
+      // The initialization process can leave chapsd in a security-officer
+      // state. We want to start it in a fresh state for normal use.
+      if (platform_->TerminatePidsByName(kChapsdProcessName, false))
+        LOG(INFO) << "Terminated " << kChapsdProcessName;
+    }
+    return success;
   }
-  return success;
+  return true;
 }
 
-bool Pkcs11Init::ConfigureTPMAsToken() {
+bool Pkcs11Init::ConfigureTPMAsOpencryptokiToken() {
   // Remove old token config file.
   if (platform_->FileExists(kTokenConfigFile) &&
       !platform_->DeleteFile(kTokenConfigFile, false))
@@ -210,7 +226,7 @@ bool Pkcs11Init::ConfigureTPMAsToken() {
   return true;
 }
 
-bool Pkcs11Init::StartPkcs11Daemon() {
+bool Pkcs11Init::StartOpencryptokiDaemon() {
   process_->Reset(0);
   process_->AddArg(kPkcsSlotdPath);
   // TODO(gauravsh): Figure out if pkcsslotd can be run as a different primary
@@ -224,7 +240,7 @@ bool Pkcs11Init::StartPkcs11Daemon() {
   return true;
 }
 
-bool Pkcs11Init::SetUserTokenPins() {
+bool Pkcs11Init::SetOpencryptokiUserTokenPins() {
   CK_RV rv = C_Initialize(NULL);
   if (rv != CKR_CRYPTOKI_ALREADY_INITIALIZED && rv != CKR_OK) {
     LOG(ERROR) << "C_Initialize returned error code 0x" << std::hex << rv;
@@ -355,9 +371,15 @@ bool Pkcs11Init::SetupOpencryptokiDirectory() {
 bool Pkcs11Init::SetupUserTokenDirectory() {
   LOG(INFO) << "Removing user token dir: " << kUserTokenDir;
   RemoveUserTokenDir();
+
   // Create token directory, since initialization neither creates or populates
   // it.
-  std::string token_obj_dir = StringPrintf("%s/TOK_OBJ", kUserTokenDir);
+  std::string token_obj_dir;
+  if (is_chaps_enabled_) {
+    token_obj_dir = kUserTokenDir;
+  } else {
+    token_obj_dir = StringPrintf("%s/TOK_OBJ", kUserTokenDir);
+  }
   if (!platform_->DirectoryExists(token_obj_dir) &&
       !platform_->CreateDirectory(token_obj_dir))
     return false;
@@ -386,7 +408,7 @@ bool Pkcs11Init::SetupUserTokenDirectory() {
   return true;
 }
 
-bool Pkcs11Init::SetUserTokenFilePermissions() {
+bool Pkcs11Init::SetOpencryptokiUserTokenFilePermissions() {
   if (!platform_->SetOwnershipRecursive(kUserTokenDir,
                                         chronos_user_id_,
                                         pkcs11_group_id_)) {
@@ -422,28 +444,37 @@ bool Pkcs11Init::IsUserTokenBroken() {
     return true;
   }
 
-  // Check if our "it is initialized" special file is there.
-  if (!platform_->FileExists(kPkcs11InitializedFile))
-    return true;
-
-  if (!CheckTokenInSlot(kDefaultTpmSlotId, kDefaultLabel)) {
-    LOG(WARNING) << "Token failed basic sanity checks. Can not be valid.";
+  if (!platform_->DirectoryExists(kUserTokenDir)) {
+    LOG(WARNING) << "User token directory does not exist, token can not be "
+                 << "valid.";
     return true;
   }
 
-  if (!platform_->FileExists(StringPrintf("%s/NVTOK.DAT",
-                                        kUserTokenDir)) ||
-      !platform_->FileExists(StringPrintf("%s/TOK_OBJ/70000000",
-                                        kUserTokenDir))) {
-    LOG(WARNING) << "PKCS#11 token is missing some files. Possibly not yet "
-                 << "initialized? TOK_OBJ contents were: ";
-    // Log the contents of what was observed in exists in the TOK_OBJ directory.
-    std::vector<std::string> tok_file_list;
-    platform_->EnumerateFiles(StringPrintf("%s/TOK_OBJ/",  kUserTokenDir), true,
-                            &tok_file_list);
-    for (std::vector<std::string>::iterator it = tok_file_list.begin();
-         it != tok_file_list.end(); ++it)
-      LOG(WARNING) << *it;
+  if (!is_chaps_enabled_) {
+    // Check if our "it is initialized" special file is there.
+    if (!platform_->FileExists(kPkcs11InitializedFile))
+      return true;
+
+    if (!platform_->FileExists(StringPrintf("%s/NVTOK.DAT",
+                                          kUserTokenDir)) ||
+        !platform_->FileExists(StringPrintf("%s/TOK_OBJ/70000000",
+                                          kUserTokenDir))) {
+      LOG(WARNING) << "PKCS#11 token is missing some files. Possibly not yet "
+                   << "initialized? TOK_OBJ contents were: ";
+      // Log the contents of the TOK_OBJ directory.
+      std::vector<std::string> tok_file_list;
+      platform_->EnumerateFiles(StringPrintf("%s/TOK_OBJ/", kUserTokenDir),
+                                true,
+                                &tok_file_list);
+      for (std::vector<std::string>::iterator it = tok_file_list.begin();
+           it != tok_file_list.end(); ++it)
+        LOG(WARNING) << *it;
+      return true;
+    }
+  }
+
+  if (!CheckTokenInSlot(kDefaultTpmSlotId, kDefaultLabel)) {
+    LOG(WARNING) << "Token failed basic sanity checks. Can not be valid.";
     return true;
   }
 
@@ -561,7 +592,8 @@ bool Pkcs11Init::CheckTokenInSlot(CK_SLOT_ID slot_id,
   }
 
   if (strncmp(reinterpret_cast<const char*>(expected_label),
-              reinterpret_cast<const char*>(token_info.label), kMaxLabelLen)) {
+              reinterpret_cast<const char*>(token_info.label),
+              kMaxLabelLen)) {
     LOG(WARNING) << "Token Label (" << token_info.label << ") does not match "
                  << "expected label (" << expected_label << ")";
     return false;
