@@ -132,6 +132,10 @@ class BacklightController : public BacklightInterfaceObserver {
   // Returns whether the user has manually turned backlight down to zero.
   bool IsBacklightActiveOff();
 
+  // Converts between [0, 100] and [0, |max_level_|] brightness scales.
+  double LevelToPercent(int64 level);
+  int64 PercentToLevel(double percent);
+
   // BacklightInterfaceObserver implementation:
   virtual void OnBacklightDeviceChanged();
 
@@ -157,10 +161,6 @@ class BacklightController : public BacklightInterfaceObserver {
 
   // Clamp |percent| to fit between LevelToPercent(min_visible_level_) and 100.
   double ClampPercentToVisibleRange(double percent);
-
-  // Converts between [0, 100] and [0, |max_level_|] brightness scales.
-  double LevelToPercent(int64 level);
-  int64 PercentToLevel(double percent);
 
   void ReadPrefs();
   void WritePrefs();

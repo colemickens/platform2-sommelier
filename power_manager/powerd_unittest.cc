@@ -31,10 +31,10 @@ using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;
 using ::testing::Test;
 
-static const int64 kDefaultBrightness = 50;
-static const int64 kMaxBrightness = 100;
-static const int64 kPluggedBrightness = 70;
-static const int64 kUnpluggedBrightness = 30;
+static const int64 kDefaultBrightnessLevel = 50;
+static const int64 kMaxBrightnessLevel = 100;
+static const double kPluggedBrightnessPercent = 70;
+static const double kUnpluggedBrightnessPercent = 30;
 static const int64 kAlsBrightness = 0;
 static const int64 kSmallInterval = 500;
 static const int64 kBigInterval = kSmallInterval * 4;
@@ -65,13 +65,13 @@ class DaemonTest : public Test {
     EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
     EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
     EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
+        .WillRepeatedly(DoAll(SetArgumentPointee<0>(kDefaultBrightnessLevel),
                               Return(true)));
     EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightness),
+        .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightnessLevel),
                               Return(true)));
-    prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightness);
-    prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightness);
+    prefs_.SetDouble(kPluggedBrightnessOffset, kPluggedBrightnessPercent);
+    prefs_.SetDouble(kUnpluggedBrightnessOffset, kUnpluggedBrightnessPercent);
     prefs_.SetInt64(kAlsBrightnessLevel, kAlsBrightness);
     CHECK(backlight_ctl_.Init());
     ResetPowerStatus(status_);
@@ -669,12 +669,17 @@ TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
   daemon_.backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE);
   daemon_.plugged_state_ = kPowerDisconnected;
 
+  int64 default_brightness_percent = static_cast<int64>(lround(
+      daemon_.backlight_controller_->LevelToPercent(kDefaultBrightnessLevel)));
+
   ExpectEnumMetric("Power.BacklightLevelOnBattery",
-                   kDefaultBrightness, kMaxBrightness);
+                   default_brightness_percent,
+                   kMetricBacklightLevelMax);
   daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
   daemon_.plugged_state_ = kPowerConnected;
   ExpectEnumMetric("Power.BacklightLevelOnAC",
-                   kDefaultBrightness, kMaxBrightness);
+                   default_brightness_percent,
+                   kMetricBacklightLevelMax);
   daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
 }
 

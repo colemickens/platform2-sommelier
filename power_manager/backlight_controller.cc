@@ -367,6 +367,14 @@ bool BacklightController::IsBacklightActiveOff() {
   return state_ == BACKLIGHT_ACTIVE && target_percent_ == 0;
 }
 
+double BacklightController::LevelToPercent(int64 raw_level) {
+  return kMaxPercent * raw_level / max_level_;
+}
+
+int64 BacklightController::PercentToLevel(double local_percent) {
+  return lround(local_percent * max_level_ / kMaxPercent);
+}
+
 void BacklightController::OnBacklightDeviceChanged() {
   LOG(INFO) << "Backlight device changed; reinitializing controller";
   if (Init())
@@ -376,14 +384,6 @@ void BacklightController::OnBacklightDeviceChanged() {
 double BacklightController::ClampPercentToVisibleRange(double percent) {
   return std::min(kMaxPercent,
                   std::max(LevelToPercent(min_visible_level_), percent));
-}
-
-double BacklightController::LevelToPercent(int64 raw_level) {
-  return kMaxPercent * raw_level / max_level_;
-}
-
-int64 BacklightController::PercentToLevel(double local_percent) {
-  return lround(local_percent * max_level_ / kMaxPercent);
 }
 
 void BacklightController::ReadPrefs() {
