@@ -97,7 +97,6 @@ INSTANTIATE_TEST_CASE_P(
            PropertyStoreTest::kByteV,
            PropertyStoreTest::kInt16V,
            PropertyStoreTest::kInt32V,
-           PropertyStoreTest::kKeyValueStoreV,
            PropertyStoreTest::kStringV,
            PropertyStoreTest::kStringmapV,
            PropertyStoreTest::kStringsV,
@@ -216,6 +215,14 @@ TEST_F(PropertyStoreTest, SetStringmapsProperty) {
   ::DBus::Error error;
   EXPECT_FALSE(DBusAdaptor::SetProperty(
       &store, "", PropertyStoreTest::kStringmapsV, &error));
+  EXPECT_EQ(internal_error(), error.name());
+}
+
+TEST_F(PropertyStoreTest, SetKeyValueStoreProperty) {
+  PropertyStore store;
+  ::DBus::Error error;
+  EXPECT_FALSE(DBusAdaptor::SetProperty(
+      &store, "", PropertyStoreTest::kKeyValueStoreV, &error));
   EXPECT_EQ(internal_error(), error.name());
 }
 

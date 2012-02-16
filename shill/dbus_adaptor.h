@@ -82,6 +82,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool IsStrings(::DBus::Signature signature);
   static bool IsUint16(::DBus::Signature signature);
   static bool IsUint32(::DBus::Signature signature);
+  static bool IsKeyValueStore(::DBus::Signature signature);
 
  protected:
   class Returner : public DBus::Tag,

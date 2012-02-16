@@ -71,7 +71,10 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
     store->SetUint16Property(name, value.reader().get_uint16(), &e);
   else if (DBusAdaptor::IsUint32(value.signature()))
     store->SetUint32Property(name, value.reader().get_uint32(), &e);
-  else {
+  else if (DBusAdaptor::IsKeyValueStore(value.signature())) {
+    VLOG(1) << " can't yet handle setting type " << value.signature();
+    e.Populate(Error::kInternalError);
+  } else {
     NOTREACHED() << " unknown type: " << value.signature();
     e.Populate(Error::kInternalError);
   }
@@ -286,9 +289,41 @@ void DBusAdaptor::ArgsToKeyValueStore(
     const KeyValueStore &value) {
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
-  writer << value.string_properties();
-  writer << value.bool_properties();
-  writer << value.uint_properties();
+  map<string, ::DBus::Variant> props;
+  {
+    map<string, string>::const_iterator it;
+    for (it = value.string_properties().begin();
+         it != value.string_properties().end();
+         ++it) {
+      ::DBus::Variant vv;
+      ::DBus::MessageIter writer = vv.writer();
+      writer.append_string(it->second.c_str());
+      props[it->first] = vv;
+    }
+  }
+  {
+    map<string, bool>::const_iterator it;
+    for (it = value.bool_properties().begin();
+         it != value.bool_properties().end();
+         ++it) {
+      ::DBus::Variant vv;
+      ::DBus::MessageIter writer = vv.writer();
+      writer.append_bool(it->second);
+      props[it->first] = vv;
+    }
+  }
+  {
+    map<string, uint32>::const_iterator it;
+    for (it = value.uint_properties().begin();
+         it != value.uint_properties().end();
+         ++it) {
+      ::DBus::Variant vv;
+      ::DBus::MessageIter writer = vv.writer();
+      writer.append_uint32(it->second);
+      props[it->first] = vv;
+    }
+  }
+  writer << props;
   return v;
 }
 
@@ -369,6 +404,11 @@ bool DBusAdaptor::IsUint16(::DBus::Signature signature) {
 // static
 bool DBusAdaptor::IsUint32(::DBus::Signature signature) {
   return signature == ::DBus::type<uint32>::sig();
+}
+
+// static
+bool DBusAdaptor::IsKeyValueStore(::DBus::Signature signature) {
+  return signature == ::DBus::type<map<string, ::DBus::Variant> >::sig();
 }
 
 // static
