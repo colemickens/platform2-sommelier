@@ -166,10 +166,15 @@ void WiFi::Start() {
   // all BSSes (not just new ones since the last scan).
   supplicant_interface_proxy_->FlushBSS(0);
 
-  // TODO(pstew): Disable fast_reauth until supplicant can properly deal
-  // with RADIUS servers that respond strangely to such requests.
-  // crosbug.com/25630
-  supplicant_interface_proxy_->SetFastReauth(false);
+  try {
+    // TODO(pstew): Disable fast_reauth until supplicant can properly deal
+    // with RADIUS servers that respond strangely to such requests.
+    // crosbug.com/25630
+    supplicant_interface_proxy_->SetFastReauth(false);
+  } catch (const DBus::Error e) {  // NOLINT
+    LOG(INFO) << "Failed to disable fast_reauth. "
+              << "May be running an older version of wpa_supplicant.";
+  }
 
   Scan(NULL);
   Device::Start();
