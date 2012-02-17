@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -133,6 +133,13 @@ void SendSignalToPowerD(const char* signal_name) {
   CHECK(signal);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   dbus_message_unref(signal);
+}
+
+void SendEmptyDBusReply(DBusConnection* connection, DBusMessage* message) {
+  DBusMessage* reply = dbus_message_new_method_return(message);
+  CHECK(reply);
+  dbus_connection_send(connection, reply, NULL);
+  dbus_message_unref(reply);
 }
 
 void CreateStatusFile(const FilePath& file) {

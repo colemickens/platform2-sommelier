@@ -625,66 +625,70 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
   Daemon* daemon = static_cast<Daemon*>(data);
   if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                   kRequestLockScreenMethod)) {
-    LOG(INFO) << "RequestLockScreen event";
+    LOG(INFO) << "Got " << kRequestLockScreenMethod << " method call";
     daemon->locker_.LockScreen();
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kRequestUnlockScreenMethod)) {
-    LOG(INFO) << "RequestUnlockScreen event";
+    LOG(INFO) << "Got " << kRequestUnlockScreenMethod << " method call";
     util::SendSignalToSessionManager("UnlockScreen");
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kScreenIsLockedMethod)) {
-    LOG(INFO) << "ScreenIsLocked event";
+    LOG(INFO) << "Got " << kScreenIsLockedMethod << " method call";
     daemon->locker_.set_locked(true);
 #if !defined(USE_AURA)
     daemon->power_button_handler_->HandleScreenLocked();
 #endif
     daemon->suspender_.CheckSuspend();
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                     kScreenIsUnlockedMethod)) {
-    LOG(INFO) << "ScreenIsUnlocked event";
+    LOG(INFO) << "Got " << kScreenIsUnlockedMethod << " method call";
     daemon->locker_.set_locked(false);
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kRequestSuspendSignal)) {
-    LOG(INFO) << "RequestSuspend event";
+    LOG(INFO) << "Got " << kRequestSuspendSignal << " signal";
     daemon->Suspend();
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kRequestRestartMethod)) {
-    LOG(INFO) << "RequestRestart event";
+    LOG(INFO) << "Got " << kRequestRestartMethod << " method call";
     daemon->OnRequestRestart(true);  // notify_window_manager=true
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kRequestShutdownMethod)) {
-    LOG(INFO) << "RequestShutdown event";
+    LOG(INFO) << "Got " << kRequestShutdownMethod << " method call";
     daemon->OnRequestShutdown(true);  // notify_window_manager=true
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kLidClosed)) {
-    LOG(INFO) << "Lid Closed event";
+    LOG(INFO) << "Got " << kLidClosed << " signal";
     daemon->SetActive();
     daemon->Suspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kLidOpened)) {
-    LOG(INFO) << "Lid Opened event";
+    LOG(INFO) << "Got " << kLidOpened << " signal";
     daemon->SetActive();
     daemon->suspender_.CancelSuspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kButtonEventSignal)) {
-    LOG(INFO) << "Button event";
+    LOG(INFO) << "Got " << kButtonEventSignal << " signal";
     daemon->OnButtonEvent(message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kDecreaseScreenBrightness)) {
-    LOG(INFO) << "Decrease screen brightness request.";
+    LOG(INFO) << "Got " << kDecreaseScreenBrightness << " method call";
     dbus_bool_t allow_off = false;
     DBusError error;
     dbus_error_init(&error);
     if (dbus_message_get_args(message, &error,
                               DBUS_TYPE_BOOLEAN, &allow_off,
                               DBUS_TYPE_INVALID) == FALSE) {
-      LOG(WARNING) << "Error reading args from "
-                   << kDecreaseScreenBrightness << ": "
-                   << (dbus_error_is_set(&error) ? error.message
-                                                 : "Unknown error");
+      LOG(WARNING) << "Unable to read " << kDecreaseScreenBrightness << " args";
+      dbus_error_free(&error);
     }
-    bool changed = daemon->backlight_controller_->DecreaseBrightness(allow_off,
-        BRIGHTNESS_CHANGE_USER_INITIATED);
+    bool changed = daemon->backlight_controller_->DecreaseBrightness(
+        allow_off, BRIGHTNESS_CHANGE_USER_INITIATED);
     daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                          kBrightnessDown,
                                          kBrightnessEnumMax);
@@ -693,9 +697,10 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
           daemon->backlight_controller_->target_percent(),
           BRIGHTNESS_CHANGE_USER_INITIATED,
           kBrightnessChangedSignal);
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kIncreaseScreenBrightness)) {
-    LOG(INFO) << "Increase screen brightness request.";
+    LOG(INFO) << "Got " << kIncreaseScreenBrightness << " method call";
     bool changed = daemon->backlight_controller_->IncreaseBrightness(
         BRIGHTNESS_CHANGE_USER_INITIATED);
     daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
@@ -706,78 +711,78 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
           daemon->backlight_controller_->target_percent(),
           BRIGHTNESS_CHANGE_USER_INITIATED,
           kBrightnessChangedSignal);
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kDecreaseKeyboardBrightness)) {
-    LOG(INFO) << "Decrease keyboard brightness request.";
+    LOG(INFO) << "Got " << kDecreaseKeyboardBrightness << " method call";
     daemon->AdjustKeyboardBrightness(-1);
     // TODO(dianders): metric?
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kIncreaseKeyboardBrightness)) {
-    LOG(INFO) << "Increase keyboard brightness request.";
+    LOG(INFO) << "Got " << kIncreaseKeyboardBrightness << " method call";
     daemon->AdjustKeyboardBrightness(1);
     // TODO(dianders): metric?
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kGetIdleTime)) {
-    LOG(INFO) << "Idle time request.";
+    LOG(INFO) << "Got " << kGetIdleTime << " method call";
     int64 idle_time_ms = -1;
     CHECK(daemon->GetIdleTime(&idle_time_ms));
-    DBusMessage *reply = dbus_message_new_method_return(message);
+    DBusMessage* reply = dbus_message_new_method_return(message);
     CHECK(reply);
     dbus_message_append_args(reply,
                              DBUS_TYPE_INT64, &idle_time_ms,
                              DBUS_TYPE_INVALID);
-    if (!dbus_connection_send(connection, reply, NULL)) {
-      LOG(WARNING) << "Failed to send reply message.";
-      // Other dbus clients may be interested in consuming this signal.
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    }
+    CHECK(dbus_connection_send(connection, reply, NULL));
+    dbus_message_unref(reply);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kRequestIdleNotification)) {
-    LOG(INFO) << "Add an idle notification request.";
+    LOG(INFO) << "Got " << kRequestIdleNotification << " method call";
     DBusError error;
     dbus_error_init(&error);
     int64 threshold = 0;
-    if (dbus_message_get_args(message, &error, DBUS_TYPE_INT64, &threshold,
-                              DBUS_TYPE_INVALID) == FALSE) {
-      LOG(WARNING) << "Trouble reading args of RequestIdleNotification event "
-                   << threshold;
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    if (dbus_message_get_args(message, &error,
+                              DBUS_TYPE_INT64, &threshold,
+                              DBUS_TYPE_INVALID)) {
+      daemon->AddIdleThreshold(threshold);
+    } else {
+      LOG(WARNING) << "Unable to read " << kRequestIdleNotification << " args";
+      dbus_error_free(&error);
     }
-    daemon->AddIdleThreshold(threshold);
+    util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kCleanShutdown)) {
-    LOG(INFO) << "Clean shutdown/restart event";
+    LOG(INFO) << "Got " << kCleanShutdown << " signal";
     if (daemon->clean_shutdown_initiated_) {
       daemon->clean_shutdown_initiated_ = false;
       daemon->Shutdown();
     } else {
-      LOG(INFO) << "Received clean shutdown signal, but never asked for it.";
+      LOG(WARNING) << "Unrequested " << kCleanShutdown << " signal";
     }
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kPowerStateChanged)) {
-    LOG(INFO) << "Power state change event";
+    LOG(INFO) << "Got " << kPowerStateChanged << " signal";
     const char* state = '\0';
     DBusError error;
     dbus_error_init(&error);
-    if (dbus_message_get_args(message, &error, DBUS_TYPE_STRING, &state,
-                              DBUS_TYPE_INVALID) == FALSE) {
-      LOG(WARNING) << "Trouble reading args of PowerStateChange event "
-                   << state;
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    if (dbus_message_get_args(message, &error,
+                              DBUS_TYPE_STRING, &state,
+                              DBUS_TYPE_INVALID)) {
+      daemon->OnPowerStateChange(state);
+    } else {
+      LOG(WARNING) << "Unable to read " << kPowerStateChanged << " args";
+      dbus_error_free(&error);
     }
-    daemon->OnPowerStateChange(state);
-    // Other dbus clients may be interested in consuming this signal.
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     "PowerSupplyChange")) {
-    LOG(INFO) << "Power supply change event";
+    LOG(INFO) << "Got PowerSupplyChange signal";
     daemon->PollPowerSupply();
-    // Other dbus clients may be interested in consuming this signal.
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  } else if (dbus_message_is_method_call(message,
-                                         kPowerManagerInterface,
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kGetAllPropertiesMethod)) {
-    LOG(INFO) << "Power supply all properties request";
+    LOG(INFO) << "Got " << kGetAllPropertiesMethod << " method call";
 
     PowerStatus* status = &daemon->power_status_;
     // Use dbus_bool_t for boolean fields; it is not safe to pass bool fields
@@ -786,7 +791,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     dbus_bool_t battery_is_present = status->battery_is_present;
     dbus_bool_t battery_is_charged =
         status->battery_state == BATTERY_STATE_FULLY_CHARGED;
-    DBusMessage *reply = dbus_message_new_method_return(message);
+    DBusMessage* reply = dbus_message_new_method_return(message);
     CHECK(reply != NULL);
     dbus_message_append_args(reply,
         DBUS_TYPE_BOOLEAN, &line_power_on,
@@ -799,17 +804,11 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
         DBUS_TYPE_BOOLEAN, &battery_is_present,
         DBUS_TYPE_BOOLEAN, &battery_is_charged,
         DBUS_TYPE_INVALID);
-
-    if (!dbus_connection_send(connection, reply, NULL)) {
-      LOG(WARNING) << "Failed to send reply message.";
-      // Other dbus clients may be interested in consuming this signal.
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    }
-    return DBUS_HANDLER_RESULT_HANDLED;
-  } else if (dbus_message_is_method_call(message,
-                                         kPowerManagerInterface,
+    CHECK(dbus_connection_send(connection, reply, NULL));
+    dbus_message_unref(reply);
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kGetPowerSupplyPropertiesMethod)) {
-    LOG(INFO) << "Power supply properties request";
+    LOG(INFO) << "Got " << kGetPowerSupplyPropertiesMethod << " method call";
 
     PowerSupplyProperties protobuf;
     PowerStatus* status = &daemon->power_status_;
@@ -826,26 +825,24 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                                     BATTERY_STATE_FULLY_CHARGED);
 
     DBusMessage *reply = dbus_message_new_method_return(message);
-    CHECK(reply != NULL);
-
+    CHECK(reply);
     std::string serialized_proto;
     CHECK(protobuf.SerializeToString(&serialized_proto));
+    // For array arguments, D-Bus wants the array typecode, the element
+    // typecode, the array address, and the number of elements (as opposed to
+    // the usual typecode-followed-by-address ordering).
     dbus_message_append_args(
         reply,
         DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
         serialized_proto.data(), serialized_proto.size(),
         DBUS_TYPE_INVALID);
-
-    if (!dbus_connection_send(connection, reply, NULL)) {
-      LOG(WARNING) << "Failed to send reply message.";
-      // Other dbus clients may be interested in consuming this signal.
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    }
-    return DBUS_HANDLER_RESULT_HANDLED;
+    CHECK(dbus_connection_send(connection, reply, NULL));
+    dbus_message_unref(reply);
   } else if (dbus_message_is_signal(
-                 message,
-                 login_manager::kSessionManagerInterface,
+                 message, login_manager::kSessionManagerInterface,
                  login_manager::kSessionManagerSessionStateChanged)) {
+    LOG(INFO) << "Got " << login_manager::kSessionManagerSessionStateChanged
+              << " signal";
     DBusError error;
     dbus_error_init(&error);
     const char* state = NULL;
@@ -856,9 +853,10 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                               DBUS_TYPE_INVALID)) {
       daemon->OnSessionStateChange(state, user);
     } else {
-      LOG(WARNING) << "Unable to read arguments from "
+      LOG(WARNING) << "Unable to read "
                    << login_manager::kSessionManagerSessionStateChanged
-                   << " signal";
+                   << " args";
+      dbus_error_free(&error);
     }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else {

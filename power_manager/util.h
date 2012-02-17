@@ -1,9 +1,13 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef POWER_MANAGER_UTIL_H_
 #define POWER_MANAGER_UTIL_H_
+
+#include <string>
+
+#include <dbus/dbus-glib-lowlevel.h>
 
 #include "cros/chromeos_wm_ipc_enums.h"
 
@@ -26,6 +30,9 @@ void SendSignalToPowerM(const char* signal);
 
 // Send a message |signal| to the unprivileged power daemon.
 void SendSignalToPowerD(const char* signal);
+
+// Send an empty reply to a D-Bus message.
+void SendEmptyDBusReply(DBusConnection* connection, DBusMessage* message);
 
 // Status file creation and removal.
 void CreateStatusFile(const FilePath& file);

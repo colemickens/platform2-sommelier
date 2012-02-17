@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -113,60 +113,55 @@ void Suspender::CancelSuspend() {
   suspend_delays_outstanding_ = 0;
 }
 
-// Register a Suspend Delay client callback. Expected argument is unsigned int32
-// containing the expected maximum delay, which will be used for delay timeout.
 DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
+  DBusMessage* reply = dbus_message_new_method_return(message);
+  CHECK(reply);
+
+  uint32 delay_ms = 0;
   DBusError error;
-  uint32 delay_ms;
-  DBusMessage* reply;
-  const std::string errmsg = StringPrintf("%s%s", kPowerManagerInterface,
-                                          kError);
   dbus_error_init(&error);
-  reply = dbus_message_new_method_return(message);
-  if (!reply) {
-    LOG(ERROR) << "dbus_message_new_method_return reply NULL!";
-    return NULL;
-  }
-  if (!dbus_message_get_args(message, &error, DBUS_TYPE_UINT32, &delay_ms,
+  if (!dbus_message_get_args(message, &error,
+                             DBUS_TYPE_UINT32, &delay_ms,
                              DBUS_TYPE_INVALID)) {
+    LOG(WARNING) << "Couldn't read args for RegisterSuspendDelay request";
+    const std::string errmsg =
+        StringPrintf("%s%s", kPowerManagerInterface, kError);
     dbus_message_set_error_name(reply, errmsg.c_str());
-    LOG(WARNING) << "Failure to register.";
     if (dbus_error_is_set(&error))
       dbus_error_free(&error);
     return reply;
   }
+
   const char* client_name = dbus_message_get_sender(message);
   if (!client_name) {
     LOG(ERROR) << "dbus_message_get_sender returned NULL name.";
     return reply;
   }
+
   LOG(INFO) << "register-suspend-delay, client: " << client_name
-            << " delay_ms : " << delay_ms;
-  if (0 < delay_ms) {
+            << " delay_ms: " << delay_ms;
+  if (delay_ms > 0) {
     suspend_delays_[client_name] = delay_ms;
     if (delay_ms > suspend_delay_timeout_ms_)
-     suspend_delay_timeout_ms_ = delay_ms;
+      suspend_delay_timeout_ms_ = delay_ms;
   }
   return reply;
 }
 
-// Unregister a Suspend Delay client callback.
 DBusMessage* Suspender::UnregisterSuspendDelay(DBusMessage* message) {
-  DBusMessage* reply;
-  const std::string errmsg = StringPrintf("%s%s", kPowerManagerInterface,
-                                          kError);
-  reply = dbus_message_new_method_return(message);
-  if (!reply) {
-    LOG(ERROR) << "dbus_message_new_method_return reply NULL!";
-    return NULL;
-  }
+  DBusMessage* reply = dbus_message_new_method_return(message);
+  CHECK(reply);
+
   const char* client_name = dbus_message_get_sender(message);
   if (!client_name) {
     LOG(ERROR) << "dbus_message_get_sender returned NULL name.";
-    return NULL;
+    return reply;
   }
+
   LOG(INFO) << "unregister-suspend-delay, client: " << client_name;
   if (!CleanUpSuspendDelay(client_name)) {
+    const std::string errmsg =
+        StringPrintf("%s%s", kPowerManagerInterface, kError);
     dbus_message_set_error_name(reply, errmsg.c_str());
   }
   return reply;
@@ -176,25 +171,19 @@ DBusHandlerResult Suspender::DBusMessageHandler(
     DBusConnection* conn, DBusMessage* message, void* data) {
   Suspender* suspender = static_cast<Suspender*>(data);
   if (dbus_message_is_method_call(message, kPowerManagerInterface,
-      kRegisterSuspendDelay)) {
-    dbus_uint32_t serial = 0;
-    LOG(INFO) << "kRegisterSuspendDelay";
+                                  kRegisterSuspendDelay)) {
+    LOG(INFO) << "Got " << kRegisterSuspendDelay << " method call";
     DBusMessage* reply = suspender->RegisterSuspendDelay(message);
-    if (!dbus_connection_send(conn, reply, &serial)) {
-      LOG(ERROR) << "dbus_connection_send(): out of memory";
-    }
+    CHECK(dbus_connection_send(conn, reply, NULL));
     dbus_message_unref(reply);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
-             kUnregisterSuspendDelay)) {
-    dbus_uint32_t serial = 0;
-    LOG(INFO) << "kUnregisterSuspendDelay";
+                                         kUnregisterSuspendDelay)) {
+    LOG(INFO) << "Got " << kUnregisterSuspendDelay << " method call";
     DBusMessage* reply = suspender->UnregisterSuspendDelay(message);
-    if (!dbus_connection_send(conn, reply, &serial)) {
-      LOG(ERROR) << "dbus_connection_send(): out of memory";
-    }
+    CHECK(dbus_connection_send(conn, reply, NULL));
     dbus_message_unref(reply);
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-             kSuspendReady)) {
+                                    kSuspendReady)) {
     suspender->SuspendReady(message);
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -181,7 +181,7 @@ bool PowerManDaemon::CancelDBusRequest() {
 
   bool cancel = (lidstate_ == LID_STATE_OPENED) &&
                 (delta.InSeconds() < kCancelDBusLidOpenedSecs);
-  LOG(INFO) << (cancel?"Canceled":"Continuing")
+  LOG(INFO) << (cancel ? "Canceled" : "Continuing")
             << " DBus activated suspend.  Lid is "
             << (lidstate_ == LID_STATE_CLOSED ? "closed." : "open.");
   return cancel;
@@ -192,52 +192,50 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
   if (dbus_message_is_signal(message, kRootPowerManagerInterface,
                              kSuspendSignal)) {
-    LOG(INFO) << "Suspend event";
+    LOG(INFO) << "Got " << kSuspendSignal << " signal";
     daemon->Suspend();
   } else if (dbus_message_is_signal(message, kRootPowerManagerInterface,
                                     kShutdownSignal)) {
-    LOG(INFO) << "Shutdown event";
+    LOG(INFO) << "Got " << kShutdownSignal << " signal";
     daemon->Shutdown();
   } else if (dbus_message_is_signal(message, kRootPowerManagerInterface,
                                     kRestartSignal)) {
-    LOG(INFO) << "Restart event";
+    LOG(INFO) << "Got " << kRestartSignal << " signal";
     daemon->Restart();
   } else if (dbus_message_is_signal(message, kRootPowerManagerInterface,
                                     kRequestCleanShutdown)) {
-    LOG(INFO) << "Request Clean Shutdown";
+    LOG(INFO) << "Got " << kRequestCleanShutdown << " signal";
     util::Launch("initctl emit power-manager-clean-shutdown");
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kPowerStateChanged)) {
-    LOG(INFO) << "Power state change event";
+    LOG(INFO) << "Got " << kPowerStateChanged << " signal";
     const char *state = '\0';
     DBusError error;
     dbus_error_init(&error);
-
-    if (dbus_message_get_args(message, &error, DBUS_TYPE_STRING, &state,
-                              DBUS_TYPE_INVALID) == FALSE) {
-      LOG(WARNING) << "Trouble reading args of PowerStateChange event "
-                   << state;
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    }
-
-    // on == resume via powerd_suspend
-    if (g_str_equal(state, "on") == TRUE) {
-      LOG(INFO) << "Resuming has commenced";
-      daemon->GenerateMetricsOnResumeEvent();
-      daemon->retry_suspend_count_ = 0;
+    if (dbus_message_get_args(message, &error,
+                              DBUS_TYPE_STRING, &state,
+                              DBUS_TYPE_INVALID)) {
+      // on == resume via powerd_suspend
+      if (g_str_equal(state, "on") == TRUE) {
+        LOG(INFO) << "Resuming has commenced";
+        daemon->GenerateMetricsOnResumeEvent();
+        daemon->retry_suspend_count_ = 0;
 #ifdef SUSPEND_LOCK_VT
-      daemon->UnlockVTSwitch();     // Allow virtual terminal switching again.
+        daemon->UnlockVTSwitch();     // Allow virtual terminal switching again.
 #endif
+      } else {
+        DLOG(INFO) << "Saw arg:" << state << " for " << kPowerStateChanged;
+      }
     } else {
-      DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
+      LOG(WARNING) << "Unable to read " << kPowerStateChanged << " args";
+      dbus_error_free(&error);
     }
-
-    // Other dbus clients may be interested in consuming this signal.
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else if (dbus_message_is_signal(
-                 message,
-                 login_manager::kSessionManagerInterface,
+                 message, login_manager::kSessionManagerInterface,
                  login_manager::kSessionManagerSessionStateChanged)) {
+    LOG(INFO) << " Got " << login_manager::kSessionManagerSessionStateChanged
+              << " signal";
     DBusError error;
     dbus_error_init(&error);
     const char* state = NULL;
@@ -255,14 +253,15 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
       else
         LOG(WARNING) << "Unknown session state : " << state;
     } else {
-      LOG(WARNING) << "Unable to read arguments from "
+      LOG(WARNING) << "Unable to read "
                    << login_manager::kSessionManagerSessionStateChanged
-                   << " signal";
+                   << " args";
+      dbus_error_free(&error);
     }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else if (dbus_message_is_method_call(message, kRootPowerManagerInterface,
                                          kExternalBacklightGetMethod)) {
-    LOG(INFO) << "External backlight get brightness method call.";
+    LOG(INFO) << "Got " << kExternalBacklightGetMethod << " method call";
     int64 current_level = 0;
     int64 max_level = 0;
     dbus_bool_t result = FALSE;
@@ -271,33 +270,32 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
                daemon->backlight_->GetMaxBrightnessLevel(&max_level);
     }
 
-    DBusMessage *reply = dbus_message_new_method_return(message);
+    DBusMessage* reply = dbus_message_new_method_return(message);
     CHECK(reply);
     dbus_message_append_args(reply,
                              DBUS_TYPE_INT64, &current_level,
                              DBUS_TYPE_INT64, &max_level,
                              DBUS_TYPE_BOOLEAN, &result,
                              DBUS_TYPE_INVALID);
-    if (!dbus_connection_send(connection, reply, NULL)) {
-      LOG(WARNING) << "Failed to send reply message.";
-      // Other dbus clients may be interested in consuming this signal.
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    }
-    return DBUS_HANDLER_RESULT_HANDLED;
+    CHECK(dbus_connection_send(connection, reply, NULL));
+    dbus_message_unref(reply);
   } else if (dbus_message_is_method_call(message, kRootPowerManagerInterface,
                                          kExternalBacklightSetMethod)) {
+    LOG(INFO) << "Got " << kExternalBacklightSetMethod << " method call";
     int64 level = 0;
     DBusError error;
     dbus_error_init(&error);
     if (dbus_message_get_args(message, &error,
                               DBUS_TYPE_INT64, &level,
-                              DBUS_TYPE_INVALID) == FALSE) {
-      LOG(WARNING) << "Trouble reading args of set brightness method call.";
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+                              DBUS_TYPE_INVALID)) {
+      if (daemon->backlight_)
+        daemon->backlight_->SetBrightnessLevel(level);
+    } else {
+      LOG(WARNING) << "Unable to read " << kExternalBacklightSetMethod
+                   << " args";
+      dbus_error_free(&error);
     }
-    if (daemon->backlight_)
-      daemon->backlight_->SetBrightnessLevel(level);
-    return DBUS_HANDLER_RESULT_HANDLED;
+    util::SendEmptyDBusReply(connection, message);
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }

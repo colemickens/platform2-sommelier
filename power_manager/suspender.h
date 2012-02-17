@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -36,14 +36,15 @@ class Suspender {
   // Cancel Suspend in progress.
   void CancelSuspend();
 
-  // Registers for a suspend delay callback.
+  // Handles a RegisterSuspendDelay request.  The caller is responsible for
+  // sending the returned reply and freeing it with dbus_message_unref().
   DBusMessage* RegisterSuspendDelay(DBusMessage* message);
 
-  // Unregister suspend delay callback.
+  // Handles an UnregisterSuspendDelay request.  The caller is responsible for
+  // sending the returned reply and freeing it with dbus_message_unref().
   DBusMessage* UnregisterSuspendDelay(DBusMessage* message);
 
  private:
-
   // Handle SuspendReady Dbus Messages.
   void SuspendReady(DBusMessage* message);
 
