@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/file_path.h>
+
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
@@ -28,8 +30,7 @@ class ChapsFactory {
                                  TPMUtility* tpm_utility,
                                  bool is_read_only) = 0;
   virtual ObjectPool* CreateObjectPool() = 0;
-  virtual ObjectPool* CreatePersistentObjectPool(
-      const std::string& file_name) = 0;
+  virtual ObjectPool* CreatePersistentObjectPool(const FilePath& file_name) = 0;
   virtual Object* CreateObject() = 0;
   virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) = 0;
 };

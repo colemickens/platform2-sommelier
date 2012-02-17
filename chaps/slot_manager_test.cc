@@ -24,30 +24,36 @@ using ::testing::SetArgumentPointee;
 
 namespace chaps {
 
-static const string kAuthData("000000");
-static const string kNewAuthData("111111");
-static const string kDefaultPubExp("\x01\x00\x01", 3);
+namespace {
 
-static ObjectPool* CreateObjectPoolMock() {
-  ObjectPoolMock* op = new ObjectPoolMock();
-  EXPECT_CALL(*op, GetInternalBlob(0, _))
+const char kAuthData[] = "000000";
+const char kNewAuthData[] = "111111";
+const char kDefaultPubExp[] = {1, 0, 1};
+const int kDefaultPubExpSize = 3;
+
+// Creates and sets default expectations on a ObjectPoolMock instance. Returns
+// a pointer to the new object.
+ObjectPool* CreateObjectPoolMock() {
+  ObjectPoolMock* object_pool = new ObjectPoolMock();
+  EXPECT_CALL(*object_pool, GetInternalBlob(0, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(string("auth_key_blob")),
                             Return(true)));
-  EXPECT_CALL(*op, GetInternalBlob(1, _))
+  EXPECT_CALL(*object_pool, GetInternalBlob(1, _))
       .WillRepeatedly(
           DoAll(SetArgumentPointee<1>(string("encrypted_master_key")),
                 Return(true)));
-  EXPECT_CALL(*op, SetInternalBlob(0, string("auth_key_blob")))
+  EXPECT_CALL(*object_pool, SetInternalBlob(0, string("auth_key_blob")))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*op, SetInternalBlob(0, string("new_auth_key_blob")))
+  EXPECT_CALL(*object_pool, SetInternalBlob(0, string("new_auth_key_blob")))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*op, SetInternalBlob(1, string("encrypted_master_key")))
+  EXPECT_CALL(*object_pool, SetInternalBlob(1, string("encrypted_master_key")))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*op, SetKey(string("master_key"))).Times(AnyNumber());
-  return op;
+  EXPECT_CALL(*object_pool, SetKey(string("master_key"))).Times(AnyNumber());
+  return object_pool;
 }
 
-static void ConfigureTPMUtility(TPMUtilityMock* tpm) {
+// Sets default expectations on a TPMUtilityMock.
+void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
   EXPECT_CALL(*tpm, Authenticate(_,
                                  kAuthData,
@@ -67,7 +73,8 @@ static void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, GenerateRandom(_, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(string("master_key")),
                             Return(true)));
-  EXPECT_CALL(*tpm, GenerateKey(1, 2048, kDefaultPubExp, kAuthData, _, _))
+  string exponent(kDefaultPubExp, kDefaultPubExpSize);
+  EXPECT_CALL(*tpm, GenerateKey(1, 2048, exponent, kAuthData, _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<4>(string("auth_key_blob")),
                             SetArgumentPointee<5>(1),
                             Return(true)));
@@ -79,20 +86,14 @@ static void ConfigureTPMUtility(TPMUtilityMock* tpm) {
                 Return(true)));
 }
 
-static bool IsAnyByteEqualTo(void* buffer, int length, uint8_t value) {
-  uint8_t* bytes = reinterpret_cast<uint8_t*>(buffer);
-  for (int i = 0; i < length; ++i) {
-    if (bytes[i] == value)
-      return true;
-  }
-  return false;
-}
-
-static Session* CreateNewSession() {
+// Creates and returns a mock Session instance.
+Session* CreateNewSession() {
   return new SessionMock();
 }
 
-// Test fixture for an initialized SlotManagerImpl instance.
+}  // namespace
+
+// A test fixture for an initialized SlotManagerImpl instance.
 class TestSlotManager: public ::testing::Test {
  public:
   TestSlotManager() {
@@ -117,11 +118,10 @@ typedef TestSlotManager TestSlotManager_DeathTest;
 
 TEST(DeathTest, InvalidInit) {
   ChapsFactoryMock factory;
-  SlotManagerImpl sm(&factory, NULL);
-  EXPECT_DEATH_IF_SUPPORTED(sm.Init(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(&factory, NULL),
+                            "Check failed");
   TPMUtilityMock tpm;
-  SlotManagerImpl sm2(NULL, &tpm);
-  EXPECT_DEATH_IF_SUPPORTED(sm.Init(), "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(NULL, &tpm), "Check failed");
 }
 
 TEST_F(TestSlotManager_DeathTest, InvalidArgs) {
@@ -182,14 +182,14 @@ TEST_F(TestSlotManager, QueryInfo) {
   memset(&slot_info, 0xEE, sizeof(slot_info));
   slot_manager_->GetSlotInfo(0, &slot_info);
   // Check if all bytes have been set by the call.
-  EXPECT_FALSE(IsAnyByteEqualTo(&slot_info, sizeof(slot_info), 0xEE));
+  EXPECT_EQ(NULL, memchr(&slot_info, 0xEE, sizeof(slot_info)));
   memset(&slot_info, 0xEE, sizeof(slot_info));
   slot_manager_->GetSlotInfo(1, &slot_info);
-  EXPECT_FALSE(IsAnyByteEqualTo(&slot_info, sizeof(slot_info), 0xEE));
+  EXPECT_EQ(NULL, memchr(&slot_info, 0xEE, sizeof(slot_info)));
   CK_TOKEN_INFO token_info;
   memset(&token_info, 0xEE, sizeof(token_info));
   slot_manager_->GetTokenInfo(0, &token_info);
-  EXPECT_FALSE(IsAnyByteEqualTo(&token_info, sizeof(token_info), 0xEE));
+  EXPECT_EQ(NULL, memchr(&token_info, 0xEE, sizeof(token_info)));
   const MechanismMap* mechanisms = slot_manager_->GetMechanismInfo(0);
   ASSERT_TRUE(mechanisms != NULL);
   // Sanity check - we don't want to be strict on the mechanism list.
@@ -216,24 +216,28 @@ TEST_F(TestSlotManager, TestSessions) {
 
 TEST_F(TestSlotManager, TestLoginEvents) {
   EXPECT_FALSE(slot_manager_->IsTokenPresent(1));
-  slot_manager_->OnLogin("some_path", kAuthData);
+  slot_manager_->OnLogin(FilePath("some_path"), kAuthData);
   EXPECT_TRUE(slot_manager_->IsTokenPresent(1));
   // Login with an existing path - should be ignored.
-  slot_manager_->OnLogin("some_path", kAuthData);
+  slot_manager_->OnLogin(FilePath("some_path"), kAuthData);
   EXPECT_EQ(2, slot_manager_->GetSlotCount());
-  slot_manager_->OnLogin("another_path", kAuthData);
+  slot_manager_->OnLogin(FilePath("another_path"), kAuthData);
   EXPECT_TRUE(slot_manager_->IsTokenPresent(2));
-  slot_manager_->OnChangeAuthData("some_path", kAuthData, kNewAuthData);
-  slot_manager_->OnChangeAuthData("yet_another_path", kAuthData, kNewAuthData);
+  slot_manager_->OnChangeAuthData(FilePath("some_path"),
+                                  kAuthData,
+                                  kNewAuthData);
+  slot_manager_->OnChangeAuthData(FilePath("yet_another_path"),
+                                  kAuthData,
+                                  kNewAuthData);
   EXPECT_LT(slot_manager_->GetSlotCount(), 5);
   // Logout with an unknown path.
-  slot_manager_->OnLogout("still_yet_another_path");
-  slot_manager_->OnLogout("some_path");
+  slot_manager_->OnLogout(FilePath("still_yet_another_path"));
+  slot_manager_->OnLogout(FilePath("some_path"));
   EXPECT_FALSE(slot_manager_->IsTokenPresent(1));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(2));
-  slot_manager_->OnLogin("one_more_path", kAuthData);
+  slot_manager_->OnLogin(FilePath("one_more_path"), kAuthData);
   EXPECT_TRUE(slot_manager_->IsTokenPresent(1));
-  slot_manager_->OnLogout("another_path");
+  slot_manager_->OnLogout(FilePath("another_path"));
 }
 
 }  // namespace chaps

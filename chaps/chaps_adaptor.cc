@@ -4,6 +4,7 @@
 
 #include "chaps/chaps_adaptor.h"
 
+#include <base/file_path.h>
 #include <base/logging.h>
 
 #include "chaps/chaps.h"
@@ -38,14 +39,14 @@ void ChapsAdaptor::OnLogin(const string& path,
                            ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   if (login_listener_)
-    login_listener_->OnLogin(path, auth_data);
+    login_listener_->OnLogin(FilePath(path), auth_data);
 }
 
 void ChapsAdaptor::OnLogout(const string& path,
                             ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   if (login_listener_)
-    login_listener_->OnLogout(path);
+    login_listener_->OnLogout(FilePath(path));
 }
 
 void ChapsAdaptor::OnChangeAuthData(const string& path,
@@ -54,7 +55,9 @@ void ChapsAdaptor::OnChangeAuthData(const string& path,
                                     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   if (login_listener_)
-    login_listener_->OnChangeAuthData(path, old_auth_data, new_auth_data);
+    login_listener_->OnChangeAuthData(FilePath(path),
+                                      old_auth_data,
+                                      new_auth_data);
 }
 
 void ChapsAdaptor::GetSlotList(const bool& token_present,

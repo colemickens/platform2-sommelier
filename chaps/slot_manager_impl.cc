@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/file_path.h>
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
 #include <openssl/rand.h>
@@ -29,22 +30,26 @@ using std::vector;
 
 namespace chaps {
 
+namespace {
+
 // I18N Note: The descriptive strings are needed for PKCS #11 compliance but
 // they should not appear on any UI.
-static const char* kDefaultTokenFile = "token";
-static const CK_VERSION kDefaultVersion = {1, 0};
-static const char* kManufacturerID = "Chromium OS";
-static const CK_ULONG kMaxPinLen = 127;
-static const CK_ULONG kMinPinLen = 6;
-static const char* kSlotDescription = "TPM Slot";
-static const char* kSystemTokenPath = "/opt/google/chaps";
-static const char* kSystemTokenAuthData = "000000";
-static const char* kTokenLabel = "TPM Token";
-static const char* kTokenModel = "";
-static const char* kTokenSerialNumber = "Not Available";
-static const int kUserKeySize = 32;
+const FilePath::CharType kDefaultTokenFile[] = FILE_PATH_LITERAL("token");
+const CK_VERSION kDefaultVersion = {1, 0};
+const char kManufacturerID[] = "Chromium OS";
+const CK_ULONG kMaxPinLen = 127;
+const CK_ULONG kMinPinLen = 6;
+const char kSlotDescription[] = "TPM Slot";
+const FilePath::CharType kSystemTokenPath[] =
+    FILE_PATH_LITERAL("/opt/google/chaps");
+const char kSystemTokenAuthData[] = "000000";
+const int kSystemTokenSlot = 0;
+const char kTokenLabel[] = "TPM Token";
+const char kTokenModel[] = "";
+const char kTokenSerialNumber[] = "Not Available";
+const int kUserKeySize = 32;
 
-static const struct MechanismInfo {
+const struct MechanismInfo {
   CK_MECHANISM_TYPE type;
   CK_MECHANISM_INFO info;
 } kDefaultMechanismInfo[] = {
@@ -81,10 +86,15 @@ static const struct MechanismInfo {
   {CKM_AES_CBC_PAD, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}}
 };
 
+}  // namespace
+
 SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory, TPMUtility* tpm_utility)
     : factory_(factory),
       last_session_id_(0),
-      tpm_utility_(tpm_utility) {}
+      tpm_utility_(tpm_utility) {
+  CHECK(factory_);
+  CHECK(tpm_utility_);
+}
 
 SlotManagerImpl::~SlotManagerImpl() {
   for (size_t i = 0; i < slot_list_.size(); ++i) {
@@ -94,8 +104,6 @@ SlotManagerImpl::~SlotManagerImpl() {
 }
 
 bool SlotManagerImpl::Init() {
-  CHECK(factory_);
-  CHECK(tpm_utility_);
   // Populate mechanism info.  This will be the same for all TPM-backed tokens.
   for (size_t i = 0; i < arraysize(kDefaultMechanismInfo); ++i) {
     mechanism_info_[kDefaultMechanismInfo[i].type] =
@@ -112,9 +120,9 @@ bool SlotManagerImpl::Init() {
   AddSlots(2);
   // Setup the system token.  This is the same as for a user token so we can
   // just do what we normally do when a user logs in.  We'll know it succeeded
-  // if slot 0 has a token inserted.
-  OnLogin(kSystemTokenPath, kSystemTokenAuthData);
-  return IsTokenPresent(0);
+  // if the system token slot has a token inserted.
+  OnLogin(FilePath(kSystemTokenPath), kSystemTokenAuthData);
+  return IsTokenPresent(kSystemTokenSlot);
 }
 
 int SlotManagerImpl::GetSlotCount() const {
@@ -122,44 +130,49 @@ int SlotManagerImpl::GetSlotCount() const {
 }
 
 bool SlotManagerImpl::IsTokenPresent(int slot_id) const {
-  CHECK(static_cast<size_t>(slot_id) < slot_list_.size());
-  return ((slot_list_[slot_id].slot_info_.flags & CKF_TOKEN_PRESENT) ==
+  CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+
+  return ((slot_list_[slot_id].slot_info.flags & CKF_TOKEN_PRESENT) ==
       CKF_TOKEN_PRESENT);
 }
 
 void SlotManagerImpl::GetSlotInfo(int slot_id, CK_SLOT_INFO* slot_info) const {
   CHECK(slot_info);
-  CHECK(static_cast<size_t>(slot_id) < slot_list_.size());
-  memcpy(slot_info, &slot_list_[slot_id].slot_info_, sizeof(CK_SLOT_INFO));
+  CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+
+  *slot_info = slot_list_[slot_id].slot_info;
 }
 
 void SlotManagerImpl::GetTokenInfo(int slot_id,
                                    CK_TOKEN_INFO* token_info) const {
   CHECK(token_info);
-  CHECK(static_cast<size_t>(slot_id) < slot_list_.size());
+  CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
   CHECK(IsTokenPresent(slot_id));
-  memcpy(token_info, &slot_list_[slot_id].token_info_, sizeof(CK_TOKEN_INFO));
+
+  *token_info = slot_list_[slot_id].token_info;
 }
 
 const MechanismMap* SlotManagerImpl::GetMechanismInfo(int slot_id) const {
-  CHECK(static_cast<size_t>(slot_id) < slot_list_.size());
+  CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
   CHECK(IsTokenPresent(slot_id));
+
   return &mechanism_info_;
 }
 
 int SlotManagerImpl::OpenSession(int slot_id, bool is_read_only) {
-  CHECK(static_cast<size_t>(slot_id) < slot_list_.size());
+  CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
   CHECK(IsTokenPresent(slot_id));
+
   shared_ptr<Session> session(factory_->CreateSession(
       slot_id,
-      slot_list_[slot_id].token_object_pool_.get(),
+      slot_list_[slot_id].token_object_pool.get(),
       tpm_utility_,
       is_read_only));
   CHECK(session.get());
   // If we use this many sessions, we have a problem.
-  CHECK(last_session_id_ < INT_MAX);
+  CHECK_LT(last_session_id_, INT_MAX);
   int session_id = ++last_session_id_;
-  slot_list_[slot_id].sessions_[session_id] = session;
+  slot_list_[slot_id].sessions[session_id] = session;
   session_slot_map_[session_id] = slot_id;
   return session_id;
 }
@@ -170,42 +183,45 @@ bool SlotManagerImpl::CloseSession(int session_id) {
     return false;
   CHECK(session);
   int slot_id = session_slot_map_[session_id];
-  CHECK(static_cast<size_t>(slot_id) < slot_list_.size());
+  CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
   session_slot_map_.erase(session_id);
-  slot_list_[slot_id].sessions_.erase(session_id);
+  slot_list_[slot_id].sessions.erase(session_id);
   return true;
 }
 
 void SlotManagerImpl::CloseAllSessions(int slot_id) {
-  CHECK(static_cast<size_t>(slot_id) < slot_list_.size());
-  map<int, shared_ptr<Session> >::iterator it;
-  for (it = slot_list_[slot_id].sessions_.begin();
-       it != slot_list_[slot_id].sessions_.end();
-       ++it) {
-    session_slot_map_.erase(it->first);
+  CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+
+  for (map<int, shared_ptr<Session> >::iterator iter =
+          slot_list_[slot_id].sessions.begin();
+       iter != slot_list_[slot_id].sessions.end();
+       ++iter) {
+    session_slot_map_.erase(iter->first);
   }
-  slot_list_[slot_id].sessions_.clear();
+  slot_list_[slot_id].sessions.clear();
 }
 
 bool SlotManagerImpl::GetSession(int session_id, Session** session) const {
   CHECK(session);
+
   // Lookup which slot this session belongs to.
-  map<int, int>::const_iterator session_slot_it =
+  map<int, int>::const_iterator session_slot_iter =
       session_slot_map_.find(session_id);
-  if (session_slot_it == session_slot_map_.end())
+  if (session_slot_iter == session_slot_map_.end())
     return false;
-  int slot_id = session_slot_it->second;
-  CHECK(static_cast<size_t>(slot_id) < slot_list_.size());
+  int slot_id = session_slot_iter->second;
+  CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+
   // Lookup the session instance.
-  map<int, shared_ptr<Session> >::const_iterator session_it =
-      slot_list_[slot_id].sessions_.find(session_id);
-  if (session_it == slot_list_[slot_id].sessions_.end())
+  map<int, shared_ptr<Session> >::const_iterator session_iter =
+      slot_list_[slot_id].sessions.find(session_id);
+  if (session_iter == slot_list_[slot_id].sessions.end())
     return false;
-  *session = session_it->second.get();
+  *session = session_iter->second.get();
   return true;
 }
 
-void SlotManagerImpl::OnLogin(const string& path, const string& auth_data) {
+void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
   // If we're already managing this token, ignore the event.
   if (path_slot_map_.find(path) != path_slot_map_.end()) {
     LOG(WARNING) << "Login event received for existing slot.";
@@ -213,7 +229,7 @@ void SlotManagerImpl::OnLogin(const string& path, const string& auth_data) {
   }
   // Setup the object pool and the key hierarchy.
   shared_ptr<ObjectPool> object_pool(factory_->CreatePersistentObjectPool(
-      path + "/" + kDefaultTokenFile));
+      path.Append(kDefaultTokenFile)));
   CHECK(object_pool.get());
   int slot_id = FindEmptySlot();
   string auth_key_blob;
@@ -222,12 +238,12 @@ void SlotManagerImpl::OnLogin(const string& path, const string& auth_data) {
   if (!object_pool->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob) ||
       !object_pool->GetInternalBlob(kEncryptedMasterKey,
                                     &encrypted_master_key)) {
-    LOG(INFO) << "Initializing key hierarchy for token at " << path;
+    LOG(INFO) << "Initializing key hierarchy for token at " << path.value();
     if (!InitializeKeyHierarchy(slot_id,
                                 object_pool.get(),
                                 auth_data,
                                 &master_key)) {
-      LOG(ERROR) << "Failed to initialize key hierarchy at " << path;
+      LOG(ERROR) << "Failed to initialize key hierarchy at " << path.value();
       tpm_utility_->UnloadKeysForSlot(slot_id);
       return;
     }
@@ -237,33 +253,33 @@ void SlotManagerImpl::OnLogin(const string& path, const string& auth_data) {
                                     auth_key_blob,
                                     encrypted_master_key,
                                     &master_key)) {
-      LOG(ERROR) << "Authentication failed for token at " << path;
+      LOG(ERROR) << "Authentication failed for token at " << path.value();
       tpm_utility_->UnloadKeysForSlot(slot_id);
       return;
     }
   }
   object_pool->SetKey(master_key);
   // Insert the new token into the empty slot.
-  slot_list_[slot_id].token_object_pool_ = object_pool;
-  slot_list_[slot_id].slot_info_.flags |= CKF_TOKEN_PRESENT;
+  slot_list_[slot_id].token_object_pool = object_pool;
+  slot_list_[slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = slot_id;
 }
 
-void SlotManagerImpl::OnLogout(const string& path) {
+void SlotManagerImpl::OnLogout(const FilePath& path) {
   // If we're not managing this token, ignore the event.
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
-    LOG(WARNING) << "Logout event received for unknown path: " << path;
+    LOG(WARNING) << "Logout event received for unknown path: " << path.value();
     return;
   }
   int slot_id = path_slot_map_[path];
   tpm_utility_->UnloadKeysForSlot(slot_id);
   CloseAllSessions(slot_id);
-  slot_list_[slot_id].token_object_pool_.reset();
-  slot_list_[slot_id].slot_info_.flags &= ~CKF_TOKEN_PRESENT;
+  slot_list_[slot_id].token_object_pool.reset();
+  slot_list_[slot_id].slot_info.flags &= ~CKF_TOKEN_PRESENT;
   path_slot_map_.erase(path);
 }
 
-void SlotManagerImpl::OnChangeAuthData(const string& path,
+void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
                                        const string& old_auth_data,
                                        const string& new_auth_data) {
   // This event can be handled whether or not we are already managing the token
@@ -274,13 +290,13 @@ void SlotManagerImpl::OnChangeAuthData(const string& path,
   bool unload = false;
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
     object_pool = factory_->CreatePersistentObjectPool(
-        path + "/" + kDefaultTokenFile);
+        path.Append(kDefaultTokenFile));
     scoped_object_pool.reset(object_pool);
     slot_id = FindEmptySlot();
     unload = true;
   } else {
     slot_id = path_slot_map_[path];
-    object_pool = slot_list_[slot_id].token_object_pool_.get();
+    object_pool = slot_list_[slot_id].token_object_pool.get();
   }
   CHECK(object_pool);
   string auth_key_blob;
@@ -292,10 +308,11 @@ void SlotManagerImpl::OnChangeAuthData(const string& path,
                                            new_auth_data,
                                            auth_key_blob,
                                            &new_auth_key_blob)) {
-    LOG(ERROR) << "Failed to change auth data for token at " << path;
+    LOG(ERROR) << "Failed to change auth data for token at " << path.value();
   } else if (!object_pool->SetInternalBlob(kEncryptedAuthKey,
                                            new_auth_key_blob)) {
-    LOG(ERROR) << "Failed to write changed auth blob for token at " << path;
+    LOG(ERROR) << "Failed to write changed auth blob for token at "
+               << path.value();
   }
   if (unload)
     tpm_utility_->UnloadKeysForSlot(slot_id);
@@ -396,7 +413,7 @@ int SlotManagerImpl::FindEmptySlot() {
 void SlotManagerImpl::AddSlots(int num_slots) {
   for (int i = 0; i < num_slots; ++i) {
     Slot slot;
-    GetDefaultInfo(&slot.slot_info_, &slot.token_info_);
+    GetDefaultInfo(&slot.slot_info, &slot.token_info);
     slot_list_.push_back(slot);
   }
 }

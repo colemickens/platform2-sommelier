@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/file_path.h>
+
 namespace chaps {
 
 // LoginEventListener is an interface which must be implemented by objects which
@@ -21,10 +23,10 @@ namespace chaps {
 //   password events.
 class LoginEventListener {
  public:
-  virtual void OnLogin(const std::string& path,
+  virtual void OnLogin(const FilePath& path,
                        const std::string& auth_data) = 0;
-  virtual void OnLogout(const std::string& path) = 0;
-  virtual void OnChangeAuthData(const std::string& path,
+  virtual void OnLogout(const FilePath& path) = 0;
+  virtual void OnChangeAuthData(const FilePath& path,
                                 const std::string& old_auth_data,
                                 const std::string& new_auth_data) = 0;
 };
