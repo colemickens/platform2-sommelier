@@ -170,6 +170,7 @@ env = common_env()
 env.Append(
     LIBS = [libchromeos, 'protobuf-lite', 'pthread', 'rt'],
     LIBPATH = ['.', '../third_party/chrome'],
+    CCFLAGS = ['-fvisibility=hidden'],
     LINKFLAGS = ['-Wl,--as-needed', '-Wl,-z,defs',
                  '-Wl,-soname,lib%s.so' % libpolicy,
                  '-Wl,--version-script,libpolicy.ver'],

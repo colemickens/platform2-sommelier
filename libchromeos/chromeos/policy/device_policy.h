@@ -13,6 +13,8 @@
 
 class FilePath;
 
+#pragma GCC visibility push(default)
+
 namespace policy {
 
 // This class holds device settings that are to be enforced across all users.
@@ -142,5 +144,7 @@ class DevicePolicy {
   DISALLOW_COPY_AND_ASSIGN(DevicePolicy);
 };
 }  // namespace policy
+
+#pragma GCC visibility pop
 
 #endif  // LIBPOLICY_DEVICE_POLICY_H_

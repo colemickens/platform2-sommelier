@@ -13,6 +13,8 @@
 
 class FilePath;
 
+#pragma GCC visibility push(default)
+
 namespace policy {
 
 class DevicePolicy;
@@ -45,5 +47,7 @@ class PolicyProvider {
   DISALLOW_COPY_AND_ASSIGN(PolicyProvider);
 };
 }  // namespace policy
+
+#pragma GCC visibility pop
 
 #endif  // POLICY_LIBPOLICY_H_

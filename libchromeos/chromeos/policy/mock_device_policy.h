@@ -12,6 +12,8 @@
 
 #include "device_policy.h"
 
+#pragma GCC visibility push(default)
+
 namespace policy {
 
 // This is a generic mock class for the DevicePolicy that can be used by other
@@ -74,5 +76,7 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_METHOD0(VerifyPolicySignature, bool(void));
 };
 }  // namespace policy
+
+#pragma GCC visibility pop
 
 #endif  // LIBPOLICY_DEVICE_POLICY_H_

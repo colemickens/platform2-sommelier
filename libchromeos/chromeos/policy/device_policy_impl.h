@@ -15,6 +15,8 @@
 #include "bindings/device_management_backend.pb.h"
 #include "device_policy.h"
 
+#pragma GCC visibility push(default)
+
 namespace policy {
 
 // This class holds device settings that are to be enforced across all users.
@@ -74,5 +76,7 @@ class DevicePolicyImpl : public DevicePolicy {
   DISALLOW_COPY_AND_ASSIGN(DevicePolicyImpl);
 };
 }  // namespace policy
+
+#pragma GCC visibility pop
 
 #endif  // LIBPOLICY_DEVICE_POLICY_IMPL_H_
