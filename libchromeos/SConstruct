@@ -171,7 +171,8 @@ env.Append(
     LIBS = [libchromeos, 'protobuf-lite', 'pthread', 'rt'],
     LIBPATH = ['.', '../third_party/chrome'],
     LINKFLAGS = ['-Wl,--as-needed', '-Wl,-z,defs',
-                 '-Wl,-soname,lib%s.so' % libpolicy],
+                 '-Wl,-soname,lib%s.so' % libpolicy,
+                 '-Wl,--version-script,libpolicy.ver'],
   )
 
 # Build the protobuf definitions.
