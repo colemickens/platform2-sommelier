@@ -192,6 +192,9 @@ class Service : public base::RefCounted<Service> {
   // Saves the service to persistent |storage|. Returns true on success.
   virtual bool Save(StoreInterface *storage);
 
+  // Saves the service to the current profile.
+  virtual bool SaveToCurrentProfile();
+
   // Returns true if the service RPC identifier should be part of the
   // manager's advertised services list, false otherwise.
   virtual bool IsVisible() const { return true; }

@@ -1201,6 +1201,34 @@ TEST_F(ManagerTest, UpdateServiceConnected) {
   EXPECT_TRUE(mock_service->auto_connect());
 }
 
+TEST_F(ManagerTest, UpdateServiceConnectedPersistFavorite) {
+  // This tests the case where the user connects to a service that is
+  // currently associated with a profile.  We want to make sure that the
+  // favorite flag is set and that the flag is saved to the current
+  // profile.
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  manager()->RegisterService(mock_service);
+  EXPECT_FALSE(mock_service->favorite());
+  EXPECT_FALSE(mock_service->auto_connect());
+
+  ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
+  mock_service->set_profile(profile);
+
+  EXPECT_CALL(*mock_service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_service.get(), SaveToCurrentProfile());
+  manager()->UpdateService(mock_service);
+  // We can't EXPECT_CALL(..., MakeFavorite), because that requires us
+  // to mock out MakeFavorite. And mocking that out would break the
+  // SortServices test. (crosbug.com/23370)
+  EXPECT_TRUE(mock_service->favorite());
+  EXPECT_TRUE(mock_service->auto_connect());
+}
+
 TEST_F(ManagerTest, SaveSuccessfulService) {
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(control_interface(), manager(), ""));

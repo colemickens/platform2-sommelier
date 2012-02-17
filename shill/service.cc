@@ -347,6 +347,10 @@ bool Service::Save(StoreInterface *storage) {
   return true;
 }
 
+bool Service::SaveToCurrentProfile() {
+  return profile()->UpdateService(this);
+}
+
 void Service::MakeFavorite() {
   if (favorite_) {
     // We do not want to clobber the value of auto_connect_ (it may

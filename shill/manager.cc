@@ -479,6 +479,7 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
   VLOG(2) << "IsConnected(): " << to_update->IsConnected();
   VLOG(2) << "IsConnecting(): " << to_update->IsConnecting();
   if (to_update->IsConnected()) {
+    bool originally_favorite = to_update->favorite();
     to_update->MakeFavorite();
     if (to_update->profile().get() == ephemeral_profile_.get()) {
       if (profiles_.empty()) {
@@ -486,6 +487,9 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
       } else {
         MoveServiceToProfile(to_update, profiles_.back());
       }
+    } else if (!originally_favorite) {
+      // Persists the updated favorite setting in the profile.
+      to_update->SaveToCurrentProfile();
     }
   }
   SortServices();
