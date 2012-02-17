@@ -139,4 +139,40 @@ TEST_F(ArchiveManagerTest, GetAVFSPath) {
             manager_.GetAVFSPath("/media/removable/disk1/test.ZIP"));
 }
 
+TEST_F(ArchiveManagerTest, GetAVFSPathWithNestedArchives) {
+  EXPECT_EQ("/var/run/avfsroot/media/archive/l2.zip/l1.zip#",
+            manager_.GetAVFSPath("/media/archive/l2.zip/l1.zip"));
+
+  // archive within an archive
+  manager_.AddMountVirtualPath("/media/archive/l2.zip",
+                               "/var/run/avfsroot/user/l2.zip#");
+  EXPECT_EQ("/var/run/avfsroot/user/l2.zip#/l1.zip#",
+            manager_.GetAVFSPath("/media/archive/l2.zip/l1.zip"));
+  EXPECT_EQ("/var/run/avfsroot/user/l2.zip#/test/l1.zip#",
+            manager_.GetAVFSPath("/media/archive/l2.zip/test/l1.zip"));
+  EXPECT_EQ("/var/run/avfsroot/user/l2.zip#/test/doc/l1.zip#",
+            manager_.GetAVFSPath("/media/archive/l2.zip/test/doc/l1.zip"));
+
+  // archive within an archive within an archive
+  manager_.AddMountVirtualPath("/media/archive/l1.zip",
+                               "/var/run/avfsroot/user/l2.zip#/l1.zip#");
+  EXPECT_EQ("/var/run/avfsroot/user/l2.zip#/l1.zip#/l0.zip#",
+            manager_.GetAVFSPath("/media/archive/l1.zip/l0.zip"));
+  EXPECT_EQ("/var/run/avfsroot/user/l2.zip#/l1.zip#/test/l0.zip#",
+            manager_.GetAVFSPath("/media/archive/l1.zip/test/l0.zip"));
+  manager_.RemoveMountVirtualPath("/media/archive/l1.zip");
+
+  manager_.AddMountVirtualPath("/media/archive/l1.zip",
+                               "/var/run/avfsroot/user/l2.zip#/test/l1.zip#");
+  EXPECT_EQ("/var/run/avfsroot/user/l2.zip#/test/l1.zip#/l0.zip#",
+            manager_.GetAVFSPath("/media/archive/l1.zip/l0.zip"));
+  EXPECT_EQ("/var/run/avfsroot/user/l2.zip#/test/l1.zip#/test/l0.zip#",
+            manager_.GetAVFSPath("/media/archive/l1.zip/test/l0.zip"));
+  manager_.RemoveMountVirtualPath("/media/archive/l1.zip");
+
+  manager_.RemoveMountVirtualPath("/media/archive/l2.zip");
+  EXPECT_EQ("/var/run/avfsroot/media/archive/l2.zip/l1.zip#",
+            manager_.GetAVFSPath("/media/archive/l2.zip/l1.zip"));
+}
+
 }  // namespace cros_disks

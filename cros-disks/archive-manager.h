@@ -65,6 +65,10 @@ class ArchiveManager : public MountManager {
   virtual std::string SuggestMountPath(const std::string& source_path) const;
 
  private:
+  // Type definition of a cache mapping a mount path to its source virtual path
+  // in the AVFS mount.
+  typedef std::map<std::string, std::string> VirtualPathMap;
+
   // Returns the extension of a file, in lower case, at the specified |path|.
   std::string GetFileExtension(const std::string& path) const;
 
@@ -85,13 +89,26 @@ class ArchiveManager : public MountManager {
   bool MountAVFSPath(const std::string& base_path,
                      const std::string& avfs_path) const;
 
+  // Adds a mapping of |mount_path| to |virtual_path| to |virtual_paths_|.
+  // An existing mapping of |mount_path| is overwritten.
+  void AddMountVirtualPath(const std::string& mount_path,
+                           const std::string& virtual_path);
+
+  // Removes a mapping of |mount_path| to its virtual path from
+  // |virtual_paths_|. It is a no-op if no such mapping exists.
+  void RemoveMountVirtualPath(const std::string& mount_path);
+
   // A set of supported archive file extensions.
   std::set<std::string> extensions_;
+
+  // A cache mapping a mount path to its source virtual path in the AVFS mount.
+  VirtualPathMap virtual_paths_;
 
   // This variable is set to true if the AVFS daemons have started.
   bool avfs_started_;
 
   FRIEND_TEST(ArchiveManagerTest, GetAVFSPath);
+  FRIEND_TEST(ArchiveManagerTest, GetAVFSPathWithNestedArchives);
   FRIEND_TEST(ArchiveManagerTest, GetFileExtension);
   FRIEND_TEST(ArchiveManagerTest, SuggestMountPath);
   FRIEND_TEST(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension);

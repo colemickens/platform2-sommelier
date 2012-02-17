@@ -130,14 +130,24 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
   MountOptions mount_options;
   mount_options.Initialize(extended_options, false, "", "");
   SystemMounter mounter(avfs_path, mount_path, "", mount_options);
-  return mounter.Mount();
+
+  MountErrorType error_type = mounter.Mount();
+  if (error_type == MOUNT_ERROR_NONE) {
+    AddMountVirtualPath(mount_path, avfs_path);
+  }
+  return error_type;
 }
 
 MountErrorType ArchiveManager::DoUnmount(const string& path,
                                          const vector<string>& options) {
   CHECK(!path.empty()) << "Invalid path argument";
   // TODO(benchan): Extract error from low-level unmount operation.
-  return platform()->Unmount(path) ? MOUNT_ERROR_NONE : MOUNT_ERROR_UNKNOWN;
+  if (platform()->Unmount(path)) {
+    // DoUnmount() is always called with |path| being the mount path.
+    RemoveMountVirtualPath(path);
+    return MOUNT_ERROR_NONE;
+  }
+  return MOUNT_ERROR_UNKNOWN;
 }
 
 string ArchiveManager::SuggestMountPath(const string& source_path) const {
@@ -183,7 +193,47 @@ string ArchiveManager::GetFileExtension(const string& path) const {
 }
 
 string ArchiveManager::GetAVFSPath(const string& path) const {
+  // When mounting an archive within another mounted archive, we need to
+  // resolve the virtual path of the inner archive to the "unfolded"
+  // form within the AVFS mount, such as
+  //   "/var/run/avfsroot/user/layer2.zip#/test/doc/layer1.zip#"
+  // instead of the "nested" form, such as
+  //   "/var/run/avfsroot/media/archive/layer2.zip/test/doc/layer1.zip#"
+  // where "/media/archive/layer2.zip" is a mount point to the virtual
+  // path "/var/run/avfsroot/user/layer2.zip#".
+  //
+  // Mounting the inner archive using the nested form may cause problems
+  // reading files from the inner archive. To avoid that, we first try to
+  // find the longest parent path of |path| that is an existing mount
+  // point to a virtual path within the AVFS mount. If such a parent path
+  // is found, we construct the virtual path of |path| within the AVFS
+  // mount as a subpath of its parent's virtual path.
+  //
+  // e.g. Given |path| is "/media/archive/layer2.zip/test/doc/layer1.zip",
+  //      and "/media/archive/layer2.zip" is a mount point to the virtual
+  //      path "/var/run/avfsroot/user/layer2.zip#" within the AVFS mount.
+  //      The following code should return the virtual path of |path| as
+  //      "/var/run/avfsroot/user/layer2.zip#/test/doc/layer1.zip#".
   FilePath file_path(path);
+  FilePath current_path = file_path.DirName();
+  FilePath parent_path = current_path.DirName();
+  while (current_path != parent_path) {  // Search till the root
+    VirtualPathMap::const_iterator path_iterator =
+        virtual_paths_.find(current_path.value());
+    if (path_iterator != virtual_paths_.end()) {
+      FilePath avfs_path(path_iterator->second);
+      // As current_path is a parent of file_path, AppendRelativePath()
+      // should return true here.
+      CHECK(current_path.AppendRelativePath(file_path, &avfs_path));
+      return avfs_path.value() + "#";
+    }
+    current_path = parent_path;
+    parent_path = parent_path.DirName();
+  }
+
+  // If no parent path is a mounted via AVFS, we are not mounting a nested
+  // archive and thus construct the virtual path of the archive based on a
+  // corresponding AVFS mount path.
   for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
     FilePath base_path(kAVFSPathMapping[i].base_path);
     FilePath avfs_path(kAVFSPathMapping[i].avfs_path);
@@ -297,6 +347,15 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
   LOG(INFO) << "Mounted '" << base_path << "' to '" << avfs_path
             << "' via AVFS";
   return true;
+}
+
+void ArchiveManager::AddMountVirtualPath(const string& mount_path,
+                                         const string& virtual_path) {
+  virtual_paths_[mount_path] = virtual_path;
+}
+
+void ArchiveManager::RemoveMountVirtualPath(const string& mount_path) {
+  virtual_paths_.erase(mount_path);
 }
 
 }  // namespace cros_disks
