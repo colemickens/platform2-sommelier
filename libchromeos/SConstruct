@@ -73,6 +73,7 @@ PROTO_FILES = ['%s/chrome_device_policy.proto' % PROTO_PATH,
                '%s/device_management_backend.proto' % PROTO_PATH]
 PROTO_SOURCES=['chromeos/policy/bindings/chrome_device_policy.pb.cc',
                'chromeos/policy/bindings/device_management_backend.pb.cc'];
+PROTO_HEADERS = [x.replace('.cc', '.h') for x in PROTO_SOURCES]
 
 POLICY_SOURCES=PROTO_SOURCES + \
     ['chromeos/policy/device_policy.cc',
@@ -93,7 +94,7 @@ for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS CPPPATH LIBPATH'):
 env['CCFLAGS'] += ['-fPIC', '-fno-exceptions']
 
 # Build the protobuf definitions.
-env.Command(PROTO_SOURCES,
+env.Command(PROTO_SOURCES + PROTO_HEADERS,
             None,
             ('mkdir -p chromeos/policy/bindings && ' +
              '/usr/bin/protoc --proto_path=%s ' +
