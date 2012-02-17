@@ -18,6 +18,7 @@
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/modem_info.h"
+#include "shill/power_manager.h"
 #include "shill/property_store.h"
 #include "shill/service.h"
 #include "shill/wifi.h"
@@ -52,6 +53,7 @@ class Manager {
   virtual ~Manager();
 
   void AddDeviceToBlackList(const std::string &device_name);
+
   void Start();
   void Stop();
 
@@ -137,9 +139,12 @@ class Manager {
   }
   virtual const std::string &GetHostName() { return props_.host_name; }
 
+  PowerManager *power_manager() const { return power_manager_.get(); }
+
  private:
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
+  friend class WiFiMainTest;
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
@@ -185,6 +190,12 @@ class Manager {
   // For unit testing.
   void set_metrics(Metrics *metrics) { metrics_ = metrics; }
 
+  // Used by tests to set a mock PowerManager.  Takes ownership of
+  // power_manager.
+  void set_power_manager(PowerManager *power_manager) {
+    power_manager_.reset(power_manager);
+  }
+
   EventDispatcher *dispatcher_;
   ScopedRunnableMethodFactory<Manager> task_factory_;
   const FilePath run_path_;
@@ -206,6 +217,7 @@ class Manager {
   ControlInterface *control_interface_;
   Metrics *metrics_;
   GLib *glib_;
+  scoped_ptr<PowerManager> power_manager_;
 
   // The priority order of technologies
   std::vector<Technology::Identifier> technology_order_;

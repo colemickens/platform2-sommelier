@@ -31,6 +31,7 @@
 #include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
+#include "shill/proxy_factory.h"
 #include "shill/resolver.h"
 #include "shill/service.h"
 #include "shill/service_sorter.h"
@@ -130,6 +131,7 @@ void Manager::AddDeviceToBlackList(const string &device_name) {
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
+  power_manager_.reset(new PowerManager(ProxyFactory::GetInstance()));
   CHECK(file_util::CreateDirectory(run_path_)) << run_path_.value();
   Resolver::GetInstance()->set_path(run_path_.Append("resolv.conf"));
 

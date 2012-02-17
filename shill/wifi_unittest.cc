@@ -35,6 +35,8 @@
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_power_manager.h"
+#include "shill/mock_power_manager_proxy.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_store.h"
 #include "shill/mock_supplicant_bss_proxy.h"
@@ -45,9 +47,9 @@
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 #include "shill/wifi_endpoint.h"
-#include "shill/wifi.h"
 #include "shill/wifi_service.h"
 #include "shill/wpa_supplicant.h"
+
 
 using std::map;
 using std::set;
@@ -62,6 +64,7 @@ using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
@@ -176,7 +179,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
                                         kDeviceName,
                                         kHostName,
                                         &glib_)),
-        proxy_factory_(this) {
+        proxy_factory_(this),
+        power_manager_(new MockPowerManager(&proxy_factory_)),
+        power_state_callback_(NULL) {
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
     // Except for WiFiServices created via WiFi::GetService, we expect
     // that any WiFiService has been registered with the Manager. So
@@ -189,6 +194,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
         WillByDefault(Return(dhcp_config_));
     ON_CALL(*dhcp_config_.get(), RequestIP()).
         WillByDefault(Return(true));
+
+    // |manager_| takes ownership of |power_manager_|.
+    manager_.set_power_manager(power_manager_);
   }
 
   virtual void SetUp() {
@@ -238,6 +246,11 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
                      WiFiEndpoint *wifi_endpoint,
                      const DBus::Path &object_path,
                      const char *dbus_addr));
+
+    virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
+        PowerManagerProxyDelegate */*delegate*/) {
+      return new MockPowerManagerProxy();
+    }
 
    private:
     SupplicantBSSProxyInterface *CreateSupplicantBSSProxyInternal(
@@ -329,12 +342,15 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     wifi_->StateChanged(new_state);
   }
   void StartWiFi() {
+    EXPECT_CALL(*power_manager_, AddStateChangeCallback(wifi_->UniqueName(), _))
+        .WillOnce(SaveArg<1>(&power_state_callback_));
     wifi_->Start();
   }
   void StopWiFi() {
     wifi_->Stop();
   }
- void GetOpenService(const char *service_type,
+
+  void GetOpenService(const char *service_type,
                       const char *ssid,
                       const char *mode,
                       Error *result) {
@@ -415,6 +431,10 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     return &dhcp_provider_;
   }
 
+  PowerManager::PowerStateCallback *power_state_callback() const {
+    return power_state_callback_;
+  }
+
   const WiFiConstRefPtr wifi() const {
     return wifi_;
   }
@@ -451,6 +471,8 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
 
  private:
   TestProxyFactory proxy_factory_;
+  MockPowerManager *power_manager_;
+  PowerManager::PowerStateCallback *power_state_callback_;
 };
 
 const char WiFiMainTest::kDeviceName[] = "wlan0";
@@ -539,6 +561,53 @@ TEST_F(WiFiMainTest, StartClearsState) {
   EXPECT_CALL(*supplicant_interface_proxy_, RemoveAllNetworks());
   EXPECT_CALL(*supplicant_interface_proxy_, FlushBSS(_));
   StartWiFi();
+}
+
+TEST_F(WiFiMainTest, PowerChangeToResumeStartsScanWhenIdle) {
+  EXPECT_CALL(*supplicant_interface_proxy_, Scan(_));
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
+  ASSERT_TRUE(power_state_callback() != NULL);
+  ASSERT_TRUE(wifi()->IsIdle());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
+  power_state_callback()->Run(PowerManagerProxyDelegate::kOn);
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, PowerChangeToSuspendDoesNotStartScan) {
+  EXPECT_CALL(*supplicant_interface_proxy_, Scan(_));
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
+  ASSERT_TRUE(power_state_callback() != NULL);
+  ASSERT_TRUE(wifi()->IsIdle());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  power_state_callback()->Run(PowerManagerProxyDelegate::kStandby);
+  dispatcher_.DispatchPendingEvents();
+  power_state_callback()->Run(PowerManagerProxyDelegate::kMem);
+  dispatcher_.DispatchPendingEvents();
+  power_state_callback()->Run(PowerManagerProxyDelegate::kDisk);
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, PowerChangeDoesNotStartScanWhenNotIdle) {
+  EXPECT_CALL(*supplicant_interface_proxy_, Scan(_));
+  StartWiFi();
+
+  WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
+  Error error;
+  service->AddEndpoint(ap);
+  service->AutoConnect();
+  EXPECT_FALSE(wifi()->IsIdle());
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
+  ASSERT_TRUE(power_state_callback() != NULL);
+  ASSERT_FALSE(wifi()->IsIdle());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  power_state_callback()->Run(PowerManagerProxyDelegate::kOn);
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(WiFiMainTest, ScanResults) {
@@ -1550,6 +1619,7 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   EXPECT_CALL(*manager(), device_info()).Times(AnyNumber());
   EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _)).Times(AnyNumber());
   EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
+  EXPECT_CALL(*manager(), IsPortalDetectionEnabled(_)).Times(AnyNumber());
   WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
   WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
 

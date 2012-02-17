@@ -32,6 +32,7 @@
 #include "shill/ieee80211.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/power_manager.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -172,6 +173,12 @@ void WiFi::Start() {
     LOG(INFO) << "Failed to disable fast_reauth. "
               << "May be running an older version of wpa_supplicant.";
   }
+
+  // Register for power state changes.  HandlePowerStateChange() will be called
+  // when the power state changes.
+  PowerManager::PowerStateCallback *cb =
+      NewCallback(this, &WiFi::HandlePowerStateChange);
+  manager()->power_manager()->AddStateChangeCallback(UniqueName(), cb);
 
   Scan(NULL);
   Device::Start();
@@ -1111,7 +1118,7 @@ bool WiFi::SanitizeSSID(string *ssid) {
   size_t i;
   bool changed = false;
 
-  for (i=0; i < ssid_len; ++i) {
+  for (i = 0; i < ssid_len; ++i) {
     if (!g_ascii_isprint((*ssid)[i])) {
       (*ssid)[i] = '?';
       changed = true;
@@ -1149,6 +1156,12 @@ void WiFi::HelpRegisterDerivedUint16(
   store->RegisterDerivedUint16(
       name,
       Uint16Accessor(new CustomAccessor<WiFi, uint16>(this, get, set)));
+}
+
+void WiFi::HandlePowerStateChange(PowerManager::SuspendState new_state) {
+  if ((new_state == PowerManagerProxyDelegate::kOn) && IsIdle()) {
+    Scan(NULL);
+  }
 }
 
 }  // namespace shill

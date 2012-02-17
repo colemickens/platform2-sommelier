@@ -14,6 +14,7 @@
 
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
+#include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -146,6 +147,10 @@ class WiFi : public Device {
       const std::string &name,
       uint16(WiFi::*get)(Error *error),
       void(WiFi::*set)(const uint16 &value, Error *error));
+
+  // If this WiFi device is idle and |new_state| indicates a resume event, a
+  // scan is initiated.
+  void HandlePowerStateChange(PowerManager::SuspendState new_state);
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
