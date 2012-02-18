@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -78,7 +78,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
 }
 
 void Connection::SetIsDefault(bool is_default) {
-  VLOG(2) << __func__;
+  VLOG(2) << __func__ << " " << is_default_ << " -> " << is_default;
   if (is_default == is_default_) {
     return;
   }

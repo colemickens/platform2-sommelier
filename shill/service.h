@@ -260,7 +260,8 @@ class Service : public base::RefCounted<Service> {
   // above Service b
   static bool Compare(ServiceRefPtr a,
                       ServiceRefPtr b,
-                      const std::vector<Technology::Identifier> &tech_order);
+                      const std::vector<Technology::Identifier> &tech_order,
+                      const char **reason);
 
   // These are defined in service.cc so that we don't have to include profile.h
   // TODO(cmasone): right now, these are here only so that we can get the
@@ -362,6 +363,14 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
   FRIEND_TEST(ServiceTest, SetProperty);
   FRIEND_TEST(ServiceTest, Unload);
+
+  static const char kServiceSortConnectEtc[];
+  static const char kServiceSortIsConnected[];
+  static const char kServiceSortIsConnecting[];
+  static const char kServiceSortIsFailed[];
+  static const char kServiceSortTechnology[];
+  static const char kServiceSortSecurityEtc[];
+  static const char kServiceSortUniqueName[];
 
   bool GetAutoConnect(Error *error);
   void SetAutoConnect(const bool &connect, Error *error);

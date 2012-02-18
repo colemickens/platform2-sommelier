@@ -605,20 +605,28 @@ void Manager::AutoConnectTask() {
   }
 
   if (VLOG_IS_ON(4)) {
-    VLOG(4) << "Sorted service list: ";  // XXX check log
-    for (vector<ServiceRefPtr>::const_iterator it = services_.begin();
-         it != services_.end(); ++it) {
-      VLOG(4) << "Service " << (*it)->friendly_name()
-              << " IsConnected: " << (*it)->IsConnected()
-              << " IsConnecting: " << (*it)->IsConnecting()
-              << " IsFailed: " << (*it)->IsFailed()
-              << " connectable: " << (*it)->connectable()
-              << " auto_connect: " << (*it)->auto_connect()
-              << " favorite: " << (*it)->favorite()
-              << " priority: " << (*it)->priority()
-              << " security_level: " << (*it)->security_level()
-              << " strength: " << (*it)->strength()
-              << " UniqueName: " << (*it)->UniqueName();
+    VLOG(4) << "Sorted service list: ";
+    for (size_t i = 0; i < services_.size(); ++i) {
+      ServiceRefPtr service = services_[i];
+      const char *compare_reason = NULL;
+      if (i + 1 < services_.size()) {
+        Service::Compare(
+            service, services_[i+1], technology_order_, &compare_reason);
+      } else {
+        compare_reason = "";
+      }
+      VLOG(4) << "Service " << service->friendly_name()
+              << " IsConnected: " << service->IsConnected()
+              << " IsConnecting: " << service->IsConnecting()
+              << " IsFailed: " << service->IsFailed()
+              << " connectable: " << service->connectable()
+              << " auto_connect: " << service->auto_connect()
+              << " favorite: " << service->favorite()
+              << " priority: " << service->priority()
+              << " security_level: " << service->security_level()
+              << " strength: " << service->strength()
+              << " UniqueName: " << service->UniqueName()
+              << " " << compare_reason;
     }
   }
 

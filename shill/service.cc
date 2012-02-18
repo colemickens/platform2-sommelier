@@ -40,6 +40,14 @@ const char Service::kCheckPortalTrue[] = "true";
 
 const int Service::kPriorityNone = 0;
 
+const char Service::kServiceSortConnectEtc[] = "ConnectableEtc";
+const char Service::kServiceSortIsConnected[] = "IsConnected";
+const char Service::kServiceSortIsConnecting[] = "IsConnecting";
+const char Service::kServiceSortIsFailed[] = "IsFailed";
+const char Service::kServiceSortTechnology[] = "Technology";
+const char Service::kServiceSortSecurityEtc[] = "SecurityEtc";
+const char Service::kServiceSortUniqueName[] = "UniqueName";
+
 const char Service::kStorageAutoConnect[] = "AutoConnect";
 const char Service::kStorageCheckPortal[] = "CheckPortal";
 const char Service::kStorageEapAnonymousIdentity[] = "EAP.AnonymousIdentity";
@@ -495,21 +503,25 @@ bool Service::DecideBetween(int a, int b, bool *decision) {
 // static
 bool Service::Compare(ServiceRefPtr a,
                       ServiceRefPtr b,
-                      const vector<Technology::Identifier> &tech_order) {
+                      const vector<Technology::Identifier> &tech_order,
+                      const char **reason) {
   bool ret;
 
   if (a->state() != b->state()) {
     if (DecideBetween(a->IsConnected(), b->IsConnected(), &ret)) {
+      *reason = kServiceSortIsConnected;
       return ret;
     }
 
     // TODO(pstew): Services don't know about portal state yet
 
     if (DecideBetween(a->IsConnecting(), b->IsConnecting(), &ret)) {
+      *reason = kServiceSortIsConnecting;
       return ret;
     }
 
     if (DecideBetween(!a->IsFailed(), !b->IsFailed(), &ret)) {
+      *reason = kServiceSortIsFailed;
       return ret;
     }
   }
@@ -518,6 +530,7 @@ bool Service::Compare(ServiceRefPtr a,
       DecideBetween(a->auto_connect(), b->auto_connect(), &ret) ||
       DecideBetween(a->favorite(), b->favorite(), &ret) ||
       DecideBetween(a->priority(), b->priority(), &ret)) {
+    *reason = kServiceSortConnectEtc;
     return ret;
   }
 
@@ -530,15 +543,19 @@ bool Service::Compare(ServiceRefPtr a,
   for (vector<Technology::Identifier>::const_iterator it = tech_order.begin();
        it != tech_order.end();
        ++it) {
-    if (DecideBetween(a->TechnologyIs(*it), b->TechnologyIs(*it), &ret))
+    if (DecideBetween(a->TechnologyIs(*it), b->TechnologyIs(*it), &ret)) {
+      *reason = kServiceSortTechnology;
       return ret;
+    }
   }
 
   if (DecideBetween(a->security_level(), b->security_level(), &ret) ||
       DecideBetween(a->strength(), b->strength(), &ret)) {
+    *reason = kServiceSortSecurityEtc;
     return ret;
   }
 
+  *reason = kServiceSortUniqueName;
   return a->UniqueName() < b->UniqueName();
 }
 
