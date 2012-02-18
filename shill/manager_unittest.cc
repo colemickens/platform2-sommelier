@@ -923,9 +923,8 @@ TEST_F(ManagerTest, SortServices) {
       .WillRepeatedly(Return(false));
 
   Error error;
-  manager()->SetTechnologyOrder(string(flimflam::kTypeEthernet) + "," +
-                                string(flimflam::kTypeWifi), &error);
-  EXPECT_TRUE(error.IsSuccess());
+  // Default technology ordering should favor Ethernet over WiFi.
+  manager()->SortServices();
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
   manager()->SetTechnologyOrder(string(flimflam::kTypeWifi) + "," +

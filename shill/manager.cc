@@ -108,6 +108,15 @@ Manager::Manager(ControlInterface *control_interface,
                              &Manager::EnumerateWatchedServices,
                              NULL);
 
+  // Set default technology order "by hand", to avoid invoking side
+  // effects of SetTechnologyOrder.
+  technology_order_.push_back(
+      Technology::IdentifierFromName(flimflam::kTypeEthernet));
+  technology_order_.push_back(
+      Technology::IdentifierFromName(flimflam::kTypeWifi));
+  technology_order_.push_back(
+      Technology::IdentifierFromName(flimflam::kTypeCellular));
+
   VLOG(2) << "Manager initialized.";
 }
 
@@ -764,6 +773,7 @@ void Manager::SetTechnologyOrder(const string &order, Error *error) {
   vector<Technology::Identifier> new_order;
   map<Technology::Identifier, bool> seen;
 
+  VLOG(2) << "Setting technology order to " << order;
   vector<string> order_parts;
   base::SplitString(order, ',', &order_parts);
 
