@@ -670,10 +670,10 @@ uint8 WiFiService::SignalToStrength(int16 signal_dbm) {
     strength = 120 + signal_dbm;  // Call -20dBm "perfect".
   }
 
-  if (strength > 100) {
-    strength = 100;
-  } else if (strength < 0) {
-    strength = 0;
+  if (strength > kStrengthMax) {
+    strength = kStrengthMax;
+  } else if (strength < kStrengthMin) {
+    strength = kStrengthMin;
   }
   return strength;
 }

@@ -75,6 +75,9 @@ const char Service::kStorageSaveCredentials[] = "SaveCredentials";
 const char Service::kStorageType[] = "Type";
 const char Service::kStorageUIData[] = "UIData";
 
+const uint8 Service::kStrengthMax = 100;
+const uint8 Service::kStrengthMin = 0;
+
 // static
 unsigned int Service::serial_number_ = 0;
 

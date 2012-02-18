@@ -75,6 +75,9 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageType[];
   static const char kStorageUIData[];
 
+  static const uint8 kStrengthMax;
+  static const uint8 kStrengthMin;
+
   enum ConnectFailure {
     kFailureUnknown,
     kFailureActivationFailure,

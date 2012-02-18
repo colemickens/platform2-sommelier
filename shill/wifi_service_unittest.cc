@@ -849,16 +849,16 @@ TEST_F(WiFiServiceTest, SignalToStrength) {
     int16 next_mapped =  WiFiService::SignalToStrength(i+1);
     EXPECT_LE(current_mapped, next_mapped)
         << "(original values " << i << " " << i+1 << ")";
-    EXPECT_GE(current_mapped, 0);
-    EXPECT_LE(current_mapped, 100);
+    EXPECT_GE(current_mapped, Service::kStrengthMin);
+    EXPECT_LE(current_mapped, Service::kStrengthMax);
   }
   for (int16 i = 1; i < std::numeric_limits<int16>::max(); ++i) {
     int16 current_mapped = WiFiService::SignalToStrength(i);
     int16 next_mapped =  WiFiService::SignalToStrength(i+1);
     EXPECT_LE(current_mapped, next_mapped)
         << "(original values " << i << " " << i+1 << ")";
-    EXPECT_GE(current_mapped, 0);
-    EXPECT_LE(current_mapped, 100);
+    EXPECT_GE(current_mapped, Service::kStrengthMin);
+    EXPECT_LE(current_mapped, Service::kStrengthMax);
   }
 }
 

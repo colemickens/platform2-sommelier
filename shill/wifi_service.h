@@ -145,7 +145,8 @@ class WiFiService : public Service {
   static bool CheckWEPKeyIndex(const std::string &passphrase, Error *error);
   static bool CheckWEPPrefix(const std::string &passphrase, Error *error);
 
-  // Maps a signal value, in dBm, to a "strength" value, from 0-100.
+  // Maps a signal value, in dBm, to a "strength" value, from
+  // |Service::kStrengthMin| to |Service:kStrengthMax|.
   static uint8 SignalToStrength(int16 signal_dbm);
 
   // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.

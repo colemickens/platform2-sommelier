@@ -41,6 +41,7 @@ EthernetService::EthernetService(ControlInterface *control_interface,
   set_connectable(true);
   set_auto_connect(true);
   set_friendly_name(GetStorageIdentifier());
+  SetStrength(kStrengthMax);
 }
 
 EthernetService::~EthernetService() { }
