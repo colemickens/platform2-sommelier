@@ -7,8 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "base/stringprintf.h"
-#include "base/string_split.h"
 #include "inst_util.h"
 
 using std::string;
@@ -55,7 +53,7 @@ bool SetImage(const string& install_dir,
   string kernel_config_root = ExtractKernelArg(kernel_config, "root");
   string dm_config = ExtractKernelArg(kernel_config, "dm");
   std::vector<string> dm_parts;
-  base::SplitString(dm_config, ',', &dm_parts);
+  SplitString(dm_config, ',', &dm_parts);
 
   if (dm_parts.size() != 2) {
     printf("Unexpected dm configuration for kernel '%s'\n", dm_config.c_str());

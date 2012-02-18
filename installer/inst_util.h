@@ -6,11 +6,18 @@
 #define INST_UTIL
 
 #include <string>
+#include <vector>
 
 #define RUN_OR_RETURN_FALSE(_x)                                 \
   do {                                                          \
     if (RunCommand(_x) != 0) return false;                      \
   } while (0)
+
+std::string StringPrintf(const std::string& format, ...);
+
+void SplitString(const std::string& str,
+                 char split,
+                 std::vector<std::string>* output);
 
 // This is a place holder to invoke the backing scripts. Once all scripts have
 // been rewritten as library calls this command should be deleted.

@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "base/stringprintf.h"
 #include "chromeos_setimage.h"
 #include "inst_util.h"
 

@@ -11,6 +11,28 @@
 
 using std::string;
 
+void TestStringPrintf(const string& result,
+                      const string& expected) {
+  if (result != expected) {
+    printf("StringPrintf('%s', '%s') Didn't match\n",
+           result.c_str(), expected.c_str());
+    exit(1);
+  }
+}
+
+void TestSplitString(const string& str,
+                     char split,
+                     const std::vector<std::string>& expected) {
+  std::vector<std::string> result;
+  SplitString(str, split, &result);
+
+  if (result != expected) {
+    printf("SplitString('%s', '%c') Didn't match\n",
+           str.c_str(), split);
+    exit(1);
+  }
+}
+
 void TestRunCommand(const string &cmd, int expected) {
   int result = RunCommand(cmd);
   if (result != expected) {
@@ -194,4 +216,36 @@ void Test() {
   TestExtractKernelArg(kernel_config, "dm", dm_config);
   TestExtractKernelArg(dm_config, "ver", "2");
   TestExtractKernelArg(dm_config, "stuff", "v");
+
+  std::vector<std::string> expected;
+
+  expected.clear();
+  expected.push_back("My Stuff");
+  TestSplitString("My Stuff", ',', expected);
+
+  expected.clear();
+  expected.push_back("My");
+  expected.push_back("Stuff");
+  expected.push_back("Is");
+  TestSplitString("My,Stuff,Is", ',', expected);
+
+  expected.clear();
+  expected.push_back("");
+  expected.push_back("My");
+  expected.push_back("Stuff");
+  TestSplitString(",My,Stuff", ',', expected);
+
+  expected.clear();
+  expected.push_back("My");
+  expected.push_back("Stuff");
+  expected.push_back("");
+  TestSplitString("My,Stuff,", ',', expected);
+
+  TestStringPrintf(StringPrintf(""), "");
+  TestStringPrintf(StringPrintf("Stuff"), "Stuff");
+  TestStringPrintf(StringPrintf("%s", "Stuff"), "Stuff");
+  TestStringPrintf(StringPrintf("%d", 3), "3");
+  TestStringPrintf(StringPrintf("%s %d", "Stuff", 3), "Stuff 3");
+
+  printf("SUCCESS!\n");
 }

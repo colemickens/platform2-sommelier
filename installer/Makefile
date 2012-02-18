@@ -7,7 +7,7 @@ include common.mk
 CFLAGS := -I$(SRC)/include $(CFLAGS)
 CXXFLAGS := -I$(SRC)/include $(CXXFLAGS)
 
-LDFLAGS := -lbase -lpthread -lrt -ldump_kernel_config
+LDFLAGS :=  -ldump_kernel_config
 
 CXX_STATIC_BINARY(cros_installer): \
 		$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS))

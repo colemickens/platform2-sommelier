@@ -2,28 +2,87 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos_postinst.h"
+#include "inst_util.h"
 
+#include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <fstream>
 #include <iostream>
 #include <linux/fs.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "base/stringprintf.h"
-#include "base/string_split.h"
-#include "base/string_util.h"
 extern "C" {
 #include "vboot/dump_kernel_config.h"
 }
 #include "vboot/kernel_blob.h"
 
 using std::string;
+
+
+string StringPrintf(const string& format, ...) {
+  va_list ap;
+
+  va_start(ap, format);
+  int v_result = vsnprintf(NULL,
+                           0,
+                           format.c_str(),
+                           ap);
+  va_end(ap);
+
+  if (v_result < 0) {
+    printf("Error in SpringPrintf - sizing\n");
+    return "";
+  }
+
+  const int size = v_result + 1;
+
+  char* sprintf_buffer = reinterpret_cast<char *>(malloc(size));
+
+  if (!sprintf_buffer) {
+    printf("Error in SpringPrintf - memory allocation\n");
+    return "";
+  }
+
+  va_start(ap, format);
+  v_result = vsnprintf(sprintf_buffer,
+                       size,
+                       format.c_str(),
+                       ap);
+  va_end(ap);
+
+  if (v_result < 0 || v_result >= size) {
+    free(sprintf_buffer);
+    printf("Error in SpringPrintf - formatting\n");
+    return "";
+  }
+
+  string result(sprintf_buffer);
+  free(sprintf_buffer);
+  return result;
+}
+
+void SplitString(const string& str,
+                 char split,
+                 std::vector<string>* output) {
+  output->clear();
+
+  size_t i = 0;
+  while (true) {
+    size_t split_at = str.find(split, i);
+    if (split_at == str.npos)
+      break;
+    output->push_back(str.substr(i, split_at-i));
+    i = split_at + 1;
+  }
+
+  output->push_back(str.substr(i));
+}
 
 // This is a place holder to invoke the backing scripts. Once all scripts have
 // been rewritten as library calls this command should be deleted.
@@ -53,7 +112,7 @@ string LsbReleaseValue(const string& file,
   while (lsb_file.good()) {
     line = "";
     getline(lsb_file, line);
-    if (StartsWithASCII(line, preamble, true))
+    if (line.compare(0, preamble.size(), preamble) == 0)
       return line.substr(preamble.size());
   }
   lsb_file.close();
@@ -67,8 +126,8 @@ bool VersionLess(const string& left,
   std::vector<string> left_parts;
   std::vector<string> right_parts;
 
-  base::SplitString(left, '.', &left_parts);
-  base::SplitString(right, '.', &right_parts);
+  SplitString(left, '.', &left_parts);
+  SplitString(right, '.', &right_parts);
 
   // We changed from 3 part versions to 4 part versions.
   // 3 part versions are always newer than 4 part versions
@@ -99,7 +158,7 @@ bool VersionLess(const string& left,
 string GetBlockDevFromPartitionDev(const string& partition_dev) {
   size_t i = partition_dev.length();
 
-  while (i > 0 && IsAsciiDigit(partition_dev[i-1]))
+  while (i > 0 && isdigit(partition_dev[i-1]))
     i--;
 
   return partition_dev.substr(0, i);
@@ -108,7 +167,7 @@ string GetBlockDevFromPartitionDev(const string& partition_dev) {
 int GetPartitionFromPartitionDev(const string& partition_dev) {
   size_t i = partition_dev.length();
 
-  while (i > 0 && IsAsciiDigit(partition_dev[i-1]))
+  while (i > 0 && isdigit(partition_dev[i-1]))
     i--;
 
   string partition_str = partition_dev.substr(i, i+1);
@@ -149,12 +208,12 @@ bool RemovePackFiles(const string& dirname) {
     string filename = ep->d_name;
 
     // Skip . files
-    if (StartsWithASCII(filename, ".", true))
+    if (filename.compare(0, 1, ".") == 0)
       continue;
 
-    if (!EndsWith(filename, "pack", true)) {
+    if ((filename.size() < 4) ||
+        (filename.compare(filename.size() - 4, 4, "pack") != 0))
       continue;
-    }
 
     string full_filename = dirname + '/' + filename;
 
@@ -266,7 +325,8 @@ string DumpKernelConfig(const string& kernel_dev) {
 
   // Map the kernel image blob.
   size_t blob_size;
-  uint8_t* blob = (uint8_t*)MapFile(kernel_dev.c_str(), &blob_size);
+  uint8_t* blob = static_cast<uint8_t*>(MapFile(kernel_dev.c_str(),
+                                                &blob_size));
 
   if (!blob) {
     printf("Error reading input file\n");
@@ -274,7 +334,7 @@ string DumpKernelConfig(const string& kernel_dev) {
   }
 
   uint8_t *config = find_kernel_config(blob,
-                                       (uint64_t)blob_size,
+                                       static_cast<uint64_t>(blob_size),
                                        CROS_32BIT_ENTRY_ADDR);
   if (!config) {
     printf("Error parsing input file\n");
@@ -282,7 +342,8 @@ string DumpKernelConfig(const string& kernel_dev) {
     return result;
   }
 
-  result = StringPrintf("%.*s", CROS_CONFIG_SIZE, config);
+  result = string(reinterpret_cast<const char *>(config),
+                  static_cast<size_t>(CROS_CONFIG_SIZE));
   munmap(blob, blob_size);
 
   return result;
