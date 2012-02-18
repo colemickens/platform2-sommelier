@@ -5,9 +5,10 @@
 include common.mk
 
 CFLAGS := -I$(SRC)/include $(CFLAGS)
-CXXFLAGS := -I$(SRC)/include $(CXXFLAGS)
+CXXFLAGS := -I$(SRC)/include -DCHROMEOS_ENVIRONMENT $(CXXFLAGS)
 
-LDFLAGS := -lbase -lpthread -lrt -ldump_kernel_config
+LDFLAGS := -lbase -lpthread -lrt -ldump_kernel_config -lcgpt-cc -luuid \
+		-l:$(shell $(CXX) -print-file-name=vboot_host.a)
 
 CXX_STATIC_BINARY(cros_installer): \
 		$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS))
