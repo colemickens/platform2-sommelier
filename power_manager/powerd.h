@@ -134,6 +134,7 @@ class Daemon : public XIdleObserver,
   FRIEND_TEST(DaemonTest, SendEnumMetric);
   FRIEND_TEST(DaemonTest, SendMetric);
   FRIEND_TEST(DaemonTest, SendMetricWithPowerState);
+  FRIEND_TEST(DaemonTest, ExtendTimeoutsWhenProjecting);
 
   enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
                    kIdleSuspend };

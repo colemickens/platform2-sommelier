@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cmath>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkx.h>
@@ -705,6 +706,75 @@ TEST_F(DaemonTest, PowerButtonDownMetric) {
                kMetricPowerButtonDownTimeMax,
                kMetricPowerButtonDownTimeBuckets);
   daemon_.SendPowerButtonMetric(false, up_time);
+}
+
+TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
+  const int64 kPluggedDimTimeMs = 10000;
+  const int64 kPluggedOffTimeMs = 20000;
+  const int64 kPluggedSuspendTimeMs = 40000;
+  const int64 kUnpluggedDimTimeMs = 15000;
+  const int64 kUnpluggedOffTimeMs = 25000;
+  const int64 kUnpluggedSuspendTimeMs = 45000;
+
+  const int64 kLockTimeMs = 30000;
+
+  // Set prefs that are read by ReadSettings().  Use 0 for ones that we don't
+  // care about.
+  prefs_.SetInt64(kLowBatterySuspendPercent, 0);
+  prefs_.SetInt64(kCleanShutdownTimeoutMs, 0);
+  prefs_.SetInt64(kPluggedDimMs, kPluggedDimTimeMs);
+  prefs_.SetInt64(kPluggedOffMs, kPluggedOffTimeMs);
+  prefs_.SetInt64(kPluggedSuspendMs, kPluggedSuspendTimeMs);
+  prefs_.SetInt64(kUnpluggedDimMs, kUnpluggedDimTimeMs);
+  prefs_.SetInt64(kUnpluggedOffMs, kUnpluggedOffTimeMs);
+  prefs_.SetInt64(kUnpluggedSuspendMs, kUnpluggedSuspendTimeMs);
+  prefs_.SetInt64(kReactMs, 0);
+  prefs_.SetInt64(kFuzzMs, 0);
+  prefs_.SetInt64(kEnforceLock, 0);
+  prefs_.SetInt64(kUseXScreenSaver, 0);
+  prefs_.SetInt64(kDisableIdleSuspend, 0);
+  prefs_.SetInt64(kLockOnIdleSuspend, 1);
+  prefs_.SetInt64(kLockMs, kLockTimeMs);
+
+  // Check that the settings are loaded correctly.
+  EXPECT_CALL(monitor_reconfigure_, is_projecting())
+      .WillRepeatedly(Return(false));
+  daemon_.ReadSettings();
+  EXPECT_EQ(kPluggedDimTimeMs, daemon_.plugged_dim_ms_);
+  EXPECT_EQ(kPluggedOffTimeMs, daemon_.plugged_off_ms_);
+  EXPECT_EQ(kPluggedSuspendTimeMs, daemon_.plugged_suspend_ms_);
+  EXPECT_EQ(kUnpluggedDimTimeMs, daemon_.unplugged_dim_ms_);
+  EXPECT_EQ(kUnpluggedOffTimeMs, daemon_.unplugged_off_ms_);
+  EXPECT_EQ(kUnpluggedSuspendTimeMs, daemon_.unplugged_suspend_ms_);
+  EXPECT_EQ(kLockTimeMs, daemon_.default_lock_ms_);
+
+  // When we start projecting, all of the timeouts should be increased.
+  EXPECT_CALL(monitor_reconfigure_, is_projecting())
+      .WillRepeatedly(Return(true));
+  daemon_.AdjustIdleTimeoutsForProjection();
+  EXPECT_GT(daemon_.plugged_dim_ms_, kPluggedDimTimeMs);
+  EXPECT_GT(daemon_.plugged_off_ms_, kPluggedOffTimeMs);
+  EXPECT_GT(daemon_.plugged_suspend_ms_, kPluggedSuspendTimeMs);
+  EXPECT_GT(daemon_.unplugged_dim_ms_, kUnpluggedDimTimeMs);
+  EXPECT_GT(daemon_.unplugged_off_ms_, kUnpluggedOffTimeMs);
+  EXPECT_GT(daemon_.unplugged_suspend_ms_, kUnpluggedSuspendTimeMs);
+  EXPECT_GT(daemon_.default_lock_ms_, kLockTimeMs);
+
+  // Check that the lock timeout remains higher than the screen-off timeout
+  // (http://crosbug.com/24847).
+  EXPECT_GT(daemon_.default_lock_ms_, daemon_.plugged_off_ms_);
+
+  // Stop projecting and check that we go back to the previous values.
+  EXPECT_CALL(monitor_reconfigure_, is_projecting())
+      .WillRepeatedly(Return(false));
+  daemon_.AdjustIdleTimeoutsForProjection();
+  EXPECT_EQ(kPluggedDimTimeMs, daemon_.plugged_dim_ms_);
+  EXPECT_EQ(kPluggedOffTimeMs, daemon_.plugged_off_ms_);
+  EXPECT_EQ(kPluggedSuspendTimeMs, daemon_.plugged_suspend_ms_);
+  EXPECT_EQ(kUnpluggedDimTimeMs, daemon_.unplugged_dim_ms_);
+  EXPECT_EQ(kUnpluggedOffTimeMs, daemon_.unplugged_off_ms_);
+  EXPECT_EQ(kUnpluggedSuspendTimeMs, daemon_.unplugged_suspend_ms_);
+  EXPECT_EQ(kLockTimeMs, daemon_.default_lock_ms_);
 }
 
 }  // namespace power_manager

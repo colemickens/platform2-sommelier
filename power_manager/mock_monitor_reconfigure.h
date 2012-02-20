@@ -13,6 +13,7 @@ namespace power_manager {
 
 class MockMonitorReconfigure : public MonitorReconfigure{
  public:
+  MOCK_CONST_METHOD0(is_projecting, bool());
 };
 
 }  // namespace power_manager

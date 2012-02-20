@@ -29,10 +29,12 @@ class MonitorReconfigure {
  public:
   // We need a default constructor for unit tests.
   MonitorReconfigure();
+
   // |backlight_ctl| is a pointer to the backlight controller for the internal
   // screen.
   MonitorReconfigure(BacklightController* backlight_ctl);
-  ~MonitorReconfigure();
+
+  virtual ~MonitorReconfigure();
 
   // Initialization.
   bool Init();
@@ -41,13 +43,12 @@ class MonitorReconfigure {
   void Run();
 
   // Returns whether an external monitor is connected.
-  bool is_projecting() const { return is_projecting_; }
+  virtual bool is_projecting() const { return is_projecting_; }
 
   // Sets projection callback function and data.
   void SetProjectionCallback(void (*func)(void*), void* data);
 
  private:
-
   // Get the XRRModeInfo for |mode|.
   XRRModeInfo* GetModeInfo(RRMode mode);
 

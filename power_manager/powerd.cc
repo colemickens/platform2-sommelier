@@ -205,15 +205,16 @@ void Daemon::ReadSettings() {
 }
 
 void Daemon::ReadLockScreenSettings() {
-  int64 lock_on_idle_suspend;
+  int64 lock_on_idle_suspend = 0;
   if (prefs_->GetInt64(kLockOnIdleSuspend, &lock_on_idle_suspend) &&
-      0 == lock_on_idle_suspend) {
+      lock_on_idle_suspend) {
+    LOG(INFO) << "Enabling screen lock on idle and suspend";
+    CHECK(prefs_->GetInt64(kLockMs, &default_lock_ms_));
+  } else {
     LOG(INFO) << "Disabling screen lock on idle and suspend";
     default_lock_ms_ = INT64_MAX;
-  } else {
-    CHECK(prefs_->GetInt64(kLockMs, &default_lock_ms_));
-    LOG(INFO) << "Enabling screen lock on idle and suspend";
   }
+  base_timeout_values_[kLockMs] = default_lock_ms_;
   lock_on_idle_suspend_ = lock_on_idle_suspend;
 }
 
@@ -1171,9 +1172,11 @@ void Daemon::AdjustIdleTimeoutsForProjection() {
   unplugged_dim_ms_     = base_timeout_values_[kUnpluggedDimMs];
   unplugged_off_ms_     = base_timeout_values_[kUnpluggedOffMs];
   unplugged_suspend_ms_ = base_timeout_values_[kUnpluggedSuspendMs];
+  default_lock_ms_      = base_timeout_values_[kLockMs];
 
   if (monitor_reconfigure_->is_projecting()) {
-    LOG(INFO) << "External display projection: Doubling idle times.";
+    LOG(INFO) << "External display projection: multiplying idle times by "
+              << kProjectionTimeoutFactor;
     plugged_dim_ms_ *= kProjectionTimeoutFactor;
     plugged_off_ms_ *= kProjectionTimeoutFactor;
     if (plugged_suspend_ms_ != INT64_MAX)
@@ -1182,6 +1185,8 @@ void Daemon::AdjustIdleTimeoutsForProjection() {
     unplugged_off_ms_ *= kProjectionTimeoutFactor;
     if (unplugged_suspend_ms_ != INT64_MAX)
       unplugged_suspend_ms_ *= kProjectionTimeoutFactor;
+    if (default_lock_ms_ != INT64_MAX)
+      default_lock_ms_ *= kProjectionTimeoutFactor;
   }
 }
 
