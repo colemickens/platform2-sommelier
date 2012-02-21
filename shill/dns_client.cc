@@ -17,8 +17,8 @@
 
 #include <base/stl_util-inl.h>
 
-#include <shill/shill_ares.h>
-#include <shill/shill_time.h>
+#include "shill/shill_ares.h"
+#include "shill/shill_time.h"
 
 using std::map;
 using std::set;

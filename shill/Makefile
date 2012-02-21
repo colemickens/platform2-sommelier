@@ -14,7 +14,7 @@ DBUSXX_XML2CPP = dbusxx-xml2cpp
 # TODO(cmasone): explore if newer versions of libbase let us avoid this.
 BASE_LIBS = -lbase -lchromeos -levent -lpthread -lrt -lcares -lmobile-provider \
             -lmetrics
-BASE_INCLUDE_DIRS = -I..
+BASE_INCLUDE_DIRS = -iquote..
 BASE_LIB_DIRS =
 
 LIBS = $(BASE_LIBS)
