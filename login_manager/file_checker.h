@@ -16,7 +16,6 @@ class FileChecker {
   virtual bool exists();
 
  private:
-  static const char kLegacy[];
   const FilePath filename_;
 
   DISALLOW_COPY_AND_ASSIGN(FileChecker);

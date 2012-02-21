@@ -8,17 +8,13 @@
 #include <base/file_util.h>
 
 namespace login_manager {
-// static
-const char FileChecker::kLegacy[] = "/tmp/disable_chrome_restart";
 
 FileChecker::FileChecker(const FilePath& filename) : filename_(filename) {}
 
 FileChecker::~FileChecker() {}
 
 bool FileChecker::exists() {
-  // TODO(cmasone): Remove kLegacy to complete http://crosbug.com/17156
-  return file_util::PathExists(filename_) ||
-      file_util::PathExists(FilePath(kLegacy));
+  return file_util::PathExists(filename_);
 }
 
 }  // namespace login_manager

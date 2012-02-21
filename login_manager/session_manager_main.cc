@@ -60,7 +60,7 @@ static const char kHelp[] = "help";
 static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "  --disable-chrome-restart-file=</path/to/file>\n"
 "    Magic file that causes this program to stop restarting the\n"
-"    chrome binary and exit. (default: /tmp/disable_chrome_restart)\n"
+"    chrome binary and exit. (default: /var/run/disable_chrome_restart)\n"
 "  --uid=[number]\n"
 "    Numeric uid to transition to prior to execution.\n"
 "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
