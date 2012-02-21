@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -53,6 +53,15 @@ class PowerManDaemon {
     BUTTON_REPEAT,
   };
 
+  typedef std::pair<std::string, std::string> DBusInterfaceMemberPair;
+  typedef void (PowerManDaemon::*DBusSignalHandler)(DBusMessage*);
+  typedef DBusMessage* (PowerManDaemon::*DBusMethodHandler)(DBusMessage*);
+
+  typedef std::map<DBusInterfaceMemberPair, DBusSignalHandler>
+      DBusSignalHandlerTable;
+  typedef std::map<DBusInterfaceMemberPair, DBusMethodHandler>
+      DBusMethodHandlerTable;
+
   inline static ButtonState GetButtonState(int value) {
     // value == 0 is button up. value == 1 is button down.
     // value == 2 is key repeat.
@@ -75,6 +84,23 @@ class PowerManDaemon {
                                               DBusMessage* message,
                                               void* data);
 
+  // Callbacks for handling dbus messages.
+  void HandleSuspendSignal(DBusMessage* message);
+  void HandleShutdownSignal(DBusMessage* message);
+  void HandleRestartSignal(DBusMessage* message);
+  void HandleRequestCleanShutdownSignal(DBusMessage* message);
+  void HandlePowerStateChangedSignal(DBusMessage* message);
+  void HandleSessionManagerStateChangedSignal(DBusMessage* message);
+  DBusMessage* HandleExternalBacklightGetMethod(DBusMessage* message);
+  DBusMessage* HandleExternalBacklightSetMethod(DBusMessage* message);
+
+  void AddDBusSignalHandler(const std::string& interface,
+                            const std::string& member,
+                            DBusSignalHandler handler);
+
+  void AddDBusMethodHandler(const std::string& interface,
+                            const std::string& member,
+                            DBusMethodHandler handler);
 
   bool CancelDBusRequest();
 
@@ -165,6 +191,10 @@ class PowerManDaemon {
   FilePath lid_open_file_;           // touch when suspend should be cancelled
   base::TimeTicks lid_ticks_;        // log time for every lid event
   int console_fd_;
+
+  // These are lookup tables that map dbus message interface/names to handlers.
+  DBusSignalHandlerTable dbus_signal_handler_table_;
+  DBusMethodHandlerTable dbus_method_handler_table_;
 };
 
 }  // namespace power_manager
