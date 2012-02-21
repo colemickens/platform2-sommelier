@@ -20,6 +20,7 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/glib/object.h>
+#include <chromeos/syslog_logging.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
@@ -53,11 +54,6 @@ static const char kDisableChromeRestartFileDefault[] =
 // starting it.
 static const char kUid[] = "uid";
 
-// Name of the flag that determines the path to log file.
-static const char kLogFile[] = "log-file";
-// The default path to the log file.
-static const char kDefaultLogFile[] = "/var/log/session_manager";
-
 // Flag that causes session manager to show the help message and exit.
 static const char kHelp[] = "help";
 // The help message shown if help flag is passed to the program.
@@ -67,8 +63,6 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "    chrome binary and exit. (default: /tmp/disable_chrome_restart)\n"
 "  --uid=[number]\n"
 "    Numeric uid to transition to prior to execution.\n"
-"  --log-file=</path/to/file>\n"
-"    Log file to use. (default: /var/log/session_manager)\n"
 "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
 "    Supplies the required program to execute and its arguments.\n"
 "    Multiple programs can be executed by delimiting them with addition --\n"
@@ -88,14 +82,7 @@ int main(int argc, char* argv[]) {
   base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
-  string log_file = cl->GetSwitchValueASCII(switches::kLogFile);
-  if (log_file.empty())
-    log_file.assign(switches::kDefaultLogFile);
-  logging::InitLogging(log_file.c_str(),
-                       logging::LOG_TO_BOTH_FILE_AND_SYSTEM_DEBUG_LOG,
-                       logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE,
-                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
