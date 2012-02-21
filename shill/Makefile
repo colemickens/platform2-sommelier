@@ -10,11 +10,13 @@ CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 
+BUILDDIR = build
+
 # libevent, gdk and gtk-2.0 are needed to leverage chrome's MessageLoop
 # TODO(cmasone): explore if newer versions of libbase let us avoid this.
 BASE_LIBS = -lbase -lchromeos -levent -lpthread -lrt -lcares -lmobile-provider \
             -lmetrics
-BASE_INCLUDE_DIRS = -iquote..
+BASE_INCLUDE_DIRS = -iquote.. -iquote $(BUILDDIR)
 BASE_LIB_DIRS =
 
 LIBS = $(BASE_LIBS)
@@ -27,6 +29,10 @@ TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 TEST_LIB_DIRS = $(LIB_DIRS)
 
 DBUS_BINDINGS_DIR = dbus_bindings
+BUILD_DBUS_BINDINGS_DIR = $(BUILDDIR)/shill/$(DBUS_BINDINGS_DIR)
+
+# Creating $(BUILD_DBUS_BINDINGS_DIR) will also create $(BUILDDIR).
+_CREATE_BUILDDIR := $(shell mkdir -p $(BUILD_DBUS_BINDINGS_DIR))
 
 DBUS_ADAPTOR_HEADERS :=
 
@@ -62,9 +68,8 @@ DBUS_BINDINGS_XML_LOCAL = \
 define ADD_BINDING
 $(eval _SOURCE = $(word 1,$(subst >, ,$(1))))
 $(eval _TARGET = $(word 2,$(subst >, ,$(1))))
-CLEAN_FILES += $(DBUS_BINDINGS_DIR)/$(_TARGET).xml
 DBUS_PROXY_HEADERS += $(_TARGET).h
-$(DBUS_BINDINGS_DIR)/$(_TARGET).xml: \
+$(BUILD_DBUS_BINDINGS_DIR)/$(_TARGET).xml: \
 	$(SYSROOT)/usr/share/dbus-1/interfaces/$(_SOURCE).xml
 	cat $$< > $$@
 endef
@@ -72,9 +77,8 @@ endef
 define ADD_LOCAL_BINDING
 $(eval _SOURCE = $(word 1,$(subst >, ,$(1))))
 $(eval _TARGET = $(word 2,$(subst >, ,$(1))))
-CLEAN_FILES += $(DBUS_BINDINGS_DIR)/$(_TARGET).xml
 DBUS_ADAPTOR_HEADERS += $(_TARGET).h
-$(DBUS_BINDINGS_DIR)/$(_TARGET).xml: $(DBUS_BINDINGS_DIR)/$(_SOURCE).xml
+$(BUILD_DBUS_BINDINGS_DIR)/$(_TARGET).xml: $(DBUS_BINDINGS_DIR)/$(_SOURCE).xml
 	cp $$< $$@
 endef
 
@@ -82,11 +86,11 @@ $(foreach b,$(DBUS_BINDINGS_XML_SYSROOT),$(eval $(call ADD_BINDING,$(b))))
 $(foreach b,$(DBUS_BINDINGS_XML_LOCAL),$(eval $(call ADD_LOCAL_BINDING,$(b))))
 
 DBUS_ADAPTOR_BINDINGS = \
-	$(addprefix $(DBUS_BINDINGS_DIR)/, $(DBUS_ADAPTOR_HEADERS))
-DBUS_PROXY_BINDINGS = $(addprefix $(DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
-DBUS_BINDINGS = $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
+	$(addprefix $(BUILD_DBUS_BINDINGS_DIR)/, $(DBUS_ADAPTOR_HEADERS))
+DBUS_PROXY_BINDINGS = \
+	$(addprefix $(BUILD_DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
 
-SHILL_OBJS = \
+SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	async_call_handler.o \
 	async_connection.o \
 	byte_string.o \
@@ -170,15 +174,16 @@ SHILL_OBJS = \
 	wifi.o \
 	wifi_endpoint.o \
 	wifi_service.o \
-	wpa_supplicant.o
+	wpa_supplicant.o \
+	)
 
 SHILL_BIN = shill
 # Broken out separately, because (unlike other SHILL_OBJS), it
 # shouldn't be linked into TEST_BIN.
-SHILL_MAIN_OBJ = shill_main.o
+SHILL_MAIN_OBJ = $(BUILDDIR)/shill_main.o
 
 TEST_BIN = shill_unittest
-TEST_OBJS = \
+TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	async_connection_unittest.o \
 	byte_string_unittest.o \
 	callback_list_unittest.o \
@@ -269,11 +274,15 @@ TEST_OBJS = \
 	testrunner.o \
 	wifi_endpoint_unittest.o \
 	wifi_service_unittest.o \
-	wifi_unittest.o
+	wifi_unittest.o \
+	)
 
 .PHONY: all clean
 
 all: $(SHILL_BIN) $(TEST_BIN)
+
+$(BUILD_DBUS_BINDINGS_DIR)/%.xml: $(DBUS_BINDINGS_DIR)/%.xml
+	cp $< $@
 
 $(DBUS_PROXY_BINDINGS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --proxy=$@ --sync --async
@@ -281,10 +290,10 @@ $(DBUS_PROXY_BINDINGS): %.h: %.xml
 $(DBUS_ADAPTOR_BINDINGS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
 
-.cc.o:
+$(BUILDDIR)/%.o: %.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@
 
-$(SHILL_OBJS): $(DBUS_BINDINGS)
+$(SHILL_OBJS): $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
 
 $(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(LDFLAGS) $^ $(LIBS) \
@@ -294,22 +303,9 @@ $(TEST_BIN): CXXFLAGS += -DUNIT_TEST
 $(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ $(TEST_LIBS) -o $@
 
-.gitignore: Makefile
-	@echo .gitignore $(DBUS_BINDINGS) $(SHILL_BIN) $(TEST_BIN) \
-		$(SHILL_OBJS) $(SHILL_OBJS:.o=.d) \
-		$(SHILL_MAIN_OBJ) $(SHILL_MAIN_OBJ:.o=.d) \
-		$(TEST_OBJS) $(TEST_OBJS:.o=.d) \
-		$(CLEAN_FILES) \
-		| tr ' ' '\n' \
-		> .gitignore
-
 clean:
 	rm -rf \
-		.gitignore \
-		*.o \
-		*.d \
-		$(CLEAN_FILES) \
-		$(DBUS_BINDINGS) \
+		$(BUILDDIR) \
 		$(SHILL_BIN) \
 		$(TEST_BIN)
 
