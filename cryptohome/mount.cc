@@ -21,7 +21,6 @@
 
 #include "crypto.h"
 #include "cryptohome_common.h"
-#include "old_vault_keyset.h"
 #include "platform.h"
 #include "username_passkey.h"
 #include "vault_keyset.h"
@@ -558,11 +557,12 @@ void Mount::RemoveNonOwnerDirectories(const FilePath& prefix) {
        next_path = dir_enumerator.Next()) {
     const std::string str_dir_name = next_path.BaseName().value();
     if (!base::strcasecmp(str_dir_name.c_str(), GetObfuscatedOwner().c_str()))
-      continue; // Skip the owner's directory.
+      continue;  // Skip the owner's directory.
     if (!chromeos::cryptohome::home::IsSanitizedUserName(str_dir_name))
-      continue; // Skip any directory whose name is not an obfuscated user name.
+      continue;  // Skip any directory whose name is not an obfuscated user
+                 // name.
     if (platform_->IsDirectoryMounted(next_path.value()))
-      continue; // Skip any directory that is currently mounted.
+      continue;  // Skip any directory that is currently mounted.
     platform_->DeleteFile(next_path.value(), true);
   }
 }
@@ -1020,111 +1020,96 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
                                VaultKeyset* vault_keyset,
                                SerializedVaultKeyset* serialized,
                                MountError* error) const {
-  FilePath salt_path(GetUserSaltFile(credentials));
-  // If a separate salt file exists, it is the old-style keyset
-  if (file_util::PathExists(salt_path)) {
-    VaultKeyset old_keyset;
-    if (!DecryptVaultKeysetOld(credentials, &old_keyset, error)) {
-      return false;
-    }
-    if (migrate_if_needed) {
-      // This is not considered a fatal error.  Re-saving with the desired
-      // protection is ideal, but not required.
-      ReEncryptVaultKeyset(credentials, old_keyset, serialized);
-    }
-    vault_keyset->FromVaultKeyset(old_keyset);
-    return true;
-  } else {
-    SecureBlob passkey;
-    credentials.GetPasskey(&passkey);
+  SecureBlob passkey;
+  credentials.GetPasskey(&passkey);
 
-    // Load the encrypted keyset
-    if (!LoadVaultKeyset(credentials, serialized)) {
-      if (error) {
-        *error = MOUNT_ERROR_FATAL;
-      }
-      return false;
+  // Load the encrypted keyset
+  if (!LoadVaultKeyset(credentials, serialized)) {
+    if (error) {
+      *error = MOUNT_ERROR_FATAL;
     }
-
-    // Attempt decrypt the master key with the passkey
-    unsigned int crypt_flags = 0;
-    Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-    if (!crypto_->DecryptVaultKeyset(*serialized, passkey, &crypt_flags,
-                                     &crypto_error, vault_keyset)) {
-      if (error) {
-        switch (crypto_error) {
-          case Crypto::CE_TPM_FATAL:
-          case Crypto::CE_OTHER_FATAL:
-            *error = MOUNT_ERROR_FATAL;
-            break;
-          case Crypto::CE_TPM_COMM_ERROR:
-            *error = MOUNT_ERROR_TPM_COMM_ERROR;
-            break;
-          case Crypto::CE_TPM_DEFEND_LOCK:
-            *error = MOUNT_ERROR_TPM_DEFEND_LOCK;
-            break;
-          default:
-            *error = MOUNT_ERROR_KEY_FAILURE;
-            break;
-        }
-      }
-      return false;
-    }
-
-    if (migrate_if_needed) {
-      // Calling EnsureTpm here handles the case where a user logged in while
-      // cryptohome was taking TPM ownership.  In that case, their vault keyset
-      // would be scrypt-wrapped and the TPM would not be connected.  If we're
-      // configured to use the TPM, calling EnsureTpm will try to connect, and
-      // if successful, the call to has_tpm() below will succeed, allowing
-      // re-wrapping (migration) using the TPM.
-      if (use_tpm_) {
-        crypto_->EnsureTpm(false);
-      }
-
-      // If the vault keyset's TPM state is not the same as that configured for
-      // the device, re-save the keyset (this will save in the device's default
-      // method).
-      //                      1   2   3   4   5   6   7   8   9  10  11  12
-      // use_tpm              -   -   -   X   X   X   X   X   X   -   -   -
-      //
-      // fallback_to_scrypt   -   -   -   -   -   -   X   X   X   X   X   X
-      //
-      // tpm_wrapped          -   X   -   -   X   -   -   X   -   -   X   -
-      //
-      // scrypt_wrapped       -   -   X   -   -   X   -   -   X   -   -   X
-      //
-      // migrate              N   Y   Y   Y   N   Y   Y   N   Y   Y   Y   N
-      bool tpm_wrapped =
-          (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
-      bool scrypt_wrapped =
-          (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
-      bool should_tpm = (crypto_->has_tpm() && use_tpm_ &&
-                         crypto_->is_tpm_connected());
-      bool should_scrypt = fallback_to_scrypt_;
-      do {
-        // If the keyset was TPM-wrapped, but there was no public key hash,
-        // always re-save.  Otherwise, check the table.
-        if (crypto_error != Crypto::CE_NO_PUBLIC_KEY_HASH) {
-          if (tpm_wrapped && should_tpm)
-            break;  // 5, 8
-          if (scrypt_wrapped && should_scrypt && !should_tpm)
-            break;  // 12
-          if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
-            break;  // 1
-        }
-        // This is not considered a fatal error.  Re-saving with the desired
-        // protection is ideal, but not required.
-        SerializedVaultKeyset new_serialized;
-        new_serialized.CopyFrom(*serialized);
-        if (ReEncryptVaultKeyset(credentials, *vault_keyset, &new_serialized)) {
-          serialized->CopyFrom(new_serialized);
-        }
-      } while (false);
-    }
-
-    return true;
+    return false;
   }
+
+  // Attempt decrypt the master key with the passkey
+  unsigned int crypt_flags = 0;
+  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  if (!crypto_->DecryptVaultKeyset(*serialized, passkey, &crypt_flags,
+                                   &crypto_error, vault_keyset)) {
+    if (error) {
+      switch (crypto_error) {
+        case Crypto::CE_TPM_FATAL:
+        case Crypto::CE_OTHER_FATAL:
+          *error = MOUNT_ERROR_FATAL;
+          break;
+        case Crypto::CE_TPM_COMM_ERROR:
+          *error = MOUNT_ERROR_TPM_COMM_ERROR;
+          break;
+        case Crypto::CE_TPM_DEFEND_LOCK:
+          *error = MOUNT_ERROR_TPM_DEFEND_LOCK;
+          break;
+        default:
+          *error = MOUNT_ERROR_KEY_FAILURE;
+          break;
+      }
+    }
+    return false;
+  }
+
+  if (!migrate_if_needed)
+    return true;
+
+  // Calling EnsureTpm here handles the case where a user logged in while
+  // cryptohome was taking TPM ownership.  In that case, their vault keyset
+  // would be scrypt-wrapped and the TPM would not be connected.  If we're
+  // configured to use the TPM, calling EnsureTpm will try to connect, and
+  // if successful, the call to has_tpm() below will succeed, allowing
+  // re-wrapping (migration) using the TPM.
+  if (use_tpm_) {
+    crypto_->EnsureTpm(false);
+  }
+
+  // If the vault keyset's TPM state is not the same as that configured for
+  // the device, re-save the keyset (this will save in the device's default
+  // method).
+  //                      1   2   3   4   5   6   7   8   9  10  11  12
+  // use_tpm              -   -   -   X   X   X   X   X   X   -   -   -
+  //
+  // fallback_to_scrypt   -   -   -   -   -   -   X   X   X   X   X   X
+  //
+  // tpm_wrapped          -   X   -   -   X   -   -   X   -   -   X   -
+  //
+  // scrypt_wrapped       -   -   X   -   -   X   -   -   X   -   -   X
+  //
+  // migrate              N   Y   Y   Y   N   Y   Y   N   Y   Y   Y   N
+  bool tpm_wrapped =
+      (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
+  bool scrypt_wrapped =
+      (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
+  bool should_tpm = (crypto_->has_tpm() && use_tpm_ &&
+                     crypto_->is_tpm_connected());
+  bool should_scrypt = fallback_to_scrypt_;
+  do {
+    // If the keyset was TPM-wrapped, but there was no public key hash,
+    // always re-save.  Otherwise, check the table.
+    if (crypto_error != Crypto::CE_NO_PUBLIC_KEY_HASH) {
+      if (tpm_wrapped && should_tpm)
+        break;  // 5, 8
+      if (scrypt_wrapped && should_scrypt && !should_tpm)
+        break;  // 12
+      if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
+        break;  // 1
+    }
+    // This is not considered a fatal error.  Re-saving with the desired
+    // protection is ideal, but not required.
+    SerializedVaultKeyset new_serialized;
+    new_serialized.CopyFrom(*serialized);
+    if (ReEncryptVaultKeyset(credentials, *vault_keyset, &new_serialized)) {
+      serialized->CopyFrom(new_serialized);
+    }
+  } while (false);
+
+  return true;
 }
 
 bool Mount::AddVaultKeyset(const Credentials& credentials,
@@ -1437,7 +1422,7 @@ bool Mount::RemoveOldFiles(const Credentials& credentials) const {
   return true;
 }
 
-bool Mount::CacheOldFiles(std::vector<std::string>& files) const {
+bool Mount::CacheOldFiles(const std::vector<std::string>& files) const {
   for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
@@ -1455,7 +1440,7 @@ bool Mount::CacheOldFiles(std::vector<std::string>& files) const {
   return true;
 }
 
-bool Mount::RevertCacheFiles(std::vector<std::string>& files) const {
+bool Mount::RevertCacheFiles(const std::vector<std::string>& files) const {
   for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
@@ -1468,7 +1453,7 @@ bool Mount::RevertCacheFiles(std::vector<std::string>& files) const {
   return true;
 }
 
-bool Mount::DeleteCacheFiles(std::vector<std::string>& files) const {
+bool Mount::DeleteCacheFiles(const std::vector<std::string>& files) const {
   for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
@@ -1526,84 +1511,6 @@ bool Mount::LoadFileString(const FilePath& path,
 
   if (!file_util::ReadFileToString(path, content)) {
     LOG(INFO) << "Could not read file contents: " << path.value();
-    return false;
-  }
-
-  return true;
-}
-
-bool Mount::SaveVaultKeysetOld(const Credentials& credentials,
-                               const VaultKeyset& vault_keyset) const {
-  // Get the vault keyset key
-  SecureBlob user_salt;
-  GetUserSalt(credentials, true, &user_salt);
-  SecureBlob passkey;
-  credentials.GetPasskey(&passkey);
-  SecureBlob keyset_key;
-  crypto_->PasskeyToKeysetKey(passkey, user_salt, 1, &keyset_key);
-
-  // Encrypt the vault keyset
-  SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  SecureBlob cipher_text;
-  crypto_->GetSecureRandom(static_cast<unsigned char*>(salt.data()),
-                           salt.size());
-  if (!crypto_->EncryptVaultKeysetOld(vault_keyset, keyset_key, salt,
-                                      &cipher_text)) {
-    LOG(ERROR) << "Encrypting vault keyset failed";
-    return false;
-  }
-
-  // Save the master key
-  unsigned int data_written = file_util::WriteFile(
-      FilePath(GetUserKeyFile(credentials)),
-      static_cast<const char*>(cipher_text.const_data()),
-      cipher_text.size());
-
-  if (data_written != cipher_text.size()) {
-    LOG(ERROR) << "Write to master key failed";
-    return false;
-  }
-  return true;
-}
-
-bool Mount::DecryptVaultKeysetOld(const Credentials& credentials,
-                                  VaultKeyset* vault_keyset,
-                                  MountError* error) const {
-  // Generate the keyset key (key encryption key)
-  SecureBlob user_salt;
-  GetUserSalt(credentials, false, &user_salt);
-  if (user_salt.size() == 0) {
-    if (error) {
-      *error = MOUNT_ERROR_FATAL;
-    }
-    return false;
-  }
-  SecureBlob passkey;
-  credentials.GetPasskey(&passkey);
-  SecureBlob keyset_key;
-  crypto_->PasskeyToKeysetKey(passkey, user_salt, 1, &keyset_key);
-
-  // Load the encrypted keyset
-  FilePath user_key_file(GetUserKeyFile(credentials));
-  if (!file_util::PathExists(user_key_file)) {
-    if (error) {
-      *error = MOUNT_ERROR_FATAL;
-    }
-    return false;
-  }
-  SecureBlob cipher_text;
-  if (!LoadFileBytes(user_key_file, &cipher_text)) {
-    if (error) {
-      *error = MOUNT_ERROR_FATAL;
-    }
-    return false;
-  }
-
-  // Attempt to unwrap the master key with the passkey key
-  if (!crypto_->DecryptVaultKeysetOld(cipher_text, keyset_key, vault_keyset)) {
-    if (error) {
-      *error = MOUNT_ERROR_KEY_FAILURE;
-    }
     return false;
   }
 

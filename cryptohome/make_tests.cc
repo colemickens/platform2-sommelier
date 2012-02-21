@@ -30,24 +30,23 @@ using ::testing::NiceMock;
 //   const char* username;
 //   const char* password;
 //   bool create;
-//   bool use_old_format;
 // };
 
 const TestUserInfo kDefaultUsers[] = {
-  {"testuser0@invalid.domain", "zero", true, false},
-  {"testuser1@invalid.domain", "one", true, false},
-  {"testuser2@invalid.domain", "two", true, false},
-  {"testuser3@invalid.domain", "three", true, false},
-  {"testuser4@invalid.domain", "four", true, false},
-  {"testuser5@invalid.domain", "five", false, false},
-  {"testuser6@invalid.domain", "six", true, false},
-  {"testuser7@invalid.domain", "seven", true, true},
-  {"testuser8@invalid.domain", "eight", true, false},
-  {"testuser9@invalid.domain", "nine", true, false},
-  {"testuser10@invalid.domain", "ten", true, false},
-  {"testuser11@invalid.domain", "eleven", true, false},
-  {"testuser12@invalid.domain", "twelve", false, false},
-  {"testuser13@invalid.domain", "thirteen", true, false},
+  {"testuser0@invalid.domain", "zero", true},
+  {"testuser1@invalid.domain", "one", true},
+  {"testuser2@invalid.domain", "two", true},
+  {"testuser3@invalid.domain", "three", true},
+  {"testuser4@invalid.domain", "four", true},
+  {"testuser5@invalid.domain", "five", false},
+  {"testuser6@invalid.domain", "six", true},
+  {"testuser7@invalid.domain", "seven", true},
+  {"testuser8@invalid.domain", "eight", true},
+  {"testuser9@invalid.domain", "nine", true},
+  {"testuser10@invalid.domain", "ten", true},
+  {"testuser11@invalid.domain", "eleven", true},
+  {"testuser12@invalid.domain", "twelve", false},
+  {"testuser13@invalid.domain", "thirteen", true},
 };
 const size_t kDefaultUserCount = arraysize(kDefaultUsers);
 const char kUserHomeDir[] = "test_user_home";
@@ -87,41 +86,30 @@ void MakeTests::InitTestData(const std::string& image_dir,
 
   // Create the user credentials
   for (unsigned int i = 0; i < test_user_count; i++) {
-    if (test_users[i].create) {
-      Mount mount;
-      NiceMock<MockPlatform> platform;
-      mount.set_platform(&platform);
-      NiceMock<MockTpm> tpm;
-      mount.get_crypto()->set_tpm(&tpm);
-      mount.set_shadow_root(image_dir);
-      mount.set_skel_source(StringPrintf("%s/skel", image_dir.c_str()));
+    if (!test_users[i].create)
+      continue;
+    Mount mount;
+    NiceMock<MockPlatform> platform;
+    mount.set_platform(&platform);
+    NiceMock<MockTpm> tpm;
+    mount.get_crypto()->set_tpm(&tpm);
+    mount.set_shadow_root(image_dir);
+    mount.set_skel_source(StringPrintf("%s/skel", image_dir.c_str()));
 
-      mount.set_use_tpm(false);
-      mount.set_policy_provider(new policy::PolicyProvider(
-          new NiceMock<policy::MockDevicePolicy>));
-      mount.set_fallback_to_scrypt(false);
-      mount.Init();
+    mount.set_use_tpm(false);
+    mount.set_policy_provider(new policy::PolicyProvider(
+        new NiceMock<policy::MockDevicePolicy>));
+    mount.set_fallback_to_scrypt(false);
+    mount.Init();
 
-      cryptohome::SecureBlob passkey;
-      cryptohome::Crypto::PasswordToPasskey(test_users[i].password,
-                                            salt,
-                                            &passkey);
-      UsernamePasskey up(test_users[i].username, passkey);
-      bool created;
-      mount.EnsureCryptohome(up, &created);
-
-      if (test_users[i].use_old_format) {
-        VaultKeyset vault_keyset;
-        SerializedVaultKeyset serialized;
-        cryptohome::MountError error;
-        if (mount.DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
-                                     &error)) {
-          mount.RemoveOldFiles(up);
-          mount.SaveVaultKeysetOld(up, vault_keyset);
-        }
-      }
-    }
+    cryptohome::SecureBlob passkey;
+    cryptohome::Crypto::PasswordToPasskey(test_users[i].password,
+                                          salt,
+                                          &passkey);
+    UsernamePasskey up(test_users[i].username, passkey);
+    bool created;
+    mount.EnsureCryptohome(up, &created);
   }
 }
 
-} // namespace cryptohome
+}  // namespace cryptohome

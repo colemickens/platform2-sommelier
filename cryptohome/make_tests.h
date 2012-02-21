@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,7 +17,6 @@ struct TestUserInfo {
   const char* username;
   const char* password;
   bool create;
-  bool use_old_format;
 };
 
 extern const TestUserInfo kDefaultUsers[];
@@ -39,4 +38,4 @@ class MakeTests {
 
 }  // namespace cryptohome
 
-#endif // CRYPTOHOME_MAKE_TESTS_H_
+#endif  // CRYPTOHOME_MAKE_TESTS_H_

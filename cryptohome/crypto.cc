@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,7 +22,6 @@ extern "C" {
 }
 
 #include "cryptohome_common.h"
-#include "old_vault_keyset.h"
 #include "platform.h"
 #include "username_passkey.h"
 
@@ -1020,105 +1019,6 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
                        vault_key_salt.size());
   serialized->set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
   serialized->set_password_rounds(rounds);
-  return true;
-}
-
-// TODO(fes): In the future, this and EncryptVaultKeysetOld should be removed.
-// "Future" here means when we are at a state where we no longer need to convert
-// legacy cryptohome vaults to the current version.
-bool Crypto::DecryptVaultKeysetOld(const chromeos::Blob& encrypted_keyset,
-                                   const chromeos::Blob& vault_key,
-                                   VaultKeyset* vault_keyset) const {
-  unsigned int header_size = kOpenSSLMagic.length() + PKCS5_SALT_LEN;
-
-  if (encrypted_keyset.size() < header_size) {
-    LOG(ERROR) << "Master key file too short";
-    return false;
-  }
-
-  // Grab the salt used in converting the passkey to a key (OpenSSL
-  // passkey-encrypted files have the format:
-  // Salted__<8-byte-salt><ciphertext>)
-  SecureBlob salt(PKCS5_SALT_LEN);
-  memcpy(salt.data(), &encrypted_keyset[kOpenSSLMagic.length()],
-         PKCS5_SALT_LEN);
-
-  SecureBlob aes_key;
-  SecureBlob iv;
-  if (!PasskeyToAesKey(vault_key,
-                       salt,
-                       kDefaultLegacyPasswordRounds,
-                       &aes_key,
-                       &iv)) {
-    LOG(ERROR) << "Failure converting passkey to key";
-    return false;
-  }
-
-  SecureBlob plain_text;
-  if (!AesDecryptSpecifyBlockMode(encrypted_keyset,
-                                  header_size,
-                                  encrypted_keyset.size() - header_size,
-                                  aes_key,
-                                  iv,
-                                  kPaddingLibraryDefault,
-                                  kEcb,
-                                  &plain_text)) {
-    LOG(ERROR) << "AES decryption failed.";
-    return false;
-  }
-
-  OldVaultKeyset old_keyset;
-  old_keyset.AssignBuffer(plain_text);
-
-  vault_keyset->FromVaultKeyset(old_keyset);
-  return true;
-}
-
-bool Crypto::EncryptVaultKeysetOld(const VaultKeyset& vault_keyset,
-                                   const SecureBlob& vault_key,
-                                   const SecureBlob& vault_key_salt,
-                                   SecureBlob* encrypted) const {
-  OldVaultKeyset old_keyset;
-  old_keyset.FromVaultKeyset(vault_keyset);
-
-  SecureBlob keyset_blob;
-  if (!old_keyset.ToBuffer(&keyset_blob)) {
-    LOG(ERROR) << "Failure serializing keyset to buffer";
-    return false;
-  }
-
-  SecureBlob aes_key;
-  SecureBlob iv;
-  if (!PasskeyToAesKey(vault_key,
-                       vault_key_salt,
-                       kDefaultLegacyPasswordRounds,
-                       &aes_key,
-                       &iv)) {
-    LOG(ERROR) << "Failure converting passkey to key";
-    return false;
-  }
-
-  SecureBlob cipher_text;
-  if (!AesEncryptSpecifyBlockMode(keyset_blob,
-                                  0,
-                                  keyset_blob.size(),
-                                  aes_key,
-                                  iv,
-                                  kPaddingLibraryDefault,
-                                  kEcb,
-                                  &cipher_text)) {
-    LOG(ERROR) << "AES encryption failed.";
-    return false;
-  }
-
-  unsigned int header_size = kOpenSSLMagic.length() + PKCS5_SALT_LEN;
-  SecureBlob final_blob(header_size + cipher_text.size());
-  memcpy(&final_blob[0], kOpenSSLMagic.c_str(), kOpenSSLMagic.length());
-  memcpy(&final_blob[kOpenSSLMagic.length()], vault_key_salt.const_data(),
-         PKCS5_SALT_LEN);
-  memcpy(&final_blob[header_size], cipher_text.data(), cipher_text.size());
-
-  encrypted->swap(final_blob);
   return true;
 }
 

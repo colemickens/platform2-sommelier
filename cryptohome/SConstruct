@@ -98,7 +98,6 @@ commonlib_sources = env.Split("""crypto.cc
                                  marshal.glibmarshal.c
                                  mount.cc
                                  mount_task.cc
-                                 old_vault_keyset.cc
                                  pkcs11_init.cc
                                  platform.cc
                                  secure_blob.cc

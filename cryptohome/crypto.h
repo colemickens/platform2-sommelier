@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -158,29 +158,6 @@ class Crypto : public EntropySource {
                           const SecureBlob& vault_key,
                           const SecureBlob& vault_key_salt,
                           SerializedVaultKeyset* serialized) const;
-
-  // Decrypts an encrypted vault keyset in the old method
-  //
-  // Parameters
-  //   encrypted_keyset - The blob containing the encrypted keyset
-  //   vault_key - The passkey used to decrypt the keyset
-  //   vault_keyset (OUT) - The decrypted vault keyset on success
-  bool DecryptVaultKeysetOld(const chromeos::Blob& encrypted_keyset,
-                             const chromeos::Blob& vault_key,
-                             VaultKeyset* vault_keyset) const;
-
-  // Encrypts the vault keyset with the given passkey in the old method
-  //
-  // Parameters
-  //   vault_keyset - The VaultKeyset to encrypt
-  //   vault_key - The passkey used to wrap the keyset
-  //   vault_key_salt - The salt to use for the vault passke to key conversion
-  //                    when encrypting the keyset
-  //   encrypted_keyset - On success, the encrypted vault keyset
-  bool EncryptVaultKeysetOld(const VaultKeyset& vault_keyset,
-                             const SecureBlob& vault_key,
-                             const SecureBlob& vault_key_salt,
-                             SecureBlob* encrypted_keyset) const;
 
   // Converts the passkey directly to an AES key.  This method derives the key
   // using the default OpenSSL conversion method.

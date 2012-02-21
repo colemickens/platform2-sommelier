@@ -365,24 +365,6 @@ class Mount : public EntropySource {
                           SerializedVaultKeyset* serialized,
                           MountError* error) const;
 
-  // Saves the VaultKeyset for the user in the old method
-  //
-  // Parameters
-  //   credentials - The Credentials for the user
-  //   vault_keyset - The VaultKeyset to save
-  bool SaveVaultKeysetOld(const Credentials& credentials,
-                          const VaultKeyset& vault_keyset) const;
-
-  // Attempt to decrypt the keyset using the old method for a user
-  //
-  // Parameters
-  //   credentials - The user credentials to use
-  //   vault_keyset (OUT) - The unencrypted vault keyset on success
-  //   error (OUT) - The specific error when decrypting
-  bool DecryptVaultKeysetOld(const Credentials& credentials,
-                             VaultKeyset* vault_keyset,
-                             MountError* error) const;
-
   // Remove the key file and (old) salt file if they exist
   //
   // Parameters
@@ -393,19 +375,19 @@ class Mount : public EntropySource {
   //
   // Parameters
   //   files - The file names to cache
-  bool CacheOldFiles(std::vector<std::string>& files) const;
+  bool CacheOldFiles(const std::vector<std::string>& files) const;
 
   // Move the cached files back to the original files
   //
   // Parameters
   //   files - The file names to un-cache
-  bool RevertCacheFiles(std::vector<std::string>& files) const;
+  bool RevertCacheFiles(const std::vector<std::string>& files) const;
 
   // Remove the cached files for the user
   //
   // Parameters
   //   files - The file names to remove
-  bool DeleteCacheFiles(std::vector<std::string>& files) const;
+  bool DeleteCacheFiles(const std::vector<std::string>& files) const;
 
   // Gets the directory in the shadow root where the user's salt, key, and vault
   // are stored.

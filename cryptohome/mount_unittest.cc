@@ -328,50 +328,6 @@ TEST_F(MountTest, GoodReDecryptTest) {
   ASSERT_TRUE(mount.TestCredentials(up));
 }
 
-TEST_F(MountTest, MigrateTest) {
-  // create a Mount instance that points to a good shadow root, test that it
-  // will migrate an old style key
-  Mount mount;
-  NiceMock<MockTpm> tpm;
-  mount.get_crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  set_policy(&mount, false, "", false);
-
-  // Test user at index 7 was created using the old style
-  cryptohome::SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[7].password,
-                                        system_salt_, &passkey);
-  UsernamePasskey up(kDefaultUsers[7].username, passkey);
-
-  EXPECT_TRUE(mount.Init());
-
-  // Make sure the keyset is not scrypt wrapped
-  std::string salt_path = mount.GetUserSaltFile(up);
-  ASSERT_TRUE(file_util::PathExists(FilePath(salt_path)));
-
-  // Call DecryptVaultKeyset first, allowing migration (the test data is not
-  // scrypt nor TPM wrapped) to a scrypt-wrapped keyset
-  VaultKeyset vault_keyset;
-  SerializedVaultKeyset serialized;
-  MountError error;
-  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
-                                       &error));
-
-  // Make sure the salt path no longer exists
-  ASSERT_FALSE(file_util::PathExists(FilePath(salt_path)));
-
-  // Make sure the keyset is now scrypt wrapped
-  std::string key_path = mount.GetUserKeyFile(up);
-  ASSERT_TRUE(LoadSerializedKeyset(key_path, &serialized));
-  ASSERT_EQ(SerializedVaultKeyset::SCRYPT_WRAPPED,
-            (serialized.flags() &
-             cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED));
-
-  ASSERT_TRUE(mount.TestCredentials(up));
-}
-
 TEST_F(MountTest, SystemSaltTest) {
   // checks that cryptohome reads the system salt
   Mount mount;
@@ -752,28 +708,28 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
 
 // Test setup that initially has no cryptohomes.
 const TestUserInfo kNoUsers[] = {
-  {"user0@invalid.domain", "zero", false, false},
-  {"user1@invalid.domain", "odin", false, false},
-  {"user2@invalid.domain", "dwaa", false, false},
-  {"owner@invalid.domain", "1234", false, false},
+  {"user0@invalid.domain", "zero", false},
+  {"user1@invalid.domain", "odin", false},
+  {"user2@invalid.domain", "dwaa", false},
+  {"owner@invalid.domain", "1234", false},
 };
 const int kNoUserCount = arraysize(kNoUsers);
 
 // Test setup that initially has a cryptohome for the owner only.
 const TestUserInfo kOwnerOnlyUsers[] = {
-  {"user0@invalid.domain", "zero", false, false},
-  {"user1@invalid.domain", "odin", false, false},
-  {"user2@invalid.domain", "dwaa", false, false},
-  {"owner@invalid.domain", "1234", true, false},
+  {"user0@invalid.domain", "zero", false},
+  {"user1@invalid.domain", "odin", false},
+  {"user2@invalid.domain", "dwaa", false},
+  {"owner@invalid.domain", "1234", true},
 };
 const int kOwnerOnlyUserCount = arraysize(kOwnerOnlyUsers);
 
 // Test setup that initially has cryptohomes for all users.
 const TestUserInfo kAlternateUsers[] = {
-  {"user0@invalid.domain", "zero", true, false},
-  {"user1@invalid.domain", "odin", true, false},
-  {"user2@invalid.domain", "dwaa", true, false},
-  {"owner@invalid.domain", "1234", true, false},
+  {"user0@invalid.domain", "zero", true},
+  {"user1@invalid.domain", "odin", true},
+  {"user2@invalid.domain", "dwaa", true},
+  {"owner@invalid.domain", "1234", true},
 };
 const int kAlternateUserCount = arraysize(kAlternateUsers);
 
