@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -77,6 +77,8 @@ class DHCPConfig : public IPConfig {
   static const char kConfigurationKeyRouters[];
   static const char kConfigurationKeySubnetCIDR[];
 
+  static const int kDHCPCDExitPollMilliseconds;
+  static const int kDHCPCDExitWaitMilliseconds;
   static const char kDHCPCDPath[];
   static const char kDHCPCDPathFormatLease[];
   static const char kDHCPCDPathFormatPID[];

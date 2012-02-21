@@ -1,10 +1,11 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "shill/dhcp_config.h"
 
 #include <arpa/inet.h>
+#include <sys/wait.h>
 
 #include <base/file_util.h>
 #include <base/logging.h>
@@ -32,6 +33,8 @@ const char DHCPConfig::kConfigurationKeyIPAddress[] = "IPAddress";
 const char DHCPConfig::kConfigurationKeyMTU[] = "InterfaceMTU";
 const char DHCPConfig::kConfigurationKeyRouters[] = "Routers";
 const char DHCPConfig::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
+const int DHCPConfig::kDHCPCDExitPollMilliseconds = 50;
+const int DHCPConfig::kDHCPCDExitWaitMilliseconds = 3000;
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 const char DHCPConfig::kDHCPCDPathFormatLease[] = "var/run/dhcpcd-%s.lease";
 const char DHCPConfig::kDHCPCDPathFormatPID[] = "var/run/dhcpcd-%s.pid";
@@ -180,7 +183,23 @@ bool DHCPConfig::Start() {
 void DHCPConfig::Stop() {
   if (pid_) {
     VLOG(2) << "Terminating " << pid_;
-    PLOG_IF(ERROR, kill(pid_, SIGTERM) < 0);
+    if (kill(pid_, SIGTERM) < 0) {
+      PLOG(ERROR);
+      return;
+    }
+    pid_t ret;
+    int num_iterations =
+        kDHCPCDExitWaitMilliseconds / kDHCPCDExitPollMilliseconds;
+    for (int count = 0; count < num_iterations; ++count) {
+      ret = waitpid(pid_, NULL, WNOHANG);
+      if (ret == pid_ || ret == -1)
+        break;
+      usleep(kDHCPCDExitPollMilliseconds * 1000);
+      if (count == num_iterations / 2)  // Make one last attempt to kill dhcpcd.
+        kill(pid_, SIGKILL);
+    }
+    if (ret != pid_)
+      PLOG(ERROR);
   }
 }
 
