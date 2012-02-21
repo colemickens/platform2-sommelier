@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -357,7 +357,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_VOLATILE;
   if (!create_in_tpm) {
     init_flags |= TSS_KEY_MIGRATABLE;
-    switch(rsa_key_bits_) {
+    switch (rsa_key_bits_) {
       case 2048:
         init_flags |= TSS_KEY_SIZE_2048;
         break;
@@ -1143,7 +1143,7 @@ void Tpm::IsEnabledOwnedCheckViaContext(TSS_HCONTEXT context_handle,
       *enabled = true;
       *owned = ((*(reinterpret_cast<TSS_BOOL*>(cap.value()))) != 0);
     }
-  } else if(ERROR_CODE(result) == TPM_E_DISABLED) {
+  } else if (ERROR_CODE(result) == TPM_E_DISABLED) {
     *enabled = false;
   }
 }
@@ -1240,10 +1240,10 @@ bool Tpm::TakeOwnership(TSS_HCONTEXT context_handle, int max_timeout_tries,
   do {
     result = Tspi_TPM_TakeOwnership(tpm_handle, srk_handle, 0);
     retry_count++;
-  } while(((result == TDDL_E_TIMEOUT) ||
-           (result == (TSS_LAYER_TDDL | TDDL_E_TIMEOUT)) ||
-           (result == (TSS_LAYER_TDDL | TDDL_E_IOERROR))) &&
-          (retry_count < max_timeout_tries));
+  } while (((result == TDDL_E_TIMEOUT) ||
+            (result == (TSS_LAYER_TDDL | TDDL_E_TIMEOUT)) ||
+            (result == (TSS_LAYER_TDDL | TDDL_E_IOERROR))) &&
+           (retry_count < max_timeout_tries));
 
   if (result) {
     TPM_LOG(ERROR, result)
@@ -2100,7 +2100,7 @@ bool Tpm::StoreTpmStatus(const TpmStatus& serialized) {
         break;
       }
       file_util::CloseFile(file);
-    } while(false);
+    } while (false);
     file_util::Delete(tpm_status_file, false);
   }
   SecureBlob final_blob(serialized.ByteSize());
@@ -2119,4 +2119,4 @@ bool Tpm::StoreTpmStatus(const TpmStatus& serialized) {
   return true;
 }
 
-} // namespace cryptohome
+}  // namespace cryptohome

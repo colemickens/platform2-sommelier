@@ -153,7 +153,6 @@ TEST_F(MountTest, GoodDecryptTest) {
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
   set_policy(&mount, false, "", false);
-  mount.set_fallback_to_scrypt(true);
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[1].password,
@@ -174,7 +173,6 @@ TEST_F(MountTest, TestCredsDoesNotReSave) {
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
   set_policy(&mount, false, "", false);
-  mount.set_fallback_to_scrypt(true);
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[2].password,
@@ -183,20 +181,14 @@ TEST_F(MountTest, TestCredsDoesNotReSave) {
 
   EXPECT_TRUE(mount.Init());
 
-  // Make sure the keyset is not scrypt wrapped
   std::string key_path = mount.GetUserKeyFile(up);
   cryptohome::SerializedVaultKeyset serialized;
   ASSERT_TRUE(LoadSerializedKeyset(key_path, &serialized));
-  ASSERT_EQ(0, (serialized.flags() &
-                cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED));
 
   ASSERT_TRUE(mount.TestCredentials(up));
 
-  // Make sure the keyset is still not scrypt wrapped
   cryptohome::SerializedVaultKeyset serialized2;
   ASSERT_TRUE(LoadSerializedKeyset(key_path, &serialized2));
-  ASSERT_EQ(0, (serialized2.flags() &
-                cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED));
 }
 
 TEST_F(MountTest, CurrentCredentialsTest) {
@@ -304,12 +296,9 @@ TEST_F(MountTest, GoodReDecryptTest) {
 
   EXPECT_TRUE(mount.Init());
 
-  // Make sure the keyset is not scrypt wrapped
   std::string key_path = mount.GetUserKeyFile(up);
   cryptohome::SerializedVaultKeyset serialized;
   ASSERT_TRUE(LoadSerializedKeyset(key_path, &serialized));
-  ASSERT_EQ(0, (serialized.flags() &
-                cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED));
 
   // Call DecryptVaultKeyset first, allowing migration (the test data is not
   // scrypt nor TPM wrapped) to a scrypt-wrapped keyset

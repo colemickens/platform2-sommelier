@@ -105,7 +105,6 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   mount.set_use_tpm(false);
   mount.set_policy_provider(new policy::PolicyProvider(
       new NiceMock<policy::MockDevicePolicy>));
-  mount.set_fallback_to_scrypt(true);
 
   ServiceSubclass service;
   service.set_mount_for_user("", &mount);

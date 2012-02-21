@@ -282,12 +282,6 @@ class Mount : public EntropySource {
     platform_ = value;
   }
 
-  // Override whether to use scrypt for added security when the TPM is off or
-  // disabled
-  void set_fallback_to_scrypt(bool value) {
-    fallback_to_scrypt_ = value;
-  }
-
   // Override whether to use the TPM for added security
   void set_use_tpm(bool value) {
     use_tpm_ = value;
@@ -720,9 +714,6 @@ class Mount : public EntropySource {
   // The platform-specific calls
   scoped_ptr<Platform> default_platform_;
   Platform *platform_;
-
-  // Whether to use scrypt for added security when use of the TPM is disabled
-  bool fallback_to_scrypt_;
 
   // Whether to use the TPM for added security
   bool use_tpm_;

@@ -99,7 +99,6 @@ void MakeTests::InitTestData(const std::string& image_dir,
     mount.set_use_tpm(false);
     mount.set_policy_provider(new policy::PolicyProvider(
         new NiceMock<policy::MockDevicePolicy>));
-    mount.set_fallback_to_scrypt(false);
     mount.Init();
 
     cryptohome::SecureBlob passkey;

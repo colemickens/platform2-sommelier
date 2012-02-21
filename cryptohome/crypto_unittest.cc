@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -89,7 +89,7 @@ TEST_F(CryptoTest, EncryptionTest) {
   SecureBlob encrypted;
   GetSerializedBlob(serialized, &encrypted);
 
-  ASSERT_TRUE(encrypted.size() > 0);
+  ASSERT_GT(encrypted.size(), 0);
   ASSERT_FALSE(CryptoTest::FindBlobInBlob(encrypted, original));
 }
 
@@ -234,8 +234,6 @@ TEST_F(CryptoTest, ScryptStepTest) {
   // Check that the code path changes to support scrypt work
   Crypto crypto;
 
-  crypto.set_fallback_to_scrypt(true);
-
   crypto.Init();
 
   VaultKeyset vault_keyset;
@@ -279,7 +277,6 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
 
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
-  crypto.set_fallback_to_scrypt(true);
 
   EXPECT_CALL(tpm, Init(_, _)).WillOnce(Return(true));
   EXPECT_CALL(tpm, Encrypt(_, _, _, _, _, _));
@@ -350,4 +347,4 @@ TEST_F(CryptoTest, GetSha256FipsTest) {
   }
 }
 
-} // namespace cryptohome
+}  // namespace cryptohome

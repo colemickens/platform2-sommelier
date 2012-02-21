@@ -142,7 +142,7 @@ class Crypto : public EntropySource {
   //   error (OUT) - The specific error code on failure
   //   vault_keyset (OUT) - The decrypted vault keyset on success
   bool DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
-                          const chromeos::Blob& vault_key,
+                          const SecureBlob& vault_key,
                           unsigned int* crypt_flags, CryptoError* error,
                           VaultKeyset* vault_keyset) const;
 
@@ -171,19 +171,6 @@ class Crypto : public EntropySource {
   bool PasskeyToAesKey(const chromeos::Blob& passkey,
                        const chromeos::Blob& salt, unsigned int rounds,
                        SecureBlob* key, SecureBlob* iv) const;
-
-  // Converts the passkey to a symmetric key used to decrypt the user's
-  // cryptohome key.  This method calculates a SHA1 hash of the salt and the
-  // specified number of iterations on the passkey.
-  //
-  // Parameters
-  //   passkey - The passkey (hash, currently) to create the key from
-  //   salt - The salt used in creating the key
-  //   iters - The hash iterations to use in generating the key
-  //   wrapper (OUT) - The wrapper
-  void PasskeyToKeysetKey(const chromeos::Blob& passkey,
-                          const chromeos::Blob& salt, unsigned int iters,
-                          SecureBlob* key) const;
 
   // Gets an existing salt, or creates one if it doesn't exist
   //
@@ -242,23 +229,12 @@ class Crypto : public EntropySource {
   // Ensures that the TPM is connected
   CryptoError EnsureTpm(bool disconnect_first) const;
 
-  // Sets whether or not to use scrypt to add a layer of protection to the vault
-  // keyset when the TPM is not used
-  void set_fallback_to_scrypt(bool value) {
-    fallback_to_scrypt_ = value;
-  }
-
   // Sets whether or not to use the TPM (must be called before init, depends
   // on the presence of a functioning, initialized TPM).  The TPM is merely used
   // to add a layer of difficulty in a brute-force attack against the user's
   // credentials.
   void set_use_tpm(bool value) {
     use_tpm_ = value;
-  }
-
-  // Sets whether to always load the TPM, even if it isn't used
-  void set_load_tpm(bool value) {
-    load_tpm_ = value;
   }
 
   // Sets the TPM implementation
@@ -299,21 +275,32 @@ class Crypto : public EntropySource {
   bool PushVaultKey(const SecureBlob& key, const std::string& key_sig,
                            const SecureBlob& salt) const;
 
+  bool EncryptTPM(const SecureBlob& blob,
+                  const SecureBlob& key,
+                  const SecureBlob& salt,
+                  SerializedVaultKeyset* serialized) const;
+
+  bool EncryptScrypt(const SecureBlob& blob,
+                     const SecureBlob& key,
+                     SerializedVaultKeyset* serialized) const;
+
+  bool DecryptTPM(const SerializedVaultKeyset& serialized,
+                  const SecureBlob& key,
+                  CryptoError* error,
+                  VaultKeyset* vault_keyset) const;
+
+  bool DecryptScrypt(const SerializedVaultKeyset& serialized,
+                     const SecureBlob& key,
+                     CryptoError* error,
+                     VaultKeyset* keyset) const;
+
+  bool IsTPMPubkeyHash(const std::string& hash, CryptoError* error) const;
+
   // If set, the TPM will be used during the encryption of the vault keyset
   bool use_tpm_;
 
-  // TODO(fes): Remove this when TPM becomes default or not, it is only used in
-  // keyset migration.
-  // If set, Crypto can process TPM-encrypted keysets, but won't default to save
-  // keysets as TPM-encrypted.
-  bool load_tpm_;
-
   // The TPM implementation
   Tpm* tpm_;
-
-  // If set, Crypto will use scrypt to protect the vault keyset when the TPM is
-  // not available for use (or turned off)
-  bool fallback_to_scrypt_;
 
   DISALLOW_COPY_AND_ASSIGN(Crypto);
 };

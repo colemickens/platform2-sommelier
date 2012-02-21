@@ -85,16 +85,14 @@ const int64 Crypto::kSaltMax = (1 << 20);  // 1 MB
 
 Crypto::Crypto()
     : use_tpm_(false),
-      load_tpm_(true),
-      tpm_(NULL),
-      fallback_to_scrypt_(true) {
+      tpm_(NULL) {
 }
 
 Crypto::~Crypto() {
 }
 
 bool Crypto::Init() {
-  if ((use_tpm_ || load_tpm_) && tpm_ == NULL) {
+  if (use_tpm_ && tpm_ == NULL) {
     tpm_ = Tpm::GetSingleton();
   }
   if (tpm_) {
@@ -541,38 +539,6 @@ bool Crypto::CreateRsaKey(unsigned int key_bits,
   return true;
 }
 
-void Crypto::PasskeyToKeysetKey(const chromeos::Blob& passkey,
-                                const chromeos::Blob& salt, unsigned int iters,
-                                SecureBlob* key) const {
-  unsigned int update_length = passkey.size();
-  unsigned int holder_size = SHA_DIGEST_LENGTH;
-  if (update_length > SHA_DIGEST_LENGTH) {
-    holder_size = update_length;
-  }
-  SecureBlob holder(holder_size);
-  memcpy(&holder[0], &passkey[0], update_length);
-
-  // Repeatedly hash the user passkey and salt to generate the key
-  for (unsigned int i = 0; i < iters; ++i) {
-    SHA_CTX sha_context;
-    unsigned char md_value[SHA_DIGEST_LENGTH];
-
-    SHA1_Init(&sha_context);
-    SHA1_Update(&sha_context, &salt[0], salt.size());
-    SHA1_Update(&sha_context, &holder[0], update_length);
-    SHA1_Final(md_value, &sha_context);
-
-    memcpy(&holder[0], md_value, SHA_DIGEST_LENGTH);
-    update_length = SHA_DIGEST_LENGTH;
-  }
-
-  holder.resize(update_length);
-  SecureBlob local_key(update_length * 2);
-  AsciiEncodeToBuffer(holder, static_cast<char*>(local_key.data()),
-                      local_key.size());
-  key->swap(local_key);
-}
-
 bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
                              bool force, SecureBlob* salt) const {
   int64 file_len = 0;
@@ -700,6 +666,7 @@ void Crypto::PasswordToPasskey(const char* password,
   passkey->swap(local_passkey);
 }
 
+// TODO(ellyjones): replace this with base::HexEncode
 void Crypto::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
                                  unsigned int buffer_length) {
   const char hex_chars[] = "0123456789abcdef";
@@ -714,16 +681,36 @@ void Crypto::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
   }
 }
 
-bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
-                                const chromeos::Blob& vault_key,
-                                unsigned int* crypt_flags, CryptoError* error,
-                                VaultKeyset* vault_keyset) const {
-  if (crypt_flags) {
-    *crypt_flags = 0;
+bool Crypto::IsTPMPubkeyHash(const string& hash,
+                             CryptoError* error) const {
+  SecureBlob pub_key;
+  Tpm::TpmRetryAction retry_action;
+  if (!tpm_->GetPublicKey(&pub_key, &retry_action)) {
+    LOG(ERROR) << "Unable to get the cryptohome public key from the TPM.";
+    if (error)
+      // This is a fatal error only if we don't get a transient error code.
+      *error = TpmErrorToCrypto(retry_action);
+    return false;
   }
-  if (error) {
-    *error = CE_NONE;
+  SecureBlob pub_key_hash;
+  GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
+  if ((hash.size() != pub_key_hash.size()) ||
+      (chromeos::SafeMemcmp(hash.data(),
+              pub_key_hash.data(),
+              pub_key_hash.size()))) {
+    if (error)
+      *error = CE_TPM_FATAL;
+    return false;
   }
+
+  return true;
+}
+
+bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
+                        const SecureBlob& vault_key,
+                        CryptoError* error,
+                        VaultKeyset* keyset) const {
+  CHECK(serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED);
   SecureBlob local_encrypted_keyset(serialized.wrapped_keyset().length());
   serialized.wrapped_keyset().copy(
       static_cast<char*>(local_encrypted_keyset.data()),
@@ -731,9 +718,37 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
   SecureBlob salt(serialized.salt().length());
   serialized.salt().copy(static_cast<char*>(salt.data()),
                          serialized.salt().length(), 0);
+  SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
 
-  // On decrypt, default to the legacy password rounds, and use the value in the
-  // SerializedVaultKeyset if it exists
+  if (!serialized.has_tpm_key()) {
+    LOG(ERROR) << "Decrypting with TPM, but no tpm key present";
+    if (error)
+      *error = CE_TPM_FATAL;
+    return false;
+  }
+
+  // If the TPM is enabled but not owned, and the keyset is TPM wrapped, then
+  // it means the TPM has been cleared since the last login, and is not
+  // re-owned.  In this case, the SRK is cleared and we cannot recover the
+  // keyset.
+  if (tpm_->IsEnabled() && !tpm_->IsOwned()) {
+    LOG(ERROR) << "Fatal error--the TPM is enabled but not owned, and this "
+               << "keyset was wrapped by the TPM.  It is impossible to "
+               << "recover this keyset.";
+    if (error)
+      *error = CE_TPM_FATAL;
+    return false;
+  }
+
+  Crypto::CryptoError local_error = EnsureTpm(false);
+  if (!tpm_->IsConnected()) {
+    LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
+               << "unavailable";
+    if (error)
+      *error = local_error;
+    return false;
+  }
+
   unsigned int rounds;
   if (serialized.has_password_rounds()) {
     rounds = serialized.password_rounds();
@@ -741,153 +756,200 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
     rounds = kDefaultLegacyPasswordRounds;
   }
 
-  SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
-  // Check if the vault keyset was TPM-wrapped
-  if ((serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED)
-      && serialized.has_tpm_key()) {
-    if (crypt_flags) {
-      *crypt_flags |= SerializedVaultKeyset::TPM_WRAPPED;
-    }
-    // If the TPM is enabled but not owned, and the keyset is TPM wrapped, then
-    // it means the TPM has been cleared since the last login, and is not
-    // re-owned.  In this case, the SRK is cleared and we cannot recover the
-    // keyset.
-    if (tpm_->IsEnabled() && !tpm_->IsOwned()) {
-      LOG(ERROR) << "Fatal error--the TPM is enabled but not owned, and this "
-                 << "keyset was wrapped by the TPM.  It is impossible to "
-                 << "recover this keyset.";
-      if (error) {
-        *error = CE_TPM_FATAL;
-      }
-      return false;
-    }
-    Crypto::CryptoError local_error = EnsureTpm(false);
-    if (!tpm_->IsConnected()) {
-      LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
-                 << "unavailable";
-      if (error) {
-        *error = local_error;
-      }
-      return false;
-    }
-    // Check if the public key for this keyset matches the public key on this
-    // TPM.  If not, we cannot recover.
-    Tpm::TpmRetryAction retry_action;
-    if (serialized.has_tpm_public_key_hash()) {
-      SecureBlob serialized_pub_key_hash(
-          serialized.tpm_public_key_hash().length());
-      serialized.tpm_public_key_hash().copy(
-          static_cast<char*>(serialized_pub_key_hash.data()),
-          serialized.tpm_public_key_hash().length(),
-          0);
-      SecureBlob pub_key;
-      if (!tpm_->GetPublicKey(&pub_key, &retry_action)) {
-        LOG(ERROR) << "Unable to get the cryptohome public key from the TPM.";
-        if (error) {
-          // This is a fatal error only if we don't get a transient error code.
-          *error = TpmErrorToCrypto(retry_action);
-        }
-        return false;
-      }
-      SecureBlob pub_key_hash;
-      GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
-      if ((serialized_pub_key_hash.size() != pub_key_hash.size()) ||
-          (chromeos::SafeMemcmp(serialized_pub_key_hash.data(),
-                  pub_key_hash.data(),
-                  pub_key_hash.size()))) {
-        LOG(ERROR) << "Fatal key error--the cryptohome public key does not "
-                   << "match the one used to encrypt this keyset.";
-        if (error) {
-          *error = CE_TPM_FATAL;
-        }
-        return false;
-      }
-    }
-    SecureBlob tpm_key(serialized.tpm_key().length());
-    serialized.tpm_key().copy(static_cast<char*>(tpm_key.data()),
-                              serialized.tpm_key().length(), 0);
-    if (!tpm_->Decrypt(tpm_key, vault_key, rounds, salt,
-                       &local_vault_key, &retry_action)) {
-      LOG(ERROR) << "The TPM failed to unwrap the intermediate key with the "
-                 << "supplied credentials";
-      if (error) {
-        // This is a fatal error only if we don't get a transient error code.
-        *error = TpmErrorToCrypto(retry_action);
-      }
+  if (serialized.has_tpm_public_key_hash()) {
+    if (!IsTPMPubkeyHash(serialized.tpm_public_key_hash(), error)) {
+      LOG(ERROR) << "TPM public key hash mismatch.";
       return false;
     }
   }
 
+  Tpm::TpmRetryAction retry_action;
+  SecureBlob tpm_key(serialized.tpm_key().length());
+  serialized.tpm_key().copy(static_cast<char*>(tpm_key.data()),
+                            serialized.tpm_key().length(), 0);
+  if (!tpm_->Decrypt(tpm_key, vault_key, rounds, salt,
+                     &local_vault_key, &retry_action)) {
+    LOG(ERROR) << "The TPM failed to unwrap the intermediate key with the "
+               << "supplied credentials";
+    if (error)
+      // This is a fatal error only if we don't get a transient error code.
+      *error = TpmErrorToCrypto(retry_action);
+    return false;
+  }
+
+  SecureBlob aes_key;
+  SecureBlob iv;
   SecureBlob plain_text;
-  if (serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED) {
-    if (crypt_flags) {
-      *crypt_flags |= SerializedVaultKeyset::SCRYPT_WRAPPED;
-    }
-    size_t out_len = serialized.wrapped_keyset().length();
-    SecureBlob decrypted(out_len);
-    int scrypt_rc;
-    if ((scrypt_rc = scryptdec_buf(
-            static_cast<const uint8_t*>(local_encrypted_keyset.const_data()),
-            local_encrypted_keyset.size(),
-            static_cast<uint8_t*>(decrypted.data()),
-            &out_len,
-            static_cast<const uint8_t*>(&vault_key[0]),
-            vault_key.size(),
-            kScryptMaxMem,
-            100.0,
-            kScryptMaxDecryptTime))) {
-      LOG(ERROR) << "Scrypt decryption failed: " << scrypt_rc;
-      if (error) {
-        *error = CE_SCRYPT_CRYPTO;
-      }
-      return false;
-    }
-    decrypted.resize(out_len);
-    SecureBlob hash;
-    unsigned int hash_offset = decrypted.size() - SHA_DIGEST_LENGTH;
-    GetSha1(decrypted, 0, hash_offset, &hash);
-    if (chromeos::SafeMemcmp(hash.data(), &decrypted[hash_offset],
-                             hash.size())) {
-      LOG(ERROR) << "Scrypt hash verification failed";
-      if (error) {
-        *error = CE_SCRYPT_CRYPTO;
-      }
-      return false;
-    }
-    decrypted.resize(hash_offset);
-    plain_text.swap(decrypted);
-  } else {
-    SecureBlob aes_key;
-    SecureBlob iv;
-    if (!PasskeyToAesKey(local_vault_key,
-                         salt,
-                         rounds,
-                         &aes_key,
-                         &iv)) {
-      LOG(ERROR) << "Failure converting passkey to key";
-      if (error) {
-        *error = CE_OTHER_FATAL;
-      }
-      return false;
-    }
-
-    if (!AesDecrypt(local_encrypted_keyset, 0, local_encrypted_keyset.size(),
-                    aes_key, iv, kPaddingCryptohomeDefault, &plain_text)) {
-      LOG(ERROR) << "AES decryption failed.";
-      if (error) {
-        *error = CE_OTHER_CRYPTO;
-      }
-      return false;
-    }
+  if (!PasskeyToAesKey(local_vault_key,
+                       salt,
+                       rounds,
+                       &aes_key,
+                       &iv)) {
+    LOG(ERROR) << "Failure converting passkey to key";
+    if (error)
+      *error = CE_OTHER_FATAL;
+    return false;
   }
 
-  vault_keyset->FromKeysBlob(plain_text);
-  // Check if the public key hash was stored
-  if (!serialized.has_tpm_public_key_hash() && serialized.has_tpm_key()) {
+  if (!AesDecrypt(local_encrypted_keyset, 0, local_encrypted_keyset.size(),
+                  aes_key, iv, kPaddingCryptohomeDefault, &plain_text)) {
+    LOG(ERROR) << "AES decryption failed.";
+    if (error)
+      *error = CE_OTHER_CRYPTO;
+    return false;
+  }
+
+  keyset->FromKeysBlob(plain_text);
+  if (!serialized.has_tpm_public_key_hash() && error)
+    *error = CE_NO_PUBLIC_KEY_HASH;
+  return true;
+}
+
+bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
+                           const SecureBlob& key,
+                           CryptoError* error,
+                           VaultKeyset* keyset) const {
+  SecureBlob blob(serialized.wrapped_keyset().length());
+  serialized.wrapped_keyset().copy(static_cast<char*>(blob.data()),
+                                   blob.size(), 0);
+  size_t out_len = blob.size();
+  SecureBlob decrypted(out_len);
+  int scrypt_rc;
+  if ((scrypt_rc = scryptdec_buf(
+          static_cast<const uint8_t*>(blob.const_data()),
+          blob.size(),
+          static_cast<uint8_t*>(decrypted.data()),
+          &out_len,
+          static_cast<const uint8_t*>(key.const_data()),
+          key.size(),
+          kScryptMaxMem,
+          100.0,
+          kScryptMaxDecryptTime))) {
+    LOG(ERROR) << "Scrypt decryption failed: " << scrypt_rc;
+    if (error)
+      *error = CE_SCRYPT_CRYPTO;
+    return false;
+  }
+  decrypted.resize(out_len);
+  SecureBlob hash;
+  unsigned int hash_offset = decrypted.size() - SHA_DIGEST_LENGTH;
+  GetSha1(decrypted, 0, hash_offset, &hash);
+  if (chromeos::SafeMemcmp(hash.data(), &decrypted[hash_offset],
+                           hash.size())) {
+    LOG(ERROR) << "Scrypt hash verification failed";
     if (error) {
-      *error = CE_NO_PUBLIC_KEY_HASH;
+      *error = CE_SCRYPT_CRYPTO;
     }
+    return false;
   }
+  decrypted.resize(hash_offset);
+  keyset->FromKeysBlob(decrypted);
+  return true;
+}
+
+bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
+                                const SecureBlob& vault_key,
+                                unsigned int* crypt_flags, CryptoError* error,
+                                VaultKeyset* vault_keyset) const {
+  if (crypt_flags)
+    *crypt_flags = serialized.flags();
+  if (error)
+    *error = CE_NONE;
+
+  // Check if the vault keyset was TPM-wrapped
+  if (serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED) {
+    return DecryptTPM(serialized, vault_key, error, vault_keyset);
+  } else if (serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED) {
+    return DecryptScrypt(serialized, vault_key, error, vault_keyset);
+  } else {
+    LOG(ERROR) << "Keyset wrapped with neither TPM nor Scrypt?";
+    return false;
+  }
+}
+
+bool Crypto::EncryptTPM(const SecureBlob& blob,
+                        const SecureBlob& key,
+                        const SecureBlob& salt,
+                        SerializedVaultKeyset* serialized) const {
+  unsigned int rounds = kDefaultPasswordRounds;
+  if (!use_tpm_)
+    return false;
+  EnsureTpm(false);
+  if (tpm_ == NULL || !tpm_->IsConnected())
+    return false;
+  SecureBlob local_blob(kDefaultAesKeySize);
+  GetSecureRandom(static_cast<unsigned char*>(local_blob.data()),
+                  local_blob.size());
+  Tpm::TpmRetryAction retry_action;
+  SecureBlob tpm_key;
+  // Encrypt the VKK using the TPM and the user's passkey.  The output is an
+  // encrypted blob in tpm_key, which is stored in the serialized vault
+  // keyset.
+  if (!tpm_->Encrypt(local_blob, key, rounds, salt, &tpm_key, &retry_action)) {
+    LOG(ERROR) << "Failed to wrap vkk with creds.";
+    return false;
+  }
+
+  SecureBlob aes_key;
+  SecureBlob iv;
+  SecureBlob cipher_text;
+  if (!PasskeyToAesKey(local_blob, salt, rounds, &aes_key, &iv)) {
+    LOG(ERROR) << "Failure converting passkey to key";
+    return false;
+  }
+
+  if (!AesEncrypt(blob, 0, blob.size(), aes_key, iv, kPaddingCryptohomeDefault,
+                  &cipher_text)) {
+    LOG(ERROR) << "AES encryption failed.";
+    return false;
+  }
+
+  SecureBlob pub_key;
+  // Allow this to fail.  It is not absolutely necessary; it allows us to
+  // detect a TPM clear.  If this fails due to a transient issue, then on next
+  // successful login, the vault keyset will be re-saved anyway.
+  if (tpm_->GetPublicKey(&pub_key, &retry_action)) {
+    SecureBlob pub_key_hash;
+    GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
+    serialized->set_tpm_public_key_hash(pub_key_hash.const_data(),
+                                        pub_key_hash.size());
+  }
+
+  unsigned int flags = serialized->flags();
+  serialized->set_password_rounds(rounds);
+  serialized->set_flags(flags | SerializedVaultKeyset::TPM_WRAPPED);
+  serialized->set_tpm_key(tpm_key.const_data(), tpm_key.size());
+  serialized->set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
+  return true;
+}
+
+bool Crypto::EncryptScrypt(const SecureBlob& blob,
+                           const SecureBlob& key,
+                           SerializedVaultKeyset* serialized) const {
+  // Append the SHA1 hash of the keyset blob
+  SecureBlob cipher_text;
+  SecureBlob hash;
+  GetSha1(blob, 0, blob.size(), &hash);
+  SecureBlob local_blob(blob.size() + hash.size());
+  memcpy(&local_blob[0], blob.const_data(), blob.size());
+  memcpy(&local_blob[blob.size()], hash.data(), hash.size());
+  cipher_text.resize(local_blob.size() + kScryptHeaderLength);
+  int scrypt_rc;
+  if ((scrypt_rc = scryptenc_buf(
+          static_cast<const uint8_t*>(local_blob.const_data()),
+          local_blob.size(),
+          static_cast<uint8_t*>(cipher_text.data()),
+          static_cast<const uint8_t*>(&key[0]),
+          key.size(),
+          kScryptMaxMem,
+          100.0,
+          kScryptMaxEncryptTime))) {
+    LOG(ERROR) << "Scrypt encryption failed: " << scrypt_rc;
+    return false;
+  }
+  unsigned int flags = serialized->flags();
+  serialized->set_flags(flags | SerializedVaultKeyset::SCRYPT_WRAPPED);
+  serialized->set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
   return true;
 }
 
@@ -901,124 +963,12 @@ bool Crypto::EncryptVaultKeyset(const VaultKeyset& vault_keyset,
     return false;
   }
 
-  unsigned int rounds = kDefaultPasswordRounds;
-  bool tpm_wrapped = false;
-  // The local_vault_key is used as the AES key to encrypt the user's vault
-  // keyset (vault keyset key, or VKK).  We initialize it to the passed-in
-  // vault_key, which is the user's passkey.
-  SecureBlob local_vault_key(vault_key.begin(), vault_key.end());
-  SecureBlob tpm_key;
-  // Check if the vault keyset should be TPM-wrapped
-  if (use_tpm_) {
-    // Ignore the status here.  When the TPM is not available, we merely fall
-    // back to scrypt.
-    EnsureTpm(false);
-  }
-  // If the TPM is available, then instead of using the user's passkey as the
-  // local_vault_key, we generate a random string of bytes to use as the VKK
-  // instead.  In this case, the user's passkey is used with the TPM to store
-  // the encrypted VKK in the serialized keyset.  To decrypt the vault keyset,
-  // the VKK must be decrypted using the TPM+user passkey, and then the VKK is
-  // used to decrypt the vault keyset. For now, we allow fall-through to
-  // non-TPM-wrapped if tpm_ is NULL.  When this happens, it uses Scrypt to
-  // protect the vault keyset.
-  if (use_tpm_ && tpm_ != NULL && tpm_->IsConnected()) {
-    // If we are using the TPM, the local_vault_key becomes a
-    // randomly-generated AES key.  It is this random key that actually encrypts
-    // the vault keyset, and itself is wrapped by the TPM.
-    local_vault_key.resize(kDefaultAesKeySize);
-    GetSecureRandom(static_cast<unsigned char*>(local_vault_key.data()),
-                    local_vault_key.size());
-    Tpm::TpmRetryAction retry_action;
-    // Encrypt the VKK using the TPM and the user's passkey.  The output is an
-    // encrypted blob in tpm_key, which is stored in the serialized vault
-    // keyset.
-    if (tpm_->Encrypt(local_vault_key, vault_key, rounds, vault_key_salt,
-                      &tpm_key, &retry_action)) {
-      tpm_wrapped = true;
-    } else {
-      // Re-place the user's passkey into the VKK.  This allows fallback to
-      // Scrypt-based protection when the TPM didn't work for any reason.
-      local_vault_key.resize(vault_key.size());
-      memcpy(local_vault_key.data(), vault_key.const_data(),
-             vault_key.size());
-      LOG(ERROR) << "The TPM failed to wrap the intermediate key with the "
-                 << "supplied credentials.  The vault keyset will not be "
-                 << "further secured by the TPM.";
-    }
-  }
-
-  SecureBlob cipher_text;
-  bool scrypt_wrapped = false;
-  // If scrypt is enabled (it is by default, but it can be disabled for unit
-  // tests), and the TPM wasn't used, then we use scrypt to encrypt the keyset.
-  // Otherwise, we use AES with whatever the VKK is.  When the TPM is available,
-  // the VKK is a random key (see above).
-  if (fallback_to_scrypt_ && !tpm_wrapped) {
-    // Append the SHA1 hash of the keyset blob
-    SecureBlob hash;
-    GetSha1(keyset_blob, 0, keyset_blob.size(), &hash);
-    SecureBlob local_keyset_blob(keyset_blob.size() + hash.size());
-    memcpy(&local_keyset_blob[0], keyset_blob.const_data(), keyset_blob.size());
-    memcpy(&local_keyset_blob[keyset_blob.size()], hash.data(), hash.size());
-    cipher_text.resize(local_keyset_blob.size() + kScryptHeaderLength);
-    int scrypt_rc;
-    if ((scrypt_rc = scryptenc_buf(
-            static_cast<const uint8_t*>(local_keyset_blob.const_data()),
-            local_keyset_blob.size(),
-            static_cast<uint8_t*>(cipher_text.data()),
-            static_cast<const uint8_t*>(&vault_key[0]),
-            vault_key.size(),
-            kScryptMaxMem,
-            100.0,
-            kScryptMaxEncryptTime))) {
-      LOG(ERROR) << "Scrypt encryption failed: " << scrypt_rc;
+  if (!EncryptTPM(keyset_blob, vault_key, vault_key_salt, serialized))
+    if (!EncryptScrypt(keyset_blob, vault_key, serialized))
       return false;
-    }
-    scrypt_wrapped = true;
-  } else {
-    SecureBlob aes_key;
-    SecureBlob iv;
-    if (!PasskeyToAesKey(local_vault_key, vault_key_salt,
-                         rounds, &aes_key, &iv)) {
-      LOG(ERROR) << "Failure converting passkey to key";
-      return false;
-    }
 
-    if (!AesEncrypt(keyset_blob, 0, keyset_blob.size(), aes_key, iv,
-                    kPaddingCryptohomeDefault, &cipher_text)) {
-      LOG(ERROR) << "AES encryption failed.";
-      return false;
-    }
-  }
-
-  unsigned int keyset_flags = SerializedVaultKeyset::NONE;
-  if (tpm_wrapped) {
-    // Store the TPM-encrypted key
-    keyset_flags = SerializedVaultKeyset::TPM_WRAPPED;
-    serialized->set_tpm_key(tpm_key.const_data(),
-                            tpm_key.size());
-    // Store the hash of the cryptohome public key
-    SecureBlob pub_key;
-    Tpm::TpmRetryAction retry_action;
-    // Allow this to fail.  It is not absolutely necessary; it allows us to
-    // detect a TPM clear.  If this fails due to a transient issue, then on next
-    // successful login, the vault keyset will be re-saved anyway.
-    if (tpm_->GetPublicKey(&pub_key, &retry_action)) {
-      SecureBlob pub_key_hash;
-      GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
-      serialized->set_tpm_public_key_hash(pub_key_hash.const_data(),
-                                         pub_key_hash.size());
-    }
-  }
-  if (scrypt_wrapped) {
-    keyset_flags |= SerializedVaultKeyset::SCRYPT_WRAPPED;
-  }
-  serialized->set_flags(keyset_flags);
   serialized->set_salt(vault_key_salt.const_data(),
                        vault_key_salt.size());
-  serialized->set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
-  serialized->set_password_rounds(rounds);
   return true;
 }
 

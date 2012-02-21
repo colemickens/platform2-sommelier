@@ -80,7 +80,6 @@ Mount::Mount()
       crypto_(default_crypto_.get()),
       default_platform_(new Platform()),
       platform_(default_platform_.get()),
-      fallback_to_scrypt_(true),
       use_tpm_(true),
       default_current_user_(new UserSession()),
       current_user_(default_current_user_.get()),
@@ -109,7 +108,6 @@ bool Mount::Init() {
   }
 
   crypto_->set_use_tpm(use_tpm_);
-  crypto_->set_fallback_to_scrypt(fallback_to_scrypt_);
 
   int original_mask = platform_->SetMask(kDefaultUmask);
   // Create the shadow root if it doesn't exist
@@ -1088,7 +1086,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
       (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
   bool should_tpm = (crypto_->has_tpm() && use_tpm_ &&
                      crypto_->is_tpm_connected());
-  bool should_scrypt = fallback_to_scrypt_;
+  bool should_scrypt = true;
   do {
     // If the keyset was TPM-wrapped, but there was no public key hash,
     // always re-save.  Otherwise, check the table.
