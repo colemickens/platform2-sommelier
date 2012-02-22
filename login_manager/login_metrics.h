@@ -18,6 +18,15 @@ public:
     NOT_PRESENT = 2,
     NUM_STATES = 3
   };
+  enum UserType {
+    GUEST = 0,
+    OWNER = 1,
+    OTHER = 2,
+    DEV_GUEST = 3,
+    DEV_OWNER = 4,
+    DEV_OTHER = 5,
+    NUM_TYPES = 6
+  };
 
   // Holds the state of several policy-related files on disk.
   // We leave an extra bit for future state-space expansion.
@@ -55,7 +64,7 @@ public:
 
   // Sends the type of user that logs in (guest, owner or other) and the mode
   // (developer or normal) to UMA by using the metrics library.
-  virtual void SendLoginUserType(bool dev_mode, bool incognito, bool owner);
+  virtual void SendLoginUserType(bool dev_mode, bool guest, bool owner);
 
   // Sends info about the state of the Owner key, device policy, and legacy
   // prefs file to UMA using the metrics library.
@@ -67,15 +76,9 @@ public:
 
  private:
   friend class LoginMetricsTest;
+  friend class UserTypeTest;
 
   static const char kLoginUserTypeMetric[];
-  // TODO(cmasone): make these an enum.  http://crosbug.com/25528
-  static const int kGuestUser;
-  static const int kOwner;
-  static const int kOther;
-  static const int kDevMode;
-  static const int kMaxValue;
-
   static const char kLoginPolicyFilesMetric[];
   static const int kMaxPolicyFilesValue;
 
@@ -89,7 +92,7 @@ public:
 
   // Returns code to send to the metrics library based on the type of user
   // (owner, guest or other) and the mode (normal or developer).
-  int LoginUserTypeCode(bool dev_mode, bool incognito, bool owner);
+  static int LoginUserTypeCode(bool dev_mode, bool guest, bool owner);
 
   const FilePath per_boot_flag_file_;
   MetricsLibrary metrics_lib_;

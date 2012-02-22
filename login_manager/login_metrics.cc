@@ -15,17 +15,6 @@ namespace login_manager {
 //static
 const char LoginMetrics::kLoginUserTypeMetric[] = "Login.UserType";
 //static
-const int LoginMetrics::kGuestUser = 0;
-//static
-const int LoginMetrics::kOwner = 1;
-//static
-const int LoginMetrics::kOther = 2;
-//static
-const int LoginMetrics::kDevMode = 3;
-//static
-const int LoginMetrics::kMaxValue = 5;
-
-//static
 const char LoginMetrics::kLoginPolicyFilesMetric[] =
     "Login.PolicyFilesStatePerBoot";
 //static
@@ -50,7 +39,7 @@ LoginMetrics::~LoginMetrics() {}
 void LoginMetrics::SendLoginUserType(bool dev_mode, bool incognito,
                                      bool owner) {
   int uma_code = LoginUserTypeCode(dev_mode, incognito, owner);
-  metrics_lib_.SendEnumToUMA(kLoginUserTypeMetric, uma_code, kMaxValue);
+  metrics_lib_.SendEnumToUMA(kLoginUserTypeMetric, uma_code, NUM_TYPES - 1);
 }
 
 bool LoginMetrics::SendPolicyFilesStatus(const PolicyFilesStatus& status) {
@@ -69,17 +58,23 @@ void LoginMetrics::RecordStats(const char* tag) {
   bootstat_log(tag);
 }
 
+// static
 // Code for incognito, owner and any other user are 0, 1 and 2
 // respectively in normal mode. In developer mode they are 3, 4 and 5.
 int LoginMetrics::LoginUserTypeCode(bool dev_mode, bool guest, bool owner) {
-  int code = 0;
-  if (dev_mode)
-    code += kDevMode;
+  if (!dev_mode) {
+    if (guest)
+      return GUEST;
+    if (owner)
+      return OWNER;
+    return OTHER;
+  }
+  // If we get here, we're in dev mode.
   if (guest)
-    return code + kGuestUser;
+    return DEV_GUEST;
   if (owner)
-    return code + kOwner;
-  return code + kOther;
+    return DEV_OWNER;
+  return DEV_OTHER;
 }
 
 }  // namespace login_manager
