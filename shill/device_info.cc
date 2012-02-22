@@ -161,7 +161,7 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     }
   }
 
-  VLOG(2) << StringPrintf("%s: device %s is is defaulted to type ethernet",
+  VLOG(2) << StringPrintf("%s: device %s is defaulted to type ethernet",
                           __func__, iface_name.c_str());
   return Technology::kEthernet;
 }

@@ -48,7 +48,7 @@ class IPAddressTest : public Test {
                         good_bytes.GetLength()));
     EXPECT_TRUE(good_addr.address().Equals(good_bytes));
     string address_string;
-    EXPECT_TRUE(good_addr.ToString(&address_string));
+    EXPECT_TRUE(good_addr.IntoString(&address_string));
     EXPECT_EQ(good_string, address_string);
 
     IPAddress good_addr_from_bytes(family, good_bytes);
@@ -65,7 +65,7 @@ class IPAddressTest : public Test {
     EXPECT_FALSE(bad_addr_from_bytes.IsValid());
 
     EXPECT_FALSE(bad_addr.Equals(bad_addr_from_bytes));
-    EXPECT_FALSE(bad_addr.ToString(&address_string));
+    EXPECT_FALSE(bad_addr.IntoString(&address_string));
   }
 };
 

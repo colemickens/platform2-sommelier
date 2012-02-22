@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -75,7 +75,10 @@ void RoutingTable::Stop() {
 
 bool RoutingTable::AddRoute(int interface_index,
                             const RoutingTableEntry &entry) {
-  VLOG(2) << __func__;
+  VLOG(2) << __func__ << " "
+          << "index " << interface_index
+          << "gateway " << entry.gateway.ToString() << " "
+          << "metric " << entry.metric;
 
   CHECK(!entry.from_rtnl);
   if (!ApplyRoute(interface_index,
@@ -91,12 +94,13 @@ bool RoutingTable::AddRoute(int interface_index,
 bool RoutingTable::GetDefaultRoute(int interface_index,
                                    IPAddress::Family family,
                                    RoutingTableEntry *entry) {
-  VLOG(2) << __func__;
+  VLOG(2) << __func__ << " index " << interface_index << " family " << family;
 
   base::hash_map<int, vector<RoutingTableEntry> >::iterator table =
     tables_.find(interface_index);
 
   if (table == tables_.end()) {
+    VLOG(2) << __func__ << " no table";
     return false;
   }
 
@@ -105,21 +109,24 @@ bool RoutingTable::GetDefaultRoute(int interface_index,
   for (nent = table->second.begin(); nent != table->second.end(); ++nent) {
     if (nent->dst.IsDefault() && nent->dst.family() == family) {
       *entry = *nent;
+      VLOG(2) << __func__ << " found "
+              << "gateway " << nent->gateway.ToString() << " "
+              << "metric " << nent->metric;
       return true;
     }
   }
 
+  VLOG(2) << __func__ << " no route";
   return false;
 }
 
 bool RoutingTable::SetDefaultRoute(int interface_index,
                                    const IPConfigRefPtr &ipconfig,
                                    uint32 metric) {
+  VLOG(2) << __func__ << " index " << interface_index << " metric " << metric;
+
   const IPConfig::Properties &ipconfig_props = ipconfig->properties();
   RoutingTableEntry old_entry;
-
-  VLOG(2) << __func__;
-
   IPAddress gateway_address(ipconfig_props.address_family);
   if (!gateway_address.SetAddressFromString(ipconfig_props.gateway)) {
     return false;
@@ -175,9 +182,10 @@ void RoutingTable::ResetTable(int interface_index) {
 }
 
 void RoutingTable::SetDefaultMetric(int interface_index, uint32 metric) {
-  RoutingTableEntry entry;
+  VLOG(2) << __func__ << " "
+          << "index " << interface_index << " metric " << metric;
 
-  VLOG(2) << __func__;
+  RoutingTableEntry entry;
 
   if (GetDefaultRoute(interface_index, IPAddress::kFamilyIPv4, &entry) &&
       entry.metric != metric) {
@@ -258,6 +266,10 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
   }
 
   if (msg.mode() == RTNLMessage::kModeAdd) {
+    VLOG(2) << __func__ << " adding "
+            << "index " << interface_index
+            << "gateway " << entry.gateway.ToString() << " "
+            << "metric " << entry.metric;
     table.push_back(entry);
   }
 }
@@ -309,6 +321,8 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
 void RoutingTable::ReplaceMetric(uint32 interface_index,
                                  const RoutingTableEntry &entry,
                                  uint32 metric) {
+  VLOG(2) << __func__ << " "
+          << "index " << interface_index << " metric " << metric;
   RoutingTableEntry new_entry = entry;
   new_entry.metric = metric;
   // First create the route at the new metric.

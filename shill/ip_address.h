@@ -61,7 +61,9 @@ class IPAddress {
   // conversion succeeds in which case |address_string| is set to the
   // result.  Otherwise the function returns false and |address_string|
   // is left unmodified.
-  bool ToString(std::string *address_string) const;
+  bool IntoString(std::string *address_string) const;
+  // Similar to IntoString, but returns by value. Convenient for logging.
+  std::string ToString() const;
 
   bool Equals(const IPAddress &b) const {
     return family_ == b.family_ && address_.Equals(b.address_) &&

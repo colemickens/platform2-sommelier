@@ -142,10 +142,8 @@ void HTTPRequest::Stop() {
 bool HTTPRequest::ConnectServer(const IPAddress &address, int port) {
   VLOG(3) << "In " << __func__;
   if (!server_async_connection_->Start(address, port)) {
-    string address_string("<unknown>");
-    address.ToString(&address_string);
     LOG(ERROR) << "Could not create socket to connect to server at "
-               << address_string;
+               << address.ToString();
     SendStatus(kResultConnectionFailure);
     return false;
   }

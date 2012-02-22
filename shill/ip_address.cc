@@ -70,7 +70,7 @@ void IPAddress::SetAddressToDefault() {
   address_ = ByteString(GetAddressLength(family_));
 }
 
-bool IPAddress::ToString(string *address_string) const {
+bool IPAddress::IntoString(string *address_string) const {
   // Noting that INET6_ADDRSTRLEN > INET_ADDRSTRLEN
   char address_buf[INET6_ADDRSTRLEN];
   if (GetLength() != GetAddressLength(family_) ||
@@ -79,6 +79,12 @@ bool IPAddress::ToString(string *address_string) const {
   }
   *address_string = address_buf;
   return true;
+}
+
+string IPAddress::ToString() const {
+  string out("<unknown>");
+  IntoString(&out);
+  return out;
 }
 
 }  // namespace shill

@@ -36,7 +36,7 @@ Connection::Connection(int interface_index,
 }
 
 Connection::~Connection() {
-  VLOG(2) << __func__;
+  VLOG(2) << __func__ << " " << interface_name_;
 
   DCHECK(!routing_request_count_);
   routing_table_->FlushRoutes(interface_index_);
@@ -44,7 +44,7 @@ Connection::~Connection() {
 }
 
 void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
-  VLOG(2) << __func__;
+  VLOG(2) << __func__ << " " << interface_name_;
 
   const IPConfig::Properties &properties = config->properties();
   IPAddress local(properties.address_family);
@@ -78,7 +78,9 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
 }
 
 void Connection::SetIsDefault(bool is_default) {
-  VLOG(2) << __func__ << " " << is_default_ << " -> " << is_default;
+  VLOG(2) << __func__ << " "
+          << interface_name_ << " (index " << interface_index_ << ") "
+          << is_default_ << " -> " << is_default;
   if (is_default == is_default_) {
     return;
   }
