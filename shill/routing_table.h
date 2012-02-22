@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -40,6 +40,7 @@ class RoutingTable {
   virtual bool AddRoute(int interface_index, const RoutingTableEntry &entry);
 
   // Get the default route associated with an interface of a given addr family.
+  // The route is copied into |*entry|.
   virtual bool GetDefaultRoute(int interface_index,
                                IPAddress::Family family,
                                RoutingTableEntry *entry);
@@ -73,8 +74,14 @@ class RoutingTable {
                   const RoutingTableEntry &entry,
                   RTNLMessage::Mode mode,
                   unsigned int flags);
+  // Get the default route associated with an interface of a given addr family.
+  // A pointer to the route is placed in |*entry|.
+  virtual bool GetDefaultRouteInternal(int interface_index,
+                               IPAddress::Family family,
+                               RoutingTableEntry **entry);
+
   void ReplaceMetric(uint32 interface_index,
-                     const RoutingTableEntry &entry,
+                     RoutingTableEntry *entry,
                      uint32 metric);
 
   static const char kRouteFlushPath4[];

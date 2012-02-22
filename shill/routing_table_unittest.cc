@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -369,13 +369,20 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                    _,
                    0));
   routing_table_->SetDefaultMetric(kTestDeviceIndex0, entry5.metric);
+  // Furthermore, the routing table should reflect the change in the metric
+  // for the default route for the interface.
+  RoutingTableEntry default_route;
+  EXPECT_TRUE(routing_table_->GetDefaultRoute(kTestDeviceIndex0,
+                                              IPAddress::kFamilyIPv4,
+                                              &default_route));
+  EXPECT_EQ(entry5.metric, default_route.metric);
 
   // Ask to flush table0.  We should see a delete message sent.
   EXPECT_CALL(sockets_,
               Send(kTestSocket,
                    IsRoutingPacket(RTNLMessage::kModeDelete,
                                    kTestDeviceIndex0,
-                                   entry0,
+                                   entry5,
                                    0),
                    _,
                    0));

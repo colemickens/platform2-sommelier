@@ -94,6 +94,17 @@ bool RoutingTable::AddRoute(int interface_index,
 bool RoutingTable::GetDefaultRoute(int interface_index,
                                    IPAddress::Family family,
                                    RoutingTableEntry *entry) {
+  RoutingTableEntry *found_entry;
+  bool ret = GetDefaultRouteInternal(interface_index, family, &found_entry);
+  if (ret) {
+    *entry = *found_entry;
+  }
+  return ret;
+}
+
+bool RoutingTable::GetDefaultRouteInternal(int interface_index,
+                                           IPAddress::Family family,
+                                           RoutingTableEntry **entry) {
   VLOG(2) << __func__ << " index " << interface_index << " family " << family;
 
   base::hash_map<int, vector<RoutingTableEntry> >::iterator table =
@@ -108,7 +119,7 @@ bool RoutingTable::GetDefaultRoute(int interface_index,
 
   for (nent = table->second.begin(); nent != table->second.end(); ++nent) {
     if (nent->dst.IsDefault() && nent->dst.family() == family) {
-      *entry = *nent;
+      *entry = &(*nent);
       VLOG(2) << __func__ << " found "
               << "gateway " << nent->gateway.ToString() << " "
               << "metric " << nent->metric;
@@ -126,23 +137,24 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
   VLOG(2) << __func__ << " index " << interface_index << " metric " << metric;
 
   const IPConfig::Properties &ipconfig_props = ipconfig->properties();
-  RoutingTableEntry old_entry;
+  RoutingTableEntry *old_entry;
   IPAddress gateway_address(ipconfig_props.address_family);
   if (!gateway_address.SetAddressFromString(ipconfig_props.gateway)) {
     return false;
   }
 
-  if (GetDefaultRoute(interface_index,
-                      ipconfig_props.address_family,
-                      &old_entry)) {
-    if (old_entry.gateway.Equals(gateway_address)) {
-      if (old_entry.metric != metric) {
+  if (GetDefaultRouteInternal(interface_index,
+                              ipconfig_props.address_family,
+                              &old_entry)) {
+    if (old_entry->gateway.Equals(gateway_address)) {
+      if (old_entry->metric != metric) {
         ReplaceMetric(interface_index, old_entry, metric);
       }
       return true;
     } else {
+      // TODO(quiche): Update internal state as well?
       ApplyRoute(interface_index,
-                 old_entry,
+                 *old_entry,
                  RTNLMessage::kModeDelete,
                  0);
     }
@@ -185,15 +197,16 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32 metric) {
   VLOG(2) << __func__ << " "
           << "index " << interface_index << " metric " << metric;
 
-  RoutingTableEntry entry;
-
-  if (GetDefaultRoute(interface_index, IPAddress::kFamilyIPv4, &entry) &&
-      entry.metric != metric) {
+  RoutingTableEntry *entry;
+  if (GetDefaultRouteInternal(
+          interface_index, IPAddress::kFamilyIPv4, &entry) &&
+      entry->metric != metric) {
     ReplaceMetric(interface_index, entry, metric);
   }
 
-  if (GetDefaultRoute(interface_index, IPAddress::kFamilyIPv6, &entry) &&
-      entry.metric != metric) {
+  if (GetDefaultRouteInternal(
+          interface_index, IPAddress::kFamilyIPv6, &entry) &&
+      entry->metric != metric) {
     ReplaceMetric(interface_index, entry, metric);
   }
 }
@@ -319,17 +332,19 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
 // We do so after creating the route at a new metric so there is no traffic
 // disruption to existing network streams.
 void RoutingTable::ReplaceMetric(uint32 interface_index,
-                                 const RoutingTableEntry &entry,
+                                 RoutingTableEntry *entry,
                                  uint32 metric) {
   VLOG(2) << __func__ << " "
           << "index " << interface_index << " metric " << metric;
-  RoutingTableEntry new_entry = entry;
+  RoutingTableEntry new_entry = *entry;
   new_entry.metric = metric;
   // First create the route at the new metric.
   ApplyRoute(interface_index, new_entry, RTNLMessage::kModeAdd,
              NLM_F_CREATE | NLM_F_REPLACE);
   // Then delete the route at the old metric.
-  ApplyRoute(interface_index, entry, RTNLMessage::kModeDelete, 0);
+  ApplyRoute(interface_index, *entry, RTNLMessage::kModeDelete, 0);
+  // Now, update our routing table (via |*entry|) from |new_entry|.
+  *entry = new_entry;
 }
 
 bool RoutingTable::FlushCache() {
