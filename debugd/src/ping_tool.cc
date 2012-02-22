@@ -30,8 +30,6 @@ std::string PingTool::Start(const DBus::FileDescriptor& outfd,
     // a C++ exception, which the dbus-c++ main loop will convert into a dbus
     // exception and return it to our caller.
     p->AddIntOption("-c", options.find("count")->second);
-  } else {
-    p->AddIntOption("-c", 4);
   }
   if (options.count("interval") == 1) {
     p->AddIntOption("-i", options.find("interval")->second);
