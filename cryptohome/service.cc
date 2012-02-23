@@ -21,11 +21,11 @@
 #include <string>
 #include <vector>
 
-#include "cryptohome/marshal.glibmarshal.h"
 #include "cryptohome_event_source.h"
 #include "crypto.h"
 #include "install_attributes.h"
 #include "interface.h"
+#include "marshal.glibmarshal.h"
 #include "mount.h"
 #include "secure_blob.h"
 #include "tpm.h"
@@ -36,7 +36,7 @@
 // modifying the files afterward.
 namespace cryptohome {  // NOLINT
 namespace gobject {  // NOLINT
-#include "cryptohome/bindings/server.h"
+#include "bindings/server.h"
 }  // namespace gobject
 }  // namespace cryptohome
 

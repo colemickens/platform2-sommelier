@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -89,25 +89,6 @@ TEST_F(SecureBlobTest, ResizeTest) {
   EXPECT_EQ(original_data, blob.data());
   EXPECT_EQ(length - 1, blob.size());
   EXPECT_EQ(0, static_cast<unsigned char*>(blob.data())[length - 1]);
-}
-
-TEST_F(SecureBlobTest, DestructorTest) {
-  // Check that resizing a SecureBlob wipes memory on destruction.  The test
-  // assumes that the unallocated memory will not be reused in the meantime,
-  // which means that this test needs to be done carefully.  It intentionally
-  // accesses freed memory to check of it has been zeroed.
-  unsigned int length = 1024;
-  SecureBlob* blob = new SecureBlob(length);
-  unsigned char* data = static_cast<unsigned char*>(blob->data());
-  for (unsigned int i = 0; i < length; i++) {
-    data[i] = i % 256;
-  }
-
-  delete(blob);
-
-  for (unsigned int i = 0; i < length; i++) {
-    EXPECT_EQ(0, data[i]);
-  }
 }
 
 } // namespace cryptohome

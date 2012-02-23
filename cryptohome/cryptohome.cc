@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -24,7 +24,7 @@
 #include <iostream>
 
 #include "bindings/client.h"
-#include "cryptohome/marshal.glibmarshal.h"
+#include "marshal.glibmarshal.h"
 #include "crypto.h"
 #include "mount.h"
 #include "pkcs11_init.h"
