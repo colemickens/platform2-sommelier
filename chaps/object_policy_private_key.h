@@ -14,6 +14,7 @@ class ObjectPolicyPrivateKey : public ObjectPolicyKey {
  public:
   ObjectPolicyPrivateKey();
   virtual ~ObjectPolicyPrivateKey();
+  virtual bool IsObjectComplete();
   virtual void SetDefaultAttributes();
 };
 
