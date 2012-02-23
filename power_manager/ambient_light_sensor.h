@@ -59,7 +59,7 @@ class AmbientLightSensor {
 
   // Return a luma level normalized to 100 based on the tsl2563 lux value.
   // The luma level will modify the controller's brightness calculation.
-  static int64 Tsl2563LuxToLevel(int luxval);
+  double Tsl2563LuxToPercent(int luxval);
 
   // Use this to send AmbientLightSensor events to BacklightController.
   BacklightController* controller_;
@@ -70,15 +70,16 @@ class AmbientLightSensor {
   // This is the ambient light sensor file descriptor.
   int als_fd_;
 
-  // Record the last read ambient light level to reduce unnecessary events.
-  int64 last_level_;
-
   // These flags are used to turn on and off polling.
   bool is_polling_;
   bool disable_polling_;
 
   // Issue reasonable diagnostics about the deferred lux file open.
   bool still_deferring_;
+
+  // These are used in the LuxToPercent calculation.
+  double log_multiply_factor_;
+  double log_subtract_factor_;
 
   DISALLOW_COPY_AND_ASSIGN(AmbientLightSensor);
 };

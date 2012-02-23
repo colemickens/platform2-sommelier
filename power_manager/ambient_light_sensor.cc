@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include <algorithm>
+#include <cmath>
 
 #include "base/logging.h"
 
@@ -17,15 +18,31 @@ namespace power_manager {
 // Period in which to poll the ambient light sensor.
 static const int kSensorPollPeriodMs = 1000;
 
+// Lux level <= kLuxLo should return 0% response.
+static const int kLuxLo = 12;
+
+// Lux level >= kLuxHi should return 100% response.
+static const int kLuxHi = 1000;
+
+// A positive kLuxOffset gives us a flatter curve, particularly at lower lux.
+// Alternatively, we could use a higher kLuxLo.
+static const int kLuxOffset = 4;
+
 AmbientLightSensor::AmbientLightSensor(BacklightController* controller,
                                        PowerPrefsInterface* prefs)
     : controller_(controller),
       prefs_(prefs),
       als_fd_(-1),
-      last_level_(0),
       is_polling_(false),
       disable_polling_(false),
-      still_deferring_(false) {}
+      still_deferring_(false) {
+  // Initialize factors used for LuxToPercent calculation.
+  // See comments in Tsl2563LuxToPercent() for a full description.
+  double hi = kLuxHi + kLuxOffset;
+  double lo = kLuxLo + kLuxOffset;
+  log_multiply_factor_ = 100 / log(hi / lo);
+  log_subtract_factor_ = log(lo) * log_multiply_factor_;
+}
 
 AmbientLightSensor::~AmbientLightSensor() {
   if (als_fd_ >= 0)
@@ -112,15 +129,13 @@ gboolean AmbientLightSensor::ReadAls() {
   if (n > 0 && n < static_cast<int>(sizeof(buffer))) {
     buffer[n] = '\0';
     int luxval = atoi(buffer);
-    int64 level = Tsl2563LuxToLevel(luxval);
     if (controller_)
-      controller_->SetAlsBrightnessOffsetPercent(level);
-    last_level_ = level;
+      controller_->SetAlsBrightnessOffsetPercent(Tsl2563LuxToPercent(luxval));
   }
   return true;
 }
 
-int64 AmbientLightSensor::Tsl2563LuxToLevel(int luxval) {
+double AmbientLightSensor::Tsl2563LuxToPercent(int luxval) {
   // Notes on tsl2563 Ambient Light Response (_ALR) table:
   //
   // measurement location: lux file value, intended luma level
@@ -129,28 +144,25 @@ int64 AmbientLightSensor::Tsl2563LuxToLevel(int luxval) {
   //  outside, day, shade: 1000-3000,      100
   //  outside, day, direct sunlight: 10000, 100
   //
-  // Table data comes from 'bc -l':
-  //   x=7
-  //   while(x>2) {
-  //     e(x)
-  //     x-=.1
-  //   }
-  int lux_table[] = {
-    8, 9, 10, 11, 12, 13, 14, 16, 18, 20,
-    22, 24, 27, 29, 33, 36, 40, 44, 49, 54,
-    60, 66, 73, 81, 90, 99, 109, 121, 134, 148,
-    164, 181, 200, 221, 244, 270, 298, 330, 365, 403,
-    445, 492, 544, 601, 665, 735, 812, 897, 992, 1096,
-  };
+  // Give a natural logorithmic response of 0-100% for lux values 12-1000.
+  // What's a log?  If value=e^exponent, then log(value)=exponent.
+  //
+  // Multiply the log by log_multiply_factor_ to provide the 100% range.
+  // Calculated as: 100 / (log((kLuxHi + kLuxOffset) / (kLuxLo + kLuxOffset)))
+  //    hi = kLuxHi + kLuxOffset
+  //    lo = kLuxLo + kLuxOffset
+  //    (log(hi) - log(lo)) * log_multiply_factor_ = 100
+  //    So: log_multiply_factor_ = 100 / log(hi / lo)
+  //
+  // Subtract log_subtract_factor_ from the log product to normalize to 0.
+  // Calculated as: log_subtract_factor_ = log(lo) * log_multiply_factor_
+  //    lo = kLuxLo + kLuxOffset
+  //    log(lo) * log_multiply_factor_ - log_subtract_factor_ = 0
+  //    So: log_subtract_factor_ = log(lo) * log_multiply_factor_
 
-  // std::lower_bound() gives a pointer to the next highest value (unless
-  // there is an exact match), or just off the end of the table if there is no
-  // next highest value.
-  int* bound = std::lower_bound(lux_table, lux_table + arraysize(lux_table),
-                                luxval);
-
-  // Normalize table pointer to 100.
-  return ((bound - lux_table) * 100 / arraysize(lux_table));
+  int value = luxval + kLuxOffset;
+  double response = log(value) * log_multiply_factor_ - log_subtract_factor_;
+  return std::max(0.0, std::min(100.0, response));
 }
 
 }  // namespace power_manager
