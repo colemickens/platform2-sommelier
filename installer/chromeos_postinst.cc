@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <vboot/CgptManager.h>
+
 #include "chromeos_setimage.h"
 #include "inst_util.h"
 
@@ -85,8 +87,6 @@ bool ChromeosChrootPostinst(string install_dir,
   bool is_install = getenv("IS_INSTALL");
   bool is_update = !is_factory_install && !is_recovery_install && !is_install;
 
-  string cgpt = install_dir + "/usr/bin/cgpt";
-
   // Find Misc partition/device names
   string root_dev = GetBlockDevFromPartitionDev(install_dev);
   int new_part_num = GetPartitionFromPartitionDev(install_dev);
@@ -131,21 +131,44 @@ bool ChromeosChrootPostinst(string install_dir,
     return false;
   }
 
-  printf("Updating Partition Table Attributes...\n");
+  printf("Updating Partition Table Attributes using CgptManager...\n");
 
-  // Make updated partition highest priority for next reboot
-  RUN_OR_RETURN_FALSE(StringPrintf("%s prioritize -i %d %s",
-                                   cgpt.c_str(),
-                                   new_kern_num, root_dev.c_str()));
+  CgptManager cgpt_manager;
+
+  int result = cgpt_manager.Initialize(root_dev);
+  if (result != kCgptSuccess) {
+    printf("Unable to initialize CgptManager\n");
+    return false;
+  }
+
+  result = cgpt_manager.SetHighestPriority(new_kern_num);
+  if (result != kCgptSuccess) {
+    printf("Unable to set highest priority for kernel %d\n", new_kern_num);
+    return false;
+  }
 
   // If it's not an update, pre-mark the first boot as successful
   // since we can't fall back on the old install.
-  bool new_as_successful = !is_update;
-  RUN_OR_RETURN_FALSE(StringPrintf("%s add -i %d -S %d -T 6 %s",
-                                   cgpt.c_str(),
-                                   new_kern_num,
-                                   new_as_successful,
-                                   root_dev.c_str()));
+  bool new_kern_successful = !is_update;
+  result = cgpt_manager.SetSuccessful(new_kern_num, new_kern_successful);
+  if (result != kCgptSuccess) {
+    printf("Unable to set successful to %d for kernel %d\n",
+           new_kern_successful,
+           new_kern_num);
+    return false;
+  }
+
+  int numTries = 6;
+  result = cgpt_manager.SetNumTriesLeft(new_kern_num, numTries);
+  if (result != kCgptSuccess) {
+    printf("Unable to set NumTriesLeft to %d for kernel %d\n",
+           numTries,
+           new_kern_num);
+    return false;
+  }
+
+  printf("Updated kernel %d with Successful = %d and NumTriesLeft = %d\n",
+          new_kern_num, new_kern_successful, numTries);
 
   if (make_dev_readonly) {
     printf("Making dev %s read-only\n", install_dev.c_str());
@@ -188,9 +211,40 @@ bool ChromeosChrootPostinst(string install_dir,
       printf("Firmware update failed (error code: $FW_RC).\n");
       printf("Rolling back update due to failure installing required "
              "firmware.\n");
-      RUN_OR_RETURN_FALSE(StringPrintf("%s add -i %d -P 0 -S 0 -T 0 %s",
-                                       cgpt.c_str(),
-                                       new_kern_num, root_dev.c_str()));
+
+      // In all these checks below, we continue even if there's a failure
+      // so as to cleanup as much as possible.
+      new_kern_successful = false;
+      bool rollback_successful = true;
+      result = cgpt_manager.SetSuccessful(new_kern_num, new_kern_successful);
+      if (result != kCgptSuccess) {
+        rollback_successful = false;
+        printf("Unable to set successful to %d for kernel %d\n",
+               new_kern_successful,
+               new_kern_num);
+      }
+
+      numTries = 0;
+      result = cgpt_manager.SetNumTriesLeft(new_kern_num, numTries);
+      if (result != kCgptSuccess) {
+        rollback_successful = false;
+        printf("Unable to set NumTriesLeft to %d for kernel %d\n",
+               numTries,
+               new_kern_num);
+      }
+
+      int priority = 0;
+      result = cgpt_manager.SetPriority(new_kern_num, priority);
+      if (result != kCgptSuccess) {
+        rollback_successful = false;
+        printf("Unable to set Priority to %d for kernel %d\n",
+               priority,
+               new_kern_num);
+      }
+
+      if (rollback_successful)
+        printf("Successfully updated GPT with all settings to rollback.\n");
+
       return false;
     }
   }
