@@ -15,7 +15,7 @@ PC_DEPS = dbus-c++-1 libchromeos protobuf openssl
 INCLUDE_DIRS = -I$(OUT)include -I.. $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 LIB_DIRS = -L$(OUT) $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CXXFLAGS := $(INCLUDE_DIRS) $(CXXFLAGS)
+CXXFLAGS := $(INCLUDE_DIRS) $(CXXFLAGS) -DNDEBUG
 LDFLAGS += -lbase -lchromeos $(LIB_DIRS)
 
 COMMON = $(OUT)chaps_utility.o $(OUT)attributes.pb.o $(OUT)attributes.o
@@ -68,7 +68,8 @@ $(OUT)chapsd: $(COMMON) \
               $(OUT)object_policy_private_key.o \
               $(OUT)object_policy_secret_key.o \
               $(OUT)object_pool_impl.o \
-              $(OUT)tpm_utility_impl.o
+              $(OUT)tpm_utility_impl.o \
+              $(OUT)chaps_factory_impl.o
 	$(call cxx_binary, -ldl -ltspi)
 RM_ON_CLEAN += $(OUT)chapsd
 
