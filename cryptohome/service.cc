@@ -905,6 +905,10 @@ gboolean Service::InstallAttributesSet(gchar* name,
 gboolean Service::InstallAttributesFinalize(gboolean* OUT_finalized,
                                             GError** error) {
   *OUT_finalized = install_attrs_->Finalize();
+
+  // Check if the machine is enterprise owned and report this to mount_.
+  DetectEnterpriseOwnership();
+
   return TRUE;
 }
 
