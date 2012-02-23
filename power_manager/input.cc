@@ -1,10 +1,8 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "power_manager/input.h"
-
-#include <string>
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -12,21 +10,32 @@
 #include <linux/input.h>
 #include <stdlib.h>
 
+#include "base/file_util.h"
 #include "base/file_path.h"
 #include "base/logging.h"
+#include "base/string_util.h"
 
 using std::map;
+using std::string;
+using std::vector;
 
 namespace power_manager {
 
 const char kInputUdevSubsystem[] = "input";
+const FilePath sys_class_input_path("/sys/class/input");
+const char kEventBasename[] = "event";
+const char kInputBasename[] = "input";
+
+const char kWakeupDisabled[] = "disabled";
+const char kWakeupEnabled[] = "enabled";
 
 Input::Input()
     : handler_(NULL),
       handler_data_(NULL),
       lid_fd_(-1),
       num_power_key_events_(0),
-      num_lid_events_(0) {}
+      num_lid_events_(0),
+      wakeups_enabled_(true) {}
 
 Input::~Input() {
   // TODO(bleung) : track and close ALL handles that we have open, and shutdown
@@ -35,8 +44,19 @@ Input::~Input() {
     close(lid_fd_);
 }
 
-bool Input::Init() {
+bool Input::Init(const vector<string>& wakeup_input_names) {
+  for(vector<string>::const_iterator names_iter = wakeup_input_names.begin();
+      names_iter != wakeup_input_names.end(); ++names_iter) {
+    // Iterate through the vector of input names, and if not the empty string,
+    // put the input name into the wakeup_inputs_map_, mapping to -1.
+    // This indicates looking for input devices with this name, but there
+    // is no input number associated with the device just yet.
+    if ((*names_iter).length() > 0)
+      wakeup_inputs_map_[*names_iter] = -1;
+  }
+
   RegisterUdevEventHandler();
+  RegisterInputWakeSources();
   return RegisterInputDevices();
 }
 
@@ -65,6 +85,16 @@ bool Input::QueryLidState(int* lid_state) {
   } else {
     return false;
   }
+}
+
+bool Input::DisableWakeInputs() {
+  wakeups_enabled_ = false;
+  return SetInputWakeupStates();
+}
+
+bool Input::EnableWakeInputs() {
+  wakeups_enabled_ = true;
+  return SetInputWakeupStates();
 }
 
 bool Input::RegisterInputDevices() {
@@ -102,13 +132,70 @@ bool Input::RegisterInputDevices() {
   return retval;
 }
 
-bool Input::AddEvent(const char * name) {
-  int event_num = -1;
-  if (strncmp("event", name, 5)) {
+bool Input::RegisterInputWakeSources() {
+  DIR* dir = opendir(sys_class_input_path.value().c_str());
+  if (dir) {
+    struct dirent entry;
+    struct dirent* result;
+    while (readdir_r(dir, &entry, &result) == 0 && result)
+      if (result->d_name[0] &&
+          strncmp(result->d_name, kInputBasename, strlen(kInputBasename)) == 0)
+        AddWakeInput(result->d_name);
+  }
+  return true;
+}
+
+bool Input::SetInputWakeupStates() {
+  bool ret = true;
+  for (WakeupMap::iterator iter = wakeup_inputs_map_.begin();
+       iter != wakeup_inputs_map_.end(); iter++) {
+    int input_num = (*iter).second;
+    if (input_num != -1 && !SetWakeupState(input_num, wakeups_enabled_)) {
+      ret = false;
+      LOG(WARNING) << "Failed to set power/wakeup for input" << input_num;
+    }
+  }
+  return ret;
+}
+
+bool Input::SetWakeupState(int input_num, bool enabled) {
+  // Allocate a buffer of size enough to fit the basename "input"
+  // with an integer up to maxint.
+  // The number of digits required to hold a number k represented in base b
+  // is ceil(logb(k)).
+  // In this case, base b=10 and k = 256^n, where n=number of bytes.
+  // So number of digits = ceil(log10(256^n)) = ceil (n log10(256))
+  // = ceil(2.408 n) <= 3 * n.
+  // + 1 for null terminator.
+  char name[strlen(kInputBasename) + sizeof(input_num) * 3 + 1];
+
+  sprintf(name, "%s%d", kInputBasename, input_num);
+  FilePath input_path = sys_class_input_path.Append(name);
+
+  // wakeup sysfs is at /sys/class/input/inputX/device/power/wakeup
+  FilePath wakeup_path = input_path.Append("device/power/wakeup");
+  if (access(wakeup_path.value().c_str(), R_OK)) {
+    LOG(WARNING) << "Failed to access power/wakeup for : " << name;
     return false;
   }
 
-  event_num = atoi(name + 5);
+  const char* wakeup_str = enabled ? kWakeupEnabled : kWakeupDisabled;
+  if (!file_util::WriteFile(wakeup_path, wakeup_str, strlen(wakeup_str))) {
+    LOG(ERROR) << "Failed to write to power/wakeup.";
+    return false;
+  }
+
+  LOG(INFO) << "Set power/wakeup for input" << input_num << " state: "
+            << wakeup_str;
+  return true;
+}
+
+bool Input::AddEvent(const char * name) {
+  int event_num = -1;
+  if (strncmp(kEventBasename, name, strlen(kEventBasename)))
+    return false;
+
+  event_num = atoi(name + strlen(kEventBasename));
 
   InputMap::iterator iter = registered_inputs_.find(event_num);
   if (iter != registered_inputs_.end()) {
@@ -144,11 +231,10 @@ bool Input::AddEvent(const char * name) {
 
 bool Input::RemoveEvent(const char* name) {
   int event_num = -1;
-  if (strncmp("event", name, 5)) {
+  if (strncmp(kEventBasename, name, strlen(kEventBasename)))
     return false;
-  }
 
-  event_num = atoi(name + 5);
+  event_num = atoi(name + strlen(kEventBasename));
   InputMap::iterator iter = registered_inputs_.find(event_num);
   if (iter == registered_inputs_.end() ) {
     LOG(WARNING) << "Input event "
@@ -166,6 +252,57 @@ bool Input::RemoveEvent(const char* name) {
     DLOG(INFO) << "Watch removed successfully!";
   registered_inputs_.erase(iter);
   return true;
+}
+
+bool Input::AddWakeInput(const char* name) {
+  if (strncmp(kInputBasename, name, strlen(kInputBasename)) ||
+      wakeup_inputs_map_.empty())
+    return false;
+
+  FilePath input_path = sys_class_input_path.Append(name);
+  FilePath device_name_path = input_path.Append("name");
+  std::string input_name;
+
+  if (access(device_name_path.value().c_str(), R_OK)) {
+    LOG(WARNING) << "Failed to access input name.";
+    return false;
+  }
+  if (!file_util::ReadFileToString(device_name_path, &input_name)) {
+    LOG(WARNING) << "Failed to read input name.";
+    return false;
+  }
+  TrimWhitespaceASCII(input_name, TRIM_TRAILING, &input_name);
+  WakeupMap::iterator iter = wakeup_inputs_map_.find(input_name);
+  if (iter == wakeup_inputs_map_.end()) {
+    // Not on the list of wakeup input devices
+    return false;
+  }
+
+  int input_num = atoi(name + strlen(kInputBasename));
+  if (!SetWakeupState(input_num, wakeups_enabled_)) {
+    LOG(ERROR) << "Error Adding Wakeup source. Cannot write to power/wakeup.";
+    return false;
+  }
+  wakeup_inputs_map_[input_name] = input_num;
+  return true;
+}
+
+bool Input::RemoveWakeInput(const char* name) {
+  if (strncmp(kInputBasename, name, strlen(kInputBasename)) ||
+      wakeup_inputs_map_.empty())
+    return false;
+
+  int input_num = atoi(name + strlen(kInputBasename));
+  WakeupMap::iterator iter;
+  for (iter = wakeup_inputs_map_.begin();
+       iter != wakeup_inputs_map_.end(); iter++) {
+    if ((*iter).second == input_num) {
+      wakeup_inputs_map_[(*iter).first] = -1;
+      LOG(INFO) << "Remove wakeup source " << (*iter).first << " was:input"
+                << input_num;
+    }
+  }
+  return false;
 }
 
 GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
@@ -264,16 +401,24 @@ gboolean Input::UdevEventHandler(GIOChannel* /* source */,
   struct udev_device* dev = udev_monitor_receive_device(input->udev_monitor_);
   if (dev) {
     const char* action = udev_device_get_action(dev);
+    const char* sysname = udev_device_get_sysname(dev);
     LOG(INFO) << "Event on ("
               << udev_device_get_subsystem(dev)
               << ") Action "
               << udev_device_get_action(dev)
               << " sys name "
               << udev_device_get_sysname(dev);
-    if (strcmp("add", action) == 0)
-      input->AddEvent(udev_device_get_sysname(dev));
-    else if (strcmp("remove", action) == 0)
-      input->RemoveEvent(udev_device_get_sysname(dev));
+    if (strncmp(kEventBasename, sysname, strlen(kEventBasename)) == 0) {
+      if (strcmp("add", action) == 0)
+        input->AddEvent(sysname);
+      else if (strcmp("remove", action) == 0)
+        input->RemoveEvent(sysname);
+    } else if (strncmp(kInputBasename, sysname, strlen(kInputBasename)) == 0) {
+      if (strcmp("add", action) == 0)
+        input->AddWakeInput(sysname);
+      else if (strcmp("remove", action) == 0)
+        input->RemoveWakeInput(sysname);
+    }
     udev_device_unref(dev);
   } else {
     LOG(ERROR) << "Can't get receive_device()";

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,6 +31,27 @@ bool PowerPrefs::StartPrefWatching(Inotify::InotifyCallback callback,
     return false;
   notifier_.Start();
   return true;
+}
+
+bool PowerPrefs::GetString(const char* name, string* buf) {
+  if (!buf) {
+    LOG(ERROR) << "Invalid return buffer!";
+    return false;
+  }
+
+  FilePath path = pref_path_.Append(name);
+  if (file_util::ReadFileToString(path, buf)) {
+    TrimWhitespaceASCII(*buf, TRIM_TRAILING, buf);
+    return true;
+  }
+  path = default_path_.Append(name);
+  buf->clear();
+  if (file_util::ReadFileToString(path, buf)) {
+    TrimWhitespaceASCII(*buf, TRIM_TRAILING, buf);
+    return true;
+  }
+  LOG(ERROR) << "Could not read " << path.value();
+  return false;
 }
 
 bool PowerPrefs::GetInt64(const char* name, int64* value) {

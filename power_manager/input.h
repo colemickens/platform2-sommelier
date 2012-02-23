@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,8 @@
 #define POWER_MANAGER_INPUT_H_
 
 #include <map>
+#include <string>
+#include <vector>
 
 #include <glib.h>
 #include <libudev.h>
@@ -15,9 +17,9 @@
 namespace power_manager {
 
 enum InputType {
- LID,
- PWRBUTTON,
- LOCKBUTTON,
+  LID,
+  PWRBUTTON,
+  LOCKBUTTON,
 };
 
 class Input {
@@ -26,9 +28,10 @@ class Input {
   ~Input();
 
   // Initialize the input object.
-  //
+  // |wakeup_inputs_names| is a vector of strings of input device names that may
+  // wake the system from resume that may be disabled.
   // On success, return true; otherwise return false.
-  bool Init();
+  bool Init(const std::vector<std::string>& wakeup_inputs_names);
 
   // Input handler function type. |data| is object passed to RegisterHandler.
   // |type| is InputType of this event. |value| is the new state of this input
@@ -39,6 +42,10 @@ class Input {
 
   // |lid_state| is 1 for closed lid. 0 for opened lid.
   bool QueryLidState(int* lid_state);
+
+  // Disable and Enable special wakeup input devices.
+  bool DisableWakeInputs();
+  bool EnableWakeInputs();
 
   int num_lid_events() const {
     return num_lid_events_;
@@ -53,12 +60,26 @@ class Input {
     guint sourcetag;
   };
 
+  // Add/Remove events to handle lid and power button.
   bool AddEvent(const char* name);
   bool RemoveEvent(const char* name);
 
+  // Add/Remove Inputs used for enabling and disabling wakeup events.
+  bool AddWakeInput(const char* name);
+  bool RemoveWakeInput(const char* name);
+
   // For every "event" in /dev/input/, open a file handle, and
-  // RegisterInputEvent on it.
+  // RegisterInputEvent on it if the event contains power buttons or lid.
   bool RegisterInputDevices();
+
+  // For every "input" in /sys/class/input/, keep track of power/wakeup if
+  // it matches wake inputs names.
+  bool RegisterInputWakeSources();
+
+  // Set power/wakeup for all tracked input devices to wakeups_enabled_
+  bool SetInputWakeupStates();
+  // Set power/wakeup for input device number |input_num|
+  bool SetWakeupState(int input_num, bool enabled);
 
   // Check that the event of handle |fd| advertises power key or lid event.
   // If so, watch this event for changes.
@@ -84,10 +105,15 @@ class Input {
   int num_lid_events_;
   struct udev_monitor* udev_monitor_;
   struct udev* udev_;
+  bool wakeups_enabled_;
 
   // maps from an input event number to a source tag.
   typedef std::map<int, IOChannelWatch> InputMap;
   InputMap registered_inputs_;
+
+  // maps from an input name to an input number
+  typedef std::map<std::string, int> WakeupMap;
+  WakeupMap wakeup_inputs_map_;
 
   DISALLOW_COPY_AND_ASSIGN(Input);
 };

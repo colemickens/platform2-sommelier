@@ -26,6 +26,7 @@ const char kPluggedSuspendMs[] = "plugged_suspend_ms";
 const char kUseXScreenSaver[] = "use_xscreensaver";
 const char kMinVisibleBacklightLevel[] = "min_visible_backlight_level";
 const char kDisableALS[] = "disable_als";
+const char kWakeupInput[] = "wakeup_input_device_names";
 
 // The minimum delta between timers when we want to give a user time to react.
 const char kReactMs[] = "react_ms";

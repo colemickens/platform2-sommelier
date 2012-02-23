@@ -33,6 +33,7 @@ extern const char kBacklightPattern[];
 extern const char kKeyboardBacklightPath[];
 extern const char kKeyboardBacklightPattern[];
 extern const char kDisableALS[];
+extern const char kWakeupInput[];
 
 // Interface names.
 extern const char kRootPowerManagerInterface[];

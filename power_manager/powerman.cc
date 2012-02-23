@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
 #include <stdlib.h>
 #include <stdio.h>
 #include <dbus/dbus-shared.h>
@@ -13,6 +14,7 @@
 #include <gdk/gdkx.h>
 
 #include "base/file_util.h"
+#include "base/string_split.h"
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
@@ -23,6 +25,7 @@
 
 using base::TimeDelta;
 using base::TimeTicks;
+using std::string;
 
 namespace {
 
@@ -61,6 +64,11 @@ PowerManDaemon::~PowerManDaemon() {
 void PowerManDaemon::Init() {
   int input_lidstate = 0;
   int64 use_input_for_lid;
+  string wakeup_inputs_str;
+  std::vector<string> wakeup_inputs;
+
+  CHECK(prefs_->GetString(kWakeupInput, &wakeup_inputs_str));
+  base::SplitString(wakeup_inputs_str, '\n', &wakeup_inputs);
   CHECK(prefs_->GetInt64(kRetrySuspendMs, &retry_suspend_ms_));
   CHECK(prefs_->GetInt64(kRetrySuspendAttempts, &retry_suspend_attempts_));
   CHECK(prefs_->GetInt64(kUseLid, &use_input_for_lid));
@@ -74,7 +82,7 @@ void PowerManDaemon::Init() {
   // Acquire a handle to the console for VT switch locking ioctl.
   CHECK(GetConsole());
   input_.RegisterHandler(&(PowerManDaemon::OnInputEvent), this);
-  CHECK(input_.Init()) << "Cannot initialize input interface.";
+  CHECK(input_.Init(wakeup_inputs)) << "Cannot initialize input interface.";
   lid_open_file_ = FilePath(run_dir_).Append(kLidOpenFile);
   if (input_.num_lid_events() > 0) {
     input_.QueryLidState(&input_lidstate);
@@ -83,8 +91,11 @@ void PowerManDaemon::Init() {
     LOG(INFO) << "PowerM Daemon Init - lid "
               << (lidstate_ == LID_STATE_CLOSED ? "closed." : "opened.");
     if (lidstate_ == LID_STATE_CLOSED) {
+      input_.DisableWakeInputs();
       LOG(INFO) << "PowerM Daemon Init - lid is closed; generating event";
       OnInputEvent(this, LID, input_lidstate);
+    } else {
+      input_.EnableWakeInputs();
     }
   }
   RegisterDBusMessageHandler();
@@ -149,6 +160,7 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
         break;
       }
       if (daemon->lidstate_ == LID_STATE_CLOSED) {
+        daemon->input_.DisableWakeInputs();
         util::SendSignalToPowerD(kLidClosed);
         // Check that powerd stuck around to act on  this event.  If not,
         // callback will assume suspend responsibilities.
@@ -157,6 +169,7 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
                                                        daemon->lid_id_,
                                                        daemon->powerd_id_));
       } else {
+        daemon->input_.EnableWakeInputs();
         util::CreateStatusFile(daemon->lid_open_file_);
         util::SendSignalToPowerD(kLidOpened);
       }

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWER_PREFS_H_
 
 #include <glib.h>
+#include <string>
 
 #include "base/file_path.h"
 #include "power_manager/inotify.h"
@@ -21,6 +22,7 @@ class PowerPrefs : public PowerPrefsInterface {
   bool StartPrefWatching(Inotify::InotifyCallback callback, gpointer data);
 
   // Overridden from PowerPrefsInterface:
+  virtual bool GetString(const char* name, std::string* value);
   virtual bool GetInt64(const char* name, int64* value);
   virtual bool SetInt64(const char* name, int64 value);
   virtual bool GetDouble(const char* name, double* value);
