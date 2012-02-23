@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <base/stl_util-inl.h>
+#include <base/string_number_conversions.h>
 
 #include "shill/shill_ares.h"
 #include "shill/shill_time.h"
@@ -52,7 +53,7 @@ DNSClient::DNSClient(IPAddress::Family family,
                      const vector<string> &dns_servers,
                      int timeout_ms,
                      EventDispatcher *dispatcher,
-                     Callback1<bool>::Type *callback)
+                     ClientCallback *callback)
     : address_(IPAddress(family)),
       interface_name_(interface_name),
       dns_servers_(dns_servers),
@@ -71,9 +72,10 @@ DNSClient::~DNSClient() {
   Stop();
 }
 
-bool DNSClient::Start(const string &hostname) {
+bool DNSClient::Start(const string &hostname, Error *error) {
   if (running_) {
-    LOG(ERROR) << "Only one DNS request is allowed at a time";
+    Error::PopulateAndLog(error, Error::kInProgress,
+                          "Only one DNS request is allowed at a time");
     return false;
   }
 
@@ -92,7 +94,8 @@ bool DNSClient::Start(const string &hostname) {
     }
 
     if (server_addresses.empty()) {
-      LOG(ERROR) << "No valid DNS server addresses";
+      Error::PopulateAndLog(error, Error::kInvalidArguments,
+                            "No valid DNS server addresses");
       return false;
     }
 
@@ -105,7 +108,9 @@ bool DNSClient::Start(const string &hostname) {
                                    &options,
                                    ARES_OPT_SERVERS | ARES_OPT_TIMEOUTMS);
     if (status != ARES_SUCCESS) {
-      LOG(ERROR) << "ARES initialization returns error code: " << status;
+      Error::PopulateAndLog(error, Error::kOperationFailed,
+                            "ARES initialization returns error code: " +
+                            base::IntToString(status));
       resolver_state_.reset();
       return false;
     }
@@ -115,12 +120,12 @@ bool DNSClient::Start(const string &hostname) {
 
   running_ = true;
   time_->GetTimeMonotonic(&resolver_state_->start_time_);
-  error_.clear();
   ares_->GetHostByName(resolver_state_->channel, hostname.c_str(),
                        address_.family(), ReceiveDNSReplyCB, this);
 
   if (!RefreshHandles()) {
     LOG(ERROR) << "Impossibly short timeout.";
+    error->CopyFrom(error_);
     Stop();
     return false;
   }
@@ -129,14 +134,39 @@ bool DNSClient::Start(const string &hostname) {
 }
 
 void DNSClient::Stop() {
+  VLOG(3) << "In " << __func__;
   if (!resolver_state_.get()) {
     return;
   }
 
   running_ = false;
   task_factory_.RevokeAll();
+  error_.Reset();
+  address_.SetAddressToDefault();
   ares_->Destroy(resolver_state_->channel);
   resolver_state_.reset();
+}
+
+// We delay our call to completion so that we exit all IOHandlers, and
+// can clean up all of our local state before calling the callback, or
+// during the process of the execution of the callee (which is free to
+// call our destructor safely).
+void DNSClient::HandleCompletion() {
+  VLOG(3) << "In " << __func__;
+  Error error;
+  error.CopyFrom(error_);
+  IPAddress address(address_);
+  if (!error.IsSuccess()) {
+    // If the DNS request did not succeed, do not trust it for future
+    // attempts.
+    Stop();
+  } else {
+    // Prepare our state for the next request without destroying the
+    // current ARES state.
+    error_.Reset();
+    address_.SetAddressToDefault();
+  }
+  callback_->Run(error, address);
 }
 
 void DNSClient::HandleDNSRead(int fd) {
@@ -151,19 +181,7 @@ void DNSClient::HandleDNSWrite(int fd) {
 
 void DNSClient::HandleTimeout() {
   ares_->ProcessFd(resolver_state_->channel, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
-  if (!RefreshHandles()) {
-    // If we have timed out, ARES might still have sockets open.
-    // Force them closed by doing an explicit shutdown.  This is
-    // different from HandleDNSRead and HandleDNSWrite where any
-    // change in our running_ state would be as a result of ARES
-    // itself and therefore properly synchronized with it: if a
-    // search completes during the course of ares_->ProcessFd(),
-    // the ARES fds and other state is guaranteed to have cleaned
-    // up and ready for a new request.  Since this timeout is
-    // genererated outside of the library it is best to completely
-    // shutdown ARES and start with fresh state for a new request.
-    Stop();
-  }
+  RefreshHandles();
 }
 
 void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
@@ -171,7 +189,11 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
     // We can be called during ARES shutdown -- ignore these events.
     return;
   }
+  VLOG(3) << "In " << __func__;
   running_ = false;
+  task_factory_.RevokeAll();
+  dispatcher_->PostTask(task_factory_.NewRunnableMethod(
+      &DNSClient::HandleCompletion));
 
   if (status == ARES_SUCCESS &&
       hostent != NULL &&
@@ -182,41 +204,40 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
     address_ = IPAddress(address_.family(),
                          ByteString(reinterpret_cast<unsigned char *>(
                              hostent->h_addr_list[0]), hostent->h_length));
-    callback_->Run(true);
   } else {
     switch (status) {
       case ARES_ENODATA:
-        error_ = kErrorNoData;
+        error_.Populate(Error::kOperationFailed, kErrorNoData);
         break;
       case ARES_EFORMERR:
-        error_ = kErrorFormErr;
+        error_.Populate(Error::kOperationFailed, kErrorFormErr);
         break;
       case ARES_ESERVFAIL:
-        error_ = kErrorServerFail;
+        error_.Populate(Error::kOperationFailed, kErrorServerFail);
         break;
       case ARES_ENOTFOUND:
-        error_ = kErrorNotFound;
+        error_.Populate(Error::kOperationFailed, kErrorNotFound);
         break;
       case ARES_ENOTIMP:
-        error_ = kErrorNotImp;
+        error_.Populate(Error::kOperationFailed, kErrorNotImp);
         break;
       case ARES_EREFUSED:
-        error_ = kErrorRefused;
+        error_.Populate(Error::kOperationFailed, kErrorRefused);
         break;
       case ARES_EBADQUERY:
       case ARES_EBADNAME:
       case ARES_EBADFAMILY:
       case ARES_EBADRESP:
-        error_ = kErrorBadQuery;
+        error_.Populate(Error::kOperationFailed, kErrorBadQuery);
         break;
       case ARES_ECONNREFUSED:
-        error_ = kErrorNetRefused;
+        error_.Populate(Error::kOperationFailed, kErrorNetRefused);
         break;
       case ARES_ETIMEOUT:
-        error_ = kErrorTimedOut;
+        error_.Populate(Error::kOperationTimeout, kErrorTimedOut);
         break;
       default:
-        error_ = kErrorUnknown;
+        error_.Populate(Error::kOperationFailed, kErrorUnknown);
         if (status == ARES_SUCCESS) {
           LOG(ERROR) << "ARES returned success but hostent was invalid!";
         } else {
@@ -224,7 +245,6 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
         }
         break;
     }
-    callback_->Run(false);
   }
 }
 
@@ -246,7 +266,7 @@ bool DNSClient::RefreshHandles() {
 
   ares_socket_t sockets[ARES_GETSOCK_MAXNUM];
   int action_bits = ares_->GetSock(resolver_state_->channel, sockets,
-                                 ARES_GETSOCK_MAXNUM);
+                                   ARES_GETSOCK_MAXNUM);
 
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
@@ -274,9 +294,8 @@ bool DNSClient::RefreshHandles() {
   }
 
   if (!running_) {
-    // We are here just to clean up socket and timer handles, and the
-    // ARES state was cleaned up during the last call to ares_process_fd().
-    task_factory_.RevokeAll();
+    // We are here just to clean up socket handles, and the ARES state was
+    // cleaned up during the last call to ares_->ProcessFd().
     return false;
   }
 
@@ -287,28 +306,29 @@ bool DNSClient::RefreshHandles() {
   timersub(&now, &resolver_state_->start_time_, &elapsed_time);
   timeout_tv.tv_sec = timeout_ms_ / 1000;
   timeout_tv.tv_usec = (timeout_ms_ % 1000) * 1000;
+  task_factory_.RevokeAll();
+
   if (timercmp(&elapsed_time, &timeout_tv, >=)) {
     // There are 3 cases of interest:
-    //  - If we got here from Start(), we will have the side-effect of
-    //    both invoking the callback and returning False in Start().
-    //    Start() will call Stop() which will shut down ARES.
-    //  - If we got here from the tail of an IO event (racing with the
-    //    timer, we can't call Stop() since that will blow away the
-    //    IOHandler we are running in, however we will soon be called
-    //    again by the timeout proc so we can clean up the ARES state
-    //    then.
-    //  - If we got here from a timeout handler, it will safely call
-    //    Stop() when we return false.
-    error_ = kErrorTimedOut;
-    callback_->Run(false);
+    //  - If we got here from Start(), when we return, Stop() will be
+    //    called, so our cleanup task will not run, so we will not have the
+    //    side-effect of both invoking the callback and returning False
+    //    in Start().
+    //  - If we got here from the tail of an IO event, we can't call
+    //    Stop() since that will blow away the IOHandler we are running
+    //    in.  We will perform the cleanup in the posted task below.
+    //  - If we got here from a timeout handler, we will perform cleanup
+    //    in the posted task.
     running_ = false;
+    error_.Populate(Error::kOperationTimeout, kErrorTimedOut);
+    dispatcher_->PostTask(task_factory_.NewRunnableMethod(
+        &DNSClient::HandleCompletion));
     return false;
   } else {
     struct timeval max, ret_tv;
     timersub(&timeout_tv, &elapsed_time, &max);
     struct timeval *tv = ares_->Timeout(resolver_state_->channel,
                                         &max, &ret_tv);
-    task_factory_.RevokeAll();
     dispatcher_->PostDelayedTask(
         task_factory_.NewRunnableMethod(&DNSClient::HandleTimeout),
         tv->tv_sec * 1000 + tv->tv_usec / 1000);

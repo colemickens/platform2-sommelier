@@ -273,12 +273,8 @@ class HTTPProxyTest : public Test {
     EXPECT_EQ(line, proxy_.client_headers_[0] + "\r\n");
   }
   void ExpectDNSRequest(const string &host, bool return_value) {
-    EXPECT_CALL(*dns_client_, Start(StrEq(host)))
+    EXPECT_CALL(*dns_client_, Start(StrEq(host), _))
         .WillOnce(Return(return_value));
-  }
-  void ExpectDNSFailure(const string &error) {
-    EXPECT_CALL(*dns_client_, error())
-        .WillOnce(ReturnRef(error));
   }
   void ExpectAsyncConnect(const string &address, int port,
                           bool return_value) {
@@ -354,8 +350,14 @@ class HTTPProxyTest : public Test {
   void AcceptClient(int fd) {
     proxy_.AcceptClient(fd);
   }
-  void GetDNSResult(bool result) {
-    proxy_.GetDNSResult(result);
+  void GetDNSResultFailure(const string &error_msg) {
+    Error error(Error::kOperationFailed, error_msg);
+    IPAddress address(IPAddress::kFamilyUnknown);
+    proxy_.GetDNSResult(error, address);
+  }
+  void GetDNSResultSuccess(const IPAddress &address) {
+    Error error;
+    proxy_.GetDNSResult(error, address);
   }
   void OnConnectCompletion(bool result, int sockfd) {
     proxy_.OnConnectCompletion(result, sockfd);
@@ -411,9 +413,7 @@ class HTTPProxyTest : public Test {
     ReadFromClient(CreateRequest(url, http_version, extra_lines));
     IPAddress addr(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(addr.SetAddressFromString(kServerAddress));
-    EXPECT_CALL(*dns_client_, address())
-        .WillOnce(ReturnRef(addr));;
-    GetDNSResult(true);
+    GetDNSResultSuccess(addr);
   }
   void SetupConnect() {
     SetupConnectWithRequest("/", "1.1", "Host: www.chromium.org:40506");
@@ -617,8 +617,7 @@ TEST_F(HTTPProxyTest, DNSRequestDelayedFailure) {
   ReadFromClient(CreateRequest("/", "1.1", "Host: www.chromium.org:40506"));
   ExpectClientResult();
   const std::string not_found_error(DNSClient::kErrorNotFound);
-  ExpectDNSFailure(not_found_error);
-  GetDNSResult(false);
+  GetDNSResultFailure(not_found_error);
   ExpectClientError(502, string("Could not resolve hostname: ") +
                     not_found_error);
 }

@@ -22,6 +22,7 @@
 
 namespace shill {
 
+class ByteString;
 class EventDispatcher;
 class PortalDetector;
 class Time;
@@ -120,8 +121,9 @@ class PortalDetector {
   static const char kStatusTimeoutString[];
 
   void CompleteAttempt(Result result);
-  void RequestReadCallback(int read_length);
-  void RequestResultCallback(HTTPRequest::Result result);
+  void RequestReadCallback(const ByteString &response_data);
+  void RequestResultCallback(HTTPRequest::Result result,
+                             const ByteString &response_data);
   void StartAttempt();
   void StartAttemptTask();
   void StopAttempt();
@@ -133,8 +135,9 @@ class PortalDetector {
   EventDispatcher *dispatcher_;
   Callback1<const Result &>::Type *portal_result_callback_;
   scoped_ptr<HTTPRequest> request_;
-  scoped_ptr<Callback1<int>::Type> request_read_callback_;
-  scoped_ptr<Callback1<HTTPRequest::Result>::Type> request_result_callback_;
+  scoped_ptr<Callback1<const ByteString &>::Type> request_read_callback_;
+  scoped_ptr<Callback2<HTTPRequest::Result, const ByteString &>::Type>
+      request_result_callback_;
   Sockets sockets_;
   ScopedRunnableMethodFactory<PortalDetector> task_factory_;
   Time *time_;

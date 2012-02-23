@@ -62,6 +62,10 @@ MATCHER_P(IsIPAddress, address, "") {
   return ip_address.Equals(arg);
 }
 
+MATCHER_P(ByteStringMatches, byte_string, "") {
+  return byte_string.Equals(arg);
+}
+
 class HTTPRequestTest : public Test {
  public:
   HTTPRequestTest()
@@ -84,18 +88,21 @@ class HTTPRequestTest : public Test {
           result_callback_(
               NewCallback(this, &CallbackTarget::ResultCallTarget)) {}
 
-    MOCK_METHOD1(ReadEventCallTarget, void(int byte_count));
-    MOCK_METHOD1(ResultCallTarget, void(HTTPRequest::Result));
-    Callback1<int>::Type *read_event_callback() {
+    MOCK_METHOD1(ReadEventCallTarget, void(const ByteString &response_data));
+    MOCK_METHOD2(ResultCallTarget, void(HTTPRequest::Result result,
+                                        const ByteString &response_data));
+    Callback1<const ByteString &>::Type *read_event_callback() {
       return read_event_callback_.get();
     }
-    Callback1<HTTPRequest::Result>::Type *result_callback() {
+    Callback2<HTTPRequest::Result,
+        const ByteString &>::Type *result_callback() {
       return result_callback_.get();
     }
 
    private:
-    scoped_ptr<Callback1<int>::Type> read_event_callback_;
-    scoped_ptr<Callback1<HTTPRequest::Result>::Type> result_callback_;
+    scoped_ptr<Callback1<const ByteString &>::Type> read_event_callback_;
+    scoped_ptr<Callback2<HTTPRequest::Result, const ByteString &>::Type>
+        result_callback_;
   };
 
   virtual void SetUp() {
@@ -140,7 +147,6 @@ class HTTPRequestTest : public Test {
     EXPECT_FALSE(request_->result_callback_);
     EXPECT_FALSE(request_->read_event_callback_);
     EXPECT_TRUE(request_->task_factory_.empty());
-    EXPECT_FALSE(request_->idle_timeout_);
     EXPECT_FALSE(request_->read_server_handler_.get());
     EXPECT_FALSE(request_->write_server_handler_.get());
     EXPECT_EQ(dns_client_, request_->dns_client_.get());
@@ -182,12 +188,8 @@ class HTTPRequestTest : public Test {
     EXPECT_NE(string::npos, response_string.find(expected_response_data));
   }
   void ExpectDNSRequest(const string &host, bool return_value) {
-    EXPECT_CALL(*dns_client_, Start(StrEq(host)))
+    EXPECT_CALL(*dns_client_, Start(StrEq(host), _))
         .WillOnce(Return(return_value));
-  }
-  void ExpectDNSFailure(const string &error) {
-    EXPECT_CALL(*dns_client_, error())
-        .WillOnce(ReturnRef(error));
   }
   void ExpectAsyncConnect(const string &address, int port,
                           bool return_value) {
@@ -234,22 +236,30 @@ class HTTPRequestTest : public Test {
     EXPECT_CALL(*connection_.get(), ReleaseRouting());
   }
   void ExpectResultCallback(HTTPRequest::Result result) {
-    EXPECT_CALL(target_, ResultCallTarget(result));
+    EXPECT_CALL(target_, ResultCallTarget(result, _));
   }
-  void InvokeResultVerify(HTTPRequest::Result result) {
+  void InvokeResultVerify(HTTPRequest::Result result,
+                          const ByteString &response_data) {
     EXPECT_EQ(HTTPRequest::kResultSuccess, result);
-    EXPECT_TRUE(expected_response_.Equals(request_->response_data()));
+    EXPECT_TRUE(expected_response_.Equals(response_data));
   }
   void ExpectResultCallbackWithResponse(const string &response) {
     expected_response_ = ByteString(response, false);
-    EXPECT_CALL(target_, ResultCallTarget(HTTPRequest::kResultSuccess))
+    EXPECT_CALL(target_, ResultCallTarget(HTTPRequest::kResultSuccess, _))
         .WillOnce(Invoke(this, &HTTPRequestTest::InvokeResultVerify));
   }
-  void ExpectReadEventCallback(int byte_count) {
-    EXPECT_CALL(target_, ReadEventCallTarget(byte_count));
+  void ExpectReadEventCallback(const string &response) {
+    ByteString response_data(response, false);
+    EXPECT_CALL(target_, ReadEventCallTarget(ByteStringMatches(response_data)));
   }
-  void GetDNSResult(bool result) {
-    request_->GetDNSResult(result);
+  void GetDNSResultFailure(const string &error_msg) {
+    Error error(Error::kOperationFailed, error_msg);
+    IPAddress address(IPAddress::kFamilyUnknown);
+    request_->GetDNSResult(error, address);
+  }
+  void GetDNSResultSuccess(const IPAddress &address) {
+    Error error;
+    request_->GetDNSResult(error, address);
   }
   void OnConnectCompletion(bool result, int sockfd) {
     request_->OnConnectCompletion(result, sockfd);
@@ -277,9 +287,7 @@ class HTTPRequestTest : public Test {
     EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(url));
     IPAddress addr(IPAddress::kFamilyIPv4);
     EXPECT_TRUE(addr.SetAddressFromString(kServerAddress));
-    EXPECT_CALL(*dns_client_, address())
-        .WillOnce(ReturnRef(addr));;
-    GetDNSResult(true);
+    GetDNSResultSuccess(addr);
   }
   void SetupConnect() {
     SetupConnectWithURL(kTextURL, kTextSiteName);
@@ -366,11 +374,9 @@ TEST_F(HTTPRequestTest, FailDNSFailure) {
   ExpectRouteRequest();
   ExpectDNSRequest(kTextSiteName, true);
   EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kTextURL));
-  const string error(DNSClient::kErrorNoData);
-  ExpectDNSFailure(error);
   ExpectResultCallback(HTTPRequest::kResultDNSFailure);
   ExpectStop();
-  GetDNSResult(false);
+  GetDNSResultFailure(DNSClient::kErrorNoData);
   ExpectReset();
 }
 
@@ -378,11 +384,10 @@ TEST_F(HTTPRequestTest, FailDNSTimeout) {
   ExpectRouteRequest();
   ExpectDNSRequest(kTextSiteName, true);
   EXPECT_EQ(HTTPRequest::kResultInProgress, StartRequest(kTextURL));
-  const string error(DNSClient::kErrorTimedOut);
-  ExpectDNSFailure(error);
   ExpectResultCallback(HTTPRequest::kResultDNSTimeout);
   ExpectStop();
-  GetDNSResult(false);
+  const string error(DNSClient::kErrorTimedOut);
+  GetDNSResultFailure(error);
   ExpectReset();
 }
 
@@ -436,13 +441,13 @@ TEST_F(HTTPRequestTest, ResponseTimeout) {
 TEST_F(HTTPRequestTest, ResponseData) {
   SetupConnectComplete();
   const string response0("hello");
-  ExpectReadEventCallback(response0.length());
+  ExpectReadEventCallback(response0);
   ExpectSetInputTimeout();
   ReadFromServer(response0);
   ExpectInResponse(response0);
 
   const string response1(" to you");
-  ExpectReadEventCallback(response1.length());
+  ExpectReadEventCallback(response0 + response1);
   ExpectSetInputTimeout();
   ReadFromServer(response1);
   ExpectInResponse(response1);
@@ -450,6 +455,7 @@ TEST_F(HTTPRequestTest, ResponseData) {
   ExpectResultCallbackWithResponse(response0 + response1);
   ExpectStop();
   ReadFromServer("");
+  ExpectReset();
 }
 
 }  // namespace shill

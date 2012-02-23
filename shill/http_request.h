@@ -21,6 +21,7 @@ namespace shill {
 
 class AsyncConnection;
 class DNSClient;
+class Error;
 class EventDispatcher;
 class HTTPURL;
 class InputData;
@@ -53,27 +54,32 @@ class HTTPRequest {
   virtual ~HTTPRequest();
 
   // Start an http GET request to the URL |url|.  Whenever any data is
-  // read from the server, |read_event_callback| is called with the number
-  // of bytes read.  This callback could be called more than once as data
-  // arrives.  All callbacks can access the data as it is read in by
-  // using the response_data() getter below.
+  // read from the server, |read_event_callback| is called with the
+  // current contents of the response data coming from the server.
+  // This callback could be called more than once as data arrives.
   //
   // When the transaction completes, |result_callback| will be called with
-  // the final status from the transaction.  |result_callback| will not be
+  // the final status from the transaction.  It is valid for the callback
+  // function to destroy this HTTPRequest object, because at this time all
+  // object state has already been cleaned up.  |result_callback| will not be
   // called if either the Start() call fails or if Stop() is called before
   // the transaction completes.
   //
   // This (Start) function returns a failure result if the request
   // failed during initialization, or kResultInProgress if the request
   // has started successfully and is now in progress.
-  virtual Result Start(const HTTPURL &url,
-                       Callback1<int>::Type *read_event_callback,
-                       Callback1<Result>::Type *result_callback);
+  virtual Result Start(
+      const HTTPURL &url,
+      Callback1<const ByteString &>::Type *read_event_callback,
+      Callback2<Result, const ByteString &>::Type *result_callback);
 
   // Stop the current HTTPRequest.  No callback is called as a side
   // effect of this function.
   virtual void Stop();
 
+  // Returns the data received so far from the server in the current
+  // request.  This data is available only while the request is active,
+  // and before the result callback is called.
   virtual const ByteString &response_data() const { return response_data_; }
 
  private:
@@ -89,7 +95,7 @@ class HTTPRequest {
   static const char kHTTPRequestTemplate[];
 
   bool ConnectServer(const IPAddress &address, int port);
-  void GetDNSResult(bool result);
+  void GetDNSResult(const Error &error, const IPAddress &address);
   void OnConnectCompletion(bool success, int fd);
   void ReadFromServer(InputData *data);
   void SendStatus(Result result);
@@ -102,13 +108,13 @@ class HTTPRequest {
   Sockets *sockets_;
 
   scoped_ptr<Callback2<bool, int>::Type> connect_completion_callback_;
-  scoped_ptr<Callback1<bool>::Type> dns_client_callback_;
+  scoped_ptr<Callback2<const Error &, const IPAddress &>::Type>
+      dns_client_callback_;
   scoped_ptr<Callback1<InputData *>::Type> read_server_callback_;
   scoped_ptr<Callback1<int>::Type> write_server_callback_;
-  Callback1<Result>::Type *result_callback_;
-  Callback1<int>::Type *read_event_callback_;
+  Callback2<Result, const ByteString &>::Type *result_callback_;
+  Callback1<const ByteString &>::Type *read_event_callback_;
   ScopedRunnableMethodFactory<HTTPRequest> task_factory_;
-  CancelableTask *idle_timeout_;
   scoped_ptr<IOHandler> read_server_handler_;
   scoped_ptr<IOHandler> write_server_handler_;
   scoped_ptr<DNSClient> dns_client_;

@@ -17,10 +17,8 @@ class MockDNSClient : public DNSClient {
   MockDNSClient();
   virtual ~MockDNSClient();
 
-  MOCK_METHOD1(Start, bool(const std::string &hostname));
+  MOCK_METHOD2(Start, bool(const std::string &hostname, Error *error));
   MOCK_METHOD0(Stop, void());
-  MOCK_CONST_METHOD0(address, const IPAddress &());
-  MOCK_CONST_METHOD0(error, const std::string &());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDNSClient);

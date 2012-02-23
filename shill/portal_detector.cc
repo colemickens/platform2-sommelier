@@ -162,9 +162,8 @@ PortalDetector::Result PortalDetector::GetPortalResultForRequestResult(
   }
 }
 
-void PortalDetector::RequestReadCallback(int /*read_length*/) {
+void PortalDetector::RequestReadCallback(const ByteString &response_data) {
   const string response_expected(kResponseExpected);
-  const ByteString &response_data = request_->response_data();
   bool expected_length_received = false;
   int compare_length = 0;
   if (response_data.GetLength() < response_expected.length()) {
@@ -188,7 +187,8 @@ void PortalDetector::RequestReadCallback(int /*read_length*/) {
   }
 }
 
-void PortalDetector::RequestResultCallback(HTTPRequest::Result result) {
+void PortalDetector::RequestResultCallback(
+    HTTPRequest::Result result, const ByteString &/*response_data*/) {
   CompleteAttempt(GetPortalResultForRequestResult(result));
 }
 

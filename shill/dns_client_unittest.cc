@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/io_handler.h"
 #include "shill/mock_ares.h"
@@ -50,9 +51,18 @@ const int kAresTimeoutMS = 2000;  // ARES transaction timeout
 const int kAresWaitMS = 1000;     // Time period ARES asks caller to wait
 }  // namespace {}
 
+MATCHER_P(IsSuccess, is_success, "") {
+  return is_success == arg.IsSuccess();
+}
+
+MATCHER_P2(IsFailure, failure_type, failure_message, "") {
+  return failure_type == arg.type() && failure_message == arg.message();
+}
+
 class DNSClientTest : public Test {
  public:
-  DNSClientTest() : ares_result_(ARES_SUCCESS) {
+  DNSClientTest()
+      : ares_result_(ARES_SUCCESS), address_result_(IPAddress::kFamilyUnknown) {
     time_val_.tv_sec = 0;
     time_val_.tv_usec = 0;
     ares_timeout_.tv_sec = kAresWaitMS / 1000;
@@ -98,6 +108,10 @@ class DNSClientTest : public Test {
 
   void CallTimeout() {
     dns_client_->HandleTimeout();
+  }
+
+  void CallCompletion() {
+    dns_client_->HandleCompletion();
   }
 
   void CreateClient(const vector<string> &dns_servers, int timeout_ms) {
@@ -147,19 +161,49 @@ class DNSClientTest : public Test {
         .WillOnce(ReturnNew<IOHandler>());
     SetActive();
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, kAresWaitMS));
-    ASSERT_TRUE(dns_client_->Start(kGoodName));
+    Error error;
+    ASSERT_TRUE(dns_client_->Start(kGoodName, &error));
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_CALL(ares_, Destroy(kAresChannel));
   }
 
   void TestValidCompletion() {
-    EXPECT_CALL(callback_target_, CallTarget(true));
     EXPECT_CALL(ares_, ProcessFd(kAresChannel, kAresFd, ARES_SOCKET_BAD))
         .WillOnce(InvokeWithoutArgs(this, &DNSClientTest::CallReplyCB));
+    ExpectPostCompletionTask();
     CallDNSRead();
-    ASSERT_TRUE(dns_client_->address().IsValid());
-    IPAddress ipaddr(dns_client_->address().family());
+
+    // Make sure that the address value is correct as held in the DNSClient.
+    ASSERT_TRUE(dns_client_->address_.IsValid());
+    IPAddress ipaddr(dns_client_->address_.family());
     ASSERT_TRUE(ipaddr.SetAddressFromString(kResult));
-    EXPECT_TRUE(ipaddr.Equals(dns_client_->address()));
+    EXPECT_TRUE(ipaddr.Equals(dns_client_->address_));
+
+    // Make sure the callback gets called with a success result, and save
+    // the callback address argument in |address_result_|.
+    EXPECT_CALL(callback_target_, CallTarget(IsSuccess(true), _))
+        .WillOnce(Invoke(this, &DNSClientTest::SaveCallbackArgs));
+    CallCompletion();
+
+    // Make sure the address was successfully passed to the callback.
+    EXPECT_TRUE(ipaddr.Equals(address_result_));
+    EXPECT_TRUE(dns_client_->address_.IsDefault());
+  }
+
+  void SaveCallbackArgs(const Error &error, const IPAddress &address)  {
+    error_result_.CopyFrom(error);
+    address_result_ = address;
+  }
+
+  void ExpectPostCompletionTask() {
+    EXPECT_CALL(dispatcher_, PostTask(_));
+  }
+
+  void ExpectReset() {
+    EXPECT_TRUE(dns_client_->address_.family() == IPAddress::kFamilyIPv4);
+    EXPECT_TRUE(dns_client_->address_.IsDefault());
+    EXPECT_TRUE(dns_client_->task_factory_.empty());
+    EXPECT_FALSE(dns_client_->resolver_state_.get());
   }
 
  protected:
@@ -168,15 +212,16 @@ class DNSClientTest : public Test {
     DNSCallbackTarget()
         : callback_(NewCallback(this, &DNSCallbackTarget::CallTarget)) {}
 
-    MOCK_METHOD1(CallTarget, void(bool success));
-    Callback1<bool>::Type *callback() { return callback_.get(); }
+    MOCK_METHOD2(CallTarget, void(const Error &error,
+                                  const IPAddress &address));
+    DNSClient::ClientCallback *callback() { return callback_.get(); }
 
    private:
-    scoped_ptr<Callback1<bool>::Type> callback_;
+    scoped_ptr<DNSClient::ClientCallback> callback_;
   };
 
   scoped_ptr<DNSClient> dns_client_;
-  MockEventDispatcher dispatcher_;
+  StrictMock<MockEventDispatcher> dispatcher_;
   string queued_request_;
   StrictMock<DNSCallbackTarget> callback_target_;
   StrictMock<MockAres> ares_;
@@ -185,6 +230,8 @@ class DNSClientTest : public Test {
   struct timeval ares_timeout_;
   struct hostent hostent_;
   int ares_result_;
+  Error error_result_;
+  IPAddress address_result_;
 };
 
 class SentinelIOHandler : public IOHandler {
@@ -197,14 +244,15 @@ TEST_F(DNSClientTest, Constructor) {
   vector<string> dns_servers;
   dns_servers.push_back(kGoodServer);
   CreateClient(dns_servers, kAresTimeoutMS);
-  EXPECT_TRUE(dns_client_->address().family() == IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(dns_client_->address().IsDefault());
+  ExpectReset();
 }
 
 // Receive error because no DNS servers were specified.
 TEST_F(DNSClientTest, NoServers) {
   CreateClient(vector<string>(), kAresTimeoutMS);
-  EXPECT_FALSE(dns_client_->Start(kGoodName));
+  Error error;
+  EXPECT_FALSE(dns_client_->Start(kGoodName, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 // Receive error because the DNS server IP address is invalid.
@@ -212,7 +260,9 @@ TEST_F(DNSClientTest, TimeoutInvalidServer) {
   vector<string> dns_servers;
   dns_servers.push_back(kBadServer);
   CreateClient(dns_servers, kAresTimeoutMS);
-  ASSERT_FALSE(dns_client_->Start(kGoodName));
+  Error error;
+  ASSERT_FALSE(dns_client_->Start(kGoodName, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 // Setup error because InitOptions failed.
@@ -222,13 +272,17 @@ TEST_F(DNSClientTest, InitOptionsFailure) {
   CreateClient(dns_servers, kAresTimeoutMS);
   EXPECT_CALL(ares_, InitOptions(_, _, _))
       .WillOnce(Return(ARES_EBADFLAGS));
-  EXPECT_FALSE(dns_client_->Start(kGoodName));
+  Error error;
+  EXPECT_FALSE(dns_client_->Start(kGoodName, &error));
+  EXPECT_EQ(Error::kOperationFailed, error.type());
 }
 
 // Fail a second request because one is already in progress.
 TEST_F(DNSClientTest, MultipleRequest) {
   StartValidRequest();
-  ASSERT_FALSE(dns_client_->Start(kGoodName));
+  Error error;
+  ASSERT_FALSE(dns_client_->Start(kGoodName, &error));
+  EXPECT_EQ(Error::kInProgress, error.type());
 }
 
 TEST_F(DNSClientTest, GoodRequest) {
@@ -277,10 +331,18 @@ TEST_F(DNSClientTest, TimeoutFirstRefresh) {
   EXPECT_CALL(time_, GetTimeMonotonic(_))
       .WillOnce(DoAll(SetArgumentPointee<0>(init_time_val), Return(0)))
       .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
-  EXPECT_CALL(callback_target_, CallTarget(false));
+  EXPECT_CALL(callback_target_, CallTarget(IsSuccess(false), _))
+      .Times(0);
   EXPECT_CALL(ares_, Destroy(kAresChannel));
-  ASSERT_FALSE(dns_client_->Start(kGoodName));
-  EXPECT_EQ(string(DNSClient::kErrorTimedOut), dns_client_->error());
+  Error error;
+  // Expect the DNSClient to post a completion task.  However this task will
+  // never run since the Stop() gets called before returning.  We confirm
+  // that the task indeed gets canceled below in ExpectReset().
+  ExpectPostCompletionTask();
+  ASSERT_FALSE(dns_client_->Start(kGoodName, &error));
+  EXPECT_EQ(Error::kOperationTimeout, error.type());
+  EXPECT_EQ(string(DNSClient::kErrorTimedOut), error.message());
+  ExpectReset();
 }
 
 // Failed request due to timeout within the dns_client.
@@ -289,8 +351,11 @@ TEST_F(DNSClientTest, TimeoutDispatcherEvent) {
   EXPECT_CALL(ares_, ProcessFd(kAresChannel,
                                ARES_SOCKET_BAD, ARES_SOCKET_BAD));
   AdvanceTime(kAresTimeoutMS);
-  EXPECT_CALL(callback_target_, CallTarget(false));
+  ExpectPostCompletionTask();
   CallTimeout();
+  EXPECT_CALL(callback_target_, CallTarget(
+      IsFailure(Error::kOperationTimeout, DNSClient::kErrorTimedOut), _));
+  CallCompletion();
 }
 
 // Failed request due to timeout reported by ARES.
@@ -300,9 +365,11 @@ TEST_F(DNSClientTest, TimeoutFromARES) {
   ares_result_ = ARES_ETIMEOUT;
   EXPECT_CALL(ares_, ProcessFd(kAresChannel, ARES_SOCKET_BAD, ARES_SOCKET_BAD))
         .WillOnce(InvokeWithoutArgs(this, &DNSClientTest::CallReplyCB));
-  EXPECT_CALL(callback_target_, CallTarget(false));
+  ExpectPostCompletionTask();
   CallTimeout();
-  EXPECT_EQ(string(DNSClient::kErrorTimedOut), dns_client_->error());
+  EXPECT_CALL(callback_target_, CallTarget(
+      IsFailure(Error::kOperationTimeout, DNSClient::kErrorTimedOut), _));
+  CallCompletion();
 }
 
 // Failed request due to "host not found" reported by ARES.
@@ -312,9 +379,11 @@ TEST_F(DNSClientTest, HostNotFound) {
   ares_result_ = ARES_ENOTFOUND;
   EXPECT_CALL(ares_, ProcessFd(kAresChannel, kAresFd, ARES_SOCKET_BAD))
       .WillOnce(InvokeWithoutArgs(this, &DNSClientTest::CallReplyCB));
-  EXPECT_CALL(callback_target_, CallTarget(false));
+  ExpectPostCompletionTask();
   CallDNSRead();
-  EXPECT_EQ(string(DNSClient::kErrorNotFound), dns_client_->error());
+  EXPECT_CALL(callback_target_, CallTarget(
+      IsFailure(Error::kOperationFailed, DNSClient::kErrorNotFound), _));
+  CallCompletion();
 }
 
 // Make sure IOHandles are deallocated when GetSock() reports them gone.
@@ -327,7 +396,8 @@ TEST_F(DNSClientTest, IOHandleDeallocGetSock) {
       .WillOnce(Return(io_handler));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, kAresWaitMS));
   SetActive();
-  ASSERT_TRUE(dns_client_->Start(kGoodName));
+  Error error;
+  ASSERT_TRUE(dns_client_->Start(kGoodName, &error));
   AdvanceTime(kAresWaitMS);
   SetInActive();
   EXPECT_CALL(*io_handler, Die());
@@ -347,7 +417,8 @@ TEST_F(DNSClientTest, IOHandleDeallocStop) {
       .WillOnce(Return(io_handler));
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, kAresWaitMS));
   SetActive();
-  ASSERT_TRUE(dns_client_->Start(kGoodName));
+  Error error;
+  ASSERT_TRUE(dns_client_->Start(kGoodName, &error));
   EXPECT_CALL(*io_handler, Die());
   EXPECT_CALL(ares_, Destroy(kAresChannel));
   dns_client_->Stop();

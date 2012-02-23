@@ -13,6 +13,7 @@
 #include "shill/async_connection.h"
 #include "shill/connection.h"
 #include "shill/dns_client.h"
+#include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/http_url.h"
 #include "shill/ip_address.h"
@@ -46,7 +47,6 @@ HTTPRequest::HTTPRequest(ConnectionRefPtr connection,
       result_callback_(NULL),
       read_event_callback_(NULL),
       task_factory_(this),
-      idle_timeout_(NULL),
       dns_client_(
           new DNSClient(IPAddress::kFamilyIPv4,
                         connection->interface_name(),
@@ -69,8 +69,8 @@ HTTPRequest::~HTTPRequest() {
 
 HTTPRequest::Result HTTPRequest::Start(
     const HTTPURL &url,
-    Callback1<int>::Type *read_event_callback,
-    Callback1<Result>::Type *result_callback) {
+    Callback1<const ByteString &>::Type *read_event_callback,
+    Callback2<Result, const ByteString &>::Type *result_callback) {
   VLOG(3) << "In " << __func__;
 
   DCHECK(!is_running_);
@@ -94,8 +94,9 @@ HTTPRequest::Result HTTPRequest::Start(
     }
   } else {
     VLOG(3) << "Looking up host: " << server_hostname_;
-    if (!dns_client_->Start(server_hostname_)) {
-      LOG(ERROR) << "Failed to start DNS client";
+    Error error;
+    if (!dns_client_->Start(server_hostname_, &error)) {
+      LOG(ERROR) << "Failed to start DNS client: " << error.message();
       Stop();
       return kResultDNSFailure;
     }
@@ -122,7 +123,6 @@ void HTTPRequest::Stop() {
 
   connection_->ReleaseRouting();
   dns_client_->Stop();
-  idle_timeout_ = NULL;
   is_running_ = false;
   result_callback_ = NULL;
   read_event_callback_ = NULL;
@@ -155,22 +155,21 @@ bool HTTPRequest::ConnectServer(const IPAddress &address, int port) {
 }
 
 // DNSClient callback that fires when the DNS request completes.
-void HTTPRequest::GetDNSResult(bool result) {
+void HTTPRequest::GetDNSResult(const Error &error, const IPAddress &address) {
   VLOG(3) << "In " << __func__;
-  if (!result) {
-    const string &error = dns_client_->error();
+  if (!error.IsSuccess()) {
     LOG(ERROR) << "Could not resolve hostname "
                << server_hostname_
                << ": "
-               << error;
-    if (error == DNSClient::kErrorTimedOut) {
+               << error.message();
+    if (error.message() == DNSClient::kErrorTimedOut) {
       SendStatus(kResultDNSTimeout);
     } else {
       SendStatus(kResultDNSFailure);
     }
     return;
   }
-  ConnectServer(dns_client_->address(), server_port_);
+  ConnectServer(address, server_port_);
 }
 
 // AsyncConnection callback routine which fires when the asynchronous Connect()
@@ -203,27 +202,33 @@ void HTTPRequest::ReadFromServer(InputData *data) {
   }
 
   response_data_.Append(ByteString(data->buf, data->len));
-  if (read_event_callback_) {
-    read_event_callback_->Run(data->len);
-  }
   StartIdleTimeout(kInputTimeoutSeconds, kResultResponseTimeout);
+  if (read_event_callback_) {
+    read_event_callback_->Run(response_data_);
+  }
 }
 
 void HTTPRequest::SendStatus(Result result) {
-  if (result_callback_) {
-    result_callback_->Run(result);
-  }
+  // Save copies on the stack, since Stop() will remove them.
+  Callback2<Result, const ByteString &>::Type *result_callback =
+      result_callback_;
+  const ByteString response_data(response_data_);
   Stop();
+
+  // Call the callback last, since it may delete us and |this| may no longer
+  // be valid.
+  if (result_callback) {
+    result_callback->Run(result, response_data);
+  }
 }
 
 // Start a timeout for "the next event".
 void HTTPRequest::StartIdleTimeout(int timeout_seconds, Result timeout_result) {
-  if (idle_timeout_) {
-    idle_timeout_->Cancel();
-  }
   timeout_result_ = timeout_result;
-  idle_timeout_ = task_factory_.NewRunnableMethod(&HTTPRequest::TimeoutTask);
-  dispatcher_->PostDelayedTask(idle_timeout_, timeout_seconds * 1000);
+  task_factory_.RevokeAll();
+  dispatcher_->PostDelayedTask(
+      task_factory_.NewRunnableMethod(&HTTPRequest::TimeoutTask),
+      timeout_seconds * 1000);
 }
 
 void HTTPRequest::TimeoutTask() {

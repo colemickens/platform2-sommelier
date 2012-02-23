@@ -13,6 +13,7 @@
 #include <base/task.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
 #include "shill/refptr_types.h"
@@ -25,9 +26,11 @@ class Ares;
 class Time;
 struct DNSClientState;
 
-// Implements a DNS resolution client that can run asynchronously
+// Implements a DNS resolution client that can run asynchronously.
 class DNSClient {
  public:
+  typedef Callback2<const Error &, const IPAddress &>::Type ClientCallback;
+
   static const int kDefaultTimeoutMS;
   static const char kErrorNoData[];
   static const char kErrorFormErr[];
@@ -45,17 +48,24 @@ class DNSClient {
             const std::vector<std::string> &dns_servers,
             int timeout_ms,
             EventDispatcher *dispatcher,
-            Callback1<bool>::Type *callback);
+            ClientCallback *callback);
   virtual ~DNSClient();
 
-  virtual bool Start(const std::string &hostname);
+  // Returns true if the DNS client started successfully, false otherwise.
+  // If successful, the callback will be called with the result of the
+  // request.  If Start() fails and returns false, the callback will not
+  // be called, but the error that caused the failure will be returned in
+  // |error|.
+  virtual bool Start(const std::string &hostname, Error *error);
+
+  // Aborts any running DNS client transaction.  This will cancel any callback
+  // invocation.
   virtual void Stop();
-  virtual const IPAddress &address() const { return address_; }
-  virtual const std::string &error() const { return error_; }
 
  private:
   friend class DNSClientTest;
 
+  void HandleCompletion();
   void HandleDNSRead(int fd);
   void HandleDNSWrite(int fd);
   void HandleTimeout();
@@ -64,14 +74,14 @@ class DNSClient {
                                 struct hostent *hostent);
   bool RefreshHandles();
 
+  Error error_;
   IPAddress address_;
   std::string interface_name_;
   std::vector<std::string> dns_servers_;
   EventDispatcher *dispatcher_;
-  Callback1<bool>::Type *callback_;
+  ClientCallback *callback_;
   int timeout_ms_;
   bool running_;
-  std::string error_;
   scoped_ptr<DNSClientState> resolver_state_;
   scoped_ptr<Callback1<int>::Type> read_callback_;
   scoped_ptr<Callback1<int>::Type> write_callback_;

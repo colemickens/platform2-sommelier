@@ -19,8 +19,9 @@
 namespace shill {
 
 class AsyncConnection;
-class EventDispatcher;
 class DNSClient;
+class Error;
+class EventDispatcher;
 class InputData;
 class IOHandler;
 class IPAddress;
@@ -93,7 +94,7 @@ class HTTPProxy {
 
   void AcceptClient(int fd);
   bool ConnectServer(const IPAddress &address, int port);
-  void GetDNSResult(bool result);
+  void GetDNSResult(const Error &error, const IPAddress &address);
   void OnConnectCompletion(bool success, int fd);
   bool ParseClientRequest();
   bool ProcessLastHeaderLine();
@@ -119,7 +120,8 @@ class HTTPProxy {
   ConnectionRefPtr connection_;
   scoped_ptr<Callback1<int>::Type> accept_callback_;
   scoped_ptr<Callback2<bool, int>::Type> connect_completion_callback_;
-  scoped_ptr<Callback1<bool>::Type> dns_client_callback_;
+  scoped_ptr<Callback2<const Error &, const IPAddress &>::Type>
+      dns_client_callback_;
   scoped_ptr<Callback1<InputData *>::Type> read_client_callback_;
   scoped_ptr<Callback1<InputData *>::Type> read_server_callback_;
   scoped_ptr<Callback1<int>::Type> write_client_callback_;

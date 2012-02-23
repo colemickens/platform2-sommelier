@@ -190,13 +190,13 @@ bool HTTPProxy::ConnectServer(const IPAddress &address, int port) {
 }
 
 // DNSClient callback that fires when the DNS request completes.
-void HTTPProxy::GetDNSResult(bool result) {
-  if (!result) {
+void HTTPProxy::GetDNSResult(const Error &error, const IPAddress &address) {
+  if (!error.IsSuccess()) {
     SendClientError(502, string("Could not resolve hostname: ") +
-                    dns_client_->error());
+                    error.message());
     return;
   }
-  ConnectServer(dns_client_->address(), server_port_);
+  ConnectServer(address, server_port_);
 }
 
 // IOReadyHandler callback routine which fires when the asynchronous Connect()
@@ -301,8 +301,9 @@ bool HTTPProxy::ParseClientRequest() {
     }
   } else {
     VLOG(3) << "Looking up host: " << server_hostname_;
-    if (!dns_client_->Start(server_hostname_)) {
-      SendClientError(502, "Could not resolve hostname");
+    Error error;
+    if (!dns_client_->Start(server_hostname_, &error)) {
+      SendClientError(502, "Could not resolve hostname: " + error.message());
       return false;
     }
     state_ = kStateLookupServer;

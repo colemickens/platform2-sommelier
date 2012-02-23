@@ -166,9 +166,7 @@ class PortalDetectorTest : public Test {
 
   void AppendReadData(const string &read_data) {
     response_data_.Append(ByteString(read_data, false));
-    EXPECT_CALL(*http_request_, response_data())
-        .WillOnce(ReturnRef(response_data_));
-    portal_detector_->RequestReadCallback(response_data_.GetLength());
+    portal_detector_->RequestReadCallback(response_data_);
   }
 
  private:
@@ -285,7 +283,8 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   for (int i = 0; i < PortalDetector::kMaxRequestAttempts; i++) {
     portal_detector()->StartAttemptTask();
     AdvanceTime(PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000);
-    portal_detector()->RequestResultCallback(HTTPRequest::kResultDNSFailure);
+    portal_detector()->RequestResultCallback(HTTPRequest::kResultDNSFailure,
+                                             response_data());
   }
 
   ExpectReset();
