@@ -39,6 +39,7 @@ static void ConfigureObjectPool(ObjectPoolMock* op) {
   op->SetupFake();
   EXPECT_CALL(*op, Insert(_)).Times(AnyNumber());
   EXPECT_CALL(*op, Find(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*op, FindByHandle(_, _)).Times(AnyNumber());
   EXPECT_CALL(*op, Delete(_)).Times(AnyNumber());
 }
 
@@ -63,6 +64,10 @@ static Object* CreateObjectMock() {
   EXPECT_CALL(*o, SetAttributeString(_, _)).Times(AnyNumber());
   EXPECT_CALL(*o, SetAttributeInt(_, _)).Times(AnyNumber());
   EXPECT_CALL(*o, SetAttributeBool(_, _)).Times(AnyNumber());
+  EXPECT_CALL(*o, set_handle(_)).Times(AnyNumber());
+  EXPECT_CALL(*o, set_store_id(_)).Times(AnyNumber());
+  EXPECT_CALL(*o, handle()).Times(AnyNumber());
+  EXPECT_CALL(*o, store_id()).Times(AnyNumber());
   return o;
 }
 

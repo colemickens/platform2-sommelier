@@ -46,7 +46,8 @@ bool ObjectPoolImpl::Init() {
       if (Parse(it->second, object.get())) {
         object->set_handle(handle_generator_->CreateHandle());
         object->set_store_id(it->first);
-        objects_[object.get()] = object;
+        objects_.insert(object.get());
+        handle_object_map_[object->handle()] = object;
       } else {
         LOG(WARNING) << "Object not parsable: " << it->first;
       }
@@ -56,23 +57,20 @@ bool ObjectPoolImpl::Init() {
 }
 
 bool ObjectPoolImpl::GetInternalBlob(int blob_id, string* blob) {
-  if (store_.get()) {
+  if (store_.get())
     return store_->GetInternalBlob(blob_id, blob);
-  }
   return false;
 }
 
 bool ObjectPoolImpl::SetInternalBlob(int blob_id, const string& blob) {
-  if (store_.get()) {
+  if (store_.get())
     return store_->SetInternalBlob(blob_id, blob);
-  }
   return false;
 }
 
 void ObjectPoolImpl::SetKey(const string& key) {
-  if (store_.get()) {
+  if (store_.get())
     store_->SetEncryptionKey(key);
-  }
 }
 
 bool ObjectPoolImpl::Insert(Object* object) {
@@ -89,10 +87,11 @@ bool ObjectPoolImpl::Insert(Object* object) {
                                   serialized,
                                   &store_id))
       return false;
-    object->set_handle(handle_generator_->CreateHandle());
     object->set_store_id(store_id);
   }
-  objects_[object] = shared_ptr<const Object>(object);
+  object->set_handle(handle_generator_->CreateHandle());
+  objects_.insert(object);
+  handle_object_map_[object->handle()] = shared_ptr<const Object>(object);
   return true;
 }
 
@@ -103,6 +102,7 @@ bool ObjectPoolImpl::Delete(const Object* object) {
     if (!store_->DeleteObjectBlob(object->store_id()))
       return false;
   }
+  handle_object_map_.erase(object->handle());
   objects_.erase(object);
   return true;
 }
@@ -110,9 +110,18 @@ bool ObjectPoolImpl::Delete(const Object* object) {
 bool ObjectPoolImpl::Find(const Object* search_template,
                           vector<const Object*>* matching_objects) {
   for (ObjectSet::iterator it = objects_.begin(); it != objects_.end(); ++it) {
-    if (Matches(search_template, it->first))
-      matching_objects->push_back(it->first);
+    if (Matches(search_template, *it))
+      matching_objects->push_back(*it);
   }
+  return true;
+}
+
+bool ObjectPoolImpl::FindByHandle(int handle, const Object** object) {
+  CHECK(object);
+  HandleObjectMap::iterator it = handle_object_map_.find(handle);
+  if (it == handle_object_map_.end())
+    return false;
+  *object = it->second.get();
   return true;
 }
 

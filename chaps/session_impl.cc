@@ -51,7 +51,6 @@ SessionImpl::SessionImpl(int slot_id,
     : factory_(factory),
       find_results_valid_(false),
       is_read_only_(is_read_only),
-      last_handle_(0),
       slot_id_(slot_id),
       token_object_pool_(token_object_pool),
       tpm_utility_(tpm_utility) {
@@ -115,28 +114,24 @@ CK_RV SessionImpl::DestroyObject(int object_handle) {
       : session_object_pool_.get();
   if (!pool->Delete(object))
     return CKR_GENERAL_ERROR;
-  object_handle_map_.erase(object);
-  handle_object_map_.erase(object_handle);
   return CKR_OK;
 }
 
 bool SessionImpl::GetObject(int object_handle, const Object** object) {
   CHECK(object);
-  map<int, const Object*>::iterator it = handle_object_map_.find(object_handle);
-  if (it == handle_object_map_.end())
-    return false;
-  *object = it->second;
-  return true;
+  if (token_object_pool_->FindByHandle(object_handle, object))
+    return true;
+  return session_object_pool_->FindByHandle(object_handle, object);
 }
 
 bool SessionImpl::GetModifiableObject(int object_handle, Object** object) {
   CHECK(object);
-  map<int, const Object*>::iterator it = handle_object_map_.find(object_handle);
-  if (it == handle_object_map_.end())
+  const Object* const_object;
+  if (!GetObject(object_handle, &const_object))
     return false;
-  ObjectPool* pool = it->second->IsTokenObject() ? token_object_pool_
+  ObjectPool* pool = const_object->IsTokenObject() ? token_object_pool_
       : session_object_pool_.get();
-  *object = pool->GetModifiableObject(it->second);
+  *object = pool->GetModifiableObject(const_object);
   return true;
 }
 
@@ -162,7 +157,7 @@ CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
   find_results_offset_ = 0;
   find_results_valid_ = true;
   for (size_t i = 0; i < objects.size(); ++i) {
-    find_results_.push_back(GetHandle(objects[i]));
+    find_results_.push_back(objects[i]->handle());
   }
   return CKR_OK;
 }
@@ -472,7 +467,7 @@ CK_RV SessionImpl::GenerateKey(CK_MECHANISM_TYPE mechanism,
       : session_object_pool_.get();
   if (!pool->Insert(object.get()))
     return CKR_FUNCTION_FAILED;
-  *new_key_handle = GetHandle(object.release());
+  *new_key_handle = object.release()->handle();
   return CKR_OK;
 }
 
@@ -561,8 +556,8 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
     pool->Delete(public_object.release());
     return CKR_FUNCTION_FAILED;
   }
-  *new_public_key_handle = GetHandle(public_object.release());
-  *new_private_key_handle = GetHandle(private_object.release());
+  *new_public_key_handle = public_object.release()->handle();
+  *new_private_key_handle = private_object.release()->handle();
   return CKR_OK;
 }
 
@@ -791,7 +786,7 @@ CK_RV SessionImpl::CreateObjectInternal(const CK_ATTRIBUTE_PTR attributes,
   }
   if (!pool->Insert(object.get()))
     return CKR_GENERAL_ERROR;
-  *new_object_handle = GetHandle(object.release());
+  *new_object_handle = object.release()->handle();
   return CKR_OK;
 }
 
@@ -883,19 +878,6 @@ string SessionImpl::GetDERDigestInfo(CK_MECHANISM_TYPE mechanism) {
   }
   // This is valid in some cases (e.g. CKM_RSA_PKCS).
   return string();
-}
-
-int SessionImpl::GetHandle(const Object* object) {
-  map<const Object*, int>::iterator it = object_handle_map_.find(object);
-  if (it == object_handle_map_.end()) {
-    // Assign a new handle.
-    CHECK(last_handle_ < INT_MAX);
-    int handle = ++last_handle_;
-    object_handle_map_[object] = handle;
-    handle_object_map_[handle] = object;
-    return handle;
-  }
-  return it->second;
 }
 
 CK_RV SessionImpl::GetOperationOutput(OperationContext* context,
