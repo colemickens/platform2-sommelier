@@ -155,7 +155,9 @@ void CellularCapability::EnableModem(AsyncCallHandler *call_handler) {
 // has been converted to multi-step async.
 void CellularCapability::DisableModem(AsyncCallHandler * /*call_handler*/) {
   try {
-    proxy_->Enable(false);
+    if (proxy_.get()) {
+      proxy_->Enable(false);
+    }
     cellular()->OnModemDisabled();
   } catch (const DBus::Error e) {
     LOG(WARNING) << "Disable failed: " << e.what();

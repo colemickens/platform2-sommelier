@@ -107,6 +107,24 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
   }
 }
 
+void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
+  int interface_index = device->interface_index();
+
+  VLOG(2) << __func__ << "(" << device->link_name() << ", "
+          << interface_index << ")";
+  CHECK(device->TechnologyIs(Technology::kCellular));
+
+  // Release reference to the device
+  map<int, Info>::iterator iter = infos_.find(interface_index);
+  if (iter != infos_.end()) {
+    VLOG(2) << "Removing device from info for index: " << interface_index;
+    manager_->DeregisterDevice(device);
+    // Release the reference to the device, but maintain the mapping
+    // for the index.  That will be cleaned up by an RTNL message.
+    iter->second.device = NULL;
+  }
+}
+
 Technology::Identifier DeviceInfo::GetDeviceTechnology(
     const string &iface_name) {
   FilePath uevent_file(StringPrintf(kInterfaceUevent, iface_name.c_str()));

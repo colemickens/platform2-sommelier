@@ -43,7 +43,11 @@ Modem::Modem(const std::string &owner,
   LOG(INFO) << "Modem created: " << owner << " at " << path;
 }
 
-Modem::~Modem() {}
+Modem::~Modem() {
+  if (device_.get()) {
+    manager_->device_info()->DeregisterDevice(device_);
+  }
+}
 
 void Modem::Init() {
   VLOG(2) << __func__;
