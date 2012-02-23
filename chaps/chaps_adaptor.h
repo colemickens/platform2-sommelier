@@ -9,6 +9,10 @@
 
 #include "chaps/chaps_adaptor_generated.h"
 
+namespace base {
+  class Lock;
+}
+
 namespace chaps {
 
 class ChapsInterface;
@@ -23,7 +27,9 @@ class LoginEventListener;
 class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                      public DBus::ObjectAdaptor {
 public:
-  ChapsAdaptor(ChapsInterface* service, LoginEventListener* login_listener);
+  ChapsAdaptor(base::Lock* lock,
+               ChapsInterface* service,
+               LoginEventListener* login_listener);
   virtual ~ChapsAdaptor();
 
   virtual void OnLogin(const std::string& path,
@@ -383,6 +389,7 @@ public:
                               ::DBus::Error& error);
 
 private:
+  base::Lock* lock_;
   ChapsInterface* service_;
   LoginEventListener* login_listener_;
 
