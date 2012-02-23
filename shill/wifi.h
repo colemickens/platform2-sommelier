@@ -90,9 +90,7 @@ class WiFi : public Device {
   static const char kManagerErrorSSIDTooLong[];
   static const char kManagerErrorSSIDTooShort[];
   static const char kManagerErrorSSIDRequired[];
-  static const char kManagerErrorTypeRequired[];
   static const char kManagerErrorUnsupportedSecurityMode[];
-  static const char kManagerErrorUnsupportedServiceType[];
   static const char kManagerErrorUnsupportedServiceMode[];
   static const char kInterfaceStateUnknown[];
 

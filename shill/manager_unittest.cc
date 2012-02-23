@@ -837,23 +837,53 @@ TEST_F(ManagerTest, RequestScan) {
   }
 }
 
-TEST_F(ManagerTest, GetWifiServiceNoDevice) {
+TEST_F(ManagerTest, GetServiceNoType) {
   KeyValueStore args;
   Error e;
-  manager()->GetWifiService(args, &e);
+  manager()->GetService(args, &e);
+  EXPECT_EQ(Error::kInvalidArguments, e.type());
+  EXPECT_EQ("must specify service type", e.message());
+}
+
+TEST_F(ManagerTest, GetServiceUnknownType) {
+  KeyValueStore args;
+  Error e;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeEthernet);
+  manager()->GetService(args, &e);
+  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_EQ("service type is unsupported", e.message());
+}
+
+TEST_F(ManagerTest, GetServiceNoWifiDevice) {
+  KeyValueStore args;
+  Error e;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  manager()->GetService(args, &e);
   EXPECT_EQ(Error::kInvalidArguments, e.type());
   EXPECT_EQ("no wifi devices available", e.message());
 }
 
-TEST_F(ManagerTest, GetWifiService) {
+TEST_F(ManagerTest, GetServiceWifi) {
   KeyValueStore args;
   Error e;
   WiFiServiceRefPtr wifi_service;
-
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
   manager()->RegisterDevice(mock_wifi_);
   EXPECT_CALL(*mock_wifi_, GetService(_, _))
       .WillRepeatedly(Return(wifi_service));
-  manager()->GetWifiService(args, &e);
+  manager()->GetService(args, &e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(ManagerTest, GetServiceVPN) {
+  KeyValueStore args;
+  Error e;
+  WiFiServiceRefPtr wifi_service;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
+  manager()->GetService(args, &e);
+  // TODO(petkov): Test that a VPN service is created.
+  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_EQ("service type is unsupported", e.message());
 }
 
 TEST_F(ManagerTest, TechnologyOrder) {

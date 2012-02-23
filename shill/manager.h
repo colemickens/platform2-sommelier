@@ -84,7 +84,7 @@ class Manager {
   std::vector<std::string> EnumerateAvailableServices(Error *error);
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
-  WiFiServiceRefPtr GetWifiService(const KeyValueStore &args, Error *error);
+  ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
   void RequestScan(const std::string &technology, Error *error);
   std::string GetTechnologyOrder();
   void SetTechnologyOrder(const std::string &order, Error *error);
@@ -148,7 +148,12 @@ class Manager {
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
 
-  static const char kManagerErrorNoDevice[];
+  static const char kErrorNoDevice[];
+  static const char kErrorTypeRequired[];
+  static const char kErrorUnsupportedServiceType[];
+
+  WiFiServiceRefPtr GetWifiService(const KeyValueStore &args, Error *error);
+  ServiceRefPtr GetVPNService(const KeyValueStore &args, Error *error);
 
   std::string CalculateState(Error *error);
   void AutoConnect();

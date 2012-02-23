@@ -63,14 +63,15 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   void EnableTechnology(const std::string &, ::DBus::Error &error);
   void DisableTechnology(const std::string &, ::DBus::Error &error);
 
-  ::DBus::Path GetService(const std::map<std::string, ::DBus::Variant> &,
+  ::DBus::Path GetService(const std::map<std::string, ::DBus::Variant> &args,
                           ::DBus::Error &error);
-  ::DBus::Path GetWifiService(const std::map<std::string, ::DBus::Variant> &,
-                              ::DBus::Error &error);
+  ::DBus::Path GetVPNService(const std::map<std::string, ::DBus::Variant> &args,
+                             ::DBus::Error &error);
+  ::DBus::Path GetWifiService(
+      const std::map<std::string, ::DBus::Variant> &args,
+      ::DBus::Error &error);
   void ConfigureWifiService(const std::map<std::string, ::DBus::Variant> &,
                             ::DBus::Error &error);
-  ::DBus::Path GetVPNService(const std::map< std::string, ::DBus::Variant> &,
-                             ::DBus::Error &error);
 
   void RegisterAgent(const ::DBus::Path &, ::DBus::Error &error);
   void UnregisterAgent(const ::DBus::Path &, ::DBus::Error &error);

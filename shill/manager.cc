@@ -43,8 +43,11 @@ using std::vector;
 
 namespace shill {
 
-// static
-const char Manager::kManagerErrorNoDevice[] = "no wifi devices available";
+// statics
+const char Manager::kErrorNoDevice[] = "no wifi devices available";
+const char Manager::kErrorTypeRequired[] = "must specify service type";
+const char Manager::kErrorUnsupportedServiceType[] =
+    "service type is unsupported";
 
 Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
@@ -732,18 +735,43 @@ string Manager::GetActiveProfileRpcIdentifier(Error */*error*/) {
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
+ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
+  if (!args.ContainsString(flimflam::kTypeProperty)) {
+    error->Populate(Error::kInvalidArguments, kErrorTypeRequired);
+    return NULL;
+  }
+
+  string type = args.GetString(flimflam::kTypeProperty);
+  if (type == flimflam::kTypeWifi) {
+    return GetWifiService(args, error);
+  }
+  if (type == flimflam::kTypeVPN) {
+    return GetVPNService(args, error);
+  }
+  error->Populate(Error::kNotSupported, kErrorUnsupportedServiceType);
+  return NULL;
+}
+
 WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
                                           Error *error) {
   vector<DeviceRefPtr> wifi_devices;
   FilterByTechnology(Technology::kWifi, &wifi_devices);
   if (wifi_devices.empty()) {
-    error->Populate(Error::kInvalidArguments, kManagerErrorNoDevice);
+    error->Populate(Error::kInvalidArguments, kErrorNoDevice);
     return NULL;
   } else {
     WiFi *wifi = dynamic_cast<WiFi *>(wifi_devices.front().get());
     CHECK(wifi);
     return wifi->GetService(args, error);
   }
+}
+
+ServiceRefPtr Manager::GetVPNService(const KeyValueStore &/*args*/,
+                                     Error *error) {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
+  error->Populate(Error::kNotSupported, kErrorUnsupportedServiceType);
+  return NULL;
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)

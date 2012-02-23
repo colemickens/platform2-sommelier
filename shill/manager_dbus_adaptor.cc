@@ -150,43 +150,40 @@ void ManagerDBusAdaptor::DisableTechnology(const string &,
                                            ::DBus::Error &/*error*/) {
 }
 
-// deprecated synonym for GetWifiService
+// Called, e.g., to get WiFiService handle for a hidden SSID.
 ::DBus::Path ManagerDBusAdaptor::GetService(
     const map<string, ::DBus::Variant> &args,
     ::DBus::Error &error) {
-  return GetWifiService(args, error);
+  ServiceRefPtr service;
+  KeyValueStore args_store;
+  Error e;
+  DBusAdaptor::ArgsToKeyValueStore(args, &args_store, &e);
+  if (e.IsSuccess()) {
+    service = manager_->GetService(args_store, &e);
+  }
+  if (e.ToDBusError(&error)) {
+    return "/";  // ensure return is syntactically valid
+  }
+  return service->GetRpcIdentifier();
 }
 
-// called, e.g., to get Service handle for a hidden SSID
+// Obsolete, use GetService instead.
+::DBus::Path ManagerDBusAdaptor::GetVPNService(
+    const map<string, ::DBus::Variant> &args,
+    ::DBus::Error &error) {
+  return GetService(args, error);
+}
+
+// Obsolete, use GetService instead.
 ::DBus::Path ManagerDBusAdaptor::GetWifiService(
     const map<string, ::DBus::Variant> &args,
     ::DBus::Error &error) {
-  KeyValueStore args_store;
-  Error e;
-  WiFiServiceRefPtr service;
-  string ret;
-
-  DBusAdaptor::ArgsToKeyValueStore(args, &args_store, &e);
-  if (e.IsSuccess()) {
-    service = manager_->GetWifiService(args_store, &e);
-  }
-
-  if (e.ToDBusError(&error)) {
-    return "/";  // ensure return is syntactically valid
-  } else {
-    return service->GetRpcIdentifier();
-  }
+  return GetService(args, error);
 }
 
 void ManagerDBusAdaptor::ConfigureWifiService(
     const map<string, ::DBus::Variant> &,
     ::DBus::Error &/*error*/) {
-}
-
-::DBus::Path ManagerDBusAdaptor::GetVPNService(
-    const map<string, ::DBus::Variant> &,
-    ::DBus::Error &/*error*/) {
-  return ::DBus::Path();
 }
 
 void ManagerDBusAdaptor::RegisterAgent(const ::DBus::Path &,

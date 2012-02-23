@@ -64,11 +64,8 @@ const char WiFi::kManagerErrorPassphraseRequired[] = "must specify passphrase";
 const char WiFi::kManagerErrorSSIDRequired[] = "must specify SSID";
 const char WiFi::kManagerErrorSSIDTooLong[]  = "SSID is too long";
 const char WiFi::kManagerErrorSSIDTooShort[] = "SSID is too short";
-const char WiFi::kManagerErrorTypeRequired[] = "must specify service type";
 const char WiFi::kManagerErrorUnsupportedSecurityMode[] =
     "security mode is unsupported";
-const char WiFi::kManagerErrorUnsupportedServiceType[] =
-    "service type is unsupported";
 const char WiFi::kManagerErrorUnsupportedServiceMode[] =
     "service mode is unsupported";
 const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
@@ -1010,15 +1007,7 @@ void WiFi::StateChanged(const string &new_state) {
 
 // Used by Manager.
 WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
-  if (!args.ContainsString(flimflam::kTypeProperty)) {
-    error->Populate(Error::kInvalidArguments, kManagerErrorTypeRequired);
-    return NULL;
-  }
-
-  if (args.GetString(flimflam::kTypeProperty) != flimflam::kTypeWifi) {
-    error->Populate(Error::kNotSupported, kManagerErrorUnsupportedServiceType);
-    return NULL;
-  }
+  CHECK_EQ(args.GetString(flimflam::kTypeProperty), flimflam::kTypeWifi);
 
   if (args.ContainsString(flimflam::kModeProperty) &&
       args.GetString(flimflam::kModeProperty) !=

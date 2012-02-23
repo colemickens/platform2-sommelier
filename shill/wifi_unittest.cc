@@ -934,13 +934,6 @@ TEST_F(WiFiMainTest, GetWifiServiceOpen) {
   EXPECT_TRUE(e.IsSuccess());
 }
 
-TEST_F(WiFiMainTest, GetWifiServiceOpenNoType) {
-  Error e;
-  GetOpenService(NULL, "an_ssid", flimflam::kModeManaged, &e);
-  EXPECT_EQ(Error::kInvalidArguments, e.type());
-  EXPECT_EQ("must specify service type", e.message());
-}
-
 TEST_F(WiFiMainTest, GetWifiServiceOpenNoSSID) {
   Error e;
   GetOpenService(flimflam::kTypeWifi, NULL, flimflam::kModeManaged, &e);
