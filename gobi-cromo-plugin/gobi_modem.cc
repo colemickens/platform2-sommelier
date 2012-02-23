@@ -1273,6 +1273,7 @@ void GobiModem::GetPowerState() {
     if (power_mode == gobi::kOnline) {
       Enabled = true;
       State = mm_state_ = MM_MODEM_STATE_ENABLED;
+      RegistrationStateHandler();
     } else {
       Enabled = false;
       State = mm_state_ = MM_MODEM_STATE_DISABLED;
@@ -1314,7 +1315,8 @@ void GobiModem::SetModemProperties() {
     }
   }
   SetTechnologySpecificProperties();
-  if (mm_state_ != MM_MODEM_STATE_ENABLED)
+  if (mm_state_ == MM_MODEM_STATE_UNKNOWN ||
+      mm_state_ == MM_MODEM_STATE_DISABLED)
     ApiDisconnect();
 }
 
