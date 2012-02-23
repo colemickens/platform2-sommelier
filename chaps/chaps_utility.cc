@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include <openssl/sha.h>
+
 #include "chaps/attributes.h"
 #include "chaps/chaps.h"
 #include "pkcs11/cryptoki.h"
@@ -477,6 +479,12 @@ string PrintAttributes(const vector<uint8_t>& serialized,
   }
   ss << "}";
   return ss.str();
+}
+
+string sha1(const string& input) {
+  unsigned char digest[SHA_DIGEST_LENGTH];
+  SHA1(ConvertStringToByteBuffer(input.data()), input.length(), digest);
+  return ConvertByteBufferToString(digest, SHA_DIGEST_LENGTH);
 }
 
 }  // namespace

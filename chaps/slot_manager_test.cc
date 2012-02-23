@@ -9,9 +9,12 @@
 #include <base/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <openssl/sha.h>
 
 #include "chaps_factory_mock.h"
+#include "chaps_utility.h"
 #include "object_pool_mock.h"
+#include "object_store_mock.h"
 #include "session_mock.h"
 #include "tpm_utility_mock.h"
 
@@ -56,15 +59,15 @@ ObjectPool* CreateObjectPoolMock() {
 void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
   EXPECT_CALL(*tpm, Authenticate(_,
-                                 kAuthData,
+                                 sha1(kAuthData),
                                  string("auth_key_blob"),
                                  string("encrypted_master_key"),
                                  _))
       .WillRepeatedly(DoAll(SetArgumentPointee<4>(string("master_key")),
                             Return(true)));
   EXPECT_CALL(*tpm, ChangeAuthData(_,
-                                   kAuthData,
-                                   kNewAuthData,
+                                   sha1(kAuthData),
+                                   sha1(kNewAuthData),
                                    string("auth_key_blob"),
                                    _))
       .WillRepeatedly(
@@ -178,9 +181,11 @@ TEST_F(TestSlotManager_DeathTest, NoToken) {
 }
 
 TEST_F(TestSlotManager, DefaultSlotSetup) {
-  EXPECT_EQ(2, slot_manager_->GetSlotCount());
+  EXPECT_EQ(1, slot_manager_->GetSlotCount());
   EXPECT_TRUE(slot_manager_->IsTokenPresent(0));
-  EXPECT_FALSE(slot_manager_->IsTokenPresent(1));
+  // TODO(dkrahn): Enable once cryptohome integration is done and slot 1 exists
+  // (crosbug.com/21003).
+  // EXPECT_FALSE(slot_manager_->IsTokenPresent(1));
 }
 
 TEST_F(TestSlotManager, QueryInfo) {
@@ -189,9 +194,11 @@ TEST_F(TestSlotManager, QueryInfo) {
   slot_manager_->GetSlotInfo(0, &slot_info);
   // Check if all bytes have been set by the call.
   EXPECT_EQ(NULL, memchr(&slot_info, 0xEE, sizeof(slot_info)));
-  memset(&slot_info, 0xEE, sizeof(slot_info));
-  slot_manager_->GetSlotInfo(1, &slot_info);
-  EXPECT_EQ(NULL, memchr(&slot_info, 0xEE, sizeof(slot_info)));
+  // TODO(dkrahn): Enable once cryptohome integration is done and slot 1 exists
+  // (crosbug.com/21003).
+  // memset(&slot_info, 0xEE, sizeof(slot_info));
+  // slot_manager_->GetSlotInfo(1, &slot_info);
+  // EXPECT_EQ(NULL, memchr(&slot_info, 0xEE, sizeof(slot_info)));
   CK_TOKEN_INFO token_info;
   memset(&token_info, 0xEE, sizeof(token_info));
   slot_manager_->GetTokenInfo(0, &token_info);
@@ -221,7 +228,9 @@ TEST_F(TestSlotManager, TestSessions) {
 }
 
 TEST_F(TestSlotManager, TestLoginEvents) {
-  EXPECT_FALSE(slot_manager_->IsTokenPresent(1));
+  // TODO(dkrahn): Enable once cryptohome integration is done and slot 1 exists
+  // (crosbug.com/21003).
+  // EXPECT_FALSE(slot_manager_->IsTokenPresent(1));
   slot_manager_->OnLogin(FilePath("some_path"), kAuthData);
   EXPECT_TRUE(slot_manager_->IsTokenPresent(1));
   // Login with an existing path - should be ignored.

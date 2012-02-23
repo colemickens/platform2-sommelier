@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 
 #include "chaps/chaps_utility.h"
 #include "chaps/session.h"
@@ -44,7 +45,7 @@ const FilePath::CharType kSystemTokenPath[] =
     FILE_PATH_LITERAL("/opt/google/chaps");
 const char kSystemTokenAuthData[] = "000000";
 const int kSystemTokenSlot = 0;
-const char kTokenLabel[] = "TPM Token";
+const char kTokenLabel[] = "User-Specific TPM Token";
 const char kTokenModel[] = "";
 const char kTokenSerialNumber[] = "Not Available";
 const int kUserKeySize = 32;
@@ -117,7 +118,9 @@ bool SlotManagerImpl::Init() {
   // Default semantics are to always start with two slots.  One 'system' slot
   // which always has a token available, and one 'user' slot which will have no
   // token until a login event is received.
-  AddSlots(2);
+  // TODO(dkrahn): Enable the user slot once cryptohome integration is done
+  // (crosbug.com/21003).
+  AddSlots(1);
   // Setup the system token.  This is the same as for a user token so we can
   // just do what we normally do when a user logs in.  We'll know it succeeded
   // if the system token slot has a token inserted.
@@ -242,7 +245,7 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
     LOG(INFO) << "Initializing key hierarchy for token at " << path.value();
     if (!InitializeKeyHierarchy(slot_id,
                                 object_pool.get(),
-                                auth_data,
+                                sha1(auth_data),
                                 &master_key)) {
       LOG(ERROR) << "Failed to initialize key hierarchy at " << path.value();
       tpm_utility_->UnloadKeysForSlot(slot_id);
@@ -250,7 +253,7 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
     }
   } else {
     if (!tpm_utility_->Authenticate(slot_id,
-                                    auth_data,
+                                    sha1(auth_data),
                                     auth_key_blob,
                                     encrypted_master_key,
                                     &master_key)) {
@@ -264,6 +267,7 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
   slot_list_[slot_id].token_object_pool = object_pool;
   slot_list_[slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = slot_id;
+  LOG(INFO) << "Key hierarchy ready for token at " << path.value();
 }
 
 void SlotManagerImpl::OnLogout(const FilePath& path) {
@@ -305,8 +309,8 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
   if (!object_pool->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob)) {
     LOG(INFO) << "Token not initialized; ignoring change auth data event.";
   } else if (!tpm_utility_->ChangeAuthData(slot_id,
-                                           old_auth_data,
-                                           new_auth_data,
+                                           sha1(old_auth_data),
+                                           sha1(new_auth_data),
                                            auth_key_blob,
                                            &new_auth_key_blob)) {
     LOG(ERROR) << "Failed to change auth data for token at " << path.value();
@@ -421,6 +425,7 @@ void SlotManagerImpl::AddSlots(int num_slots) {
   for (int i = 0; i < num_slots; ++i) {
     Slot slot;
     GetDefaultInfo(&slot.slot_info, &slot.token_info);
+    LOG(INFO) << "Adding slot: " << slot_list_.size();
     slot_list_.push_back(slot);
   }
 }
