@@ -10,5 +10,34 @@
 
 INSTALL_ROOT=$(dirname "$0")
 
-${INSTALL_ROOT}/usr/bin/cros_installer postinst  "$1" "${INSTALL_ROOT}"
-exit $?
+# ${INSTALL_ROOT}/usr/bin/cros_installer postinst  "$1" "${INSTALL_ROOT}"
+# exit $?
+
+MOUNTS=
+
+get_src_version() {
+  grep ^CHROMEOS_RELEASE_VERSION= /etc/lsb-release | cut -d = -f 2-
+}
+
+install_root_mount() {
+  local mount_point="${INSTALL_ROOT}/${1}"
+  mount --bind --no-mtab "/${1}" "${mount_point}"
+  MOUNTS="${mount_point} ${MOUNTS}"
+}
+
+cleanup() {
+  set +e
+  [ -n "${MOUNTS}" ] && umount --no-mtab ${MOUNTS}
+}
+
+set -e
+
+trap cleanup EXIT
+
+for mnt in dev home mnt/stateful_partition proc sys tmp var; do
+  install_root_mount "${mnt}"
+done
+
+chroot "${INSTALL_ROOT}" /usr/sbin/chromeos-chroot-postinst \
+  --src_version="$(get_src_version)" \
+  "$@"
