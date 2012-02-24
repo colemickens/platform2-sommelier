@@ -30,7 +30,9 @@ using ::testing::SetArgumentPointee;
 
 namespace chaps {
 
-static Object* CreateObjectMock() {
+namespace {
+
+Object* CreateObjectMock() {
   ObjectMock* o = new ObjectMock();
   o->SetupFake();
   EXPECT_CALL(*o, GetObjectClass()).Times(AnyNumber());
@@ -54,6 +56,13 @@ static Object* CreateObjectMock() {
   return o;
 }
 
+int CreateHandle() {
+  static int last_handle = 0;
+  return ++last_handle;
+}
+
+}  // namespace
+
 // A test fixture for object pools.
 class TestObjectPool : public ::testing::Test {
  public:
@@ -62,7 +71,7 @@ class TestObjectPool : public ::testing::Test {
     EXPECT_CALL(factory_, CreateObject())
         .WillRepeatedly(Invoke(CreateObjectMock));
     EXPECT_CALL(handle_generator_, CreateHandle())
-        .WillRepeatedly(Return(1));
+        .WillRepeatedly(Invoke(CreateHandle));
     // Create object pools to test with.
     store_ = new ObjectStoreMock();
     pool_.reset(new ObjectPoolImpl(&factory_, &handle_generator_, store_));
@@ -103,7 +112,7 @@ TEST_F(TestObjectPool, Init) {
 }
 
 // Test the methods that should just pass through to the object store.
-TEST_F(TestObjectPool, StprePassThrough) {
+TEST_F(TestObjectPool, StorePassThrough) {
   string s("test");
   EXPECT_CALL(*store_, GetInternalBlob(1, _))
       .WillOnce(Return(false))

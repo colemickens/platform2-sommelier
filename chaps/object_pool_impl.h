@@ -10,6 +10,7 @@
 #include <map>
 #include <string>
 #include <tr1/memory>
+#include <set>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -21,11 +22,10 @@ class ChapsFactory;
 class HandleGenerator;
 class ObjectStore;
 
-// It doesn't work well to search for a shared_ptr in a set or map but we still
-// want the object pointers to be owned by the pool. This map allows us to do
-// this. The key is the object pointer and the value is the same object pointer
-// wrapped with a shared_ptr instance.
-typedef std::map<const Object*, std::tr1::shared_ptr<const Object> > ObjectSet;
+// Key: Object handle.
+// Value: Object shared pointer.
+typedef std::map<int, std::tr1::shared_ptr<const Object> > HandleObjectMap;
+typedef std::set<const Object*> ObjectSet;
 
 class ObjectPoolImpl : public ObjectPool {
  public:
@@ -45,6 +45,7 @@ class ObjectPoolImpl : public ObjectPool {
   virtual bool Delete(const Object* object);
   virtual bool Find(const Object* search_template,
                     std::vector<const Object*>* matching_objects);
+  virtual bool FindByHandle(int handle, const Object** object);
   virtual Object* GetModifiableObject(const Object* object);
   virtual bool Flush(const Object* object);
 
@@ -56,7 +57,9 @@ class ObjectPoolImpl : public ObjectPool {
   bool Parse(const std::string& object_blob, Object* object);
   bool Serialize(const Object* object, std::string* serialized);
 
+  // Allows us to quickly check whether an object exists in the pool.
   ObjectSet objects_;
+  HandleObjectMap handle_object_map_;
   ChapsFactory* factory_;
   HandleGenerator* handle_generator_;
   scoped_ptr<ObjectStore> store_;

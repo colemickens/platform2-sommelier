@@ -148,7 +148,6 @@ class SessionImpl : public Session {
                                Object* private_object);
   std::string GenerateRandomSoftware(int num_bytes);
   std::string GetDERDigestInfo(CK_MECHANISM_TYPE mechanism);
-  int GetHandle(const Object* object);
   // Provides operation output and handles the buffer-too-small case.
   // The output data must be in context->data_.
   // required_out_length - In: The maximum number of bytes that can be received.
@@ -192,9 +191,6 @@ class SessionImpl : public Session {
   size_t find_results_offset_;
   bool find_results_valid_;
   bool is_read_only_;
-  int last_handle_;
-  std::map<int, const Object*> handle_object_map_;
-  std::map<const Object*, int> object_handle_map_;
   std::map<const Object*, int> object_tpm_handle_map_;
   OperationContext operation_context_[kNumOperationTypes];
   int slot_id_;

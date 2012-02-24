@@ -39,6 +39,8 @@ class ObjectPool {
   // supplied vector.
   virtual bool Find(const Object* search_template,
                     std::vector<const Object*>* matching_objects) = 0;
+  // Finds an object by handle. Returns false if the handle does not exist.
+  virtual bool FindByHandle(int handle, const Object** object) = 0;
   // Returns a modifiable version of the given object.
   virtual Object* GetModifiableObject(const Object* object) = 0;
   // Flushes a modified object to persistent storage.
