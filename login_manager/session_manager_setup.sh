@@ -315,6 +315,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --login-manager \
             --login-profile=user \
             --no-first-run \
+            --ppapi-flash-args=enable_stagevideo_auto=0 \
             --reload-killed-tabs \
             --scroll-pixels=3 \
             --ui-enable-partial-swap \
