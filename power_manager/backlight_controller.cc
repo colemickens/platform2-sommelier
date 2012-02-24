@@ -81,6 +81,26 @@ const char* PowerStateToString(power_manager::PowerState state) {
   }
 }
 
+bool SetDPMS(CARD16 level) {
+  Display* display = XOpenDisplay(NULL);
+  bool ret = true;
+  if (display != NULL) {
+    if (DPMSCapable(display)) {
+      CHECK(DPMSEnable(display));
+      CHECK(DPMSForceLevel(display, level));
+      XFlush(display);
+    } else {
+      LOG(WARNING) << "Can't get DPMS capable XDisplay";
+      ret = false;
+    }
+    XCloseDisplay(display);
+  } else {
+    LOG(WARNING) << "XOpenDisplay fails";
+    ret = false;
+  }
+  return ret;
+}
+
 }  // namespace
 
 namespace power_manager {
@@ -208,6 +228,10 @@ bool BacklightController::SetPowerState(PowerState new_state) {
   PowerState old_state = state_;
 #ifdef IS_DESKTOP
   state_ = new_state;
+  // TODO(sque): will be deprecated once we have external display backlight
+  // control.  chrome-os-partner:6320
+  if (new_state == BACKLIGHT_IDLE_OFF && !SetDPMS(DPMSModeOff))
+    LOG(WARNING) << "Turning DPMS OFF failed.";
 #else
   CHECK(new_state != BACKLIGHT_UNINITIALIZED);
 
@@ -230,6 +254,12 @@ bool BacklightController::SetPowerState(PowerState new_state) {
     double new_percent = ClampPercentToVisibleRange(
         last_active_offset_percent_ + als_offset_percent_);
     *current_offset_percent_ = new_percent - als_offset_percent_;
+
+    // Force the DPMS to be ON if transitioning to ACTIVE state so
+    // the brightness written to the backlight can actually take effect.
+    if (!SetDPMS(DPMSModeOn))
+      LOG(WARNING) << "Turning DPMS ON failed.";
+
     // If returning from suspend, force the backlight to zero to cancel out any
     // kernel driver behavior that sets it to some other value.  This allows
     // backlight controller to restore the backlight value from 0 to the saved
@@ -262,22 +292,6 @@ bool BacklightController::SetPowerState(PowerState new_state) {
 
   LOG(INFO) << PowerStateToString(old_state) << " -> "
             << PowerStateToString(new_state);
-
-  if (GDK_DISPLAY() == NULL)
-    return true;
-  if (!DPMSCapable(GDK_DISPLAY())) {
-    LOG(WARNING) << "X Server is not DPMS capable";
-  } else {
-    CHECK(DPMSEnable(GDK_DISPLAY()));
-    if (new_state == BACKLIGHT_ACTIVE)
-      CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOn));
-#ifdef IS_DESKTOP
-    // TODO(sque): will be deprecated once we have external display backlight
-    // control.  chrome-os-partner:6320
-    else if (new_state == BACKLIGHT_IDLE_OFF)
-      CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
-#endif // defined(IS_DESKTOP)
-  }
   return true;
 }
 
