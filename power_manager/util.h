@@ -42,12 +42,12 @@ void SendSignalWithIntToPowerD(const char* signal, int value);
 bool CallMethodInPowerD(const char* method_name, const char* data,
                         unsigned int size, int* return_value);
 
-// Send an empty reply to a D-Bus message.
-void SendEmptyDBusReply(DBusConnection* connection, DBusMessage* message);
+// Create an empty reply to a D-Bus message.
+DBusMessage* CreateEmptyDBusReply(DBusMessage* message);
 
-// Send an error reply to a D-Bus message
-void SendDBusErrorReply(DBusConnection* connection, DBusMessage* message,
-                        const char* error_name, const char* error_message);
+// Create an error reply to a D-Bus message
+DBusMessage* CreateDBusErrorReply(DBusMessage* message, const char* error_name,
+                                  const char* error_message);
 
 // Status file creation and removal.
 void CreateStatusFile(const FilePath& file);

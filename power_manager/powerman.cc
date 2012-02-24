@@ -283,8 +283,8 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
     LOG(INFO) << "Got " << member << " signal";
     DBusSignalHandler callback = iter->second;
     (daemon->*callback)(message);
+    // Do not send a reply if it is a signal.
   }
-  // No need to send a reply if it is a signal.
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 

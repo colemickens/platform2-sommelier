@@ -218,20 +218,13 @@ bool CallMethodInPowerD(const char* method_name, const char *data,
   return(true);
 }
 
-void SendEmptyDBusReply(DBusConnection* connection, DBusMessage* message) {
-  DBusMessage* reply = dbus_message_new_method_return(message);
-  CHECK(reply);
-  dbus_connection_send(connection, reply, NULL);
-  dbus_message_unref(reply);
+DBusMessage* CreateEmptyDBusReply(DBusMessage* message) {
+  return dbus_message_new_method_return(message);
 }
 
-void SendDBusErrorReply(DBusConnection* connection, DBusMessage* message,
-                        const char* error_name, const char* error_message) {
-  DBusMessage* reply = dbus_message_new_error(message, error_name,
-                                              error_message);
-  CHECK(reply);
-  dbus_connection_send(connection, reply, NULL);
-  dbus_message_unref(reply);
+DBusMessage* CreateDBusErrorReply(DBusMessage* message, const char* error_name,
+                                  const char* error_message) {
+  return dbus_message_new_error(message, error_name, error_message);
 }
 
 void CreateStatusFile(const FilePath& file) {

@@ -146,6 +146,15 @@ class Daemon : public XIdleObserver,
   enum ShutdownState { kShutdownNone, kShutdownRestarting,
                        kShutdownPowerOff };
 
+  typedef std::pair<std::string, std::string> DBusInterfaceMemberPair;
+  typedef bool (Daemon::*DBusSignalHandler)(DBusMessage*);
+  typedef DBusMessage* (Daemon::*DBusMethodHandler)(DBusMessage*);
+
+  typedef std::map<DBusInterfaceMemberPair, DBusSignalHandler>
+      DBusSignalHandlerTable;
+  typedef std::map<DBusInterfaceMemberPair, DBusMethodHandler>
+      DBusMethodHandlerTable;
+
   // Reads settings from disk
   void ReadSettings();
 
@@ -189,6 +198,40 @@ class Daemon : public XIdleObserver,
 
   // Registers the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
+
+  // Callbacks for handling dbus messages.
+  bool HandleRequestSuspendSignal(DBusMessage* message);
+  bool HandleLidClosedSignal(DBusMessage* message);
+  bool HandleLidOpenedSignal(DBusMessage* message);
+  bool HandleButtonEventSignal(DBusMessage* message);
+  bool HandleCleanShutdownSignal(DBusMessage* message);
+  bool HandlePowerStateChangedSignal(DBusMessage* message);
+  bool HandleSessionManagerSessionStateChangedSignal(DBusMessage* message);
+  bool HandleStateOverrideCancelSignal(DBusMessage* message);
+  DBusMessage* HandleRequestLockScreenMethod(DBusMessage* message);
+  DBusMessage* HandleRequestUnlockScreenMethod(DBusMessage* message);
+  DBusMessage* HandleScreenIsLockedMethod(DBusMessage* message);
+  DBusMessage* HandleScreenIsUnlockedMethod(DBusMessage* message);
+  DBusMessage* HandleRequestShutdownMethod(DBusMessage* message);
+  DBusMessage* HandleRequestRestartMethod(DBusMessage* message);
+  DBusMessage* HandleDecreaseScreenBrightnessMethod(DBusMessage* message);
+  DBusMessage* HandleIncreaseScreenBrightnessMethod(DBusMessage* message);
+  DBusMessage* HandleGetScreenBrightnessMethod(DBusMessage* message);
+  DBusMessage* HandleSetScreenBrightnessMethod(DBusMessage* message);
+  DBusMessage* HandleDecreaseKeyboardBrightnessMethod(DBusMessage* message);
+  DBusMessage* HandleIncreaseKeyboardBrightnessMethod(DBusMessage* message);
+  DBusMessage* HandleGetIdleTimeMethod(DBusMessage* message);
+  DBusMessage* HandleRequestIdleNotificationMethod(DBusMessage* message);
+  DBusMessage* HandleGetPowerSupplyPropertiesMethod(DBusMessage* message);
+  DBusMessage* HandleStateOverrideRequestMethod(DBusMessage* message);
+
+  void AddDBusSignalHandler(const std::string& interface,
+                            const std::string& member,
+                            DBusSignalHandler handler);
+
+  void AddDBusMethodHandler(const std::string& interface,
+                            const std::string& member,
+                            DBusMethodHandler handler);
 
   // Removes the previous polling timer and replaces it with one that fires
   // every 5s and calls ShortPollPowerSupply. The nature of this callback will
@@ -238,12 +281,8 @@ class Daemon : public XIdleObserver,
   // SessionStateChanged D-Bus signals.
   void OnSessionStateChange(const char* state, const char* user);
 
-  // Handles a signal from powerm describing a power or lock button event.
-  // Parses |message|, notifies |power_button_handler_|, and sends metrics.
-  void OnButtonEvent(DBusMessage* message);
-
   // Sends metrics in response to the power button being pressed or released.
-  // Called by OnButtonEvent().
+  // Called by HandleButtonEventSignal().
   void SendPowerButtonMetric(bool down, const base::TimeTicks& timestamp);
 
   void StartCleanShutdown();
@@ -456,6 +495,10 @@ class Daemon : public XIdleObserver,
   // Value returned when we add a timer for polling the power supply. This is
   // needed for removing the timer when we want to interrupt polling.
   guint32 poll_power_supply_timer_id_;
+
+  // These are lookup tables that map dbus message interface/names to handlers.
+  DBusSignalHandlerTable dbus_signal_handler_table_;
+  DBusMethodHandlerTable dbus_method_handler_table_;
 };
 
 }  // namespace power_manager
