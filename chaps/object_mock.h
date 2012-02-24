@@ -42,8 +42,14 @@ class ObjectMock : public Object {
                                          const std::string&));
   MOCK_METHOD1(RemoveAttribute, void (CK_ATTRIBUTE_TYPE));
   MOCK_CONST_METHOD0(GetAttributeMap, const AttributeMap* ());
+  MOCK_CONST_METHOD0(handle, int());
+  MOCK_METHOD1(set_handle, void(int));
+  MOCK_CONST_METHOD0(store_id, int());
+  MOCK_METHOD1(set_store_id, void(int));
 
   void SetupFake() {
+    handle_ = 0;
+    store_id_ = 0;
     ON_CALL(*this, GetObjectClass())
         .WillByDefault(testing::Invoke(this, &ObjectMock::FakeGetObjectClass));
     ON_CALL(*this, IsTokenObject())
@@ -74,10 +80,23 @@ class ObjectMock : public Object {
     ON_CALL(*this, RemoveAttribute(testing::_))
         .WillByDefault(testing::Invoke(this,
                                        &ObjectMock::FakeRemoveAttribute));
+    ON_CALL(*this, GetAttributeMap())
+        .WillByDefault(testing::Return(&attributes_));
+    ON_CALL(*this, set_handle(testing::_))
+        .WillByDefault(testing::Invoke(this, &ObjectMock::FakeSetHandle));
+    ON_CALL(*this, set_store_id(testing::_))
+        .WillByDefault(testing::Invoke(this, &ObjectMock::FakeSetStoreID));
+    ON_CALL(*this, handle())
+        .WillByDefault(testing::Invoke(this, &ObjectMock::FakeGetHandle));
+    ON_CALL(*this, store_id())
+        .WillByDefault(testing::Invoke(this, &ObjectMock::FakeGetStoreID));
   }
 
  private:
   AttributeMap attributes_;
+  int handle_;
+  int store_id_;
+
   CK_OBJECT_CLASS FakeGetObjectClass() {
     return FakeGetAttributeInt(CKA_CLASS, 0);
   }
@@ -126,6 +145,22 @@ class ObjectMock : public Object {
   }
   void FakeRemoveAttribute(CK_ATTRIBUTE_TYPE type) {
     attributes_.erase(type);
+  }
+
+  void FakeSetHandle(int handle) {
+    handle_ = handle;
+  }
+
+  void FakeSetStoreID(int id) {
+    store_id_ = id;
+  }
+
+  int FakeGetHandle() {
+    return handle_;
+  }
+
+  int FakeGetStoreID() {
+    return store_id_;
   }
 
   DISALLOW_COPY_AND_ASSIGN(ObjectMock);

@@ -48,6 +48,10 @@ class ObjectImpl : public Object {
                                   const std::string& value);
   virtual void RemoveAttribute(CK_ATTRIBUTE_TYPE type);
   virtual const AttributeMap* GetAttributeMap() const;
+  virtual int handle() const {return handle_;}
+  virtual void set_handle(int handle) {handle_ = handle;}
+  virtual int store_id() const {return store_id_;}
+  virtual void set_store_id(int store_id) {store_id_ = store_id;}
 
  private:
   ChapsFactory* factory_;
@@ -56,6 +60,8 @@ class ObjectImpl : public Object {
   // Tracks attributes which have been set by the user.
   std::set<CK_ATTRIBUTE_TYPE> external_attributes_;
   scoped_ptr<ObjectPolicy> policy_;
+  int handle_;
+  int store_id_;
 
   bool SetPolicyByClass();
 

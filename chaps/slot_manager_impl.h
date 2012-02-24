@@ -5,6 +5,7 @@
 #ifndef CHAPS_SLOT_MANAGER_IMPL_H_
 #define CHAPS_SLOT_MANAGER_IMPL_H_
 
+#include "chaps/handle_generator.h"
 #include "chaps/login_event_listener.h"
 #include "chaps/slot_manager.h"
 
@@ -31,7 +32,8 @@ class TPMUtility;
 //    }
 //    // Ready for use by SlotManager and LoginEventListener clients.
 class SlotManagerImpl : public SlotManager,
-                        public LoginEventListener {
+                        public LoginEventListener,
+                        public HandleGenerator {
  public:
   SlotManagerImpl(ChapsFactory* factory, TPMUtility* tpm_utility);
   virtual ~SlotManagerImpl();
@@ -56,6 +58,8 @@ class SlotManagerImpl : public SlotManager,
   virtual void OnChangeAuthData(const FilePath& path,
                                 const std::string& old_auth_data,
                                 const std::string& new_auth_data);
+  // HandleGenerator methods.
+  virtual int CreateHandle();
 
  private:
   // Enumerates internal blobs used by the slot manager. These will be used as
@@ -104,7 +108,7 @@ class SlotManagerImpl : public SlotManager,
   void AddSlots(int num_slots);
 
   ChapsFactory* factory_;
-  int last_session_id_;
+  int last_handle_;
   MechanismMap mechanism_info_;
   // Key: A path to a token's storage directory.
   // Value: The identifier of the associated slot.

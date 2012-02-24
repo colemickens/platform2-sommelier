@@ -18,7 +18,9 @@ using std::string;
 namespace chaps {
 
 ObjectImpl::ObjectImpl(ChapsFactory* factory) : factory_(factory),
-                                                stage_(kCreate) {}
+                                                stage_(kCreate),
+                                                handle_(0),
+                                                store_id_(0) {}
 ObjectImpl::~ObjectImpl() {}
 
 ObjectStage ObjectImpl::GetStage() const {

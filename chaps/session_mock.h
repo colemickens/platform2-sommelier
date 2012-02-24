@@ -34,14 +34,15 @@ class SessionMock : public Session {
                                   int,
                                   int*));
   MOCK_METHOD1(DestroyObject, CK_RV (int));
-  MOCK_METHOD2(GetObject, bool (int, Object**));
+  MOCK_METHOD2(GetObject, bool (int, const Object**));
+  MOCK_METHOD2(GetModifiableObject, bool (int, Object**));
   MOCK_METHOD2(FindObjectsInit, CK_RV (const CK_ATTRIBUTE_PTR, int));
   MOCK_METHOD2(FindObjects, CK_RV (int, std::vector<int>*));
   MOCK_METHOD0(FindObjectsFinal, CK_RV ());
   MOCK_METHOD4(OperationInit, CK_RV (OperationType,
                                      CK_MECHANISM_TYPE,
                                      const std::string&,
-                                     Object*));
+                                     const Object*));
   MOCK_METHOD4(OperationUpdate, CK_RV (OperationType,
                                        const std::string&,
                                        int*,

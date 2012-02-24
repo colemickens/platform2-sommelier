@@ -42,6 +42,7 @@ class SessionImpl : public Session {
               ObjectPool* token_object_pool,
               TPMUtility* tpm_utility,
               ChapsFactory* factory,
+              HandleGenerator* handle_generator,
               bool is_read_only);
   virtual ~SessionImpl();
 
@@ -59,7 +60,8 @@ class SessionImpl : public Session {
                            int object_handle,
                            int* new_object_handle);
   virtual CK_RV DestroyObject(int object_handle);
-  virtual bool GetObject(int object_handle, Object** object);
+  virtual bool GetObject(int object_handle, const Object** object);
+  virtual bool GetModifiableObject(int object_handle, Object** object);
   virtual CK_RV FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
                                 int num_attributes);
   virtual CK_RV FindObjects(int max_object_count,
@@ -69,7 +71,7 @@ class SessionImpl : public Session {
   virtual CK_RV OperationInit(OperationType operation,
                               CK_MECHANISM_TYPE mechanism,
                               const std::string& mechanism_parameter,
-                              Object* key);
+                              const Object* key);
   virtual CK_RV OperationUpdate(OperationType operation,
                                 const std::string& data_in,
                                 int* required_out_length,
@@ -113,7 +115,7 @@ class SessionImpl : public Session {
       HMAC_CTX hmac_context_;
     };
     std::string data_;  // This can be used to queue input or output.
-    Object* key_;
+    const Object* key_;
     CK_MECHANISM_TYPE mechanism_;
     std::string parameter_;  // The mechanism parameter (if any).
 
@@ -129,7 +131,7 @@ class SessionImpl : public Session {
   CK_RV CipherInit(bool is_encrypt,
                    CK_MECHANISM_TYPE mechanism,
                    const std::string& mechanism_parameter,
-                   Object* key);
+                   const Object* key);
   CK_RV CipherUpdate(OperationContext* context,
                      const std::string& data_in,
                      int* required_out_length,
@@ -146,7 +148,7 @@ class SessionImpl : public Session {
                                Object* private_object);
   std::string GenerateRandomSoftware(int num_bytes);
   std::string GetDERDigestInfo(CK_MECHANISM_TYPE mechanism);
-  int GetHandle(Object* object);
+  int GetHandle(const Object* object);
   // Provides operation output and handles the buffer-too-small case.
   // The output data must be in context->data_.
   // required_out_length - In: The maximum number of bytes that can be received.
@@ -191,7 +193,7 @@ class SessionImpl : public Session {
   bool find_results_valid_;
   bool is_read_only_;
   int last_handle_;
-  std::map<int, Object*> handle_object_map_;
+  std::map<int, const Object*> handle_object_map_;
   std::map<const Object*, int> object_handle_map_;
   std::map<const Object*, int> object_tpm_handle_map_;
   OperationContext operation_context_[kNumOperationTypes];

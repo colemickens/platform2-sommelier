@@ -385,7 +385,7 @@ uint32_t ChapsServiceImpl::GetObjectSize(uint32_t session_id,
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
   CHECK(session);
-  Object* object = NULL;
+  const Object* object = NULL;
   LOG_CK_RV_AND_RETURN_IF(!session->GetObject(object_handle, &object),
                           CKR_OBJECT_HANDLE_INVALID);
   CHECK(object);
@@ -403,7 +403,7 @@ uint32_t ChapsServiceImpl::GetAttributeValue(
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
   CHECK(session);
-  Object* object = NULL;
+  const Object* object = NULL;
   LOG_CK_RV_AND_RETURN_IF(!session->GetObject(object_handle, &object),
                           CKR_OBJECT_HANDLE_INVALID);
   CHECK(object);
@@ -429,7 +429,7 @@ uint32_t ChapsServiceImpl::SetAttributeValue(
                           CKR_SESSION_HANDLE_INVALID);
   CHECK(session);
   Object* object = NULL;
-  LOG_CK_RV_AND_RETURN_IF(!session->GetObject(object_handle, &object),
+  LOG_CK_RV_AND_RETURN_IF(!session->GetModifiableObject(object_handle, &object),
                           CKR_OBJECT_HANDLE_INVALID);
   CHECK(object);
   Attributes tmp;
@@ -485,7 +485,7 @@ uint32_t ChapsServiceImpl::EncryptInit(
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
   CHECK(session);
-  Object* key = NULL;
+  const Object* key = NULL;
   LOG_CK_RV_AND_RETURN_IF(!session->GetObject(key_handle, &key),
                           CKR_KEY_HANDLE_INVALID);
   CHECK(key);
@@ -557,7 +557,7 @@ uint32_t ChapsServiceImpl::DecryptInit(
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
   CHECK(session);
-  Object* key = NULL;
+  const Object* key = NULL;
   LOG_CK_RV_AND_RETURN_IF(!session->GetObject(key_handle, &key),
                           CKR_KEY_HANDLE_INVALID);
   CHECK(key);
@@ -695,7 +695,7 @@ uint32_t ChapsServiceImpl::SignInit(
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
   CHECK(session);
-  Object* key = NULL;
+  const Object* key = NULL;
   LOG_CK_RV_AND_RETURN_IF(!session->GetObject(key_handle, &key),
                           CKR_KEY_HANDLE_INVALID);
   CHECK(key);
@@ -776,7 +776,7 @@ uint32_t ChapsServiceImpl::VerifyInit(
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
   CHECK(session);
-  Object* key = NULL;
+  const Object* key = NULL;
   LOG_CK_RV_AND_RETURN_IF(!session->GetObject(key_handle, &key),
                           CKR_KEY_HANDLE_INVALID);
   CHECK(key);

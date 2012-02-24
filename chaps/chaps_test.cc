@@ -1102,8 +1102,8 @@ TEST_F(TestAttributes, GetAttributeValueFail) {
 TEST(GetAttributeValueDeathTest, GetAttributeValueFailFatal) {
   ChapsProxyMock proxy(true);
   vector<uint8_t> invalid(20, 0);
-  ON_CALL(proxy, GetAttributeValue(1, 2, _, _))
-      .WillByDefault(DoAll(SetArgumentPointee<3>(invalid), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetAttributeValue(1, 2, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<3>(invalid), Return(CKR_OK)));
   CK_ATTRIBUTE tmp;
   memset(&tmp, 0, sizeof(tmp));
   EXPECT_DEATH_IF_SUPPORTED(C_GetAttributeValue(1, 2, &tmp, 1), "Check failed");
