@@ -23,6 +23,7 @@
 #include "chaps/chaps_factory_impl.h"
 #include "chaps/chaps_service.h"
 #include "chaps/chaps_service_redirect.h"
+#include "chaps/chaps_utility.h"
 #include "chaps/slot_manager_impl.h"
 #include "chaps/tpm_utility_impl.h"
 
@@ -95,6 +96,7 @@ int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  chaps::ScopedOpenSSL openssl;
   chaps::g_dispatcher.reset(new DBus::BusDispatcher());
   CHECK(chaps::g_dispatcher.get());
   DBus::default_dispatcher = chaps::g_dispatcher.get();

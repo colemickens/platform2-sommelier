@@ -194,6 +194,17 @@ class PreservedByteVector {
 // Computes and returns a SHA-1 hash of the given input.
 std::string sha1(const std::string& input);
 
+// Initializes the OpenSSL library on construction and terminates the library on
+// destruction.
+class ScopedOpenSSL {
+ public:
+  ScopedOpenSSL();
+  ~ScopedOpenSSL();
+};
+
+// Returns a description of the OpenSSL error stack.
+std::string GetOpenSSLError();
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H

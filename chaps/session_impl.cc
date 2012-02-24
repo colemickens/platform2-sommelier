@@ -1012,16 +1012,6 @@ RSA* SessionImpl::CreateKeyFromObject(const Object* key_object) {
   return rsa;
 }
 
-string SessionImpl::GetOpenSSLError() {
-  BIO* bio = BIO_new(BIO_s_mem());
-  ERR_print_errors(bio);
-  char* data = NULL;
-  int data_len = BIO_get_mem_data(bio, &data);
-  string error_string(data, data_len);
-  BIO_free(bio);
-  return error_string;
-}
-
 const EVP_CIPHER* SessionImpl::GetOpenSSLCipher(CK_MECHANISM_TYPE mechanism,
                                                 size_t key_size) {
   switch (mechanism) {

@@ -181,7 +181,6 @@ class SessionImpl : public Session {
   BIGNUM* ConvertToBIGNUM(const std::string& big_integer);
   // Always returns a non-NULL value.
   RSA* CreateKeyFromObject(const Object* key_object);
-  std::string GetOpenSSLError();
   const EVP_CIPHER* GetOpenSSLCipher(CK_MECHANISM_TYPE mechanism,
                                      size_t key_size);
   const EVP_MD* GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism);
