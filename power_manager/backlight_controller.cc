@@ -9,6 +9,7 @@
 #include <X11/extensions/dpms.h>
 
 #include "base/logging.h"
+#include "base/string_util.h"
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs_interface.h"
@@ -44,8 +45,8 @@ const int kBacklightAnimationMs = 30;
 // Maximum number of brightness adjustment steps.
 const int64 kMaxBrightnessSteps = 16;
 
-// Number of light sensor samples required to overcome temporal hysteresis.
-const int kAlsHystSamples = 4;
+// Number of light sensor responses required to overcome temporal hysteresis.
+const int kAlsHystResponse = 4;
 
 // Backlight change (in %) required to overcome light sensor level hysteresis.
 const int kAlsHystPercent = 5;
@@ -96,6 +97,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       als_temporal_state_(ALS_HYST_IMMEDIATE),
       als_adjustment_count_(0),
       user_adjustment_count_(0),
+      als_response_index_(0),
       plugged_offset_percent_(0.0),
       unplugged_offset_percent_(0.0),
       current_offset_percent_(&plugged_offset_percent_),
@@ -110,6 +112,8 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       is_initialized_(false),
       target_level_(0),
       is_in_transition_(false) {
+  for (size_t i = 0; i < arraysize(als_responses_); i++)
+    als_responses_[i] = 0;
   backlight_->set_observer(this);
 }
 
@@ -353,10 +357,13 @@ void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
   if (als_temporal_state_ == ALS_HYST_IMMEDIATE) {
     als_temporal_state_ = ALS_HYST_IDLE;
     als_adjustment_count_++;
-    LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
+    LOG(INFO) << "Immediate ALS-triggered brightness adjustment.";
+    AppendAlsResponse(-1);
     WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
     return;
   }
+
+  AppendAlsResponse(lround(percent));
 
   // Apply level and temporal hysteresis to light sensor readings to reduce
   // backlight changes caused by minor and transient ambient light changes.
@@ -377,10 +384,11 @@ void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
     als_temporal_state_ = new_state;
     als_temporal_count_ = 0;
   }
-  if (als_temporal_count_ >= kAlsHystSamples) {
+  if (als_temporal_count_ >= kAlsHystResponse) {
     als_temporal_count_ = 0;
     als_adjustment_count_++;
     LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
+    DumpAlsResponses();
     // ALS adjustment should not change brightness offset.
     WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
   }
@@ -572,6 +580,27 @@ gboolean BacklightController::SetBrightnessHard(int64 level,
       DPMSCapable(GDK_DISPLAY()) && state_ == BACKLIGHT_IDLE_OFF)
     CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
   return false; // Return false so glib doesn't repeat.
+}
+
+void BacklightController::AppendAlsResponse(int val) {
+  als_response_index_ = (als_response_index_ + 1) % arraysize(als_responses_);
+  als_responses_[als_response_index_] = val;
+}
+
+void BacklightController::DumpAlsResponses() {
+  std::string buffer;
+  int response_index = als_response_index_;
+
+  for (unsigned int i = 0; i < arraysize(als_responses_); i++) {
+    if (!buffer.empty())
+      buffer += ", ";
+    buffer += StringPrintf("%d", als_responses_[response_index]);
+    response_index--;
+    if (response_index < 0)
+      response_index = arraysize(als_responses_) - 1;
+  }
+
+  LOG(INFO) << "ALS history (most recent first): " << buffer;
 }
 
 }  // namespace power_manager

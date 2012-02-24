@@ -199,6 +199,13 @@ class BacklightController : public BacklightInterfaceObserver {
   SIGNAL_CALLBACK_PACKED_2(BacklightController, gboolean, SetBrightnessHard,
                            int64, int64);
 
+  // Add an ALS value (or really any "event" value) to the response log.
+  // This will give some idea of _why_ ALS changes the backlight.
+  void AppendAlsResponse(int val);
+
+  // Dump the ALS response log, most recent events first.
+  void DumpAlsResponses();
+
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;
 
@@ -221,7 +228,7 @@ class BacklightController : public BacklightInterfaceObserver {
   // Prevent small light sensor changes from updating the backlight.
   double als_hysteresis_percent_;
 
-  // Also apply temporal hysteresis to light sensor samples.
+  // Also apply temporal hysteresis to light sensor responses.
   AlsHysteresisState als_temporal_state_;
   int als_temporal_count_;
 
@@ -230,6 +237,11 @@ class BacklightController : public BacklightInterfaceObserver {
 
   // Count of the number of adjustments that the user has caused
   int user_adjustment_count_;
+
+  // Provide a log of controller events (really ALS entries) to give
+  // some idea of why the backlight controller is changing the backlight.
+  int als_responses_[10];
+  size_t als_response_index_;
 
   // User adjustable brightness offset when AC plugged.
   double plugged_offset_percent_;
