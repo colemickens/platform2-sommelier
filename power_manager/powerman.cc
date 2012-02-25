@@ -67,8 +67,8 @@ void PowerManDaemon::Init() {
   string wakeup_inputs_str;
   std::vector<string> wakeup_inputs;
 
-  CHECK(prefs_->GetString(kWakeupInput, &wakeup_inputs_str));
-  base::SplitString(wakeup_inputs_str, '\n', &wakeup_inputs);
+  if (prefs_->GetString(kWakeupInput, &wakeup_inputs_str))
+    base::SplitString(wakeup_inputs_str, '\n', &wakeup_inputs);
   CHECK(prefs_->GetInt64(kRetrySuspendMs, &retry_suspend_ms_));
   CHECK(prefs_->GetInt64(kRetrySuspendAttempts, &retry_suspend_attempts_));
   CHECK(prefs_->GetInt64(kUseLid, &use_input_for_lid));
