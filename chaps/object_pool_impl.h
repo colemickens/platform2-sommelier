@@ -37,7 +37,6 @@ class ObjectPoolImpl : public ObjectPool {
                  HandleGenerator* handle_generator,
                  ObjectStore* store);
   virtual ~ObjectPoolImpl();
-  virtual bool Init();
   virtual bool GetInternalBlob(int blob_id, std::string* blob);
   virtual bool SetInternalBlob(int blob_id, const std::string& blob);
   virtual bool SetEncryptionKey(const std::string& key);
@@ -56,6 +55,7 @@ class ObjectPoolImpl : public ObjectPool {
   bool Matches(const Object* object_template, const Object* object);
   bool Parse(const std::string& object_blob, Object* object);
   bool Serialize(const Object* object, std::string* serialized);
+  bool LoadObjects();
 
   // Allows us to quickly check whether an object exists in the pool.
   ObjectSet objects_;

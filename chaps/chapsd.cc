@@ -51,7 +51,7 @@ class AsyncInitThread : public PlatformThread::Delegate {
         service_(service) {}
   void ThreadMain() {
     // It's important that we acquire 'lock' before signaling 'started_event'.
-    // This will prevent an D-Bus requests from being processed until we've
+    // This will prevent any D-Bus requests from being processed until we've
     // finished initialization.
     AutoLock lock(*lock_);
     started_event_.Signal();
