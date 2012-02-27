@@ -99,6 +99,12 @@ if [ $cancel -eq 0 ]; then
         log_msg "Recorded hwclock time for test"
     fi
 
+    if [ -e "/sys/firmware/log" ]; then
+        # Grep /sys/firmware/log for WAK
+        wakeup_source=$(grep -A1 -B1 "PM1_STS: WAK" /sys/firmware/log)
+        log_msg $wakeup_source
+    fi
+
     # - sends UMA metrics on resume
     /usr/bin/send_metrics_on_resume &
 fi
