@@ -88,48 +88,6 @@ RRCrtc MonitorReconfigure::FindUsableCrtc(const std::set<RRCrtc>& used_crtcs,
   return None;
 }
 
-void MonitorReconfigure::DisableOutput(XRROutputInfo* output_info) {
-  for (int c = 0; c < output_info->ncrtc; c++) {
-    RRCrtc crtc_xid = output_info->crtcs[c];
-    int result = XRRSetCrtcConfig(display_,
-                                  screen_info_,
-                                  crtc_xid,
-                                  CurrentTime,
-                                  0, 0,  // x, y
-                                  None,  // mode
-                                  RR_Rotate_0,
-                                  NULL,  // outputs
-                                  0);    // noutputs
-    bool is_connected = output_info->connection == RR_Connected;
-
-    if (result != RRSetConfigSuccess) {
-      LOG(WARNING) << "Output " << output_info->name
-                   << (is_connected ? " " : " dis")
-                   << "connected, failed to disable crtc "
-                   << crtc_xid;
-    } else {
-      LOG(INFO) << "Output " << output_info->name
-                << (is_connected ? " " : " dis")
-                << "connected, disabled crtc "
-                << crtc_xid;
-    }
-  }
-}
-
-void MonitorReconfigure::DisableLCDOutput() {
-  for (int i = 0; i < screen_info_->noutput; i++) {
-    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
-                                                  screen_info_,
-                                                  screen_info_->outputs[i]);
-    if (strncmp(output_info->name, kLcdOutputName,
-                strlen(kLcdOutputName)) == 0) {
-      DisableOutput(output_info);
-      XRRFreeOutputInfo(output_info);
-      break;
-    }
-  }
-}
-
 void MonitorReconfigure::DisableDisconnectedOutputs() {
   for (int i = 0; i < screen_info_->noutput; i++) {
     XRROutputInfo* output_info = XRRGetOutputInfo(display_,
@@ -138,7 +96,27 @@ void MonitorReconfigure::DisableDisconnectedOutputs() {
 
     if ((output_info->connection != RR_Connected) &&
         (output_info->crtc != None)) {
-      DisableOutput(output_info);
+      for (int c = 0; c < output_info->ncrtc; c++) {
+        RRCrtc crtc_xid = output_info->crtcs[c];
+        int result = XRRSetCrtcConfig(display_,
+                                      screen_info_,
+                                      crtc_xid,
+                                      CurrentTime,
+                                      0, 0,  // x, y
+                                      None,  // mode
+                                      RR_Rotate_0,
+                                      NULL,  // outputs
+                                      0);    // noutputs
+        if (result != RRSetConfigSuccess) {
+          LOG(WARNING) << "Output " << output_info->name
+                       << " disconnected, failed to disable crtc "
+                       << crtc_xid;
+        } else {
+          LOG(INFO) << "Output " << output_info->name
+                    << " disconnected, disabled crtc "
+                    << crtc_xid;
+        }
+      }
     } else {
         LOG(INFO) << "Output " << output_info->name << " left alone";
     }
@@ -251,11 +229,6 @@ void MonitorReconfigure::Run() {
   // resolution; otherwise xrandr will complain if we're trying to set the
   // screen to a smaller size than what the now-unplugged device was using.
   DisableDisconnectedOutputs();
-
-  // LVDS output is always shown as "connected" on laptop. Disable it if
-  // if we don't need to output to LCD.
-  if (lcd_resolution.name.empty())
-    DisableLCDOutput();
 
   const bool was_projecting = is_projecting_;
 

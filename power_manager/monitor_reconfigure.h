@@ -68,12 +68,6 @@ class MonitorReconfigure {
   // Set the resolution for the screen.
   bool SetScreenResolution(const ResolutionSelector::Mode& resolution);
 
-  // Disable output and all of its CRTCs.
-  void DisableOutput(XRROutputInfo* output_info);
-
-  // Disable the LCD panel output.
-  void DisableLCDOutput();
-
   // Disables all disconnected outputs.
   void DisableDisconnectedOutputs();
 
