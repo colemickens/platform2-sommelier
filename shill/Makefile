@@ -38,6 +38,7 @@ DBUS_ADAPTOR_HEADERS :=
 
 DBUS_PROXY_HEADERS = \
 	dbus-properties.h \
+	dbus-objectmanager.h \
 	dhcpcd.h \
 	power_manager.h \
 	supplicant-bss.h \
