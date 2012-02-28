@@ -108,6 +108,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	crypto_rot47.o \
 	dbus_adaptor.o \
 	dbus_control.o \
+	dbus_objectmanager_proxy.o \
 	dbus_properties.o \
 	dbus_properties_proxy.o \
 	default_profile.o \
