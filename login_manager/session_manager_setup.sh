@@ -322,8 +322,10 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --user-data-dir="$DATA_DIR" \
             --webui-login \
             --no-protector \
+            "$REGISTER_PLUGINS" \
             ${ACCELERATED_FLAGS} \
             ${AURA_FLAGS} \
+            ${FLASH_FLAGS} \
             ${SCREENSAVER_FLAG} \
             ${SHOW_VOLUME_STATUS_FLAG} \
             ${SKIP_OOBE} \
