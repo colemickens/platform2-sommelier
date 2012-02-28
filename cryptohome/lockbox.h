@@ -137,18 +137,27 @@ class Lockbox {
   // Does NOT take ownership of the pointer.
   virtual void set_tpm(Tpm* tpm) { tpm_ = tpm; }
 
+  // Replaces the default NVRAM structure version.
+  virtual void set_nvram_version(uint32_t version) { nvram_version_ = version; }
+
   virtual Tpm* tpm() { return tpm_; }
 
   // Provide a simple means to access the expected NVRAM contents.
   virtual const LockboxContents* contents() const { return contents_.get(); }
 
+  // NVRAM structure versions.
+  static const uint32_t kNvramVersion1;
+  static const uint32_t kNvramVersion2;
+  static const uint32_t kNvramVersionDefault;
   // Space reserved for the blob data size.
   static const uint32_t kReservedSizeBytes;
   static const uint32_t kReservedFlagsBytes;
-  static const uint32_t kReservedSaltBytes;
+  static const uint32_t kReservedSaltBytesV1;
+  static const uint32_t kReservedSaltBytesV2;
   static const uint32_t kReservedDigestBytes;
-  // The sum of the above sizes.
-  static const uint32_t kReservedNvramBytes;
+  // The sum of the above sizes, accounting for possible salts.
+  static const uint32_t kReservedNvramBytesV1;
+  static const uint32_t kReservedNvramBytesV2;
 
  protected:
   // Returns true if we have the authorization needed to create/destroy
@@ -168,6 +177,7 @@ class Lockbox {
  private:
   Tpm* tpm_;
   uint32_t nvram_index_;
+  uint32_t nvram_version_;
   scoped_ptr<Crypto> default_crypto_;
   Crypto* crypto_;
   scoped_ptr<LockboxContents> contents_;
@@ -176,12 +186,14 @@ class Lockbox {
 };
 
 // Defines the unmarshalled NVRAM contents.
-#define CRYPTOHOME_LOCKBOX_SALT_LENGTH 7
+#define CRYPTOHOME_LOCKBOX_SALT_LENGTH 32
 struct LockboxContents {
   uint32_t size;
   uint8_t flags;
   uint8_t salt[CRYPTOHOME_LOCKBOX_SALT_LENGTH];
   uint8_t hash[SHA256_DIGEST_LENGTH];
+  // Remaining variables are used internally and not stored to the NVRAM.
+  uint32_t salt_size;
   bool loaded;
 };
 

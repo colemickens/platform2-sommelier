@@ -18,18 +18,28 @@
 #include <chromeos/utility.h>
 
 namespace cryptohome {
+const uint32_t Lockbox::kNvramVersion1 = 1;
+const uint32_t Lockbox::kNvramVersion2 = 2;
+const uint32_t Lockbox::kNvramVersionDefault = 2;
 const uint32_t Lockbox::kReservedSizeBytes = sizeof(uint32_t);
 const uint32_t Lockbox::kReservedFlagsBytes = sizeof(uint8_t);
-const uint32_t Lockbox::kReservedSaltBytes = CRYPTOHOME_LOCKBOX_SALT_LENGTH;
+const uint32_t Lockbox::kReservedSaltBytesV1 = 7;
+const uint32_t Lockbox::kReservedSaltBytesV2 = CRYPTOHOME_LOCKBOX_SALT_LENGTH;
 const uint32_t Lockbox::kReservedDigestBytes = SHA256_DIGEST_LENGTH;
-const uint32_t Lockbox::kReservedNvramBytes = kReservedDigestBytes +
-                                              kReservedSaltBytes +
-                                              kReservedFlagsBytes +
-                                              kReservedSizeBytes;
+const uint32_t Lockbox::kReservedNvramBytesV1 = kReservedSizeBytes +
+                                                kReservedFlagsBytes +
+                                                kReservedSaltBytesV1 +
+                                                kReservedDigestBytes;
+const uint32_t Lockbox::kReservedNvramBytesV2 = kReservedSizeBytes +
+                                                kReservedFlagsBytes +
+                                                kReservedSaltBytesV2 +
+                                                kReservedDigestBytes;
+
 
 Lockbox::Lockbox(Tpm* tpm, uint32_t nvram_index)
   : tpm_(tpm),
     nvram_index_(nvram_index),
+    nvram_version_(kNvramVersionDefault),
     default_crypto_(new Crypto()),
     crypto_(default_crypto_.get()),
     contents_(new LockboxContents()) {
@@ -65,6 +75,7 @@ bool Lockbox::Destroy(ErrorId* error) {
 }
 
 bool Lockbox::Create(ErrorId* error) {
+  uint32_t nvram_bytes;
   CHECK(error);
   *error = kErrorIdNone;
   // Make sure we have what we need now.
@@ -77,7 +88,16 @@ bool Lockbox::Create(ErrorId* error) {
     LOG(ERROR) << "Failed to destroy lockbox data before creation.";
     return false;
   }
-  if (!tpm_->DefineLockOnceNvram(nvram_index_, kReservedNvramBytes, 0)) {
+  switch (nvram_version_) {
+  case kNvramVersion1:
+    nvram_bytes = kReservedNvramBytesV1;
+    break;
+  case kNvramVersion2:
+  default:
+    nvram_bytes = kReservedNvramBytesV2;
+    break;
+  }
+  if (!tpm_->DefineLockOnceNvram(nvram_index_, nvram_bytes, 0)) {
     *error = kErrorIdTpmError;
     LOG(ERROR) << "Create() failed to defined NVRAM space.";
     return false;
@@ -118,9 +138,16 @@ bool Lockbox::Load(ErrorId* error) {
     return false;
   }
 
-  // If the read is successful, but the size is wrong, we've got tampering
-  // or an unexpected bug/race during set.
-  if (nvram_data.size() != kReservedNvramBytes) {
+  // If the read is successful, but the size is not an expected value,
+  // we've got tampering or an unexpected bug/race during set.
+  switch (nvram_data.size()) {
+  case kReservedNvramBytesV1:
+    contents_->salt_size = kReservedSaltBytesV1;
+    break;
+  case kReservedNvramBytesV2:
+    contents_->salt_size = kReservedSaltBytesV2;
+    break;
+  default:
     LOG(ERROR) << "Load() unexpected NVRAM size.";
     *error = kErrorIdNvramInvalid;
     return false;
@@ -143,11 +170,13 @@ bool Lockbox::Load(ErrorId* error) {
                    nvram_data.begin() + kReservedFlagsBytes);
 
   // Grab the salt.
-  DCHECK(sizeof(contents_->salt) == kReservedSaltBytes);
-  memcpy(contents_->salt, &nvram_data[0], sizeof(contents_->salt));
+  DCHECK(sizeof(contents_->salt) == kReservedSaltBytesV2);
+  DCHECK(sizeof(contents_->salt) >= contents_->salt_size);
+  memcpy(contents_->salt, &nvram_data[0], contents_->salt_size);
   nvram_data.erase(nvram_data.begin(),
-                   nvram_data.begin() + kReservedSaltBytes);
+                   nvram_data.begin() + contents_->salt_size);
 
+  // Grab the hash.
   DCHECK(nvram_data.size() == kReservedDigestBytes);
   DCHECK(sizeof(contents_->hash) == kReservedDigestBytes);
   memcpy(contents_->hash, &nvram_data[0], sizeof(contents_->hash));
@@ -177,7 +206,7 @@ bool Lockbox::Verify(const chromeos::Blob& blob, ErrorId* error) {
   chromeos::Blob salty_blob(blob);
   salty_blob.insert(salty_blob.end(),
                     contents_->salt,
-                    contents_->salt + sizeof(contents_->salt));
+                    contents_->salt + contents_->salt_size);
 
   SecureBlob hash(0);
   crypto_->GetSha256(salty_blob, 0, salty_blob.size(), &hash);
@@ -207,14 +236,24 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
 
   // Grab a salt from the TPM.
   chromeos::Blob salt(0);
-  if (!tpm_->GetRandomData(kReservedSaltBytes, &salt)) {
-    LOG(ERROR) << "Store() failed to get a seed from the TPM.";
+  switch (nvram_version_) {
+  case kNvramVersion1:
+    contents_->salt_size = kReservedSaltBytesV1;
+    break;
+  case kNvramVersion2:
+  default:
+    contents_->salt_size = kReservedSaltBytesV2;
+    break;
+  }
+  if (!tpm_->GetRandomData(contents_->salt_size, &salt)) {
+    LOG(ERROR) << "Store() failed to get a salt from the TPM.";
     *error = kErrorIdTpmError;
     return false;
   }
   // Keep the data locally too.
-  DCHECK(kReservedSaltBytes == sizeof(contents_->salt));
-  memcpy(contents_->salt, &salt[0], sizeof(contents_->salt));
+  DCHECK(sizeof(contents_->salt) == kReservedSaltBytesV2);
+  DCHECK(sizeof(contents_->salt) >= contents_->salt_size);
+  memcpy(contents_->salt, &salt[0], contents_->salt_size);
 
   // Get the size of the data blob
   chromeos::Blob size_blob;
@@ -230,7 +269,10 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   salty_blob.insert(salty_blob.end(), salt.begin(), salt.end());
 
   SecureBlob nvram_blob(0);
+
+  // Insert the hash into the NVRAM.
   crypto_->GetSha256(salty_blob, 0, salty_blob.size(), &nvram_blob);
+  DCHECK(kReservedDigestBytes == nvram_blob.size());
   memcpy(contents_->hash, &nvram_blob[0], sizeof(contents_->hash));
 
   // Insert the salt into the NVRAM.
@@ -247,7 +289,7 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   nvram_blob.insert(nvram_blob.begin(), size_blob.begin(), size_blob.end());
 
   // The resulting NVRAM space should look like:
-  //   [size_blob][flags][salt][nvram_blob]
+  //   [size_blob][flags][salt][hash_blob]
 
   // Ensure we have the spaces ready.
   if (!tpm_->IsNvramDefined(nvram_index_)) {

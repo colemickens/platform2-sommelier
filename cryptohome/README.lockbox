@@ -24,7 +24,7 @@ itself is logically defined as follows:
   struct {
     uint32_t data_size;
     uint8_t flags;
-    uint8_t salt[7];
+    uint8_t salt[SHA256_DIGEST_LENGTH];
     uint8_t hash[SHA256_DIGEST_LENGTH];
   } __attribute__((packed));
 
@@ -36,7 +36,7 @@ Flags is reserved for future use, primarily in anticipation of future
 digest changes or data serialization changes (encrypted versus not).
 At present, flags is always 0.
 
-The salt is 7 bytes of randomly generated data sourced from the TPM
+The salt is 32 bytes of randomly generated data sourced from the TPM
 itself.  This also aids in collision attack deterrence.  Many devices
 will likely share the same file.  If a collision is found for the hash
 of that file, arbitrary replacement attacks would be feasible.  The
