@@ -155,11 +155,23 @@ bool VersionLess(const string& left,
   return false;
 }
 
+const std::string mmcblk_dev = "/dev/mmcblk";
+
 string GetBlockDevFromPartitionDev(const string& partition_dev) {
   size_t i = partition_dev.length();
 
   while (i > 0 && isdigit(partition_dev[i-1]))
     i--;
+
+  // mmcblk devices are of the form "/dev/mmcblk12p34"
+  if (partition_dev.compare(0, mmcblk_dev.size(), mmcblk_dev) == 0) {
+    // If it ends with a p, strip off the p. If it doesn't there was
+    // no partition at the end (/dev/mmcblk12) return unmodified.
+    if (partition_dev[i-1] == 'p')
+      i--;
+    else
+      return partition_dev;
+  }
 
   return partition_dev.substr(0, i);
 }
@@ -169,6 +181,13 @@ int GetPartitionFromPartitionDev(const string& partition_dev) {
 
   while (i > 0 && isdigit(partition_dev[i-1]))
     i--;
+
+  // mmcblk devices are of the form "/dev/mmcblk12p34"
+  // If there is no ending p, There was no partition at the end (/dev/mmcblk12)
+  if ((partition_dev.compare(0, mmcblk_dev.size(), mmcblk_dev) == 0) &&
+      (partition_dev[i-1] != 'p')) {
+    return 0;
+  }
 
   string partition_str = partition_dev.substr(i, i+1);
 
@@ -181,6 +200,9 @@ int GetPartitionFromPartitionDev(const string& partition_dev) {
 }
 
 string MakePartitionDev(const string& block_dev, int partition) {
+  if (block_dev.compare(0, mmcblk_dev.size(), mmcblk_dev) == 0)
+    return StringPrintf("%sp%d", block_dev.c_str(), partition);
+
   return StringPrintf("%s%d", block_dev.c_str(), partition);
 }
 

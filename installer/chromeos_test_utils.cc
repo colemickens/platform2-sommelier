@@ -172,16 +172,25 @@ void Test() {
 
   TestGetBlockDevFromPartitionDev("/dev/sda3", "/dev/sda");
   TestGetBlockDevFromPartitionDev("/dev/sda321", "/dev/sda");
+  TestGetBlockDevFromPartitionDev("/dev/sda", "/dev/sda");
+  TestGetBlockDevFromPartitionDev("/dev/mmcblk0p3", "/dev/mmcblk0");
+  TestGetBlockDevFromPartitionDev("/dev/mmcblk12p321", "/dev/mmcblk12");
+  TestGetBlockDevFromPartitionDev("/dev/mmcblk0", "/dev/mmcblk0");
   TestGetBlockDevFromPartitionDev("", "");
 
   TestGetPartitionFromPartitionDev("/dev/sda3", 3);
   TestGetPartitionFromPartitionDev("/dev/sda321", 321);
   TestGetPartitionFromPartitionDev("/dev/sda", 0);
+  TestGetPartitionFromPartitionDev("/dev/mmcblk0p3", 3);
+  TestGetPartitionFromPartitionDev("/dev/mmcblk12p321", 321);
+  TestGetPartitionFromPartitionDev("/dev/mmcblk1", 0);
   TestGetPartitionFromPartitionDev("3", 3);
   TestGetPartitionFromPartitionDev("", 0);
 
   TestMakePartitionDev("/dev/sda", 3, "/dev/sda3");
   TestMakePartitionDev("/dev/sda", 321, "/dev/sda321");
+  TestMakePartitionDev("/dev/mmcblk0", 3, "/dev/mmcblk0p3");
+  TestMakePartitionDev("/dev/mmcblk12", 321, "/dev/mmcblk12p321");
   TestMakePartitionDev("", 0, "0");
 
   TestDirname("/mnt/dir/postinst", "/mnt/dir");
