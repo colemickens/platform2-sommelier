@@ -103,6 +103,7 @@ Service::Service(ControlInterface *control_interface,
       strength_(0),
       save_credentials_(true),
       technology_(technology),
+      failed_time_(0),
       dispatcher_(dispatcher),
       unique_name_(base::UintToString(serial_number_++)),
       friendly_name_(unique_name_),
@@ -253,6 +254,7 @@ void Service::SetState(ConnectState state) {
   state_ = state;
   if (state != kStateFailure) {
     failure_ = kFailureUnknown;
+    failed_time_ = 0;
   }
   manager_->UpdateService(this);
   metrics_->NotifyServiceStateChanged(this, state);
@@ -262,7 +264,16 @@ void Service::SetState(ConnectState state) {
 
 void Service::SetFailure(ConnectFailure failure) {
   failure_ = failure;
+  failed_time_ = time(NULL);
   SetState(kStateFailure);
+}
+
+void Service::SetFailureSilent(ConnectFailure failure) {
+  // Note that order matters here, since SetState modifies |failure_| and
+  // |failed_time_|.
+  SetState(kStateIdle);
+  failure_ = failure;
+  failed_time_ = time(NULL);
 }
 
 string Service::GetRpcIdentifier() const {

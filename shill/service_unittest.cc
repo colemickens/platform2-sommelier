@@ -263,17 +263,30 @@ TEST_F(ServiceTest, State) {
   service_->SetState(Service::kStateConnected);
   // A second state change shouldn't cause another update
   service_->SetState(Service::kStateConnected);
-
   EXPECT_EQ(Service::kStateConnected, service_->state());
   EXPECT_EQ(Service::kFailureUnknown, service_->failure());
+
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateDisconnected);
 
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetFailure(Service::kFailureOutOfRange);
-
+  EXPECT_TRUE(service_->IsFailed());
+  EXPECT_GT(service_->failed_time_, 0);
   EXPECT_EQ(Service::kStateFailure, service_->state());
   EXPECT_EQ(Service::kFailureOutOfRange, service_->failure());
+
+  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  service_->SetState(Service::kStateConnected);
+  EXPECT_FALSE(service_->IsFailed());
+  EXPECT_EQ(service_->failed_time_, 0);
+
+  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  service_->SetFailureSilent(Service::kFailurePinMissing);
+  EXPECT_TRUE(service_->IsFailed());
+  EXPECT_GT(service_->failed_time_, 0);
+  EXPECT_EQ(Service::kStateIdle, service_->state());
+  EXPECT_EQ(Service::kFailurePinMissing, service_->failure());
 }
 
 TEST_F(ServiceTest, ActivateCellularModem) {

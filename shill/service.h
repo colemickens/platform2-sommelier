@@ -5,6 +5,8 @@
 #ifndef SHILL_SERVICE_
 #define SHILL_SERVICE_
 
+#include <time.h>
+
 #include <string>
 #include <map>
 #include <set>
@@ -175,12 +177,18 @@ class Service : public base::RefCounted<Service> {
     return state() == kStateAssociating || state() == kStateConfiguring;
   }
   virtual bool IsFailed() const {
-    return state() == kStateFailure;
+    // We sometimes lie about the failure state, to keep Chrome happy
+    // (see comment in WiFi::HandleDisconnect). Hence, we check both
+    // state and |failed_time_|.
+    return state() == kStateFailure || failed_time_ > 0;
   }
 
   virtual ConnectFailure failure() const { return failure_; }
-  // Records the failure mode, and sets the Service state to "Failure".
+  // Records the failure mode and time. Sets the Service state to "Failure".
   virtual void SetFailure(ConnectFailure failure);
+  // Records the failure mode and time. Sets the Service state to "Idle".
+  // Avoids showing a failure mole in the UI.
+  virtual void SetFailureSilent(ConnectFailure failure);
 
   // Returns a string that is guaranteed to uniquely identify this Service
   // instance.
@@ -396,6 +404,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SaveStringDontSave);
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
   FRIEND_TEST(ServiceTest, SetProperty);
+  FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, Unload);
 
   static const char kAutoConnConnected[];
@@ -446,6 +455,9 @@ class Service : public base::RefCounted<Service> {
   bool save_credentials_;
   EapCredentials eap_;  // Only saved if |save_credentials_| is true.
   Technology::Identifier technology_;
+  // The time of the most recent failure. Value is 0 if the service is
+  // not currently failed.
+  time_t failed_time_;
 
   ProfileRefPtr profile_;
   PropertyStore store_;

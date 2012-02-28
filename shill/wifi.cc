@@ -340,7 +340,6 @@ void WiFi::ConnectTo(WiFiService *service,
   }
 
   supplicant_interface_proxy_->SelectNetwork(network_path);
-
   pending_service_ = service;
   CHECK(current_service_.get() != pending_service_.get());
 
@@ -551,9 +550,12 @@ void WiFi::HandleDisconnect() {
   // TODO(quiche): Reconsider giving up immediately. Maybe give
   // wpa_supplicant some time to retry, first.
   supplicant_interface_proxy_->RemoveNetwork(rpcid_it->second);
-  // TODO(quiche): If we initated the disconnect, we should probably
-  // go to the idle state instead. crosbug.com/24700
-  affected_service->SetFailure(Service::kFailureUnknown);
+  // TOOD(quiche): In the event that the disconnect was deliberate, we
+  // might want to go to SetState(kStateIdle), rather than reporting a
+  // failure. crosbug.com/24700.
+  // TODO(quiche): In the event that we suspect a password failure,
+  // we should not be silent. crosbug.com/23211.
+  affected_service->SetFailureSilent(Service::kFailureUnknown);
   affected_service->NotifyCurrentEndpoint(NULL);
   metrics()->NotifyServiceDisconnect(affected_service);
 

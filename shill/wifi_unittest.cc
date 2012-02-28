@@ -1463,7 +1463,8 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToDisconnected) {
   EXPECT_EQ(NULL, GetPendingService().get());
 
   ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
-  EXPECT_EQ(Service::kStateFailure, service->state());
+  EXPECT_EQ(Service::kStateIdle, service->state());
+  EXPECT_TRUE(service->IsFailed());
   EXPECT_EQ(NULL, GetCurrentService().get());
   EXPECT_EQ(NULL, GetPendingService().get());
 }
