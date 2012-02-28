@@ -875,15 +875,23 @@ TEST_F(ManagerTest, GetServiceWifi) {
   EXPECT_TRUE(e.IsSuccess());
 }
 
+TEST_F(ManagerTest, GetServiceVPNUnknownType) {
+  KeyValueStore args;
+  Error e;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
+  ServiceRefPtr service = manager()->GetService(args, &e);
+  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_FALSE(service);
+}
+
 TEST_F(ManagerTest, GetServiceVPN) {
   KeyValueStore args;
   Error e;
-  WiFiServiceRefPtr wifi_service;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
-  manager()->GetService(args, &e);
-  // TODO(petkov): Test that a VPN service is created.
-  EXPECT_EQ(Error::kNotSupported, e.type());
-  EXPECT_EQ("service type is unsupported", e.message());
+  args.SetString(flimflam::kProviderTypeProperty, flimflam::kProviderOpenVpn);
+  ServiceRefPtr service = manager()->GetService(args, &e);
+  EXPECT_TRUE(e.IsSuccess());
+  EXPECT_TRUE(service);
 }
 
 TEST_F(ManagerTest, TechnologyOrder) {

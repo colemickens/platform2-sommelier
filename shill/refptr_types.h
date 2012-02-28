@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -44,6 +44,10 @@ typedef scoped_refptr<CellularService> CellularServiceRefPtr;
 class EthernetService;
 typedef scoped_refptr<const EthernetService> EthernetServiceConstRefPtr;
 typedef scoped_refptr<EthernetService> EthernetServiceRefPtr;
+
+class VPNService;
+typedef scoped_refptr<const VPNService> VPNServiceConstRefPtr;
+typedef scoped_refptr<VPNService> VPNServiceRefPtr;
 
 class WiFiService;
 typedef scoped_refptr<const WiFiService> WiFiServiceConstRefPtr;

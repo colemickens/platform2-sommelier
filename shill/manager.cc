@@ -35,6 +35,7 @@
 #include "shill/resolver.h"
 #include "shill/service.h"
 #include "shill/service_sorter.h"
+#include "shill/vpn_service.h"
 #include "shill/wifi.h"
 #include "shill/wifi_service.h"
 
@@ -65,6 +66,7 @@ Manager::Manager(ControlInterface *control_interface,
       adaptor_(control_interface->CreateManagerAdaptor(this)),
       device_info_(control_interface, dispatcher, metrics, this),
       modem_info_(control_interface, dispatcher, metrics, this, glib),
+      vpn_provider_(control_interface, dispatcher, metrics, this),
       running_(false),
       connect_profiles_to_rpc_(true),
       ephemeral_profile_(new EphemeralProfile(control_interface, this)),
@@ -140,6 +142,7 @@ void Manager::Start() {
   adaptor_->UpdateRunning();
   device_info_.Start();
   modem_info_.Start();
+  vpn_provider_.Start();
 }
 
 void Manager::Stop() {
@@ -158,6 +161,7 @@ void Manager::Stop() {
   }
 
   adaptor_->UpdateRunning();
+  vpn_provider_.Stop();
   modem_info_.Stop();
   device_info_.Stop();
 }
@@ -748,7 +752,7 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
     return GetWifiService(args, error);
   }
   if (type == flimflam::kTypeVPN) {
-    return GetVPNService(args, error);
+    return vpn_provider_.GetService(args, error);
   }
   error->Populate(Error::kNotSupported, kErrorUnsupportedServiceType);
   return NULL;
@@ -766,14 +770,6 @@ WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
     CHECK(wifi);
     return wifi->GetService(args, error);
   }
-}
-
-ServiceRefPtr Manager::GetVPNService(const KeyValueStore &/*args*/,
-                                     Error *error) {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
-  error->Populate(Error::kNotSupported, kErrorUnsupportedServiceType);
-  return NULL;
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)

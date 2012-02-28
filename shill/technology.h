@@ -19,6 +19,7 @@ class Technology {
     kWifi,
     kWiFiMonitor,
     kCellular,
+    kVPN,
     kBlacklisted,
     kUnknown,
   };

@@ -148,6 +148,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	modem_manager_proxy.o \
 	modem_proxy.o \
 	modem_simple_proxy.o \
+	openvpn_driver.o \
 	portal_detector.o \
 	power_manager.o \
 	power_manager_proxy.o \
@@ -173,6 +174,8 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	supplicant_interface_proxy.o \
 	supplicant_process_proxy.o \
 	technology.o \
+	vpn_provider.o \
+	vpn_service.o \
 	wifi.o \
 	wifi_endpoint.o \
 	wifi_service.o \
@@ -254,12 +257,14 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_supplicant_interface_proxy.o \
 	mock_supplicant_process_proxy.o \
 	mock_time.o \
+	mock_vpn_driver.o \
 	mock_wifi.o \
 	mock_wifi_service.o \
 	modem_info_unittest.o \
 	modem_manager_unittest.o \
 	modem_unittest.o \
 	nice_mock_control.o \
+	openvpn_driver_unittest.o \
 	portal_detector_unittest.o \
 	power_manager_unittest.o \
 	profile_dbus_property_exporter_unittest.o \
@@ -275,6 +280,8 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	service_unittest.o \
 	shill_unittest.o \
 	testrunner.o \
+	vpn_provider_unittest.o \
+	vpn_service_unittest.o \
 	wifi_endpoint_unittest.o \
 	wifi_service_unittest.o \
 	wifi_unittest.o \

@@ -21,6 +21,7 @@
 #include "shill/power_manager.h"
 #include "shill/property_store.h"
 #include "shill/service.h"
+#include "shill/vpn_provider.h"
 #include "shill/wifi.h"
 
 namespace shill {
@@ -158,7 +159,6 @@ class Manager {
   static const char kErrorUnsupportedServiceType[];
 
   WiFiServiceRefPtr GetWifiService(const KeyValueStore &args, Error *error);
-  ServiceRefPtr GetVPNService(const KeyValueStore &args, Error *error);
 
   std::string CalculateState(Error *error);
   void AutoConnect();
@@ -204,6 +204,7 @@ class Manager {
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;
   ModemInfo modem_info_;
+  VPNProvider vpn_provider_;
   bool running_;
   // Used to facilitate unit tests which can't use RPC.
   bool connect_profiles_to_rpc_;

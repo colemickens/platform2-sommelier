@@ -30,6 +30,8 @@ Technology::Identifier Technology::IdentifierFromName(const string &name) {
     return kWifi;
   } else if (name == flimflam::kTypeCellular) {
     return kCellular;
+  } else if (name == flimflam::kTypeVPN) {
+    return kVPN;
   } else {
     return kUnknown;
   }
@@ -43,6 +45,8 @@ string Technology::NameFromIdentifier(Technology::Identifier id) {
     return flimflam::kTypeWifi;
   } else if (id == kCellular) {
     return flimflam::kTypeCellular;
+  } else if (id == kVPN) {
+    return flimflam::kTypeVPN;
   } else {
     return kUnknownName;
   }
