@@ -803,23 +803,6 @@ void Mount::DoForEveryUnmountedCryptohome(
   }
 }
 
-void Mount::DeleteTrackedDirsCallback(const FilePath& vault) {
-  file_util::FileEnumerator subdir_enumerator(
-      vault, false, file_util::FileEnumerator::DIRECTORIES);
-  for (FilePath subdir_path = subdir_enumerator.Next(); !subdir_path.empty();
-       subdir_path = subdir_enumerator.Next()) {
-    FilePath subdir_name = subdir_path.BaseName();
-    if (subdir_name.value().find(kEncryptedFilePrefix) == 0) {
-      continue;
-    }
-    if (subdir_name.value().compare(".") == 0 ||
-        subdir_name.value().compare("..") == 0) {
-      continue;
-    }
-    file_util::Delete(subdir_path, true);
-  }
-}
-
 // Deletes specified directory contents, but leaves the directory itself.
 static void DeleteDirectoryContents(const FilePath& dir) {
   file_util::FileEnumerator subdir_enumerator(
@@ -833,11 +816,6 @@ static void DeleteDirectoryContents(const FilePath& dir) {
        subdir_path = subdir_enumerator.Next()) {
     file_util::Delete(subdir_path, true);
   }
-}
-
-void Mount::CleanUnmountedTrackedSubdirectories() {
-  DoForEveryUnmountedCryptohome(base::Bind(&Mount::DeleteTrackedDirsCallback,
-                                           base::Unretained(this)));
 }
 
 void Mount::DeleteCacheCallback(const FilePath& vault) {

@@ -50,9 +50,7 @@ namespace switches {
     "dump_keyset",
     "tpm_status",
     "status",
-    "remove_tracked_subdirs",
     "set_current_user_old",
-    "do_free_disk_space_control",
     "tpm_take_ownership",
     "tpm_clear_stored_password",
     "tpm_wait_ownership",
@@ -75,9 +73,7 @@ namespace switches {
     ACTION_DUMP_KEYSET,
     ACTION_TPM_STATUS,
     ACTION_STATUS,
-    ACTION_REMOVE_TRACKED_SUBDIRS,
     ACTION_SET_CURRENT_USER_OLD,
-    ACTION_DO_FREE_DISK_SPACE_CONTROL,
     ACTION_TPM_TAKE_OWNERSHIP,
     ACTION_TPM_CLEAR_STORED_PASSWORD,
     ACTION_TPM_WAIT_OWNERSHIP,
@@ -701,70 +697,6 @@ int main(int argc, char **argv) {
     } else {
       printf("%s\n", status);
       g_free(status);
-    }
-  } else if (!strcmp(
-      switches::kActions[switches::ACTION_REMOVE_TRACKED_SUBDIRS],
-      action.c_str())) {
-    chromeos::glib::ScopedError error;
-    gboolean done;
-    if (!org_chromium_CryptohomeInterface_remove_tracked_subdirectories(
-        proxy.gproxy(),
-        &done,
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("RemoveTrackedSubdirectories call failed: %s.\n", error->message);
-    } else {
-      if (done) {
-        printf("true\n");
-      } else {
-        printf("false\n");
-      }
-    }
-  } else if (!strcmp(switches::kActions[switches::ACTION_SET_CURRENT_USER_OLD],
-                     action.c_str())) {
-    chromeos::glib::ScopedError error;
-    ClientLoop client_loop;
-    client_loop.Initialize(proxy);
-    gint async_id = -1;
-    if (!org_chromium_CryptohomeInterface_async_update_current_user_activity_timestamp(
-            proxy.gproxy(),
-            cryptohome::kOldUserLastActivityTime.InSeconds(),
-            &async_id,
-            &chromeos::Resetter(&error).lvalue())) {
-      printf("AsyncUpdateCurrentUserActivityTimestamp call failed: %s.\n",
-             error->message);
-    } else {
-      client_loop.Run(async_id);
-      if (client_loop.get_return_status()) {
-        printf("Timestamp successfully updated. You may verify it with "
-               "--action=dump_keyset --user=...\n");
-      } else {
-        printf("There is no current user. Is anyone logged in?\n");
-      }
-    }
-  } else if (!strcmp(
-      switches::kActions[switches::ACTION_DO_FREE_DISK_SPACE_CONTROL],
-      action.c_str())) {
-    chromeos::glib::ScopedError error;
-    ClientLoop client_loop;
-    client_loop.Initialize(proxy);
-    gint async_id = -1;
-    if (!org_chromium_CryptohomeInterface_async_do_automatic_free_disk_space_control(
-            proxy.gproxy(),
-            &async_id,
-            &chromeos::Resetter(&error).lvalue())) {
-      printf("AsyncDoAutomaticFreeDiskSpaceControl call failed: %s.\n",
-             error->message);
-    } else {
-      client_loop.Run(async_id);
-      if (client_loop.get_return_status()) {
-        printf("Free disk space control completed successfully "
-               "and maybe cut away something. Use `df` to check.\n");
-      } else {
-        printf("Cleanup reported that there was enough free space "
-               "(more than %"PRIu64" Kbytes, check with `df`) "
-               "so it didn't try to cut anything.\n",
-               cryptohome::kMinFreeSpace >> 10);
-      }
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_TAKE_OWNERSHIP],
                      action.c_str())) {
