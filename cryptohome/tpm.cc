@@ -60,6 +60,8 @@ const unsigned int kTpmConnectIntervalMs = 100;
 const char kTpmWellKnownPassword[] = TSS_WELL_KNOWN_SECRET;
 const char kTpmOwnedWithWellKnown = 'W';
 const char kTpmOwnedWithRandom = 'R';
+const unsigned int kTpmBootPCR = 0;
+const unsigned int kTpmPCRLocality = 1;
 
 Tpm* Tpm::singleton_ = NULL;
 base::Lock Tpm::singleton_lock_;
@@ -1509,8 +1511,9 @@ bool Tpm::StoreOwnerPassword(const chromeos::Blob& owner_password,
 
   UINT32 pcr_len;
   ScopedTssMemory pcr_value(context_handle);
-  Tspi_TPM_PcrRead(tpm_handle, 0, &pcr_len, pcr_value.ptr());
-  Tspi_PcrComposite_SetPcrValue(pcrs_handle, 0, pcr_len, pcr_value.value());
+  Tspi_TPM_PcrRead(tpm_handle, kTpmBootPCR, &pcr_len, pcr_value.ptr());
+  Tspi_PcrComposite_SetPcrValue(pcrs_handle, kTpmBootPCR,
+                                pcr_len, pcr_value.value());
 
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
   ScopedTssKey enc_handle(context_handle);
@@ -1820,8 +1823,40 @@ bool Tpm::DefineLockOnceNvram(uint32_t index, size_t length, uint32_t flags) {
     LOG(ERROR) << "DefineLockOnceNvram failed to acquire authorization.";
     return false;
   }
-  // Create an NVRAM store object handle.
+  // Create a PCR object handle.
   TSS_RESULT result;
+  ScopedTssPcrs pcrs_handle(context_handle);
+  if (TPM_ERROR(result = Tspi_Context_CreateObject(context_handle,
+                                                   TSS_OBJECT_TYPE_PCRS,
+                                                   TSS_PCRS_STRUCT_INFO_SHORT,
+                                                   pcrs_handle.ptr()))) {
+    TPM_LOG(ERROR, result) << "Could not acquire PCR object handle";
+    return false;
+  }
+  // Read PCR0.
+  UINT32 pcr_len;
+  ScopedTssMemory pcr_value(context_handle);
+  if (TPM_ERROR(result = Tspi_TPM_PcrRead(tpm_handle, kTpmBootPCR,
+                                          &pcr_len, pcr_value.ptr()))) {
+    TPM_LOG(ERROR, result) << "Could not read PCR0 value";
+    return false;
+  }
+  // Include PCR0 value in PcrComposite.
+  if (TPM_ERROR(result = Tspi_PcrComposite_SetPcrValue(pcrs_handle,
+                                                       kTpmBootPCR,
+                                                       pcr_len,
+                                                       pcr_value.value()))) {
+    TPM_LOG(ERROR, result) << "Could not set value for PCR0 in PCR handle";
+    return false;
+  }
+  // Set locality.
+  if (TPM_ERROR(result = Tspi_PcrComposite_SetPcrLocality(pcrs_handle,
+                                                          kTpmPCRLocality))) {
+    TPM_LOG(ERROR, result) << "Could not set locality for PCR0 in PCR handle";
+    return false;
+  }
+
+  // Create an NVRAM store object handle.
   ScopedTssNvStore nv_handle(context_handle);
   result = Tspi_Context_CreateObject(context_handle,
                                      TSS_OBJECT_TYPE_NV,
@@ -1854,7 +1889,8 @@ bool Tpm::DefineLockOnceNvram(uint32_t index, size_t length, uint32_t flags) {
     return false;
   }
 
-  if (TPM_ERROR(result = Tspi_NV_DefineSpace(nv_handle, 0, 0))) {
+  if (TPM_ERROR(result = Tspi_NV_DefineSpace(nv_handle,
+                                             pcrs_handle, pcrs_handle))) {
     TPM_LOG(ERROR, result) << "Could not define NVRAM space: " << index;
     return false;
   }
@@ -1988,7 +2024,7 @@ bool Tpm::ReadNvram(uint32_t index, SecureBlob* blob) {
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
     LOG(ERROR) << "Could not connect to the TPM";
-    return 0;
+    return false;
   }
 
   if (!IsNvramDefinedForContext(context_handle, tpm_handle, index)) {
