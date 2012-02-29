@@ -105,6 +105,7 @@ class RTNLHandler {
 
   FRIEND_TEST(RTNLListenerTest, NoRun);
   FRIEND_TEST(RTNLListenerTest, Run);
+  FRIEND_TEST(RoutingTableTest, RouteDeleteForeign);
 
   // This stops the event-monitoring function of the RTNL handler -- it is
   // private since it will never happen in normal running, but is useful for

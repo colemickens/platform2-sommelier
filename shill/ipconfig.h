@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -104,6 +104,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(ResolverTest, Empty);
   FRIEND_TEST(ResolverTest, NonEmpty);
   FRIEND_TEST(RoutingTableTest, RouteAddDelete);
+  FRIEND_TEST(RoutingTableTest, RouteDeleteForeign);
 
   static const char kStorageType[];
   static const char kType[];

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -27,7 +27,7 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD3(SetDefaultRoute, bool(int interface_index,
                                      const IPConfigRefPtr &ipconfig,
                                      uint32 metric));
-  MOCK_METHOD1(FlushRoutes, void(int interface_index));
+  MOCK_METHOD2(FlushRoutes, void(int interface_index, bool all_routes));
   MOCK_METHOD0(FlushCache, bool());
   MOCK_METHOD1(ResetTable, void(int interface_index));
   MOCK_METHOD2(SetDefaultMetric, void(int interface_index, uint32 metric));

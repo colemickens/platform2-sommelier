@@ -50,8 +50,10 @@ class RoutingTable {
                                const IPConfigRefPtr &ipconfig,
                                uint32 metric);
 
-  // Remove all routes associated with interface.
-  virtual void FlushRoutes(int interface_index);
+  // Remove routes associated with interface.
+  // If |all_routes| is true, delete all routes.
+  // If |all_routes| is false, delete routes that we did not create.
+  virtual void FlushRoutes(int interface_index, bool all_routes);
 
   // Flush the routing cache for all interfaces.
   virtual bool FlushCache();

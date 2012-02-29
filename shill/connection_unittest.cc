@@ -174,14 +174,14 @@ TEST_F(ConnectionTest, RouteRequest) {
     connection->ReleaseRouting();
 
     // The destructor will remove the routes and addresses.
-    EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+    EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0, true));
     EXPECT_CALL(*device_info_.get(),
                 FlushAddresses(kTestDeviceInterfaceIndex0));
   }
 }
 
 TEST_F(ConnectionTest, Destructor) {
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex1));
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex1, true));
   EXPECT_CALL(*device_info_, FlushAddresses(kTestDeviceInterfaceIndex1));
   {
     ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex1,
