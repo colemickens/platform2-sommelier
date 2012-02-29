@@ -4,22 +4,32 @@
 
 #include "shill/openvpn_driver.h"
 
+#include <algorithm>
+
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
+#include "shill/mock_adaptors.h"
+#include "shill/nice_mock_control.h"
+#include "shill/rpc_task.h"
 
+using std::map;
 using std::string;
 using std::vector;
 
 namespace shill {
 
-class OpenVPNDriverTest : public testing::Test {
+class OpenVPNDriverTest : public testing::Test,
+                          public RPCTaskDelegate {
  public:
   OpenVPNDriverTest()
-      : driver_(args_) {}
+      : driver_(&control_, args_) {}
 
   virtual ~OpenVPNDriverTest() {}
+
+  // Inherited from RPCTaskDelegate.
+  virtual void Notify(const string &reason, const map<string, string> &dict);
 
  protected:
   static const char kOption[];
@@ -33,6 +43,7 @@ class OpenVPNDriverTest : public testing::Test {
     driver_.args_ = args_;
   }
 
+  NiceMockControl control_;
   KeyValueStore args_;
   OpenVPNDriver driver_;
 };
@@ -43,6 +54,9 @@ const char OpenVPNDriverTest::kValue[] = "some-property-value";
 const char OpenVPNDriverTest::kOption2[] = "--openvpn-option2";
 const char OpenVPNDriverTest::kProperty2[] = "OpenVPN.SomeProperty2";
 const char OpenVPNDriverTest::kValue2[] = "some-property-value2";
+
+void OpenVPNDriverTest::Notify(const string &/*reason*/,
+                               const map<string, string> &/*dict*/) {}
 
 TEST_F(OpenVPNDriverTest, Connect) {
   Error error;
@@ -62,6 +76,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   static const char kHost[] = "192.168.2.254";
   args_.SetString(flimflam::kProviderHostProperty, kHost);
   SetArgs();
+  driver_.rpc_task_.reset(new RPCTask(&control_, this));
   Error error;
   vector<string> options;
   driver_.InitOptions(&options, &error);
@@ -70,6 +85,9 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   EXPECT_EQ("--remote", options[2]);
   EXPECT_EQ(kHost, options[3]);
   EXPECT_EQ("openvpn", options.back());
+  EXPECT_TRUE(
+      std::find(options.begin(), options.end(), RPCTaskMockAdaptor::kRpcId) !=
+      options.end());
 }
 
 TEST_F(OpenVPNDriverTest, AppendValueOption) {

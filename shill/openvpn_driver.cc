@@ -8,18 +8,26 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
+#include "shill/rpc_task.h"
 
 using std::string;
 using std::vector;
 
 namespace shill {
 
-OpenVPNDriver::OpenVPNDriver(const KeyValueStore &args)
-    : args_(args) {}
+namespace {
+const char kOpenVPNScript[] = "/usr/lib/flimflam/scripts/openvpn-script";
+}  // namespace {}
+
+OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
+                             const KeyValueStore &args)
+    : control_(control),
+      args_(args) {}
 
 OpenVPNDriver::~OpenVPNDriver() {}
 
 void OpenVPNDriver::Connect(Error *error) {
+  // TODO(petkov): Allocate rpc_task_.
   error->Populate(Error::kNotSupported);
 }
 
@@ -121,8 +129,22 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   // TODO(petkov): Setup management control channel and add the approprate
   // options (crosbug.com/26994).
 
-  // TODO(petkov): Setup openvpn-script options and DBus info required to send
-  // back Layer 3 configuration (crosbug.com/26993).
+  // Setup openvpn-script options and RPC information required to send back
+  // Layer 3 configuration.
+  options->push_back("--setenv");
+  options->push_back("CONNMAN_BUSNAME");
+  options->push_back(rpc_task_->GetRpcConnectionIdentifier());
+  options->push_back("--setenv");
+  options->push_back("CONNMAN_INTERFACE");
+  options->push_back(rpc_task_->GetRpcInterfaceIdentifier());
+  options->push_back("--setenv");
+  options->push_back("CONNMAN_PATH");
+  options->push_back(rpc_task_->GetRpcIdentifier());
+  options->push_back("--script-security");
+  options->push_back("2");
+  options->push_back("--up");
+  options->push_back(kOpenVPNScript);
+  options->push_back("--up-restart");
 
   // Disable openvpn handling since we do route+ifconfig work.
   options->push_back("--route-noexec");

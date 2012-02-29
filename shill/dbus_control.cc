@@ -1,6 +1,8 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
+#include "shill/dbus_control.h"
 
 #include <string>
 
@@ -8,14 +10,15 @@
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/util.h>
 
-#include "shill/dbus_control.h"
 #include "shill/device_dbus_adaptor.h"
 #include "shill/ipconfig_dbus_adaptor.h"
 #include "shill/manager_dbus_adaptor.h"
 #include "shill/profile_dbus_adaptor.h"
+#include "shill/rpc_task_dbus_adaptor.h"
 #include "shill/service_dbus_adaptor.h"
 
 namespace shill {
+
 DBusControl::DBusControl() {}
 
 DBusControl::~DBusControl() {}
@@ -38,6 +41,11 @@ ManagerAdaptorInterface *DBusControl::CreateManagerAdaptor(Manager *manager) {
 ProfileAdaptorInterface *DBusControl::CreateProfileAdaptor(Profile *profile) {
   connection_->request_name(ProfileDBusAdaptor::kInterfaceName);
   return new(std::nothrow) ProfileDBusAdaptor(connection_.get(), profile);
+}
+
+RPCTaskAdaptorInterface *DBusControl::CreateRPCTaskAdaptor(RPCTask *task) {
+  connection_->request_name(RPCTaskDBusAdaptor::kInterfaceName);
+  return new(std::nothrow) RPCTaskDBusAdaptor(connection_.get(), task);
 }
 
 ServiceAdaptorInterface *DBusControl::CreateServiceAdaptor(Service *service) {

@@ -37,8 +37,8 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
                                               const KeyValueStore &value));
 
  private:
-  const std::string rpc_id;
-  const std::string rpc_conn_id;
+  const std::string rpc_id_;
+  const std::string rpc_conn_id_;
 };
 
 // These are the functions that a IPConfig adaptor must support
@@ -56,7 +56,7 @@ class IPConfigMockAdaptor : public IPConfigAdaptorInterface {
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
 
  private:
-  const std::string rpc_id;
+  const std::string rpc_id_;
 };
 
 // These are the functions that a Manager adaptor must support
@@ -81,7 +81,7 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
   MOCK_METHOD1(EmitStateChanged, void(const std::string&));
 
  private:
-  const std::string rpc_id;
+  const std::string rpc_id_;
 };
 
 // These are the functions that a Profile adaptor must support
@@ -99,7 +99,27 @@ class ProfileMockAdaptor : public ProfileAdaptorInterface {
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
 
  private:
-  const std::string rpc_id;
+  const std::string rpc_id_;
+};
+
+// These are the functions that a Task adaptor must support
+class RPCTaskMockAdaptor : public RPCTaskAdaptorInterface {
+ public:
+  static const char kRpcId[];
+  static const char kRpcInterfaceId[];
+  static const char kRpcConnId[];
+
+  RPCTaskMockAdaptor();
+  virtual ~RPCTaskMockAdaptor();
+
+  virtual const std::string &GetRpcIdentifier();
+  virtual const std::string &GetRpcInterfaceIdentifier();
+  virtual const std::string &GetRpcConnectionIdentifier();
+
+ private:
+  const std::string rpc_id_;
+  const std::string rpc_interface_id_;
+  const std::string rpc_conn_id_;
 };
 
 // These are the functions that a Service adaptor must support
@@ -123,7 +143,7 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
                void(const std::string &name, const Stringmap &value));
 
  private:
-  const std::string rpc_id;
+  const std::string rpc_id_;
 };
 
 class MockReturner : public ReturnerInterface {

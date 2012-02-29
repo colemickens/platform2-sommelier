@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -34,6 +34,11 @@ ManagerAdaptorInterface *NiceMockControl::CreateManagerAdaptor(
 ProfileAdaptorInterface *NiceMockControl::CreateProfileAdaptor(
     Profile */*profile*/) {
   return new NiceMock<ProfileMockAdaptor>();
+}
+
+RPCTaskAdaptorInterface *NiceMockControl::CreateRPCTaskAdaptor(
+    RPCTask */*task*/) {
+  return new NiceMock<RPCTaskMockAdaptor>();
 }
 
 ServiceAdaptorInterface *NiceMockControl::CreateServiceAdaptor(

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,6 +20,8 @@ class Manager;
 class ManagerAdaptorInterface;
 class Profile;
 class ProfileAdaptorInterface;
+class RPCTask;
+class RPCTaskAdaptorInterface;
 class Service;
 class ServiceAdaptorInterface;
 
@@ -33,6 +35,7 @@ class ControlInterface {
   virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager) = 0;
   virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile) = 0;
   virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service) = 0;
+  virtual RPCTaskAdaptorInterface *CreateRPCTaskAdaptor(RPCTask *task) = 0;
 
   static void RpcIdToStorageId(std::string *rpc_id) {
     CHECK(rpc_id);

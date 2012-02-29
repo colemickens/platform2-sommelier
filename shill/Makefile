@@ -64,7 +64,8 @@ DBUS_BINDINGS_XML_LOCAL = \
 	org.chromium.flimflam.IPConfig>flimflam-ipconfig \
 	org.chromium.flimflam.Manager>flimflam-manager \
 	org.chromium.flimflam.Profile>flimflam-profile \
-	org.chromium.flimflam.Service>flimflam-service
+	org.chromium.flimflam.Service>flimflam-service \
+	org.chromium.flimflam.Task>flimflam-task
 
 define ADD_BINDING
 $(eval _SOURCE = $(word 1,$(subst >, ,$(1))))
@@ -173,6 +174,8 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	supplicant_bss_proxy.o \
 	supplicant_interface_proxy.o \
 	supplicant_process_proxy.o \
+	rpc_task.o \
+	rpc_task_dbus_adaptor.o \
 	technology.o \
 	vpn_provider.o \
 	vpn_service.o \
@@ -273,6 +276,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	property_store_unittest.o \
 	resolver_unittest.o \
 	routing_table_unittest.o \
+	rpc_task_unittest.o \
 	rtnl_handler_unittest.o \
 	rtnl_listener_unittest.o \
 	rtnl_message_unittest.o \
