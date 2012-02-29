@@ -57,5 +57,6 @@ fcntl64: 1
 futex: 1
 set_thread_area: 1
 exit_group: 1
+statfs64: 1
 tgkill: 1
 set_robust_list: 1

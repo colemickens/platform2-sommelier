@@ -53,6 +53,7 @@ setsid: 1
 setfsuid: 1
 setfsgid: 1
 getsid: 1
+statfs: 1
 arch_prctl: 1
 mount: 1
 time: 1
