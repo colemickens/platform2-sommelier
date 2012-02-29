@@ -319,6 +319,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --reload-killed-tabs \
             --scroll-pixels=3 \
             --ui-enable-partial-swap \
+            --ui-use-gpu-process \
             --user-data-dir="$DATA_DIR" \
             --webui-login \
             --no-protector \
