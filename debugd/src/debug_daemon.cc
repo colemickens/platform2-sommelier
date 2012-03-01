@@ -24,6 +24,7 @@ bool DebugDaemon::Init() {
   network_status_tool_ = new NetworkStatusTool();
   ping_tool_ = new PingTool();
   route_tool_ = new RouteTool();
+  systrace_tool_ = new SystraceTool();
   tracepath_tool_ = new TracePathTool();
   try {
     // TODO(ellyjones): Remove this when crosbug.com/23964 is fixed
@@ -68,6 +69,20 @@ std::string DebugDaemon::TracePathStart(const DBus::FileDescriptor& outfd,
 
 void DebugDaemon::TracePathStop(const std::string& handle, DBus::Error& error) {
   return tracepath_tool_->Stop(handle, error);
+}
+
+void DebugDaemon::SystraceStart(const std::string& categories,
+                                DBus::Error& error) {
+  (void) systrace_tool_->Start(categories, error);
+}
+
+void DebugDaemon::SystraceStop(const DBus::FileDescriptor& outfd,
+    DBus::Error& error) {
+  return systrace_tool_->Stop(outfd, error);
+}
+
+std::string DebugDaemon::SystraceStatus(DBus::Error& error) {
+  return systrace_tool_->Status(error);
 }
 
 std::vector<std::string> DebugDaemon::GetRoutes(const std::map<std::string,
