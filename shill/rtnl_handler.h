@@ -79,6 +79,9 @@ class RTNLHandler {
   virtual bool RemoveInterfaceAddress(int interface_index,
                                       const IPAddress &local);
 
+  // Remove a network interface from the kernel.
+  virtual bool RemoveInterface(int interface_index);
+
   // Request that various tables (link, address, routing) tables be
   // exhaustively dumped via RTNL.  As results arrive from the kernel
   // they will be broadcast to all listeners.  The possible values

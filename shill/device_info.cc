@@ -2,18 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <time.h>
+#include "shill/device_info.h"
 
-#include <unistd.h>
-#include <string.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <netinet/ether.h>
-#include <net/if.h>
-#include <net/if_arp.h>
+#include <fcntl.h>
+#include <linux/if_tun.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
-#include <fcntl.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <netinet/ether.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <time.h>
+#include <unistd.h>
+
 #include <string>
 
 #include <base/callback_old.h>
@@ -27,7 +31,6 @@
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
-#include "shill/device_info.h"
 #include "shill/device_stub.h"
 #include "shill/ethernet.h"
 #include "shill/manager.h"
@@ -50,6 +53,8 @@ const char DeviceInfo::kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
 // static
 const char DeviceInfo::kInterfaceDriver[] = "/sys/class/net/%s/device/driver";
 // static
+const char DeviceInfo::kInterfaceTunFlags[] = "/sys/class/net/%s/tun_flags";
+// static
 const char DeviceInfo::kInterfaceType[] = "/sys/class/net/%s/type";
 // static
 const char *DeviceInfo::kModemDrivers[] = {
@@ -59,6 +64,8 @@ const char *DeviceInfo::kModemDrivers[] = {
     "cdc_ether",
     NULL
 };
+// static
+const char DeviceInfo::kTunDeviceName[] = "/dev/net/tun";
 
 DeviceInfo::DeviceInfo(ControlInterface *control_interface,
                        EventDispatcher *dispatcher,
@@ -162,7 +169,19 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   if (!file_util::ReadSymbolicLink(driver_file, &driver_path)) {
     VLOG(2) << StringPrintf("%s: device %s has no device symlink",
                             __func__, iface_name.c_str());
-    return Technology::kUnknown;
+    FilePath tun_flags_file(StringPrintf(kInterfaceTunFlags,
+                                         iface_name.c_str()));
+    string tun_flags_string;
+    int tun_flags = 0;
+    if (file_util::ReadFileToString(tun_flags_file, &tun_flags_string) &&
+        TrimString(tun_flags_string, "\n", &tun_flags_string) &&
+        base::HexStringToInt(tun_flags_string, &tun_flags) &&
+        (tun_flags & IFF_TUN)) {
+      VLOG(2) << StringPrintf("%s: device %s is tun device",
+                              __func__, iface_name.c_str());
+      return Technology::kTunnel;
+    }
+     return Technology::kUnknown;
   }
 
   string driver_name(driver_path.BaseName().value());
@@ -200,14 +219,6 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
 
   DeviceRefPtr device = GetDevice(dev_index);
   if (!device.get()) {
-    if (msg.HasAttribute(IFLA_ADDRESS)) {
-      infos_[dev_index].mac_address = msg.GetAttribute(IFLA_ADDRESS);
-      VLOG(2) << "link index " << dev_index << " address "
-              << infos_[dev_index].mac_address.HexEncode();
-    } else {
-      LOG(ERROR) << "Add Link message does not have IFLA_ADDRESS!";
-      return;
-    }
     if (!msg.HasAttribute(IFLA_IFNAME)) {
       LOG(ERROR) << "Add Link message does not have IFLA_IFNAME!";
       return;
@@ -223,8 +234,16 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
         technology = GetDeviceTechnology(link_name);
       }
     }
-    string address =
-        StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
+    string address;
+    if (msg.HasAttribute(IFLA_ADDRESS)) {
+      infos_[dev_index].mac_address = msg.GetAttribute(IFLA_ADDRESS);
+      address = StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
+      VLOG(2) << "link index " << dev_index << " address "
+              << infos_[dev_index].mac_address.HexEncode();
+    } else if (technology != Technology::kTunnel) {
+      LOG(ERROR) << "Add Link message does not have IFLA_ADDRESS!";
+      return;
+    }
     switch (technology) {
       case Technology::kCellular:
         // Cellular devices are managed by ModemInfo.
@@ -242,6 +261,12 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
                           link_name, address, dev_index);
         device->EnableIPv6Privacy();
         break;
+      case Technology::kTunnel:
+        // Tunnel devices are managed by the VPN code.
+        VLOG(2) << "Tunnel link " << link_name << " at index " << dev_index
+                << " -- notifying VPNProvider.";
+        // TODO(pstew): Notify VPNProvider once that method exists.
+        return;
       default:
         device = new DeviceStub(control_interface_, dispatcher_, metrics_,
                                 manager_, link_name, address, dev_index,
@@ -315,6 +340,36 @@ bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) const {
   }
   *flags = info->flags;
   return true;
+}
+
+bool DeviceInfo::CreateTunnelInterface(string *interface_name) {
+  int fd = HANDLE_EINTR(open(kTunDeviceName, O_RDWR));
+  if (fd < 0) {
+    PLOG(ERROR) << "failed to open " << kTunDeviceName;
+    return false;
+  }
+  file_util::ScopedFD scoped_fd(&fd);
+
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+  if (HANDLE_EINTR(ioctl(fd, TUNSETIFF, &ifr))) {
+    PLOG(ERROR) << "failed to create tunnel interface";
+    return false;
+  }
+
+  if (HANDLE_EINTR(ioctl(fd, TUNSETPERSIST, 1))) {
+    PLOG(ERROR) << "failed to set tunnel interface to be persistent";
+    return false;
+  }
+
+  *interface_name = string(ifr.ifr_name);
+
+  return true;
+}
+
+bool DeviceInfo::DeleteInterface(int interface_index) {
+  return rtnl_handler_->RemoveInterface(interface_index);
 }
 
 const DeviceInfo::Info *DeviceInfo::GetInfo(int interface_index) const {

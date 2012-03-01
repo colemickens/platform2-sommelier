@@ -19,6 +19,7 @@
 #include "shill/device.h"
 #include "shill/ip_address.h"
 #include "shill/rtnl_listener.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -67,6 +68,8 @@ class DeviceInfo {
   virtual bool GetAddresses(int interface_index,
                             std::vector<AddressData> *addresses) const;
   virtual void FlushAddresses(int interface_index) const;
+  virtual bool CreateTunnelInterface(std::string *interface_name);
+  virtual bool DeleteInterface(int interface_index);
 
  private:
   friend class DeviceInfoTest;
@@ -84,9 +87,10 @@ class DeviceInfo {
   static const char kInterfaceUevent[];
   static const char kInterfaceUeventWifiSignature[];
   static const char kInterfaceDriver[];
+  static const char kInterfaceTunFlags[];
   static const char kInterfaceType[];
   static const char *kModemDrivers[];
-  static const char kInterfaceIPv6Privacy[];
+  static const char kTunDeviceName[];
 
   static Technology::Identifier GetDeviceTechnology(
       const std::string &face_name);

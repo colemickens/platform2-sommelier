@@ -592,7 +592,7 @@ TEST_F(RTNLMessageTest, AddNeighbor) {
       ByteString(kAddNeighborMessage, sizeof(kAddNeighborMessage))));
 }
 
-TEST_F(RTNLMessageTest, Encode) {
+TEST_F(RTNLMessageTest, EncodeRouteAdd) {
   RTNLMessage msg(RTNLMessage::kTypeRoute,
                   RTNLMessage::kModeAdd,
                   0, 1, 2, 0,
@@ -626,6 +626,35 @@ TEST_F(RTNLMessageTest, Encode) {
                  RT_SCOPE_UNIVERSE,
                  RTN_UNICAST,
                  13);
+}
+
+TEST_F(RTNLMessageTest, EncodeLinkDel) {
+  const int kInterfaceIndex = 0x1234;
+  RTNLMessage pmsg(RTNLMessage::kTypeLink,
+                  RTNLMessage::kModeDelete,
+                  NLM_F_REQUEST,
+                  0,
+                  0,
+                  kInterfaceIndex,
+                  IPAddress::kFamilyUnknown);
+
+
+  RTNLMessage msg;
+  EXPECT_TRUE(msg.Decode(pmsg.Encode()));
+
+  EXPECT_EQ(RTNLMessage::kTypeLink, msg.type());
+  EXPECT_EQ(RTNLMessage::kModeDelete, msg.mode());
+  EXPECT_EQ(kInterfaceIndex, msg.interface_index());
+
+  RTNLMessage::LinkStatus status = msg.link_status();
+  EXPECT_EQ(0, status.flags);
+  EXPECT_EQ(0, status.change);
+
+  EXPECT_FALSE(msg.HasAttribute(IFLA_ADDRESS));
+  EXPECT_FALSE(msg.HasAttribute(IFLA_IFNAME));
+  EXPECT_FALSE(msg.HasAttribute(IFLA_MTU));
+  EXPECT_FALSE(msg.HasAttribute(IFLA_QDISC));
+  EXPECT_FALSE(msg.HasAttribute(IFLA_OPERSTATE));
 }
 
 }  // namespace shill

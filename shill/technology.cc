@@ -20,6 +20,7 @@ using std::set;
 using std::string;
 using std::vector;
 
+const char Technology::kTunnelName[] = "Tunnel";
 const char Technology::kUnknownName[] = "Unknown";
 
 // static
@@ -32,6 +33,8 @@ Technology::Identifier Technology::IdentifierFromName(const string &name) {
     return kCellular;
   } else if (name == flimflam::kTypeVPN) {
     return kVPN;
+  } else if (name == kTunnelName) {
+    return kTunnel;
   } else {
     return kUnknown;
   }
@@ -47,6 +50,8 @@ string Technology::NameFromIdentifier(Technology::Identifier id) {
     return flimflam::kTypeCellular;
   } else if (id == kVPN) {
     return flimflam::kTypeVPN;
+  } else if (id == kTunnel) {
+    return kTunnelName;
   } else {
     return kUnknownName;
   }

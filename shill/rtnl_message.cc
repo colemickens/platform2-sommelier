@@ -265,6 +265,7 @@ void RTNLMessage::EncodeLink(RTNLHeader *hdr) {
   hdr->hdr.nlmsg_type = (mode_ == kModeAdd) ? RTM_NEWLINK : RTM_DELLINK;
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->ifi));
   hdr->ifi.ifi_family = family_;
+  hdr->ifi.ifi_index = interface_index_;
   hdr->ifi.ifi_type = link_status_.type;
   hdr->ifi.ifi_flags = link_status_.flags;
   hdr->ifi.ifi_change = link_status_.change;

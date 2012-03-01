@@ -310,6 +310,18 @@ bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
                         IPAddress(local.family()));
 }
 
+bool RTNLHandler::RemoveInterface(int interface_index) {
+  RTNLMessage msg(
+      RTNLMessage::kTypeLink,
+      RTNLMessage::kModeDelete,
+      NLM_F_REQUEST,
+      0,
+      0,
+      interface_index,
+      IPAddress::kFamilyUnknown);
+  return SendMessage(&msg);
+}
+
 int RTNLHandler::GetInterfaceIndex(const string &interface_name) {
   if (interface_name.empty()) {
     LOG(ERROR) << "Empty interface name -- unable to obtain index.";
