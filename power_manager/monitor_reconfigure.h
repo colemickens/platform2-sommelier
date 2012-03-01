@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/basictypes.h"
+#include "base/time.h"
 #include "power_manager/resolution_selector.h"
 #include "power_manager/signal_callback.h"
 
@@ -68,11 +69,20 @@ class MonitorReconfigure {
   // Set the resolution for the screen.
   bool SetScreenResolution(const ResolutionSelector::Mode& resolution);
 
-  // Disables all disconnected outputs.
-  void DisableDisconnectedOutputs();
+  // Disable the output.
+  void DisableOutput(XRROutputInfo* output_info);
+
+  // Disables all the the outputs (both connected and disconnected);
+  void DisableAllOutputs();
 
   // Enables all connected and usable outputs.
   void EnableUsableOutputs(const std::vector<RRMode>& resolutions);
+
+  // Get the number of connected outputs.
+  int GetConnectedOutputsNum();
+
+  // Is LVDS connected.
+  void RecordLVDSConnection();
 
   // Callback to watch for xrandr hotplug events.
   SIGNAL_CALLBACK_2(MonitorReconfigure, GdkFilterReturn, GdkEventFilter,
@@ -93,6 +103,15 @@ class MonitorReconfigure {
   // The list of usable (connected) outputs and their info.
   std::vector<RROutput> usable_outputs_;
   std::vector<XRROutputInfo*> usable_outputs_info_;
+
+  // Number of connected outputs.
+  int noutput_;
+
+  // The timestamp of last monitor reconfiguration.
+  base::Time last_configuration_time_;
+
+  // -1 not set yet; 0 not connected; 1 connected.
+  int is_lvds_connected_;
 
   // Are we projecting?
   bool is_projecting_;
