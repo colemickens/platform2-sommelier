@@ -191,6 +191,7 @@ void WiFi::Stop() {
   supplicant_process_proxy_.reset();
   endpoint_by_rpcid_.clear();
   rpcid_by_service_.clear();
+  manager()->power_manager()->RemoveStateChangeCallback(UniqueName());
 
   for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();

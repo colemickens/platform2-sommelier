@@ -211,6 +211,8 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
 
   virtual void TearDown() {
     EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
+    EXPECT_CALL(*power_manager_, RemoveStateChangeCallback(wifi_->UniqueName()))
+        .Times(AnyNumber());
     if (supplicant_bss_proxy_.get()) {
       EXPECT_CALL(*supplicant_bss_proxy_, Die());
     }
@@ -347,6 +349,8 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     wifi_->Start();
   }
   void StopWiFi() {
+    EXPECT_CALL(*power_manager_,
+                RemoveStateChangeCallback(wifi_->UniqueName()));
     wifi_->Stop();
   }
 
