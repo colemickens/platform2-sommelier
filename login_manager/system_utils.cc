@@ -167,13 +167,14 @@ void SystemUtils::SendSignalTo(const char* interface,
                                const char* signal_name,
                                const char* payload) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              "/",
+                              login_manager::kSessionManagerServicePath,
                               interface);
   if (!proxy) {
     LOG(ERROR) << "No proxy; can't signal " << interface;
     return;
   }
-  DBusMessage* signal = ::dbus_message_new_signal("/", interface, signal_name);
+  DBusMessage* signal = ::dbus_message_new_signal(
+      login_manager::kSessionManagerServicePath, interface, signal_name);
   if (payload) {
     dbus_message_append_args(signal,
                              DBUS_TYPE_STRING, &payload,
