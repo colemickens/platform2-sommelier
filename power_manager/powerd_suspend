@@ -56,7 +56,7 @@ cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
   2> /dev/null || true
 
 # - announces the event
-/usr/bin/dbus-send --type=signal --system / \
+/usr/bin/dbus-send --type=signal --system /org/chromium/PowerManager \
   org.chromium.PowerManager.PowerStateChanged string:mem
 
 # - stores the current power status
@@ -110,7 +110,7 @@ if [ $cancel -eq 0 ]; then
 fi
 
 # - announces the event
-/usr/bin/dbus-send --type=signal --system / \
+/usr/bin/dbus-send --type=signal --system /org/chromium/PowerManager \
     org.chromium.PowerManager.PowerStateChanged string:on &
 
 cleanup_for_resume
