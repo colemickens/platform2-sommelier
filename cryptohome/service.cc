@@ -42,6 +42,8 @@ namespace gobject {  // NOLINT
 
 namespace cryptohome {
 
+const char *kSaltFilePath = "/home/.shadow/salt";
+
 // Encapsulates histogram parameters, for UMA reporting.
 struct HistogramParams {
   const char* metric_name;
@@ -170,9 +172,11 @@ class TpmInitStatus : public CryptohomeEventBase {
 };
 
 Service::Service()
-    : loop_(NULL),
+    : use_tpm_(false),
+      loop_(NULL),
       cryptohome_(NULL),
       system_salt_(),
+      crypto_(new Crypto()),
       tpm_(Tpm::GetSingleton()),
       default_tpm_init_(new TpmInit()),
       tpm_init_(default_tpm_init_.get()),
@@ -210,6 +214,10 @@ bool Service::Initialize() {
   // Initialize the metrics library for stat reporting.
   metrics_lib_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(&metrics_lib_);
+
+  crypto_->set_use_tpm(use_tpm_);
+  if (!crypto_->Init())
+    return false;
 
   mount_ = GetOrCreateMountForUser("");
   mount_->Init();
@@ -533,12 +541,10 @@ gboolean Service::AsyncRemove(gchar *userid,
 }
 
 gboolean Service::GetSystemSalt(GArray **OUT_salt, GError **error) {
-  if (system_salt_.size() == 0) {
-    mount_->GetSystemSalt(&system_salt_);
-  }
+  if (!CreateSystemSaltIfNeeded())
+    return FALSE;
   *OUT_salt = g_array_new(false, false, 1);
   g_array_append_vals(*OUT_salt, &system_salt_.front(), system_salt_.size());
-
   return TRUE;
 }
 
@@ -1056,6 +1062,14 @@ cryptohome::Mount* Service::GetOrCreateMountForUser(
   cryptohome::Mount* m = new cryptohome::Mount();
   mounts_[username] = m;
   return m;
+}
+
+bool Service::CreateSystemSaltIfNeeded() {
+  if (!system_salt_.empty())
+    return true;
+  FilePath saltfile(kSaltFilePath);
+  return crypto_->GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH,
+                                  false, &system_salt_);
 }
 
 }  // namespace cryptohome

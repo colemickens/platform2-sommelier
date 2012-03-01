@@ -89,6 +89,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                   cryptohome::Mount* m) {
     mounts_[username] = m;
   }
+  virtual void set_use_tpm(bool value) {
+    use_tpm_ = value;
+  }
 
   // MountTaskObserver
   virtual void MountTaskObserve(const MountTaskResult& result);
@@ -209,13 +212,16 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual void DetectEnterpriseOwnership() const;
 
  private:
+  bool CreateSystemSaltIfNeeded();
   cryptohome::Mount* GetOrCreateMountForUser(const std::string& username);
 
+  bool use_tpm_;
   GMainLoop* loop_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome* cryptohome_;
-  chromeos::Blob system_salt_;
+  SecureBlob system_salt_;
   cryptohome::Mount* mount_;
+  cryptohome::Crypto* crypto_;
   // TPM doesn't use the scoped_ptr for default pattern, since the tpm is a
   // singleton - we don't want it getting destroyed when we are.
   Tpm* tpm_;
