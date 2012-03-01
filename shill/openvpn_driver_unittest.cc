@@ -11,12 +11,17 @@
 
 #include "shill/error.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_device_info.h"
 #include "shill/nice_mock_control.h"
 #include "shill/rpc_task.h"
 
 using std::map;
 using std::string;
 using std::vector;
+using testing::_;
+using testing::DoAll;
+using testing::Return;
+using testing::SetArgumentPointee;
 
 namespace shill {
 
@@ -24,7 +29,8 @@ class OpenVPNDriverTest : public testing::Test,
                           public RPCTaskDelegate {
  public:
   OpenVPNDriverTest()
-      : driver_(&control_, args_) {}
+      : device_info_(&control_, NULL, NULL, NULL),
+        driver_(&control_, &device_info_, args_) {}
 
   virtual ~OpenVPNDriverTest() {}
 
@@ -43,7 +49,13 @@ class OpenVPNDriverTest : public testing::Test,
     driver_.args_ = args_;
   }
 
+  // Used to assert that a flag appears in the options.
+  void ExpectInFlags(const vector<string> &options, const string &flag,
+                     const string &value);
+
+
   NiceMockControl control_;
+  MockDeviceInfo device_info_;
   KeyValueStore args_;
   OpenVPNDriver driver_;
 };
@@ -57,6 +69,23 @@ const char OpenVPNDriverTest::kValue2[] = "some-property-value2";
 
 void OpenVPNDriverTest::Notify(const string &/*reason*/,
                                const map<string, string> &/*dict*/) {}
+
+void OpenVPNDriverTest::ExpectInFlags(const vector<string> &options,
+                                      const string &flag,
+                                      const string &value) {
+  vector<string>::const_iterator it =
+      std::find(options.begin(), options.end(), flag);
+
+  EXPECT_TRUE(it != options.end());
+  if (it != options.end())
+    return;                             // Don't crash below.
+  it++;
+  EXPECT_TRUE(it != options.end());
+  if (it != options.end())
+    return;                             // Don't crash below.
+  EXPECT_EQ(value, *it);
+}
+
 
 TEST_F(OpenVPNDriverTest, Connect) {
   Error error;
@@ -79,15 +108,17 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   driver_.rpc_task_.reset(new RPCTask(&control_, this));
   Error error;
   vector<string> options;
+  const string kInterfaceName("tun0");
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(kInterfaceName), Return(true)));
   driver_.InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ("--client", options[0]);
-  EXPECT_EQ("--remote", options[2]);
-  EXPECT_EQ(kHost, options[3]);
+  ExpectInFlags(options, "--remote", kHost);
+  ExpectInFlags(options, "CONNMAN_PATH", RPCTaskMockAdaptor::kRpcId);
+  ExpectInFlags(options, "--dev", kInterfaceName);
   EXPECT_EQ("openvpn", options.back());
-  EXPECT_TRUE(
-      std::find(options.begin(), options.end(), RPCTaskMockAdaptor::kRpcId) !=
-      options.end());
+  EXPECT_EQ(kInterfaceName, driver_.tunnel_interface_);
 }
 
 TEST_F(OpenVPNDriverTest, AppendValueOption) {
@@ -125,6 +156,17 @@ TEST_F(OpenVPNDriverTest, AppendFlag) {
   EXPECT_EQ(2, options.size());
   EXPECT_EQ(kOption, options[0]);
   EXPECT_EQ(kOption2, options[1]);
+}
+
+TEST_F(OpenVPNDriverTest, ClaimInterface) {
+  const string kInterfaceName("tun0");
+  driver_.tunnel_interface_ = kInterfaceName;
+  const int kInterfaceIndex = 1122;
+  EXPECT_FALSE(driver_.ClaimInterface(kInterfaceName + "XXX", kInterfaceIndex));
+  EXPECT_EQ(-1, driver_.interface_index_);
+
+  EXPECT_TRUE(driver_.ClaimInterface(kInterfaceName, kInterfaceIndex));
+  EXPECT_EQ(kInterfaceIndex, driver_.interface_index_);
 }
 
 }  // namespace shill

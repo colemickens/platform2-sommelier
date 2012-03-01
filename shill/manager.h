@@ -128,6 +128,7 @@ class Manager {
 
   virtual DeviceInfo *device_info() { return &device_info_; }
   ModemInfo *modem_info() { return &modem_info_; }
+  VPNProvider *vpn_provider() { return &vpn_provider_; }
   PropertyStore *mutable_store() { return &store_; }
   virtual const PropertyStore &store() const { return store_; }
 

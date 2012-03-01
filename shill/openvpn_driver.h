@@ -17,21 +17,28 @@
 namespace shill {
 
 class ControlInterface;
+class DeviceInfo;
 class Error;
 class RPCTask;
+class DeviceStub;
 
 class OpenVPNDriver : public VPNDriver {
  public:
-  OpenVPNDriver(ControlInterface *control, const KeyValueStore &args);
+  OpenVPNDriver(ControlInterface *control,
+                DeviceInfo *device_info,
+                const KeyValueStore &args);
   virtual ~OpenVPNDriver();
 
   // Inherited from VPNDriver.
+  virtual bool ClaimInterface(const std::string &link_name,
+                              int interface_index);
   virtual void Connect(Error *error);
 
  private:
   friend class OpenVPNDriverTest;
   FRIEND_TEST(OpenVPNDriverTest, AppendFlag);
   FRIEND_TEST(OpenVPNDriverTest, AppendValueOption);
+  FRIEND_TEST(OpenVPNDriverTest, ClaimInterface);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
 
@@ -45,8 +52,11 @@ class OpenVPNDriver : public VPNDriver {
                   std::vector<std::string> *options);
 
   ControlInterface *control_;
+  DeviceInfo *device_info_;
   KeyValueStore args_;
   scoped_ptr<RPCTask> rpc_task_;
+  std::string tunnel_interface_;
+  int interface_index_;
 
   DISALLOW_COPY_AND_ASSIGN(OpenVPNDriver);
 };

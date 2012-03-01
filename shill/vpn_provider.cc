@@ -8,10 +8,12 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
+#include "shill/manager.h"
 #include "shill/openvpn_driver.h"
 #include "shill/vpn_service.h"
 
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -38,17 +40,38 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
         error, Error::kNotSupported, "Missing VPN type property.");
     return NULL;
   }
+
   const string &type = args.GetString(flimflam::kProviderTypeProperty);
   scoped_ptr<VPNDriver> driver;
   if (type == flimflam::kProviderOpenVpn) {
-    driver.reset(new OpenVPNDriver(control_interface_, args));
+    driver.reset(new OpenVPNDriver(control_interface_,
+                                   manager_->device_info(), args));
   } else {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Unsupported VPN type: " + type);
     return NULL;
   }
-  return new VPNService(
-      control_interface_, dispatcher_, metrics_, manager_, driver.release());
+
+  services_.push_back(
+      new VPNService(
+          control_interface_, dispatcher_, metrics_, manager_,
+          driver.release()));
+
+  return services_.back();
+
+}
+
+bool VPNProvider::OnDeviceInfoAvailable(const string &link_name,
+                                        int interface_index) {
+  for (vector<VPNServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end();
+       ++it) {
+    if ((*it)->driver()->ClaimInterface(link_name, interface_index)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 }  // namespace shill

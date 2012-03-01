@@ -16,6 +16,8 @@ class MockVPNDriver : public VPNDriver {
   MockVPNDriver();
   virtual ~MockVPNDriver();
 
+  MOCK_METHOD2(ClaimInterface, bool(const std::string &link_name,
+                                    int interface_index));
   MOCK_METHOD1(Connect, void(Error *error));
 };
 

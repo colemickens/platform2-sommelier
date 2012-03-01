@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/device_info.h"
 #include "shill/error.h"
 #include "shill/rpc_task.h"
 
@@ -20,11 +21,27 @@ const char kOpenVPNScript[] = "/usr/lib/flimflam/scripts/openvpn-script";
 }  // namespace {}
 
 OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
+                             DeviceInfo *device_info,
                              const KeyValueStore &args)
     : control_(control),
-      args_(args) {}
+      device_info_(device_info),
+      args_(args),
+      interface_index_(-1) {}
 
 OpenVPNDriver::~OpenVPNDriver() {}
+
+bool OpenVPNDriver::ClaimInterface(const string &link_name,
+                                   int interface_index) {
+  if (link_name != tunnel_interface_) {
+    return false;
+  }
+
+  VLOG(2) << "Claiming " << link_name << " for OpenVPN tunnel";
+
+  // TODO(petkov): Could create a VPNDevice or DeviceStub here instead.
+  interface_index_ = interface_index;
+  return true;
+}
 
 void OpenVPNDriver::Connect(Error *error) {
   // TODO(petkov): Allocate rpc_task_.
@@ -49,8 +66,15 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   options->push_back("--persist-key");
   options->push_back("--persist-tun");
 
-  // TODO(petkov): Add "--dev <interface_name>". For OpenVPN, the interface will
-  // be the tunnel device (crosbug.com/26841).
+  if (tunnel_interface_.empty() &&
+      !device_info_->CreateTunnelInterface(&tunnel_interface_)) {
+    Error::PopulateAndLog(
+        error, Error::kInternalError, "Could not create tunnel interface.");
+    return;
+  }
+
+  options->push_back("--dev");
+  options->push_back(tunnel_interface_);
   options->push_back("--dev-type");
   options->push_back("tun");
   options->push_back("--syslog");

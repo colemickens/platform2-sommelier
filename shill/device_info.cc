@@ -265,7 +265,13 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
         // Tunnel devices are managed by the VPN code.
         VLOG(2) << "Tunnel link " << link_name << " at index " << dev_index
                 << " -- notifying VPNProvider.";
-        // TODO(pstew): Notify VPNProvider once that method exists.
+        if (manager_->vpn_provider()->OnDeviceInfoAvailable(link_name,
+                                                             dev_index)) {
+          // VPN does not know anything about this tunnel, it is probably
+          // left over from a previous instance and should not exist.
+          VLOG(2) << "Tunnel link is unused.  Deleting.";
+          DeleteInterface(dev_index);
+        }
         return;
       default:
         device = new DeviceStub(control_interface_, dispatcher_, metrics_,
@@ -342,7 +348,7 @@ bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) const {
   return true;
 }
 
-bool DeviceInfo::CreateTunnelInterface(string *interface_name) {
+bool DeviceInfo::CreateTunnelInterface(string *interface_name) const {
   int fd = HANDLE_EINTR(open(kTunDeviceName, O_RDWR));
   if (fd < 0) {
     PLOG(ERROR) << "failed to open " << kTunDeviceName;
@@ -368,7 +374,7 @@ bool DeviceInfo::CreateTunnelInterface(string *interface_name) {
   return true;
 }
 
-bool DeviceInfo::DeleteInterface(int interface_index) {
+bool DeviceInfo::DeleteInterface(int interface_index) const {
   return rtnl_handler_->RemoveInterface(interface_index);
 }
 

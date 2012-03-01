@@ -5,7 +5,11 @@
 #ifndef SHILL_VPN_PROVIDER_
 #define SHILL_VPN_PROVIDER_
 
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/refptr_types.h"
 
@@ -31,11 +35,18 @@ class VPNProvider {
 
   VPNServiceRefPtr GetService(const KeyValueStore &args, Error *error);
 
+  // Offers an unclaimed interface to VPN services.  Returns true if this
+  // device has been accepted by a service.
+  bool OnDeviceInfoAvailable(const std::string &link_name, int interface_index);
+
  private:
+  FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
+
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   Metrics *metrics_;
   Manager *manager_;
+  std::vector<VPNServiceRefPtr> services_;
 
   DISALLOW_COPY_AND_ASSIGN(VPNProvider);
 };

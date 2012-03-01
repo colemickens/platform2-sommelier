@@ -5,6 +5,8 @@
 #ifndef SHILL_VPN_DRIVER_
 #define SHILL_VPN_DRIVER_
 
+#include <string>
+
 #include <base/basictypes.h>
 
 namespace shill {
@@ -15,6 +17,8 @@ class VPNDriver {
  public:
   virtual ~VPNDriver() {}
 
+  virtual bool ClaimInterface(const std::string &link_name,
+                              int interface_index) = 0;
   virtual void Connect(Error *error) = 0;
 };
 

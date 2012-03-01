@@ -68,8 +68,8 @@ class DeviceInfo {
   virtual bool GetAddresses(int interface_index,
                             std::vector<AddressData> *addresses) const;
   virtual void FlushAddresses(int interface_index) const;
-  virtual bool CreateTunnelInterface(std::string *interface_name);
-  virtual bool DeleteInterface(int interface_index);
+  virtual bool CreateTunnelInterface(std::string *interface_name) const;
+  virtual bool DeleteInterface(int interface_index) const;
 
  private:
   friend class DeviceInfoTest;
