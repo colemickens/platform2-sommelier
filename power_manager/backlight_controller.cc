@@ -226,13 +226,7 @@ bool BacklightController::SetPowerState(PowerState new_state) {
     return false;
 
   PowerState old_state = state_;
-#ifdef IS_DESKTOP
-  state_ = new_state;
-  // TODO(sque): will be deprecated once we have external display backlight
-  // control.  chrome-os-partner:6320
-  if (new_state == BACKLIGHT_IDLE_OFF && !SetDPMS(DPMSModeOff))
-    LOG(WARNING) << "Turning DPMS OFF failed.";
-#else
+
   CHECK(new_state != BACKLIGHT_UNINITIALIZED);
 
   // If backlight is turned off, do not transition to dim or off states.
@@ -288,7 +282,6 @@ bool BacklightController::SetPowerState(PowerState new_state) {
   if (light_sensor_)
     light_sensor_->EnableOrDisableSensor(state_);
   als_temporal_state_ = ALS_HYST_IMMEDIATE;
-#endif // defined(IS_DESKTOP)
 
   LOG(INFO) << PowerStateToString(old_state) << " -> "
             << PowerStateToString(new_state);
@@ -590,9 +583,9 @@ gboolean BacklightController::SetBrightnessHard(int64 level,
     is_in_transition_ = false;
 
   // Turn off screen if transitioning to zero.
-  if (level == 0 && target_level == 0 && GDK_DISPLAY() != NULL &&
-      DPMSCapable(GDK_DISPLAY()) && state_ == BACKLIGHT_IDLE_OFF)
-    CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
+  if (level == 0 && target_level == 0 && state_ == BACKLIGHT_IDLE_OFF)
+    if (!SetDPMS(DPMSModeOff))
+      LOG(WARNING) << "Turning DPMS OFF failed.";
   return false; // Return false so glib doesn't repeat.
 }
 
