@@ -10,5 +10,14 @@
 
 INSTALL_ROOT=$(dirname "$0")
 
-${INSTALL_ROOT}/usr/bin/cros_installer postinst  "$1" "${INSTALL_ROOT}"
-exit $?
+#
+# /proc/cmdline is expected to contain exactly one of:
+#   cros_secure, cros_legacy, or cros_efi
+#
+
+ARG=""
+if [ -z "$(/bin/grep "cros_secure" /proc/cmdline)" ]; then
+  ARG="--legacy"
+fi
+
+${INSTALL_ROOT}/usr/bin/cros_installer postinst ${ARG} "${INSTALL_ROOT}" $@

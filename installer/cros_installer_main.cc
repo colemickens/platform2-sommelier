@@ -6,55 +6,118 @@
 #include "chromeos_postinst.h"
 #include "chromeos_test_utils.h"
 
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
 
 using std::string;
 
-const char* usage = ("cros_installer:\n"
-                     "   --test\n"
-                     "   cros_installer postinst <install_dev_name>\n");
+const char* usage = (
+    "cros_installer:\n"
+    "   --help\n"
+    "   --debug\n"
+    "   --test\n"
+    "   cros_installer postinst <install_dev> <mount_point> [ args ]\n"
+    "     --legacy\n"
+    "     --postcommit\n");
 
-void showHelp() {
+int showHelp() {
   printf("%s", usage);
-  exit(1);
+  return 1;
 }
-
 
 int main(int argc, char** argv) {
 
-  if (argc < 2)
-    showHelp();
+  struct option long_options[] = {
+    {"debug", no_argument, NULL, 'd'},
+    {"help", no_argument, NULL, 'h'},
+    {"legacy", no_argument, NULL, 'l'},
+    {"postcommit", no_argument, NULL, 'p'},
+    {"test", no_argument, NULL, 't'},
+    {NULL, 0, NULL, 0},
+  };
 
-  string arg1 = argv[1];
+  bool legacy = false;
 
-  // Show help
-  if (arg1 == "--help") {
-    showHelp();
+  while (true) {
+    int option_index;
+    int c = getopt_long(argc, argv, "h", long_options, &option_index);
+
+    if (c == -1)
+      break;
+
+    switch (c) {
+      case '?':
+        // Unknown argument
+        printf("\n");
+        return showHelp();
+
+      case 'h':
+        // --help
+        return showHelp();
+
+      case 'd':
+        // I don't think this is used, but older update engines might
+        // in some cases. So, it's present but ignored.
+        break;
+
+      case 'l':
+        // Turns on support for non-Chrome hardware. This breaks support
+        // for 32 to 64 bit transitions.
+        printf("legacy\n");
+        legacy = true;
+        break;
+
+      case 'p':
+        // This is an outdated argument. When we receive it, we just
+        // exit with success right away.
+        printf("Received --postcommit. This is a successful no-op.\n");
+        exit(0);
+
+      case 't':
+        // Cheesy gtest replacement for now...
+        Test();
+        exit(0);
+
+      default:
+        printf("Unknown argument %d - switch and struct out of sync\n\n", c);
+        return showHelp();
+    }
   }
 
-  // Run unitests
-  if (arg1 == "--test") {
-    Test();
-    exit(0);
+  if (argc - optind < 1) {
+    printf("No command type present (postinst, etc)\n\n");
+    return showHelp();
   }
+
+  string command = argv[optind++];
 
   // Run postinstall behavior
-  if (arg1 == "postinst") {
-    if (argc != 4)
-      showHelp();
+  if (command == "postinst") {
+    if (argc - optind != 2)
+      return showHelp();
 
-    string install_dir = argv[3];
-    string install_dev = argv[2];
+    string install_dir = argv[optind++];
+    string install_dev = argv[optind++];
 
     printf("postinst %s %s\n", install_dir.c_str(), install_dev.c_str());
 
+    // The normal postinstall is also needed for legacy cases
+    bool success = RunPostInstall(install_dir, install_dev);
+    printf("postinst finished %d\n", success);
+
+    if (legacy && success) {
+      // TODO(dgarrett): Will be enabled in a follow on CL.
+      //   // Run the post install processes for non-Chrome firmware
+      //   success = RunLegacyPostInstall(install_dir, install_dev);
+      printf("legacy finished %d\n", success);
+     }
+
     // ! Converts from true for success to 0 for success
-    return !RunPostInstall(install_dir, install_dev);
+    return !success;
   }
 
-  printf("Unknown command: %s\n\n", arg1.c_str());
-  showHelp();
-  exit(1);
+  printf("Unknown command: '%s'\n\n", command.c_str());
+  return showHelp();
 }
