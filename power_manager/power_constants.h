@@ -61,7 +61,6 @@ extern const char kKeyF4[];
 
 // Broadcast signals.
 extern const char kPowerStateChanged[];
-extern const char kPowerSupplyChanged[];
 
 // Files to signal powerd_suspend whether suspend should be cancelled.
 extern const char kLidOpenFile[];

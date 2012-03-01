@@ -852,11 +852,6 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
       dbus_error_free(&error);
     }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    "PowerSupplyChange")) {
-    LOG(INFO) << "Got PowerSupplyChange signal";
-    daemon->PollPowerSupply();
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kGetPowerSupplyPropertiesMethod)) {
     LOG(INFO) << "Got " << kGetPowerSupplyPropertiesMethod << " method call";

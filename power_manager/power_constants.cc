@@ -63,7 +63,6 @@ const char kKeyF4[] = "F4Key";
 
 // Broadcast signals.
 const char kPowerStateChanged[] = "PowerStateChanged";
-const char kPowerSupplyChanged[] = "PowerSupplyChanged";
 
 // Files to signal powerd_suspend whether suspend should be cancelled.
 const char kLidOpenFile[] = "lid_opened";
