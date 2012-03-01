@@ -40,6 +40,7 @@ namespace power_manager {
 class ActivityDetectorInterface;
 class MonitorReconfigure;
 class PowerButtonHandler;
+class StateControl;
 
 typedef std::vector<int64> IdleThresholds;
 
@@ -66,6 +67,7 @@ class Daemon : public XIdleObserver,
   void Init();
   void Run();
   void SetActive();
+  void UpdateIdleStates();
   void SetPlugged(bool plugged);
 
   void OnRequestRestart(bool notify_window_manager);
@@ -214,6 +216,8 @@ class Daemon : public XIdleObserver,
   void StartCleanShutdown();
   void Shutdown();
   void Suspend();
+  void SuspendDisable();
+  void SuspendEnable();
 
   // Callback for Inotify of Preference directory changes.
   static gboolean PrefChangeHandler(const char* name, int wd,
@@ -411,6 +415,11 @@ class Daemon : public XIdleObserver,
 
   // Persistent storage for metrics that need to exist for more then one session
   MetricsStore metrics_store_;
+
+  // The state_control_ class manages requests to disable different parts
+  // of the state machine.  kiosk mode and autoupdate are clients of this
+  // as they may need to disable different idle timeouts when they are running
+  scoped_ptr<StateControl> state_control_;
 };
 
 }  // namespace power_manager

@@ -28,6 +28,7 @@ extern const char kPluggedSuspendMs[];
 extern const char kMinVisibleBacklightLevel[];
 extern const char kReactMs[];
 extern const char kFuzzMs[];
+extern const char kStateMaxDisabledDurationSec[];
 extern const char kBacklightPath[];
 extern const char kBacklightPattern[];
 extern const char kKeyboardBacklightPath[];

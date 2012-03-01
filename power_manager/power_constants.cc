@@ -32,6 +32,8 @@ const char kWakeupInput[] = "wakeup_input_device_names";
 const char kReactMs[] = "react_ms";
 // The minimum delta between timers to avoid timer precision issues.
 const char kFuzzMs[] = "fuzz_ms";
+// The maximum duration in seconds the state machine can be disabled for
+const char kStateMaxDisabledDurationSec[] = "state_max_disabled_duration_sec";
 
 const char kBacklightPath[] = "/sys/class/backlight";
 const char kBacklightPattern[] = "*";

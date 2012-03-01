@@ -157,8 +157,78 @@ void SendSignalToPowerD(const char* signal_name) {
   dbus_message_unref(signal);
 }
 
+void SendSignalWithIntToPowerD(const char* signal_name, int value) {
+  LOG(INFO) << "Sending signal '" << signal_name << "' to PowerManager";
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              kPowerManagerServicePath,
+                              kPowerManagerInterface);
+  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                kPowerManagerInterface,
+                                                signal_name);
+  CHECK(signal);
+  dbus_message_append_args(signal,
+                           DBUS_TYPE_INT32, &value,
+                           DBUS_TYPE_INVALID);
+  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_message_unref(signal);
+}
+
+bool CallMethodInPowerD(const char* method_name, const char *data,
+                        unsigned int size, int* return_value) {
+  LOG(INFO) << "Calling method '" << method_name << "' in PowerManager";
+  DBusConnection *connection = dbus_g_connection_get_connection(
+        chromeos::dbus::GetSystemBusConnection().g_connection());
+  CHECK(connection);
+  DBusMessage* message = dbus_message_new_method_call(kPowerManagerServiceName,
+                                                      kPowerManagerServicePath,
+                                                      kPowerManagerInterface,
+                                                      method_name);
+  CHECK(message);
+  dbus_message_append_args(message,
+                           DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+                           &data, size,
+                           DBUS_TYPE_INVALID);
+  DBusError error;
+  dbus_error_init(&error);
+  DBusMessage* response =
+    dbus_connection_send_with_reply_and_block(connection,
+                                              message,
+                                              DBUS_TIMEOUT_USE_DEFAULT,
+                                              &error);
+  dbus_message_unref(message);
+  if (dbus_error_is_set(&error)) {
+    LOG(ERROR) << "SendMethodToPowerD: method '" << method_name << ": "
+               << error.name << " (" << error.message << ")";
+    dbus_error_free(&error);
+    return(false);
+  }
+  DBusError response_error;
+  dbus_error_init(&response_error);
+  if (!dbus_message_get_args(response, &response_error,
+                             DBUS_TYPE_INT32, return_value,
+                             DBUS_TYPE_INVALID)) {
+    LOG(WARNING) << "Couldn't read args for '" << method_name
+                 << "' response: " << response_error.name
+                 << " (" << response_error.message << ")";
+    dbus_error_free(&response_error);
+    dbus_message_unref(response);
+    return(false);
+  }
+  dbus_message_unref(response);
+  return(true);
+}
+
 void SendEmptyDBusReply(DBusConnection* connection, DBusMessage* message) {
   DBusMessage* reply = dbus_message_new_method_return(message);
+  CHECK(reply);
+  dbus_connection_send(connection, reply, NULL);
+  dbus_message_unref(reply);
+}
+
+void SendDBusErrorReply(DBusConnection* connection, DBusMessage* message,
+                        const char* error_name, const char* error_message) {
+  DBusMessage* reply = dbus_message_new_error(message, error_name,
+                                              error_message);
   CHECK(reply);
   dbus_connection_send(connection, reply, NULL);
   dbus_message_unref(reply);

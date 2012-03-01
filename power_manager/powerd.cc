@@ -28,6 +28,7 @@
 #include "power_manager/power_constants.h"
 #include "power_manager/power_supply.h"
 #include "power_manager/power_supply_properties.pb.h"
+#include "power_manager/state_control.h"
 #include "power_manager/util.h"
 
 #if !defined(USE_AURA)
@@ -117,7 +118,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       current_session_state_("stopped"),
       udev_(NULL),
       left_ctrl_down_(false),
-      right_ctrl_down_(false) {}
+      right_ctrl_down_(false),
+      state_control_(new StateControl(this)) {}
 
 Daemon::~Daemon() {
   if (udev_)
@@ -221,6 +223,8 @@ void Daemon::ReadSettings() {
 
   if (monitor_reconfigure_->is_projecting())
     AdjustIdleTimeoutsForProjection();
+
+  state_control_->ReadSettings(prefs_);
 }
 
 void Daemon::ReadLockScreenSettings() {
@@ -241,6 +245,13 @@ void Daemon::Run() {
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_timeout_add(kBatteryPollIntervalMs, PollPowerSupplyThunk, this);
   g_main_loop_run(loop);
+}
+
+void Daemon::UpdateIdleStates() {
+  LOG(INFO) << "Daemon : UpdateIdleStates";
+  int64 idle_time_ms;
+  CHECK(idle_.GetIdleTime(&idle_time_ms));
+  SetIdleState(idle_time_ms);
 }
 
 void Daemon::SetPlugged(bool plugged) {
@@ -408,7 +419,8 @@ void Daemon::SetActive() {
 }
 
 void Daemon::SetIdleState(int64 idle_time_ms) {
-  if (idle_time_ms >= suspend_ms_) {
+  if (idle_time_ms >= suspend_ms_ &&
+      !state_control_->IsStateDisabled(kIdleSuspendDisabled)) {
     // Note: currently this state doesn't do anything.  But it can be possibly
     // useful in future development.  For example, if we want to implement
     // fade from suspend, we would want to have this state to make sure the
@@ -416,10 +428,12 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
     audio_detector_->Disable();
     Suspend();
-  } else if (idle_time_ms >= off_ms_) {
+  } else if (idle_time_ms >= off_ms_ &&
+             !state_control_->IsStateDisabled(kIdleBlankDisabled)) {
     if (util::LoggedIn())
       backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF);
-  } else if (idle_time_ms >= dim_ms_) {
+  } else if (idle_time_ms >= dim_ms_ &&
+             !state_control_->IsStateDisabled(kIdleDimDisabled)) {
     backlight_controller_->SetPowerState(BACKLIGHT_DIM);
   } else if (backlight_controller_->state() != BACKLIGHT_ACTIVE) {
     if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
@@ -726,7 +740,9 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                                     kLidClosed)) {
     LOG(INFO) << "Got " << kLidClosed << " signal";
     daemon->SetActive();
-    daemon->Suspend();
+    if (!daemon->state_control_->IsStateDisabled(kLidSuspendDisabled)) {
+      daemon->Suspend();
+    }
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kLidOpened)) {
     LOG(INFO) << "Got " << kLidOpened << " signal";
@@ -895,6 +911,60 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
       dbus_error_free(&error);
     }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kStateOverrideRequest)) {
+    LOG(INFO) << "Got " << dbus_message_get_member(message) << " method call";
+    DBusError error;
+    dbus_error_init(&error);
+    char *data;
+    int size;
+    if (dbus_message_get_args(message, &error,
+                              DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+                              &data, &size,
+                              DBUS_TYPE_INVALID)) {
+      int return_value;
+      bool success = daemon->state_control_->StateOverrideRequest(
+           data, size, &return_value);
+      if (success) {
+        DBusMessage *reply = dbus_message_new_method_return(message);
+        CHECK(reply);
+        dbus_message_append_args(
+                                 reply,
+                                 DBUS_TYPE_INT32, &return_value,
+                                 DBUS_TYPE_INVALID);
+        if (!dbus_connection_send(connection, reply, NULL)) {
+          LOG(WARNING) << "Could not send response to "
+                       << kStateOverrideRequest;
+          util::SendDBusErrorReply(connection, message,
+                                   DBUS_ERROR_FAILED, "Failure sending reply");
+        }
+        dbus_message_unref(reply);
+      } else {
+        util::SendDBusErrorReply(connection, message, DBUS_ERROR_FAILED,
+                                 "Failed processing request");
+      }
+    } else {
+      LOG(WARNING) << kStateOverrideRequest << ": Error reading args: " <<
+        error.message;
+      util::SendDBusErrorReply(connection, message, DBUS_ERROR_INVALID_ARGS,
+                               "Invalid arguments passed to method");
+      dbus_error_free(&error);
+    }
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kStateOverrideCancel)) {
+    LOG(INFO) << "Got " << kStateOverrideCancel << " method call";
+    DBusError error;
+    dbus_error_init(&error);
+    int request_id;
+    if (dbus_message_get_args(message, &error,
+                              DBUS_TYPE_INT32, &request_id,
+                              DBUS_TYPE_INVALID)) {
+      daemon->state_control_->RemoveOverrideAndUpdate(request_id);
+    } else {
+      LOG(WARNING) << kStateOverrideCancel << ": Error reading args: "
+                   << error.message;
+      dbus_error_free(&error);
+    }
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }

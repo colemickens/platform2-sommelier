@@ -122,7 +122,6 @@ backlight_tool = backlight_env.Program('backlight-tool',
                                        ['backlight_tool.cc', backlight])
 Default(backlight_tool)
 
-
 # Build power supply info app
 power_supply = gdk_env.Library('power_supply',
                                ['power_supply.cc', 'power_prefs.cc',
@@ -144,20 +143,29 @@ powerd_env.Command('./power_supply_properties.proto',
                    os.environ['SYSROOT'] +
                    '/usr/include/chromeos/dbus/power_supply_properties.proto',
                    Copy('$TARGET', '$SOURCE'))
+powerd_env.Command('./power_state_control.proto',
+                   os.environ['SYSROOT'] +
+                   '/usr/include/chromeos/dbus/power_state_control.proto',
+                   Copy('$TARGET', '$SOURCE'))
 powerd_env['BUILDERS']['ProtocolBuffer'] = proto_builder
 powerd_env.Append(LIBS=Split('Xext gflags metrics X11 Xrandr udev protobuf'))
 powerd_env.ParseConfig('%s --cflags --libs dbus-1 dbus-glib-1 libchromeos-%s'
                        % (pkgconfig, BASE_VER))
 powerd_env.ProtocolBuffer('power_supply_properties.pb.cc',
                           'power_supply_properties.proto')
+powerd_env.ProtocolBuffer('power_state_control.pb.cc',
+                          'power_state_control.proto')
 powerd_env.Depends('powerd.cc',
                    'power_supply_properties.pb.cc')
-powerd_sources = Split(''' audio_detector.cc \
-  power_supply_properties.pb.cc file_tagger.cc powerd.cc powerd_metrics.cc
-  screen_locker.cc suspender.cc video_detector.cc metrics_constants.cc
-  metrics_store.cc monitor_reconfigure.cc power_supply.cc resolution_selector.cc
-  rolling_average.cc
-''')
+powerd_env.Depends('state_control.cc',
+                   'power_state_control.pb.cc')
+powerd_sources = Split('''audio_detector.cc file_tagger.cc metrics_constants.cc
+                       metrics_store.cc monitor_reconfigure.cc
+                       power_state_control.pb.cc power_supply.cc
+                       power_supply_properties.pb.cc powerd.cc
+                       powerd_metrics.cc resolution_selector.cc
+                       rolling_average.cc screen_locker.cc state_control.cc
+                       suspender.cc video_detector.cc ''')
 if not use_aura:
   powerd_sources.append('power_button_handler.cc')
 util_lib = powerd_env.Library('util_lib', ['util.cc', 'inotify.cc']);
@@ -191,6 +199,19 @@ suspend_delay_sample = suspend_delay_sample_env.Program('suspend_delay_sample',
 
 Default(suspend_delay_sample)
 
+# Build power state control tool
+power_state_tool_env = gdk_env.Clone()
+power_state_tool_env.Depends('power_state_tool.cc',
+                             'power_state_control.pb.cc')
+power_state_tool_env.Append(LIBS=Split('rt pthread gflags protobuf X11'))
+power_state_tool_env.ParseConfig(('%s --cflags --libs dbus-1 dbus-glib-1 ' +
+                                  'libchromeos-%s') % (pkgconfig, BASE_VER))
+power_state_tool = power_state_tool_env.Program('power_state_tool',
+                                                ['power_state_tool.cc',
+                                                 'power_state_control.pb.cc',
+                                                 'power_constants.cc',
+                                                 'util.cc'])
+Default(power_state_tool)
 
 # Build unit tests
 tests = []
@@ -241,4 +262,12 @@ deps = [testrunner, [
         backlight_controller, backlight, power_prefs]
 tests.append(resolution_selector_unittest_env.Program(
     'resolution_selector_unittest', deps))
+
+state_control_unittest_env = powerd_env.Clone()
+state_control_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
+deps = [testrunner, 'state_control_unittest.cc', 'state_control.cc',
+        powerd_lib, util_lib, xidle,
+        backlight_controller, backlight, power_prefs]
+tests.append(state_control_unittest_env.Program('state_control_unittest', deps))
+
 AlwaysBuild(base_env.Alias('tests', tests))

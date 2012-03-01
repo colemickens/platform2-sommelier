@@ -33,8 +33,21 @@ void SendSignalToPowerM(const char* signal, uint32 value);
 // Send a message |signal| to the unprivileged power daemon.
 void SendSignalToPowerD(const char* signal);
 
+// Send a message |signal| and int32 to the unprivileged power daemon.
+void SendSignalWithIntToPowerD(const char* signal, int value);
+
+// Call a method |method_name| in powerd that takes an arbitrary
+// array of bytes and returns an integer.
+// This is a blocking operation.
+bool CallMethodInPowerD(const char* method_name, const char* data,
+                        unsigned int size, int* return_value);
+
 // Send an empty reply to a D-Bus message.
 void SendEmptyDBusReply(DBusConnection* connection, DBusMessage* message);
+
+// Send an error reply to a D-Bus message
+void SendDBusErrorReply(DBusConnection* connection, DBusMessage* message,
+                        const char* error_name, const char* error_message);
 
 // Status file creation and removal.
 void CreateStatusFile(const FilePath& file);
