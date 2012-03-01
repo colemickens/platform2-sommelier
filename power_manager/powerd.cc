@@ -854,13 +854,14 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     CHECK(reply);
     std::string serialized_proto;
     CHECK(protobuf.SerializeToString(&serialized_proto));
+    const char* protobuf_data = serialized_proto.data();
     // For array arguments, D-Bus wants the array typecode, the element
     // typecode, the array address, and the number of elements (as opposed to
     // the usual typecode-followed-by-address ordering).
     dbus_message_append_args(
         reply,
         DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-        serialized_proto.data(), serialized_proto.size(),
+        &protobuf_data, serialized_proto.size(),
         DBUS_TYPE_INVALID);
     CHECK(dbus_connection_send(connection, reply, NULL));
     dbus_message_unref(reply);
