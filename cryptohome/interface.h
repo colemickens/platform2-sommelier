@@ -100,6 +100,10 @@ gboolean cryptohome_async_mount_guest(Cryptohome *self,
 gboolean cryptohome_unmount(Cryptohome *self,
                             gboolean *OUT_result,
                             GError **error);
+gboolean cryptohome_unmount_for_user(Cryptohome *self,
+                                     gchar *userid,
+                                     gboolean *OUT_result,
+                                     GError **error);
 gboolean cryptohome_remove_tracked_subdirectories(Cryptohome *self,
                                                   gboolean *OUT_result,
                                                   GError **error);

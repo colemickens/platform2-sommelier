@@ -153,6 +153,12 @@ gboolean cryptohome_unmount(Cryptohome *self,
                             GError **error) {
   CRYPTOHOME_WRAP_METHOD(Unmount, OUT_result);
 }
+gboolean cryptohome_unmount_for_user(Cryptohome *self,
+                                     gchar *userid,
+                                     gboolean *OUT_result,
+                                     GError **error) {
+  CRYPTOHOME_WRAP_METHOD(UnmountForUser, userid, OUT_result);
+}
 gboolean cryptohome_tpm_is_ready(Cryptohome *self,
                                  gboolean *OUT_ready,
                                  GError **error) {

@@ -751,6 +751,12 @@ gboolean Service::Unmount(gboolean *OUT_result, GError **error) {
   return TRUE;
 }
 
+gboolean Service::UnmountForUser(gchar *userid, gboolean *OUT_result,
+                                 GError **error) {
+  // TODO(ellyjones): per-user unmount support.
+  return Unmount(OUT_result, error);
+}
+
 gboolean Service::TpmIsReady(gboolean* OUT_ready, GError** error) {
   *OUT_ready = tpm_init_->IsTpmReady();
   return TRUE;

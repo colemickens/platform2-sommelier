@@ -155,6 +155,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean AsyncMountGuest(gint *OUT_async_id,
                                    GError **error);
   virtual gboolean Unmount(gboolean *OUT_result, GError **error);
+  virtual gboolean UnmountForUser(gchar* userid, gboolean *OUT_result,
+                                  GError **error);
   virtual gboolean TpmIsReady(gboolean* OUT_ready, GError** error);
   virtual gboolean TpmIsEnabled(gboolean* OUT_enabled, GError** error);
   virtual gboolean TpmGetPassword(gchar** OUT_password, GError** error);

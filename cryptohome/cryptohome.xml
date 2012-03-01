@@ -78,6 +78,10 @@
     <method name="Unmount">
       <arg type="b" name="done" direction="out" />
     </method>
+    <method name="UnmountForUser">
+      <arg type="s" name="username" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
     <method name="TpmIsReady">
       <arg type="b" name="ready" direction="out" />
     </method>
