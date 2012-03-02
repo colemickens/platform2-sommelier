@@ -1,2 +1,2 @@
-ACTION=="add", SUBSYSTEM=="usb", RUN+="/lib/udev/usb-hid-wake.sh %k"
+ACTION!="remove", SUBSYSTEM=="usb", RUN+="/lib/udev/usb-hid-wake.sh %k"
 
