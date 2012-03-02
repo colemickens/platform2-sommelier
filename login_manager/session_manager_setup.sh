@@ -230,13 +230,13 @@ if use_flag_is_set aura; then
   fi
 fi
 
-# Use OpenGL acceleration flags except on ARM
+# Setup GPU & acceleration flags which differ between x86/ARM SoC
 if [ "$(uname -m)" != "armv7l" ] ; then
-  ACCELERATED_FLAGS="--enable-accelerated-layers"
+  ACCELERATED_FLAGS="--enable-accelerated-layers \
+                     --ui-use-gpu-process"
 else
   ACCELERATED_FLAGS="--use-gl=egl \
-                     --ppapi-flash-args=enable-hardware-decoder=1 \
-                     --force-compositing-mode"
+                     --ppapi-flash-args=enable-hardware-decoder=1"
 fi
 
 # TODO(katierh): Remove this when Mali drivers fixed, crosbug.com/p/8085
@@ -319,7 +319,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --reload-killed-tabs \
             --scroll-pixels=3 \
             --ui-enable-partial-swap \
-            --ui-use-gpu-process \
             --user-data-dir="$DATA_DIR" \
             --webui-login \
             --no-protector \
