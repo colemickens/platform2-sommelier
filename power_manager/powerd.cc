@@ -807,32 +807,6 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     daemon->PollPowerSupply();
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
-                                         kGetAllPropertiesMethod)) {
-    LOG(INFO) << "Got " << kGetAllPropertiesMethod << " method call";
-
-    PowerStatus* status = &daemon->power_status_;
-    // Use dbus_bool_t for boolean fields; it is not safe to pass bool fields
-    // into a dbus message.
-    dbus_bool_t line_power_on = status->line_power_on;
-    dbus_bool_t battery_is_present = status->battery_is_present;
-    dbus_bool_t battery_is_charged =
-        status->battery_state == BATTERY_STATE_FULLY_CHARGED;
-    DBusMessage* reply = dbus_message_new_method_return(message);
-    CHECK(reply != NULL);
-    dbus_message_append_args(reply,
-        DBUS_TYPE_BOOLEAN, &line_power_on,
-        DBUS_TYPE_DOUBLE,  &status->battery_energy,
-        DBUS_TYPE_DOUBLE,  &status->battery_energy_rate,
-        DBUS_TYPE_DOUBLE,  &status->battery_voltage,
-        DBUS_TYPE_INT64,   &status->battery_time_to_empty,
-        DBUS_TYPE_INT64,   &status->battery_time_to_full,
-        DBUS_TYPE_DOUBLE,  &status->battery_percentage,
-        DBUS_TYPE_BOOLEAN, &battery_is_present,
-        DBUS_TYPE_BOOLEAN, &battery_is_charged,
-        DBUS_TYPE_INVALID);
-    CHECK(dbus_connection_send(connection, reply, NULL));
-    dbus_message_unref(reply);
-  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kGetPowerSupplyPropertiesMethod)) {
     LOG(INFO) << "Got " << kGetPowerSupplyPropertiesMethod << " method call";
 
