@@ -43,6 +43,8 @@ const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";;
 const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeToDropSecondsMin = 1;
 
+const char Metrics::kMetricTimeResumeToReadyMilliseconds[] =
+    "Network.Shill.%s.TimeResumeToReady";
 const char Metrics::kMetricTimeToConfigMilliseconds[] =
     "Network.Shill.%s.TimeToConfig";
 const char Metrics::kMetricTimeToJoinMilliseconds[] =
@@ -71,12 +73,16 @@ const uint16 Metrics::kWiFiFrequency5700 = 5700;
 const uint16 Metrics::kWiFiFrequency5745 = 5745;
 const uint16 Metrics::kWiFiFrequency5825 = 5825;
 
+// static
+const char Metrics::kMetricPowerManagerKey[] = "metrics";
+
 Metrics::Metrics()
     : library_(&metrics_library_),
       last_default_technology_(Technology::kUnknown),
       was_online_(false),
       time_online_timer_(new chromeos_metrics::Timer),
-      time_to_drop_timer_(new chromeos_metrics::Timer) {
+      time_to_drop_timer_(new chromeos_metrics::Timer),
+      time_resume_to_ready_timer_(new chromeos_metrics::Timer) {
   metrics_library_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
@@ -207,9 +213,6 @@ void Metrics::NotifyDefaultServiceChanged(const Service *service) {
     time_online_timer_->Start();
   }
 
-  // TODO(thieule): Ignore changes when suspending.
-  // crosbug.com/24440
-
   // Ignore changes that are not online/offline transitions; e.g.
   // switching between wired and wireless.  TimeToDrop measures
   // time online regardless of how we are connected.
@@ -247,7 +250,10 @@ void Metrics::NotifyServiceStateChanged(const Service *service,
   if (new_state != Service::kStateConnected)
     return;
 
-  service->SendPostReadyStateMetrics();
+  base::TimeDelta time_resume_to_ready;
+  time_resume_to_ready_timer_->GetElapsedTime(&time_resume_to_ready);
+  time_resume_to_ready_timer_->Reset();
+  service->SendPostReadyStateMetrics(time_resume_to_ready.InMilliseconds());
 }
 
 string Metrics::GetFullMetricName(const char *metric_name,
@@ -267,9 +273,12 @@ void Metrics::NotifyServiceDisconnect(const Service *service) {
             kMetricDisconnectNumBuckets);
 }
 
-void Metrics::NotifyPower() {
-  // TODO(thieule): Handle suspend and resume.
-  // crosbug.com/24440
+void Metrics::NotifyPowerStateChange(PowerManager::SuspendState new_state) {
+  if (new_state == PowerManagerProxyDelegate::kOn) {
+    time_resume_to_ready_timer_->Start();
+  } else {
+    time_resume_to_ready_timer_->Reset();
+  }
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

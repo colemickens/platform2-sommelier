@@ -334,9 +334,8 @@ void WiFiService::InitializeCustomMetrics() const {
                                             Service::kStateConfiguring);
 }
 
-void WiFiService::SendPostReadyStateMetrics() const {
-  // TODO(thieule): Send physical mode and security metrics.
-  // crosbug.com/24441
+void WiFiService::SendPostReadyStateMetrics(
+    int64 time_resume_to_ready_milliseconds) const {
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkChannel,
                                    technology()),
@@ -358,6 +357,16 @@ void WiFiService::SendPostReadyStateMetrics() const {
                                    technology()),
       security_uma,
       Metrics::kMetricNetworkSecurityMax);
+
+  if (time_resume_to_ready_milliseconds > 0) {
+    metrics()->SendToUMA(
+        metrics()->GetFullMetricName(
+            Metrics::kMetricTimeResumeToReadyMilliseconds, technology()),
+        time_resume_to_ready_milliseconds,
+        Metrics::kTimerHistogramMillisecondsMin,
+        Metrics::kTimerHistogramMillisecondsMax,
+        Metrics::kTimerHistogramNumBuckets);
+  }
 }
 
 // private methods

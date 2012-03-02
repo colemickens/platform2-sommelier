@@ -12,6 +12,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
+#include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 
@@ -116,6 +117,7 @@ class Metrics {
   static const int kMetricTimeOnlineSecondsMax;
   static const int kMetricTimeOnlineSecondsMin;
   static const int kMetricTimeOnlineSecondsNumBuckets;
+  static const char kMetricTimeResumeToReadyMilliseconds[];
   static const char kMetricTimeToConfigMilliseconds[];
   static const char kMetricTimeToDropSeconds[];
   static const int kMetricTimeToDropSecondsMax;
@@ -126,6 +128,8 @@ class Metrics {
   static const int kTimerHistogramMillisecondsMax;
   static const int kTimerHistogramMillisecondsMin;
   static const int kTimerHistogramNumBuckets;
+
+  static const char kMetricPowerManagerKey[];
 
   Metrics();
   virtual ~Metrics();
@@ -166,8 +170,8 @@ class Metrics {
   // Notifies this object that |service| has been disconnected.
   void NotifyServiceDisconnect(const Service *service);
 
-  // Notifies this object of a power management event.
-  void NotifyPower();
+  // Notifies this object of a power management state change.
+  void NotifyPowerStateChange(PowerManager::SuspendState new_state);
 
   // Sends linear histogram data to UMA.
   bool SendEnumToUMA(const std::string &name, int sample, int max);
@@ -179,13 +183,14 @@ class Metrics {
  private:
   friend struct base::DefaultLazyInstanceTraits<Metrics>;
   friend class MetricsTest;
-  FRIEND_TEST(MetricsTest, TimeToConfig);
-  FRIEND_TEST(MetricsTest, TimeToPortal);
-  FRIEND_TEST(MetricsTest, TimeToOnline);
-  FRIEND_TEST(MetricsTest, ServiceFailure);
-  FRIEND_TEST(MetricsTest, WiFiServiceChannel);
   FRIEND_TEST(MetricsTest, FrequencyToChannel);
+  FRIEND_TEST(MetricsTest, ServiceFailure);
   FRIEND_TEST(MetricsTest, TimeOnlineTimeToDrop);
+  FRIEND_TEST(MetricsTest, TimeToConfig);
+  FRIEND_TEST(MetricsTest, TimeToOnline);
+  FRIEND_TEST(MetricsTest, TimeToPortal);
+  FRIEND_TEST(MetricsTest, WiFiServiceChannel);
+  FRIEND_TEST(MetricsTest, WiFiServicePostReady);
 
   typedef ScopedVector<chromeos_metrics::TimerReporter> TimerReporters;
   typedef std::list<chromeos_metrics::TimerReporter *> TimerReportersList;
@@ -234,6 +239,9 @@ class Metrics {
   void set_time_to_drop_timer(chromeos_metrics::Timer *timer) {
     time_to_drop_timer_.reset(timer);  // Passes ownership
   }
+  void set_time_resume_to_ready_timer(chromeos_metrics::Timer *timer) {
+    time_resume_to_ready_timer_.reset(timer);  // Passes ownership
+  }
 
   // |library_| points to |metrics_library_| when shill runs normally.
   // However, in order to allow for unit testing, we point |library_| to a
@@ -245,6 +253,7 @@ class Metrics {
   bool was_online_;
   scoped_ptr<chromeos_metrics::Timer> time_online_timer_;
   scoped_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
+  scoped_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };

@@ -19,6 +19,10 @@
 #include "shill/sockets.h"
 #include "shill/technology.h"
 
+namespace chromeos_metrics {
+class Timer;
+}
+
 namespace shill {
 
 class Configuration;
@@ -222,8 +226,13 @@ class Service : public base::RefCounted<Service> {
   virtual void InitializeCustomMetrics() const {}
 
   // The inherited class that needs to send metrics after the service has
-  // transitioned to the ready state.
-  virtual void SendPostReadyStateMetrics() const {}
+  // transitioned to the ready state should override this method.
+  // |time_resume_to_ready_milliseconds| holds the elapsed time from when
+  // the system was resumed until when the service transitioned to the
+  // connected state.  This value is non-zero for the first service transition
+  // to the connected state after a resume.
+  virtual void SendPostReadyStateMetrics(
+      int64 /*time_resume_to_ready_milliseconds*/) const {}
 
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }

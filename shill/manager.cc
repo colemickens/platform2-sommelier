@@ -134,6 +134,10 @@ void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
   power_manager_.reset(new PowerManager(ProxyFactory::GetInstance()));
+  PowerManager::PowerStateCallback *cb =
+      NewCallback(metrics_, &Metrics::NotifyPowerStateChange);
+  power_manager_->AddStateChangeCallback(Metrics::kMetricPowerManagerKey, cb);
+
   CHECK(file_util::CreateDirectory(run_path_)) << run_path_.value();
   Resolver::GetInstance()->set_path(run_path_.Append("resolv.conf"));
 
@@ -164,6 +168,10 @@ void Manager::Stop() {
   vpn_provider_.Stop();
   modem_info_.Stop();
   device_info_.Stop();
+
+  // Some unit tests do not call Manager::Start().
+  if (power_manager_.get())
+    power_manager_->RemoveStateChangeCallback(Metrics::kMetricPowerManagerKey);
 }
 
 void Manager::InitializeProfiles() {
