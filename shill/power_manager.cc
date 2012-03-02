@@ -27,6 +27,7 @@ PowerManager::~PowerManager() {
 
 void PowerManager::AddStateChangeCallback(const string &key,
                                           PowerStateCallback *callback) {
+  VLOG(2) << __func__ << " key " << key;
   if (ContainsKey(state_change_callbacks_, key)) {
     LOG(DFATAL) << "Inserting duplicate key " << key;
     LOG(INFO) << "Removing previous callback for key " << key;
@@ -36,6 +37,7 @@ void PowerManager::AddStateChangeCallback(const string &key,
 }
 
 void PowerManager::RemoveStateChangeCallback(const string &key) {
+  VLOG(2) << __func__ << " key " << key;
   DCHECK(ContainsKey(state_change_callbacks_, key)) << "Removing unknown key "
                                                     << key;
   StateChangeCallbackMap::iterator it = state_change_callbacks_.find(key);
@@ -50,6 +52,7 @@ void PowerManager::OnSuspendDelay(uint32 /* sequence_number */) {
 }
 
 void PowerManager::OnPowerStateChanged(SuspendState new_power_state) {
+  VLOG(2) << __func__ << " new_power_state " << new_power_state;
   for (StateChangeCallbackMap::const_iterator it =
            state_change_callbacks_.begin();
        it != state_change_callbacks_.end(); ++it) {

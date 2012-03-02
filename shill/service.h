@@ -306,7 +306,10 @@ class Service : public base::RefCounted<Service> {
   // This should include any tests used for computing connectable(),
   // as well as other critera such as whether the device associated with
   // this service is busy with another connection.
-  virtual bool IsAutoConnectable() const;
+  //
+  // If the service is not auto-connectable, |*reason| will be set to
+  // point to C-string explaining why the service is not auto-connectable.
+  virtual bool IsAutoConnectable(const char **reason) const;
 
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //
@@ -380,6 +383,11 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
   FRIEND_TEST(ServiceTest, SetProperty);
   FRIEND_TEST(ServiceTest, Unload);
+
+  static const char kAutoConnConnected[];
+  static const char kAutoConnConnecting[];
+  static const char kAutoConnExplicitDisconnect[];
+  static const char kAutoConnNotConnectable[];
 
   static const char kServiceSortConnectEtc[];
   static const char kServiceSortIsConnected[];

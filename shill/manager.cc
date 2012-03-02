@@ -647,7 +647,7 @@ void Manager::AutoConnectTask() {
         Service::Compare(
             service, services_[i+1], technology_order_, &compare_reason);
       } else {
-        compare_reason = "";
+        compare_reason = "last";
       }
       VLOG(4) << "Service " << service->friendly_name()
               << " IsConnected: " << service->IsConnected()
@@ -660,7 +660,7 @@ void Manager::AutoConnectTask() {
               << " security_level: " << service->security_level()
               << " strength: " << service->strength()
               << " UniqueName: " << service->UniqueName()
-              << " " << compare_reason;
+              << " sorted: " << compare_reason;
     }
   }
 

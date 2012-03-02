@@ -76,7 +76,7 @@ void RoutingTable::Stop() {
 bool RoutingTable::AddRoute(int interface_index,
                             const RoutingTableEntry &entry) {
   VLOG(2) << __func__ << " "
-          << "index " << interface_index
+          << "index " << interface_index << " "
           << "gateway " << entry.gateway.ToString() << " "
           << "metric " << entry.metric;
 
@@ -292,8 +292,9 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
                               const RoutingTableEntry &entry,
                               RTNLMessage::Mode mode,
                               unsigned int flags) {
-  VLOG(2) << base::StringPrintf("%s: index %d mode %d flags 0x%x",
-                                __func__, interface_index, mode, flags);
+  VLOG(2) << base::StringPrintf("%s: dst %s index %d mode %d flags 0x%x",
+                                __func__, entry.dst.ToString().c_str(),
+                                interface_index, mode, flags);
 
   RTNLMessage msg(
       RTNLMessage::kTypeRoute,

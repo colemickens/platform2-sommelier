@@ -299,36 +299,40 @@ TEST_F(ServiceTest, ReMakeFavorite) {
 }
 
 TEST_F(ServiceTest, IsAutoConnectable) {
+  const char *reason;
   service_->set_connectable(true);
-  EXPECT_TRUE(service_->IsAutoConnectable());
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // We should not auto-connect to a Service that a user has
   // deliberately disconnected.
   Error error;
   service_->Disconnect(&error);
-  EXPECT_FALSE(service_->IsAutoConnectable());
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnExplicitDisconnect, reason);
 
   // But if the Service is reloaded, it is eligible for auto-connect
   // again.
   NiceMock<MockStore> storage;
   EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
   EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_TRUE(service_->IsAutoConnectable());
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // A deliberate Connect should also re-enable auto-connect.
   service_->Disconnect(&error);
-  EXPECT_FALSE(service_->IsAutoConnectable());
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   service_->Connect(&error);
-  EXPECT_TRUE(service_->IsAutoConnectable());
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // TODO(quiche): After we have resume handling in place, test that
   // we re-enable auto-connect on resume. crosbug.com/25213
 
   service_->SetState(Service::kStateConnected);
-  EXPECT_FALSE(service_->IsAutoConnectable());
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnConnected, reason);
 
   service_->SetState(Service::kStateAssociating);
-  EXPECT_FALSE(service_->IsAutoConnectable());
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnConnecting, reason);
 }
 
 // Make sure a property is registered as a write only property

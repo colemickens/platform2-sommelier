@@ -34,6 +34,11 @@ using std::vector;
 
 namespace shill {
 
+const char Service::kAutoConnConnected[] = "connected";
+const char Service::kAutoConnConnecting[] = "connecting";
+const char Service::kAutoConnExplicitDisconnect[] = "explicitly disconnected";
+const char Service::kAutoConnNotConnectable[] = "not connectable";
+
 const char Service::kCheckPortalAuto[] = "auto";
 const char Service::kCheckPortalFalse[] = "false";
 const char Service::kCheckPortalTrue[] = "true";
@@ -197,11 +202,13 @@ Service::~Service() {
 }
 
 void Service::AutoConnect() {
-  if (this->IsAutoConnectable()) {
+  const char *reason;
+  if (this->IsAutoConnectable(&reason)) {
     Error error;
     Connect(&error);
   } else {
-    LOG(INFO) << "Suppressed autoconnect to " << friendly_name();
+    LOG(INFO) << "Suppressed autoconnect to " << friendly_name() << " "
+              << "(" << reason << ")";
   }
 }
 
@@ -586,9 +593,28 @@ string Service::CalculateState(Error */*error*/) {
   }
 }
 
-bool Service::IsAutoConnectable() const {
-  return connectable() && !IsConnected() && !IsConnecting() &&
-      !explicitly_disconnected_;
+bool Service::IsAutoConnectable(const char **reason) const {
+  if (!connectable()) {
+    *reason = kAutoConnNotConnectable;
+    return false;
+  }
+
+  if (IsConnected()) {
+    *reason = kAutoConnConnected;
+    return false;
+  }
+
+  if (IsConnecting()) {
+    *reason = kAutoConnConnecting;
+    return false;
+  }
+
+  if (explicitly_disconnected_) {
+    *reason = kAutoConnExplicitDisconnect;
+    return false;
+  }
+
+  return true;
 }
 
 void Service::HelpRegisterDerivedBool(

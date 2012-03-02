@@ -729,6 +729,7 @@ TEST_F(WiFiServiceTest, Connectable) {
 }
 
 TEST_F(WiFiServiceTest, IsAutoConnectable) {
+  const char *reason;
   vector<uint8_t> ssid(1, 'a');
   WiFiServiceRefPtr service = new WiFiService(control_interface(),
                                               dispatcher(),
@@ -742,14 +743,17 @@ TEST_F(WiFiServiceTest, IsAutoConnectable) {
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(true));
   EXPECT_FALSE(service->HasEndpoints());
-  EXPECT_FALSE(service->IsAutoConnectable());
+  EXPECT_FALSE(service->IsAutoConnectable(&reason));
+  EXPECT_STREQ(WiFiService::kAutoConnNoEndpoint, reason);
 
+  reason = "";
   WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0);
   service->AddEndpoint(endpoint);
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(true));
   EXPECT_TRUE(service->HasEndpoints());
-  EXPECT_TRUE(service->IsAutoConnectable());
+  EXPECT_TRUE(service->IsAutoConnectable(&reason));
+  EXPECT_STREQ("", reason);
 
   // WiFi only supports connecting to one Service at a time. So, to
   // avoid disrupting connectivity, we only allow auto-connection to
@@ -757,10 +761,12 @@ TEST_F(WiFiServiceTest, IsAutoConnectable) {
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(false));
   EXPECT_TRUE(service->HasEndpoints());
-  EXPECT_FALSE(service->IsAutoConnectable());
+  EXPECT_FALSE(service->IsAutoConnectable(&reason));
+  EXPECT_STREQ(WiFiService::kAutoConnBusy, reason);
 }
 
 TEST_F(WiFiServiceTest, AutoConnect) {
+  const char *reason;
   vector<uint8_t> ssid(1, 'a');
   WiFiServiceRefPtr service = new WiFiService(control_interface(),
                                               dispatcher(),
@@ -771,7 +777,7 @@ TEST_F(WiFiServiceTest, AutoConnect) {
                                               flimflam::kModeManaged,
                                               flimflam::kSecurityNone,
                                               false);
-  EXPECT_FALSE(service->IsAutoConnectable());
+  EXPECT_FALSE(service->IsAutoConnectable(&reason));
   EXPECT_CALL(*wifi(), ConnectTo(_, _))
       .Times(0);
   service->AutoConnect();
@@ -780,13 +786,13 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   service->AddEndpoint(endpoint);
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(true));
-  EXPECT_TRUE(service->IsAutoConnectable());
+  EXPECT_TRUE(service->IsAutoConnectable(&reason));
   EXPECT_CALL(*wifi(), ConnectTo(_, _));
   service->AutoConnect();
 
   Error error;
   service->Disconnect(&error);
-  EXPECT_FALSE(service->IsAutoConnectable());
+  EXPECT_FALSE(service->IsAutoConnectable(&reason));
 }
 
 TEST_F(WiFiServiceTest, Populate8021x) {

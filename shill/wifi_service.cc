@@ -34,6 +34,9 @@ using std::vector;
 
 namespace shill {
 
+const char WiFiService::kAutoConnBusy[] = "busy";
+const char WiFiService::kAutoConnNoEndpoint[] = "no endpoints";
+
 const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";
 const char WiFiService::kStorageMode[] = "WiFi.Mode";
 const char WiFiService::kStoragePassphrase[] = "Passphrase";
@@ -114,7 +117,8 @@ WiFiService::~WiFiService() {
 }
 
 void WiFiService::AutoConnect() {
-  if (IsAutoConnectable()) {
+  const char *reason;
+  if (IsAutoConnectable(&reason)) {
     // Execute immediately, for two reasons:
     //
     // 1. We need IsAutoConnectable to return the correct value for
@@ -127,7 +131,8 @@ void WiFiService::AutoConnect() {
     //    more timely work.
     ConnectTask();
   } else {
-    LOG(INFO) << "Suppressed autoconnect to " << friendly_name();
+    LOG(INFO) << "Suppressed autoconnect to " << friendly_name() << " "
+              << "(" << reason << ")";
   }
 }
 
@@ -152,15 +157,27 @@ bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
   return wifi_->TechnologyIs(type);
 }
 
-bool WiFiService::IsAutoConnectable() const {
-  return Service::IsAutoConnectable() &&
-      // Only auto-connect to Services which have visible Endpoints.
-      // (Needed because hidden Services may remain registered with
-      // Manager even without visible Endpoints.)
-      HasEndpoints() &&
-      // Do not preempt an existing connection (whether pending, or
-      // connected, and whether to this service, or another).
-      wifi_->IsIdle();
+bool WiFiService::IsAutoConnectable(const char **reason) const {
+  if (!Service::IsAutoConnectable(reason)) {
+    return false;
+  }
+
+  // Only auto-connect to Services which have visible Endpoints.
+  // (Needed because hidden Services may remain registered with
+  // Manager even without visible Endpoints.)
+  if (!HasEndpoints()) {
+    *reason = kAutoConnNoEndpoint;
+    return false;
+  }
+
+  // Do not preempt an existing connection (whether pending, or
+  // connected, and whether to this service, or another).
+  if (!wifi_->IsIdle()) {
+    *reason = kAutoConnBusy;
+    return false;
+  }
+
+  return true;
 }
 
 bool WiFiService::IsConnecting() const {

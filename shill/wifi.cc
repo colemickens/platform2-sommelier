@@ -927,7 +927,7 @@ void WiFi::PropertiesChangedTask(
 }
 
 void WiFi::ScanDoneTask() {
-  LOG(INFO) << __func__;
+  VLOG(2) << __func__;
   scan_pending_ = false;
 }
 

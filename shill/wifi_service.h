@@ -97,7 +97,7 @@ class WiFiService : public Service {
   void set_eap(const EapCredentials& eap);
 
  protected:
-  virtual bool IsAutoConnectable() const;
+  virtual bool IsAutoConnectable(const char **reason) const;
 
  private:
   friend class WiFiServiceSecurityTest;
@@ -117,6 +117,9 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
   FRIEND_TEST(WiFiServiceTest, Populate8021x);
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
+
+  static const char kAutoConnBusy[];
+  static const char kAutoConnNoEndpoint[];
 
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
