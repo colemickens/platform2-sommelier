@@ -90,7 +90,7 @@ class TestP11PublicSession : public TestP11 {
     EXPECT_EQ(CKR_OK, chaps_->CloseSession(session_id_));
     TestP11::TearDown();
   }
-  uint32_t session_id_;
+  uint64_t session_id_;
 };
 
 class TestP11UserSession : public TestP11PublicSession {
@@ -143,11 +143,11 @@ class TestP11Object : public TestP11PublicSession {
     ASSERT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, object_handle_));
     TestP11PublicSession::TearDown();
   }
-  uint32_t object_handle_;
+  uint64_t object_handle_;
 };
 
 TEST_F(TestP11, SlotList) {
-  vector<uint32_t> slot_list;
+  vector<uint64_t> slot_list;
   uint32_t result = chaps_->GetSlotList(false, &slot_list);
   EXPECT_EQ(CKR_OK, result);
   EXPECT_LT(0, slot_list.size());
@@ -163,7 +163,7 @@ TEST_F(TestP11, SlotList) {
 TEST_F(TestP11, SlotInfo) {
   vector<uint8_t> description;
   vector<uint8_t> manufacturer;
-  uint32_t flags;
+  uint64_t flags;
   uint8_t version[4];
   uint32_t result = chaps_->GetSlotInfo(0, &description,
                                         &manufacturer, &flags,
@@ -185,9 +185,9 @@ TEST_F(TestP11, TokenInfo) {
   vector<uint8_t> manufacturer;
   vector<uint8_t> model;
   vector<uint8_t> serial_number;
-  uint32_t flags;
+  uint64_t flags;
   uint8_t version[4];
-  uint32_t not_used[10];
+  uint64_t not_used[10];
   uint32_t result = chaps_->GetTokenInfo(0, &label, &manufacturer,
                                          &model, &serial_number, &flags,
                                          &not_used[0], &not_used[1],
@@ -221,7 +221,7 @@ TEST_F(TestP11, TokenInfo) {
 }
 
 TEST_F(TestP11, MechList) {
-  vector<uint32_t> mech_list;
+  vector<uint64_t> mech_list;
   uint32_t result = chaps_->GetMechanismList(0, &mech_list);
   EXPECT_EQ(CKR_OK, result);
   EXPECT_LT(0, mech_list.size());
@@ -233,9 +233,9 @@ TEST_F(TestP11, MechList) {
 }
 
 TEST_F(TestP11, MechInfo) {
-  uint32_t flags;
-  uint32_t min_key_size;
-  uint32_t max_key_size;
+  uint64_t flags;
+  uint64_t min_key_size;
+  uint64_t max_key_size;
   uint32_t result = chaps_->GetMechanismInfo(0, CKM_RSA_PKCS, &min_key_size,
                                          &max_key_size, &flags);
   EXPECT_EQ(CKR_OK, result);
@@ -282,7 +282,7 @@ TEST_F(TestP11, InitToken) {
   ASSERT_EQ(CKR_OK, chaps_->InitToken(0, &so_pin_, label);
   // Put the token back in a usable state. This is required if we're testing on
   // a live token.
-  uint32_t session = 0;
+  uint64_t session = 0;
   ASSERT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION|CKF_RW_SESSION,
                                         &session));
   ASSERT_EQ(CKR_OK, chaps_->Login(session, CKU_SO, &so_pin_));
@@ -309,7 +309,7 @@ TEST_F(TestP11UserSession, SetPIN) {
 #endif
 
 TEST_F(TestP11, OpenCloseSession) {
-  uint32_t session = 0;
+  uint64_t session = 0;
   // Test successful RO and RW sessions.
   EXPECT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION, &session));
   EXPECT_EQ(CKR_OK, chaps_->CloseSession(session));
@@ -330,13 +330,13 @@ TEST_F(TestP11, OpenCloseSession) {
 }
 
 TEST_F(TestP11PublicSession, GetSessionInfo) {
-  uint32_t slot_id, state, flags, device_error;
+  uint64_t slot_id, state, flags, device_error;
   EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(session_id_, &slot_id, &state,
                                            &flags, &device_error));
   EXPECT_EQ(0, slot_id);
   EXPECT_EQ(CKS_RW_PUBLIC_SESSION, state);
   EXPECT_EQ(CKF_SERIAL_SESSION|CKF_RW_SESSION, flags);
-  uint32_t readonly_session_id;
+  uint64_t readonly_session_id;
   ASSERT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION,
                                         &readonly_session_id));
   EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(readonly_session_id, &slot_id,
@@ -416,14 +416,14 @@ TEST_F(TestP11PublicSession, CreateObject) {
   };
   vector<uint8_t> attribute_serial;
   ASSERT_TRUE(SerializeAttributes(attributes, 5, &attribute_serial));
-  uint32_t handle = 0;
+  uint64_t handle = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             chaps_->CreateObject(session_id_, attribute_serial, NULL));
   EXPECT_EQ(CKR_OK,
             chaps_->CreateObject(session_id_, attribute_serial, &handle));
   vector<uint8_t> attribute_serial2;
   ASSERT_TRUE(SerializeAttributes(attributes2, 1, &attribute_serial2));
-  uint32_t handle2 = 0;
+  uint64_t handle2 = 0;
   EXPECT_EQ(CKR_OK, chaps_->CopyObject(session_id_,
                                        handle,
                                        attribute_serial2,
@@ -437,7 +437,7 @@ TEST_F(TestP11PublicSession, CreateObject) {
 }
 
 TEST_F(TestP11Object, GetObjectSize) {
-  uint32_t size;
+  uint64_t size;
   EXPECT_EQ(CKR_OK, chaps_->GetObjectSize(session_id_, object_handle_, &size));
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
       chaps_->GetObjectSize(session_id_, object_handle_, NULL));
@@ -498,7 +498,7 @@ TEST_F(TestP11Object, SetAttributeValue) {
 }
 
 TEST_F(TestP11Object, FindObjects) {
-  vector<uint32_t> objects;
+  vector<uint64_t> objects;
   vector<uint8_t> empty;
   EXPECT_EQ(CKR_OK, chaps_->FindObjectsInit(session_id_, empty));
   EXPECT_EQ(CKR_OK, chaps_->FindObjects(session_id_, 10, &objects));
@@ -552,7 +552,7 @@ TEST_F(TestP11PublicSession, Encrypt) {
   };
   vector<uint8_t> key;
   ASSERT_TRUE(SerializeAttributes(key_desc, 6, &key));
-  uint32_t key_handle = 0;
+  uint64_t key_handle = 0;
   ASSERT_EQ(CKR_OK, chaps_->CreateObject(session_id_, key, &key_handle));
   // Test encrypt.
   vector<uint8_t> parameter;
@@ -561,11 +561,11 @@ TEST_F(TestP11PublicSession, Encrypt) {
                                         parameter,
                                         key_handle));
   vector<uint8_t> data(48, 2), encrypted;
-  uint32_t not_used = 0;
-  const uint32_t max_out = 100;
+  uint64_t not_used = 0;
+  const uint64_t max_out_length = 100;
   EXPECT_EQ(CKR_OK, chaps_->Encrypt(session_id_,
                                     data,
-                                    max_out,
+                                    max_out_length,
                                     &not_used,
                                     &encrypted));
   EXPECT_EQ(CKR_OK, chaps_->EncryptInit(session_id_,
@@ -575,27 +575,27 @@ TEST_F(TestP11PublicSession, Encrypt) {
   vector<uint8_t> encrypted2, tmp;
   EXPECT_EQ(CKR_OK, chaps_->EncryptUpdate(session_id_,
                                           SubVector(data, 0, 3),
-                                          max_out,
+                                          max_out_length,
                                           &not_used,
                                           &tmp));
   encrypted2.insert(encrypted2.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->EncryptUpdate(session_id_,
                                           SubVector(data, 3, 27),
-                                          max_out,
+                                          max_out_length,
                                           &not_used,
                                           &tmp));
   encrypted2.insert(encrypted2.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->EncryptUpdate(session_id_,
                                           SubVector(data, 30, 18),
-                                          max_out,
+                                          max_out_length,
                                           &not_used,
                                           &tmp));
   encrypted2.insert(encrypted2.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->EncryptFinal(session_id_,
-                                         max_out,
+                                         max_out_length,
                                          &not_used,
                                          &tmp));
   encrypted2.insert(encrypted2.end(), tmp.begin(), tmp.end());
@@ -611,7 +611,7 @@ TEST_F(TestP11PublicSession, Encrypt) {
   vector<uint8_t> decrypted;
   EXPECT_EQ(CKR_OK, chaps_->Decrypt(session_id_,
                                     encrypted,
-                                    max_out,
+                                    max_out_length,
                                     &not_used,
                                     &decrypted));
   EXPECT_TRUE(std::equal(data.begin(), data.end(), decrypted.begin()));
@@ -622,27 +622,27 @@ TEST_F(TestP11PublicSession, Encrypt) {
                                         key_handle));
   EXPECT_EQ(CKR_OK, chaps_->DecryptUpdate(session_id_,
                                           SubVector(encrypted, 0, 16),
-                                          max_out,
+                                          max_out_length,
                                           &not_used,
                                           &tmp));
   decrypted.insert(decrypted.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->DecryptUpdate(session_id_,
                                           SubVector(encrypted, 16, 17),
-                                          max_out,
+                                          max_out_length,
                                           &not_used,
                                           &tmp));
   decrypted.insert(decrypted.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->DecryptUpdate(session_id_,
                                           SubVector(encrypted, 33, 15),
-                                          max_out,
+                                          max_out_length,
                                           &not_used,
                                           &tmp));
   decrypted.insert(decrypted.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->DecryptFinal(session_id_,
-                                         max_out,
+                                         max_out_length,
                                          &not_used,
                                          &tmp));
   decrypted.insert(decrypted.end(), tmp.begin(), tmp.end());
@@ -653,30 +653,32 @@ TEST_F(TestP11PublicSession, Encrypt) {
                                         CKM_AES_ECB,
                                         parameter,
                                         key_handle));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->Encrypt(session_id_, data, max_out, NULL,
-                                               NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            chaps_->Encrypt(session_id_, data, max_out_length, NULL, NULL));
   EXPECT_EQ(CKR_OK, chaps_->DecryptInit(session_id_,
                                         CKM_AES_ECB,
                                         parameter,
                                         key_handle));
-  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->Decrypt(session_id_, data, max_out, NULL,
-                                               NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            chaps_->Decrypt(session_id_, data, max_out_length, NULL, NULL));
 }
 
 TEST_F(TestP11PublicSession, Digest) {
   vector<uint8_t> parameter;
   vector<uint8_t> data(100, 2), digest;
-  uint32_t not_used = 0;
-  const uint32_t max_out = 100;
+  uint64_t not_used = 0;
+  const uint64_t max_out_length = 100;
   EXPECT_EQ(CKR_OK, chaps_->DigestInit(session_id_, CKM_SHA_1, parameter));
   EXPECT_EQ(CKR_OK,
-            chaps_->Digest(session_id_, data, max_out, &not_used, &digest));
+            chaps_->Digest(session_id_, data, max_out_length, &not_used,
+                           &digest));
   EXPECT_EQ(CKR_OK, chaps_->DigestInit(session_id_, CKM_SHA_1, parameter));
   EXPECT_EQ(CKR_OK, chaps_->DigestUpdate(session_id_, SubVector(data, 0, 10)));
   EXPECT_EQ(CKR_OK, chaps_->DigestUpdate(session_id_, SubVector(data, 10, 90)));
   vector<uint8_t> digest2;
   EXPECT_EQ(CKR_OK,
-            chaps_->DigestFinal(session_id_, max_out, &not_used, &digest2));
+            chaps_->DigestFinal(session_id_, max_out_length, &not_used,
+                                &digest2));
   EXPECT_TRUE(std::equal(digest.begin(), digest.end(), digest2.begin()));
 
   // Create a session key.
@@ -696,13 +698,14 @@ TEST_F(TestP11PublicSession, Digest) {
   };
   vector<uint8_t> key;
   ASSERT_TRUE(SerializeAttributes(key_desc, 6, &key));
-  uint32_t key_handle = 0;
+  uint64_t key_handle = 0;
   ASSERT_EQ(CKR_OK, chaps_->CreateObject(session_id_, key, &key_handle));
   EXPECT_EQ(CKR_OK, chaps_->DigestInit(session_id_, CKM_SHA_1, parameter));
   EXPECT_EQ(CKR_OK, chaps_->DigestKey(session_id_, key_handle));
   vector<uint8_t> digest3;
   EXPECT_EQ(CKR_OK,
-            chaps_->DigestFinal(session_id_, max_out, &not_used, &digest3));
+            chaps_->DigestFinal(session_id_, max_out_length, &not_used,
+                                &digest3));
   EXPECT_TRUE(std::equal(digest.begin(), digest.end(), digest3.begin()));
 }
 
@@ -723,7 +726,7 @@ TEST_F(TestP11PublicSession, Sign) {
   };
   vector<uint8_t> key;
   ASSERT_TRUE(SerializeAttributes(key_desc, 6, &key));
-  uint32_t key_handle = 0;
+  uint64_t key_handle = 0;
   ASSERT_EQ(CKR_OK, chaps_->CreateObject(session_id_, key, &key_handle));
   // Sign / Verify using SHA-1 HMAC.
   vector<uint8_t> parameter;
@@ -732,11 +735,11 @@ TEST_F(TestP11PublicSession, Sign) {
                                      parameter,
                                      key_handle));
   vector<uint8_t> data(100, 2), signature;
-  uint32_t not_used = 0;
-  const uint32_t max_out = 100;
+  uint64_t not_used = 0;
+  const uint64_t max_out_length = 100;
   EXPECT_EQ(CKR_OK, chaps_->Sign(session_id_,
                                  data,
-                                 max_out,
+                                 max_out_length,
                                  &not_used,
                                  &signature));
   EXPECT_EQ(signature.size(), 20);
@@ -749,7 +752,7 @@ TEST_F(TestP11PublicSession, Sign) {
 
 TEST_F(TestP11UserSession, GenerateKey) {
   vector<uint8_t> empty;
-  uint32_t key_handle;
+  uint64_t key_handle;
   CK_BBOOL false_value = CK_FALSE;
   CK_BBOOL true_value = CK_TRUE;
   CK_ULONG key_length = 32;
@@ -772,7 +775,7 @@ TEST_F(TestP11UserSession, GenerateKey) {
 
 TEST_F(TestP11UserSession, GenerateKeyPair) {
   vector<uint8_t> empty;
-  uint32_t public_key, private_key;
+  uint64_t public_key, private_key;
   CK_ULONG bits = 1024;
   CK_BYTE e[] = {1, 0, 1};
   CK_BBOOL false_value = CK_FALSE;
@@ -811,7 +814,7 @@ TEST_F(TestP11UserSession, GenerateKeyPair) {
 }
 
 TEST_F(TestP11PublicSession, WrapKey) {
-  uint32_t not_used;
+  uint64_t not_used;
   vector<uint8_t> empty;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->WrapKey(session_id_,
                                                CKM_RSA_PKCS, empty,

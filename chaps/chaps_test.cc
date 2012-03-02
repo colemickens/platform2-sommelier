@@ -127,12 +127,12 @@ TEST(TestLibInfo, LibInfoNotInit) {
 class TestSlotList : public ::testing::Test {
 protected:
   virtual void SetUp() {
-    uint32_t slot_array[3] = {1, 2, 3};
+    uint64_t slot_array[3] = {1, 2, 3};
     slot_list_all_.assign(&slot_array[0], &slot_array[3]);
     slot_list_present_.assign(&slot_array[1], &slot_array[3]);
   }
-  vector<uint32_t> slot_list_all_;
-  vector<uint32_t> slot_list_present_;
+  vector<uint64_t> slot_list_all_;
+  vector<uint64_t> slot_list_present_;
 };
 
 TEST_F(TestSlotList, SlotListOK) {
@@ -319,12 +319,12 @@ TEST(TestWaitSlotEvent, SlotEventBadArgs) {
 class TestMechList : public ::testing::Test {
 protected:
   virtual void SetUp() {
-    uint32_t mech_array[3] = {1, 2, 3};
+    uint64_t mech_array[3] = {1, 2, 3};
     mech_list_all_.assign(&mech_array[0], &mech_array[3]);
     mech_list_present_.assign(&mech_array[1], &mech_array[3]);
   }
-  vector<uint32_t> mech_list_all_;
-  vector<uint32_t> mech_list_present_;
+  vector<uint64_t> mech_list_all_;
+  vector<uint64_t> mech_list_present_;
 };
 
 TEST_F(TestMechList, MechListOK) {
@@ -1168,7 +1168,7 @@ TEST(TestFindObjects, FindObjectsInitFail) {
 
 TEST(TestFindObjects, FindObjectsOK) {
   ChapsProxyMock proxy(true);
-  vector<uint32_t> object_list;
+  vector<uint64_t> object_list;
   object_list.push_back(20);
   object_list.push_back(21);
   EXPECT_CALL(proxy, FindObjects(1, 7, _))
@@ -1191,7 +1191,7 @@ TEST(TestFindObjects, FindObjectsNULL) {
 
 TEST(TestFindObjects, FindObjectsOverflow) {
   ChapsProxyMock proxy(true);
-  vector<uint32_t> object_list(8, 20);
+  vector<uint64_t> object_list(8, 20);
   EXPECT_CALL(proxy, FindObjects(1, 7, _))
       .WillOnce(DoAll(SetArgumentPointee<2>(object_list), Return(CKR_OK)));
   CK_OBJECT_HANDLE object_array[7];

@@ -67,7 +67,7 @@ TEST_F(TestService, GetSlotList) {
     .WillRepeatedly(Return(false));
   // Try bad arguments.
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetSlotList(false, NULL));
-  vector<uint32_t> slot_list;
+  vector<uint64_t> slot_list;
   slot_list.push_back(0);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetSlotList(false, &slot_list));
   // Try normal use cases.
@@ -96,7 +96,7 @@ TEST_F(TestService, GetSlotInfo) {
         0,
         reinterpret_cast<vector<uint8_t>*>(p[0]),
         reinterpret_cast<vector<uint8_t>*>(p[1]),
-        reinterpret_cast<uint32_t*>(p[2]),
+        reinterpret_cast<uint64_t*>(p[2]),
         reinterpret_cast<uint8_t*>(p[3]),
         reinterpret_cast<uint8_t*>(p[4]),
         reinterpret_cast<uint8_t*>(p[5]),
@@ -104,7 +104,7 @@ TEST_F(TestService, GetSlotInfo) {
   }
   vector<uint8_t> slot_description;
   vector<uint8_t> manufacturer_id;
-  uint32_t flags;
+  uint64_t flags;
   uint8_t hardware_version_major;
   uint8_t hardware_version_minor;
   uint8_t firmware_version_major;
@@ -154,17 +154,17 @@ TEST_F(TestService, GetTokenInfo) {
         reinterpret_cast<vector<uint8_t>*>(p[1]),
         reinterpret_cast<vector<uint8_t>*>(p[2]),
         reinterpret_cast<vector<uint8_t>*>(p[3]),
-        reinterpret_cast<uint32_t*>(p[4]),
-        reinterpret_cast<uint32_t*>(p[5]),
-        reinterpret_cast<uint32_t*>(p[6]),
-        reinterpret_cast<uint32_t*>(p[7]),
-        reinterpret_cast<uint32_t*>(p[8]),
-        reinterpret_cast<uint32_t*>(p[9]),
-        reinterpret_cast<uint32_t*>(p[10]),
-        reinterpret_cast<uint32_t*>(p[11]),
-        reinterpret_cast<uint32_t*>(p[12]),
-        reinterpret_cast<uint32_t*>(p[13]),
-        reinterpret_cast<uint32_t*>(p[14]),
+        reinterpret_cast<uint64_t*>(p[4]),
+        reinterpret_cast<uint64_t*>(p[5]),
+        reinterpret_cast<uint64_t*>(p[6]),
+        reinterpret_cast<uint64_t*>(p[7]),
+        reinterpret_cast<uint64_t*>(p[8]),
+        reinterpret_cast<uint64_t*>(p[9]),
+        reinterpret_cast<uint64_t*>(p[10]),
+        reinterpret_cast<uint64_t*>(p[11]),
+        reinterpret_cast<uint64_t*>(p[12]),
+        reinterpret_cast<uint64_t*>(p[13]),
+        reinterpret_cast<uint64_t*>(p[14]),
         reinterpret_cast<uint8_t*>(p[15]),
         reinterpret_cast<uint8_t*>(p[16]),
         reinterpret_cast<uint8_t*>(p[17]),
@@ -174,17 +174,17 @@ TEST_F(TestService, GetTokenInfo) {
   vector<uint8_t> manufacturer_id;
   vector<uint8_t> model;
   vector<uint8_t> serial_number;
-  uint32_t flags;
-  uint32_t max_session_count;
-  uint32_t session_count;
-  uint32_t max_session_count_rw;
-  uint32_t session_count_rw;
-  uint32_t max_pin_len;
-  uint32_t min_pin_len;
-  uint32_t total_public_memory;
-  uint32_t free_public_memory;
-  uint32_t total_private_memory;
-  uint32_t free_private_memory;
+  uint64_t flags;
+  uint64_t max_session_count;
+  uint64_t session_count;
+  uint64_t max_session_count_rw;
+  uint64_t session_count_rw;
+  uint64_t max_pin_len;
+  uint64_t min_pin_len;
+  uint64_t total_public_memory;
+  uint64_t free_public_memory;
+  uint64_t total_private_memory;
+  uint64_t free_private_memory;
   uint8_t hardware_version_major;
   uint8_t hardware_version_minor;
   uint8_t firmware_version_major;
@@ -271,7 +271,7 @@ TEST_F(TestService, GetMechanismList) {
   // Try bad arguments.
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetMechanismList(0, NULL));
   // Try invalid slot ID.
-  vector<uint32_t> output;
+  vector<uint64_t> output;
   EXPECT_EQ(CKR_SLOT_ID_INVALID, service_->GetMechanismList(2, &output));
   EXPECT_EQ(CKR_TOKEN_NOT_PRESENT, service_->GetMechanismList(0, &output));
   // Try the normal case.
@@ -293,7 +293,7 @@ TEST_F(TestService, GetMechanismInfo) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(slot_manager_, GetMechanismInfo(0))
     .WillRepeatedly(Return(&test_list));
-  uint32_t min_key, max_key, flags;
+  uint64_t min_key, max_key, flags;
   // Try bad arguments.
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->GetMechanismInfo(0, 123, NULL, &max_key, &flags));
@@ -351,7 +351,7 @@ TEST_F(TestService, OpenSession) {
   EXPECT_CALL(slot_manager_, OpenSession(0, true))
     .WillRepeatedly(Return(10));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->OpenSession(0, 0, NULL));
-  uint32_t session;
+  uint64_t session;
   EXPECT_EQ(CKR_SLOT_ID_INVALID, service_->OpenSession(2, 0, &session));
   EXPECT_EQ(CKR_TOKEN_NOT_PRESENT, service_->OpenSession(0, 0, &session));
   EXPECT_EQ(CKR_SESSION_PARALLEL_NOT_SUPPORTED,
@@ -391,7 +391,7 @@ TEST_F(TestService, GetSessionInfo) {
   EXPECT_CALL(session_, IsReadOnly())
     .WillRepeatedly(Return(false));
   // Try bad arguments.
-  uint32_t slot, state, flags, err;
+  uint64_t slot, state, flags, err;
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->GetSessionInfo(1, NULL, &state, &flags, &err));
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
@@ -467,7 +467,7 @@ TEST_F(TestService, CreateObject) {
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(2), Return(CKR_OK)));
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->CreateObject(1, good_attributes_, NULL));
-  uint32_t object_handle;
+  uint64_t object_handle;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             service_->CreateObject(1, good_attributes_, &object_handle));
   EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
@@ -488,7 +488,7 @@ TEST_F(TestService, CopyObject) {
     .WillRepeatedly(DoAll(SetArgumentPointee<3>(3), Return(CKR_OK)));
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->CopyObject(1, 2, good_attributes_, NULL));
-  uint32_t object_handle;
+  uint64_t object_handle;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             service_->CopyObject(1, 2, good_attributes_, &object_handle));
   EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
@@ -522,7 +522,7 @@ TEST_F(TestService, GetObjectSize) {
   EXPECT_CALL(object_, GetSize())
     .WillRepeatedly(Return(3));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetObjectSize(1, 2, NULL));
-  uint32_t size = 0;
+  uint64_t size = 0;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->GetObjectSize(1, 2, &size));
   EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID, service_->GetObjectSize(1, 2, &size));
   EXPECT_EQ(CKR_OK, service_->GetObjectSize(1, 2, &size));
@@ -597,7 +597,7 @@ TEST_F(TestService, FindObjectsInit) {
 }
 
 TEST_F(TestService, FindObjects) {
-  vector<uint32_t> objects_ret(12, 12);
+  vector<uint64_t> objects_ret(12, 12);
   vector<int> objects_mock(12, 12);
   EXPECT_CALL(slot_manager_, GetSession(1, _))
     .WillOnce(Return(false))
@@ -606,7 +606,7 @@ TEST_F(TestService, FindObjects) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(objects_mock), Return(CKR_OK)));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->FindObjects(1, 2, NULL));
-  vector<uint32_t> objects(1, 1);
+  vector<uint64_t> objects(1, 1);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->FindObjects(1, 2, &objects));
   objects.clear();
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->FindObjects(1, 2, &objects));
@@ -652,7 +652,7 @@ TEST_F(TestService, Encrypt) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
-  uint32_t len = 0;
+  uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Encrypt(1, data, 2, NULL, &data));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Encrypt(1, data, 2, &len, NULL));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
@@ -670,7 +670,7 @@ TEST_F(TestService, EncryptUpdate) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
-  uint32_t len = 0;
+  uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->EncryptUpdate(1, data, 2, NULL, &data));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->EncryptUpdate(1, data, 2, &len, NULL));
@@ -690,7 +690,7 @@ TEST_F(TestService, EncryptFinal) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
   vector<uint8_t> data;
-  uint32_t len = 0;
+  uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->EncryptFinal(1, 2, NULL, &data));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->EncryptFinal(1, 2, &len, NULL));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
@@ -725,7 +725,7 @@ TEST_F(TestService, Decrypt) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
-  uint32_t len = 0;
+  uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Decrypt(1, data, 2, NULL, &data));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Decrypt(1, data, 2, &len, NULL));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
@@ -743,7 +743,7 @@ TEST_F(TestService, DecryptUpdate) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
-  uint32_t len = 0;
+  uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->DecryptUpdate(1, data, 2, NULL, &data));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DecryptUpdate(1, data, 2, &len, NULL));
@@ -763,7 +763,7 @@ TEST_F(TestService, DecryptFinal) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
   vector<uint8_t> data;
-  uint32_t len = 0;
+  uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DecryptFinal(1, 2, NULL, &data));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DecryptFinal(1, 2, &len, NULL));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
@@ -794,7 +794,7 @@ TEST_F(TestService, Digest) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
-  uint32_t len = 0;
+  uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Digest(1, data, 2, NULL, &data));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Digest(1, data, 2, &len, NULL));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
@@ -825,7 +825,7 @@ TEST_F(TestService, DigestFinal) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
   vector<uint8_t> data;
-  uint32_t len = 0;
+  uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DigestFinal(1, 2, NULL, &data));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DigestFinal(1, 2, &len, NULL));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
@@ -860,7 +860,7 @@ TEST_F(TestService, Sign) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
   vector<uint8_t> data;
-  uint32_t len = 0;
+  uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Sign(1, data, 2, NULL, &data));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Sign(1, data, 2, &len, NULL));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
@@ -891,7 +891,7 @@ TEST_F(TestService, SignFinal) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
   vector<uint8_t> data;
-  uint32_t len = 0;
+  uint64_t len = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->SignFinal(1, 2, NULL, &data));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->SignFinal(1, 2, &len, NULL));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
@@ -969,7 +969,7 @@ TEST_F(TestService, GenerateKey) {
     .WillOnce(Return(CKR_FUNCTION_FAILED))
     .WillRepeatedly(DoAll(SetArgumentPointee<4>(3), Return(CKR_OK)));
   vector<uint8_t> param;
-  uint32_t handle;
+  uint64_t handle;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             service_->GenerateKey(1, 2, param, good_attributes_, &handle));
   EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
@@ -991,7 +991,7 @@ TEST_F(TestService, GenerateKeyPair) {
                           SetArgumentPointee<7>(4),
                           Return(CKR_OK)));
   vector<uint8_t> param;
-  uint32_t handle[2];
+  uint64_t handle[2];
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             service_->GenerateKeyPair(1, 2, param,
                                       good_attributes_, good_attributes2_,

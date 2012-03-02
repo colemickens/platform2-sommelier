@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 
 <!--
-  Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+  Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
   Use of this source code is governed by a BSD-style license that can be
   found in the LICENSE file.
 -->
@@ -45,12 +45,26 @@
 
     <!-- Methods that map to PKCS #11 calls. Each method name is identical to
          the PKCS #11 function name except for the "C_" prefix.
+
+         Note: PKCS #11 types that are CK_ULONG map to an unsigned int which
+         is of a different size depending on whether it is a 32-bit or. 64-bit
+         platform. For chaps, these are always internally represented as
+         uint64_t.
+
+         The |result| is marshalled as a 32-bit unsigned integer. Since,
+         there are a finite number of PKCS #11 defined result value (CK_RV)
+         constants, there are no 64-bit -> 32-bit truncation issues to worry
+         about.
+
+         TODO(dkrahn): For consistency, also represent |result| internally as a
+                       64-bit value.
+
     -->
 
     <!-- PKCS #11 v2.20 section 11.5 page 106. -->
     <method name="GetSlotList">
       <arg type="b" name="token_present" direction="in"/>
-      <arg type="au" name="slot_list" direction="out"/>
+      <arg type="at" name="slot_list" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -58,10 +72,10 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 108. -->
     <method name="GetSlotInfo">
-      <arg type="u" name="slot_id" direction="in"/>
+      <arg type="t" name="slot_id" direction="in"/>
       <arg type="ay" name="slot_description" direction="out"/>
       <arg type="ay" name="manufacturer_id" direction="out"/>
-      <arg type="u" name="flags" direction="out"/>
+      <arg type="t" name="flags" direction="out"/>
       <arg type="y" name="hardware_version_major" direction="out"/>
       <arg type="y" name="hardware_version_minor" direction="out"/>
       <arg type="y" name="firmware_version_major" direction="out"/>
@@ -73,22 +87,22 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 109. -->
     <method name="GetTokenInfo">
-      <arg type="u" name="slot_id" direction="in"/>
+      <arg type="t" name="slot_id" direction="in"/>
       <arg type="ay" name="label" direction="out"/>
       <arg type="ay" name="manufacturer_id" direction="out"/>
       <arg type="ay" name="model" direction="out"/>
       <arg type="ay" name="serial_number" direction="out"/>
-      <arg type="u" name="flags" direction="out"/>
-      <arg type="u" name="max_session_count" direction="out"/>
-      <arg type="u" name="session_count" direction="out"/>
-      <arg type="u" name="max_session_count_rw" direction="out"/>
-      <arg type="u" name="session_count_rw" direction="out"/>
-      <arg type="u" name="max_pin_len" direction="out"/>
-      <arg type="u" name="min_pin_len" direction="out"/>
-      <arg type="u" name="total_public_memory" direction="out"/>
-      <arg type="u" name="free_public_memory" direction="out"/>
-      <arg type="u" name="total_private_memory" direction="out"/>
-      <arg type="u" name="free_private_memory" direction="out"/>
+      <arg type="t" name="flags" direction="out"/>
+      <arg type="t" name="max_session_count" direction="out"/>
+      <arg type="t" name="session_count" direction="out"/>
+      <arg type="t" name="max_session_count_rw" direction="out"/>
+      <arg type="t" name="session_count_rw" direction="out"/>
+      <arg type="t" name="max_pin_len" direction="out"/>
+      <arg type="t" name="min_pin_len" direction="out"/>
+      <arg type="t" name="total_public_memory" direction="out"/>
+      <arg type="t" name="free_public_memory" direction="out"/>
+      <arg type="t" name="total_private_memory" direction="out"/>
+      <arg type="t" name="free_private_memory" direction="out"/>
       <arg type="y" name="hardware_version_major" direction="out"/>
       <arg type="y" name="hardware_version_minor" direction="out"/>
       <arg type="y" name="firmware_version_major" direction="out"/>
@@ -100,8 +114,8 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 111. -->
     <method name="GetMechanismList">
-      <arg type="u" name="slot_id" direction="in"/>
-      <arg type="au" name="mechanism_list" direction="out"/>
+      <arg type="t" name="slot_id" direction="in"/>
+      <arg type="at" name="mechanism_list" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -109,11 +123,11 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 112. -->
     <method name="GetMechanismInfo">
-      <arg type="u" name="slot_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
-      <arg type="u" name="min_key_size" direction="out"/>
-      <arg type="u" name="max_key_size" direction="out"/>
-      <arg type="u" name="flags" direction="out"/>
+      <arg type="t" name="slot_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
+      <arg type="t" name="min_key_size" direction="out"/>
+      <arg type="t" name="max_key_size" direction="out"/>
+      <arg type="t" name="flags" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -121,7 +135,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 113. -->
     <method name="InitToken">
-      <arg type="u" name="slot_id" direction="in"/>
+      <arg type="t" name="slot_id" direction="in"/>
       <arg type="b" name="use_null_pin" direction="in"/>
       <arg type="s" name="optional_so_pin" direction="in"/>
       <arg type="ay" name="new_token_label" direction="in"/>
@@ -132,7 +146,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 115. -->
     <method name="InitPIN">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="b" name="use_null_pin" direction="in"/>
       <arg type="s" name="optional_user_pin" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -142,7 +156,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 116. -->
     <method name="SetPIN">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="b" name="use_null_old_pin" direction="in"/>
       <arg type="s" name="optional_old_pin" direction="in"/>
       <arg type="b" name="use_null_new_pin" direction="in"/>
@@ -154,9 +168,9 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 117. -->
     <method name="OpenSession">
-      <arg type="u" name="slot_id" direction="in"/>
-      <arg type="u" name="flags" direction="in"/>
-      <arg type="u" name="session_id" direction="out"/>
+      <arg type="t" name="slot_id" direction="in"/>
+      <arg type="t" name="flags" direction="in"/>
+      <arg type="t" name="session_id" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -164,7 +178,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 118. -->
     <method name="CloseSession">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -172,7 +186,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 120. -->
     <method name="CloseAllSessions">
-      <arg type="u" name="slot_id" direction="in"/>
+      <arg type="t" name="slot_id" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -180,11 +194,11 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 120. -->
     <method name="GetSessionInfo">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="slot_id" direction="out"/>
-      <arg type="u" name="state" direction="out"/>
-      <arg type="u" name="flags" direction="out"/>
-      <arg type="u" name="device_error" direction="out"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="slot_id" direction="out"/>
+      <arg type="t" name="state" direction="out"/>
+      <arg type="t" name="flags" direction="out"/>
+      <arg type="t" name="device_error" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -192,7 +206,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 121. -->
     <method name="GetOperationState">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="operation_state" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -201,10 +215,10 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 123. -->
     <method name="SetOperationState">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="operation_state" direction="in"/>
-      <arg type="u" name="encryption_key_handle" direction="in"/>
-      <arg type="u" name="authentication_key_handle" direction="in"/>
+      <arg type="t" name="encryption_key_handle" direction="in"/>
+      <arg type="t" name="authentication_key_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -212,8 +226,8 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 125. -->
     <method name="Login">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="user_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="user_type" direction="in"/>
       <arg type="b" name="use_null_pin" direction="in"/>
       <arg type="s" name="optional_pin" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -223,7 +237,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 127. -->
     <method name="Logout">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -231,9 +245,9 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 128. -->
     <method name="CreateObject">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
-      <arg type="u" name="new_object_handle" direction="out"/>
+      <arg type="t" name="new_object_handle" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -241,10 +255,10 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 130. -->
     <method name="CopyObject">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="object_handle" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="object_handle" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
-      <arg type="u" name="new_object_handle" direction="out"/>
+      <arg type="t" name="new_object_handle" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -252,8 +266,8 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 131. -->
     <method name="DestroyObject">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="object_handle" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="object_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -261,9 +275,9 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 132. -->
     <method name="GetObjectSize">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="object_handle" direction="in"/>
-      <arg type="u" name="object_size" direction="out"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="object_handle" direction="in"/>
+      <arg type="t" name="object_size" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -271,8 +285,8 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 133. -->
     <method name="GetAttributeValue">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="object_handle" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="object_handle" direction="in"/>
       <arg type="ay" name="attributes_in" direction="in"/>
       <arg type="ay" name="attributes_out" direction="out"/>
       <arg type="u" name="result" direction="out">
@@ -282,8 +296,8 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 135. -->
     <method name="SetAttributeValue">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="object_handle" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="object_handle" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -292,7 +306,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 136. -->
     <method name="FindObjectsInit">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -301,9 +315,9 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 137. -->
     <method name="FindObjects">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="max_object_count" direction="in"/>
-      <arg type="au" name="object_list" direction="out"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="max_object_count" direction="in"/>
+      <arg type="at" name="object_list" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -311,7 +325,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 138. -->
     <method name="FindObjectsFinal">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -319,10 +333,10 @@
 
     <!-- PKCS #11 v2.20 section 11.8 page 139. -->
     <method name="EncryptInit">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
-      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="t" name="key_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -330,10 +344,10 @@
 
     <!-- PKCS #11 v2.20 section 11.8 page 140. -->
     <method name="Encrypt">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data_out" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -342,10 +356,10 @@
 
     <!-- PKCS #11 v2.20 section 11.8 page 141. -->
     <method name="EncryptUpdate">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data_out" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -354,9 +368,9 @@
 
     <!-- PKCS #11 v2.20 section 11.8 page 141. -->
     <method name="EncryptFinal">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data_out" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -365,10 +379,10 @@
 
     <!-- PKCS #11 v2.20 section 11.9 page 144. -->
     <method name="DecryptInit">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
-      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="t" name="key_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -376,10 +390,10 @@
 
     <!-- PKCS #11 v2.20 section 11.9 page 145. -->
     <method name="Decrypt">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data_out" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -388,10 +402,10 @@
 
     <!-- PKCS #11 v2.20 section 11.9 page 146. -->
     <method name="DecryptUpdate">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data_out" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -400,9 +414,9 @@
 
     <!-- PKCS #11 v2.20 section 11.9 page 146. -->
     <method name="DecryptFinal">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data_out" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -411,8 +425,8 @@
 
     <!-- PKCS #11 v2.20 section 11.10 page 148. -->
     <method name="DigestInit">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -421,10 +435,10 @@
 
     <!-- PKCS #11 v2.20 section 11.10 page 149. -->
     <method name="Digest">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="digest" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -433,7 +447,7 @@
 
     <!-- PKCS #11 v2.20 section 11.10 page 150. -->
     <method name="DigestUpdate">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -442,8 +456,8 @@
 
     <!-- PKCS #11 v2.20 section 11.10 page 150. -->
     <method name="DigestKey">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="key_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -451,9 +465,9 @@
 
     <!-- PKCS #11 v2.20 section 11.10 page 151. -->
     <method name="DigestFinal">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="digest" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -462,10 +476,10 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 152. -->
     <method name="SignInit">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
-      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="t" name="key_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -473,10 +487,10 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 153. -->
     <method name="Sign">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="signature" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -485,7 +499,7 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 154. -->
     <method name="SignUpdate">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_part" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -494,9 +508,9 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 154. -->
     <method name="SignFinal">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="signature" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -505,10 +519,10 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 155. -->
     <method name="SignRecoverInit">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
-      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="t" name="key_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -516,10 +530,10 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 156. -->
     <method name="SignRecover">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="signature" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -528,10 +542,10 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 157. -->
     <method name="VerifyInit">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
-      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="t" name="key_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -539,7 +553,7 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 158. -->
     <method name="Verify">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data" direction="in"/>
       <arg type="ay" name="signature" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -549,7 +563,7 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 159. -->
     <method name="VerifyUpdate">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_part" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -558,7 +572,7 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 159. -->
     <method name="VerifyFinal">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="signature" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -567,10 +581,10 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 161. -->
     <method name="VerifyRecoverInit">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
-      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="t" name="key_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -578,10 +592,10 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 161. -->
     <method name="VerifyRecover">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="signature" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -590,10 +604,10 @@
 
     <!-- PKCS #11 v2.20 section 11.13 page 163. -->
     <method name="DigestEncryptUpdate">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data_out" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -602,10 +616,10 @@
 
     <!-- PKCS #11 v2.20 section 11.13 page 165. -->
     <method name="DecryptDigestUpdate">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data_out" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -614,10 +628,10 @@
 
     <!-- PKCS #11 v2.20 section 11.13 page 169. -->
     <method name="SignEncryptUpdate">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data_out" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -626,10 +640,10 @@
 
     <!-- PKCS #11 v2.20 section 11.13 page 171. -->
     <method name="DecryptVerifyUpdate">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="data_out" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -638,11 +652,11 @@
 
     <!-- PKCS #11 v2.20 section 11.14 page 175. -->
     <method name="GenerateKey">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
-      <arg type="u" name="key_handle" direction="out"/>
+      <arg type="t" name="key_handle" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -650,13 +664,13 @@
 
     <!-- PKCS #11 v2.20 section 11.14 page 176. -->
     <method name="GenerateKeyPair">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
       <arg type="ay" name="public_attributes" direction="in"/>
       <arg type="ay" name="private_attributes" direction="in"/>
-      <arg type="u" name="public_key_handle" direction="out"/>
-      <arg type="u" name="private_key_handle" direction="out"/>
+      <arg type="t" name="public_key_handle" direction="out"/>
+      <arg type="t" name="private_key_handle" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -664,13 +678,13 @@
 
     <!-- PKCS #11 v2.20 section 11.14 page 178. -->
     <method name="WrapKey">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
-      <arg type="u" name="wrapping_key_handle" direction="in"/>
-      <arg type="u" name="key_handle" direction="in"/>
-      <arg type="u" name="max_out_length" direction="in"/>
-      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="t" name="wrapping_key_handle" direction="in"/>
+      <arg type="t" name="key_handle" direction="in"/>
+      <arg type="t" name="max_out_length" direction="in"/>
+      <arg type="t" name="actual_out_length" direction="out"/>
       <arg type="ay" name="wrapped_key" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -679,13 +693,13 @@
 
     <!-- PKCS #11 v2.20 section 11.14 page 180. -->
     <method name="UnwrapKey">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
-      <arg type="u" name="wrapping_key_handle" direction="in"/>
+      <arg type="t" name="wrapping_key_handle" direction="in"/>
       <arg type="ay" name="wrapped_key" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
-      <arg type="u" name="key_handle" direction="out"/>
+      <arg type="t" name="key_handle" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -693,12 +707,12 @@
 
     <!-- PKCS #11 v2.20 section 11.14 page 182. -->
     <method name="DeriveKey">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
-      <arg type="u" name="base_key_handle" direction="in"/>
+      <arg type="t" name="base_key_handle" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
-      <arg type="u" name="key_handle" direction="out"/>
+      <arg type="t" name="key_handle" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -706,7 +720,7 @@
 
     <!-- PKCS #11 v2.20 section 11.15 page 184. -->
     <method name="SeedRandom">
-      <arg type="u" name="session_id" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="seed" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -715,8 +729,8 @@
 
     <!-- PKCS #11 v2.20 section 11.15 page 184. -->
     <method name="GenerateRandom">
-      <arg type="u" name="session_id" direction="in"/>
-      <arg type="u" name="num_bytes" direction="in"/>
+      <arg type="t" name="session_id" direction="in"/>
+      <arg type="t" name="num_bytes" direction="in"/>
       <arg type="ay" name="random_data" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>

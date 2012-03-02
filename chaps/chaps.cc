@@ -63,7 +63,7 @@ static void TearDown() {
 //                        This will be updated with the actual output length.
 static CK_RV HandlePKCS11Output(CK_RV result,
                                 const vector<uint8_t>& output,
-                                uint32_t output_length,
+                                uint64_t output_length,
                                 CK_BYTE_PTR out_buffer,
                                 CK_ULONG_PTR out_buffer_length) {
   if (result == CKR_OK && out_buffer) {
@@ -196,7 +196,7 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
                     CK_ULONG_PTR pulCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
-  vector<uint32_t> slot_list;
+  vector<uint64_t> slot_list;
   CK_RV result = g_proxy->GetSlotList((tokenPresent != CK_FALSE), &slot_list);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   size_t max_copy = static_cast<size_t>(*pulCount);
@@ -307,7 +307,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
                          CK_ULONG_PTR pulCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
-  vector<uint32_t> mechanism_list;
+  vector<uint64_t> mechanism_list;
   CK_RV result = g_proxy->GetMechanismList(slotID, &mechanism_list);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   // Copy the mechanism list to caller-supplied memory.
@@ -330,7 +330,7 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
                          CK_MECHANISM_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-  vector<uint32_t> mechanism_list;
+  vector<uint64_t> mechanism_list;
   CK_RV result = g_proxy->GetMechanismInfo(
       slotID,
       type,
@@ -645,7 +645,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,
                     CK_ULONG_PTR pulObjectCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!phObject || !pulObjectCount, CKR_ARGUMENTS_BAD);
-  vector<uint32_t> object_list;
+  vector<uint64_t> object_list;
   CK_RV result = g_proxy->FindObjects(hSession, ulMaxObjectCount, &object_list);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   LOG_CK_RV_AND_RETURN_IF(object_list.size() > ulMaxObjectCount,
@@ -695,9 +695,9 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,
   if ((!pData && ulDataLen > 0) || !pulEncryptedDataLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length =
-      pEncryptedData ? static_cast<uint32_t>(*pulEncryptedDataLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length =
+      pEncryptedData ? static_cast<uint64_t>(*pulEncryptedDataLen) : 0;
   CK_RV result = g_proxy->Encrypt(hSession,
                                   chaps::ConvertByteBufferToVector(pData,
                                                                    ulDataLen),
@@ -723,9 +723,9 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pPart || !pulEncryptedPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length =
-      pEncryptedPart ? static_cast<uint32_t>(*pulEncryptedPartLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length =
+      pEncryptedPart ? static_cast<uint64_t>(*pulEncryptedPartLen) : 0;
   CK_RV result = g_proxy->EncryptUpdate(
       hSession,
       chaps::ConvertByteBufferToVector(pPart, ulPartLen),
@@ -749,9 +749,9 @@ CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulLastEncryptedPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length =
-      pLastEncryptedPart ? static_cast<uint32_t>(*pulLastEncryptedPartLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length =
+      pLastEncryptedPart ? static_cast<uint64_t>(*pulLastEncryptedPartLen) : 0;
   CK_RV result = g_proxy->EncryptFinal(hSession,
                                        max_out_length,
                                        &data_out_length,
@@ -794,8 +794,8 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,
   if ((!pEncryptedData && ulEncryptedDataLen > 0) || !pulDataLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length = pData ? static_cast<uint32_t>(*pulDataLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length = pData ? static_cast<uint64_t>(*pulDataLen) : 0;
   CK_RV result = g_proxy->Decrypt(hSession,
                                   chaps::ConvertByteBufferToVector(
                                       pEncryptedData,
@@ -822,8 +822,8 @@ CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pEncryptedPart || !pulPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length = pPart ? static_cast<uint32_t>(*pulPartLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length = pPart ? static_cast<uint64_t>(*pulPartLen) : 0;
   CK_RV result = g_proxy->DecryptUpdate(hSession,
                                         chaps::ConvertByteBufferToVector(
                                             pEncryptedPart,
@@ -848,9 +848,9 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulLastPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length =
-      pLastPart ? static_cast<uint32_t>(*pulLastPartLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length =
+      pLastPart ? static_cast<uint64_t>(*pulLastPartLen) : 0;
   CK_RV result = g_proxy->DecryptFinal(hSession,
                                        max_out_length,
                                        &data_out_length,
@@ -891,8 +891,8 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,
   if ((!pData && ulDataLen > 0) || !pulDigestLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length = pDigest ? static_cast<uint32_t>(*pulDigestLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length = pDigest ? static_cast<uint64_t>(*pulDigestLen) : 0;
   CK_RV result = g_proxy->Digest(hSession,
                                  chaps::ConvertByteBufferToVector(pData,
                                                                   ulDataLen),
@@ -939,8 +939,8 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulDigestLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length = pDigest ? static_cast<uint32_t>(*pulDigestLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length = pDigest ? static_cast<uint64_t>(*pulDigestLen) : 0;
   CK_RV result = g_proxy->DigestFinal(hSession,
                                       max_out_length,
                                       &data_out_length,
@@ -983,9 +983,9 @@ CK_RV C_Sign (CK_SESSION_HANDLE hSession,
   if ((!pData && ulDataLen > 0) || !pulSignatureLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length =
-      pSignature ? static_cast<uint32_t>(*pulSignatureLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length =
+      pSignature ? static_cast<uint64_t>(*pulSignatureLen) : 0;
   CK_RV result = g_proxy->Sign(hSession,
                                chaps::ConvertByteBufferToVector(pData,
                                                                 ulDataLen),
@@ -1023,9 +1023,9 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulSignatureLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length =
-      pSignature ? static_cast<uint32_t>(*pulSignatureLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length =
+      pSignature ? static_cast<uint64_t>(*pulSignatureLen) : 0;
   CK_RV result = g_proxy->SignFinal(hSession,
                                     max_out_length,
                                     &data_out_length,
@@ -1068,9 +1068,9 @@ CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,
   if ((!pData && ulDataLen > 0) || !pulSignatureLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length =
-      pSignature ? static_cast<uint32_t>(*pulSignatureLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length =
+      pSignature ? static_cast<uint64_t>(*pulSignatureLen) : 0;
   CK_RV result = g_proxy->SignRecover(hSession,
                                       chaps::ConvertByteBufferToVector(pData,
                                                                 ulDataLen),
@@ -1179,8 +1179,8 @@ CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,
   if (!pSignature || !pulDataLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length = pData ? static_cast<uint32_t>(*pulDataLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length = pData ? static_cast<uint64_t>(*pulDataLen) : 0;
   CK_RV result = g_proxy->VerifyRecover(
       hSession,
       chaps::ConvertByteBufferToVector(pSignature, ulSignatureLen),
@@ -1206,9 +1206,9 @@ CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pPart || !pulEncryptedPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length =
-      pEncryptedPart ? static_cast<uint32_t>(*pulEncryptedPartLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length =
+      pEncryptedPart ? static_cast<uint64_t>(*pulEncryptedPartLen) : 0;
   CK_RV result = g_proxy->DigestEncryptUpdate(
       hSession,
       chaps::ConvertByteBufferToVector(pPart, ulPartLen),
@@ -1234,8 +1234,8 @@ CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pEncryptedPart || !pulPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length = pPart ? static_cast<uint32_t>(*pulPartLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length = pPart ? static_cast<uint64_t>(*pulPartLen) : 0;
   CK_RV result = g_proxy->DecryptDigestUpdate(
       hSession,
       chaps::ConvertByteBufferToVector(pEncryptedPart, ulEncryptedPartLen),
@@ -1261,9 +1261,9 @@ CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pPart || !pulEncryptedPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length =
-      pEncryptedPart ? static_cast<uint32_t>(*pulEncryptedPartLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length =
+      pEncryptedPart ? static_cast<uint64_t>(*pulEncryptedPartLen) : 0;
   CK_RV result = g_proxy->SignEncryptUpdate(
       hSession,
       chaps::ConvertByteBufferToVector(pPart, ulPartLen),
@@ -1289,8 +1289,8 @@ CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pEncryptedPart || !pulPartLen, CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length = pPart ? static_cast<uint32_t>(*pulPartLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length = pPart ? static_cast<uint64_t>(*pulPartLen) : 0;
   CK_RV result = g_proxy->DecryptVerifyUpdate(
       hSession,
       chaps::ConvertByteBufferToVector(pEncryptedPart, ulEncryptedPartLen),
@@ -1383,9 +1383,9 @@ CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,
   if (!pMechanism || !pulWrappedKeyLen)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   vector<uint8_t> data_out;
-  uint32_t data_out_length;
-  uint32_t max_out_length =
-      pWrappedKey ? static_cast<uint32_t>(*pulWrappedKeyLen) : 0;
+  uint64_t data_out_length;
+  uint64_t max_out_length =
+      pWrappedKey ? static_cast<uint64_t>(*pulWrappedKeyLen) : 0;
   uint32_t result = g_proxy->WrapKey(
       hSession,
       pMechanism->mechanism,

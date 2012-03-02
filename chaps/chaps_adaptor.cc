@@ -61,7 +61,7 @@ void ChapsAdaptor::OnChangeAuthData(const string& path,
 }
 
 void ChapsAdaptor::GetSlotList(const bool& token_present,
-                               vector<uint32_t>& slot_list,
+                               vector<uint64_t>& slot_list,
                                uint32_t& result,
                                ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -71,10 +71,10 @@ void ChapsAdaptor::GetSlotList(const bool& token_present,
                                << PrintIntVector(slot_list);
 }
 
-void ChapsAdaptor::GetSlotInfo(const uint32_t& slot_id,
+void ChapsAdaptor::GetSlotInfo(const uint64_t& slot_id,
                                vector<uint8_t>& slot_description,
                                vector<uint8_t>& manufacturer_id,
-                               uint32_t& flags,
+                               uint64_t& flags,
                                uint8_t& hardware_version_major,
                                uint8_t& hardware_version_minor,
                                uint8_t& firmware_version_major,
@@ -95,22 +95,22 @@ void ChapsAdaptor::GetSlotInfo(const uint32_t& slot_id,
                                << ConvertByteVectorToString(slot_description);
 }
 
-void ChapsAdaptor::GetTokenInfo(const uint32_t& slot_id,
+void ChapsAdaptor::GetTokenInfo(const uint64_t& slot_id,
                                 vector<uint8_t>& label,
                                 vector<uint8_t>& manufacturer_id,
                                 vector<uint8_t>& model,
                                 vector<uint8_t>& serial_number,
-                                uint32_t& flags,
-                                uint32_t& max_session_count,
-                                uint32_t& session_count,
-                                uint32_t& max_session_count_rw,
-                                uint32_t& session_count_rw,
-                                uint32_t& max_pin_len,
-                                uint32_t& min_pin_len,
-                                uint32_t& total_public_memory,
-                                uint32_t& free_public_memory,
-                                uint32_t& total_private_memory,
-                                uint32_t& free_private_memory,
+                                uint64_t& flags,
+                                uint64_t& max_session_count,
+                                uint64_t& session_count,
+                                uint64_t& max_session_count_rw,
+                                uint64_t& session_count_rw,
+                                uint64_t& max_pin_len,
+                                uint64_t& min_pin_len,
+                                uint64_t& total_public_memory,
+                                uint64_t& free_public_memory,
+                                uint64_t& total_private_memory,
+                                uint64_t& free_private_memory,
                                 uint8_t& hardware_version_major,
                                 uint8_t& hardware_version_minor,
                                 uint8_t& firmware_version_major,
@@ -143,8 +143,8 @@ void ChapsAdaptor::GetTokenInfo(const uint32_t& slot_id,
                                << ConvertByteVectorToString(label);
 }
 
-void ChapsAdaptor::GetMechanismList(const uint32_t& slot_id,
-                                    vector<uint32_t>& mechanism_list,
+void ChapsAdaptor::GetMechanismList(const uint64_t& slot_id,
+                                    vector<uint64_t>& mechanism_list,
                                     uint32_t& result,
                                     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -154,11 +154,11 @@ void ChapsAdaptor::GetMechanismList(const uint32_t& slot_id,
                                << PrintIntVector(mechanism_list);
 }
 
-void ChapsAdaptor::GetMechanismInfo(const uint32_t& slot_id,
-                                    const uint32_t& mechanism_type,
-                                    uint32_t& min_key_size,
-                                    uint32_t& max_key_size,
-                                    uint32_t& flags,
+void ChapsAdaptor::GetMechanismInfo(const uint64_t& slot_id,
+                                    const uint64_t& mechanism_type,
+                                    uint64_t& min_key_size,
+                                    uint64_t& max_key_size,
+                                    uint64_t& flags,
                                     uint32_t& result,
                                     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -174,7 +174,7 @@ void ChapsAdaptor::GetMechanismInfo(const uint32_t& slot_id,
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "flags=" << flags;
 }
 
-uint32_t ChapsAdaptor::InitToken(const uint32_t& slot_id,
+uint32_t ChapsAdaptor::InitToken(const uint64_t& slot_id,
                                  const bool& use_null_pin,
                                  const string& optional_so_pin,
                                  const vector<uint8_t>& new_token_label,
@@ -187,7 +187,7 @@ uint32_t ChapsAdaptor::InitToken(const uint32_t& slot_id,
   return service_->InitToken(slot_id, tmp_pin, new_token_label);
 }
 
-uint32_t ChapsAdaptor::InitPIN(const uint32_t& session_id,
+uint32_t ChapsAdaptor::InitPIN(const uint64_t& session_id,
                                const bool& use_null_pin,
                                const string& optional_user_pin,
                                ::DBus::Error& /*error*/) {
@@ -198,7 +198,7 @@ uint32_t ChapsAdaptor::InitPIN(const uint32_t& session_id,
   return service_->InitPIN(session_id, tmp_pin);
 }
 
-uint32_t ChapsAdaptor::SetPIN(const uint32_t& session_id,
+uint32_t ChapsAdaptor::SetPIN(const uint64_t& session_id,
                               const bool& use_null_old_pin,
                               const string& optional_old_pin,
                               const bool& use_null_new_pin,
@@ -213,8 +213,8 @@ uint32_t ChapsAdaptor::SetPIN(const uint32_t& session_id,
   return service_->SetPIN(session_id, tmp_old_pin, tmp_new_pin);
 }
 
-void ChapsAdaptor::OpenSession(const uint32_t& slot_id, const uint32_t& flags,
-                               uint32_t& session_id,
+void ChapsAdaptor::OpenSession(const uint64_t& slot_id, const uint64_t& flags,
+                               uint64_t& session_id,
                                uint32_t& result,
                                ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -224,25 +224,25 @@ void ChapsAdaptor::OpenSession(const uint32_t& slot_id, const uint32_t& flags,
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "session_id=" << session_id;
 }
 
-uint32_t ChapsAdaptor::CloseSession(const uint32_t& session_id,
+uint32_t ChapsAdaptor::CloseSession(const uint64_t& session_id,
                                     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
   return service_->CloseSession(session_id);
 }
 
-uint32_t ChapsAdaptor::CloseAllSessions(const uint32_t& slot_id,
+uint32_t ChapsAdaptor::CloseAllSessions(const uint64_t& slot_id,
                                         ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
   return service_->CloseAllSessions(slot_id);
 }
 
-void ChapsAdaptor::GetSessionInfo(const uint32_t& session_id,
-                                  uint32_t& slot_id,
-                                  uint32_t& state,
-                                  uint32_t& flags,
-                                  uint32_t& device_error,
+void ChapsAdaptor::GetSessionInfo(const uint64_t& session_id,
+                                  uint64_t& slot_id,
+                                  uint64_t& state,
+                                  uint64_t& flags,
+                                  uint64_t& device_error,
                                   uint32_t& result,
                                   ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -258,7 +258,7 @@ void ChapsAdaptor::GetSessionInfo(const uint32_t& session_id,
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "device_error=" << device_error;
 }
 
-void ChapsAdaptor::GetOperationState(const uint32_t& session_id,
+void ChapsAdaptor::GetOperationState(const uint64_t& session_id,
                                      vector<uint8_t>& operation_state,
                                      uint32_t& result,
                                      ::DBus::Error& /*error*/) {
@@ -267,10 +267,10 @@ void ChapsAdaptor::GetOperationState(const uint32_t& session_id,
 }
 
 uint32_t ChapsAdaptor::SetOperationState(
-      const uint32_t& session_id,
+      const uint64_t& session_id,
       const vector<uint8_t>& operation_state,
-      const uint32_t& encryption_key_handle,
-      const uint32_t& authentication_key_handle,
+      const uint64_t& encryption_key_handle,
+      const uint64_t& authentication_key_handle,
       ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   return service_->SetOperationState(session_id,
@@ -279,8 +279,8 @@ uint32_t ChapsAdaptor::SetOperationState(
                                      authentication_key_handle);
 }
 
-uint32_t ChapsAdaptor::Login(const uint32_t& session_id,
-                         const uint32_t& user_type,
+uint32_t ChapsAdaptor::Login(const uint64_t& session_id,
+                         const uint64_t& user_type,
                          const bool& use_null_pin,
                          const string& optional_pin,
                          ::DBus::Error& /*error*/) {
@@ -292,7 +292,7 @@ uint32_t ChapsAdaptor::Login(const uint32_t& session_id,
   return service_->Login(session_id, user_type, pin);
 }
 
-uint32_t ChapsAdaptor::Logout(const uint32_t& session_id,
+uint32_t ChapsAdaptor::Logout(const uint64_t& session_id,
                               ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -300,9 +300,9 @@ uint32_t ChapsAdaptor::Logout(const uint32_t& session_id,
 }
 
 void ChapsAdaptor::CreateObject(
-      const uint32_t& session_id,
+      const uint64_t& session_id,
       const vector<uint8_t>& attributes,
-      uint32_t& new_object_handle,
+      uint64_t& new_object_handle,
       uint32_t& result,
       ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -316,10 +316,10 @@ void ChapsAdaptor::CreateObject(
 }
 
 void ChapsAdaptor::CopyObject(
-      const uint32_t& session_id,
-      const uint32_t& object_handle,
+      const uint64_t& session_id,
+      const uint64_t& object_handle,
       const vector<uint8_t>& attributes,
-      uint32_t& new_object_handle,
+      uint64_t& new_object_handle,
       uint32_t& result,
       ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -334,8 +334,8 @@ void ChapsAdaptor::CopyObject(
                                << new_object_handle;
 }
 
-uint32_t ChapsAdaptor::DestroyObject(const uint32_t& session_id,
-                                 const uint32_t& object_handle,
+uint32_t ChapsAdaptor::DestroyObject(const uint64_t& session_id,
+                                 const uint64_t& object_handle,
                                  ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -343,9 +343,9 @@ uint32_t ChapsAdaptor::DestroyObject(const uint32_t& session_id,
   return service_->DestroyObject(session_id, object_handle);
 }
 
-void ChapsAdaptor::GetObjectSize(const uint32_t& session_id,
-                           const uint32_t& object_handle,
-                           uint32_t& object_size,
+void ChapsAdaptor::GetObjectSize(const uint64_t& session_id,
+                           const uint64_t& object_handle,
+                           uint64_t& object_size,
                            uint32_t& result,
                            ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -355,8 +355,8 @@ void ChapsAdaptor::GetObjectSize(const uint32_t& session_id,
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "object_size=" << object_size;
 }
 
-void ChapsAdaptor::GetAttributeValue(const uint32_t& session_id,
-                               const uint32_t& object_handle,
+void ChapsAdaptor::GetAttributeValue(const uint64_t& session_id,
+                               const uint64_t& object_handle,
                                const vector<uint8_t>& attributes_in,
                                vector<uint8_t>& attributes_out,
                                uint32_t& result,
@@ -374,8 +374,8 @@ void ChapsAdaptor::GetAttributeValue(const uint32_t& session_id,
                                << PrintAttributes(attributes_out, true);
 }
 
-uint32_t ChapsAdaptor::SetAttributeValue(const uint32_t& session_id,
-                                   const uint32_t& object_handle,
+uint32_t ChapsAdaptor::SetAttributeValue(const uint64_t& session_id,
+                                   const uint64_t& object_handle,
                                    const vector<uint8_t>& attributes,
                                    ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -387,7 +387,7 @@ uint32_t ChapsAdaptor::SetAttributeValue(const uint32_t& session_id,
                                      attributes);
 }
 
-uint32_t ChapsAdaptor::FindObjectsInit(const uint32_t& session_id,
+uint32_t ChapsAdaptor::FindObjectsInit(const uint64_t& session_id,
                                        const vector<uint8_t>& attributes,
                                        ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -396,9 +396,9 @@ uint32_t ChapsAdaptor::FindObjectsInit(const uint32_t& session_id,
   return service_->FindObjectsInit(session_id, attributes);
 }
 
-void ChapsAdaptor::FindObjects(const uint32_t& session_id,
-                               const uint32_t& max_object_count,
-                               vector<uint32_t>& object_list,
+void ChapsAdaptor::FindObjects(const uint64_t& session_id,
+                               const uint64_t& max_object_count,
+                               vector<uint64_t>& object_list,
                                uint32_t& result,
                                ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -409,7 +409,7 @@ void ChapsAdaptor::FindObjects(const uint32_t& session_id,
                                << PrintIntVector(object_list);
 }
 
-uint32_t ChapsAdaptor::FindObjectsFinal(const uint32_t& session_id,
+uint32_t ChapsAdaptor::FindObjectsFinal(const uint64_t& session_id,
                                         ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -417,10 +417,10 @@ uint32_t ChapsAdaptor::FindObjectsFinal(const uint32_t& session_id,
 }
 
 uint32_t ChapsAdaptor::EncryptInit(
-    const uint32_t& session_id,
-    const uint32_t& mechanism_type,
+    const uint64_t& session_id,
+    const uint64_t& mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
-    const uint32_t& key_handle,
+    const uint64_t& key_handle,
     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -434,10 +434,10 @@ uint32_t ChapsAdaptor::EncryptInit(
                                key_handle);
 }
 
-void ChapsAdaptor::Encrypt(const uint32_t& session_id,
+void ChapsAdaptor::Encrypt(const uint64_t& session_id,
                            const vector<uint8_t>& data_in,
-                           const uint32_t& max_out_length,
-                           uint32_t& actual_out_length,
+                           const uint64_t& max_out_length,
+                           uint64_t& actual_out_length,
                            vector<uint8_t>& data_out,
                            uint32_t& result,
                            ::DBus::Error& /*error*/) {
@@ -453,10 +453,10 @@ void ChapsAdaptor::Encrypt(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-void ChapsAdaptor::EncryptUpdate(const uint32_t& session_id,
+void ChapsAdaptor::EncryptUpdate(const uint64_t& session_id,
                                  const vector<uint8_t>& data_in,
-                                 const uint32_t& max_out_length,
-                                 uint32_t& actual_out_length,
+                                 const uint64_t& max_out_length,
+                                 uint64_t& actual_out_length,
                                  vector<uint8_t>& data_out,
                                  uint32_t& result, ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -471,9 +471,9 @@ void ChapsAdaptor::EncryptUpdate(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-void ChapsAdaptor::EncryptFinal(const uint32_t& session_id,
-                                const uint32_t& max_out_length,
-                                uint32_t& actual_out_length,
+void ChapsAdaptor::EncryptFinal(const uint64_t& session_id,
+                                const uint64_t& max_out_length,
+                                uint64_t& actual_out_length,
                                 vector<uint8_t>& data_out,
                                 uint32_t& result,
                                 ::DBus::Error& /*error*/) {
@@ -489,10 +489,10 @@ void ChapsAdaptor::EncryptFinal(const uint32_t& session_id,
 }
 
 uint32_t ChapsAdaptor::DecryptInit(
-    const uint32_t& session_id,
-    const uint32_t& mechanism_type,
+    const uint64_t& session_id,
+    const uint64_t& mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
-    const uint32_t& key_handle,
+    const uint64_t& key_handle,
     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -506,10 +506,10 @@ uint32_t ChapsAdaptor::DecryptInit(
                                key_handle);
 }
 
-void ChapsAdaptor::Decrypt(const uint32_t& session_id,
+void ChapsAdaptor::Decrypt(const uint64_t& session_id,
                            const vector<uint8_t>& data_in,
-                           const uint32_t& max_out_length,
-                           uint32_t& actual_out_length,
+                           const uint64_t& max_out_length,
+                           uint64_t& actual_out_length,
                            vector<uint8_t>& data_out,
                            uint32_t& result,
                            ::DBus::Error& /*error*/) {
@@ -525,10 +525,10 @@ void ChapsAdaptor::Decrypt(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-void ChapsAdaptor::DecryptUpdate(const uint32_t& session_id,
+void ChapsAdaptor::DecryptUpdate(const uint64_t& session_id,
                                  const vector<uint8_t>& data_in,
-                                 const uint32_t& max_out_length,
-                                 uint32_t& actual_out_length,
+                                 const uint64_t& max_out_length,
+                                 uint64_t& actual_out_length,
                                  vector<uint8_t>& data_out,
                                  uint32_t& result,
                                  ::DBus::Error& /*error*/) {
@@ -544,9 +544,9 @@ void ChapsAdaptor::DecryptUpdate(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-void ChapsAdaptor::DecryptFinal(const uint32_t& session_id,
-                                const uint32_t& max_out_length,
-                                uint32_t& actual_out_length,
+void ChapsAdaptor::DecryptFinal(const uint64_t& session_id,
+                                const uint64_t& max_out_length,
+                                uint64_t& actual_out_length,
                                 vector<uint8_t>& data_out,
                                 uint32_t& result,
                                 ::DBus::Error& /*error*/) {
@@ -562,8 +562,8 @@ void ChapsAdaptor::DecryptFinal(const uint32_t& session_id,
 }
 
 uint32_t ChapsAdaptor::DigestInit(
-    const uint32_t& session_id,
-    const uint32_t& mechanism_type,
+    const uint64_t& session_id,
+    const uint64_t& mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -576,10 +576,10 @@ uint32_t ChapsAdaptor::DigestInit(
                               mechanism_parameter);
 }
 
-void ChapsAdaptor::Digest(const uint32_t& session_id,
+void ChapsAdaptor::Digest(const uint64_t& session_id,
                           const vector<uint8_t>& data_in,
-                          const uint32_t& max_out_length,
-                          uint32_t& actual_out_length,
+                          const uint64_t& max_out_length,
+                          uint64_t& actual_out_length,
                           vector<uint8_t>& digest,
                           uint32_t& result,
                           ::DBus::Error& /*error*/) {
@@ -595,7 +595,7 @@ void ChapsAdaptor::Digest(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-uint32_t ChapsAdaptor::DigestUpdate(const uint32_t& session_id,
+uint32_t ChapsAdaptor::DigestUpdate(const uint64_t& session_id,
                                     const vector<uint8_t>& data_in,
                                     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -603,8 +603,8 @@ uint32_t ChapsAdaptor::DigestUpdate(const uint32_t& session_id,
   return service_->DigestUpdate(session_id, data_in);
 }
 
-uint32_t ChapsAdaptor::DigestKey(const uint32_t& session_id,
-                                 const uint32_t& key_handle,
+uint32_t ChapsAdaptor::DigestKey(const uint64_t& session_id,
+                                 const uint64_t& key_handle,
                                  ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -612,9 +612,9 @@ uint32_t ChapsAdaptor::DigestKey(const uint32_t& session_id,
   return service_->DigestKey(session_id, key_handle);
 }
 
-void ChapsAdaptor::DigestFinal(const uint32_t& session_id,
-                               const uint32_t& max_out_length,
-                               uint32_t& actual_out_length,
+void ChapsAdaptor::DigestFinal(const uint64_t& session_id,
+                               const uint64_t& max_out_length,
+                               uint64_t& actual_out_length,
                                vector<uint8_t>& digest,
                                uint32_t& result,
                                ::DBus::Error& /*error*/) {
@@ -629,10 +629,10 @@ void ChapsAdaptor::DigestFinal(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-uint32_t ChapsAdaptor::SignInit(const uint32_t& session_id,
-                                const uint32_t& mechanism_type,
+uint32_t ChapsAdaptor::SignInit(const uint64_t& session_id,
+                                const uint64_t& mechanism_type,
                                 const vector<uint8_t>& mechanism_parameter,
-                                const uint32_t& key_handle,
+                                const uint64_t& key_handle,
                                 ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -646,10 +646,10 @@ uint32_t ChapsAdaptor::SignInit(const uint32_t& session_id,
                             key_handle);
 }
 
-void ChapsAdaptor::Sign(const uint32_t& session_id,
+void ChapsAdaptor::Sign(const uint64_t& session_id,
                         const vector<uint8_t>& data,
-                        const uint32_t& max_out_length,
-                        uint32_t& actual_out_length,
+                        const uint64_t& max_out_length,
+                        uint64_t& actual_out_length,
                         vector<uint8_t>& signature,
                         uint32_t& result,
                         ::DBus::Error& /*error*/) {
@@ -665,7 +665,7 @@ void ChapsAdaptor::Sign(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-uint32_t ChapsAdaptor::SignUpdate(const uint32_t& session_id,
+uint32_t ChapsAdaptor::SignUpdate(const uint64_t& session_id,
                                   const vector<uint8_t>& data_part,
                                   ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -673,9 +673,9 @@ uint32_t ChapsAdaptor::SignUpdate(const uint32_t& session_id,
   return service_->SignUpdate(session_id, data_part);
 }
 
-void ChapsAdaptor::SignFinal(const uint32_t& session_id,
-                             const uint32_t& max_out_length,
-                             uint32_t& actual_out_length,
+void ChapsAdaptor::SignFinal(const uint64_t& session_id,
+                             const uint64_t& max_out_length,
+                             uint64_t& actual_out_length,
                              vector<uint8_t>& signature,
                              uint32_t& result, ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -690,10 +690,10 @@ void ChapsAdaptor::SignFinal(const uint32_t& session_id,
 }
 
 uint32_t ChapsAdaptor::SignRecoverInit(
-      const uint32_t& session_id,
-      const uint32_t& mechanism_type,
+      const uint64_t& session_id,
+      const uint64_t& mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
-      const uint32_t& key_handle,
+      const uint64_t& key_handle,
       ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -707,10 +707,10 @@ uint32_t ChapsAdaptor::SignRecoverInit(
                                    key_handle);
 }
 
-void ChapsAdaptor::SignRecover(const uint32_t& session_id,
+void ChapsAdaptor::SignRecover(const uint64_t& session_id,
                                const vector<uint8_t>& data,
-                               const uint32_t& max_out_length,
-                               uint32_t& actual_out_length,
+                               const uint64_t& max_out_length,
+                               uint64_t& actual_out_length,
                                vector<uint8_t>& signature,
                                uint32_t& result,
                                ::DBus::Error& /*error*/) {
@@ -726,10 +726,10 @@ void ChapsAdaptor::SignRecover(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-uint32_t ChapsAdaptor::VerifyInit(const uint32_t& session_id,
-                                  const uint32_t& mechanism_type,
+uint32_t ChapsAdaptor::VerifyInit(const uint64_t& session_id,
+                                  const uint64_t& mechanism_type,
                                   const vector<uint8_t>& mechanism_parameter,
-                                  const uint32_t& key_handle,
+                                  const uint64_t& key_handle,
                                   ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -743,7 +743,7 @@ uint32_t ChapsAdaptor::VerifyInit(const uint32_t& session_id,
                               key_handle);
 }
 
-uint32_t ChapsAdaptor::Verify(const uint32_t& session_id,
+uint32_t ChapsAdaptor::Verify(const uint64_t& session_id,
                               const vector<uint8_t>& data,
                               const vector<uint8_t>& signature,
                               ::DBus::Error& /*error*/) {
@@ -752,7 +752,7 @@ uint32_t ChapsAdaptor::Verify(const uint32_t& session_id,
   return service_->Verify(session_id, data, signature);
 }
 
-uint32_t ChapsAdaptor::VerifyUpdate(const uint32_t& session_id,
+uint32_t ChapsAdaptor::VerifyUpdate(const uint64_t& session_id,
                                     const vector<uint8_t>& data_part,
                                     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -760,7 +760,7 @@ uint32_t ChapsAdaptor::VerifyUpdate(const uint32_t& session_id,
   return service_->VerifyUpdate(session_id, data_part);
 }
 
-uint32_t ChapsAdaptor::VerifyFinal(const uint32_t& session_id,
+uint32_t ChapsAdaptor::VerifyFinal(const uint64_t& session_id,
                                    const vector<uint8_t>& signature,
                                    ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -769,10 +769,10 @@ uint32_t ChapsAdaptor::VerifyFinal(const uint32_t& session_id,
 }
 
 uint32_t ChapsAdaptor::VerifyRecoverInit(
-      const uint32_t& session_id,
-      const uint32_t& mechanism_type,
+      const uint64_t& session_id,
+      const uint64_t& mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
-      const uint32_t& key_handle,
+      const uint64_t& key_handle,
       ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "session_id=" << session_id;
@@ -786,10 +786,10 @@ uint32_t ChapsAdaptor::VerifyRecoverInit(
                                      key_handle);
 }
 
-void ChapsAdaptor::VerifyRecover(const uint32_t& session_id,
+void ChapsAdaptor::VerifyRecover(const uint64_t& session_id,
                                  const vector<uint8_t>& signature,
-                                 const uint32_t& max_out_length,
-                                 uint32_t& actual_out_length,
+                                 const uint64_t& max_out_length,
+                                 uint64_t& actual_out_length,
                                  vector<uint8_t>& data,
                                  uint32_t& result,
                                  ::DBus::Error& /*error*/) {
@@ -805,10 +805,10 @@ void ChapsAdaptor::VerifyRecover(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-void ChapsAdaptor::DigestEncryptUpdate(const uint32_t& session_id,
+void ChapsAdaptor::DigestEncryptUpdate(const uint64_t& session_id,
                                        const vector<uint8_t>& data_in,
-                                       const uint32_t& max_out_length,
-                                       uint32_t& actual_out_length,
+                                       const uint64_t& max_out_length,
+                                       uint64_t& actual_out_length,
                                        vector<uint8_t>& data_out,
                                        uint32_t& result,
                                        ::DBus::Error& /*error*/) {
@@ -824,10 +824,10 @@ void ChapsAdaptor::DigestEncryptUpdate(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-void ChapsAdaptor::DecryptDigestUpdate(const uint32_t& session_id,
+void ChapsAdaptor::DecryptDigestUpdate(const uint64_t& session_id,
                                        const vector<uint8_t>& data_in,
-                                       const uint32_t& max_out_length,
-                                       uint32_t& actual_out_length,
+                                       const uint64_t& max_out_length,
+                                       uint64_t& actual_out_length,
                                        vector<uint8_t>& data_out,
                                        uint32_t& result,
                                        ::DBus::Error& /*error*/) {
@@ -843,10 +843,10 @@ void ChapsAdaptor::DecryptDigestUpdate(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-void ChapsAdaptor::SignEncryptUpdate(const uint32_t& session_id,
+void ChapsAdaptor::SignEncryptUpdate(const uint64_t& session_id,
                                      const vector<uint8_t>& data_in,
-                                     const uint32_t& max_out_length,
-                                     uint32_t& actual_out_length,
+                                     const uint64_t& max_out_length,
+                                     uint64_t& actual_out_length,
                                      vector<uint8_t>& data_out,
                                      uint32_t& result,
                                      ::DBus::Error& /*error*/) {
@@ -862,10 +862,10 @@ void ChapsAdaptor::SignEncryptUpdate(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-void ChapsAdaptor::DecryptVerifyUpdate(const uint32_t& session_id,
+void ChapsAdaptor::DecryptVerifyUpdate(const uint64_t& session_id,
                                        const vector<uint8_t>& data_in,
-                                       const uint32_t& max_out_length,
-                                       uint32_t& actual_out_length,
+                                       const uint64_t& max_out_length,
+                                       uint64_t& actual_out_length,
                                        vector<uint8_t>& data_out,
                                        uint32_t& result,
                                        ::DBus::Error& /*error*/) {
@@ -882,11 +882,11 @@ void ChapsAdaptor::DecryptVerifyUpdate(const uint32_t& session_id,
 }
 
 void ChapsAdaptor::GenerateKey(
-    const uint32_t& session_id,
-    const uint32_t& mechanism_type,
+    const uint64_t& session_id,
+    const uint64_t& mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     const vector<uint8_t>& attributes,
-    uint32_t& key_handle,
+    uint64_t& key_handle,
     uint32_t& result,
     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -904,13 +904,13 @@ void ChapsAdaptor::GenerateKey(
 }
 
 void ChapsAdaptor::GenerateKeyPair(
-    const uint32_t& session_id,
-    const uint32_t& mechanism_type,
+    const uint64_t& session_id,
+    const uint64_t& mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     const vector<uint8_t>& public_attributes,
     const vector<uint8_t>& private_attributes,
-    uint32_t& public_key_handle,
-    uint32_t& private_key_handle,
+    uint64_t& public_key_handle,
+    uint64_t& private_key_handle,
     uint32_t& result,
     ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -935,13 +935,13 @@ void ChapsAdaptor::GenerateKeyPair(
                                << private_key_handle;
 }
 
-void ChapsAdaptor::WrapKey(const uint32_t& session_id,
-                           const uint32_t& mechanism_type,
+void ChapsAdaptor::WrapKey(const uint64_t& session_id,
+                           const uint64_t& mechanism_type,
                            const vector<uint8_t>& mechanism_parameter,
-                           const uint32_t& wrapping_key_handle,
-                           const uint32_t& key_handle,
-                           const uint32_t& max_out_length,
-                           uint32_t& actual_out_length,
+                           const uint64_t& wrapping_key_handle,
+                           const uint64_t& key_handle,
+                           const uint64_t& max_out_length,
+                           uint64_t& actual_out_length,
                            vector<uint8_t>& wrapped_key,
                            uint32_t& result,
                            ::DBus::Error& /*error*/) {
@@ -965,13 +965,13 @@ void ChapsAdaptor::WrapKey(const uint32_t& session_id,
                                << actual_out_length;
 }
 
-void ChapsAdaptor::UnwrapKey(const uint32_t& session_id,
-                             const uint32_t& mechanism_type,
+void ChapsAdaptor::UnwrapKey(const uint64_t& session_id,
+                             const uint64_t& mechanism_type,
                              const vector<uint8_t>& mechanism_parameter,
-                             const uint32_t& wrapping_key_handle,
+                             const uint64_t& wrapping_key_handle,
                              const vector<uint8_t>& wrapped_key,
                              const vector<uint8_t>& attributes,
-                             uint32_t& key_handle,
+                             uint64_t& key_handle,
                              uint32_t& result,
                              ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -991,12 +991,12 @@ void ChapsAdaptor::UnwrapKey(const uint32_t& session_id,
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "key_handle=" << key_handle;
 }
 
-void ChapsAdaptor::DeriveKey(const uint32_t& session_id,
-                             const uint32_t& mechanism_type,
+void ChapsAdaptor::DeriveKey(const uint64_t& session_id,
+                             const uint64_t& mechanism_type,
                              const vector<uint8_t>& mechanism_parameter,
-                             const uint32_t& base_key_handle,
+                             const uint64_t& base_key_handle,
                              const vector<uint8_t>& attributes,
-                             uint32_t& key_handle,
+                             uint64_t& key_handle,
                              uint32_t& result,
                              ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -1015,7 +1015,7 @@ void ChapsAdaptor::DeriveKey(const uint32_t& session_id,
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "key_handle=" << key_handle;
 }
 
-uint32_t ChapsAdaptor::SeedRandom(const uint32_t& session_id,
+uint32_t ChapsAdaptor::SeedRandom(const uint64_t& session_id,
                               const vector<uint8_t>& seed,
                               ::DBus::Error& /*error*/) {
   VLOG(1) << "CALL: " << __func__;
@@ -1024,8 +1024,8 @@ uint32_t ChapsAdaptor::SeedRandom(const uint32_t& session_id,
   return service_->SeedRandom(session_id, seed);
 }
 
-void ChapsAdaptor::GenerateRandom(const uint32_t& session_id,
-                              const uint32_t& num_bytes,
+void ChapsAdaptor::GenerateRandom(const uint64_t& session_id,
+                              const uint64_t& num_bytes,
                               vector<uint8_t>& random_data,
                               uint32_t& result,
                               ::DBus::Error& /*error*/) {

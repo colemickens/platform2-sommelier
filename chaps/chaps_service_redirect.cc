@@ -112,7 +112,7 @@ void ChapsServiceRedirect::TearDown() {
 }
 
 uint32_t ChapsServiceRedirect::GetSlotList(bool token_present,
-                                           vector<uint32_t>* slot_list) {
+                                           vector<uint64_t>* slot_list) {
   if (!slot_list || slot_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   if (!Init2()) {
@@ -130,15 +130,15 @@ uint32_t ChapsServiceRedirect::GetSlotList(bool token_present,
   result = functions_->C_GetSlotList(token_present, slot_array.get(), &count);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   for (CK_ULONG i = 0; i < count; ++i) {
-    slot_list->push_back(static_cast<uint32_t>(slot_array[i]));
+    slot_list->push_back(static_cast<uint64_t>(slot_array[i]));
   }
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::GetSlotInfo(uint32_t slot_id,
+uint32_t ChapsServiceRedirect::GetSlotInfo(uint64_t slot_id,
                                            vector<uint8_t>* slot_description,
                                            vector<uint8_t>* manufacturer_id,
-                                           uint32_t* flags,
+                                           uint64_t* flags,
                                            uint8_t* hardware_version_major,
                                            uint8_t* hardware_version_minor,
                                            uint8_t* firmware_version_major,
@@ -158,7 +158,7 @@ uint32_t ChapsServiceRedirect::GetSlotInfo(uint32_t slot_id,
   *manufacturer_id =
       ConvertByteBufferToVector(slot_info.manufacturerID,
                                 arraysize(slot_info.manufacturerID));
-  *flags = static_cast<uint32_t>(slot_info.flags);
+  *flags = static_cast<uint64_t>(slot_info.flags);
   *hardware_version_major = slot_info.hardwareVersion.major;
   *hardware_version_minor = slot_info.hardwareVersion.minor;
   *firmware_version_major = slot_info.firmwareVersion.major;
@@ -166,22 +166,22 @@ uint32_t ChapsServiceRedirect::GetSlotInfo(uint32_t slot_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::GetTokenInfo(uint32_t slot_id,
+uint32_t ChapsServiceRedirect::GetTokenInfo(uint64_t slot_id,
                                             vector<uint8_t>* label,
                                             vector<uint8_t>* manufacturer_id,
                                             vector<uint8_t>* model,
                                             vector<uint8_t>* serial_number,
-                                            uint32_t* flags,
-                                            uint32_t* max_session_count,
-                                            uint32_t* session_count,
-                                            uint32_t* max_session_count_rw,
-                                            uint32_t* session_count_rw,
-                                            uint32_t* max_pin_len,
-                                            uint32_t* min_pin_len,
-                                            uint32_t* total_public_memory,
-                                            uint32_t* free_public_memory,
-                                            uint32_t* total_private_memory,
-                                            uint32_t* free_private_memory,
+                                            uint64_t* flags,
+                                            uint64_t* max_session_count,
+                                            uint64_t* session_count,
+                                            uint64_t* max_session_count_rw,
+                                            uint64_t* session_count_rw,
+                                            uint64_t* max_pin_len,
+                                            uint64_t* min_pin_len,
+                                            uint64_t* total_public_memory,
+                                            uint64_t* free_public_memory,
+                                            uint64_t* total_private_memory,
+                                            uint64_t* free_private_memory,
                                             uint8_t* hardware_version_major,
                                             uint8_t* hardware_version_minor,
                                             uint8_t* firmware_version_major,
@@ -228,8 +228,8 @@ uint32_t ChapsServiceRedirect::GetTokenInfo(uint32_t slot_id,
 }
 
 uint32_t ChapsServiceRedirect::GetMechanismList(
-    uint32_t slot_id,
-    vector<uint32_t>* mechanism_list) {
+    uint64_t slot_id,
+    vector<uint64_t>* mechanism_list) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!mechanism_list || mechanism_list->size() > 0,
                           CKR_ARGUMENTS_BAD);
@@ -243,16 +243,16 @@ uint32_t ChapsServiceRedirect::GetMechanismList(
   result = functions_->C_GetMechanismList(slot_id, mech_array.get(), &count);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   for (CK_ULONG i = 0; i < count; ++i) {
-    mechanism_list->push_back(static_cast<uint32_t>(mech_array[i]));
+    mechanism_list->push_back(static_cast<uint64_t>(mech_array[i]));
   }
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::GetMechanismInfo(uint32_t slot_id,
-                                                uint32_t mechanism_type,
-                                                uint32_t* min_key_size,
-                                                uint32_t* max_key_size,
-                                                uint32_t* flags) {
+uint32_t ChapsServiceRedirect::GetMechanismInfo(uint64_t slot_id,
+                                                uint64_t mechanism_type,
+                                                uint64_t* min_key_size,
+                                                uint64_t* max_key_size,
+                                                uint64_t* flags) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   if (!min_key_size || !max_key_size || !flags)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -261,13 +261,13 @@ uint32_t ChapsServiceRedirect::GetMechanismInfo(uint32_t slot_id,
                                                 mechanism_type,
                                                 &mech_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  *min_key_size = static_cast<uint32_t>(mech_info.ulMinKeySize);
-  *max_key_size = static_cast<uint32_t>(mech_info.ulMaxKeySize);
-  *flags = static_cast<uint32_t>(mech_info.flags);
+  *min_key_size = static_cast<uint64_t>(mech_info.ulMinKeySize);
+  *max_key_size = static_cast<uint64_t>(mech_info.ulMaxKeySize);
+  *flags = static_cast<uint64_t>(mech_info.flags);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::InitToken(uint32_t slot_id,
+uint32_t ChapsServiceRedirect::InitToken(uint64_t slot_id,
                                          const string* so_pin,
                                          const vector<uint8_t>& label) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
@@ -286,7 +286,7 @@ uint32_t ChapsServiceRedirect::InitToken(uint32_t slot_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::InitPIN(uint32_t session_id, const string* pin) {
+uint32_t ChapsServiceRedirect::InitPIN(uint64_t session_id, const string* pin) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_UTF8CHAR_PTR pin_buffer =
       pin ? ConvertStringToCharBuffer(pin->data()) : NULL;
@@ -296,7 +296,7 @@ uint32_t ChapsServiceRedirect::InitPIN(uint32_t session_id, const string* pin) {
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::SetPIN(uint32_t session_id,
+uint32_t ChapsServiceRedirect::SetPIN(uint64_t session_id,
                                       const string* old_pin,
                                       const string* new_pin) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
@@ -315,8 +315,8 @@ uint32_t ChapsServiceRedirect::SetPIN(uint32_t session_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::OpenSession(uint32_t slot_id, uint32_t flags,
-                                           uint32_t* session_id) {
+uint32_t ChapsServiceRedirect::OpenSession(uint64_t slot_id, uint64_t flags,
+                                           uint64_t* session_id) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!session_id, CKR_ARGUMENTS_BAD);
   CK_SESSION_HANDLE handle;
@@ -327,40 +327,40 @@ uint32_t ChapsServiceRedirect::OpenSession(uint32_t slot_id, uint32_t flags,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::CloseSession(uint32_t session_id) {
+uint32_t ChapsServiceRedirect::CloseSession(uint64_t session_id) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   uint32_t result = functions_->C_CloseSession(session_id);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::CloseAllSessions(uint32_t slot_id) {
+uint32_t ChapsServiceRedirect::CloseAllSessions(uint64_t slot_id) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   uint32_t result = functions_->C_CloseAllSessions(slot_id);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::GetSessionInfo(uint32_t session_id,
-                                              uint32_t* slot_id,
-                                              uint32_t* state,
-                                              uint32_t* flags,
-                                              uint32_t* device_error) {
+uint32_t ChapsServiceRedirect::GetSessionInfo(uint64_t session_id,
+                                              uint64_t* slot_id,
+                                              uint64_t* state,
+                                              uint64_t* flags,
+                                              uint64_t* device_error) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   if (!slot_id || !state || !flags || !device_error)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   CK_SESSION_INFO info;
   uint32_t result = functions_->C_GetSessionInfo(session_id, &info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  *slot_id = static_cast<uint32_t>(info.slotID);
-  *state = static_cast<uint32_t>(info.state);
-  *flags = static_cast<uint32_t>(info.flags);
-  *device_error = static_cast<uint32_t>(info.ulDeviceError);
+  *slot_id = static_cast<uint64_t>(info.slotID);
+  *state = static_cast<uint64_t>(info.state);
+  *flags = static_cast<uint64_t>(info.flags);
+  *device_error = static_cast<uint64_t>(info.ulDeviceError);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::GetOperationState(
-    uint32_t session_id,
+    uint64_t session_id,
     vector<uint8_t>* operation_state) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!operation_state, CKR_ARGUMENTS_BAD);
@@ -378,10 +378,10 @@ uint32_t ChapsServiceRedirect::GetOperationState(
 }
 
 uint32_t ChapsServiceRedirect::SetOperationState(
-    uint32_t session_id,
+    uint64_t session_id,
     const vector<uint8_t>& operation_state,
-    uint32_t encryption_key_handle,
-    uint32_t authentication_key_handle) {
+    uint64_t encryption_key_handle,
+    uint64_t authentication_key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   uint32_t result = functions_->C_SetOperationState(
       session_id,
@@ -393,8 +393,8 @@ uint32_t ChapsServiceRedirect::SetOperationState(
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::Login(uint32_t session_id,
-                                     uint32_t user_type,
+uint32_t ChapsServiceRedirect::Login(uint64_t session_id,
+                                     uint64_t user_type,
                                      const string* pin) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_UTF8CHAR_PTR pin_buffer =
@@ -408,16 +408,16 @@ uint32_t ChapsServiceRedirect::Login(uint32_t session_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::Logout(uint32_t session_id) {
+uint32_t ChapsServiceRedirect::Logout(uint64_t session_id) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   uint32_t result = functions_->C_Logout(session_id);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::CreateObject(uint32_t session_id,
+uint32_t ChapsServiceRedirect::CreateObject(uint64_t session_id,
                                             const vector<uint8_t>& attributes,
-                                            uint32_t* new_object_handle) {
+                                            uint64_t* new_object_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   Attributes tmp;
@@ -427,15 +427,15 @@ uint32_t ChapsServiceRedirect::CreateObject(uint32_t session_id,
       session_id,
       tmp.attributes(),
       tmp.num_attributes(),
-      PreservedUint32_t(new_object_handle));
+      PreservedUint64_t(new_object_handle));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::CopyObject(uint32_t session_id,
-                                          uint32_t object_handle,
+uint32_t ChapsServiceRedirect::CopyObject(uint64_t session_id,
+                                          uint64_t object_handle,
                                           const vector<uint8_t>& attributes,
-                                          uint32_t* new_object_handle) {
+                                          uint64_t* new_object_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   Attributes tmp;
@@ -446,34 +446,34 @@ uint32_t ChapsServiceRedirect::CopyObject(uint32_t session_id,
       object_handle,
       tmp.attributes(),
       tmp.num_attributes(),
-      PreservedUint32_t(new_object_handle));
+      PreservedUint64_t(new_object_handle));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::DestroyObject(uint32_t session_id,
-                                             uint32_t object_handle) {
+uint32_t ChapsServiceRedirect::DestroyObject(uint64_t session_id,
+                                             uint64_t object_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   uint32_t result = functions_->C_DestroyObject(session_id, object_handle);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::GetObjectSize(uint32_t session_id,
-                                             uint32_t object_handle,
-                                             uint32_t* object_size) {
+uint32_t ChapsServiceRedirect::GetObjectSize(uint64_t session_id,
+                                             uint64_t object_handle,
+                                             uint64_t* object_size) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!object_size, CKR_ARGUMENTS_BAD);
   uint32_t result = functions_->C_GetObjectSize(session_id,
                                                 object_handle,
-                                                PreservedUint32_t(object_size));
+                                                PreservedUint64_t(object_size));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::GetAttributeValue(
-    uint32_t session_id,
-    uint32_t object_handle,
+    uint64_t session_id,
+    uint64_t object_handle,
     const vector<uint8_t>& attributes_in,
     vector<uint8_t>* attributes_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
@@ -493,8 +493,8 @@ uint32_t ChapsServiceRedirect::GetAttributeValue(
 }
 
 uint32_t ChapsServiceRedirect::SetAttributeValue(
-    uint32_t session_id,
-    uint32_t object_handle,
+    uint64_t session_id,
+    uint64_t object_handle,
     const vector<uint8_t>& attributes) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   Attributes tmp;
@@ -508,7 +508,7 @@ uint32_t ChapsServiceRedirect::SetAttributeValue(
 }
 
 uint32_t ChapsServiceRedirect::FindObjectsInit(
-    uint32_t session_id,
+    uint64_t session_id,
     const vector<uint8_t>& attributes) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   Attributes tmp;
@@ -520,9 +520,9 @@ uint32_t ChapsServiceRedirect::FindObjectsInit(
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::FindObjects(uint32_t session_id,
-                                           uint32_t max_object_count,
-                                           vector<uint32_t>* object_list) {
+uint32_t ChapsServiceRedirect::FindObjects(uint64_t session_id,
+                                           uint64_t max_object_count,
+                                           vector<uint64_t>* object_list) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   if (!object_list || object_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -536,12 +536,12 @@ uint32_t ChapsServiceRedirect::FindObjects(uint32_t session_id,
                                               &object_count);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   for (CK_ULONG i = 0; i < object_count; i++) {
-    object_list->push_back(static_cast<uint32_t>(object_handles[i]));
+    object_list->push_back(static_cast<uint64_t>(object_handles[i]));
   }
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::FindObjectsFinal(uint32_t session_id) {
+uint32_t ChapsServiceRedirect::FindObjectsFinal(uint64_t session_id) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   uint32_t result = functions_->C_FindObjectsFinal(session_id);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -549,10 +549,10 @@ uint32_t ChapsServiceRedirect::FindObjectsFinal(uint32_t session_id) {
 }
 
 uint32_t ChapsServiceRedirect::EncryptInit(
-    uint32_t session_id,
-    uint32_t mechanism_type,
+    uint64_t session_id,
+    uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
-    uint32_t key_handle) {
+    uint64_t key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
@@ -566,10 +566,10 @@ uint32_t ChapsServiceRedirect::EncryptInit(
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::Encrypt(uint32_t session_id,
+uint32_t ChapsServiceRedirect::Encrypt(uint64_t session_id,
                                        const vector<uint8_t>& data_in,
-                                       uint32_t max_out_length,
-                                       uint32_t* actual_out_length,
+                                       uint64_t max_out_length,
+                                       uint64_t* actual_out_length,
                                        vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
@@ -588,17 +588,17 @@ uint32_t ChapsServiceRedirect::Encrypt(uint32_t session_id,
                                           &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::EncryptUpdate(
-    uint32_t session_id,
+    uint64_t session_id,
     const vector<uint8_t>& data_in,
-    uint32_t max_out_length,
-    uint32_t* actual_out_length,
+    uint64_t max_out_length,
+    uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
@@ -617,15 +617,15 @@ uint32_t ChapsServiceRedirect::EncryptUpdate(
                                                 &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::EncryptFinal(uint32_t session_id,
-                                            uint32_t max_out_length,
-                                            uint32_t* actual_out_length,
+uint32_t ChapsServiceRedirect::EncryptFinal(uint64_t session_id,
+                                            uint64_t max_out_length,
+                                            uint64_t* actual_out_length,
                                             vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
@@ -640,17 +640,17 @@ uint32_t ChapsServiceRedirect::EncryptFinal(uint32_t session_id,
                                                &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::DecryptInit(
-    uint32_t session_id,
-    uint32_t mechanism_type,
+    uint64_t session_id,
+    uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
-    uint32_t key_handle) {
+    uint64_t key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
@@ -664,10 +664,10 @@ uint32_t ChapsServiceRedirect::DecryptInit(
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::Decrypt(uint32_t session_id,
+uint32_t ChapsServiceRedirect::Decrypt(uint64_t session_id,
                                        const vector<uint8_t>& data_in,
-                                       uint32_t max_out_length,
-                                       uint32_t* actual_out_length,
+                                       uint64_t max_out_length,
+                                       uint64_t* actual_out_length,
                                        vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
@@ -686,7 +686,7 @@ uint32_t ChapsServiceRedirect::Decrypt(uint32_t session_id,
                                           &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   if (out_bytes.get())
     *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
@@ -694,10 +694,10 @@ uint32_t ChapsServiceRedirect::Decrypt(uint32_t session_id,
 }
 
 uint32_t ChapsServiceRedirect::DecryptUpdate(
-    uint32_t session_id,
+    uint64_t session_id,
     const vector<uint8_t>& data_in,
-    uint32_t max_out_length,
-    uint32_t* actual_out_length,
+    uint64_t max_out_length,
+    uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
@@ -716,15 +716,15 @@ uint32_t ChapsServiceRedirect::DecryptUpdate(
                                                 &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::DecryptFinal(uint32_t session_id,
-                                            uint32_t max_out_length,
-                                            uint32_t* actual_out_length,
+uint32_t ChapsServiceRedirect::DecryptFinal(uint64_t session_id,
+                                            uint64_t max_out_length,
+                                            uint64_t* actual_out_length,
                                             vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
@@ -739,15 +739,15 @@ uint32_t ChapsServiceRedirect::DecryptFinal(uint32_t session_id,
                                                &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::DigestInit(
-    uint32_t session_id,
-    uint32_t mechanism_type,
+    uint64_t session_id,
+    uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
@@ -759,10 +759,10 @@ uint32_t ChapsServiceRedirect::DigestInit(
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::Digest(uint32_t session_id,
+uint32_t ChapsServiceRedirect::Digest(uint64_t session_id,
                                       const vector<uint8_t>& data_in,
-                                      uint32_t max_out_length,
-                                      uint32_t* actual_out_length,
+                                      uint64_t max_out_length,
+                                      uint64_t* actual_out_length,
                                       vector<uint8_t>* digest) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !digest, CKR_ARGUMENTS_BAD);
@@ -781,13 +781,13 @@ uint32_t ChapsServiceRedirect::Digest(uint32_t session_id,
                                          &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *digest = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::DigestUpdate(uint32_t session_id,
+uint32_t ChapsServiceRedirect::DigestUpdate(uint64_t session_id,
                                             const vector<uint8_t>& data_in) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_BYTE_PTR in_bytes =
@@ -799,17 +799,17 @@ uint32_t ChapsServiceRedirect::DigestUpdate(uint32_t session_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::DigestKey(uint32_t session_id,
-                                         uint32_t key_handle) {
+uint32_t ChapsServiceRedirect::DigestKey(uint64_t session_id,
+                                         uint64_t key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   uint32_t result = functions_->C_DigestKey(session_id, key_handle);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::DigestFinal(uint32_t session_id,
-                                           uint32_t max_out_length,
-                                           uint32_t* actual_out_length,
+uint32_t ChapsServiceRedirect::DigestFinal(uint64_t session_id,
+                                           uint64_t max_out_length,
+                                           uint64_t* actual_out_length,
                                            vector<uint8_t>* digest) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !digest, CKR_ARGUMENTS_BAD);
@@ -824,17 +824,17 @@ uint32_t ChapsServiceRedirect::DigestFinal(uint32_t session_id,
                                               &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *digest = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::SignInit(
-    uint32_t session_id,
-    uint32_t mechanism_type,
+    uint64_t session_id,
+    uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
-    uint32_t key_handle) {
+    uint64_t key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
@@ -845,10 +845,10 @@ uint32_t ChapsServiceRedirect::SignInit(
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::Sign(uint32_t session_id,
+uint32_t ChapsServiceRedirect::Sign(uint64_t session_id,
                                     const vector<uint8_t>& data,
-                                    uint32_t max_out_length,
-                                    uint32_t* actual_out_length,
+                                    uint64_t max_out_length,
+                                    uint64_t* actual_out_length,
                                     vector<uint8_t>* signature) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
@@ -867,13 +867,13 @@ uint32_t ChapsServiceRedirect::Sign(uint32_t session_id,
                                        &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *signature = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::SignUpdate(uint32_t session_id,
+uint32_t ChapsServiceRedirect::SignUpdate(uint64_t session_id,
                                           const vector<uint8_t>& data_part) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_BYTE_PTR in_bytes =
@@ -885,9 +885,9 @@ uint32_t ChapsServiceRedirect::SignUpdate(uint32_t session_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::SignFinal(uint32_t session_id,
-                                         uint32_t max_out_length,
-                                         uint32_t* actual_out_length,
+uint32_t ChapsServiceRedirect::SignFinal(uint64_t session_id,
+                                         uint64_t max_out_length,
+                                         uint64_t* actual_out_length,
                                          vector<uint8_t>* signature) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
@@ -902,17 +902,17 @@ uint32_t ChapsServiceRedirect::SignFinal(uint32_t session_id,
                                             &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *signature = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::SignRecoverInit(
-      uint32_t session_id,
-      uint32_t mechanism_type,
+      uint64_t session_id,
+      uint64_t mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
-      uint32_t key_handle) {
+      uint64_t key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
@@ -925,10 +925,10 @@ uint32_t ChapsServiceRedirect::SignRecoverInit(
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::SignRecover(uint32_t session_id,
+uint32_t ChapsServiceRedirect::SignRecover(uint64_t session_id,
                                            const vector<uint8_t>& data,
-                                           uint32_t max_out_length,
-                                           uint32_t* actual_out_length,
+                                           uint64_t max_out_length,
+                                           uint64_t* actual_out_length,
                                            vector<uint8_t>* signature) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
@@ -947,17 +947,17 @@ uint32_t ChapsServiceRedirect::SignRecover(uint32_t session_id,
                                               &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *signature = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::VerifyInit(
-    uint32_t session_id,
-    uint32_t mechanism_type,
+    uint64_t session_id,
+    uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
-    uint32_t key_handle) {
+    uint64_t key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
@@ -970,7 +970,7 @@ uint32_t ChapsServiceRedirect::VerifyInit(
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::Verify(uint32_t session_id,
+uint32_t ChapsServiceRedirect::Verify(uint64_t session_id,
                                       const vector<uint8_t>& data,
                                       const vector<uint8_t>& signature) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
@@ -987,7 +987,7 @@ uint32_t ChapsServiceRedirect::Verify(uint32_t session_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::VerifyUpdate(uint32_t session_id,
+uint32_t ChapsServiceRedirect::VerifyUpdate(uint64_t session_id,
                                             const vector<uint8_t>& data_part) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_BYTE_PTR in_bytes =
@@ -999,7 +999,7 @@ uint32_t ChapsServiceRedirect::VerifyUpdate(uint32_t session_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::VerifyFinal(uint32_t session_id,
+uint32_t ChapsServiceRedirect::VerifyFinal(uint64_t session_id,
                                            const vector<uint8_t>& signature) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_BYTE_PTR in_bytes =
@@ -1012,10 +1012,10 @@ uint32_t ChapsServiceRedirect::VerifyFinal(uint32_t session_id,
 }
 
 uint32_t ChapsServiceRedirect::VerifyRecoverInit(
-      uint32_t session_id,
-      uint32_t mechanism_type,
+      uint64_t session_id,
+      uint64_t mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
-      uint32_t key_handle) {
+      uint64_t key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   CK_MECHANISM mechanism;
   mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
@@ -1028,10 +1028,10 @@ uint32_t ChapsServiceRedirect::VerifyRecoverInit(
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::VerifyRecover(uint32_t session_id,
+uint32_t ChapsServiceRedirect::VerifyRecover(uint64_t session_id,
                                              const vector<uint8_t>& signature,
-                                             uint32_t max_out_length,
-                                             uint32_t* actual_out_length,
+                                             uint64_t max_out_length,
+                                             uint64_t* actual_out_length,
                                              vector<uint8_t>* data) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data, CKR_ARGUMENTS_BAD);
@@ -1050,17 +1050,17 @@ uint32_t ChapsServiceRedirect::VerifyRecover(uint32_t session_id,
                                                 &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::DigestEncryptUpdate(
-    uint32_t session_id,
+    uint64_t session_id,
     const vector<uint8_t>& data_in,
-    uint32_t max_out_length,
-    uint32_t* actual_out_length,
+    uint64_t max_out_length,
+    uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
@@ -1079,17 +1079,17 @@ uint32_t ChapsServiceRedirect::DigestEncryptUpdate(
                                                       &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::DecryptDigestUpdate(
-    uint32_t session_id,
+    uint64_t session_id,
     const vector<uint8_t>& data_in,
-    uint32_t max_out_length,
-    uint32_t* actual_out_length,
+    uint64_t max_out_length,
+    uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
@@ -1108,17 +1108,17 @@ uint32_t ChapsServiceRedirect::DecryptDigestUpdate(
                                                       &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::SignEncryptUpdate(
-    uint32_t session_id,
+    uint64_t session_id,
     const vector<uint8_t>& data_in,
-    uint32_t max_out_length,
-    uint32_t* actual_out_length,
+    uint64_t max_out_length,
+    uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
@@ -1137,17 +1137,17 @@ uint32_t ChapsServiceRedirect::SignEncryptUpdate(
                                                     &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::DecryptVerifyUpdate(
-    uint32_t session_id,
+    uint64_t session_id,
     const vector<uint8_t>& data_in,
-    uint32_t max_out_length,
-    uint32_t* actual_out_length,
+    uint64_t max_out_length,
+    uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
@@ -1166,18 +1166,18 @@ uint32_t ChapsServiceRedirect::DecryptVerifyUpdate(
                                                       &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::GenerateKey(
-    uint32_t session_id,
-    uint32_t mechanism_type,
+    uint64_t session_id,
+    uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     const vector<uint8_t>& attributes,
-    uint32_t* key_handle) {
+    uint64_t* key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   CK_MECHANISM mechanism;
@@ -1192,19 +1192,19 @@ uint32_t ChapsServiceRedirect::GenerateKey(
       &mechanism,
       parsed_attributes.attributes(),
       parsed_attributes.num_attributes(),
-      PreservedUint32_t(key_handle));
+      PreservedUint64_t(key_handle));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::GenerateKeyPair(
-    uint32_t session_id,
-    uint32_t mechanism_type,
+    uint64_t session_id,
+    uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     const vector<uint8_t>& public_attributes,
     const vector<uint8_t>& private_attributes,
-    uint32_t* public_key_handle,
-    uint32_t* private_key_handle) {
+    uint64_t* public_key_handle,
+    uint64_t* private_key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!public_key_handle || !private_key_handle,
                           CKR_ARGUMENTS_BAD);
@@ -1225,20 +1225,20 @@ uint32_t ChapsServiceRedirect::GenerateKeyPair(
       public_parsed_attributes.num_attributes(),
       private_parsed_attributes.attributes(),
       private_parsed_attributes.num_attributes(),
-      PreservedUint32_t(public_key_handle),
-      PreservedUint32_t(private_key_handle));
+      PreservedUint64_t(public_key_handle),
+      PreservedUint64_t(private_key_handle));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::WrapKey(
-    uint32_t session_id,
-    uint32_t mechanism_type,
+    uint64_t session_id,
+    uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
-    uint32_t wrapping_key_handle,
-    uint32_t key_handle,
-    uint32_t max_out_length,
-    uint32_t* actual_out_length,
+    uint64_t wrapping_key_handle,
+    uint64_t key_handle,
+    uint64_t max_out_length,
+    uint64_t* actual_out_length,
     vector<uint8_t>* wrapped_key) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !wrapped_key,
@@ -1261,20 +1261,20 @@ uint32_t ChapsServiceRedirect::WrapKey(
                                           &length);
   // Provide the length before checking the result. This handles cases like
   // CKR_BUFFER_TOO_SMALL.
-  *actual_out_length = static_cast<uint32_t>(length);
+  *actual_out_length = static_cast<uint64_t>(length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *wrapped_key = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::UnwrapKey(
-    uint32_t session_id,
-    uint32_t mechanism_type,
+    uint64_t session_id,
+    uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
-    uint32_t wrapping_key_handle,
+    uint64_t wrapping_key_handle,
     const vector<uint8_t>& wrapped_key,
     const vector<uint8_t>& attributes,
-    uint32_t* key_handle) {
+    uint64_t* key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   CK_MECHANISM mechanism;
@@ -1293,18 +1293,18 @@ uint32_t ChapsServiceRedirect::UnwrapKey(
                                             wrapped_key.size(),
                                             parsed_attributes.attributes(),
                                             parsed_attributes.num_attributes(),
-                                            PreservedUint32_t(key_handle));
+                                            PreservedUint64_t(key_handle));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::DeriveKey(
-    uint32_t session_id,
-    uint32_t mechanism_type,
+    uint64_t session_id,
+    uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
-    uint32_t base_key_handle,
+    uint64_t base_key_handle,
     const vector<uint8_t>& attributes,
-    uint32_t* key_handle) {
+    uint64_t* key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   CK_MECHANISM mechanism;
@@ -1319,12 +1319,12 @@ uint32_t ChapsServiceRedirect::DeriveKey(
                                             base_key_handle,
                                             parsed_attributes.attributes(),
                                             parsed_attributes.num_attributes(),
-                                            PreservedUint32_t(key_handle));
+                                            PreservedUint64_t(key_handle));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::SeedRandom(uint32_t session_id,
+uint32_t ChapsServiceRedirect::SeedRandom(uint64_t session_id,
                                           const vector<uint8_t>& seed) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(seed.size() == 0, CKR_ARGUMENTS_BAD);
@@ -1335,8 +1335,8 @@ uint32_t ChapsServiceRedirect::SeedRandom(uint32_t session_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::GenerateRandom(uint32_t session_id,
-                                              uint32_t num_bytes,
+uint32_t ChapsServiceRedirect::GenerateRandom(uint64_t session_id,
+                                              uint64_t num_bytes,
                                               vector<uint8_t>* random_data) {
   LOG_CK_RV_AND_RETURN_IF(!Init2(), CKR_GENERAL_ERROR);
   LOG_CK_RV_AND_RETURN_IF(!random_data || num_bytes == 0, CKR_ARGUMENTS_BAD);

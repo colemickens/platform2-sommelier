@@ -167,8 +167,8 @@ class PreservedValue {
   TempType temp_;
 };
 
-typedef PreservedValue<CK_ULONG, uint32_t> PreservedCK_ULONG;
-typedef PreservedValue<uint32_t, CK_ULONG> PreservedUint32_t;
+typedef PreservedValue<CK_ULONG, uint64_t> PreservedCK_ULONG;
+typedef PreservedValue<uint64_t, CK_ULONG> PreservedUint64_t;
 
 class PreservedByteVector {
  public:
