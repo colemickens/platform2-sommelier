@@ -50,7 +50,7 @@ class ModemManagerTest : public Test {
     explicit TestProxyFactory(ModemManagerTest *test) : test_(test) {}
 
     virtual ModemManagerProxyInterface *CreateModemManagerProxy(
-        ModemManager */*manager*/,
+        ModemManagerClassic */*manager*/,
         const string &/*path*/,
         const string &/*service*/) {
       return test_->proxy_.release();
@@ -70,7 +70,7 @@ class ModemManagerTest : public Test {
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
-  ModemManager modem_manager_;
+  ModemManagerClassic modem_manager_;
   scoped_ptr<MockModemManagerProxy> proxy_;
   TestProxyFactory proxy_factory_;
 };

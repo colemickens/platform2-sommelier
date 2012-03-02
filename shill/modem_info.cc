@@ -61,14 +61,14 @@ void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
 
 void ModemInfo::RegisterModemManager(const string &service,
                                      const string &path) {
-  ModemManager *manager = new ModemManager(service,
-                                           path,
-                                           control_interface_,
-                                           dispatcher_,
-                                           metrics_,
-                                           manager_,
-                                           glib_,
-                                           provider_db_);
+  ModemManager *manager = new ModemManagerClassic(service,
+                                                  path,
+                                                  control_interface_,
+                                                  dispatcher_,
+                                                  metrics_,
+                                                  manager_,
+                                                  glib_,
+                                                  provider_db_);
   modem_managers_.push_back(manager);  // Passes ownership.
   manager->Start();
 }

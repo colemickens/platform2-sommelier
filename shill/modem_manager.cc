@@ -63,21 +63,14 @@ void ModemManager::Stop() {
 }
 
 void ModemManager::Connect(const string &owner) {
+  // Inheriting classes call this superclass method.
   owner_ = owner;
-  proxy_.reset(proxy_factory_->CreateModemManagerProxy(this, path_, owner_));
-
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  vector<DBus::Path> devices = proxy_->EnumerateDevices();
-  for (vector<DBus::Path>::const_iterator it = devices.begin();
-       it != devices.end(); ++it) {
-    AddModem(*it);
-  }
 }
 
 void ModemManager::Disconnect() {
+  // Inheriting classes call this superclass method.
   modems_.clear();
   owner_.clear();
-  proxy_.reset();
 }
 
 void ModemManager::OnAppear(GDBusConnection */*connection*/,
@@ -112,7 +105,7 @@ void ModemManager::AddModem(const string &path) {
                                     manager_,
                                     provider_db_));
   modems_[path] = modem;
-  modem->Init();
+  InitModem(modem);
 }
 
 void ModemManager::RemoveModem(const string &path) {
@@ -122,9 +115,50 @@ void ModemManager::RemoveModem(const string &path) {
 }
 
 void ModemManager::OnDeviceInfoAvailable(const string &link_name) {
-  for (Modems::iterator it = modems_.begin(); it != modems_.end(); ++it) {
+  for (Modems::const_iterator it = modems_.begin(); it != modems_.end(); ++it) {
     it->second->OnDeviceInfoAvailable(link_name);
   }
+}
+
+// ModemManagerClassic
+ModemManagerClassic::ModemManagerClassic(const std::string &service,
+                                         const std::string &path,
+                                         ControlInterface *control_interface,
+                                         EventDispatcher *dispatcher,
+                                         Metrics *metrics,
+                                         Manager *manager,
+                                         GLib *glib,
+                                         mobile_provider_db *provider_db) :
+    ModemManager(service,
+                 path,
+                 control_interface,
+                 dispatcher,
+                 metrics,
+                 manager,
+                 glib,
+                 provider_db) {}
+
+ModemManagerClassic::~ModemManagerClassic() {}
+
+void ModemManagerClassic::Connect(const string &supplied_owner) {
+  ModemManager::Connect(supplied_owner);
+  proxy_.reset(proxy_factory()->CreateModemManagerProxy(this, path(), owner()));
+
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  vector<DBus::Path> devices = proxy_->EnumerateDevices();
+  for (vector<DBus::Path>::const_iterator it = devices.begin();
+       it != devices.end(); ++it) {
+    AddModem(*it);
+  }
+}
+
+void ModemManagerClassic::Disconnect() {
+  ModemManager::Disconnect();
+  proxy_.reset();
+}
+
+void ModemManagerClassic::InitModem(shared_ptr<Modem> modem) {
+  modem->Init();
 }
 
 }  // namespace shill

@@ -56,7 +56,7 @@ DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
 }
 
 ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
-    ModemManager *manager,
+    ModemManagerClassic *manager,
     const string &path,
     const string &service) {
   return new ModemManagerProxy(connection(), manager, path, service);

@@ -14,7 +14,7 @@ using std::vector;
 namespace shill {
 
 ModemManagerProxy::ModemManagerProxy(DBus::Connection *connection,
-                                     ModemManager *manager,
+                                     ModemManagerClassic *manager,
                                      const string &path,
                                      const string &service)
     : proxy_(connection, manager, path, service) {}
@@ -26,7 +26,7 @@ vector<DBus::Path> ModemManagerProxy::EnumerateDevices() {
 }
 
 ModemManagerProxy::Proxy::Proxy(DBus::Connection *connection,
-                                ModemManager *manager,
+                                ModemManagerClassic *manager,
                                 const string &path,
                                 const string &service)
     : DBus::ObjectProxy(*connection, path, service.c_str()),

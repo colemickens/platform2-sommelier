@@ -27,7 +27,7 @@ class ModemGSMCardProxyDelegate;
 class ModemGSMCardProxyInterface;
 class ModemGSMNetworkProxyDelegate;
 class ModemGSMNetworkProxyInterface;
-class ModemManager;
+class ModemManagerClassic;
 class ModemManagerProxyInterface;
 class ModemProxyDelegate;
 class ModemProxyInterface;
@@ -60,7 +60,7 @@ class ProxyFactory {
       const std::string &service);
 
   virtual ModemManagerProxyInterface *CreateModemManagerProxy(
-      ModemManager *manager,
+      ModemManagerClassic *manager,
       const std::string &path,
       const std::string &service);
 

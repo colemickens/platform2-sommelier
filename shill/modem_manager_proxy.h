@@ -15,14 +15,14 @@
 
 namespace shill {
 
-class ModemManager;
+class ModemManagerClassic;
 
 // There's a single proxy per ModemManager service identified by its DBus |path|
 // and owner name |service|.
 class ModemManagerProxy : public ModemManagerProxyInterface {
  public:
   ModemManagerProxy(DBus::Connection *connection,
-                    ModemManager *manager,
+                    ModemManagerClassic *manager,
                     const std::string &path,
                     const std::string &service);
   virtual ~ModemManagerProxy();
@@ -35,7 +35,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
                 public DBus::ObjectProxy {
    public:
     Proxy(DBus::Connection *connection,
-          ModemManager *manager,
+          ModemManagerClassic *manager,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
@@ -49,7 +49,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
     // [None]
 
     // The owner of this proxy.
-    ModemManager *manager_;
+    ModemManagerClassic *manager_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
