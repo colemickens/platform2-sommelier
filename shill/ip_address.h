@@ -37,7 +37,7 @@ class IPAddress {
 
   // Static utilities
   // Get the length in bytes of addresses of the given family
-  static int GetAddressLength(Family family);
+  static size_t GetAddressLength(Family family);
 
   // Getters and Setters
   Family family() const { return family_; }
@@ -45,7 +45,7 @@ class IPAddress {
   unsigned int prefix() const { return prefix_; }
   void set_prefix(unsigned int prefix) { prefix_ = prefix; }
   const unsigned char *GetConstData() const { return address_.GetConstData(); }
-  int GetLength() const { return address_.GetLength(); }
+  size_t GetLength() const { return address_.GetLength(); }
   bool IsDefault() const { return address_.IsZero(); }
   bool IsValid() const {
     return family_ != kFamilyUnknown &&

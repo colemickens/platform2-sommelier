@@ -40,7 +40,7 @@ IPAddress::IPAddress(Family family)
 
 IPAddress::~IPAddress() {}
 
-int IPAddress::GetAddressLength(Family family) {
+size_t IPAddress::GetAddressLength(Family family) {
   switch (family) {
   case kFamilyIPv4:
     return sizeof(in_addr);
@@ -52,7 +52,7 @@ int IPAddress::GetAddressLength(Family family) {
 }
 
 bool IPAddress::SetAddressFromString(const string &address_string) {
-  int address_length = GetAddressLength(family_);
+  size_t address_length = GetAddressLength(family_);
 
   if (!address_length) {
     return false;

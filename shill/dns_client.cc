@@ -198,7 +198,8 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
   if (status == ARES_SUCCESS &&
       hostent != NULL &&
       hostent->h_addrtype == address_.family() &&
-      hostent->h_length == IPAddress::GetAddressLength(address_.family()) &&
+      static_cast<size_t>(hostent->h_length) ==
+      IPAddress::GetAddressLength(address_.family()) &&
       hostent->h_addr_list != NULL &&
       hostent->h_addr_list[0] != NULL) {
     address_ = IPAddress(address_.family(),

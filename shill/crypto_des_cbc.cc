@@ -16,7 +16,7 @@ using std::vector;
 
 namespace shill {
 
-const int CryptoDESCBC::kBlockSize = 8;
+const unsigned int CryptoDESCBC::kBlockSize = 8;
 const char CryptoDESCBC::kID[] = "des-cbc";
 const char CryptoDESCBC::kSentinel[] = "[ok]";
 const char CryptoDESCBC::kVersion2Prefix[] = "02:";

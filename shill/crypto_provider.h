@@ -9,9 +9,10 @@
 #include <base/memory/scoped_vector.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/crypto_interface.h"
+
 namespace shill {
 
-class CryptoInterface;
 class GLib;
 
 class CryptoProvider {

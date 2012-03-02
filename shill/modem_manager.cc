@@ -42,7 +42,7 @@ ModemManager::~ModemManager() {
 
 void ModemManager::Start() {
   LOG(INFO) << "Start watching modem manager service: " << service_;
-  CHECK_EQ(0, watcher_id_);
+  CHECK_EQ(0U, watcher_id_);
   // TODO(petkov): Implement DBus name watching through dbus-c++.
   watcher_id_ = glib_->BusWatchName(G_BUS_TYPE_SYSTEM,
                                     service_.c_str(),

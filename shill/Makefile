@@ -4,7 +4,8 @@
 
 CXX ?= g++
 CXXFLAGS ?= -fno-strict-aliasing
-CXXFLAGS += -Wall -Wextra -Werror -Wuninitialized -Woverloaded-virtual
+CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -Werror -Wuninitialized \
+	    -Woverloaded-virtual
 CXXFLAGS += $(EXTRA_CXXFLAGS)
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 PKG_CONFIG ?= pkg-config
@@ -14,16 +15,15 @@ BUILDDIR = build
 
 # libevent, gdk and gtk-2.0 are needed to leverage chrome's MessageLoop
 # TODO(cmasone): explore if newer versions of libbase let us avoid this.
-BASE_LIBS = -lbase -lchromeos -levent -lpthread -lrt -lcares -lmobile-provider \
-            -lmetrics
+BASE_LIBS = -levent -lcares -lmobile-provider -lmetrics
 BASE_INCLUDE_DIRS = -iquote.. -iquote $(BUILDDIR)
 BASE_LIB_DIRS =
 
 LIBS = $(BASE_LIBS)
-INCLUDE_DIRS = $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags dbus-c++-1 \
-	glib-2.0 gdk-2.0 gtk+-2.0 libchromeos)
-LIB_DIRS = $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs dbus-c++-1 glib-2.0 \
-	gdk-2.0 gtk+-2.0 libchromeos)
+PC_DEPS = dbus-c++-1 glib-2.0 libchrome libchromeos gdk-2.0 gtk+-2.0 \
+	  gio-2.0
+INCLUDE_DIRS := $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+LIB_DIRS := $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 TEST_LIB_DIRS = $(LIB_DIRS)
@@ -310,12 +310,12 @@ $(BUILDDIR)/%.o: %.cc
 $(SHILL_OBJS): $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
 
 $(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_OBJS)
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(LDFLAGS) $^ $(LIBS) \
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LDFLAGS) $^ $(LIB_DIRS) $(LIBS) \
 		-o $@
 
 $(TEST_BIN): CXXFLAGS += -DUNIT_TEST
 $(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
-	$(CXX) $(CXXFLAGS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ $(TEST_LIBS) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(TEST_LIB_DIRS) $(TEST_LIBS) -o $@
 
 clean:
 	rm -rf \

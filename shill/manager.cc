@@ -362,7 +362,7 @@ bool Manager::IsPortalDetectionEnabled(Technology::Identifier tech) {
 }
 
 const ProfileRefPtr &Manager::ActiveProfile() const {
-  DCHECK_NE(profiles_.size(), 0);
+  DCHECK_NE(profiles_.size(), 0U);
   return profiles_.back();
 }
 
