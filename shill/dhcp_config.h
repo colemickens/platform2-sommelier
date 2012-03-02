@@ -27,6 +27,8 @@ class DHCPConfig : public IPConfig {
  public:
   typedef std::map<std::string, DBus::Variant> Configuration;
 
+  static const int kMinMTU;
+
   DHCPConfig(ControlInterface *control_interface,
              EventDispatcher *dispatcher,
              DHCPProvider *provider,

@@ -9,6 +9,8 @@
 
 #include <string>
 
+#include <base/logging.h>
+
 #include "shill/byte_string.h"
 
 using std::string;
@@ -49,6 +51,28 @@ size_t IPAddress::GetAddressLength(Family family) {
   default:
     return 0;
   }
+}
+
+// static
+int IPAddress::GetPrefixLengthFromMask(Family family, const string &mask) {
+  switch (family) {
+    case kFamilyIPv4: {
+      in_addr_t mask_val = inet_network(mask.c_str());
+      int subnet_cidr = 0;
+      while (mask_val) {
+        subnet_cidr++;
+        mask_val <<= 1;
+      }
+      return subnet_cidr;
+    }
+    case kFamilyIPv6:
+      NOTIMPLEMENTED();
+      break;
+    default:
+      LOG(WARNING) << "Unexpected address family: " << family;
+      break;
+  }
+  return 0;
 }
 
 bool IPAddress::SetAddressFromString(const string &address_string) {

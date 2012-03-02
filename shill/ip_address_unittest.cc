@@ -73,6 +73,17 @@ TEST_F(IPAddressTest, Statics) {
   EXPECT_EQ(4, IPAddress::GetAddressLength(IPAddress::kFamilyIPv4));
   EXPECT_EQ(16, IPAddress::GetAddressLength(IPAddress::kFamilyIPv6));
 
+  EXPECT_EQ(0, IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4,
+                                                  "0.0.0.0"));
+  EXPECT_EQ(20, IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4,
+                                                   "255.255.240.0"));
+  EXPECT_EQ(32, IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4,
+                                                   "255.255.255.255"));
+  EXPECT_EQ(32, IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4,
+                                                   ""));
+  EXPECT_EQ(32, IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4,
+                                                   "foo"));
+
   IPAddress addr4(IPAddress::kFamilyIPv4);
   addr4.SetAddressToDefault();
 

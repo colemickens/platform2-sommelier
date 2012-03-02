@@ -5,12 +5,14 @@
 #ifndef SHILL_OPENVPN_DRIVER_
 #define SHILL_OPENVPN_DRIVER_
 
+#include <map>
 #include <string>
 #include <vector>
 
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/ipconfig.h"
 #include "shill/key_value_store.h"
 #include "shill/vpn_driver.h"
 
@@ -29,6 +31,9 @@ class OpenVPNDriver : public VPNDriver {
                 const KeyValueStore &args);
   virtual ~OpenVPNDriver();
 
+  bool Notify(const std::string &reason,
+              const std::map<std::string, std::string> &dict);
+
   // Inherited from VPNDriver.
   virtual bool ClaimInterface(const std::string &link_name,
                               int interface_index);
@@ -41,6 +46,21 @@ class OpenVPNDriver : public VPNDriver {
   FRIEND_TEST(OpenVPNDriverTest, ClaimInterface);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
+  FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
+  FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
+  FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
+
+  // The map is a sorted container that allows us to iterate through the options
+  // in order.
+  typedef std::map<int, std::string> ForeignOptions;
+
+  static void ParseIPConfiguration(
+      const std::map<std::string, std::string> &configuration,
+      IPConfig::Properties *properties);
+  static void ParseForeignOptions(const ForeignOptions &options,
+                                  IPConfig::Properties *properties);
+  static void ParseForeignOption(const std::string &option,
+                                 IPConfig::Properties *properties);
 
   void InitOptions(std::vector<std::string> *options, Error *error);
 

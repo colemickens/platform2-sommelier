@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
+#include "shill/ipconfig.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device_info.h"
 #include "shill/nice_mock_control.h"
@@ -91,6 +92,70 @@ TEST_F(OpenVPNDriverTest, Connect) {
   Error error;
   driver_.Connect(&error);
   EXPECT_EQ(Error::kNotSupported, error.type());
+}
+
+TEST_F(OpenVPNDriverTest, Notify) {
+  map<string, string> dict;
+  EXPECT_FALSE(driver_.Notify("down", dict));
+  EXPECT_TRUE(driver_.Notify("up", dict));
+}
+
+TEST_F(OpenVPNDriverTest, ParseForeignOption) {
+  IPConfig::Properties props;
+  OpenVPNDriver::ParseForeignOption("", &props);
+  OpenVPNDriver::ParseForeignOption("dhcp-option DOMAIN", &props);
+  OpenVPNDriver::ParseForeignOption("dhcp-option DOMAIN zzz.com foo", &props);
+  OpenVPNDriver::ParseForeignOption("dhcp-Option DOmAIN xyz.com", &props);
+  ASSERT_EQ(1, props.domain_search.size());
+  EXPECT_EQ("xyz.com", props.domain_search[0]);
+  OpenVPNDriver::ParseForeignOption("dhcp-option DnS 1.2.3.4", &props);
+  ASSERT_EQ(1, props.dns_servers.size());
+  EXPECT_EQ("1.2.3.4", props.dns_servers[0]);
+}
+
+TEST_F(OpenVPNDriverTest, ParseForeignOptions) {
+  // Basically test that std::map is a sorted container.
+  map<int, string> options;
+  options[5] = "dhcp-option DOMAIN five.com";
+  options[2] = "dhcp-option DOMAIN two.com";
+  options[8] = "dhcp-option DOMAIN eight.com";
+  options[7] = "dhcp-option DOMAIN seven.com";
+  options[4] = "dhcp-option DOMAIN four.com";
+  IPConfig::Properties props;
+  OpenVPNDriver::ParseForeignOptions(options, &props);
+  ASSERT_EQ(5, props.domain_search.size());
+  EXPECT_EQ("two.com", props.domain_search[0]);
+  EXPECT_EQ("four.com", props.domain_search[1]);
+  EXPECT_EQ("five.com", props.domain_search[2]);
+  EXPECT_EQ("seven.com", props.domain_search[3]);
+  EXPECT_EQ("eight.com", props.domain_search[4]);
+}
+
+TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
+  map<string, string> config;
+  config["ifconfig_loCal"] = "4.5.6.7";
+  config["ifconfiG_broadcast"] = "1.2.255.255";
+  config["ifconFig_netmAsk"] = "255.255.255.0";
+  config["ifconfig_remotE"] = "33.44.55.66";
+  config["route_vpN_gateway"] = "192.168.1.1";
+  config["tun_mtu"] = "1000";
+  config["foreign_option_2"] = "dhcp-option DNS 4.4.4.4";
+  config["foreign_option_1"] = "dhcp-option DNS 1.1.1.1";
+  config["foreign_option_3"] = "dhcp-option DNS 2.2.2.2";
+  config["foo"] = "bar";
+  IPConfig::Properties props;
+  OpenVPNDriver::ParseIPConfiguration(config, &props);
+  EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
+  EXPECT_EQ("4.5.6.7", props.address);
+  EXPECT_EQ("1.2.255.255", props.broadcast_address);
+  EXPECT_EQ(24, props.subnet_cidr);
+  EXPECT_EQ("33.44.55.66", props.peer_address);
+  EXPECT_EQ("192.168.1.1", props.gateway);
+  EXPECT_EQ(1000, props.mtu);
+  ASSERT_EQ(3, props.dns_servers.size());
+  EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
+  EXPECT_EQ("4.4.4.4", props.dns_servers[1]);
+  EXPECT_EQ("2.2.2.2", props.dns_servers[2]);
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {

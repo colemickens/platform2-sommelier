@@ -38,6 +38,7 @@ const int DHCPConfig::kDHCPCDExitWaitMilliseconds = 3000;
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 const char DHCPConfig::kDHCPCDPathFormatLease[] = "var/run/dhcpcd-%s.lease";
 const char DHCPConfig::kDHCPCDPathFormatPID[] = "var/run/dhcpcd-%s.pid";
+const int DHCPConfig::kMinMTU = 576;
 const char DHCPConfig::kReasonBound[] = "BOUND";
 const char DHCPConfig::kReasonFail[] = "FAIL";
 const char DHCPConfig::kReasonRebind[] = "REBIND";
@@ -276,7 +277,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
       properties->domain_search = value.operator vector<string>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.reader().get_uint16();
-      if (mtu >= 576) {
+      if (mtu >= kMinMTU) {
         properties->mtu = mtu;
       }
     } else {
