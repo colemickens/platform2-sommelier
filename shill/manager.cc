@@ -96,10 +96,12 @@ Manager::Manager(ControlInterface *control_interface,
                              NULL);
   store_.RegisterBool(flimflam::kOfflineModeProperty, &props_.offline_mode);
   store_.RegisterString(flimflam::kPortalURLProperty, &props_.portal_url);
+  store_.RegisterInt32(kPortalCheckIntervalProperty,
+                       &props_.portal_check_interval_seconds);
   HelpRegisterDerivedStrings(flimflam::kProfilesProperty,
                              &Manager::EnumerateProfiles,
                              NULL);
-  store_.RegisterString(shill::kHostNameProperty, &props_.host_name);
+  store_.RegisterString(kHostNameProperty, &props_.host_name);
   HelpRegisterDerivedString(flimflam::kStateProperty,
                             &Manager::CalculateState,
                             NULL);
@@ -777,6 +779,18 @@ WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
     WiFi *wifi = dynamic_cast<WiFi *>(wifi_devices.front().get());
     CHECK(wifi);
     return wifi->GetService(args, error);
+  }
+}
+
+void Manager::RecheckPortal(Error */*error*/) {
+  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    if ((*it)->RequestPortalDetection()) {
+      // Only start Portal Detection on the device with the default connection.
+      // We will get a "true" return value when we've found that device, and
+      // can end our loop early as a result.
+      break;
+    }
   }
 }
 

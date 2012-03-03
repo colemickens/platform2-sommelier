@@ -69,6 +69,7 @@ class PortalDetector {
     bool final;
   };
 
+  static const int kDefaultCheckIntervalSeconds;
   static const char kDefaultURL[];
   static const char kResponseExpected[];
 
@@ -87,11 +88,20 @@ class PortalDetector {
   // this is the last attempt, the "final" flag in the Result structure will
   // be true, otherwise it will be false, and the PortalDetector will
   // schedule the next attempt.
-  bool Start(const std::string &url_string);
+  virtual bool Start(const std::string &url_string);
+  virtual bool StartAfterDelay(const std::string &url_string,
+                               int delay_seconds);
 
   // End the current portal detection process if one exists, and do not call
   // the callback.
-  void Stop();
+  virtual void Stop();
+
+  // Returns whether portal request is "in progress": whether the portal
+  // detector is in the progress of making attempts.  Returns true if
+  // attempts are in progress, false otherwise.  Notably, this function
+  // returns false during the period of time between calling "Start" or
+  // "StartAfterDelay" and the actual start of the first attempt.
+  virtual bool IsInProgress();
 
   static const std::string PhaseToString(Phase phase);
   static const std::string StatusToString(Status status);
@@ -101,6 +111,7 @@ class PortalDetector {
   friend class PortalDetectorTest;
   FRIEND_TEST(PortalDetectorTest, StartAttemptFailed);
   FRIEND_TEST(PortalDetectorTest, StartAttemptRepeated);
+  FRIEND_TEST(PortalDetectorTest, StartAttemptAfterDelay);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
 
   // Number of times to attempt connection.
@@ -124,7 +135,7 @@ class PortalDetector {
   void RequestReadCallback(const ByteString &response_data);
   void RequestResultCallback(HTTPRequest::Result result,
                              const ByteString &response_data);
-  void StartAttempt();
+  void StartAttempt(int init_delay_seconds);
   void StartAttemptTask();
   void StopAttempt();
   void TimeoutAttemptTask();

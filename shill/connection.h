@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -35,7 +35,7 @@ class Connection : public base::RefCounted<Connection> {
 
   // Sets the current connection as "default", i.e., routes and DNS entries
   // should be used by all system components that don't select explicitly.
-  bool is_default() const { return is_default_; }
+  virtual bool is_default() const { return is_default_; }
   virtual void SetIsDefault(bool is_default);
 
   virtual const std::string &interface_name() const { return interface_name_; }

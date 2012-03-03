@@ -28,6 +28,7 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_portal_detector.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -59,7 +60,8 @@ class DeviceTest : public PropertyStoreTest {
                            kDeviceName,
                            kDeviceAddress,
                            0,
-                           Technology::kUnknown)) {
+                           Technology::kUnknown)),
+        device_info_(control_interface(), NULL, NULL, NULL) {
     DHCPProvider::GetInstance()->glib_ = glib();
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
   }
@@ -81,23 +83,13 @@ class DeviceTest : public PropertyStoreTest {
     device_->SelectService(service);
   }
 
-  bool StartPortalDetection() { return device_->StartPortalDetection(); }
-  void StopPortalDetection() { device_->StopPortalDetection(); }
-
-  void PortalDetectorCallback(const PortalDetector::Result &result) {
-    device_->PortalDetectorCallback(result);
-  }
-
-  void SetManager(Manager *manager) {
-    device_->manager_ = manager;
-  }
-
   void SetConnection(ConnectionRefPtr connection) {
     device_->connection_ = connection;
   }
 
   MockControl control_interface_;
   DeviceRefPtr device_;
+  MockDeviceInfo device_info_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
@@ -328,111 +320,111 @@ TEST_F(DeviceTest, Stop) {
   EXPECT_FALSE(device_->selected_service_.get());
 }
 
-TEST_F(DeviceTest, PortalDetectionDisabled) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
-  EXPECT_CALL(*service.get(), IsConnected())
+
+class DevicePortalDetectionTest : public DeviceTest {
+ public:
+  DevicePortalDetectionTest()
+      : connection_(new StrictMock<MockConnection>(&device_info_)),
+        manager_(control_interface(),
+                 dispatcher(),
+                 metrics(),
+                 glib()),
+        service_(new StrictMock<MockService>(control_interface(),
+                                             dispatcher(),
+                                             metrics(),
+                                             &manager_)),
+        portal_detector_(new StrictMock<MockPortalDetector>(connection_)) {}
+    virtual ~DevicePortalDetectionTest() {}
+  virtual void SetUp() {
+    DeviceTest::SetUp();
+    SelectService(service_);
+    SetConnection(connection_.get());
+    device_->portal_detector_.reset(portal_detector_);  // Passes ownership.
+    device_->manager_ = &manager_;
+  }
+
+ protected:
+  bool StartPortalDetection() { return device_->StartPortalDetection(); }
+  void StopPortalDetection() { device_->StopPortalDetection(); }
+
+  void PortalDetectorCallback(const PortalDetector::Result &result) {
+    device_->PortalDetectorCallback(result);
+  }
+  bool RequestPortalDetection() {
+    return device_->RequestPortalDetection();
+  }
+  void SetServiceConnectedState(Service::ConnectState state) {
+    device_->SetServiceConnectedState(state);
+  }
+  void ExpectPortalDetectorReset() {
+    EXPECT_FALSE(device_->portal_detector_.get());
+  }
+  void ExpectPortalDetectorSet() {
+    EXPECT_TRUE(device_->portal_detector_.get());
+  }
+  void ExpectPortalDetectorIsMock() {
+    EXPECT_EQ(portal_detector_, device_->portal_detector_.get());
+  }
+  scoped_refptr<MockConnection> connection_;
+  StrictMock<MockManager> manager_;
+  scoped_refptr<MockService> service_;
+
+  // Used only for EXPECT_CALL().  Object is owned by device.
+  MockPortalDetector *portal_detector_;
+};
+
+TEST_F(DevicePortalDetectionTest, PortalDetectionDisabled) {
+  EXPECT_CALL(*service_.get(), IsConnected())
       .WillRepeatedly(Return(true));
-  StrictMock<MockManager> manager(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  glib());
-  SetManager(&manager);
-  EXPECT_CALL(manager, IsPortalDetectionEnabled(device_->technology()))
+  EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(false));
-  SelectService(service);
-  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
   EXPECT_FALSE(StartPortalDetection());
 }
 
-TEST_F(DeviceTest, PortalDetectionProxyConfig) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
-  EXPECT_CALL(*service.get(), IsConnected())
+TEST_F(DevicePortalDetectionTest, PortalDetectionProxyConfig) {
+  EXPECT_CALL(*service_.get(), IsConnected())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service.get(), HasProxyConfig())
+  EXPECT_CALL(*service_.get(), HasProxyConfig())
       .WillOnce(Return(true));
-  SelectService(service);
-  StrictMock<MockManager> manager(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  glib());
-  EXPECT_CALL(manager, IsPortalDetectionEnabled(device_->technology()))
+  EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
-  SetManager(&manager);
-  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
   EXPECT_FALSE(StartPortalDetection());
 }
 
-TEST_F(DeviceTest, PortalDetectionBadUrl) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
-  EXPECT_CALL(*service.get(), IsConnected())
+TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
+  EXPECT_CALL(*service_.get(), IsConnected())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service.get(), HasProxyConfig())
+  EXPECT_CALL(*service_.get(), HasProxyConfig())
       .WillOnce(Return(false));
-  SelectService(service);
-  StrictMock<MockManager> manager(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  glib());
-  EXPECT_CALL(manager, IsPortalDetectionEnabled(device_->technology()))
+  EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
   const string portal_url;
-  EXPECT_CALL(manager, GetPortalCheckURL())
+  EXPECT_CALL(manager_, GetPortalCheckURL())
       .WillRepeatedly(ReturnRef(portal_url));
-  SetManager(&manager);
-  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
   EXPECT_FALSE(StartPortalDetection());
 }
 
-TEST_F(DeviceTest, PortalDetectionStart) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
-  EXPECT_CALL(*service.get(), IsConnected())
+TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
+  EXPECT_CALL(*service_.get(), IsConnected())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service.get(), HasProxyConfig())
+  EXPECT_CALL(*service_.get(), HasProxyConfig())
       .WillOnce(Return(false));
-  SelectService(service);
-  StrictMock<MockManager> manager(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  glib());
-  EXPECT_CALL(manager, IsPortalDetectionEnabled(device_->technology()))
+  EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
   const string portal_url(PortalDetector::kDefaultURL);
-  EXPECT_CALL(manager, GetPortalCheckURL())
+  EXPECT_CALL(manager_, GetPortalCheckURL())
       .WillRepeatedly(ReturnRef(portal_url));
-  SetManager(&manager);
-  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline))
+  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline))
       .Times(0);
-  scoped_ptr<MockDeviceInfo> device_info(
-      new NiceMock<MockDeviceInfo>(
-          control_interface(),
-          reinterpret_cast<EventDispatcher *>(NULL),
-          reinterpret_cast<Metrics *>(NULL),
-          reinterpret_cast<Manager *>(NULL)));
-  scoped_refptr<MockConnection> connection(
-      new NiceMock<MockConnection>(device_info.get()));
   const string kInterfaceName("int0");
-  EXPECT_CALL(*connection.get(), interface_name())
-              .WillRepeatedly(ReturnRef(kInterfaceName));
+  EXPECT_CALL(*connection_.get(), interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
   const vector<string> kDNSServers;
-  EXPECT_CALL(*connection.get(), dns_servers())
-              .WillRepeatedly(ReturnRef(kDNSServers));
-  SetConnection(connection.get());
+  EXPECT_CALL(*connection_.get(), dns_servers())
+      .WillRepeatedly(ReturnRef(kDNSServers));
   EXPECT_TRUE(StartPortalDetection());
 
   // Drop all references to device_info before it falls out of scope.
@@ -440,53 +432,133 @@ TEST_F(DeviceTest, PortalDetectionStart) {
   StopPortalDetection();
 }
 
-TEST_F(DeviceTest, PortalDetectionNonFinal) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
-  EXPECT_CALL(*service.get(), IsConnected())
+TEST_F(DevicePortalDetectionTest, PortalDetectionNonFinal) {
+  EXPECT_CALL(*service_.get(), IsConnected())
       .Times(0);
-  EXPECT_CALL(*service.get(), SetState(_))
+  EXPECT_CALL(*service_.get(), SetState(_))
       .Times(0);
-  SelectService(service);
   PortalDetectorCallback(PortalDetector::Result(
       PortalDetector::kPhaseUnknown,
       PortalDetector::kStatusFailure,
       false));
 }
 
-TEST_F(DeviceTest, PortalDetectionFailure) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
-  EXPECT_CALL(*service.get(), IsConnected())
+TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
+  EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
-  SelectService(service);
-  EXPECT_CALL(*service.get(), SetState(Service::kStatePortal));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  EXPECT_CALL(*connection_.get(), is_default())
+      .WillOnce(Return(false));
   PortalDetectorCallback(PortalDetector::Result(
       PortalDetector::kPhaseUnknown,
       PortalDetector::kStatusFailure,
       true));
 }
 
-TEST_F(DeviceTest, PortalDetectionSuccess) {
-  scoped_refptr<MockService> service(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  metrics(),
-                                  manager()));
-  EXPECT_CALL(*service.get(), IsConnected())
+TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
+  EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
-  SelectService(service);
-  EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
   PortalDetectorCallback(PortalDetector::Result(
       PortalDetector::kPhaseUnknown,
       PortalDetector::kStatusSuccess,
       true));
+}
+
+TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
+  EXPECT_CALL(*service_.get(), state())
+      .WillOnce(Return(Service::kStateOnline))
+      .WillRepeatedly(Return(Service::kStatePortal));
+  EXPECT_FALSE(RequestPortalDetection());
+
+  EXPECT_CALL(*connection_.get(), is_default())
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_FALSE(RequestPortalDetection());
+
+  EXPECT_CALL(*portal_detector_, IsInProgress())
+      .WillOnce(Return(true));
+  // Portal detection already running.
+  EXPECT_TRUE(RequestPortalDetection());
+
+  // Make sure our running mock portal detector was not replaced.
+  ExpectPortalDetectorIsMock();
+
+  // Throw away our pre-fabricated portal detector, and have the device create
+  // a new one.
+  StopPortalDetection();
+  EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_.get(), HasProxyConfig())
+      .WillRepeatedly(Return(false));
+  const string kPortalCheckURL("http://portal");
+  EXPECT_CALL(manager_, GetPortalCheckURL())
+      .WillOnce(ReturnRef(kPortalCheckURL));
+  const string kInterfaceName("int0");
+  EXPECT_CALL(*connection_.get(), interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
+  const vector<string> kDNSServers;
+  EXPECT_CALL(*connection_.get(), dns_servers())
+      .WillRepeatedly(ReturnRef(kDNSServers));
+  EXPECT_TRUE(RequestPortalDetection());
+}
+
+TEST_F(DevicePortalDetectionTest, NotConnected) {
+  EXPECT_CALL(*service_.get(), IsConnected())
+      .WillOnce(Return(false));
+  SetServiceConnectedState(Service::kStatePortal);
+  // We don't check for the portal detector to be reset here, because
+  // it would have been reset as a part of disconnection.
+}
+
+TEST_F(DevicePortalDetectionTest, NotPortal) {
+  EXPECT_CALL(*service_.get(), IsConnected())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  SetServiceConnectedState(Service::kStateOnline);
+  ExpectPortalDetectorReset();
+}
+
+TEST_F(DevicePortalDetectionTest, NotDefault) {
+  EXPECT_CALL(*service_.get(), IsConnected())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*connection_.get(), is_default())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  SetServiceConnectedState(Service::kStatePortal);
+  ExpectPortalDetectorReset();
+}
+
+TEST_F(DevicePortalDetectionTest, PortalIntervalIsZero) {
+  EXPECT_CALL(*service_.get(), IsConnected())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*connection_.get(), is_default())
+      .WillOnce(Return(true));
+  EXPECT_CALL(manager_, GetPortalCheckInterval())
+      .WillOnce(Return(0));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  SetServiceConnectedState(Service::kStatePortal);
+  ExpectPortalDetectorReset();
+}
+
+TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
+  EXPECT_CALL(*service_.get(), IsConnected())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*connection_.get(), is_default())
+      .WillOnce(Return(true));
+  const int kPortalDetectionInterval = 10;
+  EXPECT_CALL(manager_, GetPortalCheckInterval())
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(kPortalDetectionInterval));
+  const string kPortalCheckURL("http://portal");
+  EXPECT_CALL(manager_, GetPortalCheckURL())
+      .WillOnce(ReturnRef(kPortalCheckURL));
+  EXPECT_CALL(*portal_detector_, StartAfterDelay(kPortalCheckURL,
+                                                 kPortalDetectionInterval))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  SetServiceConnectedState(Service::kStatePortal);
+  ExpectPortalDetectorSet();
 }
 
 }  // namespace shill

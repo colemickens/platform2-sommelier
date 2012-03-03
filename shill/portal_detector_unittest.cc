@@ -115,6 +115,17 @@ class PortalDetectorTest : public Test {
     return ret;
   }
 
+  void StartAttemptTask() {
+    AssignHTTPRequest();
+    EXPECT_CALL(*http_request(), Start(_, _, _))
+        .WillOnce(Return(HTTPRequest::kResultInProgress));
+    EXPECT_CALL(
+        dispatcher(),
+        PostDelayedTask(
+            _, PortalDetector::kRequestTimeoutSeconds * 1000));
+    portal_detector()->StartAttemptTask();
+  }
+
   void TimeoutAttempt() {
     portal_detector_->TimeoutAttemptTask();
   }
@@ -217,30 +228,43 @@ TEST_F(PortalDetectorTest, StartAttemptFailed) {
 
 TEST_F(PortalDetectorTest, StartAttemptRepeated) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0));
-  portal_detector()->StartAttempt();
+  portal_detector()->StartAttempt(0);
 
-  AssignHTTPRequest();
-  EXPECT_CALL(*http_request(), Start(_, _, _))
-      .WillOnce(Return(HTTPRequest::kResultInProgress));
-  EXPECT_CALL(
-      dispatcher(),
-      PostDelayedTask(
-          _, PortalDetector::kRequestTimeoutSeconds * 1000));
-  portal_detector()->StartAttemptTask();
+  StartAttemptTask();
 
   // A second attempt should be delayed by kMinTimeBetweenAttemptsSeconds.
   EXPECT_CALL(
       dispatcher(),
       PostDelayedTask(
           _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000));
-  portal_detector()->StartAttempt();
+  portal_detector()->StartAttempt(0);
+}
+
+TEST_F(PortalDetectorTest, StartAttemptAfterDelay) {
+  const int kDelaySeconds = 123;
+  // The first attempt should be delayed by kDelaySeconds.
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, kDelaySeconds * 1000));
+  EXPECT_TRUE(portal_detector()->StartAfterDelay(kURL, kDelaySeconds));
+
+  AdvanceTime(kDelaySeconds * 1000);
+  StartAttemptTask();
+
+  // A second attempt should be delayed by kMinTimeBetweenAttemptsSeconds.
+  EXPECT_CALL(
+      dispatcher(),
+      PostDelayedTask(
+          _, PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000));
+  portal_detector()->StartAttempt(0);
 }
 
 TEST_F(PortalDetectorTest, AttemptCount) {
+  EXPECT_FALSE(portal_detector()->IsInProgress());
   // Expect the PortalDetector to immediately post a task for the each attempt.
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0))
       .Times(PortalDetector::kMaxRequestAttempts);
   EXPECT_TRUE(StartPortalRequest(kURL));
+
+  EXPECT_FALSE(portal_detector()->IsInProgress());
 
   // Expect that the request will be started -- return failure.
   EXPECT_CALL(*http_request(), Start(_, _, _))
@@ -282,11 +306,13 @@ TEST_F(PortalDetectorTest, AttemptCount) {
 
   for (int i = 0; i < PortalDetector::kMaxRequestAttempts; i++) {
     portal_detector()->StartAttemptTask();
+    EXPECT_TRUE(portal_detector()->IsInProgress());
     AdvanceTime(PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000);
     portal_detector()->RequestResultCallback(HTTPRequest::kResultDNSFailure,
                                              response_data());
   }
 
+  EXPECT_FALSE(portal_detector()->IsInProgress());
   ExpectReset();
 }
 
@@ -349,6 +375,7 @@ TEST_F(PortalDetectorTest, ReadCompleteHeader) {
 
   AppendReadData(response_expected.substr(partial_size));
 }
+
 struct ResultMapping {
   ResultMapping() : http_result(HTTPRequest::kResultUnknown), portal_result() {}
   ResultMapping(HTTPRequest::Result in_http_result,

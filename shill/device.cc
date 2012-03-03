@@ -454,13 +454,45 @@ bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
   return true;
 }
 
+bool Device::RequestPortalDetection() {
+  if (!selected_service_) {
+    VLOG(2) << FriendlyName()
+            << ": No selected service, so no need for portal check.";
+    return false;
+  }
+
+  if (!connection_.get()) {
+    VLOG(2) << FriendlyName()
+            << ": No connection, so no need for portal check.";
+    return false;
+  }
+
+  if (selected_service_->state() != Service::kStatePortal) {
+    VLOG(2) << FriendlyName()
+            << ": Service is not in portal state.  No need to start check.";
+    return false;
+  }
+
+  if (!connection_->is_default()) {
+    VLOG(2) << FriendlyName()
+            << ": Service is not the default connection.  Don't start check.";
+    return false;
+  }
+
+  if (portal_detector_.get() && portal_detector_->IsInProgress()) {
+    VLOG(2) << FriendlyName() << ": Portal detection is already running.";
+    return true;
+  }
+
+  return StartPortalDetection();
+}
+
 bool Device::StartPortalDetection() {
   if (!manager_->IsPortalDetectionEnabled(technology())) {
     // If portal detection is disabled for this technology, immediately set
     // the service state to "Online".
     VLOG(2) << "Device " << FriendlyName()
             << ": portal detection is disabled; marking service online.";
-    portal_detector_.reset();
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
@@ -472,7 +504,6 @@ bool Device::StartPortalDetection() {
     // arbitrary proxy configs and their possible credentials.
     VLOG(2) << "Device " << FriendlyName()
             << ": service has proxy config;  marking it online.";
-    portal_detector_.reset();
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
@@ -512,6 +543,25 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
                << selected_service_->UniqueName()
                << " is in non-connected state.";
     return;
+  }
+
+  if (state == Service::kStatePortal && connection_->is_default() &&
+      manager_->GetPortalCheckInterval() != 0) {
+    CHECK(portal_detector_.get());
+    if (!portal_detector_->StartAfterDelay(
+            manager_->GetPortalCheckURL(),
+            manager_->GetPortalCheckInterval())) {
+      LOG(ERROR) << "Device " << FriendlyName()
+                 << ": Portal detection failed to restart: likely bad URL: "
+                 << manager_->GetPortalCheckURL();
+      SetServiceState(Service::kStateOnline);
+      portal_detector_.reset();
+      return;
+    }
+    VLOG(2) << "Device " << FriendlyName() << ": portal detection retrying.";
+  } else {
+    VLOG(2) << "Device " << FriendlyName() << ": portal will not retry.";
+    portal_detector_.reset();
   }
 
   SetServiceState(state);

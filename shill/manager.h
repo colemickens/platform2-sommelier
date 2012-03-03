@@ -36,10 +36,12 @@ class Manager {
  public:
   struct Properties {
    public:
-    Properties() : offline_mode(false) {}
+    Properties()
+        : offline_mode(false), portal_check_interval_seconds(0) {}
     bool offline_mode;
     std::string check_portal_list;
     std::string country;
+    int32 portal_check_interval_seconds;
     std::string portal_url;
     std::string host_name;
   };
@@ -88,6 +90,9 @@ class Manager {
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
+  // Request portal detection checks on each registered device until a portal
+  // detection attempt starts on one of them.
+  void RecheckPortal(Error *error);
   void RequestScan(const std::string &technology, Error *error);
   std::string GetTechnologyOrder();
   void SetTechnologyOrder(const std::string &order, Error *error);
@@ -122,6 +127,9 @@ class Manager {
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology::Identifier tech);
 
+  virtual int GetPortalCheckInterval() const {
+    return props_.portal_check_interval_seconds;
+  }
   virtual const std::string &GetPortalCheckURL() const {
     return props_.portal_url;
   }

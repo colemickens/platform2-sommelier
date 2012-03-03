@@ -117,6 +117,18 @@ TEST_F(ConnectionTest, AddConfig) {
       ipconfig_->properties().dns_servers,
       ipconfig_->properties().domain_search));
 
+  scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
+      &control_,
+      reinterpret_cast<EventDispatcher *>(NULL),
+      reinterpret_cast<Metrics *>(NULL),
+      reinterpret_cast<Manager *>(NULL),
+      kTestDeviceName0,
+      string(),
+      kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
+      .WillOnce(Return(device));
+  EXPECT_CALL(*device.get(), RequestPortalDetection())
+      .WillOnce(Return(true));
   connection_->SetIsDefault(true);
   EXPECT_TRUE(connection_->is_default());
 
@@ -133,6 +145,18 @@ TEST_F(ConnectionTest, AddConfigReverse) {
                                                Connection::kDefaultMetric));
   vector<string> empty_list;
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
+  scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
+      &control_,
+      reinterpret_cast<EventDispatcher *>(NULL),
+      reinterpret_cast<Metrics *>(NULL),
+      reinterpret_cast<Manager *>(NULL),
+      kTestDeviceName0,
+      string(),
+      kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
+      .WillOnce(Return(device));
+  EXPECT_CALL(*device.get(), RequestPortalDetection())
+      .WillOnce(Return(true));
   connection_->SetIsDefault(true);
 
   EXPECT_CALL(rtnl_handler_,

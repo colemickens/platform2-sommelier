@@ -59,6 +59,7 @@ class DefaultProfile : public Profile {
   static const char kStorageHostName[];
   static const char kStorageName[];
   static const char kStorageOfflineMode[];
+  static const char kStoragePortalCheckInterval[];
   static const char kStoragePortalURL[];
 
   const FilePath storage_path_;

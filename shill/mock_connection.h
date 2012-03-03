@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,7 @@ class MockConnection : public Connection {
   virtual ~MockConnection();
 
   MOCK_METHOD1(UpdateFromIPConfig, void(const IPConfigRefPtr &config));
+  MOCK_CONST_METHOD0(is_default, bool());
   MOCK_METHOD1(SetIsDefault, void(bool is_default));
   MOCK_METHOD0(RequestRouting, void());
   MOCK_METHOD0(ReleaseRouting, void());

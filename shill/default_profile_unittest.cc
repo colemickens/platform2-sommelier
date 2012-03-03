@@ -120,6 +120,11 @@ TEST_F(DefaultProfileTest, Save) {
                                         DefaultProfile::kStoragePortalURL,
                                         ""))
       .WillOnce(Return(true));
+  EXPECT_CALL(*storage.get(),
+              SetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStoragePortalCheckInterval,
+                        "0"))
+      .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), Flush()).WillOnce(Return(true));
 
   EXPECT_CALL(*device_.get(), Save(storage.get())).WillOnce(Return(true));
@@ -148,6 +153,11 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
                                         DefaultProfile::kStoragePortalURL,
                                         _))
       .WillOnce(Return(false));
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStoragePortalCheckInterval,
+                        _))
+      .WillOnce(Return(false));
   profile_->set_storage(storage.release());
 
   Manager::Properties manager_props;
@@ -156,6 +166,8 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_FALSE(manager_props.offline_mode);
   EXPECT_EQ("", manager_props.check_portal_list);
   EXPECT_EQ(PortalDetector::kDefaultURL, manager_props.portal_url);
+  EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
+            manager_props.portal_check_interval_seconds);
 }
 
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
@@ -179,6 +191,14 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                                         DefaultProfile::kStoragePortalURL,
                                         _))
       .WillOnce(DoAll(SetArgumentPointee<2>(portal_url), Return(true)));
+  const string portal_check_interval_string("10");
+  const int portal_check_interval_int = 10;
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStoragePortalCheckInterval,
+                        _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(portal_check_interval_string),
+                      Return(true)));
   profile_->set_storage(storage.release());
 
   Manager::Properties manager_props;
@@ -187,6 +207,8 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_TRUE(manager_props.offline_mode);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);
   EXPECT_EQ(portal_url, manager_props.portal_url);
+  EXPECT_EQ(portal_check_interval_int,
+            manager_props.portal_check_interval_seconds);
 }
 
 TEST_F(DefaultProfileTest, GetStoragePath) {

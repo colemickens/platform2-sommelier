@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <base/file_path.h>
+#include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -33,6 +34,9 @@ const char DefaultProfile::kStorageName[] = "Name";
 const char DefaultProfile::kStorageOfflineMode[] = "OfflineMode";
 // static
 const char DefaultProfile::kStoragePortalURL[] = "PortalURL";
+// static
+const char DefaultProfile::kStoragePortalCheckInterval[] =
+    "PortalCheckInterval";
 
 DefaultProfile::DefaultProfile(ControlInterface *control,
                                Manager *manager,
@@ -50,6 +54,8 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
                            &manager_props.offline_mode);
   store->RegisterConstString(flimflam::kPortalURLProperty,
                              &manager_props.portal_url);
+  store->RegisterConstInt32(shill::kPortalCheckIntervalProperty,
+                            &manager_props.portal_check_interval_seconds);
 }
 
 DefaultProfile::~DefaultProfile() {}
@@ -65,6 +71,14 @@ bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
                             &manager_props->portal_url)) {
     manager_props->portal_url = PortalDetector::kDefaultURL;
   }
+  std::string check_interval;
+  if (!storage()->GetString(kStorageId, kStoragePortalCheckInterval,
+                            &check_interval) ||
+      !base::StringToInt(check_interval,
+                         &manager_props->portal_check_interval_seconds)) {
+    manager_props->portal_check_interval_seconds =
+        PortalDetector::kDefaultCheckIntervalSeconds;
+  }
   return true;
 }
 
@@ -78,6 +92,9 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStoragePortalURL,
                        props_.portal_url);
+  storage()->SetString(kStorageId,
+                       kStoragePortalCheckInterval,
+                       base::IntToString(props_.portal_check_interval_seconds));
   vector<DeviceRefPtr>::iterator it;
   for (it = manager()->devices_begin(); it != manager()->devices_end(); ++it) {
     if (!(*it)->Save(storage())) {

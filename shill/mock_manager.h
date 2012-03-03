@@ -32,6 +32,7 @@ class MockManager : public Manager {
                      const std::string &entry_name));
   MOCK_METHOD1(IsPortalDetectionEnabled, bool(Technology::Identifier tech));
   MOCK_CONST_METHOD0(GetPortalCheckURL, const std::string &());
+  MOCK_CONST_METHOD0(GetPortalCheckInterval, int());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockManager);

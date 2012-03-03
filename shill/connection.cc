@@ -87,11 +87,15 @@ void Connection::SetIsDefault(bool is_default) {
 
   routing_table_->SetDefaultMetric(interface_index_, GetMetric(is_default));
 
+  is_default_ = is_default;
+
   if (is_default) {
     resolver_->SetDNSFromLists(dns_servers_, dns_domain_search_);
+    DeviceRefPtr device = device_info_->GetDevice(interface_index_);
+    if (device) {
+      device->RequestPortalDetection();
+    }
   }
-
-  is_default_ = is_default;
 }
 
 void Connection::RequestRouting() {

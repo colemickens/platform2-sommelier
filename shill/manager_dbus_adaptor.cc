@@ -135,6 +135,12 @@ void ManagerDBusAdaptor::PopAnyProfile(::DBus::Error &error) {
   e.ToDBusError(&error);
 }
 
+void ManagerDBusAdaptor::RecheckPortal(::DBus::Error &error) {
+  Error e;
+  manager_->RecheckPortal(&e);
+  e.ToDBusError(&error);
+}
+
 void ManagerDBusAdaptor::RequestScan(const string &technology,
                                      ::DBus::Error &error) {
   Error e;

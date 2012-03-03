@@ -1353,4 +1353,19 @@ TEST_F(ManagerTest, AutoConnectOnDeregister) {
   dispatcher()->DispatchPendingEvents();
 }
 
+TEST_F(ManagerTest, RecheckPortal) {
+  EXPECT_CALL(*mock_devices_[0].get(), RequestPortalDetection())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_devices_[1].get(), RequestPortalDetection())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_devices_[2].get(), RequestPortalDetection())
+      .Times(0);
+
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
+
+  manager()->RecheckPortal(NULL);
+}
+
 }  // namespace shill

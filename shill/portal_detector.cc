@@ -24,6 +24,7 @@ using std::string;
 
 namespace shill {
 
+const int PortalDetector::kDefaultCheckIntervalSeconds = 30;
 const char PortalDetector::kDefaultURL[] =
     "http://clients3.google.com/generate_204";
 const char PortalDetector::kResponseExpected[] = "HTTP/1.1 204";
@@ -61,7 +62,12 @@ PortalDetector::~PortalDetector() {
   Stop();
 }
 
-bool PortalDetector::Start(const std::string &url_string) {
+bool PortalDetector::Start(const string &url_string) {
+  return StartAfterDelay(url_string, 0);
+}
+
+bool PortalDetector::StartAfterDelay(const string &url_string,
+                                     int delay_seconds) {
   VLOG(3) << "In " << __func__;
 
   DCHECK(!request_.get());
@@ -73,7 +79,7 @@ bool PortalDetector::Start(const std::string &url_string) {
 
   request_.reset(new HTTPRequest(connection_, dispatcher_, &sockets_));
   attempt_count_ = 0;
-  StartAttempt();
+  StartAttempt(delay_seconds);
   return true;
 }
 
@@ -87,6 +93,10 @@ void PortalDetector::Stop() {
   StopAttempt();
   attempt_count_ = 0;
   request_.reset();
+}
+
+bool PortalDetector::IsInProgress() {
+  return attempt_count_ != 0;
 }
 
 // static
@@ -127,7 +137,7 @@ void PortalDetector::CompleteAttempt(Result result) {
                             StatusToString(result.status).c_str());
   StopAttempt();
   if (result.status != kStatusSuccess && attempt_count_ < kMaxRequestAttempts) {
-    StartAttempt();
+    StartAttempt(0);
   } else {
     result.final = true;
     Stop();
@@ -192,7 +202,7 @@ void PortalDetector::RequestResultCallback(
   CompleteAttempt(GetPortalResultForRequestResult(result));
 }
 
-void PortalDetector::StartAttempt() {
+void PortalDetector::StartAttempt(int init_delay_seconds) {
   int64 next_attempt_delay = 0;
   if (attempt_count_ > 0) {
     // Ensure that attempts are spaced at least by a minimal interval.
@@ -206,6 +216,8 @@ void PortalDetector::StartAttempt() {
       next_attempt_delay =
         remaining_time.tv_sec * 1000 + remaining_time.tv_usec / 1000;
     }
+  } else {
+    next_attempt_delay = init_delay_seconds * 1000;
   }
   dispatcher_->PostDelayedTask(
       task_factory_.NewRunnableMethod(&PortalDetector::StartAttemptTask),

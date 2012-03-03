@@ -97,6 +97,10 @@ class Device : public base::RefCounted<Device> {
   // is not connected.
   bool IsConnected() const;
 
+  // Requests that portal detection be done, if this device has the default
+  // connection.  Returns true if portal detection was started.
+  virtual bool RequestPortalDetection();
+
   std::string GetRpcIdentifier();
   std::string GetStorageIdentifier();
 
@@ -139,6 +143,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
+  FRIEND_TEST(DeviceTest, SetServiceConnectedState);
   FRIEND_TEST(DeviceTest, Stop);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
@@ -203,6 +208,7 @@ class Device : public base::RefCounted<Device> {
 
  private:
   friend class DeviceAdaptorInterface;
+  friend class DevicePortalDetectionTest;
   friend class DeviceTest;
   friend class CellularTest;
   friend class WiFiMainTest;
