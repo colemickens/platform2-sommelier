@@ -362,9 +362,10 @@ bool Service::Reset() {
   return true;
 }
 
-void Service::MountTaskObserve(const MountTaskResult& result) {
+bool Service::MountTaskObserve(const MountTaskResult& result) {
   // The event source will free this object
   event_source_.AddEvent(new MountTaskResult(result));
+  return false;
 }
 
 void Service::NotifyEvent(CryptohomeEventBase* event) {

@@ -94,7 +94,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   }
 
   // MountTaskObserver
-  virtual void MountTaskObserve(const MountTaskResult& result);
+  virtual bool MountTaskObserve(const MountTaskResult& result);
 
   // CryptohomeEventSourceSink
   virtual void NotifyEvent(CryptohomeEventBase* event);

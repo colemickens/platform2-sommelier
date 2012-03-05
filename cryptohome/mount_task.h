@@ -50,7 +50,7 @@ class MountTaskResult : public CryptohomeEventBase {
 
   // Constructor which sets an alternative event name. Useful
   // for using MountTaskResult for other event types.
-  MountTaskResult(const char* event_name)
+  explicit MountTaskResult(const char* event_name)
       : sequence_id_(-1),
         return_status_(false),
         return_code_(MOUNT_ERROR_NONE),
@@ -120,8 +120,9 @@ class MountTaskObserver {
   MountTaskObserver() {}
   virtual ~MountTaskObserver() {}
 
-  // Called by the MountTask when the task is complete
-  virtual void MountTaskObserve(const MountTaskResult& result) = 0;
+  // Called by the MountTask when the task is complete. If this returns true,
+  // the MountTaskObserver will be freed by the MountTask.
+  virtual bool MountTaskObserve(const MountTaskResult& result) = 0;
 };
 
 class MountTask : public Task {
@@ -199,7 +200,7 @@ class MountTask : public Task {
 // Implements a no-op task that merely posts results
 class MountTaskNop : public MountTask {
  public:
-  MountTaskNop(MountTaskObserver* observer)
+  explicit MountTaskNop(MountTaskObserver* observer)
       : MountTask(observer, NULL, UsernamePasskey()) {
   }
   virtual ~MountTaskNop() { }
@@ -383,4 +384,4 @@ class MountTaskPkcs11Init : public MountTask {
 
 }  // namespace cryptohome
 
-#endif // CRYPTOHOME_MOUNT_TASK_H_
+#endif  // CRYPTOHOME_MOUNT_TASK_H_

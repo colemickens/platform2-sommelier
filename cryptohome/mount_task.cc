@@ -37,13 +37,15 @@ int MountTask::NextSequence() {
 
 void MountTask::Notify() {
   if (observer_) {
-    observer_->MountTaskObserve(*result_);
+    if (observer_->MountTaskObserve(*result_)) {
+      delete observer_;
+      observer_ = NULL;
+    }
   }
   Signal();
 }
 
-void MountTask::Signal()
-{
+void MountTask::Signal() {
   if (complete_event_) {
     complete_event_->Signal();
   }
@@ -148,7 +150,7 @@ MountTaskPkcs11Init::MountTaskPkcs11Init(MountTaskObserver* observer,
     : MountTask(observer, mount, UsernamePasskey()),
       pkcs11_init_result_(new MountTaskResult(kPkcs11InitResultEventType)),
       default_pkcs11_initializer_(new chromeos::ProcessImpl),
-      pkcs11_initializer_(default_pkcs11_initializer_.get()){
+      pkcs11_initializer_(default_pkcs11_initializer_.get()) {
   set_result(pkcs11_init_result_.get());
 }
 
@@ -157,7 +159,7 @@ void MountTaskPkcs11Init::Run() {
     // Initialization needs to be performed in its own child process to prevent
     // the cryptohomed from being killed if the session manager decided to kill
     // all processes with open files in the user's cryptohome.
-    for(size_t i = 0; i < arraysize(kPkcs11InitCmd); ++i)
+    for (size_t i = 0; i < arraysize(kPkcs11InitCmd); ++i)
       pkcs11_initializer_->AddArg(kPkcs11InitCmd[i]);
     int init_rv = pkcs11_initializer_->Run();
     LOG(INFO) << kPkcs11InitCmd[0] << " exited with status: " << init_rv;

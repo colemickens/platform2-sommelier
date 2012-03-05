@@ -67,8 +67,9 @@ class ServiceSubclass : public Service {
       completed_tasks_() { }
   virtual ~ServiceSubclass() { }
 
-  virtual void MountTaskObserve(const MountTaskResult& result) {
+  virtual bool MountTaskObserve(const MountTaskResult& result) {
     completed_tasks_.push_back(result);
+    return false;
   }
 
   std::vector<MountTaskResult> completed_tasks_;

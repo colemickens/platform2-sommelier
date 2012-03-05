@@ -64,8 +64,9 @@ class MountTaskNotifier : public MountTaskObserver {
   virtual ~MountTaskNotifier() { }
 
   // MountTaskObserver
-  virtual void MountTaskObserve(const MountTaskResult& result) {
+  virtual bool MountTaskObserve(const MountTaskResult& result) {
     notified_ = true;
+    return false;
   }
 
   bool notified_;
@@ -237,4 +238,4 @@ TEST_F(MountTaskTest, AutomaticFreeDiskSpace) {
   ASSERT_TRUE(event_.IsSignaled());
 }
 
-} // namespace cryptohome
+}  // namespace cryptohome
