@@ -15,6 +15,7 @@
 #include "shill/dhcp_config.h"
 #include "shill/error.h"
 #include "shill/rpc_task.h"
+#include "shill/vpn.h"
 
 using std::map;
 using std::string;
@@ -36,12 +37,17 @@ const char kOpenVPNTunMTU[] = "tun_mtu";
 }  // namespace
 
 OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
+                             EventDispatcher *dispatcher,
+                             Metrics *metrics,
+                             Manager *manager,
                              DeviceInfo *device_info,
                              const KeyValueStore &args)
     : control_(control),
+      dispatcher_(dispatcher),
+      metrics_(metrics),
+      manager_(manager),
       device_info_(device_info),
-      args_(args),
-      interface_index_(-1) {}
+      args_(args) {}
 
 OpenVPNDriver::~OpenVPNDriver() {}
 
@@ -53,8 +59,13 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
 
   VLOG(2) << "Claiming " << link_name << " for OpenVPN tunnel";
 
-  // TODO(petkov): Could create a VPNDevice or DeviceStub here instead.
-  interface_index_ = interface_index;
+  CHECK(!device_);
+  device_ = new VPN(control_, dispatcher_, metrics_, manager_,
+                    link_name, interface_index);
+
+  // TODO(petkov): Allocate rpc_task_.
+
+  // TODO(petkov): Initialize options and spawn openvpn.
   return true;
 }
 
@@ -146,8 +157,12 @@ void OpenVPNDriver::ParseForeignOption(const string &option,
 }
 
 void OpenVPNDriver::Connect(Error *error) {
-  // TODO(petkov): Allocate rpc_task_.
-  error->Populate(Error::kNotSupported);
+  if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
+    Error::PopulateAndLog(
+        error, Error::kInternalError, "Could not create tunnel interface.");
+    return;
+  }
+  // Wait for the ClaimInterface callback to continue the connection process.
 }
 
 void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
@@ -168,13 +183,7 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   options->push_back("--persist-key");
   options->push_back("--persist-tun");
 
-  if (tunnel_interface_.empty() &&
-      !device_info_->CreateTunnelInterface(&tunnel_interface_)) {
-    Error::PopulateAndLog(
-        error, Error::kInternalError, "Could not create tunnel interface.");
-    return;
-  }
-
+  CHECK(!tunnel_interface_.empty());
   options->push_back("--dev");
   options->push_back(tunnel_interface_);
   options->push_back("--dev-type");

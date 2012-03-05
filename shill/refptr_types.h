@@ -21,6 +21,10 @@ class Ethernet;
 typedef scoped_refptr<const Ethernet> EthernetConstRefPtr;
 typedef scoped_refptr<Ethernet> EthernetRefPtr;
 
+class VPN;
+typedef scoped_refptr<const VPN> VPNConstRefPtr;
+typedef scoped_refptr<VPN> VPNRefPtr;
+
 class WiFi;
 typedef scoped_refptr<const WiFi> WiFiConstRefPtr;
 typedef scoped_refptr<WiFi> WiFiRefPtr;

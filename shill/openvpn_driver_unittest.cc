@@ -13,8 +13,12 @@
 #include "shill/ipconfig.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_glib.h"
+#include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/nice_mock_control.h"
 #include "shill/rpc_task.h"
+#include "shill/vpn.h"
 
 using std::map;
 using std::string;
@@ -31,7 +35,9 @@ class OpenVPNDriverTest : public testing::Test,
  public:
   OpenVPNDriverTest()
       : device_info_(&control_, NULL, NULL, NULL),
-        driver_(&control_, &device_info_, args_) {}
+        manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        driver_(&control_, &dispatcher_, &metrics_, &manager_, &device_info_,
+                args_) {}
 
   virtual ~OpenVPNDriverTest() {}
 
@@ -57,6 +63,10 @@ class OpenVPNDriverTest : public testing::Test,
 
   NiceMockControl control_;
   MockDeviceInfo device_info_;
+  EventDispatcher dispatcher_;
+  MockMetrics metrics_;
+  MockGLib glib_;
+  MockManager manager_;
   KeyValueStore args_;
   OpenVPNDriver driver_;
 };
@@ -89,9 +99,22 @@ void OpenVPNDriverTest::ExpectInFlags(const vector<string> &options,
 
 
 TEST_F(OpenVPNDriverTest, Connect) {
-  Error error;
-  driver_.Connect(&error);
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  const string kInterfaceName("tun0");
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_))
+      .WillOnce(Return(false))
+      .WillOnce(DoAll(SetArgumentPointee<0>(kInterfaceName), Return(true)));
+  {
+    Error error;
+    driver_.Connect(&error);
+    EXPECT_EQ(Error::kInternalError, error.type());
+    EXPECT_TRUE(driver_.tunnel_interface_.empty());
+  }
+  {
+    Error error;
+    driver_.Connect(&error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(kInterfaceName, driver_.tunnel_interface_);
+  }
 }
 
 TEST_F(OpenVPNDriverTest, Notify) {
@@ -174,8 +197,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   Error error;
   vector<string> options;
   const string kInterfaceName("tun0");
-  EXPECT_CALL(device_info_, CreateTunnelInterface(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kInterfaceName), Return(true)));
+  driver_.tunnel_interface_ = kInterfaceName;
   driver_.InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ("--client", options[0]);
@@ -228,10 +250,11 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   driver_.tunnel_interface_ = kInterfaceName;
   const int kInterfaceIndex = 1122;
   EXPECT_FALSE(driver_.ClaimInterface(kInterfaceName + "XXX", kInterfaceIndex));
-  EXPECT_EQ(-1, driver_.interface_index_);
+  EXPECT_FALSE(driver_.device_);
 
   EXPECT_TRUE(driver_.ClaimInterface(kInterfaceName, kInterfaceIndex));
-  EXPECT_EQ(kInterfaceIndex, driver_.interface_index_);
+  ASSERT_TRUE(driver_.device_);
+  EXPECT_EQ(kInterfaceIndex, driver_.device_->interface_index());
 }
 
 }  // namespace shill

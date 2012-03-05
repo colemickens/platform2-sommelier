@@ -177,6 +177,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	rpc_task.o \
 	rpc_task_dbus_adaptor.o \
 	technology.o \
+	vpn.o \
 	vpn_provider.o \
 	vpn_service.o \
 	wifi.o \
@@ -286,6 +287,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	testrunner.o \
 	vpn_provider_unittest.o \
 	vpn_service_unittest.o \
+	vpn_unittest.o \
 	wifi_endpoint_unittest.o \
 	wifi_service_unittest.o \
 	wifi_unittest.o \

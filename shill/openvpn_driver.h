@@ -14,6 +14,7 @@
 
 #include "shill/ipconfig.h"
 #include "shill/key_value_store.h"
+#include "shill/refptr_types.h"
 #include "shill/vpn_driver.h"
 
 namespace shill {
@@ -21,12 +22,18 @@ namespace shill {
 class ControlInterface;
 class DeviceInfo;
 class Error;
+class EventDispatcher;
+class Manager;
+class Metrics;
 class RPCTask;
 class DeviceStub;
 
 class OpenVPNDriver : public VPNDriver {
  public:
   OpenVPNDriver(ControlInterface *control,
+                EventDispatcher *dispatcher,
+                Metrics *metrics,
+                Manager *manager,
                 DeviceInfo *device_info,
                 const KeyValueStore &args);
   virtual ~OpenVPNDriver();
@@ -34,16 +41,22 @@ class OpenVPNDriver : public VPNDriver {
   bool Notify(const std::string &reason,
               const std::map<std::string, std::string> &dict);
 
-  // Inherited from VPNDriver.
+  // Inherited from VPNDriver. |Connect| initiates the VPN connection by
+  // creating a tunnel device. When the device index becomes available, this
+  // instance is notified through |ClaimInterface| and resumes the connection
+  // process by setting up and spawning an external 'openvpn' process. IP
+  // configuration settings are passed back from the external process through
+  // the |Notify| RPC service method.
+  virtual void Connect(Error *error);
   virtual bool ClaimInterface(const std::string &link_name,
                               int interface_index);
-  virtual void Connect(Error *error);
 
  private:
   friend class OpenVPNDriverTest;
   FRIEND_TEST(OpenVPNDriverTest, AppendFlag);
   FRIEND_TEST(OpenVPNDriverTest, AppendValueOption);
   FRIEND_TEST(OpenVPNDriverTest, ClaimInterface);
+  FRIEND_TEST(OpenVPNDriverTest, Connect);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
@@ -72,11 +85,14 @@ class OpenVPNDriver : public VPNDriver {
                   std::vector<std::string> *options);
 
   ControlInterface *control_;
+  EventDispatcher *dispatcher_;
+  Metrics *metrics_;
+  Manager *manager_;
   DeviceInfo *device_info_;
   KeyValueStore args_;
   scoped_ptr<RPCTask> rpc_task_;
   std::string tunnel_interface_;
-  int interface_index_;
+  VPNRefPtr device_;
 
   DISALLOW_COPY_AND_ASSIGN(OpenVPNDriver);
 };
