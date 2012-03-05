@@ -8,11 +8,13 @@
 #include <map>
 #include <string>
 #include <tr1/memory>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/dbus_objectmanager_proxy_interface.h"
 #include "shill/glib.h"
 
 struct mobile_provider_db;
@@ -20,6 +22,8 @@ struct mobile_provider_db;
 namespace shill {
 
 class ControlInterface;
+class DBusObjectManagerProxyDelegate;
+class DBusObjectManagerProxyInterface;
 class EventDispatcher;
 class Manager;
 class Metrics;
@@ -38,7 +42,7 @@ class ModemManager {
                Manager *manager,
                GLib *glib,
                mobile_provider_db *provider_db);
-  ~ModemManager();
+  virtual ~ModemManager();
 
   // Starts watching for and handling the DBus modem manager service.
   void Start();
@@ -70,15 +74,20 @@ class ModemManager {
   virtual void Disconnect();
 
  private:
-  friend class ModemManagerTest;
+  friend class ModemManagerCoreTest;
+  friend class ModemManagerClassicTest;
+  friend class ModemManager1Test;
+
   FRIEND_TEST(ModemInfoTest, RegisterModemManager);
-  FRIEND_TEST(ModemManagerTest, AddRemoveModem);
-  FRIEND_TEST(ModemManagerTest, Connect);
-  FRIEND_TEST(ModemManagerTest, Disconnect);
-  FRIEND_TEST(ModemManagerTest, OnAppear);
-  FRIEND_TEST(ModemManagerTest, OnVanish);
-  FRIEND_TEST(ModemManagerTest, Start);
-  FRIEND_TEST(ModemManagerTest, Stop);
+  FRIEND_TEST(ModemManager1Test, AddRemoveInterfaces);
+  FRIEND_TEST(ModemManager1Test, Connect);
+  FRIEND_TEST(ModemManagerClassicTest, Connect);
+  FRIEND_TEST(ModemManagerCoreTest, AddRemoveModem);
+  FRIEND_TEST(ModemManagerCoreTest, Connect);
+  FRIEND_TEST(ModemManagerCoreTest, Disconnect);
+  FRIEND_TEST(ModemManagerCoreTest, OnAppearVanish);
+  FRIEND_TEST(ModemManagerCoreTest, Start);
+  FRIEND_TEST(ModemManagerCoreTest, Stop);
 
   // DBus service watcher callbacks.
   static void OnAppear(GDBusConnection *connection,
@@ -136,12 +145,54 @@ class ModemManagerClassic : public ModemManager {
  private:
   scoped_ptr<ModemManagerProxyInterface> proxy_;  // DBus service proxy
 
-  FRIEND_TEST(ModemManagerTest, Connect);
-  FRIEND_TEST(ModemManagerTest, Disconnect);
-  FRIEND_TEST(ModemManagerTest, OnAppear);
-  FRIEND_TEST(ModemManagerTest, OnVanish);
+  FRIEND_TEST(ModemManagerClassicTest, Connect);
 
   DISALLOW_COPY_AND_ASSIGN(ModemManagerClassic);
+};
+
+class ModemManager1 : public ModemManager,
+                      public DBusObjectManagerProxyDelegate {
+ public:
+  ModemManager1(const std::string &service,
+                const std::string &path,
+                ControlInterface *control_interface,
+                EventDispatcher *dispatcher,
+                Metrics *metrics,
+                Manager *manager,
+                GLib *glib,
+                mobile_provider_db *provider_db);
+
+  virtual ~ModemManager1();
+
+  static const char kDBusInterfaceModem[];
+
+ protected:
+  // ModemManager methods
+  virtual void Connect(const std::string &owner);
+  virtual void Disconnect();
+  virtual void InitModem(std::tr1::shared_ptr<Modem> modem);
+
+  // DBusObjectManagerProxyDelegate signal methods
+  virtual void OnInterfacesAdded(
+      const ::DBus::Path &object_path,
+      const DBusInterfaceToProperties &interface_to_properties);
+  virtual void OnInterfacesRemoved(
+      const ::DBus::Path &object_path,
+      const std::vector<std::string> &interfaces);
+
+  // DBusObjectManagerProxyDelegate method callbacks
+  virtual void OnGetManagedObjectsCallback(
+      const DBusObjectsWithProperties &objects_with_properties,
+      const Error &error,
+      AsyncCallHandler *call_handler);
+
+ private:
+  FRIEND_TEST(ModemManager1Test, Connect);
+  FRIEND_TEST(ModemManager1Test, AddRemoveInterfaces);
+
+  scoped_ptr<DBusObjectManagerProxyInterface> proxy_;
+
+  DISALLOW_COPY_AND_ASSIGN(ModemManager1);
 };
 }  // namespace shill
 

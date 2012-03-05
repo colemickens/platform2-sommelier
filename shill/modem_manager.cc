@@ -4,9 +4,12 @@
 
 #include "shill/modem_manager.h"
 
+#include <algorithm>
+
 #include <base/logging.h>
 #include <base/stl_util.h>
 
+#include "shill/async_call_handler.h"
 #include "shill/modem.h"
 #include "shill/modem_manager_proxy.h"
 #include "shill/proxy_factory.h"
@@ -16,7 +19,6 @@ using std::tr1::shared_ptr;
 using std::vector;
 
 namespace shill {
-
 ModemManager::ModemManager(const string &service,
                            const string &path,
                            ControlInterface *control_interface,
@@ -121,8 +123,8 @@ void ModemManager::OnDeviceInfoAvailable(const string &link_name) {
 }
 
 // ModemManagerClassic
-ModemManagerClassic::ModemManagerClassic(const std::string &service,
-                                         const std::string &path,
+ModemManagerClassic::ModemManagerClassic(const string &service,
+                                         const string &path,
                                          ControlInterface *control_interface,
                                          EventDispatcher *dispatcher,
                                          Metrics *metrics,
@@ -159,6 +161,85 @@ void ModemManagerClassic::Disconnect() {
 
 void ModemManagerClassic::InitModem(shared_ptr<Modem> modem) {
   modem->Init();
+}
+
+// ModemManager1
+const char ModemManager1::kDBusInterfaceModem[] =
+    "org.freedesktop.ModemManager1.Modem";
+
+ModemManager1::ModemManager1(const string &service,
+                             const string &path,
+                             ControlInterface *control_interface,
+                             EventDispatcher *dispatcher,
+                             Metrics *metrics,
+                             Manager *manager,
+                             GLib *glib,
+                             mobile_provider_db *provider_db) :
+    ModemManager(service,
+                 path,
+                 control_interface,
+                 dispatcher,
+                 metrics,
+                 manager,
+                 glib,
+                 provider_db) {}
+
+ModemManager1::~ModemManager1() {}
+
+void ModemManager1::Connect(const string &supplied_owner) {
+  ModemManager::Connect(supplied_owner);
+  proxy_.reset(
+      proxy_factory()->CreateDBusObjectManagerProxy(this, path(), owner()));
+
+  // TODO(rochberg):  Make global kDBusDefaultTimeout and use it here
+  proxy_->GetManagedObjects(new AsyncCallHandler(NULL), 5000);
+}
+
+void ModemManager1::Disconnect() {
+  ModemManager::Disconnect();
+  proxy_.reset();
+}
+
+void ModemManager1::InitModem(shared_ptr<Modem> modem) {
+  LOG(ERROR) << __func__;
+}
+
+// DBusObjectManagerProxyDelegate signal methods
+// Also called by OnGetManagedObjectsCallback
+void ModemManager1::OnInterfacesAdded(
+    const ::DBus::Path &object_path,
+    const DBusInterfaceToProperties &interface_to_properties) {
+  if (ContainsKey(interface_to_properties, kDBusInterfaceModem)) {
+    AddModem(object_path);
+  } else {
+    LOG(ERROR) << "Interfaces added, but not modem interface.";
+  }
+}
+
+void ModemManager1::OnInterfacesRemoved(
+    const ::DBus::Path &object_path,
+    const vector<string> &interfaces) {
+  LOG(INFO) << "MM1:  Removing interfaces from " << object_path;
+  if (find(interfaces.begin(),
+           interfaces.end(),
+           kDBusInterfaceModem) != interfaces.end()) {
+    RemoveModem(object_path);
+  } else {
+    // In theory, a modem could drop, say, 3GPP, but not CDMA.  In
+    // practice, we don't expect this
+    LOG(ERROR) << "Interfaces removed, but not modem interface";
+  }
+}
+
+// DBusObjectManagerProxy async method call
+void ModemManager1::OnGetManagedObjectsCallback(
+    const DBusObjectsWithProperties &objects,
+    const Error &error,
+    AsyncCallHandler * /* call_handler */) {
+  DBusObjectsWithProperties::const_iterator m;
+  for (m = objects.begin(); m != objects.end(); ++m) {
+    OnInterfacesAdded(m->first, m->second);
+  }
 }
 
 }  // namespace shill

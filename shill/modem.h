@@ -50,10 +50,9 @@ class Modem : public DBusPropertiesProxyDelegate,
   void OnDeviceInfoAvailable(const std::string &link_name);
 
  private:
-  friend class ModemManagerTest;
   friend class ModemTest;
-  FRIEND_TEST(ModemManagerTest, Connect);
-  FRIEND_TEST(ModemManagerTest, AddRemoveModem);
+  FRIEND_TEST(ModemManagerClassicTest, Connect);
+  FRIEND_TEST(ModemManagerCoreTest, AddRemoveModem);
   FRIEND_TEST(ModemTest, CreateDeviceFromProperties);
   FRIEND_TEST(ModemTest, Init);
 

@@ -47,10 +47,9 @@ class ModemInfo {
   static const char kCromoPath[];
   static const char kMobileProviderDBPath[];
 
-  // Registers a new ModemManager service handler and starts it.
-  void RegisterModemManager(const std::string &service,
-                            const std::string &path);
-
+  // Register and start new ModemManagers
+  template <class mm> void RegisterModemManager(const std::string &service,
+                                                const std::string &path);
   ModemManagers modem_managers_;
 
   ControlInterface *control_interface_;

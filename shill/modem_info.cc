@@ -16,6 +16,13 @@ namespace shill {
 
 const char ModemInfo::kCromoService[] = "org.chromium.ModemManager";
 const char ModemInfo::kCromoPath[] = "/org/chromium/ModemManager";
+
+// TODO(rochberg): Fix modemmanager-next-interfaces ebuild to include
+// these so that we can simply include ModemManager.h and use these
+// defines
+#define MM_DBUS_PATH    "/org/freedesktop/ModemManager1"
+#define MM_DBUS_SERVICE "org.freedesktop.ModemManager1"
+
 const char ModemInfo::kMobileProviderDBPath[] =
     "/usr/share/mobile-broadband-provider-info/serviceproviders.bfd";
 
@@ -42,8 +49,10 @@ void ModemInfo::Start() {
   provider_db_ = mobile_provider_open_db(provider_db_path_.c_str());
   PLOG_IF(WARNING, !provider_db_)
       << "Unable to load mobile provider database: ";
-  RegisterModemManager(MM_MODEMMANAGER_SERVICE, MM_MODEMMANAGER_PATH);
-  RegisterModemManager(kCromoService, kCromoPath);
+  RegisterModemManager<ModemManagerClassic>(MM_MODEMMANAGER_SERVICE,
+                                            MM_MODEMMANAGER_PATH);
+  RegisterModemManager<ModemManagerClassic>(kCromoService, kCromoPath);
+  RegisterModemManager<ModemManager1>(MM_DBUS_SERVICE, MM_DBUS_PATH);
 }
 
 void ModemInfo::Stop() {
@@ -59,18 +68,18 @@ void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
   }
 }
 
+template <class mm>
 void ModemInfo::RegisterModemManager(const string &service,
                                      const string &path) {
-  ModemManager *manager = new ModemManagerClassic(service,
-                                                  path,
-                                                  control_interface_,
-                                                  dispatcher_,
-                                                  metrics_,
-                                                  manager_,
-                                                  glib_,
-                                                  provider_db_);
+  ModemManager *manager = new mm(service,
+                                 path,
+                                 control_interface_,
+                                 dispatcher_,
+                                 metrics_,
+                                 manager_,
+                                 glib_,
+                                 provider_db_);
   modem_managers_.push_back(manager);  // Passes ownership.
   manager->Start();
 }
-
 }  // namespace shill
