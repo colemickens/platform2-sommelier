@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 
+#include "shill/dbus_objectmanager_proxy.h"
 #include "shill/dbus_properties_proxy.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/modem_cdma_proxy.h"
@@ -38,6 +39,13 @@ void ProxyFactory::Init() {
   CHECK(DBus::default_dispatcher);  // Initialized in DBusControl::Init.
   CHECK(!connection_.get());
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
+}
+
+DBusObjectManagerProxyInterface *ProxyFactory::CreateDBusObjectManagerProxy(
+    DBusObjectManagerProxyDelegate *delegate,
+    const string &path,
+    const string &service) {
+  return new DBusObjectManagerProxy(delegate, connection(), path, service);
 }
 
 DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
