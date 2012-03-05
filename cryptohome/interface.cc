@@ -122,7 +122,6 @@ gboolean cryptohome_mount(Cryptohome *self,
                           gboolean *OUT_result,
                           GError **error) {
   CRYPTOHOME_WRAP_METHOD(Mount, userid, key, create_if_missing,
-                         replace_tracked_directories, tracked_directories,
                          OUT_error_code, OUT_result);
 }
 gboolean cryptohome_async_mount(Cryptohome *self,
@@ -134,7 +133,6 @@ gboolean cryptohome_async_mount(Cryptohome *self,
                                 gint *OUT_async_id,
                                 GError **error) {
   CRYPTOHOME_WRAP_METHOD(AsyncMount, userid, key, create_if_missing,
-                         replace_tracked_directories, tracked_directories,
                          OUT_async_id);
 }
 gboolean cryptohome_mount_guest(Cryptohome *self,

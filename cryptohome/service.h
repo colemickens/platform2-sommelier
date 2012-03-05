@@ -133,20 +133,16 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                     gboolean *OUT_is_mounted,
                                     GError **error);
   virtual gboolean IsMounted(gboolean *OUT_is_mounted, GError **error);
-  virtual gboolean Mount(gchar *user,
-                         gchar *key,
+  virtual gboolean Mount(const gchar *user,
+                         const gchar *key,
                          gboolean create_if_missing,
-                         gboolean deprecated_replace_tracked_subdirectories,
-                         gchar** deprecated_tracked_subdirectories,
                          gint *OUT_error_code,
                          gboolean *OUT_result,
                          GError **error);
   virtual gboolean AsyncMount(
-      gchar *user,
-      gchar *key,
+      const gchar *user,
+      const gchar *key,
       gboolean create_if_missing,
-      gboolean deprecated_replace_tracked_subdirectories,
-      gchar** deprecated_tracked_subdirectories,
       gint *OUT_async_id,
       GError **error);
   virtual gboolean MountGuest(gint *OUT_error_code,

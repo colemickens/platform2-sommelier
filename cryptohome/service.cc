@@ -561,11 +561,9 @@ gboolean Service::IsMountedForUser(gchar *userid,
   return TRUE;
 }
 
-gboolean Service::Mount(gchar *userid,
-                        gchar *key,
+gboolean Service::Mount(const gchar *userid,
+                        const gchar *key,
                         gboolean create_if_missing,
-                        gboolean deprecated_replace_tracked_subdirectories,
-                        gchar** deprecated_tracked_subdirectories,
                         gint *OUT_error_code,
                         gboolean *OUT_result,
                         GError **error) {
@@ -626,11 +624,9 @@ gboolean Service::Mount(gchar *userid,
   return TRUE;
 }
 
-gboolean Service::AsyncMount(gchar *userid,
-                             gchar *key,
+gboolean Service::AsyncMount(const gchar *userid,
+                             const gchar *key,
                              gboolean create_if_missing,
-                             gboolean deprecated_replace_tracked_subdirectories,
-                             gchar** deprecated_tracked_subdirectories,
                              gint *OUT_async_id,
                              GError **error) {
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
