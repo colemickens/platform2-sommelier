@@ -65,7 +65,7 @@ class MountTaskResult : public CryptohomeEventBase {
         return_status_(rhs.return_status_),
         return_code_(rhs.return_code_),
         event_name_(rhs.event_name_),
-        mount_(NULL) { }
+        mount_(rhs.mount_) { }
 
   virtual ~MountTaskResult() { }
 
@@ -115,7 +115,7 @@ class MountTaskResult : public CryptohomeEventBase {
     return *this;
   }
 
-  virtual const char* GetEventName() {
+  virtual const char* GetEventName() const {
     return event_name_;
   }
 

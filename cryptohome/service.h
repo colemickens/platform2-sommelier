@@ -38,7 +38,6 @@ class TimerCollection;
 //
 // ::g_type_init() must be called before this class is used.
 class Service : public chromeos::dbus::AbstractDbusService,
-                public MountTaskObserver,
                 public CryptohomeEventSourceSink,
                 public TpmInit::TpmInitCallback {
  public:
@@ -92,9 +91,6 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual void set_use_tpm(bool value) {
     use_tpm_ = value;
   }
-
-  // MountTaskObserver
-  virtual bool MountTaskObserve(const MountTaskResult& result);
 
   // CryptohomeEventSourceSink
   virtual void NotifyEvent(CryptohomeEventBase* event);
@@ -208,6 +204,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
 
   // Checks if the machine is enterprise owned and report to mount_ then.
   virtual void DetectEnterpriseOwnership() const;
+
+  // Runs the event loop once. Only for testing.
+  virtual void DispatchEvents();
 
  private:
   bool CreateSystemSaltIfNeeded();

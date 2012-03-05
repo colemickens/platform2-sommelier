@@ -146,7 +146,7 @@ class TpmInitStatus : public CryptohomeEventBase {
         status_(false) { }
   virtual ~TpmInitStatus() { }
 
-  virtual const char* GetEventName() {
+  virtual const char* GetEventName() const {
     return kTpmInitStatusEventType;
   }
 
@@ -169,6 +169,28 @@ class TpmInitStatus : public CryptohomeEventBase {
  private:
   bool took_ownership_;
   bool status_;
+};
+
+// Bridges between the MountTaskObserver callback model and the
+// CryptohomeEventSource callback model. This class forwards MountTaskObserver
+// events to a CryptohomeEventSource. An instance of this class is single-use
+// (i.e., will be freed after it has observed one event).
+class MountTaskObserverBridge : public MountTaskObserver {
+ public:
+  explicit MountTaskObserverBridge(cryptohome::Mount* mount,
+                                   CryptohomeEventSource* source)
+    : mount_(mount), source_(source) { }
+  virtual ~MountTaskObserverBridge() { }
+  virtual bool MountTaskObserve(const MountTaskResult& result) {
+    MountTaskResult *r = new MountTaskResult(result);
+    r->set_mount(mount_);
+    source_->AddEvent(r);
+    return true;
+  }
+
+ protected:
+  cryptohome::Mount* mount_;
+  CryptohomeEventSource* source_;
 };
 
 Service::Service()
@@ -321,7 +343,10 @@ void Service::InitializePkcs11() {
   // MountTaskPkcs11_Init would set it in the service thread via NotifyEvent().
   timer_collection_->UpdateTimer(TimerCollection::kPkcs11InitTimer, true);
   pkcs11_state_ = kIsBeingInitialized;
-  MountTaskPkcs11Init* pkcs11_init_task = new MountTaskPkcs11Init(this, mount_);
+  MountTaskObserverBridge* bridge =
+      new MountTaskObserverBridge(mount_, &event_source_);
+  MountTaskPkcs11Init* pkcs11_init_task =
+      new MountTaskPkcs11Init(bridge, mount_);
   LOG(INFO) << "Putting a Pkcs11_Initialize on the mount thread.";
   mount_thread_.message_loop()->PostTask(FROM_HERE, pkcs11_init_task);
 }
@@ -360,12 +385,6 @@ bool Service::Reset() {
   // Install the local event source for handling async results
   event_source_.Reset(this, g_main_loop_get_context(loop_));
   return true;
-}
-
-bool Service::MountTaskObserve(const MountTaskResult& result) {
-  // The event source will free this object
-  event_source_.AddEvent(new MountTaskResult(result));
-  return false;
 }
 
 void Service::NotifyEvent(CryptohomeEventBase* event) {
@@ -470,8 +489,10 @@ gboolean Service::AsyncCheckKey(gchar *userid,
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
 
   // Freed by the message loop
+  MountTaskObserverBridge* bridge =
+      new MountTaskObserverBridge(mount_, &event_source_);
   MountTaskTestCredentials* mount_task = new MountTaskTestCredentials(
-      this,
+      bridge,
       mount_,
       credentials);
   *OUT_async_id = mount_task->sequence_id();
@@ -505,8 +526,10 @@ gboolean Service::AsyncMigrateKey(gchar *userid,
                                   GError **error) {
   UsernamePasskey credentials(userid, SecureBlob(to_key, strlen(to_key)));
 
+  MountTaskObserverBridge* bridge =
+      new MountTaskObserverBridge(mount_, &event_source_);
   MountTaskMigratePasskey* mount_task =
-      new MountTaskMigratePasskey(this, mount_, credentials, from_key);
+      new MountTaskMigratePasskey(bridge, mount_, credentials, from_key);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
   return TRUE;
@@ -519,8 +542,10 @@ gboolean Service::Remove(gchar *userid,
 
   MountTaskResult result;
   base::WaitableEvent event(true, false);
+  MountTaskObserverBridge* bridge =
+      new MountTaskObserverBridge(mount_, &event_source_);
   MountTaskRemove* mount_task =
-      new MountTaskRemove(this, mount_, credentials);
+      new MountTaskRemove(bridge, mount_, credentials);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
@@ -534,8 +559,10 @@ gboolean Service::AsyncRemove(gchar *userid,
                               GError **error) {
   UsernamePasskey credentials(userid, chromeos::Blob());
 
+  MountTaskObserverBridge* bridge =
+      new MountTaskObserverBridge(mount_, &event_source_);
   MountTaskRemove* mount_task =
-      new MountTaskRemove(this, mount_, credentials);
+      new MountTaskRemove(bridge, mount_, credentials);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
   return TRUE;
@@ -635,7 +662,9 @@ gboolean Service::AsyncMount(const gchar *userid,
   if (mount_->IsCryptohomeMounted()) {
     if (mount_->IsCryptohomeMountedForUser(credentials)) {
       LOG(INFO) << "Cryptohome already mounted for this user";
-      MountTaskNop* mount_task = new MountTaskNop(this);
+      MountTaskObserverBridge* bridge =
+          new MountTaskObserverBridge(mount_, &event_source_);
+      MountTaskNop* mount_task = new MountTaskNop(bridge);
       mount_task->result()->set_return_code(MOUNT_ERROR_NONE);
       mount_task->result()->set_return_status(true);
       *OUT_async_id = mount_task->sequence_id();
@@ -646,7 +675,9 @@ gboolean Service::AsyncMount(const gchar *userid,
     } else {
       if (!mount_->UnmountCryptohome()) {
         LOG(ERROR) << "Could not unmount cryptohome from previous user";
-        MountTaskNop* mount_task = new MountTaskNop(this);
+        MountTaskObserverBridge* bridge =
+            new MountTaskObserverBridge(mount_, &event_source_);
+        MountTaskNop* mount_task = new MountTaskNop(bridge);
         mount_task->result()->set_return_code(
             MOUNT_ERROR_MOUNT_POINT_BUSY);
         mount_task->result()->set_return_status(false);
@@ -664,7 +695,9 @@ gboolean Service::AsyncMount(const gchar *userid,
   timer_collection_->UpdateTimer(TimerCollection::kAsyncMountTimer, true);
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
-  MountTaskMount* mount_task = new MountTaskMount(this,
+  MountTaskObserverBridge *bridge =
+      new MountTaskObserverBridge(mount_, &event_source_);
+  MountTaskMount* mount_task = new MountTaskMount(bridge,
                                                   mount_,
                                                   credentials,
                                                   mount_args);
@@ -712,7 +745,9 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
   if (mount_->IsCryptohomeMounted()) {
     if (!mount_->UnmountCryptohome()) {
       LOG(ERROR) << "Could not unmount cryptohome from previous user";
-      MountTaskNop* mount_task = new MountTaskNop(this);
+      MountTaskObserverBridge* bridge =
+          new MountTaskObserverBridge(mount_, &event_source_);
+      MountTaskNop* mount_task = new MountTaskNop(bridge);
       mount_task->result()->set_return_code(
           MOUNT_ERROR_MOUNT_POINT_BUSY);
       mount_task->result()->set_return_status(false);
@@ -723,7 +758,9 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
   }
 
   timer_collection_->UpdateTimer(TimerCollection::kAsyncGuestMountTimer, true);
-  MountTaskMountGuest* mount_task = new MountTaskMountGuest(this, mount_);
+  MountTaskObserverBridge* bridge =
+      new MountTaskObserverBridge(mount_, &event_source_);
+  MountTaskMountGuest* mount_task = new MountTaskMountGuest(bridge, mount_);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
   async_guest_mount_sequence_id_ = mount_task->sequence_id();
@@ -1073,6 +1110,10 @@ bool Service::CreateSystemSaltIfNeeded() {
   FilePath saltfile(kSaltFilePath);
   return crypto_->GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH,
                                   false, &system_salt_);
+}
+
+void Service::DispatchEvents() {
+  event_source_.HandleDispatch();
 }
 
 }  // namespace cryptohome

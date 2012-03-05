@@ -1,4 +1,4 @@
-// Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -107,7 +107,7 @@ class CryptohomeEventBase {
   CryptohomeEventBase() { }
   virtual ~CryptohomeEventBase() { }
 
-  virtual const char* GetEventName() = 0;
+  virtual const char* GetEventName() const = 0;
 };
 
 class CryptohomeEventSourceSink {
@@ -117,4 +117,4 @@ class CryptohomeEventSourceSink {
 
 }  // namespace cryptohome
 
-#endif // CRYPTOHOME_CRYPTOHOME_EVENT_SOURCE_H_
+#endif  // CRYPTOHOME_CRYPTOHOME_EVENT_SOURCE_H_

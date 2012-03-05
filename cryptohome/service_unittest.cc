@@ -67,9 +67,15 @@ class ServiceSubclass : public Service {
       completed_tasks_() { }
   virtual ~ServiceSubclass() { }
 
-  virtual bool MountTaskObserve(const MountTaskResult& result) {
-    completed_tasks_.push_back(result);
-    return false;
+  virtual void NotifyEvent(CryptohomeEventBase* result) {
+    if (strcmp(result->GetEventName(), kMountTaskResultEventType))
+      return;
+    MountTaskResult* r = static_cast<MountTaskResult*>(result);
+    completed_tasks_.push_back(*r);
+  }
+
+  virtual void Dispatch() {
+    DispatchEvents();
   }
 
   std::vector<MountTaskResult> completed_tasks_;
@@ -131,6 +137,7 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   EXPECT_NE(-1, async_id);
   for (unsigned int i = 0; i < 64; i++) {
     bool found = false;
+    service.Dispatch();
     for (unsigned int j = 0; j < service.completed_tasks_.size(); j++) {
       if (service.completed_tasks_[j].sequence_id() == async_id) {
         out = service.completed_tasks_[j].return_status();
