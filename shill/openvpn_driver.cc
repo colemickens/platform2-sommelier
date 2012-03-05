@@ -86,6 +86,7 @@ void OpenVPNDriver::ParseIPConfiguration(
     const map<string, string> &configuration,
     IPConfig::Properties *properties) {
   ForeignOptions foreign_options;
+  RouteOptions routes;
   string trusted_ip;
   properties->address_family = IPAddress::kFamilyIPv4;
   for (map<string, string>::const_iterator it = configuration.begin();
@@ -122,13 +123,15 @@ void OpenVPNDriver::ParseIPConfiguration(
         LOG(ERROR) << "Ignored unexpected foreign option suffix: " << suffix;
       }
     } else if (StartsWithASCII(key, kOpenVPNRouteOptionPrefix, false)) {
-      // TODO(petkov): Process the route.
+      ParseRouteOption(key.substr(strlen(kOpenVPNRouteOptionPrefix)),
+                       value, &routes);
     } else {
       VLOG(2) << "Key ignored.";
     }
   }
   // TODO(petkov): If gateway and trusted_ip, pin a host route to VPN server.
   ParseForeignOptions(foreign_options, properties);
+  SetRoutes(routes, properties);
 }
 
 // static
@@ -153,6 +156,52 @@ void OpenVPNDriver::ParseForeignOption(const string &option,
     properties->domain_search.push_back(tokens[2]);
   } else if (LowerCaseEqualsASCII(tokens[1], "dns")) {
     properties->dns_servers.push_back(tokens[2]);
+  }
+}
+
+// static
+IPConfig::Route *OpenVPNDriver::GetRouteOptionEntry(
+    const string &prefix, const string &key, RouteOptions *routes) {
+  int order = 0;
+  if (!StartsWithASCII(key, prefix, false) ||
+      !base::StringToInt(key.substr(prefix.size()), &order)) {
+    return NULL;
+  }
+  return &(*routes)[order];
+}
+
+// static
+void OpenVPNDriver::ParseRouteOption(
+    const string &key, const string &value, RouteOptions *routes) {
+  IPConfig::Route *route = GetRouteOptionEntry("network_", key, routes);
+  if (route) {
+    route->host = value;
+    return;
+  }
+  route = GetRouteOptionEntry("netmask_", key, routes);
+  if (route) {
+    route->netmask = value;
+    return;
+  }
+  route = GetRouteOptionEntry("gateway_", key, routes);
+  if (route) {
+    route->gateway = value;
+    return;
+  }
+  LOG(WARNING) << "Unknown route option ignored: " << key;
+}
+
+// static
+void OpenVPNDriver::SetRoutes(const RouteOptions &routes,
+                              IPConfig::Properties *properties) {
+  for (RouteOptions::const_iterator it = routes.begin();
+       it != routes.end(); ++it) {
+    const IPConfig::Route &route = it->second;
+    if (route.host.empty() || route.netmask.empty() || route.gateway.empty()) {
+      LOG(WARNING) << "Ignoring incomplete route: " << it->first;
+      continue;
+    }
+    properties->routes.push_back(route);
   }
 }
 

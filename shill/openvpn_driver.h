@@ -57,15 +57,19 @@ class OpenVPNDriver : public VPNDriver {
   FRIEND_TEST(OpenVPNDriverTest, AppendValueOption);
   FRIEND_TEST(OpenVPNDriverTest, ClaimInterface);
   FRIEND_TEST(OpenVPNDriverTest, Connect);
+  FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
+  FRIEND_TEST(OpenVPNDriverTest, ParseRouteOption);
+  FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
 
   // The map is a sorted container that allows us to iterate through the options
   // in order.
   typedef std::map<int, std::string> ForeignOptions;
+  typedef std::map<int, IPConfig::Route> RouteOptions;
 
   static void ParseIPConfiguration(
       const std::map<std::string, std::string> &configuration,
@@ -74,6 +78,14 @@ class OpenVPNDriver : public VPNDriver {
                                   IPConfig::Properties *properties);
   static void ParseForeignOption(const std::string &option,
                                  IPConfig::Properties *properties);
+  static IPConfig::Route *GetRouteOptionEntry(const std::string &prefix,
+                                              const std::string &key,
+                                              RouteOptions *routes);
+  static void ParseRouteOption(const std::string &key,
+                               const std::string &value,
+                               RouteOptions *routes);
+  static void SetRoutes(const RouteOptions &routes,
+                        IPConfig::Properties *properties);
 
   void InitOptions(std::vector<std::string> *options, Error *error);
 

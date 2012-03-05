@@ -17,6 +17,7 @@
 #include "shill/ip_address.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
+#include "shill/routing_table_entry.h"
 
 namespace shill {
 class ControlInterface;
@@ -28,6 +29,12 @@ class StoreInterface;
 // class.
 class IPConfig : public base::RefCounted<IPConfig> {
  public:
+  struct Route {
+    std::string host;
+    std::string netmask;
+    std::string gateway;
+  };
+
   struct Properties {
     Properties() : address_family(IPAddress::kFamilyUnknown),
                    subnet_cidr(0),
@@ -44,6 +51,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
     std::string method;
     std::string peer_address;
     int32 mtu;
+    std::vector<Route> routes;
   };
 
   IPConfig(ControlInterface *control_interface, const std::string &device_name);
