@@ -490,6 +490,24 @@ class Mount : public EntropySource {
     old_user_last_activity_time_ = value;
   }
 
+  // Flag indicating if PKCS#11 is ready.
+  typedef enum {
+    kUninitialized = 0,  // PKCS#11 initialization hasn't been attempted.
+    kIsWaitingOnTPM,  // PKCS#11 initialization is waiting on TPM ownership,
+    kIsBeingInitialized,  // PKCS#11 is being attempted asynchronously.
+    kIsInitialized,  // PKCS#11 was attempted and succeeded.
+    kIsFailed,  // PKCS#11 was attempted and failed.
+    kInvalidState,  // We should never be in this state.
+  } Pkcs11State;
+
+  void set_pkcs11_state(Pkcs11State value) {
+    pkcs11_state_ = value;
+  }
+
+  Pkcs11State pkcs11_state() {
+    return pkcs11_state_;
+  }
+
  protected:
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
   friend class MakeTests;
@@ -726,6 +744,8 @@ class Mount : public EntropySource {
 
   // Time delta of last user's activity to be considered as old.
   base::TimeDelta old_user_last_activity_time_;
+
+  Pkcs11State pkcs11_state_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
 

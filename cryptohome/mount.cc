@@ -86,7 +86,8 @@ Mount::Mount()
       default_user_timestamp_(new UserOldestActivityTimestampCache()),
       user_timestamp_(default_user_timestamp_.get()),
       enterprise_owned_(false),
-      old_user_last_activity_time_(kOldUserLastActivityTime) {
+      old_user_last_activity_time_(kOldUserLastActivityTime),
+      pkcs11_state_(kUninitialized) {
 }
 
 Mount::~Mount() {

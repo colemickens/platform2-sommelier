@@ -213,7 +213,6 @@ Service::Service()
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       update_user_activity_period_(kUpdateUserActivityPeriod - 1),
-      pkcs11_state_(kUninitialized),
       async_mount_pkcs11_init_sequence_id_(-1),
       async_guest_mount_sequence_id_(-1),
       timer_collection_(new TimerCollection()),
@@ -326,7 +325,7 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
   if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned()) {
     LOG(WARNING) << "TPM was not owned. TPM initialization call back will"
                  << " handle PKCS#11 initialization.";
-    pkcs11_state_ = kIsWaitingOnTPM;
+    mount->set_pkcs11_state(cryptohome::Mount::kIsWaitingOnTPM);
     return;
   }
 
@@ -343,7 +342,7 @@ void Service::InitializePkcs11(cryptohome::Mount* mount) {
   // Reset PKCS#11 initialization status. A successful completion of
   // MountTaskPkcs11_Init would set it in the service thread via NotifyEvent().
   timer_collection_->UpdateTimer(TimerCollection::kPkcs11InitTimer, true);
-  pkcs11_state_ = kIsBeingInitialized;
+  mount->set_pkcs11_state(cryptohome::Mount::kIsBeingInitialized);
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(mount, &event_source_);
   MountTaskPkcs11Init* pkcs11_init_task =
@@ -421,7 +420,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     if (result->return_status()) {
       timer_collection_->UpdateTimer(TimerCollection::kPkcs11InitTimer, false);
       LOG(INFO) << "PKCS#11 initialization succeeded.";
-      pkcs11_state_ = kIsInitialized;
+      result->mount()->set_pkcs11_state(cryptohome::Mount::kIsInitialized);
       return;
     }
     // We only report failures on the PKCS#11 initialization once per
@@ -433,7 +432,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
           << "Failed to report a failure on PKCS#11 initialization.";
     }
     LOG(ERROR) << "PKCS#11 initialization failed.";
-    pkcs11_state_ = kIsFailed;
+    result->mount()->set_pkcs11_state(cryptohome::Mount::kIsFailed);
   }
 }
 
@@ -451,7 +450,7 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     event.Wait();
     // Check if we have a pending pkcs11 init task due to tpm ownership
     // not being done earlier. Trigger initialization if so.
-    if (pkcs11_state_ == kIsWaitingOnTPM) {
+    if (mount_->pkcs11_state() == cryptohome::Mount::kIsWaitingOnTPM) {
       InitializePkcs11(mount_);
     }
     // Initialize the install-time locked attributes since we
@@ -645,7 +644,7 @@ gboolean Service::Mount(const gchar *userid,
   if (result.return_status() && !result.return_code())
     timer_collection_->UpdateTimer(TimerCollection::kSyncMountTimer, false);
 
-  pkcs11_state_ = kUninitialized;
+  mount_->set_pkcs11_state(cryptohome::Mount::kUninitialized);
   InitializePkcs11(mount_);
 
   *OUT_error_code = result.return_code();
@@ -707,7 +706,7 @@ gboolean Service::AsyncMount(const gchar *userid,
 
   LOG(INFO) << "Asynced Mount() requested. Tracking request sequence id"
             << " for later PKCS#11 initialization.";
-  pkcs11_state_ = kUninitialized;
+  mount_->set_pkcs11_state(cryptohome::Mount::kUninitialized);
   async_mount_pkcs11_init_sequence_id_ = mount_task->sequence_id();
   return TRUE;
 }
@@ -774,13 +773,13 @@ gboolean Service::Unmount(gboolean *OUT_result, GError **error) {
   } else {
     *OUT_result = true;
   }
-  if (pkcs11_state_ == kIsBeingInitialized) {
+  if (mount_->pkcs11_state() == cryptohome::Mount::kIsBeingInitialized) {
     // TODO(gauravsh): Need a better strategy on how to deal with an ongoing
     // initialization on the mount thread. Can we kill it?
     LOG(WARNING) << "Unmount request received while PKCS#11 init in progress";
   }
   // Reset PKCS#11 initialization state.
-  pkcs11_state_ = kUninitialized;
+  mount_->set_pkcs11_state(cryptohome::Mount::kUninitialized);
   // And also reset its 'failure reported' state.
   reported_pkcs11_init_fail_ = false;
   return TRUE;
@@ -840,7 +839,7 @@ gboolean Service::TpmClearStoredPassword(GError** error) {
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   // TODO(gauravsh): Give out more information here. The state of PKCS#11
   // initialization, and it it failed - the reason for that.
-  *OUT_ready = (pkcs11_state_ == kIsInitialized);
+  *OUT_ready = (mount_->pkcs11_state() == cryptohome::Mount::kIsInitialized);
   return TRUE;
 }
 
@@ -1063,7 +1062,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
       (install_attrs_->is_first_install() ? "1" : "0"),
       install_attrs_size,
       install_attrs_data.c_str(),
-      pkcs11_state_);
+      mount_->pkcs11_state());
   return TRUE;
 }
 
