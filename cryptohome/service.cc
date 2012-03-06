@@ -321,7 +321,7 @@ void Service::InitializeInstallAttributes(bool first_time) {
   DetectEnterpriseOwnership();
 }
 
-void Service::InitializePkcs11() {
+void Service::InitializePkcs11(cryptohome::Mount* mount) {
   // Wait for ownership if there is a working TPM.
   if (tpm_ && tpm_->IsEnabled() && !tpm_->IsOwned()) {
     LOG(WARNING) << "TPM was not owned. TPM initialization call back will"
@@ -333,7 +333,8 @@ void Service::InitializePkcs11() {
   // Ok, so the TPM is owned. Time to request asynchronous initialization of
   // PKCS#11.
   // Make sure cryptohome is mounted, otherwise all of this is for naught.
-  if (!mount_->IsCryptohomeMounted()) {
+  CHECK(mount);
+  if (!mount->IsCryptohomeMounted()) {
     LOG(WARNING) << "PKCS#11 initialization requested but cryptohome is"
                  << " not mounted.";
     return;
@@ -344,9 +345,9 @@ void Service::InitializePkcs11() {
   timer_collection_->UpdateTimer(TimerCollection::kPkcs11InitTimer, true);
   pkcs11_state_ = kIsBeingInitialized;
   MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount_, &event_source_);
+      new MountTaskObserverBridge(mount, &event_source_);
   MountTaskPkcs11Init* pkcs11_init_task =
-      new MountTaskPkcs11Init(bridge, mount_);
+      new MountTaskPkcs11Init(bridge, mount);
   LOG(INFO) << "Putting a Pkcs11_Initialize on the mount thread.";
   mount_thread_.message_loop()->PostTask(FROM_HERE, pkcs11_init_task);
 }
@@ -402,7 +403,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
                                        false);
       }
       // Time to push the task for PKCS#11 initialization.
-      InitializePkcs11();
+      InitializePkcs11(result->mount());
     } else if (result->sequence_id() == async_guest_mount_sequence_id_) {
       if (result->return_status() && !result->return_code()) {
         timer_collection_->UpdateTimer(TimerCollection::kAsyncGuestMountTimer,
@@ -451,7 +452,7 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     // Check if we have a pending pkcs11 init task due to tpm ownership
     // not being done earlier. Trigger initialization if so.
     if (pkcs11_state_ == kIsWaitingOnTPM) {
-      InitializePkcs11();
+      InitializePkcs11(mount_);
     }
     // Initialize the install-time locked attributes since we
     // can't do it prior to ownership.
@@ -607,7 +608,7 @@ gboolean Service::Mount(const gchar *userid,
       // As far as PKCS#11 initialization goes, we treat this as a brand new
       // mount request. InitializePkcs11() will detect and re-initialize if
       // necessary.
-      InitializePkcs11();
+      InitializePkcs11(mount_);
       *OUT_error_code = MOUNT_ERROR_NONE;
       *OUT_result = TRUE;
       return TRUE;
@@ -645,7 +646,7 @@ gboolean Service::Mount(const gchar *userid,
     timer_collection_->UpdateTimer(TimerCollection::kSyncMountTimer, false);
 
   pkcs11_state_ = kUninitialized;
-  InitializePkcs11();
+  InitializePkcs11(mount_);
 
   *OUT_error_code = result.return_code();
   *OUT_result = result.return_status();
@@ -670,7 +671,7 @@ gboolean Service::AsyncMount(const gchar *userid,
       *OUT_async_id = mount_task->sequence_id();
       mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
       // See comment in Service::Mount() above on why this is needed here.
-      InitializePkcs11();
+      InitializePkcs11(mount_);
       return TRUE;
     } else {
       if (!mount_->UnmountCryptohome()) {

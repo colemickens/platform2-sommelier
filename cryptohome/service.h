@@ -49,7 +49,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual bool Initialize();
   virtual bool SeedUrandom();
   virtual void InitializeInstallAttributes(bool first_time);
-  virtual void InitializePkcs11();
+  virtual void InitializePkcs11(cryptohome::Mount* mount);
   virtual bool Reset();
 
   // Used internally during registration to set the
