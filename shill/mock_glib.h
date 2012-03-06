@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -104,6 +104,17 @@ class MockGLib : public GLib {
                                     gpointer user_data,
                                     GPid *child_pid,
                                     GError **error));
+  MOCK_METHOD10(SpawnAsyncWithPipesCWD,
+                gboolean(gchar **argv,
+                         gchar **envp,
+                         GSpawnFlags flags,
+                         GSpawnChildSetupFunc child_setup,
+                         gpointer user_data,
+                         GPid *child_pid,
+                         gint *standard_input,
+                         gint *standard_output,
+                         gint *standard_error,
+                         GError **error));
   MOCK_METHOD1(SpawnClosePID, void(GPid pid));
   MOCK_METHOD1(Strfreev, void(gchar **str_array));
   MOCK_METHOD0(TypeInit, void());

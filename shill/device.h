@@ -65,8 +65,6 @@ class Device : public base::RefCounted<Device> {
 
   virtual void LinkEvent(unsigned flags, unsigned change);
 
-  virtual void ConfigIP() {}
-
   // The default implementation sets |error| to kNotSupported.
   virtual void Scan(Error *error);
   virtual void RegisterOnNetwork(const std::string &network_id,

@@ -12,9 +12,11 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/glib.h"
 #include "shill/ipconfig.h"
 #include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
+#include "shill/rpc_task.h"
 #include "shill/vpn_driver.h"
 
 namespace shill {
@@ -25,21 +27,18 @@ class Error;
 class EventDispatcher;
 class Manager;
 class Metrics;
-class RPCTask;
-class DeviceStub;
 
-class OpenVPNDriver : public VPNDriver {
+class OpenVPNDriver : public VPNDriver,
+                      public RPCTaskDelegate {
  public:
   OpenVPNDriver(ControlInterface *control,
                 EventDispatcher *dispatcher,
                 Metrics *metrics,
                 Manager *manager,
                 DeviceInfo *device_info,
+                GLib *glib,
                 const KeyValueStore &args);
   virtual ~OpenVPNDriver();
-
-  bool Notify(const std::string &reason,
-              const std::map<std::string, std::string> &dict);
 
   // Inherited from VPNDriver. |Connect| initiates the VPN connection by
   // creating a tunnel device. When the device index becomes available, this
@@ -56,15 +55,19 @@ class OpenVPNDriver : public VPNDriver {
   FRIEND_TEST(OpenVPNDriverTest, AppendFlag);
   FRIEND_TEST(OpenVPNDriverTest, AppendValueOption);
   FRIEND_TEST(OpenVPNDriverTest, ClaimInterface);
+  FRIEND_TEST(OpenVPNDriverTest, Cleanup);
   FRIEND_TEST(OpenVPNDriverTest, Connect);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
+  FRIEND_TEST(OpenVPNDriverTest, Notify);
+  FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
   FRIEND_TEST(OpenVPNDriverTest, ParseRouteOption);
   FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
+  FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
 
   // The map is a sorted container that allows us to iterate through the options
   // in order.
@@ -96,15 +99,33 @@ class OpenVPNDriver : public VPNDriver {
                   const std::string &option,
                   std::vector<std::string> *options);
 
+  bool SpawnOpenVPN();
+  void Cleanup();
+
+  // Called when the openpvn process exits.
+  static void OnOpenVPNDied(GPid pid, gint status, gpointer data);
+
+  // Implements RPCTaskDelegate.
+  virtual void Notify(const std::string &reason,
+                      const std::map<std::string, std::string> &dict);
+
   ControlInterface *control_;
   EventDispatcher *dispatcher_;
   Metrics *metrics_;
   Manager *manager_;
   DeviceInfo *device_info_;
+  GLib *glib_;
   KeyValueStore args_;
   scoped_ptr<RPCTask> rpc_task_;
   std::string tunnel_interface_;
   VPNRefPtr device_;
+
+  // The PID of the spawned openvpn process. May be 0 if no process has been
+  // spawned yet or the process has died.
+  int pid_;
+
+  // Child exit watch callback source tag.
+  unsigned int child_watch_tag_;
 
   DISALLOW_COPY_AND_ASSIGN(OpenVPNDriver);
 };

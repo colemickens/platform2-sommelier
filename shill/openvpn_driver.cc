@@ -24,6 +24,7 @@ using std::vector;
 namespace shill {
 
 namespace {
+const char kOpenVPNPath[] = "/usr/sbin/openvpn";
 const char kOpenVPNScript[] = "/usr/lib/flimflam/scripts/openvpn-script";
 const char kOpenVPNForeignOptionPrefix[] = "foreign_option_";
 const char kOpenVPNIfconfigBroadcast[] = "ifconfig_broadcast";
@@ -41,15 +42,95 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
                              Metrics *metrics,
                              Manager *manager,
                              DeviceInfo *device_info,
+                             GLib *glib,
                              const KeyValueStore &args)
     : control_(control),
       dispatcher_(dispatcher),
       metrics_(metrics),
       manager_(manager),
       device_info_(device_info),
-      args_(args) {}
+      glib_(glib),
+      args_(args),
+      pid_(0),
+      child_watch_tag_(0) {}
 
-OpenVPNDriver::~OpenVPNDriver() {}
+OpenVPNDriver::~OpenVPNDriver() {
+  Cleanup();
+}
+
+void OpenVPNDriver::Cleanup() {
+  if (child_watch_tag_) {
+    glib_->SourceRemove(child_watch_tag_);
+    child_watch_tag_ = 0;
+    CHECK(pid_);
+    kill(pid_, SIGTERM);
+  }
+  if (pid_) {
+    glib_->SpawnClosePID(pid_);
+    pid_ = 0;
+  }
+  rpc_task_.reset();
+  if (device_) {
+    int interface_index = device_->interface_index();
+    device_->Stop();
+    device_ = NULL;
+    device_info_->DeleteInterface(interface_index);
+  }
+  tunnel_interface_.clear();
+}
+
+bool OpenVPNDriver::SpawnOpenVPN() {
+  VLOG(2) << __func__ << "(" << tunnel_interface_ << ")";
+
+  vector<string> options;
+  Error error;
+  InitOptions(&options, &error);
+  if (error.IsFailure()) {
+    return false;
+  }
+  VLOG(2) << "OpenVPN process options: " << JoinString(options, ' ');
+
+  // TODO(petkov): This code needs to be abstracted away in a separate external
+  // process module (crosbug.com/27131).
+  vector<char *> process_args;
+  process_args.push_back(const_cast<char *>(kOpenVPNPath));
+  for (vector<string>::const_iterator it = options.begin();
+       it != options.end(); ++it) {
+    process_args.push_back(const_cast<char *>(it->c_str()));
+  }
+  process_args.push_back(NULL);
+  char *envp[1] = { NULL };
+
+  CHECK(!pid_);
+  // Redirect all openvpn output to stderr.
+  int stderr_fd = fileno(stderr);
+  if (!glib_->SpawnAsyncWithPipesCWD(process_args.data(),
+                                     envp,
+                                     G_SPAWN_DO_NOT_REAP_CHILD,
+                                     NULL,
+                                     NULL,
+                                     &pid_,
+                                     NULL,
+                                     &stderr_fd,
+                                     &stderr_fd,
+                                     NULL)) {
+    LOG(ERROR) << "Unable to spawn: " << kOpenVPNPath;
+    return false;
+  }
+  CHECK(!child_watch_tag_);
+  child_watch_tag_ = glib_->ChildWatchAdd(pid_, OnOpenVPNDied, this);
+  return true;
+}
+
+// static
+void OpenVPNDriver::OnOpenVPNDied(GPid pid, gint status, gpointer data) {
+  VLOG(2) << __func__ << "(" << pid << ", "  << status << ")";
+  OpenVPNDriver *me = reinterpret_cast<OpenVPNDriver *>(data);
+  me->child_watch_tag_ = 0;
+  CHECK_EQ(pid, me->pid_);
+  me->Cleanup();
+  // TODO(petkov): Figure if we need to restart the connection.
+}
 
 bool OpenVPNDriver::ClaimInterface(const string &link_name,
                                    int interface_index) {
@@ -62,23 +143,23 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   CHECK(!device_);
   device_ = new VPN(control_, dispatcher_, metrics_, manager_,
                     link_name, interface_index);
-
-  // TODO(petkov): Allocate rpc_task_.
-
-  // TODO(petkov): Initialize options and spawn openvpn.
+  device_->Start();
+  rpc_task_.reset(new RPCTask(control_, this));
+  if (!SpawnOpenVPN()) {
+    Cleanup();
+  }
   return true;
 }
 
-bool OpenVPNDriver::Notify(const string &reason,
+void OpenVPNDriver::Notify(const string &reason,
                            const map<string, string> &dict) {
   VLOG(2) << __func__ << "(" << reason << ")";
   if (reason != "up") {
-    return false;
+    return;
   }
   IPConfig::Properties properties;
   ParseIPConfiguration(dict, &properties);
   // TODO(petkov): Apply the properties to a VPNDevice's IPConfig.
-  return true;
 }
 
 // static

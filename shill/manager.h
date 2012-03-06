@@ -139,6 +139,7 @@ class Manager {
   VPNProvider *vpn_provider() { return &vpn_provider_; }
   PropertyStore *mutable_store() { return &store_; }
   virtual const PropertyStore &store() const { return store_; }
+  GLib *glib() const { return glib_; }
 
   std::vector<DeviceRefPtr>::iterator devices_begin() {
     return devices_.begin();

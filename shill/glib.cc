@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -195,6 +195,29 @@ gboolean GLib::SpawnAsync(const gchar *working_directory,
                        user_data,
                        child_pid,
                        error);
+}
+
+gboolean GLib::SpawnAsyncWithPipesCWD(gchar **argv,
+                                      gchar **envp,
+                                      GSpawnFlags flags,
+                                      GSpawnChildSetupFunc child_setup,
+                                      gpointer user_data,
+                                      GPid *child_pid,
+                                      gint *standard_input,
+                                      gint *standard_output,
+                                      gint *standard_error,
+                                      GError **error) {
+  return g_spawn_async_with_pipes(NULL,
+                                  argv,
+                                  envp,
+                                  flags,
+                                  child_setup,
+                                  user_data,
+                                  child_pid,
+                                  standard_input,
+                                  standard_output,
+                                  standard_error,
+                                  error);
 }
 
 void GLib::SpawnClosePID(GPid pid) {

@@ -262,6 +262,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_supplicant_interface_proxy.o \
 	mock_supplicant_process_proxy.o \
 	mock_time.o \
+	mock_vpn.o \
 	mock_vpn_driver.o \
 	mock_wifi.o \
 	mock_wifi_service.o \

@@ -46,7 +46,7 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
   if (type == flimflam::kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(
         control_interface_, dispatcher_, metrics_, manager_,
-        manager_->device_info(), args));
+        manager_->device_info(), manager_->glib(), args));
   } else {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Unsupported VPN type: " + type);
