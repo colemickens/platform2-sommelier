@@ -245,7 +245,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   bool reported_pkcs11_init_fail_;
 
   // Tracks Mount objects for each user by username.
-  std::map<const std::string, cryptohome::Mount*> mounts_;
+  typedef std::map<const std::string, cryptohome::Mount*> MountMap;
+  MountMap mounts_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
