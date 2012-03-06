@@ -1092,10 +1092,11 @@ void Service::DetectEnterpriseOwnership() const {
   static const char true_str[] = "true";
   const chromeos::Blob true_value(true_str, true_str + arraysize(true_str));
   chromeos::Blob value;
-  if (install_attrs_->Get("enterprise.owned", &value) &&
-      value == true_value) {
-    mount_->set_enterprise_owned(true);
-  }
+  if (install_attrs_->Get("enterprise.owned", &value) && value == true_value)
+    // Tell every mount that it is enterprise-owned.
+    for (MountMap::const_iterator it = mounts_.begin();
+         it != mounts_.end(); ++it)
+      it->second->set_enterprise_owned(true);
 }
 
 cryptohome::Mount* Service::GetOrCreateMountForUser(
