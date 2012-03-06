@@ -213,7 +213,6 @@ Service::Service()
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       update_user_activity_period_(kUpdateUserActivityPeriod - 1),
-      async_mount_pkcs11_init_sequence_id_(-1),
       async_guest_mount_sequence_id_(-1),
       timer_collection_(new TimerCollection()),
       reported_pkcs11_init_fail_(false) {
@@ -392,10 +391,10 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     MountTaskResult* result = static_cast<MountTaskResult*>(event);
     g_signal_emit(cryptohome_, async_complete_signal_, 0, result->sequence_id(),
                   result->return_status(), result->return_code());
-    if (result->sequence_id() == async_mount_pkcs11_init_sequence_id_) {
+    if (result->pkcs11_init()) {
       LOG(INFO) << "An asynchronous mount request with sequence id: "
-                << async_mount_pkcs11_init_sequence_id_
-                << " finished.";
+                << result->sequence_id()
+                << " finished; doing PKCS11 init...";
       // We only report successful mounts.
       if (result->return_status() && !result->return_code()) {
         timer_collection_->UpdateTimer(TimerCollection::kAsyncMountTimer,
@@ -701,13 +700,13 @@ gboolean Service::AsyncMount(const gchar *userid,
                                                   mount_,
                                                   credentials,
                                                   mount_args);
+  mount_task->result()->set_pkcs11_init(true);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
 
   LOG(INFO) << "Asynced Mount() requested. Tracking request sequence id"
             << " for later PKCS#11 initialization.";
   mount_->set_pkcs11_state(cryptohome::Mount::kUninitialized);
-  async_mount_pkcs11_init_sequence_id_ = mount_task->sequence_id();
   return TRUE;
 }
 
