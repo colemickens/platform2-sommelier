@@ -49,7 +49,7 @@ class ServiceInterfaceTest : public ::testing::Test {
     char* buf = new char[file_size];
     int data_read = file_util::ReadFile(path, buf, file_size);
     system_salt_.assign(buf, buf + data_read);
-    delete buf;
+    delete[] buf;
   }
 
  protected:

@@ -80,7 +80,7 @@ class MountTest : public ::testing::Test {
     int data_read = file_util::ReadFile(path, buf, file_size);
     system_salt_.assign(buf, buf + data_read);
     chromeos::cryptohome::home::SetSystemSaltPath(path.value());
-    delete buf;
+    delete[] buf;
   }
 
   bool LoadSerializedKeyset(const std::string& key_path,
