@@ -48,7 +48,8 @@ class MountTaskResult : public CryptohomeEventBase {
         return_code_(MOUNT_ERROR_NONE),
         event_name_(kMountTaskResultEventType),
         mount_(NULL),
-        pkcs11_init_(false) { }
+        pkcs11_init_(false),
+        guest_(false) { }
 
   // Constructor which sets an alternative event name. Useful
   // for using MountTaskResult for other event types.
@@ -58,7 +59,8 @@ class MountTaskResult : public CryptohomeEventBase {
         return_code_(MOUNT_ERROR_NONE),
         event_name_(event_name),
         mount_(NULL),
-        pkcs11_init_(false) { }
+        pkcs11_init_(false),
+        guest_(false) { }
 
   // Copy constructor is necessary for inserting MountTaskResult into the events
   // vector in CryptohomeEventSource.
@@ -68,7 +70,8 @@ class MountTaskResult : public CryptohomeEventBase {
         return_code_(rhs.return_code_),
         event_name_(rhs.event_name_),
         mount_(rhs.mount_),
-        pkcs11_init_(false) { }
+        pkcs11_init_(rhs.pkcs11_init_),
+        guest_(rhs.guest_) { }
 
   virtual ~MountTaskResult() { }
 
@@ -118,6 +121,14 @@ class MountTaskResult : public CryptohomeEventBase {
     pkcs11_init_ = false;
   }
 
+  bool guest() const {
+    return guest_;
+  }
+
+  void set_guest(bool value) {
+    guest_ = value;
+  }
+
   MountTaskResult& operator=(const MountTaskResult& rhs) {
     sequence_id_ = rhs.sequence_id_;
     return_status_ = rhs.return_status_;
@@ -125,6 +136,7 @@ class MountTaskResult : public CryptohomeEventBase {
     event_name_ = rhs.event_name_;
     mount_ = rhs.mount_;
     pkcs11_init_ = rhs.pkcs11_init_;
+    guest_ = rhs.guest_;
     return *this;
   }
 
@@ -139,6 +151,7 @@ class MountTaskResult : public CryptohomeEventBase {
   const char* event_name_;
   Mount* mount_;
   bool pkcs11_init_;
+  bool guest_;
 };
 
 class MountTaskObserver {

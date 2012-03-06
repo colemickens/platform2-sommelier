@@ -213,7 +213,6 @@ Service::Service()
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       update_user_activity_period_(kUpdateUserActivityPeriod - 1),
-      async_guest_mount_sequence_id_(-1),
       timer_collection_(new TimerCollection()),
       reported_pkcs11_init_fail_(false) {
 }
@@ -402,7 +401,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
       }
       // Time to push the task for PKCS#11 initialization.
       InitializePkcs11(result->mount());
-    } else if (result->sequence_id() == async_guest_mount_sequence_id_) {
+    } else if (result->guest()) {
       if (result->return_status() && !result->return_code()) {
         timer_collection_->UpdateTimer(TimerCollection::kAsyncGuestMountTimer,
                                        false);
@@ -760,9 +759,9 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(mount_, &event_source_);
   MountTaskMountGuest* mount_task = new MountTaskMountGuest(bridge, mount_);
+  mount_task->result()->set_guest(true);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
-  async_guest_mount_sequence_id_ = mount_task->sequence_id();
   return TRUE;
 }
 

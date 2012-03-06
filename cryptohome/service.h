@@ -235,8 +235,6 @@ class Service : public chromeos::dbus::AbstractDbusService,
   scoped_ptr<cryptohome::InstallAttributes> default_install_attrs_;
   cryptohome::InstallAttributes* install_attrs_;
   int update_user_activity_period_;
-  // Sequence id of an asynchronous guest mount request. Needed for the timer.
-  int async_guest_mount_sequence_id_;
   // Metrics library used by all metrics reporters in cryptohome.
   MetricsLibrary metrics_lib_;
   // Collection of timers for UMA reports.
