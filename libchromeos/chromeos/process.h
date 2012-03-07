@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/string_util.h>
+#include <base/stringprintf.h>
 
 namespace chromeos {
 // Manages a process.  Can create the process, attach to an existing
