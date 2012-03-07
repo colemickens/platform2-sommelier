@@ -5,6 +5,8 @@
 #ifndef SHILL_WIFI_
 #define SHILL_WIFI_
 
+#include <time.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -78,6 +80,7 @@ class WiFi : public Device {
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
+  FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiPropertyTest, ClearDerivedProperty);  // bgscan_method_
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
@@ -93,6 +96,7 @@ class WiFi : public Device {
   static const char kManagerErrorSSIDRequired[];
   static const char kManagerErrorUnsupportedSecurityMode[];
   static const char kManagerErrorUnsupportedServiceMode[];
+  static const time_t kMaxBSSResumeAgeSeconds;
   static const char kInterfaceStateUnknown[];
 
   std::string CreateBgscanConfigString();
@@ -154,6 +158,7 @@ class WiFi : public Device {
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
+  Time *time_;
 
   ScopedRunnableMethodFactory<WiFi> task_factory_;
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
@@ -177,6 +182,10 @@ class WiFi : public Device {
   std::string supplicant_bss_;
   // Signifies that ClearCachedCredentialsTask() is pending.
   bool clear_cached_credentials_pending_;
+  // Indicates that we should flush supplicant's BSS cache after the
+  // next scan completes.
+  bool need_bss_flush_;
+  struct timeval resumed_at_;
 
   // Properties
   std::string bgscan_method_;

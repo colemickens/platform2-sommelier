@@ -42,6 +42,7 @@
 #include "shill/mock_supplicant_bss_proxy.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
+#include "shill/mock_time.h"
 #include "shill/mock_wifi_service.h"
 #include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
@@ -197,6 +198,8 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
 
     // |manager_| takes ownership of |power_manager_|.
     manager_.set_power_manager(power_manager_);
+
+    wifi_->time_ = &time_;
   }
 
   virtual void SetUp() {
@@ -449,6 +452,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
 
   EventDispatcher dispatcher_;
   NiceMock<MockRTNLHandler> rtnl_handler_;
+  MockTime time_;
 
  private:
   NiceMockControl control_interface_;
@@ -572,6 +576,7 @@ TEST_F(WiFiMainTest, PowerChangeToResumeStartsScanWhenIdle) {
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
+  ReportScanDone();
   ASSERT_TRUE(power_state_callback() != NULL);
   ASSERT_TRUE(wifi()->IsIdle());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
@@ -1698,6 +1703,23 @@ TEST_F(WiFiMainTest, BSSRemovedDestroysBSSProxy) {
   // Check this now, to make sure RemoveBSS killed the proxy (rather
   // than TearDown).
   Mock::VerifyAndClearExpectations(proxy);
+}
+
+TEST_F(WiFiMainTest, FlushBSSOnResume) {
+  const struct timeval resume_time = {1, 0};
+  const struct timeval scan_done_time = {6, 0};
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+
+  EXPECT_CALL(time_, GetTimeMonotonic(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(resume_time), Return(0)))
+      .WillOnce(DoAll(SetArgumentPointee<0>(scan_done_time), Return(0)));
+  EXPECT_CALL(supplicant_interface_proxy,
+              FlushBSS(WiFi::kMaxBSSResumeAgeSeconds + 5));
+  power_state_callback()->Run(PowerManagerProxyDelegate::kOn);
+  ReportScanDone();
 }
 
 }  // namespace shill

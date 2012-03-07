@@ -4,7 +4,6 @@
 
 #include "shill/wifi.h"
 
-#include <time.h>
 #include <stdio.h>
 #include <string.h>
 #include <netinet/ether.h>
@@ -36,6 +35,7 @@
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
+#include "shill/shill_time.h"
 #include "shill/store_interface.h"
 #include "shill/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant_process_proxy_interface.h"
@@ -69,6 +69,9 @@ const char WiFi::kManagerErrorUnsupportedSecurityMode[] =
     "security mode is unsupported";
 const char WiFi::kManagerErrorUnsupportedServiceMode[] =
     "service mode is unsupported";
+// Age (in seconds) beyond which a BSS cache entry will not be preserved,
+// across a suspend/resume.
+const time_t WiFi::kMaxBSSResumeAgeSeconds = 10;
 const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
 
 WiFi::WiFi(ControlInterface *control_interface,
@@ -87,16 +90,20 @@ WiFi::WiFi(ControlInterface *control_interface,
              interface_index,
              Technology::kWifi),
       proxy_factory_(ProxyFactory::GetInstance()),
+      time_(Time::GetInstance()),
       task_factory_(this),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
       clear_cached_credentials_pending_(false),
+      need_bss_flush_(false),
       bgscan_method_(kDefaultBgscanMethod),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_pending_(false),
       scan_interval_seconds_(kDefaultScanIntervalSeconds) {
   PropertyStore *store = this->mutable_store();
+  resumed_at_.tv_sec = 0;
+  resumed_at_.tv_usec = 0;
   HelpRegisterDerivedString(store,
                             flimflam::kBgscanMethodProperty,
                             &WiFi::GetBgscanMethod,
@@ -927,7 +934,18 @@ void WiFi::PropertiesChangedTask(
 }
 
 void WiFi::ScanDoneTask() {
-  VLOG(2) << __func__;
+  VLOG(2) << __func__ << " need_bss_flush_ " << need_bss_flush_;
+  if (need_bss_flush_) {
+    CHECK(supplicant_interface_proxy_ != NULL);
+    // Compute |max_age| relative to |resumed_at_|, to account for the
+    // time taken to scan.
+    struct timeval now;
+    uint32_t max_age;
+    time_->GetTimeMonotonic(&now);
+    max_age = kMaxBSSResumeAgeSeconds + (now.tv_sec - resumed_at_.tv_sec);
+    supplicant_interface_proxy_->FlushBSS(max_age);
+    need_bss_flush_ = false;
+  }
   scan_pending_ = false;
 }
 
@@ -1160,8 +1178,25 @@ void WiFi::HelpRegisterDerivedUint16(
 }
 
 void WiFi::HandlePowerStateChange(PowerManager::SuspendState new_state) {
-  if ((new_state == PowerManagerProxyDelegate::kOn) && IsIdle()) {
-    Scan(NULL);
+  LOG(INFO) << __func__;
+  if (new_state == PowerManagerProxyDelegate::kOn) {
+    // We want to flush the BSS cache, but we don't want to conflict
+    // with a running scan or an active connection attempt. So record
+    // the need to flush, and take care of flushing when the next scan
+    // completes.
+    //
+    // Note that supplicant will automatically expire old cache
+    // entries (after, e.g., a BSS is not found in two consecutive
+    // scans). However, our explicit flush accelerates re-association
+    // in cases where a BSS disappeared while we were asleep. (See,
+    // e.g. WiFiRoaming.005SuspendRoam.)
+    time_->GetTimeMonotonic(&resumed_at_);
+    need_bss_flush_ = true;
+
+    if (!scan_pending_ && IsIdle()) {
+      // Not scanning/connecting/connected, so let's get things rolling.
+      Scan(NULL);
+    }
   }
 }
 

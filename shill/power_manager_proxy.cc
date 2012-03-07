@@ -10,7 +10,6 @@
 using std::string;
 
 namespace shill {
-const char PowerManagerProxy::kRootPath[] = "/";
 
 PowerManagerProxy::PowerManagerProxy(PowerManagerProxyDelegate *delegate,
                                      DBus::Connection *connection)
@@ -25,12 +24,13 @@ void PowerManagerProxy::RegisterSuspendDelay(uint32 delay_ms) {
 PowerManagerProxy::Proxy::Proxy(PowerManagerProxyDelegate *delegate,
                                 DBus::Connection *connection)
     : DBus::ObjectProxy(*connection,
-                        kRootPath,
+                        power_manager::kPowerManagerServicePath,
                         power_manager::kPowerManagerServiceName),
       delegate_(delegate) {}
 
 PowerManagerProxy::Proxy::~Proxy() {}
 
+// TODO(quiche): make this signal work again. crosbug.com/27475
 void PowerManagerProxy::Proxy::SuspendDelay(const uint32_t &sequence_number) {
   VLOG(2) << __func__ << "(" << sequence_number << ")";
   delegate_->OnSuspendDelay(sequence_number);
