@@ -24,6 +24,13 @@ const IPAddress::Family IPAddress::kFamilyIPv4 = AF_INET;
 // static
 const IPAddress::Family IPAddress::kFamilyIPv6 = AF_INET6;
 
+// static
+const char IPAddress::kFamilyNameUnknown[] = "Unknown";
+// static
+const char IPAddress::kFamilyNameIPv4[] = "IPv4";
+// static
+const char IPAddress::kFamilyNameIPv6[] = "IPv6";
+
 IPAddress::IPAddress(Family family, const ByteString &address)
     : family_(family) ,
       address_(address),
@@ -42,6 +49,7 @@ IPAddress::IPAddress(Family family)
 
 IPAddress::~IPAddress() {}
 
+// static
 size_t IPAddress::GetAddressLength(Family family) {
   switch (family) {
   case kFamilyIPv4:
@@ -73,6 +81,18 @@ int IPAddress::GetPrefixLengthFromMask(Family family, const string &mask) {
       break;
   }
   return 0;
+}
+
+// static
+string IPAddress::GetAddressFamilyName(Family family) {
+  switch (family) {
+  case kFamilyIPv4:
+    return kFamilyNameIPv4;
+  case kFamilyIPv6:
+    return kFamilyNameIPv6;
+  default:
+    return kFamilyNameUnknown;
+  }
 }
 
 bool IPAddress::SetAddressFromString(const string &address_string) {

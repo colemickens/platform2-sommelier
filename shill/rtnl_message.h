@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,7 +31,8 @@ class RTNLMessage {
       kModeUnknown,
       kModeGet,
       kModeAdd,
-      kModeDelete
+      kModeDelete,
+      kModeQuery
     };
 
     struct LinkStatus {
@@ -112,7 +113,9 @@ class RTNLMessage {
     // Parse an RTNL message.  Returns true on success.
     bool Decode(const ByteString &data);
     // Encode an RTNL message.  Returns empty ByteString on failure.
-    ByteString Encode();
+    ByteString Encode() const;
+    // Reset all fields.
+    void Reset();
 
     // Getters and setters
     Type type() const { return type_; }
@@ -164,9 +167,9 @@ class RTNLMessage {
                      Mode mode,
                      rtattr **attr_data,
                      int *attr_length);
-    void EncodeLink(RTNLHeader *hdr);
-    void EncodeAddress(RTNLHeader *hdr);
-    void EncodeRoute(RTNLHeader *hdr);
+    bool EncodeLink(RTNLHeader *hdr) const;
+    bool EncodeAddress(RTNLHeader *hdr) const;
+    bool EncodeRoute(RTNLHeader *hdr) const;
 
     Type type_;
     Mode mode_;

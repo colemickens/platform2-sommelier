@@ -16,6 +16,7 @@
 namespace shill {
 
 class DeviceInfo;
+class IPAddress;
 class Resolver;
 class RoutingTable;
 class RTNLHandler;
@@ -48,6 +49,9 @@ class Connection : public base::RefCounted<Connection> {
   // ReleaseRouting() when they no longer need this facility.
   virtual void RequestRouting();
   virtual void ReleaseRouting();
+
+  // Request a host route through this connection.
+  virtual bool RequestHostRoute(const IPAddress &destination);
 
  private:
   friend class ConnectionTest;

@@ -12,14 +12,16 @@
 
 #include "shill/byte_string.h"
 #include "shill/mock_control.h"
-#include "shill/mock_sockets.h"
+#include "shill/mock_rtnl_handler.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_message.h"
 
 using testing::_;
+using testing::Invoke;
 using testing::Return;
+using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
@@ -37,20 +39,41 @@ class RoutingTableTest : public Test {
  public:
   RoutingTableTest() : routing_table_(RoutingTable::GetInstance()) {}
 
-  base::hash_map<int, std::vector<RoutingTableEntry> > *GetRoutingTables() {
-    return &routing_table_->tables_;
+  virtual void SetUp() {
+    routing_table_->rtnl_handler_ = &rtnl_handler_;
+    ON_CALL(rtnl_handler_, SendMessage(_)).WillByDefault(Return(true));
   }
-
-  void SendRouteMsg(RTNLMessage::Mode mode,
-                    uint32 interface_index,
-                    const RoutingTableEntry &entry);
 
   virtual void TearDown() {
     RTNLHandler::GetInstance()->Stop();
   }
 
+  base::hash_map<int, std::vector<RoutingTableEntry> > *GetRoutingTables() {
+    return &routing_table_->tables_;
+  }
+
+  std::queue<uint32> *GetQuerySequences() {
+    return &routing_table_->route_query_sequences_;
+  }
+
+  void SendRouteEntry(RTNLMessage::Mode mode,
+                      uint32 interface_index,
+                      const RoutingTableEntry &entry);
+
+  void SendRouteEntryWithSeqAndProto(RTNLMessage::Mode mode,
+                                     uint32 interface_index,
+                                     const RoutingTableEntry &entry,
+                                     uint32 seq,
+                                     unsigned char proto);
+
+  void SendRouteMessage(const RTNLMessage &msg);
+
+  bool SetSequenceForMessage(RTNLMessage *message) {
+    message->set_seq(RoutingTableTest::kTestRequestSeq);
+    return true;
+  }
+
  protected:
-  static const int kTestSocket;
   static const uint32 kTestDeviceIndex0;
   static const uint32 kTestDeviceIndex1;
   static const char kTestDeviceName0[];
@@ -59,18 +82,17 @@ class RoutingTableTest : public Test {
   static const char kTestForeignNetGateway4[];
   static const char kTestForeignNetAddress6[];
   static const char kTestForeignNetGateway6[];
+  static const char kTestGatewayAddress4[];
   static const char kTestNetAddress0[];
   static const char kTestNetAddress1[];
+  static const char kTestRemoteAddress4[];
+  static const uint32 kTestRequestSeq;
 
-  void StartRTNLHandler();
-  void StopRTNLHandler();
-
-  MockSockets sockets_;
   RoutingTable *routing_table_;
   TestEventDispatcher dispatcher_;
+  StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
-const int RoutingTableTest::kTestSocket = 123;
 const uint32 RoutingTableTest::kTestDeviceIndex0 = 12345;
 const uint32 RoutingTableTest::kTestDeviceIndex1 = 67890;
 const char RoutingTableTest::kTestDeviceName0[] = "test-device0";
@@ -79,58 +101,57 @@ const char RoutingTableTest::kTestForeignNetAddress4[] = "192.168.2.2";
 const char RoutingTableTest::kTestForeignNetGateway4[] = "192.168.2.1";
 const char RoutingTableTest::kTestForeignNetAddress6[] = "2000::/3";
 const char RoutingTableTest::kTestForeignNetGateway6[] = "fe80:::::1";
+const char RoutingTableTest::kTestGatewayAddress4[] = "192.168.2.254";
 const char RoutingTableTest::kTestNetAddress0[] = "192.168.1.1";
 const char RoutingTableTest::kTestNetAddress1[] = "192.168.1.2";
-
+const char RoutingTableTest::kTestRemoteAddress4[] = "192.168.2.254";
+const uint32 RoutingTableTest::kTestRequestSeq = 456;
 
 MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
-  // NB: Matchers don't get passed multiple arguments, so we can
-  //     get the address of a Send(), its length, but not both.
-  //     We have to punt and assume the length is correct -- which
-  //     should already be tested in rtnl_message_unittest.
-  struct nlmsghdr hdr;
-  memcpy(&hdr, arg, sizeof(hdr));
-
-  RTNLMessage msg;
-  if (!msg.Decode(ByteString(reinterpret_cast<const unsigned char *>(arg),
-                             hdr.nlmsg_len))) {
-    return false;
-  }
-
-  const RTNLMessage::RouteStatus &status = msg.route_status();
+  const RTNLMessage::RouteStatus &status = arg->route_status();
 
   uint32 oif;
   uint32 priority;
 
   return
-    msg.type() == RTNLMessage::kTypeRoute &&
-    msg.family() == entry.gateway.family() &&
-    msg.flags() == (NLM_F_REQUEST | flags) &&
-    status.table == RT_TABLE_MAIN &&
-    status.protocol == RTPROT_BOOT &&
-    status.scope == entry.scope &&
-    status.type == RTN_UNICAST &&
-    msg.HasAttribute(RTA_DST) &&
-    IPAddress(msg.family(),
-              msg.GetAttribute(RTA_DST)).Equals(entry.dst) &&
-    !msg.HasAttribute(RTA_SRC) &&
-    msg.HasAttribute(RTA_GATEWAY) &&
-    IPAddress(msg.family(),
-              msg.GetAttribute(RTA_GATEWAY)).Equals(entry.gateway) &&
-    msg.GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) &&
-    oif == index &&
-    msg.GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&
-    priority == entry.metric;
+      arg->type() == RTNLMessage::kTypeRoute &&
+      arg->family() == entry.gateway.family() &&
+      arg->flags() == (NLM_F_REQUEST | flags) &&
+      status.table == RT_TABLE_MAIN &&
+      status.protocol == RTPROT_BOOT &&
+      status.scope == entry.scope &&
+      status.type == RTN_UNICAST &&
+      arg->HasAttribute(RTA_DST) &&
+      IPAddress(arg->family(),
+                arg->GetAttribute(RTA_DST),
+                status.dst_prefix).Equals(entry.dst) &&
+      !arg->HasAttribute(RTA_SRC) &&
+      arg->HasAttribute(RTA_GATEWAY) &&
+      IPAddress(arg->family(),
+                arg->GetAttribute(RTA_GATEWAY)).Equals(entry.gateway) &&
+      arg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) &&
+      oif == index &&
+      arg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&
+      priority == entry.metric;
 }
 
-void RoutingTableTest::SendRouteMsg(RTNLMessage::Mode mode,
-                                    uint32 interface_index,
-                                    const RoutingTableEntry &entry) {
+void RoutingTableTest::SendRouteEntry(RTNLMessage::Mode mode,
+                                      uint32 interface_index,
+                                      const RoutingTableEntry &entry) {
+  SendRouteEntryWithSeqAndProto(mode, interface_index, entry, 0, RTPROT_BOOT);
+}
+
+void RoutingTableTest::SendRouteEntryWithSeqAndProto(
+    RTNLMessage::Mode mode,
+    uint32 interface_index,
+    const RoutingTableEntry &entry,
+    uint32 seq,
+    unsigned char proto) {
   RTNLMessage msg(
       RTNLMessage::kTypeRoute,
       mode,
       0,
-      0,
+      seq,
       0,
       0,
       entry.dst.family());
@@ -139,7 +160,7 @@ void RoutingTableTest::SendRouteMsg(RTNLMessage::Mode mode,
       entry.dst.prefix(),
       entry.src.prefix(),
       RT_TABLE_MAIN,
-      RTPROT_BOOT,
+      proto,
       entry.scope,
       RTN_UNICAST,
       0));
@@ -154,31 +175,19 @@ void RoutingTableTest::SendRouteMsg(RTNLMessage::Mode mode,
   msg.SetAttribute(RTA_PRIORITY, ByteString::CreateFromCPUUInt32(entry.metric));
   msg.SetAttribute(RTA_OIF, ByteString::CreateFromCPUUInt32(interface_index));
 
-  ByteString msgdata = msg.Encode();
-  EXPECT_NE(0, msgdata.GetLength());
-
-  InputData data(msgdata.GetData(), msgdata.GetLength());
-  RTNLHandler::GetInstance()->ParseRTNL(&data);
+  routing_table_->RouteMsgHandler(msg);
 }
 
-void RoutingTableTest::StartRTNLHandler() {
-  EXPECT_CALL(sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
-      .WillOnce(Return(kTestSocket));
-  EXPECT_CALL(sockets_, Bind(kTestSocket, _, sizeof(sockaddr_nl)))
-      .WillOnce(Return(0));
-  RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
+void RoutingTableTest::SendRouteMessage(const RTNLMessage &msg) {
+  routing_table_->RouteMsgHandler(msg);
 }
 
-void RoutingTableTest::StopRTNLHandler() {
-  EXPECT_CALL(sockets_, Close(_)).WillOnce(Return(0));
-  RTNLHandler::GetInstance()->Stop();
+TEST_F(RoutingTableTest, Start) {
+  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestRoute));
+  routing_table_->Start();
 }
 
 TEST_F(RoutingTableTest, RouteAddDelete) {
-  EXPECT_CALL(sockets_, Send(kTestSocket, _, _, 0));
-  StartRTNLHandler();
-  routing_table_->Start();
-
   // Expect the tables to be empty by default.
   EXPECT_EQ(0, GetRoutingTables()->size());
 
@@ -197,9 +206,9 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                            RT_SCOPE_UNIVERSE,
                            true);
   // Add a single entry.
-  SendRouteMsg(RTNLMessage::kModeAdd,
-               kTestDeviceIndex0,
-               entry0);
+  SendRouteEntry(RTNLMessage::kModeAdd,
+                 kTestDeviceIndex0,
+                 entry0);
 
   base::hash_map<int, std::vector<RoutingTableEntry> > *tables =
     GetRoutingTables();
@@ -213,9 +222,9 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_TRUE(entry0.Equals(test_entry));
 
   // Add a second entry for a different interface.
-  SendRouteMsg(RTNLMessage::kModeAdd,
-               kTestDeviceIndex1,
-               entry0);
+  SendRouteEntry(RTNLMessage::kModeAdd,
+                 kTestDeviceIndex1,
+                 entry0);
 
   // We should have two tables, which should have a single entry each.
   EXPECT_EQ(2, tables->size());
@@ -237,9 +246,9 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                            true);
 
   // Add a second gateway route to the second interface.
-  SendRouteMsg(RTNLMessage::kModeAdd,
-               kTestDeviceIndex1,
-               entry1);
+  SendRouteEntry(RTNLMessage::kModeAdd,
+                 kTestDeviceIndex1,
+                 entry1);
 
   // We should have two tables, one of which has a single entry, the other has
   // two.
@@ -251,9 +260,9 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_TRUE(entry1.Equals(test_entry));
 
   // Remove the first gateway route from the second interface.
-  SendRouteMsg(RTNLMessage::kModeDelete,
-               kTestDeviceIndex1,
-               entry0);
+  SendRouteEntry(RTNLMessage::kModeDelete,
+                 kTestDeviceIndex1,
+                 entry0);
 
   // We should be back to having one route per table.
   EXPECT_EQ(2, tables->size());
@@ -266,9 +275,9 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   // Send a duplicate of the second gatway route message, changing the metric.
   RoutingTableEntry entry2(entry1);
   entry2.metric++;
-  SendRouteMsg(RTNLMessage::kModeAdd,
-               kTestDeviceIndex1,
-               entry2);
+  SendRouteEntry(RTNLMessage::kModeAdd,
+                 kTestDeviceIndex1,
+                 entry2);
 
   // Routing table size shouldn't change, but the new metric should match.
   EXPECT_EQ(1, (*tables)[kTestDeviceIndex1].size());
@@ -287,9 +296,9 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                                                &test_entry));
 
   // Remove last entry from an existing interface and test that we now fail.
-  SendRouteMsg(RTNLMessage::kModeDelete,
-               kTestDeviceIndex1,
-               entry2);
+  SendRouteEntry(RTNLMessage::kModeDelete,
+                 kTestDeviceIndex1,
+                 entry2);
 
   EXPECT_FALSE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
                                                IPAddress::kFamilyIPv4,
@@ -304,14 +313,11 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   properties.address = kTestNetAddress1;
   ipconfig->UpdateProperties(properties, true);
 
-  EXPECT_CALL(sockets_,
-              Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kModeAdd,
-                                   kTestDeviceIndex1,
-                                   entry0,
-                                   NLM_F_CREATE | NLM_F_EXCL),
-                   _,
-                   0));
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
+                                          kTestDeviceIndex1,
+                                          entry0,
+                                          NLM_F_CREATE | NLM_F_EXCL)));
   EXPECT_TRUE(routing_table_->SetDefaultRoute(kTestDeviceIndex1,
                                               ipconfig,
                                               metric));
@@ -330,22 +336,16 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   // then it should delete the old entry.
   RoutingTableEntry entry4(entry3);
   entry4.metric += 10;
-  EXPECT_CALL(sockets_,
-              Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kModeAdd,
-                                   kTestDeviceIndex1,
-                                   entry4,
-                                   NLM_F_CREATE | NLM_F_REPLACE),
-                   _,
-                   0));
-  EXPECT_CALL(sockets_,
-              Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kModeDelete,
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
+                                          kTestDeviceIndex1,
+                                          entry4,
+                                          NLM_F_CREATE | NLM_F_REPLACE)));
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeDelete,
                                    kTestDeviceIndex1,
                                    entry3,
-                                   0),
-                   _,
-                   0));
+                                   0)));
   EXPECT_TRUE(routing_table_->SetDefaultRoute(kTestDeviceIndex1,
                                               ipconfig,
                                               entry4.metric));
@@ -362,22 +362,16 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   // operation should occur.
   RoutingTableEntry entry5(entry4);
   entry5.metric += 10;
-  EXPECT_CALL(sockets_,
-              Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kModeAdd,
-                                   kTestDeviceIndex0,
-                                   entry5,
-                                   NLM_F_CREATE | NLM_F_REPLACE),
-                   _,
-                   0));
-  EXPECT_CALL(sockets_,
-              Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kModeDelete,
-                                   kTestDeviceIndex0,
-                                   entry0,
-                                   0),
-                   _,
-                   0));
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
+                                          kTestDeviceIndex0,
+                                          entry5,
+                                          NLM_F_CREATE | NLM_F_REPLACE)));
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeDelete,
+                                          kTestDeviceIndex0,
+                                          entry0,
+                                          0)));
   routing_table_->SetDefaultMetric(kTestDeviceIndex0, entry5.metric);
   // Furthermore, the routing table should reflect the change in the metric
   // for the default route for the interface.
@@ -388,27 +382,122 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_EQ(entry5.metric, default_route.metric);
 
   // Ask to flush table0.  We should see a delete message sent.
-  EXPECT_CALL(sockets_,
-              Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kModeDelete,
-                                   kTestDeviceIndex0,
-                                   entry5,
-                                   0),
-                   _,
-                   0));
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeDelete,
+                                          kTestDeviceIndex0,
+                                          entry5,
+                                          0)));
   routing_table_->FlushRoutes(kTestDeviceIndex0);
   EXPECT_EQ(0, (*tables)[kTestDeviceIndex0].size());
 
   // Test that the routing table size returns to zero.
-  SendRouteMsg(RTNLMessage::kModeAdd,
-               kTestDeviceIndex0,
-               entry5);
+  SendRouteEntry(RTNLMessage::kModeAdd,
+                 kTestDeviceIndex0,
+                 entry5);
   EXPECT_EQ(1, GetRoutingTables()->size());
   routing_table_->ResetTable(kTestDeviceIndex0);
   EXPECT_EQ(0, GetRoutingTables()->size());
 
   routing_table_->Stop();
-  StopRTNLHandler();
+}
+
+MATCHER_P2(IsRoutingQuery, destination, index, "") {
+  const RTNLMessage::RouteStatus &status = arg->route_status();
+
+  uint32 oif;
+
+  return
+      arg->type() == RTNLMessage::kTypeRoute &&
+      arg->family() == destination.family() &&
+      arg->flags() == NLM_F_REQUEST &&
+      status.table == 0 &&
+      status.protocol == 0 &&
+      status.scope == 0 &&
+      status.type == 0 &&
+      arg->HasAttribute(RTA_DST) &&
+      IPAddress(arg->family(),
+                arg->GetAttribute(RTA_DST),
+                status.dst_prefix).Equals(destination) &&
+      !arg->HasAttribute(RTA_SRC) &&
+      !arg->HasAttribute(RTA_GATEWAY) &&
+      arg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) &&
+      oif == index &&
+      !arg->HasAttribute(RTA_PRIORITY);
+
+  return false;
+}
+
+TEST_F(RoutingTableTest, RequestHostRoute) {
+  IPAddress destination_address(IPAddress::kFamilyIPv4);
+  destination_address.SetAddressFromString(kTestRemoteAddress4);
+  destination_address.set_prefix(24);
+
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingQuery(destination_address,
+                                         kTestDeviceIndex0)))
+      .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
+  EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address,
+                                                 kTestDeviceIndex0));
+
+  IPAddress gateway_address(IPAddress::kFamilyIPv4);
+  gateway_address.SetAddressFromString(kTestGatewayAddress4);
+
+  IPAddress local_address(IPAddress::kFamilyIPv4);
+  local_address.SetAddressFromString(kTestDeviceNetAddress4);
+
+  const int kMetric = 10;
+  RoutingTableEntry entry(destination_address,
+                          local_address,
+                          gateway_address,
+                          kMetric,
+                          RT_SCOPE_UNIVERSE,
+                          true);
+
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
+                                          kTestDeviceIndex0,
+                                          entry,
+                                          NLM_F_CREATE | NLM_F_EXCL)));
+  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
+                                kTestDeviceIndex0,
+                                entry,
+                                kTestRequestSeq,
+                                RTPROT_UNSPEC);
+}
+
+TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
+  IPAddress destination_address(IPAddress::kFamilyIPv4);
+  destination_address.SetAddressFromString(kTestRemoteAddress4);
+  EXPECT_CALL(rtnl_handler_, SendMessage(_))
+      .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
+  EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address,
+                                                 kTestDeviceIndex0));
+  EXPECT_FALSE(GetQuerySequences()->empty());
+
+  RoutingTableEntry entry(destination_address,
+                          destination_address,
+                          destination_address,
+                          0,
+                          RT_SCOPE_UNIVERSE,
+                          true);
+
+  // Try a sequence arriving before the one RoutingTable is looking for.
+  // This should be a no-op.
+  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
+                                kTestDeviceIndex0,
+                                entry,
+                                kTestRequestSeq-1,
+                                RTPROT_UNSPEC);
+  EXPECT_FALSE(GetQuerySequences()->empty());
+
+  // Try a sequence arriving after the one RoutingTable is looking for.
+  // This should cause the request to be purged.
+  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
+                                kTestDeviceIndex0,
+                                entry,
+                                kTestRequestSeq+1,
+                                RTPROT_UNSPEC);
+  EXPECT_TRUE(GetQuerySequences()->empty());
 }
 
 }  // namespace shill

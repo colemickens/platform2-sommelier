@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -50,8 +50,7 @@ RTNLMessage::RTNLMessage(Type type,
 bool RTNLMessage::Decode(const ByteString &msg) {
   bool ret = DecodeInternal(msg);
   if (!ret) {
-    mode_ = kModeUnknown;
-    type_ = kTypeUnknown;
+    Reset();
   }
   return ret;
 }
@@ -193,7 +192,7 @@ bool RTNLMessage::DecodeRoute(const RTNLHeader *hdr,
   return true;
 }
 
-ByteString RTNLMessage::Encode() {
+ByteString RTNLMessage::Encode() const {
   if (type_ != kTypeLink &&
       type_ != kTypeAddress &&
       type_ != kTypeRoute) {
@@ -204,7 +203,6 @@ ByteString RTNLMessage::Encode() {
   hdr.hdr.nlmsg_flags = flags_;
   hdr.hdr.nlmsg_seq = seq_;
   hdr.hdr.nlmsg_pid = pid_;
-  hdr.hdr.nlmsg_seq = 0;
 
   if (mode_ == kModeGet) {
     if (type_ == kTypeLink) {
@@ -213,6 +211,9 @@ ByteString RTNLMessage::Encode() {
       hdr.hdr.nlmsg_type = RTM_GETADDR;
     } else if (type_ == kTypeRoute) {
       hdr.hdr.nlmsg_type = RTM_GETROUTE;
+    } else {
+      NOTIMPLEMENTED();
+      return ByteString();
     }
     hdr.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr.gen));
     hdr.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
@@ -220,15 +221,21 @@ ByteString RTNLMessage::Encode() {
   } else {
     switch (type_) {
     case kTypeLink:
-      EncodeLink(&hdr);
+      if (!EncodeLink(&hdr)) {
+        return ByteString();
+      }
       break;
 
     case kTypeAddress:
-      EncodeAddress(&hdr);
+      if (!EncodeAddress(&hdr)) {
+        return ByteString();
+      }
       break;
 
     case kTypeRoute:
-      EncodeRoute(&hdr);
+      if (!EncodeRoute(&hdr)) {
+        return ByteString();
+      }
       break;
 
     default:
@@ -239,7 +246,7 @@ ByteString RTNLMessage::Encode() {
   size_t header_length = hdr.hdr.nlmsg_len;
   ByteString attributes;
 
-  base::hash_map<uint16, ByteString>::iterator attr;
+  base::hash_map<uint16, ByteString>::const_iterator attr;
   for (attr = attributes_.begin(); attr != attributes_.end(); ++attr) {
     size_t len = RTA_LENGTH(attr->second.GetLength());
     hdr.hdr.nlmsg_len = NLMSG_ALIGN(hdr.hdr.nlmsg_len) + RTA_ALIGN(len);
@@ -261,28 +268,69 @@ ByteString RTNLMessage::Encode() {
   return packet;
 }
 
-void RTNLMessage::EncodeLink(RTNLHeader *hdr) {
-  hdr->hdr.nlmsg_type = (mode_ == kModeAdd) ? RTM_NEWLINK : RTM_DELLINK;
+bool RTNLMessage::EncodeLink(RTNLHeader *hdr) const {
+  switch (mode_) {
+    case kModeAdd:
+      hdr->hdr.nlmsg_type = RTM_NEWLINK;
+      break;
+    case kModeDelete:
+      hdr->hdr.nlmsg_type = RTM_DELLINK;
+      break;
+    case kModeQuery:
+      hdr->hdr.nlmsg_type = RTM_GETLINK;
+      break;
+    default:
+      NOTIMPLEMENTED();
+      return false;
+  }
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->ifi));
   hdr->ifi.ifi_family = family_;
   hdr->ifi.ifi_index = interface_index_;
   hdr->ifi.ifi_type = link_status_.type;
   hdr->ifi.ifi_flags = link_status_.flags;
   hdr->ifi.ifi_change = link_status_.change;
+  return true;
 }
 
-void RTNLMessage::EncodeAddress(RTNLHeader *hdr) {
-  hdr->hdr.nlmsg_type = (mode_ == kModeAdd) ? RTM_NEWADDR : RTM_DELADDR;
+bool RTNLMessage::EncodeAddress(RTNLHeader *hdr) const {
+  switch (mode_) {
+    case kModeAdd:
+      hdr->hdr.nlmsg_type = RTM_NEWADDR;
+      break;
+    case kModeDelete:
+      hdr->hdr.nlmsg_type = RTM_DELADDR;
+      break;
+    case kModeQuery:
+      hdr->hdr.nlmsg_type = RTM_GETADDR;
+      break;
+    default:
+      NOTIMPLEMENTED();
+      return false;
+  }
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->ifa));
   hdr->ifa.ifa_family = family_;
   hdr->ifa.ifa_prefixlen = address_status_.prefix_len;
   hdr->ifa.ifa_flags = address_status_.flags;
   hdr->ifa.ifa_scope = address_status_.scope;
   hdr->ifa.ifa_index = interface_index_;
+  return true;
 }
 
-void RTNLMessage::EncodeRoute(RTNLHeader *hdr) {
-  hdr->hdr.nlmsg_type = (mode_ == kModeAdd) ? RTM_NEWROUTE : RTM_DELROUTE;
+bool RTNLMessage::EncodeRoute(RTNLHeader *hdr) const {
+  switch (mode_) {
+    case kModeAdd:
+      hdr->hdr.nlmsg_type = RTM_NEWROUTE;
+      break;
+    case kModeDelete:
+      hdr->hdr.nlmsg_type = RTM_DELROUTE;
+      break;
+    case kModeQuery:
+      hdr->hdr.nlmsg_type = RTM_GETROUTE;
+      break;
+    default:
+      NOTIMPLEMENTED();
+      return false;
+  }
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->rtm));
   hdr->rtm.rtm_family = family_;
   hdr->rtm.rtm_dst_len = route_status_.dst_prefix;
@@ -292,6 +340,20 @@ void RTNLMessage::EncodeRoute(RTNLHeader *hdr) {
   hdr->rtm.rtm_scope = route_status_.scope;
   hdr->rtm.rtm_type = route_status_.type;
   hdr->rtm.rtm_flags = route_status_.flags;
+  return true;
+}
+
+void RTNLMessage::Reset() {
+  mode_ = kModeUnknown;
+  type_ = kTypeUnknown;
+  flags_ = 0;
+  seq_ = 0;
+  interface_index_ = 0;
+  family_ = IPAddress::kFamilyUnknown;
+  link_status_ = LinkStatus();
+  address_status_ = AddressStatus();
+  route_status_ = RouteStatus();
+  attributes_.clear();
 }
 
 }  // namespace shill

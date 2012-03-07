@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -118,7 +118,7 @@ class RTNLHandler {
   // Dispatches an rtnl message to all listeners
   void DispatchEvent(int type, const RTNLMessage &msg);
   // Send the next table-dump request to the kernel
-  void NextRequest(uint32_t seq);
+  void NextRequest(uint32 seq);
   // Parse an incoming rtnl message from the kernel
   void ParseRTNL(InputData *data);
 
@@ -131,9 +131,9 @@ class RTNLHandler {
   bool in_request_;
 
   int rtnl_socket_;
-  uint32_t request_flags_;
-  uint32_t request_sequence_;
-  uint32_t last_dump_sequence_;
+  uint32 request_flags_;
+  uint32 request_sequence_;
+  uint32 last_dump_sequence_;
 
   std::vector<RTNLListener *> listeners_;
   scoped_ptr<Callback1<InputData *>::Type> rtnl_callback_;

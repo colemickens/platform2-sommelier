@@ -5,6 +5,7 @@
 #ifndef SHILL_ROUTING_TABLE_
 #define SHILL_ROUTING_TABLE_
 
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -21,7 +22,9 @@
 namespace shill {
 
 class RoutingTableEntry;
+class RTNLHandler;
 class RTNLListener;
+class RTNLMessage;
 
 // This singleton maintains an in-process copy of the routing table on
 // a per-interface basis.  It offers the ability for other modules to
@@ -63,6 +66,11 @@ class RoutingTable {
   // Set the metric (priority) on existing default routes for an interface.
   virtual void SetDefaultMetric(int interface_index, uint32 metric);
 
+  // Get the default route to |destination| through |interface_index| and
+  // create a host route to that destination.
+  virtual bool RequestRouteToHost(const IPAddress &destination,
+                                  int interface_index);
+
  protected:
   RoutingTable();
 
@@ -70,6 +78,10 @@ class RoutingTable {
   friend struct base::DefaultLazyInstanceTraits<RoutingTable>;
   friend class RoutingTableTest;
 
+
+  static bool ParseRoutingTableMessage(const RTNLMessage &message,
+                                       int *interface_index,
+                                       RoutingTableEntry *entry);
   void RouteMsgHandler(const RTNLMessage &msg);
   bool ApplyRoute(uint32 interface_index,
                   const RoutingTableEntry &entry,
@@ -93,6 +105,10 @@ class RoutingTable {
 
   scoped_ptr<Callback1<const RTNLMessage &>::Type> route_callback_;
   scoped_ptr<RTNLListener> route_listener_;
+  std::queue<uint32> route_query_sequences_;
+
+  // Cache singleton pointer for performance and test purposes.
+  RTNLHandler *rtnl_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(RoutingTable);
 };

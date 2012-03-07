@@ -10,6 +10,7 @@
 #include "shill/device_info.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
+#include "shill/routing_table_entry.h"
 #include "shill/rtnl_handler.h"
 
 using std::string;
@@ -125,6 +126,19 @@ void Connection::ReleaseRouting() {
     // filtering was disabled.
     routing_table_->FlushCache();
   }
+}
+
+bool Connection::RequestHostRoute(const IPAddress &address) {
+  // Set the prefix to be the entire address size.
+  IPAddress address_prefix(address);
+  address_prefix.set_prefix(address_prefix.GetLength() * 8);
+
+  if (!routing_table_->RequestRouteToHost(address_prefix, interface_index_)) {
+    LOG(ERROR) << "Could not request route to " << address.ToString();
+    return false;
+  }
+
+  return true;
 }
 
 uint32 Connection::GetMetric(bool is_default) {

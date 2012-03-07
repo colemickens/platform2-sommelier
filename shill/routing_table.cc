@@ -48,7 +48,8 @@ const char RoutingTable::kRouteFlushPath6[] = "/proc/sys/net/ipv6/route/flush";
 
 RoutingTable::RoutingTable()
     : route_callback_(NewCallback(this, &RoutingTable::RouteMsgHandler)),
-      route_listener_(NULL) {
+      route_listener_(NULL),
+      rtnl_handler_(RTNLHandler::GetInstance()) {
   VLOG(2) << __func__;
 }
 
@@ -63,8 +64,7 @@ void RoutingTable::Start() {
 
   route_listener_.reset(
       new RTNLListener(RTNLHandler::kRequestRoute, route_callback_.get()));
-  RTNLHandler::GetInstance()->RequestDump(
-      RTNLHandler::kRequestRoute);
+  rtnl_handler_->RequestDump(RTNLHandler::kRequestRoute);
 }
 
 void RoutingTable::Stop() {
@@ -75,10 +75,11 @@ void RoutingTable::Stop() {
 
 bool RoutingTable::AddRoute(int interface_index,
                             const RoutingTableEntry &entry) {
-  VLOG(2) << __func__ << " "
-          << "index " << interface_index << " "
-          << "gateway " << entry.gateway.ToString() << " "
-          << "metric " << entry.metric;
+  VLOG(2) << __func__ << ": "
+          << "destination " << entry.dst.ToString()
+          << " index " << interface_index
+          << " gateway " << entry.gateway.ToString()
+          << " metric " << entry.metric;
 
   CHECK(!entry.from_rtnl);
   if (!ApplyRoute(interface_index,
@@ -105,7 +106,8 @@ bool RoutingTable::GetDefaultRoute(int interface_index,
 bool RoutingTable::GetDefaultRouteInternal(int interface_index,
                                            IPAddress::Family family,
                                            RoutingTableEntry **entry) {
-  VLOG(2) << __func__ << " index " << interface_index << " family " << family;
+  VLOG(2) << __func__ << " index " << interface_index
+          << " family " << IPAddress::GetAddressFamilyName(family);
 
   base::hash_map<int, vector<RoutingTableEntry> >::iterator table =
     tables_.find(interface_index);
@@ -120,9 +122,9 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
   for (nent = table->second.begin(); nent != table->second.end(); ++nent) {
     if (nent->dst.IsDefault() && nent->dst.family() == family) {
       *entry = &(*nent);
-      VLOG(2) << __func__ << " found "
-              << "gateway " << nent->gateway.ToString() << " "
-              << "metric " << nent->metric;
+      VLOG(2) << __func__ << ": found"
+              << " gateway " << nent->gateway.ToString()
+              << " metric " << nent->metric;
       return true;
     }
   }
@@ -195,8 +197,7 @@ void RoutingTable::ResetTable(int interface_index) {
 }
 
 void RoutingTable::SetDefaultMetric(int interface_index, uint32 metric) {
-  VLOG(2) << __func__ << " "
-          << "index " << interface_index << " metric " << metric;
+  VLOG(2) << __func__ << " index " << interface_index << " metric " << metric;
 
   RoutingTableEntry *entry;
   if (GetDefaultRouteInternal(
@@ -212,54 +213,100 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32 metric) {
   }
 }
 
-void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
-  if (msg.type() != RTNLMessage::kTypeRoute ||
-      msg.family() == IPAddress::kFamilyUnknown ||
-      !msg.HasAttribute(RTA_OIF)) {
-    return;
+// static
+bool RoutingTable::ParseRoutingTableMessage(const RTNLMessage &message,
+                                            int *interface_index,
+                                            RoutingTableEntry *entry) {
+  if (message.type() != RTNLMessage::kTypeRoute ||
+      message.family() == IPAddress::kFamilyUnknown ||
+      !message.HasAttribute(RTA_OIF)) {
+    return false;
   }
 
-  const RTNLMessage::RouteStatus &route_status = msg.route_status();
+  const RTNLMessage::RouteStatus &route_status = message.route_status();
 
   if (route_status.type != RTN_UNICAST ||
-      route_status.protocol != RTPROT_BOOT ||
       route_status.table != RT_TABLE_MAIN) {
-    return;
+    return false;
   }
 
-  uint32 interface_index = 0;
-  if (!msg.GetAttribute(RTA_OIF).ConvertToCPUUInt32(&interface_index)) {
-    return;
+  uint32 interface_index_u32 = 0;
+  if (!message.GetAttribute(RTA_OIF).ConvertToCPUUInt32(&interface_index_u32)) {
+    return false;
   }
+  *interface_index = interface_index_u32;
 
   uint32 metric = 0;
-  if (msg.HasAttribute(RTA_PRIORITY)) {
-    msg.GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric);
+  if (message.HasAttribute(RTA_PRIORITY)) {
+    message.GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric);
   }
 
-  IPAddress default_addr(msg.family());
+  IPAddress default_addr(message.family());
   default_addr.SetAddressToDefault();
 
   ByteString dst_bytes(default_addr.address());
-  if (msg.HasAttribute(RTA_DST)) {
-    dst_bytes = msg.GetAttribute(RTA_DST);
+  if (message.HasAttribute(RTA_DST)) {
+    dst_bytes = message.GetAttribute(RTA_DST);
   }
   ByteString src_bytes(default_addr.address());
-  if (msg.HasAttribute(RTA_SRC)) {
-    src_bytes = msg.GetAttribute(RTA_SRC);
+  if (message.HasAttribute(RTA_SRC)) {
+    src_bytes = message.GetAttribute(RTA_SRC);
   }
   ByteString gateway_bytes(default_addr.address());
-  if (msg.HasAttribute(RTA_GATEWAY)) {
-    gateway_bytes = msg.GetAttribute(RTA_GATEWAY);
+  if (message.HasAttribute(RTA_GATEWAY)) {
+    gateway_bytes = message.GetAttribute(RTA_GATEWAY);
   }
 
-  RoutingTableEntry entry(
-      IPAddress(msg.family(), dst_bytes, route_status.dst_prefix),
-      IPAddress(msg.family(), src_bytes, route_status.src_prefix),
-      IPAddress(msg.family(), gateway_bytes),
-      metric,
-      route_status.scope,
-      true);
+  entry->dst = IPAddress(message.family(), dst_bytes, route_status.dst_prefix);
+  entry->src = IPAddress(message.family(), src_bytes, route_status.src_prefix);
+  entry->gateway = IPAddress(message.family(), gateway_bytes);
+  entry->metric = metric;
+  entry->scope = route_status.scope;
+  entry->from_rtnl = true;
+
+  return true;
+}
+
+void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
+  int interface_index;
+  RoutingTableEntry entry;
+
+  if (!ParseRoutingTableMessage(message, &interface_index, &entry)) {
+    return;
+  }
+
+  if (!route_query_sequences_.empty() &&
+      message.route_status().protocol == RTPROT_UNSPEC) {
+    VLOG(3) << __func__ << ": Message seq: " << message.seq()
+            << " mode " << message.mode()
+            << ", next query seq: " << route_query_sequences_.front();
+
+    // Purge queries that have expired (sequence number of this message is
+    // greater than that of the head of the route query sequence).  Do the
+    // math in a way that's roll-over independent.
+    while (route_query_sequences_.front() - message.seq() > kuint32max / 2) {
+      LOG(ERROR) << __func__ << ": Purging un-replied route request sequence "
+                 << route_query_sequences_.front()
+                 << " (< " << message.seq() << ")";
+      route_query_sequences_.pop();
+      if (route_query_sequences_.empty())
+        return;
+    }
+
+    if (route_query_sequences_.front() == message.seq()) {
+      VLOG(2) << __func__ << ": Adding host route to " << entry.dst.ToString();
+      route_query_sequences_.pop();
+      RoutingTableEntry add_entry(entry);
+      add_entry.from_rtnl = false;
+      AddRoute(interface_index, add_entry);
+    }
+    return;
+  } else if (message.route_status().protocol != RTPROT_BOOT) {
+    // Responses to route queries come back with a protocol of
+    // RTPROT_UNSPEC.  Otherwise, normal route updates that we are
+    // interested in come with a protocol of RTPROT_BOOT.
+    return;
+  }
 
   vector<RoutingTableEntry> &table = tables_[interface_index];
   vector<RoutingTableEntry>::iterator nent;
@@ -268,10 +315,10 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
         nent->src.Equals(entry.src) &&
         nent->gateway.Equals(entry.gateway) &&
         nent->scope == entry.scope) {
-      if (msg.mode() == RTNLMessage::kModeDelete &&
+      if (message.mode() == RTNLMessage::kModeDelete &&
           nent->metric == entry.metric) {
         table.erase(nent);
-      } else if (msg.mode() == RTNLMessage::kModeAdd) {
+      } else if (message.mode() == RTNLMessage::kModeAdd) {
         nent->from_rtnl = true;
         nent->metric = entry.metric;
       }
@@ -279,11 +326,12 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
     }
   }
 
-  if (msg.mode() == RTNLMessage::kModeAdd) {
-    VLOG(2) << __func__ << " adding "
-            << "index " << interface_index
-            << "gateway " << entry.gateway.ToString() << " "
-            << "metric " << entry.metric;
+  if (message.mode() == RTNLMessage::kModeAdd) {
+    VLOG(2) << __func__ << " adding"
+            << " destination " << entry.dst.ToString()
+            << " index " << interface_index
+            << " gateway " << entry.gateway.ToString()
+            << " metric " << entry.metric;
     table.push_back(entry);
   }
 }
@@ -296,7 +344,7 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
                                 __func__, entry.dst.ToString().c_str(),
                                 interface_index, mode, flags);
 
-  RTNLMessage msg(
+  RTNLMessage message(
       RTNLMessage::kTypeRoute,
       mode,
       NLM_F_REQUEST | flags,
@@ -305,7 +353,7 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
       0,
       entry.dst.family());
 
-  msg.set_route_status(RTNLMessage::RouteStatus(
+  message.set_route_status(RTNLMessage::RouteStatus(
       entry.dst.prefix(),
       entry.src.prefix(),
       RT_TABLE_MAIN,
@@ -314,17 +362,19 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
       RTN_UNICAST,
       0));
 
-  msg.SetAttribute(RTA_DST, entry.dst.address());
+  message.SetAttribute(RTA_DST, entry.dst.address());
   if (!entry.src.IsDefault()) {
-    msg.SetAttribute(RTA_SRC, entry.src.address());
+    message.SetAttribute(RTA_SRC, entry.src.address());
   }
   if (!entry.gateway.IsDefault()) {
-    msg.SetAttribute(RTA_GATEWAY, entry.gateway.address());
+    message.SetAttribute(RTA_GATEWAY, entry.gateway.address());
   }
-  msg.SetAttribute(RTA_PRIORITY, ByteString::CreateFromCPUUInt32(entry.metric));
-  msg.SetAttribute(RTA_OIF, ByteString::CreateFromCPUUInt32(interface_index));
+  message.SetAttribute(RTA_PRIORITY,
+                       ByteString::CreateFromCPUUInt32(entry.metric));
+  message.SetAttribute(RTA_OIF,
+                       ByteString::CreateFromCPUUInt32(interface_index));
 
-  return RTNLHandler::GetInstance()->SendMessage(&msg);
+  return rtnl_handler_->SendMessage(&message);
 }
 
 // Somewhat surprisingly, the kernel allows you to create multiple routes
@@ -336,8 +386,7 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
 void RoutingTable::ReplaceMetric(uint32 interface_index,
                                  RoutingTableEntry *entry,
                                  uint32 metric) {
-  VLOG(2) << __func__ << " "
-          << "index " << interface_index << " metric " << metric;
+  VLOG(2) << __func__ << " index " << interface_index << " metric " << metric;
   RoutingTableEntry new_entry = *entry;
   new_entry.metric = metric;
   // First create the route at the new metric.
@@ -364,6 +413,35 @@ bool RoutingTable::FlushCache() {
   }
 
   return ret;
+}
+
+bool RoutingTable::RequestRouteToHost(const IPAddress &address,
+                                      int interface_index) {
+  RTNLMessage message(
+      RTNLMessage::kTypeRoute,
+      RTNLMessage::kModeQuery,
+      NLM_F_REQUEST,
+      0,
+      0,
+      interface_index,
+      address.family());
+
+  RTNLMessage::RouteStatus status;
+  status.dst_prefix = address.prefix();
+  message.set_route_status(status);
+  message.SetAttribute(RTA_DST, address.address());
+  message.SetAttribute(RTA_OIF,
+                       ByteString::CreateFromCPUUInt32(interface_index));
+
+  if (!rtnl_handler_->SendMessage(&message)) {
+    return false;
+  }
+
+  // Save the sequence number of the request so we can create a route for
+  // this host when we get a reply.
+  route_query_sequences_.push(message.seq());
+
+  return true;
 }
 
 }  // namespace shill

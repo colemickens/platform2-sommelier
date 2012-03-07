@@ -17,6 +17,9 @@ class IPAddress {
   static const Family kFamilyUnknown;
   static const Family kFamilyIPv4;
   static const Family kFamilyIPv6;
+  static const char kFamilyNameUnknown[];
+  static const char kFamilyNameIPv4[];
+  static const char kFamilyNameIPv6[];
 
   explicit IPAddress(Family family);
   IPAddress(Family family, const ByteString &address);
@@ -42,6 +45,9 @@ class IPAddress {
   // Returns the prefix length given an address |family| and a |mask|. For
   // example, returns 24 for an IPv4 mask 255.255.255.0.
   static int GetPrefixLengthFromMask(Family family, const std::string &mask);
+
+  // Returns the name of an address family.
+  static std::string GetAddressFamilyName(Family family);
 
   // Getters and Setters
   Family family() const { return family_; }

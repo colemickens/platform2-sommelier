@@ -170,38 +170,36 @@ TEST_F(ConnectionTest, AddConfigReverse) {
 }
 
 TEST_F(ConnectionTest, RouteRequest) {
-  {
-    ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
-                                               kTestDeviceName0,
-                                               device_info_.get()));
-    ReplaceSingletons(connection);
-    scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
-        &control_,
-        reinterpret_cast<EventDispatcher *>(NULL),
-        reinterpret_cast<Metrics *>(NULL),
-        reinterpret_cast<Manager *>(NULL),
-        kTestDeviceName0,
-        string(),
-        kTestDeviceInterfaceIndex0));
-    EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
-        .WillRepeatedly(Return(device));
-    EXPECT_CALL(*device.get(), DisableReversePathFilter()).Times(1);
-    connection->RequestRouting();
-    connection->RequestRouting();
+  ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
+                                             kTestDeviceName0,
+                                             device_info_.get()));
+  ReplaceSingletons(connection);
+  scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
+      &control_,
+      reinterpret_cast<EventDispatcher *>(NULL),
+      reinterpret_cast<Metrics *>(NULL),
+      reinterpret_cast<Manager *>(NULL),
+      kTestDeviceName0,
+      string(),
+      kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex0))
+      .WillRepeatedly(Return(device));
+  EXPECT_CALL(*device.get(), DisableReversePathFilter()).Times(1);
+  connection->RequestRouting();
+  connection->RequestRouting();
 
-    // The first release should only decrement the reference counter.
-    connection->ReleaseRouting();
+  // The first release should only decrement the reference counter.
+  connection->ReleaseRouting();
 
-    // Another release will re-enable reverse-path filter.
-    EXPECT_CALL(*device.get(), EnableReversePathFilter());
-    EXPECT_CALL(routing_table_, FlushCache());
-    connection->ReleaseRouting();
+  // Another release will re-enable reverse-path filter.
+  EXPECT_CALL(*device.get(), EnableReversePathFilter());
+  EXPECT_CALL(routing_table_, FlushCache());
+  connection->ReleaseRouting();
 
-    // The destructor will remove the routes and addresses.
-    EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
-    EXPECT_CALL(*device_info_.get(),
-                FlushAddresses(kTestDeviceInterfaceIndex0));
-  }
+  // The destructor will remove the routes and addresses.
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(*device_info_.get(),
+              FlushAddresses(kTestDeviceInterfaceIndex0));
 }
 
 TEST_F(ConnectionTest, Destructor) {
@@ -215,6 +213,31 @@ TEST_F(ConnectionTest, Destructor) {
     connection->routing_table_ = &routing_table_;
     connection->rtnl_handler_ = &rtnl_handler_;
   }
+}
+
+MATCHER_P2(IsIPAddress, address, prefix, "") {
+  IPAddress match_address(address);
+  match_address.set_prefix(prefix);
+  return match_address.Equals(arg);
+}
+
+TEST_F(ConnectionTest, RequestHostRoute) {
+  ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
+                                             kTestDeviceName0,
+                                             device_info_.get()));
+  ReplaceSingletons(connection);
+  IPAddress address(IPAddress::kFamilyIPv4);
+  ASSERT_TRUE(address.SetAddressFromString(kIPAddress0));
+  size_t prefix_len = address.GetLength() * 8;
+  EXPECT_CALL(routing_table_, RequestRouteToHost(
+      IsIPAddress(address, prefix_len), kTestDeviceInterfaceIndex0))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(connection->RequestHostRoute(address));
+
+  // The destructor will remove the routes and addresses.
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(*device_info_.get(),
+              FlushAddresses(kTestDeviceInterfaceIndex0));
 }
 
 }  // namespace shill
