@@ -580,7 +580,11 @@ gboolean Service::GetSystemSalt(GArray **OUT_salt, GError **error) {
 }
 
 gboolean Service::IsMounted(gboolean *OUT_is_mounted, GError **error) {
-  *OUT_is_mounted = mount_->IsCryptohomeMounted();
+  // We consider "the cryptohome" to be mounted if any existing cryptohome is
+  // mounted.
+  *OUT_is_mounted = FALSE;
+  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it)
+    *OUT_is_mounted = *OUT_is_mounted || it->second->IsCryptohomeMounted();
   return TRUE;
 }
 
