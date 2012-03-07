@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -9,6 +9,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/values.h>
 #include <chromeos/utility.h>
 
 #include "crypto.h"
@@ -32,7 +33,7 @@ class InstallAttributes {
   // Creates an instance of install attributes that will use the |tpm|. If |tpm|
   // is NULL, InstallAttributes will proceed insecurely (unless it is set with
   // set_tpm at a later time).
-  InstallAttributes(Tpm* tpm);
+  explicit InstallAttributes(Tpm* tpm);
   virtual ~InstallAttributes();
 
   // Prepares the underlying system for use on first-install only.
@@ -145,10 +146,17 @@ class InstallAttributes {
 
   virtual void set_is_first_install(bool first) { is_first_install_ = first; }
 
+  // Returns a description of the system's install attributes as a Value.
+  //
+  // The Value is a DictionaryValue, with keys "initialized", "version",
+  // "lockbox_index", "secure", "invalid", "first_install" and "size".
+  virtual Value* GetStatus();
+
   // Provides the TPM NVRAM index to be used by the underlying Lockbox instance.
   static const uint32_t kLockboxIndex;
   // Provides the default location for the attributes data file.
   static const char* kDefaultDataFile;
+
  protected:
   // Helper to find a given entry index using its name.
   virtual int FindIndexByName(const std::string& name) const;

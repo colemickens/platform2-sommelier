@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -278,6 +278,29 @@ bool InstallAttributes::SerializeAttributes(chromeos::Blob* out_bytes) {
   attributes_->SerializeWithCachedSizesToArray(
     static_cast<google::protobuf::uint8*>(out_bytes->data()));
   return true;
+}
+
+Value* InstallAttributes::GetStatus() {
+  DictionaryValue* dv = new DictionaryValue();
+  dv->SetBoolean("initialized", is_initialized());
+  dv->SetInteger("version", version());
+  dv->SetInteger("lockbox_index", kLockboxIndex);
+  dv->SetBoolean("secure", is_secure());
+  dv->SetBoolean("invalid", is_invalid());
+  dv->SetBoolean("first_install", is_first_install());
+  dv->SetInteger("size", Count());
+  if (Count()) {
+    DictionaryValue* attrs = new DictionaryValue();
+    std::string key;
+    chromeos::Blob value;
+    for (int i = 0; GetByIndex(i, &key, &value); i++) {
+      std::string value_str(reinterpret_cast<const char*>(&value[0]),
+                            value.size());
+      attrs->SetString(key, value_str);
+    }
+    dv->Set("attrs", attrs);
+  }
+  return dv;
 }
 
 }  // namespace cryptohome
