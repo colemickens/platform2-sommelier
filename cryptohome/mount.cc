@@ -1559,4 +1559,30 @@ bool Mount::EnsureUserMountPoints(const Credentials& credentials) const {
   return true;
 }
 
+Value* Mount::GetStatus() {
+  std::string user;
+  SerializedVaultKeyset keyset;
+  DictionaryValue* dv = new DictionaryValue();
+  current_user_->GetObfuscatedUsername(&user);
+  ListValue* keysets = new ListValue();
+  if (user.length()) {
+    DictionaryValue* keyset0 = new DictionaryValue();
+    if (LoadVaultKeysetForUser(user, &keyset)) {
+      bool tpm = keyset.flags() & SerializedVaultKeyset::TPM_WRAPPED;
+      bool scrypt = keyset.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED;
+      keyset0->SetBoolean("tpm", tpm);
+      keyset0->SetBoolean("scrypt", scrypt);
+      keyset0->SetBoolean("ok", true);
+    } else {
+      keyset0->SetBoolean("ok", false);
+    }
+    keysets->Append(keyset0);
+  }
+  dv->Set("keysets", keysets);
+  dv->SetBoolean("mounted", IsCryptohomeMounted());
+  dv->SetString("owner", GetObfuscatedOwner());
+  dv->SetBoolean("enterprise", enterprise_owned());
+  return dv;
+}
+
 }  // namespace cryptohome

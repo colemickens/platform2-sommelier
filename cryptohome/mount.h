@@ -17,6 +17,7 @@
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
+#include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <policy/device_policy.h>
@@ -507,6 +508,12 @@ class Mount : public EntropySource {
   Pkcs11State pkcs11_state() {
     return pkcs11_state_;
   }
+
+  // Returns the status of this mount as a Value
+  //
+  // The returned object is a dictionary whose keys describe the mount. Current
+  // keys are: "keysets", "mounted", "owner" and "enterprise".
+  virtual Value* GetStatus();
 
  protected:
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
