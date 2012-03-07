@@ -75,6 +75,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   void RegisterUpdateCallback(
       Callback2<const IPConfigRefPtr&, bool>::Type *callback);
 
+  void set_properties(const Properties &props) { properties_ = props; }
   const Properties &properties() const { return properties_; }
 
   // Request, renew and release IP configuration. Return true on success, false

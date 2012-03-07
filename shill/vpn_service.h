@@ -16,7 +16,7 @@ class VPNDriver;
 
 class VPNService : public Service {
  public:
-  VPNService(ControlInterface *control_interface,
+  VPNService(ControlInterface *control,
              EventDispatcher *dispatcher,
              Metrics *metrics,
              Manager *manager,

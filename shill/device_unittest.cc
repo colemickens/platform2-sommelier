@@ -75,8 +75,8 @@ class DeviceTest : public PropertyStoreTest {
   static const char kDeviceName[];
   static const char kDeviceAddress[];
 
-  void IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig, bool success) {
-    device_->IPConfigUpdatedCallback(ipconfig, success);
+  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
+    device_->OnIPConfigUpdated(ipconfig, success);
   }
 
   void SelectService(const ServiceRefPtr service) {
@@ -280,7 +280,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
   SelectService(service);
   EXPECT_CALL(*service.get(), SetState(Service::kStateDisconnected));
   EXPECT_CALL(*service.get(), SetConnection(IsNullRefPtr()));
-  IPConfigUpdatedCallback(NULL, false);
+  OnIPConfigUpdated(NULL, false);
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
@@ -297,7 +297,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
   EXPECT_CALL(*service.get(), SetConnection(NotNullRefPtr()));
-  IPConfigUpdatedCallback(ipconfig.get(), true);
+  OnIPConfigUpdated(ipconfig.get(), true);
 }
 
 TEST_F(DeviceTest, Stop) {

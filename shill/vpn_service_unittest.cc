@@ -12,6 +12,8 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_vpn_driver.h"
 
+using testing::_;
+
 namespace shill {
 
 class VPNServiceTest : public testing::Test {
@@ -32,8 +34,9 @@ class VPNServiceTest : public testing::Test {
 
 TEST_F(VPNServiceTest, Connect) {
   Error error;
+  EXPECT_CALL(*driver_, Connect(_, &error));
   service_->Connect(&error);
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(VPNServiceTest, GetStorageIdentifier) {

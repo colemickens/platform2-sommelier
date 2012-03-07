@@ -53,13 +53,11 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
     return NULL;
   }
 
-  services_.push_back(
-      new VPNService(
-          control_interface_, dispatcher_, metrics_, manager_,
-          driver.release()));
-
-  return services_.back();
-
+  VPNServiceRefPtr service = new VPNService(
+      control_interface_, dispatcher_, metrics_, manager_, driver.release());
+  services_.push_back(service);
+  manager_->RegisterService(service);
+  return service;
 }
 
 bool VPNProvider::OnDeviceInfoAvailable(const string &link_name,

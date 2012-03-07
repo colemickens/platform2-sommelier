@@ -13,20 +13,18 @@ using std::string;
 
 namespace shill {
 
-VPNService::VPNService(ControlInterface *control_interface,
+VPNService::VPNService(ControlInterface *control,
                        EventDispatcher *dispatcher,
                        Metrics *metrics,
                        Manager *manager,
                        VPNDriver *driver)
-    : Service(control_interface, dispatcher, metrics, manager,
-              Technology::kVPN),
+    : Service(control, dispatcher, metrics, manager, Technology::kVPN),
       driver_(driver) {}
 
 VPNService::~VPNService() {}
 
 void VPNService::Connect(Error *error) {
-  NOTIMPLEMENTED();
-  error->Populate(Error::kNotSupported);
+  driver_->Connect(this, error);
 }
 
 string VPNService::GetStorageIdentifier() const {

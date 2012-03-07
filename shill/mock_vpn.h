@@ -22,6 +22,8 @@ class MockVPN : public VPN {
   virtual ~MockVPN();
 
   MOCK_METHOD0(Stop, void());
+  MOCK_METHOD1(UpdateIPConfig, void(const IPConfig::Properties &properties));
+  MOCK_METHOD0(OnDisconnected, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockVPN);

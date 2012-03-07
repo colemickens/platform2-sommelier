@@ -4,6 +4,8 @@
 
 #include "shill/vpn.h"
 
+#include "shill/vpn_service.h"
+
 using std::string;
 
 namespace shill {
@@ -21,6 +23,22 @@ VPN::~VPN() {}
 
 bool VPN::TechnologyIs(const Technology::Identifier type) const {
   return type == Technology::kVPN;
+}
+
+void VPN::SelectService(const VPNServiceRefPtr &service) {
+  VLOG(2) << __func__;
+  Device::SelectService(service);
+}
+
+void VPN::UpdateIPConfig(const IPConfig::Properties &properties) {
+  VLOG(2) << __func__;
+  ipconfig()->set_properties(properties);
+  OnIPConfigUpdated(ipconfig(), true);
+}
+
+void VPN::OnDisconnected() {
+  VLOG(2) << __func__;
+  OnIPConfigUpdated(ipconfig(), false);
 }
 
 }  // namespace shill

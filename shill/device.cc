@@ -323,7 +323,7 @@ bool Device::AcquireIPConfig() {
   EnableIPv6();
   ipconfig_ = dhcp_provider_->CreateConfig(link_name_, manager_->GetHostName());
   ipconfig_->RegisterUpdateCallback(
-      NewCallback(this, &Device::IPConfigUpdatedCallback));
+      NewCallback(this, &Device::OnIPConfigUpdated));
   return ipconfig_->RequestIP();
 }
 
@@ -345,8 +345,7 @@ void Device::HelpRegisterDerivedStrings(
       StringsAccessor(new CustomAccessor<Device, Strings>(this, get, set)));
 }
 
-void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,
-                                     bool success) {
+void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
   VLOG(2) << __func__ << " " << " success: " << success;
   if (success) {
     CreateConnection();

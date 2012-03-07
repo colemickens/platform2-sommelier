@@ -16,6 +16,7 @@
 #include "shill/error.h"
 #include "shill/rpc_task.h"
 #include "shill/vpn.h"
+#include "shill/vpn_service.h"
 
 using std::map;
 using std::string;
@@ -77,6 +78,10 @@ void OpenVPNDriver::Cleanup() {
     device_info_->DeleteInterface(interface_index);
   }
   tunnel_interface_.clear();
+  if (service_) {
+    service_->SetState(Service::kStateFailure);
+    service_ = NULL;
+  }
 }
 
 bool OpenVPNDriver::SpawnOpenVPN() {
@@ -144,6 +149,7 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   device_ = new VPN(control_, dispatcher_, metrics_, manager_,
                     link_name, interface_index);
   device_->Start();
+  device_->SelectService(service_);
   rpc_task_.reset(new RPCTask(control_, this));
   if (!SpawnOpenVPN()) {
     Cleanup();
@@ -155,11 +161,12 @@ void OpenVPNDriver::Notify(const string &reason,
                            const map<string, string> &dict) {
   VLOG(2) << __func__ << "(" << reason << ")";
   if (reason != "up") {
+    device_->OnDisconnected();
     return;
   }
   IPConfig::Properties properties;
   ParseIPConfiguration(dict, &properties);
-  // TODO(petkov): Apply the properties to a VPNDevice's IPConfig.
+  device_->UpdateIPConfig(properties);
 }
 
 // static
@@ -286,11 +293,14 @@ void OpenVPNDriver::SetRoutes(const RouteOptions &routes,
   }
 }
 
-void OpenVPNDriver::Connect(Error *error) {
+void OpenVPNDriver::Connect(const VPNServiceRefPtr &service,
+                            Error *error) {
+  service_ = service;
+  service_->SetState(Service::kStateConfiguring);
   if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
     Error::PopulateAndLog(
         error, Error::kInternalError, "Could not create tunnel interface.");
-    return;
+    Cleanup();
   }
   // Wait for the ClaimInterface callback to continue the connection process.
 }

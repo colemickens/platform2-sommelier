@@ -17,9 +17,11 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_vpn.h"
+#include "shill/mock_vpn_service.h"
 #include "shill/nice_mock_control.h"
 #include "shill/rpc_task.h"
 #include "shill/vpn.h"
+#include "shill/vpn_service.h"
 
 using std::map;
 using std::string;
@@ -37,15 +39,20 @@ class OpenVPNDriverTest : public testing::Test,
   OpenVPNDriverTest()
       : device_info_(&control_, NULL, NULL, NULL),
         manager_(&control_, &dispatcher_, &metrics_, &glib_),
-        driver_(&control_, &dispatcher_, &metrics_, &manager_, &device_info_,
-                &glib_, args_) {}
+        driver_(new OpenVPNDriver(&control_, &dispatcher_, &metrics_, &manager_,
+                                  &device_info_, &glib_, args_)),
+        service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
+                                    &manager_, driver_)),
+        device_(new MockVPN(&control_, &dispatcher_, &metrics_, &manager_,
+                            kInterfaceName, kInterfaceIndex)) {}
 
   virtual ~OpenVPNDriverTest() {}
 
   virtual void TearDown() {
-    driver_.child_watch_tag_ = 0;
-    driver_.pid_ = 0;
-    driver_.device_ = NULL;
+    driver_->child_watch_tag_ = 0;
+    driver_->pid_ = 0;
+    driver_->device_ = NULL;
+    driver_->service_ = NULL;
   }
 
  protected:
@@ -61,9 +68,11 @@ class OpenVPNDriverTest : public testing::Test,
   static const char kGateway2[];
   static const char kNetmask2[];
   static const char kNetwork2[];
+  static const char kInterfaceName[];
+  static const int kInterfaceIndex;
 
   void SetArgs() {
-    driver_.args_ = args_;
+    driver_->args_ = args_;
   }
 
   // Used to assert that a flag appears in the options.
@@ -80,8 +89,9 @@ class OpenVPNDriverTest : public testing::Test,
   MockGLib glib_;
   MockManager manager_;
   KeyValueStore args_;
-  OpenVPNDriver driver_;
-  scoped_refptr<MockVPN> mock_vpn_;
+  OpenVPNDriver *driver_;  // Owner by |service_|.
+  scoped_refptr<MockVPNService> service_;
+  scoped_refptr<MockVPN> device_;
 };
 
 const char OpenVPNDriverTest::kOption[] = "--openvpn-option";
@@ -96,6 +106,8 @@ const char OpenVPNDriverTest::kNetwork1[] = "10.242.2.1";
 const char OpenVPNDriverTest::kGateway2[] = "10.242.2.14";
 const char OpenVPNDriverTest::kNetmask2[] = "255.255.0.0";
 const char OpenVPNDriverTest::kNetwork2[] = "192.168.0.0";
+const char OpenVPNDriverTest::kInterfaceName[] = "tun0";
+const int OpenVPNDriverTest::kInterfaceIndex = 123;
 
 void OpenVPNDriverTest::Notify(const string &/*reason*/,
                                const map<string, string> &/*dict*/) {}
@@ -118,28 +130,39 @@ void OpenVPNDriverTest::ExpectInFlags(const vector<string> &options,
 
 
 TEST_F(OpenVPNDriverTest, Connect) {
-  const string kInterfaceName("tun0");
+  EXPECT_CALL(*service_, SetState(Service::kStateConfiguring));
+  const string interface = kInterfaceName;
   EXPECT_CALL(device_info_, CreateTunnelInterface(_))
-      .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kInterfaceName), Return(true)));
-  {
-    Error error;
-    driver_.Connect(&error);
-    EXPECT_EQ(Error::kInternalError, error.type());
-    EXPECT_TRUE(driver_.tunnel_interface_.empty());
-  }
-  {
-    Error error;
-    driver_.Connect(&error);
-    EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(kInterfaceName, driver_.tunnel_interface_);
-  }
+      .WillOnce(DoAll(SetArgumentPointee<0>(interface), Return(true)));
+  Error error;
+  driver_->Connect(service_, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
+}
+
+TEST_F(OpenVPNDriverTest, ConnectTunnelFailure) {
+  EXPECT_CALL(*service_, SetState(Service::kStateConfiguring));
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*service_, SetState(Service::kStateFailure));
+  Error error;
+  driver_->Connect(service_, &error);
+  EXPECT_EQ(Error::kInternalError, error.type());
+  EXPECT_TRUE(driver_->tunnel_interface_.empty());
 }
 
 TEST_F(OpenVPNDriverTest, Notify) {
   map<string, string> dict;
-  driver_.Notify("up", dict);
-  // TODO(petkov): Expect an IPConfig update.
+  driver_->device_ = device_;
+  EXPECT_CALL(*device_, UpdateIPConfig(_));
+  driver_->Notify("up", dict);
+}
+
+TEST_F(OpenVPNDriverTest, NotifyFail) {
+  map<string, string> dict;
+  driver_->device_ = device_;
+  EXPECT_CALL(*device_, OnDisconnected());
+  driver_->Notify("fail", dict);
 }
 
 TEST_F(OpenVPNDriverTest, GetRouteOptionEntry) {
@@ -278,7 +301,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
 TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {
   Error error;
   vector<string> options;
-  driver_.InitOptions(&options, &error);
+  driver_->InitOptions(&options, &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_TRUE(options.empty());
 }
@@ -287,36 +310,35 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   static const char kHost[] = "192.168.2.254";
   args_.SetString(flimflam::kProviderHostProperty, kHost);
   SetArgs();
-  driver_.rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->rpc_task_.reset(new RPCTask(&control_, this));
   Error error;
   vector<string> options;
-  const string kInterfaceName("tun0");
-  driver_.tunnel_interface_ = kInterfaceName;
-  driver_.InitOptions(&options, &error);
+  driver_->tunnel_interface_ = kInterfaceName;
+  driver_->InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ("--client", options[0]);
   ExpectInFlags(options, "--remote", kHost);
   ExpectInFlags(options, "CONNMAN_PATH", RPCTaskMockAdaptor::kRpcId);
   ExpectInFlags(options, "--dev", kInterfaceName);
   EXPECT_EQ("openvpn", options.back());
-  EXPECT_EQ(kInterfaceName, driver_.tunnel_interface_);
+  EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
 }
 
 TEST_F(OpenVPNDriverTest, AppendValueOption) {
   vector<string> options;
-  driver_.AppendValueOption("OpenVPN.UnknownProperty", kOption, &options);
+  driver_->AppendValueOption("OpenVPN.UnknownProperty", kOption, &options);
   EXPECT_TRUE(options.empty());
 
   args_.SetString(kProperty, "");
   SetArgs();
-  driver_.AppendValueOption(kProperty, kOption, &options);
+  driver_->AppendValueOption(kProperty, kOption, &options);
   EXPECT_TRUE(options.empty());
 
   args_.SetString(kProperty, kValue);
   args_.SetString(kProperty2, kValue2);
   SetArgs();
-  driver_.AppendValueOption(kProperty, kOption, &options);
-  driver_.AppendValueOption(kProperty2, kOption2, &options);
+  driver_->AppendValueOption(kProperty, kOption, &options);
+  driver_->AppendValueOption(kProperty2, kOption2, &options);
   EXPECT_EQ(4, options.size());
   EXPECT_EQ(kOption, options[0]);
   EXPECT_EQ(kValue, options[1]);
@@ -326,25 +348,24 @@ TEST_F(OpenVPNDriverTest, AppendValueOption) {
 
 TEST_F(OpenVPNDriverTest, AppendFlag) {
   vector<string> options;
-  driver_.AppendValueOption("OpenVPN.UnknownProperty", kOption, &options);
+  driver_->AppendValueOption("OpenVPN.UnknownProperty", kOption, &options);
   EXPECT_TRUE(options.empty());
 
   args_.SetString(kProperty, "");
   args_.SetString(kProperty2, kValue2);
   SetArgs();
-  driver_.AppendFlag(kProperty, kOption, &options);
-  driver_.AppendFlag(kProperty2, kOption2, &options);
+  driver_->AppendFlag(kProperty, kOption, &options);
+  driver_->AppendFlag(kProperty2, kOption2, &options);
   EXPECT_EQ(2, options.size());
   EXPECT_EQ(kOption, options[0]);
   EXPECT_EQ(kOption2, options[1]);
 }
 
 TEST_F(OpenVPNDriverTest, ClaimInterface) {
-  const string kInterfaceName("tun0");
-  driver_.tunnel_interface_ = kInterfaceName;
-  const int kInterfaceIndex = 1122;
-  EXPECT_FALSE(driver_.ClaimInterface(kInterfaceName + "XXX", kInterfaceIndex));
-  EXPECT_FALSE(driver_.device_);
+  driver_->tunnel_interface_ = kInterfaceName;
+  EXPECT_FALSE(driver_->ClaimInterface(string(kInterfaceName) + "XXX",
+                                       kInterfaceIndex));
+  EXPECT_FALSE(driver_->device_);
 
   static const char kHost[] = "192.168.2.254";
   args_.SetString(flimflam::kProviderHostProperty, kHost);
@@ -352,64 +373,64 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   EXPECT_CALL(glib_, SpawnAsyncWithPipesCWD(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).WillOnce(Return(1));
-  EXPECT_TRUE(driver_.ClaimInterface(kInterfaceName, kInterfaceIndex));
-  ASSERT_TRUE(driver_.device_);
-  EXPECT_EQ(kInterfaceIndex, driver_.device_->interface_index());
+  EXPECT_TRUE(driver_->ClaimInterface(kInterfaceName, kInterfaceIndex));
+  ASSERT_TRUE(driver_->device_);
+  EXPECT_EQ(kInterfaceIndex, driver_->device_->interface_index());
 }
 
 TEST_F(OpenVPNDriverTest, Cleanup) {
   const unsigned int kTag = 123;
   const int kPID = 123456;
-  static const char kInterfaceName[] = "tun0";
-  const int kInterfaceIndex = 5;
-  driver_.child_watch_tag_ = kTag;
-  driver_.pid_ = kPID;
-  driver_.rpc_task_.reset(new RPCTask(&control_, this));
-  driver_.tunnel_interface_ = kInterfaceName;
-  mock_vpn_ = new MockVPN(&control_, &dispatcher_, &metrics_, &manager_,
-                          kInterfaceName, kInterfaceIndex);
-  driver_.device_ = mock_vpn_;
+  driver_->child_watch_tag_ = kTag;
+  driver_->pid_ = kPID;
+  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->tunnel_interface_ = kInterfaceName;
+  driver_->device_ = device_;
+  driver_->service_ = service_;
   EXPECT_CALL(glib_, SourceRemove(kTag));
   EXPECT_CALL(glib_, SpawnClosePID(kPID));
-  EXPECT_CALL(*mock_vpn_, Stop());
-  driver_.Cleanup();
-  EXPECT_EQ(0, driver_.child_watch_tag_);
-  EXPECT_EQ(0, driver_.pid_);
-  EXPECT_FALSE(driver_.rpc_task_.get());
-  EXPECT_TRUE(driver_.tunnel_interface_.empty());
-  EXPECT_FALSE(driver_.device_);
+  EXPECT_CALL(*device_, Stop());
+  EXPECT_CALL(device_info_, DeleteInterface(kInterfaceIndex));
+  EXPECT_CALL(*service_, SetState(Service::kStateFailure));
+  driver_->Cleanup();
+  EXPECT_EQ(0, driver_->child_watch_tag_);
+  EXPECT_EQ(0, driver_->pid_);
+  EXPECT_FALSE(driver_->rpc_task_.get());
+  EXPECT_TRUE(driver_->tunnel_interface_.empty());
+  EXPECT_FALSE(driver_->device_);
+  EXPECT_FALSE(driver_->service_);
 }
 
 TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
-  EXPECT_FALSE(driver_.SpawnOpenVPN());
+  EXPECT_FALSE(driver_->SpawnOpenVPN());
 
   static const char kHost[] = "192.168.2.254";
   args_.SetString(flimflam::kProviderHostProperty, kHost);
   SetArgs();
-  driver_.tunnel_interface_ = "tun0";
-  driver_.rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->tunnel_interface_ = "tun0";
+  driver_->rpc_task_.reset(new RPCTask(&control_, this));
 
   const int kPID = 234678;
   EXPECT_CALL(glib_, SpawnAsyncWithPipesCWD(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(false))
       .WillOnce(DoAll(SetArgumentPointee<5>(kPID), Return(true)));
   const int kTag = 6;
-  EXPECT_CALL(glib_, ChildWatchAdd(kPID, &driver_.OnOpenVPNDied, &driver_))
+  EXPECT_CALL(glib_, ChildWatchAdd(kPID, &driver_->OnOpenVPNDied, driver_))
       .WillOnce(Return(kTag));
-  EXPECT_FALSE(driver_.SpawnOpenVPN());
-  EXPECT_TRUE(driver_.SpawnOpenVPN());
-  EXPECT_EQ(kPID, driver_.pid_);
-  EXPECT_EQ(kTag, driver_.child_watch_tag_);
+  EXPECT_FALSE(driver_->SpawnOpenVPN());
+  EXPECT_TRUE(driver_->SpawnOpenVPN());
+  EXPECT_EQ(kPID, driver_->pid_);
+  EXPECT_EQ(kTag, driver_->child_watch_tag_);
 }
 
 TEST_F(OpenVPNDriverTest, OnOpenVPNDied) {
   const int kPID = 99999;
-  driver_.child_watch_tag_ = 333;
-  driver_.pid_ = kPID;
+  driver_->child_watch_tag_ = 333;
+  driver_->pid_ = kPID;
   EXPECT_CALL(glib_, SpawnClosePID(kPID));
-  OpenVPNDriver::OnOpenVPNDied(kPID, 2, &driver_);
-  EXPECT_EQ(0, driver_.child_watch_tag_);
-  EXPECT_EQ(0, driver_.pid_);
+  OpenVPNDriver::OnOpenVPNDied(kPID, 2, driver_);
+  EXPECT_EQ(0, driver_->child_watch_tag_);
+  EXPECT_EQ(0, driver_->pid_);
 }
 
 }  // namespace shill

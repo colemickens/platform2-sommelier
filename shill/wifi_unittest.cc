@@ -329,7 +329,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     wifi_->ClearCachedCredentials();
   }
   void ReportIPConfigComplete() {
-    wifi_->IPConfigUpdatedCallback(dhcp_config_, true);
+    wifi_->OnIPConfigUpdated(dhcp_config_, true);
   }
   void ReportLinkUp() {
     wifi_->LinkEvent(IFF_LOWER_UP, IFF_LOWER_UP);

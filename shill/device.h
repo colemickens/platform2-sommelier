@@ -106,6 +106,7 @@ class Device : public base::RefCounted<Device> {
   const std::string &link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
   const ConnectionRefPtr &connection() const { return connection_; }
+  const IPConfigRefPtr &ipconfig() const { return ipconfig_; }
   bool powered() const { return powered_; }
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString(Error *error);
@@ -157,6 +158,9 @@ class Device : public base::RefCounted<Device> {
   // IPConfigUpdatedCallback on IP configuration changes. Returns true if the IP
   // request was successfully sent.
   bool AcquireIPConfig();
+
+  // Callback invoked on every IP configuration update.
+  void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success);
 
   // Maintain connection state (Routes, IP Addresses and DNS) in the OS.
   void CreateConnection();
@@ -222,9 +226,6 @@ class Device : public base::RefCounted<Device> {
   static const char kIPFlagReversePathFilterLooseMode[];
   static const char kStoragePowered[];
   static const char kStorageIPConfigs[];
-
-  // Callback invoked on every IP configuration update.
-  void IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig, bool success);
 
   // Right now, Devices reference IPConfigs directly when persisted to disk
   // It's not clear that this makes sense long-term, but that's how it is now.

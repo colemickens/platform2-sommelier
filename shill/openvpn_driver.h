@@ -46,7 +46,7 @@ class OpenVPNDriver : public VPNDriver,
   // process by setting up and spawning an external 'openvpn' process. IP
   // configuration settings are passed back from the external process through
   // the |Notify| RPC service method.
-  virtual void Connect(Error *error);
+  virtual void Connect(const VPNServiceRefPtr &service, Error *error);
   virtual bool ClaimInterface(const std::string &link_name,
                               int interface_index);
 
@@ -57,10 +57,12 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ClaimInterface);
   FRIEND_TEST(OpenVPNDriverTest, Cleanup);
   FRIEND_TEST(OpenVPNDriverTest, Connect);
+  FRIEND_TEST(OpenVPNDriverTest, ConnectTunnelFailure);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
   FRIEND_TEST(OpenVPNDriverTest, Notify);
+  FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
@@ -116,6 +118,8 @@ class OpenVPNDriver : public VPNDriver,
   DeviceInfo *device_info_;
   GLib *glib_;
   KeyValueStore args_;
+
+  VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;
   std::string tunnel_interface_;
   VPNRefPtr device_;

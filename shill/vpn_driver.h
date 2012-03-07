@@ -9,6 +9,8 @@
 
 #include <base/basictypes.h>
 
+#include "shill/refptr_types.h"
+
 namespace shill {
 
 class Error;
@@ -19,7 +21,7 @@ class VPNDriver {
 
   virtual bool ClaimInterface(const std::string &link_name,
                               int interface_index) = 0;
-  virtual void Connect(Error *error) = 0;
+  virtual void Connect(const VPNServiceRefPtr &service, Error *error) = 0;
 };
 
 }  // namespace shill

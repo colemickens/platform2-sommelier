@@ -22,6 +22,12 @@ class VPN : public Device {
 
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
+  virtual void UpdateIPConfig(const IPConfig::Properties &properties);
+  virtual void OnDisconnected();
+
+  // Expose protected device methods to the VPN driver.
+  void SelectService(const VPNServiceRefPtr &service);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(VPN);
 };

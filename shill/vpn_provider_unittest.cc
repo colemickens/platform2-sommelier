@@ -10,6 +10,7 @@
 #include "shill/error.h"
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_vpn_driver.h"
@@ -25,6 +26,7 @@ class VPNProviderTest : public testing::Test {
  public:
   VPNProviderTest()
       : manager_(&control_, NULL, &metrics_, NULL),
+        device_info_(&control_, NULL, &metrics_, &manager_),
         provider_(&control_, NULL, &metrics_, &manager_) {}
 
   virtual ~VPNProviderTest() {}
@@ -33,6 +35,7 @@ class VPNProviderTest : public testing::Test {
   NiceMockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
+  MockDeviceInfo device_info_;
   VPNProvider provider_;
 };
 
@@ -60,6 +63,8 @@ TEST_F(VPNProviderTest, GetServiceVPN) {
   Error e;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
   args.SetString(flimflam::kProviderTypeProperty, flimflam::kProviderOpenVpn);
+  EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
+  EXPECT_CALL(manager_, RegisterService(_));
   VPNServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   EXPECT_TRUE(service);
