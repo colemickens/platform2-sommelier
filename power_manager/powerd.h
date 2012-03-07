@@ -394,6 +394,9 @@ class Daemon : public XIdleObserver,
   // active or we're in guest mode.
   std::string current_user_;
 
+  // Last session state that we have been informed of. Initialized as stopped.
+  std::string current_session_state_;
+
   // Stores normal timeout values, to be used for switching between projecting
   // and non-projecting timeouts.  Map keys are variable names found in
   // power_constants.h.

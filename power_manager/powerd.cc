@@ -12,6 +12,7 @@
 #include <X11/extensions/dpms.h>
 
 #include <algorithm>
+#include <set>
 #include <vector>
 
 #include "base/file_util.h"
@@ -55,6 +56,14 @@ const int64 kBatteryPollIntervalMs = 30000;
 
 // How frequently audio should be checked before suspending.
 const int64 kAudioCheckIntervalMs = 1000;
+
+// Valid string values for the state value of Session Manager
+const std::string kValidStateStrings[] = { "started", "stopping", "stopped" };
+
+// Set of valid state strings for easy sanity testing
+std::set<std::string> kValidStates(
+    kValidStateStrings,
+    kValidStateStrings  + sizeof(kValidStateStrings) / sizeof(std::string));
 
 } // namespace
 
@@ -104,6 +113,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       battery_discharge_rate_metric_last_(0),
       battery_remaining_charge_metric_last_(0),
       battery_time_to_empty_metric_last_(0),
+      current_session_state_("stopped"),
       udev_(NULL) {}
 
 Daemon::~Daemon() {
@@ -990,28 +1000,43 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
     return;
   }
 
-  if (strcmp(state, "started") == 0) {
+  std::string state_string(state);
+
+  if (kValidStates.find(state_string) == kValidStates.end()) {
+    LOG(WARNING) << "Changing to unknown session state: " << state;
+    return;
+  }
+
+  if (state_string == "started") {
+    // We always want to take action even if we were already "started", since we
+    // want to record when the current session started.  If this warning is
+    // appearing it means either we are querying the state of Session Manager
+    // when already know it to be "started" or we missed a "stopped"
+    // signal. Both of these cases are bad and should be investigated.
+    LOG_IF(WARNING, (current_session_state_ == state))
+        << "Received message saying session started, when we were already in "
+        << "the started state!";
+
     LOG_IF(ERROR,
            (!GenerateBatteryRemainingAtStartOfSessionMetric(power_status_)))
-           << "Start Started: Unable to generate battery remaining metric!";
+        << "Start Started: Unable to generate battery remaining metric!";
     current_user_ = user;
     session_start_ = base::Time::Now();
     DLOG(INFO) << "Session started for "
                << (current_user_.empty() ? "guest" : "non-guest user");
-  } else if (strcmp(state, "stopping") == 0) {
+  } else if (current_session_state_ != state) {
+    DLOG(INFO) << "Session " << state;
+    // For states other then "started" we only want to take action if we have
+    // actually changed state, since the code we are calling assumes that we are
+    // actually transitioning between states.
     current_user_.clear();
-    DLOG(INFO) << "Session stopping";
-  } else if (strcmp(state, "stopped") == 0) {
-    GenerateEndOfSessionMetrics(power_status_,
-                                *backlight_controller_,
-                                base::Time::Now(),
-                                session_start_);
-    current_user_.clear();
-    DLOG(INFO) << "Session stopped";
-  } else {
-    LOG(WARNING) << "Got unexpected state in session state change signal: "
-                 << state;
+    if (current_session_state_ == "stopped")
+      GenerateEndOfSessionMetrics(power_status_,
+                                  *backlight_controller_,
+                                  base::Time::Now(),
+                                  session_start_);
   }
+  current_session_state_ = state;
 }
 
 void Daemon::OnButtonEvent(DBusMessage* message) {
@@ -1154,6 +1179,7 @@ void Daemon::RetrieveSessionState() {
                         G_TYPE_STRING,
                         &user,
                         G_TYPE_INVALID)) {
+    LOG(INFO) << "Retrieved session state of " << state;
     OnSessionStateChange(state, user);
     g_free(state);
     g_free(user);
