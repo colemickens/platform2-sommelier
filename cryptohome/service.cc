@@ -10,11 +10,13 @@
 #include <stdlib.h>
 
 #include <base/file_util.h>
+#include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/platform_file.h>
 #include <base/scoped_ptr.h>
 #include <base/string_util.h>
 #include <base/time.h>
+#include <base/values.h>
 #include <chromeos/dbus/dbus.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
@@ -942,134 +944,18 @@ gboolean Service::InstallAttributesIsFirstInstall(
 }
 
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
-  Tpm::TpmStatusInfo tpm_status;
-  mount_->get_crypto()->EnsureTpm(false);
-
-  tpm_->GetStatus(true, &tpm_status);
-
-  if (tpm_init_) {
-    tpm_status.Enabled = tpm_init_->IsTpmEnabled();
-    tpm_status.BeingOwned = tpm_init_->IsTpmBeingOwned();
-    tpm_status.Owned = tpm_init_->IsTpmOwned();
-  }
-
-  std::string user_data;
-  UserSession* session = mount_->get_current_user();
-  if (session) {
-    do {
-      std::string obfuscated_user;
-      session->GetObfuscatedUsername(&obfuscated_user);
-      if (!obfuscated_user.length()) {
-        break;
-      }
-      std::string vault_path = StringPrintf("%s/%s/master.0",
-                                            mount_->get_shadow_root().c_str(),
-                                            obfuscated_user.c_str());
-      FilePath vault_file(vault_path);
-      base::PlatformFileInfo file_info;
-      if (!file_util::GetFileInfo(vault_file, &file_info)) {
-        break;
-      }
-      SecureBlob contents;
-      if (!Mount::LoadFileBytes(vault_file, &contents)) {
-        break;
-      }
-      cryptohome::SerializedVaultKeyset serialized;
-      if (!serialized.ParseFromArray(
-          static_cast<const unsigned char*>(&contents[0]), contents.size())) {
-        break;
-      }
-      base::Time::Exploded exploded;
-      file_info.last_modified.UTCExplode(&exploded);
-      user_data = StringPrintf(
-          "User Session:\n"
-          "  Keyset Was TPM Wrapped..........: %s\n"
-          "  Keyset Was Scrypt Wrapped.......: %s\n"
-          "  Keyset Last Modified............: %02d-%02d-%04d %02d:%02d:%02d"
-          " (UTC)\n",
-          ((serialized.flags() &
-            cryptohome::SerializedVaultKeyset::TPM_WRAPPED) ? "1" : "0"),
-          ((serialized.flags() &
-            cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED) ? "1" : "0"),
-          exploded.month, exploded.day_of_month, exploded.year,
-          exploded.hour, exploded.minute, exploded.second);
-    } while (false);
-  }
-  int install_attrs_size = install_attrs_->Count();
-  std::string install_attrs_data("InstallAttributes Contents:\n");
-  if (install_attrs_->Count()) {
-    std::string name;
-    chromeos::Blob value;
-    for (int pair = 0; pair < install_attrs_size; ++pair) {
-      install_attrs_data.append(StringPrintf(
-        "  Index...........................: %d\n", pair));
-      if (install_attrs_->GetByIndex(pair, &name, &value)) {
-        std::string value_str(reinterpret_cast<const char*>(&value[0]),
-                              value.size());
-        install_attrs_data.append(StringPrintf(
-          "  Name............................: %s\n"
-          "  Value...........................: %s\n",
-          name.c_str(),
-          value_str.c_str()));
-      }
-    }
-  }
-
-  mount_->ReloadDevicePolicy();
-  *OUT_status = g_strdup_printf(
-      "TPM Status:\n"
-      "  Enabled.........................: %s\n"
-      "  Owned...........................: %s\n"
-      "  Being Owned.....................: %s\n"
-      "  Can Connect.....................: %s\n"
-      "  Can Load SRK....................: %s\n"
-      "  Can Load SRK Public.............: %s\n"
-      "  Has Cryptohome Key..............: %s\n"
-      "  Can Encrypt.....................: %s\n"
-      "  Can Decrypt.....................: %s\n"
-      "  Instance Context................: %s\n"
-      "  Instance Key Handle.............: %s\n"
-      "  Last Error......................: %08x\n"
-      "%s"
-      "Mount Status:\n"
-      "  Vault Is Mounted................: %s\n"
-      "  Owner User......................: %s\n"
-      "  Enterprise Owned................: %s\n"
-      "InstallAttributes Status:\n"
-      "  Initialized.....................: %s\n"
-      "  Version.........................: %"PRIx64"\n"
-      "  Lockbox Index...................: 0x%x\n"
-      "  Secure..........................: %s\n"
-      "  Invalid.........................: %s\n"
-      "  First Install / Unlocked........: %s\n"
-      "  Entries.........................: %d\n"
-      "%s"
-      "PKCS#11 Init State................: %d\n",
-      (tpm_status.Enabled ? "1" : "0"),
-      (tpm_status.Owned ? "1" : "0"),
-      (tpm_status.BeingOwned ? "1" : "0"),
-      (tpm_status.CanConnect ? "1" : "0"),
-      (tpm_status.CanLoadSrk ? "1" : "0"),
-      (tpm_status.CanLoadSrkPublicKey ? "1" : "0"),
-      (tpm_status.HasCryptohomeKey ? "1" : "0"),
-      (tpm_status.CanEncrypt ? "1" : "0"),
-      (tpm_status.CanDecrypt ? "1" : "0"),
-      (tpm_status.ThisInstanceHasContext ? "1" : "0"),
-      (tpm_status.ThisInstanceHasKeyHandle ? "1" : "0"),
-      tpm_status.LastTpmError,
-      user_data.c_str(),
-      (mount_->IsCryptohomeMounted() ? "1" : "0"),
-      mount_->GetObfuscatedOwner().c_str(),
-      (mount_->enterprise_owned() ? "1" : "0"),
-      (install_attrs_->is_initialized() ? "1" : "0"),
-      install_attrs_->version(),
-      InstallAttributes::kLockboxIndex,
-      (install_attrs_->is_secure() ? "1" : "0"),
-      (install_attrs_->is_invalid() ? "1" : "0"),
-      (install_attrs_->is_first_install() ? "1" : "0"),
-      install_attrs_size,
-      install_attrs_data.c_str(),
-      mount_->pkcs11_state());
+  DictionaryValue dv;
+  ListValue* mounts = new ListValue();
+  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); it++)
+    mounts->Append(it->second->GetStatus());
+  Value* attrs = install_attrs_->GetStatus();
+  Value* tpm = tpm_->GetStatusValue();
+  dv.Set("mounts", mounts);
+  dv.Set("installattrs", attrs);
+  dv.Set("tpm", tpm);
+  std::string json;
+  base::JSONWriter::Write(&dv, true, &json);
+  *OUT_status = g_strdup(json.c_str());
   return TRUE;
 }
 
