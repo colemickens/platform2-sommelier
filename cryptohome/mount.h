@@ -61,6 +61,8 @@ extern const char kGCacheMetaDir[];     // subdir of kGCacheVersionDir
 extern const char kGCacheTmpDir[];      // subdir of kGCacheVersionDir
 // Name of the vault directory.
 extern const char kVaultDir[];
+extern const char kUserHomeSuffix[];
+extern const char kRootHomeSuffix[];
 // File system type for ephemeral mounts.
 extern const char kEphemeralMountType[];
 // Time delta of last user's activity to be considered as old.

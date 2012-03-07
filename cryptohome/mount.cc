@@ -39,8 +39,6 @@ const char kDefaultShadowRoot[] = "/home/.shadow";
 const char kDefaultSharedUser[] = "chronos";
 const char kDefaultSharedAccessGroup[] = "chronos-access";
 const char kDefaultSkeletonSource[] = "/etc/skel";
-const char kUserHomeSuffix[] = "user";
-const char kRootHomeSuffix[] = "root";
 const uid_t kMountOwnerUid = 0;
 const gid_t kMountOwnerGid = 0;
 // TODO(fes): Remove once UI for BWSI switches to MountGuest()
@@ -59,6 +57,8 @@ const char kGCacheVersionDir[] = "v1";
 const char kGCacheBlobsDir[] = "blobs";
 const char kGCacheMetaDir[] = "meta";
 const char kGCacheTmpDir[] = "tmp";
+const char kUserHomeSuffix[] = "user";
+const char kRootHomeSuffix[] = "root";
 const char kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
 const char kEphemeralMountPerms[] = "mode=0700";
@@ -836,13 +836,15 @@ static void DeleteDirectoryContents(const FilePath& dir) {
           file_util::FileEnumerator::SHOW_SYM_LINKS));
   for (FilePath subdir_path = subdir_enumerator.Next(); !subdir_path.empty();
        subdir_path = subdir_enumerator.Next()) {
+    LOG(WARNING) << "Deleting " << subdir_path.value();
     file_util::Delete(subdir_path, true);
   }
 }
 
 void Mount::DeleteCacheCallback(const FilePath& vault) {
-  LOG(WARNING) << "Deleting Cache for user " << vault.value();
-  DeleteDirectoryContents(vault.Append(kCacheDir));
+  const FilePath cache = vault.Append(kUserHomeSuffix).Append(kCacheDir);
+  LOG(WARNING) << "Deleting Cache " << cache.value();
+  DeleteDirectoryContents(cache);
 }
 
 void Mount::AddUserTimestampToCacheCallback(const FilePath& vault) {

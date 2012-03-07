@@ -475,6 +475,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   ASSERT_TRUE(file_util::PathExists(subdir_path));
 }
 
+// TODO(glotov): remove this test when migration code is removed.
 TEST_F(MountTest, MigrationOfTrackedDirs) {
   // Checks that old cryptohomes (without pass-through tracked
   // directories) migrate when Mount()ed.
@@ -506,10 +507,8 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   // subdirs "Cache" and "Downloads".
   FilePath cache_dir(home_dir.Append(kCacheDir));
   FilePath downloads_dir(home_dir.Append(kDownloadsDir));
-  LOG(INFO) << "mkcache: " << cache_dir.value() << " "
-            << file_util::CreateDirectory(cache_dir);
-  LOG(INFO) << "mkdownload: " << downloads_dir.value() << " "
-            << file_util::CreateDirectory(downloads_dir);
+  file_util::CreateDirectory(cache_dir);
+  file_util::CreateDirectory(downloads_dir);
 
   // And they are not empty.
   const string contents = "Hello world!!!";
@@ -551,8 +550,6 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   EXPECT_TRUE(file_util::IsDirectoryEmpty(vault_path.Append(kDownloadsDir)));
 
   // Check that Downloads is completely migrated.
-  // TODO(ellyjones): figure out how to check that the migrated-from directories
-  // are now empty
   string tested;
   EXPECT_TRUE(file_util::PathExists(downloads_dir));
   EXPECT_TRUE(file_util::ReadFileToString(
@@ -753,7 +750,8 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, CacheCleanup) {
   FilePath cache_subdir[kAlternateUserCount];
   for (int user = 0; user != kAlternateUserCount; user++) {
     // Let their Cache dirs be filled with some data.
-    cache_dir[user] = image_path_[user].Append(kVaultDir).Append(kCacheDir);
+    cache_dir[user] = image_path_[user]
+        .Append(kVaultDir).Append(kUserHomeSuffix).Append(kCacheDir);
     file_util::CreateDirectory(cache_dir[user]);
     file_util::WriteFile(cache_dir[user].Append("cached_file"),
                          contents.c_str(), contents.length());
@@ -796,7 +794,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, CacheCleanup) {
     // Check that we did not leave any litter.
     file_util::Delete(cache_dir[user], true);
     EXPECT_TRUE(file_util::IsDirectoryEmpty(
-        image_path_[user].Append(kVaultDir)));
+        image_path_[user].Append(kVaultDir).Append(kUserHomeSuffix)));
   }
 }
 
