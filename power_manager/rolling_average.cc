@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cmath>
+
 #include "base/logging.h"
 
 #include "power_manager/rolling_average.h"
@@ -9,7 +11,7 @@
 namespace power_manager {
 
 RollingAverage::RollingAverage()
-    : running_total_(0.0),
+    : running_total_(0),
       max_window_size_(0) {
 }
 
@@ -18,14 +20,14 @@ RollingAverage::~RollingAverage() {
 
 void RollingAverage::Init(unsigned int max_window_size) {
   CHECK(sample_window_.size() == 0);
-  CHECK(running_total_ == 0.0);
+  CHECK(running_total_ == 0);
   CHECK(max_window_size_ == 0);
 
   max_window_size_ = max_window_size;
 }
 
-double RollingAverage::AddSample(double sample) {
-  CHECK(sample >= 0.0);
+int64 RollingAverage::AddSample(int64 sample) {
+  CHECK(sample >= 0);
 
   if (IsFull())
     DeleteSample();
@@ -34,15 +36,15 @@ double RollingAverage::AddSample(double sample) {
   return GetAverage();
 }
 
-double RollingAverage::GetAverage() {
+int64 RollingAverage::GetAverage() {
   if (sample_window_.empty())
-    return 0.0;
+    return 0;
 
-  return running_total_ / (double)sample_window_.size();
+  return lround((double)running_total_ / (double)sample_window_.size());
 }
 
 void RollingAverage::Clear() {
-  running_total_ = 0.0;
+  running_total_ = 0;
   while (!sample_window_.empty())
     sample_window_.pop();
 }
@@ -54,7 +56,7 @@ void RollingAverage::DeleteSample() {
   sample_window_.pop();
 }
 
-void RollingAverage::InsertSample(double sample) {
+void RollingAverage::InsertSample(int64 sample) {
   CHECK(sample_window_.size() < max_window_size_);
 
   running_total_ += sample;

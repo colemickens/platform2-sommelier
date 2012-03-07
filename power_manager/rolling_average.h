@@ -20,12 +20,12 @@ class RollingAverage {
 
   virtual void Init(unsigned int max_window_size);
 
-  virtual double AddSample(double sample);
-  virtual double GetAverage();
+  virtual int64 AddSample(int64 sample);
+  virtual int64 GetAverage();
   virtual void Clear();
  protected:
   void DeleteSample();
-  void InsertSample(double sample);
+  void InsertSample(int64 sample);
   bool IsFull();
 
  private:
@@ -49,8 +49,8 @@ class RollingAverage {
   FRIEND_TEST(RollingAverageTest, IsFullUninitialized);
   FRIEND_TEST(RollingAverageTest, IsFullOverflow);
 
-  std::queue<double> sample_window_;
-  double running_total_;
+  std::queue<int64> sample_window_;
+  int64 running_total_;
   unsigned int max_window_size_;
 
   DISALLOW_COPY_AND_ASSIGN(RollingAverage);

@@ -4,13 +4,14 @@
 
 #include <gtest/gtest.h>
 
+#include "base/basictypes.h"
 #include "power_manager/rolling_average.h"
 
 using ::testing::Test;
 
 namespace power_manager {
 
-static const double kTestSample = 10;
+static const int64 kTestSample = 10;
 static const unsigned int kTestWindowSize = 3;
 
 class RollingAverageTest : public Test {
@@ -47,13 +48,13 @@ TEST_F(RollingAverageTest, InitWindowSizeSet) {
 TEST_F(RollingAverageTest, AddSampleFull) {
   rolling_average_.Init(kTestWindowSize);
   for (unsigned int i = 0; i < kTestWindowSize; i++)
-    rolling_average_.sample_window_.push(0.0);
+    rolling_average_.sample_window_.push(0);
 
   EXPECT_EQ(rolling_average_.AddSample(kTestSample),
             (kTestSample / kTestWindowSize));
   EXPECT_EQ(kTestSample, rolling_average_.running_total_);
   for (unsigned int i = 0; i < kTestWindowSize - 1; i++) {
-    EXPECT_EQ(rolling_average_.sample_window_.front(), 0.0);
+    EXPECT_EQ(rolling_average_.sample_window_.front(), 0);
     rolling_average_.sample_window_.pop();
   }
   EXPECT_EQ(rolling_average_.sample_window_.front(), kTestSample);
@@ -81,7 +82,7 @@ TEST_F(RollingAverageTest, GetAverageFull) {
 }
 
 TEST_F(RollingAverageTest, GetAverageEmpty) {
-  EXPECT_EQ(rolling_average_.GetAverage(), 0.0);
+  EXPECT_EQ(rolling_average_.GetAverage(), 0);
 }
 
 TEST_F(RollingAverageTest, ClearSuccess) {
@@ -91,25 +92,25 @@ TEST_F(RollingAverageTest, ClearSuccess) {
     rolling_average_.running_total_ += kTestSample;
   }
   rolling_average_.Clear();
-  EXPECT_EQ(rolling_average_.GetAverage(), 0.0);
+  EXPECT_EQ(rolling_average_.GetAverage(), 0);
   EXPECT_TRUE(rolling_average_.sample_window_.empty());
 }
 
 TEST_F(RollingAverageTest, DeleteSampleSuccess) {
-  double expected_total = 0.0;
+  int64 expected_total = 0;
   rolling_average_.Init(kTestWindowSize);
   for (unsigned int i = 0; i < kTestWindowSize; i++) {
-    rolling_average_.sample_window_.push(1.0 + i);
-    rolling_average_.running_total_ += 1.0 + i;
-    expected_total += 1.0 + i;
+    rolling_average_.sample_window_.push(1 + i);
+    rolling_average_.running_total_ += 1 + i;
+    expected_total += 1 + i;
   }
 
   rolling_average_.DeleteSample();
-  expected_total -= 1.0;
+  expected_total -= 1;
   EXPECT_EQ(rolling_average_.running_total_, expected_total);
-  EXPECT_EQ(rolling_average_.sample_window_.size(), kTestWindowSize - 1.0);
+  EXPECT_EQ(rolling_average_.sample_window_.size(), kTestWindowSize - 1);
   for (unsigned int i = 0; i < kTestWindowSize - 1; i++) {
-    EXPECT_EQ(rolling_average_.sample_window_.front(), 2.0 + i);
+    EXPECT_EQ(rolling_average_.sample_window_.front(), 2 + i);
     rolling_average_.sample_window_.pop();
   }
 }
