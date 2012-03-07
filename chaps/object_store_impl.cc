@@ -21,6 +21,7 @@ namespace chaps {
 
 const int ObjectStoreImpl::kAESBlockSizeBytes = 16;
 const int ObjectStoreImpl::kAESKeySizeBytes = 32;
+const int ObjectStoreImpl::kHMACSizeBytes = 64;
 
 ObjectStoreImpl::ObjectStoreImpl() {
   EVP_CIPHER_CTX_init(&cipher_context_);
@@ -143,12 +144,36 @@ bool ObjectStoreImpl::RunCipher(bool is_encrypt,
 
 bool ObjectStoreImpl::Encrypt(const string& plain_text,
                               string* cipher_text) {
-  return RunCipher(true, plain_text, cipher_text);
+  return RunCipher(true, AppendHMAC(plain_text), cipher_text);
 }
 
 bool ObjectStoreImpl::Decrypt(const string& cipher_text,
                               string* plain_text) {
-  return RunCipher(false, cipher_text, plain_text);
+  string plain_text_with_hmac;
+  if (!RunCipher(false, cipher_text, &plain_text_with_hmac))
+    return false;
+  if (!VerifyAndStripHMAC(plain_text_with_hmac, plain_text))
+    return false;
+  return true;
+}
+
+string ObjectStoreImpl::AppendHMAC(const string& input) {
+  return input + HmacSha512(input, key_);
+}
+
+bool ObjectStoreImpl::VerifyAndStripHMAC(const string& input,
+                                         string* stripped) {
+  if (input.size() < static_cast<size_t>(kHMACSizeBytes)) {
+    LOG(ERROR) << "Failed to verify blob integrity.";
+    return false;
+  }
+  *stripped = input.substr(0, input.size() - kHMACSizeBytes);
+  string hmac = input.substr(input.size() - kHMACSizeBytes);
+  if (hmac != HmacSha512(*stripped, key_)) {
+    LOG(ERROR) << "Failed to verify blob integrity.";
+    return false;
+  }
+  return true;
 }
 
 }  // namespace chaps

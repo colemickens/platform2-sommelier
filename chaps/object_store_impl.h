@@ -41,14 +41,27 @@ class ObjectStoreImpl : public ObjectStore {
   virtual bool LoadAllObjectBlobs(std::map<int, std::string>* blobs);
 
  private:
+  // Encrypts or decrypts object blobs using AES-256-CBC and a random IV which
+  // is appended to the cipher text.
   bool RunCipher(bool is_encrypt,
                  const std::string& input,
                  std::string* output);
+
+  // Encrypts an object blob and appends an HMAC.
   bool Encrypt(const std::string& plain_text, std::string* cipher_text);
+
+  // Decrypts an object blob and verifies the HMAC.
   bool Decrypt(const std::string& cipher_text, std::string* plain_text);
+
+  // Computes an HMAC and appends it to the given input.
+  std::string AppendHMAC(const std::string& input);
+
+  // Verifies an appended HMAC and strips it from the given input.
+  bool VerifyAndStripHMAC(const std::string& input, std::string* stripped);
 
   static const int kAESBlockSizeBytes;
   static const int kAESKeySizeBytes;
+  static const int kHMACSizeBytes;
 
   std::string key_;
   EVP_CIPHER_CTX cipher_context_;
