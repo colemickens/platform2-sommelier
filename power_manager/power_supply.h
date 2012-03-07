@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -42,11 +42,17 @@ struct PowerStatus {
   // signal that the time value maybe inaccurate.
   bool is_calculating_battery_time;
 
-  // Time in seconds until the battery is considered empty, 0 for
-  // unknown.
-  ::int64 battery_time_to_empty;
+  // Time in seconds until the battery is considered empty, 0 for unknown.
+  int64 battery_time_to_empty;
   // Time in seconds until the battery is considered full. 0 for unknown.
-  ::int64 battery_time_to_full;
+  int64 battery_time_to_full;
+
+  // Averaged time in seconds until the battery is considered empty, 0 for
+  // unknown.
+  int64 averaged_battery_time_to_empty;
+  // Average time in seconds until the battery is considered full. 0 for
+  // unknown.
+  int64 averaged_battery_time_to_full;
 
   double battery_percentage;
   bool battery_is_present;

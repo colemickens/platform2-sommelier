@@ -74,6 +74,10 @@ std::set<std::string> kValidStates(
 // Minimum time a user must be idle to have returned from idle
 const int64 kMinTimeForIdle = 10;
 
+// The current normal sample rate is 0.5 Hz, so this gives us a window of ~5
+// minutes.
+const unsigned int kRollingAverageSampleWindow = 10;
+
 } // namespace
 
 namespace power_manager {
@@ -161,6 +165,8 @@ void Daemon::Init() {
   RegisterDBusMessageHandler();
   RetrieveSessionState();
   suspender_.Init(run_dir_);
+  time_to_empty_average_.Init(kRollingAverageSampleWindow);
+  time_to_full_average_.Init(kRollingAverageSampleWindow);
   power_supply_.Init();
   power_supply_.GetPowerStatus(&power_status_, false);
   OnPowerEvent(this, power_status_);
@@ -1168,6 +1174,10 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
   protobuf.set_battery_is_charged(status->battery_state ==
                                   BATTERY_STATE_FULLY_CHARGED);
   protobuf.set_is_calculating_battery_time(status->is_calculating_battery_time);
+  protobuf.set_averaged_battery_time_to_empty(
+      status->averaged_battery_time_to_empty);
+  protobuf.set_averaged_battery_time_to_full(
+      status->averaged_battery_time_to_full);
 
   DBusMessage *reply = dbus_message_new_method_return(message);
   CHECK(reply);
@@ -1260,6 +1270,9 @@ gboolean Daemon::PollPowerSupply() {
 }
 
 gboolean Daemon::HandlePollPowerSupply() {
+  UpdateAveragedTimes(&power_status_,
+                      &time_to_empty_average_,
+                      &time_to_full_average_);
   OnPowerEvent(this, power_status_);
   // Send a signal once the power supply status has been obtained.
   DBusMessage* message = dbus_message_new_signal(kPowerManagerServicePath,
@@ -1272,6 +1285,32 @@ gboolean Daemon::HandlePollPowerSupply() {
     LOG(WARNING) << "Sending battery poll signal failed.";
   // Always repeat polling.
   return TRUE;
+}
+
+void Daemon::UpdateAveragedTimes(PowerStatus* status,
+                                 RollingAverage* empty_average,
+                                 RollingAverage* full_average) {
+  if (status->line_power_on) {
+    if (status->is_calculating_battery_time) {
+      status->averaged_battery_time_to_full =
+          full_average->GetAverage();
+    } else {
+      status->averaged_battery_time_to_full =
+          full_average->AddSample(status->battery_time_to_full);
+    }
+    empty_average->Clear();
+    status->averaged_battery_time_to_empty = 0;
+  } else {
+    if (status->is_calculating_battery_time) {
+      status->averaged_battery_time_to_empty =
+          empty_average->GetAverage();
+    } else {
+      status->averaged_battery_time_to_empty =
+          empty_average->AddSample(status->battery_time_to_empty);
+    }
+    full_average->Clear();
+    status->averaged_battery_time_to_full = 0;
+  }
 }
 
 void Daemon::OnLowBattery(double battery_percentage) {

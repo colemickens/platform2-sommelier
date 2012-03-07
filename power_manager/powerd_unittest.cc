@@ -17,6 +17,7 @@
 #include "power_manager/mock_backlight.h"
 #include "power_manager/mock_metrics_store.h"
 #include "power_manager/mock_monitor_reconfigure.h"
+#include "power_manager/mock_rolling_average.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
 
@@ -48,6 +49,7 @@ static const int64 kPowerButtonInterval = 20;
 static const int kSessionLength = 5;
 static const int kAdjustmentsOffset = 100;
 static const int kNumOfSessionsPerCharge = 100;
+static const int64 kBatteryTime = 23;
 
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 
@@ -229,6 +231,9 @@ class DaemonTest : public Test {
   PowerStatus status_;
   BacklightController backlight_ctl_;
   StrictMock<MockBacklight> keylight_;
+
+  StrictMock<MockRollingAverage> empty_average_;
+  StrictMock<MockRollingAverage> full_average_;
 
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;
@@ -737,6 +742,60 @@ TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
   EXPECT_EQ(kUnpluggedOffTimeMs, daemon_.unplugged_off_ms_);
   EXPECT_EQ(kUnpluggedSuspendTimeMs, daemon_.unplugged_suspend_ms_);
   EXPECT_EQ(kLockTimeMs, daemon_.default_lock_ms_);
+}
+
+TEST_F(DaemonTest, UpdateAveragedTimesChargingAndCalculating) {
+  status_.line_power_on = true;
+  status_.is_calculating_battery_time = true;
+
+  empty_average_.ExpectClear();
+  full_average_.ExpectGetAverage(kBatteryTime);
+
+  daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
+
+  EXPECT_EQ(0, status_.averaged_battery_time_to_empty);
+  EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_full);
+}
+
+TEST_F(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating) {
+  status_.line_power_on = true;
+  status_.is_calculating_battery_time = false;
+  status_.battery_time_to_full = kBatteryTime;
+
+  empty_average_.ExpectClear();
+  full_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
+
+  daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
+
+  EXPECT_EQ(0, status_.averaged_battery_time_to_empty);
+  EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_full);
+}
+
+TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndCalculating) {
+  status_.line_power_on = false;
+  status_.is_calculating_battery_time = true;
+
+  empty_average_.ExpectGetAverage(kBatteryTime);
+  full_average_.ExpectClear();
+
+  daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
+
+  EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_empty);
+  EXPECT_EQ(0, status_.averaged_battery_time_to_full);
+}
+
+TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
+  status_.line_power_on = false;
+  status_.is_calculating_battery_time = false;
+  status_.battery_time_to_empty = kBatteryTime;
+
+  empty_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
+  full_average_.ExpectClear();
+
+  daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
+
+  EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_empty);
+  EXPECT_EQ(0, status_.averaged_battery_time_to_full);
 }
 
 }  // namespace power_manager

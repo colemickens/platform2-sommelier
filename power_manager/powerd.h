@@ -29,6 +29,7 @@
 #include "power_manager/metrics_store.h"
 #include "power_manager/power_prefs.h"
 #include "power_manager/power_supply.h"
+#include "power_manager/rolling_average.h"
 #include "power_manager/screen_locker.h"
 #include "power_manager/signal_callback.h"
 #include "power_manager/suspender.h"
@@ -139,6 +140,10 @@ class Daemon : public XIdleObserver,
   FRIEND_TEST(DaemonTest, SendMetric);
   FRIEND_TEST(DaemonTest, SendMetricWithPowerState);
   FRIEND_TEST(DaemonTest, ExtendTimeoutsWhenProjecting);
+  FRIEND_TEST(DaemonTest, UpdateAveragedTimesChargingAndCalculating);
+  FRIEND_TEST(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating);
+  FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndCalculating);
+  FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating);
 
   enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
                    kIdleSuspend };
@@ -263,6 +268,12 @@ class Daemon : public XIdleObserver,
   // battery. This method sends a signal to chrome about there being fresh data
   // and generates related metrics.
   gboolean HandlePollPowerSupply();
+
+  // Update the averaged values in |status| and add the battery time estimate
+  // values from |status| to the appropriate rolling averages.
+  void UpdateAveragedTimes(PowerStatus* status,
+                           RollingAverage* empty_average,
+                           RollingAverage* full_average);
 
   // Checks for extremely low battery condition.
   void OnLowBattery(double battery_percentage);
@@ -499,6 +510,10 @@ class Daemon : public XIdleObserver,
   // These are lookup tables that map dbus message interface/names to handlers.
   DBusSignalHandlerTable dbus_signal_handler_table_;
   DBusMethodHandlerTable dbus_method_handler_table_;
+
+  // Rolling averages used to iron out instabilities in the time estimates
+  RollingAverage time_to_empty_average_;
+  RollingAverage time_to_full_average_;
 };
 
 }  // namespace power_manager
