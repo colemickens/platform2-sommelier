@@ -258,6 +258,9 @@ mkdir /tmp/cgroup/cpu/chrome_renderers/background
 echo "2" > /tmp/cgroup/cpu/chrome_renderers/background/cpu.shares
 chown -R chronos /tmp/cgroup/cpu/chrome_renderers
 
+# For i18n keyboard support (crbug.com/116999)
+export LC_CTYPE=en_US.utf8
+
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
 #
