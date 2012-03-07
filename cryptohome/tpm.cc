@@ -11,6 +11,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/threading/platform_thread.h>
 #include <base/time.h>
+#include <base/values.h>
 #include <openssl/rsa.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -2128,6 +2129,26 @@ bool Tpm::StoreTpmStatus(const TpmStatus& serialized) {
   }
   platform.SetMask(old_mask);
   return true;
+}
+
+Value* Tpm::GetStatusValue() {
+  DictionaryValue* dv = new DictionaryValue();
+  TpmStatusInfo status;
+  GetStatus(true, &status);
+
+  dv->SetBoolean("enabled", status.Enabled);
+  dv->SetBoolean("owned", status.Owned);
+  dv->SetBoolean("being_owned", status.BeingOwned);
+  dv->SetBoolean("can_connect", status.CanConnect);
+  dv->SetBoolean("can_load_srk", status.CanLoadSrk);
+  dv->SetBoolean("can_load_srk_pubkey", status.CanLoadSrkPublicKey);
+  dv->SetBoolean("has_cryptohome_key", status.HasCryptohomeKey);
+  dv->SetBoolean("can_encrypt", status.CanEncrypt);
+  dv->SetBoolean("can_decrypt", status.CanDecrypt);
+  dv->SetBoolean("has_context", status.ThisInstanceHasContext);
+  dv->SetBoolean("has_key_handle", status.ThisInstanceHasKeyHandle);
+  dv->SetInteger("last_error", status.LastTpmError);
+  return dv;
 }
 
 }  // namespace cryptohome

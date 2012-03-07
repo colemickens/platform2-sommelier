@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,6 +13,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/synchronization/lock.h>
+#include <base/values.h>
 #include <chromeos/utility.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
@@ -131,6 +132,9 @@ class Tpm {
   //                  longer)
   //   status (OUT) - The TpmStatusInfo structure containing the results
   void GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status);
+
+  // Gets the TPM status information as a Value
+  Value* GetStatusValue();
 
   // Returns the owner password if this instance was used to take ownership.
   // This will only occur when the TPM is unowned, which will be on OOBE
