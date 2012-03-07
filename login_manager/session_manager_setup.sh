@@ -287,6 +287,9 @@ bootstat x-started
 # back onscreen when X exits later.
 ply-image --clear 0x000000 &
 
+# This is a bad place to add your code.  See "RED ALERT", above.
+# Regrettably, this comment is not redundant.  :-(
+
 #
 # Reset PATH to exclude directories unneeded by session_manager.
 # Save that until here, because many of the commands above depend
