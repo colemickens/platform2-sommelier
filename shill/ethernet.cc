@@ -13,6 +13,7 @@
 
 #include <base/logging.h>
 
+#include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -47,26 +48,31 @@ Ethernet::Ethernet(ControlInterface *control_interface,
 }
 
 Ethernet::~Ethernet() {
-  Stop();
+  Stop(NULL, EnabledStateChangedCallback());
 }
 
-void Ethernet::Start() {
+void Ethernet::Start(Error *error,
+                     const EnabledStateChangedCallback &callback) {
   service_ = new EthernetService(control_interface(),
                                  dispatcher(),
                                  metrics(),
                                  manager(),
                                  this);
-  Device::Start();
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
                                                 IFF_UP);
+  OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
+  if (error)
+    error->Reset();       // indicate immediate completion
 }
 
-void Ethernet::Stop() {
+void Ethernet::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   if (service_) {
     manager()->DeregisterService(service_);
     service_ = NULL;
   }
-  Device::Stop();
+  OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
+  if (error)
+    error->Reset();       // indicate immediate completion
 }
 
 bool Ethernet::TechnologyIs(const Technology::Identifier type) const {
@@ -78,13 +84,15 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
   if ((flags & IFF_LOWER_UP) != 0 && !link_up_) {
     LOG(INFO) << link_name() << " is up; should start L3!";
     link_up_ = true;
-    manager()->RegisterService(service_);
-    if (service_->auto_connect()) {
-      if (AcquireIPConfig()) {
-        SelectService(service_);
-        SetServiceState(Service::kStateConfiguring);
-      } else {
-        LOG(ERROR) << "Unable to acquire DHCP config.";
+    if (service_) {
+      manager()->RegisterService(service_);
+      if (service_->auto_connect()) {
+        if (AcquireIPConfig()) {
+          SelectService(service_);
+          SetServiceState(Service::kStateConfiguring);
+        } else {
+          LOG(ERROR) << "Unable to acquire DHCP config.";
+        }
       }
     }
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {

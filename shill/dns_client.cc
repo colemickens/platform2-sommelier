@@ -67,8 +67,10 @@ DNSClient::DNSClient(IPAddress::Family family,
       running_(false),
       resolver_state_(NULL),
       weak_ptr_factory_(this),
-      read_callback_(Bind(&DNSClient::HandleDNSRead, Unretained(this))),
-      write_callback_(Bind(&DNSClient::HandleDNSWrite, Unretained(this))),
+      read_callback_(Bind(&DNSClient::HandleDNSRead,
+                          weak_ptr_factory_.GetWeakPtr())),
+      write_callback_(Bind(&DNSClient::HandleDNSWrite,
+                           weak_ptr_factory_.GetWeakPtr())),
       ares_(Ares::GetInstance()),
       time_(Time::GetInstance()) {}
 

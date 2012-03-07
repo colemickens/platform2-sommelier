@@ -193,7 +193,7 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   string driver_name(driver_path.BaseName().value());
   // See if driver for this interface is in a list of known modem driver names
   for (int modem_idx = 0; kModemDrivers[modem_idx] != NULL; ++modem_idx) {
-    // TODO(ers) should have additional checks to make sure a cdc_ether
+    // TODO(ers): should have additional checks to make sure a cdc_ether
     // device is really a modem. flimflam uses udev to make such checks,
     // looking to see whether a ttyACM or ttyUSB device is associated.
     if (driver_name == kModemDrivers[modem_idx]) {

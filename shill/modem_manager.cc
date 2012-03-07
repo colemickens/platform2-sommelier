@@ -6,14 +6,16 @@
 
 #include <algorithm>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 
-#include "shill/async_call_handler.h"
+#include "shill/error.h"
 #include "shill/modem.h"
 #include "shill/modem_manager_proxy.h"
 #include "shill/proxy_factory.h"
 
+using base::Bind;
 using std::string;
 using std::tr1::shared_ptr;
 using std::vector;
@@ -174,25 +176,36 @@ ModemManager1::ModemManager1(const string &service,
                              Metrics *metrics,
                              Manager *manager,
                              GLib *glib,
-                             mobile_provider_db *provider_db) :
-    ModemManager(service,
-                 path,
-                 control_interface,
-                 dispatcher,
-                 metrics,
-                 manager,
-                 glib,
-                 provider_db) {}
+                             mobile_provider_db *provider_db)
+    : ModemManager(service,
+                   path,
+                   control_interface,
+                   dispatcher,
+                   metrics,
+                   manager,
+                   glib,
+                   provider_db),
+      weak_ptr_factory_(this) {}
 
 ModemManager1::~ModemManager1() {}
 
 void ModemManager1::Connect(const string &supplied_owner) {
   ModemManager::Connect(supplied_owner);
   proxy_.reset(
-      proxy_factory()->CreateDBusObjectManagerProxy(this, path(), owner()));
+      proxy_factory()->CreateDBusObjectManagerProxy(path(), owner()));
+  proxy_->set_interfaces_added_callback(
+      Bind(&ModemManager1::OnInterfacesAddedSignal,
+           weak_ptr_factory_.GetWeakPtr()));
+  proxy_->set_interfaces_removed_callback(
+      Bind(&ModemManager1::OnInterfacesRemovedSignal,
+           weak_ptr_factory_.GetWeakPtr()));
 
   // TODO(rochberg):  Make global kDBusDefaultTimeout and use it here
-  proxy_->GetManagedObjects(new AsyncCallHandler(NULL), 5000);
+  Error error;
+  proxy_->GetManagedObjects(&error,
+                            Bind(&ModemManager1::OnGetManagedObjectsReply,
+                                 weak_ptr_factory_.GetWeakPtr()),
+                            5000);
 }
 
 void ModemManager1::Disconnect() {
@@ -204,9 +217,9 @@ void ModemManager1::InitModem(shared_ptr<Modem> modem) {
   LOG(ERROR) << __func__;
 }
 
-// DBusObjectManagerProxyDelegate signal methods
-// Also called by OnGetManagedObjectsCallback
-void ModemManager1::OnInterfacesAdded(
+// signal methods
+// Also called by OnGetManagedObjectsReply
+void ModemManager1::OnInterfacesAddedSignal(
     const ::DBus::Path &object_path,
     const DBusInterfaceToProperties &interface_to_properties) {
   if (ContainsKey(interface_to_properties, kDBusInterfaceModem)) {
@@ -216,7 +229,7 @@ void ModemManager1::OnInterfacesAdded(
   }
 }
 
-void ModemManager1::OnInterfacesRemoved(
+void ModemManager1::OnInterfacesRemovedSignal(
     const ::DBus::Path &object_path,
     const vector<string> &interfaces) {
   LOG(INFO) << "MM1:  Removing interfaces from " << object_path;
@@ -232,13 +245,14 @@ void ModemManager1::OnInterfacesRemoved(
 }
 
 // DBusObjectManagerProxy async method call
-void ModemManager1::OnGetManagedObjectsCallback(
+void ModemManager1::OnGetManagedObjectsReply(
     const DBusObjectsWithProperties &objects,
-    const Error &error,
-    AsyncCallHandler * /* call_handler */) {
-  DBusObjectsWithProperties::const_iterator m;
-  for (m = objects.begin(); m != objects.end(); ++m) {
-    OnInterfacesAdded(m->first, m->second);
+    const Error &error) {
+  if (error.IsSuccess()) {
+    DBusObjectsWithProperties::const_iterator m;
+    for (m = objects.begin(); m != objects.end(); ++m) {
+      OnInterfacesAddedSignal(m->first, m->second);
+    }
   }
 }
 

@@ -13,7 +13,9 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/adaptor_interfaces.h"
 #include "shill/accessor_interface.h"
+#include "shill/callbacks.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/sockets.h"
@@ -34,7 +36,6 @@ class HTTPProxy;
 class KeyValueStore;
 class Manager;
 class Metrics;
-class ReturnerInterface;
 class ServiceAdaptorInterface;
 class StoreInterface;
 
@@ -151,7 +152,8 @@ class Service : public base::RefCounted<Service> {
 
   // The default implementation returns the error kInvalidArguments.
   virtual void ActivateCellularModem(const std::string &carrier,
-                                     ReturnerInterface *returner);
+                                     Error *error,
+                                     const ResultCallback &callback);
 
   // Base method always returns false.
   virtual bool TechnologyIs(const Technology::Identifier type) const;

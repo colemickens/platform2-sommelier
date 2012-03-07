@@ -6,32 +6,60 @@
 
 #include <base/logging.h>
 
-#include "cellular_error.h"
+#include "shill/cellular_error.h"
 
 using std::string;
 
 namespace shill {
 
-ModemCDMAProxy::ModemCDMAProxy(ModemCDMAProxyDelegate *delegate,
+ModemCDMAProxy::ModemCDMAProxy(
                                DBus::Connection *connection,
                                const string &path,
                                const string &service)
-    : proxy_(delegate, connection, path, service) {}
+    : proxy_(connection, path, service) {}
 
 ModemCDMAProxy::~ModemCDMAProxy() {}
 
-void ModemCDMAProxy::Activate(const string &carrier,
-                                AsyncCallHandler *call_handler, int timeout) {
-  proxy_.Activate(carrier, call_handler, timeout);
+void ModemCDMAProxy::Activate(const string &carrier, Error *error,
+                              const ActivationResultCallback &callback,
+                              int timeout) {
+  scoped_ptr<ActivationResultCallback>
+      cb(new ActivationResultCallback(callback));
+  try {
+    proxy_.Activate(carrier, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
-void ModemCDMAProxy::GetRegistrationState(uint32 *cdma_1x_state,
-                                          uint32 *evdo_state) {
-  proxy_.GetRegistrationState(*cdma_1x_state, *evdo_state);
+void ModemCDMAProxy::GetRegistrationState(
+    Error *error,
+    const RegistrationStateCallback &callback,
+    int timeout) {
+  scoped_ptr<RegistrationStateCallback>
+      cb(new RegistrationStateCallback(callback));
+  try {
+    proxy_.GetRegistrationState(cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
-uint32 ModemCDMAProxy::GetSignalQuality() {
-  return proxy_.GetSignalQuality();
+void ModemCDMAProxy::GetSignalQuality(Error *error,
+                                      const SignalQualityCallback &callback,
+                                      int timeout) {
+  scoped_ptr<SignalQualityCallback> cb(new SignalQualityCallback(callback));
+  try {
+    proxy_.GetSignalQuality(cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 const string ModemCDMAProxy::MEID() {
@@ -39,14 +67,42 @@ const string ModemCDMAProxy::MEID() {
   return proxy_.Meid();
 }
 
-ModemCDMAProxy::Proxy::Proxy(ModemCDMAProxyDelegate *delegate,
-                             DBus::Connection *connection,
+void ModemCDMAProxy::set_activation_state_callback(
+    const ActivationStateSignalCallback &callback) {
+  proxy_.set_activation_state_callback(callback);
+}
+
+void ModemCDMAProxy::set_signal_quality_callback(
+    const SignalQualitySignalCallback &callback) {
+  proxy_.set_signal_quality_callback(callback);
+}
+
+void ModemCDMAProxy::set_registration_state_callback(
+    const RegistrationStateSignalCallback &callback) {
+  proxy_.set_registration_state_callback(callback);
+}
+
+ModemCDMAProxy::Proxy::Proxy(DBus::Connection *connection,
                              const string &path,
                              const string &service)
-    : DBus::ObjectProxy(*connection, path, service.c_str()),
-      delegate_(delegate) {}
+    : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
 ModemCDMAProxy::Proxy::~Proxy() {}
+
+void ModemCDMAProxy::Proxy::set_activation_state_callback(
+    const ActivationStateSignalCallback &callback) {
+  activation_state_callback_ = callback;
+}
+
+void ModemCDMAProxy::Proxy::set_signal_quality_callback(
+    const SignalQualitySignalCallback &callback) {
+  signal_quality_callback_ = callback;
+}
+
+void ModemCDMAProxy::Proxy::set_registration_state_callback(
+    const RegistrationStateSignalCallback &callback) {
+  registration_state_callback_ = callback;
+}
 
 void ModemCDMAProxy::Proxy::ActivationStateChanged(
     const uint32 &activation_state,
@@ -54,30 +110,55 @@ void ModemCDMAProxy::Proxy::ActivationStateChanged(
     const DBusPropertiesMap &status_changes) {
   VLOG(2) << __func__ << "(" << activation_state << ", " << activation_error
           << ")";
-  delegate_->OnCDMAActivationStateChanged(
-      activation_state, activation_error, status_changes);
+  activation_state_callback_.Run(activation_state,
+                                  activation_error,
+                                  status_changes);
 }
 
 void ModemCDMAProxy::Proxy::SignalQuality(const uint32 &quality) {
   VLOG(2) << __func__ << "(" << quality << ")";
-  delegate_->OnCDMASignalQualityChanged(quality);
+  signal_quality_callback_.Run(quality);
 }
 
 void ModemCDMAProxy::Proxy::RegistrationStateChanged(
     const uint32 &cdma_1x_state,
     const uint32 &evdo_state) {
   VLOG(2) << __func__ << "(" << cdma_1x_state << ", " << evdo_state << ")";
-  delegate_->OnCDMARegistrationStateChanged(cdma_1x_state, evdo_state);
+  registration_state_callback_.Run(cdma_1x_state, evdo_state);
 }
 
-void ModemCDMAProxy::Proxy::ActivateCallback(const uint32 &status,
+void ModemCDMAProxy::Proxy::ActivateCallback(const uint32_t &status,
                                              const DBus::Error &dberror,
                                              void *data) {
   VLOG(2) << __func__ << "(" << status << ")";
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ActivationResultCallback> callback(
+      reinterpret_cast<ActivationResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-  delegate_->OnActivateCallback(status, error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(status, error);
+}
+
+void ModemCDMAProxy::Proxy::GetRegistrationStateCallback(
+    const uint32 &state_1x, const uint32 &state_evdo,
+    const DBus::Error &dberror, void *data) {
+  VLOG(2) << __func__ << "(" << state_1x << ", " << state_evdo << ")";
+  scoped_ptr<RegistrationStateCallback> callback(
+      reinterpret_cast<RegistrationStateCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(state_1x, state_evdo, error);
+}
+
+
+void ModemCDMAProxy::Proxy::GetSignalQualityCallback(const uint32 &quality,
+                                                     const DBus::Error &dberror,
+                                                     void *data) {
+  VLOG(2) << __func__ << "(" << quality << ")";
+  scoped_ptr<SignalQualityCallback> callback(
+      reinterpret_cast<SignalQualityCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(quality, error);
 }
 
 }  // namespace shill

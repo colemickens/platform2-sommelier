@@ -4,8 +4,8 @@
 
 CXX ?= g++
 CXXFLAGS ?= -fno-strict-aliasing
-CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -Werror -Wuninitialized \
-	    -Woverloaded-virtual
+CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -Wno-unused-result \
+	    -Werror -Wuninitialized -Woverloaded-virtual
 CXXFLAGS += $(EXTRA_CXXFLAGS)
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 PKG_CONFIG ?= pkg-config
@@ -16,9 +16,6 @@ BUILDDIR = build
 LIBDIR = /usr/lib
 SCRIPTDIR = $(LIBDIR)/flimflam/scripts
 CPPFLAGS += -DSCRIPTDIR=\"$(SCRIPTDIR)\"
-
-# libevent, gdk and gtk-2.0 are needed to leverage chrome's MessageLoop
-# TODO(cmasone): explore if newer versions of libbase let us avoid this.
 BASE_LIBS = -lcares -lmobile-provider -lmetrics
 BASE_INCLUDE_DIRS = -iquote.. -iquote $(BUILDDIR)
 BASE_LIB_DIRS =
@@ -102,7 +99,6 @@ DBUS_PROXY_BINDINGS = \
 	$(addprefix $(BUILD_DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
 
 SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
-	async_call_handler.o \
 	async_connection.o \
 	byte_string.o \
 	cellular.o \

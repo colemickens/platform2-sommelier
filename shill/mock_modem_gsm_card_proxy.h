@@ -19,20 +19,32 @@ class MockModemGSMCardProxy : public ModemGSMCardProxyInterface {
   MockModemGSMCardProxy();
   virtual ~MockModemGSMCardProxy();
 
-  MOCK_METHOD2(GetIMEI, void(AsyncCallHandler *call_handler, int timeout));
-  MOCK_METHOD2(GetIMSI, void(AsyncCallHandler *call_handler, int timeout));
-  MOCK_METHOD2(GetSPN, void(AsyncCallHandler *call_handler, int timeout));
-  MOCK_METHOD2(GetMSISDN, void(AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD3(GetIMEI, void(Error *error,
+                             const GSMIdentifierCallback &callback,
+                             int timeout));
+  MOCK_METHOD3(GetIMSI, void(Error *error,
+                             const GSMIdentifierCallback &callback,
+                             int timeout));
+  MOCK_METHOD3(GetSPN, void(Error *error,
+                            const GSMIdentifierCallback &callback,
+                            int timeout));
+  MOCK_METHOD3(GetMSISDN, void(Error *error,
+                               const GSMIdentifierCallback &callback,
+                               int timeout));
 
-  MOCK_METHOD4(EnablePIN, void(const std::string &pin, bool enabled,
-                               AsyncCallHandler *call_handler, int timeout));
-  MOCK_METHOD3(SendPIN, void(const std::string &pin,
-                             AsyncCallHandler *call_handler, int timeout));
-  MOCK_METHOD4(SendPUK, void(const std::string &puk, const std::string &pin,
-                             AsyncCallHandler *call_handler, int timeout));
-  MOCK_METHOD4(ChangePIN, void(const std::string &old_pin,
+  MOCK_METHOD5(EnablePIN, void(const std::string &pin, bool enabled,
+                               Error *error, const ResultCallback &callback,
+                               int timeout));
+  MOCK_METHOD4(SendPIN, void(const std::string &pin,
+                             Error *error, const ResultCallback &callback,
+                             int timeout));
+  MOCK_METHOD5(SendPUK, void(const std::string &puk, const std::string &pin,
+                             Error *error, const ResultCallback &callback,
+                             int timeout));
+  MOCK_METHOD5(ChangePIN, void(const std::string &old_pin,
                                const std::string &new_pin,
-                               AsyncCallHandler *call_handler, int timeout));
+                               Error *error, const ResultCallback &callback,
+                               int timeout));
   MOCK_METHOD0(EnabledFacilityLocks, uint32());
 
  private:

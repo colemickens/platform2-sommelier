@@ -17,10 +17,8 @@ namespace mm1 {
 class ModemSimpleProxy : public ModemSimpleProxyInterface {
  public:
   // Constructs a org.freedesktop.ModemManager1.Modem.Simple DBus
-  // object proxy at |path| owned by |service|. Caught signals and
-  // asynchronous method replies will be dispatched to |delegate|.
-  ModemSimpleProxy(ModemSimpleProxyDelegate *delegate,
-                   DBus::Connection *connection,
+  // object proxy at |path| owned by |service|.
+  ModemSimpleProxy(DBus::Connection *connection,
                    const std::string &path,
                    const std::string &service);
   virtual ~ModemSimpleProxy();
@@ -28,19 +26,22 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
   // Inherited methods from SimpleProxyInterface.
   virtual void Connect(
       const DBusPropertiesMap &properties,
-      AsyncCallHandler *call_handler,
+      Error *error,
+      const DBusPathCallback &callback,
       int timeout);
   virtual void Disconnect(const ::DBus::Path &bearer,
-                          AsyncCallHandler *call_handler,
+                          Error *error,
+                          const ResultCallback &callback,
                           int timeout);
-  virtual void GetStatus(AsyncCallHandler *call_handler, int timeout);
+  virtual void GetStatus(Error *error,
+                         const DBusPropertyMapCallback &callback,
+                         int timeout);
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem::Simple_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(ModemSimpleProxyDelegate *delegate,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
@@ -56,7 +57,6 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
         const DBusPropertiesMap &bearer,
         const ::DBus::Error &dberror,
         void *data);
-    ModemSimpleProxyDelegate *delegate_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

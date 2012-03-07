@@ -52,6 +52,8 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
                            const ::DBus::Variant& value,
                            ::DBus::Error &error);
   virtual void ClearProperty(const std::string& , ::DBus::Error &error);
+  virtual void Enable(::DBus::Error &error);
+  virtual void Disable(::DBus::Error &error);
   virtual void ProposeScan(::DBus::Error &error);
   virtual ::DBus::Path AddIPConfig(const std::string& , ::DBus::Error &error);
   virtual void Register(const std::string &network_id, ::DBus::Error &error);

@@ -405,7 +405,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->service_ = service_;
   EXPECT_CALL(glib_, SourceRemove(kTag));
   EXPECT_CALL(glib_, SpawnClosePID(kPID));
-  EXPECT_CALL(*device_, Stop());
+  EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(device_info_, DeleteInterface(kInterfaceIndex));
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
   driver_->Cleanup(Service::kStateFailure);
@@ -452,7 +452,7 @@ TEST_F(OpenVPNDriverTest, OnOpenVPNDied) {
 TEST_F(OpenVPNDriverTest, Disconnect) {
   driver_->device_ = device_;
   driver_->service_ = service_;
-  EXPECT_CALL(*device_, Stop());
+  EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(device_info_, DeleteInterface(kInterfaceIndex));
   EXPECT_CALL(*service_, SetState(Service::kStateIdle));
   driver_->Disconnect();

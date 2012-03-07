@@ -22,7 +22,6 @@
 
 using base::Bind;
 using base::Callback;
-using base::Unretained;
 using base::StringPrintf;
 using std::string;
 
@@ -58,9 +57,11 @@ PortalDetector::PortalDetector(
       weak_ptr_factory_(this),
       portal_result_callback_(callback),
       request_read_callback_(
-          Bind(&PortalDetector::RequestReadCallback, Unretained(this))),
+          Bind(&PortalDetector::RequestReadCallback,
+               weak_ptr_factory_.GetWeakPtr())),
       request_result_callback_(
-          Bind(&PortalDetector::RequestResultCallback, Unretained(this))),
+          Bind(&PortalDetector::RequestResultCallback,
+               weak_ptr_factory_.GetWeakPtr())),
       time_(Time::GetInstance()) { }
 
 PortalDetector::~PortalDetector() {

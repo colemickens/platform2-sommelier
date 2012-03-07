@@ -22,6 +22,7 @@ class Error {
     kOperationFailed,  // failure, otherwise unspecified
     kAlreadyConnected,
     kAlreadyExists,
+    kOperationInitiated,
     kInProgress,
     kInternalError,
     kInvalidArguments,
@@ -65,7 +66,8 @@ class Error {
   const std::string &message() const { return message_; }
 
   bool IsSuccess() const { return type_ == kSuccess; }
-  bool IsFailure() const { return !IsSuccess(); }
+  bool IsFailure() const { return !IsSuccess() && !IsOngoing(); }
+  bool IsOngoing() const { return type_ == kOperationInitiated; }
 
   static std::string GetName(Type type);
   static std::string GetDefaultMessage(Type type);

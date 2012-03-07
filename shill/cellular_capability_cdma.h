@@ -15,38 +15,41 @@
 
 namespace shill {
 
-class CellularCapabilityCDMA : public CellularCapability,
-                               public ModemCDMAProxyDelegate {
-
+class CellularCapabilityCDMA : public CellularCapability {
  public:
   CellularCapabilityCDMA(Cellular *cellular, ProxyFactory *proxy_factory);
 
   // Inherited from CellularCapability.
-  virtual void StartModem();
-  virtual void StopModem();
+  virtual void StartModem(Error *error, const ResultCallback &callback);
+  virtual void StopModem(Error *error, const ResultCallback &callback);
   virtual void OnServiceCreated();
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
-  virtual void Activate(const std::string &carrier,
-                        AsyncCallHandler *call_handler);
+  virtual void Activate(const std::string &carrier, Error *error,
+                        const ResultCallback &callback);
   virtual bool IsRegistered();
   virtual std::string CreateFriendlyServiceName();
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void GetSignalQuality();
-  virtual void GetRegistrationState(AsyncCallHandler *call_handler);
-  virtual void GetProperties(AsyncCallHandler *call_handler);
+  virtual void GetRegistrationState();
+  virtual void GetProperties(const ResultCallback &callback);
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties);
 
-  virtual void GetMEID(AsyncCallHandler *call_handler);
+  virtual void GetMEID(const ResultCallback &callback);
 
   uint32 activation_state() const { return activation_state_; }
   uint32 registration_state_evdo() const { return registration_state_evdo_; }
   uint32 registration_state_1x() const { return registration_state_1x_; }
 
+ protected:
+  virtual void InitProxies();
+  virtual void ReleaseProxies();
+
  private:
   friend class CellularCapabilityCDMATest;
+  friend class CellularTest;
   FRIEND_TEST(CellularCapabilityCDMATest, Activate);
   FRIEND_TEST(CellularCapabilityCDMATest, ActivateError);
   FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
@@ -64,16 +67,23 @@ class CellularCapabilityCDMA : public CellularCapability,
   static std::string GetActivationStateString(uint32 state);
   static std::string GetActivationErrorString(uint32 error);
 
-  // Signal callbacks inherited from ModemCDMAProxyDelegate.
-  virtual void OnCDMAActivationStateChanged(
+  // Signal callbacks from the Modem.CDMA interface
+  virtual void OnActivationStateChangedSignal(
       uint32 activation_state,
       uint32 activation_error,
       const DBusPropertiesMap &status_changes);
-  virtual void OnCDMARegistrationStateChanged(uint32 state_1x,
-                                              uint32 state_evdo);
-  virtual void OnCDMASignalQualityChanged(uint32 strength);
-  virtual void OnActivateCallback(uint32 status, const Error &error,
-                                  AsyncCallHandler *call_handler);
+  virtual void OnRegistrationStateChangedSignal(
+      uint32 state_1x, uint32 state_evdo);
+  virtual void OnSignalQualitySignal(uint32 strength);
+
+  // Method reply callbacks from the Modem.CDMA interface
+  virtual void OnActivateReply(const ResultCallback &callback,
+                               uint32 status, const Error &error);
+
+  virtual void OnGetRegistrationStateReply(uint32 state_1x, uint32 state_evdo,
+                                           const Error &error);
+  virtual void OnGetSignalQualityReply(uint32 strength,
+                                       const Error &error);
 
   scoped_ptr<ModemCDMAProxyInterface> proxy_;
   base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;

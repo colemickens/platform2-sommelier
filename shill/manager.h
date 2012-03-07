@@ -63,6 +63,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   const ProfileRefPtr &ActiveProfile() const;
   bool IsActiveProfile(const ProfileRefPtr &profile) const;
+  virtual void SaveActiveProfile();
   bool MoveServiceToProfile(const ServiceRefPtr &to_move,
                             const ProfileRefPtr &destination);
 
@@ -132,6 +133,14 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // If there is no such connection, this function returns a reference to NULL.
   virtual ServiceRefPtr GetDefaultService() const;
 
+  // Enable all devices for the named technology.
+  void EnableTechnology(const std::string &technology_name,
+                        Error *error,
+                        const ResultCallback &callback);
+  // Disable all devices for the named technology.
+  void DisableTechnology(const std::string &technology_name,
+                         Error *error,
+                         const ResultCallback &callback);
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology::Identifier tech);
 
@@ -158,6 +167,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   }
   virtual const std::string &GetHostName() { return props_.host_name; }
 
+  virtual void UpdateEnabledTechnologies();
   PowerManager *power_manager() const { return power_manager_.get(); }
 
  private:

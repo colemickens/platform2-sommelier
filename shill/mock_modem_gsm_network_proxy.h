@@ -19,13 +19,23 @@ class MockModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
   MockModemGSMNetworkProxy();
   virtual ~MockModemGSMNetworkProxy();
 
-  MOCK_METHOD2(GetRegistrationInfo, void(AsyncCallHandler *call_handler,
-                                         int timeout));
-  MOCK_METHOD0(GetSignalQuality, uint32());
-  MOCK_METHOD3(Register, void(const std::string &network_id,
-                              AsyncCallHandler *call_handler, int timeout));
-  MOCK_METHOD2(Scan, void(AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD3(GetRegistrationInfo,
+               void(Error *error, const RegistrationInfoCallback &callback,
+                    int timeout));
+  MOCK_METHOD3(GetSignalQuality, void(Error *error,
+                                      const SignalQualityCallback &callback,
+                                      int timeout));
+  MOCK_METHOD4(Register, void(const std::string &network_id, Error *error,
+                              const ResultCallback &callback, int timeout));
+  MOCK_METHOD3(Scan, void(Error *error, const ScanResultsCallback &callback,
+                          int timeout));
   MOCK_METHOD0(AccessTechnology, uint32());
+  MOCK_METHOD1(set_signal_quality_callback,
+      void(const SignalQualitySignalCallback &callback));
+  MOCK_METHOD1(set_network_mode_callback,
+      void(const NetworkModeSignalCallback &callback));
+  MOCK_METHOD1(set_registration_info_callback,
+      void(const RegistrationInfoSignalCallback &callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemGSMNetworkProxy);

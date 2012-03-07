@@ -227,11 +227,11 @@ TEST_F(ManagerTest, DeviceRegistration) {
 
 TEST_F(ManagerTest, DeviceRegistrationAndStart) {
   manager()->running_ = true;
-  mock_devices_[0]->powered_ = true;
-  mock_devices_[1]->powered_ = false;
-  EXPECT_CALL(*mock_devices_[0].get(), Start())
+  mock_devices_[0]->enabled_persistent_ = true;
+  mock_devices_[1]->enabled_persistent_ = false;
+  EXPECT_CALL(*mock_devices_[0].get(), SetEnabled(true))
       .Times(1);
-  EXPECT_CALL(*mock_devices_[1].get(), Start())
+  EXPECT_CALL(*mock_devices_[1].get(), SetEnabled(_))
       .Times(0);
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
@@ -258,11 +258,11 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
 
-  EXPECT_CALL(*mock_devices_[0].get(), Stop());
+  EXPECT_CALL(*mock_devices_[0].get(), SetEnabled(false));
   manager()->DeregisterDevice(mock_devices_[0]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
 
-  EXPECT_CALL(*mock_devices_[1].get(), Stop());
+  EXPECT_CALL(*mock_devices_[1].get(), SetEnabled(false));
   manager()->DeregisterDevice(mock_devices_[1]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
 }

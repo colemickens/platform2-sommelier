@@ -146,14 +146,5 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
   const std::string rpc_id_;
 };
 
-class MockReturner : public ReturnerInterface {
- public:
-  MockReturner();
-  virtual ~MockReturner();
-
-  MOCK_METHOD0(Return, void());
-  MOCK_METHOD1(ReturnError, void(const Error &error));
-};
-
 }  // namespace shill
 #endif  // SHILL_MOCK_ADAPTORS_

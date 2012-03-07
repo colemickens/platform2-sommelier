@@ -7,7 +7,6 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 
-#include <base/bind.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
@@ -20,7 +19,6 @@
 #include "shill/ip_address.h"
 #include "shill/proxy_factory.h"
 
-using base::Bind;
 using std::string;
 using std::vector;
 
@@ -114,15 +112,6 @@ bool DHCPConfig::ReleaseIP() {
 }
 
 void DHCPConfig::InitProxy(const string &service) {
-  // Defer proxy creation because dbus-c++ doesn't allow registration of new
-  // D-Bus objects in the context of a D-Bus signal handler.
-  if (!proxy_.get()) {
-    dispatcher_->PostTask(
-        Bind(&DHCPConfig::InitProxyTask, AsWeakPtr(), service));
-  }
-}
-
-void DHCPConfig::InitProxyTask(const string &service) {
   if (!proxy_.get()) {
     VLOG(2) << "Init DHCP Proxy: " << device_name() << " at " << service;
     proxy_.reset(proxy_factory_->CreateDHCPProxy(service));

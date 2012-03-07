@@ -137,18 +137,5 @@ class ServiceAdaptorInterface {
                                     const Stringmap &value) = 0;
 };
 
-// A ReturnerInterface instance (along with its ownership) is passed by the
-// adaptor to the method handler. The handler releases ownership and initiates
-// an RPC return by calling one of the Return* methods.
-class ReturnerInterface {
- public:
-  virtual void Return() = 0;
-  virtual void ReturnError(const Error &error) = 0;
-
- protected:
-  // Destruction happens through the Return* methods.
-  virtual ~ReturnerInterface() {}
-};
-
 }  // namespace shill
 #endif  // SHILL_ADAPTOR_INTERFACES_

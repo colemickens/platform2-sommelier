@@ -12,18 +12,20 @@
 
 namespace shill {
 
-class AsyncCallHandler;
-
 class MockModemProxy : public ModemProxyInterface {
  public:
   MockModemProxy();
   virtual ~MockModemProxy();
 
-  MOCK_METHOD3(Enable, void(bool enable, AsyncCallHandler *call_handler,
-                            int timeout));
-  MOCK_METHOD1(Enable, void(bool enable));
-  MOCK_METHOD0(Disconnect, void());
-  MOCK_METHOD2(GetModemInfo, void(AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD4(Enable, void(bool enable, Error *error,
+                            const ResultCallback &callback, int timeout));
+  MOCK_METHOD3(Disconnect, void(Error *error, const ResultCallback &callback,
+                                int timeout));
+  MOCK_METHOD3(GetModemInfo, void(Error *error,
+                                  const ModemInfoCallback &callback,
+                                  int timeout));
+  MOCK_METHOD1(set_state_changed_callback,
+               void(const ModemStateChangedSignalCallback &callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemProxy);

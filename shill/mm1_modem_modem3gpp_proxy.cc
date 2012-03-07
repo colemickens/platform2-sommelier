@@ -14,22 +14,39 @@ namespace shill {
 namespace mm1 {
 
 ModemModem3gppProxy::ModemModem3gppProxy(
-    ModemModem3gppProxyDelegate *delegate,
     DBus::Connection *connection,
     const string &path,
     const string &service)
-    : proxy_(delegate, connection, path, service) {}
+    : proxy_(connection, path, service) {}
 
 ModemModem3gppProxy::~ModemModem3gppProxy() {}
 
 void ModemModem3gppProxy::Register(const std::string &operator_id,
-                                   AsyncCallHandler *call_handler,
+                                   Error *error,
+                                   const ResultCallback &callback,
                                    int timeout) {
-  proxy_.Register(operator_id, call_handler, timeout);
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.Register(operator_id, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
-void ModemModem3gppProxy::Scan(AsyncCallHandler *call_handler, int timeout) {
-  proxy_.Scan(call_handler, timeout);
+void ModemModem3gppProxy::Scan(Error *error,
+                               const DBusPropertyMapsCallback &callback,
+                               int timeout) {
+  scoped_ptr<DBusPropertyMapsCallback> cb(
+      new DBusPropertyMapsCallback(callback));
+  try {
+    proxy_.Scan(cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 // Inherited properties from ModemModem3gppProxyInterface.
@@ -50,12 +67,10 @@ uint32_t ModemModem3gppProxy::EnabledFacilityLocks() {
 };
 
 // ModemModem3gppProxy::Proxy
-ModemModem3gppProxy::Proxy::Proxy(ModemModem3gppProxyDelegate *delegate,
-                                  DBus::Connection *connection,
+ModemModem3gppProxy::Proxy::Proxy(DBus::Connection *connection,
                                   const std::string &path,
                                   const std::string &service)
-    : DBus::ObjectProxy(*connection, path, service.c_str()),
-      delegate_(delegate) {}
+    : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
 ModemModem3gppProxy::Proxy::~Proxy() {}
 
@@ -63,19 +78,20 @@ ModemModem3gppProxy::Proxy::~Proxy() {}
 // org::freedesktop::ModemManager1::Modem::ModemModem3gppProxy
 void ModemModem3gppProxy::Proxy::RegisterCallback(const ::DBus::Error& dberror,
                                                   void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnRegisterCallback(error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
 }
 
 void ModemModem3gppProxy::Proxy::ScanCallback(
     const std::vector<DBusPropertiesMap> &results,
     const ::DBus::Error& dberror, void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<DBusPropertyMapsCallback> callback(
+      reinterpret_cast<DBusPropertyMapsCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnScanCallback(results, error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(results, error);
 }
 
 }  // namespace mm1

@@ -12,28 +12,30 @@
 #include "shill/mm1_modem_modemcdma_proxy_interface.h"
 
 namespace shill {
-class AsyncCallHandler;
 namespace mm1 {
 
 class ModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
  public:
   // Constructs a org.freedesktop.ModemManager1.Modem.ModemCdma DBus
-  // object proxy at |path| owned by |service|. Caught signals and
-  // asynchronous method replies will be dispatched to |delegate|.
-  ModemModemCdmaProxy(ModemModemCdmaProxyDelegate *delegate,
-                      DBus::Connection *connection,
+  // object proxy at |path| owned by |service|.
+  ModemModemCdmaProxy(DBus::Connection *connection,
                       const std::string &path,
                       const std::string &service);
   virtual ~ModemModemCdmaProxy();
 
   // Inherited methods from ModemModemCdmaProxyInterface.
   virtual void Activate(const std::string &carrier,
-                        AsyncCallHandler *call_handler,
+                        Error *error,
+                        const ResultCallback &callback,
                         int timeout);
   virtual void ActivateManual(
       const DBusPropertiesMap &properties,
-      AsyncCallHandler *call_handler,
+      Error *error,
+      const ResultCallback &callback,
       int timeout);
+
+  virtual void set_activation_state_callback(
+      const ActivationStateSignalCallback &callback);
 
   // Inherited properties from ModemCdmaProxyInterface.
   virtual std::string Meid();
@@ -47,11 +49,13 @@ class ModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
   class Proxy : public org::freedesktop::ModemManager1::Modem::ModemCdma_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(ModemModemCdmaProxyDelegate *delegate,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
+
+    virtual void set_activation_state_callback(
+        const ActivationStateSignalCallback &callback);
 
    private:
     // Signal callbacks inherited from Proxy
@@ -66,7 +70,7 @@ class ModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
     virtual void ActivateCallback(const ::DBus::Error& dberror, void *data);
     virtual void ActivateManualCallback(const ::DBus::Error& dberror,
                                         void *data);
-    ModemModemCdmaProxyDelegate *delegate_;
+    ActivationStateSignalCallback activation_state_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

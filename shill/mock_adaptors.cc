@@ -84,8 +84,4 @@ ServiceMockAdaptor::~ServiceMockAdaptor() {}
 
 const string &ServiceMockAdaptor::GetRpcIdentifier() { return rpc_id_; }
 
-MockReturner::MockReturner() {}
-
-MockReturner::~MockReturner() {}
-
 }  // namespace shill

@@ -38,7 +38,6 @@
 #include "shill/technology.h"
 
 using base::Bind;
-using base::Unretained;
 using base::StringPrintf;
 using std::string;
 using std::vector;
@@ -78,7 +77,9 @@ Device::Device(ControlInterface *control_interface,
                const string &address,
                int interface_index,
                Technology::Identifier technology)
-    : powered_(true),
+    : enabled_(false),
+      enabled_persistent_(true),
+      enabled_pending_(enabled_),
       reconnect_(true),
       hardware_address_(address),
       interface_index_(interface_index),
@@ -89,9 +90,10 @@ Device::Device(ControlInterface *control_interface,
       dispatcher_(dispatcher),
       metrics_(metrics),
       manager_(manager),
+      weak_ptr_factory_(this),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
-      portal_detector_callback_(
-          Bind(&Device::PortalDetectorCallback, Unretained(this))),
+      portal_detector_callback_(Bind(&Device::PortalDetectorCallback,
+                                     weak_ptr_factory_.GetWeakPtr())),
       technology_(technology),
       portal_attempts_to_online_(0),
       dhcp_provider_(DHCPProvider::GetInstance()),
@@ -128,7 +130,7 @@ Device::Device(ControlInterface *control_interface,
                              &Device::AvailableIPConfigs,
                              NULL);
   store_.RegisterConstString(flimflam::kNameProperty, &link_name_);
-  store_.RegisterBool(flimflam::kPoweredProperty, &powered_);
+  store_.RegisterConstBool(flimflam::kPoweredProperty, &enabled_);
   HelpRegisterDerivedString(flimflam::kTypeProperty,
                             &Device::GetTechnologyString,
                             NULL);
@@ -150,29 +152,6 @@ Device::~Device() {
   VLOG(2) << "Device " << link_name_ << " destroyed.";
 }
 
-void Device::Start() {
-  running_ = true;
-  VLOG(2) << "Device " << link_name_ << " starting.";
-  routing_table_->FlushRoutes(interface_index());
-  adaptor_->UpdateEnabled();
-}
-
-void Device::Stop() {
-  VLOG(2) << "Device " << link_name_ << " stopping.";
-  running_ = false;
-  DestroyIPConfig();         // breaks a reference cycle
-  SelectService(NULL);       // breaks a reference cycle
-  adaptor_->UpdateEnabled();
-  rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
-
-  VLOG(3) << "Device " << link_name_ << " ipconfig_ "
-          << (ipconfig_.get() ? "is set." : "is not set.");
-  VLOG(3) << "Device " << link_name_ << " connection_ "
-          << (connection_.get() ? "is set." : "is not set.");
-  VLOG(3) << "Device " << link_name_ << " selected_service_ "
-          << (selected_service_.get() ? "is set." : "is not set.");
-}
-
 bool Device::TechnologyIs(const Technology::Identifier /*type*/) const {
   return false;
 }
@@ -190,49 +169,41 @@ void Device::Scan(Error *error) {
                         "Device doesn't support scan.");
 }
 
-void Device::RegisterOnNetwork(const std::string &/*network_id*/,
-                               ReturnerInterface *returner) {
-  Error error;
-  Error::PopulateAndLog(&error, Error::kNotSupported,
+void Device::RegisterOnNetwork(const std::string &/*network_id*/, Error *error,
+                                 const ResultCallback &/*callback*/) {
+  Error::PopulateAndLog(error, Error::kNotSupported,
                         "Device doesn't support network registration.");
-  returner->ReturnError(error);
 }
 
 void Device::RequirePIN(
-    const string &/*pin*/, bool /*require*/, ReturnerInterface *returner) {
+    const string &/*pin*/, bool /*require*/,
+    Error *error, const ResultCallback &/*callback*/) {
   VLOG(2) << __func__;
-  Error error;
-  Error::PopulateAndLog(
-      &error, Error::kNotSupported, "Device doesn't support RequirePIN.");
-  returner->ReturnError(error);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support RequirePIN.");
 }
 
-void Device::EnterPIN(const string &/*pin*/, ReturnerInterface *returner) {
+void Device::EnterPIN(const string &/*pin*/,
+                      Error *error, const ResultCallback &/*callback*/) {
   VLOG(2) << __func__;
-  Error error;
-  Error::PopulateAndLog(
-      &error, Error::kNotSupported, "Device doesn't support EnterPIN.");
-  returner->ReturnError(error);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support EnterPIN.");
 }
 
 void Device::UnblockPIN(const string &/*unblock_code*/,
                         const string &/*pin*/,
-                        ReturnerInterface *returner) {
+                        Error *error, const ResultCallback &/*callback*/) {
   VLOG(2) << __func__;
-  Error error;
-  Error::PopulateAndLog(
-      &error, Error::kNotSupported, "Device doesn't support UnblockPIN.");
-  returner->ReturnError(error);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support UnblockPIN.");
 }
 
 void Device::ChangePIN(const string &/*old_pin*/,
                        const string &/*new_pin*/,
-                       ReturnerInterface *returner) {
+                       Error *error, const ResultCallback &/*callback*/) {
   VLOG(2) << __func__;
-  Error error;
-  Error::PopulateAndLog(
-      &error, Error::kNotSupported, "Device doesn't support ChangePIN.");
-  returner->ReturnError(error);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support ChangePIN.");
 }
 
 void Device::DisableIPv6() {
@@ -297,14 +268,15 @@ bool Device::Load(StoreInterface *storage) {
     LOG(WARNING) << "Device is not available in the persistent store: " << id;
     return false;
   }
-  storage->GetBool(id, kStoragePowered, &powered_);
+  enabled_persistent_ = true;
+  storage->GetBool(id, kStoragePowered, &enabled_persistent_);
   // TODO(cmasone): What does it mean to load an IPConfig identifier??
   return true;
 }
 
 bool Device::Save(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
-  storage->SetBool(id, kStoragePowered, powered_);
+  storage->SetBool(id, kStoragePowered, enabled_persistent_);
   if (ipconfig_.get()) {
     // The _0 is an index into the list of IPConfigs that this device might
     // have.  We only have one IPConfig right now, and I hope to never have
@@ -330,7 +302,8 @@ bool Device::AcquireIPConfig() {
   DestroyIPConfig();
   EnableIPv6();
   ipconfig_ = dhcp_provider_->CreateConfig(link_name_, manager_->GetHostName());
-  ipconfig_->RegisterUpdateCallback(Bind(&Device::OnIPConfigUpdated, this));
+  ipconfig_->RegisterUpdateCallback(Bind(&Device::OnIPConfigUpdated,
+                                         weak_ptr_factory_.GetWeakPtr()));
   return ipconfig_->RequestIP();
 }
 
@@ -345,8 +318,8 @@ void Device::HelpRegisterDerivedString(
 
 void Device::HelpRegisterDerivedStrings(
     const string &name,
-    Strings(Device::*get)(Error *),
-    void(Device::*set)(const Strings&, Error *)) {
+    Strings(Device::*get)(Error *error),
+    void(Device::*set)(const Strings &value, Error *error)) {
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Device, Strings>(this, get, set)));
@@ -624,6 +597,78 @@ vector<string> Device::AvailableIPConfigs(Error */*error*/) {
 
 string Device::GetRpcConnectionIdentifier() {
   return adaptor_->GetRpcConnectionIdentifier();
+}
+
+// callback
+void Device::OnEnabledStateChanged(const ResultCallback &callback,
+                                   const Error &error) {
+  VLOG(2) << __func__ << "(" << enabled_pending_ << ")";
+  if (error.IsSuccess()) {
+    enabled_ = enabled_pending_;
+    manager_->UpdateEnabledTechnologies();
+    adaptor_->EmitBoolChanged(flimflam::kPoweredProperty, enabled_);
+    adaptor_->UpdateEnabled();
+  }
+  if (!callback.is_null())
+    callback.Run(error);
+}
+
+void Device::SetEnabled(bool enable) {
+  VLOG(2) << __func__ << "(" << enable << ")";
+  SetEnabledInternal(enable, false, NULL, ResultCallback());
+}
+
+void Device::SetEnabledPersistent(bool enable,
+                                  Error *error,
+                                  const ResultCallback &callback) {
+  SetEnabledInternal(enable, true, error, callback);
+}
+
+void Device::SetEnabledInternal(bool enable,
+                                bool persist,
+                                Error *error,
+                                const ResultCallback &callback) {
+  VLOG(2) << "Device " << link_name_ << " "
+          << (enable ? "starting" : "stopping");
+  if (enable == enabled_) {
+    if (error)
+      error->Reset();
+    return;
+  }
+
+  if (enabled_pending_ == enable) {
+    if (error)
+      error->Populate(Error::kInProgress,
+                      "Enable operation already in progress");
+    return;
+  }
+
+  if (persist) {
+    enabled_persistent_ = enable;
+    manager_->SaveActiveProfile();
+  }
+
+  enabled_pending_ = enable;
+  EnabledStateChangedCallback enabled_callback =
+      Bind(&Device::OnEnabledStateChanged,
+           weak_ptr_factory_.GetWeakPtr(), callback);
+  if (enable) {
+    running_ = true;
+    routing_table_->FlushRoutes(interface_index());
+    Start(error, enabled_callback);
+  } else {
+    running_ = false;
+    DestroyIPConfig();         // breaks a reference cycle
+    SelectService(NULL);       // breaks a reference cycle
+    rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
+    VLOG(3) << "Device " << link_name_ << " ipconfig_ "
+            << (ipconfig_ ? "is set." : "is not set.");
+    VLOG(3) << "Device " << link_name_ << " connection_ "
+            << (connection_ ? "is set." : "is not set.");
+    VLOG(3) << "Device " << link_name_ << " selected_service_ "
+            << (selected_service_ ? "is set." : "is not set.");
+    Stop(error, enabled_callback);
+  }
 }
 
 }  // namespace shill

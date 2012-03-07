@@ -12,47 +12,57 @@
 #include "shill/mm1_modem_proxy_interface.h"
 
 namespace shill {
-class AsyncCallHandler;
-
 namespace mm1 {
 
 class ModemProxy : public ModemProxyInterface {
  public:
   // Constructs a org.freedesktop.ModemManager1.Modem DBus object
-  // proxy at |path| owned by |service|. Caught signals and
-  // asynchronous method replies will be dispatched to |delegate|.
-  ModemProxy(ModemProxyDelegate *delegate,
-             DBus::Connection *connection,
+  // proxy at |path| owned by |service|.
+  ModemProxy(DBus::Connection *connection,
              const std::string &path,
              const std::string &service);
   virtual ~ModemProxy();
 
   // Inherited methods from ModemProxyInterface.
-  virtual void Enable(const bool &enable,
-                      AsyncCallHandler *call_handler,
+  virtual void Enable(bool enable,
+                      Error *error,
+                      const ResultCallback &callback,
                       int timeout);
-  virtual void ListBearers(AsyncCallHandler *call_handler, int timeout);
-  virtual void CreateBearer(
-      const DBusPropertiesMap &properties,
-      AsyncCallHandler *call_handler,
-      int timeout);
+  virtual void ListBearers(Error *error,
+                           const DBusPathsCallback &callback,
+                           int timeout);
+  virtual void CreateBearer(const DBusPropertiesMap &properties,
+                            Error *error,
+                            const DBusPathCallback &callback,
+                            int timeout);
   virtual void DeleteBearer(const ::DBus::Path &bearer,
-                            AsyncCallHandler *call_handler,
+                            Error *error,
+                            const ResultCallback &callback,
                             int timeout);
-  virtual void Reset(AsyncCallHandler *call_handler, int timeout);
+  virtual void Reset(Error *error,
+                     const ResultCallback &callback,
+                     int timeout);
   virtual void FactoryReset(const std::string &code,
-                            AsyncCallHandler *call_handler,
+                            Error *error,
+                            const ResultCallback &callback,
                             int timeout);
-  virtual void SetAllowedModes(const uint32_t &modes, const uint32_t &preferred,
-                               AsyncCallHandler *call_handler,
+  virtual void SetAllowedModes(const uint32_t &modes,
+                               const uint32_t &preferred,
+                               Error *error,
+                               const ResultCallback &callback,
                                int timeout);
   virtual void SetBands(const std::vector< uint32_t > &bands,
-                        AsyncCallHandler *call_handler,
+                        Error *error,
+                        const ResultCallback &callback,
                         int timeout);
   virtual void Command(const std::string &cmd,
                        const uint32_t &user_timeout,
-                       AsyncCallHandler *call_handler,
+                       Error *error,
+                       const StringCallback &callback,
                        int timeout);
+
+  virtual void set_state_changed_callback(
+      const ModemStateChangedSignalCallback &callback);
 
   // Inherited properties from ModemProxyInterface.
   virtual const ::DBus::Path Sim();
@@ -83,11 +93,13 @@ class ModemProxy : public ModemProxyInterface {
   class Proxy : public org::freedesktop::ModemManager1::Modem_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(ModemProxyDelegate *delegate,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
+
+    void set_state_changed_callback(
+        const ModemStateChangedSignalCallback &callback);
 
    private:
     // Signal callbacks inherited from Proxy
@@ -114,7 +126,7 @@ class ModemProxy : public ModemProxyInterface {
                                  const ::DBus::Error &dberror,
                                  void *data);
 
-    ModemProxyDelegate *delegate_;
+    ModemStateChangedSignalCallback state_changed_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

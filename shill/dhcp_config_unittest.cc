@@ -83,11 +83,9 @@ TEST_F(DHCPConfigTest, GetIPv4AddressString) {
 
 TEST_F(DHCPConfigTest, InitProxy) {
   static const char kService[] = ":1.200";
-  config_->InitProxy(kService);
-
   EXPECT_TRUE(proxy_.get());
   EXPECT_FALSE(config_->proxy_.get());
-  dispatcher()->DispatchPendingEvents();
+  config_->InitProxy(kService);
   EXPECT_FALSE(proxy_.get());
   EXPECT_TRUE(config_->proxy_.get());
 

@@ -12,9 +12,10 @@
 #include <base/basictypes.h>
 #include <dbus-c++/types.h>
 
+#include "shill/callbacks.h"
+
 namespace shill {
 
-class AsyncCallHandler;
 class Error;
 
 typedef DBus::Struct<unsigned int, std::string, std::string>
@@ -22,48 +23,50 @@ typedef DBus::Struct<unsigned int, std::string, std::string>
 typedef std::map<std::string, std::string> GSMScanResult;
 typedef std::vector<GSMScanResult> GSMScanResults;
 
+typedef base::Callback<void(uint32)> SignalQualitySignalCallback;
+typedef base::Callback<void(
+    uint32_t,
+    const std::string &,
+    const std::string &)> RegistrationInfoSignalCallback;
+typedef base::Callback<void(uint32_t)> NetworkModeSignalCallback;
+
+typedef base::Callback<void(uint32, const Error &)> SignalQualityCallback;
+typedef base::Callback<void(uint32_t,
+                            const std::string &,
+                            const std::string &,
+                            const Error &)> RegistrationInfoCallback;
+typedef base::Callback<void(const GSMScanResults &,
+                            const Error &)> ScanResultsCallback;
+
 // These are the methods that a ModemManager.Modem.Gsm.Network proxy must
 // support. The interface is provided so that it can be mocked in tests.
-// All calls are made asynchronously. Call completion is signalled through
-// the corresponding 'OnXXXCallback' method in the ProxyDelegate interface.
+// All calls are made asynchronously.
+// XXX fixup comment to reflect new reality
 class ModemGSMNetworkProxyInterface {
  public:
   virtual ~ModemGSMNetworkProxyInterface() {}
 
-  virtual void GetRegistrationInfo(AsyncCallHandler *call_handler,
+  virtual void GetRegistrationInfo(Error *error,
+                                   const RegistrationInfoCallback &callback,
                                    int timeout) = 0;
-  virtual uint32 GetSignalQuality() = 0;
+  virtual void GetSignalQuality(Error *error,
+                                const SignalQualityCallback &callback,
+                                int timeout) = 0;
   virtual void Register(const std::string &network_id,
-                        AsyncCallHandler *call_handler, int timeout) = 0;
-  virtual void Scan(AsyncCallHandler *call_handler, int timeout) = 0;
+                        Error *error, const ResultCallback &callback,
+                        int timeout) = 0;
+  virtual void Scan(Error *error, const ScanResultsCallback &callback,
+                    int timeout) = 0;
 
   // Properties.
   virtual uint32 AccessTechnology() = 0;
-};
-
-// ModemManager.Modem.Gsm.Network method reply callback and signal
-// delegate to be associated with the proxy.
-class ModemGSMNetworkProxyDelegate {
- public:
-  virtual ~ModemGSMNetworkProxyDelegate() {}
-
-  virtual void OnGSMNetworkModeChanged(uint32 mode) = 0;
-  // The following callback handler is used for both the
-  // RegistrationInfo signal and the GetRegistrationInfo
-  // method reply. For the signal case, the |call_handler|
-  // is NULL.
-  virtual void OnGSMRegistrationInfoChanged(
-      uint32 status,
-      const std::string &operator_code,
-      const std::string &operator_name,
-      const Error &error,
-      AsyncCallHandler *call_handler) = 0;
-  virtual void OnGSMSignalQualityChanged(uint32 quality) = 0;
-  virtual void OnScanCallback(const GSMScanResults &results,
-                              const Error &error,
-                              AsyncCallHandler *call_handler) = 0;
-  virtual void OnRegisterCallback(const Error &error,
-                                  AsyncCallHandler *call_handler) = 0;
+  // Signal callbacks
+  virtual void set_signal_quality_callback(
+      const SignalQualitySignalCallback &callback) = 0;
+  virtual void set_network_mode_callback(
+      const NetworkModeSignalCallback &callback) = 0;
+  virtual void set_registration_info_callback(
+      const RegistrationInfoSignalCallback &callback) = 0;
 };
 
 }  // namespace shill

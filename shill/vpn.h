@@ -20,7 +20,8 @@ class VPN : public Device {
 
   virtual ~VPN();
 
-  void Start();
+  virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
+  virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
 
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 

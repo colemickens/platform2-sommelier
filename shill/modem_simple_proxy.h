@@ -17,23 +17,25 @@ namespace shill {
 // A proxy to ModemManager.Modem.Simple.
 class ModemSimpleProxy : public ModemSimpleProxyInterface {
  public:
-  ModemSimpleProxy(ModemSimpleProxyDelegate *delegate,
-                   DBus::Connection *connection,
+  ModemSimpleProxy(DBus::Connection *connection,
                    const std::string &path,
                    const std::string &service);
   virtual ~ModemSimpleProxy();
 
   // Inherited from ModemSimpleProxyInterface.
-  virtual void GetModemStatus(AsyncCallHandler *call_handler, int timeout);
+  virtual void GetModemStatus(Error *error,
+                              const DBusPropertyMapCallback &callback,
+                              int timeout);
   virtual void Connect(const DBusPropertiesMap &properties,
-                       AsyncCallHandler *call_handler, int timeout);
+                       Error *error,
+                       const ResultCallback &callback,
+                       int timeout);
 
  private:
   class Proxy : public org::freedesktop::ModemManager::Modem::Simple_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(ModemSimpleProxyDelegate *delegate,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
@@ -46,8 +48,6 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
     virtual void GetStatusCallback(const DBusPropertiesMap &props,
                                    const DBus::Error &dberror, void *data);
     virtual void ConnectCallback(const DBus::Error &dberror, void *data);
-
-    ModemSimpleProxyDelegate *delegate_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

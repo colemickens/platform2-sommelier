@@ -153,7 +153,10 @@ class HTTPRequestTest : public Test {
     EXPECT_EQ(&sockets_, request_->sockets_);
     EXPECT_TRUE(request_->result_callback_.is_null());
     EXPECT_TRUE(request_->read_event_callback_.is_null());
-    EXPECT_FALSE(request_->weak_ptr_factory_.HasWeakPtrs());
+    EXPECT_FALSE(request_->connect_completion_callback_.is_null());
+    EXPECT_FALSE(request_->dns_client_callback_.is_null());
+    EXPECT_FALSE(request_->read_server_callback_.is_null());
+    EXPECT_FALSE(request_->write_server_callback_.is_null());
     EXPECT_FALSE(request_->read_server_handler_.get());
     EXPECT_FALSE(request_->write_server_handler_.get());
     EXPECT_EQ(dns_client_, request_->dns_client_.get());

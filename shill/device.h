@@ -9,11 +9,13 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/adaptor_interfaces.h"
+#include "shill/callbacks.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
 #include "shill/ipconfig.h"
@@ -33,7 +35,6 @@ class Error;
 class EventDispatcher;
 class Manager;
 class Metrics;
-class ReturnerInterface;
 class RoutingTable;
 class RTNLHandler;
 
@@ -52,13 +53,14 @@ class Device : public base::RefCounted<Device> {
          Technology::Identifier technology);
   virtual ~Device();
 
-  virtual void Start();
-
-  // Clear running state, especially any fields that hold a reference back
-  // to us. After a call to Stop(), the Device may be restarted (with a call
-  // to Start()), or destroyed (if its refcount falls to zero).
-  virtual void Stop();
-
+  // Enable or disable the device.
+  virtual void SetEnabled(bool enable);
+  // Enable or disable the device, and save the setting in the profile.
+  // The setting is persisted before the enable or disable operation
+  // starts, so that even if it fails, the user's intent is still recorded
+  // for the next time shill restarts.
+  void SetEnabledPersistent(bool enable,
+                            Error *error, const ResultCallback &callback);
 
   // TODO(gauravsh): We do not really need this since technology() can be used
   //                 to get a device's technology for direct comparison.
@@ -69,17 +71,18 @@ class Device : public base::RefCounted<Device> {
 
   // The default implementation sets |error| to kNotSupported.
   virtual void Scan(Error *error);
-  virtual void RegisterOnNetwork(const std::string &network_id,
-                                 ReturnerInterface *returner);
-  virtual void RequirePIN(
-      const std::string &pin, bool require, ReturnerInterface *returner);
-  virtual void EnterPIN(const std::string &pin, ReturnerInterface *returner);
+  virtual void RegisterOnNetwork(const std::string &network_id, Error *error,
+                                 const ResultCallback &callback);
+  virtual void RequirePIN(const std::string &pin, bool require,
+                          Error *error, const ResultCallback &callback);
+  virtual void EnterPIN(const std::string &pin,
+                        Error *error, const ResultCallback &callback);
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
-                          ReturnerInterface *returner);
+                          Error *error, const ResultCallback &callback);
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
-                         ReturnerInterface *returner);
+                         Error *error, const ResultCallback &callback);
   virtual void DisableIPv6();
   virtual void EnableIPv6();
   virtual void EnableIPv6Privacy();
@@ -108,7 +111,8 @@ class Device : public base::RefCounted<Device> {
   const std::string &link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
   const ConnectionRefPtr &connection() const { return connection_; }
-  bool powered() const { return powered_; }
+  bool enabled() const { return enabled_; }
+  bool enabled_persistent() const { return enabled_persistent_; }
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString(Error *error);
 
@@ -148,10 +152,50 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, SetServiceConnectedState);
   FRIEND_TEST(DeviceTest, Stop);
+  FRIEND_TEST(DeviceTest, OnEnabledStateChanged);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(WiFiMainTest, Connect);
+
+  // Each device must implement this method to do the work needed to
+  // enable the device to operate for establishing network connections.
+  // The |error| argument, if not NULL,
+  // will refer to an Error that starts out with the value
+  // Error::kOperationInitiated. This reflects the assumption that
+  // enable (and disable) operations will usually be non-blocking,
+  // and their completion will be indicated by means of an asynchronous
+  // reply sometime later. There are two circumstances in which a
+  // device's Start() method may overwrite |error|:
+  //
+  // 1. If an early failure is detected, such that the non-blocking
+  //    part of the operation never takes place, then |error| should
+  //    be set to the appropriate value corresponding to the type
+  //    of failure. This is the "immediate failure" case.
+  // 2. If the device is enabled without performing any non-blocking
+  //    steps, then |error| should be Reset, i.e., its value set
+  //    to Error::kSuccess. This is the "immediate success" case.
+  //
+  // In these two cases, because completion is immediate, |callback|
+  // is not used. If neither of these two conditions holds, then |error|
+  // should not be modified, and |callback| should be passed to the
+  // method that will initiate the non-blocking operation.
+  virtual void Start(Error *error,
+                     const EnabledStateChangedCallback &callback) = 0;
+
+  // Each device must implement this method to do the work needed to
+  // disable the device, i.e., clear any running state, and make the
+  // device no longer capable of establishing network connections.
+  // The discussion for Start() regarding the use of |error| and
+  // |callback| apply to Stop() as well.
+  virtual void Stop(Error *error,
+                    const EnabledStateChangedCallback &callback) = 0;
+
+  // The EnabledStateChangedCallback that gets passed to the device's
+  // Start() and Stop() methods is bound to this method. |callback|
+  // is the callback that was passed to SetEnabled().
+  void OnEnabledStateChanged(const ResultCallback &callback,
+                             const Error &error);
 
   // If there's an IP configuration in |ipconfig_|, releases the IP address and
   // destroys the configuration instance.
@@ -202,9 +246,11 @@ class Device : public base::RefCounted<Device> {
       const std::string &name,
       std::string(Device::*get)(Error *),
       void(Device::*set)(const std::string&, Error *));
-  void HelpRegisterDerivedStrings(const std::string &name,
-                                  Strings(Device::*get)(Error *),
-                                  void(Device::*set)(const Strings&, Error *));
+
+  void HelpRegisterDerivedStrings(
+      const std::string &name,
+      Strings(Device::*get)(Error *error),
+      void(Device::*set)(const Strings &value, Error *error));
 
   // Property getters reserved for subclasses
   ControlInterface *control_interface() const { return control_interface_; }
@@ -217,6 +263,7 @@ class Device : public base::RefCounted<Device> {
   friend class DevicePortalDetectionTest;
   friend class DeviceTest;
   friend class CellularTest;
+  friend class CellularCapabilityTest;
   friend class WiFiMainTest;
 
   static const char kIPFlagTemplate[];
@@ -230,6 +277,9 @@ class Device : public base::RefCounted<Device> {
   static const char kIPFlagReversePathFilterLooseMode[];
   static const char kStoragePowered[];
   static const char kStorageIPConfigs[];
+
+  void SetEnabledInternal(bool enable, bool persist,
+                          Error *error, const ResultCallback &callback);
 
   // Right now, Devices reference IPConfigs directly when persisted to disk
   // It's not clear that this makes sense long-term, but that's how it is now.
@@ -246,8 +296,34 @@ class Device : public base::RefCounted<Device> {
   std::vector<std::string> AvailableIPConfigs(Error *error);
   std::string GetRpcConnectionIdentifier();
 
-  // Properties
-  bool powered_;  // indicates whether the device is configured to operate
+  // |enabled_persistent_| is the value of the Powered property, as
+  // read from the profile. If it is not found in the profile, it
+  // defaults to true. |enabled_| reflects the real-time state of
+  // the device, i.e., enabled or disabled. |enabled_pending_| reflects
+  // the target state of the device while an enable or disable operation
+  // is occurring.
+  //
+  // Some typical sequences for these state variables are shown below.
+  //
+  // Shill starts up, profile has been read:
+  //  |enabled_persistent_|=true   |enabled_|=false   |enabled_pending_|=false
+  //
+  // Shill acts on the value of |enabled_persistent_|, calls SetEnabled(true):
+  //  |enabled_persistent_|=true   |enabled_|=false   |enabled_pending_|=true
+  //
+  // SetEnabled completes successfully, device is enabled:
+  //  |enabled_persistent_|=true   |enabled_|=true    |enabled_pending_|=true
+  //
+  // User presses "Disable" button, SetEnabled(false) is called:
+  //  |enabled_persistent_|=false   |enabled_|=true    |enabled_pending_|=false
+  //
+  // SetEnabled completes successfully, device is disabled:
+  //  |enabled_persistent_|=false   |enabled_|=false    |enabled_pending_|=false
+  bool enabled_;
+  bool enabled_persistent_;
+  bool enabled_pending_;
+
+  // Other properties
   bool reconnect_;
   const std::string hardware_address_;
 
@@ -263,6 +339,7 @@ class Device : public base::RefCounted<Device> {
   Manager *manager_;
   IPConfigRefPtr ipconfig_;
   ConnectionRefPtr connection_;
+  base::WeakPtrFactory<Device> weak_ptr_factory_;
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
   scoped_ptr<PortalDetector> portal_detector_;
   base::Callback<void(const PortalDetector::Result &)>

@@ -25,10 +25,16 @@ VPN::VPN(ControlInterface *control,
 
 VPN::~VPN() {}
 
-void VPN::Start() {
-  Device::Start();
+void VPN::Start(Error *error, const EnabledStateChangedCallback &callback) {
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
                                                 IFF_UP);
+  if (error)
+    error->Reset();
+}
+
+void VPN::Stop(Error *error, const EnabledStateChangedCallback &callback) {
+  if (error)
+    error->Reset();
 }
 
 bool VPN::TechnologyIs(const Technology::Identifier type) const {

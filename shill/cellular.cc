@@ -35,6 +35,7 @@
 #include "shill/technology.h"
 
 using base::Bind;
+using base::Closure;
 using std::map;
 using std::string;
 using std::vector;
@@ -137,29 +138,48 @@ void Cellular::SetState(State state) {
   state_ = state;
 }
 
-void Cellular::Start() {
-  LOG(INFO) << __func__ << ": " << GetStateString(state_);
+void Cellular::Start(Error *error,
+                     const EnabledStateChangedCallback &callback) {
+  VLOG(2) << __func__ << ": " << GetStateString(state_);
   if (state_ != kStateDisabled) {
     return;
   }
-  Device::Start();
   if (modem_state_ == kModemStateEnabled) {
-    // Modem already enabled.
-    OnModemEnabled();
+    // Modem already enabled. Make sure shill
+    // state matches ModemManager state.
+    SetState(kStateEnabled);
     return;
   }
-  // TODO(ers): this should not be done automatically. It should
-  // require an explicit Enable request to start the modem.
-  capability_->StartModem();
+  capability_->StartModem(error,
+                          Bind(&Cellular::OnModemStarted, this, callback));
 }
 
-void Cellular::Stop() {
-  DestroyService();
-  DisconnectModem();
+void Cellular::Stop(Error *error,
+                    const EnabledStateChangedCallback &callback) {
+  VLOG(2) << __func__ << ": " << GetStateString(state_);
+  if (service_) {
+    // TODO(ers): See whether we can/should do DestroyService() here.
+    manager()->DeregisterService(service_);
+    service_ = NULL;
+  }
+  capability_->StopModem(error,
+                         Bind(&Cellular::OnModemStopped, this, callback));
+}
+
+void Cellular::OnModemStarted(const EnabledStateChangedCallback &callback,
+                              const Error &error) {
+  VLOG(2) << __func__ << ": " << GetStateString(state_);
+  if (state_ == kStateDisabled)
+    SetState(kStateEnabled);
+  callback.Run(error);
+}
+
+void Cellular::OnModemStopped(const EnabledStateChangedCallback &callback,
+                              const Error &error) {
+  VLOG(2) << __func__ << ": " << GetStateString(state_);
   if (state_ != kStateDisabled)
-    capability_->DisableModem(NULL);
-  capability_->StopModem();
-  Device::Stop();
+    SetState(kStateDisabled);
+  callback.Run(error);
 }
 
 void Cellular::InitCapability(Type type, ProxyFactory *proxy_factory) {
@@ -177,66 +197,49 @@ void Cellular::InitCapability(Type type, ProxyFactory *proxy_factory) {
   }
 }
 
-void Cellular::OnModemEnabled() {
-  VLOG(2) << __func__ << ": " << GetStateString(state_);
-  if (state_ == kStateDisabled) {
-    SetState(kStateEnabled);
-  }
-}
-
-void Cellular::OnModemDisabled() {
-  VLOG(2) << __func__ << ": " << GetStateString(state_);
-  if (state_ != kStateDisabled) {
-    SetState(kStateDisabled);
-  }
-}
-
 void Cellular::Activate(const std::string &carrier,
-                        ReturnerInterface *returner) {
-  capability_->Activate(carrier, new AsyncCallHandler(returner));
+                        Error *error, const ResultCallback &callback) {
+  capability_->Activate(carrier, error, callback);
 }
 
 void Cellular::RegisterOnNetwork(const string &network_id,
-                                 ReturnerInterface *returner) {
-  capability_->RegisterOnNetwork(network_id, new AsyncCallHandler(returner));
+                                 Error *error,
+                                 const ResultCallback &callback) {
+  capability_->RegisterOnNetwork(network_id, error, callback);
 }
 
-void Cellular::RequirePIN(
-    const string &pin, bool require, ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  capability_->RequirePIN(pin, require, new AsyncCallHandler(returner));
+void Cellular::RequirePIN(const string &pin, bool require,
+                          Error *error, const ResultCallback &callback) {
+  VLOG(2) << __func__ << "(" << require << ")";
+  capability_->RequirePIN(pin, require, error, callback);
 }
 
-void Cellular::EnterPIN(const string &pin, ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  capability_->EnterPIN(pin, new AsyncCallHandler(returner));
+void Cellular::EnterPIN(const string &pin,
+                        Error *error, const ResultCallback &callback) {
+  VLOG(2) << __func__;
+  capability_->EnterPIN(pin, error, callback);
 }
 
 void Cellular::UnblockPIN(const string &unblock_code,
                           const string &pin,
-                          ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  capability_->UnblockPIN(unblock_code, pin, new AsyncCallHandler(returner));
+                          Error *error, const ResultCallback &callback) {
+  VLOG(2) << __func__;
+  capability_->UnblockPIN(unblock_code, pin, error, callback);
 }
 
-void Cellular::ChangePIN(
-    const string &old_pin, const string &new_pin,
-    ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  capability_->ChangePIN(old_pin, new_pin, new AsyncCallHandler(returner));
+void Cellular::ChangePIN(const string &old_pin, const string &new_pin,
+                         Error *error, const ResultCallback &callback) {
+  VLOG(2) << __func__;
+  capability_->ChangePIN(old_pin, new_pin, error, callback);
 }
 
-void Cellular::Scan(Error * /*error*/) {
-  // TODO(ers): for now report immediate success.
-  capability_->Scan(NULL);
+void Cellular::Scan(Error *error) {
+  // TODO(ers): for now report immediate success or failure.
+  capability_->Scan(error, ResultCallback());
 }
 
 void Cellular::HandleNewRegistrationState() {
-  dispatcher()->PostTask(Bind(&Cellular::HandleNewRegistrationStateTask, this));
-}
-
-void Cellular::HandleNewRegistrationStateTask() {
-  VLOG(2) << __func__;
+  VLOG(2) << __func__ << ": " << GetStateString(state_);
   if (!capability_->IsRegistered()) {
     DestroyService();
     if (state_ == kStateLinked ||
@@ -244,6 +247,12 @@ void Cellular::HandleNewRegistrationStateTask() {
         state_ == kStateRegistered) {
       SetState(kStateEnabled);
     }
+    return;
+  }
+  // In Disabled state, defer creating a service until fully
+  // enabled. UI will ignore the appearance of a new service
+  // on a disabled device.
+  if (state_ == kStateDisabled) {
     return;
   }
   if (state_ == kStateEnabled) {
@@ -309,7 +318,8 @@ void Cellular::Connect(Error *error) {
 
   DBusPropertiesMap properties;
   capability_->SetupConnectProperties(&properties);
-  capability_->Connect(properties);
+  // TODO(ers): use null callback until Connect is made fully asynchronous
+  capability_->Connect(properties, error, ResultCallback());
 }
 
 void Cellular::OnConnected() {
@@ -329,32 +339,22 @@ void Cellular::OnConnectFailed() {
 
 void Cellular::Disconnect(Error *error) {
   VLOG(2) << __func__;
-  if (state_ != kStateConnected &&
-      state_ != kStateLinked) {
+  if (state_ != kStateConnected && state_ != kStateLinked) {
     Error::PopulateAndLog(
-        error, Error::kInProgress, "Not connected; request ignored.");
+        error, Error::kNotConnected, "Not connected; request ignored.");
     return;
   }
-  capability_->Disconnect();
+  // TODO(ers): use null callback until Disconnect is made fully asynchronous
+  capability_->Disconnect(error, ResultCallback());
 }
 
 void Cellular::OnDisconnected() {
   VLOG(2) << __func__;
-  SetState(kStateRegistered);
-}
-
-void Cellular::DisconnectModem() {
-  VLOG(2) << __func__;
-  if (state_ != kStateConnected &&
-      state_ != kStateLinked) {
-    return;
-  }
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583). Note,
-  // however, that this is invoked by the Stop method, so some extra refactoring
-  // may be needed to prevent the device instance from being destroyed before
-  // the modem manager calls are complete. Maybe Disconnect and Disable need to
-  // be handled by the parent Modem class.
-  capability_->Disconnect();
+  if (state_ == kStateConnected || state_ == kStateLinked)
+    SetState(kStateRegistered);
+  else
+    LOG(WARNING) << "Disconnect occurred while in state "
+                 << GetStateString(state_);
 }
 
 void Cellular::OnDisconnectFailed() {

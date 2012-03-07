@@ -37,31 +37,64 @@ CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
   store->RegisterConstUint16(flimflam::kPRLVersionProperty, &prl_version_);
 }
 
-
-void CellularCapabilityCDMA::StartModem()
-{
-  CellularCapability::StartModem();
+void CellularCapabilityCDMA::InitProxies() {
+  CellularCapability::InitProxies();
   proxy_.reset(proxy_factory()->CreateModemCDMAProxy(
-      this, cellular()->dbus_path(), cellular()->dbus_owner()));
-
-  MultiStepAsyncCallHandler *call_handler =
-      new MultiStepAsyncCallHandler(cellular()->dispatcher());
-  call_handler->AddTask(Bind(&CellularCapabilityCDMA::EnableModem,
-                              weak_ptr_factory_.GetWeakPtr(), call_handler));
-  call_handler->AddTask(Bind(&CellularCapabilityCDMA::GetModemStatus,
-                              weak_ptr_factory_.GetWeakPtr(), call_handler));
-  call_handler->AddTask(Bind(&CellularCapabilityCDMA::GetMEID,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
-  call_handler->AddTask(Bind(&CellularCapabilityCDMA::GetModemInfo,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
-  call_handler->AddTask(Bind(&CellularCapabilityCDMA::GetRegistrationState,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
-  call_handler->PostNextTask();
+      cellular()->dbus_path(), cellular()->dbus_owner()));
+  proxy_->set_signal_quality_callback(
+      Bind(&CellularCapabilityCDMA::OnSignalQualitySignal,
+           weak_ptr_factory_.GetWeakPtr()));
+  proxy_->set_activation_state_callback(
+      Bind(&CellularCapabilityCDMA::OnActivationStateChangedSignal,
+           weak_ptr_factory_.GetWeakPtr()));
+  proxy_->set_registration_state_callback(
+      Bind(&CellularCapabilityCDMA::OnRegistrationStateChangedSignal,
+           weak_ptr_factory_.GetWeakPtr()));
 }
 
-void CellularCapabilityCDMA::StopModem() {
+void CellularCapabilityCDMA::StartModem(Error *error,
+                                        const ResultCallback &callback) {
   VLOG(2) << __func__;
-  CellularCapability::StopModem();
+  InitProxies();
+
+  CellularTaskList *tasks = new CellularTaskList();
+  ResultCallback cb =
+      Bind(&CellularCapabilityCDMA::StepCompletedCallback,
+           weak_ptr_factory_.GetWeakPtr(), callback, tasks);
+  tasks->push_back(Bind(&CellularCapabilityCDMA::EnableModem,
+                        weak_ptr_factory_.GetWeakPtr(), cb));
+  tasks->push_back(Bind(&CellularCapabilityCDMA::GetModemStatus,
+                        weak_ptr_factory_.GetWeakPtr(), cb));
+  tasks->push_back(Bind(&CellularCapabilityCDMA::GetMEID,
+                        weak_ptr_factory_.GetWeakPtr(), cb));
+  tasks->push_back(Bind(&CellularCapabilityCDMA::GetModemInfo,
+                        weak_ptr_factory_.GetWeakPtr(), cb));
+  tasks->push_back(Bind(&CellularCapabilityCDMA::FinishEnable,
+                        weak_ptr_factory_.GetWeakPtr(), cb));
+
+  RunNextStep(tasks);
+}
+
+void CellularCapabilityCDMA::StopModem(Error *error,
+                                        const ResultCallback &callback) {
+  VLOG(2) << __func__;
+  CellularTaskList *tasks = new CellularTaskList();
+  ResultCallback cb =
+      Bind(&CellularCapabilityCDMA::StepCompletedCallback,
+           weak_ptr_factory_.GetWeakPtr(), callback, tasks);
+  tasks->push_back(Bind(&CellularCapabilityCDMA::Disconnect,
+                        weak_ptr_factory_.GetWeakPtr(),
+                        static_cast<Error *>(NULL), cb));
+  tasks->push_back(Bind(&CellularCapabilityCDMA::DisableModem,
+                        weak_ptr_factory_.GetWeakPtr(), cb));
+  tasks->push_back(Bind(&CellularCapabilityCDMA::FinishDisable,
+                        weak_ptr_factory_.GetWeakPtr(), cb));
+
+  RunNextStep(tasks);
+}
+
+void CellularCapabilityCDMA::ReleaseProxies() {
+  CellularCapability::ReleaseProxies();
   proxy_.reset();
 }
 
@@ -107,18 +140,19 @@ void CellularCapabilityCDMA::SetupConnectProperties(
 }
 
 void CellularCapabilityCDMA::Activate(const string &carrier,
-                                      AsyncCallHandler *call_handler) {
+                                      Error *error,
+                                      const ResultCallback &callback) {
   VLOG(2) << __func__ << "(" << carrier << ")";
   if (cellular()->state() != Cellular::kStateEnabled &&
       cellular()->state() != Cellular::kStateRegistered) {
-    Error error;
-    Error::PopulateAndLog(&error, Error::kInvalidArguments,
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
                           "Unable to activate in " +
                           Cellular::GetStateString(cellular()->state()));
-    CompleteOperation(call_handler, error);
     return;
   }
-  proxy_->Activate(carrier, call_handler, kTimeoutActivate);
+  ActivationResultCallback cb = Bind(&CellularCapabilityCDMA::OnActivateReply,
+                                     weak_ptr_factory_.GetWeakPtr(), callback);
+  proxy_->Activate(carrier, error, cb, kTimeoutActivate);
 }
 
 void CellularCapabilityCDMA::HandleNewActivationState(uint32 error) {
@@ -165,19 +199,20 @@ string CellularCapabilityCDMA::GetActivationErrorString(uint32 error) {
   }
 }
 
-void CellularCapabilityCDMA::GetMEID(AsyncCallHandler *call_handler) {
+void CellularCapabilityCDMA::GetMEID(const ResultCallback &callback) {
   VLOG(2) << __func__;
   if (meid_.empty()) {
     // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
     meid_ = proxy_->MEID();
     VLOG(2) << "MEID: " << meid_;
   }
-  CompleteOperation(call_handler);
+  callback.Run(Error());
 }
 
-void CellularCapabilityCDMA::GetProperties(AsyncCallHandler */*call_handler*/) {
+void CellularCapabilityCDMA::GetProperties(const ResultCallback &callback) {
   VLOG(2) << __func__;
   // No properties.
+  callback.Run(Error());
 }
 
 bool CellularCapabilityCDMA::IsRegistered() {
@@ -216,21 +251,18 @@ string CellularCapabilityCDMA::GetRoamingStateString() const {
 
 void CellularCapabilityCDMA::GetSignalQuality() {
   VLOG(2) << __func__;
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  uint32 strength = proxy_->GetSignalQuality();
-  cellular()->HandleNewSignalQuality(strength);
+  SignalQualityCallback callback =
+      Bind(&CellularCapabilityCDMA::OnGetSignalQualityReply,
+           weak_ptr_factory_.GetWeakPtr());
+  proxy_->GetSignalQuality(NULL, callback, kTimeoutDefault);
 }
 
-void CellularCapabilityCDMA::GetRegistrationState(
-    AsyncCallHandler *call_handler) {
+void CellularCapabilityCDMA::GetRegistrationState() {
   VLOG(2) << __func__;
-  // TODO(petkov) Switch to asynchronous calls (crosbug.com/17583).
-  proxy_->GetRegistrationState(
-      &registration_state_1x_, &registration_state_evdo_);
-  VLOG(2) << "CDMA Registration: 1x(" << registration_state_1x_
-          << ") EVDO(" << registration_state_evdo_ << ")";
-  cellular()->HandleNewRegistrationState();
-  CompleteOperation(call_handler);
+  RegistrationStateCallback callback =
+      Bind(&CellularCapabilityCDMA::OnGetRegistrationStateReply,
+           weak_ptr_factory_.GetWeakPtr());
+  proxy_->GetRegistrationState(NULL, callback, kTimeoutDefault);
 }
 
 string CellularCapabilityCDMA::CreateFriendlyServiceName() {
@@ -248,23 +280,31 @@ void CellularCapabilityCDMA::UpdateServingOperator() {
   }
 }
 
-void CellularCapabilityCDMA::OnActivateCallback(
-    uint32 status,
-    const Error &error,
-    AsyncCallHandler *call_handler) {
-  if (error.IsFailure()) {
-    CompleteOperation(call_handler, error);
-    return;
+void CellularCapabilityCDMA::OnActivateReply(
+    const ResultCallback &callback, uint32 status, const Error &error) {
+  if (error.IsSuccess()) {
+    if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
+      activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+    }
+    HandleNewActivationState(status);
   }
-
-  if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
-    activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
-  }
-  HandleNewActivationState(status);
-  CompleteOperation(call_handler);
+  callback.Run(error);
 }
 
-void CellularCapabilityCDMA::OnCDMAActivationStateChanged(
+void CellularCapabilityCDMA::OnGetRegistrationStateReply(
+    uint32 state_1x, uint32 state_evdo, const Error &error) {
+  VLOG(2) << __func__;
+  if (error.IsSuccess())
+    OnRegistrationStateChangedSignal(state_1x, state_evdo);
+}
+
+void CellularCapabilityCDMA::OnGetSignalQualityReply(uint32 quality,
+                                                     const Error &error) {
+  if (error.IsSuccess())
+    OnSignalQualitySignal(quality);
+}
+
+void CellularCapabilityCDMA::OnActivationStateChangedSignal(
     uint32 activation_state,
     uint32 activation_error,
     const DBusPropertiesMap &status_changes) {
@@ -290,7 +330,7 @@ void CellularCapabilityCDMA::OnCDMAActivationStateChanged(
   HandleNewActivationState(activation_error);
 }
 
-void CellularCapabilityCDMA::OnCDMARegistrationStateChanged(
+void CellularCapabilityCDMA::OnRegistrationStateChangedSignal(
     uint32 state_1x, uint32 state_evdo) {
   VLOG(2) << __func__;
   registration_state_1x_ = state_1x;
@@ -301,7 +341,7 @@ void CellularCapabilityCDMA::OnCDMARegistrationStateChanged(
 void CellularCapabilityCDMA::OnModemManagerPropertiesChanged(
     const DBusPropertiesMap &/*properties*/) {}
 
-void CellularCapabilityCDMA::OnCDMASignalQualityChanged(uint32 strength) {
+void CellularCapabilityCDMA::OnSignalQualitySignal(uint32 strength) {
   cellular()->HandleNewSignalQuality(strength);
 }
 

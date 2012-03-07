@@ -104,9 +104,10 @@ void ServiceDBusAdaptor::MoveAfter(const ::DBus::Path& ,
 void ServiceDBusAdaptor::ActivateCellularModem(const string &carrier,
                                                ::DBus::Error &error) {
   VLOG(2) << __func__;
-  Returner *returner = Returner::Create(this);
-  service_->ActivateCellularModem(carrier, returner);
-  returner->DelayOrReturn(&error);
+  Error e(Error::kOperationInitiated);
+  DBus::Tag *tag = new DBus::Tag();
+  service_->ActivateCellularModem(carrier, &e, GetMethodReplyCallback(tag));
+  ReturnResultOrDefer(tag, e, &error);
 }
 
 }  // namespace shill

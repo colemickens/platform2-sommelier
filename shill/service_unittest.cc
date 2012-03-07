@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest.h>
@@ -24,6 +25,8 @@
 #include "shill/property_store_unittest.h"
 #include "shill/service_under_test.h"
 
+using base::Bind;
+using base::Unretained;
 using std::map;
 using std::string;
 using std::vector;
@@ -52,7 +55,10 @@ class ServiceTest : public PropertyStoreTest {
 
   virtual ~ServiceTest() {}
 
+  MOCK_METHOD1(TestCallback, void(const Error &error));
+
  protected:
+
   MockManager mock_manager_;
   scoped_refptr<ServiceUnderTest> service_;
   string storage_id_;
@@ -271,11 +277,12 @@ TEST_F(ServiceTest, State) {
 }
 
 TEST_F(ServiceTest, ActivateCellularModem) {
-  MockReturner returner;
-  EXPECT_CALL(returner, Return()).Times(0);
-  EXPECT_CALL(returner, ReturnError(_));
+  ResultCallback callback =
+      Bind(&ServiceTest::TestCallback, Unretained(this));
+  EXPECT_CALL(*this, TestCallback(_)).Times(0);
   Error error;
-  service_->ActivateCellularModem("Carrier", &returner);
+  service_->ActivateCellularModem("Carrier", &error, callback);
+  EXPECT_TRUE(error.IsFailure());
 }
 
 TEST_F(ServiceTest, MakeFavorite) {

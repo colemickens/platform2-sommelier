@@ -12,6 +12,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dbus_objectmanager_proxy_interface.h"
@@ -22,7 +23,6 @@ struct mobile_provider_db;
 namespace shill {
 
 class ControlInterface;
-class DBusObjectManagerProxyDelegate;
 class DBusObjectManagerProxyInterface;
 class EventDispatcher;
 class Manager;
@@ -150,8 +150,7 @@ class ModemManagerClassic : public ModemManager {
   DISALLOW_COPY_AND_ASSIGN(ModemManagerClassic);
 };
 
-class ModemManager1 : public ModemManager,
-                      public DBusObjectManagerProxyDelegate {
+class ModemManager1 : public ModemManager {
  public:
   ModemManager1(const std::string &service,
                 const std::string &path,
@@ -173,24 +172,24 @@ class ModemManager1 : public ModemManager,
   virtual void InitModem(std::tr1::shared_ptr<Modem> modem);
 
   // DBusObjectManagerProxyDelegate signal methods
-  virtual void OnInterfacesAdded(
+  virtual void OnInterfacesAddedSignal(
       const ::DBus::Path &object_path,
       const DBusInterfaceToProperties &interface_to_properties);
-  virtual void OnInterfacesRemoved(
+  virtual void OnInterfacesRemovedSignal(
       const ::DBus::Path &object_path,
       const std::vector<std::string> &interfaces);
 
   // DBusObjectManagerProxyDelegate method callbacks
-  virtual void OnGetManagedObjectsCallback(
+  virtual void OnGetManagedObjectsReply(
       const DBusObjectsWithProperties &objects_with_properties,
-      const Error &error,
-      AsyncCallHandler *call_handler);
+      const Error &error);
 
  private:
   FRIEND_TEST(ModemManager1Test, Connect);
   FRIEND_TEST(ModemManager1Test, AddRemoveInterfaces);
 
   scoped_ptr<DBusObjectManagerProxyInterface> proxy_;
+  base::WeakPtrFactory<ModemManager1> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemManager1);
 };

@@ -53,17 +53,36 @@ using ::testing::Values;
 
 namespace shill {
 
+class TestDevice : public Device {
+ public:
+  TestDevice(ControlInterface *control_interface,
+             EventDispatcher *dispatcher,
+             Metrics *metrics,
+             Manager *manager,
+             const std::string &link_name,
+             const std::string &address,
+             int interface_index,
+             Technology::Identifier technology)
+      : Device(control_interface, dispatcher, metrics, manager, link_name,
+               address, interface_index, technology) {}
+  ~TestDevice() {}
+  virtual void Start(Error *error,
+                     const EnabledStateChangedCallback &callback) {}
+  virtual void Stop(Error *error,
+                    const EnabledStateChangedCallback &callback) {}
+};
+
 class DeviceTest : public PropertyStoreTest {
  public:
   DeviceTest()
-      : device_(new Device(control_interface(),
-                           dispatcher(),
-                           NULL,
-                           manager(),
-                           kDeviceName,
-                           kDeviceAddress,
-                           kDeviceInterfaceIndex,
-                           Technology::kUnknown)),
+      : device_(new TestDevice(control_interface(),
+                               dispatcher(),
+                               NULL,
+                               manager(),
+                               kDeviceName,
+                               kDeviceAddress,
+                               kDeviceInterfaceIndex,
+                               Technology::kUnknown)),
         device_info_(control_interface(), NULL, NULL, NULL) {
     DHCPProvider::GetInstance()->glib_ = glib();
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
@@ -113,55 +132,23 @@ TEST_F(DeviceTest, Contains) {
 TEST_F(DeviceTest, GetProperties) {
   map<string, ::DBus::Variant> props;
   Error error(Error::kInvalidProperty, "");
-  {
-    ::DBus::Error dbus_error;
-    bool expected = true;
-    device_->mutable_store()->SetBoolProperty(flimflam::kPoweredProperty,
-                                              expected,
-                                              &error);
-    DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kPoweredProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kPoweredProperty].reader().get_bool(),
-              expected);
-  }
-  {
-    ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kNameProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kNameProperty].reader().get_string(),
-              string(kDeviceName));
-  }
+  ::DBus::Error dbus_error;
+  DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
+  ASSERT_FALSE(props.find(flimflam::kNameProperty) == props.end());
+  EXPECT_EQ(props[flimflam::kNameProperty].reader().get_string(),
+            string(kDeviceName));
 }
 
-TEST_F(DeviceTest, SetProperty) {
+// Note: there are currently no writeable Device properties that
+// aren't registered in a subclass.
+TEST_F(DeviceTest, SetReadOnlyProperty) {
   ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                       flimflam::kPoweredProperty,
-                                       PropertyStoreTest::kBoolV,
-                                       &error));
-
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(DBusAdaptor::SetProperty(device_->mutable_store(),
                                         flimflam::kAddressProperty,
                                         PropertyStoreTest::kStringV,
                                         &error));
   EXPECT_EQ(invalid_args(), error.name());
-}
-
-TEST_F(DeviceTest, ClearProperty) {
-  ::DBus::Error error;
-  EXPECT_TRUE(device_->powered());
-
-  EXPECT_TRUE(DBusAdaptor::SetProperty(device_->mutable_store(),
-                                       flimflam::kPoweredProperty,
-                                       PropertyStoreTest::kBoolV,
-                                       &error));
-  EXPECT_FALSE(device_->powered());
-
-  EXPECT_TRUE(DBusAdaptor::ClearProperty(device_->mutable_store(),
-                                         flimflam::kPoweredProperty,
-                                         &error));
-  EXPECT_TRUE(device_->powered());
 }
 
 TEST_F(DeviceTest, ClearReadOnlyProperty) {
@@ -311,10 +298,12 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
 
 TEST_F(DeviceTest, Start) {
   EXPECT_CALL(routing_table_, FlushRoutes(kDeviceInterfaceIndex));
-  device_->Start();
+  device_->SetEnabled(true);
 }
 
 TEST_F(DeviceTest, Stop) {
+  device_->enabled_ = true;
+  device_->enabled_pending_ = true;
   device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
   scoped_refptr<MockService> service(
       new NiceMock<MockService>(&control_interface_,
@@ -327,8 +316,11 @@ TEST_F(DeviceTest, Stop) {
       WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor *>(device_->adaptor_.get()),
               UpdateEnabled());
+  EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor *>(device_->adaptor_.get()),
+              EmitBoolChanged(flimflam::kPoweredProperty, false));
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
-  device_->Stop();
+  device_->SetEnabled(false);
+  device_->OnEnabledStateChanged(ResultCallback(), Error());
 
   EXPECT_FALSE(device_->ipconfig_.get());
   EXPECT_FALSE(device_->selected_service_.get());

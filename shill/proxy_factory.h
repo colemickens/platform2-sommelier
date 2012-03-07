@@ -16,22 +16,16 @@
 
 namespace shill {
 
-class DBusObjectManagerProxyDelegate;
 class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxyDelegate;
 class DBusPropertiesProxyInterface;
 class DHCPProxyInterface;
-class ModemCDMAProxyDelegate;
 class ModemCDMAProxyInterface;
-class ModemGSMCardProxyDelegate;
 class ModemGSMCardProxyInterface;
-class ModemGSMNetworkProxyDelegate;
 class ModemGSMNetworkProxyInterface;
 class ModemManagerClassic;
 class ModemManagerProxyInterface;
-class ModemProxyDelegate;
 class ModemProxyInterface;
-class ModemSimpleProxyDelegate;
 class ModemSimpleProxyInterface;
 class PowerManagerProxyDelegate;
 class PowerManagerProxyInterface;
@@ -50,7 +44,6 @@ class ProxyFactory {
   virtual void Init();
 
   virtual DBusObjectManagerProxyInterface *CreateDBusObjectManagerProxy(
-      DBusObjectManagerProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
 
@@ -64,27 +57,22 @@ class ProxyFactory {
       const std::string &path,
       const std::string &service);
 
-  virtual ModemProxyInterface *CreateModemProxy(ModemProxyDelegate *delegate,
-                                                const std::string &path,
+  virtual ModemProxyInterface *CreateModemProxy(const std::string &path,
                                                 const std::string &service);
 
   virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
-      ModemSimpleProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
 
   virtual ModemCDMAProxyInterface *CreateModemCDMAProxy(
-      ModemCDMAProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
 
   virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
-      ModemGSMCardProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
 
   virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
-      ModemGSMNetworkProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
 

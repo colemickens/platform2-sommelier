@@ -16,28 +16,35 @@ namespace shill {
 
 class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
  public:
-  // Constructs a ModemManager.Modem.Gsm.Card DBus object proxy at |path| owned
-  // by |service|. Callbacks will be dispatched to |delegate|.
-  ModemGSMCardProxy(ModemGSMCardProxyDelegate *delegate,
-                    DBus::Connection *connection,
+  // Constructs a ModemManager.Modem.Gsm.Card DBus
+  // object proxy at |path| owned by |service|.
+  ModemGSMCardProxy(DBus::Connection *connection,
                     const std::string &path,
                     const std::string &service);
   virtual ~ModemGSMCardProxy();
 
   // Inherited from ModemGSMCardProxyInterface.
-  virtual void GetIMEI(AsyncCallHandler *call_handler, int timeout);
-  virtual void GetIMSI(AsyncCallHandler *call_handler, int timeout);
-  virtual void GetSPN(AsyncCallHandler *call_handler, int timeout);
-  virtual void GetMSISDN(AsyncCallHandler *call_handler, int timeout);
+  virtual void GetIMEI(Error *error, const GSMIdentifierCallback &callback,
+                       int timeout);
+  virtual void GetIMSI(Error *error, const GSMIdentifierCallback &callback,
+                       int timeout);
+  virtual void GetSPN(Error *error, const GSMIdentifierCallback &callback,
+                      int timeout);
+  virtual void GetMSISDN(Error *error, const GSMIdentifierCallback &callback,
+                         int timeout);
   virtual void EnablePIN(const std::string &pin, bool enabled,
-                         AsyncCallHandler *call_handler, int timeout);
+                         Error *error, const ResultCallback &callback,
+                         int timeout);
   virtual void SendPIN(const std::string &pin,
-                       AsyncCallHandler *call_handler, int timeout);
+                       Error *error, const ResultCallback &callback,
+                       int timeout);
   virtual void SendPUK(const std::string &puk, const std::string &pin,
-                       AsyncCallHandler *call_handler, int timeout);
+                       Error *error, const ResultCallback &callback,
+                       int timeout);
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
-                         AsyncCallHandler *call_handler, int timeout);
+                         Error *error, const ResultCallback &callback,
+                         int timeout);
   virtual uint32 EnabledFacilityLocks();
 
  private:
@@ -45,8 +52,7 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
       : public org::freedesktop::ModemManager::Modem::Gsm::Card_proxy,
         public DBus::ObjectProxy {
    public:
-    Proxy(ModemGSMCardProxyDelegate *delegate,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
@@ -62,14 +68,16 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
                                  const DBus::Error &dberror, void *data);
     virtual void GetSpnCallback(const std::string &spn,
                                  const DBus::Error &dberror, void *data);
-    virtual void GetMsIsdnCallback(const std::string &misisdn,
+    virtual void GetMsIsdnCallback(const std::string &msisdn,
                                  const DBus::Error &dberror, void *data);
     virtual void EnablePinCallback(const DBus::Error &dberror, void *data);
     virtual void SendPinCallback(const DBus::Error &dberror, void *data);
     virtual void SendPukCallback(const DBus::Error &dberror, void *data);
     virtual void ChangePinCallback(const DBus::Error &dberror, void *data);
 
-    ModemGSMCardProxyDelegate *delegate_;
+    virtual void GetIdCallback(const std::string &id,
+                               const DBus::Error &dberror, void *data);
+    virtual void PinCallback(const DBus::Error &dberror, void *data);
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

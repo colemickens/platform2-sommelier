@@ -215,6 +215,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
     EXPECT_CALL(*power_manager_, RemoveStateChangeCallback(wifi_->UniqueName()))
         .Times(AnyNumber());
+    wifi_->SelectService(NULL);
     if (supplicant_bss_proxy_.get()) {
       EXPECT_CALL(*supplicant_bss_proxy_, Die());
     }
@@ -222,7 +223,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)
-    wifi_->Stop();
+    wifi_->Stop(NULL, ResultCallback());
     wifi_->set_dhcp_provider(NULL);
   }
 
@@ -348,14 +349,13 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   void StartWiFi() {
     EXPECT_CALL(*power_manager_, AddStateChangeCallback(wifi_->UniqueName(), _))
         .WillOnce(SaveArg<1>(&power_state_callback_));
-    wifi_->Start();
+    wifi_->Start(NULL, ResultCallback());
   }
   void StopWiFi() {
     EXPECT_CALL(*power_manager_,
                 RemoveStateChangeCallback(wifi_->UniqueName()));
-    wifi_->Stop();
+    wifi_->Stop(NULL, ResultCallback());
   }
-
   void GetOpenService(const char *service_type,
                       const char *ssid,
                       const char *mode,

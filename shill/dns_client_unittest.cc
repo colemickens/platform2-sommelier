@@ -205,7 +205,8 @@ class DNSClientTest : public Test {
   void ExpectReset() {
     EXPECT_TRUE(dns_client_->address_.family() == IPAddress::kFamilyIPv4);
     EXPECT_TRUE(dns_client_->address_.IsDefault());
-    EXPECT_FALSE(dns_client_->weak_ptr_factory_.HasWeakPtrs());
+    EXPECT_FALSE(dns_client_->read_callback_.is_null());
+    EXPECT_FALSE(dns_client_->write_callback_.is_null());
     EXPECT_FALSE(dns_client_->resolver_state_.get());
   }
 

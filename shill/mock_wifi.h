@@ -34,8 +34,10 @@ class MockWiFi : public WiFi {
            int interface_index);
   virtual ~MockWiFi();
 
-  MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(Stop, void());
+  MOCK_METHOD2(Start, void(Error *error,
+                           const EnabledStateChangedCallback &callback));
+  MOCK_METHOD2(Stop, void(Error *error,
+                          const EnabledStateChangedCallback &callback));
   MOCK_METHOD1(Scan, void(Error *error));
   MOCK_METHOD2(GetService,
                WiFiServiceRefPtr(const KeyValueStore &args, Error *error));

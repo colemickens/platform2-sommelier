@@ -19,50 +19,60 @@ struct mobile_provider;
 
 namespace shill {
 
-class CellularCapabilityGSM : public CellularCapability,
-                              public ModemGSMCardProxyDelegate,
-                              public ModemGSMNetworkProxyDelegate {
+class CellularCapabilityGSM : public CellularCapability {
  public:
   CellularCapabilityGSM(Cellular *cellular, ProxyFactory *proxy_factory);
 
   // Inherited from CellularCapability.
-  virtual void StartModem();
-  virtual void StopModem();
+  virtual void StartModem(Error *error, const ResultCallback &callback);
+  virtual void StopModem(Error *error, const ResultCallback &callback);
   virtual void OnServiceCreated();
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
+  // The following two methods never need to report results
+  // via callbacks, which is why they don't take callbacks
+  // as arguments.
   virtual void GetSignalQuality();
-  virtual void GetRegistrationState(AsyncCallHandler *call_handler);
-  virtual void GetProperties(AsyncCallHandler *call_handler);
-  virtual void GetIMEI(AsyncCallHandler *call_handler);
-  virtual void GetIMSI(AsyncCallHandler *call_handler);
-  virtual void GetSPN(AsyncCallHandler *call_handler);
-  virtual void GetMSISDN(AsyncCallHandler *call_handler);
-  virtual void Register(AsyncCallHandler *call_handler);
+  virtual void GetRegistrationState();
+  // The following six methods are only ever called as
+  // callbacks (from the main loop), which is why they
+  // don't take an Error * argument.
+  virtual void GetProperties(const ResultCallback &callback);
+  virtual void GetIMEI(const ResultCallback &callback);
+  virtual void GetIMSI(const ResultCallback &callback);
+  virtual void GetSPN(const ResultCallback &callback);
+  virtual void GetMSISDN(const ResultCallback &callback);
+  virtual void Register(const ResultCallback &callback);
+
   virtual void RegisterOnNetwork(const std::string &network_id,
-                                 AsyncCallHandler *call_handler);
+                                 Error *error,
+                                 const ResultCallback &callback);
   virtual bool IsRegistered();
   virtual std::string CreateFriendlyServiceName();
-  virtual void RequirePIN(
-      const std::string &pin, bool require, AsyncCallHandler *call_handler);
-  virtual void EnterPIN(const std::string &pin, AsyncCallHandler *call_handler);
+  virtual void RequirePIN(const std::string &pin, bool require,
+                          Error *error, const ResultCallback &callback);
+  virtual void EnterPIN(const std::string &pin,
+                        Error *error, const ResultCallback &callback);
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
-                          AsyncCallHandler *call_handler);
+                          Error *error, const ResultCallback &callback);
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
-                         AsyncCallHandler *call_handler);
-  virtual void Scan(AsyncCallHandler *call_handler);
+                         Error *error, const ResultCallback &callback);
+  virtual void Scan(Error *error, const ResultCallback &callback);
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties);
 
+ protected:
+  virtual void InitProxies();
+  virtual void ReleaseProxies();
+
  private:
   friend class CellularTest;
   friend class CellularCapabilityGSMTest;
-  FRIEND_TEST(CellularTest, StartGSMRegister);
-  FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
+  friend class CellularCapabilityTest;
   FRIEND_TEST(CellularCapabilityGSMTest, CreateDeviceFromProperties);
   FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMEI);
@@ -83,6 +93,8 @@ class CellularCapabilityGSM : public CellularCapability,
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityGSMTest, GetRegistrationState);
   FRIEND_TEST(CellularCapabilityGSMTest, OnModemManagerPropertiesChanged);
+  FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
+  FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(ModemTest, CreateDeviceFromProperties);
 
   struct SimLockStatus {
@@ -132,35 +144,36 @@ class CellularCapabilityGSM : public CellularCapability,
       void(CellularCapabilityGSM::*set)(
           const KeyValueStore &value, Error *error));
 
-  // Signal callbacks inherited from ModemGSMNetworkProxyDelegate.
-  virtual void OnGSMNetworkModeChanged(uint32 mode);
-  virtual void OnGSMRegistrationInfoChanged(uint32 status,
-                                            const std::string &operator_code,
-                                            const std::string &operator_name,
-                                            const Error &error,
-                                            AsyncCallHandler *call_handler);
-  virtual void OnGSMSignalQualityChanged(uint32 quality);
-  //
-  // Method callbacks inherited from ModemGSMNetworkProxyDelegate.
-  virtual void OnRegisterCallback(const Error &error,
-                                  AsyncCallHandler *call_handler);
-  virtual void OnGetIMEICallback(const std::string &imei,
-                                 const Error &error,
-                                 AsyncCallHandler *call_handler);
-  virtual void OnGetIMSICallback(const std::string &imsi,
-                                 const Error &error,
-                                 AsyncCallHandler *call_handler);
-  virtual void OnGetSPNCallback(const std::string &spn,
-                                const Error &error,
-                                AsyncCallHandler *call_handler);
-  virtual void OnGetMSISDNCallback(const std::string &msisdn,
-                                   const Error &error,
-                                   AsyncCallHandler *call_handler);
-  virtual void OnPINOperationCallback(const Error &error,
-                                      AsyncCallHandler *call_handler);
-  virtual void OnScanCallback(const GSMScanResults &results,
-                              const Error &error,
-                              AsyncCallHandler *call_handler);
+  // Signal callbacks
+  virtual void OnNetworkModeSignal(uint32 mode);
+  virtual void OnRegistrationInfoSignal(uint32 status,
+                                        const std::string &operator_code,
+                                        const std::string &operator_name);
+  virtual void OnSignalQualitySignal(uint32 quality);
+
+  // Method callbacks
+  virtual void OnGetRegistrationInfoReply(uint32 status,
+                                          const std::string &operator_code,
+                                          const std::string &operator_name,
+                                          const Error &error);
+  virtual void OnGetSignalQualityReply(uint32 quality, const Error &error);
+  virtual void OnRegisterReply(const ResultCallback &callback,
+                               const Error &error);
+  virtual void OnGetIMEIReply(const ResultCallback &callback,
+                              const std::string &imei,
+                              const Error &error);
+  virtual void OnGetIMSIReply(const ResultCallback &callback,
+                              const std::string &imsi,
+                              const Error &error);
+  virtual void OnGetSPNReply(const ResultCallback &callback,
+                             const std::string &spn,
+                             const Error &error);
+  virtual void OnGetMSISDNReply(const ResultCallback &callback,
+                                const std::string &msisdn,
+                                const Error &error);
+  virtual void OnScanReply(const ResultCallback &callback,
+                           const GSMScanResults &results,
+                           const Error &error);
 
   scoped_ptr<ModemGSMCardProxyInterface> card_proxy_;
   scoped_ptr<ModemGSMNetworkProxyInterface> network_proxy_;

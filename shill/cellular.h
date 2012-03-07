@@ -112,7 +112,8 @@ class Cellular : public Device {
   void Disconnect(Error *error);
 
   // Asynchronously activates the modem. Returns an error on failure.
-  void Activate(const std::string &carrier, ReturnerInterface *returner);
+  void Activate(const std::string &carrier, Error *error,
+                const ResultCallback &callback);
 
   const CellularServiceRefPtr &service() const { return service_; }
 
@@ -142,25 +143,29 @@ class Cellular : public Device {
   void OnModemManagerPropertiesChanged(const DBusPropertiesMap &properties);
 
   // Inherited from Device.
-  virtual void Start();
-  virtual void Stop();
+  virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
+  virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
   virtual bool TechnologyIs(Technology::Identifier type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
   virtual void Scan(Error *error);
   virtual void RegisterOnNetwork(const std::string &network_id,
-                                 ReturnerInterface *returner);
-  virtual void RequirePIN(
-      const std::string &pin, bool require, ReturnerInterface *returner);
-  virtual void EnterPIN(const std::string &pin, ReturnerInterface *returner);
+                                 Error *error,
+                                 const ResultCallback &callback);
+  virtual void RequirePIN(const std::string &pin, bool require,
+                          Error *error, const ResultCallback &callback);
+  virtual void EnterPIN(const std::string &pin,
+                        Error *error, const ResultCallback &callback);
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
-                          ReturnerInterface *returner);
+                          Error *error, const ResultCallback &callback);
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
-                         ReturnerInterface *returner);
+                         Error *error, const ResultCallback &callback);
 
-  void OnModemEnabled();
-  void OnModemDisabled();
+  void OnModemStarted(const EnabledStateChangedCallback &callback,
+                      const Error &error);
+  void OnModemStopped(const EnabledStateChangedCallback &callback,
+                      const Error &error);
   void OnConnected();
   void OnConnectFailed();
   void OnDisconnected();
@@ -173,12 +178,13 @@ class Cellular : public Device {
   friend class CellularCapabilityGSMTest;
   friend class ModemTest;
   FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
+  FRIEND_TEST(CellularCapabilityCDMATest, GetRegistrationState);
   FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, DisableModem);
-  FRIEND_TEST(CellularTest, DisconnectModem);
+  FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
@@ -186,22 +192,17 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
   FRIEND_TEST(CellularCapabilityTest, EnableModemSucceed);
+  FRIEND_TEST(CellularCapabilityTest, FinishEnable);
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
 
   void SetState(State state);
-
-  void ConnectTask(const DBusPropertiesMap &properties);
-  void DisconnectTask();
-  void DisconnectModem();
 
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
 
   void InitCapability(Type type, ProxyFactory *proxy_factory);
-
-  void HandleNewRegistrationStateTask();
 
   void CreateService();
   void DestroyService();

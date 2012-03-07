@@ -82,6 +82,8 @@
 #include <string>
 #include <vector>
 
+#include <base/callback_forward.h>
+#include <base/memory/weak_ptr.h>
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -111,8 +113,8 @@ class WiFi : public Device {
        int interface_index);
   virtual ~WiFi();
 
-  virtual void Start();
-  virtual void Stop();
+  virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
+  virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
   virtual bool Load(StoreInterface *storage);
   virtual void Scan(Error *error);
   virtual bool TechnologyIs(const Technology::Identifier type) const;
@@ -228,6 +230,8 @@ class WiFi : public Device {
   // If this WiFi device is idle and |new_state| indicates a resume event, a
   // scan is initiated.
   void HandlePowerStateChange(PowerManager::SuspendState new_state);
+
+  base::WeakPtrFactory<WiFi> weak_ptr_factory_;
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;

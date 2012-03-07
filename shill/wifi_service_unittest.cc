@@ -335,7 +335,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA) {
                                                    false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
-  wifi_service->ConnectTask();
+  wifi_service->Connect(NULL);
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskRSN) {
@@ -351,7 +351,7 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
                                                    false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
-  wifi_service->ConnectTask();
+  wifi_service->Connect(NULL);
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskPSK) {
@@ -367,7 +367,7 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
                                                    false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
-  wifi_service->ConnectTask();
+  wifi_service->Connect(NULL);
 }
 
 TEST_F(WiFiServiceTest, ConnectTask8021x) {
@@ -386,7 +386,7 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
   wifi_service->set_eap(eap);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), EAPSecurityArgs()));
-  wifi_service->ConnectTask();
+  wifi_service->Connect(NULL);
 }
 
 MATCHER(WEPSecurityArgsKeyIndex0, "") {
@@ -436,27 +436,27 @@ TEST_F(WiFiServiceTest, ConnectTaskWEP) {
   wifi_service->SetPassphrase("0:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex0()));
-  wifi_service->ConnectTask();
+  wifi_service->Connect(NULL);
 
   wifi_service->SetPassphrase("abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex0()));
-  wifi_service->ConnectTask();
+  wifi_service->Connect(NULL);
 
   wifi_service->SetPassphrase("1:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex1()));
-  wifi_service->ConnectTask();
+  wifi_service->Connect(NULL);
 
   wifi_service->SetPassphrase("2:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex2()));
-  wifi_service->ConnectTask();
+  wifi_service->Connect(NULL);
 
   wifi_service->SetPassphrase("3:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex3()));
-  wifi_service->ConnectTask();
+  wifi_service->Connect(NULL);
 }
 
 
@@ -485,7 +485,7 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   wifi_service->set_eap(eap);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), DynamicWEPArgs()));
-  wifi_service->ConnectTask();
+  wifi_service->Connect(NULL);
 }
 
 TEST_F(WiFiServiceTest, LoadHidden) {

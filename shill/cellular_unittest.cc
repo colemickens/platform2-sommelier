@@ -8,6 +8,7 @@
 #include <linux/if.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 
+#include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
@@ -32,6 +33,8 @@
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 
+using base::Bind;
+using base::Unretained;
 using std::map;
 using std::string;
 using testing::_;
@@ -43,6 +46,10 @@ using testing::SetArgumentPointee;
 using testing::Unused;
 
 namespace shill {
+
+MATCHER(IsSuccess, "") {
+  return arg.IsSuccess();
+}
 
 class CellularPropertyTest : public PropertyStoreTest {
  public:
@@ -142,29 +149,31 @@ class CellularTest : public testing::Test {
   }
 
   virtual void TearDown() {
+    device_->DestroyIPConfig();
     device_->state_ = Cellular::kStateDisabled;
-    device_->capability_->proxy_.reset(new MockModemProxy());
-    device_->Stop();
+    device_->capability_->ReleaseProxies();
     device_->set_dhcp_provider(NULL);
   }
 
-  void InvokeEnable(bool /*enable*/, void *data, int /*timeout*/) {
-    AsyncCallHandler *handler = reinterpret_cast<AsyncCallHandler *>(data);
-    device_->capability_->OnModemEnableCallback(Error(), handler);
-    dispatcher_.DispatchPendingEvents();
+  void InvokeEnable(bool enable, Error *error,
+                    const ResultCallback &callback, int timeout) {
+    callback.Run(Error());
   }
-
-  void InvokeGetModemStatus(void *data, int /*timeout*/) {
-    AsyncCallHandler *handler = reinterpret_cast<AsyncCallHandler *>(data);
+  void InvokeGetSignalQuality(Error *error,
+                              const SignalQualityCallback &callback,
+                              int timeout) {
+    callback.Run(kStrength, Error());
+  }
+  void InvokeGetModemStatus(Error *error,
+                            const DBusPropertyMapCallback &callback,
+                            int timeout) {
     DBusPropertiesMap props;
     props["carrier"].writer().append_string(kTestCarrier);
     props["unknown-property"].writer().append_string("irrelevant-value");
-    device_->capability_->OnGetModemStatusCallback(props, Error(), handler);
-    dispatcher_.DispatchPendingEvents();
+    callback.Run(props, Error());
   }
-
-  void InvokeGetModemInfo(void *data, int /*timeout*/) {
-    AsyncCallHandler *handler = reinterpret_cast<AsyncCallHandler *>(data);
+  void InvokeGetModemInfo(Error *error, const ModemInfoCallback &callback,
+                            int timeout) {
     static const char kManufacturer[] = "Company";
     static const char kModelID[] = "Gobi 2000";
     static const char kHWRev[] = "A00B1234";
@@ -172,58 +181,66 @@ class CellularTest : public testing::Test {
     info._1 = kManufacturer;
     info._2 = kModelID;
     info._3 = kHWRev;
-    device_->capability_->OnGetModemInfoCallback(info, Error(), handler);
-    dispatcher_.DispatchPendingEvents();
+    callback.Run(info, Error());
   }
-
-  void InvokeGetIMEI(void *data, int /*timeout*/) {
-    AsyncCallHandler *handler = reinterpret_cast<AsyncCallHandler *>(data);
-    GetCapabilityGSM()->OnGetIMEICallback(kIMEI, Error(), handler);
-    dispatcher_.DispatchPendingEvents();
+  void InvokeGetRegistrationState1X(Error *error,
+                                    const RegistrationStateCallback &callback,
+                                    int timeout) {
+    callback.Run(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
+                 MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
+                 Error());
   }
-
-  void InvokeGetIMSI(void *data, int /*timeout*/) {
-    AsyncCallHandler *handler = reinterpret_cast<AsyncCallHandler *>(data);
-    GetCapabilityGSM()->OnGetIMSICallback(kIMSI, Error(), handler);
-    dispatcher_.DispatchPendingEvents();
+  void InvokeGetIMEI(Error *error, const GSMIdentifierCallback &callback,
+                     int timeout) {
+    callback.Run(kIMEI, Error());
   }
-  void InvokeGetSPN(void *data, int /*timeout*/) {
-    AsyncCallHandler *handler = reinterpret_cast<AsyncCallHandler *>(data);
-    GetCapabilityGSM()->OnGetSPNCallback(kTestCarrier, Error(), handler);
-    dispatcher_.DispatchPendingEvents();
+  void InvokeGetIMSI(Error *error, const GSMIdentifierCallback &callback,
+                     int timeout) {
+    callback.Run(kIMSI, Error());
   }
-  void InvokeGetMSISDN(void *data, int /*timeout*/) {
-    AsyncCallHandler *handler = reinterpret_cast<AsyncCallHandler *>(data);
-    GetCapabilityGSM()->OnGetMSISDNCallback(kMSISDN, Error(), handler);
-    dispatcher_.DispatchPendingEvents();
+  void InvokeGetMSISDN(Error *error, const GSMIdentifierCallback &callback,
+                       int timeout) {
+    callback.Run(kMSISDN, Error());
   }
-  void InvokeRegister(const std::string &/*network_id*/,
-                      void *data, int /*timeout*/) {
-    AsyncCallHandler *handler = reinterpret_cast<AsyncCallHandler *>(data);
-    GetCapabilityGSM()->OnRegisterCallback(Error(), handler);
-    dispatcher_.DispatchPendingEvents();
+  void InvokeGetSPN(Error *error, const GSMIdentifierCallback &callback,
+                    int timeout) {
+    callback.Run(kTestCarrier, Error());
   }
-  void InvokeGetRegistrationInfo(void *data, int /*timeout*/) {
-    AsyncCallHandler *handler = reinterpret_cast<AsyncCallHandler *>(data);
-    GSMRegistrationInfo info;
+  void InvokeGetRegistrationInfo(Error *error,
+                                 const RegistrationInfoCallback &callback,
+                                 int timeout) {
     static const char kNetworkID[] = "22803";
-    info._1 = MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
-    info._2 = kNetworkID;
-    info._3 = kTestCarrier;
-    GetCapabilityGSM()->OnGSMRegistrationInfoChanged(info._1, info._2, info._3,
-                                                     Error(), handler);
-    dispatcher_.DispatchPendingEvents();
+    callback.Run(MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING,
+                 kNetworkID, kTestCarrier, Error());
   }
-  void InvokeConnect(DBusPropertiesMap /*props*/, void *data, int /*timeout*/) {
-    AsyncCallHandler *handler = reinterpret_cast<AsyncCallHandler *>(data);
-    device_->capability_->OnConnectCallback(Error(), handler);
-    dispatcher_.DispatchPendingEvents();
+  void InvokeRegister(const string &network_id,
+                      Error *error,
+                      const ResultCallback &callback,
+                      int timeout) {
+    callback.Run(Error());
   }
+  void InvokeGetRegistrationState(Error *error,
+                                  const RegistrationStateCallback &callback,
+                                  int timeout) {
+    callback.Run(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
+                 MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
+                 Error());
+  }
+  void InvokeConnect(DBusPropertiesMap props, Error *error,
+                     const ResultCallback &callback, int timeout) {
+    callback.Run(Error());
+  }
+  void InvokeDisconnect(Error *error, const ResultCallback &callback,
+                        int timeout) {
+    if (!callback.is_null())
+      callback.Run(Error());
+  }
+
+  MOCK_METHOD1(TestCallback, void(const Error &error));
 
  protected:
   static const char kTestDeviceName[];
   static const char kTestDeviceAddress[];
-  static const int kTestSocket;
   static const char kDBusOwner[];
   static const char kDBusPath[];
   static const char kTestCarrier[];
@@ -232,41 +249,37 @@ class CellularTest : public testing::Test {
   static const char kIMSI[];
   static const char kMSISDN[];
   static const char kTestMobileProviderDBPath[];
+  static const int kStrength;
 
   class TestProxyFactory : public ProxyFactory {
    public:
     explicit TestProxyFactory(CellularTest *test) : test_(test) {}
 
     virtual ModemProxyInterface *CreateModemProxy(
-        ModemProxyDelegate */*delegate*/,
         const string &/*path*/,
         const string &/*service*/) {
       return test_->proxy_.release();
     }
 
     virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
-        ModemSimpleProxyDelegate */*delegate*/,
         const string &/*path*/,
         const string &/*service*/) {
       return test_->simple_proxy_.release();
     }
 
     virtual ModemCDMAProxyInterface *CreateModemCDMAProxy(
-        ModemCDMAProxyDelegate */*delegate*/,
         const string &/*path*/,
         const string &/*service*/) {
       return test_->cdma_proxy_.release();
     }
 
     virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
-        ModemGSMCardProxyDelegate */*delegate*/,
         const string &/*path*/,
         const string &/*service*/) {
       return test_->gsm_card_proxy_.release();
     }
 
     virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
-        ModemGSMNetworkProxyDelegate */*delegate*/,
         const string &/*path*/,
         const string &/*service*/) {
       return test_->gsm_network_proxy_.release();
@@ -322,6 +335,7 @@ const char CellularTest::kIMSI[] = "123456789012345";
 const char CellularTest::kMSISDN[] = "12345678901";
 const char CellularTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
+const int CellularTest::kStrength = 90;
 
 TEST_F(CellularTest, GetStateString) {
   EXPECT_EQ("CellularStateDisabled",
@@ -337,22 +351,28 @@ TEST_F(CellularTest, GetStateString) {
 }
 
 TEST_F(CellularTest, StartCDMARegister) {
-  const int kStrength = 90;
   SetCellularType(Cellular::kTypeCDMA);
-  EXPECT_CALL(*proxy_, Enable(true, _, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   EXPECT_CALL(*simple_proxy_,
-              GetModemStatus(_, CellularCapability::kTimeoutDefault))
+              GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemStatus));
   EXPECT_CALL(*cdma_proxy_, MEID()).WillOnce(Return(kMEID));
-  EXPECT_CALL(*proxy_, GetModemInfo(_, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
-  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(_, _))
-      .WillOnce(DoAll(
-          SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME),
-          SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)));
-  EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(kStrength));
-  device_->Start();
+  EXPECT_CALL(*cdma_proxy_,
+              GetRegistrationState(NULL, _,
+                                   CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this,
+                     &CellularTest::InvokeGetRegistrationState1X));
+  EXPECT_CALL(*cdma_proxy_,
+              GetSignalQuality(NULL, _, CellularCapability::kTimeoutDefault))
+      .Times(2)
+      .WillRepeatedly(Invoke(this,
+                             &CellularTest::InvokeGetSignalQuality));
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  Error error;
+  device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(kMEID, device_->capability_->meid_);
   EXPECT_EQ(kTestCarrier, device_->capability_->carrier_);
@@ -368,37 +388,44 @@ TEST_F(CellularTest, StartGSMRegister) {
   provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
   ASSERT_TRUE(provider_db_);
   device_->provider_db_ = provider_db_;
-  const int kStrength = 70;
-  EXPECT_CALL(*proxy_, Enable(true, _, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   EXPECT_CALL(*gsm_network_proxy_,
-              Register("", _, CellularCapability::kTimeoutRegister))
+              Register("", _, _, CellularCapability::kTimeoutRegister))
       .WillOnce(Invoke(this, &CellularTest::InvokeRegister));
   EXPECT_CALL(*simple_proxy_,
-              GetModemStatus(_, CellularCapability::kTimeoutDefault))
+              GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemStatus));
-  EXPECT_CALL(*gsm_card_proxy_, GetIMEI(_, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*gsm_card_proxy_,
+              GetIMEI(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetIMEI));
-  EXPECT_CALL(*gsm_card_proxy_, GetIMSI(_, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*gsm_card_proxy_,
+              GetIMSI(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetIMSI));
-  EXPECT_CALL(*gsm_card_proxy_, GetSPN(_, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*gsm_card_proxy_,
+              GetSPN(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetSPN));
   EXPECT_CALL(*gsm_card_proxy_,
-              GetMSISDN(_, CellularCapability::kTimeoutDefault))
+              GetMSISDN(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetMSISDN));
   EXPECT_CALL(*gsm_network_proxy_, AccessTechnology())
       .WillOnce(Return(MM_MODEM_GSM_ACCESS_TECH_EDGE));
   EXPECT_CALL(*gsm_card_proxy_, EnabledFacilityLocks())
       .WillOnce(Return(MM_MODEM_GSM_FACILITY_SIM));
-  EXPECT_CALL(*proxy_, GetModemInfo(_, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
   static const char kNetworkID[] = "22803";
   EXPECT_CALL(*gsm_network_proxy_,
-              GetRegistrationInfo(_, CellularCapability::kTimeoutDefault))
+              GetRegistrationInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetRegistrationInfo));
-  EXPECT_CALL(*gsm_network_proxy_, GetSignalQuality())
-      .WillOnce(Return(kStrength));
-  device_->Start();
+  EXPECT_CALL(*gsm_network_proxy_, GetSignalQuality(NULL, _, _))
+      .Times(2)
+      .WillRepeatedly(Invoke(this,
+                             &CellularTest::InvokeGetSignalQuality));
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  Error error;
+  device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
+  EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(kIMEI, device_->capability_->imei_);
   EXPECT_EQ(kIMSI, device_->capability_->imsi_);
@@ -422,19 +449,24 @@ TEST_F(CellularTest, StartConnected) {
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
   device_->capability_->meid_ = kMEID;
-  EXPECT_CALL(*proxy_, Enable(true, _, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   EXPECT_CALL(*simple_proxy_,
-              GetModemStatus(_, CellularCapability::kTimeoutDefault))
+              GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemStatus));
-  EXPECT_CALL(*proxy_, GetModemInfo(_, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
-  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(_, _))
-      .WillOnce(DoAll(
-          SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
-          SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
-  EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
-  device_->Start();
+  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(NULL, _, _))
+      .WillOnce(Invoke(this,
+                     &CellularTest::InvokeGetRegistrationState));
+  EXPECT_CALL(*cdma_proxy_, GetSignalQuality(NULL, _, _))
+      .Times(2)
+      .WillRepeatedly(Invoke(this,
+                             &CellularTest::InvokeGetSignalQuality));
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  Error error;
+  device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
+  EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
 }
@@ -445,23 +477,28 @@ TEST_F(CellularTest, StartLinked) {
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
   device_->capability_->meid_ = kMEID;
-  EXPECT_CALL(*proxy_, Enable(true, _, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   EXPECT_CALL(*simple_proxy_,
-              GetModemStatus(_, CellularCapability::kTimeoutDefault))
+              GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemStatus));
-  EXPECT_CALL(*proxy_, GetModemInfo(_, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
-  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(_, _))
-      .WillOnce(DoAll(
-          SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
-          SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
-  EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
+  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(NULL, _, _))
+      .WillOnce(Invoke(this,
+                     &CellularTest::InvokeGetRegistrationState));
+  EXPECT_CALL(*cdma_proxy_, GetSignalQuality(NULL, _, _))
+      .Times(2)
+      .WillRepeatedly(Invoke(this,
+                             &CellularTest::InvokeGetSignalQuality));
   EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(manager_, UpdateService(_)).Times(2);
-  device_->Start();
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  Error error;
+  device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
+  EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateLinked, device_->state_);
   EXPECT_EQ(Service::kStateConfiguring, device_->service_->state());
@@ -489,7 +526,7 @@ MATCHER(ContainsPhoneNumber, "") {
   return ContainsKey(arg, CellularCapability::kConnectPropertyPhoneNumber);
 }
 
-}  // namespace {}
+}  // namespace
 
 TEST_F(CellularTest, Connect) {
   Error error;
@@ -516,7 +553,7 @@ TEST_F(CellularTest, Connect) {
 
   error.Populate(Error::kSuccess);
   EXPECT_CALL(*simple_proxy_,
-              Connect(ContainsPhoneNumber(), _,
+              Connect(ContainsPhoneNumber(), _, _,
                       CellularCapability::kTimeoutConnect))
                 .Times(2)
                 .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
@@ -537,12 +574,21 @@ TEST_F(CellularTest, Connect) {
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
 }
 
-TEST_F(CellularTest, DisconnectModem) {
-  device_->DisconnectModem();
-  EXPECT_CALL(*proxy_, Disconnect()).Times(1);
-  device_->capability_->proxy_.reset(proxy_.release());
+TEST_F(CellularTest, Disconnect) {
+  Error error;
+  device_->state_ = Cellular::kStateRegistered;
+  device_->Disconnect(&error);
+  EXPECT_EQ(Error::kNotConnected, error.type());
+  error.Reset();
+
   device_->state_ = Cellular::kStateConnected;
-  device_->DisconnectModem();
+  EXPECT_CALL(*proxy_,
+              Disconnect(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+  device_->capability_->proxy_.reset(proxy_.release());
+  device_->Disconnect(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
 
 }  // namespace shill

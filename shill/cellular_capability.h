@@ -11,9 +11,9 @@
 #include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/async_call_handler.h"
 #include "shill/dbus_properties.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/modem_simple_proxy_interface.h"
@@ -25,14 +25,16 @@ class Error;
 class EventDispatcher;
 class ProxyFactory;
 
+typedef std::vector<base::Closure> CellularTaskList;
+
 // Cellular devices instantiate subclasses of CellularCapability that
 // handle the specific modem technologies and capabilities.
-class CellularCapability : public ModemProxyDelegate,
-                           public ModemSimpleProxyDelegate {
+class CellularCapability {
  public:
   static const int kTimeoutActivate;
   static const int kTimeoutConnect;
   static const int kTimeoutDefault;
+  static const int kTimeoutEnable;
   static const int kTimeoutRegister;
   static const int kTimeoutScan;
 
@@ -64,104 +66,79 @@ class CellularCapability : public ModemProxyDelegate,
   // a non-blocking call is received, the operation advances to the next
   // step, until either an error occurs in one of them, or all the steps
   // have been completed, at which point StartModem() is finished.
-  virtual void StartModem();
-  virtual void StopModem();
-  // EnableModem ensures that the modem device is powered.
-  virtual void EnableModem(AsyncCallHandler *call_handler);
-  virtual void DisableModem(AsyncCallHandler *call_handler);
-  virtual void GetModemStatus(AsyncCallHandler *call_handler);
-  virtual void GetModemInfo(AsyncCallHandler *call_handler);
-  virtual void Connect(const DBusPropertiesMap &properties);
-  virtual void Disconnect();
+  virtual void StartModem(Error *error,
+                          const ResultCallback &callback) = 0;
+  // StopModem is also a multi-step operation consisting of several
+  // non-blocking calls.
+  virtual void StopModem(Error *error, const ResultCallback &callback) = 0;
+  virtual void Connect(const DBusPropertiesMap &properties, Error *error,
+                       const ResultCallback &callback);
+  virtual void Disconnect(Error *error, const ResultCallback &callback);
 
   // Activates the modem. Returns an Error on failure.
   // The default implementation fails by returning a kNotSupported error
   // to the caller.
   virtual void Activate(const std::string &carrier,
-                        AsyncCallHandler *call_handler);
+                        Error *error, const ResultCallback &callback);
 
   // Network registration.
   virtual void RegisterOnNetwork(const std::string &network_id,
-                                 AsyncCallHandler *call_handler);
+                                 Error *error,
+                                 const ResultCallback &callback);
   virtual bool IsRegistered() = 0;
-
-  virtual void GetProperties(AsyncCallHandler *call_handler) = 0;
-
-  // Retrieves the current cellular signal strength.
-  virtual void GetSignalQuality() = 0;
-
-  virtual void GetRegistrationState(AsyncCallHandler *call_handler) = 0;
 
   virtual std::string CreateFriendlyServiceName() = 0;
 
   // PIN management. The default implementation fails by returning an error.
-  virtual void RequirePIN(
-      const std::string &pin, bool require, AsyncCallHandler *call_handler);
-  virtual void EnterPIN(const std::string &pin, AsyncCallHandler *call_handler);
+  virtual void RequirePIN(const std::string &pin, bool require,
+                          Error *error, const ResultCallback &callback);
+  virtual void EnterPIN(const std::string &pin,
+                        Error *error, const ResultCallback &callback);
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
-                          AsyncCallHandler *call_handler);
+                          Error *error, const ResultCallback &callback);
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
-                         AsyncCallHandler *call_handler);
+                         Error *error, const ResultCallback &callback);
 
   // Network scanning. The default implementation fails by invoking
   // the reply handler with an error.
-  virtual void Scan(AsyncCallHandler *call_handler);
+  virtual void Scan(Error *error, const ResultCallback &callback);
 
   // Returns an empty string if the network technology is unknown.
   virtual std::string GetNetworkTechnologyString() const = 0;
 
   virtual std::string GetRoamingStateString() const = 0;
 
+  virtual void GetSignalQuality() = 0;
+
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties) = 0;
 
-  // Method and signal callbacks inherited from ModemProxyDelegate.
-  virtual void OnModemStateChanged(
-      uint32 old_state, uint32 new_state, uint32 reason);
-  virtual void OnModemEnableCallback(const Error &error,
-                                     AsyncCallHandler *call_handler);
-  virtual void OnGetModemInfoCallback(const ModemHardwareInfo &info,
-                                      const Error &error,
-                                      AsyncCallHandler *call_handler);
-
-  // Method and signal callbacks inherited from ModemSimpleProxyDelegate.
-  virtual void OnGetModemStatusCallback(const DBusPropertiesMap &props,
-                                        const Error &error,
-                                        AsyncCallHandler *call_handler);
-  virtual void OnConnectCallback(const Error &error,
-                                 AsyncCallHandler *call_handler);
-  virtual void OnDisconnectCallback(const Error &error,
-                                    AsyncCallHandler *call_handler);
-
  protected:
-  class MultiStepAsyncCallHandler : public AsyncCallHandler {
-   public:
-    explicit MultiStepAsyncCallHandler(EventDispatcher *dispatcher);
-    virtual ~MultiStepAsyncCallHandler();
+  // The following five methods are only ever called as
+  // callbacks (from the main loop), which is why they
+  // don't take an Error * argument.
+  virtual void EnableModem(const ResultCallback &callback);
+  virtual void DisableModem(const ResultCallback &callback);
+  virtual void GetModemStatus(const ResultCallback &callback);
+  virtual void GetModemInfo(const ResultCallback &callback);
+  virtual void GetProperties(const ResultCallback &callback) = 0;
 
-    // Override the non-error case
-    virtual bool CompleteOperation();
+  virtual void GetRegistrationState() = 0;
 
-    void AddTask(const base::Closure &task);
-    void PostNextTask();
+  void FinishEnable(const ResultCallback &callback);
+  void FinishDisable(const ResultCallback &callback);
+  virtual void InitProxies();
+  virtual void ReleaseProxies();
 
-   private:
-    EventDispatcher *dispatcher_;
-    std::vector<base::Closure> tasks_;
+  static void OnUnsupportedOperation(const char *operation, Error *error);
 
-    DISALLOW_COPY_AND_ASSIGN(MultiStepAsyncCallHandler);
-  };
-
-  static void CompleteOperation(AsyncCallHandler *reply_handler);
-  static void CompleteOperation(AsyncCallHandler *reply_handler,
-                                const Error &error);
-  // Generic synthetic callback by which a Capability class can indicate
-  // that a requested operation is not supported.
-  void static OnUnsupportedOperation(const char *operation,
-                                     AsyncCallHandler *call_handler);
-
+  // Run the next task in a list.
+  // Precondition: |tasks| is not empty.
+  void RunNextStep(CellularTaskList *tasks);
+  void StepCompletedCallback(const ResultCallback &callback,
+                             CellularTaskList *tasks, const Error &error);
   // Properties
   bool allow_roaming_;
   bool scanning_supported_;
@@ -183,6 +160,9 @@ class CellularCapability : public ModemProxyDelegate,
   FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateStatus);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
+  FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
+  FRIEND_TEST(CellularCapabilityTest, EnableModemSucceed);
+  FRIEND_TEST(CellularCapabilityTest, FinishEnable);
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
   FRIEND_TEST(CellularServiceTest, FriendlyName);
@@ -191,7 +171,7 @@ class CellularCapability : public ModemProxyDelegate,
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, Connect);
-  FRIEND_TEST(CellularTest, DisconnectModem);
+  FRIEND_TEST(CellularTest, Disconnect);
 
   void HelpRegisterDerivedBool(
       const std::string &name,
@@ -201,6 +181,22 @@ class CellularCapability : public ModemProxyDelegate,
   bool GetAllowRoaming(Error */*error*/) { return allow_roaming_; }
   void SetAllowRoaming(const bool &value, Error *error);
 
+  // Method reply and signal callbacks from Modem interface
+  virtual void OnModemStateChangedSignal(
+      uint32 old_state, uint32 new_state, uint32 reason);
+  virtual void OnGetModemInfoReply(const ResultCallback &callback,
+                                   const ModemHardwareInfo &info,
+                                   const Error &error);
+
+  // Method reply callbacks from Modem.Simple interface
+  virtual void OnGetModemStatusReply(const ResultCallback &callback,
+                                     const DBusPropertiesMap &props,
+                                     const Error &error);
+  virtual void OnConnectReply(const ResultCallback &callback,
+                              const Error &error);
+  virtual void OnDisconnectReply(const ResultCallback &callback,
+                                 const Error &error);
+
   Cellular *cellular_;
 
   // Store cached copies of singletons for speed/ease of testing.
@@ -208,6 +204,7 @@ class CellularCapability : public ModemProxyDelegate,
 
   scoped_ptr<ModemProxyInterface> proxy_;
   scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
+  base::WeakPtrFactory<CellularCapability> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapability);
 };

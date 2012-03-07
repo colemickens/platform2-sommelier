@@ -12,36 +12,59 @@ using std::string;
 namespace shill {
 
 DBusObjectManagerProxy::DBusObjectManagerProxy(
-    DBusObjectManagerProxyDelegate *delegate,
     DBus::Connection *connection,
     const string &path,
     const string &service)
-    : proxy_(delegate, connection, path, service) {}
-
+    : proxy_(connection, path, service) {}
 DBusObjectManagerProxy::~DBusObjectManagerProxy() {}
 
-void DBusObjectManagerProxy::GetManagedObjects(AsyncCallHandler *call_handler,
-                                               int timeout) {
-  return proxy_.GetManagedObjects(call_handler, timeout);
+void DBusObjectManagerProxy::GetManagedObjects(
+    Error *error,
+    const ManagedObjectsCallback &callback,
+    int timeout) {
+  scoped_ptr<ManagedObjectsCallback> cb(new ManagedObjectsCallback(callback));
+  try {
+    proxy_.GetManagedObjects(cb.get(), timeout);
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
+}
+
+void DBusObjectManagerProxy::set_interfaces_added_callback(
+      const InterfacesAddedSignalCallback &callback) {
+  proxy_.set_interfaces_added_callback(callback);
+}
+
+void DBusObjectManagerProxy::set_interfaces_removed_callback(
+      const InterfacesRemovedSignalCallback &callback) {
+  proxy_.set_interfaces_removed_callback(callback);
 }
 
 // Inherited from DBusObjectManagerProxyInterface.
-DBusObjectManagerProxy::Proxy::Proxy(DBusObjectManagerProxyDelegate *delegate,
-                                     DBus::Connection *connection,
+DBusObjectManagerProxy::Proxy::Proxy(DBus::Connection *connection,
                                      const std::string &path,
                                      const std::string &service)
-    : DBus::ObjectProxy(*connection, path, service.c_str()),
-      delegate_(delegate) {}
-
+    : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
 DBusObjectManagerProxy::Proxy::~Proxy() {}
+
+void DBusObjectManagerProxy::Proxy::set_interfaces_added_callback(
+      const InterfacesAddedSignalCallback &callback) {
+  interfaces_added_callback_ = callback;
+}
+
+void DBusObjectManagerProxy::Proxy::set_interfaces_removed_callback(
+      const InterfacesRemovedSignalCallback &callback) {
+  interfaces_removed_callback_ = callback;
+}
 
 // Signal callback
 void DBusObjectManagerProxy::Proxy::InterfacesAdded(
     const ::DBus::Path &object_path,
     const DBusInterfaceToProperties &interface_to_properties) {
   VLOG(2) << __func__ << "(" << object_path << ")";
-  delegate_->OnInterfacesAdded(object_path, interface_to_properties);
+  interfaces_added_callback_.Run(object_path, interface_to_properties);
 }
 
 // Signal callback
@@ -49,7 +72,7 @@ void DBusObjectManagerProxy::Proxy::InterfacesRemoved(
     const ::DBus::Path &object_path,
     const std::vector< std::string > &interfaces) {
   VLOG(2) << __func__ << "(" << object_path << ")";
-  delegate_->OnInterfacesRemoved(object_path, interfaces);
+  interfaces_removed_callback_.Run(object_path, interfaces);
 }
 
 // Method callback
@@ -60,12 +83,10 @@ void DBusObjectManagerProxy::Proxy::GetManagedObjectsCallback(
   VLOG(2) << __func__;
   shill::Error error;
   CellularError::FromDBusError(dberror, &error);
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ManagedObjectsCallback> callback(
+      reinterpret_cast<ManagedObjectsCallback *>(data));
 
-  delegate_->OnGetManagedObjectsCallback(
-      objects_with_properties,
-      error,
-      call_handler);
+  callback->Run(objects_with_properties, error);
 }
 
 }  // namespace shill

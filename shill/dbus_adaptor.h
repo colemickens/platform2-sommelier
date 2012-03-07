@@ -10,10 +10,13 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <dbus-c++/dbus.h>
 
 #include "shill/accessor_interface.h"
 #include "shill/adaptor_interfaces.h"
+#include "shill/callbacks.h"
 #include "shill/error.h"
 
 namespace shill {
@@ -26,7 +29,8 @@ class PropertyStore;
 
 // Superclass for all DBus-backed Adaptor objects
 class DBusAdaptor : public DBus::ObjectAdaptor,
-                    public DBus::IntrospectableAdaptor {
+                    public DBus::IntrospectableAdaptor,
+                    public base::SupportsWeakPtr<DBusAdaptor> {
  public:
   DBusAdaptor(DBus::Connection* conn, const std::string &object_path);
   virtual ~DBusAdaptor();
@@ -85,48 +89,35 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool IsKeyValueStore(::DBus::Signature signature);
 
  protected:
-  class Returner : public DBus::Tag,
-                   public ReturnerInterface {
-   public:
-    // Creates a new returner instance associated with |adaptor|.
-    static Returner *Create(DBusAdaptor *adaptor);
-
-    // Used by the adaptor to initiate or delay the return, depending on the
-    // state of the returner. A call to this method should be the last statement
-    // in the adaptor method. If none of the interface Return* methods has been
-    // called yet, DelayOrReturn exits to the dbus-c++ message handler by
-    // throwing an exception. Otherwise, it initializes |error|, completes the
-    // RPC call right away and destroys |this|.
-    void DelayOrReturn(DBus::Error *error);
-
-    // Inherited from ReturnerInterface. These methods complete the RPC call
-    // right away and destroy the object if DelayOrReturn has been called
-    // already. Otherwise, they allow DelayOrReturn to complete the call.
-    virtual void Return();
-    virtual void ReturnError(const Error &error);
-
-   private:
-    // The returner transitions through the following states:
-    //
-    // Initialized -> [Delayed|Returned] -> Destroyed.
-    enum State {
-      kStateInitialized,  // No *Return* methods called yet.
-      kStateDelayed,  // DelayOrReturn called, Return* not.
-      kStateReturned,  // Return* called, DelayOrReturn not.
-      kStateDestroyed  // Return complete, returner destroyed.
-    };
-
-    explicit Returner(DBusAdaptor *adaptor);
-
-    // Destruction happens through the *Return* methods.
-    virtual ~Returner();
-
-    DBusAdaptor *adaptor_;
-    Error error_;
-    State state_;
-
-    DISALLOW_COPY_AND_ASSIGN(Returner);
-  };
+  ResultCallback GetMethodReplyCallback(const DBus::Tag *tag);
+  // Adaptors call this method just before returning. If |error|
+  // indicates that the operation has completed, with no asynchronously
+  // delivered result expected, then a DBus method reply is immediately
+  // sent to the client that initiated the method invocation. Otherwise,
+  // the operation is ongoing, and the result will be sent to the client
+  // when the operation completes at some later time.
+  //
+  // Adaptors should always construct an Error initialized to the value
+  // Error::kOperationInitiated. A pointer to this Error is passed down
+  // through the call stack. Any layer that determines that the operation
+  // has completed, either because of a failure that prevents carrying it
+  // out, or because it was possible to complete it without sending a request
+  // to an external server, should call error.Reset() to indicate success,
+  // or to some error type to reflect the kind of failure that occurred.
+  // Otherwise, they should leave the Error alone.
+  //
+  // The general structure of an adaptor method is
+  //
+  // void XXXXDBusAdaptor::SomeMethod(<args...>, DBus::Error &error) {
+  //   Error e(Error::kOperationInitiated);
+  //   DBus::Tag *tag = new DBus::Tag();
+  //   xxxx_->SomeMethod(<args...>, &e, GetMethodReplyCallback(tag));
+  //   ReturnResultOrDefer(tag, e, &error);
+  // }
+  //
+  void ReturnResultOrDefer(const DBus::Tag *tag,
+                           const Error &error,
+                           DBus::Error *dberror);
 
  private:
   static const char kByteArraysSig[];
@@ -134,6 +125,11 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static const char kStringmapSig[];
   static const char kStringmapsSig[];
   static const char kStringsSig[];
+
+  void MethodReplyCallback(const DBus::Tag *tag, const Error &error);
+  void DeferReply(const DBus::Tag *tag);
+  void ReplyNow(const DBus::Tag *tag);
+  void ReplyNowWithError(const DBus::Tag *tag, const DBus::Error &error);
 
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);
 };

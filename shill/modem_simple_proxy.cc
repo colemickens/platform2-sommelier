@@ -4,55 +4,77 @@
 
 #include "shill/modem_simple_proxy.h"
 
+#include <base/bind.h>
+
 #include "shill/cellular_error.h"
 #include "shill/error.h"
 
+using base::Bind;
+using base::Callback;
 using std::string;
 
 namespace shill {
 
-ModemSimpleProxy::ModemSimpleProxy(ModemSimpleProxyDelegate *delegate,
-                                   DBus::Connection *connection,
+typedef Callback<void(const DBusPropertiesMap &,
+                      const Error &)> ModemStatusCallback;
+
+ModemSimpleProxy::ModemSimpleProxy(DBus::Connection *connection,
                                    const string &path,
                                    const string &service)
-    : proxy_(delegate, connection, path, service) {}
+    : proxy_(connection, path, service) {}
 
 ModemSimpleProxy::~ModemSimpleProxy() {}
 
-void ModemSimpleProxy::GetModemStatus(AsyncCallHandler *call_handler,
+void ModemSimpleProxy::GetModemStatus(Error *error,
+                                      const DBusPropertyMapCallback &callback,
                                       int timeout) {
-  proxy_.GetStatus(call_handler, timeout);
+  scoped_ptr<DBusPropertyMapCallback> cb(new DBusPropertyMapCallback(callback));
+  try {
+    proxy_.GetStatus(cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 void ModemSimpleProxy::Connect(const DBusPropertiesMap &properties,
-                               AsyncCallHandler *call_handler, int timeout) {
-  proxy_.Connect(properties, call_handler, timeout);
+                               Error *error,
+                               const ResultCallback &callback,
+                               int timeout) {
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.Connect(properties, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
-ModemSimpleProxy::Proxy::Proxy(ModemSimpleProxyDelegate *delegate,
-                               DBus::Connection *connection,
+ModemSimpleProxy::Proxy::Proxy(DBus::Connection *connection,
                                const string &path,
                                const string &service)
-    : DBus::ObjectProxy(*connection, path, service.c_str()),
-      delegate_(delegate) {}
+    : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
 ModemSimpleProxy::Proxy::~Proxy() {}
 
 void ModemSimpleProxy::Proxy::GetStatusCallback(const DBusPropertiesMap &props,
                                                 const DBus::Error &dberror,
                                                 void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<DBusPropertyMapCallback> callback(
+      reinterpret_cast<DBusPropertyMapCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
-  delegate_->OnGetModemStatusCallback(props, error, call_handler);
+  callback->Run(props, error);
 }
 
 void ModemSimpleProxy::Proxy::ConnectCallback(const DBus::Error &dberror,
                                               void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
-  delegate_->OnConnectCallback(error, call_handler);
+  callback->Run(error);
 }
 
 }  // namespace shill

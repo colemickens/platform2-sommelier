@@ -129,9 +129,6 @@ class WiFiService : public Service {
       void(WiFiService::*clear)(Error *error),
       const std::string *default_value);
 
-  void ConnectTask();
-  void DisconnectTask();
-
   std::string GetDeviceRpcId(Error *error);
   void ClearPassphrase(Error *error);
   void UpdateConnectable();

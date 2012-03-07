@@ -9,45 +9,48 @@
 
 #include <base/basictypes.h>
 
+#include "shill/callbacks.h"
 #include "shill/dbus_properties.h"
 
 namespace shill {
 
-class AsyncCallHandler;
 class Error;
+
+typedef base::Callback<void(uint32)> SignalQualitySignalCallback;
+typedef base::Callback<void(uint32, uint32)> RegistrationStateSignalCallback;
+
+typedef base::Callback<void(uint32, const Error &)> ActivationResultCallback;
+typedef base::Callback<void(uint32, const Error &)> SignalQualityCallback;
+typedef base::Callback<void(uint32, uint32,
+                            const Error &)> RegistrationStateCallback;
 
 // These are the methods that a ModemManager.Modem.CDMA proxy must support.
 // The interface is provided so that it can be mocked in tests.
-// All calls are made asynchronously. Call completion is signalled through
-// the corresponding 'OnXXXCallback' method in the ProxyDelegate interface.
+// All calls are made asynchronously. Call completion is signalled via
+// the callbacks passed to the methods.
 class ModemCDMAProxyInterface {
  public:
   virtual ~ModemCDMAProxyInterface() {}
 
-  virtual void Activate(const std::string &carrier,
-                        AsyncCallHandler *call_handler, int timeout) = 0;
-  virtual void GetRegistrationState(uint32 *cdma_1x_state,
-                                    uint32 *evdo_state) = 0;
-  virtual uint32 GetSignalQuality() = 0;
+  virtual void Activate(const std::string &carrier, Error *error,
+                        const ActivationResultCallback &callback,
+                        int timeout) = 0;
+  virtual void GetRegistrationState(Error *error,
+                                    const RegistrationStateCallback &callback,
+                                    int timeout) = 0;
+  virtual void GetSignalQuality(Error *error,
+                                const SignalQualityCallback &callback,
+                                int timeout) = 0;
 
   // Properties.
   virtual const std::string MEID() = 0;
-};
 
-// ModemManager.Modem.CDMA signal delegate to be associated with the proxy.
-class ModemCDMAProxyDelegate {
- public:
-  virtual ~ModemCDMAProxyDelegate() {}
-
-  virtual void OnCDMAActivationStateChanged(
-      uint32 activation_state,
-      uint32 activation_error,
-      const DBusPropertiesMap &status_changes) = 0;
-  virtual void OnCDMARegistrationStateChanged(uint32 state_1x,
-                                              uint32 state_evdo) = 0;
-  virtual void OnCDMASignalQualityChanged(uint32 strength) = 0;
-  virtual void OnActivateCallback(uint32 status, const Error &error,
-                                  AsyncCallHandler *call_handler) = 0;
+  virtual void set_activation_state_callback(
+      const ActivationStateSignalCallback &callback) = 0;
+  virtual void set_signal_quality_callback(
+      const SignalQualitySignalCallback &callback) = 0;
+  virtual void set_registration_state_callback(
+      const RegistrationStateSignalCallback &callback) = 0;
 };
 
 }  // namespace shill

@@ -4,14 +4,15 @@
 
 #include "shill/cellular_capability.h"
 
+#include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/adaptor_interfaces.h"
 #include "shill/cellular.h"
 #include "shill/error.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 
+using base::Bind;
 using base::Callback;
 using base::Closure;
 using std::string;
@@ -20,51 +21,21 @@ namespace shill {
 
 const char CellularCapability::kConnectPropertyPhoneNumber[] = "number";
 const char CellularCapability::kPropertyIMSI[] = "imsi";
-const int CellularCapability::kTimeoutActivate = 120000;  // ms
-const int CellularCapability::kTimeoutConnect = 45000;  // ms
-const int CellularCapability::kTimeoutDefault = 5000;  // ms
-const int CellularCapability::kTimeoutRegister = 90000;  // ms
-const int CellularCapability::kTimeoutScan = 120000;  // ms
-
-CellularCapability::MultiStepAsyncCallHandler::MultiStepAsyncCallHandler(
-    EventDispatcher *dispatcher)
-    : AsyncCallHandler(),
-      dispatcher_(dispatcher) {
-}
-
-CellularCapability::MultiStepAsyncCallHandler::~MultiStepAsyncCallHandler() {
-}
-
-void CellularCapability::MultiStepAsyncCallHandler::AddTask(
-    const Closure &task) {
-  tasks_.push_back(task);
-}
-
-bool CellularCapability::MultiStepAsyncCallHandler::CompleteOperation() {
-  if (tasks_.empty()) {
-    DoReturn();
-    return true;
-  } else {
-    PostNextTask();
-  }
-  return false;
-}
-
-void CellularCapability::MultiStepAsyncCallHandler::PostNextTask() {
-  VLOG(2) << __func__ << ": " << tasks_.size() << " remaining actions";
-  if (tasks_.empty())
-    return;
-  Closure task = tasks_[0];
-  tasks_.erase(tasks_.begin());
-  dispatcher_->PostTask(task);
-}
+// All timeout values are in milliseconds
+const int CellularCapability::kTimeoutActivate = 120000;
+const int CellularCapability::kTimeoutConnect = 45000;
+const int CellularCapability::kTimeoutDefault = 5000;
+const int CellularCapability::kTimeoutEnable = 15000;
+const int CellularCapability::kTimeoutRegister = 90000;
+const int CellularCapability::kTimeoutScan = 120000;
 
 CellularCapability::CellularCapability(Cellular *cellular,
                                        ProxyFactory *proxy_factory)
     : allow_roaming_(false),
       scanning_supported_(false),
       cellular_(cellular),
-      proxy_factory_(proxy_factory) {
+      proxy_factory_(proxy_factory),
+      weak_ptr_factory_(this) {
   PropertyStore *store = cellular->mutable_store();
   store->RegisterConstString(flimflam::kCarrierProperty, &carrier_);
   HelpRegisterDerivedBool(flimflam::kCellularAllowRoamingProperty,
@@ -112,135 +83,173 @@ void CellularCapability::SetAllowRoaming(const bool &value, Error */*error*/) {
       flimflam::kCellularAllowRoamingProperty, value);
 }
 
-void CellularCapability::StartModem() {
-  VLOG(2) << __func__;
-  proxy_.reset(proxy_factory()->CreateModemProxy(
-      this, cellular()->dbus_path(), cellular()->dbus_owner()));
-  simple_proxy_.reset(proxy_factory()->CreateModemSimpleProxy(
-      this, cellular()->dbus_path(), cellular()->dbus_owner()));
+void CellularCapability::RunNextStep(CellularTaskList *tasks) {
+  CHECK(!tasks->empty());
+  VLOG(2) << __func__ << ": " << tasks->size() << " remaining tasks";
+  Closure task = (*tasks)[0];
+  tasks->erase(tasks->begin());
+  cellular()->dispatcher()->PostTask(task);
 }
 
-void CellularCapability::StopModem() {
+void CellularCapability::StepCompletedCallback(
+    const ResultCallback &callback,
+    CellularTaskList *tasks,
+    const Error &error) {
+  if (error.IsSuccess() && !tasks->empty()) {
+    RunNextStep(tasks);
+    return;
+  }
+  delete tasks;
+  callback.Run(error);
+}
+
+void CellularCapability::InitProxies() {
+  VLOG(2) << __func__;
+  proxy_.reset(proxy_factory()->CreateModemProxy(
+      cellular()->dbus_path(), cellular()->dbus_owner()));
+  simple_proxy_.reset(proxy_factory()->CreateModemSimpleProxy(
+      cellular()->dbus_path(), cellular()->dbus_owner()));
+  proxy_->set_state_changed_callback(
+      Bind(&CellularCapability::OnModemStateChangedSignal,
+           weak_ptr_factory_.GetWeakPtr()));
+}
+
+void CellularCapability::ReleaseProxies() {
   VLOG(2) << __func__;
   proxy_.reset();
   simple_proxy_.reset();
 }
 
-void CellularCapability::CompleteOperation(AsyncCallHandler *reply_handler) {
-  if (reply_handler && reply_handler->Complete())
-      delete reply_handler;
+void CellularCapability::FinishEnable(const ResultCallback &callback) {
+  callback.Run(Error());
+  GetRegistrationState();
+  GetSignalQuality();
 }
 
-void CellularCapability::CompleteOperation(AsyncCallHandler *reply_handler,
-                                           const Error &error) {
-  if (reply_handler && reply_handler->Complete(error))
-    delete reply_handler;
+void CellularCapability::FinishDisable(const ResultCallback &callback) {
+  ReleaseProxies();
+  callback.Run(Error());
 }
 
 void CellularCapability::OnUnsupportedOperation(
     const char *operation,
-    AsyncCallHandler *call_handler) {
-  Error error;
+    Error *error) {
   string message("The ");
   message.append(operation).append(" operation is not supported.");
-  Error::PopulateAndLog(&error, Error::kNotSupported, message);
-  CompleteOperation(call_handler, error);
+  Error::PopulateAndLog(error, Error::kNotSupported, message);
 }
 
-void CellularCapability::EnableModem(AsyncCallHandler *call_handler) {
+// always called from an async context
+void CellularCapability::EnableModem(const ResultCallback &callback) {
   VLOG(2) << __func__;
-  proxy_->Enable(true, call_handler, kTimeoutDefault);
+  CHECK(!callback.is_null());
+  Error error;
+  proxy_->Enable(true, &error, callback, kTimeoutEnable);
+  if (error.IsFailure())
+    callback.Run(error);
 }
 
-// TODO(ers): convert to async once we have a way for the callback
-// to distinguish an enable from a disable, and once the Stop() operation
-// has been converted to multi-step async.
-void CellularCapability::DisableModem(AsyncCallHandler * /*call_handler*/) {
-  try {
-    if (proxy_.get()) {
-      proxy_->Enable(false);
-    }
-    cellular()->OnModemDisabled();
-  } catch (const DBus::Error e) {
-    LOG(WARNING) << "Disable failed: " << e.what();
-  }
-}
-
-void CellularCapability::GetModemStatus(AsyncCallHandler *call_handler) {
+// always called from an async context
+void CellularCapability::DisableModem(const ResultCallback &callback) {
   VLOG(2) << __func__;
-  simple_proxy_->GetModemStatus(call_handler, kTimeoutDefault);
+  CHECK(!callback.is_null());
+  Error error;
+  proxy_->Enable(false, &error, callback, kTimeoutDefault);
+  if (error.IsFailure())
+      callback.Run(error);
 }
 
-void CellularCapability::GetModemInfo(AsyncCallHandler *call_handler) {
+// always called from an async context
+void CellularCapability::GetModemStatus(const ResultCallback &callback) {
   VLOG(2) << __func__;
-  proxy_->GetModemInfo(call_handler, kTimeoutDefault);
+  CHECK(!callback.is_null());
+  DBusPropertyMapCallback cb = Bind(&CellularCapability::OnGetModemStatusReply,
+                                    weak_ptr_factory_.GetWeakPtr(), callback);
+  Error error;
+  simple_proxy_->GetModemStatus(&error, cb, kTimeoutDefault);
+  if (error.IsFailure())
+      callback.Run(error);
 }
 
-// TODO(ers): make this async (supply an AsyncCallHandler arg)
-void CellularCapability::Connect(const DBusPropertiesMap &properties) {
+// always called from an async context
+void CellularCapability::GetModemInfo(const ResultCallback &callback) {
   VLOG(2) << __func__;
-  simple_proxy_->Connect(properties, NULL, kTimeoutConnect);
+  CHECK(!callback.is_null());
+  ModemInfoCallback cb = Bind(&CellularCapability::OnGetModemInfoReply,
+                              weak_ptr_factory_.GetWeakPtr(), callback);
+  Error error;
+  proxy_->GetModemInfo(&error, cb, kTimeoutDefault);
+  if (error.IsFailure())
+      callback.Run(error);
 }
 
-// TODO(ers): convert to async once the Stop() operation
-// has been converted to multi-step async.
-void CellularCapability::Disconnect() {
+void CellularCapability::Connect(const DBusPropertiesMap &properties,
+                                 Error *error,
+                                 const ResultCallback &callback) {
   VLOG(2) << __func__;
-  try {
-    proxy_->Disconnect();
-    cellular()->OnDisconnected();
-  } catch (const DBus::Error e) {
-    LOG(WARNING) << "Disconnect failed: " << e.what();
-  }
+  ResultCallback cb = Bind(&CellularCapability::OnConnectReply,
+                           weak_ptr_factory_.GetWeakPtr(),
+                           callback);
+  simple_proxy_->Connect(properties, error, cb, kTimeoutConnect);
+}
+
+void CellularCapability::Disconnect(Error *error,
+                                    const ResultCallback &callback) {
+  VLOG(2) << __func__;
+  ResultCallback cb = Bind(&CellularCapability::OnDisconnectReply,
+                           weak_ptr_factory_.GetWeakPtr(),
+                           callback);
+  proxy_->Disconnect(error, cb, kTimeoutDefault);
 }
 
 void CellularCapability::Activate(const string &/*carrier*/,
-                                  AsyncCallHandler *call_handler) {
-  OnUnsupportedOperation(__func__, call_handler);
+                                  Error *error,
+                                  const ResultCallback &/*callback*/) {
+  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapability::RegisterOnNetwork(
-    const string &/*network_id*/, AsyncCallHandler *call_handler) {
-  OnUnsupportedOperation(__func__, call_handler);
+    const string &/*network_id*/,
+    Error *error, const ResultCallback &/*callback*/) {
+  OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::RequirePIN(
-    const string &/*pin*/, bool /*require*/, AsyncCallHandler *call_handler) {
-  OnUnsupportedOperation(__func__, call_handler);
+void CellularCapability::RequirePIN(const std::string &/*pin*/,
+                                    bool /*require*/,
+                                    Error *error,
+                                    const ResultCallback &/*callback*/) {
+  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapability::EnterPIN(const string &/*pin*/,
-                                  AsyncCallHandler *call_handler) {
-  OnUnsupportedOperation(__func__, call_handler);
+                                  Error *error,
+                                  const ResultCallback &/*callback*/) {
+  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapability::UnblockPIN(const string &/*unblock_code*/,
                                     const string &/*pin*/,
-                                    AsyncCallHandler *call_handler) {
-  OnUnsupportedOperation(__func__, call_handler);
+                                    Error *error,
+                                    const ResultCallback &/*callback*/) {
+  OnUnsupportedOperation(__func__, error);
 }
 
 void CellularCapability::ChangePIN(const string &/*old_pin*/,
                                    const string &/*new_pin*/,
-                                   AsyncCallHandler *call_handler) {
-  OnUnsupportedOperation(__func__, call_handler);
+                                   Error *error,
+                                   const ResultCallback &/*callback*/) {
+  OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::Scan(AsyncCallHandler *call_handler) {
-  OnUnsupportedOperation(__func__, call_handler);
+void CellularCapability::Scan(Error *error,
+                              const ResultCallback &callback) {
+  OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapability::OnModemEnableCallback(const Error &error,
-                                               AsyncCallHandler *call_handler) {
-  VLOG(2) << __func__ << "(" << error << ")";
-  if (error.IsSuccess())
-    cellular()->OnModemEnabled();
-  CompleteOperation(call_handler, error);
-}
-
-void CellularCapability::OnGetModemStatusCallback(
-    const DBusPropertiesMap &props, const Error &error,
-    AsyncCallHandler *call_handler) {
+void CellularCapability::OnGetModemStatusReply(
+    const ResultCallback &callback,
+    const DBusPropertiesMap &props,
+    const Error &error) {
   VLOG(2) << __func__ << " " << props.size() << " props. error " << error;
   if (error.IsSuccess()) {
     DBusProperties::GetString(props, "carrier", &carrier_);
@@ -258,13 +267,13 @@ void CellularCapability::OnGetModemStatusCallback(
 
     UpdateStatus(props);
   }
-  CompleteOperation(call_handler, error);
+  callback.Run(error);
 }
 
-void CellularCapability::OnGetModemInfoCallback(
+void CellularCapability::OnGetModemInfoReply(
+    const ResultCallback &callback,
     const ModemHardwareInfo &info,
-    const Error &error,
-    AsyncCallHandler *call_handler) {
+    const Error &error) {
   VLOG(2) << __func__ << "(" << error << ")";
   if (error.IsSuccess()) {
     manufacturer_ = info._1;
@@ -273,30 +282,34 @@ void CellularCapability::OnGetModemInfoCallback(
     VLOG(2) << __func__ << ": " << info._1 << ", " << info._2 << ", "
             << info._3;
   }
-  CompleteOperation(call_handler, error);
+  callback.Run(error);
 }
 
-void CellularCapability::OnConnectCallback(const Error &error,
-                                           AsyncCallHandler *call_handler) {
+// TODO(ers): use the supplied callback when Connect is fully asynchronous
+void CellularCapability::OnConnectReply(const ResultCallback &callback,
+                                        const Error &error) {
   VLOG(2) << __func__ << "(" << error << ")";
   if (error.IsSuccess())
     cellular()->OnConnected();
   else
     cellular()->OnConnectFailed();
-  CompleteOperation(call_handler, error);
+  if (!callback.is_null())
+    callback.Run(error);
 }
 
-void CellularCapability::OnDisconnectCallback(const Error &error,
-                                              AsyncCallHandler *call_handler) {
+// TODO(ers): use the supplied callback when Disonnect is fully asynchronous
+void CellularCapability::OnDisconnectReply(const ResultCallback &callback,
+                                           const Error &error) {
   VLOG(2) << __func__ << "(" << error << ")";
   if (error.IsSuccess())
     cellular()->OnDisconnected();
   else
     cellular()->OnDisconnectFailed();
-  CompleteOperation(call_handler, error);
+  if (!callback.is_null())
+    callback.Run(error);
 }
 
-void CellularCapability::OnModemStateChanged(
+void CellularCapability::OnModemStateChangedSignal(
     uint32 old_state, uint32 new_state, uint32 reason) {
   VLOG(2) << __func__ << "(" << old_state << ", " << new_state << ", "
           << reason << ")";

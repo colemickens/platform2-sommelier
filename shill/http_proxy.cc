@@ -29,7 +29,6 @@
 
 using base::Bind;
 using base::StringPrintf;
-using base::Unretained;
 using std::string;
 using std::vector;
 
@@ -56,14 +55,20 @@ HTTPProxy::HTTPProxy(ConnectionRefPtr connection)
     : state_(kStateIdle),
       connection_(connection),
       weak_ptr_factory_(this),
-      accept_callback_(Bind(&HTTPProxy::AcceptClient, Unretained(this))),
+      accept_callback_(Bind(&HTTPProxy::AcceptClient,
+                            weak_ptr_factory_.GetWeakPtr())),
       connect_completion_callback_(Bind(&HTTPProxy::OnConnectCompletion,
-                                        Unretained(this))),
-      dns_client_callback_(Bind(&HTTPProxy::GetDNSResult, Unretained(this))),
-      read_client_callback_(Bind(&HTTPProxy::ReadFromClient, Unretained(this))),
-      read_server_callback_(Bind(&HTTPProxy::ReadFromServer, Unretained(this))),
-      write_client_callback_(Bind(&HTTPProxy::WriteToClient, Unretained(this))),
-      write_server_callback_(Bind(&HTTPProxy::WriteToServer, Unretained(this))),
+                                        weak_ptr_factory_.GetWeakPtr())),
+      dns_client_callback_(Bind(&HTTPProxy::GetDNSResult,
+                                weak_ptr_factory_.GetWeakPtr())),
+      read_client_callback_(Bind(&HTTPProxy::ReadFromClient,
+                                 weak_ptr_factory_.GetWeakPtr())),
+      read_server_callback_(Bind(&HTTPProxy::ReadFromServer,
+                                 weak_ptr_factory_.GetWeakPtr())),
+      write_client_callback_(Bind(&HTTPProxy::WriteToClient,
+                                  weak_ptr_factory_.GetWeakPtr())),
+      write_server_callback_(Bind(&HTTPProxy::WriteToServer,
+                                  weak_ptr_factory_.GetWeakPtr())),
       dispatcher_(NULL),
       dns_client_(NULL),
       proxy_port_(-1),

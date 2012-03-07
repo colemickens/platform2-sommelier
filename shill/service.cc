@@ -222,11 +222,10 @@ void Service::Disconnect(Error */*error*/) {
 }
 
 void Service::ActivateCellularModem(const string &/*carrier*/,
-                                    ReturnerInterface *returner) {
-  Error error;
-  Error::PopulateAndLog( &error, Error::kNotSupported,
-                         "Service doesn't support cellular modem activation.");
-  returner->ReturnError(error);
+                                    Error *error,
+                                    const ResultCallback &/*callback*/) {
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Service doesn't support cellular modem activation.");
 }
 
 bool Service::TechnologyIs(const Technology::Identifier /*type*/) const {

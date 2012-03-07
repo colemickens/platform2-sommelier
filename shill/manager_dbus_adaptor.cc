@@ -146,12 +146,26 @@ void ManagerDBusAdaptor::RequestScan(const string &technology,
   e.ToDBusError(&error);
 }
 
-void ManagerDBusAdaptor::EnableTechnology(const string &,
-                                          ::DBus::Error &/*error*/) {
+void ManagerDBusAdaptor::EnableTechnology(const string &technology_name,
+                                          ::DBus::Error &error) {
+  Error e(Error::kOperationInitiated);
+  DBus::Tag *tag = new DBus::Tag();
+  manager_->EnableTechnology(technology_name, &e, GetMethodReplyCallback(tag));
+  ReturnResultOrDefer(tag, e, &error);
+  // TODO(ers): A reply will be sent to the client as soon as the first
+  // device of a given technology has finished being enabled. It would
+  // seem arguably more correct to wait until all the devices were enabled.
 }
 
-void ManagerDBusAdaptor::DisableTechnology(const string &,
-                                           ::DBus::Error &/*error*/) {
+void ManagerDBusAdaptor::DisableTechnology(const string &technology_name,
+                                           ::DBus::Error &error) {
+  Error e(Error::kOperationInitiated);
+  DBus::Tag *tag = new DBus::Tag();
+  manager_->DisableTechnology(technology_name, &e, GetMethodReplyCallback(tag));
+  ReturnResultOrDefer(tag, e, &error);
+  // TODO(ers): A reply will be sent to the client as soon as the first
+  // device of a given technology has finished being disabled. It would
+  // seem arguably more correct to wait until all the devices were enabled.
 }
 
 // Called, e.g., to get WiFiService handle for a hidden SSID.

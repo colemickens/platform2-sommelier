@@ -7,7 +7,6 @@
 
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/memory/weak_ptr.h>
 #include <dbus-c++/types.h>
 #include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -23,7 +22,7 @@ class EventDispatcher;
 class GLib;
 class ProxyFactory;
 
-class DHCPConfig : public IPConfig, public base::SupportsWeakPtr<DHCPConfig> {
+class DHCPConfig : public IPConfig {
  public:
   typedef std::map<std::string, DBus::Variant> Configuration;
 
@@ -92,10 +91,6 @@ class DHCPConfig : public IPConfig, public base::SupportsWeakPtr<DHCPConfig> {
   static const char kReasonRenew[];
 
   static const char kType[];
-
-  // If |proxy_| is not initialized already, sets it to a new D-Bus proxy to
-  // |service|.
-  void InitProxyTask(const std::string &service);
 
   // Starts dhcpcd, returns true on success and false otherwise.
   bool Start();

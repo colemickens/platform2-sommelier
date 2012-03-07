@@ -25,13 +25,16 @@ class MockDevice : public Device {
              int interface_index);
   virtual ~MockDevice();
 
-  MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(Stop, void());
+  MOCK_METHOD2(Start, void(Error *error,
+                           const EnabledStateChangedCallback &callback));
+  MOCK_METHOD2(Stop, void(Error *error,
+                          const EnabledStateChangedCallback &callback));
+  MOCK_METHOD1(SetEnabled, void(bool));
   MOCK_METHOD1(Scan, void(Error *error));
   MOCK_CONST_METHOD1(TechnologyIs,
                      bool(const Technology::Identifier technology));
-  MOCK_METHOD1(Load, bool(StoreInterface*));
-  MOCK_METHOD1(Save, bool(StoreInterface*));
+  MOCK_METHOD1(Load, bool(StoreInterface *storage));
+  MOCK_METHOD1(Save, bool(StoreInterface *storage));
   MOCK_METHOD0(DisableIPv6, void());
   MOCK_METHOD0(EnableIPv6, void());
   MOCK_METHOD0(EnableIPv6Privacy, void());

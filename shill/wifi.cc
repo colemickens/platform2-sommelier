@@ -36,6 +36,7 @@
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
+#include "shill/rtnl_handler.h"
 #include "shill/shill_time.h"
 #include "shill/store_interface.h"
 #include "shill/supplicant_interface_proxy_interface.h"
@@ -92,6 +93,7 @@ WiFi::WiFi(ControlInterface *control_interface,
              address,
              interface_index,
              Technology::kWifi),
+      weak_ptr_factory_(this),
       proxy_factory_(ProxyFactory::GetInstance()),
       time_(Time::GetInstance()),
       supplicant_state_(kInterfaceStateUnknown),
@@ -133,7 +135,7 @@ WiFi::WiFi(ControlInterface *control_interface,
 
 WiFi::~WiFi() {}
 
-void WiFi::Start() {
+void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
   ::DBus::Path interface_path;
 
   supplicant_process_proxy_.reset(
@@ -163,6 +165,8 @@ void WiFi::Start() {
       proxy_factory_->CreateSupplicantInterfaceProxy(
           this, interface_path, wpa_supplicant::kDBusAddr));
 
+  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
+                                                IFF_UP);
   // TODO(quiche) Set ApScan=1 and BSSExpireAge=190, like flimflam does?
 
   // Clear out any networks that might previously have been configured
@@ -195,13 +199,15 @@ void WiFi::Start() {
   // when the power state changes.
   manager()->power_manager()->AddStateChangeCallback(
       UniqueName(),
-      Bind(&WiFi::HandlePowerStateChange, this));
+      Bind(&WiFi::HandlePowerStateChange, weak_ptr_factory_.GetWeakPtr()));
 
   Scan(NULL);
-  Device::Start();
+  OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
+  if (error)
+    error->Reset();       // indicate immediate completion
 }
 
-void WiFi::Stop() {
+void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   VLOG(2) << "WiFi " << link_name() << " stopping.";
   // TODO(quiche): Remove interface from supplicant.
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
@@ -221,7 +227,9 @@ void WiFi::Stop() {
   current_service_ = NULL;            // breaks a reference cycle
   pending_service_ = NULL;            // breaks a reference cycle
 
-  Device::Stop();
+  OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
+  if (error)
+    error->Reset();       // indicate immediate completion
   // TODO(quiche): Anything else to do?
 
   VLOG(3) << "WiFi " << link_name() << " supplicant_process_proxy_ "
@@ -247,7 +255,7 @@ void WiFi::Scan(Error */*error*/) {
   // Needs to send a D-Bus message, but may be called from D-Bus
   // signal handler context (via Manager::RequestScan). So defer work
   // to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::ScanTask, this));
+  dispatcher()->PostTask(Bind(&WiFi::ScanTask, weak_ptr_factory_.GetWeakPtr()));
 }
 
 bool WiFi::TechnologyIs(const Technology::Identifier type) const {
@@ -264,20 +272,24 @@ void WiFi::BSSAdded(const ::DBus::Path &path,
                     const map<string, ::DBus::Variant> &properties) {
   // Called from a D-Bus signal handler, and may need to send a D-Bus
   // message. So defer work to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::BSSAddedTask, this, path, properties));
+  dispatcher()->PostTask(Bind(&WiFi::BSSAddedTask,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              path, properties));
 }
 
 void WiFi::BSSRemoved(const ::DBus::Path &path) {
   // Called from a D-Bus signal handler, and may need to send a D-Bus
   // message. So defer work to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::BSSRemovedTask, this, path));
+  dispatcher()->PostTask(Bind(&WiFi::BSSRemovedTask,
+                              weak_ptr_factory_.GetWeakPtr(), path));
 }
 
 void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
   LOG(INFO) << "In " << __func__ << "(): called";
   // Called from D-Bus signal handler, but may need to send a D-Bus
   // message. So defer work to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::PropertiesChangedTask, this, properties));
+  dispatcher()->PostTask(Bind(&WiFi::PropertiesChangedTask,
+                              weak_ptr_factory_.GetWeakPtr(), properties));
 }
 
 void WiFi::ScanDone() {
@@ -287,7 +299,8 @@ void WiFi::ScanDone() {
   // may require the the registration of new D-Bus objects. And such
   // registration can't be done in the context of a D-Bus signal
   // handler.
-  dispatcher()->PostTask(Bind(&WiFi::ScanDoneTask, this));
+  dispatcher()->PostTask(Bind(&WiFi::ScanDoneTask,
+                              weak_ptr_factory_.GetWeakPtr()));
 }
 
 void WiFi::ConnectTo(WiFiService *service,
@@ -408,7 +421,8 @@ void WiFi::ClearCachedCredentials() {
   // to event loop.
   if (!clear_cached_credentials_pending_) {
     clear_cached_credentials_pending_ = true;
-    dispatcher()->PostTask(Bind(&WiFi::ClearCachedCredentialsTask, this));
+    dispatcher()->PostTask(Bind(&WiFi::ClearCachedCredentialsTask,
+                                weak_ptr_factory_.GetWeakPtr()));
   }
 }
 
@@ -971,8 +985,9 @@ void WiFi::ScanTask() {
     scan_pending_ = true;
   } catch (const DBus::Error e) {  // NOLINT
     LOG(WARNING) << "Scan failed. Attempting to re-connect to the supplicant.";
-    Stop();
-    Start();
+    EnabledStateChangedCallback null_callback;
+    Stop(NULL, null_callback);
+    Start(NULL, null_callback);
   }
 }
 

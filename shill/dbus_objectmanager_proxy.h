@@ -14,27 +14,36 @@ namespace shill {
 class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
  public:
   // Constructs a org.freedesktop.DBus.ObjectManager DBus object proxy
-  // at |path| owned by |service|. Caught signals and asynchronous
-  // method replies will be dispatched to |delegate|.
+  // at |path| owned by |service|.
 
-  DBusObjectManagerProxy(DBusObjectManagerProxyDelegate *delegate,
-                         DBus::Connection *connection,
+  DBusObjectManagerProxy(DBus::Connection *connection,
                          const std::string &path,
                          const std::string &service);
   virtual ~DBusObjectManagerProxy();
 
   // Inherited methods from DBusObjectManagerProxyInterface.
-  virtual void GetManagedObjects(AsyncCallHandler *call_handler, int timeout);
+  virtual void GetManagedObjects(Error *error,
+                                 const ManagedObjectsCallback &callback,
+                                 int timeout);
+
+  virtual void set_interfaces_added_callback(
+      const InterfacesAddedSignalCallback &callback);
+  virtual void set_interfaces_removed_callback(
+      const InterfacesRemovedSignalCallback &callback);
 
  private:
   class Proxy : public org::freedesktop::DBus::ObjectManager_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBusObjectManagerProxyDelegate *delegate,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
+
+    virtual void set_interfaces_added_callback(
+        const InterfacesAddedSignalCallback &callback);
+    virtual void set_interfaces_removed_callback(
+        const InterfacesRemovedSignalCallback &callback);
 
    private:
     // Signal callbacks
@@ -50,7 +59,8 @@ class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
         const DBus::Error &error,
         void *call_handler);
 
-    DBusObjectManagerProxyDelegate *delegate_;
+    InterfacesAddedSignalCallback interfaces_added_callback_;
+    InterfacesRemovedSignalCallback interfaces_removed_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

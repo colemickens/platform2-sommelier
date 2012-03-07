@@ -16,30 +16,46 @@ namespace shill {
 class ModemCDMAProxy : public ModemCDMAProxyInterface {
  public:
   // Constructs a ModemManager.Modem.CDMA DBus object proxy at |path| owned by
-  // |service|. Caught signals and asynchronous method replies will be
-  // dispatched to |delegate|.
-  ModemCDMAProxy(ModemCDMAProxyDelegate *delegate,
-                 DBus::Connection *connection,
+  // |service|.
+  ModemCDMAProxy(DBus::Connection *connection,
                  const std::string &path,
                  const std::string &service);
   virtual ~ModemCDMAProxy();
 
   // Inherited from ModemCDMAProxyInterface.
-  virtual void Activate(const std::string &carrier,
-                        AsyncCallHandler *call_handler, int timeout);
-  virtual void GetRegistrationState(uint32 *cdma_1x_state, uint32 *evdo_state);
-  virtual uint32 GetSignalQuality();
+  virtual void Activate(const std::string &carrier, Error *error,
+                        const ActivationResultCallback &callback, int timeout);
+  virtual void GetRegistrationState(Error *error,
+                                    const RegistrationStateCallback &callback,
+                                    int timeout);
+  virtual void GetSignalQuality(Error *error,
+                                const SignalQualityCallback &callback,
+                                int timeout);
   virtual const std::string MEID();
 
- private:
-  class Proxy : public org::freedesktop::ModemManager::Modem::Cdma_proxy,
-                public DBus::ObjectProxy {
+  virtual void set_activation_state_callback(
+      const ActivationStateSignalCallback &callback);
+  virtual void set_signal_quality_callback(
+      const SignalQualitySignalCallback &callback);
+  virtual void set_registration_state_callback(
+      const RegistrationStateSignalCallback &callback);
+
+ public:
+  class Proxy
+      : public org::freedesktop::ModemManager::Modem::Cdma_proxy,
+        public DBus::ObjectProxy {
    public:
-    Proxy(ModemCDMAProxyDelegate *delegate,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
+
+    void set_activation_state_callback(
+        const ActivationStateSignalCallback &callback);
+    void set_signal_quality_callback(
+        const SignalQualitySignalCallback &callback);
+    void set_registration_state_callback(
+        const RegistrationStateSignalCallback &callback);
 
    private:
     // Signal callbacks inherited from ModemManager::Modem::Cdma_proxy.
@@ -54,8 +70,17 @@ class ModemCDMAProxy : public ModemCDMAProxyInterface {
     // Method callbacks inherited from ModemManager::Modem::Cdma_proxy.
     virtual void ActivateCallback(const uint32 &status,
                                   const DBus::Error &dberror, void *data);
+    virtual void GetRegistrationStateCallback(const uint32 &state_1x,
+                                              const uint32 &state_evdo,
+                                              const DBus::Error &error,
+                                              void *data);
+    virtual void GetSignalQualityCallback(const uint32 &quality,
+                                          const DBus::Error &dberror,
+                                          void *data);
 
-    ModemCDMAProxyDelegate *delegate_;
+    ActivationStateSignalCallback activation_state_callback_;
+    SignalQualitySignalCallback signal_quality_callback_;
+    RegistrationStateSignalCallback registration_state_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -22,7 +22,6 @@
 
 using base::Bind;
 using base::Callback;
-using base::Unretained;
 using base::StringPrintf;
 using std::string;
 
@@ -45,12 +44,14 @@ HTTPRequest::HTTPRequest(ConnectionRefPtr connection,
       sockets_(sockets),
       weak_ptr_factory_(this),
       connect_completion_callback_(
-          Bind(&HTTPRequest::OnConnectCompletion, Unretained(this))),
-      dns_client_callback_(Bind(&HTTPRequest::GetDNSResult, Unretained(this))),
+          Bind(&HTTPRequest::OnConnectCompletion,
+               weak_ptr_factory_.GetWeakPtr())),
+      dns_client_callback_(Bind(&HTTPRequest::GetDNSResult,
+                                weak_ptr_factory_.GetWeakPtr())),
       read_server_callback_(Bind(&HTTPRequest::ReadFromServer,
-                                 Unretained(this))),
+                                 weak_ptr_factory_.GetWeakPtr())),
       write_server_callback_(Bind(&HTTPRequest::WriteToServer,
-                                  Unretained(this))),
+                                  weak_ptr_factory_.GetWeakPtr())),
       dns_client_(
           new DNSClient(IPAddress::kFamilyIPv4,
                         connection->interface_name(),

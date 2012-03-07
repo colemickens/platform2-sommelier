@@ -18,30 +18,34 @@ namespace shill {
 class ModemProxy : public ModemProxyInterface {
  public:
   // Constructs a ModemManager.Modem DBus object proxy at |path| owned by
-  // |service|. Caught signals will be dispatched to |delegate|.
-  ModemProxy(ModemProxyDelegate *delegate,
-             DBus::Connection *connection,
+  // |service|.
+  ModemProxy(DBus::Connection *connection,
              const std::string &path,
              const std::string &service);
   virtual ~ModemProxy();
 
   // Inherited from ModemProxyInterface.
-  virtual void Enable(bool enable, AsyncCallHandler *call_handler, int timeout);
-  // TODO(ers): temporarily advertise the blocking version
-  // of Enable, until Cellular::Stop is converted for async.
-  virtual void Enable(bool enable);
-  virtual void Disconnect();
-  virtual void GetModemInfo(AsyncCallHandler *call_handler, int timeout);
+  virtual void Enable(bool enable, Error *error,
+                      const ResultCallback &callback, int timeout);
+  virtual void Disconnect(Error *error, const ResultCallback &callback,
+                          int timeout);
+  virtual void GetModemInfo(Error *error, const ModemInfoCallback &callback,
+                            int timeout);
+
+  virtual void set_state_changed_callback(
+      const ModemStateChangedSignalCallback &callback);
 
  private:
   class Proxy : public org::freedesktop::ModemManager::Modem_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(ModemProxyDelegate *delegate,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
+
+    void set_state_changed_callback(
+        const ModemStateChangedSignalCallback &callback);
 
    private:
     // Signal callbacks inherited from ModemManager::Modem_proxy.
@@ -54,7 +58,7 @@ class ModemProxy : public ModemProxyInterface {
                                  const DBus::Error &dberror, void *data);
     virtual void DisconnectCallback(const DBus::Error &dberror, void *data);
 
-    ModemProxyDelegate *delegate_;
+    ModemStateChangedSignalCallback state_changed_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

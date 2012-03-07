@@ -20,6 +20,7 @@ const Error::Info Error::kInfos[kNumErrors] = {
   { "Failure", "Operation failed (no other information)" },
   { "AlreadyConnected", "Already connected" },
   { "AlreadyExists", "Already exists" },
+  { "OperationInitiated", "Operation initiated" },
   { "InProgress", "In progress" },
   { "InternalError", "Internal error" },
   { "InvalidArguments", "Invalid arguments" },

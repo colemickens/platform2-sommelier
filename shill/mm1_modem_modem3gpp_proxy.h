@@ -17,18 +17,19 @@ namespace mm1 {
 class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
  public:
   // Constructs a org.freedesktop.ModemManager1.Modem.Modem3gpp DBus
-  // object proxy at |path| owned by |service|. Caught signals and
-  // asynchronous method replies will be dispatched to |delegate|.
-  ModemModem3gppProxy(ModemModem3gppProxyDelegate *delegate,
-                      DBus::Connection *connection,
+  // object proxy at |path| owned by |service|.
+  ModemModem3gppProxy(DBus::Connection *connection,
                       const std::string &path,
                       const std::string &service);
   virtual ~ModemModem3gppProxy();
   // Inherited methods from ModemModem3gppProxyInterface.
   virtual void Register(const std::string &operator_id,
-                        AsyncCallHandler *call_handler,
+                        Error *error,
+                        const ResultCallback &callback,
                         int timeout);
-  virtual void Scan(AsyncCallHandler *call_handler, int timeout);
+  virtual void Scan(Error *error,
+                    const DBusPropertyMapsCallback &callback,
+                    int timeout);
 
   // Inherited properties from Modem3gppProxyInterface.
   virtual std::string Imei();
@@ -41,8 +42,7 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
   class Proxy : public org::freedesktop::ModemManager1::Modem::Modem3gpp_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(ModemModem3gppProxyDelegate *delegate,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
@@ -54,7 +54,6 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
     virtual void ScanCallback(
         const std::vector<DBusPropertiesMap> &results,
         const ::DBus::Error& dberror, void *data);
-    ModemModem3gppProxyDelegate *delegate_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -408,6 +408,12 @@ bool Manager::IsActiveProfile(const ProfileRefPtr &profile) const {
           ActiveProfile().get() == profile.get());
 }
 
+void Manager::SaveActiveProfile() {
+  if (!profiles_.empty()) {
+    ActiveProfile()->Save();
+  }
+}
+
 bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
                                    const ProfileRefPtr &destination) {
   const ProfileRefPtr from = to_move->profile();
@@ -442,7 +448,56 @@ void Manager::SetProfileForService(const ServiceRefPtr &to_set,
                         "Unknown Profile requested for Service");
 }
 
+void Manager::EnableTechnology(const std::string &technology_name,
+                               Error *error,
+                               const ResultCallback &callback) {
+  Technology::Identifier id = Technology::IdentifierFromName(technology_name);
+  if (id == Technology::kUnknown) {
+    error->Populate(Error::kInvalidArguments, "Unknown technology");
+    return;
+  }
+  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    DeviceRefPtr device = *it;
+    if (device->technology() == id && !device->enabled()) {
+      device->SetEnabledPersistent(true, error, callback);
+      // Continue with other devices even if one fails
+      // TODO(ers): Decide whether an error should be returned
+      // for the overall EnableTechnology operation if some
+      // devices succeed and some fail.
+    }
+  }
+}
+
+void Manager::DisableTechnology(const std::string &technology_name,
+                                Error *error,
+                                const ResultCallback &callback) {
+  Technology::Identifier id = Technology::IdentifierFromName(technology_name);
+  if (id == Technology::kUnknown) {
+    error->Populate(Error::kInvalidArguments, "Unknown technology");
+    return;
+  }
+  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    DeviceRefPtr device = *it;
+    if (device->technology() == id && device->enabled()) {
+      device->SetEnabledPersistent(false, error, callback);
+      // Continue with other devices even if one fails
+      // TODO(ers): Decide whether an error should be returned
+      // for the overall DisableTechnology operation if some
+      // devices succeed and some fail.
+    }
+  }
+}
+
+void Manager::UpdateEnabledTechnologies() {
+  Error error;
+  adaptor_->EmitStringsChanged(flimflam::kEnabledTechnologiesProperty,
+                               EnabledTechnologies(&error));
+}
+
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
+  VLOG(2) << __func__ << "(" << to_manage->FriendlyName() << ")";
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_manage.get() == it->get())
@@ -467,8 +522,8 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
 
   // In normal usage, running_ will always be true when we are here, however
   // unit tests sometimes do things in otherwise invalid states.
-  if (running_ && to_manage->powered())
-    to_manage->Start();
+  if (running_ && to_manage->enabled_persistent())
+    to_manage->SetEnabled(true);
 
   Error error;
   adaptor_->EmitStringsChanged(flimflam::kAvailableTechnologiesProperty,
@@ -478,11 +533,12 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
 }
 
 void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
+  VLOG(2) << __func__ << "(" << to_forget->FriendlyName() << ")";
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_forget.get() == it->get()) {
       VLOG(2) << "Deregistered device: " << to_forget->UniqueName();
-      to_forget->Stop();
+      to_forget->SetEnabled(false);
       devices_.erase(it);
       Error error;
       adaptor_->EmitStringsChanged(flimflam::kAvailableTechnologiesProperty,
@@ -742,10 +798,15 @@ string Manager::DefaultTechnology(Error *error) {
       services_[0]->GetTechnologyString(error) : "";
 }
 
-vector<string> Manager::EnabledTechnologies(Error *error) {
-  // TODO(gauravsh): This must be wired up to the RPC interface to handle
-  // enabled/disabled devices as set by the user. crosbug.com/23319
-  return AvailableTechnologies(error);
+vector<string> Manager::EnabledTechnologies(Error */*error*/) {
+  set<string> unique_technologies;
+  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    if ((*it)->enabled())
+      unique_technologies.insert(
+          Technology::NameFromIdentifier((*it)->technology()));
+  }
+  return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 
 vector<string> Manager::EnumerateDevices(Error */*error*/) {

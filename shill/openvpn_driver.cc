@@ -134,7 +134,7 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state) {
   rpc_task_.reset();
   if (device_) {
     int interface_index = device_->interface_index();
-    device_->Stop();
+    device_->SetEnabled(false);
     device_ = NULL;
     device_info_->DeleteInterface(interface_index);
   }
@@ -209,8 +209,10 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   CHECK(!device_);
   device_ = new VPN(control_, dispatcher_, metrics_, manager_,
                     link_name, interface_index);
-  device_->Start();
+
+  device_->SetEnabled(true);
   device_->SelectService(service_);
+
   rpc_task_.reset(new RPCTask(control_, this));
   if (!SpawnOpenVPN()) {
     Cleanup(Service::kStateFailure);

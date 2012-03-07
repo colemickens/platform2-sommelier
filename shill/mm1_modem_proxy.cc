@@ -13,66 +13,144 @@ using std::string;
 namespace shill {
 namespace mm1 {
 
-ModemProxy::ModemProxy(ModemProxyDelegate *delegate,
-                       DBus::Connection *connection,
+ModemProxy::ModemProxy(DBus::Connection *connection,
                        const string &path,
                        const string &service)
-    : proxy_(delegate, connection, path, service) {}
+    : proxy_(connection, path, service) {}
 
 ModemProxy::~ModemProxy() {}
 
-void ModemProxy::Enable(const bool &enable,
-                        AsyncCallHandler *call_handler,
-                        int timeout) {
-  proxy_.Enable(enable, call_handler, timeout);
+void ModemProxy::set_state_changed_callback(
+      const ModemStateChangedSignalCallback &callback) {
+  proxy_.set_state_changed_callback(callback);
 }
 
-void ModemProxy::ListBearers(AsyncCallHandler *call_handler,
+void ModemProxy::Enable(bool enable,
+                        Error *error,
+                        const ResultCallback &callback,
+                        int timeout) {
+  VLOG(2) << __func__ << "(" << enable << ", " << timeout << ")";
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.Enable(enable, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
+}
+
+void ModemProxy::ListBearers(Error *error,
+                             const DBusPathsCallback &callback,
                              int timeout) {
-  proxy_.ListBearers(call_handler, timeout);
+  scoped_ptr<DBusPathsCallback> cb(new DBusPathsCallback(callback));
+  try {
+    proxy_.ListBearers(cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 void ModemProxy::CreateBearer(
     const DBusPropertiesMap &properties,
-    AsyncCallHandler *call_handler,
+    Error *error,
+    const DBusPathCallback &callback,
     int timeout) {
-  proxy_.CreateBearer(properties, call_handler, timeout);
+  scoped_ptr<DBusPathCallback> cb(new DBusPathCallback(callback));
+  try {
+  proxy_.CreateBearer(properties, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 void ModemProxy::DeleteBearer(const ::DBus::Path &bearer,
-                              AsyncCallHandler *call_handler,
+                              Error *error,
+                              const ResultCallback &callback,
                               int timeout) {
-  proxy_.DeleteBearer(bearer, call_handler, timeout);
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+  proxy_.DeleteBearer(bearer, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
-void ModemProxy::Reset(AsyncCallHandler *call_handler, int timeout) {
-  proxy_.Reset(call_handler, timeout);
+void ModemProxy::Reset(Error *error,
+                       const ResultCallback &callback,
+                       int timeout) {
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+  proxy_.Reset(cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 void ModemProxy::FactoryReset(const std::string &code,
-                              AsyncCallHandler *call_handler,
+                              Error *error,
+                              const ResultCallback &callback,
                               int timeout) {
-  proxy_.FactoryReset(code, call_handler, timeout);
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.FactoryReset(code, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 void ModemProxy::SetAllowedModes(const uint32_t &modes,
                                  const uint32_t &preferred,
-                                 AsyncCallHandler *call_handler,
+                                 Error *error,
+                                 const ResultCallback &callback,
                                  int timeout) {
-  proxy_.SetAllowedModes(modes, preferred, call_handler, timeout);
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.SetAllowedModes(modes, preferred, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 void ModemProxy::SetBands(const std::vector< uint32_t > &bands,
-                          AsyncCallHandler *call_handler,
+                          Error *error,
+                          const ResultCallback &callback,
                           int timeout) {
-  proxy_.SetBands(bands, call_handler, timeout);
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.SetBands(bands, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 void ModemProxy::Command(const std::string &cmd,
                          const uint32_t &user_timeout,
-                         AsyncCallHandler *call_handler,
+                         Error *error,
+                         const StringCallback &callback,
                          int timeout) {
-  proxy_.Command(cmd, user_timeout, call_handler, timeout);
+  scoped_ptr<StringCallback> cb(new StringCallback(callback));
+  try {
+    proxy_.Command(cmd, user_timeout, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 // Inherited properties from ModemProxyInterface.
@@ -146,99 +224,103 @@ const std::vector< uint32_t > ModemProxy::Bands() {
   return proxy_.Bands();
 };
 
-ModemProxy::Proxy::Proxy(ModemProxyDelegate *delegate,
-                         DBus::Connection *connection,
+ModemProxy::Proxy::Proxy(DBus::Connection *connection,
                          const std::string &path,
                          const std::string &service)
-    : DBus::ObjectProxy(*connection, path, service.c_str()),
-      delegate_(delegate) {}
+    : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
 ModemProxy::Proxy::~Proxy() {}
+
+void ModemProxy::Proxy::set_state_changed_callback(
+      const ModemStateChangedSignalCallback &callback) {
+  state_changed_callback_ = callback;
+}
 
 // Signal callbacks inherited from Proxy
 void ModemProxy::Proxy::StateChanged(const uint32_t &old,
                                      const uint32_t &_new,
                                      const uint32_t &reason) {
-  delegate_->OnStateChanged(old, _new, reason);
+  state_changed_callback_.Run(old, _new, reason);
 }
 
 // Method callbacks inherited from
 // org::freedesktop::ModemManager1::ModemProxy
 void ModemProxy::Proxy::EnableCallback(const ::DBus::Error& dberror,
                                        void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnEnableCallback(error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
 }
 
 void ModemProxy::Proxy::ListBearersCallback(
     const std::vector< ::DBus::Path > &bearers,
     const ::DBus::Error& dberror,
     void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<DBusPathsCallback> callback(
+      reinterpret_cast<DBusPathsCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnListBearersCallback(bearers, error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(bearers, error);
 }
 
 void ModemProxy::Proxy::CreateBearerCallback(const ::DBus::Path &path,
                                              const ::DBus::Error& dberror,
                                              void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnCreateBearerCallback(path, error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
 }
 
 void ModemProxy::Proxy::DeleteBearerCallback(const ::DBus::Error& dberror,
                                              void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnDeleteBearerCallback(error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
 }
 
 void ModemProxy::Proxy::ResetCallback(const ::DBus::Error& dberror,
                                       void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnResetCallback(error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
 }
 
 void ModemProxy::Proxy::FactoryResetCallback(const ::DBus::Error& dberror,
                                              void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnFactoryResetCallback(error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
 }
 
 void ModemProxy::Proxy::SetAllowedModesCallback(
     const ::DBus::Error& dberror,
     void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnSetAllowedModesCallback(error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
 }
 
 void ModemProxy::Proxy::SetBandsCallback(const ::DBus::Error& dberror,
                                          void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnSetBandsCallback(error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
 }
 
 void ModemProxy::Proxy::CommandCallback(const std::string &response,
                                         const ::DBus::Error& dberror,
                                         void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error),
-      delegate_->OnCommandCallback(response, error, call_handler);
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
 }
 
 }  // namespace mm1

@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/logging.h>
 #include <dbus-c++/dbus.h>
 
@@ -15,6 +17,8 @@
 #include "shill/key_value_store.h"
 #include "shill/property_store.h"
 
+using base::Bind;
+using base::Owned;
 using std::map;
 using std::string;
 using std::vector;
@@ -425,90 +429,46 @@ bool DBusAdaptor::IsKeyValueStore(::DBus::Signature signature) {
   return signature == ::DBus::type<map<string, ::DBus::Variant> >::sig();
 }
 
-// static
-DBusAdaptor::Returner *DBusAdaptor::Returner::Create(DBusAdaptor *adaptor) {
-  return new Returner(adaptor);
+void DBusAdaptor::DeferReply(const DBus::Tag *tag) {
+  return_later(tag);
 }
 
-DBusAdaptor::Returner::Returner(DBusAdaptor *adaptor)
-    : adaptor_(adaptor),
-      state_(kStateInitialized) {
-  VLOG(2) << __func__ << " @ " << this;
+void DBusAdaptor::ReplyNow(const DBus::Tag *tag) {
+  Continuation *cont = find_continuation(tag);
+  CHECK(cont);
+  return_now(cont);
 }
 
-DBusAdaptor::Returner::~Returner() {
-  CHECK(state_ != kStateDestroyed);
-  VLOG(2) << "Destroying returner @ " << this << " state: " << state_;
-  adaptor_ = NULL;
-  state_ = kStateDestroyed;
+void DBusAdaptor::ReplyNowWithError(const DBus::Tag *tag,
+                                    const DBus::Error &error) {
+  Continuation *cont = find_continuation(tag);
+  CHECK(cont);
+  return_error(cont, error);
 }
 
-void DBusAdaptor::Returner::Return() {
-  VLOG(2) << __func__ << " @ " << this << " state: " << state_;
-  switch (state_) {
-    case kStateInitialized:
-      // Service method is returning right away, without any continuation.
-      state_ = kStateReturned;
-      return;
-    case kStateDelayed: {
-      // This return happens in the continuation.
-      DBus::ObjectAdaptor::Continuation *cont =
-          adaptor_->find_continuation(this);
-      CHECK(cont);
-      adaptor_->return_now(cont);
-      delete this;
-      return;
-    }
-    default:
-      NOTREACHED() << "Unexpected state: " << state_;
-      break;
+ResultCallback DBusAdaptor::GetMethodReplyCallback(
+    const DBus::Tag *tag) {
+  return Bind(&DBusAdaptor::MethodReplyCallback, AsWeakPtr(), Owned(tag));
+}
+
+void DBusAdaptor::ReturnResultOrDefer(const DBus::Tag *tag,
+                                      const Error &error,
+                                      DBus::Error *dberror) {
+  if (error.IsOngoing()) {
+    DeferReply(tag);
+  } else if (error.IsFailure()) {
+    error.ToDBusError(dberror);
   }
 }
 
-void DBusAdaptor::Returner::ReturnError(const Error &error) {
-  VLOG(2) << __func__ << " @ " << this << " state: " << state_;
-  switch (state_) {
-    case kStateInitialized:
-      // Service method is returning right away, without any continuation.
-      error_.CopyFrom(error);
-      state_ = kStateReturned;
-      return;
-    case kStateDelayed: {
-      // This return happens in the continuation.
-      DBus::Error dbus_error;
-      error.ToDBusError(&dbus_error);
-      DBus::ObjectAdaptor::Continuation *cont =
-          adaptor_->find_continuation(this);
-      CHECK(cont);
-      adaptor_->return_error(cont, dbus_error);
-      delete this;
-      return;
-    }
-    default:
-      NOTREACHED() << "Unexpected state: " << state_;
-      break;
-  }
-}
-
-void DBusAdaptor::Returner::DelayOrReturn(DBus::Error *error) {
-  VLOG(2) << __func__ << " @ " << this << " state: " << state_;
-  switch (state_) {
-    case kStateInitialized:
-      // Service method needs continuation so delay the return.
-      state_ = kStateDelayed;
-
-      // return_later does not return. It unwinds the stack up to the dbus-c++
-      // message handler by throwing an exception.
-      adaptor_->return_later(this);
-      return;
-    case kStateReturned:
-      // Service method has returned right away, without any continuation.
-      error_.ToDBusError(error);
-      delete this;
-      return;
-    default:
-      NOTREACHED() << "Unexpected state: " << state_;
-      break;
+void DBusAdaptor::MethodReplyCallback(const DBus::Tag *tag,
+                                      const Error &error) {
+  if (error.IsFailure()) {
+    DBus::Error dberror;
+    error.ToDBusError(&dberror);
+    ReplyNowWithError(tag, dberror);
+  } else {
+    ReplyNow(tag);
   }
 }
 

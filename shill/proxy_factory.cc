@@ -43,10 +43,9 @@ void ProxyFactory::Init() {
 }
 
 DBusObjectManagerProxyInterface *ProxyFactory::CreateDBusObjectManagerProxy(
-    DBusObjectManagerProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new DBusObjectManagerProxy(delegate, connection(), path, service);
+  return new DBusObjectManagerProxy(connection(), path, service);
 }
 
 DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
@@ -64,38 +63,33 @@ ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
 }
 
 ModemProxyInterface *ProxyFactory::CreateModemProxy(
-    ModemProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new ModemProxy(delegate, connection(), path, service);
+  return new ModemProxy(connection(), path, service);
 }
 
 ModemSimpleProxyInterface *ProxyFactory::CreateModemSimpleProxy(
-    ModemSimpleProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new ModemSimpleProxy(delegate, connection(), path, service);
+  return new ModemSimpleProxy(connection(), path, service);
 }
 
 ModemCDMAProxyInterface *ProxyFactory::CreateModemCDMAProxy(
-    ModemCDMAProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new ModemCDMAProxy(delegate, connection(), path, service);
+  return new ModemCDMAProxy(connection(), path, service);
 }
 
 ModemGSMCardProxyInterface *ProxyFactory::CreateModemGSMCardProxy(
-    ModemGSMCardProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new ModemGSMCardProxy(delegate, connection(), path, service);
+  return new ModemGSMCardProxy(connection(), path, service);
 }
 
 ModemGSMNetworkProxyInterface *ProxyFactory::CreateModemGSMNetworkProxy(
-    ModemGSMNetworkProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new ModemGSMNetworkProxy(delegate, connection(), path, service);
+  return new ModemGSMNetworkProxy(connection(), path, service);
 }
 
 PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(

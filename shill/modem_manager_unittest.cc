@@ -269,7 +269,6 @@ class ModemManager1Test : public ModemManagerTest {
     explicit TestProxyFactory(ModemManager1Test *test) : test_(test) {}
 
     virtual DBusObjectManagerProxyInterface *CreateDBusObjectManagerProxy(
-        DBusObjectManagerProxyDelegate */*manager*/,
         const string &/*path*/,
         const string &/*service*/) {
       return test_->proxy_.release();
@@ -307,10 +306,10 @@ class ModemManager1Test : public ModemManagerTest {
 TEST_F(ModemManager1Test, Connect) {
   Error e;
 
-  EXPECT_CALL(*proxy_, GetManagedObjects(_, _));
+  EXPECT_CALL(*proxy_, GetManagedObjects(_, _, _));
 
   modem_manager_.Connect(kOwner);
-  modem_manager_.OnGetManagedObjectsCallback(GetModemWithProperties(), e, NULL);
+  modem_manager_.OnGetManagedObjectsReply(GetModemWithProperties(), e);
   EXPECT_EQ(1, modem_manager_.modems_.size());
   EXPECT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
   // TODO(rochberg): As mm1::connect gets more interesting, this will
@@ -318,37 +317,35 @@ TEST_F(ModemManager1Test, Connect) {
 }
 
 TEST_F(ModemManager1Test, AddRemoveInterfaces) {
-  EXPECT_CALL(*proxy_, GetManagedObjects(_, _));
+  EXPECT_CALL(*proxy_, GetManagedObjects(_, _, _));
   modem_manager_.Connect(kOwner);
 
   // Have nothing come back from GetManagedObjects
-  modem_manager_.OnGetManagedObjectsCallback(DBusObjectsWithProperties(),
-                                             Error(),
-                                             NULL);
+  modem_manager_.OnGetManagedObjectsReply(DBusObjectsWithProperties(), Error());
   EXPECT_EQ(0, modem_manager_.modems_.size());
 
   // Add an object that doesn't have a modem interface.  Nothing should be added
-  modem_manager_.OnInterfacesAdded(kModemPath,
-                                   DBusInterfaceToProperties());
+  modem_manager_.OnInterfacesAddedSignal(kModemPath,
+                                         DBusInterfaceToProperties());
   EXPECT_EQ(0, modem_manager_.modems_.size());
 
   // Actually add a modem
-  modem_manager_.OnInterfacesAdded(kModemPath,
-                                   GetModemWithProperties()[kModemPath]);
+  modem_manager_.OnInterfacesAddedSignal(kModemPath,
+                                         GetModemWithProperties()[kModemPath]);
   EXPECT_EQ(1, modem_manager_.modems_.size());
 
   // Remove an irrelevant interface
   vector<string> not_including_modem_interface;
   not_including_modem_interface.push_back("not.a.modem.interface");
-  modem_manager_.OnInterfacesRemoved(kModemPath,
-                                     not_including_modem_interface);
+  modem_manager_.OnInterfacesRemovedSignal(kModemPath,
+                                           not_including_modem_interface);
   EXPECT_EQ(1, modem_manager_.modems_.size());
 
   // Remove the modem
   vector<string> with_modem_interface;
   with_modem_interface.push_back(ModemManager1::kDBusInterfaceModem);
-  modem_manager_.OnInterfacesRemoved(kModemPath,
-                                     with_modem_interface);
+  modem_manager_.OnInterfacesRemovedSignal(kModemPath,
+                                           with_modem_interface);
   EXPECT_EQ(0, modem_manager_.modems_.size());
 }
 }  // namespace shill

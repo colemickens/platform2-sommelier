@@ -17,8 +17,13 @@ class MockDBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
   MockDBusObjectManagerProxy();
   virtual ~MockDBusObjectManagerProxy();
 
-  MOCK_METHOD2(GetManagedObjects, void(AsyncCallHandler *call_handler,
+  MOCK_METHOD3(GetManagedObjects, void(Error *error,
+                                       const ManagedObjectsCallback &callback,
                                        int timeout));
+  MOCK_METHOD1(set_interfaces_added_callback,
+      void(const InterfacesAddedSignalCallback &callback));
+  MOCK_METHOD1(set_interfaces_removed_callback,
+      void(const InterfacesRemovedSignalCallback &callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDBusObjectManagerProxy);

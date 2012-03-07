@@ -37,14 +37,15 @@ class DeviceStub : public Device {
              Technology::Identifier technology)
       : Device(control_interface, dispatcher, metrics, manager, link_name,
                address, interface_index, technology) {}
-  void Start() {}
-  void Stop() {}
+  void Start(Error */*error*/,
+             const EnabledStateChangedCallback &/*callback*/) {}
+  void Stop(Error */*error*/,
+            const EnabledStateChangedCallback &/*callback*/) {}
   bool TechnologyIs(const Technology::Identifier type) const {
     return type == technology();
   }
 
  private:
-
   DISALLOW_COPY_AND_ASSIGN(DeviceStub);
 };
 

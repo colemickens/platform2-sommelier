@@ -7,7 +7,6 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
 #include <base/string_number_conversions.h>
@@ -29,7 +28,6 @@
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
-using base::Bind;
 using std::set;
 using std::string;
 using std::vector;
@@ -130,26 +128,11 @@ void WiFiService::AutoConnect() {
     //    If we queued AutoConnects, we could build a long queue of
     //    useless work (one AutoConnect per Service), which blocks
     //    more timely work.
-    ConnectTask();
+    Connect(NULL);
   } else {
     LOG(INFO) << "Suppressed autoconnect to " << friendly_name() << " "
               << "(" << reason << ")";
   }
-}
-
-void WiFiService::Connect(Error */*error*/) {
-  LOG(INFO) << "In " << __func__ << "():";
-  // Defer handling, since dbus-c++ does not permit us to send an
-  // outbound request while processing an inbound one.
-  dispatcher()->PostTask(Bind(&WiFiService::ConnectTask, this));
-}
-
-void WiFiService::Disconnect(Error *error) {
-  LOG(INFO) << __func__;
-  Service::Disconnect(error);
-  // Defer handling, since dbus-c++ does not permit us to send an
-  // outbound request while processing an inbound one.
-  dispatcher()->PostTask(Bind(&WiFiService::DisconnectTask, this));
 }
 
 bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
@@ -398,7 +381,8 @@ void WiFiService::HelpRegisterWriteOnlyDerivedString(
               this, set, clear, default_value)));
 }
 
-void WiFiService::ConnectTask() {
+void WiFiService::Connect(Error */*error*/) {
+  LOG(INFO) << "In " << __func__ << "():";
   std::map<string, DBus::Variant> params;
   DBus::MessageIter writer;
 
@@ -456,7 +440,9 @@ void WiFiService::ConnectTask() {
   wifi_->ConnectTo(this, params);
 }
 
-void WiFiService::DisconnectTask() {
+void WiFiService::Disconnect(Error *error) {
+  LOG(INFO) << __func__;
+  Service::Disconnect(error);
   wifi_->DisconnectFrom(this);
 }
 

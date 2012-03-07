@@ -6,48 +6,42 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/callback.h>
 
 #include "shill/dbus_properties.h"  // For DBusPropertiesMap
 
 namespace shill {
 
-class AsyncCallHandler;
 class Error;
 
 typedef std::map<std::string, DBusPropertiesMap> DBusInterfaceToProperties;
-typedef
-   std::map< ::DBus::Path, DBusInterfaceToProperties> DBusObjectsWithProperties;
+typedef std::map< ::DBus::Path, DBusInterfaceToProperties>
+    DBusObjectsWithProperties;
+typedef base::Callback<void(const DBusObjectsWithProperties &, const Error &)>
+    ManagedObjectsCallback;
+typedef base::Callback<void(const DBusInterfaceToProperties &, const Error &)>
+    InterfaceAndPropertiesCallback;
+typedef base::Callback<void(const DBus::Path &,
+                            const DBusInterfaceToProperties &)>
+    InterfacesAddedSignalCallback;
+typedef base::Callback<void(const DBus::Path &,
+                            const std::vector<std::string> &)>
+    InterfacesRemovedSignalCallback;
 
 // These are the methods that a org.freedesktop.DBus.ObjectManager
 // proxy must support.  The interface is provided so that it can be
-// mocked in tests.  All calls are made asynchronously. Call
-// completion is signalled through the corresponding 'OnXXXCallback'
-// method in the ProxyDelegate interface.
-
+// mocked in tests.  All calls are made asynchronously. Call completion
+// is signalled via the callbacks passed to the methods.
 class DBusObjectManagerProxyInterface {
  public:
   virtual ~DBusObjectManagerProxyInterface() {}
-  virtual void GetManagedObjects(
-      AsyncCallHandler *call_handler, int timeout) = 0;
-};
-
-class DBusObjectManagerProxyDelegate {
- public:
-  virtual ~DBusObjectManagerProxyDelegate() {}
-
-  // Signals
-  virtual void OnInterfacesAdded(
-      const ::DBus::Path &object_path,
-      const DBusInterfaceToProperties &interface_to_properties) = 0;
-  virtual void OnInterfacesRemoved(
-      const ::DBus::Path &object_path,
-      const std::vector<std::string> &interfaces) = 0;
-
-  // Async method callbacks
-  virtual void OnGetManagedObjectsCallback(
-      const DBusObjectsWithProperties &objects_with_properties,
-      const shill::Error &error,
-      AsyncCallHandler *call_handler) = 0;
+  virtual void GetManagedObjects(Error *error,
+                                 const ManagedObjectsCallback &callback,
+                                 int timeout) = 0;
+  virtual void set_interfaces_added_callback(
+      const InterfacesAddedSignalCallback &callback) = 0;
+  virtual void set_interfaces_removed_callback(
+      const InterfacesRemovedSignalCallback &callback) = 0;
 };
 
 }  // namespace shill

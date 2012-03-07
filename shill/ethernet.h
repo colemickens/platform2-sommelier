@@ -24,8 +24,8 @@ class Ethernet : public Device {
            int interface_index);
   ~Ethernet();
 
-  void Start();
-  void Stop();
+  void Start(Error *error, const EnabledStateChangedCallback &callback);
+  void Stop(Error *error, const EnabledStateChangedCallback &callback);
   bool TechnologyIs(Technology::Identifier type) const;
   void LinkEvent(unsigned int flags, unsigned int change);
 

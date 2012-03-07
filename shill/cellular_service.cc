@@ -109,8 +109,9 @@ void CellularService::Disconnect(Error *error) {
 }
 
 void CellularService::ActivateCellularModem(const string &carrier,
-                                            ReturnerInterface *returner) {
-  cellular_->Activate(carrier, returner);
+                                            Error *error,
+                                            const ResultCallback &callback) {
+  cellular_->Activate(carrier, error, callback);
 }
 
 bool CellularService::TechnologyIs(const Technology::Identifier type) const {

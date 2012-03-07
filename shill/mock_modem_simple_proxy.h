@@ -17,10 +17,12 @@ class MockModemSimpleProxy : public ModemSimpleProxyInterface {
   MockModemSimpleProxy();
   virtual ~MockModemSimpleProxy();
 
-  MOCK_METHOD2(GetModemStatus, void(AsyncCallHandler *call_handler,
+  MOCK_METHOD3(GetModemStatus, void(Error *error,
+                                    const DBusPropertyMapCallback &callback,
                                     int timeout));
-  MOCK_METHOD3(Connect, void(const DBusPropertiesMap &properties,
-                             AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD4(Connect, void(const DBusPropertiesMap &properties,
+                             Error *error, const ResultCallback &callback,
+                             int timeout));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemSimpleProxy);

@@ -9,54 +9,120 @@
 #include "shill/cellular_error.h"
 #include "shill/error.h"
 
+using base::Callback;
 using std::string;
 
 namespace shill {
 
 ModemGSMNetworkProxy::ModemGSMNetworkProxy(
-    ModemGSMNetworkProxyDelegate *delegate,
     DBus::Connection *connection,
     const string &path,
     const string &service)
-    : proxy_(delegate, connection, path, service) {}
+    : proxy_(connection, path, service) {}
 
 ModemGSMNetworkProxy::~ModemGSMNetworkProxy() {}
 
-void ModemGSMNetworkProxy::GetRegistrationInfo(AsyncCallHandler *call_handler,
-                                               int timeout) {
-  proxy_.GetRegistrationInfo(call_handler, timeout);
+void ModemGSMNetworkProxy::GetRegistrationInfo(
+    Error *error,
+    const RegistrationInfoCallback &callback,
+    int timeout) {
+  scoped_ptr<RegistrationInfoCallback>
+      cb(new RegistrationInfoCallback(callback));
+  try {
+    proxy_.GetRegistrationInfo(cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
-uint32 ModemGSMNetworkProxy::GetSignalQuality() {
-  return proxy_.GetSignalQuality();
+void ModemGSMNetworkProxy::GetSignalQuality(
+    Error *error,
+    const SignalQualityCallback &callback,
+    int timeout) {
+  scoped_ptr<SignalQualityCallback> cb(new SignalQualityCallback(callback));
+  try {
+    proxy_.GetSignalQuality(cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 void ModemGSMNetworkProxy::Register(const string &network_id,
-                                    AsyncCallHandler *call_handler,
+                                    Error *error,
+                                    const ResultCallback &callback,
                                     int timeout) {
-  proxy_.Register(network_id, call_handler, timeout);
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.Register(network_id, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
-void ModemGSMNetworkProxy::Scan(AsyncCallHandler *call_handler, int timeout) {
-  proxy_.Scan(call_handler, timeout);
+void ModemGSMNetworkProxy::Scan(Error *error,
+                                const ScanResultsCallback &callback,
+                                int timeout) {
+  scoped_ptr<ScanResultsCallback> cb(new ScanResultsCallback(callback));
+  try {
+    proxy_.Scan(cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
 }
 
 uint32 ModemGSMNetworkProxy::AccessTechnology() {
   return proxy_.AccessTechnology();
 }
 
-ModemGSMNetworkProxy::Proxy::Proxy(ModemGSMNetworkProxyDelegate *delegate,
-                                   DBus::Connection *connection,
+void ModemGSMNetworkProxy::set_signal_quality_callback(
+    const SignalQualitySignalCallback &callback) {
+  proxy_.set_signal_quality_callback(callback);
+}
+
+void ModemGSMNetworkProxy::set_network_mode_callback(
+    const NetworkModeSignalCallback &callback) {
+  proxy_.set_network_mode_callback(callback);
+}
+
+void ModemGSMNetworkProxy::set_registration_info_callback(
+    const RegistrationInfoSignalCallback &callback) {
+  proxy_.set_registration_info_callback(callback);
+}
+
+ModemGSMNetworkProxy::Proxy::Proxy(DBus::Connection *connection,
                                    const string &path,
                                    const string &service)
-    : DBus::ObjectProxy(*connection, path, service.c_str()),
-      delegate_(delegate) {}
+    : DBus::ObjectProxy(*connection, path, service.c_str()) {}
 
 ModemGSMNetworkProxy::Proxy::~Proxy() {}
 
+void ModemGSMNetworkProxy::Proxy::set_signal_quality_callback(
+    const SignalQualitySignalCallback &callback) {
+  signal_quality_callback_ = callback;
+}
+
+void ModemGSMNetworkProxy::Proxy::set_network_mode_callback(
+    const NetworkModeSignalCallback &callback) {
+  network_mode_callback_ = callback;
+}
+
+void ModemGSMNetworkProxy::Proxy::set_registration_info_callback(
+    const RegistrationInfoSignalCallback &callback) {
+  registration_info_callback_ = callback;
+}
+
 void ModemGSMNetworkProxy::Proxy::SignalQuality(const uint32 &quality) {
   VLOG(2) << __func__ << "(" << quality << ")";
-  delegate_->OnGSMSignalQualityChanged(quality);
+  if (!signal_quality_callback_.is_null())
+    signal_quality_callback_.Run(quality);
 }
 
 void ModemGSMNetworkProxy::Proxy::RegistrationInfo(
@@ -65,39 +131,51 @@ void ModemGSMNetworkProxy::Proxy::RegistrationInfo(
     const string &operator_name) {
   VLOG(2) << __func__ << "(" << status << ", " << operator_code << ", "
           << operator_name << ")";
-  delegate_->OnGSMRegistrationInfoChanged(status, operator_code, operator_name,
-                                          Error(), NULL);
+  if (!registration_info_callback_.is_null())
+    registration_info_callback_.Run(status, operator_code, operator_name);
 }
 
 void ModemGSMNetworkProxy::Proxy::NetworkMode(const uint32_t &mode) {
   VLOG(2) << __func__ << "(" << mode << ")";
-  delegate_->OnGSMNetworkModeChanged(mode);
+  if (!network_mode_callback_.is_null())
+    network_mode_callback_.Run(mode);
 }
 
 void ModemGSMNetworkProxy::Proxy::RegisterCallback(const DBus::Error &dberror,
                                                    void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
-  delegate_->OnRegisterCallback(error, call_handler);
+  callback->Run(error);
 }
 
 void ModemGSMNetworkProxy::Proxy::GetRegistrationInfoCallback(
     const GSMRegistrationInfo &info, const DBus::Error &dberror, void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<RegistrationInfoCallback> callback(
+      reinterpret_cast<RegistrationInfoCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
-  delegate_->OnGSMRegistrationInfoChanged(info._1, info._2, info._3,
-                                          error, call_handler);
+  callback->Run(info._1, info._2, info._3, error);
+}
+
+void ModemGSMNetworkProxy::Proxy::GetSignalQualityCallback(
+    const uint32 &quality, const DBus::Error &dberror, void *data) {
+  VLOG(2) << __func__ << "(" << quality << ")";
+  scoped_ptr<SignalQualityCallback> callback(
+      reinterpret_cast<SignalQualityCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(quality, error);
 }
 
 void ModemGSMNetworkProxy::Proxy::ScanCallback(const GSMScanResults &results,
                                                const DBus::Error &dberror,
                                                void *data) {
-  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  scoped_ptr<ScanResultsCallback> callback(
+      reinterpret_cast<ScanResultsCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
-  delegate_->OnScanCallback(results, error, call_handler);
+  callback->Run(results, error);
 }
 
 }  // namespace shill
