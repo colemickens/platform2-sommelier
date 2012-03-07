@@ -20,8 +20,9 @@ GEN_DBUSXX(%):
            mkdir -p "$(dir $(TARGET_OR_MEMBER))" && \
            $(DBUSXX_XML2CPP) $< --adaptor=$(TARGET_OR_MEMBER))
 
+BASE_VER = 85268
 PC_DEPS = dbus-c++-1 glib-2.0 gthread-2.0 gobject-2.0 \
-	libchrome libchromeos
+	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
