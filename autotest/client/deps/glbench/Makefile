@@ -23,26 +23,33 @@ SOURCES_ALL = $(SOURCES_COMMON) \
               $(SOURCES_TEARTEST) \
               $(SOURCES_WINDOWMANAGERTEST)
 
+PKG_CONFIG ?= pkg-config
+BASE_VER = 85268
+PC_DEPS = libchrome-$(BASE_VER) libpng
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+
 CXXFLAGS = -g -Wall -Werror
-LDFLAGS = -lbase -lrt -lgflags -lglib-2.0 -pthread -lpng
+CPPFLAGS += $(PC_CFLAGS)
+LDLIBS = $(PC_LIBS) -lgflags
 # To compile outside of chroot or with newest libchome, use the following two lines:
-#CXXFLAGS += -I$(HOME)/chromium/src -DWORKAROUND_CROSBUG14304
-#LDFLAGS += -lbase_static -L$(HOME)/chromium/src/out/Release/obj.target/base
+#CPPFLAGS += -I$(HOME)/chromium/src -DWORKAROUND_CROSBUG14304
+#LDLIBS += -lbase_static -L$(HOME)/chromium/src/out/Release/obj.target/base
 
 GL_BENCH = ../glbench
 TEARTEST = ../teartest
 WINDOWMANAGERTEST = ../windowmanagertest
 
 ifeq ($(GRAPHICS_BACKEND),OPENGLES)
-CXXFLAGS += -DUSE_OPENGLES
+CPPFLAGS += -DUSE_OPENGLES
 SOURCES_COMMON += egl_stuff.cc
 SOURCES_TEARTEST += teartest_egl.cc
-LDFLAGS += -lGLESv2 -lX11 -lEGL
+LDLIBS += -lGLESv2 -lX11 -lEGL
 else ifeq ($(GRAPHICS_BACKEND),OPENGL)
-CXXFLAGS += -DUSE_OPENGL
+CPPFLAGS += -DUSE_OPENGL
 SOURCES_COMMON += glx_stuff.cc
 SOURCES_TEARTEST += teartest_glx.cc
-LDFLAGS += -lGL -lX11
+LDLIBS += -lGL -lX11
 endif
 
 OBJS_COMMON = $(SOURCES_COMMON:.cc=.o)
@@ -66,9 +73,9 @@ clean:
 	$(RM) *.o *.d .version
 
 $(GL_BENCH) $(TEARTEST) $(WINDOWMANAGERTEST):
-	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 $(OBJS_ALL): %.o: %.cc
-	$(CXX) $(CXXFLAGS) -c $< -o $@ -MMD
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@ -MMD
 
 -include $(DEPS_ALL)
