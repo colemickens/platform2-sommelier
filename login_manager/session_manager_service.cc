@@ -170,6 +170,8 @@ const char SessionManagerService::kLegalCharacters[] =
 // static
 const char SessionManagerService::kIncognitoUser[] = "";
 // static
+const char SessionManagerService::kDemoUser[] = "demouser";
+// static
 const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
 // static
 const char SessionManagerService::kTestingChannelFlag[] =
@@ -224,6 +226,7 @@ SessionManagerService::SessionManagerService(
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
       session_stopping_(false),
+      current_user_is_incognito_(false),
       machine_info_file_(kMachineInfoFile),
       screen_locked_(false),
       set_uid_(false),
@@ -591,7 +594,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   int dev_mode = system_->IsDevMode();
   if (dev_mode > -1) {
     login_metrics_->SendLoginUserType(dev_mode,
-                                      current_user_ == kIncognitoUser,
+                                      current_user_is_incognito_,
                                       user_is_owner);
   }
   *OUT_done =
@@ -610,7 +613,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     system_->BroadcastSignal(session_manager_,
                              signals_[kSignalSessionStateChanged],
                              kStarted, current_user_.c_str());
-    if (device_policy_->KeyMissing() && current_user_ != kIncognitoUser) {
+    if (device_policy_->KeyMissing() && !current_user_is_incognito_) {
       gen_->Start(set_uid_ ? uid_ : 0, this);
     }
     // Delete the machine-info file. It contains device-identifiable data such
@@ -1004,12 +1007,15 @@ gboolean SessionManagerService::ValidateAndCacheUserEmail(
   snprintf(email, sizeof(email), "%s", email_address);
   email[kMaxEmailSize] = '\0';  // Just to be sure.
   string email_string(email);
-  if (email_string != kIncognitoUser && !ValidateEmail(email_string)) {
+  bool user_is_incognito = ((email_string == kIncognitoUser) ||
+      (email_string == kDemoUser));
+  if (!user_is_incognito && !ValidateEmail(email_string)) {
     const char msg[] = "Provided email address is not valid.  ASCII only.";
     LOG(ERROR) << msg;
     system_->SetGError(error, CHROMEOS_LOGIN_ERROR_INVALID_EMAIL, msg);
     return FALSE;
   }
+  current_user_is_incognito_ = user_is_incognito;
   current_user_ = StringToLowerASCII(email_string);
   return TRUE;
 }

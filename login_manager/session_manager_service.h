@@ -409,6 +409,7 @@ class SessionManagerService
   static const char kEmailSeparator;
   static const char kLegalCharacters[];
   static const char kIncognitoUser[];
+  static const char kDemoUser[];
   static const char kLoginUserTypeMetric[];
   // The name of the pref that Chrome sets to track who the owner is.
   static const char kDeviceOwnerPref[];
@@ -432,6 +433,7 @@ class SessionManagerService
 
   bool session_started_;
   bool session_stopping_;
+  bool current_user_is_incognito_;
   std::string current_user_;
   std::string chrome_testing_path_;
 
