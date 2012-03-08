@@ -25,11 +25,12 @@ public:
   ChapsProxyImpl();
   virtual ~ChapsProxyImpl();
   bool Init();
-  void FireLoginEvent(const std::string& path, const std::string& auth_data);
+  void FireLoginEvent(const std::string& path,
+                      const std::vector<uint8_t>& auth_data);
   void FireLogoutEvent(const std::string& path);
   void FireChangeAuthDataEvent(const std::string& path,
-                               const std::string& old_auth_data,
-                               const std::string& new_auth_data);
+                               const std::vector<uint8_t>& old_auth_data,
+                               const std::vector<uint8_t>& new_auth_data);
   // ChapsInterface methods.
   virtual uint32_t GetSlotList(bool token_present,
                                std::vector<uint64_t>* slot_list);

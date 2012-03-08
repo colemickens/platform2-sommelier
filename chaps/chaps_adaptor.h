@@ -33,12 +33,12 @@ public:
   virtual ~ChapsAdaptor();
 
   virtual void OnLogin(const std::string& path,
-                       const std::string& auth_data,
+                       const std::vector<uint8_t>& auth_data,
                        ::DBus::Error &error);
   virtual void OnLogout(const std::string& path, ::DBus::Error &error);
   virtual void OnChangeAuthData(const std::string& path,
-                                const std::string& old_auth_data,
-                                const std::string& new_auth_data,
+                                const std::vector<uint8_t>& old_auth_data,
+                                const std::vector<uint8_t>& new_auth_data,
                                 ::DBus::Error &error);
   virtual void GetSlotList(const bool& token_present,
                            std::vector<uint64_t>& slot_list,

@@ -43,7 +43,7 @@ bool ChapsProxyImpl::Init() {
 }
 
 void ChapsProxyImpl::FireLoginEvent(const string& path,
-                                    const string& auth_data) {
+                                    const vector<uint8_t>& auth_data) {
   if (!proxy_.get()) {
     LOG(ERROR) << "Failed to fire event: proxy not initialized.";
     return;
@@ -67,9 +67,10 @@ void ChapsProxyImpl::FireLogoutEvent(const string& path) {
   }
 }
 
-void ChapsProxyImpl::FireChangeAuthDataEvent(const string& path,
-                                             const string& old_auth_data,
-                                             const string& new_auth_data) {
+void ChapsProxyImpl::FireChangeAuthDataEvent(
+    const string& path,
+    const vector<uint8_t>& old_auth_data,
+    const vector<uint8_t>& new_auth_data) {
   if (!proxy_.get()) {
     LOG(ERROR) << "Failed to fire event: proxy not initialized.";
     return;

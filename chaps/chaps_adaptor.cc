@@ -40,12 +40,13 @@ ChapsAdaptor::ChapsAdaptor(Lock* lock,
 ChapsAdaptor::~ChapsAdaptor() {}
 
 void ChapsAdaptor::OnLogin(const string& path,
-                           const string& auth_data,
+                           const vector<uint8_t>& auth_data,
                            ::DBus::Error& /*error*/) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   if (login_listener_)
-    login_listener_->OnLogin(FilePath(path), auth_data);
+    login_listener_->OnLogin(FilePath(path),
+                             ConvertByteVectorToString(auth_data));
 }
 
 void ChapsAdaptor::OnLogout(const string& path,
@@ -57,15 +58,15 @@ void ChapsAdaptor::OnLogout(const string& path,
 }
 
 void ChapsAdaptor::OnChangeAuthData(const string& path,
-                                    const string& old_auth_data,
-                                    const string& new_auth_data,
+                                    const vector<uint8_t>& old_auth_data,
+                                    const vector<uint8_t>& new_auth_data,
                                     ::DBus::Error& /*error*/) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   if (login_listener_)
     login_listener_->OnChangeAuthData(FilePath(path),
-                                      old_auth_data,
-                                      new_auth_data);
+                                      ConvertByteVectorToString(old_auth_data),
+                                      ConvertByteVectorToString(new_auth_data));
 }
 
 void ChapsAdaptor::GetSlotList(const bool& token_present,

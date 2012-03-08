@@ -53,7 +53,10 @@ attributes.cc: attributes.pb.h
 chaps_adaptor.cc chapsd.cc: chaps_adaptor_generated.h
 chaps_proxy.cc chaps.cc: chaps_proxy_generated.h
 
-$(OUT)libchaps.so: $(COMMON) $(OUT)chaps.o $(OUT)chaps_proxy.o
+$(OUT)libchaps.so: $(COMMON) \
+                   $(OUT)chaps.o \
+                   $(OUT)chaps_proxy.o \
+                   $(OUT)login_event_client.o
 	$(call cxx_library)
 RM_ON_CLEAN += $(OUT)libchaps.so
 
