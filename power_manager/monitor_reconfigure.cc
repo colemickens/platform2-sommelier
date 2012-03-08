@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,8 +15,6 @@
 
 using std::sort;
 using std::vector;
-using base::Time;
-using base::TimeDelta;
 
 namespace {
 
@@ -26,10 +24,6 @@ const char kLcdOutputName[] = "LVDS";
 const float kScreenDpi = 96.0;
 // An inch in mm.
 const float kInchInMm = 25.4;
-// Duplicate RRScreenChangeNotify events can be received when the
-// actual number of outputs does not change. Use this interval threshold
-// to filter out duplicate monitor reconfigure.
-const TimeDelta reconfigure_interval = TimeDelta::FromSeconds(2);
 
 }  // namespace
 
@@ -38,9 +32,6 @@ namespace power_manager {
 MonitorReconfigure::MonitorReconfigure()
     : display_(NULL),
       window_(None),
-      noutput_(-1),
-      last_configuration_time_(Time::Now()),
-      is_lvds_connected_(-1),
       is_projecting_(false),
       projection_callback_(NULL),
       projection_callback_data_(NULL),
@@ -51,9 +42,6 @@ MonitorReconfigure::MonitorReconfigure(
     BacklightController* backlight_ctl)
     : display_(NULL),
       window_(None),
-      noutput_(-1),
-      last_configuration_time_(Time::Now()),
-      is_lvds_connected_(-1),
       is_projecting_(false),
       projection_callback_(NULL),
       projection_callback_data_(NULL),
@@ -100,35 +88,39 @@ RRCrtc MonitorReconfigure::FindUsableCrtc(const std::set<RRCrtc>& used_crtcs,
   return None;
 }
 
-void MonitorReconfigure::DisableOutput(XRROutputInfo* output_info) {
-  for (int c = 0; c < output_info->ncrtc; c++) {
-    RRCrtc crtc_xid = output_info->crtcs[c];
-    int result = XRRSetCrtcConfig(display_,
-                                  screen_info_,
-                                  crtc_xid,
-                                  CurrentTime,
-                                  0, 0,  // x, y
-                                  None,  // mode
-                                  RR_Rotate_0,
-                                  NULL,  // outputs
-                                  0);    // noutputs
-
-    if (result != RRSetConfigSuccess) {
-      LOG(WARNING) << "Output " << output_info->name
-                   << " failed to disable crtc " << crtc_xid;
-    } else {
-      LOG(INFO) << "Output " << output_info->name
-                << " disabled crtc " << crtc_xid;
-    }
-  }
-}
-
-void MonitorReconfigure::DisableAllOutputs() {
+void MonitorReconfigure::DisableDisconnectedOutputs() {
   for (int i = 0; i < screen_info_->noutput; i++) {
     XRROutputInfo* output_info = XRRGetOutputInfo(display_,
                                                   screen_info_,
                                                   screen_info_->outputs[i]);
-    DisableOutput(output_info);
+
+    if ((output_info->connection != RR_Connected) &&
+        (output_info->crtc != None)) {
+      for (int c = 0; c < output_info->ncrtc; c++) {
+        RRCrtc crtc_xid = output_info->crtcs[c];
+        int result = XRRSetCrtcConfig(display_,
+                                      screen_info_,
+                                      crtc_xid,
+                                      CurrentTime,
+                                      0, 0,  // x, y
+                                      None,  // mode
+                                      RR_Rotate_0,
+                                      NULL,  // outputs
+                                      0);    // noutputs
+        if (result != RRSetConfigSuccess) {
+          LOG(WARNING) << "Output " << output_info->name
+                       << " disconnected, failed to disable crtc "
+                       << crtc_xid;
+        } else {
+          LOG(INFO) << "Output " << output_info->name
+                    << " disconnected, disabled crtc "
+                    << crtc_xid;
+        }
+      }
+    } else {
+        LOG(INFO) << "Output " << output_info->name << " left alone";
+    }
+
     XRRFreeOutputInfo(output_info);
   }
 }
@@ -150,9 +142,6 @@ void MonitorReconfigure::EnableUsableOutputs(
     RRCrtc crtc_xid = FindUsableCrtc(used_crtcs,
                                      output_info->crtcs,
                                      output_info->ncrtc);
-
-    CHECK(crtc_xid != None);
-
     int result = XRRSetCrtcConfig(display_,
                                   screen_info_,
                                   crtc_xid,
@@ -178,36 +167,6 @@ void MonitorReconfigure::EnableUsableOutputs(
   }
 }
 
-int MonitorReconfigure::GetConnectedOutputsNum() {
-  int count = 0;
-  for (int i = 0; i < screen_info_->noutput; i++) {
-    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
-                                                  screen_info_,
-                                                  screen_info_->outputs[i]);
-
-    if (output_info->connection == RR_Connected)
-      count++;
-  }
-
-  return count;
-}
-
-void MonitorReconfigure::RecordLVDSConnection() {
-  is_lvds_connected_ = 0;
-  for (int i = 0; i < screen_info_->noutput; i++) {
-    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
-                                                  screen_info_,
-                                                  screen_info_->outputs[i]);
-    if (strncmp(output_info->name,
-                kLcdOutputName,
-                strlen(kLcdOutputName)) == 0) {
-      if (output_info->connection == RR_Connected)
-        is_lvds_connected_ = 1;
-      break;
-    }
-  }
-}
-
 void MonitorReconfigure::Run() {
   usable_outputs_.clear();
   usable_outputs_info_.clear();
@@ -228,56 +187,6 @@ void MonitorReconfigure::Run() {
     XCloseDisplay(display_);
     return;
   }
-
-  if (is_lvds_connected_ < 0)
-    RecordLVDSConnection();
-
-  int old_noutput = noutput_;
-  noutput_ = GetConnectedOutputsNum();
-
-  if (old_noutput == -1) {   // First time run (after system booted).
-    LOG(INFO) << "First time MonitorReconfigure::Run()";
-    if (is_lvds_connected_) {  // Laptop.
-      // No external monitor, skip the reconfigure so we don't interrupt the
-      // welcome splash.
-      if (noutput_ == 1) {
-        LOG(INFO) << "Only have LVDS connection, skip reconfigure";
-        return;
-      }
-      // Laptop with external monitor, reconfigure.
-    } else {  // Desktop.
-
-    }
-  } else {  // Not the first run.
-
-    if (noutput_ != old_noutput) {      // monitor added/removed
-      // Reconfigure.
-      LOG(INFO) << "Number of outputs changed from " << old_noutput << " to "
-                << noutput_ << ", need reconfigure monitors";
-    } else { // Number of outputs does not change.
-
-      // Duplicate RRScreenNotifyEvent are fired within short time period, just
-      // ignore them.
-      if (Time::Now() - last_configuration_time_ < reconfigure_interval) {
-        LOG(INFO) << "Last time monitor rconfigured within "
-                  << reconfigure_interval.InSeconds()
-                  << " secs, skip reconfiguration";
-        return;
-      }
-
-      LOG(INFO) << "Number of outputs does not change, Waking up from suspend?";
-      // This is the case of waking from suspend and outputs do not change.
-      // If we only have LVDS connection, skip the reconfigure and just resume
-      // to the state of before suspend.
-      if (noutput_ == 1 && is_lvds_connected_) {
-        LOG(INFO) << "Only have LVDS connection, skip reconfigure";
-        return;
-      }
-      LOG(INFO) << "Have " << noutput_ << " outputs, need reconfigure";
-    }
-  }
-
-  last_configuration_time_= Time::Now();
 
   for (int i = 0; i < screen_info_->nmode; ++i) {
     XRRModeInfo* current_mode = &screen_info_->modes[i];
@@ -316,13 +225,10 @@ void MonitorReconfigure::Run() {
   // Grab the server during mode changes.
   XGrabServer(display_);
 
-  // Disable all the outputs and then later on enable those we want.
-  // Disconnected outputs need to be disabled because when output
-  // connection is removed, i915 driver does not remove the associated
-  // crtc from the output unless we tell it to do it through Xrandr.
-  // Connected outputs are disabled in case it changes associated crtc
-  // when later on usable outputs are enabled.
-  DisableAllOutputs();
+  // Disable all disconnected outputs before we try to set the screen
+  // resolution; otherwise xrandr will complain if we're trying to set the
+  // screen to a smaller size than what the now-unplugged device was using.
+  DisableDisconnectedOutputs();
 
   const bool was_projecting = is_projecting_;
 
@@ -369,6 +275,7 @@ void MonitorReconfigure::SetProjectionCallback(void (*func)(void*),
 }
 
 void MonitorReconfigure::DetermineOutputs() {
+  std::set<RRCrtc> used_crtcs;
   for (int i = 0; i < screen_info_->noutput; i++) {
     XRROutputInfo* output_info = XRRGetOutputInfo(display_,
                                                   screen_info_,
@@ -378,6 +285,13 @@ void MonitorReconfigure::DetermineOutputs() {
       // Add this output to the list of usable outputs...
       usable_outputs_.push_back(screen_info_->outputs[i]);
       usable_outputs_info_.push_back(output_info);
+      RRCrtc crtc_xid = FindUsableCrtc(used_crtcs,
+                                       output_info->crtcs,
+                                       output_info->ncrtc);
+      // ... and also add the crtc we intend to use for it.
+      used_crtcs.insert(crtc_xid);
+      LOG(INFO) << "Added output " << output_info->name
+                << " with crtc " << crtc_xid;
       // Stop at 2 connected outputs, the resolution logic can't handle more
       // than that.
       if (usable_outputs_.size() >= 2)
