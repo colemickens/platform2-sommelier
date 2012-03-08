@@ -29,6 +29,7 @@
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
+#include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
 #include "shill/service.h"
 #include "shill/store_interface.h"
@@ -89,6 +90,7 @@ Device::Device(ControlInterface *control_interface,
           NewCallback(this, &Device::PortalDetectorCallback)),
       technology_(technology),
       dhcp_provider_(DHCPProvider::GetInstance()),
+      routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
   store_.RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
 
@@ -146,6 +148,7 @@ Device::~Device() {
 void Device::Start() {
   running_ = true;
   VLOG(2) << "Device " << link_name_ << " starting.";
+  routing_table_->FlushRoutes(interface_index());
   adaptor_->UpdateEnabled();
 }
 

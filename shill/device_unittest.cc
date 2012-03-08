@@ -29,6 +29,7 @@
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_portal_detector.h"
+#include "shill/mock_routing_table.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -59,7 +60,7 @@ class DeviceTest : public PropertyStoreTest {
                            manager(),
                            kDeviceName,
                            kDeviceAddress,
-                           0,
+                           kDeviceInterfaceIndex,
                            Technology::kUnknown)),
         device_info_(control_interface(), NULL, NULL, NULL) {
     DHCPProvider::GetInstance()->glib_ = glib();
@@ -68,12 +69,14 @@ class DeviceTest : public PropertyStoreTest {
   virtual ~DeviceTest() {}
 
   virtual void SetUp() {
+    device_->routing_table_ = &routing_table_;
     device_->rtnl_handler_ = &rtnl_handler_;
   }
 
  protected:
   static const char kDeviceName[];
   static const char kDeviceAddress[];
+  static const int kDeviceInterfaceIndex;
 
   void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     device_->OnIPConfigUpdated(ipconfig, success);
@@ -90,11 +93,13 @@ class DeviceTest : public PropertyStoreTest {
   MockControl control_interface_;
   DeviceRefPtr device_;
   MockDeviceInfo device_info_;
+  MockRoutingTable routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
 const char DeviceTest::kDeviceName[] = "testdevice";
 const char DeviceTest::kDeviceAddress[] = "address";
+const int DeviceTest::kDeviceInterfaceIndex = 0;
 
 TEST_F(DeviceTest, Contains) {
   EXPECT_TRUE(device_->store().Contains(flimflam::kNameProperty));
@@ -298,6 +303,11 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
   EXPECT_CALL(*service.get(), SetConnection(NotNullRefPtr()));
   OnIPConfigUpdated(ipconfig.get(), true);
+}
+
+TEST_F(DeviceTest, Start) {
+  EXPECT_CALL(routing_table_, FlushRoutes(kDeviceInterfaceIndex));
+  device_->Start();
 }
 
 TEST_F(DeviceTest, Stop) {

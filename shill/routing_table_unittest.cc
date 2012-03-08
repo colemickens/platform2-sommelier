@@ -396,159 +396,16 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                                    0),
                    _,
                    0));
-  routing_table_->FlushRoutes(kTestDeviceIndex0, true);
+  routing_table_->FlushRoutes(kTestDeviceIndex0);
+  EXPECT_EQ(0, (*tables)[kTestDeviceIndex0].size());
 
   // Test that the routing table size returns to zero.
+  SendRouteMsg(RTNLMessage::kModeAdd,
+               kTestDeviceIndex0,
+               entry5);
   EXPECT_EQ(1, GetRoutingTables()->size());
   routing_table_->ResetTable(kTestDeviceIndex0);
   EXPECT_EQ(0, GetRoutingTables()->size());
-
-  routing_table_->Stop();
-  StopRTNLHandler();
-}
-
-TEST_F(RoutingTableTest, RouteDeleteForeign) {
-  EXPECT_CALL(sockets_, Send(kTestSocket, _, _, 0));
-  StartRTNLHandler();
-  routing_table_->Start();
-
-  // Expect the tables to be empty by default.
-  EXPECT_EQ(0, GetRoutingTables()->size());
-
-  // Add a foreign IPv4 entry.
-  IPAddress default_address4(IPAddress::kFamilyIPv4);
-  default_address4.SetAddressToDefault();
-
-  IPAddress foreign_address4(IPAddress::kFamilyIPv4);
-  foreign_address4.SetAddressFromString(kTestForeignNetAddress4);
-
-  IPAddress foreign_gateway4(IPAddress::kFamilyIPv4);
-  foreign_gateway4.SetAddressFromString(kTestForeignNetGateway4);
-
-  const int metric = 10;
-
-  RoutingTableEntry foreign_entry4(foreign_address4,
-                                   default_address4,
-                                   foreign_gateway4,
-                                   metric,
-                                   RT_SCOPE_UNIVERSE,
-                                   true);
-  SendRouteMsg(RTNLMessage::kModeAdd,
-               kTestDeviceIndex0,
-               foreign_entry4);
-
-  base::hash_map<int, std::vector<RoutingTableEntry> > *tables =
-    GetRoutingTables();
-  EXPECT_EQ(1, tables->size());
-  EXPECT_EQ(1, (*tables)[kTestDeviceIndex0].size());
-  RoutingTableEntry test_entry = (*tables)[kTestDeviceIndex0][0];
-  EXPECT_TRUE(test_entry.from_rtnl);
-
-  // Add a foreign IPv6 entry.
-  // This entry should not be deleted.
-  IPAddress default_address6(IPAddress::kFamilyIPv6);
-  default_address6.SetAddressToDefault();
-
-  IPAddress foreign_address6(IPAddress::kFamilyIPv6);
-  foreign_address6.SetAddressFromString(kTestForeignNetAddress6);
-
-  IPAddress foreign_gateway6(IPAddress::kFamilyIPv6);
-  foreign_gateway6.SetAddressFromString(kTestForeignNetGateway6);
-
-  RoutingTableEntry foreign_entry6(foreign_address6,
-                                   default_address6,
-                                   foreign_gateway6,
-                                   metric,
-                                   RT_SCOPE_UNIVERSE,
-                                   true);
-  SendRouteMsg(RTNLMessage::kModeAdd,
-               kTestDeviceIndex0,
-               foreign_entry6);
-
-  EXPECT_EQ(2, (*tables)[kTestDeviceIndex0].size());
-  test_entry = (*tables)[kTestDeviceIndex0][1];
-  EXPECT_TRUE(test_entry.from_rtnl);
-
-  // Add device route.
-  IPAddress device_net_address4(IPAddress::kFamilyIPv4);
-  device_net_address4.SetAddressFromString(kTestDeviceNetAddress4);
-  RTNLMessage msg(
-      RTNLMessage::kTypeRoute,
-      RTNLMessage::kModeAdd,
-      0,
-      0,
-      0,
-      0,
-      device_net_address4.family());
-  msg.set_route_status(RTNLMessage::RouteStatus(
-      device_net_address4.prefix(),
-      default_address4.prefix(),
-      RT_TABLE_MAIN,
-      RTPROT_KERNEL,
-      RT_SCOPE_UNIVERSE,
-      RTN_UNICAST,
-      0));
-
-  msg.SetAttribute(RTA_DST, device_net_address4.address());
-  msg.SetAttribute(RTA_SRC, default_address4.address());
-  msg.SetAttribute(RTA_GATEWAY, foreign_gateway4.address());
-  msg.SetAttribute(RTA_PRIORITY, ByteString::CreateFromCPUUInt32(metric));
-  msg.SetAttribute(RTA_OIF, ByteString::CreateFromCPUUInt32(kTestDeviceIndex0));
-
-  ByteString msgdata = msg.Encode();
-  EXPECT_NE(0, msgdata.GetLength());
-
-  InputData data(msgdata.GetData(), msgdata.GetLength());
-  RTNLHandler::GetInstance()->ParseRTNL(&data);
-
-  // The device route should not make it into our routing table.
-  EXPECT_EQ(2, (*tables)[kTestDeviceIndex0].size());
-
-  // Add an entry from IPConfig.
-  MockControl control;
-  IPConfigRefPtr ipconfig(new IPConfig(&control, kTestDeviceName0));
-  IPConfig::Properties properties;
-  properties.address_family = IPAddress::kFamilyIPv4;
-  properties.gateway = kTestNetAddress0;
-  properties.address = kTestNetAddress1;
-  ipconfig->UpdateProperties(properties, true);
-
-  IPAddress gateway_address4(IPAddress::kFamilyIPv4);
-  gateway_address4.SetAddressFromString(kTestNetAddress0);
-  RoutingTableEntry entry(default_address4,
-                          default_address4,
-                          gateway_address4,
-                          metric,
-                          RT_SCOPE_UNIVERSE,
-                          false);
-
-  EXPECT_CALL(sockets_,
-              Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kModeDelete,
-                                   kTestDeviceIndex0,
-                                   foreign_entry4,
-                                   0),
-                   _,
-                   0));
-  EXPECT_CALL(sockets_,
-              Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kModeDelete,
-                                   kTestDeviceIndex0,
-                                   foreign_entry6,
-                                   0),
-                   _,
-                   0)).Times(0);
-  EXPECT_CALL(sockets_,
-              Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kModeAdd,
-                                   kTestDeviceIndex0,
-                                   entry,
-                                   NLM_F_CREATE | NLM_F_EXCL),
-                   _,
-                   0));
-  EXPECT_TRUE(routing_table_->SetDefaultRoute(kTestDeviceIndex0,
-                                              ipconfig,
-                                              metric));
 
   routing_table_->Stop();
   StopRTNLHandler();

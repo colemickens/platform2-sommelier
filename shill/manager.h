@@ -57,7 +57,7 @@ class Manager {
 
   void AddDeviceToBlackList(const std::string &device_name);
 
-  void Start();
+  virtual void Start();
   void Stop();
 
   const ProfileRefPtr &ActiveProfile() const;

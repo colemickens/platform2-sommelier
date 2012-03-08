@@ -32,8 +32,9 @@ class Error;
 class EventDispatcher;
 class Manager;
 class Metrics;
-class RTNLHandler;
 class ReturnerInterface;
+class RoutingTable;
+class RTNLHandler;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
@@ -270,6 +271,7 @@ class Device : public base::RefCounted<Device> {
 
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider *dhcp_provider_;
+  RoutingTable *routing_table_;
   RTNLHandler *rtnl_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);

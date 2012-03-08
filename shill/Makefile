@@ -261,6 +261,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_power_manager_proxy.o \
 	mock_profile.o \
 	mock_property_store.o \
+	mock_proxy_factory.o \
 	mock_resolver.o \
 	mock_routing_table.o \
 	mock_rtnl_handler.o \

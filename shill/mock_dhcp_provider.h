@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,6 +21,7 @@ class MockDHCPProvider : public DHCPProvider {
   MockDHCPProvider();
   virtual ~MockDHCPProvider();
 
+  MOCK_METHOD3(Init, void(ControlInterface *, EventDispatcher *, GLib *));
   MOCK_METHOD2(CreateConfig, DHCPConfigRefPtr(const std::string &device_name,
                                               const std::string &host_name));
 

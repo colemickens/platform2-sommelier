@@ -14,16 +14,23 @@
 
 #include "shill/io_handler.h"
 #include "shill/mock_control.h"
+#include "shill/mock_dhcp_provider.h"
+#include "shill/mock_manager.h"
+#include "shill/mock_proxy_factory.h"
+#include "shill/mock_rtnl_handler.h"
+#include "shill/mock_routing_table.h"
 #include "shill/shill_daemon.h"
 #include "shill/shill_test_config.h"
 
-namespace shill {
-using ::testing::Test;
-using ::testing::_;
+using ::testing::Expectation;
 using ::testing::Gt;
 using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::StrictMock;
+using ::testing::Test;
+using ::testing::_;
+
+namespace shill {
 
 class MockEventDispatchTester {
  public:
@@ -164,8 +171,12 @@ class ShillDaemonTest : public Test {
  public:
   ShillDaemonTest()
       : daemon_(&config_, new MockControl()),
+        manager_(new MockManager(daemon_.control_,
+                                 &daemon_.dispatcher_,
+                                 &daemon_.metrics_,
+                                 &daemon_.glib_)),
         device_info_(daemon_.control_, dispatcher_, &daemon_.metrics_,
-                     &daemon_.manager_),
+                     daemon_.manager_.get()),
         dispatcher_(&daemon_.dispatcher_),
         dispatcher_test_(dispatcher_),
         factory_(this) {
@@ -175,17 +186,48 @@ class ShillDaemonTest : public Test {
     // Tests initialization done by the daemon's constructor
     ASSERT_NE(reinterpret_cast<Config*>(NULL), daemon_.config_);
     ASSERT_NE(reinterpret_cast<ControlInterface*>(NULL), daemon_.control_);
+    daemon_.proxy_factory_ = &proxy_factory_;
+    daemon_.rtnl_handler_ = &rtnl_handler_;
+    daemon_.routing_table_ = &routing_table_;
+    daemon_.dhcp_provider_ = &dhcp_provider_;
+    daemon_.manager_.reset(manager_);  // Passes ownership
     dispatcher_test_.ScheduleFailSafe();
   }
+  void StartDaemon() {
+    daemon_.Start();
+  }
+
  protected:
   TestConfig config_;
   Daemon daemon_;
+  MockProxyFactory proxy_factory_;
+  MockRTNLHandler rtnl_handler_;
+  MockRoutingTable routing_table_;
+  MockDHCPProvider dhcp_provider_;
+  MockManager *manager_;
   DeviceInfo device_info_;
   EventDispatcher *dispatcher_;
   StrictMock<MockEventDispatchTester> dispatcher_test_;
   ScopedRunnableMethodFactory<ShillDaemonTest> factory_;
 };
 
+
+TEST_F(ShillDaemonTest, Start) {
+  // To ensure we do not have any stale routes, we flush a device's routes
+  // when it is started.  This requires that the routing table is fully
+  // populated before we create and start devices.  So test to make sure that
+  // the RoutingTable starts before the Manager (which in turn starts
+  // DeviceInfo who is responsible for creating and starting devices).
+  // The result is that we request the dump of the routing table and when that
+  // completes, we request the dump of the links.  For each link found, we
+  // create and start the device.
+  EXPECT_CALL(proxy_factory_, Init());
+  EXPECT_CALL(rtnl_handler_, Start(_, _));
+  Expectation routing_table_started = EXPECT_CALL(routing_table_, Start());
+  EXPECT_CALL(dhcp_provider_, Init(_, _, _));
+  EXPECT_CALL(*manager_, Start()).After(routing_table_started);
+  StartDaemon();
+}
 
 TEST_F(ShillDaemonTest, EventDispatcherTimer) {
   EXPECT_CALL(dispatcher_test_, CallbackComplete(Gt(0)));

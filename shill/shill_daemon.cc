@@ -27,23 +27,27 @@ namespace shill {
 Daemon::Daemon(Config *config, ControlInterface *control)
     : config_(config),
       control_(control),
-      manager_(control_,
-               &dispatcher_,
-               &metrics_,
-               &glib_,
-               config->GetRunDirectory(),
-               config->GetStorageDirectory(),
-               config->GetUserStorageDirectoryFormat()) {
+      proxy_factory_(ProxyFactory::GetInstance()),
+      rtnl_handler_(RTNLHandler::GetInstance()),
+      routing_table_(RoutingTable::GetInstance()),
+      dhcp_provider_(DHCPProvider::GetInstance()),
+      manager_(new Manager(control_,
+                           &dispatcher_,
+                           &metrics_,
+                           &glib_,
+                           config->GetRunDirectory(),
+                           config->GetStorageDirectory(),
+                           config->GetUserStorageDirectoryFormat())) {
 }
 Daemon::~Daemon() {}
 
 void Daemon::AddDeviceToBlackList(const string &device_name) {
-  manager_.AddDeviceToBlackList(device_name);
+  manager_->AddDeviceToBlackList(device_name);
 }
 
 void Daemon::SetStartupProfiles(const vector<string> &profile_name_list) {
   Error error;
-  manager_.set_startup_profiles(profile_name_list);
+  manager_->set_startup_profiles(profile_name_list);
 }
 
 void Daemon::Run() {
@@ -60,15 +64,15 @@ void Daemon::Quit() {
 
 void Daemon::Start() {
   glib_.TypeInit();
-  ProxyFactory::GetInstance()->Init();
-  RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
-  RoutingTable::GetInstance()->Start();
-  DHCPProvider::GetInstance()->Init(control_, &dispatcher_, &glib_);
-  manager_.Start();
+  proxy_factory_->Init();
+  rtnl_handler_->Start(&dispatcher_, &sockets_);
+  routing_table_->Start();
+  dhcp_provider_->Init(control_, &dispatcher_, &glib_);
+  manager_->Start();
 }
 
 void Daemon::Stop() {
-  manager_.Stop();
+  manager_->Stop();
 }
 
 }  // namespace shill

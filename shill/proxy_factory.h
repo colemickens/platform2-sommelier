@@ -47,7 +47,7 @@ class ProxyFactory {
   // Since this is a singleton, use ProxyFactory::GetInstance()->Foo()
   static ProxyFactory *GetInstance();
 
-  void Init();
+  virtual void Init();
 
   virtual DBusObjectManagerProxyInterface *CreateDBusObjectManagerProxy(
       DBusObjectManagerProxyDelegate *delegate,

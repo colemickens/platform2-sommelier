@@ -136,9 +136,6 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
                                    uint32 metric) {
   VLOG(2) << __func__ << " index " << interface_index << " metric " << metric;
 
-  // Delete routes that we did not explicitly create.
-  FlushRoutes(interface_index, false);
-
   const IPConfig::Properties &ipconfig_props = ipconfig->properties();
   RoutingTableEntry *old_entry;
   IPAddress gateway_address(ipconfig_props.address_family);
@@ -175,7 +172,7 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
                                     false));
 }
 
-void RoutingTable::FlushRoutes(int interface_index, bool all_routes) {
+void RoutingTable::FlushRoutes(int interface_index) {
   VLOG(2) << __func__;
 
   base::hash_map<int, vector<RoutingTableEntry> >::iterator table =
@@ -188,10 +185,9 @@ void RoutingTable::FlushRoutes(int interface_index, bool all_routes) {
   vector<RoutingTableEntry>::iterator nent;
 
   for (nent = table->second.begin(); nent != table->second.end(); ++nent) {
-    if (all_routes ||
-        (nent->from_rtnl && nent->dst.family() == IPAddress::kFamilyIPv4))
       ApplyRoute(interface_index, *nent, RTNLMessage::kModeDelete, 0);
   }
+  table->second.clear();
 }
 
 void RoutingTable::ResetTable(int interface_index) {

@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/memory/scoped_ptr.h>
+
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
@@ -17,7 +19,11 @@ namespace shill {
 
 class Config;
 class ControlInterface;
+class DHCPProvider;
 class GLib;
+class ProxyFactory;
+class RoutingTable;
+class RTNLHandler;
 
 class Daemon {
  public:
@@ -40,7 +46,11 @@ class Daemon {
   Config *config_;
   ControlInterface *control_;
   Metrics metrics_;
-  Manager manager_;
+  ProxyFactory *proxy_factory_;
+  RTNLHandler *rtnl_handler_;
+  RoutingTable *routing_table_;
+  DHCPProvider *dhcp_provider_;
+  scoped_ptr<Manager> manager_;
   EventDispatcher dispatcher_;
   Sockets sockets_;
   GLib glib_;

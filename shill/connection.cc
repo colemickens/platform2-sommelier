@@ -39,7 +39,7 @@ Connection::~Connection() {
   VLOG(2) << __func__ << " " << interface_name_;
 
   DCHECK(!routing_request_count_);
-  routing_table_->FlushRoutes(interface_index_, true);
+  routing_table_->FlushRoutes(interface_index_);
   device_info_->FlushAddresses(interface_index_);
 }
 

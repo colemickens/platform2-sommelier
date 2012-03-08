@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -38,9 +38,9 @@ class DHCPProvider {
   // Initializes the provider singleton. This method hooks up a D-Bus signal
   // listener that catches signals from spawned DHCP clients and dispatches them
   // to the appropriate DHCP configuration instance.
-  void Init(ControlInterface *control_interface,
-            EventDispatcher *dispatcher,
-            GLib *glib);
+  virtual void Init(ControlInterface *control_interface,
+                    EventDispatcher *dispatcher,
+                    GLib *glib);
 
   // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
