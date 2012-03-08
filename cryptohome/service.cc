@@ -848,10 +848,16 @@ gboolean Service::TpmClearStoredPassword(GError** error) {
   return TRUE;
 }
 
+// Returns true if all Pkcs11 tokens are ready.
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   // TODO(gauravsh): Give out more information here. The state of PKCS#11
   // initialization, and it it failed - the reason for that.
-  *OUT_ready = (mount_->pkcs11_state() == cryptohome::Mount::kIsInitialized);
+  *OUT_ready = TRUE;
+  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
+    cryptohome::Mount* mount = it->second;
+    bool ok =  (mount->pkcs11_state() == cryptohome::Mount::kIsInitialized);
+    *OUT_ready = *OUT_ready && ok;
+  }
   return TRUE;
 }
 
