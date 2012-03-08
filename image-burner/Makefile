@@ -5,12 +5,14 @@
 CXXFLAGS ?= -Wall -Werror -g
 PKG_CONFIG ?= pkg-config
 
-PC_DEPS = dbus-1 dbus-glib-1 gobject-2.0 libchromeos
+BASE_VER = 85268
+PC_DEPS = dbus-1 dbus-glib-1 gobject-2.0 \
+	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-INCLUDES = -I.. $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
-LIBS += -lpthread -lrt -lrootdev $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
-
-CXXFLAGS += $(INCLUDES)
+CPPFLAGS += -I.. $(PC_CFLAGS)
+LDLIBS += -lrootdev $(PC_LIBS)
 
 COMMON_OBJS = image_burner_utils.o image_burner_impl.o
 IMAGEBURN_OBJS = $(COMMON_OBJS) image_burn_service.o image_burner.o
@@ -21,7 +23,7 @@ all: $(BINS)
 $(IMAGEBURN_OBJS) : bindings/server.h marshal.h
 
 image_burner: $(IMAGEBURN_OBJS) image_burner_main.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
@@ -36,11 +38,11 @@ clean:
 	rm -rf *.o $(BINDINGS_DIR)/* marshal.h $(BINS)
 
 unittest_runner: unittest_runner.o image_burner_impl_unittest.o $(COMMON_OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LIBS) -lgmock -lgtest -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS) -lgmock -lgtest -o $@
 
 image_burner_tester.o: bindings/client.h
 image_burner_tester: image_burner_tester.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LIBS) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 bindings/client.h: image_burner.xml
 	dbus-binding-tool --mode=glib-client --prefix=$(basename $^) $^ > $@
