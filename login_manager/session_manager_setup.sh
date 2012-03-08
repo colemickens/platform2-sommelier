@@ -220,14 +220,6 @@ if use_flag_is_set aura; then
   if ! use_flag_is_set new_power_button; then
     AURA_FLAGS="$AURA_FLAGS --aura-legacy-power-button"
   fi
-
-  # Force compact mode on Pine Trail devices.
-  # TODO(derat): Remove this flag once overlapping mode is supported on all
-  # devices, likely around M19.
-  if is_board x86-alex || is_board x86-alex_he || is_board x86-mario ||
-      is_board x86-zgb || is_board x86-zgb_he; then
-    AURA_FLAGS="$AURA_FLAGS --aura-force-compact-window-mode"
-  fi
 fi
 
 # Setup GPU & acceleration flags which differ between x86/ARM SoC
