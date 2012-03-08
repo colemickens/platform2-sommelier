@@ -776,21 +776,24 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
   return TRUE;
 }
 
+// Unmount all mounted cryptohomes.
 gboolean Service::Unmount(gboolean *OUT_result, GError **error) {
-  if (mount_->IsCryptohomeMounted()) {
-    *OUT_result = mount_->UnmountCryptohome();
-  } else {
-    *OUT_result = true;
+  *OUT_result = TRUE;
+  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
+    cryptohome::Mount* mount = it->second;
+    bool ok = !mount->IsCryptohomeMounted() || mount->UnmountCryptohome();
+    // Consider it a failure if any mount fails to unmount.
+    *OUT_result = *OUT_result && ok;
+    if (mount->pkcs11_state() == cryptohome::Mount::kIsBeingInitialized) {
+      // TODO(gauravsh): Need a better strategy on how to deal with an ongoing
+      // initialization on the mount thread. Can we kill it?
+      LOG(WARNING) << "Unmount request received while PKCS#11 init in progress";
+    }
+    // Reset PKCS#11 initialization state.
+    mount->set_pkcs11_state(cryptohome::Mount::kUninitialized);
+    // And also reset its 'failure reported' state.
+    reported_pkcs11_init_fail_ = false;
   }
-  if (mount_->pkcs11_state() == cryptohome::Mount::kIsBeingInitialized) {
-    // TODO(gauravsh): Need a better strategy on how to deal with an ongoing
-    // initialization on the mount thread. Can we kill it?
-    LOG(WARNING) << "Unmount request received while PKCS#11 init in progress";
-  }
-  // Reset PKCS#11 initialization state.
-  mount_->set_pkcs11_state(cryptohome::Mount::kUninitialized);
-  // And also reset its 'failure reported' state.
-  reported_pkcs11_init_fail_ = false;
   return TRUE;
 }
 
