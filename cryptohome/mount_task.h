@@ -118,7 +118,7 @@ class MountTaskResult : public CryptohomeEventBase {
   }
 
   void set_pkcs11_init(bool value) {
-    pkcs11_init_ = false;
+    pkcs11_init_ = value;
   }
 
   bool guest() const {
