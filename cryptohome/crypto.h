@@ -172,6 +172,16 @@ class Crypto : public EntropySource {
                        const chromeos::Blob& salt, unsigned int rounds,
                        SecureBlob* key, SecureBlob* iv) const;
 
+  // Converts the passkey to authorization data for a TPM-backed crypto token.
+  //
+  // Parameters
+  //   passkey - The passkey from which to derive the authorization data.
+  //   salt - The salt file used in deriving the authorization data.
+  //   auth_data (OUT) - The token authorization data.
+  bool PasskeyToTokenAuthData(const chromeos::Blob& passkey,
+                              const FilePath& salt_file,
+                              SecureBlob* auth_data) const;
+
   // Gets an existing salt, or creates one if it doesn't exist
   //
   // Parameters

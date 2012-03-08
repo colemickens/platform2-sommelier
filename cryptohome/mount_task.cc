@@ -156,6 +156,9 @@ MountTaskPkcs11Init::MountTaskPkcs11Init(MountTaskObserver* observer,
 
 void MountTaskPkcs11Init::Run() {
   if (mount_) {
+    // This will send an insertion event to the Chaps daemon with appropriate
+    // authorization data.
+    mount_->InsertPkcs11Token();
     // Initialization needs to be performed in its own child process to prevent
     // the cryptohomed from being killed if the session manager decided to kill
     // all processes with open files in the user's cryptohome.

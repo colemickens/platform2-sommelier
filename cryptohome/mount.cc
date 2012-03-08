@@ -33,6 +33,8 @@ namespace cryptohome {
 
 const char kDefaultUserRoot[] = "/home/chronos";
 const char kDefaultHomeDir[] = "/home/chronos/user";
+const char kDefaultTokenDir[] = "/home/chronos/user/.tpm";
+const char kTokenSaltFile[] = "/home/chronos/user/.tpm/auth_data_salt";
 const char kDefaultShadowRoot[] = "/home/.shadow";
 const char kDefaultSharedUser[] = "chronos";
 const char kDefaultSharedAccessGroup[] = "chronos-access";
@@ -86,7 +88,8 @@ Mount::Mount()
       user_timestamp_(default_user_timestamp_.get()),
       enterprise_owned_(false),
       old_user_last_activity_time_(kOldUserLastActivityTime),
-      pkcs11_state_(kUninitialized) {
+      pkcs11_state_(kUninitialized),
+      is_pkcs11_passkey_migration_required_(false) {
 }
 
 Mount::~Mount() {
@@ -402,6 +405,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   current_user_->SetUser(credentials);
+  credentials.GetPasskey(&pkcs11_passkey_);
   return true;
 }
 
@@ -577,6 +581,7 @@ void Mount::RemoveNonOwnerCryptohomes() {
 }
 
 bool Mount::UnmountCryptohome() {
+  RemovePkcs11Token();
   UnmountAllForUser(current_user_);
   ReloadDevicePolicy();
   if (AreEphemeralUsersEnabled())
@@ -1150,7 +1155,7 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
 }
 
 bool Mount::MigratePasskey(const Credentials& credentials,
-                           const char* old_key) const {
+                           const char* old_key) {
   std::string username = credentials.GetFullUsernameString();
   UsernamePasskey old_credentials(username.c_str(),
                                   SecureBlob(old_key, strlen(old_key)));
@@ -1172,6 +1177,10 @@ bool Mount::MigratePasskey(const Credentials& credentials,
       return false;
     }
     current_user_->SetUser(credentials);
+    // Setup passkey migration for PKCS #11.
+    credentials.GetPasskey(&pkcs11_passkey_);
+    old_credentials.GetPasskey(&pkcs11_old_passkey_);
+    is_pkcs11_passkey_migration_required_ = true;
     return true;
   }
   current_user_->Reset();
@@ -1277,6 +1286,38 @@ bool Mount::AreEphemeralUsersEnabled() {
 
 void Mount::ReloadDevicePolicy() {
   EnsureDevicePolicyLoaded(true);
+}
+
+void Mount::InsertPkcs11Token() {
+  FilePath salt_file(kTokenSaltFile);
+  SecureBlob auth_data;
+  if (!crypto_->PasskeyToTokenAuthData(pkcs11_passkey_, salt_file, &auth_data))
+    return;
+  if (is_pkcs11_passkey_migration_required_) {
+    LOG(INFO) << "Migrating authorization data.";
+    SecureBlob old_auth_data;
+    if (!crypto_->PasskeyToTokenAuthData(pkcs11_old_passkey_,
+                                         salt_file,
+                                         &old_auth_data))
+      return;
+    chaps_event_client_.FireChangeAuthDataEvent(
+        kDefaultTokenDir,
+        static_cast<const uint8_t*>(old_auth_data.const_data()),
+        old_auth_data.size(),
+        static_cast<const uint8_t*>(auth_data.const_data()),
+        auth_data.size());
+    is_pkcs11_passkey_migration_required_ = false;
+    pkcs11_old_passkey_.clear_contents();
+  }
+  chaps_event_client_.FireLoginEvent(
+      kDefaultTokenDir,
+      static_cast<const uint8_t*>(auth_data.const_data()),
+      auth_data.size());
+  pkcs11_passkey_.clear_contents();
+}
+
+void Mount::RemovePkcs11Token() {
+  chaps_event_client_.FireLogoutEvent(kDefaultTokenDir);
 }
 
 void Mount::RecursiveCopy(const FilePath& destination,

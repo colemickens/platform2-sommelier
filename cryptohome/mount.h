@@ -18,6 +18,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
 #include <base/values.h>
+#include <chaps/login_event_client.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <policy/device_policy.h>
@@ -36,6 +37,10 @@ namespace cryptohome {
 
 // The directory to mount the user's cryptohome at
 extern const char kDefaultHomeDir[];
+// The directory in which to create the user's PKCS #11 token database.
+extern const char kDefaultTokenDir[];
+// The path to the PKCS #11 token salt file.
+extern const char kTokenSaltFile[];
 // The directory containing the system salt and the user vaults
 extern const char kDefaultShadowRoot[];
 // The default shared user (chronos)
@@ -203,7 +208,7 @@ class Mount : public EntropySource {
   //   credentials - The new Credentials for the user
   //   from_key - The old Credentials
   virtual bool MigratePasskey(const Credentials& credentials,
-                              const char* old_key) const;
+                              const char* old_key);
 
   // Migrates from the home-in-encfs setup to the home-in-subdir setup. Instead
   // of storing all the user's files in the root of the encfs, we store them in
@@ -520,6 +525,12 @@ class Mount : public EntropySource {
   // keys are: "keysets", "mounted", "owner" and "enterprise".
   virtual Value* GetStatus();
 
+  // Inserts the current user's PKCS #11 token.
+  void InsertPkcs11Token();
+
+  // Removes the current user's PKCS #11 token.
+  void RemovePkcs11Token();
+
  protected:
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
   friend class MakeTests;
@@ -696,6 +707,11 @@ class Mount : public EntropySource {
   // mounted or belonging to the owner.
   void RemoveNonOwnerCryptohomes();
 
+  // Derives PKCS #11 token authorization data from a passkey. This may take up
+  // to ~100ms (dependant on CPU / memory performance). Returns true on success.
+  bool DeriveTokenAuthData(const SecureBlob& passkey,
+                           std::string* auth_data);
+
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;
@@ -758,6 +774,22 @@ class Mount : public EntropySource {
   base::TimeDelta old_user_last_activity_time_;
 
   Pkcs11State pkcs11_state_;
+
+  // Used to send login/logout events to Chaps.
+  chaps::LoginEventClient chaps_event_client_;
+
+  // Used to track the user's passkey. PKCS #11 initialization consumes and
+  // clears this value.
+  SecureBlob pkcs11_passkey_;
+
+  // Used to track the user's old passkey during passkey migration. PKCS #11
+  // initialization consumes and clears this value. This value is valid only if
+  // is_pkcs11_passkey_migration_required_ is set to true.
+  SecureBlob pkcs11_old_passkey_;
+
+  // Used to track whether passkey migration has occurred and PKCS #11 migration
+  // of authorization data based on the passkey needs to be performed also.
+  bool is_pkcs11_passkey_migration_required_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
 

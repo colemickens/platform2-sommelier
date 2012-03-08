@@ -23,7 +23,7 @@ class MockMount : public Mount {
                                            MountError*));
   MOCK_METHOD0(UnmountCryptohome, bool());
   MOCK_METHOD0(MountGuestCryptohome, bool());
-  MOCK_CONST_METHOD2(MigratePasskey, bool(const Credentials&, const char*));
+  MOCK_METHOD2(MigratePasskey, bool(const Credentials&, const char*));
   MOCK_METHOD1(RemoveCryptohome, bool(const Credentials&));
   MOCK_METHOD0(DoAutomaticFreeDiskSpaceControl, bool());
   MOCK_METHOD1(UpdateCurrentUserActivityTimestamp, bool(int));

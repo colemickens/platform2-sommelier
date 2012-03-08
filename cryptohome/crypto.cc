@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <chromeos/utility.h>
 extern "C" {
+#include <scrypt/crypto_scrypt.h>
 #include <scrypt/scryptenc.h>
 }
 
@@ -506,6 +507,42 @@ bool Crypto::PasskeyToAesKey(const chromeos::Blob& passkey,
     iv->swap(local_iv);
   }
 
+  return true;
+}
+
+bool Crypto::PasskeyToTokenAuthData(const chromeos::Blob& passkey,
+                                    const FilePath& salt_file,
+                                    SecureBlob* auth_data) const {
+  // Use the scrypt algorithm to derive auth data from the passkey.
+  const size_t kAuthDataSizeBytes = 32;
+  // The following scrypt parameters are based on Colin Percival's interactive
+  // login example in http://www.tarsnap.com/scrypt/scrypt-slides.pdf and
+  // adjusted for ~100ms performance on slower models. The performance is
+  // dependant on CPU and memory performance.
+  const uint64_t kScryptParameterN = (1 << 11);
+  const uint32_t kScryptParameterR = 8;
+  const uint32_t kScryptParameterP = 1;
+  const unsigned int kSaltLength = 32;
+  SecureBlob salt;
+  if (!GetOrCreateSalt(salt_file, kSaltLength, false, &salt)) {
+    LOG(ERROR) << "Failed to get authorization data salt.";
+    return false;
+  }
+  SecureBlob local_auth_data;
+  local_auth_data.resize(kAuthDataSizeBytes);
+  if (0 != crypto_scrypt(&passkey[0],
+                         passkey.size(),
+                         &salt[0],
+                         salt.size(),
+                         kScryptParameterN,
+                         kScryptParameterR,
+                         kScryptParameterP,
+                         &local_auth_data[0],
+                         kAuthDataSizeBytes)) {
+    LOG(ERROR) << "Scrypt key derivation failed.";
+    return false;
+  }
+  auth_data->swap(local_auth_data);
   return true;
 }
 
