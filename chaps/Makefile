@@ -11,12 +11,17 @@ PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 PROTOC = protoc
 
-PC_DEPS = dbus-c++-1 libchromeos protobuf openssl
-INCLUDE_DIRS = -I$(OUT)include -I.. $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
-LIB_DIRS = -L$(OUT) $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+BASE_VER = 85268
+PC_DEPS = dbus-c++-1 protobuf openssl \
+	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+
+INCLUDE_DIRS = -I$(OUT)include -I.. $(PC_CFLAGS)
+LIB_DIRS = -L$(OUT)
 
 CXXFLAGS := $(INCLUDE_DIRS) $(CXXFLAGS) -DNDEBUG
-LDFLAGS += -lbase -lchromeos $(LIB_DIRS)
+LDFLAGS += $(LIB_DIRS) $(PC_LIBS)
 
 COMMON = $(OUT)chaps_utility.o $(OUT)attributes.pb.o $(OUT)attributes.o
 MOCK = $(OUT)chaps_factory_mock.o \
