@@ -232,7 +232,7 @@ else
 fi
 
 # TODO(katierh): Remove this when Mali drivers fixed, crosbug.com/p/8085
-if is_board ironhide; then
+if is_board daisy || is_board ironhide; then
   export MALI_FORCE_WINDOW_CONFIG_ID=10
 fi
 
