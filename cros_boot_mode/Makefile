@@ -7,6 +7,13 @@
 # Pull in chromium os defaults
 include common.mk
 
+BASE_VER = 85268
+PC_DEPS = libchrome-$(BASE_VER)
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+
+CPPFLAGS += $(PC_CFLAGS)
+
 # Filter out the two legacy style binaries.
 BOOT_MODE_OBJECTS=$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS))
 $(OUT)cros_boot_mode: $(BOOT_MODE_OBJECTS)
@@ -23,9 +30,8 @@ RM_ON_CLEAN += $(OUT)libcros_boot_mode.so
 # Tests are not built by default.
 #
 
-# -lglib-2.0 is needed by libbase.a now.
 $(OUT)cros_boot_mode_testrunner: $(filter-out %_main.o,$(CXX_OBJECTS))
-	$(call cxx_binary,-lgtest -lgmock -lbase -lglib-2.0 -lrt -lpthread)
+	$(call cxx_binary,-lgtest -lgmock $(PC_LIBS))
 RM_ON_CLEAN += $(OUT)cros_boot_mode_testrunner
 # Will run each prerequisite for tests.
 # If cross-compiled, this is done against the correct architecture.
