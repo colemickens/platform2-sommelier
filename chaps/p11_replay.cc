@@ -6,11 +6,13 @@
 // and C_Sign.  This program replays these along with minimal overhead calls.
 // The --generate switch can be used to prepare a private key to test against.
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/time.h>
 #include <chromeos/syslog_logging.h>
 
 #include "chaps/chaps_utility.h"
@@ -38,12 +40,14 @@ static CK_SLOT_ID Initialize() {
   return slot_list[0];
 }
 
-// Opens a new session and performs a login.
-static CK_SESSION_HANDLE Login(CK_SLOT_ID slot) {
+// Opens a new session and performs a login. If force_login is set to true and
+// the token is already logged in, it will be logged out and logged in again.
+static CK_SESSION_HANDLE Login(CK_SLOT_ID slot, bool force_login) {
   CK_RV result = CKR_OK;
   CK_SESSION_HANDLE session = 0;
-  bool session_ready = false;
-  while (!session_ready) {
+  bool try_again = true;
+  while (try_again) {
+    try_again = false;
     result = C_OpenSession(slot,
                            CKF_SERIAL_SESSION | CKF_RW_SESSION,
                            NULL, /* Ignore callbacks. */
@@ -52,12 +56,12 @@ static CK_SESSION_HANDLE Login(CK_SLOT_ID slot) {
     LOG(INFO) << "C_OpenSession: " << chaps::CK_RVToString(result);
     if (result != CKR_OK)
       exit(-1);
-
     result = C_Login(session, CKU_USER, (CK_UTF8CHAR_PTR)"111111", 6);
     LOG(INFO) << "C_Login: " << chaps::CK_RVToString(result);
-    if (result == CKR_OK) {
-      session_ready = true;
-    } else if (result == CKR_USER_ALREADY_LOGGED_IN) {
+    if (result != CKR_OK && result != CKR_USER_ALREADY_LOGGED_IN)
+      exit(-1);
+    if (result == CKR_USER_ALREADY_LOGGED_IN && force_login) {
+      try_again = true;
       result = C_Logout(session);
       LOG(INFO) << "C_Logout: " << chaps::CK_RVToString(result);
       if (result != CKR_OK)
@@ -66,8 +70,6 @@ static CK_SESSION_HANDLE Login(CK_SLOT_ID slot) {
       LOG(INFO) << "C_CloseAllSessions: " << chaps::CK_RVToString(result);
       if (result != CKR_OK)
         exit(-1);
-    } else {
-      exit(-1);
     }
   }
   return session;
@@ -89,6 +91,10 @@ static void Sign(CK_SESSION_HANDLE session) {
   CK_ULONG object_count = 1;
   result = C_FindObjects(session, &object, 1, &object_count);
   LOG(INFO) << "C_FindObjects: " << chaps::CK_RVToString(result);
+  if (result != CKR_OK)
+    exit(-1);
+  result = C_FindObjectsFinal(session);
+  LOG(INFO) << "C_FindObjectsFinal: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
   if (object_count == 0) {
@@ -117,7 +123,7 @@ static void Sign(CK_SESSION_HANDLE session) {
 }
 
 // Generates a test key pair.
-static void GenerateKeyPair(CK_SESSION_HANDLE session) {
+static void GenerateKeyPair(CK_SESSION_HANDLE session, bool is_temp) {
   CK_MECHANISM mechanism;
   mechanism.mechanism = CKM_RSA_PKCS_KEY_PAIR_GEN;
   mechanism.pParameter = NULL;
@@ -157,6 +163,12 @@ static void GenerateKeyPair(CK_SESSION_HANDLE session) {
   LOG(INFO) << "C_GenerateKeyPair: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
+  if (is_temp) {
+    result = C_DestroyObject(session, public_key_handle);
+    LOG(INFO) << "C_DestroyObject: " << chaps::CK_RVToString(result);
+    result = C_DestroyObject(session, private_key_handle);
+    LOG(INFO) << "C_DestroyObject: " << chaps::CK_RVToString(result);
+  }
 }
 
 // Cleans up the session and library.
@@ -174,17 +186,57 @@ static void TearDown(CK_SESSION_HANDLE session) {
   C_Finalize(NULL);
 }
 
+void PrintHelp() {
+  printf("Usage: p11_replay [COMMAND]\n");
+  printf("Commands:\n");
+  printf("  --generate : Generates a key pair suitable for replay tests.\n");
+  printf("  --generate_delete : Generates a key pair and deletes it. This is "
+         "useful for comparing key generation on different TPM models\n");
+  printf("  --replay_vpn : Replays a L2TP/IPSEC VPN negotiation.\n");
+  printf("  --replay_wifi : Replays a EAP-TLS Wifi negotiation. This is the "
+         "default command if no command is specified.\n");
+}
+
+void PrintTicks(base::TimeTicks* start_ticks) {
+  base::TimeTicks now = base::TimeTicks::Now();
+  base::TimeDelta delta = now - *start_ticks;
+  *start_ticks = now;
+  long long int value = delta.InMillisecondsRoundedUp();
+  printf("Elapsed: %lldms\n", value);
+}
+
 int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
-  bool generate = CommandLine::ForCurrentProcess()->HasSwitch("generate");
+  CommandLine* cl = CommandLine::ForCurrentProcess();
+  if (cl->HasSwitch("h") || cl->HasSwitch("help")) {
+    PrintHelp();
+    return 0;
+  }
+  bool generate = cl->HasSwitch("generate");
+  bool generate_delete = cl->HasSwitch("generate_delete");
+  bool vpn = cl->HasSwitch("replay_vpn");
   chromeos::InitLog(chromeos::kLogToStderr);
 
+  base::TimeTicks start_ticks = base::TimeTicks::Now();
   CK_SLOT_ID slot = Initialize();
-  CK_SESSION_HANDLE session = Login(slot);
-  if (generate) {
-    GenerateKeyPair(session);
+  PrintTicks(&start_ticks);
+  CK_SESSION_HANDLE session;
+  if (generate || generate_delete) {
+    session = Login(slot, false);
+    PrintTicks(&start_ticks);
+    GenerateKeyPair(session, generate_delete);
+    PrintTicks(&start_ticks);
   } else {
+    printf("Replay 1 of 2\n");
+    session = Login(slot, vpn);
     Sign(session);
+    PrintTicks(&start_ticks);
+    printf("Replay 2 of 2\n");
+    CK_SESSION_HANDLE session2 = Login(slot, vpn);
+    Sign(session2);
+    PrintTicks(&start_ticks);
+    C_CloseSession(session2);
   }
   TearDown(session);
+  PrintTicks(&start_ticks);
 }

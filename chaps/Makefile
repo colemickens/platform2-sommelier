@@ -95,9 +95,9 @@ $(OUT)chaps_live_test: $(OUT)chaps_test.o
 	$(call cxx_binary, -lgtest -lgmock -lchaps)
 RM_ON_CLEAN += $(OUT)chaps_live_test
 
-$(OUT)vpn_replay: $(OUT)vpn_replay.o
+$(OUT)p11_replay: $(OUT)p11_replay.o lib
 	$(call cxx_binary, -lchaps)
-RM_ON_CLEAN += $(OUT)vpn_replay
+RM_ON_CLEAN += $(OUT)p11_replay
 
 $(OUT)chaps_event_generator: $(COMMON) \
                              $(OUT)chaps_event_generator.o \
@@ -160,7 +160,7 @@ $(OUT)tpm_utility_test: $(COMMON) $(MOCK) \
 RM_ON_CLEAN += $(OUT)tpm_utility_test
 
 # Some shortcuts
-all: $(OUT)libchaps.so $(OUT)chapsd
+all: $(OUT)libchaps.so $(OUT)chapsd $(OUT)p11_replay
 
 lib: $(OUT)libchaps.so
 
@@ -187,8 +187,6 @@ tests: $(OUT)chaps_test \
 live_tests: $(OUT)chapsd_test \
             $(OUT)chaps_event_generator \
             $(OUT)tpm_utility_test
-
-perf: $(OUT)vpn_replay
 
 runtests: tests
 	$(OUT)chaps_test
