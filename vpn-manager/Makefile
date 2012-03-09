@@ -1,6 +1,8 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+BASE_VER = 85268
 
 BINS = l2tpipsec_vpn
 IPSEC_STARTER = /usr/libexec/ipsec/starter
@@ -18,7 +20,7 @@ TEST_BINS = \
 	l2tp_manager_test \
 	service_manager_test
 
-PC_DEPS = libchrome libchromeos openssl
+PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER) openssl
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
