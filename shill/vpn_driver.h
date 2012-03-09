@@ -22,6 +22,7 @@ class VPNDriver {
   virtual bool ClaimInterface(const std::string &link_name,
                               int interface_index) = 0;
   virtual void Connect(const VPNServiceRefPtr &service, Error *error) = 0;
+  virtual void Disconnect() = 0;
 };
 
 }  // namespace shill

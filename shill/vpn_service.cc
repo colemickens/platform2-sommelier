@@ -24,7 +24,13 @@ VPNService::VPNService(ControlInterface *control,
 VPNService::~VPNService() {}
 
 void VPNService::Connect(Error *error) {
+  Service::Connect(error);
   driver_->Connect(this, error);
+}
+
+void VPNService::Disconnect(Error *error) {
+  Service::Disconnect(error);
+  driver_->Disconnect();
 }
 
 string VPNService::GetStorageIdentifier() const {

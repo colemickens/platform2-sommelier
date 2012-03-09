@@ -433,4 +433,15 @@ TEST_F(OpenVPNDriverTest, OnOpenVPNDied) {
   EXPECT_EQ(0, driver_->pid_);
 }
 
+TEST_F(OpenVPNDriverTest, Disconnect) {
+  driver_->device_ = device_;
+  driver_->service_ = service_;
+  EXPECT_CALL(*device_, OnDisconnected());
+  EXPECT_CALL(*device_, Stop());
+  EXPECT_CALL(device_info_, DeleteInterface(kInterfaceIndex));
+  EXPECT_CALL(*service_, SetState(Service::kStateIdle));
+  driver_->Disconnect();
+  EXPECT_FALSE(driver_->service_);
+}
+
 }  // namespace shill

@@ -39,6 +39,13 @@ TEST_F(VPNServiceTest, Connect) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
+TEST_F(VPNServiceTest, Disconnect) {
+  Error error;
+  EXPECT_CALL(*driver_, Disconnect());
+  service_->Disconnect(&error);
+  EXPECT_TRUE(error.IsSuccess());
+}
+
 TEST_F(VPNServiceTest, GetStorageIdentifier) {
   EXPECT_EQ("", service_->GetStorageIdentifier());
 }

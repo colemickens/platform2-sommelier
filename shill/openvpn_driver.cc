@@ -452,4 +452,14 @@ void OpenVPNDriver::AppendFlag(
   }
 }
 
+void OpenVPNDriver::Disconnect() {
+  if (device_) {
+    device_->OnDisconnected();
+    device_->SelectService(NULL);
+  }
+  service_->SetState(Service::kStateIdle);
+  service_ = NULL;
+  Cleanup();
+}
+
 }  // namespace shill

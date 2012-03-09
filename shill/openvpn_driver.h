@@ -49,6 +49,7 @@ class OpenVPNDriver : public VPNDriver,
   virtual void Connect(const VPNServiceRefPtr &service, Error *error);
   virtual bool ClaimInterface(const std::string &link_name,
                               int interface_index);
+  virtual void Disconnect();
 
  private:
   friend class OpenVPNDriverTest;
@@ -58,6 +59,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, Cleanup);
   FRIEND_TEST(OpenVPNDriverTest, Connect);
   FRIEND_TEST(OpenVPNDriverTest, ConnectTunnelFailure);
+  FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);

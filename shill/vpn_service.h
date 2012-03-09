@@ -25,8 +25,10 @@ class VPNService : public Service {
 
   // Inherited from Service.
   virtual void Connect(Error *error);
+  virtual void Disconnect(Error *error);
   virtual std::string GetStorageIdentifier() const;
-  VPNDriver *driver() { return driver_.get(); }
+
+  VPNDriver *driver() const { return driver_.get(); }
 
  private:
   FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
