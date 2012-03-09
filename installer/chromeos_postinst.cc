@@ -14,57 +14,56 @@
 
 using std::string;
 
-bool FirmwareUpdate() {
-  /*
-  # See if we need to update firmware. NOTE: we must activate new firmware
-  # only after new kernel is actived (installed and made bootable),
-  # otherwise new firmware with all old kernels may lead to recovery screen
-  # (due to new key).
-  FIRMWARE_UPDATE_SCRIPT="/usr/sbin/chromeos-firmwareupdate"
-  if [ ${FLAGS_update_firmware} -eq "${FLAGS_TRUE}" -a \
-       -x "${FIRMWARE_UPDATE_SCRIPT}" ]; then
-    FIRMWARE_UPDATE_MODE=""
-    if [ -n "${IS_FACTORY_INSTALL}" ]; then
-      # factory-mode (--force must be the first parameter when being invoked)
-     # Factory install shim will invoke similiar command in memento_updater.sh,
-      # so if you modify any parameters here, please remember to also update
-      # memento_updater.sh.
-      FIRMWARE_UPDATE_MODE="--force --mode=factory_install"
-    elif [ -n "${IS_RECOVERY_INSTALL}" ]; then
-      # recovery-mode
-      FIRMWARE_UPDATE_MODE="--mode=recovery"
-    elif [ -n "${IS_INSTALL}" ]; then
-      # installation from chromeos-install
-      FIRMWARE_UPDATE_MODE="--mode=recovery"
-    else
-      # Default: background update by Update Engine.
-      # "--background-update" tells it not to perform any dangerous
-      # thing that would require/cause reboot, for example re-writing
-      # EC firmware. Those tasks will be done in next boot.
-      FIRMWARE_UPDATE_MODE="--mode=autoupdate"
-      # FIXME(wfrichar): This is platform-specific. See below.
-      RECHECK_AFTER_UPDATE="true"
-    fi
-    FIRMWARE_UPDATE_ARGS=" $FIRMWARE_UPDATE_MODE "
-    echo "Updating firmware ($FIRMWARE_UPDATE_ARGS)"
-    env INSTALL_ROOT=/ "${FIRMWARE_UPDATE_SCRIPT}" ${FIRMWARE_UPDATE_ARGS}
-    FW_RC="$?"
-    # Next step after postinst may take a lot of time (eg, disk wiping)
-    # and people may confuse that as 'firmware update takes a long wait',
-    # we explicitly prompt here.
-    if [ "$FW_RC" -eq 0 ]; then
-      echo "Firmware update complete."
-    elif [ "$FW_RC" -eq 3 ]; then
-      echo "Firmware can't update b/c booted from B"
-      return 3
-    else
-      return 1  # error
-    fi
-  fi
-  return 0  # success
-  */
+// Updates firmware. We must activate new firmware only after new kernel is
+// actived (installed and made bootable), otherwise new firmware with all old
+// kernels may lead to recovery screen (due to new key).
+// TODO(hungte) Replace the shell execution by native code (crosbug.com/25407).
+bool FirmwareUpdate(const string &install_dir, bool is_update) {
+  int result;
+  const char *mode;
+  string command = install_dir + "/usr/sbin/chromeos-firmwareupdate";
 
-  return false;
+  if (access(command.c_str(), X_OK) != 0) {
+    printf("No firmware updates available.\n");
+    return true;
+  }
+
+  // Binary compatibility test.
+  string test_sh_command = install_dir + "/bin/sh -c exit";
+  if (system(test_sh_command.c_str()) != 0) {
+    printf("Detected incompatible system binary. "
+           "Firmware updates are disabled for system architecture transition "
+           "(ex, 32->64 bits) auto updates.\n");
+    return true;
+  }
+
+  if (is_update) {
+    // Background auto update by Update Engine.
+    mode = "autoupdate";
+  } else {
+    // Recovery image, or from command "chromeos-install".
+    mode = "recovery";
+  }
+
+  command += " --mode=";
+  command += mode;
+
+  printf("Starting firmware updater (%s)\n", command.c_str());
+  result = system(command.c_str());
+
+  // Next step after postinst may take a lot of time (eg, disk wiping)
+  // and people may confuse that as 'firmware update takes a long wait',
+  // we explicitly prompt here.
+  if (result == 0) {
+    printf("Firmware update completed.\n");
+  } else if (result == 3) {
+    printf("Firmware can't be updated because booted from B (error code: %d)\n",
+           result);
+  } else {
+    printf("Firmware update failed (error code: %d).\n", result);
+  }
+
+  return result == 0;
 }
 
 // Matches commandline arguments of chrome-chroot-postinst
@@ -201,14 +200,15 @@ bool ChromeosChrootPostinst(string install_dir,
       return false;
   }
 
-  if (firmware_update) {
-    if (!FirmwareUpdate()) {
+  // In factory process, firmware is either pre-flashed or assigned by
+  // mini-omaha server, and we don't want to try updates inside postinst.
+  if (!is_factory_install && firmware_update) {
+    if (!FirmwareUpdate(install_dir, is_update)) {
       // Note: This will only rollback the ChromeOS verified boot target.
       // The assumption is that systems running firmware autoupdate
       // are not running legacy (non-ChromeOS) firmware. If the firmware
       // updater crashes or writes corrupt data rather than gracefully
       // failing, we'll probably need to recover with a recovery image.
-      printf("Firmware update failed (error code: $FW_RC).\n");
       printf("Rolling back update due to failure installing required "
              "firmware.\n");
 
@@ -271,12 +271,13 @@ bool RunPostInstall(const string& install_dir,
     return false;
   }
 
-  bool firmware_update = false;
-
-  // TODO(dgarrett): Fix this when firware updates works
-  //
-  //if (exists "/root/.force_update_firmware")
-  //  firmware_update = true;
+  // TODO(hungte) Currently we rely on tag file /root/.force_update_firmware in
+  // source (signed) rootfs to decide if postinst should perform firmware
+  // updates (the file can be toggled by signing system, using tag_image.sh).
+  // If this is changed, or if we want to allow user overriding firmware updates
+  // in postinst in future, we may provide an option (ex, --update_firmware).
+  string tag_file = install_dir + "/root/.force_update_firmware";
+  bool firmware_update = (access(tag_file.c_str(), 0) == 0);
 
   return ChromeosChrootPostinst(install_dir,
                                 src_version,
