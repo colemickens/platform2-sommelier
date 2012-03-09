@@ -14,6 +14,20 @@ using ::testing::_;
 using ::testing::Invoke;
 using ::testing::Return;
 
+ACTION(CallDeleteFile) { return file_util::Delete(FilePath(arg0), arg1); }
+ACTION(CallEnumerateDirectoryEntries) {
+  // Pass a call to EnumerateDirectoryEntries through to a real Platform if it's
+  // not mocked.
+  Platform p;
+  return p.EnumerateDirectoryEntries(arg0, arg1, arg2);
+}
+ACTION(CallDirectoryExists) {
+  return file_util::DirectoryExists(FilePath(arg0));
+}
+ACTION(CallReadFile) {
+  return Platform().ReadFile(arg0, arg1);
+}
+
 class MockPlatform : public Platform {
  public:
   MockPlatform() {
@@ -31,6 +45,14 @@ class MockPlatform : public Platform {
         .WillByDefault(Return(false));
     ON_CALL(*this, GetCurrentTime())
         .WillByDefault(Return(base::Time::NowFromSystemTime()));
+    ON_CALL(*this, DeleteFile(_, _))
+        .WillByDefault(CallDeleteFile());
+    ON_CALL(*this, EnumerateDirectoryEntries(_, _, _))
+        .WillByDefault(CallEnumerateDirectoryEntries());
+    ON_CALL(*this, DirectoryExists(_))
+        .WillByDefault(CallDirectoryExists());
+    ON_CALL(*this, ReadFile(_, _))
+        .WillByDefault(CallReadFile());
   }
   virtual ~MockPlatform() {}
   MOCK_METHOD4(Mount, bool(const std::string&, const std::string&,
@@ -58,6 +80,10 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(ReadFile, bool(const std::string&, chromeos::Blob*));
   MOCK_METHOD2(WriteFile, bool(const std::string&, const chromeos::Blob&));
   MOCK_CONST_METHOD0(GetCurrentTime, base::Time());
+  MOCK_METHOD3(EnumerateDirectoryEntries, bool(const std::string&, bool,
+                                               std::vector<std::string>*));
+  MOCK_METHOD2(DeleteFile, bool(const std::string&, bool));
+  MOCK_METHOD1(DirectoryExists, bool(const std::string&));
 
  private:
   bool MockGetUserId(const std::string& user, uid_t* user_id, gid_t* group_id) {

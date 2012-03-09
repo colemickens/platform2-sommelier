@@ -26,6 +26,7 @@
 
 #include "credentials.h"
 #include "crypto.h"
+#include "homedirs.h"
 #include "platform.h"
 #include "secure_blob.h"
 #include "user_session.h"
@@ -61,17 +62,14 @@ extern const char kGCacheTmpDir[];      // subdir of kGCacheVersionDir
 extern const char kVaultDir[];
 extern const char kUserHomeSuffix[];
 extern const char kRootHomeSuffix[];
+// Name of the mount directory.
+extern const char kMountDir[];
+// Name of the key file.
+extern const char kKeyFile[];
 // File system type for ephemeral mounts.
 extern const char kEphemeralMountType[];
 // Time delta of last user's activity to be considered as old.
 extern const base::TimeDelta kOldUserLastActivityTime;
-
-// Minimum free disk space on stateful_partition not to begin the cleanup
-const int64 kMinFreeSpace = 512 * 1LL << 20;  // 500M bytes
-
-// Enough free disk space on stateful_partition to stop the cleanup
-const int64 kEnoughFreeSpace = 1LL << 30;  // 1G bytes
-
 
 // The Mount class handles mounting/unmounting of the user's cryptohome
 // directory as well as offline verification of the user's credentials against
@@ -491,6 +489,7 @@ class Mount : public EntropySource {
   }
   void set_enterprise_owned(bool value) {
     enterprise_owned_ = value;
+    homedirs_.set_enterprise_owned(value);
   }
 
   // Set/get time delta of last user's activity to be considered as old.
@@ -499,6 +498,7 @@ class Mount : public EntropySource {
   }
   void set_old_user_last_activity_time(base::TimeDelta value) {
     old_user_last_activity_time_ = value;
+    homedirs_.set_old_user_last_activity_time(value);
   }
 
   // Flag indicating if PKCS#11 is ready.
@@ -518,6 +518,8 @@ class Mount : public EntropySource {
   Pkcs11State pkcs11_state() {
     return pkcs11_state_;
   }
+
+  HomeDirs* homedirs() { return &homedirs_; }
 
   // Returns the status of this mount as a Value
   //
@@ -540,6 +542,7 @@ class Mount : public EntropySource {
   // Used to override the policy provider for testing (takes ownership)
   void set_policy_provider(policy::PolicyProvider* provider) {
     policy_provider_.reset(provider);
+    homedirs_.set_policy_provider(provider);
   }
 
  private:
@@ -790,6 +793,11 @@ class Mount : public EntropySource {
   // Used to track whether passkey migration has occurred and PKCS #11 migration
   // of authorization data based on the passkey needs to be performed also.
   bool is_pkcs11_passkey_migration_required_;
+
+  // Temporary; some of the methods on Mount (currently,
+  // DoAutomaticFreeDiskSpaceControl) are shims that call into this object
+  // instead. Please do not use this; it will go away once the shims are gone.
+  HomeDirs homedirs_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
 

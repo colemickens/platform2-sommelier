@@ -22,6 +22,7 @@
 
 #include "crypto.h"
 #include "cryptohome_common.h"
+#include "homedirs.h"
 #include "platform.h"
 #include "username_passkey.h"
 #include "vault_keyset.h"
@@ -57,6 +58,8 @@ const char kGCacheVersionDir[] = "v1";
 const char kGCacheTmpDir[] = "tmp";
 const char kUserHomeSuffix[] = "user";
 const char kRootHomeSuffix[] = "root";
+const char kMountDir[] = "mount";
+const char kKeyFile[] = "master.0";
 const char kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
 const char kEphemeralMountPerms[] = "mode=0700";
@@ -95,6 +98,13 @@ Mount::~Mount() {
 
 bool Mount::Init() {
   bool result = true;
+
+  homedirs_.set_platform(platform_);
+  homedirs_.set_shadow_root(shadow_root_);
+  homedirs_.set_timestamp_cache(user_timestamp_);
+  homedirs_.set_enterprise_owned(enterprise_owned_);
+  homedirs_.set_old_user_last_activity_time(old_user_last_activity_time_);
+  homedirs_.set_policy_provider(policy_provider_.get());
 
   // Get the user id and group id of the default user
   if (!platform_->GetUserId(default_username_, &default_user_,
@@ -856,65 +866,7 @@ void Mount::AddUserTimestampToCacheCallback(const FilePath& vault) {
 }
 
 bool Mount::DoAutomaticFreeDiskSpaceControl() {
-  if (platform_->AmountOfFreeDiskSpace(home_dir_) > kMinFreeSpace)
-    return false;
-
-  ReloadDevicePolicy();
-
-  // If ephemeral users are enabled, remove all cryptohomes except those
-  // currently mounted or belonging to the owner.
-  if (AreEphemeralUsersEnabled()) {
-    RemoveNonOwnerCryptohomes();
-    return (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace);
-  }
-
-  // Clean Cache directories for every user (except current one).
-  DoForEveryUnmountedCryptohome(base::Bind(&Mount::DeleteCacheCallback,
-                                           base::Unretained(this)));
-
-  if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
-    return true;
-
-  // Initialize user timestamp cache if it has not been yet.  Current
-  // user is not added now, but added on log out or during daily
-  // updates (UpdateCurrentUserActivityTimestamp()).
-  if (!user_timestamp_->initialized()) {
-    user_timestamp_->Initialize();
-    DoForEveryUnmountedCryptohome(base::Bind(
-        &Mount::AddUserTimestampToCacheCallback,
-        base::Unretained(this)));
-  }
-
-  // Delete old users, the oldest first.
-  // Don't delete anyone if we don't know who the owner is.
-  string obfuscated_owner = GetObfuscatedOwner();
-  if (enterprise_owned_ || !obfuscated_owner.empty()) {
-    const base::Time timestamp_threshold =
-        base::Time::Now() - old_user_last_activity_time_;
-    while (!user_timestamp_->oldest_known_timestamp().is_null() &&
-           user_timestamp_->oldest_known_timestamp() <= timestamp_threshold) {
-      FilePath deleted_user_dir = user_timestamp_->RemoveOldestUser();
-      if (!enterprise_owned_) {
-        std::string obfuscated_username = deleted_user_dir.BaseName().value();
-        if (obfuscated_username == obfuscated_owner) {
-          LOG(WARNING) << "Not deleting owner user " << obfuscated_username;
-          continue;
-        }
-      }
-      if (platform_->IsDirectoryMountedWith(
-              home_dir_, deleted_user_dir.Append(kVaultDir).value())) {
-        LOG(WARNING) << "Attempt to delete currently logged user. Skipped...";
-      } else {
-        LOG(WARNING) << "Deleting old user " << deleted_user_dir.value();
-        platform_->DeleteFile(deleted_user_dir.value(), true);
-        if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
-          return true;
-      }
-    }
-  }
-
-  // TODO(glotov): do further cleanup.
-  return true;
+  return homedirs_.FreeDiskSpace();
 }
 
 bool Mount::SetupGroupAccess() const {
@@ -1217,9 +1169,10 @@ string Mount::GetUserKeyFile(const Credentials& credentials) const {
 }
 
 string Mount::GetUserKeyFileForUser(const string& obfuscated_username) const {
-  return StringPrintf("%s/%s/master.0",
+  return StringPrintf("%s/%s/%s",
                       shadow_root_.c_str(),
-                      obfuscated_username.c_str());
+                      obfuscated_username.c_str(),
+                      kKeyFile);
 }
 
 string Mount::GetUserEphemeralPath(const string& obfuscated_username) const {
@@ -1234,9 +1187,10 @@ string Mount::GetUserVaultPath(const std::string& obfuscated_username) const {
 }
 
 string Mount::GetUserMountDirectory(const Credentials& credentials) const {
-  return StringPrintf("%s/%s/mount",
+  return StringPrintf("%s/%s/%s",
                       shadow_root_.c_str(),
-                      credentials.GetObfuscatedUsername(system_salt_).c_str());
+                      credentials.GetObfuscatedUsername(system_salt_).c_str(),
+                      kMountDir);
 }
 
 string Mount::VaultPathToUserPath(const std::string& vault) const {

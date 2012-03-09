@@ -24,12 +24,13 @@
 #include <policy/mock_device_policy.h>
 
 #include "crypto.h"
-#include "secure_blob.h"
-#include "username_passkey.h"
+#include "homedirs.h"
 #include "make_tests.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
 #include "mock_user_session.h"
+#include "secure_blob.h"
+#include "username_passkey.h"
 #include "vault_keyset.h"
 #include "vault_keyset.pb.h"
 
@@ -688,7 +689,7 @@ class AltImageTest : public MountTest {
  protected:
   Mount mount_;
   NiceMock<MockTpm> tpm_;
-  NiceMock<MockPlatform> platform_;
+  MockPlatform platform_;
   scoped_array<FilePath> image_path_;
   scoped_array<UsernamePasskey> username_passkey_;
 
@@ -725,8 +726,9 @@ class DoAutomaticFreeDiskSpaceControlTest : public AltImageTest {
     const string key_file =
         mount.GetUserKeyFileForUser(image_path_[user].BaseName().value());
     SerializedVaultKeyset serialized;
-    if (!LoadSerializedKeyset(key_file, &serialized))
+    if (!LoadSerializedKeyset(key_file, &serialized)) {
       return false;
+    }
     serialized.set_last_activity_timestamp(timestamp.ToInternalValue());
     return StoreSerializedKeyset(key_file, serialized);
   }
