@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -260,7 +260,6 @@ endif
 #  CXXFLAGS := -mahflag $(CXXFLAGS) # Prepend to the list
 #  CXXFLAGS := $(filter-out badflag,$(CXXFLAGS)) # Filter out a value
 # The same goes for CFLAGS.
-# TODO(wad) Moving to -fvisibility=internal by default would be nice too.
 COMMON_CFLAGS := -Wall -Werror -fstack-protector-strong -fno-strict-aliasing \
   -ggdb3 -Wa,--noexecstack -O1 -fvisibility=internal -Wformat=2
 CXXFLAGS += $(COMMON_CFLAGS)
