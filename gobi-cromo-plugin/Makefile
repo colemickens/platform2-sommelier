@@ -1,14 +1,18 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-PKG_CONFIG ?= pkg-config
-INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags dbus-c++-1 glib-2.0)
+BASE_VER = 85268
 
-CXXFLAGS += -fPIC -I$(INCLUDE_DIRS) -Wall -Werror -g -O0
-CFLAGS := $(CXXFLAGS)
-LDLIBS += -lbase -lGobiConnectionMgmt -lGobiImageMgmt -lglog -lpthread -lrt \
-          -ludev -lmetrics -lgobi3k
+PKG_CONFIG ?= pkg-config
+PC_DEPS = dbus-c++-1 glib-2.0 libchrome-$(BASE_VER)
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
+
+CPPFLAGS += $(PC_CFLAGS)
+CXXFLAGS += -fPIC -Wall -Werror -g -O0
+LDLIBS += -lGobiConnectionMgmt -lGobiImageMgmt -lglog -lpthread -lrt \
+          -ludev -lmetrics -lgobi3k $(PC_LIBS)
 
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 
@@ -55,9 +59,9 @@ $(GOBI_PLUGIN) : $(PLUGIN_OBJS)
 	$(CXX) -shared $^ $(LDFLAGS) $(LDLIBS) -o $@
 
 # Libraries that we normally get via the plugin host (cromo)
-%unittest : LDLIBS += -lgtest -lgmock -lcromo -lchromeos \
+%unittest : LDLIBS += -lgtest -lgmock -lcromo \
 	    $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1 \
-	      dbus-c++-1)
+	      dbus-c++-1 libchromeos-$(BASE_VER))
 
 # As few dependencies as possible
 gobi_handle_test : LDLIBS=-lGobiConnectionMgmt -lpthread -lrt
