@@ -68,6 +68,10 @@ void GobiGsmModem::RegistrationStateHandler() {
       case MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN:
         mm_modem_state = MM_MODEM_STATE_ENABLED; // ???
         break;
+      default:
+        LOG(ERROR) << "Unknown registration status: " << registration_status;
+        mm_modem_state = MM_MODEM_STATE_ENABLED; // ???
+        break;
     }
     if (mm_modem_state != MM_MODEM_STATE_REGISTERED ||
         mm_state() <= MM_MODEM_STATE_SEARCHING)
@@ -374,6 +378,9 @@ bool GobiGsmModem::CheckEnableOk(DBus::Error &error) {
     case gobi::kPinStatusPermanentlyBlocked:
       error_code = gobi::kPinPermanentlyBlocked;
       break;
+    default:
+      error.set(kPinError, "UIMGetPINStatus: Unkown status");
+      return false;
   }
   errname = QMIReturnCodeToMMError(error_code);
   if (errname == NULL)

@@ -196,12 +196,12 @@ int main(int argc, char *argv[])
     if (connect_modem() != 0) {
       log("Failure connecting to modem");
       return 4;
-    } else {
-      fd = open(qmi_device_path, O_RDWR);
-      if (fd < 0) {
-        fprintf(stderr, "Could not open device %s\n", qmi_device_path);
-        return 3;
-      }
+    }
+  } else {
+    fd = open(qmi_device_path, O_RDWR);
+    if (fd < 0) {
+      fprintf(stderr, "Could not open device %s\n", qmi_device_path);
+      return 3;
     }
   }
 
