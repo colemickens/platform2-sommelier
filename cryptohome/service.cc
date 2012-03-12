@@ -13,7 +13,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/platform_file.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/string_util.h>
 #include <base/time.h>
 #include <base/values.h>
