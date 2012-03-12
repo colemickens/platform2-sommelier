@@ -1153,7 +1153,7 @@ void Daemon::HandleResume() {
   file_tagger_.HandleResumeEvent();
   power_supply_.SetSuspendState(false);
   // Monitor reconfigure will set the backlight if needed.
-  monitor_reconfigure_->Run();
+  monitor_reconfigure_->Run(false);
 }
 
 void Daemon::RetrieveSessionState() {

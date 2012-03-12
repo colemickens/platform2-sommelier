@@ -13,6 +13,7 @@
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs_interface.h"
+#include "power_manager/monitor_reconfigure.h"
 
 namespace {
 
@@ -81,26 +82,6 @@ const char* PowerStateToString(power_manager::PowerState state) {
   }
 }
 
-bool SetDPMS(CARD16 level) {
-  Display* display = XOpenDisplay(NULL);
-  bool ret = true;
-  if (display != NULL) {
-    if (DPMSCapable(display)) {
-      CHECK(DPMSEnable(display));
-      CHECK(DPMSForceLevel(display, level));
-      XFlush(display);
-    } else {
-      LOG(WARNING) << "Can't get DPMS capable XDisplay";
-      ret = false;
-    }
-    XCloseDisplay(display);
-  } else {
-    LOG(WARNING) << "XOpenDisplay fails";
-    ret = false;
-  }
-  return ret;
-}
-
 }  // namespace
 
 namespace power_manager {
@@ -110,6 +91,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
     : backlight_(backlight),
       prefs_(prefs),
       light_sensor_(NULL),
+      monitor_reconfigure_(NULL),
       observer_(NULL),
       has_seen_als_event_(false),
       als_offset_percent_(0.0),
@@ -249,10 +231,10 @@ bool BacklightController::SetPowerState(PowerState new_state) {
         last_active_offset_percent_ + als_offset_percent_);
     *current_offset_percent_ = new_percent - als_offset_percent_;
 
-    // Force the DPMS to be ON if transitioning to ACTIVE state so
-    // the brightness written to the backlight can actually take effect.
-    if (!SetDPMS(DPMSModeOn))
-      LOG(WARNING) << "Turning DPMS ON failed.";
+    // When waking up from IDLE_OFF/SUSPENDED, turn back on the screen.
+    if (old_state == BACKLIGHT_IDLE_OFF || old_state == BACKLIGHT_SUSPENDED)
+      if (monitor_reconfigure_)
+        monitor_reconfigure_->SetScreenOn();
 
     // If returning from suspend, force the backlight to zero to cancel out any
     // kernel driver behavior that sets it to some other value.  This allows
@@ -582,10 +564,11 @@ gboolean BacklightController::SetBrightnessHard(int64 level,
   if (level == target_level)
     is_in_transition_ = false;
 
-  // Turn off screen if transitioning to zero.
-  if (level == 0 && target_level == 0 && state_ == BACKLIGHT_IDLE_OFF)
-    if (!SetDPMS(DPMSModeOff))
-      LOG(WARNING) << "Turning DPMS OFF failed.";
+  if (level == 0 && target_level == 0 &&
+      (state_ == BACKLIGHT_IDLE_OFF || state_ == BACKLIGHT_SUSPENDED))
+    if (monitor_reconfigure_)
+      monitor_reconfigure_->SetScreenOff();
+
   return false; // Return false so glib doesn't repeat.
 }
 

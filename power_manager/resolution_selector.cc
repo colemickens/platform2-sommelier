@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -47,8 +47,16 @@ bool ResolutionSelector::FindBestResolutions(
     Mode* screen_resolution) {
 
   // On desktop variants, it's legit to have no display at all.
-  if (lcd_modes.empty()) {
+  if (lcd_modes.empty() && external_modes.empty()) {
     LOG(INFO) << "We have no display at all";
+    return true;
+  }
+
+  // Only have external display.
+  if (lcd_modes.empty()) {
+    *external_resolution = *screen_resolution = external_modes[0];
+    lcd_resolution->name.clear();
+    LOG(INFO) << "We have no LCD display";
     return true;
   }
 

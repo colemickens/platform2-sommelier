@@ -18,6 +18,7 @@ namespace power_manager {
 class AmbientLightSensor;
 class BacklightInterface;
 class PowerPrefsInterface;
+class MonitorReconfigure;
 
 enum PowerState {
   // User is active.
@@ -87,6 +88,9 @@ class BacklightController : public BacklightInterfaceObserver {
   virtual ~BacklightController();
 
   void set_light_sensor(AmbientLightSensor* als) { light_sensor_ = als; }
+  void set_monitor_reconfigure(MonitorReconfigure* mr) {
+    monitor_reconfigure_ = mr;
+  }
   void set_observer(BacklightControllerObserver* observer) {
     observer_ = observer;
   }
@@ -214,6 +218,9 @@ class BacklightController : public BacklightInterfaceObserver {
 
   // Light sensor we need to enable/disable on power events.  Non-owned.
   AmbientLightSensor* light_sensor_;
+
+  // Use MonitorReconfigure to turn on/off the display.
+  MonitorReconfigure* monitor_reconfigure_;
 
   // Observer for changes to the brightness level.  Not owned by us.
   BacklightControllerObserver* observer_;
