@@ -889,6 +889,8 @@ TEST_F(ManagerTest, GetServiceVPN) {
   Error e;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
   args.SetString(flimflam::kProviderTypeProperty, flimflam::kProviderOpenVpn);
+  args.SetString(flimflam::kProviderHostProperty, "10.8.0.1");
+  args.SetString(flimflam::kProviderNameProperty, "vpn-name");
   ServiceRefPtr service = manager()->GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   EXPECT_TRUE(service);

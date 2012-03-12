@@ -4,11 +4,18 @@
 
 #include "shill/vpn_service.h"
 
-#include <base/logging.h>
+#include <algorithm>
 
+#include <base/logging.h>
+#include <base/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
+
+#include "shill/key_value_store.h"
 #include "shill/technology.h"
 #include "shill/vpn_driver.h"
 
+using base::StringPrintf;
+using std::replace_if;
 using std::string;
 
 namespace shill {
@@ -34,8 +41,33 @@ void VPNService::Disconnect(Error *error) {
 }
 
 string VPNService::GetStorageIdentifier() const {
-  NOTIMPLEMENTED();
-  return "";
+  return storage_id_;
+}
+
+// static
+string VPNService::CreateStorageIdentifier(const KeyValueStore &args,
+                                           Error *error) {
+  string host;
+  if (args.ContainsString(flimflam::kProviderHostProperty)) {
+    host = args.GetString(flimflam::kProviderHostProperty);
+  }
+  if (host.empty()) {
+    Error::PopulateAndLog(
+        error, Error::kInvalidProperty, "Missing VPN host.");
+    return "";
+  }
+  string name;
+  if (args.ContainsString(flimflam::kProviderNameProperty)) {
+    name = args.GetString(flimflam::kProviderNameProperty);
+  }
+  if (name.empty()) {
+    Error::PopulateAndLog(
+        error, Error::kNotSupported, "Missing VPN name.");
+    return "";
+  }
+  string id = StringPrintf("vpn_%s_%s", host.c_str(), name.c_str());
+  replace_if(id.begin(), id.end(), &Service::IllegalChar, '_');
+  return id;
 }
 
 string VPNService::GetDeviceRpcId(Error *error) {

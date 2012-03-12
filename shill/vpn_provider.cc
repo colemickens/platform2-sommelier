@@ -41,6 +41,11 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
     return NULL;
   }
 
+  string storage_id = VPNService::CreateStorageIdentifier(args, error);
+  if (storage_id.empty()) {
+    return NULL;
+  }
+
   const string &type = args.GetString(flimflam::kProviderTypeProperty);
   scoped_ptr<VPNDriver> driver;
   if (type == flimflam::kProviderOpenVpn) {
@@ -55,6 +60,7 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
 
   VPNServiceRefPtr service = new VPNService(
       control_interface_, dispatcher_, metrics_, manager_, driver.release());
+  service->set_storage_id(storage_id);
   services_.push_back(service);
   manager_->RegisterService(service);
   return service;

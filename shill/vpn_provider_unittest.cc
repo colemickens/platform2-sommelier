@@ -32,6 +32,9 @@ class VPNProviderTest : public testing::Test {
   virtual ~VPNProviderTest() {}
 
  protected:
+  static const char kHost[];
+  static const char kName[];
+
   NiceMockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
@@ -39,7 +42,10 @@ class VPNProviderTest : public testing::Test {
   VPNProvider provider_;
 };
 
-TEST_F(VPNProviderTest, GetServiceVPNNoType) {
+const char VPNProviderTest::kHost[] = "10.8.0.1";
+const char VPNProviderTest::kName[] = "vpn-name";
+
+TEST_F(VPNProviderTest, GetServiceNoType) {
   KeyValueStore args;
   Error e;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
@@ -48,26 +54,31 @@ TEST_F(VPNProviderTest, GetServiceVPNNoType) {
   EXPECT_FALSE(service);
 }
 
-TEST_F(VPNProviderTest, GetServiceVPNUnsupportedType) {
+TEST_F(VPNProviderTest, GetServiceUnsupportedType) {
   KeyValueStore args;
   Error e;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
   args.SetString(flimflam::kProviderTypeProperty, "unknown-vpn-type");
+  args.SetString(flimflam::kProviderHostProperty, kHost);
+  args.SetString(flimflam::kProviderNameProperty, kName);
   VPNServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_FALSE(service);
 }
 
-TEST_F(VPNProviderTest, GetServiceVPN) {
+TEST_F(VPNProviderTest, GetService) {
   KeyValueStore args;
   Error e;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
   args.SetString(flimflam::kProviderTypeProperty, flimflam::kProviderOpenVpn);
+  args.SetString(flimflam::kProviderHostProperty, kHost);
+  args.SetString(flimflam::kProviderNameProperty, kName);
   EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
   EXPECT_CALL(manager_, RegisterService(_));
   VPNServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
-  EXPECT_TRUE(service);
+  ASSERT_TRUE(service);
+  EXPECT_EQ("vpn_10_8_0_1_vpn_name", service->GetStorageIdentifier());
 }
 
 TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {

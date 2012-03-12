@@ -12,6 +12,7 @@
 
 namespace shill {
 
+class KeyValueStore;
 class VPNDriver;
 
 class VPNService : public Service {
@@ -30,11 +31,16 @@ class VPNService : public Service {
 
   VPNDriver *driver() const { return driver_.get(); }
 
+  static std::string CreateStorageIdentifier(const KeyValueStore &args,
+                                             Error *error);
+  void set_storage_id(const std::string &id) { storage_id_ = id; }
+
  private:
   FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
 
   virtual std::string GetDeviceRpcId(Error *error);
 
+  std::string storage_id_;
   scoped_ptr<VPNDriver> driver_;
 
   DISALLOW_COPY_AND_ASSIGN(VPNService);

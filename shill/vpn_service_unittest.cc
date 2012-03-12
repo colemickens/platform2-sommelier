@@ -4,6 +4,7 @@
 
 #include "shill/vpn_service.h"
 
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
@@ -20,8 +21,7 @@ class VPNServiceTest : public testing::Test {
  public:
   VPNServiceTest()
       : driver_(new MockVPNDriver()),
-        service_(new VPNService(&control_, NULL, &metrics_, NULL,
-                                driver_)) {}
+        service_(new VPNService(&control_, NULL, &metrics_, NULL, driver_)) {}
 
   virtual ~VPNServiceTest() {}
 
@@ -46,8 +46,36 @@ TEST_F(VPNServiceTest, Disconnect) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
+TEST_F(VPNServiceTest, CreateStorageIdentifierNoHost) {
+  KeyValueStore args;
+  Error error;
+  args.SetString(flimflam::kProviderNameProperty, "vpn-name");
+  EXPECT_EQ("", VPNService::CreateStorageIdentifier(args, &error));
+  EXPECT_EQ(Error::kInvalidProperty, error.type());
+}
+
+TEST_F(VPNServiceTest, CreateStorageIdentifierNoName) {
+  KeyValueStore args;
+  Error error;
+  args.SetString(flimflam::kProviderHostProperty, "10.8.0.1");
+  EXPECT_EQ("", VPNService::CreateStorageIdentifier(args, &error));
+  EXPECT_EQ(Error::kNotSupported, error.type());
+}
+
+TEST_F(VPNServiceTest, CreateStorageIdentifier) {
+  KeyValueStore args;
+  Error error;
+  args.SetString(flimflam::kProviderNameProperty, "vpn-name");
+  args.SetString(flimflam::kProviderHostProperty, "10.8.0.1");
+  EXPECT_EQ("vpn_10_8_0_1_vpn_name",
+            VPNService::CreateStorageIdentifier(args, &error));
+  EXPECT_TRUE(error.IsSuccess());
+}
+
 TEST_F(VPNServiceTest, GetStorageIdentifier) {
   EXPECT_EQ("", service_->GetStorageIdentifier());
+  service_->set_storage_id("foo");
+  EXPECT_EQ("foo", service_->GetStorageIdentifier());
 }
 
 TEST_F(VPNServiceTest, GetDeviceRpcId) {
