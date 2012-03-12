@@ -49,6 +49,10 @@ extern const char kIncognitoUser[];
 // Directories that we intend to track (make pass-through in cryptohome vault)
 extern const char kCacheDir[];
 extern const char kDownloadsDir[];
+extern const char kGCacheDir[];
+extern const char kGCacheVersionDir[];  // subdir of kGCacheDir
+extern const char kGCacheBlobsDir[];    // subdir of kGCacheVersionDir
+extern const char kGCacheMetaDir[];     // subdir of kGCacheVersionDir
 // Name of the vault directory.
 extern const char kVaultDir[];
 // File system type for ephemeral mounts.

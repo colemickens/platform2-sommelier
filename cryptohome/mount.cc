@@ -49,16 +49,13 @@ const char kIncognitoUser[] = "incognito";
 const char kEncryptedFilePrefix[] = "ECRYPTFS_FNEK_ENCRYPTED.";
 // Tracked directories - special sub-directories of the cryptohome
 // vault, that are visible even if not mounted. Contents is still encrypted.
+const char kVaultDir[] = "vault";
 const char kCacheDir[] = "Cache";
 const char kDownloadsDir[] = "Downloads";
-const struct TrackedDir {
-  const char* name;
-  bool need_migration;
-} kTrackedDirs[] = {
-  {kCacheDir, false},
-  {kDownloadsDir, true},
-};
-const char kVaultDir[] = "vault";
+const char kGCacheDir[] = "GCache";
+const char kGCacheVersionDir[] = "v1";
+const char kGCacheBlobsDir[] = "blobs";
+const char kGCacheMetaDir[] = "meta";
 const char kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
 const char kEphemeralMountPerms[] = "mode=0700";
@@ -680,11 +677,25 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
     return false;
   }
 
+  const struct TrackedDir {
+    string name;
+    bool need_migration;
+  } kTrackedDirs[] = {
+    {kCacheDir, false},
+    {kDownloadsDir, true},
+    {FilePath(kGCacheDir).value(), false},
+    {FilePath(kGCacheDir).Append(kGCacheVersionDir).value(), false},
+    {FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheBlobsDir)
+         .value(), false},
+    {FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheMetaDir)
+         .value(), false},
+  };
+
   // The call is allowed to partially fail if directory creation fails, but we
   // want to have as many of the specified tracked directories created as
   // possible.
   bool result = true;
-  for (size_t index = 0; index < arraysize(kTrackedDirs); ++index) {
+  for (size_t index = 0; index < ARRAYSIZE_UNSAFE(kTrackedDirs); ++index) {
     const TrackedDir& subdir = kTrackedDirs[index];
     const string subdir_name = subdir.name;
     const FilePath passthrough_dir = dest.Append(subdir_name);
@@ -717,7 +728,8 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
 
     // Create pass-through directory.
     if (!file_util::DirectoryExists(passthrough_dir)) {
-      LOG(INFO) << "create-tracked: " << passthrough_dir.value();
+      LOG(INFO) << "Creating pass-through directories "
+                << passthrough_dir.value();
       file_util::CreateDirectory(passthrough_dir);
       if (set_vault_ownership_) {
         if (!platform_->SetOwnership(passthrough_dir.value(),

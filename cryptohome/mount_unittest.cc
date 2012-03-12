@@ -368,8 +368,14 @@ TEST_F(MountTest, MountCryptohome) {
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
   FilePath vault_path = user_path.Append(kVaultDir);
   FilePath vault_user_path = vault_path.Append(kUserDir);
-  FilePath subdir_path = vault_user_path.Append(kCacheDir);
-  ASSERT_TRUE(file_util::PathExists(subdir_path));
+  ASSERT_TRUE(file_util::PathExists(vault_user_path.Append(kCacheDir)));
+  ASSERT_TRUE(file_util::PathExists(vault_user_path.Append(kDownloadsDir)));
+  ASSERT_TRUE(file_util::PathExists(
+      vault_user_path.Append(kGCacheDir)
+          .Append(kGCacheVersionDir).Append(kGCacheBlobsDir)));
+  ASSERT_TRUE(file_util::PathExists(
+      vault_user_path.Append(kGCacheDir)
+          .Append(kGCacheVersionDir).Append(kGCacheMetaDir)));
 }
 
 TEST_F(MountTest, MountCryptohomeNoChange) {
