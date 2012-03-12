@@ -10,6 +10,7 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/string_util.h>
+#include <base/stringprintf.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>
 #include <policy/libpolicy.h>

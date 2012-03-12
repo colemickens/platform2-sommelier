@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
 #include <base/string_util.h>
+#include <base/stringprintf.h>
 #include <base/values.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>

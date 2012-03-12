@@ -21,6 +21,7 @@
 #include <base/file_util.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
+#include <base/stringprintf.h>
 #include <base/time.h>
 #include <chromeos/utility.h>
 
