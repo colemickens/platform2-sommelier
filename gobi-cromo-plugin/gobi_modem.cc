@@ -1048,7 +1048,7 @@ void GobiModem::ApiConnect(DBus::Error& error) {
 
 
 ULONG GobiModem::ApiDisconnect(void) {
-  ULONG rc;
+  ULONG rc = 0;
   pthread_mutex_lock(&modem_mutex_.mutex_);
   if (connected_modem_ == this) {
     LOG(INFO) << "Disconnecting from QCWWAN.  this_=0x" << this;
@@ -1609,7 +1609,7 @@ bool GobiModem::is_connecting_or_connected() {
 //
 // Return 0 on success, gobi error code otherwise
 ULONG GobiModem::ForceDisconnect() {
-  ULONG rc;
+  ULONG rc = 0;
   if (session_id_) {
     LOG(INFO) << "ForceDisconnect: Stopping data session";
     rc = StopDataSession(session_id_);

@@ -690,6 +690,7 @@ void GobiCdmaModem::SendActivationStateChanged(uint32_t mm_activation_error) {
   } catch (const DBus::Error &e) {
     LOG(ERROR);
     SendActivationStateFailed();
+    return;
   }
 
   if (mm_activation_error == MM_MODEM_CDMA_ACTIVATION_ERROR_TIMED_OUT &&
