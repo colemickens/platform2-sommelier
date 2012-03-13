@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -61,8 +61,11 @@ void XSync::SetEventHandler(GdkFilterFunc func, gpointer data) {
 
 // static
 int64 XSync::ValueToInt64(XSyncValue value) {
-  return (static_cast<int64>(XSyncValueHigh32(value)) << 32 |
-          static_cast<int64>(XSyncValueLow32(value)));
+  // In the current X system, the idle time is returned as a 32-bit signed
+  // value, but the sign bit is not extended to the higher high 32-bit word int
+  // XSyncValue.  It must instead be interpreted as an int32, to handle the sign
+  // correctly.
+  return static_cast<int32>(XSyncValueLow32(value));
 }
 
 // static
