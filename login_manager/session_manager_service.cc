@@ -23,13 +23,15 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/command_line.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop_proxy.h>
-#include <base/stl_util-inl.h>
+#include <base/stl_util.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/error_constants.h>
@@ -211,6 +213,15 @@ const char kMachineInfoFile[] = "/tmp/machine-info";
 
 }  // namespace
 
+void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
+  session_manager_service_->message_loop_->PostTask(
+      FROM_HERE,
+      base::Bind(&HandleChildExit,
+                 pid,
+                 status,
+                 reinterpret_cast<void*>(session_manager_service_)));
+}
+
 SessionManagerService::SessionManagerService(
     std::vector<ChildJobInterface*> child_jobs,
     SystemUtils* utils)
@@ -220,7 +231,7 @@ SessionManagerService::SessionManagerService(
       session_manager_(NULL),
       main_loop_(g_main_loop_new(NULL, FALSE)),
       dont_use_directly_(new MessageLoopForUI),
-      message_loop_(base::MessageLoopProxy::CreateForCurrentThread()),
+      message_loop_(base::MessageLoopProxy::current()),
       system_(utils),
       gen_(new KeyGenerator(utils)),
       upstart_signal_emitter_(new UpstartSignalEmitter),
@@ -348,7 +359,7 @@ bool SessionManagerService::Reset() {
   }
   dont_use_directly_.reset(NULL);
   dont_use_directly_.reset(new MessageLoopForUI);
-  message_loop_ = base::MessageLoopProxy::CreateForCurrentThread();
+  message_loop_ = base::MessageLoopProxy::current();
   return true;
 }
 
@@ -415,7 +426,7 @@ bool SessionManagerService::Shutdown() {
   }
 
   device_policy_->PersistPolicySync();
-  message_loop_->PostTask(FROM_HERE, new MessageLoop::QuitTask());
+  message_loop_->PostTask(FROM_HERE, MessageLoop::QuitClosure());
   LOG(INFO) << "SessionManagerService quitting run loop";
   return true;
 }
@@ -472,7 +483,7 @@ void SessionManagerService::AllowGracefulExit() {
     LOG(INFO) << "SessionManagerService set to exit on child done";
     message_loop_->PostTask(
         FROM_HERE,
-        NewRunnableMethod(this, &SessionManagerService::Shutdown));
+        base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown), this));
   }
 }
 

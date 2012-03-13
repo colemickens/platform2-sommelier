@@ -12,9 +12,9 @@
 #include <base/basictypes.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
-#include <base/memory/scoped_temp_dir.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
+#include <base/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -116,7 +116,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     metrics_.reset(new MockMetrics);
     mitigator_.reset(new MockMitigator);
     scoped_refptr<base::MessageLoopProxy> message_loop(
-        base::MessageLoopProxy::CreateForCurrentThread());
+        base::MessageLoopProxy::current());
     service_ = new DevicePolicyService(serial_recovery_flag_file_,
                                        store_, key_,
                                        message_loop,

@@ -105,7 +105,7 @@ int main(int argc, char* argv[]) {
 
   SystemUtils system;
   // Parse jobs to be run with its args.
-  vector<string> loose_args = cl->args();
+  vector<string> loose_args = cl->GetArgs();
   vector<vector<string> > arg_lists =
       SessionManagerService::GetArgLists(loose_args);
   vector<ChildJobInterface*> child_jobs;

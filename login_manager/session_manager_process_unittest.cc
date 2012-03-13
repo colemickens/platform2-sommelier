@@ -11,7 +11,7 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/scoped_temp_dir.h>
+#include <base/scoped_temp_dir.h>
 #include <base/string_util.h>
 
 #include "login_manager/child_job.h"

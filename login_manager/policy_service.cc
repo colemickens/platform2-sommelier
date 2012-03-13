@@ -6,11 +6,13 @@
 
 #include <string>
 
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
-#include <base/stl_util-inl.h>
+#include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
-#include <base/task.h>
 
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/nss_util.h"
@@ -111,23 +113,20 @@ bool PolicyService::DoInitialize(bool* policy_success) {
 void PolicyService::PersistKey() {
   main_loop_->PostTask(
       FROM_HERE,
-      NewRunnableMethod(this, &PolicyService::PersistKeyOnLoop));
+      base::Bind(&PolicyService::PersistKeyOnLoop, this));
 }
 
 void PolicyService::PersistPolicy() {
   main_loop_->PostTask(
       FROM_HERE,
-      NewRunnableMethod(this,
-                        &PolicyService::PersistPolicyOnLoop,
-                        static_cast<Completion*>(NULL)));
+      base::Bind(&PolicyService::PersistPolicyOnLoop, this,
+                 static_cast<Completion*>(NULL)));
 }
 
 void PolicyService::PersistPolicyWithCompletion(Completion* completion) {
   main_loop_->PostTask(
       FROM_HERE,
-      NewRunnableMethod(this,
-                        &PolicyService::PersistPolicyOnLoop,
-                        completion));
+      base::Bind(&PolicyService::PersistPolicyOnLoop, this, completion));
 }
 
 bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,

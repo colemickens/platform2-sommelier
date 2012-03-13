@@ -43,8 +43,8 @@ int main(int argc, char* argv[]) {
                        logging::APPEND_TO_OLD_LOG_FILE,
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
 
-  if (cl->args().size() != 1) {
+  if (cl->GetArgs().size() != 1) {
     LOG(FATAL) << "Usage: keygen /path/to/output_file";
   }
-  return login_manager::keygen::generate(cl->args()[0]);
+  return login_manager::keygen::generate(cl->GetArgs()[0]);
 }

@@ -64,7 +64,7 @@ class PolicyServiceTest : public testing::Test {
     key_ = new StrictMock<MockOwnerKey>;
     store_ = new StrictMock<MockPolicyStore>;
     scoped_refptr<base::MessageLoopProxy> message_loop(
-        base::MessageLoopProxy::CreateForCurrentThread());
+        base::MessageLoopProxy::current());
     service_ = new PolicyService(store_, key_, message_loop);
     service_->set_delegate(&delegate_);
   }
