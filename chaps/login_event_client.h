@@ -29,7 +29,9 @@ class LoginEventClient {
   // Sends a login event. The Chaps daemon will insert a token for the user.
   //  path - The path to the user's token directory.
   //  auth_data - Authorization data to unlock the token.
-  void FireLoginEvent(const std::string& path, const std::string& auth_data);
+  void FireLoginEvent(const std::string& path,
+                      const uint8_t* auth_data,
+                      size_t auth_data_length);
 
   // Sends a logout event. The Chaps daemon will remove the user's token.
   //  path - The path to the user's token directory.
@@ -41,8 +43,10 @@ class LoginEventClient {
   //  old_auth_data - Authorization data to unlock the token as it is.
   //  new_auth_data - The new authorization data.
   void FireChangeAuthDataEvent(const std::string& path,
-                               const std::string& old_auth_data,
-                               const std::string& new_auth_data);
+                               const uint8_t* old_auth_data,
+                               size_t old_auth_data_length,
+                               const uint8_t* new_auth_data,
+                               size_t new_auth_data_length);
  private:
   ChapsProxyImpl* proxy_;
 
