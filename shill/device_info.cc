@@ -265,9 +265,9 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
         // Tunnel devices are managed by the VPN code.
         VLOG(2) << "Tunnel link " << link_name << " at index " << dev_index
                 << " -- notifying VPNProvider.";
-        if (manager_->vpn_provider()->OnDeviceInfoAvailable(link_name,
+        if (!manager_->vpn_provider()->OnDeviceInfoAvailable(link_name,
                                                              dev_index)) {
-          // VPN does not know anything about this tunnel, it is probably
+          // If VPN does not know anything about this tunnel, it is probably
           // left over from a previous instance and should not exist.
           VLOG(2) << "Tunnel link is unused.  Deleting.";
           DeleteInterface(dev_index);
