@@ -65,12 +65,7 @@ $(TEST_BIN): $(TEST_OBJS)
 	$(call cxx_binary, -lgtest -lgmock)
 clean: CLEAN($(TEST_BIN))
 
-ROOT_FILES = use_touchui debug_with_asan no_wm
-$(ROOT_FILES):
-	touch $(ROOT_FILES)
-clean: CLEAN($(ROOT_FILES))
-
 login_manager: \
-  CXX_BINARY($(KEYGEN_BIN)) CXX_BINARY($(SESSION_BIN)) $(ROOT_FILES)
+  CXX_BINARY($(KEYGEN_BIN)) CXX_BINARY($(SESSION_BIN))
 
 tests: CXX_BINARY($(KEYGEN_BIN)) TEST($(TEST_BIN))
