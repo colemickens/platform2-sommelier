@@ -627,6 +627,40 @@ cmd_shill_manager() {
   fi
 }
 
+# TODO(dkrahn): Remove once this is the default. crosbug.com/22543
+cmd_chaps() {
+  local flag_file="/home/chronos/.enable_chaps"
+  local enabled=0
+  local changed=0
+  if [ -r ${flag_file} ]; then
+    enabled=1
+  fi
+  if [ -z "$1" ]; then
+    if [ ${enabled} -eq 1 ]; then
+      echo "Currently enabled"
+    else
+      echo "Currently disabled"
+    fi
+    return
+  fi
+  if [ "$1" = "on" ]; then
+    if [ $enabled -eq 0 ]; then
+      changed=1;
+    fi
+    touch "${flag_file}"
+  else
+    if [ $enabled -eq 1 ]; then
+      changed=1
+    fi
+    rm -f "${flag_file}"
+  fi
+  if [ $changed -eq 1 ]; then
+    echo "You must reboot for this to take effect."
+  else
+    echo "No change."
+  fi
+}
+
 cmd_route() {
   local option="dict:string:variant:"
 
