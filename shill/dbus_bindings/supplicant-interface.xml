@@ -50,6 +50,7 @@
     <property name="BSSs" type="ao" access="read"/>
     <property name="Networks" type="ao" access="read"/>
     <property name="FastReauth" type="b" access="readwrite"/>
+    <property name="ScanInterval" type="i" access="readwrite"/>
     <signal name="ScanDone">
       <arg name="success" type="b"/>
     </signal>

@@ -169,6 +169,8 @@ class WiFi : public Device {
   static const char kManagerErrorUnsupportedServiceMode[];
   static const time_t kMaxBSSResumeAgeSeconds;
   static const char kInterfaceStateUnknown[];
+  // Delay between scans when supplicant finds "No suitable network".
+  static const time_t kRescanIntervalSeconds;
 
   std::string CreateBgscanConfigString();
   std::string GetBgscanMethod(Error */* error */) { return bgscan_method_; }

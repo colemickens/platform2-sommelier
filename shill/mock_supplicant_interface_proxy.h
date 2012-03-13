@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -32,6 +32,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
                void(const std::map<std::string, ::DBus::Variant> &args));
   MOCK_METHOD1(SelectNetwork, void(const ::DBus::Path &network));
   MOCK_METHOD1(SetFastReauth, void(bool enabled));
+  MOCK_METHOD1(SetScanInterval, void(int32_t seconds));
 
  private:
   // wifi_ is not used explicitly but its presence here tests that WiFi::Stop

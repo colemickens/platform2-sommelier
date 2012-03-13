@@ -75,6 +75,7 @@ const char WiFi::kManagerErrorUnsupportedServiceMode[] =
 // across a suspend/resume.
 const time_t WiFi::kMaxBSSResumeAgeSeconds = 10;
 const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
+const time_t WiFi::kRescanIntervalSeconds = 1;
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -178,7 +179,15 @@ void WiFi::Start() {
     // crosbug.com/25630
     supplicant_interface_proxy_->SetFastReauth(false);
   } catch (const DBus::Error e) {  // NOLINT
-    LOG(INFO) << "Failed to disable fast_reauth. "
+    LOG(INFO) << "Failed to disable fast_reauth."
+              << "May be running an older version of wpa_supplicant.";
+  }
+
+  try {
+    // Helps with passing WiFiRomaing.001SSIDSwitchBack.
+    supplicant_interface_proxy_->SetScanInterval(kRescanIntervalSeconds);
+  } catch (const DBus::Error e) {  // NOLINT
+    LOG(INFO) << "Failed to set scan_interval. "
               << "May be running an older version of wpa_supplicant.";
   }
 

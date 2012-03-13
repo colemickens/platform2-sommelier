@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,6 +29,7 @@ class SupplicantInterfaceProxyInterface {
       const std::map<std::string, ::DBus::Variant> &args) = 0;
   virtual void SelectNetwork(const ::DBus::Path &network) = 0;
   virtual void SetFastReauth(bool enabled) = 0;
+  virtual void SetScanInterval(int seconds) = 0;
 };
 
 }  // namespace shill

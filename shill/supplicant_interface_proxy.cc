@@ -64,6 +64,10 @@ void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
   return proxy_.FastReauth(enabled);
 }
 
+void SupplicantInterfaceProxy::SetScanInterval(int32 scan_interval) {
+  return proxy_.ScanInterval(scan_interval);
+}
+
 // definitions for private class SupplicantInterfaceProxy::Proxy
 
 SupplicantInterfaceProxy::Proxy::Proxy(

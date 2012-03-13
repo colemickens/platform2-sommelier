@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -38,6 +38,7 @@ class SupplicantInterfaceProxy
       const std::map<std::string, ::DBus::Variant> &args);
   virtual void SelectNetwork(const ::DBus::Path &network);
   virtual void SetFastReauth(bool enabled);
+  virtual void SetScanInterval(int seconds);
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1::Interface_proxy,
