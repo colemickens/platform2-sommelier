@@ -107,13 +107,7 @@ class Daemon : public XIdleObserver,
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric);
-  FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetric);
-  FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetricInterval);
-  FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetricNotDisconnected);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingWhenChargeStartsMetric);
-  FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetric);
-  FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval);
-  FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected);
   FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
   FRIEND_TEST(DaemonTest, GenerateLengthOfSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateLengthOfSessionMetricOverflow);
@@ -239,24 +233,12 @@ class Daemon : public XIdleObserver,
   bool GenerateBatteryDischargeRateMetric(const PowerStatus& info,
                                           time_t now);
 
-  // Generates a remaining battery charge UMA metric sample. Returns
-  // true if a sample was sent to UMA, false otherwise.
-  bool GenerateBatteryRemainingChargeMetric(const PowerStatus& info,
-                                            time_t now);
-
   // Generates a remaining battery charge when charge starts UMA metric sample
   // if the current state is correct. Returns true if a sample was sent to UMA,
   // false otherwise.
   void GenerateBatteryRemainingWhenChargeStartsMetric(
       const PluggedState& plugged_state,
       const PowerStatus& info);
-
-  // Generates the battery's remaining time to empty UMA metric
-  // sample. Returns true if a sample was sent to UMA, false
-  // otherwise.
-  bool GenerateBatteryTimeToEmptyMetric(const PowerStatus& info,
-                                        time_t now);
-
 
   // Calls all of the metric generation functions that need to be called at the
   // end of a session.
@@ -373,13 +355,6 @@ class Daemon : public XIdleObserver,
 
   // Timestamp the last generated battery discharge rate metric.
   time_t battery_discharge_rate_metric_last_;
-
-  // Timestamp the last generated remaining battery charge metric.
-  time_t battery_remaining_charge_metric_last_;
-
-  // Timestamp the last generated battery's remaining time to empty
-  // metric.
-  time_t battery_time_to_empty_metric_last_;
 
   // Timestamp of the last time power button is down.
   base::TimeTicks last_power_button_down_timestamp_;

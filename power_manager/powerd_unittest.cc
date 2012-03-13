@@ -61,8 +61,6 @@ class DaemonTest : public Test {
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor.
     EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
-    EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
-    EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
     EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(kDefaultBrightnessLevel),
                               Return(true)));
@@ -152,25 +150,9 @@ class DaemonTest : public Test {
 
   // Adds a metrics library mock expectation for the remaining battery
   // charge metric with the given |sample|.
-  void ExpectBatteryRemainingChargeMetric(int sample) {
-    ExpectEnumMetric(kMetricBatteryRemainingChargeName, sample,
-                     kMetricBatteryRemainingChargeMax);
-  }
-
-  // Adds a metrics library mock expectation for the remaining battery
-  // charge metric with the given |sample|.
   void ExpectBatteryRemainingWhenChargeStartsMetric(int sample) {
     ExpectEnumMetric(kMetricBatteryRemainingWhenChargeStartsName, sample,
                      kMetricBatteryRemainingWhenChargeStartsMax);
-  }
-
-  // Adds a metrics library mock expectation for the battery's
-  // remaining to empty metric with the given |sample|.
-  void ExpectBatteryTimeToEmptyMetric(int sample) {
-    ExpectMetric(kMetricBatteryTimeToEmptyName, sample,
-                 kMetricBatteryTimeToEmptyMin,
-                 kMetricBatteryTimeToEmptyMax,
-                 kMetricBatteryTimeToEmptyBuckets);
   }
 
   // Adds a metrics library mock expectation for the remaining battery at end of
@@ -311,56 +293,6 @@ TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive) {
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
-TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetric) {
-  daemon_.plugged_state_ = kPowerDisconnected;
-  status_.battery_percentage = 10.4;
-  ExpectBatteryRemainingChargeMetric(10);
-  EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, kMetricBatteryRemainingChargeInterval));
-  EXPECT_EQ(kMetricBatteryRemainingChargeInterval,
-            daemon_.battery_remaining_charge_metric_last_);
-
-  status_.battery_percentage = 11.6;
-  ExpectBatteryRemainingChargeMetric(12);
-  EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, kMetricBatteryRemainingChargeInterval - 1));
-  EXPECT_EQ(kMetricBatteryRemainingChargeInterval - 1,
-            daemon_.battery_remaining_charge_metric_last_);
-
-  status_.battery_percentage = 14.5;
-  ExpectBatteryRemainingChargeMetric(15);
-  EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, 2 * kMetricBatteryRemainingChargeInterval));
-  EXPECT_EQ(2 * kMetricBatteryRemainingChargeInterval,
-            daemon_.battery_remaining_charge_metric_last_);
-}
-
-TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricInterval) {
-  daemon_.plugged_state_ = kPowerDisconnected;
-  status_.battery_percentage = 13.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(status_,
-                                                            /* now */ 0));
-  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
-
-  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, kMetricBatteryRemainingChargeInterval - 1));
-  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
-}
-
-TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricNotDisconnected) {
-  EXPECT_EQ(kPowerUnknown, daemon_.plugged_state_);
-
-  status_.battery_percentage = 20.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, kMetricBatteryRemainingChargeInterval));
-  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
-
-  daemon_.plugged_state_ = kPowerConnected;
-  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, 2 * kMetricBatteryRemainingChargeInterval));
-  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
-}
-
 TEST_F(DaemonTest, GenerateBatteryRemainingWhenChargeStartsMetric) {
   const double battery_percentages[] = { 10.1, 10.7,
                                          20.4, 21.6,
@@ -397,29 +329,6 @@ TEST_F(DaemonTest, GenerateBatteryRemainingWhenChargeStartsMetric) {
   }
 }
 
-TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetric) {
-  daemon_.plugged_state_ = kPowerDisconnected;
-  status_.battery_time_to_empty = 90;
-  ExpectBatteryTimeToEmptyMetric(2);
-  EXPECT_TRUE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, kMetricBatteryTimeToEmptyInterval));
-  EXPECT_EQ(kMetricBatteryTimeToEmptyInterval,
-            daemon_.battery_time_to_empty_metric_last_);
-
-  status_.battery_time_to_empty = 89;
-  ExpectBatteryTimeToEmptyMetric(1);
-  EXPECT_TRUE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, kMetricBatteryTimeToEmptyInterval - 1));
-  EXPECT_EQ(kMetricBatteryTimeToEmptyInterval - 1,
-            daemon_.battery_time_to_empty_metric_last_);
-
-  status_.battery_time_to_empty = 151;
-  ExpectBatteryTimeToEmptyMetric(3);
-  EXPECT_TRUE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, 2 * kMetricBatteryTimeToEmptyInterval));
-  EXPECT_EQ(2 * kMetricBatteryTimeToEmptyInterval,
-            daemon_.battery_time_to_empty_metric_last_);
-}
 
 TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
   static const uint adjustment_counts[] = {0, 100, 500, 1000};
@@ -473,30 +382,6 @@ TEST_F(DaemonTest, GenerateLengthOfSessionMetricUnderflow) {
   base::Time start = now + base::TimeDelta::FromSeconds(kSessionLength);
 
   EXPECT_FALSE(daemon_.GenerateLengthOfSessionMetric(now, start));
-}
-
-TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval) {
-  daemon_.plugged_state_ = kPowerDisconnected;
-  status_.battery_time_to_empty = 100;
-  EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(status_, /* now */ 0));
-  EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
-  EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, kMetricBatteryTimeToEmptyInterval - 1));
-  EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
-}
-
-TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected) {
-  EXPECT_EQ(kPowerUnknown, daemon_.plugged_state_);
-
-  status_.battery_time_to_empty = 120;
-  EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, kMetricBatteryTimeToEmptyInterval));
-  EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
-
-  daemon_.plugged_state_ = kPowerConnected;
-  EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, 2 * kMetricBatteryTimeToEmptyInterval));
-  EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
@@ -625,12 +510,8 @@ TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
   status_.battery_percentage = 32.5;
   status_.battery_time_to_empty = 10 * 60;
   ExpectBatteryDischargeRateMetric(4900);
-  ExpectBatteryRemainingChargeMetric(33);
-  ExpectBatteryTimeToEmptyMetric(10);
   daemon_.GenerateMetricsOnPowerEvent(status_);
   EXPECT_LT(0, daemon_.battery_discharge_rate_metric_last_);
-  EXPECT_LT(0, daemon_.battery_remaining_charge_metric_last_);
-  EXPECT_LT(0, daemon_.battery_time_to_empty_metric_last_);
 }
 
 TEST_F(DaemonTest, SendEnumMetric) {

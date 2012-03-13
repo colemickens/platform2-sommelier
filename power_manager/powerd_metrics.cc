@@ -57,8 +57,6 @@ void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
 void Daemon::GenerateMetricsOnPowerEvent(const PowerStatus& info) {
   time_t now = time(NULL);
   GenerateBatteryDischargeRateMetric(info, now);
-  GenerateBatteryRemainingChargeMetric(info, now);
-  GenerateBatteryTimeToEmptyMetric(info, now);
 }
 
 gboolean Daemon::GenerateBacklightLevelMetric() {
@@ -98,27 +96,6 @@ bool Daemon::GenerateBatteryDischargeRateMetric(const PowerStatus& info,
   return true;
 }
 
-bool Daemon::GenerateBatteryRemainingChargeMetric(const PowerStatus& info,
-                                                  time_t now) {
-  // The remaining battery charge metric is relevant and collected
-  // only when running on battery.
-  if (plugged_state_ != kPowerDisconnected)
-    return false;
-
-  // Ensures that the metric is not generated too frequently.
-  if (!CheckMetricInterval(now, battery_remaining_charge_metric_last_,
-                           kMetricBatteryRemainingChargeInterval))
-    return false;
-
-  int charge = static_cast<int>(round(info.battery_percentage));
-  if (!SendEnumMetric(kMetricBatteryRemainingChargeName, charge,
-                      kMetricBatteryRemainingChargeMax))
-    return false;
-
-  battery_remaining_charge_metric_last_ = now;
-  return true;
-}
-
 void Daemon::GenerateBatteryRemainingWhenChargeStartsMetric(
     const PluggedState& plugged_state,
     const PowerStatus& power_status) {
@@ -133,31 +110,6 @@ void Daemon::GenerateBatteryRemainingWhenChargeStartsMetric(
                                 charge,
                                 kMetricBatteryRemainingWhenChargeStartsMax))
       << "Unable to send battery remaining when charge starts metric!";
-}
-
-bool Daemon::GenerateBatteryTimeToEmptyMetric(const PowerStatus& info,
-                                              time_t now) {
-  // The battery's remaining time to empty metric is relevant and
-  // collected only when running on battery.
-  if (plugged_state_ != kPowerDisconnected)
-    return false;
-
-  // Ensures that the metric is not generated too frequently.
-  if (!CheckMetricInterval(now, battery_time_to_empty_metric_last_,
-                           kMetricBatteryTimeToEmptyInterval))
-    return false;
-
-  // Converts the time to empty from seconds to minutes by rounding to
-  // the nearest whole minute.
-  int time = (info.battery_time_to_empty + 30) / 60;
-  if (!SendMetric(kMetricBatteryTimeToEmptyName, time,
-                  kMetricBatteryTimeToEmptyMin,
-                  kMetricBatteryTimeToEmptyMax,
-                  kMetricBatteryTimeToEmptyBuckets))
-    return false;
-
-  battery_time_to_empty_metric_last_ = now;
-  return true;
 }
 
 void Daemon::GenerateEndOfSessionMetrics(const PowerStatus& info,

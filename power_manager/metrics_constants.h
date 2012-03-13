@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,16 +30,8 @@ extern const int kMetricBatteryDischargeRateMin;
 extern const int kMetricBatteryDischargeRateMax;
 extern const int kMetricBatteryDischargeRateBuckets;
 extern const time_t kMetricBatteryDischargeRateInterval;
-extern const char kMetricBatteryRemainingChargeName[];
-extern const int kMetricBatteryRemainingChargeMax;
-extern const time_t kMetricBatteryRemainingChargeInterval;
 extern const char kMetricBatteryRemainingWhenChargeStartsName[];
 extern const int kMetricBatteryRemainingWhenChargeStartsMax;
-extern const char kMetricBatteryTimeToEmptyName[];
-extern const int kMetricBatteryTimeToEmptyMin;
-extern const int kMetricBatteryTimeToEmptyMax;
-extern const int kMetricBatteryTimeToEmptyBuckets;
-extern const time_t kMetricBatteryTimeToEmptyInterval;
 extern const char kMetricBatteryRemainingAtEndOfSessionName[];
 extern const int kMetricBatteryRemainingAtEndOfSessionMax;
 extern const char kMetricBatteryRemainingAtStartOfSessionName[];

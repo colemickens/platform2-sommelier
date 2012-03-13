@@ -111,8 +111,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       power_button_handler_(new PowerButtonHandler(this)),
 #endif
       battery_discharge_rate_metric_last_(0),
-      battery_remaining_charge_metric_last_(0),
-      battery_time_to_empty_metric_last_(0),
       current_session_state_("stopped"),
       udev_(NULL) {}
 

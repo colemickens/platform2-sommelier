@@ -31,21 +31,9 @@ const int kMetricBatteryDischargeRateMax = 30000;
 const int kMetricBatteryDischargeRateBuckets = 50;
 const time_t kMetricBatteryDischargeRateInterval = 30;  // seconds
 
-const char kMetricBatteryRemainingChargeName[] =
-    "Power.BatteryRemainingCharge";  // %
-const int kMetricBatteryRemainingChargeMax = 101;
-const time_t kMetricBatteryRemainingChargeInterval = 30;  // seconds
-
 const char kMetricBatteryRemainingWhenChargeStartsName[] =
     "Power.BatteryRemainingWhenChargeStarts";  // %
 const int kMetricBatteryRemainingWhenChargeStartsMax = 101;
-
-const char kMetricBatteryTimeToEmptyName[] =
-    "Power.BatteryTimeToEmpty";  // minutes
-const int kMetricBatteryTimeToEmptyMin = 1;
-const int kMetricBatteryTimeToEmptyMax = 1000;
-const int kMetricBatteryTimeToEmptyBuckets = 50;
-const time_t kMetricBatteryTimeToEmptyInterval = 30;  // seconds
 
 const char kMetricBatteryRemainingAtEndOfSessionName[] =
     "Power.BatteryRemainingAtEndOfSession";  // %
