@@ -17,6 +17,10 @@ class MockMetrics : public Metrics {
   virtual ~MockMetrics();
 
   MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service *service));
+  MOCK_METHOD3(SendEnumToUMA, bool(const std::string &name, int sample,
+                                   int max));
+  MOCK_METHOD5(SendToUMA, bool(const std::string &name, int sample, int min,
+                               int max, int num_buckets));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);

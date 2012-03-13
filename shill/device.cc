@@ -28,6 +28,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/http_proxy.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
 #include "shill/routing_table.h"
@@ -92,6 +93,7 @@ Device::Device(ControlInterface *control_interface,
       portal_detector_callback_(
           Bind(&Device::PortalDetectorCallback, Unretained(this))),
       technology_(technology),
+      portal_attempts_to_online_(0),
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
@@ -364,6 +366,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     // time we report the state change to the manager, the service
     // has its connection.
     SetServiceState(Service::kStateConnected);
+    portal_attempts_to_online_ = 0;
     // Subtle: Start portal detection after transitioning the service
     // to the Connected state because this call may immediately transition
     // to the Online state.
@@ -583,10 +586,33 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
           << ": received final status: "
           << PortalDetector::StatusToString(result.status);
 
+  portal_attempts_to_online_ += result.num_attempts;
+
+  metrics()->SendEnumToUMA(
+      metrics()->GetFullMetricName(Metrics::kMetricPortalResult, technology()),
+      Metrics::PortalDetectionResultToEnum(result),
+      Metrics::kPortalResultMax);
+
   if (result.status == PortalDetector::kStatusSuccess) {
     SetServiceConnectedState(Service::kStateOnline);
+
+    metrics()->SendToUMA(
+        metrics()->GetFullMetricName(
+            Metrics::kMetricPortalAttemptsToOnline, technology()),
+        portal_attempts_to_online_,
+        Metrics::kMetricPortalAttemptsToOnlineMin,
+        Metrics::kMetricPortalAttemptsToOnlineMax,
+        Metrics::kMetricPortalAttemptsToOnlineNumBuckets);
   } else {
     SetServiceConnectedState(Service::kStatePortal);
+
+    metrics()->SendToUMA(
+        metrics()->GetFullMetricName(
+            Metrics::kMetricPortalAttempts, technology()),
+        result.num_attempts,
+        Metrics::kMetricPortalAttemptsMin,
+        Metrics::kMetricPortalAttemptsMax,
+        Metrics::kMetricPortalAttemptsNumBuckets);
   }
 }
 

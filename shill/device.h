@@ -266,6 +266,10 @@ class Device : public base::RefCounted<Device> {
   base::Callback<void(const PortalDetector::Result &)>
       portal_detector_callback_;
   Technology::Identifier technology_;
+  // The number of portal detection attempts from Connected to Online state.
+  // This includes all failure/timeout attempts and the final successful
+  // attempt.
+  int portal_attempts_to_online_;
 
   // Maintain a reference to the connected / connecting service
   ServiceRefPtr selected_service_;

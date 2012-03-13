@@ -90,6 +90,8 @@ class PortalDetectorTest : public Test {
   }
 
  protected:
+  static const int kNumAttempts;
+
   class CallbackTarget {
    public:
     CallbackTarget()
@@ -206,6 +208,9 @@ class PortalDetectorTest : public Test {
   MockHTTPRequest *http_request_;
 };
 
+// static
+const int PortalDetectorTest::kNumAttempts = 0;
+
 TEST_F(PortalDetectorTest, Constructor) {
   ExpectReset();
 }
@@ -226,6 +231,7 @@ TEST_F(PortalDetectorTest, StartAttemptFailed) {
   ExpectAttemptRetry(PortalDetector::Result(
       PortalDetector::kPhaseConnection,
       PortalDetector::kStatusFailure,
+      kNumAttempts,
       false));
   portal_detector()->StartAttemptTask();
 }
@@ -289,6 +295,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
                     PortalDetector::Result(
                         PortalDetector::kPhaseDNS,
                         PortalDetector::kStatusFailure,
+                        kNumAttempts,
                         false))))
         .Times(PortalDetector::kMaxRequestAttempts - 1);
 
@@ -298,6 +305,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
                     PortalDetector::Result(
                         PortalDetector::kPhaseDNS,
                         PortalDetector::kStatusFailure,
+                        kNumAttempts,
                         true))))
         .Times(1);
   }
@@ -326,6 +334,7 @@ TEST_F(PortalDetectorTest, ReadBadHeader) {
   ExpectAttemptRetry(PortalDetector::Result(
       PortalDetector::kPhaseContent,
       PortalDetector::kStatusFailure,
+      kNumAttempts,
       false));
   AppendReadData("X");
 }
@@ -335,6 +344,7 @@ TEST_F(PortalDetectorTest, RequestTimeout) {
   ExpectAttemptRetry(PortalDetector::Result(
       PortalDetector::kPhaseUnknown,
       PortalDetector::kStatusTimeout,
+      kNumAttempts,
       false));
 
   EXPECT_CALL(*http_request(), response_data())
@@ -353,6 +363,7 @@ TEST_F(PortalDetectorTest, ReadPartialHeaderTimeout) {
   ExpectAttemptRetry(PortalDetector::Result(
       PortalDetector::kPhaseContent,
       PortalDetector::kStatusTimeout,
+      kNumAttempts,
       false));
 
   EXPECT_CALL(*http_request(), response_data())
@@ -373,6 +384,7 @@ TEST_F(PortalDetectorTest, ReadCompleteHeader) {
                   PortalDetector::Result(
                       PortalDetector::kPhaseContent,
                       PortalDetector::kStatusSuccess,
+                      kNumAttempts,
                       true))));
   EXPECT_CALL(*http_request(), Stop())
       .Times(2);

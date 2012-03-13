@@ -143,6 +143,7 @@ void PortalDetector::CompleteAttempt(Result result) {
   if (result.status != kStatusSuccess && attempt_count_ < kMaxRequestAttempts) {
     StartAttempt(0);
   } else {
+    result.num_attempts = attempt_count_;
     result.final = true;
     Stop();
   }

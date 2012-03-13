@@ -12,6 +12,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
+#include "shill/portal_detector.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -101,6 +102,21 @@ class Metrics {
     kWiFiSecurityMax
   };
 
+  enum PortalResult {
+    kPortalResultSuccess = 0,
+    kPortalResultDNSFailure = 1,
+    kPortalResultDNSTimeout = 2,
+    kPortalResultConnectionFailure = 3,
+    kPortalResultConnectionTimeout = 4,
+    kPortalResultHTTPFailure = 5,
+    kPortalResultHTTPTimeout = 6,
+    kPortalResultContentFailure = 7,
+    kPortalResultContentTimeout = 8,
+    kPortalResultUnknown = 9,
+
+    kPortalResultMax
+  };
+
   static const char kMetricDisconnect[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -129,6 +145,25 @@ class Metrics {
   static const int kTimerHistogramMillisecondsMin;
   static const int kTimerHistogramNumBuckets;
 
+  // The number of portal detections attempted for each pass.
+  // This includes both failure/timeout attempts and successful attempt
+  // (if any).
+  static const char kMetricPortalAttempts[];
+  static const int kMetricPortalAttemptsMax;
+  static const int kMetricPortalAttemptsMin;
+  static const int kMetricPortalAttemptsNumBuckets;
+
+  // The total number of portal detections attempted between the Connected
+  // state and the Online state.  This includes both failure/timeout attempts
+  // and the final successful attempt.
+  static const char kMetricPortalAttemptsToOnline[];
+  static const int kMetricPortalAttemptsToOnlineMax;
+  static const int kMetricPortalAttemptsToOnlineMin;
+  static const int kMetricPortalAttemptsToOnlineNumBuckets;
+
+  // The result of the portal detection.
+  static const char kMetricPortalResult[];
+
   static const char kMetricPowerManagerKey[];
 
   Metrics();
@@ -139,6 +174,10 @@ class Metrics {
 
   // Converts a flimflam security string into its UMA security enumerator.
   static WiFiSecurity WiFiSecurityStringToEnum(const std::string &security);
+
+  // Converts portal detection result to UMA portal result enumerator.
+  static PortalResult PortalDetectionResultToEnum(
+      const PortalDetector::Result &result);
 
   // Registers a service with this object so it can use the timers to track
   // state transition metrics.
@@ -174,11 +213,11 @@ class Metrics {
   void NotifyPowerStateChange(PowerManager::SuspendState new_state);
 
   // Sends linear histogram data to UMA.
-  bool SendEnumToUMA(const std::string &name, int sample, int max);
+  virtual bool SendEnumToUMA(const std::string &name, int sample, int max);
 
   // Send histogram data to UMA.
-  bool SendToUMA(const std::string &name, int sample, int min, int max,
-                 int num_buckets);
+  virtual bool SendToUMA(const std::string &name, int sample, int min,
+                         int max, int num_buckets);
 
  private:
   friend struct base::DefaultLazyInstanceTraits<Metrics>;

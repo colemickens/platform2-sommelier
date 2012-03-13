@@ -55,6 +55,22 @@ const int Metrics::kTimerHistogramMillisecondsMax = 45 * 1000;
 const int Metrics::kTimerHistogramMillisecondsMin = 1;
 const int Metrics::kTimerHistogramNumBuckets = 50;
 
+const char Metrics::kMetricPortalAttempts[] =
+    "Network.Shill.%s.PortalAttempts";
+const int Metrics::kMetricPortalAttemptsMax =
+    PortalDetector::kMaxRequestAttempts;
+const int Metrics::kMetricPortalAttemptsMin = 1;
+const int Metrics::kMetricPortalAttemptsNumBuckets =
+    Metrics::kMetricPortalAttemptsMax;
+
+const char Metrics::kMetricPortalAttemptsToOnline[] =
+    "Network.Shill.%s.PortalAttemptsToOnline";
+const int Metrics::kMetricPortalAttemptsToOnlineMax = 100;
+const int Metrics::kMetricPortalAttemptsToOnlineMin = 1;
+const int Metrics::kMetricPortalAttemptsToOnlineNumBuckets = 10;
+
+const char Metrics::kMetricPortalResult[] = "Network.Shill.%s.PortalResult";
+
 // static
 const uint16 Metrics::kWiFiBandwidth5MHz = 5;
 const uint16 Metrics::kWiFiBandwidth20MHz = 20;
@@ -154,6 +170,69 @@ Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
   } else {
     return kWiFiSecurityUnknown;
   }
+}
+
+// static
+Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
+      const PortalDetector::Result &result) {
+  DCHECK(result.final);
+  PortalResult retval = kPortalResultUnknown;
+  // The only time we should end a successful portal detection is when we're
+  // in the Content phase.  If we end with kStatusSuccess in any other phase,
+  // then this indicates that something bad has happened.
+  switch (result.phase) {
+    case PortalDetector::kPhaseDNS:
+      if (result.status == PortalDetector::kStatusFailure)
+        retval = kPortalResultDNSFailure;
+      else if (result.status == PortalDetector::kStatusTimeout)
+        retval = kPortalResultDNSTimeout;
+      else
+        LOG(DFATAL) << __func__ << ": Final result status " << result.status
+                    << " is not allowed in the DNS phase";
+      break;
+
+    case PortalDetector::kPhaseConnection:
+      if (result.status == PortalDetector::kStatusFailure)
+        retval = kPortalResultConnectionFailure;
+      else if (result.status == PortalDetector::kStatusTimeout)
+        retval = kPortalResultConnectionTimeout;
+      else
+        LOG(DFATAL) << __func__ << ": Final result status " << result.status
+                    << " is not allowed in the Connection phase";
+      break;
+
+    case PortalDetector::kPhaseHTTP:
+      if (result.status == PortalDetector::kStatusFailure)
+        retval = kPortalResultHTTPFailure;
+      else if (result.status == PortalDetector::kStatusTimeout)
+        retval = kPortalResultHTTPTimeout;
+      else
+        LOG(DFATAL) << __func__ << ": Final result status " << result.status
+                    << " is not allowed in the HTTP phase";
+      break;
+
+    case PortalDetector::kPhaseContent:
+      if (result.status == PortalDetector::kStatusSuccess)
+        retval = kPortalResultSuccess;
+      else if (result.status == PortalDetector::kStatusFailure)
+        retval = kPortalResultContentFailure;
+      else if (result.status == PortalDetector::kStatusTimeout)
+        retval = kPortalResultContentTimeout;
+      else
+        LOG(DFATAL) << __func__ << ": Final result status " << result.status
+                    << " is not allowed in the Content phase";
+      break;
+
+    case PortalDetector::kPhaseUnknown:
+      retval = kPortalResultUnknown;
+      break;
+
+    default:
+      LOG(DFATAL) << __func__ << ": Invalid phase " << result.phase;
+      break;
+  }
+
+  return retval;
 }
 
 void Metrics::RegisterService(const Service *service) {

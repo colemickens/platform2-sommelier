@@ -28,6 +28,7 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_portal_detector.h"
 #include "shill/mock_routing_table.h"
 #include "shill/mock_rtnl_handler.h"
@@ -42,6 +43,7 @@ using std::string;
 using std::vector;
 using ::testing::_;
 using ::testing::AtLeast;
+using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
@@ -69,6 +71,7 @@ class DeviceTest : public PropertyStoreTest {
   virtual ~DeviceTest() {}
 
   virtual void SetUp() {
+    device_->metrics_ = &metrics_;
     device_->routing_table_ = &routing_table_;
     device_->rtnl_handler_ = &rtnl_handler_;
   }
@@ -93,6 +96,7 @@ class DeviceTest : public PropertyStoreTest {
   MockControl control_interface_;
   DeviceRefPtr device_;
   MockDeviceInfo device_info_;
+  MockMetrics metrics_;
   MockRoutingTable routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
@@ -354,6 +358,8 @@ class DevicePortalDetectionTest : public DeviceTest {
   }
 
  protected:
+  static const int kPortalAttempts;
+
   bool StartPortalDetection() { return device_->StartPortalDetection(); }
   void StopPortalDetection() { device_->StopPortalDetection(); }
 
@@ -382,6 +388,8 @@ class DevicePortalDetectionTest : public DeviceTest {
   // Used only for EXPECT_CALL().  Object is owned by device.
   MockPortalDetector *portal_detector_;
 };
+
+const int DevicePortalDetectionTest::kPortalAttempts = 2;
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDisabled) {
   EXPECT_CALL(*service_.get(), IsConnected())
@@ -450,6 +458,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNonFinal) {
   PortalDetectorCallback(PortalDetector::Result(
       PortalDetector::kPhaseUnknown,
       PortalDetector::kStatusFailure,
+      kPortalAttempts,
       false));
 }
 
@@ -457,11 +466,25 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionFailure) {
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA("Network.Shill.Unknown.PortalResult",
+                            Metrics::kPortalResultConnectionFailure,
+                            Metrics::kPortalResultMax));
+  EXPECT_CALL(metrics_,
+              SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline",
+                        _, _, _, _)).Times(0);
+  EXPECT_CALL(metrics_,
+              SendToUMA("Network.Shill.Unknown.PortalAttempts",
+                        kPortalAttempts,
+                        Metrics::kMetricPortalAttemptsMin,
+                        Metrics::kMetricPortalAttemptsMax,
+                        Metrics::kMetricPortalAttemptsNumBuckets));
   EXPECT_CALL(*connection_.get(), is_default())
       .WillOnce(Return(false));
   PortalDetectorCallback(PortalDetector::Result(
-      PortalDetector::kPhaseUnknown,
+      PortalDetector::kPhaseConnection,
       PortalDetector::kStatusFailure,
+      kPortalAttempts,
       true));
 }
 
@@ -469,9 +492,70 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillOnce(Return(true));
   EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA("Network.Shill.Unknown.PortalResult",
+                            Metrics::kPortalResultSuccess,
+                            Metrics::kPortalResultMax));
+  EXPECT_CALL(metrics_,
+              SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline",
+                        kPortalAttempts,
+                        Metrics::kMetricPortalAttemptsToOnlineMin,
+                        Metrics::kMetricPortalAttemptsToOnlineMax,
+                        Metrics::kMetricPortalAttemptsToOnlineNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA("Network.Shill.Unknown.PortalAttempts",
+                        _, _, _, _)).Times(0);
   PortalDetectorCallback(PortalDetector::Result(
-      PortalDetector::kPhaseUnknown,
+      PortalDetector::kPhaseContent,
       PortalDetector::kStatusSuccess,
+      kPortalAttempts,
+      true));
+}
+
+TEST_F(DevicePortalDetectionTest, PortalDetectionSuccessAfterFailure) {
+  EXPECT_CALL(*service_.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA("Network.Shill.Unknown.PortalResult",
+                            Metrics::kPortalResultConnectionFailure,
+                            Metrics::kPortalResultMax));
+  EXPECT_CALL(metrics_,
+              SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline",
+                        _, _, _, _)).Times(0);
+  EXPECT_CALL(metrics_,
+              SendToUMA("Network.Shill.Unknown.PortalAttempts",
+                        kPortalAttempts,
+                        Metrics::kMetricPortalAttemptsMin,
+                        Metrics::kMetricPortalAttemptsMax,
+                        Metrics::kMetricPortalAttemptsNumBuckets));
+  EXPECT_CALL(*connection_.get(), is_default())
+      .WillOnce(Return(false));
+  PortalDetectorCallback(PortalDetector::Result(
+      PortalDetector::kPhaseConnection,
+      PortalDetector::kStatusFailure,
+      kPortalAttempts,
+      true));
+  Mock::VerifyAndClearExpectations(&metrics_);
+
+  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA("Network.Shill.Unknown.PortalResult",
+                            Metrics::kPortalResultSuccess,
+                            Metrics::kPortalResultMax));
+  EXPECT_CALL(metrics_,
+              SendToUMA("Network.Shill.Unknown.PortalAttemptsToOnline",
+                        kPortalAttempts * 2,
+                        Metrics::kMetricPortalAttemptsToOnlineMin,
+                        Metrics::kMetricPortalAttemptsToOnlineMax,
+                        Metrics::kMetricPortalAttemptsToOnlineNumBuckets));
+  EXPECT_CALL(metrics_,
+              SendToUMA("Network.Shill.Unknown.PortalAttempts",
+                        _, _, _, _)).Times(0);
+  PortalDetectorCallback(PortalDetector::Result(
+      PortalDetector::kPhaseContent,
+      PortalDetector::kStatusSuccess,
+      kPortalAttempts,
       true));
 }
 

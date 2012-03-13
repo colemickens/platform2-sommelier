@@ -59,19 +59,29 @@ class PortalDetector {
   };
 
   struct Result {
-    Result() : phase(kPhaseUnknown), status(kStatusFailure), final(false) {}
+    Result()
+        : phase(kPhaseUnknown), status(kStatusFailure),
+          num_attempts(0), final(false) {}
     Result(Phase phase_in, Status status_in)
-        : phase(phase_in), status(status_in), final(false) {}
-    Result(Phase phase_in, Status status_in, bool final_in)
-        : phase(phase_in), status(status_in), final(final_in) {}
+        : phase(phase_in), status(status_in),
+          num_attempts(0), final(false) {}
+    Result(Phase phase_in, Status status_in, int num_attempts_in, bool final_in)
+        : phase(phase_in), status(status_in),
+          num_attempts(num_attempts_in), final(final_in) {}
     Phase phase;
     Status status;
+    // Total number of portal detections attempted.
+    // This includes failure, timeout and successful attempts.
+    // This only valid when |final| is true.
+    int num_attempts;
     bool final;
   };
 
   static const int kDefaultCheckIntervalSeconds;
   static const char kDefaultURL[];
   static const char kResponseExpected[];
+  // Maximum number of times the PortalDetector will attempt a connection.
+  static const int kMaxRequestAttempts;
 
   PortalDetector(ConnectionRefPtr connection,
                  EventDispatcher *dispatcher,
@@ -114,8 +124,6 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, StartAttemptAfterDelay);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
 
-  // Number of times to attempt connection.
-  static const int kMaxRequestAttempts;
   // Minimum time between attempts to connect to server.
   static const int kMinTimeBetweenAttemptsSeconds;
   // Time to wait for request to complete.
