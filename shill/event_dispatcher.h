@@ -6,7 +6,7 @@
 #define SHILL_EVENT_DISPATCHER_
 
 #include <base/basictypes.h>
-#include <base/callback.h>
+#include <base/callback_old.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
@@ -17,6 +17,7 @@ namespace base {
 class MessageLoopProxy;
 }  // namespace base
 
+class Task;
 
 namespace shill {
 
@@ -35,17 +36,17 @@ class EventDispatcher {
 
   // These are thin wrappers around calls of the same name in
   // <base/message_loop_proxy.h>
-  virtual bool PostTask(const base::Closure &task);
-  virtual bool PostDelayedTask(const base::Closure &task, int64 delay_ms);
+  virtual bool PostTask(Task *task);
+  virtual bool PostDelayedTask(Task *task, int64 delay_ms);
 
   virtual IOHandler *CreateInputHandler(
       int fd,
-      const base::Callback<void(InputData *)> &callback);
+      Callback1<InputData *>::Type *callback);
 
   virtual IOHandler *CreateReadyHandler(
       int fd,
       IOHandler::ReadyMode mode,
-      const base::Callback<void(int)> &callback);
+      Callback1<int>::Type *callback);
 
  private:
   scoped_ptr<MessageLoop> dont_use_directly_;

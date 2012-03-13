@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/scoped_temp_dir.h>
+#include <base/memory/scoped_temp_dir.h>
 
 #include "shill/shill_config.h"
 

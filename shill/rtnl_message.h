@@ -7,7 +7,7 @@
 
 #include <base/basictypes.h>
 #include <base/hash_tables.h>
-#include <base/stl_util.h>
+#include <base/stl_util-inl.h>
 
 #include "shill/byte_string.h"
 #include "shill/ip_address.h"

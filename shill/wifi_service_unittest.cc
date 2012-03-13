@@ -781,7 +781,6 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   EXPECT_CALL(*wifi(), ConnectTo(_, _))
       .Times(0);
   service->AutoConnect();
-  dispatcher()->DispatchPendingEvents();
 
   WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0);
   service->AddEndpoint(endpoint);
@@ -790,11 +789,9 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   EXPECT_TRUE(service->IsAutoConnectable(&reason));
   EXPECT_CALL(*wifi(), ConnectTo(_, _));
   service->AutoConnect();
-  dispatcher()->DispatchPendingEvents();
 
   Error error;
   service->Disconnect(&error);
-  dispatcher()->DispatchPendingEvents();
   EXPECT_FALSE(service->IsAutoConnectable(&reason));
 }
 

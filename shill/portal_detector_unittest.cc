@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/bind.h>
 #include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -18,9 +17,6 @@
 #include "shill/mock_http_request.h"
 #include "shill/mock_time.h"
 
-using base::Bind;
-using base::Callback;
-using base::Unretained;
 using std::string;
 using std::vector;
 using testing::_;
@@ -93,17 +89,17 @@ class PortalDetectorTest : public Test {
   class CallbackTarget {
    public:
     CallbackTarget()
-        : result_callback_(Bind(&CallbackTarget::ResultCallback,
-                                Unretained(this))) {
+        : result_callback_(NewCallback(this, &CallbackTarget::ResultCallback)) {
     }
 
     MOCK_METHOD1(ResultCallback, void(const PortalDetector::Result &result));
-    Callback<void(const PortalDetector::Result &)> &result_callback() {
-      return result_callback_;
+    Callback1<const PortalDetector::Result &>::Type *result_callback() {
+      return result_callback_.get();
     }
 
    private:
-    Callback<void(const PortalDetector::Result &)> result_callback_;
+    scoped_ptr<Callback1<const PortalDetector::Result &>::Type>
+        result_callback_;
   };
 
   void AssignHTTPRequest() {
@@ -142,8 +138,8 @@ class PortalDetectorTest : public Test {
 
   void ExpectReset() {
     EXPECT_FALSE(portal_detector_->attempt_count_);
-    EXPECT_TRUE(callback_target_.result_callback().
-                Equals(portal_detector_->portal_result_callback_));
+    EXPECT_EQ(callback_target_.result_callback(),
+              portal_detector_->portal_result_callback_);
     EXPECT_FALSE(portal_detector_->request_.get());
   }
 

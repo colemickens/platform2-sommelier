@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/callback_old.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -109,8 +109,8 @@ class DeviceInfo {
   Metrics *metrics_;
   Manager *manager_;
   std::map<int, Info> infos_;
-  base::Callback<void(const RTNLMessage &)> link_callback_;
-  base::Callback<void(const RTNLMessage &)> address_callback_;
+  scoped_ptr<Callback1<const RTNLMessage &>::Type> link_callback_;
+  scoped_ptr<Callback1<const RTNLMessage &>::Type> address_callback_;
   scoped_ptr<RTNLListener> link_listener_;
   scoped_ptr<RTNLListener> address_listener_;
   std::set<std::string> black_list_;

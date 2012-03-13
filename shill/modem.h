@@ -10,7 +10,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/memory/weak_ptr.h>
+#include <base/task.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dbus_properties_proxy_interface.h"
@@ -28,8 +28,7 @@ class ProxyFactory;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
 // device.
-class Modem : public DBusPropertiesProxyDelegate,
-              public base::SupportsWeakPtr<Modem> {
+class Modem : public DBusPropertiesProxyDelegate {
  public:
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
   // the ModemManager.Modem DBus object path (e.g.,
@@ -91,6 +90,7 @@ class Modem : public DBusPropertiesProxyDelegate,
 
   CellularRefPtr device_;
 
+  ScopedRunnableMethodFactory<Modem> task_factory_;
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   Metrics *metrics_;

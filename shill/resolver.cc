@@ -19,9 +19,8 @@ using std::vector;
 
 namespace shill {
 
-// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
-// because of http://crbug.com/114828
-static base::LazyInstance<Resolver> g_resolver = {0, {{0}}};
+static base::LazyInstance<Resolver> g_resolver(
+    base::LINKER_INITIALIZED);
 
 Resolver::Resolver() {}
 

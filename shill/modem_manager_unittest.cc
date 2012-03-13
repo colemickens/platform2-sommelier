@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/stl_util.h>
+#include <base/stl_util-inl.h>
 #include <gtest/gtest.h>
 #include <mm/mm-modem.h>
 
@@ -122,6 +122,7 @@ TEST_F(ModemManagerTest, Connect) {
   EXPECT_EQ(kOwner, modem_manager_.owner_);
   EXPECT_EQ(1, modem_manager_.modems_.size());
   ASSERT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
+  EXPECT_FALSE(modem_manager_.modems_[kModemPath]->task_factory_.empty());
 }
 
 TEST_F(ModemManagerTest, Disconnect) {
@@ -149,6 +150,7 @@ TEST_F(ModemManagerTest, AddRemoveModem) {
   modem_manager_.AddModem(kModemPath);
   EXPECT_EQ(1, modem_manager_.modems_.size());
   ASSERT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
+  EXPECT_FALSE(modem_manager_.modems_[kModemPath]->task_factory_.empty());
 
   modem_manager_.RemoveModem(kModemPath);
   EXPECT_EQ(0, modem_manager_.modems_.size());

@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/callback.h>
+#include <base/callback_old.h>
 #include <base/memory/scoped_ptr.h>
 
 #include "shill/refptr_types.h"
@@ -31,7 +31,7 @@ class AsyncConnection {
   AsyncConnection(const std::string &interface_name,
                   EventDispatcher *dispatcher,
                   Sockets *sockets,
-                  const base::Callback<void(bool, int)> &callback);
+                  Callback2<bool, int>::Type *callback);
   virtual ~AsyncConnection();
 
   // Open a connection given an IP address and port (in host order).
@@ -65,10 +65,10 @@ class AsyncConnection {
   std::string interface_name_;
   EventDispatcher *dispatcher_;
   Sockets *sockets_;
-  base::Callback<void(bool, int)> callback_;
+  Callback2<bool, int>::Type *callback_;
   std::string error_;
   int fd_;
-  base::Callback<void(int)> connect_completion_callback_;
+  scoped_ptr<Callback1<int>::Type> connect_completion_callback_;
   scoped_ptr<IOHandler> connect_completion_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncConnection);

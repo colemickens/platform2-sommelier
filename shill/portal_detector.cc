@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/bind.h>
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
@@ -20,9 +19,6 @@
 #include "shill/ip_address.h"
 #include "shill/sockets.h"
 
-using base::Bind;
-using base::Callback;
-using base::Unretained;
 using base::StringPrintf;
 using std::string;
 
@@ -50,16 +46,16 @@ const char PortalDetector::kStatusTimeoutString[] = "Timeout";
 PortalDetector::PortalDetector(
     ConnectionRefPtr connection,
     EventDispatcher *dispatcher,
-    const Callback<void(const Result &)> &callback)
+    Callback1<const Result &>::Type *callback)
     : attempt_count_(0),
       connection_(connection),
       dispatcher_(dispatcher),
-      weak_ptr_factory_(this),
       portal_result_callback_(callback),
       request_read_callback_(
-          Bind(&PortalDetector::RequestReadCallback, Unretained(this))),
+          NewCallback(this, &PortalDetector::RequestReadCallback)),
       request_result_callback_(
-          Bind(&PortalDetector::RequestResultCallback, Unretained(this))),
+          NewCallback(this, &PortalDetector::RequestResultCallback)),
+      task_factory_(this),
       time_(Time::GetInstance()) { }
 
 PortalDetector::~PortalDetector() {
@@ -147,7 +143,7 @@ void PortalDetector::CompleteAttempt(Result result) {
     Stop();
   }
 
-  portal_result_callback_.Run(result);
+  portal_result_callback_->Run(result);
 }
 
 PortalDetector::Result PortalDetector::GetPortalResultForRequestResult(
@@ -224,7 +220,7 @@ void PortalDetector::StartAttempt(int init_delay_seconds) {
     next_attempt_delay = init_delay_seconds * 1000;
   }
   dispatcher_->PostDelayedTask(
-      Bind(&PortalDetector::StartAttemptTask, weak_ptr_factory_.GetWeakPtr()),
+      task_factory_.NewRunnableMethod(&PortalDetector::StartAttemptTask),
       next_attempt_delay);
 }
 
@@ -236,20 +232,21 @@ void PortalDetector::StartAttemptTask() {
                             attempt_count_, kMaxRequestAttempts);
 
   HTTPRequest::Result result =
-      request_->Start(url_, request_read_callback_, request_result_callback_);
+      request_->Start(url_, request_read_callback_.get(),
+                      request_result_callback_.get());
   if (result != HTTPRequest::kResultInProgress) {
     CompleteAttempt(GetPortalResultForRequestResult(result));
     return;
   }
 
   dispatcher_->PostDelayedTask(
-      Bind(&PortalDetector::TimeoutAttemptTask, weak_ptr_factory_.GetWeakPtr()),
+      task_factory_.NewRunnableMethod(&PortalDetector::TimeoutAttemptTask),
       kRequestTimeoutSeconds * 1000);
 }
 
 void PortalDetector::StopAttempt() {
   request_->Stop();
-  weak_ptr_factory_.InvalidateWeakPtrs();
+  task_factory_.RevokeAll();
 }
 
 void PortalDetector::TimeoutAttemptTask() {

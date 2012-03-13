@@ -19,17 +19,15 @@ class MockEventDispatcher : public EventDispatcher {
 
   MOCK_METHOD0(DispatchForever, void());
   MOCK_METHOD0(DispatchPendingEvents, void());
-  MOCK_METHOD1(PostTask, bool(const base::Closure &task));
-  MOCK_METHOD2(PostDelayedTask, bool(const base::Closure &task,
-                                     int64 delay_ms));
+  MOCK_METHOD1(PostTask, bool(Task *task));
+  MOCK_METHOD2(PostDelayedTask, bool(Task *task, int64 delay_ms));
   MOCK_METHOD2(CreateInputHandler,
-               IOHandler *(int fd,
-                           const base::Callback<void(InputData *)> &callback));
+               IOHandler *(int fd, Callback1<InputData *>::Type *callback));
 
   MOCK_METHOD3(CreateReadyHandler,
                IOHandler *(int fd,
                            IOHandler::ReadyMode mode,
-                           const base::Callback<void(int)> &callback));
+                           Callback1<int>::Type *callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEventDispatcher);

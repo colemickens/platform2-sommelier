@@ -12,7 +12,6 @@
 #include "shill/error.h"
 #include "shill/store_interface.h"
 
-using base::Callback;
 using std::string;
 
 namespace shill {
@@ -113,14 +112,14 @@ bool IPConfig::Save(StoreInterface *storage, const string &id_suffix) {
 
 void IPConfig::UpdateProperties(const Properties &properties, bool success) {
   properties_ = properties;
-  if (!update_callback_.is_null()) {
-    update_callback_.Run(this, success);
+  if (update_callback_.get()) {
+    update_callback_->Run(this, success);
   }
 }
 
 void IPConfig::RegisterUpdateCallback(
-    const Callback<void(const IPConfigRefPtr&, bool)> &callback) {
-  update_callback_ = callback;
+    Callback2<const IPConfigRefPtr&, bool>::Type *callback) {
+  update_callback_.reset(callback);
 }
 
 }  // namespace shill

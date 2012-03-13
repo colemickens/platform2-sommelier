@@ -6,7 +6,7 @@
 #define SHILL_CELLULAR_CAPABILITY_CDMA_
 
 #include <base/memory/scoped_ptr.h>
-#include <base/memory/weak_ptr.h>
+#include <base/task.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular_capability.h"
@@ -76,7 +76,8 @@ class CellularCapabilityCDMA : public CellularCapability,
                                   AsyncCallHandler *call_handler);
 
   scoped_ptr<ModemCDMAProxyInterface> proxy_;
-  base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
+
+  ScopedRunnableMethodFactory<CellularCapabilityCDMA> task_factory_;
 
   uint32 activation_state_;
   uint32 registration_state_evdo_;

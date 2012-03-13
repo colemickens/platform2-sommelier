@@ -7,7 +7,6 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 
-#include <base/bind.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
@@ -20,7 +19,6 @@
 #include "shill/ip_address.h"
 #include "shill/proxy_factory.h"
 
-using base::Bind;
 using std::string;
 using std::vector;
 
@@ -63,6 +61,7 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       pid_(0),
       child_watch_tag_(0),
       root_("/"),
+      task_factory_(this),
       dispatcher_(dispatcher),
       glib_(glib) {
   mutable_store()->RegisterConstString(flimflam::kAddressProperty,
@@ -118,7 +117,7 @@ void DHCPConfig::InitProxy(const string &service) {
   // D-Bus objects in the context of a D-Bus signal handler.
   if (!proxy_.get()) {
     dispatcher_->PostTask(
-        Bind(&DHCPConfig::InitProxyTask, AsWeakPtr(), service));
+        task_factory_.NewRunnableMethod(&DHCPConfig::InitProxyTask, service));
   }
 }
 

@@ -8,9 +8,7 @@
 
 namespace shill {
 
-// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
-// because of http://crbug.com/114828
-static base::LazyInstance<Time> g_time = {0, {{0}}};
+static base::LazyInstance<Time> g_time(base::LINKER_INITIALIZED);
 
 Time::Time() { }
 

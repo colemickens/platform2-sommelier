@@ -5,7 +5,7 @@
 #include "shill/key_value_store.h"
 
 #include <base/logging.h>
-#include <base/stl_util.h>
+#include <base/stl_util-inl.h>
 
 using std::map;
 using std::string;

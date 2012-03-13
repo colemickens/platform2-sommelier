@@ -18,13 +18,13 @@
 
 #include <string>
 
-#include <base/bind.h>
+#include <base/callback_old.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/hash_tables.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/stl_util.h>
+#include <base/stl_util-inl.h>
 #include <base/stringprintf.h>
 
 #include "shill/byte_string.h"
@@ -33,16 +33,13 @@
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
 
-using base::Bind;
-using base::Unretained;
 using std::string;
 using std::vector;
 
 namespace shill {
 
-// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
-// because of http://crbug.com/114828
-static base::LazyInstance<RoutingTable> g_routing_table = {0, {{0}}};
+static base::LazyInstance<RoutingTable> g_routing_table(
+    base::LINKER_INITIALIZED);
 
 // static
 const char RoutingTable::kRouteFlushPath4[] = "/proc/sys/net/ipv4/route/flush";
@@ -50,7 +47,7 @@ const char RoutingTable::kRouteFlushPath4[] = "/proc/sys/net/ipv4/route/flush";
 const char RoutingTable::kRouteFlushPath6[] = "/proc/sys/net/ipv6/route/flush";
 
 RoutingTable::RoutingTable()
-    : route_callback_(Bind(&RoutingTable::RouteMsgHandler, Unretained(this))),
+    : route_callback_(NewCallback(this, &RoutingTable::RouteMsgHandler)),
       route_listener_(NULL) {
   VLOG(2) << __func__;
 }
@@ -65,7 +62,7 @@ void RoutingTable::Start() {
   VLOG(2) << __func__;
 
   route_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestRoute, route_callback_));
+      new RTNLListener(RTNLHandler::kRequestRoute, route_callback_.get()));
   RTNLHandler::GetInstance()->RequestDump(
       RTNLHandler::kRequestRoute);
 }

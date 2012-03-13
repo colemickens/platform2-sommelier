@@ -6,7 +6,7 @@
 #define SHILL_CELLULAR_CAPABILITY_GSM_
 
 #include <base/memory/scoped_ptr.h>
-#include <base/memory/weak_ptr.h>
+#include <base/task.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
@@ -164,7 +164,8 @@ class CellularCapabilityGSM : public CellularCapability,
 
   scoped_ptr<ModemGSMCardProxyInterface> card_proxy_;
   scoped_ptr<ModemGSMNetworkProxyInterface> network_proxy_;
-  base::WeakPtrFactory<CellularCapabilityGSM> weak_ptr_factory_;
+
+  ScopedRunnableMethodFactory<CellularCapabilityGSM> task_factory_;
 
   uint32 registration_state_;
   uint32 access_technology_;

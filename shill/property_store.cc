@@ -10,7 +10,7 @@
 
 #include <base/basictypes.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
+#include <base/stl_util-inl.h>
 
 #include "shill/error.h"
 #include "shill/property_accessor.h"

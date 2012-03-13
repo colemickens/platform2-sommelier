@@ -4,14 +4,12 @@
 
 #include "shill/ipconfig.h"
 
-#include <base/bind.h>
+#include <base/callback_old.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_store.h"
 
-using base::Bind;
-using base::Unretained;
 using std::string;
 using testing::_;
 using testing::Return;
@@ -125,7 +123,7 @@ TEST_F(IPConfigTest, UpdateCallback) {
     UpdateCallbackTest callback_test(ipconfig_, success);
     ASSERT_FALSE(callback_test.called());
     ipconfig_->RegisterUpdateCallback(
-        Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+        NewCallback(&callback_test, &UpdateCallbackTest::Callback));
     ipconfig_->UpdateProperties(IPConfig::Properties(), success);
     EXPECT_TRUE(callback_test.called());
   }

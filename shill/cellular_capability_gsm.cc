@@ -4,9 +4,8 @@
 
 #include "shill/cellular_capability_gsm.h"
 
-#include <base/bind.h>
 #include <base/logging.h>
-#include <base/stl_util.h>
+#include <base/stl_util-inl.h>
 #include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -19,7 +18,6 @@
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 
-using base::Bind;
 using std::string;
 
 namespace shill {
@@ -45,7 +43,7 @@ const char CellularCapabilityGSM::kPropertyUnlockRetries[] = "UnlockRetries";
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
                                              ProxyFactory *proxy_factory)
     : CellularCapability(cellular, proxy_factory),
-      weak_ptr_factory_(this),
+      task_factory_(this),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
       home_provider_(NULL),
@@ -102,35 +100,35 @@ void CellularCapabilityGSM::StartModem()
                                                   cellular()->dbus_owner()));
   MultiStepAsyncCallHandler *call_handler =
       new MultiStepAsyncCallHandler(cellular()->dispatcher());
-  call_handler->AddTask(Bind(&CellularCapabilityGSM::EnableModem,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::EnableModem, call_handler));
 
-  call_handler->AddTask(Bind(&CellularCapabilityGSM::Register,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::Register, call_handler));
 
-  call_handler->AddTask(Bind(&CellularCapabilityGSM::GetModemStatus,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetModemStatus, call_handler));
 
-  call_handler->AddTask(Bind(&CellularCapabilityGSM::GetIMEI,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetIMEI, call_handler));
 
-  call_handler->AddTask(Bind(&CellularCapabilityGSM::GetIMSI,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetIMSI, call_handler));
 
-  call_handler->AddTask(Bind(&CellularCapabilityGSM::GetSPN,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetSPN, call_handler));
 
-  call_handler->AddTask(Bind(&CellularCapabilityGSM::GetMSISDN,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetMSISDN, call_handler));
 
-  call_handler->AddTask(Bind(&CellularCapabilityGSM::GetProperties,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetProperties, call_handler));
 
-  call_handler->AddTask(Bind(&CellularCapabilityGSM::GetModemInfo,
-                             weak_ptr_factory_.GetWeakPtr(), call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetModemInfo, call_handler));
 
-  call_handler->AddTask(Bind(&CellularCapabilityGSM::GetRegistrationState,
-                             weak_ptr_factory_.GetWeakPtr(),
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetRegistrationState,
                       call_handler));
   call_handler->PostNextTask();
 }

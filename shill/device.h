@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -263,8 +262,8 @@ class Device : public base::RefCounted<Device> {
   ConnectionRefPtr connection_;
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
   scoped_ptr<PortalDetector> portal_detector_;
-  base::Callback<void(const PortalDetector::Result &)>
-      portal_detector_callback_;
+  scoped_ptr<Callback1<const PortalDetector::Result &>::Type>
+              portal_detector_callback_;
   Technology::Identifier technology_;
 
   // Maintain a reference to the connected / connecting service

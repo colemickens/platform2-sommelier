@@ -11,11 +11,9 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <base/stringprintf.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -41,9 +39,6 @@
 #include "shill/wifi.h"
 #include "shill/wifi_service.h"
 
-using base::Bind;
-using base::StringPrintf;
-using base::Unretained;
 using std::set;
 using std::string;
 using std::vector;
@@ -64,6 +59,7 @@ Manager::Manager(ControlInterface *control_interface,
                  const string &storage_directory,
                  const string &user_storage_format)
     : dispatcher_(dispatcher),
+      task_factory_(this),
       run_path_(FilePath(run_directory)),
       storage_path_(FilePath(storage_directory)),
       user_storage_format_(user_storage_format),
@@ -140,9 +136,8 @@ void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
   power_manager_.reset(new PowerManager(ProxyFactory::GetInstance()));
-  // TODO(ers): weak ptr for metrics_?
-  PowerManager::PowerStateCallback cb =
-      Bind(&Metrics::NotifyPowerStateChange, Unretained(metrics_));
+  PowerManager::PowerStateCallback *cb =
+      NewCallback(metrics_, &Metrics::NotifyPowerStateChange);
   power_manager_->AddStateChangeCallback(Metrics::kMetricPowerManagerKey, cb);
 
   CHECK(file_util::CreateDirectory(run_path_)) << run_path_.value();
@@ -361,8 +356,8 @@ ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
   }
 
   Error::PopulateAndLog(error, Error::kNotFound,
-      StringPrintf("Entry %s is not registered in the manager",
-                   entry_name.c_str()));
+      base::StringPrintf("Entry %s is not registered in the manager",
+                         entry_name.c_str()));
   return NULL;
 }
 
@@ -632,7 +627,9 @@ void Manager::AutoConnect() {
   // We might be called in the middle of another request (e.g., as a
   // consequence of Service::SetState calling UpdateService). To avoid
   // re-entrancy issues in dbus-c++, defer to the event loop.
-  dispatcher_->PostTask(Bind(&Manager::AutoConnectTask, AsWeakPtr()));
+  dispatcher_->PostTask(
+      task_factory_.NewRunnableMethod(&Manager::AutoConnectTask));
+  return;
 }
 
 void Manager::AutoConnectTask() {

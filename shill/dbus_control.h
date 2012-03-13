@@ -5,7 +5,7 @@
 #ifndef SHILL_DBUS_CONTROL_
 #define SHILL_DBUS_CONTROL_
 
-#include <base/memory/scoped_ptr.h>
+#include <base/scoped_ptr.h>
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/util.h>
 

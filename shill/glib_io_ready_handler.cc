@@ -9,16 +9,15 @@
 #include <stdio.h>
 #include <sys/socket.h>
 
-using base::Callback;
-
 namespace shill {
 
 static gboolean DispatchIOHandler(GIOChannel *chan,
                                   GIOCondition cond,
                                   gpointer data) {
-  GlibIOReadyHandler *handler = reinterpret_cast<GlibIOReadyHandler *>(data);
+  Callback1<int>::Type *callback =
+    reinterpret_cast<Callback1<int>::Type *>(data);
 
-  handler->callback().Run(g_io_channel_unix_get_fd(chan));
+  callback->Run(g_io_channel_unix_get_fd(chan));
 
   if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
     return FALSE;
@@ -28,7 +27,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
 
 GlibIOReadyHandler::GlibIOReadyHandler(int fd,
                                        IOHandler::ReadyMode mode,
-                                       const Callback<void(int)> &callback)
+                                       Callback1<int>::Type *callback)
     : channel_(NULL),
       callback_(callback),
       source_id_(G_MAXUINT) {
@@ -54,7 +53,8 @@ GlibIOReadyHandler::~GlibIOReadyHandler() {
 
 void GlibIOReadyHandler::Start() {
   if (source_id_ == G_MAXUINT) {
-    source_id_ = g_io_add_watch(channel_, condition_, DispatchIOHandler, this);
+    source_id_ = g_io_add_watch(channel_, condition_, DispatchIOHandler,
+                                callback_);
   }
 }
 

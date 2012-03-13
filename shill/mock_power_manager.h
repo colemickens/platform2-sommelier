@@ -19,8 +19,7 @@ class MockPowerManager : public PowerManager {
   explicit MockPowerManager(ProxyFactory *proxy_factory);
   virtual ~MockPowerManager();
   MOCK_METHOD2(AddStateChangeCallback,
-               void(const std::string &key,
-                    const PowerStateCallback &callback));
+               void(const std::string &key, PowerStateCallback *callback));
   MOCK_METHOD1(RemoveStateChangeCallback, void(const std::string &key));
 
  private:

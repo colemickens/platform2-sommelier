@@ -128,7 +128,9 @@ TEST_F(ModemTest, Init) {
       MM_MODEM_IP_METHOD_DHCP);
   props[Modem::kPropertyLinkName].writer().append_string("usb1");
   EXPECT_CALL(*proxy_, GetAll(MM_MODEM_INTERFACE)).WillOnce(Return(props));
+  EXPECT_TRUE(modem_->task_factory_.empty());
   modem_->Init();
+  EXPECT_FALSE(modem_->task_factory_.empty());
 
   EXPECT_CALL(sockets_, Socket(PF_INET, SOCK_DGRAM, 0)).WillOnce(Return(-1));
   dispatcher_.DispatchPendingEvents();

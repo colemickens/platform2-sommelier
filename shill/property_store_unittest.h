@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/memory/scoped_ptr.h>
-#include <base/scoped_temp_dir.h>
+#include <base/memory/scoped_temp_dir.h>
 #include <dbus-c++/dbus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

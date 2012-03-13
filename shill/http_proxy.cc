@@ -13,7 +13,6 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
@@ -27,9 +26,7 @@
 #include "shill/ip_address.h"
 #include "shill/sockets.h"
 
-using base::Bind;
 using base::StringPrintf;
-using base::Unretained;
 using std::string;
 using std::vector;
 
@@ -55,15 +52,15 @@ const char HTTPProxy::kInternalErrorMsg[] = "Proxy Failed: Internal Error";
 HTTPProxy::HTTPProxy(ConnectionRefPtr connection)
     : state_(kStateIdle),
       connection_(connection),
-      weak_ptr_factory_(this),
-      accept_callback_(Bind(&HTTPProxy::AcceptClient, Unretained(this))),
-      connect_completion_callback_(Bind(&HTTPProxy::OnConnectCompletion,
-                                        Unretained(this))),
-      dns_client_callback_(Bind(&HTTPProxy::GetDNSResult, Unretained(this))),
-      read_client_callback_(Bind(&HTTPProxy::ReadFromClient, Unretained(this))),
-      read_server_callback_(Bind(&HTTPProxy::ReadFromServer, Unretained(this))),
-      write_client_callback_(Bind(&HTTPProxy::WriteToClient, Unretained(this))),
-      write_server_callback_(Bind(&HTTPProxy::WriteToServer, Unretained(this))),
+      accept_callback_(NewCallback(this, &HTTPProxy::AcceptClient)),
+      connect_completion_callback_(
+          NewCallback(this, &HTTPProxy::OnConnectCompletion)),
+      dns_client_callback_(NewCallback(this, &HTTPProxy::GetDNSResult)),
+      read_client_callback_(NewCallback(this, &HTTPProxy::ReadFromClient)),
+      read_server_callback_(NewCallback(this, &HTTPProxy::ReadFromServer)),
+      write_client_callback_(NewCallback(this, &HTTPProxy::WriteToClient)),
+      write_server_callback_(NewCallback(this, &HTTPProxy::WriteToServer)),
+      task_factory_(this),
       dispatcher_(NULL),
       dns_client_(NULL),
       proxy_port_(-1),
@@ -73,7 +70,8 @@ HTTPProxy::HTTPProxy(ConnectionRefPtr connection)
       client_socket_(-1),
       server_port_(kDefaultServerPort),
       server_socket_(-1),
-      is_route_requested_(false) { }
+      is_route_requested_(false),
+      idle_timeout_(NULL) { }
 
 HTTPProxy::~HTTPProxy() {
   Stop();
@@ -115,18 +113,18 @@ bool HTTPProxy::Start(EventDispatcher *dispatcher,
 
   accept_handler_.reset(
       dispatcher->CreateReadyHandler(proxy_socket_, IOHandler::kModeInput,
-                                     accept_callback_));
+                                     accept_callback_.get()));
   dispatcher_ = dispatcher;
   dns_client_.reset(new DNSClient(IPAddress::kFamilyIPv4,
                                   connection_->interface_name(),
                                   connection_->dns_servers(),
                                   kDNSTimeoutSeconds * 1000,
                                   dispatcher,
-                                  dns_client_callback_));
+                                  dns_client_callback_.get()));
   proxy_port_ = ntohs(addr.sin_port);
   server_async_connection_.reset(
       new AsyncConnection(connection_->interface_name(), dispatcher, sockets,
-                          connect_completion_callback_));
+                          connect_completion_callback_.get()));
   sockets_ = sockets;
   state_ = kStateWaitConnection;
   return true;
@@ -171,11 +169,11 @@ void HTTPProxy::AcceptClient(int fd) {
   sockets_->SetNonBlocking(client_socket_);
   read_client_handler_.reset(
       dispatcher_->CreateInputHandler(client_socket_,
-                                      read_client_callback_));
+                                      read_client_callback_.get()));
   // Overall transaction timeout.
-  dispatcher_->PostDelayedTask(Bind(&HTTPProxy::StopClient,
-                                    weak_ptr_factory_.GetWeakPtr()),
-                               kTransactionTimeoutSeconds * 1000);
+  dispatcher_->PostDelayedTask(
+      task_factory_.NewRunnableMethod(&HTTPProxy::StopClient),
+      kTransactionTimeoutSeconds * 1000);
 
   state_ = kStateReadClientHeader;
   StartIdleTimeout();
@@ -550,12 +548,13 @@ void HTTPProxy::StartIdleTimeout() {
       timeout_seconds = kInputTimeoutSeconds;
       break;
   }
-  idle_timeout_.Cancel();
+  if (idle_timeout_) {
+    idle_timeout_->Cancel();
+    idle_timeout_ = NULL;
+  }
   if (timeout_seconds != 0) {
-    idle_timeout_.Reset(Bind(&HTTPProxy::StopClient,
-                             weak_ptr_factory_.GetWeakPtr()));
-    dispatcher_->PostDelayedTask(idle_timeout_.callback(),
-                                 timeout_seconds * 1000);
+    idle_timeout_ = task_factory_.NewRunnableMethod(&HTTPProxy::StopClient);
+    dispatcher_->PostDelayedTask(idle_timeout_, timeout_seconds * 1000);
   }
 }
 
@@ -572,7 +571,7 @@ void HTTPProxy::StartReceive() {
       } else {
         read_server_handler_.reset(
             dispatcher_->CreateInputHandler(server_socket_,
-                                            read_server_callback_));
+                                            read_server_callback_.get()));
       }
     } else if (state_ == kStateFlushResponse) {
       StopClient();
@@ -592,7 +591,7 @@ void HTTPProxy::StartTransmit() {
       write_server_handler_.reset(
           dispatcher_->CreateReadyHandler(server_socket_,
                                           IOHandler::kModeOutput,
-                                          write_server_callback_));
+                                          write_server_callback_.get()));
     }
   }
   if ((state_ == kStateFlushResponse || state_ == kStateTunnelData) &&
@@ -603,7 +602,7 @@ void HTTPProxy::StartTransmit() {
       write_client_handler_.reset(
           dispatcher_->CreateReadyHandler(client_socket_,
                                           IOHandler::kModeOutput,
-                                          write_client_callback_));
+                                          write_client_callback_.get()));
     }
   }
   StartIdleTimeout();
@@ -640,8 +639,8 @@ void HTTPProxy::StopClient() {
   server_data_.Clear();
   dns_client_->Stop();
   server_async_connection_->Stop();
-  idle_timeout_.Cancel();
-  weak_ptr_factory_.InvalidateWeakPtrs();
+  task_factory_.RevokeAll();
+  idle_timeout_ = NULL;
   accept_handler_->Start();
   state_ = kStateWaitConnection;
 }

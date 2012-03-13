@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -22,8 +21,6 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_time.h"
 
-using base::Bind;
-using base::Unretained;
 using std::string;
 using std::vector;
 using testing::_;
@@ -205,7 +202,7 @@ class DNSClientTest : public Test {
   void ExpectReset() {
     EXPECT_TRUE(dns_client_->address_.family() == IPAddress::kFamilyIPv4);
     EXPECT_TRUE(dns_client_->address_.IsDefault());
-    EXPECT_FALSE(dns_client_->weak_ptr_factory_.HasWeakPtrs());
+    EXPECT_TRUE(dns_client_->task_factory_.empty());
     EXPECT_FALSE(dns_client_->resolver_state_.get());
   }
 
@@ -213,14 +210,14 @@ class DNSClientTest : public Test {
   class DNSCallbackTarget {
    public:
     DNSCallbackTarget()
-        : callback_(Bind(&DNSCallbackTarget::CallTarget, Unretained(this))) {}
+        : callback_(NewCallback(this, &DNSCallbackTarget::CallTarget)) {}
 
     MOCK_METHOD2(CallTarget, void(const Error &error,
                                   const IPAddress &address));
-    const DNSClient::ClientCallback &callback() { return callback_; }
+    DNSClient::ClientCallback *callback() { return callback_.get(); }
 
    private:
-    DNSClient::ClientCallback callback_;
+    scoped_ptr<DNSClient::ClientCallback> callback_;
   };
 
   scoped_ptr<DNSClient> dns_client_;

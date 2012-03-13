@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <glib.h>
 
-#include <base/callback.h>
+#include <base/callback_old.h>
 
 #include "shill/io_handler.h"
 
@@ -22,18 +22,16 @@ class GlibIOReadyHandler : public IOHandler {
  public:
   GlibIOReadyHandler(int fd,
                      IOHandler::ReadyMode mode,
-                     const base::Callback<void(int)> &callback);
+                     Callback1<int>::Type *callback);
   ~GlibIOReadyHandler();
 
   virtual void Start();
   virtual void Stop();
 
-  const base::Callback<void(int)> &callback() { return callback_; }
-
  private:
   GIOChannel *channel_;
   GIOCondition condition_;
-  const base::Callback<void(int)> callback_;
+  Callback1<int>::Type *callback_;
   guint source_id_;
 };
 

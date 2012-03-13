@@ -15,7 +15,6 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
 #include <base/string_number_conversions.h>
@@ -45,7 +44,6 @@
 #include "shill/wifi_service.h"
 #include "shill/wpa_supplicant.h"
 
-using base::Bind;
 using base::StringPrintf;
 using std::map;
 using std::set;
@@ -93,6 +91,7 @@ WiFi::WiFi(ControlInterface *control_interface,
              Technology::kWifi),
       proxy_factory_(ProxyFactory::GetInstance()),
       time_(Time::GetInstance()),
+      task_factory_(this),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
       clear_cached_credentials_pending_(false),
@@ -184,9 +183,9 @@ void WiFi::Start() {
 
   // Register for power state changes.  HandlePowerStateChange() will be called
   // when the power state changes.
-  manager()->power_manager()->AddStateChangeCallback(
-      UniqueName(),
-      Bind(&WiFi::HandlePowerStateChange, this));
+  PowerManager::PowerStateCallback *cb =
+      NewCallback(this, &WiFi::HandlePowerStateChange);
+  manager()->power_manager()->AddStateChangeCallback(UniqueName(), cb);
 
   Scan(NULL);
   Device::Start();
@@ -215,6 +214,8 @@ void WiFi::Stop() {
   Device::Stop();
   // TODO(quiche): Anything else to do?
 
+  VLOG(3) << "WiFi " << link_name() << " task_factory_ "
+          << (task_factory_.empty() ? "is empty." : "is not empty.");
   VLOG(3) << "WiFi " << link_name() << " supplicant_process_proxy_ "
           << (supplicant_process_proxy_.get() ? "is set." : "is not set.");
   VLOG(3) << "WiFi " << link_name() << " supplicant_interface_proxy_ "
@@ -238,7 +239,8 @@ void WiFi::Scan(Error */*error*/) {
   // Needs to send a D-Bus message, but may be called from D-Bus
   // signal handler context (via Manager::RequestScan). So defer work
   // to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::ScanTask, this));
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&WiFi::ScanTask));
 }
 
 bool WiFi::TechnologyIs(const Technology::Identifier type) const {
@@ -253,22 +255,26 @@ bool WiFi::IsConnectingTo(const WiFiService &service) const {
 
 void WiFi::BSSAdded(const ::DBus::Path &path,
                     const map<string, ::DBus::Variant> &properties) {
-  // Called from a D-Bus signal handler, and may need to send a D-Bus
+  // Called from a D-Bus signal handler, and nay need to send a D-Bus
   // message. So defer work to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::BSSAddedTask, this, path, properties));
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&WiFi::BSSAddedTask, path, properties));
 }
 
 void WiFi::BSSRemoved(const ::DBus::Path &path) {
-  // Called from a D-Bus signal handler, and may need to send a D-Bus
+  // Called from a D-Bus signal handler, and nay need to send a D-Bus
   // message. So defer work to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::BSSRemovedTask, this, path));
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&WiFi::BSSRemovedTask, path));
 }
 
 void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
   LOG(INFO) << "In " << __func__ << "(): called";
   // Called from D-Bus signal handler, but may need to send a D-Bus
   // message. So defer work to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::PropertiesChangedTask, this, properties));
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&WiFi::PropertiesChangedTask,
+                                      properties));
 }
 
 void WiFi::ScanDone() {
@@ -278,7 +284,8 @@ void WiFi::ScanDone() {
   // may require the the registration of new D-Bus objects. And such
   // registration can't be done in the context of a D-Bus signal
   // handler.
-  dispatcher()->PostTask(Bind(&WiFi::ScanDoneTask, this));
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&WiFi::ScanDoneTask));
 }
 
 void WiFi::ConnectTo(WiFiService *service,
@@ -399,7 +406,8 @@ void WiFi::ClearCachedCredentials() {
   // to event loop.
   if (!clear_cached_credentials_pending_) {
     clear_cached_credentials_pending_ = true;
-    dispatcher()->PostTask(Bind(&WiFi::ClearCachedCredentialsTask, this));
+    dispatcher()->PostTask(
+        task_factory_.NewRunnableMethod(&WiFi::ClearCachedCredentialsTask));
   }
 }
 

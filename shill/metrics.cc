@@ -17,6 +17,8 @@ using std::tr1::shared_ptr;
 
 namespace shill {
 
+static base::LazyInstance<Metrics> g_metrics(base::LINKER_INITIALIZED);
+
 // static
 const char Metrics::kMetricDisconnect[] = "Network.Shill.%s.Disconnect";
 const int Metrics::kMetricDisconnectMax = 1;

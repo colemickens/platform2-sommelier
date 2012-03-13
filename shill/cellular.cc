@@ -11,7 +11,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -34,7 +33,6 @@
 #include "shill/rtnl_handler.h"
 #include "shill/technology.h"
 
-using base::Bind;
 using std::map;
 using std::string;
 using std::vector;
@@ -104,7 +102,8 @@ Cellular::Cellular(ControlInterface *control_interface,
       modem_state_(kModemStateUnknown),
       dbus_owner_(owner),
       dbus_path_(path),
-      provider_db_(provider_db) {
+      provider_db_(provider_db),
+      task_factory_(this) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
   store->RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
@@ -232,7 +231,9 @@ void Cellular::Scan(Error * /*error*/) {
 }
 
 void Cellular::HandleNewRegistrationState() {
-  dispatcher()->PostTask(Bind(&Cellular::HandleNewRegistrationStateTask, this));
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(
+          &Cellular::HandleNewRegistrationStateTask));
 }
 
 void Cellular::HandleNewRegistrationStateTask() {

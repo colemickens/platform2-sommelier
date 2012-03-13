@@ -4,9 +4,8 @@
 
 #include "shill/dhcp_config.h"
 
-#include <base/bind.h>
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/memory/scoped_temp_dir.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -20,8 +19,6 @@
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 
-using base::Bind;
-using base::Unretained;
 using std::string;
 using std::vector;
 using testing::_;
@@ -83,7 +80,9 @@ TEST_F(DHCPConfigTest, GetIPv4AddressString) {
 
 TEST_F(DHCPConfigTest, InitProxy) {
   static const char kService[] = ":1.200";
+  EXPECT_TRUE(config_->task_factory_.empty());
   config_->InitProxy(kService);
+  EXPECT_FALSE(config_->task_factory_.empty());
 
   EXPECT_TRUE(proxy_.get());
   EXPECT_FALSE(config_->proxy_.get());
@@ -92,6 +91,7 @@ TEST_F(DHCPConfigTest, InitProxy) {
   EXPECT_TRUE(config_->proxy_.get());
 
   config_->InitProxy(kService);
+  EXPECT_TRUE(config_->task_factory_.empty());
 }
 
 TEST_F(DHCPConfigTest, ParseConfiguration) {
@@ -230,7 +230,7 @@ TEST_F(DHCPConfigTest, ProcessEventSignalFail) {
       0x01020304);
   UpdateCallbackTest callback_test(DHCPConfig::kReasonFail, config_, false);
   config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+      NewCallback(&callback_test, &UpdateCallbackTest::Callback));
   config_->ProcessEventSignal(DHCPConfig::kReasonFail, conf);
   EXPECT_TRUE(callback_test.called());
   EXPECT_TRUE(config_->properties().address.empty());
@@ -249,7 +249,7 @@ TEST_F(DHCPConfigTest, ProcessEventSignalSuccess) {
     conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(r);
     UpdateCallbackTest callback_test(message, config_, true);
     config_->RegisterUpdateCallback(
-        Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+        NewCallback(&callback_test, &UpdateCallbackTest::Callback));
     config_->ProcessEventSignal(kReasons[r], conf);
     EXPECT_TRUE(callback_test.called()) << message;
     EXPECT_EQ(base::StringPrintf("%zu.0.0.0", r), config_->properties().address)
@@ -264,7 +264,7 @@ TEST_F(DHCPConfigTest, ProcessEventSignalUnknown) {
   static const char kReasonUnknown[] = "UNKNOWN_REASON";
   UpdateCallbackTest callback_test(kReasonUnknown, config_, false);
   config_->RegisterUpdateCallback(
-      Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+      NewCallback(&callback_test, &UpdateCallbackTest::Callback));
   config_->ProcessEventSignal(kReasonUnknown, conf);
   EXPECT_FALSE(callback_test.called());
   EXPECT_TRUE(config_->properties().address.empty());

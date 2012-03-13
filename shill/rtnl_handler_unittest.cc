@@ -12,8 +12,6 @@
 #include <linux/rtnetlink.h>
 #include <sys/ioctl.h>
 
-#include <base/bind.h>
-
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
@@ -23,9 +21,6 @@
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_message.h"
 
-using base::Bind;
-using base::Callback;
-using base::Unretained;
 using std::string;
 using testing::_;
 using testing::A;
@@ -50,7 +45,7 @@ class TestEventDispatcher : public EventDispatcher {
  public:
   virtual IOHandler *CreateInputHandler(
       int /*fd*/,
-      const Callback<void(InputData*)> &/*callback*/) {
+      Callback1<InputData*>::Type */*callback*/) {
     return NULL;
   }
 };
@@ -61,7 +56,8 @@ class RTNLHandlerTest : public Test {
  public:
   RTNLHandlerTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
-        callback_(Bind(&RTNLHandlerTest::HandlerCallback, Unretained(this))) {
+        callback_(NewCallback(this, &RTNLHandlerTest::Callback)),
+        task_factory_(this) {
   }
 
   virtual void TearDown() {
@@ -69,7 +65,7 @@ class RTNLHandlerTest : public Test {
     SetSockets(NULL);
   }
 
-  MOCK_METHOD1(HandlerCallback, void(const RTNLMessage &));
+  MOCK_METHOD1(Callback, void(const RTNLMessage &));
 
  protected:
   static const int kTestSocket;
@@ -90,7 +86,8 @@ class RTNLHandlerTest : public Test {
   MockMetrics metrics_;
   MockManager manager_;
   TestEventDispatcher dispatcher_;
-  Callback<void(const RTNLMessage &)> callback_;
+  scoped_ptr<Callback1<const RTNLMessage &>::Type> callback_;
+  ScopedRunnableMethodFactory<RTNLHandlerTest> task_factory_;
 };
 
 const int RTNLHandlerTest::kTestSocket = 123;
@@ -128,9 +125,9 @@ void RTNLHandlerTest::AddLink() {
 TEST_F(RTNLHandlerTest, AddLinkTest) {
   StartRTNLHandler();
   scoped_ptr<RTNLListener> link_listener(
-      new RTNLListener(RTNLHandler::kRequestLink, callback_));
+      new RTNLListener(RTNLHandler::kRequestLink, callback_.get()));
 
-  EXPECT_CALL(*this, HandlerCallback(A<const RTNLMessage &>())).Times(1);
+  EXPECT_CALL(*this, Callback(A<const RTNLMessage &>())).Times(1);
 
   AddLink();
 

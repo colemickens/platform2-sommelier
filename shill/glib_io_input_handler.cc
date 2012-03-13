@@ -7,14 +7,13 @@
 #include <stdio.h>
 #include <glib.h>
 
-using base::Callback;
-
 namespace shill {
 
 static gboolean DispatchIOHandler(GIOChannel *chan,
                                   GIOCondition cond,
                                   gpointer data) {
-  GlibIOInputHandler *handler = reinterpret_cast<GlibIOInputHandler *>(data);
+  Callback1<InputData*>::Type *callback =
+      static_cast<Callback1<InputData*>::Type *>(data);
   unsigned char buf[4096];
   gsize len;
   GIOError err;
@@ -33,13 +32,13 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   }
 
   InputData input_data(buf, len);
-  handler->callback().Run(&input_data);
+  callback->Run(&input_data);
 
   return ret;
 }
 
-GlibIOInputHandler::GlibIOInputHandler(
-    int fd, const Callback<void(InputData *)> &callback)
+GlibIOInputHandler::GlibIOInputHandler(int fd,
+                                       Callback1<InputData*>::Type *callback)
     : channel_(g_io_channel_unix_new(fd)),
       callback_(callback),
       source_id_(G_MAXUINT) {
@@ -57,7 +56,7 @@ void GlibIOInputHandler::Start() {
     source_id_ = g_io_add_watch(channel_,
                                 static_cast<GIOCondition>(
                                     G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR),
-                                DispatchIOHandler, this);
+                                DispatchIOHandler, callback_);
   }
 }
 

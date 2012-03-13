@@ -200,7 +200,7 @@ TEST_F(DeviceTest, AcquireIPConfig) {
   EXPECT_FALSE(device_->AcquireIPConfig());
   ASSERT_TRUE(device_->ipconfig_.get());
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
-  EXPECT_FALSE(device_->ipconfig_->update_callback_.is_null());
+  EXPECT_TRUE(device_->ipconfig_->update_callback_.get());
 }
 
 TEST_F(DeviceTest, Load) {

@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/bind.h>
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
@@ -20,9 +19,6 @@
 #include "shill/ip_address.h"
 #include "shill/sockets.h"
 
-using base::Bind;
-using base::Callback;
-using base::Unretained;
 using base::StringPrintf;
 using std::string;
 
@@ -43,25 +39,25 @@ HTTPRequest::HTTPRequest(ConnectionRefPtr connection,
     : connection_(connection),
       dispatcher_(dispatcher),
       sockets_(sockets),
-      weak_ptr_factory_(this),
       connect_completion_callback_(
-          Bind(&HTTPRequest::OnConnectCompletion, Unretained(this))),
-      dns_client_callback_(Bind(&HTTPRequest::GetDNSResult, Unretained(this))),
-      read_server_callback_(Bind(&HTTPRequest::ReadFromServer,
-                                 Unretained(this))),
-      write_server_callback_(Bind(&HTTPRequest::WriteToServer,
-                                  Unretained(this))),
+          NewCallback(this, &HTTPRequest::OnConnectCompletion)),
+      dns_client_callback_(NewCallback(this, &HTTPRequest::GetDNSResult)),
+      read_server_callback_(NewCallback(this, &HTTPRequest::ReadFromServer)),
+      write_server_callback_(NewCallback(this, &HTTPRequest::WriteToServer)),
+      result_callback_(NULL),
+      read_event_callback_(NULL),
+      task_factory_(this),
       dns_client_(
           new DNSClient(IPAddress::kFamilyIPv4,
                         connection->interface_name(),
                         connection->dns_servers(),
                         kDNSTimeoutSeconds * 1000,
                         dispatcher,
-                        dns_client_callback_)),
+                        dns_client_callback_.get())),
       server_async_connection_(
           new AsyncConnection(connection_->interface_name(),
                               dispatcher_, sockets,
-                              connect_completion_callback_)),
+                              connect_completion_callback_.get())),
       server_port_(-1),
       server_socket_(-1),
       timeout_result_(kResultUnknown),
@@ -73,8 +69,8 @@ HTTPRequest::~HTTPRequest() {
 
 HTTPRequest::Result HTTPRequest::Start(
     const HTTPURL &url,
-    const Callback<void(const ByteString &)> &read_event_callback,
-    const Callback<void(Result, const ByteString &)> &result_callback) {
+    Callback1<const ByteString &>::Type *read_event_callback,
+    Callback2<Result, const ByteString &>::Type *result_callback) {
   VLOG(3) << "In " << __func__;
 
   DCHECK(!is_running_);
@@ -128,8 +124,8 @@ void HTTPRequest::Stop() {
   connection_->ReleaseRouting();
   dns_client_->Stop();
   is_running_ = false;
-  result_callback_.Reset();
-  read_event_callback_.Reset();
+  result_callback_ = NULL;
+  read_event_callback_ = NULL;
   request_data_.Clear();
   response_data_.Clear();
   server_async_connection_->Stop();
@@ -139,7 +135,7 @@ void HTTPRequest::Stop() {
     sockets_->Close(server_socket_);
     server_socket_ = -1;
   }
-  weak_ptr_factory_.InvalidateWeakPtrs();
+  task_factory_.RevokeAll();
   timeout_result_ = kResultUnknown;
 }
 
@@ -192,7 +188,7 @@ void HTTPRequest::OnConnectCompletion(bool success, int fd) {
   write_server_handler_.reset(
       dispatcher_->CreateReadyHandler(server_socket_,
                                       IOHandler::kModeOutput,
-                                      write_server_callback_));
+                                      write_server_callback_.get()));
   StartIdleTimeout(kInputTimeoutSeconds, kResultRequestTimeout);
 }
 
@@ -207,30 +203,31 @@ void HTTPRequest::ReadFromServer(InputData *data) {
 
   response_data_.Append(ByteString(data->buf, data->len));
   StartIdleTimeout(kInputTimeoutSeconds, kResultResponseTimeout);
-  if (!read_event_callback_.is_null()) {
-    read_event_callback_.Run(response_data_);
+  if (read_event_callback_) {
+    read_event_callback_->Run(response_data_);
   }
 }
 
 void HTTPRequest::SendStatus(Result result) {
   // Save copies on the stack, since Stop() will remove them.
-  Callback<void(Result, const ByteString &)> result_callback = result_callback_;
+  Callback2<Result, const ByteString &>::Type *result_callback =
+      result_callback_;
   const ByteString response_data(response_data_);
   Stop();
 
   // Call the callback last, since it may delete us and |this| may no longer
   // be valid.
-  if (!result_callback.is_null()) {
-    result_callback.Run(result, response_data);
+  if (result_callback) {
+    result_callback->Run(result, response_data);
   }
 }
 
 // Start a timeout for "the next event".
 void HTTPRequest::StartIdleTimeout(int timeout_seconds, Result timeout_result) {
   timeout_result_ = timeout_result;
-  weak_ptr_factory_.InvalidateWeakPtrs();
+  task_factory_.RevokeAll();
   dispatcher_->PostDelayedTask(
-      Bind(&HTTPRequest::TimeoutTask, weak_ptr_factory_.GetWeakPtr()),
+      task_factory_.NewRunnableMethod(&HTTPRequest::TimeoutTask),
       timeout_seconds * 1000);
 }
 
@@ -265,7 +262,8 @@ void HTTPRequest::WriteToServer(int fd) {
   if (request_data_.IsEmpty()) {
     write_server_handler_->Stop();
     read_server_handler_.reset(
-        dispatcher_->CreateInputHandler(server_socket_, read_server_callback_));
+        dispatcher_->CreateInputHandler(server_socket_,
+                                        read_server_callback_.get()));
     StartIdleTimeout(kInputTimeoutSeconds, kResultResponseTimeout);
   } else {
     StartIdleTimeout(kInputTimeoutSeconds, kResultRequestTimeout);

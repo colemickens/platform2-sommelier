@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <glib.h>
 
-#include <base/callback.h>
+#include <base/callback_old.h>
 
 #include "shill/io_handler.h"
 
@@ -16,17 +16,15 @@ namespace shill {
 
 class GlibIOInputHandler : public IOHandler {
  public:
-  GlibIOInputHandler(int fd, const base::Callback<void(InputData *)> &callback);
+  GlibIOInputHandler(int fd, Callback1<InputData*>::Type *callback);
   ~GlibIOInputHandler();
 
   virtual void Start();
   virtual void Stop();
 
-  const base::Callback<void(InputData *)> &callback() { return callback_; }
-
  private:
   GIOChannel *channel_;
-  base::Callback<void(InputData *)> callback_;
+  Callback1<InputData *>::Type *callback_;
   guint source_id_;
 };
 

@@ -6,17 +6,18 @@
 #define SHILL_CELLULAR_CAPABILITY_
 
 #include <string>
-#include <vector>
 
 #include <base/basictypes.h>
-#include <base/callback.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/scoped_vector.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/async_call_handler.h"
 #include "shill/dbus_properties.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/modem_simple_proxy_interface.h"
+
+class Task;
 
 namespace shill {
 
@@ -144,12 +145,12 @@ class CellularCapability : public ModemProxyDelegate,
     // Override the non-error case
     virtual bool CompleteOperation();
 
-    void AddTask(const base::Closure &task);
+    void AddTask(Task *task);
     void PostNextTask();
 
    private:
     EventDispatcher *dispatcher_;
-    std::vector<base::Closure> tasks_;
+    ScopedVector<Task> tasks_;
 
     DISALLOW_COPY_AND_ASSIGN(MultiStepAsyncCallHandler);
   };

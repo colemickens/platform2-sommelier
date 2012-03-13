@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 
-#include <base/cancelable_callback.h>
+#include <base/callback_old.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/memory/weak_ptr.h>
+#include <base/task.h>
 
 #include "shill/byte_string.h"
 #include "shill/refptr_types.h"
@@ -118,14 +118,15 @@ class HTTPProxy {
   // State held for the lifetime of the proxy.
   State state_;
   ConnectionRefPtr connection_;
-  base::WeakPtrFactory<HTTPProxy> weak_ptr_factory_;
-  base::Callback<void(int)> accept_callback_;
-  base::Callback<void(bool, int)> connect_completion_callback_;
-  base::Callback<void(const Error &, const IPAddress &)> dns_client_callback_;
-  base::Callback<void(InputData *)> read_client_callback_;
-  base::Callback<void(InputData *)> read_server_callback_;
-  base::Callback<void(int)> write_client_callback_;
-  base::Callback<void(int)> write_server_callback_;
+  scoped_ptr<Callback1<int>::Type> accept_callback_;
+  scoped_ptr<Callback2<bool, int>::Type> connect_completion_callback_;
+  scoped_ptr<Callback2<const Error &, const IPAddress &>::Type>
+      dns_client_callback_;
+  scoped_ptr<Callback1<InputData *>::Type> read_client_callback_;
+  scoped_ptr<Callback1<InputData *>::Type> read_server_callback_;
+  scoped_ptr<Callback1<int>::Type> write_client_callback_;
+  scoped_ptr<Callback1<int>::Type> write_server_callback_;
+  ScopedRunnableMethodFactory<HTTPProxy> task_factory_;
 
   // State held while proxy is started (even if no transaction is active).
   scoped_ptr<IOHandler> accept_handler_;
@@ -143,7 +144,7 @@ class HTTPProxy {
   int server_port_;
   int server_socket_;
   bool is_route_requested_;
-  base::CancelableClosure idle_timeout_;
+  CancelableTask *idle_timeout_;
   std::vector<std::string> client_headers_;
   std::string server_hostname_;
   ByteString client_data_;

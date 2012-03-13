@@ -5,7 +5,7 @@
 #include "shill/modem_manager.h"
 
 #include <base/logging.h>
-#include <base/stl_util.h>
+#include <base/stl_util-inl.h>
 
 #include "shill/modem.h"
 #include "shill/modem_manager_proxy.h"

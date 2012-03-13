@@ -20,8 +20,8 @@ class MockHTTPRequest : public HTTPRequest {
 
   MOCK_METHOD3(Start, HTTPRequest::Result(
       const HTTPURL &url,
-      const base::Callback<void(const ByteString &)> &read_event_callback,
-      const base::Callback<void(Result, const ByteString &)> &result_callback));
+      Callback1<const ByteString &>::Type *read_event_callback,
+      Callback2<Result, const ByteString &>::Type *result_callback));
   MOCK_METHOD0(Stop, void());
   MOCK_CONST_METHOD0(response_data, const ByteString &());
 
