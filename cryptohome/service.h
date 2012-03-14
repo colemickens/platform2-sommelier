@@ -92,6 +92,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
     use_tpm_ = value;
   }
 
+  virtual void set_homedirs(cryptohome::HomeDirs* value) { homedirs_ = value; }
+  virtual cryptohome::HomeDirs* homedirs() { return homedirs_; }
+
   // CryptohomeEventSourceSink
   virtual void NotifyEvent(CryptohomeEventBase* event);
 
@@ -247,6 +250,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // Tracks Mount objects for each user by username.
   typedef std::map<const std::string, cryptohome::Mount*> MountMap;
   MountMap mounts_;
+
+  scoped_ptr<HomeDirs> default_homedirs_;
+  HomeDirs* homedirs_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

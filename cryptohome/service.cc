@@ -216,7 +216,9 @@ Service::Service()
       install_attrs_(default_install_attrs_.get()),
       update_user_activity_period_(kUpdateUserActivityPeriod - 1),
       timer_collection_(new TimerCollection()),
-      reported_pkcs11_init_fail_(false) {
+      reported_pkcs11_init_fail_(false),
+      default_homedirs_(new cryptohome::HomeDirs()),
+      homedirs_(default_homedirs_.get()) {
 }
 
 Service::~Service() {
@@ -974,11 +976,12 @@ void Service::AutoCleanupCallback() {
 
   // Update current user's activity timestamp every day.
   if (++ticks > update_user_activity_period_) {
-    mount_->UpdateCurrentUserActivityTimestamp(0);
+    for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it)
+      it->second->UpdateCurrentUserActivityTimestamp(0);
     ticks = 0;
   }
 
-  mount_->DoAutomaticFreeDiskSpaceControl();
+  homedirs_->FreeDiskSpace();
 
   // Schedule our next call. If the thread is terminating, we would
   // not be called.

@@ -15,6 +15,7 @@
 
 #include "crypto.h"
 #include "make_tests.h"
+#include "mock_homedirs.h"
 #include "mock_install_attributes.h"
 #include "mock_mount.h"
 #include "mock_tpm.h"
@@ -155,15 +156,17 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
 TEST(Standalone, CheckAutoCleanupCallback) {
   // Checks that AutoCleanupCallback() is called periodically.
   NiceMock<MockMount> mount;
+  NiceMock<MockHomeDirs> homedirs;
   Service service;
   service.set_mount_for_user("", &mount);
+  service.set_homedirs(&homedirs);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
 
   // Service will schedule periodic clean-ups. Wait a bit and make
   // sure that we had at least 3 executed.
-  EXPECT_CALL(mount, DoAutomaticFreeDiskSpaceControl())
+  EXPECT_CALL(homedirs, FreeDiskSpace())
       .Times(::testing::AtLeast(3));
   EXPECT_CALL(mount, UpdateCurrentUserActivityTimestamp(0))
       .Times(::testing::AtLeast(3));
