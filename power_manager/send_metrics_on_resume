@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,6 +9,15 @@
 #
 # Usage:
 #   -b -- indicates that this script is invoked at boot time.
+
+# Send a message to /var/log/messages.
+# Arguments:
+#  $@ - String(s) that you want in the message. If you are having issues with
+#  this function, you should read up on how $@ works, since it might be your
+#  problem.
+log_msg() {
+    logger -t "send_metrics_on_resume[${PPID}]" $@
+}
 
 # Sends to UMA the total time since going in suspend:
 #   Power.TimeInSuspendAtBoot
@@ -63,6 +72,34 @@ get_last_message_timestamp() {
     | /bin/sed 's/.*\[\s*\([0-9.]*\)].*/\1/'
 }
 
+# Find a message related to the start of suspend and parse out its timestamp. It
+# returns the time stamp of the message it found or nothing.
+get_start_suspend_time() {
+  timestamp=$(get_last_message_timestamp "Freezing user space")
+  [ -n "$timestamp" ] && echo "$timestamp"
+}
+
+# Find a message related to the end of suspend and parse out its
+# timestamp. Since there are multiple possible messages, this function searches
+# for each one in order. It returns the time stamp of the message it found or
+# nothing.
+get_end_suspend_time() {
+  local timestamp=$(get_last_message_timestamp "Back to C!")
+  [ -z "$timestamp" ] &&
+    timestamp=$(get_last_message_timestamp "Low-level resume complete")
+  [ -z "$timestamp" ] &&
+    timestamp=$(get_last_message_timestamp "Entering suspend state")
+  echo "$timestamp"
+}
+
+# Find a message related to the end of resume and parse out its timestamp. Since
+# there are multiple possible messages, this function searches for each one in
+# order.
+get_end_resume_time() {
+  timestamp=$(get_last_message_timestamp "Restarting tasks")
+  echo "$timestamp"
+}
+
 # Sends to UMA the time it took to suspend and resume:
 #   Power.KernelResumeTimeOnAC
 #   Power.KernelResumeTimeOnBattery
@@ -76,31 +113,34 @@ send_suspend_resume_time() {
   [ -r $power_status_on_suspend ] || return
 
   # Greps the timestamps.
-  local start_suspend_time=$(get_last_message_timestamp 'Freezing user space')
-  local end_suspend_time=$(get_last_message_timestamp 'Back to C!')
-  local end_resume_time=$(get_last_message_timestamp 'Finishing wakeup.')
-  [ -n "$start_suspend_time" ] && [ -n "$end_suspend_time" ] && \
-    [ -n "$end_resume_time" ] || return
+  local start_suspend_time=$(get_start_suspend_time)
+  local end_suspend_time=$(get_end_suspend_time)
+  local end_resume_time=$(get_end_resume_time)
+
+  [ -z "$start_suspend_time" ] && log_msg "Unable to get start_suspend_time"
+  [ -z "$end_suspend_time" ] && log_msg "Unable to get end_suspend_time"
+  [ -z "$end_resume_time" ] && log_msg "Unable to get end_resume_time"
 
   # Calculates the time intervals in milliseconds.
-  local kernel_suspend_time=$(echo $start_suspend_time $end_suspend_time \
-    | /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
-  local kernel_resume_time=$(echo $end_suspend_time $end_resume_time \
-    | /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
+  [ -n "$start_suspend_time" ] && [ -n "$end_suspend_time" ] &&
+    local kernel_suspend_time=$(echo $start_suspend_time $end_suspend_time |
+    /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
+  [ -n "$end_suspend_time" ] && [ -n "$end_resume_time" ] &&
+    local kernel_resume_time=$(echo $end_suspend_time $end_resume_time |
+    /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
   local firmware_resume_time=$(calculate_firmware_resume_time)
 
-  [ -n "$kernel_suspend_time" ] && [ -n "$kernel_resume_time" ] &&
-    [ -n "$firmware_resume_time" ] || return
+  [ -z "$firmware_resume_time" ] && log_msg "Unable to get firmware_resume_time"
 
   # Sends the metrics. Uses the pre-suspend AC status for both suspend
   # and resume since this is the mode that most software is configured
   # at at resume time.
   local ac_status=$(/bin/cat $power_status_on_suspend)
-  /usr/bin/metrics_client \
+  [ -n "$kernel_suspend_time" ] && /usr/bin/metrics_client \
     Power.KernelSuspendTime$ac_status $kernel_suspend_time 1 10000 50 &
-  /usr/bin/metrics_client \
+  [ -n "$kernel_resume_time" ] && /usr/bin/metrics_client \
     Power.KernelResumeTime$ac_status $kernel_resume_time 1 10000 50 &
-  /usr/bin/metrics_client \
+  [ -n "$firmware_resume_time" ] && /usr/bin/metrics_client \
     Power.FirmwareResumeTime$ac_status $firmware_resume_time 1 10000 50 &
 
   # Cleanup.
