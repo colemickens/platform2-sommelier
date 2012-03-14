@@ -63,11 +63,7 @@ bool ObjectPoolImpl::Insert(Object* object) {
     if (!Serialize(object, &serialized))
       return false;
     int store_id;
-    if (!store_->InsertObjectBlob(object->IsPrivate(),
-                                  object->GetObjectClass(),
-                                  object->GetAttributeString(CKA_ID),
-                                  serialized,
-                                  &store_id))
+    if (!store_->InsertObjectBlob(serialized, &store_id))
       return false;
     object->set_store_id(store_id);
   }

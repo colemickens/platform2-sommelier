@@ -30,11 +30,7 @@ class ObjectStoreFake : public ObjectStore {
   virtual bool SetEncryptionKey(const std::string& key) {
     return true;
   }
-  virtual bool InsertObjectBlob(bool is_private,
-                            CK_OBJECT_CLASS object_class,
-                            const std::string& key_id,
-                            const std::string& blob,
-                            int* handle) {
+  virtual bool InsertObjectBlob(const std::string& blob, int* handle) {
     *handle = ++last_handle_;
     object_blobs_[*handle] = blob;
     return true;

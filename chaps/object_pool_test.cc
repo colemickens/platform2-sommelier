@@ -142,9 +142,9 @@ TEST_F(TestObjectPool, StorePassThrough) {
 
 // Test basic object management operations.
 TEST_F(TestObjectPool, InsertFindUpdateDelete) {
-  EXPECT_CALL(*store_, InsertObjectBlob(false, CKO_DATA, "", _, _))
+  EXPECT_CALL(*store_, InsertObjectBlob(_, _))
       .WillOnce(Return(false))
-      .WillRepeatedly(DoAll(SetArgumentPointee<4>(3), Return(true)));
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(3), Return(true)));
   EXPECT_CALL(*store_, UpdateObjectBlob(3, _))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -196,8 +196,8 @@ TEST_F(TestObjectPool, UnknownObject) {
 // Test multiple insertion of the same object pointer.
 TEST_F(TestObjectPool, DuplicateObject) {
   Object* o = CreateObjectMock();
-  EXPECT_CALL(*store_, InsertObjectBlob(false, CKO_DATA, "", _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<4>(3), Return(true)));
+  EXPECT_CALL(*store_, InsertObjectBlob(_, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(3), Return(true)));
   EXPECT_TRUE(pool_->Insert(o));
   EXPECT_FALSE(pool_->Insert(o));
   Object* o2 = CreateObjectMock();

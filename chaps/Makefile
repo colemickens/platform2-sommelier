@@ -102,7 +102,7 @@ $(OUT)chapsd: $(COMMON) \
               $(OUT)tpm_utility_impl.o \
               $(OUT)chaps_factory_impl.o \
               $(OUT)object_store_impl.o
-	$(call cxx_binary, -ldl -ltspi)
+	$(call cxx_binary, -ldl -ltspi -lleveldb -lmemenv)
 RM_ON_CLEAN += $(OUT)chapsd
 
 $(OUT)chapsd_test: $(OUT)chapsd_test.o $(OUT)chaps_service_redirect.o
@@ -172,7 +172,7 @@ RM_ON_CLEAN += $(OUT)object_pool_test
 $(OUT)object_store_test: $(COMMON) \
                         $(OUT)object_store_test.o \
                         $(OUT)object_store_impl.o
-	$(call cxx_binary, -lgtest)
+	$(call cxx_binary, -lgtest -lleveldb -lmemenv)
 RM_ON_CLEAN += $(OUT)object_store_test
 
 $(OUT)tpm_utility_test: $(COMMON) $(MOCK) \

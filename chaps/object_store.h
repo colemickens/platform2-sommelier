@@ -36,11 +36,7 @@ class ObjectStore {
   // InsertObjectBlob, DeleteObjectBlob, ...).
   virtual bool SetEncryptionKey(const std::string& key) = 0;
   // Inserts a new blob.
-  virtual bool InsertObjectBlob(bool is_private,
-                                CK_OBJECT_CLASS object_class,
-                                const std::string& key_id,
-                                const std::string& blob,
-                                int* blob_id) = 0;
+  virtual bool InsertObjectBlob(const std::string& blob, int* blob_id) = 0;
   // Deletes an existing blob.
   virtual bool DeleteObjectBlob(int blob_id) = 0;
   // Updates (replaces) an existing object blob.

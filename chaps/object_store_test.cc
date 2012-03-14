@@ -98,6 +98,63 @@ TEST_F(TestObjectStoreEncryption, CBCMode) {
   EXPECT_FALSE(encrypted_block1 == encrypted_block2);
 }
 
+TEST(TestObjectStore, InsertLoad) {
+  ObjectStoreImpl store;
+  const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
+  store.Init(FilePath(database));
+  string key(32, 'A');
+  EXPECT_TRUE(store.SetEncryptionKey(key));
+  map<int,string> objects;
+  EXPECT_TRUE(store.LoadAllObjectBlobs(&objects));
+  EXPECT_EQ(0, objects.size());
+  int handle1;
+  string blob1 = "blob1";
+  EXPECT_TRUE(store.InsertObjectBlob(blob1, &handle1));
+  int handle2;
+  string blob2 = "blob2";
+  EXPECT_TRUE(store.InsertObjectBlob(blob2, &handle2));
+  EXPECT_TRUE(store.LoadAllObjectBlobs(&objects));
+  EXPECT_EQ(2, objects.size());
+  EXPECT_TRUE(objects.end() != objects.find(handle1));
+  EXPECT_TRUE(objects.end() != objects.find(handle2));
+  EXPECT_TRUE(blob1 == objects[handle1]);
+  EXPECT_TRUE(blob2 == objects[handle2]);
+}
+
+TEST(TestObjectStore, UpdateDelete) {
+  ObjectStoreImpl store;
+  const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
+  store.Init(FilePath(database));
+  string key(32, 'A');
+  EXPECT_TRUE(store.SetEncryptionKey(key));
+  int handle1;
+  string blob1 = "blob1";
+  EXPECT_TRUE(store.InsertObjectBlob(blob1, &handle1));
+  map<int,string> objects;
+  EXPECT_TRUE(store.LoadAllObjectBlobs(&objects));
+  EXPECT_TRUE(blob1 == objects[handle1]);
+  string blob2 = "blob2";
+  EXPECT_TRUE(store.UpdateObjectBlob(handle1, blob2));
+  EXPECT_TRUE(store.LoadAllObjectBlobs(&objects));
+  EXPECT_EQ(1, objects.size());
+  EXPECT_TRUE(blob2 == objects[handle1]);
+  EXPECT_TRUE(store.DeleteObjectBlob(handle1));
+  objects.clear();
+  EXPECT_TRUE(store.LoadAllObjectBlobs(&objects));
+  EXPECT_EQ(0, objects.size());
+}
+
+TEST(TestObjectStore, InternalBlobs) {
+  ObjectStoreImpl store;
+  const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
+  store.Init(FilePath(database));
+  string blob;
+  EXPECT_FALSE(store.GetInternalBlob(1, &blob));
+  EXPECT_TRUE(store.SetInternalBlob(1, "blob"));
+  EXPECT_TRUE(store.GetInternalBlob(1, &blob));
+  EXPECT_TRUE(blob == "blob");
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

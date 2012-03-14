@@ -21,12 +21,8 @@ class ObjectStoreMock : public ObjectStore {
       bool(int blob_id, const std::string& blob));
   MOCK_METHOD1(SetEncryptionKey,
       bool(const std::string& key));
-  MOCK_METHOD5(InsertObjectBlob,
-      bool(bool is_private,
-           CK_OBJECT_CLASS object_class,
-           const std::string& key_id,
-           const std::string& blob,
-           int* blob_id));
+  MOCK_METHOD2(InsertObjectBlob,
+      bool(const std::string& blob, int* blob_id));
   MOCK_METHOD1(DeleteObjectBlob,
       bool(int blob_id));
   MOCK_METHOD2(UpdateObjectBlob,
