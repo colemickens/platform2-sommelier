@@ -32,6 +32,9 @@ void VPN::SelectService(const VPNServiceRefPtr &service) {
 
 void VPN::UpdateIPConfig(const IPConfig::Properties &properties) {
   VLOG(2) << __func__;
+  if (!ipconfig()) {
+    set_ipconfig(new IPConfig(control_interface(), link_name()));
+  }
   ipconfig()->set_properties(properties);
   OnIPConfigUpdated(ipconfig(), true);
 }

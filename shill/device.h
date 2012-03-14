@@ -108,10 +108,12 @@ class Device : public base::RefCounted<Device> {
   const std::string &link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
   const ConnectionRefPtr &connection() const { return connection_; }
-  const IPConfigRefPtr &ipconfig() const { return ipconfig_; }
   bool powered() const { return powered_; }
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString(Error *error);
+
+  const IPConfigRefPtr &ipconfig() const { return ipconfig_; }
+  void set_ipconfig(const IPConfigRefPtr &config) { ipconfig_ = config; }
 
   const std::string &FriendlyName() const;
 
