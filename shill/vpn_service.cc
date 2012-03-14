@@ -47,19 +47,13 @@ string VPNService::GetStorageIdentifier() const {
 // static
 string VPNService::CreateStorageIdentifier(const KeyValueStore &args,
                                            Error *error) {
-  string host;
-  if (args.ContainsString(flimflam::kProviderHostProperty)) {
-    host = args.GetString(flimflam::kProviderHostProperty);
-  }
+  string host = args.LookupString(flimflam::kProviderHostProperty, "");
   if (host.empty()) {
     Error::PopulateAndLog(
         error, Error::kInvalidProperty, "Missing VPN host.");
     return "";
   }
-  string name;
-  if (args.ContainsString(flimflam::kProviderNameProperty)) {
-    name = args.GetString(flimflam::kProviderNameProperty);
-  }
+  string name = args.LookupString(flimflam::kProviderNameProperty, "");
   if (name.empty()) {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Missing VPN name.");

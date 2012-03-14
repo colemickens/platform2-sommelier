@@ -35,7 +35,8 @@ void VPNProvider::Stop() {}
 VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
                                          Error *error) {
   VLOG(2) << __func__;
-  if (!args.ContainsString(flimflam::kProviderTypeProperty)) {
+  string type = args.LookupString(flimflam::kProviderTypeProperty, "");
+  if (type.empty()) {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Missing VPN type property.");
     return NULL;
@@ -46,7 +47,6 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
     return NULL;
   }
 
-  const string &type = args.GetString(flimflam::kProviderTypeProperty);
   scoped_ptr<VPNDriver> driver;
   if (type == flimflam::kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(
@@ -61,6 +61,10 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
   VPNServiceRefPtr service = new VPNService(
       control_interface_, dispatcher_, metrics_, manager_, driver.release());
   service->set_storage_id(storage_id);
+  string name = args.LookupString(flimflam::kProviderNameProperty, "");
+  if (!name.empty()) {
+    service->set_friendly_name(name);
+  }
   services_.push_back(service);
   manager_->RegisterService(service);
   return service;

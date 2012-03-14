@@ -248,6 +248,7 @@ class Service : public base::RefCounted<Service> {
   // Setter is deliberately omitted; use MakeFavorite.
 
   const std::string &friendly_name() const { return friendly_name_; }
+  void set_friendly_name(const std::string &n) { friendly_name_ = n; }
 
   int32 priority() const { return priority_; }
   void set_priority(int32 priority) { priority_ = priority; }
@@ -297,8 +298,6 @@ class Service : public base::RefCounted<Service> {
 
   // Returns true if a character is disallowed to be in a service storage id.
   static bool IllegalChar(char a) { return !LegalChar(a); }
-
-  void set_friendly_name(const std::string &n) { friendly_name_ = n; }
 
   virtual std::string CalculateState(Error *error);
 

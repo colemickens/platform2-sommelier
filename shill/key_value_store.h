@@ -41,6 +41,11 @@ class KeyValueStore {
   void SetString(const std::string& name, const std::string& value);
   void SetUint(const std::string &name, uint32 value);
 
+  // If |name| is in this store returns its value, otherwise returns
+  // |default_value|.
+  std::string LookupString(const std::string &name,
+                           const std::string &default_value) const;
+
   const std::map<std::string, bool> &bool_properties() const {
     return bool_properties_;
   }

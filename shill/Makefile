@@ -227,6 +227,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	ip_address_unittest.o \
 	ipconfig_unittest.o \
 	key_file_store_unittest.o \
+	key_value_store_unittest.o \
 	manager_unittest.o \
 	metrics_unittest.o \
 	mock_adaptors.o \

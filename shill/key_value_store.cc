@@ -56,4 +56,9 @@ void KeyValueStore::SetUint(const string &name, uint32 value) {
   uint_properties_[name] = value;
 }
 
+string KeyValueStore::LookupString(const string &name,
+                                   const string &default_value) const {
+  return ContainsString(name) ? GetString(name) : default_value;
+}
+
 }  // namespace shill

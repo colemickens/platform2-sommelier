@@ -306,10 +306,7 @@ void OpenVPNDriver::Connect(const VPNServiceRefPtr &service,
 }
 
 void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
-  string vpnhost;
-  if (args_.ContainsString(flimflam::kProviderHostProperty)) {
-    vpnhost = args_.GetString(flimflam::kProviderHostProperty);
-  }
+  string vpnhost = args_.LookupString(flimflam::kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments, "VPN host not specified.");
@@ -379,10 +376,8 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
       << "not implemented yet.";
 
   // TLS suport.
-  string remote_cert_tls;
-  if (args_.ContainsString(flimflam::kOpenVPNRemoteCertTLSProperty)) {
-    remote_cert_tls = args_.GetString(flimflam::kOpenVPNRemoteCertTLSProperty);
-  }
+  string remote_cert_tls =
+      args_.LookupString(flimflam::kOpenVPNRemoteCertTLSProperty, "");
   if (remote_cert_tls.empty()) {
     remote_cert_tls = "server";
   }
@@ -435,10 +430,7 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
 
 void OpenVPNDriver::AppendValueOption(
     const string &property, const string &option, vector<string> *options) {
-  string value;
-  if (args_.ContainsString(property)) {
-    value = args_.GetString(property);
-  }
+  string value = args_.LookupString(property, "");
   if (!value.empty()) {
     options->push_back(option);
     options->push_back(value);

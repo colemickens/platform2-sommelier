@@ -79,6 +79,7 @@ TEST_F(VPNProviderTest, GetService) {
   EXPECT_TRUE(e.IsSuccess());
   ASSERT_TRUE(service);
   EXPECT_EQ("vpn_10_8_0_1_vpn_name", service->GetStorageIdentifier());
+  EXPECT_EQ(kName, service->friendly_name());
 }
 
 TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
