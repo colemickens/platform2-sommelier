@@ -11,9 +11,11 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/connection.h"
 #include "shill/device_info.h"
 #include "shill/dhcp_config.h"
 #include "shill/error.h"
+#include "shill/manager.h"
 #include "shill/rpc_task.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
@@ -169,6 +171,8 @@ void OpenVPNDriver::Notify(const string &reason,
   }
   IPConfig::Properties properties;
   ParseIPConfiguration(dict, &properties);
+  PinHostRoute(properties);
+
   device_->UpdateIPConfig(properties);
 }
 
@@ -178,7 +182,6 @@ void OpenVPNDriver::ParseIPConfiguration(
     IPConfig::Properties *properties) {
   ForeignOptions foreign_options;
   RouteOptions routes;
-  string trusted_ip;
   properties->address_family = IPAddress::kFamilyIPv4;
   for (map<string, string>::const_iterator it = configuration.begin();
        it != configuration.end(); ++it) {
@@ -197,7 +200,7 @@ void OpenVPNDriver::ParseIPConfiguration(
     } else if (LowerCaseEqualsASCII(key, kOpenVPNRouteVPNGateway)) {
       properties->gateway = value;
     } else if (LowerCaseEqualsASCII(key, kOpenVPNTrustedIP)) {
-      trusted_ip = value;
+      properties->trusted_ip = value;
     } else if (LowerCaseEqualsASCII(key, kOpenVPNTunMTU)) {
       int mtu = 0;
       if (base::StringToInt(value, &mtu) && mtu >= DHCPConfig::kMinMTU) {
@@ -220,7 +223,6 @@ void OpenVPNDriver::ParseIPConfiguration(
       VLOG(2) << "Key ignored.";
     }
   }
-  // TODO(petkov): If gateway and trusted_ip, pin a host route to VPN server.
   ParseForeignOptions(foreign_options, properties);
   SetRoutes(routes, properties);
 }
@@ -445,6 +447,28 @@ void OpenVPNDriver::AppendFlag(
   if (args_.ContainsString(property)) {
     options->push_back(option);
   }
+}
+
+bool OpenVPNDriver::PinHostRoute(const IPConfig::Properties &properties) {
+  if (properties.gateway.empty() || properties.trusted_ip.empty()) {
+    return false;
+  }
+
+  IPAddress trusted_ip(properties.address_family);
+  if (!trusted_ip.SetAddressFromString(properties.trusted_ip)) {
+    LOG(ERROR) << "Failed to parse trusted_ip "
+               << properties.trusted_ip << "; ignored.";
+    return false;
+  }
+
+  ServiceRefPtr default_service = manager_->GetDefaultService();
+  if (!default_service) {
+    LOG(ERROR) << "No default service exists.";
+    return false;
+  }
+
+  CHECK(default_service->connection());
+  return default_service->connection()->RequestHostRoute(trusted_ip);
 }
 
 void OpenVPNDriver::Disconnect() {

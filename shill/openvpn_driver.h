@@ -70,6 +70,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
   FRIEND_TEST(OpenVPNDriverTest, ParseRouteOption);
+  FRIEND_TEST(OpenVPNDriverTest, PinHostRoute);
   FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
@@ -106,6 +107,7 @@ class OpenVPNDriver : public VPNDriver,
   void AppendFlag(const std::string &property,
                   const std::string &option,
                   std::vector<std::string> *options);
+  bool PinHostRoute(const IPConfig::Properties &properties);
 
   bool SpawnOpenVPN();
   void Cleanup();

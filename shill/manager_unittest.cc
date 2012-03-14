@@ -50,6 +50,7 @@ using ::testing::InSequence;
 using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
@@ -290,6 +291,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
                                 dispatcher(),
                                 metrics(),
                                 &manager));
+
   string service1_name(mock_service->UniqueName());
   string service2_name(mock_service2->UniqueName());
 
@@ -1066,8 +1068,8 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->SortServices();
 
-  mock_service0->connection_ = mock_connection0;
-  mock_service1->connection_ = mock_connection1;
+  mock_service0->set_mock_connection(mock_connection0);
+  mock_service1->set_mock_connection(mock_connection1);
 
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
@@ -1081,10 +1083,10 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
-  mock_service1->connection_ = NULL;
+  mock_service1->set_mock_connection(NULL);
   manager()->DeregisterService(mock_service1);
 
-  mock_service0->connection_ = NULL;
+  mock_service0->set_mock_connection(NULL);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->DeregisterService(mock_service0);
 
@@ -1402,10 +1404,10 @@ TEST_F(ManagerTest, GetDefaultService) {
 
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(device_info_.get()));
-  mock_service->connection_ = mock_connection;
+  mock_service->set_mock_connection(mock_connection);
   EXPECT_EQ(mock_service.get(), manager()->GetDefaultService().get());
 
-  mock_service->connection_ = NULL;
+  mock_service->set_mock_connection(NULL);
   manager()->DeregisterService(mock_service);
 }
 

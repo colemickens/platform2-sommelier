@@ -290,7 +290,7 @@ class Service : public base::RefCounted<Service> {
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
-  const ConnectionRefPtr &connection() const { return connection_; }
+  virtual const ConnectionRefPtr &connection() const { return connection_; }
 
  protected:
   // Returns true if a character is allowed to be in a service storage id.
@@ -370,9 +370,6 @@ class Service : public base::RefCounted<Service> {
   friend class MetricsTest;
   friend class ServiceAdaptorInterface;
   friend class WiFiServiceTest;
-  FRIEND_TEST(DeviceTest, SelectedService);
-  FRIEND_TEST(ManagerTest, GetDefaultService);
-  FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ServiceTest, Constructor);
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);

@@ -50,6 +50,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
     std::string gateway;
     std::string method;
     std::string peer_address;
+    // Used by OpenVPN to signify a destination that should bypass any default
+    // route installed.  This is usually the external IP address of the VPN
+    // server.
+    std::string trusted_ip;
     int32 mtu;
     std::vector<Route> routes;
   };

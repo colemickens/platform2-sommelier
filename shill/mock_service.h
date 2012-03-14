@@ -48,13 +48,20 @@ class MockService : public Service {
   MOCK_METHOD0(SaveToCurrentProfile, bool());
   MOCK_CONST_METHOD0(HasProxyConfig, bool());
   MOCK_METHOD1(SetConnection, void(ConnectionRefPtr connection));
+  MOCK_CONST_METHOD0(connection, const ConnectionRefPtr &());
   MOCK_CONST_METHOD0(explicitly_disconnected, bool());
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.
   bool FauxSave(StoreInterface *store);
+  // Sets the connection reference returned by default when connection()
+  // is called.
+  void set_mock_connection(const ConnectionRefPtr &connection) {
+    mock_connection_ = connection;
+  }
 
  private:
+  ConnectionRefPtr mock_connection_;
   DISALLOW_COPY_AND_ASSIGN(MockService);
 };
 

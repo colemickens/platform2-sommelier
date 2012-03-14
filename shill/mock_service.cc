@@ -17,6 +17,7 @@
 using std::string;
 using testing::_;
 using testing::Return;
+using testing::ReturnRef;
 
 namespace shill {
 
@@ -37,6 +38,7 @@ MockService::MockService(ControlInterface *control_interface,
   ON_CALL(*this, failure()).WillByDefault(Return(kFailureUnknown));
   ON_CALL(*this, TechnologyIs(_)).WillByDefault(Return(false));
   ON_CALL(*this, technology()).WillByDefault(Return(Technology::kUnknown));
+  ON_CALL(*this, connection()).WillByDefault(ReturnRef(mock_connection_));
 }
 
 MockService::~MockService() {}

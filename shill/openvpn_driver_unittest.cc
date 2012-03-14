@@ -15,10 +15,12 @@
 #include "shill/error.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_connection.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_service.h"
 #include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
 #include "shill/nice_mock_control.h"
@@ -31,8 +33,10 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::DoAll;
+using testing::NiceMock;
 using testing::Return;
 using testing::SetArgumentPointee;
+using testing::StrictMock;
 
 namespace shill {
 
@@ -268,6 +272,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   config["ifconFig_netmAsk"] = "255.255.255.0";
   config["ifconfig_remotE"] = "33.44.55.66";
   config["route_vpN_gateway"] = "192.168.1.1";
+  config["trusted_ip"] = "99.88.77.66";
   config["tun_mtu"] = "1000";
   config["foreign_option_2"] = "dhcp-option DNS 4.4.4.4";
   config["foreign_option_1"] = "dhcp-option DNS 1.1.1.1";
@@ -287,6 +292,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ(24, props.subnet_cidr);
   EXPECT_EQ("33.44.55.66", props.peer_address);
   EXPECT_EQ("192.168.1.1", props.gateway);
+  EXPECT_EQ("99.88.77.66", props.trusted_ip);
   EXPECT_EQ(1000, props.mtu);
   ASSERT_EQ(3, props.dns_servers.size());
   EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
@@ -445,6 +451,54 @@ TEST_F(OpenVPNDriverTest, Disconnect) {
   EXPECT_CALL(*service_, SetState(Service::kStateIdle));
   driver_->Disconnect();
   EXPECT_FALSE(driver_->service_);
+}
+
+MATCHER_P(IsIPAddress, address, "") {
+  IPAddress ip_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ip_address.SetAddressFromString(address));
+  return ip_address.Equals(arg);
+}
+
+TEST_F(OpenVPNDriverTest, PinHostRoute) {
+  IPConfig::Properties props;
+  props.address_family = IPAddress::kFamilyIPv4;
+  EXPECT_FALSE(driver_->PinHostRoute(props));
+
+  props.gateway = kGateway1;
+  EXPECT_FALSE(driver_->PinHostRoute(props));
+
+  props.gateway.clear();
+  props.trusted_ip = "xxx";
+  EXPECT_FALSE(driver_->PinHostRoute(props));
+
+  props.gateway = kGateway1;
+  EXPECT_FALSE(driver_->PinHostRoute(props));
+
+  props.trusted_ip = kNetwork1;
+  EXPECT_CALL(manager_, GetDefaultService())
+      .WillOnce(Return(reinterpret_cast<Service *>(NULL)));
+  EXPECT_FALSE(driver_->PinHostRoute(props));
+
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(&control_,
+                                &dispatcher_,
+                                &metrics_,
+                                &manager_));
+  scoped_refptr<MockConnection> mock_connection(
+      new StrictMock<MockConnection>(&device_info_));
+  mock_service->set_mock_connection(mock_connection);
+  EXPECT_CALL(manager_, GetDefaultService())
+      .WillOnce(Return(mock_service));
+
+  EXPECT_CALL(*mock_connection.get(), RequestHostRoute(IsIPAddress(kNetwork1)))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(driver_->PinHostRoute(props));
+
+  EXPECT_CALL(manager_, GetDefaultService())
+      .WillOnce(Return(mock_service));
+  EXPECT_CALL(*mock_connection.get(), RequestHostRoute(IsIPAddress(kNetwork1)))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(driver_->PinHostRoute(props));
 }
 
 TEST_F(OpenVPNDriverTest, VerifyPaths) {
