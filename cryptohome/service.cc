@@ -45,6 +45,7 @@ namespace gobject {
 namespace cryptohome {
 
 const char *kSaltFilePath = "/home/.shadow/salt";
+const char *kDefaultMountName = "";
 
 // Encapsulates histogram parameters, for UMA reporting.
 struct HistogramParams {
@@ -242,7 +243,9 @@ bool Service::Initialize() {
   if (!crypto_->Init())
     return false;
 
-  mount_ = GetOrCreateMountForUser("");
+  mount_ = GetMountForUser(kDefaultMountName);
+  if (!mount_)
+    mount_ = CreateMountForUser(kDefaultMountName);
   mount_->Init();
   // If the TPM is unowned or doesn't exist, it's safe for
   // this function to be called again. However, it shouldn't
@@ -1001,13 +1004,17 @@ void Service::DetectEnterpriseOwnership() const {
       it->second->set_enterprise_owned(true);
 }
 
-cryptohome::Mount* Service::GetOrCreateMountForUser(
-    const std::string& username) {
-  if (mounts_.count(username) == 1)
-    return mounts_[username];
+cryptohome::Mount* Service::CreateMountForUser(const std::string& username) {
+  CHECK_EQ(mounts_.count(username), 0U);
   cryptohome::Mount* m = new cryptohome::Mount();
   mounts_[username] = m;
   return m;
+}
+
+cryptohome::Mount* Service::GetMountForUser(const std::string& username) {
+  if (mounts_.count(username) == 1)
+    return mounts_[username];
+  return NULL;
 }
 
 bool Service::CreateSystemSaltIfNeeded() {

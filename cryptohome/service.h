@@ -213,7 +213,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
 
  private:
   bool CreateSystemSaltIfNeeded();
-  cryptohome::Mount* GetOrCreateMountForUser(const std::string& username);
+  cryptohome::Mount* GetMountForUser(const std::string& username);
+  cryptohome::Mount* CreateMountForUser(const std::string& username);
 
   bool use_tpm_;
   GMainLoop* loop_;
