@@ -91,4 +91,4 @@ TEST_F(SecureBlobTest, ResizeTest) {
   EXPECT_EQ(0, static_cast<unsigned char*>(blob.data())[length - 1]);
 }
 
-} // namespace cryptohome
+}  // namespace cryptohome

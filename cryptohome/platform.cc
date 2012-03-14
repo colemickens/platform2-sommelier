@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,6 +19,7 @@
 #include <sys/wait.h>
 
 #include <base/file_util.h>
+#include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
@@ -32,6 +33,22 @@ extern "C" {
 
 using base::SplitString;
 using std::string;
+
+namespace {
+
+// TODO(ellyjones): once we have a newer libbase, migrate to
+// base::StringToUint(). TODOBASE
+bool StringToUint(const std::string& str, unsigned int *value) {
+  char *ep = NULL;
+  // cpplint warns about strtoul(), but our libbase doesn't have StringToUint
+  unsigned int v = strtoul(str.c_str(), &ep, 10); // NOLINT strtoul
+  if (str.size() && *ep)
+    return false;
+  *value = v;
+  return true;
+}
+
+};  // namespace
 
 namespace cryptohome {
 
@@ -224,9 +241,10 @@ void Platform::LookForOpenFiles(const std::string& path_in,
   for (FilePath pid_path = proc_dir_enum.Next();
        !pid_path.empty();
        pid_path = proc_dir_enum.Next()) {
-    pid_t pid = static_cast<pid_t>(atoi(pid_path.BaseName().value().c_str()));
+    const char* pidstr = pid_path.BaseName().value().c_str();
+    pid_t pid = 0;
     // Ignore PID 1 and errors
-    if (pid <= 1) {
+    if (!base::StringToInt(pidstr, &pid) || pid <= 1) {
       continue;
     }
 
@@ -300,17 +318,16 @@ bool Platform::TerminatePidsForUser(const uid_t uid, bool hard) {
 }
 
 void Platform::GetPidsForUser(uid_t uid, std::vector<pid_t>* pids) {
-
   // Open /proc
   file_util::FileEnumerator proc_dir_enum(FilePath(proc_dir_), false,
       file_util::FileEnumerator::DIRECTORIES);
 
-
   // List PIDs in /proc
   FilePath pid_path;
   while (!(pid_path = proc_dir_enum.Next()).empty()) {
-    pid_t pid = static_cast<pid_t>(atoi(pid_path.BaseName().value().c_str()));
-    if (pid <= 1) {
+    const char* pid_str = pid_path.BaseName().value().c_str();
+    pid_t pid = 0;
+    if (!base::StringToInt(pid_str, &pid) || pid <= 1) {
       continue;
     }
     // Open /proc/<pid>/status
@@ -342,7 +359,9 @@ void Platform::GetPidsForUser(uid_t uid, std::vector<pid_t>* pids) {
       if (value.length() == 0) {
         continue;
       }
-      uid_t check_uid = static_cast<uid_t>(atoi(value.c_str()));
+      uid_t check_uid = 0;
+      if (!StringToUint(value.c_str(), &check_uid))
+        continue;
       if (check_uid == uid) {
         pids->push_back(pid);
         break;
@@ -374,8 +393,9 @@ void Platform::GetPidsByName(const string& name, std::vector<pid_t>* pids) {
   // List PIDs in /proc.
   FilePath pid_path;
   while (!(pid_path = proc_dir_enum.Next()).empty()) {
-    pid_t pid = static_cast<pid_t>(atoi(pid_path.BaseName().value().c_str()));
-    if (pid <= 1)
+    const char* pid_str = pid_path.BaseName().value().c_str();
+    pid_t pid = 0;
+    if (!base::StringToInt(pid_str, &pid) || pid <= 1)
       continue;
     // Open /proc/<pid>/status.
     FilePath status_path = pid_path.Append("status");
@@ -531,7 +551,7 @@ int Platform::SetMask(int new_mask) const {
 bool Platform::GetUserId(const std::string& user, uid_t* user_id,
                          gid_t* group_id) const {
   // Load the passwd entry
-  long user_name_length = sysconf(_SC_GETPW_R_SIZE_MAX);
+  long user_name_length = sysconf(_SC_GETPW_R_SIZE_MAX);  // NOLINT long
   if (user_name_length == -1) {
     user_name_length = kDefaultPwnameLength;
   }
@@ -548,7 +568,7 @@ bool Platform::GetUserId(const std::string& user, uid_t* user_id,
 
 bool Platform::GetGroupId(const std::string& group, gid_t* group_id) const {
   // Load the group entry
-  long group_name_length = sysconf(_SC_GETGR_R_SIZE_MAX);
+  long group_name_length = sysconf(_SC_GETGR_R_SIZE_MAX);  // NOLINT long
   if (group_name_length == -1) {
     group_name_length = kDefaultPwnameLength;
   }
@@ -705,4 +725,4 @@ bool Platform::Rename(const std::string& from, const std::string& to) {
   return rename(from.c_str(), to.c_str()) == 0;
 }
 
-} // namespace cryptohome
+}  // namespace cryptohome

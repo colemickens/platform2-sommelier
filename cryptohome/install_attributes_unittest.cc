@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -114,6 +114,7 @@ class InstallAttributesTest : public ::testing::Test {
   InstallAttributes install_attrs_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(InstallAttributesTest);
 };
@@ -136,8 +137,8 @@ TEST_F(InstallAttributesTest, OobeWithoutTpm) {
   install_attrs_.SetTpm(NULL);
 
   EXPECT_CALL(platform_, ReadFile(_, _))
-   .Times(1)
-   .WillOnce(Return(false));
+    .Times(1)
+    .WillOnce(Return(false));
 
   EXPECT_TRUE(install_attrs_.Init());
   EXPECT_TRUE(install_attrs_.is_first_install());
@@ -180,14 +181,14 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
   EXPECT_FALSE(install_attrs_.is_invalid());
 
   EXPECT_CALL(platform_, ReadFile(_, _))
-   .Times(1)
-   .WillOnce(DoAll(SetArgumentPointee<1>(serialized_data), Return(true)));
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<1>(serialized_data), Return(true)));
   EXPECT_CALL(lockbox_, Load(_))
-   .Times(1)
-   .WillOnce(Return(true));
+    .Times(1)
+    .WillOnce(Return(true));
   EXPECT_CALL(lockbox_, Verify(_, _))
-   .Times(1)
-   .WillOnce(Return(true));
+    .Times(1)
+    .WillOnce(Return(true));
   EXPECT_TRUE(install_attrs_.Init());
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -212,8 +213,8 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
   EXPECT_FALSE(install_attrs_.is_invalid());
 
   EXPECT_CALL(platform_, ReadFile(_, _))
-   .Times(1)
-   .WillOnce(DoAll(SetArgumentPointee<1>(serialized_data), Return(true)));
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<1>(serialized_data), Return(true)));
 
   EXPECT_TRUE(install_attrs_.Init());
   EXPECT_FALSE(install_attrs_.is_first_install());
@@ -244,8 +245,8 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
 
   Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramData;
   EXPECT_CALL(lockbox_, Load(_))
-   .Times(1)
-   .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
   EXPECT_TRUE(install_attrs_.Init());
   EXPECT_TRUE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -263,8 +264,8 @@ TEST_F(InstallAttributesTest, NormalBootLoadError) {
 
   Lockbox::ErrorId error_id = Lockbox::kErrorIdTpmError;
   EXPECT_CALL(lockbox_, Load(_))
-   .Times(1)
-   .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
   EXPECT_FALSE(install_attrs_.Init());
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_TRUE(install_attrs_.is_invalid());
@@ -281,11 +282,11 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
   EXPECT_FALSE(install_attrs_.is_invalid());
 
   EXPECT_CALL(lockbox_, Load(_))
-   .Times(1)
-   .WillOnce(Return(true));
+    .Times(1)
+    .WillOnce(Return(true));
   EXPECT_CALL(platform_, ReadFile(_, _))
-   .Times(1)
-   .WillOnce(Return(false));
+    .Times(1)
+    .WillOnce(Return(false));
   EXPECT_FALSE(install_attrs_.Init());
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_TRUE(install_attrs_.is_invalid());
@@ -303,16 +304,16 @@ TEST_F(InstallAttributesTest, NormalBootVerifyError) {
 
   Lockbox::ErrorId error_id = Lockbox::kErrorIdHashMismatch;
   EXPECT_CALL(lockbox_, Load(_))
-   .Times(1)
-   .WillOnce(Return(true));
+    .Times(1)
+    .WillOnce(Return(true));
 
   EXPECT_CALL(platform_, ReadFile(_, _))
-   .Times(1)
-   .WillOnce(Return(true));
+    .Times(1)
+    .WillOnce(Return(true));
 
   EXPECT_CALL(lockbox_, Verify(_, _))
-   .Times(1)
-   .WillOnce(DoAll(SetArgumentPointee<1>(error_id), Return(false)));
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<1>(error_id), Return(false)));
 
   EXPECT_FALSE(install_attrs_.Init());
   EXPECT_FALSE(install_attrs_.is_first_install());
@@ -331,8 +332,8 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
 
   Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramSpace;
   EXPECT_CALL(lockbox_, Load(_))
-   .Times(1)
-   .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
   EXPECT_TRUE(install_attrs_.Init());
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -342,4 +343,4 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
   EXPECT_EQ(0, install_attrs_.Count());
 }
 
-} // namespace cryptohome
+}  // namespace cryptohome

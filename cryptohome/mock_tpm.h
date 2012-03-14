@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -39,7 +39,7 @@ class MockTpm : public Tpm {
   MOCK_METHOD2(Init, bool(Crypto*, bool));
   MOCK_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(IsOwned, bool());
-  MOCK_METHOD1(Connect, bool(TpmRetryAction*));
+  MOCK_METHOD1(Connect, bool(TpmRetryAction*));  // NOLINT
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD6(Encrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
                                    unsigned int, const chromeos::Blob&,
@@ -75,7 +75,6 @@ class MockTpm : public Tpm {
     blob->resize(0);
     return true;
   }
-
 };
 }  // namespace cryptohome
 

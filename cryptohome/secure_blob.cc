@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -34,14 +34,14 @@ SecureBlob::~SecureBlob() {
 }
 
 void SecureBlob::resize(size_type sz) {
-  if(sz < size()) {
+  if (sz < size()) {
     chromeos::SecureMemset(&this->at(sz), 0, size() - sz);
   }
   chromeos::Blob::resize(sz);
 }
 
 void SecureBlob::resize(size_type sz, const SecureBlobElement& x) {
-  if(sz < size()) {
+  if (sz < size()) {
     chromeos::SecureMemset(&this->at(sz), 0, size() - sz);
   }
   chromeos::Blob::resize(sz, x);

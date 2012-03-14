@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,7 +23,6 @@ class TpmInit {
   // PlatformThread::Delegate
   friend class TpmInitTask;
  public:
-
   class TpmInitCallback {
    public:
     virtual void InitializeTpmComplete(bool status, bool took_ownership) = 0;
@@ -70,9 +69,6 @@ class TpmInit {
   // Clears the TPM password from memory and disk
   virtual void ClearStoredTpmPassword();
 
-  // Returns the number of milliseconds it took to initialize the TPM
-  virtual long GetInitializationMillis();
-
   virtual void set_tpm(Tpm* value);
 
   virtual Tpm* get_tpm();
@@ -90,7 +86,7 @@ class TpmInit {
   bool initialize_called_;
   bool task_done_;
   bool initialize_took_ownership_;
-  long initialization_time_;
+  int64_t initialization_time_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmInit);
 };

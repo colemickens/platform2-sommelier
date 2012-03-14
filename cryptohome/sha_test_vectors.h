@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,12 +19,12 @@ namespace cryptohome {
 // FIPS 180-2 test vectors for SHA-1 and SHA-256
 class ShaTestVectors {
  public:
-  ShaTestVectors(int type);
+  explicit ShaTestVectors(int type);
 
   ~ShaTestVectors() { }
   const chromeos::Blob* input(int index) const { return &input_[index]; }
   const SecureBlob* output(int index) const { return &output_[index]; }
-  size_t count() const { return 3; } //sizeof(input_); }
+  size_t count() const { return 3; }  // sizeof(input_); }
 
   static const char* kOneBlockMessage;
   static const char* kMultiBlockMessage;

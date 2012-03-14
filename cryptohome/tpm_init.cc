@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -129,10 +129,6 @@ bool TpmInit::GetTpmPassword(chromeos::Blob* password) {
 
 void TpmInit::ClearStoredTpmPassword() {
   tpm_init_task_->get_tpm()->ClearStoredOwnerPassword();
-}
-
-long TpmInit::GetInitializationMillis() {
-  return initialization_time_;
 }
 
 void TpmInit::ThreadMain() {

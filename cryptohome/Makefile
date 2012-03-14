@@ -10,6 +10,8 @@ DBUS_BINDING_TOOL ?= dbus-binding-tool
 
 PKG_CONFIG ?= pkg-config
 
+# When you uprev this, please grep for TODOBASE to find stuff you might want to
+# clean up or fix.
 BASE_VER = 85268
 PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 nss \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)

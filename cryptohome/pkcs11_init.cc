@@ -8,8 +8,6 @@
 
 #include <string.h>
 
-#include <iostream>
-
 #include <base/logging.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
@@ -139,7 +137,7 @@ bool Pkcs11Init::InitializeOpencryptoki() {
       !SetupOpencryptokiDirectory())
     return false;
 
-  if(!ConfigureTPMAsOpencryptokiToken())
+  if (!ConfigureTPMAsOpencryptokiToken())
     return false;
 
   // Slot daemon can only be started after the opencryptoki directory has
@@ -215,11 +213,11 @@ bool Pkcs11Init::ConfigureTPMAsOpencryptokiToken() {
 
   // Setup the TPM as a token.
   process_->Reset(0);
-  for(unsigned int i = 0; i < arraysize(kPkcsSlotCmd); i++)
+  for (unsigned int i = 0; i < arraysize(kPkcsSlotCmd); i++)
     process_->AddArg(kPkcsSlotCmd[i]);
   process_->SetUid(chronos_user_id_);
   process_->SetGid(pkcs11_group_id_);
-  if(process_->Run() != 0) {
+  if (process_->Run() != 0) {
     LOG(ERROR) << "Couldn't set the TPM as a token.";
     return false;
   }
@@ -233,7 +231,7 @@ bool Pkcs11Init::StartOpencryptokiDaemon() {
   // uid.
   process_->SetUid(chronos_user_id_);
   process_->SetGid(pkcs11_group_id_);
-  if(process_->Run() != 0) {
+  if (process_->Run() != 0) {
     LOG(ERROR) << "Couldn't start the pkcs slot daemon: " << kPkcsSlotdPath;
     return false;
   }

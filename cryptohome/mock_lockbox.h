@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,19 +21,19 @@ class MockLockbox : public Lockbox {
  public:
   MockLockbox() : Lockbox(NULL, 0) {}
   virtual ~MockLockbox() {}
-  MOCK_METHOD1(Create, bool(ErrorId*));
-  MOCK_METHOD1(Destroy, bool(ErrorId*));
-  MOCK_METHOD1(Load, bool(ErrorId*));
+  MOCK_METHOD1(Create, bool(ErrorId*));  // NOLINT
+  MOCK_METHOD1(Destroy, bool(ErrorId*));  // NOLINT
+  MOCK_METHOD1(Load, bool(ErrorId*));  // NOLINT
   MOCK_METHOD2(Verify, bool(const chromeos::Blob&, ErrorId*));
   MOCK_METHOD2(Store, bool(const chromeos::Blob&, ErrorId*));
 
-  MOCK_METHOD1(set_tpm, void(Tpm*));
+  MOCK_METHOD1(set_tpm, void(Tpm*));  // NOLINT
   MOCK_METHOD0(tpm, Tpm*());
 
-  MOCK_METHOD1(set_crypto, void(Crypto*));
+  MOCK_METHOD1(set_crypto, void(Crypto*));  // NOLINT
   MOCK_METHOD0(crypto, Crypto*());
 
-  MOCK_METHOD1(set_platform, void(Platform*));
+  MOCK_METHOD1(set_platform, void(Platform*));  // NOLINT
   MOCK_METHOD0(platform, Platform*());
 
   MOCK_METHOD1(SetDataDirectory, void(const char*));

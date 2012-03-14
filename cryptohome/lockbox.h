@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -48,9 +48,9 @@ class Lockbox {
  public:
   typedef enum {
     kErrorIdNone = 0,
-    kErrorIdHashMismatch, // Indicates tampering or disk corruption.
-    kErrorIdSizeMismatch, // Indicates tampering or disk corruption.
-    kErrorIdInsufficientAuthorization, // Indicates bad call order or TPM state.
+    kErrorIdHashMismatch,  // Tampering or disk corruption.
+    kErrorIdSizeMismatch,  // Tampering or disk corruption.
+    kErrorIdInsufficientAuthorization,  // Bad call order or TPM state.
     kErrorIdNoNvramSpace,  // No space is defined. (legacy install)
     kErrorIdNoNvramData,  // Empty (unlocked) lockbox
     // All errors below indicate any number of system errors.
@@ -58,7 +58,7 @@ class Lockbox {
     kErrorIdNvramFailedToLock,
     kErrorIdTpmNotReady,
     kErrorIdTooLarge,
-    kErrorIdTpmError, // Transient or unknown TPM error.
+    kErrorIdTpmError,  // Transient or unknown TPM error.
   } ErrorId;
 
   // Populates the basic internal state of the Lockbox.

@@ -36,8 +36,8 @@
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
 // modifying the files afterward.
-namespace cryptohome {  // NOLINT
-namespace gobject {  // NOLINT
+namespace cryptohome {
+namespace gobject {
 #include "bindings/server.h"
 }  // namespace gobject
 }  // namespace cryptohome

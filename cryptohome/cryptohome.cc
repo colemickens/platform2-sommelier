@@ -22,7 +22,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/syslog_logging.h>
 #include <chromeos/utility.h>
-#include <iostream>
 
 #include "bindings/client.h"
 #include "marshal.glibmarshal.h"
@@ -106,7 +105,7 @@ chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
 
   chromeos::Blob system_salt;
   system_salt.resize(salt->len);
-  if(system_salt.size() == salt->len) {
+  if (system_salt.size() == salt->len) {
     memcpy(&system_salt[0], static_cast<const void*>(salt->data), salt->len);
   } else {
     system_salt.clear();
@@ -138,7 +137,7 @@ bool GetAttrValue(const CommandLine* cl, std::string* value_out) {
 bool GetUsername(const CommandLine* cl, std::string* user_out) {
   *user_out = cl->GetSwitchValueASCII(switches::kUserSwitch);
 
-  if(user_out->length() == 0) {
+  if (user_out->length() == 0) {
     printf("No user specified (--user=<user>)\n");
     return false;
   }
@@ -152,7 +151,7 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
                  std::string* password_out) {
   std::string password = cl->GetSwitchValueASCII(cl_switch);
 
-  if(password.length() == 0) {
+  if (password.length() == 0) {
     struct termios original_attr;
     struct termios new_attr;
     tcgetattr(0, &original_attr);
@@ -186,7 +185,7 @@ bool ConfirmRemove(const std::string& user) {
   fflush(stdout);
   std::string verification;
   std::cin >> verification;
-  if(user != verification) {
+  if (user != verification) {
     printf("Usernames do not match.\n");
     return false;
   }
@@ -207,17 +206,17 @@ class ClientLoop {
     }
   }
 
-  void Initialize(chromeos::dbus::Proxy& proxy) {
+  void Initialize(chromeos::dbus::Proxy* proxy) {
     dbus_g_object_register_marshaller(cryptohome_VOID__INT_BOOLEAN_INT,
                                       G_TYPE_NONE,
                                       G_TYPE_INT,
                                       G_TYPE_BOOLEAN,
                                       G_TYPE_INT,
                                       G_TYPE_INVALID);
-    dbus_g_proxy_add_signal(proxy.gproxy(), "AsyncCallStatus",
+    dbus_g_proxy_add_signal(proxy->gproxy(), "AsyncCallStatus",
                             G_TYPE_INT, G_TYPE_BOOLEAN, G_TYPE_INT,
                             G_TYPE_INVALID);
-    dbus_g_proxy_connect_signal(proxy.gproxy(), "AsyncCallStatus",
+    dbus_g_proxy_connect_signal(proxy->gproxy(), "AsyncCallStatus",
                                 G_CALLBACK(ClientLoop::CallbackThunk),
                                 this, NULL);
     loop_ = g_main_loop_new(NULL, TRUE);
@@ -270,17 +269,17 @@ class TpmWaitLoop {
     }
   }
 
-  void Initialize(chromeos::dbus::Proxy& proxy) {
+  void Initialize(chromeos::dbus::Proxy* proxy) {
     dbus_g_object_register_marshaller(cryptohome_VOID__BOOLEAN_BOOLEAN_BOOLEAN,
                                       G_TYPE_NONE,
                                       G_TYPE_BOOLEAN,
                                       G_TYPE_BOOLEAN,
                                       G_TYPE_BOOLEAN,
                                       G_TYPE_INVALID);
-    dbus_g_proxy_add_signal(proxy.gproxy(), "TpmInitStatus",
+    dbus_g_proxy_add_signal(proxy->gproxy(), "TpmInitStatus",
                             G_TYPE_BOOLEAN, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN,
                             G_TYPE_INVALID);
-    dbus_g_proxy_connect_signal(proxy.gproxy(), "TpmInitStatus",
+    dbus_g_proxy_connect_signal(proxy->gproxy(), "TpmInitStatus",
                                 G_CALLBACK(TpmWaitLoop::CallbackThunk),
                                 this, NULL);
     loop_ = g_main_loop_new(NULL, TRUE);
@@ -302,13 +301,13 @@ class TpmWaitLoop {
   GMainLoop *loop_;
 };
 
-bool WaitForTPMOwnership(chromeos::dbus::Proxy& proxy) {
+bool WaitForTPMOwnership(chromeos::dbus::Proxy* proxy) {
   TpmWaitLoop client_loop;
   client_loop.Initialize(proxy);
   gboolean result;
   chromeos::glib::ScopedError error;
   if (!org_chromium_CryptohomeInterface_tpm_is_being_owned(
-          proxy.gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
+          proxy->gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
     printf("TpmIsBeingOwned call failed: %s.\n", error->message);
   }
   if (result) {
@@ -369,7 +368,7 @@ int main(int argc, char **argv) {
       }
     } else {
       ClientLoop client_loop;
-      client_loop.Initialize(proxy);
+      client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_mount(proxy.gproxy(),
                user.c_str(),
@@ -406,7 +405,7 @@ int main(int argc, char **argv) {
       }
     } else {
       ClientLoop client_loop;
-      client_loop.Initialize(proxy);
+      client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_mount_guest(proxy.gproxy(),
                &async_id,
@@ -448,7 +447,7 @@ int main(int argc, char **argv) {
       }
     } else {
       ClientLoop client_loop;
-      client_loop.Initialize(proxy);
+      client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_check_key(proxy.gproxy(),
                user.c_str(),
@@ -495,7 +494,7 @@ int main(int argc, char **argv) {
       }
     } else {
       ClientLoop client_loop;
-      client_loop.Initialize(proxy);
+      client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_migrate_key(proxy.gproxy(),
                user.c_str(),
@@ -518,11 +517,11 @@ int main(int argc, char **argv) {
                      action.c_str())) {
     std::string user;
 
-    if(!GetUsername(cl, &user)) {
+    if (!GetUsername(cl, &user)) {
       return 1;
     }
 
-    if(!cl->HasSwitch(switches::kForceSwitch) && !ConfirmRemove(user)) {
+    if (!cl->HasSwitch(switches::kForceSwitch) && !ConfirmRemove(user)) {
       return 1;
     }
 
@@ -571,7 +570,7 @@ int main(int argc, char **argv) {
                      action.c_str())) {
     std::string user;
 
-    if(!GetUsername(cl, &user)) {
+    if (!GetUsername(cl, &user)) {
       return 1;
     }
 
@@ -581,7 +580,7 @@ int main(int argc, char **argv) {
                      action.c_str())) {
     std::string user;
 
-    if(!GetUsername(cl, &user)) {
+    if (!GetUsername(cl, &user)) {
       return 1;
     }
 
@@ -782,7 +781,7 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    GArray *value_ary = g_array_new(FALSE, FALSE, sizeof(char));
+    GArray *value_ary = g_array_new(FALSE, FALSE, 1);
     g_array_append_vals(value_ary, value.c_str(), value.size());
     if (!org_chromium_CryptohomeInterface_install_attributes_set(
         proxy.gproxy(),
@@ -820,7 +819,7 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_WAIT_OWNERSHIP],
       action.c_str())) {
-    return !WaitForTPMOwnership(proxy);
+    return !WaitForTPMOwnership(&proxy);
   } else if (!strcmp(
       switches::kActions[switches::ACTION_PKCS11_INIT],
       action.c_str())) {
@@ -849,7 +848,7 @@ int main(int argc, char **argv) {
     }
     // Now wait for ownership to finish. Note that we don't care if this fails
     // since that might happen if the TPM is already owned.
-    WaitForTPMOwnership(proxy);
+    WaitForTPMOwnership(&proxy);
     // Attempt "forced" Pkcs#11 initialization.
     cryptohome::Pkcs11Init pkcs11_init;
     if (!pkcs11_init.InitializePkcs11())
@@ -866,12 +865,8 @@ int main(int argc, char **argv) {
     printf("User token looks OK!\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
-    for(int i = 0; /* loop forever */; i++) {
-      if(!switches::kActions[i]) {
-        break;
-      }
+    for (int i = 0; switches::kActions[i]; i++)
       printf("  --action=%s\n", switches::kActions[i]);
-    }
   }
   return 0;
 }
