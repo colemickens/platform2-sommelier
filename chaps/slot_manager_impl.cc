@@ -118,14 +118,17 @@ bool SlotManagerImpl::Init() {
   // Default semantics are to always start with two slots.  One 'system' slot
   // which always has a token available, and one 'user' slot which will have no
   // token until a login event is received.
-  // TODO(dkrahn): Enable the user slot once cryptohome integration is done
-  // (crosbug.com/21003).
+  // TODO(dkrahn): Make this 2 once we're ready to enable the system token.
+  // crosbug.com/27759.
   AddSlots(1);
   // Setup the system token.  This is the same as for a user token so we can
   // just do what we normally do when a user logs in.  We'll know it succeeded
   // if the system token slot has a token inserted.
-  OnLogin(FilePath(kSystemTokenPath), kSystemTokenAuthData);
-  return IsTokenPresent(kSystemTokenSlot);
+  // TODO(dkrahn): Uncomment once we're ready to enable the system token.
+  // crosbug.com/27759.
+  //OnLogin(FilePath(kSystemTokenPath), kSystemTokenAuthData);
+  //return IsTokenPresent(kSystemTokenSlot);
+  return true;
 }
 
 int SlotManagerImpl::GetSlotCount() const {

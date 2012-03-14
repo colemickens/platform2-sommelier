@@ -113,6 +113,9 @@ class TestSlotManager: public ::testing::Test {
     slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_));
     ASSERT_TRUE(slot_manager_->Init());
   }
+  void InsertToken() {
+    slot_manager_->OnLogin(FilePath("/var/lib/chaps"), kAuthData);
+  }
 
  protected:
   ChapsFactoryMock factory_;
@@ -160,7 +163,9 @@ TEST(DeathTest, OutOfMemoryInit) {
   EXPECT_CALL(factory, CreateObjectStore(_))
       .WillRepeatedly(Return(null_store));
   SlotManagerImpl sm(&factory, &tpm);
-  EXPECT_DEATH_IF_SUPPORTED(sm.Init(), "Check failed");
+  ASSERT_TRUE(sm.Init());
+  EXPECT_DEATH_IF_SUPPORTED(sm.OnLogin(FilePath("/var/lib/chaps"), kAuthData),
+                            "Check failed");
 }
 
 TEST_F(TestSlotManager_DeathTest, OutOfMemorySession) {
@@ -182,20 +187,17 @@ TEST_F(TestSlotManager_DeathTest, NoToken) {
 
 TEST_F(TestSlotManager, DefaultSlotSetup) {
   EXPECT_EQ(1, slot_manager_->GetSlotCount());
-  EXPECT_TRUE(slot_manager_->IsTokenPresent(0));
-  // TODO(dkrahn): Enable once cryptohome integration is done and slot 1 exists
-  // (crosbug.com/21003).
-  // EXPECT_FALSE(slot_manager_->IsTokenPresent(1));
+  EXPECT_FALSE(slot_manager_->IsTokenPresent(0));
 }
 
 TEST_F(TestSlotManager, QueryInfo) {
+  InsertToken();
   CK_SLOT_INFO slot_info;
   memset(&slot_info, 0xEE, sizeof(slot_info));
   slot_manager_->GetSlotInfo(0, &slot_info);
   // Check if all bytes have been set by the call.
   EXPECT_EQ(NULL, memchr(&slot_info, 0xEE, sizeof(slot_info)));
-  // TODO(dkrahn): Enable once cryptohome integration is done and slot 1 exists
-  // (crosbug.com/21003).
+  // TODO(dkrahn): Enable once slot 1 exists (crosbug.com/27759).
   // memset(&slot_info, 0xEE, sizeof(slot_info));
   // slot_manager_->GetSlotInfo(1, &slot_info);
   // EXPECT_EQ(NULL, memchr(&slot_info, 0xEE, sizeof(slot_info)));
@@ -211,6 +213,7 @@ TEST_F(TestSlotManager, QueryInfo) {
 }
 
 TEST_F(TestSlotManager, TestSessions) {
+  InsertToken();
   int id1 = slot_manager_->OpenSession(0, false);
   int id2 = slot_manager_->OpenSession(0, true);
   EXPECT_NE(id1, id2);
@@ -228,8 +231,8 @@ TEST_F(TestSlotManager, TestSessions) {
 }
 
 TEST_F(TestSlotManager, TestLoginEvents) {
-  // TODO(dkrahn): Enable once cryptohome integration is done and slot 1 exists
-  // (crosbug.com/21003).
+  InsertToken();
+  // TODO(dkrahn): Enable once slot 1 exists (crosbug.com/27759).
   // EXPECT_FALSE(slot_manager_->IsTokenPresent(1));
   slot_manager_->OnLogin(FilePath("some_path"), kAuthData);
   EXPECT_TRUE(slot_manager_->IsTokenPresent(1));
