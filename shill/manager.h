@@ -124,6 +124,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       const ProfileRefPtr &profile,
       const std::string &entry_name,
       Error *error);
+  // Return a reference to the Service associated with the default connection.
+  // If there is no such connection, this function returns a reference to NULL.
+  virtual ServiceRefPtr GetDefaultService() const;
 
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology::Identifier tech);

@@ -372,6 +372,7 @@ class Service : public base::RefCounted<Service> {
   friend class ServiceAdaptorInterface;
   friend class WiFiServiceTest;
   FRIEND_TEST(DeviceTest, SelectedService);
+  FRIEND_TEST(ManagerTest, GetDefaultService);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ServiceTest, Constructor);
   FRIEND_TEST(ServiceTest, GetProperties);

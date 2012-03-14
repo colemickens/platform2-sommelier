@@ -46,6 +46,7 @@ namespace shill {
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::ContainerEq;
+using ::testing::InSequence;
 using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -1049,8 +1050,21 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   scoped_refptr<MockConnection> mock_connection1(
       new NiceMock<MockConnection>(device_info_.get()));
 
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->RegisterService(mock_service0);
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->RegisterService(mock_service1);
+
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  manager()->SortServices();
+
+  mock_service1->set_priority(1);
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  manager()->SortServices();
+
+  mock_service1->set_priority(0);
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  manager()->SortServices();
 
   mock_service0->connection_ = mock_connection0;
   mock_service1->connection_ = mock_connection1;
@@ -1071,7 +1085,11 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   manager()->DeregisterService(mock_service1);
 
   mock_service0->connection_ = NULL;
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->DeregisterService(mock_service0);
+
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  manager()->SortServices();
 }
 
 TEST_F(ManagerTest, AvailableTechnologies) {
@@ -1368,6 +1386,27 @@ TEST_F(ManagerTest, RecheckPortal) {
   manager()->RegisterDevice(mock_devices_[2]);
 
   manager()->RecheckPortal(NULL);
+}
+
+TEST_F(ManagerTest, GetDefaultService) {
+  EXPECT_FALSE(manager()->GetDefaultService().get());
+
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  manager()->RegisterService(mock_service);
+  EXPECT_FALSE(manager()->GetDefaultService().get());
+
+  scoped_refptr<MockConnection> mock_connection(
+      new NiceMock<MockConnection>(device_info_.get()));
+  mock_service->connection_ = mock_connection;
+  EXPECT_EQ(mock_service.get(), manager()->GetDefaultService().get());
+
+  mock_service->connection_ = NULL;
+  manager()->DeregisterService(mock_service);
 }
 
 }  // namespace shill

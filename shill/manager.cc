@@ -366,6 +366,14 @@ ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
   return NULL;
 }
 
+ServiceRefPtr Manager::GetDefaultService() const {
+  if (services_.empty() || !services_[0]->connection().get()) {
+    VLOG(2) << "In " << __func__ << ": No default connection exists.";
+    return NULL;
+  }
+  return services_[0];
+}
+
 bool Manager::IsPortalDetectionEnabled(Technology::Identifier tech) {
   Error error;
   vector<Technology::Identifier> portal_technologies;
@@ -576,7 +584,9 @@ void Manager::SortServices() {
   ServiceRefPtr default_service;
 
   if (!services_.empty()) {
-    // Keep track of the service that was last considered default.
+    // Keep track of the service that is the candidate for the default
+    // service.  We have not yet tested to see if this service has a
+    // connection.
     default_service = services_[0];
   }
   sort(services_.begin(), services_.end(), ServiceSorter(technology_order_));
@@ -602,14 +612,15 @@ void Manager::SortServices() {
     if (default_connection.get() &&
         (services_[0]->connection().get() != default_connection.get())) {
       default_connection->SetIsDefault(false);
-      default_service = NULL;
     }
     if (services_[0]->connection().get()) {
       services_[0]->connection()->SetIsDefault(true);
       default_service = services_[0];
+    } else {
+      default_service = NULL;
     }
-    metrics_->NotifyDefaultServiceChanged(default_service);
   }
+  metrics_->NotifyDefaultServiceChanged(default_service);
 
   AutoConnect();
 }
