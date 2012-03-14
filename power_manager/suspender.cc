@@ -316,7 +316,7 @@ void Suspender::BroadcastSignalToClients(const char* signal_name,
   }
   LOG(INFO) << "Sending Broadcast '" << signal_name << "' to PowerManager:";
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              "/",
+                              power_manager::kPowerManagerServicePath,
                               power_manager::kPowerManagerInterface);
   DBusMessage* signal = ::dbus_message_new_signal(
       "/",
