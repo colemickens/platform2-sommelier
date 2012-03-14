@@ -305,7 +305,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-onc-policy \
             --enable-partial-swap \
             --enable-smooth-scrolling \
-            --enterprise-enrollment-initial-modulus=0 \
+            --enterprise-enrollment-initial-modulus=5 \
             --enterprise-enrollment-modulus-limit=12 \
             --force-compositing-mode \
             --load-opencryptoki \
