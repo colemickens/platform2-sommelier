@@ -14,6 +14,9 @@
 #include <stdio.h> // for sscanf()
 #include <sstream>
 
+using cromo::SmsMessage;
+using cromo::SmsMessageFragment;
+
 static const uint32_t kPinRetriesNotKnown = 999;
 
 //======================================================================
@@ -226,7 +229,7 @@ gboolean GobiGsmModem::NewSmsCallback(gpointer data) {
   if (error.is_set())
     return FALSE;
 
-  modem->SmsReceived(sms->index(), sms->is_complete());
+  modem->SmsReceived(sms->index(), sms->IsComplete());
 
   return FALSE;
 }
@@ -744,20 +747,20 @@ void GobiGsmModem::DeleteSms(int index, DBus::Error& error)
   ENSURE_SDK_SUCCESS(DeleteSMS, rc, kSdkError);
 }
 
-std::vector<int> GobiGsmModem::ListSms(DBus::Error& error)
+std::vector<int>* GobiGsmModem::ListSms(DBus::Error& error)
 {
   ULONG items[100];
   ULONG num_items;
-  std::vector<int> result;
 
   num_items = sizeof(items) / (2 * sizeof(items[0]));
   ULONG rc = sdk_->GetSMSList(gobi::kSmsNonVolatileMemory, NULL,
                               &num_items, (BYTE *)items);
-  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMSList, rc, kSdkError, result);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMSList, rc, kSdkError, NULL);
   LOG(INFO) << "GetSmsList: got " << num_items << " messages";
 
+  std::vector<int>* result = new std::vector<int>();
   for (ULONG i = 0 ; i < num_items ; i++)
-    result.push_back(items[2 * i]);
+    result->push_back(items[2 * i]);
 
   return result;
 }
@@ -768,11 +771,15 @@ void GobiGsmModem::Delete(const uint32_t& index, DBus::Error &error) {
 
 utilities::DBusPropertyMap GobiGsmModem::Get(const uint32_t& index,
                                              DBus::Error &error) {
-  return sms_cache_.Get(index, error, this);
+  scoped_ptr<utilities::DBusPropertyMap> message(
+      sms_cache_.Get(index, error, this));
+  return *(message.get());
 }
 
 std::vector<utilities::DBusPropertyMap> GobiGsmModem::List(DBus::Error &error) {
-  return sms_cache_.List(error, this);
+  scoped_ptr<std::vector<utilities::DBusPropertyMap> > list(
+      sms_cache_.List(error, this));
+  return *(list.get());
 }
 
 std::string GobiGsmModem::GetSmsc(DBus::Error &error) {
