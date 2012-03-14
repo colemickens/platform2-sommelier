@@ -4,12 +4,16 @@
 
 #include "chaps/login_event_client.h"
 
+#include <vector>
+
 #include <base/logging.h>
+#include <chromeos/utility.h>
 
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
 
 using std::string;
+using std::vector;
 
 namespace chaps {
 
@@ -25,25 +29,38 @@ bool LoginEventClient::Init() {
   return proxy_->Init();
 }
 
-void LoginEventClient::FireLoginEvent(const std::string& path,
-                                      const std::string& auth_data) {
+void LoginEventClient::FireLoginEvent(const string& path,
+                                      const uint8_t* auth_data,
+                                      size_t auth_data_length) {
   CHECK(proxy_);
-  proxy_->FireLoginEvent(path, ConvertByteStringToVector(auth_data));
+  // TODO(dkrahn): Use SecureBlob; see crosbug.com/27681.
+  vector<uint8_t> auth_data_vector(auth_data, auth_data + auth_data_length);
+  proxy_->FireLoginEvent(path, auth_data_vector);
+  chromeos::SecureMemset(&auth_data_vector[0], 0, auth_data_length);
 }
 
-void LoginEventClient::FireLogoutEvent(const std::string& path) {
+void LoginEventClient::FireLogoutEvent(const string& path) {
   CHECK(proxy_);
   proxy_->FireLogoutEvent(path);
 }
 
 void LoginEventClient::FireChangeAuthDataEvent(
-    const std::string& path,
-    const std::string& old_auth_data,
-    const std::string& new_auth_data) {
+    const string& path,
+    const uint8_t* old_auth_data,
+    size_t old_auth_data_length,
+    const uint8_t* new_auth_data,
+    size_t new_auth_data_length) {
   CHECK(proxy_);
+  // TODO(dkrahn): Use SecureBlob; see crosbug.com/27681.
+  vector<uint8_t> old_auth_data_vector(old_auth_data,
+                                       old_auth_data + old_auth_data_length);
+  vector<uint8_t> new_auth_data_vector(new_auth_data,
+                                       new_auth_data + new_auth_data_length);
   proxy_->FireChangeAuthDataEvent(path,
-                                  ConvertByteStringToVector(old_auth_data),
-                                  ConvertByteStringToVector(new_auth_data));
+                                  old_auth_data_vector,
+                                  new_auth_data_vector);
+  chromeos::SecureMemset(&old_auth_data_vector[0], 0, old_auth_data_length);
+  chromeos::SecureMemset(&new_auth_data_vector[0], 0, new_auth_data_length);
 }
 
 }  // namespace chaps
