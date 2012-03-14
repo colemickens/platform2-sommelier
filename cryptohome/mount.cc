@@ -56,6 +56,7 @@ const char kGCacheDir[] = "GCache";
 const char kGCacheVersionDir[] = "v1";
 const char kGCacheBlobsDir[] = "blobs";
 const char kGCacheMetaDir[] = "meta";
+const char kGCacheTmpDir[] = "tmp";
 const char kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
 const char kEphemeralMountPerms[] = "mode=0700";
@@ -688,6 +689,8 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
     {FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheBlobsDir)
          .value(), false},
     {FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheMetaDir)
+         .value(), false},
+    {FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheTmpDir)
          .value(), false},
   };
 

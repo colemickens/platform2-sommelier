@@ -376,6 +376,9 @@ TEST_F(MountTest, MountCryptohome) {
   ASSERT_TRUE(file_util::PathExists(
       vault_user_path.Append(kGCacheDir)
           .Append(kGCacheVersionDir).Append(kGCacheMetaDir)));
+  ASSERT_TRUE(file_util::PathExists(
+      vault_user_path.Append(kGCacheDir)
+          .Append(kGCacheVersionDir).Append(kGCacheTmpDir)));
 }
 
 TEST_F(MountTest, MountCryptohomeNoChange) {
