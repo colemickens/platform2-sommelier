@@ -10,7 +10,6 @@
 #include "shill/device_info.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
-#include "shill/routing_table_entry.h"
 #include "shill/rtnl_handler.h"
 
 using std::string;
@@ -66,6 +65,9 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
 
   routing_table_->SetDefaultRoute(interface_index_, config,
                                   GetMetric(is_default_));
+
+  // Install any explicitly configured routes at the default metric.
+  routing_table_->ConfigureRoutes(interface_index_, config, kDefaultMetric);
 
   // Save a copy of the last non-null DNS config
   if (!config->properties().dns_servers.empty()) {

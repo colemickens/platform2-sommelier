@@ -109,6 +109,10 @@ TEST_F(ConnectionTest, AddConfig) {
                               ipconfig_,
                               Connection::kNonDefaultMetricBase +
                               kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_,
+              ConfigureRoutes(kTestDeviceInterfaceIndex0,
+                              ipconfig_,
+                              Connection::kDefaultMetric));
   connection_->UpdateFromIPConfig(ipconfig_);
 
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
@@ -164,6 +168,10 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(routing_table_, SetDefaultRoute(kTestDeviceInterfaceIndex0,
                                              ipconfig_,
                                              Connection::kDefaultMetric));
+  EXPECT_CALL(routing_table_,
+              ConfigureRoutes(kTestDeviceInterfaceIndex0,
+                              ipconfig_,
+                              Connection::kDefaultMetric));
   EXPECT_CALL(resolver_, SetDNSFromIPConfig(ipconfig_));
 
   connection_->UpdateFromIPConfig(ipconfig_);

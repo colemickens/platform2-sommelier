@@ -177,6 +177,51 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
                                     false));
 }
 
+bool RoutingTable::ConfigureRoutes(int interface_index,
+                                   const IPConfigRefPtr &ipconfig,
+                                   uint32 metric) {
+  bool ret = true;
+
+  IPAddress::Family address_family = ipconfig->properties().address_family;
+  const vector<IPConfig::Route> &routes = ipconfig->properties().routes;
+
+  for (vector<IPConfig::Route>::const_iterator it = routes.begin();
+       it != routes.end();
+       ++it) {
+    VLOG(3) << "Installing route:"
+            << " Destination: " << it->host
+            << " Netmask: " << it->netmask
+            << " Gateway: " << it->gateway;
+    IPAddress destination_address(address_family);
+    IPAddress source_address(address_family);  // Left as default.
+    IPAddress gateway_address(address_family);
+    if (!destination_address.SetAddressFromString(it->host)) {
+      LOG(ERROR) << "Failed to parse host "
+                 << it->host;
+      ret = false;
+      continue;
+    }
+    if (!gateway_address.SetAddressFromString(it->gateway)) {
+      LOG(ERROR) << "Failed to parse gateway "
+                 << it->gateway;
+      ret = false;
+      continue;
+    }
+    destination_address.set_prefix(
+        IPAddress::GetPrefixLengthFromMask(address_family, it->netmask));
+    if (!AddRoute(interface_index,
+                  RoutingTableEntry(destination_address,
+                                    source_address,
+                                    gateway_address,
+                                    metric,
+                                    RT_SCOPE_UNIVERSE,
+                                    false))) {
+      ret = false;
+    }
+  }
+  return ret;
+}
+
 void RoutingTable::FlushRoutes(int interface_index) {
   VLOG(2) << __func__;
 
@@ -343,9 +388,13 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
                               const RoutingTableEntry &entry,
                               RTNLMessage::Mode mode,
                               unsigned int flags) {
-  VLOG(2) << base::StringPrintf("%s: dst %s index %d mode %d flags 0x%x",
+  VLOG(2) << base::StringPrintf("%s: dst %s/%d src %s/%d index %d mode %d "
+                                "flags 0x%x",
                                 __func__, entry.dst.ToString().c_str(),
-                                interface_index, mode, flags);
+                                entry.dst.prefix(),
+                                entry.src.ToString().c_str(),
+                                entry.src.prefix(), interface_index, mode,
+                                flags);
 
   RTNLMessage message(
       RTNLMessage::kTypeRoute,

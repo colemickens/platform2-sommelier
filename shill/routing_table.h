@@ -48,8 +48,14 @@ class RoutingTable {
                                IPAddress::Family family,
                                RoutingTableEntry *entry);
 
-  // Set the default route for an interface, given an ipconfig entry
+  // Set the default route for an interface, given an ipconfig entry.
   virtual bool SetDefaultRoute(int interface_index,
+                               const IPConfigRefPtr &ipconfig,
+                               uint32 metric);
+
+  // Configure routing table entries from the "routes" portion of |ipconifg|.
+  // Returns true if all routes were installed successfully, false otherwise.
+  virtual bool ConfigureRoutes(int interface_index,
                                const IPConfigRefPtr &ipconfig,
                                uint32 metric);
 

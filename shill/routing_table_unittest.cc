@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <linux/rtnetlink.h>
 
+#include <vector>
+
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
@@ -19,6 +21,7 @@
 #include "shill/rtnl_message.h"
 
 using base::Callback;
+using std::vector;
 using testing::_;
 using testing::Invoke;
 using testing::Return;
@@ -87,6 +90,9 @@ class RoutingTableTest : public Test {
   static const char kTestNetAddress0[];
   static const char kTestNetAddress1[];
   static const char kTestRemoteAddress4[];
+  static const char kTestRemoteNetmask4[];
+  static const char kTestRemoteNetwork4[];
+  static const int kTestRemotePrefix4;
   static const uint32 kTestRequestSeq;
 
   RoutingTable *routing_table_;
@@ -106,6 +112,9 @@ const char RoutingTableTest::kTestGatewayAddress4[] = "192.168.2.254";
 const char RoutingTableTest::kTestNetAddress0[] = "192.168.1.1";
 const char RoutingTableTest::kTestNetAddress1[] = "192.168.1.2";
 const char RoutingTableTest::kTestRemoteAddress4[] = "192.168.2.254";
+const char RoutingTableTest::kTestRemoteNetmask4[] = "255.255.255.0";
+const char RoutingTableTest::kTestRemoteNetwork4[] = "192.168.100.0";
+const int RoutingTableTest::kTestRemotePrefix4 = 24;
 const uint32 RoutingTableTest::kTestRequestSeq = 456;
 
 MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
@@ -400,6 +409,70 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_EQ(0, GetRoutingTables()->size());
 
   routing_table_->Stop();
+}
+
+TEST_F(RoutingTableTest, ConfigureRoutes) {
+  MockControl control;
+  IPConfigRefPtr ipconfig(new IPConfig(&control, kTestDeviceName0));
+  IPConfig::Properties properties;
+  properties.address_family = IPAddress::kFamilyIPv4;
+  vector<IPConfig::Route> &routes = properties.routes;
+  ipconfig->UpdateProperties(properties, true);
+
+  const int kMetric = 10;
+  EXPECT_TRUE(routing_table_->ConfigureRoutes(kTestDeviceIndex0,
+                                             ipconfig,
+                                             kMetric));
+
+  IPConfig::Route route;
+  route.host = kTestRemoteNetwork4;
+  route.netmask = kTestRemoteNetmask4;
+  route.gateway = kTestGatewayAddress4;
+  routes.push_back(route);
+  ipconfig->UpdateProperties(properties, true);
+
+  IPAddress destination_address(IPAddress::kFamilyIPv4);
+  IPAddress source_address(IPAddress::kFamilyIPv4);
+  IPAddress gateway_address(IPAddress::kFamilyIPv4);
+  ASSERT_TRUE(destination_address.SetAddressFromString(kTestRemoteNetwork4));
+  destination_address.set_prefix(kTestRemotePrefix4);
+  ASSERT_TRUE(gateway_address.SetAddressFromString(kTestGatewayAddress4));
+
+  RoutingTableEntry entry(destination_address,
+                          source_address,
+                          gateway_address,
+                          kMetric,
+                          RT_SCOPE_UNIVERSE,
+                          false);
+
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
+                                          kTestDeviceIndex0,
+                                          entry,
+                                          NLM_F_CREATE | NLM_F_EXCL)));
+  EXPECT_TRUE(routing_table_->ConfigureRoutes(kTestDeviceIndex0,
+                                              ipconfig,
+                                              kMetric));
+
+  routes.clear();
+  route.gateway = "xxx";  // Invalid gateway entry -- should be skipped
+  routes.push_back(route);
+  route.host = "xxx";  // Invalid host entry -- should be skipped
+  route.gateway = kTestGatewayAddress4;
+  routes.push_back(route);
+  route.host = kTestRemoteNetwork4;
+  routes.push_back(route);
+  ipconfig->UpdateProperties(properties, true);
+
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
+                                          kTestDeviceIndex0,
+                                          entry,
+                                          NLM_F_CREATE | NLM_F_EXCL)))
+      .Times(1);
+  EXPECT_FALSE(routing_table_->ConfigureRoutes(kTestDeviceIndex0,
+                                               ipconfig,
+                                               kMetric));
 }
 
 MATCHER_P2(IsRoutingQuery, destination, index, "") {
