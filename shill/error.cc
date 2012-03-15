@@ -42,9 +42,6 @@ const Error::Info Error::kInfos[kNumErrors] = {
   { "PermissionDenied", "Permission denied" }
 };
 
-// static
-const char Error::kInterfaceName[] = SHILL_INTERFACE;
-
 Error::Error() {
   Reset();
 }
@@ -89,7 +86,7 @@ bool Error::ToDBusError(::DBus::Error *error) const {
 // static
 string Error::GetName(Type type) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
-  return base::StringPrintf("%s.Error.%s", kInterfaceName, kInfos[type].name);
+  return base::StringPrintf("%s.Error.%s", SHILL_INTERFACE, kInfos[type].name);
 }
 
 // static

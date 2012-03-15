@@ -17,8 +17,6 @@ using std::string;
 namespace shill {
 
 // static
-const char DeviceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
-// static
 const char DeviceDBusAdaptor::kPath[] = "/device/";
 
 DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection* conn, Device *device)

@@ -18,8 +18,6 @@ using std::string;
 namespace shill {
 
 // static
-const char ServiceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
-// static
 const char ServiceDBusAdaptor::kPath[] = "/service/";
 
 ServiceDBusAdaptor::ServiceDBusAdaptor(DBus::Connection* conn, Service *service)

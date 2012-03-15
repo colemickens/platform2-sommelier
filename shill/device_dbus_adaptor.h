@@ -26,7 +26,6 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
                           public DBusAdaptor,
                           public DeviceAdaptorInterface {
  public:
-  static const char kInterfaceName[];
   static const char kPath[];
 
   DeviceDBusAdaptor(DBus::Connection* conn, Device *device);

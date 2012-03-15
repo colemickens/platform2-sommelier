@@ -81,7 +81,6 @@ class Error {
   };
 
   static const Info kInfos[kNumErrors];
-  static const char kInterfaceName[];
 
   Type type_;
   std::string message_;

@@ -23,7 +23,6 @@ class RPCTaskDBusAdaptor : public org::chromium::flimflam::Task_adaptor,
                            public DBusAdaptor,
                            public RPCTaskAdaptorInterface {
  public:
-  static const char kInterfaceName[];
   static const char kPath[];
 
   RPCTaskDBusAdaptor(DBus::Connection *conn, RPCTask *task);

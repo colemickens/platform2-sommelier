@@ -15,14 +15,12 @@ using std::string;
 namespace shill {
 
 // static
-const char RPCTaskDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
-// static
 const char RPCTaskDBusAdaptor::kPath[] = "/task/";
 
 RPCTaskDBusAdaptor::RPCTaskDBusAdaptor(DBus::Connection *conn, RPCTask *task)
     : DBusAdaptor(conn, kPath + task->UniqueName()),
       task_(task),
-      interface_name_(string(kInterfaceName) + ".Task"),
+      interface_name_(SHILL_INTERFACE ".Task"),
       connection_name_(conn->unique_name()) {}
 
 RPCTaskDBusAdaptor::~RPCTaskDBusAdaptor() {

@@ -27,7 +27,6 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
                            public DBusAdaptor,
                            public ServiceAdaptorInterface {
  public:
-  static const char kInterfaceName[];
   static const char kPath[];
 
   ServiceDBusAdaptor(DBus::Connection* conn, Service *service);

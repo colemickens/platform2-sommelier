@@ -28,7 +28,6 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                            public DBusAdaptor,
                            public ManagerAdaptorInterface {
  public:
-  static const char kInterfaceName[];
   static const char kPath[];
 
   ManagerDBusAdaptor(DBus::Connection *conn, Manager *manager);

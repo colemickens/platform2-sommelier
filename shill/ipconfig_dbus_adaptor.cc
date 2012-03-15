@@ -23,8 +23,6 @@ using std::vector;
 namespace shill {
 
 // static
-const char IPConfigDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
-// static
 const char IPConfigDBusAdaptor::kPath[] = "/ipconfig/";
 
 IPConfigDBusAdaptor::IPConfigDBusAdaptor(DBus::Connection* conn,

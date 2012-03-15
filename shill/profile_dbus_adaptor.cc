@@ -23,8 +23,6 @@ using std::vector;
 namespace shill {
 
 // static
-const char ProfileDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
-// static
 const char ProfileDBusAdaptor::kPath[] = "/profile/";
 
 ProfileDBusAdaptor::ProfileDBusAdaptor(DBus::Connection* conn, Profile *profile)

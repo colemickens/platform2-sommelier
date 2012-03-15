@@ -30,7 +30,6 @@ class ProfileDBusAdaptor : public org::chromium::flimflam::Profile_adaptor,
                            public DBusAdaptor,
                            public ProfileAdaptorInterface {
  public:
-  static const char kInterfaceName[];
   static const char kPath[];
 
   ProfileDBusAdaptor(DBus::Connection *conn, Profile *profile);
