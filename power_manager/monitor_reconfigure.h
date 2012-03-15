@@ -57,6 +57,12 @@ class MonitorReconfigure {
   // Get the XRRModeInfo for |mode|.
   XRRModeInfo* GetModeInfo(RRMode mode);
 
+  // Setup dual head in extended mode.
+  void RunExtended();
+
+  // Setup dual head in clone mode.
+  void RunClone();
+
   // Find a usable Crtc, i.e. one in |crtcs| but not in |used_crtcs|.
   RRCrtc FindUsableCrtc(const std::set<RRCrtc>& used_crtcs,
                         const RRCrtc* crtcs,

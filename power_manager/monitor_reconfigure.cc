@@ -16,6 +16,7 @@
 #include "base/logging.h"
 #include "power_manager/backlight_controller.h"
 
+using std::max;
 using std::sort;
 using std::vector;
 using base::Time;
@@ -110,6 +111,7 @@ XRRModeInfo* MonitorReconfigure::GetModeInfo(RRMode mode) {
     if (screen_info_->modes[i].id == mode)
       return &screen_info_->modes[i];
 
+  LOG(WARNING) << "mode " << mode << " not found!\n";
   return NULL;
 }
 
@@ -303,35 +305,135 @@ bool MonitorReconfigure::NeedReconfigure() {
   return need_reconfigure;
 }
 
-void MonitorReconfigure::Run(bool force_reconfigure) {
-  usable_outputs_.clear();
-  usable_outputs_info_.clear();
-  display_ = XOpenDisplay(NULL);
+void MonitorReconfigure::RunExtended() {
+  unsigned resolution_width = 0, resolution_height = 0;
+  // Grab the server during mode changes.
+  XGrabServer(display_);
 
-  // Give up if we can't open the display.
-  if (!display_) {
-    LOG(WARNING) << "Could not open display";
-    return;
+  DisableAllOutputs();
+
+  // First pass to compute the total screen size
+  for (int o = 0; o < screen_info_->noutput; o++) {
+    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
+                                                  screen_info_,
+                                                  screen_info_->outputs[o]);
+    switch (output_info->connection) {
+      case RR_Connected:
+      case RR_UnknownConnection: {
+        LOG(INFO) << "Output " << output_info->name << " is connected";
+        // If we have no modes for this output, drop it.
+        if (output_info->nmode == 0)
+           break;
+
+        RRMode mode = output_info->modes[0];
+        XRRModeInfo* mode_info = GetModeInfo(mode);
+
+        if (!mode_info) {
+          LOG(WARNING) << "Mode info not found";
+        } else {
+          LOG(INFO) << "Output "
+                    << output_info->name
+                    << "'s native mode is "
+                    << mode_info->width << "x" << mode_info->height;
+                    resolution_width = max(resolution_width, mode_info->width);
+                    resolution_height += mode_info->height;
+        }
+        break;
+      }
+      case RR_Disconnected: {
+        LOG(INFO) << "Output " << output_info->name << " is not connected";
+        break;
+      }
+    }
   }
 
-  window_ = RootWindow(display_, DefaultScreen(display_));
-  screen_info_ = XRRGetScreenResources(display_, window_);
+  LOG(INFO) << "Total screen resolution "
+            << resolution_width << "x" << resolution_height;
 
-  // Give up if we can't obtain the XRandr information.
-  if (!screen_info_) {
-    LOG(WARNING) << "Could not get XRandr information";
-    XCloseDisplay(display_);
-    return;
+  // For the screen dimensions, compute a fake size that corresponds to 96dpi.
+  // We do this for two reasons:
+  // - Screen size reporting isn't always accurate,
+  // - ChromeOS chrome doesn't work well at non-standard DPIs.
+  XRRSetScreenSize(display_, window_, resolution_width, resolution_height,
+                   resolution_width * kInchInMm / kScreenDpi,
+                   resolution_height * kInchInMm / kScreenDpi);
+
+  std::set<RRCrtc> used_crtcs;
+
+  // Second pass to set the modes.
+  int position_y = 0;
+  int num_used_outputs = 0;
+
+  for (int o = 0; o < screen_info_->noutput; o++) {
+    RROutput output = screen_info_->outputs[o];
+    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
+                                                  screen_info_,
+                                                  output);
+
+    switch (output_info->connection) {
+      case RR_Connected:
+      case RR_UnknownConnection: {
+        // Connected CRTC, enable it and use its native resolution.
+
+        // If we have no modes for this output, drop it.
+        if (output_info->nmode == 0) {
+          LOG(WARNING) << "No mode for output " << output_info->name;
+          break;
+        }
+
+        RRMode mode = output_info->modes[0];
+        XRRModeInfo* mode_info = GetModeInfo(mode);
+        RRCrtc crtc_xid = FindUsableCrtc(used_crtcs,
+                                         output_info->crtcs,
+                                         output_info->ncrtc);
+
+        CHECK(crtc_xid != None);
+
+        if (!mode_info)
+          break;
+
+        int r = XRRSetCrtcConfig(display_,
+                                 screen_info_,
+                                 crtc_xid,
+                                 CurrentTime,
+                                 0, position_y,
+                                 mode,
+                                 RR_Rotate_0,
+                                 &output,
+                                 1);
+        if (r != RRSetConfigSuccess) {
+          LOG(WARNING) << "Failed to enable output " << output_info->name;
+        } else {
+          LOG(INFO) << "Enabled output " << output_info->name
+                    << " at " << mode_info->width << "x" << mode_info->height
+                    << "+0+" << position_y << " with crtc " << crtc_xid;
+          position_y += mode_info->height;
+          used_crtcs.insert(crtc_xid);
+          num_used_outputs++;
+        }
+        break;
+      }
+    }
   }
 
-  if (lvds_connection_ == RR_UnknownConnection)
-    RecordLVDSConnection();
+  // To safeguard the case where DPMS is not properly tracked after
+  // re-enabling outputs, always turn on the DPMS after usable outputs
+  // are enabled.
+  CHECK(DPMSEnable(display_));
+  CHECK(DPMSForceLevel(display_, DPMSModeOn));
 
-  if (!force_reconfigure && !NeedReconfigure())
-    return;
+  // If we have an LVDS output, and another output is in use, we are projecting.
+  // TODO(marcheu): handle the case where the panel isn't LDVS but DP; we have
+  // to find a way to tell a laptop's DP from a desktop's DP. This will be an
+  // issue on Arrow.
+  is_projecting_ = (lvds_connection_ == RR_Connected) && num_used_outputs > 1;
 
-  last_configuration_time_= Time::Now();
+  // Now let the server go and sync all changes.
+  XUngrabServer(display_);
+  XSync(display_, False);
+}
 
+void MonitorReconfigure::RunClone() {
   for (int i = 0; i < screen_info_->nmode; ++i) {
     XRRModeInfo* current_mode = &screen_info_->modes[i];
     mode_map_[current_mode->id] = current_mode;
@@ -421,6 +523,45 @@ void MonitorReconfigure::Run(bool force_reconfigure) {
 
   XCloseDisplay(display_);
   return;
+
+}
+
+
+void MonitorReconfigure::Run(bool force_reconfigure) {
+  usable_outputs_.clear();
+  usable_outputs_info_.clear();
+  display_ = XOpenDisplay(NULL);
+
+  // Give up if we can't open the display.
+  if (!display_) {
+    LOG(WARNING) << "Could not open display";
+    return;
+  }
+
+  window_ = RootWindow(display_, DefaultScreen(display_));
+  screen_info_ = XRRGetScreenResources(display_, window_);
+
+  // Give up if we can't obtain the XRandr information.
+  if (!screen_info_) {
+    LOG(WARNING) << "Could not get XRandr information";
+    XCloseDisplay(display_);
+    return;
+  }
+
+  if (lvds_connection_ == RR_UnknownConnection)
+    RecordLVDSConnection();
+
+  if (!force_reconfigure && !NeedReconfigure())
+    return;
+
+  last_configuration_time_= Time::Now();
+
+#ifdef EXTENDED_DESKTOP
+  RunExtended();
+#else
+  RunClone();
+#endif
+
 }
 
 void MonitorReconfigure::SetProjectionCallback(void (*func)(void*),
