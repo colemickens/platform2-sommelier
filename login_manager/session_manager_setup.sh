@@ -320,7 +320,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --user-data-dir="$DATA_DIR" \
             --webui-login \
             --no-protector \
-            --vmodule='*/renderer_host/resource_dispatcher_host*=1' \
             "$REGISTER_PLUGINS" \
             ${ACCELERATED_FLAGS} \
             ${AURA_FLAGS} \
