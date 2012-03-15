@@ -26,9 +26,32 @@ extern "C" {
 #include "platform.h"
 #include "username_passkey.h"
 
-// Included last because it has conflicting defines
+// Seriously. In base/logging.h:
+//   #define LOG(severity) LAZY_STREAM(LOG_STREAM(severity),
+//                                     LOG_IS_ON(severity))
+// and:
+//   #define LOG_STREAM(severity) COMPACT_GOOGLE_LOG_ ## severity.stream()
+//   #define LOG_IS_ON(severity)
+//       ((::logging::LOG_ ## severity) >= ::logging::GetMinLogLevel())
+// Therefore, LOG(INFO) expands to a use of ::logging::LOG_INFO. Unfortunately,
+// in sys/syslog.h:
+//   #define LOG_INFO        6       /* informational */
+// Since preprocessor definitions don't obey namespaces, we end up referencing
+// ::logging::6, which causes a really baffling syntax error. This happens for
+// INFO and WARNING but not ERROR, which syslog.h calls ERR.
+//
+// Hack our way out of this by stashing the old definitions, then reapplying
+// them after including (hopefully) every file that includes syslog.h.
 extern "C" {
+#define OLD_INFO LOG_INFO
+#define OLD_WARNING LOG_WARNING
+#undef LOG_INFO
+#undef LOG_WARNING
 #include <ecryptfs.h>
+#undef LOG_INFO
+#undef LOG_WARNING
+#define LOG_INFO OLD_INFO
+#define LOG_WARNING OLD_WARNING
 }
 
 using std::string;
@@ -588,7 +611,7 @@ bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
 
   SecureBlob local_salt;
   if (force || file_len == 0 || file_len > kSaltMax) {
-    LOG(ERROR) << "Creating new salt";
+    LOG(ERROR) << "Creating new salt at " << path.value();
     // If this salt doesn't exist, automatically create it
     local_salt.resize(length);
     GetSecureRandom(static_cast<unsigned char*>(local_salt.data()),
@@ -895,7 +918,9 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
 
   // Check if the vault keyset was TPM-wrapped
   if (serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED) {
-    return DecryptTPM(serialized, vault_key, error, vault_keyset);
+    // Retry twice in case of a transient TPM communication failure.
+    return DecryptTPM(serialized, vault_key, error, vault_keyset) ||
+           DecryptTPM(serialized, vault_key, error, vault_keyset);
   } else if (serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED) {
     return DecryptScrypt(serialized, vault_key, error, vault_keyset);
   } else {

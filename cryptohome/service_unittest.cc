@@ -82,7 +82,7 @@ class ServiceSubclass : public Service {
   std::vector<MountTaskResult> completed_tasks_;
 };
 
-TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
+TEST_F(ServiceInterfaceTest, CheckKeyLoggedInSuccessTest) {
   MockMount mount;
   EXPECT_CALL(mount, Init())
       .WillOnce(Return(true));
@@ -119,6 +119,9 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
+  service.homedirs()->set_shadow_root(kImageDir);
+  service.homedirs()->crypto()->set_tpm(&tpm);
+  service.homedirs()->crypto()->set_use_tpm(false);
   service.Initialize();
 
   cryptohome::SecureBlob passkey;

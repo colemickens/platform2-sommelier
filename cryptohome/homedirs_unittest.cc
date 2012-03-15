@@ -11,6 +11,8 @@
 
 #include "make_tests.h"
 #include "mock_platform.h"
+#include "mock_tpm.h"
+#include "username_passkey.h"
 
 namespace cryptohome {
 using std::string;
@@ -34,6 +36,7 @@ ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
 
 namespace {
 const char *kTestRoot = "alt_test_home_dir";
+const char *kTestImage = "alt_test_image_dir";
 
 struct homedir {
   const char *name;
@@ -152,6 +155,46 @@ TEST_F(HomeDirsTest, FreeDiskSpace) {
     .WillOnce(Return(true));
 
   homedirs_.FreeDiskSpace();
+}
+
+TEST_F(HomeDirsTest, GoodDecryptTest) {
+  // create a Mount instance that points to a good shadow root, test that it
+  // properly authenticates against the first key.
+  SecureBlob system_salt;
+  cryptohome::MakeTests make_tests;
+  make_tests.InitTestData(kTestImage, kDefaultUsers, kDefaultUserCount);
+  NiceMock<MockTpm> tpm;
+  homedirs_.set_shadow_root(kTestImage);   // TODO(ellyjones): wat?
+  homedirs_.crypto()->set_tpm(&tpm);
+  homedirs_.crypto()->set_use_tpm(false);
+  ASSERT_TRUE(homedirs_.GetSystemSalt(&system_salt));
+  set_policy(false, "", false);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[1].password,
+                                        system_salt, &passkey);
+  UsernamePasskey up(kDefaultUsers[1].username, passkey);
+
+  ASSERT_TRUE(homedirs_.AreCredentialsValid(up));
+}
+
+TEST_F(HomeDirsTest, BadDecryptTest) {
+  // create a Mount instance that points to a good shadow root, test that it
+  // properly denies access with a bad passkey
+  SecureBlob system_salt;
+  cryptohome::MakeTests make_tests;
+  make_tests.InitTestData(kTestImage, kDefaultUsers, kDefaultUserCount);
+  NiceMock<MockTpm> tpm;
+  homedirs_.set_shadow_root(kTestImage);
+  homedirs_.crypto()->set_tpm(&tpm);
+  homedirs_.crypto()->set_use_tpm(false);
+  set_policy(false, "", false);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey("bogus", system_salt, &passkey);
+  UsernamePasskey up(kDefaultUsers[4].username, passkey);
+
+  ASSERT_FALSE(homedirs_.AreCredentialsValid(up));
 }
 
 }  // namespace cryptohome

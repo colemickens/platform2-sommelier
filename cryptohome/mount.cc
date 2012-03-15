@@ -105,6 +105,7 @@ bool Mount::Init() {
   homedirs_.set_enterprise_owned(enterprise_owned_);
   homedirs_.set_old_user_last_activity_time(old_user_last_activity_time_);
   homedirs_.set_policy_provider(policy_provider_.get());
+  homedirs_.set_crypto(crypto_);
 
   // Get the user id and group id of the default user
   if (!platform_->GetUserId(default_username_, &default_user_,
@@ -865,29 +866,10 @@ bool Mount::SetupGroupAccess() const {
 }
 
 bool Mount::TestCredentials(const Credentials& credentials) {
-  // If the current logged in user matches, use the UserSession to verify the
-  // credentials.  This is less costly than a trip to the TPM, and only verifies
-  // a user during their logged in session.
-  if (current_user_->CheckUser(credentials)) {
+  // Only check against the current user.
+  if (current_user_->CheckUser(credentials))
     return current_user_->Verify(credentials);
-  }
-  // If ephemeral users are enabled, allow a check against the cryptohome for
-  // the owner only.
-  ReloadDevicePolicy();
-  if (AreEphemeralUsersEnabled() &&
-      (credentials.GetObfuscatedUsername(system_salt_) != GetObfuscatedOwner()))
-    return false;
-  MountError mount_error;
-  VaultKeyset vault_keyset;
-  SerializedVaultKeyset serialized;
-  bool result = DecryptVaultKeyset(credentials, false, &vault_keyset,
-                                   &serialized, &mount_error);
-  // Retry once if there is a TPM communications failure
-  if (!result && mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
-    result = DecryptVaultKeyset(credentials, false, &vault_keyset,
-                                &serialized, &mount_error);
-  }
-  return result;
+  return false;
 }
 
 bool Mount::LoadVaultKeyset(const Credentials& credentials,

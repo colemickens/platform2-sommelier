@@ -15,6 +15,7 @@
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
+#include "mock_homedirs.h"
 #include "mock_mount.h"
 
 using base::PlatformThread;
@@ -191,13 +192,15 @@ TEST_F(MountTaskTest, UnmountTest) {
   ASSERT_TRUE(event_.IsSignaled());
 }
 
-TEST_F(MountTaskTest, TestCredentailsTest) {
-  EXPECT_CALL(mount_, TestCredentials(_))
+TEST_F(MountTaskTest, TestCredentialsTest) {
+  MockHomeDirs homedirs;
+  EXPECT_CALL(homedirs, AreCredentialsValid(_))
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskTestCredentials(NULL, &mount_,
-                                                       UsernamePasskey());
+  MountTask* mount_task = new MountTaskTestCredentials(NULL, NULL,
+                                                       UsernamePasskey(),
+                                                       &homedirs);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE, mount_task);

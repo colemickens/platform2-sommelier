@@ -144,36 +144,21 @@ TEST_F(MountTest, BadInitTest) {
   ASSERT_FALSE(mount.TestCredentials(up));
 }
 
-TEST_F(MountTest, GoodDecryptTest) {
-  // create a Mount instance that points to a good shadow root, test that it
-  // properly authenticates against the first key.
-  Mount mount;
-  NiceMock<MockTpm> tpm;
-  mount.get_crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  set_policy(&mount, false, "", false);
-
-  cryptohome::SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[1].password,
-                                        system_salt_, &passkey);
-  UsernamePasskey up(kDefaultUsers[1].username, passkey);
-
-  EXPECT_TRUE(mount.Init());
-  ASSERT_TRUE(mount.TestCredentials(up));
-}
-
 TEST_F(MountTest, TestCredsDoesNotReSave) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly authenticates against the first key.
+  HomeDirs homedirs;
   Mount mount;
   NiceMock<MockTpm> tpm;
+  homedirs.crypto()->set_tpm(&tpm);
+  homedirs.crypto()->set_use_tpm(false);
+  homedirs.set_shadow_root(kImageDir);
   mount.get_crypto()->set_tpm(&tpm);
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
   set_policy(&mount, false, "", false);
+  homedirs.set_policy_provider(mount.policy_provider());
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[2].password,
@@ -186,7 +171,8 @@ TEST_F(MountTest, TestCredsDoesNotReSave) {
   cryptohome::SerializedVaultKeyset serialized;
   ASSERT_TRUE(LoadSerializedKeyset(key_path, &serialized));
 
-  ASSERT_TRUE(mount.TestCredentials(up));
+  ASSERT_FALSE(mount.TestCredentials(up));
+  ASSERT_TRUE(homedirs.AreCredentialsValid(up));
 
   cryptohome::SerializedVaultKeyset serialized2;
   ASSERT_TRUE(LoadSerializedKeyset(key_path, &serialized2));
@@ -224,38 +210,25 @@ TEST_F(MountTest, CurrentCredentialsTest) {
   ASSERT_TRUE(mount.TestCredentials(up));
 }
 
-TEST_F(MountTest, BadDecryptTest) {
-  // create a Mount instance that points to a good shadow root, test that it
-  // properly denies access with a bad passkey
-  Mount mount;
-  NiceMock<MockTpm> tpm;
-  mount.get_crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  set_policy(&mount, false, "", false);
-
-  cryptohome::SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey("bogus", system_salt_, &passkey);
-  UsernamePasskey up(kDefaultUsers[4].username, passkey);
-
-  EXPECT_TRUE(mount.Init());
-  ASSERT_FALSE(mount.TestCredentials(up));
-}
-
 TEST_F(MountTest, CreateCryptohomeTest) {
   // creates a cryptohome and tests credentials
   Mount mount;
+  HomeDirs homedirs;
   NiceMock<MockTpm> tpm;
   mount.get_crypto()->set_tpm(&tpm);
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
+  homedirs.set_shadow_root(kImageDir);
+  homedirs.crypto()->set_tpm(&tpm);
+  homedirs.crypto()->set_use_tpm(false);
   set_policy(&mount, false, "", false);
+  homedirs.set_policy_provider(mount.policy_provider());
   mount.set_set_vault_ownership(false);
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
+  homedirs.set_platform(&platform);
 
   // Test user at index 5 was not created by the test data
   cryptohome::SecureBlob passkey;
@@ -275,12 +248,14 @@ TEST_F(MountTest, CreateCryptohomeTest) {
 
   ASSERT_TRUE(file_util::PathExists(key_path));
   ASSERT_TRUE(file_util::PathExists(vault_path));
-  ASSERT_TRUE(mount.TestCredentials(up));
+  ASSERT_FALSE(mount.TestCredentials(up));
+  ASSERT_TRUE(homedirs.AreCredentialsValid(up));
 }
 
 TEST_F(MountTest, GoodReDecryptTest) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly re-authenticates against the first key
+  HomeDirs homedirs;
   Mount mount;
   NiceMock<MockTpm> tpm;
   mount.get_crypto()->set_tpm(&tpm);
@@ -289,6 +264,10 @@ TEST_F(MountTest, GoodReDecryptTest) {
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
   set_policy(&mount, false, "", false);
+  homedirs.crypto()->set_tpm(&tpm);
+  homedirs.crypto()->set_use_tpm(false);
+  homedirs.set_shadow_root(kImageDir);
+  homedirs.set_policy_provider(mount.policy_provider());
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[6].password,
@@ -315,7 +294,8 @@ TEST_F(MountTest, GoodReDecryptTest) {
             (serialized2.flags() &
              cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED));
 
-  ASSERT_TRUE(mount.TestCredentials(up));
+  ASSERT_FALSE(mount.TestCredentials(up));
+  ASSERT_TRUE(homedirs.AreCredentialsValid(up));
 }
 
 TEST_F(MountTest, SystemSaltTest) {

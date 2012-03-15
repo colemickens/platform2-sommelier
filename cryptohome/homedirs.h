@@ -16,6 +16,7 @@
 #include <policy/libpolicy.h>
 #include <string>
 
+#include "credentials.h"
 #include "crypto.h"
 #include "secure_blob.h"
 #include "vault_keyset.pb.h"
@@ -51,6 +52,11 @@ class HomeDirs {
   // Returns the owner's obfuscated username.
   virtual bool GetOwner(std::string* owner);
 
+  // Returns whether the supplied credentials are valid. If the user is
+  // currently logged in, it's vastly faster to just ask their UserSession; this
+  // method requires a trip to the TPM.
+  virtual bool AreCredentialsValid(const Credentials& credentials);
+
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
   void set_platform(Platform *value) { platform_ = value; }
@@ -75,6 +81,11 @@ class HomeDirs {
     policy_provider_ = value;
   }
   policy::PolicyProvider* policy_provider() { return policy_provider_; }
+
+  void set_crypto(Crypto* value) {
+    crypto_ = value;
+  }
+  Crypto* crypto() const { return crypto_; }
 
  private:
   bool AreEphemeralUsersEnabled();
@@ -105,6 +116,10 @@ class HomeDirs {
   // Loads the contents of the file at the supplied path into the supplied blob.
   // Returns true for success, false for failure.
   bool LoadFileBytes(const FilePath& path, SecureBlob* blob) const;
+
+  // Attempts to load and decrypt the vault keyset for the supplied credentials.
+  bool DecryptVaultKeyset(const Credentials& credentials,
+                          VaultKeyset* vault_keyset);
 
   // Takes ownership of the supplied PolicyProvider. Used to avoid leaking mocks
   // in unit tests.
