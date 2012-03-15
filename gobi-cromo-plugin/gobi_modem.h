@@ -340,9 +340,9 @@ class GobiModem
   static gboolean DormancyStatusCallback(gpointer data);
 
   struct DataCapabilitiesArgs : public CallbackArgs {
-    DataCapabilitiesArgs(BYTE num_data_caps, BYTE* data_caps)
-      : num_data_caps(num_data_caps) {
-      ULONG* dcp = reinterpret_cast<ULONG*>(data_caps);
+    DataCapabilitiesArgs(BYTE num_caps, BYTE* data)
+      : num_data_caps(num_caps) {
+      ULONG* dcp = reinterpret_cast<ULONG*>(data);
       if (num_data_caps > 12)
         num_data_caps = 12;
       for (int i = 0; i < num_data_caps; i++)
