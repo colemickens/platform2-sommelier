@@ -13,6 +13,10 @@ DBUSXX_XML2CPP = dbusxx-xml2cpp
 
 BUILDDIR = build
 
+LIBDIR = /usr/lib
+SCRIPTDIR = $(LIBDIR)/flimflam/scripts
+CPPFLAGS += -DSCRIPTDIR=\"$(SCRIPTDIR)\"
+
 # libevent, gdk and gtk-2.0 are needed to leverage chrome's MessageLoop
 # TODO(cmasone): explore if newer versions of libbase let us avoid this.
 BASE_LIBS = -lcares -lmobile-provider -lmetrics
@@ -327,7 +331,7 @@ $(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LDFLAGS) $^ $(LIB_DIRS) $(LIBS) \
 		-o $@
 
-$(TEST_BIN): CXXFLAGS += -DUNIT_TEST
+$(TEST_BIN): CPPFLAGS += -DUNIT_TEST -DSYSROOT=\"$(SYSROOT)\"
 $(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(TEST_LIB_DIRS) $(TEST_LIBS) -o $@
 

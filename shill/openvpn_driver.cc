@@ -25,8 +25,6 @@ using std::vector;
 namespace shill {
 
 namespace {
-const char kOpenVPNPath[] = "/usr/sbin/openvpn";
-const char kOpenVPNScript[] = "/usr/lib/flimflam/scripts/openvpn-script";
 const char kOpenVPNForeignOptionPrefix[] = "foreign_option_";
 const char kOpenVPNIfconfigBroadcast[] = "ifconfig_broadcast";
 const char kOpenVPNIfconfigLocal[] = "ifconfig_local";
@@ -37,6 +35,11 @@ const char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
 const char kOpenVPNTrustedIP[] = "trusted_ip";
 const char kOpenVPNTunMTU[] = "tun_mtu";
 }  // namespace
+
+// static
+const char OpenVPNDriver::kOpenVPNPath[] = "/usr/sbin/openvpn";
+// static
+const char OpenVPNDriver::kOpenVPNScript[] = SCRIPTDIR "/openvpn-script";
 
 OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
                              EventDispatcher *dispatcher,

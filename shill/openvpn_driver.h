@@ -72,6 +72,10 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ParseRouteOption);
   FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
+  FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
+
+  static const char kOpenVPNPath[];
+  static const char kOpenVPNScript[];
 
   // The map is a sorted container that allows us to iterate through the options
   // in order.
