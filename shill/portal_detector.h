@@ -78,6 +78,7 @@ class PortalDetector {
   };
 
   static const int kDefaultCheckIntervalSeconds;
+  static const char kDefaultCheckPortalList[];
   static const char kDefaultURL[];
   static const char kResponseExpected[];
   // Maximum number of times the PortalDetector will attempt a connection.

@@ -29,6 +29,7 @@ using std::string;
 namespace shill {
 
 const int PortalDetector::kDefaultCheckIntervalSeconds = 30;
+const char PortalDetector::kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
 const char PortalDetector::kDefaultURL[] =
     "http://clients3.google.com/generate_204";
 const char PortalDetector::kResponseExpected[] = "HTTP/1.1 204";

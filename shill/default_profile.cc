@@ -64,9 +64,11 @@ bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
   storage()->GetString(kStorageId, kStorageHostName, &manager_props->host_name);
   storage()->GetBool(kStorageId, kStorageOfflineMode,
                      &manager_props->offline_mode);
-  storage()->GetString(kStorageId,
-                       kStorageCheckPortalList,
-                       &manager_props->check_portal_list);
+  if (!storage()->GetString(kStorageId,
+                            kStorageCheckPortalList,
+                            &manager_props->check_portal_list)) {
+    manager_props->check_portal_list = PortalDetector::kDefaultCheckPortalList;
+  }
   if (!storage()->GetString(kStorageId, kStoragePortalURL,
                             &manager_props->portal_url)) {
     manager_props->portal_url = PortalDetector::kDefaultURL;

@@ -164,7 +164,8 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   ASSERT_TRUE(profile_->LoadManagerProperties(&manager_props));
   EXPECT_EQ("", manager_props.host_name);
   EXPECT_FALSE(manager_props.offline_mode);
-  EXPECT_EQ("", manager_props.check_portal_list);
+  EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
+            manager_props.check_portal_list);
   EXPECT_EQ(PortalDetector::kDefaultURL, manager_props.portal_url);
   EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
             manager_props.portal_check_interval_seconds);
