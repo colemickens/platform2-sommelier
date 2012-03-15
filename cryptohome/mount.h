@@ -110,9 +110,6 @@ class Mount : public EntropySource {
   // Unmounts any mount at the cryptohome mount point
   virtual bool UnmountCryptohome();
 
-  // Remove a user's cryptohome
-  virtual bool RemoveCryptohome(const Credentials& credentials);
-
   // Checks if the mount point currently has a mount
   virtual bool IsCryptohomeMounted() const;
 

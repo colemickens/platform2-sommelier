@@ -308,4 +308,16 @@ bool HomeDirs::DecryptVaultKeyset(const Credentials& credentials,
   return crypto_->DecryptVaultKeyset(serialized, passkey, NULL, NULL, keyset);
 }
 
+bool HomeDirs::Remove(const std::string& username) {
+  UsernamePasskey passkey(username.c_str(), SecureBlob("", 0));
+  GetSystemSalt(NULL);
+  std::string obfuscated = passkey.GetObfuscatedUsername(system_salt_);
+  FilePath user_dir = FilePath(shadow_root_).Append(obfuscated);
+  FilePath user_path = chromeos::cryptohome::home::GetUserPath(username);
+  FilePath root_path = chromeos::cryptohome::home::GetRootPath(username);
+  return platform_->DeleteFile(user_dir.value(), true) &&
+         platform_->DeleteFile(user_path.value(), true) &&
+         platform_->DeleteFile(root_path.value(), true);
+}
+
 }  // namespace cryptohome

@@ -571,13 +571,17 @@ gboolean Service::Remove(gchar *userid,
                          gboolean *OUT_result,
                          GError **error) {
   UsernamePasskey credentials(userid, chromeos::Blob());
+  if (mount_->IsCryptohomeMountedForUser(credentials)) {
+    *OUT_result = FALSE;
+    return TRUE;
+  }
 
   MountTaskResult result;
   base::WaitableEvent event(true, false);
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(mount_, &event_source_);
   MountTaskRemove* mount_task =
-      new MountTaskRemove(bridge, mount_, credentials);
+      new MountTaskRemove(bridge, NULL, credentials, homedirs_);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
@@ -590,11 +594,15 @@ gboolean Service::AsyncRemove(gchar *userid,
                               gint *OUT_async_id,
                               GError **error) {
   UsernamePasskey credentials(userid, chromeos::Blob());
-
+  MountTask* mount_task = NULL;
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(mount_, &event_source_);
-  MountTaskRemove* mount_task =
-      new MountTaskRemove(bridge, mount_, credentials);
+  if (mount_->IsCryptohomeMountedForUser(credentials)) {
+    mount_task = new MountTaskNop(bridge);
+    mount_task->result()->set_return_status(false);
+  } else {
+    mount_task = new MountTaskRemove(bridge, NULL, credentials, homedirs_);
+  }
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
   return TRUE;

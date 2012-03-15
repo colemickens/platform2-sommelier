@@ -209,11 +209,13 @@ TEST_F(MountTaskTest, TestCredentialsTest) {
 }
 
 TEST_F(MountTaskTest, RemoveTest) {
-  EXPECT_CALL(mount_, RemoveCryptohome(_))
+  MockHomeDirs homedirs;
+  EXPECT_CALL(homedirs, Remove(_))
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskRemove(NULL, &mount_, UsernamePasskey());
+  MountTask* mount_task = new MountTaskRemove(NULL, NULL, UsernamePasskey(),
+                                              &homedirs);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE, mount_task);

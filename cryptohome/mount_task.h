@@ -349,14 +349,16 @@ class MountTaskRemove : public MountTask {
  public:
   MountTaskRemove(MountTaskObserver* observer,
                   Mount* mount,
-                  const UsernamePasskey& credentials)
-      : MountTask(observer, mount, credentials) {
+                  const UsernamePasskey& credentials,
+                  HomeDirs* homedirs)
+      : MountTask(observer, mount, credentials), homedirs_(homedirs) {
   }
   virtual ~MountTaskRemove() { }
 
   virtual void Run();
 
  private:
+  HomeDirs* homedirs_;
   DISALLOW_COPY_AND_ASSIGN(MountTaskRemove);
 };
 

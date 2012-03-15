@@ -57,6 +57,9 @@ class HomeDirs {
   // method requires a trip to the TPM.
   virtual bool AreCredentialsValid(const Credentials& credentials);
 
+  // Removes the cryptohome for the named user.
+  virtual bool Remove(const std::string& username);
+
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
   void set_platform(Platform *value) { platform_ = value; }

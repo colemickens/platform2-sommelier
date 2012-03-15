@@ -239,7 +239,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     }
 
     if (!MountEphemeralCryptohome(credentials)) {
-      RemoveCryptohome(credentials);
+      homedirs_.Remove(credentials.GetFullUsernameString());
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
     }
@@ -277,7 +277,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     if (recreate_decrypt_fatal & (local_mount_error & MOUNT_ERROR_FATAL)) {
       LOG(ERROR) << "Error, cryptohome must be re-created because of fatal "
                  << "error.";
-      if (!RemoveCryptohome(credentials)) {
+      if (!homedirs_.Remove(credentials.GetFullUsernameString())) {
         LOG(ERROR) << "Fatal decryption error, but unable to remove "
                    << "cryptohome.";
         return false;
@@ -603,24 +603,6 @@ bool Mount::UnmountCryptohome() {
   crypto_->ClearKeyset();
 
   return true;
-}
-
-bool Mount::RemoveCryptohome(const Credentials& credentials) {
-  std::string user_dir = GetUserDirectory(credentials);
-  std::string username = credentials.GetFullUsernameString();
-  FilePath user_path = chromeos::cryptohome::home::GetUserPath(username);
-  FilePath root_path = chromeos::cryptohome::home::GetRootPath(username);
-  CHECK(user_dir.length() > (shadow_root_.length() + 1));
-
-  if (IsCryptohomeMountedForUser(credentials)) {
-    if (!UnmountCryptohome()) {
-      return false;
-    }
-  }
-
-  return file_util::Delete(FilePath(user_dir), true) &&
-         file_util::Delete(user_path, true) &&
-         file_util::Delete(root_path, true);
 }
 
 bool Mount::IsCryptohomeMounted() const {
