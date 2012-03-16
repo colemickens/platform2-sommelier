@@ -265,7 +265,11 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
       return;
     }
   }
-  object_pool->SetKey(master_key);
+  if (!object_pool->SetEncryptionKey(master_key)) {
+    LOG(ERROR) << "SetEncryptionKey failed for token at " << path.value();
+    tpm_utility_->UnloadKeysForSlot(slot_id);
+    return;
+  }
   // Insert the new token into the empty slot.
   slot_list_[slot_id].token_object_pool = object_pool;
   slot_list_[slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;

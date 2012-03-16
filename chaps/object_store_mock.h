@@ -2,21 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_PERSISTENCE_MOCK_H
-#define CHAPS_PERSISTENCE_MOCK_H
+#ifndef CHAPS_OBJECT_STORE_MOCK_H
+#define CHAPS_OBJECT_STORE_MOCK_H
 
 #include "chaps/object_store.h"
+
+#include <gmock/gmock.h>
 
 namespace chaps {
 
 class ObjectStoreMock : public ObjectStore {
  public:
+  ObjectStoreMock();
+  virtual ~ObjectStoreMock();
   MOCK_METHOD2(GetInternalBlob,
       bool(int blob_id, std::string* blob));
   MOCK_METHOD2(SetInternalBlob,
       bool(int blob_id, const std::string& blob));
   MOCK_METHOD1(SetEncryptionKey,
-      void(const std::string& key));
+      bool(const std::string& key));
   MOCK_METHOD5(InsertObjectBlob,
       bool(bool is_private,
            CK_OBJECT_CLASS object_class,
@@ -33,4 +37,4 @@ class ObjectStoreMock : public ObjectStore {
 
 }  // namespace
 
-#endif  // CHAPS_PERSISTENCE_MOCK_H
+#endif  // CHAPS_OBJECT_STORE_MOCK_H

@@ -40,7 +40,7 @@ class ObjectPoolImpl : public ObjectPool {
   virtual bool Init();
   virtual bool GetInternalBlob(int blob_id, std::string* blob);
   virtual bool SetInternalBlob(int blob_id, const std::string& blob);
-  virtual void SetKey(const std::string& key);
+  virtual bool SetEncryptionKey(const std::string& key);
   virtual bool Insert(Object* object);
   virtual bool Delete(const Object* object);
   virtual bool Find(const Object* search_template,

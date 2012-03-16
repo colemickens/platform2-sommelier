@@ -28,6 +28,7 @@ MOCK = $(OUT)chaps_factory_mock.o \
        $(OUT)object_mock.o \
        $(OUT)object_policy_mock.o \
        $(OUT)object_pool_mock.o \
+       $(OUT)object_store_mock.o \
        $(OUT)session_mock.o \
        $(OUT)slot_manager_mock.o \
        $(OUT)tpm_utility_mock.o
@@ -77,7 +78,8 @@ $(OUT)chapsd: $(COMMON) \
               $(OUT)object_policy_secret_key.o \
               $(OUT)object_pool_impl.o \
               $(OUT)tpm_utility_impl.o \
-              $(OUT)chaps_factory_impl.o
+              $(OUT)chaps_factory_impl.o \
+              $(OUT)object_store_impl.o
 	$(call cxx_binary, -ldl -ltspi)
 RM_ON_CLEAN += $(OUT)chapsd
 
@@ -145,6 +147,12 @@ $(OUT)object_pool_test: $(COMMON) $(MOCK) \
 	$(call cxx_binary, -lgtest -lgmock)
 RM_ON_CLEAN += $(OUT)object_pool_test
 
+$(OUT)object_store_test: $(COMMON) \
+                        $(OUT)object_store_test.o \
+                        $(OUT)object_store_impl.o
+	$(call cxx_binary, -lgtest)
+RM_ON_CLEAN += $(OUT)object_store_test
+
 $(OUT)tpm_utility_test: $(COMMON) $(MOCK) \
                         $(OUT)tpm_utility_test.o \
                         $(OUT)tpm_utility_impl.o
@@ -173,7 +181,8 @@ tests: $(OUT)chaps_test \
        $(OUT)session_test \
        $(OUT)object_test \
        $(OUT)object_policy_test \
-       $(OUT)object_pool_test
+       $(OUT)object_pool_test \
+       $(OUT)object_store_test
 
 live_tests: $(OUT)chapsd_test \
             $(OUT)chaps_event_generator \
@@ -189,3 +198,4 @@ runtests: tests
 	$(OUT)object_test
 	$(OUT)object_policy_test
 	$(OUT)object_pool_test
+	$(OUT)object_store_test

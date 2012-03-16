@@ -21,7 +21,7 @@ class ObjectPool {
   // These methods get and set internal persistent blobs. These internal blobs
   // are for use by Chaps. PKCS #11 applications will not see these when
   // searching for objects. Only persistent implementations need to support
-  // internal blobs.
+  // internal blobs. Internal blobs do not need to be encrypted.
   //   blob_id - The value of this identifier must be managed by the caller.
   //             Only one blob can be set per blob_id (i.e. a subsequent call
   //             to SetInternalBlob with the same blob_id will overwrite the
@@ -31,7 +31,7 @@ class ObjectPool {
   // SetKey sets the encryption key for objects in this pool. This is only
   // relevant if the pool is persistent; an object pool has no obligation to
   // encrypt object data in memory.
-  virtual void SetKey(const std::string& key) = 0;
+  virtual bool SetEncryptionKey(const std::string& key) = 0;
   // This method takes ownership of the 'object' pointer on success.
   virtual bool Insert(Object* object) = 0;
   virtual bool Delete(const Object* object) = 0;

@@ -68,9 +68,10 @@ bool ObjectPoolImpl::SetInternalBlob(int blob_id, const string& blob) {
   return false;
 }
 
-void ObjectPoolImpl::SetKey(const string& key) {
+bool ObjectPoolImpl::SetEncryptionKey(const string& key) {
   if (store_.get())
-    store_->SetEncryptionKey(key);
+    return store_->SetEncryptionKey(key);
+  return true;
 }
 
 bool ObjectPoolImpl::Insert(Object* object) {

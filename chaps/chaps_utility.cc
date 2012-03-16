@@ -10,6 +10,9 @@
 #include <string>
 #include <vector>
 
+#include <openssl/bio.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 
 #include "chaps/attributes.h"
@@ -485,6 +488,26 @@ string sha1(const string& input) {
   unsigned char digest[SHA_DIGEST_LENGTH];
   SHA1(ConvertStringToByteBuffer(input.data()), input.length(), digest);
   return ConvertByteBufferToString(digest, SHA_DIGEST_LENGTH);
+}
+
+ScopedOpenSSL::ScopedOpenSSL() {
+  OpenSSL_add_all_algorithms();
+  ERR_load_crypto_strings();
+}
+
+ScopedOpenSSL::~ScopedOpenSSL() {
+  EVP_cleanup();
+  ERR_free_strings();
+}
+
+std::string GetOpenSSLError() {
+  BIO* bio = BIO_new(BIO_s_mem());
+  ERR_print_errors(bio);
+  char* data = NULL;
+  int data_len = BIO_get_mem_data(bio, &data);
+  string error_string(data, data_len);
+  BIO_free(bio);
+  return error_string;
 }
 
 }  // namespace

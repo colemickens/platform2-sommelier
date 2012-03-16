@@ -123,12 +123,12 @@ TEST_F(TestObjectPool, StorePassThrough) {
   EXPECT_CALL(*store_, SetEncryptionKey(s)).Times(1);
   EXPECT_FALSE(pool2_->GetInternalBlob(1, &s));
   EXPECT_FALSE(pool2_->SetInternalBlob(1, s));
-  pool2_->SetKey(s);
+  pool2_->SetEncryptionKey(s);
   EXPECT_FALSE(pool_->GetInternalBlob(1, &s));
   EXPECT_TRUE(pool_->GetInternalBlob(1, &s));
   EXPECT_FALSE(pool_->SetInternalBlob(1, s));
   EXPECT_TRUE(pool_->SetInternalBlob(1, s));
-  pool_->SetKey(s);
+  pool_->SetEncryptionKey(s);
 }
 
 // Test basic object management operations.

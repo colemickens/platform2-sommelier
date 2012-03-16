@@ -51,7 +51,8 @@ ObjectPool* CreateObjectPoolMock() {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*object_pool, SetInternalBlob(1, string("encrypted_master_key")))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*object_pool, SetKey(string("master_key"))).Times(AnyNumber());
+  EXPECT_CALL(*object_pool, SetEncryptionKey(string("master_key")))
+      .WillRepeatedly(Return(true));
   return object_pool;
 }
 

@@ -27,7 +27,8 @@ class ObjectStoreFake : public ObjectStore {
     internal_blobs_[blob_id] = blob;
     return true;
   }
-  virtual void SetEncryptionKey(const std::string& key) {
+  virtual bool SetEncryptionKey(const std::string& key) {
+    return true;
   }
   virtual bool InsertObjectBlob(bool is_private,
                             CK_OBJECT_CLASS object_class,

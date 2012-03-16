@@ -8,6 +8,8 @@
 #include <map>
 #include <string>
 
+#include "pkcs11/cryptoki.h"
+
 namespace chaps {
 
 // An object store provides persistent storage of object blobs and internal
@@ -26,11 +28,13 @@ class ObjectStore {
   //             Only one blob can be set per blob_id (i.e. a subsequent call
   //             to SetInternalBlob with the same blob_id will overwrite the
   //             blob).
-  //   blob - The blob data.
+  //  blob - The blob data. This will not be encrypted.
   virtual bool GetInternalBlob(int blob_id, std::string* blob) = 0;
   virtual bool SetInternalBlob(int blob_id, const std::string& blob) = 0;
-  // SetKey sets the encryption key used to encrypt object blobs.
-  virtual void SetEncryptionKey(const std::string& key) = 0;
+  // SetEncryptionKey sets the encryption key used to encrypt all object blobs.
+  // This method must be called before any object blob methods (e.g.
+  // InsertObjectBlob, DeleteObjectBlob, ...).
+  virtual bool SetEncryptionKey(const std::string& key) = 0;
   // Inserts a new blob.
   virtual bool InsertObjectBlob(bool is_private,
                                 CK_OBJECT_CLASS object_class,
