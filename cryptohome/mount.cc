@@ -266,7 +266,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   // Attempt to decrypt the vault keyset with the specified credentials
-  VaultKeyset vault_keyset;
+  VaultKeyset vault_keyset(platform_, crypto_);
   SerializedVaultKeyset serialized;
   MountError local_mount_error = MOUNT_ERROR_NONE;
   if (!DecryptVaultKeyset(credentials, true, &vault_keyset, &serialized,
@@ -634,8 +634,8 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
   file_util::CreateDirectory(user_dir);
 
   // Generate a new master key
-  VaultKeyset vault_keyset;
-  vault_keyset.CreateRandom(*this);
+  VaultKeyset vault_keyset(platform_, crypto_);
+  vault_keyset.CreateRandom();
   SerializedVaultKeyset serialized;
   if (!AddVaultKeyset(credentials, vault_keyset, &serialized)) {
     platform_->SetMask(original_mask);
@@ -1051,7 +1051,7 @@ bool Mount::MigratePasskey(const Credentials& credentials,
                                   SecureBlob(old_key, strlen(old_key)));
   // Attempt to decrypt the vault keyset with the specified credentials
   MountError mount_error;
-  VaultKeyset vault_keyset;
+  VaultKeyset vault_keyset(platform_, crypto_);
   SerializedVaultKeyset serialized;
   bool result = DecryptVaultKeyset(old_credentials, false, &vault_keyset,
                                    &serialized, &mount_error);
@@ -1326,10 +1326,6 @@ void Mount::CopySkeletonForUser(const Credentials& credentials) const {
 
 void Mount::CopySkeleton() const {
   RecursiveCopy(FilePath(home_dir_), FilePath(skel_source_));
-}
-
-void Mount::GetSecureRandom(unsigned char *rand, unsigned int length) const {
-  crypto_->GetSecureRandom(rand, length);
 }
 
 bool Mount::RemoveOldFiles(const Credentials& credentials) const {

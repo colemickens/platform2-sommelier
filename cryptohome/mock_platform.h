@@ -24,9 +24,8 @@ ACTION(CallEnumerateDirectoryEntries) {
 ACTION(CallDirectoryExists) {
   return file_util::DirectoryExists(FilePath(arg0));
 }
-ACTION(CallReadFile) {
-  return Platform().ReadFile(arg0, arg1);
-}
+ACTION(CallReadFile) { return Platform().ReadFile(arg0, arg1); }
+ACTION(CallRename) { return Platform().Rename(arg0, arg1); }
 
 class MockPlatform : public Platform {
  public:
@@ -53,6 +52,8 @@ class MockPlatform : public Platform {
         .WillByDefault(CallDirectoryExists());
     ON_CALL(*this, ReadFile(_, _))
         .WillByDefault(CallReadFile());
+    ON_CALL(*this, Rename(_, _))
+        .WillByDefault(CallRename());
   }
   virtual ~MockPlatform() {}
   MOCK_METHOD4(Mount, bool(const std::string&, const std::string&,
@@ -78,6 +79,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(FileExists, bool(const std::string&));
   MOCK_METHOD2(Stat, bool(const std::string&, struct stat*));
   MOCK_METHOD2(ReadFile, bool(const std::string&, chromeos::Blob*));
+  MOCK_METHOD2(Rename, bool(const std::string&, const std::string&));
   MOCK_METHOD2(WriteFile, bool(const std::string&, const chromeos::Blob&));
   MOCK_CONST_METHOD0(GetCurrentTime, base::Time());
   MOCK_METHOD3(EnumerateDirectoryEntries, bool(const std::string&, bool,

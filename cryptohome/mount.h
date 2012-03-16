@@ -74,7 +74,7 @@ extern const base::TimeDelta kOldUserLastActivityTime;
 // The Mount class handles mounting/unmounting of the user's cryptohome
 // directory as well as offline verification of the user's credentials against
 // the directory's crypto key.
-class Mount : public EntropySource {
+class Mount {
  public:
   struct MountArgs {
     bool create_if_missing;
@@ -607,13 +607,6 @@ class Mount : public EntropySource {
   // Copies the skeleton directory to the cryptohome mount point
   //
   void CopySkeleton() const;
-
-  // Returns the specified number of random bytes
-  //
-  // Parameters
-  //   rand (IN/OUT) - Where to store the bytes, must be a least length bytes
-  //   length - The number of random bytes to return
-  void GetSecureRandom(unsigned char *rand, unsigned int length) const;
 
   // Returns the user's salt
   //

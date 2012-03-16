@@ -258,6 +258,8 @@ TEST_F(MountTest, GoodReDecryptTest) {
   HomeDirs homedirs;
   Mount mount;
   NiceMock<MockTpm> tpm;
+  MockPlatform platform;
+  Crypto crypto;
   mount.get_crypto()->set_tpm(&tpm);
   mount.set_use_tpm(false);
   mount.set_shadow_root(kImageDir);
@@ -282,7 +284,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
 
   // Call DecryptVaultKeyset first, allowing migration (the test data is not
   // scrypt nor TPM wrapped) to a scrypt-wrapped keyset
-  VaultKeyset vault_keyset;
+  VaultKeyset vault_keyset(&platform, &crypto);
   MountError error;
   ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
                                        &error));
@@ -360,6 +362,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   // checks that cryptohome doesn't by default re-save the cryptohome when mount
   Mount mount;
   NiceMock<MockTpm> tpm;
+  Crypto crypto;
   mount.get_crypto()->set_tpm(&tpm);
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
@@ -376,7 +379,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
                                         system_salt_, &passkey);
   UsernamePasskey up(kDefaultUsers[11].username, passkey);
 
-  VaultKeyset vault_keyset;
+  VaultKeyset vault_keyset(&platform, &crypto);
   SerializedVaultKeyset serialized;
   MountError error;
   ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,

@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 
+#include "mock_platform.h"
 #include "mock_tpm.h"
 #include "sha_test_vectors.h"
 
@@ -64,6 +65,9 @@ class CryptoTest : public ::testing::Test {
         blob.size());
   }
 
+ protected:
+  MockPlatform platform_;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(CryptoTest);
 };
@@ -72,8 +76,8 @@ TEST_F(CryptoTest, EncryptionTest) {
   // Check that EncryptVaultKeyset returns something other than the bytes passed
   Crypto crypto;
 
-  VaultKeyset vault_keyset;
-  vault_keyset.CreateRandom(crypto);
+  VaultKeyset vault_keyset(&platform_, &crypto);
+  vault_keyset.CreateRandom();
 
   SecureBlob key(20);
   crypto.GetSecureRandom(static_cast<unsigned char*>(key.data()), key.size());
@@ -97,8 +101,8 @@ TEST_F(CryptoTest, DecryptionTest) {
   // Check that DecryptVaultKeyset returns the original keyset
   Crypto crypto;
 
-  VaultKeyset vault_keyset;
-  vault_keyset.CreateRandom(crypto);
+  VaultKeyset vault_keyset(&platform_, &crypto);
+  vault_keyset.CreateRandom();
 
   SecureBlob key(20);
   crypto.GetSecureRandom(static_cast<unsigned char*>(key.data()), key.size());
@@ -115,7 +119,7 @@ TEST_F(CryptoTest, DecryptionTest) {
 
   ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
-  VaultKeyset new_keyset;
+  VaultKeyset new_keyset(&platform_, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
@@ -182,6 +186,7 @@ TEST_F(CryptoTest, AsciiEncodeTest) {
 
 TEST_F(CryptoTest, TpmStepTest) {
   // Check that the code path changes to support the TPM work
+  MockPlatform platform;
   Crypto crypto;
   NiceMock<MockTpm> tpm;
 
@@ -197,8 +202,8 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   crypto.Init();
 
-  VaultKeyset vault_keyset;
-  vault_keyset.CreateRandom(crypto);
+  VaultKeyset vault_keyset(&platform_, &crypto);
+  vault_keyset.CreateRandom();
 
   SecureBlob key(20);
   crypto.GetSecureRandom(static_cast<unsigned char*>(key.data()), key.size());
@@ -215,7 +220,7 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
-  VaultKeyset new_keyset;
+  VaultKeyset new_keyset(&platform, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
@@ -232,12 +237,13 @@ TEST_F(CryptoTest, TpmStepTest) {
 
 TEST_F(CryptoTest, ScryptStepTest) {
   // Check that the code path changes to support scrypt work
+  MockPlatform platform;
   Crypto crypto;
 
   crypto.Init();
 
-  VaultKeyset vault_keyset;
-  vault_keyset.CreateRandom(crypto);
+  VaultKeyset vault_keyset(&platform, &crypto);
+  vault_keyset.CreateRandom();
 
   SecureBlob key(20);
   crypto.GetSecureRandom(static_cast<unsigned char*>(key.data()), key.size());
@@ -254,7 +260,7 @@ TEST_F(CryptoTest, ScryptStepTest) {
 
   ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
-  VaultKeyset new_keyset;
+  VaultKeyset new_keyset(&platform, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
@@ -284,8 +290,8 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
 
   crypto.Init();
 
-  VaultKeyset vault_keyset;
-  vault_keyset.CreateRandom(crypto);
+  VaultKeyset vault_keyset(&platform_, &crypto);
+  vault_keyset.CreateRandom();
 
   SecureBlob key(20);
   crypto.GetSecureRandom(static_cast<unsigned char*>(key.data()), key.size());
@@ -302,7 +308,7 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
 
   ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
-  VaultKeyset new_keyset;
+  VaultKeyset new_keyset(&platform_, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,

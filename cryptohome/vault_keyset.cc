@@ -5,12 +5,17 @@
 #include <base/logging.h>
 #include <chromeos/utility.h>
 
+#include "crypto.h"
 #include "cryptohome_common.h"
+#include "platform.h"
 #include "vault_keyset.h"
 
 namespace cryptohome {
 
-VaultKeyset::VaultKeyset() {
+VaultKeyset::VaultKeyset(Platform* platform, Crypto* crypto)
+    : platform_(platform), crypto_(crypto) {
+  CHECK(platform);
+  CHECK(crypto);
 }
 
 VaultKeyset::~VaultKeyset() {
@@ -110,24 +115,25 @@ bool VaultKeyset::ToKeysBlob(SecureBlob* keys_blob) const {
   return true;
 }
 
-void VaultKeyset::CreateRandom(const EntropySource& entropy_source) {
+void VaultKeyset::CreateRandom() {
+  CHECK(crypto_);
   fek_.resize(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  entropy_source.GetSecureRandom(&fek_[0], fek_.size());
+  crypto_->GetSecureRandom(&fek_[0], fek_.size());
 
   fek_sig_.resize(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  entropy_source.GetSecureRandom(&fek_sig_[0], fek_sig_.size());
+  crypto_->GetSecureRandom(&fek_sig_[0], fek_sig_.size());
 
   fek_salt_.resize(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  entropy_source.GetSecureRandom(&fek_salt_[0], fek_salt_.size());
+  crypto_->GetSecureRandom(&fek_salt_[0], fek_salt_.size());
 
   fnek_.resize(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  entropy_source.GetSecureRandom(&fnek_[0], fnek_.size());
+  crypto_->GetSecureRandom(&fnek_[0], fnek_.size());
 
   fnek_sig_.resize(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  entropy_source.GetSecureRandom(&fnek_sig_[0], fnek_sig_.size());
+  crypto_->GetSecureRandom(&fnek_sig_[0], fnek_sig_.size());
 
   fnek_salt_.resize(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  entropy_source.GetSecureRandom(&fnek_salt_[0], fnek_salt_.size());
+  crypto_->GetSecureRandom(&fnek_salt_[0], fnek_salt_.size());
 }
 
 const SecureBlob& VaultKeyset::FEK() const {
@@ -152,6 +158,45 @@ const SecureBlob& VaultKeyset::FNEK_SIG() const {
 
 const SecureBlob& VaultKeyset::FNEK_SALT() const {
   return fnek_salt_;
+}
+
+bool VaultKeyset::Load(const std::string& filename, const SecureBlob& key) {
+  CHECK(platform_);
+  CHECK(crypto_);
+  SecureBlob contents;
+  if (!platform_->ReadFile(filename, &contents))
+    return false;
+
+  unsigned char* data = static_cast<unsigned char*>(contents.data());
+  if (!serialized_.ParseFromArray(data, contents.size()))
+    return false;
+
+  Crypto::CryptoError error;
+  bool ok = crypto_->DecryptVaultKeyset(serialized_, key, NULL, &error, this);
+  if (!ok && error == Crypto::CE_TPM_COMM_ERROR)
+    ok = crypto_->DecryptVaultKeyset(serialized_, key, NULL, &error, this);
+
+  return ok;
+}
+
+bool VaultKeyset::Save(const std::string& filename, const SecureBlob& key) {
+  CHECK(platform_);
+  CHECK(crypto_);
+  SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+  unsigned char* salt_buf = static_cast<unsigned char*>(salt.data());
+  crypto_->GetSecureRandom(salt_buf, salt.size());
+  if (!crypto_->EncryptVaultKeyset(*this, key, salt, &serialized_))
+    return false;
+
+  SecureBlob contents(serialized_.ByteSize());
+  google::protobuf::uint8* buf =
+      static_cast<google::protobuf::uint8*>(contents.data());
+  serialized_.SerializeWithCachedSizesToArray(buf);
+
+  std::string path = filename + ".new";
+  if (!platform_->WriteFile(path, contents))
+    return false;
+  return platform_->Rename(path, filename);
 }
 
 }  // namespace cryptohome

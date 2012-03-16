@@ -287,7 +287,7 @@ bool HomeDirs::AreCredentialsValid(const Credentials& credentials) {
       (GetOwner(&owner) &&
        credentials.GetObfuscatedUsername(system_salt_) != owner))
     return false;
-  VaultKeyset vault_keyset;
+  VaultKeyset vault_keyset(platform_, crypto_);
   return DecryptVaultKeyset(credentials, &vault_keyset);
 }
 

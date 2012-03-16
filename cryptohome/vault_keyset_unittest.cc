@@ -8,13 +8,21 @@
 
 #include <base/logging.h>
 #include <chromeos/utility.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "crypto.h"
 #include "cryptohome_common.h"
+#include "mock_platform.h"
 
 namespace cryptohome {
 using std::string;
+
+using ::testing::_;
+using ::testing::SaveArg;
+using ::testing::SetArgumentPointee;
+using ::testing::Return;
+using ::testing::WithArg;
 
 class VaultKeysetTest : public ::testing::Test {
  public:
@@ -36,14 +44,18 @@ class VaultKeysetTest : public ::testing::Test {
     return false;
   }
 
+ protected:
+  MockPlatform platform_;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(VaultKeysetTest);
 };
 
 TEST_F(VaultKeysetTest, AllocateRandom) {
   // Check that allocating a random VaultKeyset works
-  VaultKeyset vault_keyset;
-  vault_keyset.CreateRandom(Crypto());
+  Crypto crypto;
+  VaultKeyset vault_keyset(&platform_, &crypto);
+  vault_keyset.CreateRandom();
 
   EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIZE, vault_keyset.FEK().size());
   EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE,
@@ -58,8 +70,9 @@ TEST_F(VaultKeysetTest, AllocateRandom) {
 
 TEST_F(VaultKeysetTest, SerializeTest) {
   // Check that serialize works
-  VaultKeyset vault_keyset;
-  vault_keyset.CreateRandom(Crypto());
+  Crypto crypto;
+  VaultKeyset vault_keyset(&platform_, &crypto);
+  vault_keyset.CreateRandom();
 
   SecureBlob blob;
   EXPECT_TRUE(vault_keyset.ToKeysBlob(&blob));
@@ -75,13 +88,14 @@ TEST_F(VaultKeysetTest, SerializeTest) {
 
 TEST_F(VaultKeysetTest, DeserializeTest) {
   // Check that deserialize works
-  VaultKeyset vault_keyset;
-  vault_keyset.CreateRandom(Crypto());
+  Crypto crypto;
+  VaultKeyset vault_keyset(&platform_, &crypto);
+  vault_keyset.CreateRandom();
 
   SecureBlob blob;
   EXPECT_TRUE(vault_keyset.ToKeysBlob(&blob));
 
-  VaultKeyset new_vault_keyset;
+  VaultKeyset new_vault_keyset(&platform_, &crypto);
   new_vault_keyset.FromKeysBlob(blob);
 
   EXPECT_EQ(vault_keyset.FEK().size(), new_vault_keyset.FEK().size());
@@ -104,6 +118,37 @@ TEST_F(VaultKeysetTest, DeserializeTest) {
             new_vault_keyset.FNEK_SALT().size());
   EXPECT_TRUE(VaultKeysetTest::FindBlobInBlob(vault_keyset.FNEK_SALT(),
                                               new_vault_keyset.FNEK_SALT()));
+}
+
+ACTION_P(CopyToSecureBlob, b) {
+  b->assign(arg0.begin(), arg0.end());
+  return true;
+}
+
+ACTION_P(CopyFromSecureBlob, b) {
+  arg0->assign(b->begin(), b->end());
+  return true;
+}
+
+TEST_F(VaultKeysetTest, LoadSaveTest) {
+  MockPlatform platform;
+  Crypto crypto;
+  VaultKeyset keyset(&platform, &crypto);
+  keyset.CreateRandom();
+  SecureBlob bytes;
+
+  EXPECT_CALL(platform, WriteFile("foo.new", _))
+      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
+  EXPECT_CALL(platform, Rename("foo.new", "foo"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform, ReadFile("foo", _))
+      .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
+
+  SecureBlob key("key", 3);
+  EXPECT_TRUE(keyset.Save("foo", key));
+
+  VaultKeyset new_keyset(&platform, &crypto);
+  EXPECT_TRUE(new_keyset.Load("foo", key));
 }
 
 }  // namespace cryptohome
