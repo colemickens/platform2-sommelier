@@ -5,6 +5,77 @@
 #ifndef SHILL_WIFI_
 #define SHILL_WIFI_
 
+// A WiFi device represents a wireless network interface implemented as an IEEE
+// 802.11 station.  An Access Point (AP) (or, more correctly, a Basic Service
+// Set(BSS)) is represented by a WiFiEndpoint.  An AP provides a WiFiService,
+// which is the same concept as Extended Service Set (ESS) in 802.11,
+// identified by an SSID.  A WiFiService includes zero or more WiFiEndpoints
+// that provide that service.
+//
+// A WiFi device interacts with a real device through WPA Supplicant.
+// Wifi::Start() creates a connection to WPA Supplicant, represented by
+// |supplicant_interface_proxy_|.  [1]
+//
+// A WiFi device becomes aware of WiFiEndpoints through BSSAdded signals from
+// WPA Supplicant, which identifies them by a "path".  The WiFi object maintains
+// an EndpointMap in |endpoint_by_rpcid_|, in which the key is the "path" and
+// the value is a pointer to a WiFiEndpoint object.  When a WiFiEndpoint is
+// added, it is associated with a WiFiService.
+//
+// A WiFi device becomes aware of a WiFiService in three different ways.  1)
+// When a WiFiEndpoint is added through the BSSAdded signal, the WiFiEndpoint is
+// providing a service, and if that service is unknown to the WiFi device, it is
+// added at that point.  2) The Manager can add a WiFiService by calling
+// WiFi::GetService().  3) Services are loaded from the profile through a call
+// to WiFi::Load().
+//
+// The WiFi device connects to a WiFiService, not a WiFiEndpoint, through WPA
+// Supplicant. It is the job of WPA Supplicant to select a BSS (aka
+// WiFiEndpoint) to connect to.  The protocol for establishing a connection is
+// as follows:
+//
+//  1.  The WiFi device sends AddNetwork to WPA Supplicant, which returns a
+//  "network path" when done.
+//
+//  2.  The WiFi device sends SelectNetwork, indicating the network path
+//  received in 1, to WPA Supplicant, which begins the process of associating
+//  with an AP in the ESS.  At this point the WiFiService which is being
+//  connected is called the |pending_service_|.
+//
+// 3.  When association is complete, WPA Supplicant sends a PropertiesChanged
+// signal to the WiFi device, indicating a change in the CurrentBSS.  The
+// WiFiService indicated by the new value of CurrentBSS is set as the
+// |current_service_|, and |pending_service_| is (normally) cleared.
+//
+// Some key things to notice are 1) WPA Supplicant does the work of selecting
+// the AP (aka WiFiEndpoint) and it tells the WiFi device which AP it selected.
+// 2) The process of connecting is asynchronous.  There is a |current_service_|
+// to which the WiFi device is presently using and a |pending_service_| to which
+// the WiFi device has initiated a connection.
+//
+// A WiFi device is notified that an AP has gone away via the BSSRemoved signal.
+// When the last WiFiEndpoint of a WiFiService is removed, the WiFiService
+// itself is deleted.
+//
+// TODO(gmorain): Add explanation of hidden SSIDs.
+//
+// WPA Supplicant's PropertiesChanged signal communicates changes in the state
+// of WPA Supplicant's current service.  This state is stored in
+// |supplicant_state_| and reflects WPA Supplicant's view of the state of the
+// connection to an AP.  Changes in this state sometimes cause state changes in
+// the WiFiService to which a WiFi device is connected.  For example, when WPA
+// Supplicant signals the new state to be "completed", then the WiFiService
+// state gets changed to "configuring".  State change notifications are not
+// reliable because WPA Supplicant may coalesce state changes in quick
+// succession so that only the last of the changes is signaled.
+//
+// Notes:
+//
+// 1.  Shill's definition of the interface is described in
+// shill/dbus_bindings/supplicant-interface.xml, and the WPA Supplicant's
+// description of the same interface is in
+// third_party/wpa_supplicant/doc/dbus.doxygen.
+
 #include <time.h>
 
 #include <map>
