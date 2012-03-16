@@ -10,7 +10,7 @@ PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += $(PC_CFLAGS)
-CXXFLAGS += -fPIC -Wall -Werror -g -O0
+CXXFLAGS += -fPIC -Wall -Werror -g
 LDLIBS += -lGobiConnectionMgmt -lGobiImageMgmt -lglog -lpthread -lrt \
           -ludev -lmetrics -lgobi3k $(PC_LIBS)
 
