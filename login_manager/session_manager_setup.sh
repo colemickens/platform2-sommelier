@@ -304,6 +304,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-accelerated-plugins \
             --enable-device-policy \
             --enable-gview \
+            --enable-in-browser-thumbnailing \
             --enable-logging \
             --enable-onc-policy \
             --enable-partial-swap \
