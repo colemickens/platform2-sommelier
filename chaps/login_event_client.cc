@@ -17,22 +17,25 @@ using std::vector;
 
 namespace chaps {
 
-LoginEventClient::LoginEventClient() : proxy_(NULL) {}
+LoginEventClient::LoginEventClient()
+  : proxy_(new ChapsProxyImpl()),
+    is_connected_(false) {
+  CHECK(proxy_);
+}
 
 LoginEventClient::~LoginEventClient() {
   delete proxy_;
-}
-
-bool LoginEventClient::Init() {
-  proxy_ = new ChapsProxyImpl();
-  CHECK(proxy_);
-  return proxy_->Init();
 }
 
 void LoginEventClient::FireLoginEvent(const string& path,
                                       const uint8_t* auth_data,
                                       size_t auth_data_length) {
   CHECK(proxy_);
+  if (!Connect()) {
+    LOG(WARNING) << "Failed to connect to the Chaps daemon. "
+                 << "Login notification will not be sent.";
+    return;
+  }
   // TODO(dkrahn): Use SecureBlob; see crosbug.com/27681.
   vector<uint8_t> auth_data_vector(auth_data, auth_data + auth_data_length);
   proxy_->FireLoginEvent(path, auth_data_vector);
@@ -41,6 +44,11 @@ void LoginEventClient::FireLoginEvent(const string& path,
 
 void LoginEventClient::FireLogoutEvent(const string& path) {
   CHECK(proxy_);
+  if (!Connect()) {
+    LOG(WARNING) << "Failed to connect to the Chaps daemon. "
+                 << "Logout notification will not be sent.";
+    return;
+  }
   proxy_->FireLogoutEvent(path);
 }
 
@@ -51,6 +59,11 @@ void LoginEventClient::FireChangeAuthDataEvent(
     const uint8_t* new_auth_data,
     size_t new_auth_data_length) {
   CHECK(proxy_);
+  if (!Connect()) {
+    LOG(WARNING) << "Failed to connect to the Chaps daemon. "
+                 << "Change authorization data notification will not be sent.";
+    return;
+  }
   // TODO(dkrahn): Use SecureBlob; see crosbug.com/27681.
   vector<uint8_t> old_auth_data_vector(old_auth_data,
                                        old_auth_data + old_auth_data_length);
@@ -61,6 +74,12 @@ void LoginEventClient::FireChangeAuthDataEvent(
                                   new_auth_data_vector);
   chromeos::SecureMemset(&old_auth_data_vector[0], 0, old_auth_data_length);
   chromeos::SecureMemset(&new_auth_data_vector[0], 0, new_auth_data_length);
+}
+
+bool LoginEventClient::Connect() {
+  if (!is_connected_)
+    is_connected_ = proxy_->Init();
+  return is_connected_;
 }
 
 }  // namespace chaps

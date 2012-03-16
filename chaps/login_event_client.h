@@ -23,9 +23,6 @@ class LoginEventClient {
   LoginEventClient();
   virtual ~LoginEventClient();
 
-  // Initializes the client instance. Returns true on success.
-  bool Init();
-
   // Sends a login event. The Chaps daemon will insert a token for the user.
   //  path - The path to the user's token directory.
   //  auth_data - Authorization data to unlock the token.
@@ -49,6 +46,10 @@ class LoginEventClient {
                                size_t new_auth_data_length);
  private:
   ChapsProxyImpl* proxy_;
+  bool is_connected_;
+
+  // Attempts to connect to the Chaps daemon. Returns true on success.
+  bool Connect();
 
   DISALLOW_COPY_AND_ASSIGN(LoginEventClient);
 };
