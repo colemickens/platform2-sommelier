@@ -34,6 +34,11 @@ using base::PlatformThreadHandle;
 using base::WaitableEvent;
 using std::string;
 
+namespace {
+  const char kProcessUser[] = "chaps";
+  const char kProcessGroup[] = "chronos-access";
+}
+
 namespace chaps {
 
 class AsyncInitThread : public PlatformThread::Delegate {
@@ -104,6 +109,8 @@ int main(int argc, char** argv) {
   if (!cl->HasSwitch("lib")) {
     // We're using chaps (i.e. not passing through to another PKCS #11 library).
     LOG(INFO) << "Starting PKCS #11 services.";
+    // Run as 'chaps'.
+    chaps::SetProcessUserAndGroup(kProcessUser, kProcessGroup, true);
     chaps::ChapsFactoryImpl factory;
     chaps::TPMUtilityImpl tpm;
     chaps::SlotManagerImpl slot_manager(&factory, &tpm);

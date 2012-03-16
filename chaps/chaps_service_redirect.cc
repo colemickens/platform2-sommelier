@@ -6,10 +6,6 @@
 
 #include <dlfcn.h>
 #include <errno.h>
-#include <grp.h>
-#include <pwd.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
@@ -58,10 +54,12 @@ bool ChapsServiceRedirect::Init() {
 }
 
 bool ChapsServiceRedirect::Init2() {
+  const char* kUser = "chronos";
+  const char* kGroup = "pkcs11";
   CHECK(functions_);
   if (is_initialized_)
     return true;
-  if (!SetProcessUserAndGroup())
+  if (!SetProcessUserAndGroup(kUser, kGroup, false))
     return false;
   CK_RV result = functions_->C_Initialize(NULL);
   if (result != CKR_OK && result != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
@@ -70,33 +68,6 @@ bool ChapsServiceRedirect::Init2() {
   }
   LOG(INFO) << library_path_ << " initialized.";
   is_initialized_ = true;
-  return true;
-}
-
-bool ChapsServiceRedirect::SetProcessUserAndGroup() {
-  const char* kUser = "chronos";
-  const char* kGroup = "pkcs11";
-  // Get a uid_t for the user.
-  errno = 0;
-  struct passwd* user_info = getpwnam(kUser);
-  if (!user_info) {
-    PLOG(ERROR) << "Failed to get user info for user '" << kUser << "'.";
-    return false;
-  }
-  uid_t uid = user_info->pw_uid;
-  // Get a gid_t for the group.
-  errno = 0;
-  struct group* group_info = getgrnam(kGroup);
-  if (!group_info) {
-    PLOG(ERROR) << "Failed to get group info for group '" << kGroup << "'.";
-    return false;
-  }
-  gid_t gid = group_info->gr_gid;
-  // Set the effective user and group.
-  if (setegid(gid) < 0 || seteuid(uid) < 0) {
-    PLOG(ERROR) << "Unable to set privileges to " << uid << ":" << gid << ".";
-    return false;
-  }
   return true;
 }
 

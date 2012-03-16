@@ -7,6 +7,7 @@
 #include <map>
 #include <string>
 
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
@@ -33,6 +34,7 @@ const char ObjectStoreImpl::kIDTrackerKey[] = "NextBlobID";
 const int ObjectStoreImpl::kAESBlockSizeBytes = 16;
 const int ObjectStoreImpl::kAESKeySizeBytes = 32;
 const int ObjectStoreImpl::kHMACSizeBytes = 64;
+const char ObjectStoreImpl::kDatabaseDirectory[] = "database";
 
 ObjectStoreImpl::ObjectStoreImpl() {
   EVP_CIPHER_CTX_init(&cipher_context_);
@@ -44,32 +46,33 @@ ObjectStoreImpl::~ObjectStoreImpl() {
   EVP_CIPHER_CTX_cleanup(&cipher_context_);
 }
 
-bool ObjectStoreImpl::Init(const FilePath& database_file) {
-  LOG(INFO) << "Opening database: " << database_file.value();
+bool ObjectStoreImpl::Init(const FilePath& database_path) {
+  LOG(INFO) << "Opening database in: " << database_path.value();
   leveldb::Options options;
   options.create_if_missing = true;
   options.paranoid_checks = true;
-  if (database_file.value() == ":memory:") {
+  if (database_path.value() == ":memory:") {
     // Memory only environment, useful for testing.
     LOG(INFO) << "Using memory-only environment.";
     env_.reset(leveldb::NewMemEnv(leveldb::Env::Default()));
     options.env = env_.get();
   }
+  FilePath database_name = database_path.Append(kDatabaseDirectory);
   leveldb::DB* db = NULL;
   leveldb::Status status = leveldb::DB::Open(options,
-                                             database_file.value(),
+                                             database_name.value(),
                                              &db);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to open database: " << status.ToString();
     // We don't want to risk using a database that has been corrupted.
-    status = leveldb::DestroyDB(database_file.value(), options);
+    status = leveldb::DestroyDB(database_name.value(), options);
     if (!status.ok()) {
       LOG(ERROR) << "Failed to destroy database: " << status.ToString();
       return false;
     }
     LOG(WARNING) << "Recreating database from scratch.";
     // Now retry the open.
-    status = leveldb::DB::Open(options, database_file.value(), &db);
+    status = leveldb::DB::Open(options, database_name.value(), &db);
     if (!status.ok()) {
       LOG(ERROR) << "Failed to open database again: " << status.ToString();
       return false;

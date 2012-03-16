@@ -35,7 +35,6 @@ namespace {
 
 // I18N Note: The descriptive strings are needed for PKCS #11 compliance but
 // they should not appear on any UI.
-const FilePath::CharType kDefaultTokenFile[] = FILE_PATH_LITERAL("token");
 const CK_VERSION kDefaultVersion = {1, 0};
 const char kManufacturerID[] = "Chromium OS";
 const CK_ULONG kMaxPinLen = 127;
@@ -235,8 +234,7 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
   }
   // Setup the object pool and the key hierarchy.
   shared_ptr<ObjectPool> object_pool(
-      factory_->CreateObjectPool(this,
-          factory_->CreateObjectStore(path.Append(kDefaultTokenFile))));
+      factory_->CreateObjectPool(this, factory_->CreateObjectStore(path)));
   CHECK(object_pool.get());
   int slot_id = FindEmptySlot();
   string auth_key_blob;
@@ -301,8 +299,8 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
   int slot_id = 0;
   bool unload = false;
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
-    object_pool = factory_->CreateObjectPool(this, factory_->CreateObjectStore(
-        path.Append(kDefaultTokenFile)));
+    object_pool = factory_->CreateObjectPool(this,
+                                             factory_->CreateObjectStore(path));
     scoped_object_pool.reset(object_pool);
     slot_id = FindEmptySlot();
     unload = true;

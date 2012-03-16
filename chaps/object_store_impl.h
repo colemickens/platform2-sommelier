@@ -95,6 +95,8 @@ class ObjectStoreImpl : public ObjectStore {
   static const int kAESBlockSizeBytes;
   static const int kAESKeySizeBytes;
   static const int kHMACSizeBytes;
+  // The leveldb directory.
+  static const char kDatabaseDirectory[];
 
   std::string key_;
   EVP_CIPHER_CTX cipher_context_;

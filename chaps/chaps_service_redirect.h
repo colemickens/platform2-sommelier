@@ -278,7 +278,6 @@ private:
   // automatically by the first call to a ChapsInterface method and will call
   // C_Initialize on the target library.
   bool Init2();
-  bool SetProcessUserAndGroup();
 
   std::string library_path_;
   void* library_;

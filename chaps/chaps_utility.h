@@ -207,6 +207,16 @@ std::string GetOpenSSLError();
 
 std::string HmacSha512(const std::string& input, const std::string& key);
 
+// Sets the user and group for the current process. If 'real' is set to true,
+// the supplementary group list is initialized before changing the uid. The real
+// gid will be set to the gid of 'user' and the effective gid will be set to the
+// gid of 'group'.
+//   user - The name of the user to run as.
+//   group - The name of the group to run as.
+//   real - If true, both real and effective user/group are set, otherwise only
+//          effective user/group are set.
+bool SetProcessUserAndGroup(const char* user, const char* group, bool real);
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H
