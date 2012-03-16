@@ -57,6 +57,7 @@ class ConnectionTest : public Test {
         connection_(new Connection(
             kTestDeviceInterfaceIndex0,
             kTestDeviceName0,
+            Technology::kUnknown,
             device_info_.get())),
         ipconfig_(new IPConfig(&control_, kTestDeviceName0)) {}
 
@@ -180,6 +181,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
 TEST_F(ConnectionTest, RouteRequest) {
   ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
                                              kTestDeviceName0,
+                                             Technology::kUnknown,
                                              device_info_.get()));
   ReplaceSingletons(connection);
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
@@ -216,6 +218,7 @@ TEST_F(ConnectionTest, Destructor) {
   {
     ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex1,
                                                kTestDeviceName1,
+                                               Technology::kUnknown,
                                                device_info_.get()));
     connection->resolver_ = &resolver_;
     connection->routing_table_ = &routing_table_;
@@ -232,6 +235,7 @@ MATCHER_P2(IsIPAddress, address, prefix, "") {
 TEST_F(ConnectionTest, RequestHostRoute) {
   ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
                                              kTestDeviceName0,
+                                             Technology::kUnknown,
                                              device_info_.get()));
   ReplaceSingletons(connection);
   IPAddress address(IPAddress::kFamilyIPv4);

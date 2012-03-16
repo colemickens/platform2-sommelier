@@ -12,6 +12,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/refptr_types.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -27,6 +28,7 @@ class Connection : public base::RefCounted<Connection> {
  public:
   Connection(int interface_index,
              const std::string &interface_name,
+             Technology::Identifier technology_,
              const DeviceInfo *device_info);
   virtual ~Connection();
 
@@ -69,6 +71,7 @@ class Connection : public base::RefCounted<Connection> {
   int routing_request_count_;
   int interface_index_;
   const std::string interface_name_;
+  Technology::Identifier technology_;
   std::vector<std::string> dns_servers_;
   std::vector<std::string> dns_domain_search_;
 

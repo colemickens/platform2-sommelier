@@ -384,6 +384,7 @@ void Device::CreateConnection() {
   if (!connection_.get()) {
     connection_ = new Connection(interface_index_,
                                  link_name_,
+                                 technology_,
                                  manager_->device_info());
   }
 }

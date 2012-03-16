@@ -23,11 +23,13 @@ const uint32 Connection::kNonDefaultMetricBase = 10;
 
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
+                       Technology::Identifier technology,
                        const DeviceInfo *device_info)
     : is_default_(false),
       routing_request_count_(0),
       interface_index_(interface_index),
       interface_name_(interface_name),
+      technology_(technology),
       device_info_(device_info),
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
@@ -55,7 +57,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   local.set_prefix(properties.subnet_cidr);
 
   IPAddress broadcast(properties.address_family);
-  if (!broadcast.SetAddressFromString(properties.broadcast_address)) {
+  if (!broadcast.SetAddressFromString(properties.broadcast_address) &&
+      technology_ != Technology::kTunnel) {
     LOG(ERROR) << "Broadcast address " << properties.broadcast_address
                << " is invalid";
     return;
