@@ -71,14 +71,14 @@ const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 
 // A helper class for scoping umask changes.
 class ScopedUmask {
-  public:
-   ScopedUmask(Platform* platform, int mask)
-       : platform_(platform),
-         old_mask_(platform_->SetMask(mask)) {}
-   ~ScopedUmask() {platform_->SetMask(old_mask_);}
-  private:
-   Platform* platform_;
-   int old_mask_;
+ public:
+  ScopedUmask(Platform* platform, int mask)
+      : platform_(platform),
+        old_mask_(platform_->SetMask(mask)) {}
+  ~ScopedUmask() {platform_->SetMask(old_mask_);}
+ private:
+  Platform* platform_;
+  int old_mask_;
 };
 
 Mount::Mount()
@@ -121,6 +121,10 @@ bool Mount::Init() {
 
   // Make sure both we and |homedirs_| have a proper device policy object.
   EnsureDevicePolicyLoaded(false);
+  homedirs_.set_policy_provider(policy_provider_.get());
+  homedirs_.set_crypto(crypto_);
+  if (!homedirs_.Init())
+    result = false;
 
   // Get the user id and group id of the default user
   if (!platform_->GetUserId(default_username_, &default_user_,

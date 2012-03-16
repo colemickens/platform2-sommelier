@@ -243,6 +243,10 @@ bool Service::Initialize() {
   if (!crypto_->Init())
     return false;
 
+  homedirs_->set_crypto(crypto_);
+  if (!homedirs_->Init())
+    return false;
+
   mount_ = GetMountForUser(kDefaultMountName);
   if (!mount_)
     mount_ = CreateMountForUser(kDefaultMountName);

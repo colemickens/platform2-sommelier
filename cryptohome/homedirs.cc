@@ -32,6 +32,12 @@ HomeDirs::HomeDirs()
 
 HomeDirs::~HomeDirs() { }
 
+bool HomeDirs::Init() {
+  if (!platform_->DirectoryExists(shadow_root_))
+    platform_->CreateDirectory(shadow_root_);
+  return GetSystemSalt(NULL);
+}
+
 bool HomeDirs::FreeDiskSpace() {
   if (platform_->AmountOfFreeDiskSpace(shadow_root_) > kMinFreeSpace) {
     return false;
@@ -281,7 +287,6 @@ bool HomeDirs::GetSystemSalt(SecureBlob* blob) {
 
 bool HomeDirs::Remove(const std::string& username) {
   UsernamePasskey passkey(username.c_str(), SecureBlob("", 0));
-  GetSystemSalt(NULL);
   std::string obfuscated = passkey.GetObfuscatedUsername(system_salt_);
   FilePath user_dir = FilePath(shadow_root_).Append(obfuscated);
   FilePath user_path = chromeos::cryptohome::home::GetUserPath(username);

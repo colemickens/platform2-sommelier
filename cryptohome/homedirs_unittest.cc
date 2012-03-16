@@ -65,6 +65,7 @@ class HomeDirsTest : public ::testing::Test {
     homedirs_.set_shadow_root(kTestRoot);
     set_policy(true, kOwner, false);
     homedirs_.timestamp_cache()->Initialize();
+    homedirs_.Init();
     FilePath fp = FilePath(kTestRoot);
     file_util::CreateDirectory(fp);
     for (unsigned int i = 0; i < arraysize(kHomedirs); i++) {

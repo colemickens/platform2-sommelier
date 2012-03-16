@@ -35,6 +35,9 @@ class HomeDirs {
   HomeDirs();
   virtual ~HomeDirs();
 
+  // Initializes this HomeDirs object. Returns true for success.
+  virtual bool Init();
+
   // Frees disk space for unused cryptohomes. If less than kMinFreeSpace is
   // available, frees space until kEnoughFreeSpace is available. Returns true if
   // there is now at least kEnoughFreeSpace, or false otherwise.
@@ -78,6 +81,8 @@ class HomeDirs {
     policy_provider_ = value;
   }
   policy::PolicyProvider* policy_provider() { return policy_provider_; }
+  void set_crypto(Crypto* value) { crypto_ = value; }
+  Crypto* crypto() const { return crypto_; }
 
  private:
   bool AreEphemeralUsersEnabled();

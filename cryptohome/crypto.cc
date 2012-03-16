@@ -588,7 +588,8 @@ bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
 
   SecureBlob local_salt;
   if (force || file_len == 0 || file_len > kSaltMax) {
-    LOG(ERROR) << "Creating new salt";
+    LOG(ERROR) << "Creating new salt at " << path.value()
+               << " (" << force << ", " << file_len << ")";
     // If this salt doesn't exist, automatically create it
     local_salt.resize(length);
     GetSecureRandom(static_cast<unsigned char*>(local_salt.data()),
@@ -597,7 +598,8 @@ bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
         static_cast<const char*>(local_salt.const_data()),
         length);
     if (data_written != length) {
-      LOG(ERROR) << "Could not write user salt";
+      LOG(ERROR) << "Could not write user salt: " << data_written
+                 << " != " << length;
       return false;
     }
     sync();

@@ -84,12 +84,16 @@ class ServiceSubclass : public Service {
 
 TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
   MockMount mount;
+  MockHomeDirs homedirs;
+  EXPECT_CALL(homedirs, Init())
+      .WillOnce(Return(true));
   EXPECT_CALL(mount, Init())
       .WillOnce(Return(true));
   EXPECT_CALL(mount, TestCredentials(_))
       .WillOnce(Return(true));
 
   Service service;
+  service.set_homedirs(&homedirs);
   service.set_mount_for_user("", &mount);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
@@ -114,7 +118,15 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   mount.set_policy_provider(new policy::PolicyProvider(
       new NiceMock<policy::MockDevicePolicy>));
 
+  HomeDirs homedirs;
+  homedirs.crypto()->set_tpm(&tpm);
+  homedirs.set_shadow_root(kImageDir);
+  homedirs.crypto()->set_use_tpm(false);
+  homedirs.set_policy_provider(new policy::PolicyProvider(
+      new NiceMock<policy::MockDevicePolicy>));
+
   ServiceSubclass service;
+  service.set_homedirs(&homedirs);
   service.set_mount_for_user("", &mount);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
@@ -156,7 +168,7 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
 TEST(Standalone, CheckAutoCleanupCallback) {
   // Checks that AutoCleanupCallback() is called periodically.
   NiceMock<MockMount> mount;
-  NiceMock<MockHomeDirs> homedirs;
+  MockHomeDirs homedirs;
   Service service;
   service.set_mount_for_user("", &mount);
   service.set_homedirs(&homedirs);
@@ -166,6 +178,8 @@ TEST(Standalone, CheckAutoCleanupCallback) {
 
   // Service will schedule periodic clean-ups. Wait a bit and make
   // sure that we had at least 3 executed.
+  EXPECT_CALL(homedirs, Init())
+      .WillOnce(Return(true));
   EXPECT_CALL(homedirs, FreeDiskSpace())
       .Times(::testing::AtLeast(3));
   EXPECT_CALL(mount, UpdateCurrentUserActivityTimestamp(0))
