@@ -120,20 +120,6 @@ void ModemTest::TearDown() {
   SetSockets(NULL);
 }
 
-TEST_F(ModemTest, Init) {
-  DBusPropertiesMap props;
-
-  SetSockets(&sockets_);
-  props[Modem::kPropertyIPMethod].writer().append_uint32(
-      MM_MODEM_IP_METHOD_DHCP);
-  props[Modem::kPropertyLinkName].writer().append_string("usb1");
-  EXPECT_CALL(*proxy_, GetAll(MM_MODEM_INTERFACE)).WillOnce(Return(props));
-  modem_->Init();
-
-  EXPECT_CALL(sockets_, Socket(PF_INET, SOCK_DGRAM, 0)).WillOnce(Return(-1));
-  dispatcher_.DispatchPendingEvents();
-}
-
 TEST_F(ModemTest, CreateDeviceFromProperties) {
   DBusPropertiesMap props;
 

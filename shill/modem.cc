@@ -53,16 +53,6 @@ Modem::~Modem() {
 void Modem::Init() {
   VLOG(2) << __func__;
   CHECK(!device_.get());
-
-  // Defer device creation because dbus-c++ doesn't allow registration of new
-  // D-Bus objects in the context of a D-Bus signal handler.
-  dispatcher_->PostTask(Bind(&Modem::InitTask, AsWeakPtr()));
-}
-
-void Modem::InitTask() {
-  VLOG(2) << __func__;
-  CHECK(!device_.get());
-
   dbus_properties_proxy_.reset(
       proxy_factory_->CreateDBusPropertiesProxy(this, path_, owner_));
   CreateDevice();

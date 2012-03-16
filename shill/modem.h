@@ -28,8 +28,7 @@ class ProxyFactory;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
 // device.
-class Modem : public DBusPropertiesProxyDelegate,
-              public base::SupportsWeakPtr<Modem> {
+class Modem : public DBusPropertiesProxyDelegate {
  public:
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
   // the ModemManager.Modem DBus object path (e.g.,
@@ -60,8 +59,6 @@ class Modem : public DBusPropertiesProxyDelegate,
   static const char kPropertyIPMethod[];
   static const char kPropertyState[];
   static const char kPropertyType[];
-
-  void InitTask();
 
   // Creates and registers a Cellular device in |device_| based on
   // ModemManager.Modem's |properties|. The device may not be created if the

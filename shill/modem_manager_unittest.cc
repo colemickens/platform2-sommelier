@@ -22,6 +22,7 @@ using std::tr1::shared_ptr;
 using std::vector;
 using testing::_;
 using testing::Invoke;
+using testing::Pointee;
 using testing::Return;
 using testing::StrEq;
 using testing::Test;
@@ -164,6 +165,26 @@ TEST_F(ModemManagerCoreTest, AddRemoveModem) {
   EXPECT_EQ(0, modem_manager_.modems_.size());
 }
 
+class ModemManagerClassicMockInit : public ModemManagerClassic {
+ public:
+  ModemManagerClassicMockInit(const string &service,
+                              const string &path,
+                              ControlInterface *control_interface,
+                              EventDispatcher *dispatcher,
+                              Metrics *metrics,
+                              Manager *manager,
+                              GLib *glib,
+                              mobile_provider_db *provider_db) :
+      ModemManagerClassic(service,
+                          path,
+                          control_interface,
+                          dispatcher,
+                          metrics,
+                          manager,
+                          glib,
+                          provider_db) {}
+  MOCK_METHOD1(InitModem, void(shared_ptr<Modem> modem));
+};
 
 class ModemManagerClassicTest : public ModemManagerTest {
  public:
@@ -205,7 +226,7 @@ class ModemManagerClassicTest : public ModemManagerTest {
     modem_manager_.proxy_factory_ = NULL;
   }
 
-  ModemManagerClassic modem_manager_;
+  ModemManagerClassicMockInit modem_manager_;
   scoped_ptr<MockModemManagerProxy> proxy_;
   TestProxyFactory proxy_factory_;
 };
@@ -215,6 +236,9 @@ TEST_F(ModemManagerClassicTest, Connect) {
 
   EXPECT_CALL(*proxy_, EnumerateDevices())
       .WillOnce(Return(vector<DBus::Path>(1, kModemPath)));
+
+  EXPECT_CALL(modem_manager_,
+              InitModem(Pointee(Field(&Modem::path_, StrEq(kModemPath)))));
 
   modem_manager_.Connect(kOwner);
   EXPECT_EQ(kOwner, modem_manager_.owner_);
