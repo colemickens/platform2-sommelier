@@ -512,7 +512,7 @@ cmd_network_logging(){
 }
 
 cmd_network_diag(){
-  /usr/bin/network_diagnostics
+  /usr/bin/network_diagnostics "$@"
 }
 
 debugd() {
