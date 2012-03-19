@@ -99,6 +99,15 @@ class DevicePolicyImpl : public DevicePolicy {
   // Returns true on success.
   virtual bool GetReleaseChannel(std::string* release_channel) const;
 
+  // Writes the value of the update_disabled policy in |update_disabled|.
+  // Returns true on success.
+  virtual bool GetUpdateDisabled(bool* update_disabled) const;
+
+  // Writes the value of the target_version_prefix policy in
+  // |target_version_prefix|. Returns true on success.
+  virtual bool GetTargetVersionPrefix(
+      std::string* target_version_prefix) const;
+
   // Writes the value of the OpenNetworkConfiguration policy in
   // |open_network_configuration|. Returns true on success.
   virtual bool GetOpenNetworkConfiguration(

@@ -330,6 +330,38 @@ bool DevicePolicyImpl::GetReleaseChannel(
   return true;
 }
 
+// Writes the value of the update_disabled policy in |update_disabled|.
+// Returns true on success.
+bool DevicePolicyImpl::GetUpdateDisabled(
+    bool* update_disabled) const {
+  if (!device_policy_.has_auto_update_settings())
+    return false;
+
+  const enterprise_management::AutoUpdateSettingsProto& proto =
+      device_policy_.auto_update_settings();
+  if (!proto.has_update_disabled())
+    return false;
+
+  *update_disabled = proto.update_disabled();
+  return true;
+}
+
+// Writes the value of the target_version_prefix policy in
+// |target_version_prefix|. Returns true on success.
+bool DevicePolicyImpl::GetTargetVersionPrefix(
+    std::string* target_version_prefix) const {
+  if (!device_policy_.has_auto_update_settings())
+    return false;
+
+  const enterprise_management::AutoUpdateSettingsProto& proto =
+      device_policy_.auto_update_settings();
+  if (!proto.has_target_version_prefix())
+    return false;
+
+  *target_version_prefix = proto.target_version_prefix();
+  return true;
+}
+
 // Writes the value of the OpenNetworkConfiguration policy in
 // |open_network_configuration|. Returns true on success.
 bool DevicePolicyImpl::GetOpenNetworkConfiguration(

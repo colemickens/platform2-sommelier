@@ -62,6 +62,8 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_CONST_METHOD1(GetProxyPacUrl, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyBypassList, bool(std::string*));
   MOCK_CONST_METHOD1(GetReleaseChannel, bool(std::string*));
+  MOCK_CONST_METHOD1(GetUpdateDisabled, bool(bool*));
+  MOCK_CONST_METHOD1(GetTargetVersionPrefix, bool(std::string*));
   MOCK_CONST_METHOD1(GetOpenNetworkConfiguration, bool(std::string*));
   MOCK_CONST_METHOD1(GetOwner, bool(std::string*));
 
