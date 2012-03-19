@@ -4,6 +4,10 @@
 
 #include "shill/vpn.h"
 
+#include <netinet/ether.h>
+#include <linux/if.h>  // Needs definitions from netinet/ether.h
+
+#include "shill/rtnl_handler.h"
 #include "shill/vpn_service.h"
 
 using std::string;
@@ -20,6 +24,12 @@ VPN::VPN(ControlInterface *control,
              interface_index, Technology::kVPN) {}
 
 VPN::~VPN() {}
+
+void VPN::Start() {
+  Device::Start();
+  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
+                                                IFF_UP);
+}
 
 bool VPN::TechnologyIs(const Technology::Identifier type) const {
   return type == Technology::kVPN;

@@ -148,7 +148,9 @@ bool Connection::RequestHostRoute(const IPAddress &address) {
   IPAddress address_prefix(address);
   address_prefix.set_prefix(address_prefix.GetLength() * 8);
 
-  if (!routing_table_->RequestRouteToHost(address_prefix, interface_index_)) {
+  // Do not set interface_index_ since this may not be the
+  // default route through which this destination can be found.
+  if (!routing_table_->RequestRouteToHost(address_prefix, -1)) {
     LOG(ERROR) << "Could not request route to " << address.ToString();
     return false;
   }

@@ -20,6 +20,8 @@ class VPN : public Device {
 
   virtual ~VPN();
 
+  void Start();
+
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
   virtual void UpdateIPConfig(const IPConfig::Properties &properties);

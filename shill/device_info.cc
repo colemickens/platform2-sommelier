@@ -213,10 +213,12 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
 
   unsigned int flags = msg.link_status().flags;
   unsigned int change = msg.link_status().change;
+  bool new_device = !ContainsKey(infos_, dev_index);
   VLOG(2) << __func__ << "(index=" << dev_index
           << std::showbase << std::hex
           << ", flags=" << flags << ", change=" << change << ")"
-          << std::dec << std::noshowbase;
+          << std::dec << std::noshowbase
+          << ", new_device=" << new_device;
   infos_[dev_index].flags = flags;
 
   DeviceRefPtr device = GetDevice(dev_index);
@@ -264,15 +266,18 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
         device->EnableIPv6Privacy();
         break;
       case Technology::kTunnel:
-        // Tunnel devices are managed by the VPN code.
-        VLOG(2) << "Tunnel link " << link_name << " at index " << dev_index
-                << " -- notifying VPNProvider.";
-        if (!manager_->vpn_provider()->OnDeviceInfoAvailable(link_name,
-                                                             dev_index)) {
-          // If VPN does not know anything about this tunnel, it is probably
-          // left over from a previous instance and should not exist.
-          VLOG(2) << "Tunnel link is unused.  Deleting.";
-          DeleteInterface(dev_index);
+        // Tunnel devices are managed by the VPN code.  Notify the VPN Provider
+        // only if this is the first time we have seen this device index.
+        if (new_device) {
+          VLOG(2) << "Tunnel link " << link_name << " at index " << dev_index
+                  << " -- notifying VPNProvider.";
+          if (!manager_->vpn_provider()->OnDeviceInfoAvailable(link_name,
+                                                               dev_index)) {
+            // If VPN does not know anything about this tunnel, it is probably
+            // left over from a previous instance and should not exist.
+            VLOG(2) << "Tunnel link is unused.  Deleting.";
+            DeleteInterface(dev_index);
+          }
         }
         return;
       default:

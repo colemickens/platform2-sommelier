@@ -128,6 +128,12 @@ void RTNLHandler::RemoveListener(RTNLListener *to_remove) {
 
 void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
                                     unsigned int change) {
+  if (!sockets_) {
+    LOG(ERROR) << __func__ << " called while not started.  "
+        "Assuming we are in unit tests.";
+    return;
+  }
+
   struct rtnl_request {
     struct nlmsghdr hdr;
     struct ifinfomsg msg;

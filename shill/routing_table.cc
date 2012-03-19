@@ -482,8 +482,11 @@ bool RoutingTable::RequestRouteToHost(const IPAddress &address,
   status.dst_prefix = address.prefix();
   message.set_route_status(status);
   message.SetAttribute(RTA_DST, address.address());
-  message.SetAttribute(RTA_OIF,
-                       ByteString::CreateFromCPUUInt32(interface_index));
+
+  if (interface_index != -1) {
+    message.SetAttribute(RTA_OIF,
+                         ByteString::CreateFromCPUUInt32(interface_index));
+  }
 
   if (!rtnl_handler_->SendMessage(&message)) {
     return false;
