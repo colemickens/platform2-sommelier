@@ -34,7 +34,9 @@ Connection::Connection(int interface_index,
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
-  VLOG(2) << __func__;
+  VLOG(2) << __func__ << "(" << interface_index
+          << ", " << interface_name
+          << ", " << Technology::NameFromIdentifier(technology) << ")";
 }
 
 Connection::~Connection() {
@@ -58,7 +60,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
 
   IPAddress broadcast(properties.address_family);
   if (!broadcast.SetAddressFromString(properties.broadcast_address) &&
-      technology_ != Technology::kTunnel) {
+      technology_ != Technology::kVPN) {
     LOG(ERROR) << "Broadcast address " << properties.broadcast_address
                << " is invalid";
     return;
