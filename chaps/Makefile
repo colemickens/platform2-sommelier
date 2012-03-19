@@ -49,10 +49,32 @@ RM_ON_CLEAN += attributes.pb.h attributes.pb.cc
 attributes.pb.cc: attributes.pb.h
 	@echo
 
-attributes.cc: attributes.pb.h
+$(OUT)attributes.o: attributes.pb.h
 
-chaps_adaptor.cc chaps_adaptor.h chapsd.cc: chaps_adaptor_generated.h
-chaps_proxy.cc chaps_proxy.h chaps.cc: chaps_proxy_generated.h
+# TODO(dkrahn): Upgrade to the newest common.mk and use '.depends' for these
+# dependencies (crosbug.com/28051).
+$(OUT)chaps_adaptor.o \
+$(OUT)chaps_adaptor.pie.o \
+$(OUT)chaps_adaptor.pic.o \
+$(OUT)chapsd.o \
+$(OUT)chapsd.pie.o \
+$(OUT)chapsd.pic.o : chaps_adaptor_generated.h
+
+$(OUT)chaps_proxy.o \
+$(OUT)chaps_proxy.pie.o \
+$(OUT)chaps_proxy.pic.o \
+$(OUT)chapsd_test.o \
+$(OUT)chapsd_test.pie.o \
+$(OUT)chapsd_test.pic.o \
+$(OUT)chaps.o \
+$(OUT)chaps.pie.o \
+$(OUT)chaps.pic.o \
+$(OUT)chaps_event_generator.o \
+$(OUT)chaps_event_generator.pie.o \
+$(OUT)chaps_event_generator.pic.o \
+$(OUT)login_event_client.o \
+$(OUT)login_event_client.pie.o \
+$(OUT)login_event_client.pic.o: chaps_proxy_generated.h
 
 $(OUT)libchaps.so: $(COMMON) \
                    $(OUT)chaps.o \
