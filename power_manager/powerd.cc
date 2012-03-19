@@ -374,6 +374,14 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
   } else {
     CHECK(idle_.AddIdleTimeout(max(lock_ms_, suspend_ms_)));
   }
+  // XIdle timeout events for idle notify status
+  for (IdleThresholds::iterator iter = thresholds_.begin();
+       iter != thresholds_.end();
+       ++iter) {
+    if (*iter > 0) {
+      CHECK(idle_.AddIdleTimeout(*iter));
+    }
+  }
 }
 
 // SetActive will transition to Normal state. Used for transitioning on events
