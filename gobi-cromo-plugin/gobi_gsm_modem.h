@@ -20,7 +20,7 @@ typedef std::vector<std::map<std::string, std::string> > ScannedNetworkList;
 
 class GobiGsmModem
     : public GobiModem,
-      public SmsModemOperations,
+      public cromo::SmsModemOperations,
       public org::freedesktop::ModemManager::Modem::Gsm_adaptor,
       public org::freedesktop::ModemManager::Modem::Gsm::Card_adaptor,
       public org::freedesktop::ModemManager::Modem::Gsm::Network_adaptor,
@@ -89,9 +89,9 @@ class GobiGsmModem
                              DBus::Error &error);
 
   // Low-level implementation routines for the SMS code
-  virtual SmsMessageFragment* GetSms(int index, DBus::Error& error);
+  virtual cromo::SmsMessageFragment* GetSms(int index, DBus::Error& error);
   virtual void DeleteSms(int index, DBus::Error& error);
-  virtual std::vector<int> ListSms(DBus::Error& error) ;
+  virtual std::vector<int>* ListSms(DBus::Error& error) ;
 
  protected:
   void GetGsmRegistrationInfo(uint32_t* registration_state,
@@ -135,7 +135,7 @@ class GobiGsmModem
 
   static gboolean CheckDataCapabilities(gpointer data);
 
-  SmsCache sms_cache_;
+  cromo::SmsCache sms_cache_;
 };
 
 
