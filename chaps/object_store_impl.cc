@@ -22,7 +22,7 @@ namespace chaps {
 const int ObjectStoreImpl::kAESBlockSizeBytes = 16;
 const int ObjectStoreImpl::kAESKeySizeBytes = 32;
 
-ObjectStoreImpl::ObjectStoreImpl() : cipher_() {
+ObjectStoreImpl::ObjectStoreImpl() {
   EVP_CIPHER_CTX_init(&cipher_context_);
 }
 
@@ -30,6 +30,10 @@ ObjectStoreImpl::~ObjectStoreImpl() {
   // TODO(dkrahn): Use SecureBlob. See crosbug.com/27681.
   chromeos::SecureMemset(const_cast<char*>(key_.data()), 0, key_.length());
   EVP_CIPHER_CTX_cleanup(&cipher_context_);
+}
+
+bool ObjectStoreImpl::Init(const FilePath& database_file) {
+  return false;
 }
 
 bool ObjectStoreImpl::GetInternalBlob(int blob_id, string* blob) {
@@ -54,26 +58,18 @@ bool ObjectStoreImpl::InsertObjectBlob(bool is_private,
                                        const string& key_id,
                                        const string& blob,
                                        int* handle) {
-  if (key_.empty())
-    return false;
   return false;
 }
 
 bool ObjectStoreImpl::DeleteObjectBlob(int handle) {
-  if (key_.empty())
-    return false;
   return false;
 }
 
 bool ObjectStoreImpl::UpdateObjectBlob(int handle, const string& blob) {
-  if (key_.empty())
-    return false;
   return false;
 }
 
 bool ObjectStoreImpl::LoadAllObjectBlobs(map<int, string>* blobs) {
-  if (key_.empty())
-    return false;
   return false;
 }
 
@@ -81,7 +77,7 @@ bool ObjectStoreImpl::RunCipher(bool is_encrypt,
                                 const string& input,
                                 string* output) {
   if (key_.empty()) {
-    LOG(ERROR) << "Store encryption key has not been initialized.";
+    LOG(ERROR) << "The store encryption key has not been initialized.";
     return false;
   }
   int input_length = input.length();
@@ -156,4 +152,3 @@ bool ObjectStoreImpl::Decrypt(const string& cipher_text,
 }
 
 }  // namespace chaps
-

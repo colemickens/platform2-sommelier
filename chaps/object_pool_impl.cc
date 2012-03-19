@@ -34,28 +34,6 @@ ObjectPoolImpl::ObjectPoolImpl(ChapsFactory* factory,
 
 ObjectPoolImpl::~ObjectPoolImpl() {}
 
-bool ObjectPoolImpl::Init() {
-  if (store_.get()) {
-    map<int, string> object_blobs;
-    if (!store_->LoadAllObjectBlobs(&object_blobs))
-      return false;
-    map<int, string>::iterator it;
-    for (it = object_blobs.begin(); it != object_blobs.end(); ++it) {
-      shared_ptr<Object> object(factory_->CreateObject());
-      // An object that is not parsable will be ignored.
-      if (Parse(it->second, object.get())) {
-        object->set_handle(handle_generator_->CreateHandle());
-        object->set_store_id(it->first);
-        objects_.insert(object.get());
-        handle_object_map_[object->handle()] = object;
-      } else {
-        LOG(WARNING) << "Object not parsable: " << it->first;
-      }
-    }
-  }
-  return true;
-}
-
 bool ObjectPoolImpl::GetInternalBlob(int blob_id, string* blob) {
   if (store_.get())
     return store_->GetInternalBlob(blob_id, blob);
@@ -69,8 +47,11 @@ bool ObjectPoolImpl::SetInternalBlob(int blob_id, const string& blob) {
 }
 
 bool ObjectPoolImpl::SetEncryptionKey(const string& key) {
-  if (store_.get())
-    return store_->SetEncryptionKey(key);
+  if (store_.get()) {
+    if (!store_->SetEncryptionKey(key))
+      return false;
+    return LoadObjects();
+  }
   return true;
 }
 
@@ -186,6 +167,27 @@ bool ObjectPoolImpl::Serialize(const Object* object, string* serialized) {
   if (!attribute_list.SerializeToString(serialized)) {
     LOG(ERROR) << "Failed to serialize object.";
     return false;
+  }
+  return true;
+}
+
+bool ObjectPoolImpl::LoadObjects() {
+  CHECK(store_.get());
+  map<int, string> object_blobs;
+  if (!store_->LoadAllObjectBlobs(&object_blobs))
+    return false;
+  map<int, string>::iterator it;
+  for (it = object_blobs.begin(); it != object_blobs.end(); ++it) {
+    shared_ptr<Object> object(factory_->CreateObject());
+    // An object that is not parsable will be ignored.
+    if (Parse(it->second, object.get())) {
+      object->set_handle(handle_generator_->CreateHandle());
+      object->set_store_id(it->first);
+      objects_.insert(object.get());
+      handle_object_map_[object->handle()] = object;
+    } else {
+      LOG(WARNING) << "Object not parsable: " << it->first;
+    }
   }
   return true;
 }

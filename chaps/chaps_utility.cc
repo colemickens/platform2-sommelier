@@ -510,4 +510,4 @@ std::string GetOpenSSLError() {
   return error_string;
 }
 
-}  // namespace
+}  // namespace chaps

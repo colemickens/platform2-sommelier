@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/file_path.h>
 #include <gtest/gtest.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -23,15 +24,18 @@ class ObjectStoreImpl : public ObjectStore {
   ObjectStoreImpl();
   virtual ~ObjectStoreImpl();
 
+  // Initializes the object store with the given database file.
+  bool Init(const FilePath& database_file);
+
   // ObjectStore methods.
   virtual bool GetInternalBlob(int blob_id, std::string* blob);
   virtual bool SetInternalBlob(int blob_id, const std::string& blob);
   virtual bool SetEncryptionKey(const std::string& key);
   virtual bool InsertObjectBlob(bool is_private,
-                            CK_OBJECT_CLASS object_class,
-                            const std::string& key_id,
-                            const std::string& blob,
-                            int* handle);
+                                CK_OBJECT_CLASS object_class,
+                                const std::string& key_id,
+                                const std::string& blob,
+                                int* handle);
   virtual bool DeleteObjectBlob(int handle);
   virtual bool UpdateObjectBlob(int handle, const std::string& blob);
   virtual bool LoadAllObjectBlobs(std::map<int, std::string>* blobs);
@@ -48,7 +52,6 @@ class ObjectStoreImpl : public ObjectStore {
 
   std::string key_;
   EVP_CIPHER_CTX cipher_context_;
-  const EVP_CIPHER* cipher_;
 
   friend class TestObjectStoreEncryption;
   FRIEND_TEST(TestObjectStoreEncryption, EncryptionInit);

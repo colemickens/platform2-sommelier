@@ -17,6 +17,7 @@
 #include "chaps/object_policy_secret_key.h"
 #include "chaps/object_pool_impl.h"
 #include "chaps/object_store_fake.h"
+#include "chaps/object_store_impl.h"
 #include "chaps/session_impl.h"
 
 using std::string;
@@ -39,16 +40,20 @@ Session* ChapsFactoryImpl::CreateSession(int slot_id,
 ObjectPool* ChapsFactoryImpl::CreateObjectPool(
     HandleGenerator* handle_generator,
     ObjectStore* object_store) {
-  scoped_ptr<ObjectPoolImpl> pool(new ObjectPoolImpl(this,
-                                                     handle_generator,
-                                                     object_store));
-  CHECK(pool->Init()) << "Object pool initialization failed.";
-  return pool.release();
+  return new ObjectPoolImpl(this, handle_generator, object_store);
 }
 
 ObjectStore* ChapsFactoryImpl::CreateObjectStore(const FilePath& file_name) {
-  // TODO(dkrahn) Implement a real object store.
-  return new ObjectStoreFake();
+  scoped_ptr<ObjectStoreImpl> store(new ObjectStoreImpl());
+  if (!store->Init(file_name)) {
+    // The approach here is to limp along without a persistent object store so
+    // crypto services do not become unavailable. The side-effect is that all
+    // objects will disappear when the token is removed (e.g. at logout).
+    LOG(WARNING)
+        << "Object store initialization failed, proceeding with fake store.";
+    return new ObjectStoreFake();
+  }
+  return store.release();
 }
 
 Object* ChapsFactoryImpl::CreateObject() {

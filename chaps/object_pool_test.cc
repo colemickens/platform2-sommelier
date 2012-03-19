@@ -97,13 +97,17 @@ TEST_F(TestObjectPool, Init) {
   l.SerializeToString(&s);
   persistent_objects[1] = s;
   persistent_objects[2] = "not_valid_protobuf";
+  string key(32, 'A');
+  EXPECT_CALL(*store_, SetEncryptionKey(key))
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, LoadAllObjectBlobs(_))
       .WillOnce(Return(false))
       .WillRepeatedly(DoAll(SetArgumentPointee<0>(persistent_objects),
                             Return(true)));
-  EXPECT_TRUE(pool2_->Init());
-  EXPECT_FALSE(pool_->Init());
-  EXPECT_TRUE(pool_->Init());
+  // Loading of objects happens when the encryption key is set.
+  EXPECT_TRUE(pool2_->SetEncryptionKey(key));
+  EXPECT_FALSE(pool_->SetEncryptionKey(key));
+  EXPECT_TRUE(pool_->SetEncryptionKey(key));
   vector<const Object*> v;
   scoped_ptr<Object> find_all(CreateObjectMock());
   EXPECT_TRUE(pool_->Find(find_all.get(), &v));
@@ -120,15 +124,20 @@ TEST_F(TestObjectPool, StorePassThrough) {
   EXPECT_CALL(*store_, SetInternalBlob(1, s))
       .WillOnce(Return(false))
       .WillOnce(Return(true));
-  EXPECT_CALL(*store_, SetEncryptionKey(s)).Times(1);
+  EXPECT_CALL(*store_, LoadAllObjectBlobs(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, SetEncryptionKey(s))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
   EXPECT_FALSE(pool2_->GetInternalBlob(1, &s));
   EXPECT_FALSE(pool2_->SetInternalBlob(1, s));
-  pool2_->SetEncryptionKey(s);
+  EXPECT_TRUE(pool2_->SetEncryptionKey(s));
   EXPECT_FALSE(pool_->GetInternalBlob(1, &s));
   EXPECT_TRUE(pool_->GetInternalBlob(1, &s));
   EXPECT_FALSE(pool_->SetInternalBlob(1, s));
   EXPECT_TRUE(pool_->SetInternalBlob(1, s));
-  pool_->SetEncryptionKey(s);
+  EXPECT_FALSE(pool_->SetEncryptionKey(s));
+  EXPECT_TRUE(pool_->SetEncryptionKey(s));
 }
 
 // Test basic object management operations.
