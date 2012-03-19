@@ -268,8 +268,10 @@ bool RTNLHandler::AddressRequest(int interface_index,
                                  RTNLMessage::Mode mode,
                                  int flags,
                                  const IPAddress &local,
-                                 const IPAddress &gateway) {
+                                 const IPAddress &gateway,
+                                 const IPAddress &peer) {
   CHECK(local.family() == gateway.family());
+  CHECK(local.family() == peer.family());
 
   RTNLMessage msg(
       RTNLMessage::kTypeAddress,
@@ -285,11 +287,12 @@ bool RTNLHandler::AddressRequest(int interface_index,
       0,
       0));
 
-  // TODO(pstew): This code only works for Ethernet-like setups,
-  //              not with devices that have a peer address like PPP.
   msg.SetAttribute(IFA_LOCAL, local.address());
   if (!gateway.IsDefault()) {
     msg.SetAttribute(IFA_BROADCAST, gateway.address());
+  }
+  if (!peer.IsDefault()) {
+    msg.SetAttribute(IFA_ADDRESS, peer.address());
   }
 
   return SendMessage(&msg);
@@ -297,12 +300,14 @@ bool RTNLHandler::AddressRequest(int interface_index,
 
 bool RTNLHandler::AddInterfaceAddress(int interface_index,
                                       const IPAddress &local,
-                                      const IPAddress &broadcast) {
+                                      const IPAddress &broadcast,
+                                      const IPAddress &peer) {
     return AddressRequest(interface_index,
                           RTNLMessage::kModeAdd,
                           NLM_F_CREATE | NLM_F_EXCL,
                           local,
-                          broadcast);
+                          broadcast,
+                          peer);
 }
 
 bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
@@ -311,6 +316,7 @@ bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
                         RTNLMessage::kModeDelete,
                         0,
                         local,
+                        IPAddress(local.family()),
                         IPAddress(local.family()));
 }
 

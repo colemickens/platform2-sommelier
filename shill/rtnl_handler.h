@@ -72,7 +72,8 @@ class RTNLHandler {
   // 'interface_index'.
   virtual bool AddInterfaceAddress(int interface_index,
                                    const IPAddress &local,
-                                   const IPAddress &gateway);
+                                   const IPAddress &gateway,
+                                   const IPAddress &peer);
 
   // Remove address from a network interface that has a kernel index of
   // 'interface_index'.
@@ -126,7 +127,8 @@ class RTNLHandler {
                       RTNLMessage::Mode mode,
                       int flags,
                       const IPAddress &local,
-                      const IPAddress &gateway);
+                      const IPAddress &gateway,
+                      const IPAddress &peer);
   Sockets *sockets_;
   bool in_request_;
 

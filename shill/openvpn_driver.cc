@@ -183,6 +183,8 @@ void OpenVPNDriver::ParseIPConfiguration(
   ForeignOptions foreign_options;
   RouteOptions routes;
   properties->address_family = IPAddress::kFamilyIPv4;
+  properties->subnet_prefix = IPAddress::GetMaxPrefixLength(
+      properties->address_family);
   for (map<string, string>::const_iterator it = configuration.begin();
        it != configuration.end(); ++it) {
     const string &key = it->first;
@@ -193,7 +195,7 @@ void OpenVPNDriver::ParseIPConfiguration(
     } else if (LowerCaseEqualsASCII(key, kOpenVPNIfconfigBroadcast)) {
       properties->broadcast_address = value;
     } else if (LowerCaseEqualsASCII(key, kOpenVPNIfconfigNetmask)) {
-      properties->subnet_cidr =
+      properties->subnet_prefix =
           IPAddress::GetPrefixLengthFromMask(properties->address_family, value);
     } else if (LowerCaseEqualsASCII(key, kOpenVPNIfconfigRemote)) {
       properties->peer_address = value;

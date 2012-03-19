@@ -42,6 +42,10 @@ class IPAddress {
   // Get the length in bytes of addresses of the given family
   static size_t GetAddressLength(Family family);
 
+  // Returns the maximum prefix length for address family |family|, i.e.,
+  // the length of this address type in bits.
+  static size_t GetMaxPrefixLength(Family family);
+
   // Returns the prefix length given an address |family| and a |mask|. For
   // example, returns 24 for an IPv4 mask 255.255.255.0.
   static size_t GetPrefixLengthFromMask(Family family, const std::string &mask);

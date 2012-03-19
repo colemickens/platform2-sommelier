@@ -58,7 +58,8 @@ void IPConfig::Init() {
                          &properties_.dns_servers);
   store_.RegisterString(flimflam::kPeerAddressProperty,
                         &properties_.peer_address);
-  store_.RegisterInt32(flimflam::kPrefixlenProperty, &properties_.subnet_cidr);
+  store_.RegisterInt32(flimflam::kPrefixlenProperty,
+                       &properties_.subnet_prefix);
   // TODO(cmasone): Does anyone use this?
   // store_.RegisterStrings(flimflam::kSearchDomainsProperty,
   //                        &properties_.domain_search);

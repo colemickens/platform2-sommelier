@@ -289,7 +289,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
   EXPECT_EQ("4.5.6.7", props.address);
   EXPECT_EQ("1.2.255.255", props.broadcast_address);
-  EXPECT_EQ(24, props.subnet_cidr);
+  EXPECT_EQ(24, props.subnet_prefix);
   EXPECT_EQ("33.44.55.66", props.peer_address);
   EXPECT_EQ("192.168.1.1", props.gateway);
   EXPECT_EQ("99.88.77.66", props.trusted_ip);

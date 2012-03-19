@@ -37,12 +37,12 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   struct Properties {
     Properties() : address_family(IPAddress::kFamilyUnknown),
-                   subnet_cidr(0),
+                   subnet_prefix(0),
                    mtu(0) {}
 
     IPAddress::Family address_family;
     std::string address;
-    int32 subnet_cidr;
+    int32 subnet_prefix;
     std::string broadcast_address;
     std::vector<std::string> dns_servers;
     std::string domain_name;

@@ -133,7 +133,7 @@ TEST_F(DHCPConfigTest, ParseConfiguration) {
   IPConfig::Properties properties;
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ("4.3.2.1", properties.address);
-  EXPECT_EQ(16, properties.subnet_cidr);
+  EXPECT_EQ(16, properties.subnet_prefix);
   EXPECT_EQ("64.48.32.16", properties.broadcast_address);
   EXPECT_EQ("8.6.4.2", properties.gateway);
   ASSERT_EQ(2, properties.dns_servers.size());

@@ -245,7 +245,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
         return false;
       }
     } else if (key == kConfigurationKeySubnetCIDR) {
-      properties->subnet_cidr = value.reader().get_byte();
+      properties->subnet_prefix = value.reader().get_byte();
     } else if (key == kConfigurationKeyBroadcastAddress) {
       properties->broadcast_address =
           GetIPv4AddressString(value.reader().get_uint32());

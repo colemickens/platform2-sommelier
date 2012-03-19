@@ -71,7 +71,7 @@ TEST_F(IPConfigTest, SaveLoad) {
 TEST_F(IPConfigTest, UpdateProperties) {
   IPConfig::Properties properties;
   properties.address = "1.2.3.4";
-  properties.subnet_cidr = 24;
+  properties.subnet_prefix = 24;
   properties.broadcast_address = "11.22.33.44";
   properties.gateway = "5.6.7.8";
   properties.dns_servers.push_back("10.20.30.40");
@@ -82,7 +82,7 @@ TEST_F(IPConfigTest, UpdateProperties) {
   properties.mtu = 700;
   ipconfig_->UpdateProperties(properties, true);
   EXPECT_EQ("1.2.3.4", ipconfig_->properties().address);
-  EXPECT_EQ(24, ipconfig_->properties().subnet_cidr);
+  EXPECT_EQ(24, ipconfig_->properties().subnet_prefix);
   EXPECT_EQ("11.22.33.44", ipconfig_->properties().broadcast_address);
   EXPECT_EQ("5.6.7.8", ipconfig_->properties().gateway);
   ASSERT_EQ(2, ipconfig_->properties().dns_servers.size());

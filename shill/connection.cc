@@ -56,7 +56,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
     LOG(ERROR) << "Local address " << properties.address << " is invalid";
     return;
   }
-  local.set_prefix(properties.subnet_cidr);
+  local.set_prefix(properties.subnet_prefix);
 
   IPAddress broadcast(properties.address_family);
   if (!broadcast.SetAddressFromString(properties.broadcast_address) &&
@@ -66,7 +66,15 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
     return;
   }
 
-  rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast);
+  IPAddress peer(properties.address_family);
+  if (!properties.peer_address.empty() &&
+      !peer.SetAddressFromString(properties.peer_address)) {
+    LOG(ERROR) << "Peer address " << properties.peer_address
+               << " is invalid";
+    return;
+  }
+
+  rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast, peer);
 
   routing_table_->SetDefaultRoute(interface_index_, config,
                                   GetMetric(is_default_));

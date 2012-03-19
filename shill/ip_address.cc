@@ -62,16 +62,21 @@ size_t IPAddress::GetAddressLength(Family family) {
 }
 
 // static
+size_t IPAddress::GetMaxPrefixLength(Family family) {
+  return GetAddressLength(family) * 8;
+}
+
+// static
 size_t IPAddress::GetPrefixLengthFromMask(Family family, const string &mask) {
   switch (family) {
     case kFamilyIPv4: {
       in_addr_t mask_val = inet_network(mask.c_str());
-      int subnet_cidr = 0;
+      int subnet_prefix = 0;
       while (mask_val) {
-        subnet_cidr++;
+        subnet_prefix++;
         mask_val <<= 1;
       }
-      return subnet_cidr;
+      return subnet_prefix;
     }
     case kFamilyIPv6:
       NOTIMPLEMENTED();

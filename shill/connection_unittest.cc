@@ -104,7 +104,7 @@ TEST_F(ConnectionTest, InitState) {
 
 TEST_F(ConnectionTest, AddConfig) {
   EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(kTestDeviceInterfaceIndex0, _, _));
+              AddInterfaceAddress(kTestDeviceInterfaceIndex0, _, _, _));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(kTestDeviceInterfaceIndex0,
                               ipconfig_,
@@ -165,7 +165,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   connection_->SetIsDefault(true);
 
   EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(kTestDeviceInterfaceIndex0, _, _));
+              AddInterfaceAddress(kTestDeviceInterfaceIndex0, _, _, _));
   EXPECT_CALL(routing_table_, SetDefaultRoute(kTestDeviceInterfaceIndex0,
                                              ipconfig_,
                                              Connection::kDefaultMetric));
