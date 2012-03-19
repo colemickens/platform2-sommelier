@@ -54,8 +54,6 @@ const char kCacheDir[] = "Cache";
 const char kDownloadsDir[] = "Downloads";
 const char kGCacheDir[] = "GCache";
 const char kGCacheVersionDir[] = "v1";
-const char kGCacheBlobsDir[] = "blobs";
-const char kGCacheMetaDir[] = "meta";
 const char kGCacheTmpDir[] = "tmp";
 const char kUserHomeSuffix[] = "user";
 const char kRootHomeSuffix[] = "root";
@@ -691,10 +689,6 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
     {kDownloadsDir, true},
     {FilePath(kGCacheDir).value(), false},
     {FilePath(kGCacheDir).Append(kGCacheVersionDir).value(), false},
-    {FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheBlobsDir)
-         .value(), false},
-    {FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheMetaDir)
-         .value(), false},
     {FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheTmpDir)
          .value(), false},
   };
