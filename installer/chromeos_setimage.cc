@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "chromeos_setimage.h"
+#include "chromeos_verity.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,33 +77,12 @@ bool SetImage(const string& install_dir,
   if (!enable_rootfs_verification)
     MakeFileSystemRw(rootfs_dev, true);
 
-  string tempfile = "/tmp/verity_tmp";
-
-  RUN_OR_RETURN_FALSE(StringPrintf("%s/bin/verity mode=create alg=%s "
-                                   "payload=%s payload_blocks=%d hashtree=%s "
-                                   "salt=%s",
-                                   install_dir.c_str(),
-                                   verity_algorithm.c_str(),
-                                   rootfs_dev.c_str(),
-                                   atoi(rootfs_sectors.c_str()) / 8,
-                                   tempfile.c_str(),
-                                   salt.c_str()));
-
-  // TODO(dgarrett): hardcode until we can read verity output
-  string generated_hash = expected_hash;
-
-  if (enable_rootfs_verification && (generated_hash != expected_hash)) {
-    printf("Root filesystem has been modified unexpectedly!\n");
-    printf("Expected %s != %s\n",
-           expected_hash.c_str(),
-           generated_hash.c_str());
+  if (chromeos_verity(verity_algorithm.c_str(), rootfs_dev.c_str(),
+                      getpagesize(),
+                      (uint64_t)(atoi(rootfs_sectors.c_str()) / 8),
+                      salt.c_str(), expected_hash.c_str(),
+                      enable_rootfs_verification) != 0)
     return false;
-  }
-
-  if(!CopyVerityHashes(tempfile, rootfs_dev, atoi(rootfs_sectors.c_str()))) {
-    printf("Failed to copy verity hashes\n");
-    return false;
-  }
 
   return true;
 }

@@ -4,12 +4,14 @@
 
 include common.mk
 
-CFLAGS := -I$(SRC)/include $(CFLAGS)
+CFLAGS := -I$(SRC)/include $(CFLAGS) -I/usr/include/verity
 CXXFLAGS := -I$(SRC)/include -DCHROMEOS_ENVIRONMENT $(CXXFLAGS)
+CXXFLAGS += -I/usr/include/verity
 
-LDFLAGS += -ldump_kernel_config -lcgpt-cc
+LDFLAGS += -ldump_kernel_config -lcgpt-cc -ldm-bht
 
 CXX_STATIC_BINARY(cros_installer): \
+		$(C_OBJECTS) \
 		$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS))
 
 clean: CLEAN(cros_installer)
@@ -18,6 +20,7 @@ all: CXX_STATIC_BINARY(cros_installer)
 cros_installer: CXX_STATIC_BINARY(cros_installer)
 
 CXX_BINARY(cros_installer_test): \
+		$(C_OBJECTS) \
 		$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS))
 
 clean: CLEAN(cros_installer_test)

@@ -62,8 +62,4 @@ std::string DumpKernelConfig(const std::string& kernel_dev);
 std::string ExtractKernelArg(const std::string& kernel_config,
                                const std::string& tag);
 
-bool CopyVerityHashes(const std::string& hash_file,
-                      const std::string& dev_name,
-                      int offset_sectors);
-
 #endif // INST_UTIL
