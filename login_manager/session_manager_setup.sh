@@ -220,6 +220,9 @@ if use_flag_is_set aura; then
   if ! use_flag_is_set new_power_button; then
     AURA_FLAGS="$AURA_FLAGS --aura-legacy-power-button"
   fi
+  if use_flag_is_set disable_login_animations; then
+    AURA_FLAGS="$AURA_FLAGS --disable-login-animations"
+  fi
 fi
 
 # Setup GPU & acceleration flags which differ between x86/ARM SoC
