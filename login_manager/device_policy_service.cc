@@ -8,7 +8,6 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
-#include <base/task.h>
 
 #include "login_manager/chrome_device_policy.pb.h"
 #include "login_manager/device_management_backend.pb.h"
