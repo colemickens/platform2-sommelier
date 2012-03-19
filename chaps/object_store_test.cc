@@ -73,13 +73,17 @@ TEST_F(TestObjectStoreEncryption, Encryption) {
   // Invalid decrypt.
   EXPECT_FALSE(store.Decrypt(blob, &decrypted1));
   // Test corrupted IV.
+  string encrypted_ok = encrypted1;
   encrypted1[encrypted1.size()-1]++;
-  EXPECT_TRUE(store.Decrypt(encrypted1, &decrypted1));
-  EXPECT_FALSE(decrypted1 == blob);
+  EXPECT_FALSE(store.Decrypt(encrypted1, &decrypted1));
   // Test corrupted cipher text.
-  encrypted2[0]++;
-  EXPECT_TRUE(store.Decrypt(encrypted2, &decrypted2));
-  EXPECT_FALSE(decrypted2 == blob);
+  encrypted1 = encrypted_ok;
+  encrypted1[0]++;
+  EXPECT_FALSE(store.Decrypt(encrypted1, &decrypted1));
+  // Test corrupted hmac.
+  encrypted1 = encrypted_ok;
+  encrypted1[encrypted1.size()-17]++;
+  EXPECT_FALSE(store.Decrypt(encrypted1, &decrypted1));
 }
 
 TEST_F(TestObjectStoreEncryption, CBCMode) {

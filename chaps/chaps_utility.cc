@@ -13,6 +13,7 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include <openssl/sha.h>
 
 #include "chaps/attributes.h"
@@ -508,6 +509,16 @@ std::string GetOpenSSLError() {
   string error_string(data, data_len);
   BIO_free(bio);
   return error_string;
+}
+
+std::string HmacSha512(const std::string& input, const std::string& key) {
+  const int kSha512OutputSize = 64;
+  unsigned char mac[kSha512OutputSize];
+  HMAC(EVP_sha512(),
+       ConvertStringToByteBuffer(key.data()), key.length(),
+       ConvertStringToByteBuffer(input.data()), input.length(),
+       mac, NULL);
+  return ConvertByteBufferToString(mac, kSha512OutputSize);
 }
 
 }  // namespace chaps

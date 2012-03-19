@@ -205,6 +205,8 @@ class ScopedOpenSSL {
 // Returns a description of the OpenSSL error stack.
 std::string GetOpenSSLError();
 
+std::string HmacSha512(const std::string& input, const std::string& key);
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H
