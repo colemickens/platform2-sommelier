@@ -16,7 +16,6 @@
 #include <gtest/gtest.h>
 #include <leveldb/db.h>
 #include <leveldb/env.h>
-#include <openssl/evp.h>
 
 namespace chaps {
 
@@ -41,13 +40,7 @@ class ObjectStoreImpl : public ObjectStore {
   virtual bool LoadAllObjectBlobs(std::map<int, std::string>* blobs);
 
  private:
-  // Encrypts or decrypts object blobs using AES-256-CBC and a random IV which
-  // is appended to the cipher text.
-  bool RunCipher(bool is_encrypt,
-                 const std::string& input,
-                 std::string* output);
-
-  // Encrypts an object blob and appends an HMAC.
+  // Encrypts an object blob with a random IV and appends an HMAC.
   bool Encrypt(const std::string& plain_text, std::string* cipher_text);
 
   // Decrypts an object blob and verifies the HMAC.
@@ -92,14 +85,12 @@ class ObjectStoreImpl : public ObjectStore {
   // The database key for the ID tracker, which always holds a value larger than
   // any object blob ID in use.
   static const char kIDTrackerKey[];
-  static const int kAESBlockSizeBytes;
   static const int kAESKeySizeBytes;
   static const int kHMACSizeBytes;
   // The leveldb directory.
   static const char kDatabaseDirectory[];
 
   std::string key_;
-  EVP_CIPHER_CTX cipher_context_;
   scoped_ptr<leveldb::Env> env_;
   scoped_ptr<leveldb::DB> db_;
 
