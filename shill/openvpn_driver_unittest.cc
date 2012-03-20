@@ -401,7 +401,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_CALL(*device_, Stop());
   EXPECT_CALL(device_info_, DeleteInterface(kInterfaceIndex));
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
-  driver_->Cleanup();
+  driver_->Cleanup(Service::kStateFailure);
   EXPECT_EQ(0, driver_->child_watch_tag_);
   EXPECT_EQ(0, driver_->pid_);
   EXPECT_FALSE(driver_->rpc_task_.get());
@@ -445,7 +445,6 @@ TEST_F(OpenVPNDriverTest, OnOpenVPNDied) {
 TEST_F(OpenVPNDriverTest, Disconnect) {
   driver_->device_ = device_;
   driver_->service_ = service_;
-  EXPECT_CALL(*device_, OnDisconnected());
   EXPECT_CALL(*device_, Stop());
   EXPECT_CALL(device_info_, DeleteInterface(kInterfaceIndex));
   EXPECT_CALL(*service_, SetState(Service::kStateIdle));

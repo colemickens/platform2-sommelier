@@ -17,6 +17,7 @@
 #include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
+#include "shill/service.h"
 #include "shill/vpn_driver.h"
 
 namespace shill {
@@ -110,7 +111,7 @@ class OpenVPNDriver : public VPNDriver,
   bool PinHostRoute(const IPConfig::Properties &properties);
 
   bool SpawnOpenVPN();
-  void Cleanup();
+  void Cleanup(Service::ConnectState state);
 
   // Called when the openpvn process exits.
   static void OnOpenVPNDied(GPid pid, gint status, gpointer data);

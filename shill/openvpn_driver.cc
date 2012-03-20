@@ -61,10 +61,10 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       child_watch_tag_(0) {}
 
 OpenVPNDriver::~OpenVPNDriver() {
-  Cleanup();
+  Cleanup(Service::kStateIdle);
 }
 
-void OpenVPNDriver::Cleanup() {
+void OpenVPNDriver::Cleanup(Service::ConnectState state) {
   if (child_watch_tag_) {
     glib_->SourceRemove(child_watch_tag_);
     child_watch_tag_ = 0;
@@ -84,7 +84,7 @@ void OpenVPNDriver::Cleanup() {
   }
   tunnel_interface_.clear();
   if (service_) {
-    service_->SetState(Service::kStateFailure);
+    service_->SetState(state);
     service_ = NULL;
   }
 }
@@ -138,7 +138,7 @@ void OpenVPNDriver::OnOpenVPNDied(GPid pid, gint status, gpointer data) {
   OpenVPNDriver *me = reinterpret_cast<OpenVPNDriver *>(data);
   me->child_watch_tag_ = 0;
   CHECK_EQ(pid, me->pid_);
-  me->Cleanup();
+  me->Cleanup(Service::kStateFailure);
   // TODO(petkov): Figure if we need to restart the connection.
 }
 
@@ -157,7 +157,7 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   device_->SelectService(service_);
   rpc_task_.reset(new RPCTask(control_, this));
   if (!SpawnOpenVPN()) {
-    Cleanup();
+    Cleanup(Service::kStateFailure);
   }
   return true;
 }
@@ -307,7 +307,7 @@ void OpenVPNDriver::Connect(const VPNServiceRefPtr &service,
   if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
     Error::PopulateAndLog(
         error, Error::kInternalError, "Could not create tunnel interface.");
-    Cleanup();
+    Cleanup(Service::kStateFailure);
   }
   // Wait for the ClaimInterface callback to continue the connection process.
 }
@@ -474,13 +474,7 @@ bool OpenVPNDriver::PinHostRoute(const IPConfig::Properties &properties) {
 }
 
 void OpenVPNDriver::Disconnect() {
-  if (device_) {
-    device_->OnDisconnected();
-    device_->SelectService(NULL);
-  }
-  service_->SetState(Service::kStateIdle);
-  service_ = NULL;
-  Cleanup();
+  Cleanup(Service::kStateIdle);
 }
 
 }  // namespace shill
