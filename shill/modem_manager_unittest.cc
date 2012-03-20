@@ -4,7 +4,7 @@
 
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
-#include <mm/mm-modem.h>
+#include <mm/ModemManager-names.h>
 
 #include "shill/manager.h"
 #include "shill/mock_control.h"
@@ -12,6 +12,7 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_modem.h"
 #include "shill/mock_modem_manager_proxy.h"
 #include "shill/modem.h"
 #include "shill/modem_manager.h"
@@ -53,7 +54,6 @@ class ModemManagerCore : public ModemManager {
 
   MOCK_METHOD1(Connect, void(const string &owner));
   MOCK_METHOD0(Disconnect, void());
-  MOCK_METHOD1(InitModem, void(shared_ptr<Modem> modem));
 };
 
 class ModemManagerTest : public Test {
@@ -61,11 +61,19 @@ class ModemManagerTest : public Test {
   ModemManagerTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_) {
   }
+
+  virtual void SetUp() {
+    modem_.reset(new StrictModem(
+        kOwner, kModemPath, &control_interface_, &dispatcher_, &metrics_,
+        &manager_, static_cast<mobile_provider_db *>(NULL)));
+  }
  protected:
   static const char kService[];
   static const char kPath[];
   static const char kOwner[];
   static const char kModemPath[];
+
+  shared_ptr<StrictModem> modem_;
 
   MockGLib glib_;
   MockControl control_interface_;
@@ -91,8 +99,6 @@ class ModemManagerCoreTest : public ModemManagerTest {
                        &manager_,
                        &glib_,
                        NULL) {}
-  virtual void SetUp() {
-  }
 
   virtual void TearDown() {
     modem_manager_.watcher_id_ = 0;
@@ -101,7 +107,6 @@ class ModemManagerCoreTest : public ModemManagerTest {
  protected:
   ModemManagerCore modem_manager_;
 };
-
 
 TEST_F(ModemManagerCoreTest, Start) {
   const int kWatcher = 123;
@@ -142,10 +147,8 @@ TEST_F(ModemManagerCoreTest, Connect) {
 }
 
 TEST_F(ModemManagerCoreTest, Disconnect) {
-  EXPECT_CALL(modem_manager_, InitModem(_));
-
   modem_manager_.owner_ = kOwner;
-  modem_manager_.AddModem(kModemPath);
+  modem_manager_.RecordAddedModem(modem_);
   EXPECT_EQ(1, modem_manager_.modems_.size());
 
   modem_manager_.ModemManager::Disconnect();
@@ -153,16 +156,12 @@ TEST_F(ModemManagerCoreTest, Disconnect) {
   EXPECT_EQ(0, modem_manager_.modems_.size());
 }
 
-TEST_F(ModemManagerCoreTest, AddRemoveModem) {
+TEST_F(ModemManagerCoreTest, ModemExists) {
   modem_manager_.owner_ = kOwner;
-  EXPECT_CALL(modem_manager_, InitModem(_));
 
-  modem_manager_.AddModem(kModemPath);
-  EXPECT_EQ(1, modem_manager_.modems_.size());
-  ASSERT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
-
-  modem_manager_.RemoveModem(kModemPath);
-  EXPECT_EQ(0, modem_manager_.modems_.size());
+  EXPECT_FALSE(modem_manager_.ModemExists(kModemPath));
+  modem_manager_.RecordAddedModem(modem_);
+  EXPECT_TRUE(modem_manager_.ModemExists(kModemPath));
 }
 
 class ModemManagerClassicMockInit : public ModemManagerClassic {
@@ -183,7 +182,7 @@ class ModemManagerClassicMockInit : public ModemManagerClassic {
                           manager,
                           glib,
                           provider_db) {}
-  MOCK_METHOD1(InitModem, void(shared_ptr<Modem> modem));
+  MOCK_METHOD1(InitModemClassic, void(shared_ptr<ModemClassic>));
 };
 
 class ModemManagerClassicTest : public ModemManagerTest {
@@ -238,13 +237,37 @@ TEST_F(ModemManagerClassicTest, Connect) {
       .WillOnce(Return(vector<DBus::Path>(1, kModemPath)));
 
   EXPECT_CALL(modem_manager_,
-              InitModem(Pointee(Field(&Modem::path_, StrEq(kModemPath)))));
+              InitModemClassic(
+                  Pointee(Field(&Modem::path_, StrEq(kModemPath)))));
 
   modem_manager_.Connect(kOwner);
   EXPECT_EQ(kOwner, modem_manager_.owner_);
   EXPECT_EQ(1, modem_manager_.modems_.size());
   ASSERT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
 }
+
+
+class ModemManager1MockInit : public ModemManager1 {
+ public:
+  ModemManager1MockInit(const string &service,
+                        const string &path,
+                        ControlInterface *control_interface,
+                        EventDispatcher *dispatcher,
+                        Metrics *metrics,
+                        Manager *manager,
+                        GLib *glib,
+                        mobile_provider_db *provider_db) :
+      ModemManager1(service,
+                    path,
+                    control_interface,
+                    dispatcher,
+                    metrics,
+                    manager,
+                    glib,
+                    provider_db) {}
+  MOCK_METHOD2(InitModem1, void(shared_ptr<Modem1>,
+                                const DBusInterfaceToProperties &));
+};
 
 
 class ModemManager1Test : public ModemManagerTest {
@@ -280,6 +303,7 @@ class ModemManager1Test : public ModemManagerTest {
 
   virtual void SetUp() {
     modem_manager_.proxy_factory_ = &proxy_factory_;
+    proxy_->IgnoreSetCallbacks();
   }
 
   virtual void TearDown() {
@@ -290,7 +314,7 @@ class ModemManager1Test : public ModemManagerTest {
     DBusPropertiesMap o_fd_mm1_modem;
 
     DBusInterfaceToProperties i_to_p;
-    i_to_p[ModemManager1::kDBusInterfaceModem] = o_fd_mm1_modem;
+    i_to_p[MM_DBUS_INTERFACE_MODEM] = o_fd_mm1_modem;
 
     DBusObjectsWithProperties objects_with_properties;
     objects_with_properties[kModemPath] = i_to_p;
@@ -298,7 +322,7 @@ class ModemManager1Test : public ModemManagerTest {
     return objects_with_properties;
   }
 
-  ModemManager1 modem_manager_;
+  ModemManager1MockInit modem_manager_;
   scoped_ptr<MockDBusObjectManagerProxy> proxy_;
   TestProxyFactory proxy_factory_;
 };
@@ -307,14 +331,17 @@ TEST_F(ModemManager1Test, Connect) {
   Error e;
 
   EXPECT_CALL(*proxy_, GetManagedObjects(_, _, _));
+  EXPECT_CALL(modem_manager_,
+              InitModem1(
+                  Pointee(Field(&Modem::path_, StrEq(kModemPath))),
+                  _));
 
   modem_manager_.Connect(kOwner);
   modem_manager_.OnGetManagedObjectsReply(GetModemWithProperties(), e);
   EXPECT_EQ(1, modem_manager_.modems_.size());
   EXPECT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
-  // TODO(rochberg): As mm1::connect gets more interesting, this will
-  // need to expand
 }
+
 
 TEST_F(ModemManager1Test, AddRemoveInterfaces) {
   EXPECT_CALL(*proxy_, GetManagedObjects(_, _, _));
@@ -325,11 +352,13 @@ TEST_F(ModemManager1Test, AddRemoveInterfaces) {
   EXPECT_EQ(0, modem_manager_.modems_.size());
 
   // Add an object that doesn't have a modem interface.  Nothing should be added
+  EXPECT_CALL(modem_manager_, InitModem1(_, _)).Times(0);
   modem_manager_.OnInterfacesAddedSignal(kModemPath,
                                          DBusInterfaceToProperties());
   EXPECT_EQ(0, modem_manager_.modems_.size());
 
   // Actually add a modem
+  EXPECT_CALL(modem_manager_, InitModem1(_, _)).Times(1);
   modem_manager_.OnInterfacesAddedSignal(kModemPath,
                                          GetModemWithProperties()[kModemPath]);
   EXPECT_EQ(1, modem_manager_.modems_.size());
@@ -343,9 +372,10 @@ TEST_F(ModemManager1Test, AddRemoveInterfaces) {
 
   // Remove the modem
   vector<string> with_modem_interface;
-  with_modem_interface.push_back(ModemManager1::kDBusInterfaceModem);
+  with_modem_interface.push_back(MM_DBUS_INTERFACE_MODEM);
   modem_manager_.OnInterfacesRemovedSignal(kModemPath,
                                            with_modem_interface);
   EXPECT_EQ(0, modem_manager_.modems_.size());
 }
+
 }  // namespace shill

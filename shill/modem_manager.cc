@@ -9,6 +9,8 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <mm/mm-modem.h>
+#include <mm/ModemManager-names.h>
 
 #include "shill/error.h"
 #include "shill/modem.h"
@@ -94,22 +96,18 @@ void ModemManager::OnVanish(GDBusConnection */*connection*/,
   manager->Disconnect();
 }
 
-void ModemManager::AddModem(const string &path) {
-  LOG(INFO) << "Add modem: " << path;
+bool ModemManager::ModemExists(const std::string &path) const {
   CHECK(!owner_.empty());
   if (ContainsKey(modems_, path)) {
-    LOG(INFO) << "Modem already exists; ignored.";
-    return;
+    LOG(INFO) << "ModemExists: " << path << " already exists.";
+    return true;
+  } else {
+    return false;
   }
-  shared_ptr<Modem> modem(new Modem(owner_,
-                                    path,
-                                    control_interface_,
-                                    dispatcher_,
-                                    metrics_,
-                                    manager_,
-                                    provider_db_));
-  modems_[path] = modem;
-  InitModem(modem);
+}
+
+void ModemManager::RecordAddedModem(shared_ptr<Modem> modem) {
+  modems_[modem->path()] = modem;
 }
 
 void ModemManager::RemoveModem(const string &path) {
@@ -142,18 +140,47 @@ ModemManagerClassic::ModemManagerClassic(const string &service,
                  glib,
                  provider_db) {}
 
+void ModemManagerClassic::OnDBusPropertiesChanged(
+    const string &/*interface*/,
+    const DBusPropertiesMap &/*changed_properties*/,
+    const vector<string> &/*invalidated_properties*/) {
+  // Ignored.
+}
+
+void ModemManagerClassic::OnModemManagerPropertiesChanged(
+    const string &/*interface*/,
+    const DBusPropertiesMap &properties) {
+  // Ignored
+}
+
+
 ModemManagerClassic::~ModemManagerClassic() {}
 
 void ModemManagerClassic::Connect(const string &supplied_owner) {
   ModemManager::Connect(supplied_owner);
   proxy_.reset(proxy_factory()->CreateModemManagerProxy(this, path(), owner()));
-
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   vector<DBus::Path> devices = proxy_->EnumerateDevices();
+
   for (vector<DBus::Path>::const_iterator it = devices.begin();
        it != devices.end(); ++it) {
-    AddModem(*it);
+    AddModemClassic(*it);
   }
+}
+
+void ModemManagerClassic::AddModemClassic(const string &path) {
+  if (ModemExists(path)) {
+    return;
+  }
+  shared_ptr<ModemClassic> modem(new ModemClassic(owner(),
+                                                  path,
+                                                  control_interface(),
+                                                  dispatcher(),
+                                                  metrics(),
+                                                  manager(),
+                                                  provider_db()));
+  RecordAddedModem(modem);
+  InitModemClassic(modem);
 }
 
 void ModemManagerClassic::Disconnect() {
@@ -161,13 +188,29 @@ void ModemManagerClassic::Disconnect() {
   proxy_.reset();
 }
 
-void ModemManagerClassic::InitModem(shared_ptr<Modem> modem) {
-  modem->Init();
+void ModemManagerClassic::InitModemClassic(shared_ptr<ModemClassic> modem) {
+  // TODO(rochberg): Switch to asynchronous calls (crosbug.com/17583).
+  if (modem == NULL) {
+    return;
+  }
+
+  scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
+      proxy_factory()->CreateDBusPropertiesProxy(this,
+                                                 modem->path(),
+                                                 modem->owner()));
+  DBusPropertiesMap properties =
+      properties_proxy->GetAll(MM_MODEM_INTERFACE);
+
+  modem->CreateDeviceClassic(properties);
 }
 
-// ModemManager1
-const char ModemManager1::kDBusInterfaceModem[] =
-    "org.freedesktop.ModemManager1.Modem";
+void ModemManagerClassic::OnDeviceAdded(const string &path) {
+  AddModemClassic(path);
+}
+
+void ModemManagerClassic::OnDeviceRemoved(const string &path) {
+  RemoveModem(path);
+}
 
 ModemManager1::ModemManager1(const string &service,
                              const string &path,
@@ -213,8 +256,28 @@ void ModemManager1::Disconnect() {
   proxy_.reset();
 }
 
-void ModemManager1::InitModem(shared_ptr<Modem> modem) {
-  LOG(ERROR) << __func__;
+void ModemManager1::AddModem1(const string &path,
+                              const DBusInterfaceToProperties &i_to_p) {
+  if (ModemExists(path)) {
+    return;
+  }
+  shared_ptr<Modem1> modem1(new Modem1(owner(),
+                                       path,
+                                       control_interface(),
+                                       dispatcher(),
+                                       metrics(),
+                                       manager(),
+                                       provider_db()));
+  RecordAddedModem(modem1);
+  InitModem1(modem1, i_to_p);
+}
+
+void ModemManager1::InitModem1(shared_ptr<Modem1> modem,
+                               const DBusInterfaceToProperties &i_to_p) {
+  if (modem == NULL) {
+    return;
+  }
+  modem->CreateDeviceMM1(i_to_p);
 }
 
 // signal methods
@@ -222,8 +285,8 @@ void ModemManager1::InitModem(shared_ptr<Modem> modem) {
 void ModemManager1::OnInterfacesAddedSignal(
     const ::DBus::Path &object_path,
     const DBusInterfaceToProperties &interface_to_properties) {
-  if (ContainsKey(interface_to_properties, kDBusInterfaceModem)) {
-    AddModem(object_path);
+  if (ContainsKey(interface_to_properties, MM_DBUS_INTERFACE_MODEM)) {
+    AddModem1(object_path, interface_to_properties);
   } else {
     LOG(ERROR) << "Interfaces added, but not modem interface.";
   }
@@ -235,7 +298,7 @@ void ModemManager1::OnInterfacesRemovedSignal(
   LOG(INFO) << "MM1:  Removing interfaces from " << object_path;
   if (find(interfaces.begin(),
            interfaces.end(),
-           kDBusInterfaceModem) != interfaces.end()) {
+           MM_DBUS_INTERFACE_MODEM) != interfaces.end()) {
     RemoveModem(object_path);
   } else {
     // In theory, a modem could drop, say, 3GPP, but not CDMA.  In

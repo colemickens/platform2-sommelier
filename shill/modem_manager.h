@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MODEM_MANAGER_
-#define SHILL_MODEM_MANAGER_
+#ifndef SHILL_MODEM_MANAGER_H_
+#define SHILL_MODEM_MANAGER_H_
 
 #include <map>
 #include <string>
@@ -16,6 +16,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dbus_objectmanager_proxy_interface.h"
+#include "shill/dbus_properties_proxy_interface.h"
 #include "shill/glib.h"
 
 struct mobile_provider_db;
@@ -23,11 +24,15 @@ struct mobile_provider_db;
 namespace shill {
 
 class ControlInterface;
+
 class DBusObjectManagerProxyInterface;
+class DBusPropertiesProxyInterface;
 class EventDispatcher;
 class Manager;
 class Metrics;
+class Modem1;
 class Modem;
+class ModemClassic;
 class ModemManagerProxyInterface;
 class ProxyFactory;
 
@@ -51,27 +56,32 @@ class ModemManager {
   // associated modems.
   void Stop();
 
-  // Adds a modem on |path|.
-  void AddModem(const std::string &path);
-
-  // Removes a modem on |path|.
-  void RemoveModem(const std::string &path);
-
   void OnDeviceInfoAvailable(const std::string &link_name);
 
  protected:
   typedef std::map<std::string, std::tr1::shared_ptr<Modem> > Modems;
 
+  ControlInterface *control_interface() const { return control_interface_; }
+  EventDispatcher *dispatcher() const { return dispatcher_; }
+  Manager *manager() const { return manager_; }
+  Metrics *metrics() const { return metrics_; }
   const std::string &owner() const { return owner_; }
-  const Modems &modems() const { return modems_; }
   const std::string &path() const { return path_; }
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
+  mobile_provider_db *provider_db() const { return provider_db_; }
 
   // Connect/Disconnect to a modem manager service.
   // Inheriting classes must call this superclass method.
   virtual void Connect(const std::string &owner);
   // Inheriting classes must call this superclass method.
   virtual void Disconnect();
+
+  bool ModemExists(const std::string &path) const;
+  // Put the modem into our modem map
+  void RecordAddedModem(std::tr1::shared_ptr<Modem> modem);
+
+  // Removes a modem on |path|.
+  void RemoveModem(const std::string &path);
 
  private:
   friend class ModemManagerCoreTest;
@@ -85,6 +95,7 @@ class ModemManager {
   FRIEND_TEST(ModemManagerCoreTest, AddRemoveModem);
   FRIEND_TEST(ModemManagerCoreTest, Connect);
   FRIEND_TEST(ModemManagerCoreTest, Disconnect);
+  FRIEND_TEST(ModemManagerCoreTest, ModemExists);
   FRIEND_TEST(ModemManagerCoreTest, OnAppearVanish);
   FRIEND_TEST(ModemManagerCoreTest, Start);
   FRIEND_TEST(ModemManagerCoreTest, Stop);
@@ -97,11 +108,6 @@ class ModemManager {
   static void OnVanish(GDBusConnection *connection,
                        const gchar *name,
                        gpointer user_data);
-
-  // Starts the process of bringing up the modem so that shill can
-  // talk to it.  Called after modem has been added to the
-  // ModemManager's internal data structures.
-  virtual void InitModem(std::tr1::shared_ptr<Modem> modem) = 0;
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
@@ -124,7 +130,8 @@ class ModemManager {
   DISALLOW_COPY_AND_ASSIGN(ModemManager);
 };
 
-class ModemManagerClassic : public ModemManager {
+class ModemManagerClassic : public ModemManager,
+                            public DBusPropertiesProxyDelegate {
  public:
   ModemManagerClassic(const std::string &service,
                       const std::string &path,
@@ -137,13 +144,29 @@ class ModemManagerClassic : public ModemManager {
 
   virtual ~ModemManagerClassic();
 
+  // Called by our dbus proxy
+  void OnDeviceAdded(const std::string &path);
+  void OnDeviceRemoved(const std::string &path);
+
+  // DBusPropertiesProxyDelegate methods.  We ignore both of these
+  void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties);
+  void OnModemManagerPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &properties);
+
  protected:
   virtual void Connect(const std::string &owner);
   virtual void Disconnect();
-  virtual void InitModem(std::tr1::shared_ptr<Modem> modem);
+
+  virtual void AddModemClassic(const std::string &path);
+  virtual void InitModemClassic(std::tr1::shared_ptr<ModemClassic> modem);
 
  private:
   scoped_ptr<ModemManagerProxyInterface> proxy_;  // DBus service proxy
+  scoped_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
 
   FRIEND_TEST(ModemManagerClassicTest, Connect);
 
@@ -163,13 +186,15 @@ class ModemManager1 : public ModemManager {
 
   virtual ~ModemManager1();
 
-  static const char kDBusInterfaceModem[];
-
  protected:
+  void AddModem1(const std::string &path,
+                 const DBusInterfaceToProperties &i_to_p);
+  virtual void InitModem1(std::tr1::shared_ptr<Modem1> modem,
+                          const DBusInterfaceToProperties &i_to_p);
+
   // ModemManager methods
   virtual void Connect(const std::string &owner);
   virtual void Disconnect();
-  virtual void InitModem(std::tr1::shared_ptr<Modem> modem);
 
   // DBusObjectManagerProxyDelegate signal methods
   virtual void OnInterfacesAddedSignal(
@@ -195,4 +220,4 @@ class ModemManager1 : public ModemManager {
 };
 }  // namespace shill
 
-#endif  // SHILL_MODEM_MANAGER_
+#endif  // SHILL_MODEM_MANAGER_H_

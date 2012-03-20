@@ -24,6 +24,7 @@ class MockDBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
       void(const InterfacesAddedSignalCallback &callback));
   MOCK_METHOD1(set_interfaces_removed_callback,
       void(const InterfacesRemovedSignalCallback &callback));
+  void IgnoreSetCallbacks();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDBusObjectManagerProxy);

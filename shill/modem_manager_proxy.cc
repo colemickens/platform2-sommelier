@@ -35,11 +35,11 @@ ModemManagerProxy::Proxy::Proxy(DBus::Connection *connection,
 ModemManagerProxy::Proxy::~Proxy() {}
 
 void ModemManagerProxy::Proxy::DeviceAdded(const DBus::Path &device) {
-  manager_->AddModem(device);
+  manager_->OnDeviceAdded(device);
 }
 
 void ModemManagerProxy::Proxy::DeviceRemoved(const DBus::Path &device) {
-  manager_->RemoveModem(device);
+  manager_->OnDeviceRemoved(device);
 }
 
 }  // namespace shill

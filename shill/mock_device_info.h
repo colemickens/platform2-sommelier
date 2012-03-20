@@ -38,6 +38,8 @@ class MockDeviceInfo : public DeviceInfo {
   MOCK_CONST_METHOD1(FlushAddresses, void(int interface_index));
   MOCK_CONST_METHOD1(CreateTunnelInterface,  bool(std::string *interface_name));
   MOCK_CONST_METHOD1(DeleteInterface, bool(int interface_index));
+  MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr &));
+  MOCK_METHOD1(DeregisterDevice, void(const DeviceRefPtr &));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDeviceInfo);

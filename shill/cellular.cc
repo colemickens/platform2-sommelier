@@ -193,6 +193,9 @@ void Cellular::InitCapability(Type type, ProxyFactory *proxy_factory) {
     case kTypeCDMA:
       capability_.reset(new CellularCapabilityCDMA(this, proxy_factory));
       break;
+    case kTypeUniversal:
+      LOG(ERROR) << "Cannot InitCapability on MM1 modem";
+      break;
     default: NOTREACHED();
   }
 }

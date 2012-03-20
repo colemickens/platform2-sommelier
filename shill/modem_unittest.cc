@@ -12,15 +12,18 @@
 
 #include "shill/cellular.h"
 #include "shill/cellular_capability_gsm.h"
+#include "shill/dbus_property_matchers.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
+#include "shill/mock_cellular.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_dbus_properties_proxy.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_sockets.h"
+#include "shill/mock_modem.h"
+#include "shill/mock_rtnl_handler.h"
 #include "shill/modem.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
@@ -31,6 +34,7 @@ using testing::_;
 using testing::DoAll;
 using testing::Return;
 using testing::SetArgumentPointee;
+using testing::StrEq;
 using testing::StrictMock;
 using testing::Test;
 
@@ -39,6 +43,11 @@ namespace shill {
 namespace {
 
 const int kTestInterfaceIndex = 5;
+const char kLinkName[] = "usb0";
+const char kOwner[] = ":1.18";
+const char kPath[] = "/org/chromium/ModemManager/Gobi/0";
+const unsigned char kAddress[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
+const char kAddressAsString[] = "000102030405";
 
 ACTION(SetInterfaceIndex) {
   if (arg2) {
@@ -55,20 +64,23 @@ class ModemTest : public Test {
         info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         proxy_(new MockDBusPropertiesProxy()),
         proxy_factory_(this),
-        modem_(new Modem(kOwner,
-                         kPath,
-                         &control_interface_,
-                         &dispatcher_,
-                         &metrics_,
-                         &manager_,
-                         NULL)) {}
-
+        modem_(
+            new StrictModem(
+                kOwner,
+                kPath,
+                &control_interface_,
+                &dispatcher_,
+                &metrics_,
+                &manager_,
+                static_cast<mobile_provider_db *>(NULL))) {}
   virtual void SetUp();
   virtual void TearDown();
 
-  void SetSockets(Sockets *sockets) {
-    RTNLHandler::GetInstance()->sockets_ = sockets;
+  void ReplaceSingletons() {
+    modem_->rtnl_handler_ = &rtnl_handler_;
   }
+
+  void ExpectLinkRelatedCalls();
 
  protected:
   class TestProxyFactory : public ProxyFactory {
@@ -86,9 +98,6 @@ class ModemTest : public Test {
     ModemTest *test_;
   };
 
-  static const char kOwner[];
-  static const char kPath[];
-
   CellularCapabilityGSM *GetCapabilityGSM() {
     return dynamic_cast<CellularCapabilityGSM *>(
         modem_->device_->capability_.get());
@@ -102,97 +111,114 @@ class ModemTest : public Test {
   MockDeviceInfo info_;
   scoped_ptr<MockDBusPropertiesProxy> proxy_;
   TestProxyFactory proxy_factory_;
-  scoped_ptr<Modem> modem_;
-  StrictMock<MockSockets> sockets_;
+  scoped_ptr<StrictModem> modem_;
+  MockRTNLHandler rtnl_handler_;
+  ByteString expected_address_;
 };
-
-const char ModemTest::kOwner[] = ":1.18";
-const char ModemTest::kPath[] = "/org/chromium/ModemManager/Gobi/0";
 
 void ModemTest::SetUp() {
   EXPECT_EQ(kOwner, modem_->owner_);
   EXPECT_EQ(kPath, modem_->path_);
-  modem_->proxy_factory_ = &proxy_factory_;
+  ReplaceSingletons();
+  expected_address_ = ByteString(kAddress, arraysize(kAddress));
+
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kLinkName)).
+      WillRepeatedly(Return(kTestInterfaceIndex));
+
+  EXPECT_CALL(*modem_, ConvertMmToCellularModemState(_)).
+      WillRepeatedly(Return(Cellular::kModemStateUnknown));
+
+  EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&info_));
 }
 
 void ModemTest::TearDown() {
   modem_.reset();
-  SetSockets(NULL);
 }
 
-TEST_F(ModemTest, CreateDeviceFromProperties) {
-  DBusPropertiesMap props;
+TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
+  static const char kSentinel[] = "sentinel";
+  static const uint32 kSentinelValue = 17;
 
-  modem_->CreateDeviceFromProperties(props);
+  DBusPropertiesMap properties;
+  properties[kSentinel].writer().append_uint32(kSentinelValue);
+
+  EXPECT_CALL(*modem_, GetLinkName(_, _)).WillRepeatedly(DoAll(
+      SetArgumentPointee<1>(string(kLinkName)),
+      Return(true)));
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName))).
+      WillRepeatedly(Return(kTestInterfaceIndex));
+
+  // The first time we call CreateDeviceFromModemProperties,
+  // GetMACAddress will fail.
+  EXPECT_CALL(info_, GetMACAddress(kTestInterfaceIndex, _)).
+      WillOnce(Return(false));
+  modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_FALSE(modem_->device_.get());
 
-  props[Modem::kPropertyIPMethod].writer().append_uint32(
-      MM_MODEM_IP_METHOD_PPP);
-  modem_->CreateDeviceFromProperties(props);
+  // On the second time, we allow GetMACAddress to succeed.  Now we
+  // expect a device to be built
+  EXPECT_CALL(info_, GetMACAddress(kTestInterfaceIndex, _)).
+      WillOnce(DoAll(SetArgumentPointee<1>(expected_address_),
+                     Return(true)));
+
+  // modem will take ownership
+  MockCellular* cellular = new MockCellular(
+      &control_interface_,
+      &dispatcher_,
+      &metrics_,
+      &manager_,
+      kLinkName,
+      kAddressAsString,
+      kTestInterfaceIndex,
+      Cellular::kTypeGSM,
+      kOwner,
+      kPath,
+      static_cast<mobile_provider_db *>(NULL));
+
+  EXPECT_CALL(*modem_,
+              ConstructCellular(StrEq(kLinkName),
+                                StrEq(kAddressAsString),
+                                kTestInterfaceIndex)).
+      WillOnce(Return(cellular));
+
+  EXPECT_CALL(*cellular, OnModemManagerPropertiesChanged(
+      HasDBusPropertyWithValueU32(kSentinel, kSentinelValue)));
+  EXPECT_CALL(info_, RegisterDevice(_));
+  EXPECT_CALL(info_, DeregisterDevice(_));
+  modem_->OnDeviceInfoAvailable(kLinkName);
+
+  EXPECT_TRUE(modem_->device_.get());
+}
+
+TEST_F(ModemTest, EarlyDeviceProperties) {
+  // OnDeviceInfoAvailable called before
+  // CreateDeviceFromModemProperties: Do nothing
+  modem_->OnDeviceInfoAvailable(kLinkName);
+  EXPECT_FALSE(modem_->device_.get());
+}
+
+TEST_F(ModemTest, CreateDeviceEarlyFailures) {
+  DBusPropertiesMap properties;
+
+  EXPECT_CALL(*modem_, ConstructCellular(_, _, _)).Times(0);
+
+  // No link name:  no device created
+  EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(Return(false));
+  modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_FALSE(modem_->device_.get());
 
-  props.erase(Modem::kPropertyIPMethod);
-  props[Modem::kPropertyIPMethod].writer().append_uint32(
-      MM_MODEM_IP_METHOD_DHCP);
-  modem_->CreateDeviceFromProperties(props);
+  // Link name, but no ifindex: no device created
+  EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(DoAll(
+      SetArgumentPointee<1>(string(kLinkName)),
+      Return(true)));
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName))).WillOnce(
+      Return(-1));
+  modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_FALSE(modem_->device_.get());
+}
 
-  static const char kLinkName[] = "usb0";
-  static const unsigned char kAddress[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
-  const int kTestSocket = 10;
-  const int kTestLinkSocket = 11;
-  props[Modem::kPropertyLinkName].writer().append_string(kLinkName);
-  EXPECT_CALL(sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
-      .Times(2)
-      .WillRepeatedly(Return(kTestSocket));
-  EXPECT_CALL(sockets_, Ioctl(kTestSocket, SIOCGIFINDEX, _))
-      .WillRepeatedly(DoAll(SetInterfaceIndex(), Return(0)));
-  EXPECT_CALL(sockets_, Close(kTestSocket))
-      .WillRepeatedly(Return(0));
-
-  EXPECT_CALL(sockets_, Socket(PF_NETLINK, _, _))
-      .WillRepeatedly(Return(kTestLinkSocket));
-  EXPECT_CALL(sockets_, Bind(kTestLinkSocket, _, _))
-      .WillRepeatedly(Return(0));
-  EXPECT_CALL(sockets_, Send(kTestLinkSocket, _, _, _))
-      .WillRepeatedly(Return(0));
-  RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
-
-  ByteString expected_address(kAddress, arraysize(kAddress));
-  EXPECT_CALL(info_, GetMACAddress(kTestInterfaceIndex, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(expected_address), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<1>(expected_address), Return(true)));
-  EXPECT_CALL(info_, GetDevice(kTestInterfaceIndex))
-      .WillRepeatedly(Return(modem_->device_));
-  EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&info_));
-
-  modem_->CreateDeviceFromProperties(props);
-  EXPECT_FALSE(modem_->device_.get());
-
-  props[Modem::kPropertyType].writer().append_uint32(MM_MODEM_TYPE_GSM);
-  props[Modem::kPropertyState].writer().append_uint32(
-      Cellular::kModemStateDisabled);
-  static const char kLockType[] = "sim-pin";
-  const int kRetries = 2;
-  props[CellularCapabilityGSM::kPropertyEnabledFacilityLocks].writer().
-      append_uint32(MM_MODEM_GSM_FACILITY_SIM);
-  props[CellularCapabilityGSM::kPropertyUnlockRequired].writer().append_string(
-      kLockType);
-  props[CellularCapabilityGSM::kPropertyUnlockRetries].writer().append_uint32(
-      kRetries);
-  modem_->CreateDeviceFromProperties(props);
-  ASSERT_TRUE(modem_->device_.get());
-  EXPECT_EQ(kLinkName, modem_->device_->link_name());
-  EXPECT_EQ(kTestInterfaceIndex, modem_->device_->interface_index());
-  EXPECT_EQ(Cellular::kModemStateDisabled, modem_->device_->modem_state());
-  EXPECT_TRUE(GetCapabilityGSM()->sim_lock_status_.enabled);
-  EXPECT_EQ(kLockType, GetCapabilityGSM()->sim_lock_status_.lock_type);
-  EXPECT_EQ(kRetries, GetCapabilityGSM()->sim_lock_status_.retries_left);
-
-  vector<DeviceRefPtr> devices;
-  manager_.FilterByTechnology(Technology::kCellular, &devices);
-  EXPECT_EQ(1, devices.size());
-  EXPECT_TRUE(devices[0].get() == modem_->device_.get());
+TEST_F(ModemTest, RejectPPPModem) {
+  // TODO(rochberg):  Port this to ModemClassic
 }
 
 }  // namespace shill

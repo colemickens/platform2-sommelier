@@ -25,6 +25,7 @@ void DBusObjectManagerProxy::GetManagedObjects(
   scoped_ptr<ManagedObjectsCallback> cb(new ManagedObjectsCallback(callback));
   try {
     proxy_.GetManagedObjects(cb.get(), timeout);
+    cb.release();
   } catch (DBus::Error e) {
     if (error)
       CellularError::FromDBusError(e, error);

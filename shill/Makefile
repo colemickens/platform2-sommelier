@@ -151,7 +151,9 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	mm1_modem_simple_proxy.o \
 	mm1_sim_proxy.o \
 	modem.o \
+	modem_1.o \
 	modem_cdma_proxy.o \
+	modem_classic.o \
 	modem_gsm_card_proxy.o \
 	modem_gsm_network_proxy.o \
 	modem_info.o \
@@ -236,6 +238,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_adaptors.o \
 	mock_ares.o \
 	mock_async_connection.o \
+	mock_cellular.o \
 	mock_connection.o \
 	mock_control.o \
 	mock_dbus_objectmanager_proxy.o \
@@ -252,6 +255,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_ipconfig.o \
 	mock_manager.o \
 	mock_metrics.o \
+	mock_modem.o \
 	mock_modem_cdma_proxy.o \
 	mock_modem_gsm_card_proxy.o \
 	mock_modem_gsm_network_proxy.o \

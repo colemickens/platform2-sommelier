@@ -4,10 +4,16 @@
 
 #include "shill/mock_dbus_objectmanager_proxy.h"
 
-namespace shill {
+using ::testing::_;
+using ::testing::AnyNumber;
 
+namespace shill {
 MockDBusObjectManagerProxy::MockDBusObjectManagerProxy() {}
 
 MockDBusObjectManagerProxy::~MockDBusObjectManagerProxy() {}
 
+void MockDBusObjectManagerProxy::IgnoreSetCallbacks() {
+  EXPECT_CALL(*this, set_interfaces_added_callback(_)).Times(AnyNumber());
+  EXPECT_CALL(*this, set_interfaces_removed_callback(_)).Times(AnyNumber());
+}
 }  // namespace shill

@@ -28,7 +28,9 @@ class Cellular : public Device {
  public:
   enum Type {
     kTypeGSM,
-    kTypeCDMA
+    kTypeCDMA,
+    kTypeUniversal,  // ModemManager1
+    kTypeInvalid,
   };
 
   // The device states progress linearly from Disabled to Linked.
@@ -48,18 +50,19 @@ class Cellular : public Device {
     kStateLinked,
   };
 
-  // These should be kept in sync with ModemManager's mm-modem.h:MMModemState.
   enum ModemState {
     kModemStateUnknown = 0,
-    kModemStateDisabled = 10,
-    kModemStateDisabling = 20,
-    kModemStateEnabling = 30,
-    kModemStateEnabled = 40,
-    kModemStateSearching = 50,
-    kModemStateRegistered = 60,
-    kModemStateDisconnecting = 70,
-    kModemStateConnecting = 80,
-    kModemStateConnected = 90,
+    kModemStateDisabled = 1,
+    kModemStateInitializing = 2,
+    kModemStateLocked = 3,
+    kModemStateDisabling = 4,
+    kModemStateEnabling = 5,
+    kModemStateEnabled = 6,
+    kModemStateSearching = 7,
+    kModemStateRegistered = 8,
+    kModemStateDisconnecting = 9,
+    kModemStateConnecting = 10,
+    kModemStateConnected = 11,
   };
 
   class Operator {
@@ -140,7 +143,8 @@ class Cellular : public Device {
   // destroying or updating the CellularService.
   void HandleNewRegistrationState();
 
-  void OnModemManagerPropertiesChanged(const DBusPropertiesMap &properties);
+  virtual void OnModemManagerPropertiesChanged(
+      const DBusPropertiesMap &properties);
 
   // Inherited from Device.
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
