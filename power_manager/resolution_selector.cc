@@ -39,6 +39,29 @@ ResolutionSelector::ResolutionSelector() {
 ResolutionSelector::~ResolutionSelector() {
 }
 
+bool ResolutionSelector::FindCommonResolutions(
+    const vector<Mode>& lcd_modes,
+    const vector<Mode>& external_modes,
+    Mode* lcd_resolution,
+    Mode* external_resolution,
+    Mode* screen_resolution) {
+
+  for(unsigned int i = 0; i < lcd_modes.size(); i++) {
+    for(unsigned int j = 0; j < external_modes.size(); j++) {
+      if (lcd_modes[i].width == external_modes[j].width &&
+          lcd_modes[i].height == external_modes[j].height) {
+        *lcd_resolution = lcd_modes[i];
+        *external_resolution = external_modes[j];
+        *screen_resolution = *lcd_resolution;
+        LOG(INFO) << "Found common resolution " << lcd_modes[i].width
+                  << "x" << lcd_modes[i].height;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 bool ResolutionSelector::FindBestResolutions(
     const vector<Mode>& lcd_modes,
     const vector<Mode>& external_modes,

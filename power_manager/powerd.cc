@@ -112,7 +112,9 @@ Daemon::Daemon(BacklightController* backlight_controller,
 #endif
       battery_discharge_rate_metric_last_(0),
       current_session_state_("stopped"),
-      udev_(NULL) {}
+      udev_(NULL),
+      left_ctrl_down_(false),
+      right_ctrl_down_(false) {}
 
 Daemon::~Daemon() {
   if (udev_)
@@ -1080,6 +1082,13 @@ void Daemon::OnButtonEvent(DBusMessage* message) {
     else
       power_button_handler_->HandleLockButtonUp();
 #endif
+  } else if (strcmp(button_name, kKeyLeftCtrl) == 0) {
+      left_ctrl_down_ = down;
+  } else if (strcmp(button_name, kKeyRightCtrl) == 0) {
+      right_ctrl_down_ = down;
+  } else if(strcmp(button_name, kKeyF4) == 0) {
+    if ((left_ctrl_down_ || right_ctrl_down_) && down && monitor_reconfigure_)
+        monitor_reconfigure_->SwitchMode();
   } else {
     NOTREACHED() << "Unhandled button '" << button_name << "'";
   }

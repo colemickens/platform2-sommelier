@@ -28,6 +28,13 @@ class MonitorReconfigure;
 // the external monitor.
 class MonitorReconfigure {
  public:
+  enum DualHeadMode {
+    kModeClone,
+    kModeFirstMonitorPrimary,
+    kModeSecondMonitorPrimary,
+    kModeLast,
+  };
+
   // We need a default constructor for unit tests.
   MonitorReconfigure();
 
@@ -43,6 +50,10 @@ class MonitorReconfigure {
   // Main entry point.
   void Run(bool force_reconfigure);
 
+  // Shortcut Ctrl+F4 will trigger SwitchMode() to cycle through different
+  // dual head modes.
+  void SwitchMode();
+
   // Returns whether an external monitor is connected.
   virtual bool is_projecting() const { return is_projecting_; }
 
@@ -57,11 +68,22 @@ class MonitorReconfigure {
   // Get the XRRModeInfo for |mode|.
   XRRModeInfo* GetModeInfo(RRMode mode);
 
-  // Setup dual head in extended mode.
+  // Setup dual head mode when there are 2 outputs available.
   void RunExtended();
 
-  // Setup dual head in clone mode.
-  void RunClone();
+  // Check whether resolution |width|x|height| is supported.
+  bool CheckValidResolution(int width, int height);
+
+  // Fall back to single head mode when RunExtended() can't configure
+  // dual head mode.
+  void FallBackToSingleHead();
+
+  // If there is only 1 output, it will be enabled with |lcd_resolution1|.
+  // If there are 2 outpus, Clone mode will be setup and each output will
+  // be enabled with |lcd_resolution| and |external_resolution| accordingly.
+  void RunClone(const ResolutionSelector::Mode& lcd_resolution,
+                const ResolutionSelector::Mode& external_resolution,
+                const ResolutionSelector::Mode& screen_resolution);
 
   // Find a usable Crtc, i.e. one in |crtcs| but not in |used_crtcs|.
   RRCrtc FindUsableCrtc(const std::set<RRCrtc>& used_crtcs,
@@ -88,8 +110,12 @@ class MonitorReconfigure {
   // Disables all the the outputs (both connected and disconnected).
   void DisableAllOutputs();
 
-  // Enables all connected and usable outputs.
-  void EnableUsableOutputs(const std::vector<RRMode>& resolutions);
+  // Enables the |idx|th output from |usable_outputs_| with resolution
+  // |mode|. If |position_x| is not NULL, then the scan out crtc for
+  // this output has x offset |position_x| in the fb, otherwise the
+  // x offset within the fb is 0. The same policy applies to |position_y|.
+  void EnableUsableOutput(int idx, RRMode mode,
+                          int* position_x, int* position_y);
 
   // Get the number of connected outputs.
   int GetConnectedOutputsNum();
@@ -113,9 +139,10 @@ class MonitorReconfigure {
   Window window_;
   XRRScreenResources* screen_info_;
 
-  // The list of usable (connected) outputs and their info.
+  // The list of usable (connected) outputs and their info and assigned crtc.
   std::vector<RROutput> usable_outputs_;
   std::vector<XRROutputInfo*> usable_outputs_info_;
+  std::vector<RRCrtc> usable_outputs_crtc_;
 
   // Number of connected outputs.
   int noutput_;
@@ -126,6 +153,13 @@ class MonitorReconfigure {
   // The status of LVDS connection:
   // RR_Connected, RR_Disconnected, RR_UnknownConnection.
   Connection lvds_connection_;
+
+  // Current dual head mode.
+  DualHeadMode dual_head_mode_;
+
+  // Whether dual head mode should be switched when Run() is called. It is
+  // set to be true when monitor reconfigure is triggered by pressing Ctrl+F4.
+  bool need_switch_mode_;
 
   // Are we projecting?
   bool is_projecting_;

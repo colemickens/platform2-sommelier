@@ -54,6 +54,9 @@ const char kExternalBacklightSetMethod[] = "ExternalBacklightSet";
 const char kLidClosed[] = "LidClosed";
 const char kLidOpened[] = "LidOpened";
 const char kExternalBacklightUpdate[] = "ExternalBacklightUpdate";
+const char kKeyLeftCtrl[] = "LeftCtrlKey";
+const char kKeyRightCtrl[] = "RightCtrlKey";
+const char kKeyF4[] = "F4Key";
 
 // Broadcast signals.
 const char kPowerStateChanged[] = "PowerStateChanged";

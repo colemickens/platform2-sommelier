@@ -475,6 +475,12 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
       (*input->handler_)(input->handler_data_, LOCKBUTTON, ev[i].value);
     else if (EV_SW == ev[i].type && SW_LID == ev[i].code)
       (*input->handler_)(input->handler_data_, LID, ev[i].value);
+    else if (EV_KEY == ev[i].type && KEY_F4 == ev[i].code)
+      (*input->handler_)(input->handler_data_, KEYF4, ev[i].value);
+    else if (EV_KEY == ev[i].type && KEY_LEFTCTRL == ev[i].code)
+      (*input->handler_)(input->handler_data_, KEYLEFTCTRL, ev[i].value);
+    else if (EV_KEY == ev[i].type && KEY_RIGHTCTRL == ev[i].code)
+      (*input->handler_)(input->handler_data_, KEYRIGHTCTRL, ev[i].value);
   }
   return true;
 }

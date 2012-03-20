@@ -20,6 +20,9 @@ enum InputType {
   LID,
   PWRBUTTON,
   LOCKBUTTON,
+  KEYLEFTCTRL,
+  KEYRIGHTCTRL,
+  KEYF4,
 };
 
 class Input {

@@ -75,6 +75,15 @@ class ResolutionSelector {
       Mode* external_resolution,
       Mode* screen_resolution);
 
+  // Find the best common resolutions for 2 outputs.
+  // Returns the modes for both screens and the screen resolution.
+  bool FindCommonResolutions(
+      const std::vector<Mode>& lcd_modes,
+      const std::vector<Mode>& external_modes,
+      Mode* lcd_resolution,
+      Mode* external_resolution,
+      Mode* screen_resolution);
+
  private:
   // Find resolutions to use that are reasonably close together.
   // |larger_device_modes| and |smaller_device_modes| should be sorted by

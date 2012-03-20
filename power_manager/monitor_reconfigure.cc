@@ -33,7 +33,7 @@ const float kInchInMm = 25.4;
 // Duplicate RRScreenChangeNotify events can be received when the
 // actual number of outputs does not change. Use this interval threshold
 // to filter out duplicate monitor reconfigure.
-const TimeDelta kReconfigureInterval = TimeDelta::FromSeconds(3);
+const TimeDelta kReconfigureInterval = TimeDelta::FromSeconds(5);
 // When doing monitor recofigure, if system uptime is less than
 // system_uptime_threshold, we consider it is the first time powerd runs
 // after boot.
@@ -62,6 +62,8 @@ MonitorReconfigure::MonitorReconfigure()
       noutput_(-1),
       last_configuration_time_(Time::Now()),
       lvds_connection_(RR_UnknownConnection),
+      dual_head_mode_(kModeClone),
+      need_switch_mode_(false),
       is_projecting_(false),
       projection_callback_(NULL),
       projection_callback_data_(NULL),
@@ -75,6 +77,8 @@ MonitorReconfigure::MonitorReconfigure(
       noutput_(-1),
       last_configuration_time_(Time::Now()),
       lvds_connection_(RR_UnknownConnection),
+      dual_head_mode_(kModeClone),
+      need_switch_mode_(false),
       is_projecting_(false),
       projection_callback_(NULL),
       projection_callback_data_(NULL),
@@ -169,49 +173,52 @@ void MonitorReconfigure::DisableAllOutputs() {
   }
 }
 
-void MonitorReconfigure::EnableUsableOutputs(
-    const std::vector<RRMode>& resolutions) {
-  std::set<RRCrtc> used_crtcs;
+void MonitorReconfigure::EnableUsableOutput(int idx,
+                                            RRMode mode,
+                                            int* position_x,
+                                            int* position_y) {
 
-  for (unsigned i = 0; i < usable_outputs_.size(); i++) {
-    XRROutputInfo* output_info = usable_outputs_info_[i];
-    RRMode resolution = resolutions[i];
-    XRRModeInfo* mode_info = GetModeInfo(resolution);
+    RROutput output = usable_outputs_[idx];
+    XRROutputInfo* output_info = usable_outputs_info_[idx];
+    XRRModeInfo* mode_info = GetModeInfo(mode);
+    RRCrtc crtc_xid = usable_outputs_crtc_[idx];
 
     if (!mode_info) {
-      LOG(WARNING) << "No mode " << resolution << " found!";
-      continue;
+      LOG(WARNING) << "No mode " << mode << " found!";
+      return;
     }
 
-    RRCrtc crtc_xid = FindUsableCrtc(used_crtcs,
-                                     output_info->crtcs,
-                                     output_info->ncrtc);
+    if (crtc_xid == None) {
+      LOG(WARNING) << "No valid crtc for output " << output_info->name;
+      return;
+    }
 
-    CHECK(crtc_xid != None);
+    int x = position_x ? *position_x : 0;
+    int y = position_y ? *position_y : 0;
 
     int result = XRRSetCrtcConfig(display_,
                                   screen_info_,
                                   crtc_xid,
                                   CurrentTime,
-                                  0, 0,  // x, y
-                                  resolution,
+                                  x, y,  // x, y
+                                  mode,
                                   RR_Rotate_0,
-                                  &usable_outputs_[i],
+                                  &output,
                                   1);    // noutputs
 
     if (result != RRSetConfigSuccess) {
       LOG(WARNING) << "Output " << output_info->name
-                   << " failed to enable resolution " << resolution
+                   << " failed to enable resolution " << mode
                    << " " << mode_info->width << "x" << mode_info->height;
     } else {
-      LOG(INFO) << "Output " << output_info->name
-              << " enabled resolution " << resolution
-              << " " << mode_info->width << "x" << mode_info->height
-              <<  " with crtc " << crtc_xid;
-      // Success, this crtc is now used.
-      used_crtcs.insert(crtc_xid);
+      LOG(INFO) << "Output " << output_info->name << " enabled resolution "
+                << mode_info->width << "x" << mode_info->height
+                << "+" << x << "+" << y << " with crtc " << crtc_xid;
+      if (position_x)
+        *position_x += mode_info->width;
+      if (position_y)
+        *position_y += mode_info->height;
     }
-  }
 }
 
 int MonitorReconfigure::GetConnectedOutputsNum() {
@@ -220,7 +227,8 @@ int MonitorReconfigure::GetConnectedOutputsNum() {
     XRROutputInfo* output_info = XRRGetOutputInfo(display_,
                                                   screen_info_,
                                                   screen_info_->outputs[i]);
-
+    // TODO(miletus@) : Add check for RR_UnknownConnection where we check
+    // for RR_Connected.
     if (output_info->connection == RR_Connected)
       count++;
   }
@@ -305,50 +313,83 @@ bool MonitorReconfigure::NeedReconfigure() {
   return need_reconfigure;
 }
 
+void MonitorReconfigure::FallBackToSingleHead() {
+
+  // Keep only one usable output.
+  usable_outputs_.pop_back();
+  usable_outputs_info_.pop_back();
+  usable_outputs_crtc_.pop_back();
+
+  vector<ResolutionSelector::Mode> lcd_modes;
+  ResolutionSelector::Mode lcd_resolution;
+  ResolutionSelector::Mode external_resolution;
+
+  // Use the highest resolution from the first output.
+  SortModesByResolution(usable_outputs_[0], &lcd_modes);
+  lcd_resolution = lcd_modes[0];
+
+  RunClone(lcd_resolution, external_resolution, lcd_resolution);
+}
+
+
+bool MonitorReconfigure::CheckValidResolution(int width, int height) {
+  int minWidth, minHeight, maxWidth, maxHeight;
+  bool is_resolution_valid = true;
+  // TODO(miletus@): To test against max GL viewport size.
+  if (XRRGetScreenSizeRange(display_, window_, &minWidth, &minHeight,
+                            &maxWidth, &maxHeight) == 1) {
+    LOG(INFO) << "Max supported screen resolution "
+              << maxWidth << "x" << maxHeight;
+    if (width < minWidth || width > maxWidth ||
+        height < minHeight || height > maxHeight) {
+      LOG(WARNING) << "Screen resolution " << width << "x" << height
+                   << " exceeds max supported resolution";
+      is_resolution_valid = false;
+    }
+  } else {
+    LOG(WARNING) << "Can't get max supported screen resolution";
+    is_resolution_valid = false;
+  }
+
+  return is_resolution_valid;
+}
+
+
 void MonitorReconfigure::RunExtended() {
   unsigned resolution_width = 0, resolution_height = 0;
   // Grab the server during mode changes.
   XGrabServer(display_);
-
   DisableAllOutputs();
-
   // First pass to compute the total screen size
-  for (int o = 0; o < screen_info_->noutput; o++) {
-    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
-                                                  screen_info_,
-                                                  screen_info_->outputs[o]);
-    switch (output_info->connection) {
-      case RR_Connected:
-      case RR_UnknownConnection: {
-        LOG(INFO) << "Output " << output_info->name << " is connected";
-        // If we have no modes for this output, drop it.
-        if (output_info->nmode == 0)
-           break;
+  for (unsigned int o = 0; o < usable_outputs_.size(); o++) {
+    XRROutputInfo* output_info = usable_outputs_info_[o];
+    if (output_info->nmode == 0)
+      break;
 
-        RRMode mode = output_info->modes[0];
-        XRRModeInfo* mode_info = GetModeInfo(mode);
+    RRMode mode = output_info->modes[0];
+    XRRModeInfo* mode_info = GetModeInfo(mode);
 
-        if (!mode_info) {
-          LOG(WARNING) << "Mode info not found";
-        } else {
-          LOG(INFO) << "Output "
-                    << output_info->name
-                    << "'s native mode is "
-                    << mode_info->width << "x" << mode_info->height;
-                    resolution_width = max(resolution_width, mode_info->width);
-                    resolution_height += mode_info->height;
-        }
-        break;
-      }
-      case RR_Disconnected: {
-        LOG(INFO) << "Output " << output_info->name << " is not connected";
-        break;
-      }
+    if (!mode_info) {
+      LOG(WARNING) << "Mode info not found";
+    } else {
+      LOG(INFO) << "Output "
+                << output_info->name
+                << "'s native mode is "
+                << mode_info->width << "x" << mode_info->height;
+      resolution_width = max(resolution_width, mode_info->width);
+      resolution_height += mode_info->height;
     }
   }
 
   LOG(INFO) << "Total screen resolution "
             << resolution_width << "x" << resolution_height;
+
+  if (!CheckValidResolution(resolution_width, resolution_height)) {
+      LOG(WARNING) << "The extended screen resolution is not valid, "
+                   << "fall back to single head mode";
+      XUngrabServer(display_);
+      return FallBackToSingleHead();
+  }
 
   // For the screen dimensions, compute a fake size that corresponds to 96dpi.
   // We do this for two reasons:
@@ -358,62 +399,24 @@ void MonitorReconfigure::RunExtended() {
                    resolution_width * kInchInMm / kScreenDpi,
                    resolution_height * kInchInMm / kScreenDpi);
 
-  std::set<RRCrtc> used_crtcs;
-
   // Second pass to set the modes.
   int position_y = 0;
-  int num_used_outputs = 0;
+  int num_used_outputs = usable_outputs_.size();
 
-  for (int o = 0; o < screen_info_->noutput; o++) {
-    RROutput output = screen_info_->outputs[o];
-    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
-                                                  screen_info_,
-                                                  output);
-
-    switch (output_info->connection) {
-      case RR_Connected:
-      case RR_UnknownConnection: {
-        // Connected CRTC, enable it and use its native resolution.
-
-        // If we have no modes for this output, drop it.
-        if (output_info->nmode == 0) {
-          LOG(WARNING) << "No mode for output " << output_info->name;
-          break;
-        }
-
-        RRMode mode = output_info->modes[0];
-        XRRModeInfo* mode_info = GetModeInfo(mode);
-        RRCrtc crtc_xid = FindUsableCrtc(used_crtcs,
-                                         output_info->crtcs,
-                                         output_info->ncrtc);
-
-        CHECK(crtc_xid != None);
-
-        if (!mode_info)
-          break;
-
-        int r = XRRSetCrtcConfig(display_,
-                                 screen_info_,
-                                 crtc_xid,
-                                 CurrentTime,
-                                 0, position_y,
-                                 mode,
-                                 RR_Rotate_0,
-                                 &output,
-                                 1);
-        if (r != RRSetConfigSuccess) {
-          LOG(WARNING) << "Failed to enable output " << output_info->name;
-        } else {
-          LOG(INFO) << "Enabled output " << output_info->name
-                    << " at " << mode_info->width << "x" << mode_info->height
-                    << "+0+" << position_y << " with crtc " << crtc_xid;
-          position_y += mode_info->height;
-          used_crtcs.insert(crtc_xid);
-          num_used_outputs++;
-        }
-        break;
-      }
-    }
+  if(dual_head_mode_ == kModeFirstMonitorPrimary) {
+    LOG(INFO) << "Setting dual head mode : FIRST MONITOR PRIMARY";
+    // If the first display is set as primary display, then scan out the first
+    // display from (0,0). And second display from (0, height_of_first_display).
+    for (int o = 0; o < num_used_outputs; o++)
+      EnableUsableOutput(o, usable_outputs_info_[o]->modes[0],
+                         NULL, &position_y);
+  } else {
+    // If the second display is set as primary display, then scan out the second
+    // display from (0,0). And first display from (0, height_of_second_display).
+    LOG(INFO) << "Setting dual head mode : SECOND MONITOR PRIMARY";
+    for (int o = num_used_outputs - 1; o >= 0; o--)
+      EnableUsableOutput(o, usable_outputs_info_[o]->modes[0],
+                         NULL, &position_y);
   }
 
   // To safeguard the case where DPMS is not properly tracked after
@@ -433,46 +436,13 @@ void MonitorReconfigure::RunExtended() {
   XSync(display_, False);
 }
 
-void MonitorReconfigure::RunClone() {
-  for (int i = 0; i < screen_info_->nmode; ++i) {
-    XRRModeInfo* current_mode = &screen_info_->modes[i];
-    mode_map_[current_mode->id] = current_mode;
-  }
+void MonitorReconfigure::RunClone(
+    const ResolutionSelector::Mode& lcd_resolution,
+    const ResolutionSelector::Mode& external_resolution,
+    const ResolutionSelector::Mode& screen_resolution) {
 
-  DetermineOutputs();
-
-  vector<ResolutionSelector::Mode> lcd_modes;
-  if (lvds_connection_ == RR_Connected) {
-    CHECK(usable_outputs_.size() >= 1);
-    SortModesByResolution(usable_outputs_[0], &lcd_modes);
-  } else {
-    LOG(INFO) << "NO LCD modes.";
-    lcd_modes.clear();
-  }
-
-  vector<ResolutionSelector::Mode> external_modes;
-  if (lvds_connection_ == RR_Connected && usable_outputs_.size() >= 2) {
-    LOG(INFO) << "Have both LCD and external modes.";
-    SortModesByResolution(usable_outputs_[1], &external_modes);
-  } else if (lvds_connection_ == RR_Disconnected &&
-             usable_outputs_.size() >= 1) {
-    LOG(INFO) << "Have only external modes.";
-    SortModesByResolution(usable_outputs_[0], &external_modes);
-  } else {
-    LOG(INFO) << "NO external modes.";
-    external_modes.clear();
-  }
-
-  ResolutionSelector selector;
-  ResolutionSelector::Mode lcd_resolution;
-  ResolutionSelector::Mode external_resolution;
-  ResolutionSelector::Mode screen_resolution;
-
-  CHECK(selector.FindBestResolutions(lcd_modes,
-                                     external_modes,
-                                     &lcd_resolution,
-                                     &external_resolution,
-                                     &screen_resolution));
+  LOG(INFO) << "RunClone() with " << usable_outputs_.size()
+            << " usable outputs";
 
   // Grab the server during mode changes.
   XGrabServer(display_);
@@ -491,15 +461,13 @@ void MonitorReconfigure::RunClone() {
 
   // Set the fb resolution if we have at least one usable output.
   // Otherwise we still go through the following code to cleanup.
+  SetScreenResolution(screen_resolution);
+
   if (usable_outputs_.size() >= 1)
-    SetScreenResolution(screen_resolution);
+    EnableUsableOutput(0, lcd_resolution.id, NULL, NULL);
 
-  std::vector<RRMode> resolutions;
-  if (lvds_connection_ == RR_Connected)
-    resolutions.push_back(lcd_resolution.id);
-  resolutions.push_back(external_resolution.id);
-
-  EnableUsableOutputs(resolutions);
+  if (usable_outputs_.size() >= 2)
+    EnableUsableOutput(1, external_resolution.id, NULL, NULL);
 
   // To safeguard the case where DPMS is not properly tracked after
   // re-enabling outputs, always turn on the DPMS after usable outputs
@@ -526,10 +494,18 @@ void MonitorReconfigure::RunClone() {
 
 }
 
+void  MonitorReconfigure::SwitchMode() {
+  LOG(WARNING) << "Ctrl+F4 pressed to switch mode";
+  need_switch_mode_ = true;
+  Run(true);
+  need_switch_mode_ = false;
+}
 
 void MonitorReconfigure::Run(bool force_reconfigure) {
   usable_outputs_.clear();
   usable_outputs_info_.clear();
+  usable_outputs_crtc_.clear();
+  mode_map_.clear();
   display_ = XOpenDisplay(NULL);
 
   // Give up if we can't open the display.
@@ -556,12 +532,63 @@ void MonitorReconfigure::Run(bool force_reconfigure) {
 
   last_configuration_time_= Time::Now();
 
-#ifdef EXTENDED_DESKTOP
-  RunExtended();
-#else
-  RunClone();
-#endif
+  for (int i = 0; i < screen_info_->nmode; ++i) {
+    XRRModeInfo* current_mode = &screen_info_->modes[i];
+    mode_map_[current_mode->id] = current_mode;
+  }
 
+  DetermineOutputs();
+
+  if (usable_outputs_.size() == 0)
+    return;
+
+  vector<ResolutionSelector::Mode> lcd_modes;
+    SortModesByResolution(usable_outputs_[0], &lcd_modes);
+
+  vector<ResolutionSelector::Mode> external_modes;
+  if (usable_outputs_.size() >= 2)
+    SortModesByResolution(usable_outputs_[1], &external_modes);
+
+  ResolutionSelector selector;
+  ResolutionSelector::Mode lcd_resolution;
+  ResolutionSelector::Mode external_resolution;
+  ResolutionSelector::Mode screen_resolution;
+
+  if (usable_outputs_.size() == 1) {
+    // If there is only one output, find the best resolution of the output
+    // and RunClone().
+    CHECK(selector.FindBestResolutions(lcd_modes,
+                                       external_modes,
+                                       &lcd_resolution,
+                                       &external_resolution,
+                                       &screen_resolution));
+    RunClone(lcd_resolution, external_resolution, screen_resolution);
+  } else {
+    // If Ctrl+F4 triggered monitor reconfigure, we move to the next
+    // dual head mode.
+    if (need_switch_mode_)
+      dual_head_mode_ = static_cast<DualHeadMode>(
+          (dual_head_mode_ + 1) % kModeLast);
+
+    // Dual head mode.
+    if (dual_head_mode_ == kModeFirstMonitorPrimary ||
+        dual_head_mode_ == kModeSecondMonitorPrimary)
+      RunExtended();
+    else {
+      // If Clone mode is needed, check that if common resolution exists
+      // between the 2 displays. If not, move to the next dual head mode.
+      if (selector.FindCommonResolutions(lcd_modes,
+                                         external_modes,
+                                         &lcd_resolution,
+                                         &external_resolution,
+                                         &screen_resolution))
+        RunClone(lcd_resolution, external_resolution, screen_resolution);
+      else {
+        dual_head_mode_ = kModeFirstMonitorPrimary;
+        RunExtended();
+      }
+    }
+  }
 }
 
 void MonitorReconfigure::SetProjectionCallback(void (*func)(void*),
@@ -571,6 +598,7 @@ void MonitorReconfigure::SetProjectionCallback(void (*func)(void*),
 }
 
 void MonitorReconfigure::DetermineOutputs() {
+  std::set<RRCrtc> used_crtcs;
   for (int i = 0; i < screen_info_->noutput; i++) {
     XRROutputInfo* output_info = XRRGetOutputInfo(display_,
                                                   screen_info_,
@@ -580,6 +608,12 @@ void MonitorReconfigure::DetermineOutputs() {
       // Add this output to the list of usable outputs...
       usable_outputs_.push_back(screen_info_->outputs[i]);
       usable_outputs_info_.push_back(output_info);
+      RRCrtc crtc_xid = FindUsableCrtc(used_crtcs,
+                                       output_info->crtcs,
+                                       output_info->ncrtc);
+      CHECK(crtc_xid != None);
+      usable_outputs_crtc_.push_back(crtc_xid);
+      used_crtcs.insert(crtc_xid);
       // Stop at 2 connected outputs, the resolution logic can't handle more
       // than that.
       if (usable_outputs_.size() >= 2)
@@ -599,6 +633,7 @@ void MonitorReconfigure::DetermineOutputs() {
               strlen(kLcdOutputName)) == 0) {
     std::swap(usable_outputs_[0], usable_outputs_[1]);
     std::swap(usable_outputs_info_[0], usable_outputs_info_[1]);
+    std::swap(usable_outputs_crtc_[0], usable_outputs_crtc_[1]);
   }
 }
 

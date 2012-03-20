@@ -389,6 +389,10 @@ class Daemon : public XIdleObserver,
   // For listening to udev events.
   struct udev_monitor* udev_monitor_;
   struct udev* udev_;
+
+  // Whether the left/right ctrl key is down.
+  bool left_ctrl_down_;
+  bool right_ctrl_down_;
 };
 
 }  // namespace power_manager
