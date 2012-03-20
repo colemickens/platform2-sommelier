@@ -25,6 +25,8 @@ class ChapsFactoryImpl : public ChapsFactory {
   virtual ObjectStore* CreateObjectStore(const FilePath& file_name);
   virtual Object* CreateObject();
   virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type);
+  virtual ObjectImporter* CreateObjectImporter(int slot_id,
+                                               TPMUtility* tpm_utility);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ChapsFactoryImpl);

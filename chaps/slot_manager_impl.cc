@@ -20,6 +20,7 @@
 #include <openssl/sha.h>
 
 #include "chaps/chaps_utility.h"
+#include "chaps/object_importer.h"
 #include "chaps/session.h"
 #include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
@@ -273,6 +274,19 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
   slot_list_[slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = slot_id;
   LOG(INFO) << "Key hierarchy ready for token at " << path.value();
+
+  // Import legacy objects. Only the existence of the 'imported' blob matters,
+  // not the content.
+  string imported_blob;
+  if (!object_pool->GetInternalBlob(kImportedTracker, &imported_blob)) {
+    scoped_ptr<ObjectImporter> importer(
+        factory_->CreateObjectImporter(slot_id, tpm_utility_));
+    if (importer.get() && importer->ImportObjects(path, object_pool.get())) {
+      if (!object_pool->SetInternalBlob(kImportedTracker, imported_blob)) {
+        LOG(WARNING) << "Successfully imported but failed to set the tracker.";
+      }
+    }
+  }
 }
 
 void SlotManagerImpl::OnLogout(const FilePath& path) {

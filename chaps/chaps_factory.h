@@ -15,6 +15,7 @@ namespace chaps {
 
 class HandleGenerator;
 class Object;
+class ObjectImporter;
 class ObjectPolicy;
 class ObjectPool;
 class ObjectStore;
@@ -37,6 +38,9 @@ class ChapsFactory {
   virtual ObjectStore* CreateObjectStore(const FilePath& file_name) = 0;
   virtual Object* CreateObject() = 0;
   virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) = 0;
+  // Returns NULL if no importer is available.
+  virtual ObjectImporter* CreateObjectImporter(int slot_id,
+                                               TPMUtility* tpm_utility) = 0;
 };
 
 }  // namespace

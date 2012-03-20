@@ -205,6 +205,7 @@ class ScopedOpenSSL {
 // Returns a description of the OpenSSL error stack.
 std::string GetOpenSSLError();
 
+// Computes a message authentication code using HMAC and SHA-512.
 std::string HmacSha512(const std::string& input, const std::string& key);
 
 // Sets the user and group for the current process. If 'real' is set to true,

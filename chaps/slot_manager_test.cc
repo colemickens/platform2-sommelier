@@ -13,6 +13,7 @@
 
 #include "chaps_factory_mock.h"
 #include "chaps_utility.h"
+#include "object_importer_mock.h"
 #include "object_pool_mock.h"
 #include "object_store_mock.h"
 #include "session_mock.h"
@@ -45,11 +46,15 @@ ObjectPool* CreateObjectPoolMock() {
       .WillRepeatedly(
           DoAll(SetArgumentPointee<1>(string("encrypted_master_key")),
                 Return(true)));
+  EXPECT_CALL(*object_pool, GetInternalBlob(2, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(string()), Return(false)));
   EXPECT_CALL(*object_pool, SetInternalBlob(0, string("auth_key_blob")))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*object_pool, SetInternalBlob(0, string("new_auth_key_blob")))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*object_pool, SetInternalBlob(1, string("encrypted_master_key")))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*object_pool, SetInternalBlob(2, string()))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*object_pool, SetEncryptionKey(string("master_key")))
       .WillRepeatedly(Return(true));
@@ -90,6 +95,12 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
                 Return(true)));
 }
 
+ObjectImporter* CreateObjectImporterMock() {
+  ObjectImporterMock* mock = new ObjectImporterMock();
+  EXPECT_CALL(*mock, ImportObjects(_, _)).WillRepeatedly(Return(true));
+  return mock;
+}
+
 // Creates and returns a mock Session instance.
 Session* CreateNewSession() {
   return new SessionMock();
@@ -108,6 +119,8 @@ class TestSlotManager: public ::testing::Test {
     ObjectStore* null_store = NULL;
     EXPECT_CALL(factory_, CreateObjectStore(_))
         .WillRepeatedly(Return(null_store));
+    EXPECT_CALL(factory_, CreateObjectImporter(_, _))
+        .WillRepeatedly(InvokeWithoutArgs(CreateObjectImporterMock));
     ConfigureTPMUtility(&tpm_);
   }
   void SetUp() {

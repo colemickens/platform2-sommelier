@@ -76,4 +76,10 @@ ObjectPolicy* ChapsFactoryImpl::CreateObjectPolicy(CK_OBJECT_CLASS type) {
   return new ObjectPolicyCommon();
 }
 
+ObjectImporter* ChapsFactoryImpl::CreateObjectImporter(
+    int slot_id,
+    TPMUtility* tpm_utility) {
+  return NULL;
+}
+
 }  // namespace chaps

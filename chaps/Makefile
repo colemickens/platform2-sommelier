@@ -31,7 +31,8 @@ MOCK = $(OUT)chaps_factory_mock.o \
        $(OUT)object_store_mock.o \
        $(OUT)session_mock.o \
        $(OUT)slot_manager_mock.o \
-       $(OUT)tpm_utility_mock.o
+       $(OUT)tpm_utility_mock.o \
+       $(OUT)object_importer_mock.o
 
 # Rules
 chaps_proxy_generated.h: chaps_interface.xml

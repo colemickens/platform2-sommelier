@@ -25,10 +25,10 @@ class ObjectStoreImpl : public ObjectStore {
   ObjectStoreImpl();
   virtual ~ObjectStoreImpl();
 
-  // Initializes the object store with the given database file. The magic file
+  // Initializes the object store with the given database path. The magic file
   // name ":memory:" will cause the store to create a memory-only database which
   // is suitable for testing.
-  bool Init(const FilePath& database_file);
+  bool Init(const FilePath& database_path);
 
   // ObjectStore methods.
   virtual bool GetInternalBlob(int blob_id, std::string* blob);
@@ -73,6 +73,11 @@ class ObjectStoreImpl : public ObjectStore {
 
   // Writes an integer to the database. Returns true on success.
   bool WriteInt(const std::string& key, int value);
+
+  // Imports opencryptoki objects into the store if necessary. Objects will not
+  // be imported more than once. Objects will only be imported from the path:
+  // <database_path>/../.tpm.
+  void ImportOpencryptokiObjects(const FilePath& database_path);
 
   // These strings are used to construct database keys for blobs. In general the
   // format of a blob database key is: <prefix><separator><id>.

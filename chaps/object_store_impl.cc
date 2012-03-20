@@ -89,7 +89,8 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
 
 bool ObjectStoreImpl::GetInternalBlob(int blob_id, string* blob) {
   if (!ReadBlob(CreateBlobKey(true, blob_id), blob)) {
-    LOG(ERROR) << "Failed to read internal blob: " << blob_id;
+    // Don't log this since it happens legitimately when a blob has not yet been
+    // set.
     return false;
   }
   return true;
@@ -257,7 +258,8 @@ bool ObjectStoreImpl::GetNextID(int* next_id) {
 bool ObjectStoreImpl::ReadBlob(const string& key, string* value) {
   leveldb::Status status = db_->Get(leveldb::ReadOptions(), key, value);
   if (!status.ok()) {
-    LOG(ERROR) << "Failed to read value from database: " << status.ToString();
+    if (!status.IsNotFound())
+      LOG(ERROR) << "Failed to read value from database: " << status.ToString();
     return false;
   }
   return true;
