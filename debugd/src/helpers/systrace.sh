@@ -133,8 +133,8 @@ stop)
     logger -t systrace "stop tracing"
     # add sync marker for chrome to time-shift system events;
     # note we need the monotonic time
-    marker=$(cat /proc/uptime |
-        awk '{ printf "trace_event_clock_sync: parent_ts=%f\n", $1 }')
+    marker=$(printf 'trace_event_clock_sync: parent_ts=%s\n' \
+        $(/usr/libexec/debugd/helpers/clock_monotonic))
     tracing_write "${marker}" trace_marker
     tracing_reset
 
