@@ -782,7 +782,7 @@ int main(int argc, char **argv) {
     }
 
     GArray *value_ary = g_array_new(FALSE, FALSE, 1);
-    g_array_append_vals(value_ary, value.c_str(), value.size());
+    g_array_append_vals(value_ary, value.c_str(), value.size() + 1);
     if (!org_chromium_CryptohomeInterface_install_attributes_set(
         proxy.gproxy(),
         name.c_str(),
