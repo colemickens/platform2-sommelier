@@ -21,6 +21,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_service.h"
+#include "shill/mock_store.h"
 #include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
 #include "shill/nice_mock_control.h"
@@ -32,7 +33,9 @@ using std::map;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::AnyNumber;
 using testing::DoAll;
+using testing::Ne;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgumentPointee;
@@ -80,6 +83,10 @@ class OpenVPNDriverTest : public testing::Test,
 
   void SetArgs() {
     driver_->args_ = args_;
+  }
+
+  KeyValueStore *GetArgs() {
+    return &driver_->args_;
   }
 
   // Used to assert that a flag appears in the options.
@@ -516,6 +523,49 @@ TEST_F(OpenVPNDriverTest, VerifyPaths) {
   string vpn_script(OpenVPNDriver::kOpenVPNScript);
   TrimString(vpn_script, FilePath::kSeparators, &vpn_script);
   EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(vpn_script)));
+}
+
+TEST_F(OpenVPNDriverTest, Load) {
+  MockStore storage;
+  static const char kStorageID[] = "vpn_service_id";
+  const string port = "1234";
+  const string password = "random-password";
+  EXPECT_CALL(storage, GetString(kStorageID, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(storage, GetString(kStorageID, flimflam::kOpenVPNPortProperty, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(port), Return(true)));
+  EXPECT_CALL(storage, GetCryptedString(kStorageID,
+                                        flimflam::kOpenVPNPasswordProperty,
+                                        _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(password), Return(true)));
+  EXPECT_TRUE(driver_->Load(&storage, kStorageID));
+  EXPECT_EQ(port,
+            GetArgs()->LookupString(flimflam::kOpenVPNPortProperty, ""));
+  EXPECT_EQ(password,
+            GetArgs()->LookupString(flimflam::kOpenVPNPasswordProperty, ""));
+}
+
+TEST_F(OpenVPNDriverTest, Store) {
+  const string key_direction = "1";
+  const string password = "foobar";
+  args_.SetString(flimflam::kOpenVPNKeyDirectionProperty, key_direction);
+  args_.SetString(flimflam::kOpenVPNPasswordProperty, password);
+  SetArgs();
+  MockStore storage;
+  static const char kStorageID[] = "vpn_service_id";
+  EXPECT_CALL(storage,
+              SetString(kStorageID,
+                        flimflam::kOpenVPNKeyDirectionProperty,
+                        key_direction))
+      .WillOnce(Return(true));
+  EXPECT_CALL(storage, SetCryptedString(kStorageID,
+                                        flimflam::kOpenVPNPasswordProperty,
+                                        password))
+      .WillOnce(Return(true));
+  EXPECT_CALL(storage, DeleteKey(kStorageID, _)).Times(AnyNumber());
+  EXPECT_CALL(storage, DeleteKey(kStorageID, flimflam::kOpenVPNAuthProperty))
+      .Times(1);
+  EXPECT_TRUE(driver_->Save(&storage, kStorageID));
 }
 
 }  // namespace shill

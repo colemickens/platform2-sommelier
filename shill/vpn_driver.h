@@ -14,6 +14,7 @@
 namespace shill {
 
 class Error;
+class StoreInterface;
 
 class VPNDriver {
  public:
@@ -23,6 +24,8 @@ class VPNDriver {
                               int interface_index) = 0;
   virtual void Connect(const VPNServiceRefPtr &service, Error *error) = 0;
   virtual void Disconnect() = 0;
+  virtual bool Load(StoreInterface *storage, const std::string &storage_id) = 0;
+  virtual bool Save(StoreInterface *storage, const std::string &storage_id) = 0;
 };
 
 }  // namespace shill

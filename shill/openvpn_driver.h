@@ -52,6 +52,9 @@ class OpenVPNDriver : public VPNDriver,
                               int interface_index);
   virtual void Disconnect();
 
+  virtual bool Load(StoreInterface *storage, const std::string &storage_id);
+  virtual bool Save(StoreInterface *storage, const std::string &storage_id);
+
  private:
   friend class OpenVPNDriverTest;
   FRIEND_TEST(OpenVPNDriverTest, AppendFlag);

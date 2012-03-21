@@ -28,6 +28,8 @@ class VPNService : public Service {
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
   virtual std::string GetStorageIdentifier() const;
+  virtual bool Load(StoreInterface *storage);
+  virtual bool Save(StoreInterface *storage);
 
   VPNDriver *driver() const { return driver_.get(); }
 

@@ -70,4 +70,14 @@ string VPNService::GetDeviceRpcId(Error *error) {
   return "/";
 }
 
+bool VPNService::Load(StoreInterface *storage) {
+  return Service::Load(storage) &&
+      driver_->Load(storage, GetStorageIdentifier());
+}
+
+bool VPNService::Save(StoreInterface *storage) {
+  return Service::Save(storage) &&
+      driver_->Save(storage, GetStorageIdentifier());
+}
+
 }  // namespace shill

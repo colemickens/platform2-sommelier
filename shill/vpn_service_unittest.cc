@@ -11,9 +11,12 @@
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_store.h"
 #include "shill/mock_vpn_driver.h"
 
 using testing::_;
+using testing::NiceMock;
+using testing::Return;
 
 namespace shill {
 
@@ -82,6 +85,23 @@ TEST_F(VPNServiceTest, GetDeviceRpcId) {
   Error error;
   EXPECT_EQ("/", service_->GetDeviceRpcId(&error));
   EXPECT_EQ(Error::kNotSupported, error.type());
+}
+
+TEST_F(VPNServiceTest, Load) {
+  NiceMock<MockStore> storage;
+  static const char kStorageID[] = "storage-id";
+  service_->set_storage_id(kStorageID);
+  EXPECT_CALL(storage, ContainsGroup(kStorageID)).WillOnce(Return(true));
+  EXPECT_CALL(*driver_, Load(&storage, kStorageID)).WillOnce(Return(true));
+  EXPECT_TRUE(service_->Load(&storage));
+}
+
+TEST_F(VPNServiceTest, Save) {
+  NiceMock<MockStore> storage;
+  static const char kStorageID[] = "storage-id";
+  service_->set_storage_id(kStorageID);
+  EXPECT_CALL(*driver_, Save(&storage, kStorageID)).WillOnce(Return(true));
+  EXPECT_TRUE(service_->Save(&storage));
 }
 
 }  // namespace shill

@@ -17,6 +17,7 @@
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/rpc_task.h"
+#include "shill/store_interface.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
@@ -36,6 +37,61 @@ const char kOpenVPNRouteOptionPrefix[] = "route_";
 const char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
 const char kOpenVPNTrustedIP[] = "trusted_ip";
 const char kOpenVPNTunMTU[] = "tun_mtu";
+
+// TODO(petkov): Move to chromeos/dbus/service_constants.h.
+const char kOpenVPNCertProperty[] = "OpenVPN.Cert";
+const char kOpenVPNKeyProperty[] = "OpenVPN.Key";
+const char kOpenVPNPingProperty[] = "OpenVPN.Ping";
+const char kOpenVPNPingExitProperty[] = "OpenVPN.PingExit";
+const char kOpenVPNPingRestartProperty[] = "OpenVPN.PingRestart";
+const char kOpenVPNTLSAuthProperty[] = "OpenVPN.TLSAuth";
+const char kOpenVPNVerbProperty[] = "OpenVPN.Verb";
+const char kVPNMTUProperty[] = "VPN.MTU";
+
+const struct {
+  const char *property;
+  bool crypted;
+} kProperties[] = {
+  { flimflam::kOpenVPNAuthNoCacheProperty, false },
+  { flimflam::kOpenVPNAuthProperty, false },
+  { flimflam::kOpenVPNAuthRetryProperty, false },
+  { flimflam::kOpenVPNAuthUserPassProperty, false },
+  { flimflam::kOpenVPNCaCertNSSProperty, false },
+  { flimflam::kOpenVPNCaCertProperty, false },
+  { flimflam::kOpenVPNCipherProperty, false },
+  { flimflam::kOpenVPNCompLZOProperty, false },
+  { flimflam::kOpenVPNCompNoAdaptProperty, false },
+  { flimflam::kOpenVPNKeyDirectionProperty, false },
+  { flimflam::kOpenVPNNsCertTypeProperty, false },
+  { flimflam::kOpenVPNPasswordProperty, true },
+  { flimflam::kOpenVPNPinProperty, false },
+  { flimflam::kOpenVPNPortProperty, false },
+  { flimflam::kOpenVPNProtoProperty, false },
+  { flimflam::kOpenVPNProviderProperty, false },
+  { flimflam::kOpenVPNPushPeerInfoProperty, false },
+  { flimflam::kOpenVPNRemoteCertEKUProperty, false },
+  { flimflam::kOpenVPNRemoteCertKUProperty, false },
+  { flimflam::kOpenVPNRemoteCertTLSProperty, false },
+  { flimflam::kOpenVPNRenegSecProperty, false },
+  { flimflam::kOpenVPNServerPollTimeoutProperty, false },
+  { flimflam::kOpenVPNShaperProperty, false },
+  { flimflam::kOpenVPNStaticChallengeProperty, false },
+  { flimflam::kOpenVPNTLSAuthContentsProperty, false },
+  { flimflam::kOpenVPNTLSRemoteProperty, false },
+  { flimflam::kOpenVPNUserProperty, false },
+  { flimflam::kProviderHostProperty, false },
+  { flimflam::kProviderNameProperty, false },
+  { flimflam::kProviderTypeProperty, false },
+  { kOpenVPNCertProperty, false },
+  { kOpenVPNKeyProperty, false },
+  { kOpenVPNPingExitProperty, false },
+  { kOpenVPNPingProperty, false },
+  { kOpenVPNPingRestartProperty, false },
+  { kOpenVPNTLSAuthProperty, false },
+  { kOpenVPNVerbProperty, false },
+  { kVPNMTUProperty, false },
+  { NULL, false },
+};
 }  // namespace
 
 // static
@@ -335,12 +391,12 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   options->push_back("--syslog");
 
   // TODO(petkov): Enable verbosity based on shill logging options too.
-  AppendValueOption("OpenVPN.Verb", "--verb", options);
+  AppendValueOption(kOpenVPNVerbProperty, "--verb", options);
 
-  AppendValueOption("VPN.MTU", "--mtu", options);
+  AppendValueOption(kVPNMTUProperty, "--mtu", options);
   AppendValueOption(flimflam::kOpenVPNProtoProperty, "--proto", options);
   AppendValueOption(flimflam::kOpenVPNPortProperty, "--port", options);
-  AppendValueOption("OpenVPN.TLSAuth", "--tls-auth", options);
+  AppendValueOption(kOpenVPNTLSAuthProperty, "--tls-auth", options);
 
   // TODO(petkov): Implement this.
   LOG_IF(ERROR, args_.ContainsString(flimflam::kOpenVPNTLSAuthContentsProperty))
@@ -367,15 +423,15 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
       << "Support for NSS CA not implemented yet.";
 
   // Client-side ping support.
-  AppendValueOption("OpenVPN.Ping", "--ping", options);
-  AppendValueOption("OpenVPN.PingExit", "--ping-exit", options);
-  AppendValueOption("OpenVPN.PingRestart", "--ping-restart", options);
+  AppendValueOption(kOpenVPNPingProperty, "--ping", options);
+  AppendValueOption(kOpenVPNPingExitProperty, "--ping-exit", options);
+  AppendValueOption(kOpenVPNPingRestartProperty, "--ping-restart", options);
 
   AppendValueOption(flimflam::kOpenVPNCaCertProperty, "--ca", options);
-  AppendValueOption("OpenVPN.Cert", "--cert", options);
+  AppendValueOption(kOpenVPNCertProperty, "--cert", options);
   AppendValueOption(
       flimflam::kOpenVPNNsCertTypeProperty, "--ns-cert-type", options);
-  AppendValueOption("OpenVPN.Key", "--key", options);
+  AppendValueOption(kOpenVPNKeyProperty, "--key", options);
 
   // TODO(petkov): Implement this.
   LOG_IF(ERROR, args_.ContainsString(flimflam::kOpenVPNClientCertIdProperty))
@@ -475,6 +531,35 @@ bool OpenVPNDriver::PinHostRoute(const IPConfig::Properties &properties) {
 
 void OpenVPNDriver::Disconnect() {
   Cleanup(Service::kStateIdle);
+}
+
+bool OpenVPNDriver::Load(StoreInterface *storage, const string &storage_id) {
+  for (int i = 0; kProperties[i].property; i++) {
+    const string property = kProperties[i].property;
+    string value;
+    bool loaded = kProperties[i].crypted ?
+        storage->GetCryptedString(storage_id, property, &value) :
+        storage->GetString(storage_id, property, &value);
+    if (loaded) {
+      args_.SetString(property, value);
+    }
+  }
+  return true;
+}
+
+bool OpenVPNDriver::Save(StoreInterface *storage, const string &storage_id) {
+  for (int i = 0; kProperties[i].property; i++) {
+    const string property = kProperties[i].property;
+    const string value = args_.LookupString(property, "");
+    if (value.empty()) {
+      storage->DeleteKey(storage_id, property);
+    } else if (kProperties[i].crypted) {
+      storage->SetCryptedString(storage_id, property, value);
+    } else {
+      storage->SetString(storage_id, property, value);
+    }
+  }
+  return true;
 }
 
 }  // namespace shill
