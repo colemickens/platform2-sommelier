@@ -1424,4 +1424,61 @@ TEST_F(ManagerTest, GetDefaultService) {
   manager()->DeregisterService(mock_service);
 }
 
+TEST_F(ManagerTest, GetServiceWithGUID) {
+  scoped_refptr<MockService> mock_service0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  scoped_refptr<MockService> mock_service1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  manager()->RegisterService(mock_service0);
+  manager()->RegisterService(mock_service1);
+
+  const string kGUID0 = "GUID0";
+  const string kGUID1 = "GUID1";
+
+  {
+    Error error;
+    ServiceRefPtr service = manager()->GetServiceWithGUID(kGUID0, &error);
+    EXPECT_FALSE(error.IsSuccess());
+    EXPECT_FALSE(service);
+  }
+
+  KeyValueStore args;
+  args.SetString(flimflam::kGuidProperty, kGUID1);
+
+  {
+    Error error;
+    ServiceRefPtr service = manager()->GetService(args, &error);
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+    EXPECT_FALSE(service);
+  }
+
+  mock_service0->set_guid(kGUID0);
+  mock_service1->set_guid(kGUID1);
+
+  {
+    Error error;
+    ServiceRefPtr service = manager()->GetServiceWithGUID(kGUID0, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(mock_service0.get(), service.get());
+  }
+
+  {
+    Error error;
+    ServiceRefPtr service = manager()->GetService(args, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(mock_service1.get(), service.get());
+  }
+
+  manager()->DeregisterService(mock_service0);
+  manager()->DeregisterService(mock_service1);
+}
+
 }  // namespace shill

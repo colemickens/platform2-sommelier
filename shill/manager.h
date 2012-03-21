@@ -117,6 +117,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // the profile.
   virtual bool HandleProfileEntryDeletion(const ProfileRefPtr &profile,
                                           const std::string &entry_name);
+  // Find a registered service that contains a GUID property that
+  // matches |guid|.
+  virtual ServiceRefPtr GetServiceWithGUID(const std::string &guid,
+                                           Error *error);
   // Find a service that is both the member of |profile| and has a
   // storage identifier that matches |entry_name|.  This function is
   // called by the Profile in order to return a profile entry's properties.

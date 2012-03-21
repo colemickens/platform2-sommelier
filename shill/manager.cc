@@ -365,6 +365,21 @@ ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
   return NULL;
 }
 
+ServiceRefPtr Manager::GetServiceWithGUID(
+    const std::string &guid, Error *error) {
+  for (vector<ServiceRefPtr>::iterator it = services_.begin();
+       it != services_.end(); ++it) {
+    if ((*it)->guid() == guid) {
+      return *it;
+    }
+  }
+
+  Error::PopulateAndLog(error, Error::kNotFound,
+      StringPrintf("Service wth GUID %s is not registered in the manager",
+                   guid.c_str()));
+  return NULL;
+}
+
 ServiceRefPtr Manager::GetDefaultService() const {
   if (services_.empty() || !services_[0]->connection().get()) {
     VLOG(2) << "In " << __func__ << ": No default connection exists.";
@@ -774,6 +789,15 @@ string Manager::GetActiveProfileRpcIdentifier(Error */*error*/) {
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
+  if (args.ContainsString(flimflam::kGuidProperty)) {
+    ServiceRefPtr service =
+        GetServiceWithGUID(args.GetString(flimflam::kGuidProperty), NULL);
+    if (service) {
+      // TODO(pstew): Configure this service using the rest of |args|.
+      return service;
+    }
+  }
+
   if (!args.ContainsString(flimflam::kTypeProperty)) {
     error->Populate(Error::kInvalidArguments, kErrorTypeRequired);
     return NULL;
