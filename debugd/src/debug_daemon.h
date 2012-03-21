@@ -17,6 +17,7 @@
 #include "network_status_tool.h"
 #include "ping_tool.h"
 #include "route_tool.h"
+#include "systrace_tool.h"
 #include "tracepath_tool.h"
 
 namespace debugd {
@@ -46,6 +47,9 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   void set_tracepath_tool(TracePathTool* tool) {
     tracepath_tool_ = tool;
   }
+  void set_systrace_tool(SystraceTool* tool) {
+    systrace_tool_ = tool;
+  }
   void set_modem_status_tool(ModemStatusTool* tool) {
     modem_status_tool_ = tool;
   }
@@ -67,6 +71,11 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                                                     DBus::Variant>& options,
                                      DBus::Error& error);
   virtual void TracePathStop(const std::string& handle, DBus::Error& error);
+  virtual void SystraceStart(const std::string& categories,
+                             DBus::Error& error);
+  virtual void SystraceStop(const DBus::FileDescriptor& outfd,
+                            DBus::Error& error);
+  virtual std::string SystraceStatus(DBus::Error& error);
   virtual std::vector<std::string> GetRoutes(const std::map<std::string,
                                                             DBus::Variant>&
                                                  options,
@@ -87,6 +96,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   NetworkStatusTool* network_status_tool_;
   PingTool* ping_tool_;
   RouteTool* route_tool_;
+  SystraceTool *systrace_tool_;
   TracePathTool *tracepath_tool_;
 };
 

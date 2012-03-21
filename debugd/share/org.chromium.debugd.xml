@@ -46,6 +46,39 @@
         running pings.
       </arg>
     </method>
+    <method name="SystraceStart">
+      <tp:docstring>
+        Start system/kernel tracing.  If tracing is already enabled it is
+        stopped first and any collected events are discarded.  The kernel
+        must have been configured to support tracing.
+      </tp:docstring>
+      <arg name="categories" type="s" direction="in">
+        <tp:docstring>
+          Trace event categories to enable.  If none are specified then
+          all known events are enabled.  Multiple categories are specified
+          separated by spaces.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="SystraceStop">
+      <tp:docstring>
+        Stop system/kernel tracing and write the collected event data.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send event data to.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="SystraceStatus">
+      <tp:docstring>
+        Return current status for system/kernel tracing including whether it
+        is enabled, the tracing clock, and the set of events enabled.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        Free-form text reporting status.
+      </arg>
+    </method>
     <method name="TracePathStart">
       <arg name="outfd" type="h" direction="in">
         <tp:docstring>

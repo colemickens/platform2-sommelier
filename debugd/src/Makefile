@@ -25,7 +25,7 @@ tests: override NEEDS_MOUNTS = 1
 tests: TEST(CXX_BINARY(testrunner))
 
 TOOLS := $(patsubst %,%_tool.o,debug_logs debug_mode modem_status \
-           network_status ping route subprocess tracepath)
+           network_status ping route subprocess systrace tracepath)
 OBJS := debug_daemon.o process_with_id.o process_with_output.o $(TOOLS)
 TESTOBJS := process_with_id_test.o
 
