@@ -165,9 +165,6 @@ class Mount : public EntropySource {
   virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
                                            bool is_new) const;
 
-  // Deletes Cache tracking directory of the given vault
-  virtual void DeleteCacheCallback(const FilePath& vault);
-
   // Adds the user, by vault, to the cache of the oldest activity timestamps.
   //
   // Parameters

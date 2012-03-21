@@ -829,28 +829,6 @@ void Mount::DoForEveryUnmountedCryptohome(
   }
 }
 
-// Deletes specified directory contents, but leaves the directory itself.
-static void DeleteDirectoryContents(const FilePath& dir) {
-  file_util::FileEnumerator subdir_enumerator(
-      dir,
-      false,
-      static_cast<file_util::FileEnumerator::FILE_TYPE>(
-          file_util::FileEnumerator::FILES |
-          file_util::FileEnumerator::DIRECTORIES |
-          file_util::FileEnumerator::SHOW_SYM_LINKS));
-  for (FilePath subdir_path = subdir_enumerator.Next(); !subdir_path.empty();
-       subdir_path = subdir_enumerator.Next()) {
-    LOG(WARNING) << "Deleting " << subdir_path.value();
-    file_util::Delete(subdir_path, true);
-  }
-}
-
-void Mount::DeleteCacheCallback(const FilePath& vault) {
-  const FilePath cache = vault.Append(kUserHomeSuffix).Append(kCacheDir);
-  LOG(WARNING) << "Deleting Cache " << cache.value();
-  DeleteDirectoryContents(cache);
-}
-
 void Mount::AddUserTimestampToCacheCallback(const FilePath& vault) {
   const FilePath user_dir = vault.DirName();
   const std::string obfuscated_username = user_dir.BaseName().value();

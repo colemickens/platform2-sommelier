@@ -744,6 +744,8 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, CacheCleanup) {
   const string contents = "some encrypted contents";
   FilePath cache_dir[kAlternateUserCount];
   FilePath cache_subdir[kAlternateUserCount];
+  FilePath gcache_tmp_dir[kAlternateUserCount];
+  FilePath gcache_tmp_subdir[kAlternateUserCount];
   for (int user = 0; user != kAlternateUserCount; user++) {
     // Let their Cache dirs be filled with some data.
     cache_dir[user] = image_path_[user]
@@ -755,6 +757,18 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, CacheCleanup) {
     file_util::CreateDirectory(cache_subdir[user]);
     file_util::WriteFile(cache_subdir[user].Append("cached_file"),
                          contents.c_str(), contents.length());
+
+    // And the same for GCache dirs.
+    gcache_tmp_dir[user] = image_path_[user]
+        .Append(kVaultDir).Append(kUserHomeSuffix).Append(kGCacheDir)
+        .Append(kGCacheVersionDir).Append(kGCacheTmpDir);
+    file_util::CreateDirectory(gcache_tmp_dir[user]);
+    file_util::WriteFile(gcache_tmp_dir[user].Append("gcached_tmp_file"),
+                         contents.c_str(), contents.length());
+    gcache_tmp_subdir[user] = gcache_tmp_dir[user].Append("gcache_tmp_subdir");
+    file_util::CreateDirectory(gcache_tmp_subdir[user]);
+    file_util::WriteFile(gcache_tmp_subdir[user].Append("gcached_tmp_file"),
+                         contents.c_str(), contents.length());
   }
 
   // Firstly, pretend we have lots of free space.
@@ -762,7 +776,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, CacheCleanup) {
       .WillRepeatedly(Return(kMinFreeSpace + 1));
   EXPECT_FALSE(mount_.DoAutomaticFreeDiskSpaceControl());
 
-  // Check that Cache is not changed.
+  // Check that Cache and GCache are not changed.
   for (int user = 0; user != kAlternateUserCount; user++) {
     string tested;
     EXPECT_TRUE(file_util::PathExists(cache_dir[user]));
@@ -774,21 +788,59 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, CacheCleanup) {
     EXPECT_TRUE(file_util::ReadFileToString(
         cache_subdir[user].Append("cached_file"), &tested));
     EXPECT_EQ(contents, tested);
+
+    tested.clear();
+    EXPECT_TRUE(file_util::PathExists(gcache_tmp_dir[user]));
+    EXPECT_TRUE(file_util::ReadFileToString(
+        gcache_tmp_dir[user].Append("gcached_tmp_file"), &tested));
+    EXPECT_EQ(contents, tested);
+    EXPECT_TRUE(file_util::PathExists(gcache_tmp_subdir[user]));
+    tested.clear();
+    EXPECT_TRUE(file_util::ReadFileToString(
+        gcache_tmp_subdir[user].Append("gcached_tmp_file"), &tested));
+    EXPECT_EQ(contents, tested);
   }
 
-  // Now pretend we have lack of free space.
+  // Now pretend we have lack of free space, but only once so only
+  // Caches should be cleaned.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace));
   EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
 
-  // Cache must be empty (and not even be deleted).
+  // Cache must be empty (but not deleted), but GCache must remain.
   for (int user = 0; user != kAlternateUserCount; user++) {
     EXPECT_TRUE(file_util::IsDirectoryEmpty(cache_dir[user]));
     EXPECT_TRUE(file_util::PathExists(cache_dir[user]));
 
+    string tested;
+    EXPECT_TRUE(file_util::PathExists(gcache_tmp_dir[user]));
+    EXPECT_TRUE(file_util::ReadFileToString(
+        gcache_tmp_dir[user].Append("gcached_tmp_file"), &tested));
+    EXPECT_EQ(contents, tested);
+    EXPECT_TRUE(file_util::PathExists(gcache_tmp_subdir[user]));
+    tested.clear();
+    EXPECT_TRUE(file_util::ReadFileToString(
+        gcache_tmp_subdir[user].Append("gcached_tmp_file"), &tested));
+    EXPECT_EQ(contents, tested);
+  }
+
+  // Now pretend we have lack of free space.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillRepeatedly(Return(kMinFreeSpace - 1));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // Cache and GCache must be empty (but not deleted).
+  for (int user = 0; user != kAlternateUserCount; user++) {
+    EXPECT_TRUE(file_util::IsDirectoryEmpty(cache_dir[user]));
+    EXPECT_TRUE(file_util::PathExists(cache_dir[user]));
+    EXPECT_TRUE(file_util::IsDirectoryEmpty(gcache_tmp_dir[user]));
+    EXPECT_TRUE(file_util::PathExists(gcache_tmp_dir[user]));
+
     // Check that we did not leave any litter.
     file_util::Delete(cache_dir[user], true);
+    file_util::Delete(image_path_[user].Append(kVaultDir)
+                      .Append(kUserHomeSuffix).Append(kGCacheDir), true);
     EXPECT_TRUE(file_util::IsDirectoryEmpty(
         image_path_[user].Append(kVaultDir).Append(kUserHomeSuffix)));
   }
@@ -868,9 +920,11 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanup) {
   SetUserTimestamp(mount_, 1, base::Time::Now());
   SetUserTimestamp(mount_, 3, base::Time::Now() - kOldUserLastActivityTime * 2);
 
-  // Now pretend we have lack of free space 2 times.
-  // So at 1st Caches are deleted and then 1 oldest user is deleted.
+  // Now pretend we have lack of free space 3 times.
+  // So at 1st Caches are deleted, then GCache tmps are deleted
+  // and then 1 oldest user is deleted.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillOnce(Return(kEnoughFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace));
@@ -912,9 +966,11 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
   // Setting owner so that old user may be deleted.
   set_policy(&mount_, true, "owner@invalid.domain", false);
 
-  // Now pretend we have lack of free space 2 times.
-  // So at 1st Caches are deleted and then 1 oldest user is deleted.
+  // Now pretend we have lack of free space 3 times.
+  // user[0] is old, user[1] is up to date, user[2] still have no timestamp,
+  // user[3] is very old, but it is an owner.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillOnce(Return(kEnoughFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace));
@@ -960,8 +1016,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupEphemeral) {
 
   // Pretend we have lack of free space.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
-      .WillOnce(Return(kMinFreeSpace - 1))
-      .WillOnce(Return(kEnoughFreeSpace));
+      .WillOnce(Return(kMinFreeSpace - 1));
   EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
 
   // All users except for user[3], who is the owner, should be deleted.

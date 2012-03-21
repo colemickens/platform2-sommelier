@@ -140,6 +140,7 @@ TEST_F(HomeDirsTest, FreeDiskSpace) {
               Return(true)));
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillOnce(Return(0))
+    .WillOnce(Return(0))
     .WillOnce(Return(kMinFreeSpace + 1))
     .WillOnce(Return(kEnoughFreeSpace - 1))
     .WillOnce(Return(kEnoughFreeSpace + 1));

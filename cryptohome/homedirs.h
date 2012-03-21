@@ -86,8 +86,10 @@ class HomeDirs {
   void DoForEveryUnmountedCryptohome(const CryptohomeCallback& cryptohome_cb);
   // Callback used during RemoveNonOwnerCryptohomes()
   void RemoveNonOwnerCryptohomesCallback(const FilePath& vault);
-  // Callback used during FreeDiskSpace()
+  // Callback used during FreeDiskSpace().
   void DeleteCacheCallback(const FilePath& vault);
+  // Callback used during FreeDiskSpace().
+  void DeleteGCacheTmpCallback(const FilePath& vault);
   // Recursively deletes all contents of a directory while leaving the directory
   // itself intact.
   void DeleteDirectoryContents(const FilePath& dir);

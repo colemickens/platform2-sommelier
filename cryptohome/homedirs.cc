@@ -43,11 +43,18 @@ bool HomeDirs::FreeDiskSpace() {
   // currently mounted or belonging to the owner.
   if (AreEphemeralUsersEnabled()) {
     RemoveNonOwnerCryptohomes();
-    return (platform_->AmountOfFreeDiskSpace(shadow_root_) >= kEnoughFreeSpace);
+    return true;
   }
 
   // Clean Cache directories for every user (except current one).
   DoForEveryUnmountedCryptohome(base::Bind(&HomeDirs::DeleteCacheCallback,
+                                           base::Unretained(this)));
+
+  if (platform_->AmountOfFreeDiskSpace(shadow_root_) >= kEnoughFreeSpace)
+    return true;
+
+  // Clean Cache directories for every user (except current one).
+  DoForEveryUnmountedCryptohome(base::Bind(&HomeDirs::DeleteGCacheTmpCallback,
                                            base::Unretained(this)));
 
   if (platform_->AmountOfFreeDiskSpace(shadow_root_) >= kEnoughFreeSpace)
@@ -192,7 +199,15 @@ void HomeDirs::RemoveNonOwnerDirectories(const FilePath& prefix) {
 
 void HomeDirs::DeleteCacheCallback(const FilePath& vault) {
   const FilePath cache = vault.Append(kUserHomeSuffix).Append(kCacheDir);
+  LOG(WARNING) << "Deleting Cache " << cache.value();
   DeleteDirectoryContents(cache);
+}
+
+void HomeDirs::DeleteGCacheTmpCallback(const FilePath& vault) {
+  const FilePath gcachetmp = vault.Append(kUserHomeSuffix).Append(kGCacheDir)
+      .Append(kGCacheVersionDir).Append(kGCacheTmpDir);
+  LOG(WARNING) << "Deleting GCache " << gcachetmp.value();
+  DeleteDirectoryContents(gcachetmp);
 }
 
 void HomeDirs::AddUserTimestampToCacheCallback(const FilePath& vault) {
