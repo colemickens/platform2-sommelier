@@ -109,9 +109,8 @@ Manager::Manager(ControlInterface *control_interface,
   HelpRegisterDerivedString(flimflam::kStateProperty,
                             &Manager::CalculateState,
                             NULL);
-  HelpRegisterDerivedStrings(flimflam::kServicesProperty,
-                             &Manager::EnumerateAvailableServices,
-                             NULL);
+  HelpRegisterConstDerivedRpcIdentifiers(flimflam::kServicesProperty,
+                                         &Manager::EnumerateAvailableServices);
   HelpRegisterDerivedStrings(flimflam::kServiceWatchListProperty,
                              &Manager::EnumerateWatchedServices,
                              NULL);
@@ -559,6 +558,15 @@ ServiceRefPtr Manager::FindService(const string& name) {
       return *it;
   }
   return NULL;
+}
+
+void Manager::HelpRegisterConstDerivedRpcIdentifiers(
+    const string &name,
+    RpcIdentifiers(Manager::*get)(Error *)) {
+  store_.RegisterDerivedRpcIdentifiers(
+      name,
+      RpcIdentifiersAccessor(
+          new CustomAccessor<Manager, RpcIdentifiers>(this, get, NULL)));
 }
 
 void Manager::HelpRegisterDerivedString(

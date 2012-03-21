@@ -147,6 +147,12 @@ PropertyStore::GetKeyValueStorePropertiesIter() const {
       ReadablePropertyConstIterator<KeyValueStore>(key_value_store_properties_);
 }
 
+ReadablePropertyConstIterator<RpcIdentifiers>
+PropertyStore::GetRpcIdentifiersPropertiesIter() const {
+  return ReadablePropertyConstIterator<RpcIdentifiers>(
+      rpc_identifiers_properties_);
+}
+
 ReadablePropertyConstIterator<string>
 PropertyStore::GetStringPropertiesIter() const {
   return ReadablePropertyConstIterator<string>(string_properties_);
@@ -398,6 +404,14 @@ void PropertyStore::RegisterDerivedKeyValueStore(
   DCHECK(!Contains(name) || ContainsKey(key_value_store_properties_, name))
       << "(Already registered " << name << ")";
   key_value_store_properties_[name] = acc;
+}
+
+void PropertyStore::RegisterDerivedRpcIdentifiers(
+    const string &name,
+    const RpcIdentifiersAccessor &accessor) {
+  DCHECK(!Contains(name) || ContainsKey(rpc_identifiers_properties_, name))
+      << "(Already registered " << name << ")";
+  rpc_identifiers_properties_[name] = accessor;
 }
 
 void PropertyStore::RegisterDerivedString(const string &name,

@@ -187,6 +187,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::vector<std::string> EnumerateWatchedServices(Error *error);
   std::string GetActiveProfileRpcIdentifier(Error *error);
 
+  void HelpRegisterConstDerivedRpcIdentifiers(
+      const std::string &name,
+      RpcIdentifiers(Manager::*get)(Error *));
   void HelpRegisterDerivedString(
       const std::string &name,
       std::string(Manager::*get)(Error *),

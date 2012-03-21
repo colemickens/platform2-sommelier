@@ -43,6 +43,12 @@ class AccessorInterface {
 
 typedef std::vector<uint8_t> ByteArray;
 typedef std::vector<ByteArray> ByteArrays;
+// Note that while the RpcIdentifiers type has the same concrete
+// representation as the Strings type, it may be serialized
+// differently. Accordingly, PropertyStore tracks RpcIdentifiers
+// separately from Strings. We create a separate typedef here, to make
+// the PropertyStore-related code read more simply.
+typedef std::vector<std::string> RpcIdentifiers;
 typedef std::vector<std::string> Strings;
 typedef std::map<std::string, std::string> Stringmap;
 typedef std::vector<Stringmap> Stringmaps;
@@ -52,6 +58,11 @@ typedef std::vector<Stringmap> Stringmaps;
 typedef std::tr1::shared_ptr<AccessorInterface<bool> > BoolAccessor;
 typedef std::tr1::shared_ptr<AccessorInterface<int16> > Int16Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<int32> > Int32Accessor;
+// See comment above RpcIdentifiers typedef, for the reason why the
+// RpcIdentifiersAccessor exists (even though it has the same
+// underlying type as StringsAccessor).
+typedef std::tr1::shared_ptr<
+  AccessorInterface<std::vector<std::string> > >RpcIdentifiersAccessor;
 typedef std::tr1::shared_ptr<AccessorInterface<std::string> > StringAccessor;
 typedef std::tr1::shared_ptr<AccessorInterface<Stringmap> > StringmapAccessor;
 typedef std::tr1::shared_ptr<AccessorInterface<Stringmaps> > StringmapsAccessor;

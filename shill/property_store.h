@@ -94,6 +94,8 @@ class PropertyStore {
   ReadablePropertyConstIterator<int32> GetInt32PropertiesIter() const;
   ReadablePropertyConstIterator<KeyValueStore> GetKeyValueStorePropertiesIter(
       ) const;
+  ReadablePropertyConstIterator<RpcIdentifiers> GetRpcIdentifiersPropertiesIter(
+      ) const;
   ReadablePropertyConstIterator<std::string> GetStringPropertiesIter() const;
   ReadablePropertyConstIterator<Stringmap> GetStringmapPropertiesIter() const;
   ReadablePropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter() const;
@@ -150,6 +152,8 @@ class PropertyStore {
                             const Int32Accessor &accessor);
   void RegisterDerivedKeyValueStore(const std::string &name,
                                     const KeyValueStoreAccessor &accessor);
+  void RegisterDerivedRpcIdentifiers(const std::string &name,
+                                     const RpcIdentifiersAccessor &accessor);
   void RegisterDerivedString(const std::string &name,
                              const StringAccessor &accessor);
   void RegisterDerivedStringmaps(const std::string &name,
@@ -174,6 +178,7 @@ class PropertyStore {
   std::map<std::string, Int16Accessor> int16_properties_;
   std::map<std::string, Int32Accessor> int32_properties_;
   std::map<std::string, KeyValueStoreAccessor> key_value_store_properties_;
+  std::map<std::string, RpcIdentifiersAccessor> rpc_identifiers_properties_;
   std::map<std::string, StringAccessor> string_properties_;
   std::map<std::string, StringmapAccessor> stringmap_properties_;
   std::map<std::string, StringmapsAccessor> stringmaps_properties_;

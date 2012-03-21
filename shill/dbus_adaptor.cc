@@ -24,7 +24,7 @@ namespace shill {
 // static
 const char DBusAdaptor::kByteArraysSig[] = "aay";
 // static
-const char DBusAdaptor::kPathArraySig[] = "ao";
+const char DBusAdaptor::kPathsSig[] = "ao";
 // static
 const char DBusAdaptor::kStringmapSig[] = "a{ss}";
 // static
@@ -111,6 +111,20 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
         store.GetKeyValueStorePropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = KeyValueStoreToVariant(it.Value(&e));
+  }
+  {
+    ReadablePropertyConstIterator<RpcIdentifiers> it =
+        store.GetRpcIdentifiersPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      Strings rpc_identifiers_as_strings  = it.Value(&e);
+      vector < ::DBus::Path> rpc_identifiers_as_paths;
+      for (Strings::const_iterator in = rpc_identifiers_as_strings.begin();
+           in != rpc_identifiers_as_strings.end();
+           ++in) {
+        rpc_identifiers_as_paths.push_back(*in);
+      }
+      (*out)[it.Key()] = PathsToVariant(rpc_identifiers_as_paths);
+    }
   }
   {
     ReadablePropertyConstIterator<string> it = store.GetStringPropertiesIter();
@@ -242,7 +256,7 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
-::DBus::Variant DBusAdaptor::PathArrayToVariant(
+::DBus::Variant DBusAdaptor::PathsToVariant(
     const vector< ::DBus::Path> &value) {
   ::DBus::MessageIter writer;
   ::DBus::Variant v;
@@ -372,8 +386,8 @@ bool DBusAdaptor::IsPath(::DBus::Signature signature) {
 }
 
 // static
-bool DBusAdaptor::IsPathArray(::DBus::Signature signature) {
-  return signature == DBusAdaptor::kPathArraySig;
+bool DBusAdaptor::IsPaths(::DBus::Signature signature) {
+  return signature == DBusAdaptor::kPathsSig;
 }
 
 // static

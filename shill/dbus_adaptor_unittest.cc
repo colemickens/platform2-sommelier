@@ -73,8 +73,8 @@ class DBusAdaptorTest : public PropertyStoreTest {
     ex_stringmap_[ex_string_] = ex_string_;
     stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap_);
 
-    ex_patharray_.push_back(ex_path_);
-    patharray_v_ = DBusAdaptor::PathArrayToVariant(ex_patharray_);
+    ex_paths_.push_back(ex_path_);
+    paths_v_ = DBusAdaptor::PathsToVariant(ex_paths_);
   }
 
   virtual ~DBusAdaptorTest() {}
@@ -88,7 +88,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
   int16 ex_int16_;
   int32 ex_int32_;
   ::DBus::Path ex_path_;
-  vector< ::DBus::Path> ex_patharray_;
+  vector< ::DBus::Path> ex_paths_;
   string ex_string_;
   map<string, string> ex_stringmap_;
   vector<map<string, string> > ex_stringmaps_;
@@ -100,7 +100,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
   ::DBus::Variant int16_v_;
   ::DBus::Variant int32_v_;
   ::DBus::Variant path_v_;
-  ::DBus::Variant patharray_v_;
+  ::DBus::Variant paths_v_;
   ::DBus::Variant string_v_;
   ::DBus::Variant stringmap_v_;
   ::DBus::Variant stringmaps_v_;
@@ -135,7 +135,7 @@ TEST_F(DBusAdaptorTest, Conversions) {
 
   EXPECT_EQ(ex_path_, path_v_.reader().get_path());
 
-  EXPECT_EQ(ex_path_, patharray_v_.operator vector< ::DBus::Path>()[0]);
+  EXPECT_EQ(ex_path_, paths_v_.operator vector< ::DBus::Path>()[0]);
 
   EXPECT_EQ(string(""), PropertyStoreTest::kStringV.reader().get_string());
   EXPECT_EQ(ex_string_, string_v_.reader().get_string());
@@ -152,7 +152,7 @@ TEST_F(DBusAdaptorTest, Signatures) {
   EXPECT_TRUE(DBusAdaptor::IsInt16(int16_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsInt32(int32_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsPath(path_v_.signature()));
-  EXPECT_TRUE(DBusAdaptor::IsPathArray(patharray_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsPaths(paths_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsString(string_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsStringmap(stringmap_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsStrings(strings_v_.signature()));

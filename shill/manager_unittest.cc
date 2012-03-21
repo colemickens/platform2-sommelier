@@ -442,6 +442,19 @@ TEST_F(ManagerTest, GetDevicesProperty) {
   }
 }
 
+TEST_F(ManagerTest, GetServicesProperty) {
+  ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
+  AdoptProfile(manager(), profile);
+  map<string, ::DBus::Variant> props;
+  ::DBus::Error dbus_error;
+  DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
+  map<string, ::DBus::Variant>::const_iterator prop =
+      props.find(flimflam::kServicesProperty);
+  ASSERT_FALSE(prop == props.end());
+  const ::DBus::Variant &variant = prop->second;
+  ASSERT_TRUE(DBusAdaptor::IsPaths(variant.signature()));
+}
+
 TEST_F(ManagerTest, MoveService) {
   Manager manager(control_interface(),
                   dispatcher(),

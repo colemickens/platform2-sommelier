@@ -69,7 +69,7 @@ void ManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
     paths.push_back(*it);
   }
 
-  PropertyChanged(name, DBusAdaptor::PathArrayToVariant(paths));
+  PropertyChanged(name, DBusAdaptor::PathsToVariant(paths));
 }
 
 void ManagerDBusAdaptor::EmitStateChanged(const string &new_state) {
