@@ -34,10 +34,11 @@ namespace cryptohome {
 
 const char kDefaultUserRoot[] = "/home/chronos";
 const char kDefaultHomeDir[] = "/home/chronos/user";
-const char kDefaultTokenDir[] = "/home/chronos/user/.tpm";
-const char kTokenSaltFile[] = "/home/chronos/user/.tpm/auth_data_salt";
+const char kChapsTokenDir[] = "/home/chronos/user/.chaps";
+const char kTokenSaltFile[] = "/home/chronos/user/.chaps/auth_data_salt";
 const char kDefaultShadowRoot[] = "/home/.shadow";
 const char kDefaultSharedUser[] = "chronos";
+const char kChapsUserName[] = "chaps";
 const char kDefaultSharedAccessGroup[] = "chronos-access";
 const char kDefaultSkeletonSource[] = "/etc/skel";
 const uid_t kMountOwnerUid = 0;
@@ -68,8 +69,21 @@ const base::TimeDelta kOldUserLastActivityTime = base::TimeDelta::FromDays(92);
 const char kDefaultEcryptfsCryptoAlg[] = "aes";
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 
+// A helper class for scoping umask changes.
+class ScopedUmask {
+  public:
+   ScopedUmask(Platform* platform, int mask)
+       : platform_(platform),
+         old_mask_(platform_->SetMask(mask)) {}
+   ~ScopedUmask() {platform_->SetMask(old_mask_);}
+  private:
+   Platform* platform_;
+   int old_mask_;
+};
+
 Mount::Mount()
     : default_user_(-1),
+      chaps_user_(-1),
       default_group_(-1),
       default_access_group_(-1),
       default_username_(kDefaultSharedUser),
@@ -109,6 +123,12 @@ bool Mount::Init() {
   // Get the user id and group id of the default user
   if (!platform_->GetUserId(default_username_, &default_user_,
                            &default_group_)) {
+    result = false;
+  }
+
+  // Get the user id of the chaps user.
+  gid_t not_used;
+  if (!platform_->GetUserId(kChapsUserName, &chaps_user_, &not_used)) {
     result = false;
   }
 
@@ -1199,10 +1219,38 @@ void Mount::ReloadDevicePolicy() {
 }
 
 void Mount::InsertPkcs11Token() {
+  // If the Chaps database directory does not exist, create it.
+  // TODO(dkrahn): If the directory exists we should check the ownership and
+  // permissions and log a warning if they are not as expected. See
+  // crosbug.com/28291.
+  std::string chaps_dir = kChapsTokenDir;
+  if (!platform_->DirectoryExists(kChapsTokenDir)) {
+    if (!platform_->CreateDirectory(kChapsTokenDir)) {
+      LOG(ERROR) << "Failed to create " << kChapsTokenDir;
+      return;
+    }
+    if (!platform_->SetOwnership(kChapsTokenDir,
+                                 chaps_user_,
+                                 default_access_group_)) {
+      LOG(ERROR) << "Couldn't set file ownership for " << kChapsTokenDir;
+      return;
+    }
+    // 0750: u + rwx, g + rx
+    mode_t chaps_perms = S_IRWXU | S_IRGRP | S_IXGRP;
+    if (!platform_->SetPermissions(kChapsTokenDir, chaps_perms)) {
+      LOG(ERROR) << "Couldn't set permissions for " << kChapsTokenDir;
+      return;
+    }
+  }
+  // We may create a salt file and, if so, we want to restrict access to it.
+  ScopedUmask scoped_umask(platform_, kDefaultUmask);
+
+  // Derive authorization data for the token from the passkey.
   FilePath salt_file(kTokenSaltFile);
   SecureBlob auth_data;
   if (!crypto_->PasskeyToTokenAuthData(pkcs11_passkey_, salt_file, &auth_data))
     return;
+  // If migration is required, send it before the login event.
   if (is_pkcs11_passkey_migration_required_) {
     LOG(INFO) << "Migrating authorization data.";
     SecureBlob old_auth_data;
@@ -1211,7 +1259,7 @@ void Mount::InsertPkcs11Token() {
                                          &old_auth_data))
       return;
     chaps_event_client_.FireChangeAuthDataEvent(
-        kDefaultTokenDir,
+        kChapsTokenDir,
         static_cast<const uint8_t*>(old_auth_data.const_data()),
         old_auth_data.size(),
         static_cast<const uint8_t*>(auth_data.const_data()),
@@ -1220,14 +1268,14 @@ void Mount::InsertPkcs11Token() {
     pkcs11_old_passkey_.clear_contents();
   }
   chaps_event_client_.FireLoginEvent(
-      kDefaultTokenDir,
+      kChapsTokenDir,
       static_cast<const uint8_t*>(auth_data.const_data()),
       auth_data.size());
   pkcs11_passkey_.clear_contents();
 }
 
 void Mount::RemovePkcs11Token() {
-  chaps_event_client_.FireLogoutEvent(kDefaultTokenDir);
+  chaps_event_client_.FireLogoutEvent(kChapsTokenDir);
 }
 
 void Mount::RecursiveCopy(const FilePath& destination,

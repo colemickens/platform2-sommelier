@@ -39,7 +39,7 @@ namespace cryptohome {
 // The directory to mount the user's cryptohome at
 extern const char kDefaultHomeDir[];
 // The directory in which to create the user's PKCS #11 token database.
-extern const char kDefaultTokenDir[];
+extern const char kChapsTokenDir[];
 // The path to the PKCS #11 token salt file.
 extern const char kTokenSaltFile[];
 // The directory containing the system salt and the user vaults
@@ -717,6 +717,10 @@ class Mount {
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;
+
+  // The uid of the chaps user. Ownership of the user's PKCS #11 token directory
+  // is set to this uid.
+  uid_t chaps_user_;
 
   // The gid of the shared user.  Ownership of the user's vault is set to this
   // gid.

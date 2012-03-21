@@ -94,18 +94,6 @@ void Pkcs11Init::GetTpmTokenInfoForUser(gchar *username,
 }
 
 bool Pkcs11Init::InitializePkcs11() {
-  if (is_chaps_enabled_) {
-    LOG(INFO) << "Chaps is enabled.";
-  } else {
-    if (!InitializeOpencryptoki())
-      return false;
-  }
-  is_pkcs11_ready_ = true;
-  return true;
-}
-
-bool Pkcs11Init::InitializeOpencryptoki() {
-  LOG(INFO) << "Initializing Opencryptoki subsystem.";
   // Determine required uid and gids.
   if (!platform_->GetGroupId(kPkcs11Group, &pkcs11_group_id_)) {
     LOG(ERROR) << "Couldn't get the group ID for group " << kPkcs11Group;
@@ -123,6 +111,18 @@ bool Pkcs11Init::InitializeOpencryptoki() {
     return false;
   }
 
+  if (is_chaps_enabled_) {
+    LOG(INFO) << "Chaps is enabled.";
+  } else {
+    if (!InitializeOpencryptoki())
+      return false;
+  }
+  is_pkcs11_ready_ = true;
+  return true;
+}
+
+bool Pkcs11Init::InitializeOpencryptoki() {
+  LOG(INFO) << "Initializing Opencryptoki subsystem.";
   // We need to get PKCS #11 daemons into an initial state.  This is necessary
   // for force_pkcs11_init.  Pkcsslotd will be restarted below; chapsd will be
   // immediately respawned by init.
