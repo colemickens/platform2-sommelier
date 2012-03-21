@@ -90,6 +90,10 @@ void DeviceInfo::AddDeviceToBlackList(const string &device_name) {
   black_list_.insert(device_name);
 }
 
+bool DeviceInfo::IsDeviceBlackListed(const string &device_name) {
+  return ContainsKey(black_list_, device_name);
+}
+
 void DeviceInfo::Start() {
   link_listener_.reset(
       new RTNLListener(RTNLHandler::kRequestLink, link_callback_));

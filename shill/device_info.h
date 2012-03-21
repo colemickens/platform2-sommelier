@@ -49,6 +49,7 @@ class DeviceInfo {
   ~DeviceInfo();
 
   void AddDeviceToBlackList(const std::string &device_name);
+  bool IsDeviceBlackListed(const std::string &device_name);
   void Start();
   void Stop();
 

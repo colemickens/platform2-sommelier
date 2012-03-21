@@ -91,6 +91,12 @@ void Modem::CreateDeviceFromProperties(const DBusPropertiesMap &properties) {
     LOG(ERROR) << "Unable to create cellular device without a link name.";
     return;
   }
+  if (manager_->device_info()->IsDeviceBlackListed(link_name_)) {
+    LOG(INFO) << "Do not create cellular device for blacklisted interface "
+              << link_name_;
+    return;
+  }
+
   // TODO(petkov): Get the interface index from DeviceInfo, similar to the MAC
   // address below.
   int interface_index =

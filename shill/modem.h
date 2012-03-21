@@ -10,7 +10,6 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dbus_properties_proxy_interface.h"
