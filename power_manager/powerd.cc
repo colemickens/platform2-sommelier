@@ -65,6 +65,9 @@ std::set<std::string> kValidStates(
     kValidStateStrings,
     kValidStateStrings  + sizeof(kValidStateStrings) / sizeof(std::string));
 
+// Minimum time a user must be idle to have returned from idle
+const int64 kMinTimeForIdle = 10;
+
 } // namespace
 
 namespace power_manager {
@@ -378,7 +381,9 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
   for (IdleThresholds::iterator iter = thresholds_.begin();
        iter != thresholds_.end();
        ++iter) {
-    if (*iter > 0) {
+    if (*iter == 0) {
+      CHECK(idle_.AddIdleTimeout(kMinTimeForIdle));
+    } else  if (*iter > 0) {
       CHECK(idle_.AddIdleTimeout(*iter));
     }
   }
@@ -438,8 +443,11 @@ bool Daemon::GetIdleTime(int64* idle_time_ms) {
 }
 
 void Daemon::AddIdleThreshold(int64 threshold) {
-  if (threshold)
-    idle_.AddIdleTimeout(threshold);
+  if (threshold == 0) {
+    CHECK(idle_.AddIdleTimeout(kMinTimeForIdle));
+  } else {
+    CHECK(idle_.AddIdleTimeout(threshold));
+  }
   thresholds_.push_back(threshold);
 }
 
@@ -524,7 +532,7 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
 
   // Notify once for each threshold.
   IdleThresholds::iterator iter = thresholds_.begin();
-  while(iter != thresholds_.end()) {
+  while (iter != thresholds_.end()) {
     // If we're idle and past a threshold, notify and erase the threshold.
     if (is_idle && *iter != 0 && idle_time_ms >= *iter) {
       IdleEventNotify(*iter);
