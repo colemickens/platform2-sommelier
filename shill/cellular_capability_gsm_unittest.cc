@@ -18,6 +18,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
+#include "shill/mock_profile.h"
 #include "shill/nice_mock_control.h"
 
 using base::Bind;
@@ -615,6 +616,73 @@ TEST_F(CellularCapabilityGSMTest, OnModemManagerPropertiesChanged) {
   EXPECT_TRUE(capability_->sim_lock_status_.enabled);
   EXPECT_EQ(kLockType, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(kRetries, capability_->sim_lock_status_.retries_left);
+}
+
+TEST_F(CellularCapabilityGSMTest, SetupApnTryList) {
+  static const string kTmobileApn("epc.tmobile.com");
+  static const string kLastGoodApn("remembered.apn");
+  static const string kLastGoodUsername("remembered.user");
+  static const string kSuppliedApn("my.apn");
+
+  SetService();
+  capability_->imsi_ = "310240123456789";
+  InitProviderDB();
+  capability_->SetHomeProvider();
+  DBusPropertiesMap props;
+  capability_->SetupConnectProperties(&props);
+  EXPECT_FALSE(props.find(flimflam::kApnProperty) == props.end());
+  EXPECT_EQ(kTmobileApn, props[flimflam::kApnProperty].reader().get_string());
+
+  ProfileRefPtr profile(new NiceMock<MockProfile>(
+      &control_, reinterpret_cast<Manager *>(NULL)));
+  cellular_->service()->set_profile(profile);
+  Stringmap apn_info;
+  apn_info[flimflam::kApnProperty] = kLastGoodApn;
+  apn_info[flimflam::kApnUsernameProperty] = kLastGoodUsername;
+  cellular_->service()->SetLastGoodApn(apn_info);
+  props.clear();
+  EXPECT_TRUE(props.find(flimflam::kApnProperty) == props.end());
+  capability_->SetupConnectProperties(&props);
+  // We expect the list to contain the last good APN, plus
+  // the 4 APNs from the mobile provider info database.
+  EXPECT_EQ(5, capability_->apn_try_list_.size());
+  EXPECT_FALSE(props.find(flimflam::kApnProperty) == props.end());
+  EXPECT_EQ(kLastGoodApn, props[flimflam::kApnProperty].reader().get_string());
+  EXPECT_FALSE(props.find(flimflam::kApnUsernameProperty) == props.end());
+  EXPECT_EQ(kLastGoodUsername,
+            props[flimflam::kApnUsernameProperty].reader().get_string());
+
+  Error error;
+  apn_info.clear();
+  props.clear();
+  apn_info[flimflam::kApnProperty] = kSuppliedApn;
+  // Setting the APN has the side effect of clearing the LastGoodApn,
+  // so the try list will have 5 elements, with the first one being
+  // the supplied APN.
+  cellular_->service()->SetApn(apn_info, &error);
+  EXPECT_TRUE(props.find(flimflam::kApnProperty) == props.end());
+  capability_->SetupConnectProperties(&props);
+  EXPECT_EQ(5, capability_->apn_try_list_.size());
+  EXPECT_FALSE(props.find(flimflam::kApnProperty) == props.end());
+  EXPECT_EQ(kSuppliedApn, props[flimflam::kApnProperty].reader().get_string());
+
+  apn_info.clear();
+  props.clear();
+  apn_info[flimflam::kApnProperty] = kLastGoodApn;
+  apn_info[flimflam::kApnUsernameProperty] = kLastGoodUsername;
+  // Now when LastGoodAPN is set, it will be the one selected.
+  cellular_->service()->SetLastGoodApn(apn_info);
+  EXPECT_TRUE(props.find(flimflam::kApnProperty) == props.end());
+  capability_->SetupConnectProperties(&props);
+  // We expect the list to contain the last good APN, plus
+  // the user-supplied APN, plus the 4 APNs from the mobile
+  // provider info database.
+  EXPECT_EQ(6, capability_->apn_try_list_.size());
+  EXPECT_FALSE(props.find(flimflam::kApnProperty) == props.end());
+  EXPECT_EQ(kLastGoodApn, props[flimflam::kApnProperty].reader().get_string());
+  EXPECT_FALSE(props.find(flimflam::kApnUsernameProperty) == props.end());
+  EXPECT_EQ(kLastGoodUsername,
+            props[flimflam::kApnUsernameProperty].reader().get_string());
 }
 
 }  // namespace shill

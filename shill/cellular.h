@@ -167,7 +167,7 @@ class Cellular : public Device {
   void OnModemStopped(const EnabledStateChangedCallback &callback,
                       const Error &error);
   void OnConnected();
-  void OnConnectFailed();
+  void OnConnectFailed(const Error &error);
   void OnDisconnected();
   void OnDisconnectFailed();
 

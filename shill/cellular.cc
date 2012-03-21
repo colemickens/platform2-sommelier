@@ -301,8 +301,7 @@ bool Cellular::TechnologyIs(const Technology::Identifier type) const {
 
 void Cellular::Connect(Error *error) {
   VLOG(2) << __func__;
-  if (state_ == kStateConnected ||
-      state_ == kStateLinked) {
+  if (state_ == kStateConnected || state_ == kStateLinked) {
     Error::PopulateAndLog(error, Error::kAlreadyConnected,
                           "Already connected; connection request ignored.");
     return;
@@ -333,8 +332,8 @@ void Cellular::OnConnected() {
   }
 }
 
-void Cellular::OnConnectFailed() {
-  // TODO(ers): Signal failure.
+void Cellular::OnConnectFailed(const Error &error) {
+  service()->SetFailure(Service::kFailureUnknown);
 }
 
 void Cellular::Disconnect(Error *error) {

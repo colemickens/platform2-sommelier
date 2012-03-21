@@ -142,6 +142,12 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
       (*out)[it.Key()]= StringmapToVariant(it.Value(&e));
   }
   {
+    ReadablePropertyConstIterator<Stringmaps> it =
+        store.GetStringmapsPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance())
+      (*out)[it.Key()]= StringmapsToVariant(it.Value(&e));
+  }
+  {
     ReadablePropertyConstIterator<Strings> it =
         store.GetStringsPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())

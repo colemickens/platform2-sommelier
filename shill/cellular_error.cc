@@ -20,6 +20,8 @@ static const char *kErrorSimPinRequired =
     MM_MOBILE_ERROR(MM_ERROR_MODEM_GSM_SIMPINREQUIRED);
 static const char *kErrorSimPukRequired =
     MM_MOBILE_ERROR(MM_ERROR_MODEM_GSM_SIMPUKREQUIRED);
+static const char *kErrorGprsNotSubscribed =
+    MM_MOBILE_ERROR(MM_ERROR_MODEM_GSM_GPRSNOTSUBSCRIBED);
 
 // static
 void CellularError::FromDBusError(const DBus::Error &dbus_error,
@@ -42,6 +44,8 @@ void CellularError::FromDBusError(const DBus::Error &dbus_error,
     type = Error::kPinRequired;
   else if (name == kErrorSimPukRequired)
     type = Error::kPinBlocked;
+  else if (name == kErrorGprsNotSubscribed)
+    type = Error::kInvalidApn;
   else
     type = Error::kOperationFailed;
 

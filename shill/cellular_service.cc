@@ -12,10 +12,15 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular.h"
+#include "shill/property_accessor.h"
+#include "shill/store_interface.h"
 
 using std::string;
 
 namespace shill {
+
+const char CellularService::kStorageAPN[] = "Cellular.APN";
+const char CellularService::kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 
 // TODO(petkov): Add these to system_api/dbus/service_constants.h
 namespace {
@@ -23,6 +28,17 @@ const char kKeyOLPURL[] = "url";
 const char kKeyOLPMethod[] = "method";
 const char kKeyOLPPostData[] = "postdata";
 }  // namespace {}
+
+static bool GetNonEmptyField(const Stringmap &stringmap,
+                             const string &fieldname,
+                             string *value) {
+  Stringmap::const_iterator it = stringmap.find(fieldname);
+  if (it != stringmap.end() && !it->second.empty()) {
+    *value = it->second;
+    return true;
+  }
+  return false;
+}
 
 CellularService::OLP::OLP() {
   SetURL("");
@@ -79,7 +95,9 @@ CellularService::CellularService(ControlInterface *control_interface,
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kActivationStateProperty,
                              &activation_state_);
-  store->RegisterStringmap(flimflam::kCellularApnProperty, &apn_info_);
+  HelpRegisterDerivedStringmap(flimflam::kCellularApnProperty,
+                               &CellularService::GetApn,
+                               &CellularService::SetApn);
   store->RegisterConstStringmap(flimflam::kCellularLastGoodApnProperty,
                                 &last_good_apn_info_);
   store->RegisterConstString(flimflam::kNetworkTechnologyProperty,
@@ -97,6 +115,144 @@ CellularService::CellularService(ControlInterface *control_interface,
 }
 
 CellularService::~CellularService() { }
+
+void CellularService::HelpRegisterDerivedStringmap(
+    const string &name,
+    Stringmap(CellularService::*get)(Error *error),
+    void(CellularService::*set)(
+        const Stringmap &value, Error *error)) {
+  mutable_store()->RegisterDerivedStringmap(
+      name,
+      StringmapAccessor(
+          new CustomAccessor<CellularService, Stringmap>(this, get, set)));
+}
+
+Stringmap *CellularService::GetUserSpecifiedApn() {
+  Stringmap::iterator it = apn_info_.find(flimflam::kApnProperty);
+  if (it == apn_info_.end() || it->second.empty())
+    return NULL;
+  return &apn_info_;
+}
+
+Stringmap *CellularService::GetLastGoodApn() {
+  Stringmap::iterator it =
+      last_good_apn_info_.find(flimflam::kApnProperty);
+  if (it == last_good_apn_info_.end() || it->second.empty())
+    return NULL;
+  return &last_good_apn_info_;
+}
+
+Stringmap CellularService::GetApn(Error */*error*/) {
+  return apn_info_;
+}
+
+void CellularService::SetApn(const Stringmap &value, Error *error) {
+  // Only copy in the fields we care about, and validate the contents.
+  // The "apn" field is mandatory.
+  string str;
+  if (!GetNonEmptyField(value, flimflam::kApnProperty, &str)) {
+    error->Populate(Error::kInvalidArguments,
+                    "supplied APN info is missing the apn");
+    return;
+  }
+  apn_info_[flimflam::kApnProperty] = str;
+  if (GetNonEmptyField(value, flimflam::kApnUsernameProperty, &str))
+    apn_info_[flimflam::kApnUsernameProperty] = str;
+  if (GetNonEmptyField(value, flimflam::kApnPasswordProperty, &str))
+    apn_info_[flimflam::kApnPasswordProperty] = str;
+
+  ClearLastGoodApn();
+  adaptor()->EmitStringmapChanged(flimflam::kCellularApnProperty, apn_info_);
+  SaveToCurrentProfile();
+}
+
+void CellularService::SetLastGoodApn(const Stringmap &apn_info) {
+  last_good_apn_info_ = apn_info;
+  adaptor()->EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+                                  last_good_apn_info_);
+  SaveToCurrentProfile();
+}
+
+void CellularService::ClearLastGoodApn() {
+  last_good_apn_info_.clear();
+  adaptor()->EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+                                  last_good_apn_info_);
+  SaveToCurrentProfile();
+}
+
+bool CellularService::Load(StoreInterface *storage) {
+  // Load properties common to all Services.
+  if (!Service::Load(storage))
+    return false;
+
+  const string id = GetStorageIdentifier();
+  LoadApn(storage, id, kStorageAPN, &apn_info_);
+  LoadApn(storage, id, kStorageLastGoodAPN, &last_good_apn_info_);
+  return true;
+}
+
+void CellularService::LoadApn(StoreInterface *storage,
+                              const string &storage_group,
+                              const string &keytag,
+                              Stringmap *apn_info) {
+  if (!LoadApnField(storage, storage_group, keytag,
+               flimflam::kApnProperty, apn_info))
+    return;
+  LoadApnField(storage, storage_group, keytag,
+               flimflam::kApnUsernameProperty, apn_info);
+  LoadApnField(storage, storage_group, keytag,
+               flimflam::kApnPasswordProperty, apn_info);
+}
+
+bool CellularService::LoadApnField(StoreInterface *storage,
+                                   const string &storage_group,
+                                   const string &keytag,
+                                   const string &apntag,
+                                   Stringmap *apn_info) {
+  string value;
+  if (storage->GetString(storage_group, keytag + "." + apntag, &value) &&
+      !value.empty()) {
+    (*apn_info)[apntag] = value;
+    return true;
+  }
+  return false;
+}
+
+bool CellularService::Save(StoreInterface *storage) {
+  // Save properties common to all Services.
+  if (!Service::Save(storage))
+    return false;
+
+  const string id = GetStorageIdentifier();
+  SaveApn(storage, id, GetUserSpecifiedApn(), kStorageAPN);
+  SaveApn(storage, id, GetLastGoodApn(), kStorageLastGoodAPN);
+  return true;
+}
+
+void CellularService::SaveApn(StoreInterface *storage,
+                              const string &storage_group,
+                              const Stringmap *apn_info,
+                              const string &keytag) {
+    SaveApnField(storage, storage_group, apn_info, keytag,
+                 flimflam::kApnProperty);
+    SaveApnField(storage, storage_group, apn_info, keytag,
+                 flimflam::kApnUsernameProperty);
+    SaveApnField(storage, storage_group, apn_info, keytag,
+                 flimflam::kApnPasswordProperty);
+}
+
+void CellularService::SaveApnField(StoreInterface *storage,
+                                   const string &storage_group,
+                                   const Stringmap *apn_info,
+                                   const string &keytag,
+                                   const string &apntag) {
+  const string key = keytag + "." + apntag;
+  string str;
+  if (apn_info && GetNonEmptyField(*apn_info, apntag, &str))
+    storage->SetString(storage_group, key, str);
+  else
+    storage->DeleteKey(storage_group, key);
+}
 
 void CellularService::Connect(Error *error) {
   Service::Connect(error);

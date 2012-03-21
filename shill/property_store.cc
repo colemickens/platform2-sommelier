@@ -428,6 +428,13 @@ void PropertyStore::RegisterDerivedStrings(const string &name,
   strings_properties_[name] = accessor;
 }
 
+void PropertyStore::RegisterDerivedStringmap(const string &name,
+                                             const StringmapAccessor &acc) {
+  DCHECK(!Contains(name) || ContainsKey(stringmap_properties_, name))
+      << "(Already registered " << name << ")";
+  stringmap_properties_[name] = acc;
+}
+
 void PropertyStore::RegisterDerivedStringmaps(const string &name,
                                               const StringmapsAccessor &acc) {
   DCHECK(!Contains(name) || ContainsKey(stringmaps_properties_, name))

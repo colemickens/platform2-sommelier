@@ -19,6 +19,10 @@ using std::string;
 
 namespace shill {
 
+const char CellularCapability::kConnectPropertyApn[] = "apn";
+const char CellularCapability::kConnectPropertyApnUsername[] = "username";
+const char CellularCapability::kConnectPropertyApnPassword[] = "password";
+const char CellularCapability::kConnectPropertyHomeOnly[] = "home_only";
 const char CellularCapability::kConnectPropertyPhoneNumber[] = "number";
 const char CellularCapability::kPropertyIMSI[] = "imsi";
 // All timeout values are in milliseconds
@@ -292,7 +296,7 @@ void CellularCapability::OnConnectReply(const ResultCallback &callback,
   if (error.IsSuccess())
     cellular()->OnConnected();
   else
-    cellular()->OnConnectFailed();
+    cellular()->OnConnectFailed(error);
   if (!callback.is_null())
     callback.Run(error);
 }

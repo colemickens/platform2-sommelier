@@ -156,6 +156,8 @@ class PropertyStore {
                                      const RpcIdentifiersAccessor &accessor);
   void RegisterDerivedString(const std::string &name,
                              const StringAccessor &accessor);
+  void RegisterDerivedStringmap(const std::string &name,
+                                const StringmapAccessor &accessor);
   void RegisterDerivedStringmaps(const std::string &name,
                                  const StringmapsAccessor &accessor);
   void RegisterDerivedStrings(const std::string &name,

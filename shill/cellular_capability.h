@@ -38,6 +38,10 @@ class CellularCapability {
   static const int kTimeoutRegister;
   static const int kTimeoutScan;
 
+  static const char kConnectPropertyApn[];
+  static const char kConnectPropertyApnUsername[];
+  static const char kConnectPropertyApnPassword[];
+  static const char kConnectPropertyHomeOnly[];
   static const char kConnectPropertyPhoneNumber[];
   static const char kPropertyIMSI[];
 
@@ -134,6 +138,8 @@ class CellularCapability {
 
   static void OnUnsupportedOperation(const char *operation, Error *error);
 
+  virtual void OnConnectReply(const ResultCallback &callback,
+                              const Error &error);
   // Run the next task in a list.
   // Precondition: |tasks| is not empty.
   void RunNextStep(CellularTaskList *tasks);
@@ -165,6 +171,7 @@ class CellularCapability {
   FRIEND_TEST(CellularCapabilityTest, FinishEnable);
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
+  FRIEND_TEST(CellularCapabilityTest, TryApns);
   FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartConnected);
@@ -192,8 +199,6 @@ class CellularCapability {
   virtual void OnGetModemStatusReply(const ResultCallback &callback,
                                      const DBusPropertiesMap &props,
                                      const Error &error);
-  virtual void OnConnectReply(const ResultCallback &callback,
-                              const Error &error);
   virtual void OnDisconnectReply(const ResultCallback &callback,
                                  const Error &error);
 

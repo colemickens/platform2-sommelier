@@ -5,6 +5,8 @@
 #ifndef SHILL_CELLULAR_CAPABILITY_GSM_
 #define SHILL_CELLULAR_CAPABILITY_GSM_
 
+#include <deque>
+
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -68,6 +70,10 @@ class CellularCapabilityGSM : public CellularCapability {
  protected:
   virtual void InitProxies();
   virtual void ReleaseProxies();
+  // Override OnConnectReply in order to handle the possibility of
+  // retrying the Connect operation.
+  virtual void OnConnectReply(const ResultCallback &callback,
+                              const Error &error);
 
  private:
   friend class CellularTest;
@@ -93,7 +99,9 @@ class CellularCapabilityGSM : public CellularCapability {
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityGSMTest, GetRegistrationState);
   FRIEND_TEST(CellularCapabilityGSMTest, OnModemManagerPropertiesChanged);
+  FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
+  FRIEND_TEST(CellularCapabilityTest, TryApns);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(ModemTest, CreateDeviceFromProperties);
 
@@ -137,6 +145,9 @@ class CellularCapabilityGSM : public CellularCapability {
   Stringmap ParseScanResult(const GSMScanResult &result);
 
   KeyValueStore SimLockStatusToProperty(Error *error);
+
+  void SetupApnTryList();
+  void FillConnectPropertyMap(DBusPropertiesMap *properties);
 
   void HelpRegisterDerivedKeyValueStore(
       const std::string &name,
@@ -189,6 +200,7 @@ class CellularCapabilityGSM : public CellularCapability {
   // Properties.
   std::string selected_network_;
   Stringmaps found_networks_;
+  std::deque<Stringmap> apn_try_list_;
   bool scanning_;
   uint16 scan_interval_;
   SimLockStatus sim_lock_status_;

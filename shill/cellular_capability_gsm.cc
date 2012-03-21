@@ -184,11 +184,81 @@ void CellularCapabilityGSM::UpdateStatus(const DBusPropertiesMap &properties) {
   }
 }
 
+// Create the list of APNs to try, in the following order:
+// - last APN that resulted in a successful connection attempt on the
+//   current network (if any)
+// - the APN, if any, that was set by the user
+// - the list of APNs found in the mobile broadband provider DB for the
+//   home provider associated with the current SIM
+// - as a last resort, attempt to connect with no APN
+void CellularCapabilityGSM::SetupApnTryList() {
+  apn_try_list_.clear();
+
+  DCHECK(cellular()->service().get());
+  const Stringmap *apn_info = cellular()->service()->GetLastGoodApn();
+  if (apn_info)
+    apn_try_list_.push_back(*apn_info);
+
+  apn_info = cellular()->service()->GetUserSpecifiedApn();
+  if (apn_info)
+    apn_try_list_.push_back(*apn_info);
+
+  apn_try_list_.insert(apn_try_list_.end(), apn_list_.begin(), apn_list_.end());
+}
+
 void CellularCapabilityGSM::SetupConnectProperties(
+    DBusPropertiesMap *properties) {
+  SetupApnTryList();
+  FillConnectPropertyMap(properties);
+}
+
+void CellularCapabilityGSM::FillConnectPropertyMap(
     DBusPropertiesMap *properties) {
   (*properties)[kConnectPropertyPhoneNumber].writer().append_string(
       kPhoneNumber);
-  // TODO(petkov): Setup apn and "home_only".
+
+  if (!allow_roaming_)
+    (*properties)[kConnectPropertyHomeOnly].writer().append_bool(true);
+
+  if (!apn_try_list_.empty()) {
+    // Leave the APN at the front of the list, so that it can be recorded
+    // if the connect attempt succeeds.
+    Stringmap apn_info = apn_try_list_.front();
+    VLOG(2) << __func__ << ": Using APN " << apn_info[flimflam::kApnProperty];
+    (*properties)[kConnectPropertyApn].writer().append_string(
+        apn_info[flimflam::kApnProperty].c_str());
+    if (ContainsKey(apn_info, flimflam::kApnUsernameProperty))
+      (*properties)[kConnectPropertyApnUsername].writer().append_string(
+          apn_info[flimflam::kApnUsernameProperty].c_str());
+    if (ContainsKey(apn_info, flimflam::kApnPasswordProperty))
+      (*properties)[kConnectPropertyApnPassword].writer().append_string(
+          apn_info[flimflam::kApnPasswordProperty].c_str());
+  }
+}
+
+void CellularCapabilityGSM::OnConnectReply(const ResultCallback &callback,
+                                           const Error &error) {
+  if (error.IsFailure()) {
+    cellular()->service()->ClearLastGoodApn();
+    // The APN that was just tried (and failed) is still at the
+    // front of the list, about to be removed. If the list is empty
+    // after that, try one last time without an APN. This may succeed
+    // with some modems in some cases.
+    if (error.type() == Error::kInvalidApn && !apn_try_list_.empty()) {
+      apn_try_list_.pop_front();
+      VLOG(2) << "Connect failed with invalid APN, " << apn_try_list_.size()
+              << " remaining APNs to try";
+      DBusPropertiesMap props;
+      FillConnectPropertyMap(&props);
+      Error error;
+      Connect(props, &error, callback);
+      return;
+    }
+  } else if (!apn_try_list_.empty()) {
+    cellular()->service()->SetLastGoodApn(apn_try_list_.front());
+    apn_try_list_.clear();
+  }
+  CellularCapability::OnConnectReply(callback, error);
 }
 
 // always called from an async context

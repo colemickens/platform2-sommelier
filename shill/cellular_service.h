@@ -24,6 +24,9 @@ class Manager;
 
 class CellularService : public Service {
  public:
+  static const char kStorageAPN[];
+  static const char kStorageLastGoodAPN[];
+
   // Online payment portal.
   class OLP {
    public:
@@ -88,11 +91,49 @@ class CellularService : public Service {
   void SetRoamingState(const std::string &state);
   const std::string &roaming_state() const { return roaming_state_; }
 
+  // Overrride Load and Save from parent Service class.  We will call
+  // the parent method.
+  virtual bool Load(StoreInterface *storage);
+  virtual bool Save(StoreInterface *storage);
+
+  Stringmap *GetUserSpecifiedApn();
+  Stringmap *GetLastGoodApn();
+  void SetLastGoodApn(const Stringmap &apn_info);
+  void ClearLastGoodApn();
+
  private:
   friend class CellularServiceTest;
+  FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
+  FRIEND_TEST(CellularCapabilityTest, TryApns);
   FRIEND_TEST(CellularTest, Connect);
 
+  void HelpRegisterDerivedStringmap(
+      const std::string &name,
+      Stringmap(CellularService::*get)(Error *error),
+      void(CellularService::*set)(const Stringmap &value, Error *error));
+
   virtual std::string GetDeviceRpcId(Error *error);
+
+  Stringmap GetApn(Error *error);
+  void SetApn(const Stringmap &value, Error *error);
+  static void SaveApn(StoreInterface *storage,
+                      const std::string &storage_group,
+                      const Stringmap *apn_info,
+                      const std::string &keytag);
+  static void SaveApnField(StoreInterface *storage,
+                           const std::string &storage_group,
+                           const Stringmap *apn_info,
+                           const std::string &keytag,
+                           const std::string &apntag);
+  static void LoadApn(StoreInterface *storage,
+                      const std::string &storage_group,
+                      const std::string &keytag,
+                      Stringmap *apn_info);
+  static bool LoadApnField(StoreInterface *storage,
+                           const std::string &storage_group,
+                           const std::string &keytag,
+                           const std::string &apntag,
+                           Stringmap *apn_info);
 
   // Properties
   std::string activation_state_;
@@ -102,8 +143,8 @@ class CellularService : public Service {
   OLP olp_;
   std::string usage_url_;
 
-  std::map<std::string, std::string> apn_info_;
-  std::map<std::string, std::string> last_good_apn_info_;
+  Stringmap apn_info_;
+  Stringmap last_good_apn_info_;
 
   std::string storage_identifier_;
 

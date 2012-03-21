@@ -23,6 +23,7 @@
 #include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
+#include "shill/mock_profile.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/nice_mock_control.h"
 #include "shill/proxy_factory.h"
@@ -65,12 +66,15 @@ class CellularCapabilityTest : public testing::Test {
         gsm_network_proxy_(new MockModemGSMNetworkProxy()),
         proxy_factory_(this),
         capability_(NULL),
-        device_adaptor_(NULL) {}
+        device_adaptor_(NULL),
+        provider_db_(NULL) {}
 
   virtual ~CellularCapabilityTest() {
     cellular_->service_ = NULL;
     capability_ = NULL;
     device_adaptor_ = NULL;
+    mobile_provider_close_db(provider_db_);
+    provider_db_ = NULL;
   }
 
   virtual void SetUp() {
@@ -82,6 +86,21 @@ class CellularCapabilityTest : public testing::Test {
 
   virtual void TearDown() {
     capability_->proxy_factory_ = NULL;
+  }
+
+  void InitProviderDB() {
+    provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
+    ASSERT_TRUE(provider_db_);
+    cellular_->provider_db_ = provider_db_;
+  }
+
+  void SetService() {
+    cellular_->service_ = new CellularService(
+        &control_, &dispatcher_, &metrics_, NULL, cellular_);
+  }
+
+  CellularCapabilityGSM *GetGsmCapability() {
+    return dynamic_cast<CellularCapabilityGSM *>(cellular_->capability_.get());
   }
 
   void InvokeEnable(bool enable, Error *error,
@@ -116,6 +135,7 @@ class CellularCapabilityTest : public testing::Test {
   MOCK_METHOD1(TestCallback, void(const Error &error));
 
  protected:
+  static const char kTestMobileProviderDBPath[];
   static const char kTestCarrier[];
   static const char kManufacturer[];
   static const char kModelID[];
@@ -193,8 +213,11 @@ class CellularCapabilityTest : public testing::Test {
   TestProxyFactory proxy_factory_;
   CellularCapability *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
+  mobile_provider_db *provider_db_;
 };
 
+const char CellularCapabilityTest::kTestMobileProviderDBPath[] =
+    "provider_db_unittest.bfd";
 const char CellularCapabilityTest::kTestCarrier[] = "The Cellular Carrier";
 const char CellularCapabilityTest::kManufacturer[] = "Company";
 const char CellularCapabilityTest::kModelID[] = "Gobi 2000";
@@ -295,6 +318,78 @@ TEST_F(CellularCapabilityTest, AllowRoaming) {
   capability_->SetAllowRoaming(false, NULL);
   EXPECT_FALSE(capability_->GetAllowRoaming(NULL));
   EXPECT_EQ(Cellular::kStateRegistered, cellular_->state_);
+}
+
+MATCHER_P(HasApn, apn, "") {
+  DBusPropertiesMap::const_iterator it = arg.find(flimflam::kApnProperty);
+  return it != arg.end() && apn == it->second.reader().get_string();
+}
+
+MATCHER(HasNoApn, "") {
+  return arg.find(flimflam::kApnProperty) == arg.end();
+}
+
+TEST_F(CellularCapabilityTest, TryApns) {
+  static const string kLastGoodApn("remembered.apn");
+  static const string kSuppliedApn("my.apn");
+  static const string kTmobileApn1("epc.tmobile.com");
+  static const string kTmobileApn2("wap.voicestream.com");
+  static const string kTmobileApn3("internet2.voicestream.com");
+  static const string kTmobileApn4("internet3.voicestream.com");
+
+  using testing::InSequence;
+  {
+    InSequence dummy;
+    EXPECT_CALL(*simple_proxy_, Connect(HasApn(kLastGoodApn), _, _, _));
+    EXPECT_CALL(*simple_proxy_, Connect(HasApn(kSuppliedApn), _, _, _));
+    EXPECT_CALL(*simple_proxy_, Connect(HasApn(kTmobileApn1), _, _, _));
+    EXPECT_CALL(*simple_proxy_, Connect(HasApn(kTmobileApn2), _, _, _));
+    EXPECT_CALL(*simple_proxy_, Connect(HasApn(kTmobileApn3), _, _, _));
+    EXPECT_CALL(*simple_proxy_, Connect(HasApn(kTmobileApn4), _, _, _));
+    EXPECT_CALL(*simple_proxy_, Connect(HasNoApn(), _, _, _));
+  }
+  CellularCapabilityGSM *gsm_capability = GetGsmCapability();
+  SetService();
+  gsm_capability->imsi_ = "310240123456789";
+  InitProviderDB();
+  gsm_capability->SetHomeProvider();
+  ProfileRefPtr profile(new NiceMock<MockProfile>(
+      &control_, reinterpret_cast<Manager *>(NULL)));
+  cellular_->service()->set_profile(profile);
+
+  Error error;
+  Stringmap apn_info;
+  DBusPropertiesMap props;
+  apn_info[flimflam::kApnProperty] = kSuppliedApn;
+  cellular_->service()->SetApn(apn_info, &error);
+
+  apn_info.clear();
+  apn_info[flimflam::kApnProperty] = kLastGoodApn;
+  cellular_->service()->SetLastGoodApn(apn_info);
+
+  capability_->SetupConnectProperties(&props);
+  // We expect the list to contain the last good APN, plus
+  // the user-supplied APN, plus the 4 APNs from the mobile
+  // provider info database.
+  EXPECT_EQ(6, gsm_capability->apn_try_list_.size());
+  EXPECT_FALSE(props.find(flimflam::kApnProperty) == props.end());
+  EXPECT_EQ(kLastGoodApn, props[flimflam::kApnProperty].reader().get_string());
+
+  SetSimpleProxy();
+  capability_->Connect(props, &error, ResultCallback());
+  Error cerror(Error::kInvalidApn);
+  capability_->OnConnectReply(ResultCallback(), cerror);
+  EXPECT_EQ(5, gsm_capability->apn_try_list_.size());
+  capability_->OnConnectReply(ResultCallback(), cerror);
+  EXPECT_EQ(4, gsm_capability->apn_try_list_.size());
+  capability_->OnConnectReply(ResultCallback(), cerror);
+  EXPECT_EQ(3, gsm_capability->apn_try_list_.size());
+  capability_->OnConnectReply(ResultCallback(), cerror);
+  EXPECT_EQ(2, gsm_capability->apn_try_list_.size());
+  capability_->OnConnectReply(ResultCallback(), cerror);
+  EXPECT_EQ(1, gsm_capability->apn_try_list_.size());
+  capability_->OnConnectReply(ResultCallback(), cerror);
+  EXPECT_EQ(0, gsm_capability->apn_try_list_.size());
 }
 
 }  // namespace shill

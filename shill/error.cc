@@ -40,6 +40,7 @@ const Error::Info Error::kInfos[kNumErrors] = {
   { "IncorrectPin", "Incorrect PIN" },
   { "PinRequired", "SIM PIN is required"},
   { "PinBlocked", "SIM PIN is blocked"},
+  { "InvalidApn", "Invalid APN" },
   { "PermissionDenied", "Permission denied" }
 };
 
