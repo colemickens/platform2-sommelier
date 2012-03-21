@@ -250,6 +250,9 @@ class Service : public base::RefCounted<Service> {
   const std::string &friendly_name() const { return friendly_name_; }
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
 
+  const std::string &guid() const { return guid_; }
+  void set_guid(const std::string &guid) { guid_ = guid; }
+
   int32 priority() const { return priority_; }
   void set_priority(int32 priority) { priority_ = priority; }
 
@@ -425,6 +428,7 @@ class Service : public base::RefCounted<Service> {
   uint8 strength_;
   std::string proxy_config_;
   std::string ui_data_;
+  std::string guid_;
   bool save_credentials_;
   EapCredentials eap_;  // Only saved if |save_credentials_| is true.
   Technology::Identifier technology_;

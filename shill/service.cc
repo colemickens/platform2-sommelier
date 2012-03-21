@@ -132,6 +132,7 @@ Service::Service(ControlInterface *control_interface,
   HelpRegisterDerivedString(flimflam::kDeviceProperty,
                             &Service::GetDeviceRpcId,
                             NULL);
+  store_.RegisterString(flimflam::kGuidProperty, &guid_);
 
   store_.RegisterString(flimflam::kEapIdentityProperty, &eap_.identity);
   store_.RegisterString(flimflam::kEAPEAPProperty, &eap_.eap);
@@ -283,6 +284,7 @@ bool Service::Load(StoreInterface *storage) {
   storage->GetString(id, kStorageProxyConfig, &proxy_config_);
   storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
   storage->GetString(id, kStorageUIData, &ui_data_);
+  storage->GetString(id, kStorageGUID, &guid_);
 
   LoadEapCredentials(storage, id);
 
@@ -341,6 +343,7 @@ bool Service::Save(StoreInterface *storage) {
     storage->SetBool(id, kStorageSaveCredentials, false);
   }
   SaveString(storage, id, kStorageUIData, ui_data_, false, true);
+  SaveString(storage, id, kStorageGUID, guid_, false, true);
 
   SaveEapCredentials(storage, id);
 
