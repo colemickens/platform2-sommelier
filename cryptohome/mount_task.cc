@@ -121,6 +121,14 @@ void MountTaskResetTpmContext::Run() {
   MountTask::Notify();
 }
 
+void MountTaskRemoveTrackedSubdirectories::Run() {
+  result()->set_return_status(true);
+  if (mount_) {
+    mount_->CleanUnmountedTrackedSubdirectories();
+  }
+  MountTask::Notify();
+}
+
 void MountTaskAutomaticFreeDiskSpace::Run() {
   bool rc = false;
   if (mount_) {

@@ -373,6 +373,21 @@ class MountTaskResetTpmContext : public MountTask {
 };
 
 // Implements asychronous removal of tracked subdirectories
+class MountTaskRemoveTrackedSubdirectories : public MountTask {
+ public:
+  MountTaskRemoveTrackedSubdirectories(MountTaskObserver* observer,
+                                       Mount* mount)
+      : MountTask(observer, mount, UsernamePasskey()) {
+  }
+  virtual ~MountTaskRemoveTrackedSubdirectories() { }
+
+  virtual void Run();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MountTaskRemoveTrackedSubdirectories);
+};
+
+// Implements asychronous removal of tracked subdirectories
 class MountTaskAutomaticFreeDiskSpace : public MountTask {
  public:
   MountTaskAutomaticFreeDiskSpace(MountTaskObserver* observer,

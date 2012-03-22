@@ -157,6 +157,35 @@ gboolean cryptohome_unmount_for_user(Cryptohome *self,
                                      GError **error) {
   CRYPTOHOME_WRAP_METHOD(UnmountForUser, userid, OUT_result);
 }
+gboolean cryptohome_remove_tracked_subdirectories(Cryptohome *self,
+                           gboolean *OUT_result,
+                           GError **error) {
+  CRYPTOHOME_WRAP_METHOD(RemoveTrackedSubdirectories, OUT_result);
+}
+gboolean cryptohome_async_remove_tracked_subdirectories(Cryptohome *self,
+                                 gint *OUT_async_id,
+                                 GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncRemoveTrackedSubdirectories, OUT_async_id);
+}
+gboolean cryptohome_do_automatic_free_disk_space_control(Cryptohome *self,
+                                                         gboolean *OUT_result,
+                                                         GError **error) {
+  CRYPTOHOME_WRAP_METHOD(DoAutomaticFreeDiskSpaceControl, OUT_result);
+}
+gboolean cryptohome_async_do_automatic_free_disk_space_control(
+    Cryptohome *self,
+    gint *OUT_async_id,
+    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncDoAutomaticFreeDiskSpaceControl, OUT_async_id);
+}
+gboolean cryptohome_async_update_current_user_activity_timestamp(
+    Cryptohome *self,
+    gint time_shift_sec,
+    gint *OUT_async_id,
+    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncUpdateCurrentUserActivityTimestamp,
+                         time_shift_sec, OUT_async_id);
+}
 gboolean cryptohome_tpm_is_ready(Cryptohome *self,
                                  gboolean *OUT_ready,
                                  GError **error) {
