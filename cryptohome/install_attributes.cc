@@ -183,7 +183,7 @@ bool InstallAttributes::Get(const std::string& name,
 bool InstallAttributes::GetByIndex(int index,
                                    std::string* name,
                                    chromeos::Blob* value) const {
-  if (index < 0 || index > attributes_->attributes_size()) {
+  if (index < 0 || index >= attributes_->attributes_size()) {
     LOG(ERROR) << "GetByIndex called with invalid index.";
     return false;
   }
@@ -293,9 +293,9 @@ Value* InstallAttributes::GetStatus() {
     DictionaryValue* attrs = new DictionaryValue();
     std::string key;
     chromeos::Blob value;
-    for (int i = 0; GetByIndex(i, &key, &value); i++) {
-      std::string value_str(reinterpret_cast<const char*>(&value[0]),
-                            value.size());
+    for (int i = 0; i < Count(); i++) {
+      GetByIndex(i, &key, &value);
+      std::string value_str(reinterpret_cast<const char*>(&value[0]));
       attrs->SetString(key, value_str);
     }
     dv->Set("attrs", attrs);
