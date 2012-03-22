@@ -25,7 +25,7 @@ using base::TimeDelta;
 namespace {
 
 // Name of the internal output.
-const char kLcdOutputName[] = "LVDS";
+const char kPanelOutputName[] = "LVDS";
 // The screen DPI we pass to X11.
 const float kScreenDpi = 96.0;
 // An inch in mm.
@@ -59,9 +59,10 @@ namespace power_manager {
 MonitorReconfigure::MonitorReconfigure()
     : display_(NULL),
       window_(None),
+      screen_info_(NULL),
       noutput_(-1),
       last_configuration_time_(Time::Now()),
-      lvds_connection_(RR_UnknownConnection),
+      panel_connection_(RR_UnknownConnection),
       dual_head_mode_(kModeClone),
       need_switch_mode_(false),
       is_projecting_(false),
@@ -74,9 +75,10 @@ MonitorReconfigure::MonitorReconfigure(
     BacklightController* backlight_ctl)
     : display_(NULL),
       window_(None),
+      screen_info_(NULL),
       noutput_(-1),
       last_configuration_time_(Time::Now()),
-      lvds_connection_(RR_UnknownConnection),
+      panel_connection_(RR_UnknownConnection),
       dual_head_mode_(kModeClone),
       need_switch_mode_(false),
       is_projecting_(false),
@@ -104,10 +106,62 @@ bool MonitorReconfigure::Init() {
   if (backlight_ctl_)
     backlight_ctl_->set_monitor_reconfigure(this);
 
+  CheckPanelConnection();
+
   // Call Run() on startup to setup screens and initialize display info.
   Run(false);
 
   return true;
+}
+
+bool MonitorReconfigure::SetupXrandr() {
+
+  display_ = XOpenDisplay(NULL);
+
+  // Give up if we can't open the display.
+  if (!display_) {
+    LOG(WARNING) << "Could not open display";
+    return false;
+  }
+
+  window_ = RootWindow(display_, DefaultScreen(display_));
+  screen_info_ = XRRGetScreenResources(display_, window_);
+
+  // Give up if we can't obtain the XRandr information.
+  if (!screen_info_) {
+    LOG(WARNING) << "Could not get XRandr information";
+    XCloseDisplay(display_);
+    display_ = NULL;
+    window_ = None;
+    return false;
+  }
+
+  for (int i = 0; i < screen_info_->nmode; ++i) {
+    XRRModeInfo* current_mode = &screen_info_->modes[i];
+    mode_map_[current_mode->id] = current_mode;
+  }
+
+  return true;
+}
+
+void MonitorReconfigure::ClearXrandr() {
+  if (screen_info_)
+    XRRFreeScreenResources(screen_info_);
+  screen_info_ = NULL;
+  if (display_)
+    XCloseDisplay(display_);
+  display_ = NULL;
+  window_ = None;
+  mode_map_.clear();
+}
+
+void MonitorReconfigure::ClearUsableOutputsInfo() {
+  usable_outputs_.clear();
+  for (unsigned i = 0; i < usable_outputs_info_.size(); i++)
+    if (usable_outputs_info_[i])
+      XRRFreeOutputInfo(usable_outputs_info_[i]);
+  usable_outputs_info_.clear();
+  usable_outputs_crtc_.clear();
 }
 
 XRRModeInfo* MonitorReconfigure::GetModeInfo(RRMode mode) {
@@ -136,30 +190,38 @@ void MonitorReconfigure::SetScreenOn() {
 
 void MonitorReconfigure::SetScreenOff() {
   LOG(INFO) << "MonitorReconfigure::SetScreenOff()";
-  DisableAllOutputs();
-  last_configuration_time_= Time::Now();
+  if (SetupXrandr()) {
+    DisableAllOutputs();
+    last_configuration_time_= Time::Now();
+    ClearXrandr();
+  }
+}
+
+void MonitorReconfigure::DisableOutputCrtc(XRROutputInfo* output_info,
+                                           RRCrtc crtc_xid) {
+  int result = XRRSetCrtcConfig(display_,
+                                screen_info_,
+                                crtc_xid,
+                                CurrentTime,
+                                0, 0,  // x, y
+                                None,  // mode
+                                RR_Rotate_0,
+                                NULL,  // outputs
+                                0);    // noutputs
+
+  if (result != RRSetConfigSuccess) {
+    LOG(WARNING) << "Output " << output_info->name
+                 << " failed to disable crtc " << crtc_xid;
+  } else {
+    LOG(INFO) << "Output " << output_info->name
+              << " disabled crtc " << crtc_xid;
+  }
 }
 
 void MonitorReconfigure::DisableOutput(XRROutputInfo* output_info) {
   for (int c = 0; c < output_info->ncrtc; c++) {
     RRCrtc crtc_xid = output_info->crtcs[c];
-    int result = XRRSetCrtcConfig(display_,
-                                  screen_info_,
-                                  crtc_xid,
-                                  CurrentTime,
-                                  0, 0,  // x, y
-                                  None,  // mode
-                                  RR_Rotate_0,
-                                  NULL,  // outputs
-                                  0);    // noutputs
-
-    if (result != RRSetConfigSuccess) {
-      LOG(WARNING) << "Output " << output_info->name
-                   << " failed to disable crtc " << crtc_xid;
-    } else {
-      LOG(INFO) << "Output " << output_info->name
-                << " disabled crtc " << crtc_xid;
-    }
+    DisableOutputCrtc(output_info, crtc_xid);
   }
 }
 
@@ -236,20 +298,34 @@ int MonitorReconfigure::GetConnectedOutputsNum() {
   return count;
 }
 
-void MonitorReconfigure::RecordLVDSConnection() {
-  lvds_connection_ = RR_Disconnected;
+bool MonitorReconfigure::HasPanelConnection() {
+  return panel_connection_ == RR_Connected;
+}
+
+// TODO(miletus@) : Need to have a different way to check panel connection for
+// Arrow since Arrow uses DP for panel connection.
+void MonitorReconfigure::CheckPanelConnection() {
+  if (panel_connection_ != RR_UnknownConnection)
+    return;
+
+  if (!SetupXrandr())
+    return;
+
+  panel_connection_ = RR_Disconnected;
   for (int i = 0; i < screen_info_->noutput; i++) {
     XRROutputInfo* output_info = XRRGetOutputInfo(display_,
                                                   screen_info_,
                                                   screen_info_->outputs[i]);
     if (strncmp(output_info->name,
-                kLcdOutputName,
-                strlen(kLcdOutputName)) == 0) {
+                kPanelOutputName,
+                strlen(kPanelOutputName)) == 0) {
       if (output_info->connection == RR_Connected)
-        lvds_connection_ = RR_Connected;
+        panel_connection_ = RR_Connected;
       break;
     }
   }
+
+  ClearXrandr();
 }
 
 bool MonitorReconfigure::NeedReconfigure() {
@@ -299,10 +375,10 @@ bool MonitorReconfigure::NeedReconfigure() {
       } else {
         LOG(INFO) << "Output number does not change, Waking up from suspend?";
         // This is the case of waking from suspend and outputs do not change.
-        // If we only have LVDS connection, skip the reconfigure and just resume
-        // to the state of before suspend.
-        if (noutput_ == 1 && lvds_connection_ == RR_Connected) {
-          LOG(INFO) << "Only have LVDS connection, skip reconfigure";
+        // If we only have panel connection, skip the reconfigure and just
+        // resume to the state of before suspend.
+        if (noutput_ == 1 && panel_connection_ == RR_Connected) {
+          LOG(INFO) << "Only have Panel connection, skip reconfigure";
           need_reconfigure = false;
         } else {
           LOG(INFO) << "Have " << noutput_ << " outputs, need reconfigure";
@@ -425,11 +501,8 @@ void MonitorReconfigure::RunExtended() {
   CHECK(DPMSEnable(display_));
   CHECK(DPMSForceLevel(display_, DPMSModeOn));
 
-  // If we have an LVDS output, and another output is in use, we are projecting.
-  // TODO(marcheu): handle the case where the panel isn't LDVS but DP; we have
-  // to find a way to tell a laptop's DP from a desktop's DP. This will be an
-  // issue on Arrow.
-  is_projecting_ = (lvds_connection_ == RR_Connected) && num_used_outputs > 1;
+  // If we have an panel output and another output is in use, we are projecting.
+  is_projecting_ = (panel_connection_ == RR_Connected) && num_used_outputs > 1;
 
   // Now let the server go and sync all changes.
   XUngrabServer(display_);
@@ -481,17 +554,6 @@ void MonitorReconfigure::RunClone(
 
   if (was_projecting != is_projecting_ && projection_callback_ != NULL)
     projection_callback_(projection_callback_data_);
-
-  usable_outputs_.clear();
-  for (unsigned i = 0; i < usable_outputs_info_.size(); i++)
-    if (usable_outputs_info_[i])
-      XRRFreeOutputInfo(usable_outputs_info_[i]);
-  usable_outputs_info_.clear();
-  XRRFreeScreenResources(screen_info_);
-
-  XCloseDisplay(display_);
-  return;
-
 }
 
 void  MonitorReconfigure::SwitchMode() {
@@ -502,30 +564,11 @@ void  MonitorReconfigure::SwitchMode() {
 }
 
 void MonitorReconfigure::Run(bool force_reconfigure) {
-  usable_outputs_.clear();
-  usable_outputs_info_.clear();
-  usable_outputs_crtc_.clear();
-  mode_map_.clear();
-  display_ = XOpenDisplay(NULL);
+  ClearXrandr();
+  ClearUsableOutputsInfo();
 
-  // Give up if we can't open the display.
-  if (!display_) {
-    LOG(WARNING) << "Could not open display";
+  if (!SetupXrandr())
     return;
-  }
-
-  window_ = RootWindow(display_, DefaultScreen(display_));
-  screen_info_ = XRRGetScreenResources(display_, window_);
-
-  // Give up if we can't obtain the XRandr information.
-  if (!screen_info_) {
-    LOG(WARNING) << "Could not get XRandr information";
-    XCloseDisplay(display_);
-    return;
-  }
-
-  if (lvds_connection_ == RR_UnknownConnection)
-    RecordLVDSConnection();
 
   if (!force_reconfigure && !NeedReconfigure())
     return;
@@ -589,6 +632,9 @@ void MonitorReconfigure::Run(bool force_reconfigure) {
       }
     }
   }
+
+  ClearXrandr();
+  ClearUsableOutputsInfo();
 }
 
 void MonitorReconfigure::SetProjectionCallback(void (*func)(void*),
@@ -629,8 +675,8 @@ void MonitorReconfigure::DetermineOutputs() {
   // If the second output is LVDS, put it in first place.
   if (usable_outputs_.size() == 2 &&
       strncmp(usable_outputs_info_[1]->name,
-              kLcdOutputName,
-              strlen(kLcdOutputName)) == 0) {
+              kPanelOutputName,
+              strlen(kPanelOutputName)) == 0) {
     std::swap(usable_outputs_[0], usable_outputs_[1]);
     std::swap(usable_outputs_info_[0], usable_outputs_info_[1]);
     std::swap(usable_outputs_crtc_[0], usable_outputs_crtc_[1]);

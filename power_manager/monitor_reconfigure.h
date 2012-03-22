@@ -64,7 +64,19 @@ class MonitorReconfigure {
   void SetScreenOn();
   void SetScreenOff();
 
+  // Return whether the device has panel output connected.
+  bool HasPanelConnection();
+
  private:
+  // Setup |display_|, |window_|, |screen_info_| and |mode_map_| value.
+  bool SetupXrandr();
+
+  // Clear |display_|, |window_|, |screen_info_| and |mode_map_| value.
+  void ClearXrandr();
+
+  // Clear |usable_outputs_|, |usable_outputs_info_| and |usable_outputs_crtc_|.
+  void ClearUsableOutputsInfo();
+
   // Get the XRRModeInfo for |mode|.
   XRRModeInfo* GetModeInfo(RRMode mode);
 
@@ -104,7 +116,10 @@ class MonitorReconfigure {
   // Policy about whether the reconfigure is needed.
   bool NeedReconfigure();
 
-  // Disable the output.
+  // Disable the output on the specified |crtc|.
+  void DisableOutputCrtc(XRROutputInfo* output_info, RRCrtc crtc);
+
+  // Disable the output on all its usable crtcs.
   void DisableOutput(XRROutputInfo* output_info);
 
   // Disables all the the outputs (both connected and disconnected).
@@ -120,8 +135,8 @@ class MonitorReconfigure {
   // Get the number of connected outputs.
   int GetConnectedOutputsNum();
 
-  // Set the the state of |lvds_connection_|.
-  void RecordLVDSConnection();
+  // Set the the state of |panel_connection_|.
+  void CheckPanelConnection();
 
   // Callback to watch for xrandr hotplug events.
   SIGNAL_CALLBACK_2(MonitorReconfigure, GdkFilterReturn, GdkEventFilter,
@@ -150,9 +165,9 @@ class MonitorReconfigure {
   // The timestamp of last monitor reconfiguration.
   base::Time last_configuration_time_;
 
-  // The status of LVDS connection:
+  // The status of panel connection:
   // RR_Connected, RR_Disconnected, RR_UnknownConnection.
-  Connection lvds_connection_;
+  Connection panel_connection_;
 
   // Current dual head mode.
   DualHeadMode dual_head_mode_;
