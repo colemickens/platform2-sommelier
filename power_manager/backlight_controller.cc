@@ -244,6 +244,9 @@ bool BacklightController::SetPowerState(PowerState new_state) {
       style = TRANSITION_INSTANT;
   }
 
+  if (new_state == BACKLIGHT_SUSPENDED)
+    style = TRANSITION_INSTANT;
+
   bool write_brightness = true;
 #ifdef HAS_ALS
   // For the first time SetPowerState() is called (when the system just
