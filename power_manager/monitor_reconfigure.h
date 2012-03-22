@@ -60,14 +60,29 @@ class MonitorReconfigure {
   // Sets projection callback function and data.
   void SetProjectionCallback(void (*func)(void*), void* data);
 
-  // Public interface for turning on/off the screens (displays).
+  // Public interface for turning on/off all the screens (displays).
   void SetScreenOn();
   void SetScreenOff();
 
+  // Public interface for turning on/off the internal panel.
+  void SetInternalPanelOn();
+  void SetInternalPanelOff();
+
   // Return whether the device has panel output connected.
-  bool HasPanelConnection();
+  bool HasInternalPanelConnection();
 
  private:
+
+  struct ConnectionState {
+    ConnectionState(RRCrtc crtc, RRMode mode, int position_x, int position_y);
+    ConnectionState();
+
+    RRCrtc crtc;
+    RRMode mode;
+    int position_x;
+    int position_y;
+  };
+
   // Setup |display_|, |window_|, |screen_info_| and |mode_map_| value.
   bool SetupXrandr();
 
@@ -135,8 +150,8 @@ class MonitorReconfigure {
   // Get the number of connected outputs.
   int GetConnectedOutputsNum();
 
-  // Set the the state of |panel_connection_|.
-  void CheckPanelConnection();
+  // Set the the state of |internal_panel_connection_|.
+  void CheckInternalPanelConnection();
 
   // Callback to watch for xrandr hotplug events.
   SIGNAL_CALLBACK_2(MonitorReconfigure, GdkFilterReturn, GdkEventFilter,
@@ -165,9 +180,15 @@ class MonitorReconfigure {
   // The timestamp of last monitor reconfiguration.
   base::Time last_configuration_time_;
 
-  // The status of panel connection:
+  // The status of internal panel connection:
   // RR_Connected, RR_Disconnected, RR_UnknownConnection.
-  Connection panel_connection_;
+  Connection internal_panel_connection_;
+
+  // Saved internal panel connection state.
+  ConnectionState internal_panel_state_;
+
+  // Whether the internal panel output is enabled.
+  bool is_internal_panel_enabled_;
 
   // Current dual head mode.
   DualHeadMode dual_head_mode_;

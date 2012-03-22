@@ -14,6 +14,7 @@
 #include <cstdlib>
 
 #include "base/logging.h"
+#include "base/string_util.h"
 #include "power_manager/backlight_controller.h"
 
 using std::max;
@@ -25,7 +26,7 @@ using base::TimeDelta;
 namespace {
 
 // Name of the internal output.
-const char kPanelOutputName[] = "LVDS";
+const char kInternalPanelName[] = "LVDS";
 // The screen DPI we pass to X11.
 const float kScreenDpi = 96.0;
 // An inch in mm.
@@ -52,9 +53,32 @@ const char* RRNotifySubtypeToString(int subtype) {
   }
 }
 
+// TODO(miletus@) : May need a different implementation for Arrow.
+bool IsInternalPanel(XRROutputInfo* output_info) {
+  return StartsWithASCII(output_info->name, kInternalPanelName, true);
+}
+
 }  // namespace
 
 namespace power_manager {
+
+MonitorReconfigure::ConnectionState::ConnectionState(
+    RRCrtc crtc,
+    RRMode mode,
+    int position_x,
+    int position_y)
+    : crtc(crtc),
+      mode(mode),
+      position_x(position_x),
+      position_y(position_y) {
+}
+
+MonitorReconfigure::ConnectionState::ConnectionState()
+    : crtc(0),
+      mode(0),
+      position_x(-1),
+      position_y(-1) {
+}
 
 MonitorReconfigure::MonitorReconfigure()
     : display_(NULL),
@@ -62,7 +86,8 @@ MonitorReconfigure::MonitorReconfigure()
       screen_info_(NULL),
       noutput_(-1),
       last_configuration_time_(Time::Now()),
-      panel_connection_(RR_UnknownConnection),
+      internal_panel_connection_(RR_UnknownConnection),
+      is_internal_panel_enabled_(true),
       dual_head_mode_(kModeClone),
       need_switch_mode_(false),
       is_projecting_(false),
@@ -78,7 +103,8 @@ MonitorReconfigure::MonitorReconfigure(
       screen_info_(NULL),
       noutput_(-1),
       last_configuration_time_(Time::Now()),
-      panel_connection_(RR_UnknownConnection),
+      internal_panel_connection_(RR_UnknownConnection),
+      is_internal_panel_enabled_(true),
       dual_head_mode_(kModeClone),
       need_switch_mode_(false),
       is_projecting_(false),
@@ -106,7 +132,7 @@ bool MonitorReconfigure::Init() {
   if (backlight_ctl_)
     backlight_ctl_->set_monitor_reconfigure(this);
 
-  CheckPanelConnection();
+  CheckInternalPanelConnection();
 
   // Call Run() on startup to setup screens and initialize display info.
   Run(false);
@@ -197,6 +223,86 @@ void MonitorReconfigure::SetScreenOff() {
   }
 }
 
+void MonitorReconfigure::SetInternalPanelOn() {
+  if (is_internal_panel_enabled_)
+    return;
+
+  LOG(INFO) << "MonitorReconfigure::SetInternalPanelOn()";
+
+  if (!SetupXrandr())
+    return;
+
+  for (int i = 0; i < screen_info_->noutput; i++) {
+    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
+                                                  screen_info_,
+                                                  screen_info_->outputs[i]);
+    if (IsInternalPanel(output_info)) {
+      if (output_info->connection == RR_Connected) {
+        // Restore the panel output.
+        usable_outputs_.push_back(screen_info_->outputs[i]);
+        usable_outputs_info_.push_back(output_info);
+
+        RRCrtc crtc;
+        RRMode mode;
+        int x, y;
+
+        // If we don't have a valid saved panel state, we restore the
+        // panel to a default state.
+        if (internal_panel_state_.crtc == 0) {
+          LOG(INFO) << "Restore panel to a default state";
+          if (output_info->ncrtc == 0 || output_info->nmode == 0) {
+            LOG(WARNING) << "Panel does not have usable crtc/mode at all";
+            break;
+          }
+          // Use the highest resolution.
+          vector<ResolutionSelector::Mode> lcd_modes;
+          SortModesByResolution(usable_outputs_[0], &lcd_modes);
+          mode = lcd_modes[0].id;
+          // Use the first usable crtc.
+          crtc = output_info->crtcs[0];
+          x = y = 0;
+        } else { // Use saved panel state.
+          LOG(INFO) << "Restore panel to a saved state.";
+          crtc = internal_panel_state_.crtc;
+          mode = internal_panel_state_.mode;
+          x =  internal_panel_state_.position_x;
+          y =  internal_panel_state_.position_y;
+        }
+
+        usable_outputs_crtc_.push_back(crtc);
+        EnableUsableOutput(0, mode, &x, &y);
+        last_configuration_time_= Time::Now();
+        CHECK(DPMSEnable(display_));
+        CHECK(DPMSForceLevel(display_, DPMSModeOn));
+        // So ClearUsableOutputsInfo() won't double free it.
+        usable_outputs_info_.pop_back();
+      }
+    }
+    XRRFreeOutputInfo(output_info);
+  }
+  ClearUsableOutputsInfo();
+  ClearXrandr();
+}
+
+void MonitorReconfigure::SetInternalPanelOff() {
+  LOG(INFO) << "MonitorReconfigure::SetInternalPanelOff()";
+  if (!SetupXrandr())
+    return;
+
+  for (int i = 0; i < screen_info_->noutput; i++) {
+    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
+                                                  screen_info_,
+                                                  screen_info_->outputs[i]);
+    if (IsInternalPanel(output_info) && output_info->crtc != None) {
+      DisableOutputCrtc(output_info, output_info->crtc);
+      is_internal_panel_enabled_ = false;
+      last_configuration_time_= Time::Now();
+    }
+    XRRFreeOutputInfo(output_info);
+  }
+  ClearXrandr();
+}
+
 void MonitorReconfigure::DisableOutputCrtc(XRROutputInfo* output_info,
                                            RRCrtc crtc_xid) {
   int result = XRRSetCrtcConfig(display_,
@@ -223,6 +329,9 @@ void MonitorReconfigure::DisableOutput(XRROutputInfo* output_info) {
     RRCrtc crtc_xid = output_info->crtcs[c];
     DisableOutputCrtc(output_info, crtc_xid);
   }
+  // Bookkeeping panel state.
+  if (IsInternalPanel(output_info))
+    is_internal_panel_enabled_ = false;
 }
 
 void MonitorReconfigure::DisableAllOutputs() {
@@ -276,6 +385,13 @@ void MonitorReconfigure::EnableUsableOutput(int idx,
       LOG(INFO) << "Output " << output_info->name << " enabled resolution "
                 << mode_info->width << "x" << mode_info->height
                 << "+" << x << "+" << y << " with crtc " << crtc_xid;
+
+      // If panel output is enabled, we save its connection state.
+      if (IsInternalPanel(output_info)) {
+        internal_panel_state_ = ConnectionState(crtc_xid, mode, x, y);
+        is_internal_panel_enabled_ = true;
+      }
+
       if (position_x)
         *position_x += mode_info->width;
       if (position_y)
@@ -293,37 +409,44 @@ int MonitorReconfigure::GetConnectedOutputsNum() {
     // for RR_Connected.
     if (output_info->connection == RR_Connected)
       count++;
+    XRRFreeOutputInfo(output_info);
   }
 
   return count;
 }
 
-bool MonitorReconfigure::HasPanelConnection() {
-  return panel_connection_ == RR_Connected;
+bool MonitorReconfigure::HasInternalPanelConnection() {
+  return internal_panel_connection_ == RR_Connected;
 }
 
 // TODO(miletus@) : Need to have a different way to check panel connection for
 // Arrow since Arrow uses DP for panel connection.
-void MonitorReconfigure::CheckPanelConnection() {
-  if (panel_connection_ != RR_UnknownConnection)
+void MonitorReconfigure::CheckInternalPanelConnection() {
+  if (internal_panel_connection_ != RR_UnknownConnection)
     return;
 
   if (!SetupXrandr())
     return;
 
-  panel_connection_ = RR_Disconnected;
+  internal_panel_connection_ = RR_Disconnected;
   for (int i = 0; i < screen_info_->noutput; i++) {
     XRROutputInfo* output_info = XRRGetOutputInfo(display_,
                                                   screen_info_,
                                                   screen_info_->outputs[i]);
-    if (strncmp(output_info->name,
-                kPanelOutputName,
-                strlen(kPanelOutputName)) == 0) {
+
+    if (IsInternalPanel(output_info)) {
       if (output_info->connection == RR_Connected)
-        panel_connection_ = RR_Connected;
+        internal_panel_connection_ = RR_Connected;
+      XRRFreeOutputInfo(output_info);
       break;
     }
+    XRRFreeOutputInfo(output_info);
   }
+
+  // |is_internal_panel_enabled_| deafaults to be true, but if we don't have
+  // panel connection at all, we mark it as not enabled.
+  if (internal_panel_connection_ == RR_Disconnected)
+    is_internal_panel_enabled_ = false;
 
   ClearXrandr();
 }
@@ -377,7 +500,7 @@ bool MonitorReconfigure::NeedReconfigure() {
         // This is the case of waking from suspend and outputs do not change.
         // If we only have panel connection, skip the reconfigure and just
         // resume to the state of before suspend.
-        if (noutput_ == 1 && panel_connection_ == RR_Connected) {
+        if (noutput_ == 1 && internal_panel_connection_ == RR_Connected) {
           LOG(INFO) << "Only have Panel connection, skip reconfigure";
           need_reconfigure = false;
         } else {
@@ -502,7 +625,8 @@ void MonitorReconfigure::RunExtended() {
   CHECK(DPMSForceLevel(display_, DPMSModeOn));
 
   // If we have an panel output and another output is in use, we are projecting.
-  is_projecting_ = (panel_connection_ == RR_Connected) && num_used_outputs > 1;
+  is_projecting_ = (internal_panel_connection_ == RR_Connected) &&
+      num_used_outputs > 1;
 
   // Now let the server go and sync all changes.
   XUngrabServer(display_);
@@ -674,9 +798,7 @@ void MonitorReconfigure::DetermineOutputs() {
 
   // If the second output is LVDS, put it in first place.
   if (usable_outputs_.size() == 2 &&
-      strncmp(usable_outputs_info_[1]->name,
-              kPanelOutputName,
-              strlen(kPanelOutputName)) == 0) {
+      IsInternalPanel(usable_outputs_info_[1])) {
     std::swap(usable_outputs_[0], usable_outputs_[1]);
     std::swap(usable_outputs_info_[0], usable_outputs_info_[1]);
     std::swap(usable_outputs_crtc_[0], usable_outputs_crtc_[1]);

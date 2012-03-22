@@ -560,6 +560,10 @@ gboolean BacklightController::SetBrightnessHard(int64 level,
   if (target_level_ != target_level)
     return false; // Return false so glib doesn't repeat.
 
+  if (level != 0 && target_level != 0 && monitor_reconfigure_ &&
+      monitor_reconfigure_->HasInternalPanelConnection())
+    monitor_reconfigure_->SetInternalPanelOn();
+
   DLOG(INFO) << "Setting brightness to " << level;
   if (!backlight_->SetBrightnessLevel(level))
     DLOG(INFO) << "Could not set brightness to " << level;
@@ -567,10 +571,17 @@ gboolean BacklightController::SetBrightnessHard(int64 level,
   if (level == target_level)
     is_in_transition_ = false;
 
-  if (level == 0 && target_level == 0 &&
-      (state_ == BACKLIGHT_IDLE_OFF || state_ == BACKLIGHT_SUSPENDED))
-    if (monitor_reconfigure_)
+  if (level == 0 && target_level == 0 && monitor_reconfigure_) {
+    // If it is in IDLE_OFF state, we call SetScreenOff() to turn off all the
+    // display outputs.
+    if (state_ == BACKLIGHT_IDLE_OFF || state_ == BACKLIGHT_SUSPENDED)
       monitor_reconfigure_->SetScreenOff();
+    // If backlight is 0 but we are in ACTIVE state, we turn off the internal
+    // panel only.
+    else if (state_ == BACKLIGHT_ACTIVE &&
+             monitor_reconfigure_->HasInternalPanelConnection())
+      monitor_reconfigure_->SetInternalPanelOff();
+  }
 
   return false; // Return false so glib doesn't repeat.
 }
