@@ -158,6 +158,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	modem_proxy.o \
 	modem_simple_proxy.o \
 	openvpn_driver.o \
+	openvpn_management_server.o \
 	portal_detector.o \
 	power_manager.o \
 	power_manager_proxy.o \
@@ -255,6 +256,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_modem_manager_proxy.o \
 	mock_modem_proxy.o \
 	mock_modem_simple_proxy.o \
+	mock_openvpn_driver.o \
 	mock_portal_detector.o \
 	mock_power_manager.o \
 	mock_power_manager_proxy.o \
@@ -281,6 +283,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	modem_unittest.o \
 	nice_mock_control.o \
 	openvpn_driver_unittest.o \
+	openvpn_management_server_unittest.o \
 	portal_detector_unittest.o \
 	power_manager_unittest.o \
 	profile_dbus_property_exporter_unittest.o \
