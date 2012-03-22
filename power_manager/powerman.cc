@@ -250,11 +250,8 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   if (type == DBUS_MESSAGE_TYPE_METHOD_CALL) {
     DBusMethodHandlerTable::iterator iter =
         daemon->dbus_method_handler_table_.find(dbus_message_pair);
-    if (iter == daemon->dbus_method_handler_table_.end()) {
-      LOG(ERROR) << "Unable to find dbus method handler for " << member
-                 << " on interface " << interface;
+    if (iter == daemon->dbus_method_handler_table_.end())
       return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    }
     LOG(INFO) << "Got " << member << " method call";
     DBusMethodHandler callback = iter->second;
     DBusMessage* reply = (daemon->*callback)(message);
@@ -268,11 +265,8 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   } else if (type == DBUS_MESSAGE_TYPE_SIGNAL) {
     DBusSignalHandlerTable::iterator iter =
         daemon->dbus_signal_handler_table_.find(dbus_message_pair);
-    if (iter == daemon->dbus_signal_handler_table_.end()) {
-      LOG(ERROR) << "Unable to find dbus signal handler for " << member
-                 << " on interface " << interface;
+    if (iter == daemon->dbus_signal_handler_table_.end())
       return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    }
     LOG(INFO) << "Got " << member << " signal";
     DBusSignalHandler callback = iter->second;
     (daemon->*callback)(message);
