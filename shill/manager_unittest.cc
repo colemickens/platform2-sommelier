@@ -33,6 +33,7 @@
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_wifi.h"
+#include "shill/mock_wifi_service.h"
 #include "shill/property_store_unittest.h"
 #include "shill/service_under_test.h"
 #include "shill/wifi_service.h"
@@ -498,6 +499,19 @@ TEST_F(ManagerTest, MoveService) {
   manager.Stop();
 }
 
+TEST_F(ManagerTest, LookupProfileByRpcIdentifier) {
+  scoped_refptr<MockProfile> mock_profile(
+      new MockProfile(control_interface(), manager(), ""));
+  const string kProfileName("profile0");
+  EXPECT_CALL(*mock_profile, GetRpcIdentifier())
+      .WillRepeatedly(Return(kProfileName));
+  AdoptProfile(manager(), mock_profile);
+
+  EXPECT_FALSE(manager()->LookupProfileByRpcIdentifier("foo"));
+  ProfileRefPtr profile = manager()->LookupProfileByRpcIdentifier(kProfileName);
+  EXPECT_EQ(mock_profile.get(), profile.get());
+}
+
 TEST_F(ManagerTest, SetProfileForService) {
   scoped_refptr<MockProfile> profile0(
       new MockProfile(control_interface(), manager(), ""));
@@ -515,7 +529,7 @@ TEST_F(ManagerTest, SetProfileForService) {
     Error error;
     manager()->SetProfileForService(service, "foo", &error);
     EXPECT_EQ(Error::kInvalidArguments, error.type());
-    EXPECT_EQ("Unknown Profile requested for Service", error.message());
+    EXPECT_EQ("Unknown Profile foo requested for Service", error.message());
   }
 
   {
@@ -910,6 +924,204 @@ TEST_F(ManagerTest, GetServiceVPN) {
   ServiceRefPtr service = manager()->GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   EXPECT_TRUE(service);
+}
+
+TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {
+  // Manager calls ActiveProfile() so we need at least one profile installed.
+  scoped_refptr<MockProfile> profile(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
+  AdoptProfile(manager(), profile);
+
+  KeyValueStore args;
+  args.SetString(flimflam::kProfileProperty, "xxx");
+  Error error;
+  manager()->ConfigureService(args, &error);
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("Invalid profile name xxx", error.message());
+}
+
+TEST_F(ManagerTest, ConfigureServiceWithGetServiceFailure) {
+  // Manager calls ActiveProfile() so we need at least one profile installed.
+  scoped_refptr<MockProfile> profile(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
+  AdoptProfile(manager(), profile);
+
+  KeyValueStore args;
+  Error error;
+  manager()->ConfigureService(args, &error);
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("must specify service type", error.message());
+}
+
+// A registered service in the ephemeral profile should be moved to the
+// active profile as a part of configuration if no profile was explicitly
+// specified.
+TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
+  scoped_refptr<MockProfile> profile(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
+
+  AdoptProfile(manager(), profile);  // This is now the active profile.
+
+  const std::vector<uint8_t> ssid;
+  scoped_refptr<MockWiFiService> service(
+      new NiceMock<MockWiFiService>(control_interface(),
+                                    dispatcher(),
+                                    metrics(),
+                                    manager(),
+                                    mock_wifi_,
+                                    ssid,
+                                    "",
+                                    "",
+                                    false));
+
+  manager()->RegisterService(service);
+  service->set_profile(GetEphemeralProfile(manager()));
+
+  // A separate MockWiFi from mock_wifi_ is used in the Manager since using
+  // the same device as that used above causes a refcounting loop.
+  scoped_refptr<MockWiFi> wifi(new NiceMock<MockWiFi>(control_interface(),
+                                                      dispatcher(),
+                                                      metrics(),
+                                                      manager(),
+                                                      "wifi1",
+                                                      "addr5",
+                                                      5));
+  manager()->RegisterDevice(wifi);
+  EXPECT_CALL(*wifi, GetService(_, _))
+      .WillOnce(Return(service));
+  EXPECT_CALL(*profile, UpdateService(ServiceRefPtr(service.get())))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*profile, AdoptService(ServiceRefPtr(service.get())))
+      .WillOnce(Return(true));
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  Error error;
+  manager()->ConfigureService(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+}
+
+// If were configure a service that was already registered and explicitly
+// specify a profile, it should be moved from the profile it was previously
+// in to the specified profile if one was requested.
+TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
+  scoped_refptr<MockProfile> profile0(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
+  scoped_refptr<MockProfile> profile1(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
+
+  const string kProfileName0 = "profile0";
+  const string kProfileName1 = "profile1";
+
+  EXPECT_CALL(*profile0, GetRpcIdentifier())
+      .WillRepeatedly(Return(kProfileName0));
+  EXPECT_CALL(*profile1, GetRpcIdentifier())
+      .WillRepeatedly(Return(kProfileName1));
+
+  AdoptProfile(manager(), profile0);
+  AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
+
+  const std::vector<uint8_t> ssid;
+  scoped_refptr<MockWiFiService> service(
+      new NiceMock<MockWiFiService>(control_interface(),
+                                    dispatcher(),
+                                    metrics(),
+                                    manager(),
+                                    mock_wifi_,
+                                    ssid,
+                                    "",
+                                    "",
+                                    false));
+
+  manager()->RegisterService(service);
+  service->set_profile(profile1);
+
+  // A separate MockWiFi from mock_wifi_ is used in the Manager since using
+  // the same device as that used above causes a refcounting loop.
+  scoped_refptr<MockWiFi> wifi(new NiceMock<MockWiFi>(control_interface(),
+                                                      dispatcher(),
+                                                      metrics(),
+                                                      manager(),
+                                                      "wifi1",
+                                                      "addr5",
+                                                      5));
+  manager()->RegisterDevice(wifi);
+  EXPECT_CALL(*wifi, GetService(_, _))
+      .WillOnce(Return(service));
+  EXPECT_CALL(*profile0, UpdateService(ServiceRefPtr(service.get())))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*profile0, AdoptService(ServiceRefPtr(service.get())))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*profile1, AbandonService(ServiceRefPtr(service.get())))
+      .WillOnce(Return(true));
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(flimflam::kProfileProperty, kProfileName0);
+  Error error;
+  manager()->ConfigureService(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  service->set_profile(NULL);  // Breaks refcounting loop.
+}
+
+// An unregistered service should remain unregistered, but its contents should
+// be saved to the specified profile nonetheless.
+TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
+  scoped_refptr<MockProfile> profile0(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
+  scoped_refptr<MockProfile> profile1(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
+
+  const string kProfileName0 = "profile0";
+  const string kProfileName1 = "profile1";
+
+  EXPECT_CALL(*profile0, GetRpcIdentifier())
+      .WillRepeatedly(Return(kProfileName0));
+  EXPECT_CALL(*profile1, GetRpcIdentifier())
+      .WillRepeatedly(Return(kProfileName1));
+
+  AdoptProfile(manager(), profile0);
+  AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
+
+  const std::vector<uint8_t> ssid;
+  scoped_refptr<MockWiFiService> service(
+      new NiceMock<MockWiFiService>(control_interface(),
+                                    dispatcher(),
+                                    metrics(),
+                                    manager(),
+                                    mock_wifi_,
+                                    ssid,
+                                    "",
+                                    "",
+                                    false));
+
+  service->set_profile(profile1);
+
+  // A separate MockWiFi from mock_wifi_ is used in the Manager since using
+  // the same device as that used above causes a refcounting loop.
+  scoped_refptr<MockWiFi> wifi(new NiceMock<MockWiFi>(control_interface(),
+                                                      dispatcher(),
+                                                      metrics(),
+                                                      manager(),
+                                                      "wifi1",
+                                                      "addr5",
+                                                      5));
+  manager()->RegisterDevice(wifi);
+  EXPECT_CALL(*wifi, GetService(_, _))
+      .WillOnce(Return(service));
+  EXPECT_CALL(*profile0, UpdateService(ServiceRefPtr(service.get())))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*profile0, AdoptService(_))
+      .Times(0);
+  EXPECT_CALL(*profile1, AdoptService(_))
+      .Times(0);
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(flimflam::kProfileProperty, kProfileName0);
+  Error error;
+  manager()->ConfigureService(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(ManagerTest, TechnologyOrder) {

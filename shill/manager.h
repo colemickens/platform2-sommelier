@@ -66,6 +66,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual void SaveActiveProfile();
   bool MoveServiceToProfile(const ServiceRefPtr &to_move,
                             const ProfileRefPtr &destination);
+  ProfileRefPtr LookupProfileByRpcIdentifier(const std::string &profile_rpcid);
 
   // Called via RPC call on Service (|to_set|) to set the "Profile" property.
   void SetProfileForService(const ServiceRefPtr &to_set,
@@ -92,6 +93,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
+  void ConfigureService(const KeyValueStore &args, Error *error);
+
   // Request portal detection checks on each registered device until a portal
   // detection attempt starts on one of them.
   void RecheckPortal(Error *error);

@@ -427,25 +427,36 @@ bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
       from->AbandonService(to_move);
 }
 
-void Manager::SetProfileForService(const ServiceRefPtr &to_set,
-                                   const string &profile_rpcid,
-                                   Error *error) {
+ProfileRefPtr Manager::LookupProfileByRpcIdentifier(
+    const string &profile_rpcid) {
   for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
        it != profiles_.end();
        ++it) {
     if (profile_rpcid == (*it)->GetRpcIdentifier()) {
-      if (to_set->profile().get() == it->get()) {
-        Error::PopulateAndLog(error, Error::kInvalidArguments,
-                              "Service is already connected to this profile");
-      } else if (!MoveServiceToProfile(to_set, *it)) {
-        Error::PopulateAndLog(error, Error::kInternalError,
-                              "Unable to move service to profile");
-      }
-      return;
+      return *it;
     }
   }
-  Error::PopulateAndLog(error, Error::kInvalidArguments,
-                        "Unknown Profile requested for Service");
+  return NULL;
+}
+
+void Manager::SetProfileForService(const ServiceRefPtr &to_set,
+                                   const string &profile_rpcid,
+                                   Error *error) {
+  ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
+  if (!profile) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          StringPrintf("Unknown Profile %s requested for "
+                                       "Service", profile_rpcid.c_str()));
+    return;
+  }
+
+  if (to_set->profile().get() == profile.get()) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Service is already connected to this profile");
+  } else if (!MoveServiceToProfile(to_set, profile)) {
+    Error::PopulateAndLog(error, Error::kInternalError,
+                          "Unable to move service to profile");
+  }
 }
 
 void Manager::EnableTechnology(const std::string &technology_name,
@@ -860,7 +871,7 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
   }
 
   if (!args.ContainsString(flimflam::kTypeProperty)) {
-    error->Populate(Error::kInvalidArguments, kErrorTypeRequired);
+    Error::PopulateAndLog(error, Error::kInvalidArguments, kErrorTypeRequired);
     return NULL;
   }
 
@@ -886,6 +897,49 @@ WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
     WiFi *wifi = dynamic_cast<WiFi *>(wifi_devices.front().get());
     CHECK(wifi);
     return wifi->GetService(args, error);
+  }
+}
+
+// called via RPC (e.g., from ManagerDBusAdaptor)
+void Manager::ConfigureService(const KeyValueStore &args, Error *error) {
+  ProfileRefPtr profile = ActiveProfile();
+  bool profile_specified = args.ContainsString(flimflam::kProfileProperty);
+  if (profile_specified) {
+    string profile_rpcid = args.GetString(flimflam::kProfileProperty);
+    profile = LookupProfileByRpcIdentifier(profile_rpcid);
+    if (!profile) {
+      Error::PopulateAndLog(error, Error::kInvalidArguments,
+                            "Invalid profile name " + profile_rpcid);
+      return;
+    }
+  }
+
+  ServiceRefPtr service = GetService(args, error);
+  if (error->IsFailure() || !service) {
+    LOG(ERROR) << "GetService failed; returning upstream error.";
+    return;
+  }
+
+  // Overwrte the profile data with the resulting configured service.
+  if (!profile->UpdateService(service)) {
+    Error::PopulateAndLog(error, Error::kInternalError,
+                          "Unable to save service to profile");
+    return;
+  }
+
+  if (HasService(service)) {
+    // If the service has been registered (it may not be -- as is the case
+    // with invisible WiFi networks), we can now transfer the service between
+    // profiles.
+    if (service->profile() == ephemeral_profile_ ||
+        (profile_specified && service->profile() != profile)) {
+      VLOG(2) << "Moving service to profile "
+              << profile->GetFriendlyName();
+      if (!MoveServiceToProfile(service, profile)) {
+        Error::PopulateAndLog(error, Error::kInternalError,
+                              "Unable to move service to profile");
+      }
+    }
   }
 }
 

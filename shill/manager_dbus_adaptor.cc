@@ -199,9 +199,17 @@ void ManagerDBusAdaptor::DisableTechnology(const string &technology_name,
   return GetService(args, error);
 }
 
-void ManagerDBusAdaptor::ConfigureWifiService(
-    const map<string, ::DBus::Variant> &,
-    ::DBus::Error &/*error*/) {
+
+void ManagerDBusAdaptor::ConfigureService(
+    const map<string, ::DBus::Variant> &args,
+    ::DBus::Error &error) {
+  KeyValueStore args_store;
+  Error e;
+  DBusAdaptor::ArgsToKeyValueStore(args, &args_store, &e);
+  if (e.IsSuccess()) {
+    manager_->ConfigureService(args_store, &e);
+  }
+  e.ToDBusError(&error);
 }
 
 void ManagerDBusAdaptor::RegisterAgent(const ::DBus::Path &,

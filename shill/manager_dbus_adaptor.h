@@ -70,8 +70,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   ::DBus::Path GetWifiService(
       const std::map<std::string, ::DBus::Variant> &args,
       ::DBus::Error &error);
-  void ConfigureWifiService(const std::map<std::string, ::DBus::Variant> &,
-                            ::DBus::Error &error);
+  void ConfigureService(const std::map<std::string, ::DBus::Variant> &args,
+                        ::DBus::Error &error);
 
   void RegisterAgent(const ::DBus::Path &, ::DBus::Error &error);
   void UnregisterAgent(const ::DBus::Path &, ::DBus::Error &error);

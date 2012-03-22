@@ -196,6 +196,7 @@ Service::Service(ControlInterface *control_interface,
   metrics_->RegisterService(this);
 
   IgnoreParameterForConfigure(flimflam::kTypeProperty);
+  IgnoreParameterForConfigure(flimflam::kProfileProperty);
 
   VLOG(2) << "Service initialized.";
 }

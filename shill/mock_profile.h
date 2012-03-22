@@ -27,6 +27,7 @@ class MockProfile : public Profile {
   MOCK_METHOD1(ConfigureDevice, bool(const DeviceRefPtr &device));
   MOCK_METHOD0(GetRpcIdentifier, std::string());
   MOCK_METHOD1(GetStoragePath, bool(FilePath *filepath));
+  MOCK_METHOD1(UpdateService, bool(const ServiceRefPtr &service));
   MOCK_METHOD0(Save, bool());
 
  private:

@@ -52,7 +52,7 @@
 			<arg type="a{sv}" direction="in"/>
 			<arg type="o" direction="out"/>
 		</method>
-		<method name="ConfigureWifiService">
+		<method name="ConfigureService">
 			<arg type="a{sv}" direction="in"/>
 		</method>
 		<method name="GetVPNService">

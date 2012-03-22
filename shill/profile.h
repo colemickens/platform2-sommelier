@@ -79,7 +79,7 @@ class Profile : public base::RefCounted<Profile> {
 
   // Clobbers persisted notion of |service| with data from |service|.
   // Returns true if |service| was found and updated, false if not found.
-  bool UpdateService(const ServiceRefPtr &service);
+  virtual bool UpdateService(const ServiceRefPtr &service);
 
   // Ask |service| if it can configure itself from the profile.  If it can,
   // change the service to point at this profile, ask |service| to perform
