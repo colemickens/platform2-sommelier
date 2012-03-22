@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -212,6 +212,20 @@ bool MountManager::UnmountAll() {
 bool MountManager::AddMountPathToCache(const string& source_path,
                                        const string& mount_path) {
   return mount_paths_.insert(std::make_pair(source_path, mount_path)).second;
+}
+
+bool MountManager::GetSourcePathFromCache(const string& mount_path,
+                                          string* source_path) const {
+  CHECK(source_path) << "Invalid source path argument";
+
+  for (MountPathMap::const_iterator path_iterator = mount_paths_.begin();
+       path_iterator != mount_paths_.end(); ++path_iterator) {
+    if (path_iterator->second == mount_path) {
+      *source_path = path_iterator->first;
+      return true;
+    }
+  }
+  return false;
 }
 
 bool MountManager::GetMountPathFromCache(const string& source_path,

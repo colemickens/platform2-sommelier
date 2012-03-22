@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,12 +15,14 @@
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>
 
+#include "cros-disks/device-ejector.h"
 #include "cros-disks/device-event.h"
 #include "cros-disks/device-event-source-interface.h"
 #include "cros-disks/mount-manager.h"
 
 namespace cros_disks {
 
+class DeviceEjector;
 class Disk;
 class Filesystem;
 class Mounter;
@@ -44,7 +46,7 @@ class DiskManager : public MountManager,
                     public DeviceEventSourceInterface {
  public:
   DiskManager(const std::string& mount_root, Platform* platform,
-              Metrics* metrics);
+              Metrics* metrics, DeviceEjector* device_ejector);
   virtual ~DiskManager();
 
   // Initializes the disk manager and registers default filesystems.
@@ -61,6 +63,9 @@ class DiskManager : public MountManager,
   virtual MountSourceType GetMountSourceType() const {
     return MOUNT_SOURCE_REMOVABLE_DEVICE;
   }
+
+  // Unmounts all mounted paths.
+  virtual bool UnmountAll();
 
   // Lists the current block devices attached to the system.
   virtual std::vector<Disk> EnumerateDisks() const;
@@ -120,6 +125,14 @@ class DiskManager : public MountManager,
   void ProcessScsiDeviceEvents(struct udev_device* device, const char *action,
                                DeviceEventList* events);
 
+  // Ejects media from a device at |device_path| if the device still exists
+  // (in sysfs) and is an optical device. Returns true if the eject process
+  // has started.
+  bool EjectDevice(const std::string& device_path);
+
+  // Device ejector for ejecting media from optical devices.
+  DeviceEjector* device_ejector_;
+
   // The root udev object.
   mutable struct udev* udev_;
 
@@ -128,6 +141,9 @@ class DiskManager : public MountManager,
 
   // A file descriptor that indicates changes to the system.
   int udev_monitor_fd_;
+
+  // Set to true if devices should be ejected upon unmount.
+  bool eject_device_on_unmount_;
 
   // A set of device sysfs paths detected by the udev monitor.
   std::set<std::string> devices_detected_;
@@ -146,6 +162,8 @@ class DiskManager : public MountManager,
   FRIEND_TEST(DiskManagerTest, RegisterFilesystem);
   FRIEND_TEST(DiskManagerTest, DoMountDiskWithNonexistentSourcePath);
   FRIEND_TEST(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions);
+  FRIEND_TEST(DiskManagerTest, EjectDeviceWithNonexistentDevicePath);
+  FRIEND_TEST(DiskManagerTest, EjectDeviceWithNonOpticalDiscDevice);
 
   DISALLOW_COPY_AND_ASSIGN(DiskManager);
 };

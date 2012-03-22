@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,6 +9,7 @@
 
 #include "cros-disks/archive-manager.h"
 #include "cros-disks/cros-disks-server-impl.h"
+#include "cros-disks/device-ejector.h"
 #include "cros-disks/device-event-moderator.h"
 #include "cros-disks/disk-manager.h"
 #include "cros-disks/format-manager.h"
@@ -37,6 +38,7 @@ class Daemon {
   Metrics metrics_;
   Platform platform_;
   ArchiveManager archive_manager_;
+  DeviceEjector device_ejector_;
   DiskManager disk_manager_;
   FormatManager format_manager_;
   CrosDisksServer server_;

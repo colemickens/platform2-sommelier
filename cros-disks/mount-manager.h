@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -110,12 +110,17 @@ class MountManager {
                          const std::vector<std::string>& options);
 
   // Unmounts all mounted paths.
-  bool UnmountAll();
+  virtual bool UnmountAll();
 
   // Adds a mapping from |source_path| to |mount_path| to the cache.
   // Returns false if |source_path| is already in the cache.
   bool AddMountPathToCache(const std::string& source_path,
                            const std::string& mount_path);
+
+  // Gets the corresponding |source_path| of |mount_path| from the cache.
+  // Returns false if |mount_path| is not found in the cache.
+  bool GetSourcePathFromCache(const std::string& mount_path,
+                              std::string* source_path) const;
 
   // Gets the corresponding |mount_path| of |source_path| from the cache.
   // Returns false if |source_path| is not found in the cache.

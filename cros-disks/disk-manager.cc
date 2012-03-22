@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -44,10 +44,13 @@ const char kPropertyDiskMediaChange[] = "DISK_MEDIA_CHANGE";
 namespace cros_disks {
 
 DiskManager::DiskManager(const string& mount_root, Platform* platform,
-                         Metrics* metrics)
+                         Metrics* metrics, DeviceEjector* device_ejector)
     : MountManager(mount_root, platform, metrics),
+      device_ejector_(device_ejector),
       udev_(udev_new()),
-      udev_monitor_fd_(0) {
+      udev_monitor_fd_(0),
+      eject_device_on_unmount_(true) {
+  CHECK(device_ejector_) << "Invalid device ejector";
   CHECK(udev_) << "Failed to initialize udev";
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
   CHECK(udev_monitor_) << "Failed to create a udev monitor";
@@ -435,6 +438,13 @@ MountErrorType DiskManager::DoUnmount(const string& path,
     // TODO(benchan): Extract error from low-level unmount operation.
     return MOUNT_ERROR_UNKNOWN;
   }
+
+  if (eject_device_on_unmount_) {
+    string source_path;
+    if (GetSourcePathFromCache(path, &source_path))
+      EjectDevice(source_path);
+  }
+
   return MOUNT_ERROR_NONE;
 }
 
@@ -450,6 +460,31 @@ bool DiskManager::ShouldReserveMountPathOnError(
     MountErrorType error_type) const {
   return error_type == MOUNT_ERROR_UNKNOWN_FILESYSTEM ||
          error_type == MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
+}
+
+bool DiskManager::EjectDevice(const string& device_path) {
+  Disk disk;
+  if (!GetDiskByDevicePath(device_path, &disk) || !disk.is_optical_disk())
+    return false;
+
+  string device_file = disk.device_file();
+  LOG(INFO) << "Eject device '" << device_file << "'.";
+  if (!device_ejector_->Eject(device_file)) {
+    LOG(WARNING) << "Failed to eject media from optical device '"
+                 << device_file << "'.";
+    return false;
+  }
+  return true;
+}
+
+bool DiskManager::UnmountAll() {
+  // UnmountAll() is called when a user session ends. We do not want to eject
+  // devices in that situation and thus set |eject_device_on_unmount_| to
+  // false temporarily to prevent devices from being ejected upon unmount.
+  eject_device_on_unmount_ = false;
+  bool all_unmounted = MountManager::UnmountAll();
+  eject_device_on_unmount_ = true;
+  return all_unmounted;
 }
 
 }  // namespace cros_disks

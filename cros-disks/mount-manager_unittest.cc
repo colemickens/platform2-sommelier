@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -800,6 +800,20 @@ TEST_F(MountManagerTest, AddMountPathToCache) {
   EXPECT_EQ(mount_path_, result);
 
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
+}
+
+// Verifies that MountManager::GetSourcePathFromCache() works as expected.
+TEST_F(MountManagerTest, GetSourcePathFromCache) {
+  string result;
+  source_path_ = "source";
+  mount_path_ = "target";
+
+  EXPECT_FALSE(manager_.GetSourcePathFromCache(mount_path_, &result));
+  EXPECT_TRUE(manager_.AddMountPathToCache(source_path_, mount_path_));
+  EXPECT_TRUE(manager_.GetSourcePathFromCache(mount_path_, &result));
+  EXPECT_EQ(source_path_, result);
+  EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
+  EXPECT_FALSE(manager_.GetSourcePathFromCache(mount_path_, &result));
 }
 
 // Verifies that MountManager::GetMountPathFromCache() works as expected.

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,7 +16,8 @@ namespace cros_disks {
 
 Daemon::Daemon(DBus::Connection* dbus_connection)
     : archive_manager_(kArchiveMountRootDirectory, &platform_, &metrics_),
-      disk_manager_(kDiskMountRootDirectory, &platform_, &metrics_),
+      disk_manager_(kDiskMountRootDirectory, &platform_, &metrics_,
+                    &device_ejector_),
       server_(*dbus_connection, &platform_, &archive_manager_,
               &disk_manager_, &format_manager_),
       event_moderator_(&server_, &disk_manager_),

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,10 +6,14 @@
 
 #include <sys/mount.h>
 
+#include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_temp_dir.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cros-disks/device-ejector.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/external-mounter.h"
 #include "cros-disks/filesystem.h"
@@ -21,6 +25,8 @@
 using std::map;
 using std::string;
 using std::vector;
+using testing::Return;
+using testing::_;
 
 namespace {
 
@@ -30,15 +36,24 @@ const char kMountRootDirectory[] = "/media/removable";
 
 namespace cros_disks {
 
+// A mock device ejector class for testing the disk manager class.
+class MockDeviceEjector : public DeviceEjector {
+ public:
+  MockDeviceEjector() {}
+
+  MOCK_METHOD1(Eject, bool(const string& device_path));
+};
+
 class DiskManagerTest : public ::testing::Test {
  public:
   DiskManagerTest()
-      : manager_(kMountRootDirectory, &platform_, &metrics_) {
+      : manager_(kMountRootDirectory, &platform_, &metrics_, &device_ejector_) {
   }
 
  protected:
   Metrics metrics_;
   Platform platform_;
+  MockDeviceEjector device_ejector_;
   DiskManager manager_;
 };
 
@@ -245,6 +260,18 @@ TEST_F(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions) {
   options.push_back("invalid-unmount-option");
   EXPECT_EQ(MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS,
             manager_.DoUnmount(source_path, options));
+}
+
+// TODO(benchan): Make GetDiskByDevicePath mockable so that we can cover
+// differnet scenarios for EjectDevice.
+TEST_F(DiskManagerTest, EjectDeviceWithNonexistentDevicePath) {
+  EXPECT_CALL(device_ejector_, Eject(_)).Times(0);
+  EXPECT_FALSE(manager_.EjectDevice("/dev/nonexistent-path"));
+}
+
+TEST_F(DiskManagerTest, EjectDeviceWithNonOpticalDiscDevice) {
+  EXPECT_CALL(device_ejector_, Eject(_)).Times(0);
+  EXPECT_FALSE(manager_.EjectDevice("/dev/loop0"));
 }
 
 }  // namespace cros_disks
