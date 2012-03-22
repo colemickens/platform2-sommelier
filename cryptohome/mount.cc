@@ -665,97 +665,55 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   const int original_mask = platform_->SetMask(kDefaultUmask);
 
   // Add the subdirectories if they do not exist.
-  const FilePath dest = FilePath(VaultPathToUserPath(
-      GetUserVaultPath(credentials.GetObfuscatedUsername(system_salt_))));
-  const FilePath source = FilePath(GetMountedUserHomePath(credentials));
-  if (!file_util::DirectoryExists(dest)) {
-    LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
-    platform_->SetMask(original_mask);
-    return false;
+  const FilePath shadow_home(VaultPathToUserPath(GetUserVaultPath(
+      credentials.GetObfuscatedUsername(system_salt_))));
+  if (!file_util::DirectoryExists(shadow_home)) {
+     LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
+     platform_->SetMask(original_mask);
+     return false;
   }
 
-  const struct TrackedDir {
-    string name;
-    bool need_migration;
-  } kTrackedDirs[] = {
-    {kCacheDir, false},
-    {kDownloadsDir, true},
-    {FilePath(kGCacheDir).value(), false},
-    {FilePath(kGCacheDir).Append(kGCacheVersionDir).value(), false},
-    {FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheTmpDir)
-         .value(), false},
+  const FilePath user_home(GetMountedUserHomePath(credentials));
+
+  static const FilePath kTrackedDirs[] = {
+    FilePath(kCacheDir),
+    FilePath(kDownloadsDir),
+    FilePath(kGCacheDir),
+    FilePath(kGCacheDir).Append(kGCacheVersionDir),
+    FilePath(kGCacheDir).Append(kGCacheVersionDir).Append(kGCacheTmpDir),
   };
 
   // The call is allowed to partially fail if directory creation fails, but we
   // want to have as many of the specified tracked directories created as
   // possible.
   bool result = true;
-  for (size_t index = 0; index < ARRAYSIZE_UNSAFE(kTrackedDirs); ++index) {
-    const TrackedDir& subdir = kTrackedDirs[index];
-    const string subdir_name = subdir.name;
-    const FilePath passthrough_dir = dest.Append(subdir_name);
-    const FilePath old_dir = source.Append(subdir_name);
+  for (size_t index = 0; index < arraysize(kTrackedDirs); ++index) {
+    const FilePath shadowside_dir = shadow_home.Append(kTrackedDirs[index]);
+    const FilePath userside_dir = user_home.Append(kTrackedDirs[index]);
 
-    // Start migrating if |subdir| is not a pass-through directory yet.
-    FilePath tmp_migrated_dir;
-    if (!is_new && file_util::DirectoryExists(old_dir) &&
-        !file_util::DirectoryExists(passthrough_dir)) {
-      if (!subdir.need_migration) {
-        LOG(INFO) << "Removing non-pass-through " << old_dir.value() << ". "
-                  << "Migration not requested.";
-        file_util::Delete(old_dir, true);
-      } else {
-        // Migrate it: rename it, and after the pass-through one is
-        // created, move its contents there.
-        tmp_migrated_dir = FilePath(dest).Append(subdir_name + ".tmp");
-        LOG(INFO) << "Moving migration directory " << old_dir.value()
-                  << " to " << tmp_migrated_dir.value() << "...";
-        if (!file_util::Move(old_dir, tmp_migrated_dir)) {
-          LOG(ERROR) << "Moving migration directory " << old_dir.value()
-                     << " to " << tmp_migrated_dir.value() << " failed. "
-                     << "Deleting it.";
-          file_util::Delete(old_dir, true);
-          tmp_migrated_dir.clear();
-          result = false;
-        }
-      }
+    // If non-pass-through dir with the same name existed - delete it
+    // to prevent duplication.
+    if (!is_new && file_util::DirectoryExists(userside_dir) &&
+        !file_util::DirectoryExists(shadowside_dir)) {
+      file_util::Delete(userside_dir, true);
     }
 
     // Create pass-through directory.
-    if (!file_util::DirectoryExists(passthrough_dir)) {
+    if (!file_util::DirectoryExists(shadowside_dir)) {
       LOG(INFO) << "Creating pass-through directories "
-                << passthrough_dir.value();
-      file_util::CreateDirectory(passthrough_dir);
+                << shadowside_dir.value();
+      file_util::CreateDirectory(shadowside_dir);
       if (set_vault_ownership_) {
-        if (!platform_->SetOwnership(passthrough_dir.value(),
+        if (!platform_->SetOwnership(shadowside_dir.value(),
                                      default_user_, default_group_)) {
           LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                      << default_group_ << ") of tracked directory path: "
-                     << passthrough_dir.value();
-          file_util::Delete(passthrough_dir, true);
+                     << shadowside_dir.value();
+          file_util::Delete(shadowside_dir, true);
           result = false;
           continue;
         }
       }
-    }
-
-    // Finish migration if started for this directory.
-    if (!tmp_migrated_dir.empty()) {
-      const FilePath new_dir = FilePath(dest).Append(subdir_name);
-      if (!file_util::DirectoryExists(new_dir)) {
-        LOG(ERROR) << "Unable to locate created pass-through directory from "
-                   << new_dir.value() << ". Are we in a unit-test?";
-
-        // For the test sake (where we don't have real mount), just create it.
-        file_util::CreateDirectory(new_dir);
-      }
-      LOG(INFO) << "Moving migration directory " << tmp_migrated_dir.value()
-                << " to " << new_dir.value() << "...";
-      if (!file_util::Move(tmp_migrated_dir, new_dir)) {
-        LOG(ERROR) << "Unable to move.";
-        result = false;
-      }
-      file_util::Delete(tmp_migrated_dir, true);
     }
   }
 

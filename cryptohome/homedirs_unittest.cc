@@ -69,6 +69,7 @@ class HomeDirsTest : public ::testing::Test {
     set_policy(true, kOwner, false);
     homedirs_.timestamp_cache()->Initialize();
     FilePath fp = FilePath(kTestRoot);
+    file_util::CreateDirectory(fp);
     for (unsigned int i = 0; i < arraysize(kHomedirs); i++) {
       const struct homedir *hd = &kHomedirs[i];
       base::Time t = base::Time::FromUTCExploded(hd->time);
