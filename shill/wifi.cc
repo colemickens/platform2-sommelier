@@ -1140,7 +1140,7 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
     }
   }
 
-  // TODO(quiche): Apply any other configuration parameters.
+  service->Configure(args, error);
 
   return service;
 }

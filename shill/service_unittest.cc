@@ -342,6 +342,52 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   EXPECT_STREQ(Service::kAutoConnConnecting, reason);
 }
 
+TEST_F(ServiceTest, ConfigureBadProperty) {
+  KeyValueStore args;
+  args.SetString("XXXInvalid", "Value");
+  Error error;
+  service_->Configure(args, &error);
+  EXPECT_FALSE(error.IsSuccess());
+}
+
+TEST_F(ServiceTest, ConfigureBoolProperty) {
+  service_->MakeFavorite();
+  service_->set_auto_connect(false);
+  ASSERT_FALSE(service_->auto_connect());
+  KeyValueStore args;
+  args.SetBool(flimflam::kAutoConnectProperty, true);
+  Error error;
+  service_->Configure(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(service_->auto_connect());
+}
+
+TEST_F(ServiceTest, ConfigureStringProperty) {
+  const string kEAPManagement0 = "management_zero";
+  const string kEAPManagement1 = "management_one";
+  service_->SetEAPKeyManagement(kEAPManagement0);
+  ASSERT_EQ(kEAPManagement0, service_->GetEAPKeyManagement());
+  KeyValueStore args;
+  args.SetString(flimflam::kEapKeyMgmtProperty, kEAPManagement1);
+  Error error;
+  service_->Configure(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kEAPManagement1, service_->GetEAPKeyManagement());
+}
+
+TEST_F(ServiceTest, ConfigureIgnoredProperty) {
+  service_->MakeFavorite();
+  service_->set_auto_connect(false);
+  ASSERT_FALSE(service_->auto_connect());
+  KeyValueStore args;
+  args.SetBool(flimflam::kAutoConnectProperty, true);
+  Error error;
+  service_->IgnoreParameterForConfigure(flimflam::kAutoConnectProperty);
+  service_->Configure(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(service_->auto_connect());
+}
+
 // Make sure a property is registered as a write only property
 // by reading and comparing all string properties returned on the store.
 // Subtle: We need to convert the test argument back and forth between

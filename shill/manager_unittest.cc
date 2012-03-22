@@ -1437,6 +1437,11 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
                                 metrics(),
                                 manager()));
 
+  EXPECT_CALL(*mock_service0.get(), Configure(_, _))
+      .Times(0);
+  EXPECT_CALL(*mock_service1.get(), Configure(_, _))
+      .Times(0);
+
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
 
@@ -1472,6 +1477,8 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
 
   {
     Error error;
+    EXPECT_CALL(*mock_service1.get(), Configure(_, &error))
+        .Times(1);
     ServiceRefPtr service = manager()->GetService(args, &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(mock_service1.get(), service.get());

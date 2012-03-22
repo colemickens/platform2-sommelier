@@ -109,6 +109,12 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   // Until we know better (at Profile load time), use the generic name.
   storage_identifier_ = GetGenericStorageIdentifier();
   UpdateConnectable();
+
+  IgnoreParameterForConfigure(flimflam::kModeProperty);
+  IgnoreParameterForConfigure(flimflam::kSSIDProperty);
+  IgnoreParameterForConfigure(flimflam::kSecurityProperty);
+  IgnoreParameterForConfigure(flimflam::kPassphraseProperty);
+  IgnoreParameterForConfigure(flimflam::kWifiHiddenSsid);
 }
 
 WiFiService::~WiFiService() {

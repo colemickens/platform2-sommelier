@@ -401,6 +401,12 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &e);
     return wifi_->GetService(args_kv, result);
   }
+
+  WiFiServiceRefPtr GetServiceWithKeyValues(const KeyValueStore &args,
+                                            Error *result) {
+    return wifi_->GetService(args, result);
+  }
+
   WiFiServiceRefPtr FindService(const vector<uint8_t> &ssid,
                                 const string &mode,
                                 const string &security) {
@@ -1250,6 +1256,21 @@ TEST_F(WiFiMainTest, FindServiceWPA) {
     EXPECT_TRUE(e.IsSuccess());
     EXPECT_EQ(wpa_service.get(), wpa_service2.get());
   }
+}
+
+TEST_F(WiFiMainTest, GetServiceWithGUID) {
+  // Perform a GetService that also configures properties in the base Service
+  // class using Service::Configure().
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(flimflam::kSSIDProperty, "ssid");
+  args.SetString(flimflam::kSecurityProperty, flimflam::kSecurityNone);
+  const string kGUID = "aguid";  // Stored as a registered Service property.
+  args.SetString(flimflam::kGuidProperty, kGUID);
+  Error e;
+  WiFiServiceRefPtr service = GetServiceWithKeyValues(args, &e);
+  EXPECT_TRUE(e.IsSuccess());
+  EXPECT_EQ(kGUID, service->guid());
 }
 
 MATCHER_P(HasHiddenSSID, ssid, "") {

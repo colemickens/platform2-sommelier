@@ -195,6 +195,8 @@ Service::Service(ControlInterface *control_interface,
 
   metrics_->RegisterService(this);
 
+  IgnoreParameterForConfigure(flimflam::kTypeProperty);
+
   VLOG(2) << "Service initialized.";
 }
 
@@ -362,6 +364,54 @@ bool Service::Save(StoreInterface *storage) {
 
 bool Service::SaveToCurrentProfile() {
   return profile()->UpdateService(this);
+}
+
+void Service::Configure(const KeyValueStore &args, Error *error) {
+  map<string, bool>::const_iterator bool_it;
+  VLOG(5) << "Configuring bool properties:";
+  for (bool_it = args.bool_properties().begin();
+       bool_it != args.bool_properties().end();
+       ++bool_it) {
+    if (ContainsKey(parameters_ignored_for_configure_, bool_it->first)) {
+      continue;
+    }
+    VLOG(5) << "   " << bool_it->first;
+    Error set_error;
+    store_.SetBoolProperty(bool_it->first, bool_it->second, &set_error);
+    if (error->IsSuccess() && set_error.IsFailure()) {
+      error->CopyFrom(set_error);
+    }
+  }
+  VLOG(5) << "Configuring string properties:";
+  map<string, string>::const_iterator string_it;
+  for (string_it = args.string_properties().begin();
+       string_it != args.string_properties().end();
+       ++string_it) {
+    if (ContainsKey(parameters_ignored_for_configure_, string_it->first)) {
+      continue;
+    }
+    VLOG(5) << "   " << string_it->first;
+    Error set_error;
+    store_.SetStringProperty(string_it->first, string_it->second, &set_error);
+    if (error->IsSuccess() && set_error.IsFailure()) {
+      error->CopyFrom(set_error);
+    }
+  }
+  VLOG(5) << "Configuring uint32 properties:";
+  map<string, uint32>::const_iterator int_it;
+  for (int_it = args.uint_properties().begin();
+       int_it != args.uint_properties().end();
+       ++int_it) {
+    if (ContainsKey(parameters_ignored_for_configure_, int_it->first)) {
+      continue;
+    }
+    VLOG(5) << "   " << int_it->first;
+    Error set_error;
+    store_.SetUint32Property(int_it->first, int_it->second, &set_error);
+    if (error->IsSuccess() && set_error.IsFailure()) {
+      error->CopyFrom(set_error);
+    }
+  }
 }
 
 void Service::MakeFavorite() {
@@ -749,6 +799,10 @@ void Service::UnloadEapCredentials() {
   eap_.pin = "";
   eap_.password = "";
   eap_.key_management = "";
+}
+
+void Service::IgnoreParameterForConfigure(const string &parameter) {
+  parameters_ignored_for_configure_.insert(parameter);
 }
 
 const string &Service::GetEAPKeyManagement() const {

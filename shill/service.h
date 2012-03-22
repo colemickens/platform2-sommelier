@@ -7,6 +7,7 @@
 
 #include <string>
 #include <map>
+#include <set>
 #include <vector>
 
 #include <base/memory/ref_counted.h>
@@ -206,6 +207,12 @@ class Service : public base::RefCounted<Service> {
   // Saves the service to the current profile.
   virtual bool SaveToCurrentProfile();
 
+  // Applies all the properties in |args| to this service object's mutable
+  // store, except for those in parameters_ignored_for_configure_.
+  // Returns an error in |error| if one or more parameter set attempts
+  // fails, but will only return the first error.
+  virtual void Configure(const KeyValueStore &args, Error *error);
+
   // Returns true if the service RPC identifier should be part of the
   // manager's advertised services list, false otherwise.
   virtual bool IsVisible() const { return true; }
@@ -363,6 +370,9 @@ class Service : public base::RefCounted<Service> {
   void SaveEapCredentials(StoreInterface *storage, const std::string &id);
   void UnloadEapCredentials();
 
+  // Ignore |parameter| when performing a Configure() operation.
+  void IgnoreParameterForConfigure(const std::string &parameter);
+
   // Property accessors reserved for subclasses
   EventDispatcher *dispatcher() const { return dispatcher_; }
   const std::string &GetEAPKeyManagement() const;
@@ -375,6 +385,8 @@ class Service : public base::RefCounted<Service> {
   friend class MetricsTest;
   friend class ServiceAdaptorInterface;
   friend class WiFiServiceTest;
+  FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
+  FRIEND_TEST(ServiceTest, ConfigureStringProperty);
   FRIEND_TEST(ServiceTest, Constructor);
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
@@ -437,6 +449,7 @@ class Service : public base::RefCounted<Service> {
 
   ProfileRefPtr profile_;
   PropertyStore store_;
+  std::set<std::string> parameters_ignored_for_configure_;
 
   EventDispatcher *dispatcher_;
   static unsigned int serial_number_;

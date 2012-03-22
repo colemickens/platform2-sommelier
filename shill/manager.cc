@@ -854,7 +854,7 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
     ServiceRefPtr service =
         GetServiceWithGUID(args.GetString(flimflam::kGuidProperty), NULL);
     if (service) {
-      // TODO(pstew): Configure this service using the rest of |args|.
+      service->Configure(args, error);
       return service;
     }
   }
