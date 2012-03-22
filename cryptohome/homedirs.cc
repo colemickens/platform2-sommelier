@@ -279,35 +279,6 @@ bool HomeDirs::GetSystemSalt(SecureBlob* blob) {
   return true;
 }
 
-bool HomeDirs::AreCredentialsValid(const Credentials& credentials) {
-  std::string owner;
-  LoadDevicePolicy();
-  GetSystemSalt(NULL);
-  if (AreEphemeralUsersEnabled() &&
-      (GetOwner(&owner) &&
-       credentials.GetObfuscatedUsername(system_salt_) != owner))
-    return false;
-  VaultKeyset vault_keyset(platform_, crypto_);
-  return DecryptVaultKeyset(credentials, &vault_keyset);
-}
-
-bool HomeDirs::DecryptVaultKeyset(const Credentials& credentials,
-                                  VaultKeyset* keyset) {
-  SerializedVaultKeyset serialized;
-  SecureBlob passkey;
-  credentials.GetPasskey(&passkey);
-  GetSystemSalt(NULL);
-  std::string user = credentials.GetObfuscatedUsername(system_salt_);
-
-  // Load the encrypted keyset
-  if (!LoadVaultKeysetForUser(user, &serialized)) {
-    return false;
-  }
-
-  // Attempt decrypt the master key with the passkey
-  return crypto_->DecryptVaultKeyset(serialized, passkey, NULL, NULL, keyset);
-}
-
 bool HomeDirs::Remove(const std::string& username) {
   UsernamePasskey passkey(username.c_str(), SecureBlob("", 0));
   GetSystemSalt(NULL);

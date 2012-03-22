@@ -31,7 +31,6 @@
 #include <chromeos/utility.h>
 
 #include "cryptohome_event_source.h"
-#include "homedirs.h"
 #include "mount.h"
 #include "pkcs11_init.h"
 #include "username_passkey.h"
@@ -328,19 +327,16 @@ class MountTaskUnmount : public MountTask {
 // Implements asychronous calls to Mount::TestCredentials()
 class MountTaskTestCredentials : public MountTask {
  public:
-  // Does not take ownership of homedirs
   MountTaskTestCredentials(MountTaskObserver* observer,
                            Mount* mount,
-                           const UsernamePasskey& credentials,
-                           HomeDirs* homedirs)
-      : MountTask(observer, mount, credentials), homedirs_(homedirs) {
+                           const UsernamePasskey& credentials)
+      : MountTask(observer, mount, credentials) {
   }
   virtual ~MountTaskTestCredentials() { }
 
   virtual void Run();
 
  private:
-  HomeDirs* homedirs_;
   DISALLOW_COPY_AND_ASSIGN(MountTaskTestCredentials);
 };
 

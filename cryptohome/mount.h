@@ -188,10 +188,7 @@ class Mount {
   //                    by specified number of seconds. Used in manual tests.
   virtual bool UpdateCurrentUserActivityTimestamp(int time_shift_sec);
 
-  // Tests if the given credentials would decrypt the user's cryptohome key.
-  // Note that this will only succeed if credentials represents the user that
-  // this Mount is for! If you need to test a Credentials in general, you want
-  // HomeDirs::AreCredentialsValid().
+  // Tests if the given credentials would decrypt the user's cryptohome key
   //
   // Parameters
   //   credentials - The Credentials to attempt to decrypt the key with
@@ -247,7 +244,6 @@ class Mount {
   // Used to override the default shadow root
   void set_shadow_root(const std::string& value) {
     shadow_root_ = value;
-    homedirs_.set_shadow_root(value);
   }
 
   // Get the shadow root
@@ -530,8 +526,6 @@ class Mount {
 
   // Removes the current user's PKCS #11 token.
   void RemovePkcs11Token();
-
-  policy::PolicyProvider* policy_provider() { return policy_provider_.get(); }
 
  protected:
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);

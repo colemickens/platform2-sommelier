@@ -97,13 +97,7 @@ void MountTaskUnmount::Run() {
 
 void MountTaskTestCredentials::Run() {
   if (mount_) {
-    // This test is not long for this world. Once all existing uses of
-    // MountTaskTestCredentials are fixed to never supply a Mount (since Mount's
-    // test will only work for the logged-in user), this logic will be removed.
     bool status = mount_->TestCredentials(credentials_);
-    result()->set_return_status(status);
-  } else if (homedirs_) {
-    bool status = homedirs_->AreCredentialsValid(credentials_);
     result()->set_return_status(status);
   }
   MountTask::Notify();

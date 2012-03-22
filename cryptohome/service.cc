@@ -480,21 +480,10 @@ gboolean Service::CheckKey(gchar *userid,
                            GError **error) {
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
 
-  // Fast path - does any Mount accept these Credentials?
-  // TODO(ellyjones): use the Mount for this user only instead of asking all of
-  // them.
-  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
-    if (it->second->TestCredentials(credentials)) {
-      *OUT_result = TRUE;
-      return TRUE;
-    }
-  }
-
-  // Slow path - ask HomeDirs to check these Credentials.
   MountTaskResult result;
   base::WaitableEvent event(true, false);
   MountTaskTestCredentials* mount_task =
-      new MountTaskTestCredentials(NULL, NULL, credentials, homedirs_);
+      new MountTaskTestCredentials(NULL, mount_, credentials);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
@@ -508,25 +497,14 @@ gboolean Service::AsyncCheckKey(gchar *userid,
                                 gint *OUT_async_id,
                                 GError **error) {
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
+
+  // Freed by the message loop
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(mount_, &event_source_);
-  // Freed by the message loop
-  MountTask* mount_task = NULL;
-
-  // Fast path - does any Mount accept these Credentials?
-  // TODO(ellyjones): use the Mount for this user only instead of asking all of
-  // them.
-  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
-    if (it->second->TestCredentials(credentials)) {
-      MountTaskNop* mount_task = new MountTaskNop(bridge);
-      mount_task->result()->set_return_status(true);
-      break;
-    }
-  }
-
-  if (!mount_task)
-    mount_task = new MountTaskTestCredentials(bridge, NULL, credentials,
-                                              homedirs_);
+  MountTaskTestCredentials* mount_task = new MountTaskTestCredentials(
+      bridge,
+      mount_,
+      credentials);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
   return TRUE;
