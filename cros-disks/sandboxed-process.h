@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,23 +8,17 @@
 #include <sys/types.h>
 
 #include <string>
-#include <vector>
 
-#include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
-#include <gtest/gtest_prod.h>
+#include "cros-disks/process.h"
 
 struct minijail;
 
 namespace cros_disks {
 
-class SandboxedProcess {
+class SandboxedProcess : public Process {
  public:
   SandboxedProcess();
-  ~SandboxedProcess();
-
-  // Adds an argument to the end of the argument list.
-  void AddArgument(const std::string& argument);
+  virtual ~SandboxedProcess();
 
   // Loads the seccomp filters from |policy_file|. The calling process will be
   // aborted if |policy_file| does not exist, cannot be read or is malformed.
@@ -39,8 +33,9 @@ class SandboxedProcess {
   // Sets the user ID of the process to be sandboxed.
   void SetUserId(uid_t user_id);
 
-  // Starts the process in a sandbox. Returns true on success.
-  bool Start();
+  // Implements Process::Start() to start the process in a sandbox.
+  // Returns true on success.
+  virtual bool Start();
 
   // Waits for the process to finish and returns its exit status.
   int Wait();
@@ -50,21 +45,7 @@ class SandboxedProcess {
   int Run();
 
  private:
-  // Builds the array of arguments |arguments_array_|, which is passed to
-  // the process to be launched by Start(), from the arguments stored in
-  // |arguments_|.
-  void BuildArgumentsArray();
-
-  std::vector<std::string> arguments_;
-
-  scoped_array<char*> arguments_array_;
-
-  scoped_array<char> arguments_buffer_;
-
   struct minijail* jail_;
-
-  FRIEND_TEST(SandboxedProcessTest, BuildEmptyArgumentsArray);
-  FRIEND_TEST(SandboxedProcessTest, BuildArgumentsArray);
 
   DISALLOW_COPY_AND_ASSIGN(SandboxedProcess);
 };
