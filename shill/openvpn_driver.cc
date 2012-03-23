@@ -544,6 +544,8 @@ bool OpenVPNDriver::Load(StoreInterface *storage, const string &storage_id) {
         storage->GetString(storage_id, property, &value);
     if (loaded) {
       args_.SetString(property, value);
+    } else {
+      args_.RemoveString(property);
     }
   }
   return true;
