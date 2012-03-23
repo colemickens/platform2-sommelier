@@ -21,6 +21,7 @@ class MockVPNService : public VPNService {
   virtual ~MockVPNService();
 
   MOCK_METHOD1(SetState, void(ConnectState state));
+  MOCK_METHOD0(InitDriverPropertyStore, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockVPNService);

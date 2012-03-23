@@ -388,7 +388,7 @@ class StringMapWrapper {
     EXPECT_TRUE(ContainsKey(value_, key));
     return value_[key];
   }
-  void Set(const string &value, const string &key, Error */*error*/) {
+  void Set(const string &key, const string &value, Error */*error*/) {
     value_[key] = value;
   }
 

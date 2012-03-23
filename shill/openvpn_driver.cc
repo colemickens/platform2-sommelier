@@ -16,6 +16,7 @@
 #include "shill/dhcp_config.h"
 #include "shill/error.h"
 #include "shill/manager.h"
+#include "shill/property_accessor.h"
 #include "shill/rpc_task.h"
 #include "shill/store_interface.h"
 #include "shill/vpn.h"
@@ -48,10 +49,14 @@ const char kOpenVPNTLSAuthProperty[] = "OpenVPN.TLSAuth";
 const char kOpenVPNVerbProperty[] = "OpenVPN.Verb";
 const char kVPNMTUProperty[] = "VPN.MTU";
 
-const struct {
-  const char *property;
-  bool crypted;
-} kProperties[] = {
+}  // namespace
+
+// static
+const char OpenVPNDriver::kOpenVPNPath[] = "/usr/sbin/openvpn";
+// static
+const char OpenVPNDriver::kOpenVPNScript[] = SCRIPTDIR "/openvpn-script";
+// static
+const OpenVPNDriver::Property OpenVPNDriver::kProperties[] = {
   { flimflam::kOpenVPNAuthNoCacheProperty, false },
   { flimflam::kOpenVPNAuthProperty, false },
   { flimflam::kOpenVPNAuthRetryProperty, false },
@@ -90,14 +95,7 @@ const struct {
   { kOpenVPNTLSAuthProperty, false },
   { kOpenVPNVerbProperty, false },
   { kVPNMTUProperty, false },
-  { NULL, false },
 };
-}  // namespace
-
-// static
-const char OpenVPNDriver::kOpenVPNPath[] = "/usr/sbin/openvpn";
-// static
-const char OpenVPNDriver::kOpenVPNScript[] = SCRIPTDIR "/openvpn-script";
 
 OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
                              EventDispatcher *dispatcher,
@@ -536,7 +534,7 @@ void OpenVPNDriver::Disconnect() {
 }
 
 bool OpenVPNDriver::Load(StoreInterface *storage, const string &storage_id) {
-  for (int i = 0; kProperties[i].property; i++) {
+  for (size_t i = 0; i < arraysize(kProperties); i++) {
     const string property = kProperties[i].property;
     string value;
     bool loaded = kProperties[i].crypted ?
@@ -552,7 +550,7 @@ bool OpenVPNDriver::Load(StoreInterface *storage, const string &storage_id) {
 }
 
 bool OpenVPNDriver::Save(StoreInterface *storage, const string &storage_id) {
-  for (int i = 0; kProperties[i].property; i++) {
+  for (size_t i = 0; i < arraysize(kProperties); i++) {
     const string property = kProperties[i].property;
     const string value = args_.LookupString(property, "");
     if (value.empty()) {
@@ -565,5 +563,56 @@ bool OpenVPNDriver::Save(StoreInterface *storage, const string &storage_id) {
   }
   return true;
 }
+
+void OpenVPNDriver::InitPropertyStore(PropertyStore *store) {
+  for (size_t i = 0; i < arraysize(kProperties); i++) {
+    store->RegisterDerivedString(
+        kProperties[i].property,
+        StringAccessor(
+            new CustomMappedAccessor<OpenVPNDriver, string, size_t>(
+                this,
+                &OpenVPNDriver::ClearMappedProperty,
+                &OpenVPNDriver::GetMappedProperty,
+                &OpenVPNDriver::SetMappedProperty,
+                i)));
+  }
+
+  // TODO(pstew): Add the PassphraseRequired and PSKRequired properties.
+  // crosbug.com/27323
+}
+
+void OpenVPNDriver::ClearMappedProperty(const size_t &index,
+                                        Error *error) {
+  CHECK(index < arraysize(kProperties));
+  if (args_.ContainsString(kProperties[index].property)) {
+    args_.RemoveString(kProperties[index].property);
+  } else {
+    error->Populate(Error::kNotFound, "Property is not set");
+  }
+}
+
+string OpenVPNDriver::GetMappedProperty(const size_t &index,
+                                        Error *error) {
+  CHECK(index < arraysize(kProperties));
+  if (kProperties[index].crypted) {
+    error->Populate(Error::kPermissionDenied, "Property is write-only");
+    return string();
+  }
+
+  if (!args_.ContainsString(kProperties[index].property)) {
+    error->Populate(Error::kNotFound, "Property is not set");
+    return string();
+  }
+
+  return args_.LookupString(kProperties[index].property, "");
+}
+
+void OpenVPNDriver::SetMappedProperty(const size_t &index,
+                                      const string &value,
+                                      Error *error) {
+  CHECK(index < arraysize(kProperties));
+  args_.SetString(kProperties[index].property, value);
+}
+
 
 }  // namespace shill

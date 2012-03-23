@@ -61,6 +61,7 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
   VPNServiceRefPtr service = new VPNService(
       control_interface_, dispatcher_, metrics_, manager_, driver.release());
   service->set_storage_id(storage_id);
+  service->InitDriverPropertyStore();
   string name = args.LookupString(flimflam::kProviderNameProperty, "");
   if (!name.empty()) {
     service->set_friendly_name(name);

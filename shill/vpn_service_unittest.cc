@@ -104,4 +104,9 @@ TEST_F(VPNServiceTest, Save) {
   EXPECT_TRUE(service_->Save(&storage));
 }
 
+TEST_F(VPNServiceTest, InitPropertyStore) {
+  EXPECT_CALL(*driver_, InitPropertyStore(service_->mutable_store()));
+  service_->InitDriverPropertyStore();
+}
+
 }  // namespace shill

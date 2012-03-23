@@ -24,6 +24,7 @@ class MockVPNDriver : public VPNDriver {
                           const std::string &storage_id));
   MOCK_METHOD2(Save, bool(StoreInterface *storage,
                           const std::string &storage_id));
+  MOCK_METHOD1(InitPropertyStore, void(PropertyStore *store));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockVPNDriver);

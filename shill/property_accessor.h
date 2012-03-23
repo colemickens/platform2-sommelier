@@ -227,7 +227,7 @@ class CustomMappedAccessor : public AccessorInterface<T> {
   CustomMappedAccessor(C *target,
                        void(C::*clearer)(const A &argument, Error *error),
                        T(C::*getter)(const A &argument, Error *error),
-                       void(C::*setter)(const T &value, const A &argument,
+                       void(C::*setter)(const A &argument, const T &value,
                                         Error *error),
                        const A &argument)
       : target_(target),
@@ -249,7 +249,7 @@ class CustomMappedAccessor : public AccessorInterface<T> {
   }
   void Set(const T &value, Error *error) {
     if (setter_) {
-      (target_->*setter_)(value, argument_, error);
+      (target_->*setter_)(argument_, value, error);
     } else {
       error->Populate(Error::kInvalidArguments, "Property is read-only");
     }
@@ -259,7 +259,7 @@ class CustomMappedAccessor : public AccessorInterface<T> {
   C *const target_;
   void(C::*const clearer_)(const A &argument, Error *error);
   T(C::*const getter_)(const A &argument, Error *error);
-  void(C::*const setter_)(const T &value, const A &argument, Error *error);
+  void(C::*const setter_)(const A &argument, const T &value, Error *error);
   A argument_;
   DISALLOW_COPY_AND_ASSIGN(CustomMappedAccessor);
 };

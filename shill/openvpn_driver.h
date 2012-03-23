@@ -55,6 +55,13 @@ class OpenVPNDriver : public VPNDriver,
   virtual bool Load(StoreInterface *storage, const std::string &storage_id);
   virtual bool Save(StoreInterface *storage, const std::string &storage_id);
 
+  virtual void InitPropertyStore(PropertyStore *store);
+  void ClearMappedProperty(const size_t &index, Error *error);
+  std::string GetMappedProperty(const size_t &index, Error *error);
+  void SetMappedProperty(const size_t &index,
+                         const std::string &value,
+                         Error *error);
+
  private:
   friend class OpenVPNDriverTest;
   FRIEND_TEST(OpenVPNDriverTest, AppendFlag);
@@ -79,8 +86,14 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
 
+  struct Property {
+    const char *property;
+    bool crypted;
+  };
+
   static const char kOpenVPNPath[];
   static const char kOpenVPNScript[];
+  static const Property kProperties[];
 
   // The map is a sorted container that allows us to iterate through the options
   // in order.

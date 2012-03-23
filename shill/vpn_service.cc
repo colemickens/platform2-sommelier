@@ -80,4 +80,8 @@ bool VPNService::Save(StoreInterface *storage) {
       driver_->Save(storage, GetStorageIdentifier());
 }
 
+void VPNService::InitDriverPropertyStore() {
+  driver_->InitPropertyStore(mutable_store());
+}
+
 }  // namespace shill
