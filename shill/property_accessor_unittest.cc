@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/stl_util.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -375,6 +376,61 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithClear) {
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ("", wrapper.value_);
+  }
+}
+
+class StringMapWrapper {
+ public:
+  void Clear(const string &key, Error */*error*/) {
+    value_.erase(key);
+  }
+  string Get(const string &key, Error */*error*/) {
+    EXPECT_TRUE(ContainsKey(value_, key));
+    return value_[key];
+  }
+  void Set(const string &value, const string &key, Error */*error*/) {
+    value_[key] = value;
+  }
+
+  map<string,string> value_;
+};
+
+TEST(PropertyAccessorTest, CustomMappedAccessor) {
+  const string kKey = "entry_key";
+  const string kValue = "entry_value";
+  {
+    // Test reading.
+    StringMapWrapper wrapper;
+    CustomMappedAccessor<StringMapWrapper, string, string> accessor(
+        &wrapper, &StringMapWrapper::Clear, &StringMapWrapper::Get,
+        &StringMapWrapper::Set, kKey);
+    wrapper.value_[kKey] = kValue;
+    Error error;
+    EXPECT_EQ(kValue, accessor.Get(&error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    // Test writing.
+    StringMapWrapper wrapper;
+    CustomMappedAccessor<StringMapWrapper, string, string> accessor(
+        &wrapper, &StringMapWrapper::Clear, &StringMapWrapper::Get,
+        &StringMapWrapper::Set, kKey);
+    Error error;
+    accessor.Set(kValue, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(kValue, wrapper.value_[kKey]);
+  }
+  {
+    // Test clearing.
+    StringMapWrapper wrapper;
+    CustomMappedAccessor<StringMapWrapper, string, string> accessor(
+        &wrapper, &StringMapWrapper::Clear, &StringMapWrapper::Get,
+        &StringMapWrapper::Set, kKey);
+    wrapper.value_[kKey] = kValue;
+    Error error;
+    accessor.Clear(&error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_FALSE(ContainsKey(wrapper.value_, kKey));
   }
 }
 

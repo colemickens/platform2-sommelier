@@ -212,6 +212,58 @@ class CustomWriteOnlyAccessor : public AccessorInterface<T> {
   DISALLOW_COPY_AND_ASSIGN(CustomWriteOnlyAccessor);
 };
 
+// CustomMappedAccessor<> passes an argument to the getter and setter
+// so that a generic method can be used, for example one that accesses the
+// property in a map.
+template<class C, class T, class A>
+class CustomMappedAccessor : public AccessorInterface<T> {
+ public:
+  // |target| is the object on which to call the methods |getter| and |setter|.
+  // |setter| is allowed to be NULL, in which case we will simply reject
+  // attempts to set via the accessor.
+  // |argument| is passed to the getter and setter methods to disambiguate
+  // between different properties in |target|.
+  // It is an error to pass NULL for any of |target|, |clearer| or |getter|.
+  CustomMappedAccessor(C *target,
+                       void(C::*clearer)(const A &argument, Error *error),
+                       T(C::*getter)(const A &argument, Error *error),
+                       void(C::*setter)(const T &value, const A &argument,
+                                        Error *error),
+                       const A &argument)
+      : target_(target),
+        clearer_(clearer),
+        getter_(getter),
+        setter_(setter),
+        argument_(argument) {
+    DCHECK(clearer);
+    DCHECK(target);
+    DCHECK(getter);
+  }
+  virtual ~CustomMappedAccessor() {}
+
+  void Clear(Error *error) {
+    (target_->*clearer_)(argument_, error);
+  }
+  T Get(Error *error) {
+    return (target_->*getter_)(argument_, error);
+  }
+  void Set(const T &value, Error *error) {
+    if (setter_) {
+      (target_->*setter_)(value, argument_, error);
+    } else {
+      error->Populate(Error::kInvalidArguments, "Property is read-only");
+    }
+  }
+
+ private:
+  C *const target_;
+  void(C::*const clearer_)(const A &argument, Error *error);
+  T(C::*const getter_)(const A &argument, Error *error);
+  void(C::*const setter_)(const T &value, const A &argument, Error *error);
+  A argument_;
+  DISALLOW_COPY_AND_ASSIGN(CustomMappedAccessor);
+};
+
 }  // namespace shill
 
 #endif  // SHILL_PROPERTY_ACCESSOR_
