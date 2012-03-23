@@ -37,6 +37,7 @@ const char* kChapsServiceName = "org.chromium.Chaps";
 const size_t kTokenLabelSize = 32;
 const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
 const CK_ATTRIBUTE_TYPE kAuthDataAttribute = CKA_VENDOR_DEFINED + 2;
+const CK_ATTRIBUTE_TYPE kLegacyAttribute = CKA_VENDOR_DEFINED + 3;
 
 const char* CK_RVToString(CK_RV value) {
   switch (value) {
@@ -357,7 +358,7 @@ string AttributeToString(CK_ATTRIBUTE_TYPE attribute) {
 static uint32_t ExtractU32(const vector<uint8_t>& value) {
   if (value.size() == 1) {
     return static_cast<uint32_t>(value[0]);
-  } else if (value.size() == 4) {
+  } else if (value.size() == 4 || value.size() == 8) {
     return *reinterpret_cast<const uint32_t*>(&value[0]);
   }
   return 0;
@@ -666,6 +667,31 @@ bool RunCipher(bool is_encrypt,
     *output += random_iv;
   }
   return true;
+}
+
+bool IsIntegralAttribute(CK_ATTRIBUTE_TYPE type) {
+  switch (type) {
+    case CKA_CLASS:
+    case CKA_KEY_TYPE:
+    case CKA_MODULUS_BITS:
+    case CKA_VALUE_BITS:
+    case CKA_VALUE_LEN:
+    case CKA_CERTIFICATE_TYPE:
+    case CKA_CERTIFICATE_CATEGORY:
+    case CKA_PRIME_BITS:
+    case CKA_SUBPRIME_BITS:
+    case CKA_KEY_GEN_MECHANISM:
+    case CKA_HW_FEATURE_TYPE:
+    case CKA_MECHANISM_TYPE:
+    case CKA_PIXEL_X:
+    case CKA_PIXEL_Y:
+    case CKA_RESOLUTION:
+    case CKA_CHAR_ROWS:
+    case CKA_CHAR_COLUMNS:
+    case CKA_BITS_PER_PIXEL:
+      return true;
+  }
+  return false;
 }
 
 }  // namespace chaps

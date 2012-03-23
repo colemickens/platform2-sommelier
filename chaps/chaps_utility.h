@@ -228,6 +228,9 @@ bool RunCipher(bool is_encrypt,
                const std::string& input,
                std::string* output);
 
+// Returns true if the given attribute type has an integral value.
+bool IsIntegralAttribute(CK_ATTRIBUTE_TYPE type);
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H

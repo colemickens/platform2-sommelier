@@ -12,6 +12,23 @@ namespace chaps {
 
 class Object;
 
+// Enumerates internal blobs. These are used as 'blob_id' values when reading
+// or writing internal blobs.
+enum InternalBlobId {
+  // The token authorization key, encrypted by the TPM.
+  kEncryptedAuthKey,
+  // The token master key, encrypted by the authorization key.
+  kEncryptedMasterKey,
+  // Tracks whether legacy objects have been imported. This is not actually a
+  // blob but its existence indicates that objects have been imported and we
+  // don't need to attempt that work again.
+  kImportedTracker,
+  // The legacy private root key blob, as imported from opencryptoki.
+  kLegacyPrivateRootKey,
+  // The legacy public root key blob, as imported from opencryptoki.
+  kLegacyPublicRootKey
+};
+
 // An ObjectPool instance manages a collection of objects.  A persistent object
 // pool is backed by a database where all object data and object-related
 // metadata is stored.
