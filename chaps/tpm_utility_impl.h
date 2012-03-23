@@ -54,6 +54,11 @@ class TPMUtilityImpl : public TPMUtility {
                        const std::string& key_blob,
                        const std::string& auth_data,
                        int* key_handle);
+  virtual bool LoadKeyWithParent(int slot,
+                                 const std::string& key_blob,
+                                 const std::string& auth_data,
+                                 int parent_key_handle,
+                                 int* key_handle);
   virtual void UnloadKeysForSlot(int slot);
   virtual bool Bind(int key_handle,
                     const std::string& input,

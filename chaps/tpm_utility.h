@@ -20,6 +20,7 @@ class TPMUtility {
   //   srk_auth_data - Authorization data for the SRK (typically empty).
   // Returns true on success.
   virtual bool Init(const std::string& srk_auth_data) = 0;
+
   // Authenticates a user by decrypting the user's master key with the user's
   // authorization key.
   //   auth_data - The user's authorization data (which is derived from the
@@ -35,6 +36,7 @@ class TPMUtility {
                             const std::string& auth_key_blob,
                             const std::string& encrypted_master_key,
                             std::string* master_key) = 0;
+
   // Changes authorization data for a user's authorization key. Returns true on
   // success.
   virtual bool ChangeAuthData(int slot_id,
@@ -42,13 +44,16 @@ class TPMUtility {
                               const std::string& new_auth_data,
                               const std::string& old_auth_key_blob,
                               std::string* new_auth_key_blob) = 0;
+
   // Provides hardware-generated random data. Returns true on success.
   virtual bool GenerateRandom(int num_bytes, std::string* random_data) = 0;
+
   // Adds entropy to the hardware random number generator. This is like seeding
   // the generator except the provided entropy is mixed with existing state and
   // the resulting random numbers generated are not deterministic. Returns true
   // on success.
   virtual bool StirRandom(const std::string& entropy_data) = 0;
+
   // Generates an RSA key pair in the TPM and wraps it with the SRK. The key
   // type will be set to TSS_KEY_TYPE_LEGACY.
   //   slot - The slot associated with this key.
@@ -68,11 +73,13 @@ class TPMUtility {
                            const std::string& auth_data,
                            std::string* key_blob,
                            int* key_handle) = 0;
+
   // Retrieves the public components of an RSA key pair. Returns true on
   // success.
   virtual bool GetPublicKey(int key_handle,
                             std::string* public_exponent,
                             std::string* modulus) = 0;
+
   // Wraps an RSA key pair with the SRK. The key type will be set to
   // TSS_KEY_TYPE_LEGACY.
   //   slot - The slot associated with this key.
@@ -93,6 +100,7 @@ class TPMUtility {
                        const std::string& auth_data,
                        std::string* key_blob,
                        int* key_handle) = 0;
+
   // Loads a key by blob into the TPM.
   //   slot - The slot associated with this key.
   //   key_blob - The key blob as provided by GenerateKey or WrapKey.
@@ -104,9 +112,25 @@ class TPMUtility {
                        const std::string& key_blob,
                        const std::string& auth_data,
                        int* key_handle) = 0;
+
+  // Loads a key by blob into the TPM that has a parent key that is not the SRK.
+  //   slot - The slot associated with this key.
+  //   key_blob - The key blob as provided by GenerateKey or WrapKey.
+  //   auth_data - Authorization data for the key.
+  //   parent_key_handle - The key handle of the parent key.
+  //   key_handle - A handle to the loaded key. This will be valid until keys
+  //                are unloaded for the given slot.
+  // Returns true on success.
+  virtual bool LoadKeyWithParent(int slot,
+                                 const std::string& key_blob,
+                                 const std::string& auth_data,
+                                 int parent_key_handle,
+                                 int* key_handle) = 0;
+
   // Unloads all keys loaded for a particular slot. All key handles for the
   // given slot will not be valid after this method returns.
   virtual void UnloadKeysForSlot(int slot) = 0;
+
   // Performs a 'bind' operation using the TSS_ES_RSAESPKCSV15 scheme. This
   // effectively performs PKCS #1 v1.5 RSA encryption (using PKCS #1 'type 2'
   // padding).
@@ -120,6 +144,7 @@ class TPMUtility {
   virtual bool Bind(int key_handle,
                     const std::string& input,
                     std::string* output) = 0;
+
   // Performs a 'unbind' operation using the TSS_ES_RSAESPKCSV15 scheme. This
   // effectively performs PKCS #1 v1.5 RSA decryption (using PKCS #1 'type 2'
   // padding).
@@ -133,6 +158,7 @@ class TPMUtility {
   virtual bool Unbind(int key_handle,
                       const std::string& input,
                       std::string* output) = 0;
+
   // Generates a digital signature using the TSS_SS_RSASSAPKCS1V15_DER scheme.
   //   key_handle - The key handle, as provided by LoadKey, WrapKey or
   //                GenerateKey.
@@ -144,6 +170,7 @@ class TPMUtility {
   virtual bool Sign(int key_handle,
                     const std::string& input,
                     std::string* signature) = 0;
+
   // Verifies a digital signature using the TSS_SS_RSASSAPKCS1V15_DER scheme.
   //   key_handle - The key handle, as provided by LoadKey, WrapKey, or
   //                GenerateKey.
