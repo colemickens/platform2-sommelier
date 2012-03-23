@@ -12,6 +12,7 @@
 #include <cmath>
 
 #include "base/logging.h"
+#include "base/file_util.h"
 
 namespace power_manager {
 
@@ -50,12 +51,24 @@ AmbientLightSensor::~AmbientLightSensor() {
 }
 
 bool AmbientLightSensor::DeferredInit() {
-  // Support both old and new naming conventions.
-  // If the lux file is not immediately found, issue a deferral
+  // Search the iio/devices directory for a subdirectory (eg "device0" or
+  // "iio:device0") that contains the "illuminance0_input" file.
+  file_util::FileEnumerator dir_enumerator(
+      FilePath("/sys/bus/iio/devices"), false,
+      file_util::FileEnumerator::DIRECTORIES);
+
+  for (FilePath check_path = dir_enumerator.Next(); !check_path.empty();
+       check_path = dir_enumerator.Next()) {
+    FilePath als_path = check_path.Append("illuminance0_input");
+    if (!file_util::PathExists(als_path))
+      continue;
+    als_fd_ = open(als_path.value().c_str(), O_RDONLY);
+    if (als_fd_ >= 0)
+      break;
+  }
+
+  // If the illuminance file is not immediately found, issue a deferral
   // message and try again later.
-  als_fd_ = open("/sys/class/iio/device0/lux", O_RDONLY);
-  if (als_fd_ == -1)
-    als_fd_ = open("/sys/bus/iio/devices/device0/illuminance0_input", O_RDONLY);
   if (als_fd_ == -1) {
     if (still_deferring_)
       return false;
