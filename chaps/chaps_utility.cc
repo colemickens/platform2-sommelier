@@ -8,6 +8,7 @@
 #include <pwd.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <sstream>
@@ -546,6 +547,8 @@ bool SetProcessUserAndGroup(const char* user_name,
   }
   gid_t gid = group_info->gr_gid;
   if (real) {
+    // Make the umask more restrictive: u + rwx, g + rx.
+    umask(0027);
     // The order of the following steps matter. In particular, we want to set
     // the uid last. Initializing supplementary groups will allow us to access
     // any files normally accessible by the uid we will be setting.
