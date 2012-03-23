@@ -213,6 +213,17 @@ power_state_tool = power_state_tool_env.Program('power_state_tool',
                                                  'util.cc'])
 Default(power_state_tool)
 
+# Build backlight dbus tool
+backlight_dbus_tool = gdk_env.Clone()
+backlight_dbus_tool.Append(LIBS=Split('rt pthread gflags protobuf X11'))
+backlight_dbus_tool.ParseConfig(('%s --cflags --libs dbus-1 dbus-glib-1 ' +
+                                 'libchromeos-%s') % (pkgconfig, BASE_VER))
+backlight_dbus_tool = backlight_dbus_tool.Program('backlight_dbus_tool',
+                                                  ['backlight_dbus_tool.cc',
+                                                   'power_constants.cc',
+                                                   'util.cc'])
+Default(backlight_dbus_tool)
+
 # Build unit tests
 tests = []
 testrunner = base_env.Library('testrunner', ['testrunner.cc'])

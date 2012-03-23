@@ -108,6 +108,9 @@ class BacklightController : public BacklightInterfaceObserver {
   // We may be in the process of smoothly transitioning to a different level.
   bool GetCurrentBrightnessPercent(double* percent);
 
+  // Set the current brightness of the backlight in the range [0, 100].
+  bool SetCurrentBrightnessPercent(const double percent);
+
   // Increase the brightness level of the backlight by one step.
   // Returns true if the brightness was changed, false otherwise.
   bool IncreaseBrightness(BrightnessChangeCause cause);

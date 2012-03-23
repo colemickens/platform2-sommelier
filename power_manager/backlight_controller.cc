@@ -170,6 +170,13 @@ bool BacklightController::GetCurrentBrightnessPercent(double* percent) {
   return true;
 }
 
+bool BacklightController::SetCurrentBrightnessPercent(const double percent) {
+  int64 level = PercentToLevel(percent);
+
+  SetBrightness(level, TRANSITION_INSTANT);
+  return true;
+}
+
 bool BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
   if (!is_initialized_)
     return false;

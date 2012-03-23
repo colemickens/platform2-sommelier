@@ -790,6 +790,54 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
           kBrightnessChangedSignal);
     util::SendEmptyDBusReply(connection, message);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kGetScreenBrightnessPercent)) {
+    LOG(INFO) << "Got " << kGetScreenBrightnessPercent << " method call";
+    double percent;
+
+    if (!daemon->backlight_controller_->GetCurrentBrightnessPercent(
+             &percent)) {
+      util::SendDBusErrorReply(connection, message, DBUS_ERROR_FAILED,
+                               "Could not fetch Screen Brightness");
+    } else {
+      DBusMessage *reply = dbus_message_new_method_return(message);
+      CHECK(reply);
+      dbus_message_append_args(reply,
+                               DBUS_TYPE_DOUBLE, &percent,
+                               DBUS_TYPE_INVALID);
+      if (!dbus_connection_send(connection, reply, NULL)) {
+        LOG(WARNING) << "Could not send response to "
+                     << kGetScreenBrightnessPercent;
+        util::SendDBusErrorReply(connection, message, DBUS_ERROR_FAILED,
+                                 "Failure sending reply");
+      }
+      dbus_message_unref(reply);
+    }
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kSetScreenBrightnessPercent)) {
+    LOG(INFO) << "Got " << kSetScreenBrightnessPercent << " method call";
+    double percent;
+
+    DBusError error;
+    dbus_error_init(&error);
+    if (dbus_message_get_args(message, &error,
+                              DBUS_TYPE_DOUBLE, &percent,
+                              DBUS_TYPE_INVALID)) {
+      bool success =
+        daemon->backlight_controller_->SetCurrentBrightnessPercent(percent);
+      if (success) {
+        util::SendEmptyDBusReply(connection, message);
+      } else {
+        util::SendDBusErrorReply(connection, message, DBUS_ERROR_FAILED,
+                                 "Could not set Screen Brightness");
+      }
+    } else {
+      LOG(WARNING) << kSetScreenBrightnessPercent
+                   << ": Error reading args: " << error.message;
+      util::SendDBusErrorReply(connection, message, DBUS_ERROR_INVALID_ARGS,
+                               "Invalid arguments passed to method");
+      dbus_error_free(&error);
+    }
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kDecreaseKeyboardBrightness)) {
     LOG(INFO) << "Got " << kDecreaseKeyboardBrightness << " method call";
     daemon->AdjustKeyboardBrightness(-1);
