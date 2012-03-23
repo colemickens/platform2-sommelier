@@ -45,6 +45,7 @@ const char kRootPowerManagerInterface[] = "org.chromium.RootPowerManager";
 const char kRootPowerManagerServiceName[] = "org.chromium.RootPowerManager";
 
 // powerd -> powerm signals.
+const char kCheckLidStateSignal[] = "CheckLidStateSignal";
 const char kRestartSignal[] = "RestartSignal";
 const char kRequestCleanShutdown[] = "RequestCleanShutdown";
 const char kSuspendSignal[] = "SuspendSignal";

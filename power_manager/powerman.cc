@@ -275,6 +275,12 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+void PowerManDaemon::HandleCheckLidStateSignal(DBusMessage* message) {
+  if (lidstate_ == LID_STATE_CLOSED) {
+    util::SendSignalToPowerD(kLidClosed);
+  }
+}
+
 void PowerManDaemon::HandleSuspendSignal(DBusMessage* message) {
   Suspend(message);
 }
@@ -486,6 +492,8 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
   CHECK(dbus_connection_add_filter(
       connection, &DBusMessageHandler, this, NULL));
 
+  AddDBusSignalHandler(kRootPowerManagerInterface, kCheckLidStateSignal,
+                       &PowerManDaemon::HandleCheckLidStateSignal);
   AddDBusSignalHandler(kRootPowerManagerInterface, kSuspendSignal,
                        &PowerManDaemon::HandleSuspendSignal);
   AddDBusSignalHandler(kRootPowerManagerInterface, kShutdownSignal,

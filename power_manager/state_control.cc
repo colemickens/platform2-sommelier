@@ -124,8 +124,7 @@ void StateControl::RemoveOverrideAndUpdate(int request_id) {
     daemon_->UpdateIdleStates();
   }
   if (old_lid_suspend && !disable_lid_suspend_)
-    // TODO(kliegs): crosbug.com/28270 to implement this
-    LOG(ERROR) << "NYI: checking lid closed out of suspend";
+    util::SendSignalToPowerM(kCheckLidStateSignal);
 }
 
 gboolean StateControl::RecordExpired() {

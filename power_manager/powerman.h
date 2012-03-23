@@ -85,6 +85,7 @@ class PowerManDaemon {
                                               void* data);
 
   // Callbacks for handling dbus messages.
+  void HandleCheckLidStateSignal(DBusMessage* message);
   void HandleSuspendSignal(DBusMessage* message);
   void HandleShutdownSignal(DBusMessage* message);
   void HandleRestartSignal(DBusMessage* message);

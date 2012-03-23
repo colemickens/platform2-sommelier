@@ -41,6 +41,7 @@ extern const char kRootPowerManagerInterface[];
 extern const char kRootPowerManagerServiceName[];
 
 // powerd -> powerm constants.
+extern const char kCheckLidStateSignal[];
 extern const char kRestartSignal[];
 extern const char kRequestCleanShutdown[];
 extern const char kSuspendSignal[];
