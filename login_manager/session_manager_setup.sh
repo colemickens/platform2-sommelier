@@ -312,6 +312,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enterprise-enrollment-initial-modulus=5 \
             --enterprise-enrollment-modulus-limit=12 \
             --force-compositing-mode \
+	    --enable-threaded-compositing \
             --load-opencryptoki \
             --log-level=1 \
             --login-manager \
