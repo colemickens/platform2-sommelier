@@ -170,11 +170,18 @@ bool BacklightController::GetCurrentBrightnessPercent(double* percent) {
   return true;
 }
 
-bool BacklightController::SetCurrentBrightnessPercent(const double percent) {
-  int64 level = PercentToLevel(percent);
+bool BacklightController::SetCurrentBrightnessPercent(
+    double percent,
+    BrightnessChangeCause cause,
+    TransitionStyle style) {
+  if (!is_initialized_)
+    return false;
 
-  SetBrightness(level, TRANSITION_INSTANT);
-  return true;
+  percent = percent < 0.001 ? 0.0 : ClampPercentToVisibleRange(percent);
+  if (percent == target_percent_)
+    return false;
+  *current_offset_percent_ = percent - als_offset_percent_;
+  return WriteBrightness(true, cause, style);
 }
 
 bool BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {

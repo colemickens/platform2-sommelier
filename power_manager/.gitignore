@@ -7,7 +7,7 @@
 *.proto
 als_brightness_level
 backlight-tool
-backlight_check_tool
+backlight_dbus_tool
 plugged_brightness_offset
 power[dm]
 power_manager_bindings_server.h

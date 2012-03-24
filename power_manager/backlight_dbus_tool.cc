@@ -16,6 +16,7 @@
 
 DEFINE_bool(set, false, "Set the percent instead of reading");
 DEFINE_double(percent, 0, "Percent to set to");
+DEFINE_bool(gradual, true, "Transition gradually");
 
 // Turn the request into a protobuff and send over dbus.
 bool GetCurrentBrightness(double* percent) {
@@ -57,7 +58,7 @@ bool GetCurrentBrightness(double* percent) {
   return(true);
 }
 
-bool SetCurrentBrightness(const double percent) {
+bool SetCurrentBrightness(const double percent, int style) {
   DBusConnection *connection = dbus_g_connection_get_connection(
         chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(connection);
@@ -69,6 +70,7 @@ bool SetCurrentBrightness(const double percent) {
   CHECK(message);
   dbus_message_append_args(message,
                            DBUS_TYPE_DOUBLE, &percent,
+                           DBUS_TYPE_INT32, &style,
                            DBUS_TYPE_INVALID);
   DBusError error;
   dbus_error_init(&error);
@@ -95,11 +97,18 @@ int main(int argc, char* argv[]) {
   g_type_init();
 
   double percent;
+  int style;
+
+  if (FLAGS_gradual) {
+    style = power_manager::kBrightnessTransitionGradual;
+  } else {
+    style = power_manager::kBrightnessTransitionInstant;
+  }
 
   CHECK(GetCurrentBrightness(&percent)) << "Could not read brightness";
   std::cout << "Current percent = " << percent << std::endl;
   if (FLAGS_set) {
-    if (SetCurrentBrightness(FLAGS_percent)) {
+    if (SetCurrentBrightness(FLAGS_percent, style)) {
       std::cout << "Set percent to " << FLAGS_percent << std::endl;
     } else {
       std::cout << "Error setting percent" << std::endl;

@@ -63,6 +63,12 @@ enum BrightnessChangeCause {
   BRIGHTNESS_CHANGE_USER_INITIATED,
 };
 
+// Different ways to transition brightness levels.
+enum TransitionStyle {
+  TRANSITION_GRADUAL,
+  TRANSITION_INSTANT,
+};
+
 // Interface for observing changes made by the backlight controller.
 class BacklightControllerObserver {
  public:
@@ -109,7 +115,10 @@ class BacklightController : public BacklightInterfaceObserver {
   bool GetCurrentBrightnessPercent(double* percent);
 
   // Set the current brightness of the backlight in the range [0, 100].
-  bool SetCurrentBrightnessPercent(const double percent);
+  // Returns true if the brightness was changed, false otherwise.
+  bool SetCurrentBrightnessPercent(double percent,
+                                   BrightnessChangeCause cause,
+                                   TransitionStyle style);
 
   // Increase the brightness level of the backlight by one step.
   // Returns true if the brightness was changed, false otherwise.
@@ -159,12 +168,6 @@ class BacklightController : public BacklightInterfaceObserver {
               GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow);
   FRIEND_TEST(DaemonTest,
               GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow);
-
-  // How to transition between brightness levels.
-  enum TransitionStyle {
-    TRANSITION_GRADUAL,
-    TRANSITION_INSTANT,
-  };
 
   // Clamp |percent| to fit between LevelToPercent(min_visible_level_) and 100.
   double ClampPercentToVisibleRange(double percent);

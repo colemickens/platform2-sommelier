@@ -23,6 +23,7 @@
 #include "chromeos/glib/object.h"
 #include "cros/chromeos_wm_ipc_enums.h"
 #include "power_manager/activity_detector_interface.h"
+#include "power_manager/backlight_controller.h"
 #include "power_manager/metrics_constants.h"
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
@@ -77,7 +78,12 @@ namespace power_manager {
 static const int64 kProjectionTimeoutFactor = 2;
 
 // Constants for brightness adjustment metric reporting.
-enum { kBrightnessDown, kBrightnessUp, kBrightnessEnumMax };
+enum {
+  kBrightnessDown,
+  kBrightnessUp,
+  kBrightnessAbsolute,
+  kBrightnessEnumMax ,
+};
 
 // Daemon: Main power manager. Adjusts device status based on whether the
 //         user is idle and on video activity indicator from the window manager.
@@ -816,20 +822,34 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                                          kSetScreenBrightnessPercent)) {
     LOG(INFO) << "Got " << kSetScreenBrightnessPercent << " method call";
     double percent;
+    int dbus_style;
 
     DBusError error;
     dbus_error_init(&error);
     if (dbus_message_get_args(message, &error,
                               DBUS_TYPE_DOUBLE, &percent,
+                              DBUS_TYPE_INT32, &dbus_style,
                               DBUS_TYPE_INVALID)) {
-      bool success =
-        daemon->backlight_controller_->SetCurrentBrightnessPercent(percent);
-      if (success) {
-        util::SendEmptyDBusReply(connection, message);
-      } else {
-        util::SendDBusErrorReply(connection, message, DBUS_ERROR_FAILED,
-                                 "Could not set Screen Brightness");
+      TransitionStyle style = TRANSITION_GRADUAL;
+      switch (dbus_style) {
+        case kBrightnessTransitionGradual:
+          style = TRANSITION_GRADUAL;
+          break;
+        case kBrightnessTransitionInstant:
+          style = TRANSITION_INSTANT;
+          break;
+        default:
+          LOG(WARNING) << "Invalid transition style passed ( " << dbus_style
+                       << " ).  Using default gradual transition";
       }
+      daemon->backlight_controller_->SetCurrentBrightnessPercent(
+          percent,
+          BRIGHTNESS_CHANGE_USER_INITIATED,
+          style);
+      daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
+                                           kBrightnessAbsolute,
+                                           kBrightnessEnumMax);
+      util::SendEmptyDBusReply(connection, message);
     } else {
       LOG(WARNING) << kSetScreenBrightnessPercent
                    << ": Error reading args: " << error.message;
