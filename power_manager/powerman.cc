@@ -93,7 +93,7 @@ void PowerManDaemon::Init() {
     if (lidstate_ == LID_STATE_CLOSED) {
       input_.DisableWakeInputs();
       LOG(INFO) << "PowerM Daemon Init - lid is closed; generating event";
-      OnInputEvent(this, LID, input_lidstate);
+      OnInputEvent(this, INPUT_LID, input_lidstate);
     } else {
       input_.EnableWakeInputs();
     }
@@ -154,7 +154,7 @@ gboolean PowerManDaemon::RetrySuspend(unsigned int lid_id) {
 void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(object);
   switch (type) {
-    case LID: {
+    case INPUT_LID: {
       daemon->lidstate_ = daemon->GetLidState(value);
       daemon->lid_id_++;
       daemon->lid_ticks_ = TimeTicks::Now();
@@ -188,19 +188,19 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
       }
       break;
     }
-    case PWRBUTTON:
+    case INPUT_POWER_BUTTON:
       daemon->SendButtonEventSignal(kPowerButtonName, GetButtonState(value));
       break;
-    case LOCKBUTTON:
+    case INPUT_LOCK_BUTTON:
       daemon->SendButtonEventSignal(kLockButtonName, GetButtonState(value));
       break;
-    case KEYLEFTCTRL:
+    case INPUT_KEY_LEFT_CTRL:
       daemon->SendButtonEventSignal(kKeyLeftCtrl, GetButtonState(value));
       break;
-    case KEYRIGHTCTRL:
+    case INPUT_KEY_RIGHT_CTRL:
       daemon->SendButtonEventSignal(kKeyRightCtrl, GetButtonState(value));
       break;
-    case KEYF4:
+    case INPUT_KEY_F4:
       daemon->SendButtonEventSignal(kKeyF4, GetButtonState(value));
       break;
     default: {
@@ -533,6 +533,8 @@ void PowerManDaemon::SendButtonEventSignal(const std::string& button_name,
                                            ButtonState state) {
   if (state == BUTTON_REPEAT)
     return;
+  LOG(INFO) << "Sending button event signal: " << button_name << " is "
+            << (state == BUTTON_UP ? "up" : "down");
 
   // This signal is used by both Chrome and powerd.
   // Both must be updated if it is changed.

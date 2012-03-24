@@ -19,7 +19,7 @@ using std::map;
 using std::string;
 using std::vector;
 
-namespace power_manager {
+namespace {
 
 const char kInputUdevSubsystem[] = "input";
 const FilePath sys_class_input_path("/sys/class/input");
@@ -28,6 +28,42 @@ const char kInputBasename[] = "input";
 
 const char kWakeupDisabled[] = "disabled";
 const char kWakeupEnabled[] = "enabled";
+
+power_manager::InputType GetInputType(const struct input_event& event) {
+  if (event.type == EV_KEY) {
+    // For key events, only handle the keys listed below.
+    switch(event.code) {
+      case KEY_POWER:     return power_manager::INPUT_POWER_BUTTON;
+      case KEY_F13:       return power_manager::INPUT_LOCK_BUTTON;
+      case KEY_F4:        return power_manager::INPUT_KEY_F4;
+      case KEY_LEFTCTRL:  return power_manager::INPUT_KEY_LEFT_CTRL;
+      case KEY_RIGHTCTRL: return power_manager::INPUT_KEY_RIGHT_CTRL;
+      default:            return power_manager::INPUT_UNHANDLED;
+    }
+  }
+  // For switch events, only handle events from the lid.
+  if (event.type == EV_SW && event.code == SW_LID)
+    return power_manager::INPUT_LID;
+
+  return power_manager::INPUT_UNHANDLED;
+}
+
+const char* InputTypeToString(power_manager::InputType type) {
+  switch (type) {
+    case power_manager::INPUT_LID:            return "input(LID)";
+    case power_manager::INPUT_POWER_BUTTON:   return "input(POWER_BUTTON)";
+    case power_manager::INPUT_LOCK_BUTTON:    return "input(LOCK_BUTTON)";
+    case power_manager::INPUT_KEY_LEFT_CTRL:  return "input(KEY_LEFT_CTRL)";
+    case power_manager::INPUT_KEY_RIGHT_CTRL: return "input(KEY_RIGHT_CTRL)";
+    case power_manager::INPUT_KEY_F4:         return "input(KEY_F4)";
+    case power_manager::INPUT_UNHANDLED:      return "input(UNHANDLED)";
+    default:                                  NOTREACHED(); return "";
+  }
+}
+
+}
+
+namespace power_manager {
 
 Input::Input()
     : handler_(NULL),
@@ -469,18 +505,12 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
   if (!input->handler_)
     return true;
   for (i = 0; i < rd / sizeof(struct input_event); i++) {
-    if (EV_KEY == ev[i].type && KEY_POWER == ev[i].code)
-      (*input->handler_)(input->handler_data_, PWRBUTTON, ev[i].value);
-    else if (EV_KEY == ev[i].type && KEY_F13 == ev[i].code)
-      (*input->handler_)(input->handler_data_, LOCKBUTTON, ev[i].value);
-    else if (EV_SW == ev[i].type && SW_LID == ev[i].code)
-      (*input->handler_)(input->handler_data_, LID, ev[i].value);
-    else if (EV_KEY == ev[i].type && KEY_F4 == ev[i].code)
-      (*input->handler_)(input->handler_data_, KEYF4, ev[i].value);
-    else if (EV_KEY == ev[i].type && KEY_LEFTCTRL == ev[i].code)
-      (*input->handler_)(input->handler_data_, KEYLEFTCTRL, ev[i].value);
-    else if (EV_KEY == ev[i].type && KEY_RIGHTCTRL == ev[i].code)
-      (*input->handler_)(input->handler_data_, KEYRIGHTCTRL, ev[i].value);
+    InputType input_type = GetInputType(ev[i]);
+    if (input_type == INPUT_UNHANDLED)
+      continue;
+    LOG(INFO) << "Handling event: " << InputTypeToString(input_type);
+    (*input->handler_)(input->handler_data_, input_type, ev[i].value);
+    LOG(INFO) << "Input event handled: " << InputTypeToString(input_type);
   }
   return true;
 }
