@@ -31,10 +31,6 @@ const char kInternalPanelName[] = "LVDS";
 const float kScreenDpi = 96.0;
 // An inch in mm.
 const float kInchInMm = 25.4;
-// Duplicate RRScreenChangeNotify events can be received when the
-// actual number of outputs does not change. Use this interval threshold
-// to filter out duplicate monitor reconfigure.
-const TimeDelta kReconfigureInterval = TimeDelta::FromSeconds(5);
 // When doing monitor recofigure, if system uptime is less than
 // system_uptime_threshold, we consider it is the first time powerd runs
 // after boot.
@@ -84,7 +80,6 @@ MonitorReconfigure::MonitorReconfigure()
     : display_(NULL),
       window_(None),
       screen_info_(NULL),
-      noutput_(-1),
       last_configuration_time_(Time::Now()),
       internal_panel_connection_(RR_UnknownConnection),
       is_internal_panel_enabled_(true),
@@ -101,7 +96,6 @@ MonitorReconfigure::MonitorReconfigure(
     : display_(NULL),
       window_(None),
       screen_info_(NULL),
-      noutput_(-1),
       last_configuration_time_(Time::Now()),
       internal_panel_connection_(RR_UnknownConnection),
       is_internal_panel_enabled_(true),
@@ -399,22 +393,6 @@ void MonitorReconfigure::EnableUsableOutput(int idx,
     }
 }
 
-int MonitorReconfigure::GetConnectedOutputsNum() {
-  int count = 0;
-  for (int i = 0; i < screen_info_->noutput; i++) {
-    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
-                                                  screen_info_,
-                                                  screen_info_->outputs[i]);
-    // TODO(miletus@) : Add check for RR_UnknownConnection where we check
-    // for RR_Connected.
-    if (output_info->connection == RR_Connected)
-      count++;
-    XRRFreeOutputInfo(output_info);
-  }
-
-  return count;
-}
-
 bool MonitorReconfigure::HasInternalPanelConnection() {
   return internal_panel_connection_ == RR_Connected;
 }
@@ -451,26 +429,48 @@ void MonitorReconfigure::CheckInternalPanelConnection() {
   ClearXrandr();
 }
 
-bool MonitorReconfigure::NeedReconfigure() {
+bool MonitorReconfigure::AreOutputsSame(const vector<OutputInfo>& outputs1,
+                                        const vector<OutputInfo>& outputs2) {
+  if(outputs1.size() != outputs2.size())
+    return false;
+
+  for (size_t i = 0; i < outputs1.size(); i++) {
+    const OutputInfo& o1 = outputs1[i];
+    const OutputInfo& o2 = outputs2[i];
+
+    if (o1.name != o2.name || o1.modes.size() != o2.modes.size())
+      return false;
+
+    for (size_t j = 0; j < o1.modes.size(); j++)
+      if (o1.modes[j].width != o2.modes[j].width ||
+          o1.modes[j].height != o2.modes[j].height ||
+          o1.modes[j].dotClock != o2.modes[j].dotClock)
+        return false;
+  }
+  return true;
+}
+
+bool MonitorReconfigure::NeedReconfigure(
+    const vector<OutputInfo>& current_outputs) {
   bool need_reconfigure = true;
-  int old_noutput = noutput_;
-  noutput_ = GetConnectedOutputsNum();
+  int old_noutput = saved_outputs_.size();
+  int noutput = current_outputs.size();
 
   if (backlight_ctl_ && backlight_ctl_->state() == BACKLIGHT_IDLE_OFF) {
     LOG(INFO) << "System in IDLE_OFF state, skip the reconfigure";
     return false;
   }
 
-  if (old_noutput == -1) {   // First time run monitor_reconfigure.
+  if (old_noutput == 0) {   // First time run monitor_reconfigure.
     LOG(INFO) << "First time MonitorReconfigure::Run()";
     struct sysinfo info;
     sysinfo(&info);
 
-    // old_noutput == -1 happens when:
+    // old_noutput == 0 happens when:
     // 1) System boots and powerd runs first time. In this case, if we only have
     // one output, we rely on that kernel/X has setup the screen for the output
     // and we don't reconfigure (to avoid blanking the welcome splash).  If we
-    // have more than one outputs, then we do the re-configuration.
+    // have more than one output, then we do the re-configuration.
     // 2) Powerd restarts,e.g. Guest session exits. We reconfigure in this case.
     // System uptime is used to tell whether this is the first time powerd runs
     // with a boot or a restart.
@@ -478,37 +478,20 @@ bool MonitorReconfigure::NeedReconfigure() {
       LOG(INFO) << "Monitor reconfigure runs at system uptime "
                 << info.uptime << ", possibly powerd restarts ? ";
     } else {  // First time powerd starts.
-      if (noutput_ == 1) {
+      if (noutput == 1) {
         LOG(INFO) << "Only have one output, skip reconfigure";
         need_reconfigure = false;
       }
     }
   } else {  // Not the first run.
-    if (noutput_ != old_noutput) {      // Monitor added/removed. Reconfigure.
-      LOG(INFO) << "Number of outputs changed from " << old_noutput << " to "
-                << noutput_ << ", need reconfigure monitors";
-    } else { // Number of outputs does not change.
-      // Duplicate RR*NotifyEvent are fired within short time period, just
-      // ignore them.
-      if (Time::Now() - last_configuration_time_ < kReconfigureInterval) {
-        LOG(INFO) << "Last time monitor rconfigured within "
-                  << kReconfigureInterval.InSeconds()
-                  << " secs, skip reconfiguration";
-        need_reconfigure = false;
-      } else {
-        LOG(INFO) << "Output number does not change, Waking up from suspend?";
-        // This is the case of waking from suspend and outputs do not change.
-        // If we only have panel connection, skip the reconfigure and just
-        // resume to the state of before suspend.
-        if (noutput_ == 1 && internal_panel_connection_ == RR_Connected) {
-          LOG(INFO) << "Only have Panel connection, skip reconfigure";
-          need_reconfigure = false;
-        } else {
-          LOG(INFO) << "Have " << noutput_ << " outputs, need reconfigure";
-        }
-      }
+    if (!AreOutputsSame(saved_outputs_, current_outputs)) {
+      LOG(INFO) << "Outputs changed, need reconfigure.";
+    } else {
+      LOG(INFO) << "Outputs did not change, skip reconfigure.";
+      need_reconfigure = false;
     }
   }
+
   return need_reconfigure;
 }
 
@@ -694,20 +677,18 @@ void MonitorReconfigure::Run(bool force_reconfigure) {
   if (!SetupXrandr())
     return;
 
-  if (!force_reconfigure && !NeedReconfigure())
+  std::vector<OutputInfo> current_outputs;
+  DetermineOutputs(&current_outputs);
+
+  if (usable_outputs_.size() == 0 ||
+      (!force_reconfigure && !NeedReconfigure(current_outputs))) {
+    saved_outputs_.swap(current_outputs);
+    ClearXrandr();
+    ClearUsableOutputsInfo();
     return;
-
-  last_configuration_time_= Time::Now();
-
-  for (int i = 0; i < screen_info_->nmode; ++i) {
-    XRRModeInfo* current_mode = &screen_info_->modes[i];
-    mode_map_[current_mode->id] = current_mode;
   }
 
-  DetermineOutputs();
-
-  if (usable_outputs_.size() == 0)
-    return;
+  last_configuration_time_= Time::Now();
 
   vector<ResolutionSelector::Mode> lcd_modes;
     SortModesByResolution(usable_outputs_[0], &lcd_modes);
@@ -757,6 +738,7 @@ void MonitorReconfigure::Run(bool force_reconfigure) {
     }
   }
 
+  saved_outputs_.swap(current_outputs);
   ClearXrandr();
   ClearUsableOutputsInfo();
 }
@@ -767,7 +749,8 @@ void MonitorReconfigure::SetProjectionCallback(void (*func)(void*),
   projection_callback_data_ = data;
 }
 
-void MonitorReconfigure::DetermineOutputs() {
+void MonitorReconfigure::DetermineOutputs(vector<OutputInfo>* current_outputs) {
+  current_outputs->clear();
   std::set<RRCrtc> used_crtcs;
   for (int i = 0; i < screen_info_->noutput; i++) {
     XRROutputInfo* output_info = XRRGetOutputInfo(display_,
@@ -784,6 +767,20 @@ void MonitorReconfigure::DetermineOutputs() {
       CHECK(crtc_xid != None);
       usable_outputs_crtc_.push_back(crtc_xid);
       used_crtcs.insert(crtc_xid);
+
+      OutputInfo info;
+      info.name = output_info->name;
+      for (int i = 0; i < output_info->nmode; i++) {
+        ModeInfo mode;
+        XRRModeInfo* xmode = GetModeInfo(output_info->modes[i]);
+        mode.width = xmode->width;
+        mode.height = xmode->height;
+        mode.dotClock = xmode->dotClock;
+        info.modes.push_back(mode);
+      }
+      sort(info.modes.begin(), info.modes.end(), ModeInfoComparator());
+      current_outputs->push_back(info);
+
       // Stop at 2 connected outputs, the resolution logic can't handle more
       // than that.
       if (usable_outputs_.size() >= 2)

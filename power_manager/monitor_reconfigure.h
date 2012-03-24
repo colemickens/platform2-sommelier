@@ -83,6 +83,28 @@ class MonitorReconfigure {
     int position_y;
   };
 
+  struct ModeInfo {
+    unsigned int width;
+    unsigned int height;
+    unsigned long dotClock;
+  };
+
+  struct ModeInfoComparator {
+    bool operator()(const ModeInfo& mode_a, const ModeInfo& mode_b) const {
+      if (mode_a.width * mode_a.height > mode_b.width * mode_b.height)
+        return true;
+      else if (mode_a.width * mode_a.height < mode_b.width * mode_b.height)
+        return false;
+      else
+        return mode_a.dotClock > mode_b.dotClock;
+    }
+  };
+
+  struct OutputInfo {
+    std::string name;
+    std::vector<ModeInfo> modes;
+  };
+
   // Setup |display_|, |window_|, |screen_info_| and |mode_map_| value.
   bool SetupXrandr();
 
@@ -118,7 +140,7 @@ class MonitorReconfigure {
                         int ncrtcs);
 
   // Initializes the |usable_outputs_| and |usable_outputs_info_| members.
-  void DetermineOutputs();
+  void DetermineOutputs(std::vector<OutputInfo>* current_outputs);
 
   // Sorts |output_info|'s modes by decreasing number of pixels, storing the
   // results in |modes_out|.
@@ -128,8 +150,14 @@ class MonitorReconfigure {
   // Set the resolution for the screen.
   bool SetScreenResolution(const ResolutionSelector::Mode& resolution);
 
+  // Compare whether two sets of output are the same, if they have the same
+  // number of outputs with the same name, and each output support the same
+  // sets of modes.
+  bool AreOutputsSame(const std::vector<OutputInfo>& outputs1,
+                      const std::vector<OutputInfo>& outputs2);
+
   // Policy about whether the reconfigure is needed.
-  bool NeedReconfigure();
+  bool NeedReconfigure(const std::vector<OutputInfo>& current_outputs);
 
   // Disable the output on the specified |crtc|.
   void DisableOutputCrtc(XRROutputInfo* output_info, RRCrtc crtc);
@@ -146,9 +174,6 @@ class MonitorReconfigure {
   // x offset within the fb is 0. The same policy applies to |position_y|.
   void EnableUsableOutput(int idx, RRMode mode,
                           int* position_x, int* position_y);
-
-  // Get the number of connected outputs.
-  int GetConnectedOutputsNum();
 
   // Set the the state of |internal_panel_connection_|.
   void CheckInternalPanelConnection();
@@ -174,8 +199,9 @@ class MonitorReconfigure {
   std::vector<XRROutputInfo*> usable_outputs_info_;
   std::vector<RRCrtc> usable_outputs_crtc_;
 
-  // Number of connected outputs.
-  int noutput_;
+  // Saved information about connected outputs. Used to compare with current
+  // connected outputs to decide whether reconfigure is needed.
+  std::vector<OutputInfo> saved_outputs_;
 
   // The timestamp of last monitor reconfiguration.
   base::Time last_configuration_time_;
