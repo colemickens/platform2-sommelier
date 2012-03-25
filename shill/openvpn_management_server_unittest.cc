@@ -25,8 +25,8 @@ class OpenVPNManagementServerTest : public testing::Test {
   OpenVPNManagementServer server_;
 };
 
-TEST_F(OpenVPNManagementServerTest, Init) {
-  EXPECT_FALSE(server_.Init());
+TEST_F(OpenVPNManagementServerTest, Start) {
+  // TODO(petkov): Add unit tests.
 }
 
 }  // namespace shill

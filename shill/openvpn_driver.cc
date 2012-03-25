@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
+#include <base/string_split.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -22,6 +23,7 @@
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
+using base::SplitString;
 using std::map;
 using std::string;
 using std::vector;
@@ -299,8 +301,8 @@ void OpenVPNDriver::ParseForeignOption(const string &option,
                                        IPConfig::Properties *properties) {
   VLOG(2) << __func__ << "(" << option << ")";
   vector<string> tokens;
-  if (Tokenize(option, " ", &tokens) != 3 ||
-      !LowerCaseEqualsASCII(tokens[0], "dhcp-option")) {
+  SplitString(option, ' ', &tokens);
+  if (tokens.size() != 3 || !LowerCaseEqualsASCII(tokens[0], "dhcp-option")) {
     return;
   }
   if (LowerCaseEqualsASCII(tokens[1], "domain")) {

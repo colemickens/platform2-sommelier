@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -47,7 +47,7 @@ GlibIOReadyHandler::GlibIOReadyHandler(int fd,
 }
 
 GlibIOReadyHandler::~GlibIOReadyHandler() {
-  g_source_remove(source_id_);
+  GlibIOReadyHandler::Stop();
   // NB: We don't shut down the channel since we don't own it
   g_io_channel_unref(channel_);
 }
