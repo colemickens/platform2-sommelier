@@ -49,7 +49,9 @@ RM_ON_CLEAN += attributes.pb.h attributes.pb.cc
 attributes.pb.cc: attributes.pb.h
 	@echo
 
-$(OUT)attributes.o: attributes.pb.h
+$(OUT)attributes.o \
+$(OUT)attributes.pie.o \
+$(OUT)attributes.pic.o: attributes.pb.h
 
 # TODO(dkrahn): Upgrade to the newest common.mk and use '.depends' for these
 # dependencies (crosbug.com/28051).
