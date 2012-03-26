@@ -236,12 +236,12 @@ TEST_F(StateControlTest, WrapTest) {
     SCOPED_TRACE("before wrap.  idle suspend should be true");
     CheckDisabled(false, false, true, false);
   }
-  state_control_.last_id_ = UINT32_MAX;
+  state_control_.last_id_ = UINT32_MAX - 1;
   info.disable_idle_suspend = false;
   info.disable_lid_suspend = true;
   // First two should succeed into 0 & 1
   ASSERT_TRUE(state_control_.StateOverrideRequestStruct(&info, &value));
-  ASSERT_EQ(value, 0);
+  ASSERT_EQ(value, UINT32_MAX);
   ASSERT_TRUE(state_control_.StateOverrideRequestStruct(&info, &value));
   ASSERT_EQ(value, 1);
   // Third time should fail as spots 2-25 are filled from above
@@ -260,6 +260,16 @@ TEST_F(StateControlTest, WrapTest) {
     SCOPED_TRACE("removed early tests.  only lid suspend should be true");
     CheckDisabled(false, false, false, true);
   }
+  // Now test for wrapping that ends on 0.
+  state_control_.RemoveOverride(UINT32_MAX);  // Cleanup previous request
+  state_control_.last_id_ = UINT32_MAX - 20;
+  for (int i= 0; i < 20; i++) {
+    ASSERT_TRUE(state_control_.StateOverrideRequestStruct(&info, &value));
+  }
+  ASSERT_EQ(value, UINT32_MAX);
+  state_control_.last_id_ = UINT32_MAX - 19;
+  EXPECT_FALSE(state_control_.StateOverrideRequestStruct(&info, &value));
+  EXPECT_EQ(state_control_.last_id_, 0);
 }
 
 TEST_F(StateControlTest, InvalidRequests) {

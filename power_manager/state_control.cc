@@ -201,11 +201,14 @@ bool StateControl::StateOverrideRequestStruct(const StateControlInfo* request,
     // Try kMaxRetries (20) times to find unused ID. Should be rare we collide
     for (unsigned int i = 0; i < kMaxRetries; i++) {
       new_entry->request_id = ++last_id_;
-      if (state_override_list_.count(new_entry->request_id) == 0) {
+      LOG(INFO) << "Checking " << new_entry->request_id;
+      if (new_entry->request_id != 0 &&
+          state_override_list_.count(new_entry->request_id) == 0) {
         break;
       }
     }
-    if (state_override_list_.count(new_entry->request_id) != 0) {
+    if (new_entry->request_id == 0 ||
+        state_override_list_.count(new_entry->request_id) != 0) {
       LOG(ERROR) << "Could not get unused index to store request";
       LOG(ERROR) << "Map size is " << state_override_list_.size();
       delete new_entry;
