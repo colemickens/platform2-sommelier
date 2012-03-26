@@ -59,6 +59,10 @@ const char kLidOpened[] = "LidOpened";
 const char kExternalBacklightUpdate[] = "ExternalBacklightUpdate";
 const char kKeyLeftCtrl[] = "LeftCtrlKey";
 const char kKeyRightCtrl[] = "RightCtrlKey";
+const char kKeyLeftAlt[] = "LeftAltKey";
+const char kKeyRightAlt[] = "RightAltKey";
+const char kKeyLeftShift[] = "LeftShiftKey";
+const char kKeyRightShift[] = "RightShiftKey";
 const char kKeyF4[] = "F4Key";
 
 // Broadcast signals.

@@ -123,8 +123,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       battery_discharge_rate_metric_last_(0),
       current_session_state_("stopped"),
       udev_(NULL),
-      left_ctrl_down_(false),
-      right_ctrl_down_(false),
+      modifiers_(kModifierNone),
       state_control_(new StateControl(this)) {}
 
 Daemon::~Daemon() {
@@ -1236,13 +1235,21 @@ void Daemon::OnButtonEvent(DBusMessage* message) {
     else
       power_button_handler_->HandleLockButtonUp();
 #endif
-  } else if (strcmp(button_name, kKeyLeftCtrl) == 0) {
-      left_ctrl_down_ = down;
-  } else if (strcmp(button_name, kKeyRightCtrl) == 0) {
-      right_ctrl_down_ = down;
+  } else if (strcmp(button_name, power_manager::kKeyLeftCtrl) == 0 ||
+             strcmp(button_name, power_manager::kKeyRightCtrl) == 0) {
+      modifiers_ = (modifiers_ & ~power_manager::kModifierCtrl) |
+                   (power_manager::kModifierCtrl * down);
+  } else if (strcmp(button_name, power_manager::kKeyLeftShift) == 0 ||
+             strcmp(button_name, power_manager::kKeyRightShift) == 0) {
+      modifiers_ = (modifiers_ & ~power_manager::kModifierShift) |
+                   (power_manager::kModifierShift * down);
+  } else if (strcmp(button_name, power_manager::kKeyLeftAlt) == 0 ||
+             strcmp(button_name, power_manager::kKeyRightAlt) == 0) {
+      modifiers_ = (modifiers_ & ~power_manager::kModifierAlt) |
+                   (power_manager::kModifierAlt * down);
   } else if(strcmp(button_name, kKeyF4) == 0) {
-    if ((left_ctrl_down_ || right_ctrl_down_) && down && monitor_reconfigure_)
-        monitor_reconfigure_->SwitchMode();
+    if (modifiers_ == kModifierCtrl && down && monitor_reconfigure_)
+      monitor_reconfigure_->SwitchMode();
   } else {
     NOTREACHED() << "Unhandled button '" << button_name << "'";
   }
