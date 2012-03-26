@@ -24,4 +24,15 @@ TEST_F(KeyValueStoreTest, LookupString) {
   EXPECT_EQ("zoo", store_.LookupString("foo", "bar"));
 }
 
+TEST_F(KeyValueStoreTest, RemoveString) {
+  const std::string kKey("foo");
+  store_.SetString(kKey, "zoo");
+  EXPECT_EQ("zoo", store_.LookupString(kKey, "bar"));
+  store_.RemoveString(kKey);
+  EXPECT_EQ("bar", store_.LookupString(kKey, "bar"));
+  // Make sure we don't get an exception/infinite loop if we do a
+  // "RemoveString()" when the key does not exist.
+  store_.RemoveString(kKey);
+}
+
 }  // namespace shill
