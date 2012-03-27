@@ -182,6 +182,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
+  FRIEND_TEST(ManagerTest, HandleProfileEntryDeletionWithUnload);
+  FRIEND_TEST(ManagerTest, PopProfileWithUnload);
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
 
@@ -203,6 +205,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // TODO(cmasone): This should be implemented by filtering |services_|.
   std::vector<std::string> EnumerateWatchedServices(Error *error);
   std::string GetActiveProfileRpcIdentifier(Error *error);
+
+  // Unload a service while iterating through |services_|.  Returns true if
+  // service was erased (which means the caller loop should not increment
+  // |service_iterator|), false otherwise (meaning the caller should
+  // increment |service_iterator|).
+  bool UnloadService(std::vector<ServiceRefPtr>::iterator *service_iterator);
 
   void HelpRegisterConstDerivedRpcIdentifiers(
       const std::string &name,

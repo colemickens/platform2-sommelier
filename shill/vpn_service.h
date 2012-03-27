@@ -30,6 +30,7 @@ class VPNService : public Service {
   virtual std::string GetStorageIdentifier() const;
   virtual bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
+  virtual bool Unload();
 
   virtual void InitDriverPropertyStore();
 

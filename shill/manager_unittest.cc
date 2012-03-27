@@ -802,6 +802,161 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
   EXPECT_EQ(profile1, s_configure_succeed->profile());
 }
 
+TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
+  MockServiceRefPtr s_will_remove0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  MockServiceRefPtr s_will_remove1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  MockServiceRefPtr s_will_not_remove0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  MockServiceRefPtr s_will_not_remove1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(NULL))
+      .Times(4);  // Once for each registration.
+
+  string entry_name("entry_name");
+  EXPECT_CALL(*s_will_remove0.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return(entry_name));
+  EXPECT_CALL(*s_will_remove1.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return(entry_name));
+  EXPECT_CALL(*s_will_not_remove0.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return(entry_name));
+  EXPECT_CALL(*s_will_not_remove1.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return(entry_name));
+
+  manager()->RegisterService(s_will_remove0);
+  manager()->RegisterService(s_will_not_remove0);
+  manager()->RegisterService(s_will_remove1);
+  manager()->RegisterService(s_will_not_remove1);
+
+  // One for each service added above.
+  ASSERT_EQ(4, manager()->services_.size());
+
+  scoped_refptr<MockProfile> profile(
+      new StrictMock<MockProfile>(control_interface(), manager(), ""));
+
+  s_will_remove0->set_profile(profile);
+  s_will_remove1->set_profile(profile);
+  s_will_not_remove0->set_profile(profile);
+  s_will_not_remove1->set_profile(profile);
+
+  AdoptProfile(manager(), profile);
+
+  // Deny any of the services re-entry to the profile.
+  EXPECT_CALL(*profile, ConfigureService(_))
+      .WillRepeatedly(Return(false));
+
+  EXPECT_CALL(*profile, AbandonService(ServiceRefPtr(s_will_remove0)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*profile, AbandonService(ServiceRefPtr(s_will_remove1)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*profile, AbandonService(ServiceRefPtr(s_will_not_remove0)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*profile, AbandonService(ServiceRefPtr(s_will_not_remove1)))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(*s_will_remove0, Unload())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*s_will_remove1, Unload())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*s_will_not_remove0, Unload())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*s_will_not_remove1, Unload())
+      .WillOnce(Return(false));
+
+
+  // This will cause all the profiles to be unloaded.
+  EXPECT_TRUE(manager()->HandleProfileEntryDeletion(profile, entry_name));
+
+  // 2 of the 4 services added above should have been unregistered and
+  // removed, leaving 2.
+  EXPECT_EQ(2, manager()->services_.size());
+  EXPECT_EQ(s_will_not_remove0.get(), manager()->services_[0].get());
+  EXPECT_EQ(s_will_not_remove1.get(), manager()->services_[1].get());
+}
+
+TEST_F(ManagerTest, PopProfileWithUnload) {
+  MockServiceRefPtr s_will_remove0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  MockServiceRefPtr s_will_remove1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  MockServiceRefPtr s_will_not_remove0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  MockServiceRefPtr s_will_not_remove1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  EXPECT_CALL(*metrics(), NotifyDefaultServiceChanged(NULL))
+      .Times(5);  // Once for each registration, and one after profile pop.
+
+  manager()->RegisterService(s_will_remove0);
+  manager()->RegisterService(s_will_not_remove0);
+  manager()->RegisterService(s_will_remove1);
+  manager()->RegisterService(s_will_not_remove1);
+
+  // One for each service added above.
+  ASSERT_EQ(4, manager()->services_.size());
+
+  scoped_refptr<MockProfile> profile0(
+      new StrictMock<MockProfile>(control_interface(), manager(), ""));
+  scoped_refptr<MockProfile> profile1(
+      new StrictMock<MockProfile>(control_interface(), manager(), ""));
+
+  s_will_remove0->set_profile(profile1);
+  s_will_remove1->set_profile(profile1);
+  s_will_not_remove0->set_profile(profile1);
+  s_will_not_remove1->set_profile(profile1);
+
+  AdoptProfile(manager(), profile0);
+  AdoptProfile(manager(), profile1);
+
+  // Deny any of the services entry to profile0, so they will all be unloaded.
+  EXPECT_CALL(*profile0, ConfigureService(_))
+      .WillRepeatedly(Return(false));
+
+  EXPECT_CALL(*s_will_remove0, Unload())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*s_will_remove1, Unload())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*s_will_not_remove0, Unload())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*s_will_not_remove1, Unload())
+      .WillOnce(Return(false));
+
+  // This will pop profile1, which should cause all our profiles to unload.
+  manager()->PopProfileInternal();
+
+  // 2 of the 4 services added above should have been unregistered and
+  // removed, leaving 2.
+  EXPECT_EQ(2, manager()->services_.size());
+  EXPECT_EQ(s_will_not_remove0.get(), manager()->services_[0].get());
+  EXPECT_EQ(s_will_not_remove1.get(), manager()->services_[1].get());
+}
+
 TEST_F(ManagerTest, SetProperty) {
   {
     ::DBus::Error error;

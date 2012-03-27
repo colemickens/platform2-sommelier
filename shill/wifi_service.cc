@@ -307,7 +307,7 @@ bool WiFiService::Save(StoreInterface *storage) {
   return true;
 }
 
-void WiFiService::Unload() {
+bool WiFiService::Unload() {
   Service::Unload();
   hidden_ssid_ = false;
   passphrase_ = "";
@@ -323,6 +323,7 @@ void WiFiService::Unload() {
     // for a service changes.  crosbug.com/25670
     wifi_->ClearCachedCredentials();
   }
+  return !IsVisible();
 }
 
 bool WiFiService::IsSecurityMatch(const string &security) const {

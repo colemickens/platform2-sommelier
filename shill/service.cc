@@ -315,7 +315,7 @@ bool Service::Load(StoreInterface *storage) {
   return true;
 }
 
-void Service::Unload() {
+bool Service::Unload() {
   auto_connect_ = false;
   check_portal_ = kCheckPortalAuto;
   favorite_ = false;
@@ -325,6 +325,7 @@ void Service::Unload() {
   ui_data_ = "";
 
   UnloadEapCredentials();
+  return false;
 }
 
 bool Service::Save(StoreInterface *storage) {

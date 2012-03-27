@@ -39,8 +39,14 @@ class VPNProvider {
   // device has been accepted by a service.
   bool OnDeviceInfoAvailable(const std::string &link_name, int interface_index);
 
+  // Clean up a VPN services that has been unloaded and will be deregistered.
+  // This removes the VPN provider's reference to this service in its
+  // services_ vector.
+  void RemoveService(VPNServiceRefPtr service);
+
  private:
   FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
+  FRIEND_TEST(VPNProviderTest, RemoveService);
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;

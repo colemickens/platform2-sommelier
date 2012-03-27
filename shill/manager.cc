@@ -294,10 +294,12 @@ void Manager::PopProfileInternal() {
   ProfileRefPtr active_profile = profiles_.back();
   profiles_.pop_back();
   vector<ServiceRefPtr>::iterator it;
-  for (it = services_.begin(); it != services_.end(); ++it) {
-    if ((*it)->profile().get() == active_profile.get() &&
-        !MatchProfileWithService(*it)) {
-      (*it)->Unload();
+  for (it = services_.begin(); it != services_.end();) {
+    if ((*it)->profile().get() != active_profile.get() ||
+        MatchProfileWithService(*it) ||
+        !UnloadService(&it)) {
+      LOG(ERROR) << "Skipping unload of service";
+      ++it;
     }
   }
   SortServices();
@@ -336,14 +338,17 @@ bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr &profile,
                                          const std::string &entry_name) {
   bool moved_services = false;
   for (vector<ServiceRefPtr>::iterator it = services_.begin();
-       it != services_.end(); ++it) {
+       it != services_.end();) {
     if ((*it)->profile().get() == profile.get() &&
         (*it)->GetStorageIdentifier() == entry_name) {
       profile->AbandonService(*it);
-      if (!MatchProfileWithService(*it)) {
-        (*it)->Unload();
+      if (MatchProfileWithService(*it) ||
+          !UnloadService(&it)) {
+        ++it;
       }
       moved_services = true;
+    } else {
+      ++it;
     }
   }
   return moved_services;
@@ -596,6 +601,17 @@ void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
       return;
     }
   }
+}
+
+bool Manager::UnloadService(vector<ServiceRefPtr>::iterator *service_iterator) {
+  if (!(**service_iterator)->Unload()) {
+    return false;
+  }
+
+  DCHECK(!(**service_iterator)->connection());
+  *service_iterator = services_.erase(*service_iterator);
+
+  return true;
 }
 
 void Manager::UpdateService(const ServiceRefPtr &to_update) {

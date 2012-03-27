@@ -81,7 +81,7 @@ class WiFiService : public Service {
   virtual bool IsLoadableFrom(StoreInterface *storage) const;
   virtual bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
-  virtual void Unload();
+  virtual bool Unload();
 
   virtual bool HasEndpoints() const { return !endpoints_.empty(); }
   virtual bool IsVisible() const;

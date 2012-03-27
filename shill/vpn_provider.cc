@@ -4,6 +4,8 @@
 
 #include "shill/vpn_provider.h"
 
+#include <algorithm>
+
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -82,6 +84,14 @@ bool VPNProvider::OnDeviceInfoAvailable(const string &link_name,
   }
 
   return false;
+}
+
+void VPNProvider::RemoveService(VPNServiceRefPtr service) {
+  vector<VPNServiceRefPtr>::iterator it;
+  it = std::find(services_.begin(), services_.end(), service);
+  if (it != services_.end()) {
+    services_.erase(it);
+  }
 }
 
 }  // namespace shill

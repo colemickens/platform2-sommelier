@@ -43,7 +43,7 @@ class MockService : public Service {
   MOCK_CONST_METHOD0(GetRpcIdentifier, std::string());
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
   MOCK_METHOD1(Load, bool(StoreInterface *store_interface));
-  MOCK_METHOD0(Unload, void());
+  MOCK_METHOD0(Unload, bool());
   MOCK_METHOD1(Save, bool(StoreInterface *store_interface));
   MOCK_METHOD0(SaveToCurrentProfile, bool());
   MOCK_METHOD2(Configure, void(const KeyValueStore &args, Error *error));

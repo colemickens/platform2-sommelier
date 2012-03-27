@@ -206,8 +206,10 @@ class Service : public base::RefCounted<Service> {
   virtual bool Load(StoreInterface *storage);
 
   // Indicate to service that it is no longer persisted to storage.  It
-  // should purge any stored profile state (e.g., credentials).
-  virtual void Unload();
+  // should purge any stored profile state (e.g., credentials).  Returns
+  // true to indicate that this service should also be unregistered from
+  // the manager, false otherwise.
+  virtual bool Unload();
 
   // Saves the service to persistent |storage|. Returns true on success.
   virtual bool Save(StoreInterface *storage);
@@ -387,6 +389,7 @@ class Service : public base::RefCounted<Service> {
   void SetEAPKeyManagement(const std::string &key_management);
   void SetEAPPassword(const std::string &password, Error *error);
   void SetEAPPrivateKeyPassword(const std::string &password, Error *error);
+  Manager *manager() const { return manager_; }
   Metrics *metrics() const { return metrics_; }
 
  private:

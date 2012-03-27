@@ -14,7 +14,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_vpn_driver.h"
-#include "shill/vpn_service.h"
+#include "shill/mock_vpn_service.h"
 
 using std::string;
 using testing::_;
@@ -110,6 +110,35 @@ TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {
 
   EXPECT_TRUE(provider_.OnDeviceInfoAvailable(kInterfaceName, kInterfaceIndex));
   provider_.services_.clear();
+}
+
+TEST_F(VPNProviderTest, RemoveService) {
+  scoped_refptr<MockVPNService> service0(
+      new MockVPNService(&control_, NULL, &metrics_, NULL, NULL));
+  scoped_refptr<MockVPNService> service1(
+      new MockVPNService(&control_, NULL, &metrics_, NULL, NULL));
+  scoped_refptr<MockVPNService> service2(
+      new MockVPNService(&control_, NULL, &metrics_, NULL, NULL));
+
+  provider_.services_.push_back(service0.get());
+  provider_.services_.push_back(service1.get());
+  provider_.services_.push_back(service2.get());
+
+  ASSERT_EQ(3, provider_.services_.size());
+
+  provider_.RemoveService(service1);
+
+  EXPECT_EQ(2, provider_.services_.size());
+  EXPECT_EQ(service0, provider_.services_[0]);
+  EXPECT_EQ(service2, provider_.services_[1]);
+
+  provider_.RemoveService(service2);
+
+  EXPECT_EQ(1, provider_.services_.size());
+  EXPECT_EQ(service0, provider_.services_[0]);
+
+  provider_.RemoveService(service0);
+  EXPECT_EQ(0, provider_.services_.size());
 }
 
 }  // namespace shill

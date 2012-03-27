@@ -11,6 +11,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/key_value_store.h"
+#include "shill/manager.h"
 #include "shill/technology.h"
 #include "shill/vpn_driver.h"
 
@@ -78,6 +79,19 @@ bool VPNService::Load(StoreInterface *storage) {
 bool VPNService::Save(StoreInterface *storage) {
   return Service::Save(storage) &&
       driver_->Save(storage, GetStorageIdentifier());
+}
+
+bool VPNService::Unload() {
+  Service::Unload();
+
+  // VPN services which have been removed from the profile should be
+  // disconnected.
+  driver_->Disconnect();
+
+  // Ask the VPN provider to remove us from its list.
+  manager()->vpn_provider()->RemoveService(this);
+
+  return true;
 }
 
 void VPNService::InitDriverPropertyStore() {
