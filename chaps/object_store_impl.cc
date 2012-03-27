@@ -15,8 +15,6 @@
 #include <leveldb/db.h>
 #include <leveldb/env.h>
 #include <leveldb/memenv.h>
-#include <openssl/evp.h>
-#include <openssl/rand.h>
 
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
@@ -31,19 +29,15 @@ const char ObjectStoreImpl::kObjectBlobKeyPrefix[] = "ObjectBlob";
 const char ObjectStoreImpl::kBlobKeySeparator[] = "&";
 const char ObjectStoreImpl::kDatabaseVersionKey[] = "DBVersion";
 const char ObjectStoreImpl::kIDTrackerKey[] = "NextBlobID";
-const int ObjectStoreImpl::kAESBlockSizeBytes = 16;
 const int ObjectStoreImpl::kAESKeySizeBytes = 32;
 const int ObjectStoreImpl::kHMACSizeBytes = 64;
 const char ObjectStoreImpl::kDatabaseDirectory[] = "database";
 
-ObjectStoreImpl::ObjectStoreImpl() {
-  EVP_CIPHER_CTX_init(&cipher_context_);
-}
+ObjectStoreImpl::ObjectStoreImpl() {}
 
 ObjectStoreImpl::~ObjectStoreImpl() {
   // TODO(dkrahn): Use SecureBlob. See crosbug.com/27681.
   chromeos::SecureMemset(const_cast<char*>(key_.data()), 0, key_.length());
-  EVP_CIPHER_CTX_cleanup(&cipher_context_);
 }
 
 bool ObjectStoreImpl::Init(const FilePath& database_path) {
@@ -178,84 +172,27 @@ bool ObjectStoreImpl::LoadAllObjectBlobs(map<int, string>* blobs) {
   return true;
 }
 
-bool ObjectStoreImpl::RunCipher(bool is_encrypt,
-                                const string& input,
-                                string* output) {
+bool ObjectStoreImpl::Encrypt(const string& plain_text,
+                              string* cipher_text) {
   if (key_.empty()) {
     LOG(ERROR) << "The store encryption key has not been initialized.";
     return false;
   }
-  int input_length = input.length();
-  string iv;
-  if (is_encrypt) {
-    // Generate a new random IV.
-    iv.resize(kAESBlockSizeBytes);
-    RAND_bytes(ConvertStringToByteBuffer(iv.data()), kAESBlockSizeBytes);
-  } else {
-    // Recover the IV from the input.
-    if (input_length < kAESBlockSizeBytes) {
-      LOG(ERROR) << "Decrypt: Invalid input.";
-      return false;
-    }
-    iv = input.substr(input_length - kAESBlockSizeBytes);
-    input_length -= kAESBlockSizeBytes;
-  }
-  if (!EVP_CipherInit_ex(&cipher_context_,
-                         EVP_aes_256_cbc(),
-                         NULL,
-                         ConvertStringToByteBuffer(key_.data()),
-                         ConvertStringToByteBuffer(iv.data()),
-                         is_encrypt)) {
-    LOG(ERROR) << "EVP_CipherInit_ex failed: " << GetOpenSSLError();
-    return false;
-  }
-  EVP_CIPHER_CTX_set_padding(&cipher_context_,
-                             1);  // Enables PKCS padding.
-  // Set the buffer size to be large enough to hold all output. For encryption,
-  // this will allow space for padding and, for decryption, this will comply
-  // with openssl documentation (even though the final output will be no larger
-  // than input_length).
-  output->resize(input_length + kAESBlockSizeBytes);
-  int output_length = 0;
-  unsigned char* output_bytes = ConvertStringToByteBuffer(output->data());
-  unsigned char* input_bytes = ConvertStringToByteBuffer(input.data());
-  if (!EVP_CipherUpdate(&cipher_context_,
-                        output_bytes,
-                        &output_length,  // Will be set to actual output length.
-                        input_bytes,
-                        input_length)) {
-    LOG(ERROR) << "EVP_CipherUpdate failed: " << GetOpenSSLError();
-    return false;
-  }
-  // The final block is yet to be computed. This check ensures we have at least
-  // kAESBlockSizeBytes bytes left in the output buffer.
-  CHECK(output_length <= input_length);
-  int output_length2 = 0;
-  if (!EVP_CipherFinal_ex(&cipher_context_,
-                          output_bytes + output_length,
-                          &output_length2)) {
-    LOG(ERROR) << "EVP_CipherFinal_ex failed: " << GetOpenSSLError();
-    return false;
-  }
-  // Adjust the output size to the number of bytes actually written.
-  output->resize(output_length + output_length2);
-  if (is_encrypt) {
-    // Append the IV so it will be available during decryption.
-    *output += iv;
-  }
-  return true;
-}
-
-bool ObjectStoreImpl::Encrypt(const string& plain_text,
-                              string* cipher_text) {
-  return RunCipher(true, AppendHMAC(plain_text), cipher_text);
+  // Append a MAC to the plain-text before encrypting.
+  return RunCipher(true, key_, string(), AppendHMAC(plain_text), cipher_text);
 }
 
 bool ObjectStoreImpl::Decrypt(const string& cipher_text,
                               string* plain_text) {
-  string plain_text_with_hmac;
-  if (!RunCipher(false, cipher_text, &plain_text_with_hmac))
+  if (key_.empty()) {
+    LOG(ERROR) << "The store encryption key has not been initialized.";
     return false;
+  }
+  // Recover the IV from the input.
+  string plain_text_with_hmac;
+  if (!RunCipher(false, key_, string(), cipher_text, &plain_text_with_hmac))
+    return false;
+  // Check the MAC that was appended before encrypting.
   if (!VerifyAndStripHMAC(plain_text_with_hmac, plain_text))
     return false;
   return true;

@@ -218,6 +218,15 @@ std::string HmacSha512(const std::string& input, const std::string& key);
 //          effective user/group are set.
 bool SetProcessUserAndGroup(const char* user, const char* group, bool real);
 
+// Performs AES-256 encryption / decryption in CBC mode with PKCS padding. If
+// 'iv' is left empty, a random IV will be generated and appended to the cipher-
+// text on encryption.
+bool RunCipher(bool is_encrypt,
+               const std::string& key,
+               const std::string& iv,
+               const std::string& input,
+               std::string* output);
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H

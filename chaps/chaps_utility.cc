@@ -19,6 +19,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+#include <openssl/rand.h>
 #include <openssl/sha.h>
 
 #include "chaps/attributes.h"
@@ -576,6 +577,93 @@ bool SetProcessUserAndGroup(const char* user_name,
                  << group_name << ".";
       return false;
     }
+  }
+  return true;
+}
+
+bool RunCipherInternal(bool is_encrypt,
+                       const string& key,
+                       const string& iv,
+                       const string& input,
+                       string* output) {
+  const size_t kAESKeySizeBytes = 32;
+  const size_t kAESBlockSizeBytes = 16;
+  CHECK(key.size() == kAESKeySizeBytes);
+  CHECK(iv.size() == kAESBlockSizeBytes);
+  EVP_CIPHER_CTX cipher_context;
+  EVP_CIPHER_CTX_init(&cipher_context);
+  if (!EVP_CipherInit_ex(&cipher_context,
+                         EVP_aes_256_cbc(),
+                         NULL,
+                         ConvertStringToByteBuffer(key.data()),
+                         ConvertStringToByteBuffer(iv.data()),
+                         is_encrypt)) {
+    LOG(ERROR) << "EVP_CipherInit_ex failed: " << GetOpenSSLError();
+    return false;
+  }
+  EVP_CIPHER_CTX_set_padding(&cipher_context,
+                             1);  // Enables PKCS padding.
+  // Set the buffer size to be large enough to hold all output. For encryption,
+  // this will allow space for padding and, for decryption, this will comply
+  // with openssl documentation (even though the final output will be no larger
+  // than input.length()).
+  output->resize(input.length() + kAESBlockSizeBytes);
+  int output_length = 0;
+  unsigned char* output_bytes = ConvertStringToByteBuffer(output->data());
+  unsigned char* input_bytes = ConvertStringToByteBuffer(input.data());
+  if (!EVP_CipherUpdate(&cipher_context,
+                        output_bytes,
+                        &output_length,  // Will be set to actual output length.
+                        input_bytes,
+                        input.length())) {
+    LOG(ERROR) << "EVP_CipherUpdate failed: " << GetOpenSSLError();
+    return false;
+  }
+  // The final block is yet to be computed. This check ensures we have at least
+  // kAESBlockSizeBytes bytes left in the output buffer.
+  CHECK(output_length <= static_cast<int>(input.length()));
+  int output_length2 = 0;
+  if (!EVP_CipherFinal_ex(&cipher_context,
+                          output_bytes + output_length,
+                          &output_length2)) {
+    LOG(ERROR) << "EVP_CipherFinal_ex failed: " << GetOpenSSLError();
+    return false;
+  }
+  // Adjust the output size to the number of bytes actually written.
+  output->resize(output_length + output_length2);
+  EVP_CIPHER_CTX_cleanup(&cipher_context);
+  return true;
+}
+
+bool RunCipher(bool is_encrypt,
+               const string& key,
+               const string& iv,
+               const string& input,
+               string* output) {
+  const size_t kIVSizeBytes = 16;
+  if (!iv.empty())
+    return RunCipherInternal(is_encrypt, key, iv, input, output);
+  string random_iv;
+  string mutable_input = input;
+  if (is_encrypt) {
+    // Generate a new random IV.
+    random_iv.resize(kIVSizeBytes);
+    RAND_bytes(ConvertStringToByteBuffer(random_iv.data()), kIVSizeBytes);
+  } else {
+    // Recover and strip the IV from the cipher-text.
+    if (input.length() < kIVSizeBytes) {
+      LOG(ERROR) << "Decrypt: Invalid input.";
+      return false;
+    }
+    size_t iv_pos = input.length() - kIVSizeBytes;
+    random_iv = input.substr(iv_pos);
+    mutable_input = input.substr(0, iv_pos);
+  }
+  if (!RunCipherInternal(is_encrypt, key, random_iv, mutable_input, output))
+    return false;
+  if (is_encrypt) {
+    // Append the random IV to the cipher-text.
+    *output += random_iv;
   }
   return true;
 }
