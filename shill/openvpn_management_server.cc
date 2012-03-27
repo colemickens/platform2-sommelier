@@ -11,8 +11,10 @@
 #include <base/string_split.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/glib.h"
 #include "shill/openvpn_driver.h"
 #include "shill/sockets.h"
 
@@ -24,8 +26,10 @@ using std::vector;
 
 namespace shill {
 
-OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver *driver)
+OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver *driver,
+                                                 GLib *glib)
     : driver_(driver),
+      glib_(glib),
       weak_ptr_factory_(this),
       ready_callback_(Bind(&OpenVPNManagementServer::OnReady,
                            weak_ptr_factory_.GetWeakPtr())),
@@ -140,8 +144,44 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
   if (!StartsWithASCII(message, ">PASSWORD:Need ", true)) {
     return false;
   }
-  NOTIMPLEMENTED();
+  if (message.find("'Auth'") != string::npos) {
+    if (message.find("SC:") != string::npos) {
+      PerformStaticChallenge();
+    } else {
+      NOTIMPLEMENTED()
+          << "User/password (no-OTP) authentication not implemented.";
+    }
+  }
   return true;
+}
+
+void OpenVPNManagementServer::PerformStaticChallenge() {
+  string user =
+      driver_->args()->LookupString(flimflam::kOpenVPNUserProperty, "");
+  string password =
+      driver_->args()->LookupString(flimflam::kOpenVPNPasswordProperty, "");
+  string otp =
+      driver_->args()->LookupString(flimflam::kOpenVPNOTPProperty, "");
+  if (user.empty() || password.empty() || otp.empty()) {
+    NOTIMPLEMENTED() << "Missing credentials.";
+    return;
+  }
+  gchar *b64_password =
+      glib_->Base64Encode(reinterpret_cast<const guchar *>(password.data()),
+                          password.size());
+  gchar *b64_otp =
+      glib_->Base64Encode(reinterpret_cast<const guchar *>(otp.data()),
+                          otp.size());
+  if (!b64_password || !b64_otp) {
+    LOG(ERROR) << "Unable to base64-encode credentials.";
+    return;
+  }
+  SendUsername("Auth", user);
+  SendPassword("Auth", StringPrintf("SCRV1:%s:%s", b64_password, b64_otp));
+  glib_->Free(b64_otp);
+  glib_->Free(b64_password);
+  // Don't reuse OTP.
+  driver_->args()->RemoveString(flimflam::kOpenVPNOTPProperty);
 }
 
 bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
@@ -179,15 +219,27 @@ bool OpenVPNManagementServer::ProcessStateMessage(const string &message) {
 }
 
 void OpenVPNManagementServer::Send(const string &data) {
-  VLOG(2) << __func__ << "(" << data << ")";
+  VLOG(2) << __func__;
   ssize_t len = sockets_->Send(connected_socket_, data.data(), data.size(), 0);
   PLOG_IF(ERROR, len < 0 || static_cast<size_t>(len) != data.size())
-      << "Send failed: " << data;
+      << "Send failed.";
 }
 
 void OpenVPNManagementServer::SendState(const string &state) {
   VLOG(2) << __func__ << "(" << state << ")";
   Send(StringPrintf("state %s\n", state.c_str()));
+}
+
+void OpenVPNManagementServer::SendUsername(const string &tag,
+                                           const string &username) {
+  VLOG(2) << __func__;
+  Send(StringPrintf("username \"%s\" %s\n", tag.c_str(), username.c_str()));
+}
+
+void OpenVPNManagementServer::SendPassword(const string &tag,
+                                           const string &password) {
+  VLOG(2) << __func__;
+  Send(StringPrintf("password \"%s\" \"%s\"\n", tag.c_str(), password.c_str()));
 }
 
 }  // namespace shill

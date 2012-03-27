@@ -6,8 +6,10 @@
 
 #include <netinet/in.h>
 
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "shill/glib.h"
 #include "shill/key_value_store.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_openvpn_driver.h"
@@ -34,7 +36,7 @@ class OpenVPNManagementServerTest : public testing::Test {
  public:
   OpenVPNManagementServerTest()
       : driver_(args_),
-        server_(&driver_) {}
+        server_(&driver_, &glib_) {}
 
   virtual ~OpenVPNManagementServerTest() {}
 
@@ -42,9 +44,24 @@ class OpenVPNManagementServerTest : public testing::Test {
   void SetDispatcher() { server_.dispatcher_ = &dispatcher_; }
   void ExpectNotStarted() { EXPECT_TRUE(server_.sockets_ == NULL); }
 
-  void ExpectSend(int socket, const string &value) {
-    EXPECT_CALL(sockets_, Send(socket, VoidStringEq(value), value.size(), 0))
+  void SetConnectedSocket() {
+    server_.connected_socket_ = kConnectedSocket;
+    SetSockets();
+  }
+
+  void ExpectSend(const string &value) {
+    EXPECT_CALL(sockets_,
+                Send(kConnectedSocket, VoidStringEq(value), value.size(), 0))
         .WillOnce(Return(value.size()));
+  }
+
+  void ExpectStaticChallengeResponse() {
+    driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
+    driver_.args()->SetString(flimflam::kOpenVPNPasswordProperty, "yoyo");
+    driver_.args()->SetString(flimflam::kOpenVPNOTPProperty, "123456");
+    SetConnectedSocket();
+    ExpectSend("username \"Auth\" jojo\n");
+    ExpectSend("password \"Auth\" \"SCRV1:eW95bw==:MTIzNDU2\"\n");
   }
 
   InputData CreateInputDataFromString(const string &str) {
@@ -55,12 +72,18 @@ class OpenVPNManagementServerTest : public testing::Test {
   }
 
  protected:
+  static const int kConnectedSocket;
+
+  GLib glib_;
   KeyValueStore args_;
   MockOpenVPNDriver driver_;
   OpenVPNManagementServer server_;
   MockSockets sockets_;
   MockEventDispatcher dispatcher_;
 };
+
+// static
+const int OpenVPNManagementServerTest::kConnectedSocket = 555;
 
 TEST_F(OpenVPNManagementServerTest, StartStarted) {
   SetSockets();
@@ -134,8 +157,7 @@ TEST_F(OpenVPNManagementServerTest, OnReadyAcceptFail) {
 
 TEST_F(OpenVPNManagementServerTest, OnReady) {
   const int kSocket = 111;
-  const int kConnectedSocket = 112;
-  SetSockets();
+  SetConnectedSocket();
   SetDispatcher();
   EXPECT_CALL(sockets_, Accept(kSocket, NULL, NULL))
       .WillOnce(Return(kConnectedSocket));
@@ -144,7 +166,7 @@ TEST_F(OpenVPNManagementServerTest, OnReady) {
               CreateInputHandler(kConnectedSocket,
                                  CallbackEq(server_.input_callback_)))
       .WillOnce(ReturnNew<IOHandler>());
-  ExpectSend(kConnectedSocket, "state on\n");
+  ExpectSend("state on\n");
   server_.OnReady(kSocket);
   EXPECT_EQ(kConnectedSocket, server_.connected_socket_);
   EXPECT_FALSE(server_.ready_handler_.get());
@@ -160,8 +182,10 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
   {
     string s = "foo\n"
         ">INFO:...\n"
+        ">PASSWORD:Need 'Auth' SC:user/password/otp\n"
         ">STATE:123,RECONNECTING,detail,...,...";
     InputData data = CreateInputDataFromString(s);
+    ExpectStaticChallengeResponse();
     EXPECT_CALL(driver_, OnReconnecting());
     server_.OnInput(&data);
   }
@@ -188,21 +212,53 @@ TEST_F(OpenVPNManagementServerTest, ProcessStateMessage) {
       server_.ProcessStateMessage(">STATE:123,RECONNECTING,detail,...,..."));
 }
 
+TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {
+  EXPECT_FALSE(server_.ProcessNeedPasswordMessage("foo"));
+  ExpectStaticChallengeResponse();
+  EXPECT_TRUE(
+      server_.ProcessNeedPasswordMessage(
+          ">PASSWORD:Need 'Auth' SC:user/password/otp"));
+  EXPECT_FALSE(driver_.args()->ContainsString(flimflam::kOpenVPNOTPProperty));
+}
+
+TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds) {
+  // Expect no crash due to null sockets_.
+  server_.PerformStaticChallenge();
+  driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
+  server_.PerformStaticChallenge();
+  driver_.args()->SetString(flimflam::kOpenVPNPasswordProperty, "yoyo");
+  server_.PerformStaticChallenge();
+}
+
+TEST_F(OpenVPNManagementServerTest, PerformStaticChallenge) {
+  ExpectStaticChallengeResponse();
+  server_.PerformStaticChallenge();
+  EXPECT_FALSE(driver_.args()->ContainsString(flimflam::kOpenVPNOTPProperty));
+}
+
 TEST_F(OpenVPNManagementServerTest, Send) {
-  const int kSocket = 555;
   const char kMessage[] = "foo\n";
-  server_.connected_socket_ = kSocket;
-  SetSockets();
-  ExpectSend(kSocket, kMessage);
+  SetConnectedSocket();
+  ExpectSend(kMessage);
   server_.Send(kMessage);
 }
 
 TEST_F(OpenVPNManagementServerTest, SendState) {
-  const int kSocket = 555;
-  server_.connected_socket_ = kSocket;
-  SetSockets();
-  ExpectSend(kSocket, "state off\n");
+  SetConnectedSocket();
+  ExpectSend("state off\n");
   server_.SendState("off");
+}
+
+TEST_F(OpenVPNManagementServerTest, SendUsername) {
+  SetConnectedSocket();
+  ExpectSend("username \"Auth\" joesmith\n");
+  server_.SendUsername("Auth", "joesmith");
+}
+
+TEST_F(OpenVPNManagementServerTest, SendPassword) {
+  SetConnectedSocket();
+  ExpectSend("password \"Auth\" \"foobar\"\n");
+  server_.SendPassword("Auth", "foobar");
 }
 
 }  // namespace shill

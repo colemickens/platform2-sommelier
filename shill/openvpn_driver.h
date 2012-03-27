@@ -64,6 +64,8 @@ class OpenVPNDriver : public VPNDriver,
                          const std::string &value,
                          Error *error);
 
+  KeyValueStore *args() { return &args_; }
+
  private:
   friend class OpenVPNDriverTest;
   FRIEND_TEST(OpenVPNDriverTest, AppendFlag);

@@ -13,6 +13,7 @@
 namespace shill {
 
 class EventDispatcher;
+class GLib;
 class InputData;
 class IOHandler;
 class OpenVPNDriver;
@@ -20,7 +21,7 @@ class Sockets;
 
 class OpenVPNManagementServer {
  public:
-  OpenVPNManagementServer(OpenVPNDriver *driver);
+  OpenVPNManagementServer(OpenVPNDriver *driver, GLib *glib);
   virtual ~OpenVPNManagementServer();
 
   // Returns true on success, false on failure.
@@ -33,11 +34,16 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, OnInput);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReady);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReadyAcceptFail);
+  FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallenge);
+  FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessInfoMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessMessage);
+  FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessStateMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, Send);
+  FRIEND_TEST(OpenVPNManagementServerTest, SendPassword);
   FRIEND_TEST(OpenVPNManagementServerTest, SendState);
+  FRIEND_TEST(OpenVPNManagementServerTest, SendUsername);
   FRIEND_TEST(OpenVPNManagementServerTest, Start);
   FRIEND_TEST(OpenVPNManagementServerTest, Stop);
 
@@ -47,6 +53,8 @@ class OpenVPNManagementServer {
 
   void Send(const std::string &data);
   void SendState(const std::string &state);
+  void SendUsername(const std::string &tag, const std::string &username);
+  void SendPassword(const std::string &tag, const std::string &password);
 
   void ProcessMessage(const std::string &message);
   bool ProcessInfoMessage(const std::string &message);
@@ -54,7 +62,10 @@ class OpenVPNManagementServer {
   bool ProcessFailedPasswordMessage(const std::string &message);
   bool ProcessStateMessage(const std::string &message);
 
+  void PerformStaticChallenge();
+
   OpenVPNDriver *driver_;
+  GLib *glib_;
   base::WeakPtrFactory<OpenVPNManagementServer> weak_ptr_factory_;
   base::Callback<void(int)> ready_callback_;
   base::Callback<void(InputData *)> input_callback_;
