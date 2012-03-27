@@ -16,6 +16,8 @@ class MockOpenVPNDriver : public OpenVPNDriver {
   MockOpenVPNDriver(const KeyValueStore &args);
   virtual ~MockOpenVPNDriver();
 
+  MOCK_METHOD0(OnReconnecting, void());
+
  private:
   DISALLOW_COPY_AND_ASSIGN(MockOpenVPNDriver);
 };

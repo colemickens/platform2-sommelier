@@ -532,7 +532,18 @@ bool OpenVPNDriver::PinHostRoute(const IPConfig::Properties &properties) {
 }
 
 void OpenVPNDriver::Disconnect() {
+  VLOG(2) << __func__;
   Cleanup(Service::kStateIdle);
+}
+
+void OpenVPNDriver::OnReconnecting() {
+  VLOG(2) << __func__;
+  if (device_) {
+    device_->OnDisconnected();
+  }
+  if (service_) {
+    service_->SetState(Service::kStateAssociating);
+  }
 }
 
 bool OpenVPNDriver::Load(StoreInterface *storage, const string &storage_id) {

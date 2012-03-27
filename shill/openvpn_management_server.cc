@@ -13,6 +13,7 @@
 #include <base/stringprintf.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/openvpn_driver.h"
 #include "shill/sockets.h"
 
 using base::Bind;
@@ -46,7 +47,7 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
     return true;
   }
 
-  int socket = sockets_->Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  int socket = sockets->Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (socket < 0) {
     PLOG(ERROR) << "Unable to create management server socket.";
     return false;
@@ -68,6 +69,7 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
   }
 
   VLOG(2) << "Listening socket: " << socket;
+  sockets_ = sockets;
   socket_ = socket;
   ready_handler_.reset(
       dispatcher->CreateReadyHandler(
@@ -121,22 +123,59 @@ void OpenVPNManagementServer::OnInput(InputData *data) {
 
 void OpenVPNManagementServer::ProcessMessage(const string &message) {
   VLOG(2) << __func__ << "(" << message << ")";
-  if (StartsWithASCII(message, ">INFO:", true)) {
-    return;
+  LOG_IF(WARNING,
+         !ProcessInfoMessage(message) &&
+         !ProcessNeedPasswordMessage(message) &&
+         !ProcessFailedPasswordMessage(message) &&
+         !ProcessStateMessage(message))
+      << "OpenVPN management message ignored: " << message;
+}
+
+bool OpenVPNManagementServer::ProcessInfoMessage(const string &message) {
+  return StartsWithASCII(message, ">INFO:", true);
+}
+
+bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
+    const string &message) {
+  if (!StartsWithASCII(message, ">PASSWORD:Need ", true)) {
+    return false;
   }
-  if (StartsWithASCII(message, ">PASSWORD:Need ", true)) {
-    NOTIMPLEMENTED();
-    return;
+  NOTIMPLEMENTED();
+  return true;
+}
+
+bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
+    const string &message) {
+  if (!StartsWithASCII(message, ">PASSWORD:Verification Failed:", true)) {
+    return false;
   }
-  if (StartsWithASCII(message, ">PASSWORD:Verification Failed:", true)) {
-    NOTIMPLEMENTED();
-    return;
+  NOTIMPLEMENTED();
+  return true;
+}
+
+// >STATE:* message support. State messages are of the form:
+//    >STATE:<date>,<state>,<detail>,<local-ip>,<remote-ip>
+// where:
+// <date> is the current time (since epoch) in seconds
+// <state> is one of:
+//    INITIAL, CONNECTING, WAIT, AUTH, GET_CONFIG, ASSIGN_IP, ADD_ROUTES,
+//    CONNECTED, RECONNECTING, EXITING, RESOLVE, TCP_CONNECT
+// <detail> is a free-form string giving details about the state change
+// <local-ip> is a dotted-quad for the local IPv4 address (when available)
+// <remote-ip> is a dotted-quad for the remote IPv4 address (when available)
+bool OpenVPNManagementServer::ProcessStateMessage(const string &message) {
+  if (!StartsWithASCII(message, ">STATE:", true)) {
+    return false;
   }
-  if (StartsWithASCII(message, ">STATE:", true)) {
-    NOTIMPLEMENTED();
-    return;
+  vector<string> details;
+  SplitString(message, ',', &details);
+  if (details.size() > 1) {
+    if (details[1] == "RECONNECTING") {
+      driver_->OnReconnecting();
+    }
+    // The rest of the states are currently ignored.
   }
-  LOG(WARNING) << "OpenVPN management message ignored: " << message;
+  return true;
 }
 
 void OpenVPNManagementServer::Send(const string &data) {

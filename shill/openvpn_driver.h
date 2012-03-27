@@ -55,6 +55,8 @@ class OpenVPNDriver : public VPNDriver,
   virtual bool Load(StoreInterface *storage, const std::string &storage_id);
   virtual bool Save(StoreInterface *storage, const std::string &storage_id);
 
+  virtual void OnReconnecting();
+
   virtual void InitPropertyStore(PropertyStore *store);
   void ClearMappedProperty(const size_t &index, Error *error);
   std::string GetMappedProperty(const size_t &index, Error *error);
@@ -77,6 +79,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, Notify);
   FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
+  FRIEND_TEST(OpenVPNDriverTest, OnReconnecting);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
