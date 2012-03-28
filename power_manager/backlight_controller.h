@@ -315,6 +315,9 @@ class BacklightController : public BacklightInterfaceObserver {
   // Flag to indicate whether there is an active brightness transition going on.
   bool is_in_transition_;
 
+  // Flag to indicate whether the state before suspended is idle off;
+  bool suspended_through_idle_off_;
+
   DISALLOW_COPY_AND_ASSIGN(BacklightController);
 };
 

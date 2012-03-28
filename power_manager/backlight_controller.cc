@@ -113,7 +113,8 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       level_to_percent_exponent_(kDefaultLevelToPercentExponent),
       is_initialized_(false),
       target_level_(0),
-      is_in_transition_(false) {
+      is_in_transition_(false),
+      suspended_through_idle_off_(false) {
   for (size_t i = 0; i < arraysize(als_responses_); i++)
     als_responses_[i] = 0;
   backlight_->set_observer(this);
@@ -245,8 +246,16 @@ bool BacklightController::SetPowerState(PowerState new_state) {
         last_active_offset_percent_ + als_offset_percent_);
     *current_offset_percent_ = new_percent - als_offset_percent_;
 
-    // When waking up from IDLE_OFF/SUSPENDED, turn back on the screen.
-    if (old_state == BACKLIGHT_IDLE_OFF || old_state == BACKLIGHT_SUSPENDED)
+    // When waking up from IDLE_OFF, turn back on the screen.
+    // When waking up from SUSPENDED:
+    // 1. System was in IDLE_OFF before going to SUSPENDED. Kernel driver
+    // will bring the system back to the IDLE_OFF state, and we need to
+    // explicitly call SetScreenOn() to turn on the screen since user does
+    // not expect to see blank screen.
+    // 2. System went to SUSPENDED state directly. Kernel driver will bring
+    // the system back to a non IDLE_OFF state, and we do nothing in this case.
+    if (old_state == BACKLIGHT_IDLE_OFF ||
+        (old_state == BACKLIGHT_SUSPENDED && suspended_through_idle_off_))
       if (monitor_reconfigure_)
         monitor_reconfigure_->SetScreenOn();
 
@@ -258,8 +267,10 @@ bool BacklightController::SetPowerState(PowerState new_state) {
       style = TRANSITION_INSTANT;
   }
 
-  if (new_state == BACKLIGHT_SUSPENDED)
+  if (new_state == BACKLIGHT_SUSPENDED) {
     style = TRANSITION_INSTANT;
+    suspended_through_idle_off_ = old_state == BACKLIGHT_IDLE_OFF;
+  }
 
   bool write_brightness = true;
 #ifdef HAS_ALS
@@ -587,8 +598,9 @@ gboolean BacklightController::SetBrightnessHard(int64 level,
 
   if (level == 0 && target_level == 0 && monitor_reconfigure_) {
     // If it is in IDLE_OFF state, we call SetScreenOff() to turn off all the
-    // display outputs.
-    if (state_ == BACKLIGHT_IDLE_OFF || state_ == BACKLIGHT_SUSPENDED)
+    // display outputs. We don't call SetScreenOff() if it is in SUSPENDED
+    // state since kernel driver will turn off the screen.
+    if (state_ == BACKLIGHT_IDLE_OFF)
       monitor_reconfigure_->SetScreenOff();
     // If backlight is 0 but we are in ACTIVE state, we turn off the internal
     // panel only.
