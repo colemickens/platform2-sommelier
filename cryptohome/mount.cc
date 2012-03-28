@@ -118,7 +118,9 @@ bool Mount::Init() {
   homedirs_.set_timestamp_cache(user_timestamp_);
   homedirs_.set_enterprise_owned(enterprise_owned_);
   homedirs_.set_old_user_last_activity_time(old_user_last_activity_time_);
-  homedirs_.set_policy_provider(policy_provider_.get());
+
+  // Make sure both we and |homedirs_| have a proper device policy object.
+  EnsureDevicePolicyLoaded(false);
 
   // Get the user id and group id of the default user
   if (!platform_->GetUserId(default_username_, &default_user_,
@@ -762,10 +764,12 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
 }
 
 void Mount::EnsureDevicePolicyLoaded(bool force_reload) {
-  if (!policy_provider_.get())
+  if (!policy_provider_.get()) {
     policy_provider_.reset(new policy::PolicyProvider());
-  else if (force_reload)
+    homedirs_.set_policy_provider(policy_provider_.get());
+  } else if (force_reload) {
     policy_provider_->Reload();
+  }
 }
 
 void Mount::DoForEveryUnmountedCryptohome(
