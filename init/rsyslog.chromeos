@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -13,17 +13,14 @@ $ModLoad imklog.so # kernel logging (formerly provided by rklogd)
 
 # Log anything (except mail) of level info or higher.
 # Don't log private authentication messages!
-*.*;mail.none;authpriv.none;cron.none;local5.none       -/var/log/messages
+*.*;mail.none;authpriv.none;local5.none                 -/var/log/messages
 
 # Copy these messages to tty8 to help with troubleshooting.
-# Don't log authentication messages, mail, cron, or wpa_supplicant(local6).
-*.*;mail.none;authpriv.none;cron.none;local6.none       /dev/tty8
+# Don't log authentication messages, mail, or wpa_supplicant(local6).
+*.*;mail.none;authpriv.none;local6.none                 /dev/tty8
 
 # The authpriv file has restricted access.
 authpriv.*                                              /var/log/secure
-
-# Log cron stuff
-cron.*                                                  -/var/log/cron
 
 # Everybody gets emergency messages
 *.emerg                                                 *
