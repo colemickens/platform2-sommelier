@@ -156,6 +156,9 @@ class MonitorReconfigure {
   bool AreOutputsSame(const std::vector<OutputInfo>& outputs1,
                       const std::vector<OutputInfo>& outputs2);
 
+  // Policy about whether mode switch is needed;
+  bool NeedSwitchMode();
+
   // Policy about whether the reconfigure is needed.
   bool NeedReconfigure(const std::vector<OutputInfo>& current_outputs);
 

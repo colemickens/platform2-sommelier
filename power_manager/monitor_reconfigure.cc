@@ -663,16 +663,42 @@ void MonitorReconfigure::RunClone(
     projection_callback_(projection_callback_data_);
 }
 
+bool MonitorReconfigure::NeedSwitchMode() {
+  if (!SetupXrandr())
+    return false;
+
+  bool ret = true;
+
+  std::vector<OutputInfo> current_outputs;
+  DetermineOutputs(&current_outputs);
+
+  // Don't switch mode if we only have internal panel as output.
+  if (internal_panel_connection_ == RR_Connected &&
+      current_outputs.size() == 1)
+    ret = false;
+
+  ClearUsableOutputsInfo();
+  ClearXrandr();
+
+  return ret;
+}
+
 void  MonitorReconfigure::SwitchMode() {
-  LOG(WARNING) << "Ctrl+F4 pressed to switch mode";
+  LOG(INFO) << "Ctrl+F4 pressed to switch mode";
+
+  if (!NeedSwitchMode()) {
+    LOG(INFO) << "Mode switch is not needed";
+    return;
+  }
+
   need_switch_mode_ = true;
   Run(true);
   need_switch_mode_ = false;
 }
 
 void MonitorReconfigure::Run(bool force_reconfigure) {
-  ClearXrandr();
   ClearUsableOutputsInfo();
+  ClearXrandr();
 
   if (!SetupXrandr())
     return;
@@ -683,8 +709,8 @@ void MonitorReconfigure::Run(bool force_reconfigure) {
   if (usable_outputs_.size() == 0 ||
       (!force_reconfigure && !NeedReconfigure(current_outputs))) {
     saved_outputs_.swap(current_outputs);
-    ClearXrandr();
     ClearUsableOutputsInfo();
+    ClearXrandr();
     return;
   }
 
@@ -739,8 +765,8 @@ void MonitorReconfigure::Run(bool force_reconfigure) {
   }
 
   saved_outputs_.swap(current_outputs);
-  ClearXrandr();
   ClearUsableOutputsInfo();
+  ClearXrandr();
 }
 
 void MonitorReconfigure::SetProjectionCallback(void (*func)(void*),
