@@ -18,6 +18,7 @@
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
 #include "shill/service.h"
+#include "shill/sockets.h"
 #include "shill/vpn_driver.h"
 
 namespace shill {
@@ -28,6 +29,7 @@ class Error;
 class EventDispatcher;
 class Manager;
 class Metrics;
+class OpenVPNManagementServer;
 
 class OpenVPNDriver : public VPNDriver,
                       public RPCTaskDelegate {
@@ -65,6 +67,16 @@ class OpenVPNDriver : public VPNDriver,
                          Error *error);
 
   KeyValueStore *args() { return &args_; }
+
+  // Returns true if an opton was appended.
+  bool AppendValueOption(const std::string &property,
+                         const std::string &option,
+                         std::vector<std::string> *options);
+
+  // Returns true if a flag was appended.
+  bool AppendFlag(const std::string &property,
+                  const std::string &option,
+                  std::vector<std::string> *options);
 
  private:
   friend class OpenVPNDriverTest;
@@ -123,12 +135,6 @@ class OpenVPNDriver : public VPNDriver,
 
   void InitOptions(std::vector<std::string> *options, Error *error);
 
-  void AppendValueOption(const std::string &property,
-                         const std::string &option,
-                         std::vector<std::string> *options);
-  void AppendFlag(const std::string &property,
-                  const std::string &option,
-                  std::vector<std::string> *options);
   bool PinHostRoute(const IPConfig::Properties &properties);
 
   bool SpawnOpenVPN();
@@ -148,6 +154,8 @@ class OpenVPNDriver : public VPNDriver,
   DeviceInfo *device_info_;
   GLib *glib_;
   KeyValueStore args_;
+  Sockets sockets_;
+  scoped_ptr<OpenVPNManagementServer> management_server_;
 
   VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;

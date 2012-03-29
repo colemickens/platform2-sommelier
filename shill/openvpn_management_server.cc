@@ -4,10 +4,12 @@
 
 #include "shill/openvpn_management_server.h"
 
+#include <arpa/inet.h>
 #include <netinet/in.h>
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
@@ -19,6 +21,7 @@
 #include "shill/sockets.h"
 
 using base::Bind;
+using base::IntToString;
 using base::SplitString;
 using base::StringPrintf;
 using std::string;
@@ -41,11 +44,12 @@ OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver *driver,
       connected_socket_(-1) {}
 
 OpenVPNManagementServer::~OpenVPNManagementServer() {
-  Stop();
+  OpenVPNManagementServer::Stop();
 }
 
 bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
-                                    Sockets *sockets) {
+                                    Sockets *sockets,
+                                    vector<string> *options) {
   VLOG(2) << __func__;
   if (sockets_) {
     return true;
@@ -79,6 +83,20 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
       dispatcher->CreateReadyHandler(
           socket, IOHandler::kModeInput, ready_callback_));
   dispatcher_ = dispatcher;
+
+  // Append openvpn management API options.
+  options->push_back("--management");
+  options->push_back(inet_ntoa(addr.sin_addr));
+  options->push_back(IntToString(ntohs(addr.sin_port)));
+  options->push_back("--management-client");
+  options->push_back("--management-query-passwords");
+  driver_->AppendFlag(
+      flimflam::kOpenVPNAuthUserPassProperty, "--auth-user-pass", options);
+  if (driver_->AppendValueOption(flimflam::kOpenVPNStaticChallengeProperty,
+                                 "--static-challenge",
+                                 options)) {
+    options->push_back("1");  // Force echo.
+  }
   return true;
 }
 

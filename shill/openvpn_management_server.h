@@ -5,6 +5,9 @@
 #ifndef SHILL_OPENVPN_MANAGEMENT_SERVER_
 #define SHILL_OPENVPN_MANAGEMENT_SERVER_
 
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
@@ -24,10 +27,13 @@ class OpenVPNManagementServer {
   OpenVPNManagementServer(OpenVPNDriver *driver, GLib *glib);
   virtual ~OpenVPNManagementServer();
 
-  // Returns true on success, false on failure.
-  bool Start(EventDispatcher *dispatcher, Sockets *sockets);
+  // Returns false on failure. On success, returns true and appends management
+  // interface openvpn options to |options|.
+  virtual bool Start(EventDispatcher *dispatcher,
+                     Sockets *sockets,
+                     std::vector<std::string> *options);
 
-  void Stop();
+  virtual void Stop();
 
  private:
   friend class OpenVPNManagementServerTest;

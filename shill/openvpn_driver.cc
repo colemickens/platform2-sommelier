@@ -17,8 +17,10 @@
 #include "shill/dhcp_config.h"
 #include "shill/error.h"
 #include "shill/manager.h"
+#include "shill/openvpn_management_server.h"
 #include "shill/property_accessor.h"
 #include "shill/rpc_task.h"
+#include "shill/sockets.h"
 #include "shill/store_interface.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
@@ -113,6 +115,7 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       device_info_(device_info),
       glib_(glib),
       args_(args),
+      management_server_(new OpenVPNManagementServer(this, glib)),
       pid_(0),
       child_watch_tag_(0) {}
 
@@ -121,6 +124,7 @@ OpenVPNDriver::~OpenVPNDriver() {
 }
 
 void OpenVPNDriver::Cleanup(Service::ConnectState state) {
+  management_server_->Stop();
   if (child_watch_tag_) {
     glib_->SourceRemove(child_watch_tag_);
     child_watch_tag_ = 0;
@@ -461,8 +465,11 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   AppendValueOption(
       flimflam::kOpenVPNRemoteCertKUProperty, "--remote-cert-ku", options);
 
-  // TODO(petkov): Setup management control channel and add the approprate
-  // options (crosbug.com/26994).
+  if (!management_server_->Start(dispatcher_, &sockets_, options)) {
+    Error::PopulateAndLog(
+        error, Error::kInternalError, "Unable to setup management channel.");
+    return;
+  }
 
   // Setup openvpn-script options and RPC information required to send back
   // Layer 3 configuration.
@@ -493,20 +500,24 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   options->push_back("openvpn");
 }
 
-void OpenVPNDriver::AppendValueOption(
+bool OpenVPNDriver::AppendValueOption(
     const string &property, const string &option, vector<string> *options) {
   string value = args_.LookupString(property, "");
   if (!value.empty()) {
     options->push_back(option);
     options->push_back(value);
+    return true;
   }
+  return false;
 }
 
-void OpenVPNDriver::AppendFlag(
+bool OpenVPNDriver::AppendFlag(
     const string &property, const string &option, vector<string> *options) {
   if (args_.ContainsString(property)) {
     options->push_back(option);
+    return true;
   }
+  return false;
 }
 
 bool OpenVPNDriver::PinHostRoute(const IPConfig::Properties &properties) {
