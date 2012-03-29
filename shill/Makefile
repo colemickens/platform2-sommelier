@@ -60,7 +60,8 @@ DBUS_BINDINGS_XML_SYSROOT = \
 	org.freedesktop.ModemManager1.Modem>mm1-modem \
 	org.freedesktop.ModemManager1.Modem.Modem3gpp>mm1-modem-modem3gpp \
 	org.freedesktop.ModemManager1.Modem.ModemCdma>mm1-modem-modemcdma \
-	org.freedesktop.ModemManager1.Modem.Simple>mm1-modem-simple
+	org.freedesktop.ModemManager1.Modem.Simple>mm1-modem-simple \
+	org.freedesktop.ModemManager1.Sim>mm1-sim
 
 # Rename local XML files with the names required by DBus to XML files with the
 # names required by the style guide, which will then be turned into generated
@@ -148,6 +149,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	mm1_modem_modemcdma_proxy.o \
 	mm1_modem_proxy.o \
 	mm1_modem_simple_proxy.o \
+	mm1_sim_proxy.o \
 	modem.o \
 	modem_cdma_proxy.o \
 	modem_gsm_card_proxy.o \

@@ -1,0 +1,151 @@
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "shill/mm1_sim_proxy.h"
+
+#include <base/logging.h>
+
+#include "cellular_error.h"
+
+using std::string;
+
+namespace shill {
+namespace mm1 {
+
+SimProxy::SimProxy(DBus::Connection *connection,
+                   const string &path,
+                   const string &service)
+    : proxy_(connection, path, service) {}
+
+SimProxy::~SimProxy() {}
+
+
+void SimProxy::SendPin(const string &pin,
+                       Error *error,
+                       const ResultCallback &callback,
+                       int timeout) {
+  // pin is intentionally not logged.
+  VLOG(2) << __func__ << "( XXX, " << timeout << ")";
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.SendPin(pin, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
+}
+
+void SimProxy::SendPuk(const string &puk,
+                       const string &pin,
+                       Error *error,
+                       const ResultCallback &callback,
+                       int timeout) {
+  // pin and puk are intentionally not logged.
+  VLOG(2) << __func__ << "( XXX, XXX, " << timeout << ")";
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.SendPuk(puk, pin, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
+}
+
+void SimProxy::EnablePin(const string &pin,
+                         const bool enabled,
+                         Error *error,
+                         const ResultCallback &callback,
+                         int timeout) {
+  // pin is intentionally not logged.
+  VLOG(2) << __func__ << "( XXX, " << enabled << ", " << timeout << ")";
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.EnablePin(pin, enabled, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
+}
+
+void SimProxy::ChangePin(const string &old_pin,
+                         const string &new_pin,
+                         Error *error,
+                         const ResultCallback &callback,
+                         int timeout) {
+  // old_pin and new_pin are intentionally not logged.
+  VLOG(2) << __func__ << "( XXX, XXX, " << timeout << ")";
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    proxy_.ChangePin(old_pin, new_pin, cb.get(), timeout);
+    cb.release();
+  } catch (DBus::Error e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
+}
+
+// Inherited properties from SimProxyInterface.
+const string SimProxy::SimIdentifier() {
+  return proxy_.SimIdentifier();
+}
+
+const string SimProxy::Imsi() {
+  return proxy_.Imsi();
+}
+
+const string SimProxy::OperatorIdentifier() {
+  return proxy_.OperatorIdentifier();
+}
+
+const string SimProxy::OperatorName() {
+  return proxy_.OperatorName();
+}
+
+SimProxy::Proxy::Proxy(DBus::Connection *connection,
+                       const string &path,
+                       const string &service)
+    : DBus::ObjectProxy(*connection, path, service.c_str()) {}
+
+SimProxy::Proxy::~Proxy() {}
+
+
+// Method callbacks inherited from
+// org::freedesktop::ModemManager1::SimProxy
+void SimProxy::Proxy::SendPinCallback(const ::DBus::Error &dberror,
+                                      void *data) {
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
+}
+
+void SimProxy::Proxy::SendPukCallback(const ::DBus::Error &dberror,
+                             void *data)  {
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
+}
+
+void SimProxy::Proxy::EnableCallback(const ::DBus::Error &dberror,
+                            void *data)  {
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
+}
+
+void SimProxy::Proxy::ChangeCallback(const ::DBus::Error &dberror,
+                            void *data) {
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
+}
+
+}  // namespace mm1
+}  // namespace shill
