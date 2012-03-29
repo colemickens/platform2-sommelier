@@ -8,6 +8,7 @@
 
 #include <glib.h>
 
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/scoped_temp_dir.h>
 #include <base/stl_util.h>
@@ -714,6 +715,69 @@ TEST_F(ManagerTest, PushPopProfile) {
   // machine profile on.
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kMachineProfile1));
+}
+
+TEST_F(ManagerTest, RemoveProfile) {
+  // It's much easier to use real Glib in creating a Manager for this
+  // test here since we want the storage side-effects.
+  GLib glib;
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  Manager manager(control_interface(),
+                  dispatcher(),
+                  metrics(),
+                  &glib,
+                  run_path(),
+                  storage_path(),
+                  temp_dir.path().value());
+
+  const char kProfile0[] = "profile0";
+  FilePath profile_path(
+      FilePath(storage_path()).Append(string(kProfile0) + ".profile"));
+
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
+  ASSERT_TRUE(file_util::PathExists(profile_path));
+
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
+
+  // Remove should fail since the profile is still on the stack.
+  {
+    Error error;
+    manager.RemoveProfile(kProfile0, &error);
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+  }
+
+  // Profile path should still exist.
+  EXPECT_TRUE(file_util::PathExists(profile_path));
+
+  EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
+
+  // This should succeed now that the profile is off the stack.
+  {
+    Error error;
+    manager.RemoveProfile(kProfile0, &error);
+    EXPECT_EQ(Error::kSuccess, error.type());
+  }
+
+  // Profile path should no longer exist.
+  EXPECT_FALSE(file_util::PathExists(profile_path));
+
+  // Another remove succeeds, due to a foible in file_util::Delete --
+  // it is not an error to delete a file that does not exist.
+  {
+    Error error;
+    manager.RemoveProfile(kProfile0, &error);
+    EXPECT_EQ(Error::kSuccess, error.type());
+  }
+
+  // Let's create an error case that will "work".  Create a non-empty
+  // directory in the place of the profile pathname.
+  ASSERT_TRUE(file_util::CreateDirectory(profile_path.Append("foo")));
+  {
+    Error error;
+    manager.RemoveProfile(kProfile0, &error);
+    EXPECT_EQ(Error::kOperationFailed, error.type());
+  }
 }
 
 // Use this matcher instead of passing RefPtrs directly into the arguments

@@ -58,6 +58,11 @@ class Profile : public base::RefCounted<Profile> {
                    InitStorageOption storage_option,
                    Error *error);
 
+  // Remove the persisitent storage for this Profile.  It is an error to
+  // do so while the underlying storage is open via InitStorage() or
+  // set_storage().
+  bool RemoveStorage(GLib *glib, Error *error);
+
   std::string GetFriendlyName();
 
   virtual std::string GetRpcIdentifier();
@@ -65,7 +70,9 @@ class Profile : public base::RefCounted<Profile> {
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
 
-  void set_storage(StoreInterface *storage);  // Takes ownership of |storage|.
+  // Set the storage inteface.  This is used for testing purposes.  It
+  // takes ownership of |storage|.
+  void set_storage(StoreInterface *storage);
 
   // Begin managing the persistence of |service|.
   // Returns true if |service| is new to this profile and was added,

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/string_util.h>
@@ -97,6 +98,29 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
                            name_.identifier.c_str()));
   }
   set_storage(storage.release());
+  return true;
+}
+
+bool Profile::RemoveStorage(GLib *glib, Error *error) {
+  FilePath path;
+
+  CHECK(!storage_.get());
+
+  if (!GetStoragePath(&path)) {
+    Error::PopulateAndLog(
+        error, Error::kInvalidArguments,
+        base::StringPrintf("Could get the storage path for %s:%s",
+                           name_.user.c_str(), name_.identifier.c_str()));
+    return false;
+  }
+
+  if (!file_util::Delete(path, false)) {
+    Error::PopulateAndLog(
+        error, Error::kOperationFailed,
+        base::StringPrintf("Could not remove path %s", path.value().c_str()));
+    return false;
+  }
+
   return true;
 }
 

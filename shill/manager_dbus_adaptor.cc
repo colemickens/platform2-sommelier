@@ -107,8 +107,11 @@ string ManagerDBusAdaptor::GetState(::DBus::Error &/*error*/) {
   return ::DBus::Path(path);
 }
 
-void ManagerDBusAdaptor::RemoveProfile(const string &/*name*/,
-                                       ::DBus::Error &/*error*/) {
+void ManagerDBusAdaptor::RemoveProfile(const string &name,
+                                       ::DBus::Error &error) {
+  Error e;
+  manager_->RemoveProfile(name, &e);
+  e.ToDBusError(&error);
 }
 
 ::DBus::Path ManagerDBusAdaptor::PushProfile(const std::string &name,

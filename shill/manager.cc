@@ -224,7 +224,7 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
                           this,
                           ident,
                           user_storage_format_,
-                          connect_profiles_to_rpc_);
+                          false);
   }
 
   if (!profile->InitStorage(glib_, Profile::kCreateNew, error)) {
@@ -364,6 +364,47 @@ void Manager::PopAnyProfile(Error *error) {
     return;
   }
   PopProfileInternal();
+}
+
+void Manager::RemoveProfile(const string &name, Error *error) {
+  Profile::Identifier ident;
+  if (!Profile::ParseIdentifier(name, &ident)) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid profile name " + name);
+    return;
+  }
+
+  for (vector<ProfileRefPtr>::const_iterator it = profiles_.begin();
+       it != profiles_.end();
+       ++it) {
+    if ((*it)->MatchesIdentifier(ident)) {
+      Error::PopulateAndLog(error, Error::kInvalidArguments,
+                            "Cannot remove profile name " + name +
+                            " since it is on stack");
+      return;
+    }
+  }
+
+  ProfileRefPtr profile;
+  if (ident.user.empty()) {
+    profile = new DefaultProfile(control_interface_,
+                                 this,
+                                 storage_path_,
+                                 ident.identifier,
+                                 props_);
+  } else {
+    profile = new Profile(control_interface_,
+                          this,
+                          ident,
+                          user_storage_format_,
+                          false);
+  }
+
+
+  // |error| will have been populated if RemoveStorage fails.
+  profile->RemoveStorage(glib_, error);
+
+  return;
 }
 
 bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr &profile,
