@@ -38,6 +38,7 @@ class DefaultProfileTest : public PropertyStoreTest {
       : profile_(new DefaultProfile(control_interface(),
                                     manager(),
                                     FilePath(storage_path()),
+                                    DefaultProfile::kDefaultId,
                                     properties_)),
         device_(new MockDevice(control_interface(),
                                dispatcher(),

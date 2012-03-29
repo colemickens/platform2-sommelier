@@ -575,11 +575,12 @@ TEST_F(ManagerTest, CreateProfile) {
   // Invalid name should be rejected.
   EXPECT_EQ(Error::kInvalidArguments, TestCreateProfile(&manager, ""));
 
-  // Valid name is still rejected because we can't create a profile
-  // that doesn't have a user component.  Such profile names are
-  // reserved for the single DefaultProfile the manager creates
-  // at startup.
-  EXPECT_EQ(Error::kInvalidArguments, TestCreateProfile(&manager, "valid"));
+  // A profile with invalid characters in it should similarly be rejected.
+  EXPECT_EQ(Error::kInvalidArguments,
+            TestCreateProfile(&manager, "valid_profile"));
+
+  // We should be able to create a machine profile.
+  EXPECT_EQ(Error::kSuccess, TestCreateProfile(&manager, "valid"));
 
   // We should succeed in creating a valid user profile.
   const char kProfile[] = "~user/profile";
@@ -606,8 +607,8 @@ TEST_F(ManagerTest, PushPopProfile) {
   // Pushing an invalid profile should fail.
   EXPECT_EQ(Error::kInvalidArguments, TestPushProfile(&manager, ""));
 
-  // Pushing a default profile name should fail.
-  EXPECT_EQ(Error::kInvalidArguments, TestPushProfile(&manager, "default"));
+  // Pushing a default profile that does not exist should fail.
+  EXPECT_EQ(Error::kNotFound, TestPushProfile(&manager, "default"));
 
   const char kProfile0[] = "~user/profile0";
   const char kProfile1[] = "~user/profile1";
@@ -693,6 +694,26 @@ TEST_F(ManagerTest, PushPopProfile) {
 
   // Next pop should fail with "stack is empty".
   EXPECT_EQ(Error::kNotFound, TestPopAnyProfile(&manager));
+
+  const char kMachineProfile0[] = "machineprofile0";
+  const char kMachineProfile1[] = "machineprofile1";
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kMachineProfile0));
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kMachineProfile1));
+
+  // Should be able to push a machine profile.
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kMachineProfile0));
+
+  // Should be able to push a user profile atop a machine profile.
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
+
+  // Pushing a system-wide profile on top of a user profile should fail.
+  EXPECT_EQ(Error::kInvalidArguments,
+            TestPushProfile(&manager, kMachineProfile1));
+
+  // However if we pop the user profile, we should be able stack another
+  // machine profile on.
+  EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kMachineProfile1));
 }
 
 // Use this matcher instead of passing RefPtrs directly into the arguments

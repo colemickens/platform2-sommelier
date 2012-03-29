@@ -160,6 +160,9 @@ void Manager::Stop() {
   // Persist profile, device, service information to disk.
   vector<ProfileRefPtr>::iterator it;
   for (it = profiles_.begin(); it != profiles_.end(); ++it) {
+    // Since this happens in a loop, the current manager state is stored to
+    // all default profiles in the stack.  This is acceptable because the
+    // only time multiple default profiles are loaded are during autotests.
     (*it)->Save();
   }
 
@@ -188,6 +191,7 @@ void Manager::InitializeProfiles() {
       default_profile(new DefaultProfile(control_interface_,
                                          this,
                                          storage_path_,
+                                         DefaultProfile::kDefaultId,
                                          props_));
   CHECK(default_profile->InitStorage(glib_, Profile::kCreateOrOpenExisting,
                                      NULL));
@@ -207,11 +211,22 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
                           "Invalid profile name " + name);
     return;
   }
-  ProfileRefPtr profile(new Profile(control_interface_,
-                                    this,
-                                    ident,
-                                    user_storage_format_,
-                                    connect_profiles_to_rpc_));
+
+  ProfileRefPtr profile;
+  if (ident.user.empty()) {
+    profile = new DefaultProfile(control_interface_,
+                                 this,
+                                 storage_path_,
+                                 ident.identifier,
+                                 props_);
+  } else {
+    profile = new Profile(control_interface_,
+                          this,
+                          ident,
+                          user_storage_format_,
+                          connect_profiles_to_rpc_);
+  }
+
   if (!profile->InitStorage(glib_, Profile::kCreateNew, error)) {
     // |error| will have been populated by InitStorage().
     return;
@@ -245,29 +260,46 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
     }
   }
 
+  ProfileRefPtr profile;
   if (ident.user.empty()) {
-    // The manager will have only one machine-wide profile, and this is the
-    // DefaultProfile.  This means no other profiles can be loaded that do
-    // not have a user component.
-    // TODO(pstew): This is all well and good, but WiFi autotests try to
-    // creating a default profile (by a name other than "default") in order
-    // to avoid leaving permanent side effects to devices under test.  This
-    // whole thing will need to be reworked in order to allow that to happen,
-    // or the autotests (or their expectations) will need to change.
-    // crosbug.com/24461
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
-                          "Cannot load non-default global profile " + name);
-    return;
-  }
+    // Allow a machine-wide-profile to be pushed on the stack only if the
+    // profile stack is empty, or if the topmost profile on the stack is
+    // also a machine-wide (non-user) profile.
+    if (!profiles_.empty() && !profiles_.back()->GetUser().empty()) {
+      Error::PopulateAndLog(error, Error::kInvalidArguments,
+                            "Cannot load non-default global profile " + name +
+                            " on top of a user profile");
+      return;
+    }
 
-  ProfileRefPtr profile(new Profile(control_interface_,
-                                    this,
-                                    ident,
-                                    user_storage_format_,
-                                    connect_profiles_to_rpc_));
-  if (!profile->InitStorage(glib_, Profile::kOpenExisting, error)) {
-    // |error| will have been populated by InitStorage().
-    return;
+    scoped_refptr<DefaultProfile>
+        default_profile(new DefaultProfile(control_interface_,
+                                           this,
+                                           storage_path_,
+                                           ident.identifier,
+                                           props_));
+    if (!default_profile->InitStorage(glib_, Profile::kOpenExisting, error)) {
+      // |error| will have been populated by InitStorage().
+      return;
+    }
+
+    if (!default_profile->LoadManagerProperties(&props_)) {
+      Error::PopulateAndLog(error, Error::kInvalidArguments,
+                            "Could not load Manager properties from profile " +
+                            name);
+      return;
+    }
+    profile = default_profile;
+  } else {
+    profile = new Profile(control_interface_,
+                          this,
+                          ident,
+                          user_storage_format_,
+                          connect_profiles_to_rpc_);
+    if (!profile->InitStorage(glib_, Profile::kOpenExisting, error)) {
+      // |error| will have been populated by InitStorage().
+      return;
+    }
   }
 
   profiles_.push_back(profile);

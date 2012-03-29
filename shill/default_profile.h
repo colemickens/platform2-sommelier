@@ -24,9 +24,12 @@ class ControlInterface;
 
 class DefaultProfile : public Profile {
  public:
+  static const char kDefaultId[];
+
   DefaultProfile(ControlInterface *control,
                  Manager *manager,
                  const FilePath &storage_path,
+                 const std::string &profile_id,
                  const Manager::Properties &manager_props);
   virtual ~DefaultProfile();
 
@@ -53,7 +56,6 @@ class DefaultProfile : public Profile {
   FRIEND_TEST(DefaultProfileTest, LoadManagerProperties);
   FRIEND_TEST(DefaultProfileTest, Save);
 
-  static const char kDefaultId[];
   static const char kStorageId[];
   static const char kStorageCheckPortalList[];
   static const char kStorageHostName[];
@@ -63,6 +65,7 @@ class DefaultProfile : public Profile {
   static const char kStoragePortalURL[];
 
   const FilePath storage_path_;
+  const std::string profile_id_;
   const Manager::Properties &props_;
 
   DISALLOW_COPY_AND_ASSIGN(DefaultProfile);

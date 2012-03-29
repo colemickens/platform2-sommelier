@@ -117,6 +117,9 @@ class Profile : public base::RefCounted<Profile> {
   // Returns whether |name| matches this Profile's |name_|.
   virtual bool MatchesIdentifier(const Identifier &name) const;
 
+  // Returns the username component of the profile identifier.
+  const std::string &GetUser() const { return name_.user; }
+
   // Returns a read-only copy of the backing storage of the profile.
   // TODO(pstew): Needed by ProfileDBusPropertyExporter crosbug.com/25813
   const StoreInterface *GetConstStorage() const { return storage_.get(); }

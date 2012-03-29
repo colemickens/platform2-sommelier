@@ -17,6 +17,7 @@
 #include "shill/portal_detector.h"
 #include "shill/store_interface.h"
 
+using std::string;
 using std::vector;
 
 namespace shill {
@@ -41,9 +42,11 @@ const char DefaultProfile::kStoragePortalCheckInterval[] =
 DefaultProfile::DefaultProfile(ControlInterface *control,
                                Manager *manager,
                                const FilePath &storage_path,
+                               const string &profile_id,
                                const Manager::Properties &manager_props)
-    : Profile(control, manager, Identifier(kDefaultId), "", true),
+    : Profile(control, manager, Identifier(profile_id), "", true),
       storage_path_(storage_path),
+      profile_id_(profile_id),
       props_(manager_props) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kCheckPortalListProperty,
@@ -108,7 +111,8 @@ bool DefaultProfile::Save() {
 }
 
 bool DefaultProfile::GetStoragePath(FilePath *path) {
-  *path = storage_path_.Append(base::StringPrintf("%s.profile", kDefaultId));
+  *path = storage_path_.Append(base::StringPrintf("%s.profile",
+                                                  profile_id_.c_str()));
   return true;
 }
 
