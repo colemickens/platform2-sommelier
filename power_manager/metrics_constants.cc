@@ -63,8 +63,8 @@ const int kMetricLengthOfSessionBuckets = 50;
 const char kMetricNumOfSessionsPerChargeName[] =
     "Power.NumberOfSessionsPerCharge";
 const int kMetricNumOfSessionsPerChargeMin = 1;
-const int kMetricNumOfSessionsPerChargeMax = 250;
-const int kMetricNumOfSessionsPerChargeBuckets = 30;
+const int kMetricNumOfSessionsPerChargeMax = 10000;
+const int kMetricNumOfSessionsPerChargeBuckets = 50;
 
 const char kMetricPowerButtonDownTimeName[] =
     "Power.PowerButtonDownTime";  // ms
