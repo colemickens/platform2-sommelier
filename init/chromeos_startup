@@ -5,16 +5,8 @@
 # found in the LICENSE file.
 
 UNDO_MOUNTS=
-mount_in_stateful_or_fail()
+cleanup_mounts()
 {
-  local mount_point
-  if mount "$@" ; then
-    # Last parameter contains the mount point
-    shift $(( $# - 1 ))
-    # Push it on the undo stack if we fail later
-    UNDO_MOUNTS="$1 ${UNDO_MOUNTS}"
-    return
-  fi
   # On failure unmount all saved mount points and repair stateful
   for mount_point in ${UNDO_MOUNTS}; do
     umount -n ${mount_point}
@@ -24,6 +16,22 @@ mount_in_stateful_or_fail()
   chromeos-boot-alert self_repair /dev/tty1
   clobber-log --repair "$STATE_DEV" "Self-repair incoherent stateful partition"
   exec clobber-state "fast keepimg"
+}
+remember_mount()
+{
+    UNDO_MOUNTS="$1 ${UNDO_MOUNTS}"
+}
+mount_or_fail()
+{
+  local mount_point
+  if mount "$@" ; then
+    # Last parameter contains the mount point
+    shift $(( $# - 1 ))
+    # Push it on the undo stack if we fail later
+    remember_mount "$1"
+    return
+  fi
+  cleanup_mounts
 }
 # The kernel mounts /proc, /sys and /dev during initialization, prior
 # to starting init.
@@ -260,26 +268,63 @@ if [ -O "$RESET_FILE" ]; then
   exec clobber-state "$ARGS"
 fi
 
-# Make sure stateful partition has some basic directories
-for d in etc home home/chronos home/root home/user var var/cache var/db \
-         var/empty var/lib var/lib/ureadahead var/lock var/log \
-         var/log/metrics var/log/window_manager var/run var/tmp; do
+# Make sure unencrypted stateful partition has the needed directories.
+for d in home home/chronos home/root home/user; do
   mkdir -p -m 0755 /mnt/stateful_partition/$d
 done
 
-# /var/tmp must be world-writeable and sticky
-chmod 1777 /mnt/stateful_partition/var/tmp
-# /home/root must be group-writeable and sticky
-chmod 1771 /mnt/stateful_partition/home/root
-# Selected directories must belong to the chronos user.
-chown chronos:chronos /mnt/stateful_partition/home/chronos
-chown chronos:chronos /mnt/stateful_partition/var/log/metrics
-chown chronos:chronos /mnt/stateful_partition/var/log/window_manager
+# Mount /home.  This mount inherits nodev,noexec,nosuid from
+# /mnt/stateful_partition above.
+mount_or_fail -n --bind /mnt/stateful_partition/home /home
 
-# Mount some /var directories and /home.  These mounts inherit
-# nodev,noexec,nosuid from /mnt/stateful_partition above.
-mount_in_stateful_or_fail -n --bind /mnt/stateful_partition/var /var
-mount_in_stateful_or_fail -n --bind /mnt/stateful_partition/home /home
+# TODO(keescook): using "mount-encrypted" is not yet the default for
+# ChromeOS, but it is available for testing. This test is optional for now,
+# but is intended to be removed and to make using mount-encrypted
+# mandatory in the future.
+if [ -e /mnt/stateful_partition/use-mount-encrypted ]; then
+    # Create, possibly migrate from the unencrypted stateful partition,
+    # and bind mount the /var and /home/chronos mounts from the encrypted
+    # filesystem /mnt/stateful_partition/encrypted, all managed by the
+    # "mount-encrypted" helper.
+    # Since /var is managed by mount-encrypted, it should not be created
+    # in the unencrypted stateful partition. Its mount point in the root
+    # filesystem exists already from the rootfs image.
+    # Since /home is still mounted from the unencrypted stateful partition,
+    # having /home/chronos already doesn't matter. It will be created by
+    # mount-encrypted if it is missing.
+    # These mounts inherit nodev,noexec,nosuid from the encrypted filesystem
+    # /mnt/stateful_partition/encrypted.
+    remember_mount /var
+    remember_mount /home/chronos
+    mount-encrypted >/tmp/mount-encrypted.log 2>&1
+    rc=$?
+    echo "rc:$rc" >>/tmp/mount-encrypted.log
+    if [ $rc -ne 0 ]; then
+        cat /tmp/mount-encrypted.log >/dev/tty1
+        cleanup_mounts
+    fi
+else
+    # Create and mount /var.  This mount inherits nodev,noexec,nosuid from
+    # /mnt/stateful_partition above.
+    mkdir -p -m 0755 /mnt/stateful_partition/var
+    mount_or_fail -n --bind /mnt/stateful_partition/var /var
+fi
+
+# Make sure required /var subdirectories exist.
+for d in cache db empty lib lib/ureadahead lock log log/metrics \
+         log/window_manager run tmp; do
+  mkdir -p -m 0755 /var/$d
+done
+
+# /var/tmp must be world-writable and sticky
+chmod 1777 /var/tmp
+# /home/root must be group-writable and sticky
+chmod 1771 /home/root
+# Selected directories must belong to the chronos user.
+chown chronos:chronos /home/chronos
+chown chronos:chronos /var/log/metrics
+chown chronos:chronos /var/log/window_manager
+
 # If we're mod_for_test, both /home and /tmp need to be mounted without noexec
 #mod_for_test#mount -n -o remount,exec,suid /home
 #mod_for_test#mount -n -o remount,exec,suid /tmp
@@ -294,16 +339,13 @@ if [ "$CROS_DEBUG" = "1" -o -f /root/.dev_mode ]; then
     mkdir -p -m 0755 /mnt/stateful_partition/dev_image
   fi
   # Mount and then remount to enable exec/suid
-  mount_in_stateful_or_fail -n --bind /mnt/stateful_partition/dev_image \
-    /usr/local
+  mount_or_fail -n --bind /mnt/stateful_partition/dev_image /usr/local
   mount -n -o remount,exec,suid /usr/local
 fi
 
-mount_in_stateful_or_fail -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun \
-  /var/run
+mount_or_fail -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
 touch /var/run/.ramfs  # TODO: Is this needed?
-mount_in_stateful_or_fail -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock \
-  /var/lock
+mount_or_fail -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
 touch /var/lock/.ramfs # TODO: Is this needed?
 mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
