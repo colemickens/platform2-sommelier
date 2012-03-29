@@ -573,11 +573,7 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   if (running_ && to_manage->enabled_persistent())
     to_manage->SetEnabled(true);
 
-  Error error;
-  adaptor_->EmitStringsChanged(flimflam::kAvailableTechnologiesProperty,
-                               AvailableTechnologies(&error));
-  adaptor_->EmitStringsChanged(flimflam::kEnabledTechnologiesProperty,
-                               EnabledTechnologies(&error));
+  EmitDeviceProperties();
 }
 
 void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
@@ -588,15 +584,26 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
       VLOG(2) << "Deregistered device: " << to_forget->UniqueName();
       to_forget->SetEnabled(false);
       devices_.erase(it);
-      Error error;
-      adaptor_->EmitStringsChanged(flimflam::kAvailableTechnologiesProperty,
-                                   AvailableTechnologies(&error));
-      adaptor_->EmitStringsChanged(flimflam::kEnabledTechnologiesProperty,
-                                   EnabledTechnologies(&error));
+      EmitDeviceProperties();
       return;
     }
   }
   VLOG(2) << __func__ << " unknown device: " << to_forget->UniqueName();
+}
+
+void Manager::EmitDeviceProperties() {
+  vector<DeviceRefPtr>::iterator it;
+  vector<string> device_paths;
+  for (it = devices_.begin(); it != devices_.end(); ++it) {
+    device_paths.push_back((*it)->GetRpcIdentifier());
+  }
+  adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kDevicesProperty,
+                                          device_paths);
+  Error error;
+  adaptor_->EmitStringsChanged(flimflam::kAvailableTechnologiesProperty,
+                               AvailableTechnologies(&error));
+  adaptor_->EmitStringsChanged(flimflam::kEnabledTechnologiesProperty,
+                               EnabledTechnologies(&error));
 }
 
 bool Manager::HasService(const ServiceRefPtr &service) {

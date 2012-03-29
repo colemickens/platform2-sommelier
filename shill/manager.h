@@ -205,6 +205,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // TODO(cmasone): This should be implemented by filtering |services_|.
   std::vector<std::string> EnumerateWatchedServices(Error *error);
   std::string GetActiveProfileRpcIdentifier(Error *error);
+  void EmitDeviceProperties();
 
   // Unload a service while iterating through |services_|.  Returns true if
   // service was erased (which means the caller loop should not increment
