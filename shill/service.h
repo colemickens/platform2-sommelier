@@ -349,6 +349,10 @@ class Service : public base::RefCounted<Service> {
       const std::string &name,
       uint16(Service::*get)(Error *error),
       void(Service::*set)(const uint16 &value, Error *error));
+  void HelpRegisterDerivedRpcIdentifier(
+      const std::string &name,
+      std::string(Service::*get)(Error *),
+      void(Service::*set)(const RpcIdentifier&, Error *));
   // Expose a property over RPC, with the name |name|.
   //
   // Reads of the property will be handled by invoking |get|.

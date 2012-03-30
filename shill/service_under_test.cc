@@ -13,7 +13,7 @@ using std::string;
 namespace shill {
 
 // static
-const char ServiceUnderTest::kRpcId[] = "mock-device-rpc";
+const char ServiceUnderTest::kRpcId[] = "/mock_device_rpc";
 // static
 const char ServiceUnderTest::kStorageId[] = "service";
 

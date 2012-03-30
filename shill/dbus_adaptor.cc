@@ -168,6 +168,13 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = Uint32ToVariant(it.Value(&e));
   }
+  {
+    ReadablePropertyConstIterator<RpcIdentifier> it =
+        store.GetRpcIdentifierPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      (*out)[it.Key()] = PathToVariant(it.Value(&e));
+    }
+  }
   return true;
 }
 

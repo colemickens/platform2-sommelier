@@ -36,7 +36,9 @@ bool PropertyStore::Contains(const string &prop) const {
           ContainsKey(strings_properties_, prop) ||
           ContainsKey(uint8_properties_, prop) ||
           ContainsKey(uint16_properties_, prop) ||
-          ContainsKey(uint32_properties_, prop));
+          ContainsKey(uint32_properties_, prop) ||
+          ContainsKey(rpc_identifier_properties_, prop) ||
+          ContainsKey(rpc_identifiers_properties_, prop));
 }
 
 bool PropertyStore::SetBoolProperty(const string &name,
@@ -94,6 +96,13 @@ bool PropertyStore::SetUint32Property(const string &name,
   return SetProperty(name, value, error, uint32_properties_, "a uint32");
 }
 
+bool PropertyStore::SetRpcIdentifierProperty(const string &name,
+                                             const RpcIdentifier &value,
+                                             Error *error) {
+  return SetProperty(name, value, error, rpc_identifier_properties_,
+                     "an rpc_identifier");
+}
+
 bool PropertyStore::ClearProperty(const string &name, Error *error) {
   VLOG(2) << "Clearing " << name << ".";
 
@@ -119,6 +128,10 @@ bool PropertyStore::ClearProperty(const string &name, Error *error) {
     uint16_properties_[name]->Clear(error);
   } else if (ContainsKey(uint32_properties_, name)) {
     uint32_properties_[name]->Clear(error);
+  } else if (ContainsKey(rpc_identifier_properties_, name)) {
+    rpc_identifier_properties_[name]->Clear(error);
+  } else if (ContainsKey(rpc_identifiers_properties_, name)) {
+    rpc_identifiers_properties_[name]->Clear(error);
   } else {
     error->Populate(
         Error::kInvalidProperty, "Property " + name + " does not exist.");
@@ -145,6 +158,12 @@ ReadablePropertyConstIterator<KeyValueStore>
 PropertyStore::GetKeyValueStorePropertiesIter() const {
   return
       ReadablePropertyConstIterator<KeyValueStore>(key_value_store_properties_);
+}
+
+ReadablePropertyConstIterator<RpcIdentifier>
+PropertyStore::GetRpcIdentifierPropertiesIter() const {
+  return ReadablePropertyConstIterator<RpcIdentifier>(
+      rpc_identifier_properties_);
 }
 
 ReadablePropertyConstIterator<RpcIdentifiers>
@@ -404,6 +423,14 @@ void PropertyStore::RegisterDerivedKeyValueStore(
   DCHECK(!Contains(name) || ContainsKey(key_value_store_properties_, name))
       << "(Already registered " << name << ")";
   key_value_store_properties_[name] = acc;
+}
+
+void PropertyStore::RegisterDerivedRpcIdentifier(
+    const string &name,
+    const RpcIdentifierAccessor &acc) {
+  DCHECK(!Contains(name) || ContainsKey(rpc_identifier_properties_, name))
+      << "(Already registered " << name << ")";
+  rpc_identifier_properties_[name] = acc;
 }
 
 void PropertyStore::RegisterDerivedRpcIdentifiers(

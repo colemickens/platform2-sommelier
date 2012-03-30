@@ -68,6 +68,10 @@ class PropertyStore {
                                  uint32 value,
                                  Error *error);
 
+  virtual bool SetRpcIdentifierProperty(const std::string &name,
+                                        const RpcIdentifier &value,
+                                        Error *error);
+
   // Clearing a property resets it to its "factory" value. This value
   // is generally the value that it (the property) had when it was
   // registered with PropertyStore.
@@ -93,6 +97,8 @@ class PropertyStore {
   ReadablePropertyConstIterator<int16> GetInt16PropertiesIter() const;
   ReadablePropertyConstIterator<int32> GetInt32PropertiesIter() const;
   ReadablePropertyConstIterator<KeyValueStore> GetKeyValueStorePropertiesIter(
+      ) const;
+  ReadablePropertyConstIterator<RpcIdentifier> GetRpcIdentifierPropertiesIter(
       ) const;
   ReadablePropertyConstIterator<RpcIdentifiers> GetRpcIdentifiersPropertiesIter(
       ) const;
@@ -152,6 +158,8 @@ class PropertyStore {
                             const Int32Accessor &accessor);
   void RegisterDerivedKeyValueStore(const std::string &name,
                                     const KeyValueStoreAccessor &accessor);
+  void RegisterDerivedRpcIdentifier(const std::string &name,
+                                    const RpcIdentifierAccessor &acc);
   void RegisterDerivedRpcIdentifiers(const std::string &name,
                                      const RpcIdentifiersAccessor &accessor);
   void RegisterDerivedString(const std::string &name,
@@ -180,6 +188,7 @@ class PropertyStore {
   std::map<std::string, Int16Accessor> int16_properties_;
   std::map<std::string, Int32Accessor> int32_properties_;
   std::map<std::string, KeyValueStoreAccessor> key_value_store_properties_;
+  std::map<std::string, RpcIdentifierAccessor> rpc_identifier_properties_;
   std::map<std::string, RpcIdentifiersAccessor> rpc_identifiers_properties_;
   std::map<std::string, StringAccessor> string_properties_;
   std::map<std::string, StringmapAccessor> stringmap_properties_;

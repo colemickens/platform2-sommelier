@@ -116,7 +116,7 @@ TEST_F(ServiceTest, GetProperties) {
     ::DBus::Error dbus_error;
     DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kDeviceProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kDeviceProperty].reader().get_string(),
+    EXPECT_EQ(props[flimflam::kDeviceProperty].reader().get_path(),
               string(ServiceUnderTest::kRpcId));
   }
 }

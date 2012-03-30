@@ -130,9 +130,9 @@ Service::Service(ControlInterface *control_interface,
 
   store_.RegisterString(flimflam::kCheckPortalProperty, &check_portal_);
   store_.RegisterConstBool(flimflam::kConnectableProperty, &connectable_);
-  HelpRegisterDerivedString(flimflam::kDeviceProperty,
-                            &Service::GetDeviceRpcId,
-                            NULL);
+  HelpRegisterDerivedRpcIdentifier(flimflam::kDeviceProperty,
+                                   &Service::GetDeviceRpcId,
+                                   NULL);
   store_.RegisterString(flimflam::kGuidProperty, &guid_);
 
   store_.RegisterString(flimflam::kEapIdentityProperty, &eap_.identity);
@@ -698,6 +698,16 @@ void Service::HelpRegisterDerivedString(
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Service, string>(this, get, set)));
+}
+
+void Service::HelpRegisterDerivedRpcIdentifier(
+    const string &name,
+    RpcIdentifier(Service::*get)(Error *),
+    void(Service::*set)(const RpcIdentifier&, Error *)) {
+  store_.RegisterDerivedRpcIdentifier(
+      name,
+      RpcIdentifierAccessor(new CustomAccessor<Service, RpcIdentifier>(
+          this, get, set)));
 }
 
 void Service::HelpRegisterDerivedUint16(
