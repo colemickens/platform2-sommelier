@@ -539,6 +539,7 @@ TEST_F(TestService, GetAttributeValue) {
   EXPECT_CALL(object_, GetAttributes(_, 1))
     .WillOnce(Return(CKR_TEMPLATE_INCONSISTENT))
     .WillOnce(Return(CKR_ATTRIBUTE_SENSITIVE))
+    .WillOnce(Return(CKR_ATTRIBUTE_TYPE_INVALID))
     .WillRepeatedly(Return(CKR_OK));
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->GetAttributeValue(1, 2, good_attributes_, NULL));
@@ -554,6 +555,16 @@ TEST_F(TestService, GetAttributeValue) {
   EXPECT_EQ(output.size(), 0);
   EXPECT_EQ(CKR_ATTRIBUTE_SENSITIVE,
             service_->GetAttributeValue(1, 2, good_attributes_, &output));
+
+  // Construct a template with a valid pointer to test serialization when the
+  // mock returns CKR_ATTRIBUTE_TYPE_INVALID.
+  int out_value = 1234;
+  CK_ATTRIBUTE invalid_type = {0, &out_value, ~0UL};
+  Attributes tmp(&invalid_type, 1);
+  vector<uint8_t> tmp_serialized;
+  tmp.Serialize(&tmp_serialized);
+  EXPECT_EQ(CKR_ATTRIBUTE_TYPE_INVALID,
+            service_->GetAttributeValue(1, 2, tmp_serialized, &output));
   EXPECT_EQ(CKR_OK,
             service_->GetAttributeValue(1, 2, good_attributes_, &output));
 }

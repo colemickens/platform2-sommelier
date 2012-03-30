@@ -84,6 +84,9 @@ bool Attributes::SerializeInternal(CK_ATTRIBUTE_PTR attributes,
                                    CK_ULONG num_attributes,
                                    bool is_nesting_allowed,
                                    string* serialized) const {
+  // The PKCS #11 specification explicitly defines this as -1 cast to CK_ULONG.
+  // See the C_GetAttributeValue section, page 133 in v2.20.
+  const CK_ULONG kErrorIndicator = static_cast<CK_ULONG>(-1);
   AttributeList attribute_list;
   for (CK_ULONG i = 0; i < num_attributes; ++i) {
     bool is_attribute_nested = IsAttributeNested(attributes[i].type);
@@ -94,8 +97,8 @@ bool Attributes::SerializeInternal(CK_ATTRIBUTE_PTR attributes,
     Attribute* next = attribute_list.add_attribute();
     next->set_type(attributes[i].type);
     next->set_length(attributes[i].ulValueLen);
-    if (!attributes[i].pValue) {
-      // The caller wants to receive length only so we won't put a value in the
+    if (!attributes[i].pValue || attributes[i].ulValueLen == kErrorIndicator) {
+      // The caller is to receive length only so we won't put a value in the
       // proto-buffer.
       continue;
     }
