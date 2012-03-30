@@ -124,8 +124,7 @@ Device::Device(ControlInterface *control_interface,
   // flimflam::kDBusConnectionProperty: Registered in Cellular
   // flimflam::kDBusObjectProperty: Register in Cellular
 
-  // TODO(cmasone): Chrome doesn't use this...does anyone?
-  // store_.RegisterConstString(flimflam::kInterfaceProperty, &link_name_);
+  store_.RegisterConstString(flimflam::kInterfaceProperty, &link_name_);
   HelpRegisterDerivedStrings(flimflam::kIPConfigsProperty,
                              &Device::AvailableIPConfigs,
                              NULL);
