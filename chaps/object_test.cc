@@ -105,6 +105,14 @@ TEST_F(TestObject, AttributeConsistency) {
   object_->SetAttributeInt(1, 2);
   EXPECT_TRUE(object_->IsAttributePresent(1));
   EXPECT_EQ(2, object_->GetAttributeInt(1, 0));
+  object_->SetAttributeString(1, string(1, 0xA));
+  EXPECT_EQ(0xA, object_->GetAttributeInt(1, 0));
+  object_->SetAttributeString(1, string(2, 0xA));
+  EXPECT_EQ(0xA0A, object_->GetAttributeInt(1, 0));
+  object_->SetAttributeString(1, string(3, 0xA));
+  EXPECT_EQ(0, object_->GetAttributeInt(1, 0));
+  object_->SetAttributeString(1, string(4, 0xA));
+  EXPECT_EQ(0xA0A0A0A, object_->GetAttributeInt(1, 0));
   // [G|S]etAttributeBool
   EXPECT_FALSE(object_->IsAttributePresent(2));
   EXPECT_FALSE(object_->GetAttributeBool(2, false));

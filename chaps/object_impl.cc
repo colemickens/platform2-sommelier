@@ -153,18 +153,14 @@ int ObjectImpl::GetAttributeInt(CK_ATTRIBUTE_TYPE type,
   AttributeMap::const_iterator it = attributes_.find(type);
   if (it == attributes_.end())
     return default_value;
-  if (it->second.length() >= sizeof(CK_ULONG)) {
-    if (it->second.length() != sizeof(CK_ULONG))
-      LOG(WARNING) << "GetAttributeInt: truncating: " << it->second.length()
-                   << " --> " << sizeof(CK_ULONG);
-    CK_ULONG value = *reinterpret_cast<const CK_ULONG*>(it->second.data());
-    return value;
-  } else if (it->second.length() >= sizeof(int)) {
-    if (it->second.length() != sizeof(int))
-      LOG(WARNING) << "GetAttributeInt: truncating: " << it->second.length()
-                   << " --> " << sizeof(int);
-    int value = *reinterpret_cast<const int*>(it->second.data());
-    return value;
+  switch (it->second.length()) {
+    case 1: return it->second[0];
+    case 2: return *reinterpret_cast<const uint16_t*>(it->second.data());
+    case 4: return *reinterpret_cast<const uint32_t*>(it->second.data());
+    case 8: return *reinterpret_cast<const uint64_t*>(it->second.data());
+    default:
+      LOG(WARNING) << "GetAttributeInt: invalid length: "
+                   << it->second.length();
   }
   return default_value;
 }
