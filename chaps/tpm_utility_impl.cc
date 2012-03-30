@@ -446,12 +446,21 @@ bool TPMUtilityImpl::LoadKey(int slot,
                              const string& key_blob,
                              const string& auth_data,
                              int* key_handle) {
+  // Use the SRK as the parent. This is the normal case.
+  return LoadKeyWithParent(slot, key_blob, auth_data, srk_, key_handle);
+}
+
+bool TPMUtilityImpl::LoadKeyWithParent(int slot,
+                                       const string& key_blob,
+                                       const string& auth_data,
+                                       int parent_key_handle,
+                                       int* key_handle) {
   if (IsAlreadyLoaded(slot, key_blob, key_handle))
     return true;
   ScopedTssKey key(tsp_context_);
   TSS_RESULT result = Tspi_Context_LoadKeyByBlob(
       tsp_context_,
-      srk_,
+      parent_key_handle,
       key_blob.length(),
       ConvertStringToByteBuffer(key_blob.data()),
       key.ptr());
@@ -468,6 +477,12 @@ bool TPMUtilityImpl::LoadKey(int slot,
   if (policy == default_policy_) {
     if (!CreateKeyPolicy(key, auth_data, true))
       return false;
+  } else if (auth_data.empty()) {
+    result = Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_NONE, 0, NULL);
+    if (result != TSS_SUCCESS) {
+      LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
+      return false;
+    }
   } else {
     result = Tspi_Policy_SetSecret(policy,
                                    TSS_SECRET_MODE_SHA1,
@@ -593,10 +608,14 @@ bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
     LOG(ERROR) << "Tspi_Context_CreateObject - " << ResultToString(result);
     return false;
   }
-  result = Tspi_Policy_SetSecret(policy,
-                                 TSS_SECRET_MODE_SHA1,
-                                 auth_data.length(),
-                                 ConvertStringToByteBuffer(auth_data.data()));
+  if (auth_data.empty()) {
+    result = Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_NONE, 0, NULL);
+  } else {
+    result = Tspi_Policy_SetSecret(policy,
+                                   TSS_SECRET_MODE_SHA1,
+                                   auth_data.length(),
+                                   ConvertStringToByteBuffer(auth_data.data()));
+  }
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
     return false;
