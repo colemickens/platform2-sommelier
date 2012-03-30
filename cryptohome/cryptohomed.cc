@@ -11,6 +11,8 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <chromeos/syslog_logging.h>
+#include <dbus/dbus.h>
+#include <glib/gthread.h>
 
 #include "platform.h"
 
@@ -40,6 +42,11 @@ int main(int argc, char **argv) {
   CommandLine *cl = CommandLine::ForCurrentProcess();
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
+
+  // Setup threading. This needs to be called before other calls into glib and
+  // before multiple threads are created that access dbus.
+  g_thread_init(NULL);
+  dbus_threads_init_default();
 
   cryptohome::Platform platform;
   cryptohome::Service service;
