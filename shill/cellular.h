@@ -174,6 +174,7 @@ class Cellular : public Device {
   void OnConnectFailed(const Error &error);
   void OnDisconnected();
   void OnDisconnectFailed();
+  std::string GetTechnologyFamily(Error *error);
 
  private:
   friend class CellularTest;
@@ -210,6 +211,16 @@ class Cellular : public Device {
 
   void CreateService();
   void DestroyService();
+
+  // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
+  //
+  // Reads of the property will be handled by invoking |get|.
+  // Writes to the property will be handled by invoking |set|.
+  // Clearing the property will be handled by PropertyStore.
+  void HelpRegisterDerivedString(
+      const std::string &name,
+      std::string(Cellular::*get)(Error *error),
+      void(Cellular::*set)(const std::string &value, Error *error));
 
   State state_;
   ModemState modem_state_;

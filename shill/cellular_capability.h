@@ -116,6 +116,8 @@ class CellularCapability {
 
   virtual void GetSignalQuality() = 0;
 
+  virtual std::string GetTypeString() const = 0;
+
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties) = 0;
 

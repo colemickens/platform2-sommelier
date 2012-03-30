@@ -64,6 +64,7 @@ class CellularCapabilityGSM : public CellularCapability {
   virtual void Scan(Error *error, const ResultCallback &callback);
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
+  virtual std::string GetTypeString() const { return "GSM"; }
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties);
 

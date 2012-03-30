@@ -109,6 +109,9 @@ Cellular::Cellular(ControlInterface *control_interface,
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
   store->RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
+  HelpRegisterDerivedString(flimflam::kTechnologyFamilyProperty,
+                            &Cellular::GetTechnologyFamily,
+                            NULL);
   store->RegisterConstStringmap(flimflam::kHomeProviderProperty,
                                 &home_provider_.ToDict());
   // For now, only a single capability is supported.
@@ -133,9 +136,22 @@ string Cellular::GetStateString(State state) {
   return StringPrintf("CellularStateUnknown-%d", state);
 }
 
+string Cellular::GetTechnologyFamily(Error *error) {
+  return capability_->GetTypeString();
+}
+
 void Cellular::SetState(State state) {
   VLOG(2) << GetStateString(state_) << " -> " << GetStateString(state);
   state_ = state;
+}
+
+void Cellular::HelpRegisterDerivedString(
+    const string &name,
+    string(Cellular::*get)(Error *),
+    void(Cellular::*set)(const string&, Error *)) {
+  mutable_store()->RegisterDerivedString(
+      name,
+      StringAccessor(new CustomAccessor<Cellular, string>(this, get, set)));
 }
 
 void Cellular::Start(Error *error,

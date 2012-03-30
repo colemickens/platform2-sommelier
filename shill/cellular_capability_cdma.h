@@ -31,6 +31,7 @@ class CellularCapabilityCDMA : public CellularCapability {
   virtual std::string CreateFriendlyServiceName();
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
+  virtual std::string GetTypeString() const { return "CDMA"; }
   virtual void GetSignalQuality();
   virtual void GetRegistrationState();
   virtual void GetProperties(const ResultCallback &callback);
