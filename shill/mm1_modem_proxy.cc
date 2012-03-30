@@ -237,8 +237,8 @@ void ModemProxy::Proxy::set_state_changed_callback(
 }
 
 // Signal callbacks inherited from Proxy
-void ModemProxy::Proxy::StateChanged(const uint32_t &old,
-                                     const uint32_t &_new,
+void ModemProxy::Proxy::StateChanged(const int32_t &old,
+                                     const int32_t &_new,
                                      const uint32_t &reason) {
   state_changed_callback_.Run(old, _new, reason);
 }

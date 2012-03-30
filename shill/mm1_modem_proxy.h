@@ -104,8 +104,8 @@ class ModemProxy : public ModemProxyInterface {
    private:
     // Signal callbacks inherited from Proxy
     // handle signals
-    void StateChanged(const uint32_t &old,
-                      const uint32_t &_new,
+    void StateChanged(const int32_t &old,
+                      const int32_t &_new,
                       const uint32_t &reason);
 
     // Method callbacks inherited from
