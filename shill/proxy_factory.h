@@ -33,6 +33,16 @@ class SupplicantBSSProxyInterface;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 
+namespace mm1 {
+
+class ModemModem3gppProxyInterface;
+class ModemModemCdmaProxyInterface;
+class ModemProxyInterface;
+class ModemSimpleProxyInterface;
+class SimProxyInterface;
+
+} // namespace mm1
+
 // Global DBus proxy factory that can be mocked out in tests.
 class ProxyFactory {
  public:
@@ -73,6 +83,27 @@ class ProxyFactory {
       const std::string &service);
 
   virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
+      const std::string &path,
+      const std::string &service);
+
+  // Proxies for ModemManager1 interfaces
+  virtual mm1::ModemModem3gppProxyInterface *CreateMM1ModemModem3gppProxy(
+      const std::string &path,
+      const std::string &service);
+
+  virtual mm1::ModemModemCdmaProxyInterface *CreateMM1ModemModemCdmaProxy(
+      const std::string &path,
+      const std::string &service);
+
+  virtual mm1::ModemProxyInterface *CreateMM1ModemProxy(
+      const std::string &path,
+      const std::string &service);
+
+  virtual mm1::ModemSimpleProxyInterface *CreateMM1ModemSimpleProxy(
+      const std::string &path,
+      const std::string &service);
+
+  virtual mm1::SimProxyInterface *CreateSimProxy(
       const std::string &path,
       const std::string &service);
 

@@ -9,6 +9,11 @@
 #include "shill/dbus_objectmanager_proxy.h"
 #include "shill/dbus_properties_proxy.h"
 #include "shill/dhcpcd_proxy.h"
+#include "shill/mm1_modem_modem3gpp_proxy.h"
+#include "shill/mm1_modem_modemcdma_proxy.h"
+#include "shill/mm1_modem_proxy.h"
+#include "shill/mm1_modem_simple_proxy.h"
+#include "shill/mm1_sim_proxy.h"
 #include "shill/modem_cdma_proxy.h"
 #include "shill/modem_gsm_card_proxy.h"
 #include "shill/modem_gsm_network_proxy.h"
@@ -90,6 +95,37 @@ ModemGSMNetworkProxyInterface *ProxyFactory::CreateModemGSMNetworkProxy(
     const string &path,
     const string &service) {
   return new ModemGSMNetworkProxy(connection(), path, service);
+}
+
+// Proxies for ModemManager1 interfaces
+mm1::ModemModem3gppProxyInterface *ProxyFactory::CreateMM1ModemModem3gppProxy(
+      const std::string &path,
+      const std::string &service) {
+  return new mm1::ModemModem3gppProxy(connection(), path, service);
+}
+
+mm1::ModemModemCdmaProxyInterface *ProxyFactory::CreateMM1ModemModemCdmaProxy(
+      const std::string &path,
+      const std::string &service) {
+  return new mm1::ModemModemCdmaProxy(connection(), path, service);
+}
+
+mm1::ModemProxyInterface *ProxyFactory::CreateMM1ModemProxy(
+      const std::string &path,
+      const std::string &service) {
+  return new mm1::ModemProxy(connection(), path, service);
+}
+
+mm1::ModemSimpleProxyInterface *ProxyFactory::CreateMM1ModemSimpleProxy(
+      const std::string &path,
+      const std::string &service) {
+  return new mm1::ModemSimpleProxy(connection(), path, service);
+}
+
+mm1::SimProxyInterface *ProxyFactory::CreateSimProxy(
+      const std::string &path,
+      const std::string &service) {
+  return new mm1::SimProxy(connection(), path, service);
 }
 
 PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(
