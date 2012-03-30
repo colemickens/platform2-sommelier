@@ -228,12 +228,42 @@ class CellularTest : public testing::Test {
   }
   void InvokeConnect(DBusPropertiesMap props, Error *error,
                      const ResultCallback &callback, int timeout) {
+    EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
     callback.Run(Error());
+  }
+  void InvokeConnectFail(DBusPropertiesMap props, Error *error,
+                     const ResultCallback &callback, int timeout) {
+    EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
+    callback.Run(Error(Error::kNotOnHomeNetwork));
   }
   void InvokeDisconnect(Error *error, const ResultCallback &callback,
                         int timeout) {
     if (!callback.is_null())
       callback.Run(Error());
+  }
+
+  void ExpectCdmaStartModem(string network_technology) {
+    EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
+        .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
+    EXPECT_CALL(*simple_proxy_,
+                GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
+        .WillOnce(Invoke(this, &CellularTest::InvokeGetModemStatus));
+    EXPECT_CALL(*proxy_,
+                GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
+        .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
+    if (network_technology == flimflam::kNetworkTechnology1Xrtt)
+      EXPECT_CALL(*cdma_proxy_, GetRegistrationState(NULL, _, _))
+          .WillOnce(Invoke(this,
+                           &CellularTest::InvokeGetRegistrationState1X));
+    else
+      EXPECT_CALL(*cdma_proxy_, GetRegistrationState(NULL, _, _))
+          .WillOnce(Invoke(this,
+                           &CellularTest::InvokeGetRegistrationState));
+    EXPECT_CALL(*cdma_proxy_, GetSignalQuality(NULL, _, _))
+        .Times(2)
+        .WillRepeatedly(Invoke(this,
+                               &CellularTest::InvokeGetSignalQuality));
+    EXPECT_CALL(*this, TestCallback(IsSuccess()));
   }
 
   MOCK_METHOD1(TestCallback, void(const Error &error));
@@ -352,25 +382,8 @@ TEST_F(CellularTest, GetStateString) {
 
 TEST_F(CellularTest, StartCDMARegister) {
   SetCellularType(Cellular::kTypeCDMA);
-  EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
-  EXPECT_CALL(*simple_proxy_,
-              GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularTest::InvokeGetModemStatus));
+  ExpectCdmaStartModem(flimflam::kNetworkTechnology1Xrtt);
   EXPECT_CALL(*cdma_proxy_, MEID()).WillOnce(Return(kMEID));
-  EXPECT_CALL(*proxy_, GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
-  EXPECT_CALL(*cdma_proxy_,
-              GetRegistrationState(NULL, _,
-                                   CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this,
-                     &CellularTest::InvokeGetRegistrationState1X));
-  EXPECT_CALL(*cdma_proxy_,
-              GetSignalQuality(NULL, _, CellularCapability::kTimeoutDefault))
-      .Times(2)
-      .WillRepeatedly(Invoke(this,
-                             &CellularTest::InvokeGetSignalQuality));
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
@@ -449,21 +462,7 @@ TEST_F(CellularTest, StartConnected) {
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
   device_->capability_->meid_ = kMEID;
-  EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
-  EXPECT_CALL(*simple_proxy_,
-              GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularTest::InvokeGetModemStatus));
-  EXPECT_CALL(*proxy_, GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
-  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(NULL, _, _))
-      .WillOnce(Invoke(this,
-                     &CellularTest::InvokeGetRegistrationState));
-  EXPECT_CALL(*cdma_proxy_, GetSignalQuality(NULL, _, _))
-      .Times(2)
-      .WillRepeatedly(Invoke(this,
-                             &CellularTest::InvokeGetSignalQuality));
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  ExpectCdmaStartModem(flimflam::kNetworkTechnologyEvdo);
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
@@ -477,25 +476,11 @@ TEST_F(CellularTest, StartLinked) {
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
   device_->capability_->meid_ = kMEID;
-  EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
-  EXPECT_CALL(*simple_proxy_,
-              GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularTest::InvokeGetModemStatus));
-  EXPECT_CALL(*proxy_, GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
-      .WillOnce(Invoke(this, &CellularTest::InvokeGetModemInfo));
-  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(NULL, _, _))
-      .WillOnce(Invoke(this,
-                     &CellularTest::InvokeGetRegistrationState));
-  EXPECT_CALL(*cdma_proxy_, GetSignalQuality(NULL, _, _))
-      .Times(2)
-      .WillRepeatedly(Invoke(this,
-                             &CellularTest::InvokeGetSignalQuality));
+  ExpectCdmaStartModem(flimflam::kNetworkTechnologyEvdo);
   EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(manager_, UpdateService(_)).Times(2);
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
@@ -589,6 +574,21 @@ TEST_F(CellularTest, Disconnect) {
   device_->Disconnect(&error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
+}
+
+TEST_F(CellularTest, ConnectFailure) {
+  SetCellularType(Cellular::kTypeCDMA);
+  device_->state_ = Cellular::kStateRegistered;
+  device_->service_ = new CellularService(
+      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
+  ASSERT_EQ(Service::kStateIdle, device_->service_->state());
+  EXPECT_CALL(*simple_proxy_,
+              Connect(_, _, _, CellularCapability::kTimeoutConnect))
+                .WillOnce(Invoke(this, &CellularTest::InvokeConnectFail));
+  device_->capability_->simple_proxy_.reset(simple_proxy_.release());
+  Error error;
+  device_->Connect(&error);
+  EXPECT_EQ(Service::kStateFailure, device_->service_->state());
 }
 
 }  // namespace shill

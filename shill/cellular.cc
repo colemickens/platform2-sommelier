@@ -336,6 +336,7 @@ void Cellular::Connect(Error *error) {
 
   DBusPropertiesMap properties;
   capability_->SetupConnectProperties(&properties);
+  service_->SetState(Service::kStateAssociating);
   // TODO(ers): use null callback until Connect is made fully asynchronous
   capability_->Connect(properties, error, ResultCallback());
 }
@@ -368,11 +369,13 @@ void Cellular::Disconnect(Error *error) {
 
 void Cellular::OnDisconnected() {
   VLOG(2) << __func__;
-  if (state_ == kStateConnected || state_ == kStateLinked)
+  if (state_ == kStateConnected || state_ == kStateLinked) {
     SetState(kStateRegistered);
-  else
+    SetServiceFailureSilent(Service::kFailureUnknown);
+  } else {
     LOG(WARNING) << "Disconnect occurred while in state "
                  << GetStateString(state_);
+  }
 }
 
 void Cellular::OnDisconnectFailed() {

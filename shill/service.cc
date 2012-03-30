@@ -91,7 +91,7 @@ Service::Service(ControlInterface *control_interface,
                  Metrics *metrics,
                  Manager *manager,
                  Technology::Identifier technology)
-    : state_(kStateUnknown),
+    : state_(kStateIdle),
       failure_(kFailureUnknown),
       auto_connect_(false),
       check_portal_(kCheckPortalAuto),
@@ -158,6 +158,9 @@ Service::Service(ControlInterface *control_interface,
   store_.RegisterString(flimflam::kEapKeyMgmtProperty, &eap_.key_management);
   store_.RegisterBool(flimflam::kEapUseSystemCAsProperty, &eap_.use_system_cas);
 
+  // TODO(ers): in flimflam clearing Error has the side-effect of
+  // setting the service state to IDLE. Is this important? I could
+  // see an autotest depending on it.
   store_.RegisterConstString(flimflam::kErrorProperty, &error_);
   store_.RegisterConstBool(flimflam::kFavoriteProperty, &favorite_);
   HelpRegisterDerivedUint16(shill::kHTTPProxyPortProperty,
@@ -219,6 +222,8 @@ void Service::AutoConnect() {
 
 void Service::Connect(Error */*error*/) {
   explicitly_disconnected_ = false;
+  // clear any failure state from a previous connect attempt
+  SetState(kStateIdle);
 }
 
 void Service::Disconnect(Error */*error*/) {
@@ -369,8 +374,6 @@ bool Service::Save(StoreInterface *storage) {
   // "Modified"
   // "LastAttempt"
   // WiFiService: "Passphrase"
-  // "APN"
-  // "LastGoodAPN"
 
   return true;
 }

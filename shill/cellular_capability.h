@@ -180,6 +180,7 @@ class CellularCapability {
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, Connect);
+  FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, Disconnect);
 
   void HelpRegisterDerivedBool(

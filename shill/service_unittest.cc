@@ -67,6 +67,7 @@ class ServiceTest : public PropertyStoreTest {
 TEST_F(ServiceTest, Constructor) {
   EXPECT_TRUE(service_->save_credentials_);
   EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+  EXPECT_EQ(Service::kStateIdle, service_->state());
 }
 
 TEST_F(ServiceTest, GetProperties) {
@@ -251,14 +252,13 @@ TEST_F(ServiceTest, Unload) {
 }
 
 TEST_F(ServiceTest, State) {
-  EXPECT_EQ(Service::kStateUnknown, service_->state());
+  EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kFailureUnknown, service_->failure());
 
   ServiceRefPtr service_ref(service_);
 
-  // TODO(quiche): make this EXPECT_CALL work (crosbug.com/20154)
-  // EXPECT_CALL(*dynamic_cast<ServiceMockAdaptor *>(service_->adaptor_.get()),
-  //     EmitStringChanged(flimflam::kStateProperty, _));
+  EXPECT_CALL(*dynamic_cast<ServiceMockAdaptor *>(service_->adaptor_.get()),
+              EmitStringChanged(flimflam::kStateProperty, _)).Times(5);
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateConnected);
   // A second state change shouldn't cause another update

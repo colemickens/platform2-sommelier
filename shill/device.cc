@@ -409,6 +409,12 @@ void Device::SetServiceFailure(Service::ConnectFailure failure_state) {
   }
 }
 
+void Device::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
+  if (selected_service_.get()) {
+    selected_service_->SetFailureSilent(failure_state);
+  }
+}
+
 string Device::SerializeIPConfigs(const string &suffix) {
   return StringPrintf("%s:%s", suffix.c_str(), ipconfig_->type().c_str());
 }

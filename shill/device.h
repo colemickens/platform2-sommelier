@@ -225,7 +225,13 @@ class Device : public base::RefCounted<Device> {
 
   // Set the failure of the selected service (implicitly sets the state to
   // "failure")
+
   void SetServiceFailure(Service::ConnectFailure failure_state);
+
+  // Records the failure mode and time of the selected service, and
+  // sets the Service state of the selected service to "Idle".
+  // Avoids showing a failure mole in the UI.
+  void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected
