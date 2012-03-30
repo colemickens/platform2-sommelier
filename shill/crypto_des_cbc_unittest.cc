@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -82,10 +82,7 @@ TEST_F(CryptoDESCBCTest, Encrypt) {
   crypto_.iv_.assign(kTestIV, kTestIV + strlen(kTestIV));
 
   string ciphertext;
-  EXPECT_TRUE(crypto_.Encrypt(kEmptyPlain, &ciphertext));
-  EXPECT_EQ(kEmptyCipher, ciphertext);
-  EXPECT_TRUE(crypto_.Encrypt(kPlainText, &ciphertext));
-  EXPECT_EQ(kCipherText, ciphertext);
+  EXPECT_FALSE(crypto_.Encrypt(kPlainText, &ciphertext));
 }
 
 TEST_F(CryptoDESCBCTest, Decrypt) {

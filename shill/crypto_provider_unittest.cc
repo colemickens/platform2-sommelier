@@ -77,7 +77,7 @@ TEST_F(CryptoProviderTest, Encrypt) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   provider_.set_key_matter_file(InitKeyMatterFile(temp_dir.path()));
   provider_.Init();
-  EXPECT_EQ(kDESCBCText, provider_.Encrypt(kPlainText));
+  EXPECT_EQ(kROT47Text, provider_.Encrypt(kPlainText));
 }
 
 TEST_F(CryptoProviderTest, Decrypt) {

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -28,35 +28,9 @@ string CryptoDESCBC::GetID() {
 }
 
 bool CryptoDESCBC::Encrypt(const string &plaintext, string *ciphertext) {
-  CHECK_EQ(kBlockSize, key_.size());
-  CHECK_EQ(kBlockSize, iv_.size());
-
-  // Prepare the data to be encrypted by concatenating |plaintext| and
-  // |kSentinel|, and appending nulls to a size multiple of |kBlockSize|.
-  vector<char> data(plaintext.begin(), plaintext.end());
-  data.insert(data.end(), kSentinel, kSentinel + strlen(kSentinel));
-  // +1 to encrypt at least one null terminator. +(kBlockSize - 1) to pad to a
-  // full block, if necessary.
-  int blocks = (data.size() + 1 + (kBlockSize - 1)) / kBlockSize;
-  data.resize(blocks * kBlockSize, '\0');
-
-  // The IV is modified in place.
-  vector<char> iv = iv_;
-  int rv =
-      cbc_crypt(key_.data(), data.data(), data.size(), DES_ENCRYPT, iv.data());
-  if (DES_FAILED(rv)) {
-    LOG(ERROR) << "DES-CBC encryption failed.";
-    return false;
-  }
-  gchar *b64_ciphertext =
-      glib_->Base64Encode(reinterpret_cast<guchar *>(data.data()), data.size());
-  if (!b64_ciphertext) {
-    LOG(ERROR) << "Unable to base64-encode DES-CBC ciphertext.";
-    return false;
-  }
-  *ciphertext = string(kVersion2Prefix) + b64_ciphertext;
-  glib_->Free(b64_ciphertext);
-  return true;
+  // Never encrypt. We'll fall back to rot47 which doesn't depend on
+  // the owner key which may change due to rotation.
+  return false;
 }
 
 bool CryptoDESCBC::Decrypt(const string &ciphertext, string *plaintext) {
