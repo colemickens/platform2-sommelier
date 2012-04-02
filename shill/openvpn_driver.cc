@@ -6,6 +6,7 @@
 
 #include <arpa/inet.h>
 
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
@@ -124,7 +125,12 @@ OpenVPNDriver::~OpenVPNDriver() {
 }
 
 void OpenVPNDriver::Cleanup(Service::ConnectState state) {
+  VLOG(2) << __func__ << "(" << Service::ConnectStateToString(state) << ")";
   management_server_->Stop();
+  if (!tls_auth_file_.empty()) {
+    file_util::Delete(tls_auth_file_, false);
+    tls_auth_file_.clear();
+  }
   if (child_watch_tag_) {
     glib_->SourceRemove(child_watch_tag_);
     child_watch_tag_ = 0;
@@ -403,11 +409,22 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   AppendValueOption(flimflam::kOpenVPNProtoProperty, "--proto", options);
   AppendValueOption(flimflam::kOpenVPNPortProperty, "--port", options);
   AppendValueOption(kOpenVPNTLSAuthProperty, "--tls-auth", options);
-
-  // TODO(petkov): Implement this.
-  LOG_IF(ERROR, args_.ContainsString(flimflam::kOpenVPNTLSAuthContentsProperty))
-      << "Support for --tls-auth not implemented yet.";
-
+  {
+    string contents =
+        args_.LookupString(flimflam::kOpenVPNTLSAuthContentsProperty, "");
+    if (!contents.empty()) {
+      if (!file_util::CreateTemporaryFile(&tls_auth_file_) ||
+          file_util::WriteFile(
+              tls_auth_file_, contents.data(), contents.size()) !=
+          static_cast<int>(contents.size())) {
+        Error::PopulateAndLog(
+            error, Error::kInternalError, "Unable to setup tls-auth file.");
+        return;
+      }
+      options->push_back("--tls-auth");
+      options->push_back(tls_auth_file_.value());
+    }
+  }
   AppendValueOption(
       flimflam::kOpenVPNTLSRemoteProperty, "--tls-remote", options);
   AppendValueOption(flimflam::kOpenVPNCipherProperty, "--cipher", options);

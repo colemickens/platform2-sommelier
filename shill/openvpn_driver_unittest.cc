@@ -352,7 +352,9 @@ TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {
 
 TEST_F(OpenVPNDriverTest, InitOptions) {
   static const char kHost[] = "192.168.2.254";
+  static const char kTLSAuthContents[] = "SOME-RANDOM-CONTENTS\n";
   args_.SetString(flimflam::kProviderHostProperty, kHost);
+  args_.SetString(flimflam::kOpenVPNTLSAuthContentsProperty, kTLSAuthContents);
   SetArgs();
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
@@ -376,6 +378,12 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
     ExpectInFlags(options, "--dev", kInterfaceName);
     EXPECT_EQ("openvpn", options.back());
     EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
+    ASSERT_FALSE(driver_->tls_auth_file_.empty());
+    ExpectInFlags(options, "--tls-auth", driver_->tls_auth_file_.value());
+    string contents;
+    EXPECT_TRUE(
+        file_util::ReadFileToString(driver_->tls_auth_file_, &contents));
+    EXPECT_EQ(kTLSAuthContents, contents);
   }
 }
 
@@ -437,6 +445,8 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
 }
 
 TEST_F(OpenVPNDriverTest, Cleanup) {
+  driver_->Cleanup(Service::kStateIdle);  // Ensure no crash.
+
   const unsigned int kTag = 123;
   const int kPID = 123456;
   driver_->child_watch_tag_ = kTag;
@@ -445,6 +455,11 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->tunnel_interface_ = kInterfaceName;
   driver_->device_ = device_;
   driver_->service_ = service_;
+  FilePath tls_auth_file;
+  EXPECT_TRUE(file_util::CreateTemporaryFile(&tls_auth_file));
+  EXPECT_FALSE(tls_auth_file.empty());
+  EXPECT_TRUE(file_util::PathExists(tls_auth_file));
+  driver_->tls_auth_file_ = tls_auth_file;
   // Stop will be called twice -- once by Cleanup and once by the destructor.
   EXPECT_CALL(*management_server_, Stop()).Times(2);
   EXPECT_CALL(glib_, SourceRemove(kTag));
@@ -459,6 +474,8 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_TRUE(driver_->tunnel_interface_.empty());
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
+  EXPECT_FALSE(file_util::PathExists(tls_auth_file));
+  EXPECT_TRUE(driver_->tls_auth_file_.empty());
 }
 
 TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {

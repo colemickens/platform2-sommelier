@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -161,6 +162,7 @@ class OpenVPNDriver : public VPNDriver,
   scoped_ptr<RPCTask> rpc_task_;
   std::string tunnel_interface_;
   VPNRefPtr device_;
+  FilePath tls_auth_file_;
 
   // The PID of the spawned openvpn process. May be 0 if no process has been
   // spawned yet or the process has died.
