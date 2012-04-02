@@ -865,6 +865,15 @@ INPUTRC="$(dirname "$0")/inputrc.crosh"
 HISTFILE="$HOME/.crosh_history"
 shell_history -r $HISTFILE
 
+# Initialize pseudo completion support.
+if [ "$IS_BASH" = "1" ]; then
+  bind 'TAB:dynamic-complete-history' 2>/dev/null
+  for f in $(declare -F | sed -n '/-f cmd_/s:.*cmd_::p'); do
+    # Do not add duplicates to avoid ballooning history.
+    grep -qs "^${f}$" $HISTFILE || shell_history -s $f
+  done
+fi
+
 repl
 
 shell_history -w $HISTFILE
