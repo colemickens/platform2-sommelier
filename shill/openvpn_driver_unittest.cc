@@ -21,6 +21,7 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_nss.h"
 #include "shill/mock_openvpn_management_server.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -37,6 +38,7 @@ using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::DoAll;
+using testing::ElementsAreArray;
 using testing::Ne;
 using testing::NiceMock;
 using testing::Return;
@@ -59,6 +61,7 @@ class OpenVPNDriverTest : public testing::Test,
                             kInterfaceName, kInterfaceIndex)),
         management_server_(new NiceMock<MockOpenVPNManagementServer>()) {
     driver_->management_server_.reset(management_server_);
+    driver_->nss_ = &nss_;
   }
 
   virtual ~OpenVPNDriverTest() {}
@@ -116,6 +119,7 @@ class OpenVPNDriverTest : public testing::Test,
   OpenVPNDriver *driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockVPN> device_;
+  MockNSS nss_;
 
   // Owned by |driver_|.
   NiceMock<MockOpenVPNManagementServer> *management_server_;
@@ -353,19 +357,29 @@ TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {
 TEST_F(OpenVPNDriverTest, InitOptions) {
   static const char kHost[] = "192.168.2.254";
   static const char kTLSAuthContents[] = "SOME-RANDOM-CONTENTS\n";
+  static const char kCaCertNSS[] = "{1234}";
+  static const char kNSSCertfile[] = "/tmp/nss-cert";
+  FilePath nss_cert(kNSSCertfile);
   args_.SetString(flimflam::kProviderHostProperty, kHost);
   args_.SetString(flimflam::kOpenVPNTLSAuthContentsProperty, kTLSAuthContents);
+  args_.SetString(flimflam::kOpenVPNCaCertNSSProperty, kCaCertNSS);
   SetArgs();
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(&dispatcher_, &driver_->sockets_, _))
       .WillOnce(Return(false))
       .WillOnce(Return(true));
+  EXPECT_CALL(nss_,
+              GetPEMCertfile(kCaCertNSS,
+                             ElementsAreArray(kHost, arraysize(kHost) - 1)))
+      .Times(2)
+      .WillRepeatedly(Return(nss_cert));
   {
     Error error;
     vector<string> options;
     driver_->InitOptions(&options, &error);
-    EXPECT_FALSE(error.IsSuccess());
+    EXPECT_EQ(Error::kInternalError, error.type());
+    EXPECT_EQ("Unable to setup management channel.", error.message());
   }
   {
     Error error;
@@ -384,6 +398,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
     EXPECT_TRUE(
         file_util::ReadFileToString(driver_->tls_auth_file_, &contents));
     EXPECT_EQ(kTLSAuthContents, contents);
+    ExpectInFlags(options, "--ca", kNSSCertfile);
   }
 }
 

@@ -21,6 +21,7 @@ class Config;
 class ControlInterface;
 class DHCPProvider;
 class GLib;
+class NSS;
 class ProxyFactory;
 class RoutingTable;
 class RTNLHandler;
@@ -32,8 +33,7 @@ class Daemon {
 
   void AddDeviceToBlackList(const std::string &device_name);
   void SetStartupProfiles(const std::vector<std::string> &profile_path);
-  // Main for connection manager.  Starts main process and holds event
-  // loop.
+  // Main for connection manager.  Starts main process and holds event loop.
   void Run();
   void Quit();
 
@@ -46,6 +46,7 @@ class Daemon {
   Config *config_;
   ControlInterface *control_;
   Metrics metrics_;
+  NSS *nss_;
   ProxyFactory *proxy_factory_;
   RTNLHandler *rtnl_handler_;
   RoutingTable *routing_table_;

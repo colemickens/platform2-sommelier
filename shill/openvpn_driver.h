@@ -30,6 +30,7 @@ class Error;
 class EventDispatcher;
 class Manager;
 class Metrics;
+class NSS;
 class OpenVPNManagementServer;
 
 class OpenVPNDriver : public VPNDriver,
@@ -157,6 +158,7 @@ class OpenVPNDriver : public VPNDriver,
   KeyValueStore args_;
   Sockets sockets_;
   scoped_ptr<OpenVPNManagementServer> management_server_;
+  NSS *nss_;
 
   VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;

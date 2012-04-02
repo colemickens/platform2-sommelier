@@ -18,6 +18,7 @@
 #include "shill/dhcp_config.h"
 #include "shill/error.h"
 #include "shill/manager.h"
+#include "shill/nss.h"
 #include "shill/openvpn_management_server.h"
 #include "shill/property_accessor.h"
 #include "shill/rpc_task.h"
@@ -117,6 +118,7 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       glib_(glib),
       args_(args),
       management_server_(new OpenVPNManagementServer(this, glib)),
+      nss_(NSS::GetInstance()),
       pid_(0),
       child_watch_tag_(0) {}
 
@@ -441,9 +443,24 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   AppendValueOption(flimflam::kOpenVPNServerPollTimeoutProperty,
                     "--server-poll-timeout", options);
 
-  // TODO(petkov): Implement this.
-  LOG_IF(ERROR, args_.ContainsString(flimflam::kOpenVPNCaCertNSSProperty))
-      << "Support for NSS CA not implemented yet.";
+  string ca_cert_nss =
+      args_.LookupString(flimflam::kOpenVPNCaCertNSSProperty, "");
+  if (!ca_cert_nss.empty()) {
+    if (!args_.LookupString(flimflam::kOpenVPNCaCertProperty, "").empty()) {
+      Error::PopulateAndLog(error,
+                            Error::kInvalidArguments,
+                            "Can't specify both CACert and CACertNSS.");
+      return;
+    }
+    vector<char> id(vpnhost.begin(), vpnhost.end());
+    FilePath certfile = nss_->GetPEMCertfile(ca_cert_nss, id);
+    if (certfile.empty()) {
+      LOG(ERROR) << "Unable to extract certificate: " << ca_cert_nss;
+    } else {
+      options->push_back("--ca");
+      options->push_back(certfile.value());
+    }
+  }
 
   // Client-side ping support.
   AppendValueOption(kOpenVPNPingProperty, "--ping", options);

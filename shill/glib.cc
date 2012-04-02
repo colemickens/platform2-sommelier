@@ -224,6 +224,28 @@ void GLib::SpawnClosePID(GPid pid) {
   g_spawn_close_pid(pid);
 }
 
+gboolean GLib::SpawnSync(const gchar *working_directory,
+                         gchar **argv,
+                         gchar **envp,
+                         GSpawnFlags flags,
+                         GSpawnChildSetupFunc child_setup,
+                         gpointer user_data,
+                         gchar **standard_output,
+                         gchar **standard_error,
+                         gint *exit_status,
+                         GError **error) {
+  return g_spawn_sync(working_directory,
+                      argv,
+                      envp,
+                      flags,
+                      child_setup,
+                      user_data,
+                      standard_output,
+                      standard_error,
+                      exit_status,
+                      error);
+}
+
 void GLib::Strfreev(gchar **str_array) {
   g_strfreev(str_array);
 }

@@ -14,6 +14,7 @@
 
 #include "shill/dhcp_provider.h"
 #include "shill/error.h"
+#include "shill/nss.h"
 #include "shill/proxy_factory.h"
 #include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
@@ -27,6 +28,7 @@ namespace shill {
 Daemon::Daemon(Config *config, ControlInterface *control)
     : config_(config),
       control_(control),
+      nss_(NSS::GetInstance()),
       proxy_factory_(ProxyFactory::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
@@ -64,6 +66,7 @@ void Daemon::Quit() {
 
 void Daemon::Start() {
   glib_.TypeInit();
+  nss_->Init(&glib_);
   proxy_factory_->Init();
   rtnl_handler_->Start(&dispatcher_, &sockets_);
   routing_table_->Start();
