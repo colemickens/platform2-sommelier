@@ -64,8 +64,11 @@ void PowerSupply::Init() {
   GetPowerSupplyPaths();
 }
 
-bool PowerSupply::GetPowerStatus(PowerStatus* status) {
+bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
   CHECK(status);
+
+  status->is_calculating_battery_time = is_calculating;
+
   // Look for battery path if none has been found yet.
   if (!battery_info_ || !line_power_info_)
     GetPowerSupplyPaths();
@@ -193,7 +196,7 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status) {
 
 bool PowerSupply::GetPowerInformation(PowerInformation* info) {
   CHECK(info);
-  GetPowerStatus(&info->power_status);
+  GetPowerStatus(&info->power_status, false);
   if (!info->power_status.battery_is_present)
     return true;
 

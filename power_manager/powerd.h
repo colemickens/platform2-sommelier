@@ -200,6 +200,13 @@ class Daemon : public XIdleObserver,
   // every 30s and calls PollPowerSupply.
   void SchedulePollPowerSupply();
 
+  // Handles polling the power supply due to change in its state. Reschedules
+  // the polling timer, so it doesn't fire too close to a state change. It then
+  // reads power supply status and sets is_calculating_battery_time to true to
+  // indicate that this value shouldn't be trusted to be accurate. It then calls
+  // a shared handler to signal chrome that fresh data is available.
+  gboolean EventPollPowerSupply();
+
   // Read the power supply status once and then schedules the regular
   // polling. This is done to allow for a one off short duration poll right
   // after a power event.
@@ -208,6 +215,11 @@ class Daemon : public XIdleObserver,
   // Reads power supply status at regular intervals, and sends a signal to
   // indicate that fresh power supply data is available.
   SIGNAL_CALLBACK_0(Daemon, gboolean, PollPowerSupply);
+
+  // Shared handler used for servicing when we have polled the state of the
+  // battery. This method sends a signal to chrome about there being fresh data
+  // and generates related metrics.
+  gboolean HandlePollPowerSupply();
 
   // Checks for extremely low battery condition.
   void OnLowBattery(double battery_percentage);

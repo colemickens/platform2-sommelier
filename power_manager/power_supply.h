@@ -37,7 +37,13 @@ struct PowerStatus {
 
   double battery_voltage;
 
-  // Time in seconds until the battery is considered empty, 0 for unknown.
+  // Set to true when we have just transitioned states and we might have both a
+  // segment of charging and discharging in the calculation. This is done to
+  // signal that the time value maybe inaccurate.
+  bool is_calculating_battery_time;
+
+  // Time in seconds until the battery is considered empty, 0 for
+  // unknown.
   ::int64 battery_time_to_empty;
   // Time in seconds until the battery is considered full. 0 for unknown.
   ::int64 battery_time_to_full;
@@ -89,7 +95,7 @@ class PowerSupply {
 
   // Read data from power supply sysfs and fill out all fields of the
   // PowerStatus structure if possible.
-  bool GetPowerStatus(PowerStatus* status);
+  bool GetPowerStatus(PowerStatus* status, bool is_calculating);
 
   // Read data from power supply sysfs for PowerInformation structure.
   bool GetPowerInformation(PowerInformation* info);

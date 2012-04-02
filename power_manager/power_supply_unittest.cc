@@ -80,11 +80,29 @@ class PowerSupplyTest : public ::testing::Test {
   scoped_ptr<ScopedTempDir> temp_dir_generator_;
 };
 
+// Test that when false is passed in the correct entry in the data structure is
+// set.
+TEST_F(PowerSupplyTest, IsNotCalculatingTime) {
+  power_supply_->Init();
+  PowerStatus power_status;
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
+  EXPECT_FALSE(power_status.is_calculating_battery_time);
+}
+
+// Test that when true is passed in the correct entry in the data structure is
+// set.
+TEST_F(PowerSupplyTest, IsCalculatingTime) {
+  power_supply_->Init();
+  PowerStatus power_status;
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, true));
+  EXPECT_TRUE(power_status.is_calculating_battery_time);
+}
+
 // Test system without power supply sysfs (e.g. virtual machine).
 TEST_F(PowerSupplyTest, TestNoPowerSupplySysfs) {
   power_supply_->Init();
   PowerStatus power_status;
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   // In absence of power supply sysfs, default assumption is line power on, no
   // battery present.
   EXPECT_TRUE(power_status.line_power_on);
@@ -107,7 +125,7 @@ TEST_F(PowerSupplyTest, TestNoBattery) {
                          iter->second.length());
   power_supply_->Init();
   PowerStatus power_status;
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   EXPECT_TRUE(power_status.line_power_on);
   EXPECT_FALSE(power_status.battery_is_present);
 }
@@ -137,7 +155,7 @@ TEST_F(PowerSupplyTest, TestCharging) {
                          iter->second.length());
   power_supply_->Init();
   PowerStatus power_status;
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   EXPECT_TRUE(power_status.line_power_on);
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
@@ -172,7 +190,7 @@ TEST_F(PowerSupplyTest, TestDischarging) {
                          iter->second.length());
   power_supply_->Init();
   PowerStatus power_status;
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
@@ -182,7 +200,7 @@ TEST_F(PowerSupplyTest, TestDischarging) {
   file_util::WriteFile(path.Append("battery/current_now"),
                        base::IntToString(-kCurrentNowInt).c_str(),
                        base::IntToString(-kCurrentNowInt).length());
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   EXPECT_FALSE(power_status.line_power_on);
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
@@ -216,7 +234,7 @@ TEST_F(PowerSupplyTest, TestEnergyDischarging) {
                          iter->second.length());
   power_supply_->Init();
   PowerStatus power_status;
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
@@ -226,7 +244,7 @@ TEST_F(PowerSupplyTest, TestEnergyDischarging) {
   file_util::WriteFile(path.Append("battery/power_now"),
                        base::IntToString(-kPowerNowInt).c_str(),
                        base::IntToString(-kPowerNowInt).length());
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   EXPECT_FALSE(power_status.line_power_on);
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
@@ -285,7 +303,7 @@ gboolean HysteresisTestLoop(gpointer data) {
   current_time = start_time +
                  base::TimeDelta::FromMilliseconds(test_data->time);
   PowerStatus power_status;
-  EXPECT_TRUE(test_data->power_supply->GetPowerStatus(&power_status));
+  EXPECT_TRUE(test_data->power_supply->GetPowerStatus(&power_status, false));
   EXPECT_EQ(values->time_to_empty, power_status.battery_time_to_empty);
   LOG_IF(INFO, values->time_to_empty !=
       power_status.battery_time_to_empty) << "Remaining time mismatch found "
@@ -442,9 +460,9 @@ TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
   power_supply_->time_now_func = GetCurrentTime;
 
   PowerStatus power_status;
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   current_time += base::TimeDelta::FromSeconds(6);
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
@@ -460,7 +478,7 @@ TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
                        base::IntToString(kCurrentNowInt / 10).length());
   current_time += base::TimeDelta::FromSeconds(8);
   // Verify that the time remaining hasn't increased dramatically.
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   EXPECT_NEAR(power_status.battery_time_to_empty, time_to_empty,
               time_to_empty * power_supply_->acceptable_variance_);
   current_time += base::TimeDelta::FromSeconds(2);
@@ -468,7 +486,7 @@ TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
   file_util::WriteFile(path.Append("battery/current_now"),
                        base::IntToString(kCurrentNowInt).c_str(),
                        base::IntToString(kCurrentNowInt).length());
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
   EXPECT_NEAR(power_status.battery_time_to_empty, time_to_empty, 30);
 }
 

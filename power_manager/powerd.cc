@@ -162,7 +162,7 @@ void Daemon::Init() {
   RetrieveSessionState();
   suspender_.Init(run_dir_);
   power_supply_.Init();
-  power_supply_.GetPowerStatus(&power_status_);
+  power_supply_.GetPowerStatus(&power_status_, false);
   OnPowerEvent(this, power_status_);
   file_tagger_.Init();
   backlight_controller_->set_observer(this);
@@ -673,6 +673,7 @@ gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
     // Rescheduling the timer to fire 5s from now to make sure that it doesn't
     // get a bogus value from being too close to this event.
     daemon->ScheduleShortPollPowerSupply();
+    daemon->EventPollPowerSupply();
   } else {
     LOG(ERROR) << "Can't get receive_device()";
     return FALSE;
@@ -943,6 +944,8 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     protobuf.set_battery_is_present(status->battery_is_present);
     protobuf.set_battery_is_charged(status->battery_state ==
                                     BATTERY_STATE_FULLY_CHARGED);
+    protobuf.set_is_calculating_battery_time(
+        status->is_calculating_battery_time);
 
     DBusMessage *reply = dbus_message_new_method_return(message);
     CHECK(reply);
@@ -1101,14 +1104,24 @@ void Daemon::SchedulePollPowerSupply() {
                                               this);
 }
 
+gboolean Daemon::EventPollPowerSupply() {
+  power_supply_.GetPowerStatus(&power_status_, true);
+  return HandlePollPowerSupply();
+}
+
 gboolean Daemon::ShortPollPowerSupply() {
   SchedulePollPowerSupply();
-  PollPowerSupply();
+  power_supply_.GetPowerStatus(&power_status_, false);
+  HandlePollPowerSupply();
   return false;
 }
 
 gboolean Daemon::PollPowerSupply() {
-  power_supply_.GetPowerStatus(&power_status_);
+  power_supply_.GetPowerStatus(&power_status_, false);
+  return HandlePollPowerSupply();
+}
+
+gboolean Daemon::HandlePollPowerSupply() {
   OnPowerEvent(this, power_status_);
   // Send a signal once the power supply status has been obtained.
   DBusMessage* message = dbus_message_new_signal(kPowerManagerServicePath,
