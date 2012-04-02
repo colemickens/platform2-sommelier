@@ -190,6 +190,21 @@ class Daemon : public XIdleObserver,
   // Registers the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 
+  // Removes the previous polling timer and replaces it with one that fires
+  // every 5s and calls ShortPollPowerSupply. The nature of this callback will
+  // cause the timer to only fire once and then return to the regular
+  // PollPowerSupply.
+  void ScheduleShortPollPowerSupply();
+
+  // Removes the previous polling timer and replaces it with one that fires
+  // every 30s and calls PollPowerSupply.
+  void SchedulePollPowerSupply();
+
+  // Read the power supply status once and then schedules the regular
+  // polling. This is done to allow for a one off short duration poll right
+  // after a power event.
+  SIGNAL_CALLBACK_0(Daemon, gboolean, ShortPollPowerSupply);
+
   // Reads power supply status at regular intervals, and sends a signal to
   // indicate that fresh power supply data is available.
   SIGNAL_CALLBACK_0(Daemon, gboolean, PollPowerSupply);
@@ -425,6 +440,10 @@ class Daemon : public XIdleObserver,
   // of the state machine.  kiosk mode and autoupdate are clients of this
   // as they may need to disable different idle timeouts when they are running
   scoped_ptr<StateControl> state_control_;
+
+  // Value returned when we add a timer for polling the power supply. This is
+  // needed for removing the timer when we want to interrupt polling.
+  guint32 poll_power_supply_timer_id_;
 };
 
 }  // namespace power_manager

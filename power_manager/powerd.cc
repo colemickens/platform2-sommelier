@@ -56,6 +56,9 @@ const char kPowerSupplyUdevSubsystem[] = "power_supply";
 // Time between battery polls, in milliseconds.
 const int64 kBatteryPollIntervalMs = 30000;
 
+// Time between battery event and next poll, in milliseconds.
+const int64 kBatteryPollShortIntervalMs = 5000;
+
 // How frequently audio should be checked before suspending.
 const int64 kAudioCheckIntervalMs = 1000;
 
@@ -124,7 +127,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       current_session_state_("stopped"),
       udev_(NULL),
       modifiers_(kModifierNone),
-      state_control_(new StateControl(this)) {}
+      state_control_(new StateControl(this)),
+      poll_power_supply_timer_id_(0) {}
 
 Daemon::~Daemon() {
   if (udev_)
@@ -248,7 +252,7 @@ void Daemon::ReadLockScreenSettings() {
 
 void Daemon::Run() {
   GMainLoop* loop = g_main_loop_new(NULL, false);
-  g_timeout_add(kBatteryPollIntervalMs, PollPowerSupplyThunk, this);
+  SchedulePollPowerSupply();
   g_main_loop_run(loop);
 }
 
@@ -665,7 +669,9 @@ gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
     CHECK(string(udev_device_get_subsystem(dev)) == kPowerSupplyUdevSubsystem);
     udev_device_unref(dev);
 
-    daemon->PollPowerSupply();
+    // Rescheduling the timer to fire 5s from now to make sure that it doesn't
+    // get a bogus value from being too close to this event.
+    daemon->ScheduleShortPollPowerSupply();
   } else {
     LOG(ERROR) << "Can't get receive_device()";
     return FALSE;
@@ -1076,6 +1082,26 @@ void Daemon::RegisterDBusMessageHandler() {
   CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
                                    NULL));
   LOG(INFO) << "D-Bus monitoring started";
+}
+
+void Daemon::ScheduleShortPollPowerSupply() {
+  g_source_remove(poll_power_supply_timer_id_);
+  poll_power_supply_timer_id_ = g_timeout_add(kBatteryPollShortIntervalMs,
+                                              ShortPollPowerSupplyThunk,
+                                              this);
+}
+
+void Daemon::SchedulePollPowerSupply() {
+  g_source_remove(poll_power_supply_timer_id_);
+  poll_power_supply_timer_id_ = g_timeout_add(kBatteryPollIntervalMs,
+                                              PollPowerSupplyThunk,
+                                              this);
+}
+
+gboolean Daemon::ShortPollPowerSupply() {
+  SchedulePollPowerSupply();
+  PollPowerSupply();
+  return false;
 }
 
 gboolean Daemon::PollPowerSupply() {
