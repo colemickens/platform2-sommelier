@@ -125,9 +125,8 @@ Device::Device(ControlInterface *control_interface,
   // flimflam::kDBusObjectProperty: Register in Cellular
 
   store_.RegisterConstString(flimflam::kInterfaceProperty, &link_name_);
-  HelpRegisterDerivedStrings(flimflam::kIPConfigsProperty,
-                             &Device::AvailableIPConfigs,
-                             NULL);
+  HelpRegisterConstDerivedRpcIdentifiers(flimflam::kIPConfigsProperty,
+                                         &Device::AvailableIPConfigs);
   store_.RegisterConstString(flimflam::kNameProperty, &link_name_);
   store_.RegisterConstBool(flimflam::kPoweredProperty, &enabled_);
   HelpRegisterDerivedString(flimflam::kTypeProperty,
@@ -322,6 +321,15 @@ void Device::HelpRegisterDerivedStrings(
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Device, Strings>(this, get, set)));
+}
+
+void Device::HelpRegisterConstDerivedRpcIdentifiers(
+    const string &name,
+    RpcIdentifiers(Device::*get)(Error *)) {
+  store_.RegisterDerivedRpcIdentifiers(
+      name,
+      RpcIdentifiersAccessor(
+          new CustomAccessor<Device, RpcIdentifiers>(this, get, NULL)));
 }
 
 void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
@@ -596,8 +604,11 @@ void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
 }
 
 vector<string> Device::AvailableIPConfigs(Error */*error*/) {
-  string id = (ipconfig_.get() ? ipconfig_->GetRpcIdentifier() : string());
-  return vector<string>(1, id);
+  if (ipconfig_.get()) {
+    string id = ipconfig_->GetRpcIdentifier();
+    return vector<string>(1, id);
+  }
+  return vector<string>();
 }
 
 string Device::GetRpcConnectionIdentifier() {

@@ -258,6 +258,10 @@ class Device : public base::RefCounted<Device> {
       Strings(Device::*get)(Error *error),
       void(Device::*set)(const Strings &value, Error *error));
 
+  void HelpRegisterConstDerivedRpcIdentifiers(
+      const std::string &name,
+      RpcIdentifiers(Device::*get)(Error *));
+
   // Property getters reserved for subclasses
   ControlInterface *control_interface() const { return control_interface_; }
   Metrics *metrics() const { return metrics_; }
