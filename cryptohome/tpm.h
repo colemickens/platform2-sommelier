@@ -28,6 +28,7 @@
 namespace cryptohome {
 
 class Crypto;
+class TpmInit;
 
 extern const TSS_UUID kCryptohomeWellKnownUuid;
 
@@ -133,8 +134,11 @@ class Tpm {
   //   status (OUT) - The TpmStatusInfo structure containing the results
   void GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status);
 
-  // Gets the TPM status information as a Value
-  Value* GetStatusValue();
+  // Gets the TPM status information as a Value.
+  //
+  // Parameters
+  //   init - If non-NULL, overrides some of the status values
+  Value* GetStatusValue(TpmInit* init);
 
   // Returns the owner password if this instance was used to take ownership.
   // This will only occur when the TPM is unowned, which will be on OOBE

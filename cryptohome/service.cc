@@ -1038,7 +1038,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); it++)
     mounts->Append(it->second->GetStatus());
   Value* attrs = install_attrs_->GetStatus();
-  Value* tpm = tpm_->GetStatusValue();
+  Value* tpm = tpm_->GetStatusValue(tpm_init_);
   dv.Set("mounts", mounts);
   dv.Set("installattrs", attrs);
   dv.Set("tpm", tpm);

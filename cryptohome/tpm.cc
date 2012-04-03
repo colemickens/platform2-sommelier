@@ -23,6 +23,7 @@
 #include "crypto.h"
 #include "mount.h"
 #include "platform.h"
+#include "tpm_init.h"
 
 using base::PlatformThread;
 using trousers::ScopedTssContext;
@@ -2131,7 +2132,7 @@ bool Tpm::StoreTpmStatus(const TpmStatus& serialized) {
   return true;
 }
 
-Value* Tpm::GetStatusValue() {
+Value* Tpm::GetStatusValue(TpmInit* init) {
   DictionaryValue* dv = new DictionaryValue();
   TpmStatusInfo status;
   GetStatus(true, &status);
@@ -2148,6 +2149,13 @@ Value* Tpm::GetStatusValue() {
   dv->SetBoolean("has_context", status.ThisInstanceHasContext);
   dv->SetBoolean("has_key_handle", status.ThisInstanceHasKeyHandle);
   dv->SetInteger("last_error", status.LastTpmError);
+
+  if (init) {
+    dv->SetBoolean("enabled", init->IsTpmEnabled());
+    dv->SetBoolean("owned", init->IsTpmOwned());
+    dv->SetBoolean("being_owned", init->IsTpmBeingOwned());
+  }
+
   return dv;
 }
 
