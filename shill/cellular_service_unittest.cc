@@ -11,9 +11,11 @@
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_profile.h"
 
 using std::string;
 using testing::_;
+using testing::InSequence;
 using testing::NiceMock;
 
 namespace shill {
@@ -128,6 +130,110 @@ TEST_F(CellularServiceTest, SetUsageURL) {
   service_->SetUsageURL(kUsageURL);
   EXPECT_EQ(kUsageURL, service_->usage_url());
   service_->SetUsageURL(kUsageURL);
+}
+
+TEST_F(CellularServiceTest, SetApn) {
+  static const char kApn[] = "TheAPN";
+  static const char kUsername[] = "commander.data";
+  ProfileRefPtr profile(new NiceMock<MockProfile>(
+      &control_, reinterpret_cast<Manager *>(NULL)));
+  service_->set_profile(profile);
+  Error error;
+  Stringmap testapn;
+  testapn[flimflam::kApnProperty] = kApn;
+  testapn[flimflam::kApnUsernameProperty] = kUsername;
+  {
+    InSequence seq;
+    EXPECT_CALL(*adaptor_,
+                EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+                                     _));
+    EXPECT_CALL(*adaptor_,
+                EmitStringmapChanged(flimflam::kCellularApnProperty, _));
+  }
+  service_->SetApn(testapn, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  Stringmap resultapn = service_->GetApn(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(2, resultapn.size());
+  Stringmap::const_iterator it = resultapn.find(flimflam::kApnProperty);
+  EXPECT_TRUE(it != resultapn.end() && it->second == kApn);
+  it = resultapn.find(flimflam::kApnUsernameProperty);
+  EXPECT_TRUE(it != resultapn.end() && it->second == kUsername);
+  EXPECT_FALSE(service_->GetUserSpecifiedApn() == NULL);
+}
+
+TEST_F(CellularServiceTest, ClearApn) {
+  static const char kApn[] = "TheAPN";
+  static const char kUsername[] = "commander.data";
+  ProfileRefPtr profile(new NiceMock<MockProfile>(
+      &control_, reinterpret_cast<Manager *>(NULL)));
+  service_->set_profile(profile);
+  Error error;
+  // Set up an APN to make sure that it later gets cleared.
+  Stringmap testapn;
+  testapn[flimflam::kApnProperty] = kApn;
+  testapn[flimflam::kApnUsernameProperty] = kUsername;
+  {
+    InSequence seq;
+    EXPECT_CALL(*adaptor_,
+                EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+                                     _));
+    EXPECT_CALL(*adaptor_,
+                EmitStringmapChanged(flimflam::kCellularApnProperty, _));
+  }
+  service_->SetApn(testapn, &error);
+  Stringmap resultapn = service_->GetApn(&error);
+  ASSERT_TRUE(error.IsSuccess());
+  ASSERT_EQ(2, service_->GetApn(&error).size());
+
+  Stringmap emptyapn;
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+                                   _)).Times(0);
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(flimflam::kCellularApnProperty, _)).Times(1);
+  service_->SetApn(emptyapn, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  resultapn = service_->GetApn(&error);
+  EXPECT_TRUE(resultapn.empty());
+  EXPECT_TRUE(service_->GetUserSpecifiedApn() == NULL);
+}
+
+TEST_F(CellularServiceTest, LastGoodApn) {
+  static const char kApn[] = "TheAPN";
+  static const char kUsername[] = "commander.data";
+  ProfileRefPtr profile(new NiceMock<MockProfile>(
+      &control_, reinterpret_cast<Manager *>(NULL)));
+  service_->set_profile(profile);
+  Stringmap testapn;
+  testapn[flimflam::kApnProperty] = kApn;
+  testapn[flimflam::kApnUsernameProperty] = kUsername;
+  EXPECT_CALL(*adaptor_,
+              EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty, _));
+  service_->SetLastGoodApn(testapn);
+  Stringmap *resultapn = service_->GetLastGoodApn();
+  EXPECT_FALSE(resultapn == NULL);
+  EXPECT_EQ(2, resultapn->size());
+  Stringmap::const_iterator it = resultapn->find(flimflam::kApnProperty);
+  EXPECT_TRUE(it != resultapn->end() && it->second == kApn);
+  it = resultapn->find(flimflam::kApnUsernameProperty);
+  EXPECT_TRUE(it != resultapn->end() && it->second == kUsername);
+  // Now set the user-specified APN, and check that LastGoodApn got
+  // cleared.
+  Stringmap userapn;
+  userapn[flimflam::kApnProperty] = kApn;
+  userapn[flimflam::kApnUsernameProperty] = kUsername;
+  {
+    InSequence seq;
+    EXPECT_CALL(*adaptor_,
+                EmitStringmapChanged(flimflam::kCellularLastGoodApnProperty,
+                                     _));
+    EXPECT_CALL(*adaptor_,
+                EmitStringmapChanged(flimflam::kCellularApnProperty, _));
+  }
+  Error error;
+  service_->SetApn(userapn, &error);
+  EXPECT_TRUE(service_->GetLastGoodApn() == NULL);
 }
 
 }  // namespace shill

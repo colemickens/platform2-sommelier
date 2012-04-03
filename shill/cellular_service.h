@@ -106,6 +106,9 @@ class CellularService : public Service {
   FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, TryApns);
   FRIEND_TEST(CellularTest, Connect);
+  FRIEND_TEST(CellularServiceTest, SetApn);
+  FRIEND_TEST(CellularServiceTest, ClearApn);
+  FRIEND_TEST(CellularServiceTest, LastGoodApn);
 
   void HelpRegisterDerivedStringmap(
       const std::string &name,

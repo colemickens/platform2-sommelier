@@ -148,20 +148,23 @@ Stringmap CellularService::GetApn(Error */*error*/) {
 
 void CellularService::SetApn(const Stringmap &value, Error *error) {
   // Only copy in the fields we care about, and validate the contents.
-  // The "apn" field is mandatory.
+  // If the "apn" field is missing or empty, the APN is cleared.
   string str;
   if (!GetNonEmptyField(value, flimflam::kApnProperty, &str)) {
-    error->Populate(Error::kInvalidArguments,
-                    "supplied APN info is missing the apn");
-    return;
+    apn_info_.clear();
+  } else {
+    apn_info_[flimflam::kApnProperty] = str;
+    if (GetNonEmptyField(value, flimflam::kApnUsernameProperty, &str))
+      apn_info_[flimflam::kApnUsernameProperty] = str;
+    if (GetNonEmptyField(value, flimflam::kApnPasswordProperty, &str))
+      apn_info_[flimflam::kApnPasswordProperty] = str;
+    // Clear the last good APN, otherwise the one the user just
+    // set won't be used, since LastGoodApn comes first in the
+    // search order when trying to connect. Only do this if a
+    // non-empty user APN has been supplied. If the user APN is
+    // being cleared, leave LastGoodApn alone.
+    ClearLastGoodApn();
   }
-  apn_info_[flimflam::kApnProperty] = str;
-  if (GetNonEmptyField(value, flimflam::kApnUsernameProperty, &str))
-    apn_info_[flimflam::kApnUsernameProperty] = str;
-  if (GetNonEmptyField(value, flimflam::kApnPasswordProperty, &str))
-    apn_info_[flimflam::kApnPasswordProperty] = str;
-
-  ClearLastGoodApn();
   adaptor()->EmitStringmapChanged(flimflam::kCellularApnProperty, apn_info_);
   SaveToCurrentProfile();
 }
