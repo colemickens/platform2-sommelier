@@ -326,6 +326,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --scroll-pixels=3 \
             --ui-enable-partial-swap \
             --ui-enable-per-tile-painting \
+            --use-cras \
             --user-data-dir="$DATA_DIR" \
             --no-protector \
             "$REGISTER_PLUGINS" \
