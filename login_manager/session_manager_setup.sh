@@ -309,10 +309,12 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-onc-policy \
             --enable-partial-swap \
             --enable-smooth-scrolling \
+            --enable-sync-tabs \
+            --enable-sync-tabs-for-other-clients \
+            --enable-threaded-compositing \
             --enterprise-enrollment-initial-modulus=5 \
             --enterprise-enrollment-modulus-limit=12 \
             --force-compositing-mode \
-	    --enable-threaded-compositing \
             --load-opencryptoki \
             --log-level=1 \
             --login-manager \
