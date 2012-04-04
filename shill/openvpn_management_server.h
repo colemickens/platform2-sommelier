@@ -40,11 +40,14 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, OnInput);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReady);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReadyAcceptFail);
+  FRIEND_TEST(OpenVPNManagementServerTest, ParseNeedPasswordTag);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallenge);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessInfoMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC);
+  FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageTPMToken);
+  FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageUnknown);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessStateMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, Send);
   FRIEND_TEST(OpenVPNManagementServerTest, SendPassword);
@@ -52,6 +55,8 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, SendUsername);
   FRIEND_TEST(OpenVPNManagementServerTest, Start);
   FRIEND_TEST(OpenVPNManagementServerTest, Stop);
+  FRIEND_TEST(OpenVPNManagementServerTest, SupplyTPMToken);
+  FRIEND_TEST(OpenVPNManagementServerTest, SupplyTPMTokenNoPIN);
 
   // IO handler callbacks.
   void OnReady(int fd);
@@ -68,7 +73,10 @@ class OpenVPNManagementServer {
   bool ProcessFailedPasswordMessage(const std::string &message);
   bool ProcessStateMessage(const std::string &message);
 
-  void PerformStaticChallenge();
+  void PerformStaticChallenge(const std::string &tag);
+  void SupplyTPMToken(const std::string &tag);
+
+  static std::string ParseNeedPasswordTag(const std::string &message);
 
   OpenVPNDriver *driver_;
   GLib *glib_;

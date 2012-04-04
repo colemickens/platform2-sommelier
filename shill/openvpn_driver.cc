@@ -45,6 +45,8 @@ const char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
 const char kOpenVPNTrustedIP[] = "trusted_ip";
 const char kOpenVPNTunMTU[] = "tun_mtu";
 
+const char kDefaultPKCS11Provider[] = "libchaps.so";
+
 // TODO(petkov): Move to chromeos/dbus/service_constants.h.
 const char kOpenVPNCertProperty[] = "OpenVPN.Cert";
 const char kOpenVPNKeyProperty[] = "OpenVPN.Key";
@@ -443,23 +445,8 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   AppendValueOption(flimflam::kOpenVPNServerPollTimeoutProperty,
                     "--server-poll-timeout", options);
 
-  string ca_cert_nss =
-      args_.LookupString(flimflam::kOpenVPNCaCertNSSProperty, "");
-  if (!ca_cert_nss.empty()) {
-    if (!args_.LookupString(flimflam::kOpenVPNCaCertProperty, "").empty()) {
-      Error::PopulateAndLog(error,
-                            Error::kInvalidArguments,
-                            "Can't specify both CACert and CACertNSS.");
-      return;
-    }
-    vector<char> id(vpnhost.begin(), vpnhost.end());
-    FilePath certfile = nss_->GetPEMCertfile(ca_cert_nss, id);
-    if (certfile.empty()) {
-      LOG(ERROR) << "Unable to extract certificate: " << ca_cert_nss;
-    } else {
-      options->push_back("--ca");
-      options->push_back(certfile.value());
-    }
+  if (!InitNSSOptions(options, error)) {
+    return;
   }
 
   // Client-side ping support.
@@ -473,10 +460,7 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
       flimflam::kOpenVPNNsCertTypeProperty, "--ns-cert-type", options);
   AppendValueOption(kOpenVPNKeyProperty, "--key", options);
 
-  // TODO(petkov): Implement this.
-  LOG_IF(ERROR, args_.ContainsString(flimflam::kOpenVPNClientCertIdProperty))
-      << "Support for PKCS#11 (--pkcs11-id and --pkcs11-providers) "
-      << "not implemented yet.";
+  InitPKCS11Options(options);
 
   // TLS suport.
   string remote_cert_tls =
@@ -499,9 +483,7 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   AppendValueOption(
       flimflam::kOpenVPNRemoteCertKUProperty, "--remote-cert-ku", options);
 
-  if (!management_server_->Start(dispatcher_, &sockets_, options)) {
-    Error::PopulateAndLog(
-        error, Error::kInternalError, "Unable to setup management channel.");
+  if (!InitManagementChannelOptions(options, error)) {
     return;
   }
 
@@ -532,6 +514,53 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   options->push_back("openvpn");
   options->push_back("--group");
   options->push_back("openvpn");
+}
+
+bool OpenVPNDriver::InitNSSOptions(vector<string> *options, Error *error) {
+  string ca_cert = args_.LookupString(flimflam::kOpenVPNCaCertNSSProperty, "");
+  if (!ca_cert.empty()) {
+    if (!args_.LookupString(flimflam::kOpenVPNCaCertProperty, "").empty()) {
+      Error::PopulateAndLog(error,
+                            Error::kInvalidArguments,
+                            "Can't specify both CACert and CACertNSS.");
+      return false;
+    }
+    const string &vpnhost = args_.GetString(flimflam::kProviderHostProperty);
+    vector<char> id(vpnhost.begin(), vpnhost.end());
+    FilePath certfile = nss_->GetPEMCertfile(ca_cert, id);
+    if (certfile.empty()) {
+      LOG(ERROR) << "Unable to extract certificate: " << ca_cert;
+    } else {
+      options->push_back("--ca");
+      options->push_back(certfile.value());
+    }
+  }
+  return true;
+}
+
+void OpenVPNDriver::InitPKCS11Options(vector<string> *options) {
+  string id = args_.LookupString(flimflam::kOpenVPNClientCertIdProperty, "");
+  if (!id.empty()) {
+    string provider =
+        args_.LookupString(flimflam::kOpenVPNProviderProperty, "");
+    if (provider.empty()) {
+      provider = kDefaultPKCS11Provider;
+    }
+    options->push_back("--pkcs11-providers");
+    options->push_back(provider);
+    options->push_back("--pkcs11-id");
+    options->push_back(id);
+  }
+}
+
+bool OpenVPNDriver::InitManagementChannelOptions(
+    vector<string> *options, Error *error) {
+  if (!management_server_->Start(dispatcher_, &sockets_, options)) {
+    Error::PopulateAndLog(
+        error, Error::kInternalError, "Unable to setup management channel.");
+    return false;
+  }
+  return true;
 }
 
 bool OpenVPNDriver::AppendValueOption(

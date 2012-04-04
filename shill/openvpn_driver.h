@@ -90,8 +90,11 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ConnectTunnelFailure);
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
+  FRIEND_TEST(OpenVPNDriverTest, InitManagementChannelOptions);
+  FRIEND_TEST(OpenVPNDriverTest, InitNSSOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
+  FRIEND_TEST(OpenVPNDriverTest, InitPKCS11Options);
   FRIEND_TEST(OpenVPNDriverTest, Notify);
   FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
@@ -136,6 +139,10 @@ class OpenVPNDriver : public VPNDriver,
                         IPConfig::Properties *properties);
 
   void InitOptions(std::vector<std::string> *options, Error *error);
+  bool InitNSSOptions(std::vector<std::string> *options, Error *error);
+  void InitPKCS11Options(std::vector<std::string> *options);
+  bool InitManagementChannelOptions(
+      std::vector<std::string> *options, Error *error);
 
   bool PinHostRoute(const IPConfig::Properties &properties);
 

@@ -65,6 +65,12 @@ class OpenVPNManagementServerTest : public testing::Test {
     ExpectSend("password \"Auth\" \"SCRV1:eW95bw==:MTIzNDU2\"\n");
   }
 
+  void ExpectPINResponse() {
+    driver_.args()->SetString(flimflam::kOpenVPNPinProperty, "987654");
+    SetConnectedSocket();
+    ExpectSend("password \"User-Specific TPM Token FOO\" \"987654\"\n");
+  }
+
   InputData CreateInputDataFromString(const string &str) {
     InputData data(
         reinterpret_cast<unsigned char *>(const_cast<char *>(str.data())),
@@ -186,9 +192,11 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
     string s = "foo\n"
         ">INFO:...\n"
         ">PASSWORD:Need 'Auth' SC:user/password/otp\n"
+        ">PASSWORD:Need 'User-Specific TPM Token FOO' ...\n"
         ">STATE:123,RECONNECTING,detail,...,...";
     InputData data = CreateInputDataFromString(s);
     ExpectStaticChallengeResponse();
+    ExpectPINResponse();
     EXPECT_CALL(driver_, OnReconnecting());
     server_.OnInput(&data);
   }
@@ -216,7 +224,6 @@ TEST_F(OpenVPNManagementServerTest, ProcessStateMessage) {
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {
-  EXPECT_FALSE(server_.ProcessNeedPasswordMessage("foo"));
   ExpectStaticChallengeResponse();
   EXPECT_TRUE(
       server_.ProcessNeedPasswordMessage(
@@ -224,19 +231,53 @@ TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {
   EXPECT_FALSE(driver_.args()->ContainsString(flimflam::kOpenVPNOTPProperty));
 }
 
+TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageTPMToken) {
+  ExpectPINResponse();
+  EXPECT_TRUE(
+      server_.ProcessNeedPasswordMessage(
+          ">PASSWORD:Need 'User-Specific TPM Token FOO' ..."));
+}
+
+TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageUnknown) {
+  EXPECT_FALSE(server_.ProcessNeedPasswordMessage("foo"));
+}
+
+TEST_F(OpenVPNManagementServerTest, ParseNeedPasswordTag) {
+  EXPECT_EQ("", OpenVPNManagementServer::ParseNeedPasswordTag(""));
+  EXPECT_EQ("", OpenVPNManagementServer::ParseNeedPasswordTag(" "));
+  EXPECT_EQ("", OpenVPNManagementServer::ParseNeedPasswordTag("'"));
+  EXPECT_EQ("", OpenVPNManagementServer::ParseNeedPasswordTag("''"));
+  EXPECT_EQ("bar",
+            OpenVPNManagementServer::ParseNeedPasswordTag("foo'bar'zoo"));
+  EXPECT_EQ("bar", OpenVPNManagementServer::ParseNeedPasswordTag("foo'bar'"));
+  EXPECT_EQ("bar", OpenVPNManagementServer::ParseNeedPasswordTag("'bar'zoo"));
+  EXPECT_EQ("bar",
+            OpenVPNManagementServer::ParseNeedPasswordTag("foo'bar'zoo'moo"));
+}
+
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds) {
   // Expect no crash due to null sockets_.
-  server_.PerformStaticChallenge();
+  server_.PerformStaticChallenge("Auth");
   driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
-  server_.PerformStaticChallenge();
+  server_.PerformStaticChallenge("Auth");
   driver_.args()->SetString(flimflam::kOpenVPNPasswordProperty, "yoyo");
-  server_.PerformStaticChallenge();
+  server_.PerformStaticChallenge("Auth");
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallenge) {
   ExpectStaticChallengeResponse();
-  server_.PerformStaticChallenge();
+  server_.PerformStaticChallenge("Auth");
   EXPECT_FALSE(driver_.args()->ContainsString(flimflam::kOpenVPNOTPProperty));
+}
+
+TEST_F(OpenVPNManagementServerTest, SupplyTPMTokenNoPIN) {
+  // Expect no crash due to null sockets_.
+  server_.SupplyTPMToken("User-Specific TPM Token FOO");
+}
+
+TEST_F(OpenVPNManagementServerTest, SupplyTPMToken) {
+  ExpectPINResponse();
+  server_.SupplyTPMToken("User-Specific TPM Token FOO");
 }
 
 TEST_F(OpenVPNManagementServerTest, Send) {

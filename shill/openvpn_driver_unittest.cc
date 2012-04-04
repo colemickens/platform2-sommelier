@@ -89,8 +89,8 @@ class OpenVPNDriverTest : public testing::Test,
   static const char kInterfaceName[];
   static const int kInterfaceIndex;
 
-  void SetArgs() {
-    driver_->args_ = args_;
+  void SetArg(const std::string &arg, const std::string &value) {
+    driver_->args_.SetString(arg, value);
   }
 
   KeyValueStore *GetArgs() {
@@ -358,48 +358,100 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   static const char kHost[] = "192.168.2.254";
   static const char kTLSAuthContents[] = "SOME-RANDOM-CONTENTS\n";
   static const char kCaCertNSS[] = "{1234}";
-  static const char kNSSCertfile[] = "/tmp/nss-cert";
-  FilePath nss_cert(kNSSCertfile);
-  args_.SetString(flimflam::kProviderHostProperty, kHost);
-  args_.SetString(flimflam::kOpenVPNTLSAuthContentsProperty, kTLSAuthContents);
-  args_.SetString(flimflam::kOpenVPNCaCertNSSProperty, kCaCertNSS);
-  SetArgs();
+  static const char kID[] = "TestPKCS11ID";
+  FilePath empty_cert;
+  SetArg(flimflam::kProviderHostProperty, kHost);
+  SetArg(flimflam::kOpenVPNTLSAuthContentsProperty, kTLSAuthContents);
+  SetArg(flimflam::kOpenVPNCaCertNSSProperty, kCaCertNSS);
+  SetArg(flimflam::kOpenVPNClientCertIdProperty, kID);
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
-  EXPECT_CALL(*management_server_, Start(&dispatcher_, &driver_->sockets_, _))
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(nss_, GetPEMCertfile(kCaCertNSS, _)).WillOnce(Return(empty_cert));
+
+  Error error;
+  vector<string> options;
+  driver_->InitOptions(&options, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ("--client", options[0]);
+  ExpectInFlags(options, "--remote", kHost);
+  ExpectInFlags(options, "CONNMAN_PATH", RPCTaskMockAdaptor::kRpcId);
+  ExpectInFlags(options, "--dev", kInterfaceName);
+  ExpectInFlags(options, "--group", "openvpn");
+  EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
+  ASSERT_FALSE(driver_->tls_auth_file_.empty());
+  ExpectInFlags(options, "--tls-auth", driver_->tls_auth_file_.value());
+  string contents;
+  EXPECT_TRUE(
+      file_util::ReadFileToString(driver_->tls_auth_file_, &contents));
+  EXPECT_EQ(kTLSAuthContents, contents);
+  ExpectInFlags(options, "--pkcs11-id", kID);
+}
+
+TEST_F(OpenVPNDriverTest, InitNSSOptions) {
+  static const char kHost[] = "192.168.2.254";
+  static const char kCaCertNSS[] = "{1234}";
+  static const char kNSSCertfile[] = "/tmp/nss-cert";
+  FilePath empty_cert;
+  FilePath nss_cert(kNSSCertfile);
+  SetArg(flimflam::kProviderHostProperty, kHost);
+  SetArg(flimflam::kOpenVPNCaCertNSSProperty, kCaCertNSS);
   EXPECT_CALL(nss_,
               GetPEMCertfile(kCaCertNSS,
                              ElementsAreArray(kHost, arraysize(kHost) - 1)))
-      .Times(2)
-      .WillRepeatedly(Return(nss_cert));
-  {
-    Error error;
-    vector<string> options;
-    driver_->InitOptions(&options, &error);
-    EXPECT_EQ(Error::kInternalError, error.type());
-    EXPECT_EQ("Unable to setup management channel.", error.message());
-  }
-  {
-    Error error;
-    vector<string> options;
-    driver_->InitOptions(&options, &error);
-    EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ("--client", options[0]);
-    ExpectInFlags(options, "--remote", kHost);
-    ExpectInFlags(options, "CONNMAN_PATH", RPCTaskMockAdaptor::kRpcId);
-    ExpectInFlags(options, "--dev", kInterfaceName);
-    EXPECT_EQ("openvpn", options.back());
-    EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
-    ASSERT_FALSE(driver_->tls_auth_file_.empty());
-    ExpectInFlags(options, "--tls-auth", driver_->tls_auth_file_.value());
-    string contents;
-    EXPECT_TRUE(
-        file_util::ReadFileToString(driver_->tls_auth_file_, &contents));
-    EXPECT_EQ(kTLSAuthContents, contents);
-    ExpectInFlags(options, "--ca", kNSSCertfile);
-  }
+      .WillOnce(Return(empty_cert))
+      .WillOnce(Return(nss_cert));
+
+  Error error;
+  vector<string> options;
+  EXPECT_TRUE(driver_->InitNSSOptions(&options, &error));
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(options.empty());
+  EXPECT_TRUE(driver_->InitNSSOptions(&options, &error));
+  ExpectInFlags(options, "--ca", kNSSCertfile);
+  EXPECT_TRUE(error.IsSuccess());
+
+  SetArg(flimflam::kOpenVPNCaCertProperty, "foo");
+  options.clear();
+  EXPECT_FALSE(driver_->InitNSSOptions(&options, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("Can't specify both CACert and CACertNSS.", error.message());
+}
+
+TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
+  vector<string> options;
+  driver_->InitPKCS11Options(&options);
+  EXPECT_TRUE(options.empty());
+
+  static const char kID[] = "TestPKCS11ID";
+  SetArg(flimflam::kOpenVPNClientCertIdProperty, kID);
+  driver_->InitPKCS11Options(&options);
+  ExpectInFlags(options, "--pkcs11-id", kID);
+  ExpectInFlags(options, "--pkcs11-providers", "libchaps.so");
+
+  static const char kProvider[] = "libpkcs11.so";
+  SetArg(flimflam::kOpenVPNProviderProperty, kProvider);
+  options.clear();
+  driver_->InitPKCS11Options(&options);
+  ExpectInFlags(options, "--pkcs11-id", kID);
+  ExpectInFlags(options, "--pkcs11-providers", kProvider);
+}
+
+TEST_F(OpenVPNDriverTest, InitManagementChannelOptions) {
+  vector<string> options;
+  EXPECT_CALL(*management_server_,
+              Start(&dispatcher_, &driver_->sockets_, &options))
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+
+  Error error;
+  EXPECT_FALSE(driver_->InitManagementChannelOptions(&options, &error));
+  EXPECT_EQ(Error::kInternalError, error.type());
+  EXPECT_EQ("Unable to setup management channel.", error.message());
+
+  error.Reset();
+  EXPECT_TRUE(driver_->InitManagementChannelOptions(&options, &error));
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(OpenVPNDriverTest, AppendValueOption) {
@@ -408,14 +460,12 @@ TEST_F(OpenVPNDriverTest, AppendValueOption) {
       driver_->AppendValueOption("OpenVPN.UnknownProperty", kOption, &options));
   EXPECT_TRUE(options.empty());
 
-  args_.SetString(kProperty, "");
-  SetArgs();
+  SetArg(kProperty, "");
   EXPECT_FALSE(driver_->AppendValueOption(kProperty, kOption, &options));
   EXPECT_TRUE(options.empty());
 
-  args_.SetString(kProperty, kValue);
-  args_.SetString(kProperty2, kValue2);
-  SetArgs();
+  SetArg(kProperty, kValue);
+  SetArg(kProperty2, kValue2);
   EXPECT_TRUE(driver_->AppendValueOption(kProperty, kOption, &options));
   EXPECT_TRUE(driver_->AppendValueOption(kProperty2, kOption2, &options));
   EXPECT_EQ(4, options.size());
@@ -431,9 +481,8 @@ TEST_F(OpenVPNDriverTest, AppendFlag) {
       driver_->AppendFlag("OpenVPN.UnknownProperty", kOption, &options));
   EXPECT_TRUE(options.empty());
 
-  args_.SetString(kProperty, "");
-  args_.SetString(kProperty2, kValue2);
-  SetArgs();
+  SetArg(kProperty, "");
+  SetArg(kProperty2, kValue2);
   EXPECT_TRUE(driver_->AppendFlag(kProperty, kOption, &options));
   EXPECT_TRUE(driver_->AppendFlag(kProperty2, kOption2, &options));
   EXPECT_EQ(2, options.size());
@@ -448,8 +497,7 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   EXPECT_FALSE(driver_->device_);
 
   static const char kHost[] = "192.168.2.254";
-  args_.SetString(flimflam::kProviderHostProperty, kHost);
-  SetArgs();
+  SetArg(flimflam::kProviderHostProperty, kHost);
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(glib_, SpawnAsyncWithPipesCWD(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(true));
@@ -497,8 +545,7 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
   EXPECT_FALSE(driver_->SpawnOpenVPN());
 
   static const char kHost[] = "192.168.2.254";
-  args_.SetString(flimflam::kProviderHostProperty, kHost);
-  SetArgs();
+  SetArg(flimflam::kProviderHostProperty, kHost);
   driver_->tunnel_interface_ = "tun0";
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   EXPECT_CALL(*management_server_, Start(_, _, _))
@@ -636,9 +683,8 @@ TEST_F(OpenVPNDriverTest, Load) {
 TEST_F(OpenVPNDriverTest, Store) {
   const string key_direction = "1";
   const string password = "foobar";
-  args_.SetString(flimflam::kOpenVPNKeyDirectionProperty, key_direction);
-  args_.SetString(flimflam::kOpenVPNPasswordProperty, password);
-  SetArgs();
+  SetArg(flimflam::kOpenVPNKeyDirectionProperty, key_direction);
+  SetArg(flimflam::kOpenVPNPasswordProperty, password);
   MockStore storage;
   static const char kStorageID[] = "vpn_service_id";
   EXPECT_CALL(storage,
@@ -676,9 +722,8 @@ TEST_F(OpenVPNDriverTest, InitPropertyStore) {
   const string kKeyDirection = "1";
   const string kPassword0 = "foobar";
   const string kPassword1 = "baz";
-  args_.SetString(flimflam::kOpenVPNKeyDirectionProperty, kKeyDirection);
-  args_.SetString(flimflam::kOpenVPNPasswordProperty, kPassword0);
-  SetArgs();
+  SetArg(flimflam::kOpenVPNKeyDirectionProperty, kKeyDirection);
+  SetArg(flimflam::kOpenVPNPasswordProperty, kPassword0);
 
   // Read a property out of the driver args using the PropertyStore interface.
   {

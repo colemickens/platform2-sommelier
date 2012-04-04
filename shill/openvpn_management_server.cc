@@ -162,18 +162,34 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
   if (!StartsWithASCII(message, ">PASSWORD:Need ", true)) {
     return false;
   }
-  if (message.find("'Auth'") != string::npos) {
+  string tag = ParseNeedPasswordTag(message);
+  if (tag == "Auth") {
     if (message.find("SC:") != string::npos) {
-      PerformStaticChallenge();
+      PerformStaticChallenge(tag);
     } else {
       NOTIMPLEMENTED()
           << "User/password (no-OTP) authentication not implemented.";
     }
+  } else if (StartsWithASCII(tag, "User-Specific TPM Token", true)) {
+    SupplyTPMToken(tag);
   }
   return true;
 }
 
-void OpenVPNManagementServer::PerformStaticChallenge() {
+// static
+string OpenVPNManagementServer::ParseNeedPasswordTag(const string &message) {
+  size_t start = message.find('\'');
+  if (start == string::npos) {
+    return string();
+  }
+  size_t end = message.find('\'', start + 1);
+  if (end == string::npos) {
+    return string();
+  }
+  return message.substr(start + 1, end - start - 1);
+}
+
+void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
   string user =
       driver_->args()->LookupString(flimflam::kOpenVPNUserProperty, "");
   string password =
@@ -194,12 +210,21 @@ void OpenVPNManagementServer::PerformStaticChallenge() {
     LOG(ERROR) << "Unable to base64-encode credentials.";
     return;
   }
-  SendUsername("Auth", user);
-  SendPassword("Auth", StringPrintf("SCRV1:%s:%s", b64_password, b64_otp));
+  SendUsername(tag, user);
+  SendPassword(tag, StringPrintf("SCRV1:%s:%s", b64_password, b64_otp));
   glib_->Free(b64_otp);
   glib_->Free(b64_password);
   // Don't reuse OTP.
   driver_->args()->RemoveString(flimflam::kOpenVPNOTPProperty);
+}
+
+void OpenVPNManagementServer::SupplyTPMToken(const string &tag) {
+  string pin = driver_->args()->LookupString(flimflam::kOpenVPNPinProperty, "");
+  if (pin.empty()) {
+    NOTIMPLEMENTED() << "Missing PIN.";
+    return;
+  }
+  SendPassword(tag, pin);
 }
 
 bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
