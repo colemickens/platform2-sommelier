@@ -156,73 +156,76 @@ void ModemProxy::Command(const std::string &cmd,
 // Inherited properties from ModemProxyInterface.
 const ::DBus::Path ModemProxy::Sim() {
   return proxy_.Sim();
-};
+}
 uint32_t ModemProxy::ModemCapabilities() {
   return proxy_.ModemCapabilities();
-};
+}
 uint32_t ModemProxy::CurrentCapabilities() {
   return proxy_.CurrentCapabilities();
-};
+}
 uint32_t ModemProxy::MaxBearers() {
   return proxy_.MaxBearers();
-};
+}
 uint32_t ModemProxy::MaxActiveBearers() {
   return proxy_.MaxActiveBearers();
-};
+}
 const std::string ModemProxy::Manufacturer() {
   return proxy_.Manufacturer();
-};
+}
 const std::string ModemProxy::Model() {
   return proxy_.Model();
-};
+}
 const std::string ModemProxy::Revision() {
   return proxy_.Revision();
-};
+}
 const std::string ModemProxy::DeviceIdentifier() {
   return proxy_.DeviceIdentifier();
-};
+}
 const std::string ModemProxy::Device() {
   return proxy_.Device();
-};
+}
 const std::string ModemProxy::Driver() {
   return proxy_.Driver();
-};
+}
 const std::string ModemProxy::Plugin() {
   return proxy_.Plugin();
-};
+}
 const std::string ModemProxy::EquipmentIdentifier() {
   return proxy_.EquipmentIdentifier();
-};
+}
 uint32_t ModemProxy::UnlockRequired() {
   return proxy_.UnlockRequired();
-};
+}
 const std::map< uint32_t, uint32_t > ModemProxy::UnlockRetries() {
   return proxy_.UnlockRetries();
-};
+}
 uint32_t ModemProxy::State() {
   return proxy_.State();
-};
+}
 uint32_t ModemProxy::AccessTechnologies() {
   return proxy_.AccessTechnologies();
-};
+}
 const ::DBus::Struct< uint32_t, bool > ModemProxy::SignalQuality() {
   return proxy_.SignalQuality();
-};
+}
+const std::vector<string> ModemProxy::OwnNumbers() {
+  return proxy_.OwnNumbers();
+}
 uint32_t ModemProxy::SupportedModes() {
   return proxy_.SupportedModes();
-};
+}
 uint32_t ModemProxy::AllowedModes() {
   return proxy_.AllowedModes();
-};
+}
 uint32_t ModemProxy::PreferredMode() {
   return proxy_.PreferredMode();
-};
+}
 const std::vector< uint32_t > ModemProxy::SupportedBands() {
   return proxy_.SupportedBands();
-};
+}
 const std::vector< uint32_t > ModemProxy::Bands() {
   return proxy_.Bands();
-};
+}
 
 ModemProxy::Proxy::Proxy(DBus::Connection *connection,
                          const std::string &path,

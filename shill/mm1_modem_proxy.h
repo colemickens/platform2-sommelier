@@ -83,6 +83,7 @@ class ModemProxy : public ModemProxyInterface {
   virtual uint32_t State();
   virtual uint32_t AccessTechnologies();
   virtual const ::DBus::Struct< uint32_t, bool > SignalQuality();
+  virtual const std::vector< std::string > OwnNumbers();
   virtual uint32_t SupportedModes();
   virtual uint32_t AllowedModes();
   virtual uint32_t PreferredMode();
