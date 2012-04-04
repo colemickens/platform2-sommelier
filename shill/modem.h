@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -82,7 +83,11 @@ class Modem : public DBusPropertiesProxyDelegate {
 
  private:
   friend class ModemTest;
+  friend class Modem1Test;
+  FRIEND_TEST(Modem1Test, Init);
+  FRIEND_TEST(Modem1Test, CreateDeviceMM1);
   FRIEND_TEST(ModemManager1Test, Connect);
+  FRIEND_TEST(ModemManager1Test, AddRemoveInterfaces);
   FRIEND_TEST(ModemManagerClassicTest, Connect);
   FRIEND_TEST(ModemManagerCoreTest, ShouldAddModem);
   FRIEND_TEST(ModemTest, CreateDeviceEarlyFailures);
@@ -120,6 +125,9 @@ class Modem : public DBusPropertiesProxyDelegate {
   bool pending_device_info_;
   RTNLHandler *rtnl_handler_;
 
+  // Store cached copies of singletons for speed/ease of testing.
+  ProxyFactory *proxy_factory_;
+
   DISALLOW_COPY_AND_ASSIGN(Modem);
 };
 
@@ -148,8 +156,6 @@ class ModemClassic : public Modem {
 };
 
 class Modem1 : public Modem {
-  // TODO(rochberg) Need to register to receive DBus property changes.
-  // crosbug.com/28596
  public:
   Modem1(const std::string &owner,
          const std::string &path,
@@ -170,6 +176,10 @@ class Modem1 : public Modem {
                            std::string *name) const;
 
  private:
+  friend class Modem1Test;
+
+  FilePath netfiles_path_;  // Used for testing
+
   DISALLOW_COPY_AND_ASSIGN(Modem1);
 };
 

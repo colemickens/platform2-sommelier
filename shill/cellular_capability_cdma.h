@@ -9,13 +9,16 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include <string>
+
 #include "shill/cellular_capability.h"
+#include "shill/cellular_capability_classic.h"
 #include "shill/cellular_service.h"
 #include "shill/modem_cdma_proxy_interface.h"
 
 namespace shill {
 
-class CellularCapabilityCDMA : public CellularCapability {
+class CellularCapabilityCDMA : public CellularCapabilityClassic {
  public:
   CellularCapabilityCDMA(Cellular *cellular, ProxyFactory *proxy_factory);
 
@@ -46,6 +49,7 @@ class CellularCapabilityCDMA : public CellularCapability {
  protected:
   virtual void InitProxies();
   virtual void ReleaseProxies();
+  virtual bool AllowRoaming();
 
  private:
   friend class CellularCapabilityCDMATest;

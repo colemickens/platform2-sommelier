@@ -15,12 +15,12 @@
 #include <base/logging.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular_capability_cdma.h"
 #include "shill/cellular_capability_gsm.h"
+#include "shill/cellular_capability_universal.h"
 #include "shill/cellular_service.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
@@ -35,8 +35,6 @@
 #include "shill/technology.h"
 
 using base::Bind;
-using base::Closure;
-using std::map;
 using std::string;
 using std::vector;
 
@@ -210,13 +208,13 @@ void Cellular::InitCapability(Type type, ProxyFactory *proxy_factory) {
       capability_.reset(new CellularCapabilityCDMA(this, proxy_factory));
       break;
     case kTypeUniversal:
-      LOG(ERROR) << "Cannot InitCapability on MM1 modem";
+      capability_.reset(new CellularCapabilityUniversal(this, proxy_factory));
       break;
     default: NOTREACHED();
   }
 }
 
-void Cellular::Activate(const std::string &carrier,
+void Cellular::Activate(const string &carrier,
                         Error *error, const ResultCallback &callback) {
   capability_->Activate(carrier, error, callback);
 }
@@ -327,7 +325,7 @@ void Cellular::Connect(Error *error) {
   }
   CHECK_EQ(kStateRegistered, state_);
 
-  if (!capability_->allow_roaming() &&
+  if (!capability_->AllowRoaming() &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
     Error::PopulateAndLog(error, Error::kNotOnHomeNetwork,
                           "Roaming disallowed; connection request ignored.");
@@ -344,7 +342,7 @@ void Cellular::Connect(Error *error) {
 void Cellular::OnConnected() {
   VLOG(2) << __func__;
   SetState(kStateConnected);
-  if (!capability_->allow_roaming() &&
+  if (!capability_->AllowRoaming() &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
     Disconnect(NULL);
   } else {
@@ -411,6 +409,15 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     SetState(kStateConnected);
     DestroyService();
   }
+}
+
+void Cellular::OnDBusPropertiesChanged(
+    const string &interface,
+    const DBusPropertiesMap &changed_properties,
+    const vector<string> &invalidated_properties) {
+  capability_->OnDBusPropertiesChanged(interface,
+                                       changed_properties,
+                                       invalidated_properties);
 }
 
 void Cellular::OnModemManagerPropertiesChanged(

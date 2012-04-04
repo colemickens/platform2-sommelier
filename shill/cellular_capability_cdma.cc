@@ -26,7 +26,7 @@ const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 
 CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
                                                ProxyFactory *proxy_factory)
-    : CellularCapability(cellular, proxy_factory),
+    : CellularCapabilityClassic(cellular, proxy_factory),
       weak_ptr_factory_(this),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       registration_state_evdo_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
@@ -38,7 +38,7 @@ CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
 }
 
 void CellularCapabilityCDMA::InitProxies() {
-  CellularCapability::InitProxies();
+  CellularCapabilityClassic::InitProxies();
   proxy_.reset(proxy_factory()->CreateModemCDMAProxy(
       cellular()->dbus_path(), cellular()->dbus_owner()));
   proxy_->set_signal_quality_callback(
@@ -76,9 +76,14 @@ void CellularCapabilityCDMA::StartModem(Error *error,
 }
 
 void CellularCapabilityCDMA::ReleaseProxies() {
-  CellularCapability::ReleaseProxies();
+  CellularCapabilityClassic::ReleaseProxies();
   proxy_.reset();
 }
+
+bool CellularCapabilityCDMA::AllowRoaming() {
+  return allow_roaming_property();
+}
+
 
 void CellularCapabilityCDMA::OnServiceCreated() {
   VLOG(2) << __func__;

@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/cellular_capability.h"
+#include "shill/cellular_capability_gsm.h"
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_metrics.h"
@@ -47,6 +48,10 @@ class CellularServiceTest : public testing::Test {
         dynamic_cast<NiceMock<ServiceMockAdaptor> *>(service_->adaptor());
   }
 
+  CellularCapabilityGSM *GetCapabilityGSM() {
+    return dynamic_cast<CellularCapabilityGSM *>(device_->capability_.get());
+  }
+
  protected:
   static const char kAddress[];
 
@@ -79,7 +84,7 @@ TEST_F(CellularServiceTest, SetRoamingState) {
 
 TEST_F(CellularServiceTest, FriendlyName) {
   static const char kCarrier[] = "Cellular Carrier";
-  device_->capability_->carrier_ = kCarrier;
+  GetCapabilityGSM()->carrier_ = kCarrier;
   service_ = new CellularService(&control_, NULL, &metrics_, NULL, device_);
   EXPECT_EQ(kCarrier, service_->friendly_name());
 }

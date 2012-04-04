@@ -243,7 +243,8 @@ void ModemProxy::Proxy::set_state_changed_callback(
 void ModemProxy::Proxy::StateChanged(const int32_t &old,
                                      const int32_t &_new,
                                      const uint32_t &reason) {
-  state_changed_callback_.Run(old, _new, reason);
+  if (!state_changed_callback_.is_null())
+    state_changed_callback_.Run(old, _new, reason);
 }
 
 // Method callbacks inherited from

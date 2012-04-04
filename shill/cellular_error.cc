@@ -4,6 +4,8 @@
 
 #include "shill/cellular_error.h"
 
+#include <string>
+
 #include <base/logging.h>
 #include <mm/mm-modem.h>
 

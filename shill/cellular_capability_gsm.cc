@@ -44,7 +44,7 @@ const char CellularCapabilityGSM::kPropertyUnlockRetries[] = "UnlockRetries";
 
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
                                              ProxyFactory *proxy_factory)
-    : CellularCapability(cellular, proxy_factory),
+    : CellularCapabilityClassic(cellular, proxy_factory),
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
@@ -90,7 +90,7 @@ void CellularCapabilityGSM::HelpRegisterDerivedKeyValueStore(
 }
 
 void CellularCapabilityGSM::InitProxies() {
-  CellularCapability::InitProxies();
+  CellularCapabilityClassic::InitProxies();
   card_proxy_.reset(
       proxy_factory()->CreateModemGSMCardProxy(cellular()->dbus_path(),
                                                cellular()->dbus_owner()));
@@ -145,7 +145,7 @@ void CellularCapabilityGSM::StartModem(Error *error,
 
 void CellularCapabilityGSM::ReleaseProxies() {
   VLOG(2) << __func__;
-  CellularCapability::ReleaseProxies();
+  CellularCapabilityClassic::ReleaseProxies();
   card_proxy_.reset();
   network_proxy_.reset();
 }
@@ -201,7 +201,7 @@ void CellularCapabilityGSM::FillConnectPropertyMap(
   (*properties)[kConnectPropertyPhoneNumber].writer().append_string(
       kPhoneNumber);
 
-  if (!allow_roaming_)
+  if (!AllowRoaming())
     (*properties)[kConnectPropertyHomeOnly].writer().append_bool(true);
 
   if (!apn_try_list_.empty()) {
@@ -242,7 +242,13 @@ void CellularCapabilityGSM::OnConnectReply(const ResultCallback &callback,
     cellular()->service()->SetLastGoodApn(apn_try_list_.front());
     apn_try_list_.clear();
   }
-  CellularCapability::OnConnectReply(callback, error);
+  CellularCapabilityClassic::OnConnectReply(callback, error);
+}
+
+bool CellularCapabilityGSM::AllowRoaming() {
+  bool requires_roaming =
+      home_provider_ ? home_provider_->requires_roaming : false;
+  return requires_roaming || allow_roaming_property();
 }
 
 // always called from an async context
@@ -569,14 +575,18 @@ void CellularCapabilityGSM::OnScanReply(const ResultCallback &callback,
                                         const GSMScanResults &results,
                                         const Error &error) {
   VLOG(2) << __func__;
-  if (error.IsFailure()) {
-    callback.Run(error);
-    return;
-  }
+
+  // Error handling is weak.  The current expectation is that on any
+  // error, found_networks_ should be cleared and a property change
+  // notification sent out.
+  //
+  // TODO(jglasgow): fix error handling
   found_networks_.clear();
-  for (GSMScanResults::const_iterator it = results.begin();
-       it != results.end(); ++it) {
-    found_networks_.push_back(ParseScanResult(*it));
+  if (!error.IsFailure()) {
+    for (GSMScanResults::const_iterator it = results.begin();
+         it != results.end(); ++it) {
+      found_networks_.push_back(ParseScanResult(*it));
+    }
   }
   cellular()->adaptor()->EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
                                                found_networks_);

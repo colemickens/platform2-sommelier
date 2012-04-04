@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/modem.h"
+
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -24,7 +26,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem.h"
 #include "shill/mock_rtnl_handler.h"
-#include "shill/modem.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
 
@@ -79,8 +80,6 @@ class ModemTest : public Test {
   void ReplaceSingletons() {
     modem_->rtnl_handler_ = &rtnl_handler_;
   }
-
-  void ExpectLinkRelatedCalls();
 
  protected:
   class TestProxyFactory : public ProxyFactory {

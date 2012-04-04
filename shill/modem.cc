@@ -40,7 +40,8 @@ Modem::Modem(const string &owner,
       provider_db_(provider_db),
       type_(Cellular::kTypeInvalid),
       pending_device_info_(false),
-      rtnl_handler_(RTNLHandler::GetInstance()) {
+      rtnl_handler_(RTNLHandler::GetInstance()),
+      proxy_factory_(ProxyFactory::GetInstance()) {
   LOG(INFO) << "Modem created: " << owner << " at " << path;
 }
 
@@ -52,9 +53,7 @@ Modem::~Modem() {
 
 void Modem::Init() {
   dbus_properties_proxy_.reset(
-      ProxyFactory::GetInstance()->CreateDBusPropertiesProxy(this,
-                                                             path(),
-                                                             owner()));
+      proxy_factory_->CreateDBusPropertiesProxy(this, path(), owner()));
 }
 
 void Modem::OnDeviceInfoAvailable(const string &link_name) {
@@ -121,17 +120,18 @@ void Modem::CreateDeviceFromModemProperties(
     return;
   }
 
-  if (type_ == Cellular::kTypeUniversal) {
-    // TODO(rochberg):
-    LOG(ERROR) << "Cannot construct Cellular object for MM1";
-    return;
-  }
-
   string address = address_bytes.HexEncode();
   device_ = ConstructCellular(link_name_, address, interface_index);
 
-  uint32 modem_state = Cellular::kModemStateUnknown;
-  DBusProperties::GetUint32(modem_properties, kPropertyState, &modem_state);
+  // Note: 0 happens to map to Cellular::kModemStateUnknown for all
+  // types of modems
+  uint32 modem_state = 0;
+  // TODO(jglasgow): refactor to avoid explicit if on modem type.  The
+  // ModemManager1 interface type is an "i" not a "u".  Handle that
+  // during refactoring.
+  if (type_ != Cellular::kTypeUniversal)
+    DBusProperties::GetUint32(modem_properties, kPropertyState, &modem_state);
+
   device_->set_modem_state(ConvertMmToCellularModemState(modem_state));
 
   // Give the device a chance to extract any capability-specific properties.
@@ -141,10 +141,14 @@ void Modem::CreateDeviceFromModemProperties(
 }
 
 void Modem::OnDBusPropertiesChanged(
-    const string &/*interface*/,
-    const DBusPropertiesMap &/*changed_properties*/,
-    const vector<string> &/*invalidated_properties*/) {
-  // Ignored.
+    const string &interface,
+    const DBusPropertiesMap &changed_properties,
+    const vector<string> &invalidated_properties) {
+  if (device().get()) {
+    device()->OnDBusPropertiesChanged(interface,
+                                      changed_properties,
+                                      invalidated_properties);
+  }
 }
 
 void Modem::OnModemManagerPropertiesChanged(

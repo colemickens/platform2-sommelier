@@ -105,7 +105,9 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	cellular.o \
 	cellular_capability.o \
 	cellular_capability_cdma.o \
+	cellular_capability_classic.o \
 	cellular_capability_gsm.o \
+	cellular_capability_universal.o \
 	cellular_error.o \
 	cellular_service.o \
 	connection.o \
@@ -212,8 +214,8 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	async_connection_unittest.o \
 	byte_string_unittest.o \
 	cellular_capability_cdma_unittest.o \
+	cellular_capability_classic_unittest.o \
 	cellular_capability_gsm_unittest.o \
-	cellular_capability_unittest.o \
 	cellular_service_unittest.o \
 	cellular_unittest.o \
 	crypto_des_cbc_unittest.o \
@@ -290,6 +292,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_vpn_service.o \
 	mock_wifi.o \
 	mock_wifi_service.o \
+	modem_1_unittest.o \
 	modem_info_unittest.o \
 	modem_manager_unittest.o \
 	modem_unittest.o \

@@ -11,26 +11,56 @@
 #include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/callbacks.h"
 #include "shill/dbus_properties.h"
-#include "shill/modem_proxy_interface.h"
-#include "shill/modem_simple_proxy_interface.h"
 
 namespace shill {
 
 class Cellular;
 class Error;
-class EventDispatcher;
 class ProxyFactory;
 
 typedef std::vector<base::Closure> CellularTaskList;
 
 // Cellular devices instantiate subclasses of CellularCapability that
 // handle the specific modem technologies and capabilities.
+//
+// The CellularCapability is directly subclassed by:
+// *  CelllularCapabilityUniversal which handles all modems managed by
+//    a modem manager using the the org.chromium.ModemManager1 DBUS
+//    interface
+// *  CellularCapabilityClassic which handles all modems managed by a
+//    modem manager using the older org.chromium.ModemManager DBUS
+//    interface.  This class is further subclassed to represent CDMA
+//    and GSM modems
+//
+// Pictorially:
+//
+// CellularCapability
+//       |
+//       |-- CellularCapabilityUniversal
+//       |
+//       |-- CellularCapabilityClassic
+//                    |
+//                    |-- CellularCapabilityGSM
+//                    |
+//                    |-- CellularCapabilityCDMA
+//
 class CellularCapability {
  public:
+
+  // SimLockStatus represents the fields in the Cellular.SIMLockStatus
+  // DBUS property of the shill device.
+  struct SimLockStatus {
+    SimLockStatus() : enabled(false), retries_left(0) {}
+
+    bool enabled;
+    std::string lock_type;
+    uint32 retries_left;
+  };
+
   static const int kTimeoutActivate;
   static const int kTimeoutConnect;
   static const int kTimeoutDefault;
@@ -38,13 +68,7 @@ class CellularCapability {
   static const int kTimeoutRegister;
   static const int kTimeoutScan;
 
-  static const char kConnectPropertyApn[];
-  static const char kConnectPropertyApnUsername[];
-  static const char kConnectPropertyApnPassword[];
-  static const char kConnectPropertyHomeOnly[];
-  static const char kConnectPropertyPhoneNumber[];
   static const char kPropertyIMSI[];
-
 
   // |cellular| is the parent Cellular device.
   CellularCapability(Cellular *cellular, ProxyFactory *proxy_factory);
@@ -60,8 +84,6 @@ class CellularCapability {
 
   virtual void SetupConnectProperties(DBusPropertiesMap *properties) = 0;
 
-  bool allow_roaming() const { return allow_roaming_; }
-
   // StartModem attempts to put the modem in a state in which it is
   // usable for creating services and establishing connections (if
   // network conditions permit). It potentially consists of multiple
@@ -75,21 +97,21 @@ class CellularCapability {
   // StopModem disconnects and disables a modem asynchronously.
   // |callback| is invoked when this completes and the result is passed
   // to the callback.
-  virtual void StopModem(Error *error, const ResultCallback &callback);
+  virtual void StopModem(Error *error, const ResultCallback &callback) = 0;
   virtual void Connect(const DBusPropertiesMap &properties, Error *error,
-                       const ResultCallback &callback);
-  virtual void Disconnect(Error *error, const ResultCallback &callback);
+                       const ResultCallback &callback) = 0;
+  virtual void Disconnect(Error *error, const ResultCallback &callback) = 0;
 
   // Activates the modem. Returns an Error on failure.
   // The default implementation fails by returning a kNotSupported error
   // to the caller.
   virtual void Activate(const std::string &carrier,
-                        Error *error, const ResultCallback &callback);
+                        Error *error, const ResultCallback &callback) = 0;
 
   // Network registration.
   virtual void RegisterOnNetwork(const std::string &network_id,
                                  Error *error,
-                                 const ResultCallback &callback);
+                                 const ResultCallback &callback) = 0;
   virtual bool IsRegistered() = 0;
 
   virtual std::string CreateFriendlyServiceName() = 0;
@@ -106,8 +128,25 @@ class CellularCapability {
                          const std::string &new_pin,
                          Error *error, const ResultCallback &callback);
 
-  // Network scanning. The default implementation fails by invoking
-  // the reply handler with an error.
+  // Asks the modem to scan for networks.
+  //
+  // The default implementation fails by filling error with
+  // kNotSupported.
+  //
+  // Subclasses should implement this by fetching scan results
+  // asynchronously.  When the results are ready, update the
+  // flimflam::kFoundNetworksProperty and send a property change
+  // notification.  Finally, callback must be invoked to inform the
+  // caller that the scan has completed.
+  //
+  // Errors are not generally reported, but on error the
+  // kFoundNetworksProperty should be cleared and a property change
+  // notification sent out.
+  //
+  // TODO(jglasgow): Refactor to reuse code by putting notification
+  // logic into Cellular or CellularCapability.
+  //
+  // TODO(jglasgow): Implement real error handling.
   virtual void Scan(Error *error, const ResultCallback &callback);
 
   // Returns an empty string if the network technology is unknown.
@@ -119,31 +158,29 @@ class CellularCapability {
 
   virtual std::string GetTypeString() const = 0;
 
+  virtual void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties) = 0;
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties) = 0;
 
- protected:
-  // The following five methods are only ever called as
-  // callbacks (from the main loop), which is why they
-  // don't take an Error * argument.
-  virtual void EnableModem(const ResultCallback &callback);
-  virtual void DisableModem(const ResultCallback &callback);
-  virtual void GetModemStatus(const ResultCallback &callback);
-  virtual void GetModemInfo(const ResultCallback &callback);
-  virtual void GetProperties(const ResultCallback &callback) = 0;
+  // Should this device allow roaming?
+  // The decision to allow roaming or not is based on the home
+  // provider as well as on the user modifiable "allow_roaming"
+  // property.
+  virtual bool AllowRoaming() = 0;
 
+ protected:
   virtual void GetRegistrationState() = 0;
 
-  void FinishEnable(const ResultCallback &callback);
-  void FinishDisable(const ResultCallback &callback);
-  virtual void InitProxies();
-  virtual void ReleaseProxies();
+  // Releases all proxies held by the object.  This is most useful
+  // during unit tests.
+  virtual void ReleaseProxies() = 0;
 
   static void OnUnsupportedOperation(const char *operation, Error *error);
 
-  virtual void OnConnectReply(const ResultCallback &callback,
-                              const Error &error);
-  // Run the next task in a list.
+  // Runs the next task in a list.
   // Precondition: |tasks| is not empty.
   void RunNextStep(CellularTaskList *tasks);
   // StepCompletedCallback is called after a task completes.
@@ -154,73 +191,34 @@ class CellularCapability {
   // the result of the just-completed task.
   void StepCompletedCallback(const ResultCallback &callback, bool ignore_error,
                              CellularTaskList *tasks, const Error &error);
-  // Properties
-  bool allow_roaming_;
-  bool scanning_supported_;
-  std::string carrier_;
-  std::string meid_;
-  std::string imei_;
-  std::string imsi_;
-  std::string esn_;
-  std::string mdn_;
-  std::string min_;
-  std::string model_id_;
-  std::string manufacturer_;
-  std::string firmware_revision_;
-  std::string hardware_revision_;
+
+  // accessor for subclasses to read the allow roaming property
+  bool allow_roaming_property() const { return allow_roaming_; }
 
  private:
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityTest;
   friend class CellularTest;
-  FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
-  FRIEND_TEST(CellularCapabilityGSMTest, UpdateStatus);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
-  FRIEND_TEST(CellularCapabilityTest, EnableModemSucceed);
-  FRIEND_TEST(CellularCapabilityTest, FinishEnable);
-  FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
-  FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
-  FRIEND_TEST(CellularCapabilityTest, TryApns);
-  FRIEND_TEST(CellularServiceTest, FriendlyName);
-  FRIEND_TEST(CellularTest, StartCDMARegister);
-  FRIEND_TEST(CellularTest, StartConnected);
-  FRIEND_TEST(CellularTest, StartGSMRegister);
-  FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, Connect);
-  FRIEND_TEST(CellularTest, ConnectFailure);
-  FRIEND_TEST(CellularTest, Disconnect);
+  FRIEND_TEST(CellularTest, TearDown);
 
   void HelpRegisterDerivedBool(
       const std::string &name,
       bool(CellularCapability::*get)(Error *error),
       void(CellularCapability::*set)(const bool &value, Error *error));
 
+  // DBUS accessors to read/modify the allow roaming property
   bool GetAllowRoaming(Error */*error*/) { return allow_roaming_; }
   void SetAllowRoaming(const bool &value, Error *error);
-
-  // Method reply and signal callbacks from Modem interface
-  virtual void OnModemStateChangedSignal(
-      uint32 old_state, uint32 new_state, uint32 reason);
-  virtual void OnGetModemInfoReply(const ResultCallback &callback,
-                                   const ModemHardwareInfo &info,
-                                   const Error &error);
-
-  // Method reply callbacks from Modem.Simple interface
-  virtual void OnGetModemStatusReply(const ResultCallback &callback,
-                                     const DBusPropertiesMap &props,
-                                     const Error &error);
-  virtual void OnDisconnectReply(const ResultCallback &callback,
-                                 const Error &error);
 
   Cellular *cellular_;
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
 
-  scoped_ptr<ModemProxyInterface> proxy_;
-  scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
-  base::WeakPtrFactory<CellularCapability> weak_ptr_factory_;
+  // User preference to allow or disallow roaming
+  bool allow_roaming_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapability);
 };

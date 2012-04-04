@@ -6,6 +6,7 @@
 #define SHILL_CELLULAR_CAPABILITY_GSM_
 
 #include <deque>
+#include <string>
 
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
@@ -14,6 +15,7 @@
 #include "shill/accessor_interface.h"
 #include "shill/cellular.h"
 #include "shill/cellular_capability.h"
+#include "shill/cellular_capability_classic.h"
 #include "shill/modem_gsm_card_proxy_interface.h"
 #include "shill/modem_gsm_network_proxy_interface.h"
 
@@ -21,7 +23,7 @@ struct mobile_provider;
 
 namespace shill {
 
-class CellularCapabilityGSM : public CellularCapability {
+class CellularCapabilityGSM : public CellularCapabilityClassic {
  public:
   CellularCapabilityGSM(Cellular *cellular, ProxyFactory *proxy_factory);
 
@@ -74,6 +76,8 @@ class CellularCapabilityGSM : public CellularCapability {
   // retrying the Connect operation.
   virtual void OnConnectReply(const ResultCallback &callback,
                               const Error &error);
+
+  virtual bool AllowRoaming();
 
  private:
   friend class CellularTest;

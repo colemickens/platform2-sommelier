@@ -6,6 +6,7 @@
 #define SHILL_CELLULAR_
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -143,6 +144,10 @@ class Cellular : public Device {
   // destroying or updating the CellularService.
   void HandleNewRegistrationState();
 
+  virtual void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties);
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties);
 
@@ -181,6 +186,7 @@ class Cellular : public Device {
   friend class CellularCapabilityTest;
   friend class CellularCapabilityCDMATest;
   friend class CellularCapabilityGSMTest;
+  friend class CellularServiceTest;
   friend class ModemTest;
   FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityCDMATest, GetRegistrationState);

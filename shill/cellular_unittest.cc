@@ -14,6 +14,7 @@
 #include <mobile_provider.h>
 
 #include "shill/cellular_capability_cdma.h"
+#include "shill/cellular_capability_classic.h"
 #include "shill/cellular_capability_gsm.h"
 #include "shill/cellular_service.h"
 #include "shill/error.h"
@@ -325,6 +326,11 @@ class CellularTest : public testing::Test {
     device_->InitCapability(type, &proxy_factory_);
   }
 
+  CellularCapabilityClassic *GetCapabilityClassic() {
+    return dynamic_cast<CellularCapabilityClassic *>(
+        device_->capability_.get());
+  }
+
   CellularCapabilityCDMA *GetCapabilityCDMA() {
     return dynamic_cast<CellularCapabilityCDMA *>(device_->capability_.get());
   }
@@ -387,8 +393,8 @@ TEST_F(CellularTest, StartCDMARegister) {
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(kMEID, device_->capability_->meid_);
-  EXPECT_EQ(kTestCarrier, device_->capability_->carrier_);
+  EXPECT_EQ(kMEID, GetCapabilityClassic()->meid_);
+  EXPECT_EQ(kTestCarrier, GetCapabilityClassic()->carrier_);
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(flimflam::kNetworkTechnology1Xrtt,
@@ -440,10 +446,10 @@ TEST_F(CellularTest, StartGSMRegister) {
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(kIMEI, device_->capability_->imei_);
-  EXPECT_EQ(kIMSI, device_->capability_->imsi_);
+  EXPECT_EQ(kIMEI, GetCapabilityGSM()->imei_);
+  EXPECT_EQ(kIMSI, GetCapabilityGSM()->imsi_);
   EXPECT_EQ(kTestCarrier, GetCapabilityGSM()->spn_);
-  EXPECT_EQ(kMSISDN, device_->capability_->mdn_);
+  EXPECT_EQ(kMSISDN, GetCapabilityGSM()->mdn_);
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
@@ -461,7 +467,7 @@ TEST_F(CellularTest, StartConnected) {
       .WillOnce(Return(true));
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
-  device_->capability_->meid_ = kMEID;
+  GetCapabilityClassic()->meid_ = kMEID;
   ExpectCdmaStartModem(flimflam::kNetworkTechnologyEvdo);
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
@@ -475,7 +481,7 @@ TEST_F(CellularTest, StartLinked) {
       .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
   SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
-  device_->capability_->meid_ = kMEID;
+  GetCapabilityClassic()->meid_ = kMEID;
   ExpectCdmaStartModem(flimflam::kNetworkTechnologyEvdo);
   EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _))
       .WillOnce(Return(dhcp_config_));
@@ -508,7 +514,8 @@ TEST_F(CellularTest, CreateService) {
 namespace {
 
 MATCHER(ContainsPhoneNumber, "") {
-  return ContainsKey(arg, CellularCapability::kConnectPropertyPhoneNumber);
+  return ContainsKey(arg,
+                     CellularCapabilityClassic::kConnectPropertyPhoneNumber);
 }
 
 }  // namespace
@@ -542,7 +549,7 @@ TEST_F(CellularTest, Connect) {
                       CellularCapability::kTimeoutConnect))
                 .Times(2)
                 .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
-  device_->capability_->simple_proxy_.reset(simple_proxy_.release());
+  GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
   device_->service_->roaming_state_ = flimflam::kRoamingStateHome;
   device_->state_ = Cellular::kStateRegistered;
   device_->Connect(&error);
@@ -570,7 +577,7 @@ TEST_F(CellularTest, Disconnect) {
   EXPECT_CALL(*proxy_,
               Disconnect(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
-  device_->capability_->proxy_.reset(proxy_.release());
+  GetCapabilityClassic()->proxy_.reset(proxy_.release());
   device_->Disconnect(&error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
@@ -585,7 +592,7 @@ TEST_F(CellularTest, ConnectFailure) {
   EXPECT_CALL(*simple_proxy_,
               Connect(_, _, _, CellularCapability::kTimeoutConnect))
                 .WillOnce(Invoke(this, &CellularTest::InvokeConnectFail));
-  device_->capability_->simple_proxy_.reset(simple_proxy_.release());
+  GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
   Error error;
   device_->Connect(&error);
   EXPECT_EQ(Service::kStateFailure, device_->service_->state());

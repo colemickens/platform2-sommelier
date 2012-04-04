@@ -79,7 +79,9 @@ class CellularCapabilityTest : public testing::Test {
 
   virtual void SetUp() {
     static_cast<Device *>(cellular_)->rtnl_handler_ = &rtnl_handler_;
-    capability_ = cellular_->capability_.get();
+
+    capability_ = dynamic_cast<CellularCapabilityClassic *>(
+        cellular_->capability_.get());
     device_adaptor_ =
         dynamic_cast<NiceMock<DeviceMockAdaptor> *>(cellular_->adaptor());
   }
@@ -199,7 +201,8 @@ class CellularCapabilityTest : public testing::Test {
 
   void SetCellularType(Cellular::Type type) {
     cellular_->InitCapability(type, &proxy_factory_);
-    capability_ = cellular_->capability_.get();
+    capability_ = dynamic_cast<CellularCapabilityClassic *>(
+        cellular_->capability_.get());
   }
 
   NiceMockControl control_;
@@ -215,7 +218,7 @@ class CellularCapabilityTest : public testing::Test {
   scoped_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
   scoped_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   TestProxyFactory proxy_factory_;
-  CellularCapability *capability_;  // Owned by |cellular_|.
+  CellularCapabilityClassic *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
   mobile_provider_db *provider_db_;
 };

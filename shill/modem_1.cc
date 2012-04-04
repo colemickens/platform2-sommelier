@@ -14,6 +14,11 @@ using std::string;
 
 namespace shill {
 
+namespace {
+// The default place where the system keeps symbolic links for network device
+const char kDefaultNetfilesPath[] = "/sys/class/net";
+} // namespace {}
+
 Modem1::Modem1(const string &owner,
                const string &path,
                ControlInterface *control_interface,
@@ -22,7 +27,8 @@ Modem1::Modem1(const string &owner,
                Manager *manager,
                mobile_provider_db *provider_db)
     : Modem(owner, path, control_interface, dispatcher, metrics, manager,
-            provider_db) {
+            provider_db),
+      netfiles_path_(kDefaultNetfilesPath) {
 }
 
 Modem1::~Modem1() {}
@@ -52,7 +58,7 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
                          string *name) const {
   string device_prop;
   if (!DBusProperties::GetString(modem_props,
-                                 Modem::kPropertyLinkName,
+                                 MM_MODEM_PROPERTY_DEVICE,
                                  &device_prop)) {
     return false;
   }
@@ -61,16 +67,15 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
   //  /sys/devices/pci0000:00/0000:00:1d.7/usb1/1-2
   FilePath device_path(device_prop);
 
-  // Each entry in /sys/class/net has the name of a network interface
-  // and is a symlink into the actual device structure:
+  // Each entry in |netfiles_path_" (typically /sys/class/net)
+  // has the name of a network interface and is a symlink into the
+  // actual device structure:
   //  eth0 -> ../../devices/pci0000:00/0000:00:1c.5/0000:01:00.0/net/eth0
   // Iterate over all of these and see if any of them point into
   // subdirectories of the sysfs path from the Device property.
-  FilePath netfiles_path("/sys/class/net");
-
   // FileEnumerator warns that it is a blocking interface; that
   // shouldn't be a problem here.
-  file_util::FileEnumerator netfiles(netfiles_path,
+  file_util::FileEnumerator netfiles(netfiles_path_,
                                      false, // don't recurse
                                      file_util::FileEnumerator::DIRECTORIES);
   for (FilePath link = netfiles.Next(); !link.empty(); link = netfiles.Next()) {
@@ -78,7 +83,7 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
     if (!file_util::ReadSymbolicLink(link, &target))
       continue;
     if (!target.IsAbsolute())
-      target = netfiles_path.Append(target);
+      target = netfiles_path_.Append(target);
     if (file_util::ContainsPath(device_path, target)) {
       *name = link.BaseName().value();
       return true;
@@ -99,6 +104,8 @@ void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &i_to_p) {
 
   // We cannot check the IP method to make sure it's not PPP. The IP
   // method will be checked later when the bearer object is fetched.
+  // TODO(jglasgow): We should pass i_to_p because there are lots of
+  // properties we might want
   CreateDeviceFromModemProperties(modem_properties->second);
 }
 
