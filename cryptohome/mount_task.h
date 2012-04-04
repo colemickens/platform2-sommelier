@@ -25,6 +25,7 @@
 #define CRYPTOHOME_MOUNT_TASK_H_
 
 #include <base/atomic_sequence_num.h>
+#include <base/memory/ref_counted.h>
 #include <base/threading/thread.h>
 #include <base/synchronization/waitable_event.h>
 #include <chromeos/process.h>
@@ -164,7 +165,7 @@ class MountTaskObserver {
   virtual bool MountTaskObserve(const MountTaskResult& result) = 0;
 };
 
-class MountTask : public Task {
+class MountTask : public base::RefCountedThreadSafe<MountTask> {
  public:
   MountTask(MountTaskObserver* observer,
             Mount* mount,

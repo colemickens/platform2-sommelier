@@ -685,7 +685,7 @@ bool Platform::EnumerateFiles(const std::string& path,
 bool Platform::EnumerateDirectoryEntries(const std::string& path,
                                          bool recursive,
                                          std::vector<std::string>* ent_list) {
-  file_util::FileEnumerator::FILE_TYPE ft = static_cast<typeof(ft)>(
+  file_util::FileEnumerator::FileType ft = static_cast<typeof(ft)>(
     file_util::FileEnumerator::FILES | file_util::FileEnumerator::DIRECTORIES |
     file_util::FileEnumerator::SHOW_SYM_LINKS);
   file_util::FileEnumerator ent_enum(FilePath(path), recursive, ft);

@@ -819,7 +819,7 @@ static void DeleteDirectoryContents(const FilePath& dir) {
   file_util::FileEnumerator subdir_enumerator(
       dir,
       false,
-      static_cast<file_util::FileEnumerator::FILE_TYPE>(
+      static_cast<file_util::FileEnumerator::FileType>(
           file_util::FileEnumerator::FILES |
           file_util::FileEnumerator::DIRECTORIES |
           file_util::FileEnumerator::SHOW_SYM_LINKS));

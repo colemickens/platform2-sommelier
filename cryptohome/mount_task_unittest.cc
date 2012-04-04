@@ -7,6 +7,7 @@
 #include "mount_task.h"
 
 #include <base/at_exit.h>
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/platform_thread.h>
@@ -104,19 +105,23 @@ TEST_F(MountTaskTest, ResultEqualsTest) {
 
 TEST_F(MountTaskTest, EventTest) {
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTask(NULL, NULL, UsernamePasskey());
+  scoped_refptr<MountTask> mount_task
+      = new MountTask(NULL, NULL, UsernamePasskey());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTask::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
 
 TEST_F(MountTaskTest, ObserveTest) {
   MountTaskNotifier notifier;
-  MountTask* mount_task = new MountTask(&notifier, NULL, UsernamePasskey());
+  scoped_refptr<MountTask> mount_task
+      = new MountTask(&notifier, NULL, UsernamePasskey());
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTask::Run, mount_task.get()));
   for (unsigned int i = 0; i < 64; i++) {
     if (!notifier.notified_) {
       PlatformThread::Sleep(100);
@@ -129,10 +134,11 @@ TEST_F(MountTaskTest, ObserveTest) {
 
 TEST_F(MountTaskTest, NopTest) {
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskNop(NULL);
+  scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(NULL);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskNop::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
@@ -143,11 +149,12 @@ TEST_F(MountTaskTest, MountTest) {
 
   ASSERT_FALSE(event_.IsSignaled());
   Mount::MountArgs mount_args;
-  MountTask* mount_task = new MountTaskMount(NULL, &mount_, UsernamePasskey(),
-                                             mount_args);
+  scoped_refptr<MountTaskMount> mount_task =
+      new MountTaskMount(NULL, &mount_, UsernamePasskey(), mount_args);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskMount::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
@@ -157,10 +164,12 @@ TEST_F(MountTaskTest, MountGuestTest) {
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskMountGuest(NULL, &mount_);
+  scoped_refptr<MountTaskMountGuest> mount_task
+      = new MountTaskMountGuest(NULL, &mount_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskMountGuest::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
@@ -170,11 +179,12 @@ TEST_F(MountTaskTest, MigratePasskeyTest) {
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskMigratePasskey(NULL, &mount_,
-                                                      UsernamePasskey(), "");
+  scoped_refptr<MountTaskMigratePasskey> mount_task
+      = new MountTaskMigratePasskey(NULL, &mount_, UsernamePasskey(), "");
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskMigratePasskey::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
@@ -184,10 +194,12 @@ TEST_F(MountTaskTest, UnmountTest) {
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskUnmount(NULL, &mount_);
+  scoped_refptr<MountTaskUnmount> mount_task
+      = new MountTaskUnmount(NULL, &mount_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskUnmount::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
@@ -197,11 +209,12 @@ TEST_F(MountTaskTest, TestCredentailsTest) {
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskTestCredentials(NULL, &mount_,
-                                                       UsernamePasskey());
+  scoped_refptr<MountTaskTestCredentials> mount_task
+      = new MountTaskTestCredentials(NULL, &mount_, UsernamePasskey());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskTestCredentials::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
@@ -212,42 +225,48 @@ TEST_F(MountTaskTest, RemoveTest) {
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskRemove(NULL, NULL, UsernamePasskey(),
-                                              &homedirs);
+  scoped_refptr<MountTaskRemove> mount_task
+      = new MountTaskRemove(NULL, NULL, UsernamePasskey(), &homedirs);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskRemove::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
 
 TEST_F(MountTaskTest, ResetTpmContext) {
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskResetTpmContext(NULL, NULL);
+  scoped_refptr<MountTaskResetTpmContext> mount_task
+      = new MountTaskResetTpmContext(NULL, NULL);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskResetTpmContext::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
 
 TEST_F(MountTaskTest, RemoveTrackedSubdirectories) {
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskRemoveTrackedSubdirectories(NULL,
-                                                                   &mount_);
+  scoped_refptr<MountTaskRemoveTrackedSubdirectories> mount_task
+      = new MountTaskRemoveTrackedSubdirectories(NULL, &mount_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskRemoveTrackedSubdirectories::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
 
 TEST_F(MountTaskTest, AutomaticFreeDiskSpace) {
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskAutomaticFreeDiskSpace(NULL, &mount_);
+  scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task
+      = new MountTaskAutomaticFreeDiskSpace(NULL, &mount_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
-  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskAutomaticFreeDiskSpace::Run, mount_task.get()));
   event_.TimedWait(wait_time_);
   ASSERT_TRUE(event_.IsSignaled());
 }
