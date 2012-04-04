@@ -62,6 +62,9 @@ class OpenVPNDriver : public VPNDriver,
   virtual void OnReconnecting();
 
   virtual void InitPropertyStore(PropertyStore *store);
+
+  virtual std::string GetProviderType() const;
+
   void ClearMappedProperty(const size_t &index, Error *error);
   std::string GetMappedProperty(const size_t &index, Error *error);
   void SetMappedProperty(const size_t &index,

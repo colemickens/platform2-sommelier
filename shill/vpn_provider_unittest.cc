@@ -75,11 +75,16 @@ TEST_F(VPNProviderTest, GetService) {
   args.SetString(flimflam::kProviderNameProperty, kName);
   EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
   EXPECT_CALL(manager_, RegisterService(_));
-  VPNServiceRefPtr service = provider_.GetService(args, &e);
+  VPNServiceRefPtr service0 = provider_.GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
-  ASSERT_TRUE(service);
-  EXPECT_EQ("vpn_10_8_0_1_vpn_name", service->GetStorageIdentifier());
-  EXPECT_EQ(kName, service->friendly_name());
+  ASSERT_TRUE(service0);
+  EXPECT_EQ("vpn_10_8_0_1_vpn_name", service0->GetStorageIdentifier());
+  EXPECT_EQ(kName, service0->friendly_name());
+
+  // A second call should return the same service.
+  VPNServiceRefPtr service1 = provider_.GetService(args, &e);
+  EXPECT_TRUE(e.IsSuccess());
+  ASSERT_EQ(service0.get(), service1.get());
 }
 
 TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {

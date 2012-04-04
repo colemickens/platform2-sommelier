@@ -28,6 +28,7 @@ class VPNDriver {
   virtual bool Load(StoreInterface *storage, const std::string &storage_id) = 0;
   virtual bool Save(StoreInterface *storage, const std::string &storage_id) = 0;
   virtual void InitPropertyStore(PropertyStore *store) = 0;
+  virtual std::string GetProviderType() const = 0;
 };
 
 }  // namespace shill

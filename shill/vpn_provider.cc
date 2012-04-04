@@ -49,6 +49,16 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
     return NULL;
   }
 
+  // Find a service in the provider list which matches these parameters.
+  for (vector<VPNServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end();
+       ++it) {
+    if (type == (*it)->driver()->GetProviderType() &&
+        (*it)->GetStorageIdentifier() == storage_id) {
+      return *it;
+    }
+  }
+
   scoped_ptr<VPNDriver> driver;
   if (type == flimflam::kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(

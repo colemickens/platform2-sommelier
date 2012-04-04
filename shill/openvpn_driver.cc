@@ -668,6 +668,10 @@ void OpenVPNDriver::InitPropertyStore(PropertyStore *store) {
   // crosbug.com/27323
 }
 
+string OpenVPNDriver::GetProviderType() const {
+  return flimflam::kProviderOpenVpn;
+}
+
 void OpenVPNDriver::ClearMappedProperty(const size_t &index,
                                         Error *error) {
   CHECK(index < arraysize(kProperties));
