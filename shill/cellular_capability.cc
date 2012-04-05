@@ -97,9 +97,10 @@ void CellularCapability::RunNextStep(CellularTaskList *tasks) {
 
 void CellularCapability::StepCompletedCallback(
     const ResultCallback &callback,
+    bool ignore_error,
     CellularTaskList *tasks,
     const Error &error) {
-  if (error.IsSuccess() && !tasks->empty()) {
+  if ((ignore_error || error.IsSuccess()) && !tasks->empty()) {
     RunNextStep(tasks);
     return;
   }
@@ -185,6 +186,28 @@ void CellularCapability::GetModemInfo(const ResultCallback &callback) {
   proxy_->GetModemInfo(&error, cb, kTimeoutDefault);
   if (error.IsFailure())
       callback.Run(error);
+}
+
+void CellularCapability::StopModem(Error *error,
+                                   const ResultCallback &callback) {
+  VLOG(2) << __func__;
+
+  CellularTaskList *tasks = new CellularTaskList();
+  ResultCallback cb =
+      Bind(&CellularCapability::StepCompletedCallback,
+           weak_ptr_factory_.GetWeakPtr(), callback, false, tasks);
+  ResultCallback cb_ignore_error =
+      Bind(&CellularCapability::StepCompletedCallback,
+           weak_ptr_factory_.GetWeakPtr(), callback, true, tasks);
+  tasks->push_back(Bind(&CellularCapability::Disconnect,
+                        weak_ptr_factory_.GetWeakPtr(),
+                        static_cast<Error *>(NULL), cb_ignore_error));
+  tasks->push_back(Bind(&CellularCapability::DisableModem,
+                        weak_ptr_factory_.GetWeakPtr(), cb));
+  tasks->push_back(Bind(&CellularCapability::FinishDisable,
+                        weak_ptr_factory_.GetWeakPtr(), cb));
+
+  RunNextStep(tasks);
 }
 
 void CellularCapability::Connect(const DBusPropertiesMap &properties,

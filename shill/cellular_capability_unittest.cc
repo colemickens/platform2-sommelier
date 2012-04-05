@@ -115,6 +115,10 @@ class CellularCapabilityTest : public testing::Test {
                         int timeout) {
     callback.Run(Error());
   }
+  void InvokeDisconnectFail(Error *error, const ResultCallback &callback,
+                            int timeout) {
+    callback.Run(Error(Error::kOperationFailed));
+  }
   void InvokeGetModemStatus(Error *error,
                             const DBusPropertyMapCallback &callback,
                             int timeout) {
@@ -390,6 +394,38 @@ TEST_F(CellularCapabilityTest, TryApns) {
   EXPECT_EQ(1, gsm_capability->apn_try_list_.size());
   capability_->OnConnectReply(ResultCallback(), cerror);
   EXPECT_EQ(0, gsm_capability->apn_try_list_.size());
+}
+
+TEST_F(CellularCapabilityTest, StopModemDisconnectSuccess) {
+  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this,
+                       &CellularCapabilityTest::InvokeDisconnect));
+  EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this,
+                       &CellularCapabilityTest::InvokeEnable));
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  SetProxy();
+
+  Error error;
+  capability_->StopModem(
+      &error, Bind(&CellularCapabilityTest::TestCallback, Unretained(this)));
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularCapabilityTest, StopModemDisconnectFail) {
+  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this,
+                       &CellularCapabilityTest::InvokeDisconnectFail));
+  EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this,
+                       &CellularCapabilityTest::InvokeEnable));
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  SetProxy();
+
+  Error error;
+  capability_->StopModem(
+      &error, Bind(&CellularCapabilityTest::TestCallback, Unretained(this)));
+  dispatcher_.DispatchPendingEvents();
 }
 
 }  // namespace shill

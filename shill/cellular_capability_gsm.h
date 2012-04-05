@@ -27,7 +27,6 @@ class CellularCapabilityGSM : public CellularCapability {
 
   // Inherited from CellularCapability.
   virtual void StartModem(Error *error, const ResultCallback &callback);
-  virtual void StopModem(Error *error, const ResultCallback &callback);
   virtual void OnServiceCreated();
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);

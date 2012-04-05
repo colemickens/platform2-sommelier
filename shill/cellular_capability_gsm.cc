@@ -115,7 +115,10 @@ void CellularCapabilityGSM::StartModem(Error *error,
   CellularTaskList *tasks = new CellularTaskList();
   ResultCallback cb =
       Bind(&CellularCapabilityGSM::StepCompletedCallback,
-           weak_ptr_factory_.GetWeakPtr(), callback, tasks);
+           weak_ptr_factory_.GetWeakPtr(), callback, false, tasks);
+  ResultCallback cb_ignore_error =
+        Bind(&CellularCapabilityGSM::StepCompletedCallback,
+                   weak_ptr_factory_.GetWeakPtr(), callback, true, tasks);
   tasks->push_back(Bind(&CellularCapabilityGSM::EnableModem,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityGSM::Register,
@@ -127,33 +130,14 @@ void CellularCapabilityGSM::StartModem(Error *error,
   tasks->push_back(Bind(&CellularCapabilityGSM::GetIMSI,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityGSM::GetSPN,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
+                        weak_ptr_factory_.GetWeakPtr(), cb_ignore_error));
   tasks->push_back(Bind(&CellularCapabilityGSM::GetMSISDN,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
+                        weak_ptr_factory_.GetWeakPtr(), cb_ignore_error));
   tasks->push_back(Bind(&CellularCapabilityGSM::GetProperties,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityGSM::GetModemInfo,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityGSM::FinishEnable,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
-
-  RunNextStep(tasks);
-}
-
-void CellularCapabilityGSM::StopModem(Error *error,
-                                      const ResultCallback &callback) {
-  VLOG(2) << __func__;
-
-  CellularTaskList *tasks = new CellularTaskList();
-  ResultCallback cb =
-      Bind(&CellularCapabilityGSM::StepCompletedCallback,
-           weak_ptr_factory_.GetWeakPtr(), callback, tasks);
-  tasks->push_back(Bind(&CellularCapabilityGSM::Disconnect,
-                        weak_ptr_factory_.GetWeakPtr(),
-                        static_cast<Error *>(NULL), cb));
-  tasks->push_back(Bind(&CellularCapabilityGSM::DisableModem,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
-  tasks->push_back(Bind(&CellularCapabilityGSM::FinishDisable,
                         weak_ptr_factory_.GetWeakPtr(), cb));
 
   RunNextStep(tasks);
@@ -808,8 +792,7 @@ void CellularCapabilityGSM::OnGetSPNReply(const ResultCallback &callback,
   } else {
     VLOG(2) << "GetSPN failed - " << error;
   }
-  // Ignore the error - it's not fatal.
-  callback.Run(Error());
+  callback.Run(error);
 }
 
 void CellularCapabilityGSM::OnGetMSISDNReply(const ResultCallback &callback,
@@ -821,8 +804,7 @@ void CellularCapabilityGSM::OnGetMSISDNReply(const ResultCallback &callback,
   } else {
     VLOG(2) << "GetMSISDN failed - " << error;
   }
-  // Ignore the error - it's not fatal.
-  callback.Run(Error());
+  callback.Run(error);
 }
 
 }  // namespace shill

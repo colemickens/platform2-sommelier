@@ -60,7 +60,7 @@ void CellularCapabilityCDMA::StartModem(Error *error,
   CellularTaskList *tasks = new CellularTaskList();
   ResultCallback cb =
       Bind(&CellularCapabilityCDMA::StepCompletedCallback,
-           weak_ptr_factory_.GetWeakPtr(), callback, tasks);
+           weak_ptr_factory_.GetWeakPtr(), callback, false, tasks);
   tasks->push_back(Bind(&CellularCapabilityCDMA::EnableModem,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityCDMA::GetModemStatus,
@@ -70,24 +70,6 @@ void CellularCapabilityCDMA::StartModem(Error *error,
   tasks->push_back(Bind(&CellularCapabilityCDMA::GetModemInfo,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityCDMA::FinishEnable,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
-
-  RunNextStep(tasks);
-}
-
-void CellularCapabilityCDMA::StopModem(Error *error,
-                                        const ResultCallback &callback) {
-  VLOG(2) << __func__;
-  CellularTaskList *tasks = new CellularTaskList();
-  ResultCallback cb =
-      Bind(&CellularCapabilityCDMA::StepCompletedCallback,
-           weak_ptr_factory_.GetWeakPtr(), callback, tasks);
-  tasks->push_back(Bind(&CellularCapabilityCDMA::Disconnect,
-                        weak_ptr_factory_.GetWeakPtr(),
-                        static_cast<Error *>(NULL), cb));
-  tasks->push_back(Bind(&CellularCapabilityCDMA::DisableModem,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
-  tasks->push_back(Bind(&CellularCapabilityCDMA::FinishDisable,
                         weak_ptr_factory_.GetWeakPtr(), cb));
 
   RunNextStep(tasks);

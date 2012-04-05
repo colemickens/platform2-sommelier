@@ -72,9 +72,10 @@ class CellularCapability {
   // have been completed, at which point StartModem() is finished.
   virtual void StartModem(Error *error,
                           const ResultCallback &callback) = 0;
-  // StopModem is also a multi-step operation consisting of several
-  // non-blocking calls.
-  virtual void StopModem(Error *error, const ResultCallback &callback) = 0;
+  // StopModem disconnects and disables a modem asynchronously.
+  // |callback| is invoked when this completes and the result is passed
+  // to the callback.
+  virtual void StopModem(Error *error, const ResultCallback &callback);
   virtual void Connect(const DBusPropertiesMap &properties, Error *error,
                        const ResultCallback &callback);
   virtual void Disconnect(Error *error, const ResultCallback &callback);
@@ -145,7 +146,13 @@ class CellularCapability {
   // Run the next task in a list.
   // Precondition: |tasks| is not empty.
   void RunNextStep(CellularTaskList *tasks);
-  void StepCompletedCallback(const ResultCallback &callback,
+  // StepCompletedCallback is called after a task completes.
+  // |callback| is the original callback that needs to be invoked when all of
+  // the tasks complete or if there is a failure.  |ignore_error| will be set
+  // to true if the next task should be run regardless of the result of the
+  // just-completed task.  |tasks| is the list of tasks remaining.  |error| is
+  // the result of the just-completed task.
+  void StepCompletedCallback(const ResultCallback &callback, bool ignore_error,
                              CellularTaskList *tasks, const Error &error);
   // Properties
   bool allow_roaming_;
@@ -163,8 +170,9 @@ class CellularCapability {
   std::string hardware_revision_;
 
  private:
-  friend class CellularTest;
+  friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityTest;
+  friend class CellularTest;
   FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateStatus);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);

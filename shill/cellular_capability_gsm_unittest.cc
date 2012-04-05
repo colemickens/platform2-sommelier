@@ -18,8 +18,11 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
+#include "shill/mock_modem_proxy.h"
+#include "shill/mock_modem_simple_proxy.h"
 #include "shill/mock_profile.h"
 #include "shill/nice_mock_control.h"
+#include "shill/proxy_factory.h"
 
 using base::Bind;
 using base::Unretained;
@@ -49,8 +52,11 @@ class CellularCapabilityGSMTest : public testing::Test {
                                "",
                                "",
                                NULL)),
+        proxy_(new MockModemProxy()),
+        simple_proxy_(new MockModemSimpleProxy()),
         card_proxy_(new MockModemGSMCardProxy()),
         network_proxy_(new MockModemGSMNetworkProxy()),
+        proxy_factory_(this),
         capability_(NULL),
         device_adaptor_(NULL),
         provider_db_(NULL) {}
@@ -70,6 +76,10 @@ class CellularCapabilityGSMTest : public testing::Test {
         dynamic_cast<NiceMock<DeviceMockAdaptor> *>(cellular_->adaptor());
   }
 
+  void InvokeEnable(bool enable, Error *error,
+                    const ResultCallback &callback, int timeout) {
+    callback.Run(Error());
+  }
   void InvokeGetIMEI(Error *error, const GSMIdentifierCallback &callback,
                      int timeout) {
     callback.Run(kIMEI, Error());
@@ -86,9 +96,17 @@ class CellularCapabilityGSMTest : public testing::Test {
                        int timeout) {
     callback.Run(kMSISDN, Error());
   }
+  void InvokeGetMSISDNFail(Error *error, const GSMIdentifierCallback &callback,
+                           int timeout) {
+    callback.Run("", Error(Error::kOperationFailed));
+  }
   void InvokeGetSPN(Error *error, const GSMIdentifierCallback &callback,
                     int timeout) {
     callback.Run(kTestCarrier, Error());
+  }
+  void InvokeGetSPNFail(Error *error, const GSMIdentifierCallback &callback,
+                        int timeout) {
+    callback.Run("", Error(Error::kOperationFailed));
   }
   void InvokeGetSignalQuality(Error *error,
                               const SignalQualityCallback &callback,
@@ -133,6 +151,17 @@ class CellularCapabilityGSMTest : public testing::Test {
     results[1][CellularCapabilityGSM::kNetworkPropertyID] = kScanID1;
     callback.Run(results, Error());
   }
+  void InvokeGetModemStatus(Error *error,
+                            const DBusPropertyMapCallback &callback,
+                            int timeout) {
+    DBusPropertiesMap props;
+    callback.Run(props, Error());
+  }
+  void InvokeGetModemInfo(Error *error, const ModemInfoCallback &callback,
+                          int timeout) {
+    ModemHardwareInfo info;
+    callback.Run(info, Error());
+  }
 
   MOCK_METHOD1(TestCallback, void(const Error &error));
 
@@ -150,12 +179,52 @@ class CellularCapabilityGSMTest : public testing::Test {
   static const char kScanID1[];
   static const int kStrength;
 
+  class TestProxyFactory : public ProxyFactory {
+   public:
+    explicit TestProxyFactory(CellularCapabilityGSMTest *test) : test_(test) {}
+
+    virtual ModemProxyInterface *CreateModemProxy(
+        const string &/*path*/,
+        const string &/*service*/) {
+      return test_->proxy_.release();
+    }
+
+    virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
+        const string &/*path*/,
+        const string &/*service*/) {
+      return test_->simple_proxy_.release();
+    }
+
+    virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
+        const string &/*path*/,
+        const string &/*service*/) {
+      return test_->card_proxy_.release();
+    }
+
+    virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
+        const string &/*path*/,
+        const string &/*service*/) {
+      return test_->network_proxy_.release();
+    }
+
+   private:
+    CellularCapabilityGSMTest *test_;
+  };
+
+  void SetProxy() {
+    capability_->proxy_.reset(proxy_.release());
+  }
+
   void SetCardProxy() {
     capability_->card_proxy_.reset(card_proxy_.release());
   }
 
   void SetNetworkProxy() {
     capability_->network_proxy_.reset(network_proxy_.release());
+  }
+
+  void SetProxyFactory() {
+    capability_->proxy_factory_ = &proxy_factory_;
   }
 
   void SetAccessTechnology(uint32 technology) {
@@ -177,12 +246,48 @@ class CellularCapabilityGSMTest : public testing::Test {
     cellular_->provider_db_ = provider_db_;
   }
 
+  void SetupCommonStartModemExpectations() {
+    EXPECT_CALL(*proxy_, set_state_changed_callback(_));
+    EXPECT_CALL(*network_proxy_, set_signal_quality_callback(_));
+    EXPECT_CALL(*network_proxy_, set_network_mode_callback(_));
+    EXPECT_CALL(*network_proxy_, set_registration_info_callback(_));
+
+    EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutEnable))
+        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeEnable));
+    EXPECT_CALL(*network_proxy_,
+                Register(_, _, _, CellularCapabilityGSM::kTimeoutRegister))
+        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeRegister));
+    EXPECT_CALL(*simple_proxy_,
+                GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
+        .WillOnce(Invoke(this,
+                         &CellularCapabilityGSMTest::InvokeGetModemStatus));
+    EXPECT_CALL(*card_proxy_,
+                GetIMEI(_, _, CellularCapability::kTimeoutDefault))
+        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetIMEI));
+    EXPECT_CALL(*card_proxy_,
+                GetIMSI(_, _, CellularCapability::kTimeoutDefault))
+        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetIMSI));
+    EXPECT_CALL(*network_proxy_, AccessTechnology());
+    EXPECT_CALL(*card_proxy_, EnabledFacilityLocks());
+    EXPECT_CALL(*proxy_,
+                GetModemInfo(_, _, CellularCapability::kTimeoutDefault))
+        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetModemInfo));
+    EXPECT_CALL(*network_proxy_,
+                GetRegistrationInfo(_, _, CellularCapability::kTimeoutDefault));
+    EXPECT_CALL(*network_proxy_,
+                GetSignalQuality(_, _, CellularCapability::kTimeoutDefault));
+    EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  }
+
   NiceMockControl control_;
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
   CellularRefPtr cellular_;
+  scoped_ptr<MockModemProxy> proxy_;
+  scoped_ptr<MockModemSimpleProxy> simple_proxy_;
   scoped_ptr<MockModemGSMCardProxy> card_proxy_;
   scoped_ptr<MockModemGSMNetworkProxy> network_proxy_;
+  TestProxyFactory proxy_factory_;
   CellularCapabilityGSM *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
   mobile_provider_db *provider_db_;
@@ -683,6 +788,54 @@ TEST_F(CellularCapabilityGSMTest, SetupApnTryList) {
   EXPECT_FALSE(props.find(flimflam::kApnUsernameProperty) == props.end());
   EXPECT_EQ(kLastGoodUsername,
             props[flimflam::kApnUsernameProperty].reader().get_string());
+}
+
+TEST_F(CellularCapabilityGSMTest, StartModemSuccess) {
+  SetupCommonStartModemExpectations();
+  EXPECT_CALL(*card_proxy_,
+              GetSPN(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetSPN));
+  EXPECT_CALL(*card_proxy_,
+              GetMSISDN(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetMSISDN));
+  SetProxyFactory();
+
+  Error error;
+  capability_->StartModem(
+      &error, Bind(&CellularCapabilityGSMTest::TestCallback, Unretained(this)));
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularCapabilityGSMTest, StartModemGetSPNFail) {
+  SetupCommonStartModemExpectations();
+  EXPECT_CALL(*card_proxy_,
+              GetSPN(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetSPNFail));
+  EXPECT_CALL(*card_proxy_,
+              GetMSISDN(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetMSISDN));
+  SetProxyFactory();
+
+  Error error;
+  capability_->StartModem(
+      &error, Bind(&CellularCapabilityGSMTest::TestCallback, Unretained(this)));
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularCapabilityGSMTest, StartModemGetMSISDNFail) {
+  SetupCommonStartModemExpectations();
+  EXPECT_CALL(*card_proxy_,
+              GetSPN(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetSPN));
+  EXPECT_CALL(*card_proxy_,
+              GetMSISDN(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetMSISDNFail));
+  SetProxyFactory();
+
+  Error error;
+  capability_->StartModem(
+      &error, Bind(&CellularCapabilityGSMTest::TestCallback, Unretained(this)));
+  dispatcher_.DispatchPendingEvents();
 }
 
 }  // namespace shill
