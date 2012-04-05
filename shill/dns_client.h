@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -83,9 +84,8 @@ class DNSClient {
   int timeout_ms_;
   bool running_;
   scoped_ptr<DNSClientState> resolver_state_;
+  base::CancelableClosure timeout_closure_;
   base::WeakPtrFactory<DNSClient> weak_ptr_factory_;
-  base::Callback<void(int)> read_callback_;
-  base::Callback<void(int)> write_callback_;
   Ares *ares_;
   Time *time_;
 

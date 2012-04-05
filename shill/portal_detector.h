@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
@@ -154,6 +155,8 @@ class PortalDetector {
   ConnectionRefPtr connection_;
   EventDispatcher *dispatcher_;
   base::WeakPtrFactory<PortalDetector> weak_ptr_factory_;
+  base::CancelableClosure attempt_timeout_;
+  base::CancelableClosure start_attempt_;
   base::Callback<void(const Result &)> portal_result_callback_;
   scoped_ptr<HTTPRequest> request_;
   base::Callback<void(const ByteString &)> request_read_callback_;

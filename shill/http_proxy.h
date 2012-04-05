@@ -144,6 +144,7 @@ class HTTPProxy {
   int server_socket_;
   bool is_route_requested_;
   base::CancelableClosure idle_timeout_;
+  base::CancelableClosure transaction_timeout_;
   std::vector<std::string> client_headers_;
   std::string server_hostname_;
   ByteString client_data_;

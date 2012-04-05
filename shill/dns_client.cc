@@ -67,10 +67,6 @@ DNSClient::DNSClient(IPAddress::Family family,
       running_(false),
       resolver_state_(NULL),
       weak_ptr_factory_(this),
-      read_callback_(Bind(&DNSClient::HandleDNSRead,
-                          weak_ptr_factory_.GetWeakPtr())),
-      write_callback_(Bind(&DNSClient::HandleDNSWrite,
-                           weak_ptr_factory_.GetWeakPtr())),
       ares_(Ares::GetInstance()),
       time_(Time::GetInstance()) {}
 
@@ -197,7 +193,7 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
   }
   VLOG(3) << "In " << __func__;
   running_ = false;
-  weak_ptr_factory_.InvalidateWeakPtrs();
+  timeout_closure_.Cancel();
   dispatcher_->PostTask(Bind(&DNSClient::HandleCompletion,
                              weak_ptr_factory_.GetWeakPtr()));
 
@@ -275,6 +271,10 @@ bool DNSClient::RefreshHandles() {
   int action_bits = ares_->GetSock(resolver_state_->channel, sockets,
                                    ARES_GETSOCK_MAXNUM);
 
+  base::Callback<void(int)> read_callback(
+      Bind(&DNSClient::HandleDNSRead, weak_ptr_factory_.GetWeakPtr()));
+  base::Callback<void(int)> write_callback(
+      Bind(&DNSClient::HandleDNSWrite, weak_ptr_factory_.GetWeakPtr()));
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
       if (ContainsKey(old_read, sockets[i])) {
@@ -284,7 +284,7 @@ bool DNSClient::RefreshHandles() {
             std::tr1::shared_ptr<IOHandler> (
                 dispatcher_->CreateReadyHandler(sockets[i],
                                                 IOHandler::kModeInput,
-                                                read_callback_));
+                                                read_callback));
       }
     }
     if (ARES_GETSOCK_WRITABLE(action_bits, i)) {
@@ -295,7 +295,7 @@ bool DNSClient::RefreshHandles() {
             std::tr1::shared_ptr<IOHandler> (
                 dispatcher_->CreateReadyHandler(sockets[i],
                                                 IOHandler::kModeOutput,
-                                                write_callback_));
+                                                write_callback));
       }
     }
   }
@@ -313,7 +313,7 @@ bool DNSClient::RefreshHandles() {
   timersub(&now, &resolver_state_->start_time_, &elapsed_time);
   timeout_tv.tv_sec = timeout_ms_ / 1000;
   timeout_tv.tv_usec = (timeout_ms_ % 1000) * 1000;
-  weak_ptr_factory_.InvalidateWeakPtrs();
+  timeout_closure_.Cancel();
 
   if (timercmp(&elapsed_time, &timeout_tv, >=)) {
     // There are 3 cases of interest:
@@ -336,9 +336,10 @@ bool DNSClient::RefreshHandles() {
     timersub(&timeout_tv, &elapsed_time, &max);
     struct timeval *tv = ares_->Timeout(resolver_state_->channel,
                                         &max, &ret_tv);
-    dispatcher_->PostDelayedTask(
-        Bind(&DNSClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()),
-        tv->tv_sec * 1000 + tv->tv_usec / 1000);
+    timeout_closure_.Reset(
+        Bind(&DNSClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()));
+    dispatcher_->PostDelayedTask(timeout_closure_.callback(),
+                                 tv->tv_sec * 1000 + tv->tv_usec / 1000);
   }
 
   return true;

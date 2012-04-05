@@ -140,7 +140,7 @@ void HTTPRequest::Stop() {
     sockets_->Close(server_socket_);
     server_socket_ = -1;
   }
-  weak_ptr_factory_.InvalidateWeakPtrs();
+  timeout_closure_.Cancel();
   timeout_result_ = kResultUnknown;
 }
 
@@ -229,10 +229,10 @@ void HTTPRequest::SendStatus(Result result) {
 // Start a timeout for "the next event".
 void HTTPRequest::StartIdleTimeout(int timeout_seconds, Result timeout_result) {
   timeout_result_ = timeout_result;
-  weak_ptr_factory_.InvalidateWeakPtrs();
-  dispatcher_->PostDelayedTask(
-      Bind(&HTTPRequest::TimeoutTask, weak_ptr_factory_.GetWeakPtr()),
-      timeout_seconds * 1000);
+  timeout_closure_.Reset(
+      Bind(&HTTPRequest::TimeoutTask, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(timeout_closure_.callback(),
+                               timeout_seconds * 1000);
 }
 
 void HTTPRequest::TimeoutTask() {

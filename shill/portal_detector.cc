@@ -96,6 +96,7 @@ void PortalDetector::Stop() {
     return;
   }
 
+  start_attempt_.Cancel();
   StopAttempt();
   attempt_count_ = 0;
   request_.reset();
@@ -226,9 +227,10 @@ void PortalDetector::StartAttempt(int init_delay_seconds) {
   } else {
     next_attempt_delay = init_delay_seconds * 1000;
   }
-  dispatcher_->PostDelayedTask(
-      Bind(&PortalDetector::StartAttemptTask, weak_ptr_factory_.GetWeakPtr()),
-      next_attempt_delay);
+
+  start_attempt_.Reset(Bind(&PortalDetector::StartAttemptTask,
+                            weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(start_attempt_.callback(), next_attempt_delay);
 }
 
 void PortalDetector::StartAttemptTask() {
@@ -245,14 +247,15 @@ void PortalDetector::StartAttemptTask() {
     return;
   }
 
-  dispatcher_->PostDelayedTask(
-      Bind(&PortalDetector::TimeoutAttemptTask, weak_ptr_factory_.GetWeakPtr()),
-      kRequestTimeoutSeconds * 1000);
+  attempt_timeout_.Reset(Bind(&PortalDetector::TimeoutAttemptTask,
+                              weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(attempt_timeout_.callback(),
+                               kRequestTimeoutSeconds * 1000);
 }
 
 void PortalDetector::StopAttempt() {
   request_->Stop();
-  weak_ptr_factory_.InvalidateWeakPtrs();
+  attempt_timeout_.Cancel();
 }
 
 void PortalDetector::TimeoutAttemptTask() {

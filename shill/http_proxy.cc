@@ -178,8 +178,9 @@ void HTTPProxy::AcceptClient(int fd) {
       dispatcher_->CreateInputHandler(client_socket_,
                                       read_client_callback_));
   // Overall transaction timeout.
-  dispatcher_->PostDelayedTask(Bind(&HTTPProxy::StopClient,
-                                    weak_ptr_factory_.GetWeakPtr()),
+  transaction_timeout_.Reset(Bind(&HTTPProxy::StopClient,
+                                  weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(transaction_timeout_.callback(),
                                kTransactionTimeoutSeconds * 1000);
 
   state_ = kStateReadClientHeader;
@@ -646,7 +647,7 @@ void HTTPProxy::StopClient() {
   dns_client_->Stop();
   server_async_connection_->Stop();
   idle_timeout_.Cancel();
-  weak_ptr_factory_.InvalidateWeakPtrs();
+  transaction_timeout_.Cancel();
   accept_handler_->Start();
   state_ = kStateWaitConnection;
 }

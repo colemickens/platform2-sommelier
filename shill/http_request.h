@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
@@ -121,6 +122,7 @@ class HTTPRequest {
   std::string server_hostname_;
   int server_port_;
   int server_socket_;
+  base::CancelableClosure timeout_closure_;
   Result timeout_result_;
   ByteString request_data_;
   ByteString response_data_;
