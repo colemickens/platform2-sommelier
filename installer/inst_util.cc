@@ -357,7 +357,7 @@ string DumpKernelConfig(const string& kernel_dev) {
 
   uint8_t *config = find_kernel_config(blob,
                                        static_cast<uint64_t>(blob_size),
-                                       CROS_32BIT_ENTRY_ADDR);
+                                       CROS_NO_ENTRY_ADDR);
   if (!config) {
     printf("Error parsing input file\n");
     munmap(blob, blob_size);
