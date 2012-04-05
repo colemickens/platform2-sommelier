@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/string_split.h>
 #include <chromeos/dbus/service_constants.h>
@@ -73,9 +74,17 @@ bool Technology::GetTechnologyVectorFromString(
     const string &technologies_string,
     vector<Identifier> *technologies_vector,
     Error *error) {
+  CHECK(technologies_vector);
+  CHECK(error);
+
   vector<string> technology_parts;
-  base::SplitString(technologies_string, ',', &technology_parts);
   set<Technology::Identifier> seen;
+  technologies_vector->clear();
+
+  // Check if |technologies_string| is empty as base::SplitString returns
+  // a vector with one empty string when given an empty string.
+  if (!technologies_string.empty())
+    base::SplitString(technologies_string, ',', &technology_parts);
 
   for (vector<string>::iterator it = technology_parts.begin();
        it != technology_parts.end();

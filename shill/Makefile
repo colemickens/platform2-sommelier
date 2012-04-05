@@ -309,6 +309,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	service_under_test.o \
 	service_unittest.o \
 	shill_unittest.o \
+	technology_unittest.o \
 	testrunner.o \
 	vpn_provider_unittest.o \
 	vpn_service_unittest.o \

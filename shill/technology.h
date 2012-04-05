@@ -12,6 +12,8 @@ namespace shill {
 
 class Error;
 
+// A class that provides functions for converting between technology names
+// and identifiers.
 class Technology {
  public:
   enum Identifier {
@@ -25,14 +27,26 @@ class Technology {
     kUnknown,
   };
 
+  // Returns the technology identifier for a technology name in |name|,
+  // or Technology::kUnknown if the technology name is unknown.
   static Identifier IdentifierFromName(const std::string &name);
+
+  // Returns the technology name for a technology identifier in |id|,
+  // or Technology::kUnknownName ("Unknown") if the technology identifier
+  // is unknown.
   static std::string NameFromIdentifier(Identifier id);
+
+  // Returns the technology identifier for a storage group identifier in
+  // |group|, which should have the format of <technology name>_<suffix>,
+  // or Technology::kUnknown if |group| is not prefixed with a known
+  // technology name.
   static Identifier IdentifierFromStorageGroup(const std::string &group);
 
-  // Convert the comma-separated list of technology names in
-  // |technologies_string| into a vector of technology identifiers output in
-  // |technologies_vector|.  Returns true if the |technologies_string| contains
-  // a valid set of technologies with no duplicate elements, false otherwise.
+  // Converts the comma-separated list of technology names (with no whitespace
+  // around commas) in |technologies_string| into a vector of technology
+  // identifiers output in |technologies_vector|. Returns true if the
+  // |technologies_string| contains a valid set of technologies with no
+  // duplicate elements, false otherwise.
   static bool GetTechnologyVectorFromString(
       const std::string &technologies_string,
       std::vector<Identifier> *technologies_vector,
