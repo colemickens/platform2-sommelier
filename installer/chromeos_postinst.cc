@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <vboot/CgptManager.h>
 
@@ -129,6 +130,9 @@ bool ChromeosChrootPostinst(string install_dir,
     printf("SetImage failed.\n");
     return false;
   }
+
+  printf("Syncing filesystems before changing boot order...\n");
+  sync();
 
   printf("Updating Partition Table Attributes using CgptManager...\n");
 
