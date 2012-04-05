@@ -715,8 +715,14 @@ string WiFiService::GetStorageIdentifierForSecurity(
                                                security.c_str()));
 }
 
-void WiFiService::set_eap(const EapCredentials &eap) {
-  Service::set_eap(eap);
+void WiFiService::set_eap(const EapCredentials &new_eap) {
+  EapCredentials modified_eap = new_eap;
+
+  // An empty key_management field is invalid.  Prevent it, if possible.
+  if (modified_eap.key_management.empty()) {
+    modified_eap.key_management = eap().key_management;
+  }
+  Service::set_eap(modified_eap);
   UpdateConnectable();
 }
 
