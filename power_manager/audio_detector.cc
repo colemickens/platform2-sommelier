@@ -54,7 +54,8 @@ bool AudioDetector::Enable() {
 
 bool AudioDetector::Disable() {
   polling_enabled_ = false;
-  g_source_remove(poll_loop_id_);
+  if (poll_loop_id_ > 0)
+    g_source_remove(poll_loop_id_);
   poll_loop_id_ = 0;
   return true;
 }

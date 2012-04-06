@@ -269,6 +269,10 @@ bool Input::AddEvent(const char * name) {
   IOChannelWatch desc;
   desc.channel = channel;
   desc.sourcetag = tag;
+  // The tag should be valid if there was a successful event registration.
+  // Thus, if the tag turns out to be valid, log a warning instead of failing
+  // or skipping this part.
+  LOG_IF(WARNING, tag == 0) << "Invalid glib source for event " << name;
   registered_inputs_[event_num] = desc;
   return true;
 }
@@ -289,6 +293,9 @@ bool Input::RemoveEvent(const char* name) {
 
   IOChannelWatch channel_descriptor = iter->second;
   guint tag = channel_descriptor.sourcetag;
+  // The tag should not be invalid (see AddEvent()).  So log a warning instead
+  // of failing or skipping.
+  LOG_IF(WARNING, tag == 0) << "Attempting to remove invalid glib source.";
   gboolean ret = g_source_remove(tag);
   if (!ret)
     DLOG(INFO) << "Remove of watch failed!";

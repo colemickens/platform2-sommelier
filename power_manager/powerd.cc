@@ -1085,14 +1085,16 @@ void Daemon::RegisterDBusMessageHandler() {
 }
 
 void Daemon::ScheduleShortPollPowerSupply() {
-  g_source_remove(poll_power_supply_timer_id_);
+  if (poll_power_supply_timer_id_ > 0)
+    g_source_remove(poll_power_supply_timer_id_);
   poll_power_supply_timer_id_ = g_timeout_add(kBatteryPollShortIntervalMs,
                                               ShortPollPowerSupplyThunk,
                                               this);
 }
 
 void Daemon::SchedulePollPowerSupply() {
-  g_source_remove(poll_power_supply_timer_id_);
+  if (poll_power_supply_timer_id_ > 0)
+    g_source_remove(poll_power_supply_timer_id_);
   poll_power_supply_timer_id_ = g_timeout_add(kBatteryPollIntervalMs,
                                               PollPowerSupplyThunk,
                                               this);
