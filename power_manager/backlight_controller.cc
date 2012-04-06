@@ -10,6 +10,8 @@
 
 #include "base/logging.h"
 #include "base/string_util.h"
+#include "base/stringprintf.h"
+
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs_interface.h"

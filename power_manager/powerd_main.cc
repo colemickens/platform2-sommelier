@@ -16,6 +16,7 @@
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/string_util.h"
+#include "base/stringprintf.h"
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/audio_detector.h"
 #include "power_manager/backlight.h"
