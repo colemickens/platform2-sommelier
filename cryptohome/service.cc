@@ -841,35 +841,6 @@ gboolean Service::UnmountForUser(gchar *userid, gboolean *OUT_result,
   return Unmount(OUT_result, error);
 }
 
-gboolean Service::RemoveTrackedSubdirectories(gboolean *OUT_result,
-                                              GError **error) {
-  MountTaskResult result;
-  base::WaitableEvent event(true, false);
-  MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount_, &event_source_);
-  scoped_refptr<MountTaskRemoveTrackedSubdirectories> mount_task =
-      new MountTaskRemoveTrackedSubdirectories(bridge, mount_);
-  mount_task->set_result(&result);
-  mount_task->set_complete_event(&event);
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskRemoveTrackedSubdirectories::Run, mount_task.get()));
-  event.Wait();
-  *OUT_result = result.return_status();
-  return TRUE;
-}
-
-gboolean Service::AsyncRemoveTrackedSubdirectories(gint *OUT_async_id,
-                                                   GError **error) {
-  MountTaskObserverBridge* bridge
-      = new MountTaskObserverBridge(mount_, &event_source_);
-  scoped_refptr<MountTaskRemoveTrackedSubdirectories> mount_task =
-      new MountTaskRemoveTrackedSubdirectories(bridge, mount_);
-  *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskRemoveTrackedSubdirectories::Run, mount_task.get()));
-  return TRUE;
-}
-
 gboolean Service::DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
                                                   GError **error) {
   MountTaskResult result;

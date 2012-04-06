@@ -152,10 +152,6 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean Unmount(gboolean *OUT_result, GError **error);
   virtual gboolean UnmountForUser(gchar* userid, gboolean *OUT_result,
                                   GError **error);
-  virtual gboolean RemoveTrackedSubdirectories(gboolean *OUT_result,
-                                               GError **error);
-  virtual gboolean AsyncRemoveTrackedSubdirectories(gint *OUT_async_id,
-                                                    GError **error);
   virtual gboolean DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
                                                    GError **error);
   virtual gboolean AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,

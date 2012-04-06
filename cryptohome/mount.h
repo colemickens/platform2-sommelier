@@ -162,15 +162,6 @@ class Mount {
   virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
                                            bool is_new) const;
 
-  // Cleans (removes) content from unmounted tracked subdirectories
-  virtual void CleanUnmountedTrackedSubdirectories();
-
-  // Deletes all tracking subdirectories of the given vault.
-  // This callback is OBSOLETE.
-  // TODO(glotov): remove the callback after feature implementation
-  // croosbug.com/9620) is complete.
-  virtual void DeleteTrackedDirsCallback(const FilePath& vault);
-
   // Deletes Cache tracking directory of the given vault
   virtual void DeleteCacheCallback(const FilePath& vault);
 

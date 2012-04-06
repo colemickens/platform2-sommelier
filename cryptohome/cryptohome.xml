@@ -82,12 +82,6 @@
       <arg type="s" name="username" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
-    <method name="RemoveTrackedSubdirectories">
-      <arg type="b" name="done" direction="out" />
-    </method>
-    <method name="AsyncRemoveTrackedSubdirectories">
-      <arg type="i" name="async_id" direction="out" />
-    </method>
     <method name="DoAutomaticFreeDiskSpaceControl">
       <arg type="b" name="done" direction="out" />
     </method>

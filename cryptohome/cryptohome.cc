@@ -50,7 +50,6 @@ namespace switches {
     "dump_keyset",
     "tpm_status",
     "status",
-    "remove_tracked_subdirs",
     "set_current_user_old",
     "do_free_disk_space_control",
     "tpm_take_ownership",
@@ -75,7 +74,6 @@ namespace switches {
     ACTION_DUMP_KEYSET,
     ACTION_TPM_STATUS,
     ACTION_STATUS,
-    ACTION_REMOVE_TRACKED_SUBDIRS,
     ACTION_SET_CURRENT_USER_OLD,
     ACTION_DO_FREE_DISK_SPACE_CONTROL,
     ACTION_TPM_TAKE_OWNERSHIP,
@@ -701,23 +699,6 @@ int main(int argc, char **argv) {
     } else {
       printf("%s\n", status);
       g_free(status);
-    }
-  } else if (!strcmp(
-      switches::kActions[switches::ACTION_REMOVE_TRACKED_SUBDIRS],
-      action.c_str())) {
-    chromeos::glib::ScopedError error;
-    gboolean done;
-    if (!org_chromium_CryptohomeInterface_remove_tracked_subdirectories(
-        proxy.gproxy(),
-        &done,
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("RemoveTrackedSubdirectories call failed: %s.\n", error->message);
-    } else {
-      if (done) {
-        printf("true\n");
-      } else {
-        printf("false\n");
-      }
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_SET_CURRENT_USER_OLD],
                      action.c_str())) {
