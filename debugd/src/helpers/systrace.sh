@@ -31,18 +31,20 @@ tracing_path=/sys/kernel/debug/tracing
 # TODO(sleffler) enable more/different events
 sched_events="
     sched:sched_switch
+    sched:sched_wakeup
 "
 workq_events="
     workqueue:workqueue_execute_start
     workqueue:workqueue_execute_end
 "
-gfx_events="$trace_events
+gfx_events="
     i915:i915_flip_request
     i915:i915_flip_complete
     i915:i915_gem_object_pwrite
 "
-power_events="$trace_events
-    power:power_frequency
+power_events="
+    power:cpu_idle
+    power:cpu_frequency
 "
 # TODO(sleffler) calculate based on enabled events
 buffer_size_running=7040           # ring-buffer size in kb / cpu
@@ -91,9 +93,9 @@ parse_category()
     workq)  echo "${workq_events}";;
 
     all)    echo "${sched_events}
-                    ${workq_events}
-                    ${power_events}
-                    ${gfx_events}";;
+                  ${workq_events}
+                  ${power_events}
+                  ${gfx_events}";;
     *)
       echo "Unknown category \'${category}\'" >&2
       exit
