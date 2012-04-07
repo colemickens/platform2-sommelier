@@ -876,6 +876,11 @@ void Manager::AutoConnectTask() {
 }
 
 string Manager::CalculateState(Error */*error*/) {
+  // |services_| is sorted such that connected services are first.
+  if (!services_.empty() &&
+      services_.front()->IsConnected()) {
+    return flimflam::kStateOnline;
+  }
   return flimflam::kStateOffline;
 }
 

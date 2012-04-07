@@ -1940,4 +1940,71 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
   manager()->DeregisterService(mock_service1);
 }
 
+
+TEST_F(ManagerTest, CalculateStateOffline) {
+  MockMetrics mock_metrics;
+  manager()->set_metrics(&mock_metrics);
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(_))
+      .Times(AnyNumber());
+  scoped_refptr<MockService> mock_service0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  scoped_refptr<MockService> mock_service1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  EXPECT_CALL(*mock_service0.get(), IsConnected())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_service1.get(), IsConnected())
+      .WillRepeatedly(Return(false));
+
+  manager()->RegisterService(mock_service0);
+  manager()->RegisterService(mock_service1);
+
+  EXPECT_EQ("offline", manager()->CalculateState(NULL));
+
+  manager()->DeregisterService(mock_service0);
+  manager()->DeregisterService(mock_service1);
+}
+
+TEST_F(ManagerTest, CalculateStateOnline) {
+  MockMetrics mock_metrics;
+  manager()->set_metrics(&mock_metrics);
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(_))
+      .Times(AnyNumber());
+  scoped_refptr<MockService> mock_service0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  scoped_refptr<MockService> mock_service1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  EXPECT_CALL(*mock_service0.get(), IsConnected())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_service1.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_service0.get(), state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(*mock_service1.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+
+  manager()->RegisterService(mock_service0);
+  manager()->RegisterService(mock_service1);
+
+  EXPECT_EQ("online", manager()->CalculateState(NULL));
+
+  manager()->DeregisterService(mock_service0);
+  manager()->DeregisterService(mock_service1);
+}
+
 }  // namespace shill

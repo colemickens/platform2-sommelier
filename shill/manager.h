@@ -180,6 +180,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   friend class ManagerTest;
   friend class WiFiMainTest;
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
+  FRIEND_TEST(ManagerTest, CalculateStateOffline);
+  FRIEND_TEST(ManagerTest, CalculateStateOnline);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
@@ -254,6 +256,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool connect_profiles_to_rpc_;
   std::vector<DeviceRefPtr> devices_;
   // We store Services in a vector, because we want to keep them sorted.
+  // Services that are connected appear first in the vector.  See
+  // Service::Compare() for details of the sorting criteria.
   std::vector<ServiceRefPtr> services_;
   // List of startup profile names to push on the profile stack on startup.
   std::vector<std::string> startup_profiles_;
