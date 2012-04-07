@@ -62,8 +62,9 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
   }
 
   // Send queries one-at-a-time, rather than parallelizing IPv4
-  // and IPv6 queries for a single host.
-  lines.push_back("options single-request");
+  // and IPv6 queries for a single host.  Also override the default
+  // 5-second request timeout and use a 1-second tiemout instead.
+  lines.push_back("options single-request timeout:1");
 
   // Newline at end of file
   lines.push_back("");
