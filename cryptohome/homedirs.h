@@ -27,6 +27,7 @@ const int64 kEnoughFreeSpace = 1LL << 30;
 
 extern const base::TimeDelta kOldUserLastActivityTime;
 
+class Credentials;
 class Platform;
 class UserOldestActivityTimestampCache;
 
@@ -56,6 +57,13 @@ class HomeDirs {
 
   // Removes the cryptohome for the named user.
   virtual bool Remove(const std::string& username);
+
+  // Returns true if the supplied Credentials are a valid (username, passkey)
+  // pair.
+  virtual bool AreCredentialsValid(const Credentials& credentials);
+
+  // Returns the vault keyset path for the supplied obfuscated username.
+  virtual std::string GetVaultKeysetPath(const std::string& obfuscated) const;
 
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.

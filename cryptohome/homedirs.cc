@@ -6,6 +6,7 @@
 #include <base/logging.h>
 #include <chromeos/cryptohome.h>
 
+#include "credentials.h"
 #include "homedirs.h"
 #include "mount.h"
 #include "platform.h"
@@ -119,6 +120,25 @@ bool HomeDirs::AreEphemeralUsersEnabled() {
     policy_provider_->GetDevicePolicy().GetEphemeralUsersEnabled(
         &ephemeral_users_enabled);
   return ephemeral_users_enabled;
+}
+
+bool HomeDirs::AreCredentialsValid(const Credentials& creds) {
+  LoadDevicePolicy();
+  std::string owner;
+  std::string obfuscated = creds.GetObfuscatedUsername(system_salt_);
+  if (AreEphemeralUsersEnabled() && GetOwner(&owner) && obfuscated != owner)
+    return false;
+  VaultKeyset vk(platform_, crypto_);
+  SecureBlob passkey;
+  creds.GetPasskey(&passkey);
+  std::string path =
+      GetVaultKeysetPath(obfuscated);
+  return vk.Load(GetVaultKeysetPath(obfuscated), passkey);
+}
+
+std::string HomeDirs::GetVaultKeysetPath(const std::string& obfuscated) const {
+  FilePath path(shadow_root_);
+  return path.Append(obfuscated).Append(kKeyFile).value();
 }
 
 void HomeDirs::RemoveNonOwnerCryptohomesCallback(const FilePath& vault) {
@@ -235,13 +255,11 @@ bool HomeDirs::LoadVaultKeysetForUser(const std::string& obfuscated_user,
   // Load the encrypted keyset
   FilePath user_key_file(shadow_root_);
   user_key_file = user_key_file.Append(obfuscated_user).Append(kKeyFile);
-  if (!file_util::PathExists(user_key_file)) {
+  if (!file_util::PathExists(user_key_file))
     return false;
-  }
   SecureBlob cipher_text;
-  if (!LoadFileBytes(user_key_file, &cipher_text)) {
+  if (!LoadFileBytes(user_key_file, &cipher_text))
     return false;
-  }
   if (!serialized->ParseFromArray(
            static_cast<const unsigned char*>(cipher_text.data()),
            cipher_text.size())) {
