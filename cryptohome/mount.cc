@@ -859,23 +859,7 @@ bool Mount::TestCredentials(const Credentials& credentials) {
   if (current_user_->CheckUser(credentials)) {
     return current_user_->Verify(credentials);
   }
-  // If ephemeral users are enabled, allow a check against the cryptohome for
-  // the owner only.
-  ReloadDevicePolicy();
-  if (AreEphemeralUsersEnabled() &&
-      (credentials.GetObfuscatedUsername(system_salt_) != GetObfuscatedOwner()))
-    return false;
-  MountError mount_error;
-  VaultKeyset vault_keyset(platform_, crypto_);
-  SerializedVaultKeyset serialized;
-  bool result = DecryptVaultKeyset(credentials, false, &vault_keyset,
-                                   &serialized, &mount_error);
-  // Retry once if there is a TPM communications failure
-  if (!result && mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
-    result = DecryptVaultKeyset(credentials, false, &vault_keyset,
-                                &serialized, &mount_error);
-  }
-  return result;
+  return homedirs_.AreCredentialsValid(credentials);
 }
 
 bool Mount::LoadVaultKeyset(const Credentials& credentials,
