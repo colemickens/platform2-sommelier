@@ -50,8 +50,10 @@ const int kOwnerPasswordLength = 12;
 const int kMaxTimeoutRetries = 5;
 const char* kTpmCheckEnabledFile = "/sys/class/misc/tpm0/device/enabled";
 const char* kTpmCheckOwnedFile = "/sys/class/misc/tpm0/device/owned";
-const char* kTpmOwnedFile = "/var/lib/.tpm_owned";
-const char* kTpmStatusFile = "/var/lib/.tpm_status";
+const char* kTpmOwnedFileOld = "/var/lib/.tpm_owned";
+const char* kTpmStatusFileOld = "/var/lib/.tpm_status";
+const char* kTpmOwnedFile = "/mnt/stateful_partition/.tpm_owned";
+const char* kTpmStatusFile = "/mnt/stateful_partition/.tpm_status";
 const char* kOpenCryptokiPath = "/var/lib/opencryptoki";
 const unsigned int kTpmConnectRetries = 10;
 const unsigned int kTpmConnectIntervalMs = 100;
@@ -97,6 +99,16 @@ bool Tpm::Init(Crypto* crypto, bool open_key) {
   }
   initialized_ = true;
   crypto_ = crypto;
+
+  // Migrate any old status files from old location to new location.
+  if (!file_util::PathExists(FilePath(kTpmOwnedFile)) &&
+      file_util::PathExists(FilePath(kTpmOwnedFileOld))) {
+    file_util::Move(FilePath(kTpmOwnedFileOld), FilePath(kTpmOwnedFile));
+  }
+  if (!file_util::PathExists(FilePath(kTpmStatusFile)) &&
+      file_util::PathExists(FilePath(kTpmStatusFileOld))) {
+    file_util::Move(FilePath(kTpmStatusFileOld), FilePath(kTpmStatusFile));
+  }
 
   // Checking disabled and owned either via sysfs or via TSS calls will block if
   // ownership is being taken by another thread or process.  So for this to work
