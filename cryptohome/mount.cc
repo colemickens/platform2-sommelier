@@ -852,14 +852,18 @@ bool Mount::SetupGroupAccess() const {
   return true;
 }
 
-bool Mount::TestCredentials(const Credentials& credentials) {
+bool Mount::AreSameUser(const Credentials& credentials) {
+  return current_user_->CheckUser(credentials);
+}
+
+bool Mount::AreValid(const Credentials& credentials) {
   // If the current logged in user matches, use the UserSession to verify the
   // credentials.  This is less costly than a trip to the TPM, and only verifies
   // a user during their logged in session.
   if (current_user_->CheckUser(credentials)) {
     return current_user_->Verify(credentials);
   }
-  return homedirs_.AreCredentialsValid(credentials);
+  return false;
 }
 
 bool Mount::LoadVaultKeyset(const Credentials& credentials,

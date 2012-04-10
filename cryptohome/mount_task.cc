@@ -98,7 +98,7 @@ void MountTaskUnmount::Run() {
 void MountTaskTestCredentials::Run() {
   bool status = false;
   if (mount_)
-    status = mount_->TestCredentials(credentials_);
+    status = mount_->AreValid(credentials_);
   else if (homedirs_)
     status = homedirs_->AreCredentialsValid(credentials_);
   result()->set_return_status(status);

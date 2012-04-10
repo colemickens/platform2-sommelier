@@ -17,7 +17,8 @@ class MockMount : public Mount {
   MockMount() {}
   ~MockMount() {}
   MOCK_METHOD0(Init, bool());
-  MOCK_METHOD1(TestCredentials, bool(const Credentials&));
+  MOCK_METHOD1(AreSameUser, bool(const Credentials&));
+  MOCK_METHOD1(AreValid, bool(const Credentials&));
   MOCK_METHOD3(MountCryptohome, bool(const Credentials&,
                                            const Mount::MountArgs&,
                                            MountError*));
@@ -26,7 +27,7 @@ class MockMount : public Mount {
   MOCK_METHOD2(MigratePasskey, bool(const Credentials&, const char*));
   MOCK_METHOD1(RemoveCryptohome, bool(const Credentials&));
   MOCK_METHOD0(DoAutomaticFreeDiskSpaceControl, bool());
-  MOCK_METHOD1(UpdateCurrentUserActivityTimestamp, bool(int));
+  MOCK_METHOD1(UpdateCurrentUserActivityTimestamp, bool(int)); // NOLINT
 };
 }  // namespace cryptohome
 

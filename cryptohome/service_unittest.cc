@@ -89,7 +89,9 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
       .WillOnce(Return(true));
   EXPECT_CALL(mount, Init())
       .WillOnce(Return(true));
-  EXPECT_CALL(mount, TestCredentials(_))
+  EXPECT_CALL(mount, AreSameUser(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(homedirs, AreCredentialsValid(_))
       .WillOnce(Return(true));
 
   Service service;
