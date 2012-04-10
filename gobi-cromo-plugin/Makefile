@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-BASE_VER = 85268
+BASE_VER ?= 125070
 
 PKG_CONFIG ?= pkg-config
 PC_DEPS = dbus-c++-1 glib-2.0 libchrome-$(BASE_VER)

@@ -5,7 +5,7 @@
 #include "gobi_gsm_modem.h"
 
 #include "gobi_modem_handler.h"
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <cromo/carrier.h>
 #include <cromo/sms_message.h>
 #include <mm/mm-modem.h>

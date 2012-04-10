@@ -4,7 +4,7 @@
 
 #include "gobi_sdk_wrapper.h"
 
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 

@@ -27,7 +27,7 @@
 #include <pthread.h>
 
 #include <base/basictypes.h> // for DISALLOW_COPY_AND_ASSIGN
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <dbus/dbus.h>  // for DBus::Path &
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <map>
