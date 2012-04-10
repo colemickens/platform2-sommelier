@@ -50,6 +50,12 @@ RM_ON_CLEAN += attributes.pb.h attributes.pb.cc
 attributes.pb.cc: attributes.pb.h
 	@echo
 
+$(OUT)object_pool_impl.o \
+$(OUT)object_pool_impl.pie.o \
+$(OUT)object_pool_impl.pic.o \
+$(OUT)object_pool_test.o \
+$(OUT)object_pool_test.pie.o \
+$(OUT)object_pool_test.pic.o \
 $(OUT)attributes.o \
 $(OUT)attributes.pie.o \
 $(OUT)attributes.pic.o: attributes.pb.h
