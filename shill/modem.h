@@ -29,7 +29,7 @@ class ProxyFactory;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
 // device.
-class Modem {
+class Modem : public DBusPropertiesProxyDelegate {
  public:
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
   // the ModemManager.Modem DBus object path (e.g.,
@@ -63,6 +63,8 @@ class Modem {
   static const char kPropertyState[];
   static const char kPropertyType[];
 
+  virtual void Init();
+
   ControlInterface *control_interface() const { return control_interface_; }
   CellularRefPtr device() const { return device_; }
   EventDispatcher *dispatcher() const { return dispatcher_; }
@@ -88,6 +90,19 @@ class Modem {
   FRIEND_TEST(ModemTest, Init);
   FRIEND_TEST(ModemTest, PendingDevicePropertiesAndCreate);
 
+  // Signal callbacks inherited from DBusPropertiesProxyDelegate.
+  virtual void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties);
+  virtual void OnModemManagerPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &properties);
+
+  // A proxy to the org.freedesktop.DBusProperties interface used to obtain
+  // ModemManager.Modem properties and watch for property changes
+  scoped_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
+
   DBusPropertiesMap initial_modem_properties_;
 
   const std::string owner_;
@@ -108,7 +123,7 @@ class Modem {
   DISALLOW_COPY_AND_ASSIGN(Modem);
 };
 
-class ModemClassic : public Modem, public DBusPropertiesProxyDelegate {
+class ModemClassic : public Modem {
  public:
   ModemClassic(const std::string &owner,
                const std::string &path,
@@ -121,15 +136,6 @@ class ModemClassic : public Modem, public DBusPropertiesProxyDelegate {
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.
   void CreateDeviceClassic(const DBusPropertiesMap &modem_properties);
-
-  // Signal callbacks inherited from DBusPropertiesProxyDelegate.
-  virtual void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties);
-  virtual void OnModemManagerPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &properties);
 
  protected:
   virtual Cellular::ModemState ConvertMmToCellularModemState(

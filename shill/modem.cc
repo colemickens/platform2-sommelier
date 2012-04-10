@@ -50,6 +50,13 @@ Modem::~Modem() {
   }
 }
 
+void Modem::Init() {
+  dbus_properties_proxy_.reset(
+      ProxyFactory::GetInstance()->CreateDBusPropertiesProxy(this,
+                                                             path(),
+                                                             owner()));
+}
+
 void Modem::OnDeviceInfoAvailable(const string &link_name) {
   VLOG(2) << __func__;
   if (pending_device_info_ && link_name_ == link_name) {
@@ -132,4 +139,20 @@ void Modem::CreateDeviceFromModemProperties(
 
   manager_->device_info()->RegisterDevice(device_);
 }
+
+void Modem::OnDBusPropertiesChanged(
+    const string &/*interface*/,
+    const DBusPropertiesMap &/*changed_properties*/,
+    const vector<string> &/*invalidated_properties*/) {
+  // Ignored.
+}
+
+void Modem::OnModemManagerPropertiesChanged(
+    const string &/*interface*/,
+    const DBusPropertiesMap &properties) {
+  if (device().get()) {
+    device()->OnModemManagerPropertiesChanged(properties);
+  }
+}
+
 }  // namespace shill

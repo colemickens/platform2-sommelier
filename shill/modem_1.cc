@@ -56,6 +56,7 @@ bool Modem1::GetLinkName(const DBusPropertiesMap & /* modem_props */,
 }
 
 void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &i_to_p) {
+  Init();
   DBusInterfaceToProperties::const_iterator modem_properties =
       i_to_p.find(MM_DBUS_INTERFACE_MODEM);
   if (modem_properties == i_to_p.end()) {

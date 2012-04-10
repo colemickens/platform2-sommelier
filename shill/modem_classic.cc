@@ -54,6 +54,7 @@ bool ModemClassic::GetLinkName(const DBusPropertiesMap& modem_properties,
 
 void ModemClassic::CreateDeviceClassic(
     const DBusPropertiesMap &modem_properties) {
+  Init();
   uint32 mm_type = kuint32max;
   DBusProperties::GetUint32(modem_properties, kPropertyType, &mm_type);
   switch (mm_type) {
@@ -75,22 +76,7 @@ void ModemClassic::CreateDeviceClassic(
     LOG(ERROR) << "Unsupported IP method: " << ip_method;
     return;
   }
-  Modem::CreateDeviceFromModemProperties(modem_properties);
-}
-
-void ModemClassic::OnDBusPropertiesChanged(
-    const string &/*interface*/,
-    const DBusPropertiesMap &/*changed_properties*/,
-    const vector<string> &/*invalidated_properties*/) {
-  // Ignored.
-}
-
-void ModemClassic::OnModemManagerPropertiesChanged(
-    const string &/*interface*/,
-    const DBusPropertiesMap &properties) {
-  if (device().get()) {
-    device()->OnModemManagerPropertiesChanged(properties);
-  }
+  CreateDeviceFromModemProperties(modem_properties);
 }
 
 }  // namespace shill
