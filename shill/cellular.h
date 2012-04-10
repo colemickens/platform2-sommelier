@@ -186,6 +186,7 @@ class Cellular : public Device {
   friend class CellularCapabilityTest;
   friend class CellularCapabilityCDMATest;
   friend class CellularCapabilityGSMTest;
+  friend class CellularCapabilityUniversalTest;
   friend class CellularServiceTest;
   friend class ModemTest;
   FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);

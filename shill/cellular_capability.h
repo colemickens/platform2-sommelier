@@ -198,6 +198,7 @@ class CellularCapability {
  private:
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityTest;
+  friend class CellularCapabilityUniversalTest;
   friend class CellularTest;
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularTest, Connect);

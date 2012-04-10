@@ -43,6 +43,8 @@
 #define MM_MODEM_SIMPLE_CONNECT_RM_PROTOCOL "rm-protocol"
 
 using base::Bind;
+using base::Callback;
+using base::Closure;
 using std::string;
 using std::vector;
 
@@ -161,18 +163,117 @@ void CellularCapabilityUniversal::InitProxies() {
                                                  cellular()->dbus_owner()));
   // Do not create a SIM proxy until the device is enabled because we
   // do not yet know the object path of the sim object.
-
   // TODO(jglasgow): register callbacks
 }
 
 void CellularCapabilityUniversal::StartModem(Error *error,
-                                       const ResultCallback &callback) {
-  OnUnsupportedOperation(__func__, error);
+                                             const ResultCallback &callback) {
+  VLOG(2) << __func__;
+
+  InitProxies();
+
+  // Start by trying to enable the modem
+  CHECK(!callback.is_null());
+  modem_proxy_->Enable(
+      true,
+      error,
+      Bind(&CellularCapabilityUniversal::Start_EnableModemCompleted,
+           weak_ptr_factory_.GetWeakPtr(), callback),
+      kTimeoutEnable);
+  if (error->IsFailure())
+    callback.Run(*error);
+}
+
+void CellularCapabilityUniversal::Start_EnableModemCompleted(
+    const ResultCallback &callback, const Error &error) {
+  if (error.IsFailure()) {
+    callback.Run(error);
+    return;
+  }
+
+  // After modem is enabled, it should be possible to get properties
+  // TODO(jglasgow): handle errors from GetProperties
+  GetProperties();
+
+  // Try to register
+  Error local_error;
+  modem_3gpp_proxy_->Register(
+      selected_network_, &local_error,
+      Bind(&CellularCapabilityUniversal::Start_RegisterCompleted,
+           weak_ptr_factory_.GetWeakPtr(), callback),
+      kTimeoutRegister);
+  if (local_error.IsFailure()) {
+    callback.Run(local_error);
+    return;
+  }
+}
+
+void CellularCapabilityUniversal::Start_RegisterCompleted(
+    const ResultCallback &callback, const Error &error) {
+  if (error.IsSuccess()) {
+    // If registered, get the registration state and signal quality.
+    GetRegistrationState();
+    GetSignalQuality();
+  } else {
+    LOG(ERROR) << "registration failed: " << error;
+  }
+
+  // Ignore registration errors, because that just means there is no signal.
+  callback.Run(Error());
 }
 
 void CellularCapabilityUniversal::StopModem(Error *error,
                                       const ResultCallback &callback) {
-  OnUnsupportedOperation(__func__, error);
+  VLOG(2) << __func__;
+  CHECK(!callback.is_null());
+  CHECK(error);
+  bool connected = false;
+  string all_bearers("/");  // Represents all bearers for disconnect operations
+
+  if (connected) {
+    modem_simple_proxy_->Disconnect(
+        all_bearers,
+        error,
+        Bind(&CellularCapabilityUniversal::Stop_DisconnectCompleted,
+             weak_ptr_factory_.GetWeakPtr(), callback),
+        kTimeoutDefault);
+    if (error->IsFailure())
+      callback.Run(*error);
+  } else {
+    Error error;
+    Closure task = Bind(&CellularCapabilityUniversal::Stop_Disable,
+                        weak_ptr_factory_.GetWeakPtr(),
+                        callback);
+    cellular()->dispatcher()->PostTask(task);
+  }
+}
+
+void CellularCapabilityUniversal::Stop_DisconnectCompleted(
+    const ResultCallback &callback, const Error &error) {
+  VLOG(2) << __func__;
+
+  LOG_IF(ERROR, error.IsFailure()) << "Disconnect failed.  Ignoring.";
+  Stop_Disable(callback);
+}
+
+void CellularCapabilityUniversal::Stop_Disable(const ResultCallback &callback) {
+  Error error;
+  modem_proxy_->Enable(
+      false, &error,
+      Bind(&CellularCapabilityUniversal::Stop_DisableCompleted,
+           weak_ptr_factory_.GetWeakPtr(), callback),
+      kTimeoutDefault);
+  if (error.IsFailure())
+    callback.Run(error);
+}
+
+void CellularCapabilityUniversal::Stop_DisableCompleted(
+    const ResultCallback &callback, const Error &error) {
+  VLOG(2) << __func__;
+
+  if (error.IsSuccess())
+    ReleaseProxies();
+  callback.Run(error);
 }
 
 void CellularCapabilityUniversal::Connect(const DBusPropertiesMap &properties,
@@ -327,8 +428,7 @@ void CellularCapabilityUniversal::GetRegistrationState() {
   On3GPPRegistrationChanged(state, operator_code, operator_name);
 }
 
-void CellularCapabilityUniversal::GetProperties(
-    const ResultCallback &callback) {
+void CellularCapabilityUniversal::GetProperties() {
   VLOG(2) << __func__;
 
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
@@ -351,19 +451,23 @@ void CellularCapabilityUniversal::GetProperties(
   if (imei_.empty()) {
     imei_ = modem_3gpp_proxy_->Imei();
   }
-  if (imsi_.empty()) {
-    imsi_ = sim_proxy_->Imsi();
-  }
-  if (spn_.empty()) {
-    spn_ = sim_proxy_->OperatorName();
-    // TODO(jglasgow): May eventually want to get SPDI, etc
+
+  string sim_path = modem_proxy_->Sim();
+  OnSimPathChanged(sim_path);
+
+  if (sim_proxy_.get()) {
+    if (imsi_.empty()) {
+      imsi_ = sim_proxy_->Imsi();
+    }
+    if (spn_.empty()) {
+      spn_ = sim_proxy_->OperatorName();
+      // TODO(jglasgow): May eventually want to get SPDI, etc
+    }
   }
   if (mdn_.empty()) {
     // TODO(jglasgow): use OwnNumbers()
   }
   GetRegistrationState();
-
-  callback.Run(Error());
 }
 
 string CellularCapabilityUniversal::CreateFriendlyServiceName() {
@@ -759,8 +863,14 @@ void CellularCapabilityUniversal::OnDBusPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &changed_properties,
     const vector<std::string> &invalidated_properties) {
-  // TODO(jglasgow): implement properties changed handling
-  NOTIMPLEMENTED();
+  if (interface == MM_DBUS_INTERFACE_MODEM) {
+    string value;
+    if (DBusProperties::GetString(changed_properties,
+                                  MM_MODEM_PROPERTY_SIM, &value))
+      OnSimPathChanged(value);
+    // TODO(jglasgow): handle additional properties on the modem interface
+  }
+  // TODO(jglasgow): handle additional interfaces
 }
 
 void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
@@ -801,6 +911,19 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
 
 void CellularCapabilityUniversal::OnSignalQualityChanged(uint32 quality) {
   cellular()->HandleNewSignalQuality(quality);
+}
+
+void CellularCapabilityUniversal::OnSimPathChanged(
+    const string &sim_path) {
+  if (sim_path == sim_path_)
+    return;
+
+  mm1::SimProxyInterface *proxy = NULL;
+  if (!sim_path.empty())
+    proxy = proxy_factory()->CreateSimProxy(sim_path,
+                                            cellular()->dbus_owner());
+  sim_path_ = sim_path;
+  sim_proxy_.reset(proxy);
 }
 
 }  // namespace shill

@@ -216,6 +216,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	cellular_capability_cdma_unittest.o \
 	cellular_capability_classic_unittest.o \
 	cellular_capability_gsm_unittest.o \
+	cellular_capability_universal_unittest.o \
 	cellular_service_unittest.o \
 	cellular_unittest.o \
 	crypto_des_cbc_unittest.o \
@@ -261,6 +262,11 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_ipconfig.o \
 	mock_manager.o \
 	mock_metrics.o \
+	mock_mm1_modem_modemcdma_proxy.o \
+	mock_mm1_modem_modem3gpp_proxy.o \
+	mock_mm1_modem_proxy.o \
+	mock_mm1_modem_simple_proxy.o \
+	mock_mm1_sim_proxy.o \
 	mock_modem.o \
 	mock_modem_cdma_proxy.o \
 	mock_modem_gsm_card_proxy.o \

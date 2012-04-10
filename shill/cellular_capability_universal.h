@@ -51,7 +51,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void GetRegistrationState();
-  virtual void GetProperties(const ResultCallback &callback);
+  virtual void GetProperties();
   virtual void Register(const ResultCallback &callback);
 
   virtual void RegisterOnNetwork(const std::string &network_id,
@@ -125,6 +125,19 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularTest, StartUniversalRegister);
   FRIEND_TEST(ModemTest, CreateDeviceFromProperties);
 
+  // Methods used in starting a modem
+  void Start_EnableModemCompleted(const ResultCallback &callback,
+                                  const Error &error);
+  void Start_RegisterCompleted(const ResultCallback &callback,
+                               const Error &error);
+
+  // Methods used in stopping a modem
+  void Stop_DisconnectCompleted(const ResultCallback &callback,
+                               const Error &error);
+  void Stop_Disable(const ResultCallback &callback);
+  void Stop_DisableCompleted(const ResultCallback &callback,
+                             const Error &error);
+
   // TOOD(jglasgow): document what this does!!!!!
   void SetAccessTechnologies(uint32 access_technologies);
 
@@ -164,6 +177,10 @@ class CellularCapabilityUniversal : public CellularCapability {
                                         const std::string &operator_code,
                                         const std::string &operator_name);
   virtual void OnSignalQualityChanged(uint32 quality);
+
+  // Updates the sim_path_ variable and creates a new proxy to the
+  // DBUS ModemManager1.Sim interface
+  virtual void OnSimPathChanged(const std::string &sim_path);
 
   // Method callbacks
   virtual void OnRegisterReply(const ResultCallback &callback,
@@ -208,6 +225,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   uint16 scan_interval_;
   SimLockStatus sim_lock_status_;
   Stringmaps apn_list_;
+  std::string sim_path_;
 
   static unsigned int friendly_service_name_id_;
 

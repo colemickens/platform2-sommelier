@@ -1,0 +1,44 @@
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef SHILL_MM1_MOCK_MODEM_MODEM3GPP_PROXY_
+#define SHILL_MM1_MOCK_MODEM_MODEM3GPP_PROXY_
+
+#include <string>
+
+#include <base/basictypes.h>
+#include <gmock/gmock.h>
+
+#include "shill/mm1_modem_modem3gpp_proxy_interface.h"
+
+namespace shill {
+namespace mm1 {
+
+class MockModemModem3gppProxy : public ModemModem3gppProxyInterface {
+ public:
+  MockModemModem3gppProxy();
+  virtual ~MockModemModem3gppProxy();
+
+  MOCK_METHOD4(Register, void(const std::string &operator_id,
+                              Error *error,
+                              const ResultCallback &callback,
+                              int timeout));
+  MOCK_METHOD3(Scan, void(Error *error,
+                          const DBusPropertyMapsCallback &callback,
+                          int timeout));
+
+  // Properties.
+  MOCK_METHOD0(Imei, std::string());
+  MOCK_METHOD0(RegistrationState, uint32_t());
+  MOCK_METHOD0(OperatorCode, std::string());
+  MOCK_METHOD0(OperatorName, std::string());
+  MOCK_METHOD0(EnabledFacilityLocks, uint32_t());
+
+  DISALLOW_COPY_AND_ASSIGN(MockModemModem3gppProxy);
+};
+
+}  // namespace mm1
+}  // namespace shill
+
+#endif  // SHILL_MM1_MOCK_MODEM_MODEM3GPP_PROXY_
