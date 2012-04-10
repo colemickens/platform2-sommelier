@@ -101,6 +101,8 @@ class SessionImpl : public Session {
   // Random number generation.
   virtual CK_RV SeedRandom(const std::string& seed);
   virtual CK_RV GenerateRandom(int num_bytes, std::string* random_data);
+  // Waits for private objects to be loaded before returning.
+  virtual void WaitForPrivateObjects();
 
  private:
   struct OperationContext {

@@ -34,12 +34,14 @@ class ChapsFactory {
                                  HandleGenerator* handle_generator,
                                  bool is_read_only) = 0;
   virtual ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,
-                                       ObjectStore* store) = 0;
+                                       ObjectStore* store,
+                                       ObjectImporter* importer) = 0;
   virtual ObjectStore* CreateObjectStore(const FilePath& file_name) = 0;
   virtual Object* CreateObject() = 0;
   virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type) = 0;
   // Returns NULL if no importer is available.
   virtual ObjectImporter* CreateObjectImporter(int slot_id,
+                                               const FilePath& path,
                                                TPMUtility* tpm_utility) = 0;
 };
 

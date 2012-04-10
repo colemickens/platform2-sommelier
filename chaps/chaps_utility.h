@@ -192,7 +192,7 @@ class PreservedByteVector {
 };
 
 // Computes and returns a SHA-1 hash of the given input.
-std::string sha1(const std::string& input);
+std::string Sha1(const std::string& input);
 
 // Initializes the OpenSSL library on construction and terminates the library on
 // destruction.

@@ -15,6 +15,7 @@
 #include "chaps/attributes.pb.h"
 #include "chaps/chaps_factory_mock.h"
 #include "chaps/handle_generator_mock.h"
+#include "chaps/object_importer_mock.h"
 #include "chaps/object_mock.h"
 #include "chaps/object_store_mock.h"
 
@@ -74,12 +75,15 @@ class TestObjectPool : public ::testing::Test {
         .WillRepeatedly(Invoke(CreateHandle));
     // Create object pools to test with.
     store_ = new ObjectStoreMock();
-    pool_.reset(new ObjectPoolImpl(&factory_, &handle_generator_, store_));
-    pool2_.reset(new ObjectPoolImpl(&factory_, &handle_generator_, NULL));
+    importer_ = new ObjectImporterMock();
+    pool_.reset(
+        new ObjectPoolImpl(&factory_, &handle_generator_, store_, importer_));
+    pool2_.reset(new ObjectPoolImpl(&factory_, &handle_generator_, NULL, NULL));
   }
 
   ChapsFactoryMock factory_;
   ObjectStoreMock* store_;
+  ObjectImporterMock* importer_;
   HandleGeneratorMock handle_generator_;
   scoped_ptr<ObjectPoolImpl> pool_;
   scoped_ptr<ObjectPoolImpl> pool2_;
@@ -88,31 +92,54 @@ class TestObjectPool : public ::testing::Test {
 // Test object pool initialization when using an object store.
 TEST_F(TestObjectPool, Init) {
   // Create some fake persistent objects for the mock store to return.
-  map<int, string> persistent_objects;
+  map<int, ObjectBlob> persistent_objects;
   AttributeList l;
   Attribute* a = l.add_attribute();
   a->set_type(CKA_ID);
   a->set_value("value");
   string s;
   l.SerializeToString(&s);
-  persistent_objects[1] = s;
-  persistent_objects[2] = "not_valid_protobuf";
+  persistent_objects[1].blob = s;
+  persistent_objects[1].is_private = true;
+  persistent_objects[2].blob = "not_valid_protobuf";
+  persistent_objects[2].is_private = false;
   string key(32, 'A');
+  EXPECT_CALL(*store_, GetInternalBlob(_, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*store_, SetInternalBlob(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, SetEncryptionKey(key))
+      .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, LoadAllObjectBlobs(_))
+  EXPECT_CALL(*store_, LoadPublicObjectBlobs(_))
       .WillOnce(Return(false))
       .WillRepeatedly(DoAll(SetArgumentPointee<0>(persistent_objects),
                             Return(true)));
-  // Loading of objects happens when the encryption key is set.
+  EXPECT_CALL(*store_, LoadPrivateObjectBlobs(_))
+      .WillOnce(Return(false))
+      .WillRepeatedly(DoAll(SetArgumentPointee<0>(persistent_objects),
+                            Return(true)));
+  EXPECT_CALL(*importer_, ImportObjects(pool_.get()))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*importer_, FinishImportAsync(pool_.get()))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  // Loading of public objects happens when the pool is initialized.
+  EXPECT_TRUE(pool2_->Init());
+  EXPECT_FALSE(pool_->Init());
+  EXPECT_TRUE(pool_->Init());
+  EXPECT_TRUE(pool_->Init());
+  // Loading of private objects happens when the encryption key is set.
   EXPECT_TRUE(pool2_->SetEncryptionKey(key));
   EXPECT_FALSE(pool_->SetEncryptionKey(key));
+  EXPECT_TRUE(pool_->SetEncryptionKey(key));
   EXPECT_TRUE(pool_->SetEncryptionKey(key));
   vector<const Object*> v;
   scoped_ptr<Object> find_all(CreateObjectMock());
   EXPECT_TRUE(pool_->Find(find_all.get(), &v));
-  ASSERT_EQ(1, v.size());
+  ASSERT_EQ(3, v.size());
   EXPECT_TRUE(v[0]->GetAttributeString(CKA_ID) == string("value"));
+  EXPECT_TRUE(v[1]->GetAttributeString(CKA_ID) == string("value"));
+  EXPECT_TRUE(v[2]->GetAttributeString(CKA_ID) == string("value"));
 }
 
 // Test the methods that should just pass through to the object store.
@@ -124,7 +151,9 @@ TEST_F(TestObjectPool, StorePassThrough) {
   EXPECT_CALL(*store_, SetInternalBlob(1, s))
       .WillOnce(Return(false))
       .WillOnce(Return(true));
-  EXPECT_CALL(*store_, LoadAllObjectBlobs(_))
+  EXPECT_CALL(*store_, LoadPublicObjectBlobs(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, LoadPrivateObjectBlobs(_))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, SetEncryptionKey(s))
       .WillOnce(Return(false))

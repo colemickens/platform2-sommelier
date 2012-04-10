@@ -12,6 +12,12 @@
 
 namespace chaps {
 
+// Pairs serialized object data with the object's privacy requirement.
+struct ObjectBlob {
+  std::string blob;
+  bool is_private;
+};
+
 // An object store provides persistent storage of object blobs and internal
 // blobs. All stored blobs are encrypted. Object properties (e.g. object class)
 // are not necessarily encrypted.
@@ -31,18 +37,21 @@ class ObjectStore {
   //  blob - The blob data. This will not be encrypted.
   virtual bool GetInternalBlob(int blob_id, std::string* blob) = 0;
   virtual bool SetInternalBlob(int blob_id, const std::string& blob) = 0;
-  // SetEncryptionKey sets the encryption key used to encrypt all object blobs.
-  // This method must be called before any object blob methods (e.g.
-  // InsertObjectBlob, DeleteObjectBlob, ...).
+  // SetEncryptionKey sets the encryption key used to encrypt all private object
+  // blobs. This method must be called before any object blob methods (e.g.
+  // InsertObjectBlob, DeleteObjectBlob, ...) can proceed successfully.
   virtual bool SetEncryptionKey(const std::string& key) = 0;
   // Inserts a new blob.
-  virtual bool InsertObjectBlob(const std::string& blob, int* blob_id) = 0;
+  virtual bool InsertObjectBlob(const ObjectBlob& blob,
+                                int* blob_id) = 0;
   // Deletes an existing blob.
   virtual bool DeleteObjectBlob(int blob_id) = 0;
   // Updates (replaces) an existing object blob.
-  virtual bool UpdateObjectBlob(int blob_id, const std::string& blob) = 0;
-  // Loads all non-internal objects.
-  virtual bool LoadAllObjectBlobs(std::map<int, std::string>* blobs) = 0;
+  virtual bool UpdateObjectBlob(int blob_id, const ObjectBlob& blob) = 0;
+  // Loads all public non-internal objects.
+  virtual bool LoadPublicObjectBlobs(std::map<int, ObjectBlob>* blobs) = 0;
+  // Loads all private non-internal objects.
+  virtual bool LoadPrivateObjectBlobs(std::map<int, ObjectBlob>* blobs) = 0;
 };
 
 }  // namespace

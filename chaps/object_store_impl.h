@@ -34,17 +34,29 @@ class ObjectStoreImpl : public ObjectStore {
   virtual bool GetInternalBlob(int blob_id, std::string* blob);
   virtual bool SetInternalBlob(int blob_id, const std::string& blob);
   virtual bool SetEncryptionKey(const std::string& key);
-  virtual bool InsertObjectBlob(const std::string& blob, int* handle);
+  virtual bool InsertObjectBlob(const ObjectBlob& blob, int* handle);
   virtual bool DeleteObjectBlob(int handle);
-  virtual bool UpdateObjectBlob(int handle, const std::string& blob);
-  virtual bool LoadAllObjectBlobs(std::map<int, std::string>* blobs);
+  virtual bool UpdateObjectBlob(int handle, const ObjectBlob& blob);
+  virtual bool LoadPublicObjectBlobs(std::map<int, ObjectBlob>* blobs);
+  virtual bool LoadPrivateObjectBlobs(std::map<int, ObjectBlob>* blobs);
 
  private:
+  enum BlobType {
+    kInternal,
+    kPrivate,
+    kPublic
+  };
+
+  // Loads all object of a given type.
+  bool LoadObjectBlobs(BlobType type, std::map<int, ObjectBlob>* blobs);
+
   // Encrypts an object blob with a random IV and appends an HMAC.
-  bool Encrypt(const std::string& plain_text, std::string* cipher_text);
+  bool Encrypt(const ObjectBlob& plain_text,
+               ObjectBlob* cipher_text);
 
   // Decrypts an object blob and verifies the HMAC.
-  bool Decrypt(const std::string& cipher_text, std::string* plain_text);
+  bool Decrypt(const ObjectBlob& cipher_text,
+               ObjectBlob* plain_text);
 
   // Computes an HMAC and appends it to the given input.
   std::string AppendHMAC(const std::string& input);
@@ -53,11 +65,12 @@ class ObjectStoreImpl : public ObjectStore {
   bool VerifyAndStripHMAC(const std::string& input, std::string* stripped);
 
   // Creates and returns a unique database key for a blob.
-  std::string CreateBlobKey(bool is_internal, int blob_id);
+  std::string CreateBlobKey(BlobType type, int blob_id);
 
   // Given a valid blob key (as created by CreateBlobKey), determines whether
-  // the blob is internal and the blob id. Returns true on success.
-  bool ParseBlobKey(const std::string& key, bool* is_internal, int* blob_id);
+  // the blob is internal, public, or private and the blob id. Returns true on
+  // success.
+  bool ParseBlobKey(const std::string& key, BlobType* type, int* blob_id);
 
   // Computes and returns the next (unused) blob id;
   bool GetNextID(int* next_id);
@@ -74,15 +87,15 @@ class ObjectStoreImpl : public ObjectStore {
   // Writes an integer to the database. Returns true on success.
   bool WriteInt(const std::string& key, int value);
 
-  // Imports opencryptoki objects into the store if necessary. Objects will not
-  // be imported more than once. Objects will only be imported from the path:
-  // <database_path>/../.tpm.
-  void ImportOpencryptokiObjects(const FilePath& database_path);
+  // Returns the blob type for the specified blob. If 'blob_id' is unknown,
+  // kInternal is returned.
+  BlobType GetBlobType(int blob_id);
 
   // These strings are used to construct database keys for blobs. In general the
   // format of a blob database key is: <prefix><separator><id>.
   static const char kInternalBlobKeyPrefix[];
-  static const char kObjectBlobKeyPrefix[];
+  static const char kPublicBlobKeyPrefix[];
+  static const char kPrivateBlobKeyPrefix[];
   static const char kBlobKeySeparator[];
   // The key for the database version. The existence of this value indicates the
   // database is not new.
@@ -94,10 +107,13 @@ class ObjectStoreImpl : public ObjectStore {
   static const int kHMACSizeBytes;
   // The leveldb directory.
   static const char kDatabaseDirectory[];
+  // An obfuscation key used for public objects.
+  static const char kObfuscationKey[];
 
   std::string key_;
   scoped_ptr<leveldb::Env> env_;
   scoped_ptr<leveldb::DB> db_;
+  std::map<int, BlobType> blob_type_map_;
 
   friend class TestObjectStoreEncryption;
   FRIEND_TEST(TestObjectStoreEncryption, EncryptionInit);

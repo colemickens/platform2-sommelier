@@ -15,12 +15,16 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/synchronization/lock.h>
+#include <base/synchronization/waitable_event.h>
+
+#include "chaps/object_store.h"
 
 namespace chaps {
 
 class ChapsFactory;
 class HandleGenerator;
-class ObjectStore;
+class ObjectImporter;
 
 // Key: Object handle.
 // Value: Object shared pointer.
@@ -35,12 +39,15 @@ class ObjectPoolImpl : public ObjectPool {
   // Otherwise, 'store' will be owned by (and later deleted by) the object pool.
   ObjectPoolImpl(ChapsFactory* factory,
                  HandleGenerator* handle_generator,
-                 ObjectStore* store);
+                 ObjectStore* store,
+                 ObjectImporter* importer);
   virtual ~ObjectPoolImpl();
+  virtual bool Init();
   virtual bool GetInternalBlob(int blob_id, std::string* blob);
   virtual bool SetInternalBlob(int blob_id, const std::string& blob);
   virtual bool SetEncryptionKey(const std::string& key);
   virtual bool Insert(Object* object);
+  virtual bool Import(Object* object);
   virtual bool Delete(const Object* object);
   virtual bool Find(const Object* search_template,
                     std::vector<const Object*>* matching_objects);
@@ -53,9 +60,12 @@ class ObjectPoolImpl : public ObjectPool {
   // attributes and those values match the template values. This function
   // returns true if the given object matches the given template.
   bool Matches(const Object* object_template, const Object* object);
-  bool Parse(const std::string& object_blob, Object* object);
-  bool Serialize(const Object* object, std::string* serialized);
-  bool LoadObjects();
+  bool Parse(const ObjectBlob& object_blob, Object* object);
+  bool Serialize(const Object* object, ObjectBlob* serialized);
+  bool LoadBlobs(const std::map<int, ObjectBlob>& object_blobs);
+  bool LoadPublicObjects();
+  bool LoadPrivateObjects();
+  void WaitForPrivateObjects();
 
   // Allows us to quickly check whether an object exists in the pool.
   ObjectSet objects_;
@@ -63,6 +73,11 @@ class ObjectPoolImpl : public ObjectPool {
   ChapsFactory* factory_;
   HandleGenerator* handle_generator_;
   scoped_ptr<ObjectStore> store_;
+  scoped_ptr<ObjectImporter> importer_;
+  bool is_private_loaded_;
+  base::Lock lock_;
+  base::WaitableEvent private_loaded_event_;
+  bool finish_import_required_;
 
   DISALLOW_COPY_AND_ASSIGN(ObjectPoolImpl);
 };

@@ -23,6 +23,7 @@ class ObjectPoolMock : public ObjectPool {
   MOCK_METHOD2(SetInternalBlob, bool (int, const std::string&));
   MOCK_METHOD1(SetEncryptionKey, bool (const std::string&));
   MOCK_METHOD1(Insert, bool (Object*));
+  MOCK_METHOD1(Import, bool (Object*));
   MOCK_METHOD1(Delete, bool (const Object*));
   MOCK_METHOD2(Find, bool (const Object*, std::vector<const Object*>*));
   MOCK_METHOD2(FindByHandle, bool(int, const Object**));
@@ -31,6 +32,8 @@ class ObjectPoolMock : public ObjectPool {
   void SetupFake() {
     last_handle_ = 0;
     ON_CALL(*this, Insert(testing::_))
+        .WillByDefault(testing::Invoke(this, &ObjectPoolMock::FakeInsert));
+    ON_CALL(*this, Import(testing::_))
         .WillByDefault(testing::Invoke(this, &ObjectPoolMock::FakeInsert));
     ON_CALL(*this, Delete(testing::_))
         .WillByDefault(testing::Invoke(this, &ObjectPoolMock::FakeDelete));

@@ -17,7 +17,8 @@ class ObjectImporterMock : public ObjectImporter {
   ObjectImporterMock();
   virtual ~ObjectImporterMock();
 
-  MOCK_METHOD2(ImportObjects, bool(const FilePath&, ObjectPool*));
+  MOCK_METHOD1(ImportObjects, bool(ObjectPool*));
+  MOCK_METHOD1(FinishImportAsync, bool(ObjectPool*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ObjectImporterMock);

@@ -25,6 +25,7 @@
 #include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
+using base::AutoLock;
 using std::map;
 using std::string;
 using std::tr1::shared_ptr;
@@ -87,6 +88,109 @@ const struct MechanismInfo {
   {CKM_AES_CBC_PAD, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}}
 };
 
+// Performs expensive tasks required to initialize a token.
+class TokenInitThread : public base::PlatformThread::Delegate {
+ public:
+  // This class will take ownership of the 'importer' pointer only.
+  TokenInitThread(int slot_id,
+                  FilePath path,
+                  const string& auth_data,
+                  TPMUtility* tpm_utility,
+                  ObjectPool* object_pool);
+
+  virtual ~TokenInitThread() {}
+
+  void ThreadMain();
+
+ private:
+  bool InitializeKeyHierarchy(string* master_key);
+
+  int slot_id_;
+  FilePath path_;
+  string auth_data_;
+  TPMUtility* tpm_utility_;
+  ObjectPool* object_pool_;
+};
+
+TokenInitThread::TokenInitThread(int slot_id,
+                                 FilePath path,
+                                 const string& auth_data,
+                                 TPMUtility* tpm_utility,
+                                 ObjectPool* object_pool)
+    : slot_id_(slot_id),
+      path_(path),
+      auth_data_(auth_data),
+      tpm_utility_(tpm_utility),
+      object_pool_(object_pool) {}
+
+void TokenInitThread::ThreadMain() {
+  string auth_key_blob;
+  string encrypted_master_key;
+  string master_key;
+  // Determine whether the key hierarchy has already been initialized based on
+  // whether the relevant blobs exist.
+  if (!object_pool_->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob) ||
+      !object_pool_->GetInternalBlob(kEncryptedMasterKey,
+                                     &encrypted_master_key)) {
+    LOG(INFO) << "Initializing key hierarchy for token at " << path_.value();
+    if (!InitializeKeyHierarchy(&master_key)) {
+      LOG(ERROR) << "Failed to initialize key hierarchy at " << path_.value();
+      tpm_utility_->UnloadKeysForSlot(slot_id_);
+      return;
+    }
+  } else {
+    if (!tpm_utility_->Authenticate(slot_id_,
+                                    Sha1(auth_data_),
+                                    auth_key_blob,
+                                    encrypted_master_key,
+                                    &master_key)) {
+      LOG(ERROR) << "Authentication failed for token at " << path_.value();
+      tpm_utility_->UnloadKeysForSlot(slot_id_);
+      return;
+    }
+  }
+  if (!object_pool_->SetEncryptionKey(master_key)) {
+    LOG(ERROR) << "SetEncryptionKey failed for token at " << path_.value();
+    tpm_utility_->UnloadKeysForSlot(slot_id_);
+    return;
+  }
+  LOG(INFO) << "Master key is ready for token at " << path_.value();
+}
+
+bool TokenInitThread::InitializeKeyHierarchy(string* master_key) {
+  if (!tpm_utility_->GenerateRandom(kUserKeySize, master_key)) {
+    LOG(ERROR) << "Failed to generate user encryption key.";
+    return false;
+  }
+  string auth_key_blob;
+  int auth_key_handle;
+  const int key_size = 2048;
+  const string public_exponent("\x01\x00\x01", 3);
+  if (!tpm_utility_->GenerateKey(slot_id_,
+                                 key_size,
+                                 public_exponent,
+                                 Sha1(auth_data_),
+                                 &auth_key_blob,
+                                 &auth_key_handle)) {
+    LOG(ERROR) << "Failed to generate user authentication key.";
+    return false;
+  }
+  string encrypted_master_key;
+  if (!tpm_utility_->Bind(auth_key_handle,
+                          *master_key,
+                          &encrypted_master_key)) {
+    LOG(ERROR) << "Failed to bind user encryption key.";
+    return false;
+  }
+  if (!object_pool_->SetInternalBlob(kEncryptedAuthKey, auth_key_blob) ||
+      !object_pool_->SetInternalBlob(kEncryptedMasterKey,
+                                    encrypted_master_key)) {
+    LOG(ERROR) << "Failed to write key hierarchy blobs.";
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory, TPMUtility* tpm_utility)
@@ -101,6 +205,9 @@ SlotManagerImpl::~SlotManagerImpl() {
   for (size_t i = 0; i < slot_list_.size(); ++i) {
     // Unload any keys that have been loaded in the TPM.
     tpm_utility_->UnloadKeysForSlot(i);
+    // Wait for any worker thread to finish.
+    if (slot_list_[i].init_thread.get())
+      base::PlatformThread::Join(slot_list_[i].init_thread_handle);
   }
 }
 
@@ -175,7 +282,6 @@ int SlotManagerImpl::OpenSession(int slot_id, bool is_read_only) {
       this,
       is_read_only));
   CHECK(session.get());
-  // If we use this many sessions, we have a problem.
   int session_id = CreateHandle();
   slot_list_[slot_id].sessions[session_id] = session;
   session_slot_map_[session_id] = slot_id;
@@ -232,60 +338,35 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
     LOG(WARNING) << "Login event received for existing slot.";
     return;
   }
-  // Setup the object pool and the key hierarchy.
-  shared_ptr<ObjectPool> object_pool(
-      factory_->CreateObjectPool(this, factory_->CreateObjectStore(path)));
-  CHECK(object_pool.get());
+  // Setup the object pool.
   int slot_id = FindEmptySlot();
-  string auth_key_blob;
-  string encrypted_master_key;
-  string master_key;
-  if (!object_pool->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob) ||
-      !object_pool->GetInternalBlob(kEncryptedMasterKey,
-                                    &encrypted_master_key)) {
-    LOG(INFO) << "Initializing key hierarchy for token at " << path.value();
-    if (!InitializeKeyHierarchy(slot_id,
-                                object_pool.get(),
-                                sha1(auth_data),
-                                &master_key)) {
-      LOG(ERROR) << "Failed to initialize key hierarchy at " << path.value();
-      tpm_utility_->UnloadKeysForSlot(slot_id);
-      return;
-    }
-  } else {
-    if (!tpm_utility_->Authenticate(slot_id,
-                                    sha1(auth_data),
-                                    auth_key_blob,
-                                    encrypted_master_key,
-                                    &master_key)) {
-      LOG(ERROR) << "Authentication failed for token at " << path.value();
-      tpm_utility_->UnloadKeysForSlot(slot_id);
-      return;
-    }
-  }
-  if (!object_pool->SetEncryptionKey(master_key)) {
-    LOG(ERROR) << "SetEncryptionKey failed for token at " << path.value();
-    tpm_utility_->UnloadKeysForSlot(slot_id);
-    return;
-  }
+  shared_ptr<ObjectPool> object_pool(
+      factory_->CreateObjectPool(this,
+                                 factory_->CreateObjectStore(path),
+                                 factory_->CreateObjectImporter(slot_id,
+                                                                path,
+                                                                tpm_utility_)));
+  CHECK(object_pool.get());
+
+  // Decrypting (or creating) the master key requires the TPM so we'll put this
+  // on a worker thread. This has the effect that queries for public objects
+  // are responsive but queries for private objects will be waiting for the
+  // master key to be ready.
+  slot_list_[slot_id].init_thread.reset(
+      new TokenInitThread(slot_id,
+                          path,
+                          auth_data,
+                          tpm_utility_,
+                          object_pool.get()));
+  base::PlatformThread::Create(0,
+                               slot_list_[slot_id].init_thread.get(),
+                               &slot_list_[slot_id].init_thread_handle);
+
   // Insert the new token into the empty slot.
   slot_list_[slot_id].token_object_pool = object_pool;
   slot_list_[slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = slot_id;
-  LOG(INFO) << "Key hierarchy ready for token at " << path.value();
-
-  // Import legacy objects. Only the existence of the 'imported' blob matters,
-  // not the content.
-  string imported_blob;
-  if (!object_pool->GetInternalBlob(kImportedTracker, &imported_blob)) {
-    scoped_ptr<ObjectImporter> importer(
-        factory_->CreateObjectImporter(slot_id, tpm_utility_));
-    if (importer.get() && importer->ImportObjects(path, object_pool.get())) {
-      if (!object_pool->SetInternalBlob(kImportedTracker, imported_blob)) {
-        LOG(WARNING) << "Successfully imported but failed to set the tracker.";
-      }
-    }
-  }
+  LOG(INFO) << "Slot ready for token at " << path.value();
 }
 
 void SlotManagerImpl::OnLogout(const FilePath& path) {
@@ -295,6 +376,9 @@ void SlotManagerImpl::OnLogout(const FilePath& path) {
     return;
   }
   int slot_id = path_slot_map_[path];
+  // Wait for initialization to be finished before cleaning up.
+  base::PlatformThread::Join(slot_list_[slot_id].init_thread_handle);
+  slot_list_[slot_id].init_thread.reset();
   tpm_utility_->UnloadKeysForSlot(slot_id);
   CloseAllSessions(slot_id);
   slot_list_[slot_id].token_object_pool.reset();
@@ -313,7 +397,8 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
   bool unload = false;
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
     object_pool = factory_->CreateObjectPool(this,
-                                             factory_->CreateObjectStore(path));
+                                             factory_->CreateObjectStore(path),
+                                             NULL);
     scoped_object_pool.reset(object_pool);
     slot_id = FindEmptySlot();
     unload = true;
@@ -327,8 +412,8 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
   if (!object_pool->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob)) {
     LOG(INFO) << "Token not initialized; ignoring change auth data event.";
   } else if (!tpm_utility_->ChangeAuthData(slot_id,
-                                           sha1(old_auth_data),
-                                           sha1(new_auth_data),
+                                           Sha1(old_auth_data),
+                                           Sha1(new_auth_data),
                                            auth_key_blob,
                                            &new_auth_key_blob)) {
     LOG(ERROR) << "Failed to change auth data for token at " << path.value();
@@ -342,6 +427,7 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
 }
 
 int SlotManagerImpl::CreateHandle() {
+  AutoLock lock(handle_generator_lock_);
   // If we use this many handles, we have a problem.
   CHECK(last_handle_ < INT_MAX);
   return ++last_handle_;
@@ -389,43 +475,6 @@ void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,
   token_info->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
   token_info->hardwareVersion = kDefaultVersion;
   token_info->firmwareVersion = kDefaultVersion;
-}
-
-bool SlotManagerImpl::InitializeKeyHierarchy(int slot_id,
-                                             ObjectPool* object_pool,
-                                             const string& auth_data,
-                                             string* master_key) {
-  if (!tpm_utility_->GenerateRandom(kUserKeySize, master_key)) {
-    LOG(ERROR) << "Failed to generate user encryption key.";
-    return false;
-  }
-  string auth_key_blob;
-  int auth_key_handle;
-  const int key_size = 2048;
-  const string public_exponent("\x01\x00\x01", 3);
-  if (!tpm_utility_->GenerateKey(slot_id,
-                                 key_size,
-                                 public_exponent,
-                                 auth_data,
-                                 &auth_key_blob,
-                                 &auth_key_handle)) {
-    LOG(ERROR) << "Failed to generate user authentication key.";
-    return false;
-  }
-  string encrypted_master_key;
-  if (!tpm_utility_->Bind(auth_key_handle,
-                          *master_key,
-                          &encrypted_master_key)) {
-    LOG(ERROR) << "Failed to bind user encryption key.";
-    return false;
-  }
-  if (!object_pool->SetInternalBlob(kEncryptedAuthKey, auth_key_blob) ||
-      !object_pool->SetInternalBlob(kEncryptedMasterKey,
-                                    encrypted_master_key)) {
-    LOG(ERROR) << "Failed to write key hierarchy blobs.";
-    return false;
-  }
-  return true;
 }
 
 int SlotManagerImpl::FindEmptySlot() {

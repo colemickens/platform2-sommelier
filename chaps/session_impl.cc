@@ -61,6 +61,7 @@ SessionImpl::SessionImpl(int slot_id,
   CHECK(tpm_utility_);
   CHECK(factory_);
   session_object_pool_.reset(factory_->CreateObjectPool(handle_generator,
+                                                        NULL,
                                                         NULL));
   CHECK(session_object_pool_.get());
 }
@@ -565,15 +566,21 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
 }
 
 CK_RV SessionImpl::SeedRandom(const string& seed) {
-  if (!tpm_utility_->StirRandom(seed))
-    return CKR_FUNCTION_FAILED;
+  RAND_seed(seed.data(), seed.length());
   return CKR_OK;
 }
 
 CK_RV SessionImpl::GenerateRandom(int num_bytes, string* random_data) {
-  if (!tpm_utility_->GenerateRandom(num_bytes, random_data))
-    return CKR_FUNCTION_FAILED;
+  *random_data = GenerateRandomSoftware(num_bytes);
   return CKR_OK;
+}
+
+void SessionImpl::WaitForPrivateObjects() {
+  scoped_ptr<Object> all_private(factory_->CreateObject());
+  CHECK(all_private.get());
+  all_private->SetAttributeBool(CKA_PRIVATE, true);
+  vector<const Object*> found;
+  token_object_pool_->Find(all_private.get(), &found);
 }
 
 bool SessionImpl::IsValidKeyType(OperationType operation,

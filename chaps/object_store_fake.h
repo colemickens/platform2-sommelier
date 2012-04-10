@@ -30,7 +30,8 @@ class ObjectStoreFake : public ObjectStore {
   virtual bool SetEncryptionKey(const std::string& key) {
     return true;
   }
-  virtual bool InsertObjectBlob(const std::string& blob, int* handle) {
+  virtual bool InsertObjectBlob(const ObjectBlob& blob,
+                                int* handle) {
     *handle = ++last_handle_;
     object_blobs_[*handle] = blob;
     return true;
@@ -39,19 +40,22 @@ class ObjectStoreFake : public ObjectStore {
     object_blobs_.erase(handle);
     return true;
   }
-  virtual bool UpdateObjectBlob(int handle, const std::string& blob) {
+  virtual bool UpdateObjectBlob(int handle, const ObjectBlob& blob) {
     object_blobs_[handle] = blob;
     return true;
   }
-  virtual bool LoadAllObjectBlobs(std::map<int, std::string>* blobs) {
+  virtual bool LoadPublicObjectBlobs(std::map<int, ObjectBlob>* blobs) {
     *blobs = object_blobs_;
+    return true;
+  }
+  virtual bool LoadPrivateObjectBlobs(std::map<int, ObjectBlob>* blobs) {
     return true;
   }
 
  private:
   int last_handle_;
   std::map<int, std::string> internal_blobs_;
-  std::map<int, std::string> object_blobs_;
+  std::map<int, ObjectBlob> object_blobs_;
 };
 
 }  // namespace chaps

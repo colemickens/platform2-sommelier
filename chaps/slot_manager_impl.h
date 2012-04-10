@@ -15,6 +15,8 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/synchronization/lock.h>
+#include <base/threading/platform_thread.h>
 
 #include "chaps/chaps_factory.h"
 #include "chaps/object_pool.h"
@@ -70,6 +72,8 @@ class SlotManagerImpl : public SlotManager,
     // Key: A session identifier.
     // Value: The associated session object.
     std::map<int, std::tr1::shared_ptr<Session> > sessions;
+    std::tr1::shared_ptr<base::PlatformThread::Delegate> init_thread;
+    base::PlatformThreadHandle init_thread_handle;
   };
 
   // Provides default PKCS #11 slot and token information. This method fills
@@ -110,6 +114,7 @@ class SlotManagerImpl : public SlotManager,
   // Value: The identifier of the associated slot.
   std::map<int, int> session_slot_map_;
   TPMUtility* tpm_utility_;
+  base::Lock handle_generator_lock_;
 
   DISALLOW_COPY_AND_ASSIGN(SlotManagerImpl);
 };

@@ -86,7 +86,7 @@ class TestSession: public ::testing::Test {
   TestSession() {
     EXPECT_CALL(factory_, CreateObject())
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectMock));
-    EXPECT_CALL(factory_, CreateObjectPool(_, _))
+    EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
     EXPECT_CALL(handle_generator_, CreateHandle())
         .WillRepeatedly(Return(1));
@@ -173,7 +173,7 @@ TEST(DeathTest, InvalidInit) {
   TPMUtilityMock tpm;
   HandleGeneratorMock handle_generator;
   SessionImpl* session;
-  EXPECT_CALL(factory, CreateObjectPool(_, _)).Times(AnyNumber());
+  EXPECT_CALL(factory, CreateObjectPool(_, _, _)).Times(AnyNumber());
   EXPECT_DEATH_IF_SUPPORTED(
       session = new SessionImpl(1, NULL, &tpm, &factory, &handle_generator,
                                 false),
@@ -244,7 +244,7 @@ TEST(DeathTest, OutOfMemoryInit) {
   ChapsFactoryMock factory;
   HandleGeneratorMock handle_generator;
   ObjectPool* null_pool = NULL;
-  EXPECT_CALL(factory, CreateObjectPool(_, _))
+  EXPECT_CALL(factory, CreateObjectPool(_, _, _))
       .WillRepeatedly(Return(null_pool));
   Session* session;
   EXPECT_DEATH_IF_SUPPORTED(

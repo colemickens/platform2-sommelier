@@ -492,7 +492,7 @@ string PrintAttributes(const vector<uint8_t>& serialized,
   return ss.str();
 }
 
-string sha1(const string& input) {
+string Sha1(const string& input) {
   unsigned char digest[SHA_DIGEST_LENGTH];
   SHA1(ConvertStringToByteBuffer(input.data()), input.length(), digest);
   return ConvertByteBufferToString(digest, SHA_DIGEST_LENGTH);

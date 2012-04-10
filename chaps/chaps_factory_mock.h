@@ -22,11 +22,15 @@ class ChapsFactoryMock : public ChapsFactory {
                                        TPMUtility*,
                                        HandleGenerator*,
                                        bool));
-  MOCK_METHOD2(CreateObjectPool, ObjectPool*(HandleGenerator*, ObjectStore*));
+  MOCK_METHOD3(CreateObjectPool, ObjectPool*(HandleGenerator*,
+                                             ObjectStore*,
+                                             ObjectImporter*));
   MOCK_METHOD1(CreateObjectStore, ObjectStore*(const FilePath&));
   MOCK_METHOD0(CreateObject, Object*());
   MOCK_METHOD1(CreateObjectPolicy, ObjectPolicy*(CK_OBJECT_CLASS));
-  MOCK_METHOD2(CreateObjectImporter, ObjectImporter*(int,TPMUtility*));
+  MOCK_METHOD3(CreateObjectImporter, ObjectImporter*(int,
+                                                     const FilePath&,
+                                                     TPMUtility*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ChapsFactoryMock);

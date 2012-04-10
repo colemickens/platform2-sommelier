@@ -11,6 +11,7 @@
 
 #include <base/basictypes.h>
 #include <base/logging.h>
+#include <base/synchronization/lock.h>
 #include <chromeos/utility.h>
 #include <openssl/rand.h>
 #include <trousers/scoped_tss_type.h>
@@ -18,6 +19,7 @@
 
 #include "chaps/chaps_utility.h"
 
+using base::AutoLock;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssObject;
@@ -152,6 +154,8 @@ TPMUtilityImpl::~TPMUtilityImpl() {
 }
 
 bool TPMUtilityImpl::Init(const string& srk_auth_data) {
+  VLOG(1) << "TPMUtilityImpl::Init enter";
+  AutoLock lock(lock_);
   TSS_RESULT result = TSS_SUCCESS;
   result = Tspi_Context_Create(tsp_context_.ptr());
   if (result != TSS_SUCCESS) {
@@ -207,6 +211,7 @@ bool TPMUtilityImpl::Init(const string& srk_auth_data) {
     LOG(ERROR) << "Tspi_Policy_AssignToObject - " << ResultToString(result);
     return false;
   }
+  VLOG(1) << "TPMUtilityImpl::Init success";
   return true;
 }
 
@@ -215,11 +220,13 @@ bool TPMUtilityImpl::Authenticate(int slot_id,
                                   const string& auth_key_blob,
                                   const string& encrypted_master_key,
                                   string* master_key) {
+  VLOG(1) << "TPMUtilityImpl::Authenticate enter";
   int key_handle = 0;
   if (!LoadKey(slot_id, auth_key_blob, auth_data, &key_handle))
     return false;
   if (!Unbind(key_handle, encrypted_master_key, master_key))
     return false;
+  VLOG(1) << "TPMUtilityImpl::Authenticate success";
   return true;
 }
 
@@ -228,6 +235,7 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
                                     const string& new_auth_data,
                                     const string& old_auth_key_blob,
                                     string* new_auth_key_blob) {
+  VLOG(1) << "TPMUtilityImpl::ChangeAuthData enter";
   int key_handle = 0;
   if (!LoadKey(slot_id, old_auth_key_blob, old_auth_data, &key_handle))
     return false;
@@ -238,6 +246,7 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
   if (!Unbind(key_handle, encrypted, &decrypted))
     return false;
   // Change the secret.
+  AutoLock lock(lock_);
   TSS_RESULT result = TSS_SUCCESS;
   ScopedTssPolicy policy(tsp_context_);
   result = Tspi_Context_CreateObject(tsp_context_,
@@ -264,10 +273,13 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
   }
   if (!GetKeyBlob(key_handle, new_auth_key_blob))
     return false;
+  VLOG(1) << "TPMUtilityImpl::ChangeAuthData success";
   return true;
 }
 
 bool TPMUtilityImpl::GenerateRandom(int num_bytes, string* random_data) {
+  VLOG(1) << "TPMUtilityImpl::GenerateRandom enter";
+  AutoLock lock(lock_);
   TSS_RESULT result = TSS_SUCCESS;
   TSS_HTPM tpm;
   BYTE *random_bytes = NULL;
@@ -283,10 +295,13 @@ bool TPMUtilityImpl::GenerateRandom(int num_bytes, string* random_data) {
   }
   *random_data = ConvertByteBufferToString(random_bytes, num_bytes);
   Tspi_Context_FreeMemory(tsp_context_, random_bytes);
+  VLOG(1) << "TPMUtilityImpl::GenerateRandom success";
   return true;
 }
 
 bool TPMUtilityImpl::StirRandom(const string& entropy_data) {
+  VLOG(1) << "TPMUtilityImpl::StirRandom enter";
+  AutoLock lock(lock_);
   TSS_RESULT result = TSS_SUCCESS;
   TSS_HTPM tpm;
   result = Tspi_Context_GetTpmObject(tsp_context_, &tpm);
@@ -301,6 +316,7 @@ bool TPMUtilityImpl::StirRandom(const string& entropy_data) {
     LOG(ERROR) << "Tspi_TPM_StirRandom - " << ResultToString(result);
     return false;
   }
+  VLOG(1) << "TPMUtilityImpl::StirRandom success";
   return true;
 }
 
@@ -310,6 +326,8 @@ bool TPMUtilityImpl::GenerateKey(int slot,
                                  const string& auth_data,
                                  string* key_blob,
                                  int* key_handle) {
+  VLOG(1) << "TPMUtilityImpl::GenerateKey enter";
+  AutoLock lock(lock_);
   TSS_RESULT result = TSS_SUCCESS;
   ScopedTssKey key(tsp_context_);
   result = Tspi_Context_CreateObject(tsp_context_,
@@ -349,12 +367,15 @@ bool TPMUtilityImpl::GenerateKey(int slot,
   if (!GetKeyBlob(key, key_blob))
     return false;
   *key_handle = CreateHandle(slot, key.release(), *key_blob);
+  VLOG(1) << "TPMUtilityImpl::GenerateKey success";
   return true;
 }
 
 bool TPMUtilityImpl::GetPublicKey(int key_handle,
                                   string* public_exponent,
                                   string* modulus) {
+  VLOG(1) << "TPMUtilityImpl::GetPublicKey enter";
+  AutoLock lock(lock_);
   if (!GetKeyAttributeData(key_handle,
                            TSS_TSPATTRIB_RSAKEY_INFO,
                            TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT,
@@ -365,6 +386,7 @@ bool TPMUtilityImpl::GetPublicKey(int key_handle,
                            TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
                            modulus))
     return false;
+  VLOG(1) << "TPMUtilityImpl::GetPublicKey success";
   return true;
 }
 
@@ -375,6 +397,8 @@ bool TPMUtilityImpl::WrapKey(int slot,
                              const string& auth_data,
                              string* key_blob,
                              int* key_handle) {
+  VLOG(1) << "TPMUtilityImpl::WrapKey enter";
+  AutoLock lock(lock_);
   if (!GetSRKPublicKey())
     return false;
   ScopedTssKey key(tsp_context_);
@@ -439,6 +463,7 @@ bool TPMUtilityImpl::WrapKey(int slot,
   if (!GetKeyBlob(key, key_blob))
     return false;
   *key_handle = CreateHandle(slot, key.release(), *key_blob);
+  VLOG(1) << "TPMUtilityImpl::WrapKey success";
   return true;
 }
 
@@ -455,8 +480,10 @@ bool TPMUtilityImpl::LoadKeyWithParent(int slot,
                                        const string& auth_data,
                                        int parent_key_handle,
                                        int* key_handle) {
+  AutoLock lock(lock_);
   if (IsAlreadyLoaded(slot, key_blob, key_handle))
     return true;
+  VLOG(1) << "TPMUtilityImpl::LoadKeyWithParent enter";
   ScopedTssKey key(tsp_context_);
   TSS_RESULT result = Tspi_Context_LoadKeyByBlob(
       tsp_context_,
@@ -494,10 +521,13 @@ bool TPMUtilityImpl::LoadKeyWithParent(int slot,
     }
   }
   *key_handle = CreateHandle(slot, key.release(), key_blob);
+  VLOG(1) << "TPMUtilityImpl::LoadKeyWithParent success";
   return true;
 }
 
 void TPMUtilityImpl::UnloadKeysForSlot(int slot) {
+  VLOG(1) << "TPMUtilityImpl::UnloadKeysForSlot enter";
+  AutoLock lock(lock_);
   set<int>* handles = &slot_handles_[slot].handles_;
   set<int>::iterator it;
   for (it = handles->begin(); it != handles->end(); ++it) {
@@ -505,11 +535,14 @@ void TPMUtilityImpl::UnloadKeysForSlot(int slot) {
     Tspi_Context_CloseObject(tsp_context_, *it);
   }
   slot_handles_.erase(slot);
+  VLOG(1) << "TPMUtilityImpl::UnloadKeysForSlot success";
 }
 
 bool TPMUtilityImpl::Bind(int key_handle,
                           const string& input,
                           string* output) {
+  VLOG(1) << "TPMUtilityImpl::Bind enter";
+  AutoLock lock(lock_);
   TSSEncryptedData encrypted(tsp_context_);
   if (!encrypted.Create())
     return false;
@@ -524,12 +557,15 @@ bool TPMUtilityImpl::Bind(int key_handle,
   }
   if (!encrypted.GetData(output))
     return false;
+  VLOG(1) << "TPMUtilityImpl::Bind success";
   return true;
 }
 
 bool TPMUtilityImpl::Unbind(int key_handle,
                             const string& input,
                             string* output) {
+  VLOG(1) << "TPMUtilityImpl::Unbind enter";
+  AutoLock lock(lock_);
   TSSEncryptedData encrypted(tsp_context_);
   if (!encrypted.Create())
     return false;
@@ -545,12 +581,15 @@ bool TPMUtilityImpl::Unbind(int key_handle,
   }
   *output = ConvertByteBufferToString(buffer, length);
   Tspi_Context_FreeMemory(tsp_context_, buffer);
+  VLOG(1) << "TPMUtilityImpl::Unbind success";
   return true;
 }
 
 bool TPMUtilityImpl::Sign(int key_handle,
                           const string& input,
                           string* signature) {
+  VLOG(1) << "TPMUtilityImpl::Sign enter";
+  AutoLock lock(lock_);
   TSSHash hash(tsp_context_);
   if (!hash.Create(input))
     return false;
@@ -564,12 +603,15 @@ bool TPMUtilityImpl::Sign(int key_handle,
   }
   *signature = ConvertByteBufferToString(buffer, length);
   Tspi_Context_FreeMemory(tsp_context_, buffer);
+  VLOG(1) << "TPMUtilityImpl::Sign success";
   return true;
 }
 
 bool TPMUtilityImpl::Verify(int key_handle,
                             const string& input,
                             const string& signature) {
+  VLOG(1) << "TPMUtilityImpl::Verify enter";
+  AutoLock lock(lock_);
   TSSHash hash(tsp_context_);
   if (!hash.Create(input))
     return false;
@@ -583,6 +625,7 @@ bool TPMUtilityImpl::Verify(int key_handle,
     LOG(ERROR) << "Tspi_Hash_VerifySignature - " << ResultToString(result);
     return false;
   }
+  VLOG(1) << "TPMUtilityImpl::Verify success";
   return true;
 }
 

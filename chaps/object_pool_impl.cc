@@ -10,6 +10,8 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/synchronization/lock.h>
+#include <base/synchronization/waitable_event.h>
 
 #include "chaps/attributes.pb.h"
 #include "chaps/chaps.h"
@@ -17,8 +19,11 @@
 #include "chaps/chaps_utility.h"
 #include "chaps/handle_generator.h"
 #include "chaps/object.h"
+#include "chaps/object_importer.h"
 #include "chaps/object_store.h"
 
+using base::AutoLock;
+using base::AutoUnlock;
 using std::map;
 using std::string;
 using std::tr1::shared_ptr;
@@ -28,40 +33,100 @@ namespace chaps {
 
 ObjectPoolImpl::ObjectPoolImpl(ChapsFactory* factory,
                                HandleGenerator* handle_generator,
-                               ObjectStore* store)
+                               ObjectStore* store,
+                               ObjectImporter* importer)
     : factory_(factory),
       handle_generator_(handle_generator),
-      store_(store) {}
+      store_(store),
+      importer_(importer),
+      is_private_loaded_(false),
+      private_loaded_event_(true, false),  // Manual reset, not signaled.
+      finish_import_required_(false) {}
 
 ObjectPoolImpl::~ObjectPoolImpl() {}
 
+bool ObjectPoolImpl::Init() {
+  AutoLock lock(lock_);
+  if (store_.get()) {
+    if (!LoadPublicObjects())
+      return false;
+    // Import legacy objects. The existence of the 'imported' blob indicates
+    // that legacy objects have already been imported. The contents of this blob
+    // are ignored.
+    AutoUnlock unlock(lock_);
+    string imported_blob;
+    if (importer_.get() && !GetInternalBlob(kImportedTracker, &imported_blob)) {
+      finish_import_required_ = importer_->ImportObjects(this);
+      if (!SetInternalBlob(kImportedTracker, imported_blob)) {
+        LOG(WARNING) << "Failed to set the import tracker.";
+      }
+    }
+  } else {
+    // There are no objects to load.
+    is_private_loaded_ = true;
+    private_loaded_event_.Signal();
+  }
+  return true;
+}
+
 bool ObjectPoolImpl::GetInternalBlob(int blob_id, string* blob) {
+  AutoLock lock(lock_);
   if (store_.get())
     return store_->GetInternalBlob(blob_id, blob);
   return false;
 }
 
 bool ObjectPoolImpl::SetInternalBlob(int blob_id, const string& blob) {
+  AutoLock lock(lock_);
   if (store_.get())
     return store_->SetInternalBlob(blob_id, blob);
   return false;
 }
 
 bool ObjectPoolImpl::SetEncryptionKey(const string& key) {
+  AutoLock lock(lock_);
   if (store_.get()) {
     if (!store_->SetEncryptionKey(key))
       return false;
-    return LoadObjects();
+    // Once we have the encryption key we can load private objects.
+    if (!LoadPrivateObjects())
+      LOG(WARNING) << "Failed to load private objects.";
+    if (finish_import_required_) {
+      CHECK(importer_.get());
+      // Unlock because FinishImportAsync inserts objects into this pool.
+      AutoUnlock unlock(lock_);
+      if (!importer_->FinishImportAsync(this))
+        LOG(WARNING) << "Failed to finish importing objects.";
+    }
   }
+  // Signal any callers waiting for private objects that they're ready.
+  is_private_loaded_ = true;
+  private_loaded_event_.Signal();
   return true;
 }
 
 bool ObjectPoolImpl::Insert(Object* object) {
+  // If it's a private object we need to wait until private objects have been
+  // loaded.
+  if (object->IsPrivate() && !is_private_loaded_) {
+    AutoLock lock(lock_);
+    WaitForPrivateObjects();
+  }
+  return Import(object);
+}
+
+bool ObjectPoolImpl::Import(Object* object) {
+  AutoLock lock(lock_);
   if (objects_.find(object) != objects_.end())
     return false;
   if (store_.get()) {
-    string serialized;
+    ObjectBlob serialized;
     if (!Serialize(object, &serialized))
+      return false;
+    // Parsing the serialized blob will normalize the object attribute values.
+    // e.g. If the caller specified 32-bits for a CK_ULONG on a 64-bit system,
+    // the value will be resized correctly.
+    if (!Parse(serialized, object))
       return false;
     int store_id;
     if (!store_->InsertObjectBlob(serialized, &store_id))
@@ -75,9 +140,14 @@ bool ObjectPoolImpl::Insert(Object* object) {
 }
 
 bool ObjectPoolImpl::Delete(const Object* object) {
+  AutoLock lock(lock_);
   if (objects_.find(object) == objects_.end())
     return false;
   if (store_.get()) {
+    // If it's a private object we need to wait until private objects have been
+    // loaded.
+    if (object->IsPrivate() && !is_private_loaded_)
+      WaitForPrivateObjects();
     if (!store_->DeleteObjectBlob(object->store_id()))
       return false;
   }
@@ -88,6 +158,15 @@ bool ObjectPoolImpl::Delete(const Object* object) {
 
 bool ObjectPoolImpl::Find(const Object* search_template,
                           vector<const Object*>* matching_objects) {
+  AutoLock lock(lock_);
+  // If we're looking for private objects we need to wait until private objects
+  // have been loaded.
+  if (((search_template->IsAttributePresent(CKA_PRIVATE) &&
+      search_template->IsPrivate()) ||
+      (search_template->IsAttributePresent(CKA_CLASS) &&
+      search_template->GetObjectClass() == CKO_PRIVATE_KEY)) &&
+      !is_private_loaded_)
+    WaitForPrivateObjects();
   for (ObjectSet::iterator it = objects_.begin(); it != objects_.end(); ++it) {
     if (Matches(search_template, *it))
       matching_objects->push_back(*it);
@@ -96,6 +175,7 @@ bool ObjectPoolImpl::Find(const Object* search_template,
 }
 
 bool ObjectPoolImpl::FindByHandle(int handle, const Object** object) {
+  AutoLock lock(lock_);
   CHECK(object);
   HandleObjectMap::iterator it = handle_object_map_.find(handle);
   if (it == handle_object_map_.end())
@@ -109,12 +189,17 @@ Object* ObjectPoolImpl::GetModifiableObject(const Object* object) {
 }
 
 bool ObjectPoolImpl::Flush(const Object* object) {
+  AutoLock lock(lock_);
   if (objects_.find(object) == objects_.end())
     return false;
   if (store_.get()) {
-    string serialized;
+    ObjectBlob serialized;
     if (!Serialize(object, &serialized))
       return false;
+    // If it's a private object we need to wait until private objects have been
+    // loaded.
+    if (object->IsPrivate() && !is_private_loaded_)
+      WaitForPrivateObjects();
     if (!store_->UpdateObjectBlob(object->store_id(), serialized))
       return false;
   }
@@ -134,9 +219,9 @@ bool ObjectPoolImpl::Matches(const Object* object_template,
   return true;
 }
 
-bool ObjectPoolImpl::Parse(const string& object_blob, Object* object) {
+bool ObjectPoolImpl::Parse(const ObjectBlob& object_blob, Object* object) {
   AttributeList attribute_list;
-  if (!attribute_list.ParseFromString(object_blob)) {
+  if (!attribute_list.ParseFromString(object_blob.blob)) {
     LOG(ERROR) << "Failed to parse proto-buffer.";
     return false;
   }
@@ -154,11 +239,17 @@ bool ObjectPoolImpl::Parse(const string& object_blob, Object* object) {
       int int_value = object->GetAttributeInt(attribute.type(), 0);
       object->SetAttributeInt(attribute.type(), int_value);
     }
+    if (attribute.type() == CKA_PRIVATE &&
+        object->IsPrivate() != object_blob.is_private) {
+      // Assume this object has been tampered with.
+      LOG(ERROR) << "Privacy attribute mismatch.";
+      return false;
+    }
   }
   return true;
 }
 
-bool ObjectPoolImpl::Serialize(const Object* object, string* serialized) {
+bool ObjectPoolImpl::Serialize(const Object* object, ObjectBlob* serialized) {
   const AttributeMap* attribute_map = object->GetAttributeMap();
   AttributeMap::const_iterator it;
   AttributeList attribute_list;
@@ -168,19 +259,16 @@ bool ObjectPoolImpl::Serialize(const Object* object, string* serialized) {
     next->set_length(it->second.length());
     next->set_value(it->second);
   }
-  if (!attribute_list.SerializeToString(serialized)) {
+  if (!attribute_list.SerializeToString(&serialized->blob)) {
     LOG(ERROR) << "Failed to serialize object.";
     return false;
   }
+  serialized->is_private = object->IsPrivate();
   return true;
 }
 
-bool ObjectPoolImpl::LoadObjects() {
-  CHECK(store_.get());
-  map<int, string> object_blobs;
-  if (!store_->LoadAllObjectBlobs(&object_blobs))
-    return false;
-  map<int, string>::iterator it;
+bool ObjectPoolImpl::LoadBlobs(const map<int, ObjectBlob>& object_blobs) {
+  map<int, ObjectBlob>::const_iterator it;
   for (it = object_blobs.begin(); it != object_blobs.end(); ++it) {
     shared_ptr<Object> object(factory_->CreateObject());
     // An object that is not parsable will be ignored.
@@ -194,6 +282,29 @@ bool ObjectPoolImpl::LoadObjects() {
     }
   }
   return true;
+}
+
+bool ObjectPoolImpl::LoadPublicObjects() {
+  CHECK(store_.get());
+  map<int, ObjectBlob> object_blobs;
+  if (!store_->LoadPublicObjectBlobs(&object_blobs))
+    return false;
+  return LoadBlobs(object_blobs);
+}
+
+bool ObjectPoolImpl::LoadPrivateObjects() {
+  CHECK(store_.get());
+  map<int, ObjectBlob> object_blobs;
+  if (!store_->LoadPrivateObjectBlobs(&object_blobs))
+    return false;
+  return LoadBlobs(object_blobs);
+}
+
+void ObjectPoolImpl::WaitForPrivateObjects() {
+  AutoUnlock unlock(lock_);
+  LOG(INFO) << "Waiting for private objects to be loaded.";
+  private_loaded_event_.Wait();
+  LOG(INFO) << "Done waiting for private objects.";
 }
 
 }  // namespace chaps

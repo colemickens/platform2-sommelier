@@ -65,15 +65,15 @@ ObjectPool* CreateObjectPoolMock() {
 void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
   EXPECT_CALL(*tpm, Authenticate(_,
-                                 sha1(kAuthData),
+                                 Sha1(kAuthData),
                                  string("auth_key_blob"),
                                  string("encrypted_master_key"),
                                  _))
       .WillRepeatedly(DoAll(SetArgumentPointee<4>(string("master_key")),
                             Return(true)));
   EXPECT_CALL(*tpm, ChangeAuthData(_,
-                                   sha1(kAuthData),
-                                   sha1(kNewAuthData),
+                                   Sha1(kAuthData),
+                                   Sha1(kNewAuthData),
                                    string("auth_key_blob"),
                                    _))
       .WillRepeatedly(
@@ -95,12 +95,6 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
                 Return(true)));
 }
 
-ObjectImporter* CreateObjectImporterMock() {
-  ObjectImporterMock* mock = new ObjectImporterMock();
-  EXPECT_CALL(*mock, ImportObjects(_, _)).WillRepeatedly(Return(true));
-  return mock;
-}
-
 // Creates and returns a mock Session instance.
 Session* CreateNewSession() {
   return new SessionMock();
@@ -114,13 +108,14 @@ class TestSlotManager: public ::testing::Test {
   TestSlotManager() {
     EXPECT_CALL(factory_, CreateSession(_, _, _, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateNewSession));
-    EXPECT_CALL(factory_, CreateObjectPool(_, _))
+    EXPECT_CALL(factory_, CreateObjectPool(_, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
     ObjectStore* null_store = NULL;
     EXPECT_CALL(factory_, CreateObjectStore(_))
         .WillRepeatedly(Return(null_store));
-    EXPECT_CALL(factory_, CreateObjectImporter(_, _))
-        .WillRepeatedly(InvokeWithoutArgs(CreateObjectImporterMock));
+    ObjectImporter* null_importer = NULL;
+    EXPECT_CALL(factory_, CreateObjectImporter(_, _, _))
+        .WillRepeatedly(Return(null_importer));
     ConfigureTPMUtility(&tpm_);
   }
   void SetUp() {
@@ -171,11 +166,14 @@ TEST(DeathTest, OutOfMemoryInit) {
   ConfigureTPMUtility(&tpm);
   ChapsFactoryMock factory;
   ObjectPool* null_pool = NULL;
-  EXPECT_CALL(factory, CreateObjectPool(_, _))
+  EXPECT_CALL(factory, CreateObjectPool(_, _, _))
       .WillRepeatedly(Return(null_pool));
   ObjectStore* null_store = NULL;
   EXPECT_CALL(factory, CreateObjectStore(_))
       .WillRepeatedly(Return(null_store));
+  ObjectImporter* null_importer = NULL;
+  EXPECT_CALL(factory, CreateObjectImporter(_, _, _))
+      .WillRepeatedly(Return(null_importer));
   SlotManagerImpl sm(&factory, &tpm);
   ASSERT_TRUE(sm.Init());
   EXPECT_DEATH_IF_SUPPORTED(sm.OnLogin(FilePath("/var/lib/chaps"), kAuthData),

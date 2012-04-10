@@ -21,11 +21,13 @@ class ChapsFactoryImpl : public ChapsFactory {
                                  HandleGenerator* handle_generator,
                                  bool is_read_only);
   virtual ObjectPool* CreateObjectPool(HandleGenerator* handle_generator,
-                                       ObjectStore* store);
+                                       ObjectStore* store,
+                                       ObjectImporter* importer);
   virtual ObjectStore* CreateObjectStore(const FilePath& file_name);
   virtual Object* CreateObject();
   virtual ObjectPolicy* CreateObjectPolicy(CK_OBJECT_CLASS type);
   virtual ObjectImporter* CreateObjectImporter(int slot_id,
+                                               const FilePath& path,
                                                TPMUtility* tpm_utility);
 
  private:

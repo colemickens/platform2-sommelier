@@ -27,13 +27,19 @@ using std::string;
 namespace chaps {
 
 const char ObjectStoreImpl::kInternalBlobKeyPrefix[] = "InternalBlob";
-const char ObjectStoreImpl::kObjectBlobKeyPrefix[] = "ObjectBlob";
+const char ObjectStoreImpl::kPublicBlobKeyPrefix[] = "PublicBlob";
+const char ObjectStoreImpl::kPrivateBlobKeyPrefix[] = "PrivateBlob";
 const char ObjectStoreImpl::kBlobKeySeparator[] = "&";
 const char ObjectStoreImpl::kDatabaseVersionKey[] = "DBVersion";
 const char ObjectStoreImpl::kIDTrackerKey[] = "NextBlobID";
 const int ObjectStoreImpl::kAESKeySizeBytes = 32;
 const int ObjectStoreImpl::kHMACSizeBytes = 64;
 const char ObjectStoreImpl::kDatabaseDirectory[] = "database";
+const char ObjectStoreImpl::kObfuscationKey[] = {
+    '\x6f', '\xaa', '\x0a', '\xb6', '\x10', '\xc0', '\xa6', '\xe4', '\x07',
+    '\x8b', '\x05', '\x1c', '\xd2', '\x8b', '\xac', '\x2d', '\xba', '\x5e',
+    '\x14', '\x9c', '\xae', '\x57', '\xfb', '\x04', '\x13', '\x92', '\xc0',
+    '\x84', '\x2a', '\xea', '\xf6', '\xfb', '\0'};
 
 ObjectStoreImpl::ObjectStoreImpl() {}
 
@@ -90,7 +96,7 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
 }
 
 bool ObjectStoreImpl::GetInternalBlob(int blob_id, string* blob) {
-  if (!ReadBlob(CreateBlobKey(true, blob_id), blob)) {
+  if (!ReadBlob(CreateBlobKey(kInternal, blob_id), blob)) {
     // Don't log this since it happens legitimately when a blob has not yet been
     // set.
     return false;
@@ -99,7 +105,7 @@ bool ObjectStoreImpl::GetInternalBlob(int blob_id, string* blob) {
 }
 
 bool ObjectStoreImpl::SetInternalBlob(int blob_id, const string& blob) {
-  if (!WriteBlob(CreateBlobKey(true, blob_id), blob)) {
+  if (!WriteBlob(CreateBlobKey(kInternal, blob_id), blob)) {
     LOG(ERROR) << "Failed to write internal blob: " << blob_id;
     return false;
   }
@@ -115,8 +121,9 @@ bool ObjectStoreImpl::SetEncryptionKey(const string& key) {
   return true;
 }
 
-bool ObjectStoreImpl::InsertObjectBlob(const string& blob, int* handle) {
-  if (key_.empty()) {
+bool ObjectStoreImpl::InsertObjectBlob(const ObjectBlob& blob,
+                                       int* handle) {
+  if (blob.is_private && key_.empty()) {
     LOG(ERROR) << "The store encryption key has not been initialized.";
     return false;
   }
@@ -124,13 +131,15 @@ bool ObjectStoreImpl::InsertObjectBlob(const string& blob, int* handle) {
     LOG(ERROR) << "Failed to generate blob identifier.";
     return false;
   }
+  blob_type_map_[*handle] = blob.is_private ? kPrivate : kPublic;
   return UpdateObjectBlob(*handle, blob);
 }
 
 bool ObjectStoreImpl::DeleteObjectBlob(int handle) {
   leveldb::WriteOptions options;
   options.sync = true;
-  leveldb::Status status = db_->Delete(options, CreateBlobKey(false, handle));
+  string db_key = CreateBlobKey(GetBlobType(handle), handle);
+  leveldb::Status status = db_->Delete(options, db_key);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to delete blob: " << status.ToString();
     return false;
@@ -138,65 +147,87 @@ bool ObjectStoreImpl::DeleteObjectBlob(int handle) {
   return true;
 }
 
-bool ObjectStoreImpl::UpdateObjectBlob(int handle, const string& blob) {
-  if (key_.empty()) {
-    LOG(ERROR) << "The store encryption key has not been initialized.";
+bool ObjectStoreImpl::UpdateObjectBlob(int handle, const ObjectBlob& blob) {
+  ObjectBlob encrypted_blob;
+  BlobType type = GetBlobType(handle);
+  if (blob.is_private != (type == kPrivate)) {
+    LOG(ERROR) << "Object privacy mismatch.";
     return false;
   }
-  string encrypted_blob;
   if (!Encrypt(blob, &encrypted_blob)) {
     LOG(ERROR) << "Failed to encrypt object blob.";
     return false;
   }
-  if (!WriteBlob(CreateBlobKey(false, handle), encrypted_blob)) {
+  if (!WriteBlob(CreateBlobKey(type, handle), encrypted_blob.blob)) {
     LOG(ERROR) << "Failed to write object blob.";
   }
   return true;
 }
 
-bool ObjectStoreImpl::LoadAllObjectBlobs(map<int, string>* blobs) {
+bool ObjectStoreImpl::LoadPublicObjectBlobs(map<int, ObjectBlob>* blobs) {
+  return LoadObjectBlobs(kPublic, blobs);
+}
+
+bool ObjectStoreImpl::LoadPrivateObjectBlobs(map<int, ObjectBlob>* blobs) {
   if (key_.empty()) {
     LOG(ERROR) << "The store encryption key has not been initialized.";
     return false;
   }
+  return LoadObjectBlobs(kPrivate, blobs);
+}
+
+bool ObjectStoreImpl::LoadObjectBlobs(BlobType type,
+                                      map<int, ObjectBlob>* blobs) {
   leveldb::Iterator* it = db_->NewIterator(leveldb::ReadOptions());
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
-    bool is_internal = true;
+    BlobType it_type;
     int id = 0;
-    if (ParseBlobKey(it->key().ToString(), &is_internal, &id) && !is_internal) {
-      string blob;
-      if (!Decrypt(it->value().ToString(), &blob)) {
+    if (ParseBlobKey(it->key().ToString(), &it_type, &id) && type == it_type) {
+      ObjectBlob encrypted_blob;
+      encrypted_blob.is_private = (type == kPrivate);
+      encrypted_blob.blob = it->value().ToString();
+      ObjectBlob blob;
+      if (!Decrypt(encrypted_blob, &blob)) {
         LOG(WARNING) << "Failed to decrypt object blob.";
         continue;
       }
       (*blobs)[id] = blob;
+      blob_type_map_[id] = type;
     }
   }
   return true;
 }
 
-bool ObjectStoreImpl::Encrypt(const string& plain_text,
-                              string* cipher_text) {
-  if (key_.empty()) {
+bool ObjectStoreImpl::Encrypt(const ObjectBlob& plain_text,
+                              ObjectBlob* cipher_text) {
+  if (plain_text.is_private && key_.empty()) {
     LOG(ERROR) << "The store encryption key has not been initialized.";
     return false;
   }
+  cipher_text->is_private = plain_text.is_private;
+  string key = plain_text.is_private ? key_ : kObfuscationKey;
   // Append a MAC to the plain-text before encrypting.
-  return RunCipher(true, key_, string(), AppendHMAC(plain_text), cipher_text);
+  return RunCipher(true,
+                   key,
+                   string(),
+                   AppendHMAC(plain_text.blob),
+                   &cipher_text->blob);
 }
 
-bool ObjectStoreImpl::Decrypt(const string& cipher_text,
-                              string* plain_text) {
-  if (key_.empty()) {
+bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
+                              ObjectBlob* plain_text) {
+  if (cipher_text.is_private && key_.empty()) {
     LOG(ERROR) << "The store encryption key has not been initialized.";
     return false;
   }
+  plain_text->is_private = cipher_text.is_private;
   // Recover the IV from the input.
+  string key = cipher_text.is_private ? key_ : kObfuscationKey;
   string plain_text_with_hmac;
-  if (!RunCipher(false, key_, string(), cipher_text, &plain_text_with_hmac))
+  if (!RunCipher(false, key, string(), cipher_text.blob, &plain_text_with_hmac))
     return false;
   // Check the MAC that was appended before encrypting.
-  if (!VerifyAndStripHMAC(plain_text_with_hmac, plain_text))
+  if (!VerifyAndStripHMAC(plain_text_with_hmac, &plain_text->blob))
     return false;
   return true;
 }
@@ -220,25 +251,48 @@ bool ObjectStoreImpl::VerifyAndStripHMAC(const string& input,
   return true;
 }
 
-string ObjectStoreImpl::CreateBlobKey(bool is_internal, int blob_id) {
-  const char* prefix =
-      is_internal ? kInternalBlobKeyPrefix : kObjectBlobKeyPrefix;
+string ObjectStoreImpl::CreateBlobKey(BlobType type, int blob_id) {
+  const char* prefix = NULL;
+  switch (type) {
+    case kInternal:
+      prefix = kInternalBlobKeyPrefix;
+      break;
+    case kPublic:
+      prefix = kPublicBlobKeyPrefix;
+      break;
+    case kPrivate:
+      prefix = kPrivateBlobKeyPrefix;
+      break;
+    default:
+      LOG(FATAL) << "Invalid enum value.";
+  }
   return base::StringPrintf("%s%s%d", prefix, kBlobKeySeparator, blob_id);
 }
 
 bool ObjectStoreImpl::ParseBlobKey(const string& key,
-                                   bool* is_internal,
+                                   BlobType* type,
                                    int* blob_id) {
   size_t index = key.rfind(kBlobKeySeparator);
+  if (index == string::npos) {
+    // This isn't a blob.
+    return false;
+  }
   base::StringPiece key_piece(key.begin() + (index + 1), key.end());
-  if (index == string::npos)
+  if (!base::StringToInt(key_piece, blob_id)) {
+    LOG(ERROR) << "Invalid blob key id: " << key;
     return false;
-  if (!base::StringToInt(key_piece, blob_id))
-    return false;
+  }
   string prefix = key.substr(0, index);
-  if (prefix != kInternalBlobKeyPrefix && prefix != kObjectBlobKeyPrefix)
+  if (prefix == kInternalBlobKeyPrefix) {
+    *type = kInternal;
+  } else if (prefix == kPublicBlobKeyPrefix) {
+    *type = kPublic;
+  } else if (prefix == kPrivateBlobKeyPrefix) {
+    *type = kPrivate;
+  } else {
+    LOG(ERROR) << "Invalid blob key prefix: " << key;
     return false;
-  *is_internal = (prefix == kInternalBlobKeyPrefix);
+  }
   return true;
 }
 
@@ -292,6 +346,13 @@ bool ObjectStoreImpl::WriteBlob(const string& key, const string& value) {
 
 bool ObjectStoreImpl::WriteInt(const string& key, int value) {
   return WriteBlob(key, base::IntToString(value));
+}
+
+ObjectStoreImpl::BlobType ObjectStoreImpl::GetBlobType(int blob_id) {
+  map<int, BlobType>::iterator it = blob_type_map_.find(blob_id);
+  if (it == blob_type_map_.end())
+    return kInternal;
+  return it->second;
 }
 
 }  // namespace chaps

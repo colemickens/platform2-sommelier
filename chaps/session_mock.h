@@ -68,6 +68,7 @@ class SessionMock : public Session {
                                        int*));
   MOCK_METHOD1(SeedRandom, CK_RV (const std::string&));
   MOCK_METHOD2(GenerateRandom, CK_RV (int, std::string*));
+  MOCK_METHOD0(WaitForPrivateObjects, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SessionMock);

@@ -40,8 +40,16 @@ Session* ChapsFactoryImpl::CreateSession(int slot_id,
 
 ObjectPool* ChapsFactoryImpl::CreateObjectPool(
     HandleGenerator* handle_generator,
-    ObjectStore* object_store) {
-  return new ObjectPoolImpl(this, handle_generator, object_store);
+    ObjectStore* object_store,
+    ObjectImporter* object_importer) {
+  scoped_ptr<ObjectPoolImpl> pool(new ObjectPoolImpl(this,
+                                                     handle_generator,
+                                                     object_store,
+                                                     object_importer));
+  CHECK(pool.get());
+  if (!pool->Init())
+    return NULL;
+  return pool.release();
 }
 
 ObjectStore* ChapsFactoryImpl::CreateObjectStore(const FilePath& file_name) {
@@ -79,8 +87,9 @@ ObjectPolicy* ChapsFactoryImpl::CreateObjectPolicy(CK_OBJECT_CLASS type) {
 
 ObjectImporter* ChapsFactoryImpl::CreateObjectImporter(
     int slot_id,
+    const FilePath& path,
     TPMUtility* tpm_utility) {
-  return new OpencryptokiImporter(slot_id, tpm_utility, this);
+  return new OpencryptokiImporter(slot_id, path, tpm_utility, this);
 }
 
 }  // namespace chaps

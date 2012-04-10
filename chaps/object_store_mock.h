@@ -22,13 +22,15 @@ class ObjectStoreMock : public ObjectStore {
   MOCK_METHOD1(SetEncryptionKey,
       bool(const std::string& key));
   MOCK_METHOD2(InsertObjectBlob,
-      bool(const std::string& blob, int* blob_id));
+      bool(const ObjectBlob& blob, int* blob_id));
   MOCK_METHOD1(DeleteObjectBlob,
       bool(int blob_id));
   MOCK_METHOD2(UpdateObjectBlob,
-      bool(int blob_id, const std::string& blob));
-  MOCK_METHOD1(LoadAllObjectBlobs,
-      bool(std::map<int, std::string>* blobs));
+      bool(int blob_id, const ObjectBlob& blob));
+  MOCK_METHOD1(LoadPublicObjectBlobs,
+      bool(std::map<int, ObjectBlob>* blobs));
+  MOCK_METHOD1(LoadPrivateObjectBlobs,
+      bool(std::map<int, ObjectBlob>* blobs));
 };
 
 }  // namespace

@@ -119,6 +119,8 @@ class Session {
   // Random number generation (see PKCS #11 v2.20: 11.15).
   virtual CK_RV SeedRandom(const std::string& seed) = 0;
   virtual CK_RV GenerateRandom(int num_bytes, std::string* random_data) = 0;
+  // Waits for private objects to be loaded before returning.
+  virtual void WaitForPrivateObjects() = 0;
 };
 
 }  // namespace

@@ -36,9 +36,11 @@ uint32_t ExtractUint32(const void* data) {
 namespace chaps {
 
 OpencryptokiImporter::OpencryptokiImporter(int slot,
+                                           const FilePath& path,
                                            TPMUtility* tpm,
                                            ChapsFactory* factory)
     : slot_(slot),
+      path_(path),
       tpm_(tpm),
       factory_(factory),
       private_root_key_(0),
@@ -48,18 +50,17 @@ OpencryptokiImporter::OpencryptokiImporter(int slot,
 
 OpencryptokiImporter::~OpencryptokiImporter() {}
 
-bool OpencryptokiImporter::ImportObjects(const FilePath& path,
-                                         ObjectPool* object_pool) {
+bool OpencryptokiImporter::ImportObjects(ObjectPool* object_pool) {
   const char kOpencryptokiDir[] = ".tpm";
   const char kOpencryptokiObjectDir[] = "TOK_OBJ";
   const char kOpencryptokiMasterKey[] = "MK_PRIVATE";
   const char kOpencryptokiObjectIndex[] = "OBJ.IDX";
 
   LOG(INFO) << "Importing opencryptoki objects.";
-  FilePath base_path = path.DirName().Append(kOpencryptokiDir);
-  FilePath master_key_path = base_path.Append(kOpencryptokiMasterKey);
+  FilePath base_path = path_.DirName().Append(kOpencryptokiDir);
   FilePath object_path = base_path.Append(kOpencryptokiObjectDir);
   FilePath index_path = object_path.Append(kOpencryptokiObjectIndex);
+  master_key_path_ = base_path.Append(kOpencryptokiMasterKey);
   if (!file_util::PathExists(index_path)) {
     LOG(WARNING) << "Did not find any opencryptoki objects to import.";
     return true;
@@ -71,7 +72,6 @@ bool OpencryptokiImporter::ImportObjects(const FilePath& path,
   }
   vector<string> object_files;
   base::SplitStringAlongWhitespace(index, &object_files);
-  map<string, string> encrypted_objects;
   vector<AttributeMap> ready_for_import;
   LOG(INFO) << "Found " << object_files.size() << " object files.";
   // Try to read and process each file listed in the index file. If a problem
@@ -91,7 +91,7 @@ bool OpencryptokiImporter::ImportObjects(const FilePath& path,
     }
     if (is_encrypted) {
       // We can't process encrypted files until we have the master key.
-      encrypted_objects[object_files[i]] = flat_object;
+      encrypted_objects_[object_files[i]] = flat_object;
       continue;
     }
     AttributeMap attributes;
@@ -105,53 +105,21 @@ bool OpencryptokiImporter::ImportObjects(const FilePath& path,
       ready_for_import.push_back(attributes);
     }
   }
-  if (encrypted_objects.size() == 0 && ready_for_import.size() == 0) {
+  if (encrypted_objects_.size() == 0 && ready_for_import.size() == 0) {
     // Nothing to import, our job is done.
     LOG(INFO) << "Did not find any opencryptoki objects to import.";
     return true;
   }
-  LOG(INFO) << "Found objects: " << encrypted_objects.size() << " private, "
+  LOG(INFO) << "Found objects: " << encrypted_objects_.size() << " private, "
             << ready_for_import.size() << " public.";
-  // Further processing will probably require us to use the tpm.
-  if (!LoadKeyHierarchy()) {
-    LOG(ERROR) << "Failed to load the opencryptoki key hierarchy.";
-    return false;
-  }
-  // If there are any encrypted objects, now is the time to decrypt them.
-  if (encrypted_objects.size() > 0) {
-    string encrypted_master_key;
-    if (!file_util::PathExists(master_key_path) ||
-        !file_util::ReadFileToString(master_key_path, &encrypted_master_key)) {
-      LOG(ERROR) << "Failed to read encrypted master key.";
-      return false;
-    }
-    string master_key;
-    if (!DecryptMasterKey(encrypted_master_key, &master_key)) {
-      LOG(ERROR) << "Failed to decrypt the master key.";
-    }
-    for (map<string, string>::iterator iter = encrypted_objects.begin();
-         iter != encrypted_objects.end();
-         ++iter) {
-      string flat_object;
-      if (!DecryptObject(master_key, iter->second, &flat_object)) {
-        LOG(WARNING) << "Failed to decrypt an encrypted object: "
-                     << iter->first;
-        continue;
-      }
-      AttributeMap attributes;
-      if (!UnflattenObject(flat_object, iter->first, true, &attributes)) {
-        LOG(WARNING) << "Failed to parse object attributes: " << iter->first;
-        continue;
-      }
-      ready_for_import.push_back(attributes);
-    }
-  }
   // Objects that have opencryptoki internal attributes such as tpm-protected
   // blobs need to be moved to the chaps format.
   int num_imported = 0;
   for (size_t i = 0; i < ready_for_import.size(); ++i) {
-    if (!ConvertToChapsFormat(&ready_for_import[i])) {
-      LOG(WARNING) << "Failed to convert an object to Chaps format.";
+    if (IsPrivateKey(ready_for_import[i])) {
+      // Private keys need authorization data decrypted which requires the TPM.
+      // Queue up the object for later processing.
+      unflattened_objects_.push_back(ready_for_import[i]);
       continue;
     }
     Object* object = NULL;
@@ -159,10 +127,37 @@ bool OpencryptokiImporter::ImportObjects(const FilePath& path,
       LOG(WARNING) << "Failed to create an object instance.";
       continue;
     }
-    if (object_pool->Insert(object))
+    if (object_pool->Import(object))
       ++num_imported;
   }
-  LOG(INFO) << "Successfully imported " << num_imported << " objects.";
+  LOG(INFO) << "Imported: " << num_imported << "; Pending: "
+            << encrypted_objects_.size() + unflattened_objects_.size();
+  return true;
+}
+
+bool OpencryptokiImporter::FinishImportAsync(ObjectPool* object_pool) {
+  // If there are any encrypted objects, now is the time to decrypt them.
+  if (!DecryptPendingObjects()) {
+    LOG(WARNING) << "Failed to decrypt encrypted objects. Only public objects"
+                 << " can be imported.";
+  }
+  // Objects that have opencryptoki internal attributes such as tpm-protected
+  // blobs need to be moved to the chaps format.
+  int num_imported = 0;
+  for (size_t i = 0; i < unflattened_objects_.size(); ++i) {
+    if (!ConvertToChapsFormat(&unflattened_objects_[i])) {
+      LOG(WARNING) << "Failed to convert an object to Chaps format.";
+      continue;
+    }
+    Object* object = NULL;
+    if (!CreateObjectInstance(unflattened_objects_[i], &object)) {
+      LOG(WARNING) << "Failed to create an object instance.";
+      continue;
+    }
+    if (object_pool->Import(object))
+      ++num_imported;
+  }
+  LOG(INFO) << "Finished importing " << num_imported << " pending objects.";
   return true;
 }
 
@@ -274,52 +269,53 @@ bool OpencryptokiImporter::ProcessInternalObject(
       LOG(ERROR) << "Failed to write private root key blob.";
       return true;
     }
-    private_root_key_blob_ = blob;
+    private_root_blob_ = blob;
   } else if (id == kPrivateLeafKeyID) {
-    private_leaf_key_blob_ = blob;
+    private_leaf_blob_ = blob;
   } else if (id == kPublicRootKeyID) {
     if (!object_pool->SetInternalBlob(kLegacyPublicRootKey, blob)) {
       LOG(ERROR) << "Failed to write public root key blob.";
       return true;
     }
-    public_root_key_blob_ = blob;
+    public_root_blob_ = blob;
   } else if (id == kPublicLeafKeyID) {
-    public_leaf_key_blob_ = blob;
+    public_leaf_blob_ = blob;
   }
   return true;
 }
 
-bool OpencryptokiImporter::LoadKeyHierarchy() {
+bool OpencryptokiImporter::LoadKeyHierarchy(bool load_private) {
   const char kDefaultAuthData[] = "111111";
-  // We need all four internal blobs in order to proceed.
-  if (private_root_key_blob_.empty() || private_leaf_key_blob_.empty() ||
-      public_root_key_blob_.empty() || public_leaf_key_blob_.empty()) {
+  string& root_blob = load_private ? private_root_blob_ : public_root_blob_;
+  string& leaf_blob = load_private ? private_leaf_blob_ : public_leaf_blob_;
+  int& root_key = load_private ? private_root_key_ : public_root_key_;
+  int& leaf_key = load_private ? private_leaf_key_ : public_leaf_key_;
+  // Check if the requested hierarchy is already loaded.
+  if (root_key && leaf_key)
+    return true;
+  // We need both the root and leaf blobs in order to proceed.
+  if (root_blob.empty() || leaf_blob.empty())
     return false;
-  }
-  // Load the root keys.
-  if (!tpm_->LoadKey(slot_, private_root_key_blob_, "", &private_root_key_))
+  // Load the root key.
+  if (!tpm_->LoadKey(slot_, root_blob, "", &root_key))
     return false;
-  if (!tpm_->LoadKey(slot_, public_root_key_blob_, "", &public_root_key_))
-    return false;
-  // Load the leaf keys.
-  string leaf_auth_data = sha1(kDefaultAuthData);
+  // Load the leaf key.
+  string leaf_auth_data = Sha1(kDefaultAuthData);
   if (!tpm_->LoadKeyWithParent(slot_,
-                               private_leaf_key_blob_,
+                               leaf_blob,
                                leaf_auth_data,
-                               private_root_key_,
-                               &private_leaf_key_))
-    return false;
-  if (!tpm_->LoadKeyWithParent(slot_,
-                               public_leaf_key_blob_,
-                               leaf_auth_data,
-                               public_root_key_,
-                               &public_leaf_key_))
+                               root_key,
+                               &leaf_key))
     return false;
   return true;
 }
 
 bool OpencryptokiImporter::DecryptMasterKey(const string& encrypted_master_key,
                                             string* master_key) {
+  if (!LoadKeyHierarchy(true)) {
+    LOG(ERROR) << "Failed to load private key hierarchy.";
+    return false;
+  }
   // Trousers defines the handle value 0 as NULL_HKEY so this check works.
   CHECK(private_leaf_key_);
   // The master key is encrypted with a simple bind to the private leaf key.
@@ -349,7 +345,7 @@ bool OpencryptokiImporter::DecryptObject(const string& key,
   if (decrypted.size() != 4 + length + kSha1OutputBytes)
     return false;
   *object_data = decrypted.substr(4, length);
-  if (sha1(*object_data) != decrypted.substr(4 + length))
+  if (Sha1(*object_data) != decrypted.substr(4 + length))
     return false;
   return true;
 }
@@ -389,6 +385,10 @@ bool OpencryptokiImporter::ConvertToChapsFormat(AttributeMap* attributes) {
   // The value of CKA_PRIVATE tells us which hierarchy we're working with.
   CK_BBOOL is_private = private_it->second[0];
   int leaf_key_handle = is_private ? private_leaf_key_ : public_leaf_key_;
+  if (!LoadKeyHierarchy(is_private)) {
+    LOG(ERROR) << "Failed to load key hierarchy: private=" << is_private;
+    return false;
+  }
   // Trousers defines the handle value 0 as NULL_HKEY so this check works.
   CHECK(leaf_key_handle);
 
@@ -421,6 +421,47 @@ bool OpencryptokiImporter::CreateObjectInstance(const AttributeMap& attributes,
   if (result != CKR_OK) {
     LOG(ERROR) << "Failed to validate new object: " << CK_RVToString(result);
     return false;
+  }
+  return true;
+}
+
+bool OpencryptokiImporter::IsPrivateKey(const AttributeMap& attributes) {
+  AttributeMap::const_iterator class_it = attributes.find(CKA_CLASS);
+  if (class_it == attributes.end() || class_it->second.size() < 4)
+    return false;
+  CK_OBJECT_CLASS object_class = ExtractUint32(class_it->second.data());
+  return (object_class == CKO_PRIVATE_KEY);
+}
+
+bool OpencryptokiImporter::DecryptPendingObjects() {
+  if (encrypted_objects_.size() > 0) {
+    string encrypted_master_key;
+    if (!file_util::PathExists(master_key_path_) ||
+        !file_util::ReadFileToString(master_key_path_, &encrypted_master_key)) {
+      LOG(ERROR) << "Failed to read encrypted master key.";
+      return false;
+    }
+    string master_key;
+    if (!DecryptMasterKey(encrypted_master_key, &master_key)) {
+      LOG(ERROR) << "Failed to decrypt the master key.";
+      return false;
+    }
+    for (map<string, string>::iterator iter = encrypted_objects_.begin();
+         iter != encrypted_objects_.end();
+         ++iter) {
+      string flat_object;
+      if (!DecryptObject(master_key, iter->second, &flat_object)) {
+        LOG(WARNING) << "Failed to decrypt an encrypted object: "
+                     << iter->first;
+        continue;
+      }
+      AttributeMap attributes;
+      if (!UnflattenObject(flat_object, iter->first, true, &attributes)) {
+        LOG(WARNING) << "Failed to parse object attributes: " << iter->first;
+        continue;
+      }
+      unflattened_objects_.push_back(attributes);
+    }
   }
   return true;
 }

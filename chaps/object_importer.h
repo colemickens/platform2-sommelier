@@ -5,8 +5,6 @@
 #ifndef CHAPS_OBJECT_IMPORTER_H
 #define CHAPS_OBJECT_IMPORTER_H
 
-#include <base/file_path.h>
-
 namespace chaps {
 
 class ObjectPool;
@@ -16,11 +14,21 @@ class ObjectPool;
 class ObjectImporter {
  public:
   virtual ~ObjectImporter() {}
-  // Imports objects into the given object pool.
-  //  path - The path of the current token.
+
+  // Imports objects into the given object pool. This method must execute as
+  // quickly as possible; TPM operations should not be performed here. If TPM
+  // operations are required to finish importing objects, this work should be
+  // done later in FinishImportAsync.
   //  pool - The object pool into which object should be inserted. This pointer
   //         must not be retained or freed by the ObjectImporter instance.
-  virtual bool ImportObjects(const FilePath& path, ObjectPool* pool) = 0;
+  virtual bool ImportObjects(ObjectPool* pool) = 0;
+
+  // Finishes importing objects that may take a long time to import. Here it is
+  // safe to perform lengthy TPM operations. This is intended to be called on a
+  // background thread but must not be called until ImportObjects has returned.
+  //  pool - The object pool into which object should be inserted. This pointer
+  //         must not be retained or freed by the ObjectImporter instance.
+  virtual bool FinishImportAsync(ObjectPool* pool) = 0;
 };
 
 }  // namespace

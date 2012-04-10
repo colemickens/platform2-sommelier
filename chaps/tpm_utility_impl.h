@@ -12,6 +12,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/synchronization/lock.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 
@@ -102,6 +103,7 @@ class TPMUtilityImpl : public TPMUtility {
   bool srk_public_loaded_;
   const std::string default_exponent_;
   std::map<int, HandleInfo> slot_handles_;
+  base::Lock lock_;
 
   DISALLOW_COPY_AND_ASSIGN(TPMUtilityImpl);
 };
