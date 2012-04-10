@@ -168,13 +168,12 @@ gboolean cryptohome_async_do_automatic_free_disk_space_control(
     GError **error) {
   CRYPTOHOME_WRAP_METHOD(AsyncDoAutomaticFreeDiskSpaceControl, OUT_async_id);
 }
-gboolean cryptohome_async_update_current_user_activity_timestamp(
+gboolean cryptohome_update_current_user_activity_timestamp(
     Cryptohome *self,
     gint time_shift_sec,
-    gint *OUT_async_id,
     GError **error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncUpdateCurrentUserActivityTimestamp,
-                         time_shift_sec, OUT_async_id);
+  CRYPTOHOME_WRAP_METHOD(UpdateCurrentUserActivityTimestamp,
+                         time_shift_sec);
 }
 gboolean cryptohome_tpm_is_ready(Cryptohome *self,
                                  gboolean *OUT_ready,

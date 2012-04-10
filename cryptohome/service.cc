@@ -870,18 +870,10 @@ gboolean Service::AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
   return TRUE;
 }
 
-gboolean Service::AsyncUpdateCurrentUserActivityTimestamp(gint time_shift_sec,
-                                                          gint *OUT_async_id,
-                                                          GError **error) {
-  MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount_, &event_source_);
-  scoped_refptr<MountTaskUpdateCurrentUserActivityTimestamp> mount_task =
-      new MountTaskUpdateCurrentUserActivityTimestamp(
-          bridge, mount_, time_shift_sec);
-  *OUT_async_id = mount_task->sequence_id();
-  mount_thread_.message_loop()->PostTask(FROM_HERE,
-      base::Bind(&MountTaskUpdateCurrentUserActivityTimestamp::Run,
-                 mount_task.get()));
+gboolean Service::UpdateCurrentUserActivityTimestamp(gint time_shift_sec,
+                                                     GError **error) {
+  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it)
+    it->second->UpdateCurrentUserActivityTimestamp(time_shift_sec);
   return TRUE;
 }
 

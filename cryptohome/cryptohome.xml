@@ -88,9 +88,8 @@
     <method name="AsyncDoAutomaticFreeDiskSpaceControl">
       <arg type="i" name="async_id" direction="out" />
     </method>
-    <method name="AsyncUpdateCurrentUserActivityTimestamp">
+    <method name="UpdateCurrentUserActivityTimestamp">
       <arg type="i" name="time_shift_sec" direction="in" />
-      <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmIsReady">
       <arg type="b" name="ready" direction="out" />
