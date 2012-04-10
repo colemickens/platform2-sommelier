@@ -11,7 +11,7 @@ PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 PROTOC = protoc
 
-BASE_VER = 85268
+BASE_VER ?= 125070
 PC_DEPS = dbus-c++-1 protobuf openssl \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))

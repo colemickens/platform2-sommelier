@@ -5,7 +5,7 @@
 #ifndef CHAPS_CHAPS_SERVICE_H
 #define CHAPS_CHAPS_SERVICE_H
 
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "chaps/chaps_interface.h"
 #include "chaps/slot_manager.h"

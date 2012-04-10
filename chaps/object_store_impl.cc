@@ -10,6 +10,8 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
+#include <base/string_piece.h>
+#include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/utility.h>
 #include <leveldb/db.h>
@@ -228,9 +230,10 @@ bool ObjectStoreImpl::ParseBlobKey(const string& key,
                                    bool* is_internal,
                                    int* blob_id) {
   size_t index = key.rfind(kBlobKeySeparator);
+  base::StringPiece key_piece(key.begin() + (index + 1), key.end());
   if (index == string::npos)
     return false;
-  if (!base::StringToInt(key.begin() + (index + 1), key.end(), blob_id))
+  if (!base::StringToInt(key_piece, blob_id))
     return false;
   string prefix = key.substr(0, index);
   if (prefix != kInternalBlobKeyPrefix && prefix != kObjectBlobKeyPrefix)

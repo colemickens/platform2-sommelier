@@ -8,7 +8,7 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/err.h>

@@ -12,7 +12,7 @@
 
 #include <base/basictypes.h>
 #include <base/file_path.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 #include <leveldb/db.h>
 #include <leveldb/env.h>

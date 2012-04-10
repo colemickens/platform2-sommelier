@@ -6,7 +6,7 @@
 #ifndef CHAPS_CHAPS_PROXY_H
 #define CHAPS_CHAPS_PROXY_H
 
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "chaps/chaps_interface.h"
 #include "chaps/chaps_proxy_generated.h"

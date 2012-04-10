@@ -7,7 +7,7 @@
 #include <map>
 #include <string>
 
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 #include <openssl/err.h>
 

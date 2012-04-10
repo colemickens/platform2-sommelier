@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/sha.h>
