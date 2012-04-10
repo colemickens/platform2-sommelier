@@ -330,14 +330,16 @@ class MountTaskTestCredentials : public MountTask {
  public:
   MountTaskTestCredentials(MountTaskObserver* observer,
                            Mount* mount,
+                           HomeDirs* homedirs,
                            const UsernamePasskey& credentials)
-      : MountTask(observer, mount, credentials) {
+      : MountTask(observer, mount, credentials), homedirs_(homedirs) {
   }
   virtual ~MountTaskTestCredentials() { }
 
   virtual void Run();
 
  private:
+  HomeDirs* homedirs_;
   DISALLOW_COPY_AND_ASSIGN(MountTaskTestCredentials);
 };
 

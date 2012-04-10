@@ -492,7 +492,7 @@ gboolean Service::CheckKey(gchar *userid,
   MountTaskResult result;
   base::WaitableEvent event(true, false);
   scoped_refptr<MountTaskTestCredentials> mount_task =
-      new MountTaskTestCredentials(NULL, mount_, credentials);
+      new MountTaskTestCredentials(NULL, mount_, homedirs_, credentials);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
   mount_thread_.message_loop()->PostTask(FROM_HERE,
@@ -512,7 +512,7 @@ gboolean Service::AsyncCheckKey(gchar *userid,
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(mount_, &event_source_);
   scoped_refptr<MountTaskTestCredentials> mount_task
-      = new MountTaskTestCredentials(bridge, mount_, credentials);
+      = new MountTaskTestCredentials(bridge, mount_, homedirs_, credentials);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&MountTaskTestCredentials::Run, mount_task.get()));

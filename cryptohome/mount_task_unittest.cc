@@ -204,13 +204,29 @@ TEST_F(MountTaskTest, UnmountTest) {
   ASSERT_TRUE(event_.IsSignaled());
 }
 
-TEST_F(MountTaskTest, TestCredentailsTest) {
+TEST_F(MountTaskTest, TestCredentialsMountTest) {
   EXPECT_CALL(mount_, TestCredentials(_))
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskTestCredentials> mount_task
-      = new MountTaskTestCredentials(NULL, &mount_, UsernamePasskey());
+      = new MountTaskTestCredentials(NULL, &mount_, NULL, UsernamePasskey());
+  mount_task->set_complete_event(&event_);
+  mount_task->set_result(&result_);
+  runner_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskTestCredentials::Run, mount_task.get()));
+  event_.TimedWait(wait_time_);
+  ASSERT_TRUE(event_.IsSignaled());
+}
+
+TEST_F(MountTaskTest, TestCredentialsHomeDirsTest) {
+  MockHomeDirs homedirs;
+  EXPECT_CALL(homedirs, AreCredentialsValid(_))
+      .WillOnce(Return(true));
+
+  ASSERT_FALSE(event_.IsSignaled());
+  scoped_refptr<MountTaskTestCredentials> mount_task
+      = new MountTaskTestCredentials(NULL, NULL, &homedirs, UsernamePasskey());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
