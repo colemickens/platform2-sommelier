@@ -44,9 +44,24 @@ class VPNProvider {
   // services_ vector.
   void RemoveService(VPNServiceRefPtr service);
 
+  void CreateServicesFromProfile(ProfileRefPtr profile);
+
  private:
   FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(VPNProviderTest, RemoveService);
+
+  // Create a service of type |type| and storage identifier |storage_id|
+  // and initial parameters |args|.  Returns a service reference pointer
+  // to the newly created service, or popuplates |error| with an the error
+  // that caused this to fail.
+  VPNServiceRefPtr CreateService(const std::string &type,
+                                 const std::string &storage_id,
+                                 const KeyValueStore &args,
+                                 Error *error);
+
+  // Find a service of type |type| whose storage identifier is |storage_id|.
+  VPNServiceRefPtr FindService(const std::string &type,
+                               const std::string &storage_id);
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;

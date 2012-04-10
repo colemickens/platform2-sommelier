@@ -128,8 +128,9 @@ class Profile : public base::RefCounted<Profile> {
   const std::string &GetUser() const { return name_.user; }
 
   // Returns a read-only copy of the backing storage of the profile.
-  // TODO(pstew): Needed by ProfileDBusPropertyExporter crosbug.com/25813
-  const StoreInterface *GetConstStorage() const { return storage_.get(); }
+  virtual const StoreInterface *GetConstStorage() const {
+    return storage_.get();
+  }
 
  protected:
   // Protected getters

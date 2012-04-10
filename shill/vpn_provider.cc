@@ -7,13 +7,17 @@
 #include <algorithm>
 
 #include <base/logging.h>
+#include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/openvpn_driver.h"
+#include "shill/profile.h"
+#include "shill/store_interface.h"
 #include "shill/vpn_service.h"
 
+using std::set;
 using std::string;
 using std::vector;
 
@@ -50,36 +54,11 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
   }
 
   // Find a service in the provider list which matches these parameters.
-  for (vector<VPNServiceRefPtr>::const_iterator it = services_.begin();
-       it != services_.end();
-       ++it) {
-    if (type == (*it)->driver()->GetProviderType() &&
-        (*it)->GetStorageIdentifier() == storage_id) {
-      return *it;
-    }
+  VPNServiceRefPtr service = FindService(type, storage_id);
+  if (service == NULL) {
+    service = CreateService(type, storage_id, args, error);
   }
 
-  scoped_ptr<VPNDriver> driver;
-  if (type == flimflam::kProviderOpenVpn) {
-    driver.reset(new OpenVPNDriver(
-        control_interface_, dispatcher_, metrics_, manager_,
-        manager_->device_info(), manager_->glib(), args));
-  } else {
-    Error::PopulateAndLog(
-        error, Error::kNotSupported, "Unsupported VPN type: " + type);
-    return NULL;
-  }
-
-  VPNServiceRefPtr service = new VPNService(
-      control_interface_, dispatcher_, metrics_, manager_, driver.release());
-  service->set_storage_id(storage_id);
-  service->InitDriverPropertyStore();
-  string name = args.LookupString(flimflam::kProviderNameProperty, "");
-  if (!name.empty()) {
-    service->set_friendly_name(name);
-  }
-  services_.push_back(service);
-  manager_->RegisterService(service);
   return service;
 }
 
@@ -102,6 +81,91 @@ void VPNProvider::RemoveService(VPNServiceRefPtr service) {
   if (it != services_.end()) {
     services_.erase(it);
   }
+}
+
+void VPNProvider::CreateServicesFromProfile(ProfileRefPtr profile) {
+  const StoreInterface *storage = profile->GetConstStorage();
+  set<string> groups =
+      storage->GetGroupsWithKey(flimflam::kProviderTypeProperty);
+  for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
+    if (!StartsWithASCII(*it, "vpn_", false)) {
+      continue;
+    }
+
+    string type;
+    if (!storage->GetString(*it, flimflam::kProviderTypeProperty, &type)) {
+      LOG(ERROR) << "Group " << *it << " is missing the "
+                 << flimflam::kProviderTypeProperty << " property.";
+      continue;
+    }
+
+    VPNServiceRefPtr service = FindService(type, *it);
+    if (service != NULL) {
+      // If the service already exists, it does not need to be configured,
+      // since PushProfile would have already called ConfigureService on it.
+      VLOG(2) << "Service already exists " << *it;
+      continue;
+    }
+
+    // Create a service with an empty |args| parameter.  We will populate
+    // the service with properties using ConfigureService() below.
+    KeyValueStore args;
+    Error error;
+    service = CreateService(type, *it, args, &error);
+
+    if (service == NULL) {
+      LOG(ERROR) << "Could not create service for " << *it;
+      continue;
+    }
+
+    if (!profile->ConfigureService(service)) {
+      LOG(ERROR) << "Could not configure service for " << *it;
+      continue;
+    }
+  }
+}
+
+VPNServiceRefPtr VPNProvider::CreateService(const string &type,
+                                            const string &storage_id,
+                                            const KeyValueStore &args,
+                                            Error *error) {
+  scoped_ptr<VPNDriver> driver;
+  if (type == flimflam::kProviderOpenVpn) {
+    driver.reset(new OpenVPNDriver(
+        control_interface_, dispatcher_, metrics_, manager_,
+        manager_->device_info(), manager_->glib(), args));
+  } else {
+    Error::PopulateAndLog(
+        error, Error::kNotSupported, "Unsupported VPN type: " + type);
+    return NULL;
+  }
+
+  VPNServiceRefPtr service = new VPNService(
+      control_interface_, dispatcher_, metrics_, manager_, driver.release());
+  service->set_storage_id(storage_id);
+  service->InitDriverPropertyStore();
+  string name = args.LookupString(flimflam::kProviderNameProperty, "");
+  if (!name.empty()) {
+    service->set_friendly_name(name);
+  }
+  services_.push_back(service);
+  manager_->RegisterService(service);
+
+  return service;
+}
+
+VPNServiceRefPtr VPNProvider::FindService(const std::string &type,
+                                          const std::string &storage_id) {
+  for (vector<VPNServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end();
+       ++it) {
+    if (type == (*it)->driver()->GetProviderType() &&
+        storage_id == (*it)->GetStorageIdentifier()) {
+      return *it;
+    }
+  }
+
+  return NULL;
 }
 
 }  // namespace shill

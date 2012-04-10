@@ -13,12 +13,17 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_profile.h"
+#include "shill/mock_store.h"
 #include "shill/mock_vpn_driver.h"
 #include "shill/mock_vpn_service.h"
 
 using std::string;
 using testing::_;
+using testing::DoAll;
+using testing::NiceMock;
 using testing::Return;
+using testing::SetArgumentPointee;
 
 namespace shill {
 
@@ -144,6 +149,58 @@ TEST_F(VPNProviderTest, RemoveService) {
 
   provider_.RemoveService(service0);
   EXPECT_EQ(0, provider_.services_.size());
+}
+
+MATCHER_P(ServiceWithStorageId, storage_id, "") {
+  return arg->GetStorageIdentifier() == storage_id;
+}
+
+TEST_F(VPNProviderTest, CreateServicesFromProfile) {
+  scoped_refptr<MockProfile> profile(
+      new NiceMock<MockProfile>(&control_, &manager_, ""));
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(*profile, GetConstStorage())
+      .WillRepeatedly(Return(&storage));
+  EXPECT_CALL(storage, GetString(_, _, _))
+      .WillRepeatedly(Return(false));
+
+  std::set<string> groups;
+  const string kNonVPNIdentifier("foo_123_456");
+  groups.insert(kNonVPNIdentifier);
+  const string kVPNIdentifier0("vpn_123_456");
+  const string kVPNIdentifier1("vpn_789_012");
+  groups.insert(kVPNIdentifier0);
+  groups.insert(kVPNIdentifier1);
+  EXPECT_CALL(storage, GetGroupsWithKey(flimflam::kProviderTypeProperty))
+      .WillRepeatedly(Return(groups));
+
+  EXPECT_CALL(*profile, ConfigureService(ServiceWithStorageId(kVPNIdentifier1)))
+      .WillOnce(Return(true));
+
+  const string kProviderTypeUnknown("unknown");
+  EXPECT_CALL(storage, GetString(kVPNIdentifier0,
+                                 flimflam::kProviderTypeProperty,
+                                 _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kProviderTypeUnknown),
+                            Return(true)));
+  const string kProviderTypeOpenVPN(flimflam::kProviderOpenVpn);
+  EXPECT_CALL(storage, GetString(kVPNIdentifier1,
+                                 flimflam::kProviderTypeProperty,
+                                 _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kProviderTypeOpenVPN),
+                            Return(true)));
+
+  EXPECT_CALL(manager_, device_info())
+      .WillRepeatedly(Return(reinterpret_cast<DeviceInfo *>(NULL)));
+
+  EXPECT_CALL(manager_, RegisterService(ServiceWithStorageId(kVPNIdentifier1)))
+      .Times(1);
+
+  provider_.CreateServicesFromProfile(profile);
+
+  // Calling this again should not create any more services (checked by the
+  // Times(1) above).
+  provider_.CreateServicesFromProfile(profile);
 }
 
 }  // namespace shill
