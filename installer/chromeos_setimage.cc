@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "chromeos_install_config.h"
 #include "inst_util.h"
 
 using std::string;
@@ -18,16 +19,9 @@ using std::string;
 // here. I think.
 //
 
-bool SetImage(const string& install_dir,
-              const string& root_dev,
-              const string& rootfs_dev,
-              const string& kernel_dev) {
+bool SetImage(const InstallConfig& install_config) {
 
-  printf("SetImage(%s, %s, %s, %s)\n",
-         install_dir.c_str(),
-         root_dev.c_str(),
-         rootfs_dev.c_str(),
-         kernel_dev.c_str());
+  printf("SetImage\n");
 
   // Re-hash the root filesystem and use the table for dm-verity.
   // We extract the parameters for verification from the kernel
@@ -36,7 +30,7 @@ bool SetImage(const string& install_dir,
   // Instead, rootfs integrity will be validated on next boot through
   // the verified kernel configuration.
 
-  string kernel_config = DumpKernelConfig(kernel_dev);
+  string kernel_config = DumpKernelConfig(install_config.kernel.device());
 
   printf("KERNEL_CONFIG: %s\n", kernel_config.c_str());
 
@@ -75,9 +69,10 @@ bool SetImage(const string& install_dir,
   bool enable_rootfs_verification = (kernel_config_root == "/dev/dm-0");
 
   if (!enable_rootfs_verification)
-    MakeFileSystemRw(rootfs_dev, true);
+    MakeFileSystemRw(install_config.root.device(), true);
 
-  if (chromeos_verity(verity_algorithm.c_str(), rootfs_dev.c_str(),
+  if (chromeos_verity(verity_algorithm.c_str(),
+                      install_config.root.device().c_str(),
                       getpagesize(),
                       (uint64_t)(atoi(rootfs_sectors.c_str()) / 8),
                       salt.c_str(), expected_hash.c_str(),

@@ -5,11 +5,10 @@
 #ifndef CHROMEOS_SETIMAGE
 #define CHROMEOS_SETIMAGE
 
+#include "chromeos_install_config.h"
+
 #include <string>
 
-bool SetImage(const std::string& install_dir,    // /tmp/mnt_xxx
-              const std::string& root_dev,       // /dev/sda
-              const std::string& rootfs_image,   // /dev/sda5
-              const std::string& kernel_image);  // /dev/sda4
+bool SetImage(const InstallConfig& install_config);
 
 #endif // CHROMEOS_SETIMAGE

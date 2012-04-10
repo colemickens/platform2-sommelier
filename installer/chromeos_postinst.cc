@@ -10,10 +10,43 @@
 
 #include <vboot/CgptManager.h>
 
+#include "chromeos_install_config.h"
 #include "chromeos_setimage.h"
 #include "inst_util.h"
 
 using std::string;
+
+bool ConfigureInstall(
+    const std::string& install_dev,
+    const std::string& install_path,
+    InstallConfig* install_config) {
+
+  Partition root = Partition(install_dev, install_path);
+
+  string slot;
+  switch (root.number()) {
+    case 3:
+      slot = "A";
+      break;
+    case 5:
+      slot = "B";
+      break;
+    default:
+      fprintf(stderr,
+              "Not a valid target parition number: %i\n", root.number());
+      return false;
+  }
+
+  string kernel_dev = MakePartitionDev(root.base_device(),
+                                       root.number() - 1);
+
+  install_config->slot = slot;
+  install_config->root = root;
+  install_config->kernel = Partition(kernel_dev);
+  install_config->boot = Partition("/dev/sda12");
+
+  return true;
+}
 
 // Updates firmware. We must activate new firmware only after new kernel is
 // actived (installed and made bootable), otherwise new firmware with all old
@@ -72,14 +105,13 @@ bool FirmwareUpdate(const string &install_dir, bool is_update) {
 // src_version of the form "10.2.3.4" or "12.3.2"
 // install_dev of the form "/dev/sda3"
 //
-bool ChromeosChrootPostinst(string install_dir,
+bool ChromeosChrootPostinst(const InstallConfig& install_config,
                             string src_version,
-                            bool firmware_update,
-                            string install_dev) {
+                            bool firmware_update) {
 
-  printf("ChromeosChrootPostinst(%s, %s, %d, %s)\n",
-         install_dir.c_str(), src_version.c_str(),
-         firmware_update, install_dev.c_str());
+  printf("ChromeosChrootPostinst(%s, %s)\n",
+         src_version.c_str(),
+         firmware_update ? "firmware" : "no firmware");
 
   // Extract External ENVs
   bool is_factory_install = getenv("IS_FACTORY_INSTALL");
@@ -87,46 +119,26 @@ bool ChromeosChrootPostinst(string install_dir,
   bool is_install = getenv("IS_INSTALL");
   bool is_update = !is_factory_install && !is_recovery_install && !is_install;
 
-  // Find Misc partition/device names
-  string root_dev = GetBlockDevFromPartitionDev(install_dev);
-  int new_part_num = GetPartitionFromPartitionDev(install_dev);
-  int new_kern_num = new_part_num - 1;
-  string new_k_dev = MakePartitionDev(root_dev, new_kern_num);
-
-  string boot_slot;
-  switch (new_part_num) {
-    case 3:
-      boot_slot = "A";
-      break;
-    case 5:
-      boot_slot = "B";
-      break;
-    default:
-      fprintf(stderr,
-              "Not a valid target parition number: %i\n", new_part_num);
-      return 1;
-  }
-
   bool make_dev_readonly = false;
 
   if (is_update && VersionLess(src_version, "0.10.156.2")) {
     // See bug chromium-os:11517. This fixes an old FS corruption problem.
     printf("Patching new rootfs\n");
-    if (!R10FileSystemPatch(install_dev))
+    if (!R10FileSystemPatch(install_config.root.device()))
       return false;
     make_dev_readonly=true;
   }
 
   // If this FS was mounted read-write, we can't do deltas from it. Mark the
   // FS as such
-  Touch(install_dir + "/.nodelta");  // Ignore Error on purpse
+  Touch(install_config.root.mount() + "/.nodelta");  // Ignore Error on purpse
 
   printf("Set boot target to %s: Partition %d, Slot %s\n",
-         install_dev.c_str(),
-         new_part_num,
-         boot_slot.c_str());
+         install_config.root.device().c_str(),
+         install_config.root.number(),
+         install_config.slot.c_str());
 
-  if (!SetImage(install_dir, root_dev, install_dev, new_k_dev)) {
+  if (!SetImage(install_config)) {
     printf("SetImage failed.\n");
     return false;
   }
@@ -138,44 +150,47 @@ bool ChromeosChrootPostinst(string install_dir,
 
   CgptManager cgpt_manager;
 
-  int result = cgpt_manager.Initialize(root_dev);
+  int result = cgpt_manager.Initialize(install_config.root.base_device());
   if (result != kCgptSuccess) {
     printf("Unable to initialize CgptManager\n");
     return false;
   }
 
-  result = cgpt_manager.SetHighestPriority(new_kern_num);
+  result = cgpt_manager.SetHighestPriority(install_config.kernel.number());
   if (result != kCgptSuccess) {
-    printf("Unable to set highest priority for kernel %d\n", new_kern_num);
+    printf("Unable to set highest priority for kernel %d\n",
+           install_config.kernel.number());
     return false;
   }
 
   // If it's not an update, pre-mark the first boot as successful
   // since we can't fall back on the old install.
   bool new_kern_successful = !is_update;
-  result = cgpt_manager.SetSuccessful(new_kern_num, new_kern_successful);
+  result = cgpt_manager.SetSuccessful(install_config.kernel.number(),
+                                      new_kern_successful);
   if (result != kCgptSuccess) {
     printf("Unable to set successful to %d for kernel %d\n",
            new_kern_successful,
-           new_kern_num);
+           install_config.kernel.number());
     return false;
   }
 
   int numTries = 6;
-  result = cgpt_manager.SetNumTriesLeft(new_kern_num, numTries);
+  result = cgpt_manager.SetNumTriesLeft(install_config.kernel.number(),
+                                        numTries);
   if (result != kCgptSuccess) {
     printf("Unable to set NumTriesLeft to %d for kernel %d\n",
            numTries,
-           new_kern_num);
+           install_config.kernel.number());
     return false;
   }
 
   printf("Updated kernel %d with Successful = %d and NumTriesLeft = %d\n",
-          new_kern_num, new_kern_successful, numTries);
+         install_config.kernel.number(), new_kern_successful, numTries);
 
   if (make_dev_readonly) {
-    printf("Making dev %s read-only\n", install_dev.c_str());
-    MakeDeviceReadOnly(install_dev);  // Ignore error
+    printf("Making dev %s read-only\n", install_config.root.device().c_str());
+    MakeDeviceReadOnly(install_config.root.device());  // Ignore error
   }
 
   // At this point in the script, the new partition has been marked bootable
@@ -207,7 +222,7 @@ bool ChromeosChrootPostinst(string install_dir,
   // In factory process, firmware is either pre-flashed or assigned by
   // mini-omaha server, and we don't want to try updates inside postinst.
   if (!is_factory_install && firmware_update) {
-    if (!FirmwareUpdate(install_dir, is_update)) {
+    if (!FirmwareUpdate(install_config.root.mount(), is_update)) {
       // Note: This will only rollback the ChromeOS verified boot target.
       // The assumption is that systems running firmware autoupdate
       // are not running legacy (non-ChromeOS) firmware. If the firmware
@@ -220,30 +235,33 @@ bool ChromeosChrootPostinst(string install_dir,
       // so as to cleanup as much as possible.
       new_kern_successful = false;
       bool rollback_successful = true;
-      result = cgpt_manager.SetSuccessful(new_kern_num, new_kern_successful);
+      result = cgpt_manager.SetSuccessful(install_config.kernel.number(),
+                                          new_kern_successful);
       if (result != kCgptSuccess) {
         rollback_successful = false;
         printf("Unable to set successful to %d for kernel %d\n",
                new_kern_successful,
-               new_kern_num);
+               install_config.kernel.number());
       }
 
       numTries = 0;
-      result = cgpt_manager.SetNumTriesLeft(new_kern_num, numTries);
+      result = cgpt_manager.SetNumTriesLeft(install_config.kernel.number(),
+                                            numTries);
       if (result != kCgptSuccess) {
         rollback_successful = false;
         printf("Unable to set NumTriesLeft to %d for kernel %d\n",
                numTries,
-               new_kern_num);
+               install_config.kernel.number());
       }
 
       int priority = 0;
-      result = cgpt_manager.SetPriority(new_kern_num, priority);
+      result = cgpt_manager.SetPriority(install_config.kernel.number(),
+                                        priority);
       if (result != kCgptSuccess) {
         rollback_successful = false;
         printf("Unable to set Priority to %d for kernel %d\n",
                priority,
-               new_kern_num);
+               install_config.kernel.number());
       }
 
       if (rollback_successful)
@@ -261,11 +279,9 @@ bool ChromeosChrootPostinst(string install_dir,
 // a simple wrapper that performs the minimal setup necessary to run
 // chromeos-chroot-postinst inside an install root chroot.
 
-bool RunPostInstall(const string& install_dir,
-                    const string& install_dev) {
+bool RunPostInstall(const InstallConfig& install_config) {
 
-  printf("RunPostInstall(%s, %s)\n",
-         install_dir.c_str(), install_dev.c_str());
+  printf("RunPostInstall\n");
 
   string src_version;
   if (!LsbReleaseValue("/etc/lsb-release",
@@ -285,11 +301,12 @@ bool RunPostInstall(const string& install_dir,
   // updates (the file can be toggled by signing system, using tag_image.sh).
   // If this is changed, or if we want to allow user overriding firmware updates
   // in postinst in future, we may provide an option (ex, --update_firmware).
-  string tag_file = install_dir + "/root/.force_update_firmware";
+  string tag_file = (install_config.root.mount() +
+                     "/root/.force_update_firmware");
+
   bool firmware_update = (access(tag_file.c_str(), 0) == 0);
 
-  return ChromeosChrootPostinst(install_dir,
+  return ChromeosChrootPostinst(install_config,
                                 src_version,
-                                firmware_update,
-                                install_dev);
+                                firmware_update);
 }
