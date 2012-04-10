@@ -343,7 +343,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   // Load the Storage Root Key
   ScopedTssKey srk_handle(context_handle);
   if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
-    TPM_LOG(ERROR, *result) << "CreateCryptohomeKey: Cannot load SRK";
+    TPM_LOG(INFO, *result) << "CreateCryptohomeKey: Cannot load SRK";
     return false;
   }
 
@@ -353,7 +353,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   ScopedTssMemory public_srk(context_handle);
   if (TPM_ERROR(*result = Tspi_Key_GetPubKey(srk_handle, &size_n,
                                              public_srk.ptr()))) {
-    TPM_LOG(ERROR, *result) << "CreateCryptohomeKey: Cannot load SRK pub key";
+    TPM_LOG(INFO, *result) << "CreateCryptohomeKey: Cannot load SRK pub key";
     return false;
   }
 
@@ -490,7 +490,7 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
   // Load the Storage Root Key
   ScopedTssKey srk_handle(context_handle);
   if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
-    TPM_LOG(ERROR, *result) << "LoadCryptohomeKey: Cannot load SRK";
+    TPM_LOG(INFO, *result) << "LoadCryptohomeKey: Cannot load SRK";
     return false;
   }
 
@@ -500,7 +500,7 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
   ScopedTssMemory public_srk(context_handle);
   if (TPM_ERROR(*result = Tspi_Key_GetPubKey(srk_handle, &size_n,
                                              public_srk.ptr()))) {
-    TPM_LOG(ERROR, *result) << "LoadCryptohomeKey: Cannot load SRK public key";
+    TPM_LOG(INFO, *result) << "LoadCryptohomeKey: Cannot load SRK public key";
     return false;
   }
 
@@ -516,7 +516,7 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
                                     key_handle))) {
       // If the error is expected to be transient, return now.
       if (IsTransient(*result)) {
-        TPM_LOG(ERROR, *result) << "LoadCryptohomeKey: Cannot load key " \
+        TPM_LOG(INFO, *result) << "LoadCryptohomeKey: Cannot load key " \
                                 << "from blob";
         return false;
       }
@@ -529,7 +529,7 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
       // Otherwise, close the key and fall through
       Tspi_Context_CloseObject(context_handle, *key_handle);
       if (IsTransient(*result)) {
-        TPM_LOG(ERROR, *result) << "LoadCryptohomeKey: closed object";
+        TPM_LOG(INFO, *result) << "LoadCryptohomeKey: closed object";
         return false;
       }
     }
@@ -542,7 +542,7 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
                                                      key_handle))) {
     // If the error is expected to be transient, return now.
     if (IsTransient(*result)) {
-      TPM_LOG(ERROR, *result) << "LoadCryptohomeKey: failed LoadKeyByUUID";
+      TPM_LOG(INFO, *result) << "LoadCryptohomeKey: failed LoadKeyByUUID";
       return false;
     }
   } else {
@@ -560,7 +560,7 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
     Tspi_Context_CloseObject(context_handle, *key_handle);
   }
 
-  TPM_LOG(ERROR, *result) << "LoadCryptohomeKey: could not load key";
+  TPM_LOG(INFO, *result) << "LoadCryptohomeKey: could not load key";
   return false;
 }
 
@@ -577,7 +577,7 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
 
   // If the error is expected to be transient, return now.
   if (IsTransient(*result)) {
-    TPM_LOG(ERROR, *result) << "Transient failure loading cryptohome key";
+    TPM_LOG(INFO, *result) << "Transient failure loading cryptohome key";
     return false;
   }
 
@@ -590,7 +590,7 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
   }
 
   // Don't check the retry status, since we are returning false here anyway
-  TPM_LOG(ERROR, *result) << "Unable to create or load cryptohome key";
+  TPM_LOG(INFO, *result) << "Unable to create or load cryptohome key";
   return false;
 }
 
