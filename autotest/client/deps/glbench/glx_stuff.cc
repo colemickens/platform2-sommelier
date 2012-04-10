@@ -12,9 +12,11 @@
 GLXContext g_glx_context = NULL;
 GLXFBConfig g_glx_fbconfig = NULL;
 
+namespace gl {
 #define F(fun, type) type fun = NULL;
 LIST_PROC_FUNCTIONS(F)
 #undef F
+};
 
 #ifndef GLX_MESA_swap_control
 typedef GLint (* PFNGLXSWAPINTERVALMESAPROC) (unsigned interval);

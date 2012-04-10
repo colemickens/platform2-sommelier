@@ -76,10 +76,13 @@
     F(glXReleaseTexImageEXT, PFNGLXRELEASETEXIMAGEEXTPROC)
 #endif
 
+namespace gl {
 #define F(fun, type) extern type fun;
 LIST_PROC_FUNCTIONS(F)
 #undef F
+};
 
+using namespace gl;
 #else
 #error bad graphics backend
 #endif
