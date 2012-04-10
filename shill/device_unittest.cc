@@ -67,9 +67,13 @@ class TestDevice : public Device {
                address, interface_index, technology) {}
   ~TestDevice() {}
   virtual void Start(Error *error,
-                     const EnabledStateChangedCallback &callback) {}
+                     const EnabledStateChangedCallback &callback) {
+    DCHECK(error);
+  }
   virtual void Stop(Error *error,
-                    const EnabledStateChangedCallback &callback) {}
+                    const EnabledStateChangedCallback &callback) {
+    DCHECK(error);
+  }
 };
 
 class DeviceTest : public PropertyStoreTest {

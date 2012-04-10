@@ -631,7 +631,10 @@ void Device::OnEnabledStateChanged(const ResultCallback &callback,
 
 void Device::SetEnabled(bool enable) {
   VLOG(2) << __func__ << "(" << enable << ")";
-  SetEnabledInternal(enable, false, NULL, ResultCallback());
+  Error error;
+  SetEnabledInternal(enable, false, &error, ResultCallback());
+  LOG_IF(ERROR, error.IsFailure())
+      << "Enabled failed, but no way to report the failure.";
 }
 
 void Device::SetEnabledPersistent(bool enable,
@@ -644,18 +647,17 @@ void Device::SetEnabledInternal(bool enable,
                                 bool persist,
                                 Error *error,
                                 const ResultCallback &callback) {
+  DCHECK(error);
   VLOG(2) << "Device " << link_name_ << " "
           << (enable ? "starting" : "stopping");
   if (enable == enabled_) {
-    if (error)
-      error->Reset();
+    error->Reset();
     return;
   }
 
   if (enabled_pending_ == enable) {
-    if (error)
-      error->Populate(Error::kInProgress,
-                      "Enable operation already in progress");
+    Error::PopulateAndLog(error, Error::kInProgress,
+                          "Enable operation already in progress");
     return;
   }
 

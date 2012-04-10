@@ -154,6 +154,7 @@ void Cellular::HelpRegisterDerivedString(
 
 void Cellular::Start(Error *error,
                      const EnabledStateChangedCallback &callback) {
+  DCHECK(error);
   VLOG(2) << __func__ << ": " << GetStateString(state_);
   if (state_ != kStateDisabled) {
     return;
