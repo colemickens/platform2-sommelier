@@ -345,9 +345,7 @@ bool Service::Save(StoreInterface *storage) {
 
   // TODO(petkov): We could choose to simplify the saving code by removing most
   // conditionals thus saving even default values.
-  if (favorite_) {
-    storage->SetBool(id, kStorageAutoConnect, auto_connect_);
-  }
+  storage->SetBool(id, kStorageAutoConnect, auto_connect_);
   if (check_portal_ == kCheckPortalAuto) {
     storage->DeleteKey(id, kStorageCheckPortal);
   } else {
@@ -849,11 +847,7 @@ bool Service::GetAutoConnect(Error */*error*/) {
 }
 
 void Service::SetAutoConnect(const bool &connect, Error *error) {
-  if (favorite_) {
-    set_auto_connect(connect);
-  } else {
-    error->Populate(Error::kInvalidArguments, "Property is read-only");
-  }
+  set_auto_connect(connect);
 }
 
 void Service::SetEAPPassword(const string &password, Error */*error*/) {

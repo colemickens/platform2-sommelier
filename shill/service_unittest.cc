@@ -164,11 +164,10 @@ TEST_F(ServiceTest, SetProperty) {
   {
     ::DBus::Error error;
     service_->set_favorite(false);
-    EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
+    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
                                           flimflam::kAutoConnectProperty,
                                           PropertyStoreTest::kBoolV,
                                           &error));
-    EXPECT_EQ(invalid_args(), error.name());
   }
   // Ensure that we can perform a trivial set of the Name property (to its
   // current value) but an attempt to set the property to a different value
