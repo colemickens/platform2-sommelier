@@ -432,6 +432,9 @@ class Service : public base::RefCounted<Service> {
 
   virtual std::string GetDeviceRpcId(Error *error) = 0;
 
+  std::string GetNameProperty(Error *error);
+  void AssertTrivialSetNameProperty(const std::string &name, Error *error);
+
   std::string GetProfileRpcId(Error *error);
   void SetProfileRpcId(const std::string &profile, Error *error);
 

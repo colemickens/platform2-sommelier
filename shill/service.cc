@@ -170,7 +170,12 @@ Service::Service(ControlInterface *control_interface,
                           &Service::IsActive,
                           NULL);
   // flimflam::kModeProperty: Registered in WiFiService
-  store_.RegisterConstString(flimflam::kNameProperty, &friendly_name_);
+
+  // Although this is a read-only property, some callers want to blindly
+  // set this value to its current value.
+  HelpRegisterDerivedString(flimflam::kNameProperty,
+                            &Service::GetNameProperty,
+                            &Service::AssertTrivialSetNameProperty);
   // flimflam::kPassphraseProperty: Registered in WiFiService
   // flimflam::kPassphraseRequiredProperty: Registered in WiFiService
   store_.RegisterInt32(flimflam::kPriorityProperty, &priority_);
@@ -858,6 +863,17 @@ void Service::SetEAPPassword(const string &password, Error */*error*/) {
 void Service::SetEAPPrivateKeyPassword(const string &password,
                                        Error */*error*/) {
   eap_.private_key_password = password;
+}
+
+string Service::GetNameProperty(Error *error) {
+  return friendly_name_;
+}
+
+void Service::AssertTrivialSetNameProperty(const string &name, Error *error) {
+  if (name != friendly_name_) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Service Name property cannot be modified.");
+  }
 }
 
 string Service::GetProfileRpcId(Error *error) {

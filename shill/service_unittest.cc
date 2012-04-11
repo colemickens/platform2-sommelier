@@ -170,6 +170,25 @@ TEST_F(ServiceTest, SetProperty) {
                                           &error));
     EXPECT_EQ(invalid_args(), error.name());
   }
+  // Ensure that we can perform a trivial set of the Name property (to its
+  // current value) but an attempt to set the property to a different value
+  // fails.
+  {
+    ::DBus::Error error;
+    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                         flimflam::kNameProperty,
+                                         DBusAdaptor::StringToVariant(
+                                             service_->friendly_name()),
+                                         &error));
+  }
+  {
+    ::DBus::Error error;
+    EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                          flimflam::kNameProperty,
+                                          PropertyStoreTest::kStringV,
+                                          &error));
+    EXPECT_EQ(invalid_args(), error.name());
+  }
 }
 
 TEST_F(ServiceTest, Load) {
