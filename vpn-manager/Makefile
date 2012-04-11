@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-BASE_VER = 85268
+BASE_VER ?= 125070
 
 LIBDIR ?= lib
 BINS = l2tpipsec_vpn
