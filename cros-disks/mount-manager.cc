@@ -14,7 +14,7 @@
 
 #include <base/file_path.h>
 #include <base/logging.h>
-#include <base/stl_util-inl.h>
+#include <base/stl_util.h>
 
 #include "cros-disks/platform.h"
 

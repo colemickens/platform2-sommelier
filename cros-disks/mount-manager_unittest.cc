@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/scoped_temp_dir.h>
+#include <base/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

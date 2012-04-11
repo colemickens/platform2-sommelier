@@ -6,7 +6,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/stl_util-inl.h>
+#include <base/stl_util.h>
 
 #include "cros-disks/glib-process.h"
 
