@@ -27,7 +27,9 @@ VPNService::VPNService(ControlInterface *control,
                        Manager *manager,
                        VPNDriver *driver)
     : Service(control, dispatcher, metrics, manager, Technology::kVPN),
-      driver_(driver) {}
+      driver_(driver) {
+  mutable_store()->RegisterString(flimflam::kVPNDomainProperty, &vpn_domain_);
+}
 
 VPNService::~VPNService() {}
 

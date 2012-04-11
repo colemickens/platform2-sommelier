@@ -56,7 +56,6 @@ const char kOpenVPNPingRestartProperty[] = "OpenVPN.PingRestart";
 const char kOpenVPNTLSAuthProperty[] = "OpenVPN.TLSAuth";
 const char kOpenVPNVerbProperty[] = "OpenVPN.Verb";
 const char kVPNMTUProperty[] = "VPN.MTU";
-
 }  // namespace
 
 // static
@@ -103,6 +102,9 @@ const OpenVPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kOpenVPNTLSAuthProperty, false },
   { kOpenVPNVerbProperty, false },
   { kVPNMTUProperty, false },
+
+  // Provided only for compatibility.  crosbug.com/29286
+  { flimflam::kOpenVPNMgmtEnableProperty, false },
 };
 
 OpenVPNDriver::OpenVPNDriver(ControlInterface *control,

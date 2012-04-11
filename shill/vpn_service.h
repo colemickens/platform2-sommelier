@@ -48,6 +48,9 @@ class VPNService : public Service {
   std::string storage_id_;
   scoped_ptr<VPNDriver> driver_;
 
+  // Provided only for compatibility.  crosbug.com/29286
+  std::string vpn_domain_;
+
   DISALLOW_COPY_AND_ASSIGN(VPNService);
 };
 
