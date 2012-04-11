@@ -73,6 +73,8 @@ class DeviceInfoTest : public Test {
   static const char kTestIPAddress4[];
 
   RTNLMessage *BuildLinkMessage(RTNLMessage::Mode mode);
+  RTNLMessage *BuildLinkMessageWithInterfaceName(RTNLMessage::Mode mode,
+                                                 const string &interface_name);
   RTNLMessage *BuildAddressMessage(RTNLMessage::Mode mode,
                                    const IPAddress &address,
                                    unsigned char flags,
@@ -100,7 +102,8 @@ const char DeviceInfoTest::kTestIPAddress2[] = "fe80::1aa9:5ff:abcd:1235";
 const char DeviceInfoTest::kTestIPAddress3[] = "fe80::1aa9:5ff:abcd:1236";
 const char DeviceInfoTest::kTestIPAddress4[] = "fe80::1aa9:5ff:abcd:1237";
 
-RTNLMessage *DeviceInfoTest::BuildLinkMessage(RTNLMessage::Mode mode) {
+RTNLMessage *DeviceInfoTest::BuildLinkMessageWithInterfaceName(
+    RTNLMessage::Mode mode, const string &interface_name) {
   RTNLMessage *message = new RTNLMessage(
       RTNLMessage::kTypeLink,
       mode,
@@ -110,10 +113,14 @@ RTNLMessage *DeviceInfoTest::BuildLinkMessage(RTNLMessage::Mode mode) {
       kTestDeviceIndex,
       IPAddress::kFamilyIPv4);
   message->SetAttribute(static_cast<uint16>(IFLA_IFNAME),
-                        ByteString(kTestDeviceName, true));
+                        ByteString(interface_name, true));
   ByteString test_address(kTestMACAddress, sizeof(kTestMACAddress));
   message->SetAttribute(IFLA_ADDRESS, test_address);
   return message;
+}
+
+RTNLMessage *DeviceInfoTest::BuildLinkMessage(RTNLMessage::Mode mode) {
+  return BuildLinkMessageWithInterfaceName(mode, kTestDeviceName);
 }
 
 RTNLMessage *DeviceInfoTest::BuildAddressMessage(RTNLMessage::Mode mode,
@@ -304,6 +311,15 @@ TEST_F(DeviceInfoTest, FlushAddressList) {
                                                     IsIPAddress(address2)));
   device_info_.FlushAddresses(kTestDeviceIndex);
   device_info_.Stop();
+}
+
+TEST_F(DeviceInfoTest, AddLoopbackDevice) {
+  device_info_.Start();
+  scoped_ptr<RTNLMessage> message(BuildLinkMessageWithInterfaceName(
+      RTNLMessage::kModeAdd, DeviceInfo::kLoopbackDeviceName));
+  EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(kTestDeviceIndex,
+                                               IFF_UP, IFF_UP));
+  SendMessageToDeviceInfo(*message);
 }
 
 }  // namespace shill

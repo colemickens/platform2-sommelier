@@ -24,6 +24,7 @@ class Technology {
     kVPN,
     kTunnel,
     kBlacklisted,
+    kLoopback,
     kUnknown,
   };
 
@@ -53,6 +54,7 @@ class Technology {
       Error *error);
 
  private:
+  static const char kLoopbackName[];
   static const char kTunnelName[];
   static const char kUnknownName[];
 };

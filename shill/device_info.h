@@ -75,6 +75,7 @@ class DeviceInfo {
  private:
   friend class DeviceInfoTest;
   FRIEND_TEST(CellularTest, StartLinked);
+  FRIEND_TEST(DeviceInfoTest, AddLoopbackDevice);  // For kLoopbackDeviceName.
 
   struct Info {
     Info() : flags(0) {}
@@ -90,6 +91,7 @@ class DeviceInfo {
   static const char kInterfaceDriver[];
   static const char kInterfaceTunFlags[];
   static const char kInterfaceType[];
+  static const char kLoopbackDeviceName[];
   static const char *kModemDrivers[];
   static const char kTunDeviceName[];
 

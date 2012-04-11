@@ -59,6 +59,8 @@ const char DeviceInfo::kInterfaceTunFlags[] = "/sys/class/net/%s/tun_flags";
 // static
 const char DeviceInfo::kInterfaceType[] = "/sys/class/net/%s/type";
 // static
+const char DeviceInfo::kLoopbackDeviceName[] = "lo";
+// static
 const char *DeviceInfo::kModemDrivers[] = {
     "gobi",
     "QCUSBNet2k",
@@ -175,6 +177,11 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   if (!file_util::ReadSymbolicLink(driver_file, &driver_path)) {
     VLOG(2) << StringPrintf("%s: device %s has no device symlink",
                             __func__, iface_name.c_str());
+    if (iface_name == kLoopbackDeviceName) {
+      VLOG(2) << StringPrintf("%s: device %s is a loopback device",
+                              __func__, iface_name.c_str());
+      return Technology::kLoopback;
+    }
     FilePath tun_flags_file(StringPrintf(kInterfaceTunFlags,
                                          iface_name.c_str()));
     string tun_flags_string;
@@ -187,7 +194,7 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
                               __func__, iface_name.c_str());
       return Technology::kTunnel;
     }
-     return Technology::kUnknown;
+    return Technology::kUnknown;
   }
 
   string driver_name(driver_path.BaseName().value());
@@ -283,6 +290,13 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
             DeleteInterface(dev_index);
           }
         }
+        return;
+      case Technology::kLoopback:
+        // Loopback devices are largely ignored, but we should make sure the
+        // link is enabled.
+        VLOG(2) << "Bringing up loopback device " << link_name << " at index "
+                << dev_index;
+        rtnl_handler_->SetInterfaceFlags(dev_index, IFF_UP, IFF_UP);
         return;
       default:
         device = new DeviceStub(control_interface_, dispatcher_, metrics_,
