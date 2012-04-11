@@ -41,8 +41,8 @@ Running integration tests
 -------------------------
 - build a test image, suitable for a VM:
   (chroot) src/scripts$ ./build_packages --board=x86-generic
-  (chroot) src/scripts$ ./build_image --board=x86-generic --withdev \
-                            --test --noenable_rootfs_verification
+  (chroot) src/scripts$ ./build_image --board=x86-generic \
+                            --noenable_rootfs_verification test
   (chroot) src/scripts$ ./image_to_vm.sh --board=x86-generic --test_image
 
 - start the VM
@@ -51,14 +51,15 @@ Running integration tests
               -hda <path to chroot>/src/build/images/x86-generic/latest/chromiumos_qemu_image.bin
 
 - open a root shell on the VM console
-  - in VM console, log in as guest
+  - in VM console, log in with any legal account (but not Guest)
   - hit C-A-t to open a shell (use right control and alt, to avoid escaping
     out of VM's mouse capture)
 
   crosh> shell
   chronos@localhost / $ sudo bash
 
-- load shill onto VM image
+- if you've modified the source after building the image, load shill onto VM image:
+  (chroot) src/scripts$ ./start_devserver
   localhost / # FEATURES="nostrip" gmerge shill
 
 - stop flimflam, and start shill
