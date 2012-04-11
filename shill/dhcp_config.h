@@ -14,6 +14,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
+#include "shill/minijail.h"
 
 namespace shill {
 
@@ -106,6 +107,7 @@ class DHCPConfig : public IPConfig {
   static const char kDHCPCDPathFormatLease[];
   static const char kDHCPCDPathFormatPID[];
   static const int kDHCPTimeoutSeconds;
+  static const char kDHCPCDUser[];
 
   static const char kReasonBound[];
   static const char kReasonFail[];
@@ -191,6 +193,8 @@ class DHCPConfig : public IPConfig {
   base::WeakPtrFactory<DHCPConfig> weak_ptr_factory_;
   EventDispatcher *dispatcher_;
   GLib *glib_;
+
+  Minijail *minijail_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPConfig);
 };

@@ -17,6 +17,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/ip_address.h"
+#include "shill/minijail.h"
 #include "shill/proxy_factory.h"
 #include "shill/scope_logger.h"
 
@@ -42,6 +43,7 @@ const char DHCPConfig::kDHCPCDPathFormatLease[] =
 const char DHCPConfig::kDHCPCDPathFormatPID[] =
     "var/run/dhcpcd/dhcpcd-%s.pid";
 const int DHCPConfig::kDHCPTimeoutSeconds = 30;
+const char DHCPConfig::kDHCPCDUser[] = "dhcp";
 const int DHCPConfig::kMinMTU = 576;
 const char DHCPConfig::kReasonBound[] = "BOUND";
 const char DHCPConfig::kReasonFail[] = "FAIL";
@@ -72,7 +74,8 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       root_("/"),
       weak_ptr_factory_(this),
       dispatcher_(dispatcher),
-      glib_(glib) {
+      glib_(glib),
+      minijail_(Minijail::GetInstance()) {
   SLOG(DHCP, 2) << __func__ << ": " << device_name;
   if (lease_file_suffix_.empty()) {
     lease_file_suffix_ = device_name;
@@ -175,18 +178,18 @@ bool DHCPConfig::Start() {
   }
   args.push_back(const_cast<char *>(interface_arg.c_str()));
   args.push_back(NULL);
-  char *envp[1] = { NULL };
+
+  struct minijail *jail = minijail_->New();
+  minijail_->DropRoot(jail, kDHCPCDUser);
+  minijail_->UseCapabilities(jail,
+                             CAP_TO_MASK(CAP_NET_BIND_SERVICE) |
+                             CAP_TO_MASK(CAP_NET_BROADCAST) |
+                             CAP_TO_MASK(CAP_NET_ADMIN) |
+                             CAP_TO_MASK(CAP_NET_RAW));
 
   CHECK(!pid_);
-  if (!glib_->SpawnAsync(NULL,
-                         args.data(),
-                         envp,
-                         G_SPAWN_DO_NOT_REAP_CHILD,
-                         NULL,
-                         NULL,
-                         &pid_,
-                         NULL)) {
-    LOG(ERROR) << "Unable to spawn " << kDHCPCDPath;
+  if (!minijail_->RunAndDestroy(jail, args, &pid_)) {
+    LOG(ERROR) << "Unable to spawn " << kDHCPCDPath << " in a jail.";
     return false;
   }
   LOG(INFO) << "Spawned " << kDHCPCDPath << " with pid: " << pid_;
@@ -320,10 +323,7 @@ void DHCPConfig::CleanupClientState() {
     glib_->SourceRemove(child_watch_tag_);
     child_watch_tag_ = 0;
   }
-  if (pid_) {
-    glib_->SpawnClosePID(pid_);
-    pid_ = 0;
-  }
+  pid_ = 0;
   proxy_.reset();
   if (lease_file_suffix_ == device_name()) {
     // If the lease file suffix was left as default, clean it up at exit.

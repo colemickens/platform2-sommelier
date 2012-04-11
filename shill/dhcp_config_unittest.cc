@@ -17,6 +17,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_dhcp_proxy.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_minijail.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 
@@ -43,6 +44,7 @@ class DHCPConfigTest : public PropertyStoreTest {
   DHCPConfigTest()
       : proxy_(new MockDHCPProxy()),
         proxy_factory_(this),
+        minijail_(new MockMinijail()),
         config_(new DHCPConfig(&control_,
                                dispatcher(),
                                DHCPProvider::GetInstance(),
@@ -54,12 +56,17 @@ class DHCPConfigTest : public PropertyStoreTest {
 
   virtual void SetUp() {
     config_->proxy_factory_ = &proxy_factory_;
+    config_->minijail_ = minijail_.get();
   }
 
   virtual void TearDown() {
     config_->proxy_factory_ = NULL;
+    config_->minijail_ = NULL;
   }
 
+  DHCPConfigRefPtr CreateMockMinijailConfig(const string &hostname,
+                                       const string &lease_suffix,
+                                       bool arp_gateway);
   DHCPConfigRefPtr CreateRunningConfig(const string &hostname,
                                        const string &lease_suffix,
                                        bool arp_gateway);
@@ -88,11 +95,30 @@ class DHCPConfigTest : public PropertyStoreTest {
   scoped_ptr<MockDHCPProxy> proxy_;
   TestProxyFactory proxy_factory_;
   MockControl control_;
+  scoped_ptr<MockMinijail> minijail_;
   DHCPConfigRefPtr config_;
 };
 
 const int DHCPConfigTest::kPID = 123456;
 const unsigned int DHCPConfigTest::kTag = 77;
+
+DHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
+                                     const string &hostname,
+                                     const string &lease_suffix,
+                                     bool arp_gateway) {
+  DHCPConfigRefPtr config(new DHCPConfig(&control_,
+                                         dispatcher(),
+                                         DHCPProvider::GetInstance(),
+                                         kDeviceName,
+                                         hostname,
+                                         lease_suffix,
+                                         arp_gateway,
+                                         glib()));
+  config->minijail_ = minijail_.get();
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(false));
+
+  return config;
+}
 
 DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(const string &hostname,
                                                      const string &lease_suffix,
@@ -105,8 +131,9 @@ DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(const string &hostname,
                                          lease_suffix,
                                          arp_gateway,
                                          glib()));
-  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
+  config->minijail_ = minijail_.get();
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(kPID), Return(true)));
   EXPECT_CALL(*glib(), ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
   EXPECT_TRUE(config->Start());
   EXPECT_EQ(kPID, config->pid_);
@@ -132,7 +159,6 @@ DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(const string &hostname,
 
 void DHCPConfigTest::StopRunningConfigAndExpect(DHCPConfigRefPtr config,
                                                 bool lease_file_exists) {
-  EXPECT_CALL(*glib(), SpawnClosePID(kPID)).Times(1);
   DHCPConfig::ChildWatchCallback(kPID, 0, config.get());
   EXPECT_EQ(NULL, DHCPProvider::GetInstance()->GetConfig(kPID).get());
 
@@ -210,8 +236,7 @@ TEST_F(DHCPConfigTest, ParseConfiguration) {
 }
 
 TEST_F(DHCPConfigTest, StartFail) {
-  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(false));
   EXPECT_CALL(*glib(), ChildWatchAdd(_, _, _)).Times(0);
   EXPECT_FALSE(config_->Start());
   EXPECT_EQ(0, config_->pid_);
@@ -244,57 +269,28 @@ MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
 }
 
 TEST_F(DHCPConfigTest, StartWithHostname) {
-  EXPECT_CALL(*glib(),
-              SpawnAsync(_, IsDHCPCDArgs(true, true, true), _, _, _, _, _, _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(false));
   EXPECT_FALSE(config_->Start());
 }
 
 TEST_F(DHCPConfigTest, StartWithoutHostname) {
-  DHCPConfigRefPtr config(new DHCPConfig(&control_,
-                                         dispatcher(),
-                                         DHCPProvider::GetInstance(),
-                                         kDeviceName,
-                                         "",
-                                         kLeaseFileSuffix,
-                                         kArpGateway,
-                                         glib()));
-
-  EXPECT_CALL(*glib(),
-              SpawnAsync(_, IsDHCPCDArgs(false, true, true), _, _, _, _, _, _))
-      .WillOnce(Return(false));
+  DHCPConfigRefPtr config = CreateMockMinijailConfig("",
+                                                     kLeaseFileSuffix,
+                                                     kArpGateway);
   EXPECT_FALSE(config->Start());
 }
 
 TEST_F(DHCPConfigTest, StartWithoutArpGateway) {
-  DHCPConfigRefPtr config(new DHCPConfig(&control_,
-                                         dispatcher(),
-                                         DHCPProvider::GetInstance(),
-                                         kDeviceName,
-                                         kHostName,
-                                         kLeaseFileSuffix,
-                                         false,
-                                         glib()));
-
-  EXPECT_CALL(*glib(),
-              SpawnAsync(_, IsDHCPCDArgs(true, false, true), _, _, _, _, _, _))
-      .WillOnce(Return(false));
+  DHCPConfigRefPtr config = CreateMockMinijailConfig(kHostName,
+                                                     kLeaseFileSuffix,
+                                                     false);
   EXPECT_FALSE(config->Start());
 }
 
 TEST_F(DHCPConfigTest, StartWithoutLeaseSuffix) {
-  DHCPConfigRefPtr config(new DHCPConfig(&control_,
-                                         dispatcher(),
-                                         DHCPProvider::GetInstance(),
-                                         kDeviceName,
-                                         kHostName,
-                                         kDeviceName,
-                                         kArpGateway,
-                                         glib()));
-
-  EXPECT_CALL(*glib(),
-              SpawnAsync(_, IsDHCPCDArgs(true, true, false), _, _, _, _, _, _))
-      .WillOnce(Return(false));
+  DHCPConfigRefPtr config = CreateMockMinijailConfig(kHostName,
+                                                     kDeviceName,
+                                                     kArpGateway);
   EXPECT_FALSE(config->Start());
 }
 
@@ -433,9 +429,8 @@ TEST_F(DHCPConfigTest, Restart) {
   config_->child_watch_tag_ = kTag1;
   DHCPProvider::GetInstance()->BindPID(kPID1, config_);
   EXPECT_CALL(*glib(), SourceRemove(kTag1)).WillOnce(Return(true));
-  EXPECT_CALL(*glib(), SpawnClosePID(kPID1)).Times(1);
-  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<6>(kPID2), Return(true)));
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(
+      DoAll(SetArgumentPointee<2>(kPID2), Return(true)));
   EXPECT_CALL(*glib(), ChildWatchAdd(kPID2, _, _)).WillOnce(Return(kTag2));
   EXPECT_TRUE(config_->Restart());
   EXPECT_EQ(kPID2, config_->pid_);
@@ -450,9 +445,8 @@ TEST_F(DHCPConfigTest, RestartNoClient) {
   const int kPID = 777;
   const unsigned int kTag = 66;
   EXPECT_CALL(*glib(), SourceRemove(_)).Times(0);
-  EXPECT_CALL(*glib(), SpawnClosePID(_)).Times(0);
-  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(
+      DoAll(SetArgumentPointee<2>(kPID), Return(true)));
   EXPECT_CALL(*glib(), ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
   EXPECT_TRUE(config_->Restart());
   EXPECT_EQ(kPID, config_->pid_);
@@ -481,9 +475,7 @@ TEST_F(DHCPConfigTest, StartTimeout) {
       Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
   config_->lease_acquisition_timeout_seconds_ = 0;
   config_->proxy_.reset(proxy_.release());
-  EXPECT_CALL(*glib(),
-              SpawnAsync(_, IsDHCPCDArgs(true, true, true), _, _, _, _, _, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(*minijail_, RunAndDestroy(_, _, _)).WillOnce(Return(true));
   config_->Start();
   config_->dispatcher_->DispatchPendingEvents();
   EXPECT_TRUE(callback_test.called());
@@ -492,10 +484,8 @@ TEST_F(DHCPConfigTest, StartTimeout) {
 TEST_F(DHCPConfigTest, Stop) {
   // Ensure no crashes.
   const int kPID = 1 << 17;  // Ensure unknown positive PID.
-  config_->Stop();
   config_->pid_ = kPID;
   config_->Stop();
-  EXPECT_CALL(*glib(), SpawnClosePID(kPID)).Times(1);  // Invoked by destructor.
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
 }
 

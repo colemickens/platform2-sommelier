@@ -25,6 +25,8 @@
 #include "shill/mock_connection.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_dhcp_config.h"
+#include "shill/mock_dhcp_provider.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_manager.h"
@@ -190,12 +192,20 @@ TEST_F(DeviceTest, DestroyIPConfigNULL) {
 
 TEST_F(DeviceTest, AcquireIPConfig) {
   device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
-  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
+  scoped_ptr<MockDHCPProvider> dhcp_provider(new MockDHCPProvider());
+  device_->dhcp_provider_ = dhcp_provider.get();
+  scoped_refptr<MockDHCPConfig> dhcp_config(new MockDHCPConfig(
+                                                    control_interface(),
+                                                    kDeviceName));
+  EXPECT_CALL(*dhcp_provider, CreateConfig(_, _, _, _))
+      .WillOnce(Return(dhcp_config));
+  EXPECT_CALL(*dhcp_config, RequestIP())
       .WillOnce(Return(false));
   EXPECT_FALSE(device_->AcquireIPConfig());
   ASSERT_TRUE(device_->ipconfig_.get());
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
   EXPECT_FALSE(device_->ipconfig_->update_callback_.is_null());
+  device_->dhcp_provider_ = NULL;
 }
 
 TEST_F(DeviceTest, Load) {

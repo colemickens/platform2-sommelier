@@ -17,7 +17,7 @@ BUILDDIR = build
 LIBDIR = /usr/lib
 SCRIPTDIR = $(LIBDIR)/flimflam/scripts
 CPPFLAGS += -DSCRIPTDIR=\"$(SCRIPTDIR)\"
-BASE_LIBS = -lcares -lmobile-provider -lmetrics
+BASE_LIBS = -lcares -lmobile-provider -lmetrics -lminijail
 BASE_INCLUDE_DIRS = -iquote.. -iquote $(BUILDDIR)
 BASE_LIB_DIRS =
 
@@ -152,6 +152,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	manager.o \
 	manager_dbus_adaptor.o \
 	metrics.o \
+	minijail.o \
 	mm1_modem_modem3gpp_proxy.o \
 	mm1_modem_modemcdma_proxy.o \
 	mm1_modem_proxy.o \
@@ -278,6 +279,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_log_unittest.o \
 	mock_manager.o \
 	mock_metrics.o \
+	mock_minijail.o \
 	mock_mm1_modem_modemcdma_proxy.o \
 	mock_mm1_modem_modem3gpp_proxy.o \
 	mock_mm1_modem_proxy.o \
