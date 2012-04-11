@@ -18,6 +18,7 @@
 #include "chaps/object_pool_impl.h"
 #include "chaps/object_store_fake.h"
 #include "chaps/object_store_impl.h"
+#include "chaps/opencryptoki_importer.h"
 #include "chaps/session_impl.h"
 
 using std::string;
@@ -79,7 +80,7 @@ ObjectPolicy* ChapsFactoryImpl::CreateObjectPolicy(CK_OBJECT_CLASS type) {
 ObjectImporter* ChapsFactoryImpl::CreateObjectImporter(
     int slot_id,
     TPMUtility* tpm_utility) {
-  return NULL;
+  return new OpencryptokiImporter(slot_id, tpm_utility, this);
 }
 
 }  // namespace chaps

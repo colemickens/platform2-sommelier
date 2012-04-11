@@ -62,18 +62,6 @@ class SlotManagerImpl : public SlotManager,
   virtual int CreateHandle();
 
  private:
-  // Enumerates internal blobs used by the slot manager. These will be used as
-  // 'blob_id' values when reading or writing internal blobs.
-  enum InternalBlobId {
-    kEncryptedAuthKey,  // The token authorization key, encrypted by the TPM.
-    // The token master key, encrypted by the authorization key.
-    kEncryptedMasterKey,
-    // Tracks whether legacy objects have been imported. This is not actually a
-    // blob but its existence indicates that objects have been imported and we
-    // don't need to attempt that work again.
-    kImportedTracker
-  };
-
   // Holds all information associated with a particular slot.
   struct Slot {
     CK_SLOT_INFO slot_info;

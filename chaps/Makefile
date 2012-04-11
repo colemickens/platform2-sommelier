@@ -110,7 +110,8 @@ $(OUT)chapsd: $(COMMON) \
               $(OUT)object_pool_impl.o \
               $(OUT)tpm_utility_impl.o \
               $(OUT)chaps_factory_impl.o \
-              $(OUT)object_store_impl.o
+              $(OUT)object_store_impl.o \
+              $(OUT)opencryptoki_importer.o
 	$(call cxx_binary, -ldl -ltspi -lleveldb -lmemenv)
 RM_ON_CLEAN += $(OUT)chapsd
 
@@ -190,6 +191,12 @@ $(OUT)tpm_utility_test: $(COMMON) $(MOCK) \
 	$(call cxx_binary, -lgtest -lgmock -ltspi)
 RM_ON_CLEAN += $(OUT)tpm_utility_test
 
+$(OUT)opencryptoki_importer_test: $(COMMON) $(MOCK) \
+                                  $(OUT)opencryptoki_importer_test.o \
+                                  $(OUT)opencryptoki_importer.o
+	$(call cxx_binary, -lgtest -lgmock)
+RM_ON_CLEAN += $(OUT)opencryptoki_importer_test
+
 # Some shortcuts
 all: $(OUT)libchaps.so $(OUT)chapsd $(OUT)p11_replay
 
@@ -213,7 +220,8 @@ tests: $(OUT)chaps_test \
        $(OUT)object_test \
        $(OUT)object_policy_test \
        $(OUT)object_pool_test \
-       $(OUT)object_store_test
+       $(OUT)object_store_test \
+       $(OUT)opencryptoki_importer_test
 
 live_tests: $(OUT)chapsd_test \
             $(OUT)chaps_event_generator \
@@ -228,3 +236,8 @@ runtests: tests
 	$(OUT)object_policy_test
 	$(OUT)object_pool_test
 	$(OUT)object_store_test
+	$(OUT)opencryptoki_importer_test
+	$(OUT)opencryptoki_importer_test --gtest_repeat=100 \
+	    --gtest_break_on_failure \
+	    --gtest_filter=RandomizedTests/TestImporterWithModifier.ImportSample/*
+

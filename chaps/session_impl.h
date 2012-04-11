@@ -160,6 +160,7 @@ class SessionImpl : public Session {
   // operation (e.g. kEncrypt requires CKA_ENCRYPT to be TRUE).
   CK_ATTRIBUTE_TYPE GetRequiredKeyUsage(OperationType operation);
   bool GetTPMKeyHandle(const Object* key, int* key_handle);
+  bool LoadLegacyRootKeys();
   bool IsHMAC(CK_MECHANISM_TYPE mechanism);
   // Returns true if the given cipher mechanism uses padding.
   bool IsPaddingEnabled(CK_MECHANISM_TYPE mechanism);
@@ -196,6 +197,9 @@ class SessionImpl : public Session {
   scoped_ptr<ObjectPool> session_object_pool_;
   ObjectPool* token_object_pool_;
   TPMUtility* tpm_utility_;
+  bool is_legacy_loaded_;  // Tracks whether the legacy root keys are loaded.
+  int private_root_key_;  // The legacy private root key.
+  int public_root_key_;  // The legacy public root key.
 
   DISALLOW_COPY_AND_ASSIGN(SessionImpl);
 };
