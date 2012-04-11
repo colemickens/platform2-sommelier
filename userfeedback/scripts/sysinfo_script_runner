@@ -38,15 +38,15 @@ simple_line_executor() {
   filter='^[^#]*[^#[:space:]]'
 
   # Do not exit in case a script wasn't found or threw an error.
-  grep -E ${filter} ${1} 2> /dev/null | while i=`line`
+  grep -E ${filter} ${1} 2> /dev/null | while read LINE
   do
     # Split the line into a key and value.
-    local key="$(echo ${i} | awk -F, '{ print $1 }')"
-    local value="$(echo ${i} | awk -F, '{ print $2 }')"
+    local key="$(echo ${LINE} | awk -F, '{ print $1 }')"
+    local value="$(echo ${LINE} | awk -F, '{ print $2 }')"
     if [ ${#value} -eq 0 ]; then
-      value=${i}
+      value=${LINE}
     fi
-    local format="$(echo ${i} | awk -F, '{ print $3 }')"
+    local format="$(echo ${LINE} | awk -F, '{ print $3 }')"
 
     echo "${key}"='"""'
     if [ "${format}" = "ascii" ]; then
@@ -65,7 +65,7 @@ simple_line_executor() {
 SYSLOG_CONTEXT=${1}
 if [ "${SYSLOG_CONTEXT}" = "feedback" ] ; then
   logger -t user_feedback "User invoked user feedback"
-elif [ "${SYSLOG_CONTEXT}" != "sysinfo" && \
+elif [ "${SYSLOG_CONTEXT}" != "sysinfo" -a \
        "${SYSLOG_CONTEXT}" != "network" ]; then
   SYSLOG_CONTEXT="sysinfo"
 fi
