@@ -842,13 +842,28 @@ bool Mount::SetupGroupAccess() const {
   // Make the following directories group accessible by other system daemons:
   //   /home/chronos/user
   //   /home/chronos/user/Downloads
-  FilePath downloads_path = FilePath(home_dir_).Append(kDownloadsDir);
-  mode_t mode = S_IXGRP;
-  if (!platform_->SetGroupAccessible(home_dir_, default_access_group_, mode) ||
-      !platform_->SetGroupAccessible(downloads_path.value(),
-                                     default_access_group_, mode))
-    return false;
+  //   /home/chronos/user/GCache (only if it exists)
+  //   /home/chronos/user/GCache/v1 (only if it exists)
+  const struct {
+    FilePath path;
+    bool optional;
+  } kGroupAccessiblePaths[] = {
+    { FilePath(home_dir_), false },
+    { FilePath(home_dir_).Append(kDownloadsDir), false },
+    { FilePath(home_dir_).Append(kGCacheDir), true },
+    { FilePath(home_dir_).Append(kGCacheDir).Append(kGCacheVersionDir), true },
+  };
 
+  mode_t mode = S_IXGRP;
+  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kGroupAccessiblePaths); ++i) {
+    if (!file_util::PathExists(kGroupAccessiblePaths[i].path) &&
+        kGroupAccessiblePaths[i].optional)
+      continue;
+
+    if (!platform_->SetGroupAccessible(kGroupAccessiblePaths[i].path.value(),
+                                       default_access_group_, mode))
+      return false;
+  }
   return true;
 }
 
