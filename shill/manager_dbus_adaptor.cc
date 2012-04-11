@@ -8,13 +8,13 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
 #include <dbus-c++/dbus.h>
 
 #include "shill/device.h"
 #include "shill/error.h"
 #include "shill/key_value_store.h"
 #include "shill/manager.h"
+#include "shill/scope_logger.h"
 #include "shill/wifi_service.h"
 
 using std::map;
@@ -229,10 +229,13 @@ int32_t ManagerDBusAdaptor::GetDebugLevel(::DBus::Error &/*error*/) {
 
 void ManagerDBusAdaptor::SetDebugLevel(const int32_t &level,
                                        ::DBus::Error &/*error*/) {
-  if (level < logging::LOG_NUM_SEVERITIES)
+  if (level < logging::LOG_NUM_SEVERITIES) {
     logging::SetMinLogLevel(level);
-  else
+    // Like VLOG, SLOG uses negative verbose level.
+    ScopeLogger::GetInstance()->set_verbose_level(-level);
+  } else {
     LOG(WARNING) << "Ignoring attempt to set log level to " << level;
+  }
 }
 
 string ManagerDBusAdaptor::GetServiceOrder(::DBus::Error &/*error*/) {
@@ -247,15 +250,16 @@ void ManagerDBusAdaptor::SetServiceOrder(const string &order,
 }
 
 std::string ManagerDBusAdaptor::GetDebugTags(::DBus::Error &/*error*/) {
-  return "";
+  return ScopeLogger::GetInstance()->GetEnabledScopeNames();
 }
 
-void ManagerDBusAdaptor::SetDebugTags(const std::string &/*tags*/,
+void ManagerDBusAdaptor::SetDebugTags(const std::string &tags,
                                       ::DBus::Error &/*error*/) {
+  ScopeLogger::GetInstance()->EnableScopesByName(tags);
 }
 
 std::string ManagerDBusAdaptor::ListDebugTags(::DBus::Error &/*error*/) {
-  return "";
+  return ScopeLogger::GetInstance()->GetAllScopeNames();
 }
 
 }  // namespace shill
