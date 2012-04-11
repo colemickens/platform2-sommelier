@@ -111,7 +111,6 @@ bool SlotManagerImpl::Init() {
         kDefaultMechanismInfo[i].info;
   }
   // Mix in some random bytes from the TPM to the openssl prng.
-  // TODO(dkrahn): crosbug.com/25435 - Evaluate whether to use the TPM RNG.
   string random;
   if (tpm_utility_->GenerateRandom(128, &random))
     RAND_seed(ConvertStringToByteBuffer(random.data()), random.length());
