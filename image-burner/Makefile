@@ -5,7 +5,7 @@
 CXXFLAGS ?= -Wall -Werror -g
 PKG_CONFIG ?= pkg-config
 
-BASE_VER = 85268
+BASE_VER ?= 125070
 PC_DEPS = dbus-1 dbus-glib-1 gobject-2.0 \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
