@@ -232,7 +232,7 @@ bool UdevDevice::IsMediaAvailable() const {
 bool UdevDevice::IsAutoMountable() const {
   // TODO(benchan): Find a reliable way to detect if a device is a removable
   // storage as the removable attribute in sysfs does not always tell the truth.
-  return !IsOnBootDevice() && !IsVirtual() && IsMediaAvailable();
+  return !IsOnBootDevice() && !IsVirtual();
 }
 
 bool UdevDevice::IsHidden() {
