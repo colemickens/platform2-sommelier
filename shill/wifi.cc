@@ -812,7 +812,11 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
 }
 
 void WiFi::ClearCachedCredentialsTask() {
-  supplicant_interface_proxy_->ClearCachedCredentials();
+  try {
+    supplicant_interface_proxy_->ClearCachedCredentials();
+  } catch (const DBus::Error e) {  // NOLINT
+    LOG(WARNING) << "Clear of cached credentials failed.";
+  }
   clear_cached_credentials_pending_ = false;
 }
 
