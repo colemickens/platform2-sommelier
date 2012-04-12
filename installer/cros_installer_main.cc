@@ -4,6 +4,7 @@
 
 #include "inst_util.h"
 #include "chromeos_install_config.h"
+#include "chromeos_legacy.h"
 #include "chromeos_postinst.h"
 #include "chromeos_test_utils.h"
 
@@ -28,46 +29,15 @@ int showHelp() {
   return 1;
 }
 
-bool post_install(const string& install_dir,
-                  const string& install_dev,
-                  bool legacy) {
-  printf("postinst %s %s\n", install_dir.c_str(), install_dev.c_str());
-
-  InstallConfig install_config;
-
-  if (!ConfigureInstall(install_dir, install_dev, &install_config)) {
-    printf("Configure failed.\n");
-    return false;
-  }
-
-  // Log how we are configured.
-  printf("PostInstall Configured: (%s, %s, %s, %s)\n",
-         install_config.slot.c_str(),
-         install_config.root.device().c_str(),
-         install_config.kernel.device().c_str(),
-         install_config.boot.device().c_str());
-
-  // The normal postinstall is also needed for legacy cases
-  if (!RunPostInstall(install_config)) {
-    printf("Primary PostInstall failed.\n");
-    return false;
-  }
-
-  return true;
-}
-
 int main(int argc, char** argv) {
 
   struct option long_options[] = {
     {"debug", no_argument, NULL, 'd'},
     {"help", no_argument, NULL, 'h'},
-    {"legacy", no_argument, NULL, 'l'},
     {"postcommit", no_argument, NULL, 'p'},
     {"test", no_argument, NULL, 't'},
     {NULL, 0, NULL, 0},
   };
-
-  bool legacy = false;
 
   while (true) {
     int option_index;
@@ -89,13 +59,6 @@ int main(int argc, char** argv) {
       case 'd':
         // I don't think this is used, but older update engines might
         // in some cases. So, it's present but ignored.
-        break;
-
-      case 'l':
-        // Turns on support for non-Chrome hardware. This breaks support
-        // for 32 to 64 bit transitions.
-        printf("legacy\n");
-        legacy = true;
         break;
 
       case 'p':
@@ -131,7 +94,7 @@ int main(int argc, char** argv) {
     string install_dev = argv[optind++];
 
     // ! converts bool to 0 / non-zero exit code
-    return !post_install(install_dev, install_dir, legacy);
+    return !RunPostInstall(install_dev, install_dir);
   }
 
   printf("Unknown command: '%s'\n\n", command.c_str());

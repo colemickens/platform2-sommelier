@@ -115,6 +115,40 @@ void TestWriteStringToFile(const string &contents,
   }
 }
 
+void TestCopyFile(const string &file_from,
+                  const string &file_to,
+                  bool expected_success) {
+  bool result_success = CopyFile(file_from, file_to);
+
+  if (result_success != expected_success) {
+    printf("CopyFile(%s, %s) '%s' != %s\n",
+           file_from.c_str(),
+           file_to.c_str(),
+           result_success ? "success" : "failure",
+           expected_success ? "success" : "failure");
+    exit(1);
+  }
+
+  if (!expected_success)
+    return;
+
+  string from_contents;
+  string to_contents;
+
+  if (!ReadFileToString(file_from, &from_contents) ||
+      !ReadFileToString(file_to, &to_contents)) {
+    printf("Failed to read files: %s, %s", file_from.c_str(), file_to.c_str());
+    exit(1);
+  }
+
+  if (from_contents != to_contents) {
+    printf("Copy contents don't match: '%s', '%s'",
+           from_contents.c_str(), to_contents.c_str());
+    exit(1);
+  }
+}
+
+
 void TestLsb(const string &file,
              const string &key,
              bool expected_success,
@@ -256,13 +290,56 @@ void TestExtractKernelArg(const string &kernel_config,
                           const string &expected) {
   string result = ExtractKernelArg(kernel_config, tag);
   if (result != expected) {
-    printf("ExtractKernelArg(%s, %s) '%s' != %s\n",
+    printf("ExtractKernelArg(%s, %s) '%s' != '%s'\n",
            kernel_config.c_str(), tag.c_str(),
            result.c_str(), expected.c_str());
     exit(1);
   }
 }
 
+void TestSetKernelArg(const string &kernel_config,
+                      const string &tag,
+                      const string &value,
+                      bool expected_success,
+                      const string &expected_result) {
+
+  string working_config = kernel_config;
+
+  bool result_success = SetKernelArg(tag, value, &working_config);
+
+  if (result_success != expected_success) {
+    printf("SetKernelArg(%s, %s, %s) '%s' != %s\n",
+           tag.c_str(),
+           value.c_str(),
+           kernel_config.c_str(),
+           result_success ? "success" : "failure",
+           expected_success ? "success" : "failure");
+    exit(1);
+  }
+
+  if (expected_success) {
+    if (working_config != expected_result) {
+      printf("SetKernelArg(%s, %s, %s) \n'%s' != \n'%s'\n",
+             tag.c_str(),
+             value.c_str(),
+             kernel_config.c_str(),
+             working_config.c_str(),
+             expected_result.c_str());
+      exit(1);
+    }
+  } else {
+    // If the method failed, working_config should be unmodfied.
+    if (working_config != kernel_config) {
+      printf("SetKernelArg(%s, %s, %s) '%s' != %s\n",
+             tag.c_str(),
+             value.c_str(),
+             kernel_config.c_str(),
+             working_config.c_str(),
+             kernel_config.c_str());
+      exit(1);
+    }
+  }
+}
 
 void Test() {
   TestRunCommand("/bin/echo Hi!*", 0);
@@ -283,24 +360,22 @@ void Test() {
   TestReadFileToString("lsb-release-test.txt", true, LSB_CONTENTS);
   TestReadFileToString("LICENSE", true, NULL);
 
-  TestWriteStringToFile("fuzzy",
-                        "/tmp",
-                        false);
+  TestWriteStringToFile("fuzzy", "/tmp", false);
+  TestWriteStringToFile("fuzzy", "/fuzzy/wuzzy", false);
+  TestWriteStringToFile("fuzzy", "/tmp/fuzzy", true);
+  TestWriteStringToFile("foobar", "/tmp/fuzzy", true);
 
-  TestWriteStringToFile("fuzzy",
-                        "/fuzzy/wuzzy",
-                        false);
-
-  TestWriteStringToFile("fuzzy",
-                        "/tmp/fuzzy",
-                        true);
-
-  TestWriteStringToFile("foobar",
-                        "/tmp/fuzzy",
-                        true);
+  TestCopyFile("/tmp", "/tmp/wuzzy", false);
+  TestCopyFile("/tmp/unknown_file", "/tmp/wuzzy", false);
+  TestCopyFile("/tmp/fuzzy", "/tmp", false);
+  TestCopyFile("/tmp/fuzzy", "/tmp/wuzzy", true);
+  TestCopyFile("/tmp/fuzzy", "/tmp/wuzzy", true);
+  TestCopyFile("LICENSE", "/tmp/LICENSE", true);
 
   // Cleanup temp files
   unlink("/tmp/fuzzy");
+  unlink("/tmp/wuzzy");
+  unlink("/tmp/LICENSE");
 
   TestLsb("bogus",
           "CHROMEOS_RELEASE_BOARD",
@@ -400,14 +475,36 @@ void Test() {
   unlink("/tmp/foo");
 
   string kernel_config =
-      "root=/dev/dm-1 dm=\"foo bar, ver=2 root2=1 stuff=v\" root2=/dev/dm-2";
+      "root=/dev/dm-1 dm=\"foo bar, ver=2 root2=1 stuff=v\""
+      " fuzzy=wuzzy root2=/dev/dm-2";
   string dm_config = "foo bar, ver=2 root2=1 stuff=v";
 
   TestExtractKernelArg(kernel_config, "root", "/dev/dm-1");
   TestExtractKernelArg(kernel_config, "root2", "/dev/dm-2");
   TestExtractKernelArg(kernel_config, "dm", dm_config);
+  TestExtractKernelArg("root=\"", "root", "");
+  TestExtractKernelArg("root=\" bar", "root", "");
   TestExtractKernelArg(dm_config, "ver", "2");
   TestExtractKernelArg(dm_config, "stuff", "v");
+
+  TestSetKernelArg(kernel_config, "fuzzy", "tuzzy", true,
+                   "root=/dev/dm-1 dm=\"foo bar, ver=2 root2=1 stuff=v\""
+                   " fuzzy=tuzzy root2=/dev/dm-2");
+  TestSetKernelArg(kernel_config, "root", "", true,
+                   "root= dm=\"foo bar, ver=2 root2=1 stuff=v\""
+                   " fuzzy=wuzzy root2=/dev/dm-2");
+  TestSetKernelArg(kernel_config, "fuzzy", "tuzzy", true,
+                   "root=/dev/dm-1 dm=\"foo bar, ver=2 root2=1 stuff=v\""
+                   " fuzzy=tuzzy root2=/dev/dm-2");
+  TestSetKernelArg(kernel_config, "root", "a b", true,
+                   "root=\"a b\" dm=\"foo bar, ver=2 root2=1 stuff=v\""
+                   " fuzzy=wuzzy root2=/dev/dm-2");
+  TestSetKernelArg(kernel_config, "dm", "ab", true,
+                   "root=/dev/dm-1 dm=ab fuzzy=wuzzy root2=/dev/dm-2");
+  TestSetKernelArg(kernel_config, "dm", "a b", true,
+                   "root=/dev/dm-1 dm=\"a b\" fuzzy=wuzzy root2=/dev/dm-2");
+  TestSetKernelArg(kernel_config, "unknown", "", false, "");
+  TestSetKernelArg(kernel_config, "ver", "", false, "");
 
   std::vector<std::string> expected;
 

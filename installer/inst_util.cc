@@ -148,6 +148,47 @@ bool WriteStringToFile(const string& contents, const string& path) {
   return success;
 }
 
+bool CopyFile(const string& from_path, const string& to_path) {
+  int fd_from = open(from_path.c_str(), O_RDONLY);
+
+  if (fd_from == -1) {
+    printf("CopyFile failed to open %s\n", from_path.c_str());
+    return false;
+  }
+
+  bool success = true;
+
+  int fd_to = open(to_path.c_str(),
+                   O_WRONLY  | O_CREAT | O_TRUNC,
+                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+  if (fd_to == -1) {
+    printf("CopyFile failed to open %s\n", to_path.c_str());
+    success = false;
+  }
+
+  ssize_t buff_in = 1;
+  char buff[512];
+
+  while (success && (buff_in > 0)) {
+    buff_in = read(fd_from, buff, sizeof(buff));
+    success = (buff_in >= 0);
+
+    if (success) {
+      ssize_t buff_out = write(fd_to, buff, buff_in);
+      success = (buff_out == buff_in);
+    }
+  }
+
+  if (close(fd_from) != 0)
+    success = false;
+
+  if (close(fd_to) != 0)
+    success = false;
+
+  return success;
+}
+
 // Look up a keyed value from a /etc/lsb-release formatted file.
 // TODO(dgarrett): If we ever call this more than once, cache
 // file contents to avoid reparsing.
@@ -452,8 +493,10 @@ string DumpKernelConfig(const string& kernel_dev) {
   return result;
 }
 
-string ExtractKernelArg(const string& kernel_config,
-                        const string& key) {
+bool FindKernelArgValueOffsets(const string& kernel_config,
+                               const string& key,
+                               size_t* value_offset,
+                               size_t* value_length) {
 
   // We are really looking for key=value
   string preamble = key + "=";
@@ -475,25 +518,73 @@ string ExtractKernelArg(const string& kernel_config,
       break;
   }
 
+  // Didn't find the key
+  if (i >= kernel_config.size())
+    return false;
+
   // Jump past the key
   i += preamble.size();
 
-  // Didn't find the key
-  if (i >= kernel_config.size())
-    return "";
-
-  char closing_char = ' ';
+  *value_offset = i;
 
   // If it's a quoted value, look for closing quote
   if (kernel_config[i] == '"') {
-    i++;
-    closing_char = '"';
+    i = kernel_config.find('"', i + 1);
+
+    // If there is no closing quote, it's an error.
+    if (i == string::npos)
+      return false;
+
+    i += 1;
   }
 
-  size_t value_start = i;
-
-  while (i < kernel_config.size() && kernel_config[i] != closing_char)
+  while (i < kernel_config.size() && kernel_config[i] != ' ')
     i++;
 
-  return kernel_config.substr(value_start, i - value_start);
+  *value_length = i - *value_offset;
+  return true;
+}
+
+string ExtractKernelArg(const string& kernel_config,
+                        const string& key) {
+  size_t value_offset;
+  size_t value_length;
+
+  if (!FindKernelArgValueOffsets(kernel_config,
+                                 key,
+                                 &value_offset,
+                                 &value_length))
+    return "";
+
+  string result = kernel_config.substr(value_offset, value_length);
+
+  if ((result.length() >= 2) &&
+      (result[0] == '"') &&
+      (result[result.length() - 1] == '"')) {
+    result = result.substr(1, result.length() - 2);
+  }
+
+  return result;
+}
+
+bool SetKernelArg(const string& key,
+                  const string& value,
+                  string* kernel_config) {
+  size_t value_offset;
+  size_t value_length;
+
+  if (!FindKernelArgValueOffsets(*kernel_config,
+                                 key,
+                                 &value_offset,
+                                 &value_length))
+    return false;
+
+  string adjusted_value = value;
+
+  if (value.find(" ") != string::npos) {
+    adjusted_value = StringPrintf("\"%s\"", value.c_str());
+  }
+
+  kernel_config->replace(value_offset, value_length, adjusted_value);
+  return true;
 }

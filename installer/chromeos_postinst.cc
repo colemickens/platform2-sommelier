@@ -10,6 +10,7 @@
 
 #include <vboot/CgptManager.h>
 
+#include "chromeos_legacy.h"
 #include "chromeos_install_config.h"
 #include "chromeos_setimage.h"
 #include "inst_util.h"
@@ -106,12 +107,10 @@ bool FirmwareUpdate(const string &install_dir, bool is_update) {
 // install_dev of the form "/dev/sda3"
 //
 bool ChromeosChrootPostinst(const InstallConfig& install_config,
-                            string src_version,
-                            bool firmware_update) {
+                            string src_version) {
 
-  printf("ChromeosChrootPostinst(%s, %s)\n",
-         src_version.c_str(),
-         firmware_update ? "firmware" : "no firmware");
+  printf("ChromeosChrootPostinst(%s)\n",
+         src_version.c_str());
 
   // Extract External ENVs
   bool is_factory_install = getenv("IS_FACTORY_INSTALL");
@@ -219,9 +218,16 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       return false;
   }
 
+  // In postinst in future, we may provide an option (ex, --update_firmware).
+  string firmware_tag_file = (install_config.root.mount() +
+                              "/root/.force_update_firmware");
+
+  bool attempt_firmware_update = (!is_factory_install &&
+                                  (access(firmware_tag_file.c_str(), 0) == 0));
+
   // In factory process, firmware is either pre-flashed or assigned by
   // mini-omaha server, and we don't want to try updates inside postinst.
-  if (!is_factory_install && firmware_update) {
+  if (attempt_firmware_update) {
     if (!FirmwareUpdate(install_config.root.mount(), is_update)) {
       // Note: This will only rollback the ChromeOS verified boot target.
       // The assumption is that systems running firmware autoupdate
@@ -279,39 +285,95 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 // a simple wrapper that performs the minimal setup necessary to run
 // chromeos-chroot-postinst inside an install root chroot.
 
-bool RunPostInstall(const InstallConfig& install_config) {
+bool RunPostInstall(const string& install_dir,
+                    const string& install_dev) {
+  InstallConfig install_config;
 
-  printf("RunPostInstall\n");
+  if (!ConfigureInstall(install_dir, install_dev, &install_config)) {
+    printf("Configure failed.\n");
+    return false;
+  }
 
   string src_version;
   if (!LsbReleaseValue("/etc/lsb-release",
                        "CHROMEOS_RELEASE_VERSION",
-                       &src_version)) {
-    printf("Failed to read /etc/lsb-release");
+                       &src_version) ||
+      src_version.empty()) {
+    printf("Failed to read /etc/lsb-release\n");
     return false;
   }
 
-  if (src_version.empty()) {
-    printf("CHROMEOS_RELEASE_VERSION not found in /etc/lsb-release");
+  // Log how we are configured.
+  printf("PostInstall Configured: (%s, %s, %s, %s)\n",
+         install_config.slot.c_str(),
+         install_config.root.device().c_str(),
+         install_config.kernel.device().c_str(),
+         install_config.boot.device().c_str());
+
+  if (!ChromeosChrootPostinst(install_config, src_version)) {
+    printf("PostInstall Failed\n");
     return false;
   }
 
-  // TODO(hungte) Currently we rely on tag file /root/.force_update_firmware in
-  // source (signed) rootfs to decide if postinst should perform firmware
-  // updates (the file can be toggled by signing system, using tag_image.sh).
-  // If this is changed, or if we want to allow user overriding firmware updates
-  // in postinst in future, we may provide an option (ex, --update_firmware).
-  string tag_file = (install_config.root.mount() +
-                     "/root/.force_update_firmware");
-
-  bool firmware_update = (access(tag_file.c_str(), 0) == 0);
-
-  bool success = ChromeosChrootPostinst(install_config,
-                                        src_version,
-                                        firmware_update);
+  // /proc/cmdline is expected to contain exactly one of:
+  //   cros_secure, cros_legacy, or cros_efi which describe which
+  //   type of boot bios we are running with. We have already
+  //   done everything needed for cros_secure, and are optionally
+  //   handling legacy or EFI bioses boot config if needed.
+  string kernel_cmd_line;
+  if (!ReadFileToString("/proc/cmdline", &kernel_cmd_line)) {
+    printf("Can't read kernel commandline options\n");
+    return false;
+  }
 
   printf("Syncing filesystem at end of postinst...\n");
   sync();
+
+  // If we are installing to a ChromeOS Bios, we are done.
+  if (kernel_cmd_line.find("cros_secure") != string::npos)
+    return true;
+
+  install_config.boot.set_mount("/tmp/boot_mnt");
+
+  string cmd;
+
+  cmd = StringPrintf("/bin/mkdir -p %s",
+                     install_config.boot.mount().c_str());
+  if (RunCommand(cmd.c_str()) != 0) {
+    printf("Cmd: '%s' failed.\n", cmd.c_str());
+    return false;
+  }
+
+  cmd = StringPrintf("/bin/mount %s %s",
+                     install_config.boot.device().c_str(),
+                     install_config.boot.mount().c_str());
+  if (RunCommand(cmd.c_str()) != 0) {
+    printf("Cmd: '%s' failed.\n", cmd.c_str());
+    return false;
+  }
+
+  bool success = true;
+
+  if (kernel_cmd_line.find("cros_legacy") != string::npos) {
+    if (!RunLegacyPostInstall(install_config)) {
+      printf("Legacy PostInstall failed.\n");
+      success = false;
+    }
+  }
+
+  if (kernel_cmd_line.find("cros_efi") != string::npos) {
+    if (!RunEfiPostInstall(install_config)) {
+      printf("EFI PostInstall failed.\n");
+      success = false;
+    }
+  }
+
+  cmd = StringPrintf("/bin/umount %s",
+                     install_config.boot.device().c_str());
+  if (RunCommand(cmd.c_str()) != 0) {
+    printf("Cmd: '%s' failed.\n", cmd.c_str());
+    success = false;
+  }
 
   return success;
 }
