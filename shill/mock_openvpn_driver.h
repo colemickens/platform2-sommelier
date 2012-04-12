@@ -13,7 +13,7 @@ namespace shill {
 
 class MockOpenVPNDriver : public OpenVPNDriver {
  public:
-  MockOpenVPNDriver(const KeyValueStore &args);
+  MockOpenVPNDriver();
   virtual ~MockOpenVPNDriver();
 
   MOCK_METHOD0(OnReconnecting, void());

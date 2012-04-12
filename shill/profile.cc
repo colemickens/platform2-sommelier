@@ -141,8 +141,9 @@ void Profile::set_storage(StoreInterface *storage) {
 }
 
 bool Profile::AdoptService(const ServiceRefPtr &service) {
-  if (storage_->ContainsGroup(service->GetStorageIdentifier()))
+  if (service->profile() == this) {
     return false;
+  }
   service->set_profile(this);
   return service->Save(storage_.get()) && storage_->Flush();
 }

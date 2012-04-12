@@ -112,15 +112,13 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
                              Metrics *metrics,
                              Manager *manager,
                              DeviceInfo *device_info,
-                             GLib *glib,
-                             const KeyValueStore &args)
+                             GLib *glib)
     : control_(control),
       dispatcher_(dispatcher),
       metrics_(metrics),
       manager_(manager),
       device_info_(device_info),
       glib_(glib),
-      args_(args),
       management_server_(new OpenVPNManagementServer(this, glib)),
       nss_(NSS::GetInstance()),
       pid_(0),
@@ -666,6 +664,12 @@ void OpenVPNDriver::InitPropertyStore(PropertyStore *store) {
                 i)));
   }
 
+  store->RegisterDerivedStringmap(
+      flimflam::kProviderProperty,
+      StringmapAccessor(
+          new CustomAccessor<OpenVPNDriver, Stringmap>(
+              this, &OpenVPNDriver::GetProvider, NULL)));
+
   // TODO(pstew): Add the PassphraseRequired and PSKRequired properties.
   // crosbug.com/27323
 }
@@ -686,18 +690,15 @@ void OpenVPNDriver::ClearMappedProperty(const size_t &index,
 
 string OpenVPNDriver::GetMappedProperty(const size_t &index,
                                         Error *error) {
-  CHECK(index < arraysize(kProperties));
-  if (kProperties[index].crypted) {
-    error->Populate(Error::kPermissionDenied, "Property is write-only");
-    return string();
-  }
-
-  if (!args_.ContainsString(kProperties[index].property)) {
-    error->Populate(Error::kNotFound, "Property is not set");
-    return string();
-  }
-
-  return args_.LookupString(kProperties[index].property, "");
+  // Provider properties are set via SetProperty calls to "Provider.XXX",
+  // however, they are retrieved via a GetProperty call, which returns
+  // all properties in a single "Provider" dict.  Therefore, none of
+  // the individual properties in the kProperties are available for
+  // enumeration in GetProperties.  Instead, they are retrieved via
+  // GetProvider below.
+  error->Populate(Error::kInvalidArguments,
+                  "Provider properties are not read back in this manner");
+  return string();
 }
 
 void OpenVPNDriver::SetMappedProperty(const size_t &index,
@@ -707,5 +708,30 @@ void OpenVPNDriver::SetMappedProperty(const size_t &index,
   args_.SetString(kProperties[index].property, value);
 }
 
+Stringmap OpenVPNDriver::GetProvider(Error *error) {
+  string provider_prefix = string(flimflam::kProviderProperty) + ".";
+  Stringmap provider_properties;
+
+  for (size_t i = 0; i < arraysize(kProperties); i++) {
+    // Never return any encrypted properties.
+    if (kProperties[i].crypted) {
+      continue;
+    }
+
+    string prop = kProperties[i].property;
+
+    // Chomp off leading "Provider." from properties that have this prefix.
+    if (StartsWithASCII(prop, provider_prefix, false)) {
+      prop = prop.substr(provider_prefix.length());
+    }
+
+    if (args_.ContainsString(kProperties[i].property)) {
+      provider_properties[prop] =
+          args_.LookupString(kProperties[i].property, "");
+    }
+  }
+
+  return provider_properties;
+}
 
 }  // namespace shill

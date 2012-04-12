@@ -475,9 +475,7 @@ TEST_F(ManagerTest, MoveService) {
     ProfileRefPtr profile(
         new Profile(control_interface(), &manager, id, "", false));
     MockStore *storage = new MockStore;
-    // Say we don't have |s2| the first time asked, then that we do.
     EXPECT_CALL(*storage, ContainsGroup(s2->GetStorageIdentifier()))
-        .WillOnce(Return(false))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*storage, Flush())
         .Times(AnyNumber())
@@ -487,7 +485,7 @@ TEST_F(ManagerTest, MoveService) {
   }
   // Create a profile that already has |s2| in it.
   ProfileRefPtr profile(new EphemeralProfile(control_interface(), &manager));
-  profile->AdoptService(s2);
+  EXPECT_TRUE(profile->AdoptService(s2));
 
   // Now, move the Service |s2| to another profile.
   EXPECT_CALL(*s2.get(), Save(_)).WillOnce(Return(true));

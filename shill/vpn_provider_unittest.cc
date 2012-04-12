@@ -177,12 +177,17 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
   EXPECT_CALL(*profile, ConfigureService(ServiceWithStorageId(kVPNIdentifier1)))
       .WillOnce(Return(true));
 
+  const string kName("name");
+  EXPECT_CALL(storage, GetString(_, flimflam::kNameProperty, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kName), Return(true)));
+
   const string kProviderTypeUnknown("unknown");
   EXPECT_CALL(storage, GetString(kVPNIdentifier0,
                                  flimflam::kProviderTypeProperty,
                                  _))
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(kProviderTypeUnknown),
                             Return(true)));
+
   const string kProviderTypeOpenVPN(flimflam::kProviderOpenVpn);
   EXPECT_CALL(storage, GetString(kVPNIdentifier1,
                                  flimflam::kProviderTypeProperty,

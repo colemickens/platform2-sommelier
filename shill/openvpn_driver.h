@@ -41,8 +41,7 @@ class OpenVPNDriver : public VPNDriver,
                 Metrics *metrics,
                 Manager *manager,
                 DeviceInfo *device_info,
-                GLib *glib,
-                const KeyValueStore &args);
+                GLib *glib);
   virtual ~OpenVPNDriver();
 
   // Inherited from VPNDriver. |Connect| initiates the VPN connection by
@@ -70,6 +69,8 @@ class OpenVPNDriver : public VPNDriver,
   void SetMappedProperty(const size_t &index,
                          const std::string &value,
                          Error *error);
+  Stringmap GetProvider(Error *error);
+
 
   KeyValueStore *args() { return &args_; }
 

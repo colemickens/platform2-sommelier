@@ -6,8 +6,8 @@
 
 namespace shill {
 
-MockOpenVPNDriver::MockOpenVPNDriver(const KeyValueStore &args)
-    : OpenVPNDriver(NULL, NULL, NULL, NULL, NULL, NULL, args) {}
+MockOpenVPNDriver::MockOpenVPNDriver()
+    : OpenVPNDriver(NULL, NULL, NULL, NULL, NULL, NULL) {}
 
 MockOpenVPNDriver::~MockOpenVPNDriver() {}
 

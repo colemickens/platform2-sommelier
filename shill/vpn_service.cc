@@ -58,9 +58,12 @@ string VPNService::CreateStorageIdentifier(const KeyValueStore &args,
   }
   string name = args.LookupString(flimflam::kProviderNameProperty, "");
   if (name.empty()) {
-    Error::PopulateAndLog(
-        error, Error::kNotSupported, "Missing VPN name.");
-    return "";
+    name = args.LookupString(flimflam::kNameProperty, "");
+    if (name.empty()) {
+      Error::PopulateAndLog(
+          error, Error::kNotSupported, "Missing VPN name.");
+      return "";
+    }
   }
   string id = StringPrintf("vpn_%s_%s", host.c_str(), name.c_str());
   replace_if(id.begin(), id.end(), &Service::IllegalChar, '_');

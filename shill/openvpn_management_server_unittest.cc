@@ -36,8 +36,7 @@ MATCHER_P(VoidStringEq, value, "") {
 class OpenVPNManagementServerTest : public testing::Test {
  public:
   OpenVPNManagementServerTest()
-      : driver_(args_),
-        server_(&driver_, &glib_) {}
+      : server_(&driver_, &glib_) {}
 
   virtual ~OpenVPNManagementServerTest() {}
 
@@ -82,7 +81,6 @@ class OpenVPNManagementServerTest : public testing::Test {
   static const int kConnectedSocket;
 
   GLib glib_;
-  KeyValueStore args_;
   MockOpenVPNDriver driver_;
   OpenVPNManagementServer server_;
   MockSockets sockets_;

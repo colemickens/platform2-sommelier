@@ -54,7 +54,7 @@ class OpenVPNDriverTest : public testing::Test,
       : device_info_(&control_, NULL, NULL, NULL),
         manager_(&control_, &dispatcher_, &metrics_, &glib_),
         driver_(new OpenVPNDriver(&control_, &dispatcher_, &metrics_, &manager_,
-                                  &device_info_, &glib_, args_)),
+                                  &device_info_, &glib_)),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)),
         device_(new MockVPN(&control_, &dispatcher_, &metrics_, &manager_,
@@ -105,6 +105,10 @@ class OpenVPNDriverTest : public testing::Test,
                                  const string &key,
                                  string *value,
                                  Error *error);
+  bool FindStringmapPropertyInStore(const PropertyStore &store,
+                                    const string &key,
+                                    Stringmap *value,
+                                    Error *error);
 
   // Inherited from RPCTaskDelegate.
   virtual void Notify(const string &reason, const map<string, string> &dict);
@@ -115,7 +119,6 @@ class OpenVPNDriverTest : public testing::Test,
   MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
-  KeyValueStore args_;
   OpenVPNDriver *driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockVPN> device_;
@@ -165,6 +168,22 @@ bool OpenVPNDriverTest::FindStringPropertyInStore(const PropertyStore &store,
                                                   Error *error) {
   ReadablePropertyConstIterator<std::string> it =
       store.GetStringPropertiesIter();
+  for ( ; !it.AtEnd(); it.Advance()) {
+    if (it.Key() == key) {
+      *value = it.Value(error);
+      return error->IsSuccess();
+    }
+  }
+  error->Populate(Error::kNotFound);
+  return false;
+}
+
+bool OpenVPNDriverTest::FindStringmapPropertyInStore(const PropertyStore &store,
+                                                     const string &key,
+                                                     Stringmap *value,
+                                                     Error *error) {
+  ReadablePropertyConstIterator<Stringmap> it =
+      store.GetStringmapPropertiesIter();
   for ( ; !it.AtEnd(); it.Advance()) {
     if (it.Key() == key) {
       *value = it.Value(error);
@@ -722,18 +741,48 @@ TEST_F(OpenVPNDriverTest, InitPropertyStore) {
   const string kKeyDirection = "1";
   const string kPassword0 = "foobar";
   const string kPassword1 = "baz";
+  const string kProviderName = "boo";
   SetArg(flimflam::kOpenVPNKeyDirectionProperty, kKeyDirection);
   SetArg(flimflam::kOpenVPNPasswordProperty, kPassword0);
+  SetArg(flimflam::kProviderNameProperty, kProviderName);
 
-  // Read a property out of the driver args using the PropertyStore interface.
+  // We should not be able to read a property out of the driver args using
+  // the key to the args directly.
   {
     Error error;
     string string_property;
-    EXPECT_TRUE(
+    EXPECT_FALSE(
         FindStringPropertyInStore(store, flimflam::kOpenVPNKeyDirectionProperty,
                                   &string_property,
                                   &error));
-    EXPECT_EQ(kKeyDirection, string_property);
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
+
+  // We should instead be able to find it within the "Provider" stringmap.
+  {
+    Error error;
+    Stringmap provider_properties;
+    EXPECT_TRUE(
+        FindStringmapPropertyInStore(store, flimflam::kProviderProperty,
+                                     &provider_properties,
+                                     &error));
+    EXPECT_TRUE(ContainsKey(provider_properties,
+                            flimflam::kOpenVPNKeyDirectionProperty));
+    EXPECT_EQ(kKeyDirection,
+              provider_properties[flimflam::kOpenVPNKeyDirectionProperty]);
+  }
+
+  // Properties that start with the prefix "Provider." should be mapped to
+  // the name in the Properties dict with the prefix removed.
+  {
+    Error error;
+    Stringmap provider_properties;
+    EXPECT_TRUE(
+        FindStringmapPropertyInStore(store, flimflam::kProviderProperty,
+                                     &provider_properties,
+                                     &error));
+    EXPECT_TRUE(ContainsKey(provider_properties, flimflam::kNameProperty));
+    EXPECT_EQ(kProviderName, provider_properties[flimflam::kNameProperty]);
   }
 
   // If we clear this property, we should no longer be able to find it.

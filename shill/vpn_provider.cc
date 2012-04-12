@@ -55,8 +55,19 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
 
   // Find a service in the provider list which matches these parameters.
   VPNServiceRefPtr service = FindService(type, storage_id);
+
   if (service == NULL) {
-    service = CreateService(type, storage_id, args, error);
+    // Create a service, using the name and type arguments passed in.
+    string name = args.LookupString(flimflam::kProviderNameProperty, "");
+    if (name.empty()) {
+      name = args.LookupString(flimflam::kNameProperty, "");
+    }
+    service = CreateService(type, name, storage_id, error);
+  }
+
+  if (service != NULL) {
+    // Configure the service using the the rest of the passed-in arguments.
+    service->Configure(args, error);
   }
 
   return service;
@@ -84,6 +95,7 @@ void VPNProvider::RemoveService(VPNServiceRefPtr service) {
 }
 
 void VPNProvider::CreateServicesFromProfile(ProfileRefPtr profile) {
+  VLOG(2) << __func__;
   const StoreInterface *storage = profile->GetConstStorage();
   set<string> groups =
       storage->GetGroupsWithKey(flimflam::kProviderTypeProperty);
@@ -99,6 +111,14 @@ void VPNProvider::CreateServicesFromProfile(ProfileRefPtr profile) {
       continue;
     }
 
+    string name;
+    if (!storage->GetString(*it, flimflam::kProviderNameProperty, &name) &&
+        !storage->GetString(*it, flimflam::kNameProperty, &name)) {
+      LOG(ERROR) << "Group " << *it << " is missing the "
+                 << flimflam::kProviderNameProperty << " property.";
+      continue;
+    }
+
     VPNServiceRefPtr service = FindService(type, *it);
     if (service != NULL) {
       // If the service already exists, it does not need to be configured,
@@ -107,11 +127,8 @@ void VPNProvider::CreateServicesFromProfile(ProfileRefPtr profile) {
       continue;
     }
 
-    // Create a service with an empty |args| parameter.  We will populate
-    // the service with properties using ConfigureService() below.
-    KeyValueStore args;
     Error error;
-    service = CreateService(type, *it, args, &error);
+    service = CreateService(type, name, *it, &error);
 
     if (service == NULL) {
       LOG(ERROR) << "Could not create service for " << *it;
@@ -126,14 +143,16 @@ void VPNProvider::CreateServicesFromProfile(ProfileRefPtr profile) {
 }
 
 VPNServiceRefPtr VPNProvider::CreateService(const string &type,
+                                            const string &name,
                                             const string &storage_id,
-                                            const KeyValueStore &args,
                                             Error *error) {
+  VLOG(2) << __func__ << " type " << type << " name " << name
+          << " storage id " << storage_id;
   scoped_ptr<VPNDriver> driver;
   if (type == flimflam::kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(
         control_interface_, dispatcher_, metrics_, manager_,
-        manager_->device_info(), manager_->glib(), args));
+        manager_->device_info(), manager_->glib()));
   } else {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Unsupported VPN type: " + type);
@@ -144,7 +163,6 @@ VPNServiceRefPtr VPNProvider::CreateService(const string &type,
       control_interface_, dispatcher_, metrics_, manager_, driver.release());
   service->set_storage_id(storage_id);
   service->InitDriverPropertyStore();
-  string name = args.LookupString(flimflam::kProviderNameProperty, "");
   if (!name.empty()) {
     service->set_friendly_name(name);
   }
