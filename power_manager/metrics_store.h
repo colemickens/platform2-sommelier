@@ -58,7 +58,6 @@ class MetricsStore {
   FRIEND_TEST(MetricsStoreTest, MapStoreMapFails);
   FRIEND_TEST(MetricsStoreTest, SyncStoreSuccess);
   FRIEND_TEST(MetricsStoreTest, SyncStoreNullMap);
-  FRIEND_TEST(MetricsStoreTest, SyncStoreInvalidMap);
   FRIEND_TEST(MetricsStoreTest, CloseStoreSuccess);
   FRIEND_TEST(MetricsStoreTest, CloseStoreBadFD);
   FRIEND_TEST(MetricsStoreTest, CloseStoreBadMap);

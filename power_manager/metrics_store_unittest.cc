@@ -239,11 +239,6 @@ TEST_F(MetricsStoreTest, SyncStoreNullMap) {
   EXPECT_DEATH(metrics_store_.SyncStore(NULL), ".*");
 }
 
-TEST_F(MetricsStoreTest, SyncStoreInvalidMap) {
-  int invalid_map[kSizeOfStoredMetrics];
-  EXPECT_FALSE(metrics_store_.SyncStore(invalid_map));
-}
-
 TEST_F(MetricsStoreTest, CloseStoreSuccess) {
   // Setting up a mmap to be torn down
   int fd = HANDLE_EINTR(open(kTestFileName,
