@@ -1,11 +1,11 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef CROS_DISKS_ARCHIVE_MANAGER_H_
 #define CROS_DISKS_ARCHIVE_MANAGER_H_
 
-#include <set>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -38,21 +38,24 @@ class ArchiveManager : public MountManager {
     return MOUNT_SOURCE_ARCHIVE;
   }
 
-  // Returns true if an archive file extension is supported.
-  bool IsFileExtensionSupported(const std::string& extension) const;
-
   // Registers a set of default archive file extensions to the manager.
   void RegisterDefaultFileExtensions();
 
-  // Registers an archive file extension to the manager.
-  // Subsequent registrations of the same file extension are ignored.
-  // |extension| should not include the leading dot.
-  void RegisterFileExtension(const std::string& extension);
+  // Registers an archive file extension and the corresponding AVFS handler to
+  // to the manager. Subsequent registrations of the same file extension
+  // overwrite an existing handler. |extension| should not include the leading
+  // dot. |avfs_handler| should be in the form like '#uzip', '#ugz#utar', etc.
+  void RegisterFileExtension(const std::string& extension,
+                             const std::string& avfs_handler);
 
  protected:
-  // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
+  // Mounts |source_path| to |mount_path| as |source_format| with |options|.
+  // |source_format| can be used to specify the archive file format of
+  // |source_path|, so that |source_path| can have any file extension.
+  // If |source_format| is an empty string, the archive file format is
+  // determined based on the file extension of |source_path|.
   virtual MountErrorType DoMount(const std::string& source_path,
-                                 const std::string& filesystem_type,
+                                 const std::string& source_format,
                                  const std::vector<std::string>& options,
                                  const std::string& mount_path);
 
@@ -72,10 +75,12 @@ class ArchiveManager : public MountManager {
   // Returns the extension of a file, in lower case, at the specified |path|.
   std::string GetFileExtension(const std::string& path) const;
 
-  // Returns the corresponding path inside the AVFS mount of a given path,
-  // or an empty string if the given path does not have a corresponding
-  // path inside the AVFS mount.
-  std::string GetAVFSPath(const std::string& path) const;
+  // Returns the corresponding path inside the AVFS mount of a given |path|
+  // with the archive file |extension|, or an empty string if |extension| is
+  // not supported or |path| does not have a corresponding path inside the AVFS
+  // mount.
+  std::string GetAVFSPath(const std::string& path,
+                          const std::string& extension) const;
 
   // Starts AVFS daemons to initialize AVFS mounts. Returns true on success or
   // if the AVFS daemons have started.
@@ -98,8 +103,9 @@ class ArchiveManager : public MountManager {
   // |virtual_paths_|. It is a no-op if no such mapping exists.
   void RemoveMountVirtualPath(const std::string& mount_path);
 
-  // A set of supported archive file extensions.
-  std::set<std::string> extensions_;
+  // A mapping of supported archive file extensions to corresponding AVFS
+  // handlers.
+  std::map<std::string, std::string> extension_handlers_;
 
   // A cache mapping a mount path to its source virtual path in the AVFS mount.
   VirtualPathMap virtual_paths_;
@@ -108,6 +114,8 @@ class ArchiveManager : public MountManager {
   bool avfs_started_;
 
   FRIEND_TEST(ArchiveManagerTest, GetAVFSPath);
+  FRIEND_TEST(ArchiveManagerTest, GetAVFSPathWithInvalidPaths);
+  FRIEND_TEST(ArchiveManagerTest, GetAVFSPathWithUnsupportedExtensions);
   FRIEND_TEST(ArchiveManagerTest, GetAVFSPathWithNestedArchives);
   FRIEND_TEST(ArchiveManagerTest, GetFileExtension);
   FRIEND_TEST(ArchiveManagerTest, SuggestMountPath);

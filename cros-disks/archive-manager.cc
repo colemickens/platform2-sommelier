@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,6 +19,7 @@
 #include "cros-disks/sandboxed-process.h"
 #include "cros-disks/system-mounter.h"
 
+using std::map;
 using std::string;
 using std::vector;
 
@@ -28,6 +29,7 @@ namespace {
 struct AVFSPathMapping {
   const char* const base_path;
   const char* const avfs_path;
+  bool optional;
 };
 
 // Process capabilities required by the avfsd process:
@@ -49,11 +51,14 @@ const char kAVFSRootDirectory[] = "/var/run/avfsroot";
 const char kAVFSLogFile[] = "/var/run/avfsroot/avfs.log";
 const char kAVFSMediaDirectory[] = "/var/run/avfsroot/media";
 const char kAVFSUserFileDirectory[] = "/var/run/avfsroot/user";
+const char kAVFSUserGDataDirectory[] = "/var/run/avfsroot/gdata";
 const char kMediaDirectory[] = "/media";
 const char kUserFileDirectory[] = "/home/chronos/user/Downloads";
+const char kUserGDataDirectory[] = "/home/chronos/user/GCache";
 const AVFSPathMapping kAVFSPathMapping[] = {
-  { kMediaDirectory, kAVFSMediaDirectory },
-  { kUserFileDirectory, kAVFSUserFileDirectory },
+  { kMediaDirectory, kAVFSMediaDirectory, false },
+  { kUserFileDirectory, kAVFSUserFileDirectory, false },
+  { kUserGDataDirectory, kAVFSUserGDataDirectory, true },
 };
 
 }  // namespace
@@ -84,9 +89,11 @@ bool ArchiveManager::StopSession(const string& user) {
 bool ArchiveManager::CanMount(const string& source_path) const {
   // The following paths can be mounted:
   //     /home/chronos/user/Downloads/...<file>
+  //     /home/chronos/user/GCache/...<file>
   //     /media/<dir>/<dir>/...<file>
   FilePath file_path(source_path);
-  if (FilePath(kUserFileDirectory).IsParent(file_path))
+  if (FilePath(kUserFileDirectory).IsParent(file_path) ||
+      FilePath(kUserGDataDirectory).IsParent(file_path))
     return true;
 
   if (FilePath(kMediaDirectory).IsParent(file_path)) {
@@ -100,19 +107,19 @@ bool ArchiveManager::CanMount(const string& source_path) const {
 }
 
 MountErrorType ArchiveManager::DoMount(const string& source_path,
-                                       const string& filesystem_type,
+                                       const string& source_format,
                                        const vector<string>& options,
                                        const string& mount_path) {
   CHECK(!source_path.empty()) << "Invalid source path argument";
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
-  string extension = GetFileExtension(source_path);
+  string extension = GetFileExtension(source_format);
+  if (extension.empty())
+    extension = GetFileExtension(source_path);
+
   metrics()->RecordArchiveType(extension);
 
-  string avfs_path;
-  if (IsFileExtensionSupported(extension)) {
-    avfs_path = GetAVFSPath(source_path);
-  }
+  string avfs_path = GetAVFSPath(source_path, extension);
   if (avfs_path.empty()) {
     LOG(ERROR) << "Path '" << source_path << "' is not a supported archive";
     return MOUNT_ERROR_UNSUPPORTED_ARCHIVE;
@@ -156,31 +163,27 @@ string ArchiveManager::SuggestMountPath(const string& source_path) const {
   return FilePath(mount_root()).Append(base_name).value();
 }
 
-bool ArchiveManager::IsFileExtensionSupported(
-    const string& extension) const {
-  return extensions_.find(extension) != extensions_.end();
-}
-
 void ArchiveManager::RegisterDefaultFileExtensions() {
   // TODO(benchan): Perhaps these settings can be read from a config file.
 
   // zip
-  RegisterFileExtension("zip");
+  RegisterFileExtension("zip", "#uzip");
   // tar
-  RegisterFileExtension("tar");
+  RegisterFileExtension("tar", "#utar");
   // All variants of bzip2-compessed tar
-  RegisterFileExtension("tar.bz2");
-  RegisterFileExtension("tbz");
-  RegisterFileExtension("tbz2");
+  RegisterFileExtension("tar.bz2", "#ubz2#utar");
+  RegisterFileExtension("tbz", "#ubz2#utar");
+  RegisterFileExtension("tbz2", "#ubz2#utar");
   // All variants of gzip-compessed tar
-  RegisterFileExtension("tar.gz");
-  RegisterFileExtension("tgz");
+  RegisterFileExtension("tar.gz", "#ugz#utar");
+  RegisterFileExtension("tgz", "#ugz#utar");
   // rar
-  RegisterFileExtension("rar");
+  RegisterFileExtension("rar", "#urar");
 }
 
-void ArchiveManager::RegisterFileExtension(const string& extension) {
-  extensions_.insert(extension);
+void ArchiveManager::RegisterFileExtension(const string& extension,
+                                           const string& avfs_handler) {
+  extension_handlers_[extension] = avfs_handler;
 }
 
 string ArchiveManager::GetFileExtension(const string& path) const {
@@ -194,7 +197,8 @@ string ArchiveManager::GetFileExtension(const string& path) const {
   return extension;
 }
 
-string ArchiveManager::GetAVFSPath(const string& path) const {
+string ArchiveManager::GetAVFSPath(const string& path,
+                                   const string& extension) const {
   // When mounting an archive within another mounted archive, we need to
   // resolve the virtual path of the inner archive to the "unfolded"
   // form within the AVFS mount, such as
@@ -216,6 +220,11 @@ string ArchiveManager::GetAVFSPath(const string& path) const {
   //      path "/var/run/avfsroot/user/layer2.zip#" within the AVFS mount.
   //      The following code should return the virtual path of |path| as
   //      "/var/run/avfsroot/user/layer2.zip#/test/doc/layer1.zip#".
+  map<string, string>::const_iterator handler_iterator =
+      extension_handlers_.find(extension);
+  if (handler_iterator == extension_handlers_.end())
+    return string();
+
   FilePath file_path(path);
   FilePath current_path = file_path.DirName();
   FilePath parent_path = current_path.DirName();
@@ -227,7 +236,7 @@ string ArchiveManager::GetAVFSPath(const string& path) const {
       // As current_path is a parent of file_path, AppendRelativePath()
       // should return true here.
       CHECK(current_path.AppendRelativePath(file_path, &avfs_path));
-      return avfs_path.value() + "#";
+      return avfs_path.value() + handler_iterator->second;
     }
     current_path = parent_path;
     parent_path = parent_path.DirName();
@@ -240,7 +249,7 @@ string ArchiveManager::GetAVFSPath(const string& path) const {
     FilePath base_path(kAVFSPathMapping[i].base_path);
     FilePath avfs_path(kAVFSPathMapping[i].avfs_path);
     if (base_path.AppendRelativePath(file_path, &avfs_path)) {
-      return avfs_path.value() + "#";
+      return avfs_path.value() + handler_iterator->second;
     }
   }
   return string();
@@ -270,8 +279,15 @@ bool ArchiveManager::StartAVFS() {
 
   avfs_started_ = true;
   for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
+    bool base_path_exists =
+        file_util::PathExists(FilePath(kAVFSPathMapping[i].base_path));
+    // Skip a non-existing but optional path.
+    if (!base_path_exists && kAVFSPathMapping[i].optional)
+      continue;
+
     const string& avfs_path = kAVFSPathMapping[i].avfs_path;
-    if (!platform()->CreateDirectory(avfs_path) ||
+    if (!base_path_exists ||
+        !platform()->CreateDirectory(avfs_path) ||
         !platform()->SetOwnership(avfs_path, user_id, group_id) ||
         !platform()->SetPermissions(avfs_path, S_IRWXU) ||
         !MountAVFSPath(kAVFSPathMapping[i].base_path, avfs_path)) {
@@ -291,6 +307,9 @@ bool ArchiveManager::StopAVFS() {
   bool all_unmounted = UnmountAll();
   for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
     const string& path = kAVFSPathMapping[i].avfs_path;
+    if (!file_util::PathExists(FilePath(path)))
+      continue;
+
     if (!platform()->Unmount(path))
       all_unmounted = false;
     platform()->RemoveEmptyDirectory(path);
