@@ -267,8 +267,13 @@ bool RunPostInstall(const string& install_dir,
   printf("RunPostInstall(%s, %s)\n",
          install_dir.c_str(), install_dev.c_str());
 
-  string src_version = LsbReleaseValue("/etc/lsb-release",
-                                       "CHROMEOS_RELEASE_VERSION");
+  string src_version;
+  if (!LsbReleaseValue("/etc/lsb-release",
+                       "CHROMEOS_RELEASE_VERSION",
+                       &src_version)) {
+    printf("Failed to read /etc/lsb-release");
+    return false;
+  }
 
   if (src_version.empty()) {
     printf("CHROMEOS_RELEASE_VERSION not found in /etc/lsb-release");

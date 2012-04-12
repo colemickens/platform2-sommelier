@@ -7,8 +7,6 @@
 #include <ctype.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <fstream>
-#include <iostream>
 #include <linux/fs.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -99,25 +97,58 @@ int RunCommand(const string& command) {
   return result;
 }
 
-string LsbReleaseValue(const string& file,
-                       const string& key) {
+// Open a file and read it's contents into a string.
+// return "" on error.
+bool ReadFileToString(const string& path, string* contents)
+{
+  string result;
+
+  int fd = open(path.c_str(), O_RDONLY);
+
+  if (fd == -1)
+    return false;
+
+  ssize_t buff_in;
+  char buff[512];
+
+  while ((buff_in = read(fd, buff, sizeof(buff))) > 0)
+    result.append(buff, buff_in);
+
+  if (close(fd) != 0)
+    return false;
+
+  // If our last read failed, return an empty string, not a partial result.
+  if (buff_in < 0)
+    return false;
+
+  *contents = result;
+  return true;
+}
+
+// Look up a keyed value from a /etc/lsb-release formatted file.
+// TODO(dgarrett): If we ever call this more than once, cache
+// file contents to avoid reparsing.
+bool LsbReleaseValue(const string& file,
+                     const string& key,
+                     string* result) {
   string preamble = key + "=";
 
-  string line;
-  std::ifstream lsb_file(file.c_str());
+  string file_contents;
+  if (!ReadFileToString(file, &file_contents))
+    return false;
 
-  if (!lsb_file.is_open())
-    return "";
+  std::vector<string> file_lines;
+  SplitString(file_contents, '\n', &file_lines);
 
-  while (lsb_file.good()) {
-    line = "";
-    getline(lsb_file, line);
-    if (line.compare(0, preamble.size(), preamble) == 0)
-      return line.substr(preamble.size());
+  std::vector<string>::iterator line;
+  for (line = file_lines.begin(); line < file_lines.end(); line++) {
+    if (line->compare(0, preamble.size(), preamble) == 0) {
+      *result = line->substr(preamble.size());
+      return true;
+    }
   }
-  lsb_file.close();
 
-  return "";
+  return false;
 }
 
 // If less is a lower version number than right

@@ -11,6 +11,11 @@
 
 using std::string;
 
+// This constant should match the contents of lsb-release-test.txt exactly.
+const char* LSB_CONTENTS = "CHROMEOS_RELEASE_BOARD=x86-mario\n"
+                           "CHROMEOS_RELEASE=1568.0.2012_01_19_1424\n"
+                           "CHROMEOS_AUSERVER=http://blah.blah:8080/update\n";
+
 void TestStringPrintf(const string& result,
                       const string& expected) {
   if (result != expected) {
@@ -50,14 +55,55 @@ void TestVersion(const string &left, const string &right, bool expected) {
   }
 }
 
-void TestLsb(const string &key, const string &expected) {
-  string file = "lsb-release-test.txt";
+// expected_string is optional, pass NULL if you don't want to verify
+// the string passed in.
+void TestReadFileToString(const string &file,
+                          bool expected_success,
+                          const char* expected_string) {
+  string result_string;
+  bool result_success = ReadFileToString(file, &result_string);
 
-  string result = LsbReleaseValue(file, key);
-  if (result != expected) {
-    printf("LsbReleaseValue(%s, %s) '%s' != %s\n",
-           file.c_str(), key.c_str(),
-           result.c_str(), expected.c_str());
+  if (result_success != expected_success) {
+    printf("ReadFileToString(%s) '%s' != %s\n",
+           file.c_str(),
+           result_success ? "success" : "failure",
+           expected_success ? "success" : "failure");
+    exit(1);
+  }
+
+  if (!expected_string)
+    return;
+
+  if (result_string != expected_string) {
+    printf("ReadFileToString(%s) '%s' != %s\n",
+           file.c_str(),
+           result_string.c_str(), expected_string);
+    exit(1);
+  }
+}
+
+void TestLsb(const string &file,
+             const string &key,
+             bool expected_success,
+             const char* expected_string) {
+  string result_string;
+  bool result_success = LsbReleaseValue(file, key, &result_string);
+
+  if (result_success != expected_success) {
+    printf("LsbReleaseValue(%s) '%s' != %s\n",
+           file.c_str(),
+           result_success ? "success" : "failure",
+           expected_success ? "success" : "failure");
+    exit(1);
+  }
+
+  if (!expected_string)
+    return;
+
+  if (result_string != expected_string) {
+    printf("LsbReleaseValue(%s) '%s' != %s\n",
+           file.c_str(),
+           result_string.c_str(), expected_string);
     exit(1);
   }
 }
@@ -166,9 +212,23 @@ void Test() {
   TestVersion("12.13.2", "1.13.2.4", false);      // 3 digit, 4 digit
   TestVersion("12.13.2.4", "12.13.1", true);      // 4 digit, 3 digit
 
-  TestLsb("CHROMEOS_RELEASE_BOARD", "x86-mario");
-  TestLsb("CHROMEOS_RELEASE", "1568.0.2012_01_19_1424");
-  TestLsb("CHROMEOS_AUSERVER", "http://blah.blah:8080/update");
+  TestReadFileToString("/tmp", false, NULL);
+  TestReadFileToString("/foo", false, NULL);
+  TestReadFileToString("lsb-release-test.txt", true, LSB_CONTENTS);
+  TestReadFileToString("LICENSE", true, NULL);
+
+  TestLsb("bogus",
+          "CHROMEOS_RELEASE_BOARD",
+          false, NULL);
+  TestLsb("lsb-release-test.txt",
+          "CHROMEOS_RELEASE_BOARD",
+          true, "x86-mario");
+  TestLsb("lsb-release-test.txt",
+          "CHROMEOS_RELEASE",
+          true, "1568.0.2012_01_19_1424");
+  TestLsb("lsb-release-test.txt",
+          "CHROMEOS_AUSERVER",
+          true, "http://blah.blah:8080/update");
 
   TestGetBlockDevFromPartitionDev("/dev/sda3", "/dev/sda");
   TestGetBlockDevFromPartitionDev("/dev/sda321", "/dev/sda");

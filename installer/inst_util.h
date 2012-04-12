@@ -23,8 +23,11 @@ void SplitString(const std::string& str,
 // been rewritten as library calls this command should be deleted.
 int RunCommand(const std::string& command);
 
-std::string LsbReleaseValue(const std::string& file,
-                            const std::string& key);
+bool ReadFileToString(const std::string& path, std::string* contents);
+
+bool LsbReleaseValue(const std::string& file,
+                     const std::string& key,
+                     std::string* result);
 
 bool VersionLess(const std::string& left,
                  const std::string& right);
