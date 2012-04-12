@@ -326,7 +326,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --ui-enable-partial-swap \
             --ui-enable-per-tile-painting \
             --user-data-dir="$DATA_DIR" \
-            --webui-login \
             --no-protector \
             "$REGISTER_PLUGINS" \
             ${ACCELERATED_FLAGS} \
