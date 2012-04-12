@@ -205,6 +205,7 @@ void Manager::InitializeProfiles() {
 }
 
 void Manager::CreateProfile(const string &name, string *path, Error *error) {
+  VLOG(2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -243,6 +244,7 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
 }
 
 void Manager::PushProfile(const string &name, string *path, Error *error) {
+  VLOG(2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -342,6 +344,7 @@ void Manager::PopProfileInternal() {
 }
 
 void Manager::PopProfile(const string &name, Error *error) {
+  VLOG(2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (profiles_.empty()) {
     Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
@@ -362,6 +365,7 @@ void Manager::PopProfile(const string &name, Error *error) {
 }
 
 void Manager::PopAnyProfile(Error *error) {
+  VLOG(2) << __func__;
   Profile::Identifier ident;
   if (profiles_.empty()) {
     Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
@@ -967,6 +971,7 @@ string Manager::GetActiveProfileRpcIdentifier(Error */*error*/) {
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
   if (args.ContainsString(flimflam::kGuidProperty)) {
+    VLOG(2) << __func__ << ": searching by GUID";
     ServiceRefPtr service =
         GetServiceWithGUID(args.GetString(flimflam::kGuidProperty), NULL);
     if (service) {
@@ -982,9 +987,11 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
 
   string type = args.GetString(flimflam::kTypeProperty);
   if (type == flimflam::kTypeWifi) {
+    VLOG(2) << __func__ << ": getting WiFi Service";
     return GetWifiService(args, error);
   }
   if (type == flimflam::kTypeVPN) {
+    VLOG(2) << __func__ << ": getting VPN Service";
     return vpn_provider_.GetService(args, error);
   }
   error->Populate(Error::kNotSupported, kErrorUnsupportedServiceType);

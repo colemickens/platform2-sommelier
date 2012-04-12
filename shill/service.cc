@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/string_number_conversions.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/connection.h"
@@ -183,9 +184,6 @@ Service::Service(ControlInterface *control_interface,
                             &Service::GetProfileRpcId,
                             &Service::SetProfileRpcId);
   store_.RegisterString(flimflam::kProxyConfigProperty, &proxy_config_);
-  // TODO(cmasone): Create VPN Service with this property
-  // store_.RegisterConstStringmap(flimflam::kProviderProperty, &provider_);
-
   store_.RegisterBool(flimflam::kSaveCredentialsProperty, &save_credentials_);
   HelpRegisterDerivedString(flimflam::kTypeProperty,
                             &Service::GetTechnologyString,
@@ -866,7 +864,10 @@ string Service::GetNameProperty(Error *error) {
 void Service::AssertTrivialSetNameProperty(const string &name, Error *error) {
   if (name != friendly_name_) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
-                          "Service Name property cannot be modified.");
+                          base::StringPrintf(
+                              "Service Name property cannot be modified "
+                              "(%s to %s)", friendly_name_.c_str(),
+                              name.c_str()));
   }
 }
 
