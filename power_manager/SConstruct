@@ -90,7 +90,7 @@ for key in Split('SYSROOT'):
     base_env['ENV'][key] = os.environ[key]
 base_env.Append(CPPPATH=['..'])
 
-BASE_VER = os.environ.get('BASE_VER', '85268')
+BASE_VER = os.environ.get('BASE_VER', '125070')
 pkgconfig = os.environ.get('PKG_CONFIG', 'pkg-config')
 gdk_env = base_env.Clone()
 gdk_env.ParseConfig('%s --cflags --libs gdk-2.0 libchrome-%s libchromeos-%s'
