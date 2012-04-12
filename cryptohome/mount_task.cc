@@ -78,12 +78,9 @@ void MountTaskMountGuest::Run() {
 }
 
 void MountTaskMigratePasskey::Run() {
-  if (mount_) {
-    bool status = mount_->MigratePasskey(
-        credentials_,
-        static_cast<const char*>(old_key_.const_data()));
-    result()->set_return_status(status);
-  }
+  CHECK(homedirs_);
+  bool status = homedirs_->Migrate(credentials_, old_key_);
+  result()->set_return_status(status);
   MountTask::Notify();
 }
 

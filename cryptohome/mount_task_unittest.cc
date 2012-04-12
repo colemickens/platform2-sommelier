@@ -175,12 +175,13 @@ TEST_F(MountTaskTest, MountGuestTest) {
 }
 
 TEST_F(MountTaskTest, MigratePasskeyTest) {
-  EXPECT_CALL(mount_, MigratePasskey(_, _))
+  MockHomeDirs homedirs;
+  EXPECT_CALL(homedirs, Migrate(_, _))
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskMigratePasskey> mount_task
-      = new MountTaskMigratePasskey(NULL, &mount_, UsernamePasskey(), "");
+      = new MountTaskMigratePasskey(NULL, &homedirs, UsernamePasskey(), "");
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,

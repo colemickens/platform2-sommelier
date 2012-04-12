@@ -314,4 +314,47 @@ bool HomeDirs::Remove(const std::string& username) {
          platform_->DeleteFile(root_path.value(), true);
 }
 
+bool HomeDirs::Migrate(const Credentials& newcreds,
+                       const SecureBlob& oldkey) {
+  SecureBlob newkey;
+  newcreds.GetPasskey(&newkey);
+  UsernamePasskey oldcreds(newcreds.GetFullUsernameString().c_str(), oldkey);
+  Mount mount;
+  mount.set_platform(platform_);
+  mount.set_crypto(crypto_);
+  mount.Init();
+  if (!mount.MountCryptohome(oldcreds, Mount::MountArgs(), NULL)) {
+    LOG(ERROR) << "Migrate: Mount failed";
+    // Fail as early as possible. Note that we don't have to worry about leaking
+    // this mount - Mount unmounts itself if it's still mounted in the
+    // destructor.
+    return false;
+  }
+  VaultKeyset keyset(platform_, crypto_);
+  std::string path = GetVaultKeysetPath(
+      newcreds.GetObfuscatedUsername(system_salt_));
+  if (!keyset.Load(path, oldkey)) {
+    LOG(ERROR) << "Can't load vault keyset at " << path;
+    return false;
+  }
+  if (!keyset.Save(path, newkey)) {
+    LOG(ERROR) << "Can't save vault keyset at " << path;
+    return false;
+  }
+  SecureBlob old_auth_data;
+  SecureBlob auth_data;
+  FilePath salt_file(kTokenSaltFile);
+  if (!crypto_->PasskeyToTokenAuthData(newkey, salt_file, &auth_data))
+    return false;
+  if (!crypto_->PasskeyToTokenAuthData(oldkey, salt_file, &old_auth_data))
+    return false;
+  chaps_event_client_.FireChangeAuthDataEvent(
+      kChapsTokenDir,
+      static_cast<const uint8_t*>(old_auth_data.const_data()),
+      old_auth_data.size(),
+      static_cast<const uint8_t*>(auth_data.const_data()),
+      auth_data.size());
+  return true;
+}
+
 }  // namespace cryptohome

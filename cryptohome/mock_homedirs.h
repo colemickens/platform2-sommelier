@@ -22,6 +22,7 @@ class MockHomeDirs : public HomeDirs {
   MOCK_METHOD0(FreeDiskSpace, bool());
   MOCK_METHOD1(AreCredentialsValid, bool(const Credentials&));
   MOCK_METHOD1(Remove, bool(const std::string&));
+  MOCK_METHOD2(Migrate, bool(const Credentials&, const SecureBlob&));
 };
 
 }  // namespace cryptohome

@@ -288,17 +288,17 @@ class MountTaskMountGuest : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskMountGuest);
 };
 
-// Implements asychronous calls to Mount::MigratePasskey()
+// Implements asychronous calls to HomeDirs::Migrate()
+// TODO(ellyjones): move this out of MountTask, as it doesn't take a Mount.
 class MountTaskMigratePasskey : public MountTask {
  public:
   MountTaskMigratePasskey(MountTaskObserver* observer,
-            Mount* mount,
+            HomeDirs* homedirs,
             const UsernamePasskey& credentials,
             const char* old_key)
-      : MountTask(observer, mount, credentials) {
-    old_key_.resize(strlen(old_key) + 1);
+      : MountTask(observer, NULL, credentials), homedirs_(homedirs) {
+    old_key_.resize(strlen(old_key));
     memcpy(old_key_.data(), old_key, old_key_.size());
-    old_key_[old_key_.size() - 1] = 0;
   }
   virtual ~MountTaskMigratePasskey() { }
 
@@ -306,6 +306,7 @@ class MountTaskMigratePasskey : public MountTask {
 
  private:
   SecureBlob old_key_;
+  HomeDirs* homedirs_;
 
   DISALLOW_COPY_AND_ASSIGN(MountTaskMigratePasskey);
 };

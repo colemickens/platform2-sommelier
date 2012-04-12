@@ -197,14 +197,6 @@ class Mount {
   //   credentials - The Credentials to attempt to decrypt the key with
   virtual bool TestCredentials(const Credentials& credentials);
 
-  // Migrages a user's vault key from one passkey to another
-  //
-  // Parameters
-  //   credentials - The new Credentials for the user
-  //   from_key - The old Credentials
-  virtual bool MigratePasskey(const Credentials& credentials,
-                              const char* old_key);
-
   // Migrates from the home-in-encfs setup to the home-in-subdir setup. Instead
   // of storing all the user's files in the root of the encfs, we store them in
   // a subdirectory of it to make room for a root-owned, user-encrypted volume.

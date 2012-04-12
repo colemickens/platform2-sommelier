@@ -1069,39 +1069,6 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
   return true;
 }
 
-bool Mount::MigratePasskey(const Credentials& credentials,
-                           const char* old_key) {
-  std::string username = credentials.GetFullUsernameString();
-  UsernamePasskey old_credentials(username.c_str(),
-                                  SecureBlob(old_key, strlen(old_key)));
-  // Attempt to decrypt the vault keyset with the specified credentials
-  MountError mount_error;
-  VaultKeyset vault_keyset(platform_, crypto_);
-  SerializedVaultKeyset serialized;
-  bool result = DecryptVaultKeyset(old_credentials, false, &vault_keyset,
-                                   &serialized, &mount_error);
-  // Retry once if there is a TPM communications failure
-  if (!result && mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
-    result = DecryptVaultKeyset(old_credentials, false, &vault_keyset,
-                                &serialized, &mount_error);
-  }
-  if (result) {
-    if (!ReEncryptVaultKeyset(credentials, vault_keyset, &serialized)) {
-      LOG(ERROR) << "Couldn't save keyset.";
-      current_user_->Reset();
-      return false;
-    }
-    current_user_->SetUser(credentials);
-    // Setup passkey migration for PKCS #11.
-    credentials.GetPasskey(&pkcs11_passkey_);
-    old_credentials.GetPasskey(&pkcs11_old_passkey_);
-    is_pkcs11_passkey_migration_required_ = true;
-    return true;
-  }
-  current_user_->Reset();
-  return false;
-}
-
 bool Mount::MountGuestCryptohome() {
   current_user_->Reset();
 

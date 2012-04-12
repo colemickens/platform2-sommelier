@@ -529,7 +529,7 @@ gboolean Service::MigrateKey(gchar *userid,
   MountTaskResult result;
   base::WaitableEvent event(true, false);
   scoped_refptr<MountTaskMigratePasskey> mount_task =
-      new MountTaskMigratePasskey(NULL, mount_, credentials, from_key);
+      new MountTaskMigratePasskey(NULL, homedirs_, credentials, from_key);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
   mount_thread_.message_loop()->PostTask(FROM_HERE,
@@ -549,7 +549,7 @@ gboolean Service::AsyncMigrateKey(gchar *userid,
   MountTaskObserverBridge* bridge =
       new MountTaskObserverBridge(mount_, &event_source_);
   scoped_refptr<MountTaskMigratePasskey> mount_task =
-      new MountTaskMigratePasskey(bridge, mount_, credentials, from_key);
+      new MountTaskMigratePasskey(bridge, homedirs_, credentials, from_key);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMigratePasskey::Run, mount_task.get()));

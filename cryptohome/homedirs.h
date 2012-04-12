@@ -12,6 +12,7 @@
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
+#include <chaps/login_event_client.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 #include <string>
@@ -64,6 +65,11 @@ class HomeDirs {
 
   // Returns the vault keyset path for the supplied obfuscated username.
   virtual std::string GetVaultKeysetPath(const std::string& obfuscated) const;
+
+  // Migrates the cryptohome for the supplied obfuscated username from the
+  // supplied old key to the supplied new key.
+  virtual bool Migrate(const Credentials& newcreds,
+                       const SecureBlob& oldkey);
 
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
@@ -141,6 +147,7 @@ class HomeDirs {
   Crypto* crypto_;
   base::TimeDelta old_user_last_activity_time_;
   SecureBlob system_salt_;
+  chaps::LoginEventClient chaps_event_client_;
 
   friend class HomeDirsTest;
 
