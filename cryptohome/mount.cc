@@ -108,6 +108,8 @@ Mount::Mount()
 }
 
 Mount::~Mount() {
+  if (IsCryptohomeMounted())
+    UnmountCryptohome();
 }
 
 bool Mount::Init() {
