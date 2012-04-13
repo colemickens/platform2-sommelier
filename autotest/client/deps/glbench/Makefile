@@ -24,7 +24,7 @@ SOURCES_ALL = $(SOURCES_COMMON) \
               $(SOURCES_WINDOWMANAGERTEST)
 
 PKG_CONFIG ?= pkg-config
-BASE_VER = 85268
+BASE_VER ?= 85268
 PC_DEPS = libchrome-$(BASE_VER) libpng
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
