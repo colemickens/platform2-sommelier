@@ -140,7 +140,55 @@ TEST_F(MountTest, BadInitTest) {
   UsernamePasskey up(kDefaultUsers[0].username, passkey);
 
   EXPECT_FALSE(mount.Init());
-  ASSERT_FALSE(mount.AreValid(up));
+  ASSERT_FALSE(mount.TestCredentials(up));
+}
+
+TEST_F(MountTest, GoodDecryptTest) {
+  // create a Mount instance that points to a good shadow root, test that it
+  // properly authenticates against the first key.
+  Mount mount;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+  set_policy(&mount, false, "", false);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[1].password,
+                                        system_salt_, &passkey);
+  UsernamePasskey up(kDefaultUsers[1].username, passkey);
+
+  EXPECT_TRUE(mount.Init());
+  ASSERT_TRUE(mount.TestCredentials(up));
+}
+
+TEST_F(MountTest, TestCredsDoesNotReSave) {
+  // create a Mount instance that points to a good shadow root, test that it
+  // properly authenticates against the first key.
+  Mount mount;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+  set_policy(&mount, false, "", false);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[2].password,
+                                        system_salt_, &passkey);
+  UsernamePasskey up(kDefaultUsers[2].username, passkey);
+
+  EXPECT_TRUE(mount.Init());
+
+  std::string key_path = mount.GetUserKeyFile(up);
+  cryptohome::SerializedVaultKeyset serialized;
+  ASSERT_TRUE(LoadSerializedKeyset(key_path, &serialized));
+
+  ASSERT_TRUE(mount.TestCredentials(up));
+
+  cryptohome::SerializedVaultKeyset serialized2;
+  ASSERT_TRUE(LoadSerializedKeyset(key_path, &serialized2));
 }
 
 TEST_F(MountTest, CurrentCredentialsTest) {
@@ -172,7 +220,7 @@ TEST_F(MountTest, CurrentCredentialsTest) {
   EXPECT_CALL(user_session, Verify(_))
       .WillOnce(Return(true));
 
-  ASSERT_TRUE(mount.AreValid(up));
+  ASSERT_TRUE(mount.TestCredentials(up));
 }
 
 TEST_F(MountTest, BadDecryptTest) {
@@ -191,13 +239,12 @@ TEST_F(MountTest, BadDecryptTest) {
   UsernamePasskey up(kDefaultUsers[4].username, passkey);
 
   EXPECT_TRUE(mount.Init());
-  ASSERT_FALSE(mount.AreValid(up));
+  ASSERT_FALSE(mount.TestCredentials(up));
 }
 
 TEST_F(MountTest, CreateCryptohomeTest) {
   // creates a cryptohome and tests credentials
   Mount mount;
-  HomeDirs homedirs;
   NiceMock<MockTpm> tpm;
   mount.get_crypto()->set_tpm(&tpm);
   mount.set_shadow_root(kImageDir);
@@ -205,7 +252,6 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   mount.set_use_tpm(false);
   set_policy(&mount, false, "", false);
   mount.set_set_vault_ownership(false);
-  homedirs.set_shadow_root(kImageDir);
 
   NiceMock<MockPlatform> platform;
   mount.set_platform(&platform);
@@ -217,7 +263,6 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   UsernamePasskey up(kDefaultUsers[5].username, passkey);
 
   EXPECT_TRUE(mount.Init());
-  EXPECT_TRUE(homedirs.Init());
   bool created;
   ASSERT_TRUE(mount.EnsureCryptohome(up, &created));
   ASSERT_TRUE(created);
@@ -229,14 +274,12 @@ TEST_F(MountTest, CreateCryptohomeTest) {
 
   ASSERT_TRUE(file_util::PathExists(key_path));
   ASSERT_TRUE(file_util::PathExists(vault_path));
-  ASSERT_FALSE(mount.AreValid(up));
-  ASSERT_TRUE(homedirs.AreCredentialsValid(up));
+  ASSERT_TRUE(mount.TestCredentials(up));
 }
 
 TEST_F(MountTest, GoodReDecryptTest) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly re-authenticates against the first key
-  HomeDirs homedirs;
   Mount mount;
   NiceMock<MockTpm> tpm;
   MockPlatform platform;
@@ -247,7 +290,6 @@ TEST_F(MountTest, GoodReDecryptTest) {
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
   set_policy(&mount, false, "", false);
-  homedirs.set_shadow_root(kImageDir);
 
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[6].password,
@@ -255,7 +297,6 @@ TEST_F(MountTest, GoodReDecryptTest) {
   UsernamePasskey up(kDefaultUsers[6].username, passkey);
 
   EXPECT_TRUE(mount.Init());
-  EXPECT_TRUE(homedirs.Init());
 
   std::string key_path = mount.GetUserKeyFile(up);
   cryptohome::SerializedVaultKeyset serialized;
@@ -275,7 +316,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
             (serialized2.flags() &
              cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED));
 
-  ASSERT_TRUE(homedirs.AreCredentialsValid(up));
+  ASSERT_TRUE(mount.TestCredentials(up));
 }
 
 TEST_F(MountTest, SystemSaltTest) {

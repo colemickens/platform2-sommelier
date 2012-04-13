@@ -191,18 +191,11 @@ class Mount {
   //                    by specified number of seconds. Used in manual tests.
   virtual bool UpdateCurrentUserActivityTimestamp(int time_shift_sec);
 
-  // Returns whether the supplied Credentials claims to be for the same user
-  // this Mount is for.
-  //
-  // Parameters
-  //   credentials - The credentials to check
-  virtual bool AreSameUser(const Credentials& credentials);
-
   // Tests if the given credentials would decrypt the user's cryptohome key
   //
   // Parameters
   //   credentials - The Credentials to attempt to decrypt the key with
-  virtual bool AreValid(const Credentials& credentials);
+  virtual bool TestCredentials(const Credentials& credentials);
 
   // Migrages a user's vault key from one passkey to another
   //

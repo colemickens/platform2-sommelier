@@ -205,7 +205,7 @@ TEST_F(MountTaskTest, UnmountTest) {
 }
 
 TEST_F(MountTaskTest, TestCredentialsMountTest) {
-  EXPECT_CALL(mount_, AreValid(_))
+  EXPECT_CALL(mount_, TestCredentials(_))
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
