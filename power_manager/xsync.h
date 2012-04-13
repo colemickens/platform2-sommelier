@@ -5,7 +5,6 @@
 #ifndef POWER_MANAGER_XSYNC_H_
 #define POWER_MANAGER_XSYNC_H_
 
-#include <gdk/gdkx.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/sync.h>
 
@@ -24,19 +23,17 @@ class XSync : public XSyncInterface {
   virtual bool QueryExtension(int* event_base, int* error_base) OVERRIDE;
   virtual bool Initialize(int* major_version, int* minor_version) OVERRIDE;
 
-  // For XSync system counter access.
   virtual XSyncSystemCounter* ListSystemCounters(int* ncounters OVERRIDE);
   virtual void FreeSystemCounterList(XSyncSystemCounter* ncounters) OVERRIDE;
   virtual bool QueryCounterInt64(XSyncCounter counter, int64* value) OVERRIDE;
   virtual bool QueryCounter(XSyncCounter counter, XSyncValue* value) OVERRIDE;
 
-  // Create and delete XSync alarms.
   virtual XSyncAlarm CreateAlarm(uint64 mask,
                                  XSyncAlarmAttributes* attrs) OVERRIDE;
   virtual bool DestroyAlarm(XSyncAlarm alarm) OVERRIDE;
 
-  // Provides an event handler for alarms.
-  virtual void SetEventHandler(GdkFilterFunc func, gpointer data) OVERRIDE;
+  virtual void AddObserver(XEventObserverInterface* observer) OVERRIDE;
+  virtual void RemoveObserver(XEventObserverInterface* observer) OVERRIDE;
 
  private:
   Display* display_;

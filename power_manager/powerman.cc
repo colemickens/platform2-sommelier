@@ -5,7 +5,6 @@
 #include <dbus/dbus-shared.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <gdk/gdkx.h>
 #include <linux/vt.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -5,7 +5,7 @@
 #ifndef POWER_MANAGER_VIDEO_DETECTOR_H_
 #define POWER_MANAGER_VIDEO_DETECTOR_H_
 
-#include <gdk/gdkx.h>
+#include <X11/Xlib.h>
 
 #include "power_manager/activity_detector_interface.h"
 

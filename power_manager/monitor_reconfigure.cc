@@ -6,7 +6,6 @@
 
 #include <sys/sysinfo.h>
 
-#include <gdk/gdkx.h>
 #include <X11/extensions/dpms.h>
 
 #include <algorithm>
@@ -16,6 +15,7 @@
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "power_manager/backlight_controller.h"
+#include "power_manager/util.h"
 
 using std::max;
 using std::sort;
@@ -108,19 +108,21 @@ MonitorReconfigure::MonitorReconfigure(
 }
 
 MonitorReconfigure::~MonitorReconfigure() {
+  if (display_)
+    XEventObserverManager::GetInstance()->RemoveObserver(this);
 }
 
 bool MonitorReconfigure::Init() {
-  if (!XRRQueryExtension(GDK_DISPLAY(), &rr_event_base_, &rr_error_base_))
+  display_ = util::GetDisplay();
+  XEventObserverManager::GetInstance()->AddObserver(this);
+  if (!XRRQueryExtension(display_, &rr_event_base_, &rr_error_base_))
     return false;
 
   int rr_major_version, rr_minor_version;
-  XRRQueryVersion(GDK_DISPLAY(), &rr_major_version, &rr_minor_version);
-  XRRSelectInput(GDK_DISPLAY(),
-                 DefaultRootWindow(GDK_DISPLAY()),
+  XRRQueryVersion(display_, &rr_major_version, &rr_minor_version);
+  XRRSelectInput(display_,
+                 DefaultRootWindow(display_),
                  RRScreenChangeNotifyMask | RROutputChangeNotifyMask);
-
-  gdk_window_add_filter(NULL, GdkEventFilterThunk, this);
   LOG(INFO) << "XRandr event filter added";
 
   if (backlight_ctl_)
@@ -135,15 +137,6 @@ bool MonitorReconfigure::Init() {
 }
 
 bool MonitorReconfigure::SetupXrandr() {
-  CHECK(NULL == display_);
-  display_ = XOpenDisplay(NULL);
-
-  // Give up if we can't open the display.
-  if (!display_) {
-    LOG(WARNING) << "Could not open display";
-    return false;
-  }
-
   CHECK(None == window_);
   window_ = RootWindow(display_, DefaultScreen(display_));
   CHECK(NULL == screen_info_);
@@ -152,8 +145,6 @@ bool MonitorReconfigure::SetupXrandr() {
   // Give up if we can't obtain the XRandr information.
   if (!screen_info_) {
     LOG(WARNING) << "Could not get XRandr information";
-    XCloseDisplay(display_);
-    display_ = NULL;
     window_ = None;
     return false;
   }
@@ -170,9 +161,6 @@ void MonitorReconfigure::ClearXrandr() {
   CHECK(NULL != screen_info_);
   XRRFreeScreenResources(screen_info_);
   screen_info_ = NULL;
-  CHECK(NULL != display_);
-  XCloseDisplay(display_);
-  display_ = NULL;
   CHECK(None != window_);
   window_ = None;
   mode_map_.clear();
@@ -869,11 +857,8 @@ bool MonitorReconfigure::SetScreenResolution(
   return true;
 }
 
-GdkFilterReturn MonitorReconfigure::GdkEventFilter(GdkXEvent* gxevent,
-                                                   GdkEvent*) {
-  XEvent* xevent = static_cast<XEvent*>(gxevent);
+XEventHandlerStatus MonitorReconfigure::HandleXEvent(XEvent* xevent) {
   XRRNotifyEvent *aevent = reinterpret_cast<XRRNotifyEvent*>(xevent);
-
   if (xevent->type == rr_event_base_ + RRScreenChangeNotify ||
       xevent->type == rr_event_base_ + RRNotify) {
     switch (xevent->type - rr_event_base_) {
@@ -886,13 +871,13 @@ GdkFilterReturn MonitorReconfigure::GdkEventFilter(GdkXEvent* gxevent,
                   << " event received.";
         break;
       default:
-        LOG(INFO) << "Unknown GDK event received.";
+        LOG(INFO) << "Unknown X event received.";
     }
     Run(false);
     // Remove this event so that no other program acts upon it.
-    return GDK_FILTER_REMOVE;
+    return XEVENT_HANDLER_STOP;
   }
-  return GDK_FILTER_CONTINUE;
+  return XEVENT_HANDLER_CONTINUE;
 }
 
 }  // namespace power_manager

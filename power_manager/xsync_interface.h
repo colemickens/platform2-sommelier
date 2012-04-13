@@ -5,13 +5,14 @@
 #ifndef POWER_MANAGER_XSYNC_INTERFACE_H_
 #define POWER_MANAGER_XSYNC_INTERFACE_H_
 
-#include <gdk/gdkx.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/sync.h>
 
 #include "base/basictypes.h"
 
 namespace power_manager {
+
+class XEventObserverInterface;
 
 class XSyncInterface {
  public:
@@ -33,8 +34,9 @@ class XSyncInterface {
   virtual XSyncAlarm CreateAlarm(uint64 mask, XSyncAlarmAttributes* attrs) = 0;
   virtual bool DestroyAlarm(XSyncAlarm alarm) = 0;
 
-  // Provides an event handler for alarms.
-  virtual void SetEventHandler(GdkFilterFunc func, gpointer data) = 0;
+  // Add and remove X event handlers.
+  virtual void AddObserver(XEventObserverInterface* observer) = 0;
+  virtual void RemoveObserver(XEventObserverInterface* observer) = 0;
 
   // Convert between int64 and XSync values.
   static int64 ValueToInt64(XSyncValue value) {

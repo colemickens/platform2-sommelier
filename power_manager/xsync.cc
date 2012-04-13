@@ -5,18 +5,15 @@
 #include "power_manager/xsync.h"
 
 #include "base/logging.h"
+#include "power_manager/util.h"
+#include "power_manager/xevent_observer.h"
 
 namespace power_manager {
 
 XSync::XSync()
-    : display_(GDK_DISPLAY()) {
-}
+    : display_(util::GetDisplay()) {}
 
 void XSync::Init() {
-  if (!display_) {
-    gdk_init_check(NULL, NULL);
-    display_ = GDK_DISPLAY();
-  }
   CHECK(display_) << "Display not initialized.";
 }
 
@@ -55,8 +52,12 @@ bool XSync::DestroyAlarm(XSyncAlarm alarm) {
   return XSyncDestroyAlarm(display_, alarm);
 }
 
-void XSync::SetEventHandler(GdkFilterFunc func, gpointer data) {
-  gdk_window_add_filter(NULL, func, data);
+void XSync::AddObserver(XEventObserverInterface* observer) {
+  XEventObserverManager::GetInstance()->AddObserver(observer);
+}
+
+void XSync::RemoveObserver(XEventObserverInterface* observer) {
+  XEventObserverManager::GetInstance()->RemoveObserver(observer);
 }
 
 }  // namespace power_manager

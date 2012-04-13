@@ -4,7 +4,7 @@
 
 #include "power_manager/audio_detector.h"
 
-#include <gdk/gdkx.h>
+#include <glib.h>
 
 #include "base/bind.h"
 #include "base/file_util.h"

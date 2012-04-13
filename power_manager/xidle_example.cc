@@ -1,8 +1,9 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gdk/gdk.h>
+#include <glib.h>
+#include <glib-object.h>
 #include <inttypes.h>
 
 #include <cstdio>
@@ -24,7 +25,7 @@ class XIdleObserverExample : public power_manager::XIdleObserver {
 };
 
 int main(int argc, char** argv) {
-  gdk_init(&argc, &argv);
+  g_type_init();
   GMainLoop* loop = g_main_loop_new(NULL, false);
   power_manager::XIdle idle;
   XIdleObserverExample observer;

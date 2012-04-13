@@ -5,13 +5,12 @@
 #ifndef POWER_MANAGER_XIDLE_H_
 #define POWER_MANAGER_XIDLE_H_
 
-#include <gdk/gdkevents.h>
-
 #include <list>
 
 #include "base/basictypes.h"
 #include "base/memory/scoped_ptr.h"
 #include "power_manager/signal_callback.h"
+#include "power_manager/xevent_observer.h"
 #include "power_manager/xsync_interface.h"
 
 namespace power_manager {
@@ -22,7 +21,7 @@ class XIdleObserver;
 // or as no longer idle.
 //
 // See examples/xidle_example.cc for usage example.
-class XIdle {
+class XIdle : public XEventObserverInterface {
  public:
   XIdle();
   // This constructor takes ownership of |xsync| by saving it in a scoped ptr.
@@ -66,8 +65,9 @@ class XIdle {
   // idle.
   XSyncAlarm CreateIdleAlarm(int64 idle_timeout_ms, XSyncTestType test_type);
 
-  SIGNAL_CALLBACK_2(XIdle, GdkFilterReturn, GdkEventFilter, GdkXEvent*,
-                    GdkEvent*);
+  // Callback to handle XSync events.
+  // Inherited from XEventObserver.
+  virtual XEventHandlerStatus HandleXEvent(XEvent* event) OVERRIDE;
 
   // Wrapper object for making XSync calls.  Allows XSync API to be mocked out
   // during testing.

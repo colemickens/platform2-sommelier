@@ -4,8 +4,6 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <gdk/gdk.h>
-#include <gdk/gdkx.h>
 #include <stdint.h>
 #include <X11/extensions/XTest.h>
 

@@ -6,7 +6,7 @@
 
 #include <dirent.h>
 #include <fcntl.h>
-#include <gdk/gdk.h>
+#include <glib.h>
 #include <linux/input.h>
 #include <stdlib.h>
 

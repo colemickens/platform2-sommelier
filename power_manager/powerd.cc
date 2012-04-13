@@ -4,7 +4,6 @@
 
 #include "power_manager/powerd.h"
 
-#include <gdk/gdkx.h>
 #include <glib-object.h>
 #include <stdint.h>
 #include <sys/inotify.h>
@@ -145,13 +144,14 @@ void Daemon::Init() {
       << "Unable to initialize metrics store, so we are going to drop number of"
       << " sessions per charge data";
 
-  if (!DPMSCapable(GDK_DISPLAY())) {
+  Display* display = util::GetDisplay();
+  if (!DPMSCapable(display)) {
     LOG(WARNING) << "X Server not DPMS capable";
   } else {
-    CHECK(DPMSEnable(GDK_DISPLAY()));
-    CHECK(DPMSSetTimeouts(GDK_DISPLAY(), 0, 0, 0));
+    CHECK(DPMSEnable(display));
+    CHECK(DPMSSetTimeouts(display, 0, 0, 0));
   }
-  CHECK(XSetScreenSaver(GDK_DISPLAY(),
+  CHECK(XSetScreenSaver(display,
                         0,                 // 0 display timeout
                         0,                 // 0 alteration timeout
                         DefaultBlanking,

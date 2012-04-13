@@ -28,8 +28,6 @@ class MockXSync : public XSyncInterface {
     return true;
   }
 
-  virtual void SetEventHandler(GdkFilterFunc func, gpointer data);
-
   virtual XSyncSystemCounter* ListSystemCounters(int* ncounters) OVERRIDE;
   virtual void FreeSystemCounterList(XSyncSystemCounter* counters) OVERRIDE;
   virtual bool QueryCounterInt64(XSyncCounter counter, int64* value) OVERRIDE;
@@ -38,6 +36,9 @@ class MockXSync : public XSyncInterface {
   virtual XSyncAlarm CreateAlarm(uint64 mask,
                                  XSyncAlarmAttributes* attrs) OVERRIDE;
   virtual bool DestroyAlarm(XSyncAlarm alarm) OVERRIDE;
+
+  virtual void AddObserver(XEventObserverInterface* observer) OVERRIDE;
+  virtual void RemoveObserver(XEventObserverInterface* observer) OVERRIDE;
 
   // Simulates user input.
   void FakeRelativeMotionEvent(int x, int y, uint64 delay);
@@ -66,9 +67,11 @@ class MockXSync : public XSyncInterface {
     int ref_count;             // When this reaches 0, delete the object.
   };
 
-  // Alarm handler that simulates a gdk event and invokes the external event
+  // Alarm handler that simulates an X event and invokes the external event
   // handler function.
-  SIGNAL_CALLBACK_PACKED_1(MockXSync, gboolean, TimeoutHandler, MockAlarm*);
+  void TimeoutHandler(MockAlarm*);
+
+  // Removes an alarm.
   bool DestroyMockAlarm(MockAlarm* alarm);
 
   // Returns the current time and time since last activity, respectively.  Note
@@ -86,13 +89,12 @@ class MockXSync : public XSyncInterface {
 
   int64 last_activity_time_;  // The last time there was user input.
   int64 current_time_;        // Mock current time, a loop-simulated value.
-  // External callback function and data that is invoked when there is an alarm
-  // event.
-  GdkFilterFunc event_handler_func;
-  gpointer event_handler_data_;
 
   typedef std::set<MockAlarm*> AlarmSet;
   AlarmSet alarms_;  // Local set of alarms that were created by CreateAlarm.
+
+  // The mock XSync object keeps track of only one observer.
+  XEventObserverInterface* observer_;
 
   DISALLOW_COPY_AND_ASSIGN(MockXSync);
 };

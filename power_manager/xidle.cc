@@ -4,10 +4,10 @@
 
 #include "power_manager/xidle.h"
 
-#include <gdk/gdkx.h>
 #include <inttypes.h>
 
 #include "base/logging.h"
+#include "power_manager/xevent_observer.h"
 #include "power_manager/xidle_observer.h"
 #include "power_manager/xsync.h"
 
@@ -17,16 +17,19 @@ XIdle::XIdle()
     : xsync_(new XSync()),
       idle_counter_(0),
       min_timeout_(kint64max) {
+  xsync_->AddObserver(this);
 }
 
 XIdle::XIdle(XSyncInterface *xsync)
     : xsync_(xsync),
       idle_counter_(0),
       min_timeout_(kint64max) {
+  xsync_->AddObserver(this);
 }
 
 XIdle::~XIdle() {
   ClearTimeouts();
+  xsync_->RemoveObserver(this);
 }
 
 bool XIdle::Init(XIdleObserver* observer) {
@@ -58,10 +61,8 @@ bool XIdle::Init(XIdleObserver* observer) {
       }
     }
     xsync_->FreeSystemCounterList(counters);
-    if (idle_counter_ && observer) {
+    if (idle_counter_ && observer)
       observer_ = observer;
-      xsync_->SetEventHandler(GdkEventFilterThunk, this);
-    }
   }
   return idle_counter_ != 0;
 }
@@ -122,13 +123,11 @@ XSyncAlarm XIdle::CreateIdleAlarm(int64 idle_timeout_ms,
   return xsync_->CreateAlarm(mask, &attr);
 }
 
-GdkFilterReturn XIdle::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
-  XEvent* xevent = static_cast<XEvent*>(gxevent);
-  XSyncAlarmNotifyEvent* alarm_event =
-      static_cast<XSyncAlarmNotifyEvent*>(gxevent);
+XEventHandlerStatus XIdle::HandleXEvent(XEvent* xevent) {
   CHECK(idle_counter_);
   CHECK(!alarms_.empty());
-
+  XSyncAlarmNotifyEvent* alarm_event =
+      reinterpret_cast<XSyncAlarmNotifyEvent*>(xevent);
   XSyncValue value;
   if (xevent->type == event_base_ + XSyncAlarmNotify &&
       alarm_event->state != XSyncAlarmDestroyed &&
@@ -144,8 +143,7 @@ GdkFilterReturn XIdle::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
       LOG(INFO) << "Filtering out stale event";
     }
   }
-
-  return GDK_FILTER_CONTINUE;
+  return XEVENT_HANDLER_CONTINUE;
 }
 
 }  // namespace power_manager

@@ -5,6 +5,7 @@
 #include "power_manager/mock_xsync.h"
 
 #include "base/logging.h"
+#include "power_manager/xevent_observer.h"
 
 namespace {
 
@@ -17,14 +18,6 @@ const char kOtherCounterName[] = "OTHER";  // Name of all other mock counters.
 const int kEventBase = 0;
 const int kErrorBase = 0;
 
-// Used for generating mock X events.
-struct MockGdkXEvent {
-  union {
-    XSyncAlarmNotifyEvent alarm_event;
-    XEvent event;
-  };
-};
-
 }  // namespace
 
 namespace power_manager {
@@ -32,111 +25,13 @@ namespace power_manager {
 MockXSync::MockXSync()
     : last_activity_time_(0),
       current_time_(0),
-      event_handler_func(NULL),
-      event_handler_data_(NULL) {}
+      observer_(NULL) {}
 
 bool MockXSync::QueryExtension(int* event_base, int* error_base) {
   if (event_base)
     *event_base = kEventBase;
   if (error_base)
     *error_base = kErrorBase;
-  return true;
-}
-
-void MockXSync::SetEventHandler(GdkFilterFunc func, gpointer data) {
-  event_handler_func = func;
-  event_handler_data_ = data;
-}
-
-gboolean MockXSync::TimeoutHandler(MockAlarm *alarm) {
-  CHECK(alarm);
-  int64 current_idle_time;
-  CHECK(QueryCounterInt64(alarm->counter, &current_idle_time));
-
-  // Make sure the amount of idle time requested has indeed been reached, if
-  // this is a positive transition alarm.
-  if (alarm->positive_transition)
-    CHECK(current_idle_time >= alarm->idle_time);
-  GdkFilterReturn handler_result = GDK_FILTER_CONTINUE;
-  // Invoke the event handler callback if one has been provided.
-  if (event_handler_func) {
-    // Create and initialize a new X event object.
-    MockGdkXEvent gxevent;
-    XEvent* xevent = &gxevent.event;
-    XSyncAlarmNotifyEvent* alarm_event = &gxevent.alarm_event;
-    xevent->type = kEventBase + XSyncAlarmNotify;
-    alarm_event->state = XSyncAlarmActive;
-
-    XSyncInterface::Int64ToValue(&alarm_event->counter_value,
-                                 current_idle_time);
-    XSyncInterface::Int64ToValue(&alarm_event->alarm_value, alarm->idle_time);
-    // Call the event handler to simulate what happens during a gdk event.
-    handler_result = event_handler_func(&gxevent, NULL, event_handler_data_);
-  } else {
-    LOG(WARNING) << "No event handler callback specified.";
-  }
-  // Release the alarm if necessary.
-  if (handler_result == GDK_FILTER_REMOVE)
-    DestroyMockAlarm(alarm);
-  return false;
-}
-
-XSyncAlarm MockXSync::CreateAlarm(uint64 mask, XSyncAlarmAttributes* attrs) {
-  // The mock alarm system is designed to support the usage in XIdle.  It is not
-  // guaranteed to support any other usage.
-  CHECK(mask & XSyncCACounter);
-  CHECK(mask & XSyncCAValue);
-  CHECK(mask & XSyncCATestType);
-  CHECK(mask & XSyncCADelta);
-  CHECK(attrs);
-
-  XSyncTestType test_type = attrs->trigger.test_type;
-  CHECK(test_type == XSyncPositiveTransition ||
-        test_type == XSyncNegativeTransition);
-  XSyncCounter counter = attrs->trigger.counter;
-  int64 wait_value = XSyncInterface::ValueToInt64(attrs->trigger.wait_value);
-  // The idle value for a negative transition must be positive, otherwise it is
-  // impossible to attain.  Idle time cannot become negative.
-  if (test_type == XSyncNegativeTransition)
-    CHECK_GT(wait_value, 0);
-  // Not sure what delta means, but Xidle uses only 0, so require delta = 0.
-  CHECK(XSyncValueIsZero(attrs->delta));
-
-  // Create alarm object.
-  MockAlarm* alarm = new MockAlarm;
-  CHECK(alarm);
-  alarm->counter = counter;
-  alarm->idle_time = wait_value;
-  alarm->ref_count = 1;
-
-  int64 current_idle_time;
-  CHECK(QueryCounterInt64(counter, &current_idle_time));
-
-  alarm->positive_transition = (test_type == XSyncPositiveTransition);
-
-  // Save this alarm locally until it is deleted.
-  alarms_.insert(alarm);
-
-  return reinterpret_cast<XSyncAlarm>(alarm);
-}
-
-bool MockXSync::DestroyAlarm(XSyncAlarm alarm) {
-  return DestroyMockAlarm(reinterpret_cast<MockAlarm*>(alarm));
-}
-
-bool MockXSync::DestroyMockAlarm(MockAlarm* alarm) {
-  CHECK(alarm);
-  // This might be used in multiple places, so don't delete it unless the
-  // current caller is the very last user.
-  if (alarm->ref_count == 0)
-    return false;
-  alarm->ref_count -= 1;
-  if (alarm->ref_count == 0) {
-    CHECK(alarms_.find(alarm) != alarms_.end());
-    // Remove the alarm from the local alarm list and delete it.
-    alarms_.erase(alarm);
-    delete alarm;
-  }
   return true;
 }
 
@@ -187,6 +82,59 @@ bool MockXSync::QueryCounter(XSyncCounter counter, XSyncValue* value) {
   return true;
 }
 
+XSyncAlarm MockXSync::CreateAlarm(uint64 mask, XSyncAlarmAttributes* attrs) {
+  // The mock alarm system is designed to support the usage in XIdle.  It is not
+  // guaranteed to support any other usage.
+  CHECK(mask & XSyncCACounter);
+  CHECK(mask & XSyncCAValue);
+  CHECK(mask & XSyncCATestType);
+  CHECK(mask & XSyncCADelta);
+  CHECK(attrs);
+
+  XSyncTestType test_type = attrs->trigger.test_type;
+  CHECK(test_type == XSyncPositiveTransition ||
+        test_type == XSyncNegativeTransition);
+  XSyncCounter counter = attrs->trigger.counter;
+  int64 wait_value = XSyncInterface::ValueToInt64(attrs->trigger.wait_value);
+  // The idle value for a negative transition must be positive, otherwise it is
+  // impossible to attain.  Idle time cannot become negative.
+  if (test_type == XSyncNegativeTransition)
+    CHECK_GT(wait_value, 0);
+  // Not sure what delta means, but Xidle uses only 0, so require delta = 0.
+  CHECK(XSyncValueIsZero(attrs->delta));
+
+  // Create alarm object.
+  MockAlarm* alarm = new MockAlarm;
+  CHECK(alarm);
+  alarm->counter = counter;
+  alarm->idle_time = wait_value;
+  alarm->ref_count = 1;
+
+  int64 current_idle_time;
+  CHECK(QueryCounterInt64(counter, &current_idle_time));
+
+  alarm->positive_transition = (test_type == XSyncPositiveTransition);
+
+  // Save this alarm locally until it is deleted.
+  alarms_.insert(alarm);
+
+  return reinterpret_cast<XSyncAlarm>(alarm);
+}
+
+bool MockXSync::DestroyAlarm(XSyncAlarm alarm) {
+  return DestroyMockAlarm(reinterpret_cast<MockAlarm*>(alarm));
+}
+
+void MockXSync::AddObserver(XEventObserverInterface* observer) {
+  CHECK_EQ(observer_, static_cast<void*>(NULL)) << "Already added observer.";
+  observer_ = observer;
+}
+
+void MockXSync::RemoveObserver(XEventObserverInterface* observer) {
+  CHECK_EQ(observer_, observer) << "Observer has not been added.";
+  observer_ = NULL;
+}
+
 void MockXSync::FakeRelativeMotionEvent(int, int, uint64) {
   // Store the current idle time before coming out of idle.
   int64 idle_time = GetIdleTime();
@@ -208,6 +156,60 @@ void MockXSync::Run(int64 total_time, int64 interval) {
     // Update the time counter.
     current_time_ += interval;
   }
+}
+
+void MockXSync::TimeoutHandler(MockAlarm *alarm) {
+  CHECK(alarm);
+  int64 current_idle_time;
+  CHECK(QueryCounterInt64(alarm->counter, &current_idle_time));
+
+  // Make sure the amount of idle time requested has indeed been reached, if
+  // this is a positive transition alarm.
+  if (alarm->positive_transition)
+    CHECK(current_idle_time >= alarm->idle_time);
+  XEventHandlerStatus handler_result = XEVENT_HANDLER_STOP;
+  // Invoke the event handler callback if one has been provided.
+  if (observer_) {
+    // Create and initialize a new mock X event object.
+    union {
+      XSyncAlarmNotifyEvent alarm_event;
+      XEvent event;
+    } mock_event;
+    memset(&mock_event, 0, sizeof(mock_event));
+
+    XEvent* xevent = &mock_event.event;
+    XSyncAlarmNotifyEvent* alarm_event = &mock_event.alarm_event;
+    xevent->type = kEventBase + XSyncAlarmNotify;
+    alarm_event->state = XSyncAlarmActive;
+
+    XSyncInterface::Int64ToValue(&alarm_event->counter_value,
+                                 current_idle_time);
+    XSyncInterface::Int64ToValue(&alarm_event->alarm_value, alarm->idle_time);
+    // Call the event handler to simulate what happens during an X event.
+    handler_result = observer_->HandleXEvent(&mock_event.event);
+  } else {
+    LOG(WARNING) << "No event handler callback specified.";
+  }
+
+  // Release the alarm if necessary.
+  if (handler_result == XEVENT_HANDLER_STOP)
+    DestroyMockAlarm(alarm);
+}
+
+bool MockXSync::DestroyMockAlarm(MockAlarm* alarm) {
+  CHECK(alarm);
+  // This might be used in multiple places, so don't delete it unless the
+  // current caller is the very last user.
+  if (alarm->ref_count == 0)
+    return false;
+  alarm->ref_count -= 1;
+  if (alarm->ref_count == 0) {
+    CHECK(alarms_.find(alarm) != alarms_.end());
+    // Remove the alarm from the local alarm list and delete it.
+    alarms_.erase(alarm);
+    delete alarm;
+  }
+  return true;
 }
 
 void MockXSync::TestAlarms(bool positive_transition, int64 idle_time) {

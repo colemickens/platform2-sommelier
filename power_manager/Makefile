@@ -58,21 +58,18 @@ $(eval $(call add_object_rules,$(SYSTEM_API_PROTO_OBJS),CXX,cc))
 
 ## binary and library targets
 
-# dbus is a standalone dependency
 DBUS_DEPS = dbus-1 dbus-glib-1
 DBUS_FLAGS := $(shell $(PKG_CONFIG) --cflags $(DBUS_DEPS))
 DBUS_LIBS := $(shell $(PKG_CONFIG) --libs $(DBUS_DEPS))
 
-# gdk_env inherits from base_env
-GDK_DEPS = glib-2.0 gdk-2.0 libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
-GDK_FLAGS := $(shell $(PKG_CONFIG) --cflags $(GDK_DEPS))
-GDK_LIBS := $(shell $(PKG_CONFIG) --libs $(GDK_DEPS))
+GLIB_DEPS = glib-2.0 gobject-2.0 libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+GLIB_FLAGS := $(shell $(PKG_CONFIG) --cflags $(GLIB_DEPS))
+GLIB_LIBS := $(shell $(PKG_CONFIG) --libs $(GLIB_DEPS))
 
-# xidle_env inherits from gdk_env
-XIDLE_FLAGS = $(GDK_FLAGS)
-XIDLE_LIBS = $(GDK_LIBS) -lX11 -lXext
+XIDLE_FLAGS = $(GLIB_FLAGS)
+XIDLE_LIBS = $(GLIB_LIBS) -lX11 -lXext
 
-LIBXIDLE_OBJS = xidle.o xsync.o
+LIBXIDLE_OBJS = util.o xidle.o xsync.o xevent_observer.o
 CXX_STATIC_LIBRARY(libxidle.pie.a): $(LIBXIDLE_OBJS)
 CXX_STATIC_LIBRARY(libxidle.pie.a): CPPFLAGS += $(XIDLE_FLAGS)
 CXX_STATIC_LIBRARY(libxidle.pie.a): LDLIBS += $(XIDLE_LIBS)
@@ -86,9 +83,8 @@ CXX_BINARY(xidle-example): LDLIBS += $(XIDLE_LIBS)
 clean: CLEAN(xidle-example)
 all: CXX_BINARY(xidle-example)
 
-# backlight_env inherits from gdk_env
-BACKLIGHT_FLAGS = $(GDK_FLAGS) $(DBUS_FLAGS)
-BACKLIGHT_LIBS = $(GDK_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -lX11 -lXrandr \
+BACKLIGHT_FLAGS = $(GLIB_FLAGS) $(DBUS_FLAGS)
+BACKLIGHT_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -lX11 -lXrandr \
                  -ludev
 LIBBACKLIGHT_OBJS = ambient_light_sensor.o async_file_reader.o backlight.o \
                     external_backlight.o external_backlight_client.o \
@@ -106,9 +102,8 @@ CXX_BINARY(backlight-tool): LDLIBS += $(BACKLIGHT_LIBS)
 clean: CLEAN(backlight-tool)
 all: CXX_BINARY(backlight-tool)
 
-# power_supply_env inherits from gdk_env
-POWERSUPPLY_FLAGS = $(GDK_FLAGS)
-POWERSUPPLY_LIBS = $(GDK_LIBS) -lgflags
+POWERSUPPLY_FLAGS = $(GLIB_FLAGS)
+POWERSUPPLY_LIBS = $(GLIB_LIBS) -lgflags
 
 LIBPOWER_SUPPLY_OBJS=power_supply.o power_prefs.o inotify.o
 CXX_STATIC_LIBRARY(libpower_supply.pie.a): $(LIBPOWER_SUPPLY_OBJS)
@@ -124,9 +119,8 @@ CXX_BINARY(power-supply-info): LDLIBS += $(POWERSUPPLY_LIBS)
 clean: CLEAN(power-supply-info)
 all: CXX_BINARY(power-supply-info)
 
-# backlight_controller_env inherits from gdk_env
-LIBBACKLIGHTCTRL_FLAGS = $(GDK_FLAGS)
-LIBBACKLIGHTCTRL_LIBS = $(GDK_LIBS)
+LIBBACKLIGHTCTRL_FLAGS = $(GLIB_FLAGS)
+LIBBACKLIGHTCTRL_LIBS = $(GLIB_LIBS)
 
 ifeq ($(USE_IS_DESKTOP),)
 LIBBACKLIGHTCTRL_OBJS = internal_backlight_controller.o
@@ -140,34 +134,32 @@ CXX_STATIC_LIBRARY(libbacklight_controller.pie.a): LDLIBS += \
                                                    $(LIBBACKLIGHTCTRL_LIBS)
 clean: CLEAN(libbacklight_controller.pie.a)
 
-# power_prefs_env inherits from gdk_env
-LIBPOWERPREFS_FLAGS = $(GDK_FLAGS)
-LIBPOWERPREFS_LIBS = $(GDK_LIBS)
+LIBPOWERPREFS_FLAGS = $(GLIB_FLAGS)
+LIBPOWERPREFS_LIBS = $(GLIB_LIBS)
 LIBPOWERPREFS_OBJS = power_prefs.o power_constants.o
 CXX_STATIC_LIBRARY(libpower_prefs.pie.a): $(LIBPOWERPREFS_OBJS)
 CXX_STATIC_LIBRARY(libpower_prefs.pie.a): CPPFLAGS += $(LIBPOWERPREFS_FLAGS)
 CXX_STATIC_LIBRARY(libpower_prefs.pie.a): LDLIBS += $(LIBPOWERPREFS_LIBS)
 clean: CLEAN(libpower_prefs.pie.a)
 
-# powerd_env inherits from gdk_env
 LIBPOWERD_DEPS = libchromeos-$(BASE_VER)
-LIBPOWERD_FLAGS := $(GDK_FLAGS) $(DBUS_FLAGS) \
+LIBPOWERD_FLAGS := $(GLIB_FLAGS) $(DBUS_FLAGS) \
                    $(shell $(PKG_CONFIG) --cflags $(LIBPOWERD_DEPS))
-LIBPOWERD_LIBS := $(GDK_LIBS) $(DBUS_LIBS) -lXext -lgflags -lmetrics -lX11 \
+LIBPOWERD_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lXext -lgflags -lmetrics -lX11 \
                   -lXrandr -ludev -lprotobuf-lite \
                   $(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
 
 LIBUTIL_OBJS = util.o inotify.o
-LIBUTIL_FLAGS = $(GDK_FLAGS)
-LIBUTIL_LIBS = $(GDK_LIBS)
+LIBUTIL_FLAGS = $(GLIB_FLAGS)
+LIBUTIL_LIBS = $(GLIB_LIBS)
 CXX_STATIC_LIBRARY(libutil.pie.a): $(LIBUTIL_OBJS)
 CXX_STATIC_LIBRARY(libutil.pie.a): CPPFLAGS += $(LIBUTIL_FLAGS)
 CXX_STATIC_LIBRARY(libutil.pie.a): LDLIBS += $(LIBUTIL_LIBS)
 clean: CLEAN(libutil.pie.a)
 
 LIBUTIL_DBUS_OBJS = util_dbus.o
-LIBUTIL_DBUS_FLAGS = $(DBUS_FLAGS) $(GDK_FLAGS)
-LIBUTIL_DBUS_LIBS = $(DBUS_LIBS) $(GDK_LIBS)
+LIBUTIL_DBUS_FLAGS = $(DBUS_FLAGS) $(GLIB_FLAGS)
+LIBUTIL_DBUS_LIBS = $(DBUS_LIBS) $(GLIB_LIBS)
 CXX_STATIC_LIBRARY(libutil_dbus.pie.a): $(LIBUTIL_DBUS_OBJS)
 CXX_STATIC_LIBRARY(libutil_dbus.pie.a): CPPFLAGS += $(LIBUTIL_DBUS_FLAGS)
 CXX_STATIC_LIBRARY(libutil_dbus.pie.a): LDLIBS += $(LIBUTIL_DBUS_LIBS)
@@ -202,11 +194,10 @@ CXX_BINARY(powerd): LDLIBS += $(POWERD_LIBS)
 clean: CXX_BINARY(powerd)
 all: CXX_BINARY(powerd)
 
-# powerman_env inherits from gdk_env
 LIBPOWERMAN_DEPS = libchromeos-$(BASE_VER)
-LIBPOWERMAN_FLAGS := $(GDK_FLAGS) $(DBUS_FLAGS) \
+LIBPOWERMAN_FLAGS := $(GLIB_FLAGS) $(DBUS_FLAGS) \
                      $(shell $(PKG_CONFIG) --cflags $(LIBPOWERMAN_DEPS))
-LIBPOWERMAN_LIBS := $(GDK_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev -lX11 \
+LIBPOWERMAN_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev -lX11 \
                     $(shell $(PKG_CONFIG) --libs $(LIBPOWERMAN_DEPS))
 LIBPOWERMAN_OBJS = powerman.o external_backlight.o input.o powerman_metrics.o
 CXX_STATIC_LIBRARY(libpowerman.pie.a): $(LIBPOWERMAN_OBJS)
@@ -228,7 +219,6 @@ CXX_BINARY(powerm): LDLIBS += $(POWERMAN_LIBS)
 clean: CXX_BINARY(powerm)
 all: CXX_BINARY(powerm)
 
-# suspect_delay_sample_env inherits from powerman_env
 SUSPENDDELAYSAMPLE_FLAGS = $(LIBPOWERMAN_FLAGS)
 SUSPENDDELAYSAMPLE_LIBS = $(LIBPOWERMAN_LIBS) -lgflags
 SUSPENDDELAYSAMPLE_OBJS = suspend_delay_sample.o
@@ -238,12 +228,12 @@ CXX_BINARY(suspend_delay_sample): LDLIBS += $(SUSPENDDELAYSAMPLE_LIBS)
 clean: CXX_BINARY(suspend_delay_sample)
 all: CXX_BINARY(suspend_delay_sample)
 
-# power_state_tool_env inherits from gdk_env
 power_state_tool.o.depends: power_state_control.pb.h
 POWERSTATETOOL_DEPS = libchromeos-$(BASE_VER)
-POWERSTATETOOL_FLAGS := $(GDK_FLAGS) $(DBUS_FLAGS) \
+POWERSTATETOOL_FLAGS := $(GLIB_FLAGS) $(DBUS_FLAGS) \
                         $(shell $(PKG_CONFIG) --cflags $(POWERSTATETOOL_DEPS))
-POWERSTATETOOL_LIBS := $(GDK_LIBS) $(DBUS_LIBS) -lgflags -lprotobuf-lite -lX11 \
+POWERSTATETOOL_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lprotobuf-lite \
+                       -lX11 \
                        $(shell $(PKG_CONFIG) --libs $(POWERSTATETOOL_DEPS))
 POWERSTATETOOL_OBJS = power_state_control.pb.o power_state_tool.o \
                       power_constants.o
@@ -254,11 +244,10 @@ CXX_BINARY(power_state_tool): LDLIBS += $(POWERSTATETOOL_LIBS)
 clean: CXX_BINARY(power_state_tool)
 all: CXX_BINARY(power_state_tool)
 
-# backlight_dbus_tool_env inherits from gdk_env
 BACKLIGHTDBUSTOOL_DEPS = libchromeos-$(BASE_VER)
-BACKLIGHTDBUSTOOL_FLAGS := $(GDK_FLAGS) $(DBUS_FLAGS) \
+BACKLIGHTDBUSTOOL_FLAGS := $(GLIB_FLAGS) $(DBUS_FLAGS) \
 	$(shell $(PKG_CONFIG) --cflags $(POWERSTATETOOL_DEPS))
-BACKLIGHTDBUSTOOL_LIBS := $(GDK_LIBS) $(DBUS_LIBS) -lrt -lpthread -lgflags \
+BACKLIGHTDBUSTOOL_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lrt -lpthread -lgflags \
                           -lprotobuf-lite -lX11 \
                           $(shell $(PKG_CONFIG) --libs $(POWERSTATETOOL_DEPS))
 BACKLIGHTDBUSTOOL_OBJS = backlight_dbus_tool.o power_constants.o
@@ -270,12 +259,10 @@ clean: CXX_BINARY(backlight_dbus_tool)
 all: CXX_BINARY(backlight_dbus_tool)
 
 ## Unit tests
-# test_runner inherits from base
 LIBTESTRUNNER_OBJS = testrunner.o
 CXX_STATIC_LIBRARY(libtestrunner.pie.a): $(LIBTESTRUNNER_OBJS)
 clean: CLEAN(libtestrunner.pie.a)
 
-# xidle_unittest_env inherits from xidle_env
 XIDLE_UNITTEST_FLAGS = $(XIDLE_FLAGS)
 XIDLE_UNITTEST_LIBS = $(XIDLE_LIBS) -lgmock -lgtest -lXtst
 XIDLE_UNITTEST_OBJS = xidle_unittest.o mock_xsync.o
@@ -287,9 +274,8 @@ CXX_BINARY(xidle_unittest): LDLIBS += $(XIDLE_UNITTEST_LIBS)
 clean: CXX_BINARY(xidle_unittest)
 tests: TEST(CXX_BINARY(xidle_unittest))
 
-# backlight_unittest_env inherits from gdk_env
-BACKLIGHT_UNITTEST_FLAGS = $(GDK_FLAGS)
-BACKLIGHT_UNITTEST_LIBS = $(GDK_LIBS) -lgmock -lgtest -lXext
+BACKLIGHT_UNITTEST_FLAGS = $(GLIB_FLAGS)
+BACKLIGHT_UNITTEST_LIBS = $(GLIB_LIBS) -lgmock -lgtest -lXext
 BACKLIGHT_UNITTEST_OBJS = backlight_unittest.o
 CXX_BINARY(backlight_unittest): $(BACKLIGHT_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libtestrunner.pie.a) \
@@ -301,7 +287,6 @@ CXX_BINARY(backlight_unittest): LDLIBS += $(BACKLIGHT_UNITTEST_LIBS)
 clean: CXX_BINARY(backlight_unittest)
 tests: TEST(CXX_BINARY(backlight_unittest))
 
-# powerd_unittest_end inherits from powerd_env
 POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
 POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock -lX11 -lXext -lXrandr \
                        -lXtst
@@ -328,7 +313,6 @@ CXX_BINARY(powerd_unittest): LDLIBS += $(POWERD_UNITTEST_LIBS)
 clean: CXX_BINARY(powerd_unittest)
 tests: TEST(CXX_BINARY(powerd_unittest))
 
-# file_tagger_unittest_env inherits from powerd_env
 FILE_TAGGER_UNITTEST_FLAGS = $(POWERD_FLAGS)
 FILE_TAGGER_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock -lXtst
 FILE_TAGGER_UNITTEST_OBJS = file_tagger_unittest.o
@@ -345,7 +329,6 @@ CXX_BINARY(file_tagger_unittest): LDLIBS += $(FILE_TAGGER_UNITTEST_LIBS)
 clean: CXX_BINARY(file_tagger_unittest)
 tests: TEST(CXX_BINARY(file_tagger_unittest))
 
-# power_supply_unittest_env inherits from powerd_env
 POWER_SUPPLY_UNITTEST_FLAGS = $(POWERD_FLAGS)
 POWER_SUPPLY_UNITTEST_LIBS = $(POWERD_LIBS)  -lgtest -lgmock -lXtst
 POWER_SUPPLY_UNITTEST_OBJS = power_supply_unittest.o
@@ -359,7 +342,6 @@ CXX_BINARY(power_supply_unittest): LDLIBS += $(POWER_SUPPLY_UNITTEST_LIBS)
 clean: CXX_BINARY(power_supply_unittest)
 tests: TEST(CXX_BINARY(power_supply_unittest))
 
-# powerman_unittest_env inherits from powerman_env
 POWERMAN_UNITTEST_FLAGS = $(POWERMAN_FLAGS)
 POWERMAN_UNITTEST_LIBS = $(POWERMAN_LIBS) -lgtest -lgmock
 POWERMAN_UNITTEST_OBJS = powerman_unittest.o
@@ -374,9 +356,8 @@ CXX_BINARY(powerman_unittest): LDLIBS += $(POWERMAN_UNITTEST_LIBS)
 clean: CXX_BINARY(powerman_unittest)
 tests: TEST(CXX_BINARY(powerman_unittest))
 
-# resolution_selector_unittest_env inherits from gdk_env
-RESOLUTION_SELECTOR_UNITTEST_FLAGS = $(GDK_FLAGS)
-RESOLUTION_SELECTOR_UNITTEST_LIBS = $(GDK_LIBS) -lgtest -lgmock
+RESOLUTION_SELECTOR_UNITTEST_FLAGS = $(GLIB_FLAGS)
+RESOLUTION_SELECTOR_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock
 RESOLUTION_SELECTOR_UNITTEST_OBJS = resolution_selector_unittest.o \
                                     resolution_selector.o
 CXX_BINARY(resolution_selector_unittest): $(RESOLUTION_SELECTOR_UNITTEST_OBJS) \
@@ -391,7 +372,6 @@ CXX_BINARY(resolution_selector_unittest): LDLIBS += \
 clean: CXX_BINARY(resolution_selector_unittest)
 tests: TEST(CXX_BINARY(resolution_selector_unittest))
 
-# state_control_unittest_env inherits from powerd_env
 state_control_unittest.o.depends: power_state_control.pb.cc
 STATE_CONTROL_UNITTEST_FLAGS = $(POWERD_FLAGS)
 STATE_CONTROL_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock -lXtst
@@ -410,9 +390,8 @@ CXX_BINARY(state_control_unittest): LDLIBS += $(STATE_CONTROL_UNITTEST_LIBS)
 clean: CXX_BINARY(state_control_unittest)
 tests: TEST(CXX_BINARY(state_control_unittest))
 
-# async_file_reader_unittest_env inherits from gdk_env
-ASYNC_FILE_READER_UNITTEST_FLAGS = $(GDK_FLAGS)
-ASYNC_FILE_READER_UNITTEST_LIBS = $(GDK_LIBS) -lgtest -lgmock -lXtst
+ASYNC_FILE_READER_UNITTEST_FLAGS = $(GLIB_FLAGS)
+ASYNC_FILE_READER_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock -lXtst
 ASYNC_FILE_READER_UNITTEST_OBJS = async_file_reader_unittest.o \
                                   async_file_reader.o
 CXX_BINARY(async_file_reader_unittest): $(ASYNC_FILE_READER_UNITTEST_OBJS) \

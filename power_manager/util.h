@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_UTIL_H_
 #define POWER_MANAGER_UTIL_H_
 
+#include <X11/Xlib.h>
+
 class FilePath;
 
 namespace power_manager {
@@ -21,6 +23,10 @@ void RemoveStatusFile(const FilePath& file);
 
 // Get the current wakeup count from sysfs
 bool GetWakeupCount(unsigned int *value);
+
+// Get a connection to the X server. Opens a connection the first time it's
+// called and caches it.
+Display* GetDisplay();
 
 }  // namespace util
 }  // namespace power_manager

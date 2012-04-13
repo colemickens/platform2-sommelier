@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gdk/gdk.h>
 #include <gflags/gflags.h>
+#include <glib.h>
 #include <syslog.h>
 
 #include <string>
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
                              "/usr/share/power_manager" :
                              FLAGS_default_prefs_dir);
   power_manager::PowerPrefs prefs(prefs_dir, default_prefs_dir);
-  gdk_init(&argc, &argv);
+  g_type_init();
 
 #ifdef IS_DESKTOP
   power_manager::ExternalBacklightClient backlight;

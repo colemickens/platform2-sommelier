@@ -5,7 +5,6 @@
 #ifndef POWER_MANAGER_SUSPENDER_H_
 #define POWER_MANAGER_SUSPENDER_H_
 
-#include <gdk/gdkx.h>
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
 

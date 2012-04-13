@@ -5,7 +5,6 @@
 #ifndef POWER_MANAGER_MONITOR_RECONFIGURE_H_
 #define POWER_MANAGER_MONITOR_RECONFIGURE_H_
 
-#include <gdk/gdkevents.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
 
@@ -18,6 +17,7 @@
 #include "base/time.h"
 #include "power_manager/resolution_selector.h"
 #include "power_manager/signal_callback.h"
+#include "power_manager/xevent_observer.h"
 
 namespace power_manager {
 
@@ -27,7 +27,7 @@ class MonitorReconfigure;
 // MonitorReconfigure is the class responsible for setting the external monitor
 // to the max resolution based on the modes supported by the native monitor and
 // the external monitor.
-class MonitorReconfigure {
+class MonitorReconfigure : public XEventObserverInterface {
  public:
   enum DualHeadMode {
     kModeClone,
@@ -187,8 +187,8 @@ class MonitorReconfigure {
   void CheckInternalPanelConnection();
 
   // Callback to watch for xrandr hotplug events.
-  SIGNAL_CALLBACK_2(MonitorReconfigure, GdkFilterReturn, GdkEventFilter,
-                    GdkXEvent*, GdkEvent*);
+  // Inherited from XEventObserver.
+  virtual XEventHandlerStatus HandleXEvent(XEvent* event) OVERRIDE;
 
   // Event and error base numbers for Xrandr.
   int rr_event_base_;

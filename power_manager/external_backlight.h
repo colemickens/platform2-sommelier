@@ -5,7 +5,7 @@
 #ifndef POWER_MANAGER_EXTERNAL_BACKLIGHT_H_
 #define POWER_MANAGER_EXTERNAL_BACKLIGHT_H_
 
-#include <gdk/gdkx.h>
+#include <glib.h>
 #include <libudev.h>
 #include <list>
 #include <map>

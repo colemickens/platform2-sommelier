@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,7 @@
 
 #include "base/logging.h"
 #include "base/time.h"
+#include "power_manager/util.h"
 
 namespace power_manager {
 
@@ -14,9 +15,10 @@ VideoDetector::VideoDetector()
       root_window_(None) {}
 
 void VideoDetector::Init() {
-  video_time_atom_ = XInternAtom(GDK_DISPLAY(), "_CHROME_VIDEO_TIME", false);
+  Display* display = util::GetDisplay();
+  video_time_atom_ = XInternAtom(display, "_CHROME_VIDEO_TIME", false);
   DCHECK(video_time_atom_ != None);
-  root_window_ = DefaultRootWindow(GDK_DISPLAY());
+  root_window_ = DefaultRootWindow(display);
   DCHECK(root_window_ != None);
 }
 
@@ -63,7 +65,7 @@ bool VideoDetector::GetRootWindowProperty(Atom property,
   unsigned long num_items = 0;
   unsigned long bytes_after_returned = 0;
   int32 status = 0;
-  status = XGetWindowProperty(GDK_DISPLAY(),
+  status = XGetWindowProperty(util::GetDisplay(),
                               root_window_,
                               property,
                               0,                // zero word offset.
