@@ -62,6 +62,12 @@ class Device : public base::RefCounted<Device> {
   void SetEnabledPersistent(bool enable,
                             Error *error, const ResultCallback &callback);
 
+  // Returns true if the underlying device reports that it is already enabled.
+  // Used when the device is registered with the Manager, so that shill can
+  // sync its state/ with the true state of the device. The default is to
+  // report false.
+  virtual bool IsUnderlyingDeviceEnabled() const;
+
   // TODO(gauravsh): We do not really need this since technology() can be used
   //                 to get a device's technology for direct comparison.
   // Base method always returns false.
@@ -144,6 +150,7 @@ class Device : public base::RefCounted<Device> {
   DeviceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
  protected:
+  FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);

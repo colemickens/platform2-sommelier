@@ -14,6 +14,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/callbacks.h"
+#include "shill/cellular.h"
 #include "shill/dbus_properties.h"
 
 namespace shill {
@@ -67,7 +68,8 @@ class CellularCapability {
   static const int kTimeoutRegister;
   static const int kTimeoutScan;
 
-  static const char kPropertyIMSI[];
+  static const char kModemPropertyIMSI[];
+  static const char kModemPropertyState[];
 
   // |cellular| is the parent Cellular device.
   CellularCapability(Cellular *cellular, ProxyFactory *proxy_factory);
@@ -112,6 +114,10 @@ class CellularCapability {
                                  Error *error,
                                  const ResultCallback &callback) = 0;
   virtual bool IsRegistered() = 0;
+  // If we are informed by means of something other than a signal indicating
+  // a registration state change that the modem has unregistered from the
+  // network, we need to update the network-type-specific capability object.
+  virtual void SetUnregistered(bool searching) = 0;
 
   virtual std::string CreateFriendlyServiceName() = 0;
 

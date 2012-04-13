@@ -17,21 +17,29 @@ typedef std::map<std::string, DBus::Variant> DBusPropertiesMap;
 
 class DBusProperties {
  public:
-  static bool GetString(const DBusPropertiesMap &properties,
-                        const std::string &key,
-                        std::string *value);
+  static bool GetBool(const DBusPropertiesMap &properties,
+                      const std::string &key,
+                      bool *value);
+
+  static bool GetInt32(const DBusPropertiesMap &properties,
+                       const std::string &key,
+                       int32 *value);
 
   static bool GetObjectPath(const DBusPropertiesMap &properties,
                             const std::string &key,
                             std::string *value);
 
-  static bool GetUint32(const DBusPropertiesMap &properties,
+  static bool GetString(const DBusPropertiesMap &properties,
                         const std::string &key,
-                        uint32 *value);
+                        std::string *value);
 
   static bool GetUint16(const DBusPropertiesMap &properties,
                         const std::string &key,
                         uint16 *value);
+
+  static bool GetUint32(const DBusPropertiesMap &properties,
+                        const std::string &key,
+                        uint32 *value);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DBusProperties);

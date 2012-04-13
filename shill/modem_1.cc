@@ -33,27 +33,6 @@ Modem1::Modem1(const string &owner,
 
 Modem1::~Modem1() {}
 
-Cellular::ModemState Modem1::ConvertMmToCellularModemState(uint32 input) const {
-  switch (input) {
-    case MM_MODEM_STATE_UNKNOWN: return Cellular::kModemStateUnknown;
-    case MM_MODEM_STATE_INITIALIZING: return Cellular::kModemStateInitializing;
-    case MM_MODEM_STATE_LOCKED: return Cellular::kModemStateLocked;
-    case MM_MODEM_STATE_DISABLED: return Cellular::kModemStateDisabled;
-    case MM_MODEM_STATE_DISABLING: return Cellular::kModemStateDisabling;
-    case MM_MODEM_STATE_ENABLING: return Cellular::kModemStateEnabling;
-    case MM_MODEM_STATE_ENABLED: return Cellular::kModemStateEnabled;
-    case MM_MODEM_STATE_SEARCHING: return Cellular::kModemStateSearching;
-    case MM_MODEM_STATE_REGISTERED: return Cellular::kModemStateRegistered;
-    case MM_MODEM_STATE_DISCONNECTING:
-      return Cellular::kModemStateDisconnecting;
-    case MM_MODEM_STATE_CONNECTING: return Cellular::kModemStateConnecting;
-    case MM_MODEM_STATE_CONNECTED: return Cellular::kModemStateConnected;
-    default:
-      DCHECK(false) << "Unknown cellular state: " << input;
-      return Cellular::kModemStateUnknown;
-  }
-}
-
 bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
                          string *name) const {
   string device_prop;

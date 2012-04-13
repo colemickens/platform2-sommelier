@@ -53,9 +53,9 @@ class Cellular : public Device {
 
   enum ModemState {
     kModemStateUnknown = 0,
-    kModemStateDisabled = 1,
-    kModemStateInitializing = 2,
-    kModemStateLocked = 3,
+    kModemStateInitializing = 1,
+    kModemStateLocked = 2,
+    kModemStateDisabled = 3,
     kModemStateDisabling = 4,
     kModemStateEnabling = 5,
     kModemStateEnabled = 6,
@@ -129,6 +129,8 @@ class Cellular : public Device {
 
   void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }
+  bool IsUnderlyingDeviceEnabled() const;
+  static bool IsEnabledModemState(ModemState state);
 
   mobile_provider_db *provider_db() const { return provider_db_; }
 
@@ -173,11 +175,15 @@ class Cellular : public Device {
                       const Error &error);
   void OnModemStopped(const EnabledStateChangedCallback &callback,
                       const Error &error);
+  void OnConnecting();
   void OnConnected();
   void OnConnectFailed(const Error &error);
   void OnDisconnected();
   void OnDisconnectFailed();
   std::string GetTechnologyFamily(Error *error);
+  void OnModemStateChanged(ModemState old_state,
+                           ModemState new_state,
+                           uint32 reason);
 
  private:
   friend class CellularTest;
@@ -196,6 +202,8 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, DisableModem);
   FRIEND_TEST(CellularTest, Disconnect);
+  FRIEND_TEST(CellularTest, ModemStateChangeDisable);
+  FRIEND_TEST(CellularTest, ModemStateChangeEnable);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);

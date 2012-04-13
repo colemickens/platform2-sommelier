@@ -61,7 +61,6 @@ class Modem : public DBusPropertiesProxyDelegate {
  protected:
   static const char kPropertyLinkName[];
   static const char kPropertyIPMethod[];
-  static const char kPropertyState[];
   static const char kPropertyType[];
 
   virtual void Init();
@@ -76,8 +75,6 @@ class Modem : public DBusPropertiesProxyDelegate {
   virtual Cellular *ConstructCellular(const std::string &link_name,
                                       const std::string &device_name,
                                       int interface_index);
-  virtual Cellular::ModemState ConvertMmToCellularModemState(
-      uint32 input) const = 0;
   virtual bool GetLinkName(const DBusPropertiesMap &properties,
                            std::string *name) const = 0;
   // Returns the name of the DBUS Modem interface.
@@ -148,8 +145,6 @@ class ModemClassic : public Modem {
   void CreateDeviceClassic(const DBusPropertiesMap &modem_properties);
 
  protected:
-  virtual Cellular::ModemState ConvertMmToCellularModemState(
-      uint32 input) const;
   virtual bool GetLinkName(const DBusPropertiesMap &modem_properties,
                            std::string *name) const;
   virtual std::string GetModemInterface(void) const;
@@ -173,8 +168,6 @@ class Modem1 : public Modem {
   void CreateDeviceMM1(const DBusInterfaceToProperties &i_to_p);
 
  protected:
-  virtual Cellular::ModemState ConvertMmToCellularModemState(
-      uint32 input) const;
   virtual bool GetLinkName(const DBusPropertiesMap &modem_properties,
                            std::string *name) const;
   virtual std::string GetModemInterface(void) const;

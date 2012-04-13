@@ -124,12 +124,15 @@ void CellularCapabilityGSM::StartModem(Error *error,
   ResultCallback cb_ignore_error =
         Bind(&CellularCapabilityGSM::StepCompletedCallback,
                    weak_ptr_factory_.GetWeakPtr(), callback, true, tasks);
-  tasks->push_back(Bind(&CellularCapabilityGSM::EnableModem,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
-  tasks->push_back(Bind(&CellularCapabilityGSM::Register,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
-  tasks->push_back(Bind(&CellularCapabilityGSM::GetModemStatus,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
+  if (!cellular()->IsUnderlyingDeviceEnabled())
+    tasks->push_back(Bind(&CellularCapabilityGSM::EnableModem,
+                          weak_ptr_factory_.GetWeakPtr(), cb));
+  // If we're within range of the home network, the modem will try to
+  // register once it's enabled, or may be already registered if we
+  // started out enabled.
+  if (!IsUnderlyingDeviceRegistered() && !selected_network_.empty())
+    tasks->push_back(Bind(&CellularCapabilityGSM::Register,
+                          weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityGSM::GetIMEI,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityGSM::GetIMSI,
@@ -141,11 +144,31 @@ void CellularCapabilityGSM::StartModem(Error *error,
   tasks->push_back(Bind(&CellularCapabilityGSM::GetProperties,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityGSM::GetModemInfo,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
+                        weak_ptr_factory_.GetWeakPtr(), cb_ignore_error));
   tasks->push_back(Bind(&CellularCapabilityGSM::FinishEnable,
                         weak_ptr_factory_.GetWeakPtr(), cb));
 
   RunNextStep(tasks);
+}
+
+bool CellularCapabilityGSM::IsUnderlyingDeviceRegistered() const {
+  switch (cellular()->modem_state()) {
+    case Cellular::kModemStateUnknown:
+    case Cellular::kModemStateDisabled:
+    case Cellular::kModemStateInitializing:
+    case Cellular::kModemStateLocked:
+    case Cellular::kModemStateDisabling:
+    case Cellular::kModemStateEnabling:
+    case Cellular::kModemStateEnabled:
+      return false;
+    case Cellular::kModemStateSearching:
+    case Cellular::kModemStateRegistered:
+    case Cellular::kModemStateDisconnecting:
+    case Cellular::kModemStateConnecting:
+    case Cellular::kModemStateConnected:
+      return true;
+  }
+  return false;
 }
 
 void CellularCapabilityGSM::ReleaseProxies() {
@@ -168,7 +191,7 @@ void CellularCapabilityGSM::OnServiceCreated() {
 }
 
 void CellularCapabilityGSM::UpdateStatus(const DBusPropertiesMap &properties) {
-  if (ContainsKey(properties, kPropertyIMSI)) {
+  if (ContainsKey(properties, kModemPropertyIMSI)) {
     SetHomeProvider();
   }
 }
@@ -550,6 +573,16 @@ bool CellularCapabilityGSM::IsRegistered() {
           registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING);
 }
 
+void CellularCapabilityGSM::SetUnregistered(bool searching) {
+  // If we're already in some non-registered state, don't override that
+  if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
+      registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING) {
+    registration_state_ =
+        (searching ? MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING :
+                     MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE);
+  }
+}
+
 void CellularCapabilityGSM::RequirePIN(
     const std::string &pin, bool require,
     Error *error, const ResultCallback &callback) {
@@ -725,33 +758,37 @@ string CellularCapabilityGSM::GetRoamingStateString() const {
 void CellularCapabilityGSM::OnDBusPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &properties,
-    const vector<string> &/* invalidated_properties */) {
-  if (interface != MM_MODEM_INTERFACE)
-    return;
-  uint32 access_technology = MM_MODEM_GSM_ACCESS_TECH_UNKNOWN;
-  if (DBusProperties::GetUint32(properties,
-                                kPropertyAccessTechnology,
-                                &access_technology)) {
-    SetAccessTechnology(access_technology);
-  }
-  bool emit = false;
-  uint32 locks = 0;
-  if (DBusProperties::GetUint32(
-          properties, kPropertyEnabledFacilityLocks, &locks)) {
-    sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
-    emit = true;
-  }
-  if (DBusProperties::GetString(
-          properties, kPropertyUnlockRequired, &sim_lock_status_.lock_type)) {
-    emit = true;
-  }
-  if (DBusProperties::GetUint32(
-          properties, kPropertyUnlockRetries, &sim_lock_status_.retries_left)) {
-    emit = true;
-  }
-  if (emit) {
-    cellular()->adaptor()->EmitKeyValueStoreChanged(
-        flimflam::kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
+    const vector<string> &invalidated_properties) {
+  CellularCapabilityClassic::OnDBusPropertiesChanged(interface,
+                                                     properties,
+                                                     invalidated_properties);
+  if (interface == MM_MODEM_GSM_NETWORK_INTERFACE) {
+    uint32 access_technology = MM_MODEM_GSM_ACCESS_TECH_UNKNOWN;
+    if (DBusProperties::GetUint32(properties,
+                                  kPropertyAccessTechnology,
+                                  &access_technology)) {
+      SetAccessTechnology(access_technology);
+    }
+  } else if (interface == MM_MODEM_GSM_CARD_INTERFACE) {
+    bool emit = false;
+    uint32 locks = 0;
+    if (DBusProperties::GetUint32(
+        properties, kPropertyEnabledFacilityLocks, &locks)) {
+      sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
+      emit = true;
+    }
+    if (DBusProperties::GetString(
+        properties, kPropertyUnlockRequired, &sim_lock_status_.lock_type)) {
+      emit = true;
+    }
+    if (DBusProperties::GetUint32(
+        properties, kPropertyUnlockRetries, &sim_lock_status_.retries_left)) {
+      emit = true;
+    }
+    if (emit) {
+      cellular()->adaptor()->EmitKeyValueStoreChanged(
+          flimflam::kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
+    }
   }
 }
 

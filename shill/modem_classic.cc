@@ -26,27 +26,6 @@ ModemClassic::ModemClassic(const std::string &owner,
 
 ModemClassic::~ModemClassic() {}
 
-Cellular::ModemState ModemClassic::ConvertMmToCellularModemState(
-    uint32 input) const {
-  switch (input) {
-    // These are defined as enums in mm-classic's private header file
-    // mm-modem.h
-    case 0: return Cellular::kModemStateUnknown;
-    case 10: return Cellular::kModemStateDisabled;
-    case 20: return Cellular::kModemStateDisabling;
-    case 30: return Cellular::kModemStateEnabling;
-    case 40: return Cellular::kModemStateEnabled;
-    case 50: return Cellular::kModemStateSearching;
-    case 60: return Cellular::kModemStateRegistered;
-    case 70: return Cellular::kModemStateDisconnecting;
-    case 80: return Cellular::kModemStateConnecting;
-    case 90: return Cellular::kModemStateConnected;
-    default:
-      DCHECK(false) << "Unknown cellular state: " << input;
-      return Cellular::kModemStateUnknown;
-  }
-}
-
 bool ModemClassic::GetLinkName(const DBusPropertiesMap& modem_properties,
                                string *name) const {
   return DBusProperties::GetString(modem_properties, kPropertyLinkName, name);

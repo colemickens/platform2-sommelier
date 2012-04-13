@@ -31,15 +31,12 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   virtual void Activate(const std::string &carrier, Error *error,
                         const ResultCallback &callback);
   virtual bool IsRegistered();
+  virtual void SetUnregistered(bool searching);
   virtual std::string CreateFriendlyServiceName();
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void GetSignalQuality();
   virtual std::string GetTypeString() const { return "CDMA"; }
-  virtual void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &properties,
-      const std::vector<std::string> &invalidated_properties);
   virtual bool AllowRoaming();
   virtual void GetRegistrationState();
   virtual void GetProperties(const ResultCallback &callback);

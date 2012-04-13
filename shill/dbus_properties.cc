@@ -9,14 +9,27 @@
 namespace shill {
 
 // static
-bool DBusProperties::GetString(const DBusPropertiesMap &properties,
-                               const std::string &key,
-                               std::string *value) {
+bool DBusProperties::GetBool(const DBusPropertiesMap &properties,
+                             const std::string &key,
+                             bool *value) {
   DBusPropertiesMap::const_iterator it = properties.find(key);
   if (it == properties.end()) {
     return false;
   }
-  *value = it->second.reader().get_string();
+  *value = it->second.reader().get_bool();
+  SLOG(DBus, 2) << key << " = " << *value;
+  return true;
+}
+
+// static
+bool DBusProperties::GetInt32(const DBusPropertiesMap &properties,
+                              const std::string &key,
+                              int32 *value) {
+  DBusPropertiesMap::const_iterator it = properties.find(key);
+  if (it == properties.end()) {
+    return false;
+  }
+  *value = it->second.reader().get_int32();
   SLOG(DBus, 2) << key << " = " << *value;
   return true;
 }
@@ -35,14 +48,14 @@ bool DBusProperties::GetObjectPath(const DBusPropertiesMap &properties,
 }
 
 // static
-bool DBusProperties::GetUint32(const DBusPropertiesMap &properties,
+bool DBusProperties::GetString(const DBusPropertiesMap &properties,
                                const std::string &key,
-                               uint32 *value) {
+                               std::string *value) {
   DBusPropertiesMap::const_iterator it = properties.find(key);
   if (it == properties.end()) {
     return false;
   }
-  *value = it->second.reader().get_uint32();
+  *value = it->second.reader().get_string();
   SLOG(DBus, 2) << key << " = " << *value;
   return true;
 }
@@ -56,6 +69,19 @@ bool DBusProperties::GetUint16(const DBusPropertiesMap &properties,
     return false;
   }
   *value = it->second.reader().get_uint16();
+  SLOG(DBus, 2) << key << " = " << *value;
+  return true;
+}
+
+// static
+bool DBusProperties::GetUint32(const DBusPropertiesMap &properties,
+                               const std::string &key,
+                               uint32 *value) {
+  DBusPropertiesMap::const_iterator it = properties.find(key);
+  if (it == properties.end()) {
+    return false;
+  }
+  *value = it->second.reader().get_uint32();
   SLOG(DBus, 2) << key << " = " << *value;
   return true;
 }

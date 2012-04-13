@@ -22,7 +22,6 @@ namespace shill {
 // TODO(petkov): Consider generating these in mm/mm-modem.h.
 const char Modem::kPropertyLinkName[] = "Device";
 const char Modem::kPropertyIPMethod[] = "IpMethod";
-const char Modem::kPropertyState[] = "State";
 const char Modem::kPropertyType[] = "Type";
 
 Modem::Modem(const string &owner,
@@ -123,17 +122,6 @@ void Modem::CreateDeviceFromModemProperties(
 
   string address = address_bytes.HexEncode();
   device_ = ConstructCellular(link_name_, address, interface_index);
-
-  // Note: 0 happens to map to Cellular::kModemStateUnknown for all
-  // types of modems
-  uint32 modem_state = 0;
-  // TODO(jglasgow): refactor to avoid explicit if on modem type.  The
-  // ModemManager1 interface type is an "i" not a "u".  Handle that
-  // during refactoring.
-  if (type_ != Cellular::kTypeUniversal)
-    DBusProperties::GetUint32(modem_properties, kPropertyState, &modem_state);
-
-  device_->set_modem_state(ConvertMmToCellularModemState(modem_state));
 
   // Give the device a chance to extract any capability-specific properties.
   device_->OnDBusPropertiesChanged(GetModemInterface(), modem_properties,

@@ -622,7 +622,8 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
 
   // In normal usage, running_ will always be true when we are here, however
   // unit tests sometimes do things in otherwise invalid states.
-  if (running_ && to_manage->enabled_persistent())
+  if (running_ && (to_manage->enabled_persistent() ||
+                   to_manage->IsUnderlyingDeviceEnabled()))
     to_manage->SetEnabled(true);
 
   EmitDeviceProperties();

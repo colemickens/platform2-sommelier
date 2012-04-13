@@ -258,13 +258,6 @@ class CellularCapabilityGSMTest : public testing::Test {
 
     EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutEnable))
         .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeEnable));
-    EXPECT_CALL(*network_proxy_,
-                Register(_, _, _, CellularCapabilityGSM::kTimeoutRegister))
-        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeRegister));
-    EXPECT_CALL(*simple_proxy_,
-                GetModemStatus(_, _, CellularCapability::kTimeoutDefault))
-        .WillOnce(Invoke(this,
-                         &CellularCapabilityGSMTest::InvokeGetModemStatus));
     EXPECT_CALL(*card_proxy_,
                 GetIMEI(_, _, CellularCapability::kTimeoutDefault))
         .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetIMEI));
@@ -564,7 +557,7 @@ TEST_F(CellularCapabilityGSMTest, UpdateStatus) {
   InitProviderDB();
   DBusPropertiesMap props;
   capability_->imsi_ = "310240123456789";
-  props[CellularCapability::kPropertyIMSI].writer().append_string("");
+  props[CellularCapability::kModemPropertyIMSI].writer().append_string("");
   capability_->UpdateStatus(props);
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
 }
@@ -729,9 +722,11 @@ TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
   // Call with the right interface and expect changes.
   EXPECT_CALL(*device_adaptor_,
               EmitKeyValueStoreChanged(flimflam::kSIMLockStatusProperty, _));
-  capability_->OnDBusPropertiesChanged(MM_MODEM_INTERFACE, props,
+  capability_->OnDBusPropertiesChanged(MM_MODEM_GSM_NETWORK_INTERFACE, props,
                                        vector<string>());
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_EDGE, capability_->access_technology_);
+  capability_->OnDBusPropertiesChanged(MM_MODEM_GSM_CARD_INTERFACE, props,
+                                       vector<string>());
   EXPECT_TRUE(capability_->sim_lock_status_.enabled);
   EXPECT_EQ(kLockType, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(kRetries, capability_->sim_lock_status_.retries_left);

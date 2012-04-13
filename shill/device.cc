@@ -623,6 +623,10 @@ string Device::GetRpcConnectionIdentifier() {
   return adaptor_->GetRpcConnectionIdentifier();
 }
 
+bool Device::IsUnderlyingDeviceEnabled() const {
+  return false;
+}
+
 // callback
 void Device::OnEnabledStateChanged(const ResultCallback &callback,
                                    const Error &error) {

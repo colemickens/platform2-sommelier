@@ -54,6 +54,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
                                  Error *error,
                                  const ResultCallback &callback);
   virtual bool IsRegistered();
+  virtual void SetUnregistered(bool searching);
   virtual std::string CreateFriendlyServiceName();
   virtual void RequirePIN(const std::string &pin, bool require,
                           Error *error, const ResultCallback &callback);
@@ -158,6 +159,8 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
       KeyValueStore(CellularCapabilityGSM::*get)(Error *error),
       void(CellularCapabilityGSM::*set)(
           const KeyValueStore &value, Error *error));
+
+  bool IsUnderlyingDeviceRegistered() const;
 
   // Signal callbacks
   void OnNetworkModeSignal(uint32 mode);

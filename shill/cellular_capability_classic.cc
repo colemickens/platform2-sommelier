@@ -27,6 +27,36 @@ const char CellularCapabilityClassic::kConnectPropertyApnPassword[] =
     "password";
 const char CellularCapabilityClassic::kConnectPropertyHomeOnly[] = "home_only";
 const char CellularCapabilityClassic::kConnectPropertyPhoneNumber[] = "number";
+const char CellularCapabilityClassic::kModemPropertyEnabled[] = "Enabled";
+
+static Cellular::ModemState ConvertClassicToModemState(uint32 classic_state) {
+  ModemClassicState cstate =
+      static_cast<ModemClassicState>(classic_state);
+  switch (cstate) {
+    case kModemClassicStateUnknown:
+      return Cellular::kModemStateUnknown;
+    case kModemClassicStateDisabled:
+      return Cellular::kModemStateDisabled;
+    case kModemClassicStateDisabling:
+      return Cellular::kModemStateDisabling;
+    case kModemClassicStateEnabling:
+      return Cellular::kModemStateEnabling;
+    case kModemClassicStateEnabled:
+      return Cellular::kModemStateEnabled;
+    case kModemClassicStateSearching:
+      return Cellular::kModemStateSearching;
+    case kModemClassicStateRegistered:
+      return Cellular::kModemStateRegistered;
+    case kModemClassicStateDisconnecting:
+      return Cellular::kModemStateDisconnecting;
+    case kModemClassicStateConnecting:
+      return Cellular::kModemStateConnecting;
+    case kModemClassicStateConnected:
+      return Cellular::kModemStateConnected;
+    default:
+      return Cellular::kModemStateUnknown;
+  };
+}
 
 CellularCapabilityClassic::CellularCapabilityClassic(
     Cellular *cellular,
@@ -71,6 +101,10 @@ void CellularCapabilityClassic::ReleaseProxies() {
 }
 
 void CellularCapabilityClassic::FinishEnable(const ResultCallback &callback) {
+  // Normally, running the callback is the last thing done in a method.
+  // In this case, we do it first, because we want to make sure that
+  // the device is marked as Enabled before the registration state is
+  // handled. See comment in Cellular::HandleNewRegistrationState.
   callback.Run(Error());
   GetRegistrationState();
   GetSignalQuality();
@@ -145,9 +179,13 @@ void CellularCapabilityClassic::StopModem(Error *error,
   ResultCallback cb_ignore_error =
       Bind(&CellularCapabilityClassic::StepCompletedCallback,
            weak_ptr_factory_.GetWeakPtr(), callback, true, tasks);
+  // TODO(ers): We can skip the call to Disconnect if the modem has
+  // told us that the modem state is Disabled or Registered.
   tasks->push_back(Bind(&CellularCapabilityClassic::Disconnect,
                         weak_ptr_factory_.GetWeakPtr(),
                         static_cast<Error *>(NULL), cb_ignore_error));
+  // TODO(ers): We can skip the call to Disable if the modem has
+  // told us that the modem state is Disabled.
   tasks->push_back(Bind(&CellularCapabilityClassic::DisableModem,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityClassic::FinishDisable,
@@ -213,6 +251,37 @@ void CellularCapabilityClassic::Scan(Error *error,
   OnUnsupportedOperation(__func__, error);
 }
 
+void CellularCapabilityClassic::OnDBusPropertiesChanged(
+    const std::string &interface,
+    const DBusPropertiesMap &changed_properties,
+    const std::vector<std::string> &invalidated_properties) {
+  bool enabled;
+  // This solves a bootstrapping problem: If the modem is not yet
+  // enabled, there are no proxy objects associated with the capability
+  // object, so modem signals like StateChanged aren't seen. By monitoring
+  // changes to the Enabled property via the ModemManager, we're able to
+  // get the initialization process started, which will result in the
+  // creation of the proxy objects.
+  //
+  // The first time we see the change to Enabled (when the modem state
+  // is Unknown), we simply update the state, and rely on the Manager to
+  // enable the device when it is registered with the Manager. On subsequent
+  // changes to Enabled, we need to explicitly enable the device ourselves.
+  if (DBusProperties::GetBool(changed_properties,
+                              kModemPropertyEnabled, &enabled)) {
+    Cellular::ModemState prev_modem_state = cellular()->modem_state();
+    if (enabled)
+      cellular()->set_modem_state(Cellular::kModemStateEnabled);
+    else
+      cellular()->set_modem_state(Cellular::kModemStateDisabled);
+    if (enabled && cellular()->state() == Cellular::kStateDisabled &&
+        prev_modem_state != Cellular::kModemStateUnknown &&
+        prev_modem_state != Cellular::kModemStateEnabled) {
+      cellular()->SetEnabled(true);
+    }
+  }
+}
+
 void CellularCapabilityClassic::OnGetModemStatusReply(
     const ResultCallback &callback,
     const DBusPropertiesMap &props,
@@ -223,16 +292,11 @@ void CellularCapabilityClassic::OnGetModemStatusReply(
     DBusProperties::GetString(props, "carrier", &carrier_);
     DBusProperties::GetString(props, "meid", &meid_);
     DBusProperties::GetString(props, "imei", &imei_);
-    DBusProperties::GetString(props, kPropertyIMSI, &imsi_);
+    DBusProperties::GetString(props, kModemPropertyIMSI, &imsi_);
     DBusProperties::GetString(props, "esn", &esn_);
     DBusProperties::GetString(props, "mdn", &mdn_);
     DBusProperties::GetString(props, "min", &min_);
     DBusProperties::GetString(props, "firmware_revision", &firmware_revision_);
-
-    uint32 state;
-    if (DBusProperties::GetUint32(props, "state", &state))
-      cellular()->set_modem_state(static_cast<Cellular::ModemState>(state));
-
     UpdateStatus(props);
   }
   callback.Run(error);
@@ -257,24 +321,9 @@ void CellularCapabilityClassic::OnModemStateChangedSignal(
     uint32 old_state, uint32 new_state, uint32 reason) {
   SLOG(Cellular, 2) << __func__ << "(" << old_state << ", " << new_state << ", "
                     << reason << ")";
-  // TODO(petkov): Complete this (crosbug.com/19662)
-#if 0
-  modem_state_ = static_cast<ModemState>(new_state);
-  if (old_state == new_state) {
-    return;
-  }
-  switch (new_state) {
-    case kModemStateEnabled:
-      if (old_state == kModemStateDisabled ||
-          old_state == kModemStateEnabling) {
-        Start();
-      }
-      // TODO(petkov): Handle the case when the state is downgraded to Enabled.
-      break;
-    default:
-      break;
-  }
-#endif
+  cellular()->OnModemStateChanged(ConvertClassicToModemState(old_state),
+                                  ConvertClassicToModemState(new_state),
+                                  reason);
 }
 
 }  // namespace shill

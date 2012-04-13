@@ -66,8 +66,9 @@ void CellularCapabilityCDMA::StartModem(Error *error,
   ResultCallback cb =
       Bind(&CellularCapabilityCDMA::StepCompletedCallback,
            weak_ptr_factory_.GetWeakPtr(), callback, false, tasks);
-  tasks->push_back(Bind(&CellularCapabilityCDMA::EnableModem,
-                        weak_ptr_factory_.GetWeakPtr(), cb));
+  if (!cellular()->IsUnderlyingDeviceEnabled())
+    tasks->push_back(Bind(&CellularCapabilityCDMA::EnableModem,
+                          weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityCDMA::GetModemStatus,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityCDMA::GetMEID,
@@ -212,6 +213,11 @@ bool CellularCapabilityCDMA::IsRegistered() {
       registration_state_1x_ != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
 }
 
+void CellularCapabilityCDMA::SetUnregistered(bool searching) {
+  registration_state_evdo_ = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  registration_state_1x_ = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+}
+
 string CellularCapabilityCDMA::GetNetworkTechnologyString() const {
   if (registration_state_evdo_ != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
     return flimflam::kNetworkTechnologyEvdo;
@@ -329,11 +335,6 @@ void CellularCapabilityCDMA::OnRegistrationStateChangedSignal(
   registration_state_evdo_ = state_evdo;
   cellular()->HandleNewRegistrationState();
 }
-
-void CellularCapabilityCDMA::OnDBusPropertiesChanged(
-    const string &/* interface */,
-    const DBusPropertiesMap &/* properties */,
-    const vector<string> &/* invalidated_properties */) {}
 
 void CellularCapabilityCDMA::OnSignalQualitySignal(uint32 strength) {
   cellular()->HandleNewSignalQuality(strength);

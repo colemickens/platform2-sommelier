@@ -162,12 +162,6 @@ void Cellular::Start(Error *error,
   if (state_ != kStateDisabled) {
     return;
   }
-  if (modem_state_ == kModemStateEnabled) {
-    // Modem already enabled. Make sure shill
-    // state matches ModemManager state.
-    SetState(kStateEnabled);
-    return;
-  }
   capability_->StartModem(error,
                           Bind(&Cellular::OnModemStarted, this, callback));
 }
@@ -182,6 +176,31 @@ void Cellular::Stop(Error *error,
   }
   capability_->StopModem(error,
                          Bind(&Cellular::OnModemStopped, this, callback));
+}
+
+bool Cellular::IsUnderlyingDeviceEnabled() const {
+  return IsEnabledModemState(modem_state_);
+}
+
+// static
+bool Cellular::IsEnabledModemState(ModemState state) {
+  switch (state) {
+    case kModemStateUnknown:
+    case kModemStateDisabled:
+    case kModemStateInitializing:
+    case kModemStateLocked:
+    case kModemStateDisabling:
+    case kModemStateEnabling:
+      return false;
+    case kModemStateEnabled:
+    case kModemStateSearching:
+    case kModemStateRegistered:
+    case kModemStateDisconnecting:
+    case kModemStateConnecting:
+    case kModemStateConnected:
+      return true;
+  }
+  return false;
 }
 
 void Cellular::OnModemStarted(const EnabledStateChangedCallback &callback,
@@ -338,10 +357,10 @@ void Cellular::Connect(Error *error) {
 
   DBusPropertiesMap properties;
   capability_->SetupConnectProperties(&properties);
-  service_->SetState(Service::kStateAssociating);
   // TODO(njw): Should a weak pointer be used here instead?
   // Would require something like a WeakPtrFactory on the class.
   ResultCallback cb = Bind(&Cellular::OnConnectReply, this);
+  OnConnecting();
   capability_->Connect(properties, error, cb);
 }
 
@@ -355,8 +374,17 @@ void Cellular::OnConnectReply(const Error &error) {
     OnConnectFailed(error);
 }
 
+void Cellular::OnConnecting() {
+  if (service_)
+    service_->SetState(Service::kStateAssociating);
+}
+
 void Cellular::OnConnected() {
   SLOG(Cellular, 2) << __func__;
+  if (state_ == kStateConnected || state_ == kStateLinked) {
+    VLOG(2) << "Already connected";
+    return;
+  }
   SetState(kStateConnected);
   if (!capability_->AllowRoaming() &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
@@ -367,7 +395,7 @@ void Cellular::OnConnected() {
 }
 
 void Cellular::OnConnectFailed(const Error &error) {
-  service()->SetFailure(Service::kFailureUnknown);
+  service_->SetFailure(Service::kFailureUnknown);
 }
 
 void Cellular::Disconnect(Error *error) {
@@ -397,6 +425,8 @@ void Cellular::OnDisconnected() {
   if (state_ == kStateConnected || state_ == kStateLinked) {
     SetState(kStateRegistered);
     SetServiceFailureSilent(Service::kFailureUnknown);
+    DestroyIPConfig();
+    rtnl_handler()->SetInterfaceFlags(interface_index(), 0, IFF_UP);
   } else {
     LOG(WARNING) << "Disconnect occurred while in state "
                  << GetStateString(state_);
@@ -425,7 +455,6 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   if ((flags & IFF_UP) != 0 && state_ == kStateConnected) {
     LOG(INFO) << link_name() << " is up.";
     SetState(kStateLinked);
-    // TODO(petkov): For GSM, remember the APN.
     if (AcquireIPConfig()) {
       SelectService(service_);
       SetServiceState(Service::kStateConfiguring);
@@ -454,6 +483,43 @@ void Cellular::set_home_provider(const Operator &oper) {
 string Cellular::CreateFriendlyServiceName() {
   SLOG(Cellular, 2) << __func__;
   return capability_.get() ? capability_->CreateFriendlyServiceName() : "";
+}
+
+void Cellular::OnModemStateChanged(ModemState old_state,
+                                   ModemState new_state,
+                                   uint32 /*reason*/) {
+  if (old_state == new_state) {
+    return;
+  }
+  set_modem_state(new_state);
+  switch (new_state) {
+    case kModemStateDisabled:
+      SetEnabled(false);
+      break;
+    case kModemStateEnabled:
+    case kModemStateSearching:
+      // Note: we only handle changes to Enabled from the Registered
+      // state here. Changes from Disabled to Enabled are handled in
+      // the DBusPropertiesChanged handler.
+      if (old_state == kModemStateRegistered) {
+        capability_->SetUnregistered(new_state == kModemStateSearching);
+        HandleNewRegistrationState();
+      }
+    case kModemStateRegistered:
+      if (old_state == kModemStateConnected ||
+          old_state == kModemStateConnecting ||
+          old_state == kModemStateDisconnecting)
+        OnDisconnected();
+      break;
+    case kModemStateConnecting:
+      OnConnecting();
+      break;
+    case kModemStateConnected:
+      OnConnected();
+      break;
+    default:
+      break;
+  }
 }
 
 }  // namespace shill

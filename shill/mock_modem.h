@@ -27,8 +27,8 @@ class MockModem : public Modem {
   // This class only mocks the pure virtual methods; if you need a
   // more thorough mock, know that modem_unittest.cc depends on the
   // incompleteness of this mock.
-  MOCK_CONST_METHOD1(ConvertMmToCellularModemState,
-                     Cellular::ModemState(uint32 state));
+  MOCK_METHOD1(SetModemStateFromProperties,
+               void(const DBusPropertiesMap &properties));
   MOCK_CONST_METHOD2(GetLinkName,
                      bool(const DBusPropertiesMap &modem_properties,
                           std::string *name));

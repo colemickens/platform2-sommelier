@@ -58,6 +58,7 @@ class CellularCapabilityUniversal : public CellularCapability {
                                  Error *error,
                                  const ResultCallback &callback);
   virtual bool IsRegistered();
+  virtual void SetUnregistered(bool searching);
   virtual std::string CreateFriendlyServiceName();
   virtual void RequirePIN(const std::string &pin, bool require,
                           Error *error, const ResultCallback &callback);
@@ -163,6 +164,9 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Signal callbacks
   void OnNetworkModeSignal(uint32 mode);
+  void OnModemStateChangedSignal(int32 old_state,
+                                 int32 new_state,
+                                 uint32 reason);
 
   // Property Change notification handlers
   void OnModemPropertiesChanged(

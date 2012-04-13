@@ -17,7 +17,8 @@ using std::string;
 
 namespace shill {
 
-const char CellularCapability::kPropertyIMSI[] = "imsi";
+const char CellularCapability::kModemPropertyIMSI[] = "imsi";
+const char CellularCapability::kModemPropertyState[] = "State";
 // All timeout values are in milliseconds
 const int CellularCapability::kTimeoutActivate = 120000;
 const int CellularCapability::kTimeoutConnect = 45000;

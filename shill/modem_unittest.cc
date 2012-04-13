@@ -124,9 +124,6 @@ void ModemTest::SetUp() {
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kLinkName)).
       WillRepeatedly(Return(kTestInterfaceIndex));
 
-  EXPECT_CALL(*modem_, ConvertMmToCellularModemState(_)).
-      WillRepeatedly(Return(Cellular::kModemStateUnknown));
-
   EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&info_));
 }
 

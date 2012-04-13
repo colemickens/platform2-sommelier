@@ -162,6 +162,9 @@ void CellularCapabilityUniversal::InitProxies() {
   modem_simple_proxy_.reset(
       proxy_factory()->CreateMM1ModemSimpleProxy(cellular()->dbus_path(),
                                                  cellular()->dbus_owner()));
+  modem_proxy_->set_state_changed_callback(
+      Bind(&CellularCapabilityUniversal::OnModemStateChangedSignal,
+           weak_ptr_factory_.GetWeakPtr()));
   // Do not create a SIM proxy until the device is enabled because we
   // do not yet know the object path of the sim object.
   // TODO(jglasgow): register callbacks
@@ -187,6 +190,7 @@ void CellularCapabilityUniversal::StartModem(Error *error,
 
 void CellularCapabilityUniversal::Start_EnableModemCompleted(
     const ResultCallback &callback, const Error &error) {
+  VLOG(2) << __func__ << ": " << error;
   if (error.IsFailure()) {
     callback.Run(error);
     return;
@@ -211,16 +215,21 @@ void CellularCapabilityUniversal::Start_EnableModemCompleted(
 
 void CellularCapabilityUniversal::Start_RegisterCompleted(
     const ResultCallback &callback, const Error &error) {
+  VLOG(2) << __func__ << ": " << error;
   if (error.IsSuccess()) {
+    // Normally, running the callback is the last thing done in a method.
+    // In this case, we do it first, because we want to make sure that
+    // the device is marked as Enabled before the registration state is
+    // handled. See comment in Cellular::HandleNewRegistrationState.
+    callback.Run(error);
     // If registered, get the registration state and signal quality.
     GetRegistrationState();
     GetSignalQuality();
   } else {
     LOG(ERROR) << "registration failed: " << error;
+    // Ignore registration errors, because that just means there is no signal.
+    callback.Run(Error());
   }
-
-  // Ignore registration errors, because that just means there is no signal.
-  callback.Run(Error());
 }
 
 void CellularCapabilityUniversal::StopModem(Error *error,
@@ -325,7 +334,7 @@ void CellularCapabilityUniversal::OnServiceCreated() {
 
 void CellularCapabilityUniversal::UpdateStatus(
     const DBusPropertiesMap &properties) {
-  if (ContainsKey(properties, kPropertyIMSI)) {
+  if (ContainsKey(properties, kModemPropertyIMSI)) {
     SetHomeProvider();
   }
 }
@@ -682,6 +691,16 @@ bool CellularCapabilityUniversal::IsRegistered() {
           registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING);
 }
 
+void CellularCapabilityUniversal::SetUnregistered(bool searching) {
+  // If we're already in some non-registered state, don't override that
+  if (registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_HOME ||
+          registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING) {
+    registration_state_ =
+        (searching ? MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING :
+                     MM_MODEM_3GPP_REGISTRATION_STATE_IDLE);
+  }
+}
+
 void CellularCapabilityUniversal::RequirePIN(
     const string &pin, bool require,
     Error *error, const ResultCallback &callback) {
@@ -864,6 +883,32 @@ void CellularCapabilityUniversal::GetSignalQuality() {
 void CellularCapabilityUniversal::OnModemPropertiesChanged(
     const DBusPropertiesMap &properties,
     const vector<string> &/* invalidated_properties */) {
+  // This solves a bootstrapping problem: If the modem is not yet
+  // enabled, there are no proxy objects associated with the capability
+  // object, so modem signals like StateChanged aren't seen. By monitoring
+  // changes to the State property via the ModemManager, we're able to
+  // get the initialization process started, which will result in the
+  // creation of the proxy objects.
+  //
+  // The first time we see the change to State (when the modem state
+  // is Unknown), we simply update the state, and rely on the Manager to
+  // enable the device when it is registered with the Manager. On subsequent
+  // changes to State, we need to explicitly enable the device ourselves.
+  int32 istate;
+  if (DBusProperties::GetInt32(properties, kModemPropertyState, &istate)) {
+    Cellular::ModemState state = static_cast<Cellular::ModemState>(istate);
+    Cellular::ModemState prev_modem_state = cellular()->modem_state();
+    bool was_enabled = cellular()->IsUnderlyingDeviceEnabled();
+    if (Cellular::IsEnabledModemState(state))
+      cellular()->set_modem_state(state);
+    if (prev_modem_state != Cellular::kModemStateUnknown &&
+        prev_modem_state != Cellular::kModemStateEnabling &&
+        !was_enabled &&
+        cellular()->state() == Cellular::kStateDisabled &&
+        cellular()->IsUnderlyingDeviceEnabled()) {
+      cellular()->SetEnabled(true);
+    }
+  }
   string value;
   if (DBusProperties::GetObjectPath(properties,
                                     MM_MODEM_PROPERTY_SIM, &value))
@@ -948,6 +993,15 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
   serving_operator_.SetName(operator_name);
   UpdateOperatorInfo();
   cellular()->HandleNewRegistrationState();
+}
+
+void CellularCapabilityUniversal::OnModemStateChangedSignal(
+    int32 old_state, int32 new_state, uint32 reason) {
+  VLOG(2) << __func__ << "(" << old_state << ", " << new_state << ", "
+          << reason << ")";
+  cellular()->OnModemStateChanged(static_cast<Cellular::ModemState>(old_state),
+                                  static_cast<Cellular::ModemState>(new_state),
+                                  reason);
 }
 
 void CellularCapabilityUniversal::OnSignalQualityChanged(uint32 quality) {

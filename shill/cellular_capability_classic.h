@@ -14,6 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/cellular.h"
 #include "shill/cellular_capability.h"
 #include "shill/dbus_properties.h"
 #include "shill/modem_proxy_interface.h"
@@ -26,6 +27,19 @@ class Error;
 class EventDispatcher;
 class ProxyFactory;
 
+enum ModemClassicState {
+  kModemClassicStateUnknown = 0,
+  kModemClassicStateDisabled = 10,
+  kModemClassicStateDisabling = 20,
+  kModemClassicStateEnabling = 30,
+  kModemClassicStateEnabled = 40,
+  kModemClassicStateSearching = 50,
+  kModemClassicStateRegistered = 60,
+  kModemClassicStateDisconnecting = 70,
+  kModemClassicStateConnecting = 80,
+  kModemClassicStateConnected = 90,
+};
+
 // CellularCapabilityClassic handles modems using the
 // org.chromium.ModemManager DBUS interface.
 class CellularCapabilityClassic : public CellularCapability {
@@ -35,6 +49,7 @@ class CellularCapabilityClassic : public CellularCapability {
   static const char kConnectPropertyApnPassword[];
   static const char kConnectPropertyHomeOnly[];
   static const char kConnectPropertyPhoneNumber[];
+  static const char kModemPropertyEnabled[];
 
   // |cellular| is the parent Cellular device.
   CellularCapabilityClassic(Cellular *cellular, ProxyFactory *proxy_factory);
@@ -66,6 +81,11 @@ class CellularCapabilityClassic : public CellularCapability {
                          Error *error, const ResultCallback &callback);
 
   virtual void Scan(Error *error, const ResultCallback &callback);
+
+  virtual void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &properties,
+      const std::vector<std::string> &invalidated_properties);
 
  protected:
   // The following five methods are only ever called as
@@ -122,6 +142,8 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, Disconnect);
+  FRIEND_TEST(CellularTest, ModemStateChangeEnable);
+  FRIEND_TEST(CellularTest, ModemStateChangeDisable);
 
   void HelpRegisterDerivedBool(
       const std::string &name,
