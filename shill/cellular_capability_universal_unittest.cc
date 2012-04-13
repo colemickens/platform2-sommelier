@@ -4,6 +4,9 @@
 
 #include "shill/cellular_capability_universal.h"
 
+#include <string>
+#include <vector>
+
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -30,6 +33,7 @@
 using base::Bind;
 using base::Unretained;
 using std::string;
+using std::vector;
 using testing::InSequence;
 using testing::NiceMock;
 using testing::Return;
@@ -173,6 +177,7 @@ TEST_F(CellularCapabilityUniversalTest, StartModem) {
   EXPECT_CALL(*modem_3gpp_proxy_, Imei()).WillOnce(Return(kImei));
   EXPECT_CALL(*modem_3gpp_proxy_, RegistrationState())
       .WillOnce(Return(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN));
+  EXPECT_CALL(*modem_proxy_, OwnNumbers()).WillOnce(Return(vector<string>()));
 
   // After setup we lose pointers to the proxies, so it is hard to set
   // expectations.

@@ -465,7 +465,10 @@ void CellularCapabilityUniversal::GetProperties() {
     }
   }
   if (mdn_.empty()) {
-    // TODO(jglasgow): use OwnNumbers()
+    // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
+    vector<string> numbers = modem_proxy_->OwnNumbers();
+    if (numbers.size() > 0)
+      mdn_ = numbers[0];
   }
   GetRegistrationState();
 }
