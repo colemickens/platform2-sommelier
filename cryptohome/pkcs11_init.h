@@ -30,7 +30,8 @@ class Pkcs11Init {
                  platform_(default_platform_.get()),
                  default_process_(new chromeos::ProcessImpl),
                  process_(default_process_.get()),
-                 is_chaps_enabled_(platform_->FileExists(kChapsEnabledFile)) { }
+                 is_chaps_enabled_(!platform_->FileExists(kChapsDisabledFile)) {
+  }
   virtual ~Pkcs11Init() { }
 
   virtual void GetTpmTokenInfo(gchar **OUT_label,
@@ -119,7 +120,7 @@ class Pkcs11Init {
   static const char* kSensitiveTokenFiles[];
 
   static const char* kPkcs11InitializedFile;
-  static const char* kChapsEnabledFile;
+  static const char* kChapsDisabledFile;
 
  private:
   // Set the PIN on |slot_id| for user |user| to |new_pin| of length

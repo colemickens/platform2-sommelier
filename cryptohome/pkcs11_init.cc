@@ -64,7 +64,7 @@ const char* Pkcs11Init::kPkcs11InitializedFile =
     "/home/chronos/user/.tpm/.isinitialized";
 
 // This file enables chaps in place of opencryptoki.
-const char* Pkcs11Init::kChapsEnabledFile = "/home/chronos/.enable_chaps";
+const char* Pkcs11Init::kChapsDisabledFile = "/home/chronos/.disable_chaps";
 
 extern const char* kTpmOwnedFile;
 extern const char kDefaultSharedUser[];
