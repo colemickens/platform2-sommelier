@@ -5,6 +5,7 @@
 #include "vpn-manager/ipsec_manager.h"
 
 #include <grp.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -45,9 +46,10 @@ const char kIpsecUpFile[] = "/var/run/ipsec/up";
 const char kIpsecServiceName[] = "ipsec";
 const char kStarterPidFile[] = "/var/run/starter.pid";
 const char kPlutoPidFile[] = "/var/run/pluto.pid";
-const mode_t kIpsecRunPathMode = (S_IRUSR | S_IWUSR | S_IXUSR |
-                                  S_IRGRP | S_IWGRP | S_IXGRP);
+const mode_t kIpsecRunPathMode = S_IRWXU | S_IRWXG;
 const char kStatefulContainer[] = "/mnt/stateful_partition/etc";
+const mode_t kStatefulContainerMode =
+    S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 const char kIpsecAuthenticationFailurePattern[] =
     "*discarding duplicate packet*STATE_MAIN_I3*";
 
@@ -332,8 +334,20 @@ bool IpsecManager::WriteConfigFiles() {
   // because pluto loses permissions to /home/chronos before it tries
   // reading secrets. Ditto for CA certs.
   // TODO(kmixter): write this via a fifo.
-  FilePath secrets_path_ = FilePath(stateful_container_).
-      Append("ipsec.secrets");
+  FilePath container_path(stateful_container_);
+  if (!file_util::CreateDirectory(container_path)) {
+    LOG(ERROR) << "Unable to create container directory "
+               << container_path.value();
+    return false;
+  }
+
+  if (chmod(container_path.value().c_str(), kStatefulContainerMode) != 0) {
+    PLOG(ERROR) << "Unable to change permissions of container directory "
+                << container_path.value();
+    return false;
+  }
+
+  FilePath secrets_path_ = container_path.Append("ipsec.secrets");
   file_util::Delete(secrets_path_, false);
   std::string formatted_secrets;
   if (!FormatSecrets(&formatted_secrets)) {
@@ -354,8 +368,7 @@ bool IpsecManager::WriteConfigFiles() {
     LOG(ERROR) << "Unable to write ipsec config files";
     return false;
   }
-  FilePath config_symlink_path = FilePath(stateful_container_).
-      Append("ipsec.conf");
+  FilePath config_symlink_path = container_path.Append("ipsec.conf");
   // Use unlink to remove the symlink directly since file_util::Delete
   // cannot delete dangling symlinks.
   unlink(config_symlink_path.value().c_str());
@@ -374,8 +387,7 @@ bool IpsecManager::WriteConfigFiles() {
   }
 
   if (!server_ca_file_.empty()) {
-    FilePath target_ca_path = FilePath(stateful_container_).
-        Append("cacert.der");
+    FilePath target_ca_path = container_path.Append("cacert.der");
     unlink(target_ca_path.value().c_str());
     if (file_util::PathExists(target_ca_path)) {
       LOG(ERROR) << "Unable to delete old CA cert";
