@@ -99,14 +99,15 @@ int RunCommand(const string& command) {
 
 // Open a file and read it's contents into a string.
 // return "" on error.
-bool ReadFileToString(const string& path, string* contents)
-{
+bool ReadFileToString(const string& path, string* contents) {
   string result;
 
   int fd = open(path.c_str(), O_RDONLY);
 
-  if (fd == -1)
+  if (fd == -1) {
+    printf("ReadFileToString failed to open %s\n", path.c_str());
     return false;
+  }
 
   ssize_t buff_in;
   char buff[512];
@@ -123,6 +124,28 @@ bool ReadFileToString(const string& path, string* contents)
 
   *contents = result;
   return true;
+}
+
+
+// Open a file and write the contents of an ASCII string into it.
+// return "" on error.
+bool WriteStringToFile(const string& contents, const string& path) {
+  int fd = open(path.c_str(),
+                O_WRONLY  | O_CREAT | O_TRUNC,
+                S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+  if (fd == -1) {
+    printf("WriteFileToString failed to open %s\n", path.c_str());
+    return false;
+  }
+
+  bool success = (write(fd, contents.c_str(), contents.size()) ==
+                  (int)contents.size());
+
+  if (close(fd) != 0)
+    return false;
+
+  return success;
 }
 
 // Look up a keyed value from a /etc/lsb-release formatted file.
@@ -288,6 +311,33 @@ bool Touch(const string& filename) {
     return false;
 
   return (close(fd) == 0);
+}
+
+// Replace the first instance of pattern in the file with value.
+bool ReplaceInFile(const string& pattern,
+                   const string& value,
+                   const string& path) {
+  string contents;
+
+  if (!ReadFileToString(path, &contents))
+    return false;
+
+  // Modify contents
+  size_t offset = contents.find(pattern);
+
+  if (offset == string::npos) {
+    printf("ReplaceInFile failed to find '%s' in %s\n",
+           pattern.c_str(),
+           path.c_str());
+    return false;
+  }
+
+  contents.replace(offset, pattern.length(), value);
+
+  if (!WriteStringToFile(contents, path))
+    return false;
+
+  return true;
 }
 
 bool R10FileSystemPatch(const string& dev_name) {

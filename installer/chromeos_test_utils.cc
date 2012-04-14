@@ -82,6 +82,39 @@ void TestReadFileToString(const string &file,
   }
 }
 
+void TestWriteStringToFile(const string &contents,
+                           const string &file,
+                           bool expected_success) {
+  bool result_success = WriteStringToFile(contents, file);
+
+  if (result_success != expected_success) {
+    printf("WriteStringToFile(%s, %s) '%s' != %s\n",
+           contents.c_str(),
+           file.c_str(),
+           result_success ? "success" : "failure",
+           expected_success ? "success" : "failure");
+    exit(1);
+  }
+
+  if (!expected_success)
+    return;
+
+  string result_string;
+  result_success = ReadFileToString(file, &result_string);
+
+  if (!result_success) {
+    printf("TestWriteStringToFile failed to read %s\n", file.c_str());
+    exit(1);
+  }
+
+  if (result_string != contents) {
+    printf("TestWriteStringToFile contents mismatch '%s' != '%s'\n",
+           result_string.c_str(),
+           contents.c_str());
+    exit(1);
+  }
+}
+
 void TestLsb(const string &file,
              const string &key,
              bool expected_success,
@@ -161,6 +194,39 @@ void TestTouch(const string &filename) {
   }
 }
 
+void TestReplaceInFile(const string& pattern,
+                       const string& value,
+                       const string& path,
+                       const string& source_contents,
+                       bool expected_success,
+                       const string& expected_string) {
+  // If the write fails, we ignore it and test to see if the replace fails
+  // when it can't open the file in question.
+  WriteStringToFile(source_contents, path);
+
+  if (ReplaceInFile(pattern, value, path) != expected_success) {
+    printf("ReplaceInFile result wasn't %s as expected\n",
+           expected_success ? "Success" : "Failure");
+    exit(1);
+  }
+
+  if (!expected_success) {
+    return;
+  }
+
+  string result_string;
+  if (!ReadFileToString(path, &result_string)) {
+    exit(1);
+  }
+
+  if (result_string != expected_string) {
+    printf("ReplaceInFile result '%s' was not: '%s'\n",
+           result_string.c_str(),
+           expected_string.c_str());
+    exit(1);
+  }
+}
+
 void TestRemovePackFiles(const string &dirname) {
   bool result = RemovePackFiles(dirname);
   if (!result) {
@@ -217,6 +283,25 @@ void Test() {
   TestReadFileToString("lsb-release-test.txt", true, LSB_CONTENTS);
   TestReadFileToString("LICENSE", true, NULL);
 
+  TestWriteStringToFile("fuzzy",
+                        "/tmp",
+                        false);
+
+  TestWriteStringToFile("fuzzy",
+                        "/fuzzy/wuzzy",
+                        false);
+
+  TestWriteStringToFile("fuzzy",
+                        "/tmp/fuzzy",
+                        true);
+
+  TestWriteStringToFile("foobar",
+                        "/tmp/fuzzy",
+                        true);
+
+  // Cleanup temp files
+  unlink("/tmp/fuzzy");
+
   TestLsb("bogus",
           "CHROMEOS_RELEASE_BOARD",
           false, NULL);
@@ -229,6 +314,44 @@ void Test() {
   TestLsb("lsb-release-test.txt",
           "CHROMEOS_AUSERVER",
           true, "http://blah.blah:8080/update");
+
+  TestReplaceInFile("was",
+                    "wuz",
+                    "/fuzzy/wuzzy",  // doesn't exist, can't be created
+                    "Fuzzy Wuzzy was a lamb",
+                    false,
+                    "Fuzzy Wuzzy wuz a lamb");
+
+  TestReplaceInFile("was",
+                    "wuz",
+                    "/tmp/fuzzy",
+                    "Fuzzy Wuzzy was a lamb",
+                    true,
+                    "Fuzzy Wuzzy wuz a lamb");
+
+  TestReplaceInFile("wasn't",
+                    "wuz",
+                    "/tmp/fuzzy",
+                    "Fuzzy Wuzzy wasn't a lamb",
+                    true,
+                    "Fuzzy Wuzzy wuz a lamb");
+
+  TestReplaceInFile("AFuzzy",
+                    "Fuzzy",
+                    "/tmp/fuzzy",
+                    "AFuzzy Wuzzy wuz a lamb",
+                    true,
+                    "Fuzzy Wuzzy wuz a lamb");
+
+  TestReplaceInFile("lam",
+                    "lamb",
+                    "/tmp/fuzzy",
+                    "Fuzzy Wuzzy wuz a lam",
+                    true,
+                    "Fuzzy Wuzzy wuz a lamb");
+
+  // Cleanup temp files
+  unlink("/tmp/fuzzy");
 
   TestGetBlockDevFromPartitionDev("/dev/sda3", "/dev/sda");
   TestGetBlockDevFromPartitionDev("/dev/sda321", "/dev/sda");

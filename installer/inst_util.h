@@ -25,6 +25,8 @@ int RunCommand(const std::string& command);
 
 bool ReadFileToString(const std::string& path, std::string* contents);
 
+bool WriteStringToFile(const std::string& contents, const std::string& path);
+
 bool LsbReleaseValue(const std::string& file,
                      const std::string& key,
                      std::string* result);
@@ -47,6 +49,14 @@ bool RemovePackFiles(const std::string& dirname);
 
 // Create an empty file
 bool Touch(const std::string& filename);
+
+// Copies a single file.
+bool CopyFile(const std::string& from_path, const std::string& to_path);
+
+// Replace the first instance of pattern in the file with value.
+bool ReplaceInFile(const std::string& pattern,
+                   const std::string& value,
+                   const std::string& path);
 
 // See bug chromium-os:11517. This fixes an old FS corruption problem.
 bool R10FileSystemPatch(const std::string& dev_name);
