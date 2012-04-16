@@ -41,6 +41,7 @@
 #include "shill/wifi.h"
 
 using base::Bind;
+using base::StringPrintf;
 using base::Unretained;
 using std::map;
 using std::string;
@@ -50,25 +51,18 @@ namespace shill {
 
 // static
 const char DeviceInfo::kInterfaceUevent[] = "/sys/class/net/%s/uevent";
-// static
 const char DeviceInfo::kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
-// static
+const char DeviceInfo::kInterfaceDevice[] = "/sys/class/net/%s/device";
 const char DeviceInfo::kInterfaceDriver[] = "/sys/class/net/%s/device/driver";
-// static
 const char DeviceInfo::kInterfaceTunFlags[] = "/sys/class/net/%s/tun_flags";
-// static
 const char DeviceInfo::kInterfaceType[] = "/sys/class/net/%s/type";
-// static
 const char DeviceInfo::kLoopbackDeviceName[] = "lo";
-// static
+const char DeviceInfo::kDriverCdcEther[] = "cdc_ether";
 const char *DeviceInfo::kModemDrivers[] = {
     "gobi",
     "QCUSBNet2k",
-    "GobiNet",
-    "cdc_ether",
-    NULL
+    "GobiNet"
 };
-// static
 const char DeviceInfo::kTunDeviceName[] = "/dev/net/tun";
 
 DeviceInfo::DeviceInfo(ControlInterface *control_interface,
@@ -140,6 +134,7 @@ void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
   }
 }
 
+// static
 Technology::Identifier DeviceInfo::GetDeviceTechnology(
     const string &iface_name) {
   FilePath uevent_file(StringPrintf(kInterfaceUevent, iface_name.c_str()));
@@ -150,11 +145,9 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     return Technology::kUnknown;
   }
 
-  /*
-   * If the "uevent" file contains the string "DEVTYPE=wlan\n" at the
-   * start of the file or after a newline, we can safely assume this
-   * is a wifi device.
-   */
+  // If the "uevent" file contains the string "DEVTYPE=wlan\n" at the
+  // start of the file or after a newline, we can safely assume this
+  // is a wifi device.
   if (contents.find(kInterfaceUeventWifiSignature) != string::npos) {
     VLOG(2) << StringPrintf("%s: device %s has wifi signature in uevent file",
                             __func__, iface_name.c_str());
@@ -198,11 +191,9 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   }
 
   string driver_name(driver_path.BaseName().value());
-  // See if driver for this interface is in a list of known modem driver names
-  for (int modem_idx = 0; kModemDrivers[modem_idx] != NULL; ++modem_idx) {
-    // TODO(ers): should have additional checks to make sure a cdc_ether
-    // device is really a modem. flimflam uses udev to make such checks,
-    // looking to see whether a ttyACM or ttyUSB device is associated.
+  // See if driver for this interface is in a list of known modem driver names.
+  for (size_t modem_idx = 0; modem_idx < arraysize(kModemDrivers);
+       ++modem_idx) {
     if (driver_name == kModemDrivers[modem_idx]) {
       VLOG(2) << StringPrintf("%s: device %s is matched with modem driver %s",
                               __func__, iface_name.c_str(),
@@ -211,9 +202,79 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     }
   }
 
+  // For cdc_ether devices, make sure it's a modem because this driver
+  // can be used for other ethernet devices.
+  if (driver_name == kDriverCdcEther &&
+      IsCdcEtherModemDevice(iface_name)) {
+    VLOG(2) << StringPrintf("%s: device %s is a modem cdc_ether device",
+                            __func__, iface_name.c_str());
+    return Technology::kCellular;
+  }
+
   VLOG(2) << StringPrintf("%s: device %s is defaulted to type ethernet",
                           __func__, iface_name.c_str());
   return Technology::kEthernet;
+}
+
+// static
+bool DeviceInfo::IsCdcEtherModemDevice(const std::string &iface_name) {
+  // A cdc_ether device is a modem device if it also exposes tty interfaces.
+  // To determine this, we look for the existence of the tty interface in the
+  // USB device sysfs tree.
+  //
+  // A typical sysfs dir hierarchy for a cdc_ether modem USB device is as
+  // follows:
+  //
+  //   /sys/devices/pci0000:00/0000:00:1d.7/usb1/1-2
+  //     1-2:1.0
+  //       tty
+  //         ttyACM0
+  //     1-2:1.1
+  //       net
+  //         usb0
+  //     1-2:1.2
+  //       tty
+  //         ttyACM1
+  //       ...
+  //
+  // /sys/class/net/usb0/device symlinks to
+  // /sys/devices/pci0000:00/0000:00:1d.7/usb1/1-2/1-2:1.1
+
+  FilePath device_file(StringPrintf(kInterfaceDevice, iface_name.c_str()));
+  FilePath device_path;
+  if (!file_util::ReadSymbolicLink(device_file, &device_path)) {
+    VLOG(2) << StringPrintf("%s: device %s has no device symlink",
+                            __func__, iface_name.c_str());
+    return false;
+  }
+  if (!device_path.IsAbsolute()) {
+    device_path = device_file.DirName().Append(device_path);
+    file_util::AbsolutePath(&device_path);
+  }
+
+  // Look for tty interface by enumerating all directories under the parent
+  // USB device and seeing if there's a subdirectory "tty" inside of the
+  // enumerated directory.  In other words, using the example dir hierarchy
+  // above, find /sys/devices/pci0000:00/0000:00:1d.7/usb1/1-2/1-2*/tty.
+  // If this exists, then this is a modem device.
+  FilePath usb_device_path(device_path.DirName());
+  string search_pattern(usb_device_path.BaseName().MaybeAsASCII() + "*");
+  return IsGrandchildSubdir(usb_device_path, search_pattern, "tty");
+}
+
+// static
+bool DeviceInfo::IsGrandchildSubdir(const FilePath &base_dir,
+                                    const string &children_filter,
+                                    const string &grandchild) {
+  file_util::FileEnumerator dir_enum(base_dir, false,
+                                     file_util::FileEnumerator::DIRECTORIES,
+                                     children_filter);
+  for (FilePath curr_dir = dir_enum.Next(); !curr_dir.empty();
+       curr_dir = dir_enum.Next()) {
+    if (file_util::DirectoryExists(curr_dir.Append(grandchild)))
+      return true;
+  }
+  return false;
 }
 
 void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {

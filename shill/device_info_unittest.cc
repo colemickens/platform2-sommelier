@@ -10,9 +10,11 @@
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <linux/rtnetlink.h>
 
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop.h>
+#include <base/scoped_temp_dir.h>
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -320,6 +322,34 @@ TEST_F(DeviceInfoTest, AddLoopbackDevice) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(kTestDeviceIndex,
                                                IFF_UP, IFF_UP));
   SendMessageToDeviceInfo(*message);
+}
+
+TEST_F(DeviceInfoTest, GrandchildSubdir) {
+  device_info_.Start();
+  ScopedTempDir temp_dir;
+  EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
+  EXPECT_TRUE(file_util::CreateDirectory(temp_dir.path().Append("child11")));
+  EXPECT_TRUE(file_util::CreateDirectory(temp_dir.path().Append("child12")));
+  FilePath child21 = temp_dir.path().Append("child21");
+  EXPECT_TRUE(file_util::CreateDirectory(child21));
+  FilePath grandchild = child21.Append("grandchild");
+  EXPECT_TRUE(file_util::CreateDirectory(grandchild));
+  EXPECT_TRUE(file_util::CreateDirectory(grandchild.Append("greatgrandchild")));
+  EXPECT_TRUE(DeviceInfo::IsGrandchildSubdir(temp_dir.path(),
+                                             "*",
+                                             "grandchild"));
+  EXPECT_FALSE(DeviceInfo::IsGrandchildSubdir(temp_dir.path(),
+                                              "*",
+                                              "nonexistent"));
+  EXPECT_FALSE(DeviceInfo::IsGrandchildSubdir(temp_dir.path(),
+                                              "child1*",
+                                              "grandchild"));
+  EXPECT_TRUE(DeviceInfo::IsGrandchildSubdir(temp_dir.path(),
+                                             "child2*",
+                                             "grandchild"));
+  EXPECT_FALSE(DeviceInfo::IsGrandchildSubdir(temp_dir.path(),
+                                              "*",
+                                              "greatgrandchild"));
 }
 
 }  // namespace shill

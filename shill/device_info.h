@@ -21,6 +21,8 @@
 #include "shill/rtnl_listener.h"
 #include "shill/technology.h"
 
+class FilePath;
+
 namespace shill {
 
 class Manager;
@@ -76,6 +78,7 @@ class DeviceInfo {
   friend class DeviceInfoTest;
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(DeviceInfoTest, AddLoopbackDevice);  // For kLoopbackDeviceName.
+  FRIEND_TEST(DeviceInfoTest, GrandchildSubdir);  // For IsGrandChildSubdir.
 
   struct Info {
     Info() : flags(0) {}
@@ -86,17 +89,41 @@ class DeviceInfo {
     unsigned int flags;
   };
 
+  // Sysfs path to a device uevent file.
   static const char kInterfaceUevent[];
+  // Content of a device uevent file that indicates it is a wifi device.
   static const char kInterfaceUeventWifiSignature[];
+  // Sysfs path to a device via its interface name.
+  static const char kInterfaceDevice[];
+  // Sysfs path to the driver of a device via its interface name.
   static const char kInterfaceDriver[];
+  // Sysfs path to the file that is used to determine if this is tun device.
   static const char kInterfaceTunFlags[];
+  // Sysfs path to the file that is used to determine if a wifi device is
+  // operating in monitor mode.
   static const char kInterfaceType[];
+  // Name of the interface for the loopback device.
   static const char kLoopbackDeviceName[];
+  // Name of the "cdc_ether" driver.  This driver is not included in the
+  // kModemDrivers list because we need to do additional checking.
+  static const char kDriverCdcEther[];
+  // Modem drivers that we support.
   static const char *kModemDrivers[];
+  // Path to the tun device.
   static const char kTunDeviceName[];
 
   static Technology::Identifier GetDeviceTechnology(
-      const std::string &face_name);
+      const std::string &iface_name);
+  // Checks the device specified by |iface_name| to see if it's a modem device.
+  // This method assumes that |iface_name| has already been determined to be
+  // using the cdc_ether driver.
+  static bool IsCdcEtherModemDevice(const std::string &iface_name);
+  // Returns true if |grandchild| is a grandchild of the |base_dir|.
+  // This method only searches for |grandchild| in children specified by
+  // the regex in |children_filter|.
+  static bool IsGrandchildSubdir(const FilePath &base_dir,
+                                 const std::string &children_filter,
+                                 const std::string &grandchild);
 
   void AddLinkMsgHandler(const RTNLMessage &msg);
   void DelLinkMsgHandler(const RTNLMessage &msg);
