@@ -822,7 +822,7 @@ void Service::UnloadEapCredentials() {
   eap_.key_id = "";
   eap_.ca_cert = "";
   eap_.ca_cert_id = "";
-  eap_.use_system_cas = false;
+  eap_.use_system_cas = true;
   eap_.pin = "";
   eap_.password = "";
   eap_.key_management = "";

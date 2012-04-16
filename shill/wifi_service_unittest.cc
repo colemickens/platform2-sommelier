@@ -811,6 +811,7 @@ TEST_F(WiFiServiceTest, Populate8021x) {
                                               false);
   Service::EapCredentials eap;
   eap.identity = "testidentity";
+  eap.pin = "xxxx";
   service->set_eap(eap);
   map<string, ::DBus::Variant> params;
   service->Populate8021xProperties(&params);
@@ -819,6 +820,67 @@ TEST_F(WiFiServiceTest, Populate8021x) {
                           wpa_supplicant::kNetworkPropertyEapIdentity));
   EXPECT_FALSE(ContainsKey(params,
                            wpa_supplicant::kNetworkPropertyEapKeyId));
+  // Test that CA path is set by default.
+  EXPECT_TRUE(ContainsKey(params,
+                          wpa_supplicant::kNetworkPropertyCaPath));
+  // Test that hardware-backed security arguments are not set.
+  EXPECT_FALSE(ContainsKey(params,
+                           wpa_supplicant::kNetworkPropertyEapPin));
+  EXPECT_FALSE(ContainsKey(params,
+                           wpa_supplicant::kNetworkPropertyEngine));
+  EXPECT_FALSE(ContainsKey(params,
+                           wpa_supplicant::kNetworkPropertyEngineId));
+}
+
+TEST_F(WiFiServiceTest, Populate8021xNoSystemCAs) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              metrics(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityNone,
+                                              false);
+  Service::EapCredentials eap;
+  eap.identity = "testidentity";
+  eap.use_system_cas = false;
+  service->set_eap(eap);
+  map<string, ::DBus::Variant> params;
+  service->Populate8021xProperties(&params);
+  // Test that CA path is not set if use_system_cas is explicitly false.
+  EXPECT_FALSE(ContainsKey(params,
+                           wpa_supplicant::kNetworkPropertyCaPath));
+}
+
+TEST_F(WiFiServiceTest, Populate8021xUsingHardwareAuth) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              metrics(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityNone,
+                                              false);
+  Service::EapCredentials eap;
+  eap.identity = "testidentity";
+  eap.key_id = "key_id";
+  eap.pin = "xxxx";
+  service->set_eap(eap);
+  map<string, ::DBus::Variant> params;
+  service->Populate8021xProperties(&params);
+  // Test that EAP engine parameters set if key_id is set.
+  EXPECT_TRUE(ContainsKey(params,
+                          wpa_supplicant::kNetworkPropertyEapPin));
+  EXPECT_TRUE(ContainsKey(params,
+                           wpa_supplicant::kNetworkPropertyEapKeyId));
+  EXPECT_TRUE(ContainsKey(params,
+                          wpa_supplicant::kNetworkPropertyEngine));
+  EXPECT_TRUE(ContainsKey(params,
+                          wpa_supplicant::kNetworkPropertyEngineId));
 }
 
 TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {

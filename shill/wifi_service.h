@@ -116,6 +116,8 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
   FRIEND_TEST(WiFiServiceTest, Populate8021x);
+  FRIEND_TEST(WiFiServiceTest, Populate8021xNoSystemCAs);
+  FRIEND_TEST(WiFiServiceTest, Populate8021xUsingHardwareAuth);
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
 
   static const char kAutoConnBusy[];

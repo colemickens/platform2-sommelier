@@ -740,7 +740,7 @@ bool WiFiService::Is8021x() const {
 void WiFiService::Populate8021xProperties(
     std::map<string, DBus::Variant> *params) {
   typedef std::pair<const char *, const char *> KeyVal;
-  KeyVal propertyvals[] = {
+  KeyVal init_propertyvals[] = {
     KeyVal(wpa_supplicant::kNetworkPropertyEapIdentity, eap().identity.c_str()),
     KeyVal(wpa_supplicant::kNetworkPropertyEapEap, eap().eap.c_str()),
     KeyVal(wpa_supplicant::kNetworkPropertyEapInnerEap,
@@ -760,17 +760,39 @@ void WiFiService::Populate8021xProperties(
     KeyVal(wpa_supplicant::kNetworkPropertyEapKeyId, eap().key_id.c_str()),
     KeyVal(wpa_supplicant::kNetworkPropertyEapCaCertId,
            eap().ca_cert_id.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapPin, eap().pin.c_str()),
     // TODO(gauravsh): Support getting CA certificates out of the NSS certdb.
     //                 crosbug.com/25663
-    KeyVal(wpa_supplicant::kNetworkPropertyCaPath, wpa_supplicant::kCaPath)
   };
 
-  DBus::MessageIter writer;
-  for (size_t i = 0; i < arraysize(propertyvals); ++i) {
-    if (strlen(propertyvals[i].second) > 0) {
-      (*params)[propertyvals[i].first].writer().
-          append_string(propertyvals[i].second);
+  vector<KeyVal> propertyvals(init_propertyvals,
+                              init_propertyvals + arraysize(init_propertyvals));
+  if (eap().use_system_cas) {
+    propertyvals.push_back(KeyVal(
+        wpa_supplicant::kNetworkPropertyCaPath, wpa_supplicant::kCaPath));
+  } else if (eap().ca_cert.empty()) {
+      LOG(WARNING) << __func__
+                   << ": No certificate authorities are configured."
+                   << " Server certificates will be accepted"
+                   << " unconditionally.";
+  }
+
+  if (!eap().cert_id.empty() || !eap().key_id.empty() ||
+      !eap().ca_cert_id.empty()) {
+    propertyvals.push_back(KeyVal(
+        wpa_supplicant::kNetworkPropertyEapPin, eap().pin.c_str()));
+    propertyvals.push_back(KeyVal(
+        wpa_supplicant::kNetworkPropertyEngineId,
+        wpa_supplicant::kEnginePKCS11));
+    // We can't use the propertyvals vector for this since this argument
+    // is a uint32, not a string.
+    (*params)[wpa_supplicant::kNetworkPropertyEngine].writer().
+        append_uint32(wpa_supplicant::kDefaultEngine);
+  }
+
+  vector<KeyVal>::iterator it;
+  for (it = propertyvals.begin(); it != propertyvals.end(); ++it) {
+    if (strlen((*it).second) > 0) {
+      (*params)[(*it).first].writer().append_string((*it).second);
     }
   }
 }

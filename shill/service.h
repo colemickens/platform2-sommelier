@@ -111,7 +111,7 @@ class Service : public base::RefCounted<Service> {
     kStateOnline
   };
   struct EapCredentials {
-    EapCredentials() : use_system_cas(false) {}
+    EapCredentials() : use_system_cas(true) {}
     std::string identity;
     std::string eap;
     std::string inner_eap;

@@ -143,12 +143,13 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
           wpa_supplicant::kDBusPath, wpa_supplicant::kDBusAddr));
   try {
     map<string, DBus::Variant> create_interface_args;
-    create_interface_args["Ifname"].writer().
+    create_interface_args[wpa_supplicant::kInterfacePropertyName].writer().
         append_string(link_name().c_str());
-    create_interface_args["Driver"].writer().
+    create_interface_args[wpa_supplicant::kInterfacePropertyDriver].writer().
         append_string(wpa_supplicant::kDriverNL80211);
-    // TODO(quiche) create_interface_args["ConfigFile"].writer().append_string
-    // (file with pkcs config info)
+    create_interface_args[
+        wpa_supplicant::kInterfacePropertyConfigFile].writer().
+        append_string(SCRIPTDIR "/wpa_supplicant.conf");
     interface_path =
         supplicant_process_proxy_->CreateInterface(create_interface_args);
   } catch (const DBus::Error e) {  // NOLINT
