@@ -20,9 +20,10 @@ class MockManager : public Manager {
               GLib *glib);
   virtual ~MockManager();
 
-  MOCK_METHOD0(device_info, DeviceInfo*(void));
-  MOCK_METHOD0(mutable_store, PropertyStore*(void));
-  MOCK_CONST_METHOD0(store, const PropertyStore&(void));
+  MOCK_METHOD0(device_info, DeviceInfo *());
+  MOCK_METHOD0(mutable_store, PropertyStore *());
+  MOCK_CONST_METHOD0(store, const PropertyStore &());
+  MOCK_CONST_METHOD0(run_path, const FilePath &());
   MOCK_METHOD0(Start, void());
   MOCK_METHOD1(HasService, bool(const ServiceRefPtr &to_manage));
   MOCK_METHOD1(RegisterService, void(const ServiceRefPtr &to_manage));

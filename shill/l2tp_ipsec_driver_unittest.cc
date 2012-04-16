@@ -4,6 +4,8 @@
 
 #include "shill/l2tp_ipsec_driver.h"
 
+#include <base/file_util.h>
+#include <base/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
@@ -11,7 +13,16 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_nss.h"
 #include "shill/mock_vpn_service.h"
+
+using std::find;
+using std::string;
+using std::vector;
+using testing::_;
+using testing::ElementsAreArray;
+using testing::Return;
+using testing::ReturnRef;
 
 namespace shill {
 
@@ -19,13 +30,32 @@ class L2TPIPSecDriverTest : public testing::Test {
  public:
   L2TPIPSecDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_, &glib_),
-        driver_(new L2TPIPSecDriver()),
+        driver_(new L2TPIPSecDriver(&manager_)),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
-                                    &manager_, driver_)) {}
+                                    &manager_, driver_)) {
+    driver_->nss_ = &nss_;
+  }
 
   virtual ~L2TPIPSecDriverTest() {}
 
+  virtual void SetUp() {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  }
+
+  virtual void TearDown() {
+    ASSERT_TRUE(temp_dir_.Delete());
+  }
+
  protected:
+  void SetArg(const string &arg, const string &value) {
+    driver_->args_.SetString(arg, value);
+  }
+
+  // Used to assert that a flag appears in the options.
+  void ExpectInFlags(const vector<string> &options, const string &flag,
+                     const string &value);
+
+  ScopedTempDir temp_dir_;
   NiceMockControl control_;
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
@@ -33,10 +63,185 @@ class L2TPIPSecDriverTest : public testing::Test {
   MockManager manager_;
   L2TPIPSecDriver *driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
+  MockNSS nss_;
 };
+
+void L2TPIPSecDriverTest::ExpectInFlags(
+    const vector<string> &options, const string &flag, const string &value) {
+  vector<string>::const_iterator it =
+      find(options.begin(), options.end(), flag);
+
+  EXPECT_TRUE(it != options.end());
+  if (it != options.end())
+    return;  // Don't crash below.
+  it++;
+  EXPECT_TRUE(it != options.end());
+  if (it != options.end())
+    return;  // Don't crash below.
+  EXPECT_EQ(value, *it);
+}
 
 TEST_F(L2TPIPSecDriverTest, GetProviderType) {
   EXPECT_EQ(flimflam::kProviderL2tpIpsec, driver_->GetProviderType());
+}
+
+TEST_F(L2TPIPSecDriverTest, Cleanup) {
+  driver_->Cleanup();  // Ensure no crash.
+
+  FilePath psk_file;
+  EXPECT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir_.path(), &psk_file));
+  EXPECT_FALSE(psk_file.empty());
+  EXPECT_TRUE(file_util::PathExists(psk_file));
+  driver_->psk_file_ = psk_file;
+  driver_->Cleanup();
+  EXPECT_FALSE(file_util::PathExists(psk_file));
+  EXPECT_TRUE(driver_->psk_file_.empty());
+}
+
+TEST_F(L2TPIPSecDriverTest, InitOptionsNoHost) {
+  Error error;
+  vector<string> options;
+  driver_->InitOptions(&options, &error);
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_TRUE(options.empty());
+}
+
+TEST_F(L2TPIPSecDriverTest, InitOptions) {
+  static const char kHost[] = "192.168.2.254";
+  static const char kCaCertNSS[] = "{1234}";
+  static const char kPSK[] = "foobar";
+
+  SetArg(flimflam::kProviderHostProperty, kHost);
+  SetArg(flimflam::kL2tpIpsecCaCertNssProperty, kCaCertNSS);
+  SetArg(flimflam::kL2tpIpsecPskProperty, kPSK);
+
+  FilePath empty_cert;
+  EXPECT_CALL(nss_, GetDERCertfile(kCaCertNSS, _)).WillOnce(Return(empty_cert));
+
+  const FilePath temp_dir(temp_dir_.path());
+  EXPECT_CALL(manager_, run_path()).WillOnce(ReturnRef(temp_dir));
+
+  Error error;
+  vector<string> options;
+  driver_->InitOptions(&options, &error);
+  EXPECT_TRUE(error.IsSuccess());
+
+  ExpectInFlags(options, "--remote_host", kHost);
+  ASSERT_FALSE(driver_->psk_file_.empty());
+  ExpectInFlags(options, "--psk_file", driver_->psk_file_.value());
+}
+
+TEST_F(L2TPIPSecDriverTest, InitPSKOptions) {
+  Error error;
+  vector<string> options;
+  static const char kPSK[] = "foobar";
+  const FilePath bad_dir("/non/existent/directory");
+  const FilePath temp_dir(temp_dir_.path());
+  EXPECT_CALL(manager_, run_path())
+      .WillOnce(ReturnRef(bad_dir))
+      .WillOnce(ReturnRef(temp_dir));
+
+  EXPECT_TRUE(driver_->InitPSKOptions(&options, &error));
+  EXPECT_TRUE(options.empty());
+  EXPECT_TRUE(error.IsSuccess());
+
+  SetArg(flimflam::kL2tpIpsecPskProperty, kPSK);
+
+  EXPECT_FALSE(driver_->InitPSKOptions(&options, &error));
+  EXPECT_TRUE(options.empty());
+  EXPECT_EQ(Error::kInternalError, error.type());
+  error.Reset();
+
+  EXPECT_TRUE(driver_->InitPSKOptions(&options, &error));
+  ASSERT_FALSE(driver_->psk_file_.empty());
+  ExpectInFlags(options, "--psk_file", driver_->psk_file_.value());
+  EXPECT_TRUE(error.IsSuccess());
+  string contents;
+  EXPECT_TRUE(
+      file_util::ReadFileToString(driver_->psk_file_, &contents));
+  EXPECT_EQ(kPSK, contents);
+  struct stat buf;
+  ASSERT_EQ(0, stat(driver_->psk_file_.value().c_str(), &buf));
+  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, buf.st_mode);
+}
+
+TEST_F(L2TPIPSecDriverTest, InitNSSOptions) {
+  static const char kHost[] = "192.168.2.254";
+  static const char kCaCertNSS[] = "{1234}";
+  static const char kNSSCertfile[] = "/tmp/nss-cert";
+  FilePath empty_cert;
+  FilePath nss_cert(kNSSCertfile);
+  SetArg(flimflam::kProviderHostProperty, kHost);
+  SetArg(flimflam::kL2tpIpsecCaCertNssProperty, kCaCertNSS);
+  EXPECT_CALL(nss_,
+              GetDERCertfile(kCaCertNSS,
+                             ElementsAreArray(kHost, arraysize(kHost) - 1)))
+      .WillOnce(Return(empty_cert))
+      .WillOnce(Return(nss_cert));
+
+  vector<string> options;
+  driver_->InitNSSOptions(&options);
+  EXPECT_TRUE(options.empty());
+  driver_->InitNSSOptions(&options);
+  ExpectInFlags(options, "--server_ca_file", kNSSCertfile);
+}
+
+TEST_F(L2TPIPSecDriverTest, AppendValueOption) {
+  static const char kOption[] = "--l2tpipsec-option";
+  static const char kProperty[] = "L2TPIPSec.SomeProperty";
+  static const char kValue[] = "some-property-value";
+  static const char kOption2[] = "--l2tpipsec-option2";
+  static const char kProperty2[] = "L2TPIPSec.SomeProperty2";
+  static const char kValue2[] = "some-property-value2";
+
+  vector<string> options;
+  EXPECT_FALSE(
+      driver_->AppendValueOption(
+          "L2TPIPSec.UnknownProperty", kOption, &options));
+  EXPECT_TRUE(options.empty());
+
+  SetArg(kProperty, "");
+  EXPECT_FALSE(driver_->AppendValueOption(kProperty, kOption, &options));
+  EXPECT_TRUE(options.empty());
+
+  SetArg(kProperty, kValue);
+  SetArg(kProperty2, kValue2);
+  EXPECT_TRUE(driver_->AppendValueOption(kProperty, kOption, &options));
+  EXPECT_TRUE(driver_->AppendValueOption(kProperty2, kOption2, &options));
+  EXPECT_EQ(4, options.size());
+  EXPECT_EQ(kOption, options[0]);
+  EXPECT_EQ(kValue, options[1]);
+  EXPECT_EQ(kOption2, options[2]);
+  EXPECT_EQ(kValue2, options[3]);
+}
+
+TEST_F(L2TPIPSecDriverTest, AppendFlag) {
+  static const char kTrueOption[] = "--l2tpipsec-option";
+  static const char kFalseOption[] = "--nol2tpipsec-option";
+  static const char kProperty[] = "L2TPIPSec.SomeProperty";
+  static const char kTrueOption2[] = "--l2tpipsec-option2";
+  static const char kFalseOption2[] = "--nol2tpipsec-option2";
+  static const char kProperty2[] = "L2TPIPSec.SomeProperty2";
+
+  vector<string> options;
+  EXPECT_FALSE(driver_->AppendFlag("L2TPIPSec.UnknownProperty",
+                                   kTrueOption, kFalseOption, &options));
+  EXPECT_TRUE(options.empty());
+
+  SetArg(kProperty, "");
+  EXPECT_FALSE(
+      driver_->AppendFlag(kProperty, kTrueOption, kFalseOption, &options));
+  EXPECT_TRUE(options.empty());
+
+  SetArg(kProperty, "true");
+  SetArg(kProperty2, "false");
+  EXPECT_TRUE(
+      driver_->AppendFlag(kProperty, kTrueOption, kFalseOption, &options));
+  EXPECT_TRUE(
+      driver_->AppendFlag(kProperty2, kTrueOption2, kFalseOption2, &options));
+  EXPECT_EQ(2, options.size());
+  EXPECT_EQ(kTrueOption, options[0]);
+  EXPECT_EQ(kFalseOption2, options[1]);
 }
 
 }  // namespace shill

@@ -162,6 +162,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   PropertyStore *mutable_store() { return &store_; }
   virtual const PropertyStore &store() const { return store_; }
   GLib *glib() const { return glib_; }
+  virtual const FilePath &run_path() const { return run_path_; }
 
   std::vector<DeviceRefPtr>::iterator devices_begin() {
     return devices_.begin();
