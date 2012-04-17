@@ -22,6 +22,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/ieee80211.h"
 #include "shill/metrics.h"
+#include "shill/nss.h"
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
 #include "shill/wifi.h"
@@ -62,7 +63,8 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       frequency_(0),
       physical_mode_(0),
       wifi_(device),
-      ssid_(ssid) {
+      ssid_(ssid),
+      nss_(NSS::GetInstance()) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kModeProperty, &mode_);
   HelpRegisterWriteOnlyDerivedString(flimflam::kPassphraseProperty,
@@ -739,6 +741,18 @@ bool WiFiService::Is8021x() const {
 
 void WiFiService::Populate8021xProperties(
     std::map<string, DBus::Variant> *params) {
+  string ca_cert = eap().ca_cert;
+  if (!eap().ca_cert_nss.empty()) {
+    vector<char> id(ssid_.begin(), ssid_.end());
+    FilePath certfile = nss_->GetDERCertfile(eap().ca_cert_nss, id);
+    if (certfile.empty()) {
+      LOG(ERROR) << "Unable to extract certificate: " << eap().ca_cert_nss;
+    } else {
+      ca_cert = certfile.value();
+    }
+  }
+
+
   typedef std::pair<const char *, const char *> KeyVal;
   KeyVal init_propertyvals[] = {
     KeyVal(wpa_supplicant::kNetworkPropertyEapIdentity, eap().identity.c_str()),
@@ -753,15 +767,13 @@ void WiFiService::Populate8021xProperties(
            eap().private_key.c_str()),
     KeyVal(wpa_supplicant::kNetworkPropertyEapPrivateKeyPassword,
            eap().private_key_password.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapCaCert, eap().ca_cert.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapCaCert, ca_cert.c_str()),
     KeyVal(wpa_supplicant::kNetworkPropertyEapCaPassword,
            eap().password.c_str()),
     KeyVal(wpa_supplicant::kNetworkPropertyEapCertId, eap().cert_id.c_str()),
     KeyVal(wpa_supplicant::kNetworkPropertyEapKeyId, eap().key_id.c_str()),
     KeyVal(wpa_supplicant::kNetworkPropertyEapCaCertId,
            eap().ca_cert_id.c_str()),
-    // TODO(gauravsh): Support getting CA certificates out of the NSS certdb.
-    //                 crosbug.com/25663
   };
 
   vector<KeyVal> propertyvals(init_propertyvals,
@@ -769,7 +781,7 @@ void WiFiService::Populate8021xProperties(
   if (eap().use_system_cas) {
     propertyvals.push_back(KeyVal(
         wpa_supplicant::kNetworkPropertyCaPath, wpa_supplicant::kCaPath));
-  } else if (eap().ca_cert.empty()) {
+  } else if (ca_cert.empty()) {
       LOG(WARNING) << __func__
                    << ": No certificate authorities are configured."
                    << " Server certificates will be accepted"

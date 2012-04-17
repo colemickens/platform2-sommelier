@@ -61,6 +61,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageEapAnonymousIdentity[];
   static const char kStorageEapCACert[];
   static const char kStorageEapCACertID[];
+  static const char kStorageEapCACertNSS[];
   static const char kStorageEapCertID[];
   static const char kStorageEapClientCert[];
   static const char kStorageEapEap[];
@@ -123,6 +124,7 @@ class Service : public base::RefCounted<Service> {
     std::string key_id;
     std::string ca_cert;
     std::string ca_cert_id;
+    std::string ca_cert_nss;
     bool use_system_cas;
     std::string pin;
     std::string password;

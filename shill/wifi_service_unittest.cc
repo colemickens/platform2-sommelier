@@ -17,6 +17,7 @@
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
+#include "shill/mock_nss.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_wifi.h"
@@ -816,20 +817,17 @@ TEST_F(WiFiServiceTest, Populate8021x) {
   map<string, ::DBus::Variant> params;
   service->Populate8021xProperties(&params);
   // Test that only non-empty 802.1x properties are populated.
-  EXPECT_TRUE(ContainsKey(params,
-                          wpa_supplicant::kNetworkPropertyEapIdentity));
-  EXPECT_FALSE(ContainsKey(params,
-                           wpa_supplicant::kNetworkPropertyEapKeyId));
+  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapIdentity));
+  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapKeyId));
+  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert));
+
   // Test that CA path is set by default.
-  EXPECT_TRUE(ContainsKey(params,
-                          wpa_supplicant::kNetworkPropertyCaPath));
+  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyCaPath));
+
   // Test that hardware-backed security arguments are not set.
-  EXPECT_FALSE(ContainsKey(params,
-                           wpa_supplicant::kNetworkPropertyEapPin));
-  EXPECT_FALSE(ContainsKey(params,
-                           wpa_supplicant::kNetworkPropertyEngine));
-  EXPECT_FALSE(ContainsKey(params,
-                           wpa_supplicant::kNetworkPropertyEngineId));
+  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapPin));
+  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEngine));
+  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEngineId));
 }
 
 TEST_F(WiFiServiceTest, Populate8021xNoSystemCAs) {
@@ -850,8 +848,7 @@ TEST_F(WiFiServiceTest, Populate8021xNoSystemCAs) {
   map<string, ::DBus::Variant> params;
   service->Populate8021xProperties(&params);
   // Test that CA path is not set if use_system_cas is explicitly false.
-  EXPECT_FALSE(ContainsKey(params,
-                           wpa_supplicant::kNetworkPropertyCaPath));
+  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyCaPath));
 }
 
 TEST_F(WiFiServiceTest, Populate8021xUsingHardwareAuth) {
@@ -873,14 +870,42 @@ TEST_F(WiFiServiceTest, Populate8021xUsingHardwareAuth) {
   map<string, ::DBus::Variant> params;
   service->Populate8021xProperties(&params);
   // Test that EAP engine parameters set if key_id is set.
-  EXPECT_TRUE(ContainsKey(params,
-                          wpa_supplicant::kNetworkPropertyEapPin));
-  EXPECT_TRUE(ContainsKey(params,
-                           wpa_supplicant::kNetworkPropertyEapKeyId));
-  EXPECT_TRUE(ContainsKey(params,
-                          wpa_supplicant::kNetworkPropertyEngine));
-  EXPECT_TRUE(ContainsKey(params,
-                          wpa_supplicant::kNetworkPropertyEngineId));
+  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapPin));
+  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapKeyId));
+  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEngine));
+  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEngineId));
+}
+
+TEST_F(WiFiServiceTest, Populate8021xNSS) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              metrics(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityNone,
+                                              false);
+  Service::EapCredentials eap;
+  eap.ca_cert_nss = "nss_nickname";
+  service->set_eap(eap);
+  MockNSS nss;
+  service->nss_ = &nss;
+
+  const string kNSSCertfile("/tmp/nss-cert");
+  FilePath nss_cert(kNSSCertfile);
+  vector<char> ssid_in_chars(ssid.begin(), ssid.end());
+  EXPECT_CALL(nss, GetDERCertfile(eap.ca_cert_nss, ssid_in_chars))
+      .WillOnce(Return(nss_cert));
+
+  map<string, ::DBus::Variant> params;
+  service->Populate8021xProperties(&params);
+  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert));
+  if (ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert)) {
+    EXPECT_EQ(kNSSCertfile, params[wpa_supplicant::kNetworkPropertyEapCaCert]
+              .reader().get_string());
+  }
 }
 
 TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {

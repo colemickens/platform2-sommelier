@@ -21,6 +21,7 @@ class EventDispatcher;
 class Error;
 class Manager;
 class Metrics;
+class NSS;
 
 class WiFiService : public Service {
  public:
@@ -118,6 +119,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, Populate8021x);
   FRIEND_TEST(WiFiServiceTest, Populate8021xNoSystemCAs);
   FRIEND_TEST(WiFiServiceTest, Populate8021xUsingHardwareAuth);
+  FRIEND_TEST(WiFiServiceTest, Populate8021xNSS);
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
 
   static const char kAutoConnBusy[];
@@ -194,6 +196,7 @@ class WiFiService : public Service {
   std::set<WiFiEndpointConstRefPtr> endpoints_;
   WiFiEndpointConstRefPtr current_endpoint_;
   const std::vector<uint8_t> ssid_;
+  NSS *nss_;
   DISALLOW_COPY_AND_ASSIGN(WiFiService);
 };
 
