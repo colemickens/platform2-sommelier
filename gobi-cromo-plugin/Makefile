@@ -83,7 +83,6 @@ install-production:
 	install -d $(PLUGINDEST) $(UDEVRULES_DIR)
 	install $(GOBI_PLUGIN) $(PLUGINDEST)
 	install $(UDEVRULES) $(UDEVRULES_DIR)
-	install -D modem_set_carrier $(DESTDIR)/usr/bin/modem_set_carrier
 
 install-tests:
 	install -d $(DESTDIR)/usr/bin
