@@ -743,7 +743,7 @@ cmd_modem() {
 }
 
 cmd_modem_set_carrier() {
-  /usr/bin/modem_set_carrier "$@"
+  /usr/bin/modem set-carrier "$@"
 }
 
 cmd_set_apn() {
