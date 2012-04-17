@@ -38,6 +38,7 @@
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
 #include "shill/service.h"
+#include "shill/virtio_ethernet.h"
 #include "shill/wifi.h"
 
 using base::Bind;
@@ -50,6 +51,7 @@ using std::vector;
 namespace shill {
 
 // static
+const char DeviceInfo::kDriverVirtioNet[] = "virtio_net";
 const char DeviceInfo::kInterfaceUevent[] = "/sys/class/net/%s/uevent";
 const char DeviceInfo::kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
 const char DeviceInfo::kInterfaceDevice[] = "/sys/class/net/%s/device";
@@ -211,8 +213,17 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     return Technology::kCellular;
   }
 
-  VLOG(2) << StringPrintf("%s: device %s is defaulted to type ethernet",
-                          __func__, iface_name.c_str());
+  // Special case for the virtio driver, used when run under KVM. See also
+  // the comment in VirtioEthernet::Start.
+  if (driver_name == kDriverVirtioNet) {
+    VLOG(2) << StringPrintf("%s: device %s is virtio ethernet", __func__,
+                            iface_name.c_str());
+    return Technology::kVirtioEthernet;
+  }
+
+  VLOG(2) << StringPrintf("%s: device %s, with driver %s, "
+                          "is defaulted to type ethernet",
+                          __func__, iface_name.c_str(), driver_name.c_str());
   return Technology::kEthernet;
 }
 
@@ -330,6 +341,11 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
       case Technology::kEthernet:
         device = new Ethernet(control_interface_, dispatcher_, metrics_,
                               manager_, link_name, address, dev_index);
+        device->EnableIPv6Privacy();
+        break;
+      case Technology::kVirtioEthernet:
+        device = new VirtioEthernet(control_interface_, dispatcher_, metrics_,
+                                    manager_, link_name, address, dev_index);
         device->EnableIPv6Privacy();
         break;
       case Technology::kWifi:

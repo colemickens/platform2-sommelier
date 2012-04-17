@@ -25,6 +25,7 @@ class Technology {
     kTunnel,
     kBlacklisted,
     kLoopback,
+    kVirtioEthernet,  // Only for internal use in DeviceInfo.
     kUnknown,
   };
 

@@ -195,6 +195,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	supplicant_interface_proxy.o \
 	supplicant_process_proxy.o \
 	technology.o \
+	virtio_ethernet.o \
 	vpn.o \
 	vpn_provider.o \
 	vpn_service.o \

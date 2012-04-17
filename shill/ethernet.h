@@ -22,12 +22,12 @@ class Ethernet : public Device {
            const std::string& link_name,
            const std::string &address,
            int interface_index);
-  ~Ethernet();
+  virtual ~Ethernet();
 
-  void Start(Error *error, const EnabledStateChangedCallback &callback);
-  void Stop(Error *error, const EnabledStateChangedCallback &callback);
-  bool TechnologyIs(Technology::Identifier type) const;
-  void LinkEvent(unsigned int flags, unsigned int change);
+  virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
+  virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
+  virtual bool TechnologyIs(Technology::Identifier type) const;
+  virtual void LinkEvent(unsigned int flags, unsigned int change);
 
  private:
   bool service_registered_;

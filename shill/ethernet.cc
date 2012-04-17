@@ -32,7 +32,7 @@ Ethernet::Ethernet(ControlInterface *control_interface,
                    Metrics *metrics,
                    Manager *manager,
                    const string &link_name,
-                   const std::string &address,
+                   const string &address,
                    int interface_index)
     : Device(control_interface,
              dispatcher,

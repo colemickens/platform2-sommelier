@@ -89,6 +89,8 @@ class DeviceInfo {
     unsigned int flags;
   };
 
+  // Name of the virtio network driver.
+  static const char kDriverVirtioNet[];
   // Sysfs path to a device uevent file.
   static const char kInterfaceUevent[];
   // Content of a device uevent file that indicates it is a wifi device.
