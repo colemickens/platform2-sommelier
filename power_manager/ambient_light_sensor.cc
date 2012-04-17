@@ -52,16 +52,24 @@ AmbientLightSensor::~AmbientLightSensor() {
 
 bool AmbientLightSensor::DeferredInit() {
   // Search the iio/devices directory for a subdirectory (eg "device0" or
-  // "iio:device0") that contains the "illuminance0_input" file.
+  // "iio:device0") that contains the "[in_]illuminance0_{input|raw}" file.
   file_util::FileEnumerator dir_enumerator(
       FilePath("/sys/bus/iio/devices"), false,
       file_util::FileEnumerator::DIRECTORIES);
+  const char* input_names[] = {
+      "in_illuminance0_input",
+      "in_illuminance0_raw",
+      "illuminance0_input",
+  };
 
   for (FilePath check_path = dir_enumerator.Next(); !check_path.empty();
        check_path = dir_enumerator.Next()) {
-    FilePath als_path = check_path.Append("illuminance0_input");
-    if (!file_util::PathExists(als_path))
-      continue;
+    FilePath als_path;
+    for (unsigned int i = 0; i < arraysize(input_names); i++) {
+      als_path = check_path.Append(input_names[i]);
+      if (file_util::PathExists(als_path))
+        break;
+    }
     als_fd_ = open(als_path.value().c_str(), O_RDONLY);
     if (als_fd_ >= 0)
       break;
