@@ -421,11 +421,6 @@ void Cellular::OnDBusPropertiesChanged(
                                        invalidated_properties);
 }
 
-void Cellular::OnModemManagerPropertiesChanged(
-    const DBusPropertiesMap &properties) {
-  capability_->OnModemManagerPropertiesChanged(properties);
-}
-
 void Cellular::set_home_provider(const Operator &oper) {
   home_provider_.CopyFrom(oper);
 }

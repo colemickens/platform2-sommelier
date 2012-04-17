@@ -29,8 +29,9 @@ class MockCellular : public Cellular {
   virtual ~MockCellular();
 
   MOCK_METHOD2(InitCapability, void(Type, ProxyFactory *));
-  MOCK_METHOD1(OnModemManagerPropertiesChanged,
-               void(const DBusPropertiesMap &));
+  MOCK_METHOD3(OnDBusPropertiesChanged, void(const std::string &,
+                                             const DBusPropertiesMap &,
+                                             const std::vector<std::string> &));
   MOCK_METHOD1(set_modem_state, void(ModemState));
 
  private:

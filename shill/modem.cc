@@ -135,7 +135,8 @@ void Modem::CreateDeviceFromModemProperties(
   device_->set_modem_state(ConvertMmToCellularModemState(modem_state));
 
   // Give the device a chance to extract any capability-specific properties.
-  device_->OnModemManagerPropertiesChanged(modem_properties);
+  device_->OnDBusPropertiesChanged(GetModemInterface(), modem_properties,
+                                    vector<string>());
 
   manager_->device_info()->RegisterDevice(device_);
 }
@@ -144,19 +145,18 @@ void Modem::OnDBusPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &changed_properties,
     const vector<string> &invalidated_properties) {
-  if (device().get()) {
-    device()->OnDBusPropertiesChanged(interface,
+  if (device_.get()) {
+    device_->OnDBusPropertiesChanged(interface,
                                       changed_properties,
                                       invalidated_properties);
   }
 }
 
 void Modem::OnModemManagerPropertiesChanged(
-    const string &/*interface*/,
+    const string &interface,
     const DBusPropertiesMap &properties) {
-  if (device().get()) {
-    device()->OnModemManagerPropertiesChanged(properties);
-  }
+  vector<string> invalidated_properties;
+  OnDBusPropertiesChanged(interface, properties, invalidated_properties);
 }
 
 }  // namespace shill

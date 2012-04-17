@@ -67,11 +67,6 @@ class CellularCapabilityClassic : public CellularCapability {
 
   virtual void Scan(Error *error, const ResultCallback &callback);
 
-  virtual void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties);
-
  protected:
   // The following five methods are only ever called as
   // callbacks (from the main loop), which is why they

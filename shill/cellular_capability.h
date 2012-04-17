@@ -50,7 +50,6 @@ typedef std::vector<base::Closure> CellularTaskList;
 //
 class CellularCapability {
  public:
-
   // SimLockStatus represents the fields in the Cellular.SIMLockStatus
   // DBUS property of the shill device.
   struct SimLockStatus {
@@ -158,12 +157,12 @@ class CellularCapability {
 
   virtual std::string GetTypeString() const = 0;
 
+  // Called when ModemManager has sent a property change notification
+  // signal over DBUS.
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties) = 0;
-  virtual void OnModemManagerPropertiesChanged(
-      const DBusPropertiesMap &properties) = 0;
 
   // Should this device allow roaming?
   // The decision to allow roaming or not is based on the home

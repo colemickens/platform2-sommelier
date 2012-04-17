@@ -73,11 +73,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void Scan(Error *error, const ResultCallback &callback);
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
-  virtual std::string GetTypeString() const { return "Universal"; }
-
   virtual void GetSignalQuality();
-  virtual void OnModemManagerPropertiesChanged(
-      const DBusPropertiesMap &properties);
+  virtual std::string GetTypeString() const { return "Universal"; }
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,
@@ -118,7 +115,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, SetHomeProvider);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalTest, GetRegistrationState);
-  FRIEND_TEST(CellularCapabilityUniversalTest, OnModemManagerPropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalTest, OnDBusPropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, TryApns);
@@ -172,6 +169,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void OnNetworkModeSignal(uint32 mode);
 
   // Property Change notification handlers
+  virtual void OnModemPropertiesChanged(
+      const DBusPropertiesMap &properties,
+      const std::vector<std::string> &invalidated_properties);
+
   // TODO(jglasgow): install generic property change notification handler
   virtual void On3GPPRegistrationChanged(MMModem3gppRegistrationState state,
                                         const std::string &operator_code,

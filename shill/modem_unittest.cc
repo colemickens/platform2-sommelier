@@ -151,6 +151,8 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   // GetMACAddress will fail.
   EXPECT_CALL(info_, GetMACAddress(kTestInterfaceIndex, _)).
       WillOnce(Return(false));
+  EXPECT_CALL(*modem_, GetModemInterface()).
+      WillRepeatedly(Return(MM_MODEM_INTERFACE));
   modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_FALSE(modem_->device_.get());
 
@@ -180,8 +182,10 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
                                 kTestInterfaceIndex)).
       WillOnce(Return(cellular));
 
-  EXPECT_CALL(*cellular, OnModemManagerPropertiesChanged(
-      HasDBusPropertyWithValueU32(kSentinel, kSentinelValue)));
+  EXPECT_CALL(*cellular, OnDBusPropertiesChanged(
+      _,
+      HasDBusPropertyWithValueU32(kSentinel, kSentinelValue),
+      _));
   EXPECT_CALL(info_, RegisterDevice(_));
   EXPECT_CALL(info_, DeregisterDevice(_));
   modem_->OnDeviceInfoAvailable(kLinkName);

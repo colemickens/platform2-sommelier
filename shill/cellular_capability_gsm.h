@@ -7,6 +7,7 @@
 
 #include <deque>
 #include <string>
+#include <vector>
 
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
@@ -66,8 +67,11 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual std::string GetTypeString() const { return "GSM"; }
-  virtual void OnModemManagerPropertiesChanged(
-      const DBusPropertiesMap &properties);
+  virtual void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &properties,
+      const std::vector<std::string> &invalidated_properties);
+  virtual bool AllowRoaming();
 
  protected:
   virtual void InitProxies();
@@ -76,8 +80,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   // retrying the Connect operation.
   virtual void OnConnectReply(const ResultCallback &callback,
                               const Error &error);
-
-  virtual bool AllowRoaming();
 
  private:
   friend class CellularTest;
@@ -102,7 +104,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   FRIEND_TEST(CellularCapabilityGSMTest, SetHomeProvider);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityGSMTest, GetRegistrationState);
-  FRIEND_TEST(CellularCapabilityGSMTest, OnModemManagerPropertiesChanged);
+  FRIEND_TEST(CellularCapabilityGSMTest, OnDBusPropertiesChanged);
   FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, TryApns);

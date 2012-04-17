@@ -109,4 +109,8 @@ void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &i_to_p) {
   CreateDeviceFromModemProperties(modem_properties->second);
 }
 
+string Modem1::GetModemInterface(void) const {
+  return string(MM_DBUS_INTERFACE_MODEM);
+}
+
 }  // namespace shill

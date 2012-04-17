@@ -10,6 +10,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include <string>
+#include <vector>
 
 #include "shill/cellular_capability.h"
 #include "shill/cellular_capability_classic.h"
@@ -33,13 +34,15 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   virtual std::string CreateFriendlyServiceName();
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
-  virtual std::string GetTypeString() const { return "CDMA"; }
   virtual void GetSignalQuality();
+  virtual std::string GetTypeString() const { return "CDMA"; }
+  virtual void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &properties,
+      const std::vector<std::string> &invalidated_properties);
+  virtual bool AllowRoaming();
   virtual void GetRegistrationState();
   virtual void GetProperties(const ResultCallback &callback);
-  virtual void OnModemManagerPropertiesChanged(
-      const DBusPropertiesMap &properties);
-
   virtual void GetMEID(const ResultCallback &callback);
 
   uint32 activation_state() const { return activation_state_; }
@@ -49,7 +52,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
  protected:
   virtual void InitProxies();
   virtual void ReleaseProxies();
-  virtual bool AllowRoaming();
 
  private:
   friend class CellularCapabilityCDMATest;

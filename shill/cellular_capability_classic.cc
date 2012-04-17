@@ -218,13 +218,6 @@ void CellularCapabilityClassic::Scan(Error *error,
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityClassic::OnDBusPropertiesChanged(
-    const std::string &interface,
-    const DBusPropertiesMap &changed_properties,
-    const std::vector<std::string> &invalidated_properties) {
-  DCHECK(false) << "Unexpected call to OnDBusPropertiesChanged.";
-}
-
 void CellularCapabilityClassic::OnGetModemStatusReply(
     const ResultCallback &callback,
     const DBusPropertiesMap &props,

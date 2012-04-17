@@ -79,4 +79,8 @@ void ModemClassic::CreateDeviceClassic(
   CreateDeviceFromModemProperties(modem_properties);
 }
 
+string ModemClassic::GetModemInterface(void) const {
+  return string(MM_MODEM_INTERFACE);
+}
+
 }  // namespace shill

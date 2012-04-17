@@ -4,6 +4,9 @@
 
 #include "shill/cellular_capability_gsm.h"
 
+#include <string>
+#include <vector>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
@@ -21,6 +24,7 @@
 
 using base::Bind;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -704,8 +708,12 @@ string CellularCapabilityGSM::GetRoamingStateString() const {
   return flimflam::kRoamingStateUnknown;
 }
 
-void CellularCapabilityGSM::OnModemManagerPropertiesChanged(
-    const DBusPropertiesMap &properties) {
+void CellularCapabilityGSM::OnDBusPropertiesChanged(
+    const string &interface,
+    const DBusPropertiesMap &properties,
+    const vector<string> &/* invalidated_properties */) {
+  if (interface != MM_MODEM_INTERFACE)
+    return;
   uint32 access_technology = MM_MODEM_GSM_ACCESS_TECH_UNKNOWN;
   if (DBusProperties::GetUint32(properties,
                                 kPropertyAccessTechnology,

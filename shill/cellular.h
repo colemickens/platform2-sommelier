@@ -148,8 +148,6 @@ class Cellular : public Device {
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties);
-  virtual void OnModemManagerPropertiesChanged(
-      const DBusPropertiesMap &properties);
 
   // Inherited from Device.
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);

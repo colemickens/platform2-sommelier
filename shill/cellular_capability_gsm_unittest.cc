@@ -4,6 +4,9 @@
 
 #include "shill/cellular_capability_gsm.h"
 
+#include <string>
+#include <vector>
+
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -27,6 +30,7 @@
 using base::Bind;
 using base::Unretained;
 using std::string;
+using std::vector;
 using testing::_;
 using testing::Invoke;
 using testing::NiceMock;
@@ -698,7 +702,7 @@ TEST_F(CellularCapabilityGSMTest, SetStorageIdentifier) {
             cellular_->service()->GetStorageIdentifier());
 }
 
-TEST_F(CellularCapabilityGSMTest, OnModemManagerPropertiesChanged) {
+TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN, capability_->access_technology_);
   EXPECT_FALSE(capability_->sim_lock_status_.enabled);
   EXPECT_EQ("", capability_->sim_lock_status_.lock_type);
@@ -714,9 +718,19 @@ TEST_F(CellularCapabilityGSMTest, OnModemManagerPropertiesChanged) {
       kLockType);
   props[CellularCapabilityGSM::kPropertyUnlockRetries].writer().append_uint32(
       kRetries);
+  // Call with the 'wrong' interface and nothing should change.
+  capability_->OnDBusPropertiesChanged(MM_MODEM_GSM_INTERFACE, props,
+                                       vector<string>());
+  EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN, capability_->access_technology_);
+  EXPECT_FALSE(capability_->sim_lock_status_.enabled);
+  EXPECT_EQ("", capability_->sim_lock_status_.lock_type);
+  EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
+
+  // Call with the right interface and expect changes.
   EXPECT_CALL(*device_adaptor_,
               EmitKeyValueStoreChanged(flimflam::kSIMLockStatusProperty, _));
-  capability_->OnModemManagerPropertiesChanged(props);
+  capability_->OnDBusPropertiesChanged(MM_MODEM_INTERFACE, props,
+                                       vector<string>());
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_EDGE, capability_->access_technology_);
   EXPECT_TRUE(capability_->sim_lock_status_.enabled);
   EXPECT_EQ(kLockType, capability_->sim_lock_status_.lock_type);

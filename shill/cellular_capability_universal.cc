@@ -287,7 +287,7 @@ void CellularCapabilityUniversal::Disconnect(Error *error,
   OnUnsupportedOperation(__func__, error);
 }
 
-void CellularCapabilityUniversal::Activate(const std::string &carrier,
+void CellularCapabilityUniversal::Activate(const string &carrier,
                                            Error *error,
                                            const ResultCallback &callback) {
   OnUnsupportedOperation(__func__, error);
@@ -671,7 +671,7 @@ bool CellularCapabilityUniversal::IsRegistered() {
 }
 
 void CellularCapabilityUniversal::RequirePIN(
-    const std::string &pin, bool require,
+    const string &pin, bool require,
     Error *error, const ResultCallback &callback) {
   CHECK(error);
   sim_proxy_->EnablePin(pin, require, error, callback, kTimeoutDefault);
@@ -847,11 +847,13 @@ void CellularCapabilityUniversal::GetSignalQuality() {
   NOTIMPLEMENTED();
 }
 
-void CellularCapabilityUniversal::OnModemManagerPropertiesChanged(
-    const DBusPropertiesMap &properties) {
-
-  // TODO(jglasgow): When CreateDeviceFromModemProperties is fixed DCHECK
-  LOG(ERROR) << "Unexpected call to OnModemPropertiesChanged.";
+void CellularCapabilityUniversal::OnModemPropertiesChanged(
+    const DBusPropertiesMap &properties,
+    const vector<string> &/* invalidated_properties */) {
+  string value;
+  if (DBusProperties::GetString(properties,
+                                MM_MODEM_PROPERTY_SIM, &value))
+    OnSimPathChanged(value);
 
   uint32 access_technologies = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
   if (DBusProperties::GetUint32(properties,
@@ -882,13 +884,9 @@ void CellularCapabilityUniversal::OnModemManagerPropertiesChanged(
 void CellularCapabilityUniversal::OnDBusPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &changed_properties,
-    const vector<std::string> &invalidated_properties) {
+    const vector<string> &invalidated_properties) {
   if (interface == MM_DBUS_INTERFACE_MODEM) {
-    string value;
-    if (DBusProperties::GetString(changed_properties,
-                                  MM_MODEM_PROPERTY_SIM, &value))
-      OnSimPathChanged(value);
-    // TODO(jglasgow): handle additional properties on the modem interface
+    OnModemPropertiesChanged(changed_properties, invalidated_properties);
   }
   // TODO(jglasgow): handle additional interfaces
 }

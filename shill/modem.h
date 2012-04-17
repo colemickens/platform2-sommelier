@@ -80,6 +80,8 @@ class Modem : public DBusPropertiesProxyDelegate {
       uint32 input) const = 0;
   virtual bool GetLinkName(const DBusPropertiesMap &properties,
                            std::string *name) const = 0;
+  // Returns the name of the DBUS Modem interface.
+  virtual std::string GetModemInterface(void) const = 0;
 
  private:
   friend class ModemTest;
@@ -150,6 +152,7 @@ class ModemClassic : public Modem {
       uint32 input) const;
   virtual bool GetLinkName(const DBusPropertiesMap &modem_properties,
                            std::string *name) const;
+  virtual std::string GetModemInterface(void) const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ModemClassic);
@@ -174,6 +177,7 @@ class Modem1 : public Modem {
       uint32 input) const;
   virtual bool GetLinkName(const DBusPropertiesMap &modem_properties,
                            std::string *name) const;
+  virtual std::string GetModemInterface(void) const;
 
  private:
   friend class Modem1Test;

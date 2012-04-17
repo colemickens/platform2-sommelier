@@ -4,6 +4,9 @@
 
 #include "shill/cellular_capability_cdma.h"
 
+#include <string>
+#include <vector>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
@@ -16,6 +19,7 @@
 
 using base::Bind;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -325,8 +329,10 @@ void CellularCapabilityCDMA::OnRegistrationStateChangedSignal(
   cellular()->HandleNewRegistrationState();
 }
 
-void CellularCapabilityCDMA::OnModemManagerPropertiesChanged(
-    const DBusPropertiesMap &/*properties*/) {}
+void CellularCapabilityCDMA::OnDBusPropertiesChanged(
+    const string &/* interface */,
+    const DBusPropertiesMap &/* properties */,
+    const vector<string> &/* invalidated_properties */) {}
 
 void CellularCapabilityCDMA::OnSignalQualitySignal(uint32 strength) {
   cellular()->HandleNewSignalQuality(strength);
