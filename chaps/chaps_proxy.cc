@@ -33,6 +33,8 @@ bool ChapsProxyImpl::Init() {
                              kChapsServiceName));
     }
     if (proxy_.get()) {
+      if (!WaitForService())
+        return false;
       LOG(INFO) << "Chaps proxy initialized (" << kChapsServicePath << ").";
       return true;
     }
@@ -1249,6 +1251,25 @@ uint32_t ChapsProxyImpl::GenerateRandom(uint64_t session_id,
     LOG(ERROR) << "DBus::Error - " << err.what();
   }
   return result;
+}
+
+bool ChapsProxyImpl::WaitForService() {
+  const useconds_t kDelayOnFailureUs = 10000;  // 10ms.
+  const int kMaxAttempts = 500;  // 5 seconds.
+  vector<uint64_t> slot_list;
+  uint32_t result;
+  string last_error_message;
+  for (int i = 0; i < kMaxAttempts; ++i) {
+    try {
+      proxy_->GetSlotList(false, slot_list, result);
+      return true;
+    } catch (DBus::Error err) {
+      last_error_message = err.what();
+    }
+    usleep(kDelayOnFailureUs);
+  }
+  LOG(ERROR) << "Chaps service is not available: " << last_error_message;
+  return false;
 }
 
 }  // namespace

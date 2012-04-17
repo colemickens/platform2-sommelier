@@ -281,6 +281,10 @@ public:
 
 
 private:
+  // Waits for the service to be available. Returns false if the service is not
+  // available within 5 seconds.
+  bool WaitForService();
+
   // This class provides the link to the dbus-c++ generated proxy.
   class Proxy : public org::chromium::Chaps_proxy,
                 public DBus::ObjectProxy {
