@@ -838,9 +838,9 @@ void Daemon::RegisterDBusMessageHandler() {
   AddDBusMethodHandler(kPowerManagerInterface, kIncreaseScreenBrightness,
                        &Daemon::HandleIncreaseScreenBrightnessMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kGetScreenBrightnessPercent,
-                       &Daemon::HandleDecreaseScreenBrightnessMethod);
+                       &Daemon::HandleGetScreenBrightnessMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kSetScreenBrightnessPercent,
-                       &Daemon::HandleIncreaseScreenBrightnessMethod);
+                       &Daemon::HandleSetScreenBrightnessMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kDecreaseKeyboardBrightness,
                        &Daemon::HandleDecreaseKeyboardBrightnessMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kIncreaseKeyboardBrightness,
