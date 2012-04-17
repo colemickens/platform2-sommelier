@@ -8,6 +8,7 @@
 
 #include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -32,6 +33,7 @@
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
+using base::UintToString;
 using std::map;
 using std::string;
 using std::vector;
@@ -715,6 +717,20 @@ TEST_F(OpenVPNDriverTest, Store) {
                                         flimflam::kOpenVPNPasswordProperty,
                                         password))
       .WillOnce(Return(true));
+  EXPECT_CALL(storage,
+              SetCryptedString(
+                  kStorageID, flimflam::kOpenVPNOTPProperty, _)).Times(0);
+  EXPECT_CALL(storage,
+              SetString(
+                  kStorageID, flimflam::kOpenVPNOTPProperty, _)).Times(0);
+  EXPECT_CALL(storage,
+              SetCryptedString(
+                  kStorageID, flimflam::kOpenVPNClientCertIdProperty, _))
+      .Times(0);
+  EXPECT_CALL(storage,
+              SetString(
+                  kStorageID, flimflam::kOpenVPNClientCertIdProperty, _))
+      .Times(0);
   EXPECT_CALL(storage, DeleteKey(kStorageID, _)).Times(AnyNumber());
   EXPECT_CALL(storage, DeleteKey(kStorageID, flimflam::kOpenVPNAuthProperty))
       .Times(1);
@@ -811,31 +827,33 @@ TEST_F(OpenVPNDriverTest, InitPropertyStore) {
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 
-  // This one should be write-only.
-  {
+  // These ones should be write-only.
+  static const char * const kWriteOnly[] = {
+    flimflam::kOpenVPNClientCertIdProperty,
+    flimflam::kOpenVPNPasswordProperty,
+    flimflam::kOpenVPNOTPProperty
+  };
+
+  for (size_t i = 0; i < arraysize(kWriteOnly); i++) {
     Error error;
     string string_property;
     EXPECT_FALSE(
-        FindStringPropertyInStore(store, flimflam::kOpenVPNPasswordProperty,
-                                  &string_property,
-                                  &error));
+        FindStringPropertyInStore(
+            store, kWriteOnly[i], &string_property, &error)) << kWriteOnly[i];
     // We get NotFound here instead of PermissionDenied here due to the
     // implementation of ReadablePropertyConstIterator: it shields us from
     // store members for which Value() would have returned an error.
-    EXPECT_EQ(Error::kNotFound, error.type());
+    EXPECT_EQ(Error::kNotFound, error.type()) << kWriteOnly[i];
   }
 
-  // Write a property to the driver args using the PropertyStore interface.
-  {
+  // Write properties to the driver args using the PropertyStore interface.
+  for (size_t i = 0; i < arraysize(kWriteOnly); i++) {
+    string value = "some-value-" + UintToString(i);
     Error error;
-    EXPECT_TRUE(store.SetStringProperty(flimflam::kOpenVPNPasswordProperty,
-                                        kPassword1,
-                                        &error));
+    EXPECT_TRUE(store.SetStringProperty(kWriteOnly[i], value, &error))
+        << kWriteOnly[i];
+    EXPECT_EQ(value, GetArgs()->GetString(kWriteOnly[i])) << kWriteOnly[i];
   }
-
-  KeyValueStore *driver_args = GetArgs();
-  EXPECT_EQ(kPassword1,
-            driver_args->GetString(flimflam::kOpenVPNPasswordProperty));
 }
 
 }  // namespace shill

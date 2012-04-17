@@ -113,8 +113,13 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
 
   struct Property {
+    enum Flags {
+      kEphemeral = 1 << 0,
+      kCrypted = 1 << 1,
+    };
+
     const char *property;
-    bool crypted;
+    int flags;
   };
 
   static const char kOpenVPNPath[];

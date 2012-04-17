@@ -64,47 +64,51 @@ const char OpenVPNDriver::kOpenVPNPath[] = "/usr/sbin/openvpn";
 const char OpenVPNDriver::kOpenVPNScript[] = SCRIPTDIR "/openvpn-script";
 // static
 const OpenVPNDriver::Property OpenVPNDriver::kProperties[] = {
-  { flimflam::kOpenVPNAuthNoCacheProperty, false },
-  { flimflam::kOpenVPNAuthProperty, false },
-  { flimflam::kOpenVPNAuthRetryProperty, false },
-  { flimflam::kOpenVPNAuthUserPassProperty, false },
-  { flimflam::kOpenVPNCaCertNSSProperty, false },
-  { flimflam::kOpenVPNCaCertProperty, false },
-  { flimflam::kOpenVPNCipherProperty, false },
-  { flimflam::kOpenVPNCompLZOProperty, false },
-  { flimflam::kOpenVPNCompNoAdaptProperty, false },
-  { flimflam::kOpenVPNKeyDirectionProperty, false },
-  { flimflam::kOpenVPNNsCertTypeProperty, false },
-  { flimflam::kOpenVPNPasswordProperty, true },
-  { flimflam::kOpenVPNPinProperty, false },
-  { flimflam::kOpenVPNPortProperty, false },
-  { flimflam::kOpenVPNProtoProperty, false },
-  { flimflam::kOpenVPNProviderProperty, false },
-  { flimflam::kOpenVPNPushPeerInfoProperty, false },
-  { flimflam::kOpenVPNRemoteCertEKUProperty, false },
-  { flimflam::kOpenVPNRemoteCertKUProperty, false },
-  { flimflam::kOpenVPNRemoteCertTLSProperty, false },
-  { flimflam::kOpenVPNRenegSecProperty, false },
-  { flimflam::kOpenVPNServerPollTimeoutProperty, false },
-  { flimflam::kOpenVPNShaperProperty, false },
-  { flimflam::kOpenVPNStaticChallengeProperty, false },
-  { flimflam::kOpenVPNTLSAuthContentsProperty, false },
-  { flimflam::kOpenVPNTLSRemoteProperty, false },
-  { flimflam::kOpenVPNUserProperty, false },
-  { flimflam::kProviderHostProperty, false },
-  { flimflam::kProviderNameProperty, false },
-  { flimflam::kProviderTypeProperty, false },
-  { kOpenVPNCertProperty, false },
-  { kOpenVPNKeyProperty, false },
-  { kOpenVPNPingExitProperty, false },
-  { kOpenVPNPingProperty, false },
-  { kOpenVPNPingRestartProperty, false },
-  { kOpenVPNTLSAuthProperty, false },
-  { kOpenVPNVerbProperty, false },
-  { kVPNMTUProperty, false },
+  { flimflam::kOpenVPNAuthNoCacheProperty, 0 },
+  { flimflam::kOpenVPNAuthProperty, 0 },
+  { flimflam::kOpenVPNAuthRetryProperty, 0 },
+  { flimflam::kOpenVPNAuthUserPassProperty, 0 },
+  { flimflam::kOpenVPNCaCertNSSProperty, 0 },
+  { flimflam::kOpenVPNCaCertProperty, 0 },
+  { flimflam::kOpenVPNCipherProperty, 0 },
+  { flimflam::kOpenVPNClientCertIdProperty,
+    OpenVPNDriver::Property::kEphemeral | OpenVPNDriver::Property::kCrypted },
+  { flimflam::kOpenVPNCompLZOProperty, 0 },
+  { flimflam::kOpenVPNCompNoAdaptProperty, 0 },
+  { flimflam::kOpenVPNKeyDirectionProperty, 0 },
+  { flimflam::kOpenVPNNsCertTypeProperty, 0 },
+  { flimflam::kOpenVPNOTPProperty,
+    OpenVPNDriver::Property::kEphemeral | OpenVPNDriver::Property::kCrypted },
+  { flimflam::kOpenVPNPasswordProperty, OpenVPNDriver::Property::kCrypted },
+  { flimflam::kOpenVPNPinProperty, 0 },
+  { flimflam::kOpenVPNPortProperty, 0 },
+  { flimflam::kOpenVPNProtoProperty, 0 },
+  { flimflam::kOpenVPNProviderProperty, 0 },
+  { flimflam::kOpenVPNPushPeerInfoProperty, 0 },
+  { flimflam::kOpenVPNRemoteCertEKUProperty, 0 },
+  { flimflam::kOpenVPNRemoteCertKUProperty, 0 },
+  { flimflam::kOpenVPNRemoteCertTLSProperty, 0 },
+  { flimflam::kOpenVPNRenegSecProperty, 0 },
+  { flimflam::kOpenVPNServerPollTimeoutProperty, 0 },
+  { flimflam::kOpenVPNShaperProperty, 0 },
+  { flimflam::kOpenVPNStaticChallengeProperty, 0 },
+  { flimflam::kOpenVPNTLSAuthContentsProperty, 0 },
+  { flimflam::kOpenVPNTLSRemoteProperty, 0 },
+  { flimflam::kOpenVPNUserProperty, 0 },
+  { flimflam::kProviderHostProperty, 0 },
+  { flimflam::kProviderNameProperty, 0 },
+  { flimflam::kProviderTypeProperty, 0 },
+  { kOpenVPNCertProperty, 0 },
+  { kOpenVPNKeyProperty, 0 },
+  { kOpenVPNPingExitProperty, 0 },
+  { kOpenVPNPingProperty, 0 },
+  { kOpenVPNPingRestartProperty, 0 },
+  { kOpenVPNTLSAuthProperty, 0 },
+  { kOpenVPNVerbProperty, 0 },
+  { kVPNMTUProperty, 0 },
 
   // Provided only for compatibility.  crosbug.com/29286
-  { flimflam::kOpenVPNMgmtEnableProperty, false },
+  { flimflam::kOpenVPNMgmtEnableProperty, 0 },
 };
 
 OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
@@ -622,9 +626,12 @@ void OpenVPNDriver::OnReconnecting() {
 
 bool OpenVPNDriver::Load(StoreInterface *storage, const string &storage_id) {
   for (size_t i = 0; i < arraysize(kProperties); i++) {
+    if ((kProperties[i].flags & Property::kEphemeral)) {
+      continue;
+    }
     const string property = kProperties[i].property;
     string value;
-    bool loaded = kProperties[i].crypted ?
+    bool loaded = (kProperties[i].flags & Property::kCrypted) ?
         storage->GetCryptedString(storage_id, property, &value) :
         storage->GetString(storage_id, property, &value);
     if (loaded) {
@@ -638,11 +645,14 @@ bool OpenVPNDriver::Load(StoreInterface *storage, const string &storage_id) {
 
 bool OpenVPNDriver::Save(StoreInterface *storage, const string &storage_id) {
   for (size_t i = 0; i < arraysize(kProperties); i++) {
+    if ((kProperties[i].flags & Property::kEphemeral)) {
+      continue;
+    }
     const string property = kProperties[i].property;
     const string value = args_.LookupString(property, "");
     if (value.empty()) {
       storage->DeleteKey(storage_id, property);
-    } else if (kProperties[i].crypted) {
+    } else if ((kProperties[i].flags & Property::kCrypted)) {
       storage->SetCryptedString(storage_id, property, value);
     } else {
       storage->SetString(storage_id, property, value);
@@ -714,7 +724,7 @@ Stringmap OpenVPNDriver::GetProvider(Error *error) {
 
   for (size_t i = 0; i < arraysize(kProperties); i++) {
     // Never return any encrypted properties.
-    if (kProperties[i].crypted) {
+    if ((kProperties[i].flags & Property::kCrypted)) {
       continue;
     }
 
