@@ -10,6 +10,7 @@
 
 using std::vector;
 using testing::_;
+using testing::NotNull;
 using testing::Return;
 using testing::SetArgumentPointee;
 
@@ -46,7 +47,8 @@ MATCHER_P(GetCertfileArgv, type, "") {
 
 TEST_F(NSSTest, GetCertfile) {
   EXPECT_CALL(glib_,
-              SpawnSync(_, GetCertfileArgv("pem"), _, _, _, _, _, _, _, _))
+              SpawnSync(_,
+                        GetCertfileArgv("pem"), NotNull(), _, _, _, _, _, _, _))
       .WillOnce(Return(false))
       .WillOnce(DoAll(SetArgumentPointee<8>(1), Return(true)))
       .WillOnce(DoAll(SetArgumentPointee<8>(0), Return(true)));

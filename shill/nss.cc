@@ -65,11 +65,12 @@ FilePath NSS::GetCertfile(
     const_cast<char *>(filename.c_str()),
     NULL
   };
+  char *envp[1] = { NULL };
   int status = 0;
   GError *error = NULL;
   if (!glib_->SpawnSync(NULL,
                         argv,
-                        NULL,
+                        envp,
                         static_cast<GSpawnFlags>(0),
                         NULL,
                         NULL,
