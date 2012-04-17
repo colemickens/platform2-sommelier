@@ -464,12 +464,29 @@ void CellularCapabilityUniversal::GetProperties() {
       // TODO(jglasgow): May eventually want to get SPDI, etc
     }
   }
+
   if (mdn_.empty()) {
     // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
     vector<string> numbers = modem_proxy_->OwnNumbers();
     if (numbers.size() > 0)
       mdn_ = numbers[0];
   }
+
+  if (model_id_.empty()) {
+    // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
+    model_id_ = modem_proxy_->Model();
+  }
+
+  if (manufacturer_.empty()) {
+    // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
+    manufacturer_ = modem_proxy_->Manufacturer();
+  }
+
+  if (firmware_revision_.empty()) {
+    // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
+    firmware_revision_ = modem_proxy_->Revision();
+  }
+
   GetRegistrationState();
 }
 
