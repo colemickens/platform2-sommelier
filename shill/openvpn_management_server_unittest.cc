@@ -191,10 +191,12 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
         ">INFO:...\n"
         ">PASSWORD:Need 'Auth' SC:user/password/otp\n"
         ">PASSWORD:Need 'User-Specific TPM Token FOO' ...\n"
+        ">PASSWORD:Verification Failed: .\n"
         ">STATE:123,RECONNECTING,detail,...,...";
     InputData data = CreateInputDataFromString(s);
     ExpectStaticChallengeResponse();
     ExpectPINResponse();
+    EXPECT_CALL(driver_, Cleanup(Service::kStateFailure));
     EXPECT_CALL(driver_, OnReconnecting());
     server_.OnInput(&data);
   }
@@ -254,7 +256,7 @@ TEST_F(OpenVPNManagementServerTest, ParseNeedPasswordTag) {
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds) {
-  // Expect no crash due to null sockets_.
+  EXPECT_CALL(driver_, Cleanup(Service::kStateFailure)).Times(3);
   server_.PerformStaticChallenge("Auth");
   driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
   server_.PerformStaticChallenge("Auth");
@@ -269,7 +271,7 @@ TEST_F(OpenVPNManagementServerTest, PerformStaticChallenge) {
 }
 
 TEST_F(OpenVPNManagementServerTest, SupplyTPMTokenNoPIN) {
-  // Expect no crash due to null sockets_.
+  EXPECT_CALL(driver_, Cleanup(Service::kStateFailure));
   server_.SupplyTPMToken("User-Specific TPM Token FOO");
 }
 
@@ -301,6 +303,13 @@ TEST_F(OpenVPNManagementServerTest, SendPassword) {
   SetConnectedSocket();
   ExpectSend("password \"Auth\" \"foobar\"\n");
   server_.SendPassword("Auth", "foobar");
+}
+
+TEST_F(OpenVPNManagementServerTest, ProcessFailedPasswordMessage) {
+  EXPECT_FALSE(server_.ProcessFailedPasswordMessage("foo"));
+  EXPECT_CALL(driver_, Cleanup(Service::kStateFailure));
+  EXPECT_TRUE(
+      server_.ProcessFailedPasswordMessage(">PASSWORD:Verification Failed: ."));
 }
 
 }  // namespace shill

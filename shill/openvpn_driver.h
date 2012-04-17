@@ -64,13 +64,14 @@ class OpenVPNDriver : public VPNDriver,
 
   virtual std::string GetProviderType() const;
 
+  virtual void Cleanup(Service::ConnectState state);
+
   void ClearMappedProperty(const size_t &index, Error *error);
   std::string GetMappedProperty(const size_t &index, Error *error);
   void SetMappedProperty(const size_t &index,
                          const std::string &value,
                          Error *error);
   Stringmap GetProvider(Error *error);
-
 
   KeyValueStore *args() { return &args_; }
 
@@ -86,8 +87,6 @@ class OpenVPNDriver : public VPNDriver,
 
  private:
   friend class OpenVPNDriverTest;
-  FRIEND_TEST(OpenVPNDriverTest, AppendFlag);
-  FRIEND_TEST(OpenVPNDriverTest, AppendValueOption);
   FRIEND_TEST(OpenVPNDriverTest, ClaimInterface);
   FRIEND_TEST(OpenVPNDriverTest, Cleanup);
   FRIEND_TEST(OpenVPNDriverTest, Connect);
@@ -156,7 +155,6 @@ class OpenVPNDriver : public VPNDriver,
   bool PinHostRoute(const IPConfig::Properties &properties);
 
   bool SpawnOpenVPN();
-  void Cleanup(Service::ConnectState state);
 
   // Called when the openpvn process exits.
   static void OnOpenVPNDied(GPid pid, gint status, gpointer data);

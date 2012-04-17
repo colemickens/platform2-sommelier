@@ -168,7 +168,8 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
       PerformStaticChallenge(tag);
     } else {
       NOTIMPLEMENTED()
-          << "User/password (no-OTP) authentication not implemented.";
+          << ": User/password (no-OTP) authentication not implemented.";
+      driver_->Cleanup(Service::kStateFailure);
     }
   } else if (StartsWithASCII(tag, "User-Specific TPM Token", true)) {
     SupplyTPMToken(tag);
@@ -197,7 +198,8 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
   string otp =
       driver_->args()->LookupString(flimflam::kOpenVPNOTPProperty, "");
   if (user.empty() || password.empty() || otp.empty()) {
-    NOTIMPLEMENTED() << "Missing credentials.";
+    NOTIMPLEMENTED() << ": Missing credentials.";
+    driver_->Cleanup(Service::kStateFailure);
     return;
   }
   gchar *b64_password =
@@ -221,7 +223,8 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
 void OpenVPNManagementServer::SupplyTPMToken(const string &tag) {
   string pin = driver_->args()->LookupString(flimflam::kOpenVPNPinProperty, "");
   if (pin.empty()) {
-    NOTIMPLEMENTED() << "Missing PIN.";
+    NOTIMPLEMENTED() << ": Missing PIN.";
+    driver_->Cleanup(Service::kStateFailure);
     return;
   }
   SendPassword(tag, pin);
@@ -233,6 +236,7 @@ bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
     return false;
   }
   NOTIMPLEMENTED();
+  driver_->Cleanup(Service::kStateFailure);
   return true;
 }
 

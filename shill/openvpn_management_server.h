@@ -43,6 +43,7 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, ParseNeedPasswordTag);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallenge);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds);
+  FRIEND_TEST(OpenVPNManagementServerTest, ProcessFailedPasswordMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessInfoMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC);
