@@ -41,6 +41,7 @@ static void ConfigureObjectPool(ObjectPoolMock* op) {
   EXPECT_CALL(*op, Find(_, _)).Times(AnyNumber());
   EXPECT_CALL(*op, FindByHandle(_, _)).Times(AnyNumber());
   EXPECT_CALL(*op, Delete(_)).Times(AnyNumber());
+  EXPECT_CALL(*op, Flush(_)).WillRepeatedly(Return(true));
 }
 
 static ObjectPool* CreateObjectPoolMock() {
@@ -686,6 +687,19 @@ TEST_F(TestSession, BadSignature) {
   EXPECT_EQ(CKR_OK, session_->OperationUpdate(kVerify, input, NULL, NULL));
   EXPECT_EQ(CKR_SIGNATURE_INVALID,
             session_->VerifyFinal(signature));
+}
+
+TEST_F(TestSession, Flush) {
+  ObjectMock token_object;
+  EXPECT_CALL(token_object, IsTokenObject()).WillRepeatedly(Return(true));
+  ObjectMock session_object;
+  EXPECT_CALL(session_object, IsTokenObject()).WillRepeatedly(Return(false));
+  EXPECT_CALL(token_pool_, Flush(_))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_FALSE(session_->FlushModifiableObject(&token_object));
+  EXPECT_TRUE(session_->FlushModifiableObject(&token_object));
+  EXPECT_TRUE(session_->FlushModifiableObject(&session_object));
 }
 
 }  // namespace chaps

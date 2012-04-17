@@ -139,6 +139,13 @@ bool SessionImpl::GetModifiableObject(int object_handle, Object** object) {
   return true;
 }
 
+bool SessionImpl::FlushModifiableObject(Object* object) {
+  CHECK(object);
+  ObjectPool* pool = object->IsTokenObject() ? token_object_pool_
+      : session_object_pool_.get();
+  return pool->Flush(object);
+}
+
 CK_RV SessionImpl::FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
                                    int num_attributes) {
   if (find_results_valid_)
