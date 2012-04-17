@@ -131,8 +131,7 @@ bool HomeDirs::AreCredentialsValid(const Credentials& creds) {
   VaultKeyset vk(platform_, crypto_);
   SecureBlob passkey;
   creds.GetPasskey(&passkey);
-  std::string path =
-      GetVaultKeysetPath(obfuscated);
+  std::string path = GetVaultKeysetPath(obfuscated);
   return vk.Load(GetVaultKeysetPath(obfuscated), passkey);
 }
 

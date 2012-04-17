@@ -749,6 +749,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
                         const SecureBlob& vault_key,
                         CryptoError* error,
                         VaultKeyset* keyset) const {
+  CHECK(tpm_);
   CHECK(serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED);
   SecureBlob local_encrypted_keyset(serialized.wrapped_keyset().length());
   serialized.wrapped_keyset().copy(
