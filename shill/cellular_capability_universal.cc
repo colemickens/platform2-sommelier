@@ -843,8 +843,10 @@ string CellularCapabilityUniversal::GetRoamingStateString() const {
 }
 
 void CellularCapabilityUniversal::GetSignalQuality() {
-  // TODO(jglasgow): implement
-  NOTIMPLEMENTED();
+  // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
+  const DBus::Struct<unsigned int, bool> quality =
+      modem_proxy_->SignalQuality();
+  OnSignalQualityChanged(quality._1);
 }
 
 void CellularCapabilityUniversal::OnModemPropertiesChanged(
@@ -861,6 +863,15 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
                                 &access_technologies)) {
     SetAccessTechnologies(access_technologies);
   }
+
+  DBusPropertiesMap::const_iterator it =
+    properties.find(MM_MODEM_PROPERTY_SIGNALQUALITY);
+  if (it != properties.end()) {
+    DBus::Struct<unsigned int, bool> quality =
+      static_cast<DBus::Variant>(it->second);
+    OnSignalQualityChanged(quality._1);
+  }
+
   // Unlockrequired and SimLock
   bool emit = false;
 
