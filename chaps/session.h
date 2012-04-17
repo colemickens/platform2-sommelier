@@ -48,6 +48,7 @@ class Session {
   virtual CK_RV DestroyObject(int object_handle) = 0;
   virtual bool GetObject(int object_handle, const Object** object) = 0;
   virtual bool GetModifiableObject(int object_handle, Object** object) = 0;
+  virtual bool FlushModifiableObject(Object* object) = 0;
   virtual CK_RV FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
                                 int num_attributes) = 0;
   virtual CK_RV FindObjects(int max_object_count,

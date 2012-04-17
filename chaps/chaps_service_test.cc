@@ -576,6 +576,9 @@ TEST_F(TestService, SetAttributeValue) {
   EXPECT_CALL(session_, GetModifiableObject(2, _))
     .WillOnce(Return(false))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+  EXPECT_CALL(session_, FlushModifiableObject(_))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(object_, SetAttributes(_, 1))
     .WillOnce(Return(CKR_TEMPLATE_INCONSISTENT))
     .WillRepeatedly(Return(CKR_OK));
@@ -587,6 +590,8 @@ TEST_F(TestService, SetAttributeValue) {
   EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
             service_->SetAttributeValue(1, 2, bad_attributes_));
   EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            service_->SetAttributeValue(1, 2, good_attributes_));
+  EXPECT_EQ(CKR_FUNCTION_FAILED,
             service_->SetAttributeValue(1, 2, good_attributes_));
   EXPECT_EQ(CKR_OK, service_->SetAttributeValue(1, 2, good_attributes_));
 }

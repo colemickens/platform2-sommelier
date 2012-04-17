@@ -62,6 +62,7 @@ class SessionImpl : public Session {
   virtual CK_RV DestroyObject(int object_handle);
   virtual bool GetObject(int object_handle, const Object** object);
   virtual bool GetModifiableObject(int object_handle, Object** object);
+  virtual bool FlushModifiableObject(Object* object);
   virtual CK_RV FindObjectsInit(const CK_ATTRIBUTE_PTR attributes,
                                 int num_attributes);
   virtual CK_RV FindObjects(int max_object_count,
