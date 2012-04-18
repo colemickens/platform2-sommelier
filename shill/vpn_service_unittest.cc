@@ -35,11 +35,29 @@ class VPNServiceTest : public testing::Test {
   VPNServiceRefPtr service_;
 };
 
+TEST_F(VPNServiceTest, TechnologyIs) {
+  EXPECT_TRUE(service_->TechnologyIs(Technology::kVPN));
+  EXPECT_FALSE(service_->TechnologyIs(Technology::kEthernet));
+}
+
 TEST_F(VPNServiceTest, Connect) {
+  EXPECT_TRUE(service_->connectable());
   Error error;
   EXPECT_CALL(*driver_, Connect(_, &error));
   service_->Connect(&error);
   EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(VPNServiceTest, ConnectAlreadyConnected) {
+  Error error;
+  EXPECT_CALL(*driver_, Connect(_, _)).Times(0);
+  service_->state_ = Service::kStateOnline;
+  service_->Connect(&error);
+  EXPECT_EQ(Error::kAlreadyConnected, error.type());
+  error.Reset();
+  service_->state_ = Service::kStateConfiguring;
+  service_->Connect(&error);
+  EXPECT_EQ(Error::kAlreadyConnected, error.type());
 }
 
 TEST_F(VPNServiceTest, Disconnect) {

@@ -46,12 +46,15 @@ const char Service::kCheckPortalTrue[] = "true";
 
 const int Service::kPriorityNone = 0;
 
-const char Service::kServiceSortConnectEtc[] = "ConnectableEtc";
+const char Service::kServiceSortAutoConnect[] = "AutoConnect";
+const char Service::kServiceSortConnectable[] = "Connectable";
+const char Service::kServiceSortFavorite[] = "Favorite";
 const char Service::kServiceSortIsConnected[] = "IsConnected";
 const char Service::kServiceSortIsConnecting[] = "IsConnecting";
 const char Service::kServiceSortIsFailed[] = "IsFailed";
-const char Service::kServiceSortTechnology[] = "Technology";
+const char Service::kServiceSortPriority[] = "Priority";
 const char Service::kServiceSortSecurityEtc[] = "SecurityEtc";
+const char Service::kServiceSortTechnology[] = "Technology";
 const char Service::kServiceSortUniqueName[] = "UniqueName";
 
 const char Service::kStorageAutoConnect[] = "AutoConnect";
@@ -598,11 +601,27 @@ bool Service::Compare(ServiceRefPtr a,
     }
   }
 
-  if (DecideBetween(a->connectable(), b->connectable(), &ret) ||
-      DecideBetween(a->auto_connect(), b->auto_connect(), &ret) ||
-      DecideBetween(a->favorite(), b->favorite(), &ret) ||
-      DecideBetween(a->priority(), b->priority(), &ret)) {
-    *reason = kServiceSortConnectEtc;
+  if (DecideBetween(a->connectable(), b->connectable(), &ret)) {
+    *reason = kServiceSortConnectable;
+    return ret;
+  }
+
+  // Ignore the auto-connect property if both services are connected
+  // already. This allows connected non-autoconnectable VPN services to be
+  // sorted higher than other connected services based on technology order.
+  if (!a->IsConnected() &&
+      DecideBetween(a->auto_connect(), b->auto_connect(), &ret)) {
+    *reason = kServiceSortAutoConnect;
+    return ret;
+  }
+
+  if (DecideBetween(a->favorite(), b->favorite(), &ret)) {
+    *reason = kServiceSortFavorite;
+    return ret;
+  }
+
+  if (DecideBetween(a->priority(), b->priority(), &ret)) {
+    *reason = kServiceSortPriority;
     return ret;
   }
 
@@ -611,7 +630,6 @@ bool Service::Compare(ServiceRefPtr a,
   // user-specified.  These heuristics should be richer (contain
   // historical information, for example) and be subject to user
   // customization.
-
   for (vector<Technology::Identifier>::const_iterator it = tech_order.begin();
        it != tech_order.end();
        ++it) {

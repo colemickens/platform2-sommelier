@@ -118,6 +118,8 @@ Manager::Manager(ControlInterface *control_interface,
   // Set default technology order "by hand", to avoid invoking side
   // effects of SetTechnologyOrder.
   technology_order_.push_back(
+      Technology::IdentifierFromName(flimflam::kTypeVPN));
+  technology_order_.push_back(
       Technology::IdentifierFromName(flimflam::kTypeEthernet));
   technology_order_.push_back(
       Technology::IdentifierFromName(flimflam::kTypeWifi));

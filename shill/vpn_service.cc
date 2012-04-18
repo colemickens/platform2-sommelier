@@ -28,12 +28,22 @@ VPNService::VPNService(ControlInterface *control,
                        VPNDriver *driver)
     : Service(control, dispatcher, metrics, manager, Technology::kVPN),
       driver_(driver) {
+  set_connectable(true);
   mutable_store()->RegisterString(flimflam::kVPNDomainProperty, &vpn_domain_);
 }
 
 VPNService::~VPNService() {}
 
+bool VPNService::TechnologyIs(const Technology::Identifier type) const {
+  return type == Technology::kVPN;
+}
+
 void VPNService::Connect(Error *error) {
+  if (IsConnected() || IsConnecting()) {
+    Error::PopulateAndLog(
+        error, Error::kAlreadyConnected, "VPN service already connected.");
+    return;
+  }
   Service::Connect(error);
   driver_->Connect(this, error);
 }

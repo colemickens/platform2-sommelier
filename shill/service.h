@@ -415,18 +415,22 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SetProperty);
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, Unload);
+  FRIEND_TEST(VPNServiceTest, ConnectAlreadyConnected);
 
   static const char kAutoConnConnected[];
   static const char kAutoConnConnecting[];
   static const char kAutoConnExplicitDisconnect[];
   static const char kAutoConnNotConnectable[];
 
-  static const char kServiceSortConnectEtc[];
+  static const char kServiceSortAutoConnect[];
+  static const char kServiceSortConnectable[];
+  static const char kServiceSortFavorite[];
   static const char kServiceSortIsConnected[];
   static const char kServiceSortIsConnecting[];
   static const char kServiceSortIsFailed[];
-  static const char kServiceSortTechnology[];
+  static const char kServiceSortPriority[];
   static const char kServiceSortSecurityEtc[];
+  static const char kServiceSortTechnology[];
   static const char kServiceSortUniqueName[];
 
   bool GetAutoConnect(Error *error);
