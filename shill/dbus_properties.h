@@ -21,6 +21,10 @@ class DBusProperties {
                         const std::string &key,
                         std::string *value);
 
+  static bool GetObjectPath(const DBusPropertiesMap &properties,
+                            const std::string &key,
+                            std::string *value);
+
   static bool GetUint32(const DBusPropertiesMap &properties,
                         const std::string &key,
                         uint32 *value);

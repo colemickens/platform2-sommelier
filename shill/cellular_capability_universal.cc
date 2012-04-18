@@ -853,8 +853,8 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
     const DBusPropertiesMap &properties,
     const vector<string> &/* invalidated_properties */) {
   string value;
-  if (DBusProperties::GetString(properties,
-                                MM_MODEM_PROPERTY_SIM, &value))
+  if (DBusProperties::GetObjectPath(properties,
+                                    MM_MODEM_PROPERTY_SIM, &value))
     OnSimPathChanged(value);
 
   uint32 access_technologies = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;

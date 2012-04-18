@@ -22,6 +22,19 @@ bool DBusProperties::GetString(const DBusPropertiesMap &properties,
 }
 
 // static
+bool DBusProperties::GetObjectPath(const DBusPropertiesMap &properties,
+                                   const std::string &key,
+                                   std::string *value) {
+  DBusPropertiesMap::const_iterator it = properties.find(key);
+  if (it == properties.end()) {
+    return false;
+  }
+  *value = it->second.reader().get_path();
+  VLOG(2) << key << " = " << *value;
+  return true;
+}
+
+// static
 bool DBusProperties::GetUint32(const DBusPropertiesMap &properties,
                                const std::string &key,
                                uint32 *value) {
