@@ -14,8 +14,7 @@ namespace shill {
 
 class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
  public:
-  DBusPropertiesProxy(DBusPropertiesProxyDelegate *delegate,
-                      DBus::Connection *connection,
+  DBusPropertiesProxy(DBus::Connection *connection,
                       const std::string &path,
                       const std::string &service);
   virtual ~DBusPropertiesProxy();
@@ -23,15 +22,24 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
   // Inherited from DBusPropertiesProxyInterface.
   virtual DBusPropertiesMap GetAll(const std::string &interface_name);
 
+  virtual void set_properties_changed_callback(
+      const PropertiesChangedCallback &callback);
+  virtual void set_modem_manager_properties_changed_callback(
+      const ModemManagerPropertiesChangedCallback &callback);
+
  private:
   class Proxy : public org::freedesktop::DBus::Properties_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBusPropertiesProxyDelegate *delegate,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
+
+    virtual void set_properties_changed_callback(
+        const PropertiesChangedCallback &callback);
+    virtual void set_modem_manager_properties_changed_callback(
+        const ModemManagerPropertiesChangedCallback &callback);
 
    private:
     // Signal callbacks inherited from DBusProperties_proxy.
@@ -43,7 +51,8 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
         const DBusPropertiesMap &changed_properties,
         const std::vector<std::string> &invalidated_properties);
 
-    DBusPropertiesProxyDelegate *delegate_;
+    PropertiesChangedCallback properties_changed_callback_;
+    ModemManagerPropertiesChangedCallback mm_properties_changed_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

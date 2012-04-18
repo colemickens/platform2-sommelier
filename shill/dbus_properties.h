@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <dbus-c++/types.h>
@@ -32,6 +33,10 @@ class DBusProperties {
   static bool GetString(const DBusPropertiesMap &properties,
                         const std::string &key,
                         std::string *value);
+
+  static bool GetStrings(const DBusPropertiesMap &properties,
+                         const std::string &key,
+                         std::vector<std::string> *value);
 
   static bool GetUint16(const DBusPropertiesMap &properties,
                         const std::string &key,

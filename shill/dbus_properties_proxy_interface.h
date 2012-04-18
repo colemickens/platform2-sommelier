@@ -7,6 +7,8 @@
 
 #include <vector>
 
+#include <base/callback.h>
+
 #include "shill/dbus_properties.h"
 
 namespace shill {
@@ -15,24 +17,28 @@ namespace shill {
 // is provided so that it can be mocked in tests.
 class DBusPropertiesProxyInterface {
  public:
+  // Callback invoked when an object sends a DBus property change signal.
+  typedef base::Callback<void(
+      const std::string &interface,
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties)>
+    PropertiesChangedCallback;
+
+  // Callback invoked when the classic modem manager sends a DBus
+  // property change signal.
+  typedef base::Callback<void(
+      const std::string &interface,
+      const DBusPropertiesMap &properties)>
+    ModemManagerPropertiesChangedCallback;
+
   virtual ~DBusPropertiesProxyInterface() {}
 
   virtual DBusPropertiesMap GetAll(const std::string &interface_name) = 0;
-};
 
-// DBus.Properties signal delegate to be associated with the proxy.
-class DBusPropertiesProxyDelegate {
- public:
-  virtual ~DBusPropertiesProxyDelegate() {}
-
-  virtual void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties) = 0;
-
-  virtual void OnModemManagerPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &properties) = 0;
+  virtual void set_properties_changed_callback(
+      const PropertiesChangedCallback &callback) = 0;
+  virtual void set_modem_manager_properties_changed_callback(
+      const ModemManagerPropertiesChangedCallback &callback) = 0;
 };
 
 }  // namespace shill

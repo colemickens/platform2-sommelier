@@ -54,10 +54,9 @@ DBusObjectManagerProxyInterface *ProxyFactory::CreateDBusObjectManagerProxy(
 }
 
 DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
-    DBusPropertiesProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new DBusPropertiesProxy(delegate, connection(), path, service);
+  return new DBusPropertiesProxy(connection(), path, service);
 }
 
 ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(

@@ -74,7 +74,6 @@ class Modem1Test : public Test {
     explicit TestProxyFactory(Modem1Test *test) : test_(test) {}
 
     virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-        DBusPropertiesProxyDelegate */*delegate*/,
         const string &/*path*/,
         const string &/*service*/) {
       return test_->proxy_.release();

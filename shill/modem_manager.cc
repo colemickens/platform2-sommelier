@@ -140,20 +140,6 @@ ModemManagerClassic::ModemManagerClassic(const string &service,
                  glib,
                  provider_db) {}
 
-void ModemManagerClassic::OnDBusPropertiesChanged(
-    const string &/*interface*/,
-    const DBusPropertiesMap &/*changed_properties*/,
-    const vector<string> &/*invalidated_properties*/) {
-  // Ignored.
-}
-
-void ModemManagerClassic::OnModemManagerPropertiesChanged(
-    const string &/*interface*/,
-    const DBusPropertiesMap &properties) {
-  // Ignored
-}
-
-
 ModemManagerClassic::~ModemManagerClassic() {}
 
 void ModemManagerClassic::Connect(const string &supplied_owner) {
@@ -195,8 +181,7 @@ void ModemManagerClassic::InitModemClassic(shared_ptr<ModemClassic> modem) {
   }
 
   scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
-      proxy_factory()->CreateDBusPropertiesProxy(this,
-                                                 modem->path(),
+      proxy_factory()->CreateDBusPropertiesProxy(modem->path(),
                                                  modem->owner()));
   DBusPropertiesMap properties =
       properties_proxy->GetAll(MM_MODEM_INTERFACE);

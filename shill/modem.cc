@@ -14,6 +14,7 @@
 #include "shill/scope_logger.h"
 
 using base::Bind;
+using base::Unretained;
 using std::string;
 using std::vector;
 
@@ -53,7 +54,11 @@ Modem::~Modem() {
 
 void Modem::Init() {
   dbus_properties_proxy_.reset(
-      proxy_factory_->CreateDBusPropertiesProxy(this, path(), owner()));
+      proxy_factory_->CreateDBusPropertiesProxy(path(), owner()));
+  dbus_properties_proxy_->set_modem_manager_properties_changed_callback(
+      Bind(&Modem::OnModemManagerPropertiesChanged, Unretained(this)));
+  dbus_properties_proxy_->set_properties_changed_callback(
+      Bind(&Modem::OnDBusPropertiesChanged, Unretained(this)));
 }
 
 void Modem::OnDeviceInfoAvailable(const string &link_name) {

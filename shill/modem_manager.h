@@ -130,8 +130,7 @@ class ModemManager {
   DISALLOW_COPY_AND_ASSIGN(ModemManager);
 };
 
-class ModemManagerClassic : public ModemManager,
-                            public DBusPropertiesProxyDelegate {
+class ModemManagerClassic : public ModemManager {
  public:
   ModemManagerClassic(const std::string &service,
                       const std::string &path,
@@ -147,15 +146,6 @@ class ModemManagerClassic : public ModemManager,
   // Called by our dbus proxy
   void OnDeviceAdded(const std::string &path);
   void OnDeviceRemoved(const std::string &path);
-
-  // DBusPropertiesProxyDelegate methods.  We ignore both of these
-  void OnDBusPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties);
-  void OnModemManagerPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &properties);
 
  protected:
   virtual void Connect(const std::string &owner);
