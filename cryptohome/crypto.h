@@ -203,10 +203,10 @@ class Crypto : public EntropySource {
   //     encryption key that should be used in subsequent calls to mount(2)
   bool AddKeyset(const VaultKeyset& vault_keyset,
                  std::string* key_signature,
-                 std::string* filename_key_signature) const;
+                 std::string* filename_key_signature);
 
   // Clears the user's kernel keyring
-  void ClearKeyset() const;
+  void ClearKeyset();
 
   // Gets the SHA1 hash of the data provided
   void GetSha1(const chromeos::Blob& data, unsigned int start,
@@ -283,7 +283,7 @@ class Crypto : public EntropySource {
   //   key_sig - The key's (ascii) signature
   //   salt - The salt
   bool PushVaultKey(const SecureBlob& key, const std::string& key_sig,
-                           const SecureBlob& salt) const;
+                    const SecureBlob& salt);
 
   bool EncryptTPM(const SecureBlob& blob,
                   const SecureBlob& key,
@@ -311,6 +311,9 @@ class Crypto : public EntropySource {
 
   // The TPM implementation
   Tpm* tpm_;
+
+  // Handles for kernel-managed ecryptfs keys.
+  std::vector<std::string> key_signatures_;
 
   DISALLOW_COPY_AND_ASSIGN(Crypto);
 };

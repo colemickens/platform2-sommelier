@@ -238,6 +238,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
                                  bool recreate_decrypt_fatal,
                                  MountError* mount_error) {
   current_user_->Reset();
+  current_user_->SetUser(credentials);
 
   string username = credentials.GetFullUsernameString();
   if (username.compare(kIncognitoUser) == 0) {
@@ -271,14 +272,14 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
     }
-
-    current_user_->SetUser(credentials);
     *mount_error = MOUNT_ERROR_NONE;
     return true;
   }
 
   if (!mount_args.create_if_missing && !DoesCryptohomeExist(credentials)) {
     if (mount_error) {
+      LOG(ERROR) << "Asked to mount nonexistent user: "
+                 << credentials.GetFullUsernameString();
       *mount_error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
     }
     return false;
@@ -325,6 +326,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     }
     return false;
   }
+
   crypto_->ClearKeyset();
 
   // Add the decrypted key to the keyring so that ecryptfs can use it
@@ -441,7 +443,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_NONE;
   }
 
-  current_user_->SetUser(credentials);
   credentials.GetPasskey(&pkcs11_passkey_);
   return true;
 }

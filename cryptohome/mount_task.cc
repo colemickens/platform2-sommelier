@@ -52,21 +52,16 @@ void MountTask::Signal() {
 }
 
 void MountTaskMount::Run() {
-  if (mount_) {
-    MountError code = MOUNT_ERROR_NONE;
-    bool status = mount_->MountCryptohome(credentials_,
-                                          mount_args_,
-                                          &code);
-    result()->set_return_status(status);
-    result()->set_return_code(code);
-  }
-  MountTask::Notify();
-
+  CHECK(mount_);
+  MountError code = MOUNT_ERROR_NONE;
+  bool status = mount_->MountCryptohome(credentials_,
+                                        mount_args_,
+                                        &code);
+  result()->set_return_status(status);
+  result()->set_return_code(code);
   // Update user activity timestamp to be able to detect old users.
-  // This action is not mandatory, so we perform it after
-  // CryptohomeMount() returns, in background.
-  if (mount_)
-    mount_->UpdateCurrentUserActivityTimestamp(0);
+  mount_->UpdateCurrentUserActivityTimestamp(0);
+  MountTask::Notify();
 }
 
 void MountTaskMountGuest::Run() {

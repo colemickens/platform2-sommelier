@@ -87,8 +87,6 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
   MockHomeDirs homedirs;
   EXPECT_CALL(homedirs, Init())
       .WillOnce(Return(true));
-  EXPECT_CALL(mount, Init())
-      .WillOnce(Return(true));
   EXPECT_CALL(mount, AreSameUser(_))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs, AreCredentialsValid(_))

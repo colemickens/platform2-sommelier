@@ -18,7 +18,6 @@
 
 #include "cryptohome_event_source.h"
 #include "install_attributes.h"
-#include "mount.h"
 #include "mount_task.h"
 #include "pkcs11_init.h"
 #include "tpm_init.h"
@@ -224,12 +223,13 @@ class Service : public chromeos::dbus::AbstractDbusService,
   cryptohome::Mount* GetMountForUser(const std::string& username);
   cryptohome::Mount* CreateMountForUser(const std::string& username);
 
+  bool LegacyUnmountAll();
+
   bool use_tpm_;
   GMainLoop* loop_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome* cryptohome_;
   SecureBlob system_salt_;
-  cryptohome::Mount* mount_;
   cryptohome::Crypto* crypto_;
   // TPM doesn't use the scoped_ptr for default pattern, since the tpm is a
   // singleton - we don't want it getting destroyed when we are.
