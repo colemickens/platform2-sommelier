@@ -39,9 +39,12 @@ const char kTestDeviceName1[] = "netdev1";
 const int kTestDeviceInterfaceIndex1 = 321;
 const char kIPAddress0[] = "192.168.1.1";
 const char kGatewayAddress0[] = "192.168.1.254";
+const char kGatewayAddress1[] = "192.168.2.254";
 const char kBroadcastAddress0[] = "192.168.1.255";
 const char kNameServer0[] = "8.8.8.8";
 const char kNameServer1[] = "8.8.9.9";
+const int32 kPrefix0 = 24;
+const int32 kPrefix1 = 31;
 const char kSearchDomain0[] = "chromium.org";
 const char kSearchDomain1[] = "google.com";
 }  // namespace {}
@@ -59,20 +62,27 @@ class ConnectionTest : public Test {
             kTestDeviceName0,
             Technology::kUnknown,
             device_info_.get())),
-        ipconfig_(new IPConfig(&control_, kTestDeviceName0)) {}
+        ipconfig_(new IPConfig(&control_, kTestDeviceName0)),
+        local_address_(IPAddress::kFamilyIPv4),
+        broadcast_address_(IPAddress::kFamilyIPv4),
+        gateway_address_(IPAddress::kFamilyIPv4),
+        default_address_(IPAddress::kFamilyIPv4) {}
 
   virtual void SetUp() {
     ReplaceSingletons(connection_);
-    IPConfig::Properties properties;
-    properties.address = kIPAddress0;
-    properties.gateway = kGatewayAddress0;
-    properties.broadcast_address = kBroadcastAddress0;
-    properties.dns_servers.push_back(kNameServer0);
-    properties.dns_servers.push_back(kNameServer1);
-    properties.domain_search.push_back(kSearchDomain0);
-    properties.domain_search.push_back(kSearchDomain1);
-    properties.address_family = IPAddress::kFamilyIPv4;
-    ipconfig_->UpdateProperties(properties, true);
+    properties_.address = kIPAddress0;
+    properties_.subnet_prefix = kPrefix0;
+    properties_.gateway = kGatewayAddress0;
+    properties_.broadcast_address = kBroadcastAddress0;
+    properties_.dns_servers.push_back(kNameServer0);
+    properties_.dns_servers.push_back(kNameServer1);
+    properties_.domain_search.push_back(kSearchDomain0);
+    properties_.domain_search.push_back(kSearchDomain1);
+    properties_.address_family = IPAddress::kFamilyIPv4;
+    UpdateProperties();
+    EXPECT_TRUE(local_address_.SetAddressFromString(kIPAddress0));
+    EXPECT_TRUE(broadcast_address_.SetAddressFromString(kBroadcastAddress0));
+    EXPECT_TRUE(gateway_address_.SetAddressFromString(kGatewayAddress0));
   }
 
   virtual void TearDown() {
@@ -85,11 +95,20 @@ class ConnectionTest : public Test {
     connection->rtnl_handler_ = &rtnl_handler_;
   }
 
+  void UpdateProperties() {
+    ipconfig_->UpdateProperties(properties_, true);
+  }
+
  protected:
   scoped_ptr<StrictMock<MockDeviceInfo> > device_info_;
   ConnectionRefPtr connection_;
   MockControl control_;
   IPConfigRefPtr ipconfig_;
+  IPConfig::Properties properties_;
+  IPAddress local_address_;
+  IPAddress broadcast_address_;
+  IPAddress gateway_address_;
+  IPAddress default_address_;
   StrictMock<MockResolver> resolver_;
   StrictMock<MockRoutingTable> routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
@@ -102,12 +121,21 @@ TEST_F(ConnectionTest, InitState) {
   EXPECT_FALSE(connection_->routing_request_count_);
 }
 
+MATCHER_P2(IsIPAddress, address, prefix, "") {
+  IPAddress match_address(address);
+  match_address.set_prefix(prefix);
+  return match_address.Equals(arg);
+}
+
 TEST_F(ConnectionTest, AddConfig) {
   EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(kTestDeviceInterfaceIndex0, _, _, _));
+              AddInterfaceAddress(kTestDeviceInterfaceIndex0,
+                                  IsIPAddress(local_address_, kPrefix0),
+                                  IsIPAddress(broadcast_address_, 0),
+                                  IsIPAddress(default_address_, 0)));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(kTestDeviceInterfaceIndex0,
-                              ipconfig_,
+                              IsIPAddress(gateway_address_, 0),
                               Connection::kNonDefaultMetricBase +
                               kTestDeviceInterfaceIndex0));
   EXPECT_CALL(routing_table_,
@@ -145,6 +173,68 @@ TEST_F(ConnectionTest, AddConfig) {
   EXPECT_FALSE(connection_->is_default());
 }
 
+TEST_F(ConnectionTest, AddConfigWithPeer) {
+  const string kPeerAddress("192.168.1.222");
+  IPAddress peer_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(peer_address.SetAddressFromString(kPeerAddress));
+  properties_.peer_address = kPeerAddress;
+  properties_.gateway = string();
+  UpdateProperties();
+  EXPECT_CALL(rtnl_handler_,
+              AddInterfaceAddress(kTestDeviceInterfaceIndex0,
+                                  IsIPAddress(local_address_, kPrefix0),
+                                  IsIPAddress(broadcast_address_, 0),
+                                  IsIPAddress(peer_address, 0)));
+  EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _)).Times(0);
+  EXPECT_CALL(routing_table_,
+              ConfigureRoutes(kTestDeviceInterfaceIndex0,
+                              ipconfig_,
+                              Connection::kDefaultMetric));
+  connection_->UpdateFromIPConfig(ipconfig_);
+}
+
+TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
+  // Assign a prefix that makes the gateway unreachable.
+  properties_.subnet_prefix = kPrefix1;
+  UpdateProperties();
+
+  // Connection should override with a prefix which will allow the
+  // gateway to be reachable.
+  EXPECT_CALL(rtnl_handler_,
+              AddInterfaceAddress(kTestDeviceInterfaceIndex0,
+                                  IsIPAddress(local_address_, kPrefix0),
+                                  IsIPAddress(broadcast_address_, 0),
+                                  IsIPAddress(default_address_, 0)));
+  EXPECT_CALL(routing_table_,
+              SetDefaultRoute(kTestDeviceInterfaceIndex0,
+                              IsIPAddress(gateway_address_, 0),
+                              Connection::kNonDefaultMetricBase +
+                              kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_,
+              ConfigureRoutes(kTestDeviceInterfaceIndex0,
+                              ipconfig_,
+                              Connection::kDefaultMetric));
+  connection_->UpdateFromIPConfig(ipconfig_);
+
+  // Assign a gateway address that violates the minimum plausible prefix
+  // the Connection can assign.
+  properties_.gateway = kGatewayAddress1;
+  UpdateProperties();
+
+  // Connection cannot override this prefix, so it will revert to the
+  // configured prefix, expecting the default route to fail.
+  EXPECT_CALL(rtnl_handler_,
+              AddInterfaceAddress(kTestDeviceInterfaceIndex0,
+                                  IsIPAddress(local_address_, kPrefix1),
+                                  IsIPAddress(broadcast_address_, 0),
+                                  IsIPAddress(default_address_, 0)));
+  EXPECT_CALL(routing_table_,
+              SetDefaultRoute(kTestDeviceInterfaceIndex0, _, _));
+  EXPECT_CALL(routing_table_,
+              ConfigureRoutes(kTestDeviceInterfaceIndex0, _, _));
+  connection_->UpdateFromIPConfig(ipconfig_);
+}
+
 TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                                Connection::kDefaultMetric));
@@ -165,10 +255,13 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   connection_->SetIsDefault(true);
 
   EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(kTestDeviceInterfaceIndex0, _, _, _));
+              AddInterfaceAddress(kTestDeviceInterfaceIndex0,
+                                  IsIPAddress(local_address_, kPrefix0),
+                                  IsIPAddress(broadcast_address_, 0),
+                                  IsIPAddress(default_address_, 0)));
   EXPECT_CALL(routing_table_, SetDefaultRoute(kTestDeviceInterfaceIndex0,
-                                             ipconfig_,
-                                             Connection::kDefaultMetric));
+                                              IsIPAddress(gateway_address_, 0),
+                                              Connection::kDefaultMetric));
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
@@ -224,12 +317,6 @@ TEST_F(ConnectionTest, Destructor) {
     connection->routing_table_ = &routing_table_;
     connection->rtnl_handler_ = &rtnl_handler_;
   }
-}
-
-MATCHER_P2(IsIPAddress, address, prefix, "") {
-  IPAddress match_address(address);
-  match_address.set_prefix(prefix);
-  return match_address.Equals(arg);
 }
 
 TEST_F(ConnectionTest, RequestHostRoute) {

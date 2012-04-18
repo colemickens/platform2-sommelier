@@ -25,7 +25,7 @@ class MockRoutingTable : public RoutingTable {
                                      IPAddress::Family family,
                                      RoutingTableEntry *entry));
   MOCK_METHOD3(SetDefaultRoute, bool(int interface_index,
-                                     const IPConfigRefPtr &ipconfig,
+                                     const IPAddress &gateway_address,
                                      uint32 metric));
   MOCK_METHOD3(ConfigureRoutes, bool(int interface_index,
                                      const IPConfigRefPtr &ipconfig,

@@ -57,14 +57,20 @@ class Connection : public base::RefCounted<Connection> {
 
  private:
   friend class ConnectionTest;
-  FRIEND_TEST(ConnectionTest, InitState);
   FRIEND_TEST(ConnectionTest, AddConfig);
   FRIEND_TEST(ConnectionTest, AddConfigReverse);
+  FRIEND_TEST(ConnectionTest, AddConfigWithBrokenNetmask);
+  FRIEND_TEST(ConnectionTest, AddConfigWithPeer);
   FRIEND_TEST(ConnectionTest, Destructor);
+  FRIEND_TEST(ConnectionTest, InitState);
 
   static const uint32 kDefaultMetric;
   static const uint32 kNonDefaultMetricBase;
 
+  // Work around misconfigured servers which provide a gateway address that
+  // is unreachable with the provided netmask.
+  static void FixGatewayReachability(IPAddress *local,
+                                     const IPAddress &gateway);
   uint32 GetMetric(bool is_default);
 
   bool is_default_;

@@ -282,7 +282,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   test_entry = (*tables)[kTestDeviceIndex1][0];
   EXPECT_TRUE(entry1.Equals(test_entry));
 
-  // Send a duplicate of the second gatway route message, changing the metric.
+  // Send a duplicate of the second gateway route message, changing the metric.
   RoutingTableEntry entry2(entry1);
   entry2.metric++;
   SendRouteEntry(RTNLMessage::kModeAdd,
@@ -314,14 +314,9 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                                                IPAddress::kFamilyIPv4,
                                                &test_entry));
 
-  // Add a route from an IPConfig entry.
-  MockControl control;
-  IPConfigRefPtr ipconfig(new IPConfig(&control, kTestDeviceName0));
-  IPConfig::Properties properties;
-  properties.address_family = IPAddress::kFamilyIPv4;
-  properties.gateway = kTestNetAddress0;
-  properties.address = kTestNetAddress1;
-  ipconfig->UpdateProperties(properties, true);
+  // Add a route to a gatway address.
+  IPAddress gateway_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(gateway_address.SetAddressFromString(kTestNetAddress0));
 
   EXPECT_CALL(rtnl_handler_,
               SendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
@@ -329,7 +324,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                                           entry0,
                                           NLM_F_CREATE | NLM_F_EXCL)));
   EXPECT_TRUE(routing_table_->SetDefaultRoute(kTestDeviceIndex1,
-                                              ipconfig,
+                                              gateway_address,
                                               metric));
 
   // The table entry should look much like entry0, except with
@@ -357,7 +352,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                                    entry3,
                                    0)));
   EXPECT_TRUE(routing_table_->SetDefaultRoute(kTestDeviceIndex1,
-                                              ipconfig,
+                                              gateway_address,
                                               entry4.metric));
 
   // Test that removing the table causes the route to disappear.

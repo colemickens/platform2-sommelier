@@ -137,19 +137,14 @@ bool RoutingTable::GetDefaultRouteInternal(int interface_index,
 }
 
 bool RoutingTable::SetDefaultRoute(int interface_index,
-                                   const IPConfigRefPtr &ipconfig,
+                                   const IPAddress &gateway_address,
                                    uint32 metric) {
   VLOG(2) << __func__ << " index " << interface_index << " metric " << metric;
 
-  const IPConfig::Properties &ipconfig_props = ipconfig->properties();
   RoutingTableEntry *old_entry;
-  IPAddress gateway_address(ipconfig_props.address_family);
-  if (!gateway_address.SetAddressFromString(ipconfig_props.gateway)) {
-    return false;
-  }
 
   if (GetDefaultRouteInternal(interface_index,
-                              ipconfig_props.address_family,
+                              gateway_address.family(),
                               &old_entry)) {
     if (old_entry->gateway.Equals(gateway_address)) {
       if (old_entry->metric != metric) {
@@ -165,7 +160,7 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
     }
   }
 
-  IPAddress default_address(ipconfig_props.address_family);
+  IPAddress default_address(gateway_address.family());
   default_address.SetAddressToDefault();
 
   return AddRoute(interface_index,
