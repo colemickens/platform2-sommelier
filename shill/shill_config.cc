@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,6 +16,8 @@ const char Config::kDefaultStorageDirectory[] = "/var/cache/shill";
 // static
 const char Config::kDefaultUserStorageFormat[] = "/home/%s/user/shill";
 // static
+const char Config::kFlimflamRunDirectory[] = "/var/run/flimflam";
+// static
 const char Config::kFlimflamStorageDirectory[] = "/var/cache/flimflam";
 // static
 const char Config::kFlimflamUserStorageFormat[] = "/home/%s/user/flimflam";
@@ -26,13 +28,11 @@ Config::Config() : use_flimflam_(false) {
 Config::~Config() {}
 
 std::string Config::GetRunDirectory() {
-  return kDefaultRunDirectory;
+  return (use_flimflam_ ? kFlimflamRunDirectory : kDefaultRunDirectory);
 }
 
 std::string Config::GetStorageDirectory() {
-  return (use_flimflam_ ?
-          kFlimflamStorageDirectory :
-          kDefaultStorageDirectory);
+  return (use_flimflam_ ? kFlimflamStorageDirectory : kDefaultStorageDirectory);
 }
 
 std::string Config::GetUserStorageDirectoryFormat() {

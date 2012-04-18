@@ -43,8 +43,8 @@ static const char kPushProfiles[] = "push";
 static const char kHelp[] = "help";
 // LOG() level. 0 = INFO, 1 = WARNING, 2 = ERROR.
 static const char kLogLevel[] = "log-level";
-// Use the same directories flimflam uses for global, user profiles..
-static const char kUseFlimflamProfiles[] = "use-flimflam-profiles";
+// Use the same directories flimflam uses (profiles, run dir...)
+static const char kUseFlimflamDirs[] = "use-flimflam-dirs";
 
 // The help message shown if help flag is passed to the program.
 static const char kHelpMessage[] = "\n"
@@ -61,8 +61,8 @@ static const char kHelpMessage[] = "\n"
     "    LOG() level. 0 = INFO, 1 = WARNING, 2 = ERROR.\n"
     "  --push=profile1,profile2\n"
     "    Specify profiles to push on startup.\n"
-    "  --use-flimflam-profiles\n"
-    "    Use the same directories flimflam uses for global, user profiles.\n"
+    "  --use-flimflam-dirs\n"
+    "    Use the same directories flimflam uses (profiles, run dir...).\n"
     "  --v=N\n"
     "    Enables VLOG(N) and below.\n"
     "  --vmodule=\"*file_pattern*=1,certain_file.cc=2\".\n"
@@ -128,8 +128,8 @@ int main(int argc, char** argv) {
       cl->GetSwitchValueASCII(switches::kDefaultConfigDir));
 
   shill::Config config; /* (config_dir, default_config_dir) */
-  if (cl->HasSwitch(switches::kUseFlimflamProfiles))
-    config.UseFlimflamStorageDirs();
+  if (cl->HasSwitch(switches::kUseFlimflamDirs))
+    config.UseFlimflamDirs();
 
   // TODO(pstew): This should be chosen based on config
   // Make sure we delete the DBusControl object AFTER the LazyInstances

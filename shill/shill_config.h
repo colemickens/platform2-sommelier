@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,7 +16,7 @@ class Config {
   Config();
   virtual ~Config();
 
-  void UseFlimflamStorageDirs() { use_flimflam_ = true; }
+  void UseFlimflamDirs() { use_flimflam_ = true; }
 
   virtual std::string GetRunDirectory();
   virtual std::string GetStorageDirectory();
@@ -26,6 +26,7 @@ class Config {
   static const char kDefaultRunDirectory[];
   static const char kDefaultStorageDirectory[];
   static const char kDefaultUserStorageFormat[];
+  static const char kFlimflamRunDirectory[];
   static const char kFlimflamStorageDirectory[];
   static const char kFlimflamUserStorageFormat[];
 
