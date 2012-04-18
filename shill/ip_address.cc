@@ -8,14 +8,22 @@
 #include <netinet/in.h>
 
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
+#include <base/string_split.h>
 
 #include "shill/byte_string.h"
 
 using std::string;
+using std::vector;
 
 namespace shill {
+
+namespace {
+const size_t kBitsPerByte = 8;
+} // namespace
 
 // static
 const IPAddress::Family IPAddress::kFamilyUnknown = AF_UNSPEC;
@@ -63,7 +71,30 @@ size_t IPAddress::GetAddressLength(Family family) {
 
 // static
 size_t IPAddress::GetMaxPrefixLength(Family family) {
-  return GetAddressLength(family) * 8;
+  return GetAddressLength(family) * kBitsPerByte;
+}
+
+size_t IPAddress::GetMinPrefixLength() const {
+  if (family() != kFamilyIPv4) {
+    NOTIMPLEMENTED() << ": only implemented for IPv4";
+    return GetMaxPrefixLength(family());
+  }
+
+  CHECK(IsValid());
+  in_addr_t address_val;
+  memcpy(&address_val, GetConstData(), sizeof(address_val));
+  // IN_CLASSx() macros operate on addresses in host-order.
+  address_val = ntohl(address_val);
+  if (IN_CLASSA(address_val)) {
+    return GetMaxPrefixLength(family()) - IN_CLASSA_NSHIFT;
+  } else if (IN_CLASSB(address_val)) {
+    return GetMaxPrefixLength(family()) - IN_CLASSB_NSHIFT;
+  } else if (IN_CLASSC(address_val)) {
+    return GetMaxPrefixLength(family()) - IN_CLASSC_NSHIFT;
+  }
+
+  LOG(ERROR) << "Invalid IPv4 address class";
+  return GetMaxPrefixLength(family());
 }
 
 // static
@@ -86,6 +117,29 @@ size_t IPAddress::GetPrefixLengthFromMask(Family family, const string &mask) {
       break;
   }
   return 0;
+}
+
+// static
+IPAddress IPAddress::GetAddressMaskFromPrefix(Family family, size_t prefix) {
+  ByteString address_bytes(GetAddressLength(family));
+  unsigned char *address_ptr = address_bytes.GetData();
+
+  size_t bits = prefix;
+  if (bits > GetMaxPrefixLength(family)) {
+    bits = GetMaxPrefixLength(family);
+  }
+
+  while (bits > kBitsPerByte) {
+    bits -= kBitsPerByte;
+    *address_ptr++ = kuint8max;
+  }
+
+  // We are guaranteed to be before the end of the address data since even
+  // if the prefix is the maximum, the loop above will end before we assign
+  // and increment past the last byte.
+  *address_ptr = ~((1 << (kBitsPerByte - bits)) - 1);
+
+  return IPAddress(family, address_bytes);
 }
 
 // static
@@ -115,6 +169,26 @@ bool IPAddress::SetAddressFromString(const string &address_string) {
   return true;
 }
 
+bool IPAddress::SetAddressAndPrefixFromString(const string &address_string) {
+  vector<string> address_parts;
+  base::SplitString(address_string, '/', &address_parts);
+  if (address_parts.size() != 2) {
+    LOG(ERROR) << "Cannot split address " << address_string;
+    return false;
+  }
+  if (!SetAddressFromString(address_parts[0])) {
+    LOG(ERROR) << "Cannot parse address string " << address_parts[0];
+    return false;
+  }
+  int prefix;
+  if (!base::StringToInt(address_parts[1], &prefix) || prefix < 0) {
+    LOG(ERROR) << "Cannot parse address prefix " << address_parts[1];
+    return false;
+  }
+  set_prefix(prefix);
+  return true;
+}
+
 void IPAddress::SetAddressToDefault() {
   address_ = ByteString(GetAddressLength(family_));
 }
@@ -134,6 +208,28 @@ string IPAddress::ToString() const {
   string out("<unknown>");
   IntoString(&out);
   return out;
+}
+
+IPAddress IPAddress::MaskWith(const IPAddress &b) {
+  CHECK(IsValid());
+  CHECK(b.IsValid());
+  CHECK_EQ(family(), b.family());
+
+  ByteString address_bytes(address());
+  address_bytes.ApplyMask(b.address());
+
+  return IPAddress(family(), address_bytes);
+}
+
+IPAddress IPAddress::GetNetworkPart() {
+  return MaskWith(GetAddressMaskFromPrefix(family(), prefix()));
+}
+
+bool IPAddress::CanReachAddress(const IPAddress &b) {
+  CHECK_EQ(family(), b.family());
+  IPAddress b_prefixed(b);
+  b_prefixed.set_prefix(prefix());
+  return GetNetworkPart().Equals(b_prefixed.GetNetworkPart());
 }
 
 }  // namespace shill

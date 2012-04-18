@@ -49,6 +49,16 @@ bool ByteString::IsZero() const {
   return true;
 }
 
+bool ByteString::ApplyMask(const ByteString &b) {
+  if (GetLength() != b.GetLength()) {
+    return false;
+  }
+  for (size_t i = 0; i < GetLength(); ++i) {
+    data_[i] &= b.data_[i];
+  }
+  return true;
+}
+
 bool ByteString::Equals(const ByteString &b) const {
   return data_ == b.data_;
 }

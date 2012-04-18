@@ -46,9 +46,24 @@ class IPAddress {
   // the length of this address type in bits.
   static size_t GetMaxPrefixLength(Family family);
 
+  // Provides a guideline for the minimum sensible prefix for this IP
+  // address.  As opposed to GetMaxPrefixLength() above, this function
+  // takes into account the class of this IP address to determine the
+  // smallest prefix that makes sense for this class of address to have.
+  // Since this function uses classful (pre-CIDR) rules to perform this
+  // estimate, this is not an absolute rule and others methods like
+  // IsValid() do not consider this a criteria.  It is only useful for
+  // making guesses as to the mimimal plausible prefix that might be
+  // viable for an address when the supplied prefix is obviously incorrect.
+  size_t GetMinPrefixLength() const;
+
   // Returns the prefix length given an address |family| and a |mask|. For
   // example, returns 24 for an IPv4 mask 255.255.255.0.
   static size_t GetPrefixLengthFromMask(Family family, const std::string &mask);
+
+  // Returns an IPAddress of type |family| that has all the high-order |prefix|
+  // bits set.
+  static IPAddress GetAddressMaskFromPrefix(Family family, size_t prefix);
 
   // Returns the name of an address family.
   static std::string GetAddressFamilyName(Family family);
@@ -66,8 +81,10 @@ class IPAddress {
         GetLength() == GetAddressLength(family_);
   }
 
-  // Parse an IP address string
+  // Parse an IP address string.
   bool SetAddressFromString(const std::string &address_string);
+  // Parse an "address/prefix" IP address and prefix pair from a string.
+  bool SetAddressAndPrefixFromString(const std::string &address_string);
   // An uninitialized IPAddress is empty and invalid when constructed.
   // Use SetAddressToDefault() to set it to the default or "all-zeroes" address.
   void SetAddressToDefault();
@@ -83,6 +100,22 @@ class IPAddress {
     return family_ == b.family_ && address_.Equals(b.address_) &&
         prefix_ == b.prefix_;
   }
+
+  // Perform an AND operation between the address data of |this| and that
+  // of |b|.  Returns an IPAddress containing the result of the operation.
+  // It is an error if |this| and |b| are not of the same address family
+  // or if either are not valid,
+  IPAddress MaskWith(const IPAddress &b);
+
+  // Return an address that represents the network-part of the address,
+  // i.e, the address with all but the prefix bits masked out.
+  IPAddress GetNetworkPart();
+
+  // Tests whether this IPAddress is able to directly access the address
+  // |b| without an intervening gateway.  It tests whether the network
+  // part of |b| is the same as the network part of |this|, using the
+  // prefix of |this|.  Returns true if |b| is reachable, false otherwise.
+  bool CanReachAddress(const IPAddress &b);
 
  private:
   Family family_;

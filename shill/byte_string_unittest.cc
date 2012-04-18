@@ -131,4 +131,21 @@ TEST_F(ByteStringTest, HexEncode) {
   EXPECT_EQ(kTest2HexString, bs.HexEncode());
 }
 
+TEST_F(ByteStringTest, ApplyMask) {
+  ByteString bs(kTest1, sizeof(kTest1));
+  ByteString mask;
+  ByteString expected_result;
+  for (size_t i = 0; i < sizeof(kTest1); i++) {
+    EXPECT_FALSE(bs.ApplyMask(mask));
+    unsigned char val = sizeof(kTest1) - i;
+    mask.Append(ByteString(&val, 1));
+    val &= bs.GetConstData()[i];
+    expected_result.Append(ByteString(&val, 1));
+  }
+  EXPECT_TRUE(bs.ApplyMask(mask));
+  EXPECT_TRUE(bs.Equals(expected_result));
+  bs.Resize(sizeof(kTest1) - 1);
+  EXPECT_FALSE(bs.ApplyMask(mask));
+}
+
 }  // namespace shill

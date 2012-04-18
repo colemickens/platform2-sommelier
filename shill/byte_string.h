@@ -49,7 +49,16 @@ class ByteString {
   bool ConvertToNetUInt32(uint32 *val) const;
 
   bool IsEmpty() const { return GetLength() == 0; }
+
+  // Returns true if every element of |this| is zero, false otherwise.
   bool IsZero() const;
+
+  // Perform an AND operation between each element of |this| with the
+  // corresponding byte of |b|.  Returns true if both |this| and |b|
+  // are the same length, and as such the operation succeeds; false
+  // if they are not.
+  bool ApplyMask(const ByteString &b);
+
   bool Equals(const ByteString &b) const;
   void Append(const ByteString &b);
   void Clear() { data_.clear(); }
