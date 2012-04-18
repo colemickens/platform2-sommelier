@@ -152,6 +152,7 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state) {
   rpc_task_.reset();
   if (device_) {
     int interface_index = device_->interface_index();
+    device_->OnDisconnected();
     device_->SetEnabled(false);
     device_ = NULL;
     device_info_->DeleteInterface(interface_index);
