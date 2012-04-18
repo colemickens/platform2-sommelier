@@ -306,7 +306,12 @@ bool RunPostInstall(const InstallConfig& install_config) {
 
   bool firmware_update = (access(tag_file.c_str(), 0) == 0);
 
-  return ChromeosChrootPostinst(install_config,
-                                src_version,
-                                firmware_update);
+  bool success = ChromeosChrootPostinst(install_config,
+                                        src_version,
+                                        firmware_update);
+
+  printf("Syncing filesystem at end of postinst...\n");
+  sync();
+
+  return success;
 }
