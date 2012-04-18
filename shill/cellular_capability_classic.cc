@@ -11,6 +11,7 @@
 #include "shill/error.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
+#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::Callback;
@@ -53,7 +54,7 @@ CellularCapabilityClassic::CellularCapabilityClassic(
 CellularCapabilityClassic::~CellularCapabilityClassic() {}
 
 void CellularCapabilityClassic::InitProxies() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   proxy_.reset(proxy_factory()->CreateModemProxy(
       cellular()->dbus_path(), cellular()->dbus_owner()));
   simple_proxy_.reset(proxy_factory()->CreateModemSimpleProxy(
@@ -64,7 +65,7 @@ void CellularCapabilityClassic::InitProxies() {
 }
 
 void CellularCapabilityClassic::ReleaseProxies() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   proxy_.reset();
   simple_proxy_.reset();
 }
@@ -90,7 +91,7 @@ void CellularCapabilityClassic::OnUnsupportedOperation(
 
 // always called from an async context
 void CellularCapabilityClassic::EnableModem(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
   proxy_->Enable(true, &error, callback, kTimeoutEnable);
@@ -100,7 +101,7 @@ void CellularCapabilityClassic::EnableModem(const ResultCallback &callback) {
 
 // always called from an async context
 void CellularCapabilityClassic::DisableModem(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
   proxy_->Enable(false, &error, callback, kTimeoutDefault);
@@ -110,7 +111,7 @@ void CellularCapabilityClassic::DisableModem(const ResultCallback &callback) {
 
 // always called from an async context
 void CellularCapabilityClassic::GetModemStatus(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   DBusPropertyMapCallback cb = Bind(
       &CellularCapabilityClassic::OnGetModemStatusReply,
@@ -123,7 +124,7 @@ void CellularCapabilityClassic::GetModemStatus(const ResultCallback &callback) {
 
 // always called from an async context
 void CellularCapabilityClassic::GetModemInfo(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   ModemInfoCallback cb = Bind(&CellularCapabilityClassic::OnGetModemInfoReply,
                               weak_ptr_factory_.GetWeakPtr(), callback);
@@ -135,7 +136,7 @@ void CellularCapabilityClassic::GetModemInfo(const ResultCallback &callback) {
 
 void CellularCapabilityClassic::StopModem(Error *error,
                                    const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
 
   CellularTaskList *tasks = new CellularTaskList();
   ResultCallback cb =
@@ -158,13 +159,13 @@ void CellularCapabilityClassic::StopModem(Error *error,
 void CellularCapabilityClassic::Connect(const DBusPropertiesMap &properties,
                                  Error *error,
                                  const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   simple_proxy_->Connect(properties, error, callback, kTimeoutConnect);
 }
 
 void CellularCapabilityClassic::Disconnect(Error *error,
                                     const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   proxy_->Disconnect(error, callback, kTimeoutDefault);
 }
 
@@ -216,7 +217,8 @@ void CellularCapabilityClassic::OnGetModemStatusReply(
     const ResultCallback &callback,
     const DBusPropertiesMap &props,
     const Error &error) {
-  VLOG(2) << __func__ << " " << props.size() << " props. error " << error;
+  SLOG(Cellular, 2) << __func__ << " " << props.size() << " props. error "
+                    << error;
   if (error.IsSuccess()) {
     DBusProperties::GetString(props, "carrier", &carrier_);
     DBusProperties::GetString(props, "meid", &meid_);
@@ -240,21 +242,21 @@ void CellularCapabilityClassic::OnGetModemInfoReply(
     const ResultCallback &callback,
     const ModemHardwareInfo &info,
     const Error &error) {
-  VLOG(2) << __func__ << "(" << error << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << error << ")";
   if (error.IsSuccess()) {
     manufacturer_ = info._1;
     model_id_ = info._2;
     hardware_revision_ = info._3;
-    VLOG(2) << __func__ << ": " << info._1 << ", " << info._2 << ", "
-            << info._3;
+    SLOG(Cellular, 2) << __func__ << ": " << info._1 << ", " << info._2 << ", "
+                      << info._3;
   }
   callback.Run(error);
 }
 
 void CellularCapabilityClassic::OnModemStateChangedSignal(
     uint32 old_state, uint32 new_state, uint32 reason) {
-  VLOG(2) << __func__ << "(" << old_state << ", " << new_state << ", "
-          << reason << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << old_state << ", " << new_state << ", "
+                    << reason << ")";
   // TODO(petkov): Complete this (crosbug.com/19662)
 #if 0
   modem_state_ = static_cast<ModemState>(new_state);

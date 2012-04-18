@@ -11,6 +11,7 @@
 #include "shill/manager.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
+#include "shill/scope_logger.h"
 
 using base::Bind;
 using std::string;
@@ -57,7 +58,7 @@ void Modem::Init() {
 }
 
 void Modem::OnDeviceInfoAvailable(const string &link_name) {
-  VLOG(2) << __func__;
+  SLOG(Modem, 2) << __func__;
   if (pending_device_info_ && link_name_ == link_name) {
     // pending_device_info_ is only set if we've already been through
     // CreateDeviceFromModemProperties() and saved our initial
@@ -87,7 +88,7 @@ Cellular *Modem::ConstructCellular(const string &link_name,
 
 void Modem::CreateDeviceFromModemProperties(
     const DBusPropertiesMap &modem_properties) {
-  VLOG(2) << __func__;
+  SLOG(Modem, 2) << __func__;
 
   if (device_.get()) {
     return;

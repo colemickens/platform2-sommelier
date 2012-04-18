@@ -6,6 +6,7 @@
 #include <base/logging.h>
 
 #include "cellular_error.h"
+#include "scope_logger.h"
 
 using std::string;
 
@@ -64,7 +65,7 @@ void DBusObjectManagerProxy::Proxy::set_interfaces_removed_callback(
 void DBusObjectManagerProxy::Proxy::InterfacesAdded(
     const ::DBus::Path &object_path,
     const DBusInterfaceToProperties &interface_to_properties) {
-  VLOG(2) << __func__ << "(" << object_path << ")";
+  SLOG(DBus, 2) << __func__ << "(" << object_path << ")";
   interfaces_added_callback_.Run(object_path, interface_to_properties);
 }
 
@@ -72,7 +73,7 @@ void DBusObjectManagerProxy::Proxy::InterfacesAdded(
 void DBusObjectManagerProxy::Proxy::InterfacesRemoved(
     const ::DBus::Path &object_path,
     const std::vector< std::string > &interfaces) {
-  VLOG(2) << __func__ << "(" << object_path << ")";
+  SLOG(DBus, 2) << __func__ << "(" << object_path << ")";
   interfaces_removed_callback_.Run(object_path, interfaces);
 }
 
@@ -81,7 +82,7 @@ void DBusObjectManagerProxy::Proxy::GetManagedObjectsCallback(
     const DBusObjectsWithProperties &objects_with_properties,
     const DBus::Error &dberror,
     void *data) {
-  VLOG(2) << __func__;
+  SLOG(DBus, 2) << __func__;
   shill::Error error;
   CellularError::FromDBusError(dberror, &error);
   scoped_ptr<ManagedObjectsCallback> callback(

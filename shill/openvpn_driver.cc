@@ -22,6 +22,7 @@
 #include "shill/openvpn_management_server.h"
 #include "shill/property_accessor.h"
 #include "shill/rpc_task.h"
+#include "shill/scope_logger.h"
 #include "shill/sockets.h"
 #include "shill/store_interface.h"
 #include "shill/vpn.h"
@@ -133,7 +134,8 @@ OpenVPNDriver::~OpenVPNDriver() {
 }
 
 void OpenVPNDriver::Cleanup(Service::ConnectState state) {
-  VLOG(2) << __func__ << "(" << Service::ConnectStateToString(state) << ")";
+  SLOG(VPN, 2) << __func__ << "(" << Service::ConnectStateToString(state)
+               << ")";
   management_server_->Stop();
   if (!tls_auth_file_.empty()) {
     file_util::Delete(tls_auth_file_, false);
@@ -165,7 +167,7 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state) {
 }
 
 bool OpenVPNDriver::SpawnOpenVPN() {
-  VLOG(2) << __func__ << "(" << tunnel_interface_ << ")";
+  SLOG(VPN, 2) << __func__ << "(" << tunnel_interface_ << ")";
 
   vector<string> options;
   Error error;
@@ -173,7 +175,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   if (error.IsFailure()) {
     return false;
   }
-  VLOG(2) << "OpenVPN process options: " << JoinString(options, ' ');
+  SLOG(VPN, 2) << "OpenVPN process options: " << JoinString(options, ' ');
 
   // TODO(petkov): This code needs to be abstracted away in a separate external
   // process module (crosbug.com/27131).
@@ -209,7 +211,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
 
 // static
 void OpenVPNDriver::OnOpenVPNDied(GPid pid, gint status, gpointer data) {
-  VLOG(2) << __func__ << "(" << pid << ", "  << status << ")";
+  SLOG(VPN, 2) << __func__ << "(" << pid << ", "  << status << ")";
   OpenVPNDriver *me = reinterpret_cast<OpenVPNDriver *>(data);
   me->child_watch_tag_ = 0;
   CHECK_EQ(pid, me->pid_);
@@ -223,7 +225,7 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
     return false;
   }
 
-  VLOG(2) << "Claiming " << link_name << " for OpenVPN tunnel";
+  SLOG(VPN, 2) << "Claiming " << link_name << " for OpenVPN tunnel";
 
   CHECK(!device_);
   device_ = new VPN(control_, dispatcher_, metrics_, manager_,
@@ -241,7 +243,7 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
 
 void OpenVPNDriver::Notify(const string &reason,
                            const map<string, string> &dict) {
-  VLOG(2) << __func__ << "(" << reason << ")";
+  SLOG(VPN, 2) << __func__ << "(" << reason << ")";
   if (reason != "up") {
     device_->OnDisconnected();
     return;
@@ -266,7 +268,7 @@ void OpenVPNDriver::ParseIPConfiguration(
        it != configuration.end(); ++it) {
     const string &key = it->first;
     const string &value = it->second;
-    VLOG(2) << "Processing: " << key << " -> " << value;
+    SLOG(VPN, 2) << "Processing: " << key << " -> " << value;
     if (LowerCaseEqualsASCII(key, kOpenVPNIfconfigLocal)) {
       properties->address = value;
     } else if (LowerCaseEqualsASCII(key, kOpenVPNIfconfigBroadcast)) {
@@ -299,7 +301,7 @@ void OpenVPNDriver::ParseIPConfiguration(
       ParseRouteOption(key.substr(strlen(kOpenVPNRouteOptionPrefix)),
                        value, &routes);
     } else {
-      VLOG(2) << "Key ignored.";
+      SLOG(VPN, 2) << "Key ignored.";
     }
   }
   ParseForeignOptions(foreign_options, properties);
@@ -318,7 +320,7 @@ void OpenVPNDriver::ParseForeignOptions(const ForeignOptions &options,
 // static
 void OpenVPNDriver::ParseForeignOption(const string &option,
                                        IPConfig::Properties *properties) {
-  VLOG(2) << __func__ << "(" << option << ")";
+  SLOG(VPN, 2) << __func__ << "(" << option << ")";
   vector<string> tokens;
   SplitString(option, ' ', &tokens);
   if (tokens.size() != 3 || !LowerCaseEqualsASCII(tokens[0], "dhcp-option")) {
@@ -611,12 +613,12 @@ bool OpenVPNDriver::PinHostRoute(const IPConfig::Properties &properties) {
 }
 
 void OpenVPNDriver::Disconnect() {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   Cleanup(Service::kStateIdle);
 }
 
 void OpenVPNDriver::OnReconnecting() {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   if (device_) {
     device_->OnDisconnected();
   }

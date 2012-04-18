@@ -1,4 +1,4 @@
-Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 
@@ -102,3 +102,20 @@ To keep the shill source code consistent, please follow the conventions below:
 
   RATIONALE: The naming convention makes the relationship between the signal
   handler and the task function obvious, at-a-glance.
+
+- When adding verbose log messages for debug purposes, use the SLOG marco and
+  its variants (see scope_logger.h for details).
+
+  - Choose the appropriate scope and verbose level for log messages. E.g.
+
+      SLOG(WiFi, 1) << message;  // for WiFi related code
+
+  - Before defining a new scope, check if any existing scope defined in
+    scope_logger.h already fulfills the needs.
+
+  - To add a new scope:
+    1. Add a new value to the Scope enumerated type in scope_logger.h.
+       Keep the values sorted as instructed in the header file.
+    2. Add the corresponding scope name to the kScopeNames array in
+       scope_logger.cc.
+    3. Update the GetAllScopeNames test in scope_logger_unittest.cc.

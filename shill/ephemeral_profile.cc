@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,6 +12,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/manager.h"
+#include "shill/scope_logger.h"
 
 using std::map;
 using std::string;
@@ -26,7 +27,8 @@ EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
 EphemeralProfile::~EphemeralProfile() {}
 
 bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
-  VLOG(2) << "Adding " << service->UniqueName() << " to ephemeral profile.";
+  SLOG(Profile, 2) << "Adding " << service->UniqueName()
+                   << " to ephemeral profile.";
   service->set_profile(this);
   return true;
 }
@@ -34,7 +36,8 @@ bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
 bool EphemeralProfile::AbandonService(const ServiceRefPtr &service) {
   if (service->profile() == this)
     service->set_profile(NULL);
-  VLOG(2) << "Removing " << service->UniqueName() << " from ephemeral profile.";
+  SLOG(Profile, 2) << "Removing " << service->UniqueName()
+                   << " from ephemeral profile.";
   return true;
 }
 

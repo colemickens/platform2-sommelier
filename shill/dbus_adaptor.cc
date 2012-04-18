@@ -16,6 +16,7 @@
 #include "shill/error.h"
 #include "shill/key_value_store.h"
 #include "shill/property_store.h"
+#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::Owned;
@@ -38,7 +39,7 @@ const char DBusAdaptor::kStringsSig[] = "as";
 
 DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)
     : DBus::ObjectAdaptor(*conn, object_path) {
-  VLOG(2) << "DBusAdaptor: " << object_path;
+  SLOG(DBus, 2) << "DBusAdaptor: " << object_path;
 }
 
 DBusAdaptor::~DBusAdaptor() {}
@@ -67,7 +68,7 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
                                 value.operator map<string, string>(),
                                 &e);
   else if (DBusAdaptor::IsStringmaps(value.signature())) {
-    VLOG(1) << " can't yet handle setting type " << value.signature();
+    SLOG(DBus, 1) << " can't yet handle setting type " << value.signature();
     e.Populate(Error::kInternalError);
   } else if (DBusAdaptor::IsStrings(value.signature()))
     store->SetStringsProperty(name, value.operator vector<string>(), &e);
@@ -76,7 +77,7 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
   else if (DBusAdaptor::IsUint32(value.signature()))
     store->SetUint32Property(name, value.reader().get_uint32(), &e);
   else if (DBusAdaptor::IsKeyValueStore(value.signature())) {
-    VLOG(1) << " can't yet handle setting type " << value.signature();
+    SLOG(DBus, 1) << " can't yet handle setting type " << value.signature();
     e.Populate(Error::kInternalError);
   } else {
     NOTREACHED() << " unknown type: " << value.signature();

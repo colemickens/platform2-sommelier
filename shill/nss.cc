@@ -10,6 +10,7 @@
 #include <base/stringprintf.h>
 
 #include "shill/glib.h"
+#include "shill/scope_logger.h"
 
 using base::HexEncode;
 using base::StringPrintf;
@@ -29,11 +30,11 @@ static base::LazyInstance<NSS> g_nss = { 0, {{0}} };
 
 NSS::NSS()
     : glib_(NULL) {
-  VLOG(2) << __func__;
+  SLOG(Crypto, 2) << __func__;
 }
 
 NSS::~NSS() {
-  VLOG(2) << __func__;
+  SLOG(Crypto, 2) << __func__;
 }
 
 // static

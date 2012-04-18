@@ -14,6 +14,7 @@
 
 #include "shill/error.h"
 #include "shill/property_accessor.h"
+#include "shill/scope_logger.h"
 
 using std::map;
 using std::string;
@@ -104,7 +105,7 @@ bool PropertyStore::SetRpcIdentifierProperty(const string &name,
 }
 
 bool PropertyStore::ClearProperty(const string &name, Error *error) {
-  VLOG(2) << "Clearing " << name << ".";
+  SLOG(Property, 2) << "Clearing " << name << ".";
 
   if (ContainsKey(bool_properties_, name)) {
     bool_properties_[name]->Clear(error);
@@ -485,7 +486,8 @@ bool PropertyStore::SetProperty(
     Error *error,
     map< string, std::tr1::shared_ptr< AccessorInterface<V> > >&collection,
     const string &value_type_english) {
-  VLOG(2) << "Setting " << name << " as " << value_type_english << ".";
+  SLOG(Property, 2) << "Setting " << name << " as " << value_type_english
+                    << ".";
   if (ContainsKey(collection, name)) {
     collection[name]->Set(value, error);
   } else {

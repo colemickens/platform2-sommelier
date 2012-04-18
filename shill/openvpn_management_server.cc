@@ -18,6 +18,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/openvpn_driver.h"
+#include "shill/scope_logger.h"
 #include "shill/sockets.h"
 
 using base::Bind;
@@ -50,7 +51,7 @@ OpenVPNManagementServer::~OpenVPNManagementServer() {
 bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
                                     Sockets *sockets,
                                     vector<string> *options) {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   if (sockets_) {
     return true;
   }
@@ -76,7 +77,7 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
     return false;
   }
 
-  VLOG(2) << "Listening socket: " << socket;
+  SLOG(VPN, 2) << "Listening socket: " << socket;
   sockets_ = sockets;
   socket_ = socket;
   ready_handler_.reset(
@@ -101,7 +102,7 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
 }
 
 void OpenVPNManagementServer::Stop() {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   if (!sockets_) {
     return;
   }
@@ -120,7 +121,7 @@ void OpenVPNManagementServer::Stop() {
 }
 
 void OpenVPNManagementServer::OnReady(int fd) {
-  VLOG(2) << __func__ << "(" << fd << ")";
+  SLOG(VPN, 2) << __func__ << "(" << fd << ")";
   connected_socket_ = sockets_->Accept(fd, NULL, NULL);
   if (connected_socket_ < 0) {
     PLOG(ERROR) << "Connected socket accept failed.";
@@ -133,7 +134,7 @@ void OpenVPNManagementServer::OnReady(int fd) {
 }
 
 void OpenVPNManagementServer::OnInput(InputData *data) {
-  VLOG(2) << __func__ << "(" << data->len << ")";
+  SLOG(VPN, 2) << __func__ << "(" << data->len << ")";
   vector<string> messages;
   SplitString(
       string(reinterpret_cast<char *>(data->buf), data->len), '\n', &messages);
@@ -144,7 +145,7 @@ void OpenVPNManagementServer::OnInput(InputData *data) {
 }
 
 void OpenVPNManagementServer::ProcessMessage(const string &message) {
-  VLOG(2) << __func__ << "(" << message << ")";
+  SLOG(VPN, 2) << __func__ << "(" << message << ")";
   LOG_IF(WARNING,
          !ProcessInfoMessage(message) &&
          !ProcessNeedPasswordMessage(message) &&
@@ -266,26 +267,26 @@ bool OpenVPNManagementServer::ProcessStateMessage(const string &message) {
 }
 
 void OpenVPNManagementServer::Send(const string &data) {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   ssize_t len = sockets_->Send(connected_socket_, data.data(), data.size(), 0);
   PLOG_IF(ERROR, len < 0 || static_cast<size_t>(len) != data.size())
       << "Send failed.";
 }
 
 void OpenVPNManagementServer::SendState(const string &state) {
-  VLOG(2) << __func__ << "(" << state << ")";
+  SLOG(VPN, 2) << __func__ << "(" << state << ")";
   Send(StringPrintf("state %s\n", state.c_str()));
 }
 
 void OpenVPNManagementServer::SendUsername(const string &tag,
                                            const string &username) {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   Send(StringPrintf("username \"%s\" %s\n", tag.c_str(), username.c_str()));
 }
 
 void OpenVPNManagementServer::SendPassword(const string &tag,
                                            const string &password) {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   Send(StringPrintf("password \"%s\" \"%s\"\n", tag.c_str(), password.c_str()));
 }
 

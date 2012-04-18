@@ -8,6 +8,7 @@
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
 
 #include "shill/rtnl_handler.h"
+#include "shill/scope_logger.h"
 #include "shill/vpn_service.h"
 
 using std::string;
@@ -42,12 +43,12 @@ bool VPN::TechnologyIs(const Technology::Identifier type) const {
 }
 
 void VPN::SelectService(const VPNServiceRefPtr &service) {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   Device::SelectService(service);
 }
 
 void VPN::UpdateIPConfig(const IPConfig::Properties &properties) {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   if (!ipconfig()) {
     set_ipconfig(new IPConfig(control_interface(), link_name()));
   }
@@ -56,7 +57,7 @@ void VPN::UpdateIPConfig(const IPConfig::Properties &properties) {
 }
 
 void VPN::OnDisconnected() {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   OnIPConfigUpdated(ipconfig(), false);
 }
 

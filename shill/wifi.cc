@@ -37,6 +37,7 @@
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
+#include "shill/scope_logger.h"
 #include "shill/shill_time.h"
 #include "shill/store_interface.h"
 #include "shill/supplicant_interface_proxy_interface.h"
@@ -130,7 +131,7 @@ WiFi::WiFi(ControlInterface *control_interface,
                             flimflam::kScanIntervalProperty,
                             &WiFi::GetScanInterval,
                             &WiFi::SetScanInterval);
-  VLOG(2) << "WiFi device " << link_name() << " initialized.";
+  SLOG(WiFi, 2) << "WiFi device " << link_name() << " initialized.";
 }
 
 WiFi::~WiFi() {}
@@ -209,7 +210,7 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
 }
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
-  VLOG(2) << "WiFi " << link_name() << " stopping.";
+  SLOG(WiFi, 2) << "WiFi " << link_name() << " stopping.";
   // TODO(quiche): Remove interface from supplicant.
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
   supplicant_process_proxy_.reset();
@@ -220,8 +221,8 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
        ++it) {
-    VLOG(3) << "WiFi " << link_name() << " deregistering service "
-            << (*it)->friendly_name();
+    SLOG(WiFi, 3) << "WiFi " << link_name() << " deregistering service "
+                  << (*it)->friendly_name();
     manager()->DeregisterService(*it);
   }
   services_.clear();                  // breaks reference cycles
@@ -233,16 +234,18 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
     error->Reset();       // indicate immediate completion
   // TODO(quiche): Anything else to do?
 
-  VLOG(3) << "WiFi " << link_name() << " supplicant_process_proxy_ "
-          << (supplicant_process_proxy_.get() ? "is set." : "is not set.");
-  VLOG(3) << "WiFi " << link_name() << " supplicant_interface_proxy_ "
-          << (supplicant_interface_proxy_.get() ? "is set." : "is not set.");
-  VLOG(3) << "WiFi " << link_name() << " pending_service_ "
-          << (pending_service_.get() ? "is set." : "is not set.");
-  VLOG(3) << "WiFi " << link_name() << " has " << endpoint_by_rpcid_.size()
-          << " EndpointMap entries.";
-  VLOG(3) << "WiFi " << link_name() << " has " << services_.size()
-          << " Services.";
+  SLOG(WiFi, 3) << "WiFi " << link_name() << " supplicant_process_proxy_ "
+                << (supplicant_process_proxy_.get() ?
+                    "is set." : "is not set.");
+  SLOG(WiFi, 3) << "WiFi " << link_name() << " supplicant_interface_proxy_ "
+                << (supplicant_interface_proxy_.get() ?
+                    "is set." : "is not set.");
+  SLOG(WiFi, 3) << "WiFi " << link_name() << " pending_service_ "
+                << (pending_service_.get() ? "is set." : "is not set.");
+  SLOG(WiFi, 3) << "WiFi " << link_name() << " has "
+                << endpoint_by_rpcid_.size() << " EndpointMap entries.";
+  SLOG(WiFi, 3) << "WiFi " << link_name() << " has " << services_.size()
+                << " Services.";
 }
 
 bool WiFi::Load(StoreInterface *storage) {
@@ -501,8 +504,8 @@ WiFiServiceRefPtr WiFi::CreateServiceForEndpoint(const WiFiEndpoint &endpoint,
 }
 
 void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
-  VLOG(3) << "WiFi " << link_name() << " CurrentBSS "
-          << supplicant_bss_ << " -> " << new_bss;
+  SLOG(WiFi, 3) << "WiFi " << link_name() << " CurrentBSS "
+                << supplicant_bss_ << " -> " << new_bss;
   supplicant_bss_ = new_bss;
   if (new_bss == wpa_supplicant::kCurrentBSSNull) {
     HandleDisconnect();
@@ -530,24 +533,24 @@ void WiFi::HandleDisconnect() {
 
   current_service_ = NULL;
   if (!affected_service) {
-    VLOG(2) << "WiFi " << link_name()
-            << " disconnected while not connected or connecting";
+    SLOG(WiFi, 2) << "WiFi " << link_name()
+                  << " disconnected while not connected or connecting";
     return;
   }
 
   ReverseServiceMap::const_iterator rpcid_it =
       rpcid_by_service_.find(affected_service);
   if (rpcid_it == rpcid_by_service_.end()) {
-    VLOG(2) << "WiFi " << link_name() << " disconnected from "
-            << " (or failed to connect to) "
-            << affected_service->friendly_name() << ", "
-            << "but could not find supplicant network to disable.";
+    SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "
+                  << " (or failed to connect to) "
+                  << affected_service->friendly_name() << ", "
+                  << "but could not find supplicant network to disable.";
     return;
   }
 
-  VLOG(2) << "WiFi " << link_name() << " disconnected from "
-          << " (or failed to connect to) "
-          << affected_service->friendly_name();
+  SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "
+                << " (or failed to connect to) "
+                << affected_service->friendly_name();
   // TODO(quiche): Reconsider giving up immediately. Maybe give
   // wpa_supplicant some time to retry, first.
   supplicant_interface_proxy_->RemoveNetwork(rpcid_it->second);
@@ -577,9 +580,9 @@ void WiFi::HandleDisconnect() {
     //
     // Log this fact, to help us debug (in case our assumptions are
     // wrong).
-    VLOG(2) << "WiFi " << link_name() << " pending connection to "
-            << pending_service_->friendly_name()
-            << " after disconnect";
+    SLOG(WiFi, 2) << "WiFi " << link_name() << " pending connection to "
+                  << pending_service_->friendly_name()
+                  << " after disconnect";
   }
 }
 
@@ -603,9 +606,9 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
       return;
   }
 
-  VLOG(2) << "WiFi " << link_name()
-          << " roamed to Endpoint " << endpoint.bssid_string()
-          << " (SSID " << endpoint.ssid_string() << ")";
+  SLOG(WiFi, 2) << "WiFi " << link_name()
+                << " roamed to Endpoint " << endpoint.bssid_string()
+                << " (SSID " << endpoint.ssid_string() << ")";
 
   service->NotifyCurrentEndpoint(&endpoint);
 
@@ -621,11 +624,11 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     // If it fails, we'll process things in HandleDisconnect.
     //
     // So we leave |pending_service_| untouched.
-    VLOG(2) << "WiFi " << link_name()
-            << " new current Endpoint "
-            << endpoint.bssid_string()
-            << " is not part of pending service "
-            << pending_service_->friendly_name();
+    SLOG(WiFi, 2) << "WiFi " << link_name()
+                  << " new current Endpoint "
+                  << endpoint.bssid_string()
+                  << " is not part of pending service "
+                  << pending_service_->friendly_name();
 
     // Sanity check: if we didn't roam onto |pending_service_|, we
     // should still be on |current_service_|.
@@ -712,7 +715,7 @@ ByteArrays WiFi::GetHiddenSSIDList() {
       hidden_ssids_set.insert((*it)->ssid());
     }
   }
-  VLOG(2) << "Found " << hidden_ssids_set.size() << " hidden services";
+  SLOG(WiFi, 2) << "Found " << hidden_ssids_set.size() << " hidden services";
   ByteArrays hidden_ssids(hidden_ssids_set.begin(), hidden_ssids_set.end());
   if (!hidden_ssids.empty()) {
     // TODO(pstew): Devise a better method for time-sharing with SSIDs that do
@@ -736,9 +739,10 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
   for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
     bool is_hidden = false;
     if (!storage->GetBool(*it, flimflam::kWifiHiddenSsid, &is_hidden)) {
-      VLOG(2) << "Storage group " << *it << " returned by GetGroupsWithKey "
-              << "failed for GetBool(" << flimflam::kWifiHiddenSsid
-              << ") -- possible non-bool key";
+      SLOG(WiFi, 2) << "Storage group " << *it << " returned by "
+                    << "GetGroupsWithKey failed for GetBool("
+                    << flimflam::kWifiHiddenSsid
+                    << ") -- possible non-bool key";
       continue;
     }
     if (!is_hidden) {
@@ -748,8 +752,8 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
     vector<uint8_t> ssid_bytes;
     if (!storage->GetString(*it, flimflam::kSSIDProperty, &ssid_hex) ||
         !base::HexStringToBytes(ssid_hex, &ssid_bytes)) {
-      VLOG(2) << "Hidden network is missing/invalid \""
-              << flimflam::kSSIDProperty << "\" property";
+      SLOG(WiFi, 2) << "Hidden network is missing/invalid \""
+                    << flimflam::kSSIDProperty << "\" property";
       continue;
     }
     string device_address;
@@ -760,8 +764,8 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
     if (!WiFiService::ParseStorageIdentifier(*it, &device_address,
                                              &network_mode, &security) ||
         device_address != address()) {
-      VLOG(2) << "Hidden network has unparsable storage identifier \""
-              << *it << "\"";
+      SLOG(WiFi, 2) << "Hidden network has unparsable storage identifier \""
+                    << *it << "\"";
       continue;
     }
     if (FindService(ssid_bytes, network_mode, security).get()) {
@@ -898,8 +902,8 @@ void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
   CHECK(service) << "Can't find Service for Endpoint "
                  << path << " "
                  << "(with BSSID " << endpoint->bssid_string() << ").";
-  VLOG(2) << "Removing Endpoint " << endpoint->bssid_string()
-          << " from Service " << service->friendly_name();
+  SLOG(WiFi, 2) << "Removing Endpoint " << endpoint->bssid_string()
+                << " from Service " << service->friendly_name();
   service->RemoveEndpoint(endpoint);
 
   bool disconnect_service = !service->HasEndpoints() &&
@@ -956,7 +960,7 @@ void WiFi::PropertiesChangedTask(
 }
 
 void WiFi::ScanDoneTask() {
-  VLOG(2) << __func__ << " need_bss_flush_ " << need_bss_flush_;
+  SLOG(WiFi, 2) << __func__ << " need_bss_flush_ " << need_bss_flush_;
   if (need_bss_flush_) {
     CHECK(supplicant_interface_proxy_ != NULL);
     // Compute |max_age| relative to |resumed_at_|, to account for the
@@ -972,7 +976,7 @@ void WiFi::ScanDoneTask() {
 }
 
 void WiFi::ScanTask() {
-  VLOG(2) << "WiFi " << link_name() << " scan requested.";
+  SLOG(WiFi, 2) << "WiFi " << link_name() << " scan requested.";
   map<string, DBus::Variant> scan_args;
   scan_args[wpa_supplicant::kPropertyScanType].writer().
       append_string(wpa_supplicant::kScanTypeActive);
@@ -1017,8 +1021,8 @@ void WiFi::StateChanged(const string &new_state) {
   affected_service =
       pending_service_.get() ? pending_service_.get() : current_service_.get();
   if (!affected_service) {
-    VLOG(2) << "WiFi " << link_name() << " " << __func__
-            << " with no service";
+    SLOG(WiFi, 2) << "WiFi " << link_name() << " " << __func__
+                  << " with no service";
     return;
   }
 

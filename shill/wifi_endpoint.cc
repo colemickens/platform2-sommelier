@@ -13,6 +13,7 @@
 
 #include "shill/ieee80211.h"
 #include "shill/proxy_factory.h"
+#include "shill/scope_logger.h"
 #include "shill/supplicant_bss_proxy_interface.h"
 #include "shill/wifi.h"
 #include "shill/wifi_endpoint.h"
@@ -80,8 +81,8 @@ void WiFiEndpoint::PropertiesChanged(
       properties.find(wpa_supplicant::kBSSPropertySignal);
   if (properties_it != properties.end()) {
     signal_strength_ = properties_it->second.reader().get_int16();
-    VLOG(2) << "WiFiEndpoint " << bssid_string_ << " signal is now "
-            << signal_strength_;
+    SLOG(WiFi, 2) << "WiFiEndpoint " << bssid_string_ << " signal is now "
+                  << signal_strength_;
     device_->NotifyEndpointChanged(*this);
   }
 }

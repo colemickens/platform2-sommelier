@@ -7,6 +7,8 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/scope_logger.h"
+
 using std::string;
 
 namespace shill {
@@ -32,13 +34,13 @@ PowerManagerProxy::Proxy::~Proxy() {}
 
 // TODO(quiche): make this signal work again. crosbug.com/27475
 void PowerManagerProxy::Proxy::SuspendDelay(const uint32_t &sequence_number) {
-  VLOG(2) << __func__ << "(" << sequence_number << ")";
+  SLOG(Power, 2) << __func__ << "(" << sequence_number << ")";
   delegate_->OnSuspendDelay(sequence_number);
 }
 
 void PowerManagerProxy::Proxy::PowerStateChanged(
     const string &new_power_state) {
-  VLOG(2) << __func__ << "(" << new_power_state << ")";
+  SLOG(Power, 2) << __func__ << "(" << new_power_state << ")";
 
   PowerManagerProxyDelegate::SuspendState suspend_state;
   if (new_power_state == "on") {

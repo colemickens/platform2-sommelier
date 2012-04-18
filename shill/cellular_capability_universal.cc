@@ -21,6 +21,7 @@
 #include "shill/error.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
+#include "shill/scope_logger.h"
 
 #ifdef MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN
 #error "Do not include mm-modem.h"
@@ -94,7 +95,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       scanning_supported_(true),
       scanning_(false),
       scan_interval_(0) {
-  VLOG(2) << "Cellular capability constructed: Universal";
+  SLOG(Cellular, 2) << "Cellular capability constructed: Universal";
   PropertyStore *store = cellular->mutable_store();
 
   store->RegisterConstString(flimflam::kCarrierProperty, &carrier_);
@@ -168,7 +169,7 @@ void CellularCapabilityUniversal::InitProxies() {
 
 void CellularCapabilityUniversal::StartModem(Error *error,
                                              const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
 
   InitProxies();
 
@@ -224,7 +225,7 @@ void CellularCapabilityUniversal::Start_RegisterCompleted(
 
 void CellularCapabilityUniversal::StopModem(Error *error,
                                       const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   CHECK(error);
   bool connected = false;
@@ -250,7 +251,7 @@ void CellularCapabilityUniversal::StopModem(Error *error,
 
 void CellularCapabilityUniversal::Stop_DisconnectCompleted(
     const ResultCallback &callback, const Error &error) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
 
   LOG_IF(ERROR, error.IsFailure()) << "Disconnect failed.  Ignoring.";
   Stop_Disable(callback);
@@ -269,7 +270,7 @@ void CellularCapabilityUniversal::Stop_Disable(const ResultCallback &callback) {
 
 void CellularCapabilityUniversal::Stop_DisableCompleted(
     const ResultCallback &callback, const Error &error) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
 
   if (error.IsSuccess())
     ReleaseProxies();
@@ -279,7 +280,7 @@ void CellularCapabilityUniversal::Stop_DisableCompleted(
 void CellularCapabilityUniversal::Connect(const DBusPropertiesMap &properties,
                                           Error *error,
                                           const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   DBusPathCallback cb = Bind(&CellularCapabilityUniversal::OnConnectReply,
                              weak_ptr_factory_.GetWeakPtr(),
                              callback);
@@ -288,7 +289,7 @@ void CellularCapabilityUniversal::Connect(const DBusPropertiesMap &properties,
 
 void CellularCapabilityUniversal::Disconnect(Error *error,
                                              const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   modem_simple_proxy_->Disconnect(bearer_path_,
                                   error,
                                   callback,
@@ -302,7 +303,7 @@ void CellularCapabilityUniversal::Activate(const string &carrier,
 }
 
 void CellularCapabilityUniversal::ReleaseProxies() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   modem_3gpp_proxy_.reset();
   modem_cdma_proxy_.reset();
   modem_proxy_.reset();
@@ -371,7 +372,8 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
     // Leave the APN at the front of the list, so that it can be recorded
     // if the connect attempt succeeds.
     Stringmap apn_info = apn_try_list_.front();
-    VLOG(2) << __func__ << ": Using APN " << apn_info[flimflam::kApnProperty];
+    SLOG(Cellular, 2) << __func__ << ": Using APN "
+                      << apn_info[flimflam::kApnProperty];
     (*properties)[MM_MODEM_SIMPLE_CONNECT_APN].writer().append_string(
         apn_info[flimflam::kApnProperty].c_str());
     if (ContainsKey(apn_info, flimflam::kApnUsernameProperty))
@@ -386,7 +388,7 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
 void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
                                                  const DBus::Path &path,
                                                  const Error &error) {
-  VLOG(2) << __func__ << "(" << error << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << error << ")";
 
   if (error.IsFailure()) {
     cellular()->service()->ClearLastGoodApn();
@@ -396,8 +398,8 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
     // with some modems in some cases.
     if (error.type() == Error::kInvalidApn && !apn_try_list_.empty()) {
       apn_try_list_.pop_front();
-      VLOG(2) << "Connect failed with invalid APN, " << apn_try_list_.size()
-              << " remaining APNs to try";
+      SLOG(Cellular, 2) << "Connect failed with invalid APN, "
+                        << apn_try_list_.size() << " remaining APNs to try";
       DBusPropertiesMap props;
       FillConnectPropertyMap(&props);
       Error error;
@@ -423,7 +425,7 @@ bool CellularCapabilityUniversal::AllowRoaming() {
 }
 
 void CellularCapabilityUniversal::GetRegistrationState() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   string operator_code;
   string operator_name;
 
@@ -439,18 +441,18 @@ void CellularCapabilityUniversal::GetRegistrationState() {
 }
 
 void CellularCapabilityUniversal::GetProperties() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
 
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   uint32 technologies = modem_proxy_->AccessTechnologies();
   // TODO(jglasgow): figure out the most likely one that we are using....
   SetAccessTechnologies(technologies);
-  VLOG(2) << "AccessTechnologies: " << technologies;
+  SLOG(Cellular, 2) << "AccessTechnologies: " << technologies;
 
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   uint32 locks = modem_3gpp_proxy_->EnabledFacilityLocks();
   sim_lock_status_.enabled = locks & MM_MODEM_3GPP_FACILITY_SIM;
-  VLOG(2) << "GSM EnabledFacilityLocks: " << locks;
+  SLOG(Cellular, 2) << "GSM EnabledFacilityLocks: " << locks;
 
   // TODO(jglasgow): Switch to asynchronous calls (crosbug.com/17583).
   const DBus::Struct<unsigned int, bool> quality =
@@ -501,7 +503,7 @@ void CellularCapabilityUniversal::GetProperties() {
 }
 
 string CellularCapabilityUniversal::CreateFriendlyServiceName() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_HOME &&
       !cellular()->home_provider().GetName().empty()) {
     return cellular()->home_provider().GetName();
@@ -519,7 +521,7 @@ string CellularCapabilityUniversal::CreateFriendlyServiceName() {
 }
 
 void CellularCapabilityUniversal::SetHomeProvider() {
-  VLOG(2) << __func__ << "(IMSI: " << imsi_
+  SLOG(Cellular, 2) << __func__ << "(IMSI: " << imsi_
           << " SPN: " << spn_ << ")";
   // TODO(petkov): The test for NULL provider_db should be done by
   // mobile_provider_lookup_best_match.
@@ -530,7 +532,7 @@ void CellularCapabilityUniversal::SetHomeProvider() {
       mobile_provider_lookup_best_match(
           cellular()->provider_db(), spn_.c_str(), imsi_.c_str());
   if (!provider) {
-    VLOG(2) << "GSM provider not found.";
+    SLOG(Cellular, 2) << "GSM provider not found.";
     return;
   }
   home_provider_ = provider;
@@ -554,10 +556,10 @@ void CellularCapabilityUniversal::SetHomeProvider() {
 }
 
 void CellularCapabilityUniversal::UpdateOperatorInfo() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   const string &network_id = serving_operator_.GetCode();
   if (!network_id.empty()) {
-    VLOG(2) << "Looking up network id: " << network_id;
+    SLOG(Cellular, 2) << "Looking up network id: " << network_id;
     mobile_provider *provider =
         mobile_provider_lookup_by_network(cellular()->provider_db(),
                                           network_id.c_str());
@@ -568,25 +570,25 @@ void CellularCapabilityUniversal::UpdateOperatorInfo() {
         if (provider->country) {
           serving_operator_.SetCountry(provider->country);
         }
-        VLOG(2) << "Operator name: " << serving_operator_.GetName()
+        SLOG(Cellular, 2) << "Operator name: " << serving_operator_.GetName()
                 << ", country: " << serving_operator_.GetCountry();
       }
     } else {
-      VLOG(2) << "GSM provider not found.";
+      SLOG(Cellular, 2) << "GSM provider not found.";
     }
   }
   UpdateServingOperator();
 }
 
 void CellularCapabilityUniversal::UpdateServingOperator() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (cellular()->service().get()) {
     cellular()->service()->SetServingOperator(serving_operator_);
   }
 }
 
 void CellularCapabilityUniversal::InitAPNList() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (!home_provider_) {
     return;
   }
@@ -630,7 +632,7 @@ void CellularCapabilityUniversal::InitAPNList() {
 
 // always called from an async context
 void CellularCapabilityUniversal::Register(const ResultCallback &callback) {
-  VLOG(2) << __func__ << " \"" << selected_network_ << "\"";
+  SLOG(Cellular, 2) << __func__ << " \"" << selected_network_ << "\"";
   CHECK(!callback.is_null());
   Error error;
   ResultCallback cb = Bind(&CellularCapabilityUniversal::OnRegisterReply,
@@ -644,7 +646,7 @@ void CellularCapabilityUniversal::RegisterOnNetwork(
     const string &network_id,
     Error *error,
     const ResultCallback &callback) {
-  VLOG(2) << __func__ << "(" << network_id << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << network_id << ")";
   CHECK(error);
   desired_network_ = network_id;
   ResultCallback cb = Bind(&CellularCapabilityUniversal::OnRegisterReply,
@@ -655,7 +657,7 @@ void CellularCapabilityUniversal::RegisterOnNetwork(
 void CellularCapabilityUniversal::OnRegisterReply(
     const ResultCallback &callback,
     const Error &error) {
-  VLOG(2) << __func__ << "(" << error << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << error << ")";
 
   if (error.IsSuccess()) {
     selected_network_ = desired_network_;
@@ -711,7 +713,7 @@ void CellularCapabilityUniversal::ChangePIN(
 
 void CellularCapabilityUniversal::Scan(Error *error,
                                        const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   // TODO(petkov): Defer scan requests if a scan is in progress already.
   CHECK(error);
   DBusPropertyMapsCallback cb = Bind(&CellularCapabilityUniversal::OnScanReply,
@@ -722,7 +724,7 @@ void CellularCapabilityUniversal::Scan(Error *error,
 void CellularCapabilityUniversal::OnScanReply(const ResultCallback &callback,
                                               const ScanResults &results,
                                               const Error &error) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
 
   // Error handling is weak.  The current expectation is that on any
   // error, found_networks_ should be cleared and a property change
@@ -938,9 +940,9 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
     MMModem3gppRegistrationState state,
     const string &operator_code,
     const string &operator_name) {
-  VLOG(2) << __func__ << ": regstate=" << state
-          << ", opercode=" << operator_code
-          << ", opername=" << operator_name;
+  SLOG(Cellular, 2) << __func__ << ": regstate=" << state
+                    << ", opercode=" << operator_code
+                    << ", opername=" << operator_name;
   registration_state_ = state;
   serving_operator_.SetCode(operator_code);
   serving_operator_.SetName(operator_name);

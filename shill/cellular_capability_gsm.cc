@@ -21,6 +21,7 @@
 #include "shill/error.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
+#include "shill/scope_logger.h"
 
 using base::Bind;
 using std::string;
@@ -55,7 +56,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
       home_provider_(NULL),
       scanning_(false),
       scan_interval_(0) {
-  VLOG(2) << "Cellular capability constructed: GSM";
+  SLOG(Cellular, 2) << "Cellular capability constructed: GSM";
   PropertyStore *store = cellular->mutable_store();
   store->RegisterConstString(flimflam::kSelectedNetworkProperty,
                              &selected_network_);
@@ -148,7 +149,7 @@ void CellularCapabilityGSM::StartModem(Error *error,
 }
 
 void CellularCapabilityGSM::ReleaseProxies() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CellularCapabilityClassic::ReleaseProxies();
   card_proxy_.reset();
   network_proxy_.reset();
@@ -212,7 +213,8 @@ void CellularCapabilityGSM::FillConnectPropertyMap(
     // Leave the APN at the front of the list, so that it can be recorded
     // if the connect attempt succeeds.
     Stringmap apn_info = apn_try_list_.front();
-    VLOG(2) << __func__ << ": Using APN " << apn_info[flimflam::kApnProperty];
+    SLOG(Cellular, 2) << __func__ << ": Using APN "
+                      << apn_info[flimflam::kApnProperty];
     (*properties)[kConnectPropertyApn].writer().append_string(
         apn_info[flimflam::kApnProperty].c_str());
     if (ContainsKey(apn_info, flimflam::kApnUsernameProperty))
@@ -227,7 +229,7 @@ void CellularCapabilityGSM::FillConnectPropertyMap(
 void CellularCapabilityGSM::Connect(const DBusPropertiesMap &properties,
                                     Error *error,
                                     const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   ResultCallback cb = Bind(&CellularCapabilityGSM::OnConnectReply,
                            weak_ptr_factory_.GetWeakPtr(),
                            callback);
@@ -244,8 +246,8 @@ void CellularCapabilityGSM::OnConnectReply(const ResultCallback &callback,
     // with some modems in some cases.
     if (error.type() == Error::kInvalidApn && !apn_try_list_.empty()) {
       apn_try_list_.pop_front();
-      VLOG(2) << "Connect failed with invalid APN, " << apn_try_list_.size()
-              << " remaining APNs to try";
+      SLOG(Cellular, 2) << "Connect failed with invalid APN, "
+                        << apn_try_list_.size() << " remaining APNs to try";
       DBusPropertiesMap props;
       FillConnectPropertyMap(&props);
       Error error;
@@ -268,7 +270,7 @@ bool CellularCapabilityGSM::AllowRoaming() {
 
 // always called from an async context
 void CellularCapabilityGSM::GetIMEI(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
   if (imei_.empty()) {
@@ -278,14 +280,14 @@ void CellularCapabilityGSM::GetIMEI(const ResultCallback &callback) {
     if (error.IsFailure())
       callback.Run(error);
   } else {
-    VLOG(2) << "Already have IMEI " << imei_;
+    SLOG(Cellular, 2) << "Already have IMEI " << imei_;
     callback.Run(error);
   }
 }
 
 // always called from an async context
 void CellularCapabilityGSM::GetIMSI(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
   if (imsi_.empty()) {
@@ -296,14 +298,14 @@ void CellularCapabilityGSM::GetIMSI(const ResultCallback &callback) {
     if (error.IsFailure())
       callback.Run(error);
   } else {
-    VLOG(2) << "Already have IMSI " << imsi_;
+    SLOG(Cellular, 2) << "Already have IMSI " << imsi_;
     callback.Run(error);
   }
 }
 
 // always called from an async context
 void CellularCapabilityGSM::GetSPN(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
   if (spn_.empty()) {
@@ -314,14 +316,14 @@ void CellularCapabilityGSM::GetSPN(const ResultCallback &callback) {
     if (error.IsFailure())
       callback.Run(error);
   } else {
-    VLOG(2) << "Already have SPN " << spn_;
+    SLOG(Cellular, 2) << "Already have SPN " << spn_;
     callback.Run(error);
   }
 }
 
 // always called from an async context
 void CellularCapabilityGSM::GetMSISDN(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
   if (mdn_.empty()) {
@@ -332,13 +334,13 @@ void CellularCapabilityGSM::GetMSISDN(const ResultCallback &callback) {
     if (error.IsFailure())
       callback.Run(error);
   } else {
-    VLOG(2) << "Already have MSISDN " << mdn_;
+    SLOG(Cellular, 2) << "Already have MSISDN " << mdn_;
     callback.Run(error);
   }
 }
 
 void CellularCapabilityGSM::GetSignalQuality() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   SignalQualityCallback callback =
       Bind(&CellularCapabilityGSM::OnGetSignalQualityReply,
            weak_ptr_factory_.GetWeakPtr());
@@ -346,7 +348,7 @@ void CellularCapabilityGSM::GetSignalQuality() {
 }
 
 void CellularCapabilityGSM::GetRegistrationState() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   RegistrationInfoCallback callback =
       Bind(&CellularCapabilityGSM::OnGetRegistrationInfoReply,
            weak_ptr_factory_.GetWeakPtr());
@@ -354,23 +356,23 @@ void CellularCapabilityGSM::GetRegistrationState() {
 }
 
 void CellularCapabilityGSM::GetProperties(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
 
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   uint32 tech = network_proxy_->AccessTechnology();
   SetAccessTechnology(tech);
-  VLOG(2) << "GSM AccessTechnology: " << tech;
+  SLOG(Cellular, 2) << "GSM AccessTechnology: " << tech;
 
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   uint32 locks = card_proxy_->EnabledFacilityLocks();
   sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
-  VLOG(2) << "GSM EnabledFacilityLocks: " << locks;
+  SLOG(Cellular, 2) << "GSM EnabledFacilityLocks: " << locks;
 
   callback.Run(Error());
 }
 
 string CellularCapabilityGSM::CreateFriendlyServiceName() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME &&
       !cellular()->home_provider().GetName().empty()) {
     return cellular()->home_provider().GetName();
@@ -388,8 +390,8 @@ string CellularCapabilityGSM::CreateFriendlyServiceName() {
 }
 
 void CellularCapabilityGSM::SetHomeProvider() {
-  VLOG(2) << __func__ << "(IMSI: " << imsi_
-          << " SPN: " << spn_ << ")";
+  SLOG(Cellular, 2) << __func__ << "(IMSI: " << imsi_
+                    << " SPN: " << spn_ << ")";
   // TODO(petkov): The test for NULL provider_db should be done by
   // mobile_provider_lookup_best_match.
   if (imsi_.empty() || !cellular()->provider_db()) {
@@ -399,7 +401,7 @@ void CellularCapabilityGSM::SetHomeProvider() {
       mobile_provider_lookup_best_match(
           cellular()->provider_db(), spn_.c_str(), imsi_.c_str());
   if (!provider) {
-    VLOG(2) << "GSM provider not found.";
+    SLOG(Cellular, 2) << "GSM provider not found.";
     return;
   }
   home_provider_ = provider;
@@ -423,10 +425,10 @@ void CellularCapabilityGSM::SetHomeProvider() {
 }
 
 void CellularCapabilityGSM::UpdateOperatorInfo() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   const string &network_id = serving_operator_.GetCode();
   if (!network_id.empty()) {
-    VLOG(2) << "Looking up network id: " << network_id;
+    SLOG(Cellular, 2) << "Looking up network id: " << network_id;
     mobile_provider *provider =
         mobile_provider_lookup_by_network(cellular()->provider_db(),
                                           network_id.c_str());
@@ -437,25 +439,25 @@ void CellularCapabilityGSM::UpdateOperatorInfo() {
         if (provider->country) {
           serving_operator_.SetCountry(provider->country);
         }
-        VLOG(2) << "Operator name: " << serving_operator_.GetName()
-                << ", country: " << serving_operator_.GetCountry();
+        SLOG(Cellular, 2) << "Operator name: " << serving_operator_.GetName()
+                          << ", country: " << serving_operator_.GetCountry();
       }
     } else {
-      VLOG(2) << "GSM provider not found.";
+      SLOG(Cellular, 2) << "GSM provider not found.";
     }
   }
   UpdateServingOperator();
 }
 
 void CellularCapabilityGSM::UpdateServingOperator() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (cellular()->service().get()) {
     cellular()->service()->SetServingOperator(serving_operator_);
   }
 }
 
 void CellularCapabilityGSM::InitAPNList() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (!home_provider_) {
     return;
   }
@@ -499,7 +501,7 @@ void CellularCapabilityGSM::InitAPNList() {
 
 // always called from an async context
 void CellularCapabilityGSM::Register(const ResultCallback &callback) {
-  VLOG(2) << __func__ << " \"" << selected_network_ << "\"";
+  SLOG(Cellular, 2) << __func__ << " \"" << selected_network_ << "\"";
   CHECK(!callback.is_null());
   Error error;
   ResultCallback cb = Bind(&CellularCapabilityGSM::OnRegisterReply,
@@ -513,7 +515,7 @@ void CellularCapabilityGSM::RegisterOnNetwork(
     const string &network_id,
     Error *error,
     const ResultCallback &callback) {
-  VLOG(2) << __func__ << "(" << network_id << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << network_id << ")";
   CHECK(error);
   desired_network_ = network_id;
   ResultCallback cb = Bind(&CellularCapabilityGSM::OnRegisterReply,
@@ -523,7 +525,7 @@ void CellularCapabilityGSM::RegisterOnNetwork(
 
 void CellularCapabilityGSM::OnRegisterReply(const ResultCallback &callback,
                                             const Error &error) {
-  VLOG(2) << __func__ << "(" << error << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << error << ")";
 
   if (error.IsSuccess()) {
     selected_network_ = desired_network_;
@@ -578,7 +580,7 @@ void CellularCapabilityGSM::ChangePIN(
 }
 
 void CellularCapabilityGSM::Scan(Error *error, const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   // TODO(petkov): Defer scan requests if a scan is in progress already.
   CHECK(error);
   ScanResultsCallback cb = Bind(&CellularCapabilityGSM::OnScanReply,
@@ -589,7 +591,7 @@ void CellularCapabilityGSM::Scan(Error *error, const ResultCallback &callback) {
 void CellularCapabilityGSM::OnScanReply(const ResultCallback &callback,
                                         const GSMScanResults &results,
                                         const Error &error) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
 
   // Error handling is weak.  The current expectation is that on any
   // error, found_networks_ should be cleared and a property change
@@ -629,7 +631,8 @@ Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {
       "HSUPA",
       flimflam::kNetworkTechnologyHspa,
     };
-    VLOG(2) << "Network property: " << it->first << " = " << it->second;
+    SLOG(Cellular, 2) << "Network property: " << it->first << " = "
+                      << it->second;
     if (it->first == kNetworkPropertyStatus) {
       int status = 0;
       if (base::StringToInt(it->second, &status) &&
@@ -759,9 +762,9 @@ void CellularCapabilityGSM::OnNetworkModeSignal(uint32 /*mode*/) {
 
 void CellularCapabilityGSM::OnRegistrationInfoSignal(
     uint32 status, const string &operator_code, const string &operator_name) {
-  VLOG(2) << __func__ << ": regstate=" << status
-          << ", opercode=" << operator_code
-          << ", opername=" << operator_name;
+  SLOG(Cellular, 2) << __func__ << ": regstate=" << status
+                    << ", opercode=" << operator_code
+                    << ", opername=" << operator_name;
   registration_state_ = status;
   serving_operator_.SetCode(operator_code);
   serving_operator_.SetName(operator_name);
@@ -790,10 +793,10 @@ void CellularCapabilityGSM::OnGetIMEIReply(const ResultCallback &callback,
                                            const string &imei,
                                            const Error &error) {
   if (error.IsSuccess()) {
-    VLOG(2) << "IMEI: " << imei;
+    SLOG(Cellular, 2) << "IMEI: " << imei;
     imei_ = imei;
   } else {
-    VLOG(2) << "GetIMEI failed - " << error;
+    SLOG(Cellular, 2) << "GetIMEI failed - " << error;
   }
   callback.Run(error);
 }
@@ -802,11 +805,11 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback &callback,
                                            const string &imsi,
                                            const Error &error) {
   if (error.IsSuccess()) {
-    VLOG(2) << "IMSI: " << imsi;
+    SLOG(Cellular, 2) << "IMSI: " << imsi;
     imsi_ = imsi;
     SetHomeProvider();
   } else {
-    VLOG(2) << "GetIMSI failed - " << error;
+    SLOG(Cellular, 2) << "GetIMSI failed - " << error;
   }
   callback.Run(error);
 }
@@ -815,11 +818,11 @@ void CellularCapabilityGSM::OnGetSPNReply(const ResultCallback &callback,
                                           const string &spn,
                                           const Error &error) {
   if (error.IsSuccess()) {
-    VLOG(2) << "SPN: " << spn;
+    SLOG(Cellular, 2) << "SPN: " << spn;
     spn_ = spn;
     SetHomeProvider();
   } else {
-    VLOG(2) << "GetSPN failed - " << error;
+    SLOG(Cellular, 2) << "GetSPN failed - " << error;
   }
   callback.Run(error);
 }
@@ -828,10 +831,10 @@ void CellularCapabilityGSM::OnGetMSISDNReply(const ResultCallback &callback,
                                              const string &msisdn,
                                              const Error &error) {
   if (error.IsSuccess()) {
-    VLOG(2) << "MSISDN: " << msisdn;
+    SLOG(Cellular, 2) << "MSISDN: " << msisdn;
     mdn_ = msisdn;
   } else {
-    VLOG(2) << "GetMSISDN failed - " << error;
+    SLOG(Cellular, 2) << "GetMSISDN failed - " << error;
   }
   callback.Run(error);
 }

@@ -18,6 +18,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/http_url.h"
 #include "shill/ip_address.h"
+#include "shill/scope_logger.h"
 #include "shill/sockets.h"
 
 using base::Bind;
@@ -74,7 +75,7 @@ bool PortalDetector::Start(const string &url_string) {
 
 bool PortalDetector::StartAfterDelay(const string &url_string,
                                      int delay_seconds) {
-  VLOG(3) << "In " << __func__;
+  SLOG(Portal, 3) << "In " << __func__;
 
   DCHECK(!request_.get());
 
@@ -90,7 +91,7 @@ bool PortalDetector::StartAfterDelay(const string &url_string,
 }
 
 void PortalDetector::Stop() {
-  VLOG(3) << "In " << __func__;
+  SLOG(Portal, 3) << "In " << __func__;
 
   if (!request_.get()) {
     return;

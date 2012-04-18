@@ -33,6 +33,7 @@
 #include "shill/refptr_types.h"
 #include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
+#include "shill/scope_logger.h"
 #include "shill/service.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
@@ -143,11 +144,11 @@ Device::Device(ControlInterface *control_interface,
   // flimflam::kScanIntervalProperty: Registered in WiFi, Cellular
 
   // TODO(pstew): Initialize Interface monitor, so we can detect new interfaces
-  VLOG(2) << "Device " << link_name_ << " index " << interface_index;
+  SLOG(Device, 2) << "Device " << link_name_ << " index " << interface_index;
 }
 
 Device::~Device() {
-  VLOG(2) << "Device " << link_name_ << " destroyed.";
+  SLOG(Device, 2) << "Device " << link_name_ << " destroyed.";
 }
 
 bool Device::TechnologyIs(const Technology::Identifier /*type*/) const {
@@ -155,14 +156,14 @@ bool Device::TechnologyIs(const Technology::Identifier /*type*/) const {
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {
-  VLOG(2) << "Device " << link_name_
-          << std::showbase << std::hex
-          << " flags " << flags << " changed " << change
-          << std::dec << std::noshowbase;
+  SLOG(Device, 2) << "Device " << link_name_
+                  << std::showbase << std::hex
+                  << " flags " << flags << " changed " << change
+                  << std::dec << std::noshowbase;
 }
 
 void Device::Scan(Error *error) {
-  VLOG(2) << "Device " << link_name_ << " scan requested.";
+  SLOG(Device, 2) << "Device " << link_name_ << " scan requested.";
   Error::PopulateAndLog(error, Error::kNotSupported,
                         "Device doesn't support scan.");
 }
@@ -176,14 +177,14 @@ void Device::RegisterOnNetwork(const std::string &/*network_id*/, Error *error,
 void Device::RequirePIN(
     const string &/*pin*/, bool /*require*/,
     Error *error, const ResultCallback &/*callback*/) {
-  VLOG(2) << __func__;
+  SLOG(Device, 2) << __func__;
   Error::PopulateAndLog(error, Error::kNotSupported,
                         "Device doesn't support RequirePIN.");
 }
 
 void Device::EnterPIN(const string &/*pin*/,
                       Error *error, const ResultCallback &/*callback*/) {
-  VLOG(2) << __func__;
+  SLOG(Device, 2) << __func__;
   Error::PopulateAndLog(error, Error::kNotSupported,
                         "Device doesn't support EnterPIN.");
 }
@@ -191,7 +192,7 @@ void Device::EnterPIN(const string &/*pin*/,
 void Device::UnblockPIN(const string &/*unblock_code*/,
                         const string &/*pin*/,
                         Error *error, const ResultCallback &/*callback*/) {
-  VLOG(2) << __func__;
+  SLOG(Device, 2) << __func__;
   Error::PopulateAndLog(error, Error::kNotSupported,
                         "Device doesn't support UnblockPIN.");
 }
@@ -199,7 +200,7 @@ void Device::UnblockPIN(const string &/*unblock_code*/,
 void Device::ChangePIN(const string &/*old_pin*/,
                        const string &/*new_pin*/,
                        Error *error, const ResultCallback &/*callback*/) {
-  VLOG(2) << __func__;
+  SLOG(Device, 2) << __func__;
   Error::PopulateAndLog(error, Error::kNotSupported,
                         "Device doesn't support ChangePIN.");
 }
@@ -333,7 +334,7 @@ void Device::HelpRegisterConstDerivedRpcIdentifiers(
 }
 
 void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
-  VLOG(2) << __func__ << " " << " success: " << success;
+  SLOG(Device, 2) << __func__ << " " << " success: " << success;
   if (success) {
     CreateConnection();
     connection_->UpdateFromIPConfig(ipconfig);
@@ -360,7 +361,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
 }
 
 void Device::CreateConnection() {
-  VLOG(2) << __func__;
+  SLOG(Device, 2) << __func__;
   if (!connection_.get()) {
     connection_ = new Connection(interface_index_,
                                  link_name_,
@@ -370,7 +371,7 @@ void Device::CreateConnection() {
 }
 
 void Device::DestroyConnection() {
-  VLOG(2) << __func__;
+  SLOG(Device, 2) << __func__;
   StopPortalDetection();
   if (selected_service_.get()) {
     selected_service_->SetConnection(NULL);
@@ -379,12 +380,12 @@ void Device::DestroyConnection() {
 }
 
 void Device::SelectService(const ServiceRefPtr &service) {
-  VLOG(2) << __func__ << ": "
-          << (service.get() ?
-              StringPrintf("%s (%s)",
-                           service->UniqueName().c_str(),
-                           service->friendly_name().c_str()) :
-              "*reset*");
+  SLOG(Device, 2) << __func__ << ": "
+                  << (service.get() ?
+                      StringPrintf("%s (%s)",
+                                   service->UniqueName().c_str(),
+                                   service->friendly_name().c_str()) :
+                      "*reset*");
 
   if (selected_service_.get() == service.get()) {
     // No change to |selected_service_|. Return early to avoid
@@ -439,7 +440,8 @@ bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
   }
   FilePath flag_file(StringPrintf(kIPFlagTemplate, ip_version.c_str(),
                                   link_name_.c_str(), flag.c_str()));
-  VLOG(2) << "Writing " << value << " to flag file " << flag_file.value();
+  SLOG(Device, 2) << "Writing " << value << " to flag file "
+                  << flag_file.value();
   if (file_util::WriteFile(flag_file, value.c_str(), value.length()) != 1) {
     LOG(ERROR) << StringPrintf("IP flag write failed: %s to %s",
                                value.c_str(), flag_file.value().c_str());
@@ -450,31 +452,32 @@ bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
 
 bool Device::RequestPortalDetection() {
   if (!selected_service_) {
-    VLOG(2) << FriendlyName()
+    SLOG(Device, 2) << FriendlyName()
             << ": No selected service, so no need for portal check.";
     return false;
   }
 
   if (!connection_.get()) {
-    VLOG(2) << FriendlyName()
+    SLOG(Device, 2) << FriendlyName()
             << ": No connection, so no need for portal check.";
     return false;
   }
 
   if (selected_service_->state() != Service::kStatePortal) {
-    VLOG(2) << FriendlyName()
+    SLOG(Device, 2) << FriendlyName()
             << ": Service is not in portal state.  No need to start check.";
     return false;
   }
 
   if (!connection_->is_default()) {
-    VLOG(2) << FriendlyName()
+    SLOG(Device, 2) << FriendlyName()
             << ": Service is not the default connection.  Don't start check.";
     return false;
   }
 
   if (portal_detector_.get() && portal_detector_->IsInProgress()) {
-    VLOG(2) << FriendlyName() << ": Portal detection is already running.";
+    SLOG(Device, 2) << FriendlyName()
+                    << ": Portal detection is already running.";
     return true;
   }
 
@@ -485,8 +488,9 @@ bool Device::StartPortalDetection() {
   if (!manager_->IsPortalDetectionEnabled(technology())) {
     // If portal detection is disabled for this technology, immediately set
     // the service state to "Online".
-    VLOG(2) << "Device " << FriendlyName()
-            << ": portal detection is disabled; marking service online.";
+    SLOG(Device, 2) << "Device " << FriendlyName()
+                    << ": Portal detection is disabled; "
+                    << "marking service online.";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
@@ -496,8 +500,8 @@ bool Device::StartPortalDetection() {
     // Services with HTTP proxy configurations should not be checked by the
     // connection manager, since we don't have the ability to evaluate
     // arbitrary proxy configs and their possible credentials.
-    VLOG(2) << "Device " << FriendlyName()
-            << ": service has proxy config;  marking it online.";
+    SLOG(Device, 2) << "Device " << FriendlyName()
+                    << ": Service has proxy config; marking it online.";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
   }
@@ -513,12 +517,14 @@ bool Device::StartPortalDetection() {
     return false;
   }
 
-  VLOG(2) << "Device " << FriendlyName() << ": portal detection has started.";
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Portal detection has started.";
   return true;
 }
 
 void Device::StopPortalDetection() {
-  VLOG(2) << "Device " << FriendlyName() << ": portal detection has stopped.";
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Portal detection has stopped.";
   portal_detector_.reset();
 }
 
@@ -552,9 +558,11 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
       portal_detector_.reset();
       return;
     }
-    VLOG(2) << "Device " << FriendlyName() << ": portal detection retrying.";
+    SLOG(Device, 2) << "Device " << FriendlyName()
+                    << ": Portal detection retrying.";
   } else {
-    VLOG(2) << "Device " << FriendlyName() << ": portal will not retry.";
+    SLOG(Device, 2) << "Device " << FriendlyName()
+                    << ": Portal will not retry.";
     portal_detector_.reset();
   }
 
@@ -563,15 +571,15 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
 
 void Device::PortalDetectorCallback(const PortalDetector::Result &result) {
   if (!result.final) {
-    VLOG(2) << "Device " << FriendlyName()
-            << ": received non-final status: "
-            << PortalDetector::StatusToString(result.status);
+    SLOG(Device, 2) << "Device " << FriendlyName()
+                    << ": Received non-final status: "
+                    << PortalDetector::StatusToString(result.status);
     return;
   }
 
-  VLOG(2) << "Device " << FriendlyName()
-          << ": received final status: "
-          << PortalDetector::StatusToString(result.status);
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Received final status: "
+                  << PortalDetector::StatusToString(result.status);
 
   portal_attempts_to_online_ += result.num_attempts;
 
@@ -618,7 +626,7 @@ string Device::GetRpcConnectionIdentifier() {
 // callback
 void Device::OnEnabledStateChanged(const ResultCallback &callback,
                                    const Error &error) {
-  VLOG(2) << __func__ << "(" << enabled_pending_ << ")";
+  SLOG(Device, 2) << __func__ << "(" << enabled_pending_ << ")";
   if (error.IsSuccess()) {
     enabled_ = enabled_pending_;
     manager_->UpdateEnabledTechnologies();
@@ -630,7 +638,7 @@ void Device::OnEnabledStateChanged(const ResultCallback &callback,
 }
 
 void Device::SetEnabled(bool enable) {
-  VLOG(2) << __func__ << "(" << enable << ")";
+  SLOG(Device, 2) << __func__ << "(" << enable << ")";
   Error error;
   SetEnabledInternal(enable, false, &error, ResultCallback());
   LOG_IF(ERROR, error.IsFailure())
@@ -648,8 +656,8 @@ void Device::SetEnabledInternal(bool enable,
                                 Error *error,
                                 const ResultCallback &callback) {
   DCHECK(error);
-  VLOG(2) << "Device " << link_name_ << " "
-          << (enable ? "starting" : "stopping");
+  SLOG(Device, 2) << "Device " << link_name_ << " "
+                  << (enable ? "starting" : "stopping");
   if (enable == enabled_) {
     error->Reset();
     return;
@@ -679,12 +687,12 @@ void Device::SetEnabledInternal(bool enable,
     DestroyIPConfig();         // breaks a reference cycle
     SelectService(NULL);       // breaks a reference cycle
     rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
-    VLOG(3) << "Device " << link_name_ << " ipconfig_ "
-            << (ipconfig_ ? "is set." : "is not set.");
-    VLOG(3) << "Device " << link_name_ << " connection_ "
-            << (connection_ ? "is set." : "is not set.");
-    VLOG(3) << "Device " << link_name_ << " selected_service_ "
-            << (selected_service_ ? "is set." : "is not set.");
+    SLOG(Device, 3) << "Device " << link_name_ << " ipconfig_ "
+                    << (ipconfig_ ? "is set." : "is not set.");
+    SLOG(Device, 3) << "Device " << link_name_ << " connection_ "
+                    << (connection_ ? "is set." : "is not set.");
+    SLOG(Device, 3) << "Device " << link_name_ << " selected_service_ "
+                    << (selected_service_ ? "is set." : "is not set.");
     Stop(error, enabled_callback);
   }
 }

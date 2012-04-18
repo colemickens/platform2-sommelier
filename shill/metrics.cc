@@ -10,6 +10,7 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/scope_logger.h"
 #include "shill/wifi_service.h"
 
 using std::string;
@@ -147,7 +148,7 @@ Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16 frequency) {
   if (channel == kWiFiChannelUndef)
     LOG(WARNING) << "no mapping for frequency " << frequency;
   else
-    VLOG(3) << "map " << frequency << " to " << channel;
+    SLOG(Metrics, 3) << "map " << frequency << " to " << channel;
 
   return channel;
 }
@@ -254,7 +255,7 @@ void Metrics::AddServiceStateTransitionTimer(
     Service::ConnectState stop_state) {
   ServiceMetricsLookupMap::iterator it = services_metrics_.find(service);
   if (it == services_metrics_.end()) {
-    VLOG(1) << "service not found";
+    SLOG(Metrics, 1) << "service not found";
     DCHECK(false);
     return;
   }
@@ -314,7 +315,7 @@ void Metrics::NotifyServiceStateChanged(const Service *service,
                                         Service::ConnectState new_state) {
   ServiceMetricsLookupMap::iterator it = services_metrics_.find(service);
   if (it == services_metrics_.end()) {
-    VLOG(1) << "service not found";
+    SLOG(Metrics, 1) << "service not found";
     DCHECK(false);
     return;
   }

@@ -7,9 +7,8 @@
 #include <map>
 #include <string>
 
-#include <base/logging.h>
-
 #include "shill/error.h"
+#include "shill/scope_logger.h"
 #include "shill/service.h"
 
 using std::map;
@@ -103,7 +102,7 @@ void ServiceDBusAdaptor::MoveAfter(const ::DBus::Path& ,
 
 void ServiceDBusAdaptor::ActivateCellularModem(const string &carrier,
                                                ::DBus::Error &error) {
-  VLOG(2) << __func__;
+  SLOG(DBus, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   service_->ActivateCellularModem(carrier, &e, GetMethodReplyCallback(tag));

@@ -7,6 +7,7 @@
 #include <base/logging.h>
 
 #include "shill/cellular_error.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 
@@ -108,29 +109,30 @@ void ModemCDMAProxy::Proxy::ActivationStateChanged(
     const uint32 &activation_state,
     const uint32 &activation_error,
     const DBusPropertiesMap &status_changes) {
-  VLOG(2) << __func__ << "(" << activation_state << ", " << activation_error
-          << ")";
+  SLOG(Modem, 2) << __func__ << "(" << activation_state << ", "
+                 << activation_error << ")";
   activation_state_callback_.Run(activation_state,
                                   activation_error,
                                   status_changes);
 }
 
 void ModemCDMAProxy::Proxy::SignalQuality(const uint32 &quality) {
-  VLOG(2) << __func__ << "(" << quality << ")";
+  SLOG(Modem, 2) << __func__ << "(" << quality << ")";
   signal_quality_callback_.Run(quality);
 }
 
 void ModemCDMAProxy::Proxy::RegistrationStateChanged(
     const uint32 &cdma_1x_state,
     const uint32 &evdo_state) {
-  VLOG(2) << __func__ << "(" << cdma_1x_state << ", " << evdo_state << ")";
+  SLOG(Modem, 2) << __func__ << "(" << cdma_1x_state << ", "
+                 << evdo_state << ")";
   registration_state_callback_.Run(cdma_1x_state, evdo_state);
 }
 
 void ModemCDMAProxy::Proxy::ActivateCallback(const uint32_t &status,
                                              const DBus::Error &dberror,
                                              void *data) {
-  VLOG(2) << __func__ << "(" << status << ")";
+  SLOG(Modem, 2) << __func__ << "(" << status << ")";
   scoped_ptr<ActivationResultCallback> callback(
       reinterpret_cast<ActivationResultCallback *>(data));
   Error error;
@@ -141,7 +143,7 @@ void ModemCDMAProxy::Proxy::ActivateCallback(const uint32_t &status,
 void ModemCDMAProxy::Proxy::GetRegistrationStateCallback(
     const uint32 &state_1x, const uint32 &state_evdo,
     const DBus::Error &dberror, void *data) {
-  VLOG(2) << __func__ << "(" << state_1x << ", " << state_evdo << ")";
+  SLOG(Modem, 2) << __func__ << "(" << state_1x << ", " << state_evdo << ")";
   scoped_ptr<RegistrationStateCallback> callback(
       reinterpret_cast<RegistrationStateCallback *>(data));
   Error error;
@@ -153,7 +155,7 @@ void ModemCDMAProxy::Proxy::GetRegistrationStateCallback(
 void ModemCDMAProxy::Proxy::GetSignalQualityCallback(const uint32 &quality,
                                                      const DBus::Error &dberror,
                                                      void *data) {
-  VLOG(2) << __func__ << "(" << quality << ")";
+  SLOG(Modem, 2) << __func__ << "(" << quality << ")";
   scoped_ptr<SignalQualityCallback> callback(
       reinterpret_cast<SignalQualityCallback *>(data));
   Error error;

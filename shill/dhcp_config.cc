@@ -18,6 +18,7 @@
 #include "shill/glib.h"
 #include "shill/ip_address.h"
 #include "shill/proxy_factory.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 using std::vector;
@@ -65,11 +66,11 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       glib_(glib) {
   mutable_store()->RegisterConstString(flimflam::kAddressProperty,
                                        &(properties().address));
-  VLOG(2) << __func__ << ": " << device_name;
+  SLOG(DHCP, 2) << __func__ << ": " << device_name;
 }
 
 DHCPConfig::~DHCPConfig() {
-  VLOG(2) << __func__ << ": " << device_name();
+  SLOG(DHCP, 2) << __func__ << ": " << device_name();
 
   // Don't leave behind dhcpcd running.
   Stop();
@@ -79,7 +80,7 @@ DHCPConfig::~DHCPConfig() {
 }
 
 bool DHCPConfig::RequestIP() {
-  VLOG(2) << __func__ << ": " << device_name();
+  SLOG(DHCP, 2) << __func__ << ": " << device_name();
   if (!pid_) {
     return Start();
   }
@@ -91,7 +92,7 @@ bool DHCPConfig::RequestIP() {
 }
 
 bool DHCPConfig::RenewIP() {
-  VLOG(2) << __func__ << ": " << device_name();
+  SLOG(DHCP, 2) << __func__ << ": " << device_name();
   if (!pid_) {
     return false;
   }
@@ -100,7 +101,7 @@ bool DHCPConfig::RenewIP() {
 }
 
 bool DHCPConfig::ReleaseIP() {
-  VLOG(2) << __func__ << ": " << device_name();
+  SLOG(DHCP, 2) << __func__ << ": " << device_name();
   if (!pid_) {
     return true;
   }
@@ -113,7 +114,7 @@ bool DHCPConfig::ReleaseIP() {
 
 void DHCPConfig::InitProxy(const string &service) {
   if (!proxy_.get()) {
-    VLOG(2) << "Init DHCP Proxy: " << device_name() << " at " << service;
+    SLOG(DHCP, 2) << "Init DHCP Proxy: " << device_name() << " at " << service;
     proxy_.reset(proxy_factory_->CreateDHCPProxy(service));
   }
 }
@@ -139,7 +140,7 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
 }
 
 bool DHCPConfig::Start() {
-  VLOG(2) << __func__ << ": " << device_name();
+  SLOG(DHCP, 2) << __func__ << ": " << device_name();
 
   vector<char *> args;
   args.push_back(const_cast<char *>(kDHCPCDPath));
@@ -173,7 +174,7 @@ bool DHCPConfig::Start() {
 
 void DHCPConfig::Stop() {
   if (pid_) {
-    VLOG(2) << "Terminating " << pid_;
+    SLOG(DHCP, 2) << "Terminating " << pid_;
     if (kill(pid_, SIGTERM) < 0) {
       PLOG(ERROR);
       return;
@@ -220,14 +221,14 @@ string DHCPConfig::GetIPv4AddressString(unsigned int address) {
 
 bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
                                     IPConfig::Properties *properties) {
-  VLOG(2) << __func__;
+  SLOG(DHCP, 2) << __func__;
   properties->method = flimflam::kTypeDHCP;
   properties->address_family = IPAddress::kFamilyIPv4;
   for (Configuration::const_iterator it = configuration.begin();
        it != configuration.end(); ++it) {
     const string &key = it->first;
     const DBus::Variant &value = it->second;
-    VLOG(2) << "Processing key: " << key;
+    SLOG(DHCP, 2) << "Processing key: " << key;
     if (key == kConfigurationKeyIPAddress) {
       properties->address = GetIPv4AddressString(value.reader().get_uint32());
       if (properties->address.empty()) {
@@ -271,14 +272,14 @@ bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
         properties->mtu = mtu;
       }
     } else {
-      VLOG(2) << "Key ignored.";
+      SLOG(DHCP, 2) << "Key ignored.";
     }
   }
   return true;
 }
 
 void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
-  VLOG(2) << "pid " << pid << " exit status " << status;
+  SLOG(DHCP, 2) << "pid " << pid << " exit status " << status;
   DHCPConfig *config = reinterpret_cast<DHCPConfig *>(data);
   config->child_watch_tag_ = 0;
   CHECK_EQ(pid, config->pid_);

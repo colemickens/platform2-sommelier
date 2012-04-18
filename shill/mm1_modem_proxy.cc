@@ -6,7 +6,8 @@
 
 #include <base/logging.h>
 
-#include "cellular_error.h"
+#include "shill/cellular_error.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 
@@ -29,7 +30,7 @@ void ModemProxy::Enable(bool enable,
                         Error *error,
                         const ResultCallback &callback,
                         int timeout) {
-  VLOG(2) << __func__ << "(" << enable << ", " << timeout << ")";
+  SLOG(Modem, 2) << __func__ << "(" << enable << ", " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
     proxy_.Enable(enable, cb.get(), timeout);

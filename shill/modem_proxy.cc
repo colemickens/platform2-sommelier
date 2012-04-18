@@ -9,6 +9,7 @@
 
 #include "shill/cellular_error.h"
 #include "shill/error.h"
+#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::Callback;
@@ -33,7 +34,7 @@ void ModemProxy::set_state_changed_callback(
 
 void ModemProxy::Enable(bool enable, Error *error,
                         const ResultCallback &callback, int timeout) {
-  VLOG(2) << __func__ << "(" << enable << ", " << timeout << ")";
+  SLOG(Modem, 2) << __func__ << "(" << enable << ", " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
     proxy_.Enable(enable, cb.get(), timeout);
@@ -83,12 +84,13 @@ void ModemProxy::Proxy::set_state_changed_callback(
 
 void ModemProxy::Proxy::StateChanged(
     const uint32 &old, const uint32 &_new, const uint32 &reason) {
-  VLOG(2) << __func__ << "(" << old << ", " << _new << ", " << reason << ")";
+  SLOG(Modem, 2) << __func__ << "(" << old << ", " << _new << ", "
+                 << reason << ")";
   state_changed_callback_.Run(old, _new, reason);
 }
 
 void ModemProxy::Proxy::EnableCallback(const DBus::Error &dberror, void *data) {
-  VLOG(2) << __func__;
+  SLOG(Modem, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);

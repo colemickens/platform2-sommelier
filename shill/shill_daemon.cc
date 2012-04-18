@@ -18,6 +18,7 @@
 #include "shill/proxy_factory.h"
 #include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
+#include "shill/scope_logger.h"
 #include "shill/shill_config.h"
 
 using std::string;
@@ -54,9 +55,9 @@ void Daemon::SetStartupProfiles(const vector<string> &profile_name_list) {
 
 void Daemon::Run() {
   Start();
-  VLOG(1) << "Running main loop.";
+  SLOG(Daemon, 1) << "Running main loop.";
   dispatcher_.DispatchForever();
-  VLOG(1) << "Exited main loop.";
+  SLOG(Daemon, 1) << "Exited main loop.";
   Stop();
 }
 

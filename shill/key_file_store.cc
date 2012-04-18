@@ -7,6 +7,8 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 
+#include "shill/scope_logger.h"
+
 using std::set;
 using std::string;
 using std::vector;
@@ -167,7 +169,8 @@ bool KeyFileStore::GetString(const string &group,
       glib_->KeyFileGetString(key_file_, group.c_str(), key.c_str(), &error);
   if (!data) {
     string s = glib_->ConvertErrorToMessage(error);
-    VLOG(10) << "Failed to lookup (" << group << ":" << key << "): " << s;
+    SLOG(Storage, 10) << "Failed to lookup (" << group << ":" << key << "): "
+                      << s;
     return false;
   }
   if (value) {
@@ -194,7 +197,8 @@ bool KeyFileStore::GetBool(const string &group,
       glib_->KeyFileGetBoolean(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
     string s = glib_->ConvertErrorToMessage(error);
-    VLOG(10) << "Failed to lookup (" << group << ":" << key << "): " << s;
+    SLOG(Storage, 10) << "Failed to lookup (" << group << ":" << key << "): "
+                      << s;
     return false;
   }
   if (value) {
@@ -220,7 +224,8 @@ bool KeyFileStore::GetInt(
       glib_->KeyFileGetInteger(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
     string s = glib_->ConvertErrorToMessage(error);
-    VLOG(10) << "Failed to lookup (" << group << ":" << key << "): " << s;
+    SLOG(Storage, 10) << "Failed to lookup (" << group << ":" << key << "): "
+                      << s;
     return false;
   }
   if (value) {
@@ -248,7 +253,8 @@ bool KeyFileStore::GetStringList(const string &group,
                                              &error);
   if (!data) {
     string s = glib_->ConvertErrorToMessage(error);
-    VLOG(10) << "Failed to lookup (" << group << ":" << key << "): " << s;
+    SLOG(Storage, 10) << "Failed to lookup (" << group << ":" << key << "): "
+                      << s;
     return false;
   }
   if (value) {

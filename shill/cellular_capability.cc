@@ -10,6 +10,7 @@
 #include "shill/cellular.h"
 #include "shill/error.h"
 #include "shill/property_accessor.h"
+#include "shill/scope_logger.h"
 
 using base::Closure;
 using std::string;
@@ -48,7 +49,8 @@ void CellularCapability::HelpRegisterDerivedBool(
 }
 
 void CellularCapability::SetAllowRoaming(const bool &value, Error */*error*/) {
-  VLOG(2) << __func__ << "(" << allow_roaming_ << "->" << value << ")";
+  SLOG(Cellular, 2) << __func__
+                    << "(" << allow_roaming_ << "->" << value << ")";
   if (allow_roaming_ == value) {
     return;
   }
@@ -67,7 +69,7 @@ void CellularCapability::SetAllowRoaming(const bool &value, Error */*error*/) {
 
 void CellularCapability::RunNextStep(CellularTaskList *tasks) {
   CHECK(!tasks->empty());
-  VLOG(2) << __func__ << ": " << tasks->size() << " remaining tasks";
+  SLOG(Cellular, 2) << __func__ << ": " << tasks->size() << " remaining tasks";
   Closure task = (*tasks)[0];
   tasks->erase(tasks->begin());
   cellular()->dispatcher()->PostTask(task);

@@ -12,6 +12,7 @@
 #include <base/stringprintf.h>
 
 #include "shill/ipconfig.h"
+#include "shill/scope_logger.h"
 
 using base::StringPrintf;
 using std::string;
@@ -32,7 +33,7 @@ Resolver* Resolver::GetInstance() {
 }
 
 bool Resolver::SetDNSFromIPConfig(const IPConfigRefPtr &ipconfig) {
-  VLOG(2) << __func__;
+  SLOG(Resolver, 2) << __func__;
 
   CHECK(!path_.empty());
 
@@ -43,10 +44,10 @@ bool Resolver::SetDNSFromIPConfig(const IPConfigRefPtr &ipconfig) {
 
 bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
                                const std::vector<std::string> &domain_search) {
-  VLOG(2) << __func__;
+  SLOG(Resolver, 2) << __func__;
 
   if (dns_servers.empty() && domain_search.empty()) {
-    VLOG(2) << "DNS list is empty";
+    SLOG(Resolver, 2) << "DNS list is empty";
     return ClearDNS();
   }
 
@@ -71,14 +72,14 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
 
   string contents = JoinString(lines, '\n');
 
-  VLOG(2) << "Writing DNS out to " << path_.value();
+  SLOG(Resolver, 2) << "Writing DNS out to " << path_.value();
   int count = file_util::WriteFile(path_, contents.c_str(), contents.size());
 
   return count == static_cast<int>(contents.size());
 }
 
 bool Resolver::ClearDNS() {
-  VLOG(2) << __func__;
+  SLOG(Resolver, 2) << __func__;
 
   CHECK(!path_.empty());
 

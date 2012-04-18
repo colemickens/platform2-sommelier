@@ -18,6 +18,7 @@
 #include <chromeos/syslog_logging.h>
 
 #include "shill/dbus_control.h"
+#include "shill/scope_logger.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 
@@ -79,7 +80,7 @@ void SetupLogging(bool foreground) {
 }
 
 void DeleteDBusControl(void* param) {
-  VLOG(2) << __func__;
+  SLOG(DBus, 2) << __func__;
   shill::DBusControl* dbus_control =
       reinterpret_cast<shill::DBusControl*>(param);
   delete dbus_control;

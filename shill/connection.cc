@@ -11,6 +11,7 @@
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 
@@ -34,13 +35,13 @@ Connection::Connection(int interface_index,
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
-  VLOG(2) << __func__ << "(" << interface_index
-          << ", " << interface_name
-          << ", " << Technology::NameFromIdentifier(technology) << ")";
+  SLOG(Connection, 2) << __func__ << "(" << interface_index << ", "
+                      << interface_name << ", "
+                      << Technology::NameFromIdentifier(technology) << ")";
 }
 
 Connection::~Connection() {
-  VLOG(2) << __func__ << " " << interface_name_;
+  SLOG(Connection, 2) << __func__ << " " << interface_name_;
 
   DCHECK(!routing_request_count_);
   routing_table_->FlushRoutes(interface_index_);
@@ -48,7 +49,7 @@ Connection::~Connection() {
 }
 
 void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
-  VLOG(2) << __func__ << " " << interface_name_;
+  SLOG(Connection, 2) << __func__ << " " << interface_name_;
 
   const IPConfig::Properties &properties = config->properties();
   IPAddress local(properties.address_family);
@@ -109,9 +110,9 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
 }
 
 void Connection::SetIsDefault(bool is_default) {
-  VLOG(2) << __func__ << " "
-          << interface_name_ << " (index " << interface_index_ << ") "
-          << is_default_ << " -> " << is_default;
+  SLOG(Connection, 2) << __func__ << " " << interface_name_
+                      << " (index " << interface_index_ << ") "
+                      << is_default_ << " -> " << is_default;
   if (is_default == is_default_) {
     return;
   }

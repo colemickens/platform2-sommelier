@@ -6,7 +6,8 @@
 
 #include <base/logging.h>
 
-#include "cellular_error.h"
+#include "shill/cellular_error.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 
@@ -26,7 +27,7 @@ void SimProxy::SendPin(const string &pin,
                        const ResultCallback &callback,
                        int timeout) {
   // pin is intentionally not logged.
-  VLOG(2) << __func__ << "( XXX, " << timeout << ")";
+  SLOG(Modem, 2) << __func__ << "( XXX, " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
     proxy_.SendPin(pin, cb.get(), timeout);
@@ -43,7 +44,7 @@ void SimProxy::SendPuk(const string &puk,
                        const ResultCallback &callback,
                        int timeout) {
   // pin and puk are intentionally not logged.
-  VLOG(2) << __func__ << "( XXX, XXX, " << timeout << ")";
+  SLOG(Modem, 2) << __func__ << "( XXX, XXX, " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
     proxy_.SendPuk(puk, pin, cb.get(), timeout);
@@ -60,7 +61,7 @@ void SimProxy::EnablePin(const string &pin,
                          const ResultCallback &callback,
                          int timeout) {
   // pin is intentionally not logged.
-  VLOG(2) << __func__ << "( XXX, " << enabled << ", " << timeout << ")";
+  SLOG(Modem, 2) << __func__ << "( XXX, " << enabled << ", " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
     proxy_.EnablePin(pin, enabled, cb.get(), timeout);
@@ -77,7 +78,7 @@ void SimProxy::ChangePin(const string &old_pin,
                          const ResultCallback &callback,
                          int timeout) {
   // old_pin and new_pin are intentionally not logged.
-  VLOG(2) << __func__ << "( XXX, XXX, " << timeout << ")";
+  SLOG(Modem, 2) << __func__ << "( XXX, XXX, " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
     proxy_.ChangePin(old_pin, new_pin, cb.get(), timeout);

@@ -11,6 +11,7 @@
 
 #include "shill/device.h"
 #include "shill/error.h"
+#include "shill/scope_logger.h"
 
 using base::Bind;
 using std::map;
@@ -112,7 +113,7 @@ void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
 
 void DeviceDBusAdaptor::Register(const string &network_id,
                                  ::DBus::Error &error) {
-  VLOG(2) << __func__ << "(" << network_id << ")";
+  SLOG(DBus, 2) << __func__ << "(" << network_id << ")";
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   device_->RegisterOnNetwork(network_id, &e, GetMethodReplyCallback(tag));

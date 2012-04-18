@@ -1,10 +1,10 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "shill/dbus_properties_proxy.h"
 
-#include <base/logging.h>
+#include "shill/scope_logger.h"
 
 namespace shill {
 
@@ -35,7 +35,7 @@ DBusPropertiesProxy::Proxy::~Proxy() {}
 void DBusPropertiesProxy::Proxy::MmPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &properties) {
-  VLOG(2) << __func__ << "(" << interface << ")";
+  SLOG(DBus, 2) << __func__ << "(" << interface << ")";
   delegate_->OnModemManagerPropertiesChanged(interface, properties);
 }
 
@@ -43,7 +43,7 @@ void DBusPropertiesProxy::Proxy::PropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &changed_properties,
     const vector<string> &invalidated_properties) {
-  VLOG(2) << __func__ << "(" << interface << ")";
+  SLOG(DBus, 2) << __func__ << "(" << interface << ")";
   delegate_->OnDBusPropertiesChanged(
       interface, changed_properties, invalidated_properties);
 }

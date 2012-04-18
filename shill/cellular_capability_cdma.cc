@@ -16,6 +16,7 @@
 #include "shill/cellular.h"
 #include "shill/cellular_service.h"
 #include "shill/proxy_factory.h"
+#include "shill/scope_logger.h"
 
 using base::Bind;
 using std::string;
@@ -36,7 +37,7 @@ CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
       registration_state_evdo_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       registration_state_1x_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       prl_version_(0) {
-  VLOG(2) << "Cellular capability constructed: CDMA";
+  SLOG(Cellular, 2) << "Cellular capability constructed: CDMA";
   PropertyStore *store = cellular->mutable_store();
   store->RegisterConstUint16(flimflam::kPRLVersionProperty, &prl_version_);
 }
@@ -58,7 +59,7 @@ void CellularCapabilityCDMA::InitProxies() {
 
 void CellularCapabilityCDMA::StartModem(Error *error,
                                         const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   InitProxies();
 
   CellularTaskList *tasks = new CellularTaskList();
@@ -90,7 +91,7 @@ bool CellularCapabilityCDMA::AllowRoaming() {
 
 
 void CellularCapabilityCDMA::OnServiceCreated() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   cellular()->service()->SetOLP(olp_);
   cellular()->service()->SetUsageURL(usage_url_);
   UpdateServingOperator();
@@ -133,7 +134,7 @@ void CellularCapabilityCDMA::SetupConnectProperties(
 void CellularCapabilityCDMA::Activate(const string &carrier,
                                       Error *error,
                                       const ResultCallback &callback) {
-  VLOG(2) << __func__ << "(" << carrier << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << carrier << ")";
   if (cellular()->state() != Cellular::kStateEnabled &&
       cellular()->state() != Cellular::kStateRegistered) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -191,17 +192,17 @@ string CellularCapabilityCDMA::GetActivationErrorString(uint32 error) {
 }
 
 void CellularCapabilityCDMA::GetMEID(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (meid_.empty()) {
     // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
     meid_ = proxy_->MEID();
-    VLOG(2) << "MEID: " << meid_;
+    SLOG(Cellular, 2) << "MEID: " << meid_;
   }
   callback.Run(Error());
 }
 
 void CellularCapabilityCDMA::GetProperties(const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   // No properties.
   callback.Run(Error());
 }
@@ -241,7 +242,7 @@ string CellularCapabilityCDMA::GetRoamingStateString() const {
 }
 
 void CellularCapabilityCDMA::GetSignalQuality() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   SignalQualityCallback callback =
       Bind(&CellularCapabilityCDMA::OnGetSignalQualityReply,
            weak_ptr_factory_.GetWeakPtr());
@@ -249,7 +250,7 @@ void CellularCapabilityCDMA::GetSignalQuality() {
 }
 
 void CellularCapabilityCDMA::GetRegistrationState() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   RegistrationStateCallback callback =
       Bind(&CellularCapabilityCDMA::OnGetRegistrationStateReply,
            weak_ptr_factory_.GetWeakPtr());
@@ -257,7 +258,7 @@ void CellularCapabilityCDMA::GetRegistrationState() {
 }
 
 string CellularCapabilityCDMA::CreateFriendlyServiceName() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (!carrier_.empty()) {
     return carrier_;
   }
@@ -265,7 +266,7 @@ string CellularCapabilityCDMA::CreateFriendlyServiceName() {
 }
 
 void CellularCapabilityCDMA::UpdateServingOperator() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (cellular()->service().get()) {
     cellular()->service()->SetServingOperator(cellular()->home_provider());
   }
@@ -284,7 +285,7 @@ void CellularCapabilityCDMA::OnActivateReply(
 
 void CellularCapabilityCDMA::OnGetRegistrationStateReply(
     uint32 state_1x, uint32 state_evdo, const Error &error) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (error.IsSuccess())
     OnRegistrationStateChangedSignal(state_1x, state_evdo);
 }
@@ -299,7 +300,7 @@ void CellularCapabilityCDMA::OnActivationStateChangedSignal(
     uint32 activation_state,
     uint32 activation_error,
     const DBusPropertiesMap &status_changes) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   DBusProperties::GetString(status_changes, "mdn", &mdn_);
   DBusProperties::GetString(status_changes, "min", &min_);
   string payment;
@@ -323,7 +324,7 @@ void CellularCapabilityCDMA::OnActivationStateChangedSignal(
 
 void CellularCapabilityCDMA::OnRegistrationStateChangedSignal(
     uint32 state_1x, uint32 state_evdo) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   registration_state_1x_ = state_1x;
   registration_state_evdo_ = state_evdo;
   cellular()->HandleNewRegistrationState();

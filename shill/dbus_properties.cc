@@ -1,10 +1,10 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "shill/dbus_properties.h"
 
-#include <base/logging.h>
+#include "shill/scope_logger.h"
 
 namespace shill {
 
@@ -17,7 +17,7 @@ bool DBusProperties::GetString(const DBusPropertiesMap &properties,
     return false;
   }
   *value = it->second.reader().get_string();
-  VLOG(2) << key << " = " << *value;
+  SLOG(DBus, 2) << key << " = " << *value;
   return true;
 }
 
@@ -30,7 +30,7 @@ bool DBusProperties::GetObjectPath(const DBusPropertiesMap &properties,
     return false;
   }
   *value = it->second.reader().get_path();
-  VLOG(2) << key << " = " << *value;
+  SLOG(DBus, 2) << key << " = " << *value;
   return true;
 }
 
@@ -43,7 +43,7 @@ bool DBusProperties::GetUint32(const DBusPropertiesMap &properties,
     return false;
   }
   *value = it->second.reader().get_uint32();
-  VLOG(2) << key << " = " << *value;
+  SLOG(DBus, 2) << key << " = " << *value;
   return true;
 }
 
@@ -56,7 +56,7 @@ bool DBusProperties::GetUint16(const DBusPropertiesMap &properties,
     return false;
   }
   *value = it->second.reader().get_uint16();
-  VLOG(2) << key << " = " << *value;
+  SLOG(DBus, 2) << key << " = " << *value;
   return true;
 }
 

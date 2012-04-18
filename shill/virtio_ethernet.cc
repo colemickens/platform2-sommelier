@@ -13,6 +13,7 @@
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 
@@ -32,7 +33,7 @@ VirtioEthernet::VirtioEthernet(ControlInterface *control_interface,
                link_name,
                address,
                interface_index) {
-  VLOG(2) << "VirtioEthernet device " << link_name << " initialized.";
+  SLOG(Ethernet, 2) << "VirtioEthernet device " << link_name << " initialized.";
 }
 
 VirtioEthernet::~VirtioEthernet() {
@@ -52,9 +53,9 @@ void VirtioEthernet::Start(Error *error,
   // transmit any frames. (See crosbug.com/29494)
   //
   // To avoid this, we sleep to let the device setup function complete.
-  VLOG(2) << "Sleeping to let virtio initialize.";
+  SLOG(Ethernet, 2) << "Sleeping to let virtio initialize.";
   sleep(2);
-  VLOG(2) << "Starting virtio Ethernet.";
+  SLOG(Ethernet, 2) << "Starting virtio Ethernet.";
   Ethernet::Start(error, callback);
 }
 

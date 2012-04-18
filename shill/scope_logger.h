@@ -68,22 +68,29 @@ class ScopeLogger {
   // Logging scopes.
   //
   // Update kScopeNames in scope_logger.cc after changing this enumerated type.
+  // These scope identifiers are sorted by their scope names alphabetically.
   enum Scope {
     kCellular = 0,
     kConnection,
     kCrypto,
+    kDaemon,
     kDBus,
     kDevice,
-    kDHClient,
+    kDHCP,
+    kDNS,
     kEthernet,
+    kHTTP,
+    kHTTPProxy,
     kInet,
     kManager,
     kMetrics,
     kModem,
     kPortal,
+    kPower,
     kProfile,
-    kResolv,
-    kResolvFiles,
+    kProperty,
+    kResolver,
+    kRoute,
     kRTNL,
     kService,
     kStorage,

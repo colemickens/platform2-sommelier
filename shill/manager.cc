@@ -35,6 +35,7 @@
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/resolver.h"
+#include "shill/scope_logger.h"
 #include "shill/service.h"
 #include "shill/service_sorter.h"
 #include "shill/vpn_service.h"
@@ -126,7 +127,7 @@ Manager::Manager(ControlInterface *control_interface,
   technology_order_.push_back(
       Technology::IdentifierFromName(flimflam::kTypeCellular));
 
-  VLOG(2) << "Manager initialized.";
+  SLOG(Manager, 2) << "Manager initialized.";
 }
 
 Manager::~Manager() {
@@ -207,7 +208,7 @@ void Manager::InitializeProfiles() {
 }
 
 void Manager::CreateProfile(const string &name, string *path, Error *error) {
-  VLOG(2) << __func__ << " " << name;
+  SLOG(Manager, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -246,7 +247,7 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
 }
 
 void Manager::PushProfile(const string &name, string *path, Error *error) {
-  VLOG(2) << __func__ << " " << name;
+  SLOG(Manager, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -346,7 +347,7 @@ void Manager::PopProfileInternal() {
 }
 
 void Manager::PopProfile(const string &name, Error *error) {
-  VLOG(2) << __func__ << " " << name;
+  SLOG(Manager, 2) << __func__ << " " << name;
   Profile::Identifier ident;
   if (profiles_.empty()) {
     Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
@@ -367,7 +368,7 @@ void Manager::PopProfile(const string &name, Error *error) {
 }
 
 void Manager::PopAnyProfile(Error *error) {
-  VLOG(2) << __func__;
+  SLOG(Manager, 2) << __func__;
   Profile::Identifier ident;
   if (profiles_.empty()) {
     Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
@@ -470,7 +471,7 @@ ServiceRefPtr Manager::GetServiceWithGUID(
 
 ServiceRefPtr Manager::GetDefaultService() const {
   if (services_.empty() || !services_[0]->connection().get()) {
-    VLOG(2) << "In " << __func__ << ": No default connection exists.";
+    SLOG(Manager, 2) << "In " << __func__ << ": No default connection exists.";
     return NULL;
   }
   return services_[0];
@@ -505,12 +506,12 @@ void Manager::SaveActiveProfile() {
 bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
                                    const ProfileRefPtr &destination) {
   const ProfileRefPtr from = to_move->profile();
-  VLOG(2) << "Moving service "
-          << to_move->UniqueName()
-          << " to profile "
-          << destination->GetFriendlyName()
-          << " from "
-          << from->GetFriendlyName();
+  SLOG(Manager, 2) << "Moving service "
+                   << to_move->UniqueName()
+                   << " to profile "
+                   << destination->GetFriendlyName()
+                   << " from "
+                   << from->GetFriendlyName();
   return destination->AdoptService(to_move) &&
       from->AbandonService(to_move);
 }
@@ -596,7 +597,7 @@ void Manager::UpdateEnabledTechnologies() {
 }
 
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
-  VLOG(2) << __func__ << "(" << to_manage->FriendlyName() << ")";
+  SLOG(Manager, 2) << __func__ << "(" << to_manage->FriendlyName() << ")";
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_manage.get() == it->get())
@@ -628,18 +629,19 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
 }
 
 void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
-  VLOG(2) << __func__ << "(" << to_forget->FriendlyName() << ")";
+  SLOG(Manager, 2) << __func__ << "(" << to_forget->FriendlyName() << ")";
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_forget.get() == it->get()) {
-      VLOG(2) << "Deregistered device: " << to_forget->UniqueName();
+      SLOG(Manager, 2) << "Deregistered device: " << to_forget->UniqueName();
       to_forget->SetEnabled(false);
       devices_.erase(it);
       EmitDeviceProperties();
       return;
     }
   }
-  VLOG(2) << __func__ << " unknown device: " << to_forget->UniqueName();
+  SLOG(Manager, 2) << __func__ << " unknown device: "
+                   << to_forget->UniqueName();
 }
 
 void Manager::EmitDeviceProperties() {
@@ -667,8 +669,8 @@ bool Manager::HasService(const ServiceRefPtr &service) {
 }
 
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {
-  VLOG(2) << "In " << __func__ << "(): Registering service "
-          << to_manage->UniqueName();
+  SLOG(Manager, 2) << "In " << __func__ << "(): Registering service "
+                   << to_manage->UniqueName();
 
   MatchProfileWithService(to_manage);
 
@@ -710,8 +712,8 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
             << " state: " << Service::ConnectStateToString(to_update->state())
             << " failure: "
             << Service::ConnectFailureToString(to_update->failure());
-  VLOG(2) << "IsConnected(): " << to_update->IsConnected();
-  VLOG(2) << "IsConnecting(): " << to_update->IsConnecting();
+  SLOG(Manager, 2) << "IsConnected(): " << to_update->IsConnected();
+  SLOG(Manager, 2) << "IsConnecting(): " << to_update->IsConnecting();
   if (to_update->IsConnected()) {
     bool originally_favorite = to_update->favorite();
     to_update->MakeFavorite();
@@ -776,7 +778,7 @@ void Manager::HelpRegisterDerivedStrings(
 }
 
 void Manager::SortServices() {
-  VLOG(4) << "In " << __func__;
+  SLOG(Manager, 4) << "In " << __func__;
   ServiceRefPtr default_service;
 
   if (!services_.empty()) {
@@ -848,8 +850,8 @@ void Manager::AutoConnectTask() {
     return;
   }
 
-  if (VLOG_IS_ON(4)) {
-    VLOG(4) << "Sorted service list: ";
+  if (SLOG_IS_ON(Manager, 4)) {
+    SLOG(Manager, 4) << "Sorted service list: ";
     for (size_t i = 0; i < services_.size(); ++i) {
       ServiceRefPtr service = services_[i];
       const char *compare_reason = NULL;
@@ -859,18 +861,18 @@ void Manager::AutoConnectTask() {
       } else {
         compare_reason = "last";
       }
-      VLOG(4) << "Service " << service->friendly_name()
-              << " IsConnected: " << service->IsConnected()
-              << " IsConnecting: " << service->IsConnecting()
-              << " IsFailed: " << service->IsFailed()
-              << " connectable: " << service->connectable()
-              << " auto_connect: " << service->auto_connect()
-              << " favorite: " << service->favorite()
-              << " priority: " << service->priority()
-              << " security_level: " << service->security_level()
-              << " strength: " << service->strength()
-              << " UniqueName: " << service->UniqueName()
-              << " sorted: " << compare_reason;
+      SLOG(Manager, 4) << "Service " << service->friendly_name()
+                       << " IsConnected: " << service->IsConnected()
+                       << " IsConnecting: " << service->IsConnecting()
+                       << " IsFailed: " << service->IsFailed()
+                       << " connectable: " << service->connectable()
+                       << " auto_connect: " << service->auto_connect()
+                       << " favorite: " << service->favorite()
+                       << " priority: " << service->priority()
+                       << " security_level: " << service->security_level()
+                       << " strength: " << service->strength()
+                       << " UniqueName: " << service->UniqueName()
+                       << " sorted: " << compare_reason;
     }
   }
 
@@ -973,7 +975,7 @@ string Manager::GetActiveProfileRpcIdentifier(Error */*error*/) {
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
   if (args.ContainsString(flimflam::kGuidProperty)) {
-    VLOG(2) << __func__ << ": searching by GUID";
+    SLOG(Manager, 2) << __func__ << ": searching by GUID";
     ServiceRefPtr service =
         GetServiceWithGUID(args.GetString(flimflam::kGuidProperty), NULL);
     if (service) {
@@ -989,11 +991,11 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
 
   string type = args.GetString(flimflam::kTypeProperty);
   if (type == flimflam::kTypeWifi) {
-    VLOG(2) << __func__ << ": getting WiFi Service";
+    SLOG(Manager, 2) << __func__ << ": getting WiFi Service";
     return GetWifiService(args, error);
   }
   if (type == flimflam::kTypeVPN) {
-    VLOG(2) << __func__ << ": getting VPN Service";
+    SLOG(Manager, 2) << __func__ << ": getting VPN Service";
     return vpn_provider_.GetService(args, error);
   }
   error->Populate(Error::kNotSupported, kErrorUnsupportedServiceType);
@@ -1047,8 +1049,8 @@ void Manager::ConfigureService(const KeyValueStore &args, Error *error) {
     // profiles.
     if (service->profile() == ephemeral_profile_ ||
         (profile_specified && service->profile() != profile)) {
-      VLOG(2) << "Moving service to profile "
-              << profile->GetFriendlyName();
+      SLOG(Manager, 2) << "Moving service to profile "
+                       << profile->GetFriendlyName();
       if (!MoveServiceToProfile(service, profile)) {
         Error::PopulateAndLog(error, Error::kInternalError,
                               "Unable to move service to profile");
@@ -1100,7 +1102,7 @@ string Manager::GetTechnologyOrder() {
 
 void Manager::SetTechnologyOrder(const string &order, Error *error) {
   vector<Technology::Identifier> new_order;
-  VLOG(2) << "Setting technology order to " << order;
+  SLOG(Manager, 2) << "Setting technology order to " << order;
   if (!Technology::GetTechnologyVectorFromString(order, &new_order, error)) {
     return;
   }

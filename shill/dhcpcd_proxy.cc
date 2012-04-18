@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@
 #include <base/logging.h>
 
 #include "shill/dhcp_provider.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 using std::vector;
@@ -25,17 +26,17 @@ DHCPCDListener::Proxy::Proxy(DBus::Connection *connection,
     : DBus::InterfaceProxy(DHCPCDProxy::kDBusInterfaceName),
       DBus::ObjectProxy(*connection, DHCPCDProxy::kDBusPath),
       provider_(provider) {
-  VLOG(2) << __func__;
+  SLOG(DHCP, 2) << __func__;
   connect_signal(DHCPCDListener::Proxy, Event, EventSignal);
   connect_signal(DHCPCDListener::Proxy, StatusChanged, StatusChangedSignal);
 }
 
 void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
-  VLOG(2) << __func__;
+  SLOG(DHCP, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid;
   ri >> pid;
-  VLOG(2) << "sender(" << signal.sender() << ") pid(" << pid << ")";
+  SLOG(DHCP, 2) << "sender(" << signal.sender() << ") pid(" << pid << ")";
 
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
   if (!config.get()) {
@@ -53,11 +54,11 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
 
 void DHCPCDListener::Proxy::StatusChangedSignal(
     const DBus::SignalMessage &signal) {
-  VLOG(2) << __func__;
+  SLOG(DHCP, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid;
   ri >> pid;
-  VLOG(2) << "sender(" << signal.sender() << ") pid(" << pid << ")";
+  SLOG(DHCP, 2) << "sender(" << signal.sender() << ") pid(" << pid << ")";
 
   // Accept StatusChanged signals just to get the sender address and create an
   // appropriate proxy for the PID/sender pair.
@@ -71,7 +72,7 @@ void DHCPCDListener::Proxy::StatusChangedSignal(
 
 DHCPCDProxy::DHCPCDProxy(DBus::Connection *connection, const string &service)
     : proxy_(connection, service) {
-  VLOG(2) << "DHCPCDProxy(service=" << service << ").";
+  SLOG(DHCP, 2) << "DHCPCDProxy(service=" << service << ").";
 }
 
 void DHCPCDProxy::Rebind(const string &interface) {

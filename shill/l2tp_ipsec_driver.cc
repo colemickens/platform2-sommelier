@@ -11,6 +11,7 @@
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/nss.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 using std::vector;
@@ -77,7 +78,7 @@ string L2TPIPSecDriver::GetProviderType() const {
 }
 
 void L2TPIPSecDriver::Cleanup() {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   if (!psk_file_.empty()) {
     file_util::Delete(psk_file_, false);
     psk_file_.clear();

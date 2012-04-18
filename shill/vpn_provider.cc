@@ -14,6 +14,7 @@
 #include "shill/manager.h"
 #include "shill/openvpn_driver.h"
 #include "shill/profile.h"
+#include "shill/scope_logger.h"
 #include "shill/store_interface.h"
 #include "shill/vpn_service.h"
 
@@ -40,7 +41,7 @@ void VPNProvider::Stop() {}
 
 VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
                                          Error *error) {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   string type = args.LookupString(flimflam::kProviderTypeProperty, "");
   if (type.empty()) {
     Error::PopulateAndLog(
@@ -95,7 +96,7 @@ void VPNProvider::RemoveService(VPNServiceRefPtr service) {
 }
 
 void VPNProvider::CreateServicesFromProfile(ProfileRefPtr profile) {
-  VLOG(2) << __func__;
+  SLOG(VPN, 2) << __func__;
   const StoreInterface *storage = profile->GetConstStorage();
   set<string> groups =
       storage->GetGroupsWithKey(flimflam::kProviderTypeProperty);
@@ -123,7 +124,7 @@ void VPNProvider::CreateServicesFromProfile(ProfileRefPtr profile) {
     if (service != NULL) {
       // If the service already exists, it does not need to be configured,
       // since PushProfile would have already called ConfigureService on it.
-      VLOG(2) << "Service already exists " << *it;
+      SLOG(VPN, 2) << "Service already exists " << *it;
       continue;
     }
 
@@ -146,8 +147,8 @@ VPNServiceRefPtr VPNProvider::CreateService(const string &type,
                                             const string &name,
                                             const string &storage_id,
                                             Error *error) {
-  VLOG(2) << __func__ << " type " << type << " name " << name
-          << " storage id " << storage_id;
+  SLOG(VPN, 2) << __func__ << " type " << type << " name " << name
+               << " storage id " << storage_id;
   scoped_ptr<VPNDriver> driver;
   if (type == flimflam::kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(

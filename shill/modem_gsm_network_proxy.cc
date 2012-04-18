@@ -8,6 +8,7 @@
 
 #include "shill/cellular_error.h"
 #include "shill/error.h"
+#include "shill/scope_logger.h"
 
 using base::Callback;
 using std::string;
@@ -120,7 +121,7 @@ void ModemGSMNetworkProxy::Proxy::set_registration_info_callback(
 }
 
 void ModemGSMNetworkProxy::Proxy::SignalQuality(const uint32 &quality) {
-  VLOG(2) << __func__ << "(" << quality << ")";
+  SLOG(Modem, 2) << __func__ << "(" << quality << ")";
   if (!signal_quality_callback_.is_null())
     signal_quality_callback_.Run(quality);
 }
@@ -129,14 +130,14 @@ void ModemGSMNetworkProxy::Proxy::RegistrationInfo(
     const uint32_t &status,
     const string &operator_code,
     const string &operator_name) {
-  VLOG(2) << __func__ << "(" << status << ", " << operator_code << ", "
-          << operator_name << ")";
+  SLOG(Modem, 2) << __func__ << "(" << status << ", " << operator_code << ", "
+                 << operator_name << ")";
   if (!registration_info_callback_.is_null())
     registration_info_callback_.Run(status, operator_code, operator_name);
 }
 
 void ModemGSMNetworkProxy::Proxy::NetworkMode(const uint32_t &mode) {
-  VLOG(2) << __func__ << "(" << mode << ")";
+  SLOG(Modem, 2) << __func__ << "(" << mode << ")";
   if (!network_mode_callback_.is_null())
     network_mode_callback_.Run(mode);
 }
@@ -160,7 +161,7 @@ void ModemGSMNetworkProxy::Proxy::GetRegistrationInfoCallback(
 
 void ModemGSMNetworkProxy::Proxy::GetSignalQualityCallback(
     const uint32 &quality, const DBus::Error &dberror, void *data) {
-  VLOG(2) << __func__ << "(" << quality << ")";
+  SLOG(Modem, 2) << __func__ << "(" << quality << ")";
   scoped_ptr<SignalQualityCallback> callback(
       reinterpret_cast<SignalQualityCallback *>(data));
   Error error;

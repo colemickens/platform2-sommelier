@@ -8,6 +8,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
+#include "shill/scope_logger.h"
 
 using std::map;
 using std::string;
@@ -22,11 +23,11 @@ RPCTask::RPCTask(ControlInterface *control_interface, RPCTaskDelegate *delegate)
       unique_name_(base::UintToString(serial_number_++)),
       adaptor_(control_interface->CreateRPCTaskAdaptor(this)) {
   CHECK(delegate);
-  VLOG(2) << "RPCTask " + unique_name_ + " created.";
+  SLOG(Task, 2) << "RPCTask " + unique_name_ + " created.";
 }
 
 RPCTask::~RPCTask() {
-  VLOG(2) << "RPCTask " + unique_name_ + " destroyed.";
+  SLOG(Task, 2) << "RPCTask " + unique_name_ + " destroyed.";
 }
 
 void RPCTask::Notify(const string &reason, const map<string, string> &dict) {

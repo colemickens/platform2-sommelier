@@ -22,6 +22,7 @@
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/rtnl_handler.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 
@@ -44,7 +45,7 @@ Ethernet::Ethernet(ControlInterface *control_interface,
              Technology::kEthernet),
       service_registered_(false),
       link_up_(false) {
-  VLOG(2) << "Ethernet device " << link_name << " initialized.";
+  SLOG(Ethernet, 2) << "Ethernet device " << link_name << " initialized.";
 }
 
 Ethernet::~Ethernet() {

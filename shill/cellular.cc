@@ -32,6 +32,7 @@
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
+#include "shill/scope_logger.h"
 #include "shill/technology.h"
 
 using base::Bind;
@@ -115,7 +116,8 @@ Cellular::Cellular(ControlInterface *control_interface,
   // For now, only a single capability is supported.
   InitCapability(type, ProxyFactory::GetInstance());
 
-  VLOG(2) << "Cellular device " << this->link_name() << " initialized.";
+  SLOG(Cellular, 2) << "Cellular device " << this->link_name()
+                    << " initialized.";
 }
 
 Cellular::~Cellular() {
@@ -139,7 +141,8 @@ string Cellular::GetTechnologyFamily(Error *error) {
 }
 
 void Cellular::SetState(State state) {
-  VLOG(2) << GetStateString(state_) << " -> " << GetStateString(state);
+  SLOG(Cellular, 2) << GetStateString(state_) << " -> "
+                    << GetStateString(state);
   state_ = state;
 }
 
@@ -155,7 +158,7 @@ void Cellular::HelpRegisterDerivedString(
 void Cellular::Start(Error *error,
                      const EnabledStateChangedCallback &callback) {
   DCHECK(error);
-  VLOG(2) << __func__ << ": " << GetStateString(state_);
+  SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
   if (state_ != kStateDisabled) {
     return;
   }
@@ -171,7 +174,7 @@ void Cellular::Start(Error *error,
 
 void Cellular::Stop(Error *error,
                     const EnabledStateChangedCallback &callback) {
-  VLOG(2) << __func__ << ": " << GetStateString(state_);
+  SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
   if (service_) {
     // TODO(ers): See whether we can/should do DestroyService() here.
     manager()->DeregisterService(service_);
@@ -183,7 +186,7 @@ void Cellular::Stop(Error *error,
 
 void Cellular::OnModemStarted(const EnabledStateChangedCallback &callback,
                               const Error &error) {
-  VLOG(2) << __func__ << ": " << GetStateString(state_);
+  SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
   if (state_ == kStateDisabled)
     SetState(kStateEnabled);
   callback.Run(error);
@@ -191,7 +194,7 @@ void Cellular::OnModemStarted(const EnabledStateChangedCallback &callback,
 
 void Cellular::OnModemStopped(const EnabledStateChangedCallback &callback,
                               const Error &error) {
-  VLOG(2) << __func__ << ": " << GetStateString(state_);
+  SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
   if (state_ != kStateDisabled)
     SetState(kStateDisabled);
   callback.Run(error);
@@ -200,7 +203,7 @@ void Cellular::OnModemStopped(const EnabledStateChangedCallback &callback,
 void Cellular::InitCapability(Type type, ProxyFactory *proxy_factory) {
   // TODO(petkov): Consider moving capability construction into a factory that's
   // external to the Cellular class.
-  VLOG(2) << __func__ << "(" << type << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << type << ")";
   switch (type) {
     case kTypeGSM:
       capability_.reset(new CellularCapabilityGSM(this, proxy_factory));
@@ -228,26 +231,26 @@ void Cellular::RegisterOnNetwork(const string &network_id,
 
 void Cellular::RequirePIN(const string &pin, bool require,
                           Error *error, const ResultCallback &callback) {
-  VLOG(2) << __func__ << "(" << require << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << require << ")";
   capability_->RequirePIN(pin, require, error, callback);
 }
 
 void Cellular::EnterPIN(const string &pin,
                         Error *error, const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   capability_->EnterPIN(pin, error, callback);
 }
 
 void Cellular::UnblockPIN(const string &unblock_code,
                           const string &pin,
                           Error *error, const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   capability_->UnblockPIN(unblock_code, pin, error, callback);
 }
 
 void Cellular::ChangePIN(const string &old_pin, const string &new_pin,
                          Error *error, const ResultCallback &callback) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   capability_->ChangePIN(old_pin, new_pin, error, callback);
 }
 
@@ -257,7 +260,7 @@ void Cellular::Scan(Error *error) {
 }
 
 void Cellular::HandleNewRegistrationState() {
-  VLOG(2) << __func__ << ": " << GetStateString(state_);
+  SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
   if (!capability_->IsRegistered()) {
     DestroyService();
     if (state_ == kStateLinked ||
@@ -287,14 +290,14 @@ void Cellular::HandleNewRegistrationState() {
 }
 
 void Cellular::HandleNewSignalQuality(uint32 strength) {
-  VLOG(2) << "Signal strength: " << strength;
+  SLOG(Cellular, 2) << "Signal strength: " << strength;
   if (service_) {
     service_->SetStrength(strength);
   }
 }
 
 void Cellular::CreateService() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK(!service_.get());
   service_ =
       new CellularService(control_interface(), dispatcher(), metrics(),
@@ -304,7 +307,7 @@ void Cellular::CreateService() {
 }
 
 void Cellular::DestroyService() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   DestroyIPConfig();
   if (service_) {
     manager()->DeregisterService(service_);
@@ -318,7 +321,7 @@ bool Cellular::TechnologyIs(const Technology::Identifier type) const {
 }
 
 void Cellular::Connect(Error *error) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (state_ == kStateConnected || state_ == kStateLinked) {
     Error::PopulateAndLog(error, Error::kAlreadyConnected,
                           "Already connected; connection request ignored.");
@@ -345,7 +348,7 @@ void Cellular::Connect(Error *error) {
 // Note that there's no ResultCallback argument to this,
 // since Connect() isn't yet passed one.
 void Cellular::OnConnectReply(const Error &error) {
-  VLOG(2) << __func__ << "(" << error << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << error << ")";
   if (error.IsSuccess())
     OnConnected();
   else
@@ -353,7 +356,7 @@ void Cellular::OnConnectReply(const Error &error) {
 }
 
 void Cellular::OnConnected() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   SetState(kStateConnected);
   if (!capability_->AllowRoaming() &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
@@ -368,7 +371,7 @@ void Cellular::OnConnectFailed(const Error &error) {
 }
 
 void Cellular::Disconnect(Error *error) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (state_ != kStateConnected && state_ != kStateLinked) {
     Error::PopulateAndLog(
         error, Error::kNotConnected, "Not connected; request ignored.");
@@ -382,7 +385,7 @@ void Cellular::Disconnect(Error *error) {
 // Note that there's no ResultCallback argument to this,
 // since Disconnect() isn't yet passed one.
 void Cellular::OnDisconnectReply(const Error &error) {
-  VLOG(2) << __func__ << "(" << error << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << error << ")";
   if (error.IsSuccess())
     OnDisconnected();
   else
@@ -390,7 +393,7 @@ void Cellular::OnDisconnectReply(const Error &error) {
 }
 
 void Cellular::OnDisconnected() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   if (state_ == kStateConnected || state_ == kStateLinked) {
     SetState(kStateRegistered);
     SetServiceFailureSilent(Service::kFailureUnknown);
@@ -405,7 +408,7 @@ void Cellular::OnDisconnectFailed() {
 }
 
 void Cellular::EstablishLink() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   CHECK_EQ(kStateConnected, state_);
   unsigned int flags = 0;
   if (manager()->device_info()->GetFlags(interface_index(), &flags) &&
@@ -449,7 +452,7 @@ void Cellular::set_home_provider(const Operator &oper) {
 }
 
 string Cellular::CreateFriendlyServiceName() {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   return capability_.get() ? capability_->CreateFriendlyServiceName() : "";
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/error.h"
+#include "shill/scope_logger.h"
 #include "shill/store_interface.h"
 
 using base::Callback;
@@ -63,11 +64,11 @@ void IPConfig::Init() {
   // TODO(cmasone): Does anyone use this?
   // store_.RegisterStrings(flimflam::kSearchDomainsProperty,
   //                        &properties_.domain_search);
-  VLOG(2) << __func__ << " device: " << device_name();
+  SLOG(Inet, 2) << __func__ << " device: " << device_name();
 }
 
 IPConfig::~IPConfig() {
-  VLOG(2) << __func__ << " device: " << device_name();
+  SLOG(Inet, 2) << __func__ << " device: " << device_name();
 }
 
 string IPConfig::GetRpcIdentifier() {

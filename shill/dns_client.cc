@@ -20,6 +20,7 @@
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 
+#include "shill/scope_logger.h"
 #include "shill/shill_ares.h"
 #include "shill/shill_time.h"
 
@@ -136,7 +137,7 @@ bool DNSClient::Start(const string &hostname, Error *error) {
 }
 
 void DNSClient::Stop() {
-  VLOG(3) << "In " << __func__;
+  SLOG(DNS, 3) << "In " << __func__;
   if (!resolver_state_.get()) {
     return;
   }
@@ -154,7 +155,7 @@ void DNSClient::Stop() {
 // during the process of the execution of the callee (which is free to
 // call our destructor safely).
 void DNSClient::HandleCompletion() {
-  VLOG(3) << "In " << __func__;
+  SLOG(DNS, 3) << "In " << __func__;
   Error error;
   error.CopyFrom(error_);
   IPAddress address(address_);
@@ -191,7 +192,7 @@ void DNSClient::ReceiveDNSReply(int status, struct hostent *hostent) {
     // We can be called during ARES shutdown -- ignore these events.
     return;
   }
-  VLOG(3) << "In " << __func__;
+  SLOG(DNS, 3) << "In " << __func__;
   running_ = false;
   timeout_closure_.Cancel();
   dispatcher_->PostTask(Bind(&DNSClient::HandleCompletion,
