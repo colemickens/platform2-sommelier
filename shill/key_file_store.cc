@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -166,8 +166,8 @@ bool KeyFileStore::GetString(const string &group,
   gchar *data =
       glib_->KeyFileGetString(key_file_, group.c_str(), key.c_str(), &error);
   if (!data) {
-    LOG(ERROR) << "Failed to lookup (" << group << ":" << key << "): "
-               << glib_->ConvertErrorToMessage(error);
+    string s = glib_->ConvertErrorToMessage(error);
+    VLOG(10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
   if (value) {
@@ -193,8 +193,8 @@ bool KeyFileStore::GetBool(const string &group,
   gboolean data =
       glib_->KeyFileGetBoolean(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
-    LOG(ERROR) << "Failed to lookup (" << group << ":" << key << "): "
-               << glib_->ConvertErrorToMessage(error);
+    string s = glib_->ConvertErrorToMessage(error);
+    VLOG(10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
   if (value) {
@@ -219,8 +219,8 @@ bool KeyFileStore::GetInt(
   gint data =
       glib_->KeyFileGetInteger(key_file_, group.c_str(), key.c_str(), &error);
   if (error) {
-    LOG(ERROR) << "Failed to lookup (" << group << ":" << key << "): "
-               << glib_->ConvertErrorToMessage(error);
+    string s = glib_->ConvertErrorToMessage(error);
+    VLOG(10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
   if (value) {
@@ -247,8 +247,8 @@ bool KeyFileStore::GetStringList(const string &group,
                                              &length,
                                              &error);
   if (!data) {
-    LOG(ERROR) << "Failed to lookup (" << group << ":" << key << "): "
-               << glib_->ConvertErrorToMessage(error);
+    string s = glib_->ConvertErrorToMessage(error);
+    VLOG(10) << "Failed to lookup (" << group << ":" << key << "): " << s;
     return false;
   }
   if (value) {
