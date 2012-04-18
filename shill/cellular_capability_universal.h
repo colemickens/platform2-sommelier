@@ -6,6 +6,7 @@
 #define SHILL_CELLULAR_CAPABILITY_UNIVERSAL_
 
 #include <deque>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -35,6 +36,7 @@ class CellularCapabilityUniversal : public CellularCapability {
  public:
   typedef std::vector<DBusPropertiesMap> ScanResults;
   typedef DBusPropertiesMap ScanResult;
+  typedef std::map< uint32_t, uint32_t > LockRetryData;
 
   CellularCapabilityUniversal(Cellular *cellular, ProxyFactory *proxy_factory);
 
@@ -80,44 +82,18 @@ class CellularCapabilityUniversal : public CellularCapability {
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties);
-  virtual void OnModem3GPPPropertiesChanged(
-      const DBusPropertiesMap &properties);
-
+  virtual bool AllowRoaming();
  protected:
   virtual void InitProxies();
   virtual void ReleaseProxies();
-
-  virtual bool AllowRoaming();
 
  private:
   friend class CellularTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityTest;
-  FRIEND_TEST(CellularCapabilityUniversalTest, CreateDeviceFromProperties);
-  FRIEND_TEST(CellularCapabilityUniversalTest, CreateFriendlyServiceName);
-  FRIEND_TEST(CellularCapabilityUniversalTest, GetIMEI);
-  FRIEND_TEST(CellularCapabilityUniversalTest, GetIMSI);
-  FRIEND_TEST(CellularCapabilityUniversalTest, GetMSISDN);
-  FRIEND_TEST(CellularCapabilityUniversalTest, GetSPN);
-  FRIEND_TEST(CellularCapabilityUniversalTest, RequirePIN);
-  FRIEND_TEST(CellularCapabilityUniversalTest, EnterPIN);
-  FRIEND_TEST(CellularCapabilityUniversalTest, UnblockPIN);
-  FRIEND_TEST(CellularCapabilityUniversalTest, ChangePIN);
-  FRIEND_TEST(CellularCapabilityUniversalTest, InitAPNList);
-  FRIEND_TEST(CellularCapabilityUniversalTest, ParseScanResult);
-  FRIEND_TEST(CellularCapabilityUniversalTest, ParseScanResultProviderLookup);
-  FRIEND_TEST(CellularCapabilityUniversalTest, RegisterOnNetwork);
-  FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
-  FRIEND_TEST(CellularCapabilityUniversalTest, SetAccessTechnologies);
-  FRIEND_TEST(CellularCapabilityUniversalTest, SetHomeProvider);
-  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfo);
-  FRIEND_TEST(CellularCapabilityUniversalTest, GetRegistrationState);
-  FRIEND_TEST(CellularCapabilityUniversalTest, OnDBusPropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalTest, SetupApnTryList);
-  FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityTest, TryApns);
-  FRIEND_TEST(CellularTest, StartUniversalRegister);
-  FRIEND_TEST(ModemTest, CreateDeviceFromProperties);
+  FRIEND_TEST(CellularCapabilityUniversalTest, StartModem);
+  FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalTest, SimPropertiesChanged);
 
   // Methods used in starting a modem
   void Start_EnableModemCompleted(const ResultCallback &callback,
@@ -131,9 +107,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void Stop_Disable(const ResultCallback &callback);
   void Stop_DisableCompleted(const ResultCallback &callback,
                              const Error &error);
-
-  // TOOD(jglasgow): document what this does!!!!!
-  void SetAccessTechnologies(uint32 access_technologies);
 
   // Sets the upper level information about the home cellular provider from the
   // modem's IMSI and SPN.
@@ -173,15 +146,44 @@ class CellularCapabilityUniversal : public CellularCapability {
       const DBusPropertiesMap &properties,
       const std::vector<std::string> &invalidated_properties);
 
-  // TODO(jglasgow): install generic property change notification handler
-  void On3GPPRegistrationChanged(MMModem3gppRegistrationState state,
-                                 const std::string &operator_code,
-                                 const std::string &operator_name);
   void OnSignalQualityChanged(uint32 quality);
 
   // Updates the sim_path_ variable and creates a new proxy to the
   // DBUS ModemManager1.Sim interface
   void OnSimPathChanged(const std::string &sim_path);
+  void OnModemCapabilitesChanged(uint32 capabilities);
+  void OnModemCurrentCapabilitiesChanged(uint32 current_capabilities);
+  void OnMdnChanged(const std::string &mdn);
+  void OnModemManufacturerChanged(const std::string &manufacturer);
+  void OnModemModelChanged(const std::string &model);
+  void OnModemRevisionChanged(const std::string &revision);
+  void OnModemStateChanged(Cellular::ModemState state);
+  void OnAccessTechnologiesChanged(uint32 access_technologies);
+  void OnSupportedModesChanged(uint32 supported_modes);
+  void OnAllowedModesChanged(uint32 allowed_modes);
+  void OnPreferredModeChanged(MMModemMode preferred_mode);
+  void OnLockRetriesChanged(MMModemLock unlock_required,
+                            const LockRetryData &lock_retries);
+  void OnSimLockStatusChanged();
+
+  // 3GPP property change handlers
+  virtual void OnModem3GPPPropertiesChanged(
+      const DBusPropertiesMap &properties,
+      const std::vector<std::string> &invalidated_properties);
+  void OnImeiChanged(const std::string &imei);
+  void On3GPPRegistrationChanged(MMModem3gppRegistrationState state,
+                                 const std::string &operator_code,
+                                 const std::string &operator_name);
+  void OnFacilityLocksChanged(uint32 locks);
+
+  // SIM property change handlers
+  void OnSimPropertiesChanged(
+      const DBusPropertiesMap &props,
+      const std::vector<std::string> &invalidated_properties);
+  void OnImsiChanged(const std::string &imsi);
+  void OnSimIdentifierChanged(const std::string &id);
+  void OnOperatorIdChanged(const std::string &operator_id);
+  void OnOperatorNameChanged(const std::string &operator_name);
 
   // Method callbacks
   void OnRegisterReply(const ResultCallback &callback,
@@ -203,9 +205,19 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   MMModem3gppRegistrationState registration_state_;
   MMModemCdmaRegistrationState cdma_registration_state_;
+
+  // Bits based on MMModemCapabilities
+  uint32 capabilities_;         // technologies supported, may require reload
+  uint32 current_capabilities_; // technologies supportsed without a reload
   uint32 access_technologies_;  // Bits based on MMModemAccessTechnology
+  uint32 supported_modes_;      // Bits based on MMModemMode
+  uint32 allowed_modes_;        // Bits based on MMModemMode
+  MMModemMode preferred_mode_;       // A single MMModemMode bit
+
   Cellular::Operator serving_operator_;
   std::string spn_;
+  std::string sim_identifier_;
+  std::string operator_id_;
   mobile_provider *home_provider_;
   std::string desired_network_;
 

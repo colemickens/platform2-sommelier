@@ -11,12 +11,15 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <mobile_provider.h>
+#include <mm/ModemManager-names.h>
 
 #include "shill/cellular.h"
 #include "shill/cellular_service.h"
+#include "shill/dbus_adaptor.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -68,6 +71,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
         modem_proxy_(new mm1::MockModemProxy()),
         modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
         sim_proxy_(new mm1::MockSimProxy()),
+        properties_proxy_(new MockDBusPropertiesProxy()),
         proxy_factory_(this),
         capability_(NULL),
         device_adaptor_(NULL) {}
@@ -98,11 +102,18 @@ class CellularCapabilityUniversalTest : public testing::Test {
                         const ResultCallback &callback, int timeout) {
     callback.Run(Error(Error::kOperationFailed));
   }
+  void InvokeRegister(const string &operator_id, Error *error,
+                      const ResultCallback &callback, int timeout) {
+    callback.Run(Error());
+  }
+
 
   MOCK_METHOD1(TestCallback, void(const Error &error));
 
  protected:
   static const char kImei[];
+  static const char kSimPath[];
+  static const uint32 kAccessTechnologies;
 
   class TestProxyFactory : public ProxyFactory {
    public:
@@ -138,6 +149,11 @@ class CellularCapabilityUniversalTest : public testing::Test {
         const std::string &/* service */) {
       return test_->sim_proxy_.release();
     }
+    virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
+        const std::string &/* path */,
+        const std::string &/* service */) {
+      return test_->properties_proxy_.release();
+    }
 
    private:
     CellularCapabilityUniversalTest *test_;
@@ -154,40 +170,74 @@ class CellularCapabilityUniversalTest : public testing::Test {
   scoped_ptr<mm1::MockModemProxy> modem_proxy_;
   scoped_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
   scoped_ptr<mm1::MockSimProxy> sim_proxy_;
+  scoped_ptr<MockDBusPropertiesProxy> properties_proxy_;
   TestProxyFactory proxy_factory_;
   CellularCapabilityUniversal *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
 };
 
 const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
+const char CellularCapabilityUniversalTest::kSimPath[] = "/foo/sim";
+const uint32 CellularCapabilityUniversalTest::kAccessTechnologies =
+    MM_MODEM_ACCESS_TECHNOLOGY_LTE |
+    MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS;
 
 TEST_F(CellularCapabilityUniversalTest, StartModem) {
-  EXPECT_CALL(*modem_proxy_,
-              Enable(true, _, _, CellularCapability::kTimeoutEnable))
-      .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeEnable));
-  EXPECT_CALL(*modem_proxy_, AccessTechnologies())
-      .WillOnce(Return(MM_MODEM_ACCESS_TECHNOLOGY_LTE|
-                       MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS));
-  EXPECT_CALL(*modem_3gpp_proxy_, EnabledFacilityLocks()).WillOnce(Return(0));
+  // Set up mock modem properties
+  DBusPropertiesMap modem_properties;
+  string operator_name = "TestOperator";
+  string operator_code = "001400";
+
+  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
+      writer().append_uint32(kAccessTechnologies);
+
+  ::DBus::Variant v;
+  ::DBus::MessageIter writer = v.writer();
   ::DBus::Struct< uint32_t, bool > quality;
   quality._1 = 90;
   quality._2 = true;
+  writer << quality;
+  modem_properties[MM_MODEM_PROPERTY_SIGNALQUALITY] = v;
+
+  // Set up mock modem 3gpp properties
+  DBusPropertiesMap modem3gpp_properties;
+  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS].
+      writer().append_uint32(0);
+  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_IMEI].
+      writer().append_string(kImei);
+
+  EXPECT_CALL(*modem_proxy_,
+              Enable(true, _, _, CellularCapability::kTimeoutEnable))
+      .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeEnable));
+  EXPECT_CALL(*properties_proxy_,
+              GetAll(MM_DBUS_INTERFACE_MODEM))
+      .WillOnce(Return(modem_properties));
+  EXPECT_CALL(*properties_proxy_,
+              GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP))
+      .WillOnce(Return(modem3gpp_properties));
+  EXPECT_CALL(*modem_3gpp_proxy_,
+              Register(_, _, _, _))
+      .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeRegister));
   EXPECT_CALL(*modem_proxy_, SignalQuality()).WillOnce(Return(quality));
-  EXPECT_CALL(*modem_proxy_, Sim()).WillOnce(Return(""));
-  EXPECT_CALL(*modem_3gpp_proxy_, Imei()).WillOnce(Return(kImei));
   EXPECT_CALL(*modem_3gpp_proxy_, RegistrationState())
-      .WillOnce(Return(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN));
-  EXPECT_CALL(*modem_proxy_, OwnNumbers()).WillOnce(Return(vector<string>()));
+      .WillOnce(Return(MM_MODEM_3GPP_REGISTRATION_STATE_HOME));
+  EXPECT_CALL(*modem_3gpp_proxy_, OperatorName())
+      .WillOnce(Return(operator_name));
+  EXPECT_CALL(*modem_3gpp_proxy_, OperatorCode())
+      .WillOnce(Return(operator_code));
 
   // After setup we lose pointers to the proxies, so it is hard to set
   // expectations.
   SetUp();
 
   Error error;
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
   ResultCallback callback =
       Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
   capability_->StartModem(&error, callback);
   EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kImei, capability_->imei_);
+  EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
 }
 
 TEST_F(CellularCapabilityUniversalTest, StartModemFail) {
@@ -203,6 +253,102 @@ TEST_F(CellularCapabilityUniversalTest, StartModemFail) {
   Error error;
   capability_->StartModem(&error, callback);
   EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(CellularCapabilityUniversalTest, PropertiesChanged) {
+  // Set up mock modem properties
+  DBusPropertiesMap modem_properties;
+  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
+      writer().append_uint32(kAccessTechnologies);
+  modem_properties[MM_MODEM_PROPERTY_SIM].
+      writer().append_path(kSimPath);
+
+  // Set up mock modem 3gpp properties
+  DBusPropertiesMap modem3gpp_properties;
+  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS].
+      writer().append_uint32(0);
+  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_IMEI].
+      writer().append_string(kImei);
+
+  // Set up mock modem sim properties
+  DBusPropertiesMap sim_properties;
+
+  // After setup we lose pointers to the proxies, so it is hard to set
+  // expectations.
+  EXPECT_CALL(*properties_proxy_,
+              GetAll(MM_DBUS_INTERFACE_SIM))
+      .WillOnce(Return(sim_properties));
+
+  SetUp();
+
+  EXPECT_EQ("", capability_->imei_);
+  EXPECT_EQ(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN,
+            capability_->access_technologies_);
+  EXPECT_FALSE(capability_->sim_proxy_.get());
+  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                       modem_properties, vector<string>());
+  EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
+  EXPECT_EQ(kSimPath, capability_->sim_path_);
+  EXPECT_TRUE(capability_->sim_proxy_.get());
+
+  // Changing properties on wrong interface will not have an effect
+  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                       modem3gpp_properties,
+                                       vector<string>());
+  EXPECT_EQ("", capability_->imei_);
+
+  // Changing properties on the right interface gets reflected in the
+  // capabilities object
+  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEM3GPP,
+                                       modem3gpp_properties,
+                                       vector<string>());
+  EXPECT_EQ(kImei, capability_->imei_);
+}
+
+TEST_F(CellularCapabilityUniversalTest, SimPropertiesChanged) {
+  // Set up mock modem properties
+  DBusPropertiesMap modem_properties;
+  modem_properties[MM_MODEM_PROPERTY_SIM].writer().append_path(kSimPath);
+
+  // Set up mock modem sim properties
+  const char kImsi[] = "310100000001";
+  DBusPropertiesMap sim_properties;
+  sim_properties[MM_SIM_PROPERTY_IMSI].writer().append_string(kImsi);
+
+  EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
+      .WillOnce(Return(sim_properties));
+
+  // After setup we lose pointers to the proxies, so it is hard to set
+  // expectations.
+  SetUp();
+
+  EXPECT_FALSE(capability_->sim_proxy_.get());
+  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                       modem_properties, vector<string>());
+  EXPECT_EQ(kSimPath, capability_->sim_path_);
+  EXPECT_TRUE(capability_->sim_proxy_.get());
+  EXPECT_EQ(kImsi, capability_->imsi_);
+
+  // Updating the SIM
+  DBusPropertiesMap new_properties;
+  const char kNewImsi[] = "123123123";
+  const char kSimIdentifier[] = "9999888";
+  const char kOperatorIdentifier[] = "410";
+  const char kOperatorName[] = "new operator";
+  new_properties[MM_SIM_PROPERTY_IMSI].writer().append_string(kNewImsi);
+  new_properties[MM_SIM_PROPERTY_SIMIDENTIFIER].writer().
+      append_string(kSimIdentifier);
+  new_properties[MM_SIM_PROPERTY_OPERATORIDENTIFIER].writer().
+      append_string(kOperatorIdentifier);
+  new_properties[MM_SIM_PROPERTY_OPERATORNAME].writer().
+      append_string(kOperatorName);
+  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_SIM,
+                                       new_properties,
+                                       vector<string>());
+  EXPECT_EQ(kNewImsi, capability_->imsi_);
+  EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
+  EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
+  EXPECT_EQ(kOperatorName, capability_->spn_);
 }
 
 }  // namespace shill

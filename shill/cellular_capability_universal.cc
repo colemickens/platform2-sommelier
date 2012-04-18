@@ -13,11 +13,13 @@
 #include <mobile_provider.h>
 #include <mm/ModemManager-names.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular_service.h"
+#include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -46,6 +48,7 @@
 using base::Bind;
 using base::Callback;
 using base::Closure;
+using std::map;
 using std::string;
 using std::vector;
 
@@ -91,6 +94,9 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
       cdma_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
+      supported_modes_(MM_MODEM_MODE_NONE),
+      allowed_modes_(MM_MODEM_MODE_NONE),
+      preferred_mode_(MM_MODEM_MODE_NONE),
       home_provider_(NULL),
       scanning_supported_(true),
       scanning_(false),
@@ -452,63 +458,15 @@ void CellularCapabilityUniversal::GetRegistrationState() {
 void CellularCapabilityUniversal::GetProperties() {
   SLOG(Cellular, 2) << __func__;
 
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  uint32 technologies = modem_proxy_->AccessTechnologies();
-  // TODO(jglasgow): figure out the most likely one that we are using....
-  SetAccessTechnologies(technologies);
-  SLOG(Cellular, 2) << "AccessTechnologies: " << technologies;
+  scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
+      proxy_factory()->CreateDBusPropertiesProxy(cellular()->dbus_path(),
+                                                 cellular()->dbus_owner()));
+  DBusPropertiesMap properties(
+      properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM));
+  OnModemPropertiesChanged(properties, vector<string>());
 
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  uint32 locks = modem_3gpp_proxy_->EnabledFacilityLocks();
-  sim_lock_status_.enabled = locks & MM_MODEM_3GPP_FACILITY_SIM;
-  SLOG(Cellular, 2) << "GSM EnabledFacilityLocks: " << locks;
-
-  // TODO(jglasgow): Switch to asynchronous calls (crosbug.com/17583).
-  const DBus::Struct<unsigned int, bool> quality =
-      modem_proxy_->SignalQuality();
-  OnSignalQualityChanged(quality._1);
-
-  // TODO(jglasgow): Switch to asynchronous calls (crosbug.com/17583).
-  if (imei_.empty()) {
-    imei_ = modem_3gpp_proxy_->Imei();
-  }
-
-  string sim_path = modem_proxy_->Sim();
-  OnSimPathChanged(sim_path);
-
-  if (sim_proxy_.get()) {
-    if (imsi_.empty()) {
-      imsi_ = sim_proxy_->Imsi();
-    }
-    if (spn_.empty()) {
-      spn_ = sim_proxy_->OperatorName();
-      // TODO(jglasgow): May eventually want to get SPDI, etc
-    }
-  }
-
-  if (mdn_.empty()) {
-    // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
-    vector<string> numbers = modem_proxy_->OwnNumbers();
-    if (numbers.size() > 0)
-      mdn_ = numbers[0];
-  }
-
-  if (model_id_.empty()) {
-    // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
-    model_id_ = modem_proxy_->Model();
-  }
-
-  if (manufacturer_.empty()) {
-    // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
-    manufacturer_ = modem_proxy_->Manufacturer();
-  }
-
-  if (firmware_revision_.empty()) {
-    // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
-    firmware_revision_ = modem_proxy_->Revision();
-  }
-
-  GetRegistrationState();
+  properties = properties_proxy->GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP);
+  OnModem3GPPPropertiesChanged(properties, vector<string>());
 }
 
 string CellularCapabilityUniversal::CreateFriendlyServiceName() {
@@ -846,14 +804,6 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
   return parsed;
 }
 
-void CellularCapabilityUniversal::SetAccessTechnologies(
-    uint32 access_technologies) {
-  access_technologies_ = access_technologies;
-  if (cellular()->service().get()) {
-    cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
-  }
-}
-
 string CellularCapabilityUniversal::GetNetworkTechnologyString() const {
   // Order is imnportant.  Return the highest speed technology
   // TODO(jglasgow): change shill interfaces to a capability model
@@ -895,58 +845,90 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   // enable the device when it is registered with the Manager. On subsequent
   // changes to State, we need to explicitly enable the device ourselves.
   int32 istate;
-  if (DBusProperties::GetInt32(properties, kModemPropertyState, &istate)) {
+  if (DBusProperties::GetInt32(properties, MM_MODEM_PROPERTY_STATE, &istate)) {
     Cellular::ModemState state = static_cast<Cellular::ModemState>(istate);
-    Cellular::ModemState prev_modem_state = cellular()->modem_state();
-    bool was_enabled = cellular()->IsUnderlyingDeviceEnabled();
-    if (Cellular::IsEnabledModemState(state))
-      cellular()->set_modem_state(state);
-    if (prev_modem_state != Cellular::kModemStateUnknown &&
-        prev_modem_state != Cellular::kModemStateEnabling &&
-        !was_enabled &&
-        cellular()->state() == Cellular::kStateDisabled &&
-        cellular()->IsUnderlyingDeviceEnabled()) {
-      cellular()->SetEnabled(true);
-    }
+    OnModemStateChanged(state);
   }
-  string value;
+  string string_value;
   if (DBusProperties::GetObjectPath(properties,
-                                    MM_MODEM_PROPERTY_SIM, &value))
-    OnSimPathChanged(value);
-
-  uint32 access_technologies = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
+                                    MM_MODEM_PROPERTY_SIM, &string_value))
+    OnSimPathChanged(string_value);
+  uint32 uint_value;
   if (DBusProperties::GetUint32(properties,
-                                MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
-                                &access_technologies)) {
-    SetAccessTechnologies(access_technologies);
-  }
+                                MM_MODEM_PROPERTY_MODEMCAPABILITIES,
+                                &uint_value))
+    OnModemCapabilitesChanged(uint_value);
+  if (DBusProperties::GetUint32(properties,
+                                MM_MODEM_PROPERTY_CURRENTCAPABILITIES,
+                                &uint_value))
+    OnModemCurrentCapabilitiesChanged(uint_value);
+  // not needed: MM_MODEM_PROPERTY_MAXBEARERS
+  // not needed: MM_MODEM_PROPERTY_MAXACTIVEBEARERS
+  if (DBusProperties::GetString(properties,
+                                MM_MODEM_PROPERTY_MANUFACTURER,
+                                &string_value))
+    OnModemManufacturerChanged(string_value);
+  if (DBusProperties::GetString(properties,
+                                MM_MODEM_PROPERTY_MODEL,
+                                &string_value))
+    OnModemModelChanged(string_value);
+  if (DBusProperties::GetString(properties,
+                               MM_MODEM_PROPERTY_REVISION,
+                               &string_value))
+    OnModemRevisionChanged(string_value);
+  // not needed: MM_MODEM_PROPERTY_DEVICEIDENTIFIER
+  // not needed: MM_MODEM_PROPERTY_DEVICE
+  // not needed: MM_MODEM_PROPERTY_DRIVER
+  // not needed: MM_MODEM_PROPERTY_PLUGIN
+  // not needed: MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER
 
-  DBusPropertiesMap::const_iterator it =
-    properties.find(MM_MODEM_PROPERTY_SIGNALQUALITY);
-  if (it != properties.end()) {
-    DBus::Struct<unsigned int, bool> quality =
-      static_cast<DBus::Variant>(it->second);
-    OnSignalQualityChanged(quality._1);
-  }
-
-  // Unlockrequired and SimLock
-  bool emit = false;
-
-  uint32_t lock_required;  // This is really of type MMModemLock
+  // Unlock required and SimLock
+  bool locks_changed = false;
+  uint32_t unlock_required;  // This is really of type MMModemLock
   if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_PROPERTY_UNLOCKREQUIRED,
-                                &lock_required)) {
-    // TODO(jglasgow): set sim_lock_status_.lock_type
-    emit = true;
+                                &unlock_required)) {
+    locks_changed = true;
   }
-  // TODO(jglasgow): Update PIN retries which are a{uu} and require parsing
-  // Get the property MM_MODEM_PROPERTY_UNLOCKRETRIES
-  // Set sim_lock_status_.retries_left
+  LockRetryData lock_retries;
+  DBusPropertiesMap::const_iterator it =
+      properties.find(MM_MODEM_PROPERTY_UNLOCKRETRIES);
+  if (it != properties.end()) {
+    lock_retries = it->second;
+    locks_changed = true;
+  }
+  if (locks_changed)
+    OnLockRetriesChanged(static_cast<MMModemLock>(unlock_required),
+                         lock_retries);
+  if (DBusProperties::GetUint32(properties,
+                                MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
+                                &uint_value))
+    OnAccessTechnologiesChanged(uint_value);
 
-  if (emit) {
-    cellular()->adaptor()->EmitKeyValueStoreChanged(
-        flimflam::kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
+  it = properties.find(MM_MODEM_PROPERTY_SIGNALQUALITY);
+  if (it != properties.end()) {
+    DBus::Struct<unsigned int, bool> quality = it->second;
+    OnSignalQualityChanged(quality._1);
   }
+  vector<string> numbers;
+  if (DBusProperties::GetStrings(properties, MM_MODEM_PROPERTY_OWNNUMBERS,
+                                 &numbers)) {
+    string mdn;
+    if (numbers.size() > 0)
+      mdn = numbers[0];
+    OnMdnChanged(mdn);
+  }
+  if (DBusProperties::GetUint32(properties, MM_MODEM_PROPERTY_SUPPORTEDMODES,
+                                &uint_value))
+    OnSupportedModesChanged(uint_value);
+  if (DBusProperties::GetUint32(properties, MM_MODEM_PROPERTY_ALLOWEDMODES,
+                                &uint_value))
+    OnAllowedModesChanged(uint_value);
+  if (DBusProperties::GetUint32(properties, MM_MODEM_PROPERTY_PREFERREDMODE,
+                                &uint_value))
+    OnPreferredModeChanged(static_cast<MMModemMode>(uint_value));
+  // au: MM_MODEM_PROPERTY_SUPPORTEDBANDS,
+  // au: MM_MODEM_PROPERTY_BANDS
 }
 
 void CellularCapabilityUniversal::OnDBusPropertiesChanged(
@@ -956,29 +938,187 @@ void CellularCapabilityUniversal::OnDBusPropertiesChanged(
   if (interface == MM_DBUS_INTERFACE_MODEM) {
     OnModemPropertiesChanged(changed_properties, invalidated_properties);
   }
-  // TODO(jglasgow): handle additional interfaces
-}
-
-void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
-    const DBusPropertiesMap &properties) {
-  bool emit = false;
-  uint32 locks = 0;
-  if (DBusProperties::GetUint32(
-          properties, MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS,
-          &locks)) {
-    sim_lock_status_.enabled = locks & MM_MODEM_3GPP_FACILITY_SIM;
-    emit = true;
+  if (interface == MM_DBUS_INTERFACE_MODEM_MODEM3GPP) {
+    OnModem3GPPPropertiesChanged(changed_properties, invalidated_properties);
   }
-  // TODO(jglasgow): coordinate with changes to Modem properties
-  if (emit) {
-    cellular()->adaptor()->EmitKeyValueStoreChanged(
-        flimflam::kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
+  if (interface == MM_DBUS_INTERFACE_SIM) {
+    OnSimPropertiesChanged(changed_properties, invalidated_properties);
   }
 }
 
 void CellularCapabilityUniversal::OnNetworkModeSignal(uint32 /*mode*/) {
   // TODO(petkov): Implement this.
   NOTIMPLEMENTED();
+}
+
+void CellularCapabilityUniversal::OnSimPathChanged(
+    const string &sim_path) {
+  if (sim_path == sim_path_)
+    return;
+
+  mm1::SimProxyInterface *proxy = NULL;
+  if (!sim_path.empty())
+    proxy = proxy_factory()->CreateSimProxy(sim_path,
+                                            cellular()->dbus_owner());
+  sim_path_ = sim_path;
+  sim_proxy_.reset(proxy);
+
+  if (sim_path.empty()) {
+    // Clear all data about the sim
+    OnImsiChanged("");
+    OnSimIdentifierChanged("");
+    OnOperatorIdChanged("");
+    OnOperatorNameChanged("");
+  } else {
+    scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
+        proxy_factory()->CreateDBusPropertiesProxy(sim_path,
+                                                   cellular()->dbus_owner()));
+    // TODO(jglasgow): convert to async interface
+    DBusPropertiesMap properties(
+        properties_proxy->GetAll(MM_DBUS_INTERFACE_SIM));
+    OnSimPropertiesChanged(properties, vector<string>());
+  }
+}
+
+void CellularCapabilityUniversal::OnModemCapabilitesChanged(
+    uint32 capabilities) {
+  capabilities_ = capabilities;
+}
+
+void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
+    uint32 current_capabilities) {
+  current_capabilities_ = current_capabilities;
+}
+
+void CellularCapabilityUniversal::OnMdnChanged(
+    const string &mdn) {
+  mdn_ = mdn;
+}
+
+void CellularCapabilityUniversal::OnModemManufacturerChanged(
+    const string &manufacturer) {
+  manufacturer_ = manufacturer;
+}
+
+void CellularCapabilityUniversal::OnModemModelChanged(
+    const string &model) {
+  model_id_ = model;
+}
+
+void CellularCapabilityUniversal::OnModemRevisionChanged(
+    const string &revision) {
+  firmware_revision_ = revision;
+}
+
+void CellularCapabilityUniversal::OnModemStateChanged(
+    Cellular::ModemState state) {
+  Cellular::ModemState prev_modem_state = cellular()->modem_state();
+  bool was_enabled = cellular()->IsUnderlyingDeviceEnabled();
+  if (Cellular::IsEnabledModemState(state))
+    cellular()->set_modem_state(state);
+  if (prev_modem_state != Cellular::kModemStateUnknown &&
+      prev_modem_state != Cellular::kModemStateEnabling &&
+      !was_enabled &&
+      cellular()->state() == Cellular::kStateDisabled &&
+      cellular()->IsUnderlyingDeviceEnabled()) {
+    cellular()->SetEnabled(true);
+  }
+}
+
+void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
+    uint32 access_technologies) {
+  access_technologies_ = access_technologies;
+  if (cellular()->service().get()) {
+    cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
+  }
+}
+
+void CellularCapabilityUniversal::OnSupportedModesChanged(
+    uint32 supported_modes) {
+  supported_modes_ = supported_modes;
+}
+
+void CellularCapabilityUniversal::OnAllowedModesChanged(
+    uint32 allowed_modes) {
+  allowed_modes_ = allowed_modes;
+}
+
+void CellularCapabilityUniversal::OnPreferredModeChanged(
+    MMModemMode preferred_mode) {
+  preferred_mode_ = preferred_mode;
+}
+
+void CellularCapabilityUniversal::OnLockRetriesChanged(
+    MMModemLock unlock_required,
+    const LockRetryData &lock_retries) {
+  switch(unlock_required) {
+    case MM_MODEM_LOCK_SIM_PIN:
+      sim_lock_status_.lock_type = "sim-pin";
+      break;
+    case MM_MODEM_LOCK_SIM_PUK:
+      sim_lock_status_.lock_type = "sim-puk";
+      break;
+    default:
+      sim_lock_status_.lock_type = "";
+      break;
+  }
+  LockRetryData::const_iterator it = lock_retries.find(unlock_required);
+  if (it != lock_retries.end()) {
+    sim_lock_status_.retries_left = it->second;
+  } else {
+    // Unknown, use 999
+    sim_lock_status_.retries_left = 999;
+  }
+  OnSimLockStatusChanged();
+}
+
+void CellularCapabilityUniversal::OnSimLockStatusChanged() {
+  cellular()->adaptor()->EmitKeyValueStoreChanged(
+      flimflam::kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
+}
+
+void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
+    const DBusPropertiesMap &properties,
+    const vector<string> &/* invalidated_properties */) {
+  VLOG(2) << __func__;
+  string imei;
+  if (DBusProperties::GetString(properties,
+                                MM_MODEM_MODEM3GPP_PROPERTY_IMEI,
+                                &imei))
+    OnImeiChanged(imei);
+
+  // Handle registration state changes as a single change
+  string operator_code = serving_operator_.GetCode();
+  string operator_name = serving_operator_.GetName();
+  MMModem3gppRegistrationState state = registration_state_;
+  bool registration_changed = false;
+  uint32 uint_value;
+  if (DBusProperties::GetUint32(properties,
+                                MM_MODEM_MODEM3GPP_PROPERTY_REGISTRATIONSTATE,
+                                &uint_value)) {
+    state = static_cast<MMModem3gppRegistrationState>(uint_value);
+    registration_changed = true;
+  }
+  if (DBusProperties::GetString(properties,
+                                MM_MODEM_MODEM3GPP_PROPERTY_OPERATORCODE,
+                                &operator_code))
+    registration_changed = true;
+  if (DBusProperties::GetString(properties,
+                                MM_MODEM_MODEM3GPP_PROPERTY_OPERATORNAME,
+                                &operator_name))
+    registration_changed = true;
+  if (registration_changed)
+    On3GPPRegistrationChanged(state, operator_code, operator_name);
+
+  uint32 locks = 0;
+  if (DBusProperties::GetUint32(
+          properties, MM_MODEM_MODEM3GPP_PROPERTY_ENABLEDFACILITYLOCKS,
+          &locks))
+    OnFacilityLocksChanged(locks);
+}
+
+void CellularCapabilityUniversal::OnImeiChanged(const string &imei) {
+  imei_ = imei;
 }
 
 void CellularCapabilityUniversal::On3GPPRegistrationChanged(
@@ -1008,17 +1148,46 @@ void CellularCapabilityUniversal::OnSignalQualityChanged(uint32 quality) {
   cellular()->HandleNewSignalQuality(quality);
 }
 
-void CellularCapabilityUniversal::OnSimPathChanged(
-    const string &sim_path) {
-  if (sim_path == sim_path_)
-    return;
+void CellularCapabilityUniversal::OnFacilityLocksChanged(uint32 locks) {
+  if (sim_lock_status_.enabled != (locks & MM_MODEM_3GPP_FACILITY_SIM)) {
+    sim_lock_status_.enabled = locks & MM_MODEM_3GPP_FACILITY_SIM;
+    OnSimLockStatusChanged();
+  }
+}
 
-  mm1::SimProxyInterface *proxy = NULL;
-  if (!sim_path.empty())
-    proxy = proxy_factory()->CreateSimProxy(sim_path,
-                                            cellular()->dbus_owner());
-  sim_path_ = sim_path;
-  sim_proxy_.reset(proxy);
+void CellularCapabilityUniversal::OnSimPropertiesChanged(
+    const DBusPropertiesMap &props,
+    const vector<string> &/* invalidated_properties */) {
+  VLOG(2) << __func__;
+  string value;
+  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_IMSI, &value))
+    OnImsiChanged(value);
+  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_SIMIDENTIFIER, &value))
+    OnSimIdentifierChanged(value);
+  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_OPERATORIDENTIFIER,
+                                &value))
+    OnOperatorIdChanged(value);
+  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_OPERATORNAME, &value))
+    OnOperatorNameChanged(value);
+  // TODO(jglasgow): May eventually want to get SPDI, etc
+}
+
+void CellularCapabilityUniversal::OnImsiChanged(const string &imsi) {
+  imsi_ = imsi;
+}
+
+void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
+  sim_identifier_ = id;
+}
+
+void CellularCapabilityUniversal::OnOperatorIdChanged(
+    const string &operator_id) {
+  operator_id_ = operator_id;
+}
+
+void CellularCapabilityUniversal::OnOperatorNameChanged(
+    const string &operator_name) {
+  spn_ = operator_name;
 }
 
 }  // namespace shill
