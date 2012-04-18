@@ -73,7 +73,7 @@ bool ScopeLogger::IsLogEnabled(Scope scope, int verbose_level) const {
 
 string ScopeLogger::GetAllScopeNames() const {
   vector<string> names(kScopeNames, kScopeNames + arraysize(kScopeNames));
-  return JoinString(names, ',');
+  return JoinString(names, '+');
 }
 
 string ScopeLogger::GetEnabledScopeNames() const {
