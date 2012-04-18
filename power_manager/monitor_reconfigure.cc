@@ -135,7 +135,7 @@ bool MonitorReconfigure::Init() {
 }
 
 bool MonitorReconfigure::SetupXrandr() {
-
+  CHECK(NULL == display_);
   display_ = XOpenDisplay(NULL);
 
   // Give up if we can't open the display.
@@ -144,7 +144,9 @@ bool MonitorReconfigure::SetupXrandr() {
     return false;
   }
 
+  CHECK(None == window_);
   window_ = RootWindow(display_, DefaultScreen(display_));
+  CHECK(NULL == screen_info_);
   screen_info_ = XRRGetScreenResources(display_, window_);
 
   // Give up if we can't obtain the XRandr information.
@@ -165,12 +167,13 @@ bool MonitorReconfigure::SetupXrandr() {
 }
 
 void MonitorReconfigure::ClearXrandr() {
-  if (screen_info_)
-    XRRFreeScreenResources(screen_info_);
+  CHECK(NULL != screen_info_);
+  XRRFreeScreenResources(screen_info_);
   screen_info_ = NULL;
-  if (display_)
-    XCloseDisplay(display_);
+  CHECK(NULL != display_);
+  XCloseDisplay(display_);
   display_ = NULL;
+  CHECK(None != window_);
   window_ = None;
   mode_map_.clear();
 }
@@ -346,12 +349,8 @@ void MonitorReconfigure::EnableUsableOutput(int idx,
     RROutput output = usable_outputs_[idx];
     XRROutputInfo* output_info = usable_outputs_info_[idx];
     XRRModeInfo* mode_info = GetModeInfo(mode);
+    CHECK(NULL != mode_info);
     RRCrtc crtc_xid = usable_outputs_crtc_[idx];
-
-    if (!mode_info) {
-      LOG(WARNING) << "No mode " << mode << " found!";
-      return;
-    }
 
     if (crtc_xid == None) {
       LOG(WARNING) << "No valid crtc for output " << output_info->name;
@@ -550,17 +549,16 @@ void MonitorReconfigure::RunExtended() {
 
     RRMode mode = output_info->modes[0];
     XRRModeInfo* mode_info = GetModeInfo(mode);
+    // We pulled this mode from our existing usable_outputs_ structure so we
+    // better find it.
+    CHECK(NULL != mode_info);
 
-    if (!mode_info) {
-      LOG(WARNING) << "Mode info not found";
-    } else {
-      LOG(INFO) << "Output "
-                << output_info->name
-                << "'s native mode is "
-                << mode_info->width << "x" << mode_info->height;
-      resolution_width = max(resolution_width, mode_info->width);
-      resolution_height += mode_info->height;
-    }
+    LOG(INFO) << "Output "
+              << output_info->name
+              << "'s native mode is "
+              << mode_info->width << "x" << mode_info->height;
+    resolution_width = max(resolution_width, mode_info->width);
+    resolution_height += mode_info->height;
   }
 
   LOG(INFO) << "Total screen resolution "
@@ -698,7 +696,6 @@ void  MonitorReconfigure::SwitchMode() {
 
 void MonitorReconfigure::Run(bool force_reconfigure) {
   ClearUsableOutputsInfo();
-  ClearXrandr();
 
   if (!SetupXrandr())
     return;
@@ -799,6 +796,9 @@ void MonitorReconfigure::DetermineOutputs(vector<OutputInfo>* current_outputs) {
       for (int i = 0; i < output_info->nmode; i++) {
         ModeInfo mode;
         XRRModeInfo* xmode = GetModeInfo(output_info->modes[i]);
+        // We pulled this mode from our existing usable_outputs_ structure so we
+        // better find it.
+        CHECK(NULL != xmode);
         mode.width = xmode->width;
         mode.height = xmode->height;
         mode.dotClock = xmode->dotClock;

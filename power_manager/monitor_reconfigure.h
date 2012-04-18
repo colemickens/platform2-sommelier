@@ -106,15 +106,19 @@ class MonitorReconfigure {
   };
 
   // Setup |display_|, |window_|, |screen_info_| and |mode_map_| value.
+  // Note:  Must be balanced with |ClearXrandr()|.
   bool SetupXrandr();
 
   // Clear |display_|, |window_|, |screen_info_| and |mode_map_| value.
+  // Note:  Must be balanced with |SetupXrandr()|.
   void ClearXrandr();
 
   // Clear |usable_outputs_|, |usable_outputs_info_| and |usable_outputs_crtc_|.
   void ClearUsableOutputsInfo();
 
-  // Get the XRRModeInfo for |mode|.
+  // Get the XRRModeInfo for |mode|.  This method can return NULL if the mode
+  // isn't known to |screen_info_| but most callers should CHECK against that
+  // case.
   XRRModeInfo* GetModeInfo(RRMode mode);
 
   // Setup dual head mode when there are 2 outputs available.
@@ -175,6 +179,7 @@ class MonitorReconfigure {
   // |mode|. If |position_x| is not NULL, then the scan out crtc for
   // this output has x offset |position_x| in the fb, otherwise the
   // x offset within the fb is 0. The same policy applies to |position_y|.
+  // Note:  This method CHECKs that |mode| is known to the screen_info_.
   void EnableUsableOutput(int idx, RRMode mode,
                           int* position_x, int* position_y);
 
