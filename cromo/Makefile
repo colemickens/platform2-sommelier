@@ -11,7 +11,7 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += $(PC_CFLAGS) $($(*F)_CPPFLAGS)
 CXXFLAGS += -Wall -Werror -g -O0 $($(*F)_CXXFLAGS)
-LDLIBS = $(PC_LIBS) -lgflags -lglog -ldl -lmetrics -lminijail
+LDLIBS = $(PC_LIBS) -lgflags -ldl -lmetrics -lminijail
 LDLIBS_UNITTEST = $(LDLIBS) -lgtest
 
 LDFLAGS_CROMO = -Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=cromo.ver
@@ -81,6 +81,7 @@ SRCS = carrier.cc \
        sandbox.cc \
        sms_message.cc \
        sms_cache.cc \
+       syslog_helper.cc \
        utilities.cc
 
 OBJS = $(SRCS:.cc=.o)
@@ -127,11 +128,12 @@ $(dummy_OBJS): glue
 $(CROMO): $(OBJS) $(LIBCROMO) cromo.ver
 	$(CXX) $(LDFLAGS_CROMO) $(OBJS) $(LDLIBS) -o $@
 
-$(LIBCROMO): cromo_server.o hooktable.o utilities.o modem_handler.o \
-	     sms_message.o sms_cache.o
+$(LIBCROMO): cromo_server.o hooktable.o utilities.o \
+	      modem_handler.o sms_message.o sms_cache.o syslog_helper.o
 	$(AR) r $@ $^
 
-cromo_server_unittest: carrier.o cromo_server_unittest.o cromo_server.o hooktable.o
+cromo_server_unittest: carrier.o cromo_server_unittest.o cromo_server.o \
+					   hooktable.o syslog_helper.o
 utilities_unittest: utilities_unittest.o $(LIBCROMO)
 sms_message_unittest: sms_message_unittest.o $(LIBCROMO)
 sms_cache_unittest: sms_cache_unittest.o $(LIBCROMO)

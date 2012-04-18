@@ -1,12 +1,12 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 // Unit tests for utilities for the cromo modem manager
 
 #include "utilities.h"
 
+#include <base/logging.h>
 #include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 TEST(Utilities, ExtractString) {
@@ -306,7 +306,6 @@ TEST(Utilities, Ucs2Utf8RoundTrip) {
 
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
-  google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   return RUN_ALL_TESTS();

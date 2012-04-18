@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,12 +7,13 @@
 // rest of cromo.
 #include "utilities.h"
 
-#include <glog/logging.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <iomanip>
 #include <sstream>
+
+#include <base/logging.h>
 
 namespace utilities {
 

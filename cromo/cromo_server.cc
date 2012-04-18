@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,15 +6,15 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include <base/logging.h>
 #include <dbus-c++/glib-integration.h>
 #include <dbus/dbus.h>
-#include <glog/logging.h>
 #include <mm/mm-modem.h>
-#include <syslog.h>
 
 #include "carrier.h"
 #include "modem_handler.h"
 #include "plugin_manager.h"
+#include "syslog_helper.h"
 
 using std::vector;
 
@@ -74,25 +74,13 @@ vector<DBus::Path> CromoServer::EnumerateDevices(DBus::Error& error) {
 }
 
 void CromoServer::SetLogging(const std::string& level, DBus::Error& error) {
-  int mask = 0;
-  const char *cstr = level.c_str();
-
-  if (strcasecmp(cstr, "debug") == 0) {
-    mask = LOG_UPTO(LOG_DEBUG);
-  } else if (strcasecmp(cstr, "info") == 0) {
-    mask = LOG_UPTO(LOG_INFO);
-  } else if (strcasecmp(cstr, "warn")  == 0) {
-    mask = LOG_UPTO(LOG_WARNING);
-  } else if (strcasecmp(cstr, "error") == 0) {
-    mask = LOG_UPTO(LOG_ERR);
-  } else {
+  if (SysLogHelperSetLevel(level)) {
     std::string msg(std::string("Invalid Logging Level: ") + level);
     LOG(ERROR) << msg;
     error.set(kDBusInvalidArgs, msg.c_str());
-    return;
   }
-  setlogmask(mask);
-  LOG(INFO) << "logging level set to: " << level;
+
+  return;
 }
 
 void CromoServer::AddModemHandler(ModemHandler* handler) {

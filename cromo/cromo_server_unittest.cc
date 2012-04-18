@@ -1,11 +1,12 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "carrier.h"
+
+#include <base/logging.h>
 #include <dbus-c++/glib-integration.h>
 #include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <mm/mm-modem.h>
 
@@ -51,7 +52,6 @@ TEST(Carrier, Find) {
 
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
-  google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   return RUN_ALL_TESTS();

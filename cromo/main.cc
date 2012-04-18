@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,20 +6,21 @@
 
 #include <signal.h>
 #include <stdio.h>
-#include <syslog.h>
 #include <sys/signalfd.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <base/command_line.h>
+#include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/syslog_logging.h>
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/util.h>
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 
 #include "carrier.h"
 #include "plugin_manager.h"
 #include "sandbox.h"
+#include "syslog_helper.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
@@ -28,15 +29,26 @@
 static const char *kDBusInterface = "org.freedesktop.DBus";
 static const char *kDBusNameOwnerChanged = "NameOwnerChanged";
 
-DEFINE_string(plugins, "",
-              "comma-separated list of plugins to load at startup");
-
 DBus::Glib::BusDispatcher dispatcher;
 GMainLoop *main_loop;
 static CromoServer *server;
 
 static const int kExitMaxTries = 10;
 static int kExitTries = 0;
+
+namespace switches {
+
+// Comma-separated list of plugins to load at startup
+static const char kPlugins[] = "plugins";
+// Flag that causes shill to show the help message and exit.
+static const char kHelp[] = "help";
+
+// The help message shown if help flag is passed to the program.
+static const char kHelpMessage[] = "\n"
+    "Available Switches: \n"
+    "  --plugins\n"
+    "    comma-separated list of plugins to load at startup\n";
+}  // namespace switches
 
 // This function is run on a timer by exit_main_loop(). It calls all of the
 // exit-ok hooks to see if they are all ready for the program to exit; it also
@@ -105,36 +117,6 @@ static void block_signals(void) {
   pthread_sigmask(SIG_BLOCK, &sigs, NULL);
 }
 
-namespace google {
-class LogSinkSyslog : public google::LogSink {
- public:
-  LogSinkSyslog() {
-    openlog("cromo",
-            LOG_PID,  // Options
-            LOG_LOCAL3);  // 5,6,7 are taken
-    setlogmask(LOG_UPTO(LOG_INFO));
-  }
-
-  virtual void send(LogSeverity severity, const char* full_filename,
-                    const char* base_filename, int line,
-                    const struct ::tm* tm_time,
-                    const char* message, size_t message_len) {
-    static const int glog_to_syslog[NUM_SEVERITIES] = {
-      LOG_INFO, LOG_WARNING, LOG_ERR, LOG_CRIT};
-    CHECK(severity < google::NUM_SEVERITIES && severity >= 0);
-    CHECK(message_len <= INT_MAX);
-
-    syslog(glog_to_syslog[severity],
-           "%s:%d %.*s",
-           base_filename, line, static_cast<int>(message_len), message);
-  }
-
-  virtual ~LogSinkSyslog() {
-    closelog();
-  }
-};
-}  // namespace google
-
 class MessageHandler : public DBus::Callback_Base<bool, const DBus::Message&> {
   public:
     MessageHandler(CromoServer *srv) : srv_(srv) { }
@@ -183,29 +165,32 @@ class MessageHandler : public DBus::Callback_Base<bool, const DBus::Message&> {
     CromoServer *srv_;
 };
 
-int main(int argc, char* argv[]) {
-  google::LogSinkSyslog syslogger;
+// Always logs to the syslog and stderr.
+void SetupLogging(void) {
+  int log_flags = 0;
+  log_flags |= chromeos::kLogToSyslog;
+  log_flags |= chromeos::kLogToStderr;
+  log_flags |= chromeos::kLogHeader;
+  chromeos::InitLog(log_flags);
+}
 
+int main(int argc, char* argv[]) {
   // Drop privs right away for now.
   // TODO(ellyjones): once we do more serious sandboxing, this will need to be
   // broken into two parts, one to be done pre-plugin load and one to be done
   // post-plugin load -- or we can just do the whole thing post-plugin load.
   Sandbox::Enter();
 
-  // Can't use LOG here, unfortunately :( we don't want it to be an error but we
-  // do want it logged regardless of priority level.
-  openlog("cromo", LOG_PID, LOG_LOCAL3);
-  syslog(LOG_NOTICE, "vcsid %s", VCSID);
-  closelog();
+  CommandLine::Init(argc, argv);
+  CommandLine* cl = CommandLine::ForCurrentProcess();
 
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  google::SetCommandLineOptionWithMode("min_log_level",
-                                       "0",
-                                       google::SET_FLAG_IF_DEFAULT);
-  google::InitGoogleLogging(argv[0]);
-  google::LogToStderr();
-  google::AddLogSink(&syslogger);
-  google::InstallFailureSignalHandler();
+  if (cl->HasSwitch(switches::kHelp)) {
+    LOG(INFO) << switches::kHelpMessage;
+    return 0;
+  }
+
+  SysLogHelperInit();
+  SetupLogging();
 
   block_signals();
 
@@ -236,7 +221,9 @@ int main(int argc, char* argv[]) {
   AddBaselineCarriers(server);
 
   // Instantiate modem handlers for each type of hardware supported
-  PluginManager::LoadPlugins(server, FLAGS_plugins);
+  std::string plugins = cl->GetSwitchValueASCII(switches::kPlugins);
+  PluginManager::LoadPlugins(server, plugins);
+
   server->CheckForPowerDaemon();
 
   dispatcher.enter();

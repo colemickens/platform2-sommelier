@@ -1,10 +1,11 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 // Unit tests for SMS message creation
 
+#include <base/logging.h>
+
 #include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 
 #include "sms_message.h"
@@ -638,7 +639,6 @@ TEST(CreateSmsMessage, NonIntlSMSC) {
 
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
-  google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   return RUN_ALL_TESTS();
