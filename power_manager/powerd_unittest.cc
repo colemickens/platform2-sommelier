@@ -71,6 +71,8 @@ class DaemonTest : public Test {
     EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightnessLevel),
                               Return(true)));
+    EXPECT_CALL(backlight_, SetBrightnessLevel(_))
+        .WillRepeatedly(Return(true));
     prefs_.SetDouble(kPluggedBrightnessOffset, kPluggedBrightnessPercent);
     prefs_.SetDouble(kUnpluggedBrightnessOffset, kUnpluggedBrightnessPercent);
     CHECK(backlight_ctl_.Init());

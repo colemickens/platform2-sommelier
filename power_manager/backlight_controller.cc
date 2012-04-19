@@ -4,8 +4,10 @@
 
 #include "power_manager/backlight_controller.h"
 
+#include <algorithm>
 #include <cmath>
 #include <gdk/gdkx.h>
+#include <sys/time.h>
 #include <X11/extensions/dpms.h>
 
 #include "base/logging.h"
@@ -13,9 +15,11 @@
 #include "base/stringprintf.h"
 
 #include "power_manager/ambient_light_sensor.h"
+#include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs_interface.h"
-#include "power_manager/monitor_reconfigure.h"
+#include "power_manager/util.h"
+
 
 namespace {
 
@@ -44,6 +48,16 @@ const int kBacklightAnimationFrames = 8;
 
 // Time between backlight animation frames, in milliseconds.
 const int kBacklightAnimationMs = 30;
+
+// Amount of variation allowed in actual animation frame intervals.
+const double kBacklightAnimationTolerance = 0.2;
+
+// Minimum and maximum allowed animation frame interval, in milliseconds.
+// Anything outside of it should result in a warning being logged.
+const int kBacklightAnimationMinMs = static_cast<int>(
+    (1.0 - kBacklightAnimationTolerance) * kBacklightAnimationMs);
+const int kBacklightAnimationMaxMs = static_cast<int>(
+    (1.0 + kBacklightAnimationTolerance) * kBacklightAnimationMs);
 
 // Maximum number of brightness adjustment steps.
 const int64 kMaxBrightnessSteps = 16;
@@ -115,8 +129,8 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       level_to_percent_exponent_(kDefaultLevelToPercentExponent),
       is_initialized_(false),
       target_level_(0),
-      is_in_transition_(false),
-      suspended_through_idle_off_(false) {
+      suspended_through_idle_off_(false),
+      gradual_transition_event_id_(0) {
   for (size_t i = 0; i < arraysize(als_responses_); i++)
     als_responses_[i] = 0;
   backlight_->set_observer(this);
@@ -549,6 +563,12 @@ bool BacklightController::SetBrightness(int64 target_level,
   // outstanding brightness transition to a different brightness.
   target_level_ = target_level;
 
+  // Stop existing gradual brightness transition if there is one.
+  if (gradual_transition_event_id_ > 0) {
+    g_source_remove(gradual_transition_event_id_);
+    gradual_transition_event_id_ = 0;
+  }
+
   // If the current brightness happens to be at the new target brightness,
   // do not start a new transition.
   int64 diff = target_level - current_level;
@@ -564,29 +584,73 @@ bool BacklightController::SetBrightness(int64 target_level,
   // The following check will require this code to be updated should more styles
   // be added in the future.
   DCHECK_EQ(style, TRANSITION_GRADUAL);
-  is_in_transition_ = true;
-  int64 previous_level = current_level;
-  for (int i = 0; i < kBacklightAnimationFrames; ++i) {
-    int64 step_level =
-        current_level + diff * (i + 1) / kBacklightAnimationFrames;
-    if (step_level == previous_level)
-      continue;
-    g_timeout_add(i * kBacklightAnimationMs, SetBrightnessHardThunk,
-                  CreateSetBrightnessHardArgs(this, step_level, target_level));
-    previous_level = step_level;
+
+  // We don't want to take more steps than there are adjustment levels between
+  // the start brightness and the end brightness.
+  int64 num_steps = std::min(abs(diff), kBacklightAnimationFrames);
+  if (num_steps <= 1) {
+    SetBrightnessHard(target_level, target_level);
+    return true;
+  }
+
+  gradual_transition_total_time_ = base::TimeDelta::FromMilliseconds(
+      (num_steps - 1) * kBacklightAnimationMs);
+  gradual_transition_start_level_ = current_level +
+    static_cast<int64>(round(static_cast<double>(diff) / num_steps));
+
+  // The first adjustment step should happen immediately.  Don't use a timeout
+  // for this.
+  gradual_transition_start_time_ = base::TimeTicks::Now();
+  SetBrightnessHard(gradual_transition_start_level_, target_level);
+  gradual_transition_last_step_time_ = gradual_transition_start_time_;
+
+  gradual_transition_event_id_ = g_timeout_add(kBacklightAnimationMs,
+                                               SetBrightnessStepThunk,
+                                               this);
+  CHECK(gradual_transition_event_id_ > 0);
+  return true;
+}
+
+gboolean BacklightController::SetBrightnessStep() {
+  // Determine the current step brightness using linear interpolation based on
+  // how much of the expected transition time has already elapsed.
+  base::TimeTicks current_time = base::TimeTicks::Now();
+  double elapsed_time_fraction =
+      (current_time - gradual_transition_start_time_).InMillisecondsF() /
+      gradual_transition_total_time_.InMillisecondsF();
+  elapsed_time_fraction = std::min(1.0, elapsed_time_fraction);
+  int64 current_brightness = static_cast<int64>(
+      round(gradual_transition_start_level_ + elapsed_time_fraction *
+            (target_level_ - gradual_transition_start_level_)));
+
+  SetBrightnessHard(current_brightness, target_level_);
+
+  // Add a check for transition intervals that are too long or too short.
+  // Too long means the transition events are blocked by other events.
+  // Too short means either the event timing is broken or the last step time is
+  // not being reset on a new transition.
+  int64 diff_ms =
+      (current_time - gradual_transition_last_step_time_).InMilliseconds();
+  if (diff_ms > kBacklightAnimationMaxMs) {
+    LOG(WARNING) << "Interval between adjustment steps was " << diff_ms
+                 << " ms, expected no more than " << kBacklightAnimationMaxMs
+                 << " ms";
+  } else if (diff_ms < kBacklightAnimationMinMs) {
+    LOG(WARNING) << "Interval between adjustment steps was " << diff_ms
+                 << " ms, expected no less than " << kBacklightAnimationMinMs
+                 << " ms";
+  }
+  gradual_transition_last_step_time_ = current_time;
+
+  if (elapsed_time_fraction >= 1.0) {
+    // When there are no more adjustment steps to take, the transition ends.
+    gradual_transition_event_id_ = 0;
+    return false;
   }
   return true;
 }
 
-gboolean BacklightController::SetBrightnessHard(int64 level,
-                                                int64 target_level) {
-  // If the target brightness of this call does not match the backlight's
-  // current target brightness, it must be from an earlier backlight adjustment
-  // that had a different target brightness.  In that case, it is invalidated
-  // so do nothing.
-  if (target_level_ != target_level)
-    return false; // Return false so glib doesn't repeat.
-
+void BacklightController::SetBrightnessHard(int64 level, int64 target_level) {
   if (level != 0 && target_level != 0 && monitor_reconfigure_ &&
       monitor_reconfigure_->HasInternalPanelConnection())
     monitor_reconfigure_->SetInternalPanelOn();
@@ -594,9 +658,6 @@ gboolean BacklightController::SetBrightnessHard(int64 level,
   DLOG(INFO) << "Setting brightness to " << level;
   if (!backlight_->SetBrightnessLevel(level))
     DLOG(INFO) << "Could not set brightness to " << level;
-
-  if (level == target_level)
-    is_in_transition_ = false;
 
   if (level == 0 && target_level == 0 && monitor_reconfigure_) {
     // If it is in IDLE_OFF state, we call SetScreenOff() to turn off all the
@@ -610,8 +671,6 @@ gboolean BacklightController::SetBrightnessHard(int64 level,
              monitor_reconfigure_->HasInternalPanelConnection())
       monitor_reconfigure_->SetInternalPanelOff();
   }
-
-  return false; // Return false so glib doesn't repeat.
 }
 
 void BacklightController::AppendAlsResponse(int val) {

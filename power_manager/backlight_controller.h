@@ -8,10 +8,12 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "base/basictypes.h"
+#include "base/time.h"
 #include "power_manager/backlight_interface.h"
 #include "power_manager/signal_callback.h"
 
 typedef int gboolean;
+typedef unsigned int guint;
 
 namespace power_manager {
 
@@ -199,15 +201,17 @@ class BacklightController : public BacklightInterfaceObserver {
   //   Current brightness = 40
   //   Want to set brightness to 60 over 5 steps, so the steps are:
   //      40 -> 44 -> 48 -> 52 -> 56 -> 60
-  //   Thus, SetBrightnessHard(level, target_level) would be called five times
-  //   with the args:
+  //   Thus, SetBrightnessStep() is invoked five times at regular intervals,
+  //   and it calls SetBrightnessHard(level, target_level) each time with args:
   //      SetBrightnessHard(44, 60);
   //      SetBrightnessHard(48, 60);
   //      SetBrightnessHard(52, 60);
   //      SetBrightnessHard(56, 60);
   //      SetBrightnessHard(60, 60);
-  SIGNAL_CALLBACK_PACKED_2(BacklightController, gboolean, SetBrightnessHard,
-                           int64, int64);
+  SIGNAL_CALLBACK_0(BacklightController, gboolean, SetBrightnessStep);
+
+  // Sets the backlight brightness immediately.
+  void SetBrightnessHard(int64 level, int64 target_level);
 
   // Add an ALS value (or really any "event" value) to the response log.
   // This will give some idea of _why_ ALS changes the backlight.
@@ -312,11 +316,24 @@ class BacklightController : public BacklightInterfaceObserver {
   // The destination hardware brightness used for brightness transitions.
   int64 target_level_;
 
-  // Flag to indicate whether there is an active brightness transition going on.
-  bool is_in_transition_;
-
   // Flag to indicate whether the state before suspended is idle off;
   bool suspended_through_idle_off_;
+
+  // Timestamp of the beginning of the current brightness transition.
+  base::TimeTicks gradual_transition_start_time_;
+
+  // Timestamp of the previous gradual transition step.
+  base::TimeTicks gradual_transition_last_step_time_;
+
+  // The total time that the current brightness transition should take.
+  // This is meant to be a prediction and may not match actual values.
+  base::TimeDelta gradual_transition_total_time_;
+
+  // Brightness level at start of the current transition.
+  int64 gradual_transition_start_level_;
+
+  // ID of adjustment timeout event source.
+  guint gradual_transition_event_id_;
 
   DISALLOW_COPY_AND_ASSIGN(BacklightController);
 };
