@@ -102,7 +102,7 @@ xidle_env = gdk_env.Clone()
 xidle_env.Append(LIBS=Split('X11 Xext'))
 xidle = xidle_env.Library('xidle', ['xidle.cc', 'xsync.cc'])
 xidle_example = xidle_env.Program('xidle-example',
-                                  ['examples/xidle_example.cc', xidle])
+                                  ['xidle_example.cc', xidle])
 Default(xidle_example)
 
 # Build backlight tool

@@ -7,8 +7,8 @@
 #include <string>
 
 #include "base/basictypes.h"
-#include "power_manager/power_state_control.pb.cc"
 #include "power_manager/state_control.h"
+#include "power_state_control.pb.cc"
 
 using ::testing::Test;
 

@@ -13,11 +13,10 @@
 #include "power_manager/file_tagger.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs.h"
-#include "power_manager/power_state_control.pb.h"
 #include "power_manager/powerd.h"
 #include "power_manager/state_control.h"
 #include "power_manager/util.h"
-
+#include "power_state_control.pb.h"
 
 using std::min;
 

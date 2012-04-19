@@ -9,9 +9,9 @@
 
 #include "base/logging.h"
 #include "chromeos/dbus/service_constants.h"
-#include "power_manager/power_state_control.pb.h"
 #include "power_manager/state_control.h"
 #include "power_manager/util.h"
+#include "power_state_control.pb.h"
 
 DEFINE_int64(duration, 0, "Duration.");
 DEFINE_int64(request_id, 0, "Request_Id.");

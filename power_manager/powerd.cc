@@ -29,9 +29,9 @@
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_supply.h"
-#include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/state_control.h"
 #include "power_manager/util.h"
+#include "power_supply_properties.pb.h"
 
 using std::map;
 using std::max;
