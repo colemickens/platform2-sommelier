@@ -7,7 +7,7 @@ Executable programs:
     Simple tool to get and set the brightness level of the display backlight.
   * powerd (powerd.cc)
     Upper power manager. Adjusts device status based on whether the
-    user is idle and on video activity indicator from the window manager.
+    user is idle and on video activity indicator from Chrome.
     This daemon is responsible for dimming the backlight or turning off the
     screen based on user idle, and it is responsible for adjusting backlight
     intensity based on user input and ambient light condition. The daemon also

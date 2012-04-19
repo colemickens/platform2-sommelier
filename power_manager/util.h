@@ -53,10 +53,6 @@ DBusMessage* CreateDBusErrorReply(DBusMessage* message, const char* error_name,
 void CreateStatusFile(const FilePath& file);
 void RemoveStatusFile(const FilePath& file);
 
-// Send an X ClientEvent message to the window manager.
-bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,
-                                int first_param);
-
 // Get the current wakeup count from sysfs
 bool GetWakeupCount(unsigned int *value);
 

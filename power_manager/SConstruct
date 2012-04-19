@@ -79,11 +79,6 @@ if int(ARGUMENTS.get('has_als', 0)):
 if int(ARGUMENTS.get('has_keyboard_backlight', 0)):
   base_env.Append(CPPDEFINES=['HAS_KEYBOARD_BACKLIGHT'])
 
-use_aura = False
-if int(ARGUMENTS.get('aura', 0)):
-  base_env.Append(CPPDEFINES=['USE_AURA'])
-  use_aura = True
-
 # Fix issue with scons not passing some vars through the environment.
 for key in Split('SYSROOT'):
   if key in os.environ:
@@ -166,8 +161,6 @@ powerd_sources = Split('''audio_detector.cc file_tagger.cc metrics_constants.cc
                        powerd_metrics.cc resolution_selector.cc
                        rolling_average.cc screen_locker.cc state_control.cc
                        suspender.cc video_detector.cc ''')
-if not use_aura:
-  powerd_sources.append('power_button_handler.cc')
 util_lib = powerd_env.Library('util_lib', ['util.cc', 'inotify.cc']);
 powerd_lib = powerd_env.Library('powerd_lib', powerd_sources)
 powerd = powerd_env.Program('powerd',

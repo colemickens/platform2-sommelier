@@ -23,15 +23,6 @@
 
 namespace {
 
-// Name of the X selection that the window manager takes ownership of.  This
-// comes from ICCCM 4.3; see http://tronche.com/gui/x/icccm/sec-4.html#s-4.3.
-const char kWindowManagerSelectionName[] = "WM_S0";
-
-// Name of the atom used in the message_type field of X ClientEvent messages
-// sent to the Chrome OS window manager.  This is hardcoded in the window
-// manager.
-const char kWindowManagerMessageTypeName[] = "_CHROME_WM_MESSAGE";
-
 const char kWakeupCountPath[] = "/sys/power/wakeup_count";
 
 }  // namespace
@@ -241,46 +232,6 @@ void RemoveStatusFile(const FilePath& file) {
     else
       LOG(INFO) << "Removed " << file.value();
   }
-}
-
-bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,
-                                int first_param) {
-  // Ensure that we won't crash if we get an error from the X server.
-  gdk_error_trap_push();
-
-  Display* display = GDK_DISPLAY();
-  Window wm_window = XGetSelectionOwner(
-      display, XInternAtom(display, kWindowManagerSelectionName, True));
-  if (wm_window == None) {
-    LOG(WARNING) << "Unable to find window owning the "
-                 << kWindowManagerSelectionName << " X selection -- is the "
-                 << "window manager running?";
-    gdk_error_trap_pop();
-    return false;
-  }
-
-  XEvent event;
-  event.xclient.type = ClientMessage;
-  event.xclient.window = wm_window;
-  event.xclient.message_type =
-      XInternAtom(display, kWindowManagerMessageTypeName, True);
-  event.xclient.format = 32;  // 32-bit values
-  event.xclient.data.l[0] = type;
-  event.xclient.data.l[1] = first_param;
-  for (int i = 2; i < 5; ++i)
-    event.xclient.data.l[i] = 0;
-  XSendEvent(display,
-             wm_window,
-             False,  // propagate
-             0,      // empty event mask
-             &event);
-
-  gdk_flush();
-  if (gdk_error_trap_pop()) {
-    LOG(WARNING) << "Got error while sending message to window manager";
-    return false;
-  }
-  return true;
 }
 
 bool GetWakeupCount(unsigned int *value) {

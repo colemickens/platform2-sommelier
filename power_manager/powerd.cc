@@ -33,10 +33,6 @@
 #include "power_manager/state_control.h"
 #include "power_manager/util.h"
 
-#if !defined(USE_AURA)
-#include "power_manager/power_button_handler.h"
-#endif
-
 using std::map;
 using std::max;
 using std::min;
@@ -94,7 +90,7 @@ enum {
 };
 
 // Daemon: Main power manager. Adjusts device status based on whether the
-//         user is idle and on video activity indicator from the window manager.
+//         user is idle and on video activity indicator from Chrome.
 //         This daemon is responsible for dimming of the backlight, turning
 //         the screen off, and suspending to RAM. The daemon also has the
 //         capability of shutting the system down.
@@ -125,9 +121,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       suspender_(&locker_, &file_tagger_),
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath)),
-#if !defined(USE_AURA)
-      power_button_handler_(new PowerButtonHandler(this)),
-#endif
       battery_discharge_rate_metric_last_(0),
       current_session_state_("stopped"),
       udev_(NULL),
@@ -311,23 +304,15 @@ void Daemon::SetPlugged(bool plugged) {
   SetIdleState(idle_time_ms);
 }
 
-void Daemon::OnRequestRestart(bool notify_window_manager) {
+void Daemon::OnRequestRestart() {
   if (shutdown_state_ == kShutdownNone) {
-    if (notify_window_manager) {
-      util::SendMessageToWindowManager(
-          chromeos::WM_IPC_MESSAGE_WM_NOTIFY_SHUTTING_DOWN, 0);
-    }
     shutdown_state_ = kShutdownRestarting;
     StartCleanShutdown();
   }
 }
 
-void Daemon::OnRequestShutdown(bool notify_window_manager) {
+void Daemon::OnRequestShutdown() {
   if (shutdown_state_ == kShutdownNone) {
-    if (notify_window_manager) {
-      util::SendMessageToWindowManager(
-          chromeos::WM_IPC_MESSAGE_WM_NOTIFY_SHUTTING_DOWN, 0);
-    }
     shutdown_state_ = kShutdownPowerOff;
     StartCleanShutdown();
   }
@@ -900,23 +885,12 @@ bool Daemon::HandleButtonEventSignal(DBusMessage* message) {
   }
 
   if (strcmp(button_name, kPowerButtonName) == 0) {
-#if !defined(USE_AURA)
-    if (down)
-      power_button_handler_->HandlePowerButtonDown();
-    else
-      power_button_handler_->HandlePowerButtonUp();
-#endif
     // TODO: Use |timestamp| instead if libbase/libchrome ever gets updated to a
     // recent-enough version that base::TimeTicks::FromInternalValue() is
     // available: http://crosbug.com/16623
     SendPowerButtonMetric(down, base::TimeTicks::Now());
   } else if (strcmp(button_name, kLockButtonName) == 0) {
-#if !defined(USE_AURA)
-    if (down)
-      power_button_handler_->HandleLockButtonDown();
-    else
-      power_button_handler_->HandleLockButtonUp();
-#endif
+    // Chrome handles lock button presses directly.
   } else if (strcmp(button_name, power_manager::kKeyLeftCtrl) == 0 ||
              strcmp(button_name, power_manager::kKeyRightCtrl) == 0) {
       modifiers_ = (modifiers_ & ~power_manager::kModifierCtrl) |
@@ -1011,9 +985,6 @@ DBusMessage* Daemon::HandleRequestUnlockScreenMethod(DBusMessage* message) {
 
 DBusMessage* Daemon::HandleScreenIsLockedMethod(DBusMessage* message) {
   locker_.set_locked(true);
-#if !defined(USE_AURA)
-  power_button_handler_->HandleScreenLocked();
-#endif
   suspender_.CheckSuspend();
   return NULL;
 }
@@ -1024,12 +995,12 @@ DBusMessage* Daemon::HandleScreenIsUnlockedMethod(DBusMessage* message) {
 }
 
 DBusMessage* Daemon::HandleRequestShutdownMethod(DBusMessage* message) {
-  OnRequestShutdown(true);  // notify_window_manager=true
+  OnRequestShutdown();
   return NULL;
 }
 
 DBusMessage* Daemon::HandleRequestRestartMethod(DBusMessage* message) {
-  OnRequestRestart(true);  // notify_window_manager=true
+  OnRequestRestart();
   return NULL;
 }
 
@@ -1327,7 +1298,7 @@ void Daemon::OnLowBattery(double battery_percentage) {
     LOG(INFO) << "Low battery condition detected. Shutting down immediately.";
     low_battery_ = true;
     file_tagger_.HandleLowBatteryEvent();
-    OnRequestShutdown(true);  // notify_window_manager=true
+    OnRequestShutdown();
   } else if (battery_percentage < 0) {
     LOG(INFO) << "Battery is at " << battery_percentage << "%, may not be "
               << "fully initialized yet.";
@@ -1471,7 +1442,7 @@ void Daemon::Suspend() {
     backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
   } else {
     LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
-    OnRequestShutdown(true);  // notify_window_manager=true
+    OnRequestShutdown();
   }
 }
 
