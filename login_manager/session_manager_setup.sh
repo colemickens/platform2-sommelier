@@ -239,12 +239,22 @@ if is_board daisy || is_board ironhide; then
   export MALI_FORCE_WINDOW_CONFIG_ID=10
 fi
 
+HIGHDPI_FLAGS=
+if use_flag_is_set highdpi; then
+  HIGHDPI_FLAGS="--enable-viewport --default-device-scale-factor=2"
+fi
+
 # If screensaver use isn't disabled, set screensaver.
 SCREENSAVERS_PATH=/usr/share/chromeos-assets/screensavers
 SCREENSAVER_FLAG=
 if [ -d "${SCREENSAVERS_PATH}" ]; then
   SCREENSAVER_FLAG="--screen-saver-url=\
 file://${SCREENSAVERS_PATH}/default/index.htm"
+fi
+
+TOUCHUI_FLAGS=
+if use_flag_is_set touchui; then
+  TOUCHUI_FLAGS="--touch-optimized-ui"
 fi
 
 # Device Manager Server used to fetch the enterprise policy, if applicable.
@@ -333,7 +343,9 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${ACCELERATED_FLAGS} \
             ${AURA_FLAGS} \
             ${FLASH_FLAGS} \
+            ${HIGHDPI_FLAGS} \
             ${SCREENSAVER_FLAG} \
             ${SHOW_VOLUME_STATUS_FLAG} \
             ${SKIP_OOBE} \
+            ${TOUCHUI_FLAGS} \
     ${WM_SCRIPT:+-- "${WM_SCRIPT}"}
