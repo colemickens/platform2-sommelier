@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -36,12 +36,17 @@
   }                                                   \
   RETURN METHOD();
 
+#define SIGNAL_CALLBACK_1(CLASS, RETURN, METHOD, ARG0)      \
+  static RETURN METHOD ## Thunk(void* data, ARG0 sender) {  \
+    return reinterpret_cast<CLASS*>(data)->METHOD(sender);  \
+  }                                                         \
+  RETURN METHOD(ARG0);
+
 #define SIGNAL_CALLBACK_2(CLASS, RETURN, METHOD, ARG0, ARG1)     \
   static RETURN METHOD ## Thunk(ARG0 sender, ARG1 one,           \
                                 void* data) {                    \
     return reinterpret_cast<CLASS*>(data)->METHOD(sender, one);  \
   }                                                              \
-                                                                 \
   RETURN METHOD(ARG0, ARG1);
 
 // SIGNAL_CALLBACK_PACKED_[n](CLASS, RETURN, METHOD, TYPE0, TYPE1, ...)

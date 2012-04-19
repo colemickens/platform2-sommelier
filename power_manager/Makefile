@@ -96,8 +96,9 @@ BACKLIGHT_FLAGS = $(GDK_FLAGS) $(BACKLIGHT_DEPS_FLAGS)
 BACKLIGHT_LIBS = $(GDK_LIBS) $(BACKLIGHT_DEPS_LIBS) -lgflags -lmetrics -lX11 \
                  -lXrandr -ludev
 
-LIBBACKLIGHT_OBJS = ambient_light_sensor.o backlight.o external_backlight.o \
-                    external_backlight_client.o power_constants.o
+LIBBACKLIGHT_OBJS = ambient_light_sensor.o async_file_reader.o backlight.o \
+                    external_backlight.o external_backlight_client.o \
+                    power_constants.o
 CXX_STATIC_LIBRARY(libbacklight.pie.a): $(LIBBACKLIGHT_OBJS)
 CXX_STATIC_LIBRARY(libbacklight.pie.a): CPPFLAGS += $(BACKLIGHT_FLAGS)
 CXX_STATIC_LIBRARY(libbacklight.pie.a): LDLIBS += $(BACKLIGHT_LIBS)
@@ -171,10 +172,11 @@ clean: CLEAN(libutil.pie.a)
 powerd.o.depends: power_supply_properties.pb.h
 state_control.o.depends: power_supply_properties.pb.h
 LIBPOWERD_OBJS = power_state_control.pb.o power_supply_properties.pb.o \
-                 audio_detector.o file_tagger.o metrics_constants.o \
-                 metrics_store.o monitor_reconfigure.o power_supply.o powerd.o \
-                 powerd_metrics.o resolution_selector.o rolling_average.o \
-                 screen_locker.o state_control.o suspender.o video_detector.o
+                 async_file_reader.o audio_detector.o file_tagger.o \
+                 metrics_constants.o metrics_store.o monitor_reconfigure.o \
+                 power_supply.o powerd.o powerd_metrics.o \
+                 resolution_selector.o rolling_average.o screen_locker.o \
+                 state_control.o suspender.o video_detector.o
 CXX_STATIC_LIBRARY(libpowerd.pie.a): $(LIBPOWERD_OBJS)
 CXX_STATIC_LIBRARY(libpowerd.pie.a): CPPFLAGS += $(LIBPOWERD_FLAGS)
 CXX_STATIC_LIBRARY(libpowerd.pie.a): LDLIBS += $(LIBPOWERD_LIBS)
@@ -396,3 +398,17 @@ CXX_BINARY(state_control_unittest): CPPFLAGS += $(STATE_CONTROL_UNITTEST_FLAGS)
 CXX_BINARY(state_control_unittest): LDLIBS += $(STATE_CONTROL_UNITTEST_LIBS)
 clean: CXX_BINARY(state_control_unittest)
 tests: TEST(CXX_BINARY(state_control_unittest))
+
+# async_file_reader_unittest_env inherits from gdk_env
+ASYNC_FILE_READER_UNITTEST_FLAGS = $(GDK_FLAGS)
+ASYNC_FILE_READER_UNITTEST_LIBS = $(GDK_LIBS) -lgtest -lgmock -lXtst
+ASYNC_FILE_READER_UNITTEST_OBJS = async_file_reader_unittest.o \
+                                  async_file_reader.o
+CXX_BINARY(async_file_reader_unittest): $(ASYNC_FILE_READER_UNITTEST_OBJS) \
+	CXX_STATIC_LIBRARY(libtestrunner.pie.a)
+CXX_BINARY(async_file_reader_unittest): CPPFLAGS += \
+	$(ASYNC_FILE_READER_UNITTEST_FLAGS)
+CXX_BINARY(async_file_reader_unittest): LDLIBS += \
+	$(ASYNC_FILE_READER_UNITTEST_LIBS)
+clean: CXX_BINARY(async_file_reader_unittest)
+tests: TEST(CXX_BINARY(async_file_reader_unittest))

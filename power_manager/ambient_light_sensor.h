@@ -7,6 +7,7 @@
 
 #include <glib.h>
 
+#include "power_manager/async_file_reader.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs_interface.h"
@@ -54,6 +55,10 @@ class AmbientLightSensor {
   // Handler for a periodic event that reads the ambient light sensor.
   SIGNAL_CALLBACK_0(AmbientLightSensor, gboolean, ReadAls);
 
+  // Asynchronous I/O success and error handlers, respectively.
+  void ReadCallback(const std::string& data);
+  void ErrorCallback();
+
   // Deferred init for the als in case the light sensor starts late.
   bool DeferredInit();
 
@@ -67,19 +72,28 @@ class AmbientLightSensor {
   // Interface for saving preferences. Non-owned.
   PowerPrefsInterface* prefs_;
 
-  // This is the ambient light sensor file descriptor.
-  int als_fd_;
-
   // These flags are used to turn on and off polling.
   bool is_polling_;
   bool disable_polling_;
 
   // Issue reasonable diagnostics about the deferred lux file open.
+  // Flag indicating whether a valid ALS device lux value file has been found.
   bool still_deferring_;
+
+  // Flag indicating whether a valid ALS device lux value file has been found.
+  bool als_found_;
+
+  // This is the ambient light sensor asynchronous file I/O object.
+  AsyncFileReader als_file_;
 
   // These are used in the LuxToPercent calculation.
   double log_multiply_factor_;
   double log_subtract_factor_;
+
+  // Callbacks for asynchronous file I/O.
+  base::Callback<void(const std::string&)> read_cb_;
+  base::Callback<void()> error_cb_;
+
 
   DISALLOW_COPY_AND_ASSIGN(AmbientLightSensor);
 };

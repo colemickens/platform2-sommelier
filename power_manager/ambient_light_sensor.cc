@@ -11,8 +11,11 @@
 #include <algorithm>
 #include <cmath>
 
+#include "base/bind.h"
 #include "base/logging.h"
 #include "base/file_util.h"
+#include "base/string_number_conversions.h"
+#include "base/string_util.h"
 
 namespace power_manager {
 
@@ -33,10 +36,14 @@ AmbientLightSensor::AmbientLightSensor(BacklightController* controller,
                                        PowerPrefsInterface* prefs)
     : controller_(controller),
       prefs_(prefs),
-      als_fd_(-1),
       is_polling_(false),
       disable_polling_(false),
-      still_deferring_(false) {
+      still_deferring_(false),
+      als_found_(false),
+      read_cb_(base::Bind(&AmbientLightSensor::ReadCallback,
+                          base::Unretained(this))),
+      error_cb_(base::Bind(&AmbientLightSensor::ErrorCallback,
+                           base::Unretained(this))) {
   // Initialize factors used for LuxToPercent calculation.
   // See comments in Tsl2563LuxToPercent() for a full description.
   double hi = kLuxHi + kLuxOffset;
@@ -45,12 +52,10 @@ AmbientLightSensor::AmbientLightSensor(BacklightController* controller,
   log_subtract_factor_ = log(lo) * log_multiply_factor_;
 }
 
-AmbientLightSensor::~AmbientLightSensor() {
-  if (als_fd_ >= 0)
-    close(als_fd_);
-}
+AmbientLightSensor::~AmbientLightSensor() {}
 
 bool AmbientLightSensor::DeferredInit() {
+  CHECK(!als_file_.HasOpenedFile());
   // Search the iio/devices directory for a subdirectory (eg "device0" or
   // "iio:device0") that contains the "[in_]illuminance0_{input|raw}" file.
   file_util::FileEnumerator dir_enumerator(
@@ -64,29 +69,23 @@ bool AmbientLightSensor::DeferredInit() {
 
   for (FilePath check_path = dir_enumerator.Next(); !check_path.empty();
        check_path = dir_enumerator.Next()) {
-    FilePath als_path;
     for (unsigned int i = 0; i < arraysize(input_names); i++) {
-      als_path = check_path.Append(input_names[i]);
-      if (file_util::PathExists(als_path))
-        break;
+      FilePath als_path = check_path.Append(input_names[i]);
+      if (als_file_.Init(als_path.value())) {
+        if (still_deferring_)
+          LOG(INFO) << "Finally found the lux file";
+        return true;
+      }
     }
-    als_fd_ = open(als_path.value().c_str(), O_RDONLY);
-    if (als_fd_ >= 0)
-      break;
   }
 
   // If the illuminance file is not immediately found, issue a deferral
   // message and try again later.
-  if (als_fd_ == -1) {
-    if (still_deferring_)
-      return false;
-    LOG(WARNING) << "Deferring lux: " << strerror(errno);
-    still_deferring_ = true;
-    return false;
-  }
   if (still_deferring_)
-    LOG(INFO) << "Finally found the lux file";
-  return true;
+    return false;
+  LOG(WARNING) << "Deferring lux: " << strerror(errno);
+  still_deferring_ = true;
+  return false;
 }
 
 bool AmbientLightSensor::Init() {
@@ -136,24 +135,42 @@ gboolean AmbientLightSensor::ReadAls() {
 
   // We really want to read the ambient light level.
   // Complete the deferred lux file open if necessary.
-  if (als_fd_ < 0) {
-    if (!DeferredInit())
-      return true;  // Return true to try again later.
-  }
+  if (!als_file_.HasOpenedFile() && !DeferredInit())
+    return true;  // Return true to try again later.
 
-  char buffer[10];
-  int n;
-  if (lseek(als_fd_, 0, SEEK_SET) != 0 ||
-      (n = read(als_fd_, buffer, sizeof(buffer) - 1)) == -1) {
-    LOG(WARNING) << "Unable to read light sensor file";
-  }
-  if (n > 0 && n < static_cast<int>(sizeof(buffer))) {
-    buffer[n] = '\0';
-    int luxval = atoi(buffer);
+  als_file_.StartRead(&read_cb_, &error_cb_);
+  return FALSE;
+}
+
+void AmbientLightSensor::ReadCallback(const std::string& data) {
+  int value = -1;
+  std::string trimmed_data;
+  TrimWhitespaceASCII(data, TRIM_ALL, &trimmed_data);
+  if (base::StringToInt(trimmed_data, &value)) {
     if (controller_)
-      controller_->SetAlsBrightnessOffsetPercent(Tsl2563LuxToPercent(luxval));
+      controller_->SetAlsBrightnessOffsetPercent(Tsl2563LuxToPercent(value));
+  } else {
+    LOG(ERROR) << "Could not read lux value from ALS file contents: ["
+               << trimmed_data << "]";
   }
-  return true;
+  // If the polling has been disabled, do not read again.
+  if (disable_polling_) {
+    is_polling_ = false;
+    return;
+  }
+  // Schedule next poll.
+  g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
+}
+
+void AmbientLightSensor::ErrorCallback() {
+  LOG(ERROR) << "Error reading ALS file.";
+  // If the polling has been disabled, do not read again.
+  if (disable_polling_) {
+    is_polling_ = false;
+    return;
+  }
+  // Schedule next poll.
+  g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
 }
 
 double AmbientLightSensor::Tsl2563LuxToPercent(int luxval) {

@@ -5,27 +5,37 @@
 #include "power_manager/audio_detector.h"
 
 #include <gdk/gdkx.h>
-#include <string>
 
+#include "base/bind.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/memory/ref_counted.h"
 
 namespace {
 
-const char kAudioBasePath[] = "/proc/asound/card0/pcm0p";
+// Audio status file path.
+const char kAudioStatusPath[] = "/proc/asound/card0/pcm0p/sub0/status";
+
+// Audio polling interval.
 const int kPollMs = 1000;
 
 }  // namespace
 
 namespace power_manager {
 
-AudioDetector::AudioDetector() : polling_enabled_(false),
-                                 poll_loop_id_(0) {}
+AudioDetector::AudioDetector()
+    : polling_enabled_(false),
+      read_cb_(
+          base::Bind(&AudioDetector::ReadCallback,base::Unretained(this))),
+      error_cb_(
+          base::Bind(&AudioDetector::ErrorCallback, base::Unretained(this))) {}
+
+AudioDetector::~AudioDetector() {}
 
 void AudioDetector::Init() {
-  // TODO(sque): We can make this more flexible to accommodate different sysfs.
-  FilePath base_path(kAudioBasePath);
-  audio_status_path_ = base_path.Append("sub0/status");
+  if (!audio_file_.Init(kAudioStatusPath))
+    LOG(WARNING) << "No audio status file found, audio detection will be "
+                 << "disabled.";
 }
 
 bool AudioDetector::GetActivity(int64 activity_threshold_ms,
@@ -44,56 +54,51 @@ bool AudioDetector::GetActivity(int64 activity_threshold_ms,
 }
 
 bool AudioDetector::Enable() {
-  if (polling_enabled_)
+  if (IsPollingEnabled())
     return true;
   polling_enabled_ = true;
-  poll_loop_id_ = g_timeout_add(kPollMs, PollThunk, this);
-  Poll();
-  return true;
+  // Attempt to open the audio file if it's not open already.
+  if (!audio_file_.HasOpenedFile())
+    Init();
+  if (IsPollingEnabled()) {
+    Poll();
+    return true;
+  }
+  return false;
 }
 
 bool AudioDetector::Disable() {
   polling_enabled_ = false;
-  if (poll_loop_id_ > 0)
-    g_source_remove(poll_loop_id_);
-  poll_loop_id_ = 0;
   return true;
 }
 
-bool AudioDetector::GetAudioStatus(bool* is_active) {
-  CHECK(is_active != NULL);
-  if (!file_util::PathExists(audio_status_path_))
-    return false;
-
-  // Read and parse the contents of the audio status file.
-  std::string sound_buf;
-  bool ok = file_util::ReadFileToString(audio_status_path_, &sound_buf);
-  if (strstr(sound_buf.c_str(), "closed"))  // Audio is inactive.
-    *is_active = false;
-  else if (strstr(sound_buf.c_str(), "state: RUNNING"))  // Audio is active.
-    *is_active = true;
-  else  // Could not determine audio state.
-    ok = false;
-
-  return ok;
-}
-
 gboolean AudioDetector::Poll() {
-  // Do not update the audio poll results if it has been disabled.  Also, do not
-  // continue polling.
-  if (!polling_enabled_) {
-    LOG(WARNING) << "Audio polling should be disabled.";
+  if (!IsPollingEnabled()) {
+    LOG(ERROR) << "Polling not enabled or audio status file not found.";
     return FALSE;
   }
-  bool audio_is_playing = false;
-  if (!GetAudioStatus(&audio_is_playing)) {
-    LOG(ERROR) << "Could not read audio.\n";
-    return TRUE;
-  }
-  // Record audio time.
-  if (audio_is_playing)
+
+  audio_file_.StartRead(&read_cb_, &error_cb_);
+  return FALSE;
+}
+
+void AudioDetector::ReadCallback(const std::string& data) {
+  if (data.find("state: RUNNING") != std::string::npos)
     last_audio_time_ = base::Time::Now();
-  return TRUE;
+  // If the polling has been disabled, do not read again.
+  if (IsPollingEnabled())
+    g_timeout_add(kPollMs, PollThunk, this);
+}
+
+void AudioDetector::ErrorCallback() {
+  LOG(ERROR) << "Error reading file " << kAudioStatusPath;
+  // If the polling has been disabled, do not read again.
+  if (IsPollingEnabled())
+    g_timeout_add(kPollMs, PollThunk, this);
+}
+
+bool AudioDetector::IsPollingEnabled() const {
+  return polling_enabled_ && audio_file_.HasOpenedFile();
 }
 
 }  // namespace power_manager
