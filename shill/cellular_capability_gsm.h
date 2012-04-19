@@ -160,36 +160,35 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
           const KeyValueStore &value, Error *error));
 
   // Signal callbacks
-  virtual void OnNetworkModeSignal(uint32 mode);
-  virtual void OnRegistrationInfoSignal(uint32 status,
-                                        const std::string &operator_code,
-                                        const std::string &operator_name);
-  virtual void OnSignalQualitySignal(uint32 quality);
+  void OnNetworkModeSignal(uint32 mode);
+  void OnRegistrationInfoSignal(uint32 status,
+                                const std::string &operator_code,
+                                const std::string &operator_name);
+  void OnSignalQualitySignal(uint32 quality);
 
   // Method callbacks
-  virtual void OnGetRegistrationInfoReply(uint32 status,
-                                          const std::string &operator_code,
-                                          const std::string &operator_name,
-                                          const Error &error);
-  virtual void OnGetSignalQualityReply(uint32 quality, const Error &error);
-  virtual void OnRegisterReply(const ResultCallback &callback,
-                               const Error &error);
-  virtual void OnGetIMEIReply(const ResultCallback &callback,
-                              const std::string &imei,
-                              const Error &error);
-  virtual void OnGetIMSIReply(const ResultCallback &callback,
-                              const std::string &imsi,
-                              const Error &error);
-  virtual void OnGetSPNReply(const ResultCallback &callback,
-                             const std::string &spn,
-                             const Error &error);
-  virtual void OnGetMSISDNReply(const ResultCallback &callback,
-                                const std::string &msisdn,
-                                const Error &error);
-  virtual void OnScanReply(const ResultCallback &callback,
-                           const GSMScanResults &results,
-                           const Error &error);
-  // TODO(njw): None of the above callbacks need to be virtual.
+  void OnGetRegistrationInfoReply(uint32 status,
+                                  const std::string &operator_code,
+                                  const std::string &operator_name,
+                                  const Error &error);
+  void OnGetSignalQualityReply(uint32 quality, const Error &error);
+  void OnRegisterReply(const ResultCallback &callback,
+                       const Error &error);
+  void OnGetIMEIReply(const ResultCallback &callback,
+                      const std::string &imei,
+                      const Error &error);
+  void OnGetIMSIReply(const ResultCallback &callback,
+                      const std::string &imsi,
+                      const Error &error);
+  void OnGetSPNReply(const ResultCallback &callback,
+                     const std::string &spn,
+                     const Error &error);
+  void OnGetMSISDNReply(const ResultCallback &callback,
+                        const std::string &msisdn,
+                        const Error &error);
+  void OnScanReply(const ResultCallback &callback,
+                   const GSMScanResults &results,
+                   const Error &error);
   void OnConnectReply(const ResultCallback &callback, const Error &error);
 
   scoped_ptr<ModemGSMCardProxyInterface> card_proxy_;

@@ -337,8 +337,7 @@ void Cellular::Connect(Error *error) {
   capability_->SetupConnectProperties(&properties);
   service_->SetState(Service::kStateAssociating);
   // TODO(njw): Should a weak pointer be used here instead?
-  // Would require something like a WeakPtrFactory on the class,
-  // and the Classic and Universal subclasses already have one.
+  // Would require something like a WeakPtrFactory on the class.
   ResultCallback cb = Bind(&Cellular::OnConnectReply, this);
   capability_->Connect(properties, error, cb);
 }

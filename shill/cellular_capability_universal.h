@@ -162,30 +162,29 @@ class CellularCapabilityUniversal : public CellularCapability {
           const KeyValueStore &value, Error *error));
 
   // Signal callbacks
-  virtual void OnNetworkModeSignal(uint32 mode);
+  void OnNetworkModeSignal(uint32 mode);
 
   // Property Change notification handlers
-  virtual void OnModemPropertiesChanged(
+  void OnModemPropertiesChanged(
       const DBusPropertiesMap &properties,
       const std::vector<std::string> &invalidated_properties);
 
   // TODO(jglasgow): install generic property change notification handler
-  virtual void On3GPPRegistrationChanged(MMModem3gppRegistrationState state,
-                                        const std::string &operator_code,
-                                        const std::string &operator_name);
-  virtual void OnSignalQualityChanged(uint32 quality);
+  void On3GPPRegistrationChanged(MMModem3gppRegistrationState state,
+                                 const std::string &operator_code,
+                                 const std::string &operator_name);
+  void OnSignalQualityChanged(uint32 quality);
 
   // Updates the sim_path_ variable and creates a new proxy to the
   // DBUS ModemManager1.Sim interface
-  virtual void OnSimPathChanged(const std::string &sim_path);
+  void OnSimPathChanged(const std::string &sim_path);
 
   // Method callbacks
-  virtual void OnRegisterReply(const ResultCallback &callback,
-                               const Error &error);
-  virtual void OnScanReply(const ResultCallback &callback,
-                           const ScanResults &results,
-                           const Error &error);
-  // TODO(njw): None of the above callbacks need to be virtual.
+  void OnRegisterReply(const ResultCallback &callback,
+                       const Error &error);
+  void OnScanReply(const ResultCallback &callback,
+                   const ScanResults &results,
+                   const Error &error);
   void OnConnectReply(const ResultCallback &callback,
                       const DBus::Path &bearer,
                       const Error &error);

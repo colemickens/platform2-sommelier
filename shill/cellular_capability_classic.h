@@ -129,16 +129,16 @@ class CellularCapabilityClassic : public CellularCapability {
       void(CellularCapability::*set)(const bool &value, Error *error));
 
   // Method reply and signal callbacks from Modem interface
-  virtual void OnModemStateChangedSignal(
+  void OnModemStateChangedSignal(
       uint32 old_state, uint32 new_state, uint32 reason);
-  virtual void OnGetModemInfoReply(const ResultCallback &callback,
-                                   const ModemHardwareInfo &info,
-                                   const Error &error);
+  void OnGetModemInfoReply(const ResultCallback &callback,
+                           const ModemHardwareInfo &info,
+                           const Error &error);
 
   // Method reply callbacks from Modem.Simple interface
-  virtual void OnGetModemStatusReply(const ResultCallback &callback,
-                                     const DBusPropertiesMap &props,
-                                     const Error &error);
+  void OnGetModemStatusReply(const ResultCallback &callback,
+                             const DBusPropertiesMap &props,
+                             const Error &error);
 
   Cellular *cellular_;
   base::WeakPtrFactory<CellularCapabilityClassic> weak_ptr_factory_;

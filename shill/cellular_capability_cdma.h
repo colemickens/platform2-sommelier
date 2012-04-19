@@ -74,22 +74,21 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   static std::string GetActivationErrorString(uint32 error);
 
   // Signal callbacks from the Modem.CDMA interface
-  virtual void OnActivationStateChangedSignal(
+  void OnActivationStateChangedSignal(
       uint32 activation_state,
       uint32 activation_error,
       const DBusPropertiesMap &status_changes);
-  virtual void OnRegistrationStateChangedSignal(
+  void OnRegistrationStateChangedSignal(
       uint32 state_1x, uint32 state_evdo);
-  virtual void OnSignalQualitySignal(uint32 strength);
+  void OnSignalQualitySignal(uint32 strength);
 
   // Method reply callbacks from the Modem.CDMA interface
-  virtual void OnActivateReply(const ResultCallback &callback,
-                               uint32 status, const Error &error);
+  void OnActivateReply(const ResultCallback &callback,
+                       uint32 status, const Error &error);
 
-  virtual void OnGetRegistrationStateReply(uint32 state_1x, uint32 state_evdo,
-                                           const Error &error);
-  virtual void OnGetSignalQualityReply(uint32 strength,
-                                       const Error &error);
+  void OnGetRegistrationStateReply(uint32 state_1x, uint32 state_evdo,
+                                   const Error &error);
+  void OnGetSignalQualityReply(uint32 strength, const Error &error);
 
   scoped_ptr<ModemCDMAProxyInterface> proxy_;
   base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
