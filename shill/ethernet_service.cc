@@ -40,7 +40,7 @@ EthernetService::EthernetService(ControlInterface *control_interface,
       ethernet_(device) {
   set_connectable(true);
   set_auto_connect(true);
-  set_friendly_name(GetStorageIdentifier());
+  set_friendly_name("Ethernet");
   SetStrength(kStrengthMax);
 }
 
