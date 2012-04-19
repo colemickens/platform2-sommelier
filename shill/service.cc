@@ -339,6 +339,8 @@ bool Service::Unload() {
   ui_data_ = "";
 
   UnloadEapCredentials();
+  Error error;  // Ignored.
+  Disconnect(&error);
   return false;
 }
 
