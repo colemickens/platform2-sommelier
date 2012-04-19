@@ -44,13 +44,11 @@ namespace chaps {
 class AsyncInitThread : public PlatformThread::Delegate {
  public:
   AsyncInitThread(Lock* lock,
-                  const string& srk_auth_data,
                   TPMUtilityImpl* tpm,
                   SlotManagerImpl* slot_manager,
                   ChapsServiceImpl* service)
       : started_event_(true, false),
         lock_(lock),
-        srk_auth_data_(srk_auth_data),
         tpm_(tpm),
         slot_manager_(slot_manager),
         service_(service) {}
@@ -61,8 +59,8 @@ class AsyncInitThread : public PlatformThread::Delegate {
     AutoLock lock(*lock_);
     started_event_.Signal();
     LOG(INFO) << "Starting asynchronous initialization.";
-    if (!tpm_->Init(srk_auth_data_))
-      LOG(FATAL) << "TPM initialization failed.";
+    if (!tpm_->Init())
+      LOG(WARNING) << "TPM initialization failed.";
     if (!slot_manager_->Init())
       LOG(FATAL) << "Slot initialization failed.";
     if (!service_->Init())
@@ -75,7 +73,6 @@ class AsyncInitThread : public PlatformThread::Delegate {
  private:
   WaitableEvent started_event_;
   Lock* lock_;
-  string srk_auth_data_;
   TPMUtilityImpl* tpm_;
   SlotManagerImpl* slot_manager_;
   ChapsServiceImpl* service_;
@@ -111,10 +108,7 @@ int main(int argc, char** argv) {
     LOG(INFO) << "Starting PKCS #11 services.";
     // Run as 'chaps'.
     chaps::SetProcessUserAndGroup(kProcessUser, kProcessGroup, true);
-    chaps::ChapsFactoryImpl factory;
-    chaps::TPMUtilityImpl tpm;
-    chaps::SlotManagerImpl slot_manager(&factory, &tpm);
-    chaps::ChapsServiceImpl service(&slot_manager);
+    // Determine SRK authorization data from the command line.
     string srk_auth_data;
     if (cl->HasSwitch("srk_password"))
       srk_auth_data = cl->GetSwitchValueASCII("srk_password");
@@ -127,11 +121,11 @@ int main(int argc, char** argv) {
         LOG(WARNING) << "Invalid value for srk_zeros: using empty string.";
       }
     }
-    chaps::AsyncInitThread init_thread(&lock,
-                                       srk_auth_data,
-                                       &tpm,
-                                       &slot_manager,
-                                       &service);
+    chaps::TPMUtilityImpl tpm(srk_auth_data);
+    chaps::ChapsFactoryImpl factory;
+    chaps::SlotManagerImpl slot_manager(&factory, &tpm);
+    chaps::ChapsServiceImpl service(&slot_manager);
+    chaps::AsyncInitThread init_thread(&lock, &tpm, &slot_manager, &service);
     PlatformThreadHandle init_thread_handle;
     if (!PlatformThread::Create(0, &init_thread, &init_thread_handle))
       LOG(FATAL) << "Failed to create initialization thread.";

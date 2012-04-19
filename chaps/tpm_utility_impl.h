@@ -20,9 +20,9 @@ namespace chaps {
 
 class TPMUtilityImpl : public TPMUtility {
  public:
-  TPMUtilityImpl();
+  TPMUtilityImpl(const std::string& srk_auth_data);
   virtual ~TPMUtilityImpl();
-  virtual bool Init(const std::string& srk_auth_data);
+  virtual bool Init();
   virtual bool Authenticate(int slot_id,
                             const std::string& auth_data,
                             const std::string& auth_key_blob,
@@ -97,9 +97,11 @@ class TPMUtilityImpl : public TPMUtility {
   bool GetSRKPublicKey();
   bool IsAlreadyLoaded(int slot, const std::string& key_blob, int* key_handle);
 
+  bool is_initialized_;
   trousers::ScopedTssContext tsp_context_;
   TSS_HPOLICY default_policy_;
   TSS_HKEY srk_;
+  std::string srk_auth_data_;
   bool srk_public_loaded_;
   const std::string default_exponent_;
   std::map<int, HandleInfo> slot_handles_;

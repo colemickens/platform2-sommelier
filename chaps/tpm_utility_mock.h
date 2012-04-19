@@ -17,7 +17,7 @@ class TPMUtilityMock : public TPMUtility {
   TPMUtilityMock();
   virtual ~TPMUtilityMock();
 
-  MOCK_METHOD1(Init, bool(const std::string&));
+  MOCK_METHOD0(Init, bool());
   MOCK_METHOD5(Authenticate, bool(int,
                                   const std::string&,
                                   const std::string&,

@@ -63,6 +63,7 @@ ObjectPool* CreateObjectPoolMock() {
 
 // Sets default expectations on a TPMUtilityMock.
 void ConfigureTPMUtility(TPMUtilityMock* tpm) {
+  EXPECT_CALL(*tpm, Init()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
   EXPECT_CALL(*tpm, Authenticate(_,
                                  Sha1(kAuthData),
@@ -268,6 +269,12 @@ TEST_F(TestSlotManager, TestLoginEvents) {
   slot_manager_->OnLogin(FilePath("one_more_path"), kAuthData);
   EXPECT_TRUE(slot_manager_->IsTokenPresent(1));
   slot_manager_->OnLogout(FilePath("another_path"));
+}
+
+TEST_F(TestSlotManager, TestTPMFailure) {
+  EXPECT_CALL(tpm_, Init()).WillRepeatedly(Return(false));
+  InsertToken();
+  EXPECT_FALSE(slot_manager_->IsTokenPresent(0));
 }
 
 }  // namespace chaps

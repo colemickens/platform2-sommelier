@@ -16,10 +16,9 @@ class TPMUtility {
  public:
   virtual ~TPMUtility() {}
   // Performs initialization tasks including the loading of the storage root key
-  // (SRK).
-  //   srk_auth_data - Authorization data for the SRK (typically empty).
+  // (SRK). This may be called multiple times.
   // Returns true on success.
-  virtual bool Init(const std::string& srk_auth_data) = 0;
+  virtual bool Init() = 0;
 
   // Authenticates a user by decrypting the user's master key with the user's
   // authorization key.
