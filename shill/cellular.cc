@@ -336,8 +336,21 @@ void Cellular::Connect(Error *error) {
   DBusPropertiesMap properties;
   capability_->SetupConnectProperties(&properties);
   service_->SetState(Service::kStateAssociating);
-  // TODO(ers): use null callback until Connect is made fully asynchronous
-  capability_->Connect(properties, error, ResultCallback());
+  // TODO(njw): Should a weak pointer be used here instead?
+  // Would require something like a WeakPtrFactory on the class,
+  // and the Classic and Universal subclasses already have one.
+  ResultCallback cb = Bind(&Cellular::OnConnectReply, this);
+  capability_->Connect(properties, error, cb);
+}
+
+// Note that there's no ResultCallback argument to this,
+// since Connect() isn't yet passed one.
+void Cellular::OnConnectReply(const Error &error) {
+  VLOG(2) << __func__ << "(" << error << ")";
+  if (error.IsSuccess())
+    OnConnected();
+  else
+    OnConnectFailed(error);
 }
 
 void Cellular::OnConnected() {
@@ -362,8 +375,19 @@ void Cellular::Disconnect(Error *error) {
         error, Error::kNotConnected, "Not connected; request ignored.");
     return;
   }
-  // TODO(ers): use null callback until Disconnect is made fully asynchronous
-  capability_->Disconnect(error, ResultCallback());
+  // TODO(njw): See Connect() about possible weak ptr for 'this'.
+  ResultCallback cb = Bind(&Cellular::OnDisconnectReply, this);
+  capability_->Disconnect(error, cb);
+}
+
+// Note that there's no ResultCallback argument to this,
+// since Disconnect() isn't yet passed one.
+void Cellular::OnDisconnectReply(const Error &error) {
+  VLOG(2) << __func__ << "(" << error << ")";
+  if (error.IsSuccess())
+    OnDisconnected();
+  else
+    OnDisconnectFailed();
 }
 
 void Cellular::OnDisconnected() {

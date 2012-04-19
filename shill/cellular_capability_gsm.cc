@@ -224,6 +224,16 @@ void CellularCapabilityGSM::FillConnectPropertyMap(
   }
 }
 
+void CellularCapabilityGSM::Connect(const DBusPropertiesMap &properties,
+                                    Error *error,
+                                    const ResultCallback &callback) {
+  VLOG(2) << __func__;
+  ResultCallback cb = Bind(&CellularCapabilityGSM::OnConnectReply,
+                           weak_ptr_factory_.GetWeakPtr(),
+                           callback);
+  simple_proxy_->Connect(properties, error, cb, kTimeoutConnect);
+}
+
 void CellularCapabilityGSM::OnConnectReply(const ResultCallback &callback,
                                            const Error &error) {
   if (error.IsFailure()) {
@@ -246,7 +256,8 @@ void CellularCapabilityGSM::OnConnectReply(const ResultCallback &callback,
     cellular()->service()->SetLastGoodApn(apn_try_list_.front());
     apn_try_list_.clear();
   }
-  CellularCapabilityClassic::OnConnectReply(callback, error);
+  if (!callback.is_null())
+    callback.Run(error);
 }
 
 bool CellularCapabilityGSM::AllowRoaming() {

@@ -33,6 +33,8 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   virtual void OnServiceCreated();
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
+  virtual void Connect(const DBusPropertiesMap &properties, Error *error,
+                       const ResultCallback &callback);
   // The following two methods never need to report results
   // via callbacks, which is why they don't take callbacks
   // as arguments.
@@ -76,10 +78,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
  protected:
   virtual void InitProxies();
   virtual void ReleaseProxies();
-  // Override OnConnectReply in order to handle the possibility of
-  // retrying the Connect operation.
-  virtual void OnConnectReply(const ResultCallback &callback,
-                              const Error &error);
 
  private:
   friend class CellularTest;
@@ -191,6 +189,8 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   virtual void OnScanReply(const ResultCallback &callback,
                            const GSMScanResults &results,
                            const Error &error);
+  // TODO(njw): None of the above callbacks need to be virtual.
+  void OnConnectReply(const ResultCallback &callback, const Error &error);
 
   scoped_ptr<ModemGSMCardProxyInterface> card_proxy_;
   scoped_ptr<ModemGSMNetworkProxyInterface> network_proxy_;

@@ -228,6 +228,9 @@ class Cellular : public Device {
       std::string(Cellular::*get)(Error *error),
       void(Cellular::*set)(const std::string &value, Error *error));
 
+  void OnConnectReply(const Error &error);
+  void OnDisconnectReply(const Error &error);
+
   State state_;
   ModemState modem_state_;
 

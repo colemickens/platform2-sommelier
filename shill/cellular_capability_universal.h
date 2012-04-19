@@ -85,10 +85,6 @@ class CellularCapabilityUniversal : public CellularCapability {
  protected:
   virtual void InitProxies();
   virtual void ReleaseProxies();
-  // Override OnConnectReply in order to handle the possibility of
-  // retrying the Connect operation.
-  virtual void OnConnectReply(const ResultCallback &callback,
-                              const Error &error);
 
   virtual bool AllowRoaming();
 
@@ -189,6 +185,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void OnScanReply(const ResultCallback &callback,
                            const ScanResults &results,
                            const Error &error);
+  // TODO(njw): None of the above callbacks need to be virtual.
+  void OnConnectReply(const ResultCallback &callback,
+                      const DBus::Path &bearer,
+                      const Error &error);
 
   scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
   scoped_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
@@ -227,6 +227,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   SimLockStatus sim_lock_status_;
   Stringmaps apn_list_;
   std::string sim_path_;
+  DBus::Path bearer_path_;
 
   static unsigned int friendly_service_name_id_;
 

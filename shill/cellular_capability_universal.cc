@@ -279,12 +279,20 @@ void CellularCapabilityUniversal::Stop_DisableCompleted(
 void CellularCapabilityUniversal::Connect(const DBusPropertiesMap &properties,
                                           Error *error,
                                           const ResultCallback &callback) {
-  OnUnsupportedOperation(__func__, error);
+  VLOG(2) << __func__;
+  DBusPathCallback cb = Bind(&CellularCapabilityUniversal::OnConnectReply,
+                             weak_ptr_factory_.GetWeakPtr(),
+                             callback);
+  modem_simple_proxy_->Connect(properties, error, cb, kTimeoutConnect);
 }
 
 void CellularCapabilityUniversal::Disconnect(Error *error,
                                              const ResultCallback &callback) {
-  OnUnsupportedOperation(__func__, error);
+  VLOG(2) << __func__;
+  modem_simple_proxy_->Disconnect(bearer_path_,
+                                  error,
+                                  callback,
+                                  kTimeoutDefault);
 }
 
 void CellularCapabilityUniversal::Activate(const string &carrier,
@@ -376,7 +384,10 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
 }
 
 void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
-                                           const Error &error) {
+                                                 const DBus::Path &path,
+                                                 const Error &error) {
+  VLOG(2) << __func__ << "(" << error << ")";
+
   if (error.IsFailure()) {
     cellular()->service()->ClearLastGoodApn();
     // The APN that was just tried (and failed) is still at the
@@ -393,13 +404,12 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
       Connect(props, &error, callback);
       return;
     }
-    cellular()->OnConnectFailed(error);
   } else {
     if (!apn_try_list_.empty()) {
       cellular()->service()->SetLastGoodApn(apn_try_list_.front());
       apn_try_list_.clear();
     }
-    cellular()->OnConnected();
+    bearer_path_ = path;
   }
 
   if (!callback.is_null())

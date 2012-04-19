@@ -159,19 +159,13 @@ void CellularCapabilityClassic::Connect(const DBusPropertiesMap &properties,
                                  Error *error,
                                  const ResultCallback &callback) {
   VLOG(2) << __func__;
-  ResultCallback cb = Bind(&CellularCapabilityClassic::OnConnectReply,
-                           weak_ptr_factory_.GetWeakPtr(),
-                           callback);
-  simple_proxy_->Connect(properties, error, cb, kTimeoutConnect);
+  simple_proxy_->Connect(properties, error, callback, kTimeoutConnect);
 }
 
 void CellularCapabilityClassic::Disconnect(Error *error,
                                     const ResultCallback &callback) {
   VLOG(2) << __func__;
-  ResultCallback cb = Bind(&CellularCapabilityClassic::OnDisconnectReply,
-                           weak_ptr_factory_.GetWeakPtr(),
-                           callback);
-  proxy_->Disconnect(error, cb, kTimeoutDefault);
+  proxy_->Disconnect(error, callback, kTimeoutDefault);
 }
 
 void CellularCapabilityClassic::Activate(const string &/*carrier*/,
@@ -255,31 +249,6 @@ void CellularCapabilityClassic::OnGetModemInfoReply(
             << info._3;
   }
   callback.Run(error);
-}
-
-// TODO(ers): use the supplied callback when Connect is fully asynchronous
-void CellularCapabilityClassic::OnConnectReply(const ResultCallback &callback,
-                                               const Error &error) {
-  VLOG(2) << __func__ << "(" << error << ")";
-  if (error.IsSuccess())
-    cellular()->OnConnected();
-  else
-    cellular()->OnConnectFailed(error);
-  if (!callback.is_null())
-    callback.Run(error);
-}
-
-// TODO(ers): use the supplied callback when Disonnect is fully asynchronous
-void CellularCapabilityClassic::OnDisconnectReply(
-    const ResultCallback &callback,
-    const Error &error) {
-  VLOG(2) << __func__ << "(" << error << ")";
-  if (error.IsSuccess())
-    cellular()->OnDisconnected();
-  else
-    cellular()->OnDisconnectFailed();
-  if (!callback.is_null())
-    callback.Run(error);
 }
 
 void CellularCapabilityClassic::OnModemStateChangedSignal(

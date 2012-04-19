@@ -385,17 +385,17 @@ TEST_F(CellularCapabilityTest, TryApns) {
   SetSimpleProxy();
   capability_->Connect(props, &error, ResultCallback());
   Error cerror(Error::kInvalidApn);
-  capability_->OnConnectReply(ResultCallback(), cerror);
+  gsm_capability->OnConnectReply(ResultCallback(), cerror);
   EXPECT_EQ(5, gsm_capability->apn_try_list_.size());
-  capability_->OnConnectReply(ResultCallback(), cerror);
+  gsm_capability->OnConnectReply(ResultCallback(), cerror);
   EXPECT_EQ(4, gsm_capability->apn_try_list_.size());
-  capability_->OnConnectReply(ResultCallback(), cerror);
+  gsm_capability->OnConnectReply(ResultCallback(), cerror);
   EXPECT_EQ(3, gsm_capability->apn_try_list_.size());
-  capability_->OnConnectReply(ResultCallback(), cerror);
+  gsm_capability->OnConnectReply(ResultCallback(), cerror);
   EXPECT_EQ(2, gsm_capability->apn_try_list_.size());
-  capability_->OnConnectReply(ResultCallback(), cerror);
+  gsm_capability->OnConnectReply(ResultCallback(), cerror);
   EXPECT_EQ(1, gsm_capability->apn_try_list_.size());
-  capability_->OnConnectReply(ResultCallback(), cerror);
+  gsm_capability->OnConnectReply(ResultCallback(), cerror);
   EXPECT_EQ(0, gsm_capability->apn_try_list_.size());
 }
 

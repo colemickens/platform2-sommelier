@@ -84,9 +84,6 @@ class CellularCapabilityClassic : public CellularCapability {
 
   static void OnUnsupportedOperation(const char *operation, Error *error);
 
-  virtual void OnConnectReply(const ResultCallback &callback,
-                              const Error &error);
-
   // Properties
   bool scanning_supported_;
   std::string meid_;
@@ -100,6 +97,8 @@ class CellularCapabilityClassic : public CellularCapability {
   std::string firmware_revision_;
   std::string hardware_revision_;
   std::string carrier_;
+
+  scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
 
  private:
   friend class CellularTest;
@@ -140,14 +139,11 @@ class CellularCapabilityClassic : public CellularCapability {
   virtual void OnGetModemStatusReply(const ResultCallback &callback,
                                      const DBusPropertiesMap &props,
                                      const Error &error);
-  virtual void OnDisconnectReply(const ResultCallback &callback,
-                                 const Error &error);
 
   Cellular *cellular_;
   base::WeakPtrFactory<CellularCapabilityClassic> weak_ptr_factory_;
 
   scoped_ptr<ModemProxyInterface> proxy_;
-  scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityClassic);
 };
