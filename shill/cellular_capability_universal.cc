@@ -190,7 +190,7 @@ void CellularCapabilityUniversal::StartModem(Error *error,
 
 void CellularCapabilityUniversal::Start_EnableModemCompleted(
     const ResultCallback &callback, const Error &error) {
-  VLOG(2) << __func__ << ": " << error;
+  SLOG(Cellular, 2) << __func__ << ": " << error;
   if (error.IsFailure()) {
     callback.Run(error);
     return;
@@ -215,7 +215,7 @@ void CellularCapabilityUniversal::Start_EnableModemCompleted(
 
 void CellularCapabilityUniversal::Start_RegisterCompleted(
     const ResultCallback &callback, const Error &error) {
-  VLOG(2) << __func__ << ": " << error;
+  SLOG(Cellular, 2) << __func__ << ": " << error;
   if (error.IsSuccess()) {
     // Normally, running the callback is the last thing done in a method.
     // In this case, we do it first, because we want to make sure that
@@ -997,8 +997,8 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
 
 void CellularCapabilityUniversal::OnModemStateChangedSignal(
     int32 old_state, int32 new_state, uint32 reason) {
-  VLOG(2) << __func__ << "(" << old_state << ", " << new_state << ", "
-          << reason << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << old_state << ", " << new_state << ", "
+                    << reason << ")";
   cellular()->OnModemStateChanged(static_cast<Cellular::ModemState>(old_state),
                                   static_cast<Cellular::ModemState>(new_state),
                                   reason);
