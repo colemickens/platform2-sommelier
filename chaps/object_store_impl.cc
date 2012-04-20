@@ -178,7 +178,7 @@ bool ObjectStoreImpl::LoadPrivateObjectBlobs(map<int, ObjectBlob>* blobs) {
 
 bool ObjectStoreImpl::LoadObjectBlobs(BlobType type,
                                       map<int, ObjectBlob>* blobs) {
-  leveldb::Iterator* it = db_->NewIterator(leveldb::ReadOptions());
+  scoped_ptr<leveldb::Iterator> it(db_->NewIterator(leveldb::ReadOptions()));
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     BlobType it_type;
     int id = 0;
