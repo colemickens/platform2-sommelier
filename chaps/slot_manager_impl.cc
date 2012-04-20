@@ -219,8 +219,11 @@ bool SlotManagerImpl::Init() {
   }
   // Mix in some random bytes from the TPM to the openssl prng.
   string random;
-  if (tpm_utility_->GenerateRandom(128, &random))
+  if (tpm_utility_->GenerateRandom(128, &random)) {
     RAND_seed(ConvertStringToByteBuffer(random.data()), random.length());
+  } else {
+    LOG(WARNING) << "TPM failed to generate random data.";
+  }
   // Default semantics are to always start with two slots.  One 'system' slot
   // which always has a token available, and one 'user' slot which will have no
   // token until a login event is received.
@@ -336,6 +339,11 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
   // If we're already managing this token, ignore the event.
   if (path_slot_map_.find(path) != path_slot_map_.end()) {
     LOG(WARNING) << "Login event received for existing slot.";
+    return;
+  }
+  // If there's something wrong with the TPM, don't attempt to load a token.
+  if (!tpm_utility_->Init()) {
+    LOG(ERROR) << "Failed to initialize TPM, login event aborting.";
     return;
   }
   // Setup the object pool.
