@@ -30,6 +30,10 @@ RPCTask::~RPCTask() {
   SLOG(Task, 2) << "RPCTask " + unique_name_ + " destroyed.";
 }
 
+void RPCTask::GetLogin(string *user, string *password) {
+  delegate_->GetLogin(user, password);
+}
+
 void RPCTask::Notify(const string &reason, const map<string, string> &dict) {
   delegate_->Notify(reason, dict);
 }

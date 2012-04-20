@@ -6,10 +6,12 @@
 
 #include <base/file_util.h>
 #include <base/scoped_temp_dir.h>
+#include <base/string_util.h>
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/nice_mock_control.h"
+#include "shill/mock_adaptors.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -17,20 +19,23 @@
 #include "shill/mock_vpn_service.h"
 
 using std::find;
+using std::map;
 using std::string;
 using std::vector;
 using testing::_;
 using testing::ElementsAreArray;
 using testing::Return;
 using testing::ReturnRef;
+using testing::SetArgumentPointee;
 
 namespace shill {
 
-class L2TPIPSecDriverTest : public testing::Test {
+class L2TPIPSecDriverTest : public testing::Test,
+                            public RPCTaskDelegate {
  public:
   L2TPIPSecDriverTest()
       : manager_(&control_, &dispatcher_, &metrics_, &glib_),
-        driver_(new L2TPIPSecDriver(&manager_)),
+        driver_(new L2TPIPSecDriver(&control_, &manager_, &glib_)),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)) {
     driver_->nss_ = &nss_;
@@ -43,6 +48,9 @@ class L2TPIPSecDriverTest : public testing::Test {
   }
 
   virtual void TearDown() {
+    driver_->child_watch_tag_ = 0;
+    driver_->pid_ = 0;
+    driver_->service_ = NULL;
     ASSERT_TRUE(temp_dir_.Delete());
   }
 
@@ -55,6 +63,10 @@ class L2TPIPSecDriverTest : public testing::Test {
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
 
+  // Inherited from RPCTaskDelegate.
+  virtual void GetLogin(string *user, string *password);
+  virtual void Notify(const string &reason, const map<string, string> &dict);
+
   ScopedTempDir temp_dir_;
   NiceMockControl control_;
   EventDispatcher dispatcher_;
@@ -65,6 +77,11 @@ class L2TPIPSecDriverTest : public testing::Test {
   scoped_refptr<MockVPNService> service_;
   MockNSS nss_;
 };
+
+void L2TPIPSecDriverTest::GetLogin(string */*user*/, string */*password*/) {}
+
+void L2TPIPSecDriverTest::Notify(
+    const string &/*reason*/, const map<string, string> &/*dict*/) {}
 
 void L2TPIPSecDriverTest::ExpectInFlags(
     const vector<string> &options, const string &flag, const string &value) {
@@ -86,22 +103,47 @@ TEST_F(L2TPIPSecDriverTest, GetProviderType) {
 }
 
 TEST_F(L2TPIPSecDriverTest, Cleanup) {
-  driver_->Cleanup();  // Ensure no crash.
+  driver_->Cleanup(Service::kStateIdle);  // Ensure no crash.
 
+  const unsigned int kTag = 123;
+  driver_->child_watch_tag_ = kTag;
+  EXPECT_CALL(glib_, SourceRemove(kTag));
+  const int kPID = 123456;
+  driver_->pid_ = kPID;
+  EXPECT_CALL(glib_, SpawnClosePID(kPID));
+  driver_->service_ = service_;
+  EXPECT_CALL(*service_, SetState(Service::kStateFailure));
+  driver_->rpc_task_.reset(new RPCTask(&control_, this));
   FilePath psk_file;
   EXPECT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir_.path(), &psk_file));
   EXPECT_FALSE(psk_file.empty());
   EXPECT_TRUE(file_util::PathExists(psk_file));
   driver_->psk_file_ = psk_file;
-  driver_->Cleanup();
+  driver_->Cleanup(Service::kStateFailure);
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(driver_->psk_file_.empty());
+  EXPECT_EQ(0, driver_->child_watch_tag_);
+  EXPECT_EQ(0, driver_->pid_);
+  EXPECT_FALSE(driver_->rpc_task_.get());
+  EXPECT_FALSE(driver_->service_);
+}
+
+TEST_F(L2TPIPSecDriverTest, InitEnvironment) {
+  vector<string> env;
+  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->InitEnvironment(&env);
+  ASSERT_EQ(3, env.size());
+  EXPECT_EQ(string("CONNMAN_BUSNAME=") + RPCTaskMockAdaptor::kRpcConnId,
+            env[0]);
+  EXPECT_EQ(string("CONNMAN_INTERFACE=") + RPCTaskMockAdaptor::kRpcInterfaceId,
+            env[1]);
+  EXPECT_EQ(string("CONNMAN_PATH=") + RPCTaskMockAdaptor::kRpcId, env[2]);
 }
 
 TEST_F(L2TPIPSecDriverTest, InitOptionsNoHost) {
   Error error;
   vector<string> options;
-  driver_->InitOptions(&options, &error);
+  EXPECT_FALSE(driver_->InitOptions(&options, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_TRUE(options.empty());
 }
@@ -123,7 +165,7 @@ TEST_F(L2TPIPSecDriverTest, InitOptions) {
 
   Error error;
   vector<string> options;
-  driver_->InitOptions(&options, &error);
+  EXPECT_TRUE(driver_->InitOptions(&options, &error));
   EXPECT_TRUE(error.IsSuccess());
 
   ExpectInFlags(options, "--remote_host", kHost);
@@ -242,6 +284,83 @@ TEST_F(L2TPIPSecDriverTest, AppendFlag) {
   EXPECT_EQ(2, options.size());
   EXPECT_EQ(kTrueOption, options[0]);
   EXPECT_EQ(kFalseOption2, options[1]);
+}
+
+TEST_F(L2TPIPSecDriverTest, GetLogin) {
+  static const char kUser[] = "joesmith";
+  static const char kPassword[] = "random-password";
+  string user, password;
+  SetArg(flimflam::kL2tpIpsecUserProperty, kUser);
+  driver_->GetLogin(&user, &password);
+  EXPECT_TRUE(user.empty());
+  EXPECT_TRUE(password.empty());
+  SetArg(flimflam::kL2tpIpsecUserProperty, "");
+  SetArg(flimflam::kL2tpIpsecPasswordProperty, kPassword);
+  driver_->GetLogin(&user, &password);
+  EXPECT_TRUE(user.empty());
+  EXPECT_TRUE(password.empty());
+  SetArg(flimflam::kL2tpIpsecUserProperty, kUser);
+  driver_->GetLogin(&user, &password);
+  EXPECT_EQ(kUser, user);
+  EXPECT_EQ(kPassword, password);
+}
+
+TEST_F(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied) {
+  const int kPID = 99999;
+  driver_->child_watch_tag_ = 333;
+  driver_->pid_ = kPID;
+  EXPECT_CALL(glib_, SpawnClosePID(kPID));
+  L2TPIPSecDriver::OnL2TPIPSecVPNDied(kPID, 2, driver_);
+  EXPECT_EQ(0, driver_->child_watch_tag_);
+  EXPECT_EQ(0, driver_->pid_);
+}
+
+namespace {
+MATCHER(CheckEnv, "") {
+  if (!arg || !arg[0] || !arg[1] || !arg[2] || arg[3]) {
+    return false;
+  }
+  return StartsWithASCII(arg[0], "CONNMAN_", true);
+}
+}  // namespace
+
+TEST_F(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN) {
+  Error error;
+  EXPECT_FALSE(driver_->SpawnL2TPIPSecVPN(&error));
+  EXPECT_TRUE(error.IsFailure());
+
+  static const char kHost[] = "192.168.2.254";
+  SetArg(flimflam::kProviderHostProperty, kHost);
+  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+
+  const int kPID = 234678;
+  EXPECT_CALL(glib_,
+              SpawnAsyncWithPipesCWD(_, CheckEnv(), _, _, _, _, _, _, _, _))
+      .WillOnce(Return(false))
+      .WillOnce(DoAll(SetArgumentPointee<5>(kPID), Return(true)));
+  const int kTag = 6;
+  EXPECT_CALL(glib_, ChildWatchAdd(kPID, &driver_->OnL2TPIPSecVPNDied, driver_))
+      .WillOnce(Return(kTag));
+  error.Reset();
+  EXPECT_FALSE(driver_->SpawnL2TPIPSecVPN(&error));
+  EXPECT_EQ(Error::kInternalError, error.type());
+  error.Reset();
+  EXPECT_TRUE(driver_->SpawnL2TPIPSecVPN(&error));
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kPID, driver_->pid_);
+  EXPECT_EQ(kTag, driver_->child_watch_tag_);
+}
+
+TEST_F(L2TPIPSecDriverTest, Connect) {
+  EXPECT_CALL(*service_, SetState(Service::kStateConfiguring));
+  static const char kHost[] = "192.168.2.254";
+  SetArg(flimflam::kProviderHostProperty, kHost);
+  EXPECT_CALL(glib_, SpawnAsyncWithPipesCWD(_, _, _, _, _, _, _, _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).WillOnce(Return(1));
+  Error error;
+  driver_->Connect(service_, &error);
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 }  // namespace shill

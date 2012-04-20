@@ -42,6 +42,11 @@ const string &RPCTaskDBusAdaptor::GetRpcConnectionIdentifier() {
   return connection_name_;
 }
 
+void RPCTaskDBusAdaptor::getsec(
+    string &user, string &password, DBus::Error &error) {
+  task_->GetLogin(&user, &password);
+}
+
 void RPCTaskDBusAdaptor::notify(const string &reason,
                                 const map<string, string> &dict,
                                 DBus::Error &/*error*/) {

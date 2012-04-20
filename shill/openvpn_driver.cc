@@ -241,6 +241,10 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   return true;
 }
 
+void OpenVPNDriver::GetLogin(string */*user*/, string */*password*/) {
+  NOTREACHED();
+}
+
 void OpenVPNDriver::Notify(const string &reason,
                            const map<string, string> &dict) {
   SLOG(VPN, 2) << __func__ << "(" << reason << ")";

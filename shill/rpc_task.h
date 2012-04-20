@@ -16,10 +16,13 @@ namespace shill {
 class ControlInterface;
 class RPCTaskAdaptorInterface;
 
+// TODO(petkov): Switch from delegate interface to registered callbacks
+// (crosbug.com/29766).
 class RPCTaskDelegate {
  public:
   virtual ~RPCTaskDelegate() {}
 
+  virtual void GetLogin(std::string *user, std::string *password) = 0;
   virtual void Notify(const std::string &reason,
                       const std::map<std::string, std::string> &dict) = 0;
 };
@@ -33,6 +36,7 @@ class RPCTask {
   RPCTask(ControlInterface *control_interface, RPCTaskDelegate *delegate);
   virtual ~RPCTask();
 
+  virtual void GetLogin(std::string *user, std::string *password);
   virtual void Notify(const std::string &reason,
                       const std::map<std::string, std::string> &dict);
 

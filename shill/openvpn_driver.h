@@ -160,6 +160,7 @@ class OpenVPNDriver : public VPNDriver,
   static void OnOpenVPNDied(GPid pid, gint status, gpointer data);
 
   // Implements RPCTaskDelegate.
+  virtual void GetLogin(std::string *user, std::string *password);
   virtual void Notify(const std::string &reason,
                       const std::map<std::string, std::string> &dict);
 

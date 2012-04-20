@@ -17,18 +17,31 @@ namespace shill {
 class RPCTaskTest : public testing::Test,
                     public RPCTaskDelegate {
  public:
-  RPCTaskTest() : notify_calls_(0), task_(&control_, this) {}
+  RPCTaskTest()
+      : get_login_calls_(0),
+        notify_calls_(0),
+        task_(&control_, this) {}
 
   // Inherited from RPCTaskDelegate.
+  virtual void GetLogin(string *user, string *password);
   virtual void Notify(const string &reason, const map<string, string> &dict);
 
  protected:
+  int get_login_calls_;
   int notify_calls_;
+  string *last_user_;
+  string *last_password_;
   string last_notify_reason_;
   map<string, string> last_notify_dict_;
   NiceMockControl control_;
   RPCTask task_;
 };
+
+void RPCTaskTest::GetLogin(string *user, string *password) {
+  get_login_calls_++;
+  last_user_ = user;
+  last_password_ = password;
+}
 
 void RPCTaskTest::Notify(const string &reason,
                          const map<string, string> &dict) {
@@ -43,6 +56,14 @@ TEST_F(RPCTaskTest, GetRpcIdentifiers) {
   EXPECT_EQ(RPCTaskMockAdaptor::kRpcInterfaceId,
             task_.GetRpcInterfaceIdentifier());
   EXPECT_EQ(RPCTaskMockAdaptor::kRpcConnId, task_.GetRpcConnectionIdentifier());
+}
+
+TEST_F(RPCTaskTest, GetLogin) {
+  string user, password;
+  task_.GetLogin(&user, &password);
+  EXPECT_EQ(1, get_login_calls_);
+  EXPECT_EQ(&user, last_user_);
+  EXPECT_EQ(&password, last_password_);
 }
 
 TEST_F(RPCTaskTest, Notify) {

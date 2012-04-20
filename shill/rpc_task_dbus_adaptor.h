@@ -34,6 +34,8 @@ class RPCTaskDBusAdaptor : public org::chromium::flimflam::Task_adaptor,
   virtual const std::string &GetRpcConnectionIdentifier();
 
   // Implementation of Task_adaptor
+  virtual void getsec(
+      std::string &user, std::string &password, DBus::Error &error);
   virtual void notify(const std::string &reason,
                       const std::map<std::string, std::string> &dict,
                       DBus::Error &error);

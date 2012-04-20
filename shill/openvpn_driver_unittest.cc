@@ -113,6 +113,7 @@ class OpenVPNDriverTest : public testing::Test,
                                     Error *error);
 
   // Inherited from RPCTaskDelegate.
+  virtual void GetLogin(string *user, string *password);
   virtual void Notify(const string &reason, const map<string, string> &dict);
 
   NiceMockControl control_;
@@ -144,6 +145,8 @@ const char OpenVPNDriverTest::kNetmask2[] = "255.255.0.0";
 const char OpenVPNDriverTest::kNetwork2[] = "192.168.0.0";
 const char OpenVPNDriverTest::kInterfaceName[] = "tun0";
 const int OpenVPNDriverTest::kInterfaceIndex = 123;
+
+void OpenVPNDriverTest::GetLogin(string */*user*/, string */*password*/) {}
 
 void OpenVPNDriverTest::Notify(const string &/*reason*/,
                                const map<string, string> &/*dict*/) {}

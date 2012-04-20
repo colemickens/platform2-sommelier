@@ -3,6 +3,10 @@
 
 <node>
 	<interface name="org.chromium.flimflam.Task">
+		<method name="getsec">
+			<arg type="s" direction="out"/>
+			<arg type="s" direction="out"/>
+		</method>
 		<method name="notify">
 			<arg type="s" direction="in"/>
 			<arg type="a{ss}" direction="in"/>
