@@ -39,8 +39,12 @@ static const char kDeviceBlackList[] = "device-black-list";
 static const char kPushProfiles[] = "push";
 // Flag that causes shill to show the help message and exit.
 static const char kHelp[] = "help";
-// LOG() level. 0 = INFO, 1 = WARNING, 2 = ERROR.
+// Logging level:
+//   0 = LOG(INFO), 1 = LOG(WARNING), 2 = LOG(ERROR),
+//   -1 = SLOG(..., 1), -2 = SLOG(..., 2), etc.
 static const char kLogLevel[] = "log-level";
+// Scopes to enable for SLOG()-based logging.
+static const char kLogScopes[] = "log-scopes";
 // Use the same directories flimflam uses (profiles, run dir...)
 static const char kUseFlimflamDirs[] = "use-flimflam-dirs";
 
@@ -56,15 +60,15 @@ static const char kHelpMessage[] = "\n"
     "  --device-black-list=device1,device2\n"
     "    Do not manage devices named device1 or device2\n"
     "  --log-level=N\n"
-    "    LOG() level. 0 = INFO, 1 = WARNING, 2 = ERROR.\n"
+    "    Logging level:\n"
+    "      0 = LOG(INFO), 1 = LOG(WARNING), 2 = LOG(ERROR),\n"
+    "      -1 = SLOG(..., 1), -2 = SLOG(..., 2), etc.\n"
+    "  --log-scopes=\"*scope1+scope2\".\n"
+    "    Scopes to enable for SLOG()-based logging.\n"
     "  --push=profile1,profile2\n"
     "    Specify profiles to push on startup.\n"
     "  --use-flimflam-dirs\n"
-    "    Use the same directories flimflam uses (profiles, run dir...).\n"
-    "  --v=N\n"
-    "    Enables VLOG(N) and below.\n"
-    "  --vmodule=\"*file_pattern*=1,certain_file.cc=2\".\n"
-    "    Enable VLOG() at different levels in different files/modules.\n";
+    "    Use the same directories flimflam uses (profiles, run dir...).\n";
 }  // namespace switches
 
 // Always logs to the syslog and logs to stderr if
@@ -112,11 +116,18 @@ int main(int argc, char** argv) {
     std::string log_level = cl->GetSwitchValueASCII(switches::kLogLevel);
     int level = 0;
     if (base::StringToInt(log_level, &level) &&
-        level >= 0 && level < logging::LOG_NUM_SEVERITIES) {
+        level < logging::LOG_NUM_SEVERITIES) {
       logging::SetMinLogLevel(level);
+      // Like VLOG, SLOG uses negative verbose level.
+      shill::ScopeLogger::GetInstance()->set_verbose_level(-level);
     } else {
       LOG(WARNING) << "Bad log level: " << log_level;
     }
+  }
+
+  if (cl->HasSwitch(switches::kLogScopes)) {
+    std::string log_scopes = cl->GetSwitchValueASCII(switches::kLogScopes);
+    shill::ScopeLogger::GetInstance()->EnableScopesByName(log_scopes);
   }
 
   FilePath config_dir(cl->GetSwitchValueASCII(switches::kConfigDir));
