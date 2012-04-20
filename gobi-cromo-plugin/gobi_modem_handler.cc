@@ -9,10 +9,12 @@ extern "C" {
 #include <libudev.h>
 #include <stdio.h>
 #include <syslog.h>
+// Defines from syslog.h that conflict with base/logging.h. Ugh.
+#undef LOG_INFO
+#undef LOG_WARNING
 }
 
-#include "glog/logging.h"
-
+#include <base/logging.h>
 #include <cromo/cromo_server.h>
 #include <cromo/plugin.h>
 

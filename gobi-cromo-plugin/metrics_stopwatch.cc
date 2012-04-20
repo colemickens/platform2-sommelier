@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <time.h>
 
-#include <glog/logging.h>
+#include <base/logging.h>
 #include <metrics/metrics_library.h>
 
 static const unsigned long long kInvalid = ULLONG_MAX;

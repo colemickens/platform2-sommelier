@@ -8,7 +8,7 @@ extern "C" {
 #include <libudev.h>
 }
 
-#include "glog/logging.h"
+#include <base/logging.h>
 
 static gboolean udev_event(GIOChannel* channel,
                            GIOCondition condition,

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Small test for gobi modem handles.  Avoids glog and many other
-// dependencies.  Code liberally cribbed from gobi-modem-reset.c
+// Small test for gobi modem handles.  Avoids many dependencies.
+// Code liberally cribbed from gobi-modem-reset.c
 
 #include <ctype.h>
 #include <errno.h>

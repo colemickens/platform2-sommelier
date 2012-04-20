@@ -10,7 +10,7 @@
 #include <pthread.h>
 #include <base/basictypes.h>
 // TODO(ers) remove following #include once logging spew is resolved
-#include <glog/logging.h>
+#include <base/logging.h>
 #include <gtest/gtest_prod.h>  // For FRIEND_TEST
 #include <map>
 #include <string>

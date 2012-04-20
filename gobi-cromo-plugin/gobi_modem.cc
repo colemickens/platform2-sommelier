@@ -19,12 +19,12 @@ extern "C" {
 #include <time.h>
 };
 
+#include <base/logging.h>
 #include <base/stringprintf.h>
 #include <cromo/carrier.h>
 #include <cromo/cromo_server.h>
 #include <cromo/utilities.h>
 
-#include <glog/logging.h>
 
 // This ought to be in a header file somewhere, but if it is, I can't find it.
 #ifndef NDEBUG

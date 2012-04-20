@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <glog/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -169,7 +169,6 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmConnected) {
 
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
-  google::InitGoogleLogging(argv[0]);
 
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;

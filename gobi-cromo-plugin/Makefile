@@ -11,7 +11,7 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += $(PC_CFLAGS)
 CXXFLAGS += -fPIC -Wall -Werror -g
-LDLIBS += -lGobiConnectionMgmt -lGobiImageMgmt -lglog -lpthread -lrt \
+LDLIBS += -lGobiConnectionMgmt -lGobiImageMgmt -lpthread -lrt \
           -ludev -lmetrics -lgobi3k $(PC_LIBS)
 
 DBUSXX_XML2CPP = dbusxx-xml2cpp

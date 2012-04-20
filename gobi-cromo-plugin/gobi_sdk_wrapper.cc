@@ -22,7 +22,7 @@
 
 #include "gobi_sdk_wrapper.h"
 
-#include <glog/logging.h>
+#include <base/logging.h>
 
 #include "gobi/GobiConnectionMgmtAPI.h"
 #include "gobi/GobiImageMgmtAPI.h"

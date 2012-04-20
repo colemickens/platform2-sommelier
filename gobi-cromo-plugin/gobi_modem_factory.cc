@@ -9,8 +9,8 @@
 #include "gobi_2k_modem.h"
 #include "gobi_3k_modem.h"
 
+#include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <glog/logging.h>
 
 GobiModem* GobiModemFactory::CreateModem(DBus::Connection& connection,
                                          const DBus::Path& path,
