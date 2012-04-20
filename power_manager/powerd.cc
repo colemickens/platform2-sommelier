@@ -802,7 +802,7 @@ void Daemon::RegisterDBusMessageHandler() {
                        &Daemon::HandleLidOpenedSignal);
   AddDBusSignalHandler(kPowerManagerInterface, kButtonEventSignal,
                        &Daemon::HandleButtonEventSignal);
-  AddDBusSignalHandler(kPowerManagerInterface, kRequestCleanShutdown,
+  AddDBusSignalHandler(kPowerManagerInterface, kCleanShutdown,
                        &Daemon::HandleCleanShutdownSignal);
   AddDBusSignalHandler(kPowerManagerInterface, kPowerStateChangedSignal,
                        &Daemon::HandlePowerStateChangedSignal);
