@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <glib-unix.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -15,10 +16,6 @@
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <chromeos/syslog_logging.h>
-
-extern "C" {
-#include <glib-unix.h>
-}
 
 #include "shill/dbus_control.h"
 #include "shill/shill_config.h"
