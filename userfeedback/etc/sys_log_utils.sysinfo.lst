@@ -17,7 +17,7 @@
 CLIENT_ID,/usr/share/userfeedback/scripts/get_log "/home/chronos/Consent To Send Stats"
 LOGDATE,/bin/date
 Xorg.0.log,/usr/share/userfeedback/scripts/get_log /var/log/Xorg.0.log
-alsa_controls,/usr/bin/amixer contents
+alsa_controls,/usr/bin/amixer -c0 contents
 bios_info,/usr/share/userfeedback/scripts/get_log /var/log/bios_info.txt
 bios_log,cat /sys/firmware/log | /usr/share/userfeedback/scripts/get_log /dev/stdin 2000
 board-specific, /usr/share/userfeedback/scripts/get_board_specific_info
@@ -26,6 +26,7 @@ chrome_log,/usr/share/userfeedback/scripts/get_log /home/chronos/user/log/chrome
 chrome_system_log,/usr/share/userfeedback/scripts/get_log /var/log/chrome/chrome,ascii
 cpu,uname -p
 cpuinfo,cat /proc/cpuinfo
+cras,/usr/bin/cras_test_client --dump_server_info
 dmesg,/bin/dmesg
 ec_info,/usr/share/userfeedback/scripts/get_log /var/log/ec_info.txt
 env,set
