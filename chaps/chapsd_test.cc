@@ -271,43 +271,6 @@ TEST_F(TestP11, MechInfo) {
   EXPECT_EQ(CKR_ARGUMENTS_BAD, result);
 }
 
-// TODO(dkrahn): crosbug.com/22297
-// These PIN-related tests can mess up a live token.  Leave them until we're
-// no longer using openCryptoki.
-#ifdef CHAPS_TOKEN_INIT_TESTS
-TEST_F(TestP11, InitToken) {
-  string label = "test";
-  ASSERT_EQ(CKR_OK, chaps_->CloseAllSessions(0));
-  EXPECT_NE(CKR_OK, chaps_->InitToken(0, NULL, label));
-  ASSERT_EQ(CKR_OK, chaps_->InitToken(0, &so_pin_, label);
-  // Put the token back in a usable state. This is required if we're testing on
-  // a live token.
-  uint64_t session = 0;
-  ASSERT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION|CKF_RW_SESSION,
-                                        &session));
-  ASSERT_EQ(CKR_OK, chaps_->Login(session, CKU_SO, &so_pin_));
-  ASSERT_EQ(CKR_OK, chaps_->InitPIN(session, &user_pin_));
-  ASSERT_EQ(CKR_OK, chaps_->Logout(session));
-  ASSERT_EQ(CKR_OK, chaps_->CloseSession(session));
-}
-
-TEST_F(TestP11SOSession, InitPIN) {
-  EXPECT_NE(CKR_OK, chaps_->InitPIN(session_id_, NULL));
-  EXPECT_EQ(CKR_OK, chaps_->InitPIN(session_id_, &user_pin_));
-}
-
-TEST_F(TestP11UserSession, SetPIN) {
-  string bad_pin = "123456";
-  string other_pin = "222222";
-  EXPECT_NE(CKR_OK, chaps_->SetPIN(session_id_, &bad_pin, &other_pin));
-  EXPECT_NE(CKR_OK, chaps_->SetPIN(session_id_, NULL, NULL));
-  ASSERT_EQ(CKR_OK, chaps_->SetPIN(session_id_, &user_pin_, &other_pin));
-  // Put the PIN back to what it was. This is required if we're testing on a
-  // live token.
-  ASSERT_EQ(CKR_OK, chaps_->SetPIN(session_id_, &other_pin, &user_pin_));
-}
-#endif
-
 TEST_F(TestP11, OpenCloseSession) {
   uint64_t session = 0;
   // Test successful RO and RW sessions.
