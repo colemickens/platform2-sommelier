@@ -78,7 +78,7 @@ class DeviceInfo {
   friend class DeviceInfoTest;
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(DeviceInfoTest, AddLoopbackDevice);  // For kLoopbackDeviceName.
-  FRIEND_TEST(DeviceInfoTest, GrandchildSubdir);  // For IsGrandChildSubdir.
+  FRIEND_TEST(DeviceInfoTest, HasSubdir);  // For HasSubdir.
 
   struct Info {
     Info() : flags(0) {}
@@ -120,12 +120,10 @@ class DeviceInfo {
   // This method assumes that |iface_name| has already been determined to be
   // using the cdc_ether driver.
   static bool IsCdcEtherModemDevice(const std::string &iface_name);
-  // Returns true if |grandchild| is a grandchild of the |base_dir|.
-  // This method only searches for |grandchild| in children specified by
-  // the regex in |children_filter|.
-  static bool IsGrandchildSubdir(const FilePath &base_dir,
-                                 const std::string &children_filter,
-                                 const std::string &grandchild);
+  // Returns true if |base_dir| has a subdirectory named |subdir|.
+  // |subdir| can be an immediate subdirectory of |base_dir| or can be
+  // several levels deep.
+  static bool HasSubdir(const FilePath &base_dir, const FilePath &subdir);
 
   void AddLinkMsgHandler(const RTNLMessage &msg);
   void DelLinkMsgHandler(const RTNLMessage &msg);

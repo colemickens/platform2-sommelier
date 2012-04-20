@@ -254,6 +254,10 @@ bool DeviceInfo::IsCdcEtherModemDevice(const std::string &iface_name) {
   //
   // /sys/class/net/usb0/device symlinks to
   // /sys/devices/pci0000:00/0000:00:1d.7/usb1/1-2/1-2:1.1
+  //
+  // Note that some modem devices have the tty directory one level deeper
+  // (eg. E362), so the device tree for the tty interface is:
+  // /sys/devices/pci0000:00/0000:00:1d.7/usb/1-2/1-2:1.0/ttyUSB0/tty/ttyUSB0
 
   FilePath device_file(StringPrintf(kInterfaceDevice, iface_name.c_str()));
   FilePath device_path;
@@ -268,25 +272,23 @@ bool DeviceInfo::IsCdcEtherModemDevice(const std::string &iface_name) {
   }
 
   // Look for tty interface by enumerating all directories under the parent
-  // USB device and seeing if there's a subdirectory "tty" inside of the
-  // enumerated directory.  In other words, using the example dir hierarchy
-  // above, find /sys/devices/pci0000:00/0000:00:1d.7/usb1/1-2/1-2*/tty.
+  // USB device and see if there's a subdirectory "tty" inside.  In other
+  // words, using the example dir hierarchy above, find
+  // /sys/devices/pci0000:00/0000:00:1d.7/usb1/1-2/.../tty.
   // If this exists, then this is a modem device.
-  FilePath usb_device_path(device_path.DirName());
-  string search_pattern(usb_device_path.BaseName().MaybeAsASCII() + "*");
-  return IsGrandchildSubdir(usb_device_path, search_pattern, "tty");
+  return HasSubdir(device_path.DirName(), FilePath("tty"));
 }
 
 // static
-bool DeviceInfo::IsGrandchildSubdir(const FilePath &base_dir,
-                                    const string &children_filter,
-                                    const string &grandchild) {
-  file_util::FileEnumerator dir_enum(base_dir, false,
-                                     file_util::FileEnumerator::DIRECTORIES,
-                                     children_filter);
+bool DeviceInfo::HasSubdir(const FilePath &base_dir, const FilePath &subdir) {
+  file_util::FileEnumerator::FileType type =
+      static_cast<file_util::FileEnumerator::FileType>(
+          file_util::FileEnumerator::DIRECTORIES |
+          file_util::FileEnumerator::SHOW_SYM_LINKS);
+  file_util::FileEnumerator dir_enum(base_dir, true, type);
   for (FilePath curr_dir = dir_enum.Next(); !curr_dir.empty();
        curr_dir = dir_enum.Next()) {
-    if (file_util::DirectoryExists(curr_dir.Append(grandchild)))
+    if (curr_dir.BaseName() == subdir)
       return true;
   }
   return false;
