@@ -10,6 +10,7 @@
 #include <base/stringprintf.h>
 #include <gtest/gtest.h>
 
+using file_util::FileEnumerator;
 using std::set;
 using std::string;
 using std::vector;
@@ -70,6 +71,18 @@ TEST_F(KeyFileStoreTest, OpenClose) {
   EXPECT_EQ(1, store_.crypto_.cryptos_.size());
   ASSERT_TRUE(store_.Close());
   EXPECT_FALSE(store_.key_file_);
+  FileEnumerator file_enumerator(temp_dir_.path(),
+                                 false /* not recursive */,
+                                 FileEnumerator::FILES);
+
+  // Verify that the file actually got written with the right name.
+  EXPECT_EQ(test_file_.value(), file_enumerator.Next().value());
+  FileEnumerator::FindInfo find_info;
+  file_enumerator.GetFindInfo(&find_info);
+
+  // Verify that the profile is a regular file, readable and writeable by the
+  // owner only.
+  EXPECT_EQ(S_IFREG | S_IRUSR | S_IWUSR, find_info.stat.st_mode);
 
   ASSERT_TRUE(store_.Open());
   EXPECT_TRUE(store_.key_file_);

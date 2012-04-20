@@ -6,6 +6,9 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "shill/scope_logger.h"
 
@@ -83,11 +86,18 @@ bool KeyFileStore::Flush() {
     success = false;
   }
   if (success) {
-    int written = file_util::WriteFile(path_, data, length);
-    if (written < 0 ||
-        static_cast<unsigned int>(written) != length) {
-      LOG(ERROR) << "Failed to store key file: " << path_.value();
+    // The profile file must be accessible by the owner only.
+    int fd = creat(path_.value().c_str(), S_IRUSR | S_IWUSR);
+    if (fd < 0) {
+      LOG(ERROR) << "Failed to create key file " << path_.value();
       success = false;
+    } else {
+      int written = file_util::WriteFileDescriptor(fd, data, length);
+      if (written < 0 || (static_cast<gsize>(written) != length)) {
+        LOG(ERROR) << "Failed to store key file: " << path_.value();
+        success = false;
+      }
+      close(fd);
     }
   }
   glib_->Free(data);
