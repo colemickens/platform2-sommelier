@@ -43,6 +43,9 @@ class DeviceInfo {
     unsigned char scope;
   };
 
+  // Device name prefix for modem pseudo devices used in testing.
+  static const char kModemPseudoDeviceNamePrefix[];
+
   DeviceInfo(ControlInterface *control_interface,
              EventDispatcher *dispatcher,
              Metrics *metrics,

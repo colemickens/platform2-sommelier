@@ -9,6 +9,7 @@
 #include <mm/ModemManager-names.h>
 
 #include "shill/cellular.h"
+#include "shill/device_info.h"
 
 using std::string;
 
@@ -39,7 +40,13 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
   if (!DBusProperties::GetString(modem_props,
                                  MM_MODEM_PROPERTY_DEVICE,
                                  &device_prop)) {
+    LOG(ERROR) << "Device missing property: " << MM_MODEM_PROPERTY_DEVICE;
     return false;
+  }
+
+  if (device_prop.find(DeviceInfo::kModemPseudoDeviceNamePrefix) == 0) {
+    *name = device_prop;
+    return true;
   }
 
   // |device_prop| will be a sysfs path such as:
@@ -68,6 +75,7 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
       return true;
     }
   }
+  LOG(ERROR) << "No link name found for: " << device_prop;
   return false;
 }
 

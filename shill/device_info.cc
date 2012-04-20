@@ -52,6 +52,7 @@ using std::vector;
 namespace shill {
 
 // static
+const char DeviceInfo::kModemPseudoDeviceNamePrefix[] = "pseudomodem";
 const char DeviceInfo::kDeviceInfoRoot[] = "/sys/class/net";
 const char DeviceInfo::kDriverVirtioNet[] = "virtio_net";
 const char DeviceInfo::kInterfaceUevent[] = "uevent";
@@ -234,6 +235,14 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
       IsCdcEtherModemDevice(iface_name)) {
     SLOG(Device, 2) << StringPrintf("%s: device %s is a modem cdc_ether device",
                                     __func__, iface_name.c_str());
+    return Technology::kCellular;
+  }
+
+  // Special case for pseudo modems which are used for testing
+  if (iface_name.find(kModemPseudoDeviceNamePrefix) == 0) {
+    SLOG(Device, 2) << StringPrintf(
+        "%s: device %s is a pseudo modem for testing",
+        __func__, iface_name.c_str());
     return Technology::kCellular;
   }
 

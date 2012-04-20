@@ -342,7 +342,9 @@ TEST_F(DeviceInfoTest, HasSubdir) {
 
 class DeviceInfoTechnologyTest : public DeviceInfoTest {
  public:
-  DeviceInfoTechnologyTest() : DeviceInfoTest() {}
+  DeviceInfoTechnologyTest()
+      : DeviceInfoTest(),
+        test_device_name_(kTestDeviceName) {}
   virtual ~DeviceInfoTechnologyTest() {}
 
   virtual void SetUp() {
@@ -354,19 +356,24 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
   }
 
   Technology::Identifier GetDeviceTechnology() {
-    return device_info_.GetDeviceTechnology(kTestDeviceName);
+    return device_info_.GetDeviceTechnology(test_device_name_);
   }
   FilePath GetInfoPath(const string &name);
   void CreateInfoFile(const string &name, const string &contents);
   void CreateInfoSymLink(const string &name, const string &contents);
+  void SetDeviceName(const string &name) {
+    test_device_name_ = name;
+    SetUp();
+  }
 
  protected:
   ScopedTempDir temp_dir_;
   FilePath device_info_root_;
+  string test_device_name_;
 };
 
 FilePath DeviceInfoTechnologyTest::GetInfoPath(const string &name) {
-  return device_info_root_.Append(kTestDeviceName).Append(name);
+  return device_info_root_.Append(test_device_name_).Append(name);
 }
 
 void DeviceInfoTechnologyTest::CreateInfoFile(const string &name,
@@ -485,6 +492,18 @@ TEST_F(DeviceInfoTechnologyTest, CDCEtherNonModem) {
   CreateInfoSymLink("device", "device_dir");
   CreateInfoSymLink("device_dir/driver", "cdc_ether");
   EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, PseudoModem) {
+  SetDeviceName("pseudomodem");
+  CreateInfoSymLink("device", "device_dir");
+  CreateInfoSymLink("device_dir/driver", "cdc_ether");
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+
+  SetDeviceName("pseudomodem9");
+  CreateInfoSymLink("device", "device_dir");
+  CreateInfoSymLink("device_dir/driver", "cdc_ether");
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
 }  // namespace shill
