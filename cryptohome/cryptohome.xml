@@ -126,6 +126,9 @@
       <arg type="s" name="label" direction="out" />
       <arg type="s" name="user_pin" direction="out" />
     </method>
+    <method name="Pkcs11Terminate">
+      <arg type="s" name="username" direction="in" />
+    </method>
     <method name="GetStatusString">
       <arg type="s" name="status" direction="out" />
     </method>

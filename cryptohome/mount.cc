@@ -617,7 +617,6 @@ void Mount::RemoveNonOwnerCryptohomes() {
 }
 
 bool Mount::UnmountCryptohome() {
-  RemovePkcs11Token();
   UnmountAllForUser(current_user_);
   ReloadDevicePolicy();
   if (AreEphemeralUsersEnabled())

@@ -182,6 +182,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean Pkcs11IsTpmTokenReadyForUser(gchar *username,
                                                 gboolean* OUT_ready,
                                                 GError** error);
+  virtual gboolean Pkcs11Terminate(gchar* username, GError** error);
   virtual gboolean GetStatusString(gchar** OUT_status, GError** error);
 
   // InstallAttributes methods

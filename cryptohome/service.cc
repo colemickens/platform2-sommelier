@@ -980,6 +980,13 @@ gboolean Service::Pkcs11GetTpmTokenInfoForUser(gchar* username,
   return TRUE;
 }
 
+gboolean Service::Pkcs11Terminate(gchar* username, GError **error) {
+  for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
+    // TODO(dkrahn): Make this user-specific.
+    it->second->RemovePkcs11Token();
+  }
+  return TRUE;
+}
 
 gboolean Service::InstallAttributesGet(gchar* name,
                                        GArray** OUT_value,

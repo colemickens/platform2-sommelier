@@ -61,6 +61,7 @@ namespace switches {
     "pkcs11_init",
     "force_pkcs11_init",
     "pkcs11_token_status",
+    "pkcs11_terminate",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -84,7 +85,8 @@ namespace switches {
     ACTION_INSTALL_ATTRIBUTES_FINALIZE,
     ACTION_PKCS11_INIT,
     ACTION_FORCE_PKCS11_INIT,
-    ACTION_PKCS11_TOKEN_STATUS };
+    ACTION_PKCS11_TOKEN_STATUS,
+    ACTION_PKCS11_TERMINATE };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
@@ -905,6 +907,18 @@ int main(int argc, char **argv) {
       return 1;
     }
     printf("User token looks OK!\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_PKCS11_TERMINATE],
+                     action.c_str())) {
+    // If no username is specified, proceed with the empty string.
+    string user;
+    GetUsername(cl, &user);
+    chromeos::glib::ScopedError error;
+    if (!org_chromium_CryptohomeInterface_pkcs11_terminate(
+            proxy.gproxy(),
+            user.c_str(),
+            &chromeos::Resetter(&error).lvalue())) {
+      printf("PKCS #11 terminate call failed: %s.\n", error->message);
+    }
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)
