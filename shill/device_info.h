@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -20,8 +21,6 @@
 #include "shill/ip_address.h"
 #include "shill/rtnl_listener.h"
 #include "shill/technology.h"
-
-class FilePath;
 
 namespace shill {
 
@@ -75,9 +74,9 @@ class DeviceInfo {
   virtual bool DeleteInterface(int interface_index) const;
 
  private:
+  friend class DeviceInfoTechnologyTest;
   friend class DeviceInfoTest;
   FRIEND_TEST(CellularTest, StartLinked);
-  FRIEND_TEST(DeviceInfoTest, AddLoopbackDevice);  // For kLoopbackDeviceName.
   FRIEND_TEST(DeviceInfoTest, HasSubdir);  // For HasSubdir.
 
   struct Info {
@@ -89,6 +88,8 @@ class DeviceInfo {
     unsigned int flags;
   };
 
+  // Root of the kernel sysfs directory holding network device info.
+  static const char kDeviceInfoRoot[];
   // Name of the virtio network driver.
   static const char kDriverVirtioNet[];
   // Sysfs path to a device uevent file.
@@ -104,8 +105,6 @@ class DeviceInfo {
   // Sysfs path to the file that is used to determine if a wifi device is
   // operating in monitor mode.
   static const char kInterfaceType[];
-  // Name of the interface for the loopback device.
-  static const char kLoopbackDeviceName[];
   // Name of the "cdc_ether" driver.  This driver is not included in the
   // kModemDrivers list because we need to do additional checking.
   static const char kDriverCdcEther[];
@@ -114,12 +113,30 @@ class DeviceInfo {
   // Path to the tun device.
   static const char kTunDeviceName[];
 
-  static Technology::Identifier GetDeviceTechnology(
-      const std::string &iface_name);
+  // Return the FilePath for a given |path_name| in the device sysinfo for
+  // a specific interface |iface_name|.
+  FilePath GetDeviceInfoPath(const std::string &iface_name,
+                             const std::string &path_name);
+  // Return the contents of the device info file |path_name| for interface
+  // |iface_name| in output parameter |contents_out|.  Returns true if file
+  // read succeeded, false otherwise.
+  bool GetDeviceInfoContents(const std::string &iface_name,
+                             const std::string &path_name,
+                             std::string *contents_out);
+
+  // Return the filepath for the target of the device info symbolic link
+  // |path_name| for interface |iface_name| in output parameter |path_out|.
+  // Returns true if symbolic link read succeeded, false otherwise.
+  bool GetDeviceInfoSymbolicLink(const std::string &iface_name,
+                                 const std::string &path_name,
+                                 FilePath *path_out);
+  // Classify the device named |iface_name|, and return an identifier
+  // indicating its type.
+  Technology::Identifier GetDeviceTechnology(const std::string &iface_name);
   // Checks the device specified by |iface_name| to see if it's a modem device.
   // This method assumes that |iface_name| has already been determined to be
   // using the cdc_ether driver.
-  static bool IsCdcEtherModemDevice(const std::string &iface_name);
+  bool IsCdcEtherModemDevice(const std::string &iface_name);
   // Returns true if |base_dir| has a subdirectory named |subdir|.
   // |subdir| can be an immediate subdirectory of |base_dir| or can be
   // several levels deep.
@@ -144,6 +161,7 @@ class DeviceInfo {
   scoped_ptr<RTNLListener> link_listener_;
   scoped_ptr<RTNLListener> address_listener_;
   std::set<std::string> black_list_;
+  FilePath device_info_root_;
 
   // Cache copy of singleton
   RTNLHandler *rtnl_handler_;

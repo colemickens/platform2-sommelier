@@ -21,9 +21,10 @@ using std::set;
 using std::string;
 using std::vector;
 
-const char Technology::kLoopbackName[] = "Loopback";
-const char Technology::kTunnelName[] = "Tunnel";
-const char Technology::kUnknownName[] = "Unknown";
+const char Technology::kLoopbackName[] = "loopback";
+const char Technology::kTunnelName[] = "tunnel";
+const char Technology::kPPPName[] = "ppp";
+const char Technology::kUnknownName[] = "unknown";
 
 // static
 Technology::Identifier Technology::IdentifierFromName(const string &name) {
@@ -39,6 +40,8 @@ Technology::Identifier Technology::IdentifierFromName(const string &name) {
     return kLoopback;
   } else if (name == kTunnelName) {
     return kTunnel;
+  } else if (name == kPPPName) {
+    return kPPP;
   } else {
     return kUnknown;
   }
@@ -58,6 +61,8 @@ string Technology::NameFromIdentifier(Technology::Identifier id) {
     return kLoopbackName;
   } else if (id == kTunnel) {
     return kTunnelName;
+  } else if (id == kPPP) {
+    return kPPPName;
   } else {
     return kUnknownName;
   }

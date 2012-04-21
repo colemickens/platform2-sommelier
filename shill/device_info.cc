@@ -52,14 +52,14 @@ using std::vector;
 namespace shill {
 
 // static
+const char DeviceInfo::kDeviceInfoRoot[] = "/sys/class/net";
 const char DeviceInfo::kDriverVirtioNet[] = "virtio_net";
-const char DeviceInfo::kInterfaceUevent[] = "/sys/class/net/%s/uevent";
+const char DeviceInfo::kInterfaceUevent[] = "uevent";
 const char DeviceInfo::kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
-const char DeviceInfo::kInterfaceDevice[] = "/sys/class/net/%s/device";
-const char DeviceInfo::kInterfaceDriver[] = "/sys/class/net/%s/device/driver";
-const char DeviceInfo::kInterfaceTunFlags[] = "/sys/class/net/%s/tun_flags";
-const char DeviceInfo::kInterfaceType[] = "/sys/class/net/%s/type";
-const char DeviceInfo::kLoopbackDeviceName[] = "lo";
+const char DeviceInfo::kInterfaceDevice[] = "device";
+const char DeviceInfo::kInterfaceDriver[] = "device/driver";
+const char DeviceInfo::kInterfaceTunFlags[] = "tun_flags";
+const char DeviceInfo::kInterfaceType[] = "type";
 const char DeviceInfo::kDriverCdcEther[] = "cdc_ether";
 const char *DeviceInfo::kModemDrivers[] = {
     "gobi",
@@ -80,6 +80,7 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
       address_callback_(Bind(&DeviceInfo::AddressMsgHandler, Unretained(this))),
       link_listener_(NULL),
       address_listener_(NULL),
+      device_info_root_(kDeviceInfoRoot),
       rtnl_handler_(RTNLHandler::GetInstance()) {
 }
 
@@ -138,12 +139,36 @@ void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
   }
 }
 
-// static
+FilePath DeviceInfo::GetDeviceInfoPath(const string &iface_name,
+                                       const string &path_name) {
+  return device_info_root_.Append(iface_name).Append(path_name);
+}
+
+bool DeviceInfo::GetDeviceInfoContents(const string &iface_name,
+                                       const string &path_name,
+                                       string *contents_out) {
+  return file_util::ReadFileToString(GetDeviceInfoPath(iface_name, path_name),
+                                     contents_out);
+}
+bool DeviceInfo::GetDeviceInfoSymbolicLink(const string &iface_name,
+                                      const string &path_name,
+                                      FilePath *path_out) {
+  return file_util::ReadSymbolicLink(GetDeviceInfoPath(iface_name, path_name),
+                                     path_out);
+}
+
 Technology::Identifier DeviceInfo::GetDeviceTechnology(
     const string &iface_name) {
-  FilePath uevent_file(StringPrintf(kInterfaceUevent, iface_name.c_str()));
+  string type_string;
+  int arp_type = ARPHRD_VOID;;
+  if (GetDeviceInfoContents(iface_name, kInterfaceType, &type_string) &&
+      TrimString(type_string, "\n", &type_string) &&
+      !base::StringToInt(type_string, &arp_type)) {
+    arp_type = ARPHRD_VOID;
+  }
+
   string contents;
-  if (!file_util::ReadFileToString(uevent_file, &contents)) {
+  if (!GetDeviceInfoContents(iface_name, kInterfaceUevent, &contents)) {
     SLOG(Device, 2) << StringPrintf("%s: device %s has no uevent file",
                                     __func__, iface_name.c_str());
     return Technology::kUnknown;
@@ -156,13 +181,7 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     SLOG(Device, 2)
         << StringPrintf("%s: device %s has wifi signature in uevent file",
                         __func__, iface_name.c_str());
-    FilePath type_file(StringPrintf(kInterfaceType, iface_name.c_str()));
-    string type_string;
-    int type_val = 0;
-    if (file_util::ReadFileToString(type_file, &type_string) &&
-        TrimString(type_string, "\n", &type_string) &&
-        base::StringToInt(type_string, &type_val) &&
-        type_val == ARPHRD_IEEE80211_RADIOTAP) {
+    if (arp_type == ARPHRD_IEEE80211_RADIOTAP) {
       SLOG(Device, 2) << StringPrintf("%s: wifi device %s is in monitor mode",
                                       __func__, iface_name.c_str());
       return Technology::kWiFiMonitor;
@@ -170,23 +189,25 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     return Technology::kWifi;
   }
 
-  FilePath driver_file(StringPrintf(kInterfaceDriver, iface_name.c_str()));
   FilePath driver_path;
-  if (!file_util::ReadSymbolicLink(driver_file, &driver_path)) {
+  if (!GetDeviceInfoSymbolicLink(iface_name, kInterfaceDriver, &driver_path)) {
     SLOG(Device, 2) << StringPrintf("%s: device %s has no device symlink",
                                     __func__, iface_name.c_str());
-    if (iface_name == kLoopbackDeviceName) {
+    if (arp_type == ARPHRD_LOOPBACK) {
       SLOG(Device, 2) << StringPrintf("%s: device %s is a loopback device",
                                       __func__, iface_name.c_str());
       return Technology::kLoopback;
     }
-    FilePath tun_flags_file(StringPrintf(kInterfaceTunFlags,
-                                         iface_name.c_str()));
-    string tun_flags_string;
+    if (arp_type == ARPHRD_PPP) {
+      SLOG(Device, 2) << StringPrintf("%s: device %s is a ppp device",
+                                      __func__, iface_name.c_str());
+      return Technology::kPPP;
+    }
+    string tun_flags_str;
     int tun_flags = 0;
-    if (file_util::ReadFileToString(tun_flags_file, &tun_flags_string) &&
-        TrimString(tun_flags_string, "\n", &tun_flags_string) &&
-        base::HexStringToInt(tun_flags_string, &tun_flags) &&
+    if (GetDeviceInfoContents(iface_name, kInterfaceTunFlags, &tun_flags_str) &&
+        TrimString(tun_flags_str, "\n", &tun_flags_str) &&
+        base::HexStringToInt(tun_flags_str, &tun_flags) &&
         (tun_flags & IFF_TUN)) {
       SLOG(Device, 2) << StringPrintf("%s: device %s is tun device",
                                       __func__, iface_name.c_str());
@@ -231,7 +252,6 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   return Technology::kEthernet;
 }
 
-// static
 bool DeviceInfo::IsCdcEtherModemDevice(const std::string &iface_name) {
   // A cdc_ether device is a modem device if it also exposes tty interfaces.
   // To determine this, we look for the existence of the tty interface in the
@@ -259,7 +279,7 @@ bool DeviceInfo::IsCdcEtherModemDevice(const std::string &iface_name) {
   // (eg. E362), so the device tree for the tty interface is:
   // /sys/devices/pci0000:00/0000:00:1d.7/usb/1-2/1-2:1.0/ttyUSB0/tty/ttyUSB0
 
-  FilePath device_file(StringPrintf(kInterfaceDevice, iface_name.c_str()));
+  FilePath device_file = GetDeviceInfoPath(iface_name, kInterfaceDevice);
   FilePath device_path;
   if (!file_util::ReadSymbolicLink(device_file, &device_path)) {
     SLOG(Device, 2) << StringPrintf("%s: device %s has no device symlink",
@@ -333,7 +353,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
       address = StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
       SLOG(Device, 2) << "link index " << dev_index << " address "
                       << infos_[dev_index].mac_address.HexEncode();
-    } else if (technology != Technology::kTunnel) {
+    } else if (technology != Technology::kTunnel &&
+               technology != Technology::kPPP) {
       LOG(ERROR) << "Add Link message does not have IFLA_ADDRESS!";
       return;
     }
@@ -360,15 +381,18 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
                           link_name, address, dev_index);
         device->EnableIPv6Privacy();
         break;
+      case Technology::kPPP:
       case Technology::kTunnel:
-        // Tunnel devices are managed by the VPN code.  Notify the VPN Provider
-        // only if this is the first time we have seen this device index.
+        // Tunnel and PPP devices are managed by the VPN code (PPP for
+        // l2tpipsec).  Notify the VPN Provider only if this is the first
+        // time we have seen this device index.
         if (new_device) {
-          SLOG(Device, 2) << "Tunnel link " << link_name
+          SLOG(Device, 2) << "Tunnel / PPP link " << link_name
                           << " at index " << dev_index
                           << " -- notifying VPNProvider.";
           if (!manager_->vpn_provider()->OnDeviceInfoAvailable(link_name,
-                                                               dev_index)) {
+                                                               dev_index) &&
+              technology == Technology::kTunnel) {
             // If VPN does not know anything about this tunnel, it is probably
             // left over from a previous instance and should not exist.
             SLOG(Device, 2) << "Tunnel link is unused.  Deleting.";

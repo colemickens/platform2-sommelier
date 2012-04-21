@@ -7,8 +7,10 @@
 #include <glib.h>
 #include <sys/socket.h>
 #include <linux/if.h>
+#include <linux/if_tun.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <linux/rtnetlink.h>
+#include <net/if_arp.h>
 
 #include <base/file_util.h>
 #include <base/logging.h>
@@ -16,6 +18,7 @@
 #include <base/message_loop.h>
 #include <base/scoped_temp_dir.h>
 #include <base/stl_util.h>
+#include <base/string_number_conversions.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -55,6 +58,7 @@ class DeviceInfoTest : public Test {
       : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
         device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_) {
   }
+  virtual ~DeviceInfoTest() {}
 
   virtual void SetUp() {
     device_info_.rtnl_handler_ = &rtnl_handler_;
@@ -315,15 +319,6 @@ TEST_F(DeviceInfoTest, FlushAddressList) {
   device_info_.Stop();
 }
 
-TEST_F(DeviceInfoTest, AddLoopbackDevice) {
-  device_info_.Start();
-  scoped_ptr<RTNLMessage> message(BuildLinkMessageWithInterfaceName(
-      RTNLMessage::kModeAdd, DeviceInfo::kLoopbackDeviceName));
-  EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(kTestDeviceIndex,
-                                               IFF_UP, IFF_UP));
-  SendMessageToDeviceInfo(*message);
-}
-
 TEST_F(DeviceInfoTest, HasSubdir) {
   device_info_.Start();
   ScopedTempDir temp_dir;
@@ -340,6 +335,154 @@ TEST_F(DeviceInfoTest, HasSubdir) {
                                     FilePath("greatgrandchild")));
   EXPECT_FALSE(DeviceInfo::HasSubdir(temp_dir.path(),
                                      FilePath("nonexistent")));
+}
+
+class DeviceInfoTechnologyTest : public DeviceInfoTest {
+ public:
+  DeviceInfoTechnologyTest() : DeviceInfoTest() {}
+  virtual ~DeviceInfoTechnologyTest() {}
+
+  virtual void SetUp() {
+    temp_dir_.CreateUniqueTempDir();
+    device_info_root_ = temp_dir_.path().Append("sys/class/net");
+    device_info_.device_info_root_ = device_info_root_;
+    // Most tests require that the uevent file exist.
+    CreateInfoFile("uevent", "xxx");
+  }
+
+  Technology::Identifier GetDeviceTechnology() {
+    return device_info_.GetDeviceTechnology(kTestDeviceName);
+  }
+  FilePath GetInfoPath(const string &name);
+  void CreateInfoFile(const string &name, const string &contents);
+  void CreateInfoSymLink(const string &name, const string &contents);
+
+ protected:
+  ScopedTempDir temp_dir_;
+  FilePath device_info_root_;
+};
+
+FilePath DeviceInfoTechnologyTest::GetInfoPath(const string &name) {
+  return device_info_root_.Append(kTestDeviceName).Append(name);
+}
+
+void DeviceInfoTechnologyTest::CreateInfoFile(const string &name,
+                                              const string &contents) {
+  FilePath info_path = GetInfoPath(name);
+  EXPECT_TRUE(file_util::CreateDirectory(info_path.DirName()));
+  string contents_newline(contents + "\n");
+  EXPECT_TRUE(file_util::WriteFile(info_path, contents_newline.c_str(),
+                                   contents_newline.size()));
+}
+
+void DeviceInfoTechnologyTest::CreateInfoSymLink(const string &name,
+                                                 const string &contents) {
+  FilePath info_path = GetInfoPath(name);
+  LOG(ERROR) << info_path.value();
+  EXPECT_TRUE(file_util::CreateDirectory(info_path.DirName()));
+  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath(contents), info_path));
+}
+
+TEST_F(DeviceInfoTechnologyTest, Unknown) {
+  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
+  // Should still be unknown even without a uevent file.
+  EXPECT_TRUE(file_util::Delete(GetInfoPath("uevent"), FALSE));
+  EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, Loopback) {
+  CreateInfoFile("type", base::IntToString(ARPHRD_LOOPBACK));
+  EXPECT_EQ(Technology::kLoopback, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, PPP) {
+  CreateInfoFile("type", base::IntToString(ARPHRD_PPP));
+  EXPECT_EQ(Technology::kPPP, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, Tunnel) {
+  CreateInfoFile("tun_flags", base::IntToString(IFF_TUN));
+  EXPECT_EQ(Technology::kTunnel, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, WiFi) {
+  CreateInfoFile("uevent", "DEVTYPE=wlan");
+  EXPECT_EQ(Technology::kWifi, GetDeviceTechnology());
+  CreateInfoFile("uevent", "foo\nDEVTYPE=wlan");
+  EXPECT_EQ(Technology::kWifi, GetDeviceTechnology());
+  CreateInfoFile("type", base::IntToString(ARPHRD_IEEE80211_RADIOTAP));
+  EXPECT_EQ(Technology::kWiFiMonitor, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, Ethernet) {
+  CreateInfoSymLink("device/driver", "xxx");
+  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, CellularGobi1) {
+  CreateInfoSymLink("device/driver", "blah/foo/gobi");
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, CellularGobi2) {
+  CreateInfoSymLink("device/driver", "../GobiNet");
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, QCUSB) {
+  CreateInfoSymLink("device/driver", "QCUSBNet2k");
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+}
+
+// Modem with absolute driver path with top-level tty file:
+//   /sys/class/net/dev0/device -> /sys/devices/virtual/0/00
+//   /sys/devices/virtual/0/00/driver -> /drivers/cdc_ether
+//   /sys/devices/virtual/0/01/tty [empty directory]
+TEST_F(DeviceInfoTechnologyTest, CDCEtherModem1) {
+  FilePath device_root(temp_dir_.path().Append("sys/devices/virtual/0"));
+  FilePath device_path(device_root.Append("00"));
+  EXPECT_TRUE(file_util::CreateDirectory(device_path));
+  CreateInfoSymLink("device", device_path.value());
+  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
+                                            device_path.Append("driver")));
+  EXPECT_TRUE(file_util::CreateDirectory(device_root.Append("01/tty")));
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+}
+
+// Modem with relative driver path with top-level tty file.
+//   /sys/class/net/dev0/device -> ../../../device_dir/0/00
+//   /sys/device_dir/0/00/driver -> /drivers/cdc_ether
+//   /sys/device_dir/0/01/tty [empty directory]
+TEST_F(DeviceInfoTechnologyTest, CDCEtherModem2) {
+  CreateInfoSymLink("device", "../../../device_dir/0/00");
+  FilePath device_root(temp_dir_.path().Append("sys/device_dir/0"));
+  FilePath device_path(device_root.Append("00"));
+  EXPECT_TRUE(file_util::CreateDirectory(device_path));
+  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
+                                            device_path.Append("driver")));
+  EXPECT_TRUE(file_util::CreateDirectory(device_root.Append("01/tty")));
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+}
+
+// Modem with relative driver path with lower-level tty file.
+//   /sys/class/net/dev0/device -> ../../../device_dir/0/00
+//   /sys/device_dir/0/00/driver -> /drivers/cdc_ether
+//   /sys/device_dir/0/01/yyy/tty [empty directory]
+TEST_F(DeviceInfoTechnologyTest, CDCEtherModem3) {
+  CreateInfoSymLink("device", "../../../device_dir/0/00");
+  FilePath device_root(temp_dir_.path().Append("sys/device_dir/0"));
+  FilePath device_path(device_root.Append("00"));
+  EXPECT_TRUE(file_util::CreateDirectory(device_path));
+  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
+                                            device_path.Append("driver")));
+  EXPECT_TRUE(file_util::CreateDirectory(device_root.Append("01/yyy/tty")));
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, CDCEtherNonModem) {
+  CreateInfoSymLink("device", "device_dir");
+  CreateInfoSymLink("device_dir/driver", "cdc_ether");
+  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
 }
 
 }  // namespace shill

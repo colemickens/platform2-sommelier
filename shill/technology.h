@@ -26,6 +26,7 @@ class Technology {
     kBlacklisted,
     kLoopback,
     kVirtioEthernet,  // Only for internal use in DeviceInfo.
+    kPPP,
     kUnknown,
   };
 
@@ -57,6 +58,7 @@ class Technology {
  private:
   static const char kLoopbackName[];
   static const char kTunnelName[];
+  static const char kPPPName[];
   static const char kUnknownName[];
 };
 
