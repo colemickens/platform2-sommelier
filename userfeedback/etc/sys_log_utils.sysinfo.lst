@@ -1,9 +1,9 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # Every command listed here will be executed and logged to our feedback
-# mechanism. The format is comma delimted and the first term will be the key.
+# mechanism. The format is comma delimited and the first term will be the key.
 # if no key is provided then the command will be used as the key and the value.
 #
 # Lines starting with # will be ignored.
