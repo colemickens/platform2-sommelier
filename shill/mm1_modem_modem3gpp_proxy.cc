@@ -6,7 +6,8 @@
 
 #include <base/logging.h>
 
-#include "cellular_error.h"
+#include "shill/cellular_error.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 
@@ -27,6 +28,7 @@ void ModemModem3gppProxy::Register(const std::string &operator_id,
                                    int timeout) {
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.Register(operator_id, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -41,6 +43,7 @@ void ModemModem3gppProxy::Scan(Error *error,
   scoped_ptr<DBusPropertyMapsCallback> cb(
       new DBusPropertyMapsCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.Scan(cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -51,18 +54,23 @@ void ModemModem3gppProxy::Scan(Error *error,
 
 // Inherited properties from ModemModem3gppProxyInterface.
 std::string ModemModem3gppProxy::Imei() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Imei();
 };
 uint32_t ModemModem3gppProxy::RegistrationState() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.RegistrationState();
 };
 std::string ModemModem3gppProxy::OperatorCode() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.OperatorCode();
 };
 std::string ModemModem3gppProxy::OperatorName() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.OperatorName();
 };
 uint32_t ModemModem3gppProxy::EnabledFacilityLocks() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.EnabledFacilityLocks();
 };
 
@@ -78,6 +86,7 @@ ModemModem3gppProxy::Proxy::~Proxy() {}
 // org::freedesktop::ModemManager1::Modem::ModemModem3gppProxy
 void ModemModem3gppProxy::Proxy::RegisterCallback(const ::DBus::Error& dberror,
                                                   void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -87,6 +96,7 @@ void ModemModem3gppProxy::Proxy::RegisterCallback(const ::DBus::Error& dberror,
 void ModemModem3gppProxy::Proxy::ScanCallback(
     const std::vector<DBusPropertiesMap> &results,
     const ::DBus::Error& dberror, void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<DBusPropertyMapsCallback> callback(
       reinterpret_cast<DBusPropertyMapsCallback *>(data));
   Error error;

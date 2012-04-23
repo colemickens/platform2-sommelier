@@ -6,7 +6,8 @@
 
 #include <base/logging.h>
 
-#include "cellular_error.h"
+#include "shill/cellular_error.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 
@@ -27,6 +28,7 @@ void ModemSimpleProxy::Connect(
     int timeout) {
   scoped_ptr<DBusPathCallback> cb(new DBusPathCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.Connect(properties, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -41,6 +43,7 @@ void ModemSimpleProxy::Disconnect(const ::DBus::Path &bearer,
                                   int timeout) {
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.Disconnect(bearer, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -53,7 +56,8 @@ void ModemSimpleProxy::GetStatus(Error *error,
                                  const DBusPropertyMapCallback &callback,
                                  int timeout) {
   scoped_ptr<DBusPropertyMapCallback> cb(new DBusPropertyMapCallback(callback));
-  try  {
+  try {
+    SLOG(DBus, 2) << __func__;
     proxy_.GetStatus(cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -76,6 +80,7 @@ ModemSimpleProxy::Proxy::~Proxy() {}
 void ModemSimpleProxy::Proxy::ConnectCallback(const ::DBus::Path &bearer,
                                               const ::DBus::Error &dberror,
                                               void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<DBusPathCallback> callback(
       reinterpret_cast<DBusPathCallback *>(data));
   Error error;
@@ -85,6 +90,7 @@ void ModemSimpleProxy::Proxy::ConnectCallback(const ::DBus::Path &bearer,
 
 void ModemSimpleProxy::Proxy::DisconnectCallback(const ::DBus::Error &dberror,
                                                  void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -95,6 +101,7 @@ void ModemSimpleProxy::Proxy::GetStatusCallback(
     const DBusPropertiesMap &properties,
     const ::DBus::Error &dberror,
     void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<DBusPropertyMapCallback> callback(
       reinterpret_cast<DBusPropertyMapCallback *>(data));
   Error error;

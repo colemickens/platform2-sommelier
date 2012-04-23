@@ -9,6 +9,7 @@
 
 #include <dbus-c++/dbus.h>
 
+#include "shill/scope_logger.h"
 #include "shill/wifi_endpoint.h"
 
 using std::map;
@@ -37,6 +38,7 @@ SupplicantBSSProxy::Proxy::~Proxy() {}
 
 void SupplicantBSSProxy::Proxy::PropertiesChanged(
     const std::map<string, ::DBus::Variant> &properties) {
+  SLOG(DBus, 2) << __func__;
   wifi_endpoint_->PropertiesChanged(properties);
 }
 

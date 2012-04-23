@@ -10,6 +10,8 @@
 #include <base/logging.h>
 #include <dbus-c++/dbus.h>
 
+#include "shill/scope_logger.h"
+
 using std::map;
 using std::string;
 
@@ -24,14 +26,17 @@ SupplicantProcessProxy::~SupplicantProcessProxy() {}
 
 ::DBus::Path SupplicantProcessProxy::CreateInterface(
     const map<string, ::DBus::Variant> &args) {
+  SLOG(DBus, 2) << __func__;
   return proxy_.CreateInterface(args);
 }
 
 void SupplicantProcessProxy::RemoveInterface(const ::DBus::Path &path) {
+  SLOG(DBus, 2) << __func__;
   return proxy_.RemoveInterface(path);
 }
 
 ::DBus::Path SupplicantProcessProxy::GetInterface(const string &ifname) {
+  SLOG(DBus, 2) << __func__;
   return proxy_.GetInterface(ifname);
 }
 
@@ -46,19 +51,19 @@ SupplicantProcessProxy::Proxy::~Proxy() {}
 void SupplicantProcessProxy::Proxy::InterfaceAdded(
     const ::DBus::Path& /*path*/,
     const map<string, ::DBus::Variant> &/*properties*/) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   // XXX
 }
 
 void SupplicantProcessProxy::Proxy::InterfaceRemoved(
     const ::DBus::Path& /*path*/) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   // XXX
 }
 
 void SupplicantProcessProxy::Proxy::PropertiesChanged(
     const map<string, ::DBus::Variant>& /*properties*/) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   // XXX
 }
 

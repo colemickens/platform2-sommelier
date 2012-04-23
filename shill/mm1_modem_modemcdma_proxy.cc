@@ -6,7 +6,8 @@
 
 #include <base/logging.h>
 
-#include "cellular_error.h"
+#include "shill/cellular_error.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 
@@ -26,6 +27,7 @@ void ModemModemCdmaProxy::Activate(const std::string &carrier,
                         int timeout) {
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.Activate(carrier, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -41,6 +43,7 @@ void ModemModemCdmaProxy::ActivateManual(
     int timeout) {
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.ActivateManual(properties, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -56,21 +59,27 @@ void ModemModemCdmaProxy::set_activation_state_callback(
 
 // Inherited properties from ModemModemCdmaProxyInterface.
 std::string ModemModemCdmaProxy::Meid() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Meid();
 };
 std::string ModemModemCdmaProxy::Esn() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Esn();
 };
 uint32_t ModemModemCdmaProxy::Sid() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Sid();
 };
 uint32_t ModemModemCdmaProxy::Nid() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Nid();
 };
 uint32_t ModemModemCdmaProxy::Cdma1xRegistrationState() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Cdma1xRegistrationState();
 };
 uint32_t ModemModemCdmaProxy::EvdoRegistrationState() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.EvdoRegistrationState();
 };
 
@@ -92,6 +101,7 @@ void ModemModemCdmaProxy::Proxy::ActivationStateChanged(
     const uint32_t &activation_state,
     const uint32_t &activation_error,
     const DBusPropertiesMap &status_changes) {
+  SLOG(DBus, 2) << __func__;
   activation_state_callback_.Run(activation_state,
                                  activation_error,
                                  status_changes);
@@ -101,6 +111,7 @@ void ModemModemCdmaProxy::Proxy::ActivationStateChanged(
 // org::freedesktop::ModemManager1::Modem::ModemModemCdmaProxy
 void ModemModemCdmaProxy::Proxy::ActivateCallback(const ::DBus::Error& dberror,
                                                   void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -110,6 +121,7 @@ void ModemModemCdmaProxy::Proxy::ActivateCallback(const ::DBus::Error& dberror,
 void ModemModemCdmaProxy::Proxy::ActivateManualCallback(
     const ::DBus::Error& dberror,
     void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);

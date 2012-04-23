@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <dbus-c++/dbus.h>
 
+#include "shill/scope_logger.h"
 #include "shill/wifi.h"
 
 using std::map;
@@ -28,43 +29,53 @@ SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
 
 ::DBus::Path SupplicantInterfaceProxy::AddNetwork(
     const std::map<std::string, ::DBus::Variant> &args) {
+  SLOG(DBus, 2) << __func__;
   return proxy_.AddNetwork(args);
 }
 
 void SupplicantInterfaceProxy::ClearCachedCredentials() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.ClearCachedCredentials();
 }
 
 void SupplicantInterfaceProxy::Disconnect() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Disconnect();
 }
 
 void SupplicantInterfaceProxy::FlushBSS(const uint32_t &age) {
+  SLOG(DBus, 2) << __func__;
   return proxy_.FlushBSS(age);
 }
 
 void SupplicantInterfaceProxy::RemoveAllNetworks() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.RemoveAllNetworks();
 }
 
 void SupplicantInterfaceProxy::RemoveNetwork(const ::DBus::Path &network) {
+  SLOG(DBus, 2) << __func__;
   return proxy_.RemoveNetwork(network);
 }
 
 void SupplicantInterfaceProxy::Scan(
     const std::map<std::string, ::DBus::Variant> &args) {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Scan(args);
 }
 
 void SupplicantInterfaceProxy::SelectNetwork(const ::DBus::Path &network) {
+  SLOG(DBus, 2) << __func__;
   return proxy_.SelectNetwork(network);
 }
 
 void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
+  SLOG(DBus, 2) << __func__;
   return proxy_.FastReauth(enabled);
 }
 
 void SupplicantInterfaceProxy::SetScanInterval(int32 scan_interval) {
+  SLOG(DBus, 2) << __func__;
   return proxy_.ScanInterval(scan_interval);
 }
 
@@ -79,55 +90,55 @@ SupplicantInterfaceProxy::Proxy::Proxy(
 SupplicantInterfaceProxy::Proxy::~Proxy() {}
 
 void SupplicantInterfaceProxy::Proxy::BlobAdded(const string &/*blobname*/) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::BlobRemoved(const string &/*blobname*/) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::BSSAdded(
     const ::DBus::Path &BSS,
     const std::map<string, ::DBus::Variant> &properties) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   wifi_->BSSAdded(BSS, properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path &BSS) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   wifi_->BSSRemoved(BSS);
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkAdded(
     const ::DBus::Path &/*network*/,
     const std::map<string, ::DBus::Variant> &/*properties*/) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkRemoved(
     const ::DBus::Path &/*network*/) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   // TODO(quiche): Pass this up to WiFi, so that it can clean its
   // rpcid_by_service_ map. crosbug.com/24699
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkSelected(
     const ::DBus::Path &/*network*/) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::PropertiesChanged(
     const std::map<string, ::DBus::Variant> &properties) {
-  LOG(INFO) << __func__;
+  SLOG(DBus, 2) << __func__;
   wifi_->PropertiesChanged(properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::ScanDone(const bool& success) {
-  LOG(INFO) << __func__ << " " << success;
+  SLOG(DBus, 2) << __func__ << ": " << success;
   if (success) {
     wifi_->ScanDone();
   }

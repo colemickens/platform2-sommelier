@@ -30,37 +30,45 @@ ServiceDBusAdaptor::~ServiceDBusAdaptor() {
 void ServiceDBusAdaptor::UpdateConnected() {}
 
 void ServiceDBusAdaptor::EmitBoolChanged(const string &name, bool value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
 }
 
 void ServiceDBusAdaptor::EmitUint8Changed(const string &name, uint8 value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::ByteToVariant(value));
 }
 
 void ServiceDBusAdaptor::EmitUint16Changed(const string &name, uint16 value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Uint16ToVariant(value));
 }
 
 void ServiceDBusAdaptor::EmitUintChanged(const string &name, uint32 value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
 void ServiceDBusAdaptor::EmitIntChanged(const string &name, int value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
 void ServiceDBusAdaptor::EmitStringChanged(const string &name,
                                            const string &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
 void ServiceDBusAdaptor::EmitStringmapChanged(const string &name,
                                               const Stringmap &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringmapToVariant(value));
 }
 
 map<string, ::DBus::Variant> ServiceDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   map<string, ::DBus::Variant> properties;
   DBusAdaptor::GetProperties(service_->store(), &properties, &error);
   return properties;
@@ -69,6 +77,7 @@ map<string, ::DBus::Variant> ServiceDBusAdaptor::GetProperties(
 void ServiceDBusAdaptor::SetProperty(const string &name,
                                      const ::DBus::Variant &value,
                                      ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   DBusAdaptor::SetProperty(service_->mutable_store(), name, value, &error);
   if (!error.is_set()) {
     service_->OnPropertyChanged(name);
@@ -77,6 +86,7 @@ void ServiceDBusAdaptor::SetProperty(const string &name,
 
 void ServiceDBusAdaptor::ClearProperty(const string &name,
                                        ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   DBusAdaptor::ClearProperty(service_->mutable_store(), name, &error);
   if (!error.is_set()) {
     service_->OnPropertyChanged(name);
@@ -84,26 +94,31 @@ void ServiceDBusAdaptor::ClearProperty(const string &name,
 }
 
 void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   Error e;
   service_->Connect(&e);
   e.ToDBusError(&error);
 }
 
 void ServiceDBusAdaptor::Disconnect(::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   Error e;
   service_->Disconnect(&e);
   e.ToDBusError(&error);
 }
 
 void ServiceDBusAdaptor::Remove(::DBus::Error &/*error*/) {
+  SLOG(DBus, 2) << __func__;
 }
 
 void ServiceDBusAdaptor::MoveBefore(const ::DBus::Path& ,
                                     ::DBus::Error &/*error*/) {
+  SLOG(DBus, 2) << __func__;
 }
 
 void ServiceDBusAdaptor::MoveAfter(const ::DBus::Path& ,
                                    ::DBus::Error &/*error*/) {
+  SLOG(DBus, 2) << __func__;
 }
 
 void ServiceDBusAdaptor::ActivateCellularModem(const string &carrier,

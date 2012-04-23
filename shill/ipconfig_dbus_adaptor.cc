@@ -14,6 +14,7 @@
 
 #include "shill/error.h"
 #include "shill/ipconfig.h"
+#include "shill/scope_logger.h"
 
 using base::StringPrintf;
 using std::map;
@@ -40,25 +41,30 @@ IPConfigDBusAdaptor::~IPConfigDBusAdaptor() {
 }
 
 void IPConfigDBusAdaptor::EmitBoolChanged(const string &name, bool value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
 }
 
 void IPConfigDBusAdaptor::EmitUintChanged(const string &name,
                                           uint32 value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
 void IPConfigDBusAdaptor::EmitIntChanged(const string &name, int value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
 void IPConfigDBusAdaptor::EmitStringChanged(const string &name,
                                             const string &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
 map<string, ::DBus::Variant> IPConfigDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   map<string, ::DBus::Variant> properties;
   DBusAdaptor::GetProperties(ipconfig_->store(), &properties, &error);
   return properties;
@@ -67,6 +73,7 @@ map<string, ::DBus::Variant> IPConfigDBusAdaptor::GetProperties(
 void IPConfigDBusAdaptor::SetProperty(const string &name,
                                       const ::DBus::Variant &value,
                                       ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   if (DBusAdaptor::SetProperty(ipconfig_->mutable_store(),
                                name,
                                value,
@@ -77,18 +84,22 @@ void IPConfigDBusAdaptor::SetProperty(const string &name,
 
 void IPConfigDBusAdaptor::ClearProperty(const std::string &name,
                                         ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   DBusAdaptor::ClearProperty(ipconfig_->mutable_store(), name, &error);
 }
 
 void IPConfigDBusAdaptor::Remove(::DBus::Error &/*error*/) {
+  SLOG(DBus, 2) << __func__;
 }
 
 void IPConfigDBusAdaptor::MoveBefore(const ::DBus::Path& /*path*/,
                                      ::DBus::Error &/*error*/) {
+  SLOG(DBus, 2) << __func__;
 }
 
 void IPConfigDBusAdaptor::MoveAfter(const ::DBus::Path& /*path*/,
                                     ::DBus::Error &/*error*/) {
+  SLOG(DBus, 2) << __func__;
 }
 
 }  // namespace shill

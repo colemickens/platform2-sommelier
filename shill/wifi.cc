@@ -1064,23 +1064,27 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
   if (args.ContainsString(flimflam::kModeProperty) &&
       args.GetString(flimflam::kModeProperty) !=
       flimflam::kModeManaged) {
-    error->Populate(Error::kNotSupported, kManagerErrorUnsupportedServiceMode);
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          kManagerErrorUnsupportedServiceMode);
     return NULL;
   }
 
   if (!args.ContainsString(flimflam::kSSIDProperty)) {
-    error->Populate(Error::kInvalidArguments, kManagerErrorSSIDRequired);
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          kManagerErrorSSIDRequired);
     return NULL;
   }
 
   string ssid = args.GetString(flimflam::kSSIDProperty);
   if (ssid.length() < 1) {
-    error->Populate(Error::kInvalidNetworkName, kManagerErrorSSIDTooShort);
+    Error::PopulateAndLog(error, Error::kInvalidNetworkName,
+                          kManagerErrorSSIDTooShort);
     return NULL;
   }
 
   if (ssid.length() > IEEE_80211::kMaxSSIDLen) {
-    error->Populate(Error::kInvalidNetworkName, kManagerErrorSSIDTooLong);
+    Error::PopulateAndLog(error, Error::kInvalidNetworkName,
+                          kManagerErrorSSIDTooLong);
     return NULL;
   }
 
@@ -1097,8 +1101,8 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
       security_method != flimflam::kSecurityWpa &&
       security_method != flimflam::kSecurityRsn &&
       security_method != flimflam::kSecurity8021x) {
-    error->Populate(Error::kNotSupported,
-                    kManagerErrorUnsupportedSecurityMode);
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          kManagerErrorUnsupportedSecurityMode);
     return NULL;
   }
 

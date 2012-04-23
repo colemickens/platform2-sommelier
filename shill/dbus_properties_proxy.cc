@@ -19,6 +19,7 @@ DBusPropertiesProxy::DBusPropertiesProxy(DBus::Connection *connection,
 DBusPropertiesProxy::~DBusPropertiesProxy() {}
 
 DBusPropertiesMap DBusPropertiesProxy::GetAll(const string &interface_name) {
+  SLOG(DBus, 2) << __func__ << "(" << interface_name << ")";
   return proxy_.GetAll(interface_name);
 }
 

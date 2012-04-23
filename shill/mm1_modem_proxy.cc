@@ -33,6 +33,7 @@ void ModemProxy::Enable(bool enable,
   SLOG(Modem, 2) << __func__ << "(" << enable << ", " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.Enable(enable, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -46,6 +47,7 @@ void ModemProxy::ListBearers(Error *error,
                              int timeout) {
   scoped_ptr<DBusPathsCallback> cb(new DBusPathsCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.ListBearers(cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -61,7 +63,8 @@ void ModemProxy::CreateBearer(
     int timeout) {
   scoped_ptr<DBusPathCallback> cb(new DBusPathCallback(callback));
   try {
-  proxy_.CreateBearer(properties, cb.get(), timeout);
+    SLOG(DBus, 2) << __func__;
+    proxy_.CreateBearer(properties, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
     if (error)
@@ -75,7 +78,8 @@ void ModemProxy::DeleteBearer(const ::DBus::Path &bearer,
                               int timeout) {
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
-  proxy_.DeleteBearer(bearer, cb.get(), timeout);
+    SLOG(DBus, 2) << __func__;
+    proxy_.DeleteBearer(bearer, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
     if (error)
@@ -88,7 +92,8 @@ void ModemProxy::Reset(Error *error,
                        int timeout) {
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
-  proxy_.Reset(cb.get(), timeout);
+    SLOG(DBus, 2) << __func__;
+    proxy_.Reset(cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
     if (error)
@@ -102,6 +107,7 @@ void ModemProxy::FactoryReset(const std::string &code,
                               int timeout) {
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.FactoryReset(code, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -117,6 +123,7 @@ void ModemProxy::SetAllowedModes(const uint32_t &modes,
                                  int timeout) {
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.SetAllowedModes(modes, preferred, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -131,6 +138,7 @@ void ModemProxy::SetBands(const std::vector< uint32_t > &bands,
                           int timeout) {
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.SetBands(bands, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -146,6 +154,7 @@ void ModemProxy::Command(const std::string &cmd,
                          int timeout) {
   scoped_ptr<StringCallback> cb(new StringCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.Command(cmd, user_timeout, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -156,75 +165,99 @@ void ModemProxy::Command(const std::string &cmd,
 
 // Inherited properties from ModemProxyInterface.
 const ::DBus::Path ModemProxy::Sim() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Sim();
 }
 uint32_t ModemProxy::ModemCapabilities() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.ModemCapabilities();
 }
 uint32_t ModemProxy::CurrentCapabilities() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.CurrentCapabilities();
 }
 uint32_t ModemProxy::MaxBearers() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.MaxBearers();
 }
 uint32_t ModemProxy::MaxActiveBearers() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.MaxActiveBearers();
 }
 const std::string ModemProxy::Manufacturer() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Manufacturer();
 }
 const std::string ModemProxy::Model() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Model();
 }
 const std::string ModemProxy::Revision() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Revision();
 }
 const std::string ModemProxy::DeviceIdentifier() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.DeviceIdentifier();
 }
 const std::string ModemProxy::Device() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Device();
 }
 const std::string ModemProxy::Driver() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Driver();
 }
 const std::string ModemProxy::Plugin() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Plugin();
 }
 const std::string ModemProxy::EquipmentIdentifier() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.EquipmentIdentifier();
 }
 uint32_t ModemProxy::UnlockRequired() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.UnlockRequired();
 }
 const std::map< uint32_t, uint32_t > ModemProxy::UnlockRetries() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.UnlockRetries();
 }
 uint32_t ModemProxy::State() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.State();
 }
 uint32_t ModemProxy::AccessTechnologies() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.AccessTechnologies();
 }
 const ::DBus::Struct< uint32_t, bool > ModemProxy::SignalQuality() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.SignalQuality();
 }
 const std::vector<string> ModemProxy::OwnNumbers() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.OwnNumbers();
 }
 uint32_t ModemProxy::SupportedModes() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.SupportedModes();
 }
 uint32_t ModemProxy::AllowedModes() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.AllowedModes();
 }
 uint32_t ModemProxy::PreferredMode() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.PreferredMode();
 }
 const std::vector< uint32_t > ModemProxy::SupportedBands() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.SupportedBands();
 }
 const std::vector< uint32_t > ModemProxy::Bands() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Bands();
 }
 
@@ -244,6 +277,7 @@ void ModemProxy::Proxy::set_state_changed_callback(
 void ModemProxy::Proxy::StateChanged(const int32_t &old,
                                      const int32_t &_new,
                                      const uint32_t &reason) {
+  SLOG(DBus, 2) << __func__;
   if (!state_changed_callback_.is_null())
     state_changed_callback_.Run(old, _new, reason);
 }
@@ -252,6 +286,7 @@ void ModemProxy::Proxy::StateChanged(const int32_t &old,
 // org::freedesktop::ModemManager1::ModemProxy
 void ModemProxy::Proxy::EnableCallback(const ::DBus::Error& dberror,
                                        void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -262,6 +297,7 @@ void ModemProxy::Proxy::ListBearersCallback(
     const std::vector< ::DBus::Path > &bearers,
     const ::DBus::Error& dberror,
     void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<DBusPathsCallback> callback(
       reinterpret_cast<DBusPathsCallback *>(data));
   Error error;
@@ -272,6 +308,7 @@ void ModemProxy::Proxy::ListBearersCallback(
 void ModemProxy::Proxy::CreateBearerCallback(const ::DBus::Path &path,
                                              const ::DBus::Error& dberror,
                                              void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -280,6 +317,7 @@ void ModemProxy::Proxy::CreateBearerCallback(const ::DBus::Path &path,
 
 void ModemProxy::Proxy::DeleteBearerCallback(const ::DBus::Error& dberror,
                                              void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -288,6 +326,7 @@ void ModemProxy::Proxy::DeleteBearerCallback(const ::DBus::Error& dberror,
 
 void ModemProxy::Proxy::ResetCallback(const ::DBus::Error& dberror,
                                       void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -296,6 +335,7 @@ void ModemProxy::Proxy::ResetCallback(const ::DBus::Error& dberror,
 
 void ModemProxy::Proxy::FactoryResetCallback(const ::DBus::Error& dberror,
                                              void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -305,6 +345,7 @@ void ModemProxy::Proxy::FactoryResetCallback(const ::DBus::Error& dberror,
 void ModemProxy::Proxy::SetAllowedModesCallback(
     const ::DBus::Error& dberror,
     void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -313,6 +354,7 @@ void ModemProxy::Proxy::SetAllowedModesCallback(
 
 void ModemProxy::Proxy::SetBandsCallback(const ::DBus::Error& dberror,
                                          void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -322,6 +364,7 @@ void ModemProxy::Proxy::SetBandsCallback(const ::DBus::Error& dberror,
 void ModemProxy::Proxy::CommandCallback(const std::string &response,
                                         const ::DBus::Error& dberror,
                                         void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);

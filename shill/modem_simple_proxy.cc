@@ -8,6 +8,7 @@
 
 #include "shill/cellular_error.h"
 #include "shill/error.h"
+#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::Callback;
@@ -30,6 +31,7 @@ void ModemSimpleProxy::GetModemStatus(Error *error,
                                       int timeout) {
   scoped_ptr<DBusPropertyMapCallback> cb(new DBusPropertyMapCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.GetStatus(cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -44,6 +46,7 @@ void ModemSimpleProxy::Connect(const DBusPropertiesMap &properties,
                                int timeout) {
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.Connect(properties, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -62,6 +65,7 @@ ModemSimpleProxy::Proxy::~Proxy() {}
 void ModemSimpleProxy::Proxy::GetStatusCallback(const DBusPropertiesMap &props,
                                                 const DBus::Error &dberror,
                                                 void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<DBusPropertyMapCallback> callback(
       reinterpret_cast<DBusPropertyMapCallback *>(data));
   Error error;
@@ -71,6 +75,7 @@ void ModemSimpleProxy::Proxy::GetStatusCallback(const DBusPropertiesMap &props,
 
 void ModemSimpleProxy::Proxy::ConnectCallback(const DBus::Error &dberror,
                                               void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);

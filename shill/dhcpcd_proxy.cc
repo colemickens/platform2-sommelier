@@ -32,7 +32,7 @@ DHCPCDListener::Proxy::Proxy(DBus::Connection *connection,
 }
 
 void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
-  SLOG(DHCP, 2) << __func__;
+  SLOG(DBus, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid;
   ri >> pid;
@@ -54,7 +54,7 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
 
 void DHCPCDListener::Proxy::StatusChangedSignal(
     const DBus::SignalMessage &signal) {
-  SLOG(DHCP, 2) << __func__;
+  SLOG(DBus, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid;
   ri >> pid;
@@ -76,10 +76,12 @@ DHCPCDProxy::DHCPCDProxy(DBus::Connection *connection, const string &service)
 }
 
 void DHCPCDProxy::Rebind(const string &interface) {
+  SLOG(DBus, 2) << __func__;
   proxy_.Rebind(interface);
 }
 
 void DHCPCDProxy::Release(const string &interface) {
+  SLOG(DBus, 2) << __func__;
   proxy_.Release(interface);
 }
 
@@ -98,11 +100,13 @@ void DHCPCDProxy::Proxy::Event(
     const uint32_t &/*pid*/,
     const std::string &/*reason*/,
     const DHCPConfig::Configuration &/*configuration*/) {
+  SLOG(DBus, 2) << __func__;
   NOTREACHED();
 }
 
 void DHCPCDProxy::Proxy::StatusChanged(const uint32_t &/*pid*/,
                                        const std::string &/*status*/) {
+  SLOG(DBus, 2) << __func__;
   NOTREACHED();
 }
 

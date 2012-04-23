@@ -1020,7 +1020,8 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
     SLOG(Manager, 2) << __func__ << ": getting VPN Service";
     return vpn_provider_.GetService(args, error);
   }
-  error->Populate(Error::kNotSupported, kErrorUnsupportedServiceType);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        kErrorUnsupportedServiceType);
   return NULL;
 }
 
@@ -1029,7 +1030,7 @@ WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
   vector<DeviceRefPtr> wifi_devices;
   FilterByTechnology(Technology::kWifi, &wifi_devices);
   if (wifi_devices.empty()) {
-    error->Populate(Error::kInvalidArguments, kErrorNoDevice);
+    Error::PopulateAndLog(error, Error::kInvalidArguments, kErrorNoDevice);
     return NULL;
   } else {
     WiFi *wifi = dynamic_cast<WiFi *>(wifi_devices.front().get());
@@ -1058,7 +1059,7 @@ void Manager::ConfigureService(const KeyValueStore &args, Error *error) {
     return;
   }
 
-  // Overwrte the profile data with the resulting configured service.
+  // Overwrite the profile data with the resulting configured service.
   if (!profile->UpdateService(service)) {
     Error::PopulateAndLog(error, Error::kInternalError,
                           "Unable to save service to profile");

@@ -30,6 +30,7 @@ void SimProxy::SendPin(const string &pin,
   SLOG(Modem, 2) << __func__ << "( XXX, " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.SendPin(pin, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -47,6 +48,7 @@ void SimProxy::SendPuk(const string &puk,
   SLOG(Modem, 2) << __func__ << "( XXX, XXX, " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.SendPuk(puk, pin, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -64,6 +66,7 @@ void SimProxy::EnablePin(const string &pin,
   SLOG(Modem, 2) << __func__ << "( XXX, " << enabled << ", " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.EnablePin(pin, enabled, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -81,6 +84,7 @@ void SimProxy::ChangePin(const string &old_pin,
   SLOG(Modem, 2) << __func__ << "( XXX, XXX, " << timeout << ")";
   scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.ChangePin(old_pin, new_pin, cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {
@@ -91,18 +95,22 @@ void SimProxy::ChangePin(const string &old_pin,
 
 // Inherited properties from SimProxyInterface.
 const string SimProxy::SimIdentifier() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.SimIdentifier();
 }
 
 const string SimProxy::Imsi() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.Imsi();
 }
 
 const string SimProxy::OperatorIdentifier() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.OperatorIdentifier();
 }
 
 const string SimProxy::OperatorName() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.OperatorName();
 }
 
@@ -118,6 +126,7 @@ SimProxy::Proxy::~Proxy() {}
 // org::freedesktop::ModemManager1::SimProxy
 void SimProxy::Proxy::SendPinCallback(const ::DBus::Error &dberror,
                                       void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -125,7 +134,8 @@ void SimProxy::Proxy::SendPinCallback(const ::DBus::Error &dberror,
 }
 
 void SimProxy::Proxy::SendPukCallback(const ::DBus::Error &dberror,
-                             void *data)  {
+                                      void *data)  {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -133,7 +143,8 @@ void SimProxy::Proxy::SendPukCallback(const ::DBus::Error &dberror,
 }
 
 void SimProxy::Proxy::EnableCallback(const ::DBus::Error &dberror,
-                            void *data)  {
+                                     void *data)  {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);
@@ -141,7 +152,8 @@ void SimProxy::Proxy::EnableCallback(const ::DBus::Error &dberror,
 }
 
 void SimProxy::Proxy::ChangeCallback(const ::DBus::Error &dberror,
-                            void *data) {
+                                     void *data) {
+  SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
   CellularError::FromDBusError(dberror, &error);

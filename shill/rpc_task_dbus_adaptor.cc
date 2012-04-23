@@ -8,6 +8,7 @@
 
 #include "shill/error.h"
 #include "shill/rpc_task.h"
+#include "shill/scope_logger.h"
 
 using std::map;
 using std::string;
@@ -44,12 +45,14 @@ const string &RPCTaskDBusAdaptor::GetRpcConnectionIdentifier() {
 
 void RPCTaskDBusAdaptor::getsec(
     string &user, string &password, DBus::Error &error) {
+  SLOG(DBus, 2) << __func__ << ": " << user;
   task_->GetLogin(&user, &password);
 }
 
 void RPCTaskDBusAdaptor::notify(const string &reason,
                                 const map<string, string> &dict,
                                 DBus::Error &/*error*/) {
+  SLOG(DBus, 2) << __func__ << ": " << reason;
   task_->Notify(reason, dict);
 }
 

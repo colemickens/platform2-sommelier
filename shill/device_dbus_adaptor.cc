@@ -42,34 +42,41 @@ const std::string &DeviceDBusAdaptor::GetRpcConnectionIdentifier() {
 void DeviceDBusAdaptor::UpdateEnabled() {}
 
 void DeviceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
 }
 
 void DeviceDBusAdaptor::EmitUintChanged(const std::string& name, uint32 value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
 void DeviceDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
 void DeviceDBusAdaptor::EmitStringChanged(const std::string& name,
                                           const std::string& value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
 void DeviceDBusAdaptor::EmitStringmapsChanged(const std::string &name,
                                               const Stringmaps &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::StringmapsToVariant(value));
 }
 
 void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const std::string &name,
                                                  const KeyValueStore &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::KeyValueStoreToVariant(value));
 }
 
 map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   map<string, ::DBus::Variant> properties;
   DBusAdaptor::GetProperties(device_->store(), &properties, &error);
   return properties;
@@ -78,15 +85,18 @@ map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(
 void DeviceDBusAdaptor::SetProperty(const string &name,
                                     const ::DBus::Variant &value,
                                     ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   DBusAdaptor::SetProperty(device_->mutable_store(), name, value, &error);
 }
 
 void DeviceDBusAdaptor::ClearProperty(const std::string &name,
                                       ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
   DBusAdaptor::ClearProperty(device_->mutable_store(), name, &error);
 }
 
 void DeviceDBusAdaptor::Enable(::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   device_->SetEnabledPersistent(true, &e, GetMethodReplyCallback(tag));
@@ -94,6 +104,7 @@ void DeviceDBusAdaptor::Enable(::DBus::Error &error) {
 }
 
 void DeviceDBusAdaptor::Disable(::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   device_->SetEnabledPersistent(false, &e, GetMethodReplyCallback(tag));
@@ -101,6 +112,7 @@ void DeviceDBusAdaptor::Disable(::DBus::Error &error) {
 }
 
 void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   Error e;
   device_->Scan(&e);
   e.ToDBusError(&error);
@@ -108,6 +120,7 @@ void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
 
 ::DBus::Path DeviceDBusAdaptor::AddIPConfig(const string& ,
                                             ::DBus::Error &/*error*/) {
+  SLOG(DBus, 2) << __func__;
   return "/";
 }
 
@@ -122,6 +135,7 @@ void DeviceDBusAdaptor::Register(const string &network_id,
 
 void DeviceDBusAdaptor::RequirePin(
     const string &pin, const bool &require, DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   device_->RequirePIN(pin, require, &e, GetMethodReplyCallback(tag));
@@ -129,6 +143,7 @@ void DeviceDBusAdaptor::RequirePin(
 }
 
 void DeviceDBusAdaptor::EnterPin(const string &pin, DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   device_->EnterPIN(pin, &e, GetMethodReplyCallback(tag));
@@ -137,6 +152,7 @@ void DeviceDBusAdaptor::EnterPin(const string &pin, DBus::Error &error) {
 
 void DeviceDBusAdaptor::UnblockPin(
     const string &unblock_code, const string &pin, DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   device_->UnblockPIN(unblock_code, pin, &e, GetMethodReplyCallback(tag));
@@ -145,6 +161,7 @@ void DeviceDBusAdaptor::UnblockPin(
 
 void DeviceDBusAdaptor::ChangePin(
     const string &old_pin, const string &new_pin, DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   Error e;
   DBus::Tag *tag = new DBus::Tag();
   device_->ChangePIN(old_pin, new_pin, &e, GetMethodReplyCallback(tag));

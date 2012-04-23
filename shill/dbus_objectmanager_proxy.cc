@@ -5,8 +5,8 @@
 
 #include <base/logging.h>
 
-#include "cellular_error.h"
-#include "scope_logger.h"
+#include "shill/cellular_error.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 
@@ -25,6 +25,7 @@ void DBusObjectManagerProxy::GetManagedObjects(
     int timeout) {
   scoped_ptr<ManagedObjectsCallback> cb(new ManagedObjectsCallback(callback));
   try {
+    SLOG(DBus, 2) << __func__;
     proxy_.GetManagedObjects(cb.get(), timeout);
     cb.release();
   } catch (DBus::Error e) {

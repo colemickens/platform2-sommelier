@@ -7,6 +7,7 @@
 #include <base/logging.h>
 
 #include "shill/modem_manager.h"
+#include "shill/scope_logger.h"
 
 using std::string;
 using std::vector;
@@ -22,6 +23,7 @@ ModemManagerProxy::ModemManagerProxy(DBus::Connection *connection,
 ModemManagerProxy::~ModemManagerProxy() {}
 
 vector<DBus::Path> ModemManagerProxy::EnumerateDevices() {
+  SLOG(DBus, 2) << __func__;
   return proxy_.EnumerateDevices();
 }
 
@@ -35,10 +37,12 @@ ModemManagerProxy::Proxy::Proxy(DBus::Connection *connection,
 ModemManagerProxy::Proxy::~Proxy() {}
 
 void ModemManagerProxy::Proxy::DeviceAdded(const DBus::Path &device) {
+  SLOG(DBus, 2) << __func__;
   manager_->OnDeviceAdded(device);
 }
 
 void ModemManagerProxy::Proxy::DeviceRemoved(const DBus::Path &device) {
+  SLOG(DBus, 2) << __func__;
   manager_->OnDeviceRemoved(device);
 }
 

@@ -201,15 +201,19 @@ void DBusAdaptor::ArgsToKeyValueStore(
   for (map<string, ::DBus::Variant>::const_iterator it = args.begin();
        it != args.end();
        ++it) {
+    string key = it->first;
     DBus::type<string> string_type;
     DBus::type<bool> bool_type;
 
     if (it->second.signature() == string_type.sig()) {
-      out->SetString(it->first, it->second.reader().get_string());
+      SLOG(DBus, 5) << "Got string property " << key;
+      out->SetString(key, it->second.reader().get_string());
     } else if (it->second.signature() == bool_type.sig()) {
-      out->SetBool(it->first, it->second.reader().get_bool());
+      SLOG(DBus, 5) << "Got bool property " << key;
+      out->SetBool(key, it->second.reader().get_bool());
     } else {
-      error->Populate(Error::kInternalError);
+      Error::PopulateAndLog(error, Error::kInternalError,
+                            "unsupported type for property " + key);
       return;  // Skip remaining args after error.
     }
   }
