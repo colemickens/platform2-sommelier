@@ -326,8 +326,10 @@ int main(int argc, char** argv) {
   if (load)
     LoadToken(cl->GetSwitchValueASCII("path"),
               cl->GetSwitchValueASCII("auth"));
-  if (unload)
+  if (unload) {
     UnloadToken(cl->GetSwitchValueASCII("path"));
+    return 0;
+  }
 
   CK_SLOT_ID slot = Initialize();
   CK_SESSION_HANDLE session = OpenSession(slot);
