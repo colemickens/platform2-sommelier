@@ -4,7 +4,6 @@
 
 #include "shill/metrics.h"
 
-#include <base/lazy_instance.h>
 #include <base/logging.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>

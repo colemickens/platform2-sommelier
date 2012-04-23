@@ -35,9 +35,9 @@ using std::string;
 
 namespace shill {
 
-// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
-// because of http://crbug.com/114828
-static base::LazyInstance<RTNLHandler> g_rtnl_handler = {0, {{0}}};
+namespace {
+base::LazyInstance<RTNLHandler> g_rtnl_handler = LAZY_INSTANCE_INITIALIZER;
+}  // namespace
 
 RTNLHandler::RTNLHandler()
     : sockets_(NULL),

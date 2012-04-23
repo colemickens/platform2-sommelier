@@ -52,9 +52,7 @@ const char *const kScopeNames[] = {
 COMPILE_ASSERT(arraysize(kScopeNames) == ScopeLogger::kNumScopes,
                scope_tags_does_not_have_expected_number_of_strings);
 
-// TODO(benchan): not using LAZY_INSTANCE_INITIALIZER
-// because of http://crbug.com/114828
-base::LazyInstance<ScopeLogger> g_scope_logger = {0, {{0}}};
+base::LazyInstance<ScopeLogger> g_scope_logger = LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace
 

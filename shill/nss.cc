@@ -20,13 +20,10 @@ using std::vector;
 namespace shill {
 
 namespace {
+base::LazyInstance<NSS> g_nss = LAZY_INSTANCE_INITIALIZER;
 const char kCertfileBasename[] = "/tmp/nss-cert.";
 const char kNSSGetCertScript[] = SCRIPTDIR "/nss-get-cert";
 }  // namespace
-
-// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
-// because of http://crbug.com/114828
-static base::LazyInstance<NSS> g_nss = { 0, {{0}} };
 
 NSS::NSS()
     : glib_(NULL) {

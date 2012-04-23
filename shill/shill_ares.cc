@@ -6,9 +6,9 @@
 
 namespace shill {
 
-// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
-// because of http://crbug.com/114828
-static base::LazyInstance<Ares> g_ares = {0, {{0}}};
+namespace {
+base::LazyInstance<Ares> g_ares = LAZY_INSTANCE_INITIALIZER;
+}  // namespace
 
 Ares::Ares() { }
 

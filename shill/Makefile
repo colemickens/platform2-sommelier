@@ -5,6 +5,7 @@
 CXX ?= g++
 CXXFLAGS ?= -fno-strict-aliasing
 CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -Wno-unused-result \
+	    -Wno-missing-field-initializers \
 	    -Werror -Wuninitialized -Woverloaded-virtual
 CXXFLAGS += $(EXTRA_CXXFLAGS)
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS

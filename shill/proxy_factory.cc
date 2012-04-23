@@ -29,9 +29,9 @@ using std::string;
 
 namespace shill {
 
-// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
-// because of http://crbug.com/114828
-static base::LazyInstance<ProxyFactory> g_proxy_factory = {0, {{0}}};
+namespace {
+base::LazyInstance<ProxyFactory> g_proxy_factory = LAZY_INSTANCE_INITIALIZER;
+}  // namespace
 
 ProxyFactory::ProxyFactory() {}
 

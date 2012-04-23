@@ -41,9 +41,9 @@ using std::vector;
 
 namespace shill {
 
-// TODO(ers): not using LAZY_INSTANCE_INITIALIZER
-// because of http://crbug.com/114828
-static base::LazyInstance<RoutingTable> g_routing_table = {0, {{0}}};
+namespace {
+base::LazyInstance<RoutingTable> g_routing_table = LAZY_INSTANCE_INITIALIZER;
+}  // namespace
 
 // static
 const char RoutingTable::kRouteFlushPath4[] = "/proc/sys/net/ipv4/route/flush";

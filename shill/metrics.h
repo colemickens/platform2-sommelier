@@ -7,7 +7,6 @@
 
 #include <list>
 
-#include <base/lazy_instance.h>
 #include <base/memory/scoped_vector.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
@@ -220,7 +219,6 @@ class Metrics {
                          int max, int num_buckets);
 
  private:
-  friend struct base::DefaultLazyInstanceTraits<Metrics>;
   friend class MetricsTest;
   FRIEND_TEST(MetricsTest, FrequencyToChannel);
   FRIEND_TEST(MetricsTest, ServiceFailure);
