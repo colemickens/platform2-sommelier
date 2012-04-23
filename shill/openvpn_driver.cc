@@ -62,7 +62,7 @@ const char OpenVPNDriver::kOpenVPNPath[] = "/usr/sbin/openvpn";
 // static
 const char OpenVPNDriver::kOpenVPNScript[] = SCRIPTDIR "/openvpn-script";
 // static
-const OpenVPNDriver::Property OpenVPNDriver::kProperties[] = {
+const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { flimflam::kOpenVPNAuthNoCacheProperty, 0 },
   { flimflam::kOpenVPNAuthProperty, 0 },
   { flimflam::kOpenVPNAuthRetryProperty, 0 },

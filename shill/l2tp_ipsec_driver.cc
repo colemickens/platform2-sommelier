@@ -35,12 +35,32 @@ const char kL2TPIPSecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 
 // static
 const char L2TPIPSecDriver::kPPPDPlugin[] = SCRIPTDIR "/libppp-plugin.so";
+// static
 const char L2TPIPSecDriver::kL2TPIPSecVPNPath[] = "/usr/sbin/l2tpipsec_vpn";
+// static
+const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
+  { flimflam::kL2tpIpsecCaCertNssProperty, 0 },
+  { flimflam::kL2tpIpsecClientCertIdProperty, 0 },
+  { flimflam::kL2tpIpsecClientCertSlotProperty, 0 },
+  { flimflam::kL2tpIpsecPasswordProperty, Property::kCrypted },
+  { flimflam::kL2tpIpsecPinProperty, Property::kEphemeral },
+  { flimflam::kL2tpIpsecPskProperty, Property::kCrypted },
+  { flimflam::kL2tpIpsecUserProperty, 0 },
+  { kL2TPIPSecIPSecTimeoutProperty, 0 },
+  { kL2TPIPSecLeftProtoPortProperty, 0 },
+  { kL2TPIPSecLengthBitProperty, 0 },
+  { kL2TPIPSecPFSProperty, 0 },
+  { kL2TPIPSecRefusePapProperty, 0 },
+  { kL2TPIPSecRekeyProperty, 0 },
+  { kL2TPIPSecRequireAuthProperty, 0 },
+  { kL2TPIPSecRequireChapProperty, 0 },
+  { kL2TPIPSecRightProtoPortProperty, 0 },
+};
 
 L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
                                  Manager *manager,
                                  GLib *glib)
-    : VPNDriver(NULL, 0),
+    : VPNDriver(kProperties, arraysize(kProperties)),
       control_(control),
       manager_(manager),
       glib_(glib),

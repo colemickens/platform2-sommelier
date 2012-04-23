@@ -50,8 +50,10 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, InitPSKOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);
   FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN);
+
   static const char kPPPDPlugin[];
   static const char kL2TPIPSecVPNPath[];
+  static const Property kProperties[];
 
   bool SpawnL2TPIPSecVPN(Error *error);
 

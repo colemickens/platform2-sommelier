@@ -643,4 +643,16 @@ TEST_F(OpenVPNDriverTest, VerifyPaths) {
   EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(vpn_script)));
 }
 
+TEST_F(OpenVPNDriverTest, InitPropertyStore) {
+  // Sanity test property store initialization.
+  PropertyStore store;
+  driver_->InitPropertyStore(&store);
+  const string kUser = "joe";
+  Error error;
+  EXPECT_TRUE(
+      store.SetStringProperty(flimflam::kOpenVPNUserProperty, kUser, &error));
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kUser, GetArgs()->GetString(flimflam::kOpenVPNUserProperty));
+}
+
 }  // namespace shill

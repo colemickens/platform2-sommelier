@@ -59,6 +59,10 @@ class L2TPIPSecDriverTest : public testing::Test,
     driver_->args_.SetString(arg, value);
   }
 
+  KeyValueStore *GetArgs() {
+    return driver_->args();
+  }
+
   // Used to assert that a flag appears in the options.
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
@@ -361,6 +365,18 @@ TEST_F(L2TPIPSecDriverTest, Connect) {
   Error error;
   driver_->Connect(service_, &error);
   EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {
+  // Sanity test property store initialization.
+  PropertyStore store;
+  driver_->InitPropertyStore(&store);
+  const string kUser = "joe";
+  Error error;
+  EXPECT_TRUE(
+      store.SetStringProperty(flimflam::kL2tpIpsecUserProperty, kUser, &error));
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kUser, GetArgs()->GetString(flimflam::kL2tpIpsecUserProperty));
 }
 
 }  // namespace shill
