@@ -378,7 +378,6 @@ void DeviceInfoTechnologyTest::CreateInfoFile(const string &name,
 void DeviceInfoTechnologyTest::CreateInfoSymLink(const string &name,
                                                  const string &contents) {
   FilePath info_path = GetInfoPath(name);
-  LOG(ERROR) << info_path.value();
   EXPECT_TRUE(file_util::CreateDirectory(info_path.DirName()));
   EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath(contents), info_path));
 }
