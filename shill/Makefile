@@ -197,6 +197,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	technology.o \
 	virtio_ethernet.o \
 	vpn.o \
+	vpn_driver.o \
 	vpn_provider.o \
 	vpn_service.o \
 	wifi.o \
@@ -325,6 +326,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	shill_unittest.o \
 	technology_unittest.o \
 	testrunner.o \
+	vpn_driver_unittest.o \
 	vpn_provider_unittest.o \
 	vpn_service_unittest.o \
 	vpn_unittest.o \

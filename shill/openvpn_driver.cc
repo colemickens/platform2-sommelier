@@ -20,11 +20,9 @@
 #include "shill/manager.h"
 #include "shill/nss.h"
 #include "shill/openvpn_management_server.h"
-#include "shill/property_accessor.h"
 #include "shill/rpc_task.h"
 #include "shill/scope_logger.h"
 #include "shill/sockets.h"
-#include "shill/store_interface.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
@@ -73,14 +71,13 @@ const OpenVPNDriver::Property OpenVPNDriver::kProperties[] = {
   { flimflam::kOpenVPNCaCertProperty, 0 },
   { flimflam::kOpenVPNCipherProperty, 0 },
   { flimflam::kOpenVPNClientCertIdProperty,
-    OpenVPNDriver::Property::kEphemeral | OpenVPNDriver::Property::kCrypted },
+    Property::kEphemeral | Property::kCrypted },
   { flimflam::kOpenVPNCompLZOProperty, 0 },
   { flimflam::kOpenVPNCompNoAdaptProperty, 0 },
   { flimflam::kOpenVPNKeyDirectionProperty, 0 },
   { flimflam::kOpenVPNNsCertTypeProperty, 0 },
-  { flimflam::kOpenVPNOTPProperty,
-    OpenVPNDriver::Property::kEphemeral | OpenVPNDriver::Property::kCrypted },
-  { flimflam::kOpenVPNPasswordProperty, OpenVPNDriver::Property::kCrypted },
+  { flimflam::kOpenVPNOTPProperty, Property::kEphemeral | Property::kCrypted },
+  { flimflam::kOpenVPNPasswordProperty, Property::kCrypted },
   { flimflam::kOpenVPNPinProperty, 0 },
   { flimflam::kOpenVPNPortProperty, 0 },
   { flimflam::kOpenVPNProtoProperty, 0 },
@@ -118,7 +115,8 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
                              Manager *manager,
                              DeviceInfo *device_info,
                              GLib *glib)
-    : control_(control),
+    : VPNDriver(kProperties, arraysize(kProperties)),
+      control_(control),
       dispatcher_(dispatcher),
       metrics_(metrics),
       manager_(manager),
@@ -396,7 +394,7 @@ void OpenVPNDriver::Connect(const VPNServiceRefPtr &service,
 }
 
 void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
-  string vpnhost = args_.LookupString(flimflam::kProviderHostProperty, "");
+  string vpnhost = args()->LookupString(flimflam::kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments, "VPN host not specified.");
@@ -426,7 +424,7 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   AppendValueOption(kOpenVPNTLSAuthProperty, "--tls-auth", options);
   {
     string contents =
-        args_.LookupString(flimflam::kOpenVPNTLSAuthContentsProperty, "");
+        args()->LookupString(flimflam::kOpenVPNTLSAuthContentsProperty, "");
     if (!contents.empty()) {
       if (!file_util::CreateTemporaryFile(&tls_auth_file_) ||
           file_util::WriteFile(
@@ -475,7 +473,7 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
 
   // TLS suport.
   string remote_cert_tls =
-      args_.LookupString(flimflam::kOpenVPNRemoteCertTLSProperty, "");
+      args()->LookupString(flimflam::kOpenVPNRemoteCertTLSProperty, "");
   if (remote_cert_tls.empty()) {
     remote_cert_tls = "server";
   }
@@ -528,15 +526,16 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
 }
 
 bool OpenVPNDriver::InitNSSOptions(vector<string> *options, Error *error) {
-  string ca_cert = args_.LookupString(flimflam::kOpenVPNCaCertNSSProperty, "");
+  string ca_cert =
+      args()->LookupString(flimflam::kOpenVPNCaCertNSSProperty, "");
   if (!ca_cert.empty()) {
-    if (!args_.LookupString(flimflam::kOpenVPNCaCertProperty, "").empty()) {
+    if (!args()->LookupString(flimflam::kOpenVPNCaCertProperty, "").empty()) {
       Error::PopulateAndLog(error,
                             Error::kInvalidArguments,
                             "Can't specify both CACert and CACertNSS.");
       return false;
     }
-    const string &vpnhost = args_.GetString(flimflam::kProviderHostProperty);
+    const string &vpnhost = args()->GetString(flimflam::kProviderHostProperty);
     vector<char> id(vpnhost.begin(), vpnhost.end());
     FilePath certfile = nss_->GetPEMCertfile(ca_cert, id);
     if (certfile.empty()) {
@@ -550,10 +549,10 @@ bool OpenVPNDriver::InitNSSOptions(vector<string> *options, Error *error) {
 }
 
 void OpenVPNDriver::InitPKCS11Options(vector<string> *options) {
-  string id = args_.LookupString(flimflam::kOpenVPNClientCertIdProperty, "");
+  string id = args()->LookupString(flimflam::kOpenVPNClientCertIdProperty, "");
   if (!id.empty()) {
     string provider =
-        args_.LookupString(flimflam::kOpenVPNProviderProperty, "");
+        args()->LookupString(flimflam::kOpenVPNProviderProperty, "");
     if (provider.empty()) {
       provider = kDefaultPKCS11Provider;
     }
@@ -576,7 +575,7 @@ bool OpenVPNDriver::InitManagementChannelOptions(
 
 bool OpenVPNDriver::AppendValueOption(
     const string &property, const string &option, vector<string> *options) {
-  string value = args_.LookupString(property, "");
+  string value = args()->LookupString(property, "");
   if (!value.empty()) {
     options->push_back(option);
     options->push_back(value);
@@ -587,7 +586,7 @@ bool OpenVPNDriver::AppendValueOption(
 
 bool OpenVPNDriver::AppendFlag(
     const string &property, const string &option, vector<string> *options) {
-  if (args_.ContainsString(property)) {
+  if (args()->ContainsString(property)) {
     options->push_back(option);
     return true;
   }
@@ -631,124 +630,8 @@ void OpenVPNDriver::OnReconnecting() {
   }
 }
 
-bool OpenVPNDriver::Load(StoreInterface *storage, const string &storage_id) {
-  for (size_t i = 0; i < arraysize(kProperties); i++) {
-    if ((kProperties[i].flags & Property::kEphemeral)) {
-      continue;
-    }
-    const string property = kProperties[i].property;
-    string value;
-    bool loaded = (kProperties[i].flags & Property::kCrypted) ?
-        storage->GetCryptedString(storage_id, property, &value) :
-        storage->GetString(storage_id, property, &value);
-    if (loaded) {
-      args_.SetString(property, value);
-    } else {
-      args_.RemoveString(property);
-    }
-  }
-  return true;
-}
-
-bool OpenVPNDriver::Save(StoreInterface *storage, const string &storage_id) {
-  for (size_t i = 0; i < arraysize(kProperties); i++) {
-    if ((kProperties[i].flags & Property::kEphemeral)) {
-      continue;
-    }
-    const string property = kProperties[i].property;
-    const string value = args_.LookupString(property, "");
-    if (value.empty()) {
-      storage->DeleteKey(storage_id, property);
-    } else if ((kProperties[i].flags & Property::kCrypted)) {
-      storage->SetCryptedString(storage_id, property, value);
-    } else {
-      storage->SetString(storage_id, property, value);
-    }
-  }
-  return true;
-}
-
-void OpenVPNDriver::InitPropertyStore(PropertyStore *store) {
-  for (size_t i = 0; i < arraysize(kProperties); i++) {
-    store->RegisterDerivedString(
-        kProperties[i].property,
-        StringAccessor(
-            new CustomMappedAccessor<OpenVPNDriver, string, size_t>(
-                this,
-                &OpenVPNDriver::ClearMappedProperty,
-                &OpenVPNDriver::GetMappedProperty,
-                &OpenVPNDriver::SetMappedProperty,
-                i)));
-  }
-
-  store->RegisterDerivedStringmap(
-      flimflam::kProviderProperty,
-      StringmapAccessor(
-          new CustomAccessor<OpenVPNDriver, Stringmap>(
-              this, &OpenVPNDriver::GetProvider, NULL)));
-
-  // TODO(pstew): Add the PassphraseRequired and PSKRequired properties.
-  // crosbug.com/27323
-}
-
 string OpenVPNDriver::GetProviderType() const {
   return flimflam::kProviderOpenVpn;
-}
-
-void OpenVPNDriver::ClearMappedProperty(const size_t &index,
-                                        Error *error) {
-  CHECK(index < arraysize(kProperties));
-  if (args_.ContainsString(kProperties[index].property)) {
-    args_.RemoveString(kProperties[index].property);
-  } else {
-    error->Populate(Error::kNotFound, "Property is not set");
-  }
-}
-
-string OpenVPNDriver::GetMappedProperty(const size_t &index,
-                                        Error *error) {
-  // Provider properties are set via SetProperty calls to "Provider.XXX",
-  // however, they are retrieved via a GetProperty call, which returns
-  // all properties in a single "Provider" dict.  Therefore, none of
-  // the individual properties in the kProperties are available for
-  // enumeration in GetProperties.  Instead, they are retrieved via
-  // GetProvider below.
-  error->Populate(Error::kInvalidArguments,
-                  "Provider properties are not read back in this manner");
-  return string();
-}
-
-void OpenVPNDriver::SetMappedProperty(const size_t &index,
-                                      const string &value,
-                                      Error *error) {
-  CHECK(index < arraysize(kProperties));
-  args_.SetString(kProperties[index].property, value);
-}
-
-Stringmap OpenVPNDriver::GetProvider(Error *error) {
-  string provider_prefix = string(flimflam::kProviderProperty) + ".";
-  Stringmap provider_properties;
-
-  for (size_t i = 0; i < arraysize(kProperties); i++) {
-    // Never return any encrypted properties.
-    if ((kProperties[i].flags & Property::kCrypted)) {
-      continue;
-    }
-
-    string prop = kProperties[i].property;
-
-    // Chomp off leading "Provider." from properties that have this prefix.
-    if (StartsWithASCII(prop, provider_prefix, false)) {
-      prop = prop.substr(provider_prefix.length());
-    }
-
-    if (args_.ContainsString(kProperties[i].property)) {
-      provider_properties[prop] =
-          args_.LookupString(kProperties[i].property, "");
-    }
-  }
-
-  return provider_properties;
 }
 
 }  // namespace shill

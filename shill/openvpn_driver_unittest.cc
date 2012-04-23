@@ -8,7 +8,6 @@
 
 #include <base/file_path.h>
 #include <base/file_util.h>
-#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -33,7 +32,6 @@
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
-using base::UintToString;
 using std::map;
 using std::string;
 using std::vector;
@@ -91,26 +89,17 @@ class OpenVPNDriverTest : public testing::Test,
   static const char kInterfaceName[];
   static const int kInterfaceIndex;
 
-  void SetArg(const std::string &arg, const std::string &value) {
-    driver_->args_.SetString(arg, value);
+  void SetArg(const string &arg, const string &value) {
+    driver_->args()->SetString(arg, value);
   }
 
   KeyValueStore *GetArgs() {
-    return &driver_->args_;
+    return driver_->args();
   }
 
   // Used to assert that a flag appears in the options.
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
-
-  bool FindStringPropertyInStore(const PropertyStore &store,
-                                 const string &key,
-                                 string *value,
-                                 Error *error);
-  bool FindStringmapPropertyInStore(const PropertyStore &store,
-                                    const string &key,
-                                    Stringmap *value,
-                                    Error *error);
 
   // Inherited from RPCTaskDelegate.
   virtual void GetLogin(string *user, string *password);
@@ -165,38 +154,6 @@ void OpenVPNDriverTest::ExpectInFlags(const vector<string> &options,
   if (it != options.end())
     return;  // Don't crash below.
   EXPECT_EQ(value, *it);
-}
-
-bool OpenVPNDriverTest::FindStringPropertyInStore(const PropertyStore &store,
-                                                  const string &key,
-                                                  string *value,
-                                                  Error *error) {
-  ReadablePropertyConstIterator<std::string> it =
-      store.GetStringPropertiesIter();
-  for ( ; !it.AtEnd(); it.Advance()) {
-    if (it.Key() == key) {
-      *value = it.Value(error);
-      return error->IsSuccess();
-    }
-  }
-  error->Populate(Error::kNotFound);
-  return false;
-}
-
-bool OpenVPNDriverTest::FindStringmapPropertyInStore(const PropertyStore &store,
-                                                     const string &key,
-                                                     Stringmap *value,
-                                                     Error *error) {
-  ReadablePropertyConstIterator<Stringmap> it =
-      store.GetStringmapPropertiesIter();
-  for ( ; !it.AtEnd(); it.Advance()) {
-    if (it.Key() == key) {
-      *value = it.Value(error);
-      return error->IsSuccess();
-    }
-  }
-  error->Populate(Error::kNotFound);
-  return false;
 }
 
 TEST_F(OpenVPNDriverTest, Connect) {
@@ -684,181 +641,6 @@ TEST_F(OpenVPNDriverTest, VerifyPaths) {
   string vpn_script(OpenVPNDriver::kOpenVPNScript);
   TrimString(vpn_script, FilePath::kSeparators, &vpn_script);
   EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(vpn_script)));
-}
-
-TEST_F(OpenVPNDriverTest, Load) {
-  MockStore storage;
-  static const char kStorageID[] = "vpn_service_id";
-  const string port = "1234";
-  const string password = "random-password";
-  EXPECT_CALL(storage, GetString(kStorageID, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(storage, GetString(kStorageID, flimflam::kOpenVPNPortProperty, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(port), Return(true)));
-  EXPECT_CALL(storage, GetCryptedString(kStorageID,
-                                        flimflam::kOpenVPNPasswordProperty,
-                                        _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(password), Return(true)));
-  EXPECT_TRUE(driver_->Load(&storage, kStorageID));
-  EXPECT_EQ(port,
-            GetArgs()->LookupString(flimflam::kOpenVPNPortProperty, ""));
-  EXPECT_EQ(password,
-            GetArgs()->LookupString(flimflam::kOpenVPNPasswordProperty, ""));
-}
-
-TEST_F(OpenVPNDriverTest, Store) {
-  const string key_direction = "1";
-  const string password = "foobar";
-  SetArg(flimflam::kOpenVPNKeyDirectionProperty, key_direction);
-  SetArg(flimflam::kOpenVPNPasswordProperty, password);
-  MockStore storage;
-  static const char kStorageID[] = "vpn_service_id";
-  EXPECT_CALL(storage,
-              SetString(kStorageID,
-                        flimflam::kOpenVPNKeyDirectionProperty,
-                        key_direction))
-      .WillOnce(Return(true));
-  EXPECT_CALL(storage, SetCryptedString(kStorageID,
-                                        flimflam::kOpenVPNPasswordProperty,
-                                        password))
-      .WillOnce(Return(true));
-  EXPECT_CALL(storage,
-              SetCryptedString(
-                  kStorageID, flimflam::kOpenVPNOTPProperty, _)).Times(0);
-  EXPECT_CALL(storage,
-              SetString(
-                  kStorageID, flimflam::kOpenVPNOTPProperty, _)).Times(0);
-  EXPECT_CALL(storage,
-              SetCryptedString(
-                  kStorageID, flimflam::kOpenVPNClientCertIdProperty, _))
-      .Times(0);
-  EXPECT_CALL(storage,
-              SetString(
-                  kStorageID, flimflam::kOpenVPNClientCertIdProperty, _))
-      .Times(0);
-  EXPECT_CALL(storage, DeleteKey(kStorageID, _)).Times(AnyNumber());
-  EXPECT_CALL(storage, DeleteKey(kStorageID, flimflam::kOpenVPNAuthProperty))
-      .Times(1);
-  EXPECT_TRUE(driver_->Save(&storage, kStorageID));
-}
-
-TEST_F(OpenVPNDriverTest, InitPropertyStore) {
-  // Figure out if the store is actually hooked up to the driver argument
-  // KeyValueStore.
-  PropertyStore store;
-  driver_->InitPropertyStore(&store);
-
-  // An un-set property in OpenVPN should not be readable.
-  {
-    Error error;
-    string string_property;
-    EXPECT_FALSE(
-        FindStringPropertyInStore(store, flimflam::kOpenVPNKeyDirectionProperty,
-                                  &string_property,
-                                  &error));
-    EXPECT_EQ(Error::kNotFound, error.type());
-  }
-
-  const string kKeyDirection = "1";
-  const string kPassword0 = "foobar";
-  const string kPassword1 = "baz";
-  const string kProviderName = "boo";
-  SetArg(flimflam::kOpenVPNKeyDirectionProperty, kKeyDirection);
-  SetArg(flimflam::kOpenVPNPasswordProperty, kPassword0);
-  SetArg(flimflam::kProviderNameProperty, kProviderName);
-
-  // We should not be able to read a property out of the driver args using
-  // the key to the args directly.
-  {
-    Error error;
-    string string_property;
-    EXPECT_FALSE(
-        FindStringPropertyInStore(store, flimflam::kOpenVPNKeyDirectionProperty,
-                                  &string_property,
-                                  &error));
-    EXPECT_EQ(Error::kNotFound, error.type());
-  }
-
-  // We should instead be able to find it within the "Provider" stringmap.
-  {
-    Error error;
-    Stringmap provider_properties;
-    EXPECT_TRUE(
-        FindStringmapPropertyInStore(store, flimflam::kProviderProperty,
-                                     &provider_properties,
-                                     &error));
-    EXPECT_TRUE(ContainsKey(provider_properties,
-                            flimflam::kOpenVPNKeyDirectionProperty));
-    EXPECT_EQ(kKeyDirection,
-              provider_properties[flimflam::kOpenVPNKeyDirectionProperty]);
-  }
-
-  // Properties that start with the prefix "Provider." should be mapped to
-  // the name in the Properties dict with the prefix removed.
-  {
-    Error error;
-    Stringmap provider_properties;
-    EXPECT_TRUE(
-        FindStringmapPropertyInStore(store, flimflam::kProviderProperty,
-                                     &provider_properties,
-                                     &error));
-    EXPECT_TRUE(ContainsKey(provider_properties, flimflam::kNameProperty));
-    EXPECT_EQ(kProviderName, provider_properties[flimflam::kNameProperty]);
-  }
-
-  // If we clear this property, we should no longer be able to find it.
-  {
-    Error error;
-    EXPECT_TRUE(store.ClearProperty(flimflam::kOpenVPNKeyDirectionProperty,
-                                     &error));
-    EXPECT_TRUE(error.IsSuccess());
-  }
-
-  {
-    Error error;
-    string string_property;
-    EXPECT_FALSE(
-        FindStringPropertyInStore(store, flimflam::kOpenVPNKeyDirectionProperty,
-                                  &string_property,
-                                  &error));
-    EXPECT_EQ(Error::kNotFound, error.type());
-  }
-
-  // A second attempt to clear this property should return an error.
-  {
-    Error error;
-    EXPECT_FALSE(store.ClearProperty(flimflam::kOpenVPNKeyDirectionProperty,
-                                      &error));
-    EXPECT_EQ(Error::kNotFound, error.type());
-  }
-
-  // These ones should be write-only.
-  static const char * const kWriteOnly[] = {
-    flimflam::kOpenVPNClientCertIdProperty,
-    flimflam::kOpenVPNPasswordProperty,
-    flimflam::kOpenVPNOTPProperty
-  };
-
-  for (size_t i = 0; i < arraysize(kWriteOnly); i++) {
-    Error error;
-    string string_property;
-    EXPECT_FALSE(
-        FindStringPropertyInStore(
-            store, kWriteOnly[i], &string_property, &error)) << kWriteOnly[i];
-    // We get NotFound here instead of PermissionDenied here due to the
-    // implementation of ReadablePropertyConstIterator: it shields us from
-    // store members for which Value() would have returned an error.
-    EXPECT_EQ(Error::kNotFound, error.type()) << kWriteOnly[i];
-  }
-
-  // Write properties to the driver args using the PropertyStore interface.
-  for (size_t i = 0; i < arraysize(kWriteOnly); i++) {
-    string value = "some-value-" + UintToString(i);
-    Error error;
-    EXPECT_TRUE(store.SetStringProperty(kWriteOnly[i], value, &error))
-        << kWriteOnly[i];
-    EXPECT_EQ(value, GetArgs()->GetString(kWriteOnly[i])) << kWriteOnly[i];
-  }
 }
 
 }  // namespace shill

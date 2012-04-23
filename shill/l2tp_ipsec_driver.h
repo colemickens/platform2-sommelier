@@ -35,9 +35,6 @@ class L2TPIPSecDriver : public VPNDriver,
                               int interface_index);
   virtual void Connect(const VPNServiceRefPtr &service, Error *error);
   virtual void Disconnect();
-  virtual bool Load(StoreInterface *storage, const std::string &storage_id);
-  virtual bool Save(StoreInterface *storage, const std::string &storage_id);
-  virtual void InitPropertyStore(PropertyStore *store);
   virtual std::string GetProviderType() const;
 
  private:

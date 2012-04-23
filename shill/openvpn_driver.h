@@ -15,7 +15,6 @@
 
 #include "shill/glib.h"
 #include "shill/ipconfig.h"
-#include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
 #include "shill/service.h"
@@ -55,25 +54,11 @@ class OpenVPNDriver : public VPNDriver,
                               int interface_index);
   virtual void Disconnect();
 
-  virtual bool Load(StoreInterface *storage, const std::string &storage_id);
-  virtual bool Save(StoreInterface *storage, const std::string &storage_id);
-
   virtual void OnReconnecting();
-
-  virtual void InitPropertyStore(PropertyStore *store);
 
   virtual std::string GetProviderType() const;
 
   virtual void Cleanup(Service::ConnectState state);
-
-  void ClearMappedProperty(const size_t &index, Error *error);
-  std::string GetMappedProperty(const size_t &index, Error *error);
-  void SetMappedProperty(const size_t &index,
-                         const std::string &value,
-                         Error *error);
-  Stringmap GetProvider(Error *error);
-
-  KeyValueStore *args() { return &args_; }
 
   // Returns true if an opton was appended.
   bool AppendValueOption(const std::string &property,
@@ -110,16 +95,6 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
-
-  struct Property {
-    enum Flags {
-      kEphemeral = 1 << 0,
-      kCrypted = 1 << 1,
-    };
-
-    const char *property;
-    int flags;
-  };
 
   static const char kOpenVPNPath[];
   static const char kOpenVPNScript[];
@@ -170,7 +145,6 @@ class OpenVPNDriver : public VPNDriver,
   Manager *manager_;
   DeviceInfo *device_info_;
   GLib *glib_;
-  KeyValueStore args_;
   Sockets sockets_;
   scoped_ptr<OpenVPNManagementServer> management_server_;
   NSS *nss_;

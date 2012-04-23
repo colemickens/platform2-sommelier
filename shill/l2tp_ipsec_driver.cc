@@ -40,7 +40,8 @@ const char L2TPIPSecDriver::kL2TPIPSecVPNPath[] = "/usr/sbin/l2tpipsec_vpn";
 L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
                                  Manager *manager,
                                  GLib *glib)
-    : control_(control),
+    : VPNDriver(NULL, 0),
+      control_(control),
       manager_(manager),
       glib_(glib),
       nss_(NSS::GetInstance()),
@@ -69,23 +70,6 @@ void L2TPIPSecDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
 
 void L2TPIPSecDriver::Disconnect() {
   // TODO(petkov): crosbug.com/29364.
-  NOTIMPLEMENTED();
-}
-
-bool L2TPIPSecDriver::Load(StoreInterface *storage, const string &storage_id) {
-  // TODO(petkov): crosbug.com/29362.
-  NOTIMPLEMENTED();
-  return false;
-}
-
-bool L2TPIPSecDriver::Save(StoreInterface *storage, const string &storage_id) {
-  // TODO(petkov): crosbug.com/29362.
-  NOTIMPLEMENTED();
-  return false;
-}
-
-void L2TPIPSecDriver::InitPropertyStore(PropertyStore *store) {
-  // TODO(petkov): crosbug.com/29362.
   NOTIMPLEMENTED();
 }
 
