@@ -52,7 +52,12 @@ const char *const kScopeNames[] = {
 COMPILE_ASSERT(arraysize(kScopeNames) == ScopeLogger::kNumScopes,
                scope_tags_does_not_have_expected_number_of_strings);
 
-base::LazyInstance<ScopeLogger> g_scope_logger = LAZY_INSTANCE_INITIALIZER;
+// ScopeLogger needs to be a 'leaky' singleton as it needs to survive to
+// handle logging till the very end of the shill process. Making ScopeLogger
+// leaky is fine as it does not need to clean up or release any resource at
+// destruction.
+base::LazyInstance<ScopeLogger>::Leaky g_scope_logger =
+    LAZY_INSTANCE_INITIALIZER;
 
 }  // namespace
 
