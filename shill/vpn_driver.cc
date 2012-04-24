@@ -7,6 +7,8 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/connection.h"
+#include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/property_store.h"
 #include "shill/scope_logger.h"
@@ -16,8 +18,11 @@ using std::string;
 
 namespace shill {
 
-VPNDriver::VPNDriver(const Property *properties, size_t property_count)
-    : properties_(properties),
+VPNDriver::VPNDriver(Manager *manager,
+                     const Property *properties,
+                     size_t property_count)
+    : manager_(manager),
+      properties_(properties),
       property_count_(property_count) {}
 
 VPNDriver::~VPNDriver() {}
@@ -131,6 +136,29 @@ Stringmap VPNDriver::GetProvider(Error *error) {
   }
 
   return provider_properties;
+}
+
+bool VPNDriver::PinHostRoute(const IPConfig::Properties &properties) {
+  SLOG(VPN, 2) << __func__;
+  if (properties.gateway.empty() || properties.trusted_ip.empty()) {
+    return false;
+  }
+
+  IPAddress trusted_ip(properties.address_family);
+  if (!trusted_ip.SetAddressFromString(properties.trusted_ip)) {
+    LOG(ERROR) << "Failed to parse trusted_ip "
+               << properties.trusted_ip << "; ignored.";
+    return false;
+  }
+
+  ServiceRefPtr default_service = manager_->GetDefaultService();
+  if (!default_service) {
+    LOG(ERROR) << "No default service exists.";
+    return false;
+  }
+
+  CHECK(default_service->connection());
+  return default_service->connection()->RequestHostRoute(trusted_ip);
 }
 
 }  // namespace shill

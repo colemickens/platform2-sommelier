@@ -60,9 +60,8 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
 L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
                                  Manager *manager,
                                  GLib *glib)
-    : VPNDriver(kProperties, arraysize(kProperties)),
+    : VPNDriver(manager, kProperties, arraysize(kProperties)),
       control_(control),
-      manager_(manager),
       glib_(glib),
       nss_(NSS::GetInstance()),
       pid_(0),
@@ -100,10 +99,7 @@ string L2TPIPSecDriver::GetProviderType() const {
 void L2TPIPSecDriver::Cleanup(Service::ConnectState state) {
   SLOG(VPN, 2) << __func__
                << "(" << Service::ConnectStateToString(state) << ")";
-  if (!psk_file_.empty()) {
-    file_util::Delete(psk_file_, false);
-    psk_file_.clear();
-  }
+  DeletePSKFile();
   if (child_watch_tag_) {
     glib_->SourceRemove(child_watch_tag_);
     child_watch_tag_ = 0;
@@ -118,6 +114,13 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state) {
   if (service_) {
     service_->SetState(state);
     service_ = NULL;
+  }
+}
+
+void L2TPIPSecDriver::DeletePSKFile() {
+  if (!psk_file_.empty()) {
+    file_util::Delete(psk_file_, false);
+    psk_file_.clear();
   }
 }
 
@@ -234,7 +237,7 @@ bool L2TPIPSecDriver::InitPSKOptions(vector<string> *options, Error *error) {
   string psk = args_.LookupString(flimflam::kL2tpIpsecPskProperty, "");
   if (!psk.empty()) {
     if (!file_util::CreateTemporaryFileInDir(
-            manager_->run_path(), &psk_file_) ||
+            manager()->run_path(), &psk_file_) ||
         chmod(psk_file_.value().c_str(), S_IRUSR | S_IWUSR) ||
         file_util::WriteFile(psk_file_, psk.data(), psk.size()) !=
         static_cast<int>(psk.size())) {
@@ -315,10 +318,55 @@ void L2TPIPSecDriver::GetLogin(string *user, string *password) {
   *password = password_property;
 }
 
+void L2TPIPSecDriver::ParseIPConfiguration(
+    const map<string, string> &configuration,
+    IPConfig::Properties *properties,
+    string *interface_name) {
+  properties->address_family = IPAddress::kFamilyIPv4;
+  properties->subnet_prefix = IPAddress::GetMaxPrefixLength(
+      properties->address_family);
+  for (map<string, string>::const_iterator it = configuration.begin();
+       it != configuration.end(); ++it) {
+    const string &key = it->first;
+    const string &value = it->second;
+    SLOG(VPN, 2) << "Processing: " << key << " -> " << value;
+    if (key == "INTERNAL_IP4_ADDRESS") {
+      properties->address = value;
+    } else if (key == "EXTERNAL_IP4_ADDRESS") {
+      properties->peer_address = value;
+    } else if (key == "GATEWAY_ADDRESS") {
+      properties->gateway = value;
+    } else if (key == "DNS1") {
+      properties->dns_servers.insert(properties->dns_servers.begin(), value);
+    } else if (key == "DNS2") {
+      properties->dns_servers.push_back(value);
+    } else if (key == "INTERNAL_IFNAME") {
+      *interface_name = value;
+    } else if (key == "LNS_ADDRESS") {
+      properties->trusted_ip = value;
+    } else {
+      SLOG(VPN, 2) << "Key ignored.";
+    }
+  }
+}
+
 void L2TPIPSecDriver::Notify(
     const string &reason, const map<string, string> &dict) {
-  // TODO(petkov): crosbug.com/29365.
-  NOTIMPLEMENTED();
+  SLOG(VPN, 2) << __func__ << "(" << reason << ")";
+
+  if (reason != "connect") {
+    // TODO(petkov): Disconnect the device (crosbug.com/29364).
+    NOTIMPLEMENTED();
+    return;
+  }
+
+  IPConfig::Properties properties;
+  string interface_name;
+  ParseIPConfiguration(dict, &properties, &interface_name);
+  PinHostRoute(properties);
+  DeletePSKFile();
+  // TODO(petkov): Create device_ and device_->UpdateIPConfig(properties)
+  // (crosbug.com/29912).
 }
 
 }  // namespace shill

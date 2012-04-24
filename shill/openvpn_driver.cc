@@ -115,11 +115,10 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
                              Manager *manager,
                              DeviceInfo *device_info,
                              GLib *glib)
-    : VPNDriver(kProperties, arraysize(kProperties)),
+    : VPNDriver(manager, kProperties, arraysize(kProperties)),
       control_(control),
       dispatcher_(dispatcher),
       metrics_(metrics),
-      manager_(manager),
       device_info_(device_info),
       glib_(glib),
       management_server_(new OpenVPNManagementServer(this, glib)),
@@ -226,7 +225,7 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   SLOG(VPN, 2) << "Claiming " << link_name << " for OpenVPN tunnel";
 
   CHECK(!device_);
-  device_ = new VPN(control_, dispatcher_, metrics_, manager_,
+  device_ = new VPN(control_, dispatcher_, metrics_, manager(),
                     link_name, interface_index);
 
   device_->SetEnabled(true);
@@ -591,28 +590,6 @@ bool OpenVPNDriver::AppendFlag(
     return true;
   }
   return false;
-}
-
-bool OpenVPNDriver::PinHostRoute(const IPConfig::Properties &properties) {
-  if (properties.gateway.empty() || properties.trusted_ip.empty()) {
-    return false;
-  }
-
-  IPAddress trusted_ip(properties.address_family);
-  if (!trusted_ip.SetAddressFromString(properties.trusted_ip)) {
-    LOG(ERROR) << "Failed to parse trusted_ip "
-               << properties.trusted_ip << "; ignored.";
-    return false;
-  }
-
-  ServiceRefPtr default_service = manager_->GetDefaultService();
-  if (!default_service) {
-    LOG(ERROR) << "No default service exists.";
-    return false;
-  }
-
-  CHECK(default_service->connection());
-  return default_service->connection()->RequestHostRoute(trusted_ip);
 }
 
 void OpenVPNDriver::Disconnect() {

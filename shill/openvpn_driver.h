@@ -14,7 +14,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/glib.h"
-#include "shill/ipconfig.h"
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
 #include "shill/service.h"
@@ -27,7 +26,6 @@ class ControlInterface;
 class DeviceInfo;
 class Error;
 class EventDispatcher;
-class Manager;
 class Metrics;
 class NSS;
 class OpenVPNManagementServer;
@@ -91,7 +89,6 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
   FRIEND_TEST(OpenVPNDriverTest, ParseRouteOption);
-  FRIEND_TEST(OpenVPNDriverTest, PinHostRoute);
   FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
@@ -127,8 +124,6 @@ class OpenVPNDriver : public VPNDriver,
   bool InitManagementChannelOptions(
       std::vector<std::string> *options, Error *error);
 
-  bool PinHostRoute(const IPConfig::Properties &properties);
-
   bool SpawnOpenVPN();
 
   // Called when the openpvn process exits.
@@ -142,7 +137,6 @@ class OpenVPNDriver : public VPNDriver,
   ControlInterface *control_;
   EventDispatcher *dispatcher_;
   Metrics *metrics_;
-  Manager *manager_;
   DeviceInfo *device_info_;
   GLib *glib_;
   Sockets sockets_;

@@ -10,14 +10,25 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/event_dispatcher.h"
+#include "shill/glib.h"
+#include "shill/mock_connection.h"
+#include "shill/mock_device_info.h"
+#include "shill/mock_glib.h"
+#include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
+#include "shill/mock_service.h"
 #include "shill/mock_store.h"
+#include "shill/nice_mock_control.h"
 #include "shill/property_store.h"
 
 using std::string;
 using testing::_;
 using testing::AnyNumber;
+using testing::NiceMock;
 using testing::Return;
 using testing::SetArgumentPointee;
+using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
@@ -31,7 +42,7 @@ const char kPortProperty[] = "VPN.Port";
 
 class VPNDriverUnderTest : public VPNDriver {
  public:
-  VPNDriverUnderTest();
+  VPNDriverUnderTest(Manager *manager);
   virtual ~VPNDriverUnderTest() {}
 
   // Inherited from VPNDriver.
@@ -56,12 +67,15 @@ const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
   { flimflam::kProviderNameProperty, 0 },
 };
 
-VPNDriverUnderTest::VPNDriverUnderTest()
-    : VPNDriver(kProperties, arraysize(kProperties)) {}
+VPNDriverUnderTest::VPNDriverUnderTest(Manager *manager)
+    : VPNDriver(manager, kProperties, arraysize(kProperties)) {}
 
 class VPNDriverTest : public Test {
  public:
-  VPNDriverTest() {}
+  VPNDriverTest()
+      : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
+        manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        driver_(&manager_) {}
 
   virtual ~VPNDriverTest() {}
 
@@ -81,6 +95,12 @@ class VPNDriverTest : public Test {
                                     Stringmap *value,
                                     Error *error);
 
+  NiceMockControl control_;
+  NiceMock<MockDeviceInfo> device_info_;
+  EventDispatcher dispatcher_;
+  MockMetrics metrics_;
+  MockGLib glib_;
+  MockManager manager_;
   VPNDriverUnderTest driver_;
 };
 
@@ -256,6 +276,55 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
         << kWriteOnly[i];
     EXPECT_EQ(value, GetArgs()->GetString(kWriteOnly[i])) << kWriteOnly[i];
   }
+}
+
+namespace {
+MATCHER_P(IsIPAddress, address, "") {
+  IPAddress ip_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ip_address.SetAddressFromString(address));
+  return ip_address.Equals(arg);
+}
+}  // namespace
+
+TEST_F(VPNDriverTest, PinHostRoute) {
+  static const char kGateway[] = "10.242.2.13";
+  static const char kNetwork[] = "10.242.2.1";
+
+  IPConfig::Properties props;
+  props.address_family = IPAddress::kFamilyIPv4;
+  EXPECT_FALSE(driver_.PinHostRoute(props));
+
+  props.gateway = kGateway;
+  EXPECT_FALSE(driver_.PinHostRoute(props));
+
+  props.gateway.clear();
+  props.trusted_ip = "xxx";
+  EXPECT_FALSE(driver_.PinHostRoute(props));
+
+  props.gateway = kGateway;
+  EXPECT_FALSE(driver_.PinHostRoute(props));
+
+  props.trusted_ip = kNetwork;
+  EXPECT_CALL(manager_, GetDefaultService())
+      .WillOnce(Return(reinterpret_cast<Service *>(NULL)));
+  EXPECT_FALSE(driver_.PinHostRoute(props));
+
+  scoped_refptr<MockService> service(
+      new NiceMock<MockService>(&control_, &dispatcher_, &metrics_, &manager_));
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  service->set_mock_connection(connection);
+  EXPECT_CALL(manager_, GetDefaultService())
+      .WillOnce(Return(service));
+
+  EXPECT_CALL(*connection, RequestHostRoute(IsIPAddress(kNetwork)))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(driver_.PinHostRoute(props));
+
+  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(service));
+  EXPECT_CALL(*connection, RequestHostRoute(IsIPAddress(kNetwork)))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(driver_.PinHostRoute(props));
 }
 
 }  // namespace shill

@@ -12,6 +12,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/glib.h"
+#include "shill/ipconfig.h"
 #include "shill/key_value_store.h"
 #include "shill/rpc_task.h"
 #include "shill/service.h"
@@ -21,7 +22,6 @@ namespace shill {
 
 class ControlInterface;
 class GLib;
-class Manager;
 class NSS;
 
 class L2TPIPSecDriver : public VPNDriver,
@@ -42,13 +42,16 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, AppendFlag);
   FRIEND_TEST(L2TPIPSecDriverTest, AppendValueOption);
   FRIEND_TEST(L2TPIPSecDriverTest, Cleanup);
+  FRIEND_TEST(L2TPIPSecDriverTest, DeletePSKFile);
   FRIEND_TEST(L2TPIPSecDriverTest, GetLogin);
   FRIEND_TEST(L2TPIPSecDriverTest, InitEnvironment);
   FRIEND_TEST(L2TPIPSecDriverTest, InitNSSOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptionsNoHost);
   FRIEND_TEST(L2TPIPSecDriverTest, InitPSKOptions);
+  FRIEND_TEST(L2TPIPSecDriverTest, Notify);
   FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);
+  FRIEND_TEST(L2TPIPSecDriverTest, ParseIPConfiguration);
   FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN);
 
   static const char kPPPDPlugin[];
@@ -65,6 +68,8 @@ class L2TPIPSecDriver : public VPNDriver,
 
   void Cleanup(Service::ConnectState state);
 
+  void DeletePSKFile();
+
   // Returns true if an opton was appended.
   bool AppendValueOption(const std::string &property,
                          const std::string &option,
@@ -76,6 +81,11 @@ class L2TPIPSecDriver : public VPNDriver,
                   const std::string &false_option,
                   std::vector<std::string> *options);
 
+  static void ParseIPConfiguration(
+      const std::map<std::string, std::string> &configuration,
+      IPConfig::Properties *properties,
+      std::string *interface_name);
+
   // Called when the l2tpipsec_vpn process exits.
   static void OnL2TPIPSecVPNDied(GPid pid, gint status, gpointer data);
 
@@ -85,7 +95,6 @@ class L2TPIPSecDriver : public VPNDriver,
                       const std::map<std::string, std::string> &dict);
 
   ControlInterface *control_;
-  Manager *manager_;
   GLib *glib_;
   NSS *nss_;
   KeyValueStore args_;

@@ -51,7 +51,7 @@ class OpenVPNDriverTest : public testing::Test,
                           public RPCTaskDelegate {
  public:
   OpenVPNDriverTest()
-      : device_info_(&control_, NULL, NULL, NULL),
+      : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         manager_(&control_, &dispatcher_, &metrics_, &glib_),
         driver_(new OpenVPNDriver(&control_, &dispatcher_, &metrics_, &manager_,
                                   &device_info_, &glib_)),
@@ -106,7 +106,7 @@ class OpenVPNDriverTest : public testing::Test,
   virtual void Notify(const string &reason, const map<string, string> &dict);
 
   NiceMockControl control_;
-  MockDeviceInfo device_info_;
+  NiceMock<MockDeviceInfo> device_info_;
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockGLib glib_;
@@ -169,8 +169,7 @@ TEST_F(OpenVPNDriverTest, Connect) {
 
 TEST_F(OpenVPNDriverTest, ConnectTunnelFailure) {
   EXPECT_CALL(*service_, SetState(Service::kStateConfiguring));
-  EXPECT_CALL(device_info_, CreateTunnelInterface(_))
-      .WillOnce(Return(false));
+  EXPECT_CALL(device_info_, CreateTunnelInterface(_)).WillOnce(Return(false));
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
   Error error;
   driver_->Connect(service_, &error);
@@ -178,11 +177,30 @@ TEST_F(OpenVPNDriverTest, ConnectTunnelFailure) {
   EXPECT_TRUE(driver_->tunnel_interface_.empty());
 }
 
+namespace {
+MATCHER_P(IsIPAddress, address, "") {
+  IPAddress ip_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ip_address.SetAddressFromString(address));
+  return ip_address.Equals(arg);
+}
+}  // namespace
+
 TEST_F(OpenVPNDriverTest, Notify) {
-  map<string, string> dict;
+  map<string, string> config;
+  static const char kPeer[] = "99.88.77.66";
+  config["route_vpn_gateway"] = "192.168.1.1";
+  config["trusted_ip"] = kPeer;
+  scoped_refptr<MockService> service(
+      new NiceMock<MockService>(&control_, &dispatcher_, &metrics_, &manager_));
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  service->set_mock_connection(connection);
+  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(service));
+  EXPECT_CALL(*connection, RequestHostRoute(IsIPAddress(kPeer)))
+      .WillOnce(Return(true));
   driver_->device_ = device_;
   EXPECT_CALL(*device_, UpdateIPConfig(_));
-  driver_->Notify("up", dict);
+  driver_->Notify("up", config);
 }
 
 TEST_F(OpenVPNDriverTest, NotifyFail) {
@@ -575,54 +593,6 @@ TEST_F(OpenVPNDriverTest, OnReconnecting) {
   EXPECT_CALL(*device_, OnDisconnected());
   EXPECT_CALL(*service_, SetState(Service::kStateAssociating));
   driver_->OnReconnecting();
-}
-
-MATCHER_P(IsIPAddress, address, "") {
-  IPAddress ip_address(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ip_address.SetAddressFromString(address));
-  return ip_address.Equals(arg);
-}
-
-TEST_F(OpenVPNDriverTest, PinHostRoute) {
-  IPConfig::Properties props;
-  props.address_family = IPAddress::kFamilyIPv4;
-  EXPECT_FALSE(driver_->PinHostRoute(props));
-
-  props.gateway = kGateway1;
-  EXPECT_FALSE(driver_->PinHostRoute(props));
-
-  props.gateway.clear();
-  props.trusted_ip = "xxx";
-  EXPECT_FALSE(driver_->PinHostRoute(props));
-
-  props.gateway = kGateway1;
-  EXPECT_FALSE(driver_->PinHostRoute(props));
-
-  props.trusted_ip = kNetwork1;
-  EXPECT_CALL(manager_, GetDefaultService())
-      .WillOnce(Return(reinterpret_cast<Service *>(NULL)));
-  EXPECT_FALSE(driver_->PinHostRoute(props));
-
-  scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(&control_,
-                                &dispatcher_,
-                                &metrics_,
-                                &manager_));
-  scoped_refptr<MockConnection> mock_connection(
-      new StrictMock<MockConnection>(&device_info_));
-  mock_service->set_mock_connection(mock_connection);
-  EXPECT_CALL(manager_, GetDefaultService())
-      .WillOnce(Return(mock_service));
-
-  EXPECT_CALL(*mock_connection.get(), RequestHostRoute(IsIPAddress(kNetwork1)))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(driver_->PinHostRoute(props));
-
-  EXPECT_CALL(manager_, GetDefaultService())
-      .WillOnce(Return(mock_service));
-  EXPECT_CALL(*mock_connection.get(), RequestHostRoute(IsIPAddress(kNetwork1)))
-      .WillOnce(Return(true));
-  EXPECT_TRUE(driver_->PinHostRoute(props));
 }
 
 TEST_F(OpenVPNDriverTest, VerifyPaths) {

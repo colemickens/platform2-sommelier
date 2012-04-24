@@ -12,10 +12,13 @@
 #include "shill/event_dispatcher.h"
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_connection.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_nss.h"
+#include "shill/mock_service.h"
 #include "shill/mock_vpn_service.h"
 
 using std::find;
@@ -24,9 +27,11 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::ElementsAreArray;
+using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SetArgumentPointee;
+using testing::StrictMock;
 
 namespace shill {
 
@@ -34,7 +39,8 @@ class L2TPIPSecDriverTest : public testing::Test,
                             public RPCTaskDelegate {
  public:
   L2TPIPSecDriverTest()
-      : manager_(&control_, &dispatcher_, &metrics_, &glib_),
+      : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
+        manager_(&control_, &dispatcher_, &metrics_, &glib_),
         driver_(new L2TPIPSecDriver(&control_, &manager_, &glib_)),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)) {
@@ -67,12 +73,15 @@ class L2TPIPSecDriverTest : public testing::Test,
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
 
+  FilePath SetupPSKFile();
+
   // Inherited from RPCTaskDelegate.
   virtual void GetLogin(string *user, string *password);
   virtual void Notify(const string &reason, const map<string, string> &dict);
 
   ScopedTempDir temp_dir_;
   NiceMockControl control_;
+  NiceMock<MockDeviceInfo> device_info_;
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockGLib glib_;
@@ -102,6 +111,15 @@ void L2TPIPSecDriverTest::ExpectInFlags(
   EXPECT_EQ(value, *it);
 }
 
+FilePath L2TPIPSecDriverTest::SetupPSKFile() {
+  FilePath psk_file;
+  EXPECT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir_.path(), &psk_file));
+  EXPECT_FALSE(psk_file.empty());
+  EXPECT_TRUE(file_util::PathExists(psk_file));
+  driver_->psk_file_ = psk_file;
+  return psk_file;
+}
+
 TEST_F(L2TPIPSecDriverTest, GetProviderType) {
   EXPECT_EQ(flimflam::kProviderL2tpIpsec, driver_->GetProviderType());
 }
@@ -118,11 +136,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   driver_->service_ = service_;
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
-  FilePath psk_file;
-  EXPECT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir_.path(), &psk_file));
-  EXPECT_FALSE(psk_file.empty());
-  EXPECT_TRUE(file_util::PathExists(psk_file));
-  driver_->psk_file_ = psk_file;
+  FilePath psk_file = SetupPSKFile();
   driver_->Cleanup(Service::kStateFailure);
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(driver_->psk_file_.empty());
@@ -130,6 +144,13 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_EQ(0, driver_->pid_);
   EXPECT_FALSE(driver_->rpc_task_.get());
   EXPECT_FALSE(driver_->service_);
+}
+
+TEST_F(L2TPIPSecDriverTest, DeletePSKFile) {
+  FilePath psk_file = SetupPSKFile();
+  driver_->DeletePSKFile();
+  EXPECT_FALSE(file_util::PathExists(psk_file));
+  EXPECT_TRUE(driver_->psk_file_.empty());
 }
 
 TEST_F(L2TPIPSecDriverTest, InitEnvironment) {
@@ -377,6 +398,57 @@ TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {
       store.SetStringProperty(flimflam::kL2tpIpsecUserProperty, kUser, &error));
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kUser, GetArgs()->GetString(flimflam::kL2tpIpsecUserProperty));
+}
+
+TEST_F(L2TPIPSecDriverTest, ParseIPConfiguration) {
+  map<string, string> config;
+  config["INTERNAL_IP4_ADDRESS"] = "4.5.6.7";
+  config["EXTERNAL_IP4_ADDRESS"] = "33.44.55.66";
+  config["GATEWAY_ADDRESS"] = "192.168.1.1";
+  config["DNS1"] = "1.1.1.1";
+  config["DNS2"] = "2.2.2.2";
+  config["INTERNAL_IFNAME"] = "ppp0";
+  config["LNS_ADDRESS"] = "99.88.77.66";
+  config["foo"] = "bar";
+  IPConfig::Properties props;
+  string interface_name;
+  L2TPIPSecDriver::ParseIPConfiguration(config, &props, &interface_name);
+  EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
+  EXPECT_EQ("4.5.6.7", props.address);
+  EXPECT_EQ("33.44.55.66", props.peer_address);
+  EXPECT_EQ("192.168.1.1", props.gateway);
+  EXPECT_EQ("99.88.77.66", props.trusted_ip);
+  ASSERT_EQ(2, props.dns_servers.size());
+  EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
+  EXPECT_EQ("2.2.2.2", props.dns_servers[1]);
+  EXPECT_EQ("ppp0", interface_name);
+}
+
+namespace {
+MATCHER_P(IsIPAddress, address, "") {
+  IPAddress ip_address(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(ip_address.SetAddressFromString(address));
+  return ip_address.Equals(arg);
+}
+}  // namespace
+
+TEST_F(L2TPIPSecDriverTest, Notify) {
+  map<string, string> config;
+  static const char kPeer[] = "99.88.77.66";
+  config["GATEWAY_ADDRESS"] = "192.168.1.1";
+  config["LNS_ADDRESS"] = kPeer;
+  scoped_refptr<MockService> service(
+      new NiceMock<MockService>(&control_, &dispatcher_, &metrics_, &manager_));
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  service->set_mock_connection(connection);
+  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(service));
+  EXPECT_CALL(*connection, RequestHostRoute(IsIPAddress(kPeer)))
+      .WillOnce(Return(true));
+  FilePath psk_file = SetupPSKFile();
+  driver_->Notify("connect", config);
+  EXPECT_FALSE(file_util::PathExists(psk_file));
+  EXPECT_TRUE(driver_->psk_file_.empty());
 }
 
 }  // namespace shill

@@ -8,14 +8,17 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
+#include "shill/ipconfig.h"
 #include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
 
 class Error;
+class Manager;
 class PropertyStore;
 class StoreInterface;
 
@@ -47,15 +50,24 @@ class VPNDriver {
     int flags;
   };
 
-  VPNDriver(const Property *properties, size_t property_count);
+  VPNDriver(Manager *manager,
+            const Property *properties,
+            size_t property_count);
+
+  Manager *manager() const { return manager_; }
+
+  bool PinHostRoute(const IPConfig::Properties &properties);
 
  private:
+  FRIEND_TEST(VPNDriverTest, PinHostRoute);
+
   Stringmap GetProvider(Error *error);
   void ClearMappedProperty(const size_t &index, Error *error);
   std::string GetMappedProperty(const size_t &index, Error *error);
   void SetMappedProperty(
       const size_t &index, const std::string &value, Error *error);
 
+  Manager *manager_;
   const Property * const properties_;
   const size_t property_count_;
   KeyValueStore args_;
