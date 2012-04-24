@@ -138,27 +138,4 @@ Stringmap VPNDriver::GetProvider(Error *error) {
   return provider_properties;
 }
 
-bool VPNDriver::PinHostRoute(const IPConfig::Properties &properties) {
-  SLOG(VPN, 2) << __func__;
-  if (properties.gateway.empty() || properties.trusted_ip.empty()) {
-    return false;
-  }
-
-  IPAddress trusted_ip(properties.address_family);
-  if (!trusted_ip.SetAddressFromString(properties.trusted_ip)) {
-    LOG(ERROR) << "Failed to parse trusted_ip "
-               << properties.trusted_ip << "; ignored.";
-    return false;
-  }
-
-  ServiceRefPtr default_service = manager_->GetDefaultService();
-  if (!default_service) {
-    LOG(ERROR) << "No default service exists.";
-    return false;
-  }
-
-  CHECK(default_service->connection());
-  return default_service->connection()->RequestHostRoute(trusted_ip);
-}
-
 }  // namespace shill

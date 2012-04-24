@@ -32,6 +32,14 @@ class RTNLMessage;
 // default route for an interface or modifying its metric (priority).
 class RoutingTable {
  public:
+  struct Query {
+    Query() : sequence(0), tag(0) {}
+    Query(uint32 sequence_in, int tag_in)
+        : sequence(sequence_in), tag(tag_in) {}
+    uint32 sequence;
+    int tag;
+  };
+
   virtual ~RoutingTable();
 
   static RoutingTable *GetInstance();
@@ -65,6 +73,10 @@ class RoutingTable {
   // Route entries are immediately purged from our copy of the routing table.
   virtual void FlushRoutes(int interface_index);
 
+  // Iterate over all routing tables removing routes tagged with |tag|.
+  // Route entries are immediately purged from our copy of the routing table.
+  virtual void FlushRoutesWithTag(int tag);
+
   // Flush the routing cache for all interfaces.
   virtual bool FlushCache();
 
@@ -75,9 +87,13 @@ class RoutingTable {
   virtual void SetDefaultMetric(int interface_index, uint32 metric);
 
   // Get the default route to |destination| through |interface_index| and
-  // create a host route to that destination.
+  // create a host route to that destination.  When creating the route,
+  // tag our local entry with |tag|, so we can remove it later.  Connections
+  // use their interface index as the tag, so that as they are destroyed,
+  // they can remove all their dependent routes.
   virtual bool RequestRouteToHost(const IPAddress &destination,
-                                  int interface_index);
+                                  int interface_index,
+                                  int tag);
 
  protected:
   RoutingTable();
@@ -113,7 +129,7 @@ class RoutingTable {
 
   base::Callback<void(const RTNLMessage &)> route_callback_;
   scoped_ptr<RTNLListener> route_listener_;
-  std::queue<uint32> route_query_sequences_;
+  std::queue<Query> route_queries_;
 
   // Cache singleton pointer for performance and test purposes.
   RTNLHandler *rtnl_handler_;

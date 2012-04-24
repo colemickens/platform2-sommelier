@@ -45,6 +45,7 @@ Connection::~Connection() {
 
   DCHECK(!routing_request_count_);
   routing_table_->FlushRoutes(interface_index_);
+  routing_table_->FlushRoutesWithTag(interface_index_);
   device_info_->FlushAddresses(interface_index_);
 }
 
@@ -52,6 +53,11 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   SLOG(Connection, 2) << __func__ << " " << interface_name_;
 
   const IPConfig::Properties &properties = config->properties();
+  if (!properties.trusted_ip.empty() && !PinHostRoute(properties)) {
+    LOG(ERROR) << "Unable to pin host route to " << properties.trusted_ip;
+    return;
+  }
+
   IPAddress local(properties.address_family);
   if (!local.SetAddressFromString(properties.address)) {
     LOG(ERROR) << "Local address " << properties.address << " is invalid";
@@ -166,7 +172,10 @@ bool Connection::RequestHostRoute(const IPAddress &address) {
 
   // Do not set interface_index_ since this may not be the
   // default route through which this destination can be found.
-  if (!routing_table_->RequestRouteToHost(address_prefix, -1)) {
+  // However, we should tag the created route with our interface
+  // index so we can clean this route up when this connection closes.
+  if (!routing_table_->RequestRouteToHost(address_prefix, -1,
+                                          interface_index_)) {
     LOG(ERROR) << "Could not request route to " << address.ToString();
     return false;
   }
@@ -209,6 +218,22 @@ uint32 Connection::GetMetric(bool is_default) {
   // index.  This way all non-default routes (even to the same gateway IP) end
   // up with unique metrics so they do not collide.
   return is_default ? kDefaultMetric : kNonDefaultMetricBase + interface_index_;
+}
+
+bool Connection::PinHostRoute(const IPConfig::Properties &properties) {
+  SLOG(Connection, 2) << __func__;
+  if (properties.gateway.empty() || properties.trusted_ip.empty()) {
+    return false;
+  }
+
+  IPAddress trusted_ip(properties.address_family);
+  if (!trusted_ip.SetAddressFromString(properties.trusted_ip)) {
+    LOG(ERROR) << "Failed to parse trusted_ip "
+               << properties.trusted_ip << "; ignored.";
+    return false;
+  }
+
+  return RequestHostRoute(trusted_ip);
 }
 
 }  // namespace shill

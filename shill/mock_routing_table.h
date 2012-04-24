@@ -31,11 +31,13 @@ class MockRoutingTable : public RoutingTable {
                                      const IPConfigRefPtr &ipconfig,
                                      uint32 metric));
   MOCK_METHOD1(FlushRoutes, void(int interface_index));
+  MOCK_METHOD1(FlushRoutesWithTag, void(int tag));
   MOCK_METHOD0(FlushCache, bool());
   MOCK_METHOD1(ResetTable, void(int interface_index));
   MOCK_METHOD2(SetDefaultMetric, void(int interface_index, uint32 metric));
-  MOCK_METHOD2(RequestRouteToHost, bool(const IPAddress &addresss,
-                                        int interface_index));
+  MOCK_METHOD3(RequestRouteToHost, bool(const IPAddress &addresss,
+                                        int interface_index,
+                                        int tag));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockRoutingTable);

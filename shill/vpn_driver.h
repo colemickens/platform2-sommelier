@@ -11,7 +11,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
-#include "shill/ipconfig.h"
 #include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
 
@@ -56,11 +55,7 @@ class VPNDriver {
 
   Manager *manager() const { return manager_; }
 
-  bool PinHostRoute(const IPConfig::Properties &properties);
-
  private:
-  FRIEND_TEST(VPNDriverTest, PinHostRoute);
-
   Stringmap GetProvider(Error *error);
   void ClearMappedProperty(const size_t &index, Error *error);
   std::string GetMappedProperty(const size_t &index, Error *error);

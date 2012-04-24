@@ -14,6 +14,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/glib.h"
+#include "shill/ipconfig.h"
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
 #include "shill/service.h"

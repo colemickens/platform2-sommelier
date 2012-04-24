@@ -16,13 +16,16 @@ namespace shill {
 // operator=.
 struct RoutingTableEntry {
  public:
+  static const int kDefaultTag = -1;
+
   RoutingTableEntry()
       : dst(IPAddress::kFamilyUnknown),
         src(IPAddress::kFamilyUnknown),
         gateway(IPAddress::kFamilyUnknown),
         metric(0),
         scope(0),
-        from_rtnl(false) {}
+        from_rtnl(false),
+        tag(kDefaultTag) {}
 
   RoutingTableEntry(const IPAddress &dst_in,
                     const IPAddress &src_in,
@@ -35,7 +38,23 @@ struct RoutingTableEntry {
         gateway(gateway_in),
         metric(metric_in),
         scope(scope_in),
-        from_rtnl(from_rtnl_in) {}
+        from_rtnl(from_rtnl_in),
+        tag(kDefaultTag) {}
+
+  RoutingTableEntry(const IPAddress &dst_in,
+                    const IPAddress &src_in,
+                    const IPAddress &gateway_in,
+                    uint32 metric_in,
+                    unsigned char scope_in,
+                    bool from_rtnl_in,
+                    int tag_in)
+      : dst(dst_in),
+        src(src_in),
+        gateway(gateway_in),
+        metric(metric_in),
+        scope(scope_in),
+        from_rtnl(from_rtnl_in),
+        tag(tag_in) {}
 
   RoutingTableEntry(const RoutingTableEntry &b)
       : dst(b.dst),
@@ -43,7 +62,8 @@ struct RoutingTableEntry {
         gateway(b.gateway),
         metric(b.metric),
         scope(b.scope),
-        from_rtnl(b.from_rtnl) {}
+        from_rtnl(b.from_rtnl),
+        tag(b.tag) {}
 
   RoutingTableEntry &operator=(const RoutingTableEntry &b) {
     dst = b.dst;
@@ -52,6 +72,7 @@ struct RoutingTableEntry {
     metric = b.metric;
     scope = b.scope;
     from_rtnl = b.from_rtnl;
+    tag = b.tag;
 
     return *this;
   }
@@ -64,7 +85,8 @@ struct RoutingTableEntry {
             gateway.Equals(b.gateway) &&
             metric == b.metric &&
             scope == b.scope &&
-            from_rtnl == b.from_rtnl);
+            from_rtnl == b.from_rtnl &&
+            tag == b.tag);
   }
 
   IPAddress dst;
@@ -73,6 +95,7 @@ struct RoutingTableEntry {
   uint32 metric;
   unsigned char scope;
   bool from_rtnl;
+  int tag;
 };
 
 }  // namespace shill

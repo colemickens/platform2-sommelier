@@ -87,6 +87,9 @@ class ConnectionTest : public Test {
 
   virtual void TearDown() {
     EXPECT_CALL(*device_info_, FlushAddresses(kTestDeviceInterfaceIndex0));
+    EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+    EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
+    connection_ = NULL;
   }
 
   void ReplaceSingletons(ConnectionRefPtr connection) {
@@ -97,6 +100,11 @@ class ConnectionTest : public Test {
 
   void UpdateProperties() {
     ipconfig_->UpdateProperties(properties_, true);
+  }
+
+  bool PinHostRoute(ConnectionRefPtr connection,
+                    const IPConfig::Properties &properties) {
+    return connection->PinHostRoute(properties);
   }
 
  protected:
@@ -301,12 +309,14 @@ TEST_F(ConnectionTest, RouteRequest) {
 
   // The destructor will remove the routes and addresses.
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_.get(),
               FlushAddresses(kTestDeviceInterfaceIndex0));
 }
 
 TEST_F(ConnectionTest, Destructor) {
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex1));
+  EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex1));
   EXPECT_CALL(*device_info_, FlushAddresses(kTestDeviceInterfaceIndex1));
   {
     ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex1,
@@ -329,12 +339,58 @@ TEST_F(ConnectionTest, RequestHostRoute) {
   ASSERT_TRUE(address.SetAddressFromString(kIPAddress0));
   size_t prefix_len = address.GetLength() * 8;
   EXPECT_CALL(routing_table_, RequestRouteToHost(
-      IsIPAddress(address, prefix_len), -1))
+      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0))
       .WillOnce(Return(true));
   EXPECT_TRUE(connection->RequestHostRoute(address));
 
   // The destructor will remove the routes and addresses.
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(*device_info_.get(),
+              FlushAddresses(kTestDeviceInterfaceIndex0));
+}
+
+TEST_F(ConnectionTest, PinHostRoute) {
+  static const char kGateway[] = "10.242.2.13";
+  static const char kNetwork[] = "10.242.2.1";
+
+  ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
+                                             kTestDeviceName0,
+                                             Technology::kUnknown,
+                                             device_info_.get()));
+  ReplaceSingletons(connection);
+
+  IPConfig::Properties props;
+  props.address_family = IPAddress::kFamilyIPv4;
+  EXPECT_FALSE(PinHostRoute(connection, props));
+
+  props.gateway = kGateway;
+  EXPECT_FALSE(PinHostRoute(connection, props));
+
+  props.gateway.clear();
+  props.trusted_ip = "xxx";
+  EXPECT_FALSE(PinHostRoute(connection, props));
+
+  props.gateway = kGateway;
+  EXPECT_FALSE(PinHostRoute(connection, props));
+
+  props.trusted_ip = kNetwork;
+  IPAddress address(IPAddress::kFamilyIPv4);
+  ASSERT_TRUE(address.SetAddressFromString(kNetwork));
+  size_t prefix_len = address.GetLength() * 8;
+  EXPECT_CALL(routing_table_, RequestRouteToHost(
+      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(PinHostRoute(connection, props));
+
+  EXPECT_CALL(routing_table_, RequestRouteToHost(
+      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(PinHostRoute(connection, props));
+
+  // The destructor will remove the routes and addresses.
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
   EXPECT_CALL(*device_info_.get(),
               FlushAddresses(kTestDeviceInterfaceIndex0));
 }

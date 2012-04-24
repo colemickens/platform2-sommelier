@@ -237,6 +237,24 @@ void RoutingTable::FlushRoutes(int interface_index) {
   table->second.clear();
 }
 
+void RoutingTable::FlushRoutesWithTag(int tag) {
+  SLOG(Route, 2) << __func__;
+
+  base::hash_map<int, vector<RoutingTableEntry> >::iterator table;
+  for (table = tables_.begin(); table != tables_.end(); ++table) {
+    vector<RoutingTableEntry>::iterator nent;
+
+    for (nent = table->second.begin(); nent != table->second.end();) {
+      if (nent->tag == tag) {
+        ApplyRoute(table->first, *nent, RTNLMessage::kModeDelete, 0);
+        nent = table->second.erase(nent);
+      } else {
+        ++nent;
+      }
+    }
+  }
+}
+
 void RoutingTable::ResetTable(int interface_index) {
   tables_.erase(interface_index);
 }
@@ -321,30 +339,31 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
     return;
   }
 
-  if (!route_query_sequences_.empty() &&
+  if (!route_queries_.empty() &&
       message.route_status().protocol == RTPROT_UNSPEC) {
     SLOG(Route, 3) << __func__ << ": Message seq: " << message.seq()
                    << " mode " << message.mode()
-                   << ", next query seq: " << route_query_sequences_.front();
+                   << ", next query seq: " << route_queries_.front().sequence;
 
     // Purge queries that have expired (sequence number of this message is
     // greater than that of the head of the route query sequence).  Do the
     // math in a way that's roll-over independent.
-    while (route_query_sequences_.front() - message.seq() > kuint32max / 2) {
+    while (route_queries_.front().sequence - message.seq() > kuint32max / 2) {
       LOG(ERROR) << __func__ << ": Purging un-replied route request sequence "
-                 << route_query_sequences_.front()
+                 << route_queries_.front().sequence
                  << " (< " << message.seq() << ")";
-      route_query_sequences_.pop();
-      if (route_query_sequences_.empty())
+      route_queries_.pop();
+      if (route_queries_.empty())
         return;
     }
 
-    if (route_query_sequences_.front() == message.seq()) {
+    if (route_queries_.front().sequence == message.seq()) {
       SLOG(Route, 2) << __func__ << ": Adding host route to "
                      << entry.dst.ToString();
-      route_query_sequences_.pop();
       RoutingTableEntry add_entry(entry);
       add_entry.from_rtnl = false;
+      add_entry.tag = route_queries_.front().tag;
+      route_queries_.pop();
       AddRoute(interface_index, add_entry);
     }
     return;
@@ -466,7 +485,8 @@ bool RoutingTable::FlushCache() {
 }
 
 bool RoutingTable::RequestRouteToHost(const IPAddress &address,
-                                      int interface_index) {
+                                      int interface_index,
+                                      int tag) {
   RTNLMessage message(
       RTNLMessage::kTypeRoute,
       RTNLMessage::kModeQuery,
@@ -492,7 +512,7 @@ bool RoutingTable::RequestRouteToHost(const IPAddress &address,
 
   // Save the sequence number of the request so we can create a route for
   // this host when we get a reply.
-  route_query_sequences_.push(message.seq());
+  route_queries_.push(Query(message.seq(), tag));
 
   return true;
 }

@@ -394,7 +394,6 @@ void L2TPIPSecDriver::Notify(
   }
   device_->SetEnabled(true);
   device_->SelectService(service_);
-  PinHostRoute(properties);
   device_->UpdateIPConfig(properties);
 }
 

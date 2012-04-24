@@ -12,13 +12,11 @@
 #include "shill/event_dispatcher.h"
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_nss.h"
-#include "shill/mock_service.h"
 #include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
 #include "shill/vpn.h"
@@ -447,20 +445,9 @@ MATCHER_P(IsIPAddress, address, "") {
 
 TEST_F(L2TPIPSecDriverTest, Notify) {
   map<string, string> config;
-  static const char kPeer[] = "99.88.77.66";
   config["INTERNAL_IFNAME"] = kInterfaceName;
-  config["GATEWAY_ADDRESS"] = "192.168.1.1";
-  config["LNS_ADDRESS"] = kPeer;
-  scoped_refptr<MockService> service(
-      new NiceMock<MockService>(&control_, &dispatcher_, &metrics_, &manager_));
-  scoped_refptr<MockConnection> connection(
-      new StrictMock<MockConnection>(&device_info_));
-  service->set_mock_connection(connection);
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
-  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(service));
-  EXPECT_CALL(*connection, RequestHostRoute(IsIPAddress(kPeer)))
-      .WillOnce(Return(true));
   EXPECT_CALL(*device_, SetEnabled(true));
   EXPECT_CALL(*device_, UpdateIPConfig(_));
   driver_->device_ = device_;

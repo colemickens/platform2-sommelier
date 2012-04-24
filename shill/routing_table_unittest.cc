@@ -21,6 +21,8 @@
 #include "shill/rtnl_message.h"
 
 using base::Callback;
+using base::hash_map;
+using std::queue;
 using std::vector;
 using testing::_;
 using testing::Invoke;
@@ -41,7 +43,7 @@ class TestEventDispatcher : public EventDispatcher {
 
 class RoutingTableTest : public Test {
  public:
-  RoutingTableTest() : routing_table_(RoutingTable::GetInstance()) {}
+  RoutingTableTest() : routing_table_(new RoutingTable()) {}
 
   virtual void SetUp() {
     routing_table_->rtnl_handler_ = &rtnl_handler_;
@@ -52,12 +54,12 @@ class RoutingTableTest : public Test {
     RTNLHandler::GetInstance()->Stop();
   }
 
-  base::hash_map<int, std::vector<RoutingTableEntry> > *GetRoutingTables() {
+  hash_map<int, vector<RoutingTableEntry> > *GetRoutingTables() {
     return &routing_table_->tables_;
   }
 
-  std::queue<uint32> *GetQuerySequences() {
-    return &routing_table_->route_query_sequences_;
+  queue<RoutingTable::Query> *GetQueries() {
+    return &routing_table_->route_queries_;
   }
 
   void SendRouteEntry(RTNLMessage::Mode mode,
@@ -94,6 +96,7 @@ class RoutingTableTest : public Test {
   static const char kTestRemoteNetwork4[];
   static const int kTestRemotePrefix4;
   static const uint32 kTestRequestSeq;
+  static const int kTestRouteTag;
 
   RoutingTable *routing_table_;
   TestEventDispatcher dispatcher_;
@@ -116,6 +119,7 @@ const char RoutingTableTest::kTestRemoteNetmask4[] = "255.255.255.0";
 const char RoutingTableTest::kTestRemoteNetwork4[] = "192.168.100.0";
 const int RoutingTableTest::kTestRemotePrefix4 = 24;
 const uint32 RoutingTableTest::kTestRequestSeq = 456;
+const int RoutingTableTest::kTestRouteTag = 789;
 
 MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
   const RTNLMessage::RouteStatus &status = arg->route_status();
@@ -220,7 +224,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                  kTestDeviceIndex0,
                  entry0);
 
-  base::hash_map<int, std::vector<RoutingTableEntry> > *tables =
+  hash_map<int, vector<RoutingTableEntry> > *tables =
     GetRoutingTables();
 
   // We should have a single table, which should in turn have a single entry.
@@ -506,7 +510,8 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
                                          kTestDeviceIndex0)))
       .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
   EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address,
-                                                 kTestDeviceIndex0));
+                                                 kTestDeviceIndex0,
+                                                 kTestRouteTag));
 
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
   gateway_address.SetAddressFromString(kTestGatewayAddress4);
@@ -532,6 +537,29 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
                                 entry,
                                 kTestRequestSeq,
                                 RTPROT_UNSPEC);
+
+  hash_map<int, vector<RoutingTableEntry> > *tables =
+    GetRoutingTables();
+
+  // We should have a single table, which should in turn have a single entry.
+  EXPECT_EQ(1, tables->size());
+  EXPECT_TRUE(ContainsKey(*tables, kTestDeviceIndex0));
+  EXPECT_EQ(1, (*tables)[kTestDeviceIndex0].size());
+
+  // This entry's tag should match the tag we requested.
+  EXPECT_EQ(kTestRouteTag, (*tables)[kTestDeviceIndex0][0].tag);
+
+  // Ask to flush routes with our tag.  We should see a delete message sent.
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeDelete,
+                                          kTestDeviceIndex0,
+                                          entry,
+                                          0)));
+
+  routing_table_->FlushRoutesWithTag(kTestRouteTag);
+
+  // After flushing routes for this tag, we should end up with no routes.
+  EXPECT_EQ(0, (*tables)[kTestDeviceIndex0].size());
 }
 
 TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
@@ -540,8 +568,9 @@ TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
   EXPECT_CALL(rtnl_handler_, SendMessage(_))
       .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
   EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address,
-                                                 kTestDeviceIndex0));
-  EXPECT_FALSE(GetQuerySequences()->empty());
+                                                 kTestDeviceIndex0,
+                                                 kTestRouteTag));
+  EXPECT_FALSE(GetQueries()->empty());
 
   RoutingTableEntry entry(destination_address,
                           destination_address,
@@ -557,7 +586,7 @@ TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
                                 entry,
                                 kTestRequestSeq-1,
                                 RTPROT_UNSPEC);
-  EXPECT_FALSE(GetQuerySequences()->empty());
+  EXPECT_FALSE(GetQueries()->empty());
 
   // Try a sequence arriving after the one RoutingTable is looking for.
   // This should cause the request to be purged.
@@ -566,7 +595,7 @@ TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
                                 entry,
                                 kTestRequestSeq+1,
                                 RTPROT_UNSPEC);
-  EXPECT_TRUE(GetQuerySequences()->empty());
+  EXPECT_TRUE(GetQueries()->empty());
 }
 
 }  // namespace shill

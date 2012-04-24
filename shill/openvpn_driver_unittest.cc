@@ -16,14 +16,12 @@
 #include "shill/error.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_nss.h"
 #include "shill/mock_openvpn_management_server.h"
-#include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
@@ -188,17 +186,6 @@ MATCHER_P(IsIPAddress, address, "") {
 
 TEST_F(OpenVPNDriverTest, Notify) {
   map<string, string> config;
-  static const char kPeer[] = "99.88.77.66";
-  config["route_vpn_gateway"] = "192.168.1.1";
-  config["trusted_ip"] = kPeer;
-  scoped_refptr<MockService> service(
-      new NiceMock<MockService>(&control_, &dispatcher_, &metrics_, &manager_));
-  scoped_refptr<MockConnection> connection(
-      new StrictMock<MockConnection>(&device_info_));
-  service->set_mock_connection(connection);
-  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(service));
-  EXPECT_CALL(*connection, RequestHostRoute(IsIPAddress(kPeer)))
-      .WillOnce(Return(true));
   driver_->device_ = device_;
   EXPECT_CALL(*device_, UpdateIPConfig(_));
   driver_->Notify("up", config);

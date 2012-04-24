@@ -11,6 +11,7 @@
 #include <base/memory/ref_counted.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/ipconfig.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
 
@@ -72,6 +73,7 @@ class Connection : public base::RefCounted<Connection> {
   static void FixGatewayReachability(IPAddress *local,
                                      const IPAddress &gateway);
   uint32 GetMetric(bool is_default);
+  bool PinHostRoute(const IPConfig::Properties &config);
 
   bool is_default_;
   int routing_request_count_;

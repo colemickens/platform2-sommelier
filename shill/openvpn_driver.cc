@@ -251,8 +251,6 @@ void OpenVPNDriver::Notify(const string &reason,
   }
   IPConfig::Properties properties;
   ParseIPConfiguration(dict, &properties);
-  PinHostRoute(properties);
-
   device_->UpdateIPConfig(properties);
 }
 
