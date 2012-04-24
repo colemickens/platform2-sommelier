@@ -169,6 +169,7 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
   unsigned int flags = 0;
@@ -179,6 +180,7 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   EXPECT_FALSE(address.IsEmpty());
   EXPECT_TRUE(address.Equals(ByteString(kTestMACAddress,
                                         sizeof(kTestMACAddress))));
+  EXPECT_EQ(kTestDeviceIndex, device_info_.GetIndex(kTestDeviceName));
 
   message.reset(BuildLinkMessage(RTNLMessage::kModeAdd));
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_UP | IFF_RUNNING, 0));
@@ -190,6 +192,7 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   SendMessageToDeviceInfo(*message);
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
   EXPECT_FALSE(device_info_.GetFlags(kTestDeviceIndex, NULL));
+  EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
 
   device_info_.Stop();
 }

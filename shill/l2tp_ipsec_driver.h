@@ -21,13 +21,21 @@
 namespace shill {
 
 class ControlInterface;
+class DeviceInfo;
+class EventDispatcher;
 class GLib;
+class Metrics;
 class NSS;
 
 class L2TPIPSecDriver : public VPNDriver,
                         public RPCTaskDelegate {
  public:
-  L2TPIPSecDriver(ControlInterface *control, Manager *manager, GLib *glib);
+  L2TPIPSecDriver(ControlInterface *control,
+                  EventDispatcher *dispatcher,
+                  Metrics *metrics,
+                  Manager *manager,
+                  DeviceInfo *device_info,
+                  GLib *glib);
   virtual ~L2TPIPSecDriver();
 
   // Inherited from VPNDriver.
@@ -95,6 +103,9 @@ class L2TPIPSecDriver : public VPNDriver,
                       const std::map<std::string, std::string> &dict);
 
   ControlInterface *control_;
+  EventDispatcher *dispatcher_;
+  Metrics *metrics_;
+  DeviceInfo *device_info_;
   GLib *glib_;
   NSS *nss_;
   KeyValueStore args_;
@@ -102,6 +113,7 @@ class L2TPIPSecDriver : public VPNDriver,
   VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;
   FilePath psk_file_;
+  VPNRefPtr device_;
 
   // The PID of the spawned l2tpipsec_vpn process. May be 0 if no process has
   // been spawned yet or the process has died.

@@ -9,10 +9,12 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/device_info.h"
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/nss.h"
 #include "shill/scope_logger.h"
+#include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
 using std::map;
@@ -58,10 +60,16 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
 };
 
 L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
+                                 EventDispatcher *dispatcher,
+                                 Metrics *metrics,
                                  Manager *manager,
+                                 DeviceInfo *device_info,
                                  GLib *glib)
     : VPNDriver(manager, kProperties, arraysize(kProperties)),
       control_(control),
+      dispatcher_(dispatcher),
+      metrics_(metrics),
+      device_info_(device_info),
       glib_(glib),
       nss_(NSS::GetInstance()),
       pid_(0),
@@ -109,6 +117,11 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state) {
   if (pid_) {
     glib_->SpawnClosePID(pid_);
     pid_ = 0;
+  }
+  if (device_) {
+    device_->OnDisconnected();
+    device_->SetEnabled(false);
+    device_ = NULL;
   }
   rpc_task_.reset();
   if (service_) {
@@ -360,13 +373,29 @@ void L2TPIPSecDriver::Notify(
     return;
   }
 
+  DeletePSKFile();
+
   IPConfig::Properties properties;
   string interface_name;
   ParseIPConfiguration(dict, &properties, &interface_name);
+
+  int interface_index = device_info_->GetIndex(interface_name);
+  if (interface_index < 0) {
+    // TODO(petkov): Consider handling the race when the RTNL notification about
+    // the new PPP device has not been received yet. We can keep the IP
+    // configuration and apply it when ClaimInterface is invoked.
+    NOTIMPLEMENTED() << ": No device info for " << interface_name << ".";
+    return;
+  }
+
+  if (!device_) {
+    device_ = new VPN(control_, dispatcher_, metrics_, manager(),
+                      interface_name, interface_index);
+  }
+  device_->SetEnabled(true);
+  device_->SelectService(service_);
   PinHostRoute(properties);
-  DeletePSKFile();
-  // TODO(petkov): Create device_ and device_->UpdateIPConfig(properties)
-  // (crosbug.com/29912).
+  device_->UpdateIPConfig(properties);
 }
 
 }  // namespace shill

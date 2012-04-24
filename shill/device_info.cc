@@ -339,6 +339,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
     ByteString b(msg.GetAttribute(IFLA_IFNAME));
     string link_name(reinterpret_cast<const char*>(b.GetConstData()));
     SLOG(Device, 2) << "add link index "  << dev_index << " name " << link_name;
+    infos_[dev_index].name = link_name;
+    indices_[link_name] = dev_index;
 
     if (!link_name.empty()) {
       if (ContainsKey(black_list_, link_name)) {
@@ -435,6 +437,11 @@ DeviceRefPtr DeviceInfo::GetDevice(int interface_index) const {
   return info ? info->device : NULL;
 }
 
+int DeviceInfo::GetIndex(const string &interface_name) const {
+  map<string, int>::const_iterator it = indices_.find(interface_name);
+  return it == indices_.end() ? -1 : it->second;
+}
+
 bool DeviceInfo::GetMACAddress(int interface_index, ByteString *address) const {
   const Info *info = GetInfo(interface_index);
   if (!info) {
@@ -527,6 +534,7 @@ void DeviceInfo::RemoveInfo(int interface_index) {
     if (iter->second.device.get()) {
       manager_->DeregisterDevice(iter->second.device);
     }
+    indices_.erase(iter->second.name);
     infos_.erase(iter);
   } else {
     SLOG(Device, 2) << __func__ << ": Unknown device index: "

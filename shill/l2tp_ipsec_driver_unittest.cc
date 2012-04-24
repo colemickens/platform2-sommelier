@@ -19,7 +19,9 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_nss.h"
 #include "shill/mock_service.h"
+#include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
+#include "shill/vpn.h"
 
 using std::find;
 using std::map;
@@ -41,9 +43,12 @@ class L2TPIPSecDriverTest : public testing::Test,
   L2TPIPSecDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         manager_(&control_, &dispatcher_, &metrics_, &glib_),
-        driver_(new L2TPIPSecDriver(&control_, &manager_, &glib_)),
+        driver_(new L2TPIPSecDriver(&control_, &dispatcher_, &metrics_,
+                                    &manager_, &device_info_, &glib_)),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
-                                    &manager_, driver_)) {
+                                    &manager_, driver_)),
+        device_(new MockVPN(&control_, &dispatcher_, &metrics_, &manager_,
+                            kInterfaceName, kInterfaceIndex)) {
     driver_->nss_ = &nss_;
   }
 
@@ -56,11 +61,15 @@ class L2TPIPSecDriverTest : public testing::Test,
   virtual void TearDown() {
     driver_->child_watch_tag_ = 0;
     driver_->pid_ = 0;
+    driver_->device_ = NULL;
     driver_->service_ = NULL;
     ASSERT_TRUE(temp_dir_.Delete());
   }
 
  protected:
+  static const char kInterfaceName[];
+  static const int kInterfaceIndex;
+
   void SetArg(const string &arg, const string &value) {
     driver_->args_.SetString(arg, value);
   }
@@ -88,8 +97,12 @@ class L2TPIPSecDriverTest : public testing::Test,
   MockManager manager_;
   L2TPIPSecDriver *driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
+  scoped_refptr<MockVPN> device_;
   MockNSS nss_;
 };
+
+const char L2TPIPSecDriverTest::kInterfaceName[] = "ppp0";
+const int L2TPIPSecDriverTest::kInterfaceIndex = 123;
 
 void L2TPIPSecDriverTest::GetLogin(string */*user*/, string */*password*/) {}
 
@@ -435,6 +448,7 @@ MATCHER_P(IsIPAddress, address, "") {
 TEST_F(L2TPIPSecDriverTest, Notify) {
   map<string, string> config;
   static const char kPeer[] = "99.88.77.66";
+  config["INTERNAL_IFNAME"] = kInterfaceName;
   config["GATEWAY_ADDRESS"] = "192.168.1.1";
   config["LNS_ADDRESS"] = kPeer;
   scoped_refptr<MockService> service(
@@ -442,9 +456,14 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   scoped_refptr<MockConnection> connection(
       new StrictMock<MockConnection>(&device_info_));
   service->set_mock_connection(connection);
+  EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
+      .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(service));
   EXPECT_CALL(*connection, RequestHostRoute(IsIPAddress(kPeer)))
       .WillOnce(Return(true));
+  EXPECT_CALL(*device_, SetEnabled(true));
+  EXPECT_CALL(*device_, UpdateIPConfig(_));
+  driver_->device_ = device_;
   FilePath psk_file = SetupPSKFile();
   driver_->Notify("connect", config);
   EXPECT_FALSE(file_util::PathExists(psk_file));

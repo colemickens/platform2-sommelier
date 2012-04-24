@@ -73,6 +73,9 @@ class DeviceInfo {
   virtual bool CreateTunnelInterface(std::string *interface_name) const;
   virtual bool DeleteInterface(int interface_index) const;
 
+  // Returns the interface index for |interface_name| or -1 if unknown.
+  virtual int GetIndex(const std::string &interface_name) const;
+
  private:
   friend class DeviceInfoTechnologyTest;
   friend class DeviceInfoTest;
@@ -83,6 +86,7 @@ class DeviceInfo {
     Info() : flags(0) {}
 
     DeviceRefPtr device;
+    std::string name;
     ByteString mac_address;
     std::vector<AddressData> ip_addresses;
     unsigned int flags;
@@ -155,7 +159,10 @@ class DeviceInfo {
   EventDispatcher *dispatcher_;
   Metrics *metrics_;
   Manager *manager_;
-  std::map<int, Info> infos_;
+
+  std::map<int, Info> infos_;  // Maps interface index to Info.
+  std::map<std::string, int> indices_;  // Maps interface name to index.
+
   base::Callback<void(const RTNLMessage &)> link_callback_;
   base::Callback<void(const RTNLMessage &)> address_callback_;
   scoped_ptr<RTNLListener> link_listener_;
