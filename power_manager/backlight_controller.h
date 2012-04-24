@@ -58,7 +58,7 @@ class BacklightControllerObserver {
                                          BrightnessChangeCause cause) {}
 
  protected:
-  ~BacklightControllerObserver() {}
+  virtual ~BacklightControllerObserver() {}
 };
 
 // Interface implemented by classes that control the backlight.

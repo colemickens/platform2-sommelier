@@ -44,7 +44,6 @@ class MockMetricsStore : public MetricsStore {
         .WillOnce(Return(value))
         .RetiresOnSaturation();
   }
-
 };  // class MockMetricsStore
 
 }  // namespace power_manager

@@ -35,6 +35,7 @@ class MetricsStore {
 
   // Store Status Accessor
   virtual bool IsBroken();
+
  private:
   friend class MetricsStoreTest;
   FRIEND_TEST(MetricsStoreTest, ResetNumOfSessionsPerChargeMetric);

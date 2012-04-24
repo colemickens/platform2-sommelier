@@ -176,7 +176,7 @@ bool MetricsStore::MapStore(const int fd, int** map) {
 }
 
 bool MetricsStore::SyncStore(int* map) {
-  CHECK(map != 0);
+  CHECK(map);
   if (HANDLE_EINTR(msync(map, kSizeOfStoredMetrics, MS_SYNC)) < 0) {
     LOG(ERROR) << "Failed to msync with errno=" << strerror(errno);
     StoreBroke();

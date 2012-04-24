@@ -121,7 +121,7 @@ TEST_F(MetricsStoreTest, ConfigureStoreNoFile) {
   // Expecting file to be created when it dne
   EXPECT_TRUE(metrics_store_.ConfigureStore(kTestFileName));
   struct stat st;
-  EXPECT_EQ( 0, lstat(kTestFileName, &st));
+  EXPECT_EQ(0, lstat(kTestFileName, &st));
   EXPECT_EQ(MetricsStore::kNumOfStoredMetrics * sizeof(int), st.st_size);
 }
 
@@ -257,7 +257,6 @@ TEST_F(MetricsStoreTest, CloseStoreSuccess) {
   metrics_store_.CloseStore(&fd, &metrics_store_.store_map_);
   EXPECT_EQ(-1, fd);
   EXPECT_TRUE(metrics_store_.store_map_ == NULL);
-
 }
 
 // This method should silently handle bad inputs since it is called by the

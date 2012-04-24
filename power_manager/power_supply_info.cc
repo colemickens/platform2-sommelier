@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -86,12 +86,13 @@ class InfoDisplay {
               << string
               << std::endl;
   }
+
  private:
   int name_indent_;
   int value_indent_;
-}; // class InfoDisplay
+};  // class InfoDisplay
 
-} // namespace
+}  // namespace
 
 int main(int, char*[]) {
   FilePath path(kPowerStatusPath);

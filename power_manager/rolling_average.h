@@ -6,10 +6,10 @@
 #define POWER_MANAGER_ROLLING_AVERAGE_H_
 #pragma once
 
-#include <queue>
-
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
+#include <queue>
 
 namespace power_manager {
 
@@ -23,6 +23,7 @@ class RollingAverage {
   virtual int64 AddSample(int64 sample);
   virtual int64 GetAverage();
   virtual void Clear();
+
  protected:
   void DeleteSample();
   void InsertSample(int64 sample);

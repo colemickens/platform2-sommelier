@@ -58,7 +58,7 @@ const int kVoltageNowInt = ScaleDouble(kVoltageNow);
 
 const int kCycleCount = 10000;
 
-} // namespace
+}  // namespace
 
 namespace power_manager {
 
@@ -315,7 +315,7 @@ gboolean HysteresisTestLoop(gpointer data) {
   return false;
 }
 
-} // namespace
+}  // namespace
 
 TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
   FilePath path = temp_dir_generator_->path();

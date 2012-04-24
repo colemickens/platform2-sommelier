@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <vector>
 
 #include "base/logging.h"
 #include "base/file_util.h"
@@ -57,7 +58,7 @@ const int kDDCSleepUs = 45000;
 
 const std::string ToHex(int value) {
   char buf[100];
-  sprintf(buf, "0x%x", value);
+  snprintf(buf, sizeof(buf), "0x%x", value);
   return buf;
 }
 
@@ -151,7 +152,7 @@ bool DDCRead(int handle, uint8 index, uint8* value, uint8* max_value) {
   return true;
 }
 
-} // namespace
+}  // namespace
 
 namespace power_manager {
 
@@ -235,7 +236,7 @@ void ExternalBacklight::RegisterUdevEventHandler() {
 
   // Create the udev monitor structure.
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
-  if (!udev_monitor_ ) {
+  if (!udev_monitor_) {
     LOG(ERROR) << "Can't create udev monitor.";
     udev_unref(udev_);
   }

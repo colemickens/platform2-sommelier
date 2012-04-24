@@ -47,6 +47,6 @@ class Inotify {
   DISALLOW_COPY_AND_ASSIGN(Inotify);
 };
 
-} // namespace power_manager
+}  // namespace power_manager
 
-#endif // POWER_MANAGER_INOTIFY_H_
+#endif  // POWER_MANAGER_INOTIFY_H_

@@ -14,7 +14,6 @@ namespace power_manager {
 // Interface for reading and writing the preferences for power manager.
 class PowerPrefsInterface {
  public:
-
   // Read a string setting from disk into |buf|
   // Returns true if successful; otherwise returns false.
   virtual bool GetString(const char* name, std::string* buf) = 0;

@@ -86,7 +86,7 @@ void SuspendDelaySignaled(DBusMessage* message) {
   dbus_error_init(&error);
   if (!dbus_message_get_args(message, &error, DBUS_TYPE_UINT32, &sequence_num,
                              DBUS_TYPE_INVALID)) {
-    cout << "Could not get args from SuspendDelay signal!" << endl ;
+    cout << "Could not get args from SuspendDelay signal!" << endl;
     if (dbus_error_is_set(&error))
       dbus_error_free(&error);
     return;
@@ -154,7 +154,6 @@ void RegisterDBusMessageHandler() {
                             G_TYPE_INVALID);
     dbus_g_proxy_connect_signal(proxy, "NameOwnerChanged",
                                 G_CALLBACK(signal_handler), NULL, NULL);
-
 }
 
 int main(int argc, char* argv[]) {

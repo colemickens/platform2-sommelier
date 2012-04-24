@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef STATE_CONTROL_H_
-#define STATE_CONTROL_H_
+#ifndef POWER_MANAGER_STATE_CONTROL_H_
+#define POWER_MANAGER_STATE_CONTROL_H_
 
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
@@ -84,4 +84,4 @@ class StateControl {
 
 }  // namespace power_manager
 
-#endif  // STATE_CONTROL_H_
+#endif  // POWER_MANAGER_STATE_CONTROL_H_

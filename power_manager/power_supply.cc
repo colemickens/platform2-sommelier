@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -38,7 +38,7 @@ inline int64 HoursToSecondsInt(double num_hours) {
   return lround(HoursToSecondsDouble(num_hours));
 }
 
-} // namespace
+}  // namespace
 
 namespace power_manager {
 
@@ -89,7 +89,7 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
   if (line_power_info_ && file_util::PathExists(line_power_path_)) {
     line_power_info_->GetInt64("online", &value);
     // Return the line power status.
-    status->line_power_on = line_power_on_ = (bool) value;
+    status->line_power_on = line_power_on_ = static_cast<bool>(value);
   }
 
   // If no battery was found, or if the previously found path doesn't exist
@@ -101,7 +101,7 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
   }
 
   battery_info_->GetInt64("present", &value);
-  status->battery_is_present = battery_is_present_ = (bool) value;
+  status->battery_is_present = battery_is_present_ = static_cast<bool>(value);
   // If there is no battery present, we can skip the rest of the readings.
   if (!battery_is_present_)
     return true;
@@ -129,7 +129,7 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
     charge_full_ = battery_info_->ReadScaledDouble("charge_full");
     charge_full_design_ = battery_info_->ReadScaledDouble("charge_full_design");
     charge_now_ = battery_info_->ReadScaledDouble("charge_now");
-  } else if(file_util::PathExists(battery_path_.Append("energy_full"))) {
+  } else if (file_util::PathExists(battery_path_.Append("energy_full"))) {
     if (nominal_voltage_ <= 0 || voltage_now_ <= 0) {
       LOG(WARNING) << "Non valid voltage_nominal/now readings for "
                    << "energy-to-charge conversion : "
@@ -150,9 +150,9 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
   if (file_util::PathExists(battery_path_.Append("power_now"))) {
     current_now_ = fabs(battery_info_->ReadScaledDouble("power_now")) /
                    voltage_now_;
-  }
-  else
+  } else {
     current_now_ = fabs(battery_info_->ReadScaledDouble("current_now"));
+  }
   cycle_count_ = battery_info_->ReadScaledDouble("cycle_count");
 
   serial_number_.clear();

@@ -23,14 +23,14 @@ class MockRollingAverage : public RollingAverage {
   }
 
   MOCK_METHOD1(AddSample, int64(int64 sample));
-  void ExpectAddSample(int64 sample, int64 ret_val){
+  void ExpectAddSample(int64 sample, int64 ret_val) {
     EXPECT_CALL(*this, AddSample(sample))
         .WillOnce(Return(ret_val))
         .RetiresOnSaturation();
   }
 
   MOCK_METHOD0(GetAverage, int64());
-  void ExpectGetAverage(int64 ret_val){
+  void ExpectGetAverage(int64 ret_val) {
     EXPECT_CALL(*this, GetAverage())
         .WillOnce(Return(ret_val))
         .RetiresOnSaturation();

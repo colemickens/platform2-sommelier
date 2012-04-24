@@ -258,7 +258,7 @@ void MonitorReconfigure::SetInternalPanelOn() {
           // Use the first usable crtc.
           crtc = output_info->crtcs[0];
           x = y = 0;
-        } else { // Use saved panel state.
+        } else {  // Use saved panel state.
           LOG(INFO) << "Restore panel to a saved state.";
           crtc = internal_panel_state_.crtc;
           mode = internal_panel_state_.mode;
@@ -345,7 +345,6 @@ void MonitorReconfigure::EnableUsableOutput(int idx,
                                             RRMode mode,
                                             int* position_x,
                                             int* position_y) {
-
     RROutput output = usable_outputs_[idx];
     XRROutputInfo* output_info = usable_outputs_info_[idx];
     XRRModeInfo* mode_info = GetModeInfo(mode);
@@ -430,7 +429,7 @@ void MonitorReconfigure::CheckInternalPanelConnection() {
 
 bool MonitorReconfigure::AreOutputsSame(const vector<OutputInfo>& outputs1,
                                         const vector<OutputInfo>& outputs2) {
-  if(outputs1.size() != outputs2.size())
+  if (outputs1.size() != outputs2.size())
     return false;
 
   for (size_t i = 0; i < outputs1.size(); i++) {
@@ -495,7 +494,6 @@ bool MonitorReconfigure::NeedReconfigure(
 }
 
 void MonitorReconfigure::FallBackToSingleHead() {
-
   // Keep only one usable output.
   usable_outputs_.pop_back();
   usable_outputs_info_.pop_back();
@@ -583,7 +581,7 @@ void MonitorReconfigure::RunExtended() {
   int position_y = 0;
   int num_used_outputs = usable_outputs_.size();
 
-  if(dual_head_mode_ == kModeFirstMonitorPrimary) {
+  if (dual_head_mode_ == kModeFirstMonitorPrimary) {
     LOG(INFO) << "Setting dual head mode : FIRST MONITOR PRIMARY";
     // If the first display is set as primary display, then scan out the first
     // display from (0,0). And second display from (0, height_of_first_display).
@@ -743,18 +741,18 @@ void MonitorReconfigure::Run(bool force_reconfigure) {
 
     // Dual head mode.
     if (dual_head_mode_ == kModeFirstMonitorPrimary ||
-        dual_head_mode_ == kModeSecondMonitorPrimary)
+        dual_head_mode_ == kModeSecondMonitorPrimary) {
       RunExtended();
-    else {
+    } else {
       // If Clone mode is needed, check that if common resolution exists
       // between the 2 displays. If not, move to the next dual head mode.
       if (selector.FindCommonResolutions(lcd_modes,
                                          external_modes,
                                          &lcd_resolution,
                                          &external_resolution,
-                                         &screen_resolution))
+                                         &screen_resolution)) {
         RunClone(lcd_resolution, external_resolution, screen_resolution);
-      else {
+      } else {
         dual_head_mode_ = kModeFirstMonitorPrimary;
         RunExtended();
       }

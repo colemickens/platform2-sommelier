@@ -5,9 +5,9 @@
 #ifndef POWER_MANAGER_UTIL_H_
 #define POWER_MANAGER_UTIL_H_
 
-#include <string>
-
 #include <dbus/dbus-glib-lowlevel.h>
+
+#include <string>
 
 #include "base/basictypes.h"
 #include "cros/chromeos_wm_ipc_enums.h"

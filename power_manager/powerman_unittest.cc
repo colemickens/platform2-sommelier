@@ -5,6 +5,8 @@
 #include <gtest/gtest.h>
 #include <stdint.h>
 
+#include <string>
+
 #include "base/logging.h"
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/mock_backlight.h"
@@ -75,4 +77,4 @@ TEST_F(PowerManDaemonTest, GenerateRetrySuspendCountMetric) {
   daemon_.GenerateMetricsOnResumeEvent();
 }
 
-} // namespace power_manager
+}  // namespace power_manager

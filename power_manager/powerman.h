@@ -10,6 +10,10 @@
 #include <gdk/gdk.h>
 #include <libudev.h>
 
+#include <map>
+#include <string>
+#include <utility>
+
 #include "base/file_path.h"
 #include "base/time.h"
 #include "metrics/metrics_library.h"
@@ -165,9 +169,9 @@ class PowerManDaemon {
   void Shutdown();
   // Suspend(unsigned int, bool) is the real function. The other three redirect
   void Suspend(unsigned int wakeup_count, bool wakeup_count_valid);
-  void Suspend(); // call suspend ignoring wakeup_count
-  void Suspend(unsigned int wakeup_count); // pass in explicit wakeup_count
-  void Suspend(DBusMessage* message); // get wakeup_count value from dbus
+  void Suspend();  // call suspend ignoring wakeup_count
+  void Suspend(unsigned int wakeup_count);  // pass in explicit wakeup_count
+  void Suspend(DBusMessage* message);  // get wakeup_count value from dbus
 
   // Lock and unlock virtual terminal switching.
   void LockVTSwitch();
@@ -188,13 +192,13 @@ class PowerManDaemon {
   int64 retry_suspend_attempts_;
   int retry_suspend_count_;
   pid_t suspend_pid_;
-  unsigned int lid_id_;              // incremented on lid event
-  unsigned int powerd_id_;           // incremented when powerd spawns/dies
-  SessionManagerState session_state_;// started | stopping | stopped
-  PowerManagerState powerd_state_;   // alive | dead | unknown
-  FilePath run_dir_;                 // --run_dir /var/run/power_manager
-  FilePath lid_open_file_;           // touch when suspend should be cancelled
-  base::TimeTicks lid_ticks_;        // log time for every lid event
+  unsigned int lid_id_;                // incremented on lid event
+  unsigned int powerd_id_;             // incremented when powerd spawns/dies
+  SessionManagerState session_state_;  // started | stopping | stopped
+  PowerManagerState powerd_state_;     // alive | dead | unknown
+  FilePath run_dir_;                   // --run_dir /var/run/power_manager
+  FilePath lid_open_file_;             // touch when suspend should be cancelled
+  base::TimeTicks lid_ticks_;          // log time for every lid event
   int console_fd_;
 
   // These are lookup tables that map dbus message interface/names to handlers.

@@ -5,12 +5,12 @@
 #ifndef POWER_MANAGER_INPUT_H_
 #define POWER_MANAGER_INPUT_H_
 
+#include <glib.h>
+#include <libudev.h>
+
 #include <map>
 #include <string>
 #include <vector>
-
-#include <glib.h>
-#include <libudev.h>
 
 #include "base/basictypes.h"
 
@@ -126,6 +126,6 @@ class Input {
   DISALLOW_COPY_AND_ASSIGN(Input);
 };
 
-} // namespace power_manager
+}  // namespace power_manager
 
-#endif // POWER_MANAGER_INPUT_H_
+#endif  // POWER_MANAGER_INPUT_H_

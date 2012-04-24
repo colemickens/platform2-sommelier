@@ -14,13 +14,13 @@
 
 namespace base {
 class Time;
-} // namespace base
+}  // namespace base
 
 namespace power_manager {
 
 class FileTagger {
  public:
-  FileTagger(const FilePath& trace_dir);
+  explicit FileTagger(const FilePath& trace_dir);
 
   void Init();
 

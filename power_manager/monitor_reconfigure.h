@@ -11,6 +11,7 @@
 
 #include <map>
 #include <set>
+#include <string>
 #include <vector>
 
 #include "base/basictypes.h"
@@ -40,7 +41,7 @@ class MonitorReconfigure {
 
   // |backlight_ctl| is a pointer to the backlight controller for the internal
   // screen.
-  MonitorReconfigure(BacklightController* backlight_ctl);
+  explicit MonitorReconfigure(BacklightController* backlight_ctl);
 
   virtual ~MonitorReconfigure();
 
@@ -72,7 +73,6 @@ class MonitorReconfigure {
   bool HasInternalPanelConnection();
 
  private:
-
   struct ConnectionState {
     ConnectionState(RRCrtc crtc, RRMode mode, int position_x, int position_y);
     ConnectionState();

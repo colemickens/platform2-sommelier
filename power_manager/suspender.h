@@ -5,12 +5,12 @@
 #ifndef POWER_MANAGER_SUSPENDER_H_
 #define POWER_MANAGER_SUSPENDER_H_
 
-#include <string>
-#include <map>
-
 #include <gdk/gdkx.h>
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
+
+#include <map>
+#include <string>
 
 #include "base/file_path.h"
 #include "power_manager/screen_locker.h"

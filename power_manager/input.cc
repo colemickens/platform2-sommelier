@@ -32,7 +32,7 @@ const char kWakeupEnabled[] = "enabled";
 power_manager::InputType GetInputType(const struct input_event& event) {
   if (event.type == EV_KEY) {
     // For key events, only handle the keys listed below.
-    switch(event.code) {
+    switch (event.code) {
       case KEY_POWER:     return power_manager::INPUT_POWER_BUTTON;
       case KEY_F13:       return power_manager::INPUT_LOCK_BUTTON;
       case KEY_F4:        return power_manager::INPUT_KEY_F4;
@@ -69,7 +69,7 @@ const char* InputTypeToString(power_manager::InputType type) {
   }
 }
 
-}
+}  // namespace
 
 namespace power_manager {
 
@@ -89,7 +89,7 @@ Input::~Input() {
 }
 
 bool Input::Init(const vector<string>& wakeup_input_names) {
-  for(vector<string>::const_iterator names_iter = wakeup_input_names.begin();
+  for (vector<string>::const_iterator names_iter = wakeup_input_names.begin();
       names_iter != wakeup_input_names.end(); ++names_iter) {
     // Iterate through the vector of input names, and if not the empty string,
     // put the input name into the wakeup_inputs_map_, mapping to -1.
@@ -105,10 +105,10 @@ bool Input::Init(const vector<string>& wakeup_input_names) {
 }
 
 #define BITS_PER_LONG (sizeof(long) * 8)
-#define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
-#define OFF(x)  ((x)%BITS_PER_LONG)
-#define BIT(x)  (1UL<<OFF(x))
-#define LONG(x) ((x)/BITS_PER_LONG)
+#define NBITS(x) ((((x) - 1) / BITS_PER_LONG) + 1)
+#define OFF(x)  ((x) % BITS_PER_LONG)
+#define BIT(x)  (1UL << OFF(x))
+#define LONG(x) ((x) / BITS_PER_LONG)
 #define IS_BIT_SET(bit, array)  ((array[LONG(bit)] >> OFF(bit)) & 1)
 
 bool Input::QueryLidState(int* lid_state) {
@@ -213,7 +213,7 @@ bool Input::SetWakeupState(int input_num, bool enabled) {
   // + 1 for null terminator.
   char name[strlen(kInputBasename) + sizeof(input_num) * 3 + 1];
 
-  sprintf(name, "%s%d", kInputBasename, input_num);
+  snprintf(name, sizeof(name), "%s%d", kInputBasename, input_num);
   FilePath input_path = sys_class_input_path.Append(name);
 
   // wakeup sysfs is at /sys/class/input/inputX/device/power/wakeup
@@ -262,7 +262,7 @@ bool Input::AddEvent(const char * name) {
   guint tag;
   GIOChannel* channel = RegisterInputEvent(event_fd, &tag);
   if (!channel) {
-    if (close(event_fd) < 0) // event not registered, closing.
+    if (close(event_fd) < 0)  // event not registered, closing.
       LOG(ERROR) << "Error closing file handle.";
     return false;
   }
@@ -284,7 +284,7 @@ bool Input::RemoveEvent(const char* name) {
 
   event_num = atoi(name + strlen(kEventBasename));
   InputMap::iterator iter = registered_inputs_.find(event_num);
-  if (iter == registered_inputs_.end() ) {
+  if (iter == registered_inputs_.end()) {
     LOG(WARNING) << "Input event "
                  << event_num
                  << " not registered. Nothing to remove.";
@@ -362,14 +362,14 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
   char phys[256] = "Unknown";
   bool watch_added = false;
 
-  if (ioctl(fd, EVIOCGNAME(sizeof(name)),name) < 0) {
+  if (ioctl(fd, EVIOCGNAME(sizeof(name)), name) < 0) {
     LOG(ERROR) << "Could not get name of this device.";
     return NULL;
   } else {
     LOG(INFO) << "Device name : " << name;
   }
 
-  if (ioctl(fd, EVIOCGPHYS(sizeof(phys)),phys) < 0) {
+  if (ioctl(fd, EVIOCGPHYS(sizeof(phys)), phys) < 0) {
     LOG(ERROR) << "Could not get topo phys path of this device.";
     return NULL;
   } else {
@@ -486,7 +486,7 @@ void Input::RegisterUdevEventHandler() {
 
   // Create the udev monitor structure.
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
-  if (!udev_monitor_ ) {
+  if (!udev_monitor_) {
     LOG(ERROR) << "Can't create udev monitor.";
     udev_unref(udev_);
   }
@@ -513,7 +513,7 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
   struct input_event ev[64];
   fd = g_io_channel_unix_get_fd(source);
   rd = read(fd, ev, sizeof(struct input_event) * 64);
-  if (rd < (int) sizeof(struct input_event)) {
+  if (rd < static_cast<int>(sizeof(struct input_event))) {
     LOG(ERROR) << "failed reading";
     return true;
   }
@@ -535,4 +535,4 @@ void Input::RegisterHandler(InputHandler handler, void* data) {
   handler_data_ = data;
 }
 
-} // namespace power_manager
+}  // namespace power_manager

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,7 +25,7 @@ class XIdleObserver;
 class XIdle {
  public:
   XIdle();
-  XIdle(XSync *xsync);
+  explicit XIdle(XSync *xsync);
   ~XIdle();
 
   // Initialize the object with the given |observer|.

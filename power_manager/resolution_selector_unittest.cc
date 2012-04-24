@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <algorithm>
-
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
+
+#include <algorithm>
 
 #include "base/command_line.h"
 #include "base/logging.h"

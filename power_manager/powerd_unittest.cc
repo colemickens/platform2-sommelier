@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <cmath>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkx.h>
 #include <stdint.h>
 #include <X11/extensions/XTest.h>
+
+#include <cmath>
 
 #include "base/logging.h"
 #include "metrics/metrics_library_mock.h"
@@ -89,7 +90,7 @@ class DaemonTest : public Test {
     backlight_ctl_.set_disable_dbus_for_testing(true);
 #endif
     CHECK(backlight_ctl_.Init());
-    ResetPowerStatus(status_);
+    ResetPowerStatus(&status_);
   }
 
  protected:
@@ -190,9 +191,9 @@ class DaemonTest : public Test {
                                    kMetricBatteryRemainingAtStartOfSessionMax);
   }
 
-  // Resets all fields of |info| to 0.
-  void ResetPowerStatus(PowerStatus& status) {
-    memset(&status, 0, sizeof(PowerStatus));
+  // Resets all fields of |status| to 0.
+  void ResetPowerStatus(PowerStatus* status) {
+    memset(status, 0, sizeof(PowerStatus));
   }
 
   // Adds a metrics library mock expectation for the number of ALS adjustments
@@ -355,7 +356,7 @@ TEST_F(DaemonTest, GenerateBatteryRemainingWhenChargeStartsMetric) {
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   status_.battery_is_present = true;
-  for(size_t i = 0; i < num_percentages; i++) {
+  for (size_t i = 0; i < num_percentages; i++) {
     status_.battery_percentage = battery_percentages[i];
     int expected_percentage = round(status_.battery_percentage);
 
@@ -371,7 +372,7 @@ TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
   static const uint adjustment_counts[] = {0, 100, 500, 1000};
   size_t num_counts = ARRAYSIZE_UNSAFE(adjustment_counts);
 
-  for(size_t i = 0; i < num_counts; i++) {
+  for (size_t i = 0; i < num_counts; i++) {
     backlight_ctl_.als_adjustment_count_ = adjustment_counts[i];
     ExpectNumberOfAlsAdjustmentsPerSessionMetric(adjustment_counts[i]);
     EXPECT_TRUE(
@@ -526,7 +527,7 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
                                         82.4, 82.5};
   const size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
-  for(size_t i = 0; i < num_percentages; i++) {
+  for (size_t i = 0; i < num_percentages; i++) {
     status_.battery_percentage = battery_percentages[i];
     int expected_percentage = round(status_.battery_percentage);
 
@@ -555,7 +556,7 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
                                         82.4, 82.5};
   const size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
-  for(size_t i = 0; i < num_percentages; i++) {
+  for (size_t i = 0; i < num_percentages; i++) {
     status_.battery_percentage = battery_percentages[i];
     int expected_percentage = round(status_.battery_percentage);
 

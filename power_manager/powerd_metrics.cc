@@ -249,8 +249,7 @@ void Daemon::HandleNumOfSessionsPerChargeOnSetPlugged(
   if (plugged_state == kPowerConnected) {
     LOG_IF(ERROR, !GenerateNumOfSessionsPerChargeMetric(metrics_store))
         << "Failed to send NumOfSessionsPerCharge metrics";
-  }
-  else if (plugged_state == kPowerDisconnected) {
+  } else if (plugged_state == kPowerDisconnected) {
     int count = metrics_store->GetNumOfSessionsPerChargeMetric();
     switch (count) {
       case 1:

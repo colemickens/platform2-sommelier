@@ -4,9 +4,10 @@
 
 #include "power_manager/external_backlight_controller.h"
 
+#include <dbus/dbus-glib-lowlevel.h>
+
 #include <algorithm>
 #include <cmath>
-#include <dbus/dbus-glib-lowlevel.h>
 
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"

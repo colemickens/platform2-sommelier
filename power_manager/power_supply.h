@@ -94,7 +94,7 @@ struct PowerInformation {
 // charge and voltage level, current, etc.
 class PowerSupply {
  public:
-  PowerSupply(const FilePath& power_supply_path);
+  explicit PowerSupply(const FilePath& power_supply_path);
   ~PowerSupply();
 
   void Init();
@@ -120,7 +120,7 @@ class PowerSupply {
   // Make this public for unit testing purposes, but keep objects private.
   class PowerInfoReader : public PowerPrefs {
    public:
-    PowerInfoReader(const FilePath& path) : PowerPrefs(path, path) {}
+    explicit PowerInfoReader(const FilePath& path) : PowerPrefs(path, path) {}
 
     double ReadScaledDouble(const char* name);
     bool ReadString(const char* name, std::string* str);

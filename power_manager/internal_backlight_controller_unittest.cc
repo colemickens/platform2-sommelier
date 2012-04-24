@@ -5,6 +5,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <utility>
+#include <vector>
+
 #include "base/logging.h"
 #include "power_manager/internal_backlight_controller.h"
 #include "power_manager/mock_backlight.h"
@@ -74,7 +77,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseBrightness) {
 #else
   EXPECT_DOUBLE_EQ(kUnpluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
-#endif // defined(HAS_ALS)
+#endif  // defined(HAS_ALS)
 
   double old_percent = controller_.GetTargetBrightnessPercent();
   controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
@@ -100,7 +103,7 @@ TEST_F(InternalBacklightControllerTest, DecreaseBrightness) {
 #else
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
-#endif // defined(HAS_ALS)
+#endif  // defined(HAS_ALS)
 
   double old_percent = controller_.GetTargetBrightnessPercent();
   controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
@@ -127,7 +130,7 @@ TEST_F(InternalBacklightControllerTest, DecreaseBrightnessDisallowOff) {
 #else
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
-#endif // defined(HAS_ALS)
+#endif  // defined(HAS_ALS)
 
   for (int i = 0; i < kStepsToHitLimit; ++i)
     controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
@@ -330,7 +333,7 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
-#endif // !defined(IS_DESKTOP)
+#endif  // !defined(IS_DESKTOP)
 }
 
 // Check that InternalBacklightController reinitializes itself correctly when

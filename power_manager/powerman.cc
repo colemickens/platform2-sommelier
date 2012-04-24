@@ -2,16 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string>
-#include <stdlib.h>
-#include <stdio.h>
 #include <dbus/dbus-shared.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <gdk/gdkx.h>
 #include <linux/vt.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
-#include <gdk/gdkx.h>
+
+#include <string>
+#include <vector>
 
 #include "base/file_util.h"
 #include "base/string_split.h"
@@ -288,7 +290,7 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-void PowerManDaemon::HandleCheckLidStateSignal(DBusMessage* message) {
+void PowerManDaemon::HandleCheckLidStateSignal(DBusMessage*) {  // NOLINT
   if (lidstate_ == LID_STATE_CLOSED) {
     util::SendSignalToPowerD(kLidClosed);
   }
@@ -298,15 +300,15 @@ void PowerManDaemon::HandleSuspendSignal(DBusMessage* message) {
   Suspend(message);
 }
 
-void PowerManDaemon::HandleShutdownSignal(DBusMessage*) {
+void PowerManDaemon::HandleShutdownSignal(DBusMessage*) {  // NOLINT
   Shutdown();
 }
 
-void PowerManDaemon::HandleRestartSignal(DBusMessage*) {
+void PowerManDaemon::HandleRestartSignal(DBusMessage*) {  // NOLINT
   Restart();
 }
 
-void PowerManDaemon::HandleRequestCleanShutdownSignal(DBusMessage*) {
+void PowerManDaemon::HandleRequestCleanShutdownSignal(DBusMessage*) {  // NOLINT
   util::Launch("initctl emit power-manager-clean-shutdown");
 }
 
@@ -591,7 +593,7 @@ void PowerManDaemon::Suspend(unsigned int wakeup_count,
                         CreateRetrySuspendArgs(this, lid_id_));
 
   // create command line
-  if (wakeup_count_valid && snprintf(suspend_cmd,sizeof(suspend_cmd),
+  if (wakeup_count_valid && snprintf(suspend_cmd, sizeof(suspend_cmd),
                                      "powerd_suspend --wakeup_count %d",
                                      wakeup_count) == sizeof(suspend_cmd)) {
     LOG(ERROR) << "Command line exceeded size limit: "
@@ -633,11 +635,11 @@ void PowerManDaemon::Suspend(unsigned int wakeup_count,
 }
 
 void PowerManDaemon::Suspend() {
-  Suspend(0,false);
+  Suspend(0, false);
 }
 
 void PowerManDaemon::Suspend(unsigned int wakeup_count) {
-  Suspend(wakeup_count,true);
+  Suspend(wakeup_count, true);
 }
 
 void PowerManDaemon::Suspend(DBusMessage* message) {
@@ -657,7 +659,7 @@ void PowerManDaemon::Suspend(DBusMessage* message) {
 }
 
 void PowerManDaemon::LockVTSwitch() {
-  CHECK(console_fd_ >= 0);
+  CHECK_GE(console_fd_, 0);
   if (ioctl(console_fd_, VT_LOCKSWITCH))
     LOG(ERROR) << "Error in ioctl(VT_LOCKSWITCH): " << errno;
   else
@@ -665,7 +667,7 @@ void PowerManDaemon::LockVTSwitch() {
 }
 
 void PowerManDaemon::UnlockVTSwitch() {
-  CHECK(console_fd_ >= 0);
+  CHECK_GE(console_fd_, 0);
   if (ioctl(console_fd_, VT_UNLOCKSWITCH))
     LOG(ERROR) << "Error in ioctl(VT_UNLOCKSWITCH): " << errno;
   else
@@ -679,8 +681,7 @@ bool PowerManDaemon::GetConsole() {
     LOG(ERROR) << "Failed to open " << file_path.value().c_str()
                << ", errno = " << errno;
     retval = false;
-  }
-  else {
+  } else {
     LOG(INFO) << "Opened console " << file_path.value().c_str()
               << " with file id = " << console_fd_;
   }

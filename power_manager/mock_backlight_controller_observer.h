@@ -5,10 +5,10 @@
 #ifndef POWER_MANAGER_MOCK_BACKLIGHT_CONTROLLER_OBSERVER_H_
 #define POWER_MANAGER_MOCK_BACKLIGHT_CONTROLLER_OBSERVER_H_
 
+#include <base/basictypes.h>
+
 #include <utility>
 #include <vector>
-
-#include <base/basictypes.h>
 
 #include "power_manager/backlight_controller.h"
 

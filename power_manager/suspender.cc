@@ -4,6 +4,8 @@
 
 #include "power_manager/suspender.h"
 
+#include <algorithm>
+
 #include "base/file_path.h"
 #include "base/logging.h"
 #include "base/string_util.h"
@@ -48,13 +50,13 @@ void Suspender::RequestSuspend() {
   unsigned int timeout_ms;
   suspend_requested_ = true;
   suspend_delays_outstanding_ = suspend_delays_.size();
-  wakeup_count_=0;
-  wakeup_count_valid_=false;
+  wakeup_count_ = 0;
+  wakeup_count_valid_ = false;
   if (util::GetWakeupCount(&wakeup_count_)) {
-    wakeup_count_valid_=true;
+    wakeup_count_valid_ = true;
   } else {
     LOG(ERROR) << "Could not get wakeup_count prior to suspend.";
-    wakeup_count_valid_=false;
+    wakeup_count_valid_ = false;
   }
   // Use current time for sequence number.
   suspend_sequence_number_ = TimeTicks::Now().ToInternalValue() / 1000;
@@ -62,7 +64,7 @@ void Suspender::RequestSuspend() {
   // TODO(bleung) : change locker to use the new delayed suspend method
   if (locker_->lock_on_suspend_enabled()) {
     locker_->LockScreen();
-    suspend_delays_outstanding_++; // one for the locker. TODO : remove this.
+    suspend_delays_outstanding_++;  // one for the locker. TODO : remove this.
     timeout_ms = max(kScreenLockerTimeoutMS, suspend_delay_timeout_ms_);
   } else {
     timeout_ms = suspend_delay_timeout_ms_;
@@ -247,7 +249,7 @@ void Suspender::Suspend() {
   util::RemoveStatusFile(user_active_file_);
   file_tagger_->HandleSuspendEvent();
   if (wakeup_count_valid_) {
-    util::SendSignalToPowerM(kSuspendSignal,wakeup_count_);
+    util::SendSignalToPowerM(kSuspendSignal, wakeup_count_);
   } else {
     util::SendSignalToPowerM(kSuspendSignal);
   }

@@ -46,7 +46,8 @@ int64 RollingAverage::GetAverage() {
   if (sample_window_.empty())
     return 0;
 
-  return lround((double)running_total_ / (double)sample_window_.size());
+  return lround(static_cast<double>(running_total_) /
+                static_cast<double>(sample_window_.size()));
 }
 
 void RollingAverage::Clear() {
@@ -56,7 +57,7 @@ void RollingAverage::Clear() {
 }
 
 void RollingAverage::DeleteSample() {
-  if(!sample_window_.empty()) {
+  if (!sample_window_.empty()) {
     running_total_ -= sample_window_.front();
     sample_window_.pop();
   }

@@ -4,11 +4,13 @@
 
 #include "power_manager/internal_backlight_controller.h"
 
-#include <algorithm>
-#include <cmath>
 #include <gdk/gdkx.h>
 #include <sys/time.h>
 #include <X11/extensions/dpms.h>
+
+#include <algorithm>
+#include <cmath>
+#include <string>
 
 #include "base/logging.h"
 #include "base/string_util.h"
@@ -330,7 +332,7 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
               << "brightness adjustment since no ALS value available yet.";
     write_brightness = false;
   }
-#endif // defined(HAS_ALS)
+#endif  // defined(HAS_ALS)
   if (write_brightness)
     WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, style);
 
@@ -401,7 +403,7 @@ bool InternalBacklightController::OnPlugEvent(bool is_plugged) {
               << "brightness adjustment since no ALS value available yet.";
     return true;
   }
-#endif // defined(HAS_ALS)
+#endif  // defined(HAS_ALS)
   return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
 }
 
@@ -642,7 +644,7 @@ bool InternalBacklightController::SetBrightness(int64 target_level,
   gradual_transition_event_id_ = g_timeout_add(kBacklightAnimationMs,
                                                SetBrightnessStepThunk,
                                                this);
-  CHECK(gradual_transition_event_id_ > 0);
+  CHECK_GT(gradual_transition_event_id_, 0U);
   return true;
 }
 

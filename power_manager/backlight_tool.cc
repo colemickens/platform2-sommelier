@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,7 +23,7 @@ DEFINE_int64(set_brightness, -1, "Set brightness level.");
 // A simple tool to get and set the brightness level of the display backlight.
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
-  CHECK(argc == 1) << "Unexpected arguments. Try --help";
+  CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
   CHECK(!FLAGS_get_brightness || !FLAGS_get_max_brightness) <<
       "-get_brightness and -get_max_brightness are mutually exclusive";
 #ifdef IS_DESKTOP

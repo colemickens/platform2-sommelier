@@ -180,7 +180,7 @@ TEST_F(RollingAverageTest, IsFullUninitialized) {
 }
 
 TEST_F(RollingAverageTest, IsFullOverflow) {
-  for(unsigned int i = 0; i < kTestWindowSize + 1; i++)
+  for (unsigned int i = 0; i < kTestWindowSize + 1; i++)
     rolling_average_.sample_window_.push(kTestSample);
 
   EXPECT_TRUE(rolling_average_.IsFull());

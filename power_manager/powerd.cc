@@ -4,7 +4,6 @@
 
 #include "power_manager/powerd.h"
 
-#include <cmath>
 #include <gdk/gdkx.h>
 #include <glib-object.h>
 #include <stdint.h>
@@ -12,6 +11,7 @@
 #include <X11/extensions/dpms.h>
 
 #include <algorithm>
+#include <cmath>
 #include <set>
 #include <vector>
 
@@ -74,7 +74,7 @@ const int64 kMinTimeForIdle = 10;
 // minutes.
 const unsigned int kRollingAverageSampleWindow = 10;
 
-} // namespace
+}  // namespace
 
 namespace power_manager {
 
@@ -591,9 +591,10 @@ void Daemon::AdjustKeyboardBrightness(int direction) {
   // Try to move by 1-step, handling corner cases:
   // 1. kNumKeylightLevels > max_level
   // 2. Step would take us less than 0 or more than max.
-  int64 step_size = max((int64)1, (max_level+1) / kNumKeylightLevels);
+  int64 step_size = max(static_cast<int64>(1),
+                        (max_level + 1) / kNumKeylightLevels);
   level = level + (direction * step_size);
-  level = max((int64)0, min(max_level, level));
+  level = max(static_cast<int64>(0), min(max_level, level));
 
   if (!keyboard_backlight_->SetBrightnessLevel(level)) {
     LOG(WARNING) << "Failed to set keyboard backlight brightness";
@@ -682,7 +683,7 @@ void Daemon::RegisterUdevEventHandler() {
 
   // Create the udev monitor structure.
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
-  if (!udev_monitor_ ) {
+  if (!udev_monitor_) {
     LOG(ERROR) << "Can't create udev monitor.";
     udev_unref(udev_);
   }
@@ -721,7 +722,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
   if (type == DBUS_MESSAGE_TYPE_METHOD_CALL) {
     DBusMethodHandlerTable::iterator iter =
         daemon->dbus_method_handler_table_.find(dbus_message_pair);
-    // TODO (sque): This should not be reached.  The dbus filter should only
+    // TODO(sque): This should not be reached.  The dbus filter should only
     // call this handler for messages that it handles.  crosbug.com/28715
     if (iter == daemon->dbus_method_handler_table_.end())
       return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -741,7 +742,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     DBusSignalHandlerTable::iterator iter =
         daemon->dbus_signal_handler_table_.find(dbus_message_pair);
     if (iter == daemon->dbus_signal_handler_table_.end()) {
-        // TODO (sque): This should not be reached.  The dbus filter should only
+        // TODO(sque): This should not be reached.  The dbus filter should only
         // call this handler for messages that it handles.  crosbug.com/28715
       return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
@@ -752,7 +753,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     // Do not send a reply if it is a signal.
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
-  NOTREACHED(); // All valid cases should be handled and returned.
+  NOTREACHED();  // All valid cases should be handled and returned.
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
@@ -852,18 +853,18 @@ void Daemon::RegisterDBusMessageHandler() {
   LOG(INFO) << "D-Bus monitoring started";
 }
 
-bool Daemon::HandleRequestSuspendSignal(DBusMessage*) {
+bool Daemon::HandleRequestSuspendSignal(DBusMessage*) {  // NOLINT
   Suspend();
   return true;
 }
 
-bool Daemon::HandleLidClosedSignal(DBusMessage*) {
+bool Daemon::HandleLidClosedSignal(DBusMessage*) {  // NOLINT
   SetActive();
   Suspend();
   return true;
 }
 
-bool Daemon::HandleLidOpenedSignal(DBusMessage*) {
+bool Daemon::HandleLidOpenedSignal(DBusMessage*) {  // NOLINT
   SetActive();
   suspender_.CancelSuspend();
   return true;
@@ -905,7 +906,7 @@ bool Daemon::HandleButtonEventSignal(DBusMessage* message) {
              strcmp(button_name, power_manager::kKeyRightAlt) == 0) {
       modifiers_ = (modifiers_ & ~power_manager::kModifierAlt) |
                    (power_manager::kModifierAlt * down);
-  } else if(strcmp(button_name, kKeyF4) == 0) {
+  } else if (strcmp(button_name, kKeyF4) == 0) {
     if (modifiers_ == kModifierCtrl && down && monitor_reconfigure_)
       monitor_reconfigure_->SwitchMode();
   } else {
@@ -914,7 +915,7 @@ bool Daemon::HandleButtonEventSignal(DBusMessage* message) {
   return true;
 }
 
-bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {
+bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {  // NOLINT
   if (clean_shutdown_initiated_) {
     clean_shutdown_initiated_ = false;
     Shutdown();
@@ -1337,7 +1338,7 @@ gboolean Daemon::CleanShutdownTimedOut() {
 }
 
 void Daemon::OnPowerStateChange(const char* state) {
- // on == resume via powerd_suspend
+  // on == resume via powerd_suspend
   if (g_str_equal(state, "on") == TRUE) {
     LOG(INFO) << "Resuming has commenced";
     HandleResume();

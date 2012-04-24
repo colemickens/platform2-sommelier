@@ -120,7 +120,7 @@ void AmbientLightSensor::EnableOrDisableSensor(PowerState state) {
   // threaded application.
   disable_polling_ = false;
   if (is_polling_)
-    return; // already polling.
+    return;  // already polling.
 
   // Start polling.
   LOG(INFO) << "Enabling light sensor poll";
@@ -131,14 +131,14 @@ void AmbientLightSensor::EnableOrDisableSensor(PowerState state) {
 gboolean AmbientLightSensor::ReadAls() {
   if (disable_polling_) {
     is_polling_ = false;
-    return false; // Returning false removes the timeout.
+    return false;  // Returning false removes the timeout.
   }
 
   // We really want to read the ambient light level.
   // Complete the deferred lux file open if necessary.
   if (als_fd_ < 0) {
     if (!DeferredInit())
-      return true; // Return true to try again later.
+      return true;  // Return true to try again later.
   }
 
   char buffer[10];

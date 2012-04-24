@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,7 +25,7 @@ struct MockGdkXEvent {
   };
 };
 
-} // namespace
+}  // namespace
 
 namespace power_manager {
 
@@ -96,7 +96,7 @@ XSyncAlarm MockXSync::CreateAlarm(uint64 mask, XSyncAlarmAttributes* attrs) {
   // The idle value for a negative transition must be positive, otherwise it is
   // impossible to attain.  Idle time cannot become negative.
   if (test_type == XSyncNegativeTransition)
-    CHECK(wait_value > 0);
+    CHECK_GT(wait_value, 0);
   // Not sure what delta means, but Xidle uses only 0, so require delta = 0.
   CHECK(XSyncValueIsZero(attrs->delta));
 
@@ -153,7 +153,9 @@ XSyncSystemCounter* MockXSync::ListSystemCounters(int* ncounters) {
                                                 : kOtherCounterName;
     counters[i].name = new char[strlen(name) + 1];
     CHECK(counters[i].name);
-    strcpy(counters[i].name, name);
+    // strcpy is safe here because we just allocated counters[i].name
+    // to strlen(name)+1
+    strcpy(counters[i].name, name);  // NOLINT(runtime/printf)
   }
   return counters;
 }
@@ -197,8 +199,8 @@ void MockXSync::FakeRelativeMotionEvent(int, int, uint64) {
 
 void MockXSync::Run(int64 total_time, int64 interval) {
   // Simulate the passage of time by running a loop over the given interval.
-  CHECK(total_time >= 0);
-  CHECK(interval > 0);
+  CHECK_GE(total_time, 0);
+  CHECK_GT(interval, 0);
   for (int64 runtime = 0; runtime < total_time; runtime += interval) {
     TestAlarms(true, GetIdleTime());
     // Update the time counter.

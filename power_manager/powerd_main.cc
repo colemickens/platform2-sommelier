@@ -4,9 +4,9 @@
 
 #include <gdk/gdk.h>
 #include <gflags/gflags.h>
+#include <syslog.h>
 
 #include <string>
-#include <syslog.h>
 
 // Defines from syslog.h that conflict with base/logging.h. Ugh.
 #undef LOG_INFO
@@ -61,9 +61,9 @@ static bool SetUpLogSymlink(const string& symlink_path,
 
 static string GetTimeAsString(time_t utime) {
   struct tm tm;
-  CHECK(localtime_r(&utime, &tm) == &tm);
+  CHECK_EQ(localtime_r(&utime, &tm), &tm);
   char str[16];
-  CHECK(strftime(str, sizeof(str), "%Y%m%d-%H%M%S", &tm) == 15);
+  CHECK_EQ(strftime(str, sizeof(str), "%Y%m%d-%H%M%S", &tm), 15UL);
   return string(str);
 }
 
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
   CHECK(!FLAGS_prefs_dir.empty()) << "--prefs_dir is required";
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
   CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";
-  CHECK(argc == 1) << "Unexpected arguments. Try --help";
+  CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
   CommandLine::Init(argc, argv);
 
   const string log_latest =
