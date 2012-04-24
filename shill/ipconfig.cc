@@ -45,22 +45,21 @@ IPConfig::IPConfig(ControlInterface *control_interface,
 }
 
 void IPConfig::Init() {
-  // Address might be R/O or not, depending on the type of IPconfig, so
-  // we'll leave this up to the subclasses.
-  // Register(Const?)String(flimflam::kAddressProperty, &properties_.address);
-  store_.RegisterString(flimflam::kBroadcastProperty,
-                        &properties_.broadcast_address);
-  store_.RegisterString(flimflam::kDomainNameProperty,
-                        &properties_.domain_name);
-  store_.RegisterString(flimflam::kGatewayProperty, &properties_.gateway);
+  store_.RegisterConstString(flimflam::kAddressProperty,
+                             &properties_.address);
+  store_.RegisterConstString(flimflam::kBroadcastProperty,
+                             &properties_.broadcast_address);
+  store_.RegisterConstString(flimflam::kDomainNameProperty,
+                             &properties_.domain_name);
+  store_.RegisterConstString(flimflam::kGatewayProperty, &properties_.gateway);
   store_.RegisterConstString(flimflam::kMethodProperty, &properties_.method);
-  store_.RegisterInt32(flimflam::kMtuProperty, &properties_.mtu);
-  store_.RegisterStrings(flimflam::kNameServersProperty,
-                         &properties_.dns_servers);
-  store_.RegisterString(flimflam::kPeerAddressProperty,
-                        &properties_.peer_address);
-  store_.RegisterInt32(flimflam::kPrefixlenProperty,
-                       &properties_.subnet_prefix);
+  store_.RegisterConstInt32(flimflam::kMtuProperty, &properties_.mtu);
+  store_.RegisterConstStrings(flimflam::kNameServersProperty,
+                              &properties_.dns_servers);
+  store_.RegisterConstString(flimflam::kPeerAddressProperty,
+                             &properties_.peer_address);
+  store_.RegisterConstInt32(flimflam::kPrefixlenProperty,
+                            &properties_.subnet_prefix);
   // TODO(cmasone): Does anyone use this?
   // store_.RegisterStrings(flimflam::kSearchDomainsProperty,
   //                        &properties_.domain_search);

@@ -64,8 +64,6 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       root_("/"),
       dispatcher_(dispatcher),
       glib_(glib) {
-  mutable_store()->RegisterConstString(flimflam::kAddressProperty,
-                                       &(properties().address));
   SLOG(DHCP, 2) << __func__ << ": " << device_name;
 }
 

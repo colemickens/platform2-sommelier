@@ -173,6 +173,9 @@ Service::Service(ControlInterface *control_interface,
   HelpRegisterDerivedUint16(shill::kHTTPProxyPortProperty,
                             &Service::GetHTTPProxyPort,
                             NULL);
+  HelpRegisterDerivedRpcIdentifier(shill::kIPConfigProperty,
+                                   &Service::GetIPConfigRpcIdentifier,
+                                   NULL);
   HelpRegisterDerivedBool(flimflam::kIsActiveProperty,
                           &Service::IsActive,
                           NULL);
@@ -662,6 +665,23 @@ void Service::OnPropertyChanged(const string &property) {
   if (profile_.get() && profile_->GetConstStorage()) {
     profile_->UpdateService(this);
   }
+}
+
+string Service::GetIPConfigRpcIdentifier(Error *error) {
+  if (!connection_) {
+    error->Populate(Error::kNotFound);
+    return "/";
+  }
+
+  string id = connection_->ipconfig_rpc_identifier();
+
+  if (id.empty()) {
+    // Do not return an empty IPConfig.
+    error->Populate(Error::kNotFound);
+    return "/";
+  }
+
+  return id;
 }
 
 void Service::set_connectable(bool connectable) {

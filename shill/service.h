@@ -409,6 +409,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
   FRIEND_TEST(ServiceTest, ConfigureStringProperty);
   FRIEND_TEST(ServiceTest, Constructor);
+  FRIEND_TEST(ServiceTest, GetIPConfigRpcIdentifier);
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, Save);
@@ -441,6 +442,8 @@ class Service : public base::RefCounted<Service> {
   void SetAutoConnect(const bool &connect, Error *error);
 
   virtual std::string GetDeviceRpcId(Error *error) = 0;
+
+  std::string GetIPConfigRpcIdentifier(Error *error);
 
   std::string GetNameProperty(Error *error);
   void AssertTrivialSetNameProperty(const std::string &name, Error *error);

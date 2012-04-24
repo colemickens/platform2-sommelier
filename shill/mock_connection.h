@@ -20,6 +20,7 @@ class MockConnection : public Connection {
   MOCK_METHOD1(UpdateFromIPConfig, void(const IPConfigRefPtr &config));
   MOCK_CONST_METHOD0(is_default, bool());
   MOCK_METHOD1(SetIsDefault, void(bool is_default));
+  MOCK_CONST_METHOD0(ipconfig_rpc_identifier, const std::string &());
   MOCK_METHOD0(RequestRouting, void());
   MOCK_METHOD0(ReleaseRouting, void());
   MOCK_CONST_METHOD0(interface_name, const std::string &());

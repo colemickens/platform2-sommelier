@@ -110,6 +110,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
     dns_domain_search_ = config->properties().domain_search;
   }
 
+  ipconfig_rpc_identifier_ = config->GetRpcIdentifier();
+
   if (is_default_) {
     resolver_->SetDNSFromIPConfig(config);
   }

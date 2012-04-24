@@ -373,10 +373,6 @@ TEST_F(DHCPConfigTest, Stop) {
 }
 
 TEST_F(DHCPConfigTest, SetProperty) {
-  EXPECT_TRUE(DBusAdaptor::SetProperty(config_->mutable_store(),
-                                       flimflam::kMtuProperty,
-                                       PropertyStoreTest::kInt32V,
-                                       NULL));
   ::DBus::Error error;
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(DBusAdaptor::SetProperty(config_->mutable_store(),

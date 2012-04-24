@@ -20,6 +20,8 @@
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
+#include "shill/mock_connection.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
@@ -36,6 +38,7 @@ using testing::AtLeast;
 using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
 using testing::StrictMock;
 using testing::SetArgumentPointee;
 using testing::Test;
@@ -461,5 +464,45 @@ INSTANTIATE_TEST_CASE_P(
     Values(
         DBusAdaptor::StringToVariant(flimflam::kEapPrivateKeyPasswordProperty),
         DBusAdaptor::StringToVariant(flimflam::kEapPasswordProperty)));
+
+
+TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
+  {
+    Error error;
+    EXPECT_EQ("/", service_->GetIPConfigRpcIdentifier(&error));
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
+
+  scoped_ptr<MockDeviceInfo> mock_device_info(
+      new NiceMock<MockDeviceInfo>(control_interface(), dispatcher(), metrics(),
+                                   &mock_manager_));
+  scoped_refptr<MockConnection> mock_connection(
+      new NiceMock<MockConnection>(mock_device_info.get()));
+
+  service_->connection_ = mock_connection;
+
+  {
+    Error error;
+    const string empty_string;
+    EXPECT_CALL(*mock_connection, ipconfig_rpc_identifier())
+        .WillOnce(ReturnRef(empty_string));
+    EXPECT_EQ("/", service_->GetIPConfigRpcIdentifier(&error));
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
+
+  {
+    Error error;
+    const string nonempty_string("/ipconfig/path");
+    EXPECT_CALL(*mock_connection, ipconfig_rpc_identifier())
+        .WillOnce(ReturnRef(nonempty_string));
+    EXPECT_EQ(nonempty_string, service_->GetIPConfigRpcIdentifier(&error));
+    EXPECT_EQ(Error::kSuccess, error.type());
+  }
+
+  // Assure orderly destruction of the Connection before DeviceInfo.
+  service_->connection_ = NULL;
+  mock_connection = NULL;
+  mock_device_info.reset();
+}
 
 }  // namespace shill

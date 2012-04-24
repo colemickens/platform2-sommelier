@@ -47,6 +47,10 @@ class Connection : public base::RefCounted<Connection> {
     return dns_servers_;
   }
 
+  virtual const std::string &ipconfig_rpc_identifier() const {
+    return ipconfig_rpc_identifier_;
+  }
+
   // Request to accept traffic routed to this connection even if it is not
   // the default.  This request is ref-counted so the caller must call
   // ReleaseRouting() when they no longer need this facility.
@@ -82,6 +86,7 @@ class Connection : public base::RefCounted<Connection> {
   Technology::Identifier technology_;
   std::vector<std::string> dns_servers_;
   std::vector<std::string> dns_domain_search_;
+  std::string ipconfig_rpc_identifier_;
 
   // Store cached copies of singletons for speed/ease of testing
   const DeviceInfo *device_info_;
