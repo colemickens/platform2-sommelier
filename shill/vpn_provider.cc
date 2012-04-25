@@ -11,6 +11,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
+#include "shill/l2tp_ipsec_driver.h"
 #include "shill/manager.h"
 #include "shill/openvpn_driver.h"
 #include "shill/profile.h"
@@ -152,6 +153,10 @@ VPNServiceRefPtr VPNProvider::CreateService(const string &type,
   scoped_ptr<VPNDriver> driver;
   if (type == flimflam::kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(
+        control_interface_, dispatcher_, metrics_, manager_,
+        manager_->device_info(), manager_->glib()));
+  } else if (type == flimflam::kProviderL2tpIpsec) {
+    driver.reset(new L2TPIPSecDriver(
         control_interface_, dispatcher_, metrics_, manager_,
         manager_->device_info(), manager_->glib()));
   } else {

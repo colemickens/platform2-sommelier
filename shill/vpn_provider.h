@@ -47,6 +47,7 @@ class VPNProvider {
   void CreateServicesFromProfile(ProfileRefPtr profile);
 
  private:
+  FRIEND_TEST(VPNProviderTest, CreateService);
   FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(VPNProviderTest, RemoveService);
 

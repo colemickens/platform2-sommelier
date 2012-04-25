@@ -208,4 +208,34 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
   provider_.CreateServicesFromProfile(profile);
 }
 
+TEST_F(VPNProviderTest, CreateService) {
+  static const char kName[] = "test-vpn-service";
+  static const char kStorageID[] = "test_vpn_storage_id";
+  static const char *kTypes[] = {
+    flimflam::kProviderOpenVpn,
+    flimflam::kProviderL2tpIpsec,
+  };
+  const size_t kTypesCount = arraysize(kTypes);
+  EXPECT_CALL(manager_, device_info())
+      .Times(kTypesCount)
+      .WillRepeatedly(Return(&device_info_));
+  EXPECT_CALL(manager_, RegisterService(_)).Times(kTypesCount);
+  for (size_t i = 0; i < kTypesCount; i++) {
+    Error error;
+    VPNServiceRefPtr service =
+        provider_.CreateService(kTypes[i], kName, kStorageID, &error);
+    ASSERT_TRUE(service) << kTypes[i];
+    ASSERT_TRUE(service->driver()) << kTypes[i];
+    EXPECT_EQ(kTypes[i], service->driver()->GetProviderType());
+    EXPECT_EQ(kName, service->friendly_name()) << kTypes[i];
+    EXPECT_EQ(kStorageID, service->GetStorageIdentifier()) << kTypes[i];
+    EXPECT_TRUE(error.IsSuccess()) << kTypes[i];
+  }
+  Error error;
+  VPNServiceRefPtr unknown_service =
+      provider_.CreateService("unknown-vpn-type", kName, kStorageID, &error);
+  EXPECT_FALSE(unknown_service);
+  EXPECT_EQ(Error::kNotSupported, error.type());
+}
+
 }  // namespace shill
