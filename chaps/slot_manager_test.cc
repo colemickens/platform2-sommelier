@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/memory/scoped_ptr.h>
+#include <base/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <openssl/sha.h>
@@ -123,9 +124,12 @@ class TestSlotManager: public ::testing::Test {
     slot_manager_.reset(new SlotManagerImpl(&factory_, &tpm_));
     ASSERT_TRUE(slot_manager_->Init());
   }
+  // TODO(dkrahn): Update gtest/gmock to thread-safe version. crosbug.com/30000
+#if GTEST_IS_THREADSAFE
   void InsertToken() {
     slot_manager_->OnLogin(FilePath("/var/lib/chaps"), kAuthData);
   }
+#endif
 
  protected:
   ChapsFactoryMock factory_;
@@ -162,6 +166,7 @@ TEST_F(TestSlotManager_DeathTest, InvalidArgs) {
   EXPECT_DEATH_IF_SUPPORTED(slot_manager_->GetSession(0, NULL), "Check failed");
 }
 
+#if GTEST_IS_THREADSAFE
 TEST(DeathTest, OutOfMemoryInit) {
   TPMUtilityMock tpm;
   ConfigureTPMUtility(&tpm);
@@ -180,6 +185,7 @@ TEST(DeathTest, OutOfMemoryInit) {
   EXPECT_DEATH_IF_SUPPORTED(sm.OnLogin(FilePath("/var/lib/chaps"), kAuthData),
                             "Check failed");
 }
+#endif
 
 TEST_F(TestSlotManager_DeathTest, OutOfMemorySession) {
   Session* null_session = NULL;
@@ -203,6 +209,7 @@ TEST_F(TestSlotManager, DefaultSlotSetup) {
   EXPECT_FALSE(slot_manager_->IsTokenPresent(0));
 }
 
+#if GTEST_IS_THREADSAFE
 TEST_F(TestSlotManager, QueryInfo) {
   InsertToken();
   CK_SLOT_INFO slot_info;
@@ -271,11 +278,28 @@ TEST_F(TestSlotManager, TestLoginEvents) {
   slot_manager_->OnLogout(FilePath("another_path"));
 }
 
+TEST_F(TestSlotManager, ManyLogin) {
+  InsertToken();
+  for (int i = 0; i < 1000; ++i) {
+    string path = base::StringPrintf("test%d", i);
+    slot_manager_->OnLogin(FilePath(path), kAuthData);
+    slot_manager_->OnChangeAuthData(FilePath(path), kAuthData, kNewAuthData);
+    slot_manager_->OnChangeAuthData(FilePath(path + "_"),
+                                    kAuthData,
+                                    kNewAuthData);
+  }
+  for (int i = 0; i < 1000; ++i) {
+    string path = base::StringPrintf("test%d", i);
+    slot_manager_->OnLogout(FilePath(path));
+  }
+}
+
 TEST_F(TestSlotManager, TestTPMFailure) {
   EXPECT_CALL(tpm_, Init()).WillRepeatedly(Return(false));
   InsertToken();
   EXPECT_FALSE(slot_manager_->IsTokenPresent(0));
 }
+#endif
 
 }  // namespace chaps
 
