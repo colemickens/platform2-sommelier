@@ -1,0 +1,443 @@
+Device hierarchy
+================
+
+Service		org.chromium.flimflam
+Interface	org.chromium.flimflam.Device
+Object path	[variable prefix]/{device0,device1,...}
+
+Methods		dict GetProperties()
+
+			Returns properties for the device object. See
+			the properties section for available properties.
+
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property. Only
+			properties that are listed as read-write are
+			changeable. On success a PropertyChanged signal
+			will be emitted.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.InvalidProperty
+
+		void ClearProperty(string name)
+
+			Reset the specified parameter to its "factory"
+			value and remove any previously set value from
+			the profile. Only properties that are listed as
+			read-write are changeable.
+
+		void ProposeScan() --DEPRECATED--
+
+			Start a scan operation if possible.
+
+			For WiFi devices this triggers a search for
+			available WiFi networks.  When results are
+			available, the Device.Networks property is
+			updated and a PropertyChanged signal is issued.
+
+			For cellular devices, this triggers a search for
+			available cellular networks, which may take up to a
+			minute to complete. When the results are available,
+			the property Cellular.FoundNetworks (see below) is
+			set with the results.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		object path AddIPConfig(string method) --DEPRECATED--
+
+			This function only remains so it does not trigger
+			an error in the caller, and returns the path "/",
+			and never returns an error.  In flimflam it used to
+			provide the ability to create IPConfig objects
+			to the device to provide IPv4 or IPv6 setup state.
+
+		void RequirePin(string pin, boolean require)
+
+			(Cellular only) Enable or disable PIN protection for
+			a cellular modem's SIM card. If 'require' is true,
+			then a PIN will need to be supplied (by calling
+			EnterPin) before the modem is usable. If 'require'
+			is false, a PIN will not be required.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
+					 [service].Error.PinError
+
+			In the case of PinError, the error message gives
+			more detail: [interface].PinRequired
+				     [interface].PinBlocked
+				     [interface].IncorrectPin
+
+		void EnterPin(string pin)
+
+			(Cellular only) Provide a PIN to unlock a SIM card.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
+					 [service].Error.PinError
+
+			In the case of PinError, the error message gives
+			more detail: [interface].PinRequired
+				     [interface].PinBlocked
+				     [interface].IncorrectPin
+
+		void UnblockPin(string puk, string pin)
+
+			(Cellular only) Provide a PUK code to unblock a PIN.
+			When an incorrect PIN has been entered too many times
+			(three is generally the number of tries allowed), the
+			PIN becomes "blocked", and the SIM card can only be
+			unlocked by providing a PUK code provided by the
+			carrier. At the same time, a new PIN must be specified.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
+					 [service].Error.PinError
+
+			In the case of PinError, the error message gives
+			more detail: [interface].PinRequired
+				     [interface].PinBlocked
+				     [interface].IncorrectPin
+
+		void ChangePin(string old_pin, string new_pin)
+
+			(Cellular only) Change the PIN used to unlock a SIM
+			card. The existing PIN must be provided along with
+			the new PIN.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
+					 [service].Error.PinError
+
+			In the case of PinError, the error message gives
+			more detail: [interface].PinRequired
+				     [interface].PinBlocked
+				     [interface].IncorrectPin
+
+		void Register(string network_id)
+
+			(Cellular only) Initiate registration on the network
+			specified by network_id, which is in the form MCCMNC.
+			If the network ID is the empty string, then switch
+			back to automatic registration mode before initiating
+			registration.
+
+			If registration succeeds, the network_id is remembered,
+			and is saved in the profile, so that the same network
+			will be tried again if the modem is disabled and then
+			re-enabled, or if the system is restarted or resumed.
+
+			If registration fails, the network_id is not
+			remembered, and is not saved in the profile. If it was
+			already in the profile, it is deleted. In addtion, one
+			more attempt is made to register, after switching back
+			to automatic registration mode.
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+Properties	string Address [readonly]
+
+			The low-level (physical) address of the device.
+
+		string BgscanMethod [readwrite]
+
+			(WiFi only) A string identifying the background scan
+			algorithm.
+			Possible values:
+				"simple" [default]
+				"learn"
+
+			A change to this property takes affect on the next
+			association.
+
+		uint16 BgscanShortInterval [readwrite]
+
+			(WiFi only) Time in seconds between background scans
+			when actively searching for better APs (e.g., when
+			roaming).
+
+			A change to this property takes affect on the next
+			association.
+
+		int32 BgscanSignalThreshold [readwrite]
+
+			(WiFi only) Receive signal strength threshold (in dBm),
+			for the currently connected network, below which
+			roaming is triggered.
+
+			A change to this property takes affect on the next
+			association.
+
+		boolean Cellular.AllowRoaming [readwrite]
+
+			(Celluar only) Whether cellular data connections
+			are allowed when the device is roaming (i.e,
+			not registered on the home network). When this
+			property is false, data connections are not
+			allowed while roaming (regardless of the AutoConnect
+			setting of associated services).
+
+			If a connection was established while on the home
+			network, and the device begins roaming, the data
+			connection is terminated.
+
+			If the property is true, and a data connection was
+			established while roaming, and then the property is
+			set to false, the connection is terminated.
+
+			If the Cellular.ProviderRequiresRoaming property
+			is true, that setting will override this property's
+			setting.
+
+			By default Cellular.AllowRoaming is false.
+
+		string Cellular.Carrier [readonly]
+
+			(Cellular only) The name of the carrier for
+			which the device is configured.
+
+		dict Cellular.HomeProvider [readonly] [GSM only]
+
+			(Cellular only) Description of the operator that
+			issued the SIM card currently installed in the modem.
+			The dictionary may contain the following string-valued
+			properties:
+
+			"name"       The operator name
+			"country"    The two-letter country code.
+			"network_id" The MCC (Mobile Country Code)
+				     and MNC (Mobile Network Code) of the
+				     operator on whose network the device is
+				     registered. The value of the property is
+				     the simple concatenation of the MCC and
+				     the MNC, with no separator. The first
+				     three digits are always the MCC, and
+				     the following two or three digits are the
+				     MNC.
+
+		string Cellular.MEID [readonly]
+
+			(Cellular only) For CDMA modems, the Mobile
+			Equipment Identifer of the modem.
+
+		string Cellular.IMEI [readonly]
+
+			(Cellular only) The International Mobile Equipment
+			Identity of the modem.
+
+		string Cellular.IMSI [readonly]
+
+			(Cellular only) For GSM modems, the International
+			Mobile Subscriber Identity of the SIM card
+			installed in the device.
+
+		string Cellular.ESN [readonly]
+
+			(Cellular only) The Electronic Serial Number of
+			the modem.
+
+		string Cellular.MDN [readonly]
+
+			(Cellular only) The Mobile Directory Number
+			(i.e., phone number) of the device.
+
+		string Cellular.MIN [readonly]
+
+			(Cellular only) The Mobile Identification Number
+			of the device. The MIN is often the same as
+			the MDN, but may change if a user changes to a
+			different service provider.
+
+		string Cellular.ModelID [readonly]
+
+			(Cellular only) The hardware model of the modem. The
+			contents of this property are unspecified, and are
+			useful primarily as a diagnostic aid.
+
+		string Cellular.Manufacturer [readonly]
+
+			(Cellular only) The manufacturer of the modem. The
+			contents of this property are unspecified,
+			and are useful primarily as a diagnostic aid.
+
+		string Cellular.FirmwareRevision [readonly]
+
+			(Cellular only) The revision of firmware that is
+			loaded in the modem. The contents of this property
+			are unspecified, and are useful primarily as a
+			diagnostic aid.
+
+		string Cellular.HardwareRevision [readonly]
+
+			(Cellular only) The hardware revision of
+			the modem. The contents of this property are
+			unspecified, and are useful primarily as a
+			diagnostic aid.
+
+		int16 Cellular.PRLVersion [readonly]
+
+			(Cellular only) The revision of the Preferred
+			Roaming List that is loaded in the modem.
+			Cellular.PRLVersion is primarily useful as a
+			diagnostic aid.
+
+		boolean Cellular.ProviderRequiresRoaming [readonly]
+
+			(Celluar only) Indicates that the cellular
+			provider (determined based on IMSI and SPN)
+			requires roaming.  This is important to
+			certain MVNOs which have no home network and
+			wish to provide network services without
+			regard to the Cellular.AllowRoaming setting.
+
+		dict Cellular.SIMLockStatus [readonly]
+
+			(Cellular only) For GSM modems, a dictionary
+			containing two properties describing the state
+			of the SIM card lock. The two properties are:
+
+			string LockType
+
+				If this string is empty, the SIM card is not
+				PIN-locked. Otherwise, it specifies the type
+				of lock in effect: "sim-pin" or "sim-puk".
+
+			uint32 RetriesLeft
+
+				If LockType is empty or is "sim-pin", then
+				this property gives the number of attempts
+				remaining to supply a correct PIN before the
+				PIN becomes blocked, at which point a PUK
+				provided by the carrier would be necessary
+				to unlock the SIM (and the LockType changes to
+				"sim-puk").
+
+				If LockType is "sim-puk", then this property
+				gives the number of attempts remaining to supply
+				a correct PUK before the SIM card becomes
+				permanently locked, at which point the SIM
+				card must be replaced. This state is indicated
+				when LockType is "sim-puk" and RetriesLeft is
+				zero.
+
+			boolean LockEnabled
+
+				Indicates whether SIM locking is enabled,
+				i.e., whether, when the device is powered
+				on, a PIN or PUK will need to be entered to
+				unlock the SIM. This differs from the
+				LockType property, which indicates whether
+				the device is currently waiting for a PIN
+				to be entered. The SIM can currently be
+				unlocked (LockType is ""), but at the same
+				time locking can be enabled (LockEnabled is
+				True).
+
+		array{dict} Cellular.FoundNetworks [readonly] [GSM only]
+
+			(Cellular only) The result of the most recent
+			scan operation. The property is an array
+			of dictionaries, with each (string, string) entry
+			from the following properties:
+
+			"status"     The availability of the network. Values
+				     are "unknown", "available", "current",
+				     and "forbidden".
+			"network_id" The network id in the form MCC/MNC
+				     (without the '/')
+			"short_name" Short-format name of the network operator
+			"long_name"  Long-format name of the network operator
+			"technology" Access technology used by the network, e.g.
+				     "GSM", "UMTS", "EDGE", "HSPA", etc.
+
+		array{dict} Cellular.APNList [readonly] [GSM only]
+
+			(Cellular only) The list of APNs associated with
+			the home provider (ref. Cellular.HomeProvider property)
+			The property is an array of dictionaries, with each
+			(string, string) entry from the following properties:
+
+			"apn"        The APN, to be used when making
+				     connections.
+			"username"   The username to be passed along with the
+				     APN when making connections. This property
+				     is present only if a username is required.
+			"password"   The password to be passed along with the
+				     APN when making connections. This property
+				     is present only if a password is required.
+			"name"       Optional description of the APN, not localized.
+			"localized_name"
+				     Optional description of the APN, localized.
+			"language"
+				     If the "localized_name" property is present, this
+				     gives the two-letter language code for the locale
+				     of the localized name. If "localized_name" exists,
+				     then this property will always exist as well.
+
+		string Interface [readonly]
+
+			The device interface (for example "eth0" etc.)
+
+			This value is for pure informational purposes. It
+			is not guaranteed that it is always present.
+
+		array{object} IPConfigs [readonly]  --DEPRECATED--
+
+			List of IPConfig objects paths. Every object path
+			represents a Layer 3 configuration record for
+			the device.  In shill, for a connected device,
+			this is always a single object path containing
+			the currently used IPConfig.  In the future, use
+			the "IPConfig" property of the Service.
+
+		string Name [readonly]
+
+			The device name (for example "Wireless" etc.)
+
+			This name can be used for directly displaying it in
+			the application. It has pure informational purpose
+			and there is not guarantee that it is present.
+
+		boolean Powered [readonly]
+
+			Switch a device on or off. This will also modify
+			the list of networks in range. All known networks
+			will be still available via the Networks property.
+
+			Changing this value does not change the value of the
+			Policy property.
+
+			The value of this property can be changed by other
+			parts of the system (including the kernel). An
+			example would be modifications via the "ifconfig"
+			command line utility.
+
+		uint16 ScanInterval [readwrite]
+
+                        (Defined in WiFi and Cellular)
+
+			The scan interval is the time in seconds between
+			automated scan attempts. Setting this value to
+			0 will disable the periodic scanning.
+
+			The default value is 300 and so every 5 minutes
+			a scan procedure will be triggered.
+
+			This property is not available with all types
+			of devices. Some may not support background
+			scanning at all.
+
+		boolean Scanning [readonly]
+
+                        (Defined in WiFi and Cellular)
+
+			Indicates that a device is currently performing a
+			network scan.
+
+		string Type [readonly]
+
+			The device type (for example "ethernet", "wifi" etc.)

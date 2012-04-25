@@ -1,0 +1,404 @@
+Manager hierarchy
+=================
+
+Service		org.chromium.flimflam
+Interface	org.chromium.flimflam.Manager
+Object path	/
+
+Methods		dict GetProperties()
+
+			Return the global system properties specified
+			in the Properties section.
+
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property. Only
+			properties that are listed as read-write are
+			changeable. On success a PropertyChanged signal
+			will be emitted.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.InvalidProperty
+
+		string GetState()
+
+			Return the connection state of a system. The
+			same value is return via the State property.
+
+		object CreateProfile(string name)
+
+			Create and add new profile with the specified
+			identifier name.  The name should either be in the
+			form ``name'' or ``~user/name'' where where ``user''
+			is the login name of a user suitable for finding
+			their home directory.  Both strings must contain
+			only alpha-numeric ASCII characters.
+
+			Profiles created without a user name are stored in
+			a system directory readable only by the connection
+			mananger.  Profiles created with a user name are
+			stored in the user's home directory but readable
+			only by the connection manager.
+
+			If any existing profile is specified its contents
+			are reset to a default (minimal) contents.  If the
+			profile is already registered with a CreateProfile
+			or PushProfile request then an error is returned.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.AlreadyExists
+
+		object PushProfile(string name)
+
+			Push the profile with the specified identifier
+			onto the profile stack.  The profile must have
+			previously been created with CreateProfile.
+			The profile becomes the ``active profile'' that
+			is searched first when loading data and to which
+			updates are stored.
+
+			A profile may be pushed only once.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.AlreadyExists
+
+		object PopProfile(string name)
+
+			Pop the top-most profile on the profile stack.
+			Any profile beneath this profile becomes the
+			``active profile''.  Any services using configuration
+			from the popped profile are disconnected and the
+                        credentials invalidated (the next time
+			credentials are needed they are loaded from the
+			(new) active profile).
+
+			The name must match the identifer of the active
+			profile.  This is a safeguard against accidentally
+			removing the wrong profile.
+
+			Note it is valid to pop all profiles from the
+			stack; in this state the connection manager does
+			not write any state to persistent storage.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotFound
+
+		object PopAnyProfile()
+
+			Like PopProfile but do not check the profile on
+			the top of the stack; pop anything.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void RemoveProfile(string name)
+
+			Remove the profile with specified identifier.
+
+			The profile may not be resident on the stack.
+			The default profile may not be removed.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.AlreadyExists
+
+		void RequestScan(string type)
+
+			Request a scan for the specified technology. If
+			type is the string "" then a scan request is
+			made for each technology.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void EnableTechnology(string type)
+
+			Enable all technologies of the specified type.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.InProgress
+					 [service].Error.AlreadyEnabled
+
+		void DisableTechnology(string type)
+
+			Disable all technologies of the specified type.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.InProgress
+					 [service].Error.AlreadyDisabled
+
+		void ConfigureService(dict properties)
+
+			Update the configuration of a service in memory
+			and in the profile.  If no service exists in
+			memory it is temporarily created to carry out
+			this work and then removed after saving its
+			configuration to the profle.
+
+			If a GUID property is specified in properties
+			it is used to find the service; otherwise Type,
+			Security, and type-specific properties such as
+			WiFi.SSID are used to find any existing service.
+			If no service is located in memory a new one is
+			created with the supplied properties.
+
+			All provided parameters are applied to the in
+			memory service regardless of errors.  But if an
+			error occurs while setting a property and the
+			service object was created as a result of this
+			call it is removed.  In the event of multiple
+			errors the first error code is returned by
+			this call.
+
+			See the Service Properties section for a list of
+			properties and constraints on property values.
+			See also GetService.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
+
+		object GetService(dict properties)
+
+			Return the object path of a service after
+			applying any requested configuration changes.
+			If no service exists it is created.
+
+			If a GUID property is specified in properties
+			it is used to find the service; otherwise Type,
+			Security, and type-specific properties such as
+			WiFi.SSID are used to find any existing service.
+			If no service is located in memory a new one is
+			created with the supplied properties.
+
+			All provided parameters are applied to the service
+			regardless of errors.  But if an error occurs
+			while setting a property and the service was
+			created as a result of this call it is removed.
+			In the event of multiple errors the first error
+			code is returned by this call.
+
+			See the Service Properties section for a list of
+			properties and constraints on property values.
+			See also ConfigureService.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
+					 [service].Error.PermissionDenied
+					 [service].Error.InternalError
+					 [service].Error.InvalidNetworkName
+					 [service].Error.InvalidPassphrase
+
+		object GetVPNService(dict properties) --DEPRECATED--
+
+			Like GetService, but only for "vpn" services and
+			without using the GUID property to lookup a service.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
+					 [service].Error.PermissionDenied
+					 [service].Error.InternalError
+
+		object GetWifiService(dict properties) --DEPRECATED--
+
+			Like GetService, but only for "wifi" services and
+			without using the GUID property to lookup a service.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
+					 [service].Error.PermissionDenied
+					 [service].Error.InternalError
+					 [service].Error.InvalidNetworkName
+					 [service].Error.InvalidPassphrase
+
+		void SetDebugTags(string taglist)
+
+			Set the debug tags that are enabled for logging to
+			syslog. "taglist" is a list of valid tag names
+			separated by "+".  Shill silently ignores
+			invalid flags.
+
+		string GetDebugTags()
+			Get the list of enabled debug tags. The list is
+			represented as a string of tag names separated
+			by "+".
+
+		string ListDebugTags()
+			Get the list of all debug tags that can be enabled.
+			The list is represented as a string of tag names
+			separated by "+".
+
+		string GetServiceOrder()
+
+			Return a ','-separated string listing known technologies
+			in priority ordering.
+
+			For example, the default ordering would be returned as:
+				"ethernet,bluetooth,wifi,wimax,cellular"
+
+		void SetServiceOrder(string mask)
+
+			Set the technology priority based on a provided
+			','-separated list of technologies, sorted from highest
+			priority to lowest.
+
+			The list may contain the following services:
+				{ ethernet, wifi, wimax, bluetooth, cellular }
+			Technologies not included are assigned the lowest
+			priority.
+
+			Technology priority changes occur immediately.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void RecheckPortal()
+
+			Retest the portal state of the active service
+			if a check is not currently in progress.  This
+			will only have an effect if the active service
+			is currently in the portal state.
+
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+		StateChanged(string state)
+
+			This signal is similar to the PropertyChanged signal
+			for the State property.
+
+			It exists for application state only care about the
+			current state and so can avoid to be woken up when
+			other details changes.
+
+Properties 	object ActiveProfile [readwrite]
+
+			Object path of the current active profile.
+
+		array{string} AvailableTechnologies [readonly]
+
+			The list of available technologies. The strings
+			are the same as the ones from the service types.
+
+		string CheckPortalList [readwrite]
+
+			The list of technologies for which captive portal
+			checking is enabled.  This is a comma-separated
+			string; e.g. "wifi,wimax,vpn".
+
+		array{string} ConnectedTechnologies [readonly]
+
+			The list of connected technologies. The strings
+			are the same as the ones from the service type.
+
+		string Country [readwrite]
+
+			The ISO 3166 country code.  This may not be defined;
+			it is defined if manually set or if it is discovered
+			through a service such as WiFi, Celluar, or GPS.
+
+		string DefaultTechnology [readonly]
+
+			The current connected technology which holds the
+			default route.
+
+		array{object} Devices [readonly]
+
+			List of device object paths.
+
+		array{string} EnabledTechnologies [readonly]
+
+			The list of enabled technologies. The strings
+			are the same as the ones from the service types.
+
+		string HostName [readwrite]
+
+			The hostname to be reported in DHCP requests.
+			Some DHCP servers may register a DNS entry on
+			behalf of this hostname; others may just make
+			available a table for administrators to tell
+			what machines are on their network.
+
+			The default for this name is empty, which
+			means that the system will not report a hostname.
+
+		boolean OfflineMode [readwrite]
+
+			The offline mode indicates the global setting for
+			switching all radios on or off. Changing offline mode
+			to true results in powering down all devices. When
+			leaving offline mode the individual policy of each
+			device decides to switch the radio back on or not.
+
+			During offline mode, it is still possible to switch
+			certain technologies manually back on. For example
+			the limited usage of WiFi or Bluetooth devices might
+			be allowed in some situations.
+
+		string PortalURL [readwrite]
+
+			The URL to use when doing captive portal checking.
+			When a service reaches the "ready" state and
+			captive portal checking is enabled for it; an
+			HTTP GET of this URL is done.  If this fails
+			with a 204 error then the service is moved
+			to the "online" state.  Otherwise the service
+			is assumed to be not online and marked in a
+			"portal" state.  Note that this check may fail
+			for multiple reasons that are indicated in the
+			Error property of the service.
+
+		int32 PortalCheckInterval [readwrite]
+
+			The interval in seconds between re-checking a
+			service in the portal state.
+
+		array{object} Profiles [readonly]
+
+			List of profile object paths.
+
+		array{object} Services [readonly]
+
+			List of service object paths. The list is sorted
+			internally to have the service with the default
+			route always first and then the favorite services
+			followed by scan results.
+
+			This list represents the available services for the
+			current selected profile. If the profile gets changed
+			then this list will be updated.
+
+			The same list is available via the profile object
+			itself. It is just provided here for convenience of
+			applications only dealing with the current active
+			profile.
+
+		array{object} ServiceWatchList [readonly]
+
+			List of service object paths that are in a
+			'non-idle' state.  This indicates the set of services
+			which are currently listed as associating, configuring,
+			or some other state other than idle.  This allows a
+			caller to use this property indication to track which
+			services should be monitored for state changes.
+
+			In particular, services in error states like "failure"
+			and "disconnect" are in the watchlist.
+
+			The services are listed in the same service sorting
+			order as the "Services" property above, but this
+			property is not considered "changed" if the ordering
+			changes.
+
+			Changes to this list are batched up for small periods
+			of time, so that batches of changes are collected
+			into a single message containing the final state, and
+			ephemeral changes where the list returns to the
+			previous state are filtered out.
+
+			Note: Currently shill reports the entire service
+			list, unfiltered.
+
+		string State [readonly]
+
+			The global connection state of a system. Possible
+			values are "online" if at least one connection exists
+			and "offline" if no device is connected.
