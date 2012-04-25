@@ -412,10 +412,8 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   options->push_back(tunnel_interface_);
   options->push_back("--dev-type");
   options->push_back("tun");
-  options->push_back("--syslog");
 
-  // TODO(petkov): Enable verbosity based on shill logging options too.
-  AppendValueOption(kOpenVPNVerbProperty, "--verb", options);
+  InitLoggingOptions(options);
 
   AppendValueOption(kVPNMTUProperty, "--mtu", options);
   AppendValueOption(flimflam::kOpenVPNProtoProperty, "--proto", options);
@@ -570,6 +568,19 @@ bool OpenVPNDriver::InitManagementChannelOptions(
     return false;
   }
   return true;
+}
+
+void OpenVPNDriver::InitLoggingOptions(vector<string> *options) {
+  options->push_back("--syslog");
+
+  string verb = args()->LookupString(kOpenVPNVerbProperty, "");
+  if (verb.empty() && SLOG_IS_ON(VPN, 0)) {
+    verb = "3";
+  }
+  if (!verb.empty()) {
+    options->push_back("--verb");
+    options->push_back(verb);
+  }
 }
 
 bool OpenVPNDriver::AppendValueOption(

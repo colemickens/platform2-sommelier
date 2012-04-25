@@ -76,6 +76,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ConnectTunnelFailure);
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
+  FRIEND_TEST(OpenVPNDriverTest, InitLoggingOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitManagementChannelOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitNSSOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
@@ -123,6 +124,7 @@ class OpenVPNDriver : public VPNDriver,
   void InitPKCS11Options(std::vector<std::string> *options);
   bool InitManagementChannelOptions(
       std::vector<std::string> *options, Error *error);
+  void InitLoggingOptions(std::vector<std::string> *options);
 
   bool SpawnOpenVPN();
 

@@ -29,6 +29,7 @@
 #include "shill/mock_vpn_service.h"
 #include "shill/nice_mock_control.h"
 #include "shill/rpc_task.h"
+#include "shill/scope_logger.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
@@ -385,6 +386,8 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
       file_util::ReadFileToString(driver_->tls_auth_file_, &contents));
   EXPECT_EQ(kTLSAuthContents, contents);
   ExpectInFlags(options, "--pkcs11-id", kID);
+  EXPECT_TRUE(std::find(options.begin(), options.end(), "--syslog") !=
+              options.end());
 }
 
 TEST_F(OpenVPNDriverTest, InitNSSOptions) {
@@ -451,6 +454,32 @@ TEST_F(OpenVPNDriverTest, InitManagementChannelOptions) {
   error.Reset();
   EXPECT_TRUE(driver_->InitManagementChannelOptions(&options, &error));
   EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(OpenVPNDriverTest, InitLoggingOptions) {
+  vector<string> options;
+  bool vpn_logging = SLOG_IS_ON(VPN, 0);
+  ScopeLogger::GetInstance()->EnableScopesByName("-vpn");
+  driver_->InitLoggingOptions(&options);
+  ASSERT_EQ(1, options.size());
+  EXPECT_EQ("--syslog", options[0]);
+  ScopeLogger::GetInstance()->EnableScopesByName("+vpn");
+  options.clear();
+  driver_->InitLoggingOptions(&options);
+  ExpectInFlags(options, "--verb", "3");
+  ScopeLogger::GetInstance()->EnableScopesByName("-vpn");
+  SetArg("OpenVPN.Verb", "2");
+  options.clear();
+  driver_->InitLoggingOptions(&options);
+  ExpectInFlags(options, "--verb", "2");
+  ScopeLogger::GetInstance()->EnableScopesByName("+vpn");
+  SetArg("OpenVPN.Verb", "1");
+  options.clear();
+  driver_->InitLoggingOptions(&options);
+  ExpectInFlags(options, "--verb", "1");
+  if (!vpn_logging) {
+    ScopeLogger::GetInstance()->EnableScopesByName("-vpn");
+  }
 }
 
 TEST_F(OpenVPNDriverTest, AppendValueOption) {
