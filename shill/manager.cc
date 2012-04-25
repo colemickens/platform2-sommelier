@@ -228,7 +228,7 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
                           this,
                           ident,
                           user_storage_format_,
-                          false);
+                          true);
   }
 
   if (!profile->InitStorage(glib_, Profile::kCreateNew, error)) {

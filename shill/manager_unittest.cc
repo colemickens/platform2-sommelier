@@ -581,9 +581,16 @@ TEST_F(ManagerTest, CreateProfile) {
   // We should be able to create a machine profile.
   EXPECT_EQ(Error::kSuccess, TestCreateProfile(&manager, "valid"));
 
-  // We should succeed in creating a valid user profile.
+  // We should succeed in creating a valid user profile.  Verify the returned
+  // path.
   const char kProfile[] = "~user/profile";
-  EXPECT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile));
+  {
+    Error error;
+    string path;
+    manager.CreateProfile(kProfile, &path, &error);
+    EXPECT_EQ(Error::kSuccess, error.type());
+    EXPECT_EQ("/profile_rpc", path);
+  }
 
   // We should fail in creating it a second time (already exists).
   EXPECT_EQ(Error::kAlreadyExists, TestCreateProfile(&manager, kProfile));
