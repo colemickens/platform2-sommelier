@@ -11,7 +11,10 @@ using std::vector;
 
 namespace cros_disks {
 
-Process::Process() {
+// static
+const pid_t Process::kInvalidProcessId = -1;
+
+Process::Process() : pid_(kInvalidProcessId) {
 }
 
 Process::~Process() {

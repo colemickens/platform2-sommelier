@@ -41,7 +41,14 @@ bool SandboxedProcess::Start() {
   char** arguments = GetArguments();
   CHECK(arguments) << "No argument is provided.";
 
-  return minijail_run(jail_, arguments[0], arguments) == 0;
+  pid_t child_pid = kInvalidProcessId;
+  int result = minijail_run_pid(jail_, arguments[0], arguments, &child_pid);
+  if (result == 0) {
+    set_pid(child_pid);
+    return true;
+  }
+
+  return false;
 }
 
 int SandboxedProcess::Wait() {

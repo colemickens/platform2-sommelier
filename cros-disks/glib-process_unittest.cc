@@ -63,11 +63,12 @@ TEST_F(GlibProcessTest, Start) {
   process_.AddArgument("/bin/ls");
   process_.set_callback(base::Bind(&GlibProcessTest::OnProcessTerminated,
                                    base::Unretained(this)));
+  EXPECT_EQ(Process::kInvalidProcessId, process_.pid());
   EXPECT_TRUE(process_.Start());
-  EXPECT_NE(0, process_.pid());
+  EXPECT_NE(Process::kInvalidProcessId, process_.pid());
   EXPECT_TRUE(WaitForProcessTermination(10));
   // Process ID should remain unchanged after process termination.
-  EXPECT_NE(0, process_.pid());
+  EXPECT_NE(Process::kInvalidProcessId, process_.pid());
 }
 
 }  // namespace cros_disks

@@ -19,6 +19,9 @@ namespace cros_disks {
 // TODO(benchan): This base class is not feature complete yet.
 class Process {
  public:
+  // Invalid process ID assigned to a process that has not started.
+  static const pid_t kInvalidProcessId;
+
   virtual ~Process();
 
   // Adds an argument to the end of the argument list. Any argument added by
@@ -28,6 +31,8 @@ class Process {
   // Implemented by a derived class to start the process without waiting for
   // it to terminate. Returns true on success.
   virtual bool Start() = 0;
+
+  pid_t pid() const { return pid_; }
 
  protected:
   Process();
@@ -41,6 +46,8 @@ class Process {
   // class.
   char** GetArguments();
 
+  void set_pid(pid_t pid) { pid_ = pid; }
+
  private:
   // Builds |arguments_array_| and |arguments_buffer_| from |arguments_|.
   // Existing values of |arguments_array_| and |arguments_buffer_| are
@@ -51,6 +58,9 @@ class Process {
   std::vector<std::string> arguments_;
   scoped_array<char*> arguments_array_;
   scoped_array<char> arguments_buffer_;
+
+  // Process ID (default to kInvalidProcessId when the process has not started).
+  pid_t pid_;
 
   FRIEND_TEST(ProcessTest, GetArguments);
   FRIEND_TEST(ProcessTest, GetArgumentsWithNoArgumentsAdded);

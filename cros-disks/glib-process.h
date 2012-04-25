@@ -27,8 +27,6 @@ class GlibProcess : public Process {
   // for it to terminate. Return true on success.
   virtual bool Start();
 
-  pid_t pid() const { return pid_; }
-
   int status() const { return status_; }
 
   void set_callback(const Callback& callback) { callback_ = callback; }
@@ -40,9 +38,6 @@ class GlibProcess : public Process {
 
   // Called by g_child_watch_add() upon process termination.
   static void OnChildWatchNotify(GPid pid, gint status, gpointer data);
-
-  // Process ID (default to 0 when the process has not started).
-  pid_t pid_;
 
   // Termination status of the process (default to 0 if the process has not
   // started). See wait(2) for details.

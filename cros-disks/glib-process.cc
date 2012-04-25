@@ -8,7 +8,7 @@
 
 namespace cros_disks {
 
-GlibProcess::GlibProcess() : pid_(0), status_(0), child_watch_id_(0) {
+GlibProcess::GlibProcess() : status_(0), child_watch_id_(0) {
 }
 
 GlibProcess::~GlibProcess() {
@@ -19,13 +19,13 @@ GlibProcess::~GlibProcess() {
     g_source_remove(child_watch_id_);
     child_watch_id_ = 0;
 
-    g_spawn_close_pid(pid_);
-    pid_ = 0;
+    g_spawn_close_pid(pid());
+    set_pid(kInvalidProcessId);
   }
 }
 
 bool GlibProcess::Start() {
-  CHECK_EQ(pid_, 0) << "Process has already started.";
+  CHECK_EQ(kInvalidProcessId, pid()) << "Process has already started.";
 
   char** arguments = GetArguments();
   CHECK(arguments) << "No argument is provided.";
@@ -35,6 +35,7 @@ bool GlibProcess::Start() {
       G_SPAWN_SEARCH_PATH |
       G_SPAWN_STDOUT_TO_DEV_NULL |
       G_SPAWN_STDERR_TO_DEV_NULL);
+  pid_t child_pid = kInvalidProcessId;
   GError* error = NULL;
   gboolean success = g_spawn_async(NULL,  // Inherit parent's working directory
                                    arguments,
@@ -42,12 +43,13 @@ bool GlibProcess::Start() {
                                    flags,
                                    NULL,  // No setup function
                                    NULL,  // No user data
-                                   &pid_,
+                                   &child_pid,
                                    &error);
 
   if (success) {
+    set_pid(child_pid);
     child_watch_id_ =
-        g_child_watch_add(pid_, &GlibProcess::OnChildWatchNotify, this);
+        g_child_watch_add(child_pid, &GlibProcess::OnChildWatchNotify, this);
   }
   if (error) {
     LOG(ERROR) << "Failed to spawn a process: " << error->message;
@@ -64,11 +66,11 @@ void GlibProcess::OnTerminated(int status) {
   CHECK(arguments);
 
   if (WIFEXITED(status)) {
-    LOG(INFO) << "Process '" << arguments[0] << "' (pid " << pid_
+    LOG(INFO) << "Process '" << arguments[0] << "' (pid " << pid()
               << ") terminated normally with an exit status "
               << WEXITSTATUS(status) << ".";
   } else if (WIFSIGNALED(status)) {
-    LOG(INFO) << "Process '" << arguments[0] << "' (pid " << pid_
+    LOG(INFO) << "Process '" << arguments[0] << "' (pid " << pid()
               << ") terminated by a signal " << WTERMSIG(status) << ".";
   }
 
