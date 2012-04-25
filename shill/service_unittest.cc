@@ -21,6 +21,7 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_profile.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 #include "shill/service_under_test.h"
@@ -417,6 +418,27 @@ TEST_F(ServiceTest, ConfigureIgnoredProperty) {
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
+}
+
+TEST_F(ServiceTest, OnPropertyChanged) {
+  scoped_refptr<MockProfile> profile(
+      new StrictMock<MockProfile>(control_interface(), manager()));
+  service_->set_profile(NULL);
+  // Expect no crash.
+  service_->OnPropertyChanged("");
+
+  // Expect no call to Update if the profile has no storage.
+  service_->set_profile(profile);
+  EXPECT_CALL(*profile, UpdateService(_)).Times(0);
+  EXPECT_CALL(*profile, GetConstStorage())
+      .WillOnce(Return(reinterpret_cast<StoreInterface *>(NULL)));
+  service_->OnPropertyChanged("");
+
+  // Expect call to Update if the profile has storage.
+  EXPECT_CALL(*profile, UpdateService(_)).Times(1);
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(*profile, GetConstStorage()).WillOnce(Return(&storage));
+  service_->OnPropertyChanged("");
 }
 
 // Make sure a property is registered as a write only property

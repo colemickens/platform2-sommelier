@@ -70,6 +70,9 @@ void ServiceDBusAdaptor::SetProperty(const string &name,
                                      const ::DBus::Variant &value,
                                      ::DBus::Error &error) {
   DBusAdaptor::SetProperty(service_->mutable_store(), name, value, &error);
+  if (!error.is_set()) {
+    service_->OnPropertyChanged(name);
+  }
 }
 
 void ServiceDBusAdaptor::ClearProperty(const string &name,

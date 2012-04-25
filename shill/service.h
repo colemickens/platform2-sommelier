@@ -312,6 +312,10 @@ class Service : public base::RefCounted<Service> {
   const ProfileRefPtr &profile() const;
   void set_profile(const ProfileRefPtr &p);
 
+  // Notification that occurs when a single property has been changed via
+  // the RPC adaptor.
+  void OnPropertyChanged(const std::string &property);
+
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
   virtual const ConnectionRefPtr &connection() const { return connection_; }

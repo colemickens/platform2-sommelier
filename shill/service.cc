@@ -658,6 +658,12 @@ const ProfileRefPtr &Service::profile() const { return profile_; }
 
 void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
 
+void Service::OnPropertyChanged(const string &property) {
+  if (profile_.get() && profile_->GetConstStorage()) {
+    profile_->UpdateService(this);
+  }
+}
+
 void Service::set_connectable(bool connectable) {
   connectable_ = connectable;
   adaptor_->EmitBoolChanged(flimflam::kConnectableProperty, connectable_);
