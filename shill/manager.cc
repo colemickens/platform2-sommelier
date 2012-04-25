@@ -576,6 +576,12 @@ void Manager::SetProfileForService(const ServiceRefPtr &to_set,
     return;
   }
 
+  if (!to_set->profile()) {
+    // We are being asked to set the profile property of a service that
+    // has never been registered.  Now is a good time to register it.
+    RegisterService(to_set);
+  }
+
   if (to_set->profile().get() == profile.get()) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           "Service is already connected to this profile");

@@ -540,6 +540,23 @@ TEST_F(ManagerTest, SetProfileForService) {
                                                      dispatcher(),
                                                      metrics(),
                                                      manager()));
+  EXPECT_FALSE(manager()->HasService(service));
+  {
+    Error error;
+    EXPECT_CALL(*profile0, AdoptService(_))
+        .WillOnce(Return(true));
+    // Expect that setting the profile of a service that does not already
+    // have one assigned does not cause a crash.
+    manager()->SetProfileForService(service, "profile0", &error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // The service should be registered as a side-effect of the profile being
+  // set for this service.
+  EXPECT_TRUE(manager()->HasService(service));
+
+  // Since we have mocked Profile::AdoptServie() above, the service's
+  // profile was not actually changed.  Do so explicitly now.
   service->set_profile(profile0);
 
   {
