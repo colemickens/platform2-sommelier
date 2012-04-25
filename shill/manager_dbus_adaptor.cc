@@ -215,14 +215,6 @@ void ManagerDBusAdaptor::ConfigureService(
   e.ToDBusError(&error);
 }
 
-void ManagerDBusAdaptor::RegisterAgent(const ::DBus::Path &,
-                                       ::DBus::Error &/*error*/) {
-}
-
-void ManagerDBusAdaptor::UnregisterAgent(const ::DBus::Path &,
-                                         ::DBus::Error &/*error*/) {
-}
-
 int32_t ManagerDBusAdaptor::GetDebugLevel(::DBus::Error &/*error*/) {
   return logging::GetMinLogLevel();
 }

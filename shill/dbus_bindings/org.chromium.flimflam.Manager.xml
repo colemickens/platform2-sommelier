@@ -59,12 +59,6 @@
 			<arg type="a{sv}" direction="in"/>
 			<arg type="o" direction="out"/>
 		</method>
-		<method name="RegisterAgent">
-			<arg type="o" direction="in"/>
-		</method>
-		<method name="UnregisterAgent">
-			<arg type="o" direction="in"/>
-		</method>
 		<method name="GetDebugLevel">
 			<arg type="i" direction="out"/>
 		</method>
