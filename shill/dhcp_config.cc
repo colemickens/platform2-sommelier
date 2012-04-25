@@ -39,7 +39,8 @@ const int DHCPConfig::kDHCPCDExitWaitMilliseconds = 3000;
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 const char DHCPConfig::kDHCPCDPathFormatLease[] =
     "var/lib/dhcpcd/dhcpcd-%s.lease";
-const char DHCPConfig::kDHCPCDPathFormatPID[] = "var/run/dhcpcd-%s.pid";
+const char DHCPConfig::kDHCPCDPathFormatPID[] =
+    "var/run/dhcpcd/dhcpcd-%s.pid";
 const int DHCPConfig::kMinMTU = 576;
 const char DHCPConfig::kReasonBound[] = "BOUND";
 const char DHCPConfig::kReasonFail[] = "FAIL";

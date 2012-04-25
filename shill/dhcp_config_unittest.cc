@@ -115,7 +115,7 @@ DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(const string &hostname,
 
   EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
   config->root_ = temp_dir_.path();
-  FilePath varrun = temp_dir_.path().Append("var/run");
+  FilePath varrun = temp_dir_.path().Append("var/run/dhcpcd");
   EXPECT_TRUE(file_util::CreateDirectory(varrun));
   pid_file_ = varrun.Append(base::StringPrintf("dhcpcd-%s.pid", kDeviceName));
   FilePath varlib = temp_dir_.path().Append("var/lib/dhcpcd");
