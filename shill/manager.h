@@ -149,6 +149,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology::Identifier tech);
 
+  std::string CalculateState(Error *error);
+
   virtual int GetPortalCheckInterval() const {
     return props_.portal_check_interval_seconds;
   }
@@ -198,7 +200,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   WiFiServiceRefPtr GetWifiService(const KeyValueStore &args, Error *error);
 
-  std::string CalculateState(Error *error);
   void AutoConnect();
   void AutoConnectTask();
   std::vector<std::string> AvailableTechnologies(Error *error);

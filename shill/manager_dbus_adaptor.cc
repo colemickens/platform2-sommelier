@@ -95,7 +95,7 @@ void ManagerDBusAdaptor::SetProperty(const string &name,
 }
 
 string ManagerDBusAdaptor::GetState(::DBus::Error &/*error*/) {
-  return string();
+  return manager_->CalculateState(NULL);
 }
 
 ::DBus::Path ManagerDBusAdaptor::CreateProfile(const string &name,
