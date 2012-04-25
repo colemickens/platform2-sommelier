@@ -22,8 +22,10 @@ class MockVPNDriver : public VPNDriver {
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD2(Load, bool(StoreInterface *storage,
                           const std::string &storage_id));
-  MOCK_METHOD2(Save, bool(StoreInterface *storage,
-                          const std::string &storage_id));
+  MOCK_METHOD3(Save, bool(StoreInterface *storage,
+                          const std::string &storage_id,
+                          bool save_credentials));
+  MOCK_METHOD0(UnloadCredentials, void());
   MOCK_METHOD1(InitPropertyStore, void(PropertyStore *store));
   MOCK_CONST_METHOD0(GetProviderType, std::string());
 

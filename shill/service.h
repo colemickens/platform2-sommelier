@@ -292,6 +292,9 @@ class Service : public base::RefCounted<Service> {
   const EapCredentials &eap() const { return eap_; }
   virtual void set_eap(const EapCredentials &eap);
 
+  bool save_credentials() const { return save_credentials_; }
+  void set_save_credentials(bool save) { save_credentials_ = save; }
+
   const std::string &error() const { return error_; }
   void set_error(const std::string &error) { error_ = error; }
 

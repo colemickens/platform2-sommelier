@@ -36,8 +36,15 @@ namespace shill {
 namespace {
 const char kHostProperty[] = "VPN.Host";
 const char kOTPProperty[] = "VPN.OTP";
+const char kPINProperty[] = "VPN.PIN";
 const char kPasswordProperty[] = "VPN.Password";
 const char kPortProperty[] = "VPN.Port";
+
+const char kPIN[] = "5555";
+const char kPassword[] = "random-password";
+const char kPort[] = "1234";
+const char kStorageID[] = "vpn_service_id";
+
 }  // namespace
 
 class VPNDriverUnderTest : public VPNDriver {
@@ -61,8 +68,9 @@ class VPNDriverUnderTest : public VPNDriver {
 // static
 const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
   { kHostProperty, 0 },
-  { kOTPProperty, Property::kEphemeral | Property::kCrypted },
-  { kPasswordProperty, Property::kCrypted },
+  { kOTPProperty, Property::kEphemeral },
+  { kPINProperty, Property::kWriteOnly },
+  { kPasswordProperty, Property::kCredential },
   { kPortProperty, 0 },
   { flimflam::kProviderNameProperty, 0 },
 };
@@ -138,40 +146,60 @@ bool VPNDriverTest::FindStringmapPropertyInStore(const PropertyStore &store,
 
 TEST_F(VPNDriverTest, Load) {
   MockStore storage;
-  static const char kStorageID[] = "vpn_service_id";
-  const string kPort = "1234";
-  const string kPassword = "random-password";
   EXPECT_CALL(storage, GetString(kStorageID, _, _))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(storage, GetString(kStorageID, kOTPProperty, _)).Times(0);
-  EXPECT_CALL(storage, GetCryptedString(kStorageID, kOTPProperty, _)).Times(0);
+  EXPECT_CALL(storage, GetString(_, kOTPProperty, _)).Times(0);
+  EXPECT_CALL(storage, GetCryptedString(_, kOTPProperty, _)).Times(0);
   EXPECT_CALL(storage, GetString(kStorageID, kPortProperty, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kPort), Return(true)));
+      .WillOnce(DoAll(SetArgumentPointee<2>(string(kPort)), Return(true)));
+  EXPECT_CALL(storage, GetString(kStorageID, kPINProperty, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(string(kPIN)), Return(true)));
   EXPECT_CALL(storage, GetCryptedString(kStorageID, kPasswordProperty, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(kPassword), Return(true)));
+      .WillOnce(DoAll(SetArgumentPointee<2>(string(kPassword)), Return(true)));
   EXPECT_TRUE(driver_.Load(&storage, kStorageID));
   EXPECT_EQ(kPort, GetArgs()->LookupString(kPortProperty, ""));
+  EXPECT_EQ(kPIN, GetArgs()->LookupString(kPINProperty, ""));
   EXPECT_EQ(kPassword, GetArgs()->LookupString(kPasswordProperty, ""));
 }
 
 TEST_F(VPNDriverTest, Store) {
-  const string kPort = "1234";
-  const string kPassword = "foobar";
+  SetArg(kPINProperty, kPIN);
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
   SetArg(kOTPProperty, "987654");
   MockStore storage;
-  static const char kStorageID[] = "vpn_service_id";
   EXPECT_CALL(storage, SetString(kStorageID, kPortProperty, kPort))
+      .WillOnce(Return(true));
+  EXPECT_CALL(storage, SetString(kStorageID, kPINProperty, kPIN))
       .WillOnce(Return(true));
   EXPECT_CALL(storage,
               SetCryptedString(kStorageID, kPasswordProperty, kPassword))
       .WillOnce(Return(true));
-  EXPECT_CALL(storage, SetCryptedString(kStorageID, kOTPProperty, _)).Times(0);
-  EXPECT_CALL(storage, SetString(kStorageID, kOTPProperty, _)).Times(0);
+  EXPECT_CALL(storage, SetCryptedString(_, kOTPProperty, _)).Times(0);
+  EXPECT_CALL(storage, SetString(_, kOTPProperty, _)).Times(0);
   EXPECT_CALL(storage, DeleteKey(kStorageID, _)).Times(AnyNumber());
   EXPECT_CALL(storage, DeleteKey(kStorageID, kHostProperty)).Times(1);
-  EXPECT_TRUE(driver_.Save(&storage, kStorageID));
+  EXPECT_TRUE(driver_.Save(&storage, kStorageID, true));
+}
+
+TEST_F(VPNDriverTest, StoreNoCredentials) {
+  SetArg(kPasswordProperty, kPassword);
+  MockStore storage;
+  EXPECT_CALL(storage, SetString(_, kPasswordProperty, _)).Times(0);
+  EXPECT_CALL(storage, SetCryptedString(_, kPasswordProperty, _)).Times(0);
+  EXPECT_CALL(storage, DeleteKey(kStorageID, _)).Times(AnyNumber());
+  EXPECT_CALL(storage, DeleteKey(kStorageID, kPasswordProperty)).Times(1);
+  EXPECT_TRUE(driver_.Save(&storage, kStorageID, false));
+}
+
+TEST_F(VPNDriverTest, UnloadCredentials) {
+  SetArg(kOTPProperty, "654321");
+  SetArg(kPasswordProperty, kPassword);
+  SetArg(kPortProperty, kPort);
+  driver_.UnloadCredentials();
+  EXPECT_FALSE(GetArgs()->ContainsString(kOTPProperty));
+  EXPECT_FALSE(GetArgs()->ContainsString(kPasswordProperty));
+  EXPECT_EQ(kPort, GetArgs()->LookupString(kPortProperty, ""));
 }
 
 TEST_F(VPNDriverTest, InitPropertyStore) {
@@ -190,8 +218,6 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 
-  const string kPort = "1234";
-  const string kPassword = "foobar";
   const string kProviderName = "boo";
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
@@ -250,31 +276,25 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 
-  // These ones should be write-only.
-  static const char * const kWriteOnly[] = {
-    kPasswordProperty,
-    kOTPProperty
-  };
-
-  for (size_t i = 0; i < arraysize(kWriteOnly); i++) {
+  // Test write only properties.
+  {
     Error error;
     string string_property;
     EXPECT_FALSE(
         FindStringPropertyInStore(
-            store, kWriteOnly[i], &string_property, &error)) << kWriteOnly[i];
+            store, kPINProperty, &string_property, &error));
     // We get NotFound here instead of PermissionDenied here due to the
-    // implementation of ReadablePropertyConstIterator: it shields us from
-    // store members for which Value() would have returned an error.
-    EXPECT_EQ(Error::kNotFound, error.type()) << kWriteOnly[i];
+    // implementation of ReadablePropertyConstIterator: it shields us from store
+    // members for which Value() would have returned an error.
+    EXPECT_EQ(Error::kNotFound, error.type());
   }
 
   // Write properties to the driver args using the PropertyStore interface.
-  for (size_t i = 0; i < arraysize(kWriteOnly); i++) {
-    string value = "some-value-" + base::UintToString(i);
+  {
+    const string kValue = "some-value";
     Error error;
-    EXPECT_TRUE(store.SetStringProperty(kWriteOnly[i], value, &error))
-        << kWriteOnly[i];
-    EXPECT_EQ(value, GetArgs()->GetString(kWriteOnly[i])) << kWriteOnly[i];
+    EXPECT_TRUE(store.SetStringProperty(kPINProperty, kValue, &error));
+    EXPECT_EQ(kValue, GetArgs()->GetString(kPINProperty));
   }
 }
 

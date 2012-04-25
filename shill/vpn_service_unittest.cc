@@ -114,7 +114,8 @@ TEST_F(VPNServiceTest, Load) {
   static const char kStorageID[] = "storage-id";
   service_->set_storage_id(kStorageID);
   EXPECT_CALL(storage, ContainsGroup(kStorageID)).WillOnce(Return(true));
-  EXPECT_CALL(*driver_, Load(&storage, kStorageID)).WillOnce(Return(true));
+  EXPECT_CALL(*driver_, Load(&storage, kStorageID))
+      .WillOnce(Return(true));
   EXPECT_TRUE(service_->Load(&storage));
 }
 
@@ -122,20 +123,36 @@ TEST_F(VPNServiceTest, Save) {
   NiceMock<MockStore> storage;
   static const char kStorageID[] = "storage-id";
   service_->set_storage_id(kStorageID);
-  EXPECT_CALL(*driver_, Save(&storage, kStorageID)).WillOnce(Return(true));
+  EXPECT_CALL(*driver_, Save(&storage, kStorageID, false))
+      .WillOnce(Return(true));
   EXPECT_TRUE(service_->Save(&storage));
+}
+
+TEST_F(VPNServiceTest, SaveCredentials) {
+  NiceMock<MockStore> storage;
+  static const char kStorageID[] = "storage-id";
+  service_->set_storage_id(kStorageID);
+  service_->set_save_credentials(true);
+  EXPECT_CALL(*driver_, Save(&storage, kStorageID, true))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(service_->Save(&storage));
+}
+
+TEST_F(VPNServiceTest, Unload) {
+  service_->set_auto_connect(true);
+  service_->set_save_credentials(true);
+  EXPECT_CALL(*driver_, Disconnect());
+  EXPECT_CALL(*driver_, UnloadCredentials());
+  manager_.vpn_provider()->services_.push_back(service_);
+  service_->Unload();
+  EXPECT_FALSE(service_->auto_connect());
+  EXPECT_FALSE(service_->save_credentials());
+  EXPECT_TRUE(manager_.vpn_provider()->services_.empty());
 }
 
 TEST_F(VPNServiceTest, InitPropertyStore) {
   EXPECT_CALL(*driver_, InitPropertyStore(service_->mutable_store()));
   service_->InitDriverPropertyStore();
-}
-
-TEST_F(VPNServiceTest, Unload) {
-  EXPECT_CALL(*driver_, Disconnect());
-  manager_.vpn_provider()->services_.push_back(service_);
-  service_->Unload();
-  EXPECT_TRUE(manager_.vpn_provider()->services_.empty());
 }
 
 }  // namespace shill

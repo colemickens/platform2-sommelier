@@ -35,7 +35,7 @@ bool VPNDriver::Load(StoreInterface *storage, const string &storage_id) {
     }
     const string property = properties_[i].property;
     string value;
-    bool loaded = (properties_[i].flags & Property::kCrypted) ?
+    bool loaded = (properties_[i].flags & Property::kCredential) ?
         storage->GetCryptedString(storage_id, property, &value) :
         storage->GetString(storage_id, property, &value);
     if (loaded) {
@@ -47,23 +47,39 @@ bool VPNDriver::Load(StoreInterface *storage, const string &storage_id) {
   return true;
 }
 
-bool VPNDriver::Save(StoreInterface *storage, const string &storage_id) {
+bool VPNDriver::Save(StoreInterface *storage,
+                     const string &storage_id,
+                     bool save_credentials) {
   SLOG(VPN, 2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
     if ((properties_[i].flags & Property::kEphemeral)) {
       continue;
     }
+    bool credential = (properties_[i].flags & Property::kCredential);
     const string property = properties_[i].property;
-    const string value = args_.LookupString(property, "");
+    string value;
+    if (!credential || save_credentials) {
+      value = args_.LookupString(property, "");
+    }
     if (value.empty()) {
       storage->DeleteKey(storage_id, property);
-    } else if ((properties_[i].flags & Property::kCrypted)) {
+    } else if (credential) {
       storage->SetCryptedString(storage_id, property, value);
     } else {
       storage->SetString(storage_id, property, value);
     }
   }
   return true;
+}
+
+void VPNDriver::UnloadCredentials() {
+  SLOG(VPN, 2) << __func__;
+  for (size_t i = 0; i < property_count_; i++) {
+    if ((properties_[i].flags &
+         (Property::kEphemeral | Property::kCredential))) {
+      args_.RemoveString(properties_[i].property);
+    }
+  }
 }
 
 void VPNDriver::InitPropertyStore(PropertyStore *store) {
@@ -119,8 +135,7 @@ Stringmap VPNDriver::GetProvider(Error *error) {
   Stringmap provider_properties;
 
   for (size_t i = 0; i < property_count_; i++) {
-    // Never return any encrypted properties.
-    if ((properties_[i].flags & Property::kCrypted)) {
+    if ((properties_[i].flags & Property::kWriteOnly)) {
       continue;
     }
 

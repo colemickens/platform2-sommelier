@@ -34,15 +34,19 @@ class VPNDriver {
   virtual void InitPropertyStore(PropertyStore *store);
 
   virtual bool Load(StoreInterface *storage, const std::string &storage_id);
-  virtual bool Save(StoreInterface *storage, const std::string &storage_id);
+  virtual bool Save(StoreInterface *storage,
+                    const std::string &storage_id,
+                    bool save_credentials);
+  virtual void UnloadCredentials();
 
   KeyValueStore *args() { return &args_; }
 
  protected:
   struct Property {
     enum Flags {
-      kEphemeral = 1 << 0,
-      kCrypted = 1 << 1,
+      kEphemeral = 1 << 0,   // Never load or save.
+      kCredential = 1 << 1,  // Save if saving credentials (crypted).
+      kWriteOnly = 1 << 2,   // Never read over RPC.
     };
 
     const char *property;

@@ -29,6 +29,7 @@ VPNService::VPNService(ControlInterface *control,
     : Service(control, dispatcher, metrics, manager, Technology::kVPN),
       driver_(driver) {
   set_connectable(true);
+  set_save_credentials(false);
   mutable_store()->RegisterString(flimflam::kVPNDomainProperty, &vpn_domain_);
 }
 
@@ -92,12 +93,15 @@ bool VPNService::Load(StoreInterface *storage) {
 
 bool VPNService::Save(StoreInterface *storage) {
   return Service::Save(storage) &&
-      driver_->Save(storage, GetStorageIdentifier());
+      driver_->Save(storage, GetStorageIdentifier(), save_credentials());
 }
 
 bool VPNService::Unload() {
   // The base method also disconnects the service.
   Service::Unload();
+
+  set_save_credentials(false);
+  driver_->UnloadCredentials();
 
   // Ask the VPN provider to remove us from its list.
   manager()->vpn_provider()->RemoveService(this);
