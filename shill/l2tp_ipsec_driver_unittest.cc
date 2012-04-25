@@ -144,7 +144,10 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   const int kPID = 123456;
   driver_->pid_ = kPID;
   EXPECT_CALL(glib_, SpawnClosePID(kPID));
+  driver_->device_ = device_;
   driver_->service_ = service_;
+  EXPECT_CALL(*device_, OnDisconnected());
+  EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   FilePath psk_file = SetupPSKFile();
@@ -154,6 +157,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_EQ(0, driver_->child_watch_tag_);
   EXPECT_EQ(0, driver_->pid_);
   EXPECT_FALSE(driver_->rpc_task_.get());
+  EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
 }
 
@@ -399,6 +403,17 @@ TEST_F(L2TPIPSecDriverTest, Connect) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
+TEST_F(L2TPIPSecDriverTest, Disconnect) {
+  driver_->device_ = device_;
+  driver_->service_ = service_;
+  EXPECT_CALL(*device_, OnDisconnected());
+  EXPECT_CALL(*device_, SetEnabled(false));
+  EXPECT_CALL(*service_, SetState(Service::kStateIdle));
+  driver_->Disconnect();
+  EXPECT_FALSE(driver_->device_);
+  EXPECT_FALSE(driver_->service_);
+}
+
 TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {
   // Sanity test property store initialization.
   PropertyStore store;
@@ -455,6 +470,33 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   driver_->Notify("connect", config);
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(driver_->psk_file_.empty());
+}
+
+TEST_F(L2TPIPSecDriverTest, NotifyFail) {
+  map<string, string> dict;
+  driver_->device_ = device_;
+  EXPECT_CALL(*device_, OnDisconnected());
+  driver_->Notify("fail", dict);
+}
+
+TEST_F(L2TPIPSecDriverTest, VerifyPaths) {
+  // Ensure that the various path constants that the L2TP/IPSec driver uses
+  // actually exists in the build image.  Due to build dependencies, they should
+  // already exist by the time we run unit tests.
+
+  // The L2TPIPSecDriver path constants are absolute.  FilePath::Append asserts
+  // that its argument is not an absolute path, so we need to strip the leading
+  // separators.  There's nothing built into FilePath to do so.
+  static const char *kPaths[] = {
+    L2TPIPSecDriver::kL2TPIPSecVPNPath,
+    L2TPIPSecDriver::kPPPDPlugin,
+  };
+  for (size_t i = 0; i < arraysize(kPaths); i++) {
+    string path(kPaths[i]);
+    TrimString(path, FilePath::kSeparators, &path);
+    EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(path)))
+        << kPaths[i];
+  }
 }
 
 }  // namespace shill

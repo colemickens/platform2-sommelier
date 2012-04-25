@@ -10,6 +10,7 @@
 #include "shill/error.h"
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_store.h"
 #include "shill/mock_vpn_driver.h"
@@ -24,13 +25,16 @@ class VPNServiceTest : public testing::Test {
  public:
   VPNServiceTest()
       : driver_(new MockVPNDriver()),
-        service_(new VPNService(&control_, NULL, &metrics_, NULL, driver_)) {}
+        manager_(&control_, NULL, NULL, NULL),
+        service_(new VPNService(&control_, NULL, &metrics_, &manager_,
+                                driver_)) {}
 
   virtual ~VPNServiceTest() {}
 
  protected:
   MockVPNDriver *driver_;  // Owned by |service_|.
   NiceMockControl control_;
+  MockManager manager_;
   MockMetrics metrics_;
   VPNServiceRefPtr service_;
 };
@@ -125,6 +129,13 @@ TEST_F(VPNServiceTest, Save) {
 TEST_F(VPNServiceTest, InitPropertyStore) {
   EXPECT_CALL(*driver_, InitPropertyStore(service_->mutable_store()));
   service_->InitDriverPropertyStore();
+}
+
+TEST_F(VPNServiceTest, Unload) {
+  EXPECT_CALL(*driver_, Disconnect());
+  manager_.vpn_provider()->services_.push_back(service_);
+  service_->Unload();
+  EXPECT_TRUE(manager_.vpn_provider()->services_.empty());
 }
 
 }  // namespace shill

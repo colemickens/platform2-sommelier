@@ -96,8 +96,8 @@ void L2TPIPSecDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
 }
 
 void L2TPIPSecDriver::Disconnect() {
-  // TODO(petkov): crosbug.com/29364.
-  NOTIMPLEMENTED();
+  SLOG(VPN, 2) << __func__;
+  Cleanup(Service::kStateIdle);
 }
 
 string L2TPIPSecDriver::GetProviderType() const {
@@ -368,8 +368,7 @@ void L2TPIPSecDriver::Notify(
   SLOG(VPN, 2) << __func__ << "(" << reason << ")";
 
   if (reason != "connect") {
-    // TODO(petkov): Disconnect the device (crosbug.com/29364).
-    NOTIMPLEMENTED();
+    device_->OnDisconnected();
     return;
   }
 

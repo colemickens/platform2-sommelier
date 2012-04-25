@@ -50,6 +50,7 @@ class VPNProvider {
   FRIEND_TEST(VPNProviderTest, CreateService);
   FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(VPNProviderTest, RemoveService);
+  FRIEND_TEST(VPNServiceTest, Unload);
 
   // Create a service of type |type| and storage identifier |storage_id|
   // and initial parameters |args|.  Returns a service reference pointer

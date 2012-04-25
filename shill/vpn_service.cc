@@ -96,11 +96,8 @@ bool VPNService::Save(StoreInterface *storage) {
 }
 
 bool VPNService::Unload() {
+  // The base method also disconnects the service.
   Service::Unload();
-
-  // VPN services which have been removed from the profile should be
-  // disconnected.
-  driver_->Disconnect();
 
   // Ask the VPN provider to remove us from its list.
   manager()->vpn_provider()->RemoveService(this);

@@ -599,6 +599,7 @@ TEST_F(OpenVPNDriverTest, Disconnect) {
   EXPECT_CALL(device_info_, DeleteInterface(kInterfaceIndex));
   EXPECT_CALL(*service_, SetState(Service::kStateIdle));
   driver_->Disconnect();
+  EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
 }
 
@@ -613,20 +614,22 @@ TEST_F(OpenVPNDriverTest, OnReconnecting) {
 
 TEST_F(OpenVPNDriverTest, VerifyPaths) {
   // Ensure that the various path constants that the OpenVPN driver uses
-  // actually exists in the build image.  Due to build dependencies, they
-  // should already exist by the time we run unit tests.
+  // actually exists in the build image.  Due to build dependencies, they should
+  // already exist by the time we run unit tests.
 
-  // The OpenVPNDriver path constants are absolute.  FilePath::Append
-  // asserts that its argument is not an absolute path, so we need to
-  // strip the leading separators.  There's nothing built into FilePath
-  // to do so.
-  string vpn_path(OpenVPNDriver::kOpenVPNPath);
-  TrimString(vpn_path, FilePath::kSeparators, &vpn_path);
-  EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(vpn_path)));
-
-  string vpn_script(OpenVPNDriver::kOpenVPNScript);
-  TrimString(vpn_script, FilePath::kSeparators, &vpn_script);
-  EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(vpn_script)));
+  // The OpenVPNDriver path constants are absolute.  FilePath::Append asserts
+  // that its argument is not an absolute path, so we need to strip the leading
+  // separators.  There's nothing built into FilePath to do so.
+  static const char *kPaths[] = {
+    OpenVPNDriver::kOpenVPNPath,
+    OpenVPNDriver::kOpenVPNScript,
+  };
+  for (size_t i = 0; i < arraysize(kPaths); i++) {
+    string path(kPaths[i]);
+    TrimString(path, FilePath::kSeparators, &path);
+    EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(path)))
+        << kPaths[i];
+  }
 }
 
 TEST_F(OpenVPNDriverTest, InitPropertyStore) {
