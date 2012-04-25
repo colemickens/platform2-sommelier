@@ -40,7 +40,9 @@ class MockDevice : public Device {
   MOCK_METHOD0(EnableIPv6Privacy, void());
   MOCK_METHOD0(DisableReversePathFilter, void());
   MOCK_METHOD0(EnableReversePathFilter, void());
+  MOCK_METHOD0(RestartPortalDetection, bool());
   MOCK_METHOD0(RequestPortalDetection, bool());
+  MOCK_CONST_METHOD1(IsConnectedToService, bool(const ServiceRefPtr &service));
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
 
  private:

@@ -106,6 +106,17 @@ class Device : public base::RefCounted<Device> {
   // is not connected.
   bool IsConnected() const;
 
+  // Returns true if the selected service on the device (if any) is connected
+  // and matches the passed-in argument |service|.  Returns false if there is
+  // no connected service, or if it does not match |service|.
+  virtual bool IsConnectedToService(const ServiceRefPtr &service) const;
+
+  // Restart the portal detection process on a connected device.  This is
+  // useful if the properties on the connected service have changed in a
+  // way that may affect the decision to run portal detection at all.
+  // Returns true if portal detection was started.
+  virtual bool RestartPortalDetection();
+
   // Requests that portal detection be done, if this device has the default
   // connection.  Returns true if portal detection was started.
   virtual bool RequestPortalDetection();

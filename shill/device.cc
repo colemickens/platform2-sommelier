@@ -236,6 +236,10 @@ bool Device::IsConnected() const {
   return false;
 }
 
+bool Device::IsConnectedToService(const ServiceRefPtr &service) const {
+  return service == selected_service_ && IsConnected();
+}
+
 string Device::GetRpcIdentifier() {
   return adaptor_->GetRpcIdentifier();
 }
@@ -450,6 +454,11 @@ bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
   return true;
 }
 
+bool Device::RestartPortalDetection() {
+  StopPortalDetection();
+  return StartPortalDetection();
+}
+
 bool Device::RequestPortalDetection() {
   if (!selected_service_) {
     SLOG(Device, 2) << FriendlyName()
@@ -485,7 +494,17 @@ bool Device::RequestPortalDetection() {
 }
 
 bool Device::StartPortalDetection() {
-  if (!manager_->IsPortalDetectionEnabled(technology())) {
+  DCHECK(selected_service_.get());
+  if (selected_service_->IsPortalDetectionDisabled()) {
+    SLOG(Device, 2) << "Service " << selected_service_->friendly_name()
+                    << ": Portal detection is disabled; "
+                    << "marking service online.";
+    SetServiceConnectedState(Service::kStateOnline);
+    return false;
+  }
+
+  if (selected_service_->IsPortalDetectionAuto() &&
+      !manager_->IsPortalDetectionEnabled(technology())) {
     // If portal detection is disabled for this technology, immediately set
     // the service state to "Online".
     SLOG(Device, 2) << "Device " << FriendlyName()
@@ -495,7 +514,6 @@ bool Device::StartPortalDetection() {
     return false;
   }
 
-  DCHECK(selected_service_.get());
   if (selected_service_->HasProxyConfig()) {
     // Services with HTTP proxy configurations should not be checked by the
     // connection manager, since we don't have the ability to evaluate

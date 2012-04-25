@@ -1072,6 +1072,19 @@ void Manager::RecheckPortal(Error */*error*/) {
   }
 }
 
+void Manager::RecheckPortalOnService(const ServiceRefPtr &service) {
+  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    if ((*it)->IsConnectedToService(service)) {
+      // As opposed to RecheckPortal() above, we explicitly stop and then
+      // restart portal detection, since the service to recheck was explicitly
+      // specified.
+      (*it)->RestartPortalDetection();
+      break;
+    }
+  }
+}
+
 // called via RPC (e.g., from ManagerDBusAdaptor)
 void Manager::RequestScan(const string &technology, Error *error) {
   if (technology == flimflam::kTypeWifi || technology == "") {

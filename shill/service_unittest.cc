@@ -79,7 +79,7 @@ TEST_F(ServiceTest, GetProperties) {
   Error error(Error::kInvalidProperty, "");
   {
     ::DBus::Error dbus_error;
-    string expected("portal_list");
+    string expected("true");
     service_->mutable_store()->SetStringProperty(flimflam::kCheckPortalProperty,
                                                  expected,
                                                  &error);
@@ -442,6 +442,59 @@ TEST_F(ServiceTest, OnPropertyChanged) {
   NiceMock<MockStore> storage;
   EXPECT_CALL(*profile, GetConstStorage()).WillOnce(Return(&storage));
   service_->OnPropertyChanged("");
+}
+
+
+TEST_F(ServiceTest, RecheckPortal) {
+  ServiceRefPtr service_ref(service_);
+  service_->state_ = Service::kStateIdle;
+  EXPECT_CALL(mock_manager_, RecheckPortalOnService(_)).Times(0);
+  service_->OnPropertyChanged(flimflam::kCheckPortalProperty);
+
+  service_->state_ = Service::kStatePortal;
+  EXPECT_CALL(mock_manager_, RecheckPortalOnService(service_ref)).Times(1);
+  service_->OnPropertyChanged(flimflam::kCheckPortalProperty);
+
+  service_->state_ = Service::kStateConnected;
+  EXPECT_CALL(mock_manager_, RecheckPortalOnService(service_ref)).Times(1);
+  service_->OnPropertyChanged(flimflam::kProxyConfigProperty);
+
+  service_->state_ = Service::kStateOnline;
+  EXPECT_CALL(mock_manager_, RecheckPortalOnService(service_ref)).Times(1);
+  service_->OnPropertyChanged(flimflam::kCheckPortalProperty);
+
+  service_->state_ = Service::kStatePortal;
+  EXPECT_CALL(mock_manager_, RecheckPortalOnService(_)).Times(0);
+  service_->OnPropertyChanged(flimflam::kEAPKeyIDProperty);
+}
+
+TEST_F(ServiceTest, SetCheckPortal) {
+  ServiceRefPtr service_ref(service_);
+  {
+    Error error;
+    service_->SetCheckPortal("false", &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(Service::kCheckPortalFalse, service_->check_portal_);
+  }
+  {
+    Error error;
+    service_->SetCheckPortal("true", &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(Service::kCheckPortalTrue, service_->check_portal_);
+  }
+  {
+    Error error;
+    service_->SetCheckPortal("auto", &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+  }
+  {
+    Error error;
+    service_->SetCheckPortal("xxx", &error);
+    EXPECT_FALSE(error.IsSuccess());
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+    EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+  }
 }
 
 // Make sure a property is registered as a write only property

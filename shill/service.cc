@@ -134,7 +134,9 @@ Service::Service(ControlInterface *control_interface,
   // flimflam::kServingOperatorProperty: Registered in CellularService
   // flimflam::kPaymentURLProperty: Registered in CellularService
 
-  store_.RegisterString(flimflam::kCheckPortalProperty, &check_portal_);
+  HelpRegisterDerivedString(flimflam::kCheckPortalProperty,
+                            &Service::GetCheckPortal,
+                            &Service::SetCheckPortal);
   store_.RegisterConstBool(flimflam::kConnectableProperty, &connectable_);
   HelpRegisterDerivedRpcIdentifier(flimflam::kDeviceProperty,
                                    &Service::GetDeviceRpcId,
@@ -665,6 +667,13 @@ void Service::OnPropertyChanged(const string &property) {
   if (profile_.get() && profile_->GetConstStorage()) {
     profile_->UpdateService(this);
   }
+  if ((property == flimflam::kCheckPortalProperty ||
+       property == flimflam::kProxyConfigProperty) &&
+      (state_ == kStateConnected ||
+       state_ == kStatePortal ||
+       state_ == kStateOnline)) {
+    manager_->RecheckPortalOnService(this);
+  }
 }
 
 string Service::GetIPConfigRpcIdentifier(Error *error) {
@@ -735,6 +744,14 @@ bool Service::IsAutoConnectable(const char **reason) const {
   }
 
   return true;
+}
+
+bool Service::IsPortalDetectionDisabled() const {
+  return check_portal_ == kCheckPortalFalse;
+}
+
+bool Service::IsPortalDetectionAuto() const {
+  return check_portal_ == kCheckPortalAuto;
 }
 
 void Service::HelpRegisterDerivedBool(
@@ -899,6 +916,26 @@ bool Service::GetAutoConnect(Error */*error*/) {
 
 void Service::SetAutoConnect(const bool &connect, Error *error) {
   set_auto_connect(connect);
+}
+
+string Service::GetCheckPortal(Error *error) {
+  return check_portal_;
+}
+
+void Service::SetCheckPortal(const string &check_portal, Error *error) {
+  if (check_portal == check_portal_) {
+    return;
+  }
+  if (check_portal != kCheckPortalFalse &&
+      check_portal != kCheckPortalTrue &&
+      check_portal != kCheckPortalAuto) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          base::StringPrintf(
+                              "Invalid Service CheckPortal property value: %s",
+                              check_portal.c_str()));
+    return;
+  }
+  check_portal_ = check_portal;
 }
 
 void Service::SetEAPPassword(const string &password, Error */*error*/) {

@@ -225,6 +225,14 @@ class Service : public base::RefCounted<Service> {
   // fails, but will only return the first error.
   virtual void Configure(const KeyValueStore &args, Error *error);
 
+  // Returns whether portal detection is explicitly disabled on this service
+  // via a property set on it.
+  virtual bool IsPortalDetectionDisabled() const;
+
+  // Returns whether portal detection is set to follow the default setting
+  // of this service's technology via a property set on it.
+  virtual bool IsPortalDetectionAuto() const;
+
   // Returns true if the service RPC identifier should be part of the
   // manager's advertised services list, false otherwise.
   virtual bool IsVisible() const { return true; }
@@ -415,12 +423,14 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, GetIPConfigRpcIdentifier);
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
+  FRIEND_TEST(ServiceTest, RecheckPortal);
   FRIEND_TEST(ServiceTest, Save);
   FRIEND_TEST(ServiceTest, SaveString);
   FRIEND_TEST(ServiceTest, SaveStringCrypted);
   FRIEND_TEST(ServiceTest, SaveStringDontSave);
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
   FRIEND_TEST(ServiceTest, SetProperty);
+  FRIEND_TEST(ServiceTest, SetCheckPortal);
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, Unload);
   FRIEND_TEST(VPNServiceTest, ConnectAlreadyConnected);
@@ -443,6 +453,9 @@ class Service : public base::RefCounted<Service> {
 
   bool GetAutoConnect(Error *error);
   void SetAutoConnect(const bool &connect, Error *error);
+
+  std::string GetCheckPortal(Error *error);
+  void SetCheckPortal(const std::string &check_portal, Error *error);
 
   virtual std::string GetDeviceRpcId(Error *error) = 0;
 

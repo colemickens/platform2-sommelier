@@ -1860,6 +1860,29 @@ TEST_F(ManagerTest, RecheckPortal) {
   manager()->RecheckPortal(NULL);
 }
 
+TEST_F(ManagerTest, RecheckPortalOnService) {
+  MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
+                                                        dispatcher(),
+                                                        metrics(),
+                                                        manager());
+  EXPECT_CALL(*mock_devices_[0].get(),
+              IsConnectedToService(IsRefPtrTo(service)))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*mock_devices_[1].get(),
+              IsConnectedToService(IsRefPtrTo(service)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_devices_[1].get(), RestartPortalDetection())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_devices_[2].get(), IsConnectedToService(_))
+      .Times(0);
+
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
+
+  manager()->RecheckPortalOnService(service);
+}
+
 TEST_F(ManagerTest, GetDefaultService) {
   EXPECT_FALSE(manager()->GetDefaultService().get());
 

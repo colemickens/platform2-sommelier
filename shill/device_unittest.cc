@@ -295,6 +295,8 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   EXPECT_CALL(*service.get(), SetState(Service::kStateConnected));
   EXPECT_CALL(*service.get(), IsConnected())
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service.get(), IsPortalDetectionDisabled())
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*service.get(), SetState(Service::kStateOnline));
   EXPECT_CALL(*service.get(), SetConnection(NotNullRefPtr()));
   OnIPConfigUpdated(ipconfig.get(), true);
@@ -387,9 +389,22 @@ class DevicePortalDetectionTest : public DeviceTest {
 
 const int DevicePortalDetectionTest::kPortalAttempts = 2;
 
-TEST_F(DevicePortalDetectionTest, PortalDetectionDisabled) {
+TEST_F(DevicePortalDetectionTest, ServicePortalDetectionDisabled) {
+  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+      .WillOnce(Return(true));
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
+  EXPECT_FALSE(StartPortalDetection());
+}
+
+TEST_F(DevicePortalDetectionTest, TechnologyPortalDetectionDisabled) {
+  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*service_.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
+      .WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(false));
   EXPECT_CALL(*service_.get(), SetState(Service::kStateOnline));
@@ -397,9 +412,13 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDisabled) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionProxyConfig) {
+  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+      .WillOnce(Return(false));
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service_.get(), HasProxyConfig())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
@@ -408,10 +427,14 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionProxyConfig) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
+  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+      .WillOnce(Return(false));
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service_.get(), HasProxyConfig())
       .WillOnce(Return(false));
+  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
+      .WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
   const string portal_url;
@@ -422,10 +445,14 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
+  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+      .WillOnce(Return(false));
   EXPECT_CALL(*service_.get(), IsConnected())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service_.get(), HasProxyConfig())
       .WillOnce(Return(false));
+  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
+      .WillOnce(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillOnce(Return(true));
   const string portal_url(PortalDetector::kDefaultURL);
@@ -577,6 +604,10 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetection) {
   // Throw away our pre-fabricated portal detector, and have the device create
   // a new one.
   StopPortalDetection();
+  EXPECT_CALL(*service_.get(), IsPortalDetectionDisabled())
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*service_.get(), IsPortalDetectionAuto())
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(manager_, IsPortalDetectionEnabled(device_->technology()))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service_.get(), HasProxyConfig())

@@ -98,6 +98,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Request portal detection checks on each registered device until a portal
   // detection attempt starts on one of them.
   void RecheckPortal(Error *error);
+  // Request portal detection be restarted on the device connected to
+  // |service|.
+  virtual void RecheckPortalOnService(const ServiceRefPtr &service);
+
   void RequestScan(const std::string &technology, Error *error);
   std::string GetTechnologyOrder();
   void SetTechnologyOrder(const std::string &order, Error *error);
