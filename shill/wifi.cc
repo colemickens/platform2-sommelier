@@ -65,7 +65,6 @@ const uint16 WiFi::kDefaultScanIntervalSeconds = 180;
 // Note that WiFi generates some manager-level errors, because it implements
 // the Manager.GetWiFiService flimflam API. The API is implemented here,
 // rather than in manager, to keep WiFi-specific logic in the right place.
-const char WiFi::kManagerErrorPassphraseRequired[] = "must specify passphrase";
 const char WiFi::kManagerErrorSSIDRequired[] = "must specify SSID";
 const char WiFi::kManagerErrorSSIDTooLong[]  = "SSID is too long";
 const char WiFi::kManagerErrorSSIDTooShort[] = "SSID is too short";
@@ -1103,16 +1102,6 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
     return NULL;
   }
 
-  if ((security_method == flimflam::kSecurityWep ||
-       security_method == flimflam::kSecurityPsk ||
-       security_method == flimflam::kSecurityWpa ||
-       security_method == flimflam::kSecurityRsn) &&
-      !args.ContainsString(flimflam::kPassphraseProperty)) {
-    error->Populate(Error::kInvalidArguments,
-                    kManagerErrorPassphraseRequired);
-    return NULL;
-  }
-
   bool hidden_ssid;
   if (args.ContainsBool(flimflam::kWifiHiddenSsid)) {
     hidden_ssid = args.GetBool(flimflam::kWifiHiddenSsid);
@@ -1140,10 +1129,11 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
     // The Service will be registered if/when we find Endpoints for it.
   }
 
-  if (security_method == flimflam::kSecurityWep ||
-      security_method == flimflam::kSecurityPsk ||
-      security_method == flimflam::kSecurityWpa ||
-      security_method == flimflam::kSecurityRsn) {
+  if ((security_method == flimflam::kSecurityWep ||
+       security_method == flimflam::kSecurityPsk ||
+       security_method == flimflam::kSecurityWpa ||
+       security_method == flimflam::kSecurityRsn) &&
+      args.ContainsString(flimflam::kPassphraseProperty)) {
     service->SetPassphrase(args.GetString(flimflam::kPassphraseProperty),
                            error);
     if (error->IsFailure()) {

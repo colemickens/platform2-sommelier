@@ -163,7 +163,6 @@ class WiFi : public Device {
   static const uint16 kDefaultBgscanShortIntervalSeconds;
   static const int32 kDefaultBgscanSignalThresholdDbm;
   static const uint16 kDefaultScanIntervalSeconds;
-  static const char kManagerErrorPassphraseRequired[];
   static const char kManagerErrorSSIDTooLong[];
   static const char kManagerErrorSSIDTooShort[];
   static const char kManagerErrorSSIDRequired[];

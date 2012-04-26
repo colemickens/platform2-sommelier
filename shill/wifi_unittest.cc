@@ -1061,11 +1061,13 @@ TEST_F(WiFiMainTest, GetWifiServiceRSN) {
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceRSNNoPassword) {
+  // When configuring hidden networks, Chrome expects to be able to
+  // GetService w/o a password, and supply the password with
+  // SetProperty afterwards.
   Error e;
   GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
              flimflam::kSecurityRsn, NULL, &e);
-  EXPECT_EQ(Error::kInvalidArguments, e.type());
-  EXPECT_EQ("must specify passphrase", e.message());
+  EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceBadSecurity) {
@@ -1077,11 +1079,13 @@ TEST_F(WiFiMainTest, GetWifiServiceBadSecurity) {
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEPNoPassword) {
+  // When configuring hidden networks, Chrome expects to be able to
+  // GetService w/o a password, and supply the password with
+  // SetProperty afterwards.
   Error e;
   GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
              flimflam::kSecurityWep, NULL, &e);
-  EXPECT_EQ(Error::kInvalidArguments, e.type());
-  EXPECT_EQ("must specify passphrase", e.message());
+  EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEPEmptyPassword) {
