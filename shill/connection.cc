@@ -89,16 +89,15 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
     return;
   }
 
-  FixGatewayReachability(&local, gateway_address);
+  if (!FixGatewayReachability(&local, gateway_address, peer)) {
+    LOG(WARNING) << "Expect limited network connectivity.";
+  }
 
   rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast, peer);
 
   if (gateway_address.IsValid()) {
     routing_table_->SetDefaultRoute(interface_index_, gateway_address,
                                     GetMetric(is_default_));
-  } else if (!peer.IsValid()) {
-    LOG(WARNING) << "No gateway or peer address was provided for this "
-                 << "connection.  Expect limited network connectivity.";
   }
 
   // Install any explicitly configured routes at the default metric.
@@ -186,10 +185,27 @@ bool Connection::RequestHostRoute(const IPAddress &address) {
 }
 
 // static
-void Connection::FixGatewayReachability(IPAddress *local,
-                                        const IPAddress &gateway) {
-  if (!gateway.IsValid() || local->CanReachAddress(gateway)) {
-    return;
+bool Connection::FixGatewayReachability(IPAddress *local,
+                                        const IPAddress &gateway,
+                                        const IPAddress &peer) {
+  if (!gateway.IsValid()) {
+    LOG(WARNING) << "No gateway address was provided for this connection.";
+    return false;
+  }
+
+  if (peer.IsValid()) {
+    if (gateway.Equals(peer)) {
+      return true;
+    }
+    LOG(WARNING) << "Gateway address "
+                 << gateway.ToString()
+                 << " does not match peer address "
+                 << peer.ToString();
+    return false;
+  }
+
+  if (local->CanReachAddress(gateway)) {
+    return true;
   }
 
   LOG(WARNING) << "Gateway "
@@ -209,10 +225,11 @@ void Connection::FixGatewayReachability(IPAddress *local,
   if (prefix < local->GetMinPrefixLength()) {
     // Restore the original prefix since we cannot find a better one.
     local->set_prefix(original_prefix);
-    LOG(WARNING) << "Expect limited network connectivity.";
-  } else {
-    LOG(WARNING) << "Mitigating this by setting local prefix to " << prefix;
+    return false;
   }
+
+  LOG(WARNING) << "Mitigating this by setting local prefix to " << prefix;
+  return true;
 }
 
 uint32 Connection::GetMetric(bool is_default) {

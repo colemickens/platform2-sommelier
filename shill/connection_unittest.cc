@@ -395,4 +395,52 @@ TEST_F(ConnectionTest, PinHostRoute) {
               FlushAddresses(kTestDeviceInterfaceIndex0));
 }
 
+TEST_F(ConnectionTest, FixGatewayReachability) {
+  static const char kLocal[] = "10.242.2.13";
+  IPAddress local(IPAddress::kFamilyIPv4);
+  ASSERT_TRUE(local.SetAddressFromString(kLocal));
+  const int kPrefix = 24;
+  local.set_prefix(kPrefix);
+  IPAddress gateway(IPAddress::kFamilyIPv4);
+  IPAddress peer(IPAddress::kFamilyIPv4);
+
+  // Should fail because no gateway is set.
+  EXPECT_FALSE(Connection::FixGatewayReachability(&local, gateway, peer));
+  EXPECT_EQ(kPrefix, local.prefix());
+
+  // Should succeed because with the given prefix, this gateway is reachable.
+  static const char kReachableGateway[] = "10.242.2.14";
+  ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
+  EXPECT_TRUE(Connection::FixGatewayReachability(&local, gateway, peer));
+  // Prefix should remain unchanged.
+  EXPECT_EQ(kPrefix, local.prefix());
+
+  // Should succeed because we modified the prefix to match the gateway.
+  static const char kExpandableGateway[] = "10.242.3.14";
+  ASSERT_TRUE(gateway.SetAddressFromString(kExpandableGateway));
+  EXPECT_TRUE(Connection::FixGatewayReachability(&local, gateway, peer));
+  // Prefix should have opened up by 1 bit.
+  EXPECT_EQ(kPrefix - 1, local.prefix());
+
+  // Should fail because we cannot plausibly expand the prefix past 8.
+  local.set_prefix(kPrefix);
+  static const char kUnreachableGateway[] = "11.242.2.14";
+  ASSERT_TRUE(gateway.SetAddressFromString(kUnreachableGateway));
+  EXPECT_FALSE(Connection::FixGatewayReachability(&local, gateway, peer));
+  // Prefix should not have changed.
+  EXPECT_EQ(kPrefix, local.prefix());
+
+  // However, if this is a peer-to-peer interface and the peer matches
+  // the gateway, we should succeed.
+  ASSERT_TRUE(peer.SetAddressFromString(kUnreachableGateway));
+  EXPECT_TRUE(Connection::FixGatewayReachability(&local, gateway, peer));
+  EXPECT_EQ(kPrefix, local.prefix());
+
+  // If there is a peer specified and it does not match the gateway (even
+  // if it was reachable via netmask), we should fail.
+  ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
+  EXPECT_FALSE(Connection::FixGatewayReachability(&local, gateway, peer));
+  EXPECT_EQ(kPrefix, local.prefix());
+}
+
 }  // namespace shill
