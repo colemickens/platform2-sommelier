@@ -40,16 +40,6 @@ mount -n -t tmpfs -o nodev,noexec,nosuid tmp /tmp
 # Mount debugfs as crossystem requires chromeos_arm driver interface.
 mount -n -t debugfs debugfs /sys/kernel/debug
 
-TRACING=/sys/kernel/debug/tracing
-# NB: check for tracing dir in case the kernel config changes
-if [ -d "${TRACING}" ]; then
-  # enable debugd write access for systrace helper
-  for file in buffer_size_kb set_event trace trace_clock trace_marker \
-              tracing_on; do
-    chgrp debugd ${TRACING}/${file} && chmod g+w ${TRACING}/${file}
-  done
-fi
-
 # bootstat writes timings to both tmpfs and debugfs.
 bootstat pre-startup
 
