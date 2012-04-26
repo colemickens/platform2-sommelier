@@ -199,7 +199,7 @@ void L2TPIPSecDriver::InitEnvironment(vector<string> *environment) {
 }
 
 bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
-  string vpnhost = args_.LookupString(flimflam::kProviderHostProperty, "");
+  string vpnhost = args()->LookupString(flimflam::kProviderHostProperty, "");
   if (vpnhost.empty()) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments, "VPN host not specified.");
@@ -247,7 +247,7 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
 }
 
 bool L2TPIPSecDriver::InitPSKOptions(vector<string> *options, Error *error) {
-  string psk = args_.LookupString(flimflam::kL2tpIpsecPskProperty, "");
+  string psk = args()->LookupString(flimflam::kL2tpIpsecPskProperty, "");
   if (!psk.empty()) {
     if (!file_util::CreateTemporaryFileInDir(
             manager()->run_path(), &psk_file_) ||
@@ -266,9 +266,9 @@ bool L2TPIPSecDriver::InitPSKOptions(vector<string> *options, Error *error) {
 
 void L2TPIPSecDriver::InitNSSOptions(vector<string> *options) {
   string ca_cert =
-      args_.LookupString(flimflam::kL2tpIpsecCaCertNssProperty, "");
+      args()->LookupString(flimflam::kL2tpIpsecCaCertNssProperty, "");
   if (!ca_cert.empty()) {
-    const string &vpnhost = args_.GetString(flimflam::kProviderHostProperty);
+    const string &vpnhost = args()->GetString(flimflam::kProviderHostProperty);
     vector<char> id(vpnhost.begin(), vpnhost.end());
     FilePath certfile = nss_->GetDERCertfile(ca_cert, id);
     if (certfile.empty()) {
@@ -282,7 +282,7 @@ void L2TPIPSecDriver::InitNSSOptions(vector<string> *options) {
 
 bool L2TPIPSecDriver::AppendValueOption(
     const string &property, const string &option, vector<string> *options) {
-  string value = args_.LookupString(property, "");
+  string value = args()->LookupString(property, "");
   if (!value.empty()) {
     options->push_back(option);
     options->push_back(value);
@@ -295,7 +295,7 @@ bool L2TPIPSecDriver::AppendFlag(const string &property,
                                  const string &true_option,
                                  const string &false_option,
                                  vector<string> *options) {
-  string value = args_.LookupString(property, "");
+  string value = args()->LookupString(property, "");
   if (!value.empty()) {
     options->push_back(value == "true" ? true_option : false_option);
     return true;
@@ -316,13 +316,13 @@ void L2TPIPSecDriver::OnL2TPIPSecVPNDied(GPid pid, gint status, gpointer data) {
 void L2TPIPSecDriver::GetLogin(string *user, string *password) {
   SLOG(VPN, 2) << __func__;
   string user_property =
-      args_.LookupString(flimflam::kL2tpIpsecUserProperty, "");
+      args()->LookupString(flimflam::kL2tpIpsecUserProperty, "");
   if (user_property.empty()) {
     LOG(ERROR) << "User not set.";
     return;
   }
   string password_property =
-      args_.LookupString(flimflam::kL2tpIpsecPasswordProperty, "");
+      args()->LookupString(flimflam::kL2tpIpsecPasswordProperty, "");
   if (password_property.empty()) {
     LOG(ERROR) << "Password not set.";
     return;

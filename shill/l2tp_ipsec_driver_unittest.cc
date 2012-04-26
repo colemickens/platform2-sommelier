@@ -69,7 +69,7 @@ class L2TPIPSecDriverTest : public testing::Test,
   static const int kInterfaceIndex;
 
   void SetArg(const string &arg, const string &value) {
-    driver_->args_.SetString(arg, value);
+    driver_->args()->SetString(arg, value);
   }
 
   KeyValueStore *GetArgs() {

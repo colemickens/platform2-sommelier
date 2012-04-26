@@ -13,7 +13,6 @@
 
 #include "shill/glib.h"
 #include "shill/ipconfig.h"
-#include "shill/key_value_store.h"
 #include "shill/rpc_task.h"
 #include "shill/service.h"
 #include "shill/vpn_driver.h"
@@ -111,7 +110,6 @@ class L2TPIPSecDriver : public VPNDriver,
   DeviceInfo *device_info_;
   GLib *glib_;
   NSS *nss_;
-  KeyValueStore args_;
 
   VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;
