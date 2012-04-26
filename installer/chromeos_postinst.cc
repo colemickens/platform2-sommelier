@@ -63,15 +63,6 @@ bool FirmwareUpdate(const string &install_dir, bool is_update) {
     return true;
   }
 
-  // Binary compatibility test.
-  string test_sh_command = install_dir + "/bin/sh -c exit";
-  if (system(test_sh_command.c_str()) != 0) {
-    printf("Detected incompatible system binary. "
-           "Firmware updates are disabled for system architecture transition "
-           "(ex, 32->64 bits) auto updates.\n");
-    return true;
-  }
-
   if (is_update) {
     // Background auto update by Update Engine.
     mode = "autoupdate";
