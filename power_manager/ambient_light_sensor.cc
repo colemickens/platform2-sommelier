@@ -100,7 +100,7 @@ bool AmbientLightSensor::Init() {
     return false;
   }
   if (controller_)
-    controller_->set_light_sensor(this);
+    controller_->SetAmbientLightSensor(this);
   return true;
 }
 

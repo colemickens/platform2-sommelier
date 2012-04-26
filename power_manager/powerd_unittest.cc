@@ -12,6 +12,7 @@
 
 #include "base/logging.h"
 #include "metrics/metrics_library_mock.h"
+#include "power_manager/internal_backlight_controller.h"
 #include "power_manager/metrics_constants.h"
 #include "power_manager/mock_activity_detector.h"
 #include "power_manager/mock_backlight.h"
@@ -231,7 +232,7 @@ class DaemonTest : public Test {
   PluggedState plugged_state_;
   PowerPrefs prefs_;
   PowerStatus status_;
-  BacklightController backlight_ctl_;
+  InternalBacklightController backlight_ctl_;
   StrictMock<MockBacklight> keylight_;
 
   StrictMock<MockRollingAverage> empty_average_;
@@ -637,16 +638,19 @@ TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
   daemon_.backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE);
   daemon_.plugged_state_ = kPowerDisconnected;
 
-  int64 default_brightness_percent = static_cast<int64>(lround(
-      daemon_.backlight_controller_->LevelToPercent(kDefaultBrightnessLevel)));
+  double current_percent = 0.0;
+  ASSERT_TRUE(
+      daemon_.backlight_controller_->GetCurrentBrightnessPercent(
+          &current_percent));
+  int64 current_percent_int = static_cast<int64>(lround(current_percent));
 
   ExpectEnumMetric("Power.BacklightLevelOnBattery",
-                   default_brightness_percent,
+                   current_percent_int,
                    kMetricBacklightLevelMax);
   daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
   daemon_.plugged_state_ = kPowerConnected;
   ExpectEnumMetric("Power.BacklightLevelOnAC",
-                   default_brightness_percent,
+                   current_percent_int,
                    kMetricBacklightLevelMax);
   daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
 }

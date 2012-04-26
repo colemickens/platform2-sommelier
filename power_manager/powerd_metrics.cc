@@ -43,11 +43,11 @@ void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
         kMetricIdleMax, kMetricIdleBuckets);
 
     int64 event_delta_ms = event_delta.InMilliseconds();
-    if (backlight_controller_->state() == BACKLIGHT_IDLE_OFF) {
+    if (backlight_controller_->GetPowerState() == BACKLIGHT_IDLE_OFF) {
       SendMetricWithPowerState(kMetricIdleAfterScreenOffName, event_delta_ms,
           kMetricIdleAfterScreenOffMin, kMetricIdleAfterScreenOffMax,
           kMetricIdleAfterScreenOffBuckets);
-    } else if (backlight_controller_->state() == BACKLIGHT_DIM) {
+    } else if (backlight_controller_->GetPowerState() == BACKLIGHT_DIM) {
       SendMetricWithPowerState(kMetricIdleAfterDimName, event_delta_ms,
           kMetricIdleAfterDimMin, kMetricIdleAfterDimMax,
           kMetricIdleAfterDimBuckets);
@@ -62,7 +62,7 @@ void Daemon::GenerateMetricsOnPowerEvent(const PowerStatus& info) {
 
 gboolean Daemon::GenerateBacklightLevelMetric() {
   double percent;
-  if (backlight_controller_->state() == BACKLIGHT_ACTIVE &&
+  if (backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE &&
       backlight_controller_->GetCurrentBrightnessPercent(&percent)) {
     SendEnumMetricWithPowerState(kMetricBacklightLevelName, lround(percent),
                                  kMetricBacklightLevelMax);
@@ -153,7 +153,7 @@ bool Daemon::GenerateBatteryRemainingAtStartOfSessionMetric(
 
 bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric(
     const BacklightController& backlight) {
-  int num_of_adjustments = backlight.als_adjustment_count();
+  int num_of_adjustments = backlight.GetNumAmbientLightSensorAdjustments();
 
   if (num_of_adjustments < 0) {
     LOG(ERROR) <<
@@ -174,7 +174,7 @@ bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric(
 
 bool Daemon::GenerateUserBrightnessAdjustmentsPerSessionMetric(
     const BacklightController& backlight) {
-  int adjustment_count = backlight.user_adjustment_count();
+  int adjustment_count = backlight.GetNumUserAdjustments();
 
   if (adjustment_count < 0) {
     LOG(ERROR) << "Calculation for user brightness adjustments per session "

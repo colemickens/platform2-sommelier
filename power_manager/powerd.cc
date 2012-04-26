@@ -164,7 +164,7 @@ void Daemon::Init() {
   power_supply_.GetPowerStatus(&power_status_, false);
   OnPowerEvent(this, power_status_);
   file_tagger_.Init();
-  backlight_controller_->set_observer(this);
+  backlight_controller_->SetObserver(this);
   monitor_reconfigure_->SetProjectionCallback(
       &AdjustIdleTimeoutsForProjectionThunk, this);
 }
@@ -290,12 +290,12 @@ void Daemon::SetPlugged(bool plugged) {
   // suspend timeout.
   // If the state is uninitialized, this is the powerd startup condition, so
   // we ignore any idle time from before powerd starts.
-  if (backlight_controller_->state() == BACKLIGHT_ACTIVE ||
-      backlight_controller_->state() == BACKLIGHT_DIM)
+  if (backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE ||
+      backlight_controller_->GetPowerState() == BACKLIGHT_DIM)
     SetIdleOffset(idle_time_ms, kIdleNormal);
-  else if (backlight_controller_->state() == BACKLIGHT_IDLE_OFF)
+  else if (backlight_controller_->GetPowerState() == BACKLIGHT_IDLE_OFF)
     SetIdleOffset(idle_time_ms, kIdleSuspend);
-  else if (backlight_controller_->state() == BACKLIGHT_UNINITIALIZED)
+  else if (backlight_controller_->GetPowerState() == BACKLIGHT_UNINITIALIZED)
     SetIdleOffset(idle_time_ms, kIdleNormal);
   else
     SetIdleOffset(0, kIdleNormal);
@@ -436,9 +436,9 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
   } else if (idle_time_ms >= dim_ms_ &&
              !state_control_->IsStateDisabled(kIdleDimDisabled)) {
     backlight_controller_->SetPowerState(BACKLIGHT_DIM);
-  } else if (backlight_controller_->state() != BACKLIGHT_ACTIVE) {
+  } else if (backlight_controller_->GetPowerState() != BACKLIGHT_ACTIVE) {
     if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
-      if (backlight_controller_->state() == BACKLIGHT_SUSPENDED) {
+      if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED) {
         util::CreateStatusFile(FilePath(run_dir_).Append(kUserActiveFile));
         suspender_.CancelSuspend();
       }
@@ -448,7 +448,7 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     BrightenScreenIfOff();
   }
   if (idle_time_ms >= lock_ms_ && util::LoggedIn() &&
-      backlight_controller_->state() != BACKLIGHT_SUSPENDED) {
+      backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED) {
     locker_.LockScreen();
   }
 }
@@ -502,7 +502,7 @@ void Daemon::BrightenScreenIfOff() {
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
-  if (is_idle && backlight_controller_->state() == BACKLIGHT_ACTIVE &&
+  if (is_idle && backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE &&
       dim_ms_ <= idle_time_ms && !locker_.is_locked()) {
     int64 video_time_ms = 0;
     bool video_is_playing = false;
@@ -514,18 +514,20 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     if (video_is_playing)
       SetIdleOffset(idle_time_ms - video_time_ms, kIdleNormal);
   }
-  if (is_idle && backlight_controller_->state() == BACKLIGHT_DIM &&
+  if (is_idle && backlight_controller_->GetPowerState() == BACKLIGHT_DIM &&
       !util::OOBECompleted()) {
     LOG(INFO) << "OOBE not complete. Delaying screenoff until done.";
     SetIdleOffset(idle_time_ms, kIdleScreenOff);
   }
-  if (is_idle && backlight_controller_->state() != BACKLIGHT_SUSPENDED &&
+  if (is_idle &&
+      backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED &&
       idle_time_ms >= suspend_ms_ - react_ms_) {
     // Before suspending, make sure there is no audio playing for a period of
     // time, so start polling for audio detection early.
     audio_detector_->Enable();
   }
-  if (is_idle && backlight_controller_->state() != BACKLIGHT_SUSPENDED &&
+  if (is_idle &&
+      backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED &&
       idle_time_ms >= suspend_ms_) {
     int64 audio_time_ms = 0;
     bool audio_is_playing = false;
@@ -1020,10 +1022,12 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                kBrightnessDown,
                                kBrightnessEnumMax);
-  if (!changed)
-    SendBrightnessChangedSignal(backlight_controller_->target_percent(),
-                                BRIGHTNESS_CHANGE_USER_INITIATED,
-                                kBrightnessChangedSignal);
+  if (!changed) {
+    SendBrightnessChangedSignal(
+        backlight_controller_->GetTargetBrightnessPercent(),
+        BRIGHTNESS_CHANGE_USER_INITIATED,
+        kBrightnessChangedSignal);
+  }
   return NULL;
 }
 
@@ -1034,10 +1038,12 @@ DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                kBrightnessUp,
                                kBrightnessEnumMax);
-  if (!changed)
-    SendBrightnessChangedSignal(backlight_controller_->target_percent(),
-                                BRIGHTNESS_CHANGE_USER_INITIATED,
-                                kBrightnessChangedSignal);
+  if (!changed) {
+    SendBrightnessChangedSignal(
+        backlight_controller_->GetTargetBrightnessPercent(),
+        BRIGHTNESS_CHANGE_USER_INITIATED,
+        kBrightnessChangedSignal);
+  }
   return NULL;
 }
 

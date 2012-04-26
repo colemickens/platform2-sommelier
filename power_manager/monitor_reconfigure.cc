@@ -124,7 +124,7 @@ bool MonitorReconfigure::Init() {
   LOG(INFO) << "XRandr event filter added";
 
   if (backlight_ctl_)
-    backlight_ctl_->set_monitor_reconfigure(this);
+    backlight_ctl_->SetMonitorReconfigure(this);
 
   CheckInternalPanelConnection();
 
@@ -455,7 +455,7 @@ bool MonitorReconfigure::NeedReconfigure(
   int old_noutput = saved_outputs_.size();
   int noutput = current_outputs.size();
 
-  if (backlight_ctl_ && backlight_ctl_->state() == BACKLIGHT_IDLE_OFF) {
+  if (backlight_ctl_ && backlight_ctl_->GetPowerState() == BACKLIGHT_IDLE_OFF) {
     LOG(INFO) << "System in IDLE_OFF state, skip the reconfigure";
     return false;
   }

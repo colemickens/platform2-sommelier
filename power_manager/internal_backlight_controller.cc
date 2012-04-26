@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/backlight_controller.h"
+#include "power_manager/internal_backlight_controller.h"
 
 #include <algorithm>
 #include <cmath>
@@ -102,8 +102,9 @@ const char* PowerStateToString(power_manager::PowerState state) {
 
 namespace power_manager {
 
-BacklightController::BacklightController(BacklightInterface* backlight,
-                                         PowerPrefsInterface* prefs)
+InternalBacklightController::InternalBacklightController(
+    BacklightInterface* backlight,
+    PowerPrefsInterface* prefs)
     : backlight_(backlight),
       prefs_(prefs),
       light_sensor_(NULL),
@@ -136,11 +137,22 @@ BacklightController::BacklightController(BacklightInterface* backlight,
   backlight_->set_observer(this);
 }
 
-BacklightController::~BacklightController() {
+InternalBacklightController::~InternalBacklightController() {
   backlight_->set_observer(NULL);
 }
 
-bool BacklightController::Init() {
+double InternalBacklightController::LevelToPercent(int64 raw_level) {
+  return kMaxPercent *
+      pow(static_cast<double>(raw_level) / max_level_,
+          level_to_percent_exponent_);
+}
+
+int64 InternalBacklightController::PercentToLevel(double percent) {
+  return lround(pow(percent / kMaxPercent, 1.0 / level_to_percent_exponent_) *
+                max_level_);
+}
+
+bool InternalBacklightController::Init() {
   if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
       !backlight_->GetCurrentBrightnessLevel(&target_level_)) {
     LOG(ERROR) << "Querying backlight during initialization failed";
@@ -177,7 +189,26 @@ bool BacklightController::Init() {
   return true;
 }
 
-bool BacklightController::GetCurrentBrightnessPercent(double* percent) {
+void InternalBacklightController::SetAmbientLightSensor(
+    AmbientLightSensor* sensor) {
+  light_sensor_ = sensor;
+}
+
+void InternalBacklightController::SetMonitorReconfigure(
+    MonitorReconfigure* monitor_reconfigure) {
+  monitor_reconfigure_ = monitor_reconfigure;
+}
+
+void InternalBacklightController::SetObserver(
+    BacklightControllerObserver* observer) {
+  observer_ = observer;
+}
+
+double InternalBacklightController::GetTargetBrightnessPercent() {
+  return target_percent_;
+}
+
+bool InternalBacklightController::GetCurrentBrightnessPercent(double* percent) {
   DCHECK(percent);
   int64 level = 0;
   if (!backlight_->GetCurrentBrightnessLevel(&level))
@@ -187,7 +218,7 @@ bool BacklightController::GetCurrentBrightnessPercent(double* percent) {
   return true;
 }
 
-bool BacklightController::SetCurrentBrightnessPercent(
+bool InternalBacklightController::SetCurrentBrightnessPercent(
     double percent,
     BrightnessChangeCause cause,
     TransitionStyle style) {
@@ -201,7 +232,8 @@ bool BacklightController::SetCurrentBrightnessPercent(
   return WriteBrightness(true, cause, style);
 }
 
-bool BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
+bool InternalBacklightController::IncreaseBrightness(
+    BrightnessChangeCause cause) {
   if (!is_initialized_)
     return false;
 
@@ -216,8 +248,9 @@ bool BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
   return WriteBrightness(true, cause, TRANSITION_GRADUAL);
 }
 
-bool BacklightController::DecreaseBrightness(bool allow_off,
-                                             BrightnessChangeCause cause) {
+bool InternalBacklightController::DecreaseBrightness(
+    bool allow_off,
+    BrightnessChangeCause cause) {
   if (!is_initialized_)
     return false;
 
@@ -234,7 +267,7 @@ bool BacklightController::DecreaseBrightness(bool allow_off,
   return WriteBrightness(true, cause, TRANSITION_GRADUAL);
 }
 
-bool BacklightController::SetPowerState(PowerState new_state) {
+bool InternalBacklightController::SetPowerState(PowerState new_state) {
   if (new_state == state_ || !is_initialized_)
     return false;
 
@@ -314,7 +347,11 @@ bool BacklightController::SetPowerState(PowerState new_state) {
   return true;
 }
 
-bool BacklightController::OnPlugEvent(bool is_plugged) {
+PowerState InternalBacklightController::GetPowerState() {
+  return state_;
+}
+
+bool InternalBacklightController::OnPlugEvent(bool is_plugged) {
   if ((is_plugged ? kPowerConnected : kPowerDisconnected) == plugged_state_ ||
       !is_initialized_)
     return false;
@@ -368,7 +405,8 @@ bool BacklightController::OnPlugEvent(bool is_plugged) {
   return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
 }
 
-void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
+void InternalBacklightController::SetAlsBrightnessOffsetPercent(
+    double percent) {
 #ifndef HAS_ALS
   LOG(WARNING) << "Got ALS reading from platform supposed to have no ALS. "
                << "Please check the platform ALS configuration.";
@@ -427,33 +465,30 @@ void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
   }
 }
 
-bool BacklightController::IsBacklightActiveOff() {
+bool InternalBacklightController::IsBacklightActiveOff() {
   return state_ == BACKLIGHT_ACTIVE && target_percent_ == 0;
 }
 
-double BacklightController::LevelToPercent(int64 raw_level) {
-  return kMaxPercent *
-      pow(static_cast<double>(raw_level) / max_level_,
-          level_to_percent_exponent_);
+int InternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
+  return als_adjustment_count_;
 }
 
-int64 BacklightController::PercentToLevel(double percent) {
-  return lround(pow(percent / kMaxPercent, 1.0 / level_to_percent_exponent_) *
-                max_level_);
+int InternalBacklightController::GetNumUserAdjustments() const {
+  return user_adjustment_count_;
 }
 
-void BacklightController::OnBacklightDeviceChanged() {
+void InternalBacklightController::OnBacklightDeviceChanged() {
   LOG(INFO) << "Backlight device changed; reinitializing controller";
   if (Init())
     WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
 }
 
-double BacklightController::ClampPercentToVisibleRange(double percent) {
+double InternalBacklightController::ClampPercentToVisibleRange(double percent) {
   return std::min(kMaxPercent,
                   std::max(LevelToPercent(min_visible_level_), percent));
 }
 
-void BacklightController::ReadPrefs() {
+void InternalBacklightController::ReadPrefs() {
   if (!prefs_->GetInt64(kMinVisibleBacklightLevel, &min_visible_level_))
     min_visible_level_ = 1;
   min_visible_level_ = std::max(
@@ -476,7 +511,7 @@ void BacklightController::ReadPrefs() {
   unplugged_offset_percent_ = std::max(min_percent, unplugged_offset_percent_);
 }
 
-void BacklightController::WritePrefs() {
+void InternalBacklightController::WritePrefs() {
   if (!is_initialized_)
     return;
   if (plugged_state_ == kPowerConnected)
@@ -485,9 +520,9 @@ void BacklightController::WritePrefs() {
     prefs_->SetDouble(kUnpluggedBrightnessOffset, unplugged_offset_percent_);
 }
 
-bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
-                                          BrightnessChangeCause cause,
-                                          TransitionStyle style) {
+bool InternalBacklightController::WriteBrightness(bool adjust_brightness_offset,
+                                                  BrightnessChangeCause cause,
+                                                  TransitionStyle style) {
   if (!is_initialized_)
     return false;
 
@@ -546,8 +581,8 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
   return true;
 }
 
-bool BacklightController::SetBrightness(int64 target_level,
-                                        TransitionStyle style) {
+bool InternalBacklightController::SetBrightness(int64 target_level,
+                                                TransitionStyle style) {
   int64 current_level = 0;
   backlight_->GetCurrentBrightnessLevel(&current_level);
   LOG(INFO) << "Setting brightness level to " << target_level
@@ -611,7 +646,7 @@ bool BacklightController::SetBrightness(int64 target_level,
   return true;
 }
 
-gboolean BacklightController::SetBrightnessStep() {
+gboolean InternalBacklightController::SetBrightnessStep() {
   // Determine the current step brightness using linear interpolation based on
   // how much of the expected transition time has already elapsed.
   base::TimeTicks current_time = base::TimeTicks::Now();
@@ -650,7 +685,8 @@ gboolean BacklightController::SetBrightnessStep() {
   return true;
 }
 
-void BacklightController::SetBrightnessHard(int64 level, int64 target_level) {
+void InternalBacklightController::SetBrightnessHard(int64 level,
+                                                    int64 target_level) {
   if (level != 0 && target_level != 0 && monitor_reconfigure_ &&
       monitor_reconfigure_->HasInternalPanelConnection())
     monitor_reconfigure_->SetInternalPanelOn();
@@ -673,12 +709,12 @@ void BacklightController::SetBrightnessHard(int64 level, int64 target_level) {
   }
 }
 
-void BacklightController::AppendAlsResponse(int val) {
+void InternalBacklightController::AppendAlsResponse(int val) {
   als_response_index_ = (als_response_index_ + 1) % arraysize(als_responses_);
   als_responses_[als_response_index_] = val;
 }
 
-void BacklightController::DumpAlsResponses() {
+void InternalBacklightController::DumpAlsResponses() {
   std::string buffer;
   int response_index = als_response_index_;
 

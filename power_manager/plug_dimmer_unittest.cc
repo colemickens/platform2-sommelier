@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,7 @@
 
 #include "base/command_line.h"
 #include "base/logging.h"
-#include "power_manager/backlight_controller.h"
+#include "power_manager/internal_backlight_controller.h"
 #include "power_manager/mock_backlight.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs.h"
@@ -57,7 +57,7 @@ class PlugDimmerTest : public Test {
  protected:
   MockBacklight backlight_;
   PowerPrefs prefs_;
-  BacklightController backlight_ctl_;
+  InternalBacklightController backlight_ctl_;
 
   int64 current_brightness_;
   int64 target_brightness_;

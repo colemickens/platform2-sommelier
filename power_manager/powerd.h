@@ -51,6 +51,12 @@ const KeyModifier kModifierAlt   = 4;
 
 typedef std::vector<int64> IdleThresholds;
 
+enum PluggedState {
+  kPowerDisconnected,
+  kPowerConnected,
+  kPowerUnknown,
+};
+
 class Daemon : public XIdleObserver,
                public BacklightControllerObserver {
  public:

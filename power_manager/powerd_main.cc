@@ -20,6 +20,7 @@
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/audio_detector.h"
 #include "power_manager/backlight.h"
+#include "power_manager/internal_backlight_controller.h"
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
@@ -105,7 +106,7 @@ int main(int argc, char* argv[]) {
                       power_manager::kBacklightPattern))
     LOG(WARNING) << "Cannot initialize backlight";
 #endif
-  power_manager::BacklightController backlight_ctl(&backlight, &prefs);
+  power_manager::InternalBacklightController backlight_ctl(&backlight, &prefs);
   if (!backlight_ctl.Init())
     LOG(WARNING) << "Cannot initialize backlight controller";
   power_manager::AmbientLightSensor als(&backlight_ctl, &prefs);

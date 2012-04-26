@@ -130,7 +130,7 @@ Default(power_supply_info)
 
 # Build power daemon
 backlight_controller = gdk_env.Library('backlight_controller',
-                                       ['backlight_controller.cc'])
+                                       ['internal_backlight_controller.cc'])
 power_prefs = gdk_env.Library('power_prefs', ['power_prefs.cc',
                                               'power_constants.cc'])
 powerd_env = gdk_env.Clone()
@@ -241,9 +241,11 @@ deps = [testrunner, 'plug_dimmer_unittest.cc', 'monitor_reconfigure.cc',
 tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 powerd_unittest_env = powerd_env.Clone()
 powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
-deps = [testrunner, 'powerd_unittest.cc', 'backlight_controller_unittest.cc',
-        'metrics_store_unittest.cc', 'rolling_average_unittest.cc', powerd_lib,
-        util_lib, xidle, backlight_controller, backlight, power_prefs]
+deps = [testrunner, 'powerd_unittest.cc',
+        'internal_backlight_controller_unittest.cc',
+        'metrics_store_unittest.cc', 'rolling_average_unittest.cc',
+        powerd_lib, util_lib, xidle, backlight_controller, backlight,
+        power_prefs]
 tests.append(powerd_unittest_env.Program('powerd_unittest', deps))
 file_tagger_unittest_env = powerd_env.Clone()
 file_tagger_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
