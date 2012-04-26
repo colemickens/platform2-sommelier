@@ -19,7 +19,7 @@ using std::string;
 namespace {
 
 // Expected location of the ntfs-3g executable.
-const char kMountProgramPath[] = "/bin/ntfs-3g";
+const char kMountProgramPath[] = "/usr/bin/ntfs-3g";
 
 const char kMountUser[] = "ntfs-3g";
 
