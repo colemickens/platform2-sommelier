@@ -15,6 +15,7 @@
 #include <base/file_path.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <base/string_util.h>
 
 #include "cros-disks/platform.h"
 
@@ -30,6 +31,8 @@ const mode_t kMountRootDirectoryPermissions =
     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 // Permissions to set on the mount directory (u+rwx,g+rwx).
 const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
+// Prefix of the mount label option.
+const char kMountOptionMountLabelPrefix[] = "mountlabel=";
 // Literal for unmount option: "force".
 const char kUnmountOptionForce[] = "force";
 // Maximum number of trials on creating a mount directory using
@@ -104,6 +107,10 @@ MountErrorType MountManager::Mount(const string& source_path,
     }
   }
 
+  vector<string> updated_options = options;
+  string mount_label;
+  ExtractMountLabelFromOptions(&updated_options, &mount_label);
+
   // Create a directory and set up its ownership/permissions for mounting
   // the source path. If an error occurs, ShouldReserveMountPathOnError()
   // is not called to reserve the mount path as a reserved mount path still
@@ -111,6 +118,11 @@ MountErrorType MountManager::Mount(const string& source_path,
   bool mount_path_created;
   if (mount_path->empty()) {
     actual_mount_path = SuggestMountPath(source_path);
+    if (!mount_label.empty()) {
+      // Replace the basename(|actual_mount_path|) with |mount_label|.
+      actual_mount_path =
+          FilePath(actual_mount_path).DirName().Append(mount_label).value();
+    }
     mount_path_created = platform_->CreateOrReuseEmptyDirectoryWithFallback(
         &actual_mount_path, kMaxNumMountTrials, GetReservedMountPaths());
   } else {
@@ -138,7 +150,7 @@ MountErrorType MountManager::Mount(const string& source_path,
   // ShouldReserveMountPathOnError() is called to check if the mount path
   // should be reserved.
   MountErrorType error_type =
-      DoMount(source_path, filesystem_type, options, actual_mount_path);
+      DoMount(source_path, filesystem_type, updated_options, actual_mount_path);
   if (error_type == MOUNT_ERROR_NONE) {
     LOG(INFO) << "Path '" << source_path << "' is mounted to '"
               << actual_mount_path << "'";
@@ -292,6 +304,29 @@ void MountManager::ReserveMountPath(const string& mount_path,
 
 void MountManager::UnreserveMountPath(const string& mount_path) {
   reserved_mount_paths_.erase(mount_path);
+}
+
+bool MountManager::ExtractMountLabelFromOptions(
+    vector<string>* options, std::string* mount_label) const {
+  CHECK(options) << "Invalid mount options argument";
+  CHECK(mount_label) << "Invalid mount label argument";
+
+  mount_label->clear();
+  bool found_mount_label = false;
+  vector<string>::iterator option_iterator = options->begin();
+  while (option_iterator != options->end()) {
+    if (!StartsWithASCII(*option_iterator, kMountOptionMountLabelPrefix,
+                         false)) {
+      ++option_iterator;
+      continue;
+    }
+
+    found_mount_label = true;
+    *mount_label =
+        option_iterator->substr(strlen(kMountOptionMountLabelPrefix));
+    option_iterator = options->erase(option_iterator);
+  }
+  return found_mount_label;
 }
 
 bool MountManager::ExtractUnmountOptions(const vector<string>& options,

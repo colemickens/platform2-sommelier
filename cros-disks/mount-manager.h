@@ -179,6 +179,14 @@ class MountManager {
   virtual std::string SuggestMountPath(
       const std::string& source_path) const = 0;
 
+  // Extracts the mount label, if any, from an array of options.
+  // If a mount label option is found in |options|, returns true, sets
+  // |mount_label| to the mount label value, and removes the option from
+  // |options|. If multiple mount label options are given, |mount_label|
+  // is set to the last mount label value.
+  bool ExtractMountLabelFromOptions(std::vector<std::string>* options,
+                                    std::string* mount_label) const;
+
   // Extracts unmount flags for umount() from an array of options.
   virtual bool ExtractUnmountOptions(const std::vector<std::string>& options,
                                      int *unmount_flags) const;
@@ -221,6 +229,9 @@ class MountManager {
   // the path to reserved.
   ReservedMountPathMap reserved_mount_paths_;
 
+  FRIEND_TEST(MountManagerTest, ExtractMountLabelFromOptions);
+  FRIEND_TEST(MountManagerTest, ExtractMountLabelFromOptionsWithNoMountLabel);
+  FRIEND_TEST(MountManagerTest, ExtractMountLabelFromOptionsWithTwoMountLabels);
   FRIEND_TEST(MountManagerTest, ExtractSupportedUnmountOptions);
   FRIEND_TEST(MountManagerTest, ExtractUnsupportedUnmountOptions);
   FRIEND_TEST(MountManagerTest, IsPathImmediateChildOfParent);

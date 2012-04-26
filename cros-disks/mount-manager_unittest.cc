@@ -24,6 +24,7 @@
 using std::set;
 using std::string;
 using std::vector;
+using testing::ElementsAre;
 using testing::Return;
 using testing::_;
 
@@ -358,6 +359,41 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
             manager_.Mount(source_path_, filesystem_type_, options_,
                            &mount_path_));
   EXPECT_EQ(suggested_mount_path, mount_path_);
+  EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
+  EXPECT_TRUE(manager_.UnmountAll());
+  EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
+}
+
+// Verifies that MountManager::Mount() returns no error when it successfully
+// mounts a source path with a given mount label in options.
+TEST_F(MountManagerTest, MountSucceededWithGivenMountLabel) {
+  source_path_ = "source";
+  string suggested_mount_path = "parent_path/suggested";
+  string final_mount_path = "parent_path/custom_label";
+  options_.push_back("mountlabel=custom_label");
+  vector<string> updated_options;
+
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
+  EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(final_mount_path, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, SetPermissions(final_mount_path, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform_, RemoveEmptyDirectory(final_mount_path))
+      .WillOnce(Return(true));
+  EXPECT_CALL(manager_, DoMount(source_path_, filesystem_type_, updated_options,
+                                final_mount_path))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(manager_, DoUnmount(final_mount_path, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(manager_, SuggestMountPath(source_path_))
+      .WillOnce(Return(suggested_mount_path));
+
+  EXPECT_EQ(MOUNT_ERROR_NONE,
+            manager_.Mount(source_path_, filesystem_type_, options_,
+                           &mount_path_));
+  EXPECT_EQ(final_mount_path, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
   EXPECT_TRUE(manager_.UnmountAll());
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
@@ -918,6 +954,56 @@ TEST_F(MountManagerTest, ReserveAndUnreserveMountPath) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
   EXPECT_EQ(MOUNT_ERROR_NONE,
             manager_.GetMountErrorOfReservedMountPath(mount_path_));
+}
+
+// Verifies that MountManager::ExtractMountLabelFromOptions() extracts a mount
+// label from the given options and returns true.
+TEST_F(MountManagerTest, ExtractMountLabelFromOptions) {
+  vector<string> options;
+  string mount_label;
+  options.push_back("ro");
+  options.push_back("mountlabel=My USB Drive");
+  options.push_back("noexec");
+
+  EXPECT_TRUE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
+  EXPECT_THAT(options, ElementsAre("ro", "noexec"));
+  EXPECT_EQ("My USB Drive", mount_label);
+}
+
+// Verifies that MountManager::ExtractMountLabelFromOptions() returns false
+// when no mount label is found in the given options.
+TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithNoMountLabel) {
+  vector<string> options;
+  string mount_label;
+
+  EXPECT_FALSE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
+  EXPECT_THAT(options, ElementsAre());
+  EXPECT_EQ("", mount_label);
+
+  options.push_back("ro");
+  EXPECT_FALSE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
+  EXPECT_THAT(options, ElementsAre("ro"));
+  EXPECT_EQ("", mount_label);
+
+  options.push_back("mountlabel");
+  EXPECT_FALSE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
+  EXPECT_THAT(options, ElementsAre("ro", "mountlabel"));
+  EXPECT_EQ("", mount_label);
+}
+
+// Verifies that MountManager::ExtractMountLabelFromOptions() extracts the last
+// mount label from the given options with two mount labels.
+TEST_F(MountManagerTest, ExtractMountLabelFromOptionsWithTwoMountLabels) {
+  vector<string> options;
+  string mount_label;
+  options.push_back("ro");
+  options.push_back("mountlabel=My USB Drive");
+  options.push_back("noexec");
+  options.push_back("mountlabel=Another Label");
+
+  EXPECT_TRUE(manager_.ExtractMountLabelFromOptions(&options, &mount_label));
+  EXPECT_THAT(options, ElementsAre("ro", "noexec"));
+  EXPECT_EQ("Another Label", mount_label);
 }
 
 // Verifies that MountManager::ExtractUnmountOptions() extracts supported
