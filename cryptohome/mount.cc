@@ -68,6 +68,7 @@ const base::TimeDelta kOldUserLastActivityTime = base::TimeDelta::FromDays(92);
 
 const char kDefaultEcryptfsCryptoAlg[] = "aes";
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
+const gid_t kDaemonStoreGid = 400;
 
 // A helper class for scoping umask changes.
 class ScopedUmask {
@@ -1284,8 +1285,9 @@ void Mount::MigrateToUserHome(const std::string& vault_path) const {
   // finish it.
   if (platform_->Stat(root_path.value(), &st) &&
       S_ISDIR(st.st_mode) &&
+      st.st_mode & S_ISVTX &&
       st.st_uid == kMountOwnerUid &&
-      st.st_gid == kMountOwnerGid) {
+      st.st_gid == kDaemonStoreGid) {
       return;
   }
 
@@ -1336,6 +1338,16 @@ void Mount::MigrateToUserHome(const std::string& vault_path) const {
   // Create root_path at the end as a sentinel for migration.
   if (!platform_->CreateDirectory(root_path.value())) {
     PLOG(ERROR) << "CreateDirectory() failed: " << root_path.value();
+    return;
+  }
+  if (!platform_->SetOwnership(root_path.value(), kMountOwnerUid,
+                               kDaemonStoreGid)) {
+    PLOG(ERROR) << "SetOwnership() failed: " << root_path.value();
+    return;
+  }
+  if (!platform_->SetPermissions(root_path.value(),
+                                 S_IRWXU | S_IRWXG | S_ISVTX)) {
+    PLOG(ERROR) << "SetPermissions() failed: " << root_path.value();
     return;
   }
   LOG(INFO) << "Migrated user directory: " << vault_path.c_str();
