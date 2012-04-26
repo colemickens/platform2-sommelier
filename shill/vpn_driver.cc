@@ -96,10 +96,10 @@ void VPNDriver::InitPropertyStore(PropertyStore *store) {
                 i)));
   }
 
-  store->RegisterDerivedStringmap(
+  store->RegisterDerivedKeyValueStore(
       flimflam::kProviderProperty,
-      StringmapAccessor(
-          new CustomAccessor<VPNDriver, Stringmap>(
+      KeyValueStoreAccessor(
+          new CustomAccessor<VPNDriver, KeyValueStore>(
               this, &VPNDriver::GetProvider, NULL)));
 }
 
@@ -129,24 +129,23 @@ void VPNDriver::SetMappedProperty(
   args_.SetString(properties_[index].property, value);
 }
 
-Stringmap VPNDriver::GetProvider(Error *error) {
+KeyValueStore VPNDriver::GetProvider(Error *error) {
   SLOG(VPN, 2) << __func__;
   string provider_prefix = string(flimflam::kProviderProperty) + ".";
-  Stringmap provider_properties;
+  KeyValueStore provider_properties;
 
   for (size_t i = 0; i < property_count_; i++) {
     if ((properties_[i].flags & Property::kWriteOnly)) {
       continue;
     }
-
-    string prop = properties_[i].property;
-
-    // Chomp off leading "Provider." from properties that have this prefix.
-    if (StartsWithASCII(prop, provider_prefix, false)) {
-      prop = prop.substr(provider_prefix.length());
-    }
-    if (args_.ContainsString(properties_[i].property)) {
-      provider_properties[prop] = args_.GetString(properties_[i].property);
+    string value = args_.LookupString(properties_[i].property, "");
+    if (!value.empty()) {
+      // Chomp off leading "Provider." from properties that have this prefix.
+      string prop = properties_[i].property;
+      if (StartsWithASCII(prop, provider_prefix, false)) {
+        prop = prop.substr(provider_prefix.length());
+      }
+      provider_properties.SetString(prop, value);
     }
   }
 

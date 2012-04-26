@@ -620,4 +620,13 @@ string OpenVPNDriver::GetProviderType() const {
   return flimflam::kProviderOpenVpn;
 }
 
+KeyValueStore OpenVPNDriver::GetProvider(Error *error) {
+  SLOG(VPN, 2) << __func__;
+  KeyValueStore props = VPNDriver::GetProvider(error);
+  props.SetBool(flimflam::kPassphraseRequiredProperty,
+                args()->LookupString(
+                    flimflam::kOpenVPNPasswordProperty, "").empty());
+  return props;
+}
+
 }  // namespace shill

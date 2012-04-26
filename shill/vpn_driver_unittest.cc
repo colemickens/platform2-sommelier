@@ -98,10 +98,10 @@ class VPNDriverTest : public Test {
                                  const string &key,
                                  string *value,
                                  Error *error);
-  bool FindStringmapPropertyInStore(const PropertyStore &store,
-                                    const string &key,
-                                    Stringmap *value,
-                                    Error *error);
+  bool FindKeyValueStorePropertyInStore(const PropertyStore &store,
+                                        const string &key,
+                                        KeyValueStore *value,
+                                        Error *error);
 
   NiceMockControl control_;
   NiceMock<MockDeviceInfo> device_info_;
@@ -128,12 +128,12 @@ bool VPNDriverTest::FindStringPropertyInStore(const PropertyStore &store,
   return false;
 }
 
-bool VPNDriverTest::FindStringmapPropertyInStore(const PropertyStore &store,
-                                                 const string &key,
-                                                 Stringmap *value,
-                                                 Error *error) {
-  ReadablePropertyConstIterator<Stringmap> it =
-      store.GetStringmapPropertiesIter();
+bool VPNDriverTest::FindKeyValueStorePropertyInStore(const PropertyStore &store,
+                                                     const string &key,
+                                                     KeyValueStore *value,
+                                                     Error *error) {
+  ReadablePropertyConstIterator<KeyValueStore> it =
+      store.GetKeyValueStorePropertiesIter();
   for ( ; !it.AtEnd(); it.Advance()) {
     if (it.Key() == key) {
       *value = it.Value(error);
@@ -237,24 +237,23 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   // We should instead be able to find it within the "Provider" stringmap.
   {
     Error error;
-    Stringmap provider_properties;
+    KeyValueStore provider_properties;
     EXPECT_TRUE(
-        FindStringmapPropertyInStore(
+        FindKeyValueStorePropertyInStore(
             store, flimflam::kProviderProperty, &provider_properties, &error));
-    EXPECT_TRUE(ContainsKey(provider_properties, kPortProperty));
-    EXPECT_EQ(kPort, provider_properties[kPortProperty]);
+    EXPECT_EQ(kPort, provider_properties.LookupString(kPortProperty, ""));
   }
 
   // Properties that start with the prefix "Provider." should be mapped to the
   // name in the Properties dict with the prefix removed.
   {
     Error error;
-    Stringmap provider_properties;
+    KeyValueStore provider_properties;
     EXPECT_TRUE(
-        FindStringmapPropertyInStore(
+        FindKeyValueStorePropertyInStore(
             store, flimflam::kProviderProperty, &provider_properties, &error));
-    EXPECT_TRUE(ContainsKey(provider_properties, flimflam::kNameProperty));
-    EXPECT_EQ(kProviderName, provider_properties[flimflam::kNameProperty]);
+    EXPECT_EQ(kProviderName,
+              provider_properties.LookupString(flimflam::kNameProperty, ""));
   }
 
   // If we clear this property, we should no longer be able to find it.

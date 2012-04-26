@@ -59,8 +59,9 @@ class VPNDriver {
 
   Manager *manager() const { return manager_; }
 
+  virtual KeyValueStore GetProvider(Error *error);
+
  private:
-  Stringmap GetProvider(Error *error);
   void ClearMappedProperty(const size_t &index, Error *error);
   std::string GetMappedProperty(const size_t &index, Error *error);
   void SetMappedProperty(

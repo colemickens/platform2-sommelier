@@ -60,9 +60,15 @@ void KeyValueStore::RemoveString(const string &name) {
   string_properties_.erase(name);
 }
 
+bool KeyValueStore::LookupBool(const string &name, bool default_value) const {
+  map<string, bool>::const_iterator it(bool_properties_.find(name));
+  return it == bool_properties_.end() ? default_value : it->second;
+}
+
 string KeyValueStore::LookupString(const string &name,
                                    const string &default_value) const {
-  return ContainsString(name) ? GetString(name) : default_value;
+  map<string, string>::const_iterator it(string_properties_.find(name));
+  return it == string_properties_.end() ? default_value : it->second;
 }
 
 }  // namespace shill

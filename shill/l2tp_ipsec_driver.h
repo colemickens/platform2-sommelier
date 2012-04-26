@@ -99,6 +99,9 @@ class L2TPIPSecDriver : public VPNDriver,
   // Called when the l2tpipsec_vpn process exits.
   static void OnL2TPIPSecVPNDied(GPid pid, gint status, gpointer data);
 
+  // Inherit from VPNDriver to add custom properties.
+  virtual KeyValueStore GetProvider(Error *error);
+
   // Implements RPCTaskDelegate.
   virtual void GetLogin(std::string *user, std::string *password);
   virtual void Notify(const std::string &reason,

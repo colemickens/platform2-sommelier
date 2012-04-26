@@ -396,4 +396,16 @@ void L2TPIPSecDriver::Notify(
   device_->UpdateIPConfig(properties);
 }
 
+KeyValueStore L2TPIPSecDriver::GetProvider(Error *error) {
+  SLOG(VPN, 2) << __func__;
+  KeyValueStore props = VPNDriver::GetProvider(error);
+  props.SetBool(flimflam::kPassphraseRequiredProperty,
+                args()->LookupString(
+                    flimflam::kL2tpIpsecPasswordProperty, "").empty());
+  props.SetBool(flimflam::kL2tpIpsecPskRequiredProperty,
+                args()->LookupString(
+                    flimflam::kL2tpIpsecPskProperty, "").empty());
+  return props;
+}
+
 }  // namespace shill

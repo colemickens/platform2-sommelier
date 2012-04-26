@@ -132,6 +132,9 @@ class OpenVPNDriver : public VPNDriver,
   // Called when the openpvn process exits.
   static void OnOpenVPNDied(GPid pid, gint status, gpointer data);
 
+  // Inherit from VPNDriver to add custom properties.
+  virtual KeyValueStore GetProvider(Error *error);
+
   // Implements RPCTaskDelegate.
   virtual void GetLogin(std::string *user, std::string *password);
   virtual void Notify(const std::string &reason,

@@ -18,6 +18,15 @@ class KeyValueStoreTest : public Test {
   KeyValueStore store_;
 };
 
+TEST_F(KeyValueStoreTest, LookupBool) {
+  EXPECT_FALSE(store_.LookupBool("foo", false));
+  store_.SetBool("foo", true);
+  EXPECT_TRUE(store_.LookupBool("foo", false));
+  EXPECT_TRUE(store_.LookupBool("moo", true));
+  store_.SetBool("moo", false);
+  EXPECT_FALSE(store_.LookupBool("moo", true));
+}
+
 TEST_F(KeyValueStoreTest, LookupString) {
   EXPECT_EQ("bar", store_.LookupString("foo", "bar"));
   store_.SetString("foo", "zoo");
