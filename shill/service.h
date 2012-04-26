@@ -233,6 +233,9 @@ class Service : public base::RefCounted<Service> {
   // of this service's technology via a property set on it.
   virtual bool IsPortalDetectionAuto() const;
 
+  // Returns true if the service is persisted to a non-ephemeral profile.
+  virtual bool IsRemembered() const;
+
   // Returns true if the service RPC identifier should be part of the
   // manager's advertised services list, false otherwise.
   virtual bool IsVisible() const { return true; }

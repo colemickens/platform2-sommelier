@@ -710,7 +710,7 @@ ByteArrays WiFi::GetHiddenSSIDList() {
   for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
        ++it) {
-    if ((*it)->hidden_ssid() && (*it)->favorite()) {
+    if ((*it)->hidden_ssid() && (*it)->IsRemembered()) {
       hidden_ssids_set.insert((*it)->ssid());
     }
   }

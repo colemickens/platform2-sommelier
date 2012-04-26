@@ -423,6 +423,22 @@ TEST_F(ServiceTest, ConfigureIgnoredProperty) {
   EXPECT_FALSE(service_->auto_connect());
 }
 
+TEST_F(ServiceTest, IsRemembered) {
+  ServiceConstRefPtr service_ref(service_);
+  service_->set_profile(NULL);
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(_)).Times(0);
+  EXPECT_FALSE(service_->IsRemembered());
+
+  scoped_refptr<MockProfile> profile(
+      new StrictMock<MockProfile>(control_interface(), manager()));
+  service_->set_profile(profile);
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(service_ref))
+     .WillOnce(Return(true))
+     .WillOnce(Return(false));
+  EXPECT_FALSE(service_->IsRemembered());
+  EXPECT_TRUE(service_->IsRemembered());
+}
+
 TEST_F(ServiceTest, OnPropertyChanged) {
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(control_interface(), manager()));

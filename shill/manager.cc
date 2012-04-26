@@ -494,6 +494,10 @@ void Manager::SetStartupPortalList(const string &portal_list) {
   use_startup_portal_list_ = true;
 }
 
+bool Manager::IsServiceEphemeral(const ServiceConstRefPtr &service) const {
+  return service->profile() == ephemeral_profile_;
+}
+
 const ProfileRefPtr &Manager::ActiveProfile() const {
   DCHECK_NE(profiles_.size(), 0U);
   return profiles_.back();
@@ -725,7 +729,7 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
   if (to_update->IsConnected()) {
     bool originally_favorite = to_update->favorite();
     to_update->MakeFavorite();
-    if (to_update->profile().get() == ephemeral_profile_.get()) {
+    if (IsServiceEphemeral(to_update)) {
       if (profiles_.empty()) {
         LOG(ERROR) << "Cannot assign profile to service: no profiles exist!";
       } else {
@@ -1065,7 +1069,7 @@ void Manager::ConfigureService(const KeyValueStore &args, Error *error) {
     // If the service has been registered (it may not be -- as is the case
     // with invisible WiFi networks), we can now transfer the service between
     // profiles.
-    if (service->profile() == ephemeral_profile_ ||
+    if (IsServiceEphemeral(service) ||
         (profile_specified && service->profile() != profile)) {
       SLOG(Manager, 2) << "Moving service to profile "
                        << profile->GetFriendlyName();

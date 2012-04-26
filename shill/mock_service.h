@@ -49,6 +49,7 @@ class MockService : public Service {
   MOCK_METHOD2(Configure, void(const KeyValueStore &args, Error *error));
   MOCK_CONST_METHOD0(IsPortalDetectionDisabled, bool());
   MOCK_CONST_METHOD0(IsPortalDetectionAuto, bool());
+  MOCK_CONST_METHOD0(IsRemembered, bool());
   MOCK_CONST_METHOD0(HasProxyConfig, bool());
   MOCK_METHOD1(SetConnection, void(ConnectionRefPtr connection));
   MOCK_CONST_METHOD0(connection, const ConnectionRefPtr &());

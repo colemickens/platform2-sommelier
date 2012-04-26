@@ -37,6 +37,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
 #include "shill/mock_power_manager_proxy.h"
+#include "shill/mock_profile.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_store.h"
 #include "shill/mock_supplicant_bss_proxy.h"
@@ -431,6 +432,11 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(*storage, GetString(StrEq(*id), flimflam::kSSIDProperty, _))
         .WillRepeatedly(DoAll(SetArgumentPointee<2>(hex_ssid), Return(true)));
   }
+
+  NiceMockControl *control_interface() {
+    return &control_interface_;
+  }
+
   MockManager *manager() {
     return &manager_;
   }
@@ -1304,18 +1310,20 @@ TEST_F(WiFiMainTest, ScanHidden) {
           DBus::Error(
               "fi.w1.wpa_supplicant1.InterfaceUnknown",
               "test threw fi.w1.wpa_supplicant1.InterfaceUnknown")));
+  scoped_refptr<MockProfile> profile(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
   {
-    // Create a hidden, favorite service.
+    // Create a hidden service with an associated profile.
     Error e;
     WiFiServiceRefPtr service =
         GetServiceInner(flimflam::kTypeWifi, "ssid0", flimflam::kModeManaged,
                         NULL, NULL, true, &e);
     EXPECT_TRUE(e.IsSuccess());
     EXPECT_TRUE(service->hidden_ssid());
-    service->MakeFavorite();
+    service->set_profile(profile);
   }
   {
-    // Create a hidden, non-favorite service.
+    // Create a hidden service without an associated profile.
     Error e;
     WiFiServiceRefPtr service =
         GetServiceInner(flimflam::kTypeWifi, "ssid1", flimflam::kModeManaged,
@@ -1324,14 +1332,14 @@ TEST_F(WiFiMainTest, ScanHidden) {
     EXPECT_TRUE(service->hidden_ssid());
   }
   {
-    // Create a non-hidden, favorite service.
+    // Create a non-hidden service with an associated profile.
     Error e;
     WiFiServiceRefPtr service =
         GetServiceInner(flimflam::kTypeWifi, "ssid2", flimflam::kModeManaged,
                         NULL, NULL, false, &e);
     EXPECT_TRUE(e.IsSuccess());
     EXPECT_FALSE(service->hidden_ssid());
-    service->MakeFavorite();
+    service->set_profile(profile);
   }
   EXPECT_CALL(*supplicant_interface_proxy_, Scan(HasHiddenSSID("ssid0")));
   StartWiFi();

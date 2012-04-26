@@ -444,6 +444,10 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
   }
 }
 
+bool Service::IsRemembered() const {
+  return profile_ && !manager_->IsServiceEphemeral(this);
+}
+
 void Service::MakeFavorite() {
   if (favorite_) {
     // We do not want to clobber the value of auto_connect_ (it may

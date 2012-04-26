@@ -158,6 +158,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // profile.
   void SetStartupPortalList(const std::string &portal_list);
 
+  // Return whether a service belongs to the ephemeral profile.
+  virtual bool IsServiceEphemeral(const ServiceConstRefPtr &service) const;
+
   std::string CalculateState(Error *error);
 
   virtual int GetPortalCheckInterval() const {
