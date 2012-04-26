@@ -133,11 +133,10 @@ stop)
     fi
 
     logger -t systrace "stop tracing"
-    # add sync marker for chrome to time-shift system events;
-    # note we need the monotonic time
-    marker=$(printf 'trace_event_clock_sync: parent_ts=%s\n' \
-        $(/usr/libexec/debugd/helpers/clock_monotonic))
-    tracing_write "${marker}" trace_marker
+    # Add null sync marker for chrome so events are 0-time-shifted
+    # (on chrome os user-space events are stamped with the kernel
+    #  trace clock so there is no need to time-shift events).
+    tracing_write 'trace_event_clock_sync: parent_ts=0' trace_marker
     tracing_reset
 
     # NB: debugd attaches stdout to an fd passed in by the client
