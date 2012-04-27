@@ -228,22 +228,12 @@ backlight_unittest_env = gdk_env.Clone()
 backlight_unittest_env.Append(LIBS=Split('gtest gmock Xext'))
 deps = [testrunner, 'backlight_unittest.cc', backlight, power_prefs, util_lib]
 tests.append(backlight_unittest_env.Program('backlight_unittest', deps))
-dimmer_unittest_env = gdk_env.Clone()
-dimmer_libs = Split('gtest gmock Xext X11 Xrandr');
-dimmer_unittest_env.Append(LIBS=dimmer_libs);
-deps = [testrunner, 'idle_dimmer_unittest.cc', 'monitor_reconfigure.cc',
-        'resolution_selector.cc', backlight_controller, backlight, power_prefs,
-        util_lib]
-tests.append(dimmer_unittest_env.Program('idle_dimmer_unittest', deps))
-deps = [testrunner, 'plug_dimmer_unittest.cc', 'monitor_reconfigure.cc',
-        'resolution_selector.cc', backlight_controller, backlight, power_prefs,
-        util_lib]
-tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 powerd_unittest_env = powerd_env.Clone()
-powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
+powerd_unittest_env.Append(LIBS=Split('gmock gtest X11 Xext Xrandr Xtst'))
 deps = [testrunner, 'powerd_unittest.cc',
-        'internal_backlight_controller_unittest.cc',
-        'metrics_store_unittest.cc', 'rolling_average_unittest.cc',
+        'idle_dimmer_unittest.cc', 'internal_backlight_controller_unittest.cc',
+        'metrics_store_unittest.cc', 'plug_dimmer_unittest.cc',
+        'rolling_average_unittest.cc',
         powerd_lib, util_lib, xidle, backlight_controller, backlight,
         power_prefs]
 tests.append(powerd_unittest_env.Program('powerd_unittest', deps))
