@@ -326,6 +326,11 @@ class Service : public base::RefCounted<Service> {
   const ProfileRefPtr &profile() const;
   void set_profile(const ProfileRefPtr &p);
 
+  // Notification that occurs when a service now has profile data saved
+  // on its behalf.  Some service types like WiFi can choose to register
+  // themselves at this point.
+  virtual void OnProfileConfigured() {}
+
   // Notification that occurs when a single property has been changed via
   // the RPC adaptor.
   void OnPropertyChanged(const std::string &property);

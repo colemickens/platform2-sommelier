@@ -1079,6 +1079,9 @@ void Manager::ConfigureService(const KeyValueStore &args, Error *error) {
       }
     }
   }
+
+  // Notify the service that a profile has been configured for it.
+  service->OnProfileConfigured();
 }
 
 void Manager::RecheckPortal(Error */*error*/) {

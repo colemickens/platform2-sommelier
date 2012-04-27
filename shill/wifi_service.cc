@@ -21,6 +21,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ieee80211.h"
+#include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/nss.h"
 #include "shill/property_accessor.h"
@@ -305,7 +306,6 @@ bool WiFiService::Save(StoreInterface *storage) {
   storage->SetString(id, kStorageSecurity, security_);
   storage->SetString(id, kStorageSSID, hex_ssid_);
 
-  // TODO(quiche): Save Passphrase property. (crosbug.com/23467)
   return true;
 }
 
@@ -726,6 +726,17 @@ void WiFiService::set_eap(const EapCredentials &new_eap) {
   }
   Service::set_eap(modified_eap);
   UpdateConnectable();
+}
+
+void WiFiService::OnProfileConfigured() {
+  if (profile() || !hidden_ssid()) {
+    return;
+  }
+  // This situation occurs when a hidden WiFi service created via GetService
+  // has been persisted to a profile in Manager::ConfigureService().  Now
+  // that configuration is saved, we must join the service with its profile,
+  // which will make this SSID eligible for directed probes during scans.
+  manager()->RegisterService(this);
 }
 
 bool WiFiService::Is8021x() const {

@@ -97,6 +97,10 @@ class WiFiService : public Service {
   // when the EAP credentials change for 802.1x networks.
   void set_eap(const EapCredentials& eap);
 
+  // Override from parent Service class to register hidden services once they
+  // have been configured.
+  virtual void OnProfileConfigured();
+
  protected:
   virtual bool IsAutoConnectable(const char **reason) const;
 
