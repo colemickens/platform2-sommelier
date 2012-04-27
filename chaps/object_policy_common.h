@@ -37,23 +37,8 @@ class ObjectPolicyCommon : public ObjectPolicy {
   std::map<CK_ATTRIBUTE_TYPE, AttributePolicy> policies_;
   // Helps sub-classes add more policies.
   void AddPolicies(const AttributePolicy* policies, int size);
-};
-
-// Allows an object to explicitly enforce no policies.
-class ObjectPolicyNone : public ObjectPolicy {
- public:
-  virtual void Init(Object* object) {}
-  virtual bool IsReadAllowed(CK_ATTRIBUTE_TYPE type) {
-    return true;
-  }
-  virtual bool IsModifyAllowed(CK_ATTRIBUTE_TYPE type,
-                               const std::string& value) {
-    return true;
-  }
-  virtual bool IsObjectComplete() {
-    return true;
-  }
-  virtual void SetDefaultAttributes() {}
+  // Determines whether the object is private based on object class.
+  bool IsPrivateClass();
 };
 
 }  // namespace
