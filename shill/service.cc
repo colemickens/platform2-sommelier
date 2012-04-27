@@ -213,6 +213,8 @@ Service::Service(ControlInterface *control_interface,
 
   metrics_->RegisterService(this);
 
+  static_ip_parameters_.PlumbPropertyStore(&store_);
+
   IgnoreParameterForConfigure(flimflam::kTypeProperty);
   IgnoreParameterForConfigure(flimflam::kProfileProperty);
 
@@ -319,7 +321,7 @@ bool Service::Load(StoreInterface *storage) {
   storage->GetString(id, kStorageGUID, &guid_);
 
   LoadEapCredentials(storage, id);
-
+  static_ip_parameters_.Load(storage, id);
   // TODO(petkov): Load these:
 
   // "Failure"
@@ -379,6 +381,7 @@ bool Service::Save(StoreInterface *storage) {
   SaveString(storage, id, kStorageGUID, guid_, false, true);
 
   SaveEapCredentials(storage, id);
+  static_ip_parameters_.Save(storage, id);
 
   // TODO(petkov): Save these:
 

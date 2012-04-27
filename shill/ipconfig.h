@@ -23,6 +23,7 @@ namespace shill {
 class ControlInterface;
 class Error;
 class IPConfigAdaptorInterface;
+class StaticIPParameters;
 class StoreInterface;
 
 // IPConfig superclass. Individual IP configuration types will inherit from this
@@ -91,6 +92,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
+  void ApplyStaticIPParameters(const StaticIPParameters &static_ip_parameters);
 
   // |id_suffix| is used to generate a storage ID that binds this instance
   // to its associated device.

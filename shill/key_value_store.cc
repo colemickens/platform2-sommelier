@@ -18,6 +18,10 @@ bool KeyValueStore::ContainsBool(const string &name) const {
   return ContainsKey(bool_properties_, name);
 }
 
+bool KeyValueStore::ContainsInt(const string &name) const {
+  return ContainsKey(int_properties_, name);
+}
+
 bool KeyValueStore::ContainsString(const string &name) const {
   return ContainsKey(string_properties_, name);
 }
@@ -29,6 +33,12 @@ bool KeyValueStore::ContainsUint(const string &name) const {
 bool KeyValueStore::GetBool(const string &name) const {
   map<string, bool>::const_iterator it(bool_properties_.find(name));
   CHECK(it != bool_properties_.end()) << "for bool property " << name;
+  return it->second;
+}
+
+int32 KeyValueStore::GetInt(const string &name) const {
+  map<string, int32>::const_iterator it(int_properties_.find(name));
+  CHECK(it != int_properties_.end()) << "for int property " << name;
   return it->second;
 }
 
@@ -48,6 +58,10 @@ void KeyValueStore::SetBool(const string &name, bool value) {
   bool_properties_[name] = value;
 }
 
+void KeyValueStore::SetInt(const string &name, int32 value) {
+  int_properties_[name] = value;
+}
+
 void KeyValueStore::SetString(const string &name, const string &value) {
   string_properties_[name] = value;
 }
@@ -58,6 +72,10 @@ void KeyValueStore::SetUint(const string &name, uint32 value) {
 
 void KeyValueStore::RemoveString(const string &name) {
   string_properties_.erase(name);
+}
+
+void KeyValueStore::RemoveInt(const string &name) {
+  int_properties_.erase(name);
 }
 
 bool KeyValueStore::LookupBool(const string &name, bool default_value) const {

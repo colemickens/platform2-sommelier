@@ -66,8 +66,11 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   local.set_prefix(properties.subnet_prefix);
 
   IPAddress broadcast(properties.address_family);
-  if (!broadcast.SetAddressFromString(properties.broadcast_address) &&
-      technology_ != Technology::kVPN) {
+  if (properties.broadcast_address.empty()) {
+    if (technology_ != Technology::kVPN) {
+      LOG(WARNING) << "Broadcast address is not set.  Using default.";
+    }
+  } else if (!broadcast.SetAddressFromString(properties.broadcast_address)) {
     LOG(ERROR) << "Broadcast address " << properties.broadcast_address
                << " is invalid";
     return;

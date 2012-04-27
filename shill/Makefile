@@ -192,6 +192,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	shill_test_config.o \
 	shill_time.o \
 	sockets.o \
+	static_ip_parameters.o \
 	supplicant_bss_proxy.o \
 	supplicant_interface_proxy.o \
 	supplicant_process_proxy.o \
@@ -326,6 +327,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	service_under_test.o \
 	service_unittest.o \
 	shill_unittest.o \
+	static_ip_parameters_unittest.o \
 	technology_unittest.o \
 	testrunner.o \
 	vpn_driver_unittest.o \

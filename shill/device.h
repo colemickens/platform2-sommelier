@@ -306,6 +306,9 @@ class Device : public base::RefCounted<Device> {
   static const char kStoragePowered[];
   static const char kStorageIPConfigs[];
 
+  // Configure static IP address parameters if the service provides them.
+  void ConfigureStaticIPTask();
+
   void SetEnabledInternal(bool enable, bool persist,
                           Error *error, const ResultCallback &callback);
 

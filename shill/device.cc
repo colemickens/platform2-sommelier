@@ -307,6 +307,8 @@ bool Device::AcquireIPConfig() {
   ipconfig_ = dhcp_provider_->CreateConfig(link_name_, manager_->GetHostName());
   ipconfig_->RegisterUpdateCallback(Bind(&Device::OnIPConfigUpdated,
                                          weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostTask(Bind(&Device::ConfigureStaticIPTask,
+                             weak_ptr_factory_.GetWeakPtr()));
   return ipconfig_->RequestIP();
 }
 
@@ -337,14 +339,39 @@ void Device::HelpRegisterConstDerivedRpcIdentifiers(
           new CustomAccessor<Device, RpcIdentifiers>(this, get, NULL)));
 }
 
+void Device::ConfigureStaticIPTask() {
+  SLOG(Device, 2) << __func__ << " selected_service " << selected_service_.get()
+                  << " ipconfig " << ipconfig_.get();
+
+  if (!selected_service_ || !ipconfig_) {
+    return;
+  }
+
+  const StaticIPParameters &static_ip_parameters =
+      selected_service_->static_ip_parameters();
+  if (static_ip_parameters.ContainsAddress()) {
+    SLOG(Device, 2) << __func__ << " " << " configuring static IP parameters.";
+    // If the parameters contain an IP address, apply them now and bring
+    // the interface up.  When DHCP information arrives, it will supplement
+    // the static information.
+    OnIPConfigUpdated(ipconfig_, true);
+  } else {
+    SLOG(Device, 2) << __func__ << " " << " no static IP address.";
+  }
+}
+
 void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
   SLOG(Device, 2) << __func__ << " " << " success: " << success;
   if (success) {
     CreateConnection();
+    if (selected_service_) {
+      ipconfig->ApplyStaticIPParameters(
+          selected_service_->static_ip_parameters());
+    }
     connection_->UpdateFromIPConfig(ipconfig);
     // SetConnection must occur after the UpdateFromIPConfig so the
     // service can use the values derived from the connection.
-    if (selected_service_.get()) {
+    if (selected_service_) {
       selected_service_->SetConnection(connection_);
     }
     // The service state change needs to happen last, so that at the

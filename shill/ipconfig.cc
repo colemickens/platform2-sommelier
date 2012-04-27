@@ -11,6 +11,7 @@
 #include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/scope_logger.h"
+#include "shill/static_ip_parameters.h"
 #include "shill/store_interface.h"
 
 using base::Callback;
@@ -93,6 +94,11 @@ bool IPConfig::RenewIP() {
 
 bool IPConfig::ReleaseIP() {
   return false;
+}
+
+void IPConfig::ApplyStaticIPParameters(
+    const StaticIPParameters &static_ip_parameters) {
+  static_ip_parameters.ApplyTo(&properties_);
 }
 
 bool IPConfig::Load(StoreInterface *storage, const string &id_suffix) {

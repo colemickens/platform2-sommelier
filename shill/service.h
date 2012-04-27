@@ -22,6 +22,7 @@
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/sockets.h"
+#include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
 
 namespace chromeos_metrics {
@@ -338,6 +339,9 @@ class Service : public base::RefCounted<Service> {
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
   virtual const ConnectionRefPtr &connection() const { return connection_; }
+  const StaticIPParameters &static_ip_parameters() const {
+    return static_ip_parameters_;
+  }
 
  protected:
   // Returns true if a character is allowed to be in a service storage id.
@@ -519,6 +523,7 @@ class Service : public base::RefCounted<Service> {
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
   scoped_ptr<HTTPProxy> http_proxy_;
   ConnectionRefPtr connection_;
+  StaticIPParameters static_ip_parameters_;
   Metrics *metrics_;
   Manager *manager_;
   Sockets sockets_;

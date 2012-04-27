@@ -281,9 +281,9 @@ bool RTNLHandler::AddressRequest(int interface_index,
                                  RTNLMessage::Mode mode,
                                  int flags,
                                  const IPAddress &local,
-                                 const IPAddress &gateway,
+                                 const IPAddress &broadcast,
                                  const IPAddress &peer) {
-  CHECK(local.family() == gateway.family());
+  CHECK(local.family() == broadcast.family());
   CHECK(local.family() == peer.family());
 
   RTNLMessage msg(
@@ -301,8 +301,8 @@ bool RTNLHandler::AddressRequest(int interface_index,
       0));
 
   msg.SetAttribute(IFA_LOCAL, local.address());
-  if (!gateway.IsDefault()) {
-    msg.SetAttribute(IFA_BROADCAST, gateway.address());
+  if (!broadcast.IsDefault()) {
+    msg.SetAttribute(IFA_BROADCAST, broadcast.address());
   }
   if (!peer.IsDefault()) {
     msg.SetAttribute(IFA_ADDRESS, peer.address());
