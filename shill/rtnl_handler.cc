@@ -231,10 +231,15 @@ void RTNLHandler::ParseRTNL(InputData *data) {
     SLOG(RTNL, 3) << __func__ << ": received payload (" << end - buf << ")";
 
     RTNLMessage msg;
-    if (!msg.Decode(ByteString(reinterpret_cast<unsigned char *>(hdr),
-                               hdr->nlmsg_len))) {
+    ByteString payload(reinterpret_cast<unsigned char *>(hdr), hdr->nlmsg_len);
+    SLOG(RTNL, 5) << "RTNL received payload length " << payload.GetLength()
+                  << ": \"" << payload.HexEncode() << "\"";
+    if (!msg.Decode(payload)) {
       SLOG(RTNL, 3) << __func__ << ": rtnl packet type "
-                    << hdr->nlmsg_type << " length " << hdr->nlmsg_len;
+                    << hdr->nlmsg_type
+                    << " length " << hdr->nlmsg_len
+                    << " sequence " << hdr->nlmsg_seq;
+
       switch (hdr->nlmsg_type) {
         case NLMSG_NOOP:
         case NLMSG_OVERRUN:
@@ -367,12 +372,18 @@ int RTNLHandler::GetInterfaceIndex(const string &interface_name) {
 }
 
 bool RTNLHandler::SendMessage(RTNLMessage *message) {
-  message->set_seq(request_sequence_++);
+  message->set_seq(request_sequence_);
   ByteString msgdata = message->Encode();
 
   if (msgdata.GetLength() == 0) {
     return false;
   }
+
+  SLOG(RTNL, 5) << "RTNL sending payload with request sequence "
+                << request_sequence_ << ", length " << msgdata.GetLength()
+                << ": \"" << msgdata.HexEncode() << "\"";
+
+  request_sequence_++;
 
   if (sockets_->Send(rtnl_socket_,
                      msgdata.GetConstData(),
