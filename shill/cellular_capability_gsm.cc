@@ -640,7 +640,8 @@ void CellularCapabilityGSM::OnScanReply(const ResultCallback &callback,
   }
   cellular()->adaptor()->EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
                                                found_networks_);
-  callback.Run(error);
+  if (!callback.is_null())
+    callback.Run(error);
 }
 
 Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {
