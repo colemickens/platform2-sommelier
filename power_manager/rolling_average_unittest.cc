@@ -24,25 +24,40 @@ class RollingAverageTest : public Test {
 
 TEST_F(RollingAverageTest, InitSuccess) {
   rolling_average_.Init(kTestWindowSize);
+
+  EXPECT_EQ(rolling_average_.sample_window_.size(), 0);
+  EXPECT_EQ(rolling_average_.running_total_, 0);
   EXPECT_EQ(rolling_average_.max_window_size_, kTestWindowSize);
 }
 
 TEST_F(RollingAverageTest, InitSamplePresent) {
   rolling_average_.sample_window_.push(kTestSample);
-  EXPECT_DEATH(rolling_average_.Init(kTestWindowSize), ".*");
-  rolling_average_.sample_window_.pop();
+
+  rolling_average_.Init(kTestWindowSize);
+
+  EXPECT_EQ(rolling_average_.sample_window_.size(), 0);
+  EXPECT_EQ(rolling_average_.running_total_, 0);
+  EXPECT_EQ(rolling_average_.max_window_size_, kTestWindowSize);
 }
 
 TEST_F(RollingAverageTest, InitTotalNonZero) {
   rolling_average_.running_total_ = kTestSample;
-  EXPECT_DEATH(rolling_average_.Init(kTestWindowSize), ".*");
-  rolling_average_.running_total_ = 0.0;
+
+  rolling_average_.Init(kTestWindowSize);
+
+  EXPECT_EQ(rolling_average_.sample_window_.size(), 0);
+  EXPECT_EQ(rolling_average_.running_total_, 0);
+  EXPECT_EQ(rolling_average_.max_window_size_, kTestWindowSize);
 }
 
 TEST_F(RollingAverageTest, InitWindowSizeSet) {
   rolling_average_.max_window_size_ = kTestWindowSize;
-  EXPECT_DEATH(rolling_average_.Init(kTestWindowSize), ".*");
-  rolling_average_.max_window_size_ = 0;
+
+  rolling_average_.Init(kTestWindowSize);
+
+  EXPECT_EQ(rolling_average_.sample_window_.size(), 0);
+  EXPECT_EQ(rolling_average_.running_total_, 0);
+  EXPECT_EQ(rolling_average_.max_window_size_, kTestWindowSize);
 }
 
 TEST_F(RollingAverageTest, AddSampleFull) {
@@ -67,9 +82,11 @@ TEST_F(RollingAverageTest, AddSampleEmpty) {
 }
 
 TEST_F(RollingAverageTest, AddSampleNegativeValue) {
-  // Die on negative samples, currently only planned to be used with strictly
-  // positive values
-  EXPECT_DEATH(rolling_average_.AddSample(-kTestSample), ".*");
+  // Invalid samples should cause the current average to be returned and the
+  // sample to be discarded.
+  rolling_average_.Init(kTestWindowSize);
+  EXPECT_EQ(rolling_average_.AddSample(kTestSample), kTestSample);
+  EXPECT_EQ(rolling_average_.AddSample(-kTestSample), kTestSample);
 }
 
 TEST_F(RollingAverageTest, GetAverageFull) {
@@ -118,8 +135,7 @@ TEST_F(RollingAverageTest, DeleteSampleSuccess) {
 TEST_F(RollingAverageTest, DeleteSampleEmpty) {
   rolling_average_.Init(kTestWindowSize);
 
-  // Die if we are trying to delete when empty
-  EXPECT_DEATH(rolling_average_.DeleteSample(), ".*");
+  rolling_average_.DeleteSample();
 }
 
 TEST_F(RollingAverageTest, InsertSampleSuccess) {
@@ -137,9 +153,12 @@ TEST_F(RollingAverageTest, InsertSampleFull) {
   for (unsigned int i = 0; i < kTestWindowSize; i++)
     rolling_average_.InsertSample(kTestSample);
 
-  // Inserting on a filled queue is a fatal error, should have removed an entry
-  // first
-  EXPECT_DEATH(rolling_average_.InsertSample(kTestSample), ".*");
+  rolling_average_.InsertSample(kTestSample);
+
+  // Inserting when full is an error, but not fatal
+  EXPECT_EQ(rolling_average_.sample_window_.size(), kTestWindowSize + 1);
+  EXPECT_EQ(rolling_average_.running_total_,
+            kTestSample * (kTestWindowSize + 1));
 }
 
 TEST_F(RollingAverageTest, IsFullFalse) {
@@ -157,14 +176,14 @@ TEST_F(RollingAverageTest, IsFullTrue) {
 }
 
 TEST_F(RollingAverageTest, IsFullUninitialized) {
-  EXPECT_DEATH(rolling_average_.IsFull(), ".*");
+  EXPECT_TRUE(rolling_average_.IsFull());
 }
 
 TEST_F(RollingAverageTest, IsFullOverflow) {
   for(unsigned int i = 0; i < kTestWindowSize + 1; i++)
     rolling_average_.sample_window_.push(kTestSample);
 
-  EXPECT_DEATH(rolling_average_.IsFull(), ".*");
+  EXPECT_TRUE(rolling_average_.IsFull());
 }
 
 };  // namespace power_manager
