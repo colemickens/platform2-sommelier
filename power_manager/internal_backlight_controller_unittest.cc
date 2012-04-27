@@ -2,15 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <utility>
-#include <vector>
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "base/logging.h"
 #include "power_manager/internal_backlight_controller.h"
 #include "power_manager/mock_backlight.h"
+#include "power_manager/mock_backlight_controller_observer.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs.h"
 
@@ -19,9 +17,6 @@ using ::testing::DoAll;
 using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
-using std::make_pair;
-using std::pair;
-using std::vector;
 
 namespace power_manager {
 
@@ -39,33 +34,6 @@ const int kStepsToHitLimit = 20;
 // Number of ambient light sensor samples that should be supplied in order to
 // trigger an update to InternalBacklightController's ALS offset.
 const int kAlsSamplesToTriggerAdjustment = 5;
-
-// Simple helper class that logs brightness changes for the NotifyObserver test.
-class MockObserver : public BacklightControllerObserver {
- public:
-  MockObserver() {}
-  virtual ~MockObserver() {}
-
-  vector<pair<double, BrightnessChangeCause> > changes() const {
-    return changes_;
-  }
-
-  void Clear() {
-    changes_.clear();
-  }
-
-  // BacklightControllerObserver implementation:
-  virtual void OnScreenBrightnessChanged(double brightness_percent,
-                                         BrightnessChangeCause cause) {
-    changes_.push_back(make_pair(brightness_percent, cause));
-  }
-
- private:
-  // Received changes, in oldest-to-newest order.
-  vector<pair<double, BrightnessChangeCause> > changes_;
-
-  DISALLOW_COPY_AND_ASSIGN(MockObserver);
-};
 
 }  // namespace
 
@@ -191,7 +159,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   ASSERT_TRUE(controller_.OnPlugEvent(false));
   controller_.SetAlsBrightnessOffsetPercent(16);
 
-  MockObserver observer;
+  MockBacklightControllerObserver observer;
   controller_.SetObserver(&observer);
 
   // Increase the brightness and check that the observer is notified.

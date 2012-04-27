@@ -347,7 +347,7 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
   return true;
 }
 
-PowerState InternalBacklightController::GetPowerState() {
+PowerState InternalBacklightController::GetPowerState() const {
   return state_;
 }
 

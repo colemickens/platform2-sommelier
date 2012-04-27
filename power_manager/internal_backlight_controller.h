@@ -5,13 +5,12 @@
 #ifndef POWER_MANAGER_INTERNAL_BACKLIGHT_CONTROLLER_H_
 #define POWER_MANAGER_INTERNAL_BACKLIGHT_CONTROLLER_H_
 
-#include "power_manager/backlight_controller.h"
-
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/time.h"
+#include "power_manager/backlight_controller.h"
 #include "power_manager/powerd.h"
 #include "power_manager/signal_callback.h"
 
@@ -53,7 +52,7 @@ class InternalBacklightController : public BacklightController {
   virtual bool DecreaseBrightness(bool allow_off,
                                   BrightnessChangeCause cause) OVERRIDE;
   virtual bool SetPowerState(PowerState state) OVERRIDE;
-  virtual PowerState GetPowerState() OVERRIDE;
+  virtual PowerState GetPowerState() const OVERRIDE;
   virtual bool OnPlugEvent(bool is_plugged) OVERRIDE;
   virtual void SetAlsBrightnessOffsetPercent(double percent) OVERRIDE;
   virtual bool IsBacklightActiveOff() OVERRIDE;

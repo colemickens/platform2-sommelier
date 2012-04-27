@@ -63,6 +63,8 @@ base_env['CFLAGS'].extend(Split(extra_flags))
 base_env['CXXFLAGS'].extend(Split(extra_flags))
 base_env['CPPFLAGS'].extend(Split(extra_cppflags))
 
+is_desktop = int(ARGUMENTS.get('is_desktop', 0))
+
 # Switch between new and legacy power button behavior.
 # Legacy : power button doesn't send release signal at the right time.
 # First button push enables lock screen. Second button push shuts down.
@@ -72,7 +74,7 @@ if int(ARGUMENTS.get('new_power_button', 0)):
   base_env.Append(CPPDEFINES=['NEW_POWER_BUTTON'])
 if int(ARGUMENTS.get('lockvt', 0)):
   base_env.Append(CPPDEFINES=['SUSPEND_LOCK_VT'])
-if int(ARGUMENTS.get('is_desktop', 0)):
+if is_desktop:
   base_env.Append(CPPDEFINES=['IS_DESKTOP'])
 if int(ARGUMENTS.get('has_als', 0)):
   base_env.Append(CPPDEFINES=['HAS_ALS'])
@@ -129,8 +131,11 @@ power_supply_info = power_supply_env.Program('power-supply-info',
 Default(power_supply_info)
 
 # Build power daemon
-backlight_controller = gdk_env.Library('backlight_controller',
-                                       ['internal_backlight_controller.cc'])
+if is_desktop:
+  deps = ['external_backlight_controller.cc']
+else:
+  deps = ['internal_backlight_controller.cc']
+backlight_controller = gdk_env.Library('backlight_controller', deps)
 power_prefs = gdk_env.Library('power_prefs', ['power_prefs.cc',
                                               'power_constants.cc'])
 powerd_env = gdk_env.Clone()
@@ -220,37 +225,48 @@ Default(backlight_dbus_tool)
 # Build unit tests
 tests = []
 testrunner = base_env.Library('testrunner', ['testrunner.cc'])
+
 xidle_unittest_env = xidle_env.Clone()
 xidle_unittest_env.Append(LIBS=['gtest', 'Xtst'])
 deps = [testrunner, 'xidle_unittest.cc', 'mock_xsync.cc', xidle]
 tests.append(xidle_unittest_env.Program('xidle_unittest', deps))
+
 backlight_unittest_env = gdk_env.Clone()
 backlight_unittest_env.Append(LIBS=Split('gtest gmock Xext'))
 deps = [testrunner, 'backlight_unittest.cc', backlight, power_prefs, util_lib]
 tests.append(backlight_unittest_env.Program('backlight_unittest', deps))
+
 powerd_unittest_env = powerd_env.Clone()
 powerd_unittest_env.Append(LIBS=Split('gmock gtest X11 Xext Xrandr Xtst'))
 deps = [testrunner, 'powerd_unittest.cc',
-        'idle_dimmer_unittest.cc', 'internal_backlight_controller_unittest.cc',
-        'metrics_store_unittest.cc', 'plug_dimmer_unittest.cc',
-        'rolling_average_unittest.cc',
+        'metrics_store_unittest.cc', 'rolling_average_unittest.cc',
         powerd_lib, util_lib, xidle, backlight_controller, backlight,
         power_prefs]
+if is_desktop:
+  deps.append('external_backlight_controller_unittest.cc')
+else:
+  deps.append('internal_backlight_controller_unittest.cc')
+  deps.append('idle_dimmer_unittest.cc')
+  deps.append('plug_dimmer_unittest.cc')
 tests.append(powerd_unittest_env.Program('powerd_unittest', deps))
+
 file_tagger_unittest_env = powerd_env.Clone()
 file_tagger_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
 deps = [testrunner, 'file_tagger_unittest.cc', powerd_lib,
         util_lib, xidle, backlight_controller, backlight, power_prefs]
 tests.append(file_tagger_unittest_env.Program('file_tagger_unittest', deps))
+
 power_supply_unittest_env = powerd_env.Clone()
 power_supply_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
 deps = [testrunner, 'power_supply_unittest.cc', powerd_lib, power_prefs,
         util_lib]
 tests.append(power_supply_unittest_env.Program('power_supply_unittest', deps))
+
 powerman_unittest_env = powerman_env.Clone()
 powerman_unittest_env.Append(LIBS=Split('gtest gmock'))
 deps = [testrunner, 'powerman_unittest.cc', powerman_lib, util_lib, power_prefs]
 tests.append(powerman_unittest_env.Program('powerman_unittest', deps))
+
 resolution_selector_unittest_env = gdk_env.Clone()
 resolution_selector_unittest_env.Append(LIBS=Split('gtest gmock'))
 deps = [testrunner, [

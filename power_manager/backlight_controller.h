@@ -109,7 +109,7 @@ class BacklightController : public BacklightInterfaceObserver {
   virtual bool SetPowerState(PowerState state) = 0;
 
   // Get the previously-set state.
-  virtual PowerState GetPowerState() = 0;
+  virtual PowerState GetPowerState() const = 0;
 
   // Mark the computer as plugged or unplugged, and adjust the brightness
   // appropriately.  Returns true if the brightness was set and false
