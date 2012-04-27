@@ -33,6 +33,7 @@ class Daemon {
 
   void AddDeviceToBlackList(const std::string &device_name);
   void SetStartupProfiles(const std::vector<std::string> &profile_path);
+  void SetStartupPortalList(const std::string &portal_list);
   // Main for connection manager.  Starts main process and holds event loop.
   void Run();
   void Quit();

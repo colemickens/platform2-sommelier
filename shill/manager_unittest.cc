@@ -2035,4 +2035,39 @@ TEST_F(ManagerTest, CalculateStateOnline) {
   manager()->DeregisterService(mock_service1);
 }
 
+TEST_F(ManagerTest, StartupPortalList) {
+  // Simulate loading value from the default profile.
+  const string kProfileValue("wifi,vpn");
+  manager()->props_.check_portal_list = kProfileValue;
+
+  EXPECT_EQ(kProfileValue, manager()->GetCheckPortalList(NULL));
+  EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kWifi));
+  EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
+
+  const string kStartupValue("cellular,ethernet");
+  manager()->SetStartupPortalList(kStartupValue);
+  // Ensure profile value is not overwritten, so when we save the default
+  // profile, the correct value will still be written.
+  EXPECT_EQ(kProfileValue, manager()->props_.check_portal_list);
+
+  // However we should read back a different list.
+  EXPECT_EQ(kStartupValue, manager()->GetCheckPortalList(NULL));
+  EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kWifi));
+  EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
+
+  const string kRuntimeValue("ppp");
+  // Setting a runtime value over the control API should overwrite both
+  // the profile value and what we read back.
+  Error error;
+  manager()->mutable_store()->SetStringProperty(
+      flimflam::kCheckPortalListProperty,
+      kRuntimeValue,
+      &error);
+  ASSERT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kRuntimeValue, manager()->GetCheckPortalList(NULL));
+  EXPECT_EQ(kRuntimeValue, manager()->props_.check_portal_list);
+  EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
+  EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kPPP));
+}
+
 }  // namespace shill

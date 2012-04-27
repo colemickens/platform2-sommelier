@@ -48,6 +48,10 @@ void Daemon::AddDeviceToBlackList(const string &device_name) {
   manager_->AddDeviceToBlackList(device_name);
 }
 
+void Daemon::SetStartupPortalList(const string &portal_list) {
+  manager_->SetStartupPortalList(portal_list);
+}
+
 void Daemon::SetStartupProfiles(const vector<string> &profile_name_list) {
   Error error;
   manager_->set_startup_profiles(profile_name_list);

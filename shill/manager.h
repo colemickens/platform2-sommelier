@@ -152,6 +152,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                          const ResultCallback &callback);
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology::Identifier tech);
+  // Set the start-up value for the portal detection list.  This list will
+  // be used until a value set explicitly over the control API.  Until
+  // then, we ignore but do not overwrite whatever value is stored in the
+  // profile.
+  void SetStartupPortalList(const std::string &portal_list);
 
   std::string CalculateState(Error *error);
 
@@ -197,6 +202,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
+  FRIEND_TEST(ManagerTest, StartupPortalList);
 
   static const char kErrorNoDevice[];
   static const char kErrorTypeRequired[];
@@ -215,6 +221,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // TODO(cmasone): This should be implemented by filtering |services_|.
   std::vector<std::string> EnumerateWatchedServices(Error *error);
   std::string GetActiveProfileRpcIdentifier(Error *error);
+  std::string GetCheckPortalList(Error *error);
+  void SetCheckPortalList(const std::string &portal_list, Error *error);
   void EmitDeviceProperties();
 
   // Unload a service while iterating through |services_|.  Returns true if
@@ -276,6 +284,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // The priority order of technologies
   std::vector<Technology::Identifier> technology_order_;
+
+  // Manager can be optionally configured with a list of technologies to
+  // do portal detection on at startup.  We need to keep track of that list
+  // as well as a flag that tells us whether we should continue using it
+  // instead of the configured portal list.
+  std::string startup_portal_list_;
+  bool use_startup_portal_list_;
 
   // Properties to be get/set via PropertyStore calls.
   Properties props_;

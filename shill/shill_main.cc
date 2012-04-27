@@ -35,6 +35,8 @@ static const char kConfigDir[] = "config-dir";
 static const char kDefaultConfigDir[] = "default-config-dir";
 // Don't attempt to manage these devices.
 static const char kDeviceBlackList[] = "device-black-list";
+// Technologies to enable for portal check at startup.
+static const char kPortalList[] = "portal-list";
 // Flag to specify specific profiles to be pushed.
 static const char kPushProfiles[] = "push";
 // Flag that causes shill to show the help message and exit.
@@ -65,6 +67,8 @@ static const char kHelpMessage[] = "\n"
     "      -1 = SLOG(..., 1), -2 = SLOG(..., 2), etc.\n"
     "  --log-scopes=\"*scope1+scope2\".\n"
     "    Scopes to enable for SLOG()-based logging.\n"
+    "  --portal-list=technology1,technology2\n"
+    "    Specify technologies to perform portal detection on at startup.\n"
     "  --push=profile1,profile2\n"
     "    Specify profiles to push on startup.\n"
     "  --use-flimflam-dirs\n"
@@ -165,6 +169,10 @@ int main(int argc, char** argv) {
     for (i = device_list.begin(); i != device_list.end(); ++i) {
       daemon.AddDeviceToBlackList(*i);
     }
+  }
+
+  if (cl->HasSwitch(switches::kPortalList)) {
+    daemon.SetStartupPortalList(cl->GetSwitchValueASCII(switches::kPortalList));
   }
 
   g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);

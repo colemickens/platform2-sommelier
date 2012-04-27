@@ -77,15 +77,17 @@ Manager::Manager(ControlInterface *control_interface,
       ephemeral_profile_(new EphemeralProfile(control_interface, this)),
       control_interface_(control_interface),
       metrics_(metrics),
-      glib_(glib) {
+      glib_(glib),
+      use_startup_portal_list_(false) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             NULL);
   HelpRegisterDerivedStrings(flimflam::kAvailableTechnologiesProperty,
                              &Manager::AvailableTechnologies,
                              NULL);
-  store_.RegisterString(flimflam::kCheckPortalListProperty,
-                        &props_.check_portal_list);
+  HelpRegisterDerivedString(flimflam::kCheckPortalListProperty,
+                            &Manager::GetCheckPortalList,
+                            &Manager::SetCheckPortalList);
   HelpRegisterDerivedStrings(flimflam::kConnectedTechnologiesProperty,
                              &Manager::ConnectedTechnologies,
                              NULL);
@@ -480,11 +482,16 @@ ServiceRefPtr Manager::GetDefaultService() const {
 bool Manager::IsPortalDetectionEnabled(Technology::Identifier tech) {
   Error error;
   vector<Technology::Identifier> portal_technologies;
-  return Technology::GetTechnologyVectorFromString(props_.check_portal_list,
+  return Technology::GetTechnologyVectorFromString(GetCheckPortalList(NULL),
                                                    &portal_technologies,
                                                    &error) &&
       std::find(portal_technologies.begin(), portal_technologies.end(),
                 tech) != portal_technologies.end();
+}
+
+void Manager::SetStartupPortalList(const string &portal_list) {
+  startup_portal_list_ = portal_list;
+  use_startup_portal_list_ = true;
 }
 
 const ProfileRefPtr &Manager::ActiveProfile() const {
@@ -971,6 +978,16 @@ vector<string> Manager::EnumerateWatchedServices(Error *error) {
 
 string Manager::GetActiveProfileRpcIdentifier(Error */*error*/) {
   return ActiveProfile()->GetRpcIdentifier();
+}
+
+string Manager::GetCheckPortalList(Error */*error*/) {
+ return use_startup_portal_list_ ? startup_portal_list_ :
+     props_.check_portal_list;
+}
+
+void Manager::SetCheckPortalList(const string &portal_list, Error *error) {
+  props_.check_portal_list = portal_list;
+  use_startup_portal_list_ = false;
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
