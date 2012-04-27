@@ -727,20 +727,23 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
   SLOG(Manager, 2) << "IsConnected(): " << to_update->IsConnected();
   SLOG(Manager, 2) << "IsConnecting(): " << to_update->IsConnecting();
   if (to_update->IsConnected()) {
-    bool originally_favorite = to_update->favorite();
     to_update->MakeFavorite();
-    if (IsServiceEphemeral(to_update)) {
-      if (profiles_.empty()) {
-        LOG(ERROR) << "Cannot assign profile to service: no profiles exist!";
-      } else {
-        MoveServiceToProfile(to_update, profiles_.back());
-      }
-    } else if (!originally_favorite) {
-      // Persists the updated favorite setting in the profile.
-      to_update->SaveToCurrentProfile();
-    }
+    // Persists the updated favorite setting in the profile.
+    SaveServiceToProfile(to_update);
   }
   SortServices();
+}
+
+void Manager::SaveServiceToProfile(const ServiceRefPtr &to_update) {
+  if (IsServiceEphemeral(to_update)) {
+    if (profiles_.empty()) {
+      LOG(ERROR) << "Cannot assign profile to service: no profiles exist!";
+    } else {
+      MoveServiceToProfile(to_update, profiles_.back());
+    }
+  } else {
+    to_update->profile()->UpdateService(to_update);
+  }
 }
 
 void Manager::FilterByTechnology(Technology::Identifier tech,

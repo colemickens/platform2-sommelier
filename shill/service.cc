@@ -395,8 +395,11 @@ bool Service::Save(StoreInterface *storage) {
   return true;
 }
 
-bool Service::SaveToCurrentProfile() {
-  return profile()->UpdateService(this);
+void Service::SaveToCurrentProfile() {
+  // Some unittests do not specify a manager.
+  if (manager()) {
+    manager()->SaveServiceToProfile(this);
+  }
 }
 
 void Service::Configure(const KeyValueStore &args, Error *error) {

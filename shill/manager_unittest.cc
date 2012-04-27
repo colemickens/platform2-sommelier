@@ -1744,18 +1744,22 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistFavorite) {
   EXPECT_FALSE(mock_service->favorite());
   EXPECT_FALSE(mock_service->auto_connect());
 
-  ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
-  mock_service->set_profile(profile);
+  scoped_refptr<MockProfile> profile(
+      new MockProfile(control_interface(), manager(), ""));
 
-  EXPECT_CALL(*mock_service.get(), IsConnected())
+  mock_service->set_profile(profile);
+  EXPECT_CALL(*mock_service, IsConnected())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_service.get(), SaveToCurrentProfile());
+  EXPECT_CALL(*profile,
+              UpdateService(static_cast<ServiceRefPtr>(mock_service)));
   manager()->UpdateService(mock_service);
   // We can't EXPECT_CALL(..., MakeFavorite), because that requires us
   // to mock out MakeFavorite. And mocking that out would break the
   // SortServices test. (crosbug.com/23370)
   EXPECT_TRUE(mock_service->favorite());
   EXPECT_TRUE(mock_service->auto_connect());
+  // This releases the ref on the mock profile.
+  mock_service->set_profile(NULL);
 }
 
 TEST_F(ManagerTest, SaveSuccessfulService) {

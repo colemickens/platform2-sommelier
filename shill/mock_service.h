@@ -45,7 +45,7 @@ class MockService : public Service {
   MOCK_METHOD1(Load, bool(StoreInterface *store_interface));
   MOCK_METHOD0(Unload, bool());
   MOCK_METHOD1(Save, bool(StoreInterface *store_interface));
-  MOCK_METHOD0(SaveToCurrentProfile, bool());
+  MOCK_METHOD0(SaveToCurrentProfile, void());
   MOCK_METHOD2(Configure, void(const KeyValueStore &args, Error *error));
   MOCK_CONST_METHOD0(IsPortalDetectionDisabled, bool());
   MOCK_CONST_METHOD0(IsPortalDetectionAuto, bool());

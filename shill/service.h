@@ -218,7 +218,7 @@ class Service : public base::RefCounted<Service> {
   virtual bool Save(StoreInterface *storage);
 
   // Saves the service to the current profile.
-  virtual bool SaveToCurrentProfile();
+  virtual void SaveToCurrentProfile();
 
   // Applies all the properties in |args| to this service object's mutable
   // store, except for those in parameters_ignored_for_configure_.

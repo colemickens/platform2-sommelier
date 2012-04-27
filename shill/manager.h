@@ -190,6 +190,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual void UpdateEnabledTechnologies();
   PowerManager *power_manager() const { return power_manager_.get(); }
 
+  // Writes the service |to_update| to persistant storage.  If the service's is
+  // ephemeral, it is moved to the current profile.
+  void SaveServiceToProfile(const ServiceRefPtr &to_update);
+
  private:
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
