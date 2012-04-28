@@ -562,6 +562,42 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
   EXPECT_EQ(0, (*tables)[kTestDeviceIndex0].size());
 }
 
+TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
+  IPAddress destination_address(IPAddress::kFamilyIPv4);
+  destination_address.SetAddressFromString(kTestRemoteAddress4);
+  destination_address.set_prefix(24);
+
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingQuery(destination_address,
+                                         kTestDeviceIndex0)))
+      .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
+  EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address,
+                                                 kTestDeviceIndex0,
+                                                 kTestRouteTag));
+
+  // Don't specify a gateway address.
+  IPAddress gateway_address(IPAddress::kFamilyIPv4);
+
+  IPAddress local_address(IPAddress::kFamilyIPv4);
+  local_address.SetAddressFromString(kTestDeviceNetAddress4);
+
+  const int kMetric = 10;
+  RoutingTableEntry entry(destination_address,
+                          local_address,
+                          gateway_address,
+                          kMetric,
+                          RT_SCOPE_UNIVERSE,
+                          true);
+
+  // Ensure that without a gateway entry, we don't create a route.
+  EXPECT_CALL(rtnl_handler_, SendMessage(_)).Times(0);
+  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
+                                kTestDeviceIndex0,
+                                entry,
+                                kTestRequestSeq,
+                                RTPROT_UNSPEC);
+}
+
 TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
   IPAddress destination_address(IPAddress::kFamilyIPv4);
   destination_address.SetAddressFromString(kTestRemoteAddress4);

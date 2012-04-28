@@ -358,13 +358,18 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
     }
 
     if (route_queries_.front().sequence == message.seq()) {
-      SLOG(Route, 2) << __func__ << ": Adding host route to "
-                     << entry.dst.ToString();
-      RoutingTableEntry add_entry(entry);
-      add_entry.from_rtnl = false;
-      add_entry.tag = route_queries_.front().tag;
-      route_queries_.pop();
-      AddRoute(interface_index, add_entry);
+      if (entry.gateway.IsDefault()) {
+        SLOG(Route, 2) << __func__ << ": Ignoring route result with no gateway "
+                       << "since we don't need to plumb these.";
+      } else {
+        SLOG(Route, 2) << __func__ << ": Adding host route to "
+                       << entry.dst.ToString();
+        RoutingTableEntry add_entry(entry);
+        add_entry.from_rtnl = false;
+        add_entry.tag = route_queries_.front().tag;
+        route_queries_.pop();
+        AddRoute(interface_index, add_entry);
+      }
     }
     return;
   } else if (message.route_status().protocol != RTPROT_BOOT) {
