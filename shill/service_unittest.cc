@@ -25,6 +25,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
+#include "shill/property_store_inspector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/service_under_test.h"
 
@@ -520,11 +521,9 @@ TEST_F(ServiceTest, SetCheckPortal) {
 // our supeclass (PropertyStoreTest) is declared with.
 class ReadOnlyServicePropertyTest : public ServiceTest {};
 TEST_P(ReadOnlyServicePropertyTest, PropertyWriteOnly) {
-  ReadablePropertyConstIterator<string> it =
-      (service_->store()).GetStringPropertiesIter();
   string property(GetParam().reader().get_string());
-  for( ; !it.AtEnd(); it.Advance())
-    EXPECT_NE(it.Key(), property);
+  PropertyStoreInspector inspector(&service_->store());
+  EXPECT_FALSE(inspector.ContainsStringProperty(property));
 }
 
 INSTANTIATE_TEST_CASE_P(

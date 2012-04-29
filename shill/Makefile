@@ -314,6 +314,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	profile_dbus_property_exporter_unittest.o \
 	profile_unittest.o \
 	property_accessor_unittest.o \
+	property_store_inspector.o \
 	property_store_unittest.o \
 	resolver_unittest.o \
 	routing_table_unittest.o \

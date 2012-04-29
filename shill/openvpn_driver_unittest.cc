@@ -26,6 +26,7 @@
 #include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
 #include "shill/nice_mock_control.h"
+#include "shill/property_store_inspector.h"
 #include "shill/rpc_task.h"
 #include "shill/scope_logger.h"
 #include "shill/vpn.h"
@@ -96,11 +97,6 @@ class OpenVPNDriverTest : public testing::Test,
     return driver_->args();
   }
 
-  bool FindKeyValueStorePropertyInStore(const PropertyStore &store,
-                                        const string &key,
-                                        KeyValueStore *value,
-                                        Error *error);
-
   // Used to assert that a flag appears in the options.
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
@@ -143,23 +139,6 @@ void OpenVPNDriverTest::GetLogin(string */*user*/, string */*password*/) {}
 
 void OpenVPNDriverTest::Notify(const string &/*reason*/,
                                const map<string, string> &/*dict*/) {}
-
-bool OpenVPNDriverTest::FindKeyValueStorePropertyInStore(
-    const PropertyStore &store,
-    const string &key,
-    KeyValueStore *value,
-    Error *error) {
-  ReadablePropertyConstIterator<KeyValueStore> it =
-      store.GetKeyValueStorePropertiesIter();
-  for ( ; !it.AtEnd(); it.Advance()) {
-    if (it.Key() == key) {
-      *value = it.Value(error);
-      return error->IsSuccess();
-    }
-  }
-  error->Populate(Error::kNotFound);
-  return false;
-}
 
 void OpenVPNDriverTest::ExpectInFlags(const vector<string> &options,
                                       const string &flag,
@@ -669,12 +648,13 @@ TEST_F(OpenVPNDriverTest, InitPropertyStore) {
 TEST_F(OpenVPNDriverTest, GetProvider) {
   PropertyStore store;
   driver_->InitPropertyStore(&store);
+  PropertyStoreInspector inspector(&store);
   {
     Error error;
     KeyValueStore props;
     EXPECT_TRUE(
-        FindKeyValueStorePropertyInStore(
-            store, flimflam::kProviderProperty, &props, &error));
+        inspector.GetKeyValueStoreProperty(
+            flimflam::kProviderProperty, &props, &error));
     EXPECT_TRUE(props.LookupBool(flimflam::kPassphraseRequiredProperty, false));
   }
   {
@@ -682,8 +662,8 @@ TEST_F(OpenVPNDriverTest, GetProvider) {
     KeyValueStore props;
     SetArg(flimflam::kOpenVPNPasswordProperty, "random-password");
     EXPECT_TRUE(
-        FindKeyValueStorePropertyInStore(
-            store, flimflam::kProviderProperty, &props, &error));
+        inspector.GetKeyValueStoreProperty(
+            flimflam::kProviderProperty, &props, &error));
     EXPECT_FALSE(props.LookupBool(flimflam::kPassphraseRequiredProperty, true));
   }
 }

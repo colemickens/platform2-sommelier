@@ -21,6 +21,7 @@
 #include "shill/mock_store.h"
 #include "shill/nice_mock_control.h"
 #include "shill/property_store.h"
+#include "shill/property_store_inspector.h"
 
 using std::string;
 using testing::_;
@@ -94,14 +95,9 @@ class VPNDriverTest : public Test {
 
   KeyValueStore *GetArgs() { return driver_.args(); }
 
-  bool FindStringPropertyInStore(const PropertyStore &store,
-                                 const string &key,
-                                 string *value,
-                                 Error *error);
-  bool FindKeyValueStorePropertyInStore(const PropertyStore &store,
-                                        const string &key,
-                                        KeyValueStore *value,
-                                        Error *error);
+  bool GetProviderProperty(const PropertyStore &store,
+                           const string &key,
+                           string *value);
 
   NiceMockControl control_;
   NiceMock<MockDeviceInfo> device_info_;
@@ -112,36 +108,21 @@ class VPNDriverTest : public Test {
   VPNDriverUnderTest driver_;
 };
 
-bool VPNDriverTest::FindStringPropertyInStore(const PropertyStore &store,
-                                              const string &key,
-                                              string *value,
-                                              Error *error) {
-  ReadablePropertyConstIterator<std::string> it =
-      store.GetStringPropertiesIter();
-  for ( ; !it.AtEnd(); it.Advance()) {
-    if (it.Key() == key) {
-      *value = it.Value(error);
-      return error->IsSuccess();
-    }
+bool VPNDriverTest::GetProviderProperty(const PropertyStore &store,
+                                        const string &key,
+                                        string *value) {
+  Error error;
+  PropertyStoreInspector inspector(&store);
+  KeyValueStore provider_properties;
+  EXPECT_TRUE(inspector.GetKeyValueStoreProperty(
+      flimflam::kProviderProperty, &provider_properties, &error));
+  if (!provider_properties.ContainsString(key)) {
+    return false;
   }
-  error->Populate(Error::kNotFound);
-  return false;
-}
-
-bool VPNDriverTest::FindKeyValueStorePropertyInStore(const PropertyStore &store,
-                                                     const string &key,
-                                                     KeyValueStore *value,
-                                                     Error *error) {
-  ReadablePropertyConstIterator<KeyValueStore> it =
-      store.GetKeyValueStorePropertiesIter();
-  for ( ; !it.AtEnd(); it.Advance()) {
-    if (it.Key() == key) {
-      *value = it.Value(error);
-      return error->IsSuccess();
-    }
+  if (value != NULL) {
+    *value = provider_properties.GetString(key);
   }
-  error->Populate(Error::kNotFound);
-  return false;
+  return true;
 }
 
 TEST_F(VPNDriverTest, Load) {
@@ -207,16 +188,11 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   // KeyValueStore.
   PropertyStore store;
   driver_.InitPropertyStore(&store);
+  PropertyStoreInspector inspector(&store);
 
   // An un-set property should not be readable.
-  {
-    Error error;
-    string string_property;
-    EXPECT_FALSE(
-        FindStringPropertyInStore(
-            store, kPortProperty, &string_property, &error));
-    EXPECT_EQ(Error::kNotFound, error.type());
-  }
+  EXPECT_FALSE(inspector.ContainsStringProperty(kPortProperty));
+  EXPECT_FALSE(GetProviderProperty(store, kPortProperty, NULL));
 
   const string kProviderName = "boo";
   SetArg(kPortProperty, kPort);
@@ -225,47 +201,24 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
 
   // We should not be able to read a property out of the driver args using the
   // key to the args directly.
-  {
-    Error error;
-    string string_property;
-    EXPECT_FALSE(
-        FindStringPropertyInStore(
-            store, kPortProperty, &string_property, &error));
-    EXPECT_EQ(Error::kNotFound, error.type());
-  }
+  EXPECT_FALSE(inspector.ContainsStringProperty(kPortProperty));
 
   // We should instead be able to find it within the "Provider" stringmap.
-  {
-    Error error;
-    KeyValueStore provider_properties;
-    EXPECT_TRUE(
-        FindKeyValueStorePropertyInStore(
-            store, flimflam::kProviderProperty, &provider_properties, &error));
-    EXPECT_EQ(kPort, provider_properties.LookupString(kPortProperty, ""));
-  }
+  string value;
+  EXPECT_TRUE(GetProviderProperty(store, kPortProperty, &value));
+  EXPECT_EQ(kPort, value);
 
   // Properties that start with the prefix "Provider." should be mapped to the
   // name in the Properties dict with the prefix removed.
-  {
-    Error error;
-    KeyValueStore provider_properties;
-    EXPECT_TRUE(
-        FindKeyValueStorePropertyInStore(
-            store, flimflam::kProviderProperty, &provider_properties, &error));
-    EXPECT_EQ(kProviderName,
-              provider_properties.LookupString(flimflam::kNameProperty, ""));
-  }
+  EXPECT_TRUE(GetProviderProperty(store, flimflam::kNameProperty, &value));
+  EXPECT_EQ(kProviderName, value);
 
-  // If we clear this property, we should no longer be able to find it.
+  // If we clear a property, we should no longer be able to find it.
   {
     Error error;
     EXPECT_TRUE(store.ClearProperty(kPortProperty, &error));
     EXPECT_TRUE(error.IsSuccess());
-    string string_property;
-    EXPECT_FALSE(
-        FindStringPropertyInStore(
-            store, kPortProperty, &string_property, &error));
-    EXPECT_EQ(Error::kNotFound, error.type());
+    EXPECT_FALSE(GetProviderProperty(store, kPortProperty, NULL));
   }
 
   // A second attempt to clear this property should return an error.
@@ -276,17 +229,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   }
 
   // Test write only properties.
-  {
-    Error error;
-    string string_property;
-    EXPECT_FALSE(
-        FindStringPropertyInStore(
-            store, kPINProperty, &string_property, &error));
-    // We get NotFound here instead of PermissionDenied here due to the
-    // implementation of ReadablePropertyConstIterator: it shields us from store
-    // members for which Value() would have returned an error.
-    EXPECT_EQ(Error::kNotFound, error.type());
-  }
+  EXPECT_FALSE(GetProviderProperty(store, kPINProperty, NULL));
 
   // Write properties to the driver args using the PropertyStore interface.
   {
