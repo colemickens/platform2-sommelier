@@ -339,6 +339,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --use-cras \
             --user-data-dir="$DATA_DIR" \
             --no-protector \
+            --disable-seccomp-filter-sandbox \
             "$REGISTER_PLUGINS" \
             ${ACCELERATED_FLAGS} \
             ${AURA_FLAGS} \
