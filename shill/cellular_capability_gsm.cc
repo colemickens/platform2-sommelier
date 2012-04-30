@@ -781,21 +781,24 @@ void CellularCapabilityGSM::OnDBusPropertiesChanged(
                                   &access_technology)) {
       SetAccessTechnology(access_technology);
     }
-  } else if (interface == MM_MODEM_GSM_CARD_INTERFACE) {
+  } else {
     bool emit = false;
-    uint32 locks = 0;
-    if (DBusProperties::GetUint32(
-        properties, kPropertyEnabledFacilityLocks, &locks)) {
-      sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
-      emit = true;
-    }
-    if (DBusProperties::GetString(
-        properties, kPropertyUnlockRequired, &sim_lock_status_.lock_type)) {
-      emit = true;
-    }
-    if (DBusProperties::GetUint32(
-        properties, kPropertyUnlockRetries, &sim_lock_status_.retries_left)) {
-      emit = true;
+    if (interface == MM_MODEM_GSM_CARD_INTERFACE) {
+      uint32 locks = 0;
+      if (DBusProperties::GetUint32(
+              properties, kPropertyEnabledFacilityLocks, &locks)) {
+        sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
+        emit = true;
+      }
+    } else if (interface == MM_MODEM_INTERFACE) {
+      if (DBusProperties::GetString(properties, kPropertyUnlockRequired,
+                                    &sim_lock_status_.lock_type)) {
+        emit = true;
+      }
+      if (DBusProperties::GetUint32(properties, kPropertyUnlockRetries,
+                                    &sim_lock_status_.retries_left)) {
+        emit = true;
+      }
     }
     if (emit) {
       cellular()->adaptor()->EmitKeyValueStoreChanged(

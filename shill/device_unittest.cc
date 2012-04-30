@@ -306,6 +306,9 @@ TEST_F(DeviceTest, Start) {
   device_->SetEnabled(true);
   EXPECT_TRUE(device_->running_);
   EXPECT_TRUE(device_->enabled_pending_);
+  device_->OnEnabledStateChanged(ResultCallback(),
+                                 Error(Error::kOperationFailed));
+  EXPECT_FALSE(device_->enabled_pending_);
 }
 
 TEST_F(DeviceTest, Stop) {
@@ -332,7 +335,6 @@ TEST_F(DeviceTest, Stop) {
   EXPECT_FALSE(device_->ipconfig_.get());
   EXPECT_FALSE(device_->selected_service_.get());
 }
-
 
 class DevicePortalDetectionTest : public DeviceTest {
  public:

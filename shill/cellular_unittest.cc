@@ -53,6 +53,10 @@ MATCHER(IsSuccess, "") {
   return arg.IsSuccess();
 }
 
+MATCHER(IsFailure, "") {
+  return arg.IsFailure();
+}
+
 class CellularPropertyTest : public PropertyStoreTest {
  public:
   CellularPropertyTest()
@@ -654,6 +658,22 @@ TEST_F(CellularTest, ModemStateChangeDisable) {
   EXPECT_EQ(Cellular::kModemStateDisabled, device_->modem_state());
   EXPECT_EQ(Cellular::kStateDisabled, device_->state());
   EXPECT_FALSE(device_->enabled());
+}
+
+TEST_F(CellularTest, OnModemStarted){
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
+  device_->OnModemStarted(Bind(&CellularTest::TestCallback, Unretained(this)),
+                          Error(Error::kSuccess));
+  EXPECT_EQ(device_->state_, Cellular::kStateEnabled);
+}
+
+TEST_F(CellularTest, OnModemStartedFail){
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
+  device_->OnModemStarted(Bind(&CellularTest::TestCallback, Unretained(this)),
+                          Error(Error::kOperationFailed));
+  EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
 }
 
 }  // namespace shill

@@ -170,7 +170,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, SetServiceConnectedState);
   FRIEND_TEST(DeviceTest, Start);
   FRIEND_TEST(DeviceTest, Stop);
-  FRIEND_TEST(DeviceTest, OnEnabledStateChanged);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);

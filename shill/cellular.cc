@@ -240,7 +240,7 @@ bool Cellular::IsEnabledModemState(ModemState state) {
 void Cellular::OnModemStarted(const EnabledStateChangedCallback &callback,
                               const Error &error) {
   SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
-  if (state_ == kStateDisabled) {
+  if (error.IsSuccess() && (state_ == kStateDisabled)) {
     SetState(kStateEnabled);
     // Registration state updates may have been ignored while the
     // modem was not yet marked enabled.

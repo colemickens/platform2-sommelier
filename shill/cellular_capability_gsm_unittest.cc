@@ -17,6 +17,7 @@
 #include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/key_value_store_matcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
@@ -731,15 +732,40 @@ TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
   EXPECT_EQ("", capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
 
-  // Call with the right interface and expect changes.
-  EXPECT_CALL(*device_adaptor_,
-              EmitKeyValueStoreChanged(flimflam::kSIMLockStatusProperty, _));
+  // Call with the MM_MODEM_GSM_NETWORK_INTERFACE interface and expect a change
+  // to the enabled state of the SIM lock.
+  KeyValueStore lock_status;
+  lock_status.SetBool(flimflam::kSIMLockEnabledProperty, true);
+  lock_status.SetString(flimflam::kSIMLockTypeProperty, "");
+  lock_status.SetUint(flimflam::kSIMLockRetriesLeftProperty, 0);
+
+  EXPECT_CALL(*device_adaptor_, EmitKeyValueStoreChanged(
+      flimflam::kSIMLockStatusProperty,
+      KeyValueStoreEq(lock_status)));
+
   capability_->OnDBusPropertiesChanged(MM_MODEM_GSM_NETWORK_INTERFACE, props,
                                        vector<string>());
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_EDGE, capability_->access_technology_);
   capability_->OnDBusPropertiesChanged(MM_MODEM_GSM_CARD_INTERFACE, props,
                                        vector<string>());
   EXPECT_TRUE(capability_->sim_lock_status_.enabled);
+  EXPECT_TRUE(capability_->sim_lock_status_.lock_type.empty());
+  EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
+
+  // Some properties are sent on the MM_MODEM_INTERFACE.
+  capability_->sim_lock_status_.enabled = false;
+  capability_->sim_lock_status_.lock_type = "";
+  capability_->sim_lock_status_.retries_left = 0;
+  KeyValueStore lock_status2;
+  lock_status2.SetBool(flimflam::kSIMLockEnabledProperty, false);
+  lock_status2.SetString(flimflam::kSIMLockTypeProperty, kLockType);
+  lock_status2.SetUint(flimflam::kSIMLockRetriesLeftProperty, kRetries);
+  EXPECT_CALL(*device_adaptor_,
+              EmitKeyValueStoreChanged(flimflam::kSIMLockStatusProperty,
+                                       KeyValueStoreEq(lock_status2)));
+  capability_->OnDBusPropertiesChanged(MM_MODEM_INTERFACE, props,
+                                       vector<string>());
+  EXPECT_FALSE(capability_->sim_lock_status_.enabled);
   EXPECT_EQ(kLockType, capability_->sim_lock_status_.lock_type);
   EXPECT_EQ(kRetries, capability_->sim_lock_status_.retries_left);
 }

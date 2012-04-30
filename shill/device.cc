@@ -680,6 +680,7 @@ void Device::OnEnabledStateChanged(const ResultCallback &callback,
     adaptor_->EmitBoolChanged(flimflam::kPoweredProperty, enabled_);
     adaptor_->UpdateEnabled();
   }
+  enabled_pending_ = enabled_;
   if (!callback.is_null())
     callback.Run(error);
 }

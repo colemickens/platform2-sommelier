@@ -213,6 +213,8 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
+  FRIEND_TEST(CellularTest, OnModemStarted);
+  FRIEND_TEST(CellularTest, OnModemStartedFail);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
