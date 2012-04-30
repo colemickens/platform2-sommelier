@@ -51,4 +51,4 @@ class Daemon {
 
 }  // namespace cros_disks
 
-#endif  // CROS_DISKS_DISK_H_
+#endif  // CROS_DISKS_DAEMON_H_

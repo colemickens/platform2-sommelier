@@ -4,9 +4,6 @@
 #
 # Top-level Makefile for cros-disks.
 
-# Pull in chromium os defaults
-# TODO(rtc): This verison of common.mk came from drewry@, we should find
-# a way to share the file rather than copying it.
 include common.mk
 
 PKG_CONFIG ?= pkg-config
