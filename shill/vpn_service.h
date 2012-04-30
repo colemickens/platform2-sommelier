@@ -32,6 +32,7 @@ class VPNService : public Service {
   virtual bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
   virtual bool Unload();
+  virtual void MakeFavorite();
 
   virtual void InitDriverPropertyStore();
 

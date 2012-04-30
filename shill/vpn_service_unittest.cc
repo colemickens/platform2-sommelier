@@ -155,4 +155,12 @@ TEST_F(VPNServiceTest, InitPropertyStore) {
   service_->InitDriverPropertyStore();
 }
 
+TEST_F(VPNServiceTest, MakeFavorite) {
+  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(service_->auto_connect());
+  service_->MakeFavorite();
+  EXPECT_TRUE(service_->favorite());
+  EXPECT_FALSE(service_->auto_connect());
+}
+
 }  // namespace shill

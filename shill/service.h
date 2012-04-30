@@ -421,6 +421,8 @@ class Service : public base::RefCounted<Service> {
   Manager *manager() const { return manager_; }
   Metrics *metrics() const { return metrics_; }
 
+  void set_favorite(bool favorite) { favorite_ = favorite; }
+
  private:
   friend class MetricsTest;
   friend class ServiceAdaptorInterface;
@@ -481,9 +483,6 @@ class Service : public base::RefCounted<Service> {
   // Utility function that returns true if a is different from b.  When they
   // are, "decision" is populated with the boolean value of "a > b".
   static bool DecideBetween(int a, int b, bool *decision);
-
-  // For unit testing.
-  void set_favorite(bool favorite) { favorite_ = favorite; }
 
   ConnectState state_;
   ConnectFailure failure_;
