@@ -404,11 +404,9 @@ Properties	string Address [readonly]
 
 		boolean Powered [readonly]
 
-			Switch a device on or off. This will also modify
-			the list of networks in range. All known networks
-			will be still available via the Networks property.
+			Indicates whether the device is on or off.
 
-			Changing this value does not change the value of the
+			This value does not influence the value of the
 			Policy property.
 
 			The value of this property can be changed by other
