@@ -32,6 +32,8 @@ Technology::Identifier Technology::IdentifierFromName(const string &name) {
     return kEthernet;
   } else if (name == flimflam::kTypeWifi) {
     return kWifi;
+  } else if (name == flimflam::kTypeWimax) {
+    return kWiMax;
   } else if (name == flimflam::kTypeCellular) {
     return kCellular;
   } else if (name == flimflam::kTypeVPN) {
@@ -53,6 +55,8 @@ string Technology::NameFromIdentifier(Technology::Identifier id) {
     return flimflam::kTypeEthernet;
   } else if (id == kWifi) {
     return flimflam::kTypeWifi;
+  } else if (id == kWiMax) {
+    return flimflam::kTypeWimax;
   } else if (id == kCellular) {
     return flimflam::kTypeCellular;
   } else if (id == kVPN) {

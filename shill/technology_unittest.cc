@@ -21,13 +21,13 @@ class TechnologyTest : public Test {};
 TEST_F(TechnologyTest, IdentifierFromName) {
   EXPECT_EQ(Technology::kEthernet, Technology::IdentifierFromName("ethernet"));
   EXPECT_EQ(Technology::kWifi, Technology::IdentifierFromName("wifi"));
+  EXPECT_EQ(Technology::kWiMax, Technology::IdentifierFromName("wimax"));
   EXPECT_EQ(Technology::kCellular, Technology::IdentifierFromName("cellular"));
   EXPECT_EQ(Technology::kTunnel, Technology::IdentifierFromName("tunnel"));
   EXPECT_EQ(Technology::kLoopback, Technology::IdentifierFromName("loopback"));
   EXPECT_EQ(Technology::kVPN, Technology::IdentifierFromName("vpn"));
   EXPECT_EQ(Technology::kPPP, Technology::IdentifierFromName("ppp"));
   EXPECT_EQ(Technology::kUnknown, Technology::IdentifierFromName("bluetooth"));
-  EXPECT_EQ(Technology::kUnknown, Technology::IdentifierFromName("wimax"));
   EXPECT_EQ(Technology::kUnknown, Technology::IdentifierFromName("foo"));
   EXPECT_EQ(Technology::kUnknown, Technology::IdentifierFromName(""));
 }
@@ -35,6 +35,7 @@ TEST_F(TechnologyTest, IdentifierFromName) {
 TEST_F(TechnologyTest, NameFromIdentifier) {
   EXPECT_EQ("ethernet", Technology::NameFromIdentifier(Technology::kEthernet));
   EXPECT_EQ("wifi", Technology::NameFromIdentifier(Technology::kWifi));
+  EXPECT_EQ("wimax", Technology::NameFromIdentifier(Technology::kWiMax));
   EXPECT_EQ("cellular", Technology::NameFromIdentifier(Technology::kCellular));
   EXPECT_EQ("tunnel", Technology::NameFromIdentifier(Technology::kTunnel));
   EXPECT_EQ("loopback", Technology::NameFromIdentifier(Technology::kLoopback));

@@ -20,6 +20,7 @@ class Technology {
     kEthernet,
     kWifi,
     kWiFiMonitor,
+    kWiMax,
     kCellular,
     kVPN,
     kTunnel,
