@@ -753,6 +753,34 @@ Properties	boolean AutoConnect [readwrite]
 					activate a cellular modem. Consult the
 					Error property for details.
 
+		string StaticIP.Address [readwrite]
+		string StaticIP.Gateway [readwrite]
+		int32 StaticIP.Mtu [readwrite]
+		string StaticIP.NameServers [readwrite]
+		string StaticIP.PeerAddress [readwrite]
+		int32 StaticIP.Prefixlen [readwrite]
+
+			The properties above can be set on a service to
+			selectively override individual parameters received
+			over DHCP or whatever default IP aquisition technique
+			is used by the service.  The "StaticIP.NameServers"
+			property should be a comma-separated list of IP
+			addresses.
+
+			Additionally, in services that use DHCP, if the
+			"StaticIP.Address" and "StaticIP.Prefixlen"
+			parameters are both set on a service, the service
+			will be configured as soon as a link is established,
+			in order to allow full static IP configuration.  A
+			DHCP client will be launched in parallel, which, if
+			successful, will provide values for any parameters
+			that were not set statically.
+
+			The IPConfig associated with the service (object
+			path supplied in the "IPConfig" property above)
+			will display the result of the merged network
+			parameters.
+
 		uint8 Strength [readonly]
 
 			Indicates the signal strength of the service. This
