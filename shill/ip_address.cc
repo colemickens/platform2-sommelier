@@ -216,13 +216,31 @@ IPAddress IPAddress::MaskWith(const IPAddress &b) {
   CHECK_EQ(family(), b.family());
 
   ByteString address_bytes(address());
-  address_bytes.ApplyMask(b.address());
+  address_bytes.BitwiseAnd(b.address());
+
+  return IPAddress(family(), address_bytes);
+}
+
+IPAddress IPAddress::MergeWith(const IPAddress &b) {
+  CHECK(IsValid());
+  CHECK(b.IsValid());
+  CHECK_EQ(family(), b.family());
+
+  ByteString address_bytes(address());
+  address_bytes.BitwiseOr(b.address());
 
   return IPAddress(family(), address_bytes);
 }
 
 IPAddress IPAddress::GetNetworkPart() {
   return MaskWith(GetAddressMaskFromPrefix(family(), prefix()));
+}
+
+IPAddress IPAddress::GetDefaultBroadcast() {
+  ByteString broadcast_bytes(
+    GetAddressMaskFromPrefix(family(), prefix()).address());
+  broadcast_bytes.BitwiseInvert();
+  return MergeWith(IPAddress(family(), broadcast_bytes));
 }
 
 bool IPAddress::CanReachAddress(const IPAddress &b) {

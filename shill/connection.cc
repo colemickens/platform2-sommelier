@@ -67,8 +67,9 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
 
   IPAddress broadcast(properties.address_family);
   if (properties.broadcast_address.empty()) {
-    if (technology_ != Technology::kVPN) {
+    if (properties.peer_address.empty()) {
       LOG(WARNING) << "Broadcast address is not set.  Using default.";
+      broadcast = local.GetDefaultBroadcast();
     }
   } else if (!broadcast.SetAddressFromString(properties.broadcast_address)) {
     LOG(ERROR) << "Broadcast address " << properties.broadcast_address

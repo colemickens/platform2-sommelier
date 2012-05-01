@@ -196,63 +196,83 @@ INSTANTIATE_TEST_CASE_P(
         PrefixMapping(IPAddress::kFamilyIPv6, 136,
                       "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")));
 
-struct MaskMapping {
-  MaskMapping() : family(IPAddress::kFamilyUnknown) {}
-  MaskMapping(IPAddress::Family family_in,
+struct BitOperationMapping {
+  BitOperationMapping() : family(IPAddress::kFamilyUnknown) {}
+  BitOperationMapping(IPAddress::Family family_in,
               const string &address_a_in,
               const string &address_b_in,
-              const string &expected_address_in)
+              const string &expected_anded_in,
+              const string &expected_orred_in)
       : family(family_in),
         address_a(address_a_in),
         address_b(address_b_in),
-        expected_address(expected_address_in) {}
+        expected_anded(expected_anded_in),
+        expected_orred(expected_orred_in) {}
   IPAddress::Family family;
   string address_a;
   string address_b;
-  string expected_address;
+  string expected_anded;
+  string expected_orred;
 };
 
-class IPAddressMaskMappingTest
-    : public testing::TestWithParam<MaskMapping> {};
+class IPAddressBitOperationMappingTest
+    : public testing::TestWithParam<BitOperationMapping> {};
 
-TEST_P(IPAddressMaskMappingTest, TestMaskMapping) {
+TEST_P(IPAddressBitOperationMappingTest, TestBitOperationMapping) {
   IPAddress address_a(GetParam().family);
   EXPECT_TRUE(address_a.SetAddressFromString(GetParam().address_a));
   IPAddress address_b(GetParam().family);
   EXPECT_TRUE(address_b.SetAddressFromString(GetParam().address_b));
-  IPAddress expected_address(GetParam().family);
-  EXPECT_TRUE(expected_address.SetAddressFromString(
-      GetParam().expected_address));
-  EXPECT_TRUE(expected_address.Equals(address_a.MaskWith(address_b)));
+  IPAddress expected_anded(GetParam().family);
+  EXPECT_TRUE(expected_anded.SetAddressFromString(
+      GetParam().expected_anded));
+  EXPECT_TRUE(expected_anded.Equals(address_a.MaskWith(address_b)));
+  IPAddress expected_orred(GetParam().family);
+  EXPECT_TRUE(expected_orred.SetAddressFromString(
+      GetParam().expected_orred));
+  EXPECT_TRUE(expected_orred.Equals(address_a.MergeWith(address_b)));
 }
 
 INSTANTIATE_TEST_CASE_P(
-    IPAddressMaskMappingTestRun,
-    IPAddressMaskMappingTest,
+    IPAddressBitOperationMappingTestRun,
+    IPAddressBitOperationMappingTest,
     ::testing::Values(
-        MaskMapping(IPAddress::kFamilyIPv4,
-                    "255.255.255.255", "0.0.0.0", "0.0.0.0"),
-        MaskMapping(IPAddress::kFamilyIPv4,
-                    "0.0.0.0", "255.255.255.255", "0.0.0.0"),
-        MaskMapping(IPAddress::kFamilyIPv4,
-                    "170.170.170.170", "85.85.85.85", "0.0.0.0"),
-        MaskMapping(IPAddress::kFamilyIPv4,
-                    "238.187.119.221", "119.221.238.187", "102.153.102.153")));
+        BitOperationMapping(IPAddress::kFamilyIPv4,
+                            "255.255.255.255", "0.0.0.0",
+                            "0.0.0.0", "255.255.255.255"),
+        BitOperationMapping(IPAddress::kFamilyIPv4,
+                            "0.0.0.0", "255.255.255.255",
+                            "0.0.0.0", "255.255.255.255"),
+        BitOperationMapping(IPAddress::kFamilyIPv4,
+                            "170.170.170.170", "85.85.85.85",
+                            "0.0.0.0", "255.255.255.255"),
+        BitOperationMapping(IPAddress::kFamilyIPv4,
+                            "238.187.119.221", "119.221.238.187",
+                            "102.153.102.153", "255.255.255.255"),
+        BitOperationMapping(IPAddress::kFamilyIPv4,
+                            "17.68.136.34", "119.221.238.187",
+                            "17.68.136.34", "119.221.238.187"),
+        BitOperationMapping(IPAddress::kFamilyIPv4,
+                            "192.168.1.10", "255.255.255.0",
+                            "192.168.1.0", "255.255.255.10")));
 
 struct NetworkPartMapping {
   NetworkPartMapping() : family(IPAddress::kFamilyUnknown) {}
   NetworkPartMapping(IPAddress::Family family_in,
                      const string &address_in,
                      size_t prefix_in,
-                     const string &expected_address_in)
+                     const string &expected_network_in,
+                     const string &expected_broadcast_in)
       : family(family_in),
         address(address_in),
         prefix(prefix_in),
-        expected_address(expected_address_in) {}
+        expected_network(expected_network_in),
+        expected_broadcast(expected_broadcast_in) {}
   IPAddress::Family family;
   string address;
   size_t prefix;
-  string expected_address;
+  string expected_network;
+  string expected_broadcast;
 };
 
 class IPAddressNetworkPartMappingTest
@@ -261,11 +281,15 @@ class IPAddressNetworkPartMappingTest
 TEST_P(IPAddressNetworkPartMappingTest, TestNetworkPartMapping) {
   IPAddress address(GetParam().family);
   EXPECT_TRUE(address.SetAddressFromString(GetParam().address));
-  IPAddress expected_address(GetParam().family);
-  EXPECT_TRUE(expected_address.SetAddressFromString(
-      GetParam().expected_address));
+  IPAddress expected_network(GetParam().family);
+  EXPECT_TRUE(expected_network.SetAddressFromString(
+      GetParam().expected_network));
   address.set_prefix(GetParam().prefix);
-  EXPECT_TRUE(expected_address.Equals(address.GetNetworkPart()));
+  EXPECT_TRUE(expected_network.Equals(address.GetNetworkPart()));
+  IPAddress expected_broadcast(GetParam().family);
+  EXPECT_TRUE(expected_broadcast.SetAddressFromString(
+      GetParam().expected_broadcast));
+  EXPECT_TRUE(expected_broadcast.Equals(address.GetDefaultBroadcast()));
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -273,13 +297,28 @@ INSTANTIATE_TEST_CASE_P(
     IPAddressNetworkPartMappingTest,
     ::testing::Values(
         NetworkPartMapping(IPAddress::kFamilyIPv4,
-                           "255.255.255.255", 0, "0.0.0.0"),
+                           "255.255.255.255", 0, "0.0.0.0", "255.255.255.255"),
         NetworkPartMapping(IPAddress::kFamilyIPv4,
-                           "255.255.255.255", 32, "255.255.255.255"),
+                           "255.255.255.255", 32,
+                           "255.255.255.255", "255.255.255.255"),
         NetworkPartMapping(IPAddress::kFamilyIPv4,
-                           "255.255.255.255", 24, "255.255.255.0"),
+                           "255.255.255.255", 24,
+                           "255.255.255.0", "255.255.255.255"),
         NetworkPartMapping(IPAddress::kFamilyIPv4,
-                           "255.255.255.255", 16, "255.255.0.0")));
+                           "255.255.255.255", 16,
+                           "255.255.0.0", "255.255.255.255"),
+        NetworkPartMapping(IPAddress::kFamilyIPv4,
+                           "0.0.0.0", 0, "0.0.0.0", "255.255.255.255"),
+        NetworkPartMapping(IPAddress::kFamilyIPv4,
+                           "0.0.0.0", 32, "0.0.0.0", "0.0.0.0"),
+        NetworkPartMapping(IPAddress::kFamilyIPv4,
+                           "0.0.0.0", 24, "0.0.0.0", "0.0.0.255"),
+        NetworkPartMapping(IPAddress::kFamilyIPv4,
+                           "0.0.0.0", 16, "0.0.0.0", "0.0.255.255"),
+        NetworkPartMapping(IPAddress::kFamilyIPv4,
+                           "192.168.1.1", 24, "192.168.1.0", "192.168.1.255"),
+        NetworkPartMapping(IPAddress::kFamilyIPv4,
+                           "10.1.0.1", 8, "10.0.0.0", "10.255.255.255")));
 
 struct MinPrefixLengthMapping {
   MinPrefixLengthMapping() : family(IPAddress::kFamilyUnknown) {}

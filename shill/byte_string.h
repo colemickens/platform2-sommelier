@@ -56,8 +56,17 @@ class ByteString {
   // Perform an AND operation between each element of |this| with the
   // corresponding byte of |b|.  Returns true if both |this| and |b|
   // are the same length, and as such the operation succeeds; false
-  // if they are not.
-  bool ApplyMask(const ByteString &b);
+  // if they are not.  The result of the operation is stored in |this|.
+  bool BitwiseAnd(const ByteString &b);
+
+  // Perform an OR operation between each element of |this| with the
+  // corresponding byte of |b|.  Returns true if both |this| and |b|
+  // are the same length, and as such the operation succeeds; false
+  // if they are not.  The result of the operation is stored in |this|.
+  bool BitwiseOr(const ByteString &b);
+
+  // Perform an inversion operation on each of the bits this string.
+  void BitwiseInvert();
 
   bool Equals(const ByteString &b) const;
   void Append(const ByteString &b);

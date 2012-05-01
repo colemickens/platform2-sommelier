@@ -131,21 +131,49 @@ TEST_F(ByteStringTest, HexEncode) {
   EXPECT_EQ(kTest2HexString, bs.HexEncode());
 }
 
-TEST_F(ByteStringTest, ApplyMask) {
+TEST_F(ByteStringTest, BitwiseAnd) {
   ByteString bs(kTest1, sizeof(kTest1));
   ByteString mask;
   ByteString expected_result;
   for (size_t i = 0; i < sizeof(kTest1); i++) {
-    EXPECT_FALSE(bs.ApplyMask(mask));
+    EXPECT_FALSE(bs.BitwiseAnd(mask));
     unsigned char val = sizeof(kTest1) - i;
     mask.Append(ByteString(&val, 1));
     val &= bs.GetConstData()[i];
     expected_result.Append(ByteString(&val, 1));
   }
-  EXPECT_TRUE(bs.ApplyMask(mask));
+  EXPECT_TRUE(bs.BitwiseAnd(mask));
   EXPECT_TRUE(bs.Equals(expected_result));
   bs.Resize(sizeof(kTest1) - 1);
-  EXPECT_FALSE(bs.ApplyMask(mask));
+  EXPECT_FALSE(bs.BitwiseAnd(mask));
+}
+
+TEST_F(ByteStringTest, BitwiseOr) {
+  ByteString bs(kTest1, sizeof(kTest1));
+  ByteString merge;
+  ByteString expected_result;
+  for (size_t i = 0; i < sizeof(kTest1); i++) {
+    EXPECT_FALSE(bs.BitwiseOr(merge));
+    unsigned char val = sizeof(kTest1) - i;
+    merge.Append(ByteString(&val, 1));
+    val |= bs.GetConstData()[i];
+    expected_result.Append(ByteString(&val, 1));
+  }
+  EXPECT_TRUE(bs.BitwiseOr(merge));
+  EXPECT_TRUE(bs.Equals(expected_result));
+  bs.Resize(sizeof(kTest1) - 1);
+  EXPECT_FALSE(bs.BitwiseOr(merge));
+}
+
+TEST_F(ByteStringTest, BitwiseInvert) {
+  ByteString bs(kTest1, sizeof(kTest1));
+  ByteString invert;
+  for (size_t i = 0; i < sizeof(kTest1); i++) {
+    unsigned char val = kTest1[i] ^ 0xff;
+    invert.Append(ByteString(&val, 1));
+  }
+  bs.BitwiseInvert();
+  EXPECT_TRUE(bs.Equals(invert));
 }
 
 }  // namespace shill

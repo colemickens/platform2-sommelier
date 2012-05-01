@@ -107,9 +107,19 @@ class IPAddress {
   // or if either are not valid,
   IPAddress MaskWith(const IPAddress &b);
 
+  // Perform an OR operation between the address data of |this| and that
+  // of |b|.  Returns an IPAddress containing the result of the operation.
+  // It is an error if |this| and |b| are not of the same address family
+  // or if either are not valid,
+  IPAddress MergeWith(const IPAddress &b);
+
   // Return an address that represents the network-part of the address,
   // i.e, the address with all but the prefix bits masked out.
   IPAddress GetNetworkPart();
+
+  // Return the default broadcast address for the IP address, by setting
+  // all of the host-part bits to 1.
+  IPAddress GetDefaultBroadcast();
 
   // Tests whether this IPAddress is able to directly access the address
   // |b| without an intervening gateway.  It tests whether the network

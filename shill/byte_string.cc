@@ -49,7 +49,7 @@ bool ByteString::IsZero() const {
   return true;
 }
 
-bool ByteString::ApplyMask(const ByteString &b) {
+bool ByteString::BitwiseAnd(const ByteString &b) {
   if (GetLength() != b.GetLength()) {
     return false;
   }
@@ -57,6 +57,22 @@ bool ByteString::ApplyMask(const ByteString &b) {
     data_[i] &= b.data_[i];
   }
   return true;
+}
+
+bool ByteString::BitwiseOr(const ByteString &b) {
+  if (GetLength() != b.GetLength()) {
+    return false;
+  }
+  for (size_t i = 0; i < GetLength(); ++i) {
+    data_[i] |= b.data_[i];
+  }
+  return true;
+}
+
+void ByteString::BitwiseInvert() {
+  for (size_t i = 0; i < GetLength(); ++i) {
+    data_[i] = ~data_[i];
+  }
 }
 
 bool ByteString::Equals(const ByteString &b) const {
