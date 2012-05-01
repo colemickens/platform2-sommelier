@@ -205,6 +205,8 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	wifi.o \
 	wifi_endpoint.o \
 	wifi_service.o \
+	wimax.o \
+	wimax_service.o \
 	wpa_supplicant.o \
 	)
 

@@ -29,6 +29,10 @@ class WiFi;
 typedef scoped_refptr<const WiFi> WiFiConstRefPtr;
 typedef scoped_refptr<WiFi> WiFiRefPtr;
 
+class WiMax;
+typedef scoped_refptr<const WiMax> WiMaxConstRefPtr;
+typedef scoped_refptr<WiMax> WiMaxRefPtr;
+
 class Endpoint;
 typedef scoped_refptr<const Endpoint> EndpointConstRefPtr;
 typedef scoped_refptr<Endpoint> EndpointRefPtr;
@@ -56,6 +60,10 @@ typedef scoped_refptr<VPNService> VPNServiceRefPtr;
 class WiFiService;
 typedef scoped_refptr<const WiFiService> WiFiServiceConstRefPtr;
 typedef scoped_refptr<WiFiService> WiFiServiceRefPtr;
+
+class WiMaxService;
+typedef scoped_refptr<const WiMaxService> WiMaxServiceConstRefPtr;
+typedef scoped_refptr<WiMaxService> WiMaxServiceRefPtr;
 
 class IPConfig;
 typedef scoped_refptr<IPConfig> IPConfigRefPtr;
