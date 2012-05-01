@@ -51,6 +51,9 @@ getgid32: 1
 geteuid32: 1
 setfsuid32: 1
 setfsgid32: 1
+setgroups32: 1
+setresgid32: 1
+setresuid32: 1
 madvise: 1
 getdents64: 1
 fcntl64: 1
