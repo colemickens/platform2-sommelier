@@ -595,30 +595,33 @@ cmd_ping() {
 
 # TODO(gauravsh): Remove once this is the default. crosbug.com/23531
 cmd_shill_manager() {
-  local flag_file="/home/chronos/.disable_shill"
-  local enabled=1
+  local disable_file="/home/chronos/.disable_shill"
+  local enable_file="/home/chronos/.enable_shill"
+  local previous="defaulted"
   local changed=0
-  if [ -r ${flag_file} ]; then
-    enabled=0
+  if [ -r ${enable_file} -a -r ${disable_file} ]; then
+    previous="misconfigured"
+  elif [ -r ${enable_file} ]; then
+    previous="enabled"
+  elif [ -r ${disable_file} ]; then
+    previous="disabled"
   fi
   if [ -z "$1" ]; then
-    if [ ${enabled} -eq 1 ]; then
-      echo "Currently enabled"
-    else
-      echo "Currently disabled"
-    fi
+    echo "Currently ${previous}."
     return
   fi
   if [ "$1" = "on" ]; then
-    if [ $enabled -eq 0 ]; then
-      changed=1;
-    fi
-    rm -f "${flag_file}"
-  else
-    if [ $enabled -eq 1 ]; then
+    if [ ${previous} != "enabled" ]; then
       changed=1
     fi
-    touch "${flag_file}"
+    touch "${enable_file}"
+    rm -f "${disable_file}"
+  else
+    if [ ${previous} != "disabled" ]; then
+      changed=1
+    fi
+    touch "${disable_file}"
+    rm -f "${enable_file}"
   fi
   if [ $changed -eq 1 ]; then
     echo "You must reboot for this to take effect"
