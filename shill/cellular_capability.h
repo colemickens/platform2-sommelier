@@ -198,7 +198,9 @@ class CellularCapability {
                              CellularTaskList *tasks, const Error &error);
 
   // accessor for subclasses to read the allow roaming property
-  bool allow_roaming_property() const { return allow_roaming_; }
+  bool allow_roaming_property() const {
+    return cellular_->allow_roaming_property();
+  }
 
  private:
   friend class CellularCapabilityGSMTest;
@@ -209,22 +211,10 @@ class CellularCapability {
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, TearDown);
 
-  void HelpRegisterDerivedBool(
-      const std::string &name,
-      bool(CellularCapability::*get)(Error *error),
-      void(CellularCapability::*set)(const bool &value, Error *error));
-
-  // DBUS accessors to read/modify the allow roaming property
-  bool GetAllowRoaming(Error */*error*/) { return allow_roaming_; }
-  void SetAllowRoaming(const bool &value, Error *error);
-
   Cellular *cellular_;
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
-
-  // User preference to allow or disallow roaming
-  bool allow_roaming_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapability);
 };

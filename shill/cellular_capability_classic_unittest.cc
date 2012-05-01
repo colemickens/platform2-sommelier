@@ -299,9 +299,9 @@ TEST_F(CellularCapabilityTest, UnsupportedOperation) {
 }
 
 TEST_F(CellularCapabilityTest, AllowRoaming) {
-  EXPECT_FALSE(capability_->GetAllowRoaming(NULL));
-  capability_->SetAllowRoaming(false, NULL);
-  EXPECT_FALSE(capability_->GetAllowRoaming(NULL));
+  EXPECT_FALSE(cellular_->GetAllowRoaming(NULL));
+  cellular_->SetAllowRoaming(false, NULL);
+  EXPECT_FALSE(cellular_->GetAllowRoaming(NULL));
 
   {
     InSequence seq;
@@ -314,16 +314,16 @@ TEST_F(CellularCapabilityTest, AllowRoaming) {
   cellular_->state_ = Cellular::kStateConnected;
   dynamic_cast<CellularCapabilityGSM *>(capability_)->registration_state_ =
       MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
-  capability_->SetAllowRoaming(true, NULL);
-  EXPECT_TRUE(capability_->GetAllowRoaming(NULL));
+  cellular_->SetAllowRoaming(true, NULL);
+  EXPECT_TRUE(cellular_->GetAllowRoaming(NULL));
   EXPECT_EQ(Cellular::kStateConnected, cellular_->state_);
 
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularCapabilityTest::InvokeDisconnect));
   SetProxy();
   cellular_->state_ = Cellular::kStateConnected;
-  capability_->SetAllowRoaming(false, NULL);
-  EXPECT_FALSE(capability_->GetAllowRoaming(NULL));
+  cellular_->SetAllowRoaming(false, NULL);
+  EXPECT_FALSE(cellular_->GetAllowRoaming(NULL));
   EXPECT_EQ(Cellular::kStateRegistered, cellular_->state_);
 }
 

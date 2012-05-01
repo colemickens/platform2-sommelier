@@ -30,43 +30,10 @@ const int CellularCapability::kTimeoutScan = 120000;
 CellularCapability::CellularCapability(Cellular *cellular,
                                        ProxyFactory *proxy_factory)
     : cellular_(cellular),
-      proxy_factory_(proxy_factory),
-      allow_roaming_(false) {
-  HelpRegisterDerivedBool(flimflam::kCellularAllowRoamingProperty,
-                          &CellularCapability::GetAllowRoaming,
-                          &CellularCapability::SetAllowRoaming);
+      proxy_factory_(proxy_factory) {
 }
 
 CellularCapability::~CellularCapability() {}
-
-void CellularCapability::HelpRegisterDerivedBool(
-    const string &name,
-    bool(CellularCapability::*get)(Error *error),
-    void(CellularCapability::*set)(const bool &value, Error *error)) {
-  cellular()->mutable_store()->RegisterDerivedBool(
-      name,
-      BoolAccessor(
-          new CustomAccessor<CellularCapability, bool>(this, get, set)));
-}
-
-void CellularCapability::SetAllowRoaming(const bool &value, Error */*error*/) {
-  SLOG(Cellular, 2) << __func__
-                    << "(" << allow_roaming_ << "->" << value << ")";
-  if (allow_roaming_ == value) {
-    return;
-  }
-  allow_roaming_ = value;
-  // Use AllowRoaming() instead of allow_roaming_ in order to
-  // incorporate provider preferences when evaluating if a disconnect
-  // is required.
-  if (!AllowRoaming() &&
-      GetRoamingStateString() == flimflam::kRoamingStateRoaming) {
-    Error error;
-    cellular()->Disconnect(&error);
-  }
-  cellular()->adaptor()->EmitBoolChanged(
-      flimflam::kCellularAllowRoamingProperty, value);
-}
 
 void CellularCapability::RunNextStep(CellularTaskList *tasks) {
   CHECK(!tasks->empty());

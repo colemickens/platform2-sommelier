@@ -33,6 +33,7 @@
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
 #include "shill/scope_logger.h"
+#include "shill/store_interface.h"
 #include "shill/technology.h"
 
 using base::Bind;
@@ -40,6 +41,9 @@ using std::string;
 using std::vector;
 
 namespace shill {
+
+// static
+const char Cellular::kAllowRoaming[] = "AllowRoaming";
 
 Cellular::Operator::Operator() {
   SetName("");
@@ -104,13 +108,17 @@ Cellular::Cellular(ControlInterface *control_interface,
       modem_state_(kModemStateUnknown),
       dbus_owner_(owner),
       dbus_path_(path),
-      provider_db_(provider_db) {
+      provider_db_(provider_db),
+      allow_roaming_(false) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
   store->RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
   HelpRegisterDerivedString(flimflam::kTechnologyFamilyProperty,
                             &Cellular::GetTechnologyFamily,
                             NULL);
+  HelpRegisterDerivedBool(flimflam::kCellularAllowRoamingProperty,
+                          &Cellular::GetAllowRoaming,
+                          &Cellular::SetAllowRoaming);
   store->RegisterConstStringmap(flimflam::kHomeProviderProperty,
                                 &home_provider_.ToDict());
   // For now, only a single capability is supported.
@@ -121,6 +129,22 @@ Cellular::Cellular(ControlInterface *control_interface,
 }
 
 Cellular::~Cellular() {
+}
+
+bool Cellular::Load(StoreInterface *storage) {
+  const string id = GetStorageIdentifier();
+  if (!storage->ContainsGroup(id)) {
+    LOG(WARNING) << "Device is not available in the persistent store: " << id;
+    return false;
+  }
+  storage->GetBool(id, kAllowRoaming, &allow_roaming_);
+  return Device::Load(storage);
+}
+
+bool Cellular::Save(StoreInterface *storage) {
+  const string id = GetStorageIdentifier();
+  storage->SetBool(id, kAllowRoaming, allow_roaming_);
+  return Device::Save(storage);
 }
 
 // static
@@ -144,6 +168,16 @@ void Cellular::SetState(State state) {
   SLOG(Cellular, 2) << GetStateString(state_) << " -> "
                     << GetStateString(state);
   state_ = state;
+}
+
+void Cellular::HelpRegisterDerivedBool(
+    const string &name,
+    bool(Cellular::*get)(Error *error),
+    void(Cellular::*set)(const bool &value, Error *error)) {
+  mutable_store()->RegisterDerivedBool(
+      name,
+      BoolAccessor(
+          new CustomAccessor<Cellular, bool>(this, get, set)));
 }
 
 void Cellular::HelpRegisterDerivedString(
@@ -520,6 +554,26 @@ void Cellular::OnModemStateChanged(ModemState old_state,
     default:
       break;
   }
+}
+
+void Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
+  SLOG(Cellular, 2) << __func__
+                    << "(" << allow_roaming_ << "->" << value << ")";
+  if (allow_roaming_ == value) {
+    return;
+  }
+  allow_roaming_ = value;
+  manager()->SaveActiveProfile();
+
+  // Use AllowRoaming() instead of allow_roaming_ in order to
+  // incorporate provider preferences when evaluating if a disconnect
+  // is required.
+  if (!capability_->AllowRoaming() &&
+      capability_->GetRoamingStateString() == flimflam::kRoamingStateRoaming) {
+    Error error;
+    Disconnect(&error);
+  }
+  adaptor()->EmitBoolChanged(flimflam::kCellularAllowRoamingProperty, value);
 }
 
 }  // namespace shill

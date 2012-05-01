@@ -107,6 +107,12 @@ class Cellular : public Device {
            mobile_provider_db *provider_db);
   virtual ~Cellular();
 
+  // Load configuration for the device from |storage|.
+  virtual bool Load(StoreInterface *storage);
+
+  // Save configuration for the device to |storage|.
+  virtual bool Save(StoreInterface *storage);
+
   // Asynchronously connects the modem to the network. Populates |error| on
   // failure, leaves it unchanged otherwise.
   void Connect(Error *error);
@@ -185,6 +191,9 @@ class Cellular : public Device {
                            ModemState new_state,
                            uint32 reason);
 
+  // accessor to read the allow roaming property
+  bool allow_roaming_property() const { return allow_roaming_; }
+
  private:
   friend class CellularTest;
   friend class CellularCapabilityTest;
@@ -215,6 +224,9 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
 
+  // Names of properties in storage
+  static const char kAllowRoaming[];
+
   void SetState(State state);
 
   // Invoked when the modem is connected to the cellular network to transition
@@ -231,6 +243,10 @@ class Cellular : public Device {
   // Reads of the property will be handled by invoking |get|.
   // Writes to the property will be handled by invoking |set|.
   // Clearing the property will be handled by PropertyStore.
+  void HelpRegisterDerivedBool(
+      const std::string &name,
+      bool(Cellular::*get)(Error *error),
+      void(Cellular::*set)(const bool &value, Error *error));
   void HelpRegisterDerivedString(
       const std::string &name,
       std::string(Cellular::*get)(Error *error),
@@ -238,6 +254,10 @@ class Cellular : public Device {
 
   void OnConnectReply(const Error &error);
   void OnDisconnectReply(const Error &error);
+
+  // DBUS accessors to read/modify the allow roaming property
+  bool GetAllowRoaming(Error */*error*/) { return allow_roaming_; }
+  void SetAllowRoaming(const bool &value, Error *error);
 
   State state_;
   ModemState modem_state_;
@@ -253,6 +273,9 @@ class Cellular : public Device {
 
   // Properties
   Operator home_provider_;
+
+  // User preference to allow or disallow roaming
+  bool allow_roaming_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };

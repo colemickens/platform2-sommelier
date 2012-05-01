@@ -542,7 +542,7 @@ TEST_F(CellularTest, Connect) {
   device_->service_ = new CellularService(
       &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
 
-  device_->capability_->allow_roaming_ = false;
+  device_->allow_roaming_ = false;
   device_->service_->roaming_state_ = flimflam::kRoamingStateRoaming;
   device_->Connect(&error);
   EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
@@ -561,7 +561,7 @@ TEST_F(CellularTest, Connect) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateConnected, device_->state_);
 
-  device_->capability_->allow_roaming_ = true;
+  device_->allow_roaming_ = true;
   device_->service_->roaming_state_ = flimflam::kRoamingStateRoaming;
   device_->state_ = Cellular::kStateRegistered;
   device_->Connect(&error);
