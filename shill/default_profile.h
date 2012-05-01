@@ -36,6 +36,10 @@ class DefaultProfile : public Profile {
   // Loads global configuration into manager properties.
   virtual bool LoadManagerProperties(Manager::Properties *manager_props);
 
+  // Override the Profile superclass implementation to accept all Ethernet
+  // services, since these should have an affinity for the default profile.
+  virtual bool ConfigureService(const ServiceRefPtr &service);
+
   // Persists profile information, as well as that of discovered devices
   // and bound services, to disk.
   // Returns true on success, false on failure.

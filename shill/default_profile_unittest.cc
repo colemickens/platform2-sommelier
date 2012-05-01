@@ -18,6 +18,7 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
+#include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
@@ -217,6 +218,37 @@ TEST_F(DefaultProfileTest, GetStoragePath) {
   FilePath path;
   EXPECT_TRUE(profile_->GetStoragePath(&path));
   EXPECT_EQ(storage_path() + "/default.profile", path.value());
+}
+
+TEST_F(DefaultProfileTest, ConfigureService) {
+  scoped_ptr<MockStore> storage(new MockStore);
+  EXPECT_CALL(*storage, ContainsGroup(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*storage, Flush())
+      .WillOnce(Return(true));
+
+  scoped_refptr<MockService> unknown_service(new MockService(
+      control_interface(),
+      dispatcher(),
+      metrics(),
+      manager()));
+  EXPECT_CALL(*unknown_service, technology())
+      .WillOnce(Return(Technology::kUnknown));
+  EXPECT_CALL(*unknown_service, Save(_)) .Times(0);
+
+  scoped_refptr<MockService> ethernet_service(new MockService(
+      control_interface(),
+      dispatcher(),
+      metrics(),
+      manager()));
+  EXPECT_CALL(*ethernet_service, technology())
+      .WillOnce(Return(Technology::kEthernet));
+  EXPECT_CALL(*ethernet_service, Save(storage.get()))
+      .WillOnce(Return(true));
+
+  profile_->set_storage(storage.release());
+  EXPECT_FALSE(profile_->ConfigureService(unknown_service));
+  EXPECT_TRUE(profile_->ConfigureService(ethernet_service));
 }
 
 }  // namespace shill

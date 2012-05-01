@@ -87,6 +87,21 @@ bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
   return true;
 }
 
+bool DefaultProfile::ConfigureService(const ServiceRefPtr &service) {
+  if (Profile::ConfigureService(service)) {
+    return true;
+  }
+  if (service->technology() == Technology::kEthernet) {
+    // Ethernet services should have an affinity towards the default profile,
+    // so even if a new Ethernet service has no known configuration, accept
+    // it anyway.
+    UpdateService(service);
+    service->set_profile(this);
+    return true;
+  }
+  return false;
+}
+
 bool DefaultProfile::Save() {
   storage()->SetString(kStorageId, kStorageHostName, props_.host_name);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
