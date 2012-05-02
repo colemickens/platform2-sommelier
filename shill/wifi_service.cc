@@ -312,8 +312,8 @@ bool WiFiService::Save(StoreInterface *storage) {
 bool WiFiService::Unload() {
   Service::Unload();
   hidden_ssid_ = false;
-  passphrase_ = "";
-  UpdateConnectable();
+  Error unused_error;
+  ClearPassphrase(&unused_error);
   if (security_ == flimflam::kSecurity8021x) {
     // TODO(pstew): 802.1x/RSN networks (as opposed to 802.1x/WPA or
     // 802.1x/WEP) have the ability to cache WPA PMK credentials.
@@ -390,10 +390,18 @@ void WiFiService::HelpRegisterWriteOnlyDerivedString(
               this, set, clear, default_value)));
 }
 
-void WiFiService::Connect(Error */*error*/) {
-  LOG(INFO) << "In " << __func__ << "():";
+void WiFiService::Connect(Error *error) {
+  LOG(INFO) << "In " << __func__ << "(): Service " << friendly_name();
   std::map<string, DBus::Variant> params;
   DBus::MessageIter writer;
+
+  if (!connectable()) {
+    LOG(ERROR) << "Can't connect. Service " << friendly_name()
+               << " is not connectable";
+    Error::PopulateAndLog(error, Error::kOperationFailed,
+      Error::GetDefaultMessage(Error::kOperationFailed));
+    return;
+  }
 
   params[wpa_supplicant::kNetworkPropertyMode].writer().
       append_uint32(WiFiEndpoint::ModeStringToUint(mode_));

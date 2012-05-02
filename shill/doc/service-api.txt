@@ -54,10 +54,15 @@ Methods		dict GetProperties()
 			connecting then it is terminated before this request
 			is handled.
 
+                        If the requested service cannot, for reasons not
+                        described above, be connected, OperationFailed is
+                        returned.
+
 			Possible Errors: [service].Error.AlreadyConnected
 					 [service].Error.InProgress
 					 [service].Error.OperationAborted
 					 [service].Error.InvalidService
+					 [service].Error.OperationFailed
 
 		void Disconnect()
 

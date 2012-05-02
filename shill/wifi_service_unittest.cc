@@ -336,6 +336,8 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA) {
                                                    false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
+  Error error;
+  wifi_service->SetPassphrase("0:mumblemumblem", &error);
   wifi_service->Connect(NULL);
 }
 
@@ -352,6 +354,8 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
                                                    false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
+  Error error;
+  wifi_service->SetPassphrase("0:mumblemumblem", &error);
   wifi_service->Connect(NULL);
 }
 
@@ -368,6 +372,8 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
                                                    false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
+  Error error;
+  wifi_service->SetPassphrase("0:mumblemumblem", &error);
   wifi_service->Connect(NULL);
 }
 
@@ -384,6 +390,7 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
                                                    false);
   Service::EapCredentials eap;
   eap.identity = "identity";
+  eap.password = "mumble";
   wifi_service->set_eap(eap);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), EAPSecurityArgs()));
@@ -483,6 +490,7 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   Service::EapCredentials eap;
   eap.key_management = "IEEE8021X";
   eap.identity = "something";
+  eap.password = "mumble";
   wifi_service->set_eap(eap);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), DynamicWEPArgs()));

@@ -905,7 +905,6 @@ void Service::UnloadEapCredentials() {
   eap_.use_system_cas = true;
   eap_.pin = "";
   eap_.password = "";
-  eap_.key_management = "";
 }
 
 void Service::IgnoreParameterForConfigure(const string &parameter) {
