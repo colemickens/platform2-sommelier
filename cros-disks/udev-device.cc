@@ -36,6 +36,7 @@ const char kPropertyBlkIdFilesystemType[] = "TYPE";
 const char kPropertyBlkIdFilesystemLabel[] = "LABEL";
 const char kPropertyBlkIdFilesystemUUID[] = "UUID";
 const char kPropertyCDROM[] = "ID_CDROM";
+const char kPropertyCDROMDVD[] = "ID_CDROM_DVD";
 const char kPropertyCDROMMedia[] = "ID_CDROM_MEDIA";
 const char kPropertyDeviceType[] = "DEVTYPE";
 const char kPropertyDeviceTypeUSBDevice[] = "usb_device";
@@ -184,6 +185,9 @@ size_t UdevDevice::GetPrimaryPartitionCount() const {
 }
 
 DeviceMediaType UdevDevice::GetDeviceMediaType() const {
+  if (IsPropertyTrue(kPropertyCDROMDVD))
+    return DEVICE_MEDIA_DVD;
+
   if (IsPropertyTrue(kPropertyCDROM))
     return DEVICE_MEDIA_OPTICAL_DISC;
 

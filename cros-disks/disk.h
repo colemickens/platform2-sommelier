@@ -72,7 +72,8 @@ class Disk {
   void set_is_rotational(bool is_rotational) { is_rotational_ = is_rotational; }
 
   bool is_optical_disk() const {
-    return media_type_ == DEVICE_MEDIA_OPTICAL_DISC;
+    return (media_type_ == DEVICE_MEDIA_OPTICAL_DISC ||
+            media_type_ == DEVICE_MEDIA_DVD);
   }
 
   bool is_read_only() const { return is_read_only_; }
@@ -133,7 +134,6 @@ class Disk {
   bool is_media_available_;
   bool is_on_boot_device_;
   bool is_rotational_;
-  bool is_optical_disk_;
   bool is_read_only_;
   bool is_virtual_;
   std::vector<std::string> mount_paths_;

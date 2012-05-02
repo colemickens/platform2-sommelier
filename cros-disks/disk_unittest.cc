@@ -39,6 +39,9 @@ TEST_F(DiskTest, GetPresentationNameForDiskWithoutLabel) {
 
   disk_.set_media_type(DEVICE_MEDIA_MOBILE);
   EXPECT_EQ("Mobile Device", disk_.GetPresentationName());
+
+  disk_.set_media_type(DEVICE_MEDIA_DVD);
+  EXPECT_EQ("DVD", disk_.GetPresentationName());
 }
 
 }  // namespace cros_disks

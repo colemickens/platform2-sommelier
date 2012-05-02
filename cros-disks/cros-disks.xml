@@ -16,7 +16,6 @@
       <tp:member name="DeviceFile" type="s"> </tp:member>
       <tp:member name="DriveModel" type="s"> </tp:member>
       <tp:member name="DriveIsRotational" type="b"> </tp:member>
-      <tp:member name="DeviceIsOpticalDisc" type="b"> </tp:member>
       <tp:member name="DeviceIsReadOnly" type="b"> </tp:member>
       <tp:member name="DeviceSize" type="t"> </tp:member>
     </tp:struct>

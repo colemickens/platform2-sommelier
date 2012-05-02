@@ -14,6 +14,7 @@ const char kUSBDriveName[] = "USB Drive";
 const char kSDCardName[] = "SD Card";
 const char kOpticalDiscName[] = "Optical Disc";
 const char kMobileDeviceName[] = "Mobile Device";
+const char kDVDName[] = "DVD";
 const char kFallbackPresentationName[] = "External Drive";
 
 }  // namespace
@@ -28,7 +29,6 @@ Disk::Disk()
       is_media_available_(false),
       is_on_boot_device_(true),
       is_rotational_(false),
-      is_optical_disk_(false),
       is_read_only_(false),
       is_virtual_(true),
       mount_paths_(),
@@ -61,6 +61,8 @@ string Disk::GetPresentationName() const {
       return kOpticalDiscName;
     case DEVICE_MEDIA_MOBILE:
       return kMobileDeviceName;
+    case DEVICE_MEDIA_DVD:
+      return kDVDName;
     default:
       return kFallbackPresentationName;
   }
@@ -80,7 +82,6 @@ DBusDisk Disk::ToDBusFormat() const {
   disk[kIdLabel].writer().append_string(label().c_str());
   disk[kDriveModel].writer().append_string(drive_model().c_str());
   disk[kDriveIsRotational].writer().append_bool(is_rotational());
-  disk[kDeviceIsOpticalDisc].writer().append_bool(is_optical_disk());
   disk[kDeviceMediaType].writer().append_uint32(media_type());
   disk[kDeviceSize].writer().append_uint64(device_capacity());
   disk[kDeviceIsReadOnly].writer().append_bool(is_read_only());
