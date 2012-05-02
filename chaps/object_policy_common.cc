@@ -90,7 +90,7 @@ void ObjectPolicyCommon::SetDefaultAttributes() {
   if (!object_->IsAttributePresent(CKA_TOKEN))
     object_->SetAttributeBool(CKA_TOKEN, false);
   if (!object_->IsAttributePresent(CKA_PRIVATE))
-    object_->SetAttributeBool(CKA_PRIVATE, true);
+    object_->SetAttributeBool(CKA_PRIVATE, IsPrivateClass());
   if (!object_->IsAttributePresent(CKA_MODIFIABLE))
     object_->SetAttributeBool(CKA_MODIFIABLE, true);
   if (!object_->IsAttributePresent(CKA_LABEL))
@@ -102,6 +102,15 @@ void ObjectPolicyCommon::AddPolicies(const AttributePolicy* policies,
   for (int i = 0; i < num_policies; ++i) {
     policies_[policies[i].type_] = policies[i];
   }
+}
+
+bool ObjectPolicyCommon::IsPrivateClass() {
+  switch (object_->GetObjectClass()) {
+    case CKO_PUBLIC_KEY:
+    case CKO_CERTIFICATE:
+      return false;
+  }
+  return true;
 }
 
 }  // namespace chaps
