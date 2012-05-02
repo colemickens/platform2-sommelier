@@ -54,9 +54,16 @@ class ObjectStoreImpl : public ObjectStore {
   bool Encrypt(const ObjectBlob& plain_text,
                ObjectBlob* cipher_text);
 
-  // Decrypts an object blob and verifies the HMAC.
+  // Verifies and decrypts an object blob.
   bool Decrypt(const ObjectBlob& cipher_text,
                ObjectBlob* plain_text);
+
+  // TODO(dkrahn): We're migrating objects for the convenience of dev-channel
+  // users. Once this is in beta and everyone has either migrated over or never
+  // had old-style objects this migration code can be removed.
+  // Verifies and decrypts an object blob the old way.
+  bool DecryptOld(const ObjectBlob& cipher_text,
+                  ObjectBlob* plain_text);
 
   // Computes an HMAC and appends it to the given input.
   std::string AppendHMAC(const std::string& input, const std::string& key);
@@ -113,6 +120,8 @@ class ObjectStoreImpl : public ObjectStore {
   static const char kCorruptDatabaseDirectory[];
   // An obfuscation key used for public objects.
   static const char kObfuscationKey[];
+  // The current blob format version.
+  static const int kBlobVersion;
 
   std::string key_;
   scoped_ptr<leveldb::Env> env_;

@@ -677,7 +677,11 @@ bool RunCipher(bool is_encrypt,
   if (is_encrypt) {
     // Generate a new random IV.
     random_iv.resize(kIVSizeBytes);
-    RAND_bytes(ConvertStringToByteBuffer(random_iv.data()), kIVSizeBytes);
+    if (1 != RAND_bytes(ConvertStringToByteBuffer(random_iv.data()),
+                        kIVSizeBytes)) {
+      LOG(ERROR) << "RAND_bytes failed: " << GetOpenSSLError();
+      return false;
+    }
   } else {
     // Recover and strip the IV from the cipher-text.
     if (input.length() < kIVSizeBytes) {

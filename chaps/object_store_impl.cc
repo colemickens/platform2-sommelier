@@ -6,6 +6,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <base/file_util.h>
 #include <base/logging.h>
@@ -23,6 +24,7 @@
 
 using std::map;
 using std::string;
+using std::vector;
 
 namespace chaps {
 
@@ -41,6 +43,7 @@ const char ObjectStoreImpl::kObfuscationKey[] = {
     '\x8b', '\x05', '\x1c', '\xd2', '\x8b', '\xac', '\x2d', '\xba', '\x5e',
     '\x14', '\x9c', '\xae', '\x57', '\xfb', '\x04', '\x13', '\x92', '\xc0',
     '\x84', '\x2a', '\xea', '\xf6', '\xfb', '\0'};
+const int ObjectStoreImpl::kBlobVersion = 1;
 
 ObjectStoreImpl::ObjectStoreImpl() {}
 
@@ -183,6 +186,7 @@ bool ObjectStoreImpl::LoadPrivateObjectBlobs(map<int, ObjectBlob>* blobs) {
 
 bool ObjectStoreImpl::LoadObjectBlobs(BlobType type,
                                       map<int, ObjectBlob>* blobs) {
+  vector<int> blobs_to_migrate;
   scoped_ptr<leveldb::Iterator> it(db_->NewIterator(leveldb::ReadOptions()));
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     BlobType it_type;
@@ -193,11 +197,26 @@ bool ObjectStoreImpl::LoadObjectBlobs(BlobType type,
       encrypted_blob.blob = it->value().ToString();
       ObjectBlob blob;
       if (!Decrypt(encrypted_blob, &blob)) {
-        LOG(WARNING) << "Failed to decrypt object blob.";
-        continue;
+        if (DecryptOld(encrypted_blob, &blob)) {
+          // This object was encrypted the old way. Schedule it for migration.
+          blobs_to_migrate.push_back(id);
+        } else {
+          LOG(WARNING) << "Failed to decrypt object blob.";
+          continue;
+        }
       }
       (*blobs)[id] = blob;
       blob_type_map_[id] = type;
+    }
+  }
+  for (size_t i = 0; i < blobs_to_migrate.size(); ++i) {
+    // Migrate by reencrypting.
+    LOG(INFO) << "Migrating object blob.";
+    int id = blobs_to_migrate[i];
+    if (!UpdateObjectBlob(id, (*blobs)[id])) {
+      LOG(WARNING) << "Failed to migrate object blob.";
+      blobs->erase(id);
+      blob_type_map_.erase(id);
     }
   }
   return true;
@@ -211,16 +230,44 @@ bool ObjectStoreImpl::Encrypt(const ObjectBlob& plain_text,
   }
   cipher_text->is_private = plain_text.is_private;
   string key = plain_text.is_private ? key_ : kObfuscationKey;
-  // Append a MAC to the plain-text before encrypting.
-  return RunCipher(true,
-                   key,
-                   string(),
-                   AppendHMAC(plain_text.blob, key),
-                   &cipher_text->blob);
+  string cipher_text_no_hmac;
+  if (!RunCipher(true, key, string(), plain_text.blob, &cipher_text_no_hmac))
+    return false;
+  // Prepend a version header and include it in the MAC.
+  string version_header(1, static_cast<char>(kBlobVersion));
+  cipher_text->blob = AppendHMAC(version_header + cipher_text_no_hmac, key);
+  return true;
 }
 
 bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
                               ObjectBlob* plain_text) {
+  if (cipher_text.is_private && key_.empty()) {
+    LOG(ERROR) << "The store encryption key has not been initialized.";
+    return false;
+  }
+  plain_text->is_private = cipher_text.is_private;
+  string key = cipher_text.is_private ? key_ : kObfuscationKey;
+  string cipher_text_no_hmac;
+  if (!VerifyAndStripHMAC(cipher_text.blob,
+                          key,
+                          &cipher_text_no_hmac))
+    return false;
+  // Check and strip the version header.
+  int version = static_cast<int>(cipher_text_no_hmac[0]);
+  if (version != kBlobVersion) {
+    LOG(ERROR) << "Blob found with unknown version.";
+    return false;
+  }
+  cipher_text_no_hmac = cipher_text_no_hmac.substr(1);
+  return RunCipher(false,
+                   key,
+                   string(),
+                   cipher_text_no_hmac,
+                   &plain_text->blob);
+}
+
+bool ObjectStoreImpl::DecryptOld(const ObjectBlob& cipher_text,
+                                 ObjectBlob* plain_text) {
   if (cipher_text.is_private && key_.empty()) {
     LOG(ERROR) << "The store encryption key has not been initialized.";
     return false;
@@ -256,7 +303,11 @@ bool ObjectStoreImpl::VerifyAndStripHMAC(const string& input,
   }
   *stripped = input.substr(0, input.size() - kHMACSizeBytes);
   string hmac = input.substr(input.size() - kHMACSizeBytes);
-  if (hmac != HmacSha512(*stripped, key)) {
+  string computed_hmac = HmacSha512(*stripped, key);
+  if ((hmac.size() != computed_hmac.size()) ||
+      (0 != chromeos::SafeMemcmp(hmac.data(),
+                                 computed_hmac.data(),
+                                 hmac.size()))) {
     LOG(ERROR) << "Failed to verify blob integrity.";
     return false;
   }
