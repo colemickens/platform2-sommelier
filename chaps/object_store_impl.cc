@@ -35,6 +35,7 @@ const char ObjectStoreImpl::kIDTrackerKey[] = "NextBlobID";
 const int ObjectStoreImpl::kAESKeySizeBytes = 32;
 const int ObjectStoreImpl::kHMACSizeBytes = 64;
 const char ObjectStoreImpl::kDatabaseDirectory[] = "database";
+const char ObjectStoreImpl::kCorruptDatabaseDirectory[] = "database_corrupt";
 const char ObjectStoreImpl::kObfuscationKey[] = {
     '\x6f', '\xaa', '\x0a', '\xb6', '\x10', '\xc0', '\xa6', '\xe4', '\x07',
     '\x8b', '\x05', '\x1c', '\xd2', '\x8b', '\xac', '\x2d', '\xba', '\x5e',
@@ -66,13 +67,17 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
                                              &db);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to open database: " << status.ToString();
-    // We don't want to risk using a database that has been corrupted.
-    status = leveldb::DestroyDB(database_name.value(), options);
-    if (!status.ok()) {
-      LOG(ERROR) << "Failed to destroy database: " << status.ToString();
+    // We don't want to risk using a database that has been corrupted. Recreate
+    // the database from scratch but save the corrupted database for diagnostic
+    // purposes.
+    LOG(WARNING) << "Recreating database from scratch. Moving current database "
+                 << "to " << kCorruptDatabaseDirectory;
+    FilePath corrupt_db_path = database_path.Append(kCorruptDatabaseDirectory);
+    file_util::Delete(corrupt_db_path, true);
+    if (!file_util::Move(database_name, corrupt_db_path)) {
+      LOG(ERROR) << "Failed to move database." << status.ToString();
       return false;
     }
-    LOG(WARNING) << "Recreating database from scratch.";
     // Now retry the open.
     status = leveldb::DB::Open(options, database_name.value(), &db);
     if (!status.ok()) {

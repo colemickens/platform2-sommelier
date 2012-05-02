@@ -109,6 +109,8 @@ class ObjectStoreImpl : public ObjectStore {
   static const int kHMACSizeBytes;
   // The leveldb directory.
   static const char kDatabaseDirectory[];
+  // A directory in which to backup a corrupted database before recreating.
+  static const char kCorruptDatabaseDirectory[];
   // An obfuscation key used for public objects.
   static const char kObfuscationKey[];
 
