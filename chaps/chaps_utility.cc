@@ -39,6 +39,18 @@ const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
 const CK_ATTRIBUTE_TYPE kAuthDataAttribute = CKA_VENDOR_DEFINED + 2;
 const CK_ATTRIBUTE_TYPE kLegacyAttribute = CKA_VENDOR_DEFINED + 3;
 
+// Some NSS-specific constants (from NSS' pkcs11n.h).
+#define NSSCK_VENDOR_NSS 0x4E534350
+#define CKA_NSS (CKA_VENDOR_DEFINED|NSSCK_VENDOR_NSS)
+#define CKA_NSS_URL                (CKA_NSS +  1)
+#define CKA_NSS_EMAIL              (CKA_NSS +  2)
+#define CKA_NSS_SMIME_INFO         (CKA_NSS +  3)
+#define CKA_NSS_SMIME_TIMESTAMP    (CKA_NSS +  4)
+#define CKA_NSS_PKCS8_SALT         (CKA_NSS +  5)
+#define CKA_NSS_PASSWORD_CHECK     (CKA_NSS +  6)
+#define CKA_NSS_EXPIRES            (CKA_NSS +  7)
+#define CKA_NSS_KRL                (CKA_NSS +  8)
+
 const char* CK_RVToString(CK_RV value) {
   switch (value) {
     case CKR_OK:
@@ -347,6 +359,22 @@ string AttributeToString(CK_ATTRIBUTE_TYPE attribute) {
       return "CKA_WRAP_TEMPLATE";
     case CKA_UNWRAP_TEMPLATE:
       return "CKA_UNWRAP_TEMPLATE";
+    case CKA_NSS_URL:
+      return "CKA_NSS_URL";
+    case CKA_NSS_EMAIL:
+      return "CKA_NSS_EMAIL";
+    case CKA_NSS_SMIME_INFO:
+      return "CKA_NSS_SMIME_INFO";
+    case CKA_NSS_SMIME_TIMESTAMP:
+      return "CKA_NSS_SMIME_TIMESTAMP";
+    case CKA_NSS_PKCS8_SALT:
+      return "CKA_NSS_PKCS8_SALT";
+    case CKA_NSS_PASSWORD_CHECK:
+      return "CKA_NSS_PASSWORD_CHECK";
+    case CKA_NSS_EXPIRES:
+      return "CKA_NSS_EXPIRES";
+    case CKA_NSS_KRL:
+      return "CKA_NSS_KRL";
     default:
       stringstream ss;
       ss << attribute;
