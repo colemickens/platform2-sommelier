@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <sys/inotify.h>
+#include <unistd.h>
 
 #include "base/logging.h"
 
