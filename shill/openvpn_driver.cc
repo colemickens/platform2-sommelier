@@ -109,6 +109,14 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { flimflam::kOpenVPNMgmtEnableProperty, 0 },
 };
 
+// static
+const char OpenVPNDriver::kLSBReleaseFile[] = "/etc/lsb-release";
+// static
+const char OpenVPNDriver::kChromeOSReleaseName[] = "CHROMEOS_RELEASE_NAME";
+//static
+const char OpenVPNDriver::kChromeOSReleaseVersion[] =
+    "CHROMEOS_RELEASE_VERSION";
+
 OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
                              EventDispatcher *dispatcher,
                              Metrics *metrics,
@@ -123,6 +131,7 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       glib_(glib),
       management_server_(new OpenVPNManagementServer(this, glib)),
       nss_(NSS::GetInstance()),
+      lsb_release_file_(kLSBReleaseFile),
       pid_(0),
       child_watch_tag_(0) {}
 
@@ -183,13 +192,22 @@ bool OpenVPNDriver::SpawnOpenVPN() {
     process_args.push_back(const_cast<char *>(it->c_str()));
   }
   process_args.push_back(NULL);
-  char *envp[1] = { NULL };
+
+  vector<string> environment;
+  InitEnvironment(&environment);
+
+  vector<char *> process_env;
+  for (vector<string>::const_iterator it = environment.begin();
+       it != environment.end(); ++it) {
+    process_env.push_back(const_cast<char *>(it->c_str()));
+  }
+  process_env.push_back(NULL);
 
   CHECK(!pid_);
   // Redirect all openvpn output to stderr.
   int stderr_fd = fileno(stderr);
   if (!glib_->SpawnAsyncWithPipesCWD(process_args.data(),
-                                     envp,
+                                     process_env.data(),
                                      G_SPAWN_DO_NOT_REAP_CHILD,
                                      NULL,
                                      NULL,
@@ -627,6 +645,44 @@ KeyValueStore OpenVPNDriver::GetProvider(Error *error) {
                 args()->LookupString(
                     flimflam::kOpenVPNPasswordProperty, "").empty());
   return props;
+}
+
+// TODO(petkov): Consider refactoring lsb-release parsing out into a shared
+// singleton if it's used outside OpenVPN.
+bool OpenVPNDriver::ParseLSBRelease(map<string, string> *lsb_release) {
+  SLOG(VPN, 2) << __func__ << "(" << lsb_release_file_.value() << ")";
+  string contents;
+  if (!file_util::ReadFileToString(lsb_release_file_, &contents)) {
+    LOG(ERROR) << "Unable to read the lsb-release file: "
+               << lsb_release_file_.value();
+    return false;
+  }
+  vector<string> lines;
+  SplitString(contents, '\n', &lines);
+  for (vector<string>::const_iterator it = lines.begin();
+       it != lines.end(); ++it) {
+    size_t assign = it->find('=');
+    if (assign == string::npos) {
+      continue;
+    }
+    (*lsb_release)[it->substr(0, assign)] = it->substr(assign + 1);
+  }
+  return true;
+}
+
+void OpenVPNDriver::InitEnvironment(vector<string> *environment) {
+  // Adds the platform name and version to the environment so that openvpn can
+  // send them to the server when OpenVPN.PushPeerInfo is set.
+  map<string, string> lsb_release;
+  ParseLSBRelease(&lsb_release);
+  string platform_name = lsb_release[kChromeOSReleaseName];
+  if (!platform_name.empty()) {
+    environment->push_back("IV_PLAT=" + platform_name);
+  }
+  string platform_version = lsb_release[kChromeOSReleaseVersion];
+  if (!platform_version.empty()) {
+    environment->push_back("IV_PLAT_REL=" + platform_version);
+  }
 }
 
 }  // namespace shill

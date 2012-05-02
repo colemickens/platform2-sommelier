@@ -71,6 +71,10 @@ class OpenVPNDriverTest : public testing::Test,
     driver_->pid_ = 0;
     driver_->device_ = NULL;
     driver_->service_ = NULL;
+    if (!lsb_release_file_.empty()) {
+      EXPECT_TRUE(file_util::Delete(lsb_release_file_, false));
+      lsb_release_file_.clear();
+    }
   }
 
  protected:
@@ -101,6 +105,8 @@ class OpenVPNDriverTest : public testing::Test,
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
 
+  void SetupLSBRelease();
+
   // Inherited from RPCTaskDelegate.
   virtual void GetLogin(string *user, string *password);
   virtual void Notify(const string &reason, const map<string, string> &dict);
@@ -118,6 +124,8 @@ class OpenVPNDriverTest : public testing::Test,
 
   // Owned by |driver_|.
   NiceMock<MockOpenVPNManagementServer> *management_server_;
+
+  FilePath lsb_release_file_;
 };
 
 const char OpenVPNDriverTest::kOption[] = "--openvpn-option";
@@ -154,6 +162,25 @@ void OpenVPNDriverTest::ExpectInFlags(const vector<string> &options,
   if (it != options.end())
     return;  // Don't crash below.
   EXPECT_EQ(value, *it);
+}
+
+void OpenVPNDriverTest::SetupLSBRelease() {
+  static const char kLSBReleaseContents[] =
+      "\n"
+      "=\n"
+      "foo=\n"
+      "=bar\n"
+      "zoo==\n"
+      "CHROMEOS_RELEASE_BOARD=x86-alex\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+      "CHROMEOS_RELEASE_VERSION=2202.0\n";
+  EXPECT_TRUE(file_util::CreateTemporaryFile(&lsb_release_file_));
+  EXPECT_EQ(arraysize(kLSBReleaseContents),
+            file_util::WriteFile(lsb_release_file_,
+                                 kLSBReleaseContents,
+                                 arraysize(kLSBReleaseContents)));
+  EXPECT_EQ(OpenVPNDriver::kLSBReleaseFile, driver_->lsb_release_file_.value());
+  driver_->lsb_release_file_ = lsb_release_file_;
 }
 
 TEST_F(OpenVPNDriverTest, Connect) {
@@ -558,7 +585,19 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_TRUE(driver_->tls_auth_file_.empty());
 }
 
+namespace {
+MATCHER(CheckEnv, "") {
+  if (!arg || !arg[0] || !arg[1] || arg[2]) {
+    return false;
+  }
+  return (string(arg[0]) == "IV_PLAT=Chromium OS" &&
+          string(arg[1]) == "IV_PLAT_REL=2202.0");
+}
+}  // namespace
+
 TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
+  SetupLSBRelease();
+
   EXPECT_FALSE(driver_->SpawnOpenVPN());
 
   static const char kHost[] = "192.168.2.254";
@@ -570,7 +609,8 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
       .WillRepeatedly(Return(true));
 
   const int kPID = 234678;
-  EXPECT_CALL(glib_, SpawnAsyncWithPipesCWD(_, _, _, _, _, _, _, _, _, _))
+  EXPECT_CALL(glib_,
+              SpawnAsyncWithPipesCWD(_, CheckEnv(), _, _, _, _, _, _, _, _))
       .WillOnce(Return(false))
       .WillOnce(DoAll(SetArgumentPointee<5>(kPID), Return(true)));
   const int kTag = 6;
@@ -666,6 +706,31 @@ TEST_F(OpenVPNDriverTest, GetProvider) {
             flimflam::kProviderProperty, &props, &error));
     EXPECT_FALSE(props.LookupBool(flimflam::kPassphraseRequiredProperty, true));
   }
+}
+
+TEST_F(OpenVPNDriverTest, ParseLSBRelease) {
+  SetupLSBRelease();
+  map<string, string> lsb_release;
+  EXPECT_TRUE(driver_->ParseLSBRelease(&lsb_release));
+  EXPECT_TRUE(ContainsKey(lsb_release, "foo") && lsb_release["foo"] == "");
+  EXPECT_EQ("=", lsb_release["zoo"]);
+  EXPECT_EQ("Chromium OS", lsb_release[OpenVPNDriver::kChromeOSReleaseName]);
+  EXPECT_EQ("2202.0", lsb_release[OpenVPNDriver::kChromeOSReleaseVersion]);
+  driver_->lsb_release_file_ = FilePath("/non/existent/file");
+  EXPECT_FALSE(driver_->ParseLSBRelease(NULL));
+}
+
+TEST_F(OpenVPNDriverTest, InitEnvironment) {
+  vector<string> env;
+  SetupLSBRelease();
+  driver_->InitEnvironment(&env);
+  ASSERT_EQ(2, env.size());
+  EXPECT_EQ("IV_PLAT=Chromium OS", env[0]);
+  EXPECT_EQ("IV_PLAT_REL=2202.0", env[1]);
+  env.clear();
+  EXPECT_EQ(0, file_util::WriteFile(lsb_release_file_, "", 0));
+  driver_->InitEnvironment(&env);
+  EXPECT_EQ(0, env.size());
 }
 
 }  // namespace shill

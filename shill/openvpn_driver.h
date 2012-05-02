@@ -77,6 +77,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ConnectTunnelFailure);
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
+  FRIEND_TEST(OpenVPNDriverTest, InitEnvironment);
   FRIEND_TEST(OpenVPNDriverTest, InitLoggingOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitManagementChannelOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitNSSOptions);
@@ -90,6 +91,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
+  FRIEND_TEST(OpenVPNDriverTest, ParseLSBRelease);
   FRIEND_TEST(OpenVPNDriverTest, ParseRouteOption);
   FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
@@ -98,6 +100,10 @@ class OpenVPNDriver : public VPNDriver,
   static const char kOpenVPNPath[];
   static const char kOpenVPNScript[];
   static const Property kProperties[];
+
+  static const char kLSBReleaseFile[];
+  static const char kChromeOSReleaseName[];
+  static const char kChromeOSReleaseVersion[];
 
   // The map is a sorted container that allows us to iterate through the options
   // in order.
@@ -127,6 +133,9 @@ class OpenVPNDriver : public VPNDriver,
       std::vector<std::string> *options, Error *error);
   void InitLoggingOptions(std::vector<std::string> *options);
 
+  void InitEnvironment(std::vector<std::string> *environment);
+  bool ParseLSBRelease(std::map<std::string, std::string> *lsb_release);
+
   bool SpawnOpenVPN();
 
   // Called when the openpvn process exits.
@@ -148,6 +157,7 @@ class OpenVPNDriver : public VPNDriver,
   Sockets sockets_;
   scoped_ptr<OpenVPNManagementServer> management_server_;
   NSS *nss_;
+  FilePath lsb_release_file_;
 
   VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;
