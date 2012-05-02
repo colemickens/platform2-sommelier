@@ -59,10 +59,12 @@ class ObjectStoreImpl : public ObjectStore {
                ObjectBlob* plain_text);
 
   // Computes an HMAC and appends it to the given input.
-  std::string AppendHMAC(const std::string& input);
+  std::string AppendHMAC(const std::string& input, const std::string& key);
 
   // Verifies an appended HMAC and strips it from the given input.
-  bool VerifyAndStripHMAC(const std::string& input, std::string* stripped);
+  bool VerifyAndStripHMAC(const std::string& input,
+                          const std::string& key,
+                          std::string* stripped);
 
   // Creates and returns a unique database key for a blob.
   std::string CreateBlobKey(BlobType type, int blob_id);

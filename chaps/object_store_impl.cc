@@ -210,7 +210,7 @@ bool ObjectStoreImpl::Encrypt(const ObjectBlob& plain_text,
   return RunCipher(true,
                    key,
                    string(),
-                   AppendHMAC(plain_text.blob),
+                   AppendHMAC(plain_text.blob, key),
                    &cipher_text->blob);
 }
 
@@ -227,16 +227,17 @@ bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
   if (!RunCipher(false, key, string(), cipher_text.blob, &plain_text_with_hmac))
     return false;
   // Check the MAC that was appended before encrypting.
-  if (!VerifyAndStripHMAC(plain_text_with_hmac, &plain_text->blob))
+  if (!VerifyAndStripHMAC(plain_text_with_hmac, key, &plain_text->blob))
     return false;
   return true;
 }
 
-string ObjectStoreImpl::AppendHMAC(const string& input) {
-  return input + HmacSha512(input, key_);
+string ObjectStoreImpl::AppendHMAC(const string& input, const string& key) {
+  return input + HmacSha512(input, key);
 }
 
 bool ObjectStoreImpl::VerifyAndStripHMAC(const string& input,
+                                         const string& key,
                                          string* stripped) {
   if (input.size() < static_cast<size_t>(kHMACSizeBytes)) {
     LOG(ERROR) << "Failed to verify blob integrity.";
@@ -244,7 +245,7 @@ bool ObjectStoreImpl::VerifyAndStripHMAC(const string& input,
   }
   *stripped = input.substr(0, input.size() - kHMACSizeBytes);
   string hmac = input.substr(input.size() - kHMACSizeBytes);
-  if (hmac != HmacSha512(*stripped, key_)) {
+  if (hmac != HmacSha512(*stripped, key)) {
     LOG(ERROR) << "Failed to verify blob integrity.";
     return false;
   }
