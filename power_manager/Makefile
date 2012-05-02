@@ -2,20 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO(rharrison:crosbug.com/30057): Factor out common flags and libs into top
-#                                    level vars and have each binary/library
-#                                    generate a list of this vars that they want
-#                                    to use instead of having pseudo
-#                                    dependencies
-# TODO(rharrison:crosbug.com/30057): Possibly replace gdk-2.0 with a smaller set
-#                                    of deps
-# TODO(rharrison:crosbug.com/30057): Scrub the list of deps and libs for each
-#                                    target
-# TODO(rharrison:crosbug.com/30057): Look at re-laying out the package source to
-#                                    have per binary group dirs and use
-#                                    module.mk file to lower the amount of code
-#                                    in this file
+# This Makefile uses ChromeOS's common.mk for most of its functionality. Consult
+# the documentation in common-mk for recipes and other information.
 
+# This controls where we build the package. Don't fiddle with this, since things
+# like CPPFLAGS and some of the protobuf stuff depends on it.
 OUT ?= $(PWD)/out
 VERBOSE ?= 0
 
@@ -38,15 +29,17 @@ CPPFLAGS-$(USE_AURA) += -DUSE_AURA
 CPPFLAGS += $(CPPFLAGS-y)
 
 ## protobuffer targets
-# These rules are for including protobufs that live in the dbus directory of the
-# repo system_api. To add a new one from this location to the build, just add
-# the name of the generated .cc file to the bindings variable.
+# Detailed instructions on how to work with these rules can be found in the
+# common-mk package.  These rules are for including protobufs that live in the
+# dbus directory of the system_api repo. To add a new one from this location to
+# the build, just add the name of the generated .cc file to the bindings
+# variable and include approriate depends targets[.
 #
 # To add protobufs from a different location then you need to copy all the proto
 # variables and use a new prefix for them, setting the path variable as you
 # need.
 #
-# TODO(rharrison:crosbug.com/30056): Once I have written the described macros,
+# TODO(rharrison:crosbug.com/30056): Once I have written the protobuf macros,
 #                                    use them here
 SYSTEM_API_PROTO_BINDINGS = power_state_control.pb.cc \
                             power_supply_properties.pb.cc
