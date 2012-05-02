@@ -7,6 +7,7 @@
 
 #include <fstream>
 #include <string>
+#include <unistd.h>
 
 #include "image_burner_utils_interfaces.h"
 
