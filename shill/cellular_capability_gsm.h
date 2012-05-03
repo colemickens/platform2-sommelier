@@ -31,7 +31,6 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   // Inherited from CellularCapability.
   virtual void StartModem(Error *error, const ResultCallback &callback);
   virtual void OnServiceCreated();
-  virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void Connect(const DBusPropertiesMap &properties, Error *error,
                        const ResultCallback &callback);
@@ -79,6 +78,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
  protected:
   virtual void InitProxies();
   virtual void ReleaseProxies();
+  virtual void UpdateStatus(const DBusPropertiesMap &properties);
 
  private:
   friend class CellularTest;
@@ -100,6 +100,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   FRIEND_TEST(CellularCapabilityGSMTest, RegisterOnNetwork);
   FRIEND_TEST(CellularCapabilityGSMTest, Scan);
   FRIEND_TEST(CellularCapabilityGSMTest, SetAccessTechnology);
+  FRIEND_TEST(CellularCapabilityGSMTest, UpdateStatus);
   FRIEND_TEST(CellularCapabilityGSMTest, SetHomeProvider);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityGSMTest, GetRegistrationState);

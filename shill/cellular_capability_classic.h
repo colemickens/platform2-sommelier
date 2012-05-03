@@ -88,6 +88,8 @@ class CellularCapabilityClassic : public CellularCapability {
       const std::vector<std::string> &invalidated_properties);
 
  protected:
+  virtual void GetRegistrationState() = 0;
+
   // The following five methods are only ever called as
   // callbacks (from the main loop), which is why they
   // don't take an Error * argument.
@@ -101,6 +103,7 @@ class CellularCapabilityClassic : public CellularCapability {
   void FinishDisable(const ResultCallback &callback);
   virtual void InitProxies();
   virtual void ReleaseProxies();
+  virtual void UpdateStatus(const DBusPropertiesMap &properties) = 0;
 
   static void OnUnsupportedOperation(const char *operation, Error *error);
 

@@ -205,37 +205,7 @@ void CellularCapabilityUniversal::Start_EnableModemCompleted(
   // After modem is enabled, it should be possible to get properties
   // TODO(jglasgow): handle errors from GetProperties
   GetProperties();
-
-  // Try to register
-  Error local_error;
-  modem_3gpp_proxy_->Register(
-      selected_network_, &local_error,
-      Bind(&CellularCapabilityUniversal::Start_RegisterCompleted,
-           weak_ptr_factory_.GetWeakPtr(), callback),
-      kTimeoutRegister);
-  if (local_error.IsFailure()) {
-    callback.Run(local_error);
-    return;
-  }
-}
-
-void CellularCapabilityUniversal::Start_RegisterCompleted(
-    const ResultCallback &callback, const Error &error) {
-  SLOG(Cellular, 2) << __func__ << ": " << error;
-  if (error.IsSuccess()) {
-    // Normally, running the callback is the last thing done in a method.
-    // In this case, we do it first, because we want to make sure that
-    // the device is marked as Enabled before the registration state is
-    // handled. See comment in Cellular::HandleNewRegistrationState.
-    callback.Run(error);
-    // If registered, get the registration state and signal quality.
-    GetRegistrationState();
-    GetSignalQuality();
-  } else {
-    LOG(ERROR) << "registration failed: " << error;
-    // Ignore registration errors, because that just means there is no signal.
-    callback.Run(Error());
-  }
+  callback.Run(error);
 }
 
 void CellularCapabilityUniversal::StopModem(Error *error,
@@ -338,13 +308,6 @@ void CellularCapabilityUniversal::OnServiceCreated() {
   UpdateServingOperator();
 }
 
-void CellularCapabilityUniversal::UpdateStatus(
-    const DBusPropertiesMap &properties) {
-  if (ContainsKey(properties, kModemPropertyIMSI)) {
-    SetHomeProvider();
-  }
-}
-
 // Create the list of APNs to try, in the following order:
 // - last APN that resulted in a successful connection attempt on the
 //   current network (if any)
@@ -439,22 +402,6 @@ bool CellularCapabilityUniversal::AllowRoaming() {
   return requires_roaming || allow_roaming_property();
 }
 
-void CellularCapabilityUniversal::GetRegistrationState() {
-  SLOG(Cellular, 2) << __func__;
-  string operator_code;
-  string operator_name;
-
-  const MMModem3gppRegistrationState state =
-      static_cast<MMModem3gppRegistrationState>(
-          modem_3gpp_proxy_->RegistrationState());
-  if (state == MM_MODEM_3GPP_REGISTRATION_STATE_HOME ||
-      state == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING) {
-    operator_code = modem_3gpp_proxy_->OperatorCode();
-    operator_name = modem_3gpp_proxy_->OperatorName();
-  }
-  On3GPPRegistrationChanged(state, operator_code, operator_name);
-}
-
 void CellularCapabilityUniversal::GetProperties() {
   SLOG(Cellular, 2) << __func__;
 
@@ -502,7 +449,11 @@ void CellularCapabilityUniversal::SetHomeProvider() {
     SLOG(Cellular, 2) << "GSM provider not found.";
     return;
   }
+
+  // Even if provider is the same as home_provider_, it is possible
+  // that the spn_ has changed.  Run all the code below.
   home_provider_ = provider;
+
   Cellular::Operator oper;
   if (provider->networks) {
     oper.SetCode(provider->networks[0]);
@@ -965,10 +916,10 @@ void CellularCapabilityUniversal::OnSimPathChanged(
 
   if (sim_path.empty()) {
     // Clear all data about the sim
-    OnImsiChanged("");
+    imsi_ = "";
+    spn_ = "";
     OnSimIdentifierChanged("");
     OnOperatorIdChanged("");
-    OnOperatorNameChanged("");
   } else {
     scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
         proxy_factory()->CreateDBusPropertiesProxy(sim_path,
@@ -1160,20 +1111,25 @@ void CellularCapabilityUniversal::OnSimPropertiesChanged(
     const vector<string> &/* invalidated_properties */) {
   VLOG(2) << __func__;
   string value;
-  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_IMSI, &value))
-    OnImsiChanged(value);
+  bool must_update_home_provider = false;
   if (DBusProperties::GetString(props, MM_SIM_PROPERTY_SIMIDENTIFIER, &value))
     OnSimIdentifierChanged(value);
   if (DBusProperties::GetString(props, MM_SIM_PROPERTY_OPERATORIDENTIFIER,
                                 &value))
     OnOperatorIdChanged(value);
-  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_OPERATORNAME, &value))
-    OnOperatorNameChanged(value);
+  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_OPERATORNAME, &value)) {
+    spn_ = value;
+    must_update_home_provider = true;
+  }
+  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_IMSI, &value)) {
+    imsi_ = value;
+    must_update_home_provider = true;
+  }
   // TODO(jglasgow): May eventually want to get SPDI, etc
-}
 
-void CellularCapabilityUniversal::OnImsiChanged(const string &imsi) {
-  imsi_ = imsi;
+  if (must_update_home_provider)
+    SetHomeProvider();
+
 }
 
 void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
@@ -1183,11 +1139,6 @@ void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
 void CellularCapabilityUniversal::OnOperatorIdChanged(
     const string &operator_id) {
   operator_id_ = operator_id;
-}
-
-void CellularCapabilityUniversal::OnOperatorNameChanged(
-    const string &operator_name) {
-  spn_ = operator_name;
 }
 
 }  // namespace shill

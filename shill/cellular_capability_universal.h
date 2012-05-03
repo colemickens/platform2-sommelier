@@ -50,9 +50,7 @@ class CellularCapabilityUniversal : public CellularCapability {
                         Error *error, const ResultCallback &callback);
 
   virtual void OnServiceCreated();
-  virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
-  virtual void GetRegistrationState();
   virtual void GetProperties();
   virtual void Register(const ResultCallback &callback);
 
@@ -98,8 +96,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Methods used in starting a modem
   void Start_EnableModemCompleted(const ResultCallback &callback,
                                   const Error &error);
-  void Start_RegisterCompleted(const ResultCallback &callback,
-                               const Error &error);
 
   // Methods used in stopping a modem
   void Stop_DisconnectCompleted(const ResultCallback &callback,

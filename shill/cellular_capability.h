@@ -81,8 +81,6 @@ class CellularCapability {
   // Invoked by the parent Cellular device when a new service is created.
   virtual void OnServiceCreated() = 0;
 
-  virtual void UpdateStatus(const DBusPropertiesMap &properties) = 0;
-
   virtual void SetupConnectProperties(DBusPropertiesMap *properties) = 0;
 
   // StartModem attempts to put the modem in a state in which it is
@@ -177,8 +175,6 @@ class CellularCapability {
   virtual bool AllowRoaming() = 0;
 
  protected:
-  virtual void GetRegistrationState() = 0;
-
   // Releases all proxies held by the object.  This is most useful
   // during unit tests.
   virtual void ReleaseProxies() = 0;

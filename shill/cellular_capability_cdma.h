@@ -26,7 +26,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   // Inherited from CellularCapability.
   virtual void StartModem(Error *error, const ResultCallback &callback);
   virtual void OnServiceCreated();
-  virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void Activate(const std::string &carrier, Error *error,
                         const ResultCallback &callback);
@@ -49,6 +48,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
  protected:
   virtual void InitProxies();
   virtual void ReleaseProxies();
+  virtual void UpdateStatus(const DBusPropertiesMap &properties);
 
  private:
   friend class CellularCapabilityCDMATest;

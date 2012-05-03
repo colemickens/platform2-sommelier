@@ -94,6 +94,14 @@ class CellularCapabilityUniversalTest : public testing::Test {
     capability_->proxy_factory_ = NULL;
   }
 
+  void InitProviderDB() {
+    const char kTestMobileProviderDBPath[] = "provider_db_unittest.bfd";
+
+    provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
+    ASSERT_TRUE(provider_db_);
+    cellular_->provider_db_ = provider_db_;
+  }
+
   void InvokeEnable(bool enable, Error *error,
                     const ResultCallback &callback, int timeout) {
     callback.Run(Error());
@@ -174,6 +182,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
   TestProxyFactory proxy_factory_;
   CellularCapabilityUniversal *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
+  mobile_provider_db *provider_db_;
 };
 
 const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
@@ -215,16 +224,6 @@ TEST_F(CellularCapabilityUniversalTest, StartModem) {
   EXPECT_CALL(*properties_proxy_,
               GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP))
       .WillOnce(Return(modem3gpp_properties));
-  EXPECT_CALL(*modem_3gpp_proxy_,
-              Register(_, _, _, _))
-      .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeRegister));
-  EXPECT_CALL(*modem_proxy_, SignalQuality()).WillOnce(Return(quality));
-  EXPECT_CALL(*modem_3gpp_proxy_, RegistrationState())
-      .WillOnce(Return(MM_MODEM_3GPP_REGISTRATION_STATE_HOME));
-  EXPECT_CALL(*modem_3gpp_proxy_, OperatorName())
-      .WillOnce(Return(operator_name));
-  EXPECT_CALL(*modem_3gpp_proxy_, OperatorCode())
-      .WillOnce(Return(operator_code));
 
   // After setup we lose pointers to the proxies, so it is hard to set
   // expectations.
@@ -321,7 +320,11 @@ TEST_F(CellularCapabilityUniversalTest, SimPropertiesChanged) {
   // After setup we lose pointers to the proxies, so it is hard to set
   // expectations.
   SetUp();
+  InitProviderDB();
 
+  EXPECT_TRUE(cellular_->home_provider().GetName().empty());
+  EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
+  EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
   EXPECT_FALSE(capability_->sim_proxy_.get());
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                        modem_properties, vector<string>());
@@ -331,23 +334,35 @@ TEST_F(CellularCapabilityUniversalTest, SimPropertiesChanged) {
 
   // Updating the SIM
   DBusPropertiesMap new_properties;
-  const char kNewImsi[] = "123123123";
+  const char kCountry[] = "us";
+  const char kCode[] = "310160";
+  const char kNewImsi[] = "310240123456789";
   const char kSimIdentifier[] = "9999888";
-  const char kOperatorIdentifier[] = "410";
-  const char kOperatorName[] = "new operator";
+  const char kOperatorIdentifier[] = "310240";
+  const char kOperatorName[] = "Custom SPN";
   new_properties[MM_SIM_PROPERTY_IMSI].writer().append_string(kNewImsi);
   new_properties[MM_SIM_PROPERTY_SIMIDENTIFIER].writer().
       append_string(kSimIdentifier);
   new_properties[MM_SIM_PROPERTY_OPERATORIDENTIFIER].writer().
       append_string(kOperatorIdentifier);
-  new_properties[MM_SIM_PROPERTY_OPERATORNAME].writer().
-      append_string(kOperatorName);
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_SIM,
                                        new_properties,
                                        vector<string>());
   EXPECT_EQ(kNewImsi, capability_->imsi_);
   EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
+  EXPECT_EQ("", capability_->spn_);
+  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
+  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
+  EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
+  EXPECT_EQ(4, capability_->apn_list_.size());
+
+  new_properties[MM_SIM_PROPERTY_OPERATORNAME].writer().
+      append_string(kOperatorName);
+  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_SIM,
+                                       new_properties,
+                                       vector<string>());
+  EXPECT_EQ(kOperatorName, cellular_->home_provider().GetName());
   EXPECT_EQ(kOperatorName, capability_->spn_);
 }
 
