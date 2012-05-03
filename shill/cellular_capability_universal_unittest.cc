@@ -116,6 +116,15 @@ class CellularCapabilityUniversalTest : public testing::Test {
   }
 
 
+  void InvokeScan(Error *error, const DBusPropertyMapsCallback &callback,
+                  int timeout) {
+    callback.Run(CellularCapabilityUniversal::ScanResults(), Error());
+  }
+
+  void Set3gppProxy() {
+    capability_->modem_3gpp_proxy_.reset(modem_3gpp_proxy_.release());
+  }
+
   MOCK_METHOD1(TestCallback, void(const Error &error));
 
  protected:
@@ -364,6 +373,23 @@ TEST_F(CellularCapabilityUniversalTest, SimPropertiesChanged) {
                                        vector<string>());
   EXPECT_EQ(kOperatorName, cellular_->home_provider().GetName());
   EXPECT_EQ(kOperatorName, capability_->spn_);
+}
+
+MATCHER_P(SizeIs, value, "") {
+  return static_cast<size_t>(value) == arg.size();
+}
+
+// Validates that OnScanReply does not crash with a null callback.
+TEST_F(CellularCapabilityUniversalTest, ScanWithNullCallback) {
+  Error error;
+  EXPECT_CALL(*modem_3gpp_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
+      .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeScan));
+  EXPECT_CALL(*device_adaptor_,
+              EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
+                                    SizeIs(0)));
+  Set3gppProxy();
+  capability_->Scan(&error, ResultCallback());
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 }  // namespace shill

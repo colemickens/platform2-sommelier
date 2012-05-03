@@ -664,7 +664,14 @@ void CellularCapabilityUniversal::OnScanReply(const ResultCallback &callback,
   }
   cellular()->adaptor()->EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
                                                found_networks_);
-  callback.Run(error);
+
+  // TODO(gmorain): This check for is_null() is a work-around because
+  // Cellular::Scan() passes a null callback.  Instead: 1. Have Cellular::Scan()
+  // pass in a callback. 2. Have Cellular "own" the found_networks_ property
+  // 3. Have Cellular EmitStingMapsChanged() 4. Share the code between GSM and
+  // Universal.
+  if (!callback.is_null())
+    callback.Run(error);
 }
 
 Stringmap CellularCapabilityUniversal::ParseScanResult(
