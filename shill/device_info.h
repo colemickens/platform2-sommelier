@@ -26,6 +26,7 @@ namespace shill {
 
 class Manager;
 class Metrics;
+class RoutingTable;
 class RTNLHandler;
 class RTNLMessage;
 
@@ -84,15 +85,19 @@ class DeviceInfo {
   friend class DeviceInfoTest;
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(DeviceInfoTest, HasSubdir);  // For HasSubdir.
+  FRIEND_TEST(DeviceInfoTest, StartStop);
 
   struct Info {
-    Info() : flags(0) {}
+    Info() : flags(0), has_addresses_only(false) {}
 
     DeviceRefPtr device;
     std::string name;
     ByteString mac_address;
     std::vector<AddressData> ip_addresses;
     unsigned int flags;
+    // This flag indicates that link information has not been retrieved yet;
+    // only the ip_addresses field is valid.
+    bool has_addresses_only;
   };
 
   // Root of the kernel sysfs directory holding network device info.
@@ -119,6 +124,14 @@ class DeviceInfo {
   static const char *kModemDrivers[];
   // Path to the tun device.
   static const char kTunDeviceName[];
+
+  // Create a Device object for the interface named |linkname|, with a
+  // string-form MAC address |address|, whose kernel interface index
+  // is |interface_index| and detected technology is |technology|.
+  DeviceRefPtr CreateDevice(const std::string &link_name,
+                            const std::string &address,
+                            int interface_index,
+                            Technology::Identifier technology);
 
   // Return the FilePath for a given |path_name| in the device sysinfo for
   // a specific interface |iface_name|.
@@ -173,7 +186,8 @@ class DeviceInfo {
   std::set<std::string> black_list_;
   FilePath device_info_root_;
 
-  // Cache copy of singleton
+  // Cache copy of singleton pointers.
+  RoutingTable *routing_table_;
   RTNLHandler *rtnl_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceInfo);

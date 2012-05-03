@@ -14,6 +14,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_store.h"
 #include "shill/mock_vpn_driver.h"
+#include "shill/mock_vpn_provider.h"
 
 using testing::_;
 using testing::NiceMock;
@@ -143,11 +144,13 @@ TEST_F(VPNServiceTest, Unload) {
   service_->set_save_credentials(true);
   EXPECT_CALL(*driver_, Disconnect());
   EXPECT_CALL(*driver_, UnloadCredentials());
-  manager_.vpn_provider()->services_.push_back(service_);
+  MockVPNProvider provider;
+  EXPECT_CALL(manager_, vpn_provider()).WillRepeatedly(Return(&provider));
+  provider.services_.push_back(service_);
   service_->Unload();
   EXPECT_FALSE(service_->auto_connect());
   EXPECT_FALSE(service_->save_credentials());
-  EXPECT_TRUE(manager_.vpn_provider()->services_.empty());
+  EXPECT_TRUE(provider.services_.empty());
 }
 
 TEST_F(VPNServiceTest, InitPropertyStore) {

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,6 +31,7 @@ class MockRTNLHandler : public RTNLHandler {
                                          const IPAddress &peer));
   MOCK_METHOD2(RemoveInterfaceAddress, bool(int interface_index,
                                             const IPAddress &local));
+  MOCK_METHOD1(RemoveInterface, bool(int interface_index));
   MOCK_METHOD1(RequestDump, void(int request_flags));
   MOCK_METHOD1(GetInterfaceIndex, int(const std::string &interface_name));
   MOCK_METHOD1(SendMessage, bool(RTNLMessage *message));

@@ -28,16 +28,17 @@ class VPNProvider {
               EventDispatcher *dispatcher,
               Metrics *metrics,
               Manager *manager);
-  ~VPNProvider();
+  virtual ~VPNProvider();
 
-  void Start();
-  void Stop();
+  virtual void Start();
+  virtual void Stop();
 
   VPNServiceRefPtr GetService(const KeyValueStore &args, Error *error);
 
   // Offers an unclaimed interface to VPN services.  Returns true if this
   // device has been accepted by a service.
-  bool OnDeviceInfoAvailable(const std::string &link_name, int interface_index);
+  virtual bool OnDeviceInfoAvailable(const std::string &link_name,
+                                     int interface_index);
 
   // Clean up a VPN services that has been unloaded and will be deregistered.
   // This removes the VPN provider's reference to this service in its

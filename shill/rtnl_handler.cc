@@ -189,15 +189,15 @@ void RTNLHandler::NextRequest(uint32 seq) {
   if (seq != last_dump_sequence_)
     return;
 
-  if ((request_flags_ & kRequestLink) != 0) {
-    type = RTNLMessage::kTypeLink;
-    flag = kRequestLink;
-  } else if ((request_flags_ & kRequestAddr) != 0) {
+  if ((request_flags_ & kRequestAddr) != 0) {
     type = RTNLMessage::kTypeAddress;
     flag = kRequestAddr;
   } else if ((request_flags_ & kRequestRoute) != 0) {
     type = RTNLMessage::kTypeRoute;
     flag = kRequestRoute;
+  } else if ((request_flags_ & kRequestLink) != 0) {
+    type = RTNLMessage::kTypeLink;
+    flag = kRequestLink;
   } else {
     SLOG(RTNL, 2) << "Done with requests";
     in_request_ = false;
@@ -317,7 +317,7 @@ bool RTNLHandler::AddInterfaceAddress(int interface_index,
                                       const IPAddress &peer) {
     return AddressRequest(interface_index,
                           RTNLMessage::kModeAdd,
-                          NLM_F_CREATE | NLM_F_EXCL,
+                          NLM_F_CREATE | NLM_F_EXCL | NLM_F_ECHO,
                           local,
                           broadcast,
                           peer);
@@ -327,7 +327,7 @@ bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
                                          const IPAddress &local) {
   return AddressRequest(interface_index,
                         RTNLMessage::kModeDelete,
-                        0,
+                        NLM_F_ECHO,
                         local,
                         IPAddress(local.family()),
                         IPAddress(local.family()));

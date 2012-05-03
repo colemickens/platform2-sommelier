@@ -29,12 +29,12 @@ class ModemInfo {
             Metrics *metrics,
             Manager *manager,
             GLib *glib);
-  ~ModemInfo();
+  virtual ~ModemInfo();
 
-  void Start();
-  void Stop();
+  virtual void Start();
+  virtual void Stop();
 
-  void OnDeviceInfoAvailable(const std::string &link_name);
+  virtual void OnDeviceInfoAvailable(const std::string &link_name);
 
  private:
   friend class ModemInfoTest;

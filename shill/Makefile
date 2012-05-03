@@ -275,6 +275,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_modem_cdma_proxy.o \
 	mock_modem_gsm_card_proxy.o \
 	mock_modem_gsm_network_proxy.o \
+	mock_modem_info.o \
 	mock_modem_manager_proxy.o \
 	mock_modem_proxy.o \
 	mock_modem_simple_proxy.o \
@@ -299,6 +300,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_time.o \
 	mock_vpn.o \
 	mock_vpn_driver.o \
+	mock_vpn_provider.o \
 	mock_vpn_service.o \
 	mock_wifi.o \
 	mock_wifi_service.o \

@@ -35,7 +35,6 @@ class Error;
 class EventDispatcher;
 class Manager;
 class Metrics;
-class RoutingTable;
 class RTNLHandler;
 
 // Device superclass.  Individual network interfaces types will inherit from
@@ -169,6 +168,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, SetServiceConnectedState);
+  FRIEND_TEST(DeviceTest, Start);
   FRIEND_TEST(DeviceTest, Stop);
   FRIEND_TEST(DeviceTest, OnEnabledStateChanged);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
@@ -386,7 +386,6 @@ class Device : public base::RefCounted<Device> {
 
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider *dhcp_provider_;
-  RoutingTable *routing_table_;
   RTNLHandler *rtnl_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);

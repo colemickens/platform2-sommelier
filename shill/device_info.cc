@@ -34,6 +34,7 @@
 #include "shill/device_stub.h"
 #include "shill/ethernet.h"
 #include "shill/manager.h"
+#include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
@@ -82,6 +83,7 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
       link_listener_(NULL),
       address_listener_(NULL),
       device_info_root_(kDeviceInfoRoot),
+      routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
 }
 
@@ -107,6 +109,7 @@ void DeviceInfo::Start() {
 void DeviceInfo::Stop() {
   link_listener_.reset();
   address_listener_.reset();
+  infos_.clear();
 }
 
 void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
@@ -323,6 +326,78 @@ bool DeviceInfo::HasSubdir(const FilePath &base_dir, const FilePath &subdir) {
   return false;
 }
 
+DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
+                                      const string &address,
+                                      int interface_index,
+                                      Technology::Identifier technology) {
+  DeviceRefPtr device;
+
+  switch (technology) {
+    case Technology::kCellular:
+      // Cellular devices are managed by ModemInfo.
+      SLOG(Device, 2) << "Cellular link " << link_name
+                      << " at index " << interface_index
+                      << " -- notifying ModemInfo.";
+      manager_->modem_info()->OnDeviceInfoAvailable(link_name);
+      break;
+    case Technology::kEthernet:
+      device = new Ethernet(control_interface_, dispatcher_, metrics_,
+                            manager_, link_name, address, interface_index);
+      device->EnableIPv6Privacy();
+      break;
+    case Technology::kVirtioEthernet:
+      device = new VirtioEthernet(control_interface_, dispatcher_, metrics_,
+                                  manager_, link_name, address,
+                                  interface_index);
+      device->EnableIPv6Privacy();
+      break;
+    case Technology::kWifi:
+      device = new WiFi(control_interface_, dispatcher_, metrics_, manager_,
+                        link_name, address, interface_index);
+      device->EnableIPv6Privacy();
+      break;
+    case Technology::kPPP:
+    case Technology::kTunnel:
+      // Tunnel and PPP devices are managed by the VPN code (PPP for
+      // l2tpipsec).  Notify the VPN Provider of the interface's presence.
+      // Since CreateDevice is only called once in the lifetime of an
+      // interface index, this notification will only occur the first
+      // time the device is seen.
+      SLOG(Device, 2) << "Tunnel / PPP link " << link_name
+                      << " at index " << interface_index
+                      << " -- notifying VPNProvider.";
+      if (!manager_->vpn_provider()->OnDeviceInfoAvailable(link_name,
+                                                           interface_index) &&
+          technology == Technology::kTunnel) {
+        // If VPN does not know anything about this tunnel, it is probably
+        // left over from a previous instance and should not exist.
+        SLOG(Device, 2) << "Tunnel link is unused.  Deleting.";
+        DeleteInterface(interface_index);
+      }
+      break;
+    case Technology::kLoopback:
+      // Loopback devices are largely ignored, but we should make sure the
+      // link is enabled.
+      SLOG(Device, 2) << "Bringing up loopback device " << link_name
+                      << " at index " << interface_index;
+      rtnl_handler_->SetInterfaceFlags(interface_index, IFF_UP, IFF_UP);
+      return NULL;
+    default:
+      // We will not manage this device in shill.  Do not create a device
+      // object or do anything to change its state.  We create a stub object
+      // which is useful for testing.
+      return new DeviceStub(control_interface_, dispatcher_, metrics_,
+                            manager_, link_name, address, interface_index,
+                            technology);;
+  }
+
+  // Reset the routing table and addresses.
+  routing_table_->FlushRoutes(interface_index);
+  FlushAddresses(interface_index);
+
+  return device;
+}
+
 void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
   DCHECK(msg.type() == RTNLMessage::kTypeLink &&
          msg.mode() == RTNLMessage::kModeAdd);
@@ -331,16 +406,19 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
 
   unsigned int flags = msg.link_status().flags;
   unsigned int change = msg.link_status().change;
-  bool new_device = !ContainsKey(infos_, dev_index);
+  bool new_device =
+      !ContainsKey(infos_, dev_index) || infos_[dev_index].has_addresses_only;
   SLOG(Device, 2) << __func__ << "(index=" << dev_index
                   << std::showbase << std::hex
                   << ", flags=" << flags << ", change=" << change << ")"
                   << std::dec << std::noshowbase
                   << ", new_device=" << new_device;
+  infos_[dev_index].has_addresses_only = false;
   infos_[dev_index].flags = flags;
 
   DeviceRefPtr device = GetDevice(dev_index);
-  if (!device.get()) {
+  if (new_device) {
+    CHECK(!device);
     if (!msg.HasAttribute(IFLA_IFNAME)) {
       LOG(ERROR) << "Add Link message does not have IFLA_IFNAME!";
       return;
@@ -369,64 +447,14 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
       LOG(ERROR) << "Add Link message does not have IFLA_ADDRESS!";
       return;
     }
-    switch (technology) {
-      case Technology::kCellular:
-        // Cellular devices are managed by ModemInfo.
-        SLOG(Device, 2) << "Cellular link " << link_name
-                        << " at index " << dev_index
-                        << " -- notifying ModemInfo.";
-        manager_->modem_info()->OnDeviceInfoAvailable(link_name);
-        return;
-      case Technology::kEthernet:
-        device = new Ethernet(control_interface_, dispatcher_, metrics_,
-                              manager_, link_name, address, dev_index);
-        device->EnableIPv6Privacy();
-        break;
-      case Technology::kVirtioEthernet:
-        device = new VirtioEthernet(control_interface_, dispatcher_, metrics_,
-                                    manager_, link_name, address, dev_index);
-        device->EnableIPv6Privacy();
-        break;
-      case Technology::kWifi:
-        device = new WiFi(control_interface_, dispatcher_, metrics_, manager_,
-                          link_name, address, dev_index);
-        device->EnableIPv6Privacy();
-        break;
-      case Technology::kPPP:
-      case Technology::kTunnel:
-        // Tunnel and PPP devices are managed by the VPN code (PPP for
-        // l2tpipsec).  Notify the VPN Provider only if this is the first
-        // time we have seen this device index.
-        if (new_device) {
-          SLOG(Device, 2) << "Tunnel / PPP link " << link_name
-                          << " at index " << dev_index
-                          << " -- notifying VPNProvider.";
-          if (!manager_->vpn_provider()->OnDeviceInfoAvailable(link_name,
-                                                               dev_index) &&
-              technology == Technology::kTunnel) {
-            // If VPN does not know anything about this tunnel, it is probably
-            // left over from a previous instance and should not exist.
-            SLOG(Device, 2) << "Tunnel link is unused.  Deleting.";
-            DeleteInterface(dev_index);
-          }
-        }
-        return;
-      case Technology::kLoopback:
-        // Loopback devices are largely ignored, but we should make sure the
-        // link is enabled.
-        SLOG(Device, 2) << "Bringing up loopback device " << link_name
-                        << " at index " << dev_index;
-        rtnl_handler_->SetInterfaceFlags(dev_index, IFF_UP, IFF_UP);
-        return;
-      default:
-        device = new DeviceStub(control_interface_, dispatcher_, metrics_,
-                                manager_, link_name, address, dev_index,
-                                technology);
-        break;
+    device = CreateDevice(link_name, address, dev_index, technology);
+    if (device) {
+      RegisterDevice(device);
     }
-    RegisterDevice(device);
   }
-  device->LinkEvent(flags, change);
+  if (device) {
+    device->LinkEvent(flags, change);
+  }
 }
 
 void DeviceInfo::DelLinkMsgHandler(const RTNLMessage &msg) {
@@ -482,8 +510,9 @@ void DeviceInfo::FlushAddresses(int interface_index) const {
     if (iter->address.family() == IPAddress::kFamilyIPv4 ||
         (iter->scope == RT_SCOPE_UNIVERSE &&
          (iter->flags & ~IFA_F_TEMPORARY) == 0)) {
-      SLOG(Device, 2) << __func__ << ": removing ip address from interface "
-                      << interface_index;
+      SLOG(Device, 2) << __func__ << ": removing ip address "
+                      << iter->address.ToString()
+                      << " from interface " << interface_index;
       rtnl_handler_->RemoveInterfaceAddress(interface_index, iter->address);
     }
   }
@@ -567,9 +596,9 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
   DCHECK(msg.type() == RTNLMessage::kTypeAddress);
   int interface_index = msg.interface_index();
   if (!ContainsKey(infos_, interface_index)) {
-    LOG(ERROR) << "Got address type message for unknown index "
-               << interface_index;
-    return;
+    SLOG(Device, 2) << "Got advance address information for unknown index "
+                    << interface_index;
+    infos_[interface_index].has_addresses_only = true;
   }
   const RTNLMessage::AddressStatus &status = msg.address_status();
   IPAddress address(msg.family(),
@@ -593,7 +622,8 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
     }
   } else if (msg.mode() == RTNLMessage::kModeAdd) {
     address_list.push_back(AddressData(address, status.flags, status.scope));
-    SLOG(Device, 2) << "Add address for interface " << interface_index;
+    SLOG(Device, 2) << "Add address " << address.ToString()
+                    << " for interface " << interface_index;
   }
 }
 

@@ -73,8 +73,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                             const std::string &profile,
                             Error *error);
 
-  void RegisterDevice(const DeviceRefPtr &to_manage);
-  void DeregisterDevice(const DeviceRefPtr &to_forget);
+  virtual void RegisterDevice(const DeviceRefPtr &to_manage);
+  virtual void DeregisterDevice(const DeviceRefPtr &to_forget);
 
   virtual bool HasService(const ServiceRefPtr &service);
   // Register a Service with the Manager. Manager may choose to
@@ -171,8 +171,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   }
 
   virtual DeviceInfo *device_info() { return &device_info_; }
-  ModemInfo *modem_info() { return &modem_info_; }
-  VPNProvider *vpn_provider() { return &vpn_provider_; }
+  virtual ModemInfo *modem_info() { return &modem_info_; }
+  virtual VPNProvider *vpn_provider() { return &vpn_provider_; }
   PropertyStore *mutable_store() { return &store_; }
   virtual const PropertyStore &store() const { return store_; }
   GLib *glib() const { return glib_; }

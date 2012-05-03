@@ -28,8 +28,11 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_modem_info.h"
+#include "shill/mock_routing_table.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_sockets.h"
+#include "shill/mock_vpn_provider.h"
 #include "shill/rtnl_message.h"
 
 using base::Callback;
@@ -37,6 +40,7 @@ using std::map;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::Mock;
 using testing::Return;
 using testing::StrictMock;
 using testing::Test;
@@ -62,9 +66,30 @@ class DeviceInfoTest : public Test {
 
   virtual void SetUp() {
     device_info_.rtnl_handler_ = &rtnl_handler_;
-    EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink |
-                                           RTNLHandler::kRequestAddr));
+    device_info_.routing_table_ = &routing_table_;
   }
+
+  IPAddress CreateInterfaceAddress() {
+    // Create an IP address entry (as if left-over from a previous connection
+    // manager).
+    IPAddress address(IPAddress::kFamilyIPv4);
+    EXPECT_TRUE(address.SetAddressFromString(kTestIPAddress0));
+    address.set_prefix(kTestIPAddressPrefix0);
+    vector<DeviceInfo::AddressData> &addresses =
+        device_info_.infos_[kTestDeviceIndex].ip_addresses;
+    addresses.push_back(DeviceInfo::AddressData(address, 0, RT_SCOPE_UNIVERSE));
+    EXPECT_EQ(1, addresses.size());
+    return address;
+  }
+
+  DeviceRefPtr CreateDevice(const std::string &link_name,
+                            const std::string &address,
+                            int interface_index,
+                            Technology::Identifier technology) {
+    return device_info_.CreateDevice(link_name, address, interface_index,
+                                     technology);
+  }
+
 
  protected:
   static const int kTestDeviceIndex;
@@ -93,6 +118,7 @@ class DeviceInfoTest : public Test {
   StrictMock<MockManager> manager_;
   DeviceInfo device_info_;
   TestEventDispatcher dispatcher_;
+  MockRoutingTable routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
@@ -163,9 +189,29 @@ MATCHER_P(IsIPAddress, address, "") {
   return address.Equals(arg);
 }
 
-TEST_F(DeviceInfoTest, DeviceEnumeration) {
-  // Start our own private device_info
+TEST_F(DeviceInfoTest, StartStop) {
+  EXPECT_FALSE(device_info_.link_listener_.get());
+  EXPECT_FALSE(device_info_.address_listener_.get());
+  EXPECT_TRUE(device_info_.infos_.empty());
+
+  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink |
+                                         RTNLHandler::kRequestAddr));
   device_info_.Start();
+  EXPECT_TRUE(device_info_.link_listener_.get());
+  EXPECT_TRUE(device_info_.address_listener_.get());
+  EXPECT_TRUE(device_info_.infos_.empty());
+  Mock::VerifyAndClearExpectations(&rtnl_handler_);
+
+  CreateInterfaceAddress();
+  EXPECT_FALSE(device_info_.infos_.empty());
+
+  device_info_.Stop();
+  EXPECT_FALSE(device_info_.link_listener_.get());
+  EXPECT_FALSE(device_info_.address_listener_.get());
+  EXPECT_TRUE(device_info_.infos_.empty());
+}
+
+TEST_F(DeviceInfoTest, DeviceEnumeration) {
   scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
@@ -189,29 +235,161 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   EXPECT_EQ(IFF_UP | IFF_RUNNING, flags);
 
   message.reset(BuildLinkMessage(RTNLMessage::kModeDelete));
+  EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   SendMessageToDeviceInfo(*message);
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
   EXPECT_FALSE(device_info_.GetFlags(kTestDeviceIndex, NULL));
   EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
+}
 
-  device_info_.Stop();
+TEST_F(DeviceInfoTest, CreateDeviceCellular) {
+  IPAddress address = CreateInterfaceAddress();
+
+  // A cellular device should be offered to ModemInfo.
+  StrictMock<MockModemInfo> modem_info;
+  EXPECT_CALL(manager_, modem_info()).WillOnce(Return(&modem_info));
+  EXPECT_CALL(modem_info, OnDeviceInfoAvailable(kTestDeviceName)).Times(1);
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
+                                                    IsIPAddress(address)));
+  EXPECT_FALSE(CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex, Technology::kCellular));
+}
+
+TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
+  IPAddress address = CreateInterfaceAddress();
+
+  // An Ethernet device should cause routes and addresses to be flushed.
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
+                                                    IsIPAddress(address)));
+  DeviceRefPtr device = CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex, Technology::kEthernet);
+  EXPECT_TRUE(device);
+  Mock::VerifyAndClearExpectations(&routing_table_);
+  Mock::VerifyAndClearExpectations(&rtnl_handler_);
+
+  // The Ethernet device destructor notifies the manager.
+  EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(1);
+  device = NULL;
+}
+
+TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
+  IPAddress address = CreateInterfaceAddress();
+
+  // VirtioEthernet is identical to Ethernet from the perspective of this test.
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
+                                                    IsIPAddress(address)));
+  DeviceRefPtr device = CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex,
+      Technology::kVirtioEthernet);
+  EXPECT_TRUE(device);
+  Mock::VerifyAndClearExpectations(&routing_table_);
+  Mock::VerifyAndClearExpectations(&rtnl_handler_);
+
+  // The Ethernet device destructor notifies the manager.
+  EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(1);
+  device = NULL;
+}
+
+TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
+  IPAddress address = CreateInterfaceAddress();
+
+  // WiFi looks a lot like Ethernet too.
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
+                                                    IsIPAddress(address)));
+  EXPECT_TRUE(CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex, Technology::kWifi));
+}
+
+TEST_F(DeviceInfoTest, CreateDeviceTunnelAccepted) {
+  IPAddress address = CreateInterfaceAddress();
+
+  // A VPN device should be offered to VPNProvider.
+  StrictMock<MockVPNProvider> vpn_provider;
+  EXPECT_CALL(manager_, vpn_provider()).WillOnce(Return(&vpn_provider));
+  EXPECT_CALL(vpn_provider,
+              OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
+                                                    IsIPAddress(address)));
+  EXPECT_CALL(rtnl_handler_, RemoveInterface(_)).Times(0);
+  EXPECT_FALSE(CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex, Technology::kTunnel));
+}
+
+TEST_F(DeviceInfoTest, CreateDeviceTunnelRejected) {
+  IPAddress address = CreateInterfaceAddress();
+
+  // A VPN device should be offered to VPNProvider.
+  StrictMock<MockVPNProvider> vpn_provider;
+  EXPECT_CALL(manager_, vpn_provider()).WillOnce(Return(&vpn_provider));
+  EXPECT_CALL(vpn_provider,
+              OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
+      .WillOnce(Return(false));
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
+                                                    IsIPAddress(address)));
+  // Since the device was rejected by the VPNProvider, DeviceInfo will
+  // remove the interface.
+  EXPECT_CALL(rtnl_handler_, RemoveInterface(kTestDeviceIndex)).Times(1);
+  EXPECT_FALSE(CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex, Technology::kTunnel));
+}
+
+TEST_F(DeviceInfoTest, CreateDevicePPP) {
+  IPAddress address = CreateInterfaceAddress();
+
+  // A VPN device should be offered to VPNProvider.
+  StrictMock<MockVPNProvider> vpn_provider;
+  EXPECT_CALL(manager_, vpn_provider()).WillOnce(Return(&vpn_provider));
+  EXPECT_CALL(vpn_provider,
+              OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
+      .WillOnce(Return(false));
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
+                                                    IsIPAddress(address)));
+  // We do not remove PPP interfaces even if the provider does not accept it.
+  EXPECT_CALL(rtnl_handler_, RemoveInterface(_)).Times(0);
+  EXPECT_FALSE(CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex, Technology::kPPP));
+}
+
+TEST_F(DeviceInfoTest, CreateDeviceLoopback) {
+  // A loopback device should be brought up, and nothing else done to it.
+  EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
+  EXPECT_CALL(rtnl_handler_,
+              SetInterfaceFlags(kTestDeviceIndex, IFF_UP, IFF_UP)).Times(1);
+  EXPECT_FALSE(CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex, Technology::kLoopback));
+}
+
+TEST_F(DeviceInfoTest, CreateDeviceUnknown) {
+  IPAddress address = CreateInterfaceAddress();
+
+  // An unknown (blacklisted, unhandled, etc) device won't be flushed or
+  // registered.
+  EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
+  EXPECT_TRUE(CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex, Technology::kUnknown));
 }
 
 TEST_F(DeviceInfoTest, DeviceBlackList) {
   device_info_.AddDeviceToBlackList(kTestDeviceName);
-  device_info_.Start();
   scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
   SendMessageToDeviceInfo(*message);
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
   ASSERT_TRUE(device.get());
   EXPECT_TRUE(device->TechnologyIs(Technology::kBlacklisted));
-
-  device_info_.Stop();
 }
 
 TEST_F(DeviceInfoTest, DeviceAddressList) {
-  device_info_.Start();
   scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
   SendMessageToDeviceInfo(*message);
 
@@ -267,18 +445,16 @@ TEST_F(DeviceInfoTest, DeviceAddressList) {
 
   // Delete device
   message.reset(BuildLinkMessage(RTNLMessage::kModeDelete));
+  EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   SendMessageToDeviceInfo(*message);
 
   // Should be able to handle message for interface that doesn't exist
   message.reset(BuildAddressMessage(RTNLMessage::kModeAdd, ip_address0, 0, 0));
   SendMessageToDeviceInfo(*message);
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
-
-  device_info_.Stop();
 }
 
 TEST_F(DeviceInfoTest, FlushAddressList) {
-  device_info_.Start();
   scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
   SendMessageToDeviceInfo(*message);
 
@@ -319,11 +495,9 @@ TEST_F(DeviceInfoTest, FlushAddressList) {
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
                                                     IsIPAddress(address2)));
   device_info_.FlushAddresses(kTestDeviceIndex);
-  device_info_.Stop();
 }
 
 TEST_F(DeviceInfoTest, HasSubdir) {
-  device_info_.Start();
   ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
   EXPECT_TRUE(file_util::CreateDirectory(temp_dir.path().Append("child1")));

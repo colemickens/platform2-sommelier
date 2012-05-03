@@ -31,7 +31,6 @@
 #include "shill/metrics.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
-#include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
 #include "shill/scope_logger.h"
 #include "shill/service.h"
@@ -98,7 +97,6 @@ Device::Device(ControlInterface *control_interface,
       technology_(technology),
       portal_attempts_to_online_(0),
       dhcp_provider_(DHCPProvider::GetInstance()),
-      routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
   store_.RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
 
@@ -729,7 +727,6 @@ void Device::SetEnabledInternal(bool enable,
            weak_ptr_factory_.GetWeakPtr(), callback);
   if (enable) {
     running_ = true;
-    routing_table_->FlushRoutes(interface_index());
     Start(error, enabled_callback);
   } else {
     running_ = false;

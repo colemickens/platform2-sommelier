@@ -30,7 +30,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_portal_detector.h"
-#include "shill/mock_routing_table.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -95,7 +94,6 @@ class DeviceTest : public PropertyStoreTest {
 
   virtual void SetUp() {
     device_->metrics_ = &metrics_;
-    device_->routing_table_ = &routing_table_;
     device_->rtnl_handler_ = &rtnl_handler_;
   }
 
@@ -120,7 +118,6 @@ class DeviceTest : public PropertyStoreTest {
   DeviceRefPtr device_;
   MockDeviceInfo device_info_;
   MockMetrics metrics_;
-  MockRoutingTable routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
@@ -303,8 +300,12 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
 }
 
 TEST_F(DeviceTest, Start) {
-  EXPECT_CALL(routing_table_, FlushRoutes(kDeviceInterfaceIndex));
+  EXPECT_FALSE(device_->running_);
+  EXPECT_FALSE(device_->enabled_);
+  EXPECT_FALSE(device_->enabled_pending_);
   device_->SetEnabled(true);
+  EXPECT_TRUE(device_->running_);
+  EXPECT_TRUE(device_->enabled_pending_);
 }
 
 TEST_F(DeviceTest, Stop) {

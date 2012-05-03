@@ -21,10 +21,14 @@ class MockManager : public Manager {
   virtual ~MockManager();
 
   MOCK_METHOD0(device_info, DeviceInfo *());
+  MOCK_METHOD0(modem_info, ModemInfo *());
+  MOCK_METHOD0(vpn_provider, VPNProvider *());
   MOCK_METHOD0(mutable_store, PropertyStore *());
   MOCK_CONST_METHOD0(store, const PropertyStore &());
   MOCK_CONST_METHOD0(run_path, const FilePath &());
   MOCK_METHOD0(Start, void());
+  MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr &to_manage));
+  MOCK_METHOD1(DeregisterDevice, void(const DeviceRefPtr &to_forget));
   MOCK_METHOD1(HasService, bool(const ServiceRefPtr &to_manage));
   MOCK_METHOD1(RegisterService, void(const ServiceRefPtr &to_manage));
   MOCK_METHOD1(UpdateService, void(const ServiceRefPtr &to_update));
