@@ -1178,30 +1178,73 @@ void Mount::ReloadDevicePolicy() {
   EnsureDevicePolicyLoaded(true);
 }
 
-void Mount::InsertPkcs11Token() {
+bool Mount::CheckChapsDirectory(bool* permissions_status)
+{
   // If the Chaps database directory does not exist, create it.
-  // TODO(dkrahn): If the directory exists we should check the ownership and
-  // permissions and log a warning if they are not as expected. See
-  // crosbug.com/28291.
-  std::string chaps_dir = kChapsTokenDir;
+  DCHECK(permissions_status);
+  *permissions_status = true;
+  // 0750: u + rwx, g + rx
+  mode_t chaps_perms = S_IRWXU | S_IRGRP | S_IXGRP;
   if (!platform_->DirectoryExists(kChapsTokenDir)) {
     if (!platform_->CreateDirectory(kChapsTokenDir)) {
       LOG(ERROR) << "Failed to create " << kChapsTokenDir;
-      return;
+      *permissions_status = false;
+      return false;
     }
-    if (!platform_->SetOwnership(kChapsTokenDir,
-                                 chaps_user_,
+    if (!platform_->SetOwnership(kChapsTokenDir, chaps_user_,
                                  default_access_group_)) {
       LOG(ERROR) << "Couldn't set file ownership for " << kChapsTokenDir;
-      return;
+      *permissions_status = false;
+      return false;
     }
-    // 0750: u + rwx, g + rx
-    mode_t chaps_perms = S_IRWXU | S_IRGRP | S_IXGRP;
     if (!platform_->SetPermissions(kChapsTokenDir, chaps_perms)) {
       LOG(ERROR) << "Couldn't set permissions for " << kChapsTokenDir;
-      return;
+      *permissions_status = false;
+      return false;
     }
+    return true;
   }
+  // Directory already exists so check permissions and log a warning
+  // if not as expected.
+  mode_t current_perms;
+  if (!platform_->GetPermissions(kChapsTokenDir, &current_perms)) {
+    LOG(ERROR) << "Couldn't get permissions for " << kChapsTokenDir;
+    *permissions_status = false;
+    return false;
+  }
+  if (current_perms != chaps_perms) {
+    LOG(WARNING) << "Chaps directory had incorrect permissions: "
+                 << StringPrintf("Expected: %o Found: %o",
+                                 chaps_perms, current_perms);
+    *permissions_status = false;
+  }
+  uid_t current_user;
+  gid_t current_group;
+  if (!platform_->GetOwnership(kChapsTokenDir, &current_user,
+                               &current_group)) {
+    LOG(ERROR) << "Couldn't get ownership for " << kChapsTokenDir;
+    *permissions_status = false;
+    return false;
+  }
+  if (current_user != chaps_user_) {
+    LOG(WARNING) << "Chaps directory had incorrect owner: "
+                 << StringPrintf("Expected: %u Found: %u",
+                                 chaps_user_, current_user);
+    *permissions_status = false;
+  }
+  if (current_group != default_access_group_) {
+    LOG(WARNING) << "Chaps directory had incorrect group: "
+                 << StringPrintf("Expected: %u Found: %u",
+                                 default_access_group_, current_group);
+    *permissions_status = false;
+  }
+  return true;
+}
+
+bool Mount::InsertPkcs11Token() {
+  bool permissions_status = false;
+  if (!CheckChapsDirectory(&permissions_status))
+     return false;
   // We may create a salt file and, if so, we want to restrict access to it.
   ScopedUmask scoped_umask(platform_, kDefaultUmask);
 
@@ -1209,7 +1252,7 @@ void Mount::InsertPkcs11Token() {
   FilePath salt_file(kTokenSaltFile);
   SecureBlob auth_data;
   if (!crypto_->PasskeyToTokenAuthData(pkcs11_passkey_, salt_file, &auth_data))
-    return;
+    return false;
   // If migration is required, send it before the login event.
   if (is_pkcs11_passkey_migration_required_) {
     LOG(INFO) << "Migrating authorization data.";
@@ -1217,7 +1260,7 @@ void Mount::InsertPkcs11Token() {
     if (!crypto_->PasskeyToTokenAuthData(pkcs11_old_passkey_,
                                          salt_file,
                                          &old_auth_data))
-      return;
+      return false;
     chaps_event_client_.FireChangeAuthDataEvent(
         kChapsTokenDir,
         static_cast<const uint8_t*>(old_auth_data.const_data()),
@@ -1232,6 +1275,7 @@ void Mount::InsertPkcs11Token() {
       static_cast<const uint8_t*>(auth_data.const_data()),
       auth_data.size());
   pkcs11_passkey_.clear_contents();
+  return permissions_status;
 }
 
 void Mount::RemovePkcs11Token() {

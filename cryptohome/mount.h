@@ -510,8 +510,20 @@ class Mount {
   // keys are: "keysets", "mounted", "owner" and "enterprise".
   virtual Value* GetStatus();
 
+  // Checks Chaps Directory and makes sure that it has the correct
+  // permissions, owner uid and gid. If any of these values are
+  // incorrect, permissions_check is set to false. If the directory
+  // does not exist, it is created and initialzed with the correct
+  // values. If the directory or its attributes cannot be checked,
+  // set or created, a fatal error has occured and the function
+  // returns false.
+  //
+  // Parameters
+  //   permissions_check - set to false if permissions, uid or gid is incorrect
+  bool CheckChapsDirectory(bool* permissions_check);
+
   // Inserts the current user's PKCS #11 token.
-  void InsertPkcs11Token();
+  bool InsertPkcs11Token();
 
   // Removes the current user's PKCS #11 token.
   void RemovePkcs11Token();

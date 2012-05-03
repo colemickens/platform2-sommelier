@@ -27,13 +27,22 @@ ACTION(CallDirectoryExists) {
 ACTION(CallPathExists) {
   return file_util::PathExists(FilePath(arg0));
 }
+ACTION(CallCreateDirectory) {
+  return file_util::CreateDirectory(FilePath(arg0));
+}
 ACTION(CallReadFile) { return Platform().ReadFile(arg0, arg1); }
 ACTION(CallRename) { return Platform().Rename(arg0, arg1); }
 
 class MockPlatform : public Platform {
  public:
   MockPlatform() {
+    ON_CALL(*this, GetOwnership(_, _, _))
+        .WillByDefault(Invoke(this, &MockPlatform::MockGetOwnership));
     ON_CALL(*this, SetOwnership(_, _, _))
+        .WillByDefault(Return(true));
+    ON_CALL(*this, GetPermissions(_, _))
+        .WillByDefault(Invoke(this, &MockPlatform::MockGetPermissions));
+    ON_CALL(*this, SetPermissions(_, _))
         .WillByDefault(Return(true));
     ON_CALL(*this, SetGroupAccessible(_, _, _))
         .WillByDefault(Return(true));
@@ -55,6 +64,8 @@ class MockPlatform : public Platform {
         .WillByDefault(CallDirectoryExists());
     ON_CALL(*this, FileExists(_))
         .WillByDefault(CallPathExists());
+    ON_CALL(*this, CreateDirectory(_))
+      .WillByDefault(CallCreateDirectory());
     ON_CALL(*this, ReadFile(_, _))
         .WillByDefault(CallReadFile());
     ON_CALL(*this, Rename(_, _))
@@ -70,7 +81,9 @@ class MockPlatform : public Platform {
                                             const std::string&));
   MOCK_METHOD2(TerminatePidsWithOpenFiles, bool(const std::string&, bool));
   MOCK_METHOD2(TerminatePidsForUser, bool(const uid_t, bool));
+  MOCK_CONST_METHOD3(GetOwnership, bool(const std::string&, uid_t*, gid_t*));
   MOCK_CONST_METHOD3(SetOwnership, bool(const std::string&, uid_t, gid_t));
+  MOCK_CONST_METHOD2(GetPermissions, bool(const std::string&, mode_t*));
   MOCK_CONST_METHOD2(SetPermissions, bool(const std::string&, mode_t));
   MOCK_CONST_METHOD3(SetOwnershipRecursive, bool(const std::string&,
                                                  uid_t, gid_t));
@@ -91,8 +104,21 @@ class MockPlatform : public Platform {
                                                std::vector<std::string>*));
   MOCK_METHOD2(DeleteFile, bool(const std::string&, bool));
   MOCK_METHOD1(DirectoryExists, bool(const std::string&));
+  MOCK_METHOD1(CreateDirectory, bool(const std::string&));
 
  private:
+  bool MockGetOwnership(const std::string& path, uid_t* user_id,
+                        gid_t* group_id) const {
+    *user_id = getuid();
+    *group_id = getgid();
+    return true;
+  }
+
+  bool MockGetPermissions(const std::string& path, mode_t* mode) const {
+    *mode = S_IRWXU | S_IRGRP | S_IXGRP;
+    return true;
+  }
+
   bool MockGetUserId(const std::string& user, uid_t* user_id, gid_t* group_id) {
     *user_id = getuid();
     *group_id = getgid();

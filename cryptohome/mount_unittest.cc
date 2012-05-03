@@ -39,6 +39,8 @@ using std::string;
 using ::testing::InSequence;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::DoAll;
+using ::testing::SetArgumentPointee;
 using ::testing::_;
 
 const char kImageDir[] = "test_image_dir";
@@ -193,6 +195,142 @@ TEST_F(MountTest, BadDecryptTest) {
 
   EXPECT_TRUE(mount.Init());
   ASSERT_FALSE(mount.AreValid(up));
+}
+
+TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDir){
+  Mount mount;
+  NiceMock<MockPlatform> platform;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+  mount.set_platform(&platform);
+  EXPECT_TRUE(mount.Init());
+  EXPECT_CALL(platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
+  bool permissions_status = false;
+  EXPECT_TRUE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_TRUE(permissions_status);
+}
+
+TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadPerms){
+  Mount mount;
+  NiceMock<MockPlatform> platform;
+  mode_t bad_perms = S_IXGRP;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+  mount.set_platform(&platform);
+  EXPECT_TRUE(mount.Init());
+  EXPECT_CALL(platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, GetPermissions(_, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(bad_perms),Return(true)));
+  bool permissions_status = false;
+  EXPECT_TRUE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(permissions_status);
+}
+
+TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID){
+  Mount mount;
+  NiceMock<MockPlatform> platform;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+  mount.set_platform(&platform);
+  EXPECT_TRUE(mount.Init());
+  mode_t bad_uid = 0;
+  mode_t correct_gid = getgid();
+  EXPECT_CALL(platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, GetOwnership(_, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(bad_uid),
+                            SetArgumentPointee<2>(correct_gid),
+                            Return(true)));
+  bool permissions_status = false;
+  EXPECT_TRUE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(permissions_status);
+}
+
+TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID){
+  Mount mount;
+  NiceMock<MockPlatform> platform;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+  EXPECT_TRUE(mount.Init());
+  mode_t correct_uid = getuid();
+  mode_t bad_gid = 0;
+  mount.set_platform(&platform);
+  EXPECT_CALL(platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, GetOwnership(_, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(correct_uid),
+                            SetArgumentPointee<2>(bad_gid),
+                            Return(true)));
+  bool permissions_status = false;
+  EXPECT_TRUE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(permissions_status);
+}
+
+TEST_F(MountTest, CheckChapsDirectoryCalledWithNonexistingDirWithFatalError){
+  Mount mount;
+  NiceMock<MockPlatform> platform;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+  mount.set_platform(&platform);
+  EXPECT_TRUE(mount.Init());
+  EXPECT_CALL(platform, DirectoryExists(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform, CreateDirectory(_))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, SetOwnership(_, _, _))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, SetPermissions(_, _))
+      .WillRepeatedly(Return(false));
+  bool permissions_status = false;
+  EXPECT_FALSE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(permissions_status);
+  EXPECT_FALSE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(permissions_status);
+  EXPECT_FALSE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(permissions_status);
+}
+
+TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithFatalError){
+  Mount mount;
+  NiceMock<MockPlatform> platform;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+  mount.set_platform(&platform);
+  EXPECT_TRUE(mount.Init());
+  EXPECT_CALL(platform, DirectoryExists(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, GetPermissions(_, _))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, GetOwnership(_, _, _))
+      .WillRepeatedly(Return(false));
+  bool permissions_status = false;
+  EXPECT_FALSE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(permissions_status);
+  EXPECT_FALSE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(permissions_status);
 }
 
 TEST_F(MountTest, CreateCryptohomeTest) {
