@@ -15,6 +15,39 @@ log_msg() {
     logger -t "powerd_suspend[${PPID}]" $@
 }
 
+is_lumpy() {
+    crossystem hwid | grep -q "LUMPY"
+}
+
+has_gobi_modem() {
+    lsusb -d 1410:a021
+}
+
+do_lumpy_gobi_modem_revive() {
+    # Toggle the power and off GPIOs connected to
+    # gobi modem in order to revive it.
+
+    cd /sys/class/gpio
+
+    # TODO (snanda): get the gpio base from crossystem instead
+    # of assuming that it will always be 160 for lumpy.
+    if [ ! -d gpio198 ]; then
+        echo 198 > export
+    fi
+    if [ ! -d gpio203 ]; then
+        echo 203 > export
+    fi
+
+    echo out > gpio198/direction
+    echo out > gpio203/direction
+
+    echo 1 > gpio203/value
+    echo 0 > gpio198/value
+
+    echo 0 > gpio203/value
+    echo 1 > gpio198/value
+}
+
 # Check pm_wakeup_events status and return success to cancel the suspend
 suspend_pm_wakeup_cancel() {
     if [ "${FLAGS_wakeup_count}" -eq -1 ] ||
@@ -69,6 +102,13 @@ else
     echo OnAC > $power_status_on_suspend
 fi
 
+# Is this a Lumpy system with Gobi modem?
+lumpy_with_gobi_modem=0
+if is_lumpy && has_gobi_modem; then
+    log_msg "Lumpy with gobi modem"
+    lumpy_with_gobi_modem=1
+fi
+
 # Disable USB-Persist to save 500ms
 # (by not waiting for USB devices to reset and resume)
 for i in /sys/bus/usb/devices/*/power/persist; do echo 0 > $i; done
@@ -107,6 +147,14 @@ if [ $cancel -eq 0 ]; then
 
     # - sends UMA metrics on resume
     /usr/bin/send_metrics_on_resume &
+
+    # Revive the modem if it was present prior to suspending but is absent now.
+    if [ $lumpy_with_gobi_modem ]; then
+        if ! has_gobi_modem ; then
+            log_msg "Reviving lumpy gobi modem"
+            do_lumpy_gobi_modem_revive
+        fi
+    fi
 fi
 
 # - announces the event
