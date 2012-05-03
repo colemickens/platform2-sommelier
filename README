@@ -40,3 +40,131 @@ explores all the different ways common.mk can be used.
 
 - Defaulting to -fvisibility=internal
 - Test and examplem
+
+= Recipes
+
+This section is a brief recipe book to some common activities, but you should
+consult the common.mk file for detailed information. In these recipes replace
+<text> with the appropriate text for your situation. These recipes assume that
+you have organized your Makefile along the lines of the other recipes, i.e. the
+add flag recipe assumes your targets follow the add target recipes. The Makefile
+in power_manager is a good place to look for examples, since most these recipes
+were pulled from there.
+
+For libraries these recipes assume that you want to build the PIE versions of
+libraries. You have the option of building PIC versions by replacing where
+'.pie.' is used with '.pic.'. One of these must be present, since common.mk is
+looking to parse these out and there isn't a default behaviour.
+
+Adding a flag to a target:
+  Add flag to "<target>_FLAGS =" line.
+  or
+  Add a line "<target>_FLAGS += flag".
+
+Adding a library to a target:
+  Add -l<library> to "<target>_LIBS =" line.
+  or
+  Add a line "<target>_LIBS += -l<library>".
+
+Adding a complex dependency, like gtk, when <target>_DEPS exists:
+  Add proper pkg_config name of the dependency to the "<target>_DEPS =" line.
+
+Adding a complex dependency, like gtk, when <target>_DEPS does not exist:
+  Add a "<target>_DEPS =" line before the related FLAGS and LIBS lines, with
+  the proper pkg_config name of your dependency.
+  Change "<target>_FLAGS =" to "<target>_FLAGS :=" and add
+  "$(shell $(PKG_CONFIG) --cflags $(<target>_DEPS))" to the line.
+  Change "<target>_LIBS =" to "<target>_LIBS :=" and add
+  "$(shell $(PKG_CONFIG) --libs $(<target>_DEPS))" to the line.
+
+Add a new source file, with name <filename>.cc to a existing target:
+ Add <filename>.o to <target>_OBJS.
+ Follow the instructions above for adding a new flags, libs and deps
+  related to the file.
+
+Add a new library target dependency to binary target:
+  Add CXX_STATIC_LIBRARY(lib<library>.pie.a) to the dependencies of
+  CXX_BINARY(<binary>).
+
+Add a new binary target:
+  When creating the DEPS, FLAGS, and LIBS lines try to reuse existing
+  definitions that make sense instead of declaring everything anew.
+  If needed, add "<target>_DEPS =" line with dependency list
+  Add "<target>_FLAGS =" line with flags list.
+  Add "<target>_LIBS =" line with library list.
+  Add "<target>_OBJS =" line with object list. The object list is composed of
+  the .cc source files that are needed for the target, with .o replacing the
+  .cc.
+  Add "CXX_BINARY(<target>): $(<target>_OBJS) ... line. This line should have
+  any library dependencies that are built in this file included on it. How to
+  do this is discussed above.
+  Add remaining boilerplate:
+    CXX_BINARY(<target>): CPPFLAGS += $(<target>_FLAGS)
+    CXX_BINARY(<target>): LDLIBS += $(<target>_LIBS)
+    clean: CLEAN(<target>)
+    all: CXX_BINARY(<target>)
+
+Add a new unit test target:
+It is assumed there is a <parent> binary or library target that defines the
+environment.
+  Add "<target>_FLAGS =" line with $(<parent>_FLAGS) and any other needed
+  flags.
+  Add "<target>_LIBS =" line with $(<parent>_LIBS) -lgtest -lgmock and other
+   needed libs.
+  Add "<target>_OBJS> =" line with the objects for the unit tests"
+  Add "CXX_BINARY(<target>): $(<target>_OBJS) ... line. This line should have
+  any library dependencies that are built in this file included on it. How to
+  do this is discussed above.
+  Add remaining boilerplate:
+    CXX_BINARY(<target>): CPPFLAGS += $(<target>_FLAGS)
+    CXX_BINARY(<target>): LDLIBS += $(<target>_LIBS)
+    clean: CLEAN(<target>)
+    tests: TEST(CXX_BINARY(<target>))
+
+Add a new library target:
+  When creating the DEPS, FLAGS, and LIBS lines try to reuse existing
+  definitions that make sense instead of declaring everything anew.
+  If needed, add "<target>_DEPS =" line with dependency list
+  Add "<target>_FLAGS =" line with flags list.
+  Add "<target>_LIBS =" line with library list.
+  Add "<target>_OBJS =" line with object list. The object list is composed of
+  the .cc source files that are needed for the target, with .o replacing the
+  .cc.
+  Add "CXX_STATIC_LIBRARY(lib<target>.pie.a): $(<target>_OBJS) ... line.
+  Add remaining boilerplate:
+    CXX_STATIC_LIBRARY(<target>): CPPFLAGS += $(<target>_FLAGS)
+    CXX_STATIC_LIBRARY(<target>): LDLIBS += $(<target>_LIBS)
+    clean: CLEAN(<target>)
+
+Add a protocol buffer when there are already protocol buffers used from the same
+package/location as yours:
+  Add <protobuf>.pb.cc "<package>_PROTO_BINDINGS =" line.
+  or
+  Add a line "<package>_PROTO_BINDINGS += <protobuf>.pb.cc".
+  For every .o that depends on <protobuf>.pb.cc existing:
+    <target>.o.depends: <protobuf>.pb.cc
+  For every .o that depends on <protobuf>.pb.h existing:
+    <target>.o.depends: <protobuf>.pb.h
+
+Add a protobuffer that is in a new package:
+  Use the following template
+    <package>_PROTO_BINDINGS =
+    <package>_PROTO_PATH = $(SYSROOT)/<installed location of .proto files>
+    <package>_PROTO_HEADERS = $(patsubst %.cc,%.h,$(<package>_PROTO_BINDINGS))
+    <package>_PROTO_OBJS = $(patsubst %.cc,%.o,$(<package>_PROTO_BINDINGS))
+    $(<package>_PROTO_HEADERS): %.h: %.cc ;
+    $(<package>_PROTO_BINDINGS): %.pb.cc: $(<package>_PROTO_PATH)/%.proto
+        $(PROTOC) --proto_path=$(<package>_PROTO_PATH) --cpp_out=. $<
+    clean: CLEAN($(<package>_PROTO_BINDINGS))
+    clean: CLEAN($(<package>_PROTO_HEADERS))
+    clean: CLEAN($(<package>_PROTO_OBJS))
+    # Add rules for compiling generated protobuffer code, as the CXX_OBJECTS list
+    # is built before these source files exists and, as such, does not contain them.
+    $(eval $(call add_object_rules,$(<package>_PROTO_OBJS),CXX,cc))
+  Use the above recipe to add in your protobufs
+
+NOTE:
+If you have added in protocol buffer definitions directly to the package you are
+working in, go undo that and figure out where they should actually go. If you
+are really sure they should be in your package you are a bit on your own, but
+feel free to contact me at rharrison@chromium.org.
