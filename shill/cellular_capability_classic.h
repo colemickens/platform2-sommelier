@@ -88,6 +88,8 @@ class CellularCapabilityClassic : public CellularCapability {
       const std::vector<std::string> &invalidated_properties);
 
  protected:
+  typedef std::vector<base::Closure> CellularTaskList;
+
   virtual void GetRegistrationState() = 0;
 
   // The following five methods are only ever called as
@@ -106,6 +108,18 @@ class CellularCapabilityClassic : public CellularCapability {
   virtual void UpdateStatus(const DBusPropertiesMap &properties) = 0;
 
   static void OnUnsupportedOperation(const char *operation, Error *error);
+
+  // Runs the next task in a list.
+  // Precondition: |tasks| is not empty.
+  void RunNextStep(CellularTaskList *tasks);
+  // StepCompletedCallback is called after a task completes.
+  // |callback| is the original callback that needs to be invoked when all of
+  // the tasks complete or if there is a failure.  |ignore_error| will be set
+  // to true if the next task should be run regardless of the result of the
+  // just-completed task.  |tasks| is the list of tasks remaining.  |error| is
+  // the result of the just-completed task.
+  void StepCompletedCallback(const ResultCallback &callback, bool ignore_error,
+                             CellularTaskList *tasks, const Error &error);
 
   // Properties
   bool scanning_supported_;

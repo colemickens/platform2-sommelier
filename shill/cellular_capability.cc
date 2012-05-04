@@ -35,27 +35,6 @@ CellularCapability::CellularCapability(Cellular *cellular,
 
 CellularCapability::~CellularCapability() {}
 
-void CellularCapability::RunNextStep(CellularTaskList *tasks) {
-  CHECK(!tasks->empty());
-  SLOG(Cellular, 2) << __func__ << ": " << tasks->size() << " remaining tasks";
-  Closure task = (*tasks)[0];
-  tasks->erase(tasks->begin());
-  cellular()->dispatcher()->PostTask(task);
-}
-
-void CellularCapability::StepCompletedCallback(
-    const ResultCallback &callback,
-    bool ignore_error,
-    CellularTaskList *tasks,
-    const Error &error) {
-  if ((ignore_error || error.IsSuccess()) && !tasks->empty()) {
-    RunNextStep(tasks);
-    return;
-  }
-  delete tasks;
-  callback.Run(error);
-}
-
 void CellularCapability::OnUnsupportedOperation(
     const char *operation,
     Error *error) {

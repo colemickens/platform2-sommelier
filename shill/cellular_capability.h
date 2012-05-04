@@ -23,8 +23,6 @@ class Cellular;
 class Error;
 class ProxyFactory;
 
-typedef std::vector<base::Closure> CellularTaskList;
-
 // Cellular devices instantiate subclasses of CellularCapability that
 // handle the specific modem technologies and capabilities.
 //
@@ -180,18 +178,6 @@ class CellularCapability {
   virtual void ReleaseProxies() = 0;
 
   static void OnUnsupportedOperation(const char *operation, Error *error);
-
-  // Runs the next task in a list.
-  // Precondition: |tasks| is not empty.
-  void RunNextStep(CellularTaskList *tasks);
-  // StepCompletedCallback is called after a task completes.
-  // |callback| is the original callback that needs to be invoked when all of
-  // the tasks complete or if there is a failure.  |ignore_error| will be set
-  // to true if the next task should be run regardless of the result of the
-  // just-completed task.  |tasks| is the list of tasks remaining.  |error| is
-  // the result of the just-completed task.
-  void StepCompletedCallback(const ResultCallback &callback, bool ignore_error,
-                             CellularTaskList *tasks, const Error &error);
 
   // accessor for subclasses to read the allow roaming property
   bool allow_roaming_property() const {
