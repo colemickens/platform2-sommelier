@@ -190,4 +190,25 @@ TEST(Standalone, CheckAutoCleanupCallback) {
   PlatformThread::Sleep(100);
 }
 
+TEST(Standalone, CheckAutoCleanupCallbackFirst) {
+  // Checks that AutoCleanupCallback() is called first right after init.
+  NiceMock<MockMount> mount;
+  MockHomeDirs homedirs;
+  Service service;
+  service.set_mount_for_user("", &mount);
+  service.set_homedirs(&homedirs);
+  NiceMock<MockInstallAttributes> attrs;
+  service.set_install_attrs(&attrs);
+  service.set_initialize_tpm(false);
+
+  // Service will schedule first claenup right after its init.
+  EXPECT_CALL(homedirs, Init())
+      .WillOnce(Return(true));
+  EXPECT_CALL(homedirs, FreeDiskSpace())
+      .Times(1);
+  service.set_auto_cleanup_period(1000);  // 1s - long enough
+  service.Initialize();
+  PlatformThread::Sleep(10);  // short delay to see the first invocation
+}
+
 }  // namespace cryptohome

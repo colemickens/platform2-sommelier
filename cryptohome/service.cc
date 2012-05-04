@@ -299,12 +299,11 @@ bool Service::Initialize() {
 
   mount_thread_.Start();
 
-  // Start scheduling periodic cleanup events.  Note, that the first
-  // event will be called by Chrome explicitly from the login screen.
-  mount_thread_.message_loop()->PostDelayedTask(
+  // Start scheduling periodic cleanup events. Subsequent events are scheduled
+  // by the callback itself.
+  mount_thread_.message_loop()->PostTask(
       FROM_HERE,
-      base::Bind(&Service::AutoCleanupCallback, base::Unretained(this)),
-      auto_cleanup_period_);
+      base::Bind(&Service::AutoCleanupCallback, base::Unretained(this)));
 
   return result;
 }
