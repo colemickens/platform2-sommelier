@@ -423,6 +423,49 @@ cmd_ssh_forget_host() {
   chmod 644 "$known_hosts"
 }
 
+cmd_swap() {
+  local swap_enable_file="/home/chronos/.swap_enabled"
+
+  case "$1" in
+  "enable")
+    if [ -z "$2" ]; then
+      # remove file in case root owns it
+      rm -f $swap_enable_file
+      touch $swap_enable_file
+    elif ! echo "$2" | grep -q "^[0-9]*$"; then
+      echo "$2 is not a valid integer literal"
+      cmd_swap usage
+      return 1
+    elif [ "$2" -ne 500 -a \
+           "$2" -ne 1000 -a \
+           "$2" -ne 2000 -a \
+           "$2" -ne 3000 -a \
+           "$2" -ne 4500 -a \
+           "$2" -ne 6000 ]; then
+      echo "invalid size $2. Valid choices: 500, 1000, 2000, 3000, 4500 or 6000"
+      cmd_swap usage
+      return 1
+    else
+      # remove file in case root owns it
+      rm -f $swap_enable_file
+      echo "$2" >$swap_enable_file
+    fi
+    echo "Swap will be ON at next reboot."
+    ;;
+  "disable")
+    rm -f $swap_enable_file
+    echo "Swap will be OFF at next reboot."
+    ;;
+  "status")
+    /sbin/swapon -s
+    ;;
+  *)
+    echo "Usage: swap < status | enable [<optional swap size (MB)>] | disable >"
+    return 1
+    ;;
+  esac
+}
+
 cmd_experimental_storage() {
   local enable=""
   if [ -z "$1" ]; then
