@@ -234,8 +234,8 @@ bool ObjectPoolImpl::Parse(const ObjectBlob& object_blob, Object* object) {
     object->SetAttributeString(attribute.type(), attribute.value());
     // Correct the length of integral attributes since they may have been
     // serialized with a different sizeof(CK_ULONG).
-    if (IsIntegralAttribute(attribute.type() &&
-        attribute.value().length() != sizeof(CK_ULONG))) {
+    if (IsIntegralAttribute(attribute.type()) &&
+        attribute.value().length() != sizeof(CK_ULONG)) {
       int int_value = object->GetAttributeInt(attribute.type(), 0);
       object->SetAttributeInt(attribute.type(), int_value);
     }
