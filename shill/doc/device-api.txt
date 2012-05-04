@@ -27,6 +27,14 @@ Methods		dict GetProperties()
 			the profile. Only properties that are listed as
 			read-write are changeable.
 
+		void Enable()
+
+		        Enable the device.
+
+		void Disable()
+
+		        Disable the device.
+
 		void ProposeScan() --DEPRECATED--
 
 			Start a scan operation if possible.
