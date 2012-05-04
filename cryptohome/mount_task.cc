@@ -99,7 +99,7 @@ void MountTaskTestCredentials::Run() {
 
 void MountTaskRemove::Run() {
   if (homedirs_) {
-    bool status = homedirs_->Remove(credentials_.GetFullUsernameString());
+    bool status = homedirs_->Remove(credentials_.username());
     result()->set_return_status(status);
   }
   MountTask::Notify();

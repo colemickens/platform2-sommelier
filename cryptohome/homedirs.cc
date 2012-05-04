@@ -317,7 +317,7 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
                        const SecureBlob& oldkey) {
   SecureBlob newkey;
   newcreds.GetPasskey(&newkey);
-  UsernamePasskey oldcreds(newcreds.GetFullUsernameString().c_str(), oldkey);
+  UsernamePasskey oldcreds(newcreds.username().c_str(), oldkey);
   Mount mount;
   mount.set_platform(platform_);
   mount.set_crypto(crypto_);

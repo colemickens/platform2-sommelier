@@ -240,7 +240,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   current_user_->Reset();
   current_user_->SetUser(credentials);
 
-  string username = credentials.GetFullUsernameString();
+  string username = credentials.username();
   if (username.compare(kIncognitoUser) == 0) {
     // TODO(fes): Have guest set error conditions?
     if (mount_error) {
@@ -268,7 +268,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     }
 
     if (!MountEphemeralCryptohome(credentials)) {
-      homedirs_.Remove(credentials.GetFullUsernameString());
+      homedirs_.Remove(credentials.username());
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
     }
@@ -279,7 +279,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (!mount_args.create_if_missing && !DoesCryptohomeExist(credentials)) {
     if (mount_error) {
       LOG(ERROR) << "Asked to mount nonexistent user: "
-                 << credentials.GetFullUsernameString();
+                 << credentials.username();
       *mount_error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
     }
     return false;
@@ -306,7 +306,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     if (recreate_decrypt_fatal & (local_mount_error & MOUNT_ERROR_FATAL)) {
       LOG(ERROR) << "Error, cryptohome must be re-created because of fatal "
                  << "error.";
-      if (!homedirs_.Remove(credentials.GetFullUsernameString())) {
+      if (!homedirs_.Remove(credentials.username())) {
         LOG(ERROR) << "Fatal decryption error, but unable to remove "
                    << "cryptohome.";
         return false;
@@ -448,7 +448,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 }
 
 bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
-  const string username = credentials.GetFullUsernameString();
+  const string username = credentials.username();
   const string path = GetUserEphemeralPath(
       credentials.GetObfuscatedUsername(system_salt_));
   const string user_multi_home =
@@ -1526,7 +1526,7 @@ bool Mount::EnsureDirHasOwner(const FilePath& fp, uid_t final_uid,
 }
 
 bool Mount::EnsureUserMountPoints(const Credentials& credentials) const {
-  const std::string username = credentials.GetFullUsernameString();
+  const std::string username = credentials.username();
   FilePath root_path = chromeos::cryptohome::home::GetRootPath(username);
   FilePath user_path = chromeos::cryptohome::home::GetUserPath(username);
   if (!EnsureDirHasOwner(root_path, kMountOwnerUid, kMountOwnerGid)) {

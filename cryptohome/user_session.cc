@@ -28,7 +28,7 @@ void UserSession::Init(Crypto* crypto, const SecureBlob& salt) {
 
 bool UserSession::SetUser(const Credentials& credentials) {
   obfuscated_username_ = credentials.GetObfuscatedUsername(username_salt_);
-  username_ = credentials.GetFullUsernameString();
+  username_ = credentials.username();
 
   key_salt_.resize(PKCS5_SALT_LEN);
   crypto_->GetSecureRandom(static_cast<unsigned char*>(key_salt_.data()),

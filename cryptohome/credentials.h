@@ -21,7 +21,7 @@ class Credentials {
   //
   // Parameters
   //
-  virtual std::string GetFullUsernameString() const = 0;
+  virtual std::string username() const = 0;
 
   // Returns the obfuscated username, used as the name of the directory
   // containing the user's stateful data (and maybe used for other reasons

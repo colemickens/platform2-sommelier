@@ -1278,7 +1278,7 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
   EXPECT_TRUE(file_util::PathExists(root_path_[0]));
   EXPECT_FALSE(file_util::PathExists(image_path_[0]));
   for (int user = 1; user != kAlternateUserCount; user++) {
-    if (username_passkey_[user].GetFullUsernameString() ==
+    if (username_passkey_[user].username() ==
         "owner@invalid.domain") {
       // The owner's cryptohome and mount points should have been preserved.
       EXPECT_TRUE(file_util::PathExists(user_path_[user]));
@@ -1329,8 +1329,7 @@ TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
   ASSERT_TRUE(mount_.UnmountCryptohome());
 
   for (int user = 0; user != kAlternateUserCount; user++) {
-    if (username_passkey_[user].GetFullUsernameString() ==
-        "owner@invalid.domain") {
+    if (username_passkey_[user].username() == "owner@invalid.domain") {
       // The owner's cryptohome and mount points should have been preserved.
       EXPECT_TRUE(file_util::PathExists(user_path_[user]));
       EXPECT_TRUE(file_util::PathExists(root_path_[user]));

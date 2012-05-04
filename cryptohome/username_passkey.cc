@@ -25,13 +25,13 @@ UsernamePasskey::~UsernamePasskey() {
 }
 
 void UsernamePasskey::Assign(const Credentials& rhs) {
-  username_.assign(rhs.GetFullUsernameString());
+  username_.assign(rhs.username());
   SecureBlob passkey;
   rhs.GetPasskey(&passkey);
   passkey_.assign(passkey.begin(), passkey.end());
 }
 
-std::string UsernamePasskey::GetFullUsernameString() const {
+std::string UsernamePasskey::username() const {
   return username_;
 }
 

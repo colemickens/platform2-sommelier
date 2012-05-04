@@ -29,11 +29,11 @@ class UsernamePasskeyTest : public ::testing::Test {
   DISALLOW_COPY_AND_ASSIGN(UsernamePasskeyTest);
 };
 
-TEST(UsernamePasskeyTest, GetFullUsernameStringTest) {
+TEST(UsernamePasskeyTest, UsernameTest) {
   char username[80];
   snprintf(username, sizeof(username), "%s%s", kFakeUser, "@gmail.com");
   UsernamePasskey up(username, SecureBlob(kFakePasskey, strlen(kFakePasskey)));
-  std::string full_username = up.GetFullUsernameString();
+  std::string full_username = up.username();
   EXPECT_EQ(0, strcmp(username, full_username.c_str()));
 }
 

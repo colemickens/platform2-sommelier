@@ -27,7 +27,7 @@ class UsernamePasskey : public Credentials {
   void Assign(const Credentials& rhs);
 
   // Overridden from cryptohome::Credentials
-  std::string GetFullUsernameString() const;
+  std::string username() const;
   std::string GetObfuscatedUsername(const chromeos::Blob &system_salt) const;
   void GetPasskey(SecureBlob* passkey) const;
 
