@@ -17,6 +17,7 @@
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
+#include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/power_constants.h"
@@ -216,6 +217,38 @@ DBusMessage* CreateEmptyDBusReply(DBusMessage* message) {
 DBusMessage* CreateDBusErrorReply(DBusMessage* message, const char* error_name,
                                   const char* error_message) {
   return dbus_message_new_error(message, error_name, error_message);
+}
+
+void AddDBusSignalMatch(DBusConnection* connection,
+                        const std::string& interface,
+                        const std::string& member) {
+  std::string filter;
+  filter = StringPrintf("type='signal', interface='%s', member='%s'",
+                        interface.c_str(), member.c_str());
+  DBusError error;
+  dbus_error_init(&error);
+  dbus_bus_add_match(connection, filter.c_str(), &error);
+  if (dbus_error_is_set(&error)) {
+    LOG(ERROR) << "Failed to add a match: " << error.name << ", message="
+               << error.message;
+  }
+}
+
+void AddDBusMethodMatch(DBusConnection* connection,
+                        const std::string& interface,
+                        const std::string& path,
+                        const std::string& member) {
+  std::string filter;
+  filter =
+      StringPrintf("type='method_call', interface='%s', path='%s', member='%s'",
+                   interface.c_str(), path.c_str(), member.c_str());
+  DBusError error;
+  dbus_error_init(&error);
+  dbus_bus_add_match(connection, filter.c_str(), &error);
+  if (dbus_error_is_set(&error)) {
+    LOG(ERROR) << "Failed to add a match: " << error.name << ", message="
+               << error.message;
+  }
 }
 
 void CreateStatusFile(const FilePath& file) {

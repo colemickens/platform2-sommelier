@@ -10,10 +10,6 @@
 #include <gdk/gdk.h>
 #include <libudev.h>
 
-#include <map>
-#include <string>
-#include <utility>
-
 #include "base/file_path.h"
 #include "base/time.h"
 #include "metrics/metrics_library.h"
@@ -136,14 +132,6 @@ class PowerManDaemon {
   SIGNAL_CALLBACK_PACKED_1(PowerManDaemon, gboolean, RetrySuspend,
                            unsigned int);
 
-  // Add interfaces to dbus matches for connection.
-  void AddDBusMatch(DBusConnection *connection,
-                    const char *interface,
-                    const char *member);
-  void AddDBusMatch(DBusConnection *connection, const char *interface);
-  void AddDBusMethod(DBusConnection *connection,
-                     const char *interface,
-                     const char *path);
   // Register the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 

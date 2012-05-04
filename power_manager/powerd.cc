@@ -775,28 +775,6 @@ void Daemon::RegisterDBusMessageHandler() {
     dbus_error_free(&error);
   }
 
-  vector<string> matches;
-  matches.push_back(
-      StringPrintf("type='signal', interface='%s'", kPowerManagerInterface));
-  matches.push_back(
-      StringPrintf("type='signal', interface='%s', member='%s'",
-                   login_manager::kSessionManagerInterface,
-                   login_manager::kSessionManagerSessionStateChanged));
-  matches.push_back(
-      StringPrintf("type='method_call', interface='%s', path='%s'",
-                   kPowerManagerInterface,
-                   kPowerManagerServicePath));
-
-  for (vector<string>::const_iterator it = matches.begin();
-       it != matches.end(); ++it) {
-    dbus_bus_add_match(connection, it->c_str(), &error);
-    if (dbus_error_is_set(&error)) {
-      LOG(DFATAL) << "Failed to add match \"" << *it << "\": "
-                  << error.name << ", message=" << error.message;
-      dbus_error_free(&error);
-    }
-  }
-
   AddDBusSignalHandler(kPowerManagerInterface, kRequestSuspendSignal,
                        &Daemon::HandleRequestSuspendSignal);
   AddDBusSignalHandler(kPowerManagerInterface, kLidClosed,
@@ -1205,12 +1183,21 @@ DBusMessage* Daemon::HandleStateOverrideRequestMethod(DBusMessage* message) {
 void Daemon::AddDBusSignalHandler(const std::string& interface,
                                   const std::string& member,
                                   DBusSignalHandler handler) {
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  CHECK(connection);
+  util::AddDBusSignalMatch(connection, interface, member);
   dbus_signal_handler_table_[std::make_pair(interface, member)] = handler;
 }
 
 void Daemon::AddDBusMethodHandler(const std::string& interface,
                                   const std::string& member,
                                   DBusMethodHandler handler) {
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  CHECK(connection);
+  util::AddDBusMethodMatch(
+      connection, interface, kPowerManagerServicePath, member);
   dbus_method_handler_table_[std::make_pair(interface, member)] = handler;
 }
 

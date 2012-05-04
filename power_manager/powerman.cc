@@ -402,12 +402,21 @@ DBusMessage* PowerManDaemon::HandleExternalBacklightSetMethod(
 void PowerManDaemon::AddDBusSignalHandler(const std::string& interface,
                                           const std::string& member,
                                           DBusSignalHandler handler) {
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  CHECK(connection);
+  util::AddDBusSignalMatch(connection, interface, member);
   dbus_signal_handler_table_[std::make_pair(interface, member)] = handler;
 }
 
 void PowerManDaemon::AddDBusMethodHandler(const std::string& interface,
                                           const std::string& member,
                                           DBusMethodHandler handler) {
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  CHECK(connection);
+  util::AddDBusMethodMatch(
+      connection, interface, kPowerManagerServicePath, member);
   dbus_method_handler_table_[std::make_pair(interface, member)] = handler;
 }
 
@@ -441,46 +450,6 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
   }
 }
 
-void PowerManDaemon::AddDBusMatch(DBusConnection *connection,
-                                  const char *interface,
-                                  const char *member) {
-  DBusError error;
-  dbus_error_init(&error);
-  std::string filter;
-  if (member)
-    filter = StringPrintf("type='signal', interface='%s', member='%s'",
-                          interface, member);
-  else
-    filter = StringPrintf("type='signal', interface='%s'", interface);
-  dbus_bus_add_match(connection, filter.c_str(), &error);
-  if (dbus_error_is_set(&error)) {
-    LOG(ERROR) << "Failed to add a match:" << error.name << ", message="
-               << error.message;
-    NOTREACHED();
-  }
-}
-
-void PowerManDaemon::AddDBusMatch(DBusConnection *connection,
-                                  const char *interface) {
-  AddDBusMatch(connection, interface, NULL);
-}
-
-void PowerManDaemon::AddDBusMethod(DBusConnection *connection,
-                                   const char *interface,
-                                   const char *path) {
-  DBusError error;
-  dbus_error_init(&error);
-  std::string filter;
-  filter = StringPrintf("type='method_call', interface='%s', path='%s'",
-                        interface, path);
-  dbus_bus_add_match(connection, filter.c_str(), &error);
-  if (dbus_error_is_set(&error)) {
-    LOG(ERROR) << "Failed to add a match:" << error.name << ", message="
-               << error.message;
-    NOTREACHED();
-  }
-}
-
 void PowerManDaemon::RegisterDBusMessageHandler() {
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
@@ -495,17 +464,6 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
                << kRootPowerManagerServiceName << "\": "
                << (dbus_error_is_set(&error) ? error.message : "Unknown error");
   }
-
-  AddDBusMatch(connection,
-               login_manager::kSessionManagerInterface,
-               login_manager::kSessionManagerSessionStateChanged);
-  AddDBusMatch(connection, kRootPowerManagerInterface);
-  AddDBusMatch(connection, kPowerManagerInterface, kPowerStateChanged);
-  AddDBusMethod(connection,
-                kRootPowerManagerInterface,
-                kPowerManagerServicePath);
-  CHECK(dbus_connection_add_filter(
-      connection, &DBusMessageHandler, this, NULL));
 
   AddDBusSignalHandler(kRootPowerManagerInterface, kCheckLidStateSignal,
                        &PowerManDaemon::HandleCheckLidStateSignal);
@@ -527,6 +485,9 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
                        &PowerManDaemon::HandleExternalBacklightGetMethod);
   AddDBusMethodHandler(kRootPowerManagerInterface, kExternalBacklightSetMethod,
                        &PowerManDaemon::HandleExternalBacklightSetMethod);
+
+  CHECK(dbus_connection_add_filter(
+      connection, &DBusMessageHandler, this, NULL));
 
   DBusGProxy* proxy = dbus_g_proxy_new_for_name(
       chromeos::dbus::GetSystemBusConnection().g_connection(),
