@@ -71,30 +71,13 @@ class UserSession {
   //   username (OUT) - the username
   virtual void GetUsername(std::string* username) const;
 
-  // Push a mount onto the stack of mounts for this user's session
-  //
-  // Parameters
-  //   mount_point - Mount point of this mount
-  virtual void PushMount(const std::string& mount_point);
-
-  // Pops a mount from the stack of mounts for this user's session
-  // Returns false if there are no remaining mounts
-  //
-  // Parameters
-  //   mount_point (OUT) - Mount point popped from the stack
-  virtual bool PopMount(std::string* mount_point);
-
  private:
-  // Logs if there are any mounts still remaining.
-  virtual void LogIfAnyMounts();
-
   std::string obfuscated_username_;
   std::string username_;
   Crypto* crypto_;
   SecureBlob username_salt_;
   SecureBlob key_salt_;
   SecureBlob cipher_;
-  std::vector<std::string> mount_points_;
 
   DISALLOW_COPY_AND_ASSIGN(UserSession);
 };

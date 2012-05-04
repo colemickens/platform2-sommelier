@@ -522,7 +522,7 @@ bool Mount::MountForUser(UserSession *user, const std::string& src,
                          const std::string& dest, const std::string& type,
                          const std::string& options) {
   if (platform_->Mount(src, dest, type, options)) {
-    user->PushMount(dest);
+    mounts_.Push(dest);
     return true;
   }
   return false;
@@ -531,7 +531,7 @@ bool Mount::MountForUser(UserSession *user, const std::string& src,
 bool Mount::BindForUser(UserSession *user, const std::string& src,
                         const std::string& dest) {
   if (platform_->Bind(src, dest)) {
-    user->PushMount(dest);
+    mounts_.Push(dest);
     return true;
   }
   return false;
@@ -539,7 +539,7 @@ bool Mount::BindForUser(UserSession *user, const std::string& src,
 
 bool Mount::UnmountForUser(UserSession *user) {
   std::string mount_point;
-  if (!user->PopMount(&mount_point)) {
+  if (!mounts_.Pop(&mount_point)) {
     return false;
   }
   ForceUnmount(mount_point);

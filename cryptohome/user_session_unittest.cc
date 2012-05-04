@@ -84,18 +84,4 @@ TEST_F(UserSessionTest, VerifyTest) {
   EXPECT_TRUE(session.Verify(up));
 }
 
-TEST_F(UserSessionTest, MountTest) {
-  Crypto crypto;
-  UserSession session;
-  std::string popped;
-  session.Init(&crypto, salt);
-  session.PushMount("/foo");
-  session.PushMount("/bar");
-  EXPECT_TRUE(session.PopMount(&popped));
-  EXPECT_EQ(popped, "/bar");
-  EXPECT_TRUE(session.PopMount(&popped));
-  EXPECT_EQ(popped, "/foo");
-  EXPECT_FALSE(session.PopMount(&popped));
-}
-
 }  // namespace cryptohome

@@ -27,6 +27,7 @@
 #include "credentials.h"
 #include "crypto.h"
 #include "homedirs.h"
+#include "mount_stack.h"
 #include "platform.h"
 #include "secure_blob.h"
 #include "user_session.h"
@@ -791,6 +792,9 @@ class Mount {
   // DoAutomaticFreeDiskSpaceControl) are shims that call into this object
   // instead. Please do not use this; it will go away once the shims are gone.
   HomeDirs homedirs_;
+
+  // Stack of mounts (in the mount(2) sense) that we've made.
+  MountStack mounts_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
 

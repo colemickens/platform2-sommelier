@@ -19,9 +19,7 @@ UserSession::UserSession()
     : crypto_(NULL) {
 }
 
-UserSession::~UserSession() {
-  LogIfAnyMounts();
-}
+UserSession::~UserSession() { }
 
 void UserSession::Init(Crypto* crypto, const SecureBlob& salt) {
   crypto_ = crypto;
@@ -57,7 +55,6 @@ bool UserSession::SetUser(const Credentials& credentials) {
 }
 
 void UserSession::Reset() {
-  LogIfAnyMounts();
   username_ = "";
   obfuscated_username_ = "";
   key_salt_.resize(0);
@@ -99,32 +96,6 @@ void UserSession::GetObfuscatedUsername(std::string* username) const {
 
 void UserSession::GetUsername(std::string* username) const {
   username->assign(username_);
-}
-
-void UserSession::PushMount(const std::string& mount_point) {
-  mount_points_.push_back(mount_point);
-}
-
-bool UserSession::PopMount(std::string* mount_point) {
-  if (mount_points_.empty()) {
-    return false;
-  }
-  *mount_point = mount_points_.back();
-  mount_points_.pop_back();
-  return true;
-}
-
-void UserSession::LogIfAnyMounts() {
-  if (mount_points_.empty()) {
-    return;
-  }
-  std::vector<std::string>::iterator it;
-  LOG(ERROR) << "UserSession for '" << obfuscated_username_
-             << "' destroyed with " << mount_points_.size()
-             << " mounts:";
-  for (it = mount_points_.begin(); it != mount_points_.end(); ++it) {
-    LOG(ERROR) << "  " << *it;
-  }
 }
 
 }  // namespace cryptohome
