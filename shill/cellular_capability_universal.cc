@@ -7,13 +7,11 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
-#include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mobile_provider.h>
 #include <mm/ModemManager-names.h>
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -35,7 +33,7 @@
 #define MM_MODEM_SIMPLE_CONNECT_PIN "pin"
 #define MM_MODEM_SIMPLE_CONNECT_OPERATOR_ID "operator-id"
 #define MM_MODEM_SIMPLE_CONNECT_BANDS "bands"
-#define MM_MODEM_SIMPLE_CONNECT_ALLWOED_MODES "allowed-modes"
+#define MM_MODEM_SIMPLE_CONNECT_ALLOWED_MODES "allowed-modes"
 #define MM_MODEM_SIMPLE_CONNECT_PREFERRED_MODE "preferred-mode"
 #define MM_MODEM_SIMPLE_CONNECT_APN "apn"
 #define MM_MODEM_SIMPLE_CONNECT_IP_TYPE "ip-type"
@@ -46,9 +44,7 @@
 #define MM_MODEM_SIMPLE_CONNECT_RM_PROTOCOL "rm-protocol"
 
 using base::Bind;
-using base::Callback;
 using base::Closure;
-using std::map;
 using std::string;
 using std::vector;
 
@@ -1002,7 +998,7 @@ void CellularCapabilityUniversal::OnPreferredModeChanged(
 void CellularCapabilityUniversal::OnLockRetriesChanged(
     MMModemLock unlock_required,
     const LockRetryData &lock_retries) {
-  switch(unlock_required) {
+  switch (unlock_required) {
     case MM_MODEM_LOCK_SIM_PIN:
       sim_lock_status_.lock_type = "sim-pin";
       break;
@@ -1129,7 +1125,6 @@ void CellularCapabilityUniversal::OnSimPropertiesChanged(
 
   if (must_update_home_provider)
     SetHomeProvider();
-
 }
 
 void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
