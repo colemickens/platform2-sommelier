@@ -52,6 +52,15 @@ namespace shill {
 
 // static
 unsigned int CellularCapabilityUniversal::friendly_service_name_id_ = 0;
+const char CellularCapabilityUniversal::kStatusProperty[] = "status";
+const char CellularCapabilityUniversal::kOperatorLongProperty[] =
+    "operator-long";
+const char CellularCapabilityUniversal::kOperatorShortProperty[] =
+    "operator-short";
+const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
+    "operator-code";
+const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
+    "access-technology";
 
 static const char kPhoneNumber[] = "*99#";
 
@@ -638,11 +647,19 @@ void CellularCapabilityUniversal::ChangePIN(
 void CellularCapabilityUniversal::Scan(Error *error,
                                        const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
-  // TODO(petkov): Defer scan requests if a scan is in progress already.
   CHECK(error);
+  if (scanning_) {
+    Error::PopulateAndLog(error, Error::kInProgress, "Already scanning");
+    return;
+  }
   DBusPropertyMapsCallback cb = Bind(&CellularCapabilityUniversal::OnScanReply,
                                      weak_ptr_factory_.GetWeakPtr(), callback);
   modem_3gpp_proxy_->Scan(error, cb, kTimeoutScan);
+  if (!error->IsFailure()) {
+    scanning_ = true;
+    cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
+                                           scanning_);
+  }
 }
 
 void CellularCapabilityUniversal::OnScanReply(const ResultCallback &callback,
@@ -655,6 +672,9 @@ void CellularCapabilityUniversal::OnScanReply(const ResultCallback &callback,
   // notification sent out.
   //
   // TODO(jglasgow): fix error handling
+  scanning_ = false;
+  cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
+                                         scanning_);
   found_networks_.clear();
   if (!error.IsFailure()) {
     for (ScanResults::const_iterator it = results.begin();
@@ -676,12 +696,6 @@ void CellularCapabilityUniversal::OnScanReply(const ResultCallback &callback,
 
 Stringmap CellularCapabilityUniversal::ParseScanResult(
     const ScanResult &result) {
-
-  static const char kStatusProperty[] = "status";
-  static const char kOperatorLongProperty[] = "operator-long";
-  static const char kOperatorShortProperty[] = "operator-short";
-  static const char kOperatorCodeProperty[] = "operator-code";
-  static const char kOperatorAccessTechnologyProperty[] = "access-technology";
 
   /* ScanResults contain the following keys:
 

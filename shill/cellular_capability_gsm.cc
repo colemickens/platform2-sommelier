@@ -614,11 +614,19 @@ void CellularCapabilityGSM::ChangePIN(
 
 void CellularCapabilityGSM::Scan(Error *error, const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
-  // TODO(petkov): Defer scan requests if a scan is in progress already.
   CHECK(error);
+  if (scanning_) {
+    Error::PopulateAndLog(error, Error::kInProgress, "Already scanning");
+    return;
+  }
   ScanResultsCallback cb = Bind(&CellularCapabilityGSM::OnScanReply,
                                 weak_ptr_factory_.GetWeakPtr(), callback);
   network_proxy_->Scan(error, cb, kTimeoutScan);
+  if (!error->IsFailure()) {
+    scanning_ = true;
+    cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
+                                           scanning_);
+  }
 }
 
 void CellularCapabilityGSM::OnScanReply(const ResultCallback &callback,
@@ -631,6 +639,9 @@ void CellularCapabilityGSM::OnScanReply(const ResultCallback &callback,
   // notification sent out.
   //
   // TODO(jglasgow): fix error handling
+  scanning_ = false;
+  cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
+                                         scanning_);
   found_networks_.clear();
   if (!error.IsFailure()) {
     for (GSMScanResults::const_iterator it = results.begin();

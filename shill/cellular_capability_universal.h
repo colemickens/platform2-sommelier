@@ -86,12 +86,23 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void ReleaseProxies();
 
  private:
+  // Constants used in scan results.  Make available to unit tests.
+  // TODO(jglasgow): Generate from modem manager into ModemManager-names.h.
+  // See http://crosbug.com/30551.
+  static const char kStatusProperty[];
+  static const char kOperatorLongProperty[];
+  static const char kOperatorShortProperty[];
+  static const char kOperatorCodeProperty[];
+  static const char kOperatorAccessTechnologyProperty[];
+
   friend class CellularTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityTest;
   FRIEND_TEST(CellularCapabilityUniversalTest, StartModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, SimPropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
+  FRIEND_TEST(CellularCapabilityUniversalTest, ScanFailure);
 
   // Methods used in starting a modem
   void Start_EnableModemCompleted(const ResultCallback &callback,

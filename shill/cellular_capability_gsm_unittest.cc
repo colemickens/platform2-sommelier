@@ -35,6 +35,7 @@ using testing::_;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
+using testing::SaveArg;
 
 namespace shill {
 
@@ -146,14 +147,13 @@ class CellularCapabilityGSMTest : public testing::Test {
                        const ResultCallback &callback, int timeout) {
     callback.Run(Error());
   }
-  void InvokeScan(Error *error, const ScanResultsCallback &callback,
-                  int timeout) {
+  void InvokeScanReply() {
     GSMScanResults results;
     results.push_back(GSMScanResult());
     results[0][CellularCapabilityGSM::kNetworkPropertyID] = kScanID0;
     results.push_back(GSMScanResult());
     results[1][CellularCapabilityGSM::kNetworkPropertyID] = kScanID1;
-    callback.Run(results, Error());
+    scan_callback_.Run(results, Error());
   }
   void InvokeGetModemStatus(Error *error,
                             const DBusPropertyMapCallback &callback,
@@ -288,6 +288,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   CellularCapabilityGSM *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
   mobile_provider_db *provider_db_;
+  ScanResultsCallback scan_callback_;  // saved for testing scan operations
 };
 
 const char CellularCapabilityGSMTest::kAddress[] = "1122334455";
@@ -482,16 +483,27 @@ MATCHER(SizeIs2, "") {
 TEST_F(CellularCapabilityGSMTest, Scan) {
   Error error;
   EXPECT_CALL(*network_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
-      .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeScan));
+      .WillOnce(SaveArg<1>(&scan_callback_));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   capability_->found_networks_.resize(3, Stringmap());
   EXPECT_CALL(*device_adaptor_,
               EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
                                     SizeIs2()));
+  EXPECT_CALL(*device_adaptor_,
+              EmitBoolChanged(flimflam::kScanningProperty, true));
+  EXPECT_FALSE(capability_->scanning_);
+
   SetNetworkProxy();
   capability_->Scan(&error, Bind(&CellularCapabilityGSMTest::TestCallback,
                                  Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(capability_->scanning_);
+
+  // Simulate the completion of the scan...
+  EXPECT_CALL(*device_adaptor_,
+              EmitBoolChanged(flimflam::kScanningProperty, false));
+  InvokeScanReply();
+  EXPECT_FALSE(capability_->scanning_);
   EXPECT_EQ(2, capability_->found_networks_.size());
   EXPECT_EQ(kScanID0,
             capability_->found_networks_[0][flimflam::kNetworkIdProperty]);

@@ -40,6 +40,7 @@ using std::vector;
 using testing::InSequence;
 using testing::NiceMock;
 using testing::Return;
+using testing::SaveArg;
 using testing::_;
 
 namespace shill {
@@ -115,10 +116,13 @@ class CellularCapabilityUniversalTest : public testing::Test {
     callback.Run(Error());
   }
 
-
   void InvokeScan(Error *error, const DBusPropertyMapsCallback &callback,
                   int timeout) {
     callback.Run(CellularCapabilityUniversal::ScanResults(), Error());
+  }
+  void ScanError(Error *error, const DBusPropertyMapsCallback &callback,
+                 int timeout) {
+    error->Populate(Error::kOperationFailed);
   }
 
   void Set3gppProxy() {
@@ -192,6 +196,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
   CellularCapabilityUniversal *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
   mobile_provider_db *provider_db_;
+  DBusPropertyMapsCallback scan_callback_;  // saved for testing scan operations
 };
 
 const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
@@ -390,6 +395,95 @@ TEST_F(CellularCapabilityUniversalTest, ScanWithNullCallback) {
   Set3gppProxy();
   capability_->Scan(&error, ResultCallback());
   EXPECT_TRUE(error.IsSuccess());
+}
+
+// Validates that the scanning property is updated
+TEST_F(CellularCapabilityUniversalTest, Scan) {
+  Error error;
+
+  EXPECT_CALL(*modem_3gpp_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
+      .WillRepeatedly(SaveArg<1>(&scan_callback_));
+  EXPECT_CALL(*device_adaptor_,
+              EmitBoolChanged(flimflam::kScanningProperty, true));
+  Set3gppProxy();
+  capability_->Scan(&error, ResultCallback());
+  EXPECT_TRUE(capability_->scanning_);
+
+  // Simulate the completion of the scan with 2 networks in the results.
+  EXPECT_CALL(*device_adaptor_,
+              EmitBoolChanged(flimflam::kScanningProperty, false));
+  EXPECT_CALL(*device_adaptor_,
+              EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
+                                    SizeIs(2)));
+  vector<DBusPropertiesMap> results;
+  const char kScanID0[] = "testID0";
+  const char kScanID1[] = "testID1";
+  results.push_back(DBusPropertiesMap());
+  results[0][CellularCapabilityUniversal::kOperatorLongProperty].
+      writer().append_string(kScanID0);
+  results.push_back(DBusPropertiesMap());
+  results[1][CellularCapabilityUniversal::kOperatorLongProperty].
+      writer().append_string(kScanID1);
+  scan_callback_.Run(results, error);
+  EXPECT_FALSE(capability_->scanning_);
+
+  // Simulate the completion of the scan with no networks in the results.
+  EXPECT_CALL(*device_adaptor_,
+              EmitBoolChanged(flimflam::kScanningProperty, true));
+  capability_->Scan(&error, ResultCallback());
+  EXPECT_TRUE(capability_->scanning_);
+  EXPECT_CALL(*device_adaptor_,
+              EmitBoolChanged(flimflam::kScanningProperty, false));
+  EXPECT_CALL(*device_adaptor_,
+              EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
+                                    SizeIs(0)));
+  scan_callback_.Run(vector<DBusPropertiesMap>(), Error());
+  EXPECT_FALSE(capability_->scanning_);
+}
+
+// Validates expected property updates when scan fails
+TEST_F(CellularCapabilityUniversalTest, ScanFailure) {
+  Error error;
+
+  // Test immediate error
+  {
+    InSequence seq;
+    EXPECT_CALL(*modem_3gpp_proxy_,
+                Scan(_, _, CellularCapability::kTimeoutScan))
+        .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::ScanError));
+    EXPECT_CALL(*modem_3gpp_proxy_,
+                Scan(_, _, CellularCapability::kTimeoutScan))
+        .WillOnce(SaveArg<1>(&scan_callback_));
+  }
+  Set3gppProxy();
+  capability_->Scan(&error, ResultCallback());
+  EXPECT_FALSE(capability_->scanning_);
+  EXPECT_TRUE(error.IsFailure());
+
+  // Initiate a scan
+  error.Populate(Error::kSuccess);
+  EXPECT_CALL(*device_adaptor_,
+              EmitBoolChanged(flimflam::kScanningProperty, true));
+  capability_->Scan(&error, ResultCallback());
+  EXPECT_TRUE(capability_->scanning_);
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Validate that error is returned if Scan is called while already scanning.
+  capability_->Scan(&error, ResultCallback());
+  EXPECT_TRUE(capability_->scanning_);
+  EXPECT_TRUE(error.IsFailure());
+
+  // Validate that signals are emitted even if an error is reported.
+  capability_->found_networks_.clear();
+  capability_->found_networks_.push_back(Stringmap());
+  EXPECT_CALL(*device_adaptor_,
+              EmitBoolChanged(flimflam::kScanningProperty, false));
+  EXPECT_CALL(*device_adaptor_,
+              EmitStringmapsChanged(flimflam::kFoundNetworksProperty,
+                                    SizeIs(0)));
+  vector<DBusPropertiesMap> results;
+  scan_callback_.Run(results, Error(Error::kOperationFailed));
+  EXPECT_FALSE(capability_->scanning_);
 }
 
 }  // namespace shill
