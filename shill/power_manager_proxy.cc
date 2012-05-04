@@ -21,7 +21,12 @@ PowerManagerProxy::~PowerManagerProxy() {}
 
 void PowerManagerProxy::RegisterSuspendDelay(uint32 delay_ms) {
   SLOG(DBus, 2) << __func__;
-  proxy_.RegisterSuspendDelay(delay_ms);
+  try {
+    proxy_.RegisterSuspendDelay(delay_ms);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << "delay ms: " << delay_ms;
+  }
 }
 
 PowerManagerProxy::Proxy::Proxy(PowerManagerProxyDelegate *delegate,

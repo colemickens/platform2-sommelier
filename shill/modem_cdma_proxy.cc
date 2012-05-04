@@ -69,7 +69,12 @@ void ModemCDMAProxy::GetSignalQuality(Error *error,
 const string ModemCDMAProxy::MEID() {
   LOG(INFO) << "ModemCDMAProxy::" << __func__;
   SLOG(DBus, 2) << __func__;
-  return proxy_.Meid();
+  try {
+    return proxy_.Meid();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return string();  // Make the compiler happy.
+  }
 }
 
 void ModemCDMAProxy::set_activation_state_callback(

@@ -35,7 +35,13 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
   SLOG(DBus, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid;
-  ri >> pid;
+  try {
+    ri >> pid;
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " interface: " << signal.interface()
+               << " member: " << signal.member() << " path: " << signal.path();
+  }
   SLOG(DHCP, 2) << "sender(" << signal.sender() << ") pid(" << pid << ")";
 
   DHCPConfigRefPtr config = provider_->GetConfig(pid);
@@ -46,9 +52,21 @@ void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
   config->InitProxy(signal.sender());
 
   string reason;
+  try {
   ri >> reason;
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " interface: " << signal.interface()
+               << " member: " << signal.member() << " path: " << signal.path();
+  }
   DHCPConfig::Configuration configuration;
-  ri >> configuration;
+  try {
+    ri >> configuration;
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " interface: " << signal.interface()
+               << " member: " << signal.member() << " path: " << signal.path();
+  }
   config->ProcessEventSignal(reason, configuration);
 }
 
@@ -57,7 +75,13 @@ void DHCPCDListener::Proxy::StatusChangedSignal(
   SLOG(DBus, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid;
-  ri >> pid;
+  try {
+    ri >> pid;
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " interface: " << signal.interface()
+               << " member: " << signal.member() << " path: " << signal.path();
+  }
   SLOG(DHCP, 2) << "sender(" << signal.sender() << ") pid(" << pid << ")";
 
   // Accept StatusChanged signals just to get the sender address and create an
@@ -77,12 +101,22 @@ DHCPCDProxy::DHCPCDProxy(DBus::Connection *connection, const string &service)
 
 void DHCPCDProxy::Rebind(const string &interface) {
   SLOG(DBus, 2) << __func__;
-  proxy_.Rebind(interface);
+  try {
+    proxy_.Rebind(interface);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " interface: " << interface;
+  }
 }
 
 void DHCPCDProxy::Release(const string &interface) {
   SLOG(DBus, 2) << __func__;
-  proxy_.Release(interface);
+  try {
+    proxy_.Release(interface);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " interface: " << interface;
+  }
 }
 
 DHCPCDProxy::Proxy::Proxy(DBus::Connection *connection,

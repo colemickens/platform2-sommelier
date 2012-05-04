@@ -85,7 +85,12 @@ void ModemGSMNetworkProxy::Scan(Error *error,
 
 uint32 ModemGSMNetworkProxy::AccessTechnology() {
   SLOG(DBus, 2) << __func__;
+  try {
   return proxy_.AccessTechnology();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
 
 void ModemGSMNetworkProxy::set_signal_quality_callback(

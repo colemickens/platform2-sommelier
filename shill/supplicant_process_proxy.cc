@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <dbus-c++/dbus.h>
 
+#include "shill/dbus_properties.h"
 #include "shill/scope_logger.h"
 
 using std::map;
@@ -27,17 +28,33 @@ SupplicantProcessProxy::~SupplicantProcessProxy() {}
 ::DBus::Path SupplicantProcessProxy::CreateInterface(
     const map<string, ::DBus::Variant> &args) {
   SLOG(DBus, 2) << __func__;
-  return proxy_.CreateInterface(args);
+  try {
+    return proxy_.CreateInterface(args);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " args keys are: " << DBusProperties::KeysToString(args);
+    return ::DBus::Path();  // Make the compiler happy.
+  }
 }
 
 void SupplicantProcessProxy::RemoveInterface(const ::DBus::Path &path) {
   SLOG(DBus, 2) << __func__;
-  return proxy_.RemoveInterface(path);
+  try {
+    return proxy_.RemoveInterface(path);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+  }
 }
 
 ::DBus::Path SupplicantProcessProxy::GetInterface(const string &ifname) {
   SLOG(DBus, 2) << __func__;
-  return proxy_.GetInterface(ifname);
+  try {
+    return proxy_.GetInterface(ifname);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " ifname: " << ifname;
+    return ::DBus::Path();  // Make the compiler happy.
+  }
 }
 
 // definitions for private class SupplicantProcessProxy::Proxy

@@ -142,7 +142,12 @@ void ModemGSMCardProxy::ChangePIN(const string &old_pin,
 
 uint32 ModemGSMCardProxy::EnabledFacilityLocks() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.EnabledFacilityLocks();
+  try {
+    return proxy_.EnabledFacilityLocks();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
 
 ModemGSMCardProxy::Proxy::Proxy(DBus::Connection *connection,

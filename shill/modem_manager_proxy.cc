@@ -24,7 +24,12 @@ ModemManagerProxy::~ModemManagerProxy() {}
 
 vector<DBus::Path> ModemManagerProxy::EnumerateDevices() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.EnumerateDevices();
+  try {
+    return proxy_.EnumerateDevices();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return vector<DBus::Path>();  // Make the compiler happy.
+  }
 }
 
 ModemManagerProxy::Proxy::Proxy(DBus::Connection *connection,

@@ -60,27 +60,57 @@ void ModemModemCdmaProxy::set_activation_state_callback(
 // Inherited properties from ModemModemCdmaProxyInterface.
 std::string ModemModemCdmaProxy::Meid() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Meid();
+  try {
+    return proxy_.Meid();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 };
 std::string ModemModemCdmaProxy::Esn() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Esn();
+  try {
+    return proxy_.Esn();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 };
 uint32_t ModemModemCdmaProxy::Sid() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Sid();
+  try {
+    return proxy_.Sid();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 };
 uint32_t ModemModemCdmaProxy::Nid() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Nid();
+  try {
+    return proxy_.Nid();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 };
 uint32_t ModemModemCdmaProxy::Cdma1xRegistrationState() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Cdma1xRegistrationState();
+  try {
+    return proxy_.Cdma1xRegistrationState();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 };
 uint32_t ModemModemCdmaProxy::EvdoRegistrationState() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.EvdoRegistrationState();
+  try {
+    return proxy_.EvdoRegistrationState();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 };
 
 // ModemModemCdmaProxy::Proxy

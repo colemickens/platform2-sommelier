@@ -110,4 +110,16 @@ bool DBusProperties::GetUint32(const DBusPropertiesMap &properties,
   return true;
 }
 
+// static
+std::string DBusProperties::KeysToString(const std::map<std::string,
+                                         ::DBus::Variant> &args) {
+  std::string keys;
+  for (std::map<std::string, ::DBus::Variant>:: const_iterator it =
+           args.begin(); it != args.end(); ++it) {
+    keys.append(" ");
+    keys.append(it->first);
+  }
+  return keys;
+}
+
 }  // namespace shill

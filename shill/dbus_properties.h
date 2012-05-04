@@ -46,6 +46,9 @@ class DBusProperties {
                         const std::string &key,
                         uint32 *value);
 
+  static std::string KeysToString(const std::map<std::string,
+                                  ::DBus::Variant> &args);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(DBusProperties);
 };

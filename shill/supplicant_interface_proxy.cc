@@ -30,53 +30,99 @@ SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
 ::DBus::Path SupplicantInterfaceProxy::AddNetwork(
     const std::map<std::string, ::DBus::Variant> &args) {
   SLOG(DBus, 2) << __func__;
-  return proxy_.AddNetwork(args);
+  try {
+    return proxy_.AddNetwork(args);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " args keys are: " << DBusProperties::KeysToString(args);
+    return ::DBus::Path();  // Make the compiler happy.
+  }
 }
 
 void SupplicantInterfaceProxy::ClearCachedCredentials() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.ClearCachedCredentials();
+  try {
+    return proxy_.ClearCachedCredentials();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+  }
 }
 
 void SupplicantInterfaceProxy::Disconnect() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Disconnect();
+  try {
+    return proxy_.Disconnect();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+  }
 }
 
 void SupplicantInterfaceProxy::FlushBSS(const uint32_t &age) {
   SLOG(DBus, 2) << __func__;
-  return proxy_.FlushBSS(age);
+  try {
+    return proxy_.FlushBSS(age);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " age: " << age;
+  }
 }
 
 void SupplicantInterfaceProxy::RemoveAllNetworks() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.RemoveAllNetworks();
+  try {
+    return proxy_.RemoveAllNetworks();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+  }
 }
 
 void SupplicantInterfaceProxy::RemoveNetwork(const ::DBus::Path &network) {
   SLOG(DBus, 2) << __func__;
-  return proxy_.RemoveNetwork(network);
+  try {
+    return proxy_.RemoveNetwork(network);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+  }
 }
 
 void SupplicantInterfaceProxy::Scan(
     const std::map<std::string, ::DBus::Variant> &args) {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Scan(args);
+  try {
+    return proxy_.Scan(args);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " args keys are: " << DBusProperties::KeysToString(args);
+  }
 }
 
 void SupplicantInterfaceProxy::SelectNetwork(const ::DBus::Path &network) {
   SLOG(DBus, 2) << __func__;
-  return proxy_.SelectNetwork(network);
+  try {
+    return proxy_.SelectNetwork(network);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+  }
 }
 
 void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
   SLOG(DBus, 2) << __func__;
-  return proxy_.FastReauth(enabled);
+  try {
+    return proxy_.FastReauth(enabled);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << "enabled: " << enabled;
+  }
 }
 
 void SupplicantInterfaceProxy::SetScanInterval(int32 scan_interval) {
   SLOG(DBus, 2) << __func__;
-  return proxy_.ScanInterval(scan_interval);
+  try {
+    return proxy_.ScanInterval(scan_interval);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+               << " scan interval: " << scan_interval;
+  }
 }
 
 // definitions for private class SupplicantInterfaceProxy::Proxy

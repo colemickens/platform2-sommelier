@@ -55,23 +55,48 @@ void ModemModem3gppProxy::Scan(Error *error,
 // Inherited properties from ModemModem3gppProxyInterface.
 std::string ModemModem3gppProxy::Imei() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Imei();
+  try {
+    return proxy_.Imei();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 };
 uint32_t ModemModem3gppProxy::RegistrationState() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.RegistrationState();
+  try {
+    return proxy_.RegistrationState();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 };
 std::string ModemModem3gppProxy::OperatorCode() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.OperatorCode();
+  try {
+    return proxy_.OperatorCode();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 };
 std::string ModemModem3gppProxy::OperatorName() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.OperatorName();
+  try {
+    return proxy_.OperatorName();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 };
 uint32_t ModemModem3gppProxy::EnabledFacilityLocks() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.EnabledFacilityLocks();
+  try {
+    return proxy_.EnabledFacilityLocks();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 };
 
 // ModemModem3gppProxy::Proxy

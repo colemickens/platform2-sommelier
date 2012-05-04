@@ -132,7 +132,7 @@ void ModemProxy::SetAllowedModes(const uint32_t &modes,
   }
 }
 
-void ModemProxy::SetBands(const std::vector< uint32_t > &bands,
+void ModemProxy::SetBands(const std::vector<uint32_t> &bands,
                           Error *error,
                           const ResultCallback &callback,
                           int timeout) {
@@ -166,99 +166,219 @@ void ModemProxy::Command(const std::string &cmd,
 // Inherited properties from ModemProxyInterface.
 const ::DBus::Path ModemProxy::Sim() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Sim();
+  try {
+    return proxy_.Sim();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return ::DBus::Path();  // Make the compiler happy.
+  }
 }
 uint32_t ModemProxy::ModemCapabilities() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.ModemCapabilities();
+  try {
+    return proxy_.ModemCapabilities();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
 uint32_t ModemProxy::CurrentCapabilities() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.CurrentCapabilities();
+  try {
+    return proxy_.CurrentCapabilities();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
 uint32_t ModemProxy::MaxBearers() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.MaxBearers();
+  try {
+    return proxy_.MaxBearers();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
 uint32_t ModemProxy::MaxActiveBearers() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.MaxActiveBearers();
+  try {
+    return proxy_.MaxActiveBearers();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
 const std::string ModemProxy::Manufacturer() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Manufacturer();
+  try {
+    return proxy_.Manufacturer();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 }
 const std::string ModemProxy::Model() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Model();
+  try {
+    return proxy_.Model();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 }
 const std::string ModemProxy::Revision() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Revision();
+  try {
+    return proxy_.Revision();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 }
 const std::string ModemProxy::DeviceIdentifier() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.DeviceIdentifier();
+  try {
+    return proxy_.DeviceIdentifier();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 }
 const std::string ModemProxy::Device() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Device();
+  try {
+    return proxy_.Device();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 }
 const std::string ModemProxy::Driver() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Driver();
+  try {
+    return proxy_.Driver();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 }
 const std::string ModemProxy::Plugin() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Plugin();
+  try {
+    return proxy_.Plugin();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 }
 const std::string ModemProxy::EquipmentIdentifier() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.EquipmentIdentifier();
+  try {
+    return proxy_.EquipmentIdentifier();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::string();  // Make the compiler happy.
+  }
 }
 uint32_t ModemProxy::UnlockRequired() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.UnlockRequired();
+  try {
+    return proxy_.UnlockRequired();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
-const std::map< uint32_t, uint32_t > ModemProxy::UnlockRetries() {
+const std::map<uint32_t, uint32_t> ModemProxy::UnlockRetries() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.UnlockRetries();
+  try {
+    return proxy_.UnlockRetries();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::map<uint32_t, uint32_t>();  // Make the compiler happy.
+  }
 }
 uint32_t ModemProxy::State() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.State();
+  try {
+    return proxy_.State();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
 uint32_t ModemProxy::AccessTechnologies() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.AccessTechnologies();
+  try {
+    return proxy_.AccessTechnologies();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
-const ::DBus::Struct< uint32_t, bool > ModemProxy::SignalQuality() {
+const ::DBus::Struct<uint32_t, bool> ModemProxy::SignalQuality() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.SignalQuality();
+  try {
+    return proxy_.SignalQuality();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return ::DBus::Struct<uint32_t, bool>();  // Make the compiler happy.
+  }
 }
 const std::vector<string> ModemProxy::OwnNumbers() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.OwnNumbers();
+  try {
+    return proxy_.OwnNumbers();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::vector<string>();  // Make the compiler happy.
+  }
 }
 uint32_t ModemProxy::SupportedModes() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.SupportedModes();
+  try {
+    return proxy_.SupportedModes();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
 uint32_t ModemProxy::AllowedModes() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.AllowedModes();
+  try {
+    return proxy_.AllowedModes();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
 uint32_t ModemProxy::PreferredMode() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.PreferredMode();
+  try {
+    return proxy_.PreferredMode();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
 }
-const std::vector< uint32_t > ModemProxy::SupportedBands() {
+const std::vector<uint32_t> ModemProxy::SupportedBands() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.SupportedBands();
+  try {
+    return proxy_.SupportedBands();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::vector<uint32_t>();  // Make the compiler happy.
+  }
 }
-const std::vector< uint32_t > ModemProxy::Bands() {
+const std::vector<uint32_t> ModemProxy::Bands() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Bands();
+  try {
+    return proxy_.Bands();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::vector<uint32_t>();  // Make the compiler happy.
+  }
 }
 
 ModemProxy::Proxy::Proxy(DBus::Connection *connection,
@@ -294,7 +414,7 @@ void ModemProxy::Proxy::EnableCallback(const ::DBus::Error& dberror,
 }
 
 void ModemProxy::Proxy::ListBearersCallback(
-    const std::vector< ::DBus::Path > &bearers,
+    const std::vector< ::DBus::Path> &bearers,
     const ::DBus::Error& dberror,
     void *data) {
   SLOG(DBus, 2) << __func__;

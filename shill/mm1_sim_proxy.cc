@@ -96,22 +96,42 @@ void SimProxy::ChangePin(const string &old_pin,
 // Inherited properties from SimProxyInterface.
 const string SimProxy::SimIdentifier() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.SimIdentifier();
+  try {
+    return proxy_.SimIdentifier();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return string();  // Make the compiler happy.
+  }
 }
 
 const string SimProxy::Imsi() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.Imsi();
+  try {
+    return proxy_.Imsi();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return string();  // Make the compiler happy.
+  }
 }
 
 const string SimProxy::OperatorIdentifier() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.OperatorIdentifier();
+  try {
+    return proxy_.OperatorIdentifier();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return string();  // Make the compiler happy.
+  }
 }
 
 const string SimProxy::OperatorName() {
   SLOG(DBus, 2) << __func__;
-  return proxy_.OperatorName();
+  try {
+    return proxy_.OperatorName();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return string();  // Make the compiler happy.
+  }
 }
 
 SimProxy::Proxy::Proxy(DBus::Connection *connection,
