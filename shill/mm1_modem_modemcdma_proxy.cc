@@ -30,7 +30,7 @@ void ModemModemCdmaProxy::Activate(const std::string &carrier,
     SLOG(DBus, 2) << __func__;
     proxy_.Activate(carrier, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -46,7 +46,7 @@ void ModemModemCdmaProxy::ActivateManual(
     SLOG(DBus, 2) << __func__;
     proxy_.ActivateManual(properties, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }

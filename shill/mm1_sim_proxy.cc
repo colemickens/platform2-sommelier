@@ -33,7 +33,7 @@ void SimProxy::SendPin(const string &pin,
     SLOG(DBus, 2) << __func__;
     proxy_.SendPin(pin, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -51,7 +51,7 @@ void SimProxy::SendPuk(const string &puk,
     SLOG(DBus, 2) << __func__;
     proxy_.SendPuk(puk, pin, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -69,7 +69,7 @@ void SimProxy::EnablePin(const string &pin,
     SLOG(DBus, 2) << __func__;
     proxy_.EnablePin(pin, enabled, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -87,7 +87,7 @@ void SimProxy::ChangePin(const string &old_pin,
     SLOG(DBus, 2) << __func__;
     proxy_.ChangePin(old_pin, new_pin, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }

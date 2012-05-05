@@ -30,7 +30,7 @@ void ModemCDMAProxy::Activate(const string &carrier, Error *error,
     SLOG(DBus, 2) << __func__;
     proxy_.Activate(carrier, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -46,7 +46,7 @@ void ModemCDMAProxy::GetRegistrationState(
     SLOG(DBus, 2) << __func__;
     proxy_.GetRegistrationState(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -60,7 +60,7 @@ void ModemCDMAProxy::GetSignalQuality(Error *error,
     SLOG(DBus, 2) << __func__;
     proxy_.GetSignalQuality(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }

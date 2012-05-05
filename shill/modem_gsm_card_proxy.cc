@@ -31,7 +31,7 @@ void ModemGSMCardProxy::GetIMEI(Error *error,
     SLOG(DBus, 2) << __func__;
     proxy_.GetImei(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -45,7 +45,7 @@ void ModemGSMCardProxy::GetIMSI(Error *error,
     SLOG(DBus, 2) << __func__;
     proxy_.GetImsi(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -59,7 +59,7 @@ void ModemGSMCardProxy::GetSPN(Error *error,
     SLOG(DBus, 2) << __func__;
     proxy_.GetSpn(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -73,7 +73,7 @@ void ModemGSMCardProxy::GetMSISDN(Error *error,
     SLOG(DBus, 2) << __func__;
     proxy_.GetMsIsdn(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -88,7 +88,7 @@ void ModemGSMCardProxy::EnablePIN(const string &pin, bool enabled,
     SLOG(DBus, 2) << __func__;
     proxy_.EnablePin(pin, enabled, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -103,7 +103,7 @@ void ModemGSMCardProxy::SendPIN(const string &pin,
     SLOG(DBus, 2) << __func__;
     proxy_.SendPin(pin, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -118,7 +118,7 @@ void ModemGSMCardProxy::SendPUK(const string &puk, const string &pin,
     SLOG(DBus, 2) << __func__;
     proxy_.SendPuk(puk, pin, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -134,7 +134,7 @@ void ModemGSMCardProxy::ChangePIN(const string &old_pin,
     SLOG(DBus, 2) << __func__;
     proxy_.ChangePin(old_pin, new_pin, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }

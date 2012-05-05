@@ -33,7 +33,7 @@ void ModemGSMNetworkProxy::GetRegistrationInfo(
     SLOG(DBus, 2) << __func__;
     proxy_.GetRegistrationInfo(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -48,7 +48,7 @@ void ModemGSMNetworkProxy::GetSignalQuality(
     SLOG(DBus, 2) << __func__;
     proxy_.GetSignalQuality(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -63,7 +63,7 @@ void ModemGSMNetworkProxy::Register(const string &network_id,
     SLOG(DBus, 2) << __func__;
     proxy_.Register(network_id, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -77,7 +77,7 @@ void ModemGSMNetworkProxy::Scan(Error *error,
     SLOG(DBus, 2) << __func__;
     proxy_.Scan(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }

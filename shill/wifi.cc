@@ -152,7 +152,7 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
         append_string(SCRIPTDIR "/wpa_supplicant.conf");
     interface_path =
         supplicant_process_proxy_->CreateInterface(create_interface_args);
-  } catch (const DBus::Error e) {  // NOLINT
+  } catch (const DBus::Error &e) {  // NOLINT
     if (!strcmp(e.name(), wpa_supplicant::kErrorInterfaceExists)) {
       interface_path =
           supplicant_process_proxy_->GetInterface(link_name());
@@ -183,7 +183,7 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
     // with RADIUS servers that respond strangely to such requests.
     // crosbug.com/25630
     supplicant_interface_proxy_->SetFastReauth(false);
-  } catch (const DBus::Error e) {  // NOLINT
+  } catch (const DBus::Error &e) {  // NOLINT
     LOG(INFO) << "Failed to disable fast_reauth."
               << "May be running an older version of wpa_supplicant.";
   }
@@ -191,7 +191,7 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
   try {
     // Helps with passing WiFiRomaing.001SSIDSwitchBack.
     supplicant_interface_proxy_->SetScanInterval(kRescanIntervalSeconds);
-  } catch (const DBus::Error e) {  // NOLINT
+  } catch (const DBus::Error &e) {  // NOLINT
     LOG(INFO) << "Failed to set scan_interval. "
               << "May be running an older version of wpa_supplicant.";
   }
@@ -337,7 +337,7 @@ void WiFi::ConnectTo(WiFiService *service,
     network_path =
         supplicant_interface_proxy_->AddNetwork(service_params);
     rpcid_by_service_[service] = network_path;
-  } catch (const DBus::Error e) {  // NOLINT
+  } catch (const DBus::Error &e) {  // NOLINT
     LOG(ERROR) << "exception while adding network: " << e.what();
     return;
   }
@@ -391,7 +391,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     supplicant_interface_proxy_->Disconnect();
     // We'll call RemoveNetwork and reset |current_service_| after
     // supplicant notifies us that the CurrentBSS has changed.
-  } catch (const DBus::Error e) {  // NOLINT
+  } catch (const DBus::Error &e) {  // NOLINT
     // Can't depend on getting a notification of CurrentBSS change.
     // So effect changes immediately.
     ReverseServiceMap::const_iterator rpcid_it =
@@ -818,7 +818,7 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
 void WiFi::ClearCachedCredentialsTask() {
   try {
     supplicant_interface_proxy_->ClearCachedCredentials();
-  } catch (const DBus::Error e) {  // NOLINT
+  } catch (const DBus::Error &e) {  // NOLINT
     LOG(WARNING) << "Clear of cached credentials failed.";
   }
   clear_cached_credentials_pending_ = false;
@@ -993,7 +993,7 @@ void WiFi::ScanTask() {
   try {
     supplicant_interface_proxy_->Scan(scan_args);
     scan_pending_ = true;
-  } catch (const DBus::Error e) {  // NOLINT
+  } catch (const DBus::Error &e) {  // NOLINT
     LOG(WARNING) << "Scan failed. Attempting to re-connect to the supplicant.";
     EnabledStateChangedCallback null_callback;
     Stop(NULL, null_callback);

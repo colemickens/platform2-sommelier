@@ -28,7 +28,7 @@ void DBusObjectManagerProxy::GetManagedObjects(
     SLOG(DBus, 2) << __func__;
     proxy_.GetManagedObjects(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }

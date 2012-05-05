@@ -31,7 +31,7 @@ void ModemModem3gppProxy::Register(const std::string &operator_id,
     SLOG(DBus, 2) << __func__;
     proxy_.Register(operator_id, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -46,7 +46,7 @@ void ModemModem3gppProxy::Scan(Error *error,
     SLOG(DBus, 2) << __func__;
     proxy_.Scan(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }

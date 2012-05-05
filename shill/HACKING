@@ -103,6 +103,11 @@ To keep the shill source code consistent, please follow the conventions below:
   RATIONALE: The naming convention makes the relationship between the signal
   handler and the task function obvious, at-a-glance.
 
+- C++ exceptions are not allowed in the code. An exception to this rule is
+  that try-catch blocks may be used in various D-Bus proxy classes to handle
+  DBus::Error exceptions thrown by the D-Bus C++ code. C++ exceptions should
+  be caught by const reference in general.
+
 - When adding verbose log messages for debug purposes, use the SLOG marco and
   its variants (see scope_logger.h for details).
 

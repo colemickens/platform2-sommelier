@@ -40,7 +40,7 @@ void ModemProxy::Enable(bool enable, Error *error,
     SLOG(DBus, 2) << __func__;
     proxy_.Enable(enable, cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -53,7 +53,7 @@ void ModemProxy::Disconnect(Error *error, const ResultCallback &callback,
     SLOG(DBus, 2) << __func__;
     proxy_.Disconnect(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
@@ -67,7 +67,7 @@ void ModemProxy::GetModemInfo(Error *error,
     SLOG(DBus, 2) << __func__;
     proxy_.GetInfo(cb.get(), timeout);
     cb.release();
-  } catch (DBus::Error e) {
+  } catch (const DBus::Error &e) {
     if (error)
       CellularError::FromDBusError(e, error);
   }
