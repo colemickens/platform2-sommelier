@@ -232,8 +232,14 @@ bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
   if (!RunCipher(false, key, string(), cipher_text.blob, &plain_text_with_hmac))
     return false;
   // Check the MAC that was appended before encrypting.
-  if (!VerifyAndStripHMAC(plain_text_with_hmac, key, &plain_text->blob))
-    return false;
+  if (!VerifyAndStripHMAC(plain_text_with_hmac, key, &plain_text->blob)) {
+    // Due to a past bug, public object MACs may have been generated with the
+    // master key.
+    if (cipher_text.is_private ||
+        !VerifyAndStripHMAC(plain_text_with_hmac, key_, &plain_text->blob)) {
+      return false;
+    }
+  }
   return true;
 }
 
