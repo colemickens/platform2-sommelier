@@ -20,8 +20,6 @@
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs_interface.h"
-#include "power_manager/util.h"
-
 
 namespace {
 

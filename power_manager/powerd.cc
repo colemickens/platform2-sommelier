@@ -31,6 +31,7 @@
 #include "power_manager/power_supply.h"
 #include "power_manager/state_control.h"
 #include "power_manager/util.h"
+#include "power_manager/util_dbus.h"
 #include "power_supply_properties.pb.h"
 
 using std::map;
@@ -431,7 +432,7 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     Suspend();
   } else if (idle_time_ms >= off_ms_ &&
              !state_control_->IsStateDisabled(kIdleBlankDisabled)) {
-    if (util::LoggedIn())
+    if (util::IsUserLoggedIn())
       backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF);
   } else if (idle_time_ms >= dim_ms_ &&
              !state_control_->IsStateDisabled(kIdleDimDisabled)) {
@@ -447,7 +448,7 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
   } else if (idle_time_ms < react_ms_ && locker_.is_locked()) {
     BrightenScreenIfOff();
   }
-  if (idle_time_ms >= lock_ms_ && util::LoggedIn() &&
+  if (idle_time_ms >= lock_ms_ && util::IsUserLoggedIn() &&
       backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED) {
     locker_.LockScreen();
   }
@@ -496,7 +497,7 @@ void Daemon::IdleEventNotify(int64 threshold) {
 }
 
 void Daemon::BrightenScreenIfOff() {
-  if (util::LoggedIn() && backlight_controller_->IsBacklightActiveOff())
+  if (util::IsUserLoggedIn() && backlight_controller_->IsBacklightActiveOff())
     backlight_controller_->IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
 }
 
@@ -1428,7 +1429,7 @@ void Daemon::Suspend() {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown.";
     return;
   }
-  if (util::LoggedIn()) {
+  if (util::IsUserLoggedIn()) {
     power_supply_.SetSuspendState(true);
     suspender_.RequestSuspend();
     // When going to suspend, notify the backlight controller so it will know to

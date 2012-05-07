@@ -64,8 +64,13 @@ clean: CLEAN($(SYSTEM_API_PROTO_OBJS))
 $(eval $(call add_object_rules,$(SYSTEM_API_PROTO_OBJS),CXX,cc))
 
 ## binary and library targets
+
+# dbus is a standalone dependency
+DBUS_DEPS = dbus-1 dbus-glib-1
+DBUS_FLAGS := $(shell $(PKG_CONFIG) --cflags $(DBUS_DEPS))
+DBUS_LIBS := $(shell $(PKG_CONFIG) --libs $(DBUS_DEPS))
+
 # gdk_env inherits from base_env
-#
 GDK_DEPS = glib-2.0 gdk-2.0 libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 GDK_FLAGS := $(shell $(PKG_CONFIG) --cflags $(GDK_DEPS))
 GDK_LIBS := $(shell $(PKG_CONFIG) --libs $(GDK_DEPS))
@@ -89,13 +94,9 @@ clean: CLEAN(xidle-example)
 all: CXX_BINARY(xidle-example)
 
 # backlight_env inherits from gdk_env
-BACKLIGHT_DEPS = dbus-1 dbus-glib-1
-BACKLIGHT_DEPS_FLAGS := $(shell $(PKG_CONFIG) --cflags $(BACKLIGHT_DEPS))
-BACKLIGHT_DEPS_LIBS := $(shell $(PKG_CONFIG) --libs $(BACKLIGHT_DEPS))
-BACKLIGHT_FLAGS = $(GDK_FLAGS) $(BACKLIGHT_DEPS_FLAGS)
-BACKLIGHT_LIBS = $(GDK_LIBS) $(BACKLIGHT_DEPS_LIBS) -lgflags -lmetrics -lX11 \
-                 -lXrandr -ludev
-
+BACKLIGHT_FLAGS = $(GDK_FLAGS) $(DBUS_FLAGS)
+BACKLIGHT_LIBS = $(GDK_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -lX11 -lXrandr \
+                 -ludev
 LIBBACKLIGHT_OBJS = ambient_light_sensor.o async_file_reader.o backlight.o \
                     external_backlight.o external_backlight_client.o \
                     power_constants.o
@@ -156,18 +157,28 @@ CXX_STATIC_LIBRARY(libpower_prefs.pie.a): LDLIBS += $(LIBPOWERPREFS_LIBS)
 clean: CLEAN(libpower_prefs.pie.a)
 
 # powerd_env inherits from gdk_env
-LIBPOWERD_DEPS = dbus-1 dbus-glib-1 libchromeos-$(BASE_VER)
-LIBPOWERD_FLAGS := $(GDK_FLAGS) \
+LIBPOWERD_DEPS = libchromeos-$(BASE_VER)
+LIBPOWERD_FLAGS := $(GDK_FLAGS) $(DBUS_FLAGS) \
                    $(shell $(PKG_CONFIG) --cflags $(LIBPOWERD_DEPS))
-LIBPOWERD_LIBS := $(GDK_LIBS) -lXext -lgflags -lmetrics -lX11 -lXrandr -ludev \
-                  -lprotobuf-lite \
+LIBPOWERD_LIBS := $(GDK_LIBS) $(DBUS_LIBS) -lXext -lgflags -lmetrics -lX11 \
+                  -lXrandr -ludev -lprotobuf-lite \
                   $(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
 
 LIBUTIL_OBJS = util.o inotify.o
+LIBUTIL_FLAGS = $(GDK_FLAGS)
+LIBUTIL_LIBS = $(GDK_LIBS)
 CXX_STATIC_LIBRARY(libutil.pie.a): $(LIBUTIL_OBJS)
-CXX_STATIC_LIBRARY(libutil.pie.a): CPPFLAGS += $(LIBPOWERD_FLAGS)
-CXX_STATIC_LIBRARY(libutil.pie.a): LDLIBS += $(LIBPOWERD_LIBS)
+CXX_STATIC_LIBRARY(libutil.pie.a): CPPFLAGS += $(LIBUTIL_FLAGS)
+CXX_STATIC_LIBRARY(libutil.pie.a): LDLIBS += $(LIBUTIL_LIBS)
 clean: CLEAN(libutil.pie.a)
+
+LIBUTIL_DBUS_OBJS = util_dbus.o
+LIBUTIL_DBUS_FLAGS = $(DBUS_FLAGS) $(GDK_FLAGS)
+LIBUTIL_DBUS_LIBS = $(DBUS_LIBS) $(GDK_LIBS)
+CXX_STATIC_LIBRARY(libutil_dbus.pie.a): $(LIBUTIL_DBUS_OBJS)
+CXX_STATIC_LIBRARY(libutil_dbus.pie.a): CPPFLAGS += $(LIBUTIL_DBUS_FLAGS)
+CXX_STATIC_LIBRARY(libutil_dbus.pie.a): LDLIBS += $(LIBUTIL_DBUS_LIBS)
+clean: CLEAN(libutil_dbus.pie.a)
 
 powerd.o.depends: power_supply_properties.pb.h
 state_control.o.depends: power_supply_properties.pb.h
@@ -191,17 +202,18 @@ CXX_BINARY(powerd): $(POWERD_OBJS) \
 	CXX_STATIC_LIBRARY(libbacklight.pie.a) \
 	CXX_STATIC_LIBRARY(libpower_prefs.pie.a) \
 	CXX_STATIC_LIBRARY(libbacklight_controller.pie.a) \
-	CXX_STATIC_LIBRARY(libutil.pie.a)
+	CXX_STATIC_LIBRARY(libutil.pie.a) \
+	CXX_STATIC_LIBRARY(libutil_dbus.pie.a)
 CXX_BINARY(powerd): CPPFLAGS += $(POWERD_FLAGS)
 CXX_BINARY(powerd): LDLIBS += $(POWERD_LIBS)
 clean: CXX_BINARY(powerd)
 all: CXX_BINARY(powerd)
 
 # powerman_env inherits from gdk_env
-LIBPOWERMAN_DEPS = dbus-1 dbus-glib-1 libchromeos-$(BASE_VER)
-LIBPOWERMAN_FLAGS := $(GDK_FLAGS) \
+LIBPOWERMAN_DEPS = libchromeos-$(BASE_VER)
+LIBPOWERMAN_FLAGS := $(GDK_FLAGS) $(DBUS_FLAGS) \
                      $(shell $(PKG_CONFIG) --cflags $(LIBPOWERMAN_DEPS))
-LIBPOWERMAN_LIBS := $(GDK_LIBS) -lgflags -lmetrics -ludev -lX11 \
+LIBPOWERMAN_LIBS := $(GDK_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev -lX11 \
                     $(shell $(PKG_CONFIG) --libs $(LIBPOWERMAN_DEPS))
 LIBPOWERMAN_OBJS = powerman.o external_backlight.o input.o powerman_metrics.o
 CXX_STATIC_LIBRARY(libpowerman.pie.a): $(LIBPOWERMAN_OBJS)
@@ -216,7 +228,8 @@ CXX_BINARY(powerm): $(POWERMAN_OBJS) \
 	CXX_STATIC_LIBRARY(libbacklight.pie.a) \
 	CXX_STATIC_LIBRARY(libpower_prefs.pie.a) \
 	CXX_STATIC_LIBRARY(libpowerman.pie.a) \
-	CXX_STATIC_LIBRARY(libutil.pie.a)
+	CXX_STATIC_LIBRARY(libutil.pie.a) \
+	CXX_STATIC_LIBRARY(libutil_dbus.pie.a)
 CXX_BINARY(powerm): CPPFLAGS += $(POWERMAN_FLAGS)
 CXX_BINARY(powerm): LDLIBS += $(POWERMAN_LIBS)
 clean: CXX_BINARY(powerm)
@@ -234,28 +247,30 @@ all: CXX_BINARY(suspend_delay_sample)
 
 # power_state_tool_env inherits from gdk_env
 power_state_tool.o.depends: power_state_control.pb.h
-POWERSTATETOOL_DEPS = dbus-1 dbus-glib-1 libchromeos-$(BASE_VER)
-POWERSTATETOOL_FLAGS := $(GDK_FLAGS) \
+POWERSTATETOOL_DEPS = libchromeos-$(BASE_VER)
+POWERSTATETOOL_FLAGS := $(GDK_FLAGS) $(DBUS_FLAGS) \
                         $(shell $(PKG_CONFIG) --cflags $(POWERSTATETOOL_DEPS))
-POWERSTATETOOL_LIBS := $(GDK_LIBS) -lgflags -lprotobuf-lite -lX11 \
+POWERSTATETOOL_LIBS := $(GDK_LIBS) $(DBUS_LIBS) -lgflags -lprotobuf-lite -lX11 \
                        $(shell $(PKG_CONFIG) --libs $(POWERSTATETOOL_DEPS))
 POWERSTATETOOL_OBJS = power_state_control.pb.o power_state_tool.o \
-                      power_constants.o util.o
-CXX_BINARY(power_state_tool): $(POWERSTATETOOL_OBJS)
+                      power_constants.o
+CXX_BINARY(power_state_tool): $(POWERSTATETOOL_OBJS) \
+	CXX_STATIC_LIBRARY(libutil_dbus.pie.a)
 CXX_BINARY(power_state_tool): CPPFLAGS += $(POWERSTATETOOL_FLAGS)
 CXX_BINARY(power_state_tool): LDLIBS += $(POWERSTATETOOL_LIBS)
 clean: CXX_BINARY(power_state_tool)
 all: CXX_BINARY(power_state_tool)
 
 # backlight_dbus_tool_env inherits from gdk_env
-BACKLIGHTDBUSTOOL_DEPS = dbus-1 dbus-glib-1 libchromeos-$(BASE_VER)
-BACKLIGHTDBUSTOOL_FLAGS := $(GDK_FLAGS) \
+BACKLIGHTDBUSTOOL_DEPS = libchromeos-$(BASE_VER)
+BACKLIGHTDBUSTOOL_FLAGS := $(GDK_FLAGS) $(DBUS_FLAGS) \
 	$(shell $(PKG_CONFIG) --cflags $(POWERSTATETOOL_DEPS))
-BACKLIGHTDBUSTOOL_LIBS := $(GDK_LIBS) -lrt -lpthread -lgflags -lprotobuf-lite \
-                          -lX11 \
+BACKLIGHTDBUSTOOL_LIBS := $(GDK_LIBS) $(DBUS_LIBS) -lrt -lpthread -lgflags \
+                          -lprotobuf-lite -lX11 \
                           $(shell $(PKG_CONFIG) --libs $(POWERSTATETOOL_DEPS))
-BACKLIGHTDBUSTOOL_OBJS = backlight_dbus_tool.o power_constants.o util.o
-CXX_BINARY(backlight_dbus_tool): $(BACKLIGHTDBUSTOOL_OBJS)
+BACKLIGHTDBUSTOOL_OBJS = backlight_dbus_tool.o power_constants.o
+CXX_BINARY(backlight_dbus_tool): $(BACKLIGHTDBUSTOOL_OBJS) \
+	CXX_STATIC_LIBRARY(libutil_dbus.pie.a)
 CXX_BINARY(backlight_dbus_tool): CPPFLAGS += $(BACKLIGHTDBUSTOOL_FLAGS)
 CXX_BINARY(backlight_dbus_tool): LDLIBS += $(BACKLIGHTDBUSTOOL_LIBS)
 clean: CXX_BINARY(backlight_dbus_tool)
@@ -313,7 +328,8 @@ CXX_BINARY(powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libbacklight.pie.a) \
 	CXX_STATIC_LIBRARY(libpower_prefs.pie.a) \
 	CXX_STATIC_LIBRARY(libxidle.pie.a) \
-	CXX_STATIC_LIBRARY(libutil.pie.a)
+	CXX_STATIC_LIBRARY(libutil.pie.a) \
+	CXX_STATIC_LIBRARY(libutil_dbus.pie.a)
 CXX_BINARY(powerd_unittest): CPPFLAGS += $(POWERD_UNITTEST_FLAGS)
 CXX_BINARY(powerd_unittest): LDLIBS += $(POWERD_UNITTEST_LIBS)
 clean: CXX_BINARY(powerd_unittest)
@@ -358,7 +374,8 @@ CXX_BINARY(powerman_unittest): $(POWERMAN_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(libpowerman.pie.a) \
 	CXX_STATIC_LIBRARY(libpower_prefs.pie.a) \
-	CXX_STATIC_LIBRARY(libutil.pie.a)
+	CXX_STATIC_LIBRARY(libutil.pie.a) \
+	CXX_STATIC_LIBRARY(libutil_dbus.pie.a)
 CXX_BINARY(powerman_unittest): CPPFLAGS += $(POWERMAN_UNITTEST_FLAGS)
 CXX_BINARY(powerman_unittest): LDLIBS += $(POWERMAN_UNITTEST_LIBS)
 clean: CXX_BINARY(powerman_unittest)
@@ -393,7 +410,8 @@ CXX_BINARY(state_control_unittest): $(STATE_CONTROL_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libbacklight_controller.pie.a) \
 	CXX_STATIC_LIBRARY(libbacklight.pie.a) \
 	CXX_STATIC_LIBRARY(libpower_prefs.pie.a) \
-	CXX_STATIC_LIBRARY(libutil.pie.a)
+	CXX_STATIC_LIBRARY(libutil.pie.a) \
+	CXX_STATIC_LIBRARY(libutil_dbus.pie.a)
 CXX_BINARY(state_control_unittest): CPPFLAGS += $(STATE_CONTROL_UNITTEST_FLAGS)
 CXX_BINARY(state_control_unittest): LDLIBS += $(STATE_CONTROL_UNITTEST_LIBS)
 clean: CXX_BINARY(state_control_unittest)

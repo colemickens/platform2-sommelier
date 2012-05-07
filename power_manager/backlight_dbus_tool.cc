@@ -12,7 +12,7 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/power_constants.h"
-#include "power_manager/util.h"
+#include "power_manager/util_dbus.h"
 
 DEFINE_bool(set, false, "Set the percent instead of reading");
 DEFINE_double(percent, 0, "Percent to set to");

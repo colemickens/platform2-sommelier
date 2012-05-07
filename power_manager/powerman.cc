@@ -25,6 +25,7 @@
 #include "power_manager/power_constants.h"
 #include "power_manager/powerman.h"
 #include "power_manager/util.h"
+#include "power_manager/util_dbus.h"
 
 using base::TimeDelta;
 using base::TimeTicks;

@@ -8,13 +8,15 @@
 
 #include <iostream>
 
-#include "power_manager/util.h"
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+
+// TODO(crosbug.com/30645): Use high-level wrappers to abstract away low-level
+// dbus code.  Create new functions if necessary.
 
 using std::string;
 using std::cout;

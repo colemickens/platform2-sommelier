@@ -1,0 +1,68 @@
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef POWER_MANAGER_UTIL_DBUS_H_
+#define POWER_MANAGER_UTIL_DBUS_H_
+
+#include <string>
+
+#include "base/basictypes.h"
+
+struct DBusConnection;
+struct DBusMessage;
+
+namespace power_manager {
+namespace util {
+
+// Queries session manager to see if the user is logged into Chrome.
+bool IsUserLoggedIn();
+
+// Sends a message |signal| to the session manager.
+void SendSignalToSessionManager(const char* signal);
+
+// TODO(crosbug.com/30645): The following SendSignal functions do not follow a
+// consistent naming scheme.  There's also an overloaded function in there.  It
+// would be good not to have to overload it.
+
+// Sends a message |signal| to the privileged power daemon.
+void SendSignalToPowerM(const char* signal);
+
+// Sends a message |signal| with |value| to the privileged power daemon.
+void SendSignalToPowerM(const char* signal, uint32 value);
+
+// Sends a message |signal| to the unprivileged power daemon.
+void SendSignalToPowerD(const char* signal);
+
+// Sends a message |signal| and int32 to the unprivileged power daemon.
+void SendSignalWithIntToPowerD(const char* signal, int value);
+
+// Calls a method |method_name| in powerd that takes an arbitrary
+// array of bytes and returns an integer.
+// This is a blocking operation.
+bool CallMethodInPowerD(const char* method_name,
+                        const char* data,
+                        uint32 size,
+                        int* return_value);
+
+// Creates an empty reply to a D-Bus message.
+DBusMessage* CreateEmptyDBusReply(DBusMessage* message);
+
+// Creates an error reply to a D-Bus message
+DBusMessage* CreateDBusErrorReply(DBusMessage* message,
+                                  const char* error_name,
+                                  const char* error_message);
+
+// Adds signal and method match rules to a dbus connection.
+void AddDBusSignalMatch(DBusConnection* connection,
+                        const std::string& interface,
+                        const std::string& member);
+void AddDBusMethodMatch(DBusConnection* connection,
+                        const std::string& interface,
+                        const std::string& path,
+                        const std::string& member);
+
+}  // namespace util
+}  // namespace power_manager
+
+#endif  // POWER_MANAGER_UTIL_DBUS_H_
