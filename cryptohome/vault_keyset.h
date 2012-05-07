@@ -8,7 +8,6 @@
 #include <base/basictypes.h>
 
 #include "cryptohome_common.h"
-#include "entropy_source.h"
 #include "secure_blob.h"
 #include "vault_keyset.pb.h"
 

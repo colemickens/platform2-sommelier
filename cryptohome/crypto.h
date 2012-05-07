@@ -23,7 +23,7 @@ namespace cryptohome {
 // Default number of hash rounds to use when generating  key from a password
 extern const unsigned int kDefaultPasswordRounds;
 
-class Crypto : public EntropySource {
+class Crypto {
  public:
   // PaddingScheme dictates the padding at the end of the ciphertext:
   //   kPaddingNone - Do not use padding.  The input plaintext must be a
