@@ -193,7 +193,7 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
       break;
     }
     case INPUT_POWER_BUTTON:
-      daemon->SendButtonEventSignal(kPowerButtonName, GetButtonState(value));
+      daemon->HandlePowerButtonEvent(GetButtonState(value));
       break;
     case INPUT_LOCK_BUTTON:
       daemon->SendButtonEventSignal(kLockButtonName, GetButtonState(value));
@@ -289,6 +289,18 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
     // Do not send a reply if it is a signal.
   }
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+void PowerManDaemon::HandlePowerButtonEvent(ButtonState value) {
+  // Forward the signal to be handled by powerd and chrome
+  SendButtonEventSignal(kPowerButtonName, value);
+
+  // On button down, since the user may be doing a long press to cause a
+  // hardware shutdown, sync our state.
+  if (value == BUTTON_DOWN) {
+    LOG(INFO) << "Syncing state due to power button down event";
+    util::Launch("sync");
+  }
 }
 
 void PowerManDaemon::HandleCheckLidStateSignal(DBusMessage*) {  // NOLINT

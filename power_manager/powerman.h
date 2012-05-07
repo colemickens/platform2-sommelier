@@ -63,7 +63,8 @@ class PowerManDaemon {
       DBusMethodHandlerTable;
 
   inline static ButtonState GetButtonState(int value) {
-    // value == 0 is button up. value == 1 is button down.
+    // value == 0 is button up.
+    // value == 1 is button down.
     // value == 2 is key repeat.
     return static_cast<ButtonState>(value);
   }
@@ -83,6 +84,8 @@ class PowerManDaemon {
   static DBusHandlerResult DBusMessageHandler(DBusConnection*,
                                               DBusMessage* message,
                                               void* data);
+  // Methods for handling input events.
+  void HandlePowerButtonEvent(ButtonState value);
 
   // Callbacks for handling dbus messages.
   void HandleCheckLidStateSignal(DBusMessage* message);
