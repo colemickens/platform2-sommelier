@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "chromeos_install_config.h"
+#include "chromeos_postinst.h"
 #include "inst_util.h"
 
 using std::string;
@@ -341,6 +343,70 @@ void TestSetKernelArg(const string &kernel_config,
   }
 }
 
+void TestConfigureInstall(const std::string& install_dev,
+                          const std::string& install_path,
+                          bool expected_success,
+                          const std::string& expected_slot,
+                          const std::string& expected_root,
+                          const std::string& expected_kernel,
+                          const std::string& expected_boot) {
+
+  InstallConfig install_config;
+
+  bool result_success = ConfigureInstall(install_dev,
+                                         install_path,
+                                         &install_config);
+
+  if (result_success != expected_success) {
+    printf("TestConfigureInstall(%s, %s) '%s' != %s\n",
+           install_dev.c_str(),
+           install_path.c_str(),
+           result_success ? "success" : "failure",
+           expected_success ? "success" : "failure");
+    exit(1);
+  }
+
+  if (!expected_success)
+    return;
+
+  if (install_config.slot != expected_slot) {
+    printf("TestConfigureInstall(%s, %s) slot '%s' != %s\n",
+           install_dev.c_str(),
+           install_path.c_str(),
+           install_config.slot.c_str(),
+           expected_slot.c_str());
+    exit(1);
+  }
+
+  if (install_config.root.device() != expected_root) {
+    printf("TestConfigureInstall(%s, %s) root '%s' != %s\n",
+           install_dev.c_str(),
+           install_path.c_str(),
+           install_config.root.device().c_str(),
+           expected_root.c_str());
+    exit(1);
+  }
+
+  if (install_config.kernel.device() != expected_kernel) {
+    printf("TestConfigureInstall(%s, %s) kernel '%s' != %s\n",
+           install_dev.c_str(),
+           install_path.c_str(),
+           install_config.kernel.device().c_str(),
+           expected_kernel.c_str());
+    exit(1);
+  }
+
+  if (install_config.boot.device() != expected_boot) {
+    printf("TestConfigureInstall(%s, %s) kernel '%s' != %s\n",
+           install_dev.c_str(),
+           install_path.c_str(),
+           install_config.boot.device().c_str(),
+           expected_boot.c_str());
+    exit(1);
+  }
+}
+
+
 void Test() {
   TestRunCommand("/bin/echo Hi!*", 0);
   TestRunCommand("/bin/echo Hi!* Bye thri", 0);
@@ -535,6 +601,24 @@ void Test() {
   TestStringPrintf(StringPrintf("%s", "Stuff"), "Stuff");
   TestStringPrintf(StringPrintf("%d", 3), "3");
   TestStringPrintf(StringPrintf("%s %d", "Stuff", 3), "Stuff 3");
+
+  TestConfigureInstall("/dev/sda3", "/mnt",
+                       true,
+                       "A", "/dev/sda3", "/dev/sda2", "/dev/sda12");
+  TestConfigureInstall("/dev/sda5", "/mnt",
+                       true,
+                       "B", "/dev/sda5", "/dev/sda4", "/dev/sda12");
+  TestConfigureInstall("/dev/mmcblk0p3", "/mnt",
+                       true, "A",
+                       "/dev/mmcblk0p3", "/dev/mmcblk0p2", "/dev/mmcblk0p12");
+  TestConfigureInstall("/dev/mmcblk0p5", "/mnt",
+                       true, "B",
+                       "/dev/mmcblk0p5", "/dev/mmcblk0p4", "/dev/mmcblk0p12");
+  TestConfigureInstall("/dev/sda2", "/mnt",
+                       false, "", "", "", "");
+  TestConfigureInstall("/dev/sda", "/mnt",
+                       false, "", "", "", "");
+
 
   printf("SUCCESS!\n");
 }

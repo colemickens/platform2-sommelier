@@ -41,10 +41,13 @@ bool ConfigureInstall(
   string kernel_dev = MakePartitionDev(root.base_device(),
                                        root.number() - 1);
 
+  string boot_dev = MakePartitionDev(root.base_device(),
+                                     12);
+
   install_config->slot = slot;
   install_config->root = root;
   install_config->kernel = Partition(kernel_dev);
-  install_config->boot = Partition("/dev/sda12");
+  install_config->boot = Partition(boot_dev);
 
   return true;
 }
@@ -306,6 +309,11 @@ bool RunPostInstall(const string& install_dir,
     return false;
   }
 
+  // TODO(dgarrett, 27574) Stop reading the kernel command line,
+  // or using the arm ifdef and instead check for the existence of
+  // /boot/syslinux and /boot/grub to see if we need to setup those
+  // boot loaders.
+
   // /proc/cmdline is expected to contain exactly one of:
   //   cros_secure, cros_legacy, or cros_efi which describe which
   //   type of boot bios we are running with. We have already
@@ -319,6 +327,13 @@ bool RunPostInstall(const string& install_dir,
 
   printf("Syncing filesystem at end of postinst...\n");
   sync();
+
+#ifdef __arm__
+  // The Arm platform only uses U-Boot, but may set cros_legacy to mean
+  // U-Boot without our secure boot modifications. For our purposes,
+  // U-Boot is U-Boot and we are already done.
+  return true;
+#endif
 
   // If we are installing to a ChromeOS Bios, we are done.
   if (kernel_cmd_line.find("cros_secure") != string::npos)
