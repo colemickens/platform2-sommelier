@@ -31,6 +31,8 @@ struct Cryptohome;
 // Wrapper for all timers used by the cryptohome daemon.
 class TimerCollection;
 
+class Platform;
+
 // Service
 // Provides a wrapper for exporting CryptohomeInterface to
 // D-Bus and entering the glib run loop.
@@ -89,6 +91,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   }
   virtual void set_use_tpm(bool value) {
     use_tpm_ = value;
+  }
+  virtual void set_platform(Platform *value) {
+    platform_ = value;
   }
 
   virtual void set_homedirs(cryptohome::HomeDirs* value) { homedirs_ = value; }
@@ -231,6 +236,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   gobject::Cryptohome* cryptohome_;
   SecureBlob system_salt_;
   cryptohome::Crypto* crypto_;
+  scoped_ptr<Platform> default_platform_;
+  Platform* platform_;
   // TPM doesn't use the scoped_ptr for default pattern, since the tpm is a
   // singleton - we don't want it getting destroyed when we are.
   Tpm* tpm_;

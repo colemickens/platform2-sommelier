@@ -32,11 +32,11 @@ class MockTpm : public Tpm {
         .WillByDefault(Return(true));
     ON_CALL(*this, GetPublicKey(_, _))
         .WillByDefault(Invoke(this, &MockTpm::GetBlankPublicKey));
-    ON_CALL(*this, Init(_, _))
+    ON_CALL(*this, Init(_, _, _))
         .WillByDefault(Return(true));
   }
   ~MockTpm() {}
-  MOCK_METHOD2(Init, bool(Crypto*, bool));
+  MOCK_METHOD3(Init, bool(Crypto*, Platform*, bool));
   MOCK_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(IsOwned, bool());
   MOCK_METHOD1(Connect, bool(TpmRetryAction*));  // NOLINT

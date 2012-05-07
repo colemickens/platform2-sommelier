@@ -124,9 +124,6 @@ class HomeDirs {
   // Returns true for success, false for failure.
   bool LoadVaultKeysetForUser(const std::string& obfuscated_user,
                               SerializedVaultKeyset* serialized) const;
-  // Loads the contents of the file at the supplied path into the supplied blob.
-  // Returns true for success, false for failure.
-  bool LoadFileBytes(const FilePath& path, SecureBlob* blob) const;
 
   // Takes ownership of the supplied PolicyProvider. Used to avoid leaking mocks
   // in unit tests.

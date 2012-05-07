@@ -86,7 +86,8 @@ class MountTest : public ::testing::Test {
   bool LoadSerializedKeyset(const std::string& key_path,
                             cryptohome::SerializedVaultKeyset* serialized) {
     cryptohome::SecureBlob contents;
-    if (!cryptohome::Mount::LoadFileBytes(FilePath(key_path), &contents)) {
+    Platform platform;
+    if (!platform.ReadFile(key_path, &contents)) {
       return false;
     }
     return serialized->ParseFromArray(

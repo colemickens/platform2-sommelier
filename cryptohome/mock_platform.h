@@ -24,6 +24,9 @@ ACTION(CallEnumerateDirectoryEntries) {
 ACTION(CallDirectoryExists) {
   return file_util::DirectoryExists(FilePath(arg0));
 }
+ACTION(CallPathExists) {
+  return file_util::PathExists(FilePath(arg0));
+}
 ACTION(CallReadFile) { return Platform().ReadFile(arg0, arg1); }
 ACTION(CallRename) { return Platform().Rename(arg0, arg1); }
 
@@ -50,6 +53,8 @@ class MockPlatform : public Platform {
         .WillByDefault(CallEnumerateDirectoryEntries());
     ON_CALL(*this, DirectoryExists(_))
         .WillByDefault(CallDirectoryExists());
+    ON_CALL(*this, FileExists(_))
+        .WillByDefault(CallPathExists());
     ON_CALL(*this, ReadFile(_, _))
         .WillByDefault(CallReadFile());
     ON_CALL(*this, Rename(_, _))

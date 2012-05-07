@@ -304,20 +304,6 @@ class Mount {
     current_user_->Reset();
   }
 
-  // Loads the contents of the specified file as a blob
-  //
-  // Parameters
-  //   path - The file path to read from
-  //   blob (OUT) - Where to store the loaded file bytes
-  static bool LoadFileBytes(const FilePath& path, SecureBlob* blob);
-
-  // Loads the contents of the specified file as a string
-  //
-  // Parameters
-  //   path - The file path to read from
-  //   content (OUT) - The string value
-  static bool LoadFileString(const FilePath& path, std::string* content);
-
   // Encrypts and adds the VaultKeyset to the serialized store
   //
   // Parameters

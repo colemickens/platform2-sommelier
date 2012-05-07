@@ -92,12 +92,12 @@ Crypto::Crypto()
 Crypto::~Crypto() {
 }
 
-bool Crypto::Init() {
+bool Crypto::Init(Platform* platform) {
   if (use_tpm_ && tpm_ == NULL) {
     tpm_ = Tpm::GetSingleton();
   }
   if (tpm_) {
-    tpm_->Init(this, true);
+    tpm_->Init(this, platform, true);
   }
   return true;
 }

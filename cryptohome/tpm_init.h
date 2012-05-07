@@ -16,6 +16,7 @@
 namespace cryptohome {
 
 class TpmInitTask;
+class Platform;
 
 class TpmInit {
   // Friend class TpmInitTask as it is a glue class to allow ThreadMain to be
@@ -29,7 +30,7 @@ class TpmInit {
   };
 
   // Default constructor
-  TpmInit();
+  explicit TpmInit(Platform* platform);
 
   virtual ~TpmInit();
 

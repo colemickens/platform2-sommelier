@@ -66,7 +66,7 @@ class Crypto : public EntropySource {
   virtual ~Crypto();
 
   // Initializes Crypto
-  bool Init();
+  bool Init(Platform* platform);
 
   // Returns random bytes of the given length using OpenSSL's random number
   // generator.  The random number generator is automatically seeded from

@@ -86,19 +86,23 @@ Tpm::Tpm()
       is_disabled_(true),
       is_owned_(false),
       is_srk_available_(false),
-      is_being_owned_(false) {
+      is_being_owned_(false),
+      platform_(NULL) {
 }
 
 Tpm::~Tpm() {
   Disconnect();
 }
 
-bool Tpm::Init(Crypto* crypto, bool open_key) {
+bool Tpm::Init(Crypto* crypto, Platform* platform, bool open_key) {
   if (initialized_) {
     return false;
   }
   initialized_ = true;
+  DCHECK(crypto);
+  DCHECK(platform);
   crypto_ = crypto;
+  platform_ = platform;
 
   // Migrate any old status files from old location to new location.
   if (!file_util::PathExists(FilePath(kTpmOwnedFile)) &&
@@ -518,7 +522,7 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
 
   // First, try loading the key from the key file
   SecureBlob raw_key;
-  if (Mount::LoadFileBytes(FilePath(key_file_), &raw_key)) {
+  if (platform_->ReadFile(key_file_, &raw_key)) {
     if (TPM_ERROR(*result = Tspi_Context_LoadKeyByBlob(
                                     context_handle,
                                     srk_handle,
@@ -2090,7 +2094,7 @@ bool Tpm::LoadTpmStatus(TpmStatus* serialized) {
     return false;
   }
   SecureBlob file_data;
-  if (!Mount::LoadFileBytes(tpm_status_file, &file_data)) {
+  if (!platform_->ReadFile(kTpmStatusFile, &file_data)) {
     return false;
   }
   if (!serialized->ParseFromArray(

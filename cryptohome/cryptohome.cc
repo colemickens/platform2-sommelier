@@ -28,6 +28,7 @@
 #include "crypto.h"
 #include "mount.h"
 #include "pkcs11_init.h"
+#include "platform.h"
 #include "secure_blob.h"
 #include "tpm.h"
 #include "username_passkey.h"
@@ -340,6 +341,7 @@ int main(int argc, char **argv) {
                               cryptohome::kCryptohomeServicePath,
                               cryptohome::kCryptohomeInterface);
   DCHECK(proxy.gproxy()) << "Failed to acquire proxy";
+  cryptohome::Platform platform;
 
   if (!strcmp(switches::kActions[switches::ACTION_MOUNT], action.c_str())) {
     std::string user, password;
@@ -594,7 +596,7 @@ int main(int argc, char **argv) {
         up.GetObfuscatedUsername(GetSystemSalt(proxy)).c_str());
 
     cryptohome::SecureBlob contents;
-    if (!cryptohome::Mount::LoadFileBytes(FilePath(vault_path), &contents)) {
+    if (!platform.ReadFile(vault_path, &contents)) {
       printf("Couldn't load keyset contents: %s.\n", vault_path.c_str());
       return 1;
     }

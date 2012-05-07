@@ -31,6 +31,7 @@
 #include "interface.h"
 #include "marshal.glibmarshal.h"
 #include "mount.h"
+#include "platform.h"
 #include "secure_blob.h"
 #include "tpm.h"
 #include "username_passkey.h"
@@ -205,8 +206,10 @@ Service::Service()
       cryptohome_(NULL),
       system_salt_(),
       crypto_(new Crypto()),
+      default_platform_(new Platform()),
+      platform_(default_platform_.get()),
       tpm_(Tpm::GetSingleton()),
-      default_tpm_init_(new TpmInit()),
+      default_tpm_init_(new TpmInit(platform_)),
       tpm_init_(default_tpm_init_.get()),
       default_pkcs11_init_(new Pkcs11Init()),
       pkcs11_init_(default_pkcs11_init_.get()),
@@ -243,7 +246,7 @@ bool Service::Initialize() {
   chromeos_metrics::TimerReporter::set_metrics_lib(&metrics_lib_);
 
   crypto_->set_use_tpm(use_tpm_);
-  if (!crypto_->Init())
+  if (!crypto_->Init(platform_))
     return false;
 
   homedirs_->set_crypto(crypto_);

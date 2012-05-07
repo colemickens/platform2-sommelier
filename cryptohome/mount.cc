@@ -156,7 +156,7 @@ bool Mount::Init() {
     file_util::CreateDirectory(shadow_root);
   }
 
-  if (!crypto_->Init()) {
+  if (!crypto_->Init(platform_)) {
     result = false;
   }
 
@@ -893,12 +893,12 @@ bool Mount::LoadVaultKeyset(const Credentials& credentials,
 bool Mount::LoadVaultKeysetForUser(const string& obfuscated_username,
                                    SerializedVaultKeyset* serialized) const {
   // Load the encrypted keyset
-  FilePath user_key_file(GetUserKeyFileForUser(obfuscated_username));
-  if (!file_util::PathExists(user_key_file)) {
+  std::string user_key_file = GetUserKeyFileForUser(obfuscated_username);
+  if (!platform_->FileExists(user_key_file)) {
     return false;
   }
   SecureBlob cipher_text;
-  if (!LoadFileBytes(user_key_file, &cipher_text)) {
+  if (!platform_->ReadFile(user_key_file, &cipher_text)) {
     return false;
   }
   if (!serialized->ParseFromArray(
@@ -1432,47 +1432,6 @@ void Mount::GetUserSalt(const Credentials& credentials, bool force,
                         SecureBlob* salt) const {
   FilePath path(GetUserSaltFile(credentials));
   crypto_->GetOrCreateSalt(path, CRYPTOHOME_DEFAULT_SALT_LENGTH, force, salt);
-}
-
-bool Mount::LoadFileBytes(const FilePath& path,
-                          SecureBlob* blob) {
-  int64 file_size;
-  if (!file_util::PathExists(path)) {
-    return false;
-  }
-  if (!file_util::GetFileSize(path, &file_size)) {
-    LOG(ERROR) << "Could not get size of " << path.value();
-    return false;
-  }
-  // Compare to the max of a 32-bit signed integer
-  if (file_size > static_cast<int64>(INT_MAX)) {
-    LOG(ERROR) << "File " << path.value() << " is too large: " << file_size;
-    return false;
-  }
-  SecureBlob buf(file_size);
-  int data_read = file_util::ReadFile(path, reinterpret_cast<char*>(&buf[0]),
-                                      file_size);
-  // Cast is okay because of comparison to INT_MAX above
-  if (data_read != static_cast<int>(file_size)) {
-    LOG(ERROR) << "Could not read entire file " << file_size;
-    return false;
-  }
-  blob->swap(buf);
-  return true;
-}
-
-bool Mount::LoadFileString(const FilePath& path,
-                           std::string* content) {
-  if (!file_util::PathExists(path)) {
-    return false;
-  }
-
-  if (!file_util::ReadFileToString(path, content)) {
-    LOG(INFO) << "Could not read file contents: " << path.value();
-    return false;
-  }
-
-  return true;
 }
 
 bool Mount::EnsureDirHasOwner(const FilePath& fp, uid_t final_uid,

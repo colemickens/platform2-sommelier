@@ -66,7 +66,7 @@ class Tpm {
   //   crypto - The Crypto instance to use (for generating an RSA key, entropy,
   //            etc.)
   //   open_key - Whether or not to open (load) the cryptohome TPM key
-  virtual bool Init(Crypto* crypto, bool open_key);
+  virtual bool Init(Crypto* crypto, Platform* platform, bool open_key);
 
   // Read a status bit from the TPM
   //
@@ -500,6 +500,8 @@ class Tpm {
 
   static Tpm* singleton_;
   static base::Lock singleton_lock_;
+
+  Platform* platform_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm);
 };

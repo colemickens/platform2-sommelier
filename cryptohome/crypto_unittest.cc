@@ -193,14 +193,14 @@ TEST_F(CryptoTest, TpmStepTest) {
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
 
-  EXPECT_CALL(tpm, Init(_, _))
+  EXPECT_CALL(tpm, Init(_, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(tpm, Encrypt(_, _, _, _, _, _));
   EXPECT_CALL(tpm, Decrypt(_, _, _, _, _, _));
   EXPECT_CALL(tpm, IsConnected())
       .WillRepeatedly(Return(true));
 
-  crypto.Init();
+  crypto.Init(&platform);
 
   VaultKeyset vault_keyset(&platform_, &crypto);
   vault_keyset.CreateRandom();
@@ -240,7 +240,7 @@ TEST_F(CryptoTest, ScryptStepTest) {
   MockPlatform platform;
   Crypto crypto;
 
-  crypto.Init();
+  crypto.Init(&platform);
 
   VaultKeyset vault_keyset(&platform, &crypto);
   vault_keyset.CreateRandom();
@@ -278,17 +278,18 @@ TEST_F(CryptoTest, ScryptStepTest) {
 TEST_F(CryptoTest, TpmScryptStepTest) {
   // Check that the code path changes to support when TPM + scrypt fallback are
   // enabled
+  MockPlatform platform;
   Crypto crypto;
   NiceMock<MockTpm> tpm;
 
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
 
-  EXPECT_CALL(tpm, Init(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(tpm, Init(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(tpm, Encrypt(_, _, _, _, _, _));
   EXPECT_CALL(tpm, Decrypt(_, _, _, _, _, _));
 
-  crypto.Init();
+  crypto.Init(&platform);
 
   VaultKeyset vault_keyset(&platform_, &crypto);
   vault_keyset.CreateRandom();

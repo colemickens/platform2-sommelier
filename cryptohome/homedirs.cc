@@ -252,12 +252,11 @@ void HomeDirs::AddUserTimestampToCacheCallback(const FilePath& vault) {
 bool HomeDirs::LoadVaultKeysetForUser(const std::string& obfuscated_user,
                                       SerializedVaultKeyset* serialized) const {
   // Load the encrypted keyset
-  FilePath user_key_file(shadow_root_);
-  user_key_file = user_key_file.Append(obfuscated_user).Append(kKeyFile);
-  if (!file_util::PathExists(user_key_file))
+  std::string user_key_file = GetVaultKeysetPath(obfuscated_user);
+  if (!platform_->FileExists(user_key_file))
     return false;
   SecureBlob cipher_text;
-  if (!LoadFileBytes(user_key_file, &cipher_text))
+  if (!platform_->ReadFile(user_key_file, &cipher_text))
     return false;
   if (!serialized->ParseFromArray(
            static_cast<const unsigned char*>(cipher_text.data()),
@@ -265,13 +264,6 @@ bool HomeDirs::LoadVaultKeysetForUser(const std::string& obfuscated_user,
     return false;
   }
   return true;
-}
-
-bool HomeDirs::LoadFileBytes(const FilePath& path, SecureBlob* blob) const {
-  bool ok = platform_->ReadFile(path.value(), blob);
-  if (!ok)
-    LOG(ERROR) << "Could not read " << path.value();
-  return ok;
 }
 
 bool HomeDirs::GetOwner(std::string* owner) {

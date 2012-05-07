@@ -19,9 +19,10 @@ namespace cryptohome {
 // the TPM.
 class TpmInitTask : public PlatformThread::Delegate {
  public:
-  TpmInitTask()
+  explicit TpmInitTask(Platform* platform)
         : tpm_(NULL),
-        init_(NULL) {
+        init_(NULL),
+        platform_(platform) {
   }
 
   virtual ~TpmInitTask() {
@@ -30,7 +31,7 @@ class TpmInitTask : public PlatformThread::Delegate {
   void Init(TpmInit* init) {
     init_ = init;
     if (tpm_)
-      tpm_->Init(NULL, false);
+      tpm_->Init(NULL, platform_, false);
   }
 
   virtual void ThreadMain() {
@@ -50,10 +51,11 @@ class TpmInitTask : public PlatformThread::Delegate {
  private:
   Tpm* tpm_;
   TpmInit* init_;
+  Platform* platform_;
 };
 
-TpmInit::TpmInit()
-    : tpm_init_task_(new TpmInitTask()),
+TpmInit::TpmInit(Platform* platform)
+    : tpm_init_task_(new TpmInitTask(platform)),
       init_thread_(kNullThreadHandle),
       notify_callback_(NULL),
       initialize_called_(false),
