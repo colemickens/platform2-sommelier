@@ -430,7 +430,7 @@ Properties	string Address [readonly]
 			automated scan attempts. Setting this value to
 			0 will disable the periodic scanning.
 
-			The default value is 300 and so every 5 minutes
+			The default value is 180 and so every 3 minutes
 			a scan procedure will be triggered.
 
 			This property is not available with all types

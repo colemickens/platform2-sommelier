@@ -83,6 +83,7 @@
 #include <vector>
 
 #include <base/callback_forward.h>
+#include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -229,6 +230,13 @@ class WiFi : public Device {
   // If this WiFi device is idle and |new_state| indicates a resume event, a
   // scan is initiated.
   void HandlePowerStateChange(PowerManager::SuspendState new_state);
+  // Schedules a scan attempt at time |scan_interval_seconds_| in the
+  // future.  Cancels any currently pending scan timer.
+  void StartScanTimer();
+  // Cancels any currently pending scan timer.
+  void StopScanTimer();
+  // Initiates a scan, if idle. Reschedules the scan timer regardless.
+  void ScanTimerHandler();
 
   base::WeakPtrFactory<WiFi> weak_ptr_factory_;
 
@@ -261,6 +269,8 @@ class WiFi : public Device {
   // next scan completes.
   bool need_bss_flush_;
   struct timeval resumed_at_;
+  // Executes when the (foreground) scan timer expires. Calls ScanTimerHandler.
+  base::CancelableClosure scan_timer_callback_;
 
   // Properties
   std::string bgscan_method_;

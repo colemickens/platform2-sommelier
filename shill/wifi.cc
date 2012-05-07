@@ -203,6 +203,7 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
       Bind(&WiFi::HandlePowerStateChange, weak_ptr_factory_.GetWeakPtr()));
 
   Scan(NULL);
+  StartScanTimer();
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
     error->Reset();       // indicate immediate completion
@@ -211,6 +212,7 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " stopping.";
   // TODO(quiche): Remove interface from supplicant.
+  StopScanTimer();
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
   supplicant_process_proxy_.reset();
   endpoint_by_rpcid_.clear();
@@ -477,11 +479,14 @@ void WiFi::SetBgscanSignalThreshold(const int32 &dbm, Error */*error*/) {
 
 void WiFi::SetScanInterval(const uint16 &seconds, Error */*error*/) {
   scan_interval_seconds_ = seconds;
-  // We do not update |pending_service_| or |current_service_|, because
-  // supplicant does not allow for reconfiguration without disconnect
-  // and reconnect.
-
-  // TODO(quiche): Update scan timer. crosbug.com/24337
+  if (running()) {
+    StartScanTimer();
+  }
+  // The scan interval affects both foreground scans (handled by
+  // |scan_timer_callback_|), and background scans (handled by
+  // supplicant). However, we do not update |pending_service_| or
+  // |current_service_|, because supplicant does not allow for
+  // reconfiguration without disconnect and reconnect.
 }
 
 // To avoid creating duplicate services, call FindServiceForEndpoint
@@ -508,6 +513,23 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   supplicant_bss_ = new_bss;
   if (new_bss == wpa_supplicant::kCurrentBSSNull) {
     HandleDisconnect();
+    if (!GetHiddenSSIDList().empty()) {
+      // Before disconnecting, wpa_supplicant probably scanned for
+      // APs. So, in the normal case, we defer to the timer for the next scan.
+      //
+      // However, in the case of hidden SSIDs, supplicant knows about
+      // at most one of them. (That would be the hidden SSID we were
+      // connected to, if applicable.)
+      //
+      // So, in this case, we initiate an immediate scan. This scan
+      // will include the hidden SSIDs we know about (up to the limit of
+      // kScanMAxSSIDsPerScan).
+      //
+      // We may want to reconsider this immediate scan, if/when shill
+      // takes greater responsibility for scanning (vs. letting
+      // supplicant handle most of it).
+      Scan(NULL);
+    }
   } else {
     HandleRoam(new_bss);
   }
@@ -972,6 +994,7 @@ void WiFi::ScanDoneTask() {
     need_bss_flush_ = false;
   }
   scan_pending_ = false;
+  StartScanTimer();
 }
 
 void WiFi::ScanTask() {
@@ -1222,6 +1245,29 @@ void WiFi::HandlePowerStateChange(PowerManager::SuspendState new_state) {
       Scan(NULL);
     }
   }
+}
+
+void WiFi::StartScanTimer() {
+  if (scan_interval_seconds_ == 0) {
+    StopScanTimer();
+    return;
+  }
+  scan_timer_callback_.Reset(
+      Bind(&WiFi::ScanTimerHandler, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(
+      scan_timer_callback_.callback(), scan_interval_seconds_ * 1000);
+}
+
+void WiFi::StopScanTimer() {
+  scan_timer_callback_.Cancel();
+}
+
+void WiFi::ScanTimerHandler() {
+  SLOG(WiFi, 2) << "WiFi Device " << link_name() << ": " << __func__;
+  if (IsIdle() && !scan_pending_) {
+    Scan(NULL);
+  }
+  StartScanTimer();
 }
 
 }  // namespace shill

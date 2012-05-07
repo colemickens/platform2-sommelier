@@ -269,9 +269,15 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     WiFiMainTest *test_;
   };
 
+  void CancelScanTimer() {
+    wifi_->scan_timer_callback_.Cancel();
+  }
   WiFiServiceRefPtr CreateServiceForEndpoint(const WiFiEndpoint &endpoint) {
     bool hidden_ssid = false;
     return wifi_->CreateServiceForEndpoint(endpoint, hidden_ssid);
+  }
+  void FireScanTimer() {
+    wifi_->ScanTimerHandler();
   }
   const WiFiServiceRefPtr &GetCurrentService() {
     return wifi_->current_service_;
@@ -281,6 +287,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   }
   const WiFiServiceRefPtr &GetPendingService() {
     return wifi_->pending_service_;
+  }
+  const base::CancelableClosure &GetScanTimer() {
+    return wifi_->scan_timer_callback_;
   }
   const vector<WiFiServiceRefPtr> &GetServices() {
     return wifi_->services_;
@@ -347,15 +356,18 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   void ReportStateChanged(const string &new_state) {
     wifi_->StateChanged(new_state);
   }
+  void SetScanInterval(uint16_t interval_seconds) {
+    wifi_->SetScanInterval(interval_seconds, NULL);
+  }
   void StartWiFi() {
     EXPECT_CALL(*power_manager_, AddStateChangeCallback(wifi_->UniqueName(), _))
         .WillOnce(SaveArg<1>(&power_state_callback_));
-    wifi_->Start(NULL, ResultCallback());
+    wifi_->SetEnabled(true);  // Start(NULL, ResultCallback());
   }
   void StopWiFi() {
     EXPECT_CALL(*power_manager_,
                 RemoveStateChangeCallback(wifi_->UniqueName()));
-    wifi_->Stop(NULL, ResultCallback());
+    wifi_->SetEnabled(false);  // Stop(NULL, ResultCallback());
   }
   void GetOpenService(const char *service_type,
                       const char *ssid,
@@ -559,8 +571,10 @@ TEST_F(WiFiMainTest, CleanStart) {
               "fi.w1.wpa_supplicant1.InterfaceUnknown",
               "test threw fi.w1.wpa_supplicant1.InterfaceUnknown")));
   EXPECT_CALL(*supplicant_interface_proxy_, Scan(_));
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
+  EXPECT_FALSE(GetScanTimer().IsCancelled());
 }
 
 TEST_F(WiFiMainTest, Restart) {
@@ -1015,6 +1029,7 @@ TEST_F(WiFiMainTest, Stop) {
 
   EXPECT_CALL(*manager(), DeregisterService(_));
   StopWiFi();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceOpen) {
@@ -1753,6 +1768,116 @@ TEST_F(WiFiMainTest, FlushBSSOnResume) {
               FlushBSS(WiFi::kMaxBSSResumeAgeSeconds + 5));
   power_state_callback().Run(PowerManagerProxyDelegate::kOn);
   ReportScanDone();
+}
+
+TEST_F(WiFiMainTest, ScanTimerIdle) {
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  ReportScanDone();
+  CancelScanTimer();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
+  FireScanTimer();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_FALSE(GetScanTimer().IsCancelled());  // Automatically re-armed.
+}
+
+TEST_F(WiFiMainTest, ScanTimerScanning) {
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  CancelScanTimer();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
+
+  // Should not call Scan, since we're already scanning.
+  // (Scanning is triggered by StartWiFi.)
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  FireScanTimer();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_FALSE(GetScanTimer().IsCancelled());  // Automatically re-armed.
+}
+
+TEST_F(WiFiMainTest, ScanTimerConnecting) {
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+  ReportScanDone();
+  WiFiService *service(GetServices().begin()->get());
+  InitiateConnect(service);
+  CancelScanTimer();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  FireScanTimer();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_FALSE(GetScanTimer().IsCancelled());  // Automatically re-armed.
+}
+
+TEST_F(WiFiMainTest, ScanTimerReconfigured) {
+  StartWiFi();
+  CancelScanTimer();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
+
+  SetScanInterval(1);
+  EXPECT_FALSE(GetScanTimer().IsCancelled());
+}
+
+TEST_F(WiFiMainTest, ScanTimerResetOnScanDone) {
+  StartWiFi();
+  CancelScanTimer();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
+
+  ReportScanDone();
+  EXPECT_FALSE(GetScanTimer().IsCancelled());
+}
+
+TEST_F(WiFiMainTest, ScanTimerStopOnZeroInterval) {
+  StartWiFi();
+  EXPECT_FALSE(GetScanTimer().IsCancelled());
+
+  SetScanInterval(0);
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
+}
+
+TEST_F(WiFiMainTest, ScanOnDisconnectWithHidden) {
+  Error e;
+  scoped_refptr<MockProfile> profile(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
+  WiFiServiceRefPtr hidden_service =
+      GetServiceInner(flimflam::kTypeWifi, "hidden_ssid",
+                      flimflam::kModeManaged, NULL, NULL, true, &e);
+  hidden_service->set_profile(profile);
+
+  StartWiFi();
+  WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
+  ReportBSS("an_ap", ap->ssid_string(), ap->bssid_string(), 0, 0,
+            kNetworkModeInfrastructure);
+  InitiateConnect(service);
+  ReportCurrentBSSChanged("an_ap");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(HasHiddenSSID("hidden_ssid")));
+  ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, NoScanOnDisconnectWithoutHidden) {
+  StartWiFi();
+  WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
+  ReportBSS("an_ap", ap->ssid_string(), ap->bssid_string(), 0, 0,
+            kNetworkModeInfrastructure);
+  InitiateConnect(service);
+  ReportCurrentBSSChanged("an_ap");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
+  dispatcher_.DispatchPendingEvents();
 }
 
 }  // namespace shill
