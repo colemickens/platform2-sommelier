@@ -250,6 +250,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_ares.o \
 	mock_async_connection.o \
 	mock_cellular.o \
+	mock_cellular_service.o \
 	mock_connection.o \
 	mock_control.o \
 	mock_dbus_objectmanager_proxy.o \

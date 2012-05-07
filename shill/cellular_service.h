@@ -98,8 +98,8 @@ class CellularService : public Service {
 
   Stringmap *GetUserSpecifiedApn();
   Stringmap *GetLastGoodApn();
-  void SetLastGoodApn(const Stringmap &apn_info);
-  void ClearLastGoodApn();
+  virtual void SetLastGoodApn(const Stringmap &apn_info);
+  virtual void ClearLastGoodApn();
 
  private:
   friend class CellularServiceTest;

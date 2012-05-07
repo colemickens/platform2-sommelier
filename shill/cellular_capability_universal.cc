@@ -27,22 +27,6 @@
 #error "Do not include mm-modem.h"
 #endif
 
-// The following are constants that should be found in
-// mm/ModemManager-names.h  The are reproduced here as #define because
-// that is how they will appear eventually in ModemManager-names.h
-#define MM_MODEM_SIMPLE_CONNECT_PIN "pin"
-#define MM_MODEM_SIMPLE_CONNECT_OPERATOR_ID "operator-id"
-#define MM_MODEM_SIMPLE_CONNECT_BANDS "bands"
-#define MM_MODEM_SIMPLE_CONNECT_ALLOWED_MODES "allowed-modes"
-#define MM_MODEM_SIMPLE_CONNECT_PREFERRED_MODE "preferred-mode"
-#define MM_MODEM_SIMPLE_CONNECT_APN "apn"
-#define MM_MODEM_SIMPLE_CONNECT_IP_TYPE "ip-type"
-#define MM_MODEM_SIMPLE_CONNECT_USER "user"
-#define MM_MODEM_SIMPLE_CONNECT_PASSWORD "password"
-#define MM_MODEM_SIMPLE_CONNECT_NUMBER "number"
-#define MM_MODEM_SIMPLE_CONNECT_ALLOW_ROAMING "allow-roaming"
-#define MM_MODEM_SIMPLE_CONNECT_RM_PROTOCOL "rm-protocol"
-
 using base::Bind;
 using base::Closure;
 using std::string;
@@ -51,7 +35,21 @@ using std::vector;
 namespace shill {
 
 // static
-unsigned int CellularCapabilityUniversal::friendly_service_name_id_ = 0;
+const char CellularCapabilityUniversal::kConnectPin[] = "pin";
+const char CellularCapabilityUniversal::kConnectOperatorId[] = "operator-id";
+const char CellularCapabilityUniversal::kConnectBands[] = "bands";
+const char CellularCapabilityUniversal::kConnectAllowedModes[] =
+    "allowed-modes";
+const char CellularCapabilityUniversal::kConnectPreferredMode[] =
+    "preferred-mode";
+const char CellularCapabilityUniversal::kConnectApn[] = "apn";
+const char CellularCapabilityUniversal::kConnectIPType[] = "ip-type";
+const char CellularCapabilityUniversal::kConnectUser[] = "user";
+const char CellularCapabilityUniversal::kConnectPassword[] = "password";
+const char CellularCapabilityUniversal::kConnectNumber[] = "number";
+const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
+    "allow-roaming";
+const char CellularCapabilityUniversal::kConnectRMProtocol[] = "rm-protocol";
 const char CellularCapabilityUniversal::kStatusProperty[] = "status";
 const char CellularCapabilityUniversal::kOperatorLongProperty[] =
     "operator-long";
@@ -61,6 +59,9 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
     "operator-code";
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
+const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
+unsigned int CellularCapabilityUniversal::friendly_service_name_id_ = 0;
+
 
 static const char kPhoneNumber[] = "*99#";
 
@@ -345,10 +346,10 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
     DBusPropertiesMap *properties) {
 
   // TODO(jglasgow): Is this really needed anymore?
-  (*properties)[MM_MODEM_SIMPLE_CONNECT_NUMBER].writer().append_string(
+  (*properties)[kConnectNumber].writer().append_string(
       kPhoneNumber);
 
-  (*properties)[MM_MODEM_SIMPLE_CONNECT_ALLOW_ROAMING].writer().append_bool(
+  (*properties)[kConnectAllowRoaming].writer().append_bool(
       AllowRoaming());
 
   if (!apn_try_list_.empty()) {
@@ -357,13 +358,13 @@ void CellularCapabilityUniversal::FillConnectPropertyMap(
     Stringmap apn_info = apn_try_list_.front();
     SLOG(Cellular, 2) << __func__ << ": Using APN "
                       << apn_info[flimflam::kApnProperty];
-    (*properties)[MM_MODEM_SIMPLE_CONNECT_APN].writer().append_string(
+    (*properties)[kConnectApn].writer().append_string(
         apn_info[flimflam::kApnProperty].c_str());
     if (ContainsKey(apn_info, flimflam::kApnUsernameProperty))
-      (*properties)[MM_MODEM_SIMPLE_CONNECT_USER].writer().append_string(
+      (*properties)[kConnectUser].writer().append_string(
           apn_info[flimflam::kApnUsernameProperty].c_str());
     if (ContainsKey(apn_info, flimflam::kApnPasswordProperty))
-      (*properties)[MM_MODEM_SIMPLE_CONNECT_PASSWORD].writer().append_string(
+      (*properties)[kConnectPassword].writer().append_string(
           apn_info[flimflam::kApnPasswordProperty].c_str());
   }
 }
@@ -379,7 +380,7 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
     // front of the list, about to be removed. If the list is empty
     // after that, try one last time without an APN. This may succeed
     // with some modems in some cases.
-    if (error.type() == Error::kInvalidApn && !apn_try_list_.empty()) {
+    if (RetriableConnectError(error) && !apn_try_list_.empty()) {
       apn_try_list_.pop_front();
       SLOG(Cellular, 2) << "Connect failed with invalid APN, "
                         << apn_try_list_.size() << " remaining APNs to try";
@@ -912,6 +913,20 @@ void CellularCapabilityUniversal::OnDBusPropertiesChanged(
   if (interface == MM_DBUS_INTERFACE_SIM) {
     OnSimPropertiesChanged(changed_properties, invalidated_properties);
   }
+}
+
+bool CellularCapabilityUniversal::RetriableConnectError(
+    const Error &error) const {
+  if (error.type() == Error::kInvalidApn)
+    return true;
+
+  // modemmanager does not ever return kInvalidApn for E362 modems
+  // with 1.41 firmware.  It remains to be seem if this will change
+  // with 3.x firmware.
+  if ((model_id_ == kE362ModelId) && (error.type() == Error::kOperationFailed))
+    return true;
+
+  return false;
 }
 
 void CellularCapabilityUniversal::OnNetworkModeSignal(uint32 /*mode*/) {

@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_DEVICE_
-#define SHILL_MOCK_DEVICE_
+#ifndef SHILL_MOCK_CELLULAR_H_
+#define SHILL_MOCK_CELLULAR_H_
 
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 
@@ -40,4 +41,4 @@ class MockCellular : public Cellular {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_CELLULAR_
+#endif  // SHILL_MOCK_CELLULAR_H_

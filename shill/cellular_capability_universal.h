@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_CAPABILITY_UNIVERSAL_
-#define SHILL_CELLULAR_CAPABILITY_UNIVERSAL_
+#ifndef SHILL_CELLULAR_CAPABILITY_UNIVERSAL_H_
+#define SHILL_CELLULAR_CAPABILITY_UNIVERSAL_H_
 
 #include <deque>
 #include <map>
@@ -37,6 +37,23 @@ class CellularCapabilityUniversal : public CellularCapability {
   typedef std::vector<DBusPropertiesMap> ScanResults;
   typedef DBusPropertiesMap ScanResult;
   typedef std::map< uint32_t, uint32_t > LockRetryData;
+
+  // Constants used in connect method call.  Make available to test matchers.
+  // TODO(jglasgow): Generate from modem manager into
+  // ModemManager-names.h.
+  // See http://crosbug.com/30551.
+  static const char kConnectPin[];
+  static const char kConnectOperatorId[];
+  static const char kConnectBands[];
+  static const char kConnectAllowedModes[];
+  static const char kConnectPreferredMode[];
+  static const char kConnectApn[];
+  static const char kConnectIPType[];
+  static const char kConnectUser[];
+  static const char kConnectPassword[];
+  static const char kConnectNumber[];
+  static const char kConnectAllowRoaming[];
+  static const char kConnectRMProtocol[];
 
   CellularCapabilityUniversal(Cellular *cellular, ProxyFactory *proxy_factory);
 
@@ -81,6 +98,7 @@ class CellularCapabilityUniversal : public CellularCapability {
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties);
   virtual bool AllowRoaming();
+
  protected:
   virtual void InitProxies();
   virtual void ReleaseProxies();
@@ -95,6 +113,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kOperatorCodeProperty[];
   static const char kOperatorAccessTechnologyProperty[];
 
+  // Modem Model ID strings.  From modem firmware via modemmanager.
+  static const char kE362ModelId[];
+
   friend class CellularTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityTest;
@@ -103,6 +124,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, SimPropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
   FRIEND_TEST(CellularCapabilityUniversalTest, ScanFailure);
+  FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
+  FRIEND_TEST(CellularCapabilityUniversalTest, ConnectApns);
 
   // Methods used in starting a modem
   void Start_EnableModemCompleted(const ResultCallback &callback,
@@ -141,6 +164,11 @@ class CellularCapabilityUniversal : public CellularCapability {
       KeyValueStore(CellularCapabilityUniversal::*get)(Error *error),
       void(CellularCapabilityUniversal::*set)(
           const KeyValueStore &value, Error *error));
+
+  // Returns true if a connect error should be retried.  This function
+  // abstracts modem specific behavior for modems which do a lousy job
+  // of returning specific errors on connect failures.
+  bool RetriableConnectError(const Error &error) const;
 
   // Signal callbacks
   void OnNetworkModeSignal(uint32 mode);
@@ -214,12 +242,12 @@ class CellularCapabilityUniversal : public CellularCapability {
   MMModemCdmaRegistrationState cdma_registration_state_;
 
   // Bits based on MMModemCapabilities
-  uint32 capabilities_;         // technologies supported, may require reload
-  uint32 current_capabilities_; // technologies supportsed without a reload
-  uint32 access_technologies_;  // Bits based on MMModemAccessTechnology
-  uint32 supported_modes_;      // Bits based on MMModemMode
-  uint32 allowed_modes_;        // Bits based on MMModemMode
-  MMModemMode preferred_mode_;       // A single MMModemMode bit
+  uint32 capabilities_;          // technologies supported, may require reload
+  uint32 current_capabilities_;  // technologies supportsed without a reload
+  uint32 access_technologies_;   // Bits based on MMModemAccessTechnology
+  uint32 supported_modes_;       // Bits based on MMModemMode
+  uint32 allowed_modes_;         // Bits based on MMModemMode
+  MMModemMode preferred_mode_;   // A single MMModemMode bit
 
   Cellular::Operator serving_operator_;
   std::string spn_;
@@ -258,4 +286,4 @@ class CellularCapabilityUniversal : public CellularCapability {
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_CAPABILITY_UNIVERSAL_
+#endif  // SHILL_CELLULAR_CAPABILITY_UNIVERSAL_H_

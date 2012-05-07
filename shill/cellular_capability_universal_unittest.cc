@@ -19,6 +19,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_cellular_service.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
@@ -51,6 +52,13 @@ MATCHER(IsSuccess, "") {
 MATCHER(IsFailure, "") {
   return arg.IsFailure();
 }
+MATCHER_P(HasApn, expected_apn, "") {
+  string apn;
+  return (DBusProperties::GetString(arg,
+                                    CellularCapabilityUniversal::kConnectApn,
+                                    &apn) &&
+          apn == expected_apn);
+}
 
 class CellularCapabilityUniversalTest : public testing::Test {
  public:
@@ -67,6 +75,11 @@ class CellularCapabilityUniversalTest : public testing::Test {
                                "",
                                "",
                                NULL)),
+        service_(new MockCellularService(&control_,
+                                         &dispatcher_,
+                                         &metrics_,
+                                         &manager_,
+                                         cellular_)),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
@@ -89,6 +102,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
     capability_->proxy_factory_ = &proxy_factory_;
     device_adaptor_ =
         dynamic_cast<NiceMock<DeviceMockAdaptor> *>(cellular_->adaptor());
+    cellular_->service_ = service_;
   }
 
   virtual void TearDown() {
@@ -127,6 +141,10 @@ class CellularCapabilityUniversalTest : public testing::Test {
 
   void Set3gppProxy() {
     capability_->modem_3gpp_proxy_.reset(modem_3gpp_proxy_.release());
+  }
+
+  void SetSimpleProxy() {
+    capability_->modem_simple_proxy_.reset(modem_simple_proxy_.release());
   }
 
   MOCK_METHOD1(TestCallback, void(const Error &error));
@@ -186,6 +204,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
   MockGLib glib_;
   MockManager manager_;
   CellularRefPtr cellular_;
+  MockCellularService *service_;  // owned by cellular_
   scoped_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
   scoped_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
   scoped_ptr<mm1::MockModemProxy> modem_proxy_;
@@ -197,6 +216,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
   mobile_provider_db *provider_db_;
   DBusPropertyMapsCallback scan_callback_;  // saved for testing scan operations
+  DBusPathCallback connect_callback_;  // saved for testing connect operations
 };
 
 const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
@@ -484,6 +504,70 @@ TEST_F(CellularCapabilityUniversalTest, ScanFailure) {
   vector<DBusPropertiesMap> results;
   scan_callback_.Run(results, Error(Error::kOperationFailed));
   EXPECT_FALSE(capability_->scanning_);
+}
+
+// Validates expected behavior of Connect function
+TEST_F(CellularCapabilityUniversalTest, Connect) {
+  mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
+  SetSimpleProxy();
+  Error error;
+  DBusPropertiesMap properties;
+  capability_->apn_try_list_.clear();
+  ResultCallback callback =
+      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+  DBus::Path bearer("/foo");
+
+  // Test connect failures
+  EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _, _))
+      .WillOnce(SaveArg<2>(&connect_callback_));
+  capability_->Connect(properties, &error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  EXPECT_CALL(*service_, ClearLastGoodApn());
+  connect_callback_.Run(bearer, Error(Error::kOperationFailed));
+
+  // Test connect success
+  EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _, _))
+      .WillOnce(SaveArg<2>(&connect_callback_));
+  capability_->Connect(properties, &error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  connect_callback_.Run(bearer, Error(Error::kSuccess));
+}
+
+// Validates Connect iterates over APNs
+TEST_F(CellularCapabilityUniversalTest, ConnectApns) {
+  mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
+  SetSimpleProxy();
+  Error error;
+  DBusPropertiesMap properties;
+  capability_->apn_try_list_.clear();
+  ResultCallback callback =
+      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+  DBus::Path bearer("/bearer0");
+
+  const char apn_name_foo[] = "foo";
+  const char apn_name_bar[] = "bar";
+  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_foo), _, _, _))
+      .WillOnce(SaveArg<2>(&connect_callback_));
+  Stringmap apn1;
+  apn1[flimflam::kApnProperty] = apn_name_foo;
+  capability_->apn_try_list_.push_back(apn1);
+  Stringmap apn2;
+  apn2[flimflam::kApnProperty] = apn_name_bar;
+  capability_->apn_try_list_.push_back(apn2);
+  capability_->FillConnectPropertyMap(&properties);
+  capability_->Connect(properties, &error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+
+  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_bar), _, _, _))
+      .WillOnce(SaveArg<2>(&connect_callback_));
+  EXPECT_CALL(*service_, ClearLastGoodApn());
+  connect_callback_.Run(bearer, Error(Error::kInvalidApn));
+
+  EXPECT_CALL(*service_, SetLastGoodApn(apn2));
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  connect_callback_.Run(bearer, Error(Error::kSuccess));
 }
 
 }  // namespace shill
