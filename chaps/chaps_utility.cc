@@ -383,17 +383,26 @@ string AttributeToString(CK_ATTRIBUTE_TYPE attribute) {
   return string();
 }
 
-static uint32_t ExtractU32(const vector<uint8_t>& value) {
+static CK_ULONG ExtractCK_ULONG(const vector<uint8_t>& value) {
   if (value.size() == 1) {
-    return static_cast<uint32_t>(value[0]);
-  } else if (value.size() == 4 || value.size() == 8) {
-    return *reinterpret_cast<const uint32_t*>(&value[0]);
+    return static_cast<CK_ULONG>(value[0]);
+  } else if (value.size() == 4) {
+    CK_ULONG ulong_value = *reinterpret_cast<const uint32_t*>(&value[0]);
+    // If a value should be 64-bits and is only 32-bits, this will make sure the
+    // log reflects the potentially invalid value. Some clients may handle this
+    // case robustly but NSS has been noted to keep the 32 most significant bits
+    // set. We want to log the worst case value.
+    if (sizeof(CK_ULONG) == 8)
+      ulong_value |= 0xFFFFFFFF00000000;
+    return ulong_value;
+  } else if (value.size() == 8) {
+    return *reinterpret_cast<const uint64_t*>(&value[0]);
   }
-  return 0;
+  return -1;
 }
 
 static string PrintClass(const vector<uint8_t>& value) {
-  uint32_t num_value = ExtractU32(value);
+  CK_ULONG num_value = ExtractCK_ULONG(value);
   switch (num_value) {
     case CKO_DATA:
       return "CKO_DATA";
@@ -420,7 +429,7 @@ static string PrintClass(const vector<uint8_t>& value) {
 }
 
 static string PrintKeyType(const vector<uint8_t>& value) {
-  uint32_t num_value = ExtractU32(value);
+  CK_ULONG num_value = ExtractCK_ULONG(value);
   switch (num_value) {
     case CKK_RSA:
       return "CKK_RSA";
@@ -451,7 +460,7 @@ static string PrintKeyType(const vector<uint8_t>& value) {
 }
 
 static string PrintYesNo(const vector<uint8_t>& value) {
-  if (!ExtractU32(value))
+  if (!ExtractCK_ULONG(value))
     return "No";
   return "Yes";
 }
@@ -505,7 +514,9 @@ string PrintAttributes(const vector<uint8_t>& serialized,
         ss << ", ";
       ss << AttributeToString(attribute.type);
       if (is_value_enabled) {
-        if (attribute.pValue) {
+        if (attribute.ulValueLen == static_cast<CK_ULONG>(-1)) {
+          ss << "=<invalid>";
+        } else if (attribute.pValue) {
           uint8_t* buf = reinterpret_cast<uint8_t*>(attribute.pValue);
           vector<uint8_t> value(&buf[0],
                                 &buf[attribute.ulValueLen]);

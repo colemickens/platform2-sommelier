@@ -400,8 +400,8 @@ void ChapsAdaptor::GetAttributeValue(const uint64_t& session_id,
                                        object_handle,
                                        attributes_in,
                                        &attributes_out);
-  VLOG_IF(2, result == CKR_OK) << "OUT: " << "attributes_out="
-                               << PrintAttributes(attributes_out, true);
+  VLOG_IF(2, result == CKR_OK || result == CKR_ATTRIBUTE_TYPE_INVALID)
+      << "OUT: " << "attributes_out=" << PrintAttributes(attributes_out, true);
 }
 
 uint32_t ChapsAdaptor::SetAttributeValue(const uint64_t& session_id,
