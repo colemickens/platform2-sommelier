@@ -1,0 +1,14 @@
+#
+# NOTE! Please use 'git ls-files -i --exclude-standard'
+# command after changing this file, to see if there are
+# any tracked files which get ignored after the change.
+#
+
+# Intermediate files
+*~
+*.o
+*.d
+
+# Built executables
+cros_installer
+cros_installer_test
