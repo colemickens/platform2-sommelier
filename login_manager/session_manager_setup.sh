@@ -241,7 +241,7 @@ fi
 
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
-  HIGHDPI_FLAGS="--enable-viewport --default-device-scale-factor=2"
+  HIGHDPI_FLAGS="--default-device-scale-factor=2"
 fi
 
 # If screensaver use isn't disabled, set screensaver.
