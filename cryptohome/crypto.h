@@ -203,10 +203,10 @@ class Crypto {
   //     encryption key that should be used in subsequent calls to mount(2)
   bool AddKeyset(const VaultKeyset& vault_keyset,
                  std::string* key_signature,
-                 std::string* filename_key_signature);
+                 std::string* filename_key_signature) const;
 
   // Clears the user's kernel keyring
-  void ClearKeyset();
+  void ClearKeyset() const;
 
   // Gets the SHA1 hash of the data provided
   void GetSha1(const chromeos::Blob& data, unsigned int start,
@@ -283,7 +283,7 @@ class Crypto {
   //   key_sig - The key's (ascii) signature
   //   salt - The salt
   bool PushVaultKey(const SecureBlob& key, const std::string& key_sig,
-                    const SecureBlob& salt);
+                           const SecureBlob& salt) const;
 
   bool EncryptTPM(const SecureBlob& blob,
                   const SecureBlob& key,
@@ -311,9 +311,6 @@ class Crypto {
 
   // The TPM implementation
   Tpm* tpm_;
-
-  // Handles for kernel-managed ecryptfs keys.
-  std::vector<std::string> key_signatures_;
 
   DISALLOW_COPY_AND_ASSIGN(Crypto);
 };

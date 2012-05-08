@@ -619,7 +619,7 @@ bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
 
 bool Crypto::AddKeyset(const VaultKeyset& vault_keyset,
                        std::string* key_signature,
-                       std::string* filename_key_signature) {
+                       std::string* filename_key_signature) const {
   // Add the File Encryption key (FEK) from the vault keyset.  This is the key
   // that is used to encrypt the file contents when it is persisted to the lower
   // filesystem by eCryptfs.
@@ -643,14 +643,8 @@ bool Crypto::AddKeyset(const VaultKeyset& vault_keyset,
   return true;
 }
 
-void Crypto::ClearKeyset() {
-  while (!key_signatures_.empty()) {
-    char *sig = const_cast<char*>(key_signatures_.back().c_str());
-    if (ecryptfs_remove_auth_tok_from_keyring(sig) < 0)
-      LOG(ERROR) << "Could not delete key: " << sig;
-    key_signatures_.pop_back();
-  }
-  key_signatures_.clear();
+void Crypto::ClearKeyset() const {
+  Platform::ClearUserKeyring();
 }
 
 Crypto::CryptoError Crypto::TpmErrorToCrypto(
@@ -668,7 +662,7 @@ Crypto::CryptoError Crypto::TpmErrorToCrypto(
 }
 
 bool Crypto::PushVaultKey(const SecureBlob& key, const std::string& key_sig,
-                          const SecureBlob& salt) {
+                          const SecureBlob& salt) const {
   DCHECK(key.size() == ECRYPTFS_MAX_KEY_BYTES);
   DCHECK(key_sig.length() == (ECRYPTFS_SIG_SIZE * 2));
   DCHECK(salt.size() == ECRYPTFS_SALT_SIZE);
@@ -683,8 +677,6 @@ bool Crypto::PushVaultKey(const SecureBlob& key, const std::string& key_sig,
           const_cast<char*>(key_sig.c_str())) < 0) {
     LOG(ERROR) << "PushVaultKey failed";
   }
-
-  key_signatures_.push_back(key_sig);
 
   return true;
 }
