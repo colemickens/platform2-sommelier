@@ -33,9 +33,9 @@ SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
   try {
     return proxy_.AddNetwork(args);
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << " args keys are: " << DBusProperties::KeysToString(args);
-    return ::DBus::Path();  // Make the compiler happy.
+    throw;  // Re-throw the exception.
   }
 }
 
@@ -44,7 +44,8 @@ void SupplicantInterfaceProxy::ClearCachedCredentials() {
   try {
     return proxy_.ClearCachedCredentials();
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
   }
 }
 
@@ -53,7 +54,8 @@ void SupplicantInterfaceProxy::Disconnect() {
   try {
     return proxy_.Disconnect();
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
   }
 }
 
@@ -91,8 +93,9 @@ void SupplicantInterfaceProxy::Scan(
   try {
     return proxy_.Scan(args);
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << " args keys are: " << DBusProperties::KeysToString(args);
+    throw;  // Re-throw the exception.
   }
 }
 
@@ -110,8 +113,9 @@ void SupplicantInterfaceProxy::SetFastReauth(bool enabled) {
   try {
     return proxy_.FastReauth(enabled);
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << "enabled: " << enabled;
+    throw;  // Re-throw the exception.
   }
 }
 
@@ -120,8 +124,9 @@ void SupplicantInterfaceProxy::SetScanInterval(int32 scan_interval) {
   try {
     return proxy_.ScanInterval(scan_interval);
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << " scan interval: " << scan_interval;
+    throw;  // Re-throw the exception.
   }
 }
 

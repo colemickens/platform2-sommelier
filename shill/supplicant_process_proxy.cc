@@ -31,9 +31,9 @@ SupplicantProcessProxy::~SupplicantProcessProxy() {}
   try {
     return proxy_.CreateInterface(args);
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << " args keys are: " << DBusProperties::KeysToString(args);
-    return ::DBus::Path();  // Make the compiler happy.
+    throw;  // Re-throw the exception.
   }
 }
 
