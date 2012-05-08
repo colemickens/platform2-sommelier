@@ -300,9 +300,16 @@ void Device::DestroyIPConfig() {
 }
 
 bool Device::AcquireIPConfig() {
+  return AcquireIPConfigWithLeaseName(string());
+}
+
+bool Device::AcquireIPConfigWithLeaseName(const string &lease_name) {
   DestroyIPConfig();
   EnableIPv6();
-  ipconfig_ = dhcp_provider_->CreateConfig(link_name_, manager_->GetHostName());
+  ipconfig_ = dhcp_provider_->CreateConfig(link_name_,
+                                           manager_->GetHostName(),
+                                           lease_name,
+                                           manager_->GetArpGateway());
   ipconfig_->RegisterUpdateCallback(Bind(&Device::OnIPConfigUpdated,
                                          weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostTask(Bind(&Device::ConfigureStaticIPTask,

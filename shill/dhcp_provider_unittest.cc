@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,6 +15,8 @@ namespace shill {
 namespace {
 const char kDeviceName[] = "testdevicename";
 const char kHostName[] = "testhostname";
+const char kStorageIdentifier[] = "teststorageidentifier";
+const bool kArpGateway = false;
 }  // namespace {}
 
 class DHCPProviderTest : public Test {
@@ -31,7 +33,10 @@ class DHCPProviderTest : public Test {
 };
 
 TEST_F(DHCPProviderTest, CreateConfig) {
-  DHCPConfigRefPtr config = provider_->CreateConfig(kDeviceName, kHostName);
+  DHCPConfigRefPtr config = provider_->CreateConfig(kDeviceName,
+                                                    kHostName,
+                                                    kStorageIdentifier,
+                                                    kArpGateway);
   EXPECT_TRUE(config.get());
   EXPECT_EQ(&glib_, config->glib_);
   EXPECT_EQ(kDeviceName, config->device_name());

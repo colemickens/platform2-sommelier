@@ -102,6 +102,10 @@ TEST_F(DefaultProfileTest, GetProperties) {
 
 TEST_F(DefaultProfileTest, Save) {
   scoped_ptr<MockStore> storage(new MockStore);
+  EXPECT_CALL(*storage.get(), SetBool(DefaultProfile::kStorageId,
+                                      DefaultProfile::kStorageArpGateway,
+                                      true))
+      .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStorageName,
                                         DefaultProfile::kDefaultId))
@@ -139,21 +143,26 @@ TEST_F(DefaultProfileTest, Save) {
 
 TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   scoped_ptr<MockStore> storage(new MockStore);
+  Manager::Properties manager_props;
+  EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
+                                      DefaultProfile::kStorageArpGateway,
+                                      &manager_props.arp_gateway))
+      .WillOnce(Return(false));
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStorageHostName,
-                                        _))
+                                        &manager_props.host_name))
       .WillOnce(Return(false));
   EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
                                       DefaultProfile::kStorageOfflineMode,
-                                      _))
+                                      &manager_props.offline_mode))
       .WillOnce(Return(false));
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStorageCheckPortalList,
-                                        _))
+                                        &manager_props.check_portal_list))
       .WillOnce(Return(false));
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStoragePortalURL,
-                                        _))
+                                        &manager_props.portal_url))
       .WillOnce(Return(false));
   EXPECT_CALL(*storage.get(),
               GetString(DefaultProfile::kStorageId,
@@ -162,8 +171,8 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
       .WillOnce(Return(false));
   profile_->set_storage(storage.release());
 
-  Manager::Properties manager_props;
   ASSERT_TRUE(profile_->LoadManagerProperties(&manager_props));
+  EXPECT_TRUE(manager_props.arp_gateway);
   EXPECT_EQ("", manager_props.host_name);
   EXPECT_FALSE(manager_props.offline_mode);
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
@@ -176,6 +185,10 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
   scoped_ptr<MockStore> storage(new MockStore);
   const string host_name("hostname");
+  EXPECT_CALL(*storage.get(), GetBool(DefaultProfile::kStorageId,
+                                      DefaultProfile::kStorageArpGateway,
+                                      _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(false), Return(true)));
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStorageHostName,
                                         _))
@@ -206,6 +219,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
 
   Manager::Properties manager_props;
   ASSERT_TRUE(profile_->LoadManagerProperties(&manager_props));
+  EXPECT_FALSE(manager_props.arp_gateway);
   EXPECT_EQ(host_name, manager_props.host_name);
   EXPECT_TRUE(manager_props.offline_mode);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);

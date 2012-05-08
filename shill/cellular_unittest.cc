@@ -116,11 +116,7 @@ class CellularTest : public testing::Test {
       : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
         device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         dhcp_config_(new MockDHCPConfig(&control_interface_,
-                                        &dispatcher_,
-                                        &dhcp_provider_,
-                                        kTestDeviceName,
-                                        "",
-                                        &glib_)),
+                                        kTestDeviceName)),
         device_(new Cellular(&control_interface_,
                              &dispatcher_,
                              &metrics_,
@@ -491,7 +487,7 @@ TEST_F(CellularTest, StartLinked) {
   device_->set_modem_state(Cellular::kModemStateConnected);
   GetCapabilityClassic()->meid_ = kMEID;
   ExpectCdmaStartModem(flimflam::kNetworkTechnologyEvdo);
-  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _))
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(manager_, UpdateService(_)).Times(2);

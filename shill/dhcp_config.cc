@@ -37,7 +37,8 @@ const char DHCPConfig::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
 const int DHCPConfig::kDHCPCDExitPollMilliseconds = 50;
 const int DHCPConfig::kDHCPCDExitWaitMilliseconds = 3000;
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
-const char DHCPConfig::kDHCPCDPathFormatLease[] = "var/run/dhcpcd-%s.lease";
+const char DHCPConfig::kDHCPCDPathFormatLease[] =
+    "var/lib/dhcpcd/dhcpcd-%s.lease";
 const char DHCPConfig::kDHCPCDPathFormatPID[] = "var/run/dhcpcd-%s.pid";
 const int DHCPConfig::kMinMTU = 576;
 const char DHCPConfig::kReasonBound[] = "BOUND";
@@ -54,17 +55,24 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
                        DHCPProvider *provider,
                        const string &device_name,
                        const string &request_hostname,
+                       const string &lease_file_suffix,
+                       bool arp_gateway,
                        GLib *glib)
     : IPConfig(control_interface, device_name, kType),
       proxy_factory_(ProxyFactory::GetInstance()),
       provider_(provider),
       request_hostname_(request_hostname),
+      lease_file_suffix_(lease_file_suffix),
+      arp_gateway_(arp_gateway),
       pid_(0),
       child_watch_tag_(0),
       root_("/"),
       dispatcher_(dispatcher),
       glib_(glib) {
   SLOG(DHCP, 2) << __func__ << ": " << device_name;
+  if (lease_file_suffix_.empty()) {
+    lease_file_suffix_ = device_name;
+  }
 }
 
 DHCPConfig::~DHCPConfig() {
@@ -142,12 +150,20 @@ bool DHCPConfig::Start() {
 
   vector<char *> args;
   args.push_back(const_cast<char *>(kDHCPCDPath));
-  args.push_back(const_cast<char *>("-B"));  // foreground
-  args.push_back(const_cast<char *>(device_name().c_str()));
+  args.push_back(const_cast<char *>("-B"));  // Run in foreground.
   if (!request_hostname_.empty()) {
-    args.push_back(const_cast<char *>("-h"));  // request hostname
+    args.push_back(const_cast<char *>("-h"));  // Request hostname from server.
     args.push_back(const_cast<char *>(request_hostname_.c_str()));
   }
+  if (arp_gateway_) {
+    args.push_back(const_cast<char *>("-R"));  // ARP for default gateway.
+  }
+  string interface_arg(device_name());
+  if (lease_file_suffix_ != device_name()) {
+    interface_arg = base::StringPrintf("%s=%s", device_name().c_str(),
+                                       lease_file_suffix_.c_str());
+  }
+  args.push_back(const_cast<char *>(interface_arg.c_str()));
   args.push_back(NULL);
   char *envp[1] = { NULL };
 
@@ -297,12 +313,14 @@ void DHCPConfig::CleanupClientState() {
     pid_ = 0;
   }
   proxy_.reset();
-  file_util::Delete(root_.Append(base::StringPrintf(kDHCPCDPathFormatLease,
-                                                    device_name().c_str())),
-                    false);
-  file_util::Delete(root_.Append(base::StringPrintf(kDHCPCDPathFormatPID,
-                                                    device_name().c_str())),
-                    false);
+  if (lease_file_suffix_ == device_name()) {
+    // If the lease file suffix was left as default, clean it up at exit.
+    file_util::Delete(root_.Append(
+        base::StringPrintf(kDHCPCDPathFormatLease,
+                           device_name().c_str())), false);
+  }
+  file_util::Delete(root_.Append(
+      base::StringPrintf(kDHCPCDPathFormatPID, device_name().c_str())), false);
 }
 
 }  // namespace shill

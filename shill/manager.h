@@ -38,13 +38,18 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   struct Properties {
    public:
     Properties()
-        : offline_mode(false), portal_check_interval_seconds(0) {}
+        : offline_mode(false),
+          portal_check_interval_seconds(0),
+          arp_gateway(true) {}
     bool offline_mode;
     std::string check_portal_list;
     std::string country;
     int32 portal_check_interval_seconds;
     std::string portal_url;
     std::string host_name;
+    // Whether to ARP for the default gateway in the DHCP client after
+    // acquiring a lease.
+    bool arp_gateway;
   };
 
   Manager(ControlInterface *control_interface,
@@ -185,7 +190,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void set_startup_profiles(const std::vector<std::string> &startup_profiles) {
     startup_profiles_ = startup_profiles;
   }
-  virtual const std::string &GetHostName() { return props_.host_name; }
+  bool GetArpGateway() const { return props_.arp_gateway; }
+  const std::string &GetHostName() const { return props_.host_name; }
 
   virtual void UpdateEnabledTechnologies();
   PowerManager *power_manager() const { return power_manager_.get(); }

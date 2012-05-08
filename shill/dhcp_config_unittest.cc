@@ -34,6 +34,8 @@ namespace shill {
 namespace {
 const char kDeviceName[] = "eth0";
 const char kHostName[] = "hostname";
+const char kLeaseFileSuffix[] = "leasefilesuffix";
+const bool kArpGateway = true;
 }  // namespace {}
 
 class DHCPConfigTest : public PropertyStoreTest {
@@ -46,6 +48,8 @@ class DHCPConfigTest : public PropertyStoreTest {
                                DHCPProvider::GetInstance(),
                                kDeviceName,
                                kHostName,
+                               kLeaseFileSuffix,
+                               kArpGateway,
                                glib())) {}
 
   virtual void SetUp() {
@@ -55,6 +59,12 @@ class DHCPConfigTest : public PropertyStoreTest {
   virtual void TearDown() {
     config_->proxy_factory_ = NULL;
   }
+
+  DHCPConfigRefPtr CreateRunningConfig(const string &hostname,
+                                       const string &lease_suffix,
+                                       bool arp_gateway);
+  void StopRunningConfigAndExpect(DHCPConfigRefPtr config,
+                                  bool lease_file_exists);
 
  protected:
   class TestProxyFactory : public ProxyFactory {
@@ -69,11 +79,66 @@ class DHCPConfigTest : public PropertyStoreTest {
     DHCPConfigTest *test_;
   };
 
+  static const int kPID;
+  static const unsigned int kTag;
+
+  FilePath lease_file_;
+  FilePath pid_file_;
+  ScopedTempDir temp_dir_;
   scoped_ptr<MockDHCPProxy> proxy_;
   TestProxyFactory proxy_factory_;
   MockControl control_;
   DHCPConfigRefPtr config_;
 };
+
+const int DHCPConfigTest::kPID = 123456;
+const unsigned int DHCPConfigTest::kTag = 77;
+
+DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(const string &hostname,
+                                                     const string &lease_suffix,
+                                                     bool arp_gateway) {
+  DHCPConfigRefPtr config(new DHCPConfig(&control_,
+                                         dispatcher(),
+                                         DHCPProvider::GetInstance(),
+                                         kDeviceName,
+                                         hostname,
+                                         lease_suffix,
+                                         arp_gateway,
+                                         glib()));
+  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
+  EXPECT_CALL(*glib(), ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
+  EXPECT_TRUE(config->Start());
+  EXPECT_EQ(kPID, config->pid_);
+  EXPECT_EQ(config.get(), DHCPProvider::GetInstance()->GetConfig(kPID).get());
+  EXPECT_EQ(kTag, config->child_watch_tag_);
+
+  EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
+  config->root_ = temp_dir_.path();
+  FilePath varrun = temp_dir_.path().Append("var/run");
+  EXPECT_TRUE(file_util::CreateDirectory(varrun));
+  pid_file_ = varrun.Append(base::StringPrintf("dhcpcd-%s.pid", kDeviceName));
+  FilePath varlib = temp_dir_.path().Append("var/lib/dhcpcd");
+  EXPECT_TRUE(file_util::CreateDirectory(varlib));
+  lease_file_ =
+      varlib.Append(base::StringPrintf("dhcpcd-%s.lease", kDeviceName));
+  EXPECT_EQ(0, file_util::WriteFile(pid_file_, "", 0));
+  EXPECT_EQ(0, file_util::WriteFile(lease_file_, "", 0));
+  EXPECT_TRUE(file_util::PathExists(pid_file_));
+  EXPECT_TRUE(file_util::PathExists(lease_file_));
+
+  return config;
+}
+
+void DHCPConfigTest::StopRunningConfigAndExpect(DHCPConfigRefPtr config,
+                                                bool lease_file_exists) {
+  EXPECT_CALL(*glib(), SpawnClosePID(kPID)).Times(1);
+  DHCPConfig::ChildWatchCallback(kPID, 0, config.get());
+  EXPECT_EQ(NULL, DHCPProvider::GetInstance()->GetConfig(kPID).get());
+
+  EXPECT_FALSE(file_util::PathExists(pid_file_));
+  EXPECT_EQ(lease_file_exists, file_util::PathExists(lease_file_));
+}
 
 TEST_F(DHCPConfigTest, GetIPv4AddressString) {
   EXPECT_EQ("255.255.255.255", config_->GetIPv4AddressString(0xffffffff));
@@ -152,30 +217,35 @@ TEST_F(DHCPConfigTest, StartFail) {
   EXPECT_EQ(0, config_->pid_);
 }
 
-MATCHER_P(IsDHCPCDArgs, has_hostname, "") {
+MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
   if (string(arg[0]) != "/sbin/dhcpcd" ||
-      string(arg[1]) != "-B" ||
-      string(arg[2]) != kDeviceName) {
+      string(arg[1]) != "-B") {
     return false;
   }
 
+  int end_offset = 2;
   if (has_hostname) {
-    if (string(arg[3]) != "-h" ||
-        string(arg[4]) != kHostName ||
-        arg[5] != NULL) {
+    if (string(arg[end_offset]) != "-h" ||
+        string(arg[end_offset + 1]) != kHostName) {
       return false;
     }
-  } else {
-      if (arg[3] != NULL) {
-        return false;
-      }
+    end_offset += 2;
   }
 
-  return true;
+  if (has_arp_gateway) {
+    if (string(arg[end_offset]) != "-R")
+      return false;
+    ++end_offset;
+  }
+
+  string device_arg = has_lease_suffix ?
+      string(kDeviceName) + "=" + string(kLeaseFileSuffix) : kDeviceName;
+  return string(arg[end_offset]) == device_arg && arg[end_offset + 1] == NULL;
 }
 
 TEST_F(DHCPConfigTest, StartWithHostname) {
-  EXPECT_CALL(*glib(), SpawnAsync(_, IsDHCPCDArgs(true), _, _, _, _, _, _))
+  EXPECT_CALL(*glib(),
+              SpawnAsync(_, IsDHCPCDArgs(true, true, true), _, _, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(config_->Start());
 }
@@ -186,9 +256,44 @@ TEST_F(DHCPConfigTest, StartWithoutHostname) {
                                          DHCPProvider::GetInstance(),
                                          kDeviceName,
                                          "",
+                                         kLeaseFileSuffix,
+                                         kArpGateway,
                                          glib()));
 
-  EXPECT_CALL(*glib(), SpawnAsync(_, IsDHCPCDArgs(false), _, _, _, _, _, _))
+  EXPECT_CALL(*glib(),
+              SpawnAsync(_, IsDHCPCDArgs(false, true, true), _, _, _, _, _, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(config->Start());
+}
+
+TEST_F(DHCPConfigTest, StartWithoutArpGateway) {
+  DHCPConfigRefPtr config(new DHCPConfig(&control_,
+                                         dispatcher(),
+                                         DHCPProvider::GetInstance(),
+                                         kDeviceName,
+                                         kHostName,
+                                         kLeaseFileSuffix,
+                                         false,
+                                         glib()));
+
+  EXPECT_CALL(*glib(),
+              SpawnAsync(_, IsDHCPCDArgs(true, false, true), _, _, _, _, _, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(config->Start());
+}
+
+TEST_F(DHCPConfigTest, StartWithoutLeaseSuffix) {
+  DHCPConfigRefPtr config(new DHCPConfig(&control_,
+                                         dispatcher(),
+                                         DHCPProvider::GetInstance(),
+                                         kDeviceName,
+                                         kHostName,
+                                         kDeviceName,
+                                         kArpGateway,
+                                         glib()));
+
+  EXPECT_CALL(*glib(),
+              SpawnAsync(_, IsDHCPCDArgs(true, true, false), _, _, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(config->Start());
 }
@@ -332,35 +437,16 @@ TEST_F(DHCPConfigTest, RestartNoClient) {
   config_->child_watch_tag_ = 0;
 }
 
-TEST_F(DHCPConfigTest, StartSuccess) {
-  const int kPID = 123456;
-  const unsigned int kTag = 55;
-  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
-  EXPECT_CALL(*glib(), ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
-  EXPECT_TRUE(config_->Start());
-  EXPECT_EQ(kPID, config_->pid_);
-  EXPECT_EQ(config_.get(), DHCPProvider::GetInstance()->GetConfig(kPID).get());
-  EXPECT_EQ(kTag, config_->child_watch_tag_);
+TEST_F(DHCPConfigTest, StartSuccessEphemeral) {
+  DHCPConfigRefPtr config =
+      CreateRunningConfig(kHostName, kDeviceName, kArpGateway);
+  StopRunningConfigAndExpect(config, false);
+}
 
-  ScopedTempDir temp_dir;
-  config_->root_ = temp_dir.path();
-  FilePath varrun = temp_dir.path().Append("var/run");
-  EXPECT_TRUE(file_util::CreateDirectory(varrun));
-  FilePath pid_file =
-      varrun.Append(base::StringPrintf("dhcpcd-%s.pid", kDeviceName));
-  FilePath lease_file =
-      varrun.Append(base::StringPrintf("dhcpcd-%s.lease", kDeviceName));
-  EXPECT_EQ(0, file_util::WriteFile(pid_file, "", 0));
-  EXPECT_EQ(0, file_util::WriteFile(lease_file, "", 0));
-  ASSERT_TRUE(file_util::PathExists(pid_file));
-  ASSERT_TRUE(file_util::PathExists(lease_file));
-
-  EXPECT_CALL(*glib(), SpawnClosePID(kPID)).Times(1);
-  DHCPConfig::ChildWatchCallback(kPID, 0, config_.get());
-  EXPECT_EQ(NULL, DHCPProvider::GetInstance()->GetConfig(kPID).get());
-  EXPECT_FALSE(file_util::PathExists(pid_file));
-  EXPECT_FALSE(file_util::PathExists(lease_file));
+TEST_F(DHCPConfigTest, StartSuccessPersistent) {
+  DHCPConfigRefPtr config =
+      CreateRunningConfig(kHostName, kLeaseFileSuffix, kArpGateway);
+  StopRunningConfigAndExpect(config, true);
 }
 
 TEST_F(DHCPConfigTest, Stop) {

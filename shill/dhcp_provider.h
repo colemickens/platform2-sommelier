@@ -27,7 +27,10 @@ class ProxyFactory;
 // configurations for devices can be obtained through its CreateConfig
 // method. For example, a single DHCP configuration request can be initiated as:
 //
-// DHCPProvider::GetInstance()->CreateConfig(device_name, host_name)->Request();
+// DHCPProvider::GetInstance()->CreateConfig(device_name,
+//                                           host_name,
+//                                           lease_file_suffix,
+//                                           arp_gateway)->Request();
 class DHCPProvider {
  public:
   virtual ~DHCPProvider();
@@ -44,11 +47,17 @@ class DHCPProvider {
 
   // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
-  // DHCPConfig::Renew.  If |hostname| is not-empty, it is placed in the DHCP
+  // DHCPConfig::Renew.  If |host_name| is not-empty, it is placed in the DHCP
   // request to allow the server to map the request to a specific user-named
-  // origin.
+  // origin.  The DHCP lease file will contain the suffix supplied
+  // in |lease_file_suffix| if non-empty, otherwise |device_name|.  If
+  // |arp_gateway| is true, the DHCP client will ARP for the gateway IP
+  // address as an additional safeguard against the issued IP address being
+  // in-use by another station.
   virtual DHCPConfigRefPtr CreateConfig(const std::string &device_name,
-                                        const std::string &host_name);
+                                        const std::string &host_name,
+                                        const std::string &lease_file_suffix,
+                                        bool arp_gateway);
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
   // NULL if |pid| is not bound to a configuration.

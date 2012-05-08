@@ -273,6 +273,15 @@ Properties 	object ActiveProfile [readwrite]
 
 			Object path of the current active profile.
 
+		boolean ArpGateway [readwrite]
+
+			Specifies whether the DHCP client should be
+			configured to perform the extra step of performing
+			an ARP of the gateway IP address.  This provides
+			a level of assurance that the issued IP address is
+			valid and not blocked in some manner unknown by the
+			DHCP server.
+
 		array{string} AvailableTechnologies [readonly]
 
 			The list of available technologies. The strings

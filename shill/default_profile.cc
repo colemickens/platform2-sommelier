@@ -26,6 +26,8 @@ const char DefaultProfile::kDefaultId[] = "default";
 // static
 const char DefaultProfile::kStorageId[] = "global";
 // static
+const char DefaultProfile::kStorageArpGateway[] = "ArpGateway";
+// static
 const char DefaultProfile::kStorageCheckPortalList[] = "CheckPortalList";
 // static
 const char DefaultProfile::kStorageHostName[] = "HostName";
@@ -49,6 +51,8 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
       profile_id_(profile_id),
       props_(manager_props) {
   PropertyStore *store = this->mutable_store();
+  store->RegisterConstBool(flimflam::kArpGatewayProperty,
+                           &manager_props.arp_gateway);
   store->RegisterConstString(flimflam::kCheckPortalListProperty,
                              &manager_props.check_portal_list);
   store->RegisterConstString(flimflam::kCountryProperty,
@@ -64,6 +68,8 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
 DefaultProfile::~DefaultProfile() {}
 
 bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
+  storage()->GetBool(kStorageId, kStorageArpGateway,
+                     &manager_props->arp_gateway);
   storage()->GetString(kStorageId, kStorageHostName, &manager_props->host_name);
   storage()->GetBool(kStorageId, kStorageOfflineMode,
                      &manager_props->offline_mode);
@@ -103,6 +109,7 @@ bool DefaultProfile::ConfigureService(const ServiceRefPtr &service) {
 }
 
 bool DefaultProfile::Save() {
+  storage()->SetBool(kStorageId, kStorageArpGateway, props_.arp_gateway);
   storage()->SetString(kStorageId, kStorageHostName, props_.host_name);
   storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
   storage()->SetBool(kStorageId, kStorageOfflineMode, props_.offline_mode);

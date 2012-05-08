@@ -1,23 +1,23 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "shill/mock_dhcp_config.h"
 
+using std::string;
+
 namespace shill {
 
 MockDHCPConfig::MockDHCPConfig(ControlInterface *control_interface,
-                               EventDispatcher *dispatcher,
-                               DHCPProvider *provider,
-                               const std::string &device_name,
-                               const std::string &request_host_name,
-                               GLib *glib)
+                               const string &device_name)
     : DHCPConfig(control_interface,
-                 dispatcher,
-                 provider,
+                 NULL,
+                 NULL,
                  device_name,
-                 request_host_name,
-                 glib) {}
+                 string(),
+                 string(),
+                 false,
+                 NULL) {}
 
 MockDHCPConfig::~MockDHCPConfig() {}
 

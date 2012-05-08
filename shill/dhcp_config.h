@@ -22,6 +22,16 @@ class EventDispatcher;
 class GLib;
 class ProxyFactory;
 
+// This class provides a DHCP client instance for the device |device_name|.
+// If |request_hostname| is non-empty, it asks the DHCP server to register
+// this hostname on our behalf, for purposes of administration or creating
+// a dynamic DNS entry.
+//
+// The DHPCConfig instance asks the DHCP client to create a lease file
+// containing the name |lease_file_suffix|.  If this suffix is the same as
+// |device_name|, the lease is considered to be ephemeral, and the lease
+// file is removed whenever this DHCPConfig instance is no longer needed.
+// Otherwise, the lease file persists and will be re-used in future attempts.
 class DHCPConfig : public IPConfig {
  public:
   typedef std::map<std::string, DBus::Variant> Configuration;
@@ -33,6 +43,8 @@ class DHCPConfig : public IPConfig {
              DHCPProvider *provider,
              const std::string &device_name,
              const std::string &request_hostname,
+             const std::string &lease_file_suffix,
+             bool arp_gateway,
              GLib *glib);
   virtual ~DHCPConfig();
 
@@ -64,8 +76,9 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, RestartNoClient);
   FRIEND_TEST(DHCPConfigTest, StartFail);
   FRIEND_TEST(DHCPConfigTest, StartWithHostname);
+  FRIEND_TEST(DHCPConfigTest, StartWithoutArpGateway);
   FRIEND_TEST(DHCPConfigTest, StartWithoutHostname);
-  FRIEND_TEST(DHCPConfigTest, StartSuccess);
+  FRIEND_TEST(DHCPConfigTest, StartWithoutLeaseSuffix);
   FRIEND_TEST(DHCPConfigTest, Stop);
   FRIEND_TEST(DHCPProviderTest, CreateConfig);
 
@@ -126,6 +139,14 @@ class DHCPConfig : public IPConfig {
   // Hostname to be used in the request.  This will be passed to the DHCP
   // server in the request.
   std::string request_hostname_;
+
+  // DHCP lease file suffix, used to differentiate the lease of one interface
+  // or network from another.
+  std::string lease_file_suffix_;
+
+  // Specifies whether to supply an argument to the DHCP client to validate
+  // the acquired IP address using an ARP request to the gateway IP address.
+  bool arp_gateway_;
 
   // The PID of the spawned DHCP client. May be 0 if no client has been spawned
   // yet or the client has died.

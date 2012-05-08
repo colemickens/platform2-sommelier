@@ -219,10 +219,18 @@ class Device : public base::RefCounted<Device> {
   void DestroyIPConfig();
 
   // Creates a new DHCP IP configuration instance, stores it in |ipconfig_| and
-  // requests a new IP configuration. Registers a callback to
+  // requests a new IP configuration.  Saves the DHCP lease to the generic
+  // lease filename based on the interface name.  Registers a callback to
   // IPConfigUpdatedCallback on IP configuration changes. Returns true if the IP
   // request was successfully sent.
   bool AcquireIPConfig();
+
+  // Creates a new DHCP IP configuration instance, stores it in |ipconfig_| and
+  // requests a new IP configuration.  Saves the DHCP lease to a filename
+  // based on the passed-in |lease_name|.  Registers a callback to
+  // IPConfigUpdatedCallback on IP configuration changes. Returns true if the IP
+  // request was successfully sent.
+  bool AcquireIPConfigWithLeaseName(const std::string &lease_name);
 
   // Callback invoked on every IP configuration update.
   void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success);

@@ -1050,8 +1050,9 @@ void WiFi::StateChanged(const string &new_state) {
 
   if (new_state == wpa_supplicant::kInterfaceStateCompleted &&
       !affected_service->IsConnected()) {
-    if (AcquireIPConfig()) {
-      LOG(INFO) << link_name() << " is up; should start L3!";
+    if (AcquireIPConfigWithLeaseName(
+            affected_service->GetStorageIdentifier())) {
+      LOG(INFO) << link_name() << " is up; started L3 configuration.";
       affected_service->SetState(Service::kStateConfiguring);
     } else {
       LOG(ERROR) << "Unable to acquire DHCP config.";

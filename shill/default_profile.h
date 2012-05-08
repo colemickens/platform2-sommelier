@@ -61,6 +61,7 @@ class DefaultProfile : public Profile {
   FRIEND_TEST(DefaultProfileTest, Save);
 
   static const char kStorageId[];
+  static const char kStorageArpGateway[];
   static const char kStorageCheckPortalList[];
   static const char kStorageHostName[];
   static const char kStorageName[];

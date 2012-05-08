@@ -88,7 +88,7 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     if (service_) {
       manager()->RegisterService(service_);
       if (service_->auto_connect()) {
-        if (AcquireIPConfig()) {
+        if (AcquireIPConfigWithLeaseName(service_->GetStorageIdentifier())) {
           SelectService(service_);
           SetServiceState(Service::kStateConfiguring);
         } else {

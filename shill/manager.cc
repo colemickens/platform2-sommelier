@@ -82,6 +82,7 @@ Manager::Manager(ControlInterface *control_interface,
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             NULL);
+  store_.RegisterBool(flimflam::kArpGatewayProperty, &props_.arp_gateway);
   HelpRegisterDerivedStrings(flimflam::kAvailableTechnologiesProperty,
                              &Manager::AvailableTechnologies,
                              NULL);

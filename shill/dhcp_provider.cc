@@ -47,10 +47,18 @@ void DHCPProvider::Init(ControlInterface *control_interface,
 }
 
 DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name,
-                                            const string &host_name) {
+                                            const string &host_name,
+                                            const string &lease_file_suffix,
+                                            bool arp_gateway) {
   SLOG(DHCP, 2) << __func__ << " device: " << device_name;
-  return new DHCPConfig(
-      control_interface_, dispatcher_, this, device_name, host_name, glib_);
+  return new DHCPConfig(control_interface_,
+                        dispatcher_,
+                        this,
+                        device_name,
+                        host_name,
+                        lease_file_suffix,
+                        arp_gateway,
+                        glib_);
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
