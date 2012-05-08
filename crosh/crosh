@@ -1,5 +1,5 @@
 #!/bin/dash
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -199,6 +199,9 @@ check_keyfile() {
   # Allow files in /home/chronos/user, /media. Note that we *do* allow .., so
   # this isn't actually a security barrier, just a molly-guard to keep users
   # from putting keys in insecure storage.
+  if [ ! -f "$1" -a ! -f "$HOME/Downloads/$1" ]; then
+    return 1;
+  fi
   if [ ! -r "$1" -a ! -r "$HOME/Downloads/$1" ]; then
     return 1;
   fi
