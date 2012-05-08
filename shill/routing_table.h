@@ -5,7 +5,7 @@
 #ifndef SHILL_ROUTING_TABLE_
 #define SHILL_ROUTING_TABLE_
 
-#include <queue>
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -21,10 +21,9 @@
 
 namespace shill {
 
-class RoutingTableEntry;
 class RTNLHandler;
 class RTNLListener;
-class RTNLMessage;
+class RoutingTableEntry;
 
 // This singleton maintains an in-process copy of the routing table on
 // a per-interface basis.  It offers the ability for other modules to
@@ -33,11 +32,20 @@ class RTNLMessage;
 class RoutingTable {
  public:
   struct Query {
+    // Callback::Run(interface_index, entry)
+    typedef base::Callback<void(int, const RoutingTableEntry &)> Callback;
+
     Query() : sequence(0), tag(0) {}
-    Query(uint32 sequence_in, int tag_in)
-        : sequence(sequence_in), tag(tag_in) {}
+    Query(uint32 sequence_in,
+          int tag_in,
+          Callback callback_in)
+        : sequence(sequence_in),
+          tag(tag_in),
+          callback(callback_in) {}
+
     uint32 sequence;
     int tag;
+    Callback callback;
   };
 
   virtual ~RoutingTable();
@@ -86,14 +94,20 @@ class RoutingTable {
   // Set the metric (priority) on existing default routes for an interface.
   virtual void SetDefaultMetric(int interface_index, uint32 metric);
 
-  // Get the default route to |destination| through |interface_index| and
-  // create a host route to that destination.  When creating the route,
-  // tag our local entry with |tag|, so we can remove it later.  Connections
-  // use their interface index as the tag, so that as they are destroyed,
-  // they can remove all their dependent routes.
+  // Get the default route to |destination| through |interface_index| and create
+  // a host route to that destination.  When creating the route, tag our local
+  // entry with |tag|, so we can remove it later.  Connections use their
+  // interface index as the tag, so that as they are destroyed, they can remove
+  // all their dependent routes.  If |callback| is not null, it will be invoked
+  // when the request-route response is received and the add-route request has
+  // been sent successfully.
   virtual bool RequestRouteToHost(const IPAddress &destination,
                                   int interface_index,
-                                  int tag);
+                                  int tag,
+                                  const Query::Callback &callback);
+
+  // Cancels all outstanding query |callback| instances.
+  void CancelQueryCallback(const Query::Callback &callback);
 
  protected:
   RoutingTable();
@@ -101,7 +115,6 @@ class RoutingTable {
  private:
   friend struct base::DefaultLazyInstanceTraits<RoutingTable>;
   friend class RoutingTableTest;
-
 
   static bool ParseRoutingTableMessage(const RTNLMessage &message,
                                        int *interface_index,
@@ -129,7 +142,7 @@ class RoutingTable {
 
   base::Callback<void(const RTNLMessage &)> route_callback_;
   scoped_ptr<RTNLListener> route_listener_;
-  std::queue<Query> route_queries_;
+  std::deque<Query> route_queries_;
 
   // Cache singleton pointer for performance and test purposes.
   RTNLHandler *rtnl_handler_;

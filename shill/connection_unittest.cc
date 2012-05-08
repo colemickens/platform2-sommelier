@@ -339,7 +339,7 @@ TEST_F(ConnectionTest, RequestHostRoute) {
   ASSERT_TRUE(address.SetAddressFromString(kIPAddress0));
   size_t prefix_len = address.GetLength() * 8;
   EXPECT_CALL(routing_table_, RequestRouteToHost(
-      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0))
+      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0, _))
       .WillOnce(Return(true));
   EXPECT_TRUE(connection->RequestHostRoute(address));
 
@@ -379,12 +379,12 @@ TEST_F(ConnectionTest, PinHostRoute) {
   ASSERT_TRUE(address.SetAddressFromString(kNetwork));
   size_t prefix_len = address.GetLength() * 8;
   EXPECT_CALL(routing_table_, RequestRouteToHost(
-      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0))
+      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(PinHostRoute(connection, props));
 
   EXPECT_CALL(routing_table_, RequestRouteToHost(
-      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0))
+      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0, _))
       .WillOnce(Return(true));
   EXPECT_TRUE(PinHostRoute(connection, props));
 

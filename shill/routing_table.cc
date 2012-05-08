@@ -36,6 +36,7 @@
 
 using base::Bind;
 using base::Unretained;
+using std::deque;
 using std::string;
 using std::vector;
 
@@ -232,7 +233,7 @@ void RoutingTable::FlushRoutes(int interface_index) {
   vector<RoutingTableEntry>::iterator nent;
 
   for (nent = table->second.begin(); nent != table->second.end(); ++nent) {
-      ApplyRoute(interface_index, *nent, RTNLMessage::kModeDelete, 0);
+    ApplyRoute(interface_index, *nent, RTNLMessage::kModeDelete, 0);
   }
   table->second.clear();
 }
@@ -352,24 +353,30 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &message) {
       LOG(ERROR) << __func__ << ": Purging un-replied route request sequence "
                  << route_queries_.front().sequence
                  << " (< " << message.seq() << ")";
-      route_queries_.pop();
+      route_queries_.pop_front();
       if (route_queries_.empty())
         return;
     }
 
-    if (route_queries_.front().sequence == message.seq()) {
-      if (entry.gateway.IsDefault()) {
+    const Query &query = route_queries_.front();
+    if (query.sequence == message.seq()) {
+      RoutingTableEntry add_entry(entry);
+      add_entry.from_rtnl = false;
+      add_entry.tag = query.tag;
+      bool added = true;
+      if (add_entry.gateway.IsDefault()) {
         SLOG(Route, 2) << __func__ << ": Ignoring route result with no gateway "
                        << "since we don't need to plumb these.";
       } else {
         SLOG(Route, 2) << __func__ << ": Adding host route to "
-                       << entry.dst.ToString();
-        RoutingTableEntry add_entry(entry);
-        add_entry.from_rtnl = false;
-        add_entry.tag = route_queries_.front().tag;
-        route_queries_.pop();
-        AddRoute(interface_index, add_entry);
+                       << add_entry.dst.ToString();
+        added = AddRoute(interface_index, add_entry);
       }
+      if (added && !query.callback.is_null()) {
+        SLOG(Route, 2) << "Running query callback.";
+        query.callback.Run(interface_index, add_entry);
+      }
+      route_queries_.pop_front();
     }
     return;
   } else if (message.route_status().protocol != RTPROT_BOOT) {
@@ -491,7 +498,8 @@ bool RoutingTable::FlushCache() {
 
 bool RoutingTable::RequestRouteToHost(const IPAddress &address,
                                       int interface_index,
-                                      int tag) {
+                                      int tag,
+                                      const Query::Callback &callback) {
   RTNLMessage message(
       RTNLMessage::kTypeRoute,
       RTNLMessage::kModeQuery,
@@ -517,9 +525,20 @@ bool RoutingTable::RequestRouteToHost(const IPAddress &address,
 
   // Save the sequence number of the request so we can create a route for
   // this host when we get a reply.
-  route_queries_.push(Query(message.seq(), tag));
+  route_queries_.push_back(Query(message.seq(), tag, callback));
 
   return true;
+}
+
+
+void RoutingTable::CancelQueryCallback(const Query::Callback &callback) {
+  SLOG(Route, 2) << __func__;
+  for (deque<Query>::iterator it = route_queries_.begin();
+       it != route_queries_.end(); ++it) {
+    if (it->callback.Equals(callback)) {
+      it->callback.Reset();
+    }
+  }
 }
 
 }  // namespace shill

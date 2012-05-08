@@ -20,11 +20,14 @@
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_message.h"
 
+using base::Bind;
 using base::Callback;
+using base::Unretained;
 using base::hash_map;
-using std::queue;
+using std::deque;
 using std::vector;
 using testing::_;
+using testing::Field;
 using testing::Invoke;
 using testing::Return;
 using testing::StrictMock;
@@ -58,7 +61,7 @@ class RoutingTableTest : public Test {
     return &routing_table_->tables_;
   }
 
-  queue<RoutingTable::Query> *GetQueries() {
+  deque<RoutingTable::Query> *GetQueries() {
     return &routing_table_->route_queries_;
   }
 
@@ -98,6 +101,19 @@ class RoutingTableTest : public Test {
   static const uint32 kTestRequestSeq;
   static const int kTestRouteTag;
 
+  class QueryCallbackTarget {
+   public:
+    QueryCallbackTarget()
+        : callback_(Bind(&QueryCallbackTarget::CallTarget, Unretained(this))) {}
+
+    MOCK_METHOD2(CallTarget,
+                 void(int interface_index, const RoutingTableEntry &entry));
+    const RoutingTable::Query::Callback &callback() { return callback_; }
+
+   private:
+    RoutingTable::Query::Callback callback_;
+  };
+
   RoutingTable *routing_table_;
   TestEventDispatcher dispatcher_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
@@ -120,6 +136,8 @@ const char RoutingTableTest::kTestRemoteNetwork4[] = "192.168.100.0";
 const int RoutingTableTest::kTestRemotePrefix4 = 24;
 const uint32 RoutingTableTest::kTestRequestSeq = 456;
 const int RoutingTableTest::kTestRouteTag = 789;
+
+namespace {
 
 MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
   const RTNLMessage::RouteStatus &status = arg->route_status();
@@ -148,6 +166,8 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
       arg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&
       priority == entry.metric;
 }
+
+}  // namespace
 
 void RoutingTableTest::SendRouteEntry(RTNLMessage::Mode mode,
                                       uint32 interface_index,
@@ -509,9 +529,11 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
               SendMessage(IsRoutingQuery(destination_address,
                                          kTestDeviceIndex0)))
       .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
-  EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address,
-                                                 kTestDeviceIndex0,
-                                                 kTestRouteTag));
+  EXPECT_TRUE(
+      routing_table_->RequestRouteToHost(destination_address,
+                                         kTestDeviceIndex0,
+                                         kTestRouteTag,
+                                         RoutingTable::Query::Callback()));
 
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
   gateway_address.SetAddressFromString(kTestGatewayAddress4);
@@ -538,8 +560,7 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
                                 kTestRequestSeq,
                                 RTPROT_UNSPEC);
 
-  hash_map<int, vector<RoutingTableEntry> > *tables =
-    GetRoutingTables();
+  hash_map<int, vector<RoutingTableEntry> > *tables = GetRoutingTables();
 
   // We should have a single table, which should in turn have a single entry.
   EXPECT_EQ(1, tables->size());
@@ -548,6 +569,8 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
 
   // This entry's tag should match the tag we requested.
   EXPECT_EQ(kTestRouteTag, (*tables)[kTestDeviceIndex0][0].tag);
+
+  EXPECT_TRUE(GetQueries()->empty());
 
   // Ask to flush routes with our tag.  We should see a delete message sent.
   EXPECT_CALL(rtnl_handler_,
@@ -571,9 +594,11 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
               SendMessage(IsRoutingQuery(destination_address,
                                          kTestDeviceIndex0)))
       .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
-  EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address,
-                                                 kTestDeviceIndex0,
-                                                 kTestRouteTag));
+  EXPECT_TRUE(
+      routing_table_->RequestRouteToHost(destination_address,
+                                         kTestDeviceIndex0,
+                                         kTestRouteTag,
+                                         RoutingTable::Query::Callback()));
 
   // Don't specify a gateway address.
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
@@ -596,16 +621,21 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
                                 entry,
                                 kTestRequestSeq,
                                 RTPROT_UNSPEC);
+  EXPECT_TRUE(GetQueries()->empty());
 }
 
 TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
   IPAddress destination_address(IPAddress::kFamilyIPv4);
   destination_address.SetAddressFromString(kTestRemoteAddress4);
+  QueryCallbackTarget target;
+  EXPECT_CALL(target, CallTarget(_, _)).Times(0);
   EXPECT_CALL(rtnl_handler_, SendMessage(_))
       .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
-  EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address,
-                                                 kTestDeviceIndex0,
-                                                 kTestRouteTag));
+  EXPECT_TRUE(
+      routing_table_->RequestRouteToHost(destination_address,
+                                         kTestDeviceIndex0,
+                                         kTestRouteTag,
+                                         target.callback()));
   EXPECT_FALSE(GetQueries()->empty());
 
   RoutingTableEntry entry(destination_address,
@@ -620,7 +650,7 @@ TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
   SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
                                 kTestDeviceIndex0,
                                 entry,
-                                kTestRequestSeq-1,
+                                kTestRequestSeq - 1,
                                 RTPROT_UNSPEC);
   EXPECT_FALSE(GetQueries()->empty());
 
@@ -629,9 +659,108 @@ TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
   SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
                                 kTestDeviceIndex0,
                                 entry,
-                                kTestRequestSeq+1,
+                                kTestRequestSeq + 1,
                                 RTPROT_UNSPEC);
   EXPECT_TRUE(GetQueries()->empty());
+}
+
+TEST_F(RoutingTableTest, RequestHostRouteWithCallback) {
+  IPAddress destination_address(IPAddress::kFamilyIPv4);
+
+  EXPECT_CALL(rtnl_handler_, SendMessage(_))
+      .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
+  QueryCallbackTarget target;
+  EXPECT_TRUE(
+      routing_table_->RequestRouteToHost(
+          destination_address, -1, kTestRouteTag, target.callback()));
+
+  IPAddress gateway_address(IPAddress::kFamilyIPv4);
+  gateway_address.SetAddressFromString(kTestGatewayAddress4);
+  IPAddress local_address(IPAddress::kFamilyIPv4);
+
+  const int kMetric = 10;
+  RoutingTableEntry entry(destination_address,
+                          local_address,
+                          gateway_address,
+                          kMetric,
+                          RT_SCOPE_UNIVERSE,
+                          true);
+
+  EXPECT_CALL(rtnl_handler_, SendMessage(_));
+  EXPECT_CALL(target,
+              CallTarget(kTestDeviceIndex0,
+                         Field(&RoutingTableEntry::tag, kTestRouteTag)));
+  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
+                                kTestDeviceIndex0,
+                                entry,
+                                kTestRequestSeq,
+                                RTPROT_UNSPEC);
+}
+
+TEST_F(RoutingTableTest, RequestHostRouteWithoutGatewayWithCallback) {
+  IPAddress destination_address(IPAddress::kFamilyIPv4);
+
+  EXPECT_CALL(rtnl_handler_, SendMessage(_))
+      .WillOnce(Invoke(this, &RoutingTableTest::SetSequenceForMessage));
+  QueryCallbackTarget target;
+  EXPECT_TRUE(
+      routing_table_->RequestRouteToHost(
+          destination_address, -1, kTestRouteTag, target.callback()));
+
+  IPAddress gateway_address(IPAddress::kFamilyIPv4);
+  IPAddress local_address(IPAddress::kFamilyIPv4);
+
+  const int kMetric = 10;
+  RoutingTableEntry entry(destination_address,
+                          local_address,
+                          gateway_address,
+                          kMetric,
+                          RT_SCOPE_UNIVERSE,
+                          true);
+
+  EXPECT_CALL(target,
+              CallTarget(kTestDeviceIndex0,
+                         Field(&RoutingTableEntry::tag, kTestRouteTag)));
+  SendRouteEntryWithSeqAndProto(RTNLMessage::kModeAdd,
+                                kTestDeviceIndex0,
+                                entry,
+                                kTestRequestSeq,
+                                RTPROT_UNSPEC);
+}
+
+TEST_F(RoutingTableTest, CancelQueryCallback) {
+  IPAddress destination_address(IPAddress::kFamilyIPv4);
+  destination_address.SetAddressFromString(kTestRemoteAddress4);
+  QueryCallbackTarget target1;
+  QueryCallbackTarget target2;
+  QueryCallbackTarget target3;
+  EXPECT_CALL(rtnl_handler_, SendMessage(_)).Times(4);
+  EXPECT_TRUE(
+      routing_table_->RequestRouteToHost(destination_address,
+                                         kTestDeviceIndex0,
+                                         kTestRouteTag,
+                                         target1.callback()));
+  EXPECT_TRUE(
+      routing_table_->RequestRouteToHost(destination_address,
+                                         kTestDeviceIndex0,
+                                         kTestRouteTag,
+                                         target2.callback()));
+  EXPECT_TRUE(
+      routing_table_->RequestRouteToHost(destination_address,
+                                         kTestDeviceIndex0,
+                                         kTestRouteTag,
+                                         target2.callback()));
+  EXPECT_TRUE(
+      routing_table_->RequestRouteToHost(destination_address,
+                                         kTestDeviceIndex0,
+                                         kTestRouteTag,
+                                         target3.callback()));
+  ASSERT_EQ(4, GetQueries()->size());
+  routing_table_->CancelQueryCallback(target2.callback());
+  EXPECT_TRUE(GetQueries()->at(0).callback.Equals(target1.callback()));
+  EXPECT_TRUE(GetQueries()->at(1).callback.is_null());
+  EXPECT_TRUE(GetQueries()->at(2).callback.is_null());
+  EXPECT_TRUE(GetQueries()->at(3).callback.Equals(target3.callback()));
 }
 
 }  // namespace shill

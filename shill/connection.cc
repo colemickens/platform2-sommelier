@@ -180,7 +180,8 @@ bool Connection::RequestHostRoute(const IPAddress &address) {
   // However, we should tag the created route with our interface
   // index so we can clean this route up when this connection closes.
   if (!routing_table_->RequestRouteToHost(address_prefix, -1,
-                                          interface_index_)) {
+                                          interface_index_,
+                                          RoutingTable::Query::Callback())) {
     LOG(ERROR) << "Could not request route to " << address.ToString();
     return false;
   }

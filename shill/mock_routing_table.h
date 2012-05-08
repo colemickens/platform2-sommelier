@@ -35,9 +35,10 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD0(FlushCache, bool());
   MOCK_METHOD1(ResetTable, void(int interface_index));
   MOCK_METHOD2(SetDefaultMetric, void(int interface_index, uint32 metric));
-  MOCK_METHOD3(RequestRouteToHost, bool(const IPAddress &addresss,
+  MOCK_METHOD4(RequestRouteToHost, bool(const IPAddress &addresss,
                                         int interface_index,
-                                        int tag));
+                                        int tag,
+                                        const Query::Callback &callback));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockRoutingTable);
