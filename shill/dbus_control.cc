@@ -24,27 +24,63 @@ DBusControl::DBusControl() {}
 DBusControl::~DBusControl() {}
 
 DeviceAdaptorInterface *DBusControl::CreateDeviceAdaptor(Device *device) {
-  return new(std::nothrow) DeviceDBusAdaptor(connection_.get(), device);
+  DeviceAdaptorInterface *result = NULL;
+  try {
+    result = new DeviceDBusAdaptor(connection_.get(), device);
+  } catch(const DBus::Error &error) {
+    LOG(ERROR) << error.message();
+  }
+  return result;
 }
 
 IPConfigAdaptorInterface *DBusControl::CreateIPConfigAdaptor(IPConfig *config) {
-  return new(std::nothrow) IPConfigDBusAdaptor(connection_.get(), config);
+  IPConfigAdaptorInterface *result = NULL;
+  try {
+    result = new IPConfigDBusAdaptor(connection_.get(), config);
+  } catch(const DBus::Error &error) {
+    LOG(ERROR) << error.message();
+  }
+  return result;
 }
 
 ManagerAdaptorInterface *DBusControl::CreateManagerAdaptor(Manager *manager) {
-  return new(std::nothrow) ManagerDBusAdaptor(connection_.get(), manager);
+  ManagerAdaptorInterface *result = NULL;
+  try {
+    result = new ManagerDBusAdaptor(connection_.get(), manager);
+  } catch(const DBus::Error &error) {
+    LOG(ERROR) << error.message();
+  }
+  return result;
 }
 
 ProfileAdaptorInterface *DBusControl::CreateProfileAdaptor(Profile *profile) {
-  return new(std::nothrow) ProfileDBusAdaptor(connection_.get(), profile);
+  ProfileAdaptorInterface *result = NULL;
+  try {
+    result = new ProfileDBusAdaptor(connection_.get(), profile);
+  } catch(const DBus::Error &error) {
+    LOG(ERROR) << error.message();
+  }
+  return result;
 }
 
 RPCTaskAdaptorInterface *DBusControl::CreateRPCTaskAdaptor(RPCTask *task) {
-  return new(std::nothrow) RPCTaskDBusAdaptor(connection_.get(), task);
+  RPCTaskAdaptorInterface *result = NULL;
+  try {
+    result = new RPCTaskDBusAdaptor(connection_.get(), task);
+  } catch(const DBus::Error &error) {
+    LOG(ERROR) << error.message();
+  }
+  return result;
 }
 
 ServiceAdaptorInterface *DBusControl::CreateServiceAdaptor(Service *service) {
-  return new(std::nothrow) ServiceDBusAdaptor(connection_.get(), service);
+  ServiceAdaptorInterface *result = NULL;
+  try {
+    result = new ServiceDBusAdaptor(connection_.get(), service);
+  } catch(const DBus::Error &error) {
+    LOG(ERROR) << error.message();
+  }
+  return result;
 }
 
 void DBusControl::Init() {
