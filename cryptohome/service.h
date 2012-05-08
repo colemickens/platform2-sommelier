@@ -135,6 +135,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean GetSystemSalt(GArray **OUT_salt, GError **error);
   virtual gboolean IsMountedForUser(gchar *user,
                                     gboolean *OUT_is_mounted,
+                                    gboolean *OUT_is_ephemeral_mount,
                                     GError **error);
   virtual gboolean IsMounted(gboolean *OUT_is_mounted, GError **error);
   virtual gboolean Mount(const gchar *user,

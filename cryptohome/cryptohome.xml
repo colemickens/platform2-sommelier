@@ -17,6 +17,7 @@
     <method name="IsMountedForUser">
       <arg type="s" name="username" direction="in" />
       <arg type="b" name="is_mounted" direction="out" />
+      <arg type="b" name="is_ephemeral_mount" direction="out" />
     </method>
     <method name="CheckKey">
       <arg type="s" name="username" direction="in" />

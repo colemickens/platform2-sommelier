@@ -645,9 +645,19 @@ gboolean Service::IsMounted(gboolean *OUT_is_mounted, GError **error) {
 
 gboolean Service::IsMountedForUser(gchar *userid,
                                    gboolean *OUT_is_mounted,
+                                   gboolean *OUT_is_ephemeral_mount,
                                    GError **error) {
   UsernamePasskey credentials(userid, SecureBlob("", 0));
-  *OUT_is_mounted = mount_->IsCryptohomeMountedForUser(credentials);
+  if (mount_->IsVaultMountedForUser(credentials)) {
+    *OUT_is_mounted = true;
+    *OUT_is_ephemeral_mount = false;
+  } else if (mount_->IsCryptohomeMountedForUser(credentials)) {
+    *OUT_is_mounted = true;
+    *OUT_is_ephemeral_mount = true;
+  } else {
+    *OUT_is_mounted = false;
+    *OUT_is_ephemeral_mount = false;
+  }
   return TRUE;
 }
 

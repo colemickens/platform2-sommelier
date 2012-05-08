@@ -72,6 +72,7 @@ gboolean cryptohome_is_mounted(Cryptohome *self,
 gboolean cryptohome_is_mounted_for_user(Cryptohome *self,
                                         gchar *userid,
                                         gboolean *OUT_is_mounted,
+                                        gboolean *OUT_is_ephemeral_mount,
                                         GError **error);
 gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,

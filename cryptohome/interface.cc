@@ -109,8 +109,10 @@ gboolean cryptohome_is_mounted(Cryptohome *self,
 gboolean cryptohome_is_mounted_for_user(Cryptohome *self,
                                         gchar *userid,
                                         gboolean *OUT_is_mounted,
+                                        gboolean *OUT_is_ephemeral_mount,
                                         GError **error) {
-  CRYPTOHOME_WRAP_METHOD(IsMountedForUser, userid, OUT_is_mounted);
+  CRYPTOHOME_WRAP_METHOD(IsMountedForUser, userid,
+                         OUT_is_mounted, OUT_is_ephemeral_mount);
 }
 gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,
