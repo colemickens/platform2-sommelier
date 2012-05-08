@@ -570,4 +570,45 @@ TEST_F(CellularCapabilityUniversalTest, ConnectApns) {
   connect_callback_.Run(bearer, Error(Error::kSuccess));
 }
 
+// Validates GetTypeString and AccessTechnologyToTechnologyFamily
+TEST_F(CellularCapabilityUniversalTest, GetTypeString) {
+  const int gsm_technologies[] = {
+    MM_MODEM_ACCESS_TECHNOLOGY_LTE,
+    MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS,
+    MM_MODEM_ACCESS_TECHNOLOGY_HSPA,
+    MM_MODEM_ACCESS_TECHNOLOGY_HSUPA,
+    MM_MODEM_ACCESS_TECHNOLOGY_HSDPA,
+    MM_MODEM_ACCESS_TECHNOLOGY_UMTS,
+    MM_MODEM_ACCESS_TECHNOLOGY_EDGE,
+    MM_MODEM_ACCESS_TECHNOLOGY_GPRS,
+    MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT,
+    MM_MODEM_ACCESS_TECHNOLOGY_GSM,
+    MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+    MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+    MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
+    MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
+    MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
+    MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
+    MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
+  };
+  for(size_t i = 0; i < arraysize(gsm_technologies); ++i) {
+    capability_->access_technologies_ = gsm_technologies[i];
+    ASSERT_EQ(capability_->GetTypeString(), flimflam::kTechnologyFamilyGsm);
+  }
+  const int cdma_technologies[] = {
+    MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+    MM_MODEM_ACCESS_TECHNOLOGY_EVDOA,
+    MM_MODEM_ACCESS_TECHNOLOGY_EVDOA | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+    MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
+    MM_MODEM_ACCESS_TECHNOLOGY_EVDOB | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
+    MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
+  };
+  for(size_t i = 0; i < arraysize(cdma_technologies); ++i) {
+    capability_->access_technologies_ = cdma_technologies[i];
+    ASSERT_EQ(capability_->GetTypeString(), flimflam::kTechnologyFamilyCdma);
+  }
+  capability_->access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
+  ASSERT_EQ(capability_->GetTypeString(), "");
+}
+
 }  // namespace shill

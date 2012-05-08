@@ -11,6 +11,7 @@
 
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
@@ -68,7 +69,9 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   virtual void Scan(Error *error, const ResultCallback &callback);
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
-  virtual std::string GetTypeString() const { return "GSM"; }
+  virtual std::string GetTypeString() const {
+    return flimflam::kTechnologyFamilyGsm;
+  }
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &properties,

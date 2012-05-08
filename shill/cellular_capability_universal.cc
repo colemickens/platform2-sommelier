@@ -92,6 +92,26 @@ static string AccessTechnologyToString(uint32 access_technologies) {
   return "";
 }
 
+static string AccessTechnologyToTechnologyFamily(uint32 access_technologies) {
+  if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_LTE |
+                             MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS |
+                             MM_MODEM_ACCESS_TECHNOLOGY_HSPA |
+                             MM_MODEM_ACCESS_TECHNOLOGY_HSUPA |
+                             MM_MODEM_ACCESS_TECHNOLOGY_HSDPA |
+                             MM_MODEM_ACCESS_TECHNOLOGY_UMTS |
+                             MM_MODEM_ACCESS_TECHNOLOGY_EDGE |
+                             MM_MODEM_ACCESS_TECHNOLOGY_GPRS |
+                             MM_MODEM_ACCESS_TECHNOLOGY_GSM_COMPACT |
+                             MM_MODEM_ACCESS_TECHNOLOGY_GSM))
+    return flimflam::kTechnologyFamilyGsm;
+  if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 |
+                              MM_MODEM_ACCESS_TECHNOLOGY_EVDOA |
+                              MM_MODEM_ACCESS_TECHNOLOGY_EVDOB |
+                             MM_MODEM_ACCESS_TECHNOLOGY_1XRTT))
+    return flimflam::kTechnologyFamilyCdma;
+  return "";
+}
+
 CellularCapabilityUniversal::CellularCapabilityUniversal(
     Cellular *cellular,
     ProxyFactory *proxy_factory)
@@ -774,7 +794,7 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
 }
 
 string CellularCapabilityUniversal::GetNetworkTechnologyString() const {
-  // Order is imnportant.  Return the highest speed technology
+  // Order is important.  Return the highest speed technology
   // TODO(jglasgow): change shill interfaces to a capability model
 
   return AccessTechnologyToString(access_technologies_);
@@ -797,6 +817,10 @@ void CellularCapabilityUniversal::GetSignalQuality() {
   const DBus::Struct<unsigned int, bool> quality =
       modem_proxy_->SignalQuality();
   OnSignalQualityChanged(quality._1);
+}
+
+string CellularCapabilityUniversal::GetTypeString() const {
+  return AccessTechnologyToTechnologyFamily(access_technologies_);
 }
 
 void CellularCapabilityUniversal::OnModemPropertiesChanged(
@@ -1010,9 +1034,16 @@ void CellularCapabilityUniversal::OnModemStateChanged(
 
 void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
     uint32 access_technologies) {
-  access_technologies_ = access_technologies;
-  if (cellular()->service().get()) {
-    cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
+  if (access_technologies_ != access_technologies) {
+    access_technologies_ = access_technologies;
+    // TODO(jglasgow): address layering violation of emitting change
+    // signal here for a property owned by Cellular.
+    cellular()->adaptor()->EmitStringChanged(
+        flimflam::kTechnologyFamilyProperty,
+        GetTypeString());
+    if (cellular()->service().get()) {
+      cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
+    }
   }
 }
 

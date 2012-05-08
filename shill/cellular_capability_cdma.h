@@ -7,6 +7,7 @@
 
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include <string>
@@ -35,7 +36,9 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void GetSignalQuality();
-  virtual std::string GetTypeString() const { return "CDMA"; }
+  virtual std::string GetTypeString() const {
+    return flimflam::kTechnologyFamilyCdma;
+  }
   virtual bool AllowRoaming();
   virtual void GetRegistrationState();
   virtual void GetProperties(const ResultCallback &callback);

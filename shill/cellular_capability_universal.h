@@ -92,7 +92,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void GetSignalQuality();
-  virtual std::string GetTypeString() const { return "Universal"; }
+  virtual std::string GetTypeString() const;
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,
@@ -126,6 +126,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, ScanFailure);
   FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalTest, ConnectApns);
+  FRIEND_TEST(CellularCapabilityUniversalTest, GetTypeString);
 
   // Methods used in starting a modem
   void Start_EnableModemCompleted(const ResultCallback &callback,
