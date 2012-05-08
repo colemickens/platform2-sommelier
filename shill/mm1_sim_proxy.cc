@@ -162,8 +162,8 @@ void SimProxy::Proxy::SendPukCallback(const ::DBus::Error &dberror,
   callback->Run(error);
 }
 
-void SimProxy::Proxy::EnableCallback(const ::DBus::Error &dberror,
-                                     void *data)  {
+void SimProxy::Proxy::EnablePinCallback(const ::DBus::Error &dberror,
+                                        void *data)  {
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
@@ -171,8 +171,8 @@ void SimProxy::Proxy::EnableCallback(const ::DBus::Error &dberror,
   callback->Run(error);
 }
 
-void SimProxy::Proxy::ChangeCallback(const ::DBus::Error &dberror,
-                                     void *data) {
+void SimProxy::Proxy::ChangePinCallback(const ::DBus::Error &dberror,
+                                        void *data) {
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;

@@ -66,10 +66,10 @@ class SimProxy : public SimProxyInterface {
                                  void *data);
     virtual void SendPukCallback(const ::DBus::Error &dberror,
                                  void *data);
-    virtual void EnableCallback(const ::DBus::Error &dberror,
-                                void *data);
-    virtual void ChangeCallback(const ::DBus::Error &dberror,
-                                void *data);
+    virtual void EnablePinCallback(const ::DBus::Error &dberror,
+                                   void *data);
+    virtual void ChangePinCallback(const ::DBus::Error &dberror,
+                                   void *data);
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
