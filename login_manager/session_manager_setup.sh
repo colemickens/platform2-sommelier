@@ -227,8 +227,7 @@ fi
 
 # Setup GPU & acceleration flags which differ between x86/ARM SoC
 if [ "$(uname -m)" != "armv7l" ] ; then
-  ACCELERATED_FLAGS="--enable-accelerated-layers \
-                     --ui-use-gpu-process"
+  ACCELERATED_FLAGS="--enable-accelerated-layers"
 else
   ACCELERATED_FLAGS="--use-gl=egl \
                      --ppapi-flash-args=enable-hardware-decoder=1"
@@ -336,6 +335,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --scroll-pixels=3 \
             --ui-enable-partial-swap \
             --ui-enable-per-tile-painting \
+            --ui-use-gpu-process \
             --use-cras \
             --user-data-dir="$DATA_DIR" \
             --no-protector \
