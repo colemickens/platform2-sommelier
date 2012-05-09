@@ -106,9 +106,6 @@ class RoutingTable {
                                   int tag,
                                   const Query::Callback &callback);
 
-  // Cancels all outstanding query |callback| instances.
-  void CancelQueryCallback(const Query::Callback &callback);
-
  protected:
   RoutingTable();
 

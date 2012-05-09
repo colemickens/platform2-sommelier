@@ -161,6 +161,7 @@ class Device : public base::RefCounted<Device> {
 
  protected:
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
+  FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);

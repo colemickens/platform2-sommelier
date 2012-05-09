@@ -13,6 +13,10 @@
 #include "shill/rtnl_handler.h"
 #include "shill/scope_logger.h"
 
+using base::Bind;
+using base::Closure;
+using base::Unretained;
+using std::deque;
 using std::string;
 
 namespace shill {
@@ -22,15 +26,56 @@ const uint32 Connection::kDefaultMetric = 1;
 // static
 const uint32 Connection::kNonDefaultMetricBase = 10;
 
+Connection::Binder::Binder(const string &name,
+                           const Closure &disconnect_callback)
+    : name_(name),
+      connection_(NULL),
+      client_disconnect_callback_(disconnect_callback) {}
+
+Connection::Binder::~Binder() {
+  Attach(NULL);
+}
+
+void Connection::Binder::Attach(const ConnectionRefPtr &connection) {
+  if (connection_) {
+    connection_->DetachBinder(this);
+    LOG(INFO) << name_ << ": unbound from connection: "
+              << connection_->interface_name();
+  }
+  // Uses a bare pointer to the bound Connection to avoid circular references
+  // between clients and connections.
+  if ((connection_ = connection.get())) {
+    connection_->AttachBinder(this);
+    LOG(INFO) << name_ << ": bound to connection: "
+              << connection_->interface_name();
+  }
+}
+
+void Connection::Binder::OnDisconnect() {
+  LOG(INFO) << name_ << ": bound connection disconnected: "
+            << connection_->interface_name();
+  connection_ = NULL;
+  if (!client_disconnect_callback_.is_null()) {
+    SLOG(Connection, 2) << "Running client disconnect callback.";
+    client_disconnect_callback_.Run();
+  }
+}
+
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        Technology::Identifier technology,
                        const DeviceInfo *device_info)
-    : is_default_(false),
+    : weak_ptr_factory_(this),
+      is_default_(false),
       routing_request_count_(0),
       interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
+      lower_binder_(
+          interface_name_,
+          // Connection owns a single instance of |lower_binder_| so it's safe
+          // to use an Unretained callback.
+          Bind(&Connection::OnLowerDisconnect, Unretained(this))),
       device_info_(device_info),
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
@@ -42,6 +87,8 @@ Connection::Connection(int interface_index,
 
 Connection::~Connection() {
   SLOG(Connection, 2) << __func__ << " " << interface_name_;
+
+  NotifyBindersOnDisconnect();
 
   DCHECK(!routing_request_count_);
   routing_table_->FlushRoutes(interface_index_);
@@ -175,13 +222,18 @@ bool Connection::RequestHostRoute(const IPAddress &address) {
   IPAddress address_prefix(address);
   address_prefix.set_prefix(address_prefix.GetLength() * 8);
 
-  // Do not set interface_index_ since this may not be the
-  // default route through which this destination can be found.
-  // However, we should tag the created route with our interface
-  // index so we can clean this route up when this connection closes.
-  if (!routing_table_->RequestRouteToHost(address_prefix, -1,
-                                          interface_index_,
-                                          RoutingTable::Query::Callback())) {
+  // Do not set interface_index_ since this may not be the default route through
+  // which this destination can be found.  However, we should tag the created
+  // route with our interface index so we can clean this route up when this
+  // connection closes.  Also, add route query callback to determine the lower
+  // connection and bind to it.
+  if (!routing_table_->RequestRouteToHost(
+          address_prefix,
+          -1,
+          interface_index_,
+          RoutingTable::Query::Callback(
+              Bind(&Connection::OnRouteQueryResponse,
+                   weak_ptr_factory_.GetWeakPtr())))) {
     LOG(ERROR) << "Could not request route to " << address.ToString();
     return false;
   }
@@ -258,6 +310,66 @@ bool Connection::PinHostRoute(const IPConfig::Properties &properties) {
   }
 
   return RequestHostRoute(trusted_ip);
+}
+
+void Connection::OnRouteQueryResponse(int interface_index,
+                                      const RoutingTableEntry &entry) {
+  SLOG(Connection, 2) << __func__ << "(" << interface_index << ", "
+                      << entry.tag << ")";
+  lower_binder_.Attach(NULL);
+  DeviceRefPtr device = device_info_->GetDevice(interface_index);
+  if (!device) {
+    LOG(ERROR) << "Unable to lookup device for index " << interface_index;
+    return;
+  }
+  ConnectionRefPtr connection = device->connection();
+  if (!connection) {
+    LOG(ERROR) << "Device " << interface_index << " has no connection.";
+    return;
+  }
+  lower_binder_.Attach(connection);
+}
+
+void Connection::OnLowerDisconnect() {
+  SLOG(Connection, 2) << __func__ << "(" << interface_name_ << ")";
+  // Ensures that |this| instance doesn't get destroyed in the middle of
+  // notifying the binders. This method needs to be separate from
+  // NotifyBindersOnDisconnect because the latter may be invoked by Connection's
+  // destructor when |this| instance's reference count is already 0.
+  ConnectionRefPtr connection(this);
+  connection->NotifyBindersOnDisconnect();
+}
+
+void Connection::NotifyBindersOnDisconnect() {
+  // Note that this method may be invoked by the destructor.
+  SLOG(Connection, 2) << __func__ << "(" << interface_name_ << ")";
+
+  // Unbinds the lower connection before notifying the binders. This ensures
+  // correct behavior in case of circular binding.
+  lower_binder_.Attach(NULL);
+  while (!binders_.empty()) {
+    // Pop the binder first and then notify it to ensure that each binder is
+    // notified only once.
+    Binder *binder = binders_.front();
+    binders_.pop_front();
+    binder->OnDisconnect();
+  }
+}
+
+void Connection::AttachBinder(Binder *binder) {
+  SLOG(Connection, 2) << __func__ << "(" << interface_name_ << ")";
+  binders_.push_back(binder);
+}
+
+void Connection::DetachBinder(Binder *binder) {
+  SLOG(Connection, 2) << __func__ << "(" << interface_name_ << ")";
+  for (deque<Binder *>::iterator it = binders_.begin();
+       it != binders_.end(); ++it) {
+    if (binder == *it) {
+      binders_.erase(it);
+      return;
+    }
+  }
 }
 
 }  // namespace shill

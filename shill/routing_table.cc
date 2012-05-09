@@ -530,15 +530,4 @@ bool RoutingTable::RequestRouteToHost(const IPAddress &address,
   return true;
 }
 
-
-void RoutingTable::CancelQueryCallback(const Query::Callback &callback) {
-  SLOG(Route, 2) << __func__;
-  for (deque<Query>::iterator it = route_queries_.begin();
-       it != route_queries_.end(); ++it) {
-    if (it->callback.Equals(callback)) {
-      it->callback.Reset();
-    }
-  }
-}
-
 }  // namespace shill

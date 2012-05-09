@@ -14,6 +14,7 @@
 
 #include "shill/connection.h"
 #include "shill/ipconfig.h"
+#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
@@ -27,6 +28,7 @@ using std::vector;
 using testing::_;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
 using testing::StrictMock;
 using testing::Test;
 
@@ -86,9 +88,7 @@ class ConnectionTest : public Test {
   }
 
   virtual void TearDown() {
-    EXPECT_CALL(*device_info_, FlushAddresses(kTestDeviceInterfaceIndex0));
-    EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
-    EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
+    AddDestructorExpectations();
     connection_ = NULL;
   }
 
@@ -108,6 +108,37 @@ class ConnectionTest : public Test {
   }
 
  protected:
+  class DisconnectCallbackTarget {
+   public:
+    DisconnectCallbackTarget()
+        : callback_(base::Bind(&DisconnectCallbackTarget::CallTarget,
+                               base::Unretained(this))) {}
+
+    MOCK_METHOD0(CallTarget, void());
+    const base::Closure &callback() { return callback_; }
+
+   private:
+    base::Closure callback_;
+  };
+
+  void AddDestructorExpectations() {
+    EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+    EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
+    EXPECT_CALL(*device_info_.get(),
+                FlushAddresses(kTestDeviceInterfaceIndex0));
+  }
+
+  // Returns a new test connection object. The caller usually needs to call
+  // AddDestructorExpectations before destroying the object.
+  ConnectionRefPtr GetNewConnection() {
+    ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
+                                               kTestDeviceName0,
+                                               Technology::kUnknown,
+                                               device_info_.get()));
+    ReplaceSingletons(connection);
+    return connection;
+  }
+
   scoped_ptr<StrictMock<MockDeviceInfo> > device_info_;
   ConnectionRefPtr connection_;
   MockControl control_;
@@ -122,17 +153,25 @@ class ConnectionTest : public Test {
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
-TEST_F(ConnectionTest, InitState) {
-  EXPECT_EQ(kTestDeviceInterfaceIndex0, connection_->interface_index_);
-  EXPECT_EQ(kTestDeviceName0, connection_->interface_name_);
-  EXPECT_FALSE(connection_->is_default());
-  EXPECT_FALSE(connection_->routing_request_count_);
-}
+namespace {
 
 MATCHER_P2(IsIPAddress, address, prefix, "") {
   IPAddress match_address(address);
   match_address.set_prefix(prefix);
   return match_address.Equals(arg);
+}
+
+MATCHER(IsNonNullCallback, "") {
+  return !arg.is_null();
+}
+
+}  // namespace
+
+TEST_F(ConnectionTest, InitState) {
+  EXPECT_EQ(kTestDeviceInterfaceIndex0, connection_->interface_index_);
+  EXPECT_EQ(kTestDeviceName0, connection_->interface_name_);
+  EXPECT_FALSE(connection_->is_default());
+  EXPECT_FALSE(connection_->routing_request_count_);
 }
 
 TEST_F(ConnectionTest, AddConfig) {
@@ -280,11 +319,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
 }
 
 TEST_F(ConnectionTest, RouteRequest) {
-  ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
-                                             kTestDeviceName0,
-                                             Technology::kUnknown,
-                                             device_info_.get()));
-  ReplaceSingletons(connection);
+  ConnectionRefPtr connection = GetNewConnection();
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
       reinterpret_cast<EventDispatcher *>(NULL),
@@ -308,57 +343,45 @@ TEST_F(ConnectionTest, RouteRequest) {
   connection->ReleaseRouting();
 
   // The destructor will remove the routes and addresses.
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
-  EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
-  EXPECT_CALL(*device_info_.get(),
-              FlushAddresses(kTestDeviceInterfaceIndex0));
+  AddDestructorExpectations();
 }
 
 TEST_F(ConnectionTest, Destructor) {
+  ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex1,
+                                             kTestDeviceName1,
+                                             Technology::kUnknown,
+                                             device_info_.get()));
+  connection->resolver_ = &resolver_;
+  connection->routing_table_ = &routing_table_;
+  connection->rtnl_handler_ = &rtnl_handler_;
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex1));
   EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex1));
   EXPECT_CALL(*device_info_, FlushAddresses(kTestDeviceInterfaceIndex1));
-  {
-    ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex1,
-                                               kTestDeviceName1,
-                                               Technology::kUnknown,
-                                               device_info_.get()));
-    connection->resolver_ = &resolver_;
-    connection->routing_table_ = &routing_table_;
-    connection->rtnl_handler_ = &rtnl_handler_;
-  }
+  connection = NULL;
 }
 
 TEST_F(ConnectionTest, RequestHostRoute) {
-  ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
-                                             kTestDeviceName0,
-                                             Technology::kUnknown,
-                                             device_info_.get()));
-  ReplaceSingletons(connection);
+  ConnectionRefPtr connection = GetNewConnection();
   IPAddress address(IPAddress::kFamilyIPv4);
   ASSERT_TRUE(address.SetAddressFromString(kIPAddress0));
   size_t prefix_len = address.GetLength() * 8;
-  EXPECT_CALL(routing_table_, RequestRouteToHost(
-      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0, _))
+  EXPECT_CALL(routing_table_,
+              RequestRouteToHost(IsIPAddress(address, prefix_len),
+                                 -1,
+                                 kTestDeviceInterfaceIndex0,
+                                 IsNonNullCallback()))
       .WillOnce(Return(true));
   EXPECT_TRUE(connection->RequestHostRoute(address));
 
   // The destructor will remove the routes and addresses.
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
-  EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
-  EXPECT_CALL(*device_info_.get(),
-              FlushAddresses(kTestDeviceInterfaceIndex0));
+  AddDestructorExpectations();
 }
 
 TEST_F(ConnectionTest, PinHostRoute) {
   static const char kGateway[] = "10.242.2.13";
   static const char kNetwork[] = "10.242.2.1";
 
-  ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
-                                             kTestDeviceName0,
-                                             Technology::kUnknown,
-                                             device_info_.get()));
-  ReplaceSingletons(connection);
+  ConnectionRefPtr connection = GetNewConnection();
 
   IPConfig::Properties props;
   props.address_family = IPAddress::kFamilyIPv4;
@@ -389,10 +412,7 @@ TEST_F(ConnectionTest, PinHostRoute) {
   EXPECT_TRUE(PinHostRoute(connection, props));
 
   // The destructor will remove the routes and addresses.
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
-  EXPECT_CALL(routing_table_, FlushRoutesWithTag(kTestDeviceInterfaceIndex0));
-  EXPECT_CALL(*device_info_.get(),
-              FlushAddresses(kTestDeviceInterfaceIndex0));
+  AddDestructorExpectations();
 }
 
 TEST_F(ConnectionTest, FixGatewayReachability) {
@@ -441,6 +461,183 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
   EXPECT_FALSE(Connection::FixGatewayReachability(&local, gateway, peer));
   EXPECT_EQ(kPrefix, local.prefix());
+}
+
+TEST_F(ConnectionTest, Binders) {
+  EXPECT_TRUE(connection_->binders_.empty());
+  DisconnectCallbackTarget target0;
+  DisconnectCallbackTarget target1;
+  DisconnectCallbackTarget target2;
+  DisconnectCallbackTarget target3;
+  Connection::Binder binder0("binder0", target0.callback());
+  Connection::Binder binder1("binder1", target1.callback());
+  Connection::Binder binder2("binder2", target2.callback());
+  Connection::Binder binder3("binder3", target3.callback());
+
+  binder0.Attach(connection_);
+  binder1.Attach(connection_);
+
+  EXPECT_CALL(target1, CallTarget()).Times(0);
+  binder1.Attach(connection_);
+
+  binder3.Attach(connection_);
+  binder2.Attach(connection_);
+
+  EXPECT_CALL(target3, CallTarget()).Times(0);
+  binder3.Attach(NULL);
+
+  ASSERT_EQ(3, connection_->binders_.size());
+  EXPECT_TRUE(connection_->binders_.at(0) == &binder0);
+  EXPECT_TRUE(connection_->binders_.at(1) == &binder1);
+  EXPECT_TRUE(connection_->binders_.at(2) == &binder2);
+
+  EXPECT_CALL(target0, CallTarget()).Times(1);
+  EXPECT_CALL(target1, CallTarget()).Times(1);
+  EXPECT_CALL(target2, CallTarget()).Times(1);
+  connection_->NotifyBindersOnDisconnect();
+  EXPECT_TRUE(connection_->binders_.empty());
+
+  // Should be a no-op.
+  connection_->NotifyBindersOnDisconnect();
+}
+
+TEST_F(ConnectionTest, Binder) {
+  // No connection should be bound initially.
+  Connection::Binder *binder = &connection_->lower_binder_;
+  EXPECT_EQ(connection_->interface_name(), binder->name_);
+  EXPECT_FALSE(binder->client_disconnect_callback_.is_null());
+  EXPECT_FALSE(binder->IsBound());
+
+  ConnectionRefPtr connection1 = GetNewConnection();
+  EXPECT_TRUE(connection1->binders_.empty());
+
+  // Bind lower |connection1| and check if it's bound.
+  binder->Attach(connection1);
+  EXPECT_TRUE(binder->IsBound());
+  EXPECT_EQ(connection1.get(), binder->connection().get());
+  ASSERT_FALSE(connection1->binders_.empty());
+  EXPECT_TRUE(binder == connection1->binders_.at(0));
+
+  // Unbind lower |connection1| and check if it's unbound.
+  binder->Attach(NULL);
+  EXPECT_FALSE(binder->IsBound());
+  EXPECT_TRUE(connection1->binders_.empty());
+
+  ConnectionRefPtr connection2 = GetNewConnection();
+
+  // Bind lower |connection1| to upper |connection2| and destroy the upper
+  // |connection2|. Make sure lower |connection1| is unbound (i.e., the
+  // disconnect callback is deregistered).
+  connection2->lower_binder_.Attach(connection1);
+  EXPECT_FALSE(connection1->binders_.empty());
+  AddDestructorExpectations();
+  connection2 = NULL;
+  EXPECT_TRUE(connection1->binders_.empty());
+
+  // Bind lower |connection1| to upper |connection_| and destroy lower
+  // |connection1|. Make sure lower |connection1| is unbound from upper
+  // |connection_| and upper |connection_|'s registered disconnect callbacks are
+  // run.
+  binder->Attach(connection1);
+  DisconnectCallbackTarget target;
+  Connection::Binder test_binder("from_test", target.callback());
+  test_binder.Attach(connection_);
+  EXPECT_CALL(target, CallTarget()).Times(1);
+  ASSERT_FALSE(connection_->binders_.empty());
+  AddDestructorExpectations();
+  connection1 = NULL;
+  EXPECT_FALSE(binder->IsBound());
+  EXPECT_FALSE(test_binder.IsBound());
+  EXPECT_TRUE(connection_->binders_.empty());
+
+  {
+    // Binding a connection to itself should be safe.
+    ConnectionRefPtr connection = GetNewConnection();
+
+    connection->lower_binder_.Attach(connection);
+
+    EXPECT_FALSE(connection->binders_.empty());
+
+    DisconnectCallbackTarget target;
+    Connection::Binder binder("test", target.callback());
+    binder.Attach(connection);
+
+    AddDestructorExpectations();
+    EXPECT_CALL(target, CallTarget()).Times(1);
+    connection = NULL;
+  }
+
+  {
+    // Circular binding of multiple connections should be safe.
+    ConnectionRefPtr connection_a = GetNewConnection();
+    ConnectionRefPtr connection_b = GetNewConnection();
+
+    connection_a->lower_binder_.Attach(connection_b);
+    connection_b->lower_binder_.Attach(connection_a);
+
+    EXPECT_FALSE(connection_a->binders_.empty());
+    EXPECT_FALSE(connection_b->binders_.empty());
+
+    DisconnectCallbackTarget target_a;
+    DisconnectCallbackTarget target_b;
+    Connection::Binder binder_a("test_a", target_a.callback());
+    Connection::Binder binder_b("test_b", target_b.callback());
+    binder_a.Attach(connection_a);
+    binder_b.Attach(connection_b);
+
+    AddDestructorExpectations();
+    EXPECT_CALL(target_a, CallTarget()).Times(1);
+    EXPECT_CALL(target_b, CallTarget()).Times(1);
+    connection_b = NULL;
+
+    EXPECT_TRUE(connection_a->binders_.empty());
+
+    AddDestructorExpectations();
+    connection_a = NULL;
+  }
+}
+
+TEST_F(ConnectionTest, OnRouteQueryResponse) {
+  Connection::Binder *binder = &connection_->lower_binder_;
+  ConnectionRefPtr connection = GetNewConnection();
+  scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
+      &control_,
+      reinterpret_cast<EventDispatcher *>(NULL),
+      reinterpret_cast<Metrics *>(NULL),
+      reinterpret_cast<Manager *>(NULL),
+      kTestDeviceName1,
+      string(),
+      kTestDeviceInterfaceIndex1));
+
+  // Make sure we unbind the old lower connection even if we can't lookup the
+  // lower connection device.
+  binder->Attach(connection);
+  scoped_refptr<MockDevice> null_device;
+  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
+      .WillOnce(Return(null_device));
+  connection_->OnRouteQueryResponse(
+      kTestDeviceInterfaceIndex1, RoutingTableEntry());
+  EXPECT_FALSE(binder->IsBound());
+
+  // Check for graceful handling of a device with no connection.
+  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
+      .WillOnce(Return(device));
+  connection_->OnRouteQueryResponse(
+      kTestDeviceInterfaceIndex1, RoutingTableEntry());
+  EXPECT_FALSE(binder->IsBound());
+
+  // Check that the upper connection is bound to the lower connection.
+  device->connection_ = connection;
+  EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
+      .WillOnce(Return(device));
+  connection_->OnRouteQueryResponse(
+      kTestDeviceInterfaceIndex1, RoutingTableEntry());
+  EXPECT_TRUE(binder->IsBound());
+  EXPECT_EQ(connection.get(), binder->connection().get());
+
+  device->connection_ = NULL;
+  AddDestructorExpectations();
+  connection = NULL;
 }
 
 }  // namespace shill
