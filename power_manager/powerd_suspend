@@ -149,7 +149,7 @@ if [ $cancel -eq 0 ]; then
     /usr/bin/send_metrics_on_resume &
 
     # Revive the modem if it was present prior to suspending but is absent now.
-    if [ $lumpy_with_gobi_modem ]; then
+    if [ $lumpy_with_gobi_modem -eq 1 ]; then
         if ! has_gobi_modem ; then
             log_msg "Reviving lumpy gobi modem"
             do_lumpy_gobi_modem_revive
