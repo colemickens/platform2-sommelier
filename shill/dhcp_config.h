@@ -5,8 +5,10 @@
 #ifndef SHILL_DHCP_CONFIG_
 #define SHILL_DHCP_CONFIG_
 
+#include <base/cancelable_callback.h>
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <dbus-c++/types.h>
 #include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -61,6 +63,10 @@ class DHCPConfig : public IPConfig {
   void ProcessEventSignal(const std::string &reason,
                           const Configuration &configuration);
 
+ protected:
+  // Overrides base clase implementation.
+  virtual void UpdateProperties(const Properties &properties, bool success);
+
  private:
   friend class DHCPConfigTest;
   FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
@@ -72,14 +78,17 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, ReleaseIP);
   FRIEND_TEST(DHCPConfigTest, RenewIP);
   FRIEND_TEST(DHCPConfigTest, RequestIP);
+  FRIEND_TEST(DHCPConfigTest, RequestIPTimeout);
   FRIEND_TEST(DHCPConfigTest, Restart);
   FRIEND_TEST(DHCPConfigTest, RestartNoClient);
   FRIEND_TEST(DHCPConfigTest, StartFail);
+  FRIEND_TEST(DHCPConfigTest, StartTimeout);
   FRIEND_TEST(DHCPConfigTest, StartWithHostname);
   FRIEND_TEST(DHCPConfigTest, StartWithoutArpGateway);
   FRIEND_TEST(DHCPConfigTest, StartWithoutHostname);
   FRIEND_TEST(DHCPConfigTest, StartWithoutLeaseSuffix);
   FRIEND_TEST(DHCPConfigTest, Stop);
+  FRIEND_TEST(DHCPConfigTest, StopDuringRequestIP);
   FRIEND_TEST(DHCPProviderTest, CreateConfig);
 
   static const char kConfigurationKeyBroadcastAddress[];
@@ -96,6 +105,7 @@ class DHCPConfig : public IPConfig {
   static const char kDHCPCDPath[];
   static const char kDHCPCDPathFormatLease[];
   static const char kDHCPCDPathFormatPID[];
+  static const int kDHCPTimeoutSeconds;
 
   static const char kReasonBound[];
   static const char kReasonFail[];
@@ -131,6 +141,16 @@ class DHCPConfig : public IPConfig {
   // its GPid, exit watch callback, and state files.
   void CleanupClientState();
 
+  // Initialize a callback that will invoke ProcessDHCPTimeout if we
+  // do not get a lease in a reasonable amount of time.
+  void StartDHCPTimeout();
+  // Cancel callback created by StartDHCPTimeout. One-liner included
+  // for symmetry.
+  void StopDHCPTimeout();
+  // Called if we do not get a DHCP lease in a reasonable amount of time.
+  // Informs upper layers of the failure.
+  void ProcessDHCPTimeout();
+
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
 
@@ -158,9 +178,17 @@ class DHCPConfig : public IPConfig {
   // The proxy for communicating with the DHCP client.
   scoped_ptr<DHCPProxyInterface> proxy_;
 
+  // Called if we fail to get a DHCP lease in a timely manner.
+  base::CancelableClosure lease_acquisition_timeout_callback_;
+
+  // Time to wait for a DHCP lease. Represented as field so that it
+  // can be overriden in tests.
+  unsigned int lease_acquisition_timeout_seconds_;
+
   // Root file path, used for testing.
   FilePath root_;
 
+  base::WeakPtrFactory<DHCPConfig> weak_ptr_factory_;
   EventDispatcher *dispatcher_;
   GLib *glib_;
 

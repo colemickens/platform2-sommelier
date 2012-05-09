@@ -435,6 +435,7 @@ class Service : public base::RefCounted<Service> {
   friend class ServiceAdaptorInterface;
   friend class VPNServiceTest;
   friend class WiFiServiceTest;
+  FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
   FRIEND_TEST(ServiceTest, ConfigureStringProperty);
   FRIEND_TEST(ServiceTest, Constructor);

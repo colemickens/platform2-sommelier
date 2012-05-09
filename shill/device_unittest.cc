@@ -35,12 +35,14 @@
 #include "shill/mock_store.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
+#include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
 
 using std::map;
 using std::string;
 using std::vector;
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::AtLeast;
 using ::testing::Mock;
 using ::testing::NiceMock;
@@ -89,6 +91,7 @@ class DeviceTest : public PropertyStoreTest {
         device_info_(control_interface(), NULL, NULL, NULL) {
     DHCPProvider::GetInstance()->glib_ = glib();
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
+    DHCPProvider::GetInstance()->dispatcher_ = dispatcher();
   }
   virtual ~DeviceTest() {}
 
@@ -277,6 +280,21 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
   SelectService(service);
   EXPECT_CALL(*service.get(), SetState(Service::kStateDisconnected));
   EXPECT_CALL(*service.get(), SetConnection(IsNullRefPtr()));
+  OnIPConfigUpdated(NULL, false);
+}
+
+TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  manager()));
+  SelectService(service);
+  service->static_ip_parameters_.args_.SetString(
+      flimflam::kAddressProperty, "1.1.1.1");
+  service->static_ip_parameters_.args_.SetInt(flimflam::kPrefixlenProperty, 16);
+  EXPECT_CALL(*service.get(), SetState(_)).Times(0);
+  EXPECT_CALL(*service.get(), SetConnection(_)).Times(0);
   OnIPConfigUpdated(NULL, false);
 }
 

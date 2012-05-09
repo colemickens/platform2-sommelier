@@ -102,7 +102,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
  protected:
   // Updates the IP configuration properties and notifies registered listeners
   // about the event. |success| is set to false if the IP configuration failed.
-  void UpdateProperties(const Properties &properties, bool success);
+  virtual void UpdateProperties(const Properties &properties, bool success);
 
   // |id_suffix| is appended to the storage id, intended to bind this instance
   // to its associated device.

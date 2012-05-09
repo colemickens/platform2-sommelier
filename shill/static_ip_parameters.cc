@@ -4,6 +4,8 @@
 
 #include "shill/static_ip_parameters.h"
 
+#include <string.h>
+
 #include <base/logging.h>
 #include <base/string_split.h>
 #include <chromeos/dbus/service_constants.h>
@@ -208,18 +210,6 @@ void StaticIPParameters::ClearMappedProperty(
   }
 }
 
-string StaticIPParameters::GetMappedStringProperty(
-    const size_t &index, Error *error) {
-  CHECK(index < arraysize(kProperties));
-
-  const string &key = kProperties[index].name;
-  if (!args_.ContainsString(key)) {
-    error->Populate(Error::kNotFound, "Property is not set");
-    return string();
-  }
-  return args_.GetString(key);
-}
-
 int32 StaticIPParameters::GetMappedInt32Property(
     const size_t &index, Error *error) {
   CHECK(index < arraysize(kProperties));
@@ -232,16 +222,28 @@ int32 StaticIPParameters::GetMappedInt32Property(
   return args_.GetInt(key);
 }
 
-void StaticIPParameters::SetMappedStringProperty(
-    const size_t &index, const string &value, Error *error) {
+string StaticIPParameters::GetMappedStringProperty(
+    const size_t &index, Error *error) {
   CHECK(index < arraysize(kProperties));
-  args_.SetString(kProperties[index].name, value);
+
+  const string &key = kProperties[index].name;
+  if (!args_.ContainsString(key)) {
+    error->Populate(Error::kNotFound, "Property is not set");
+    return string();
+  }
+  return args_.GetString(key);
 }
 
 void StaticIPParameters::SetMappedInt32Property(
     const size_t &index, const int32 &value, Error *error) {
   CHECK(index < arraysize(kProperties));
   args_.SetInt(kProperties[index].name, value);
+}
+
+void StaticIPParameters::SetMappedStringProperty(
+    const size_t &index, const string &value, Error *error) {
+  CHECK(index < arraysize(kProperties));
+  args_.SetString(kProperties[index].name, value);
 }
 
 }  // namespace shill

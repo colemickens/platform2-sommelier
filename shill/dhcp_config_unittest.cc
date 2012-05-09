@@ -325,6 +325,8 @@ class UpdateCallbackTest {
   bool called_;
 };
 
+void DoNothing() {}
+
 }  // namespace {}
 
 TEST_F(DHCPConfigTest, ProcessEventSignalFail) {
@@ -334,9 +336,11 @@ TEST_F(DHCPConfigTest, ProcessEventSignalFail) {
   UpdateCallbackTest callback_test(DHCPConfig::kReasonFail, config_, false);
   config_->RegisterUpdateCallback(
       Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+  config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
   config_->ProcessEventSignal(DHCPConfig::kReasonFail, conf);
   EXPECT_TRUE(callback_test.called());
   EXPECT_TRUE(config_->properties().address.empty());
+  EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
 }
 
 TEST_F(DHCPConfigTest, ProcessEventSignalSuccess) {
@@ -353,10 +357,12 @@ TEST_F(DHCPConfigTest, ProcessEventSignalSuccess) {
     UpdateCallbackTest callback_test(message, config_, true);
     config_->RegisterUpdateCallback(
         Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+    config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
     config_->ProcessEventSignal(kReasons[r], conf);
     EXPECT_TRUE(callback_test.called()) << message;
     EXPECT_EQ(base::StringPrintf("%zu.0.0.0", r), config_->properties().address)
         << message;
+    EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   }
 }
 
@@ -368,9 +374,11 @@ TEST_F(DHCPConfigTest, ProcessEventSignalUnknown) {
   UpdateCallbackTest callback_test(kReasonUnknown, config_, false);
   config_->RegisterUpdateCallback(
       Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+  config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
   config_->ProcessEventSignal(kReasonUnknown, conf);
   EXPECT_FALSE(callback_test.called());
   EXPECT_TRUE(config_->properties().address.empty());
+  EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
 }
 
 
@@ -383,18 +391,36 @@ TEST_F(DHCPConfigTest, ReleaseIP) {
 }
 
 TEST_F(DHCPConfigTest, RenewIP) {
+  EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   config_->pid_ = 456;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
   config_->proxy_.reset(proxy_.release());
   EXPECT_TRUE(config_->RenewIP());
+  EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   config_->pid_ = 0;
 }
 
 TEST_F(DHCPConfigTest, RequestIP) {
+  EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   config_->pid_ = 567;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
   config_->proxy_.reset(proxy_.release());
   EXPECT_TRUE(config_->RenewIP());
+  EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  config_->pid_ = 0;
+}
+
+TEST_F(DHCPConfigTest, RequestIPTimeout) {
+  UpdateCallbackTest callback_test(DHCPConfig::kReasonFail, config_, false);
+  config_->RegisterUpdateCallback(
+      Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+  config_->lease_acquisition_timeout_seconds_ = 0;
+  config_->pid_ = 567;
+  EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
+  config_->proxy_.reset(proxy_.release());
+  config_->RenewIP();
+  config_->dispatcher_->DispatchPendingEvents();
+  EXPECT_TRUE(callback_test.called());
   config_->pid_ = 0;
 }
 
@@ -449,6 +475,20 @@ TEST_F(DHCPConfigTest, StartSuccessPersistent) {
   StopRunningConfigAndExpect(config, true);
 }
 
+TEST_F(DHCPConfigTest, StartTimeout) {
+  UpdateCallbackTest callback_test(DHCPConfig::kReasonFail, config_, false);
+  config_->RegisterUpdateCallback(
+      Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
+  config_->lease_acquisition_timeout_seconds_ = 0;
+  config_->proxy_.reset(proxy_.release());
+  EXPECT_CALL(*glib(),
+              SpawnAsync(_, IsDHCPCDArgs(true, true, true), _, _, _, _, _, _))
+      .WillOnce(Return(true));
+  config_->Start();
+  config_->dispatcher_->DispatchPendingEvents();
+  EXPECT_TRUE(callback_test.called());
+}
+
 TEST_F(DHCPConfigTest, Stop) {
   // Ensure no crashes.
   const int kPID = 1 << 17;  // Ensure unknown positive PID.
@@ -456,6 +496,18 @@ TEST_F(DHCPConfigTest, Stop) {
   config_->pid_ = kPID;
   config_->Stop();
   EXPECT_CALL(*glib(), SpawnClosePID(kPID)).Times(1);  // Invoked by destructor.
+  EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+}
+
+TEST_F(DHCPConfigTest, StopDuringRequestIP) {
+  config_->pid_ = 567;
+  EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
+  config_->proxy_.reset(proxy_.release());
+  EXPECT_TRUE(config_->RenewIP());
+  EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  config_->pid_ = 0;  // Keep Stop from killing a real process.
+  config_->Stop();
+  EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
 }
 
 TEST_F(DHCPConfigTest, SetProperty) {

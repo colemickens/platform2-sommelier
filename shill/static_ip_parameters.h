@@ -43,6 +43,7 @@ class StaticIPParameters {
 
  private:
   friend class StaticIPParametersTest;
+  FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
 
   struct Property {
     enum Type {

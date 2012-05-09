@@ -389,8 +389,36 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     // to the Online state.
     StartPortalDetection();
   } else {
-    // TODO(pstew): This logic gets more complex when multiple IPConfig types
-    // are run in parallel (e.g. DHCP and DHCP6)
+    // TODO(pstew): This logic gets yet more complex when multiple
+    // IPConfig types are run in parallel (e.g. DHCP and DHCP6)
+    if (selected_service_ &&
+        selected_service_->static_ip_parameters().ContainsAddress()) {
+      // Consider three cases:
+      //
+      // 1. We're here because DHCP failed while starting up. There
+      //    are two subcases:
+      //    a. DHCP has failed, and Static IP config has _not yet_
+      //       completed. It's fine to do nothing, because we'll
+      //       apply the static config shortly.
+      //    b. DHCP has failed, and Static IP config has _already_
+      //       completed. It's fine to do nothing, because we can
+      //       continue to use the static config that's already
+      //       been applied.
+      //
+      // 2. We're here because a previously valid DHCP configuration
+      //    is no longer valid. There's still a static IP config,
+      //    because the condition in the if clause evaluated to true.
+      //    Furthermore, the static config includes an IP address for
+      //    us to use.
+      //
+      //    The current configuration may include some DHCP
+      //    parameters, overriden by any static parameters
+      //    provided. We continue to use this configuration, because
+      //    the only configuration element that is leased to us (IP
+      //    address) will be overriden by a static parameter.
+      return;
+    }
+
     SetServiceState(Service::kStateDisconnected);
     DestroyConnection();
   }

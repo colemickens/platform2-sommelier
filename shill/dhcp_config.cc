@@ -41,6 +41,7 @@ const char DHCPConfig::kDHCPCDPathFormatLease[] =
     "var/lib/dhcpcd/dhcpcd-%s.lease";
 const char DHCPConfig::kDHCPCDPathFormatPID[] =
     "var/run/dhcpcd/dhcpcd-%s.pid";
+const int DHCPConfig::kDHCPTimeoutSeconds = 30;
 const int DHCPConfig::kMinMTU = 576;
 const char DHCPConfig::kReasonBound[] = "BOUND";
 const char DHCPConfig::kReasonFail[] = "FAIL";
@@ -67,7 +68,9 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       arp_gateway_(arp_gateway),
       pid_(0),
       child_watch_tag_(0),
+      lease_acquisition_timeout_seconds_(kDHCPTimeoutSeconds),
       root_("/"),
+      weak_ptr_factory_(this),
       dispatcher_(dispatcher),
       glib_(glib) {
   SLOG(DHCP, 2) << __func__ << ": " << device_name;
@@ -104,6 +107,7 @@ bool DHCPConfig::RenewIP() {
     return false;
   }
   proxy_->Rebind(device_name());
+  StartDHCPTimeout();
   return true;
 }
 
@@ -146,6 +150,11 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
   UpdateProperties(properties, true);
 }
 
+void DHCPConfig::UpdateProperties(const Properties &properties, bool success) {
+  StopDHCPTimeout();
+  IPConfig::UpdateProperties(properties, success);
+}
+
 bool DHCPConfig::Start() {
   SLOG(DHCP, 2) << __func__ << ": " << device_name();
 
@@ -184,6 +193,7 @@ bool DHCPConfig::Start() {
   provider_->BindPID(pid_, this);
   CHECK(!child_watch_tag_);
   child_watch_tag_ = glib_->ChildWatchAdd(pid_, ChildWatchCallback, this);
+  StartDHCPTimeout();
   return true;
 }
 
@@ -208,6 +218,7 @@ void DHCPConfig::Stop() {
     if (ret != pid_)
       PLOG(ERROR);
   }
+  StopDHCPTimeout();
 }
 
 bool DHCPConfig::Restart() {
@@ -322,6 +333,24 @@ void DHCPConfig::CleanupClientState() {
   }
   file_util::Delete(root_.Append(
       base::StringPrintf(kDHCPCDPathFormatPID, device_name().c_str())), false);
+}
+
+void DHCPConfig::StartDHCPTimeout() {
+  lease_acquisition_timeout_callback_.Reset(
+      Bind(&DHCPConfig::ProcessDHCPTimeout, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(
+      lease_acquisition_timeout_callback_.callback(),
+      lease_acquisition_timeout_seconds_ * 1000);
+}
+
+void DHCPConfig::StopDHCPTimeout() {
+  lease_acquisition_timeout_callback_.Cancel();
+}
+
+void DHCPConfig::ProcessDHCPTimeout() {
+  LOG(ERROR) << "Timed out waiting for DHCP lease on " << device_name() << " "
+             << "(after " << lease_acquisition_timeout_seconds_ << " seconds).";
+  UpdateProperties(IPConfig::Properties(), false);
 }
 
 }  // namespace shill
