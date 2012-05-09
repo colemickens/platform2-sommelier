@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -476,6 +476,9 @@ class GobiModem
   static int EventKeyToIndex(const char *key);
   void RequestEvent(const std::string req, DBus::Error& error);
   bool event_enabled[GOBI_EVENT_MAX];
+
+  // Sets the Enabled property and emits a property changed signal.
+  void SetEnabled(bool enabled);
 
   FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmDisconnected);
   FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmConnected);

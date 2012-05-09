@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -1158,7 +1158,7 @@ void GobiModem::PowerCycle(DBus::Error &error) {
 }
 
 void GobiModem::ResetModem(DBus::Error& error) {
-  Enabled = false;
+  SetEnabled(false);
   SetMmState(MM_MODEM_STATE_DISABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   LOG(INFO) << "Offline";
 
@@ -1271,11 +1271,11 @@ void GobiModem::GetPowerState() {
   else {
     LOG(INFO) << "Initial power mode: " << power_mode;
     if (power_mode == gobi::kOnline) {
-      Enabled = true;
+      SetEnabled(true);
       State = mm_state_ = MM_MODEM_STATE_ENABLED;
       RegistrationStateHandler();
     } else {
-      Enabled = false;
+      SetEnabled(false);
       State = mm_state_ = MM_MODEM_STATE_DISABLED;
     }
   }
@@ -1437,14 +1437,14 @@ void GobiModem::PowerModeHandler() {
   } else {
     LOG(INFO) << "PowerModeHandler: " << power_mode;
     if (power_mode == gobi::kOnline) {
-      Enabled = true;
+      SetEnabled(true);
       SetMmState(MM_MODEM_STATE_ENABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
       registration_time_.Start();    // Stopped in
       // GobiCdmaModem::RegistrationStateHandler,
       // if appropriate
     } else {
       ApiDisconnect();
-      Enabled = false;
+      SetEnabled(false);
       SetMmState(MM_MODEM_STATE_DISABLED,
                  MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
     }
@@ -1740,4 +1740,14 @@ void GobiModem::Reset(DBus::Error& error) {
   // the bus; that code is still in the git repo.
 
   ExitAndResetDevice(0);
+}
+
+void GobiModem::SetEnabled(bool enabled) {
+  Enabled = enabled;
+  LOG(INFO) << "MM sending Enabled property changed signal: " << enabled;
+  utilities::DBusPropertyMap props;
+  props["Enabled"].writer().append_bool(enabled);
+  MmPropertiesChanged(
+      org::freedesktop::ModemManager::Modem_adaptor::introspect()->name,
+      props);
 }
