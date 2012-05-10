@@ -47,10 +47,20 @@ export DISPLAY=:0.0
 # If used with Address Sanitizer, set the following flags to alter memory
 # allocations by glibc. Hopefully later, when ASAN matures, we will not need
 # any changes for it to run.
+ASAN_FLAGS=
 if use_flag_is_set asan; then
+  # Make glib use system malloc.
   export G_SLICE=always-malloc
+
+  # Make nss skip dlclosing dynamically loaded modules,
+  # which would result in "obj:*" in backtraces.
   export NSS_DISABLE_ARENA_FREE_LIST=1
+
+  # Make nss use system malloc.
   export NSS_DISABLE_UNLOAD=1
+
+  # Disable sandboxing as it causes crashes in ASAN. crosbug.com/127536.
+  ASAN_FLAGS="--no-sandbox"
 fi
 
 # Change the directory for ibus-daemon socket file from ~/.config/ibus/bus/ to
@@ -349,4 +359,5 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${SHOW_VOLUME_STATUS_FLAG} \
             ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
+            ${ASAN_FLAGS} \
     ${WM_SCRIPT:+-- "${WM_SCRIPT}"}
