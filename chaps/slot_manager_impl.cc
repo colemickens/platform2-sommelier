@@ -91,7 +91,7 @@ const struct MechanismInfo {
 // Performs expensive tasks required to initialize a token.
 class TokenInitThread : public base::PlatformThread::Delegate {
  public:
-  // This class will take ownership of the 'importer' pointer only.
+  // This class will not take ownership of any pointers.
   TokenInitThread(int slot_id,
                   FilePath path,
                   const string& auth_data,
@@ -100,6 +100,7 @@ class TokenInitThread : public base::PlatformThread::Delegate {
 
   virtual ~TokenInitThread() {}
 
+  // PlatformThread::Delegate interface.
   void ThreadMain();
 
  private:
@@ -110,6 +111,26 @@ class TokenInitThread : public base::PlatformThread::Delegate {
   string auth_data_;
   TPMUtility* tpm_utility_;
   ObjectPool* object_pool_;
+};
+
+// Performs expensive tasks required to terminate a token.
+class TokenTermThread : public base::PlatformThread::Delegate {
+ public:
+  // This class will not take ownership of any pointers.
+  TokenTermThread(int slot_id, TPMUtility* tpm_utility)
+      : slot_id_(slot_id),
+        tpm_utility_(tpm_utility) {}
+
+  virtual ~TokenTermThread() {}
+
+  // PlatformThread::Delegate interface.
+  void ThreadMain() {
+    tpm_utility_->UnloadKeysForSlot(slot_id_);
+  }
+
+ private:
+  int slot_id_;
+  TPMUtility* tpm_utility_;
 };
 
 TokenInitThread::TokenInitThread(int slot_id,
@@ -209,11 +230,11 @@ SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory, TPMUtility* tpm_utility)
 
 SlotManagerImpl::~SlotManagerImpl() {
   for (size_t i = 0; i < slot_list_.size(); ++i) {
+    // Wait for any worker thread to finish.
+    if (slot_list_[i].worker_thread.get())
+      base::PlatformThread::Join(slot_list_[i].worker_thread_handle);
     // Unload any keys that have been loaded in the TPM.
     tpm_utility_->UnloadKeysForSlot(i);
-    // Wait for any worker thread to finish.
-    if (slot_list_[i].init_thread.get())
-      base::PlatformThread::Join(slot_list_[i].init_thread_handle);
   }
 }
 
@@ -342,6 +363,7 @@ bool SlotManagerImpl::GetSession(int session_id, Session** session) const {
 }
 
 void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
+  VLOG(2) << "SlotManagerImpl::OnLogin enter";
   // If we're already managing this token, ignore the event.
   if (path_slot_map_.find(path) != path_slot_map_.end()) {
     LOG(WARNING) << "Login event received for existing slot.";
@@ -362,42 +384,57 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
                                                                 tpm_utility_)));
   CHECK(object_pool.get());
 
+  // Wait for the termination of a previous token.
+  if (slot_list_[slot_id].worker_thread.get())
+    base::PlatformThread::Join(slot_list_[slot_id].worker_thread_handle);
+
   // Decrypting (or creating) the master key requires the TPM so we'll put this
   // on a worker thread. This has the effect that queries for public objects
   // are responsive but queries for private objects will be waiting for the
   // master key to be ready.
-  slot_list_[slot_id].init_thread.reset(
+  slot_list_[slot_id].worker_thread.reset(
       new TokenInitThread(slot_id,
                           path,
                           auth_data,
                           tpm_utility_,
                           object_pool.get()));
   base::PlatformThread::Create(0,
-                               slot_list_[slot_id].init_thread.get(),
-                               &slot_list_[slot_id].init_thread_handle);
+                               slot_list_[slot_id].worker_thread.get(),
+                               &slot_list_[slot_id].worker_thread_handle);
 
   // Insert the new token into the empty slot.
   slot_list_[slot_id].token_object_pool = object_pool;
   slot_list_[slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = slot_id;
   LOG(INFO) << "Slot ready for token at " << path.value();
+  VLOG(2) << "SlotManagerImpl::OnLogin success";
 }
 
 void SlotManagerImpl::OnLogout(const FilePath& path) {
+  VLOG(2) << "SlotManagerImpl::OnLogout enter";
   // If we're not managing this token, ignore the event.
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
     LOG(WARNING) << "Logout event received for unknown path: " << path.value();
     return;
   }
   int slot_id = path_slot_map_[path];
+
   // Wait for initialization to be finished before cleaning up.
-  base::PlatformThread::Join(slot_list_[slot_id].init_thread_handle);
-  slot_list_[slot_id].init_thread.reset();
-  tpm_utility_->UnloadKeysForSlot(slot_id);
+  if (slot_list_[slot_id].worker_thread.get())
+    base::PlatformThread::Join(slot_list_[slot_id].worker_thread_handle);
+
+  // Spawn a thread to handle the TPM-related work.
+  slot_list_[slot_id].worker_thread.reset(new TokenTermThread(slot_id,
+                                                              tpm_utility_));
+  base::PlatformThread::Create(0,
+                               slot_list_[slot_id].worker_thread.get(),
+                               &slot_list_[slot_id].worker_thread_handle);
+
   CloseAllSessions(slot_id);
   slot_list_[slot_id].token_object_pool.reset();
   slot_list_[slot_id].slot_info.flags &= ~CKF_TOKEN_PRESENT;
   path_slot_map_.erase(path);
+  VLOG(2) << "SlotManagerImpl::OnLogout success";
 }
 
 void SlotManagerImpl::OnChangeAuthData(const FilePath& path,

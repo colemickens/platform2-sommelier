@@ -72,8 +72,8 @@ class SlotManagerImpl : public SlotManager,
     // Key: A session identifier.
     // Value: The associated session object.
     std::map<int, std::tr1::shared_ptr<Session> > sessions;
-    std::tr1::shared_ptr<base::PlatformThread::Delegate> init_thread;
-    base::PlatformThreadHandle init_thread_handle;
+    std::tr1::shared_ptr<base::PlatformThread::Delegate> worker_thread;
+    base::PlatformThreadHandle worker_thread_handle;
   };
 
   // Provides default PKCS #11 slot and token information. This method fills
