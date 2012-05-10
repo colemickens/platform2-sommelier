@@ -159,13 +159,10 @@ bool Input::RegisterInputDevices() {
     LOG(ERROR) << "Cannot open input dir : " << input_path.value().c_str();
     return false;
   }
-  if (!num_power_key_events_) {
-    LOG(ERROR) << "No power keys registered.";
-    retval = false;
-  } else {
-    LOG(INFO) << "Number of power key events registered : "
-              << num_power_key_events_;
-  }
+
+  LOG(INFO) << "Number of power key events registered : "
+            << num_power_key_events_;
+
   // Allow max of one lid.
   if (num_lid_events_ > 1) {
     LOG(ERROR) << "No lid events registered.";
