@@ -41,6 +41,7 @@ gfx_events="
     i915:i915_flip_request
     i915:i915_flip_complete
     i915:i915_gem_object_pwrite
+    drm:drm_vblank_event
 "
 power_events="
     power:cpu_idle
