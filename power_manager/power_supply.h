@@ -133,7 +133,7 @@ class PowerSupply {
   double GetLinearTimeToEmpty();
 
   // Determine remaining time when charging or discharging.
-  void CalculateRemainingTime(PowerStatus *status);
+  void CalculateRemainingTime(PowerStatus* status);
 
   // Offsets the timestamps used in hysteresis calculations.  This is used when
   // suspending and resuming -- the time while suspended should not count toward

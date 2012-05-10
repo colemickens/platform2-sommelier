@@ -35,9 +35,9 @@ bool MockXSync::QueryExtension(int* event_base, int* error_base) {
   return true;
 }
 
-XSyncSystemCounter* MockXSync::ListSystemCounters(int* ncounters) {
-  if (ncounters)
-    *ncounters = kNumCounters;
+XSyncSystemCounter* MockXSync::ListSystemCounters(int* num_counters) {
+  if (num_counters)
+    *num_counters = kNumCounters;
   // Create a list of mock counters.
   XSyncSystemCounter* counters = new XSyncSystemCounter[kNumCounters];
   CHECK(counters);

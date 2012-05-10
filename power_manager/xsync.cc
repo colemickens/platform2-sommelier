@@ -25,19 +25,19 @@ bool XSync::Initialize(int* major_version, int* minor_version) {
   return XSyncInitialize(display_, major_version, minor_version);
 }
 
-XSyncSystemCounter* XSync::ListSystemCounters(int* ncounters) {
-  return XSyncListSystemCounters(display_, ncounters);
+XSyncSystemCounter* XSync::ListSystemCounters(int* num_counters) {
+  return XSyncListSystemCounters(display_, num_counters);
 }
 
-void XSync::FreeSystemCounterList(XSyncSystemCounter* ncounters) {
-  XSyncFreeSystemCounterList(ncounters);
+void XSync::FreeSystemCounterList(XSyncSystemCounter* counters) {
+  XSyncFreeSystemCounterList(counters);
 }
 
 bool XSync::QueryCounterInt64(XSyncCounter counter, int64* value) {
   XSyncValue xvalue;
-  int retval = XSyncQueryCounter(display_, counter, &xvalue);
+  int result = XSyncQueryCounter(display_, counter, &xvalue);
   *value = ValueToInt64(xvalue);
-  return retval;
+  return result;
 }
 
 bool XSync::QueryCounter(XSyncCounter counter, XSyncValue* value) {

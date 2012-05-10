@@ -66,14 +66,14 @@ int main(int argc, char* argv[]) {
   info.disable_idle_blank = FLAGS_disable_idle_blank;
   info.disable_idle_suspend = FLAGS_disable_idle_suspend;
   info.disable_lid_suspend = FLAGS_disable_lid_suspend;
-  int ret;
-  if (!SendStateOverrideRequest(&info, &ret)) {
+  int result;
+  if (!SendStateOverrideRequest(&info, &result)) {
     std::cerr << "Error sending request" << std::endl;
     return(-1);
   }
   if (!FLAGS_quiet)
     std::cout << "Success.  request_id: ";
 
-  std::cout << ret << std::endl;
+  std::cout << result << std::endl;
   return 0;
 }

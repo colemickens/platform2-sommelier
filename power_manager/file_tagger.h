@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -51,7 +51,7 @@ class FileTagger {
   // Handles deletion of the trace files, signaling that the data has been
   // collected, and can be written to anew.  This depends on crash reporter to
   // do the right thing by deleting the files after it reads them.
-  static gboolean TraceFileChangeHandler(const char* name, int wd,
+  static gboolean TraceFileChangeHandler(const char* name, int watch_handle,
                                          unsigned int mask, gpointer data);
 
   // For file system notifications and changes

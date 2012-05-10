@@ -26,7 +26,7 @@ class XSyncInterface {
 
   // For XSync system counter access.
   virtual XSyncSystemCounter* ListSystemCounters(int* num_counters) = 0;
-  virtual void FreeSystemCounterList(XSyncSystemCounter* num_counters) = 0;
+  virtual void FreeSystemCounterList(XSyncSystemCounter* counters) = 0;
   virtual bool QueryCounterInt64(XSyncCounter counter, int64* value) = 0;
   virtual bool QueryCounter(XSyncCounter counter, XSyncValue* value) = 0;
 

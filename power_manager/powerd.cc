@@ -278,10 +278,11 @@ void Daemon::SetPlugged(bool plugged) {
   // If we are moving from kPowerUknown then we don't know how long the device
   // has been on AC for and thus our metric would not tell us anything about the
   // battery state when the user decided to charge.
-  if (plugged_state_ != kPowerUnknown)
+  if (plugged_state_ != kPowerUnknown) {
     GenerateBatteryRemainingWhenChargeStartsMetric(
         plugged ? kPowerConnected : kPowerDisconnected,
         power_status_);
+  }
 
   LOG(INFO) << "Daemon : SetPlugged = " << plugged;
   plugged_state_ = plugged ? kPowerConnected : kPowerDisconnected;
@@ -485,11 +486,10 @@ void Daemon::IdleEventNotify(int64 threshold) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               kPowerManagerServicePath,
                               kPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kPowerManagerInterface,
-                                                threshold ?
-                                                    kIdleNotifySignal :
-                                                    kActiveNotifySignal);
+  DBusMessage* signal = dbus_message_new_signal(
+      kPowerManagerServicePath,
+      kPowerManagerInterface,
+      threshold ? kIdleNotifySignal : kActiveNotifySignal);
   CHECK(signal);
   dbus_message_append_args(signal,
                            DBUS_TYPE_INT64, &threshold_int,
@@ -1071,7 +1071,7 @@ DBusMessage* Daemon::HandleGetScreenBrightnessMethod(DBusMessage* message) {
     return util::CreateDBusErrorReply(message, DBUS_ERROR_FAILED,
                                       "Could not fetch Screen Brightness");
   }
-  DBusMessage *reply = dbus_message_new_method_return(message);
+  DBusMessage* reply = dbus_message_new_method_return(message);
   CHECK(reply);
   dbus_message_append_args(reply,
                            DBUS_TYPE_DOUBLE, &percent,
@@ -1140,7 +1140,7 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
   protobuf.set_averaged_battery_time_to_full(
       status->averaged_battery_time_to_full);
 
-  DBusMessage *reply = dbus_message_new_method_return(message);
+  DBusMessage* reply = dbus_message_new_method_return(message);
   CHECK(reply);
   std::string serialized_proto;
   CHECK(protobuf.SerializeToString(&serialized_proto));
@@ -1148,18 +1148,17 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
   // typecode, the array address, and the number of elements (as opposed to
   // the usual typecode-followed-by-address ordering).
   const char* serial_data = serialized_proto.data();
-  dbus_message_append_args(
-      reply,
-      DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-      &serial_data, serialized_proto.size(),
-      DBUS_TYPE_INVALID);
+  dbus_message_append_args(reply,
+                           DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+                           &serial_data, serialized_proto.size(),
+                           DBUS_TYPE_INVALID);
   return reply;
 }
 
 DBusMessage* Daemon::HandleStateOverrideRequestMethod(DBusMessage* message) {
   DBusError error;
   dbus_error_init(&error);
-  char *data;
+  char* data;
   int size;
   if (dbus_message_get_args(message, &error,
                             DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
@@ -1169,7 +1168,7 @@ DBusMessage* Daemon::HandleStateOverrideRequestMethod(DBusMessage* message) {
     bool success = state_control_->StateOverrideRequest(
          data, size, &return_value);
     if (success) {
-      DBusMessage *reply = dbus_message_new_method_return(message);
+      DBusMessage* reply = dbus_message_new_method_return(message);
       CHECK(reply);
       dbus_message_append_args(reply,
                                DBUS_TYPE_INT32, &return_value,

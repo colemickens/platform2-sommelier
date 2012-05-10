@@ -182,7 +182,7 @@ bool StateControl::StateOverrideRequestStruct(const StateControlInfo* request,
     return false;
   }
 
-  StateControlInfo *new_entry = NULL;
+  StateControlInfo* new_entry = NULL;
 
   if (request->request_id != 0) {
     StateControlList::iterator iter =
@@ -211,7 +211,7 @@ bool StateControl::StateOverrideRequestStruct(const StateControlInfo* request,
       LOG(ERROR) << "Could not get unused index to store request";
       LOG(ERROR) << "Map size is " << state_override_list_.size();
       delete new_entry;
-      return(false);
+      return false;
     }
   }
   new_entry->duration             = request->duration;

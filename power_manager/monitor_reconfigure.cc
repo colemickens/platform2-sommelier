@@ -91,8 +91,7 @@ MonitorReconfigure::MonitorReconfigure()
       backlight_ctl_(NULL) {
 }
 
-MonitorReconfigure::MonitorReconfigure(
-    BacklightController* backlight_ctl)
+MonitorReconfigure::MonitorReconfigure(BacklightController* backlight_ctl)
     : display_(NULL),
       window_(None),
       screen_info_(NULL),
@@ -655,7 +654,7 @@ bool MonitorReconfigure::NeedSwitchMode() {
   if (!SetupXrandr())
     return false;
 
-  bool ret = true;
+  bool result = true;
 
   std::vector<OutputInfo> current_outputs;
   DetermineOutputs(&current_outputs);
@@ -663,12 +662,12 @@ bool MonitorReconfigure::NeedSwitchMode() {
   // Don't switch mode if we only have internal panel as output.
   if (internal_panel_connection_ == RR_Connected &&
       current_outputs.size() == 1)
-    ret = false;
+    result = false;
 
   ClearUsableOutputsInfo();
   ClearXrandr();
 
-  return ret;
+  return result;
 }
 
 void  MonitorReconfigure::SwitchMode() {
@@ -863,7 +862,7 @@ bool MonitorReconfigure::SetScreenResolution(
 }
 
 XEventHandlerStatus MonitorReconfigure::HandleXEvent(XEvent* xevent) {
-  XRRNotifyEvent *aevent = reinterpret_cast<XRRNotifyEvent*>(xevent);
+  XRRNotifyEvent* aevent = reinterpret_cast<XRRNotifyEvent*>(xevent);
   if (xevent->type == rr_event_base_ + RRScreenChangeNotify ||
       xevent->type == rr_event_base_ + RRNotify) {
     switch (xevent->type - rr_event_base_) {

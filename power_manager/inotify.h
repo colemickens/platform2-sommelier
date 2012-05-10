@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,14 +14,15 @@ namespace power_manager {
 class Inotify {
  public:
   typedef gboolean (*InotifyCallback)(const char* name,   // path name to watch
-                                      int wd,             // watch handle
+                                      int watch_handle,   // watch handle
                                       unsigned int mask,  // inotify mask
                                       gpointer);          // data from init
   Inotify();
   ~Inotify();
 
-  // |cb| is the callback used when an event occurs. |data| is passed to cb.
-  bool Init(InotifyCallback cb, gpointer data);
+  // |callback| is the callback used when an event occurs.
+  // |data| is passed to |callback|.
+  bool Init(InotifyCallback callback, gpointer data);
 
   // Add an inotify watch on on path |name|. |mask| is an inotify event mask.
   // See linux/inotify.h for legal values.

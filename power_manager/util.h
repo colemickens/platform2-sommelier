@@ -15,14 +15,14 @@ namespace util {
 bool OOBECompleted();
 
 // Issue command asynchronously.
-void Launch(const char* cmd);
+void Launch(const char* command);
 
 // Status file creation and removal.
 void CreateStatusFile(const FilePath& file);
 void RemoveStatusFile(const FilePath& file);
 
 // Get the current wakeup count from sysfs
-bool GetWakeupCount(unsigned int *value);
+bool GetWakeupCount(unsigned int* value);
 
 // Get a connection to the X server. Opens a connection the first time it's
 // called and caches it.

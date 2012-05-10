@@ -28,7 +28,7 @@ class MockXSync : public XSyncInterface {
     return true;
   }
 
-  virtual XSyncSystemCounter* ListSystemCounters(int* ncounters) OVERRIDE;
+  virtual XSyncSystemCounter* ListSystemCounters(int* num_counters) OVERRIDE;
   virtual void FreeSystemCounterList(XSyncSystemCounter* counters) OVERRIDE;
   virtual bool QueryCounterInt64(XSyncCounter counter, int64* value) OVERRIDE;
   virtual bool QueryCounter(XSyncCounter counter, XSyncValue* value) OVERRIDE;

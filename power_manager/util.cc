@@ -29,13 +29,13 @@ bool OOBECompleted() {
   return access("/home/chronos/.oobe_completed", F_OK) == 0;
 }
 
-void Launch(const char* cmd) {
-  LOG(INFO) << "Launching " << cmd;
+void Launch(const char* command) {
+  LOG(INFO) << "Launching " << command;
   pid_t pid = fork();
   if (pid == 0) {
     // Detach from parent so that powerd doesn't need to wait around for us
     setsid();
-    exit(fork() == 0 ? system(cmd) : 0);
+    exit(fork() == 0 ? system(command) : 0);
   } else if (pid > 0) {
     waitpid(pid, NULL, 0);
   }
@@ -57,7 +57,7 @@ void RemoveStatusFile(const FilePath& file) {
   }
 }
 
-bool GetWakeupCount(unsigned int *value) {
+bool GetWakeupCount(unsigned int* value) {
   int64 temp_value;
   FilePath path(kWakeupCountPath);
   std::string buf;

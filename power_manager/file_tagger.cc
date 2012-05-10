@@ -83,9 +83,9 @@ bool FileTagger::SetupTraceFileNotifier() {
 }
 
 gboolean FileTagger::TraceFileChangeHandler(const char* name,
-                                           int,               // watch handle
-                                           unsigned int,      // mask
-                                           gpointer data) {
+                                            int /* watch_handle */,
+                                            unsigned int /* mask */,
+                                            gpointer data) {
   FileTagger* tagger = static_cast<FileTagger*>(data);
   LOG(INFO) << "Received file system change signal from file " << name;
   if (!strcmp(name, tagger->suspend_file_.BaseName().value().c_str()) ||

@@ -51,10 +51,10 @@ bool XIdle::Init(XIdleObserver* observer) {
   }
 
   XSyncSystemCounter* counters;
-  int ncounters;
-  counters = xsync_->ListSystemCounters(&ncounters);
+  int num_counters;
+  counters = xsync_->ListSystemCounters(&num_counters);
   if (counters) {
-    for (int i = 0; i < ncounters; ++i) {
+    for (int i = 0; i < num_counters; ++i) {
       if (counters[i].name && strcmp(counters[i].name, "IDLETIME") == 0) {
         idle_counter_ = counters[i].counter;
         break;

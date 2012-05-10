@@ -34,7 +34,7 @@ Inotify::~Inotify() {
   }
 }
 
-bool Inotify::Init(InotifyCallback cb, gpointer data) {
+bool Inotify::Init(InotifyCallback callback, gpointer data) {
   int fd = inotify_init();
   if (fd < 0) {
     LOG(ERROR) << "Error in inotify_init";
@@ -45,7 +45,7 @@ bool Inotify::Init(InotifyCallback cb, gpointer data) {
     LOG(ERROR) << "Error creating gio channel for Inotify.";
     return false;
   }
-  callback_ = cb;
+  callback_ = callback;
   callback_data_ = data;
   return true;
 }
@@ -57,10 +57,10 @@ int Inotify::AddWatch(const char* name, int mask) {
     return -1;
   }
   LOG(INFO) << "Creating watch for " << name;
-  int wd = inotify_add_watch(fd, name, mask);
-  if (wd < 0)
+  int watch_handle = inotify_add_watch(fd, name, mask);
+  if (watch_handle < 0)
     LOG(ERROR) << "Error creating inotify watch for " << name;
-  return wd;
+  return watch_handle;
 }
 
 void Inotify::Start() {
@@ -83,8 +83,8 @@ gboolean Inotify::CallbackHandler(GIOChannel* source,
   gpointer callback_data = inotifier->callback_data_;
   char buf[kInotifyBufferSize];
   gsize len;
-  GIOError err = g_io_channel_read(source, buf, kInotifyBufferSize, &len);
-  if (G_IO_ERROR_NONE != err) {
+  GIOError error = g_io_channel_read(source, buf, kInotifyBufferSize, &len);
+  if (G_IO_ERROR_NONE != error) {
     LOG(ERROR) << "Error reading from inotify!";
     return false;
   }

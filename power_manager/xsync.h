@@ -23,8 +23,8 @@ class XSync : public XSyncInterface {
   virtual bool QueryExtension(int* event_base, int* error_base) OVERRIDE;
   virtual bool Initialize(int* major_version, int* minor_version) OVERRIDE;
 
-  virtual XSyncSystemCounter* ListSystemCounters(int* ncounters OVERRIDE);
-  virtual void FreeSystemCounterList(XSyncSystemCounter* ncounters) OVERRIDE;
+  virtual XSyncSystemCounter* ListSystemCounters(int* num_counters OVERRIDE);
+  virtual void FreeSystemCounterList(XSyncSystemCounter* counters) OVERRIDE;
   virtual bool QueryCounterInt64(XSyncCounter counter, int64* value) OVERRIDE;
   virtual bool QueryCounter(XSyncCounter counter, XSyncValue* value) OVERRIDE;
 

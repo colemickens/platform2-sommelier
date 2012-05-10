@@ -80,7 +80,7 @@ void PowerManDaemon::Init() {
   // Only 1-10 retries prior to just shutting down.
   CHECK_GT(retry_suspend_attempts_, 0);
   CHECK_LE(retry_suspend_attempts_, 10);
-  use_input_for_lid_ = 1 == use_input_for_lid;
+  use_input_for_lid_ = (use_input_for_lid == 1);
   loop_ = g_main_loop_new(NULL, false);
   // Acquire a handle to the console for VT switch locking ioctl.
   CHECK(GetConsole());
@@ -317,7 +317,7 @@ void PowerManDaemon::HandleRequestCleanShutdownSignal(DBusMessage*) {  // NOLINT
 }
 
 void PowerManDaemon::HandlePowerStateChangedSignal(DBusMessage* message) {
-  const char *state = '\0';
+  const char* state = '\0';
   DBusError error;
   dbus_error_init(&error);
   if (dbus_message_get_args(message, &error,
@@ -426,7 +426,7 @@ void PowerManDaemon::AddDBusMethodHandler(const std::string& interface,
 
 void PowerManDaemon::DBusNameOwnerChangedHandler(
     DBusGProxy*, const gchar* name, const gchar* old_owner,
-    const gchar* new_owner, void *data) {
+    const gchar* new_owner, void* data) {
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
   if (!name || !new_owner || !old_owner) {
     LOG(ERROR) << "NameOwnerChanged with Null name.";
@@ -547,8 +547,6 @@ void PowerManDaemon::Restart() {
 
 void PowerManDaemon::Suspend(unsigned int wakeup_count,
                              bool wakeup_count_valid) {
-  char suspend_cmd[60];
-
   LOG(INFO) << "Launching Suspend";
   if ((suspend_pid_ > 0) && !kill(-suspend_pid_, 0)) {
     LOG(ERROR) << "Previous retry suspend pid:"
@@ -558,11 +556,12 @@ void PowerManDaemon::Suspend(unsigned int wakeup_count,
                         CreateRetrySuspendArgs(this, lid_id_));
 
   // create command line
-  if (wakeup_count_valid && snprintf(suspend_cmd, sizeof(suspend_cmd),
+  char suspend_command[60];
+  if (wakeup_count_valid && snprintf(suspend_command, sizeof(suspend_command),
                                      "powerd_suspend --wakeup_count %d",
-                                     wakeup_count) == sizeof(suspend_cmd)) {
+                                     wakeup_count) == sizeof(suspend_command)) {
     LOG(ERROR) << "Command line exceeded size limit: "
-               << sizeof(suspend_cmd);
+               << sizeof(suspend_command);
     // We shouldn't ever exceed 60 chars (leaves 40 chars for the int)
     // If we do, exit out and let the retry handle it
     return;
@@ -584,7 +583,7 @@ void PowerManDaemon::Suspend(unsigned int wakeup_count,
       if (CancelDBusRequest()) {
         exit(system("powerd_suspend --cancel"));
       } else if (wakeup_count_valid) {
-        exit(system(suspend_cmd));
+        exit(system(suspend_command));
       } else {
         exit(system("powerd_suspend"));
       }
@@ -640,17 +639,17 @@ void PowerManDaemon::UnlockVTSwitch() {
 }
 
 bool PowerManDaemon::GetConsole() {
-  bool retval = true;
+  bool result = true;
   FilePath file_path("/dev/tty0");
   if ((console_fd_ = open(file_path.value().c_str(), O_RDWR)) < 0) {
     LOG(ERROR) << "Failed to open " << file_path.value().c_str()
                << ", errno = " << errno;
-    retval = false;
+    result = false;
   } else {
     LOG(INFO) << "Opened console " << file_path.value().c_str()
               << " with file id = " << console_fd_;
   }
-  return retval;
+  return result;
 }
 
 }  // namespace power_manager

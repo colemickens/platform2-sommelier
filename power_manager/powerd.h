@@ -197,7 +197,7 @@ class Daemon : public XIdleObserver,
   static void OnPowerEvent(void* object, const PowerStatus& info);
 
   // Handles power supply udev events.
-  static gboolean UdevEventHandler(GIOChannel* source,
+  static gboolean UdevEventHandler(GIOChannel*,
                                    GIOCondition condition,
                                    gpointer data);
 
@@ -312,9 +312,8 @@ class Daemon : public XIdleObserver,
   void SuspendEnable();
 
   // Callback for Inotify of Preference directory changes.
-  static gboolean PrefChangeHandler(const char* name, int wd,
-                                    unsigned int mask,
-                                    gpointer data);
+  static gboolean PrefChangeHandler(const char* name, int watch_handle,
+                                    unsigned int mask, gpointer data);
 
   // Generates UMA metrics on every idle event.
   void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);

@@ -288,7 +288,7 @@ double PowerSupply::GetLinearTimeToEmpty() {
                                                                 voltage_now_));
 }
 
-void PowerSupply::CalculateRemainingTime(PowerStatus *status) {
+void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
   CHECK(time_now_func);
   base::Time time_now = time_now_func();
   // This function might be called due to a race condition between the suspend

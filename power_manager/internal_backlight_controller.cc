@@ -317,7 +317,7 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
 
   if (new_state == BACKLIGHT_SUSPENDED) {
     style = TRANSITION_INSTANT;
-    suspended_through_idle_off_ = old_state == BACKLIGHT_IDLE_OFF;
+    suspended_through_idle_off_ = (old_state == BACKLIGHT_IDLE_OFF);
   }
 
   bool write_brightness = true;

@@ -105,26 +105,26 @@ bool Input::Init(const vector<string>& wakeup_input_names) {
 }
 
 #define BITS_PER_LONG (sizeof(long) * 8)
-#define NBITS(x) ((((x) - 1) / BITS_PER_LONG) + 1)
+#define NUM_BITS(x) ((((x) - 1) / BITS_PER_LONG) + 1)
 #define OFF(x)  ((x) % BITS_PER_LONG)
 #define BIT(x)  (1UL << OFF(x))
 #define LONG(x) ((x) / BITS_PER_LONG)
 #define IS_BIT_SET(bit, array)  ((array[LONG(bit)] >> OFF(bit)) & 1)
 
 bool Input::QueryLidState(int* lid_state) {
-  unsigned long sw[NBITS(SW_LID + 1)];
   if (0 > lid_fd_) {
     LOG(ERROR) << "No lid found on system.";
     return false;
   }
-  memset(sw, 0, sizeof(sw));
-  if (ioctl(lid_fd_, EVIOCGBIT(EV_SW, SW_LID + 1), sw) < 0) {
+  unsigned long switch_events[NUM_BITS(SW_LID + 1)];
+  memset(switch_events, 0, sizeof(switch_events));
+  if (ioctl(lid_fd_, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
     LOG(ERROR) << "Error in GetLidState ioctl";
     return false;
   }
-  if (IS_BIT_SET(SW_LID, sw)) {
-    ioctl(lid_fd_, EVIOCGSW(sizeof(sw)), sw);
-    *lid_state = IS_BIT_SET(SW_LID, sw);
+  if (IS_BIT_SET(SW_LID, switch_events)) {
+    ioctl(lid_fd_, EVIOCGSW(sizeof(switch_events)), switch_events);
+    *lid_state = IS_BIT_SET(SW_LID, switch_events);
     return true;
   } else {
     return false;
@@ -145,7 +145,6 @@ bool Input::RegisterInputDevices() {
   FilePath input_path("/dev/input");
   DIR* dir = opendir(input_path.value().c_str());
   int num_registered = 0;
-  bool retval = true;
   if (dir) {
     struct dirent entry;
     struct dirent* result;
@@ -166,11 +165,10 @@ bool Input::RegisterInputDevices() {
   // Allow max of one lid.
   if (num_lid_events_ > 1) {
     LOG(ERROR) << "No lid events registered.";
-    retval = false;
-  } else {
-    LOG(INFO) << "Number of lid events registered : " << num_lid_events_;
+    return false;
   }
-  return retval;
+  LOG(INFO) << "Number of lid events registered : " << num_lid_events_;
+  return true;
 }
 
 bool Input::RegisterInputWakeSources() {
@@ -187,16 +185,16 @@ bool Input::RegisterInputWakeSources() {
 }
 
 bool Input::SetInputWakeupStates() {
-  bool ret = true;
+  bool result = true;
   for (WakeupMap::iterator iter = wakeup_inputs_map_.begin();
        iter != wakeup_inputs_map_.end(); iter++) {
     int input_num = (*iter).second;
     if (input_num != -1 && !SetWakeupState(input_num, wakeups_enabled_)) {
-      ret = false;
+      result = false;
       LOG(WARNING) << "Failed to set power/wakeup for input" << input_num;
     }
   }
-  return ret;
+  return result;
 }
 
 bool Input::SetWakeupState(int input_num, bool enabled) {
@@ -293,11 +291,10 @@ bool Input::RemoveEvent(const char* name) {
   // The tag should not be invalid (see AddEvent()).  So log a warning instead
   // of failing or skipping.
   LOG_IF(WARNING, tag == 0) << "Attempting to remove invalid glib source.";
-  gboolean ret = g_source_remove(tag);
-  if (!ret)
-    DLOG(INFO) << "Remove of watch failed!";
-  else
+  if (g_source_remove(tag))
     DLOG(INFO) << "Watch removed successfully!";
+  else
+    DLOG(INFO) << "Remove of watch failed!";
   registered_inputs_.erase(iter);
   return true;
 }
@@ -309,12 +306,12 @@ bool Input::AddWakeInput(const char* name) {
 
   FilePath input_path = sys_class_input_path.Append(name);
   FilePath device_name_path = input_path.Append("name");
-  std::string input_name;
-
   if (access(device_name_path.value().c_str(), R_OK)) {
     LOG(WARNING) << "Failed to access input name.";
     return false;
   }
+
+  std::string input_name;
   if (!file_util::ReadFileToString(device_name_path, &input_name)) {
     LOG(WARNING) << "Failed to read input name.";
     return false;
@@ -354,11 +351,7 @@ bool Input::RemoveWakeInput(const char* name) {
 }
 
 GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
-  unsigned long events[NBITS(EV_MAX)];
   char name[256] = "Unknown";
-  char phys[256] = "Unknown";
-  bool watch_added = false;
-
   if (ioctl(fd, EVIOCGNAME(sizeof(name)), name) < 0) {
     LOG(ERROR) << "Could not get name of this device.";
     return NULL;
@@ -366,6 +359,7 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
     LOG(INFO) << "Device name : " << name;
   }
 
+  char phys[256] = "Unknown";
   if (ioctl(fd, EVIOCGPHYS(sizeof(phys)), phys) < 0) {
     LOG(ERROR) << "Could not get topo phys path of this device.";
     return NULL;
@@ -391,6 +385,7 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
   }
 #endif
 
+  unsigned long events[NUM_BITS(EV_MAX)];
   memset(events, 0, sizeof(events));
   if (ioctl(fd, EVIOCGBIT(0, EV_MAX), events) < 0) {
     LOG(ERROR) << "Error in powerm ioctl - event list";
@@ -398,8 +393,9 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
   }
 
   GIOChannel* channel = NULL;
+  bool watch_added = false;
   if (IS_BIT_SET(EV_KEY, events)) {
-    unsigned long keys[NBITS(KEY_MAX)];
+    unsigned long keys[NUM_BITS(KEY_MAX)];
     memset(keys, 0, sizeof(keys));
     if (ioctl(fd, EVIOCGBIT(EV_KEY, KEY_MAX), keys) < 0) {
       LOG(ERROR) << "Error in powerm ioctl - key";
@@ -413,17 +409,17 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
     }
   }
   if (IS_BIT_SET(EV_SW, events)) {
-    unsigned long sw[NBITS(SW_LID + 1)];
-    memset(sw, 0, sizeof(sw));
-    if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), sw) < 0) {
-      LOG(ERROR) << "Error in powerm ioctl - sw";
+    unsigned long switch_events[NUM_BITS(SW_LID + 1)];
+    memset(switch_events, 0, sizeof(switch_events));
+    if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
+      LOG(ERROR) << "Error in powerm ioctl - switch_events";
     }
     // An input event may have more than one kind of key or switch.
     // For example, if both the power button and the lid switch are handled
     // by the gpio_keys driver, both will share a single event in /dev/input.
     // In this case, only create one io channel per fd, and only add one
     // watch per event file.
-    if (IS_BIT_SET(SW_LID, sw)) {
+    if (IS_BIT_SET(SW_LID, switch_events)) {
       num_lid_events_++;
       if (!watch_added) {
           LOG(INFO) << "Watching this event for lid switch!";
@@ -506,22 +502,21 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
   Input* input = static_cast<Input*>(data);
   if (condition != G_IO_IN)
     return false;
-  unsigned int fd, rd, i;
-  struct input_event ev[64];
-  fd = g_io_channel_unix_get_fd(source);
-  rd = read(fd, ev, sizeof(struct input_event) * 64);
-  if (rd < static_cast<int>(sizeof(struct input_event))) {
+  struct input_event events[64];
+  gint fd = g_io_channel_unix_get_fd(source);
+  unsigned int read_size = read(fd, events, sizeof(struct input_event) * 64);
+  if (read_size < static_cast<int>(sizeof(struct input_event))) {
     LOG(ERROR) << "failed reading";
     return true;
   }
   if (!input->handler_)
     return true;
-  for (i = 0; i < rd / sizeof(struct input_event); i++) {
-    InputType input_type = GetInputType(ev[i]);
+  for (unsigned int i = 0; i < read_size / sizeof(struct input_event); i++) {
+    InputType input_type = GetInputType(events[i]);
     if (input_type == INPUT_UNHANDLED)
       continue;
     LOG(INFO) << "Handling event: " << InputTypeToString(input_type);
-    (*input->handler_)(input->handler_data_, input_type, ev[i].value);
+    (*input->handler_)(input->handler_data_, input_type, events[i].value);
     LOG(INFO) << "Input event handled: " << InputTypeToString(input_type);
   }
   return true;

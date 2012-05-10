@@ -30,7 +30,7 @@ bool IsUserLoggedIn() {
   GError* error = NULL;
   gchar* state = NULL;
   gchar* user = NULL;
-  bool retval;
+  bool result;
   if (dbus_g_proxy_call(proxy,
                         login_manager::kSessionManagerRetrieveSessionState,
                         &error,
@@ -40,17 +40,17 @@ bool IsUserLoggedIn() {
                         G_TYPE_STRING,
                         &user,
                         G_TYPE_INVALID)) {
-    retval = strcmp(state, "started") == 0;
+    result = (strcmp(state, "started") == 0);
     g_free(state);
     g_free(user);
   } else {
     LOG(ERROR) << "Unable to retrieve session state from session manager: "
                << error->message;
     g_error_free(error);
-    retval = access("/var/run/state/logged-in", F_OK) == 0;
+    result = access("/var/run/state/logged-in", F_OK) == 0;
   }
   g_object_unref(proxy);
-  return retval;
+  return result;
 }
 
 void SendSignalToSessionManager(const char* signal) {
@@ -122,9 +122,7 @@ void SendSignalWithIntToPowerD(const char* signal_name, int value) {
                                                 kPowerManagerInterface,
                                                 signal_name);
   CHECK(signal);
-  dbus_message_append_args(signal,
-                           DBUS_TYPE_INT32, &value,
-                           DBUS_TYPE_INVALID);
+  dbus_message_append_args(signal, DBUS_TYPE_INT32, &value, DBUS_TYPE_INVALID);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   dbus_message_unref(signal);
 }
@@ -134,8 +132,8 @@ bool CallMethodInPowerD(const char* method_name,
                         uint32 size,
                         int* return_value) {
   LOG(INFO) << "Calling method '" << method_name << "' in PowerManager";
-  DBusConnection *connection = dbus_g_connection_get_connection(
-        chromeos::dbus::GetSystemBusConnection().g_connection());
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(connection);
   DBusMessage* message = dbus_message_new_method_call(kPowerManagerServiceName,
                                                       kPowerManagerServicePath,
@@ -149,16 +147,16 @@ bool CallMethodInPowerD(const char* method_name,
   DBusError error;
   dbus_error_init(&error);
   DBusMessage* response =
-    dbus_connection_send_with_reply_and_block(connection,
-                                              message,
-                                              DBUS_TIMEOUT_USE_DEFAULT,
-                                              &error);
+      dbus_connection_send_with_reply_and_block(connection,
+                                                message,
+                                                DBUS_TIMEOUT_USE_DEFAULT,
+                                                &error);
   dbus_message_unref(message);
   if (dbus_error_is_set(&error)) {
     LOG(ERROR) << "SendMethodToPowerD: method '" << method_name << ": "
                << error.name << " (" << error.message << ")";
     dbus_error_free(&error);
-    return(false);
+    return false;
   }
   DBusError response_error;
   dbus_error_init(&response_error);
@@ -170,10 +168,10 @@ bool CallMethodInPowerD(const char* method_name,
                  << " (" << response_error.message << ")";
     dbus_error_free(&response_error);
     dbus_message_unref(response);
-    return(false);
+    return false;
   }
   dbus_message_unref(response);
-  return(true);
+  return true;
 }
 
 DBusMessage* CreateEmptyDBusReply(DBusMessage* message) {
