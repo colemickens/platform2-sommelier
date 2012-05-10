@@ -219,5 +219,30 @@ void AddDBusMethodMatch(DBusConnection* connection,
   }
 }
 
+void LogDBusError(DBusMessage* message) {
+  if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_ERROR) {
+    LOG(ERROR) << "Received message of non-error type in LogDBusError";
+    return;
+  }
+
+  char* error_string = NULL;
+  if (!dbus_message_get_args(message, NULL,
+                             DBUS_TYPE_STRING, &error_string,
+                             DBUS_TYPE_INVALID)) {
+    LOG(ERROR) << "Could not get arg from dbus error message";
+    return;
+  }
+
+  if (!error_string) {
+    LOG(ERROR) << "Error string for dbus error message is NULL";
+    return;
+  }
+
+  LOG(INFO) << "Received error message from "
+            << dbus_message_get_sender(message) << " with name "
+            << dbus_message_get_error_name(message) << ": "
+            << error_string;
+}
+
 }  // namespace util
 }  // namespace power_manager

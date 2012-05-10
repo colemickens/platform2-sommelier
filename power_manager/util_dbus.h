@@ -62,6 +62,9 @@ void AddDBusMethodMatch(DBusConnection* connection,
                         const std::string& path,
                         const std::string& member);
 
+// Parse out the error message and log it for debugging.
+void LogDBusError(DBusMessage* message);
+
 }  // namespace util
 }  // namespace power_manager
 

@@ -245,15 +245,7 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   // Filter out error messages -- should not be getting them.
   int type = dbus_message_get_type(message);
   if (type == DBUS_MESSAGE_TYPE_ERROR) {
-    char* error_string = NULL;
-    CHECK(dbus_message_get_args(message, NULL,
-                                DBUS_TYPE_STRING, &error_string,
-                                DBUS_TYPE_INVALID));
-    CHECK(error_string);
-    LOG(INFO) << "Received error message from "
-              << dbus_message_get_sender(message) << " with name "
-              << dbus_message_get_error_name(message) << ": "
-              << error_string;
+    util::LogDBusError(message);
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
 

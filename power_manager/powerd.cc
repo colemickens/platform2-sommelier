@@ -712,10 +712,12 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
 
   // Filter out messages other than signals and method calls.
   int type = dbus_message_get_type(message);
-
   if (type != DBUS_MESSAGE_TYPE_METHOD_CALL &&
-      type != DBUS_MESSAGE_TYPE_SIGNAL)
+      type != DBUS_MESSAGE_TYPE_SIGNAL) {
+    if (type == DBUS_MESSAGE_TYPE_ERROR)
+      util::LogDBusError(message);
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+  }
 
   // Look up and call the corresponding dbus message handler.
   std::string interface = dbus_message_get_interface(message);
