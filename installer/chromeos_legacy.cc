@@ -96,6 +96,27 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
   return true;
 }
 
+bool RunLegacyUBootPostInstall(const InstallConfig& install_config) {
+  printf("Running LegacyUBootPostInstall\n");
+
+  string src_img = StringPrintf("%s/boot/boot-%s.scr.uimg",
+                                install_config.root.mount().c_str(),
+                                install_config.slot.c_str());
+
+  string dst_img = StringPrintf("%s/u-boot/boot.scr.uimg",
+                                install_config.boot.mount().c_str());
+
+  // If the source img file exists, copy it into place, else do
+  // nothing.
+  if (access(src_img.c_str(), R_OK) == 0) {
+    printf("Copying '%s' to '%s'\n", src_img.c_str(), dst_img.c_str());
+    return CopyFile(src_img, dst_img);
+  } else {
+    printf("Not present to install: '%s'\n", src_img.c_str());
+    return true;
+  }
+}
+
 bool RunEfiPostInstall(const InstallConfig& install_config) {
   printf("Running EfiPostInstall\n");
   printf("!!!Not yet supported!!!\n");

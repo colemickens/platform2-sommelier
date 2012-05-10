@@ -366,8 +366,7 @@ bool RunPostInstall(const string& install_dir,
   sync();
 
   // If we are installing to a ChromeOS Bios, we are done.
-  if ((install_config.bios_type == kBiosTypeSecure) ||
-      (install_config.bios_type == kBiosTypeUBoot))
+  if (install_config.bios_type == kBiosTypeSecure)
     return true;
 
   install_config.boot.set_mount("/tmp/boot_mnt");
@@ -389,9 +388,17 @@ bool RunPostInstall(const string& install_dir,
   {
     case kBiosTypeUnknown:
     case kBiosTypeSecure:
-    case kBiosTypeUBoot:
       printf("Unexpected BiosType %d.\n", install_config.bios_type);
       success = false;
+      break;
+
+    case kBiosTypeUBoot:
+      // The Arm platform only uses U-Boot, but may set cros_legacy to mean
+      // U-Boot without secure boot modifications. This may need handling.
+      if (!RunLegacyUBootPostInstall(install_config)) {
+        printf("Legacy PostInstall failed.\n");
+        success = false;
+      }
       break;
 
     case kBiosTypeLegacy:

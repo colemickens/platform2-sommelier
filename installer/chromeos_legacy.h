@@ -11,6 +11,10 @@
 // (syslinux config files) on the boot partition. Returns false on error.
 bool RunLegacyPostInstall(const InstallConfig& install_config);
 
+// Attempts to update boot files needed by u-boot (not our secure u-boot)
+// in some development situations.
+bool RunLegacyUBootPostInstall(const InstallConfig& install_config);
+
 // Attempts to update boot files needed by the EFI bios boot
 // (grub config files) on the boot partition. Returns false on error.
 bool RunEfiPostInstall(const InstallConfig& install_config);
