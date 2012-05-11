@@ -42,6 +42,7 @@ class L2TPIPSecDriver : public VPNDriver,
                               int interface_index);
   virtual void Connect(const VPNServiceRefPtr &service, Error *error);
   virtual void Disconnect();
+  virtual void OnConnectionDisconnected();
   virtual std::string GetProviderType() const;
 
  private:
@@ -59,6 +60,7 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, InitPSKOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, Notify);
   FRIEND_TEST(L2TPIPSecDriverTest, NotifyFail);
+  FRIEND_TEST(L2TPIPSecDriverTest, OnConnectionDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);
   FRIEND_TEST(L2TPIPSecDriverTest, ParseIPConfiguration);
   FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN);

@@ -52,6 +52,7 @@ class OpenVPNDriver : public VPNDriver,
   virtual bool ClaimInterface(const std::string &link_name,
                               int interface_index);
   virtual void Disconnect();
+  virtual void OnConnectionDisconnected();
 
   virtual void OnReconnecting();
 
@@ -86,6 +87,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, InitPKCS11Options);
   FRIEND_TEST(OpenVPNDriverTest, Notify);
   FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
+  FRIEND_TEST(OpenVPNDriverTest, OnConnectionDisconnected);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
   FRIEND_TEST(OpenVPNDriverTest, OnReconnecting);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);

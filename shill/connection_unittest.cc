@@ -28,7 +28,6 @@ using std::vector;
 using testing::_;
 using testing::NiceMock;
 using testing::Return;
-using testing::ReturnRef;
 using testing::StrictMock;
 using testing::Test;
 
@@ -609,6 +608,7 @@ TEST_F(ConnectionTest, Binder) {
     connection = NULL;
 
     // Ensure no crash -- the weak pointer to connection should be NULL.
+    EXPECT_FALSE(binder.connection());
     binder.Attach(NULL);
   }
 }

@@ -51,7 +51,7 @@ class MockService : public Service {
   MOCK_CONST_METHOD0(IsPortalDetectionAuto, bool());
   MOCK_CONST_METHOD0(IsRemembered, bool());
   MOCK_CONST_METHOD0(HasProxyConfig, bool());
-  MOCK_METHOD1(SetConnection, void(ConnectionRefPtr connection));
+  MOCK_METHOD1(SetConnection, void(const ConnectionRefPtr &connection));
   MOCK_CONST_METHOD0(connection, const ConnectionRefPtr &());
   MOCK_CONST_METHOD0(explicitly_disconnected, bool());
   MOCK_CONST_METHOD0(technology, Technology::Identifier());

@@ -44,6 +44,7 @@ class Connection : public base::RefCounted<Connection> {
     // any. Pass NULL to just unbind this Binder.
     void Attach(const ConnectionRefPtr &to_connection);
 
+    const std::string &name() const { return name_; }
     bool IsBound() const { return connection_ != NULL; }
     ConnectionRefPtr connection() const { return connection_.get(); }
 
@@ -111,6 +112,7 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, InitState);
   FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
   FRIEND_TEST(ConnectionTest, RequestHostRoute);
+  FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
 
   static const uint32 kDefaultMetric;
   static const uint32 kNonDefaultMetricBase;

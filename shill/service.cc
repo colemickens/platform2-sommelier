@@ -28,6 +28,7 @@
 #include "shill/refptr_types.h"
 #include "shill/scope_logger.h"
 #include "shill/service_dbus_adaptor.h"
+#include "shill/sockets.h"
 #include "shill/store_interface.h"
 
 using std::map;
@@ -118,8 +119,8 @@ Service::Service(ControlInterface *control_interface,
       configuration_(NULL),
       adaptor_(control_interface->CreateServiceAdaptor(this)),
       metrics_(metrics),
-      manager_(manager) {
-
+      manager_(manager),
+      sockets_(new Sockets()) {
   HelpRegisterDerivedBool(flimflam::kAutoConnectProperty,
                           &Service::GetAutoConnect,
                           &Service::SetAutoConnect);
@@ -465,10 +466,10 @@ void Service::MakeFavorite() {
   favorite_ = true;
 }
 
-void Service::SetConnection(ConnectionRefPtr connection) {
+void Service::SetConnection(const ConnectionRefPtr &connection) {
   if (connection.get()) {
     http_proxy_.reset(new HTTPProxy(connection));
-    http_proxy_->Start(dispatcher_, &sockets_);
+    http_proxy_->Start(dispatcher_, sockets_.get());
   } else {
     http_proxy_.reset();
   }

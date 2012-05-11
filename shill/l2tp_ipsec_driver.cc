@@ -103,6 +103,11 @@ void L2TPIPSecDriver::Disconnect() {
   Cleanup(Service::kStateIdle);
 }
 
+void L2TPIPSecDriver::OnConnectionDisconnected() {
+  SLOG(VPN, 2) << __func__;
+  Cleanup(Service::kStateFailure);
+}
+
 string L2TPIPSecDriver::GetProviderType() const {
   return flimflam::kProviderL2tpIpsec;
 }

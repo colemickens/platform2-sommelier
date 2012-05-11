@@ -29,6 +29,7 @@ class VPNDriver {
                               int interface_index) = 0;
   virtual void Connect(const VPNServiceRefPtr &service, Error *error) = 0;
   virtual void Disconnect() = 0;
+  virtual void OnConnectionDisconnected() = 0;
   virtual std::string GetProviderType() const = 0;
 
   virtual void InitPropertyStore(PropertyStore *store);

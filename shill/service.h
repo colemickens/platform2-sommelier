@@ -21,7 +21,6 @@
 #include "shill/callbacks.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
-#include "shill/sockets.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
 
@@ -41,6 +40,7 @@ class KeyValueStore;
 class Manager;
 class Metrics;
 class ServiceAdaptorInterface;
+class Sockets;
 class StoreInterface;
 
 // A Service is a uniquely named entity, which the system can
@@ -140,7 +140,6 @@ class Service : public base::RefCounted<Service> {
           Metrics *metrics,
           Manager *manager,
           Technology::Identifier technology);
-  virtual ~Service();
 
   // AutoConnect MAY choose to ignore the connection request in some
   // cases. For example, if the corresponding Device only supports one
@@ -246,10 +245,11 @@ class Service : public base::RefCounted<Service> {
 
   virtual void MakeFavorite();
 
-  // Set the connection for this service.  If the connection is
-  // non-NULL, create an HTTP Proxy that will utilize this service's
-  // connection to serve requests.
-  virtual void SetConnection(ConnectionRefPtr connection);
+  // Set the connection for this service.  If the connection is non-NULL, create
+  // an HTTP Proxy that will utilize this service's connection to serve
+  // requests.
+  virtual void SetConnection(const ConnectionRefPtr &connection);
+  virtual const ConnectionRefPtr &connection() const { return connection_; }
 
   // Examines the EAP credentials for the service and returns true if a
   // connection attempt can be made.
@@ -338,12 +338,15 @@ class Service : public base::RefCounted<Service> {
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
-  virtual const ConnectionRefPtr &connection() const { return connection_; }
   const StaticIPParameters &static_ip_parameters() const {
     return static_ip_parameters_;
   }
 
  protected:
+  friend class base::RefCounted<Service>;
+
+  virtual ~Service();
+
   // Returns true if a character is allowed to be in a service storage id.
   static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
 
@@ -430,6 +433,7 @@ class Service : public base::RefCounted<Service> {
  private:
   friend class MetricsTest;
   friend class ServiceAdaptorInterface;
+  friend class VPNServiceTest;
   friend class WiFiServiceTest;
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
   FRIEND_TEST(ServiceTest, ConfigureStringProperty);
@@ -447,7 +451,6 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SetCheckPortal);
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, Unload);
-  FRIEND_TEST(VPNServiceTest, ConnectAlreadyConnected);
 
   static const char kAutoConnConnected[];
   static const char kAutoConnConnecting[];
@@ -526,7 +529,7 @@ class Service : public base::RefCounted<Service> {
   StaticIPParameters static_ip_parameters_;
   Metrics *metrics_;
   Manager *manager_;
-  Sockets sockets_;
+  scoped_ptr<Sockets> sockets_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

@@ -10,33 +10,61 @@
 #include "shill/error.h"
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_connection.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_sockets.h"
 #include "shill/mock_store.h"
 #include "shill/mock_vpn_driver.h"
 #include "shill/mock_vpn_provider.h"
 
+using std::string;
 using testing::_;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
 
 namespace shill {
 
 class VPNServiceTest : public testing::Test {
  public:
   VPNServiceTest()
-      : driver_(new MockVPNDriver()),
+      : interface_name_("test-interface"),
+        driver_(new MockVPNDriver()),
         manager_(&control_, NULL, NULL, NULL),
+        device_info_(&control_, NULL, NULL, NULL),
+        connection_(new NiceMock<MockConnection>(&device_info_)),
+        sockets_(new MockSockets()),
         service_(new VPNService(&control_, NULL, &metrics_, &manager_,
-                                driver_)) {}
+                                driver_)) {
+    service_->sockets_.reset(sockets_);  // Passes ownership.
+  }
 
   virtual ~VPNServiceTest() {}
 
  protected:
+  virtual void SetUp() {
+    ON_CALL(*connection_, interface_name())
+        .WillByDefault(ReturnRef(interface_name_));
+  }
+
+  virtual void TearDown() {
+    EXPECT_CALL(device_info_, FlushAddresses(0));
+  }
+
+  void SetServiceState(Service::ConnectState state) {
+    service_->state_ = state;
+  }
+
+  std::string interface_name_;
   MockVPNDriver *driver_;  // Owned by |service_|.
   NiceMockControl control_;
   MockManager manager_;
   MockMetrics metrics_;
+  MockDeviceInfo device_info_;
+  scoped_refptr<NiceMock<MockConnection> > connection_;
+  MockSockets *sockets_;  // Owned by |service_|.
   VPNServiceRefPtr service_;
 };
 
@@ -56,11 +84,11 @@ TEST_F(VPNServiceTest, Connect) {
 TEST_F(VPNServiceTest, ConnectAlreadyConnected) {
   Error error;
   EXPECT_CALL(*driver_, Connect(_, _)).Times(0);
-  service_->state_ = Service::kStateOnline;
+  SetServiceState(Service::kStateOnline);
   service_->Connect(&error);
   EXPECT_EQ(Error::kAlreadyConnected, error.type());
   error.Reset();
-  service_->state_ = Service::kStateConfiguring;
+  SetServiceState(Service::kStateConfiguring);
   service_->Connect(&error);
   EXPECT_EQ(Error::kAlreadyConnected, error.type());
 }
@@ -164,6 +192,25 @@ TEST_F(VPNServiceTest, MakeFavorite) {
   service_->MakeFavorite();
   EXPECT_TRUE(service_->favorite());
   EXPECT_FALSE(service_->auto_connect());
+}
+
+TEST_F(VPNServiceTest, SetConnection) {
+  EXPECT_FALSE(service_->connection_binder_.get());
+  EXPECT_FALSE(service_->connection());
+  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
+  service_->SetConnection(connection_);
+  ASSERT_TRUE(service_->connection_binder_.get());
+  EXPECT_EQ(connection_.get(),
+            service_->connection_binder_->connection().get());
+  EXPECT_EQ(connection_.get(), service_->connection().get());
+  EXPECT_CALL(*driver_, OnConnectionDisconnected()).Times(0);
+}
+
+TEST_F(VPNServiceTest, OnConnectionDisconnected) {
+  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
+  service_->SetConnection(connection_);
+  EXPECT_CALL(*driver_, OnConnectionDisconnected()).Times(1);
+  connection_->OnLowerDisconnect();
 }
 
 }  // namespace shill

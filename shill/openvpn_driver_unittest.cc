@@ -644,6 +644,13 @@ TEST_F(OpenVPNDriverTest, Disconnect) {
   EXPECT_FALSE(driver_->service_);
 }
 
+TEST_F(OpenVPNDriverTest, OnConnectionDisconnected) {
+  driver_->service_ = service_;
+  EXPECT_CALL(*service_, SetState(Service::kStateFailure));
+  driver_->OnConnectionDisconnected();
+  EXPECT_FALSE(driver_->service_);
+}
+
 TEST_F(OpenVPNDriverTest, OnReconnecting) {
   driver_->OnReconnecting();  // Expect no crash.
   driver_->device_ = device_;

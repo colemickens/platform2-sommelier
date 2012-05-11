@@ -230,9 +230,8 @@ bool Connection::RequestHostRoute(const IPAddress &address) {
           address_prefix,
           -1,
           interface_index_,
-          RoutingTable::Query::Callback(
-              Bind(&Connection::OnRouteQueryResponse,
-                   weak_ptr_factory_.GetWeakPtr())))) {
+          Bind(&Connection::OnRouteQueryResponse,
+               weak_ptr_factory_.GetWeakPtr()))) {
     LOG(ERROR) << "Could not request route to " << address.ToString();
     return false;
   }
@@ -314,7 +313,7 @@ bool Connection::PinHostRoute(const IPConfig::Properties &properties) {
 void Connection::OnRouteQueryResponse(int interface_index,
                                       const RoutingTableEntry &entry) {
   SLOG(Connection, 2) << __func__ << "(" << interface_index << ", "
-                      << entry.tag << ")";
+                      << entry.tag << ")" << " @ " << interface_name_;
   lower_binder_.Attach(NULL);
   DeviceRefPtr device = device_info_->GetDevice(interface_index);
   if (!device) {
@@ -330,7 +329,7 @@ void Connection::OnRouteQueryResponse(int interface_index,
 }
 
 void Connection::OnLowerDisconnect() {
-  SLOG(Connection, 2) << __func__ << "(" << interface_name_ << ")";
+  SLOG(Connection, 2) << __func__ << " @ " << interface_name_;
   // Ensures that |this| instance doesn't get destroyed in the middle of
   // notifying the binders. This method needs to be separate from
   // NotifyBindersOnDisconnect because the latter may be invoked by Connection's
@@ -341,7 +340,7 @@ void Connection::OnLowerDisconnect() {
 
 void Connection::NotifyBindersOnDisconnect() {
   // Note that this method may be invoked by the destructor.
-  SLOG(Connection, 2) << __func__ << "(" << interface_name_ << ")";
+  SLOG(Connection, 2) << __func__ << " @ " << interface_name_;
 
   // Unbinds the lower connection before notifying the binders. This ensures
   // correct behavior in case of circular binding.
@@ -356,12 +355,14 @@ void Connection::NotifyBindersOnDisconnect() {
 }
 
 void Connection::AttachBinder(Binder *binder) {
-  SLOG(Connection, 2) << __func__ << "(" << interface_name_ << ")";
+  SLOG(Connection, 2) << __func__ << "(" << binder->name() << ")" << " @ "
+                      << interface_name_;
   binders_.push_back(binder);
 }
 
 void Connection::DetachBinder(Binder *binder) {
-  SLOG(Connection, 2) << __func__ << "(" << interface_name_ << ")";
+  SLOG(Connection, 2) << __func__ << "(" << binder->name() << ")" << " @ "
+                      << interface_name_;
   for (deque<Binder *>::iterator it = binders_.begin();
        it != binders_.end(); ++it) {
     if (binder == *it) {

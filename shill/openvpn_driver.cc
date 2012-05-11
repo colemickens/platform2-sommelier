@@ -624,6 +624,11 @@ void OpenVPNDriver::Disconnect() {
   Cleanup(Service::kStateIdle);
 }
 
+void OpenVPNDriver::OnConnectionDisconnected() {
+  SLOG(VPN, 2) << __func__;
+  Cleanup(Service::kStateFailure);
+}
+
 void OpenVPNDriver::OnReconnecting() {
   SLOG(VPN, 2) << __func__;
   if (device_) {

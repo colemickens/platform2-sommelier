@@ -8,6 +8,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/connection.h"
 #include "shill/service.h"
 
 namespace shill {
@@ -33,6 +34,7 @@ class VPNService : public Service {
   virtual bool Save(StoreInterface *storage);
   virtual bool Unload();
   virtual void MakeFavorite();
+  virtual void SetConnection(const ConnectionRefPtr &connection);
 
   virtual void InitDriverPropertyStore();
 
@@ -44,11 +46,13 @@ class VPNService : public Service {
 
  private:
   FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
+  FRIEND_TEST(VPNServiceTest, SetConnection);
 
   virtual std::string GetDeviceRpcId(Error *error);
 
   std::string storage_id_;
   scoped_ptr<VPNDriver> driver_;
+  scoped_ptr<Connection::Binder> connection_binder_;
 
   // Provided only for compatibility.  crosbug.com/29286
   std::string vpn_domain_;

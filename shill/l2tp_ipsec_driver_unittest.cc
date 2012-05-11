@@ -415,6 +415,13 @@ TEST_F(L2TPIPSecDriverTest, Disconnect) {
   EXPECT_FALSE(driver_->service_);
 }
 
+TEST_F(L2TPIPSecDriverTest, OnConnectionDisconnected) {
+  driver_->service_ = service_;
+  EXPECT_CALL(*service_, SetState(Service::kStateFailure));
+  driver_->OnConnectionDisconnected();
+  EXPECT_FALSE(driver_->service_);
+}
+
 TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {
   // Sanity test property store initialization.
   PropertyStore store;

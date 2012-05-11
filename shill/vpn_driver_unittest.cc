@@ -58,6 +58,7 @@ class VPNDriverUnderTest : public VPNDriver {
                                     int interface_index));
   MOCK_METHOD2(Connect, void(const VPNServiceRefPtr &service, Error *error));
   MOCK_METHOD0(Disconnect, void());
+  MOCK_METHOD0(OnConnectionDisconnected, void());
   MOCK_CONST_METHOD0(GetProviderType, string());
 
  private:
