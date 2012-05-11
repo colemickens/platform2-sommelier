@@ -24,6 +24,18 @@ namespace power_manager {
 class BacklightController;
 class MonitorReconfigure;
 
+enum ScreenPowerState {
+    POWER_STATE_INVALID,
+    POWER_STATE_ON,
+    POWER_STATE_OFF,
+};
+
+enum ScreenPowerOutputSelection {
+    OUTPUT_SELECTION_INVALID,
+    OUTPUT_SELECTION_ALL_DISPLAYS,
+    OUTPUT_SELECTION_INTERNAL_ONLY,
+};
+
 // MonitorReconfigure is the class responsible for setting the external monitor
 // to the max resolution based on the modes supported by the native monitor and
 // the external monitor.
@@ -71,6 +83,9 @@ class MonitorReconfigure : public XEventObserverInterface {
 
   // Return whether the device has panel output connected.
   bool HasInternalPanelConnection();
+
+  // Called to shut down monitor reconfiguration support.
+  void ForceDisableReconfigure();
 
  private:
   struct ConnectionState {
@@ -191,6 +206,13 @@ class MonitorReconfigure : public XEventObserverInterface {
   // Inherited from XEventObserver.
   virtual XEventHandlerStatus HandleXEvent(XEvent* event) OVERRIDE;
 
+  // Sends the DBus signal to set the screen power signal (which is caught by
+  // Chrome to enable/disable outputs).
+  // |power_state| If the state is to be set on or off.
+  // |output_selection| Either internal output or all.
+  void SendSetScreenPowerSignal(ScreenPowerState power_state,
+      ScreenPowerOutputSelection output_selection);
+
   // Event and error base numbers for Xrandr.
   int rr_event_base_;
   int rr_error_base_;
@@ -242,6 +264,11 @@ class MonitorReconfigure : public XEventObserverInterface {
 
   // Not owned.
   BacklightController* backlight_ctl_;
+
+  // Temporary flag used to selectively disable monitor configuration.  This
+  // flag is set when Chrome sends the DBus message to notify us that it will
+  // handle those cases.
+  bool force_disable_reconfigure_;
 
   DISALLOW_COPY_AND_ASSIGN(MonitorReconfigure);
 };

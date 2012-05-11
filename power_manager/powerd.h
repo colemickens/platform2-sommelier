@@ -222,6 +222,7 @@ class Daemon : public XIdleObserver,
   bool HandlePowerStateChangedSignal(DBusMessage* message);
   bool HandleSessionManagerSessionStateChangedSignal(DBusMessage* message);
   bool HandleStateOverrideCancelSignal(DBusMessage* message);
+  bool HandleUseNewMonitorConfigSignal(DBusMessage* message);
   DBusMessage* HandleRequestLockScreenMethod(DBusMessage* message);
   DBusMessage* HandleRequestUnlockScreenMethod(DBusMessage* message);
   DBusMessage* HandleScreenIsLockedMethod(DBusMessage* message);

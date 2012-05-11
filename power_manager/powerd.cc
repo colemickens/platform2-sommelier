@@ -797,6 +797,8 @@ void Daemon::RegisterDBusMessageHandler() {
                        &Daemon::HandleSessionManagerSessionStateChangedSignal);
   AddDBusSignalHandler(kPowerManagerInterface, kStateOverrideCancel,
                        &Daemon::HandleStateOverrideCancelSignal);
+  AddDBusSignalHandler(kPowerManagerInterface, kUseNewMonitorConfigSignal,
+                       &Daemon::HandleUseNewMonitorConfigSignal);
 
   AddDBusMethodHandler(kPowerManagerInterface, kRequestLockScreenMethod,
                        &Daemon::HandleRequestLockScreenMethod);
@@ -956,6 +958,11 @@ bool Daemon::HandleStateOverrideCancelSignal(DBusMessage* message) {
                  << error.message;
     dbus_error_free(&error);
   }
+  return true;
+}
+
+bool Daemon::HandleUseNewMonitorConfigSignal(DBusMessage* message) {
+  monitor_reconfigure_->ForceDisableReconfigure();
   return true;
 }
 

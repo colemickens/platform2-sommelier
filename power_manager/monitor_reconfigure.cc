@@ -14,7 +14,9 @@
 
 #include "base/logging.h"
 #include "base/string_util.h"
+#include "chromeos/dbus/service_constants.h"
 #include "power_manager/backlight_controller.h"
+#include "power_manager/powerd.h"
 #include "power_manager/util.h"
 
 using std::max;
@@ -88,7 +90,8 @@ MonitorReconfigure::MonitorReconfigure()
       is_projecting_(false),
       projection_callback_(NULL),
       projection_callback_data_(NULL),
-      backlight_ctl_(NULL) {
+      backlight_ctl_(NULL),
+      force_disable_reconfigure_(false) {
 }
 
 MonitorReconfigure::MonitorReconfigure(BacklightController* backlight_ctl)
@@ -103,7 +106,8 @@ MonitorReconfigure::MonitorReconfigure(BacklightController* backlight_ctl)
       is_projecting_(false),
       projection_callback_(NULL),
       projection_callback_data_(NULL),
-      backlight_ctl_(backlight_ctl) {
+      backlight_ctl_(backlight_ctl),
+      force_disable_reconfigure_(false) {
 }
 
 MonitorReconfigure::~MonitorReconfigure() {
@@ -195,12 +199,20 @@ RRCrtc MonitorReconfigure::FindUsableCrtc(const std::set<RRCrtc>& used_crtcs,
 
 void MonitorReconfigure::SetScreenOn() {
   LOG(INFO) << "MonitorReconfigure::SetScreenOn()";
-  Run(true);
+  if (force_disable_reconfigure_) {
+    SendSetScreenPowerSignal(POWER_STATE_ON,
+                             OUTPUT_SELECTION_ALL_DISPLAYS);
+  } else {
+    Run(true);
+  }
 }
 
 void MonitorReconfigure::SetScreenOff() {
   LOG(INFO) << "MonitorReconfigure::SetScreenOff()";
-  if (SetupXrandr()) {
+  if (force_disable_reconfigure_) {
+    SendSetScreenPowerSignal(POWER_STATE_OFF,
+                             OUTPUT_SELECTION_ALL_DISPLAYS);
+  } else if (SetupXrandr()) {
     DisableAllOutputs();
     last_configuration_time_= Time::Now();
     ClearXrandr();
@@ -212,6 +224,12 @@ void MonitorReconfigure::SetInternalPanelOn() {
     return;
 
   LOG(INFO) << "MonitorReconfigure::SetInternalPanelOn()";
+  if (force_disable_reconfigure_) {
+    is_internal_panel_enabled_ = true;
+    SendSetScreenPowerSignal(POWER_STATE_ON,
+                             OUTPUT_SELECTION_INTERNAL_ONLY);
+    return;
+  }
 
   if (!SetupXrandr())
     return;
@@ -270,6 +288,13 @@ void MonitorReconfigure::SetInternalPanelOn() {
 
 void MonitorReconfigure::SetInternalPanelOff() {
   LOG(INFO) << "MonitorReconfigure::SetInternalPanelOff()";
+  if (force_disable_reconfigure_) {
+    is_internal_panel_enabled_ = false;
+    SendSetScreenPowerSignal(POWER_STATE_OFF,
+                             OUTPUT_SELECTION_INTERNAL_ONLY);
+    return;
+  }
+
   if (!SetupXrandr())
     return;
 
@@ -380,6 +405,10 @@ void MonitorReconfigure::EnableUsableOutput(int idx,
 
 bool MonitorReconfigure::HasInternalPanelConnection() {
   return internal_panel_connection_ == RR_Connected;
+}
+
+void MonitorReconfigure::ForceDisableReconfigure() {
+  force_disable_reconfigure_ = true;
 }
 
 // TODO(miletus@) : Need to have a different way to check panel connection for
@@ -684,6 +713,11 @@ void  MonitorReconfigure::SwitchMode() {
 }
 
 void MonitorReconfigure::Run(bool force_reconfigure) {
+  if (force_disable_reconfigure_) {
+    // TODO: Remove this logic removed once Chrome's replacement code has
+    // landed.
+    return;
+  }
   ClearUsableOutputsInfo();
 
   if (!SetupXrandr())
@@ -882,6 +916,26 @@ XEventHandlerStatus MonitorReconfigure::HandleXEvent(XEvent* xevent) {
     return XEVENT_HANDLER_STOP;
   }
   return XEVENT_HANDLER_CONTINUE;
+}
+
+void MonitorReconfigure::SendSetScreenPowerSignal(ScreenPowerState power_state,
+    ScreenPowerOutputSelection output_selection) {
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              kPowerManagerServicePath,
+                              kPowerManagerInterface);
+  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                kPowerManagerInterface,
+                                                kSetScreenPowerSignal);
+  CHECK(NULL != signal);
+  dbus_bool_t set_power_on = (POWER_STATE_ON == power_state);
+  dbus_bool_t is_all_displays
+      = (OUTPUT_SELECTION_ALL_DISPLAYS == output_selection);
+  dbus_message_append_args(signal,
+                           DBUS_TYPE_BOOLEAN, &set_power_on,
+                           DBUS_TYPE_BOOLEAN, &is_all_displays,
+                           DBUS_TYPE_INVALID);
+  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_message_unref(signal);
 }
 
 }  // namespace power_manager
