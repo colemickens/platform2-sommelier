@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,33 +10,33 @@
 #include <X11/extensions/sync.h>
 
 #include "base/basictypes.h"
+#include "base/compiler_specific.h"
+#include "power_manager/xsync_interface.h"
 
 namespace power_manager {
 
-class XSync {
+class XSync : public XSyncInterface {
  public:
   XSync();
   virtual ~XSync() {}
-  virtual void Init();
+  virtual void Init() OVERRIDE;
 
-  virtual bool QueryExtension(int* event_base, int* error_base);
-  virtual bool Initialize(int* major_version, int* minor_version);
+  virtual bool QueryExtension(int* event_base, int* error_base) OVERRIDE;
+  virtual bool Initialize(int* major_version, int* minor_version) OVERRIDE;
 
   // For XSync system counter access.
-  virtual XSyncSystemCounter* ListSystemCounters(int* ncounters);
-  virtual void FreeSystemCounterList(XSyncSystemCounter* ncounters);
-  virtual bool QueryCounterInt64(XSyncCounter counter, int64* value);
-  virtual bool QueryCounter(XSyncCounter counter, XSyncValue* value);
+  virtual XSyncSystemCounter* ListSystemCounters(int* ncounters OVERRIDE);
+  virtual void FreeSystemCounterList(XSyncSystemCounter* ncounters) OVERRIDE;
+  virtual bool QueryCounterInt64(XSyncCounter counter, int64* value) OVERRIDE;
+  virtual bool QueryCounter(XSyncCounter counter, XSyncValue* value) OVERRIDE;
 
   // Create and delete XSync alarms.
-  virtual XSyncAlarm CreateAlarm(uint64 mask, XSyncAlarmAttributes* attrs);
-  virtual bool DestroyAlarm(XSyncAlarm alarm);
-  // Provides an event handler for alarms.
-  virtual void SetEventHandler(GdkFilterFunc func, gpointer data);
+  virtual XSyncAlarm CreateAlarm(uint64 mask,
+                                 XSyncAlarmAttributes* attrs) OVERRIDE;
+  virtual bool DestroyAlarm(XSyncAlarm alarm) OVERRIDE;
 
-  // Convert between int64 and XSync values.
-  static int64 ValueToInt64(XSyncValue value);
-  static void Int64ToValue(XSyncValue* xvalue, int64 value);
+  // Provides an event handler for alarms.
+  virtual void SetEventHandler(GdkFilterFunc func, gpointer data) OVERRIDE;
 
  private:
   Display* display_;

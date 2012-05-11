@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,6 +9,7 @@
 
 #include "base/logging.h"
 #include "power_manager/xidle_observer.h"
+#include "power_manager/xsync.h"
 
 namespace power_manager {
 
@@ -18,7 +19,7 @@ XIdle::XIdle()
       min_timeout_(kint64max) {
 }
 
-XIdle::XIdle(XSync *xsync)
+XIdle::XIdle(XSyncInterface *xsync)
     : xsync_(xsync),
       idle_counter_(0),
       min_timeout_(kint64max) {
@@ -29,8 +30,8 @@ XIdle::~XIdle() {
 }
 
 bool XIdle::Init(XIdleObserver* observer) {
-  xsync_->Init();
   CHECK(xsync_.get());
+  xsync_->Init();
   if (!xsync_->QueryExtension(&event_base_, &error_base_)) {
     LOG(WARNING) << "Error querying XSync extension.";
     return false;
@@ -116,7 +117,7 @@ XSyncAlarm XIdle::CreateIdleAlarm(int64 idle_timeout_ms,
   XSyncAlarmAttributes attr;
   attr.trigger.counter = idle_counter_;
   attr.trigger.test_type = test_type;
-  XSync::Int64ToValue(&attr.trigger.wait_value, idle_timeout_ms);
+  XSyncInterface::Int64ToValue(&attr.trigger.wait_value, idle_timeout_ms);
   XSyncIntToValue(&attr.delta, 0);
   return xsync_->CreateAlarm(mask, &attr);
 }
@@ -136,7 +137,8 @@ GdkFilterReturn XIdle::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
                                        alarm_event->alarm_value);
     bool is_idle2 = !XSyncValueLessThan(value, alarm_event->alarm_value);
     if (is_idle == is_idle2) {
-      int64 idle_time_ms = XSync::ValueToInt64(alarm_event->counter_value);
+      int64 idle_time_ms =
+          XSyncInterface::ValueToInt64(alarm_event->counter_value);
       observer_->OnIdleEvent(is_idle, idle_time_ms);
     } else {
       LOG(INFO) << "Filtering out stale event";

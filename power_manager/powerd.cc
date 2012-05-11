@@ -101,6 +101,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
                MetricsLibraryInterface* metrics_lib,
                ActivityDetectorInterface* video_detector,
                ActivityDetectorInterface* audio_detector,
+               XIdle* idle,
                MonitorReconfigure* monitor_reconfigure,
                BacklightInterface* keyboard_backlight,
                const FilePath& run_dir)
@@ -109,6 +110,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       metrics_lib_(metrics_lib),
       video_detector_(video_detector),
       audio_detector_(audio_detector),
+      idle_(idle),
       monitor_reconfigure_(monitor_reconfigure),
       keyboard_backlight_(keyboard_backlight),
       low_battery_suspend_percent_(0),
@@ -136,7 +138,7 @@ Daemon::~Daemon() {
 
 void Daemon::Init() {
   ReadSettings();
-  CHECK(idle_.Init(this));
+  CHECK(idle_->Init(this));
   prefs_->StartPrefWatching(&(PrefChangeHandler), this);
   MetricInit();
   LOG_IF(ERROR, (!metrics_store_.Init()))
@@ -260,7 +262,7 @@ void Daemon::Run() {
 void Daemon::UpdateIdleStates() {
   LOG(INFO) << "Daemon : UpdateIdleStates";
   int64 idle_time_ms;
-  CHECK(idle_.GetIdleTime(&idle_time_ms));
+  CHECK(idle_->GetIdleTime(&idle_time_ms));
   SetIdleState(idle_time_ms);
 }
 
@@ -284,7 +286,7 @@ void Daemon::SetPlugged(bool plugged) {
   LOG(INFO) << "Daemon : SetPlugged = " << plugged;
   plugged_state_ = plugged ? kPowerConnected : kPowerDisconnected;
   int64 idle_time_ms;
-  CHECK(idle_.GetIdleTime(&idle_time_ms));
+  CHECK(idle_->GetIdleTime(&idle_time_ms));
   // If the screen is on, and the user plugged or unplugged the computer,
   // we should wait a bit before turning off the screen.
   // If the screen is off, don't immediately suspend, wait another
@@ -377,36 +379,36 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
   }
 
   // Sync up idle state with new settings.
-  CHECK(idle_.ClearTimeouts());
+  CHECK(idle_->ClearTimeouts());
   if (offset_ms > fuzz_ms_)
-    CHECK(idle_.AddIdleTimeout(fuzz_ms_));
+    CHECK(idle_->AddIdleTimeout(fuzz_ms_));
   if (kMetricIdleMin <= dim_ms_ - fuzz_ms_)
-    CHECK(idle_.AddIdleTimeout(kMetricIdleMin));
+    CHECK(idle_->AddIdleTimeout(kMetricIdleMin));
   // XIdle timeout events for dimming and idle-off.
-  CHECK(idle_.AddIdleTimeout(dim_ms_));
-  CHECK(idle_.AddIdleTimeout(off_ms_));
+  CHECK(idle_->AddIdleTimeout(dim_ms_));
+  CHECK(idle_->AddIdleTimeout(off_ms_));
   // This is to start polling audio before a suspend.
   // |suspend_ms_| must be >= |off_ms_| + |react_ms_|, so if the following
   // condition is false, then they must be equal.  In that case, the idle
   // timeout at |off_ms_| would be equivalent, and the following timeout would
   // be redundant.
   if (suspend_ms_ - react_ms_ > off_ms_)
-    CHECK(idle_.AddIdleTimeout(suspend_ms_ - react_ms_));
+    CHECK(idle_->AddIdleTimeout(suspend_ms_ - react_ms_));
   // XIdle timeout events for lock and/or suspend.
   if (lock_ms_ < suspend_ms_ - fuzz_ms_ || lock_ms_ - fuzz_ms_ > suspend_ms_) {
-    CHECK(idle_.AddIdleTimeout(lock_ms_));
-    CHECK(idle_.AddIdleTimeout(suspend_ms_));
+    CHECK(idle_->AddIdleTimeout(lock_ms_));
+    CHECK(idle_->AddIdleTimeout(suspend_ms_));
   } else {
-    CHECK(idle_.AddIdleTimeout(max(lock_ms_, suspend_ms_)));
+    CHECK(idle_->AddIdleTimeout(max(lock_ms_, suspend_ms_)));
   }
   // XIdle timeout events for idle notify status
   for (IdleThresholds::iterator iter = thresholds_.begin();
        iter != thresholds_.end();
        ++iter) {
     if (*iter == 0) {
-      CHECK(idle_.AddIdleTimeout(kMinTimeForIdle));
+      CHECK(idle_->AddIdleTimeout(kMinTimeForIdle));
     } else  if (*iter > 0) {
-      CHECK(idle_.AddIdleTimeout(*iter));
+      CHECK(idle_->AddIdleTimeout(*iter));
     }
   }
 }
@@ -415,7 +417,7 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
 // that do not result in activity monitored by X, i.e. lid open.
 void Daemon::SetActive() {
   int64 idle_time_ms;
-  CHECK(idle_.GetIdleTime(&idle_time_ms));
+  CHECK(idle_->GetIdleTime(&idle_time_ms));
   SetIdleOffset(idle_time_ms, kIdleNormal);
   SetIdleState(idle_time_ms);
 }
@@ -464,14 +466,14 @@ void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
 }
 
 bool Daemon::GetIdleTime(int64* idle_time_ms) {
-  return idle_.GetIdleTime(idle_time_ms);
+  return idle_->GetIdleTime(idle_time_ms);
 }
 
 void Daemon::AddIdleThreshold(int64 threshold) {
   if (threshold == 0) {
-    CHECK(idle_.AddIdleTimeout(kMinTimeForIdle));
+    CHECK(idle_->AddIdleTimeout(kMinTimeForIdle));
   } else {
-    CHECK(idle_.AddIdleTimeout(threshold));
+    CHECK(idle_->AddIdleTimeout(threshold));
   }
   thresholds_.push_back(threshold);
 }

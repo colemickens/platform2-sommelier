@@ -66,8 +66,10 @@ gboolean MockXSync::TimeoutHandler(MockAlarm *alarm) {
     XSyncAlarmNotifyEvent* alarm_event = &gxevent.alarm_event;
     xevent->type = kEventBase + XSyncAlarmNotify;
     alarm_event->state = XSyncAlarmActive;
-    XSync::Int64ToValue(&alarm_event->counter_value, current_idle_time);
-    XSync::Int64ToValue(&alarm_event->alarm_value, alarm->idle_time);
+
+    XSyncInterface::Int64ToValue(&alarm_event->counter_value,
+                                 current_idle_time);
+    XSyncInterface::Int64ToValue(&alarm_event->alarm_value, alarm->idle_time);
     // Call the event handler to simulate what happens during a gdk event.
     handler_result = event_handler_func(&gxevent, NULL, event_handler_data_);
   } else {
@@ -92,7 +94,7 @@ XSyncAlarm MockXSync::CreateAlarm(uint64 mask, XSyncAlarmAttributes* attrs) {
   CHECK(test_type == XSyncPositiveTransition ||
         test_type == XSyncNegativeTransition);
   XSyncCounter counter = attrs->trigger.counter;
-  int64 wait_value = XSync::ValueToInt64(attrs->trigger.wait_value);
+  int64 wait_value = XSyncInterface::ValueToInt64(attrs->trigger.wait_value);
   // The idle value for a negative transition must be positive, otherwise it is
   // impossible to attain.  Idle time cannot become negative.
   if (test_type == XSyncNegativeTransition)
@@ -181,7 +183,7 @@ bool MockXSync::QueryCounter(XSyncCounter counter, XSyncValue* value) {
   if (!QueryCounterInt64(counter, &int_value))
     return false;
   CHECK(value);
-  XSync::Int64ToValue(value, int_value);
+  XSyncInterface::Int64ToValue(value, int_value);
   return true;
 }
 

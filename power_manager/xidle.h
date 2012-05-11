@@ -12,7 +12,7 @@
 #include "base/basictypes.h"
 #include "base/memory/scoped_ptr.h"
 #include "power_manager/signal_callback.h"
-#include "power_manager/xsync.h"
+#include "power_manager/xsync_interface.h"
 
 namespace power_manager {
 
@@ -25,7 +25,9 @@ class XIdleObserver;
 class XIdle {
  public:
   XIdle();
-  explicit XIdle(XSync *xsync);
+  // This constructor takes ownership of |xsync| by saving it in a scoped ptr.
+  // The caller should not attempt to delete |xsync|.
+  explicit XIdle(XSyncInterface *xsync);
   ~XIdle();
 
   // Initialize the object with the given |observer|.
@@ -69,7 +71,7 @@ class XIdle {
 
   // Wrapper object for making XSync calls.  Allows XSync API to be mocked out
   // during testing.
-  scoped_ptr<XSync> xsync_;
+  scoped_ptr<XSyncInterface> xsync_;
 
   XSyncCounter idle_counter_;
   int64 min_timeout_;

@@ -19,6 +19,7 @@
 #include "power_manager/mock_metrics_store.h"
 #include "power_manager/mock_monitor_reconfigure.h"
 #include "power_manager/mock_rolling_average.h"
+#include "power_manager/mock_xsync.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
 
@@ -69,8 +70,9 @@ class DaemonTest : public Test {
 #else
         backlight_ctl_(&backlight_, &prefs_),
 #endif
+        idle_(new MockXSync),
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
-                &audio_detector_, &monitor_reconfigure_, &keylight_,
+                &audio_detector_, &idle_, &monitor_reconfigure_, &keylight_,
                 FilePath(".")) {}
 
   virtual void SetUp() {
@@ -257,6 +259,7 @@ class DaemonTest : public Test {
 
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;
+  XIdle idle_;
   Daemon daemon_;
 };
 

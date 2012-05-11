@@ -59,18 +59,4 @@ void XSync::SetEventHandler(GdkFilterFunc func, gpointer data) {
   gdk_window_add_filter(NULL, func, data);
 }
 
-// static
-int64 XSync::ValueToInt64(XSyncValue value) {
-  // In the current X system, the idle time is returned as a 32-bit signed
-  // value, but the sign bit is not extended to the higher high 32-bit word int
-  // XSyncValue.  It must instead be interpreted as an int32, to handle the sign
-  // correctly.
-  return static_cast<int32>(XSyncValueLow32(value));
-}
-
-// static
-void XSync::Int64ToValue(XSyncValue* xvalue, int64 value) {
-  XSyncIntsToValue(xvalue, value, value >> 32);
-}
-
 }  // namespace power_manager

@@ -69,6 +69,7 @@ class Daemon : public XIdleObserver,
          MetricsLibraryInterface* metrics_lib,
          ActivityDetectorInterface* video_detector,
          ActivityDetectorInterface* audio_detector,
+         XIdle* idle,
          MonitorReconfigure* monitor_reconfigure,
          BacklightInterface* keyboard_backlight,
          const FilePath& run_dir);
@@ -425,7 +426,7 @@ class Daemon : public XIdleObserver,
   MetricsLibraryInterface* metrics_lib_;
   ActivityDetectorInterface* video_detector_;
   ActivityDetectorInterface* audio_detector_;
-  XIdle idle_;
+  XIdle* idle_;
   MonitorReconfigure* monitor_reconfigure_;
   BacklightInterface* keyboard_backlight_;
   double low_battery_suspend_percent_;

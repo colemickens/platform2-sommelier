@@ -305,7 +305,7 @@ tests: TEST(CXX_BINARY(backlight_unittest))
 POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
 POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock -lX11 -lXext -lXrandr \
                        -lXtst
-POWERD_UNITTEST_OBJS = powerd_unittest.o metrics_store_unittest.o \
+POWERD_UNITTEST_OBJS = powerd_unittest.o metrics_store_unittest.o mock_xsync.o \
                        rolling_average_unittest.o
 ifeq ($(USE_IS_DESKTOP),)
 POWERD_UNITTEST_OBJS += internal_backlight_controller_unittest.o \

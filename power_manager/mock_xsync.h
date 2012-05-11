@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,33 +7,37 @@
 
 #include <set>
 
+#include "base/compiler_specific.h"
 #include "base/time.h"
 #include "power_manager/signal_callback.h"
-#include "power_manager/xsync.h"
+#include "power_manager/xsync_interface.h"
 
 namespace power_manager {
 
-class MockXSync : public XSync {
+class MockXSync : public XSyncInterface {
  public:
   MockXSync();
+  virtual ~MockXSync() {}
 
   // Virtual functions overridden from XSync
-  virtual void Init() {}
+  virtual void Init() OVERRIDE {}
 
-  virtual bool QueryExtension(int* event_base, int* error_base);
-  virtual bool Initialize(int* /* major_version */, int* /* minor_version */) {
+  virtual bool QueryExtension(int* event_base, int* error_base) OVERRIDE;
+  virtual bool Initialize(int* /* major_version */,
+                          int* /* minor_version */) OVERRIDE {
     return true;
   }
 
   virtual void SetEventHandler(GdkFilterFunc func, gpointer data);
 
-  virtual XSyncSystemCounter* ListSystemCounters(int* ncounters);
-  virtual void FreeSystemCounterList(XSyncSystemCounter* counters);
-  virtual bool QueryCounterInt64(XSyncCounter counter, int64* value);
-  virtual bool QueryCounter(XSyncCounter counter, XSyncValue* value);
+  virtual XSyncSystemCounter* ListSystemCounters(int* ncounters) OVERRIDE;
+  virtual void FreeSystemCounterList(XSyncSystemCounter* counters) OVERRIDE;
+  virtual bool QueryCounterInt64(XSyncCounter counter, int64* value) OVERRIDE;
+  virtual bool QueryCounter(XSyncCounter counter, XSyncValue* value) OVERRIDE;
 
-  virtual XSyncAlarm CreateAlarm(uint64 mask, XSyncAlarmAttributes* attrs);
-  virtual bool DestroyAlarm(XSyncAlarm alarm);
+  virtual XSyncAlarm CreateAlarm(uint64 mask,
+                                 XSyncAlarmAttributes* attrs) OVERRIDE;
+  virtual bool DestroyAlarm(XSyncAlarm alarm) OVERRIDE;
 
   // Simulates user input.
   void FakeRelativeMotionEvent(int x, int y, uint64 delay);
