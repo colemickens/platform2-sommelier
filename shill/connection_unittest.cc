@@ -566,7 +566,6 @@ TEST_F(ConnectionTest, Binder) {
     EXPECT_CALL(target, CallTarget()).Times(1);
     connection = NULL;
   }
-
   {
     // Circular binding of multiple connections should be safe.
     ConnectionRefPtr connection_a = GetNewConnection();
@@ -594,6 +593,23 @@ TEST_F(ConnectionTest, Binder) {
 
     AddDestructorExpectations();
     connection_a = NULL;
+  }
+  {
+    // Test the weak pointer to the bound Connection. This is not a case that
+    // should occur but the weak pointer should handle it gracefully.
+    DisconnectCallbackTarget target;
+    Connection::Binder binder("test_weak", target.callback());
+    ConnectionRefPtr connection = GetNewConnection();
+    binder.Attach(connection);
+
+    // Make sure the connection doesn't notify the binder on destruction.
+    connection->binders_.clear();
+    AddDestructorExpectations();
+    EXPECT_CALL(target, CallTarget()).Times(0);
+    connection = NULL;
+
+    // Ensure no crash -- the weak pointer to connection should be NULL.
+    binder.Attach(NULL);
   }
 }
 

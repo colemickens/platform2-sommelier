@@ -29,22 +29,21 @@ const uint32 Connection::kNonDefaultMetricBase = 10;
 Connection::Binder::Binder(const string &name,
                            const Closure &disconnect_callback)
     : name_(name),
-      connection_(NULL),
       client_disconnect_callback_(disconnect_callback) {}
 
 Connection::Binder::~Binder() {
   Attach(NULL);
 }
 
-void Connection::Binder::Attach(const ConnectionRefPtr &connection) {
+void Connection::Binder::Attach(const ConnectionRefPtr &to_connection) {
   if (connection_) {
     connection_->DetachBinder(this);
     LOG(INFO) << name_ << ": unbound from connection: "
               << connection_->interface_name();
+    connection_.reset();
   }
-  // Uses a bare pointer to the bound Connection to avoid circular references
-  // between clients and connections.
-  if ((connection_ = connection.get())) {
+  if (to_connection) {
+    connection_ = to_connection->weak_ptr_factory_.GetWeakPtr();
     connection_->AttachBinder(this);
     LOG(INFO) << name_ << ": bound to connection: "
               << connection_->interface_name();
@@ -54,7 +53,7 @@ void Connection::Binder::Attach(const ConnectionRefPtr &connection) {
 void Connection::Binder::OnDisconnect() {
   LOG(INFO) << name_ << ": bound connection disconnected: "
             << connection_->interface_name();
-  connection_ = NULL;
+  connection_.reset();
   if (!client_disconnect_callback_.is_null()) {
     SLOG(Connection, 2) << "Running client disconnect callback.";
     client_disconnect_callback_.Run();

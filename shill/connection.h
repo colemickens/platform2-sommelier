@@ -40,12 +40,12 @@ class Connection : public base::RefCounted<Connection> {
     Binder(const std::string &name, const base::Closure &disconnect_callback);
     ~Binder();
 
-    // Binds to |connection|. Unbinds the previous bound connection, if
+    // Binds to |to_connection|. Unbinds the previous bound connection, if
     // any. Pass NULL to just unbind this Binder.
-    void Attach(const ConnectionRefPtr &connection);
+    void Attach(const ConnectionRefPtr &to_connection);
 
     bool IsBound() const { return connection_ != NULL; }
-    ConnectionRefPtr connection() const { return connection_; }
+    ConnectionRefPtr connection() const { return connection_.get(); }
 
    private:
     friend class Connection;
@@ -55,7 +55,7 @@ class Connection : public base::RefCounted<Connection> {
     void OnDisconnect();
 
     const std::string name_;
-    Connection *connection_;
+    base::WeakPtr<Connection> connection_;
     const base::Closure client_disconnect_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Binder);
