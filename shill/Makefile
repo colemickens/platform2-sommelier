@@ -309,6 +309,8 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_vpn_service.o \
 	mock_wifi.o \
 	mock_wifi_service.o \
+	mock_wimax.o \
+	mock_wimax_service.o \
 	modem_1_unittest.o \
 	modem_info_unittest.o \
 	modem_manager_unittest.o \
@@ -344,6 +346,8 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	wifi_endpoint_unittest.o \
 	wifi_service_unittest.o \
 	wifi_unittest.o \
+	wimax_service_unittest.o \
+	wimax_unittest.o \
 	)
 
 .PHONY: all clean

@@ -7,6 +7,8 @@
 #include "shill/technology.h"
 #include "shill/wimax.h"
 
+using std::string;
+
 namespace shill {
 
 WiMaxService::WiMaxService(ControlInterface *control,
@@ -32,6 +34,16 @@ void WiMaxService::Connect(Error *error) {
 void WiMaxService::Disconnect(Error *error) {
   Service::Disconnect(error);
   wimax_->Disconnect(error);
+}
+
+string WiMaxService::GetStorageIdentifier() const {
+  // TODO(benchan,petkov): Generate a proper storage identifier.
+  return "";
+}
+
+string WiMaxService::GetDeviceRpcId(Error *error) {
+  // TODO(benchan,petkov): Is this need?
+  return "";
 }
 
 }  // namespace shill
