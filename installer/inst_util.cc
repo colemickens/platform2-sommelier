@@ -89,6 +89,9 @@ void SplitString(const string& str,
 int RunCommand(const string& command) {
   printf("Command: %s\n", command.c_str());
 
+  fflush(stdout);
+  fflush(stderr);
+
   int result = system(command.c_str());
 
   if (result != 0)
