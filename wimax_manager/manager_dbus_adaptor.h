@@ -8,6 +8,8 @@
 #include "wimax_manager/dbus_adaptor.h"
 #include "wimax_manager/dbus_bindings/manager.h"
 
+#include <vector>
+
 namespace wimax_manager {
 
 class Manager;
@@ -17,6 +19,8 @@ class ManagerDBusAdaptor : public org::chromium::WiMaxManager_adaptor,
  public:
   ManagerDBusAdaptor(DBus::Connection *connection, Manager *manager);
   virtual ~ManagerDBusAdaptor();
+
+  void UpdateDevices();
 
  private:
   Manager *manager_;

@@ -6,14 +6,13 @@
 #include <glib-object.h>
 #include <glib-unix.h>
 
-#include <dbus-c++/glib-integration.h>
-#include <dbus-c++/util.h>
-
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <chromeos/syslog_logging.h>
 #include <gflags/gflags.h>
+
+#include "wimax_manager/daemon.h"
 
 DEFINE_bool(foreground, false,
             "Don't daemon()ize; run in foreground.");
@@ -24,7 +23,6 @@ DEFINE_int32(minloglevel, logging::LOG_WARNING,
 namespace {
 
 const char kUsageMessage[] = "Chromium OS WiMAX Manager";
-const char kWiMaxManagerServiceName[] = "org.chromium.WiMaxManager";
 
 // Always logs to syslog and stderr when running in the foreground.
 void SetupLogging() {
@@ -67,12 +65,8 @@ int main(int argc, char** argv) {
   g_unix_signal_add(SIGINT, TerminationSignalCallback, loop);
   g_unix_signal_add(SIGTERM, TerminationSignalCallback, loop);
 
-  DBus::Glib::BusDispatcher dispatcher;
-  DBus::default_dispatcher = &dispatcher;
-  dispatcher.attach(NULL);
-
-  DBus::Connection dbus_connection = DBus::Connection::SystemBus();
-  dbus_connection.request_name(kWiMaxManagerServiceName);
+  wimax_manager::Daemon daemon;
+  CHECK(daemon.Initialize()) << "Failed to initialize daemon";
 
   g_main_loop_run(loop);
   g_main_loop_unref(loop);
