@@ -216,6 +216,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
+  FRIEND_TEST(ManagerTest, EnableTechnology);
+  FRIEND_TEST(ManagerTest, DisableTechnology);
 
   static const char kErrorNoDevice[];
   static const char kErrorTypeRequired[];

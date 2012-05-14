@@ -4,6 +4,7 @@
 
 #include "shill/manager.h"
 
+#include <map>
 #include <set>
 
 #include <glib.h>
@@ -2073,5 +2074,55 @@ TEST_F(ManagerTest, StartupPortalList) {
   EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
   EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kPPP));
 }
+
+TEST_F(ManagerTest, EnableTechnology) {
+  Error error(Error::kOperationInitiated);
+  ResultCallback callback;
+  manager()->EnableTechnology(flimflam::kTypeEthernet, &error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+
+  ON_CALL(*mock_devices_[0], TechnologyIs(Technology::kEthernet))
+      .WillByDefault(Return(true));
+
+  manager()->RegisterDevice(mock_devices_[0]);
+
+  // Device is enabled, so expect operation is successful.
+  mock_devices_[0]->enabled_ = true;
+  error.Populate(Error::kOperationInitiated);
+  manager()->EnableTechnology(flimflam::kTypeEthernet, &error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Device is disabled, so expect operation in progress.
+  mock_devices_[0]->enabled_ = false;
+  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(true, _, _));
+  error.Populate(Error::kOperationInitiated);
+  manager()->EnableTechnology(flimflam::kTypeEthernet, &error, callback);
+  EXPECT_TRUE(error.IsOngoing());
+}
+
+TEST_F(ManagerTest, DisableTechnology) {
+  Error error(Error::kOperationInitiated);
+  ResultCallback callback;
+  manager()->DisableTechnology(flimflam::kTypeEthernet, &error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+
+  ON_CALL(*mock_devices_[0], TechnologyIs(Technology::kEthernet))
+      .WillByDefault(Return(true));
+
+  manager()->RegisterDevice(mock_devices_[0]);
+
+  // Device is disabled, so expect operation is successful.
+  error.Populate(Error::kOperationInitiated);
+  manager()->DisableTechnology(flimflam::kTypeEthernet, &error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Device is enabled, so expect operation in progress.
+  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _));
+  mock_devices_[0]->enabled_ = true;
+  error.Populate(Error::kOperationInitiated);
+  manager()->DisableTechnology(flimflam::kTypeEthernet, &error, callback);
+  EXPECT_TRUE(error.IsOngoing());
+}
+
 
 }  // namespace shill

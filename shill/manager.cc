@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -563,43 +564,61 @@ void Manager::SetProfileForService(const ServiceRefPtr &to_set,
 void Manager::EnableTechnology(const std::string &technology_name,
                                Error *error,
                                const ResultCallback &callback) {
+  CHECK(error != NULL);
+  DCHECK(error->IsOngoing());
   Technology::Identifier id = Technology::IdentifierFromName(technology_name);
   if (id == Technology::kUnknown) {
     error->Populate(Error::kInvalidArguments, "Unknown technology");
     return;
   }
+  bool deferred = false;
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();
        it != devices_.end(); ++it) {
     DeviceRefPtr device = *it;
-    if (device->technology() == id && !device->enabled()) {
+    if (device->TechnologyIs(id) && !device->enabled()) {
       device->SetEnabledPersistent(true, error, callback);
       // Continue with other devices even if one fails
       // TODO(ers): Decide whether an error should be returned
       // for the overall EnableTechnology operation if some
       // devices succeed and some fail.
+      if (error->IsOngoing())
+        deferred = true;
     }
   }
+  // If no device has deferred work, then clear the error to
+  // communicate to the caller that all work is done.
+  if (!deferred)
+    error->Reset();
 }
 
 void Manager::DisableTechnology(const std::string &technology_name,
                                 Error *error,
                                 const ResultCallback &callback) {
+  CHECK(error != NULL);
+  DCHECK(error->IsOngoing());
   Technology::Identifier id = Technology::IdentifierFromName(technology_name);
   if (id == Technology::kUnknown) {
     error->Populate(Error::kInvalidArguments, "Unknown technology");
     return;
   }
+  bool deferred = false;
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();
        it != devices_.end(); ++it) {
     DeviceRefPtr device = *it;
-    if (device->technology() == id && device->enabled()) {
+    if (device->TechnologyIs(id) && device->enabled()) {
       device->SetEnabledPersistent(false, error, callback);
       // Continue with other devices even if one fails
       // TODO(ers): Decide whether an error should be returned
       // for the overall DisableTechnology operation if some
       // devices succeed and some fail.
+      if (error->IsOngoing())
+        deferred = true;
     }
   }
+  // If no device has deferred work, then clear the error to
+  // communicate to the caller that all work is done.
+  if (!deferred)
+    error->Reset();
 }
 
 void Manager::UpdateEnabledTechnologies() {
@@ -768,7 +787,7 @@ ServiceRefPtr Manager::FindService(const string& name) {
 
 void Manager::HelpRegisterConstDerivedRpcIdentifiers(
     const string &name,
-    RpcIdentifiers(Manager::*get)(Error *)) {
+    RpcIdentifiers(Manager::*get)(Error *error)) {
   store_.RegisterDerivedRpcIdentifiers(
       name,
       RpcIdentifiersAccessor(
@@ -989,8 +1008,8 @@ string Manager::GetActiveProfileRpcIdentifier(Error */*error*/) {
 }
 
 string Manager::GetCheckPortalList(Error */*error*/) {
- return use_startup_portal_list_ ? startup_portal_list_ :
-     props_.check_portal_list;
+  return use_startup_portal_list_ ? startup_portal_list_ :
+      props_.check_portal_list;
 }
 
 void Manager::SetCheckPortalList(const string &portal_list, Error *error) {

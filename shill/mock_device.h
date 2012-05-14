@@ -30,6 +30,9 @@ class MockDevice : public Device {
   MOCK_METHOD2(Stop, void(Error *error,
                           const EnabledStateChangedCallback &callback));
   MOCK_METHOD1(SetEnabled, void(bool));
+  MOCK_METHOD3(SetEnabledPersistent, void(bool enable,
+                                          Error* error,
+                                          const ResultCallback &callback));
   MOCK_METHOD1(Scan, void(Error *error));
   MOCK_CONST_METHOD1(TechnologyIs,
                      bool(const Technology::Identifier technology));

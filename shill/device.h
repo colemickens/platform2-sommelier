@@ -58,8 +58,9 @@ class Device : public base::RefCounted<Device> {
   // The setting is persisted before the enable or disable operation
   // starts, so that even if it fails, the user's intent is still recorded
   // for the next time shill restarts.
-  void SetEnabledPersistent(bool enable,
-                            Error *error, const ResultCallback &callback);
+  virtual void SetEnabledPersistent(bool enable,
+                                    Error *error,
+                                    const ResultCallback &callback);
 
   // Returns true if the underlying device reports that it is already enabled.
   // Used when the device is registered with the Manager, so that shill can
@@ -174,6 +175,8 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
+  FRIEND_TEST(ManagerTest, EnableTechnology);
+  FRIEND_TEST(ManagerTest, DisableTechnology);
   FRIEND_TEST(WiFiMainTest, Connect);
 
   // Each device must implement this method to do the work needed to
