@@ -155,6 +155,28 @@ bool ObjectStoreImpl::DeleteObjectBlob(int handle) {
   return true;
 }
 
+bool ObjectStoreImpl::DeleteAllObjectBlobs() {
+  vector<string> blobs_to_delete;
+  scoped_ptr<leveldb::Iterator> it(db_->NewIterator(leveldb::ReadOptions()));
+  for (it->SeekToFirst(); it->Valid(); it->Next()) {
+    BlobType type;
+    int id = 0;
+    if (ParseBlobKey(it->key().ToString(), &type, &id) && type != kInternal)
+      blobs_to_delete.push_back(it->key().ToString());
+  }
+  bool deleted_all = true;
+  for (size_t i = 0; i < blobs_to_delete.size(); ++i) {
+    leveldb::WriteOptions options;
+    options.sync = true;
+    leveldb::Status status = db_->Delete(options, blobs_to_delete[i]);
+    if (!status.ok()) {
+      LOG(ERROR) << "Failed to delete blob: " << status.ToString();
+      deleted_all = false;
+    }
+  }
+  return deleted_all;
+}
+
 bool ObjectStoreImpl::UpdateObjectBlob(int handle, const ObjectBlob& blob) {
   ObjectBlob encrypted_blob;
   BlobType type = GetBlobType(handle);

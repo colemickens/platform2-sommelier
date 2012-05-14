@@ -36,6 +36,7 @@ class ObjectStoreImpl : public ObjectStore {
   virtual bool SetEncryptionKey(const std::string& key);
   virtual bool InsertObjectBlob(const ObjectBlob& blob, int* handle);
   virtual bool DeleteObjectBlob(int handle);
+  virtual bool DeleteAllObjectBlobs();
   virtual bool UpdateObjectBlob(int handle, const ObjectBlob& blob);
   virtual bool LoadPublicObjectBlobs(std::map<int, ObjectBlob>* blobs);
   virtual bool LoadPrivateObjectBlobs(std::map<int, ObjectBlob>* blobs);

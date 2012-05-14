@@ -49,6 +49,7 @@ class ObjectPoolImpl : public ObjectPool {
   virtual bool Insert(Object* object);
   virtual bool Import(Object* object);
   virtual bool Delete(const Object* object);
+  virtual bool DeleteAll();
   virtual bool Find(const Object* search_template,
                     std::vector<const Object*>* matching_objects);
   virtual bool FindByHandle(int handle, const Object** object);

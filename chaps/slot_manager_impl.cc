@@ -136,7 +136,6 @@ void TokenInitThread::ThreadMain() {
     if (!InitializeKeyHierarchy(&master_key)) {
       LOG(ERROR) << "Failed to initialize key hierarchy at " << path_.value();
       tpm_utility_->UnloadKeysForSlot(slot_id_);
-      return;
     }
   } else {
     if (!tpm_utility_->Authenticate(slot_id_,
@@ -144,9 +143,15 @@ void TokenInitThread::ThreadMain() {
                                     auth_key_blob,
                                     encrypted_master_key,
                                     &master_key)) {
-      LOG(ERROR) << "Authentication failed for token at " << path_.value();
+      LOG(ERROR) << "Authentication failed for token at " << path_.value()
+                 << ", reinitializing token.";
       tpm_utility_->UnloadKeysForSlot(slot_id_);
-      return;
+      if (!object_pool_->DeleteAll())
+        LOG(WARNING) << "Failed to delete all existing objects.";
+      if (!InitializeKeyHierarchy(&master_key)) {
+        LOG(ERROR) << "Failed to initialize key hierarchy at " << path_.value();
+        tpm_utility_->UnloadKeysForSlot(slot_id_);
+      }
     }
   }
   if (!object_pool_->SetEncryptionKey(master_key)) {
@@ -154,7 +159,8 @@ void TokenInitThread::ThreadMain() {
     tpm_utility_->UnloadKeysForSlot(slot_id_);
     return;
   }
-  LOG(INFO) << "Master key is ready for token at " << path_.value();
+  if (!master_key.empty())
+    LOG(INFO) << "Master key is ready for token at " << path_.value();
 }
 
 bool TokenInitThread::InitializeKeyHierarchy(string* master_key) {

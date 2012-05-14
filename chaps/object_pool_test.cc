@@ -234,6 +234,47 @@ TEST_F(TestObjectPool, DuplicateObject) {
   EXPECT_FALSE(pool2_->Insert(o2));
 }
 
+TEST_F(TestObjectPool, DeleteAll) {
+  EXPECT_CALL(*store_, InsertObjectBlob(_, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(3), Return(true)));
+  EXPECT_CALL(*store_, DeleteAllObjectBlobs())
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
+  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
+  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
+  vector<const Object*> v;
+  scoped_ptr<Object> find_all(CreateObjectMock());
+  EXPECT_TRUE(pool_->Find(find_all.get(), &v));
+  EXPECT_EQ(3, v.size());
+  // Test the store failure is passed back but cached objects are still deleted.
+  EXPECT_FALSE(pool_->DeleteAll());
+  v.clear();
+  EXPECT_TRUE(pool_->Find(find_all.get(), &v));
+  EXPECT_EQ(0, v.size());
+  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
+  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
+  EXPECT_TRUE(pool_->Insert(CreateObjectMock()));
+  // Test with store success.
+  EXPECT_TRUE(pool_->DeleteAll());
+  v.clear();
+  EXPECT_TRUE(pool_->Find(find_all.get(), &v));
+  EXPECT_EQ(0, v.size());
+  // Test with session pool.
+  EXPECT_CALL(*store_, InsertObjectBlob(_, _)).Times(0);
+  EXPECT_CALL(*store_, DeleteAllObjectBlobs()).Times(0);
+  EXPECT_TRUE(pool2_->Insert(CreateObjectMock()));
+  EXPECT_TRUE(pool2_->Insert(CreateObjectMock()));
+  EXPECT_TRUE(pool2_->Insert(CreateObjectMock()));
+  v.clear();
+  EXPECT_TRUE(pool2_->Find(find_all.get(), &v));
+  EXPECT_EQ(3, v.size());
+  EXPECT_TRUE(pool2_->DeleteAll());
+  v.clear();
+  EXPECT_TRUE(pool2_->Find(find_all.get(), &v));
+  EXPECT_EQ(0, v.size());
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

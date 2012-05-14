@@ -44,8 +44,10 @@ class ObjectStore {
   // Inserts a new blob.
   virtual bool InsertObjectBlob(const ObjectBlob& blob,
                                 int* blob_id) = 0;
-  // Deletes an existing blob.
+  // Deletes an existing object blob.
   virtual bool DeleteObjectBlob(int blob_id) = 0;
+  // Deletes all object blobs.
+  virtual bool DeleteAllObjectBlobs() = 0;
   // Updates (replaces) an existing object blob.
   virtual bool UpdateObjectBlob(int blob_id, const ObjectBlob& blob) = 0;
   // Loads all public non-internal objects.

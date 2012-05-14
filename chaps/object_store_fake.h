@@ -40,6 +40,10 @@ class ObjectStoreFake : public ObjectStore {
     object_blobs_.erase(handle);
     return true;
   }
+  virtual bool DeleteAllObjectBlobs() {
+    object_blobs_.clear();
+    return true;
+  }
   virtual bool UpdateObjectBlob(int handle, const ObjectBlob& blob) {
     object_blobs_[handle] = blob;
     return true;

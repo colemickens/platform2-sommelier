@@ -25,6 +25,7 @@ class ObjectPoolMock : public ObjectPool {
   MOCK_METHOD1(Insert, bool (Object*));
   MOCK_METHOD1(Import, bool (Object*));
   MOCK_METHOD1(Delete, bool (const Object*));
+  MOCK_METHOD0(DeleteAll, bool());
   MOCK_METHOD2(Find, bool (const Object*, std::vector<const Object*>*));
   MOCK_METHOD2(FindByHandle, bool(int, const Object**));
   MOCK_METHOD1(GetModifiableObject, Object*(const Object*));

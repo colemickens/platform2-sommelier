@@ -45,10 +45,11 @@ class ObjectPool {
   //             blob).
   virtual bool GetInternalBlob(int blob_id, std::string* blob) = 0;
   virtual bool SetInternalBlob(int blob_id, const std::string& blob) = 0;
-  // SetKey sets the encryption key for objects in this pool. This is only
-  // relevant if the pool is persistent; an object pool has no obligation to
-  // encrypt object data in memory and no obligation to encrypt public object
-  // blobs.
+  // Sets the encryption key for objects in this pool. This is only relevant
+  // if the pool is persistent; an object pool has no obligation to encrypt
+  // object data in memory and no obligation to encrypt public object blobs.
+  // If the encryption key is not available and will not be available during the
+  // lifetime of the pool, this method should be called with zero-length key.
   virtual bool SetEncryptionKey(const std::string& key) = 0;
   // This method takes ownership of the 'object' pointer on success.
   virtual bool Insert(Object* object) = 0;
@@ -57,6 +58,8 @@ class ObjectPool {
   virtual bool Import(Object* object) = 0;
   // Deletes an existing object.
   virtual bool Delete(const Object* object) = 0;
+  // Deletes all existing objects.
+  virtual bool DeleteAll() = 0;
   // Finds all objects matching the search template and appends them to the
   // supplied vector.
   virtual bool Find(const Object* search_template,

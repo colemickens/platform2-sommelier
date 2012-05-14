@@ -25,6 +25,8 @@ class ObjectStoreMock : public ObjectStore {
       bool(const ObjectBlob& blob, int* blob_id));
   MOCK_METHOD1(DeleteObjectBlob,
       bool(int blob_id));
+  MOCK_METHOD0(DeleteAllObjectBlobs,
+      bool());
   MOCK_METHOD2(UpdateObjectBlob,
       bool(int blob_id, const ObjectBlob& blob));
   MOCK_METHOD1(LoadPublicObjectBlobs,

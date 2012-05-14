@@ -85,7 +85,9 @@ bool ObjectPoolImpl::SetInternalBlob(int blob_id, const string& blob) {
 
 bool ObjectPoolImpl::SetEncryptionKey(const string& key) {
   AutoLock lock(lock_);
-  if (store_.get()) {
+  if (key.empty())
+    LOG(WARNING) << "WARNING: Private object services will not be available.";
+  if (store_.get() && !key.empty()) {
     if (!store_->SetEncryptionKey(key))
       return false;
     // Once we have the encryption key we can load private objects.
@@ -153,6 +155,17 @@ bool ObjectPoolImpl::Delete(const Object* object) {
   }
   handle_object_map_.erase(object->handle());
   objects_.erase(object);
+  return true;
+}
+
+bool ObjectPoolImpl::DeleteAll() {
+  AutoLock lock(lock_);
+  objects_.clear();
+  handle_object_map_.clear();
+  is_private_loaded_ = true;
+  private_loaded_event_.Signal();
+  if (store_.get())
+    return store_->DeleteAllObjectBlobs();
   return true;
 }
 

@@ -190,6 +190,31 @@ TEST(TestObjectStore, InternalBlobs) {
   EXPECT_TRUE(blob == "blob");
 }
 
+TEST(TestObjectStore, DeleteAll) {
+  ObjectStoreImpl store;
+  const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
+  store.Init(FilePath(database));
+  string key(32, 'A');
+  EXPECT_TRUE(store.SetEncryptionKey(key));
+  // Insert a few blobs and make sure only internal blobs survive DeleteAll.
+  int handle1;
+  ObjectBlob blob1 = {"blob1", false};
+  EXPECT_TRUE(store.InsertObjectBlob(blob1, &handle1));
+  int handle2;
+  ObjectBlob blob2 = {"blob2", true};
+  EXPECT_TRUE(store.InsertObjectBlob(blob2, &handle2));
+  EXPECT_TRUE(store.SetInternalBlob(1, "internal"));
+  EXPECT_TRUE(store.DeleteAllObjectBlobs());
+  map<int,ObjectBlob> objects, objects2;
+  EXPECT_TRUE(store.LoadPublicObjectBlobs(&objects));
+  EXPECT_TRUE(store.LoadPrivateObjectBlobs(&objects2));
+  EXPECT_EQ(0, objects.size());
+  EXPECT_EQ(0, objects2.size());
+  string internal;
+  EXPECT_TRUE(store.GetInternalBlob(1, &internal));
+  EXPECT_TRUE(internal == "internal");
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {
