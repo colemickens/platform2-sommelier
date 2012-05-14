@@ -64,6 +64,10 @@ class CellularServiceTest : public testing::Test {
 
 const char CellularServiceTest::kAddress[] = "000102030405";
 
+TEST_F(CellularServiceTest, Constructor) {
+  EXPECT_TRUE(service_->connectable());
+}
+
 TEST_F(CellularServiceTest, SetNetworkTechnology) {
   EXPECT_CALL(*adaptor_, EmitStringChanged(flimflam::kNetworkTechnologyProperty,
                                            flimflam::kNetworkTechnologyUmts));

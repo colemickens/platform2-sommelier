@@ -92,6 +92,7 @@ CellularService::CellularService(ControlInterface *control_interface,
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kCellular),
       cellular_(device) {
+  set_connectable(true);
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kActivationStateProperty,
                              &activation_state_);
