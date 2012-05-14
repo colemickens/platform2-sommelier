@@ -10,10 +10,12 @@
 #include <stdlib.h>
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
 #include <base/time.h>
 #include <chromeos/syslog_logging.h>
 
@@ -23,6 +25,7 @@
 
 using chaps::ConvertStringToByteBuffer;
 using std::string;
+using std::vector;
 
 namespace {
 const char* kKeyID = "test";
@@ -121,6 +124,32 @@ CK_SESSION_HANDLE Login(CK_SLOT_ID slot,
   return session;
 }
 
+// Finds all objects matching the given attributes.
+void Find(CK_SESSION_HANDLE session,
+          CK_ATTRIBUTE attributes[],
+          CK_ULONG num_attributes,
+          vector<CK_OBJECT_HANDLE>* objects) {
+  CK_RV result = C_FindObjectsInit(session, attributes, num_attributes);
+  LOG(INFO) << "C_FindObjectsInit: " << chaps::CK_RVToString(result);
+  if (result != CKR_OK)
+    exit(-1);
+  CK_OBJECT_HANDLE object = 0;
+  CK_ULONG object_count = 1;
+  while (object_count > 0) {
+    result = C_FindObjects(session, &object, 1, &object_count);
+    LOG(INFO) << "C_FindObjects: " << chaps::CK_RVToString(result);
+    if (result != CKR_OK)
+      exit(-1);
+    if (object_count > 0) {
+      objects->push_back(object);
+    }
+  }
+  result = C_FindObjectsFinal(session);
+  LOG(INFO) << "C_FindObjectsFinal: " << chaps::CK_RVToString(result);
+  if (result != CKR_OK)
+    exit(-1);
+}
+
 // Sign some data with a private key.
 void Sign(CK_SESSION_HANDLE session) {
   CK_OBJECT_CLASS class_value = CKO_PRIVATE_KEY;
@@ -128,22 +157,9 @@ void Sign(CK_SESSION_HANDLE session) {
     {CKA_CLASS, &class_value, sizeof(class_value)},
     {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)}
   };
-  CK_RV result = C_FindObjectsInit(session, attributes, arraysize(attributes));
-  LOG(INFO) << "C_FindObjectsInit: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
-    exit(-1);
-
-  CK_OBJECT_HANDLE object = 0;
-  CK_ULONG object_count = 1;
-  result = C_FindObjects(session, &object, 1, &object_count);
-  LOG(INFO) << "C_FindObjects: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
-    exit(-1);
-  result = C_FindObjectsFinal(session);
-  LOG(INFO) << "C_FindObjectsFinal: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
-    exit(-1);
-  if (object_count == 0) {
+  vector<CK_OBJECT_HANDLE> objects;
+  Find(session, attributes, arraysize(attributes), &objects);
+  if (objects.size() == 0) {
     LOG(INFO) << "No key.";
     exit(-1);
   }
@@ -152,13 +168,13 @@ void Sign(CK_SESSION_HANDLE session) {
   mechanism.mechanism = CKM_SHA1_RSA_PKCS;
   mechanism.pParameter = NULL;
   mechanism.ulParameterLen = 0;
-  result = C_SignInit(session, &mechanism, object);
+  CK_RV result = C_SignInit(session, &mechanism, objects[0]);
   LOG(INFO) << "C_SignInit: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
 
   CK_BYTE data[200] = {0};
-  CK_BYTE signature[256] = {0};
+  CK_BYTE signature[2048] = {0};
   CK_ULONG signature_length = arraysize(signature);
   result = C_Sign(session,
                   data, arraysize(data),
@@ -169,12 +185,14 @@ void Sign(CK_SESSION_HANDLE session) {
 }
 
 // Generates a test key pair.
-void GenerateKeyPair(CK_SESSION_HANDLE session, bool is_temp) {
+void GenerateKeyPair(CK_SESSION_HANDLE session,
+                     int key_size_bits,
+                     bool is_temp) {
   CK_MECHANISM mechanism;
   mechanism.mechanism = CKM_RSA_PKCS_KEY_PAIR_GEN;
   mechanism.pParameter = NULL;
   mechanism.ulParameterLen = 0;
-  CK_ULONG bits = 2048;
+  CK_ULONG bits = key_size_bits;
   CK_BYTE e[] = {1, 0, 1};
   CK_BBOOL false_value = CK_FALSE;
   CK_BBOOL true_value = CK_TRUE;
@@ -185,7 +203,8 @@ void GenerateKeyPair(CK_SESSION_HANDLE session, bool is_temp) {
     {CKA_TOKEN, &true_value, sizeof(true_value)},
     {CKA_PRIVATE, &false_value, sizeof(false_value)},
     {CKA_MODULUS_BITS, &bits, sizeof(bits)},
-    {CKA_PUBLIC_EXPONENT, e, sizeof(e)}
+    {CKA_PUBLIC_EXPONENT, e, sizeof(e)},
+    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
   };
   CK_ATTRIBUTE private_attributes[] = {
     {CKA_DECRYPT, &true_value, sizeof(true_value)},
@@ -224,28 +243,16 @@ void DeleteAllTestKeys(CK_SESSION_HANDLE session) {
     {CKA_CLASS, &class_value, sizeof(class_value)},
     {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)}
   };
-  CK_RV result = C_FindObjectsInit(session, attributes, arraysize(attributes));
-  LOG(INFO) << "C_FindObjectsInit: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
-    exit(-1);
-  CK_OBJECT_HANDLE object = 0;
-  CK_ULONG object_count = 1;
-  while (object_count > 0) {
-    result = C_FindObjects(session, &object, 1, &object_count);
-    LOG(INFO) << "C_FindObjects: " << chaps::CK_RVToString(result);
+  vector<CK_OBJECT_HANDLE> objects;
+  Find(session, attributes, arraysize(attributes), &objects);
+  class_value = CKO_PUBLIC_KEY;
+  Find(session, attributes, arraysize(attributes), &objects);
+  for (size_t i = 0; i < objects.size(); ++i) {
+    CK_RV result = C_DestroyObject(session, objects[i]);
+    LOG(INFO) << "C_DestroyObject: " << chaps::CK_RVToString(result);
     if (result != CKR_OK)
       exit(-1);
-    if (object_count > 0) {
-      result = C_DestroyObject(session, object);
-      LOG(INFO) << "C_DestroyObject: " << chaps::CK_RVToString(result);
-      if (result != CKR_OK)
-        exit(-1);
-    }
   }
-  result = C_FindObjectsFinal(session);
-  LOG(INFO) << "C_FindObjectsFinal: " << chaps::CK_RVToString(result);
-  if (result != CKR_OK)
-    exit(-1);
 }
 
 // Cleans up the session and library.
@@ -335,9 +342,13 @@ int main(int argc, char** argv) {
   CK_SESSION_HANDLE session = OpenSession(slot);
   PrintTicks(&start_ticks);
   if (generate || generate_delete) {
+    int key_size_bits = 2048;
+    if (cl->HasSwitch("key_size") &&
+        !base::StringToInt(cl->GetSwitchValueASCII("key_size"), &key_size_bits))
+      key_size_bits = 2048;
     session = Login(slot, false, session);
     PrintTicks(&start_ticks);
-    GenerateKeyPair(session, generate_delete);
+    GenerateKeyPair(session, key_size_bits, generate_delete);
     PrintTicks(&start_ticks);
   }
   if (vpn || wifi) {

@@ -198,7 +198,7 @@ uint32_t ChapsServiceImpl::InitToken(uint64_t slot_id,
   // a token via this interface.  CKR_FUNCTION_NOT_SUPPORTED could be an option
   // here but reporting an incorrect pin is more likely to be handled gracefully
   // by the caller.
-  return CKR_PIN_INCORRECT;
+  LOG_CK_RV_AND_RETURN(CKR_PIN_INCORRECT);
 }
 
 uint32_t ChapsServiceImpl::InitPIN(uint64_t session_id, const string* pin) {
@@ -209,7 +209,7 @@ uint32_t ChapsServiceImpl::InitPIN(uint64_t session_id, const string* pin) {
   // Authentication is not handled via this interface.  Since this function can
   // only be called in the "R/W SO Functions" state and we don't support this
   // state, CKR_USER_NOT_LOGGED_IN is the appropriate response.
-  return CKR_USER_NOT_LOGGED_IN;
+  LOG_CK_RV_AND_RETURN(CKR_USER_NOT_LOGGED_IN);
 }
 
 uint32_t ChapsServiceImpl::SetPIN(uint64_t session_id,
@@ -221,7 +221,7 @@ uint32_t ChapsServiceImpl::SetPIN(uint64_t session_id,
   CHECK(session);
   // Authentication is not handled via this interface.  We do not support
   // changing a pin or password of any kind.
-  return CKR_PIN_INVALID;
+  LOG_CK_RV_AND_RETURN(CKR_PIN_INVALID);
 }
 
 uint32_t ChapsServiceImpl::OpenSession(uint64_t slot_id,
@@ -289,7 +289,7 @@ uint32_t ChapsServiceImpl::GetOperationState(
                           !session->IsOperationActive(kVerify),
                           CKR_OPERATION_NOT_INITIALIZED);
   // There is an active operation but we'll still refuse to give out state.
-  return CKR_STATE_UNSAVEABLE;
+  LOG_CK_RV_AND_RETURN(CKR_STATE_UNSAVEABLE);
 }
 
 uint32_t ChapsServiceImpl::SetOperationState(
@@ -302,7 +302,7 @@ uint32_t ChapsServiceImpl::SetOperationState(
                           CKR_SESSION_HANDLE_INVALID);
   CHECK(session);
   // We don't give out operation state so there's no way this is valid.
-  return CKR_SAVED_STATE_INVALID;
+  LOG_CK_RV_AND_RETURN(CKR_SAVED_STATE_INVALID);
 }
 
 uint32_t ChapsServiceImpl::Login(uint64_t session_id,
@@ -674,7 +674,7 @@ uint32_t ChapsServiceImpl::DigestUpdate(uint64_t session_id,
 uint32_t ChapsServiceImpl::DigestKey(uint64_t session_id,
                                      uint64_t key_handle) {
   // We don't give out key digests.
-  return CKR_KEY_INDIGESTIBLE;
+  LOG_CK_RV_AND_RETURN(CKR_KEY_INDIGESTIBLE);
 }
 
 uint32_t ChapsServiceImpl::DigestFinal(uint64_t session_id,
@@ -763,7 +763,7 @@ uint32_t ChapsServiceImpl::SignRecoverInit(
       uint64_t mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
       uint64_t key_handle) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::SignRecover(uint64_t session_id,
@@ -771,7 +771,7 @@ uint32_t ChapsServiceImpl::SignRecover(uint64_t session_id,
                                        uint64_t max_out_length,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* signature) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::VerifyInit(
@@ -828,7 +828,7 @@ uint32_t ChapsServiceImpl::VerifyRecoverInit(
       uint64_t mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
       uint64_t key_handle) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::VerifyRecover(uint64_t session_id,
@@ -836,7 +836,7 @@ uint32_t ChapsServiceImpl::VerifyRecover(uint64_t session_id,
                                          uint64_t max_out_length,
                                          uint64_t* actual_out_length,
                                          vector<uint8_t>* data) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::DigestEncryptUpdate(
@@ -845,7 +845,7 @@ uint32_t ChapsServiceImpl::DigestEncryptUpdate(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::DecryptDigestUpdate(
@@ -854,7 +854,7 @@ uint32_t ChapsServiceImpl::DecryptDigestUpdate(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::SignEncryptUpdate(
@@ -863,7 +863,7 @@ uint32_t ChapsServiceImpl::SignEncryptUpdate(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::DecryptVerifyUpdate(
@@ -872,7 +872,7 @@ uint32_t ChapsServiceImpl::DecryptVerifyUpdate(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::GenerateKey(
@@ -935,7 +935,7 @@ uint32_t ChapsServiceImpl::WrapKey(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* wrapped_key) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::UnwrapKey(
@@ -946,7 +946,7 @@ uint32_t ChapsServiceImpl::UnwrapKey(
     const vector<uint8_t>& wrapped_key,
     const vector<uint8_t>& attributes,
     uint64_t* key_handle) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::DeriveKey(
@@ -956,7 +956,7 @@ uint32_t ChapsServiceImpl::DeriveKey(
     uint64_t base_key_handle,
     const vector<uint8_t>& attributes,
     uint64_t* key_handle) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  LOG_CK_RV_AND_RETURN(CKR_FUNCTION_NOT_SUPPORTED);
 }
 
 uint32_t ChapsServiceImpl::SeedRandom(uint64_t session_id,
