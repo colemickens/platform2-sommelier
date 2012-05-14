@@ -263,7 +263,7 @@ fi
 
 TOUCHUI_FLAGS=
 if use_flag_is_set touchui; then
-  TOUCHUI_FLAGS="--touch-optimized-ui"
+  TOUCHUI_FLAGS="--touch-optimized-ui --enable-touch-calibration"
 fi
 
 # Device Manager Server used to fetch the enterprise policy, if applicable.
