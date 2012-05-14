@@ -273,10 +273,12 @@ DMSERVER="https://m.google.com/devicemanagement/data/api"
 # foreground renderer and one for all the background renderers and set the
 # background group to the lowest possible priority.
 mkdir -p /tmp/cgroup/cpu
-mount -t cgroup cgroup /tmp/cgroup/cpu -o cpu
-mkdir /tmp/cgroup/cpu/chrome_renderers
-mkdir /tmp/cgroup/cpu/chrome_renderers/foreground
-mkdir /tmp/cgroup/cpu/chrome_renderers/background
+if ! grep -q '^cgroup /tmp/cgroup/cpu cgroup' /proc/mounts; then
+  mount -t cgroup cgroup /tmp/cgroup/cpu -o cpu
+fi
+mkdir -p /tmp/cgroup/cpu/chrome_renderers
+mkdir -p /tmp/cgroup/cpu/chrome_renderers/foreground
+mkdir -p /tmp/cgroup/cpu/chrome_renderers/background
 echo "2" > /tmp/cgroup/cpu/chrome_renderers/background/cpu.shares
 chown -R chronos /tmp/cgroup/cpu/chrome_renderers
 
