@@ -73,6 +73,7 @@ Manager::Manager(ControlInterface *control_interface,
       device_info_(control_interface, dispatcher, metrics, this),
       modem_info_(control_interface, dispatcher, metrics, this, glib),
       vpn_provider_(control_interface, dispatcher, metrics, this),
+      wimax_provider_(control_interface, dispatcher, metrics, this),
       running_(false),
       connect_profiles_to_rpc_(true),
       ephemeral_profile_(new EphemeralProfile(control_interface, this)),
@@ -160,6 +161,8 @@ void Manager::Start() {
   device_info_.Start();
   modem_info_.Start();
   vpn_provider_.Start();
+  // TODO(petkov): Enable this and test on a running system.
+  // wimax_provider_.Start();
 }
 
 void Manager::Stop() {
@@ -181,6 +184,7 @@ void Manager::Stop() {
   }
 
   adaptor_->UpdateRunning();
+  wimax_provider_.Stop();
   vpn_provider_.Stop();
   modem_info_.Stop();
   device_info_.Stop();

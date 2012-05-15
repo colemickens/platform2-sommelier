@@ -23,6 +23,7 @@ namespace {
 
 const char kTestLinkName[] = "wm0";
 const int kTestInterfaceIndex = 5;
+const char kTestPath[] = "/org/chromium/WiMaxManager/Device/7";
 
 }  // namespace
 
@@ -31,7 +32,7 @@ class WiMaxServiceTest : public testing::Test {
   WiMaxServiceTest()
       : manager_(&control_, NULL, NULL, NULL),
         wimax_(new MockWiMax(&control_, NULL, &metrics_, &manager_,
-                             kTestLinkName, kTestInterfaceIndex)),
+                             kTestLinkName, kTestInterfaceIndex, kTestPath)),
         service_(new WiMaxService(&control_, NULL, &metrics_, &manager_,
                                   wimax_)) {}
 
@@ -41,7 +42,7 @@ class WiMaxServiceTest : public testing::Test {
   NiceMockControl control_;
   MockManager manager_;
   MockMetrics metrics_;
-  MockWiMax *wimax_;  // Owned by |service_|.
+  scoped_refptr<MockWiMax> wimax_;
   WiMaxServiceRefPtr service_;
 };
 

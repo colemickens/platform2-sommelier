@@ -5,9 +5,14 @@
 #ifndef SHILL_WIMAX_H_
 #define SHILL_WIMAX_H_
 
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
 #include "shill/device.h"
 
 namespace shill {
+
+class ProxyFactory;
+class WiMaxDeviceProxyInterface;
 
 class WiMax : public Device {
  public:
@@ -16,7 +21,8 @@ class WiMax : public Device {
         Metrics *metrics,
         Manager *manager,
         const std::string &link_name,
-        int interface_index);
+        int interface_index,
+        const RpcIdentifier &path);
 
   virtual ~WiMax();
 
@@ -28,7 +34,18 @@ class WiMax : public Device {
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
 
+  const RpcIdentifier &path() const { return path_; }
+
  private:
+  friend class WiMaxTest;
+  FRIEND_TEST(WiMaxTest, StartStop);
+
+  const RpcIdentifier path_;
+
+  scoped_ptr<WiMaxDeviceProxyInterface> proxy_;
+
+  ProxyFactory *proxy_factory_;
+
   DISALLOW_COPY_AND_ASSIGN(WiMax);
 };
 

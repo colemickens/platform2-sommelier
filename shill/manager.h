@@ -24,6 +24,7 @@
 #include "shill/service.h"
 #include "shill/vpn_provider.h"
 #include "shill/wifi.h"
+#include "shill/wimax_provider.h"
 
 namespace shill {
 
@@ -178,6 +179,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual DeviceInfo *device_info() { return &device_info_; }
   virtual ModemInfo *modem_info() { return &modem_info_; }
   virtual VPNProvider *vpn_provider() { return &vpn_provider_; }
+  virtual WiMaxProvider *wimax_provider() { return &wimax_provider_; }
   PropertyStore *mutable_store() { return &store_; }
   virtual const PropertyStore &store() const { return store_; }
   GLib *glib() const { return glib_; }
@@ -280,6 +282,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   DeviceInfo device_info_;
   ModemInfo modem_info_;
   VPNProvider vpn_provider_;
+  WiMaxProvider wimax_provider_;
   bool running_;
   // Used to facilitate unit tests which can't use RPC.
   bool connect_profiles_to_rpc_;

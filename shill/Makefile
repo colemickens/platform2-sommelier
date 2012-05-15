@@ -210,6 +210,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	wimax.o \
 	wimax_device_proxy.o \
 	wimax_manager_proxy.o \
+	wimax_provider.o \
 	wimax_service.o \
 	wpa_supplicant.o \
 	)
@@ -350,6 +351,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	wifi_endpoint_unittest.o \
 	wifi_service_unittest.o \
 	wifi_unittest.o \
+	wimax_provider_unittest.o \
 	wimax_service_unittest.o \
 	wimax_unittest.o \
 	)

@@ -4,6 +4,10 @@
 
 #include "shill/wimax.h"
 
+#include "shill/proxy_factory.h"
+#include "shill/scope_logger.h"
+#include "shill/wimax_device_proxy_interface.h"
+
 using std::string;
 
 namespace shill {
@@ -13,16 +17,33 @@ WiMax::WiMax(ControlInterface *control,
              Metrics *metrics,
              Manager *manager,
              const string &link_name,
-             int interface_index)
+             int interface_index,
+             const RpcIdentifier &path)
     : Device(control, dispatcher, metrics, manager, link_name, "",
-             interface_index, Technology::kWiMax) {}
+             interface_index, Technology::kWiMax),
+      path_(path),
+      proxy_factory_(ProxyFactory::GetInstance()) {
+  SLOG(WiMax, 2) << __func__ << "(" << link_name << ", " << path << ")";
+}
 
-WiMax::~WiMax() {}
+WiMax::~WiMax() {
+  SLOG(WiMax, 2) << __func__ << "(" << link_name() << ", " << path_ << ")";
+}
 
 void WiMax::Start(Error *error, const EnabledStateChangedCallback &callback) {
+  SLOG(WiMax, 2) << __func__;
+  proxy_.reset(proxy_factory_->CreateWiMaxDeviceProxy(path_));
+  if (error) {
+    error->Reset();
+  }
 }
 
 void WiMax::Stop(Error *error, const EnabledStateChangedCallback &callback) {
+  SLOG(WiMax, 2) << __func__;
+  proxy_.reset();
+  if (error) {
+    error->Reset();
+  }
 }
 
 bool WiMax::TechnologyIs(const Technology::Identifier type) const {

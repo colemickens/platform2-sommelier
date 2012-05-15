@@ -24,7 +24,8 @@ class MockWiMax : public WiMax {
             Metrics *metrics,
             Manager *manager,
             const std::string &link_name,
-            int interface_index);
+            int interface_index,
+            const RpcIdentifier &path);
   virtual ~MockWiMax();
 
   MOCK_METHOD2(Start, void(Error *error,
