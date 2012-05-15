@@ -5,6 +5,7 @@
 #include "shill/wimax_manager_proxy.h"
 
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
 #include "shill/scope_logger.h"
@@ -12,12 +13,6 @@
 using std::vector;
 
 namespace shill {
-
-namespace {
-// TODO(petkov): Declare these in chromeos/dbus/service_constants.h.
-const char kWiMaxManagerServicePath[] = "/org/chromium/WiMaxManager";
-const char kWiMaxManagerServiceName[] = "org.chromium.WiMaxManager";
-}  // namespace
 
 WiMaxManagerProxy::WiMaxManagerProxy(DBus::Connection *connection)
     : proxy_(connection) {}
@@ -42,8 +37,8 @@ vector<RpcIdentifier> WiMaxManagerProxy::Devices(Error *error) {
 
 WiMaxManagerProxy::Proxy::Proxy(DBus::Connection *connection)
     : DBus::ObjectProxy(*connection,
-                        kWiMaxManagerServicePath,
-                        kWiMaxManagerServiceName) {}
+                        wimax_manager::kWiMaxManagerServicePath,
+                        wimax_manager::kWiMaxManagerServiceName) {}
 
 WiMaxManagerProxy::Proxy::~Proxy() {}
 

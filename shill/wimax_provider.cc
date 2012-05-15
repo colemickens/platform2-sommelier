@@ -5,6 +5,7 @@
 #include "shill/wimax_provider.h"
 
 #include <base/bind.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
@@ -18,12 +19,6 @@ using std::string;
 using std::vector;
 
 namespace shill {
-
-namespace {
-// TODO(petkov): Declare these in chromeos/dbus/service_constants.h.
-const char kWiMaxManagerServicePath[] = "/org/chromium/WiMaxManager";
-const char kWiMaxManagerServiceName[] = "org.chromium.WiMaxManager";
-}  // namespace
 
 WiMaxProvider::WiMaxProvider(ControlInterface *control,
                              EventDispatcher *dispatcher,
@@ -46,7 +41,8 @@ void WiMaxProvider::Start() {
   }
   properties_proxy_.reset(
       proxy_factory_->CreateDBusPropertiesProxy(
-          kWiMaxManagerServicePath, kWiMaxManagerServiceName));
+          wimax_manager::kWiMaxManagerServicePath,
+          wimax_manager::kWiMaxManagerServiceName));
   properties_proxy_->set_properties_changed_callback(
       Bind(&WiMaxProvider::OnPropertiesChanged, Unretained(this)));
   manager_proxy_.reset(proxy_factory_->CreateWiMaxManagerProxy());

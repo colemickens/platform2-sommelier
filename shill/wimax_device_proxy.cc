@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
 #include "shill/scope_logger.h"
@@ -16,11 +17,6 @@ using base::Unretained;
 using std::string;
 
 namespace shill {
-
-namespace {
-// TODO(petkov): Declare this in chromeos/dbus/service_constants.h.
-const char kWiMaxManagerServiceName[] = "org.chromium.WiMaxManager";
-}  // namespace
 
 WiMaxDeviceProxy::WiMaxDeviceProxy(DBus::Connection *connection,
                                    const DBus::Path &path)
@@ -112,7 +108,8 @@ void WiMaxDeviceProxy::FromDBusError(const DBus::Error &dbus_error,
 
 WiMaxDeviceProxy::Proxy::Proxy(DBus::Connection *connection,
                                const DBus::Path &path)
-    : DBus::ObjectProxy(*connection, path, kWiMaxManagerServiceName) {}
+    : DBus::ObjectProxy(*connection, path,
+                        wimax_manager::kWiMaxManagerServiceName) {}
 
 WiMaxDeviceProxy::Proxy::~Proxy() {}
 
