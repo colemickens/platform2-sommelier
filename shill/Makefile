@@ -52,6 +52,8 @@ DBUS_PROXY_HEADERS = \
 # Generates rules for copying SYSROOT XMLs locally and updates the proxy header
 # dependencies.
 DBUS_BINDINGS_XML_SYSROOT = \
+	org.chromium.WiMaxManager>wimax_manager \
+	org.chromium.WiMaxManager.Device>wimax_manager-device \
 	org.freedesktop.ModemManager>modem_manager \
 	org.freedesktop.ModemManager.Modem>modem \
 	org.freedesktop.ModemManager.Modem.Cdma>modem-cdma \
@@ -62,9 +64,7 @@ DBUS_BINDINGS_XML_SYSROOT = \
 	org.freedesktop.ModemManager1.Modem.Modem3gpp>mm1-modem-modem3gpp \
 	org.freedesktop.ModemManager1.Modem.ModemCdma>mm1-modem-modemcdma \
 	org.freedesktop.ModemManager1.Modem.Simple>mm1-modem-simple \
-	org.freedesktop.ModemManager1.Sim>mm1-sim \
-	org.chromium.WiMaxManager>wimax_manager \
-	org.chromium.WiMaxManager.Device>wimax_manager_device
+	org.freedesktop.ModemManager1.Sim>mm1-sim
 
 # Rename local XML files with the names required by DBus to XML files with the
 # names required by the style guide, which will then be turned into generated
@@ -208,6 +208,8 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	wifi_endpoint.o \
 	wifi_service.o \
 	wimax.o \
+	wimax_device_proxy.o \
+	wimax_manager_proxy.o \
 	wimax_service.o \
 	wpa_supplicant.o \
 	)
@@ -310,6 +312,8 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_wifi.o \
 	mock_wifi_service.o \
 	mock_wimax.o \
+	mock_wimax_device_proxy.o \
+	mock_wimax_manager_proxy.o \
 	mock_wimax_service.o \
 	modem_1_unittest.o \
 	modem_info_unittest.o \

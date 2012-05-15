@@ -47,6 +47,7 @@ const char *const kScopeNames[] = {
   "task",
   "vpn",
   "wifi",
+  "wimax",
 };
 
 COMPILE_ASSERT(arraysize(kScopeNames) == ScopeLogger::kNumScopes,

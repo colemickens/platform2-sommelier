@@ -59,7 +59,8 @@ TEST_F(ScopeLoggerTest, GetAllScopeNames) {
             "storage+"
             "task+"
             "vpn+"
-            "wifi",
+            "wifi+"
+            "wimax",
       logger_->GetAllScopeNames());
 }
 

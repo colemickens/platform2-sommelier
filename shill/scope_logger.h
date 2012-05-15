@@ -97,6 +97,7 @@ class ScopeLogger {
     kTask,
     kVPN,
     kWiFi,
+    kWiMax,
     kNumScopes
   };
 

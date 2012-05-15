@@ -24,6 +24,8 @@
 #include "shill/supplicant_bss_proxy.h"
 #include "shill/supplicant_interface_proxy.h"
 #include "shill/supplicant_process_proxy.h"
+#include "shill/wimax_device_proxy.h"
+#include "shill/wimax_manager_proxy.h"
 
 using std::string;
 
@@ -98,33 +100,42 @@ ModemGSMNetworkProxyInterface *ProxyFactory::CreateModemGSMNetworkProxy(
 
 // Proxies for ModemManager1 interfaces
 mm1::ModemModem3gppProxyInterface *ProxyFactory::CreateMM1ModemModem3gppProxy(
-      const std::string &path,
-      const std::string &service) {
+      const string &path,
+      const string &service) {
   return new mm1::ModemModem3gppProxy(connection(), path, service);
 }
 
 mm1::ModemModemCdmaProxyInterface *ProxyFactory::CreateMM1ModemModemCdmaProxy(
-      const std::string &path,
-      const std::string &service) {
+      const string &path,
+      const string &service) {
   return new mm1::ModemModemCdmaProxy(connection(), path, service);
 }
 
 mm1::ModemProxyInterface *ProxyFactory::CreateMM1ModemProxy(
-      const std::string &path,
-      const std::string &service) {
+      const string &path,
+      const string &service) {
   return new mm1::ModemProxy(connection(), path, service);
 }
 
 mm1::ModemSimpleProxyInterface *ProxyFactory::CreateMM1ModemSimpleProxy(
-      const std::string &path,
-      const std::string &service) {
+      const string &path,
+      const string &service) {
   return new mm1::ModemSimpleProxy(connection(), path, service);
 }
 
 mm1::SimProxyInterface *ProxyFactory::CreateSimProxy(
-      const std::string &path,
-      const std::string &service) {
+      const string &path,
+      const string &service) {
   return new mm1::SimProxy(connection(), path, service);
+}
+
+WiMaxDeviceProxyInterface *ProxyFactory::CreateWiMaxDeviceProxy(
+    const string &path) {
+  return new WiMaxDeviceProxy(connection(), path);
+}
+
+WiMaxManagerProxyInterface *ProxyFactory::CreateWiMaxManagerProxy() {
+  return new WiMaxManagerProxy(connection());
 }
 
 PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(
