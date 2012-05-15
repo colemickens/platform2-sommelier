@@ -636,7 +636,7 @@ TEST_F(CellularTest, ModemStateChangeDisable) {
               Disconnect(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   EXPECT_CALL(*proxy_,
-              Enable(false, _, _, CellularCapability::kTimeoutDefault))
+              Enable(false, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   EXPECT_CALL(manager_, UpdateEnabledTechnologies());
   device_->enabled_ = true;

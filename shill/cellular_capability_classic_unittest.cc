@@ -403,7 +403,7 @@ TEST_F(CellularCapabilityTest, StopModemDisconnectSuccess) {
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
                        &CellularCapabilityTest::InvokeDisconnect));
-  EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this,
                        &CellularCapabilityTest::InvokeEnable));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
@@ -419,7 +419,7 @@ TEST_F(CellularCapabilityTest, StopModemDisconnectFail) {
   EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this,
                        &CellularCapabilityTest::InvokeDisconnectFail));
-  EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this,
                        &CellularCapabilityTest::InvokeEnable));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));

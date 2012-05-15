@@ -159,7 +159,7 @@ void CellularCapabilityClassic::DisableModem(const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
-  proxy_->Enable(false, &error, callback, kTimeoutDefault);
+  proxy_->Enable(false, &error, callback, kTimeoutEnable);
   if (error.IsFailure())
       callback.Run(error);
 }
