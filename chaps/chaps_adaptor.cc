@@ -69,6 +69,11 @@ void ChapsAdaptor::OnChangeAuthData(const string& path,
                                       ConvertByteVectorToString(new_auth_data));
 }
 
+void ChapsAdaptor::SetLogLevel(const int32_t& level,
+                               ::DBus::Error& /*error*/) {
+  logging::SetMinLogLevel(level);
+}
+
 void ChapsAdaptor::GetSlotList(const bool& token_present,
                                vector<uint64_t>& slot_list,
                                uint32_t& result,

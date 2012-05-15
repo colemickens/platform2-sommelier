@@ -40,6 +40,7 @@ public:
                                 const std::vector<uint8_t>& old_auth_data,
                                 const std::vector<uint8_t>& new_auth_data,
                                 ::DBus::Error &error);
+  virtual void SetLogLevel(const int32_t& level, ::DBus::Error &error);
   virtual void GetSlotList(const bool& token_present,
                            std::vector<uint64_t>& slot_list,
                            uint32_t& result,

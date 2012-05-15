@@ -492,10 +492,6 @@ string ValueToString(CK_ATTRIBUTE_TYPE attribute,
       return PrintYesNo(value);
     case CKA_ID:
       return PrintIntVector(value);
-    case CKA_LABEL:
-    case CKA_SUBJECT:
-    case CKA_ISSUER:
-      return ConvertByteVectorToString(value);
     default:
       return "***";
   }

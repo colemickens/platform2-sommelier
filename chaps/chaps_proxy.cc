@@ -84,6 +84,18 @@ void ChapsProxyImpl::FireChangeAuthDataEvent(
   }
 }
 
+void ChapsProxyImpl::SetLogLevel(const int32_t& level) {
+  if (!proxy_.get()) {
+    LOG(ERROR) << "Failed to set logging level: proxy not initialized.";
+    return;
+  }
+  try {
+    proxy_->SetLogLevel(level);
+  } catch (DBus::Error err) {
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+}
+
 uint32_t ChapsProxyImpl::GetSlotList(bool token_present,
                                      vector<uint64_t>* slot_list) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);

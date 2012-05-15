@@ -43,6 +43,11 @@
       <arg type="ay" name="new_auth_data" direction="in"/>
     </method>
 
+    <!-- Logging methods. -->
+    <method name="SetLogLevel">
+      <arg type="i" name="level" direction="in"/>
+    </method>
+
     <!-- Methods that map to PKCS #11 calls. Each method name is identical to
          the PKCS #11 function name except for the "C_" prefix.
 

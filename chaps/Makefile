@@ -115,6 +115,10 @@ $(OUT)chapsd: $(COMMON) \
 	$(call cxx_binary, -ldl -ltspi -lleveldb -lmemenv)
 RM_ON_CLEAN += $(OUT)chapsd
 
+$(OUT)chaps_client: $(OUT)chaps_client.o lib
+	$(call cxx_binary, -lchaps)
+RM_ON_CLEAN += $(OUT)chaps_client
+
 $(OUT)chapsd_test: $(OUT)chapsd_test.o $(OUT)chaps_service_redirect.o
 	$(call cxx_binary, -lgtest -lgflags -lchaps -ldl)
 RM_ON_CLEAN += $(OUT)chapsd_test
@@ -198,7 +202,7 @@ $(OUT)opencryptoki_importer_test: $(COMMON) $(MOCK) \
 RM_ON_CLEAN += $(OUT)opencryptoki_importer_test
 
 # Some shortcuts
-all: $(OUT)libchaps.so $(OUT)chapsd $(OUT)p11_replay
+all: $(OUT)libchaps.so $(OUT)chapsd $(OUT)chaps_client $(OUT)p11_replay
 
 lib: $(OUT)libchaps.so
 
