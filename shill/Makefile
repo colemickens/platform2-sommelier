@@ -62,7 +62,9 @@ DBUS_BINDINGS_XML_SYSROOT = \
 	org.freedesktop.ModemManager1.Modem.Modem3gpp>mm1-modem-modem3gpp \
 	org.freedesktop.ModemManager1.Modem.ModemCdma>mm1-modem-modemcdma \
 	org.freedesktop.ModemManager1.Modem.Simple>mm1-modem-simple \
-	org.freedesktop.ModemManager1.Sim>mm1-sim
+	org.freedesktop.ModemManager1.Sim>mm1-sim \
+	org.chromium.WiMaxManager>wimax_manager \
+	org.chromium.WiMaxManager.Device>wimax_manager_device
 
 # Rename local XML files with the names required by DBus to XML files with the
 # names required by the style guide, which will then be turned into generated
