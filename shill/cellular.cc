@@ -197,19 +197,14 @@ void Cellular::Start(Error *error,
     return;
   }
   capability_->StartModem(error,
-                          Bind(&Cellular::OnModemStarted, this, callback));
+                          Bind(&Cellular::StartModemCallback, this, callback));
 }
 
 void Cellular::Stop(Error *error,
                     const EnabledStateChangedCallback &callback) {
   SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
-  if (service_) {
-    // TODO(ers): See whether we can/should do DestroyService() here.
-    manager()->DeregisterService(service_);
-    service_ = NULL;
-  }
   capability_->StopModem(error,
-                         Bind(&Cellular::OnModemStopped, this, callback));
+                         Bind(&Cellular::StopModemCallback, this, callback));
 }
 
 bool Cellular::IsUnderlyingDeviceEnabled() const {
@@ -237,8 +232,8 @@ bool Cellular::IsEnabledModemState(ModemState state) {
   return false;
 }
 
-void Cellular::OnModemStarted(const EnabledStateChangedCallback &callback,
-                              const Error &error) {
+void Cellular::StartModemCallback(const EnabledStateChangedCallback &callback,
+                                  const Error &error) {
   SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
   if (error.IsSuccess() && (state_ == kStateDisabled)) {
     SetState(kStateEnabled);
@@ -249,9 +244,13 @@ void Cellular::OnModemStarted(const EnabledStateChangedCallback &callback,
   callback.Run(error);
 }
 
-void Cellular::OnModemStopped(const EnabledStateChangedCallback &callback,
-                              const Error &error) {
+void Cellular::StopModemCallback(const EnabledStateChangedCallback &callback,
+                                 const Error &error) {
   SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
+  // Destroy the cellular service regardless of any errors that occur during
+  // the stop process since we do not know the state of the modem at this
+  // point.
+  DestroyService();
   if (state_ != kStateDisabled)
     SetState(kStateDisabled);
   callback.Run(error);

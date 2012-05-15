@@ -19,6 +19,7 @@
 #include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/mock_cellular_service.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
@@ -656,20 +657,50 @@ TEST_F(CellularTest, ModemStateChangeDisable) {
   EXPECT_FALSE(device_->enabled());
 }
 
-TEST_F(CellularTest, OnModemStarted){
+TEST_F(CellularTest, StartModemCallback) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
-  device_->OnModemStarted(Bind(&CellularTest::TestCallback, Unretained(this)),
-                          Error(Error::kSuccess));
+  device_->StartModemCallback(Bind(&CellularTest::TestCallback,
+                                   Unretained(this)),
+                              Error(Error::kSuccess));
   EXPECT_EQ(device_->state_, Cellular::kStateEnabled);
 }
 
-TEST_F(CellularTest, OnModemStartedFail){
+TEST_F(CellularTest, StartModemCallbackFail) {
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
-  device_->OnModemStarted(Bind(&CellularTest::TestCallback, Unretained(this)),
-                          Error(Error::kOperationFailed));
+  device_->StartModemCallback(Bind(&CellularTest::TestCallback,
+                                   Unretained(this)),
+                              Error(Error::kOperationFailed));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
+}
+
+TEST_F(CellularTest, StopModemCallback) {
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  device_->service_ = new MockCellularService(&control_interface_,
+                                              &dispatcher_,
+                                              &metrics_,
+                                              &manager_,
+                                              device_);
+  device_->StopModemCallback(Bind(&CellularTest::TestCallback,
+                                  Unretained(this)),
+                             Error(Error::kSuccess));
+  EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
+  EXPECT_FALSE(device_->service_.get());
+}
+
+TEST_F(CellularTest, StopModemCallbackFail) {
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  device_->service_ = new MockCellularService(&control_interface_,
+                                              &dispatcher_,
+                                              &metrics_,
+                                              &manager_,
+                                              device_);
+  device_->StopModemCallback(Bind(&CellularTest::TestCallback,
+                                  Unretained(this)),
+                             Error(Error::kOperationFailed));
+  EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
+  EXPECT_FALSE(device_->service_.get());
 }
 
 }  // namespace shill

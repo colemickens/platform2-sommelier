@@ -177,10 +177,10 @@ class Cellular : public Device {
                          const std::string &new_pin,
                          Error *error, const ResultCallback &callback);
 
-  void OnModemStarted(const EnabledStateChangedCallback &callback,
-                      const Error &error);
-  void OnModemStopped(const EnabledStateChangedCallback &callback,
-                      const Error &error);
+  void StartModemCallback(const EnabledStateChangedCallback &callback,
+                          const Error &error);
+  void StopModemCallback(const EnabledStateChangedCallback &callback,
+                         const Error &error);
   void OnConnecting();
   void OnConnected();
   void OnConnectFailed(const Error &error);
@@ -213,8 +213,10 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
-  FRIEND_TEST(CellularTest, OnModemStarted);
-  FRIEND_TEST(CellularTest, OnModemStartedFail);
+  FRIEND_TEST(CellularTest, StartModemCallback);
+  FRIEND_TEST(CellularTest, StartModemCallbackFail);
+  FRIEND_TEST(CellularTest, StopModemCallback);
+  FRIEND_TEST(CellularTest, StopModemCallbackFail);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
