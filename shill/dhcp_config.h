@@ -77,6 +77,7 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, ProcessEventSignalSuccess);
   FRIEND_TEST(DHCPConfigTest, ProcessEventSignalUnknown);
   FRIEND_TEST(DHCPConfigTest, ReleaseIP);
+  FRIEND_TEST(DHCPConfigTest, ReleaseIPArpGW);
   FRIEND_TEST(DHCPConfigTest, RenewIP);
   FRIEND_TEST(DHCPConfigTest, RequestIP);
   FRIEND_TEST(DHCPConfigTest, RequestIPTimeout);
@@ -110,6 +111,7 @@ class DHCPConfig : public IPConfig {
   static const char kDHCPCDUser[];
 
   static const char kReasonBound[];
+  static const char kReasonGatewayArp[];
   static const char kReasonFail[];
   static const char kReasonRebind[];
   static const char kReasonReboot[];

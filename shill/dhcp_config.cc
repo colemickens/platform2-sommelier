@@ -47,6 +47,7 @@ const char DHCPConfig::kDHCPCDUser[] = "dhcp";
 const int DHCPConfig::kMinMTU = 576;
 const char DHCPConfig::kReasonBound[] = "BOUND";
 const char DHCPConfig::kReasonFail[] = "FAIL";
+const char DHCPConfig::kReasonGatewayArp[] = "GATEWAY-ARP";
 const char DHCPConfig::kReasonRebind[] = "REBIND";
 const char DHCPConfig::kReasonReboot[] = "REBOOT";
 const char DHCPConfig::kReasonRenew[] = "RENEW";
@@ -119,7 +120,9 @@ bool DHCPConfig::ReleaseIP() {
   if (!pid_) {
     return true;
   }
-  if (proxy_.get()) {
+  // If we are using gateway unicast ARP to speed up re-connect, don't
+  // give up our leases when we disconnect.
+  if (!arp_gateway_ && proxy_.get()) {
     proxy_->Release(device_name());
   }
   Stop();
@@ -144,13 +147,23 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
   if (reason != kReasonBound &&
       reason != kReasonRebind &&
       reason != kReasonReboot &&
-      reason != kReasonRenew) {
+      reason != kReasonRenew &&
+      reason != kReasonGatewayArp) {
     LOG(WARNING) << "Event ignored.";
     return;
   }
   IPConfig::Properties properties;
   CHECK(ParseConfiguration(configuration, &properties));
-  UpdateProperties(properties, true);
+  if (reason == kReasonGatewayArp) {
+    // This is a non-authoritative confirmation that we or on the same
+    // network as the one we received a lease on previously.  The DHCP
+    // client is still running, so we should not cancel the timeout
+    // until that completes.  In the meantime, however, we can tentatively
+    // configure our network in anticipation of successful completion.
+    IPConfig::UpdateProperties(properties, true);
+  } else {
+    UpdateProperties(properties, true);
+  }
 }
 
 void DHCPConfig::UpdateProperties(const Properties &properties, bool success) {
@@ -171,6 +184,7 @@ bool DHCPConfig::Start() {
   }
   if (arp_gateway_) {
     args.push_back(const_cast<char *>("-R"));  // ARP for default gateway.
+    args.push_back(const_cast<char *>("-U"));  // Enable unicast ARP on renew.
   }
   string interface_arg(device_name());
   if (lease_file_suffix_ != device_name()) {

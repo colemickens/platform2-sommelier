@@ -380,7 +380,17 @@ TEST_F(DHCPConfigTest, ProcessEventSignalUnknown) {
 
 TEST_F(DHCPConfigTest, ReleaseIP) {
   config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
+  config_->arp_gateway_ = false;
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
+  config_->proxy_.reset(proxy_.release());
+  EXPECT_TRUE(config_->ReleaseIP());
+  config_->pid_ = 0;
+}
+
+TEST_F(DHCPConfigTest, ReleaseIPArpGW) {
+  config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
+  config_->arp_gateway_ = true;
+  EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
   config_->proxy_.reset(proxy_.release());
   EXPECT_TRUE(config_->ReleaseIP());
   config_->pid_ = 0;

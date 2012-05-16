@@ -85,7 +85,11 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   // Request, renew and release IP configuration. Return true on success, false
   // otherwise. The default implementation always returns false indicating a
-  // failure.
+  // failure.  ReleaseIP is advisory: if we are no longer connected, it is not
+  // possible to properly vacate the lease on the remote server.  Also,
+  // depending on the configuration of the specific IPConfig subclass, we may
+  // end up holding on to the lease so we can resume to the network lease
+  // faster.
   virtual bool RequestIP();
   virtual bool RenewIP();
   virtual bool ReleaseIP();
