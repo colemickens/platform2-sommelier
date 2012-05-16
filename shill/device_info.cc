@@ -42,6 +42,7 @@
 #include "shill/service.h"
 #include "shill/virtio_ethernet.h"
 #include "shill/wifi.h"
+#include "shill/wimax.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -55,6 +56,8 @@ namespace shill {
 // static
 const char DeviceInfo::kModemPseudoDeviceNamePrefix[] = "pseudomodem";
 const char DeviceInfo::kDeviceInfoRoot[] = "/sys/class/net";
+const char DeviceInfo::kDriverCdcEther[] = "cdc_ether";
+const char DeviceInfo::kDriverGdmWiMax[] = "gdm_wimax";
 const char DeviceInfo::kDriverVirtioNet[] = "virtio_net";
 const char DeviceInfo::kInterfaceUevent[] = "uevent";
 const char DeviceInfo::kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
@@ -62,7 +65,6 @@ const char DeviceInfo::kInterfaceDevice[] = "device";
 const char DeviceInfo::kInterfaceDriver[] = "device/driver";
 const char DeviceInfo::kInterfaceTunFlags[] = "tun_flags";
 const char DeviceInfo::kInterfaceType[] = "type";
-const char DeviceInfo::kDriverCdcEther[] = "cdc_ether";
 const char *DeviceInfo::kModemDrivers[] = {
     "gobi",
     "QCUSBNet2k",
@@ -155,8 +157,8 @@ bool DeviceInfo::GetDeviceInfoContents(const string &iface_name,
                                      contents_out);
 }
 bool DeviceInfo::GetDeviceInfoSymbolicLink(const string &iface_name,
-                                      const string &path_name,
-                                      FilePath *path_out) {
+                                           const string &path_name,
+                                           FilePath *path_out) {
   return file_util::ReadSymbolicLink(GetDeviceInfoPath(iface_name, path_name),
                                      path_out);
 }
@@ -230,6 +232,12 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
                           __func__, iface_name.c_str(), driver_name.c_str());
       return Technology::kCellular;
     }
+  }
+
+  if (driver_name == kDriverGdmWiMax) {
+    SLOG(Device, 2) << StringPrintf("%s: device %s is a WiMAX device",
+                                    __func__, iface_name.c_str());
+    return Technology::kWiMax;
   }
 
   // For cdc_ether devices, make sure it's a modem because this driver
@@ -356,6 +364,12 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
                         link_name, address, interface_index);
       device->EnableIPv6Privacy();
       break;
+    case Technology::kWiMax:
+      // TODO(benchan): Identify the object path.
+      // device = new WiMax(control_interface_, dispatcher_, metrics_, manager_,
+      //                   link_name, address, interface_index,
+      //                   /* object_path */);
+      break;
     case Technology::kPPP:
     case Technology::kTunnel:
       // Tunnel and PPP devices are managed by the VPN code (PPP for
@@ -388,7 +402,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       // which is useful for testing.
       return new DeviceStub(control_interface_, dispatcher_, metrics_,
                             manager_, link_name, address, interface_index,
-                            technology);;
+                            technology);
   }
 
   // Reset the routing table and addresses.

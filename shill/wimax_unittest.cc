@@ -21,6 +21,7 @@ namespace shill {
 namespace {
 
 const char kTestLinkName[] = "wm0";
+const char kTestAddress[] = "01:23:45:67:89:ab";
 const int kTestInterfaceIndex = 5;
 const char kTestPath[] = "/org/chromium/WiMaxManager/Device/6";
 
@@ -33,7 +34,8 @@ class WiMaxTest : public testing::Test {
         proxy_factory_(this),
         manager_(&control_, &dispatcher_, &metrics_, &glib_),
         wimax_(new WiMax(&control_, &dispatcher_, &metrics_, &manager_,
-                         kTestLinkName, kTestInterfaceIndex, kTestPath)) {}
+                         kTestLinkName, kTestAddress, kTestInterfaceIndex,
+                         kTestPath)) {}
 
   virtual ~WiMaxTest() {}
 

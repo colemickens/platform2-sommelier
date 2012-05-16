@@ -22,6 +22,7 @@ namespace shill {
 namespace {
 
 const char kTestLinkName[] = "wm0";
+const char kTestAddress[] = "01:23:45:67:89:ab";
 const int kTestInterfaceIndex = 5;
 const char kTestPath[] = "/org/chromium/WiMaxManager/Device/7";
 
@@ -32,7 +33,8 @@ class WiMaxServiceTest : public testing::Test {
   WiMaxServiceTest()
       : manager_(&control_, NULL, NULL, NULL),
         wimax_(new MockWiMax(&control_, NULL, &metrics_, &manager_,
-                             kTestLinkName, kTestInterfaceIndex, kTestPath)),
+                             kTestLinkName, kTestAddress, kTestInterfaceIndex,
+                             kTestPath)),
         service_(new WiMaxService(&control_, NULL, &metrics_, &manager_,
                                   wimax_)) {}
 

@@ -15,10 +15,11 @@ MockWiMax::MockWiMax(ControlInterface *control,
                      Metrics *metrics,
                      Manager *manager,
                      const string &link_name,
+                     const string &address,
                      int interface_index,
                      const RpcIdentifier &path)
-    : WiMax(control, dispatcher, metrics, manager, link_name, interface_index,
-            path) {
+    : WiMax(control, dispatcher, metrics, manager, link_name, address,
+            interface_index, path) {
 }
 
 MockWiMax::~MockWiMax() {}

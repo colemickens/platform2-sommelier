@@ -102,6 +102,11 @@ class DeviceInfo {
 
   // Root of the kernel sysfs directory holding network device info.
   static const char kDeviceInfoRoot[];
+  // Name of the "cdc_ether" driver.  This driver is not included in the
+  // kModemDrivers list because we need to do additional checking.
+  static const char kDriverCdcEther[];
+  // Name of the GDM WiMAX driver.
+  static const char kDriverGdmWiMax[];
   // Name of the virtio network driver.
   static const char kDriverVirtioNet[];
   // Sysfs path to a device uevent file.
@@ -117,9 +122,6 @@ class DeviceInfo {
   // Sysfs path to the file that is used to determine if a wifi device is
   // operating in monitor mode.
   static const char kInterfaceType[];
-  // Name of the "cdc_ether" driver.  This driver is not included in the
-  // kModemDrivers list because we need to do additional checking.
-  static const char kDriverCdcEther[];
   // Modem drivers that we support.
   static const char *kModemDrivers[];
   // Path to the tun device.

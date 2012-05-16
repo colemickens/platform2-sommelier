@@ -17,9 +17,10 @@ WiMax::WiMax(ControlInterface *control,
              Metrics *metrics,
              Manager *manager,
              const string &link_name,
+             const string &address,
              int interface_index,
              const RpcIdentifier &path)
-    : Device(control, dispatcher, metrics, manager, link_name, "",
+    : Device(control, dispatcher, metrics, manager, link_name, address,
              interface_index, Technology::kWiMax),
       path_(path),
       proxy_factory_(ProxyFactory::GetInstance()) {
