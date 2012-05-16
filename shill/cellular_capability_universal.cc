@@ -235,14 +235,16 @@ void CellularCapabilityUniversal::Start_EnableModemCompleted(
 }
 
 void CellularCapabilityUniversal::StopModem(Error *error,
-                                      const ResultCallback &callback) {
+                                            const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   CHECK(error);
-  bool connected = false;
-  string all_bearers("/");  // Represents all bearers for disconnect operations
+  Cellular::State state = cellular()->state();
+  bool connected = (state == Cellular::kStateConnected ||
+                    state == Cellular::kStateLinked);
 
   if (connected) {
+    string all_bearers("/");  // "/" means all bearers.  See Modemanager docs.
     modem_simple_proxy_->Disconnect(
         all_bearers,
         error,
@@ -252,7 +254,6 @@ void CellularCapabilityUniversal::StopModem(Error *error,
     if (error->IsFailure())
       callback.Run(*error);
   } else {
-    Error error;
     Closure task = Bind(&CellularCapabilityUniversal::Stop_Disable,
                         weak_ptr_factory_.GetWeakPtr(),
                         callback);
@@ -274,7 +275,7 @@ void CellularCapabilityUniversal::Stop_Disable(const ResultCallback &callback) {
       false, &error,
       Bind(&CellularCapabilityUniversal::Stop_DisableCompleted,
            weak_ptr_factory_.GetWeakPtr(), callback),
-      kTimeoutDefault);
+      kTimeoutEnable);
   if (error.IsFailure())
     callback.Run(error);
 }

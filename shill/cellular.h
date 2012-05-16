@@ -225,6 +225,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityTest, FinishEnable);
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
+  FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
 
   // Names of properties in storage

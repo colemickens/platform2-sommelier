@@ -288,6 +288,59 @@ TEST_F(CellularCapabilityUniversalTest, StartModemFail) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
+TEST_F(CellularCapabilityUniversalTest, StopModem) {
+  // Save pointers to proxies before they are lost by the call to InitProxies
+  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  SetUp();
+  EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
+  capability_->InitProxies();
+
+  Error error;
+  ResultCallback callback =
+      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+  capability_->StopModem(&error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+
+  ResultCallback disable_callback;
+  EXPECT_CALL(*modem_proxy,
+              Enable(false, _, _, CellularCapability::kTimeoutEnable))
+      .WillOnce(SaveArg<2>(&disable_callback));
+  dispatcher_.DispatchPendingEvents();
+
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  disable_callback.Run(Error(Error::kSuccess));
+}
+
+TEST_F(CellularCapabilityUniversalTest, StopModemConnected) {
+  // Save pointers to proxies before they are lost by the call to InitProxies
+  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
+  SetUp();
+  EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
+  capability_->InitProxies();
+
+  ResultCallback disconnect_callback;
+  Error error;
+  ResultCallback callback =
+      Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
+  EXPECT_CALL(*modem_simple_proxy,
+              Disconnect(::DBus::Path("/"), _, _,
+                         CellularCapability::kTimeoutDefault))
+      .WillOnce(SaveArg<2>(&disconnect_callback));
+  capability_->cellular()->state_ = Cellular::kStateConnected;
+  capability_->StopModem(&error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+
+  ResultCallback disable_callback;
+  EXPECT_CALL(*modem_proxy,
+              Enable(false, _, _, CellularCapability::kTimeoutEnable))
+      .WillOnce(SaveArg<2>(&disable_callback));
+  disconnect_callback.Run(Error(Error::kSuccess));
+
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  disable_callback.Run(Error(Error::kSuccess));
+}
+
 TEST_F(CellularCapabilityUniversalTest, PropertiesChanged) {
   // Set up mock modem properties
   DBusPropertiesMap modem_properties;

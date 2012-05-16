@@ -120,6 +120,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityTest;
   FRIEND_TEST(CellularCapabilityUniversalTest, StartModem);
+  FRIEND_TEST(CellularCapabilityUniversalTest, StopModem);
+  FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, SimPropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
