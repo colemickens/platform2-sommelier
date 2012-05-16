@@ -37,10 +37,11 @@ namespace chaps {
 
 static const int kDefaultAuthDataBytes = 20;
 static const int kMaxCipherBlockBytes = 16;
-static const int kMaxRSAOutputBytes = 256;
+static const int kMaxRSAOutputBytes = 2048;
 static const int kMaxDigestOutputBytes = EVP_MAX_MD_SIZE;
 static const int kMinRSAKeyBits = 512;
-static const int kMaxRSAKeyBits = 2048;
+static const int kMaxRSAKeyBitsHW = 2048;  // Max supported by the TPM.
+static const int kMaxRSAKeyBitsSW = kMaxRSAOutputBytes * 8;
 
 SessionImpl::SessionImpl(int slot_id,
                          ObjectPool* token_object_pool,
@@ -229,7 +230,7 @@ CK_RV SessionImpl::OperationInit(OperationType operation,
     }
     if (IsRSA(mechanism)) {
       int key_size = key->GetAttributeString(CKA_MODULUS).length() * 8;
-      if (key_size < kMinRSAKeyBits || key_size > kMaxRSAKeyBits) {
+      if (key_size < kMinRSAKeyBits || key_size > kMaxRSAKeyBitsSW) {
         LOG(ERROR) << "Key size not supported: " << key_size;
         return CKR_KEY_SIZE_RANGE;
       }
@@ -518,10 +519,10 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
   if (!public_object->IsAttributePresent(CKA_MODULUS_BITS))
     return CKR_TEMPLATE_INCOMPLETE;
   int modulus_bits = public_object->GetAttributeInt(CKA_MODULUS_BITS, 0);
-  if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBits)
+  if (modulus_bits < kMinRSAKeyBits || modulus_bits > kMaxRSAKeyBitsSW)
     return CKR_KEY_SIZE_RANGE;
   ObjectPool* pool = token_object_pool_;
-  if (private_object->IsTokenObject()) {
+  if (private_object->IsTokenObject() && modulus_bits <= kMaxRSAKeyBitsHW) {
     string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
     string key_blob;
     int tpm_key_handle;
@@ -540,7 +541,8 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
     private_object->SetAttributeString(kAuthDataAttribute, auth_data);
     private_object->SetAttributeString(kKeyBlobAttribute, key_blob);
   } else {
-    pool = session_object_pool_.get();
+    if (!private_object->IsTokenObject())
+      pool = session_object_pool_.get();
     if (!GenerateKeyPairSoftware(modulus_bits,
                                  public_exponent,
                                  public_object.get(),
@@ -1143,7 +1145,8 @@ const EVP_MD* SessionImpl::GetOpenSSLDigest(CK_MECHANISM_TYPE mechanism) {
 }
 
 bool SessionImpl::RSADecrypt(OperationContext* context) {
-  if (context->key_->IsTokenObject()) {
+  if (context->key_->IsTokenObject() &&
+      context->key_->IsAttributePresent(kKeyBlobAttribute)) {
     int tpm_key_handle = 0;
     if (!GetTPMKeyHandle(context->key_, &tpm_key_handle))
       return false;
@@ -1154,6 +1157,7 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
   } else {
     RSA* rsa = CreateKeyFromObject(context->key_);
     uint8_t buffer[kMaxRSAOutputBytes];
+    CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
     int length = RSA_private_decrypt(
         context->data_.length(),
         ConvertStringToByteBuffer(context->data_.data()),
@@ -1173,6 +1177,7 @@ bool SessionImpl::RSADecrypt(OperationContext* context) {
 bool SessionImpl::RSAEncrypt(OperationContext* context) {
   RSA* rsa = CreateKeyFromObject(context->key_);
   uint8_t buffer[kMaxRSAOutputBytes];
+  CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
   int length = RSA_public_encrypt(
       context->data_.length(),
       ConvertStringToByteBuffer(context->data_.data()),
@@ -1191,7 +1196,8 @@ bool SessionImpl::RSAEncrypt(OperationContext* context) {
 bool SessionImpl::RSASign(OperationContext* context) {
   string data_to_sign = GetDERDigestInfo(context->mechanism_) + context->data_;
   string signature;
-  if (context->key_->IsTokenObject()) {
+  if (context->key_->IsTokenObject() &&
+      context->key_->IsAttributePresent(kKeyBlobAttribute)) {
     int tpm_key_handle = 0;
     if (!GetTPMKeyHandle(context->key_, &tpm_key_handle))
       return false;
@@ -1199,6 +1205,7 @@ bool SessionImpl::RSASign(OperationContext* context) {
       return false;
   } else {
     RSA* rsa = CreateKeyFromObject(context->key_);
+    CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
     uint8_t buffer[kMaxRSAOutputBytes];
     int length = RSA_private_encrypt(
         data_to_sign.length(),
@@ -1224,6 +1231,7 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
       signature.length())
     return CKR_SIGNATURE_LEN_RANGE;
   RSA* rsa = CreateKeyFromObject(context->key_);
+  CHECK(RSA_size(rsa) <= kMaxRSAOutputBytes);
   uint8_t buffer[kMaxRSAOutputBytes];
   int length = RSA_public_decrypt(
       signature.length(),
@@ -1255,6 +1263,13 @@ CK_RV SessionImpl::WrapPrivateKey(Object* object) {
       prime = object->GetAttributeString(CKA_PRIME_1);
     } else {
       prime = object->GetAttributeString(CKA_PRIME_2);
+    }
+    int key_size_bits = object->GetAttributeString(CKA_MODULUS).length() * 8;
+    if (key_size_bits > kMaxRSAKeyBitsHW || key_size_bits < kMinRSAKeyBits) {
+      LOG(WARNING) << "WARNING: " << key_size_bits
+                   << "-bit private key cannot be wrapped by the TPM.";
+      // Fall back to software.
+      return CKR_OK;
     }
     string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
     string key_blob;

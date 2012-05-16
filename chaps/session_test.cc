@@ -592,7 +592,7 @@ TEST_F(TestSession, BadKeySize) {
   const Object* priv = NULL;
   GenerateRSAKeyPair(true, 512, &pub, &priv);
   // RSA keys can have a modulus size no smaller than 512.
-  const_cast<Object*>(priv)->SetAttributeString(CKA_MODULUS, string(300, 0));
+  const_cast<Object*>(priv)->SetAttributeString(CKA_MODULUS, string(32, 0));
   EXPECT_EQ(CKR_KEY_SIZE_RANGE,
             session_->OperationInit(kSign, CKM_RSA_PKCS, "", priv));
 }
@@ -618,7 +618,7 @@ TEST_F(TestSession, BadRSAGenerate) {
                                       priv_attr, 1,
                                       &pub, &priv));
   pub_attr[1].ulValueLen = 3;
-  size = 10000;
+  size = 20000;
   // CKA_MODULUS_BITS too large.
   EXPECT_EQ(CKR_KEY_SIZE_RANGE,
             session_->GenerateKeyPair(CKM_RSA_PKCS_KEY_PAIR_GEN, "",
