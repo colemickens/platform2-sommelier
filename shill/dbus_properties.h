@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,6 +11,8 @@
 
 #include <base/basictypes.h>
 #include <dbus-c++/types.h>
+
+#include "shill/accessor_interface.h"
 
 namespace shill {
 
@@ -45,6 +47,10 @@ class DBusProperties {
   static bool GetUint32(const DBusPropertiesMap &properties,
                         const std::string &key,
                         uint32 *value);
+
+  static bool GetRpcIdentifiers(const DBusPropertiesMap &properties,
+                                const std::string &key,
+                                std::vector<RpcIdentifier> *value);
 
   static std::string KeysToString(const std::map<std::string,
                                   ::DBus::Variant> &args);

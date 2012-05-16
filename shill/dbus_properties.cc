@@ -111,6 +111,24 @@ bool DBusProperties::GetUint32(const DBusPropertiesMap &properties,
 }
 
 // static
+bool DBusProperties::GetRpcIdentifiers(const DBusPropertiesMap &properties,
+                                       const string &key,
+                                       vector<RpcIdentifier> *value) {
+  DBusPropertiesMap::const_iterator it = properties.find(key);
+  if (it == properties.end()) {
+    return false;
+  }
+  vector<DBus::Path> paths = it->second.operator vector<DBus::Path>();
+  value->clear();
+  for (vector<DBus::Path>::const_iterator it = paths.begin();
+       it != paths.end(); ++it) {
+    value->push_back(*it);
+  }
+  SLOG(DBus, 2) << key << " = (RpcIdentfier)[" << value->size() << "]";
+  return true;
+}
+
+// static
 std::string DBusProperties::KeysToString(const std::map<std::string,
                                          ::DBus::Variant> &args) {
   std::string keys;

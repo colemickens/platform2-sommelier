@@ -23,6 +23,7 @@ class MockManager : public Manager {
   MOCK_METHOD0(device_info, DeviceInfo *());
   MOCK_METHOD0(modem_info, ModemInfo *());
   MOCK_METHOD0(vpn_provider, VPNProvider *());
+  MOCK_METHOD0(wimax_provider, WiMaxProvider *());
   MOCK_METHOD0(mutable_store, PropertyStore *());
   MOCK_CONST_METHOD0(store, const PropertyStore &());
   MOCK_CONST_METHOD0(run_path, const FilePath &());

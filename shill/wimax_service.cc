@@ -4,6 +4,9 @@
 
 #include "shill/wimax_service.h"
 
+#include <base/string_util.h>
+#include <chromeos/dbus/service_constants.h>
+
 #include "shill/technology.h"
 #include "shill/wimax.h"
 
@@ -17,8 +20,11 @@ WiMaxService::WiMaxService(ControlInterface *control,
                            Manager *manager,
                            const WiMaxRefPtr &wimax)
     : Service(control, dispatcher, metrics, manager, Technology::kWiMax),
-      wimax_(wimax) {
-}
+      wimax_(wimax),
+      storage_id_(
+          StringToLowerASCII(string(flimflam::kTypeWimax) +
+                             "_" +
+                             wimax_->address())) {}
 
 WiMaxService::~WiMaxService() {}
 
@@ -37,13 +43,11 @@ void WiMaxService::Disconnect(Error *error) {
 }
 
 string WiMaxService::GetStorageIdentifier() const {
-  // TODO(benchan,petkov): Generate a proper storage identifier.
-  return "";
+  return storage_id_;
 }
 
 string WiMaxService::GetDeviceRpcId(Error *error) {
-  // TODO(benchan,petkov): Is this need?
-  return "";
+  return wimax_->GetRpcIdentifier();
 }
 
 }  // namespace shill

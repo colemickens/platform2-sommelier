@@ -315,6 +315,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_wimax.o \
 	mock_wimax_device_proxy.o \
 	mock_wimax_manager_proxy.o \
+	mock_wimax_provider.o \
 	mock_wimax_service.o \
 	modem_1_unittest.o \
 	modem_info_unittest.o \

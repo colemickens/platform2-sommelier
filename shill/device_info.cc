@@ -42,7 +42,6 @@
 #include "shill/service.h"
 #include "shill/virtio_ethernet.h"
 #include "shill/wifi.h"
-#include "shill/wimax.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -121,7 +120,8 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
   infos_[device->interface_index()].device = device;
   if (device->TechnologyIs(Technology::kCellular) ||
       device->TechnologyIs(Technology::kEthernet) ||
-      device->TechnologyIs(Technology::kWifi)) {
+      device->TechnologyIs(Technology::kWifi) ||
+      device->TechnologyIs(Technology::kWiMax)) {
     manager_->RegisterDevice(device);
   }
 }
@@ -131,7 +131,8 @@ void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
 
   SLOG(Device, 2) << __func__ << "(" << device->link_name() << ", "
                   << interface_index << ")";
-  CHECK(device->TechnologyIs(Technology::kCellular));
+  CHECK(device->TechnologyIs(Technology::kCellular) ||
+        device->TechnologyIs(Technology::kWiMax));
 
   // Release reference to the device
   map<int, Info>::iterator iter = infos_.find(interface_index);
@@ -365,10 +366,11 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       device->EnableIPv6Privacy();
       break;
     case Technology::kWiMax:
-      // TODO(benchan): Identify the object path.
-      // device = new WiMax(control_interface_, dispatcher_, metrics_, manager_,
-      //                   link_name, address, interface_index,
-      //                   /* object_path */);
+      // WiMax devices are managed by WiMaxProvider.
+      SLOG(Device, 2) << "WiMax link " << link_name
+                      << " at index " << interface_index
+                      << " -- notifying WiMaxProvider.";
+      manager_->wimax_provider()->OnDeviceInfoAvailable(link_name);
       break;
     case Technology::kPPP:
     case Technology::kTunnel:

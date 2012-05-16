@@ -33,6 +33,7 @@
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_sockets.h"
 #include "shill/mock_vpn_provider.h"
+#include "shill/mock_wimax_provider.h"
 #include "shill/rtnl_message.h"
 
 using base::Callback;
@@ -254,6 +255,20 @@ TEST_F(DeviceInfoTest, CreateDeviceCellular) {
                                                     IsIPAddress(address)));
   EXPECT_FALSE(CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kCellular));
+}
+
+TEST_F(DeviceInfoTest, CreateDeviceWiMax) {
+  IPAddress address = CreateInterfaceAddress();
+
+  // A WiMax device should be offered to WiMaxProvider.
+  StrictMock<MockWiMaxProvider> wimax_provider;
+  EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&wimax_provider));
+  EXPECT_CALL(wimax_provider, OnDeviceInfoAvailable(kTestDeviceName)).Times(1);
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
+                                                    IsIPAddress(address)));
+  EXPECT_FALSE(CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex, Technology::kWiMax));
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
@@ -600,6 +615,11 @@ TEST_F(DeviceInfoTechnologyTest, WiFi) {
 TEST_F(DeviceInfoTechnologyTest, Ethernet) {
   CreateInfoSymLink("device/driver", "xxx");
   EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, WiMax) {
+  CreateInfoSymLink("device/driver", "gdm_wimax");
+  EXPECT_EQ(Technology::kWiMax, GetDeviceTechnology());
 }
 
 TEST_F(DeviceInfoTechnologyTest, CellularGobi1) {

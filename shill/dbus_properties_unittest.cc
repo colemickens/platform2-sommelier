@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -91,6 +91,33 @@ TEST_F(DBusPropertiesTest, GetUint16) {
   props[kTestProperty].writer().append_uint16(kTestValue);
   EXPECT_TRUE(DBusProperties::GetUint16(props, kTestProperty, &value));
   EXPECT_EQ(kTestValue, value);
+}
+
+TEST_F(DBusPropertiesTest, GetRpcIdentifiers) {
+  static const char kTestProperty[] = "paths";
+  static const char kOldTestPath0[] = "/org/chromium/Something/Old";
+  static const char kOldTestPath1[] = "/org/chromium/Else/Old";
+  static const char kTestPath0[] = "/org/chromium/Something";
+  static const char kTestPath1[] = "/org/chromium/Else";
+
+  vector<RpcIdentifier> value;
+  value.push_back(kOldTestPath0);
+  value.push_back(kOldTestPath1);
+  DBusPropertiesMap props;
+  EXPECT_FALSE(DBusProperties::GetRpcIdentifiers(props, kTestProperty, &value));
+  ASSERT_EQ(2, value.size());
+  EXPECT_EQ(kOldTestPath0, value[0]);
+  EXPECT_EQ(kOldTestPath1, value[1]);
+
+  vector<DBus::Path> paths;
+  paths.push_back(kTestPath0);
+  paths.push_back(kTestPath1);
+  DBus::MessageIter writer = props[kTestProperty].writer();
+  writer << paths;
+  EXPECT_TRUE(DBusProperties::GetRpcIdentifiers(props, kTestProperty, &value));
+  ASSERT_EQ(2, value.size());
+  EXPECT_EQ(kTestPath0, value[0]);
+  EXPECT_EQ(kTestPath1, value[1]);
 }
 
 }  // namespace shill

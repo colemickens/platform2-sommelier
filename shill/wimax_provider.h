@@ -36,16 +36,31 @@ class WiMaxProvider {
   virtual void Start();
   virtual void Stop();
 
+  virtual void OnDeviceInfoAvailable(const std::string &link_name);
+
  private:
   friend class WiMaxProviderTest;
+  FRIEND_TEST(WiMaxProviderTest, CreateDevice);
+  FRIEND_TEST(WiMaxProviderTest, DestroyDeadDevices);
+  FRIEND_TEST(WiMaxProviderTest, GetLinkName);
+  FRIEND_TEST(WiMaxProviderTest, OnDeviceInfoAvailable);
+  FRIEND_TEST(WiMaxProviderTest, OnPropertiesChanged);
   FRIEND_TEST(WiMaxProviderTest, StartStop);
+  FRIEND_TEST(WiMaxProviderTest, UpdateDevices);
 
-  void UpdateDevices(const std::vector<RpcIdentifier> &devices);
+  typedef std::vector<RpcIdentifier> RpcIdentifiers;
+
+  void UpdateDevices(const RpcIdentifiers &devices);
 
   void OnPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties);
+
+  void CreateDevice(const std::string &link_name, const RpcIdentifier &path);
+  void DestroyDeadDevices(const RpcIdentifiers &live_devices);
+
+  std::string GetLinkName(const RpcIdentifier &path);
 
   ControlInterface *control_;
   EventDispatcher *dispatcher_;
@@ -54,6 +69,9 @@ class WiMaxProvider {
 
   scoped_ptr<WiMaxManagerProxyInterface> manager_proxy_;
   scoped_ptr<DBusPropertiesProxyInterface> properties_proxy_;
+
+  std::map<std::string, std::string> pending_devices_;
+  std::vector<WiMaxRefPtr> devices_;
 
   ProxyFactory *proxy_factory_;
 

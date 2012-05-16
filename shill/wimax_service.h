@@ -5,6 +5,8 @@
 #ifndef SHILL_WIMAX_SERVICE_H_
 #define SHILL_WIMAX_SERVICE_H_
 
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 
@@ -26,9 +28,12 @@ class WiMaxService : public Service {
   virtual std::string GetStorageIdentifier() const;
 
  private:
+  FRIEND_TEST(WiMaxServiceTest, GetDeviceRpcId);
+
   virtual std::string GetDeviceRpcId(Error *error);
 
   WiMaxRefPtr wimax_;
+  std::string storage_id_;
 
   DISALLOW_COPY_AND_ASSIGN(WiMaxService);
 };
