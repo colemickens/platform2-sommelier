@@ -402,3 +402,13 @@ CXX_BINARY(async_file_reader_unittest): LDLIBS += \
 	$(ASYNC_FILE_READER_UNITTEST_LIBS)
 clean: CXX_BINARY(async_file_reader_unittest)
 tests: TEST(CXX_BINARY(async_file_reader_unittest))
+
+UTIL_UNITTEST_FLAGS = $(LIBUTIL_FLAGS)
+UTIL_UNITTEST_LIBS = $(LIBUTIL_LIBS) -lgtest -lgmock -lX11
+UTIL_UNITTEST_OBJS = util_unittest.o util.o
+CXX_BINARY(util_unittest): $(UTIL_UNITTEST_OBJS) \
+	CXX_STATIC_LIBRARY(libtestrunner.pie.a)
+CXX_BINARY(util_unittest): CPPFLAGS +=$(UTIL_UNITTEST_FLAGS)
+CXX_BINARY(util_unittest): LDLIBS += $(UTIL_UNITTEST_LIBS)
+clean: CXX_BINARY(util_unittest)
+tests: TEST(CXX_BINARY(util_unittest))

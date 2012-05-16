@@ -9,6 +9,7 @@
 #include "base/logging.h"
 #include "power_manager/metrics_constants.h"
 #include "power_manager/metrics_store.h"
+#include "power_manager/util.h"
 
 using base::TimeDelta;
 using base::TimeTicks;
@@ -26,6 +27,10 @@ bool CheckMetricInterval(time_t now, time_t last, time_t interval) {
 void Daemon::MetricInit() {
   g_timeout_add(kMetricBacklightLevelIntervalMs,
                 &Daemon::GenerateBacklightLevelMetricThunk, this);
+  // Run GenerateThermalMetrics once now as its a long interval
+  GenerateThermalMetrics();
+  g_timeout_add(kMetricThermalIntervalMs,
+                &Daemon::GenerateThermalMetricsThunk, this);
 }
 
 void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
@@ -303,6 +308,43 @@ bool Daemon::SendEnumMetricWithPowerState(const std::string& name, int sample,
     return false;
   }
   return SendEnumMetric(name_with_power_state, sample, max);
+}
+
+void Daemon::SendThermalMetrics(unsigned int aborted, unsigned int turned_on,
+                                unsigned int multiple) {
+  unsigned int total = aborted + turned_on;
+  if (total == 0) {
+    LOG(WARNING) << "SendThermalMetrics: total is 0 (aborted = "
+                 << aborted << ", turnd_on = " << turned_on << ")";
+    return;
+  }
+
+  unsigned int aborted_percent = (100 * aborted) / total;
+  unsigned int multiple_percent = (100 * multiple) / total;
+
+  LOG_IF(ERROR, !SendEnumMetric(kMetricThermalAbortedFanTurnOnName,
+                                aborted_percent,
+                                kMetricThermalAbortedFanTurnOnMax))
+      << "Unable to send aborted fan turn on metric!";
+  LOG_IF(ERROR, !SendEnumMetric(kMetricThermalMultipleFanTurnOnName,
+                                multiple_percent,
+                                kMetricThermalMultipleFanTurnOnMax))
+      << "Unable to send multiple fan turn on metric!";
+}
+
+gboolean Daemon::GenerateThermalMetrics() {
+  unsigned int aborted, turned_on, multiple;
+
+  if (!util::GetUintFromFile(kMetricThermalAbortedFanFilename, &aborted) ||
+      !util::GetUintFromFile(kMetricThermalTurnedOnFanFilename, &turned_on) ||
+      !util::GetUintFromFile(kMetricThermalMultipleFanFilename, &multiple)) {
+    LOG(ERROR) << "Unable to read values from debugfs thermal files. "
+               << "UMA metrics not being sent this poll period.";
+    return true;
+  }
+
+  SendThermalMetrics(aborted, turned_on, multiple);
+  return true;
 }
 
 }  // namespace power_manager

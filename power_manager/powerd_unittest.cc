@@ -829,4 +829,22 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
   EXPECT_EQ(0, status_.averaged_battery_time_to_full);
 }
 
+TEST_F(DaemonTest, SendThermalMetrics) {
+  int aborted = 5;
+  int turned_on = 10;
+  int multiple = 2;
+  int total = aborted + turned_on;
+
+  ExpectEnumMetric(kMetricThermalAbortedFanTurnOnName,
+                   static_cast<int>(round(100 * aborted / total)),
+                   kMetricThermalAbortedFanTurnOnMax);
+  ExpectEnumMetric(kMetricThermalMultipleFanTurnOnName,
+                   static_cast<int>(round(100 * multiple / total)),
+                   kMetricThermalMultipleFanTurnOnMax);
+  daemon_.SendThermalMetrics(aborted, turned_on, multiple);
+  // The next call should fail and not send a metric.
+  // If it does, spurious SendEnumMetric calls will trigger a test failure
+  daemon_.SendThermalMetrics(0, 0, multiple);
+}
+
 }  // namespace power_manager

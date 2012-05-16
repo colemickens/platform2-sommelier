@@ -57,7 +57,14 @@ extern const char kMetricPowerButtonDownTimeName[];
 extern const int kMetricPowerButtonDownTimeMin;
 extern const int kMetricPowerButtonDownTimeMax;
 extern const int kMetricPowerButtonDownTimeBuckets;
-
+extern const int kMetricThermalAbortedFanTurnOnMax;
+extern const char kMetricThermalAbortedFanTurnOnName[];
+extern const char kMetricThermalAbortedFanFilename[];
+extern const int kMetricThermalMultipleFanTurnOnMax;
+extern const char kMetricThermalMultipleFanTurnOnName[];
+extern const char kMetricThermalMultipleFanFilename[];
+extern const char kMetricThermalTurnedOnFanFilename[];
+extern const time_t kMetricThermalIntervalMs;
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_METRICS_CONSTANTS_H_

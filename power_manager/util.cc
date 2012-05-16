@@ -8,6 +8,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <string>
+
 #include "base/basictypes.h"
 #include "base/file_path.h"
 #include "base/file_util.h"
@@ -83,6 +85,21 @@ Display* GetDisplay() {
     display = XOpenDisplay(NULL);
   CHECK(display);
   return display;
+}
+
+bool GetUintFromFile(const char* filename, unsigned int* value) {
+  std::string buf;
+
+  FilePath path(filename);
+  if (!file_util::ReadFileToString(path, &buf)) {
+    LOG(ERROR) << "Unable to read " << filename;
+    return false;
+  }
+  TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+  if (base::StringToUint(buf, value))
+      return true;
+  LOG(ERROR) << "Garbage found in " << filename << "( " << buf << " )";
+  return false;
 }
 
 }  // namespace util

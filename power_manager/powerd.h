@@ -143,6 +143,7 @@ class Daemon : public XIdleObserver,
               GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow);
   FRIEND_TEST(DaemonTest,
               GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow);
+  FRIEND_TEST(DaemonTest, SendThermalMetrics);
   FRIEND_TEST(DaemonTest, HandleNumOfSessionsPerChargeOnSetPlugged);
   FRIEND_TEST(DaemonTest, PowerButtonDownMetric);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
@@ -409,6 +410,15 @@ class Daemon : public XIdleObserver,
   // metrics/metrics_library.h for a description of the arguments.
   bool SendEnumMetricWithPowerState(const std::string& name, int sample,
                                     int max);
+
+
+  // Send Thermal metrics to Chrome UMA
+  void SendThermalMetrics(unsigned int aborted, unsigned int turned_on,
+                          unsigned int multiple);
+
+  // Generates UMA metrics for fan thermal state transitions
+  // Always returns true.
+  SIGNAL_CALLBACK_0(Daemon, gboolean, GenerateThermalMetrics);
 
   // Called by dbus handler when resume signal is received
   void HandleResume();
