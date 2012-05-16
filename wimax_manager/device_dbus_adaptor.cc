@@ -22,8 +22,8 @@ const char kDeviceDBusObjectPathPrefix[] = "/org/chromium/WiMaxManager/Device";
 
 // static
 string DeviceDBusAdaptor::GetDeviceObjectPath(const Device &device) {
-  return base::StringPrintf("%s/%d",
-                            kDeviceDBusObjectPathPrefix, device.index());
+  return base::StringPrintf("%s/%s",
+                            kDeviceDBusObjectPathPrefix, device.name().c_str());
 }
 
 DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection *connection,

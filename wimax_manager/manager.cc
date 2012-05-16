@@ -42,7 +42,7 @@ bool Manager::Initialize() {
     return false;
   }
 
-  if (!driver_->GetDevices(&devices_)) {
+  if (!driver_->GetDevices(&devices_.get())) {
     LOG(ERROR) << "Failed to get list of devices";
     return false;
   }
@@ -60,7 +60,7 @@ bool Manager::Initialize() {
 }
 
 bool Manager::Finalize() {
-  STLDeleteElements(&devices_);
+  devices_.reset();
 
   if (!driver_.get())
     return true;

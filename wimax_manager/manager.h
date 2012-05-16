@@ -9,6 +9,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/scoped_vector.h>
 
 namespace DBus {
 
@@ -30,12 +31,12 @@ class Manager {
   bool Initialize();
   bool Finalize();
 
-  const std::vector<Device *> &devices() const { return devices_; }
+  const std::vector<Device *> &devices() const { return devices_.get(); }
 
  private:
   DBus::Connection *dbus_connection_;
   scoped_ptr<Driver> driver_;
-  std::vector<Device *> devices_;
+  ScopedVector<Device> devices_;
   scoped_ptr<ManagerDBusAdaptor> adaptor_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);

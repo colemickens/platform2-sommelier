@@ -4,6 +4,8 @@
 
 #include "wimax_manager/manager_dbus_adaptor.h"
 
+#include <vector>
+
 #include <base/logging.h>
 
 #include "wimax_manager/device_dbus_adaptor.h"
@@ -33,7 +35,7 @@ void ManagerDBusAdaptor::UpdateDevices() {
   vector<DBus::Path> device_paths;
   const vector<Device *> &devices = manager_->devices();
   for (vector<Device *>::const_iterator device_iterator = devices.begin();
-       device_iterator != devices.end(); ++ device_iterator) {
+       device_iterator != devices.end(); ++device_iterator) {
     device_paths.push_back(
         DeviceDBusAdaptor::GetDeviceObjectPath(*(*device_iterator)));
   }

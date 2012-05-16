@@ -8,8 +8,6 @@
 #include "wimax_manager/dbus_adaptor.h"
 #include "wimax_manager/dbus_bindings/manager.h"
 
-#include <vector>
-
 namespace wimax_manager {
 
 class Manager;

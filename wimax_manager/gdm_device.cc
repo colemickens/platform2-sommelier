@@ -5,6 +5,7 @@
 #include "wimax_manager/gdm_device.h"
 
 #include <base/logging.h>
+#include <base/memory/scoped_vector.h>
 #include <base/stl_util.h>
 
 #include "wimax_manager/gdm_driver.h"
@@ -22,9 +23,9 @@ const int kMaxNumberOfTrials = 10;
 }  // namespace
 
 GdmDevice::GdmDevice(uint8 index, const string &name,
-                     const base::WeakPtr<GdmDriver> &driver_)
+                     const base::WeakPtr<GdmDriver> &driver)
     : Device(index, name),
-      driver_(driver_),
+      driver_(driver),
       open_(false),
       status_(WIMAX_API_DEVICE_STATUS_UnInitialized),
       connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging) {
@@ -110,11 +111,11 @@ bool GdmDevice::Connect() {
   if (!Open())
     return false;
 
-  vector<Network *> networks;
+  ScopedVector<Network> networks;
   for (int num_trials = 0; num_trials < kMaxNumberOfTrials; ++num_trials) {
     // TODO(benchan): Fix this code.
     sleep(2);
-    if (!driver_->GetNetworksForDevice(this, &networks)) {
+    if (!driver_->GetNetworksForDevice(this, &networks.get())) {
       LOG(ERROR) << "Failed to get list of networks for device '"
                  << name() << "'";
     }
@@ -129,7 +130,6 @@ bool GdmDevice::Connect() {
   if (!success)
     LOG(ERROR) << "Failed to connect device '" << name() << "' to network";
 
-  STLDeleteElements(&networks);
   return success;
 }
 

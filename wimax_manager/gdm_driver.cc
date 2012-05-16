@@ -105,7 +105,7 @@ bool ConvertWideCharacterArrayToUTF8String(const wchar_t (&wide_char_array)[N],
   return WideToUTF8(wide_char_array, wide_string_length, utf8_string);
 }
 
-} // namespace
+}  // namespace
 
 GdmDriver::GdmDriver() : api_handle_(NULL) {
 }
@@ -374,10 +374,7 @@ bool GdmDriver::ConnectDeviceToNetwork(GdmDevice *device,
       GAPI_CmdConnectToNetwork(&device_id,
                                const_cast<wchar_t *>(network_name_wcs.c_str()),
                                0);
-  if (ret != GCT_API_RET_SUCCESS)
-    return false;
-
-  return true;
+  return ret == GCT_API_RET_SUCCESS;
 }
 
 bool GdmDriver::DisconnectDeviceFromNetwork(GdmDevice *device) {
