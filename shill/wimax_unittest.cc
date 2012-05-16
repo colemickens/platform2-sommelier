@@ -15,6 +15,7 @@
 #include "shill/proxy_factory.h"
 
 using std::string;
+using testing::_;
 
 namespace shill {
 
@@ -84,10 +85,11 @@ TEST_F(WiMaxTest, TechnologyIs) {
 
 TEST_F(WiMaxTest, StartStop) {
   EXPECT_FALSE(wimax_->proxy_.get());
+  EXPECT_CALL(*proxy_, Enable(_, _, _));
+  EXPECT_CALL(*proxy_, Disable(_, _, _));
   wimax_->Start(NULL, EnabledStateChangedCallback());
   EXPECT_TRUE(wimax_->proxy_.get());
   wimax_->Stop(NULL, EnabledStateChangedCallback());
-  EXPECT_FALSE(wimax_->proxy_.get());
 }
 
 }  // namespace shill

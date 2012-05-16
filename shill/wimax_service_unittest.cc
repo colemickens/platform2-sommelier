@@ -51,6 +51,10 @@ class WiMaxServiceTest : public testing::Test {
   WiMaxServiceRefPtr service_;
 };
 
+TEST_F(WiMaxServiceTest, Constructor) {
+  EXPECT_EQ(kTestLinkName, service_->friendly_name());
+}
+
 TEST_F(WiMaxServiceTest, TechnologyIs) {
   EXPECT_TRUE(service_->TechnologyIs(Technology::kWiMax));
   EXPECT_FALSE(service_->TechnologyIs(Technology::kEthernet));

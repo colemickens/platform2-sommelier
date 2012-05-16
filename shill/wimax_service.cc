@@ -24,7 +24,10 @@ WiMaxService::WiMaxService(ControlInterface *control,
       storage_id_(
           StringToLowerASCII(string(flimflam::kTypeWimax) +
                              "_" +
-                             wimax_->address())) {}
+                             wimax_->address())) {
+  // TODO(petkov): Figure a friendly service name.
+  set_friendly_name(wimax->link_name());
+}
 
 WiMaxService::~WiMaxService() {}
 

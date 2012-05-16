@@ -41,9 +41,19 @@ class WiMax : public Device {
   friend class WiMaxTest;
   FRIEND_TEST(WiMaxTest, StartStop);
 
+  static const int kTimeoutDefault;
+
+  void OnConnectComplete(const Error &error);
+  void OnDisconnectComplete(const Error &error);
+  void OnEnableComplete(const EnabledStateChangedCallback &callback,
+                        const Error &error);
+  void OnDisableComplete(const EnabledStateChangedCallback &callback,
+                         const Error &error);
+
   const RpcIdentifier path_;
 
   scoped_ptr<WiMaxDeviceProxyInterface> proxy_;
+  WiMaxServiceRefPtr service_;
 
   ProxyFactory *proxy_factory_;
 
