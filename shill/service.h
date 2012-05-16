@@ -204,6 +204,9 @@ class Service : public base::RefCounted<Service> {
   // Returns whether the service configuration can be loaded from |storage|.
   virtual bool IsLoadableFrom(StoreInterface *storage) const;
 
+  // Returns true if the service uses 802.1x for key management.
+  virtual bool Is8021x() const { return false; };
+
   // Loads the service from persistent |storage|. Returns true on success.
   virtual bool Load(StoreInterface *storage);
 
@@ -334,7 +337,7 @@ class Service : public base::RefCounted<Service> {
 
   // Notification that occurs when a single property has been changed via
   // the RPC adaptor.
-  void OnPropertyChanged(const std::string &property);
+  virtual void OnPropertyChanged(const std::string &property);
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }

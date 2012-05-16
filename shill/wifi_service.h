@@ -55,6 +55,8 @@ class WiFiService : public Service {
   virtual void AddEndpoint(const WiFiEndpointConstRefPtr endpoint);
   virtual void RemoveEndpoint(const WiFiEndpointConstRefPtr endpoint);
   bool NumEndpoints() const { return endpoints_.size(); }
+  virtual bool Is8021x() const;
+
 
   // Called to update the identity of the currently connected endpoint.
   // To indicate that there is no currently connect endpoint, call with
@@ -170,9 +172,6 @@ class WiFiService : public Service {
   std::string GetSpecificStorageIdentifier() const;
   std::string GetStorageIdentifierForSecurity(
       const std::string &security) const;
-
-  // Returns true if the wireless service uses 802.1x for key management.
-  bool Is8021x() const;
 
   // Populate the |params| map with available 802.1x EAP properties.
   void Populate8021xProperties(std::map<std::string, DBus::Variant> *params);

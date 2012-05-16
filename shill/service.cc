@@ -504,8 +504,9 @@ bool Service::Is8021xConnectable() const {
 
   // For EAP-TLS, a client certificate is required.
   if (eap_.eap.empty() || eap_.eap == "TLS") {
-    if (!eap_.client_cert.empty() || !eap_.cert_id.empty()) {
-      SLOG(Service, 2) << "Connectable. EAP-TLS with a client cert.";
+    if ((!eap_.client_cert.empty() || !eap_.cert_id.empty()) &&
+        (!eap_.private_key.empty() || !eap_.key_id.empty())) {
+      SLOG(Service, 2) << "Connectable. EAP-TLS with a client cert and key.";
       return true;
     }
   }
@@ -675,6 +676,18 @@ const ProfileRefPtr &Service::profile() const { return profile_; }
 void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
 
 void Service::OnPropertyChanged(const string &property) {
+  if (Is8021x() &&
+      (property == flimflam::kEAPCertIDProperty ||
+       property == flimflam::kEAPClientCertProperty ||
+       property == flimflam::kEAPKeyIDProperty ||
+       property == flimflam::kEAPPINProperty ||
+       property == flimflam::kEapCaCertIDProperty ||
+       property == flimflam::kEapIdentityProperty ||
+       property == flimflam::kEapPasswordProperty ||
+       property == flimflam::kEapPrivateKeyProperty)) {
+    // This notifies subclassess that EAP parameters have been changed.
+    set_eap(eap_);
+  }
   if (profile_.get() && profile_->GetConstStorage()) {
     profile_->UpdateService(this);
   }

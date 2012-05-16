@@ -37,6 +37,7 @@ using std::vector;
 using testing::_;
 using testing::AtLeast;
 using testing::DoAll;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
@@ -571,6 +572,69 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   service_->connection_ = NULL;
   mock_connection = NULL;
   mock_device_info.reset();
+}
+
+class ServiceWithMockSetEap : public ServiceUnderTest {
+ public:
+  ServiceWithMockSetEap(ControlInterface *control_interface,
+                        EventDispatcher *dispatcher,
+                        Metrics *metrics,
+                        Manager *manager)
+      : ServiceUnderTest(control_interface, dispatcher, metrics, manager),
+        is_8021x_(false) {}
+  MOCK_METHOD1(set_eap, void(const EapCredentials &eap));
+  virtual bool Is8021x() const { return is_8021x_; }
+  void set_is_8021x(bool is_8021x) { is_8021x_ = is_8021x; }
+
+ private:
+  bool is_8021x_;
+};
+
+TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
+  scoped_refptr<ServiceWithMockSetEap> service(
+      new ServiceWithMockSetEap(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                &mock_manager_));
+  string eap_credential_properties[] = {
+      flimflam::kEAPCertIDProperty,
+      flimflam::kEAPClientCertProperty,
+      flimflam::kEAPKeyIDProperty,
+      flimflam::kEAPPINProperty,
+      flimflam::kEapCaCertIDProperty,
+      flimflam::kEapIdentityProperty,
+      flimflam::kEapPasswordProperty,
+      flimflam::kEapPrivateKeyProperty
+  };
+  string eap_non_credential_properties[] = {
+      flimflam::kEAPEAPProperty,
+      flimflam::kEapPhase2AuthProperty,
+      flimflam::kEapAnonymousIdentityProperty,
+      flimflam::kEapPrivateKeyPasswordProperty,
+      flimflam::kEapKeyMgmtProperty,
+      flimflam::kEapCaCertNssProperty,
+      flimflam::kEapUseSystemCAsProperty
+  };
+  // While this is not an 802.1x-based service, none of these property
+  // changes should cause a call to set_eap().
+  EXPECT_CALL(*service, set_eap(_)).Times(0);
+  for (size_t i = 0; i < arraysize(eap_credential_properties); ++i)
+    service->OnPropertyChanged(eap_credential_properties[i]);
+  for (size_t i = 0; i < arraysize(eap_non_credential_properties); ++i)
+    service->OnPropertyChanged(eap_non_credential_properties[i]);
+
+  service->set_is_8021x(true);
+
+  // When this is an 802.1x-based service, set_eap should be called for
+  // all credential-carrying properties.
+  for (size_t i = 0; i < arraysize(eap_credential_properties); ++i) {
+    EXPECT_CALL(*service, set_eap(_)).Times(1);
+    service->OnPropertyChanged(eap_credential_properties[i]);
+    Mock::VerifyAndClearExpectations(service.get());
+  }
+  EXPECT_CALL(*service, set_eap(_)).Times(0);
+  for (size_t i = 0; i < arraysize(eap_non_credential_properties); ++i)
+    service->OnPropertyChanged(eap_non_credential_properties[i]);
 }
 
 }  // namespace shill
