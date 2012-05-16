@@ -139,6 +139,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	glib.o \
 	glib_io_ready_handler.o \
 	glib_io_input_handler.o \
+	hook_table.o \
 	http_proxy.o \
 	http_request.o \
 	http_url.o \
@@ -243,6 +244,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	dhcp_provider_unittest.o \
 	dns_client_unittest.o \
 	error_unittest.o \
+	hook_table_unittest.o \
 	http_proxy_unittest.o \
 	http_request_unittest.o \
 	http_url_unittest.o \
