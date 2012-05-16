@@ -103,6 +103,7 @@ class MonitorReconfigure : public XEventObserverInterface {
   struct OutputInfo {
     std::string name;
     std::vector<ModeInfo> modes;
+    bool configured;
   };
 
   // Setup |display_|, |window_|, |screen_info_| and |mode_map_| value.

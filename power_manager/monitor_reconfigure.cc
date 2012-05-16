@@ -465,8 +465,12 @@ bool MonitorReconfigure::NeedReconfigure(
                 << info.uptime << ", possibly powerd restarts ? ";
     } else {  // First time powerd starts.
       if (noutput == 1) {
-        LOG(INFO) << "Only have one output, skip reconfigure";
-        need_reconfigure = false;
+        // Skip if our only output is already configured, otherwise configure.
+        need_reconfigure = !current_outputs[0].configured;
+        if (need_reconfigure)
+          LOG(INFO) << "Only have one output and not configured, need reconfigure";
+        else
+          LOG(INFO) << "Only have one output and already configure, skip reconfigure";
       }
     }
   } else {  // Not the first run.
@@ -790,6 +794,7 @@ void MonitorReconfigure::DetermineOutputs(vector<OutputInfo>* current_outputs) {
         mode.dotClock = xmode->dotClock;
         info.modes.push_back(mode);
       }
+      info.configured = output_info->crtc != None;
       sort(info.modes.begin(), info.modes.end(), ModeInfoComparator());
       current_outputs->push_back(info);
 
