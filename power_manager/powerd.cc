@@ -424,6 +424,7 @@ void Daemon::SetActive() {
 }
 
 void Daemon::SetIdleState(int64 idle_time_ms) {
+  PowerState old_state = backlight_controller_->GetPowerState();
   if (idle_time_ms >= suspend_ms_ &&
       !state_control_->IsStateDisabled(kIdleSuspendDisabled)) {
     // Note: currently this state doesn't do anything.  But it can be possibly
@@ -455,6 +456,9 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
       backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED) {
     locker_.LockScreen();
   }
+  if (old_state != backlight_controller_->GetPowerState())
+    idle_transition_timestamps_[backlight_controller_->GetPowerState()] =
+        base::TimeTicks::Now();
 }
 
 void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
@@ -554,7 +558,13 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     }
   }
 
-  GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
+  if (is_idle) {
+    last_idle_event_timestamp_ = base::TimeTicks::Now();
+    last_idle_timedelta_ = base::TimeDelta::FromMilliseconds(idle_time_ms);
+  } else if (!last_idle_event_timestamp_.is_null() &&
+             idle_time_ms < last_idle_timedelta_.InMilliseconds()) {
+    GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
+  }
   SetIdleState(idle_time_ms);
   if (!is_idle && offset_ms_ != 0)
     SetIdleOffset(0, kIdleNormal);

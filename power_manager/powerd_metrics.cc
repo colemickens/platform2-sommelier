@@ -34,30 +34,33 @@ void Daemon::MetricInit() {
 }
 
 void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
-  if (is_idle) {
-    last_idle_event_timestamp_ = TimeTicks::Now();
-    last_idle_timedelta_ = TimeDelta::FromMilliseconds(idle_time_ms);
-  } else if (!last_idle_event_timestamp_.is_null() &&
-             idle_time_ms < last_idle_timedelta_.InMilliseconds()) {
-    TimeDelta event_delta = TimeTicks::Now() - last_idle_event_timestamp_;
-    TimeDelta total_delta = event_delta + last_idle_timedelta_;
-    int64 total_delta_ms = total_delta.InMilliseconds();
-    last_idle_event_timestamp_ = TimeTicks();
+  TimeTicks current_time = TimeTicks::Now();
+  TimeDelta event_delta = current_time - last_idle_event_timestamp_;
+  TimeDelta total_delta = event_delta + last_idle_timedelta_;
+  last_idle_event_timestamp_ = TimeTicks();
 
-    SendMetricWithPowerState(kMetricIdleName, total_delta_ms, kMetricIdleMin,
-        kMetricIdleMax, kMetricIdleBuckets);
+  SendMetricWithPowerState(kMetricIdleName, total_delta.InMilliseconds(),
+      kMetricIdleMin, kMetricIdleMax, kMetricIdleBuckets);
 
-    int64 event_delta_ms = event_delta.InMilliseconds();
-    if (backlight_controller_->GetPowerState() == BACKLIGHT_IDLE_OFF) {
-      SendMetricWithPowerState(kMetricIdleAfterScreenOffName, event_delta_ms,
-          kMetricIdleAfterScreenOffMin, kMetricIdleAfterScreenOffMax,
-          kMetricIdleAfterScreenOffBuckets);
-    } else if (backlight_controller_->GetPowerState() == BACKLIGHT_DIM) {
-      SendMetricWithPowerState(kMetricIdleAfterDimName, event_delta_ms,
-          kMetricIdleAfterDimMin, kMetricIdleAfterDimMax,
-          kMetricIdleAfterDimBuckets);
-    }
+  if (!idle_transition_timestamps_[BACKLIGHT_DIM].is_null()) {
+    TimeDelta dim_event_delta =
+      current_time - idle_transition_timestamps_[BACKLIGHT_DIM];
+    SendMetricWithPowerState(kMetricIdleAfterDimName,
+                             dim_event_delta.InMilliseconds(),
+                             kMetricIdleAfterDimMin,
+                             kMetricIdleAfterDimMax,
+                             kMetricIdleAfterDimBuckets);
   }
+  if (!idle_transition_timestamps_[BACKLIGHT_IDLE_OFF].is_null()) {
+    TimeDelta screen_off_event_delta =
+      current_time - idle_transition_timestamps_[BACKLIGHT_IDLE_OFF];
+    SendMetricWithPowerState(kMetricIdleAfterScreenOffName,
+                             screen_off_event_delta.InMilliseconds(),
+                             kMetricIdleAfterScreenOffMin,
+                             kMetricIdleAfterScreenOffMax,
+                             kMetricIdleAfterScreenOffBuckets);
+  }
+  idle_transition_timestamps_.clear();
 }
 
 void Daemon::GenerateMetricsOnPowerEvent(const PowerStatus& info) {

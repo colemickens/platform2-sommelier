@@ -481,6 +481,9 @@ class Daemon : public XIdleObserver,
   // Idle time as of last idle event.
   base::TimeDelta last_idle_timedelta_;
 
+  // Timestamps of the last idle-triggered power state transitions.
+  std::map<PowerState, base::TimeTicks> idle_transition_timestamps_;
+
   // User whose session is currently active, or empty if no session is
   // active or we're in guest mode.
   std::string current_user_;
