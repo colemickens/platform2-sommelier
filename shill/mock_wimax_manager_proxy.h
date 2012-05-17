@@ -19,7 +19,9 @@ class MockWiMaxManagerProxy : public WiMaxManagerProxyInterface {
   MockWiMaxManagerProxy();
   virtual ~MockWiMaxManagerProxy();
 
-  MOCK_METHOD1(Devices, std::vector<RpcIdentifier>(Error *error));
+  MOCK_METHOD1(set_devices_changed_callback,
+               void(const DevicesChangedCallback &callback));
+  MOCK_METHOD1(Devices, RpcIdentifiers(Error *error));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxManagerProxy);

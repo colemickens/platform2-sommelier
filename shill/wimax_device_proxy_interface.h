@@ -19,6 +19,8 @@ class Error;
 // interface is provided so that it can be mocked in tests.
 class WiMaxDeviceProxyInterface {
  public:
+  typedef base::Callback<void(const RpcIdentifiers &)> NetworksChangedCallback;
+
   virtual ~WiMaxDeviceProxyInterface() {}
 
   virtual void Enable(Error *error,
@@ -27,12 +29,18 @@ class WiMaxDeviceProxyInterface {
   virtual void Disable(Error *error,
                        const ResultCallback &callback,
                        int timeout) = 0;
+  virtual void ScanNetworks(Error *error,
+                            const ResultCallback &callback,
+                            int timeout) = 0;
   virtual void Connect(Error *error,
                        const ResultCallback &callback,
                        int timeout) = 0;
   virtual void Disconnect(Error *error,
                           const ResultCallback &callback,
                           int timeout) = 0;
+
+  virtual void set_networks_changed_callback(
+      const NetworksChangedCallback &callback) = 0;
 
   // Properties.
   virtual uint8 Index(Error *error) = 0;

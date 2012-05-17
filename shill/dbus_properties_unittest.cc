@@ -100,7 +100,7 @@ TEST_F(DBusPropertiesTest, GetRpcIdentifiers) {
   static const char kTestPath0[] = "/org/chromium/Something";
   static const char kTestPath1[] = "/org/chromium/Else";
 
-  vector<RpcIdentifier> value;
+  RpcIdentifiers value;
   value.push_back(kOldTestPath0);
   value.push_back(kOldTestPath1);
   DBusPropertiesMap props;
@@ -118,6 +118,21 @@ TEST_F(DBusPropertiesTest, GetRpcIdentifiers) {
   ASSERT_EQ(2, value.size());
   EXPECT_EQ(kTestPath0, value[0]);
   EXPECT_EQ(kTestPath1, value[1]);
+}
+
+TEST_F(DBusPropertiesTest, ConvertPathsToRpcIdentifiers) {
+  static const char kOldTestPath[] = "/org/chromium/Something/Old";
+  static const char kTestPath0[] = "/org/chromium/Something";
+  static const char kTestPath1[] = "/org/chromium/Else";
+
+  RpcIdentifiers ids(1, kOldTestPath);
+  vector<DBus::Path> paths;
+  paths.push_back(kTestPath0);
+  paths.push_back(kTestPath1);
+  DBusProperties::ConvertPathsToRpcIdentifiers(paths, &ids);
+  ASSERT_EQ(2, ids.size());
+  EXPECT_EQ(kTestPath0, ids[0]);
+  EXPECT_EQ(kTestPath1, ids[1]);
 }
 
 }  // namespace shill

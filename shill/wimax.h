@@ -27,22 +27,28 @@ class WiMax : public Device {
 
   virtual ~WiMax();
 
+  // Inherited from Device.
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
-
   virtual bool TechnologyIs(const Technology::Identifier type) const;
+  virtual void Scan(Error *error);
 
-  virtual void Connect(Error *error);
-  virtual void Disconnect(Error *error);
+  virtual void ConnectTo(const WiMaxServiceRefPtr &service, Error *error);
+  virtual void DisconnectFrom(const WiMaxServiceRefPtr &service, Error *error);
 
   const RpcIdentifier &path() const { return path_; }
+  bool scanning() const { return scanning_; }
 
  private:
   friend class WiMaxTest;
+  FRIEND_TEST(WiMaxTest, CreateService);
+  FRIEND_TEST(WiMaxTest, DestroyDeadServices);
+  FRIEND_TEST(WiMaxTest, OnNetworksChanged);
   FRIEND_TEST(WiMaxTest, StartStop);
 
   static const int kTimeoutDefault;
 
+  void OnScanNetworksComplete(const Error &error);
   void OnConnectComplete(const Error &error);
   void OnDisconnectComplete(const Error &error);
   void OnEnableComplete(const EnabledStateChangedCallback &callback,
@@ -50,10 +56,17 @@ class WiMax : public Device {
   void OnDisableComplete(const EnabledStateChangedCallback &callback,
                          const Error &error);
 
+  void OnNetworksChanged(const RpcIdentifiers &networks);
+
+  void CreateService(const RpcIdentifier &network);
+  void DestroyDeadServices(const RpcIdentifiers &live_networks);
+
   const RpcIdentifier path_;
 
   scoped_ptr<WiMaxDeviceProxyInterface> proxy_;
-  WiMaxServiceRefPtr service_;
+  bool scanning_;
+  std::map<RpcIdentifier, WiMaxServiceRefPtr> services_;
+  WiMaxServiceRefPtr pending_service_;
 
   ProxyFactory *proxy_factory_;
 

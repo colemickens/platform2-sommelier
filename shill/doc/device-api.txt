@@ -439,7 +439,7 @@ Properties	string Address [readonly]
 
 		boolean Scanning [readonly]
 
-                        (Defined in WiFi and Cellular)
+			(Defined in Cellular, WiFi and WiMAX)
 
 			Indicates that a device is currently performing a
 			network scan.

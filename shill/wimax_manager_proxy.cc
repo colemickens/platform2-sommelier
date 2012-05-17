@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/dbus_properties.h"
 #include "shill/error.h"
 #include "shill/scope_logger.h"
 
@@ -19,7 +20,12 @@ WiMaxManagerProxy::WiMaxManagerProxy(DBus::Connection *connection)
 
 WiMaxManagerProxy::~WiMaxManagerProxy() {}
 
-vector<RpcIdentifier> WiMaxManagerProxy::Devices(Error *error) {
+void WiMaxManagerProxy::set_devices_changed_callback(
+    const DevicesChangedCallback &callback) {
+  proxy_.set_devices_changed_callback(callback);
+}
+
+RpcIdentifiers WiMaxManagerProxy::Devices(Error *error) {
   SLOG(DBus, 2) << __func__;
   vector<DBus::Path> dbus_devices;
   try {
@@ -27,11 +33,8 @@ vector<RpcIdentifier> WiMaxManagerProxy::Devices(Error *error) {
   } catch (const DBus::Error &e) {
     Error::PopulateAndLog(error, Error::kOperationFailed, e.what());
   }
-  vector<RpcIdentifier> devices;
-  for (vector<DBus::Path>::const_iterator it = dbus_devices.begin();
-       it != dbus_devices.end(); ++it) {
-    devices.push_back(*it);
-  }
+  RpcIdentifiers devices;
+  DBusProperties::ConvertPathsToRpcIdentifiers(dbus_devices, &devices);
   return devices;
 }
 
@@ -41,5 +44,21 @@ WiMaxManagerProxy::Proxy::Proxy(DBus::Connection *connection)
                         wimax_manager::kWiMaxManagerServiceName) {}
 
 WiMaxManagerProxy::Proxy::~Proxy() {}
+
+void WiMaxManagerProxy::Proxy::set_devices_changed_callback(
+    const DevicesChangedCallback &callback) {
+  devices_changed_callback_ = callback;
+}
+
+void WiMaxManagerProxy::Proxy::DevicesChanged(
+    const vector<DBus::Path> &devices) {
+  SLOG(DBus, 2) << __func__ << "(" << devices.size() << ")";
+  if (devices_changed_callback_.is_null()) {
+    return;
+  }
+  RpcIdentifiers rpc_devices;
+  DBusProperties::ConvertPathsToRpcIdentifiers(devices, &rpc_devices);
+  devices_changed_callback_.Run(rpc_devices);
+}
 
 }  // namespace shill

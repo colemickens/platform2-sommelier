@@ -15,6 +15,7 @@ using base::Bind;
 using base::Callback;
 using base::Unretained;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -42,6 +43,15 @@ void WiMaxDeviceProxy::Disable(Error *error,
          error, callback, timeout);
 }
 
+void WiMaxDeviceProxy::ScanNetworks(Error *error,
+                                    const ResultCallback &callback,
+                                    int timeout) {
+  SLOG(DBus, 2) << __func__ << "(" << timeout << ")";
+  Invoke(Bind((void (Proxy::*)(void *, int))&Proxy::ScanNetworks,
+              Unretained(&proxy_)),
+         error, callback, timeout);
+}
+
 void WiMaxDeviceProxy::Connect(Error *error,
                                const ResultCallback &callback,
                                int timeout) {
@@ -58,6 +68,11 @@ void WiMaxDeviceProxy::Disconnect(Error *error,
   Invoke(Bind((void (Proxy::*)(void *, int))&Proxy::Disconnect,
               Unretained(&proxy_)),
          error, callback, timeout);
+}
+
+void WiMaxDeviceProxy::set_networks_changed_callback(
+    const NetworksChangedCallback &callback) {
+  proxy_.set_networks_changed_callback(callback);
 }
 
 uint8 WiMaxDeviceProxy::Index(Error *error) {
@@ -113,6 +128,22 @@ WiMaxDeviceProxy::Proxy::Proxy(DBus::Connection *connection,
 
 WiMaxDeviceProxy::Proxy::~Proxy() {}
 
+void WiMaxDeviceProxy::Proxy::set_networks_changed_callback(
+    const NetworksChangedCallback &callback) {
+  networks_changed_callback_ = callback;
+}
+
+void WiMaxDeviceProxy::Proxy::NetworksChanged(
+    const vector<DBus::Path> &networks) {
+  SLOG(DBus, 2) << __func__ << "(" << networks.size() << ")";
+  if (networks_changed_callback_.is_null()) {
+    return;
+  }
+  RpcIdentifiers rpc_networks;
+  DBusProperties::ConvertPathsToRpcIdentifiers(networks, &rpc_networks);
+  networks_changed_callback_.Run(rpc_networks);
+}
+
 void WiMaxDeviceProxy::Proxy::EnableCallback(const DBus::Error &error,
                                              void *data) {
   SLOG(DBus, 2) << __func__;
@@ -121,6 +152,12 @@ void WiMaxDeviceProxy::Proxy::EnableCallback(const DBus::Error &error,
 
 void WiMaxDeviceProxy::Proxy::DisableCallback(const DBus::Error &error,
                                               void *data) {
+  SLOG(DBus, 2) << __func__;
+  HandleCallback(error, data);
+}
+
+void WiMaxDeviceProxy::Proxy::ScanNetworksCallback(const DBus::Error &error,
+                                                   void *data) {
   SLOG(DBus, 2) << __func__;
   HandleCallback(error, data);
 }

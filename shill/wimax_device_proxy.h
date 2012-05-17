@@ -26,12 +26,17 @@ class WiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
   virtual void Disable(Error *error,
                        const ResultCallback &callback,
                        int timeout);
+  virtual void ScanNetworks(Error *error,
+                            const ResultCallback &callback,
+                            int timeout);
   virtual void Connect(Error *error,
                        const ResultCallback &callback,
                        int timeout);
   virtual void Disconnect(Error *error,
                           const ResultCallback &callback,
                           int timeout);
+  virtual void set_networks_changed_callback(
+      const NetworksChangedCallback &callback);
   virtual uint8 Index(Error *error);
   virtual std::string Name(Error *error);
 
@@ -39,21 +44,25 @@ class WiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
   class Proxy : public org::chromium::WiMaxManager::Device_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          const DBus::Path &path);
+    Proxy(DBus::Connection *connection, const DBus::Path &path);
     virtual ~Proxy();
+
+    void set_networks_changed_callback(const NetworksChangedCallback &callback);
 
    private:
     // Signal callbacks inherited from WiMaxManager::Device_proxy.
-    // [None]
+    virtual void NetworksChanged(const std::vector<DBus::Path> &networks);
 
     // Method callbacks inherited from WiMaxManager::Device_proxy.
     virtual void EnableCallback(const DBus::Error &error, void *data);
     virtual void DisableCallback(const DBus::Error &error, void *data);
+    virtual void ScanNetworksCallback(const DBus::Error &error, void *data);
     virtual void ConnectCallback(const DBus::Error &error, void *data);
     virtual void DisconnectCallback(const DBus::Error &error, void *data);
 
     static void HandleCallback(const DBus::Error &error, void *data);
+
+    NetworksChangedCallback networks_changed_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -12,6 +12,8 @@
 
 namespace shill {
 
+class WiMaxNetworkProxyInterface;
+
 class WiMaxService : public Service {
  public:
   WiMaxService(ControlInterface *control,
@@ -20,6 +22,13 @@ class WiMaxService : public Service {
                Manager *manager,
                const WiMaxRefPtr &wimax);
   virtual ~WiMaxService();
+
+  // Returns true on success, false otherwise. Takes ownership of proxy,
+  // regardless of the result of the operation.
+  bool Start(WiMaxNetworkProxyInterface *proxy);
+
+  const std::string &network_name() const { return network_name_; }
+  uint32 network_identifier() const { return network_identifier_; }
 
   // Inherited from Service.
   virtual bool TechnologyIs(const Technology::Identifier type) const;
@@ -33,7 +42,11 @@ class WiMaxService : public Service {
   virtual std::string GetDeviceRpcId(Error *error);
 
   WiMaxRefPtr wimax_;
+  scoped_ptr<WiMaxNetworkProxyInterface> proxy_;
   std::string storage_id_;
+
+  uint32 network_identifier_;
+  std::string network_name_;
 
   DISALLOW_COPY_AND_ASSIGN(WiMaxService);
 };

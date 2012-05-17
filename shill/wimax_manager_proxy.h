@@ -16,25 +16,31 @@ namespace shill {
 
 class WiMaxManagerProxy : public WiMaxManagerProxyInterface {
  public:
-  WiMaxManagerProxy(DBus::Connection *connection);
+  explicit WiMaxManagerProxy(DBus::Connection *connection);
   virtual ~WiMaxManagerProxy();
 
   // Inherited from WiMaxManagerProxyInterface.
-  virtual std::vector<RpcIdentifier> Devices(Error *error);
+  virtual void set_devices_changed_callback(
+      const DevicesChangedCallback &callback);
+  virtual RpcIdentifiers Devices(Error *error);
 
  private:
   class Proxy : public org::chromium::WiMaxManager_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection);
+    explicit Proxy(DBus::Connection *connection);
     virtual ~Proxy();
+
+    void set_devices_changed_callback(const DevicesChangedCallback &callback);
 
    private:
     // Signal callbacks inherited from WiMaxManager_proxy.
-    // [None]
+    virtual void DevicesChanged(const std::vector<DBus::Path> &devices);
 
     // Method callbacks inherited from WiMaxManager_proxy.
     // [None]
+
+    DevicesChangedCallback devices_changed_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -26,6 +26,7 @@
 #include "shill/supplicant_process_proxy.h"
 #include "shill/wimax_device_proxy.h"
 #include "shill/wimax_manager_proxy.h"
+#include "shill/wimax_network_proxy.h"
 
 using std::string;
 
@@ -136,6 +137,11 @@ WiMaxDeviceProxyInterface *ProxyFactory::CreateWiMaxDeviceProxy(
 
 WiMaxManagerProxyInterface *ProxyFactory::CreateWiMaxManagerProxy() {
   return new WiMaxManagerProxy(connection());
+}
+
+WiMaxNetworkProxyInterface *ProxyFactory::CreateWiMaxNetworkProxy(
+    const string &path) {
+  return new WiMaxNetworkProxy(connection(), path);
 }
 
 PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(

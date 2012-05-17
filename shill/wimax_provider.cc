@@ -10,7 +10,6 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/proxy_factory.h"
@@ -26,12 +25,6 @@ using std::string;
 using std::vector;
 
 namespace shill {
-
-namespace {
-// TODO(petkov): Add these to chromeos/dbus/service_constants.h.
-const char kWiMaxDevicePathPrefix[] = "/org/chromium/WiMaxManager/Device/";
-const char kWiMaxManagerDevicesProperty[] = "Devices";
-}  // namespace
 
 WiMaxProvider::WiMaxProvider(ControlInterface *control,
                              EventDispatcher *dispatcher,
@@ -52,25 +45,20 @@ void WiMaxProvider::Start() {
   if (manager_proxy_.get()) {
     return;
   }
-  properties_proxy_.reset(
-      proxy_factory_->CreateDBusPropertiesProxy(
-          wimax_manager::kWiMaxManagerServicePath,
-          wimax_manager::kWiMaxManagerServiceName));
-  properties_proxy_->set_properties_changed_callback(
-      Bind(&WiMaxProvider::OnPropertiesChanged, Unretained(this)));
   manager_proxy_.reset(proxy_factory_->CreateWiMaxManagerProxy());
+  manager_proxy_->set_devices_changed_callback(
+      Bind(&WiMaxProvider::OnDevicesChanged, Unretained(this)));
   Error error;
-  UpdateDevices(manager_proxy_->Devices(&error));
+  OnDevicesChanged(manager_proxy_->Devices(&error));
 }
 
 void WiMaxProvider::Stop() {
   SLOG(WiMax, 2) << __func__;
-  properties_proxy_.reset();
   manager_proxy_.reset();
   DestroyDeadDevices(RpcIdentifiers());
 }
 
-void WiMaxProvider::UpdateDevices(const RpcIdentifiers &devices) {
+void WiMaxProvider::OnDevicesChanged(const RpcIdentifiers &devices) {
   SLOG(WiMax, 2) << __func__;
   DestroyDeadDevices(devices);
   for (RpcIdentifiers::const_iterator it = devices.begin();
@@ -79,18 +67,6 @@ void WiMaxProvider::UpdateDevices(const RpcIdentifiers &devices) {
     if (!link_name.empty()) {
       CreateDevice(link_name, *it);
     }
-  }
-}
-
-void WiMaxProvider::OnPropertiesChanged(
-    const string &/*interface*/,
-    const DBusPropertiesMap &changed_properties,
-    const vector<string> &/*invalidated_properties*/) {
-  SLOG(WiMax, 2) << __func__;
-  RpcIdentifiers devices;
-  if (DBusProperties::GetRpcIdentifiers(
-          changed_properties, kWiMaxManagerDevicesProperty, &devices)) {
-    UpdateDevices(devices);
   }
 }
 
@@ -165,8 +141,8 @@ void WiMaxProvider::DestroyDeadDevices(const RpcIdentifiers &live_devices) {
 }
 
 string WiMaxProvider::GetLinkName(const RpcIdentifier &path) {
-  if (StartsWithASCII(path, kWiMaxDevicePathPrefix, true)) {
-    return path.substr(strlen(kWiMaxDevicePathPrefix));
+  if (StartsWithASCII(path, wimax_manager::kDeviceObjectPathPrefix, true)) {
+    return path.substr(strlen(wimax_manager::kDeviceObjectPathPrefix));
   }
   LOG(ERROR) << "Unable to determine link name from RPC path: " << path;
   return string();

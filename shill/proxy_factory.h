@@ -33,6 +33,7 @@ class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class WiMaxDeviceProxyInterface;
 class WiMaxManagerProxyInterface;
+class WiMaxNetworkProxyInterface;
 
 namespace mm1 {
 
@@ -110,6 +111,8 @@ class ProxyFactory {
   virtual WiMaxDeviceProxyInterface *CreateWiMaxDeviceProxy(
       const std::string &path);
   virtual WiMaxManagerProxyInterface *CreateWiMaxManagerProxy();
+  virtual WiMaxNetworkProxyInterface *CreateWiMaxNetworkProxy(
+      const std::string &path);
 
   // The caller retains ownership of 'delegate'.  It must not be deleted before
   // the proxy.

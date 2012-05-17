@@ -33,8 +33,10 @@ class MockWiMax : public WiMax {
                            const EnabledStateChangedCallback &callback));
   MOCK_METHOD2(Stop, void(Error *error,
                           const EnabledStateChangedCallback &callback));
-  MOCK_METHOD1(Connect, void(Error *error));
-  MOCK_METHOD1(Disconnect, void(Error *error));
+  MOCK_METHOD2(ConnectTo, void(const WiMaxServiceRefPtr &service,
+                               Error *error));
+  MOCK_METHOD2(DisconnectFrom, void(const WiMaxServiceRefPtr &service,
+                                    Error *error));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMax);

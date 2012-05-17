@@ -277,6 +277,8 @@ class Device : public base::RefCounted<Device> {
   // the service is already in a connected state before doing so.
   void SetServiceConnectedState(Service::ConnectState state);
 
+  const ServiceRefPtr &selected_service() const { return selected_service_; }
+
   void HelpRegisterDerivedString(
       const std::string &name,
       std::string(Device::*get)(Error *),

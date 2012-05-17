@@ -161,8 +161,7 @@ void Manager::Start() {
   device_info_.Start();
   modem_info_.Start();
   vpn_provider_.Start();
-  // TODO(petkov): Enable this and test on a running system.
-  // wimax_provider_.Start();
+  wimax_provider_.Start();
 }
 
 void Manager::Stop() {

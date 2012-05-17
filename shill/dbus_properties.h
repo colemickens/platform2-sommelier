@@ -50,7 +50,11 @@ class DBusProperties {
 
   static bool GetRpcIdentifiers(const DBusPropertiesMap &properties,
                                 const std::string &key,
-                                std::vector<RpcIdentifier> *value);
+                                RpcIdentifiers *value);
+
+  static void ConvertPathsToRpcIdentifiers(
+      const std::vector<DBus::Path> &dbus_paths,
+      RpcIdentifiers *rpc_identifiers);
 
   static std::string KeysToString(const std::map<std::string,
                                   ::DBus::Variant> &args);

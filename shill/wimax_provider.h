@@ -13,13 +13,11 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
-#include "shill/dbus_properties.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
 
 class ControlInterface;
-class DBusPropertiesProxyInterface;
 class EventDispatcher;
 class Manager;
 class Metrics;
@@ -45,18 +43,10 @@ class WiMaxProvider {
   FRIEND_TEST(WiMaxProviderTest, DestroyDeadDevices);
   FRIEND_TEST(WiMaxProviderTest, GetLinkName);
   FRIEND_TEST(WiMaxProviderTest, OnDeviceInfoAvailable);
-  FRIEND_TEST(WiMaxProviderTest, OnPropertiesChanged);
+  FRIEND_TEST(WiMaxProviderTest, OnDevicesChanged);
   FRIEND_TEST(WiMaxProviderTest, StartStop);
-  FRIEND_TEST(WiMaxProviderTest, UpdateDevices);
 
-  typedef std::vector<RpcIdentifier> RpcIdentifiers;
-
-  void UpdateDevices(const RpcIdentifiers &devices);
-
-  void OnPropertiesChanged(
-      const std::string &interface,
-      const DBusPropertiesMap &changed_properties,
-      const std::vector<std::string> &invalidated_properties);
+  void OnDevicesChanged(const RpcIdentifiers &devices);
 
   void CreateDevice(const std::string &link_name, const RpcIdentifier &path);
   void DestroyDeadDevices(const RpcIdentifiers &live_devices);
@@ -69,7 +59,6 @@ class WiMaxProvider {
   Manager *manager_;
 
   scoped_ptr<WiMaxManagerProxyInterface> manager_proxy_;
-  scoped_ptr<DBusPropertiesProxyInterface> properties_proxy_;
 
   std::map<std::string, std::string> pending_devices_;
   std::map<std::string, WiMaxRefPtr> devices_;
