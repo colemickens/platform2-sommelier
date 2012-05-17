@@ -5,15 +5,16 @@
 
 <node>
   <interface name="org.chromium.WiMaxManager.Device">
-    <method name="Enable">
-    </method>
-    <method name="Disable">
-    </method>
-    <method name="Connect">
-    </method>
-    <method name="Disconnect">
-    </method>
+    <method name="Enable" />
+    <method name="Disable" />
+    <method name="ScanNetworks" />
+    <method name="Connect" />
+    <method name="Disconnect" />
+    <signal name="NetworksChanged">
+      <arg name="Networks" type="ao" />
+    </signal>
     <property name="Index" type="y" access="read" />
     <property name="Name" type="s" access="read" />
+    <property name="Networks" type="ao" access="read" />
   </interface>
 </node>

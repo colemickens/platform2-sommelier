@@ -4,8 +4,6 @@
 
 #include "wimax_manager/manager.h"
 
-#include <dbus-c++/dbus.h>
-
 #include <base/logging.h>
 #include <base/stl_util.h>
 
@@ -16,11 +14,7 @@
 
 namespace wimax_manager {
 
-Manager::Manager(DBus::Connection *dbus_connection)
-    : dbus_connection_(dbus_connection),
-      adaptor_(new(std::nothrow) ManagerDBusAdaptor(dbus_connection, this)) {
-  CHECK(dbus_connection_);
-  CHECK(adaptor_.get());
+Manager::Manager() {
 }
 
 Manager::~Manager() {
@@ -47,15 +41,10 @@ bool Manager::Initialize() {
     return false;
   }
 
-  for (size_t i = 0; i < devices_.size(); ++i) {
-    Device *device = devices_[i];
-    DeviceDBusAdaptor *adaptor =
-        new(std::nothrow) DeviceDBusAdaptor(dbus_connection_, device);
-    CHECK(adaptor);
-    device->set_adaptor(adaptor);
-  }
-  adaptor_->UpdateDevices();
+  for (size_t i = 0; i < devices_.size(); ++i)
+    devices_[i]->CreateDBusAdaptor();
 
+  dbus_adaptor()->UpdateDevices();
   return true;
 }
 

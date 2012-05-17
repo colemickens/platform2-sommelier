@@ -79,16 +79,29 @@ string GetConnectionProgressDescription(
   }
 }
 
-string GetNetworkTypeDescription(WIMAX_API_NETWORK_TYPE network_type) {
+string GetNetworkTypeDescription(NetworkType network_type) {
   switch (network_type) {
-    case WIMAX_API_HOME:
+    case kNetworkHome:
       return "Home";
-    case WIMAX_API_PARTNER:
+    case kNetworkPartner:
       return "Partner";
-    case WIMAX_API_ROAMING_PARTNER:
+    case kNetworkRoamingParnter:
       return "Roaming partner";
     default:
       return "Unknown";
+  }
+}
+
+NetworkType ConvertNetworkType(WIMAX_API_NETWORK_TYPE network_type) {
+  switch (network_type) {
+    case WIMAX_API_HOME:
+      return kNetworkHome;
+    case WIMAX_API_PARTNER:
+      return kNetworkPartner;
+    case WIMAX_API_ROAMING_PARTNER:
+      return kNetworkRoamingParnter;
+    default:
+      return kNetworkUnknown;
   }
 }
 
@@ -346,15 +359,16 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
       continue;
     }
 
+    NetworkType network_type = ConvertNetworkType(network_list[i].networkType);
+    int network_cinr = network_list[i].CINR - 10;
+    int network_rssi = network_list[i].RSSI - 123;
     LOG(INFO) << base::StringPrintf(
-        "Found network '%s': type = '%s', id = %08x, RSSI = %d, CINR = %d\n",
-        network_name.c_str(),
-        GetNetworkTypeDescription(network_list[i].networkType).c_str(),
-        network_id,
-        network_list[i].RSSI - 123,
-        network_list[i].CINR - 10);
+        "Found network '%s': type = '%s', id = %08x, CINR = %d, RSSI = %d\n",
+        network_name.c_str(), GetNetworkTypeDescription(network_type).c_str(),
+        network_id, network_cinr, network_rssi);;
 
-    Network *network = new(std::nothrow) Network(network_id, network_name);
+    Network *network = new(std::nothrow) Network(
+        network_id, network_name, network_type, network_cinr, network_rssi);
     CHECK(network);
     networks->push_back(network);
   }

@@ -6,13 +6,15 @@
 #include <glib-object.h>
 #include <glib-unix.h>
 
+#include <base/at_exit.h>
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <chromeos/syslog_logging.h>
 #include <gflags/gflags.h>
 
-#include "wimax_manager/daemon.h"
+#include "wimax_manager/manager.h"
+#include "wimax_manager/manager_dbus_adaptor.h"
 
 DEFINE_bool(foreground, false,
             "Don't daemon()ize; run in foreground.");
@@ -46,6 +48,7 @@ gboolean TerminationSignalCallback(gpointer data) {
 }  // namespace
 
 int main(int argc, char** argv) {
+  base::AtExitManager exit_manager;
   g_type_init();
   g_thread_init(NULL);
   google::SetUsageMessage(kUsageMessage);
@@ -65,8 +68,9 @@ int main(int argc, char** argv) {
   g_unix_signal_add(SIGINT, TerminationSignalCallback, loop);
   g_unix_signal_add(SIGTERM, TerminationSignalCallback, loop);
 
-  wimax_manager::Daemon daemon;
-  CHECK(daemon.Initialize()) << "Failed to initialize daemon";
+  wimax_manager::Manager manager;
+  manager.CreateDBusAdaptor();
+  CHECK(manager.Initialize()) << "Failed to initialize WiMAX manager";
 
   g_main_loop_run(loop);
   g_main_loop_unref(loop);

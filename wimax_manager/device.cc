@@ -19,8 +19,8 @@ Device::Device(uint8 index, const string &name)
 Device::~Device() {
 }
 
-void Device::set_adaptor(DeviceDBusAdaptor *adaptor) {
-  adaptor_.reset(adaptor);
+void Device::UpdateNetworks() {
+  dbus_adaptor()->UpdateNetworks();
 }
 
 }  // namespace wimax_manager

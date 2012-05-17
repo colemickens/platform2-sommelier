@@ -10,6 +10,7 @@
 
 #include "wimax_manager/gdm_driver.h"
 #include "wimax_manager/network.h"
+#include "wimax_manager/network_dbus_adaptor.h"
 
 using std::string;
 using std::vector;
@@ -96,7 +97,7 @@ bool GdmDevice::Enable() {
 }
 
 bool GdmDevice::Disable() {
-  if (!Open())
+  if (!driver_ || !open_)
     return false;
 
   if (!driver_->PowerOffDeviceRF(this)) {
@@ -107,26 +108,39 @@ bool GdmDevice::Disable() {
   return true;
 }
 
+bool GdmDevice::ScanNetworks() {
+  if (!Open())
+    return false;
+
+  ScopedVector<Network> *networks = mutable_networks();
+  networks->reset();
+
+  for (int num_trials = 0; num_trials < kMaxNumberOfTrials; ++num_trials) {
+    // TODO(benchan): Fix this code.
+    sleep(2);
+    if (!driver_->GetNetworksForDevice(this, &networks->get())) {
+      LOG(ERROR) << "Failed to get list of networks for device '"
+                 << name() << "'";
+    }
+    if (!networks->empty())
+      break;
+  }
+
+  for (size_t i = 0; i < networks->size(); ++i)
+    (*networks)[i]->CreateDBusAdaptor();
+
+  UpdateNetworks();
+  return true;
+}
+
 bool GdmDevice::Connect() {
   if (!Open())
     return false;
 
-  ScopedVector<Network> networks;
-  for (int num_trials = 0; num_trials < kMaxNumberOfTrials; ++num_trials) {
-    // TODO(benchan): Fix this code.
-    sleep(2);
-    if (!driver_->GetNetworksForDevice(this, &networks.get())) {
-      LOG(ERROR) << "Failed to get list of networks for device '"
-                 << name() << "'";
-    }
-    if (!networks.empty())
-      break;
-  }
-
-  if (networks.empty())
+  if (networks().empty())
     return false;
 
-  bool success = driver_->ConnectDeviceToNetwork(this, networks[0]);
+  bool success = driver_->ConnectDeviceToNetwork(this, networks()[0]);
   if (!success)
     LOG(ERROR) << "Failed to connect device '" << name() << "' to network";
 
@@ -134,7 +148,7 @@ bool GdmDevice::Connect() {
 }
 
 bool GdmDevice::Disconnect() {
-  if (!Open())
+  if (!driver_ || !open_)
     return false;
 
   if (!driver_->DisconnectDeviceFromNetwork(this)) {

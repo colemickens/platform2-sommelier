@@ -34,10 +34,15 @@ GEN_DBUSXX(wimax_manager/dbus_bindings/device.h): \
 	$(SRC)/dbus_bindings/org.chromium.WiMaxManager.Device.xml
 clean: CLEAN(wimax_manager/dbus_bindings/device.h)
 
+GEN_DBUSXX(wimax_manager/dbus_bindings/network.h): \
+	$(SRC)/dbus_bindings/org.chromium.WiMaxManager.Network.xml
+clean: CLEAN(wimax_manager/dbus_bindings/network.h)
+
 # Require DBus binding headers to be generated first.
 $(patsubst %.o,%.o.depends,$(CXX_OBJECTS)): \
+	GEN_DBUSXX(wimax_manager/dbus_bindings/device.h) \
 	GEN_DBUSXX(wimax_manager/dbus_bindings/manager.h) \
-	GEN_DBUSXX(wimax_manager/dbus_bindings/device.h)
+	GEN_DBUSXX(wimax_manager/dbus_bindings/network.h)
 
 CXX_BINARY(wimax-manager): $(filter-out testrunner.o %_unittest.o,$(CXX_OBJECTS))
 clean: CLEAN(wimax-manager)

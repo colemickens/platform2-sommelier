@@ -5,6 +5,9 @@
 
 <node>
   <interface name="org.chromium.WiMaxManager">
+    <signal name="DevicesChanged">
+      <arg name="Devices" type="ao" />
+    </signal>
     <property name="Devices" type="ao" access="read" />
   </interface>
 </node>

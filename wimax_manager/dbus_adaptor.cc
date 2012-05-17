@@ -4,6 +4,8 @@
 
 #include "wimax_manager/dbus_adaptor.h"
 
+#include <chromeos/dbus/service_constants.h>
+
 using std::string;
 
 namespace wimax_manager {
@@ -14,6 +16,11 @@ DBusAdaptor::DBusAdaptor(DBus::Connection *connection,
 }
 
 DBusAdaptor::~DBusAdaptor() {
+}
+
+// static
+void DBusAdaptor::SetError(DBus::Error *error, const string &message) {
+  error->set(kWiMaxManagerServiceError, message.c_str());
 }
 
 }  // namespace wimax_manager

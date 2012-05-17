@@ -8,20 +8,39 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/memory/scoped_ptr.h>
+
+#include "wimax_manager/dbus_adaptable.h"
 
 namespace wimax_manager {
 
-class Network {
+enum NetworkType {
+  kNetworkHome,
+  kNetworkPartner,
+  kNetworkRoamingParnter,
+  kNetworkUnknown,
+};
+
+class NetworkDBusAdaptor;
+
+class Network : public DBusAdaptable<Network, NetworkDBusAdaptor> {
  public:
-  Network(uint32 id, const std::string& name);
+  Network(uint32 identifier, const std::string &name, NetworkType type,
+          int cinr, int rssi);
   ~Network();
 
-  uint32 id() const { return id_; }
+  uint32 identifier() const { return identifier_; }
   const std::string &name() const { return name_; }
+  NetworkType type() const { return type_; }
+  int cinr() const { return cinr_; }
+  int rssi() const { return rssi_; }
 
  private:
-  uint32 id_;
+  uint32 identifier_;
   std::string name_;
+  NetworkType type_;
+  int cinr_;
+  int rssi_;
 
   DISALLOW_COPY_AND_ASSIGN(Network);
 };

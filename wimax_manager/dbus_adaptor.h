@@ -19,6 +19,8 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   DBusAdaptor(DBus::Connection *connection, const std::string &object_path);
   virtual ~DBusAdaptor();
 
+  static void SetError(DBus::Error *error, const std::string &message);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);
 };

@@ -11,11 +11,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 
-namespace DBus {
-
-class Connection;
-
-}  // namespace DBus
+#include "wimax_manager/dbus_adaptable.h"
 
 namespace wimax_manager {
 
@@ -23,9 +19,9 @@ class Device;
 class Driver;
 class ManagerDBusAdaptor;
 
-class Manager {
+class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
  public:
-  explicit Manager(DBus::Connection *dbus_connection);
+  Manager();
   virtual ~Manager();
 
   bool Initialize();
@@ -34,10 +30,8 @@ class Manager {
   const std::vector<Device *> &devices() const { return devices_.get(); }
 
  private:
-  DBus::Connection *dbus_connection_;
   scoped_ptr<Driver> driver_;
   ScopedVector<Device> devices_;
-  scoped_ptr<ManagerDBusAdaptor> adaptor_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

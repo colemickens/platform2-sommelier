@@ -17,15 +17,18 @@ class Device;
 class DeviceDBusAdaptor : public org::chromium::WiMaxManager::Device_adaptor,
                           public DBusAdaptor {
  public:
-  static std::string GetDeviceObjectPath(const Device &device);
-
   DeviceDBusAdaptor(DBus::Connection *connection, Device *device);
   virtual ~DeviceDBusAdaptor();
 
+  static std::string GetDeviceObjectPath(const Device &device);
+
   virtual void Enable(DBus::Error &error);  // NOLINT
   virtual void Disable(DBus::Error &error);  // NOLINT
+  virtual void ScanNetworks(DBus::Error &error);  // NOLINT
   virtual void Connect(DBus::Error &error);  // NOLINT
   virtual void Disconnect(DBus::Error &error);  // NOLINT
+
+  void UpdateNetworks();
 
  private:
   Device *device_;

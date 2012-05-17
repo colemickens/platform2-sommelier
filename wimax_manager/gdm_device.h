@@ -28,6 +28,7 @@ class GdmDevice : public Device {
 
   virtual bool Enable();
   virtual bool Disable();
+  virtual bool ScanNetworks();
   virtual bool Connect();
   virtual bool Disconnect();
 
