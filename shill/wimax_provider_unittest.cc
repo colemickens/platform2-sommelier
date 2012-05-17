@@ -131,7 +131,9 @@ TEST_F(WiMaxProviderTest, OnDeviceInfoAvailable) {
   provider_.OnDeviceInfoAvailable(GetTestLinkName(1));
   EXPECT_TRUE(provider_.pending_devices_.empty());
   ASSERT_EQ(1, provider_.devices_.size());
-  EXPECT_EQ(GetTestLinkName(1), provider_.devices_[0]->link_name());
+  ASSERT_TRUE(ContainsKey(provider_.devices_, GetTestLinkName(1)));
+  EXPECT_EQ(GetTestLinkName(1),
+            provider_.devices_[GetTestLinkName(1)]->link_name());
 }
 
 TEST_F(WiMaxProviderTest, OnPropertiesChanged) {
@@ -163,14 +165,20 @@ TEST_F(WiMaxProviderTest, CreateDevice) {
   provider_.CreateDevice(GetTestLinkName(1), GetTestPath(1));
   EXPECT_TRUE(provider_.pending_devices_.empty());
   ASSERT_EQ(1, provider_.devices_.size());
-  EXPECT_EQ(GetTestLinkName(1), provider_.devices_[0]->link_name());
+  ASSERT_TRUE(ContainsKey(provider_.devices_, GetTestLinkName(1)));
+  EXPECT_EQ(GetTestLinkName(1),
+            provider_.devices_[GetTestLinkName(1)]->link_name());
+
+  WiMax *device = provider_.devices_[GetTestLinkName(1)].get();
+  provider_.CreateDevice(GetTestLinkName(1), GetTestPath(1));
+  EXPECT_EQ(device, provider_.devices_[GetTestLinkName(1)].get());
 }
 
 TEST_F(WiMaxProviderTest, DestroyDeadDevices) {
   for (int i = 0; i < 4; i++) {
-    provider_.devices_.push_back(
-        new MockWiMax(&control_, NULL, &metrics_, &manager_,
-                      GetTestLinkName(i), "", i, GetTestPath(i)));
+    provider_.devices_[GetTestLinkName(i)] =
+      new MockWiMax(&control_, NULL, &metrics_, &manager_,
+                    GetTestLinkName(i), "", i, GetTestPath(i));
   }
   for (int i = 4; i < 8; i++) {
     provider_.pending_devices_[GetTestLinkName(i)] = GetTestPath(i);
@@ -187,8 +195,8 @@ TEST_F(WiMaxProviderTest, DestroyDeadDevices) {
   EXPECT_CALL(device_info_, DeregisterDevice(_)).Times(2);
   provider_.DestroyDeadDevices(live_devices);
   ASSERT_EQ(2, provider_.devices_.size());
-  EXPECT_EQ(GetTestLinkName(0), provider_.devices_[0]->link_name());
-  EXPECT_EQ(GetTestLinkName(3), provider_.devices_[1]->link_name());
+  EXPECT_TRUE(ContainsKey(provider_.devices_, GetTestLinkName(0)));
+  EXPECT_TRUE(ContainsKey(provider_.devices_, GetTestLinkName(3)));
   EXPECT_EQ(2, provider_.pending_devices_.size());
   EXPECT_TRUE(ContainsKey(provider_.pending_devices_, GetTestLinkName(4)));
   EXPECT_TRUE(ContainsKey(provider_.pending_devices_, GetTestLinkName(7)));

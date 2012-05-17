@@ -5,6 +5,7 @@
 #ifndef SHILL_WIMAX_PROVIDER_H_
 #define SHILL_WIMAX_PROVIDER_H_
 
+#include <map>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -71,7 +72,7 @@ class WiMaxProvider {
   scoped_ptr<DBusPropertiesProxyInterface> properties_proxy_;
 
   std::map<std::string, std::string> pending_devices_;
-  std::vector<WiMaxRefPtr> devices_;
+  std::map<std::string, WiMaxRefPtr> devices_;
 
   ProxyFactory *proxy_factory_;
 

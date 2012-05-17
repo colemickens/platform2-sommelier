@@ -106,6 +106,11 @@ void WiMaxProvider::OnDeviceInfoAvailable(const string &link_name) {
 void WiMaxProvider::CreateDevice(const string &link_name,
                                  const RpcIdentifier &path) {
   SLOG(WiMax, 2) << __func__ << "(" << link_name << ", " << path << ")";
+  if (ContainsKey(devices_, link_name)) {
+    SLOG(WiMax, 2) << "Device already exists.";
+    CHECK_EQ(path, devices_[link_name]->path());
+    return;
+  }
   pending_devices_.erase(link_name);
   DeviceInfo *device_info = manager_->device_info();
   if (device_info->IsDeviceBlackListed(link_name)) {
@@ -123,14 +128,14 @@ void WiMaxProvider::CreateDevice(const string &link_name,
   }
   ByteString address_bytes;
   if (!device_info->GetMACAddress(index, &address_bytes)) {
-    LOG(ERROR) << "Unable to create a WiMax device with not MAC address: "
+    LOG(ERROR) << "Unable to create a WiMax device with no MAC address: "
                << link_name;
     return;
   }
   string address = address_bytes.HexEncode();
   WiMaxRefPtr device(new WiMax(control_, dispatcher_, metrics_, manager_,
                                link_name, address, index, path));
-  devices_.push_back(device);
+  devices_[link_name] = device;
   device_info->RegisterDevice(device);
 }
 
@@ -146,13 +151,13 @@ void WiMaxProvider::DestroyDeadDevices(const RpcIdentifiers &live_devices) {
       ++it;
     }
   }
-  for (vector<WiMaxRefPtr>::iterator it = devices_.begin();
+  for (map<string, WiMaxRefPtr>::iterator it = devices_.begin();
        it != devices_.end(); ) {
-    if (find(live_devices.begin(), live_devices.end(), (*it)->path()) ==
+    if (find(live_devices.begin(), live_devices.end(), it->second->path()) ==
         live_devices.end()) {
-      SLOG(WiMax, 2) << "Destroying device: " << (*it)->link_name();
-      manager_->device_info()->DeregisterDevice(*it);
-      it = devices_.erase(it);
+      SLOG(WiMax, 2) << "Destroying device: " << it->first;
+      manager_->device_info()->DeregisterDevice(it->second);
+      devices_.erase(it++);
     } else {
       ++it;
     }
