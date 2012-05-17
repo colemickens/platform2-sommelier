@@ -53,6 +53,7 @@ class WiMaxServiceTest : public testing::Test {
 
 TEST_F(WiMaxServiceTest, Constructor) {
   EXPECT_EQ(kTestLinkName, service_->friendly_name());
+  EXPECT_TRUE(service_->connectable());
 }
 
 TEST_F(WiMaxServiceTest, TechnologyIs) {

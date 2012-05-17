@@ -47,6 +47,8 @@ void WiMax::Start(Error *error, const EnabledStateChangedCallback &callback) {
 
 void WiMax::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   SLOG(WiMax, 2) << __func__;
+  DestroyIPConfig();
+  SelectService(NULL);
   if (service_) {
     manager()->DeregisterService(service_);
     service_ = NULL;
@@ -61,6 +63,7 @@ bool WiMax::TechnologyIs(const Technology::Identifier type) const {
 
 void WiMax::Connect(Error *error) {
   SLOG(WiMax, 2) << __func__;
+  service_->SetState(Service::kStateAssociating);
   proxy_->Connect(
       error, Bind(&WiMax::OnConnectComplete, this), kTimeoutDefault);
 }
@@ -73,14 +76,20 @@ void WiMax::Disconnect(Error *error) {
 
 void WiMax::OnConnectComplete(const Error &error) {
   SLOG(WiMax, 2) << __func__;
-  if (error.IsSuccess()) {
+  if (error.IsSuccess() && AcquireIPConfig()) {
     SelectService(service_);
-    // TODO(petkov): AcquireIPConfig through DHCP?
+    SetServiceState(Service::kStateConfiguring);
+  } else {
+    LOG(ERROR) << "Unable to connect.";
+    if (service_) {
+      service_->SetState(Service::kStateFailure);
+    }
   }
 }
 
 void WiMax::OnDisconnectComplete(const Error &error) {
   SLOG(WiMax, 2) << __func__;
+  DestroyIPConfig();
   SelectService(NULL);
 }
 
@@ -98,7 +107,6 @@ void WiMax::OnEnableComplete(const EnabledStateChangedCallback &callback,
     manager()->RegisterService(service_);
   }
   callback.Run(error);
-
 }
 
 void WiMax::OnDisableComplete(const EnabledStateChangedCallback &callback,

@@ -27,6 +27,7 @@ WiMaxService::WiMaxService(ControlInterface *control,
                              wimax_->address())) {
   // TODO(petkov): Figure a friendly service name.
   set_friendly_name(wimax->link_name());
+  set_connectable(true);
 }
 
 WiMaxService::~WiMaxService() {}
