@@ -196,6 +196,14 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     return Technology::kWifi;
   }
 
+  // Special case for pseudo modems which are used for testing
+  if (iface_name.find(kModemPseudoDeviceNamePrefix) == 0) {
+    SLOG(Device, 2) << StringPrintf(
+        "%s: device %s is a pseudo modem for testing",
+        __func__, iface_name.c_str());
+    return Technology::kCellular;
+  }
+
   FilePath driver_path;
   if (!GetDeviceInfoSymbolicLink(iface_name, kInterfaceDriver, &driver_path)) {
     SLOG(Device, 2) << StringPrintf("%s: device %s has no device symlink",
@@ -247,14 +255,6 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
       IsCdcEtherModemDevice(iface_name)) {
     SLOG(Device, 2) << StringPrintf("%s: device %s is a modem cdc_ether device",
                                     __func__, iface_name.c_str());
-    return Technology::kCellular;
-  }
-
-  // Special case for pseudo modems which are used for testing
-  if (iface_name.find(kModemPseudoDeviceNamePrefix) == 0) {
-    SLOG(Device, 2) << StringPrintf(
-        "%s: device %s is a pseudo modem for testing",
-        __func__, iface_name.c_str());
     return Technology::kCellular;
   }
 
