@@ -209,6 +209,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, ConnectFailure);
+  FRIEND_TEST(CellularTest, ConnectFailureNoService);
   FRIEND_TEST(CellularTest, DisableModem);
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);

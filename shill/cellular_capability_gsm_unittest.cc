@@ -44,6 +44,10 @@ MATCHER(IsSuccess, "") {
   return arg.IsSuccess();
 }
 
+MATCHER(IsFailure, "") {
+  return arg.IsFailure();
+}
+
 class CellularCapabilityGSMTest : public testing::Test {
  public:
   CellularCapabilityGSMTest()
@@ -168,6 +172,11 @@ class CellularCapabilityGSMTest : public testing::Test {
     callback.Run(info, Error());
   }
 
+  void InvokeConnectFail(DBusPropertiesMap props, Error *error,
+                         const ResultCallback &callback, int timeout) {
+    callback.Run(Error(Error::kOperationFailed));
+  }
+
   MOCK_METHOD1(TestCallback, void(const Error &error));
 
  protected:
@@ -251,11 +260,15 @@ class CellularCapabilityGSMTest : public testing::Test {
     cellular_->provider_db_ = provider_db_;
   }
 
-  void SetupCommonStartModemExpectations() {
+  void SetupCommonProxiesExpectations() {
     EXPECT_CALL(*proxy_, set_state_changed_callback(_));
     EXPECT_CALL(*network_proxy_, set_signal_quality_callback(_));
     EXPECT_CALL(*network_proxy_, set_network_mode_callback(_));
     EXPECT_CALL(*network_proxy_, set_registration_info_callback(_));
+  }
+
+  void SetupCommonStartModemExpectations() {
+    SetupCommonProxiesExpectations();
 
     EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutEnable))
         .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeEnable));
@@ -275,6 +288,10 @@ class CellularCapabilityGSMTest : public testing::Test {
     EXPECT_CALL(*network_proxy_,
                 GetSignalQuality(_, _, CellularCapability::kTimeoutDefault));
     EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  }
+
+  void InitProxies() {
+    capability_->InitProxies();
   }
 
   NiceMockControl control_;
@@ -884,5 +901,25 @@ TEST_F(CellularCapabilityGSMTest, StartModemGetMSISDNFail) {
       &error, Bind(&CellularCapabilityGSMTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
+
+TEST_F(CellularCapabilityGSMTest, ConnectFailureNoService) {
+  // Make sure we don't crash if the connect failed and there is no
+  // CellularService object.  This can happen if the modem is enabled and
+  // then quickly disabled.
+  SetupCommonProxiesExpectations();
+  EXPECT_CALL(*simple_proxy_,
+              Connect(_, _, _, CellularCapabilityGSM::kTimeoutConnect))
+       .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeConnectFail));
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  SetProxyFactory();
+  InitProxies();
+  EXPECT_FALSE(capability_->cellular()->service());
+  Error error;
+  DBusPropertiesMap props;
+  capability_->Connect(props, &error,
+                       Bind(&CellularCapabilityGSMTest::TestCallback,
+                            Unretained(this)));
+}
+
 
 }  // namespace shill

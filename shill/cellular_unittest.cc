@@ -243,8 +243,13 @@ class CellularTest : public testing::Test {
     callback.Run(Error());
   }
   void InvokeConnectFail(DBusPropertiesMap props, Error *error,
-                     const ResultCallback &callback, int timeout) {
+                         const ResultCallback &callback, int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
+    callback.Run(Error(Error::kNotOnHomeNetwork));
+  }
+  void InvokeConnectFailNoService(DBusPropertiesMap props, Error *error,
+                                  const ResultCallback &callback, int timeout) {
+    device_->service_ = NULL;
     callback.Run(Error(Error::kNotOnHomeNetwork));
   }
   void InvokeDisconnect(Error *error, const ResultCallback &callback,
@@ -601,6 +606,24 @@ TEST_F(CellularTest, ConnectFailure) {
   Error error;
   device_->Connect(&error);
   EXPECT_EQ(Service::kStateFailure, device_->service_->state());
+}
+
+TEST_F(CellularTest, ConnectFailureNoService) {
+  // Make sure we don't crash if the connect failed and there is no
+  // CellularService object.  This can happen if the modem is enabled and
+  // then quick disabled.
+  SetCellularType(Cellular::kTypeCDMA);
+  device_->state_ = Cellular::kStateRegistered;
+  device_->service_ = new CellularService(
+      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
+  EXPECT_CALL(
+      *simple_proxy_,
+      Connect(_, _, _, CellularCapability::kTimeoutConnect))
+      .WillOnce(Invoke(this, &CellularTest::InvokeConnectFailNoService));
+  EXPECT_CALL(manager_, UpdateService(_));
+  GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
+  Error error;
+  device_->Connect(&error);
 }
 
 TEST_F(CellularTest, ModemStateChangeEnable) {

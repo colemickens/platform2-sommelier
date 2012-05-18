@@ -261,8 +261,13 @@ void CellularCapabilityGSM::Connect(const DBusPropertiesMap &properties,
 
 void CellularCapabilityGSM::OnConnectReply(const ResultCallback &callback,
                                            const Error &error) {
-  if (error.IsFailure()) {
-    cellular()->service()->ClearLastGoodApn();
+  CellularServiceRefPtr service = cellular()->service();
+  if (!service) {
+    // The service could have been deleted before our Connect() request
+    // completes if the modem was enabled and then quickly disabled.
+    apn_try_list_.clear();
+  } else if (error.IsFailure()) {
+    service->ClearLastGoodApn();
     // The APN that was just tried (and failed) is still at the
     // front of the list, about to be removed. If the list is empty
     // after that, try one last time without an APN. This may succeed
@@ -278,7 +283,7 @@ void CellularCapabilityGSM::OnConnectReply(const ResultCallback &callback,
       return;
     }
   } else if (!apn_try_list_.empty()) {
-    cellular()->service()->SetLastGoodApn(apn_try_list_.front());
+    service->SetLastGoodApn(apn_try_list_.front());
     apn_try_list_.clear();
   }
   if (!callback.is_null())

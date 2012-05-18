@@ -432,7 +432,8 @@ void Cellular::OnConnected() {
 }
 
 void Cellular::OnConnectFailed(const Error &error) {
-  service_->SetFailure(Service::kFailureUnknown);
+  if (service_)
+    service_->SetFailure(Service::kFailureUnknown);
 }
 
 void Cellular::Disconnect(Error *error) {
