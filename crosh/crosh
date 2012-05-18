@@ -107,6 +107,9 @@ HELP_ADVANCED='
 
  syslog <message>
   Logs a message to syslog.
+
+ chaps_debug [start|stop|<log_level>]
+  Sets the chapsd logging level. No arguments will start verbose logging.
 '
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
@@ -707,6 +710,22 @@ cmd_chaps() {
     echo "You must reboot for this to take effect."
   else
     echo "No change."
+  fi
+}
+
+cmd_chaps_debug() {
+  local level=${1:--2}
+  if [ "$1" = "stop" ]; then
+    level=0
+  fi
+  if [ "$1" = "start" ]; then
+    level=-2
+  fi
+  /usr/bin/chaps_client --set_log_level=${level} 2> /dev/null
+  if [ $? -eq 0 ]; then
+    echo "Logging level set to ${level}."
+  else
+    echo "Failed to set logging level."
   fi
 }
 
