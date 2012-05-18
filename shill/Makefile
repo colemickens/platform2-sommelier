@@ -17,11 +17,12 @@ BUILDDIR = build
 LIBDIR = /usr/lib
 SCRIPTDIR = $(LIBDIR)/flimflam/scripts
 CPPFLAGS += -DSCRIPTDIR=\"$(SCRIPTDIR)\"
-BASE_LIBS = -lbootstat -lcares -lmobile-provider -lmetrics -lminijail
+BASE_LIBS = -lbootstat -lcares -lmobile-provider -lmetrics -lminijail -lnl
 BASE_INCLUDE_DIRS = -iquote.. -iquote $(BUILDDIR)
 BASE_LIB_DIRS =
 
 LIBS = $(BASE_LIBS)
+
 BASE_VER = 125070
 PC_DEPS = dbus-c++-1 glib-2.0 gio-2.0 libchrome-$(BASE_VER) \
 	libchromeos-$(BASE_VER)
@@ -117,6 +118,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	cellular_capability_universal.o \
 	cellular_error.o \
 	cellular_service.o \
+	config80211.o \
 	connection.o \
 	crypto_des_cbc.o \
 	crypto_provider.o \
@@ -152,6 +154,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	ip_address.o \
 	ipconfig.o \
 	ipconfig_dbus_adaptor.o \
+	kernel_bound_nlmessage.o \
 	key_file_store.o \
 	key_value_store.o \
 	link_monitor.o \
@@ -177,6 +180,8 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	modem_manager_proxy.o \
 	modem_proxy.o \
 	modem_simple_proxy.o \
+	netlink_socket.o \
+	nl80211_socket.o \
 	nss.o \
 	openvpn_driver.o \
 	openvpn_management_server.o \
@@ -210,6 +215,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	supplicant_interface_proxy.o \
 	supplicant_process_proxy.o \
 	technology.o \
+	user_bound_nlmessage.o \
 	virtio_ethernet.o \
 	vpn.o \
 	vpn_driver.o \
@@ -247,6 +253,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	crypto_des_cbc_unittest.o \
 	crypto_provider_unittest.o \
 	crypto_rot47_unittest.o \
+	config80211_unittest.o \
 	connection_unittest.o \
 	dbus_adaptor_unittest.o \
 	dbus_manager_unittest.o \

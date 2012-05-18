@@ -30,7 +30,7 @@ namespace shill {
 
 // TODO(gmorain): 3 seconds may or may not be enough.  Add an UMA stat to see
 // how often the timeout occurs.  crosbug.com/31475.
-const int Daemon::kTerminationActionsTimeout = 3000; // ms
+const int Daemon::kTerminationActionsTimeout = 3000;  // ms
 
 Daemon::Daemon(Config *config, ControlInterface *control)
     : config_(config),
@@ -40,6 +40,8 @@ Daemon::Daemon(Config *config, ControlInterface *control)
       rtnl_handler_(RTNLHandler::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       dhcp_provider_(DHCPProvider::GetInstance()),
+      config80211_(Config80211::GetInstance()),
+      callback80211_(Callback80211Object::GetInstance()),
       manager_(new Manager(control_,
                            &dispatcher_,
                            &metrics_,
@@ -48,6 +50,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
                            config->GetStorageDirectory(),
                            config->GetUserStorageDirectoryFormat())) {
 }
+
 Daemon::~Daemon() {}
 
 void Daemon::AddDeviceToBlackList(const string &device_name) {
@@ -92,6 +95,25 @@ void Daemon::Start() {
   rtnl_handler_->Start(&dispatcher_, &sockets_);
   routing_table_->Start();
   dhcp_provider_->Init(control_, &dispatcher_, &glib_);
+
+  if (config80211_) {
+    config80211_->Init(&dispatcher_);
+    // Subscribe to all the events in which we're interested.
+    static const Config80211::EventType kEvents[] = {
+      Config80211::kEventTypeConfig,
+      Config80211::kEventTypeScan,
+      Config80211::kEventTypeRegulatory,
+      Config80211::kEventTypeMlme };
+
+    // Install |callback80211_| in the Config80211 singleton.
+    callback80211_->set_config80211(config80211_);
+    callback80211_->InstallAsCallback();
+
+    for (size_t i = 0; i < arraysize(kEvents); i++) {
+      config80211_->SubscribeToEvents(kEvents[i]);
+    }
+  }
+
   manager_->Start();
 }
 

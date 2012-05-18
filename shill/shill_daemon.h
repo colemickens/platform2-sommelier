@@ -9,6 +9,7 @@
 
 #include <base/memory/scoped_ptr.h>
 
+#include "shill/config80211.h"
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
@@ -62,6 +63,8 @@ class Daemon {
   RTNLHandler *rtnl_handler_;
   RoutingTable *routing_table_;
   DHCPProvider *dhcp_provider_;
+  Config80211 *config80211_;
+  Callback80211Object *callback80211_;
   scoped_ptr<Manager> manager_;
   EventDispatcher dispatcher_;
   Sockets sockets_;
