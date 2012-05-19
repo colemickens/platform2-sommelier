@@ -23,6 +23,15 @@ class WiMaxService : public Service {
                const WiMaxRefPtr &wimax);
   virtual ~WiMaxService();
 
+  // Returns the parameters to be passed to WiMaxManager.Device.Connect() when
+  // connecting to the network associated with this service.
+  void GetConnectParameters(DBusPropertiesMap *parameters) const;
+
+  // Returns the DBus object path for the WiMaxManager.Network object
+  // associated with this service. Must only be called after |proxy_| is set
+  // by Start().
+  DBus::Path GetNetworkObjectPath() const;
+
   // Returns true on success, false otherwise. Takes ownership of proxy,
   // regardless of the result of the operation.
   bool Start(WiMaxNetworkProxyInterface *proxy);
@@ -47,6 +56,7 @@ class WiMaxService : public Service {
 
   uint32 network_identifier_;
   std::string network_name_;
+  bool need_passphrase_;
 
   DISALLOW_COPY_AND_ASSIGN(WiMaxService);
 };

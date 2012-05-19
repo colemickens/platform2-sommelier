@@ -18,6 +18,7 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
   virtual ~WiMaxNetworkProxy();
 
   // Inherited from WiMaxNetwokProxyInterface.
+  virtual DBus::Path proxy_object_path() const;
   virtual uint32 Identifier(Error *error);
   virtual std::string Name(Error *error);
   virtual int Type(Error *error);

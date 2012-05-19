@@ -92,9 +92,11 @@ void WiMax::ConnectTo(const WiMaxServiceRefPtr &service, Error *error) {
   }
   service->SetState(Service::kStateAssociating);
   pending_service_ = service;
-  // TODO(petkov): Need to update this to connect to a specific service,
-  // however, there's no support for this in WiMaxManager yet.
+
+  DBusPropertiesMap parameters;
+  service->GetConnectParameters(&parameters);
   proxy_->Connect(
+      service->GetNetworkObjectPath(), parameters,
       error, Bind(&WiMax::OnConnectComplete, this), kTimeoutDefault);
   if (error->IsFailure()) {
     OnConnectComplete(*error);

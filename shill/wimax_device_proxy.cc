@@ -52,12 +52,15 @@ void WiMaxDeviceProxy::ScanNetworks(Error *error,
          error, callback, timeout);
 }
 
-void WiMaxDeviceProxy::Connect(Error *error,
+void WiMaxDeviceProxy::Connect(const DBus::Path &network,
+                               const DBusPropertiesMap &parameters,
+                               Error *error,
                                const ResultCallback &callback,
                                int timeout) {
   SLOG(DBus, 2) << __func__ << "(" << timeout << ")";
-  Invoke(Bind((void (Proxy::*)(void *, int))&Proxy::Connect,
-              Unretained(&proxy_)),
+  Invoke(Bind((void (Proxy::*)(const DBus::Path &, const DBusPropertiesMap &,
+                               void *, int))&Proxy::Connect,
+              Unretained(&proxy_), network, parameters),
          error, callback, timeout);
 }
 

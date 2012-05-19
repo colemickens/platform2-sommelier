@@ -27,9 +27,31 @@ WiMaxService::WiMaxService(ControlInterface *control,
                            const WiMaxRefPtr &wimax)
     : Service(control, dispatcher, metrics, manager, Technology::kWiMax),
       wimax_(wimax),
-      network_identifier_(0) {}
+      network_identifier_(0),
+      need_passphrase_(true) {
+  PropertyStore *store = this->mutable_store();
+  // TODO(benchan): Support networks that require no user credentials or
+  // implicitly defined credentials.
+  store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
+}
 
 WiMaxService::~WiMaxService() {}
+
+void WiMaxService::GetConnectParameters(DBusPropertiesMap *parameters) const {
+  CHECK(parameters);
+
+  (*parameters)[wimax_manager::kEAPAnonymousIdentity].writer()
+      .append_string(eap().anonymous_identity.c_str());
+  (*parameters)[wimax_manager::kEAPUserIdentity].writer()
+      .append_string(eap().identity.c_str());
+  (*parameters)[wimax_manager::kEAPUserPassword].writer()
+      .append_string(eap().password.c_str());
+}
+
+DBus::Path WiMaxService::GetNetworkObjectPath() const {
+  CHECK(proxy_.get());
+  return proxy_->proxy_object_path();
+}
 
 bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
   SLOG(WiMax, 2) << __func__;

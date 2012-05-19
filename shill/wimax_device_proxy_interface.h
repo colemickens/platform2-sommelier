@@ -10,6 +10,7 @@
 #include <base/basictypes.h>
 
 #include "shill/callbacks.h"
+#include "shill/dbus_properties.h"
 
 namespace shill {
 
@@ -32,7 +33,9 @@ class WiMaxDeviceProxyInterface {
   virtual void ScanNetworks(Error *error,
                             const ResultCallback &callback,
                             int timeout) = 0;
-  virtual void Connect(Error *error,
+  virtual void Connect(const DBus::Path &network,
+                       const DBusPropertiesMap &parameters,
+                       Error *error,
                        const ResultCallback &callback,
                        int timeout) = 0;
   virtual void Disconnect(Error *error,

@@ -20,6 +20,10 @@ WiMaxNetworkProxy::WiMaxNetworkProxy(DBus::Connection *connection,
 
 WiMaxNetworkProxy::~WiMaxNetworkProxy() {}
 
+DBus::Path WiMaxNetworkProxy::proxy_object_path() const {
+  return proxy_.path();
+}
+
 uint32 WiMaxNetworkProxy::Identifier(Error *error) {
   SLOG(DBus, 2) << __func__;
   try {

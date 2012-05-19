@@ -19,6 +19,9 @@ using std::string;
 using testing::_;
 using testing::NiceMock;
 using testing::Return;
+using wimax_manager::kEAPAnonymousIdentity;
+using wimax_manager::kEAPUserIdentity;
+using wimax_manager::kEAPUserPassword;
 
 namespace shill {
 
@@ -50,6 +53,42 @@ class WiMaxServiceTest : public testing::Test {
   scoped_refptr<MockWiMax> wimax_;
   WiMaxServiceRefPtr service_;
 };
+
+TEST_F(WiMaxServiceTest, GetConnectParameters) {
+  {
+    DBusPropertiesMap parameters;
+    service_->GetConnectParameters(&parameters);
+
+    EXPECT_TRUE(ContainsKey(parameters, kEAPAnonymousIdentity));
+    EXPECT_STREQ("", parameters[kEAPAnonymousIdentity].reader().get_string());
+
+    EXPECT_TRUE(ContainsKey(parameters, kEAPUserIdentity));
+    EXPECT_STREQ("", parameters[kEAPUserIdentity].reader().get_string());
+
+    EXPECT_TRUE(ContainsKey(parameters, kEAPUserPassword));
+    EXPECT_STREQ("", parameters[kEAPUserPassword].reader().get_string());
+  }
+  {
+    Service::EapCredentials eap;
+    eap.anonymous_identity = "TestAnonymousIdentity";
+    eap.identity = "TestUserIdentity";
+    eap.password = "TestPassword";
+    service_->set_eap(eap);
+
+    DBusPropertiesMap parameters;
+    service_->GetConnectParameters(&parameters);
+
+    EXPECT_TRUE(ContainsKey(parameters, kEAPAnonymousIdentity));
+    EXPECT_EQ(eap.anonymous_identity,
+              parameters[kEAPAnonymousIdentity].reader().get_string());
+
+    EXPECT_TRUE(ContainsKey(parameters, kEAPUserIdentity));
+    EXPECT_EQ(eap.identity, parameters[kEAPUserIdentity].reader().get_string());
+
+    EXPECT_TRUE(ContainsKey(parameters, kEAPUserPassword));
+    EXPECT_EQ(eap.password, parameters[kEAPUserPassword].reader().get_string());
+  }
+}
 
 TEST_F(WiMaxServiceTest, TechnologyIs) {
   EXPECT_TRUE(service_->TechnologyIs(Technology::kWiMax));

@@ -16,11 +16,12 @@ class MockWiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
   MockWiMaxNetworkProxy();
   virtual ~MockWiMaxNetworkProxy();
 
+  MOCK_CONST_METHOD0(proxy_object_path, DBus::Path());
   MOCK_METHOD1(Identifier, uint32(Error *error));
   MOCK_METHOD1(Name, std::string(Error *error));
   MOCK_METHOD1(Type, int(Error *error));
   MOCK_METHOD1(CINR, int(Error *error));
-  MOCK_METHOD1(RSSI, int (Error *error));
+  MOCK_METHOD1(RSSI, int(Error *error));
 
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxNetworkProxy);
 };

@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIMAX_NETWORK_PROXY_INTERFACE_
-#define SHILL_WIMAX_NETWORK_PROXY_INTERFACE_
+#ifndef SHILL_WIMAX_NETWORK_PROXY_INTERFACE_H_
+#define SHILL_WIMAX_NETWORK_PROXY_INTERFACE_H_
 
 #include <string>
 
 #include <base/basictypes.h>
+#include <dbus-c++/dbus.h>
 
 namespace shill {
 
@@ -18,6 +19,8 @@ class Error;
 class WiMaxNetworkProxyInterface {
  public:
   virtual ~WiMaxNetworkProxyInterface() {}
+
+  virtual DBus::Path proxy_object_path() const = 0;
 
   // Properties.
   virtual uint32 Identifier(Error *error) = 0;
