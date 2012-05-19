@@ -35,13 +35,14 @@ class GdmDriver : public Driver,
   bool OpenDevice(GdmDevice *device);
   bool CloseDevice(GdmDevice *device);
   bool GetDeviceStatus(GdmDevice *device);
-  bool SetDeviceEAPParameters(GdmDevice *device);
+  bool SetDeviceEAPParameters(GdmDevice *device,
+                              GCT_API_EAP_PARAM *eap_parameters);
   bool AutoSelectProfileForDevice(GdmDevice *device);
   bool PowerOnDeviceRF(GdmDevice *device);
   bool PowerOffDeviceRF(GdmDevice *device);
   bool GetNetworksForDevice(GdmDevice *device,
                             std::vector<Network *> *networks);
-  bool ConnectDeviceToNetwork(GdmDevice *device, const Network *network);
+  bool ConnectDeviceToNetwork(GdmDevice *device, const Network &network);
   bool DisconnectDeviceFromNetwork(GdmDevice *device);
 
  private:

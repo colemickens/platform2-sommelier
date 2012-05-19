@@ -8,7 +8,10 @@
     <method name="Enable" />
     <method name="Disable" />
     <method name="ScanNetworks" />
-    <method name="Connect" />
+    <method name="Connect">
+      <arg name="Network" type="o" direction="in" />
+      <arg name="Parameters" type="a{sv}" direction="in" />
+    </method>
     <method name="Disconnect" />
     <signal name="NetworksChanged">
       <arg name="Networks" type="ao" />

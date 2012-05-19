@@ -29,7 +29,8 @@ class GdmDevice : public Device {
   virtual bool Enable();
   virtual bool Disable();
   virtual bool ScanNetworks();
-  virtual bool Connect();
+  virtual bool Connect(const Network &network,
+                       const base::DictionaryValue &parameters);
   virtual bool Disconnect();
 
  private:
@@ -37,6 +38,9 @@ class GdmDevice : public Device {
 
   bool Open();
   bool Close();
+
+  bool ConstructEAPParameters(const base::DictionaryValue &connect_parameters,
+                              GCT_API_EAP_PARAM *eap_parameters);
 
   void set_mac_address(const uint8 mac_address[6]);
   void set_status(WIMAX_API_DEVICE_STATUS status) { status_ = status; }

@@ -6,10 +6,12 @@
 #define WIMAX_MANAGER_DEVICE_H_
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
+#include <base/values.h>
 
 #include "wimax_manager/dbus_adaptable.h"
 #include "wimax_manager/network.h"
@@ -26,7 +28,8 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   virtual bool Enable() = 0;
   virtual bool Disable() = 0;
   virtual bool ScanNetworks() = 0;
-  virtual bool Connect() = 0;
+  virtual bool Connect(const Network &network,
+                       const base::DictionaryValue &parameters) = 0;
   virtual bool Disconnect() = 0;
 
   uint8 index() const { return index_; }

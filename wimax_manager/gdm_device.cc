@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_vector.h>
 #include <base/stl_util.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "wimax_manager/gdm_driver.h"
 #include "wimax_manager/network.h"
@@ -20,6 +21,28 @@ namespace wimax_manager {
 namespace {
 
 const int kMaxNumberOfTrials = 10;
+
+template <size_t N>
+bool CopyEAPParameterToUInt8Array(const base::DictionaryValue &parameters,
+                                  const string &key, UINT8 (&uint8_array)[N]) {
+  if (!parameters.HasKey(key)) {
+    uint8_array[0] = '\0';
+    return true;
+  }
+
+  string value;
+  if (!parameters.GetString(key, &value))
+    return false;
+
+  size_t value_length = value.length();
+  if (value_length >= N)
+    return false;
+
+  char *char_array = reinterpret_cast<char *>(uint8_array);
+  value.copy(char_array, value_length);
+  char_array[value_length] = '\0';
+  return true;
+}
 
 }  // namespace
 
@@ -72,11 +95,6 @@ bool GdmDevice::Close() {
 bool GdmDevice::Enable() {
   if (!Open())
     return false;
-
-  if (!driver_->SetDeviceEAPParameters(this)) {
-    LOG(ERROR) << "Failed to set EAP parameters of device '" << name() << "'";
-    return false;
-  }
 
   if (!driver_->GetDeviceStatus(this)) {
     LOG(ERROR) << "Failed to get status of device '" << name() << "'";
@@ -133,18 +151,31 @@ bool GdmDevice::ScanNetworks() {
   return true;
 }
 
-bool GdmDevice::Connect() {
+bool GdmDevice::Connect(const Network &network,
+                        const base::DictionaryValue &parameters) {
   if (!Open())
     return false;
 
   if (networks().empty())
     return false;
 
-  bool success = driver_->ConnectDeviceToNetwork(this, networks()[0]);
-  if (!success)
-    LOG(ERROR) << "Failed to connect device '" << name() << "' to network";
+  GCT_API_EAP_PARAM eap_parameters;
+  if (!ConstructEAPParameters(parameters, &eap_parameters))
+    return false;
 
-  return success;
+  if (!driver_->SetDeviceEAPParameters(this, &eap_parameters)) {
+    LOG(ERROR) << "Failed to set EAP parameters on device '" << name() << "'";
+    return false;
+  }
+
+  if (!driver_->ConnectDeviceToNetwork(this, network)) {
+    LOG(ERROR) << "Failed to connect device '" << name()
+               << "' to network '" << network.name() << "' ("
+               << network.identifier() << ")";
+    return false;
+  }
+
+  return true;
 }
 
 bool GdmDevice::Disconnect() {
@@ -153,6 +184,39 @@ bool GdmDevice::Disconnect() {
 
   if (!driver_->DisconnectDeviceFromNetwork(this)) {
     LOG(ERROR) << "Failed to disconnect device '" << name() << "' from network";
+    return false;
+  }
+
+  return true;
+}
+
+bool GdmDevice::ConstructEAPParameters(
+    const base::DictionaryValue &connect_parameters,
+    GCT_API_EAP_PARAM *eap_parameters) {
+  CHECK(eap_parameters);
+
+  memset(eap_parameters, 0, sizeof(GCT_API_EAP_PARAM));
+  // TODO(benchan): Allow selection between EAP-TLS and EAP-TTLS;
+  eap_parameters->type = GCT_WIMAX_EAP_TLS;
+  eap_parameters->fragSize = 1300;
+  eap_parameters->useNvramParam = 1;
+  eap_parameters->logEnable = 1;
+
+  if (!CopyEAPParameterToUInt8Array(connect_parameters, kEAPAnonymousIdentity,
+                                    eap_parameters->anonymousId)) {
+    LOG(ERROR) << "Invalid EAP anonymous identity";
+    return false;
+  }
+
+  if (!CopyEAPParameterToUInt8Array(connect_parameters, kEAPUserIdentity,
+                                    eap_parameters->userId)) {
+    LOG(ERROR) << "Invalid EAP user identity";
+    return false;
+  }
+
+  if (!CopyEAPParameterToUInt8Array(connect_parameters, kEAPUserPassword,
+                                    eap_parameters->userIdPwd)) {
+    LOG(ERROR) << "Invalid EAP user password";
     return false;
   }
 
