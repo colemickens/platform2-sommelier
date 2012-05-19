@@ -16,6 +16,7 @@
 #include <base/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <chromeos/utility.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
@@ -88,6 +89,21 @@ const struct MechanismInfo {
   {CKM_AES_CBC_PAD, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}}
 };
 
+// Verifies authorization data against a hash stored in the token database.
+// Args:
+//   auth_data_hash - A hash of the authorization data to be verified.
+//   saved_auth_data_hash - The hash currently stored in the database.
+bool VerifyAuthData(const string& auth_data_hash,
+                    const string& saved_auth_data_hash) {
+  if (saved_auth_data_hash.empty())
+    return true;
+  if (auth_data_hash.length() != saved_auth_data_hash.length())
+    return false;
+  return (0 == chromeos::SafeMemcmp(auth_data_hash.data(),
+                                    saved_auth_data_hash.data(),
+                                    saved_auth_data_hash.length()));
+}
+
 // Performs expensive tasks required to initialize a token.
 class TokenInitThread : public base::PlatformThread::Delegate {
  public:
@@ -145,6 +161,8 @@ TokenInitThread::TokenInitThread(int slot_id,
       object_pool_(object_pool) {}
 
 void TokenInitThread::ThreadMain() {
+  string auth_data_hash = Sha512(auth_data_);
+  string saved_auth_data_hash;
   string auth_key_blob;
   string encrypted_master_key;
   string master_key;
@@ -159,7 +177,11 @@ void TokenInitThread::ThreadMain() {
       tpm_utility_->UnloadKeysForSlot(slot_id_);
     }
   } else {
-    if (!tpm_utility_->Authenticate(slot_id_,
+    // Don't send the auth data to the TPM if it fails to verify against the
+    // saved hash.
+    object_pool_->GetInternalBlob(kAuthDataHash, &saved_auth_data_hash);
+    if (!VerifyAuthData(auth_data_hash, saved_auth_data_hash) ||
+        !tpm_utility_->Authenticate(slot_id_,
                                     Sha1(auth_data_),
                                     auth_key_blob,
                                     encrypted_master_key,
@@ -180,8 +202,11 @@ void TokenInitThread::ThreadMain() {
     tpm_utility_->UnloadKeysForSlot(slot_id_);
     return;
   }
-  if (!master_key.empty())
+  if (!master_key.empty()) {
+    if (auth_data_hash != saved_auth_data_hash)
+      object_pool_->SetInternalBlob(kAuthDataHash, auth_data_hash);
     LOG(INFO) << "Master key is ready for token at " << path_.value();
+  }
 }
 
 bool TokenInitThread::InitializeKeyHierarchy(string* master_key) {
@@ -458,6 +483,13 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
     object_pool = slot_list_[slot_id].token_object_pool.get();
   }
   CHECK(object_pool);
+  // Before we attempt the change, sanity check old_auth_data.
+  string saved_auth_data_hash;
+  object_pool->GetInternalBlob(kAuthDataHash, &saved_auth_data_hash);
+  if (!VerifyAuthData(Sha512(old_auth_data), saved_auth_data_hash)) {
+    LOG(ERROR) << "Old authorization data is not correct.";
+    return;
+  }
   string auth_key_blob;
   string new_auth_key_blob;
   if (!object_pool->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob)) {
@@ -471,6 +503,10 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
   } else if (!object_pool->SetInternalBlob(kEncryptedAuthKey,
                                            new_auth_key_blob)) {
     LOG(ERROR) << "Failed to write changed auth blob for token at "
+               << path.value();
+  } else if (!object_pool->SetInternalBlob(kAuthDataHash,
+                                           Sha512(new_auth_data))) {
+    LOG(ERROR) << "Failed to write auth data hash for token at "
                << path.value();
   }
   if (unload)

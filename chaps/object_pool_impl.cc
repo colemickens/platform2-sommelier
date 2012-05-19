@@ -162,8 +162,6 @@ bool ObjectPoolImpl::DeleteAll() {
   AutoLock lock(lock_);
   objects_.clear();
   handle_object_map_.clear();
-  is_private_loaded_ = true;
-  private_loaded_event_.Signal();
   if (store_.get())
     return store_->DeleteAllObjectBlobs();
   return true;

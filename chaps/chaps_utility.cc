@@ -533,6 +533,12 @@ string Sha1(const string& input) {
   return ConvertByteBufferToString(digest, SHA_DIGEST_LENGTH);
 }
 
+string Sha512(const string& input) {
+  unsigned char digest[SHA512_DIGEST_LENGTH];
+  SHA512(ConvertStringToByteBuffer(input.data()), input.length(), digest);
+  return ConvertByteBufferToString(digest, SHA512_DIGEST_LENGTH);
+}
+
 ScopedOpenSSL::ScopedOpenSSL() {
   OpenSSL_add_all_algorithms();
   ERR_load_crypto_strings();

@@ -26,7 +26,9 @@ enum InternalBlobId {
   // The legacy private root key blob, as imported from opencryptoki.
   kLegacyPrivateRootKey,
   // The legacy public root key blob, as imported from opencryptoki.
-  kLegacyPublicRootKey
+  kLegacyPublicRootKey,
+  // A hash of the authorization data.
+  kAuthDataHash,
 };
 
 // An ObjectPool instance manages a collection of objects.  A persistent object

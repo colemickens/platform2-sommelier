@@ -194,6 +194,9 @@ class PreservedByteVector {
 // Computes and returns a SHA-1 hash of the given input.
 std::string Sha1(const std::string& input);
 
+// Computes and returns a SHA-512 hash of the given input.
+std::string Sha512(const std::string& input);
+
 // Initializes the OpenSSL library on construction and terminates the library on
 // destruction.
 class ScopedOpenSSL {
