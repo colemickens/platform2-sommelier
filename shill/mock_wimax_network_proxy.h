@@ -22,6 +22,7 @@ class MockWiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
   MOCK_METHOD1(Type, int(Error *error));
   MOCK_METHOD1(CINR, int(Error *error));
   MOCK_METHOD1(RSSI, int(Error *error));
+  MOCK_METHOD1(SignalStrength, int(Error *error));
 
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxNetworkProxy);
 };

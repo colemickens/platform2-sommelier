@@ -24,6 +24,7 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
   virtual int Type(Error *error);
   virtual int CINR(Error *error);
   virtual int RSSI(Error *error);
+  virtual int SignalStrength(Error *error);
 
  private:
   class Proxy : public org::chromium::WiMaxManager::Network_proxy,

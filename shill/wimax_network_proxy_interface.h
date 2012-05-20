@@ -28,6 +28,7 @@ class WiMaxNetworkProxyInterface {
   virtual int Type(Error *error) = 0;
   virtual int CINR(Error *error) = 0;
   virtual int RSSI(Error *error) = 0;
+  virtual int SignalStrength(Error *error) = 0;
 };
 
 }  // namespace shill

@@ -67,6 +67,12 @@ bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
     return false;
   }
 
+  int signal_strength = proxy_->SignalStrength(&error);
+  if (!error.IsSuccess()) {
+    return false;
+  }
+  SetStrength(signal_strength);
+
   set_friendly_name(network_name_);
   storage_id_ =
       StringToLowerASCII(base::StringPrintf("%s_%s_%08x_%s",

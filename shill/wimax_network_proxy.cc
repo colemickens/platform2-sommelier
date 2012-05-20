@@ -74,6 +74,16 @@ int WiMaxNetworkProxy::RSSI(Error *error) {
   return 0;
 }
 
+int WiMaxNetworkProxy::SignalStrength(Error *error) {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.SignalStrength();
+  } catch (const DBus::Error &e) {
+    FromDBusError(e, error);
+  }
+  return 0;
+}
+
 // static
 void WiMaxNetworkProxy::FromDBusError(const DBus::Error &dbus_error,
                                       Error *error) {
