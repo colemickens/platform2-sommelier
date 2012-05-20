@@ -19,4 +19,20 @@ Network::Network(uint32 identifier, const string &name, NetworkType type,
 Network::~Network() {
 }
 
+int Network::GetSignalStrength() const {
+  // According to IEEE 802.16, RSSI should be ranging from -123 to -40 dBm
+  // with 1 dBm increment.
+  int rssi = rssi_;
+  if (rssi < kMinRSSI)
+    rssi = kMinRSSI;
+  if (rssi > kMaxRSSI)
+    rssi = kMaxRSSI;
+
+  // Mapping from [-123, -40] to [0, 100] using integer divison.
+  int range_size = kMaxRSSI - kMinRSSI;
+  int half_range_size = range_size / 2;
+  int offset = rssi - kMinRSSI;
+  return (offset * 100 + half_range_size) / range_size;
+}
+
 }  // namespace wimax_manager

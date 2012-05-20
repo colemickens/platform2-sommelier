@@ -10,5 +10,6 @@
     <property name="Type" type="i" access="read" />
     <property name="CINR" type="i" access="read" />
     <property name="RSSI" type="i" access="read" />
+    <property name="SignalStrength" type="i" access="read" />
   </interface>
 </node>

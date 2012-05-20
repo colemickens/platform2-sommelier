@@ -24,6 +24,7 @@ NetworkDBusAdaptor::NetworkDBusAdaptor(DBus::Connection *connection,
   Type = network->type();
   CINR = network->cinr();
   RSSI = network->rssi();
+  SignalStrength = network->GetSignalStrength();
 }
 
 NetworkDBusAdaptor::~NetworkDBusAdaptor() {

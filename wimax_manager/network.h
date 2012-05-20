@@ -25,9 +25,14 @@ class NetworkDBusAdaptor;
 
 class Network : public DBusAdaptable<Network, NetworkDBusAdaptor> {
  public:
+  static const int kMaxRSSI = -40;
+  static const int kMinRSSI = -123;
+
   Network(uint32 identifier, const std::string &name, NetworkType type,
           int cinr, int rssi);
   ~Network();
+
+  int GetSignalStrength() const;
 
   uint32 identifier() const { return identifier_; }
   const std::string &name() const { return name_; }
