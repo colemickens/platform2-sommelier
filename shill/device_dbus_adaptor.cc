@@ -119,8 +119,10 @@ void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
 }
 
 ::DBus::Path DeviceDBusAdaptor::AddIPConfig(const string& ,
-                                            ::DBus::Error &/*error*/) {
+                                            ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
+  Error e(Error::kNotSupported, "This function is deprecated in shill");
+  e.ToDBusError(&error);
   return "/";
 }
 
