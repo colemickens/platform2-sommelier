@@ -348,9 +348,7 @@ class SessionManagerService
                               gboolean* OUT_done,
                               GError** error);
 
-  // Starts a wipe of the device by touching a flag file, then rebooting to
-  // allow early-boot code to wipe parts of stateful we need wiped. Have a look
-  // at /src/platform/init/chromeos_startup for the gory details.
+  // Sets the device up to "Powerwash" on reboot, and then triggers a reboot.
   gboolean StartDeviceWipe(gboolean *OUT_done, GError** error);
 
   // Manage per-session services, which die when the session ends.
@@ -386,6 +384,12 @@ class SessionManagerService
 
   // Directory in which per-boot metrics flag files will be stored.
   static const char kFlagFileDir[];
+
+  // Path to flag file indicating that a user has logged in since last boot.
+  static const char kLoggedInFlag[];
+
+  // Path to magic file that will trigger device wiping on next boot.
+  static const char kResetFile[];
 
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }
@@ -486,6 +490,12 @@ class SessionManagerService
                                      GArray** policy_blob,
                                      GError** error);
 
+  // Starts a 'Powerwash' of the device by touching a flag file, then
+  // rebooting to allow early-boot code to wipe parts of stateful we
+  // need wiped. Have a look at /src/platform/init/chromeos_startup
+  // for the gory details.
+  void InitiateDeviceWipe();
+
   bool IsValidCookie(const char *cookie);
 
   static const uint32 kMaxEmailSize;
@@ -497,8 +507,6 @@ class SessionManagerService
   // The name of the pref that Chrome sets to track who the owner is.
   static const char kDeviceOwnerPref[];
   static const char *kValidSessionServices[];
-  static const char kLoggedInFlag[];
-  static const char kResetFile[];
 
   static const int kKillTimeoutCollectChrome;
   static const char kCollectChromeFile[];
@@ -544,8 +552,6 @@ class SessionManagerService
 
   static size_t kCookieEntropyBytes;
   std::string cookie_;
-  FRIEND_TEST(SessionManagerDBusTest, StartDeviceWipeAlreadyLoggedIn);
-  FRIEND_TEST(SessionManagerDBusTest, StartDeviceWipe);
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
 };

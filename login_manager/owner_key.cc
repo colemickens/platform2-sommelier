@@ -70,6 +70,13 @@ bool OwnerKey::PopulateFromDiskIfPossible() {
     key_.resize(0);
     return false;
   }
+
+  scoped_ptr<NssUtil> nss_util(NssUtil::Create());
+  if (!nss_util->CheckPublicKeyBlob(key_)) {
+    LOG(ERROR) << "Policy key " << key_file_.value() << " is corrupted!";
+    return false;
+  }
+
   return true;
 }
 

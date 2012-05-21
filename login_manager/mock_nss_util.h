@@ -44,6 +44,14 @@ class MockNssUtil : public NssUtil {
   DISALLOW_COPY_AND_ASSIGN(MockNssUtil);
 };
 
+class CheckPublicKeyUtil : public MockNssUtil {
+ public:
+  CheckPublicKeyUtil(bool expected);
+  virtual ~CheckPublicKeyUtil();
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CheckPublicKeyUtil);
+};
+
 class KeyCheckUtil : public MockNssUtil {
  public:
   KeyCheckUtil();

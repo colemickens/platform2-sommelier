@@ -15,16 +15,37 @@
 #include <crypto/rsa_private_key.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/mock_nss_util.h"
+#include "login_manager/nss_util.h"
+
 namespace login_manager {
+
+class CheckPublicKeyUtilFactory : public NssUtil::Factory {
+ public:
+  CheckPublicKeyUtilFactory(bool expected) : expected_(expected) {}
+  virtual ~CheckPublicKeyUtilFactory() {}
+  NssUtil* CreateNssUtil() {
+    return new CheckPublicKeyUtil(expected_);
+  }
+ private:
+  bool expected_;
+  DISALLOW_COPY_AND_ASSIGN(CheckPublicKeyUtilFactory);
+};
+
 class OwnerKeyTest : public ::testing::Test {
  public:
-  OwnerKeyTest() {}
+  OwnerKeyTest() : factory_(true) {}
   virtual ~OwnerKeyTest() {}
 
   virtual void SetUp() {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir_.path(), &tmpfile_));
     ASSERT_EQ(2, file_util::WriteFile(tmpfile_, "a", 2));
+    NssUtil::set_factory(&factory_);
+  }
+
+  virtual void TearDown() {
+    NssUtil::set_factory(NULL);
   }
 
   void StartUnowned() {
@@ -34,6 +55,7 @@ class OwnerKeyTest : public ::testing::Test {
   FilePath tmpfile_;
 
  private:
+  CheckPublicKeyUtilFactory factory_;
   ScopedTempDir tmpdir_;
   DISALLOW_COPY_AND_ASSIGN(OwnerKeyTest);
 };
@@ -77,6 +99,20 @@ TEST_F(OwnerKeyTest, NoKeyToLoad) {
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
+  ASSERT_TRUE(key.HaveCheckedDisk());
+  ASSERT_FALSE(key.IsPopulated());
+}
+
+TEST_F(OwnerKeyTest, EmptyKeyToLoad) {
+  ASSERT_EQ(0, file_util::WriteFile(tmpfile_, "", 0));
+  ASSERT_TRUE(file_util::PathExists(tmpfile_));
+  CheckPublicKeyUtilFactory factory(false);
+  NssUtil::set_factory(&factory);
+
+  OwnerKey key(tmpfile_);
+  ASSERT_FALSE(key.HaveCheckedDisk());
+  ASSERT_FALSE(key.IsPopulated());
+  ASSERT_FALSE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
 }
@@ -138,6 +174,7 @@ TEST_F(OwnerKeyTest, RefuseToClobberOnDisk) {
 }
 
 TEST_F(OwnerKeyTest, SignVerify) {
+  NssUtil::set_factory(NULL);  // Use real NSS.
   StartUnowned();
   OwnerKey key(tmpfile_);
 
@@ -168,6 +205,7 @@ TEST_F(OwnerKeyTest, SignVerify) {
 }
 
 TEST_F(OwnerKeyTest, RotateKey) {
+  NssUtil::set_factory(NULL);  // Use real NSS.
   StartUnowned();
   OwnerKey key(tmpfile_);
 

@@ -24,10 +24,12 @@
 #include "login_manager/mock_system_utils.h"
 
 using ::testing::AnyNumber;
+using ::testing::AtMost;
 using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::WithArgs;
 using ::testing::_;
 
 namespace login_manager {
@@ -257,7 +259,31 @@ TEST_F(SessionManagerProcessTest, StatsRecorded) {
   EXPECT_CALL(*metrics_, RecordStats("chrome-exec")).Times(1);
 
   SimpleRunManager();
-  DLOG(INFO) << "Finished the run!";
+}
+
+TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
+  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+
+  // Expected to occur during manager_->Run().
+  ExpectChildJobBoilerplate(job, 1);
+  EXPECT_CALL(*job, RecordTime())
+      .Times(1);
+  EXPECT_CALL(*device_policy_service_, Initialize())
+    .WillOnce(Return(false));
+  MockChildProcess proc(kDummyPid, 0, manager_->test_api());
+  EXPECT_CALL(utils_, fork())
+      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
+                      Return(proc.pid())));
+
+  // Expect Powerwash to be triggered.
+  FilePath reset_path(SessionManagerService::kResetFile);
+  EXPECT_CALL(utils_, AtomicFileWrite(reset_path, _, _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(utils_, CallMethodOnPowerManager(_))
+    .WillOnce(Return());
+  MockUtils();
+
+  ASSERT_FALSE(manager_->Run());
 }
 
 TEST_F(SessionManagerProcessTest, EnableChromeTesting) {

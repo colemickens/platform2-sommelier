@@ -98,17 +98,17 @@ bool PolicyService::PersistPolicySync() {
 
 bool PolicyService::DoInitialize(bool* policy_success) {
   DCHECK(policy_success);
-  bool key_load_failed = false;
+  bool key_load_success = true;
   if (!key()->PopulateFromDiskIfPossible()) {
     LOG(ERROR) << "Failed to load policy key from disk.";
-    key_load_failed = true;
+    key_load_success = false;
   }
 
   *policy_success = store()->LoadOrCreate();
   if (!*policy_success)  // Non-fatal, so log, and keep going.
-    LOG(ERROR) << "Failed to load policy data, continuing anyway.";
+    LOG(WARNING) << "Failed to load policy data, continuing anyway.";
 
-  return !key_load_failed;  // Key load failure is fatal.
+  return key_load_success;  // Key load failure is fatal.
 }
 
 void PolicyService::PersistKey() {

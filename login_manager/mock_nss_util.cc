@@ -17,6 +17,11 @@ using ::testing::_;
 MockNssUtil::MockNssUtil() {}
 MockNssUtil::~MockNssUtil() {}
 
+CheckPublicKeyUtil::CheckPublicKeyUtil(bool expected) {
+  EXPECT_CALL(*this, CheckPublicKeyBlob(_)).WillOnce(Return(expected));
+}
+CheckPublicKeyUtil::~CheckPublicKeyUtil() {}
+
 KeyCheckUtil::KeyCheckUtil() {
   EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
   EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));

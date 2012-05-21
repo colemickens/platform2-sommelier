@@ -419,9 +419,13 @@ bool SessionManagerService::Run() {
   else
     AllowGracefulExit();  // Schedules a Shutdown() on current MessageLoop.
 
-  // TODO(cmasone): A corrupted owner key means that the user needs to go
-  //                to recovery mode.  How to tell them that from here?
-  CHECK(device_policy_->Initialize());
+  // A corrupted owner key means that the device needs to undergo
+  // 'Powerwash', which reboots and then wipes most of the stateful partition.
+  if (!device_policy_->Initialize()) {
+    InitiateDeviceWipe();
+    return false;
+  }
+
   MessageLoop::current()->Run();
   CleanupChildren(GetKillTimeout());
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopped;
@@ -564,16 +568,19 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
     if (!file_util::CreateNewTempDirectory(
         FILE_PATH_LITERAL(""), &temp_dir_path))
       return FALSE;
-    if (chmod(temp_dir_path.value().c_str(), 0003))
-      return FALSE;
 
     // Get a temporary filename in the temporary directory.
+    // TODO(cmasone): make this use safe functions.  http://crosbug.com/35231.
     char* temp_path = tempnam(temp_dir_path.value().c_str(), "");
     if (!temp_path) {
       PLOG(ERROR) << "Can't get temp file name in " << temp_dir_path.value()
                   << ": ";
       return FALSE;
     }
+
+    // Ensure no races with tempnam above.
+    if (chmod(temp_dir_path.value().c_str(), 0003))
+      return FALSE;
     chrome_testing_path_ = temp_path;
     free(temp_path);
   }
@@ -1213,8 +1220,6 @@ bool SessionManagerService::IsValidCookie(const char *cookie) {
 
 gboolean SessionManagerService::StartDeviceWipe(gboolean* OUT_done,
                                                 GError** error) {
-  const char *contents = "fast safe";
-  const FilePath reset_path(kResetFile);
   const FilePath session_path(kLoggedInFlag);
   if (system_->Exists(session_path)) {
     const char msg[] = "A user has already logged in this boot.";
@@ -1222,10 +1227,16 @@ gboolean SessionManagerService::StartDeviceWipe(gboolean* OUT_done,
     system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ALREADY_SESSION, msg);
     return FALSE;
   }
-  system_->AtomicFileWrite(reset_path, contents, strlen(contents));
-  system_->CallMethodOnPowerManager(power_manager::kRequestRestartSignal);
+  InitiateDeviceWipe();
   *OUT_done = TRUE;
   return TRUE;
+}
+
+void SessionManagerService::InitiateDeviceWipe() {
+  const char *contents = "fast safe";
+  const FilePath reset_path(kResetFile);
+  system_->AtomicFileWrite(reset_path, contents, strlen(contents));
+  system_->CallMethodOnPowerManager(power_manager::kRequestRestartSignal);
 }
 
 }  // namespace login_manager

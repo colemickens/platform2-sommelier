@@ -797,6 +797,8 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileInitialization) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*key_, PopulateFromDiskIfPossible())
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*key_, HaveCheckedDisk())
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*key_, IsPopulated())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, LoadOrCreate())

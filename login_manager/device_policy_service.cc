@@ -131,12 +131,11 @@ bool DevicePolicyService::KeyMissing() {
 
 bool DevicePolicyService::Initialize() {
   bool policy_success = true;
-  bool result = DoInitialize(&policy_success);
+  bool key_success = DoInitialize(&policy_success);
 
-  ReportPolicyFileMetrics(result, policy_success);
-
+  ReportPolicyFileMetrics(key_success, policy_success);
   UpdateSerialNumberRecoveryFlagFile();
-  return result;
+  return key_success;
 }
 
 bool DevicePolicyService::Store(const uint8* policy_blob,
