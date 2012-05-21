@@ -128,6 +128,8 @@ Manager::Manager(ControlInterface *control_interface,
   technology_order_.push_back(
       Technology::IdentifierFromName(flimflam::kTypeEthernet));
   technology_order_.push_back(
+      Technology::IdentifierFromName(flimflam::kTypeWimax));
+  technology_order_.push_back(
       Technology::IdentifierFromName(flimflam::kTypeWifi));
   technology_order_.push_back(
       Technology::IdentifierFromName(flimflam::kTypeCellular));
