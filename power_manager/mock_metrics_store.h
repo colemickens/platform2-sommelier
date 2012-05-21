@@ -44,6 +44,13 @@ class MockMetricsStore : public MetricsStore {
         .WillOnce(Return(value))
         .RetiresOnSaturation();
   }
+
+  MOCK_CONST_METHOD0(IsInitialized, bool());
+  void ExpectIsInitialized(bool ret_val) {
+    EXPECT_CALL(*this, IsInitialized())
+        .WillOnce(Return(ret_val))
+        .RetiresOnSaturation();
+  }
 };  // class MockMetricsStore
 
 }  // namespace power_manager

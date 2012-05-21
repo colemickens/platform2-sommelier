@@ -26,15 +26,14 @@ class MetricsStore {
   virtual bool Init();
 
   // NumSessionsPerCharge Methods
-  // These methods will eat calls to them if the store is broken
+  // These methods will eat calls to them if the store is not mapped
   virtual void ResetNumOfSessionsPerChargeMetric();
   virtual void IncrementNumOfSessionsPerChargeMetric();
-  // DO NOT call this if the metrics store is broken, it will cause a CHECK to
-  // be hit
   virtual int GetNumOfSessionsPerChargeMetric();
 
-  // Store Status Accessor
-  virtual bool IsBroken();
+  // Returns whether or not the MetricsStore has been initialized
+  // correctly
+  virtual bool IsInitialized() const;
 
  private:
   friend class MetricsStoreTest;
@@ -55,8 +54,8 @@ class MetricsStore {
   FRIEND_TEST(MetricsStoreTest, OpenStoreFileSymLink);
   FRIEND_TEST(MetricsStoreTest, MapStoreSuccess);
   FRIEND_TEST(MetricsStoreTest, MapStoreBadFD);
-  FRIEND_TEST(MetricsStoreTest, MapStoreSetStore);
-  FRIEND_TEST(MetricsStoreTest, MapStoreMapFails);
+  FRIEND_TEST(MetricsStoreTest, MapStoreAlreadyMapped);
+  FRIEND_TEST(MetricsStoreTest, MapStoreMapCallFails);
   FRIEND_TEST(MetricsStoreTest, SyncStoreSuccess);
   FRIEND_TEST(MetricsStoreTest, SyncStoreNullMap);
   FRIEND_TEST(MetricsStoreTest, CloseStoreSuccess);
@@ -79,11 +78,11 @@ class MetricsStore {
   bool StoreFileConfigured(const char* file_path);
   bool ConfigureStore(const char* file_path);
   bool OpenStoreFile(const char* file_path, int* fd, bool truncate);
-  bool MapStore(const int fd, int** map);
+  bool MapStore();
   bool SyncStore(int* map);
 
   // Destructor Utility Functions
-  void CloseStore(int* fd, int** map);
+  void CloseStore();
 
   // Accessor Utility Functions
   void ResetMetric(const StoredMetric& metric);
@@ -91,15 +90,13 @@ class MetricsStore {
   void SetMetric(const StoredMetric& metric, const int& value);
   int GetMetric(const StoredMetric& metric);
 
-  // Store Status Utility Function
-  // Breakages in the metric store file backing are considered to be
-  // unrecoverable. We also kill the backing file at this point, so that when
-  // powerd starts next we have a chance of starting clean.
-  void StoreBroke();
+  // Utility function to clean up the MetricsStore when we get into a
+  // bad state. This method unmaps the store, closes the file, and
+  // removes it.
+  void ScrubStore();
 
   int store_fd_;
   int* store_map_;
-  bool is_broken_;
   DISALLOW_COPY_AND_ASSIGN(MetricsStore);
 };  // class MetricsStore
 

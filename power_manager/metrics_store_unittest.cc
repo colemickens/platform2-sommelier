@@ -26,20 +26,90 @@ class MetricsStoreTest : public Test {
   MetricsStoreTest() {}
 
   virtual void SetUp() {
-    fake_store_ = static_cast<int*>(mmap(NULL,
-                                kSizeOfStoredMetrics,
-                                PROT_READ | PROT_WRITE,
-                                MAP_PRIVATE | MAP_ANON,
-                                -1,
-                                0));
-    metrics_store_.store_map_ = fake_store_;
+    CreateFakeMap();
+    CreateTestFile();
+    CreateTestSymLink();
   }
 
   virtual void TearDown() {
-    HANDLE_EINTR(remove(kTestFileName));
-    HANDLE_EINTR(remove(kTestSymLinkName));
+    DestroyFakeMap();
+    DestroyTestFile();
+    DestroyTestSymLink();
+  }
+
+  virtual void CreateFakeMap() {
+    fake_store_ = static_cast<int*>(mmap(NULL,
+                                         kSizeOfStoredMetrics,
+                                         PROT_READ | PROT_WRITE,
+                                         MAP_PRIVATE | MAP_ANON,
+                                         -1,
+                                         0));
+    metrics_store_.store_map_ = fake_store_;
+    metrics_store_.store_fd_ = kTestFD;
+  }
+
+
+  virtual void DestroyFakeMap() {
     metrics_store_.store_map_ = NULL;
+    metrics_store_.store_fd_ = -1;
     HANDLE_EINTR(munmap(fake_store_, kSizeOfStoredMetrics));
+  }
+
+  virtual void CreateRealMap() {
+    metrics_store_.store_fd_ = HANDLE_EINTR(open(kTestFileName,
+                                                 O_RDWR | O_CREAT | O_TRUNC,
+                                                 kReadWriteFlags));
+    HANDLE_EINTR(ftruncate(metrics_store_.store_fd_, kSizeOfStoredMetrics));
+
+    metrics_store_.store_map_ = static_cast<int*>(mmap(NULL,
+                                                       kSizeOfStoredMetrics,
+                                                       PROT_READ | PROT_WRITE,
+                                                       MAP_PRIVATE | MAP_ANON,
+                                                       metrics_store_.store_fd_,
+                                                       0));
+  }
+
+  virtual void DestroyRealMap() {
+    HANDLE_EINTR(munmap(metrics_store_.store_map_, kSizeOfStoredMetrics));
+    if (metrics_store_.store_fd_ > -1)
+      close(metrics_store_.store_fd_);
+    metrics_store_.store_map_ = NULL;
+    metrics_store_.store_fd_ = -1;
+  }
+
+  virtual void CreateTestFile() {
+    // Creating the file for the test
+    int fd = HANDLE_EINTR(open(kTestFileName,
+                               O_RDWR | O_CREAT | O_TRUNC,
+                               kReadWriteFlags));
+    // Sizing the test file
+    HANDLE_EINTR(ftruncate(fd, kSizeOfStoredMetrics));
+    close(fd);
+  }
+
+  virtual void CreateTestFileWrongSize() {
+    // Creating the file for the test
+    int fd = HANDLE_EINTR(open(kTestFileName,
+                               O_RDWR | O_CREAT | O_TRUNC,
+                               kReadWriteFlags));
+    // Sizing the test file
+    HANDLE_EINTR(ftruncate(fd, 0));
+    close(fd);
+  }
+
+  virtual void DestroyTestFile() {
+    HANDLE_EINTR(remove(kTestFileName));
+  }
+
+  virtual void CreateTestSymLink() {
+    if (HANDLE_EINTR(symlink(kTestFileName, kTestSymLinkName)) < 0) {
+      LOG(ERROR) << "Failed to create symlink" << kTestSymLinkName << " of "
+                 << kTestFileName << " with errno=" << strerror(errno);
+    }
+  }
+
+  virtual void DestroyTestSymLink() {
+    HANDLE_EINTR(remove(kTestSymLinkName));
   }
 
  protected:
@@ -65,53 +135,25 @@ TEST_F(MetricsStoreTest, GetNumOfSessionsPerChargeMetric) {
             metrics_store_.GetNumOfSessionsPerChargeMetric());
 }
 
-
 TEST_F(MetricsStoreTest, StoreFileConfiguredSuccess) {
-  // Creating the file for the test
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-  // Sizing the test file
-  HANDLE_EINTR(ftruncate(fd, kSizeOfStoredMetrics));
-  close(fd);
-
   // Expecting to return true when the file exists and is sized
   EXPECT_TRUE(metrics_store_.StoreFileConfigured(kTestFileName));
 }
 
 TEST_F(MetricsStoreTest, StoreFileConfiguredNoFile) {
   // Expecting to return false when the file dne
+  DestroyTestFile();
   EXPECT_FALSE(metrics_store_.StoreFileConfigured(kTestFileName));
 }
 
 TEST_F(MetricsStoreTest, StoreFileConfiguredWrongSize) {
-  // Creating the file for the test
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-  // Sizing the test file
-  HANDLE_EINTR(ftruncate(fd, 10 * kSizeOfStoredMetrics));
-  close(fd);
-
   // Expecting to return false since the file is the wrong size
+  DestroyTestFile();
+  CreateTestFileWrongSize();
   EXPECT_FALSE(metrics_store_.StoreFileConfigured(kTestFileName));
 }
 
 TEST_F(MetricsStoreTest, StoreFileConfiguredSymLink) {
-  // Creating the file for the test
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-  // Sizing the test file
-  HANDLE_EINTR(ftruncate(fd, kSizeOfStoredMetrics));
-  close(fd);
-
-  // Creating the sym link
-  if (HANDLE_EINTR(symlink(kTestFileName, kTestSymLinkName)) < 0) {
-    LOG(ERROR) << "Failed to create symlink" << kTestSymLinkName << " of "
-               << kTestFileName << " with errno=" << strerror(errno);
-  }
-
   // Make sure that we die when the file is a sym link
   EXPECT_FALSE(metrics_store_.StoreFileConfigured(kTestSymLinkName));
 }
@@ -119,6 +161,7 @@ TEST_F(MetricsStoreTest, StoreFileConfiguredSymLink) {
 
 TEST_F(MetricsStoreTest, ConfigureStoreNoFile) {
   // Expecting file to be created when it dne
+  DestroyTestFile();
   EXPECT_TRUE(metrics_store_.ConfigureStore(kTestFileName));
   struct stat st;
   EXPECT_EQ(0, lstat(kTestFileName, &st));
@@ -126,12 +169,6 @@ TEST_F(MetricsStoreTest, ConfigureStoreNoFile) {
 }
 
 TEST_F(MetricsStoreTest, ConfigureStoreFileExists) {
-  // Creating the file for the test
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-  close(fd);
-
   // Expecting file to be opened fine when it exists already
   EXPECT_TRUE(metrics_store_.ConfigureStore(kTestFileName));
   struct stat st;
@@ -141,135 +178,107 @@ TEST_F(MetricsStoreTest, ConfigureStoreFileExists) {
 
 TEST_F(MetricsStoreTest, OpenStoreFileNoFile) {
   int fd = -1;
+  DestroyTestFile();
   EXPECT_TRUE(metrics_store_.OpenStoreFile(kTestFileName, &fd, false));
+  EXPECT_NE(fd, -1);
 }
 
 TEST_F(MetricsStoreTest, OpenStoreFileExists) {
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-  close(fd);
-  fd = -1;
+  int fd = -1;
   EXPECT_TRUE(metrics_store_.OpenStoreFile(kTestFileName, &fd, false));
+  EXPECT_GT(fd, -1);
 }
 
 TEST_F(MetricsStoreTest, OpenStoreFileTruncate) {
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-  close(fd);
-  fd = -1;
+  DestroyTestFile();
+  CreateTestFileWrongSize();
+  int fd = -1;
   EXPECT_TRUE(metrics_store_.OpenStoreFile(kTestFileName, &fd, true));
+  EXPECT_GT(fd, -1);
 }
 
 TEST_F(MetricsStoreTest, OpenStoreFileFDSet) {
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-  close(fd);
-  fd = kTestFD;
-  EXPECT_DEATH(metrics_store_.OpenStoreFile(kTestFileName, &fd, false), ".*");
+  int fd = kTestFD;
+  EXPECT_FALSE(metrics_store_.OpenStoreFile(kTestFileName, &fd, false));
+  EXPECT_TRUE(metrics_store_.store_map_ == NULL);
+  EXPECT_EQ(metrics_store_.store_fd_, -1);
 }
 
 TEST_F(MetricsStoreTest, OpenStoreFileSymLink) {
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-  close(fd);
-  fd = -1;
-  if (HANDLE_EINTR(symlink(kTestFileName, kTestSymLinkName)) < 0) {
-    LOG(ERROR) << "Failed to create symlink" << kTestSymLinkName << " of "
-               << kTestFileName << " with errno=" << strerror(errno);
-  }
+  int fd = -1;
   EXPECT_FALSE(metrics_store_.OpenStoreFile(kTestSymLinkName, &fd, false));
+  EXPECT_EQ(fd, -1);
 }
 
 TEST_F(MetricsStoreTest, MapStoreSuccess) {
-  // Need to setup a file such that the class can mmap it
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-  HANDLE_EINTR(ftruncate(fd, kSizeOfStoredMetrics));
-  metrics_store_.store_map_ = NULL;
-
+  DestroyFakeMap();
+  metrics_store_.store_fd_ = HANDLE_EINTR(open(kTestFileName,
+                                               O_RDWR | O_CREAT | O_TRUNC,
+                                               kReadWriteFlags));
+  HANDLE_EINTR(ftruncate(metrics_store_.store_fd_ , kSizeOfStoredMetrics));
   // We should be able to map to this file and location with no issues
-  EXPECT_TRUE(metrics_store_.MapStore(fd, &(metrics_store_.store_map_)));
+  EXPECT_TRUE(metrics_store_.MapStore());
   EXPECT_TRUE(metrics_store_.store_map_ != NULL);
-
-  HANDLE_EINTR(munmap(metrics_store_.store_map_, kSizeOfStoredMetrics));
-  close(fd);
+  DestroyRealMap();
 }
 
 TEST_F(MetricsStoreTest, MapStoreBadFD) {
-  EXPECT_DEATH(metrics_store_.MapStore(-1, &(metrics_store_.store_map_)), ".*");
+  DestroyFakeMap();
+  EXPECT_FALSE(metrics_store_.MapStore());
+  EXPECT_TRUE(metrics_store_.store_map_ == NULL);
+  EXPECT_EQ(metrics_store_.store_fd_, -1);
 }
 
-TEST_F(MetricsStoreTest, MapStoreSetStore) {
-  metrics_store_.store_map_ = fake_store_;
-  EXPECT_DEATH(metrics_store_.MapStore(kTestFD,
-                                       &(metrics_store_.store_map_)),
-               ".*");
+TEST_F(MetricsStoreTest, MapStoreAlreadyMapped) {
+  EXPECT_FALSE(metrics_store_.MapStore());
+  EXPECT_TRUE(metrics_store_.store_map_ == NULL);
+  EXPECT_EQ(metrics_store_.store_fd_, -1);
 }
 
-TEST_F(MetricsStoreTest, MapStoreMapFails) {
-  metrics_store_.store_map_ = NULL;
-  EXPECT_FALSE(metrics_store_.MapStore(kTestFD,
-                                       &(metrics_store_.store_map_)));
+TEST_F(MetricsStoreTest, MapStoreMapCallFails) {
+  DestroyFakeMap();
+  metrics_store_.store_fd_ = kTestFD;
+  EXPECT_FALSE(metrics_store_.MapStore());
+  EXPECT_TRUE(metrics_store_.store_map_ == NULL);
+  EXPECT_EQ(metrics_store_.store_fd_, -1);
 }
 
 TEST_F(MetricsStoreTest, SyncStoreSuccess) {
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-
-  HANDLE_EINTR(ftruncate(fd, kSizeOfStoredMetrics));
-  metrics_store_.store_map_ = static_cast<int*>(
-      mmap(0,
-           kSizeOfStoredMetrics,
-           PROT_READ | PROT_WRITE,
-           MAP_PRIVATE,
-           fd,
-           0));
+  DestroyFakeMap();
+  CreateRealMap();
   metrics_store_.SyncStore(metrics_store_.store_map_);
-  HANDLE_EINTR(munmap(metrics_store_.store_map_, kSizeOfStoredMetrics));
-  close(fd);
+  DestroyRealMap();
 }
 
 TEST_F(MetricsStoreTest, SyncStoreNullMap) {
-  EXPECT_DEATH(metrics_store_.SyncStore(NULL), ".*");
+  DestroyFakeMap();
+  EXPECT_FALSE(metrics_store_.SyncStore(NULL));
+  EXPECT_TRUE(metrics_store_.store_map_ == NULL);
+  EXPECT_EQ(metrics_store_.store_fd_, -1);
 }
 
 TEST_F(MetricsStoreTest, CloseStoreSuccess) {
-  // Setting up a mmap to be torn down
-  int fd = HANDLE_EINTR(open(kTestFileName,
-                             O_RDWR | O_CREAT | O_TRUNC,
-                             kReadWriteFlags));
-
-  HANDLE_EINTR(ftruncate(fd, kSizeOfStoredMetrics));
-  metrics_store_.store_map_ = static_cast<int*>(
-      mmap(0,
-           kSizeOfStoredMetrics,
-           PROT_READ | PROT_WRITE,
-           MAP_PRIVATE,
-           fd,
-           0));
-
-  metrics_store_.CloseStore(&fd, &metrics_store_.store_map_);
-  EXPECT_EQ(-1, fd);
+  DestroyFakeMap();
+  CreateRealMap();
+  metrics_store_.CloseStore();
+  EXPECT_EQ(-1, metrics_store_.store_fd_);
   EXPECT_TRUE(metrics_store_.store_map_ == NULL);
 }
 
 // This method should silently handle bad inputs since it is called by the
 // destructor
 TEST_F(MetricsStoreTest, CloseStoreBadFD) {
-  int fd = -1;
-  metrics_store_.CloseStore(&fd, &metrics_store_.store_map_);
+  int fd = metrics_store_.store_fd_;
+  metrics_store_.store_fd_ = -1;
+  metrics_store_.CloseStore();
+  metrics_store_.store_fd_ = fd;
+  DestroyFakeMap();
 }
 
 TEST_F(MetricsStoreTest, CloseStoreBadMap) {
-  int fd = kTestFD;
-  metrics_store_.store_map_ = NULL;
-  metrics_store_.CloseStore(&fd, &metrics_store_.store_map_);
+  DestroyFakeMap();
+  metrics_store_.store_fd_ = kTestFD;
+  metrics_store_.CloseStore();
 }
 
 TEST_F(MetricsStoreTest, ResetMetricSuccess) {
@@ -279,13 +288,12 @@ TEST_F(MetricsStoreTest, ResetMetricSuccess) {
 }
 
 TEST_F(MetricsStoreTest, ResetMetricUnderflow) {
-  EXPECT_DEATH(metrics_store_.ResetMetric(
-      static_cast<MetricsStore::StoredMetric>(-1)), ".*");
+  metrics_store_.ResetMetric(
+      static_cast<MetricsStore::StoredMetric>(-1));
 }
 
 TEST_F(MetricsStoreTest, ResetMetricOverflow) {
-  EXPECT_DEATH(metrics_store_.ResetMetric(MetricsStore::kNumOfStoredMetrics),
-               ".*");
+  metrics_store_.ResetMetric(MetricsStore::kNumOfStoredMetrics);
 }
 
 TEST_F(MetricsStoreTest, IncrementMetricSuccess) {
@@ -294,13 +302,12 @@ TEST_F(MetricsStoreTest, IncrementMetricSuccess) {
 }
 
 TEST_F(MetricsStoreTest, IncrementMetricUnderflow) {
-  EXPECT_DEATH(metrics_store_.IncrementMetric(
-      static_cast<MetricsStore::StoredMetric>(-1)), ".*");
+  metrics_store_.IncrementMetric(
+      static_cast<MetricsStore::StoredMetric>(-1));
 }
 
 TEST_F(MetricsStoreTest, IncrementMetricOverflow) {
-  EXPECT_DEATH(metrics_store_.IncrementMetric(
-      MetricsStore::kNumOfStoredMetrics), ".*");
+  metrics_store_.IncrementMetric(MetricsStore::kNumOfStoredMetrics);
 }
 
 TEST_F(MetricsStoreTest, SetMetricSuccess) {
@@ -311,14 +318,13 @@ TEST_F(MetricsStoreTest, SetMetricSuccess) {
 }
 
 TEST_F(MetricsStoreTest, SetMetricUnderflow) {
-  EXPECT_DEATH(metrics_store_.SetMetric(
-      static_cast<MetricsStore::StoredMetric>(-1), kTestMetricValue),
-               ".*");
+  metrics_store_.SetMetric(static_cast<MetricsStore::StoredMetric>(-1),
+                           kTestMetricValue);
 }
 
 TEST_F(MetricsStoreTest, SetMetricOverflow) {
-  EXPECT_DEATH(metrics_store_.SetMetric(MetricsStore::kNumOfStoredMetrics,
-                                        kTestMetricValue), ".*");
+  metrics_store_.SetMetric(MetricsStore::kNumOfStoredMetrics,
+                           kTestMetricValue);
 }
 
 TEST_F(MetricsStoreTest, GetMetricSuccess) {
@@ -329,13 +335,16 @@ TEST_F(MetricsStoreTest, GetMetricSuccess) {
 }
 
 TEST_F(MetricsStoreTest, GetMetricUnderflow) {
-  EXPECT_DEATH(metrics_store_.GetMetric(
-      static_cast<MetricsStore::StoredMetric>(-1)), ".*");
+  EXPECT_EQ(
+      metrics_store_.GetMetric(static_cast<MetricsStore::StoredMetric>(-1)),
+      -1);
 }
 
 TEST_F(MetricsStoreTest, GetMetricOverflow) {
-  EXPECT_DEATH(metrics_store_.GetMetric(MetricsStore::kNumOfStoredMetrics),
-               ".*");
+  EXPECT_EQ(
+      metrics_store_.GetMetric(static_cast<MetricsStore::StoredMetric>(
+          MetricsStore::kNumOfStoredMetrics)),
+      -1);
 }
 
 };  // namespace power_manager

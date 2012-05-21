@@ -425,10 +425,12 @@ TEST_F(DaemonTest, GenerateLengthOfSessionMetricUnderflow) {
 }
 
 TEST_F(DaemonTest, GenerateNumOfSessionsPerChargeMetric) {
+  metrics_store_.ExpectIsInitialized(true);
   metrics_store_.ExpectGetNumOfSessionsPerChargeMetric(0);
   EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric(&metrics_store_));
   Mock::VerifyAndClearExpectations(&metrics_store_);
 
+  metrics_store_.ExpectIsInitialized(true);
   metrics_store_.ExpectGetNumOfSessionsPerChargeMetric(
       kNumOfSessionsPerCharge);
   metrics_store_.ExpectResetNumOfSessionsPerChargeMetric();
@@ -437,10 +439,11 @@ TEST_F(DaemonTest, GenerateNumOfSessionsPerChargeMetric) {
   Mock::VerifyAndClearExpectations(&metrics_lib_);
   Mock::VerifyAndClearExpectations(&metrics_store_);
 
-  EXPECT_DEATH(daemon_.GenerateNumOfSessionsPerChargeMetric(NULL), ".*");
+  EXPECT_FALSE(daemon_.GenerateNumOfSessionsPerChargeMetric(NULL));
 }
 
 TEST_F(DaemonTest, HandleNumOfSessionsPerChargeOnSetPlugged) {
+  metrics_store_.ExpectIsInitialized(true);
   metrics_store_.ExpectGetNumOfSessionsPerChargeMetric(
       kNumOfSessionsPerCharge);
   metrics_store_.ExpectResetNumOfSessionsPerChargeMetric();

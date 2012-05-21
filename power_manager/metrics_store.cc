@@ -20,31 +20,32 @@ const int kReadWriteFlags = S_IRUSR | S_IWUSR;
 
 MetricsStore::MetricsStore()
     : store_fd_(-1),
-      store_map_(NULL),
-      is_broken_(false) {
+      store_map_(NULL) {
 }
 
 MetricsStore::~MetricsStore() {
-  CloseStore(&store_fd_, &store_map_);
+  CloseStore();
 }
 
 bool MetricsStore::Init() {
-  CHECK_EQ(store_fd_, -1);
-  CHECK(store_map_ == NULL);
+  if ((store_fd_ != -1) || (store_map_ != NULL)) {
+    LOG(ERROR) << "Store not in default state, not running intialization!";
+    return false;
+  }
 
   if (!StoreFileConfigured(kMetricsStorePath))
     if (!(ConfigureStore(kMetricsStorePath))) {
-      StoreBroke();
+      unlink(kMetricsStorePath);
       return false;
     }
 
   if (!OpenStoreFile(kMetricsStorePath, &store_fd_, false)) {
-    StoreBroke();
+    unlink(kMetricsStorePath);
     return false;
   }
 
-  if (!MapStore(store_fd_, &store_map_)) {
-    StoreBroke();
+  if (!MapStore()) {
+    ScrubStore();
     return false;
   }
 
@@ -63,8 +64,10 @@ int MetricsStore::GetNumOfSessionsPerChargeMetric() {
   return GetMetric(kNumOfSessionsPerChargeMetric);
 }
 
-bool MetricsStore::IsBroken() {
-  return is_broken_;
+bool MetricsStore::IsInitialized() const {
+  return ((store_fd_ > -1) &&
+          (store_map_ != NULL) &&
+          (store_map_ != MAP_FAILED));
 }
 
 bool MetricsStore::StoreFileConfigured(const char* file_path) {
@@ -93,13 +96,14 @@ bool MetricsStore::ConfigureStore(const char* file_path) {
 
   if (!OpenStoreFile(file_path, &fd, true)) {
     LOG(ERROR) << "Call to OpenStore failed";
+    ScrubStore();
     return false;
   }
 
   if (HANDLE_EINTR(ftruncate(fd, kSizeOfStoredMetrics)) < 0) {
     LOG(ERROR) << "Failed to truncate/expand file " << file_path
                << " with errno=" << strerror(errno);
-    StoreBroke();
+    ScrubStore();
     return false;
   }
 
@@ -111,17 +115,22 @@ bool MetricsStore::ConfigureStore(const char* file_path) {
 bool MetricsStore::OpenStoreFile(const char* file_path,
                                  int* fd,
                                  bool truncate) {
-  CHECK_EQ(*fd, -1);
+  if (*fd > -1) {
+    LOG(ERROR) << "Supplied file descriptor is already set, cannot open store"
+               << " file";
+    ScrubStore();
+    return false;
+  }
 
   int flags = O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW;
   *fd = HANDLE_EINTR(open(file_path,
                           flags,
                           kReadWriteFlags));
-  if (*fd >= 0)
+  if (*fd > -1)
     return true;
   if (errno != EEXIST) {
     PLOG(ERROR) << "Failed to open persistent metrics store file on first try";
-    StoreBroke();
+    ScrubStore();
     return false;
   }
 
@@ -134,11 +143,11 @@ bool MetricsStore::OpenStoreFile(const char* file_path,
   *fd = HANDLE_EINTR(open(file_path,
                           flags,
                           kReadWriteFlags));
-  if (*fd >= 0)
+  if (*fd > -1)
     return true;
   if (errno != -ELOOP) {
     PLOG(ERROR) << "Failed to open persistent metrics store file second try";
-    StoreBroke();
+    ScrubStore();
     return false;
   }
 
@@ -147,73 +156,96 @@ bool MetricsStore::OpenStoreFile(const char* file_path,
   *fd = HANDLE_EINTR(open(file_path,
                           flags,
                           kReadWriteFlags));
-  if (*fd >= 0) {
+  if (*fd > -1) {
     return true;
   } else {
-    LOG(ERROR) << "Failed to open persistent metrics store file second try";
-    StoreBroke();
+    LOG(ERROR) << "Failed to open persistent metrics store file third try";
+    ScrubStore();
     return false;
   }
 }
 
-bool MetricsStore::MapStore(const int fd, int** map) {
-  CHECK_GT(fd, -1);
-  CHECK(*map == NULL);
-
-  *map = static_cast<int*>(mmap(NULL,
-                                kSizeOfStoredMetrics,
-                                PROT_READ | PROT_WRITE,
-                                MAP_SHARED,
-                                fd,
-                                0));
-
-  if (*map == MAP_FAILED) {
-    LOG(ERROR) << "Failed to mmap file with errno=" << strerror(errno);
-    StoreBroke();
+bool MetricsStore::MapStore() {
+  if ((store_fd_ < 0) || (store_map_ != NULL)) {
+    LOG(ERROR) << "MetricsStore in incorrect state to map store!";
+    ScrubStore();
     return false;
   }
+
+  store_map_ = static_cast<int*>(mmap(NULL,
+                                      kSizeOfStoredMetrics,
+                                      PROT_READ | PROT_WRITE,
+                                      MAP_SHARED,
+                                      store_fd_,
+                                      0));
+  if (store_map_ == MAP_FAILED) {
+    LOG(ERROR) << "Failed to mmap file with errno=" << strerror(errno);
+    ScrubStore();
+    return false;
+  }
+
   return true;
 }
 
 bool MetricsStore::SyncStore(int* map) {
-  CHECK(map);
+  if (map == NULL) {
+    LOG(ERROR) << "Tried to sync NULL map!";
+    ScrubStore();
+    return false;
+  }
+
   if (HANDLE_EINTR(msync(map, kSizeOfStoredMetrics, MS_SYNC)) < 0) {
     LOG(ERROR) << "Failed to msync with errno=" << strerror(errno);
-    StoreBroke();
+    ScrubStore();
     return false;
   }
   return true;
 }
 
-void MetricsStore::CloseStore(int* fd, int** map) {
-  if (*fd > -1) {
-    if (*map != NULL) {
-      if (HANDLE_EINTR(munmap(*map, kSizeOfStoredMetrics)) < 0) {
-        LOG(ERROR) << "Failed to unmap store metrics with errno="
-                   << strerror(errno);
-        StoreBroke();
-      }
-      *map = NULL;
-    }
-    close(*fd);
-    *fd = -1;
+void MetricsStore::CloseStore() {
+  if (!IsInitialized()) {
+    LOG(ERROR) << "CloseStore called with invalid values.";
+    ScrubStore();
+    return;
   }
+
+
+  if (HANDLE_EINTR(munmap(store_map_, kSizeOfStoredMetrics)) < 0) {
+    LOG(ERROR) << "Failed to unmap store metrics with errno="
+               << strerror(errno);
+  }
+  close(store_fd_);
+
+  store_map_ = NULL;
+  store_fd_ = -1;
 }
 
 void MetricsStore::ResetMetric(const StoredMetric& metric) {
-  if (is_broken_)
+  if (!IsInitialized()) {
+    LOG(WARNING) << "Attempted to reset metric when not initialized";
     return;
-  CHECK_GE(metric, 0);
-  CHECK_LT(metric, kNumOfStoredMetrics);
+  }
+
+  if ((metric < 0) || (metric >= kNumOfStoredMetrics)) {
+    LOG(WARNING) << "ResetMetric: Metric index out of range, metric = "
+                 << metric;
+    return;
+  }
 
   SetMetric(metric, 0);
 }
 
 void MetricsStore::IncrementMetric(const StoredMetric& metric) {
-  if (is_broken_)
+  if (!IsInitialized()) {
+    LOG(WARNING) << "Attempted to increment metric when not initialized";
     return;
-  CHECK_GE(metric, 0);
-  CHECK_LT(metric, kNumOfStoredMetrics);
+  }
+
+  if ((metric < 0) || (metric >= kNumOfStoredMetrics)) {
+    LOG(WARNING) << "IncrementMetric: Metric index out of range, metric = "
+                 << metric;
+    return;
+  }
 
   LOG(INFO) << "Current value in store map is " << store_map_[metric];
   LOG(INFO) << "Current value of store map is " << store_map_;
@@ -223,30 +255,53 @@ void MetricsStore::IncrementMetric(const StoredMetric& metric) {
 }
 
 void MetricsStore::SetMetric(const StoredMetric& metric, const int& value) {
-  if (is_broken_)
+  if (!IsInitialized()) {
+    LOG(WARNING) << "Attempted to set metric when not initialized";
     return;
-  CHECK_GE(metric, 0);
-  CHECK_LT(metric, kNumOfStoredMetrics);
+  }
+
+  if ((metric < 0) || (metric >= kNumOfStoredMetrics)) {
+    LOG(WARNING) << "SetMetric: Metric index out of range, metric = " << metric;
+    return;
+  }
 
   store_map_[metric] = value;
   SyncStore(store_map_);
 }
 
 int MetricsStore::GetMetric(const StoredMetric& metric) {
-  CHECK(!is_broken_);
-  CHECK_GE(metric, 0);
-  CHECK_LT(metric, kNumOfStoredMetrics);
+  if (!IsInitialized()) {
+    LOG(WARNING) << "Attempted to get metric when not initialized";
+    return -1;
+  }
+
+  if ((metric < 0) || (metric >= kNumOfStoredMetrics)) {
+    LOG(WARNING) << "GetMetric: Metric index out of range, metric = " << metric;
+    return -1;
+  }
 
   return store_map_[metric];
 }
 
-void MetricsStore::StoreBroke() {
-  if (is_broken_)
-    return;
-  LOG(ERROR) << "Metrics store has gotten into a bad state, so we are flagging"
-             << " as broken and removing the backing file";
+void MetricsStore::ScrubStore() {
+  LOG(ERROR) << "Metrics store has gotten into a bad state, so we are unmapping"
+             << " it and removing the backing file";
+
+  if ((store_map_ != NULL) && (store_map_ != MAP_FAILED)) {
+    if (HANDLE_EINTR(munmap(store_map_, kSizeOfStoredMetrics)) < 0) {
+      LOG(ERROR) << "Failed to unmap store metrics with errno="
+                 << strerror(errno);
+    }
+  }
+
+  if (store_fd_ > -1)
+    close(store_fd_);
+
+  store_map_ = NULL;
+  store_fd_ = -1;
+
   unlink(kMetricsStorePath);
-  is_broken_ = true;
 }
+
 
 };  // namespace power_manager

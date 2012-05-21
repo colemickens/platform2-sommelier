@@ -222,14 +222,24 @@ bool Daemon::GenerateLengthOfSessionMetric(const base::Time& now,
 }
 
 bool Daemon::GenerateNumOfSessionsPerChargeMetric(MetricsStore* store) {
-  CHECK(store != NULL);
-  if (metrics_store_.IsBroken()) {
-    LOG(ERROR) << "Metrics store is in bad state, so could not generate number "
-               << "of sessions per charge";
+  if (store == NULL) {
+    LOG(ERROR) << "Attempted to generate NumOfSessionsPerCharge metric with "
+               << "NULL MetricsStore";
+    return false;
+  }
+
+  if (!store->IsInitialized()) {
+    LOG(ERROR) << "Metrics store is not initialized, so could not generate "
+               << "NumOfSessionsPerCharge metric";
     return false;
   }
 
   int sample = store->GetNumOfSessionsPerChargeMetric();
+  if (sample == -1) {
+    LOG(WARNING) << "Received -1 for NumOfSessionsPerCharge from MetricsStore";
+    return false;
+  }
+
   if (sample == 0) {
     LOG(INFO) << "A spurious call to GenerateNumOfSessionsPerChargeMetric has "
               << "occurred or we changed state at the login screen";
