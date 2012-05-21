@@ -89,7 +89,7 @@ bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
                                             wimax_->address().c_str()));
   replace_if(
       storage_id_.begin(), storage_id_.end(), &Service::IllegalChar, '_');
-  set_connectable(true);
+  UpdateConnectable();
   return true;
 }
 
@@ -113,6 +113,25 @@ string WiMaxService::GetStorageIdentifier() const {
 
 string WiMaxService::GetDeviceRpcId(Error *error) {
   return wimax_->GetRpcIdentifier();
+}
+
+bool WiMaxService::Is8021x() const {
+  return true;
+}
+
+void WiMaxService::set_eap(const EapCredentials &eap) {
+  Service::set_eap(eap);
+  UpdateConnectable();
+}
+
+void WiMaxService::UpdateConnectable() {
+  // Don't use Service::Is8021xConnectable because we don't support the full set
+  // of authentication methods.
+  bool is_connectable = false;
+  if (!eap().identity.empty()) {
+    is_connectable = !eap().password.empty();
+  }
+  set_connectable(is_connectable);
 }
 
 void WiMaxService::OnSignalStrengthChanged(int strength) {

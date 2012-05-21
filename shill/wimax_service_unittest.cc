@@ -113,8 +113,24 @@ TEST_F(WiMaxServiceTest, Start) {
   EXPECT_EQ(kName, service_->network_name());
   EXPECT_EQ(kName, service_->friendly_name());
   EXPECT_EQ(kIdentifier, service_->network_identifier());
-  EXPECT_TRUE(service_->connectable());
+  EXPECT_FALSE(service_->connectable());
   EXPECT_FALSE(service_->GetStorageIdentifier().empty());
+}
+
+TEST_F(WiMaxServiceTest, SetEAP) {
+  ServiceRefPtr base_service = service_;
+  EXPECT_TRUE(base_service->Is8021x());
+  EXPECT_TRUE(service_->need_passphrase_);
+  EXPECT_FALSE(base_service->connectable());
+  Service::EapCredentials eap;
+  eap.identity = "TestIdentity";
+  base_service->set_eap(eap);
+  EXPECT_TRUE(service_->need_passphrase_);
+  EXPECT_FALSE(base_service->connectable());
+  eap.password = "TestPassword";
+  base_service->set_eap(eap);
+  EXPECT_TRUE(service_->need_passphrase_);
+  EXPECT_TRUE(base_service->connectable());
 }
 
 }  // namespace shill

@@ -44,14 +44,19 @@ class WiMaxService : public Service {
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
   virtual std::string GetStorageIdentifier() const;
+  virtual bool Is8021x() const;
+  virtual void set_eap(const EapCredentials &eap);
 
  private:
   FRIEND_TEST(WiMaxServiceTest, GetDeviceRpcId);
   FRIEND_TEST(WiMaxServiceTest, OnSignalStrengthChanged);
+  FRIEND_TEST(WiMaxServiceTest, SetEAP);
 
   virtual std::string GetDeviceRpcId(Error *error);
 
   void OnSignalStrengthChanged(int strength);
+
+  void UpdateConnectable();
 
   WiMaxRefPtr wimax_;
   scoped_ptr<WiMaxNetworkProxyInterface> proxy_;
