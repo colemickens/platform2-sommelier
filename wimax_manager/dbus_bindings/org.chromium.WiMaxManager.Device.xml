@@ -9,12 +9,12 @@
     <method name="Disable" />
     <method name="ScanNetworks" />
     <method name="Connect">
-      <arg name="Network" type="o" direction="in" />
-      <arg name="Parameters" type="a{sv}" direction="in" />
+      <arg name="network" type="o" direction="in" />
+      <arg name="parameters" type="a{sv}" direction="in" />
     </method>
     <method name="Disconnect" />
     <signal name="NetworksChanged">
-      <arg name="Networks" type="ao" />
+      <arg name="networks" type="ao" />
     </signal>
     <property name="Index" type="y" access="read" />
     <property name="Name" type="s" access="read" />

@@ -5,6 +5,9 @@
 
 <node>
   <interface name="org.chromium.WiMaxManager.Network">
+    <signal name="SignalStrengthChanged">
+      <arg name="signal_strength" type="i" />
+    </signal>
     <property name="Identifier" type="u" access="read" />
     <property name="Name" type="s" access="read" />
     <property name="Type" type="i" access="read" />
