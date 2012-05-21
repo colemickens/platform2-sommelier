@@ -8,7 +8,9 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <dbus-c++/dbus.h>
+#include <base/callback_forward.h>
+
+#include "shill/accessor_interface.h"
 
 namespace shill {
 
@@ -18,9 +20,14 @@ class Error;
 // interface is provided so that it can be mocked in tests.
 class WiMaxNetworkProxyInterface {
  public:
+  typedef base::Callback<void(int)> SignalStrengthChangedCallback;
+
   virtual ~WiMaxNetworkProxyInterface() {}
 
-  virtual DBus::Path proxy_object_path() const = 0;
+  virtual RpcIdentifier path() const = 0;
+
+  virtual void set_signal_strength_changed_callback(
+      const SignalStrengthChangedCallback &callback) = 0;
 
   // Properties.
   virtual uint32 Identifier(Error *error) = 0;

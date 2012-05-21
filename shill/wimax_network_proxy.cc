@@ -20,8 +20,13 @@ WiMaxNetworkProxy::WiMaxNetworkProxy(DBus::Connection *connection,
 
 WiMaxNetworkProxy::~WiMaxNetworkProxy() {}
 
-DBus::Path WiMaxNetworkProxy::proxy_object_path() const {
+RpcIdentifier WiMaxNetworkProxy::path() const {
   return proxy_.path();
+}
+
+void WiMaxNetworkProxy::set_signal_strength_changed_callback(
+    const SignalStrengthChangedCallback &callback) {
+  proxy_.set_signal_strength_changed_callback(callback);
 }
 
 uint32 WiMaxNetworkProxy::Identifier(Error *error) {
@@ -103,5 +108,18 @@ WiMaxNetworkProxy::Proxy::Proxy(DBus::Connection *connection,
                         wimax_manager::kWiMaxManagerServiceName) {}
 
 WiMaxNetworkProxy::Proxy::~Proxy() {}
+
+void WiMaxNetworkProxy::Proxy::set_signal_strength_changed_callback(
+    const SignalStrengthChangedCallback &callback) {
+  signal_strength_changed_callback_ = callback;
+}
+
+void WiMaxNetworkProxy::Proxy::SignalStrengthChanged(
+    const int32 &signal_strength) {
+  SLOG(DBus, 2) << __func__ << "(" << signal_strength << ")";
+  if (!signal_strength_changed_callback_.is_null()) {
+    signal_strength_changed_callback_.Run(signal_strength);
+  }
+}
 
 }  // namespace shill

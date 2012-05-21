@@ -27,10 +27,9 @@ class WiMaxService : public Service {
   // connecting to the network associated with this service.
   void GetConnectParameters(DBusPropertiesMap *parameters) const;
 
-  // Returns the DBus object path for the WiMaxManager.Network object
-  // associated with this service. Must only be called after |proxy_| is set
-  // by Start().
-  DBus::Path GetNetworkObjectPath() const;
+  // Returns the RPC object path for the WiMaxManager.Network object associated
+  // with this service. Must only be called after |proxy_| is set by Start().
+  RpcIdentifier GetNetworkObjectPath() const;
 
   // Returns true on success, false otherwise. Takes ownership of proxy,
   // regardless of the result of the operation.
@@ -47,8 +46,11 @@ class WiMaxService : public Service {
 
  private:
   FRIEND_TEST(WiMaxServiceTest, GetDeviceRpcId);
+  FRIEND_TEST(WiMaxServiceTest, OnSignalStrengthChanged);
 
   virtual std::string GetDeviceRpcId(Error *error);
+
+  void OnSignalStrengthChanged(int strength);
 
   WiMaxRefPtr wimax_;
   scoped_ptr<WiMaxNetworkProxyInterface> proxy_;

@@ -14,6 +14,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_wimax.h"
+#include "shill/mock_wimax_network_proxy.h"
 
 using std::string;
 using testing::_;
@@ -37,7 +38,8 @@ const char kTestPath[] = "/org/chromium/WiMaxManager/Device/wm7";
 class WiMaxServiceTest : public testing::Test {
  public:
   WiMaxServiceTest()
-      : manager_(&control_, NULL, NULL, NULL),
+      : proxy_(new MockWiMaxNetworkProxy()),
+        manager_(&control_, NULL, NULL, NULL),
         wimax_(new MockWiMax(&control_, NULL, &metrics_, &manager_,
                              kTestLinkName, kTestAddress, kTestInterfaceIndex,
                              kTestPath)),
@@ -47,6 +49,7 @@ class WiMaxServiceTest : public testing::Test {
   virtual ~WiMaxServiceTest() {}
 
  protected:
+  scoped_ptr<MockWiMaxNetworkProxy> proxy_;
   NiceMockControl control_;
   MockManager manager_;
   MockMetrics metrics_;
@@ -99,6 +102,29 @@ TEST_F(WiMaxServiceTest, GetDeviceRpcId) {
   Error error;
   EXPECT_EQ(DeviceMockAdaptor::kRpcId, service_->GetDeviceRpcId(&error));
   EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(WiMaxServiceTest, OnSignalStrengthChanged) {
+  const int kStrength = 55;
+  service_->OnSignalStrengthChanged(kStrength);
+  EXPECT_EQ(kStrength, service_->strength());
+}
+
+TEST_F(WiMaxServiceTest, Start) {
+  static const char kName[] = "MyWiMaxNetwork";
+  const uint32 kIdentifier = 1234;
+  const int kStrength = 66;
+  EXPECT_CALL(*proxy_, Name(_)).WillOnce(Return(kName));
+  EXPECT_CALL(*proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
+  EXPECT_CALL(*proxy_, SignalStrength(_)).WillOnce(Return(kStrength));
+  EXPECT_CALL(*proxy_, set_signal_strength_changed_callback(_));
+  EXPECT_TRUE(service_->Start(proxy_.release()));
+  EXPECT_EQ(kStrength, service_->strength());
+  EXPECT_EQ(kName, service_->network_name());
+  EXPECT_EQ(kName, service_->friendly_name());
+  EXPECT_EQ(kIdentifier, service_->network_identifier());
+  EXPECT_TRUE(service_->connectable());
+  EXPECT_FALSE(service_->GetStorageIdentifier().empty());
 }
 
 }  // namespace shill

@@ -120,6 +120,8 @@ TEST_F(WiMaxTest, OnNetworksChanged) {
   EXPECT_CALL(manager_, DeregisterService(_));
   EXPECT_CALL(*network_proxy_, Name(_));
   EXPECT_CALL(*network_proxy_, Identifier(_));
+  EXPECT_CALL(*network_proxy_, SignalStrength(_));
+  EXPECT_CALL(*network_proxy_, set_signal_strength_changed_callback(_));
   EXPECT_CALL(manager_, RegisterService(_));
   wimax_->OnNetworksChanged(live_devices);
   ASSERT_EQ(1, wimax_->services_.size());
@@ -133,6 +135,8 @@ TEST_F(WiMaxTest, CreateService) {
 
   EXPECT_CALL(*network_proxy_, Name(_)).WillOnce(Return(kTestNetworkName));
   EXPECT_CALL(*network_proxy_, Identifier(_));
+  EXPECT_CALL(*network_proxy_, SignalStrength(_));
+  EXPECT_CALL(*network_proxy_, set_signal_strength_changed_callback(_));
   EXPECT_CALL(manager_, RegisterService(_));
   wimax_->CreateService(GetTestNetworkPath(1));
   ASSERT_EQ(1, wimax_->services_.size());

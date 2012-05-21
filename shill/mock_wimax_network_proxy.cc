@@ -4,6 +4,8 @@
 
 #include "shill/mock_wimax_network_proxy.h"
 
+#include <base/callback.h>
+
 namespace shill {
 
 MockWiMaxNetworkProxy::MockWiMaxNetworkProxy() {}

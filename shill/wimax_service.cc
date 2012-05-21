@@ -48,13 +48,14 @@ void WiMaxService::GetConnectParameters(DBusPropertiesMap *parameters) const {
       .append_string(eap().password.c_str());
 }
 
-DBus::Path WiMaxService::GetNetworkObjectPath() const {
+RpcIdentifier WiMaxService::GetNetworkObjectPath() const {
   CHECK(proxy_.get());
-  return proxy_->proxy_object_path();
+  return proxy_->path();
 }
 
 bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
   SLOG(WiMax, 2) << __func__;
+  CHECK(proxy);
   proxy_.reset(proxy);
 
   Error error;
@@ -72,6 +73,8 @@ bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
     return false;
   }
   SetStrength(signal_strength);
+  proxy_->set_signal_strength_changed_callback(
+      Bind(&WiMaxService::OnSignalStrengthChanged, Unretained(this)));
 
   set_friendly_name(network_name_);
   storage_id_ =
@@ -106,6 +109,11 @@ string WiMaxService::GetStorageIdentifier() const {
 
 string WiMaxService::GetDeviceRpcId(Error *error) {
   return wimax_->GetRpcIdentifier();
+}
+
+void WiMaxService::OnSignalStrengthChanged(int strength) {
+  SLOG(WiMax, 2) << __func__ << "(" << strength << ")";
+  SetStrength(strength);
 }
 
 }  // namespace shill

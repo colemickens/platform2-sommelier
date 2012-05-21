@@ -5,6 +5,8 @@
 #ifndef SHILL_WIMAX_NETWORK_PROXY_H_
 #define SHILL_WIMAX_NETWORK_PROXY_H_
 
+#include <base/callback.h>
+
 #include "shill/dbus_bindings/wimax_manager-network.h"
 #include "shill/wimax_network_proxy_interface.h"
 
@@ -18,7 +20,9 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
   virtual ~WiMaxNetworkProxy();
 
   // Inherited from WiMaxNetwokProxyInterface.
-  virtual DBus::Path proxy_object_path() const;
+  virtual RpcIdentifier path() const;
+  virtual void set_signal_strength_changed_callback(
+      const SignalStrengthChangedCallback &callback);
   virtual uint32 Identifier(Error *error);
   virtual std::string Name(Error *error);
   virtual int Type(Error *error);
@@ -33,12 +37,17 @@ class WiMaxNetworkProxy : public WiMaxNetworkProxyInterface {
     Proxy(DBus::Connection *connection, const DBus::Path &path);
     virtual ~Proxy();
 
+    void set_signal_strength_changed_callback(
+        const SignalStrengthChangedCallback &callback);
+
    private:
     // Signal callbacks inherited from WiMaxManager::Network_proxy.
-    // [None]
+    virtual void SignalStrengthChanged(const int32 &signal_strength);
 
     // Method callbacks inherited from WiMaxManager::Network_proxy.
     // [None]
+
+    SignalStrengthChangedCallback signal_strength_changed_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
