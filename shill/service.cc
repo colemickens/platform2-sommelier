@@ -80,6 +80,7 @@ const char Service::kStorageEapUseSystemCAs[] = "EAP.UseSystemCAs";
 const char Service::kStorageError[] = "Error";
 const char Service::kStorageFavorite[] = "Favorite";
 const char Service::kStorageGUID[] = "GUID";
+const char Service::kStorageHasEverConnected[] = "HasEverConnected";
 const char Service::kStorageName[] = "Name";
 const char Service::kStoragePriority[] = "Priority";
 const char Service::kStorageProxyConfig[] = "ProxyConfig";
@@ -111,6 +112,7 @@ Service::Service(ControlInterface *control_interface,
       save_credentials_(true),
       technology_(technology),
       failed_time_(0),
+      has_ever_connected_(false),
       dispatcher_(dispatcher),
       unique_name_(base::UintToString(serial_number_++)),
       friendly_name_(unique_name_),
@@ -278,6 +280,10 @@ void Service::SetState(ConnectState state) {
     failure_ = kFailureUnknown;
     failed_time_ = 0;
   }
+  if (state == kStateConnected) {
+    has_ever_connected_ = true;
+    SaveToProfile();
+  }
   manager_->UpdateService(this);
   metrics_->NotifyServiceStateChanged(this, state);
   Error error;
@@ -315,11 +321,12 @@ bool Service::Load(StoreInterface *storage) {
   storage->GetBool(id, kStorageAutoConnect, &auto_connect_);
   storage->GetString(id, kStorageCheckPortal, &check_portal_);
   storage->GetBool(id, kStorageFavorite, &favorite_);
+  storage->GetString(id, kStorageGUID, &guid_);
+  storage->GetBool(id, kStorageHasEverConnected, &has_ever_connected_);
   storage->GetInt(id, kStoragePriority, &priority_);
   storage->GetString(id, kStorageProxyConfig, &proxy_config_);
   storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
   storage->GetString(id, kStorageUIData, &ui_data_);
-  storage->GetString(id, kStorageGUID, &guid_);
 
   LoadEapCredentials(storage, id);
   static_ip_parameters_.Load(storage, id);
@@ -328,8 +335,6 @@ bool Service::Load(StoreInterface *storage) {
   // "Failure"
   // "Modified"
   // "LastAttempt"
-  // "APN"
-  // "LastGoodAPN"
 
   explicitly_disconnected_ = false;
   favorite_ = true;
@@ -366,6 +371,8 @@ bool Service::Save(StoreInterface *storage) {
     storage->SetString(id, kStorageCheckPortal, check_portal_);
   }
   storage->SetBool(id, kStorageFavorite, favorite_);
+  SaveString(storage, id, kStorageGUID, guid_, false, true);
+  storage->SetBool(id, kStorageHasEverConnected, has_ever_connected_);
   storage->SetString(id, kStorageName, friendly_name_);
   if (priority_ != kPriorityNone) {
     storage->SetInt(id, kStoragePriority, priority_);
@@ -379,19 +386,15 @@ bool Service::Save(StoreInterface *storage) {
     storage->SetBool(id, kStorageSaveCredentials, false);
   }
   SaveString(storage, id, kStorageUIData, ui_data_, false, true);
-  SaveString(storage, id, kStorageGUID, guid_, false, true);
 
   SaveEapCredentials(storage, id);
   static_ip_parameters_.Save(storage, id);
 
   // TODO(petkov): Save these:
 
-  // "WiFi.HiddenSSID"
-  // "SSID"
   // "Failure"
   // "Modified"
   // "LastAttempt"
-  // WiFiService: "Passphrase"
 
   return true;
 }
@@ -688,9 +691,7 @@ void Service::OnPropertyChanged(const string &property) {
     // This notifies subclassess that EAP parameters have been changed.
     set_eap(eap_);
   }
-  if (profile_.get() && profile_->GetConstStorage()) {
-    profile_->UpdateService(this);
-  }
+  SaveToProfile();
   if ((property == flimflam::kCheckPortalProperty ||
        property == flimflam::kProxyConfigProperty) &&
       (state_ == kStateConnected ||
@@ -1002,6 +1003,12 @@ uint16 Service::GetHTTPProxyPort(Error */*error*/) {
     return static_cast<uint16>(http_proxy_->proxy_port());
   }
   return 0;
+}
+
+void Service::SaveToProfile() {
+  if (profile_.get() && profile_->GetConstStorage()) {
+    profile_->UpdateService(this);
+  }
 }
 
 void Service::SetStrength(uint8 strength) {

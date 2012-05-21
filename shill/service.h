@@ -78,6 +78,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageError[];
   static const char kStorageFavorite[];
   static const char kStorageGUID[];
+  static const char kStorageHasEverConnected[];
   static const char kStorageName[];
   static const char kStoragePriority[];
   static const char kStorageProxyConfig[];
@@ -289,6 +290,8 @@ class Service : public base::RefCounted<Service> {
   const std::string &guid() const { return guid_; }
   void set_guid(const std::string &guid) { guid_ = guid; }
 
+  bool has_ever_connected() const { return has_ever_connected_; }
+
   int32 priority() const { return priority_; }
   void set_priority(int32 priority) { priority_ = priority; }
 
@@ -455,6 +458,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SetCheckPortal);
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, Unload);
+  FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);
 
   static const char kAutoConnConnected[];
   static const char kAutoConnConnecting[];
@@ -491,6 +495,11 @@ class Service : public base::RefCounted<Service> {
   // Returns TCP port of service's HTTP proxy in host order.
   uint16 GetHTTPProxyPort(Error *error);
 
+  // Saves settings to profile, if we have one. Unlike
+  // SaveServiceToProfile, SaveToProfile never assigns this service
+  // into a profile.
+  void SaveToProfile();
+
   // Utility function that returns true if a is different from b.  When they
   // are, "decision" is populated with the boolean value of "a > b".
   static bool DecideBetween(int a, int b, bool *decision);
@@ -515,6 +524,8 @@ class Service : public base::RefCounted<Service> {
   // The time of the most recent failure. Value is 0 if the service is
   // not currently failed.
   time_t failed_time_;
+  // Whether or not this service has ever reached kStateConnected.
+  bool has_ever_connected_;
 
   ProfileRefPtr profile_;
   PropertyStore store_;

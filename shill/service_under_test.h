@@ -14,7 +14,7 @@ class EventDispatcher;
 class Manager;
 class Metrics;
 
-// This is a simple Service subclass with all the pure-virutal methods stubbed
+// This is a simple Service subclass with all the pure-virutal methods stubbed.
 class ServiceUnderTest : public Service {
  public:
   static const char kRpcId[];

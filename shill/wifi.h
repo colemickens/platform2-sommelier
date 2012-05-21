@@ -151,6 +151,9 @@ class WiFi : public Device {
 
  private:
   friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
+  FRIEND_TEST(WiFiMainTest, SuspectCredentialsOpen);  // SuspectCredentials
+  FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPANeverConnected);  // as above
+  FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);  // ""
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
@@ -210,7 +213,8 @@ class WiFi : public Device {
   void ScanDoneTask();
   void ScanTask();
   void StateChanged(const std::string &new_state);
-
+  // Heuristic check if a connection failure was due to bad credentials.
+  bool SuspectCredentials(const WiFiService &service) const;
   void HelpRegisterDerivedInt32(
       PropertyStore *store,
       const std::string &name,

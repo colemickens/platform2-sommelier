@@ -35,6 +35,7 @@ using std::map;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::AnyNumber;
 using testing::AtLeast;
 using testing::DoAll;
 using testing::Mock;
@@ -64,6 +65,7 @@ class ServiceTest : public PropertyStoreTest {
   MOCK_METHOD1(TestCallback, void(const Error &error));
 
  protected:
+  typedef scoped_refptr<MockProfile> MockProfileRefPtr;
 
   MockManager mock_manager_;
   scoped_refptr<ServiceUnderTest> service_;
@@ -74,6 +76,7 @@ TEST_F(ServiceTest, Constructor) {
   EXPECT_TRUE(service_->save_credentials_);
   EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
   EXPECT_EQ(Service::kStateIdle, service_->state());
+  EXPECT_FALSE(service_->has_ever_connected());
 }
 
 TEST_F(ServiceTest, GetProperties) {
@@ -265,7 +268,7 @@ TEST_F(ServiceTest, Unload) {
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(string_value), Return(true)));
   ASSERT_TRUE(service_->Load(&storage));
   // TODO(pstew): A single string property in the service is tested as
-  // a sentinel that properties are being set and reset at the rit times.
+  // a sentinel that properties are being set and reset at the right times.
   // However, since property load/store is essentially a manual process,
   // it is error prone and should either be exhaustively unit-tested or
   // a generic framework for registering loaded/stored properties should
@@ -282,13 +285,14 @@ TEST_F(ServiceTest, State) {
   ServiceRefPtr service_ref(service_);
 
   EXPECT_CALL(*dynamic_cast<ServiceMockAdaptor *>(service_->adaptor_.get()),
-              EmitStringChanged(flimflam::kStateProperty, _)).Times(5);
+              EmitStringChanged(flimflam::kStateProperty, _)).Times(7);
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateConnected);
   // A second state change shouldn't cause another update
   service_->SetState(Service::kStateConnected);
   EXPECT_EQ(Service::kStateConnected, service_->state());
   EXPECT_EQ(Service::kFailureUnknown, service_->failure());
+  EXPECT_TRUE(service_->has_ever_connected_);
 
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateDisconnected);
@@ -311,6 +315,35 @@ TEST_F(ServiceTest, State) {
   EXPECT_GT(service_->failed_time_, 0);
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kFailurePinMissing, service_->failure());
+
+  // If the Service has a Profile, the profile should be saved when
+  // the service enters kStateConnected. (The case where the service
+  // doesn't have a profile is tested above.)
+  MockProfileRefPtr mock_profile(
+      new MockProfile(control_interface(), &mock_manager_));
+  NiceMock<MockStore> storage;
+  service_->set_profile(mock_profile);
+  service_->has_ever_connected_ = false;
+  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  EXPECT_CALL(*mock_profile, GetConstStorage())
+      .WillOnce(Return(&storage));
+  EXPECT_CALL(*mock_profile, UpdateService(service_ref));
+  service_->SetState(Service::kStateConnected);
+  EXPECT_TRUE(service_->has_ever_connected_);
+  service_->set_profile(NULL);  // Break reference cycle.
+
+  // Similar to the above, but emulate an emphemeral profile, which
+  // has no storage. We can't update the service in the profile, but
+  // we should not crash.
+  service_->state_ = Service::kStateIdle;  // Skips state change logic.
+  service_->set_profile(mock_profile);
+  service_->has_ever_connected_ = false;
+  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  EXPECT_CALL(*mock_profile, GetConstStorage()).
+      WillOnce(Return(static_cast<StoreInterface *>(NULL)));
+  service_->SetState(Service::kStateConnected);
+  EXPECT_TRUE(service_->has_ever_connected_);
+  service_->set_profile(NULL);  // Break reference cycle.
 }
 
 TEST_F(ServiceTest, ActivateCellularModem) {

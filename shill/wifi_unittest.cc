@@ -33,6 +33,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
+#include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
@@ -61,6 +62,7 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::DefaultValue;
 using ::testing::DoAll;
+using ::testing::EndsWith;
 using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::Mock;
@@ -314,7 +316,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     return WiFiEndpoint::MakeOpenEndpoint(
         &proxy_factory_, NULL, ssid, bssid, 0, 0);
   }
-  MockWiFiServiceRefPtr MakeMockService() {
+  MockWiFiServiceRefPtr MakeMockService(const std::string &security) {
     vector<uint8_t> ssid(1, 'a');
     return new MockWiFiService(
         &control_interface_,
@@ -324,7 +326,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
         wifi_,
         ssid,
         flimflam::kModeManaged,
-        flimflam::kSecurityNone,
+        security,
         false);
   }
   void RemoveBSS(const ::DBus::Path &bss_path);
@@ -352,6 +354,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   void ReportStateChanged(const string &new_state) {
     wifi_->StateChanged(new_state);
   }
+  void SetPendingService(const WiFiServiceRefPtr &service) {
+    wifi_->pending_service_ = service;
+  }
   void SetScanInterval(uint16_t interval_seconds) {
     wifi_->SetScanInterval(interval_seconds, NULL);
   }
@@ -365,20 +370,20 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
                 RemoveStateChangeCallback(wifi_->UniqueName()));
     wifi_->SetEnabled(false);  // Stop(NULL, ResultCallback());
   }
-  void GetOpenService(const char *service_type,
-                      const char *ssid,
-                      const char *mode,
-                      Error *result) {
-    GetServiceInner(service_type, ssid, mode, NULL, NULL, false, result);
+  WiFiServiceRefPtr GetOpenService(const char *service_type,
+                                   const char *ssid,
+                                   const char *mode,
+                                   Error *result) {
+    return GetServiceInner(service_type, ssid, mode, NULL, NULL, false, result);
   }
-  void GetService(const char *service_type,
-                  const char *ssid,
-                  const char *mode,
-                  const char *security,
-                  const char *passphrase,
-                  Error *result) {
-    GetServiceInner(service_type, ssid, mode, security, passphrase, false,
-                    result);
+  WiFiServiceRefPtr GetService(const char *service_type,
+                               const char *ssid,
+                               const char *mode,
+                               const char *security,
+                               const char *passphrase,
+                               Error *result) {
+    return GetServiceInner(service_type, ssid, mode, security, passphrase,
+                           false, result);
   }
   WiFiServiceRefPtr GetServiceInner(const char *service_type,
                                     const char *ssid,
@@ -1369,7 +1374,7 @@ TEST_F(WiFiMainTest, StateChangeWithService) {
   // Forward transition should trigger a Service state change.
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
-  MockWiFiServiceRefPtr service = MakeMockService();
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
   InitiateConnect(service);
   EXPECT_CALL(*service.get(), SetState(Service::kStateAssociating));
   ReportStateChanged(wpa_supplicant::kInterfaceStateAssociated);
@@ -1386,7 +1391,7 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
-  MockWiFiServiceRefPtr service = MakeMockService();
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
   EXPECT_CALL(*service.get(), SetState(Service::kStateConfiguring));
   InitiateConnect(service);
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
@@ -1633,7 +1638,7 @@ TEST_F(WiFiMainTest, AddNetworkArgs) {
 
 TEST_F(WiFiMainTest, StateAndIPIgnoreLinkEvent) {
   StartWiFi();
-  MockWiFiServiceRefPtr service = MakeMockService();
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
   InitiateConnect(service);
   EXPECT_CALL(*service.get(), SetState(_)).Times(0);
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
@@ -1872,6 +1877,51 @@ TEST_F(WiFiMainTest, NoScanOnDisconnectWithoutHidden) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
   ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, SuspectCredentialsOpen) {
+  Error e;
+  WiFiServiceRefPtr service = GetOpenService(
+      flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged, &e);
+  ReportStateChanged(wpa_supplicant::kInterfaceState4WayHandshake);
+  EXPECT_FALSE(service->has_ever_connected());
+  EXPECT_FALSE(wifi()->SuspectCredentials(*service));
+}
+
+TEST_F(WiFiMainTest, SuspectCredentialsWPANeverConnected) {
+  Error e;
+  WiFiServiceRefPtr service =
+      GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+                 flimflam::kSecurityWpa, "abcdefgh", &e);
+  ReportStateChanged(wpa_supplicant::kInterfaceState4WayHandshake);
+  EXPECT_FALSE(service->has_ever_connected());
+  EXPECT_TRUE(wifi()->SuspectCredentials(*service));
+}
+
+TEST_F(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected) {
+  Error e;
+  WiFiServiceRefPtr service =
+      GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+                 flimflam::kSecurityWpa, "abcdefgh", &e);
+  ReportStateChanged(wpa_supplicant::kInterfaceState4WayHandshake);
+  service->has_ever_connected_ = true;
+  EXPECT_FALSE(wifi()->SuspectCredentials(*service));
+}
+
+TEST_F(WiFiMainTest, SuspectCredentialsYieldFailure) {
+  ScopedMockLog log;
+  Error e;
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityWpa);
+  SetPendingService(service);
+  ReportStateChanged(wpa_supplicant::kInterfaceState4WayHandshake);
+  EXPECT_FALSE(service->has_ever_connected());
+
+  EXPECT_CALL(*service, SetFailure(Service::kFailureBadCredentials));
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("Bad passphrase?")));
+  ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
+  EXPECT_EQ(Service::kStateIdle, service->state());
+  EXPECT_TRUE(service->IsFailed());
 }
 
 }  // namespace shill

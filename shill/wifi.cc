@@ -566,20 +566,22 @@ void WiFi::HandleDisconnect() {
                   << " (or failed to connect to) "
                   << affected_service->friendly_name() << ", "
                   << "but could not find supplicant network to disable.";
-    return;
+  } else {
+    // TODO(quiche): Reconsider giving up immediately. Maybe give
+    // wpa_supplicant some time to retry, first.
+    supplicant_interface_proxy_->RemoveNetwork(rpcid_it->second);
   }
 
   SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "
                 << " (or failed to connect to) "
                 << affected_service->friendly_name();
-  // TODO(quiche): Reconsider giving up immediately. Maybe give
-  // wpa_supplicant some time to retry, first.
-  supplicant_interface_proxy_->RemoveNetwork(rpcid_it->second);
-  // TOOD(quiche): In the event that the disconnect was deliberate, we
-  // might want to go to SetState(kStateIdle), rather than reporting a
-  // failure. crosbug.com/24700.
-  // TODO(quiche): In the event that we suspect a password failure,
-  // we should not be silent. crosbug.com/23211.
+  if (SuspectCredentials(*affected_service)) {
+    // If we suspect bad credentials, set failure, to trigger an error
+    // mole in Chrome. Failure is a transient state, and we'll
+    // transition out of it immediately (after this if block).
+    affected_service->SetFailure(Service::kFailureBadCredentials);
+    LOG(ERROR) << "Connection failure during 4-Way Handshake. Bad passphrase?";
+  }
   affected_service->SetFailureSilent(Service::kFailureUnknown);
   affected_service->NotifyCurrentEndpoint(NULL);
   metrics()->NotifyServiceDisconnect(affected_service);
@@ -1079,6 +1081,17 @@ void WiFi::StateChanged(const string &new_state) {
     // kInterfaceStateDisconnected, in favor of observing the corresponding
     // change in CurrentBSS.
   }
+}
+
+bool WiFi::SuspectCredentials(const WiFiService &service) const {
+  if (!service.IsSecurityMatch(flimflam::kSecurityPsk)) {
+    // We can only diagnose credentials for WPA/RSN networks. For
+    // others, assume the failure was not credential related.
+    return false;
+  }
+
+  return supplicant_state_ == wpa_supplicant::kInterfaceState4WayHandshake &&
+      !service.has_ever_connected();
 }
 
 // Used by Manager.
