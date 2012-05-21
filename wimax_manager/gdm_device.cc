@@ -164,6 +164,7 @@ bool GdmDevice::ScanNetworks() {
     return true;
   }
 
+  bool networks_added = false;
   NetworkMap *networks = mutable_networks();
   set<Network::Identifier> networks_to_remove = GetKeysOfMap(*networks);
 
@@ -174,6 +175,7 @@ bool GdmDevice::ScanNetworks() {
       // Add a newly found network.
       scanned_networks[i]->CreateDBusAdaptor();
       (*networks)[identifier] = scanned_networks[i];
+      networks_added = true;
     } else {
       // Update an existing network.
       network_iterator->second->UpdateFrom(*scanned_networks[i]);
@@ -184,7 +186,11 @@ bool GdmDevice::ScanNetworks() {
   // Remove networks that disappeared.
   RemoveKeysFromMap(networks, networks_to_remove);
 
-  UpdateNetworks();
+  // Only call UpdateNetworks(), which emits NetworksChanged signal, when
+  // a network is added or removed.
+  if (networks_added || !networks_to_remove.empty())
+    UpdateNetworks();
+
   return true;
 }
 
