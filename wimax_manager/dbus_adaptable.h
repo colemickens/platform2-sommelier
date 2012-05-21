@@ -6,6 +6,8 @@
 #define WIMAX_MANAGER_DBUS_ADAPTABLE_H_
 
 #include <base/basictypes.h>
+#include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 #include <dbus-c++/dbus.h>
 
 #include "wimax_manager/dbus_control.h"
@@ -19,6 +21,9 @@ class DBusAdaptable {
   ~DBusAdaptable() {}
 
   void CreateDBusAdaptor() {
+    if (dbus_adaptor_.get())
+      return;
+
     dbus_adaptor_.reset(new(std::nothrow) Adaptor(
         DBusControl::GetConnection(), static_cast<Adaptee *>(this)));
     CHECK(dbus_adaptor_.get());

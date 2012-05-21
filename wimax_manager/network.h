@@ -5,10 +5,11 @@
 #ifndef WIMAX_MANAGER_NETWORK_H_
 #define WIMAX_MANAGER_NETWORK_H_
 
+#include <map>
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
+#include <base/memory/ref_counted.h>
 
 #include "wimax_manager/dbus_adaptable.h"
 
@@ -23,25 +24,34 @@ enum NetworkType {
 
 class NetworkDBusAdaptor;
 
-class Network : public DBusAdaptable<Network, NetworkDBusAdaptor> {
+class Network : public base::RefCounted<Network>,
+                public DBusAdaptable<Network, NetworkDBusAdaptor> {
  public:
+  typedef uint32 Identifier;
+
+  static const int kMaxCINR = 53;
+  static const int kMinCINR = -10;
   static const int kMaxRSSI = -40;
   static const int kMinRSSI = -123;
 
-  Network(uint32 identifier, const std::string &name, NetworkType type,
+  Network(Identifier identifier, const std::string &name, NetworkType type,
           int cinr, int rssi);
-  ~Network();
 
+  void UpdateFrom(const Network &network);
   int GetSignalStrength() const;
 
-  uint32 identifier() const { return identifier_; }
+  Identifier identifier() const { return identifier_; }
   const std::string &name() const { return name_; }
   NetworkType type() const { return type_; }
   int cinr() const { return cinr_; }
   int rssi() const { return rssi_; }
 
  private:
-  uint32 identifier_;
+  friend class base::RefCounted<Network>;
+
+  ~Network();
+
+  Identifier identifier_;
   std::string name_;
   NetworkType type_;
   int cinr_;
@@ -49,6 +59,9 @@ class Network : public DBusAdaptable<Network, NetworkDBusAdaptor> {
 
   DISALLOW_COPY_AND_ASSIGN(Network);
 };
+
+typedef scoped_refptr<Network> NetworkRefPtr;
+typedef std::map<Network::Identifier, NetworkRefPtr> NetworkMap;
 
 }  // namespace wimax_manager
 

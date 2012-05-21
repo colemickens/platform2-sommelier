@@ -10,13 +10,24 @@ using std::string;
 
 namespace wimax_manager {
 
-Network::Network(uint32 identifier, const string &name, NetworkType type,
+Network::Network(Identifier identifier, const string &name, NetworkType type,
                  int cinr, int rssi)
     : identifier_(identifier), name_(name), type_(type),
       cinr_(cinr), rssi_(rssi) {
 }
 
 Network::~Network() {
+}
+
+void Network::UpdateFrom(const Network &network) {
+  identifier_ = network.identifier_;
+  name_ = network.name_;
+  type_ = network.type_;
+  cinr_ = network.cinr_;
+  rssi_ = network.rssi_;
+
+  if (dbus_adaptor())
+    dbus_adaptor()->UpdateProperties();
 }
 
 int Network::GetSignalStrength() const {

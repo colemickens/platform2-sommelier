@@ -103,7 +103,7 @@ void DeviceDBusAdaptor::ScanNetworks(DBus::Error &error) {  // NOLINT
 void DeviceDBusAdaptor::Connect(const DBus::Path &network_object_path,
                                 const map<string, DBus::Variant> &parameters,
                                 DBus::Error &error) {  // NOLINT
-  const Network *network = FindNetworkByDBusObjectPath(network_object_path);
+  NetworkRefPtr network = FindNetworkByDBusObjectPath(network_object_path);
   if (!network) {
     SetError(&error, "Could not find network ' " + network_object_path + "'.");
     return;
@@ -130,22 +130,22 @@ void DeviceDBusAdaptor::Disconnect(DBus::Error &error) {  // NOLINT
 
 void DeviceDBusAdaptor::UpdateNetworks() {
   vector<DBus::Path> network_paths;
-  const vector<Network *> &networks = device_->networks();
-  for (vector<Network *>::const_iterator network_iterator = networks.begin();
+  const NetworkMap &networks = device_->networks();
+  for (NetworkMap::const_iterator network_iterator = networks.begin();
        network_iterator != networks.end(); ++network_iterator) {
-    network_paths.push_back((*network_iterator)->dbus_object_path());
+    network_paths.push_back(network_iterator->second->dbus_object_path());
   }
   Networks = network_paths;
   NetworksChanged(network_paths);
 }
 
-const Network *DeviceDBusAdaptor::FindNetworkByDBusObjectPath(
+NetworkRefPtr DeviceDBusAdaptor::FindNetworkByDBusObjectPath(
     const DBus::Path &network_object_path) const {
-  const vector<Network *> &networks = device_->networks();
-  for (vector<Network *>::const_iterator network_iterator = networks.begin();
+  const NetworkMap &networks = device_->networks();
+  for (NetworkMap::const_iterator network_iterator = networks.begin();
        network_iterator != networks.end(); ++network_iterator) {
-    if ((*network_iterator)->dbus_object_path() == network_object_path)
-      return *network_iterator;
+    if (network_iterator->second->dbus_object_path() == network_object_path)
+      return network_iterator->second;
   }
   return NULL;
 }

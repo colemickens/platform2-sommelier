@@ -12,15 +12,15 @@
 #include "wimax_manager/gdm_driver.h"
 #include "wimax_manager/network.h"
 #include "wimax_manager/network_dbus_adaptor.h"
+#include "wimax_manager/utility.h"
 
+using std::set;
 using std::string;
 using std::vector;
 
 namespace wimax_manager {
 
 namespace {
-
-const int kMaxNumberOfTrials = 10;
 
 template <size_t N>
 bool CopyEAPParameterToUInt8Array(const base::DictionaryValue &parameters,
@@ -44,6 +44,15 @@ bool CopyEAPParameterToUInt8Array(const base::DictionaryValue &parameters,
   return true;
 }
 
+gboolean OnNetworkScan(gpointer data) {
+  CHECK(data);
+
+  reinterpret_cast<GdmDevice *>(data)->ScanNetworks();
+
+  // Return TRUE to keep calling this function repeatedly.
+  return TRUE;
+}
+
 }  // namespace
 
 GdmDevice::GdmDevice(uint8 index, const string &name,
@@ -52,7 +61,8 @@ GdmDevice::GdmDevice(uint8 index, const string &name,
       driver_(driver),
       open_(false),
       status_(WIMAX_API_DEVICE_STATUS_UnInitialized),
-      connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging) {
+      connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging),
+      scan_timeout_id_(0) {
 }
 
 GdmDevice::~GdmDevice() {
@@ -111,12 +121,28 @@ bool GdmDevice::Enable() {
     return false;
   }
 
+  // Set OnNetworkScan() to be called repeatedly at |scan_interval_| intervals
+  // to scan and update the list of networks via ScanNetworks().
+  //
+  // TODO(benchan): Refactor common functionalities like periodic network scan
+  // to the Device base class.
+  if (scan_timeout_id_ == 0) {
+    scan_timeout_id_ =
+        g_timeout_add_seconds(scan_interval(), OnNetworkScan, this);
+  }
+
   return true;
 }
 
 bool GdmDevice::Disable() {
   if (!driver_ || !open_)
     return false;
+
+  // Cancel the periodic calls to OnNetworkScan().
+  if (scan_timeout_id_ != 0) {
+    g_source_remove(scan_timeout_id_);
+    scan_timeout_id_ = 0;
+  }
 
   if (!driver_->PowerOffDeviceRF(this)) {
     LOG(ERROR) << "Failed to power off RF of device '" << name() << "'";
@@ -130,22 +156,33 @@ bool GdmDevice::ScanNetworks() {
   if (!Open())
     return false;
 
-  ScopedVector<Network> *networks = mutable_networks();
-  networks->reset();
-
-  for (int num_trials = 0; num_trials < kMaxNumberOfTrials; ++num_trials) {
-    // TODO(benchan): Fix this code.
-    sleep(2);
-    if (!driver_->GetNetworksForDevice(this, &networks->get())) {
-      LOG(ERROR) << "Failed to get list of networks for device '"
+  vector<NetworkRefPtr> scanned_networks;
+  if (!driver_->GetNetworksForDevice(this, &scanned_networks)) {
+    LOG(WARNING) << "Failed to get list of networks for device '"
                  << name() << "'";
-    }
-    if (!networks->empty())
-      break;
+    // Ignore error and wait for next scan.
+    return true;
   }
 
-  for (size_t i = 0; i < networks->size(); ++i)
-    (*networks)[i]->CreateDBusAdaptor();
+  NetworkMap *networks = mutable_networks();
+  set<Network::Identifier> networks_to_remove = GetKeysOfMap(*networks);
+
+  for (size_t i = 0; i < scanned_networks.size(); ++i) {
+    Network::Identifier identifier = scanned_networks[i]->identifier();
+    NetworkMap::iterator network_iterator = networks->find(identifier);
+    if (network_iterator == networks->end()) {
+      // Add a newly found network.
+      scanned_networks[i]->CreateDBusAdaptor();
+      (*networks)[identifier] = scanned_networks[i];
+    } else {
+      // Update an existing network.
+      network_iterator->second->UpdateFrom(*scanned_networks[i]);
+    }
+    networks_to_remove.erase(identifier);
+  }
+
+  // Remove networks that disappeared.
+  RemoveKeysFromMap(networks, networks_to_remove);
 
   UpdateNetworks();
   return true;

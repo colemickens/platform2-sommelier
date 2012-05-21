@@ -6,7 +6,6 @@
 #define WIMAX_MANAGER_DEVICE_H_
 
 #include <string>
-#include <vector>
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
@@ -34,17 +33,21 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
 
   uint8 index() const { return index_; }
   const std::string &name() const { return name_; }
-  const std::vector<Network *> &networks() const { return networks_.get(); }
+  const NetworkMap &networks() const { return networks_; }
+
+  int scan_interval() const { return scan_interval_; }
+  void set_scan_interval(int scan_interval) { scan_interval_ = scan_interval; }
 
  protected:
   void UpdateNetworks();
 
-  ScopedVector<Network> *mutable_networks() { return &networks_; }
+  NetworkMap *mutable_networks() { return &networks_; }
 
  private:
   uint8 index_;
   std::string name_;
-  ScopedVector<Network> networks_;
+  NetworkMap networks_;
+  int scan_interval_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

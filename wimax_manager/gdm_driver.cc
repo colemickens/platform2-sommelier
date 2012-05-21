@@ -306,7 +306,7 @@ bool GdmDriver::PowerOffDeviceRF(GdmDevice *device) {
 }
 
 bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
-                                     vector<Network *> *networks) {
+                                     vector<NetworkRefPtr> *networks) {
   CHECK(networks);
 
   GDEV_ID device_id = GetDeviceId(device);
@@ -341,14 +341,14 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
     }
 
     NetworkType network_type = ConvertNetworkType(network_list[i].networkType);
-    int network_cinr = network_list[i].CINR - 10;
-    int network_rssi = network_list[i].RSSI - 123;
+    int network_cinr = network_list[i].CINR + Network::kMinCINR;
+    int network_rssi = network_list[i].RSSI + Network::kMinRSSI;
     LOG(INFO) << base::StringPrintf(
         "Found network '%s': type = '%s', id = %08x, CINR = %d, RSSI = %d",
         network_name.c_str(), GetNetworkTypeDescription(network_type).c_str(),
         network_id, network_cinr, network_rssi);
 
-    Network *network = new(std::nothrow) Network(
+    NetworkRefPtr network = new(std::nothrow) Network(
         network_id, network_name, network_type, network_cinr, network_rssi);
     CHECK(network);
     networks->push_back(network);

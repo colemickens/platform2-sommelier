@@ -9,6 +9,8 @@ extern "C" {
 #include <gct/gctapi.h>
 }  // extern "C"
 
+#include <glib.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -54,6 +56,7 @@ class GdmDevice : public Device {
   WIMAX_API_DEVICE_STATUS status_;
   WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress_;
   uint8 mac_address_[6];
+  guint scan_timeout_id_;
 
   DISALLOW_COPY_AND_ASSIGN(GdmDevice);
 };

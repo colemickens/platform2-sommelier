@@ -16,11 +16,11 @@ extern "C" {
 #include <base/memory/weak_ptr.h>
 
 #include "wimax_manager/driver.h"
+#include "wimax_manager/network.h"
 
 namespace wimax_manager {
 
 class GdmDevice;
-class Network;
 
 class GdmDriver : public Driver,
                   public base::SupportsWeakPtr<GdmDriver> {
@@ -41,7 +41,7 @@ class GdmDriver : public Driver,
   bool PowerOnDeviceRF(GdmDevice *device);
   bool PowerOffDeviceRF(GdmDevice *device);
   bool GetNetworksForDevice(GdmDevice *device,
-                            std::vector<Network *> *networks);
+                            std::vector<NetworkRefPtr> *networks);
   bool ConnectDeviceToNetwork(GdmDevice *device, const Network &network);
   bool DisconnectDeviceFromNetwork(GdmDevice *device);
 

@@ -22,6 +22,8 @@ class NetworkDBusAdaptor : public org::chromium::WiMaxManager::Network_adaptor,
 
   static std::string GetNetworkObjectPath(const Network &network);
 
+  void UpdateProperties();
+
  private:
   Network *network_;
 

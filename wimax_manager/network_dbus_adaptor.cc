@@ -19,12 +19,7 @@ NetworkDBusAdaptor::NetworkDBusAdaptor(DBus::Connection *connection,
                                        Network *network)
     : DBusAdaptor(connection, GetNetworkObjectPath(*network)),
       network_(network) {
-  Identifier = network->identifier();
-  Name = network->name();
-  Type = network->type();
-  CINR = network->cinr();
-  RSSI = network->rssi();
-  SignalStrength = network->GetSignalStrength();
+  UpdateProperties();
 }
 
 NetworkDBusAdaptor::~NetworkDBusAdaptor() {
@@ -34,6 +29,15 @@ NetworkDBusAdaptor::~NetworkDBusAdaptor() {
 string NetworkDBusAdaptor::GetNetworkObjectPath(const Network &network) {
   return base::StringPrintf("%s%08x", kNetworkObjectPathPrefix,
                             network.identifier());
+}
+
+void NetworkDBusAdaptor::UpdateProperties() {
+  Identifier = network_->identifier();
+  Name = network_->name();
+  Type = network_->type();
+  CINR = network_->cinr();
+  RSSI = network_->rssi();
+  SignalStrength = network_->GetSignalStrength();
 }
 
 }  // namespace wimax_manager

@@ -10,11 +10,11 @@
 
 #include "wimax_manager/dbus_adaptor.h"
 #include "wimax_manager/dbus_bindings/device.h"
+#include "wimax_manager/network.h"
 
 namespace wimax_manager {
 
 class Device;
-class Network;
 
 class DeviceDBusAdaptor : public org::chromium::WiMaxManager::Device_adaptor,
                           public DBusAdaptor {
@@ -35,7 +35,7 @@ class DeviceDBusAdaptor : public org::chromium::WiMaxManager::Device_adaptor,
   void UpdateNetworks();
 
  private:
-  const Network *FindNetworkByDBusObjectPath(
+  NetworkRefPtr FindNetworkByDBusObjectPath(
       const DBus::Path &network_object_path) const;
 
   Device *device_;

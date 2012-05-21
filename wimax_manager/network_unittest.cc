@@ -9,6 +9,8 @@
 namespace wimax_manager {
 
 class NetworkTest : public testing::Test {
+ protected:
+  NetworkRefPtr network_;
 };
 
 TEST_F(NetworkTest, GetSignalStrength) {
@@ -23,22 +25,17 @@ TEST_F(NetworkTest, GetSignalStrength) {
             arraysize(kExpectedStrengths));
 
   for (int rssi = Network::kMinRSSI; rssi <= Network::kMaxRSSI; ++rssi) {
-    Network network(1, "", kNetworkHome, 0, rssi);
+    network_ = new Network(1, "", kNetworkHome, 0, rssi);
     EXPECT_EQ(kExpectedStrengths[rssi - Network::kMinRSSI],
-              network.GetSignalStrength());
+              network_->GetSignalStrength());
   }
 
-  {
-    Network network(1, "", kNetworkHome, 0, Network::kMinRSSI - 1);
-    EXPECT_EQ(kExpectedStrengths[0], network.GetSignalStrength());
-  }
+  network_ = new Network(1, "", kNetworkHome, 0, Network::kMinRSSI - 1);
+  EXPECT_EQ(kExpectedStrengths[0], network_->GetSignalStrength());
 
-  {
-    Network network(1, "", kNetworkHome, 0, Network::kMaxRSSI + 1);
-    EXPECT_EQ(kExpectedStrengths[arraysize(kExpectedStrengths) - 1],
-              network.GetSignalStrength());
-  }
+  network_ = new Network(1, "", kNetworkHome, 0, Network::kMaxRSSI + 1);
+  EXPECT_EQ(kExpectedStrengths[arraysize(kExpectedStrengths) - 1],
+            network_->GetSignalStrength());
 }
-
 
 }  // namespace shill
