@@ -19,6 +19,9 @@ NetworkDBusAdaptor::NetworkDBusAdaptor(DBus::Connection *connection,
                                        Network *network)
     : DBusAdaptor(connection, GetNetworkObjectPath(*network)),
       network_(network) {
+  // Initialize |SignalStrength| before UpdateProperties() reads it for
+  // the first time.
+  SignalStrength = network_->GetSignalStrength();
   UpdateProperties();
 }
 
@@ -37,7 +40,11 @@ void NetworkDBusAdaptor::UpdateProperties() {
   Type = network_->type();
   CINR = network_->cinr();
   RSSI = network_->rssi();
-  SignalStrength = network_->GetSignalStrength();
+  int signal_strength = network_->GetSignalStrength();
+  if (SignalStrength() != signal_strength) {
+    SignalStrength = signal_strength;
+    SignalStrengthChanged(signal_strength);
+  }
 }
 
 }  // namespace wimax_manager
