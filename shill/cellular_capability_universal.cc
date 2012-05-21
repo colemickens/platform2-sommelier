@@ -1036,12 +1036,15 @@ void CellularCapabilityUniversal::OnModemStateChanged(
 void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
     uint32 access_technologies) {
   if (access_technologies_ != access_technologies) {
+    const string old_type_string(GetTypeString());
     access_technologies_ = access_technologies;
-    // TODO(jglasgow): address layering violation of emitting change
-    // signal here for a property owned by Cellular.
-    cellular()->adaptor()->EmitStringChanged(
-        flimflam::kTechnologyFamilyProperty,
-        GetTypeString());
+    const string new_type_string(GetTypeString());
+    if (new_type_string != old_type_string) {
+      // TODO(jglasgow): address layering violation of emitting change
+      // signal here for a property owned by Cellular.
+      cellular()->adaptor()->EmitStringChanged(
+          flimflam::kTechnologyFamilyProperty, new_type_string);
+    }
     if (cellular()->service().get()) {
       cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
     }

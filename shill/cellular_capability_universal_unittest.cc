@@ -371,6 +371,8 @@ TEST_F(CellularCapabilityUniversalTest, PropertiesChanged) {
   EXPECT_EQ(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN,
             capability_->access_technologies_);
   EXPECT_FALSE(capability_->sim_proxy_.get());
+  EXPECT_CALL(*device_adaptor_, EmitStringChanged(
+      flimflam::kTechnologyFamilyProperty, flimflam::kTechnologyFamilyGsm));
   capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
                                        modem_properties, vector<string>());
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
@@ -389,6 +391,37 @@ TEST_F(CellularCapabilityUniversalTest, PropertiesChanged) {
                                        modem3gpp_properties,
                                        vector<string>());
   EXPECT_EQ(kImei, capability_->imei_);
+
+  // Expect to see changes when the family changes
+  modem_properties.clear();
+  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
+      writer().append_uint32(MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
+  EXPECT_CALL(*device_adaptor_, EmitStringChanged(
+      flimflam::kTechnologyFamilyProperty, flimflam::kTechnologyFamilyCdma)).
+      Times(1);
+  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                       modem_properties,
+                                       vector<string>());
+  // Back to LTE
+  modem_properties.clear();
+  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
+      writer().append_uint32(MM_MODEM_ACCESS_TECHNOLOGY_LTE);
+  EXPECT_CALL(*device_adaptor_, EmitStringChanged(
+      flimflam::kTechnologyFamilyProperty, flimflam::kTechnologyFamilyGsm)).
+      Times(1);
+  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                       modem_properties,
+                                       vector<string>());
+
+  // LTE & CDMA - the device adaptor should not be called!
+  modem_properties.clear();
+  modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
+      writer().append_uint32(MM_MODEM_ACCESS_TECHNOLOGY_LTE |
+                             MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
+  EXPECT_CALL(*device_adaptor_, EmitStringChanged(_, _)).Times(0);
+  capability_->OnDBusPropertiesChanged(MM_DBUS_INTERFACE_MODEM,
+                                       modem_properties,
+                                       vector<string>());
 }
 
 TEST_F(CellularCapabilityUniversalTest, SimPropertiesChanged) {
