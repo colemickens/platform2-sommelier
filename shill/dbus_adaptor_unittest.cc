@@ -218,16 +218,37 @@ TEST_F(DBusAdaptorTest, ClearProperty) {
 }
 
 TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {
-    map<string, ::DBus::Variant> args;
-    KeyValueStore args_kv;
-    Error error;
+  map<string, ::DBus::Variant> args;
+  KeyValueStore args_kv;
+  Error error;
 
-    args["string_arg"].writer().append_string("string");
-    args["bool_arg"].writer().append_bool(true);
-    DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &error);
-    EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ("string", args_kv.GetString("string_arg"));
-    EXPECT_EQ(true, args_kv.GetBool("bool_arg"));
+  args["string_arg"].writer().append_string("string");
+  args["bool_arg"].writer().append_bool(true);
+  DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ("string", args_kv.GetString("string_arg"));
+  EXPECT_EQ(true, args_kv.GetBool("bool_arg"));
+}
+
+TEST_F(DBusAdaptorTest, KeyValueStoreToVariant) {
+  static const char kStringKey[] = "StringKey";
+  static const char kStringValue[] = "StringValue";
+  static const char kBoolKey[] = "BoolKey";
+  const bool kBoolValue = true;
+  KeyValueStore store;
+  store.SetString(kStringKey, kStringValue);
+  store.SetBool(kBoolKey, kBoolValue);
+  DBus::Variant var = DBusAdaptor::KeyValueStoreToVariant(store);
+  ASSERT_TRUE(DBusAdaptor::IsKeyValueStore(var.signature()));
+  DBusPropertiesMap props = var.operator DBusPropertiesMap();
+  // Sanity test the result.
+  EXPECT_EQ(2, props.size());
+  string string_value;
+  EXPECT_TRUE(DBusProperties::GetString(props, kStringKey, &string_value));
+  EXPECT_EQ(kStringValue, string_value);
+  bool bool_value = !kBoolValue;
+  EXPECT_TRUE(DBusProperties::GetBool(props, kBoolKey, &bool_value));
+  EXPECT_EQ(kBoolValue, bool_value);
 }
 
 }  // namespace shill

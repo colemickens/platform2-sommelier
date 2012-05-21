@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DBUS_PROPERTIES_
-#define SHILL_DBUS_PROPERTIES_
+#ifndef SHILL_DBUS_PROPERTIES_H_
+#define SHILL_DBUS_PROPERTIES_H_
 
 #include <map>
 #include <string>
@@ -56,6 +56,9 @@ class DBusProperties {
       const std::vector<DBus::Path> &dbus_paths,
       RpcIdentifiers *rpc_identifiers);
 
+  static void ConvertKeyValueStoreToMap(
+      const KeyValueStore &store, DBusPropertiesMap *properties);
+
   static std::string KeysToString(const std::map<std::string,
                                   ::DBus::Variant> &args);
 
@@ -65,4 +68,4 @@ class DBusProperties {
 
 }  // namespace shill
 
-#endif  // SHILL_DBUS_PROPERTIES_
+#endif  // SHILL_DBUS_PROPERTIES_H_

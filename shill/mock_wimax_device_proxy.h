@@ -26,8 +26,8 @@ class MockWiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
   MOCK_METHOD3(ScanNetworks, void(Error *error,
                                   const ResultCallback &callback,
                                   int timeout));
-  MOCK_METHOD5(Connect, void(const DBus::Path &network,
-                             const DBusPropertiesMap &parameters,
+  MOCK_METHOD5(Connect, void(const RpcIdentifier &network,
+                             const KeyValueStore &parameters,
                              Error *error,
                              const ResultCallback &callback,
                              int timeout));

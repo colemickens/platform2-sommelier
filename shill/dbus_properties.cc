@@ -4,11 +4,13 @@
 
 #include "shill/dbus_properties.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
 #include "shill/scope_logger.h"
 
+using std::map;
 using std::string;
 using std::vector;
 
@@ -127,10 +129,35 @@ bool DBusProperties::GetRpcIdentifiers(const DBusPropertiesMap &properties,
 // static
 void DBusProperties::ConvertPathsToRpcIdentifiers(
     const vector<DBus::Path> &dbus_paths, RpcIdentifiers *rpc_identifiers) {
+  CHECK(rpc_identifiers);
   rpc_identifiers->clear();
   for (vector<DBus::Path>::const_iterator it = dbus_paths.begin();
        it != dbus_paths.end(); ++it) {
     rpc_identifiers->push_back(*it);
+  }
+}
+
+// static
+void DBusProperties::ConvertKeyValueStoreToMap(
+    const KeyValueStore &store, DBusPropertiesMap *properties) {
+  CHECK(properties);
+  properties->clear();
+  for (map<string, string>::const_iterator it =
+           store.string_properties().begin();
+       it != store.string_properties().end(); ++it) {
+    (*properties)[it->first].writer().append_string(it->second.c_str());
+  }
+  for (map<string, bool>::const_iterator it = store.bool_properties().begin();
+       it != store.bool_properties().end(); ++it) {
+    (*properties)[it->first].writer().append_bool(it->second);
+  }
+  for (map<string, int32>::const_iterator it = store.int_properties().begin();
+       it != store.int_properties().end(); ++it) {
+    (*properties)[it->first].writer().append_int32(it->second);
+  }
+  for (map<string, uint32>::const_iterator it = store.uint_properties().begin();
+       it != store.uint_properties().end(); ++it) {
+    (*properties)[it->first].writer().append_uint32(it->second);
   }
 }
 

@@ -12,6 +12,7 @@
 
 namespace shill {
 
+class KeyValueStore;
 class WiMaxNetworkProxyInterface;
 
 class WiMaxService : public Service {
@@ -25,7 +26,7 @@ class WiMaxService : public Service {
 
   // Returns the parameters to be passed to WiMaxManager.Device.Connect() when
   // connecting to the network associated with this service.
-  void GetConnectParameters(DBusPropertiesMap *parameters) const;
+  void GetConnectParameters(KeyValueStore *parameters) const;
 
   // Returns the RPC object path for the WiMaxManager.Network object associated
   // with this service. Must only be called after |proxy_| is set by Start().

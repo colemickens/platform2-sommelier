@@ -10,6 +10,7 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/key_value_store.h"
 #include "shill/scope_logger.h"
 #include "shill/technology.h"
 #include "shill/wimax.h"
@@ -37,15 +38,18 @@ WiMaxService::WiMaxService(ControlInterface *control,
 
 WiMaxService::~WiMaxService() {}
 
-void WiMaxService::GetConnectParameters(DBusPropertiesMap *parameters) const {
+void WiMaxService::GetConnectParameters(KeyValueStore *parameters) const {
   CHECK(parameters);
-
-  (*parameters)[wimax_manager::kEAPAnonymousIdentity].writer()
-      .append_string(eap().anonymous_identity.c_str());
-  (*parameters)[wimax_manager::kEAPUserIdentity].writer()
-      .append_string(eap().identity.c_str());
-  (*parameters)[wimax_manager::kEAPUserPassword].writer()
-      .append_string(eap().password.c_str());
+  if (!eap().anonymous_identity.empty()) {
+    parameters->SetString(wimax_manager::kEAPAnonymousIdentity,
+                          eap().anonymous_identity);
+  }
+  if (!eap().identity.empty()) {
+    parameters->SetString(wimax_manager::kEAPUserIdentity, eap().identity);
+  }
+  if (!eap().password.empty()) {
+    parameters->SetString(wimax_manager::kEAPUserPassword, eap().password);
+  }
 }
 
 RpcIdentifier WiMaxService::GetNetworkObjectPath() const {

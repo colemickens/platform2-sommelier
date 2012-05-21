@@ -7,6 +7,7 @@
 #include <base/bind.h>
 #include <base/stringprintf.h>
 
+#include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/proxy_factory.h"
 #include "shill/scope_logger.h"
@@ -93,7 +94,7 @@ void WiMax::ConnectTo(const WiMaxServiceRefPtr &service, Error *error) {
   service->SetState(Service::kStateAssociating);
   pending_service_ = service;
 
-  DBusPropertiesMap parameters;
+  KeyValueStore parameters;
   service->GetConnectParameters(&parameters);
   proxy_->Connect(
       service->GetNetworkObjectPath(), parameters,

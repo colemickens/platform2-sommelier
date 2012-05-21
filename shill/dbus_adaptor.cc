@@ -323,42 +323,10 @@ void DBusAdaptor::ArgsToKeyValueStore(
 // static
 ::DBus::Variant DBusAdaptor::KeyValueStoreToVariant(
     const KeyValueStore &value) {
+  DBusPropertiesMap props;
+  DBusProperties::ConvertKeyValueStoreToMap(value, &props);
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
-  map<string, ::DBus::Variant> props;
-  {
-    map<string, string>::const_iterator it;
-    for (it = value.string_properties().begin();
-         it != value.string_properties().end();
-         ++it) {
-      ::DBus::Variant vv;
-      ::DBus::MessageIter writer = vv.writer();
-      writer.append_string(it->second.c_str());
-      props[it->first] = vv;
-    }
-  }
-  {
-    map<string, bool>::const_iterator it;
-    for (it = value.bool_properties().begin();
-         it != value.bool_properties().end();
-         ++it) {
-      ::DBus::Variant vv;
-      ::DBus::MessageIter writer = vv.writer();
-      writer.append_bool(it->second);
-      props[it->first] = vv;
-    }
-  }
-  {
-    map<string, uint32>::const_iterator it;
-    for (it = value.uint_properties().begin();
-         it != value.uint_properties().end();
-         ++it) {
-      ::DBus::Variant vv;
-      ::DBus::MessageIter writer = vv.writer();
-      writer.append_uint32(it->second);
-      props[it->first] = vv;
-    }
-  }
   writer << props;
   return v;
 }

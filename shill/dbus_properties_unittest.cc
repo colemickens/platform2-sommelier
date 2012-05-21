@@ -135,4 +135,36 @@ TEST_F(DBusPropertiesTest, ConvertPathsToRpcIdentifiers) {
   EXPECT_EQ(kTestPath1, ids[1]);
 }
 
+TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
+  static const char kStringKey[] = "StringKey";
+  static const char kStringValue[] = "StringValue";
+  static const char kBoolKey[] = "BoolKey";
+  const bool kBoolValue = true;
+  static const char kInt32Key[] = "Int32Key";
+  const int32 kInt32Value = 123;
+  static const char kUint32Key[] = "Uint32Key";
+  const uint32 kUint32Value = 654;
+  KeyValueStore store;
+  store.SetString(kStringKey, kStringValue);
+  store.SetBool(kBoolKey, kBoolValue);
+  store.SetInt(kInt32Key, kInt32Value);
+  store.SetUint(kUint32Key, kUint32Value);
+  DBusPropertiesMap props;
+  props["RandomKey"].writer().append_string("RandomValue");
+  DBusProperties::ConvertKeyValueStoreToMap(store, &props);
+  EXPECT_EQ(4, props.size());
+  string string_value;
+  EXPECT_TRUE(DBusProperties::GetString(props, kStringKey, &string_value));
+  EXPECT_EQ(kStringValue, string_value);
+  bool bool_value = !kBoolValue;
+  EXPECT_TRUE(DBusProperties::GetBool(props, kBoolKey, &bool_value));
+  EXPECT_EQ(kBoolValue, bool_value);
+  int32 int32_value = ~kInt32Value;
+  EXPECT_TRUE(DBusProperties::GetInt32(props, kInt32Key, &int32_value));
+  EXPECT_EQ(kInt32Value, int32_value);
+  uint32 uint32_value = ~kUint32Value;
+  EXPECT_TRUE(DBusProperties::GetUint32(props, kUint32Key, &uint32_value));
+  EXPECT_EQ(kUint32Value, uint32_value);
+}
+
 }  // namespace shill

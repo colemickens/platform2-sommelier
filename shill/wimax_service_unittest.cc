@@ -59,17 +59,12 @@ class WiMaxServiceTest : public testing::Test {
 
 TEST_F(WiMaxServiceTest, GetConnectParameters) {
   {
-    DBusPropertiesMap parameters;
+    KeyValueStore parameters;
     service_->GetConnectParameters(&parameters);
 
-    EXPECT_TRUE(ContainsKey(parameters, kEAPAnonymousIdentity));
-    EXPECT_STREQ("", parameters[kEAPAnonymousIdentity].reader().get_string());
-
-    EXPECT_TRUE(ContainsKey(parameters, kEAPUserIdentity));
-    EXPECT_STREQ("", parameters[kEAPUserIdentity].reader().get_string());
-
-    EXPECT_TRUE(ContainsKey(parameters, kEAPUserPassword));
-    EXPECT_STREQ("", parameters[kEAPUserPassword].reader().get_string());
+    EXPECT_FALSE(parameters.ContainsString(kEAPAnonymousIdentity));
+    EXPECT_FALSE(parameters.ContainsString(kEAPUserIdentity));
+    EXPECT_FALSE(parameters.ContainsString(kEAPUserPassword));
   }
   {
     Service::EapCredentials eap;
@@ -78,18 +73,13 @@ TEST_F(WiMaxServiceTest, GetConnectParameters) {
     eap.password = "TestPassword";
     service_->set_eap(eap);
 
-    DBusPropertiesMap parameters;
+    KeyValueStore parameters;
     service_->GetConnectParameters(&parameters);
 
-    EXPECT_TRUE(ContainsKey(parameters, kEAPAnonymousIdentity));
     EXPECT_EQ(eap.anonymous_identity,
-              parameters[kEAPAnonymousIdentity].reader().get_string());
-
-    EXPECT_TRUE(ContainsKey(parameters, kEAPUserIdentity));
-    EXPECT_EQ(eap.identity, parameters[kEAPUserIdentity].reader().get_string());
-
-    EXPECT_TRUE(ContainsKey(parameters, kEAPUserPassword));
-    EXPECT_EQ(eap.password, parameters[kEAPUserPassword].reader().get_string());
+              parameters.LookupString(kEAPAnonymousIdentity, ""));
+    EXPECT_EQ(eap.identity, parameters.LookupString(kEAPUserIdentity, ""));
+    EXPECT_EQ(eap.password, parameters.LookupString(kEAPUserPassword, ""));
   }
 }
 

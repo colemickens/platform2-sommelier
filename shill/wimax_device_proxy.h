@@ -29,8 +29,8 @@ class WiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
   virtual void ScanNetworks(Error *error,
                             const ResultCallback &callback,
                             int timeout);
-  virtual void Connect(const DBus::Path &network,
-                       const DBusPropertiesMap &parameters,
+  virtual void Connect(const RpcIdentifier &network,
+                       const KeyValueStore &parameters,
                        Error *error,
                        const ResultCallback &callback,
                        int timeout);

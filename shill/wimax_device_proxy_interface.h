@@ -10,11 +10,11 @@
 #include <base/basictypes.h>
 
 #include "shill/callbacks.h"
-#include "shill/dbus_properties.h"
 
 namespace shill {
 
 class Error;
+class KeyValueStore;
 
 // These are the methods that a WiMaxManager.Device proxy must support. The
 // interface is provided so that it can be mocked in tests.
@@ -33,8 +33,8 @@ class WiMaxDeviceProxyInterface {
   virtual void ScanNetworks(Error *error,
                             const ResultCallback &callback,
                             int timeout) = 0;
-  virtual void Connect(const DBus::Path &network,
-                       const DBusPropertiesMap &parameters,
+  virtual void Connect(const RpcIdentifier &network,
+                       const KeyValueStore &parameters,
                        Error *error,
                        const ResultCallback &callback,
                        int timeout) = 0;
