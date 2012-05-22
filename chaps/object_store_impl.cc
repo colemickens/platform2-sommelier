@@ -208,7 +208,6 @@ bool ObjectStoreImpl::LoadPrivateObjectBlobs(map<int, ObjectBlob>* blobs) {
 
 bool ObjectStoreImpl::LoadObjectBlobs(BlobType type,
                                       map<int, ObjectBlob>* blobs) {
-  vector<int> blobs_to_migrate;
   scoped_ptr<leveldb::Iterator> it(db_->NewIterator(leveldb::ReadOptions()));
   for (it->SeekToFirst(); it->Valid(); it->Next()) {
     BlobType it_type;
@@ -219,26 +218,11 @@ bool ObjectStoreImpl::LoadObjectBlobs(BlobType type,
       encrypted_blob.blob = it->value().ToString();
       ObjectBlob blob;
       if (!Decrypt(encrypted_blob, &blob)) {
-        if (DecryptOld(encrypted_blob, &blob)) {
-          // This object was encrypted the old way. Schedule it for migration.
-          blobs_to_migrate.push_back(id);
-        } else {
-          LOG(WARNING) << "Failed to decrypt object blob.";
-          continue;
-        }
+        LOG(WARNING) << "Failed to decrypt object blob.";
+        continue;
       }
       (*blobs)[id] = blob;
       blob_type_map_[id] = type;
-    }
-  }
-  for (size_t i = 0; i < blobs_to_migrate.size(); ++i) {
-    // Migrate by reencrypting.
-    LOG(INFO) << "Migrating object blob.";
-    int id = blobs_to_migrate[i];
-    if (!UpdateObjectBlob(id, (*blobs)[id])) {
-      LOG(WARNING) << "Failed to migrate object blob.";
-      blobs->erase(id);
-      blob_type_map_.erase(id);
     }
   }
   return true;
@@ -286,30 +270,6 @@ bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
                    string(),
                    cipher_text_no_hmac,
                    &plain_text->blob);
-}
-
-bool ObjectStoreImpl::DecryptOld(const ObjectBlob& cipher_text,
-                                 ObjectBlob* plain_text) {
-  if (cipher_text.is_private && key_.empty()) {
-    LOG(ERROR) << "The store encryption key has not been initialized.";
-    return false;
-  }
-  plain_text->is_private = cipher_text.is_private;
-  // Recover the IV from the input.
-  string key = cipher_text.is_private ? key_ : kObfuscationKey;
-  string plain_text_with_hmac;
-  if (!RunCipher(false, key, string(), cipher_text.blob, &plain_text_with_hmac))
-    return false;
-  // Check the MAC that was appended before encrypting.
-  if (!VerifyAndStripHMAC(plain_text_with_hmac, key, &plain_text->blob)) {
-    // Due to a past bug, public object MACs may have been generated with the
-    // master key.
-    if (cipher_text.is_private ||
-        !VerifyAndStripHMAC(plain_text_with_hmac, key_, &plain_text->blob)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 string ObjectStoreImpl::AppendHMAC(const string& input, const string& key) {
