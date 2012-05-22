@@ -38,6 +38,8 @@ class MockWiMax : public WiMax {
   MOCK_METHOD2(DisconnectFrom, void(const WiMaxServiceRefPtr &service,
                                     Error *error));
 
+  MOCK_METHOD0(StartLiveServices, void());
+
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMax);
 };

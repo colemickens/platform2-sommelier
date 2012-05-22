@@ -6,20 +6,24 @@
 
 #include <algorithm>
 
+#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/key_value_store.h"
 #include "shill/scope_logger.h"
+#include "shill/store_interface.h"
 #include "shill/technology.h"
 #include "shill/wimax.h"
-#include "shill/wimax_network_proxy_interface.h"
 
 using std::replace_if;
 using std::string;
 
 namespace shill {
+
+const char WiMaxService::kStorageNetworkId[] = "NetworkId";
+const char WiMaxService::kNetworkIdProperty[] = "NetworkId";
 
 WiMaxService::WiMaxService(ControlInterface *control,
                            EventDispatcher *dispatcher,
@@ -28,12 +32,14 @@ WiMaxService::WiMaxService(ControlInterface *control,
                            const WiMaxRefPtr &wimax)
     : Service(control, dispatcher, metrics, manager, Technology::kWiMax),
       wimax_(wimax),
-      network_identifier_(0),
       need_passphrase_(true) {
   PropertyStore *store = this->mutable_store();
   // TODO(benchan): Support networks that require no user credentials or
   // implicitly defined credentials.
   store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
+  store->RegisterConstString(kNetworkIdProperty, &network_id_);
+
+  IgnoreParameterForConfigure(kNetworkIdProperty);
 }
 
 WiMaxService::~WiMaxService() {}
@@ -57,40 +63,52 @@ RpcIdentifier WiMaxService::GetNetworkObjectPath() const {
   return proxy_->path();
 }
 
+void WiMaxService::Stop() {
+  SLOG(WiMax, 2) << __func__;
+  proxy_.reset();
+  SetStrength(0);
+}
+
 bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
   SLOG(WiMax, 2) << __func__;
   CHECK(proxy);
-  proxy_.reset(proxy);
-
+  scoped_ptr<WiMaxNetworkProxyInterface> local_proxy(proxy);
+  if (IsStarted()) {
+    return true;
+  }
+  if (friendly_name().empty()) {
+    LOG(ERROR) << "Empty service name.";
+    return false;
+  }
   Error error;
-  network_name_ = proxy_->Name(&error);
-  if (!error.IsSuccess()) {
+  network_name_ = proxy->Name(&error);
+  if (error.IsFailure()) {
     return false;
   }
-  network_identifier_ = proxy_->Identifier(&error);
-  if (!error.IsSuccess()) {
+  uint32 identifier = proxy->Identifier(&error);
+  if (error.IsFailure()) {
     return false;
   }
-
-  int signal_strength = proxy_->SignalStrength(&error);
-  if (!error.IsSuccess()) {
+  WiMaxNetworkId id = ConvertIdentifierToNetworkId(identifier);
+  if (id != network_id_) {
+    LOG(ERROR) << "Network identifiers don't match: "
+               << id << " != " << network_id_;
+    return false;
+  }
+  int signal_strength = proxy->SignalStrength(&error);
+  if (error.IsFailure()) {
     return false;
   }
   SetStrength(signal_strength);
-  proxy_->set_signal_strength_changed_callback(
+  proxy->set_signal_strength_changed_callback(
       Bind(&WiMaxService::OnSignalStrengthChanged, Unretained(this)));
-
-  set_friendly_name(network_name_);
-  storage_id_ =
-      StringToLowerASCII(base::StringPrintf("%s_%s_%08x_%s",
-                                            flimflam::kTypeWimax,
-                                            network_name_.c_str(),
-                                            network_identifier_,
-                                            wimax_->address().c_str()));
-  replace_if(
-      storage_id_.begin(), storage_id_.end(), &Service::IllegalChar, '_');
   UpdateConnectable();
+  proxy_.reset(local_proxy.release());
   return true;
+}
+
+bool WiMaxService::IsStarted() const {
+  return proxy_.get();
 }
 
 bool WiMaxService::TechnologyIs(const Technology::Identifier type) const {
@@ -137,6 +155,36 @@ void WiMaxService::UpdateConnectable() {
 void WiMaxService::OnSignalStrengthChanged(int strength) {
   SLOG(WiMax, 2) << __func__ << "(" << strength << ")";
   SetStrength(strength);
+}
+
+bool WiMaxService::Save(StoreInterface *storage) {
+  SLOG(WiMax, 2) << __func__;
+  if (!Service::Save(storage)) {
+    return false;
+  }
+  const string id = GetStorageIdentifier();
+  storage->SetString(id, kStorageNetworkId, network_id_);
+  return true;
+}
+
+// static
+WiMaxNetworkId WiMaxService::ConvertIdentifierToNetworkId(uint32 identifier) {
+  return base::StringPrintf("%08x", identifier);
+}
+
+void WiMaxService::InitStorageIdentifier() {
+  storage_id_ = CreateStorageIdentifier(network_id_, friendly_name());
+}
+
+// static
+string WiMaxService::CreateStorageIdentifier(const WiMaxNetworkId &id,
+                                             const string &name) {
+  string storage_id =
+      base::StringPrintf("%s_%s_%s",
+                         flimflam::kTypeWimax, name.c_str(), id.c_str());
+  StringToLowerASCII(&storage_id);
+  replace_if(storage_id.begin(), storage_id.end(), &Service::IllegalChar, '_');
+  return storage_id;
 }
 
 }  // namespace shill

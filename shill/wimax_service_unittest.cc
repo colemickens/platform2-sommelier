@@ -13,6 +13,7 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_store.h"
 #include "shill/mock_wimax.h"
 #include "shill/mock_wimax_network_proxy.h"
 
@@ -32,6 +33,8 @@ const char kTestLinkName[] = "wm0";
 const char kTestAddress[] = "0123456789AB";
 const int kTestInterfaceIndex = 5;
 const char kTestPath[] = "/org/chromium/WiMaxManager/Device/wm7";
+const char kTestName[] = "Test WiMAX Network";
+const char kTestNetworkId[] = "1234abcd";
 
 }  // namespace
 
@@ -44,7 +47,11 @@ class WiMaxServiceTest : public testing::Test {
                              kTestLinkName, kTestAddress, kTestInterfaceIndex,
                              kTestPath)),
         service_(new WiMaxService(&control_, NULL, &metrics_, &manager_,
-                                  wimax_)) {}
+                                  wimax_)) {
+    service_->set_friendly_name(kTestName);
+    service_->set_network_id(kTestNetworkId);
+    service_->InitStorageIdentifier();
+  }
 
   virtual ~WiMaxServiceTest() {}
 
@@ -100,21 +107,29 @@ TEST_F(WiMaxServiceTest, OnSignalStrengthChanged) {
   EXPECT_EQ(kStrength, service_->strength());
 }
 
-TEST_F(WiMaxServiceTest, Start) {
-  static const char kName[] = "MyWiMaxNetwork";
-  const uint32 kIdentifier = 1234;
+TEST_F(WiMaxServiceTest, StartStop) {
+  static const char kName[] = "My WiMAX Network";
+  const uint32 kIdentifier = 0x1234abcd;
   const int kStrength = 66;
+  EXPECT_FALSE(service_->IsStarted());
+  EXPECT_EQ(0, service_->strength());
+  EXPECT_FALSE(service_->proxy_.get());
   EXPECT_CALL(*proxy_, Name(_)).WillOnce(Return(kName));
   EXPECT_CALL(*proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
   EXPECT_CALL(*proxy_, SignalStrength(_)).WillOnce(Return(kStrength));
   EXPECT_CALL(*proxy_, set_signal_strength_changed_callback(_));
   EXPECT_TRUE(service_->Start(proxy_.release()));
+  EXPECT_TRUE(service_->IsStarted());
   EXPECT_EQ(kStrength, service_->strength());
   EXPECT_EQ(kName, service_->network_name());
-  EXPECT_EQ(kName, service_->friendly_name());
-  EXPECT_EQ(kIdentifier, service_->network_identifier());
+  EXPECT_EQ(kTestName, service_->friendly_name());
+  EXPECT_EQ(kTestNetworkId, service_->network_id());
   EXPECT_FALSE(service_->connectable());
-  EXPECT_FALSE(service_->GetStorageIdentifier().empty());
+  EXPECT_TRUE(service_->proxy_.get());
+  service_->Stop();
+  EXPECT_FALSE(service_->IsStarted());
+  EXPECT_EQ(0, service_->strength());
+  EXPECT_FALSE(service_->proxy_.get());
 }
 
 TEST_F(WiMaxServiceTest, SetEAP) {
@@ -131,6 +146,31 @@ TEST_F(WiMaxServiceTest, SetEAP) {
   base_service->set_eap(eap);
   EXPECT_TRUE(service_->need_passphrase_);
   EXPECT_TRUE(base_service->connectable());
+}
+
+TEST_F(WiMaxServiceTest, ConvertIdentifierToNetworkId) {
+  EXPECT_EQ("00000000", WiMaxService::ConvertIdentifierToNetworkId(0));
+  EXPECT_EQ("abcd1234", WiMaxService::ConvertIdentifierToNetworkId(0xabcd1234));
+  EXPECT_EQ("ffffffff", WiMaxService::ConvertIdentifierToNetworkId(0xffffffff));
+}
+
+TEST_F(WiMaxServiceTest, StorageIdentifier) {
+  static const char kStorageId[] = "wimax_test_wimax_network_1234abcd";
+  EXPECT_EQ(kStorageId, service_->GetStorageIdentifier());
+  EXPECT_EQ(kStorageId,
+            WiMaxService::CreateStorageIdentifier(kTestNetworkId, kTestName));
+}
+
+TEST_F(WiMaxServiceTest, Save) {
+  NiceMock<MockStore> storage;
+  string storage_id = service_->GetStorageIdentifier();
+  EXPECT_CALL(storage, SetString(storage_id, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, DeleteKey(storage_id, _)).WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, SetString(storage_id,
+                                 WiMaxService::kStorageNetworkId,
+                                 kTestNetworkId));
+  EXPECT_TRUE(service_->Save(&storage));
 }
 
 }  // namespace shill

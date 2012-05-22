@@ -42,6 +42,7 @@
 #include "shill/vpn_service.h"
 #include "shill/wifi.h"
 #include "shill/wifi_service.h"
+#include "shill/wimax_service.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -1040,13 +1041,17 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
   }
 
   string type = args.GetString(flimflam::kTypeProperty);
+  if (type == flimflam::kTypeVPN) {
+    SLOG(Manager, 2) << __func__ << ": getting VPN Service";
+    return vpn_provider_.GetService(args, error);
+  }
   if (type == flimflam::kTypeWifi) {
     SLOG(Manager, 2) << __func__ << ": getting WiFi Service";
     return GetWifiService(args, error);
   }
-  if (type == flimflam::kTypeVPN) {
-    SLOG(Manager, 2) << __func__ << ": getting VPN Service";
-    return vpn_provider_.GetService(args, error);
+  if (type == flimflam::kTypeWimax) {
+    SLOG(Manager, 2) << __func__ << ": getting WiMAX Service";
+    return wimax_provider_.GetService(args, error);
   }
   Error::PopulateAndLog(error, Error::kNotSupported,
                         kErrorUnsupportedServiceType);

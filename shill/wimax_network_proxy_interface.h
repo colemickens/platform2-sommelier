@@ -14,6 +14,11 @@
 
 namespace shill {
 
+// Generally, a string representation of a Network's Identifier. We may group
+// several different network identifiers into a single representative
+// WiMaxNetworkId, if necessary.
+typedef std::string WiMaxNetworkId;
+
 class Error;
 
 // These are the methods that a WiMaxManager.Network proxy must support. The

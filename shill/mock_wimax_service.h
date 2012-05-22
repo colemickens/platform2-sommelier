@@ -20,6 +20,11 @@ class MockWiMaxService : public WiMaxService {
                    const WiMaxRefPtr &wimax);
   virtual ~MockWiMaxService();
 
+  MOCK_CONST_METHOD0(GetNetworkObjectPath, RpcIdentifier());
+  MOCK_METHOD1(Start, bool(WiMaxNetworkProxyInterface *proxy));
+  MOCK_METHOD0(Stop, void());
+  MOCK_CONST_METHOD0(IsStarted, bool());
+
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxService);
 };

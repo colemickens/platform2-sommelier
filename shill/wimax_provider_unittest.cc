@@ -15,6 +15,7 @@
 #include "shill/mock_wimax_manager_proxy.h"
 #include "shill/nice_mock_control.h"
 #include "shill/proxy_factory.h"
+#include "shill/wimax_service.h"
 
 using std::string;
 using std::vector;
@@ -179,6 +180,47 @@ TEST_F(WiMaxProviderTest, DestroyDeadDevices) {
 TEST_F(WiMaxProviderTest, GetLinkName) {
   EXPECT_EQ("", provider_.GetLinkName("/random/path"));
   EXPECT_EQ(GetTestLinkName(1), provider_.GetLinkName(GetTestPath(1)));
+}
+
+TEST_F(WiMaxProviderTest, GetService) {
+  KeyValueStore args;
+  Error e;
+
+  // No device.
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWimax);
+  WiMaxServiceRefPtr service = provider_.GetService(args, &e);
+  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_FALSE(service);
+
+  // No network id property.
+  scoped_refptr<MockWiMax> device(
+      new MockWiMax(&control_, NULL, &metrics_, &manager_,
+                    GetTestLinkName(1), "", 1, GetTestPath(1)));
+  provider_.devices_[GetTestLinkName(1)] = device;
+  e.Reset();
+  service = provider_.GetService(args, &e);
+  EXPECT_EQ(Error::kInvalidArguments, e.type());
+
+  // No name property.
+  static const char kNetworkId[] = "1234abcd";
+  args.SetString(WiMaxService::kNetworkIdProperty, kNetworkId);
+  e.Reset();
+  service = provider_.GetService(args, &e);
+  EXPECT_EQ(Error::kInvalidArguments, e.type());
+
+  // Service created and configured.
+  static const char kName[] = "Test WiMAX Network";
+  args.SetString(flimflam::kNameProperty, kName);
+  static const char kIdentity[] = "joe";
+  args.SetString(flimflam::kEapIdentityProperty, kIdentity);
+  EXPECT_CALL(manager_, RegisterService(_));
+  EXPECT_CALL(*device, StartLiveServices());
+  e.Reset();
+  service = provider_.GetService(args, &e);
+  EXPECT_TRUE(e.IsSuccess());
+  ASSERT_TRUE(service);
+  EXPECT_EQ(kIdentity, service->eap().identity);
+  device->services_.clear();
 }
 
 }  // namespace shill

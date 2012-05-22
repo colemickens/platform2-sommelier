@@ -1172,6 +1172,15 @@ TEST_F(ManagerTest, GetServiceVPN) {
   EXPECT_TRUE(service);
 }
 
+TEST_F(ManagerTest, GetServiceWiMax) {
+  KeyValueStore args;
+  Error e;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWimax);
+  manager()->GetService(args, &e);
+  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_EQ("No WiMAX device available.", e.message());
+}
+
 TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {
   // Manager calls ActiveProfile() so we need at least one profile installed.
   scoped_refptr<MockProfile> profile(

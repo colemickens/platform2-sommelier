@@ -11,11 +11,13 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
+#include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/proxy_factory.h"
 #include "shill/scope_logger.h"
 #include "shill/wimax.h"
 #include "shill/wimax_manager_proxy_interface.h"
+#include "shill/wimax_service.h"
 
 using base::Bind;
 using base::Unretained;
@@ -77,6 +79,41 @@ void WiMaxProvider::OnDeviceInfoAvailable(const string &link_name) {
     RpcIdentifier path = find_it->second;
     CreateDevice(link_name, path);
   }
+}
+
+WiMaxServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
+                                             Error *error) {
+  SLOG(WiMax, 2) << __func__;
+  CHECK_EQ(args.GetString(flimflam::kTypeProperty), flimflam::kTypeWimax);
+  if (devices_.empty()) {
+    Error::PopulateAndLog(
+        error, Error::kNotSupported, "No WiMAX device available.");
+    return NULL;
+  }
+  WiMaxNetworkId id = args.LookupString(WiMaxService::kNetworkIdProperty, "");
+  if (id.empty()) {
+    Error::PopulateAndLog(
+        error, Error::kInvalidArguments, "Missing WiMAX network id.");
+    return NULL;
+  }
+  string name = args.LookupString(flimflam::kNameProperty, "");
+  if (name.empty()) {
+    Error::PopulateAndLog(
+        error, Error::kInvalidArguments, "Missing WiMAX service name.");
+    return NULL;
+  }
+  // Use the first available WiMAX device to construct and register the
+  // service. We may need to consider alternatives if this becomes an issue. For
+  // example, we could refactor service creation and management out of WiMax
+  // into WiMaxProvider.
+  WiMaxRefPtr device = devices_.begin()->second;
+  WiMaxServiceRefPtr service = device->GetService(id, name);
+  CHECK(service);
+  // Configure the service using the the rest of the passed-in arguments.
+  service->Configure(args, error);
+  // Start the service if there's a matching live network.
+  device->StartLiveServices();
+  return service;
 }
 
 void WiMaxProvider::CreateDevice(const string &link_name,

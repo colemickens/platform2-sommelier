@@ -19,6 +19,7 @@ namespace shill {
 
 class ControlInterface;
 class EventDispatcher;
+class KeyValueStore;
 class Manager;
 class Metrics;
 class ProxyFactory;
@@ -37,11 +38,15 @@ class WiMaxProvider {
 
   virtual void OnDeviceInfoAvailable(const std::string &link_name);
 
+  // Used by Manager::GetService.
+  WiMaxServiceRefPtr GetService(const KeyValueStore &args, Error *error);
+
  private:
   friend class WiMaxProviderTest;
   FRIEND_TEST(WiMaxProviderTest, CreateDevice);
   FRIEND_TEST(WiMaxProviderTest, DestroyDeadDevices);
   FRIEND_TEST(WiMaxProviderTest, GetLinkName);
+  FRIEND_TEST(WiMaxProviderTest, GetService);
   FRIEND_TEST(WiMaxProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(WiMaxProviderTest, OnDevicesChanged);
   FRIEND_TEST(WiMaxProviderTest, StartStop);
