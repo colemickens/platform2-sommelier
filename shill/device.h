@@ -305,7 +305,7 @@ class Device : public base::RefCounted<Device> {
   friend class DeviceTest;
   friend class CellularTest;
   friend class CellularCapabilityTest;
-  friend class WiFiMainTest;
+  friend class WiFiObjectTest;
 
   static const char kIPFlagTemplate[];
   static const char kIPFlagVersion4[];

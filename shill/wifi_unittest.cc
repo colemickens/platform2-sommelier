@@ -33,6 +33,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -160,13 +161,14 @@ TEST_F(WiFiPropertyTest, ClearDerivedProperty) {
   EXPECT_EQ(WiFi::kDefaultBgscanMethod, device_->bgscan_method_);
 }
 
-class WiFiMainTest : public ::testing::TestWithParam<string> {
+class WiFiObjectTest : public ::testing::TestWithParam<string> {
  public:
-  WiFiMainTest()
-      : manager_(&control_interface_, NULL, &metrics_, &glib_),
-        device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
+  WiFiObjectTest(EventDispatcher *dispatcher)
+      : event_dispatcher_(dispatcher),
+        manager_(&control_interface_, NULL, &metrics_, &glib_),
+        device_info_(&control_interface_, dispatcher, &metrics_, &manager_),
         wifi_(new WiFi(&control_interface_,
-                       &dispatcher_,
+                       dispatcher,
                        &metrics_,
                        &manager_,
                        kDeviceName,
@@ -231,7 +233,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
 
   class TestProxyFactory : public ProxyFactory {
    public:
-    explicit TestProxyFactory(WiFiMainTest *test);
+    explicit TestProxyFactory(WiFiObjectTest *test);
 
     virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
         const char */*dbus_path*/, const char */*dbus_addr*/) {
@@ -264,7 +266,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
       return test_->supplicant_bss_proxy_.release();
     }
 
-    WiFiMainTest *test_;
+    WiFiObjectTest *test_;
   };
 
   void CancelScanTimer() {
@@ -293,7 +295,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     return wifi_->services_;
   }
   // note: the tests need the proxies referenced by WiFi (not the
-  // proxies instantiated by WiFiMainTest), to ensure that WiFi
+  // proxies instantiated by WiFiObjectTest), to ensure that WiFi
   // sets up its proxies correctly.
   SupplicantProcessProxyInterface *GetSupplicantProcessProxy() {
     return wifi_->supplicant_process_proxy_.get();
@@ -320,7 +322,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     vector<uint8_t> ssid(1, 'a');
     return new MockWiFiService(
         &control_interface_,
-        &dispatcher_,
+        event_dispatcher_,
         &metrics_,
         &manager_,
         wifi_,
@@ -359,6 +361,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   }
   void SetScanInterval(uint16_t interval_seconds) {
     wifi_->SetScanInterval(interval_seconds, NULL);
+  }
+  uint16_t GetScanInterval() {
+    return wifi_->GetScanInterval(NULL);
   }
   void StartWiFi() {
     EXPECT_CALL(*power_manager_, AddStateChangeCallback(wifi_->UniqueName(), _))
@@ -446,6 +451,10 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
         .WillRepeatedly(DoAll(SetArgumentPointee<2>(hex_ssid), Return(true)));
   }
 
+  void RestartFastScanAttempts() {
+    wifi_->RestartFastScanAttempts();
+  }
+
   NiceMockControl *control_interface() {
     return &control_interface_;
   }
@@ -474,7 +483,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     return &proxy_factory_;
   }
 
-  EventDispatcher dispatcher_;
+  EventDispatcher *event_dispatcher_;
   NiceMock<MockRTNLHandler> rtnl_handler_;
   MockTime time_;
 
@@ -506,16 +515,16 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   PowerManager::PowerStateCallback power_state_callback_;
 };
 
-const char WiFiMainTest::kDeviceName[] = "wlan0";
-const char WiFiMainTest::kDeviceAddress[] = "000102030405";
-const char WiFiMainTest::kNetworkModeAdHoc[] = "ad-hoc";
-const char WiFiMainTest::kNetworkModeInfrastructure[] = "infrastructure";
+const char WiFiObjectTest::kDeviceName[] = "wlan0";
+const char WiFiObjectTest::kDeviceAddress[] = "000102030405";
+const char WiFiObjectTest::kNetworkModeAdHoc[] = "ad-hoc";
+const char WiFiObjectTest::kNetworkModeInfrastructure[] = "infrastructure";
 
-void WiFiMainTest::RemoveBSS(const ::DBus::Path &bss_path) {
+void WiFiObjectTest::RemoveBSS(const ::DBus::Path &bss_path) {
   wifi_->BSSRemovedTask(bss_path);
 }
 
-void WiFiMainTest::ReportBSS(const ::DBus::Path &bss_path,
+void WiFiObjectTest::ReportBSS(const ::DBus::Path &bss_path,
                              const string &ssid,
                              const string &bssid,
                              int16_t signal_strength,
@@ -544,13 +553,22 @@ void WiFiMainTest::ReportBSS(const ::DBus::Path &bss_path,
   wifi_->BSSAddedTask(bss_path, bss_properties);
 }
 
-WiFiMainTest::TestProxyFactory::TestProxyFactory(WiFiMainTest *test)
+WiFiObjectTest::TestProxyFactory::TestProxyFactory(WiFiObjectTest *test)
     : test_(test) {
   EXPECT_CALL(*this, CreateSupplicantBSSProxy(_, _, _)).Times(AnyNumber());
   ON_CALL(*this, CreateSupplicantBSSProxy(_, _, _))
       .WillByDefault(
           Invoke(this, (&TestProxyFactory::CreateSupplicantBSSProxyInternal)));
 }
+
+// Most of our tests involve using a real EventDispatcher object.
+class WiFiMainTest : public WiFiObjectTest {
+ public:
+  WiFiMainTest() : WiFiObjectTest(&dispatcher_) {}
+
+ protected:
+  EventDispatcher dispatcher_;
+};
 
 TEST_F(WiFiMainTest, ProxiesSetUpDuringStart) {
   EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
@@ -1922,6 +1940,70 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailure) {
   ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
   EXPECT_EQ(Service::kStateIdle, service->state());
   EXPECT_TRUE(service->IsFailed());
+}
+
+// Scanning tests will use a mock of the event dispatcher instead of a real
+// one.
+class WiFiScanTest : public WiFiObjectTest {
+ public:
+  WiFiScanTest() : WiFiObjectTest(&mock_dispatcher_) {}
+
+ protected:
+  void ExpectInitialScanSequence();
+
+  StrictMock<MockEventDispatcher> mock_dispatcher_;
+};
+
+void WiFiScanTest::ExpectInitialScanSequence() {
+  // Choose a number of iterations some multiple higher than the fast scan
+  // count.
+  const int kScanTimes = WiFi::kNumFastScanAttempts * 4;
+
+  // Each time we call FireScanTimer() below, WiFi will post a task to actually
+  // run Scan() on the wpa_supplicant proxy.
+  EXPECT_CALL(mock_dispatcher_, PostTask(_))
+      .Times(kScanTimes);
+  {
+    InSequence seq;
+    // The scans immediately after the initial scan should happen at the short
+    // interval.  If we add the initial scan (not invoked in this function) to
+    // the ones in the expectation below, we get WiFi::kNumFastScanAttempts at
+    // the fast scan interval.
+    EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
+        _, WiFi::kFastScanIntervalSeconds * 1000))
+        .Times(WiFi::kNumFastScanAttempts - 1)
+        .WillRepeatedly(Return(true));
+
+    // After this, the WiFi device should use the normal scan interval.
+    EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
+        _, GetScanInterval() * 1000))
+        .Times(kScanTimes - WiFi::kNumFastScanAttempts + 1)
+        .WillRepeatedly(Return(true));
+
+    for (int i = 0; i < kScanTimes; i++) {
+      FireScanTimer();
+    }
+  }
+}
+
+TEST_F(WiFiScanTest, FastRescan) {
+  // This PostTask is a result of the call to Scan(NULL), and is meant to
+  // post a task to call Scan() on the wpa_supplicant proxy immediately.
+  EXPECT_CALL(mock_dispatcher_, PostTask(_));
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
+      _, WiFi::kFastScanIntervalSeconds * 1000))
+      .WillOnce(Return(true));
+  StartWiFi();
+
+  ExpectInitialScanSequence();
+
+  // If we end up disconnecting, the sequence should repeat.
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
+      _, WiFi::kFastScanIntervalSeconds * 1000))
+      .WillOnce(Return(true));
+  RestartFastScanAttempts();
+
+  ExpectInitialScanSequence();
 }
 
 }  // namespace shill

@@ -150,15 +150,17 @@ class WiFi : public Device {
   static bool SanitizeSSID(std::string *ssid);
 
  private:
-  friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
-  FRIEND_TEST(WiFiMainTest, SuspectCredentialsOpen);  // SuspectCredentials
-  FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPANeverConnected);  // as above
-  FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);  // ""
+  friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
+  friend class WiFiScanTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
+  FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
-  FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
+  FRIEND_TEST(WiFiMainTest, SuspectCredentialsOpen);  // SuspectCredentials
+  FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPANeverConnected);  // as above
+  FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);  // ""
   FRIEND_TEST(WiFiPropertyTest, ClearDerivedProperty);  // bgscan_method_
+  FRIEND_TEST(WiFiScanTest, FastRescan);  // kFastScanIntervalSeconds
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<WiFiService *, std::string> ReverseServiceMap;
@@ -176,6 +178,9 @@ class WiFi : public Device {
   static const char kInterfaceStateUnknown[];
   // Delay between scans when supplicant finds "No suitable network".
   static const time_t kRescanIntervalSeconds;
+  // Number of times to quickly attempt a scan after startup / disconnect.
+  static const int kNumFastScanAttempts;
+  static const int kFastScanIntervalSeconds;
 
   std::string CreateBgscanConfigString();
   std::string GetBgscanMethod(Error */* error */) { return bgscan_method_; }
@@ -234,6 +239,8 @@ class WiFi : public Device {
   // If this WiFi device is idle and |new_state| indicates a resume event, a
   // scan is initiated.
   void HandlePowerStateChange(PowerManager::SuspendState new_state);
+  // Restart fast scanning after disconnection.
+  void RestartFastScanAttempts();
   // Schedules a scan attempt at time |scan_interval_seconds_| in the
   // future.  Cancels any currently pending scan timer.
   void StartScanTimer();
@@ -275,6 +282,8 @@ class WiFi : public Device {
   struct timeval resumed_at_;
   // Executes when the (foreground) scan timer expires. Calls ScanTimerHandler.
   base::CancelableClosure scan_timer_callback_;
+  // Number of remaining fast scans to be done during startup and disconnect.
+  int fast_scans_remaining_;
 
   // Properties
   std::string bgscan_method_;

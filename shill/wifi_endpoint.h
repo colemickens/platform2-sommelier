@@ -59,7 +59,7 @@ class WiFiEndpoint : public Endpoint {
 
  private:
   friend class WiFiEndpointTest;
-  friend class WiFiMainTest;  // for MakeOpenEndpoint
+  friend class WiFiObjectTest;  // for MakeOpenEndpoint
   friend class WiFiServiceTest;  // for MakeOpenEndpoint
   // these test cases need access to the KeyManagement enum
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);

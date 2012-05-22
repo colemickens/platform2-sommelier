@@ -77,6 +77,8 @@ const char WiFi::kManagerErrorUnsupportedServiceMode[] =
 const time_t WiFi::kMaxBSSResumeAgeSeconds = 10;
 const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
 const time_t WiFi::kRescanIntervalSeconds = 1;
+const int WiFi::kNumFastScanAttempts = 3;
+const int WiFi::kFastScanIntervalSeconds = 10;
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -100,6 +102,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       supplicant_bss_("(unknown)"),
       clear_cached_credentials_pending_(false),
       need_bss_flush_(false),
+      fast_scans_remaining_(kNumFastScanAttempts),
       bgscan_method_(kDefaultBgscanMethod),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
@@ -610,6 +613,10 @@ void WiFi::HandleDisconnect() {
                   << pending_service_->friendly_name()
                   << " after disconnect";
   }
+
+  // If we disconnect, initially scan at a faster frequency, to make sure
+  // we've found all available APs.
+  RestartFastScanAttempts();
 }
 
 // We use the term "Roam" loosely. In particular, we include the case
@@ -1264,6 +1271,11 @@ void WiFi::HandlePowerStateChange(PowerManager::SuspendState new_state) {
   }
 }
 
+void WiFi::RestartFastScanAttempts() {
+  fast_scans_remaining_ = kNumFastScanAttempts;
+  StartScanTimer();
+}
+
 void WiFi::StartScanTimer() {
   if (scan_interval_seconds_ == 0) {
     StopScanTimer();
@@ -1271,8 +1283,11 @@ void WiFi::StartScanTimer() {
   }
   scan_timer_callback_.Reset(
       Bind(&WiFi::ScanTimerHandler, weak_ptr_factory_.GetWeakPtr()));
-  dispatcher()->PostDelayedTask(
-      scan_timer_callback_.callback(), scan_interval_seconds_ * 1000);
+  // Repeat the first few scans after disconnect relatively quickly so we
+  // have reasonable trust that no APs we are looking for are present.
+  dispatcher()->PostDelayedTask(scan_timer_callback_.callback(),
+      fast_scans_remaining_ > 0 ?
+          kFastScanIntervalSeconds * 1000 : scan_interval_seconds_ * 1000);
 }
 
 void WiFi::StopScanTimer() {
@@ -1283,6 +1298,9 @@ void WiFi::ScanTimerHandler() {
   SLOG(WiFi, 2) << "WiFi Device " << link_name() << ": " << __func__;
   if (IsIdle() && !scan_pending_) {
     Scan(NULL);
+    if (fast_scans_remaining_ > 0) {
+      --fast_scans_remaining_;
+    }
   }
   StartScanTimer();
 }

@@ -205,7 +205,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
  private:
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
-  friend class WiFiMainTest;
+  friend class WiFiObjectTest;
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, CalculateStateOffline);
   FRIEND_TEST(ManagerTest, CalculateStateOnline);
