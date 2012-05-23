@@ -461,10 +461,8 @@ void Device::SelectService(const ServiceRefPtr &service) {
     if (selected_service_->state() != Service::kStateFailure) {
       selected_service_->SetState(Service::kStateIdle);
     }
-    // TODO(pstew): We need to revisit the model here: should the Device
-    // subclass be responsible for calling DestroyIPConfig() (which would
-    // trigger DestroyConnection() and Service::SetConnection(NULL))?
-    // Ethernet does, but WiFi currently does not.  crosbug.com/23929
+    // Just in case the Device subclass has not already done so, make
+    // sure the previously selected service has its connection removed.
     selected_service_->SetConnection(NULL);
   }
   selected_service_ = service;

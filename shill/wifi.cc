@@ -557,6 +557,9 @@ void WiFi::HandleDisconnect() {
     SLOG(WiFi, 2) << "WiFi " << link_name()
                   << " disconnected while not connected or connecting";
     return;
+  } else if (affected_service == selected_service()) {
+    // If our selected service has disconnected, destroy IP configuration state.
+    DestroyIPConfig();
   }
 
   ReverseServiceMap::const_iterator rpcid_it =
