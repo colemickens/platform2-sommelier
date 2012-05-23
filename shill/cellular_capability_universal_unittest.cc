@@ -619,6 +619,19 @@ TEST_F(CellularCapabilityUniversalTest, Connect) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   connect_callback_.Run(bearer, Error(Error::kSuccess));
+
+  // Test connect failures without a service.  Make sure that shill
+  // does not crash if the connect failed and there is no
+  // CellularService object.  This can happen if the modem is enabled
+  // and then quickly disabled.
+  cellular_->service_ = NULL;
+  EXPECT_FALSE(capability_->cellular()->service());
+  EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _, _))
+      .WillOnce(SaveArg<2>(&connect_callback_));
+  capability_->Connect(properties, &error, callback);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  connect_callback_.Run(bearer, Error(Error::kOperationFailed));
 }
 
 // Validates Connect iterates over APNs

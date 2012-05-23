@@ -722,7 +722,7 @@ void Device::SetEnabled(bool enable) {
   SLOG(Device, 2) << __func__ << "(" << enable << ")";
   Error error;
   SetEnabledInternal(enable, false, &error, ResultCallback());
-  LOG_IF(ERROR, error.IsFailure())
+  LOG_IF(ERROR, error.IsFailure() && !error.IsOngoing())
       << "Enabled failed, but no way to report the failure.";
 }
 

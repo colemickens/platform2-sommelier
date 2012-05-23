@@ -395,8 +395,13 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
                                                  const Error &error) {
   SLOG(Cellular, 2) << __func__ << "(" << error << ")";
 
-  if (error.IsFailure()) {
-    cellular()->service()->ClearLastGoodApn();
+  CellularServiceRefPtr service = cellular()->service();
+  if (!service) {
+    // The service could have been deleted before our Connect() request
+    // completes if the modem was enabled and then quickly disabled.
+    apn_try_list_.clear();
+  } else if (error.IsFailure()) {
+    service->ClearLastGoodApn();
     // The APN that was just tried (and failed) is still at the
     // front of the list, about to be removed. If the list is empty
     // after that, try one last time without an APN. This may succeed
@@ -413,7 +418,7 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
     }
   } else {
     if (!apn_try_list_.empty()) {
-      cellular()->service()->SetLastGoodApn(apn_try_list_.front());
+      service->SetLastGoodApn(apn_try_list_.front());
       apn_try_list_.clear();
     }
     bearer_path_ = path;
@@ -929,6 +934,7 @@ void CellularCapabilityUniversal::OnDBusPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &changed_properties,
     const vector<string> &invalidated_properties) {
+  SLOG(Cellular, 2) << __func__ << "(" << interface << ")";
   if (interface == MM_DBUS_INTERFACE_MODEM) {
     OnModemPropertiesChanged(changed_properties, invalidated_properties);
   }

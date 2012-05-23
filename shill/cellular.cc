@@ -542,6 +542,8 @@ void Cellular::OnModemStateChanged(ModemState old_state,
       if (old_state == kModemStateRegistered) {
         capability_->SetUnregistered(new_state == kModemStateSearching);
         HandleNewRegistrationState();
+      } else {
+        SLOG(Cellular, 2) << __func__ << "Ignoring state change to Enabled";
       }
     case kModemStateRegistered:
       if (old_state == kModemStateConnected ||
