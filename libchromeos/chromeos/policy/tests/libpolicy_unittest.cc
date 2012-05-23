@@ -5,11 +5,11 @@
 #include <base/file_path.h>
 #include <base/logging.h>
 #include <gtest/gtest.h>
-#include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/ssl.h>
 
-#include <chromeos/policy/libpolicy.h>
 #include <chromeos/policy/device_policy_impl.h>
+#include <chromeos/policy/libpolicy.h>
 
 namespace policy {
 
@@ -125,10 +125,22 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetReleaseChannel(&string_value));
   ASSERT_EQ("stable-channel", string_value);
 
-  // TODO: Update policy file for these methods:
-  // GetUpdateDisabled,
-  // GetTargetVersionPrefix
-  // GetScatterFactorInSeconds
+  bool_value = true;
+  ASSERT_TRUE(policy.GetUpdateDisabled(&bool_value));
+  ASSERT_FALSE(bool_value);
+
+  int64 int64_value = -1LL;
+  ASSERT_TRUE(policy.GetScatterFactorInSeconds(&int64_value));
+  ASSERT_EQ(17LL, int64_value);
+
+  ASSERT_TRUE(policy.GetTargetVersionPrefix(&string_value));
+  ASSERT_EQ("42.0.", string_value);
+
+  std::set<std::string> types;
+  ASSERT_TRUE(policy.GetAllowedConnectionTypesForUpdate(&types));
+  ASSERT_TRUE(types.end() != types.find("ethernet"));
+  ASSERT_TRUE(types.end() != types.find("wifi"));
+  ASSERT_EQ(2, types.size());
 
   ASSERT_TRUE(policy.GetOpenNetworkConfiguration(&string_value));
   ASSERT_EQ("{}", string_value);

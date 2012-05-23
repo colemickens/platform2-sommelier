@@ -76,6 +76,23 @@ bool VerifySignature(std::string& signed_data,
   return rv == 1;
 }
 
+// Decodes the connection type enum from the device settings protobuf to string
+// representations. The strings must match the connection manager definitions.
+std::string DecodeConnectionType(int type) {
+  static const char* const kConnectionTypes[] = {
+    "ethernet",
+    "wifi",
+    "wimax",
+    "bluetooth",
+    "cellular",
+  };
+
+  if (type < 0 || type >= static_cast<int>(arraysize(kConnectionTypes)))
+    return std::string();
+
+  return kConnectionTypes[type];
+}
+
 }  // namespace
 
 DevicePolicyImpl::DevicePolicyImpl()
@@ -116,8 +133,6 @@ bool DevicePolicyImpl::LoadPolicy() {
   return true;
 }
 
-// Writes the value of the PolicyRefreshRate policy in |rate|. Returns
-// true on success.
 bool DevicePolicyImpl::GetPolicyRefreshRate(int* rate) const {
   if (!device_policy_.has_device_policy_refresh_rate())
     return false;
@@ -126,8 +141,6 @@ bool DevicePolicyImpl::GetPolicyRefreshRate(int* rate) const {
   return true;
 }
 
-// Writes the value of the UserWhitelist policy in |user_whitelist|. Returns
-// true on success.
 bool DevicePolicyImpl::GetUserWhitelist(
     std::vector<std::string>* user_whitelist) const {
   if (!device_policy_.has_user_whitelist())
@@ -140,8 +153,6 @@ bool DevicePolicyImpl::GetUserWhitelist(
   return true;
 }
 
-// Writes the value of the GuestModeEnabled policy in |guest_mode_enabled|.
-// Returns true on success.
 bool DevicePolicyImpl::GetGuestModeEnabled(bool* guest_mode_enabled) const {
   if (!device_policy_.has_guest_mode_enabled())
     return false;
@@ -150,8 +161,6 @@ bool DevicePolicyImpl::GetGuestModeEnabled(bool* guest_mode_enabled) const {
   return true;
 }
 
-// Writes the value of the CameraEnabled policy in |camera_enabled|. Returns
-// true on success.
 bool DevicePolicyImpl::GetCameraEnabled(bool* camera_enabled) const {
   if (!device_policy_.has_camera_enabled())
     return false;
@@ -159,8 +168,6 @@ bool DevicePolicyImpl::GetCameraEnabled(bool* camera_enabled) const {
   return true;
 }
 
-// Writes the value of the ShowUserNamesOnSignIn policy in |show_usernames|.
-// Returns true on success.
 bool DevicePolicyImpl::GetShowUserNames(bool* show_user_names) const {
   if (!device_policy_.has_show_user_names())
     return false;
@@ -168,8 +175,6 @@ bool DevicePolicyImpl::GetShowUserNames(bool* show_user_names) const {
   return true;
 }
 
-// Writes the value of the DataRoamingEnabled policy in |data_roaming_enabled|
-// Returns true on success.
 bool DevicePolicyImpl::GetDataRoamingEnabled(bool* data_roaming_enabled) const {
   if (!device_policy_.has_data_roaming_enabled())
     return false;
@@ -178,8 +183,6 @@ bool DevicePolicyImpl::GetDataRoamingEnabled(bool* data_roaming_enabled) const {
   return true;
 }
 
-// Writes the value of the AllowNewUSer policy in |allow_new_user|. Returns
-// true on success.
 bool DevicePolicyImpl::GetAllowNewUsers(bool* allow_new_users) const {
   if (!device_policy_.has_allow_new_users())
     return false;
@@ -187,8 +190,6 @@ bool DevicePolicyImpl::GetAllowNewUsers(bool* allow_new_users) const {
   return true;
 }
 
-// Writes the value of the MetricsEnabled policy in |metrics_enabled|. Returns
-// true on success.
 bool DevicePolicyImpl::GetMetricsEnabled(bool* metrics_enabled) const {
   if (!device_policy_.has_metrics_enabled())
     return false;
@@ -196,8 +197,6 @@ bool DevicePolicyImpl::GetMetricsEnabled(bool* metrics_enabled) const {
   return true;
 }
 
-// Writes the value of ReportVersionInfo policy in |report_version_info|.
-// Returns true on success.
 bool DevicePolicyImpl::GetReportVersionInfo(bool* report_version_info) const {
   if (!device_policy_.has_device_reporting())
     return false;
@@ -211,8 +210,6 @@ bool DevicePolicyImpl::GetReportVersionInfo(bool* report_version_info) const {
   return true;
 }
 
-// Writes the value of ReportActivityTimes policy in |report_activity_times|.
-// Returns true on success.
 bool DevicePolicyImpl::GetReportActivityTimes(
     bool* report_activity_times) const {
   if (!device_policy_.has_device_reporting())
@@ -227,8 +224,6 @@ bool DevicePolicyImpl::GetReportActivityTimes(
   return true;
 }
 
-// Writes the value of ReportBootMode policy in |report_boot_mode|. Returns
-// true on success.
 bool DevicePolicyImpl::GetReportBootMode(bool* report_boot_mode) const {
   if (!device_policy_.has_device_reporting())
     return false;
@@ -242,8 +237,6 @@ bool DevicePolicyImpl::GetReportBootMode(bool* report_boot_mode) const {
   return true;
 }
 
-// Writes the value of the EphemeralUsersEnabled policy in
-// |ephemeral_users_enabled|. Returns true on success.
 bool DevicePolicyImpl::GetEphemeralUsersEnabled(
     bool* ephemeral_users_enabled) const {
   if (!device_policy_.has_ephemeral_users_enabled())
@@ -253,8 +246,6 @@ bool DevicePolicyImpl::GetEphemeralUsersEnabled(
   return true;
 }
 
-// Writes the value of the ProxyMode policy in |proxy_mode|. Returns true on
-// success.
 bool DevicePolicyImpl::GetProxyMode(std::string* proxy_mode) const {
   if (!device_policy_.has_device_proxy_settings())
     return false;
@@ -268,8 +259,6 @@ bool DevicePolicyImpl::GetProxyMode(std::string* proxy_mode) const {
   return true;
 }
 
-// Writes the value of the ProxyServer policy in |proxy_server|. Returns true
-// on success.
 bool DevicePolicyImpl::GetProxyServer(std::string* proxy_server) const {
   if (!device_policy_.has_device_proxy_settings())
     return false;
@@ -283,8 +272,6 @@ bool DevicePolicyImpl::GetProxyServer(std::string* proxy_server) const {
   return true;
 }
 
-// Writes the value of the ProxyPacUrl policy in |proxy_pac|. Returns true on
-// success.
 bool DevicePolicyImpl::GetProxyPacUrl(std::string* proxy_pac) const {
   if (!device_policy_.has_device_proxy_settings())
     return false;
@@ -298,8 +285,6 @@ bool DevicePolicyImpl::GetProxyPacUrl(std::string* proxy_pac) const {
   return true;
 }
 
-// Writes the value of the ProxyBypassList policy in |proxy_bypass_list|.
-// Returns true on success.
 bool DevicePolicyImpl::GetProxyBypassList(
     std::string* proxy_bypass_list) const {
   if (!device_policy_.has_device_proxy_settings())
@@ -314,8 +299,6 @@ bool DevicePolicyImpl::GetProxyBypassList(
   return true;
 }
 
-// Writes the value of the release channel policy in |release_channel|.
-// Returns true on success.
 bool DevicePolicyImpl::GetReleaseChannel(
     std::string* release_channel) const {
   if (!device_policy_.has_release_channel())
@@ -330,8 +313,6 @@ bool DevicePolicyImpl::GetReleaseChannel(
   return true;
 }
 
-// Writes the value of the update_disabled policy in |update_disabled|.
-// Returns true on success.
 bool DevicePolicyImpl::GetUpdateDisabled(
     bool* update_disabled) const {
   if (!device_policy_.has_auto_update_settings())
@@ -346,8 +327,6 @@ bool DevicePolicyImpl::GetUpdateDisabled(
   return true;
 }
 
-// Writes the value of the target_version_prefix policy in
-// |target_version_prefix|. Returns true on success.
 bool DevicePolicyImpl::GetTargetVersionPrefix(
     std::string* target_version_prefix) const {
   if (!device_policy_.has_auto_update_settings())
@@ -362,8 +341,6 @@ bool DevicePolicyImpl::GetTargetVersionPrefix(
   return true;
 }
 
-// Writes the value of the scatter_factor_in_seconds policy in
-// |scatter_factor_in_seconds|. Returns true on success.
 bool DevicePolicyImpl::GetScatterFactorInSeconds(
     int64* scatter_factor_in_seconds) const {
   if (!device_policy_.has_auto_update_settings())
@@ -378,8 +355,24 @@ bool DevicePolicyImpl::GetScatterFactorInSeconds(
   return true;
 }
 
-// Writes the value of the OpenNetworkConfiguration policy in
-// |open_network_configuration|. Returns true on success.
+bool DevicePolicyImpl::GetAllowedConnectionTypesForUpdate(
+      std::set<std::string>* connection_types) const {
+  if (!device_policy_.has_auto_update_settings())
+    return false;
+
+  const enterprise_management::AutoUpdateSettingsProto& proto =
+      device_policy_.auto_update_settings();
+  if (proto.allowed_connection_types_size() <= 0)
+    return false;
+
+  for (int i = 0; i < proto.allowed_connection_types_size(); i++) {
+    std::string type = DecodeConnectionType(proto.allowed_connection_types(i));
+    if (!type.empty())
+      connection_types->insert(type);
+  }
+  return true;
+}
+
 bool DevicePolicyImpl::GetOpenNetworkConfiguration(
     std::string* open_network_configuration) const {
   if (!device_policy_.has_open_network_configuration())
@@ -394,9 +387,6 @@ bool DevicePolicyImpl::GetOpenNetworkConfiguration(
   return true;
 }
 
-// Writes the name of the device owner in |owner|. For enterprise enrolled
-// devices, this will be an empty string.
-// Returns true on success.
 bool DevicePolicyImpl::GetOwner(std::string* owner) const {
   // The device is enterprise enrolled iff a request token exists.
   if (policy_data_.has_request_token()) {
@@ -451,4 +441,3 @@ bool DevicePolicyImpl::VerifyPolicySignature() {
 }
 
 }  // namespace policy
-

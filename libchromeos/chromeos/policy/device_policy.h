@@ -5,6 +5,7 @@
 #ifndef LIBPOLICY_DEVICE_POLICY_H_
 #define LIBPOLICY_DEVICE_POLICY_H_
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -113,6 +114,13 @@ class DevicePolicy {
   // |scatter_factor_in_seconds|. Returns true on success.
   virtual bool GetScatterFactorInSeconds(
       int64* scatter_factor_in_seconds) const = 0;
+
+  // Writes the connection types on which updates are allowed to
+  // |connection_types|. The identifiers returned are intended to be consistent
+  // with what the connection manager users: ethernet, wifi, wimax, bluetooth,
+  // cellular.
+  virtual bool GetAllowedConnectionTypesForUpdate(
+      std::set<std::string>* connection_types) const = 0;
 
   // Writes the value of the OpenNetworkConfiguration policy in
   // |open_network_configuration|. Returns true on success.
