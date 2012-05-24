@@ -30,6 +30,7 @@ class MockNssUtil : public NssUtil {
                crypto::RSAPrivateKey*(const std::vector<uint8>&));
   MOCK_METHOD0(GenerateKeyPair, crypto::RSAPrivateKey*());
   MOCK_METHOD0(GetOwnerKeyFilePath, FilePath());
+  MOCK_METHOD0(GetNssdbSubpath, FilePath());
   MOCK_METHOD1(CheckPublicKeyBlob, bool(const std::vector<uint8>&));
   MOCK_METHOD8(Verify, bool(const uint8* algorithm, int algorithm_len,
                             const uint8* signature, int signature_len,

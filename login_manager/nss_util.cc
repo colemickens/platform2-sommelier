@@ -10,10 +10,12 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <crypto/nss_util.h>
+#include <crypto/nss_util_internal.h>
 #include <crypto/rsa_private_key.h>
 #include <crypto/signature_creator.h>
 #include <crypto/signature_verifier.h>
 #include <keyhi.h>
+#include <pk11pub.h>
 
 using crypto::RSAPrivateKey;
 
@@ -52,6 +54,8 @@ class NssUtilImpl : public NssUtil {
 
   FilePath GetOwnerKeyFilePath();
 
+  FilePath GetNssdbSubpath();
+
   bool CheckPublicKeyBlob(const std::vector<uint8>& blob);
 
   bool Verify(const uint8* algorithm, int algorithm_len,
@@ -67,6 +71,7 @@ class NssUtilImpl : public NssUtil {
   // Hardcoded path of the user's NSS key database.
   // TODO(cmasone): get rid of this once http://crosbug.com/14007 is fixed.
   static const char kUserDbPath[];
+  static const char kNssdbSubpath[];
 
   DISALLOW_COPY_AND_ASSIGN(NssUtilImpl);
 };
@@ -94,6 +99,8 @@ void NssUtil::BlobFromBuffer(const std::string& buf, std::vector<uint8>* out) {
 const uint16 NssUtilImpl::kKeySizeInBits = 2048;
 // static
 const char NssUtilImpl::kUserDbPath[] = "/home/chronos/user/.pki/nssdb/key4.db";
+// static
+const char NssUtilImpl::kNssdbSubpath[] = ".pki/nssdb";
 
 NssUtilImpl::NssUtilImpl() {
   crypto::EnsureNSSInit();
@@ -110,7 +117,14 @@ bool NssUtilImpl::OpenUserDB() {
   // user sessions, we'll need to deal with the fact that we have no way to
   // close this persistent DB.
   crypto::OpenPersistentNSSDB();
-  return true;
+
+  // If we opened successfully, we will have a non-default private key slot.
+  PK11SlotInfo* private_slot = crypto::GetPrivateNSSKeySlot();
+  PK11SlotInfo* internal_slot = PK11_GetInternalKeySlot();
+  bool slots_are_different = (private_slot != internal_slot);
+  PK11_FreeSlot(private_slot);
+  PK11_FreeSlot(internal_slot);
+  return slots_are_different;
 }
 
 RSAPrivateKey* NssUtilImpl::GetPrivateKey(
@@ -128,6 +142,10 @@ RSAPrivateKey* NssUtilImpl::GenerateKeyPair() {
 
 FilePath NssUtilImpl::GetOwnerKeyFilePath() {
   return FilePath(kOwnerKeyFile);
+}
+
+FilePath NssUtilImpl::GetNssdbSubpath() {
+  return FilePath(kNssdbSubpath);
 }
 
 bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8>& blob) {

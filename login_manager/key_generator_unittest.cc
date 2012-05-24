@@ -17,6 +17,7 @@
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_child_process.h"
 #include "login_manager/mock_system_utils.h"
+#include "login_manager/nss_util.h"
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils.h"
 
@@ -67,7 +68,10 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
 }
 
 TEST_F(KeyGeneratorTest, KeygenTest) {
+  scoped_ptr<NssUtil> nss(NssUtil::Create());
   const FilePath key_file_path(tmpdir_.path().AppendASCII("foo.pub"));
+  ASSERT_TRUE(file_util::CreateDirectory(
+      key_file_path.DirName().Append(nss->GetNssdbSubpath())));
   ASSERT_EQ(keygen::generate(key_file_path.value()), 0);
   ASSERT_TRUE(file_util::PathExists(key_file_path));
 
