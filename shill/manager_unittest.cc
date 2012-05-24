@@ -39,6 +39,7 @@
 #include "shill/property_store_unittest.h"
 #include "shill/service_under_test.h"
 #include "shill/wifi_service.h"
+#include "shill/wimax_service.h"
 
 using std::map;
 using std::set;
@@ -1172,13 +1173,25 @@ TEST_F(ManagerTest, GetServiceVPN) {
   EXPECT_TRUE(service);
 }
 
+TEST_F(ManagerTest, GetServiceWiMaxNoNetworkId) {
+  KeyValueStore args;
+  Error e;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWimax);
+  ServiceRefPtr service = manager()->GetService(args, &e);
+  EXPECT_EQ(Error::kInvalidArguments, e.type());
+  EXPECT_EQ("Missing WiMAX network id.", e.message());
+  EXPECT_FALSE(service);
+}
+
 TEST_F(ManagerTest, GetServiceWiMax) {
   KeyValueStore args;
   Error e;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeWimax);
-  manager()->GetService(args, &e);
-  EXPECT_EQ(Error::kNotSupported, e.type());
-  EXPECT_EQ("No WiMAX device available.", e.message());
+  args.SetString(WiMaxService::kNetworkIdProperty, "01234567");
+  args.SetString(flimflam::kNameProperty, "WiMAX Network");
+  ServiceRefPtr service = manager()->GetService(args, &e);
+  EXPECT_TRUE(e.IsSuccess());
+  EXPECT_TRUE(service);
 }
 
 TEST_F(ManagerTest, ConfigureServiceWithInvalidProfile) {

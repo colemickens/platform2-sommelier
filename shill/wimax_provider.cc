@@ -13,8 +13,10 @@
 #include "shill/error.h"
 #include "shill/key_value_store.h"
 #include "shill/manager.h"
+#include "shill/profile.h"
 #include "shill/proxy_factory.h"
 #include "shill/scope_logger.h"
+#include "shill/store_interface.h"
 #include "shill/wimax.h"
 #include "shill/wimax_manager_proxy_interface.h"
 #include "shill/wimax_service.h"
@@ -23,6 +25,7 @@ using base::Bind;
 using base::Unretained;
 using std::find;
 using std::map;
+using std::set;
 using std::string;
 using std::vector;
 
@@ -38,9 +41,7 @@ WiMaxProvider::WiMaxProvider(ControlInterface *control,
       manager_(manager),
       proxy_factory_(ProxyFactory::GetInstance()) {}
 
-WiMaxProvider::~WiMaxProvider() {
-  Stop();
-}
+WiMaxProvider::~WiMaxProvider() {}
 
 void WiMaxProvider::Start() {
   SLOG(WiMax, 2) << __func__;
@@ -58,18 +59,8 @@ void WiMaxProvider::Stop() {
   SLOG(WiMax, 2) << __func__;
   manager_proxy_.reset();
   DestroyDeadDevices(RpcIdentifiers());
-}
-
-void WiMaxProvider::OnDevicesChanged(const RpcIdentifiers &devices) {
-  SLOG(WiMax, 2) << __func__;
-  DestroyDeadDevices(devices);
-  for (RpcIdentifiers::const_iterator it = devices.begin();
-       it != devices.end(); ++it) {
-    string link_name = GetLinkName(*it);
-    if (!link_name.empty()) {
-      CreateDevice(link_name, *it);
-    }
-  }
+  networks_.clear();
+  DestroyAllServices();
 }
 
 void WiMaxProvider::OnDeviceInfoAvailable(const string &link_name) {
@@ -81,15 +72,25 @@ void WiMaxProvider::OnDeviceInfoAvailable(const string &link_name) {
   }
 }
 
+void WiMaxProvider::OnNetworksChanged() {
+  SLOG(WiMax, 2) << __func__;
+  // Collects the set if live networks from all devices.
+  networks_.clear();
+  for (map<string, WiMaxRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    const set<RpcIdentifier> &networks = it->second->networks();
+    networks_.insert(networks.begin(), networks.end());
+  }
+  // Stops dead and starts live services based on the collected set of live
+  // networks.
+  StopDeadServices();
+  StartLiveServices();
+}
+
 WiMaxServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
                                              Error *error) {
   SLOG(WiMax, 2) << __func__;
   CHECK_EQ(args.GetString(flimflam::kTypeProperty), flimflam::kTypeWimax);
-  if (devices_.empty()) {
-    Error::PopulateAndLog(
-        error, Error::kNotSupported, "No WiMAX device available.");
-    return NULL;
-  }
   WiMaxNetworkId id = args.LookupString(WiMaxService::kNetworkIdProperty, "");
   if (id.empty()) {
     Error::PopulateAndLog(
@@ -102,18 +103,76 @@ WiMaxServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
         error, Error::kInvalidArguments, "Missing WiMAX service name.");
     return NULL;
   }
-  // Use the first available WiMAX device to construct and register the
-  // service. We may need to consider alternatives if this becomes an issue. For
-  // example, we could refactor service creation and management out of WiMax
-  // into WiMaxProvider.
-  WiMaxRefPtr device = devices_.begin()->second;
-  WiMaxServiceRefPtr service = device->GetService(id, name);
+  WiMaxServiceRefPtr service = GetUniqueService(id, name);
   CHECK(service);
   // Configure the service using the the rest of the passed-in arguments.
   service->Configure(args, error);
   // Start the service if there's a matching live network.
-  device->StartLiveServices();
+  StartLiveServices();
   return service;
+}
+
+void WiMaxProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
+  SLOG(WiMax, 2) << __func__;
+  bool created = false;
+  const StoreInterface *storage = profile->GetConstStorage();
+  set<string> groups = storage->GetGroupsWithKey(Service::kStorageType);
+  for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
+    const string &storage_id = *it;
+    string type;
+    if (!storage->GetString(storage_id, Service::kStorageType, &type) ||
+        type != Technology::NameFromIdentifier(Technology::kWiMax)) {
+      continue;
+    }
+    if (FindService(storage_id)) {
+      continue;
+    }
+    WiMaxNetworkId id;
+    if (!storage->GetString(storage_id, WiMaxService::kStorageNetworkId, &id) ||
+        id.empty()) {
+      LOG(ERROR) << "Unable to load network id: " << storage_id;
+      continue;
+    }
+    string name;
+    if (!storage->GetString(storage_id, Service::kStorageName, &name) ||
+        name.empty()) {
+      LOG(ERROR) << "Unable to load service name: " << storage_id;
+      continue;
+    }
+    WiMaxServiceRefPtr service = GetUniqueService(id, name);
+    CHECK(service);
+    if (!profile->ConfigureService(service)) {
+      LOG(ERROR) << "Could not configure service: " << storage_id;
+    }
+    created = true;
+  }
+  if (created) {
+    StartLiveServices();
+  }
+}
+
+WiMaxRefPtr WiMaxProvider::SelectCarrier(const WiMaxServiceRefPtr &service) {
+  SLOG(WiMax, 2) << __func__ << "(" << service->GetStorageIdentifier() << ")";
+  if (devices_.empty()) {
+    LOG(ERROR) << "No WiMAX devices available.";
+    return NULL;
+  }
+  // TODO(petkov): For now, just return the first available device. We need to
+  // be smarter here and select a device that sees |service|'s network.
+  return devices_.begin()->second;
+}
+
+void WiMaxProvider::OnDevicesChanged(const RpcIdentifiers &devices) {
+  SLOG(WiMax, 2) << __func__;
+  DestroyDeadDevices(devices);
+  for (RpcIdentifiers::const_iterator it = devices.begin();
+       it != devices.end(); ++it) {
+    const RpcIdentifier &path = *it;
+    string link_name = GetLinkName(path);
+    if (!link_name.empty()) {
+      CreateDevice(link_name, path);
+    }
+  }
 }
 
 void WiMaxProvider::CreateDevice(const string &link_name,
@@ -127,7 +186,7 @@ void WiMaxProvider::CreateDevice(const string &link_name,
   pending_devices_.erase(link_name);
   DeviceInfo *device_info = manager_->device_info();
   if (device_info->IsDeviceBlackListed(link_name)) {
-    LOG(INFO) << "Do not create WiMax device for blacklisted interface "
+    LOG(INFO) << "WiMAX device not created, interface blacklisted: "
               << link_name;
     return;
   }
@@ -141,7 +200,7 @@ void WiMaxProvider::CreateDevice(const string &link_name,
   }
   ByteString address_bytes;
   if (!device_info->GetMACAddress(index, &address_bytes)) {
-    LOG(ERROR) << "Unable to create a WiMax device with no MAC address: "
+    LOG(ERROR) << "Unable to create a WiMAX device with no MAC address: "
                << link_name;
     return;
   }
@@ -150,6 +209,7 @@ void WiMaxProvider::CreateDevice(const string &link_name,
                                link_name, address, index, path));
   devices_[link_name] = device;
   device_info->RegisterDevice(device);
+  LOG(INFO) << "Created WiMAX device: " << link_name << " @ " << path;
 }
 
 void WiMaxProvider::DestroyDeadDevices(const RpcIdentifiers &live_devices) {
@@ -158,7 +218,7 @@ void WiMaxProvider::DestroyDeadDevices(const RpcIdentifiers &live_devices) {
        it != pending_devices_.end(); ) {
     if (find(live_devices.begin(), live_devices.end(), it->second) ==
         live_devices.end()) {
-      SLOG(WiMax, 2) << "Forgetting pending device: " << it->second;
+      LOG(INFO) << "Forgetting pending device: " << it->second;
       pending_devices_.erase(it++);
     } else {
       ++it;
@@ -168,7 +228,7 @@ void WiMaxProvider::DestroyDeadDevices(const RpcIdentifiers &live_devices) {
        it != devices_.end(); ) {
     if (find(live_devices.begin(), live_devices.end(), it->second->path()) ==
         live_devices.end()) {
-      SLOG(WiMax, 2) << "Destroying device: " << it->first;
+      LOG(INFO) << "Destroying device: " << it->first;
       manager_->device_info()->DeregisterDevice(it->second);
       devices_.erase(it++);
     } else {
@@ -183,6 +243,108 @@ string WiMaxProvider::GetLinkName(const RpcIdentifier &path) {
   }
   LOG(ERROR) << "Unable to determine link name from RPC path: " << path;
   return string();
+}
+
+WiMaxServiceRefPtr WiMaxProvider::FindService(const string &storage_id) {
+  SLOG(WiMax, 2) << __func__ << "(" << storage_id << ")";
+  for (vector<WiMaxServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end(); ++it) {
+    if ((*it)->GetStorageIdentifier() == storage_id) {
+      return *it;
+    }
+  }
+  return NULL;
+}
+
+WiMaxServiceRefPtr WiMaxProvider::GetUniqueService(const WiMaxNetworkId &id,
+                                                   const string &name) {
+  SLOG(WiMax, 2) << __func__ << "(" << id << ", " << name << ")";
+  string storage_id = WiMaxService::CreateStorageIdentifier(id, name);
+  WiMaxServiceRefPtr service = FindService(storage_id);
+  if (service) {
+    SLOG(WiMax, 2) << "Service already exists.";
+    return service;
+  }
+  service = new WiMaxService(control_, dispatcher_, metrics_, manager_);
+  service->set_network_id(id);
+  service->set_friendly_name(name);
+  service->InitStorageIdentifier();
+  services_.push_back(service);
+  manager_->RegisterService(service);
+  LOG(INFO) << "Registered WiMAX service: " << service->GetStorageIdentifier();
+  return service;
+}
+
+WiMaxServiceRefPtr WiMaxProvider::GetDefaultService(
+    const RpcIdentifier &network) {
+  SLOG(WiMax, 2) << __func__ << "(" << network << ")";
+  scoped_ptr<WiMaxNetworkProxyInterface> proxy(
+      proxy_factory_->CreateWiMaxNetworkProxy(network));
+  Error error;
+  uint32 identifier = proxy->Identifier(&error);
+  if (error.IsFailure()) {
+    return NULL;
+  }
+  string name = proxy->Name(&error);
+  if (error.IsFailure()) {
+    return NULL;
+  }
+  return GetUniqueService(
+      WiMaxService::ConvertIdentifierToNetworkId(identifier), name);
+}
+
+void WiMaxProvider::StartLiveServices() {
+  for (set<RpcIdentifier>::const_iterator it = networks_.begin();
+       it != networks_.end(); ++it) {
+    StartLiveServicesForNetwork(*it);
+  }
+}
+
+void WiMaxProvider::StartLiveServicesForNetwork(const RpcIdentifier &network) {
+  SLOG(WiMax, 2) << __func__ << "(" << network << ")";
+  WiMaxServiceRefPtr default_service = GetDefaultService(network);
+  if (!default_service) {
+    return;
+  }
+  // Start services for this live network identifier.
+  for (vector<WiMaxServiceRefPtr>::iterator it = services_.begin();
+       it != services_.end(); ++it) {
+    const WiMaxServiceRefPtr &service = *it;
+    if (service->network_id() != default_service->network_id() ||
+        service->IsStarted()) {
+      continue;
+    }
+    if (!service->Start(proxy_factory_->CreateWiMaxNetworkProxy(network))) {
+      LOG(ERROR) << "Unable to start service: "
+                 << service->GetStorageIdentifier();
+    }
+  }
+}
+
+void WiMaxProvider::StopDeadServices() {
+  SLOG(WiMax, 2) << __func__ << "(" << networks_.size() << ")";
+  for (vector<WiMaxServiceRefPtr>::iterator it = services_.begin();
+       it != services_.end(); ++it) {
+    const WiMaxServiceRefPtr &service = *it;
+    if (!service->IsStarted() ||
+        ContainsKey(networks_, service->GetNetworkObjectPath())) {
+      continue;
+    }
+    service->Stop();
+  }
+}
+
+void WiMaxProvider::DestroyAllServices() {
+  SLOG(WiMax, 2) << __func__;
+  while (!services_.empty()) {
+    const WiMaxServiceRefPtr &service = services_.back();
+    // Stop the service so that it can notify its carrier device, if any.
+    service->Stop();
+    manager_->DeregisterService(service);
+    LOG(INFO) << "Deregistered WiMAX service: "
+              << service->GetStorageIdentifier();
+    services_.pop_back();
+  }
 }
 
 }  // namespace shill

@@ -16,8 +16,7 @@ class MockWiMaxService : public WiMaxService {
   MockWiMaxService(ControlInterface *control,
                    EventDispatcher *dispatcher,
                    Metrics *metrics,
-                   Manager *manager,
-                   const WiMaxRefPtr &wimax);
+                   Manager *manager);
   virtual ~MockWiMaxService();
 
   MOCK_CONST_METHOD0(GetNetworkObjectPath, RpcIdentifier());

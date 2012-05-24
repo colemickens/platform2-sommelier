@@ -12,7 +12,6 @@
 #include "shill/manager.h"
 #include "shill/proxy_factory.h"
 #include "shill/scope_logger.h"
-#include "shill/store_interface.h"
 #include "shill/wimax_device_proxy_interface.h"
 #include "shill/wimax_service.h"
 
@@ -59,10 +58,12 @@ void WiMax::Start(Error *error, const EnabledStateChangedCallback &callback) {
 
 void WiMax::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   SLOG(WiMax, 2) << __func__;
+  if (selected_service()) {
+    Error error;
+    DisconnectFrom(selected_service(), &error);
+  }
   networks_.clear();
-  StopDeadServices();
-  DestroyAllServices();
-  services_.clear();
+  manager()->wimax_provider()->OnNetworksChanged();
   proxy_->Disable(
       error, Bind(&WiMax::OnDisableComplete, this, callback), kTimeoutDefault);
 }
@@ -87,14 +88,14 @@ void WiMax::Scan(Error *error) {
 }
 
 void WiMax::ConnectTo(const WiMaxServiceRefPtr &service, Error *error) {
-  SLOG(WiMax, 2) << __func__ << "(" << service->friendly_name() << ")";
+  SLOG(WiMax, 2) << __func__ << "(" << service->GetStorageIdentifier() << ")";
   if (pending_service_) {
     Error::PopulateAndLog(
         error, Error::kInProgress,
         base::StringPrintf(
             "Pending connect to %s, ignoring connect request to %s.",
             pending_service_->friendly_name().c_str(),
-            service->friendly_name().c_str()));
+            service->GetStorageIdentifier().c_str()));
     return;
   }
   service->SetState(Service::kStateAssociating);
@@ -110,7 +111,7 @@ void WiMax::ConnectTo(const WiMaxServiceRefPtr &service, Error *error) {
   }
 }
 
-void WiMax::DisconnectFrom(const WiMaxServiceRefPtr &service, Error *error) {
+void WiMax::DisconnectFrom(const ServiceRefPtr &service, Error *error) {
   SLOG(WiMax, 2) << __func__;
   if (pending_service_) {
     Error::PopulateAndLog(
@@ -118,7 +119,7 @@ void WiMax::DisconnectFrom(const WiMaxServiceRefPtr &service, Error *error) {
         base::StringPrintf(
             "Pending connect to %s, ignoring disconnect request from %s.",
             pending_service_->friendly_name().c_str(),
-            service->friendly_name().c_str()));
+            service->GetStorageIdentifier().c_str()));
     return;
   }
   if (selected_service() && service != selected_service()) {
@@ -127,13 +128,23 @@ void WiMax::DisconnectFrom(const WiMaxServiceRefPtr &service, Error *error) {
         base::StringPrintf(
             "Curent service is %s, ignoring disconnect request from %s.",
             selected_service()->friendly_name().c_str(),
-            service->friendly_name().c_str()));
+            service->GetStorageIdentifier().c_str()));
     return;
   }
+  DropConnection();
   proxy_->Disconnect(
       error, Bind(&WiMax::OnDisconnectComplete, this), kTimeoutDefault);
   if (error->IsFailure()) {
-    OnDisconnectComplete(Error());
+    OnDisconnectComplete(*error);
+  }
+}
+
+void WiMax::OnServiceStopped(const WiMaxServiceRefPtr &service) {
+  if (service == selected_service()) {
+    DropConnection();
+  }
+  if (pending_service_ == service) {
+    pending_service_ = NULL;
   }
 }
 
@@ -162,8 +173,6 @@ void WiMax::OnConnectComplete(const Error &error) {
 
 void WiMax::OnDisconnectComplete(const Error &/*error*/) {
   SLOG(WiMax, 2) << __func__;
-  DestroyIPConfig();
-  SelectService(NULL);
 }
 
 void WiMax::OnEnableComplete(const EnabledStateChangedCallback &callback,
@@ -189,167 +198,14 @@ void WiMax::OnDisableComplete(const EnabledStateChangedCallback &callback,
 
 void WiMax::OnNetworksChanged(const RpcIdentifiers &networks) {
   SLOG(WiMax, 2) << __func__;
-  networks_ = networks;
-  StopDeadServices();
-  StartLiveServices();
+  networks_.clear();
+  networks_.insert(networks.begin(), networks.end());
+  manager()->wimax_provider()->OnNetworksChanged();
 }
 
-void WiMax::StartLiveServices() {
-  for (RpcIdentifiers::const_iterator it = networks_.begin();
-       it != networks_.end(); ++it) {
-    StartLiveServicesForNetwork(*it);
-  }
-}
-
-void WiMax::StartLiveServicesForNetwork(const RpcIdentifier &network) {
-  SLOG(WiMax, 2) << __func__ << "(" << network << ")";
-  WiMaxServiceRefPtr default_service = GetDefaultService(network);
-  if (!default_service) {
-    return;
-  }
-  // Start services for this live network identifier.
-  for (vector<WiMaxServiceRefPtr>::iterator it = services_.begin();
-       it != services_.end(); ++it) {
-    WiMaxServiceRefPtr service = *it;
-    if (service->network_id() != default_service->network_id()) {
-      continue;
-    }
-    if (service->IsStarted()) {
-      continue;
-    }
-    if (service->Start(proxy_factory_->CreateWiMaxNetworkProxy(network))) {
-      LOG(INFO) << "WiMAX service started: "
-                << service->GetStorageIdentifier();
-    } else {
-      LOG(ERROR) << "Unable to start service: "
-                 << service->GetStorageIdentifier();
-    }
-  }
-}
-
-void WiMax::StopDeadServices() {
-  SLOG(WiMax, 2) << __func__ << "(" << networks_.size() << ")";
-  for (vector<WiMaxServiceRefPtr>::iterator it = services_.begin();
-       it != services_.end(); ++it) {
-    WiMaxServiceRefPtr service = *it;
-    if (!service->IsStarted()) {
-      continue;
-    }
-    if (find(networks_.begin(), networks_.end(),
-             service->GetNetworkObjectPath()) == networks_.end()) {
-      LOG(INFO) << "Stopping WiMAX service: "
-                << service->GetStorageIdentifier();
-      if (service == selected_service()) {
-        DestroyIPConfig();
-        SelectService(NULL);
-      }
-      if (pending_service_ == service) {
-        pending_service_ = NULL;
-      }
-      service->Stop();
-    }
-  }
-}
-
-void WiMax::DestroyAllServices() {
-  SLOG(WiMax, 2) << __func__;
-  while (!services_.empty()) {
-    const WiMaxServiceRefPtr &service = services_.back();
-    manager()->DeregisterService(service);
-    LOG(INFO) << "Deregistered WiMAX service: "
-              << service->GetStorageIdentifier();
-    services_.pop_back();
-  }
-}
-
-WiMaxServiceRefPtr WiMax::GetService(const WiMaxNetworkId &id,
-                                     const string &name) {
-  SLOG(WiMax, 2) << __func__ << "(" << id << ", " << name << ")";
-  string storage_id = WiMaxService::CreateStorageIdentifier(id, name);
-  WiMaxServiceRefPtr service = FindService(storage_id);
-  if (service) {
-    SLOG(WiMax, 2) << "Service already exists.";
-    return service;
-  }
-  service = new WiMaxService(control_interface(),
-                             dispatcher(),
-                             metrics(),
-                             manager(),
-                             this);
-  service->set_network_id(id);
-  service->set_friendly_name(name);
-  service->InitStorageIdentifier();
-  services_.push_back(service);
-  manager()->RegisterService(service);
-  LOG(INFO) << "Registered WiMAX service: " << service->GetStorageIdentifier();
-  return service;
-}
-
-WiMaxServiceRefPtr WiMax::GetDefaultService(const RpcIdentifier &network) {
-  SLOG(WiMax, 2) << __func__ << "(" << network << ")";
-  scoped_ptr<WiMaxNetworkProxyInterface> proxy(
-      proxy_factory_->CreateWiMaxNetworkProxy(network));
-  Error error;
-  uint32 identifier = proxy->Identifier(&error);
-  if (error.IsFailure()) {
-    return NULL;
-  }
-  string name = proxy->Name(&error);
-  if (error.IsFailure()) {
-    return NULL;
-  }
-  return GetService(WiMaxService::ConvertIdentifierToNetworkId(identifier),
-                    name);
-}
-
-WiMaxServiceRefPtr WiMax::FindService(const string &storage_id) {
-  SLOG(WiMax, 2) << __func__ << "(" << storage_id << ")";
-  for (vector<WiMaxServiceRefPtr>::const_iterator it = services_.begin();
-       it != services_.end(); ++it) {
-    if ((*it)->GetStorageIdentifier() == storage_id) {
-      return *it;
-    }
-  }
-  return NULL;
-}
-
-bool WiMax::Load(StoreInterface *storage) {
-  bool loaded = Device::Load(storage);
-  if (LoadServices(storage)) {
-    StartLiveServices();
-  }
-  return loaded;
-}
-
-bool WiMax::LoadServices(StoreInterface *storage) {
-  SLOG(WiMax, 2) << __func__;
-  bool loaded = false;
-  set<string> groups = storage->GetGroupsWithKey(Service::kStorageType);
-  for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
-    string type;
-    if (!storage->GetString(*it, Service::kStorageType, &type) ||
-        type != GetTechnologyString(NULL)) {
-      continue;
-    }
-    if (FindService(*it)) {
-      continue;
-    }
-    WiMaxNetworkId id;
-    if (!storage->GetString(*it, WiMaxService::kStorageNetworkId, &id) ||
-        id.empty()) {
-      LOG(ERROR) << "Unable to load network id.";
-      continue;
-    }
-    string name;
-    if (!storage->GetString(*it, Service::kStorageName, &name) ||
-        name.empty()) {
-      LOG(ERROR) << "Unable to load service name.";
-      continue;
-    }
-    GetService(id, name);
-    loaded = true;
-  }
-  return loaded;
+void WiMax::DropConnection() {
+  DestroyIPConfig();
+  SelectService(NULL);
 }
 
 }  // namespace shill

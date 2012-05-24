@@ -25,8 +25,7 @@ class WiMaxService : public Service {
   WiMaxService(ControlInterface *control,
                EventDispatcher *dispatcher,
                Metrics *metrics,
-               Manager *manager,
-               const WiMaxRefPtr &wimax);
+               Manager *manager);
   virtual ~WiMaxService();
 
   // Returns the parameters to be passed to WiMaxManager.Device.Connect() when
@@ -44,7 +43,8 @@ class WiMaxService : public Service {
   virtual bool Start(WiMaxNetworkProxyInterface *proxy);
 
   // Stops the service by disassociating it from |proxy_| and resetting its
-  // signal strength to 0.
+  // signal strength to 0. If the service is connected, it notifies the carrier
+  // device that the service is stopped.
   virtual void Stop();
 
   virtual bool IsStarted() const;
@@ -70,7 +70,10 @@ class WiMaxService : public Service {
   virtual void set_eap(const EapCredentials &eap);
   virtual bool Save(StoreInterface *storage);
 
+  // TODO(petkov): Support Unload (crosbug.com/p/9942).
+
  private:
+  friend class WiMaxServiceTest;
   FRIEND_TEST(WiMaxServiceTest, GetDeviceRpcId);
   FRIEND_TEST(WiMaxServiceTest, OnSignalStrengthChanged);
   FRIEND_TEST(WiMaxServiceTest, SetEAP);
@@ -82,7 +85,7 @@ class WiMaxService : public Service {
 
   void UpdateConnectable();
 
-  WiMaxRefPtr wimax_;
+  WiMaxRefPtr device_;
   scoped_ptr<WiMaxNetworkProxyInterface> proxy_;
   std::string storage_id_;
 

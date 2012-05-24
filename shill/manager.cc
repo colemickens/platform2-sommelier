@@ -332,9 +332,10 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
     profile->ConfigureDevice(*it);
   }
 
-  // Offer the Profile contents to the VPNProvider which will create
-  // new VPN services if necessary.
+  // Offer the Profile contents to the service/device providers which will
+  // create new services if necessary.
   vpn_provider_.CreateServicesFromProfile(profile);
+  wimax_provider_.CreateServicesFromProfile(profile);
 
   *path = profile->GetRpcIdentifier();
   SortServices();

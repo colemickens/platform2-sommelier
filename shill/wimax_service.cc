@@ -12,6 +12,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/key_value_store.h"
+#include "shill/manager.h"
 #include "shill/scope_logger.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
@@ -28,10 +29,8 @@ const char WiMaxService::kNetworkIdProperty[] = "NetworkId";
 WiMaxService::WiMaxService(ControlInterface *control,
                            EventDispatcher *dispatcher,
                            Metrics *metrics,
-                           Manager *manager,
-                           const WiMaxRefPtr &wimax)
+                           Manager *manager)
     : Service(control, dispatcher, metrics, manager, Technology::kWiMax),
-      wimax_(wimax),
       need_passphrase_(true) {
   PropertyStore *store = this->mutable_store();
   // TODO(benchan): Support networks that require no user credentials or
@@ -64,9 +63,16 @@ RpcIdentifier WiMaxService::GetNetworkObjectPath() const {
 }
 
 void WiMaxService::Stop() {
-  SLOG(WiMax, 2) << __func__;
+  if (!IsStarted()) {
+    return;
+  }
+  LOG(INFO) << "Stopping WiMAX service: " << GetStorageIdentifier();
   proxy_.reset();
   SetStrength(0);
+  if (device_) {
+    device_->OnServiceStopped(this);
+    device_ = NULL;
+  }
 }
 
 bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
@@ -104,6 +110,7 @@ bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
       Bind(&WiMaxService::OnSignalStrengthChanged, Unretained(this)));
   UpdateConnectable();
   proxy_.reset(local_proxy.release());
+  LOG(INFO) << "WiMAX service started: " << GetStorageIdentifier();
   return true;
 }
 
@@ -116,13 +123,30 @@ bool WiMaxService::TechnologyIs(const Technology::Identifier type) const {
 }
 
 void WiMaxService::Connect(Error *error) {
+  if (device_) {
+    Error::PopulateAndLog(
+        error, Error::kAlreadyConnected, "Already connected.");
+    return;
+  }
+  device_ = manager()->wimax_provider()->SelectCarrier(this);
+  if (!device_) {
+    Error::PopulateAndLog(
+        error, Error::kNoCarrier, "No suitable WiMAX device available.");
+    return;
+  }
   Service::Connect(error);
-  wimax_->ConnectTo(this, error);
+  device_->ConnectTo(this, error);
 }
 
 void WiMaxService::Disconnect(Error *error) {
+  if (!device_) {
+    Error::PopulateAndLog(
+        error, Error::kNotConnected, "Not connected.");
+    return;
+  }
   Service::Disconnect(error);
-  wimax_->DisconnectFrom(this, error);
+  device_->DisconnectFrom(this, error);
+  device_ = NULL;
 }
 
 string WiMaxService::GetStorageIdentifier() const {
@@ -130,7 +154,11 @@ string WiMaxService::GetStorageIdentifier() const {
 }
 
 string WiMaxService::GetDeviceRpcId(Error *error) {
-  return wimax_->GetRpcIdentifier();
+  if (device_) {
+    return device_->GetRpcIdentifier();
+  }
+  error->Populate(Error::kNotSupported);
+  return "/";
 }
 
 bool WiMaxService::Is8021x() const {

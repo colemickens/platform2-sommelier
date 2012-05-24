@@ -35,6 +35,7 @@
 #include "shill/mock_vpn_provider.h"
 #include "shill/mock_wimax_provider.h"
 #include "shill/rtnl_message.h"
+#include "shill/wimax.h"
 
 using base::Callback;
 using std::map;

@@ -9,9 +9,8 @@ namespace shill {
 MockWiMaxService::MockWiMaxService(ControlInterface *control,
                                    EventDispatcher *dispatcher,
                                    Metrics *metrics,
-                                   Manager *manager,
-                                   const WiMaxRefPtr &wimax)
-    : WiMaxService(control, dispatcher, metrics, manager, wimax) {}
+                                   Manager *manager)
+    : WiMaxService(control, dispatcher, metrics, manager) {}
 
 MockWiMaxService::~MockWiMaxService() {}
 

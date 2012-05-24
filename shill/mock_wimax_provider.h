@@ -17,6 +17,8 @@ class MockWiMaxProvider : public WiMaxProvider {
   virtual ~MockWiMaxProvider();
 
   MOCK_METHOD1(OnDeviceInfoAvailable, void(const std::string &link_name));
+  MOCK_METHOD0(OnNetworksChanged, void());
+  MOCK_METHOD1(SelectCarrier, WiMaxRefPtr(const WiMaxServiceRefPtr &service));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxProvider);

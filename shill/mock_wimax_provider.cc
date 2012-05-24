@@ -4,6 +4,8 @@
 
 #include "shill/mock_wimax_provider.h"
 
+#include "shill/wimax.h"
+
 namespace shill {
 
 MockWiMaxProvider::MockWiMaxProvider()

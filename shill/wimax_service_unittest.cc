@@ -16,6 +16,7 @@
 #include "shill/mock_store.h"
 #include "shill/mock_wimax.h"
 #include "shill/mock_wimax_network_proxy.h"
+#include "shill/mock_wimax_provider.h"
 
 using std::string;
 using testing::_;
@@ -43,11 +44,10 @@ class WiMaxServiceTest : public testing::Test {
   WiMaxServiceTest()
       : proxy_(new MockWiMaxNetworkProxy()),
         manager_(&control_, NULL, NULL, NULL),
-        wimax_(new MockWiMax(&control_, NULL, &metrics_, &manager_,
-                             kTestLinkName, kTestAddress, kTestInterfaceIndex,
-                             kTestPath)),
-        service_(new WiMaxService(&control_, NULL, &metrics_, &manager_,
-                                  wimax_)) {
+        device_(new MockWiMax(&control_, NULL, &metrics_, &manager_,
+                              kTestLinkName, kTestAddress, kTestInterfaceIndex,
+                              kTestPath)),
+        service_(new WiMaxService(&control_, NULL, &metrics_, &manager_)) {
     service_->set_friendly_name(kTestName);
     service_->set_network_id(kTestNetworkId);
     service_->InitStorageIdentifier();
@@ -56,11 +56,15 @@ class WiMaxServiceTest : public testing::Test {
   virtual ~WiMaxServiceTest() {}
 
  protected:
+  virtual void TearDown() {
+    service_->device_ = NULL;
+  }
+
   scoped_ptr<MockWiMaxNetworkProxy> proxy_;
   NiceMockControl control_;
   MockManager manager_;
   MockMetrics metrics_;
-  scoped_refptr<MockWiMax> wimax_;
+  scoped_refptr<MockWiMax> device_;
   WiMaxServiceRefPtr service_;
 };
 
@@ -97,6 +101,10 @@ TEST_F(WiMaxServiceTest, TechnologyIs) {
 
 TEST_F(WiMaxServiceTest, GetDeviceRpcId) {
   Error error;
+  EXPECT_EQ("/", service_->GetDeviceRpcId(&error));
+  EXPECT_EQ(Error::kNotSupported, error.type());
+  service_->device_ = device_;
+  error.Reset();
   EXPECT_EQ(DeviceMockAdaptor::kRpcId, service_->GetDeviceRpcId(&error));
   EXPECT_TRUE(error.IsSuccess());
 }
@@ -126,6 +134,9 @@ TEST_F(WiMaxServiceTest, StartStop) {
   EXPECT_EQ(kTestNetworkId, service_->network_id());
   EXPECT_FALSE(service_->connectable());
   EXPECT_TRUE(service_->proxy_.get());
+
+  service_->device_ = device_;
+  EXPECT_CALL(*device_, OnServiceStopped(_));
   service_->Stop();
   EXPECT_FALSE(service_->IsStarted());
   EXPECT_EQ(0, service_->strength());
@@ -171,6 +182,34 @@ TEST_F(WiMaxServiceTest, Save) {
                                  WiMaxService::kStorageNetworkId,
                                  kTestNetworkId));
   EXPECT_TRUE(service_->Save(&storage));
+}
+
+TEST_F(WiMaxServiceTest, Connect) {
+  MockWiMaxProvider provider;
+  scoped_refptr<MockWiMax> null_device;
+  EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&provider));
+  EXPECT_CALL(provider, SelectCarrier(_)).WillOnce(Return(null_device));
+  Error error;
+  service_->Connect(&error);
+  EXPECT_EQ(Error::kNoCarrier, error.type());
+
+  EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&provider));
+  EXPECT_CALL(provider, SelectCarrier(_)).WillOnce(Return(device_));
+  EXPECT_CALL(*device_, ConnectTo(_, _));
+  error.Reset();
+  service_->Connect(&error);
+  EXPECT_TRUE(error.IsSuccess());
+
+  service_->Connect(&error);
+  EXPECT_EQ(Error::kAlreadyConnected, error.type());
+
+  EXPECT_CALL(*device_, DisconnectFrom(_, _));
+  error.Reset();
+  service_->Disconnect(&error);
+  EXPECT_TRUE(error.IsSuccess());
+
+  service_->Disconnect(&error);
+  EXPECT_EQ(Error::kNotConnected, error.type());
 }
 
 }  // namespace shill
