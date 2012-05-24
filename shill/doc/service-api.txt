@@ -438,6 +438,23 @@ Properties	boolean AutoConnect [readwrite]
 			This property is included in get requests only
 			when the requester has sufficient privileges.
 
+		array{string} EAP.RemoteCertification [readonly]
+
+			(WiFi only) The list of certificate subject names
+			reported by the remote RADIUS server.  This
+			property is set during 802.1x negotiation and
+			persists after disconnection for later inspection,
+			but is not persisted between connection manager
+			restarts.  It is also cleared at the beginning of
+			the next connection.
+
+		string EAP.SubjectMatch [readwrite]
+
+			(WiFi only) A substring which the remote
+			RADIUS server certificate subject name must
+			contain.  If the subject does not contain this
+			substring, abort 802.1x negotiation.
+
 		string Error [readonly]
 
 			The service error status details.

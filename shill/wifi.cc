@@ -292,6 +292,11 @@ void WiFi::BSSRemoved(const ::DBus::Path &path) {
                               weak_ptr_factory_.GetWeakPtr(), path));
 }
 
+void WiFi::Certification(const map<string, ::DBus::Variant> &properties) {
+  dispatcher()->PostTask(Bind(&WiFi::CertificationTask,
+                              weak_ptr_factory_.GetWeakPtr(), properties));
+}
+
 void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
   LOG(INFO) << "In " << __func__ << "(): called";
   // Called from D-Bus signal handler, but may need to send a D-Bus
@@ -969,6 +974,30 @@ void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
       services_.erase(it);
     }
   }
+}
+
+void WiFi::CertificationTask(
+    const map<string, ::DBus::Variant> &properties) {
+  if (!current_service_) {
+    LOG(ERROR) << "WiFi " << link_name() << " " << __func__
+               << " with no current service.";
+    return;
+  }
+
+  map<string, ::DBus::Variant>::const_iterator properties_it =
+      properties.find(wpa_supplicant::kInterfacePropertyDepth);
+  if (properties_it == properties.end()) {
+    LOG(ERROR) << __func__ << " no depth parameter.";
+    return;
+  }
+  uint32 depth = properties_it->second.reader().get_uint32();
+  properties_it = properties.find(wpa_supplicant::kInterfacePropertySubject);
+  if (properties_it == properties.end()) {
+    LOG(ERROR) << __func__ << " no subject parameter.";
+    return;
+  }
+  string subject(properties_it->second.reader().get_string());
+  current_service_->AddEAPCertification(subject, depth);
 }
 
 void WiFi::PropertiesChangedTask(

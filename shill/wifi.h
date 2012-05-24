@@ -42,10 +42,14 @@
 //  with an AP in the ESS.  At this point the WiFiService which is being
 //  connected is called the |pending_service_|.
 //
-// 3.  When association is complete, WPA Supplicant sends a PropertiesChanged
-// signal to the WiFi device, indicating a change in the CurrentBSS.  The
-// WiFiService indicated by the new value of CurrentBSS is set as the
-// |current_service_|, and |pending_service_| is (normally) cleared.
+//  3.  During association to an EAP-TLS network, WPA Supplicant can send
+//  multiple "Certification" events, which provide information about the
+//  identity of the remote entity.
+//
+//  4.  When association is complete, WPA Supplicant sends a PropertiesChanged
+//  signal to the WiFi device, indicating a change in the CurrentBSS.  The
+//  WiFiService indicated by the new value of CurrentBSS is set as the
+//  |current_service_|, and |pending_service_| is (normally) cleared.
 //
 // Some key things to notice are 1) WPA Supplicant does the work of selecting
 // the AP (aka WiFiEndpoint) and it tells the WiFi device which AP it selected.
@@ -126,6 +130,7 @@ class WiFi : public Device {
   void BSSAdded(const ::DBus::Path &BSS,
                 const std::map<std::string, ::DBus::Variant> &properties);
   void BSSRemoved(const ::DBus::Path &BSS);
+  void Certification(const std::map<std::string, ::DBus::Variant> &properties);
   void PropertiesChanged(
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDone();
@@ -213,6 +218,8 @@ class WiFi : public Device {
                     const std::map<std::string, ::DBus::Variant> &properties);
   void BSSRemovedTask(const ::DBus::Path &BSS);
   void ClearCachedCredentialsTask();
+  void CertificationTask(
+      const std::map<std::string, ::DBus::Variant> &properties);
   void PropertiesChangedTask(
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDoneTask();

@@ -67,6 +67,9 @@
     <signal name="BlobRemoved">
       <arg name="blobname" type="s"/>
     </signal>
+    <signal name="Certification">
+      <arg name="properties" type="a{sv}"/>
+    </signal>
     <signal name="NetworkAdded">
       <arg name="network" type="o"/>
       <arg name="properties" type="a{sv}"/>

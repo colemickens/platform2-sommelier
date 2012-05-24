@@ -157,6 +157,12 @@ void SupplicantInterfaceProxy::Proxy::BSSAdded(
   wifi_->BSSAdded(BSS, properties);
 }
 
+void SupplicantInterfaceProxy::Proxy::Certification(
+    const std::map<string, ::DBus::Variant> &properties) {
+  SLOG(DBus, 2) << __func__;
+  wifi_->Certification(properties);
+}
+
 void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path &BSS) {
   SLOG(DBus, 2) << __func__;
   wifi_->BSSRemoved(BSS);

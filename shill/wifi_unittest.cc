@@ -282,6 +282,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   const WiFiServiceRefPtr &GetCurrentService() {
     return wifi_->current_service_;
   }
+  void SetCurrentService(const WiFiServiceRefPtr &service) {
+    wifi_->current_service_ = service;
+  }
   const WiFi::EndpointMap &GetEndpointMap() {
     return wifi_->endpoint_by_rpcid_;
   }
@@ -449,6 +452,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         .WillRepeatedly(DoAll(SetArgumentPointee<2>(true), Return(true)));
     EXPECT_CALL(*storage, GetString(StrEq(*id), flimflam::kSSIDProperty, _))
         .WillRepeatedly(DoAll(SetArgumentPointee<2>(hex_ssid), Return(true)));
+  }
+  void ReportCertification(const map<string, ::DBus::Variant> &properties) {
+    wifi_->CertificationTask(properties);
   }
 
   void RestartFastScanAttempts() {
@@ -1942,6 +1948,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailure) {
   EXPECT_TRUE(service->IsFailed());
 }
 
+
 // Scanning tests will use a mock of the event dispatcher instead of a real
 // one.
 class WiFiScanTest : public WiFiObjectTest {
@@ -2004,6 +2011,36 @@ TEST_F(WiFiScanTest, FastRescan) {
   RestartFastScanAttempts();
 
   ExpectInitialScanSequence();
+}
+
+TEST_F(WiFiMainTest, EAPCertification) {
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurity8021x);
+  EXPECT_CALL(*service, AddEAPCertification(_, _)).Times(0);
+
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("no current service.")));
+  map<string, ::DBus::Variant> args;
+  ReportCertification(args);
+  Mock::VerifyAndClearExpectations(&log);
+
+  SetCurrentService(service);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("no depth parameter.")));
+  ReportCertification(args);
+  Mock::VerifyAndClearExpectations(&log);
+
+  const uint32 kDepth = 123;
+  args[wpa_supplicant::kInterfacePropertyDepth].writer().append_uint32(kDepth);
+
+  EXPECT_CALL(log,
+              Log(logging::LOG_ERROR, _, EndsWith("no subject parameter.")));
+  ReportCertification(args);
+  Mock::VerifyAndClearExpectations(&log);
+
+  const string kSubject("subject");
+  args[wpa_supplicant::kInterfacePropertySubject].writer()
+      .append_string(kSubject.c_str());
+  EXPECT_CALL(*service, AddEAPCertification(kSubject, kDepth)).Times(1);
+  ReportCertification(args);
 }
 
 }  // namespace shill

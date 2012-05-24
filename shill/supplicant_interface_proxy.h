@@ -59,6 +59,8 @@ class SupplicantInterfaceProxy
                           const std::map<std::string, ::DBus::Variant>
                           &properties);
     virtual void BSSRemoved(const ::DBus::Path &BSS);
+    virtual void Certification(const std::map<std::string, ::DBus::Variant>
+                               &properties);
     virtual void NetworkAdded(const ::DBus::Path &network,
                               const std::map<std::string, ::DBus::Variant>
                               &properties);

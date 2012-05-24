@@ -42,6 +42,8 @@ const char Service::kAutoConnConnecting[] = "connecting";
 const char Service::kAutoConnExplicitDisconnect[] = "explicitly disconnected";
 const char Service::kAutoConnNotConnectable[] = "not connectable";
 
+const size_t Service::kEAPMaxCertificationElements = 10;
+
 const char Service::kCheckPortalAuto[] = "auto";
 const char Service::kCheckPortalFalse[] = "false";
 const char Service::kCheckPortalTrue[] = "true";
@@ -169,6 +171,10 @@ Service::Service(ControlInterface *control_interface,
                                      &eap_.password);
   store_.RegisterString(flimflam::kEapKeyMgmtProperty, &eap_.key_management);
   store_.RegisterBool(flimflam::kEapUseSystemCAsProperty, &eap_.use_system_cas);
+  store_.RegisterConstStrings(shill::kEapRemoteCertificationProperty,
+                              &eap_.remote_certification);
+  store_.RegisterString(shill::kEapSubjectMatchProperty,
+                        &eap_.subject_match);
 
   // TODO(ers): in flimflam clearing Error has the side-effect of
   // setting the service state to IDLE. Is this important? I could
@@ -526,6 +532,33 @@ bool Service::Is8021xConnectable() const {
   SLOG(Service, 2)
       << "Not connectable. No suitable EAP configuration was found.";
   return false;
+}
+
+bool Service::AddEAPCertification(const string &name, size_t depth) {
+  if (depth >= kEAPMaxCertificationElements) {
+    LOG(WARNING) << "Ignoring certification " << name
+                 << " because depth " << depth
+                 << " exceeds our maximum of "
+                 << kEAPMaxCertificationElements;
+    return false;
+  }
+
+  if (depth >= eap_.remote_certification.size()) {
+    eap_.remote_certification.resize(depth + 1);
+  } else if (name == eap_.remote_certification[depth]) {
+    return true;
+  }
+
+  eap_.remote_certification[depth] = name;
+  LOG(INFO) << "Received certification for "
+            << name
+            << " at depth "
+            << depth;
+  return true;
+}
+
+void Service::ClearEAPCertification() {
+  eap_.remote_certification.clear();
 }
 
 void Service::set_eap(const EapCredentials &eap) {

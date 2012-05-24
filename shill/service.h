@@ -115,22 +115,42 @@ class Service : public base::RefCounted<Service> {
   };
   struct EapCredentials {
     EapCredentials() : use_system_cas(true) {}
+    // Who we identify ourselves as to the EAP authenticator.
     std::string identity;
+    // The outer or only EAP authetnication type.
     std::string eap;
+    // The inner EAP authentication type.
     std::string inner_eap;
+    // When there is an inner EAP type, use this identity for the outer.
     std::string anonymous_identity;
+    // Filename of the client certificate.
     std::string client_cert;
+    // Locator for the client certificate within the security token.
     std::string cert_id;
+    // Filename of the client private key.
     std::string private_key;
+    // Password for decrypting the client private key file.
     std::string private_key_password;
+    // Locator for the client private key within the security token.
     std::string key_id;
+    // Filename of the certificate authority (CA) certificate.
     std::string ca_cert;
+    // Locator for the CA certificate within the security token.
     std::string ca_cert_id;
+    // Locator for the CA certificate within the user NSS database.
     std::string ca_cert_nss;
+    // If true, use the system-wide CA database to authenticate the remote.
     bool use_system_cas;
+    // PIN code for accessing the security token.
     std::string pin;
+    // Password to use for EAP methods which require one.
     std::string password;
+    // Key management algorithm to use after EAP succeeds.
     std::string key_management;
+    // If non-empty, string to match remote subject against before connecting.
+    std::string subject_match;
+    // List of subject names reported by remote entity during TLS setup.
+    std::vector<std::string> remote_certification;
   };
 
   static const int kPriorityNone;
@@ -258,6 +278,12 @@ class Service : public base::RefCounted<Service> {
   // Examines the EAP credentials for the service and returns true if a
   // connection attempt can be made.
   bool Is8021xConnectable() const;
+
+  // Add an EAP certification id |name| at position |depth| in the stack.
+  // Returns true if entry was added, false otherwise.
+  virtual bool AddEAPCertification(const std::string &name, size_t depth);
+  // Clear all EAP certification elements.
+  void ClearEAPCertification();
 
   // The inherited class should register any custom metrics in this method.
   virtual void InitializeCustomMetrics() const {}
@@ -442,6 +468,7 @@ class Service : public base::RefCounted<Service> {
   friend class VPNServiceTest;
   friend class WiFiServiceTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
+  FRIEND_TEST(ServiceTest, Certification);
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
   FRIEND_TEST(ServiceTest, ConfigureStringProperty);
   FRIEND_TEST(ServiceTest, Constructor);
@@ -464,6 +491,8 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnConnecting[];
   static const char kAutoConnExplicitDisconnect[];
   static const char kAutoConnNotConnectable[];
+
+  static const size_t kEAPMaxCertificationElements;
 
   static const char kServiceSortAutoConnect[];
   static const char kServiceSortConnectable[];

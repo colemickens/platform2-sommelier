@@ -411,6 +411,7 @@ void WiFiService::Connect(Error *error) {
     if (GetEAPKeyManagement().empty())
       SetEAPKeyManagement("WPA-EAP");
     Populate8021xProperties(&params);
+    ClearEAPCertification();
   } else if (security_ == flimflam::kSecurityPsk) {
     const string psk_proto = StringPrintf("%s %s",
                                           wpa_supplicant::kSecurityModeWPA,
@@ -793,6 +794,8 @@ void WiFiService::Populate8021xProperties(
     KeyVal(wpa_supplicant::kNetworkPropertyEapKeyId, eap().key_id.c_str()),
     KeyVal(wpa_supplicant::kNetworkPropertyEapCaCertId,
            eap().ca_cert_id.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapSubjectMatch,
+           eap().subject_match.c_str())
   };
 
   vector<KeyVal> propertyvals(init_propertyvals,

@@ -22,6 +22,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
@@ -38,6 +39,7 @@ using testing::_;
 using testing::AnyNumber;
 using testing::AtLeast;
 using testing::DoAll;
+using testing::HasSubstr;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -668,6 +670,47 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
   EXPECT_CALL(*service, set_eap(_)).Times(0);
   for (size_t i = 0; i < arraysize(eap_non_credential_properties); ++i)
     service->OnPropertyChanged(eap_non_credential_properties[i]);
+}
+
+TEST_F(ServiceTest, Certification) {
+  EXPECT_FALSE(service_->eap_.remote_certification.size());
+
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
+                       HasSubstr("exceeds our maximum"))).Times(2);
+  string kSubject("foo");
+  EXPECT_FALSE(service_->AddEAPCertification(
+      kSubject, Service::kEAPMaxCertificationElements));
+  EXPECT_FALSE(service_->AddEAPCertification(
+      kSubject, Service::kEAPMaxCertificationElements + 1));
+  EXPECT_FALSE(service_->eap_.remote_certification.size());
+  Mock::VerifyAndClearExpectations(&log);
+
+  EXPECT_CALL(log,
+              Log(logging::LOG_INFO, _, HasSubstr("Received certification")))
+      .Times(1);
+  EXPECT_TRUE(service_->AddEAPCertification(
+      kSubject, Service::kEAPMaxCertificationElements - 1));
+  Mock::VerifyAndClearExpectations(&log);
+  EXPECT_EQ(Service::kEAPMaxCertificationElements,
+      service_->eap_.remote_certification.size());
+  for (size_t i = 0; i < Service::kEAPMaxCertificationElements - 1; ++i) {
+      EXPECT_TRUE(service_->eap_.remote_certification[i].empty());
+  }
+  EXPECT_EQ(kSubject, service_->eap_.remote_certification[
+      Service::kEAPMaxCertificationElements - 1]);
+
+  // Re-adding the same name in the same position should not generate a log.
+  EXPECT_CALL(log, Log(_, _, _)).Times(0);
+  EXPECT_TRUE(service_->AddEAPCertification(
+      kSubject, Service::kEAPMaxCertificationElements - 1));
+
+  // Replacing the item should generate a log message.
+  EXPECT_CALL(log,
+              Log(logging::LOG_INFO, _, HasSubstr("Received certification")))
+      .Times(1);
+  EXPECT_TRUE(service_->AddEAPCertification(
+      kSubject + "x", Service::kEAPMaxCertificationElements - 1));
 }
 
 }  // namespace shill
