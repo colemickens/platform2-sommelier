@@ -240,9 +240,8 @@ bool GdmDevice::ConstructEAPParameters(
 
   memset(eap_parameters, 0, sizeof(GCT_API_EAP_PARAM));
   // TODO(benchan): Allow selection between EAP-TLS and EAP-TTLS;
-  eap_parameters->type = GCT_WIMAX_EAP_TLS;
+  eap_parameters->type = GCT_WIMAX_EAP_TTLS_MSCHAPV2;
   eap_parameters->fragSize = 1300;
-  eap_parameters->useNvramParam = 1;
   eap_parameters->logEnable = 1;
 
   if (!CopyEAPParameterToUInt8Array(connect_parameters, kEAPAnonymousIdentity,
