@@ -7,6 +7,7 @@
 #include <glib-object.h>
 #include <stdint.h>
 #include <sys/inotify.h>
+#include <X11/Xlib.h>
 #include <X11/extensions/dpms.h>
 
 #include <algorithm>

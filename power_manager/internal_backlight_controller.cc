@@ -5,7 +5,6 @@
 #include "power_manager/internal_backlight_controller.h"
 
 #include <sys/time.h>
-#include <X11/extensions/dpms.h>
 
 #include <algorithm>
 #include <cmath>
