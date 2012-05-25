@@ -20,7 +20,6 @@
 #include <chromeos/syslog_logging.h>
 
 #include "chaps/chaps_utility.h"
-#include "chaps/login_event_client.h"
 #include "pkcs11/cryptoki.h"
 
 using chaps::ConvertStringToByteBuffer;
@@ -29,35 +28,6 @@ using std::vector;
 
 namespace {
 const char* kKeyID = "test";
-
-// Loads a token given a path and auth data.
-void LoadToken(const string& path, const string& auth) {
-  chaps::LoginEventClient client;
-  client.FireLoginEvent(path,
-                        ConvertStringToByteBuffer(auth.data()),
-                        auth.length());
-  LOG(INFO) << "Sent Event: Login: " << path;
-}
-
-// Unloads a token given a path.
-void UnloadToken(const string& path) {
-  chaps::LoginEventClient client;
-  client.FireLogoutEvent(path);
-  LOG(INFO) << "Sent Event: Logout: " << path;
-}
-
-// Changes authorization data for a token at the given path.
-void ChangeAuthData(const string& path,
-                    const string& auth_old,
-                    const string& auth_new) {
-  chaps::LoginEventClient client;
-  client.FireChangeAuthDataEvent(path,
-                                 ConvertStringToByteBuffer(auth_old.data()),
-                                 auth_old.length(),
-                                 ConvertStringToByteBuffer(auth_new.data()),
-                                 auth_new.length());
-  LOG(INFO) << "Sent Event: Change Authorization Data: " << path;
-}
 
 // Initializes the library and finds an appropriate slot.
 CK_SLOT_ID Initialize() {
@@ -271,11 +241,6 @@ void TearDown(CK_SESSION_HANDLE session, bool logout) {
 void PrintHelp() {
   printf("Usage: p11_replay [COMMAND]\n");
   printf("Commands:\n");
-  printf("  --load --path=<path> --auth=<auth>"
-         " : Loads the token at the given path.\n");
-  printf("  --unload --path=<path> : Unloads the token at the given path.\n");
-  printf("  --change_auth --path=<path> --auth <old_auth> --new_auth <new_auth>"
-         " : Changes authorization data for the token at the given path.\n");
   printf("  --generate : Generates a key pair suitable for replay tests.\n");
   printf("  --generate_delete : Generates a key pair and deletes it. This is "
          "useful for comparing key generation on different TPM models\n");
@@ -303,41 +268,19 @@ int main(int argc, char** argv) {
     PrintHelp();
     return 0;
   }
-  bool load = (cl->HasSwitch("load") &&
-               cl->HasSwitch("path") &&
-               cl->HasSwitch("auth"));
-  bool unload = cl->HasSwitch("unload") && cl->HasSwitch("path");
-  bool change_auth = (cl->HasSwitch("change_auth") &&
-                      cl->HasSwitch("path") &&
-                      cl->HasSwitch("auth") &&
-                      cl->HasSwitch("new_auth"));
   bool generate = cl->HasSwitch("generate");
   bool generate_delete = cl->HasSwitch("generate_delete");
   bool vpn = cl->HasSwitch("replay_vpn");
   bool wifi = cl->HasSwitch("replay_wifi") || (cl->GetSwitches().size() == 0);
   bool logout = cl->HasSwitch("logout");
   bool cleanup = cl->HasSwitch("cleanup");
-  if (!load && !unload && !change_auth && !generate && !generate_delete &&
-      !vpn && !wifi && !logout && !cleanup) {
+  if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup) {
     PrintHelp();
     return 0;
   }
 
   chromeos::InitLog(chromeos::kLogToStderr);
-
   base::TimeTicks start_ticks = base::TimeTicks::Now();
-  if (change_auth)
-    ChangeAuthData(cl->GetSwitchValueASCII("path"),
-                   cl->GetSwitchValueASCII("auth"),
-                   cl->GetSwitchValueASCII("new_auth"));
-  if (load)
-    LoadToken(cl->GetSwitchValueASCII("path"),
-              cl->GetSwitchValueASCII("auth"));
-  if (unload) {
-    UnloadToken(cl->GetSwitchValueASCII("path"));
-    return 0;
-  }
-
   CK_SLOT_ID slot = Initialize();
   CK_SESSION_HANDLE session = OpenSession(slot);
   PrintTicks(&start_ticks);
