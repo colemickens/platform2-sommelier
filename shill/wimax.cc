@@ -18,7 +18,6 @@
 using base::Bind;
 using std::set;
 using std::string;
-using std::vector;
 
 namespace shill {
 
@@ -143,7 +142,7 @@ void WiMax::OnServiceStopped(const WiMaxServiceRefPtr &service) {
   if (service == selected_service()) {
     DropConnection();
   }
-  if (pending_service_ == service) {
+  if (service == pending_service_) {
     pending_service_ = NULL;
   }
 }

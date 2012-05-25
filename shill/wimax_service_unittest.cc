@@ -148,12 +148,22 @@ TEST_F(WiMaxServiceTest, SetEAP) {
   EXPECT_TRUE(base_service->Is8021x());
   EXPECT_TRUE(service_->need_passphrase_);
   EXPECT_FALSE(base_service->connectable());
+
+  // No password.
   Service::EapCredentials eap;
   eap.identity = "TestIdentity";
   base_service->set_eap(eap);
   EXPECT_TRUE(service_->need_passphrase_);
   EXPECT_FALSE(base_service->connectable());
+
+  // Not started.
   eap.password = "TestPassword";
+  base_service->set_eap(eap);
+  EXPECT_TRUE(service_->need_passphrase_);
+  EXPECT_FALSE(base_service->connectable());
+
+  // Connectable.
+  service_->proxy_.reset(proxy_.release());
   base_service->set_eap(eap);
   EXPECT_TRUE(service_->need_passphrase_);
   EXPECT_TRUE(base_service->connectable());
@@ -210,6 +220,24 @@ TEST_F(WiMaxServiceTest, Connect) {
 
   service_->Disconnect(&error);
   EXPECT_EQ(Error::kNotConnected, error.type());
+}
+
+TEST_F(WiMaxServiceTest, Unload) {
+  MockWiMaxProvider provider;
+  EXPECT_CALL(manager_, wimax_provider())
+      .Times(2)
+      .WillRepeatedly(Return(&provider));
+  Service::EapCredentials eap;
+  eap.identity = "TestUserIdentity";
+  service_->set_eap(eap);
+  EXPECT_CALL(provider, OnServiceUnloaded(_)).WillOnce(Return(false));
+  EXPECT_FALSE(service_->Unload());
+  EXPECT_TRUE(service_->eap().identity.empty());
+  eap.identity = "TestUserIdentity";
+  service_->set_eap(eap);
+  EXPECT_CALL(provider, OnServiceUnloaded(_)).WillOnce(Return(true));
+  EXPECT_TRUE(service_->Unload());
+  EXPECT_TRUE(service_->eap().identity.empty());
 }
 
 }  // namespace shill

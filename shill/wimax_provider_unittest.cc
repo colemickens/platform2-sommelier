@@ -210,11 +210,7 @@ TEST_F(WiMaxProviderTest, FindService) {
   service->set_friendly_name(kName);
   service->set_network_id(kNetworkId);
   service->InitStorageIdentifier();
-  provider_.services_.push_back(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
-  provider_.services_.push_back(service);
-  provider_.services_.push_back(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+  provider_.services_[service->GetStorageIdentifier()] = service;
   EXPECT_EQ(service.get(),
             provider_.FindService(
                 WiMaxService::CreateStorageIdentifier(kNetworkId,
@@ -229,13 +225,21 @@ TEST_F(WiMaxProviderTest, StartLiveServicesForNetwork) {
   vector<scoped_refptr<MockWiMaxService> > services(4);
   for (size_t i = 0; i < services.size(); i++) {
     services[i] = new MockWiMaxService(&control_, NULL, &metrics_, &manager_);
-    services[i]->set_network_id(kNetworkId);
-    provider_.services_.push_back(services[i]);
+    if (i == 0) {
+      services[0]->set_network_id("deadbeef");
+    } else {
+      services[i]->set_network_id(kNetworkId);
+    }
+    // Make services[3] the default service.
+    if (i == 3) {
+      services[i]->set_friendly_name(kName);
+    } else {
+      services[i]->set_friendly_name(
+          base::StringPrintf("Configured %d", static_cast<int>(i)));
+    }
+    services[i]->InitStorageIdentifier();
+    provider_.services_[services[i]->GetStorageIdentifier()] = services[i];
   }
-  services[0]->set_network_id("deadbeef");
-  // Make services[3] the default service.
-  services[3]->set_friendly_name(kName);
-  services[3]->InitStorageIdentifier();
   EXPECT_CALL(*network_proxy_, Name(_)).WillOnce(Return(kName));
   EXPECT_CALL(*network_proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
   EXPECT_CALL(*services[0], IsStarted()).Times(0);
@@ -253,7 +257,7 @@ TEST_F(WiMaxProviderTest, DestroyAllServices) {
   vector<scoped_refptr<MockWiMaxService> > services(2);
   for (size_t i = 0; i < services.size(); i++) {
     services[i] = new MockWiMaxService(&control_, NULL, &metrics_, &manager_);
-    provider_.services_.push_back(services[i]);
+    provider_.services_[services[i]->GetStorageIdentifier()] = services[i];
     EXPECT_CALL(*services[i], Stop());
   }
   EXPECT_CALL(manager_, DeregisterService(_)).Times(services.size());
@@ -265,26 +269,28 @@ TEST_F(WiMaxProviderTest, StopDeadServices) {
   vector<scoped_refptr<MockWiMaxService> > services(4);
   for (size_t i = 0; i < services.size(); i++) {
     services[i] = new MockWiMaxService(&control_, NULL, &metrics_, &manager_);
-    if (i > 0) {
-      EXPECT_CALL(*services[i], IsStarted()).WillOnce(Return(true));
-      EXPECT_CALL(*services[i], GetNetworkObjectPath())
-          .WillOnce(Return(GetTestNetworkPath(100 + i)));
-    } else {
+    if (i == 0) {
       EXPECT_CALL(*services[i], IsStarted()).WillOnce(Return(false));
       EXPECT_CALL(*services[i], GetNetworkObjectPath()).Times(0);
       EXPECT_CALL(*services[i], Stop()).Times(0);
+    } else {
+      EXPECT_CALL(*services[i], IsStarted()).WillOnce(Return(true));
+      EXPECT_CALL(*services[i], GetNetworkObjectPath())
+          .WillOnce(Return(GetTestNetworkPath(100 + i)));
     }
-    provider_.services_.push_back(services[i]);
+    provider_.services_[services[i]->GetStorageIdentifier()] = services[i];
   }
-
+  services[3]->set_is_default(true);
   EXPECT_CALL(*services[1], Stop()).Times(0);
   EXPECT_CALL(*services[2], Stop());
   EXPECT_CALL(*services[3], Stop());
+  EXPECT_CALL(manager_, DeregisterService(_));
   provider_.networks_.insert(GetTestNetworkPath(777));
   provider_.networks_.insert(GetTestNetworkPath(101));
   provider_.StopDeadServices();
-
-  EXPECT_EQ(4, provider_.services_.size());
+  EXPECT_EQ(3, provider_.services_.size());
+  EXPECT_FALSE(ContainsKey(provider_.services_,
+                           services[3]->GetStorageIdentifier()));
 }
 
 TEST_F(WiMaxProviderTest, OnNetworksChanged) {
@@ -301,6 +307,7 @@ TEST_F(WiMaxProviderTest, OnNetworksChanged) {
   EXPECT_CALL(*service0, Start(_)).Times(0);
   EXPECT_CALL(*service0, Stop()).Times(1);
   service0->set_network_id("1234");
+  service0->InitStorageIdentifier();
 
   // Stopped service to be started.
   scoped_refptr<MockWiMaxService> service1(
@@ -314,8 +321,8 @@ TEST_F(WiMaxProviderTest, OnNetworksChanged) {
   EXPECT_CALL(*network_proxy_, Name(_)).WillOnce(Return(kName));
   EXPECT_CALL(*network_proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
 
-  provider_.services_.push_back(service0);
-  provider_.services_.push_back(service1);
+  provider_.services_[service0->GetStorageIdentifier()] = service0;
+  provider_.services_[service1->GetStorageIdentifier()] = service1;
 
   for (int i = 0; i < 3; i++) {
     scoped_refptr<MockWiMax> device(
@@ -348,7 +355,7 @@ TEST_F(WiMaxProviderTest, GetUniqueService) {
   service0->set_network_id(kNetworkId);
   service0->set_friendly_name(kName0);
   service0->InitStorageIdentifier();
-  provider_.services_.push_back(service0);
+  provider_.services_[service0->GetStorageIdentifier()] = service0;
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   WiMaxServiceRefPtr service = provider_.GetUniqueService(kNetworkId, kName0);
   ASSERT_TRUE(service);
@@ -363,6 +370,7 @@ TEST_F(WiMaxProviderTest, GetUniqueService) {
   EXPECT_EQ(2, provider_.services_.size());
   EXPECT_EQ(WiMaxService::CreateStorageIdentifier(kNetworkId, kName1),
             service->GetStorageIdentifier());
+  EXPECT_FALSE(service->is_default());
 
   // Service already exists -- it was just created.
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
@@ -370,6 +378,7 @@ TEST_F(WiMaxProviderTest, GetUniqueService) {
   ASSERT_TRUE(service1);
   EXPECT_EQ(service.get(), service1.get());
   EXPECT_EQ(2, provider_.services_.size());
+  EXPECT_FALSE(service->is_default());
 }
 
 TEST_F(WiMaxProviderTest, GetDefaultService) {
@@ -390,6 +399,7 @@ TEST_F(WiMaxProviderTest, GetDefaultService) {
   EXPECT_EQ(1, provider_.services_.size());
   EXPECT_EQ(WiMaxService::CreateStorageIdentifier(kNetworkId, kName),
             service->GetStorageIdentifier());
+  EXPECT_TRUE(service->is_default());
 
   // Ensure that no duplicate service is created or registered.
   ASSERT_FALSE(network_proxy_.get());
@@ -402,6 +412,7 @@ TEST_F(WiMaxProviderTest, GetDefaultService) {
   ASSERT_TRUE(service2);
   EXPECT_EQ(1, provider_.services_.size());
   EXPECT_EQ(service.get(), service2.get());
+  EXPECT_TRUE(service->is_default());
 }
 
 TEST_F(WiMaxProviderTest, CreateServicesFromProfile) {
@@ -440,11 +451,11 @@ TEST_F(WiMaxProviderTest, CreateServicesFromProfile) {
   EXPECT_CALL(*profile, ConfigureService(_)).WillOnce(Return(true));
   provider_.CreateServicesFromProfile(profile);
   ASSERT_EQ(1, provider_.services_.size());
-  WiMaxServiceRefPtr service = provider_.services_[0];
+  WiMaxServiceRefPtr service = provider_.services_.begin()->second;
   EXPECT_EQ("wimax_network_01234567", service->GetStorageIdentifier());
   provider_.CreateServicesFromProfile(profile);
   ASSERT_EQ(1, provider_.services_.size());
-  EXPECT_EQ(service.get(), provider_.services_[0].get());
+  EXPECT_EQ(service.get(), provider_.services_.begin()->second);
 }
 
 TEST_F(WiMaxProviderTest, GetService) {
@@ -489,6 +500,24 @@ TEST_F(WiMaxProviderTest, SelectCarrier) {
   provider_.devices_[GetTestLinkName(1)] = device;
   WiMaxRefPtr carrier = provider_.SelectCarrier(service);
   EXPECT_EQ(device.get(), carrier.get());
+}
+
+TEST_F(WiMaxProviderTest, OnServiceUnloaded) {
+  scoped_refptr<MockWiMaxService> service(
+      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+  EXPECT_FALSE(service->is_default());
+  scoped_refptr<MockWiMaxService> service_default(
+      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+  service_default->set_is_default(true);
+  provider_.services_[service->GetStorageIdentifier()] = service;
+  provider_.services_[service_default->GetStorageIdentifier()] =
+      service_default;
+  EXPECT_CALL(manager_, DeregisterService(_)).Times(0);
+  EXPECT_FALSE(provider_.OnServiceUnloaded(service_default));
+  EXPECT_EQ(2, provider_.services_.size());
+  EXPECT_TRUE(provider_.OnServiceUnloaded(service));
+  EXPECT_EQ(1, provider_.services_.size());
+  EXPECT_EQ(service_default.get(), provider_.services_.begin()->second.get());
 }
 
 }  // namespace shill

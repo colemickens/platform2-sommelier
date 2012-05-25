@@ -18,6 +18,7 @@ class MockWiMaxProvider : public WiMaxProvider {
 
   MOCK_METHOD1(OnDeviceInfoAvailable, void(const std::string &link_name));
   MOCK_METHOD0(OnNetworksChanged, void());
+  MOCK_METHOD1(OnServiceUnloaded, bool(const WiMaxServiceRefPtr &service));
   MOCK_METHOD1(SelectCarrier, WiMaxRefPtr(const WiMaxServiceRefPtr &service));
 
  private:

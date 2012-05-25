@@ -7,7 +7,6 @@
 
 #include <map>
 #include <set>
-#include <vector>
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
@@ -44,6 +43,10 @@ class WiMaxProvider {
   // Signaled by a WiMAX device when its set of live networks changes.
   virtual void OnNetworksChanged();
 
+  // Signaled by |service| when it's been unloaded by Manager. Returns true if
+  // this provider has released ownership of the service, and false otherwise.
+  virtual bool OnServiceUnloaded(const WiMaxServiceRefPtr &service);
+
   // Creates if necessary and configures a WiMAX service with the given
   // parameters. Used by Manager::GetService.
   WiMaxServiceRefPtr GetService(const KeyValueStore &args, Error *error);
@@ -68,6 +71,7 @@ class WiMaxProvider {
   FRIEND_TEST(WiMaxProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(WiMaxProviderTest, OnDevicesChanged);
   FRIEND_TEST(WiMaxProviderTest, OnNetworksChanged);
+  FRIEND_TEST(WiMaxProviderTest, OnServiceUnloaded);
   FRIEND_TEST(WiMaxProviderTest, SelectCarrier);
   FRIEND_TEST(WiMaxProviderTest, StartLiveServicesForNetwork);
   FRIEND_TEST(WiMaxProviderTest, StartStop);
@@ -116,9 +120,11 @@ class WiMaxProvider {
 
   scoped_ptr<WiMaxManagerProxyInterface> manager_proxy_;
 
-  std::map<std::string, std::string> pending_devices_;
+  // Key is the interface link name.
+  std::map<std::string, RpcIdentifier> pending_devices_;
   std::map<std::string, WiMaxRefPtr> devices_;
-  std::vector<WiMaxServiceRefPtr> services_;
+  // Key is service's storage identifier.
+  std::map<std::string, WiMaxServiceRefPtr> services_;
   std::set<RpcIdentifier> networks_;
 
   ProxyFactory *proxy_factory_;

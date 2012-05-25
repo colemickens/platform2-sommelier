@@ -31,7 +31,8 @@ WiMaxService::WiMaxService(ControlInterface *control,
                            Metrics *metrics,
                            Manager *manager)
     : Service(control, dispatcher, metrics, manager, Technology::kWiMax),
-      need_passphrase_(true) {
+      need_passphrase_(true),
+      is_default_(false) {
   PropertyStore *store = this->mutable_store();
   // TODO(benchan): Support networks that require no user credentials or
   // implicitly defined credentials.
@@ -39,6 +40,11 @@ WiMaxService::WiMaxService(ControlInterface *control,
   store->RegisterConstString(kNetworkIdProperty, &network_id_);
 
   IgnoreParameterForConfigure(kNetworkIdProperty);
+
+  // Initialize a default storage identifier based on the service's unique
+  // name. The identifier most likely needs to be reinitialized by the caller
+  // when its components have been set.
+  InitStorageIdentifier();
 }
 
 WiMaxService::~WiMaxService() {}
@@ -73,6 +79,7 @@ void WiMaxService::Stop() {
     device_->OnServiceStopped(this);
     device_ = NULL;
   }
+  UpdateConnectable();
 }
 
 bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
@@ -174,8 +181,10 @@ void WiMaxService::UpdateConnectable() {
   // Don't use Service::Is8021xConnectable because we don't support the full set
   // of authentication methods.
   bool is_connectable = false;
-  if (!eap().identity.empty()) {
-    is_connectable = !eap().password.empty();
+  if (IsStarted()) {
+    if (!eap().identity.empty()) {
+      is_connectable = !eap().password.empty();
+    }
   }
   set_connectable(is_connectable);
 }
@@ -193,6 +202,14 @@ bool WiMaxService::Save(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
   storage->SetString(id, kStorageNetworkId, network_id_);
   return true;
+}
+
+bool WiMaxService::Unload() {
+  // The base method also disconnects the service.
+  Service::Unload();
+  // Notify the WiMAX provider that this service has been unloaded. If the
+  // provider releases ownership of this service, it needs to be deregistered.
+  return manager()->wimax_provider()->OnServiceUnloaded(this);
 }
 
 // static

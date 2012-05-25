@@ -52,6 +52,8 @@ class WiMaxService : public Service {
   const std::string &network_name() const { return network_name_; }
   const WiMaxNetworkId &network_id() const { return network_id_; }
   void set_network_id(const WiMaxNetworkId &id) { network_id_ = id; }
+  bool is_default() const { return is_default_; }
+  void set_is_default(bool is_default) { is_default_ = is_default; }
 
   static WiMaxNetworkId ConvertIdentifierToNetworkId(uint32 identifier);
 
@@ -69,8 +71,7 @@ class WiMaxService : public Service {
   virtual bool Is8021x() const;
   virtual void set_eap(const EapCredentials &eap);
   virtual bool Save(StoreInterface *storage);
-
-  // TODO(petkov): Support Unload (crosbug.com/p/9942).
+  virtual bool Unload();
 
  private:
   friend class WiMaxServiceTest;
@@ -92,6 +93,7 @@ class WiMaxService : public Service {
   WiMaxNetworkId network_id_;
   std::string network_name_;
   bool need_passphrase_;
+  bool is_default_;
 
   DISALLOW_COPY_AND_ASSIGN(WiMaxService);
 };
