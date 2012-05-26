@@ -20,11 +20,11 @@
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/audio_detector.h"
 #include "power_manager/backlight.h"
+#include "power_manager/idle_detector.h"
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
 #include "power_manager/video_detector.h"
-#include "power_manager/xidle.h"
 
 #ifdef IS_DESKTOP
 #include "power_manager/external_backlight_client.h"
@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
   video_detector.Init();
   power_manager::AudioDetector audio_detector;
   audio_detector.Init();
-  power_manager::XIdle idle;
+  power_manager::IdleDetector idle;
   metrics_lib.Init();
   power_manager::MonitorReconfigure monitor_reconfigure(&backlight_ctl);
   if (!monitor_reconfigure.Init())

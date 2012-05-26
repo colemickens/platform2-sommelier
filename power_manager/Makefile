@@ -66,23 +66,6 @@ GLIB_DEPS = glib-2.0 gobject-2.0 libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 GLIB_FLAGS := $(shell $(PKG_CONFIG) --cflags $(GLIB_DEPS))
 GLIB_LIBS := $(shell $(PKG_CONFIG) --libs $(GLIB_DEPS))
 
-XIDLE_FLAGS = $(GLIB_FLAGS)
-XIDLE_LIBS = $(GLIB_LIBS) -lX11 -lXext
-
-LIBXIDLE_OBJS = util.o xidle.o xsync.o xevent_observer.o
-CXX_STATIC_LIBRARY(libxidle.pie.a): $(LIBXIDLE_OBJS)
-CXX_STATIC_LIBRARY(libxidle.pie.a): CPPFLAGS += $(XIDLE_FLAGS)
-CXX_STATIC_LIBRARY(libxidle.pie.a): LDLIBS += $(XIDLE_LIBS)
-clean: CLEAN(libxidle.pie.a)
-
-XIDLE-EXAMPLE_OBJS = xidle_example.o
-CXX_BINARY(xidle-example): $(XIDLE-EXAMPLE_OBJS) \
-	CXX_STATIC_LIBRARY(libxidle.pie.a)
-CXX_BINARY(xidle-example): CPPFLAGS += $(XIDLE_FLAGS)
-CXX_BINARY(xidle-example): LDLIBS += $(XIDLE_LIBS)
-clean: CLEAN(xidle-example)
-all: CXX_BINARY(xidle-example)
-
 BACKLIGHT_FLAGS = $(GLIB_FLAGS) $(DBUS_FLAGS)
 BACKLIGHT_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -lX11 -lXrandr \
                  -ludev
@@ -169,10 +152,11 @@ powerd.o.depends: power_supply_properties.pb.h
 state_control.o.depends: power_supply_properties.pb.h
 LIBPOWERD_OBJS = power_state_control.pb.o power_supply_properties.pb.o \
                  async_file_reader.o audio_detector.o file_tagger.o \
-                 metrics_constants.o metrics_store.o monitor_reconfigure.o \
-                 power_supply.o powerd.o powerd_metrics.o \
-                 resolution_selector.o rolling_average.o screen_locker.o \
-                 state_control.o suspender.o video_detector.o
+                 idle_detector.o metrics_constants.o metrics_store.o \
+                 monitor_reconfigure.o power_supply.o powerd.o \
+                 powerd_metrics.o resolution_selector.o rolling_average.o \
+                 screen_locker.o state_control.o suspender.o video_detector.o \
+                 xevent_observer.o
 CXX_STATIC_LIBRARY(libpowerd.pie.a): $(LIBPOWERD_OBJS)
 CXX_STATIC_LIBRARY(libpowerd.pie.a): CPPFLAGS += $(LIBPOWERD_FLAGS)
 CXX_STATIC_LIBRARY(libpowerd.pie.a): LDLIBS += $(LIBPOWERD_LIBS)
@@ -183,7 +167,6 @@ POWERD_LIBS = $(LIBPOWERD_LIBS)
 POWERD_OBJS = powerd_main.o
 CXX_BINARY(powerd): $(POWERD_OBJS) \
 	CXX_STATIC_LIBRARY(libpowerd.pie.a) \
-	CXX_STATIC_LIBRARY(libxidle.pie.a) \
 	CXX_STATIC_LIBRARY(libbacklight.pie.a) \
 	CXX_STATIC_LIBRARY(libpower_prefs.pie.a) \
 	CXX_STATIC_LIBRARY(libbacklight_controller.pie.a) \
@@ -263,17 +246,6 @@ LIBTESTRUNNER_OBJS = testrunner.o
 CXX_STATIC_LIBRARY(libtestrunner.pie.a): $(LIBTESTRUNNER_OBJS)
 clean: CLEAN(libtestrunner.pie.a)
 
-XIDLE_UNITTEST_FLAGS = $(XIDLE_FLAGS)
-XIDLE_UNITTEST_LIBS = $(XIDLE_LIBS) -lgmock -lgtest -lXtst
-XIDLE_UNITTEST_OBJS = xidle_unittest.o mock_xsync.o
-CXX_BINARY(xidle_unittest): $(XIDLE_UNITTEST_OBJS) \
-	CXX_STATIC_LIBRARY(libtestrunner.pie.a) \
-	CXX_STATIC_LIBRARY(libxidle.pie.a)
-CXX_BINARY(xidle_unittest): CPPFLAGS += $(XIDLE_UNITTEST_FLAGS)
-CXX_BINARY(xidle_unittest): LDLIBS += $(XIDLE_UNITTEST_LIBS)
-clean: CXX_BINARY(xidle_unittest)
-tests: TEST(CXX_BINARY(xidle_unittest))
-
 BACKLIGHT_UNITTEST_FLAGS = $(GLIB_FLAGS)
 BACKLIGHT_UNITTEST_LIBS = $(GLIB_LIBS) -lgmock -lgtest -lXext
 BACKLIGHT_UNITTEST_OBJS = backlight_unittest.o
@@ -290,7 +262,7 @@ tests: TEST(CXX_BINARY(backlight_unittest))
 POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
 POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock -lX11 -lXext -lXrandr \
                        -lXtst
-POWERD_UNITTEST_OBJS = powerd_unittest.o metrics_store_unittest.o mock_xsync.o \
+POWERD_UNITTEST_OBJS = powerd_unittest.o metrics_store_unittest.o \
                        rolling_average_unittest.o
 ifeq ($(USE_IS_DESKTOP),)
 POWERD_UNITTEST_OBJS += internal_backlight_controller_unittest.o \
@@ -305,7 +277,6 @@ CXX_BINARY(powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libbacklight_controller.pie.a) \
 	CXX_STATIC_LIBRARY(libbacklight.pie.a) \
 	CXX_STATIC_LIBRARY(libpower_prefs.pie.a) \
-	CXX_STATIC_LIBRARY(libxidle.pie.a) \
 	CXX_STATIC_LIBRARY(libutil.pie.a) \
 	CXX_STATIC_LIBRARY(libutil_dbus.pie.a)
 CXX_BINARY(powerd_unittest): CPPFLAGS += $(POWERD_UNITTEST_FLAGS)
@@ -322,7 +293,6 @@ CXX_BINARY(file_tagger_unittest): $(FILE_TAGGER_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libbacklight_controller.pie.a) \
 	CXX_STATIC_LIBRARY(libbacklight.pie.a) \
 	CXX_STATIC_LIBRARY(libpower_prefs.pie.a) \
-	CXX_STATIC_LIBRARY(libxidle.pie.a) \
 	CXX_STATIC_LIBRARY(libutil.pie.a)
 CXX_BINARY(file_tagger_unittest): CPPFLAGS += $(FILE_TAGGER_UNITTEST_FLAGS)
 CXX_BINARY(file_tagger_unittest): LDLIBS += $(FILE_TAGGER_UNITTEST_LIBS)
@@ -379,7 +349,6 @@ STATE_CONTROL_UNITTEST_OBJS = state_control_unittest.o state_control.o
 CXX_BINARY(state_control_unittest): $(STATE_CONTROL_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(libpowerd.pie.a) \
-	CXX_STATIC_LIBRARY(libxidle.pie.a) \
 	CXX_STATIC_LIBRARY(libbacklight_controller.pie.a) \
 	CXX_STATIC_LIBRARY(libbacklight.pie.a) \
 	CXX_STATIC_LIBRARY(libpower_prefs.pie.a) \

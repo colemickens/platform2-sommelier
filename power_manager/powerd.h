@@ -27,6 +27,7 @@
 #include "power_manager/backlight_controller.h"
 #include "power_manager/backlight_interface.h"
 #include "power_manager/file_tagger.h"
+#include "power_manager/idle_detector.h"
 #include "power_manager/inotify.h"
 #include "power_manager/metrics_store.h"
 #include "power_manager/power_prefs.h"
@@ -35,7 +36,6 @@
 #include "power_manager/screen_locker.h"
 #include "power_manager/signal_callback.h"
 #include "power_manager/suspender.h"
-#include "power_manager/idle_interface.h"
 
 namespace power_manager {
 
@@ -68,7 +68,7 @@ class Daemon : public IdleObserver,
          MetricsLibraryInterface* metrics_lib,
          ActivityDetectorInterface* video_detector,
          ActivityDetectorInterface* audio_detector,
-         IdleInterface* idle,
+         IdleDetector* idle,
          MonitorReconfigure* monitor_reconfigure,
          BacklightInterface* keyboard_backlight,
          const FilePath& run_dir);
@@ -87,11 +87,6 @@ class Daemon : public IdleObserver,
 
   void OnRequestRestart();
   void OnRequestShutdown();
-
-  // Set idle_time_ms to how long the user has been idle, in milliseconds.
-  // On success, return true; otherwise return false. Used in idle API on
-  // chrome side.
-  bool GetIdleTime(int64* idle_time_ms);
 
   // Add an idle threshold to notify on.
   void AddIdleThreshold(int64 threshold);
@@ -436,7 +431,7 @@ class Daemon : public IdleObserver,
   MetricsLibraryInterface* metrics_lib_;
   ActivityDetectorInterface* video_detector_;
   ActivityDetectorInterface* audio_detector_;
-  IdleInterface* idle_;
+  IdleDetector* idle_;
   MonitorReconfigure* monitor_reconfigure_;
   BacklightInterface* keyboard_backlight_;
   double low_battery_suspend_percent_;
