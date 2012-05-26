@@ -120,8 +120,8 @@ class Connection : public base::RefCounted<Connection> {
   // Work around misconfigured servers which provide a gateway address that
   // is unreachable with the provided netmask.
   static bool FixGatewayReachability(IPAddress *local,
-                                     const IPAddress &gateway,
-                                     const IPAddress &peer);
+                                     IPAddress *peer,
+                                     const IPAddress &gateway);
   uint32 GetMetric(bool is_default);
   bool PinHostRoute(const IPConfig::Properties &config);
 

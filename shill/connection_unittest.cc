@@ -267,13 +267,16 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
   properties_.gateway = kGatewayAddress1;
   UpdateProperties();
 
-  // Connection cannot override this prefix, so it will revert to the
-  // configured prefix, expecting the default route to fail.
+  IPAddress gateway_address1(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(gateway_address1.SetAddressFromString(kGatewayAddress1));
+  // Connection cannot override this prefix, so it will switch to a
+  // model where the peer address is set to the value of the gateway
+  // address.
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0,
                                   IsIPAddress(local_address_, kPrefix1),
                                   IsIPAddress(broadcast_address_, 0),
-                                  IsIPAddress(default_address_, 0)));
+                                  IsIPAddress(gateway_address1, 0)));
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(kTestDeviceInterfaceIndex0, _, _));
   EXPECT_CALL(routing_table_,
@@ -424,42 +427,55 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   IPAddress peer(IPAddress::kFamilyIPv4);
 
   // Should fail because no gateway is set.
-  EXPECT_FALSE(Connection::FixGatewayReachability(&local, gateway, peer));
+  EXPECT_FALSE(Connection::FixGatewayReachability(&local, &peer, gateway));
   EXPECT_EQ(kPrefix, local.prefix());
+  EXPECT_FALSE(peer.IsValid());
 
   // Should succeed because with the given prefix, this gateway is reachable.
   static const char kReachableGateway[] = "10.242.2.14";
   ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
-  EXPECT_TRUE(Connection::FixGatewayReachability(&local, gateway, peer));
+  peer = IPAddress(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
   // Prefix should remain unchanged.
   EXPECT_EQ(kPrefix, local.prefix());
+  // Peer should remain unchanged.
+  EXPECT_FALSE(peer.IsValid());
 
   // Should succeed because we modified the prefix to match the gateway.
   static const char kExpandableGateway[] = "10.242.3.14";
   ASSERT_TRUE(gateway.SetAddressFromString(kExpandableGateway));
-  EXPECT_TRUE(Connection::FixGatewayReachability(&local, gateway, peer));
+  peer = IPAddress(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
   // Prefix should have opened up by 1 bit.
   EXPECT_EQ(kPrefix - 1, local.prefix());
+  // Peer should remain unchanged.
+  EXPECT_FALSE(peer.IsValid());
 
-  // Should fail because we cannot plausibly expand the prefix past 8.
+  // Should change models to assuming peer-to-pear because we cannot
+  // plausibly expand the prefix past 8.
   local.set_prefix(kPrefix);
   static const char kUnreachableGateway[] = "11.242.2.14";
   ASSERT_TRUE(gateway.SetAddressFromString(kUnreachableGateway));
-  EXPECT_FALSE(Connection::FixGatewayReachability(&local, gateway, peer));
+  peer = IPAddress(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
   // Prefix should not have changed.
   EXPECT_EQ(kPrefix, local.prefix());
+  // Peer address should be set to the gateway address.
+  EXPECT_TRUE(peer.Equals(gateway));
 
-  // However, if this is a peer-to-peer interface and the peer matches
-  // the gateway, we should succeed.
+  // If this is a peer-to-peer interface and the peer matches the gateway,
+  // we should succeed.
   ASSERT_TRUE(peer.SetAddressFromString(kUnreachableGateway));
-  EXPECT_TRUE(Connection::FixGatewayReachability(&local, gateway, peer));
+  EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
   EXPECT_EQ(kPrefix, local.prefix());
+  EXPECT_TRUE(peer.Equals(gateway));
 
   // If there is a peer specified and it does not match the gateway (even
   // if it was reachable via netmask), we should fail.
   ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
-  EXPECT_FALSE(Connection::FixGatewayReachability(&local, gateway, peer));
+  EXPECT_FALSE(Connection::FixGatewayReachability(&local, &peer, gateway));
   EXPECT_EQ(kPrefix, local.prefix());
+  EXPECT_FALSE(peer.Equals(gateway));
 }
 
 TEST_F(ConnectionTest, Binders) {

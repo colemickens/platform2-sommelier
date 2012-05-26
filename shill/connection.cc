@@ -139,7 +139,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
     return;
   }
 
-  if (!FixGatewayReachability(&local, gateway_address, peer)) {
+  if (!FixGatewayReachability(&local, &peer, gateway_address)) {
     LOG(WARNING) << "Expect limited network connectivity.";
   }
 
@@ -241,21 +241,21 @@ bool Connection::RequestHostRoute(const IPAddress &address) {
 
 // static
 bool Connection::FixGatewayReachability(IPAddress *local,
-                                        const IPAddress &gateway,
-                                        const IPAddress &peer) {
+                                        IPAddress *peer,
+                                        const IPAddress &gateway) {
   if (!gateway.IsValid()) {
     LOG(WARNING) << "No gateway address was provided for this connection.";
     return false;
   }
 
-  if (peer.IsValid()) {
-    if (gateway.Equals(peer)) {
+  if (peer->IsValid()) {
+    if (gateway.Equals(*peer)) {
       return true;
     }
     LOG(WARNING) << "Gateway address "
                  << gateway.ToString()
                  << " does not match peer address "
-                 << peer.ToString();
+                 << peer->ToString();
     return false;
   }
 
@@ -280,7 +280,10 @@ bool Connection::FixGatewayReachability(IPAddress *local,
   if (prefix < local->GetMinPrefixLength()) {
     // Restore the original prefix since we cannot find a better one.
     local->set_prefix(original_prefix);
-    return false;
+    DCHECK(!peer->IsValid());
+    LOG(WARNING) << "Assuming point-to-point configuration.";
+    *peer = gateway;
+    return true;
   }
 
   LOG(WARNING) << "Mitigating this by setting local prefix to " << prefix;
