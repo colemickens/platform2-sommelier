@@ -8,7 +8,6 @@
 
 #include "base/logging.h"
 #include "power_manager/xevent_observer.h"
-#include "power_manager/xidle_observer.h"
 #include "power_manager/xsync.h"
 
 namespace power_manager {
@@ -32,7 +31,7 @@ XIdle::~XIdle() {
   xsync_->RemoveObserver(this);
 }
 
-bool XIdle::Init(XIdleObserver* observer) {
+bool XIdle::Init(IdleObserver* observer) {
   CHECK(xsync_.get());
   xsync_->Init();
   if (!xsync_->QueryExtension(&event_base_, &error_base_)) {

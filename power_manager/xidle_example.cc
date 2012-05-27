@@ -10,12 +10,11 @@
 
 #include "base/logging.h"
 #include "power_manager/xidle.h"
-#include "power_manager/xidle_observer.h"
 
 // Prints console notifications when the user is and is not idle.
-class XIdleObserverExample : public power_manager::XIdleObserver {
+class IdleObserverExample : public power_manager::IdleObserver {
  public:
-  // Overridden from power_manager::XIdleObserver:
+  // Overridden from power_manager::IdleObserver:
   virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     if (is_idle)
       printf("User has been idle for %" PRIi64 " ms\n", idle_time_ms);
@@ -28,7 +27,7 @@ int main(int argc, char** argv) {
   g_type_init();
   GMainLoop* loop = g_main_loop_new(NULL, false);
   power_manager::XIdle idle;
-  XIdleObserverExample observer;
+  IdleObserverExample observer;
   CHECK(idle.Init(&observer));
   CHECK(idle.AddIdleTimeout(2000));
   CHECK(idle.AddIdleTimeout(5000));

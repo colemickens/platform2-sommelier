@@ -101,7 +101,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
                MetricsLibraryInterface* metrics_lib,
                ActivityDetectorInterface* video_detector,
                ActivityDetectorInterface* audio_detector,
-               XIdle* idle,
+               IdleInterface* idle,
                MonitorReconfigure* monitor_reconfigure,
                BacklightInterface* keyboard_backlight,
                const FilePath& run_dir)

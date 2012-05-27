@@ -20,6 +20,7 @@
 #include "power_manager/mock_xsync.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
+#include "power_manager/xidle.h"
 
 #ifdef IS_DESKTOP
 #include "power_manager/external_backlight_controller.h"

@@ -13,7 +13,6 @@
 #include "base/memory/scoped_ptr.h"
 #include "power_manager/mock_xsync.h"
 #include "power_manager/xidle.h"
-#include "power_manager/xidle_observer.h"
 
 namespace power_manager {
 
@@ -32,9 +31,9 @@ class XIdleTest : public ::testing::Test {
   MockXSync* xsync_;
 };
 
-class XIdleObserverTest : public XIdleObserver {
+class IdleObserverTest : public IdleObserver {
  public:
-  explicit XIdleObserverTest(MockXSync* xsync)
+  explicit IdleObserverTest(MockXSync* xsync)
       : count_(0),
         xsync_(xsync) {}
 
@@ -103,7 +102,7 @@ TEST_F(XIdleTest, GetIdleTimeWhenNonIdleTest) {
 TEST_F(XIdleTest, MonitorTest) {
   xsync_->FakeMotionEvent();
   // Register observer with XIdle, so it can count XIdle events.
-  XIdleObserverTest observer(xsync_);
+  IdleObserverTest observer(xsync_);
   ASSERT_TRUE(idle_->Init(&observer));
   // Set an idle timeout.
   idle_->AddIdleTimeout(50);

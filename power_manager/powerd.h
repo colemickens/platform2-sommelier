@@ -35,8 +35,7 @@
 #include "power_manager/screen_locker.h"
 #include "power_manager/signal_callback.h"
 #include "power_manager/suspender.h"
-#include "power_manager/xidle.h"
-#include "power_manager/xidle_observer.h"
+#include "power_manager/idle_interface.h"
 
 namespace power_manager {
 
@@ -59,7 +58,7 @@ enum PluggedState {
   kPowerUnknown,
 };
 
-class Daemon : public XIdleObserver,
+class Daemon : public IdleObserver,
                public BacklightControllerObserver {
  public:
   // Note that keyboard_backlight is an optional parameter (it can be NULL)
@@ -69,7 +68,7 @@ class Daemon : public XIdleObserver,
          MetricsLibraryInterface* metrics_lib,
          ActivityDetectorInterface* video_detector,
          ActivityDetectorInterface* audio_detector,
-         XIdle* idle,
+         IdleInterface* idle,
          MonitorReconfigure* monitor_reconfigure,
          BacklightInterface* keyboard_backlight,
          const FilePath& run_dir);
@@ -104,7 +103,7 @@ class Daemon : public XIdleObserver,
   // key so user can see that the screen has been locked.
   void BrightenScreenIfOff();
 
-  // Overridden from XIdleObserver:
+  // Overridden from IdleObserver:
   virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms);
 
   // Overridden from BacklightControllerObserver:
@@ -436,7 +435,7 @@ class Daemon : public XIdleObserver,
   MetricsLibraryInterface* metrics_lib_;
   ActivityDetectorInterface* video_detector_;
   ActivityDetectorInterface* audio_detector_;
-  XIdle* idle_;
+  IdleInterface* idle_;
   MonitorReconfigure* monitor_reconfigure_;
   BacklightInterface* keyboard_backlight_;
   double low_battery_suspend_percent_;
