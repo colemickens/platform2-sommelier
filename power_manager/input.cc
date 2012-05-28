@@ -8,11 +8,11 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <linux/input.h>
-#include <stdlib.h>
 
 #include "base/file_util.h"
 #include "base/file_path.h"
 #include "base/logging.h"
+#include "base/string_number_conversions.h"
 #include "base/string_util.h"
 
 using std::map;
@@ -22,9 +22,10 @@ using std::vector;
 namespace {
 
 const char kInputUdevSubsystem[] = "input";
-const FilePath sys_class_input_path("/sys/class/input");
-const char kEventBasename[] = "event";
-const char kInputBasename[] = "input";
+const char kSysClassInputPath[] = "/sys/class/input";
+const char kDevInputPath[] = "/dev/input";
+const char kEventBaseName[] = "event";
+const char kInputBaseName[] = "input";
 
 const char kWakeupDisabled[] = "disabled";
 const char kWakeupEnabled[] = "enabled";
@@ -67,6 +68,12 @@ const char* InputTypeToString(power_manager::InputType type) {
     case power_manager::INPUT_UNHANDLED:      return "input(UNHANDLED)";
     default:                                  NOTREACHED(); return "";
   }
+}
+
+bool GetSuffixNumber(const char* name, const char* base_name, int* suffix) {
+  if (strncmp(base_name, name, strlen(base_name)))
+    return false;
+  return base::StringToInt(name + strlen(base_name), suffix);
 }
 
 }  // namespace
@@ -142,7 +149,7 @@ bool Input::EnableWakeInputs() {
 }
 
 bool Input::RegisterInputDevices() {
-  FilePath input_path("/dev/input");
+  FilePath input_path(kDevInputPath);
   DIR* dir = opendir(input_path.value().c_str());
   int num_registered = 0;
   if (dir) {
@@ -172,13 +179,13 @@ bool Input::RegisterInputDevices() {
 }
 
 bool Input::RegisterInputWakeSources() {
-  DIR* dir = opendir(sys_class_input_path.value().c_str());
+  DIR* dir = opendir(kSysClassInputPath);
   if (dir) {
     struct dirent entry;
     struct dirent* result;
     while (readdir_r(dir, &entry, &result) == 0 && result)
       if (result->d_name[0] &&
-          strncmp(result->d_name, kInputBasename, strlen(kInputBasename)) == 0)
+          strncmp(result->d_name, kInputBaseName, strlen(kInputBaseName)) == 0)
         AddWakeInput(result->d_name);
   }
   return true;
@@ -206,10 +213,10 @@ bool Input::SetWakeupState(int input_num, bool enabled) {
   // So number of digits = ceil(log10(256^n)) = ceil (n log10(256))
   // = ceil(2.408 n) <= 3 * n.
   // + 1 for null terminator.
-  char name[strlen(kInputBasename) + sizeof(input_num) * 3 + 1];
+  char name[strlen(kInputBaseName) + sizeof(input_num) * 3 + 1];
 
-  snprintf(name, sizeof(name), "%s%d", kInputBasename, input_num);
-  FilePath input_path = sys_class_input_path.Append(name);
+  snprintf(name, sizeof(name), "%s%d", kInputBaseName, input_num);
+  FilePath input_path = FilePath(kSysClassInputPath).Append(name);
 
   // wakeup sysfs is at /sys/class/input/inputX/device/power/wakeup
   FilePath wakeup_path = input_path.Append("device/power/wakeup");
@@ -229,12 +236,10 @@ bool Input::SetWakeupState(int input_num, bool enabled) {
   return true;
 }
 
-bool Input::AddEvent(const char * name) {
+bool Input::AddEvent(const char* name) {
   int event_num = -1;
-  if (strncmp(kEventBasename, name, strlen(kEventBasename)))
+  if (!GetSuffixNumber(name, kEventBaseName, &event_num))
     return false;
-
-  event_num = atoi(name + strlen(kEventBasename));
 
   InputMap::iterator iter = registered_inputs_.find(event_num);
   if (iter != registered_inputs_.end()) {
@@ -242,8 +247,7 @@ bool Input::AddEvent(const char * name) {
     return false;
   }
 
-  FilePath input_path("/dev/input");
-  FilePath event_path = input_path.Append(name);
+  FilePath event_path = FilePath(kDevInputPath).Append(name);
   int event_fd;
   if (access(event_path.value().c_str(), R_OK)) {
     LOG(WARNING) << "Failed to read from device.";
@@ -263,7 +267,7 @@ bool Input::AddEvent(const char * name) {
   }
   IOChannelWatch desc;
   desc.channel = channel;
-  desc.sourcetag = tag;
+  desc.source_id = tag;
   // The tag should be valid if there was a successful event registration.
   // Thus, if the tag turns out to be valid, log a warning instead of failing
   // or skipping this part.
@@ -274,10 +278,9 @@ bool Input::AddEvent(const char * name) {
 
 bool Input::RemoveEvent(const char* name) {
   int event_num = -1;
-  if (strncmp(kEventBasename, name, strlen(kEventBasename)))
+  if (!GetSuffixNumber(name, kEventBaseName, &event_num))
     return false;
 
-  event_num = atoi(name + strlen(kEventBasename));
   InputMap::iterator iter = registered_inputs_.find(event_num);
   if (iter == registered_inputs_.end()) {
     LOG(WARNING) << "Input event "
@@ -287,7 +290,7 @@ bool Input::RemoveEvent(const char* name) {
   }
 
   IOChannelWatch channel_descriptor = iter->second;
-  guint tag = channel_descriptor.sourcetag;
+  guint tag = channel_descriptor.source_id;
   // The tag should not be invalid (see AddEvent()).  So log a warning instead
   // of failing or skipping.
   LOG_IF(WARNING, tag == 0) << "Attempting to remove invalid glib source.";
@@ -300,12 +303,13 @@ bool Input::RemoveEvent(const char* name) {
 }
 
 bool Input::AddWakeInput(const char* name) {
-  if (strncmp(kInputBasename, name, strlen(kInputBasename)) ||
-      wakeup_inputs_map_.empty())
+  int input_num = -1;
+  if (wakeup_inputs_map_.empty() ||
+      !GetSuffixNumber(name, kInputBaseName, &input_num))
     return false;
 
-  FilePath input_path = sys_class_input_path.Append(name);
-  FilePath device_name_path = input_path.Append("name");
+  FilePath device_name_path =
+      FilePath(kSysClassInputPath).Append(name).Append("name");
   if (access(device_name_path.value().c_str(), R_OK)) {
     LOG(WARNING) << "Failed to access input name.";
     return false;
@@ -323,7 +327,6 @@ bool Input::AddWakeInput(const char* name) {
     return false;
   }
 
-  int input_num = atoi(name + strlen(kInputBasename));
   if (!SetWakeupState(input_num, wakeups_enabled_)) {
     LOG(ERROR) << "Error Adding Wakeup source. Cannot write to power/wakeup.";
     return false;
@@ -333,11 +336,11 @@ bool Input::AddWakeInput(const char* name) {
 }
 
 bool Input::RemoveWakeInput(const char* name) {
-  if (strncmp(kInputBasename, name, strlen(kInputBasename)) ||
-      wakeup_inputs_map_.empty())
+  int input_num = -1;
+  if (wakeup_inputs_map_.empty() ||
+      !GetSuffixNumber(name, kInputBaseName, &input_num))
     return false;
 
-  int input_num = atoi(name + strlen(kInputBasename));
   WakeupMap::iterator iter;
   for (iter = wakeup_inputs_map_.begin();
        iter != wakeup_inputs_map_.end(); iter++) {
@@ -452,12 +455,12 @@ gboolean Input::UdevEventHandler(GIOChannel* /* source */,
               << udev_device_get_action(dev)
               << " sys name "
               << udev_device_get_sysname(dev);
-    if (strncmp(kEventBasename, sysname, strlen(kEventBasename)) == 0) {
+    if (strncmp(kEventBaseName, sysname, strlen(kEventBaseName)) == 0) {
       if (strcmp("add", action) == 0)
         input->AddEvent(sysname);
       else if (strcmp("remove", action) == 0)
         input->RemoveEvent(sysname);
-    } else if (strncmp(kInputBasename, sysname, strlen(kInputBasename)) == 0) {
+    } else if (strncmp(kInputBaseName, sysname, strlen(kInputBaseName)) == 0) {
       if (strcmp("add", action) == 0)
         input->AddWakeInput(sysname);
       else if (strcmp("remove", action) == 0)

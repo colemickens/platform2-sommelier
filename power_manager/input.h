@@ -65,7 +65,7 @@ class Input {
  private:
   struct IOChannelWatch {
     GIOChannel* channel;
-    guint sourcetag;
+    guint source_id;
   };
 
   // Add/Remove events to handle lid and power button.
