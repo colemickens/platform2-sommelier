@@ -68,6 +68,9 @@ class Input {
     guint source_id;
   };
 
+  // Closes the G_IO channel |channel| and its file handle.
+  void CloseIOChannel(IOChannelWatch* channel);
+
   // Add/Remove events to handle lid and power button.
   bool AddEvent(const char* name);
   bool RemoveEvent(const char* name);
@@ -91,7 +94,10 @@ class Input {
 
   // Check that the event of handle |fd| advertises power key or lid event.
   // If so, watch this event for changes.
-  GIOChannel* RegisterInputEvent(int fd, guint* tag);
+  // Returns true if the event watch was successfully created.
+  // If it returns false, it doesn't necessarily mean there was an error.  The
+  // file handle could have been for something other than the power key or lid.
+  bool RegisterInputEvent(int fd, int event_num);
 
   static gboolean UdevEventHandler(GIOChannel* source,
                                    GIOCondition condition,

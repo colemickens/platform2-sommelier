@@ -89,10 +89,14 @@ Input::Input()
       wakeups_enabled_(true) {}
 
 Input::~Input() {
-  // TODO(bleung) : track and close ALL handles that we have open, and shutdown
-  // g_io_channels as well.
+  for (InputMap::iterator iter = registered_inputs_.begin();
+       iter != registered_inputs_.end();
+       ++iter) {
+    CloseIOChannel(&iter->second);
+  }
   if (lid_fd_ >= 0)
     close(lid_fd_);
+    LOG(INFO) << "~Input done";
 }
 
 bool Input::Init(const vector<string>& wakeup_input_names) {
@@ -236,10 +240,29 @@ bool Input::SetWakeupState(int input_num, bool enabled) {
   return true;
 }
 
+void Input::CloseIOChannel(IOChannelWatch* channel) {
+  // The source id should not be invalid (see AddEvent()), so log a warning and
+  // continue with the removal instead of failing or skipping.  We still want to
+  // remove the IO channel itself even if the source is invalid.
+  if (channel->source_id == 0)
+    LOG(WARNING) << "Attempting to remove invalid glib source.";
+  else
+    g_source_remove(channel->source_id);
+  channel->source_id = 0;
+
+  if (g_io_channel_shutdown(channel->channel, true, NULL) != G_IO_STATUS_NORMAL)
+    LOG(WARNING) << "Error shutting down GIO channel.";
+  if (close(g_io_channel_unix_get_fd(channel->channel)) < 0)
+    LOG(ERROR) << "Error closing file handle.";
+  channel->channel = NULL;
+}
+
 bool Input::AddEvent(const char* name) {
   int event_num = -1;
-  if (!GetSuffixNumber(name, kEventBaseName, &event_num))
+  if (!GetSuffixNumber(name, kEventBaseName, &event_num)) {
+    LOG(WARNING) << name << " is not a valid event name, not adding as event.";
     return false;
+  }
 
   InputMap::iterator iter = registered_inputs_.find(event_num);
   if (iter != registered_inputs_.end()) {
@@ -258,28 +281,20 @@ bool Input::AddEvent(const char* name) {
     return false;
   }
 
-  guint tag;
-  GIOChannel* channel = RegisterInputEvent(event_fd, &tag);
-  if (!channel) {
+  if (!RegisterInputEvent(event_fd, event_num)) {
     if (close(event_fd) < 0)  // event not registered, closing.
       LOG(ERROR) << "Error closing file handle.";
     return false;
   }
-  IOChannelWatch desc;
-  desc.channel = channel;
-  desc.source_id = tag;
-  // The tag should be valid if there was a successful event registration.
-  // Thus, if the tag turns out to be valid, log a warning instead of failing
-  // or skipping this part.
-  LOG_IF(WARNING, tag == 0) << "Invalid glib source for event " << name;
-  registered_inputs_[event_num] = desc;
   return true;
 }
 
 bool Input::RemoveEvent(const char* name) {
   int event_num = -1;
-  if (!GetSuffixNumber(name, kEventBaseName, &event_num))
+  if (!GetSuffixNumber(name, kEventBaseName, &event_num)) {
+    LOG(WARNING) << name << " is not a valid event name, not removing event.";
     return false;
+  }
 
   InputMap::iterator iter = registered_inputs_.find(event_num);
   if (iter == registered_inputs_.end()) {
@@ -289,15 +304,7 @@ bool Input::RemoveEvent(const char* name) {
     return false;
   }
 
-  IOChannelWatch channel_descriptor = iter->second;
-  guint tag = channel_descriptor.source_id;
-  // The tag should not be invalid (see AddEvent()).  So log a warning instead
-  // of failing or skipping.
-  LOG_IF(WARNING, tag == 0) << "Attempting to remove invalid glib source.";
-  if (g_source_remove(tag))
-    DLOG(INFO) << "Watch removed successfully!";
-  else
-    DLOG(INFO) << "Remove of watch failed!";
+  CloseIOChannel(&iter->second);
   registered_inputs_.erase(iter);
   return true;
 }
@@ -353,11 +360,11 @@ bool Input::RemoveWakeInput(const char* name) {
   return false;
 }
 
-GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
+bool Input::RegisterInputEvent(int fd, int event_num) {
   char name[256] = "Unknown";
   if (ioctl(fd, EVIOCGNAME(sizeof(name)), name) < 0) {
     LOG(ERROR) << "Could not get name of this device.";
-    return NULL;
+    return false;
   } else {
     LOG(INFO) << "Device name : " << name;
   }
@@ -365,7 +372,7 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
   char phys[256] = "Unknown";
   if (ioctl(fd, EVIOCGPHYS(sizeof(phys)), phys) < 0) {
     LOG(ERROR) << "Could not get topo phys path of this device.";
-    return NULL;
+    return false;
   } else {
     LOG(INFO) << "Device topo phys : " << phys;
   }
@@ -376,7 +383,7 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
   // keyboard, which starts with isa in its topo phys path.
   if (0 == strncmp("LNXPWRBN", phys, 8)) {
     LOG(INFO) << "Skipping interface : " << phys;
-    return NULL;
+    return false;
 }
 #else
   // Skip input events that are on the built in keyboard.
@@ -384,7 +391,7 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
   // Skipping will reduce the wasteful waking of powerm due to keyboard events.
   if (0 == strncmp("isa", phys, 3)) {
     LOG(INFO) << "Skipping interface : " << phys;
-    return NULL;
+    return false;
   }
 #endif
 
@@ -392,10 +399,11 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
   memset(events, 0, sizeof(events));
   if (ioctl(fd, EVIOCGBIT(0, EV_MAX), events) < 0) {
     LOG(ERROR) << "Error in powerm ioctl - event list";
-    return NULL;
+    return false;
   }
 
   GIOChannel* channel = NULL;
+  guint watch_id = 0;
   bool watch_added = false;
   if (IS_BIT_SET(EV_KEY, events)) {
     unsigned long keys[NUM_BITS(KEY_MAX)];
@@ -406,7 +414,7 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
     if (IS_BIT_SET(KEY_POWER, keys) || IS_BIT_SET(KEY_F13, keys)) {
       LOG(INFO) << "Watching this event for power/lock buttons!";
       channel = g_io_channel_unix_new(fd);
-      *tag = g_io_add_watch(channel, G_IO_IN, &(Input::EventHandler), this);
+      watch_id = g_io_add_watch(channel, G_IO_IN, &(Input::EventHandler), this);
       num_power_key_events_++;
       watch_added = true;
     }
@@ -427,7 +435,8 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
       if (!watch_added) {
           LOG(INFO) << "Watching this event for lid switch!";
           channel = g_io_channel_unix_new(fd);
-          *tag = g_io_add_watch(channel, G_IO_IN, &(Input::EventHandler), this);
+          watch_id =
+              g_io_add_watch(channel, G_IO_IN, &(Input::EventHandler), this);
           watch_added = true;
       } else {
         LOG(INFO) << "Watched event also has a lid!";
@@ -437,7 +446,18 @@ GIOChannel* Input::RegisterInputEvent(int fd, guint* tag) {
       lid_fd_ = fd;
     }
   }
-  return channel;
+  if (!watch_added)
+    return false;
+
+  IOChannelWatch desc;
+  desc.channel = channel;
+  desc.source_id = watch_id;
+  // The watch id should be valid if there was a successful event registration.
+  // Thus, if the id turns out to be invalid, log a warning instead of failing
+  // or skipping this part.
+  LOG_IF(WARNING, watch_id == 0) << "Invalid glib source for event " << name;
+  registered_inputs_[event_num] = desc;
+  return true;
 }
 
 gboolean Input::UdevEventHandler(GIOChannel* /* source */,
