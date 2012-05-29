@@ -14,6 +14,7 @@
 #include "wimax_manager/network_dbus_adaptor.h"
 #include "wimax_manager/utility.h"
 
+using base::DictionaryValue;
 using std::set;
 using std::string;
 using std::vector;
@@ -23,7 +24,7 @@ namespace wimax_manager {
 namespace {
 
 template <size_t N>
-bool CopyEAPParameterToUInt8Array(const base::DictionaryValue &parameters,
+bool CopyEAPParameterToUInt8Array(const DictionaryValue &parameters,
                                   const string &key, UINT8 (&uint8_array)[N]) {
   if (!parameters.HasKey(key)) {
     uint8_array[0] = '\0';
@@ -195,7 +196,7 @@ bool GdmDevice::ScanNetworks() {
 }
 
 bool GdmDevice::Connect(const Network &network,
-                        const base::DictionaryValue &parameters) {
+                        const DictionaryValue &parameters) {
   if (!Open())
     return false;
 
@@ -233,8 +234,9 @@ bool GdmDevice::Disconnect() {
   return true;
 }
 
+// static
 bool GdmDevice::ConstructEAPParameters(
-    const base::DictionaryValue &connect_parameters,
+    const DictionaryValue &connect_parameters,
     GCT_API_EAP_PARAM *eap_parameters) {
   CHECK(eap_parameters);
 
@@ -243,12 +245,6 @@ bool GdmDevice::ConstructEAPParameters(
   eap_parameters->type = GCT_WIMAX_EAP_TTLS_MSCHAPV2;
   eap_parameters->fragSize = 1300;
   eap_parameters->logEnable = 1;
-
-  if (!CopyEAPParameterToUInt8Array(connect_parameters, kEAPAnonymousIdentity,
-                                    eap_parameters->anonymousId)) {
-    LOG(ERROR) << "Invalid EAP anonymous identity";
-    return false;
-  }
 
   if (!CopyEAPParameterToUInt8Array(connect_parameters, kEAPUserIdentity,
                                     eap_parameters->userId)) {
@@ -259,6 +255,31 @@ bool GdmDevice::ConstructEAPParameters(
   if (!CopyEAPParameterToUInt8Array(connect_parameters, kEAPUserPassword,
                                     eap_parameters->userIdPwd)) {
     LOG(ERROR) << "Invalid EAP user password";
+    return false;
+  }
+
+  const DictionaryValue *connect_parameters_ptr = &connect_parameters;
+  DictionaryValue updated_connect_parameters;
+  string user_id;
+  // If no anonymous identity is given, extract <realm> from the user identity
+  // and use RANDOM@<realm> as the anonymous identity for EAP-TTLS.
+  //
+  // TODO(benchan): Not sure if this should be pushed via ONC as it seems to be
+  // GDM specific.
+  if (!connect_parameters.HasKey(kEAPAnonymousIdentity) &&
+      connect_parameters.GetString(kEAPUserIdentity, &user_id)) {
+    size_t realm_pos = user_id.find('@');
+    if (realm_pos != string::npos) {
+      string anonymous_id = "RANDOM" + user_id.substr(realm_pos);
+      updated_connect_parameters.SetString(kEAPAnonymousIdentity, anonymous_id);
+      connect_parameters_ptr = &updated_connect_parameters;
+    }
+  }
+
+  if (!CopyEAPParameterToUInt8Array(*connect_parameters_ptr,
+                                    kEAPAnonymousIdentity,
+                                    eap_parameters->anonymousId)) {
+    LOG(ERROR) << "Invalid EAP anonymous identity";
     return false;
   }
 

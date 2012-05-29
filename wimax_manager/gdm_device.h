@@ -15,6 +15,7 @@ extern "C" {
 
 #include <base/basictypes.h>
 #include <base/memory/weak_ptr.h>
+#include <gtest/gtest_prod.h>
 
 #include "wimax_manager/device.h"
 
@@ -37,12 +38,17 @@ class GdmDevice : public Device {
 
  private:
   friend class GdmDriver;
+  FRIEND_TEST(GdmDeviceTest, ConstructEAPParameters);
+  FRIEND_TEST(GdmDeviceTest, ConstructEAPParametersWithInvalidEAPParameters);
+  FRIEND_TEST(GdmDeviceTest, ConstructEAPParametersWithoutAnonymousIdentity);
+  FRIEND_TEST(GdmDeviceTest, ConstructEAPParametersWithoutEAPParameters);
 
   bool Open();
   bool Close();
 
-  bool ConstructEAPParameters(const base::DictionaryValue &connect_parameters,
-                              GCT_API_EAP_PARAM *eap_parameters);
+  static bool ConstructEAPParameters(
+      const base::DictionaryValue &connect_parameters,
+      GCT_API_EAP_PARAM *eap_parameters);
 
   void set_mac_address(const uint8 mac_address[6]);
   void set_status(WIMAX_API_DEVICE_STATUS status) { status_ = status; }
