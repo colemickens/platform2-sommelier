@@ -5,6 +5,8 @@
 #ifndef WIMAX_MANAGER_MANAGER_H_
 #define WIMAX_MANAGER_MANAGER_H_
 
+#include <glib.h>
+
 #include <vector>
 
 #include <base/basictypes.h>
@@ -26,12 +28,16 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
 
   bool Initialize();
   bool Finalize();
+  bool ScanDevices();
 
   const std::vector<Device *> &devices() const { return devices_.get(); }
 
  private:
   scoped_ptr<Driver> driver_;
   ScopedVector<Device> devices_;
+
+  int num_device_scans_;
+  guint device_scan_timeout_id_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };
