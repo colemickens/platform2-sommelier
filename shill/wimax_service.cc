@@ -135,14 +135,19 @@ void WiMaxService::Connect(Error *error) {
         error, Error::kAlreadyConnected, "Already connected.");
     return;
   }
-  device_ = manager()->wimax_provider()->SelectCarrier(this);
-  if (!device_) {
+  WiMaxRefPtr carrier = manager()->wimax_provider()->SelectCarrier(this);
+  if (!carrier) {
     Error::PopulateAndLog(
         error, Error::kNoCarrier, "No suitable WiMAX device available.");
     return;
   }
   Service::Connect(error);
-  device_->ConnectTo(this, error);
+  carrier->ConnectTo(this, error);
+  if (error->IsSuccess()) {
+    // Associate with the carrier device if the connection process has been
+    // initiated successfully.
+    device_ = carrier;
+  }
 }
 
 void WiMaxService::Disconnect(Error *error) {
@@ -210,6 +215,14 @@ bool WiMaxService::Unload() {
   // Notify the WiMAX provider that this service has been unloaded. If the
   // provider releases ownership of this service, it needs to be deregistered.
   return manager()->wimax_provider()->OnServiceUnloaded(this);
+}
+
+void WiMaxService::SetState(ConnectState state) {
+  Service::SetState(state);
+  if (!IsConnecting() && !IsConnected()) {
+    // Disassociate from any carrier device if it's not connected anymore.
+    device_ = NULL;
+  }
 }
 
 // static

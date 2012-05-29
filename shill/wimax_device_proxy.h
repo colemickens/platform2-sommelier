@@ -39,6 +39,8 @@ class WiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
                           int timeout);
   virtual void set_networks_changed_callback(
       const NetworksChangedCallback &callback);
+  virtual void set_status_changed_callback(
+      const StatusChangedCallback &callback);
   virtual uint8 Index(Error *error);
   virtual std::string Name(Error *error);
 
@@ -50,10 +52,12 @@ class WiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
     virtual ~Proxy();
 
     void set_networks_changed_callback(const NetworksChangedCallback &callback);
+    void set_status_changed_callback(const StatusChangedCallback &callback);
 
    private:
     // Signal callbacks inherited from WiMaxManager::Device_proxy.
     virtual void NetworksChanged(const std::vector<DBus::Path> &networks);
+    virtual void StatusChanged(const int32 &status);
 
     // Method callbacks inherited from WiMaxManager::Device_proxy.
     virtual void EnableCallback(const DBus::Error &error, void *data);
@@ -65,6 +69,7 @@ class WiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
     static void HandleCallback(const DBus::Error &error, void *data);
 
     NetworksChangedCallback networks_changed_callback_;
+    StatusChangedCallback status_changed_callback_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

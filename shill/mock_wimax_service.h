@@ -23,6 +23,7 @@ class MockWiMaxService : public WiMaxService {
   MOCK_METHOD1(Start, bool(WiMaxNetworkProxyInterface *proxy));
   MOCK_METHOD0(Stop, void());
   MOCK_CONST_METHOD0(IsStarted, bool());
+  MOCK_METHOD1(SetState, void(ConnectState state));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxService);

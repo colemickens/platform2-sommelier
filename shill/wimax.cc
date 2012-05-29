@@ -51,6 +51,8 @@ void WiMax::Start(Error *error, const EnabledStateChangedCallback &callback) {
   proxy_.reset(proxy_factory_->CreateWiMaxDeviceProxy(path_));
   proxy_->set_networks_changed_callback(
       Bind(&WiMax::OnNetworksChanged, Unretained(this)));
+  proxy_->set_status_changed_callback(
+      Bind(&WiMax::OnStatusChanged, Unretained(this)));
   proxy_->Enable(
       error, Bind(&WiMax::OnEnableComplete, this, callback), kTimeoutDefault);
 }
@@ -155,19 +157,17 @@ void WiMax::OnScanNetworksComplete(const Error &/*error*/) {
 
 void WiMax::OnConnectComplete(const Error &error) {
   SLOG(WiMax, 2) << __func__;
-  if (!pending_service_) {
-    LOG(ERROR) << "Unexpected OnConnectComplete callback.";
+  if (error.IsSuccess()) {
+    // Nothing to do -- the connection process is resumed on the StatusChanged
+    // signal.
     return;
   }
-  if (error.IsSuccess() && AcquireIPConfig()) {
-    LOG(INFO) << "Connected to " << pending_service_->friendly_name();
-    SelectService(pending_service_);
-    SetServiceState(Service::kStateConfiguring);
-  } else {
-    LOG(ERROR) << "Unable to connect to " << pending_service_->friendly_name();
+  if (pending_service_) {
+    LOG(ERROR) << "Unable to initiate connection to "
+               << pending_service_->GetStorageIdentifier();
     pending_service_->SetState(Service::kStateFailure);
+    pending_service_ = NULL;
   }
-  pending_service_ = NULL;
 }
 
 void WiMax::OnDisconnectComplete(const Error &/*error*/) {
@@ -200,6 +200,43 @@ void WiMax::OnNetworksChanged(const RpcIdentifiers &networks) {
   networks_.clear();
   networks_.insert(networks.begin(), networks.end());
   manager()->wimax_provider()->OnNetworksChanged();
+}
+
+void WiMax::OnStatusChanged(wimax_manager::DeviceStatus status) {
+  SLOG(WiMax, 2) << __func__ << "(" << status << ")";
+  switch (status) {
+    case wimax_manager::kDeviceStatusConnected:
+      if (!pending_service_) {
+        LOG(WARNING) << "Unexpected status change; ignored.";
+        return;
+      }
+      if (AcquireIPConfig()) {
+        LOG(INFO) << "Connected to "
+                  << pending_service_->GetStorageIdentifier();
+        SelectService(pending_service_);
+        SetServiceState(Service::kStateConfiguring);
+      } else {
+        LOG(ERROR) << "Unable to connect to "
+                   << pending_service_->GetStorageIdentifier();
+        pending_service_->SetState(Service::kStateFailure);
+      }
+      pending_service_ = NULL;
+      break;
+    case wimax_manager::kDeviceStatusScanning:
+    case wimax_manager::kDeviceStatusConnecting:
+      // Nothing to do.
+      break;
+    default:
+      if (pending_service_) {
+        pending_service_->SetState(Service::kStateFailure);
+        pending_service_ = NULL;
+      }
+      if (selected_service()) {
+        selected_service()->SetState(Service::kStateFailure);
+        DropConnection();
+      }
+      break;
+  }
 }
 
 void WiMax::DropConnection() {

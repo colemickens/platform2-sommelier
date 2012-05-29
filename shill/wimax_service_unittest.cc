@@ -240,4 +240,20 @@ TEST_F(WiMaxServiceTest, Unload) {
   EXPECT_TRUE(service_->eap().identity.empty());
 }
 
+TEST_F(WiMaxServiceTest, SetState) {
+  service_->device_ = device_;
+  ServiceRefPtr base_service = service_;
+  EXPECT_EQ(Service::kStateIdle, service_->state());
+
+  EXPECT_CALL(manager_, UpdateService(_));
+  base_service->SetState(Service::kStateAssociating);
+  EXPECT_EQ(Service::kStateAssociating, service_->state());
+  EXPECT_TRUE(service_->device_);
+
+  EXPECT_CALL(manager_, UpdateService(_));
+  base_service->SetState(Service::kStateFailure);
+  EXPECT_EQ(Service::kStateFailure, service_->state());
+  EXPECT_FALSE(service_->device_);
+}
+
 }  // namespace shill

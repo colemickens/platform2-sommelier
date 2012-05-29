@@ -7,6 +7,7 @@
 
 #include <set>
 
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
@@ -48,6 +49,7 @@ class WiMax : public Device {
  private:
   friend class WiMaxTest;
   FRIEND_TEST(WiMaxProviderTest, OnNetworksChanged);
+  FRIEND_TEST(WiMaxTest, OnConnectComplete);
   FRIEND_TEST(WiMaxTest, OnNetworksChanged);
   FRIEND_TEST(WiMaxTest, OnServiceStopped);
   FRIEND_TEST(WiMaxTest, StartStop);
@@ -63,6 +65,7 @@ class WiMax : public Device {
                          const Error &error);
 
   void OnNetworksChanged(const RpcIdentifiers &networks);
+  void OnStatusChanged(wimax_manager::DeviceStatus status);
 
   void DropConnection();
 

@@ -20,6 +20,7 @@
 
 using std::string;
 using testing::_;
+using testing::NiceMock;
 using testing::Return;
 
 namespace shill {
@@ -94,6 +95,7 @@ TEST_F(WiMaxTest, StartStop) {
   EXPECT_FALSE(device_->proxy_.get());
   EXPECT_CALL(*proxy_, Enable(_, _, _));
   EXPECT_CALL(*proxy_, set_networks_changed_callback(_));
+  EXPECT_CALL(*proxy_, set_status_changed_callback(_));
   EXPECT_CALL(*proxy_, Disable(_, _, _));
   device_->Start(NULL, EnabledStateChangedCallback());
   ASSERT_TRUE(device_->proxy_.get());
@@ -107,8 +109,12 @@ TEST_F(WiMaxTest, StartStop) {
 }
 
 TEST_F(WiMaxTest, OnServiceStopped) {
-  scoped_refptr<MockWiMaxService> service0(
-      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+  scoped_refptr<NiceMock<MockWiMaxService> > service0(
+      new NiceMock<MockWiMaxService>(
+          &control_,
+          reinterpret_cast<EventDispatcher *>(NULL),
+          &metrics_,
+          &manager_));
   scoped_refptr<MockWiMaxService> service1(
       new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
   device_->SelectService(service0);
@@ -140,6 +146,17 @@ TEST_F(WiMaxTest, OnNetworksChanged) {
   EXPECT_EQ(2, device_->networks_.size());
   EXPECT_TRUE(ContainsKey(device_->networks_, "bar"));
   EXPECT_TRUE(ContainsKey(device_->networks_, "zoo"));
+}
+
+TEST_F(WiMaxTest, OnConnectComplete) {
+  scoped_refptr<MockWiMaxService> service(
+      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+  device_->pending_service_ = service;
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  EXPECT_TRUE(device_->pending_service_);
+  EXPECT_CALL(*service, SetState(Service::kStateFailure));
+  device_->OnConnectComplete(Error(Error::kOperationFailed));
+  EXPECT_FALSE(device_->pending_service_);
 }
 
 }  // namespace shill

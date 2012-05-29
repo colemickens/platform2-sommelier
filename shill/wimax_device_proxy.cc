@@ -16,6 +16,7 @@ using base::Callback;
 using base::Unretained;
 using std::string;
 using std::vector;
+using wimax_manager::DeviceStatus;
 
 namespace shill {
 
@@ -81,6 +82,11 @@ void WiMaxDeviceProxy::set_networks_changed_callback(
   proxy_.set_networks_changed_callback(callback);
 }
 
+void WiMaxDeviceProxy::set_status_changed_callback(
+    const StatusChangedCallback &callback) {
+  proxy_.set_status_changed_callback(callback);
+}
+
 uint8 WiMaxDeviceProxy::Index(Error *error) {
   SLOG(DBus, 2) << __func__;
   try {
@@ -139,6 +145,11 @@ void WiMaxDeviceProxy::Proxy::set_networks_changed_callback(
   networks_changed_callback_ = callback;
 }
 
+void WiMaxDeviceProxy::Proxy::set_status_changed_callback(
+    const StatusChangedCallback &callback) {
+  status_changed_callback_ = callback;
+}
+
 void WiMaxDeviceProxy::Proxy::NetworksChanged(
     const vector<DBus::Path> &networks) {
   SLOG(DBus, 2) << __func__ << "(" << networks.size() << ")";
@@ -148,6 +159,14 @@ void WiMaxDeviceProxy::Proxy::NetworksChanged(
   RpcIdentifiers rpc_networks;
   DBusProperties::ConvertPathsToRpcIdentifiers(networks, &rpc_networks);
   networks_changed_callback_.Run(rpc_networks);
+}
+
+void WiMaxDeviceProxy::Proxy::StatusChanged(const int32 &status) {
+  SLOG(DBus, 2) << __func__ << "(" << status << ")";
+  if (status_changed_callback_.is_null()) {
+    return;
+  }
+  status_changed_callback_.Run(static_cast<DeviceStatus>(status));
 }
 
 void WiMaxDeviceProxy::Proxy::EnableCallback(const DBus::Error &error,

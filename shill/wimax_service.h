@@ -72,12 +72,14 @@ class WiMaxService : public Service {
   virtual void set_eap(const EapCredentials &eap);
   virtual bool Save(StoreInterface *storage);
   virtual bool Unload();
+  virtual void SetState(ConnectState state);
 
  private:
   friend class WiMaxServiceTest;
   FRIEND_TEST(WiMaxServiceTest, GetDeviceRpcId);
   FRIEND_TEST(WiMaxServiceTest, OnSignalStrengthChanged);
   FRIEND_TEST(WiMaxServiceTest, SetEAP);
+  FRIEND_TEST(WiMaxServiceTest, SetState);
   FRIEND_TEST(WiMaxServiceTest, StartStop);
 
   virtual std::string GetDeviceRpcId(Error *error);

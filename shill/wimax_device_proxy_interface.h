@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/callbacks.h"
 
@@ -21,6 +22,8 @@ class KeyValueStore;
 class WiMaxDeviceProxyInterface {
  public:
   typedef base::Callback<void(const RpcIdentifiers &)> NetworksChangedCallback;
+  typedef base::Callback<void(
+      wimax_manager::DeviceStatus)> StatusChangedCallback;
 
   virtual ~WiMaxDeviceProxyInterface() {}
 
@@ -44,6 +47,8 @@ class WiMaxDeviceProxyInterface {
 
   virtual void set_networks_changed_callback(
       const NetworksChangedCallback &callback) = 0;
+  virtual void set_status_changed_callback(
+      const StatusChangedCallback &callback) = 0;
 
   // Properties.
   virtual uint8 Index(Error *error) = 0;
