@@ -35,7 +35,18 @@ struct PowerStatus {
   // positive, the source is being discharged, if negative it's being charged.
   double battery_energy_rate;
 
-  double battery_voltage;
+  // Current battery levels.
+  double battery_voltage;  // in volts.
+  double battery_current;  // in amperes.
+  double battery_charge;  // in ampere-hours.
+
+  // Battery full charge level in ampere-hours.
+  double battery_charge_full;
+
+  // The battery voltage used in calculating time remaining.  This may or may
+  // not be the same as the instantaneous voltage |battery_voltage|, as voltage
+  // levels vary over the time the battery is charged or discharged.
+  double nominal_voltage;
 
   // Set to true when we have just transitioned states and we might have both a
   // segment of charging and discharging in the calculation. This is done to
@@ -74,18 +85,10 @@ struct PowerInformation {
   // considered full.
   double battery_energy_full_design;
 
-  bool battery_is_rechargeable;  // [needed?]
-  double battery_capacity;
-
-  std::string battery_technology;  // [needed?]
-
   std::string battery_vendor;
   std::string battery_model;
   std::string battery_serial;
-
-  std::string line_power_vendor;
-  std::string line_power_model;
-  std::string line_power_serial;
+  std::string battery_technology;
 
   std::string battery_state_string;
 };
@@ -130,7 +133,7 @@ class PowerSupply {
   void GetPowerSupplyPaths();
 
   // Computes time remaining based on energy drain rate.
-  double GetLinearTimeToEmpty();
+  double GetLinearTimeToEmpty(const PowerStatus& status);
 
   // Determine remaining time when charging or discharging.
   void CalculateRemainingTime(PowerStatus* status);
@@ -149,24 +152,6 @@ class PowerSupply {
   FilePath power_supply_path_;
   FilePath line_power_path_;
   FilePath battery_path_;
-
-  // Various fields that are read from power supply sysfs.
-  double charge_full_;
-  double charge_full_design_;
-  double charge_now_;
-  double current_now_;
-  double cycle_count_;
-  double voltage_now_;
-  double nominal_voltage_;
-
-  // Indicates whether battery is present.
-  bool battery_is_present_;
-  // Indicates whether line power is on.
-  bool line_power_on_;
-
-  std::string serial_number_;
-  std::string technology_;
-  std::string type_;
 
   // These are used for using hysteresis to avoid large swings in calculated
   // remaining battery time.

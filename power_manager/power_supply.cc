@@ -81,39 +81,46 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
     // A hack for situations like VMs where there is no power supply sysfs.
     LOG(INFO) << "No power supply sysfs path found, assuming line power on.";
 #endif
-    status->line_power_on = line_power_on_ = true;
-    status->battery_is_present = battery_is_present_ = false;
+    status->line_power_on = true;
+    status->battery_is_present = false;
     return true;
   }
   int64 value;
   if (line_power_info_ && file_util::PathExists(line_power_path_)) {
     line_power_info_->GetInt64("online", &value);
     // Return the line power status.
-    status->line_power_on = line_power_on_ = static_cast<bool>(value);
+    status->line_power_on = static_cast<bool>(value);
   }
 
   // If no battery was found, or if the previously found path doesn't exist
   // anymore, return true.  This is still an acceptable case since the battery
   // could be physically removed.
   if (!battery_info_ || !file_util::PathExists(battery_path_)) {
-    status->battery_is_present = battery_is_present_ = false;
+    status->battery_is_present = false;
     return true;
   }
 
   battery_info_->GetInt64("present", &value);
-  status->battery_is_present = battery_is_present_ = static_cast<bool>(value);
+  status->battery_is_present = static_cast<bool>(value);
   // If there is no battery present, we can skip the rest of the readings.
-  if (!battery_is_present_)
+  if (!status->battery_is_present)
     return true;
 
-  voltage_now_ = battery_info_->ReadScaledDouble("voltage_now");
+  double battery_voltage = battery_info_->ReadScaledDouble("voltage_now");
+  status->battery_voltage = battery_voltage;
+
   // Attempt to determine nominal voltage for time remaining calculations.
+  // The battery voltage used in calculating time remaining.  This may or may
+  // not be the same as the instantaneous voltage |battery_voltage|, as voltage
+  // levels vary over the time the battery is charged or discharged.
+  double nominal_voltage;
   if (file_util::PathExists(battery_path_.Append("voltage_min_design")))
-    nominal_voltage_ = battery_info_->ReadScaledDouble("voltage_min_design");
+    nominal_voltage = battery_info_->ReadScaledDouble("voltage_min_design");
   else if (file_util::PathExists(battery_path_.Append("voltage_max_design")))
-    nominal_voltage_ = battery_info_->ReadScaledDouble("voltage_max_design");
+    nominal_voltage = battery_info_->ReadScaledDouble("voltage_max_design");
   else
-    nominal_voltage_ = voltage_now_;
+    nominal_voltage = battery_voltage;
+  status->nominal_voltage = nominal_voltage;
 
   // ACPI has two different battery types: charge_battery and energy_battery.
   // The main difference is that charge_battery type exposes
@@ -125,70 +132,72 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
   // Change all the energy readings to charge format.
   // If both energy and charge reading are present (some non-ACPI drivers
   // expose both readings), read only the charge format.
+  double battery_charge_full = 0;
+  double battery_charge_full_design = 0;
+  double battery_charge = 0;
+
   if (file_util::PathExists(battery_path_.Append("charge_full"))) {
-    charge_full_ = battery_info_->ReadScaledDouble("charge_full");
-    charge_full_design_ = battery_info_->ReadScaledDouble("charge_full_design");
-    charge_now_ = battery_info_->ReadScaledDouble("charge_now");
+    battery_charge_full = battery_info_->ReadScaledDouble("charge_full");
+    battery_charge_full_design =
+        battery_info_->ReadScaledDouble("charge_full_design");
+    battery_charge = battery_info_->ReadScaledDouble("charge_now");
   } else if (file_util::PathExists(battery_path_.Append("energy_full"))) {
-    if (nominal_voltage_ <= 0 || voltage_now_ <= 0) {
+    if (nominal_voltage <= 0 || battery_voltage <= 0) {
       LOG(WARNING) << "Non valid voltage_nominal/now readings for "
                    << "energy-to-charge conversion : "
-                   << nominal_voltage_ << "/" << voltage_now_;
+                   << nominal_voltage << "/" << battery_voltage;
       return false;
     }
-    charge_full_ =
-        battery_info_->ReadScaledDouble("energy_full") / voltage_now_;
-    charge_full_design_ =
-        battery_info_->ReadScaledDouble("energy_full_design") / voltage_now_;
-    charge_now_ = battery_info_->ReadScaledDouble("energy_now") / voltage_now_;
+    battery_charge_full =
+        battery_info_->ReadScaledDouble("energy_full") / battery_voltage;
+    battery_charge_full_design =
+        battery_info_->ReadScaledDouble("energy_full_design") / battery_voltage;
+    battery_charge =
+        battery_info_->ReadScaledDouble("energy_now") / battery_voltage;
   } else {
     LOG(WARNING) << "No charge/energy readings for battery";
     return false;
   }
+  status->battery_charge_full = battery_charge_full;
+  status->battery_charge = battery_charge;
+
   // Sometimes current could be negative.  Ignore it and use |line_power_on| to
   // determine whether it's charging or discharging.
+  double battery_current = 0;
   if (file_util::PathExists(battery_path_.Append("power_now"))) {
-    current_now_ = fabs(battery_info_->ReadScaledDouble("power_now")) /
-                   voltage_now_;
+    battery_current = fabs(battery_info_->ReadScaledDouble("power_now")) /
+        battery_voltage;
   } else {
-    current_now_ = fabs(battery_info_->ReadScaledDouble("current_now"));
+    battery_current = fabs(battery_info_->ReadScaledDouble("current_now"));
   }
-  cycle_count_ = battery_info_->ReadScaledDouble("cycle_count");
-
-  serial_number_.clear();
-  technology_.clear();
-  type_.clear();
-  battery_info_->ReadString("serial_number", &serial_number_);
-  battery_info_->ReadString("technology", &technology_);
-  battery_info_->ReadString("type", &type_);
+  status->battery_current = battery_current;
 
   // Perform calculations / interpretations of the data read from sysfs.
-  status->battery_energy = charge_now_ * voltage_now_;
-  status->battery_energy_rate = current_now_ * voltage_now_;
-  status->battery_voltage = voltage_now_;
+  status->battery_energy = battery_charge * battery_voltage;
+  status->battery_energy_rate = battery_current * battery_voltage;
 
   CalculateRemainingTime(status);
 
-  if (charge_full_ > 0 && charge_full_design_ > 0)
-    status->battery_percentage = 100. * charge_now_ / charge_full_;
+  if (battery_charge_full > 0 && battery_charge_full_design > 0)
+    status->battery_percentage = 100. * battery_charge / battery_charge_full;
   else
     status->battery_percentage = -1;
 
   // Determine battery state from above readings.  Disregard the "status" field
   // in sysfs, as that can be inconsistent with the numerical readings.
   status->battery_state = BATTERY_STATE_UNKNOWN;
-  if (line_power_on_) {
-    if (charge_now_ >= charge_full_) {
+  if (status->line_power_on) {
+    if (battery_charge >= battery_charge_full) {
       status->battery_state = BATTERY_STATE_FULLY_CHARGED;
     } else {
-      if (current_now_ <= 0)
+      if (battery_current <= 0)
         LOG(WARNING) << "Line power is on and battery is not fully charged "
-                     << "but battery current is " << current_now_ << " A.";
+                     << "but battery current is " << battery_current << " A.";
       status->battery_state = BATTERY_STATE_CHARGING;
     }
   } else {
     status->battery_state = BATTERY_STATE_DISCHARGING;
-    if (charge_now_ == 0)
+    if (battery_charge == 0)
       status->battery_state = BATTERY_STATE_EMPTY;
   }
   return true;
@@ -199,6 +208,11 @@ bool PowerSupply::GetPowerInformation(PowerInformation* info) {
   GetPowerStatus(&info->power_status, false);
   if (!info->power_status.battery_is_present)
     return true;
+
+  info->battery_vendor.clear();
+  info->battery_model.clear();
+  info->battery_serial.clear();
+  info->battery_technology.clear();
 
   // POWER_SUPPLY_PROP_VENDOR does not seem to be a valid property
   // defined in <linux/power_supply.y>.
@@ -283,9 +297,9 @@ void PowerSupply::GetPowerSupplyPaths() {
   }
 }
 
-double PowerSupply::GetLinearTimeToEmpty() {
-  return HoursToSecondsDouble(nominal_voltage_ * charge_now_ / (current_now_ *
-                                                                voltage_now_));
+double PowerSupply::GetLinearTimeToEmpty(const PowerStatus& status) {
+  return HoursToSecondsDouble(status.nominal_voltage * status.battery_charge /
+      (status.battery_current * status.battery_voltage));
 }
 
 void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
@@ -332,11 +346,12 @@ void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
   }
 
   // Check to make sure there isn't a division by zero.
-  if (current_now_ > 0) {
+  if (status->battery_current > 0) {
     double time_to_empty = 0;
     if (status->line_power_on) {
       status->battery_time_to_full =
-          HoursToSecondsInt((charge_full_ - charge_now_) / current_now_);
+          HoursToSecondsInt((status->battery_charge_full -
+              status->battery_charge) / status->battery_current);
       // Reset the remaining-time-calculation state machine when AC plugged in.
       found_acceptable_time_range_ = false;
       last_poll_time_ = base::Time();
@@ -351,7 +366,7 @@ void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
       // use the simple linear calculation for time.
       if (discharge_start_time_.is_null())
         discharge_start_time_ = time_now;
-      time_to_empty = GetLinearTimeToEmpty();
+      time_to_empty = GetLinearTimeToEmpty(*status);
       status->battery_time_to_empty = lround(time_to_empty);
       // Select an acceptable remaining time once the system has been
       // discharging for the necessary amount of time.
@@ -364,7 +379,7 @@ void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
         hysteresis_time_ = kHysteresisTime;
       }
     } else {
-      double calculated_time = GetLinearTimeToEmpty();
+      double calculated_time = GetLinearTimeToEmpty(*status);
       double allowed_time_variation = acceptable_time_ * acceptable_variance_;
       // Reduce the acceptable time range as time goes by.
       acceptable_time_ -= (time_now - last_poll_time_).InSecondsF();
