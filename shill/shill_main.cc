@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <errno.h>
+#include <glib.h>
 #include <glib-unix.h>
+#include <stdio.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -75,9 +78,15 @@ static const char kHelpMessage[] = "\n"
     "    Use the same directories flimflam uses (profiles, run dir...).\n";
 }  // namespace switches
 
+namespace {
+
+const char *kLoggerCommand = "/usr/bin/logger";
+
+}  // namespace
+
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
-void SetupLogging(bool foreground) {
+void SetupLogging(bool foreground, char *daemon_name) {
   int log_flags = 0;
   log_flags |= chromeos::kLogToSyslog;
   log_flags |= chromeos::kLogHeader;
@@ -85,6 +94,40 @@ void SetupLogging(bool foreground) {
     log_flags |= chromeos::kLogToStderr;
   }
   chromeos::InitLog(log_flags);
+
+  if (!foreground) {
+    vector<char *> logger_command_line;
+    int logger_stdin_fd;
+    logger_command_line.push_back(const_cast<char *>(kLoggerCommand));
+    logger_command_line.push_back(const_cast<char *>("--priority"));
+    logger_command_line.push_back(const_cast<char *>("daemon.err"));
+    logger_command_line.push_back(const_cast<char *>("--tag"));
+    logger_command_line.push_back(daemon_name);
+    logger_command_line.push_back(NULL);
+    if (!g_spawn_async_with_pipes(NULL,
+                                  logger_command_line.data(),
+                                  NULL,
+                                  G_SPAWN_STDERR_TO_DEV_NULL,
+                                  NULL,
+                                  NULL,
+                                  NULL,
+                                  &logger_stdin_fd,
+                                  NULL,
+                                  NULL,
+                                  NULL)) {
+      LOG(ERROR) << "Unable to spawn logger. "
+                 << "Writes to stderr will be discarded.";
+      return;
+    }
+
+    // Note that we don't set O_CLOEXEC here. This means that stderr
+    // from any child processes will, by default, be logged to syslog.
+    if (dup2(logger_stdin_fd, fileno(stderr)) != fileno(stderr)) {
+      LOG(ERROR) << "Failed to redirect stderr to syslog: "
+                 << strerror(errno);
+    }
+    close(logger_stdin_fd);
+  }
 }
 
 void DeleteDBusControl(void* param) {
@@ -115,9 +158,9 @@ int main(int argc, char** argv) {
   if (!cl->HasSwitch(switches::kForeground))
     PLOG_IF(FATAL, daemon(nochdir, noclose) == -1 ) << "Failed to daemonize";
 
-  SetupLogging(cl->HasSwitch(switches::kForeground));
+  SetupLogging(cl->HasSwitch(switches::kForeground), argv[0]);
   if (cl->HasSwitch(switches::kLogLevel)) {
-    std::string log_level = cl->GetSwitchValueASCII(switches::kLogLevel);
+    string log_level = cl->GetSwitchValueASCII(switches::kLogLevel);
     int level = 0;
     if (base::StringToInt(log_level, &level) &&
         level < logging::LOG_NUM_SEVERITIES) {
@@ -130,7 +173,7 @@ int main(int argc, char** argv) {
   }
 
   if (cl->HasSwitch(switches::kLogScopes)) {
-    std::string log_scopes = cl->GetSwitchValueASCII(switches::kLogScopes);
+    string log_scopes = cl->GetSwitchValueASCII(switches::kLogScopes);
     shill::ScopeLogger::GetInstance()->EnableScopesByName(log_scopes);
   }
 

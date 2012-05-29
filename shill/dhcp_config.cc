@@ -164,6 +164,7 @@ bool DHCPConfig::Start() {
   vector<char *> args;
   args.push_back(const_cast<char *>(kDHCPCDPath));
   args.push_back(const_cast<char *>("-B"));  // Run in foreground.
+  args.push_back(const_cast<char *>("-q"));  // Only warnings+errors to stderr.
   if (!request_hostname_.empty()) {
     args.push_back(const_cast<char *>("-h"));  // Request hostname from server.
     args.push_back(const_cast<char *>(request_hostname_.c_str()));
