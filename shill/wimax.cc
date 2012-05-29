@@ -222,7 +222,6 @@ void WiMax::OnStatusChanged(wimax_manager::DeviceStatus status) {
       }
       pending_service_ = NULL;
       break;
-    case wimax_manager::kDeviceStatusScanning:
     case wimax_manager::kDeviceStatusConnecting:
       // Nothing to do.
       break;
