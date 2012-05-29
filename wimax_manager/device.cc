@@ -22,7 +22,8 @@ const int kDefaultScanIntervalInSeconds = 5;
 
 Device::Device(uint8 index, const string &name)
     : index_(index), name_(name),
-      scan_interval_(kDefaultScanIntervalInSeconds) {
+      scan_interval_(kDefaultScanIntervalInSeconds),
+      status_(kDeviceStatusUninitialized) {
 }
 
 Device::~Device() {
@@ -30,6 +31,13 @@ Device::~Device() {
 
 void Device::UpdateNetworks() {
   dbus_adaptor()->UpdateNetworks();
+}
+
+void Device::set_status(DeviceStatus status) {
+  if (status_ != status) {
+    status_ = status;
+    dbus_adaptor()->UpdateStatus();
+  }
 }
 
 }  // namespace wimax_manager

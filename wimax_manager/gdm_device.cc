@@ -23,6 +23,9 @@ namespace wimax_manager {
 
 namespace {
 
+const int kConnectionStatusPollIntervalInSeconds = 1;
+const int kMaxNumberOfConnectionStatusPolls = 120;
+
 template <size_t N>
 bool CopyEAPParameterToUInt8Array(const DictionaryValue &parameters,
                                   const string &key, UINT8 (&uint8_array)[N]) {
@@ -61,7 +64,6 @@ GdmDevice::GdmDevice(uint8 index, const string &name,
     : Device(index, name),
       driver_(driver),
       open_(false),
-      status_(WIMAX_API_DEVICE_STATUS_UnInitialized),
       connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging),
       scan_timeout_id_(0) {
 }
@@ -132,6 +134,10 @@ bool GdmDevice::Enable() {
         g_timeout_add_seconds(scan_interval(), OnNetworkScan, this);
   }
 
+  if (!driver_->GetDeviceStatus(this)) {
+    LOG(WARNING) << "Failed to get status of device '" << name() << "'";
+    return false;
+  }
   return true;
 }
 
@@ -150,6 +156,10 @@ bool GdmDevice::Disable() {
     return false;
   }
 
+  if (!driver_->GetDeviceStatus(this)) {
+    LOG(WARNING) << "Failed to get status of device '" << name() << "'";
+    return false;
+  }
   return true;
 }
 
@@ -219,7 +229,19 @@ bool GdmDevice::Connect(const Network &network,
     return false;
   }
 
-  return true;
+  // TODO(benchan): After modifying shill to monitor Device.StatusChanged
+  // signal, check the connection status asynchronously with a timeout instead
+  // of polling.
+  for (int i = 0; i < kMaxNumberOfConnectionStatusPolls; ++i) {
+    sleep(kConnectionStatusPollIntervalInSeconds);
+    if (!driver_->GetDeviceStatus(this)) {
+      LOG(WARNING) << "Failed to get status of device '" << name() << "'";
+      continue;
+    }
+    if (status() == kDeviceStatusConnected)
+      return true;
+  }
+  return false;
 }
 
 bool GdmDevice::Disconnect() {
@@ -231,6 +253,10 @@ bool GdmDevice::Disconnect() {
     return false;
   }
 
+  if (!driver_->GetDeviceStatus(this)) {
+    LOG(WARNING) << "Failed to get status of device '" << name() << "'";
+    return false;
+  }
   return true;
 }
 

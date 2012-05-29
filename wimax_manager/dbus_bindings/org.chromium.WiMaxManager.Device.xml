@@ -16,8 +16,12 @@
     <signal name="NetworksChanged">
       <arg name="networks" type="ao" />
     </signal>
+    <signal name="StatusChanged">
+      <arg name="status" type="i" />
+    </signal>
     <property name="Index" type="y" access="read" />
     <property name="Name" type="s" access="read" />
     <property name="Networks" type="ao" access="read" />
+    <property name="Status" type="i" access="read" />
   </interface>
 </node>

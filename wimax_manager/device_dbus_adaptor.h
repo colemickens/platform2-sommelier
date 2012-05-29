@@ -33,6 +33,7 @@ class DeviceDBusAdaptor : public org::chromium::WiMaxManager::Device_adaptor,
   virtual void Disconnect(DBus::Error &error);  // NOLINT
 
   void UpdateNetworks();
+  void UpdateStatus();
 
  private:
   NetworkRefPtr FindNetworkByDBusObjectPath(

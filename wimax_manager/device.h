@@ -11,6 +11,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <base/values.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "wimax_manager/dbus_adaptable.h"
 #include "wimax_manager/network.h"
@@ -34,6 +35,7 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   uint8 index() const { return index_; }
   const std::string &name() const { return name_; }
   const NetworkMap &networks() const { return networks_; }
+  const DeviceStatus status() const { return status_; }
 
   int scan_interval() const { return scan_interval_; }
   void set_scan_interval(int scan_interval) { scan_interval_ = scan_interval; }
@@ -42,12 +44,14 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   void UpdateNetworks();
 
   NetworkMap *mutable_networks() { return &networks_; }
+  void set_status(DeviceStatus status);
 
  private:
   uint8 index_;
   std::string name_;
   NetworkMap networks_;
   int scan_interval_;
+  DeviceStatus status_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

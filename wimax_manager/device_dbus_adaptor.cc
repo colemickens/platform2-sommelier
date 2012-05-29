@@ -71,6 +71,7 @@ DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection *connection,
   Index = device->index();
   Name = device->name();
   Networks = vector<DBus::Path>();
+  Status = device->status();
 }
 
 DeviceDBusAdaptor::~DeviceDBusAdaptor() {
@@ -137,6 +138,12 @@ void DeviceDBusAdaptor::UpdateNetworks() {
   }
   Networks = network_paths;
   NetworksChanged(network_paths);
+}
+
+void DeviceDBusAdaptor::UpdateStatus() {
+  int status = device_->status();
+  Status = status;
+  StatusChanged(status);
 }
 
 NetworkRefPtr DeviceDBusAdaptor::FindNetworkByDBusObjectPath(

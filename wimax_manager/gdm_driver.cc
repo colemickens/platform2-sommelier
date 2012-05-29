@@ -53,6 +53,25 @@ string GetDeviceStatusDescription(WIMAX_API_DEVICE_STATUS device_status) {
   }
 }
 
+DeviceStatus ConvertDeviceStatus(WIMAX_API_DEVICE_STATUS device_status) {
+  switch (device_status) {
+    case WIMAX_API_DEVICE_STATUS_RF_OFF_HW_SW:
+    case WIMAX_API_DEVICE_STATUS_RF_OFF_HW:
+    case WIMAX_API_DEVICE_STATUS_RF_OFF_SW:
+      return kDeviceStatusDisabled;
+    case WIMAX_API_DEVICE_STATUS_Ready:
+      return kDeviceStatusReady;
+    case WIMAX_API_DEVICE_STATUS_Scanning:
+      return kDeviceStatusScanning;
+    case WIMAX_API_DEVICE_STATUS_Connecting:
+      return kDeviceStatusConnecting;
+    case WIMAX_API_DEVICE_STATUS_Data_Connected:
+      return kDeviceStatusConnected;
+    default:
+      return kDeviceStatusUninitialized;
+  }
+}
+
 string GetConnectionProgressDescription(
     WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress) {
   switch (connection_progress) {
@@ -248,7 +267,7 @@ bool GdmDriver::GetDeviceStatus(GdmDevice *device) {
   if (ret != GCT_API_RET_SUCCESS)
     return false;
 
-  device->set_status(device_status);
+  device->set_status(ConvertDeviceStatus(device_status));
   device->set_connection_progress(connection_progress);
 
   LOG(INFO) << "Device '" << device->name()

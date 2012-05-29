@@ -51,7 +51,6 @@ class GdmDevice : public Device {
       GCT_API_EAP_PARAM *eap_parameters);
 
   void set_mac_address(const uint8 mac_address[6]);
-  void set_status(WIMAX_API_DEVICE_STATUS status) { status_ = status; }
   void set_connection_progress(
       WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress) {
     connection_progress_ = connection_progress;
@@ -59,7 +58,6 @@ class GdmDevice : public Device {
 
   base::WeakPtr<GdmDriver> driver_;
   bool open_;
-  WIMAX_API_DEVICE_STATUS status_;
   WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress_;
   uint8 mac_address_[6];
   guint scan_timeout_id_;
