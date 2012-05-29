@@ -18,6 +18,24 @@ namespace {
 // TODO(benchan): Perform some measurements and fine tune this value.
 const int kDefaultScanIntervalInSeconds = 5;
 
+string GetDeviceStatusDescription(DeviceStatus device_status) {
+  switch (device_status) {
+    case kDeviceStatusUninitialized:
+      return "Uninitialized";
+    case kDeviceStatusDisabled:
+      return "Disabled";
+    case kDeviceStatusReady:
+      return "Ready";
+    case kDeviceStatusScanning:
+      return "Scanning";
+    case kDeviceStatusConnecting:
+      return "Connecting";
+    case kDeviceStatusConnected:
+      return "Connected";
+  }
+  return "Unknown";
+}
+
 }  // namespace
 
 Device::Device(uint8 index, const string &name)
@@ -33,8 +51,11 @@ void Device::UpdateNetworks() {
   dbus_adaptor()->UpdateNetworks();
 }
 
-void Device::set_status(DeviceStatus status) {
+void Device::SetStatus(DeviceStatus status) {
   if (status_ != status) {
+    LOG(INFO) << "Device status changed from "
+              << GetDeviceStatusDescription(status_) << " to "
+              << GetDeviceStatusDescription(status);
     status_ = status;
     dbus_adaptor()->UpdateStatus();
   }

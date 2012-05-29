@@ -267,7 +267,7 @@ bool GdmDriver::GetDeviceStatus(GdmDevice *device) {
   if (ret != GCT_API_RET_SUCCESS)
     return false;
 
-  device->set_status(ConvertDeviceStatus(device_status));
+  device->SetStatus(ConvertDeviceStatus(device_status));
   device->set_connection_progress(connection_progress);
 
   LOG(INFO) << "Device '" << device->name()

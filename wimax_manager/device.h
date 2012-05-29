@@ -44,7 +44,7 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   void UpdateNetworks();
 
   NetworkMap *mutable_networks() { return &networks_; }
-  void set_status(DeviceStatus status);
+  void SetStatus(DeviceStatus status);
 
  private:
   uint8 index_;

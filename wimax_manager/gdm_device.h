@@ -32,6 +32,7 @@ class GdmDevice : public Device {
   virtual bool Enable();
   virtual bool Disable();
   virtual bool ScanNetworks();
+  virtual bool UpdateStatus();
   virtual bool Connect(const Network &network,
                        const base::DictionaryValue &parameters);
   virtual bool Disconnect();
@@ -61,6 +62,7 @@ class GdmDevice : public Device {
   WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress_;
   uint8 mac_address_[6];
   guint scan_timeout_id_;
+  guint status_update_timeout_id_;
 
   DISALLOW_COPY_AND_ASSIGN(GdmDevice);
 };

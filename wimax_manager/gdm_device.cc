@@ -23,8 +23,7 @@ namespace wimax_manager {
 
 namespace {
 
-const int kConnectionStatusPollIntervalInSeconds = 1;
-const int kMaxNumberOfConnectionStatusPolls = 120;
+const int kStatusUpdateIntervalInSeconds = 3;
 
 template <size_t N>
 bool CopyEAPParameterToUInt8Array(const DictionaryValue &parameters,
@@ -57,6 +56,15 @@ gboolean OnNetworkScan(gpointer data) {
   return TRUE;
 }
 
+gboolean OnStatusUpdate(gpointer data) {
+  CHECK(data);
+
+  reinterpret_cast<GdmDevice *>(data)->UpdateStatus();
+
+  // Return TRUE to keep calling this function repeatedly.
+  return TRUE;
+}
+
 }  // namespace
 
 GdmDevice::GdmDevice(uint8 index, const string &name,
@@ -65,7 +73,8 @@ GdmDevice::GdmDevice(uint8 index, const string &name,
       driver_(driver),
       open_(false),
       connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging),
-      scan_timeout_id_(0) {
+      scan_timeout_id_(0),
+      status_update_timeout_id_(0) {
 }
 
 GdmDevice::~GdmDevice() {
@@ -134,8 +143,13 @@ bool GdmDevice::Enable() {
         g_timeout_add_seconds(scan_interval(), OnNetworkScan, this);
   }
 
+  if (status_update_timeout_id_ == 0) {
+    status_update_timeout_id_ = g_timeout_add_seconds(
+        kStatusUpdateIntervalInSeconds, OnStatusUpdate, this);
+  }
+
   if (!driver_->GetDeviceStatus(this)) {
-    LOG(WARNING) << "Failed to get status of device '" << name() << "'";
+    LOG(ERROR) << "Failed to get status of device '" << name() << "'";
     return false;
   }
   return true;
@@ -151,13 +165,19 @@ bool GdmDevice::Disable() {
     scan_timeout_id_ = 0;
   }
 
+  // Cancel the periodic calls to OnStatusUpdate().
+  if (status_update_timeout_id_ != 0) {
+    g_source_remove(status_update_timeout_id_);
+    status_update_timeout_id_ = 0;
+  }
+
   if (!driver_->PowerOffDeviceRF(this)) {
     LOG(ERROR) << "Failed to power off RF of device '" << name() << "'";
     return false;
   }
 
   if (!driver_->GetDeviceStatus(this)) {
-    LOG(WARNING) << "Failed to get status of device '" << name() << "'";
+    LOG(ERROR) << "Failed to get status of device '" << name() << "'";
     return false;
   }
   return true;
@@ -205,6 +225,14 @@ bool GdmDevice::ScanNetworks() {
   return true;
 }
 
+bool GdmDevice::UpdateStatus() {
+  if (!driver_->GetDeviceStatus(this)) {
+    LOG(ERROR) << "Failed to get status of device '" << name() << "'";
+    return false;
+  }
+  return true;
+}
+
 bool GdmDevice::Connect(const Network &network,
                         const DictionaryValue &parameters) {
   if (!Open())
@@ -228,20 +256,7 @@ bool GdmDevice::Connect(const Network &network,
                << network.identifier() << ")";
     return false;
   }
-
-  // TODO(benchan): After modifying shill to monitor Device.StatusChanged
-  // signal, check the connection status asynchronously with a timeout instead
-  // of polling.
-  for (int i = 0; i < kMaxNumberOfConnectionStatusPolls; ++i) {
-    sleep(kConnectionStatusPollIntervalInSeconds);
-    if (!driver_->GetDeviceStatus(this)) {
-      LOG(WARNING) << "Failed to get status of device '" << name() << "'";
-      continue;
-    }
-    if (status() == kDeviceStatusConnected)
-      return true;
-  }
-  return false;
+  return true;
 }
 
 bool GdmDevice::Disconnect() {
@@ -254,7 +269,7 @@ bool GdmDevice::Disconnect() {
   }
 
   if (!driver_->GetDeviceStatus(this)) {
-    LOG(WARNING) << "Failed to get status of device '" << name() << "'";
+    LOG(ERROR) << "Failed to get status of device '" << name() << "'";
     return false;
   }
   return true;
