@@ -738,10 +738,11 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
   if (type == DBUS_MESSAGE_TYPE_METHOD_CALL) {
     DBusMethodHandlerTable::iterator iter =
         daemon->dbus_method_handler_table_.find(dbus_message_pair);
-    // TODO(sque): This should not be reached.  The dbus filter should only
-    // call this handler for messages that it handles.  crosbug.com/28715
-    if (iter == daemon->dbus_method_handler_table_.end())
+    if (iter == daemon->dbus_method_handler_table_.end()) {
+      LOG(ERROR) << "Could not find handler for " << interface << ":" << member
+                 << " in method handler table.";
       return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
 
     LOG(INFO) << "Got " << member << " method call";
     DBusMethodHandler callback = iter->second;
@@ -758,8 +759,8 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     DBusSignalHandlerTable::iterator iter =
         daemon->dbus_signal_handler_table_.find(dbus_message_pair);
     if (iter == daemon->dbus_signal_handler_table_.end()) {
-        // TODO(sque): This should not be reached.  The dbus filter should only
-        // call this handler for messages that it handles.  crosbug.com/28715
+      LOG(ERROR) << "Could not find handler for " << interface << ":" << member
+                 << " in signal handler table.";
       return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
     LOG(INFO) << "Got " << member << " signal";
