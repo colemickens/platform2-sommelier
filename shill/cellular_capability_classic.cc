@@ -62,6 +62,7 @@ CellularCapabilityClassic::CellularCapabilityClassic(
     Cellular *cellular,
     ProxyFactory *proxy_factory)
     : CellularCapability(cellular, proxy_factory),
+      scanning_supported_(false),
       weak_ptr_factory_(this) {
   PropertyStore *store = cellular->mutable_store();
   store->RegisterConstString(flimflam::kCarrierProperty, &carrier_);
