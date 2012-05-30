@@ -11,53 +11,78 @@
 namespace power_manager {
 
 VideoDetector::VideoDetector()
+#ifdef USE_X11_ACTIVITY_DETECTION
     : video_time_atom_(None),
-      root_window_(None) {}
+      root_window_(None)
+#endif
+    {}
 
 void VideoDetector::Init() {
+#ifdef USE_X11_ACTIVITY_DETECTION
   Display* display = util::GetDisplay();
   video_time_atom_ = XInternAtom(display, "_CHROME_VIDEO_TIME", false);
   DCHECK(video_time_atom_ != None);
   root_window_ = DefaultRootWindow(display);
   DCHECK(root_window_ != None);
+#endif
 }
 
 bool VideoDetector::GetActivity(int64 activity_threshold_ms,
                                 int64* time_since_activity_ms,
                                 bool* is_active) {
-  time_t* data = NULL;
   CHECK(NULL != is_active);
-  if (GetRootWindowProperty(video_time_atom_, (unsigned char**)&data)) {
-    time_t seconds = time(NULL);
-    time_t video_time = 0;
-    DCHECK(NULL != data);
-    video_time = data[0];
-    if (seconds >= video_time)  {
-      time_t time_since_activity = seconds - video_time;
-      *time_since_activity_ms = time_since_activity * 1000;
+  if (GetTimeSinceVideoActivity(time_since_activity_ms)) {
+    if (*time_since_activity_ms >= 0)  {
       *is_active = *time_since_activity_ms < activity_threshold_ms;
       LOG(INFO) << "Video activity " << (*is_active ? "found." : "not found.")
-                << " Last timestamp: " << time_since_activity << "s ago.";
+                << " Last timestamp: " << *time_since_activity_ms << "ms ago.";
     } else {
       *is_active = false;
-      LOG(WARNING) << "_CHROME_VIDEO_TIME is ahead of time(NULL)."
+      LOG(WARNING) << "Last video time is ahead of current time."
                    << " Check if the system clock has changed.";
     }
   } else {
     // This is not an error condition. Before wm detects the first video
     // activity, the property will not exist, and GetRootWindowProperty
     // will return false.
-    LOG(INFO) << "Video activity not found."
-              << " Did not get _CHROME_VIDEO_TIME from root window.";
+    LOG(INFO) << "Video activity not found, probably because "
+              << "no video activity has been detected yet.";
     *is_active = false;
+  }
+  return true;
+}
+
+void VideoDetector::HandleActivity(const base::TimeTicks& last_activity_time) {
+  last_video_time_ = last_activity_time;
+}
+
+bool VideoDetector::GetTimeSinceVideoActivity(int64* time_since_activity_ms) {
+  if (!last_video_time_.is_null()) {
+    *time_since_activity_ms =
+        (base::TimeTicks::Now() - last_video_time_).InMilliseconds();
+    return true;
+  }
+  bool result = false;
+#ifdef USE_X11_ACTIVITY_DETECTION
+  time_t* data = NULL;
+  if (GetRootWindowProperty(video_time_atom_, (unsigned char**)&data)) {
+    time_t seconds = time(NULL);
+    time_t video_time = 0;
+    DCHECK(NULL != data);
+    video_time = data[0];
+    if (seconds >= video_time)
+      *time_since_activity_ms = (seconds - video_time) * 1000;
+    result = true;
   }
   // Data may be a valid pointer even if GetRootWindowProperty returns false.
   // If the property returned isn't the type we asked, free it as well.
   if (data)
     XFree(data);
-  return true;
+#endif
+  return result;
 }
 
+#ifdef USE_X11_ACTIVITY_DETECTION
 bool VideoDetector::GetRootWindowProperty(Atom property,
                                           unsigned char** data) {
   Atom actual_type;
@@ -79,5 +104,6 @@ bool VideoDetector::GetRootWindowProperty(Atom property,
                               data);
   return (Success == status && property == actual_type);
 }
+#endif
 
 }  // namespace power_manager

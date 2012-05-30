@@ -239,6 +239,7 @@ class Daemon : public IdleObserver,
   DBusMessage* HandleRequestIdleNotificationMethod(DBusMessage* message);
   DBusMessage* HandleGetPowerSupplyPropertiesMethod(DBusMessage* message);
   DBusMessage* HandleStateOverrideRequestMethod(DBusMessage* message);
+  DBusMessage* HandleVideoActivityMethod(DBusMessage* message);
 
   void AddDBusSignalHandler(const std::string& interface,
                             const std::string& member,

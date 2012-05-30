@@ -844,6 +844,8 @@ void Daemon::RegisterDBusMessageHandler() {
                        &Daemon::HandleGetPowerSupplyPropertiesMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kStateOverrideRequest,
                        &Daemon::HandleStateOverrideRequestMethod);
+  AddDBusMethodHandler(kPowerManagerInterface, kHandleVideoActivityMethod,
+                       &Daemon::HandleVideoActivityMethod);
 
   CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
                                    NULL));
@@ -1201,6 +1203,24 @@ DBusMessage* Daemon::HandleStateOverrideRequestMethod(DBusMessage* message) {
     error.message;
   return util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
                                     "Invalid arguments passed to method");
+}
+
+DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
+  DBusError error;
+  dbus_error_init(&error);
+  int64 last_activity_time_internal = 0;
+  if (!dbus_message_get_args(message, &error,
+                             DBUS_TYPE_INT64, &last_activity_time_internal,
+                             DBUS_TYPE_INVALID)) {
+    LOG(WARNING) << kHandleVideoActivityMethod
+                << ": Error reading args: " << error.message;
+    dbus_error_free(&error);
+    return util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
+                                      "Invalid arguments passed to method");
+  }
+  video_detector_->HandleActivity(
+      base::TimeTicks::FromInternalValue(last_activity_time_internal));
+  return NULL;
 }
 
 void Daemon::AddDBusSignalHandler(const std::string& interface,

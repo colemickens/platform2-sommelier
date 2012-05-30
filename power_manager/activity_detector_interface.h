@@ -7,6 +7,10 @@
 
 #include "base/basictypes.h"
 
+namespace base {
+class TimeTicks;
+}
+
 namespace power_manager {
 
 // Interface for detecting the presence of certain activity during user idle
@@ -27,6 +31,11 @@ class ActivityDetectorInterface {
   // detection is polling-based, for example.
   virtual bool Enable() = 0;
   virtual bool Disable() = 0;
+
+  // Called by external activity sources to notify detector of activity.
+  // This does not have to be implemented by classes using this interface, so it
+  // is not a pure virtual function.
+  virtual void HandleActivity(const base::TimeTicks& last_activity_time) {}
 
  protected:
   virtual ~ActivityDetectorInterface() {}
