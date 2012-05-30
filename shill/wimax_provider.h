@@ -6,7 +6,6 @@
 #define SHILL_WIMAX_PROVIDER_H_
 
 #include <map>
-#include <set>
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
@@ -65,17 +64,22 @@ class WiMaxProvider {
   FRIEND_TEST(WiMaxProviderTest, DestroyAllServices);
   FRIEND_TEST(WiMaxProviderTest, DestroyDeadDevices);
   FRIEND_TEST(WiMaxProviderTest, FindService);
-  FRIEND_TEST(WiMaxProviderTest, GetDefaultService);
   FRIEND_TEST(WiMaxProviderTest, GetLinkName);
   FRIEND_TEST(WiMaxProviderTest, GetUniqueService);
   FRIEND_TEST(WiMaxProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(WiMaxProviderTest, OnDevicesChanged);
   FRIEND_TEST(WiMaxProviderTest, OnNetworksChanged);
   FRIEND_TEST(WiMaxProviderTest, OnServiceUnloaded);
+  FRIEND_TEST(WiMaxProviderTest, RetrieveNetworkInfo);
   FRIEND_TEST(WiMaxProviderTest, SelectCarrier);
-  FRIEND_TEST(WiMaxProviderTest, StartLiveServicesForNetwork);
+  FRIEND_TEST(WiMaxProviderTest, StartLiveServices);
   FRIEND_TEST(WiMaxProviderTest, StartStop);
   FRIEND_TEST(WiMaxProviderTest, StopDeadServices);
+
+  struct NetworkInfo {
+    WiMaxNetworkId id;
+    std::string name;
+  };
 
   void OnDevicesChanged(const RpcIdentifiers &devices);
 
@@ -83,6 +87,10 @@ class WiMaxProvider {
   void DestroyDeadDevices(const RpcIdentifiers &live_devices);
 
   std::string GetLinkName(const RpcIdentifier &path);
+
+  // Retrieves network info for a network at RPC |path| into |networks_| if it's
+  // not already available.
+  void RetrieveNetworkInfo(const RpcIdentifier &path);
 
   // Finds and returns the service identified by |storage_id|. Returns NULL if
   // the service is not found.
@@ -93,18 +101,10 @@ class WiMaxProvider {
   WiMaxServiceRefPtr GetUniqueService(const WiMaxNetworkId &id,
                                       const std::string &name);
 
-  // Finds or creates the default service for |network|.
-  WiMaxServiceRefPtr GetDefaultService(const RpcIdentifier &network);
-
   // Starts all services with network ids in the current set of live
   // networks. This method also creates, registers and starts the default
   // service for each live network.
   void StartLiveServices();
-
-  // Starts all services with a network id matching the network id of the
-  // |network| RPC object. This method also creates, registers and starts the
-  // default service for |network|.
-  void StartLiveServicesForNetwork(const RpcIdentifier &network);
 
   // Stops all services with network ids that are not in the current set of live
   // networks.
@@ -125,7 +125,7 @@ class WiMaxProvider {
   std::map<std::string, WiMaxRefPtr> devices_;
   // Key is service's storage identifier.
   std::map<std::string, WiMaxServiceRefPtr> services_;
-  std::set<RpcIdentifier> networks_;
+  std::map<RpcIdentifier, NetworkInfo> networks_;
 
   ProxyFactory *proxy_factory_;
 

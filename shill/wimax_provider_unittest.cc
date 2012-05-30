@@ -201,6 +201,24 @@ TEST_F(WiMaxProviderTest, GetLinkName) {
   EXPECT_EQ(GetTestLinkName(1), provider_.GetLinkName(GetTestPath(1)));
 }
 
+TEST_F(WiMaxProviderTest, RetrieveNetworkInfo) {
+  static const char kName[] = "Default Network";
+  const uint32 kIdentifier = 0xabcdef;
+  static const char kNetworkId[] = "00abcdef";
+  EXPECT_CALL(*network_proxy_, Name(_)).WillOnce(Return(kName));
+  EXPECT_CALL(*network_proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
+  provider_.RetrieveNetworkInfo(GetTestNetworkPath(kIdentifier));
+  EXPECT_EQ(1, provider_.networks_.size());
+  EXPECT_TRUE(ContainsKey(provider_.networks_,
+                          GetTestNetworkPath(kIdentifier)));
+  EXPECT_EQ(kName,
+            provider_.networks_[GetTestNetworkPath(kIdentifier)].name);
+  EXPECT_EQ(kNetworkId,
+            provider_.networks_[GetTestNetworkPath(kIdentifier)].id);
+  provider_.RetrieveNetworkInfo(GetTestNetworkPath(kIdentifier));
+  EXPECT_EQ(1, provider_.networks_.size());
+}
+
 TEST_F(WiMaxProviderTest, FindService) {
   EXPECT_FALSE(provider_.FindService("some_storage_id"));
   scoped_refptr<MockWiMaxService> service(
@@ -218,7 +236,7 @@ TEST_F(WiMaxProviderTest, FindService) {
   EXPECT_FALSE(provider_.FindService("some_storage_id"));
 }
 
-TEST_F(WiMaxProviderTest, StartLiveServicesForNetwork) {
+TEST_F(WiMaxProviderTest, StartLiveServices) {
   const uint32 kIdentifier = 0x1234567;
   static const char kNetworkId[] = "01234567";
   static const char kName[] = "Some WiMAX Provider";
@@ -240,8 +258,11 @@ TEST_F(WiMaxProviderTest, StartLiveServicesForNetwork) {
     services[i]->InitStorageIdentifier();
     provider_.services_[services[i]->GetStorageIdentifier()] = services[i];
   }
-  EXPECT_CALL(*network_proxy_, Name(_)).WillOnce(Return(kName));
-  EXPECT_CALL(*network_proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
+  WiMaxProvider::NetworkInfo info;
+  info.id = kNetworkId;
+  info.name = kName;
+  provider_.networks_[GetTestNetworkPath(kIdentifier)] = info;
+  network_proxy_.reset();
   EXPECT_CALL(*services[0], IsStarted()).Times(0);
   EXPECT_CALL(*services[1], IsStarted()).WillOnce(Return(true));
   EXPECT_CALL(*services[1], Start(_)).Times(0);
@@ -250,7 +271,11 @@ TEST_F(WiMaxProviderTest, StartLiveServicesForNetwork) {
   EXPECT_CALL(*services[3], IsStarted()).WillOnce(Return(false));
   EXPECT_CALL(*services[3], Start(_)).WillOnce(Return(false));
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
-  provider_.StartLiveServicesForNetwork(GetTestNetworkPath(kIdentifier));
+  provider_.StartLiveServices();
+  EXPECT_FALSE(services[0]->is_default());
+  EXPECT_FALSE(services[1]->is_default());
+  EXPECT_FALSE(services[2]->is_default());
+  EXPECT_TRUE(services[3]->is_default());
 }
 
 TEST_F(WiMaxProviderTest, DestroyAllServices) {
@@ -285,8 +310,8 @@ TEST_F(WiMaxProviderTest, StopDeadServices) {
   EXPECT_CALL(*services[2], Stop());
   EXPECT_CALL(*services[3], Stop());
   EXPECT_CALL(manager_, DeregisterService(_));
-  provider_.networks_.insert(GetTestNetworkPath(777));
-  provider_.networks_.insert(GetTestNetworkPath(101));
+  provider_.networks_[GetTestNetworkPath(777)].id = "01234567";
+  provider_.networks_[GetTestNetworkPath(101)].id = "12345678";
   provider_.StopDeadServices();
   EXPECT_EQ(3, provider_.services_.size());
   EXPECT_FALSE(ContainsKey(provider_.services_,
@@ -336,7 +361,7 @@ TEST_F(WiMaxProviderTest, OnNetworksChanged) {
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, DeregisterService(_)).Times(0);
 
-  provider_.networks_.insert("foo");
+  provider_.networks_["/org/chromium/foo"].id = "foo";
   provider_.OnNetworksChanged();
   EXPECT_EQ(1, provider_.networks_.size());
   EXPECT_TRUE(ContainsKey(provider_.networks_, GetTestNetworkPath(101)));
@@ -379,40 +404,6 @@ TEST_F(WiMaxProviderTest, GetUniqueService) {
   EXPECT_EQ(service.get(), service1.get());
   EXPECT_EQ(2, provider_.services_.size());
   EXPECT_FALSE(service->is_default());
-}
-
-TEST_F(WiMaxProviderTest, GetDefaultService) {
-  EXPECT_TRUE(provider_.services_.empty());
-
-  static const char kName[] = "Default Network";
-  const uint32 kIdentifier = 0xabcdef;
-  static const char kNetworkId[] = "00abcdef";
-
-  // Ensure that a service is created and registered if it doesn't exist
-  // already.
-  EXPECT_CALL(*network_proxy_, Name(_)).WillOnce(Return(kName));
-  EXPECT_CALL(*network_proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
-  EXPECT_CALL(manager_, RegisterService(_));
-  WiMaxServiceRefPtr service =
-      provider_.GetDefaultService(GetTestNetworkPath(kIdentifier));
-  ASSERT_TRUE(service);
-  EXPECT_EQ(1, provider_.services_.size());
-  EXPECT_EQ(WiMaxService::CreateStorageIdentifier(kNetworkId, kName),
-            service->GetStorageIdentifier());
-  EXPECT_TRUE(service->is_default());
-
-  // Ensure that no duplicate service is created or registered.
-  ASSERT_FALSE(network_proxy_.get());
-  network_proxy_.reset(new MockWiMaxNetworkProxy());
-  EXPECT_CALL(*network_proxy_, Name(_)).WillOnce(Return(kName));
-  EXPECT_CALL(*network_proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
-  EXPECT_CALL(manager_, RegisterService(_)).Times(0);
-  WiMaxServiceRefPtr service2 =
-      provider_.GetDefaultService(GetTestNetworkPath(kIdentifier));
-  ASSERT_TRUE(service2);
-  EXPECT_EQ(1, provider_.services_.size());
-  EXPECT_EQ(service.get(), service2.get());
-  EXPECT_TRUE(service->is_default());
 }
 
 TEST_F(WiMaxProviderTest, CreateServicesFromProfile) {
