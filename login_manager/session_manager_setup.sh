@@ -256,7 +256,7 @@ fi
 
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
-  HIGHDPI_FLAGS="--default-device-scale-factor=2"
+  HIGHDPI_FLAGS="--allow-webui-compositing --default-device-scale-factor=2"
 fi
 
 # If screensaver use isn't disabled, set screensaver.
@@ -269,7 +269,7 @@ fi
 
 TOUCHUI_FLAGS=
 if use_flag_is_set touchui; then
-  TOUCHUI_FLAGS="--touch-optimized-ui --enable-touch-calibration"
+  TOUCHUI_FLAGS="--enable-touch-calibration --enable-touch-events"
 fi
 
 # Device Manager Server used to fetch the enterprise policy, if applicable.
