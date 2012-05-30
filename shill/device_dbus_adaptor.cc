@@ -76,7 +76,7 @@ void DeviceDBusAdaptor::EmitKeyValueStoreChanged(const std::string &name,
 
 map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
-  SLOG(DBus, 2) << __func__;
+  SLOG(DBus, 2) << __func__ << " " << device_->FriendlyName();
   map<string, ::DBus::Variant> properties;
   DBusAdaptor::GetProperties(device_->store(), &properties, &error);
   return properties;

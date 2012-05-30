@@ -98,24 +98,32 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
   Error e;
   {
     ReadablePropertyConstIterator<bool> it = store.GetBoolPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing bool " << it.Key();
       (*out)[it.Key()] = BoolToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<int16> it = store.GetInt16PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing int16 " << it.Key();
       (*out)[it.Key()] = Int16ToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<int32> it = store.GetInt32PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing int32 " << it.Key();
       (*out)[it.Key()] = Int32ToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<KeyValueStore> it =
         store.GetKeyValueStorePropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing KeyValueStore " << it.Key();
       (*out)[it.Key()] = KeyValueStoreToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<RpcIdentifiers> it =
@@ -128,51 +136,67 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
            ++in) {
         rpc_identifiers_as_paths.push_back(*in);
       }
+      SLOG(DBus, 5) << __func__ << " serializing RpcIdentifiers " << it.Key();
       (*out)[it.Key()] = PathsToVariant(rpc_identifiers_as_paths);
     }
   }
   {
     ReadablePropertyConstIterator<string> it = store.GetStringPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing string " << it.Key();
       (*out)[it.Key()] = StringToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<Stringmap> it =
         store.GetStringmapPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing Stringmap " << it.Key();
       (*out)[it.Key()]= StringmapToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<Stringmaps> it =
         store.GetStringmapsPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing Stringmaps " << it.Key();
       (*out)[it.Key()]= StringmapsToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<Strings> it =
         store.GetStringsPropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing Strings " << it.Key();
       (*out)[it.Key()] = StringsToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<uint8> it = store.GetUint8PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing uint8 " << it.Key();
       (*out)[it.Key()] = ByteToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<uint16> it = store.GetUint16PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing uint16 " << it.Key();
       (*out)[it.Key()] = Uint16ToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<uint32> it = store.GetUint32PropertiesIter();
-    for ( ; !it.AtEnd(); it.Advance())
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing uint32 " << it.Key();
       (*out)[it.Key()] = Uint32ToVariant(it.Value(&e));
+    }
   }
   {
     ReadablePropertyConstIterator<RpcIdentifier> it =
         store.GetRpcIdentifierPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing RpcIdentifier " << it.Key();
       (*out)[it.Key()] = PathToVariant(it.Value(&e));
     }
   }
