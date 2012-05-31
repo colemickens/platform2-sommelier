@@ -119,6 +119,8 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
       cdma_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
+      capabilities_(MM_MODEM_CAPABILITY_NONE),
+      current_capabilities_(MM_MODEM_CAPABILITY_NONE),
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
       supported_modes_(MM_MODEM_MODE_NONE),
       allowed_modes_(MM_MODEM_MODE_NONE),

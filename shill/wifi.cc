@@ -102,6 +102,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       supplicant_bss_("(unknown)"),
       clear_cached_credentials_pending_(false),
       need_bss_flush_(false),
+      resumed_at_((struct timeval){0}),
       fast_scans_remaining_(kNumFastScanAttempts),
       bgscan_method_(kDefaultBgscanMethod),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
@@ -109,8 +110,6 @@ WiFi::WiFi(ControlInterface *control_interface,
       scan_pending_(false),
       scan_interval_seconds_(kDefaultScanIntervalSeconds) {
   PropertyStore *store = this->mutable_store();
-  resumed_at_.tv_sec = 0;
-  resumed_at_.tv_usec = 0;
   HelpRegisterDerivedString(store,
                             flimflam::kBgscanMethodProperty,
                             &WiFi::GetBgscanMethod,

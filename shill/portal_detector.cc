@@ -53,6 +53,7 @@ PortalDetector::PortalDetector(
     EventDispatcher *dispatcher,
     const Callback<void(const Result &)> &callback)
     : attempt_count_(0),
+      attempt_start_time_((struct timeval){0}),
       connection_(connection),
       dispatcher_(dispatcher),
       weak_ptr_factory_(this),

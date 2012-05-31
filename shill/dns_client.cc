@@ -47,10 +47,12 @@ const char DNSClient::kErrorUnknown[] = "DNS Resolver unknown internal error";
 
 // Private to the implementation of resolver so callers don't include ares.h
 struct DNSClientState {
+  DNSClientState() : channel(NULL), start_time((struct timeval){0}) {}
+
   ares_channel channel;
   map< ares_socket_t, std::tr1::shared_ptr<IOHandler> > read_handlers;
   map< ares_socket_t, std::tr1::shared_ptr<IOHandler> > write_handlers;
-  struct timeval start_time_;
+  struct timeval start_time;
 };
 
 DNSClient::DNSClient(IPAddress::Family family,
@@ -122,7 +124,7 @@ bool DNSClient::Start(const string &hostname, Error *error) {
   }
 
   running_ = true;
-  time_->GetTimeMonotonic(&resolver_state_->start_time_);
+  time_->GetTimeMonotonic(&resolver_state_->start_time);
   ares_->GetHostByName(resolver_state_->channel, hostname.c_str(),
                        address_.family(), ReceiveDNSReplyCB, this);
 
@@ -311,7 +313,7 @@ bool DNSClient::RefreshHandles() {
   // the resolver library.
   struct timeval now, elapsed_time, timeout_tv;
   time_->GetTimeMonotonic(&now);
-  timersub(&now, &resolver_state_->start_time_, &elapsed_time);
+  timersub(&now, &resolver_state_->start_time, &elapsed_time);
   timeout_tv.tv_sec = timeout_ms_ / 1000;
   timeout_tv.tv_usec = (timeout_ms_ % 1000) * 1000;
   timeout_closure_.Cancel();

@@ -29,6 +29,8 @@ RTNLMessage::RTNLMessage()
     : type_(kTypeUnknown),
       mode_(kModeUnknown),
       flags_(0),
+      seq_(0),
+      pid_(0),
       interface_index_(0),
       family_(IPAddress::kFamilyUnknown) {}
 
@@ -348,6 +350,7 @@ void RTNLMessage::Reset() {
   type_ = kTypeUnknown;
   flags_ = 0;
   seq_ = 0;
+  pid_ = 0;
   interface_index_ = 0;
   family_ = IPAddress::kFamilyUnknown;
   link_status_ = LinkStatus();
