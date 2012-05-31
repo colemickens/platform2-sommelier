@@ -726,4 +726,47 @@ TEST_F(CellularTest, StopModemCallbackFail) {
   EXPECT_FALSE(device_->service_.get());
 }
 
+TEST_F(CellularTest, ConnectAddsTerminationAction) {
+  Error error;
+  EXPECT_CALL(*simple_proxy_,
+              Connect(ContainsPhoneNumber(), _, _,
+                      CellularCapability::kTimeoutConnect))
+                .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
+  EXPECT_CALL(*proxy_,
+              Disconnect(_, _, CellularCapability::kTimeoutDefault))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+
+  // TestCallback() will be called when the termination actions complete.  This
+  // verifies that the actions were registered, invoked, and report their
+  // status.
+  EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(2);
+
+  device_->service_ = new CellularService(
+      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
+  GetCapabilityClassic()->proxy_.reset(proxy_.release());
+  GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
+  device_->state_ = Cellular::kStateRegistered;
+  device_->Connect(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(Cellular::kStateConnected, device_->state_);
+
+  // If the action of establishing a connection registered a termination action
+  // with the manager, then running the termination action will result in a
+  // disconnect.
+  manager_.RunTerminationActions(
+      0, Bind(&CellularTest::TestCallback, Unretained(this)));
+  EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
+  dispatcher_.DispatchPendingEvents();
+
+  // Verify that the termination action has been removed from the manager.
+  // Running the registered termination actions again should result in
+  // TestCallback being called with success because there are no registered
+  // termination actions..  If the termination action is not removed, then
+  // TestCallback will be called with kOperationTimeout.
+  manager_.RunTerminationActions(
+      0, Bind(&CellularTest::TestCallback, Unretained(this)));
+  dispatcher_.DispatchPendingEvents();
+}
+
 }  // namespace shill

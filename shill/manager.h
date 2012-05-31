@@ -18,6 +18,7 @@
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
+#include "shill/hook_table.h"
 #include "shill/modem_info.h"
 #include "shill/power_manager.h"
 #include "shill/property_store.h"
@@ -202,6 +203,27 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // ephemeral, it is moved to the current profile.
   void SaveServiceToProfile(const ServiceRefPtr &to_update);
 
+  // Adds a closure to be executed when ChromeOS suspends or shill terminates.
+  // |name| should be unique; otherwise, a previous closure by the same name
+  // will be replaced.  |start| will be called when RunTerminationActions() is
+  // called.  When an action completed, TerminationActionComplete() must be
+  // called.
+  void AddTerminationAction(const std::string &name,
+                            const base::Closure &start);
+
+  // Users call this function to report the completion of an action |name|.
+  // This function should be called once for each action.
+  void TerminationActionComplete(const std::string &name);
+
+  // Removes the action associtated with |name|.
+  void RemoveTerminationAction(const std::string &name);
+
+  // Runs the termination actions.  If all actions complete within |timeout_ms|,
+  // |done| is called with a value of Error::kSuccess.  Otherwise, it is called
+  // with Error::kOperationTimeout.
+  void RunTerminationActions(int timeout_ms,
+                             const base::Callback<void(const Error &)> &done);
+
  private:
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
@@ -313,6 +335,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Properties to be get/set via PropertyStore calls.
   Properties props_;
   PropertyStore store_;
+
+  HookTable termination_actions_;
 };
 
 }  // namespace shill

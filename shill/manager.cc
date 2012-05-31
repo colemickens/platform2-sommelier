@@ -30,6 +30,7 @@
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/hook_table.h"
 #include "shill/key_file_store.h"
 #include "shill/metrics.h"
 #include "shill/profile.h"
@@ -81,7 +82,8 @@ Manager::Manager(ControlInterface *control_interface,
       control_interface_(control_interface),
       metrics_(metrics),
       glib_(glib),
-      use_startup_portal_list_(false) {
+      use_startup_portal_list_(false),
+      termination_actions_(dispatcher) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             NULL);
@@ -771,6 +773,24 @@ void Manager::SaveServiceToProfile(const ServiceRefPtr &to_update) {
   } else {
     to_update->profile()->UpdateService(to_update);
   }
+}
+
+void Manager::AddTerminationAction(const std::string &name,
+                                   const base::Closure &start) {
+  termination_actions_.Add(name, start);
+}
+
+void Manager::TerminationActionComplete(const std::string &name) {
+  termination_actions_.ActionComplete(name);
+}
+
+void Manager::RemoveTerminationAction(const std::string &name) {
+  termination_actions_.Remove(name);
+}
+
+void Manager::RunTerminationActions(
+    int timeout_ms, const base::Callback<void(const Error &)> &done) {
+  termination_actions_.Run(timeout_ms, done);
 }
 
 void Manager::FilterByTechnology(Technology::Identifier tech,

@@ -208,6 +208,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
+  FRIEND_TEST(CellularTest, ConnectAddsTerminationAction);
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
   FRIEND_TEST(CellularTest, DisableModem);
@@ -265,6 +266,10 @@ class Cellular : public Device {
   // DBUS accessors to read/modify the allow roaming property
   bool GetAllowRoaming(Error */*error*/) { return allow_roaming_; }
   void SetAllowRoaming(const bool &value, Error *error);
+
+  // When shill terminates or ChromeOS suspends, this function is called to
+  // disconnect from the cellular network.
+  void StartTermination();
 
   State state_;
   ModemState modem_state_;

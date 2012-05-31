@@ -8,11 +8,13 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 
 using base::Bind;
+using base::Callback;
 using base::Closure;
 using base::ConstRef;
 using base::Unretained;
@@ -20,59 +22,81 @@ using std::string;
 
 namespace shill {
 
-const int HookTable::kPollIterations = 10;
-
 HookTable::HookTable(EventDispatcher *event_dispatcher)
-    : event_dispatcher_(event_dispatcher),
-      iteration_counter_(0) {}
+    : event_dispatcher_(event_dispatcher) {}
 
-void HookTable::Add(const string &name, const base::Closure &start,
-                    const base::Callback<bool()> &poll) {
+void HookTable::Add(const string &name, const base::Closure &start) {
+  Remove(name);
   hook_table_.insert(
-      HookTableMap::value_type(name, HookCallbacks(start, poll)));
+      HookTableMap::value_type(name, HookAction(start)));
 }
 
-void HookTable::Run(int timeout_seconds,
-                    const base::Callback<void(const Error &)> &done) {
-  // Run all the start actions in the hook table.
-  for (HookTableMap::const_iterator it = hook_table_.begin();
-       it != hook_table_.end(); ++it) {
-    it->second.start.Run();
+HookTable::~HookTable() {
+  timeout_cb_.Cancel();
+}
+
+void HookTable::Remove(const std::string &name) {
+  HookTableMap::iterator it = hook_table_.find(name);
+  if (it != hook_table_.end()) {
+    hook_table_.erase(it);
   }
-
-  // Start polling for completion.
-  iteration_counter_ = 0;
-  PollActions(timeout_seconds, done);
 }
 
-void HookTable::PollActions(int timeout_seconds,
-                            const base::Callback<void(const Error &)> &done) {
-  // Call all the poll functions in the hook table.
-  bool all_done = true;
-  for (HookTableMap::const_iterator it = hook_table_.begin();
-       it != hook_table_.end(); ++it) {
-    if (!it->second.poll.Run()) {
-      all_done = false;
+void HookTable::ActionComplete(const std::string &name) {
+  HookTableMap::iterator it = hook_table_.find(name);
+  if (it != hook_table_.end()) {
+    HookAction *action = &it->second;
+    if (action->started && !action->completed) {
+      action->completed = true;
     }
   }
+  if (AllActionsComplete() && !done_cb_.is_null()) {
+    timeout_cb_.Cancel();
+    done_cb_.Run(Error(Error::kSuccess));
+    done_cb_.Reset();
+  }
+}
 
-  if (all_done) {
+void HookTable::Run(int timeout_ms,
+                    const Callback<void(const Error &)> &done) {
+  if (hook_table_.empty()) {
     done.Run(Error(Error::kSuccess));
     return;
   }
+  done_cb_ = done;
+  timeout_cb_.Reset(Bind(&HookTable::ActionsTimedOut, Unretained(this)));
+  event_dispatcher_->PostDelayedTask(timeout_cb_.callback(), timeout_ms);
 
-  if (iteration_counter_ >= kPollIterations) {
-    done.Run(Error(Error::kOperationTimeout));
-    return;
+  // Mark all actions as having started before we execute any actions.
+  // Otherwise, if the first action completes inline, its call to
+  // ActionComplete() will cause the |done| callback to be invoked before the
+  // rest of the actions get started.
+  for (HookTableMap::iterator it = hook_table_.begin();
+       it != hook_table_.end(); ++it) {
+    HookAction *action = &it->second;
+    action->started = true;
+    action->completed = false;
   }
+  // Now start the actions.
+  for (HookTableMap::iterator it = hook_table_.begin();
+       it != hook_table_.end(); ++it) {
+    it->second.start.Run();
+  }
+}
 
-  // Some actions have not yet completed.  Queue this function to poll again
-  // later.
-  Closure poll_actions_cb = Bind(&HookTable::PollActions, Unretained(this),
-                                 timeout_seconds, ConstRef(done));
-  const uint64 delay_ms = (timeout_seconds * 1000) / kPollIterations;
-  event_dispatcher_->PostDelayedTask(poll_actions_cb, delay_ms);
-  iteration_counter_++;
+bool HookTable::AllActionsComplete() {
+  for (HookTableMap::const_iterator it = hook_table_.begin();
+       it != hook_table_.end(); ++it) {
+    const HookAction &action = it->second;
+    if (action.started && !action.completed) {
+        return false;
+    }
+  }
+  return true;
+}
+
+void HookTable::ActionsTimedOut() {
+  done_cb_.Run(Error(Error::kOperationTimeout));
 }
 
 }  // namespace shill

@@ -20,6 +20,7 @@ namespace shill {
 class Config;
 class ControlInterface;
 class DHCPProvider;
+class Error;
 class GLib;
 class NSS;
 class ProxyFactory;
@@ -36,11 +37,20 @@ class Daemon {
   void SetStartupPortalList(const std::string &portal_list);
   // Main for connection manager.  Starts main process and holds event loop.
   void Run();
+
+  // Starts the termination actions in the manager.
   void Quit();
 
  private:
   friend class ShillDaemonTest;
 
+  // Time to wait for termination actions to complete.
+  static const int kTerminationActionsTimeout;  // ms
+
+  // Causes the dispatcher message loop to terminate, calls Stop(), and returns
+  // to the main function which started the daemon.  Called when the termination
+  // actions are completed.
+  void TerminationActionsCompleted(const Error &error);
   void Start();
   void Stop();
 

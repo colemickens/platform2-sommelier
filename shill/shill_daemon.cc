@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/file_path.h>
 #include <base/logging.h>
 
@@ -21,10 +22,16 @@
 #include "shill/scope_logger.h"
 #include "shill/shill_config.h"
 
+using base::Bind;
+using base::Unretained;
 using std::string;
 using std::vector;
 
 namespace shill {
+
+// TODO(gmorain): 3 seconds may or may not be enough.  Add an UMA stat to see
+// how often the timeout occurs.  crosbug.com/31475.
+const int Daemon::kTerminationActionsTimeout = 3000; // ms
 
 Daemon::Daemon(Config *config, ControlInterface *control)
     : config_(config),
@@ -62,10 +69,20 @@ void Daemon::Run() {
   SLOG(Daemon, 1) << "Running main loop.";
   dispatcher_.DispatchForever();
   SLOG(Daemon, 1) << "Exited main loop.";
-  Stop();
 }
 
 void Daemon::Quit() {
+  SLOG(Daemon, 1) << "Starting termination actions.";
+  // Stop() prevents autoconnect from attempting to immediately connect to
+  // services after they have been disconnected.
+  Stop();
+  manager_->RunTerminationActions(kTerminationActionsTimeout,
+                                  Bind(&Daemon::TerminationActionsCompleted,
+                                       Unretained(this)));
+}
+
+void Daemon::TerminationActionsCompleted(const Error & error) {
+  SLOG(Daemon, 1) << "Finished termination actions.  Result: " << error;
   dispatcher_.PostTask(MessageLoop::QuitClosure());
 }
 

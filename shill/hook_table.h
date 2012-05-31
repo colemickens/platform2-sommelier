@@ -6,20 +6,19 @@
 #define SHILL_HOOK_TABLE_H_
 
 // HookTable provides a facility for starting a set of generic actions and
-// polling for their completion.  For example, on shutdown, each service gets
+// reporting for their completion.  For example, on shutdown, each service gets
 // disconnected.  A disconnect action may be instantaneous or it may require
 // some time to complete.  Users of this facility use the Add() function to
-// provide a closure for starting an action and a callback for polling its
-// completion.  When an event occurs, the Run() function is called, which starts
-// each action and polls for completion.  Upon completion or timeout, Run()
-// calls a user-supplied callback to notify the caller of the state of actions.
+// provide a closure for starting an action. Users report the completion of an
+// action.  When an event occurs, the Run() function is called, which starts
+// each action and sets a timer.  Upon completion or timeout, Run() calls a
+// user-supplied callback to notify the caller of the state of actions.
 //
 // Usage example.  Add an action to a hook table like this:
 //
 //   HookTable hook_table_(&event_dispatcher);
 //   Closure start_cb = Bind(&MyService::Disconnect, &my_service);
-//   Callback poll_cb = Bind(&MyService::IsConnected, &my_service);
-//   hook_table_.Add("MyService", start_cb, poll_cb);
+//   hook_table_.Add("MyService", start_cb);
 //
 // The code that catches an event runs the actions of the hook table like this:
 //
@@ -37,69 +36,76 @@
 
 #include <base/basictypes.h>
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 #include <gtest/gtest_prod.h>
 
 namespace shill {
-class Error;
 class EventDispatcher;
+class Error;
 
 class HookTable {
  public:
   explicit HookTable(EventDispatcher *event_dispatcher);
+  ~HookTable();
 
   // Adds a closure to the hook table.  |name| should be unique; otherwise, a
-  // previous closure by the same name will NOT be replaced.  |start| will be
-  // called when Run() is called.  Run() will poll to see if the action has
-  // completed by calling |poll|, which should return true when the action has
-  // completed.
-  void Add(const std::string &name, const base::Closure &start,
-           const base::Callback<bool()> &poll);
+  // previous closure by the same name will be replaced.  |start| will be called
+  // when Run() is called.
+  void Add(const std::string &name, const base::Closure &start);
 
-  // Runs the actions that have been added to the HookTable via Add().  It polls
-  // for completion up to |timeout_seconds|.  If all actions complete within the
-  // timeout period, |done| is called with a value of Error::kSuccess.
-  // Otherwise, it is called with Error::kOperationTimeout.
-  void Run(int timeout_seconds,
+  // Users call this function to report the completion of an action |name|.
+  void ActionComplete(const std::string &name);
+
+  // Removes the action associtated with |name| from the hook table.  If |name|
+  // does not exist, the hook table is unchanged.
+  void Remove(const std::string &name);
+
+  // Runs the actions that have been added to the HookTable via Add().  It
+  // starts a timer for completion in |timeout_ms|.  If all actions complete
+  // succesfully within the timeout period, |done| is called with a value of
+  // Error::kSuccess.  Otherwise, it is called with Error::kOperationTimeout.
+  void Run(int timeout_ms,
            const base::Callback<void(const Error &)> &done);
 
  private:
-  FRIEND_TEST(HookTableTest, ActionTimesOut);
-  FRIEND_TEST(HookTableTest, DelayedAction);
-  FRIEND_TEST(HookTableTest, MultipleActionsAllSucceed);
-  FRIEND_TEST(HookTableTest, MultipleActionsAndOneTimesOut);
-
-  // The |timeout_seconds| passed to Run() is divided into |kPollIterations|,
-  // polled once iteration.
-  static const int kPollIterations;
-
-  // For each action, there is a |start| and a |poll| callback, which are stored
-  // in this structure.
-  struct HookCallbacks {
-    HookCallbacks(const base::Closure &s, const base::Callback<bool()> &p)
-        : start(s), poll(p) {}
+  // For each action, there is a |start| callback which is stored in this
+  // structure.
+  struct HookAction {
+    HookAction(const base::Closure &start_cb)
+        : start(start_cb),
+          started(false),
+          completed(false) {}
     const base::Closure start;
-    const base::Callback<bool()> poll;
+    bool started;
+    bool completed;
   };
 
   // Each action is stored in this table.  The key is |name| passed to Add().
-  typedef std::map<std::string, HookCallbacks> HookTableMap;
+  typedef std::map<std::string, HookAction> HookTableMap;
 
-  // Calls all the |poll| callbacks in |hook_table_|.  If all of them return
-  // true, then |done| is called with Error::kSuccess.  Otherwise, it queues
-  // itself in the |event_dispatcher_| to be called again later.  It repeats
-  // this process up to |kPollIterations|, after which if an action still has
-  // not completed, |done| is called with Error::kOperationTimeout.
-  void PollActions(int timeout_seconds,
-                   const base::Callback<void(const Error &)> &done);
+  // Returns true if all started actions have completed; false otherwise.  If no
+  // actions have started, returns true.
+  bool AllActionsComplete();
+
+  // This function runs if all the actions do not complete before the timeout
+  // period.  It invokes the user-supplied callback to Run() with an error value
+  // kOperationTimeout.
+  void ActionsTimedOut();
 
   // Each action is stored in this table.
   HookTableMap hook_table_;
 
-  // Used for polling actions that do not complete immediately.
-  EventDispatcher *const event_dispatcher_;
+  // This is the user-supplied callback to Run().
+  base::Callback<void(const Error &)> done_cb_;
 
-  // Counts the number of polling attempts.
-  int iteration_counter_;
+  // This callback is creted in Run() and is queued to the event dispatcher to
+  // run after a timeout period.  If all the actions complete before the
+  // timeout, then this callback is cancelled.
+  base::CancelableClosure timeout_cb_;
+
+  // Used for setting a timeout action to run in case all the actions do not
+  // complete in time.
+  EventDispatcher *const event_dispatcher_;
 
   DISALLOW_COPY_AND_ASSIGN(HookTable);
 };

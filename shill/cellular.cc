@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/callback.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -37,6 +38,7 @@
 #include "shill/technology.h"
 
 using base::Bind;
+using base::Closure;
 using std::string;
 using std::vector;
 
@@ -422,6 +424,8 @@ void Cellular::OnConnected() {
     VLOG(2) << "Already connected";
     return;
   }
+  Closure start_cb = Bind(&Cellular::StartTermination, this);
+  manager()->AddTerminationAction(FriendlyName(), start_cb);
   SetState(kStateConnected);
   if (!capability_->AllowRoaming() &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
@@ -456,6 +460,8 @@ void Cellular::OnDisconnectReply(const Error &error) {
     OnDisconnected();
   else
     OnDisconnectFailed();
+  manager()->TerminationActionComplete(FriendlyName());
+  manager()->RemoveTerminationAction(FriendlyName());
 }
 
 void Cellular::OnDisconnected() {
@@ -581,5 +587,11 @@ void Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
   }
   adaptor()->EmitBoolChanged(flimflam::kCellularAllowRoamingProperty, value);
 }
+
+void Cellular::StartTermination() {
+  Error error;
+  Disconnect(&error);
+}
+
 
 }  // namespace shill

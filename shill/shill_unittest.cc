@@ -26,6 +26,7 @@
 using base::Bind;
 using base::Callback;
 using base::CancelableClosure;
+using base::Unretained;
 using base::WeakPtrFactory;
 
 using ::testing::Expectation;
@@ -203,6 +204,8 @@ class ShillDaemonTest : public Test {
     daemon_.Start();
   }
 
+  MOCK_METHOD0(TerminationAction, void());
+
  protected:
   TestConfig config_;
   Daemon daemon_;
@@ -268,5 +271,31 @@ TEST_F(ShillDaemonTest, EventDispatcherReady) {
   dispatcher_->DispatchForever();
   dispatcher_test_.StopListenReady();
 }
+
+ACTION_P2(CompleteAction, manager, name) {
+  manager->TerminationActionComplete(name);
+}
+
+TEST_F(ShillDaemonTest, Quit) {
+  // The following expectations are to satisfy calls in Daemon::Start().
+  EXPECT_CALL(proxy_factory_, Init());
+  EXPECT_CALL(rtnl_handler_, Start(_, _));
+  EXPECT_CALL(routing_table_, Start());
+  EXPECT_CALL(dhcp_provider_, Init(_, _, _));
+  EXPECT_CALL(*manager_, Start());
+
+  // This expectation verifies that the termination actions are invoked.
+  EXPECT_CALL(*this, TerminationAction())
+      .WillOnce(CompleteAction(manager_, "daemon test"));
+
+  manager_->AddTerminationAction("daemon test",
+                                 Bind(&ShillDaemonTest::TerminationAction,
+                                      Unretained(this)));
+
+  // Run Daemon::Quit() after the daemon starts running.
+  dispatcher_->PostTask(Bind(&Daemon::Quit, Unretained(&daemon_)));
+  daemon_.Run();
+}
+
 
 }  // namespace shill
