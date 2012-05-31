@@ -20,6 +20,7 @@ using std::string;
 bool ConfigureInstall(
     const std::string& install_dev,
     const std::string& install_path,
+    BiosType bios_type,
     InstallConfig* install_config) {
 
   Partition root = Partition(install_dev, install_path);
@@ -44,12 +45,60 @@ bool ConfigureInstall(
   string boot_dev = MakePartitionDev(root.base_device(),
                                      12);
 
+  // if we don't know the bios type, detect it. Errors are logged
+  // by the detect method.
+  if (( bios_type == kBiosTypeUnknown) && !DetectBiosType(&bios_type)) {
+    return false;
+  }
+
+  // Put the actual values on the result structure
   install_config->slot = slot;
   install_config->root = root;
   install_config->kernel = Partition(kernel_dev);
   install_config->boot = Partition(boot_dev);
+  install_config->bios_type = bios_type;
 
   return true;
+}
+
+bool DetectBiosType(BiosType* bios_type) {
+
+  // Look up the current kernel command line
+  string kernel_cmd_line;
+  if (!ReadFileToString("/proc/cmdline", &kernel_cmd_line)) {
+    printf("Can't read kernel commandline options\n");
+    return false;
+  }
+
+  return KernelConfigToBiosType(kernel_cmd_line, bios_type);
+}
+
+bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
+
+  if (kernel_config.find("cros_secure") != string::npos) {
+    *type = kBiosTypeSecure;
+    return true;
+  }
+
+  if (kernel_config.find("cros_legacy") != string::npos) {
+#ifdef __arm__
+    // The Arm platform only uses U-Boot, but may set cros_legacy to mean
+    // U-Boot without our secure boot modifications.
+    *type = kBiosTypeUBoot;
+#else
+    *type = kBiosTypeLegacy;
+#endif
+    return true;
+  }
+
+  if (kernel_config.find("cros_efi") != string::npos) {
+    *type = kBiosTypeEFI;
+    return true;
+  }
+
+  // No recognized bios type was found
+  printf("No recognized cros_XXX bios option on kernel command line\n");
+  return false;
 }
 
 // Updates firmware. We must activate new firmware only after new kernel is
@@ -280,10 +329,14 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 // chromeos-chroot-postinst inside an install root chroot.
 
 bool RunPostInstall(const string& install_dir,
-                    const string& install_dev) {
+                    const string& install_dev,
+                    BiosType bios_type) {
   InstallConfig install_config;
 
-  if (!ConfigureInstall(install_dir, install_dev, &install_config)) {
+  if (!ConfigureInstall(install_dir,
+                        install_dev,
+                        bios_type,
+                        &install_config)) {
     printf("Configure failed.\n");
     return false;
   }
@@ -309,34 +362,12 @@ bool RunPostInstall(const string& install_dir,
     return false;
   }
 
-  // TODO(dgarrett, 27574) Stop reading the kernel command line,
-  // or using the arm ifdef and instead check for the existence of
-  // /boot/syslinux and /boot/grub to see if we need to setup those
-  // boot loaders.
-
-  // /proc/cmdline is expected to contain exactly one of:
-  //   cros_secure, cros_legacy, or cros_efi which describe which
-  //   type of boot bios we are running with. We have already
-  //   done everything needed for cros_secure, and are optionally
-  //   handling legacy or EFI bioses boot config if needed.
-  string kernel_cmd_line;
-  if (!ReadFileToString("/proc/cmdline", &kernel_cmd_line)) {
-    printf("Can't read kernel commandline options\n");
-    return false;
-  }
-
   printf("Syncing filesystem at end of postinst...\n");
   sync();
 
-#ifdef __arm__
-  // The Arm platform only uses U-Boot, but may set cros_legacy to mean
-  // U-Boot without our secure boot modifications. For our purposes,
-  // U-Boot is U-Boot and we are already done.
-  return true;
-#endif
-
   // If we are installing to a ChromeOS Bios, we are done.
-  if (kernel_cmd_line.find("cros_secure") != string::npos)
+  if ((install_config.bios_type == kBiosTypeSecure) ||
+      (install_config.bios_type == kBiosTypeUBoot))
     return true;
 
   install_config.boot.set_mount("/tmp/boot_mnt");
@@ -345,33 +376,37 @@ bool RunPostInstall(const string& install_dir,
 
   cmd = StringPrintf("/bin/mkdir -p %s",
                      install_config.boot.mount().c_str());
-  if (RunCommand(cmd.c_str()) != 0) {
-    printf("Cmd: '%s' failed.\n", cmd.c_str());
-    return false;
-  }
+  RUN_OR_RETURN_FALSE(cmd);
 
   cmd = StringPrintf("/bin/mount %s %s",
                      install_config.boot.device().c_str(),
                      install_config.boot.mount().c_str());
-  if (RunCommand(cmd.c_str()) != 0) {
-    printf("Cmd: '%s' failed.\n", cmd.c_str());
-    return false;
-  }
+  RUN_OR_RETURN_FALSE(cmd);
 
   bool success = true;
 
-  if (kernel_cmd_line.find("cros_legacy") != string::npos) {
-    if (!RunLegacyPostInstall(install_config)) {
-      printf("Legacy PostInstall failed.\n");
+  switch (install_config.bios_type)
+  {
+    case kBiosTypeUnknown:
+    case kBiosTypeSecure:
+    case kBiosTypeUBoot:
+      printf("Unexpected BiosType %d.\n", install_config.bios_type);
       success = false;
-    }
-  }
+      break;
 
-  if (kernel_cmd_line.find("cros_efi") != string::npos) {
-    if (!RunEfiPostInstall(install_config)) {
-      printf("EFI PostInstall failed.\n");
-      success = false;
-    }
+    case kBiosTypeLegacy:
+      if (!RunLegacyPostInstall(install_config)) {
+        printf("Legacy PostInstall failed.\n");
+        success = false;
+      }
+      break;
+
+    case kBiosTypeEFI:
+      if (!RunEfiPostInstall(install_config)) {
+        printf("EFI PostInstall failed.\n");
+        success = false;
+      }
+      break;
   }
 
   cmd = StringPrintf("/bin/umount %s",

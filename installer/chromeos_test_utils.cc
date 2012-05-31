@@ -354,8 +354,11 @@ void TestConfigureInstall(const std::string& install_dev,
 
   InstallConfig install_config;
 
+  BiosType test_bios = kBiosTypeSecure;
+
   bool result_success = ConfigureInstall(install_dev,
                                          install_path,
+                                         test_bios,
                                          &install_config);
 
   if (result_success != expected_success) {
@@ -398,15 +401,80 @@ void TestConfigureInstall(const std::string& install_dev,
   }
 
   if (install_config.boot.device() != expected_boot) {
-    printf("TestConfigureInstall(%s, %s) kernel '%s' != %s\n",
+    printf("TestConfigureInstall(%s, %s) boot '%s' != %s\n",
            install_dev.c_str(),
            install_path.c_str(),
            install_config.boot.device().c_str(),
            expected_boot.c_str());
     exit(1);
   }
+
+  if (install_config.bios_type != test_bios) {
+    printf("TestConfigureInstall(%s, %s) bios '%d' != %d\n",
+           install_dev.c_str(),
+           install_path.c_str(),
+           install_config.bios_type,
+           test_bios);
+    exit(1);
+  }
 }
 
+// Method from cros_installer_main.cc that we want to test.
+bool StrToBiosType(std::string name, BiosType* bios_type);
+
+void TestStrToBiosType(string name,
+                       bool expected_success,
+                       BiosType expected_result) {
+  BiosType bios_type = kBiosTypeUnknown;
+
+  bool result = StrToBiosType(name, &bios_type);
+
+  if (expected_success != result) {
+    printf("TestStrToBiosType(%s) success '%d' != %d\n",
+           name.c_str(),
+           expected_success,
+           result);
+    exit(1);
+  }
+
+  if (!expected_success)
+    return;
+
+  if (bios_type != expected_result) {
+    printf("TestStrToBiosType(%s) result '%d' != %d\n",
+           name.c_str(),
+           expected_result,
+           bios_type);
+    exit(1);
+  }
+}
+
+void TestKernelConfigToBiosType(string kernel_config,
+                                bool expected_success,
+                                BiosType expected_result) {
+  BiosType bios_type = kBiosTypeUnknown;
+
+  bool result = KernelConfigToBiosType(kernel_config, &bios_type);
+
+  if (expected_success != result) {
+    printf("TestStrToBiosType(%s) success '%d' != %d\n",
+           kernel_config.c_str(),
+           expected_success,
+           result);
+    exit(1);
+  }
+
+  if (!expected_success)
+    return;
+
+  if (bios_type != expected_result) {
+    printf("TestStrToBiosType(%s) result '%d' != %d\n",
+           kernel_config.c_str(),
+           expected_result,
+           bios_type);
+    exit(1);
+  }
+}
 
 void Test() {
   TestRunCommand("/bin/echo Hi!*", 0);
@@ -620,6 +688,25 @@ void Test() {
   TestConfigureInstall("/dev/sda", "/mnt",
                        false, "", "", "", "");
 
+  TestStrToBiosType("secure", true, kBiosTypeSecure);
+  TestStrToBiosType("uboot", true, kBiosTypeUBoot);
+  TestStrToBiosType("legacy", true, kBiosTypeLegacy);
+  TestStrToBiosType("efi", true, kBiosTypeEFI);
+  TestStrToBiosType("fuzzy", false, kBiosTypeUnknown);
+
+  BiosType legacy_bios = kBiosTypeLegacy;
+#ifdef __arm__
+  legacy_bios = kBiosTypeUBoot;
+#endif
+
+  TestKernelConfigToBiosType("kernel_config cros_secure",
+                             true, kBiosTypeSecure);
+  TestKernelConfigToBiosType("cros_legacy kernel_config",
+                             true, legacy_bios);
+  TestKernelConfigToBiosType("kernel_config cros_efi foo",
+                             true, kBiosTypeEFI);
+  TestKernelConfigToBiosType("kernel_config",
+                             false, kBiosTypeUnknown);
 
   printf("SUCCESS!\n");
 }

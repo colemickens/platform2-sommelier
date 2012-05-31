@@ -21,6 +21,7 @@ const char* usage = (
     "   --debug\n"
     "   --test\n"
     "   cros_installer postinst <install_dev> <mount_point> [ args ]\n"
+    "     --bios [ secure | legacy | efi | uboot ]\n"
     "     --legacy\n"
     "     --postcommit\n");
 
@@ -29,15 +30,37 @@ int showHelp() {
   return 1;
 }
 
+bool StrToBiosType(string name, BiosType* bios_type) {
+  if (name == "secure")
+    *bios_type = kBiosTypeSecure;
+  else if (name == "uboot")
+    *bios_type = kBiosTypeUBoot;
+  else if (name == "legacy")
+    *bios_type = kBiosTypeLegacy;
+  else if (name == "efi")
+    *bios_type = kBiosTypeEFI;
+  else {
+    printf("Bios type %s is not one of secure, legacy, efi, or uboot\n",
+           name.c_str());
+    return false;
+  }
+
+  return true;
+}
+
 int main(int argc, char** argv) {
 
   struct option long_options[] = {
+    {"bios", required_argument, NULL, 'b'},
     {"debug", no_argument, NULL, 'd'},
     {"help", no_argument, NULL, 'h'},
     {"postcommit", no_argument, NULL, 'p'},
     {"test", no_argument, NULL, 't'},
     {NULL, 0, NULL, 0},
   };
+
+  // Unkown means we will attempt to autodetect later on.
+  BiosType bios_type = kBiosTypeUnknown;
 
   while (true) {
     int option_index;
@@ -55,6 +78,12 @@ int main(int argc, char** argv) {
       case 'h':
         // --help
         return showHelp();
+
+      case 'b':
+        // Bios type has been explicitly given, don't autodetect
+        if (!StrToBiosType(optarg, &bios_type))
+          exit(1);
+        break;
 
       case 'd':
         // I don't think this is used, but older update engines might
@@ -94,7 +123,7 @@ int main(int argc, char** argv) {
     string install_dev = argv[optind++];
 
     // ! converts bool to 0 / non-zero exit code
-    return !RunPostInstall(install_dev, install_dir);
+    return !RunPostInstall(install_dev, install_dir, bios_type);
   }
 
   printf("Unknown command: '%s'\n\n", command.c_str());
