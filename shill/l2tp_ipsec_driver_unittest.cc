@@ -440,21 +440,21 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
   driver_->InitPropertyStore(&store);
   PropertyStoreInspector inspector(&store);
   {
-    Error error;
     KeyValueStore props;
-    EXPECT_TRUE(inspector.GetKeyValueStoreProperty(
-        flimflam::kProviderProperty, &props, &error));
+    EXPECT_TRUE(
+        inspector.GetKeyValueStoreProperty(
+            flimflam::kProviderProperty, &props));
     EXPECT_TRUE(props.LookupBool(flimflam::kPassphraseRequiredProperty, false));
     EXPECT_TRUE(
         props.LookupBool(flimflam::kL2tpIpsecPskRequiredProperty, false));
   }
   {
-    Error error;
     KeyValueStore props;
     SetArg(flimflam::kL2tpIpsecPasswordProperty, "random-password");
     SetArg(flimflam::kL2tpIpsecPskProperty, "random-psk");
-    EXPECT_TRUE(inspector.GetKeyValueStoreProperty(
-        flimflam::kProviderProperty, &props, &error));
+    EXPECT_TRUE(
+        inspector.GetKeyValueStoreProperty(
+            flimflam::kProviderProperty, &props));
     EXPECT_FALSE(props.LookupBool(flimflam::kPassphraseRequiredProperty, true));
     EXPECT_FALSE(
         props.LookupBool(flimflam::kL2tpIpsecPskRequiredProperty, true));

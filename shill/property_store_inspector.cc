@@ -4,166 +4,90 @@
 
 #include "shill/property_store_inspector.h"
 
-#include "shill/error.h"
-
 using std::map;
 using std::string;
 using std::vector;
 
 namespace shill {
 
-PropertyStoreInspector::PropertyStoreInspector() {}
+PropertyStoreInspector::PropertyStoreInspector() : store_(NULL) {}
 
 PropertyStoreInspector::PropertyStoreInspector(const PropertyStore *store)
     : store_(store) {}
 
 PropertyStoreInspector::~PropertyStoreInspector() {}
 
-bool PropertyStoreInspector::GetBoolProperty(const string &name,
-                                             bool *value,
-                                             Error *error) {
-  return GetProperty(name, value, error, &PropertyStore::GetBoolPropertiesIter);
+bool PropertyStoreInspector::GetBoolProperty(const string &name, bool *value) {
+  return GetProperty(name, value, &PropertyStore::GetBoolPropertiesIter);
 }
 
 bool PropertyStoreInspector::GetInt16Property(const string &name,
-                                              int16 *value,
-                                              Error *error) {
-  return GetProperty(name, value, error,
-                     &PropertyStore::GetInt16PropertiesIter);
+                                              int16 *value) {
+  return GetProperty(name, value, &PropertyStore::GetInt16PropertiesIter);
 }
 
 bool PropertyStoreInspector::GetInt32Property(const string &name,
-                                              int32 *value,
-                                              Error *error) {
-  return GetProperty(name, value, error,
-                     &PropertyStore::GetInt32PropertiesIter);
+                                              int32 *value) {
+  return GetProperty(name, value, &PropertyStore::GetInt32PropertiesIter);
 }
 
 bool PropertyStoreInspector::GetKeyValueStoreProperty(const string &name,
-                                                      KeyValueStore *value,
-                                                      Error *error) {
-  return GetProperty(name, value, error,
+                                                      KeyValueStore *value) {
+  return GetProperty(name, value,
                      &PropertyStore::GetKeyValueStorePropertiesIter);
 }
 
 bool PropertyStoreInspector::GetStringProperty(const string &name,
-                                               string *value,
-                                               Error *error) {
-  return GetProperty(name, value, error,
-                     &PropertyStore::GetStringPropertiesIter);
+                                               string *value) {
+  return GetProperty(name, value, &PropertyStore::GetStringPropertiesIter);
 }
 
 bool PropertyStoreInspector::GetStringmapProperty(const string &name,
-                                                  map<string, string> *values,
-                                                  Error *error) {
-  return GetProperty(name, values, error,
-                     &PropertyStore::GetStringmapPropertiesIter);
+                                                  map<string, string> *values) {
+  return GetProperty(name, values, &PropertyStore::GetStringmapPropertiesIter);
 }
 
 bool PropertyStoreInspector::GetStringsProperty(const string &name,
-                                                vector<string> *values,
-                                                Error *error) {
-  return GetProperty(name, values, error,
-                     &PropertyStore::GetStringsPropertiesIter);
+                                                vector<string> *values) {
+  return GetProperty(name, values, &PropertyStore::GetStringsPropertiesIter);
 }
 
 bool PropertyStoreInspector::GetUint8Property(const string &name,
-                                              uint8 *value,
-                                              Error *error) {
-  return GetProperty(name, value, error,
-                     &PropertyStore::GetUint8PropertiesIter);
+                                              uint8 *value) {
+  return GetProperty(name, value, &PropertyStore::GetUint8PropertiesIter);
 }
 
 bool PropertyStoreInspector::GetUint16Property(const string &name,
-                                               uint16 *value,
-                                               Error *error) {
-  return GetProperty(name, value, error,
-                     &PropertyStore::GetUint16PropertiesIter);
+                                               uint16 *value) {
+  return GetProperty(name, value, &PropertyStore::GetUint16PropertiesIter);
 }
 
 bool PropertyStoreInspector::GetUint32Property(const string &name,
-                                               uint32 *value,
-                                               Error *error) {
-  return GetProperty(name, value, error,
-                     &PropertyStore::GetUint32PropertiesIter);
+                                               uint32 *value) {
+  return GetProperty(name, value, &PropertyStore::GetUint32PropertiesIter);
 }
 
 bool PropertyStoreInspector::GetRpcIdentifierProperty(const string &name,
-                                                      RpcIdentifier *value,
-                                                      Error *error) {
-  return GetProperty(name, value, error,
+                                                      RpcIdentifier *value) {
+  return GetProperty(name, value,
                      &PropertyStore::GetRpcIdentifierPropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsBoolProperty(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetBoolPropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsInt16Property(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetInt16PropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsInt32Property(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetInt32PropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsKeyValueStoreProperty(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetKeyValueStorePropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsStringProperty(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetStringPropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsStringmapProperty(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetStringmapPropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsStringsProperty(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetStringsPropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsUint8Property(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetUint8PropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsUint16Property(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetUint16PropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsUint32Property(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetUint32PropertiesIter);
-}
-
-bool PropertyStoreInspector::ContainsRpcIdentifierProperty(const string &name) {
-  return ContainsProperty(name, &PropertyStore::GetRpcIdentifierPropertiesIter);
 }
 
 template <class V>
 bool PropertyStoreInspector::GetProperty(
     const string &name,
     V *value,
-    Error *error,
     ReadablePropertyConstIterator<V>(PropertyStore::*getter)() const) {
-  ReadablePropertyConstIterator<V> it = ((*store_).*getter)();
-  for ( ; !it.AtEnd(); it.Advance()) {
+  for (ReadablePropertyConstIterator<V> it = ((*store_).*getter)();
+       !it.AtEnd(); it.Advance()) {
     if (it.Key() == name) {
-      *value = it.Value(error);
-      return error->IsSuccess();
+      if (value) {
+        *value = it.value();
+      }
+      return true;
     }
   }
-  error->Populate(Error::kNotFound);
   return false;
 };
-
-template <class V>
-bool PropertyStoreInspector::ContainsProperty(
-      const std::string &name,
-      ReadablePropertyConstIterator<V>(PropertyStore::*getter)() const) {
-  V value;
-  Error error;
-  GetProperty(name, &value, &error, getter);
-  return error.type() != Error::kNotFound;
-}
 
 }  // namespace shill

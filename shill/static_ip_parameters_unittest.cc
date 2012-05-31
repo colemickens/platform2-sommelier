@@ -119,21 +119,20 @@ TEST_F(StaticIpParametersTest, ControlInterface) {
   EXPECT_EQ(kTestMtu, props.mtu);
 
   PropertyStoreInspector inspector(&store);
-  EXPECT_FALSE(inspector.ContainsStringProperty("StaticIP.Address"));
+  EXPECT_FALSE(inspector.GetStringProperty("StaticIP.Address", NULL));
   string string_value;
-  EXPECT_TRUE(inspector.GetStringProperty("StaticIP.Gateway",
-                                          &string_value, &error));
+  EXPECT_TRUE(inspector.GetStringProperty("StaticIP.Gateway", &string_value));
   EXPECT_EQ(kGateway, string_value);
-  EXPECT_FALSE(inspector.ContainsInt32Property("StaticIP.Mtu"));
+  EXPECT_FALSE(inspector.GetInt32Property("StaticIP.Mtu", NULL));
   EXPECT_TRUE(inspector.GetStringProperty("StaticIP.NameServers",
-                                          &string_value, &error));
+                                          &string_value));
   EXPECT_EQ(kNameServers, string_value);
   EXPECT_TRUE(inspector.GetStringProperty("StaticIP.PeerAddress",
-                                          &string_value, &error));
+                                          &string_value));
   EXPECT_EQ(kPeerAddress, string_value);
   int32 int_value;
   EXPECT_TRUE(inspector.GetInt32Property("StaticIP.Prefixlen",
-                                         &int_value, &error));
+                                         &int_value));
   EXPECT_EQ(kPrefixLen, int_value);
 }
 

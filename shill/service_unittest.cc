@@ -559,7 +559,7 @@ class ReadOnlyServicePropertyTest : public ServiceTest {};
 TEST_P(ReadOnlyServicePropertyTest, PropertyWriteOnly) {
   string property(GetParam().reader().get_string());
   PropertyStoreInspector inspector(&service_->store());
-  EXPECT_FALSE(inspector.ContainsStringProperty(property));
+  EXPECT_FALSE(inspector.GetStringProperty(property, NULL));
 }
 
 INSTANTIATE_TEST_CASE_P(

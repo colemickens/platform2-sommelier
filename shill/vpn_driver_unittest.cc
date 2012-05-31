@@ -112,11 +112,10 @@ class VPNDriverTest : public Test {
 bool VPNDriverTest::GetProviderProperty(const PropertyStore &store,
                                         const string &key,
                                         string *value) {
-  Error error;
   PropertyStoreInspector inspector(&store);
   KeyValueStore provider_properties;
   EXPECT_TRUE(inspector.GetKeyValueStoreProperty(
-      flimflam::kProviderProperty, &provider_properties, &error));
+      flimflam::kProviderProperty, &provider_properties));
   if (!provider_properties.ContainsString(key)) {
     return false;
   }
@@ -192,7 +191,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   PropertyStoreInspector inspector(&store);
 
   // An un-set property should not be readable.
-  EXPECT_FALSE(inspector.ContainsStringProperty(kPortProperty));
+  EXPECT_FALSE(inspector.GetStringProperty(kPortProperty, NULL));
   EXPECT_FALSE(GetProviderProperty(store, kPortProperty, NULL));
 
   const string kProviderName = "boo";
@@ -202,7 +201,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
 
   // We should not be able to read a property out of the driver args using the
   // key to the args directly.
-  EXPECT_FALSE(inspector.ContainsStringProperty(kPortProperty));
+  EXPECT_FALSE(inspector.GetStringProperty(kPortProperty, NULL));
 
   // We should instead be able to find it within the "Provider" stringmap.
   string value;

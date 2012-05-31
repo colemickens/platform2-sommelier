@@ -230,7 +230,6 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
   // Test that properties registered as write-only are not returned
   // when using Get*PropertiesIter().
   PropertyStore store;
-  Error error;
   {
     const string keys[]  = {"boolp1", "boolp2"};
     bool values[] = {true, true};
@@ -238,11 +237,9 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     store.RegisterBool(keys[1], &values[1]);
 
     ReadablePropertyConstIterator<bool> it = store.GetBoolPropertiesIter();
-    error.Reset();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
-    EXPECT_TRUE(values[1] == it.Value(&error));
-    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_TRUE(values[1] == it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
   }
@@ -253,11 +250,9 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     store.RegisterInt16(keys[1], &values[1]);
 
     ReadablePropertyConstIterator<int16> it = store.GetInt16PropertiesIter();
-    error.Reset();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
-    EXPECT_EQ(values[1], it.Value(&error));
-    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(values[1], it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
   }
@@ -268,11 +263,9 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     store.RegisterInt32(keys[1], &values[1]);
 
     ReadablePropertyConstIterator<int32> it = store.GetInt32PropertiesIter();
-    error.Reset();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
-    EXPECT_EQ(values[1], it.Value(&error));
-    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(values[1], it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
   }
@@ -283,11 +276,9 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     store.RegisterString(keys[1], &values[1]);
 
     ReadablePropertyConstIterator<string> it = store.GetStringPropertiesIter();
-    error.Reset();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
-    EXPECT_EQ(values[1], it.Value(&error));
-    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(values[1], it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
   }
@@ -301,11 +292,9 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
 
     ReadablePropertyConstIterator<Stringmap> it =
         store.GetStringmapPropertiesIter();
-    error.Reset();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
-    EXPECT_TRUE(values[1] == it.Value(&error));
-    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_TRUE(values[1] == it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
   }
@@ -323,11 +312,9 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
 
     ReadablePropertyConstIterator<Stringmaps> it =
         store.GetStringmapsPropertiesIter();
-    error.Reset();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
-    EXPECT_TRUE(values[1] == it.Value(&error));
-    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_TRUE(values[1] == it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
   }
@@ -344,11 +331,9 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
 
     ReadablePropertyConstIterator<Strings> it =
         store.GetStringsPropertiesIter();
-    error.Reset();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
-    EXPECT_TRUE(values[1] == it.Value(&error));
-    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_TRUE(values[1] == it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
   }
@@ -359,11 +344,9 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     store.RegisterUint8(keys[1], &values[1]);
 
     ReadablePropertyConstIterator<uint8> it = store.GetUint8PropertiesIter();
-    error.Reset();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
-    EXPECT_EQ(values[1], it.Value(&error));
-    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(values[1], it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
   }
@@ -374,11 +357,9 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     store.RegisterUint16(keys[1], &values[1]);
 
     ReadablePropertyConstIterator<uint16> it = store.GetUint16PropertiesIter();
-    error.Reset();
     EXPECT_FALSE(it.AtEnd());
     EXPECT_EQ(keys[1], it.Key());
-    EXPECT_EQ(values[1], it.Value(&error));
-    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(values[1], it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
   }

@@ -697,20 +697,18 @@ TEST_F(OpenVPNDriverTest, GetProvider) {
   driver_->InitPropertyStore(&store);
   PropertyStoreInspector inspector(&store);
   {
-    Error error;
     KeyValueStore props;
     EXPECT_TRUE(
         inspector.GetKeyValueStoreProperty(
-            flimflam::kProviderProperty, &props, &error));
+            flimflam::kProviderProperty, &props));
     EXPECT_TRUE(props.LookupBool(flimflam::kPassphraseRequiredProperty, false));
   }
   {
-    Error error;
     KeyValueStore props;
     SetArg(flimflam::kOpenVPNPasswordProperty, "random-password");
     EXPECT_TRUE(
         inspector.GetKeyValueStoreProperty(
-            flimflam::kProviderProperty, &props, &error));
+            flimflam::kProviderProperty, &props));
     EXPECT_FALSE(props.LookupBool(flimflam::kPassphraseRequiredProperty, true));
   }
 }

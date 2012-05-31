@@ -95,26 +95,25 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
 bool DBusAdaptor::GetProperties(const PropertyStore &store,
                                 map<string, ::DBus::Variant> *out,
                                 ::DBus::Error */*error*/) {
-  Error e;
   {
     ReadablePropertyConstIterator<bool> it = store.GetBoolPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing bool " << it.Key();
-      (*out)[it.Key()] = BoolToVariant(it.Value(&e));
+      (*out)[it.Key()] = BoolToVariant(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<int16> it = store.GetInt16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing int16 " << it.Key();
-      (*out)[it.Key()] = Int16ToVariant(it.Value(&e));
+      (*out)[it.Key()] = Int16ToVariant(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<int32> it = store.GetInt32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing int32 " << it.Key();
-      (*out)[it.Key()] = Int32ToVariant(it.Value(&e));
+      (*out)[it.Key()] = Int32ToVariant(it.value());
     }
   }
   {
@@ -122,14 +121,14 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
         store.GetKeyValueStorePropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing KeyValueStore " << it.Key();
-      (*out)[it.Key()] = KeyValueStoreToVariant(it.Value(&e));
+      (*out)[it.Key()] = KeyValueStoreToVariant(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<RpcIdentifiers> it =
         store.GetRpcIdentifiersPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      Strings rpc_identifiers_as_strings  = it.Value(&e);
+      const Strings &rpc_identifiers_as_strings  = it.value();
       vector < ::DBus::Path> rpc_identifiers_as_paths;
       for (Strings::const_iterator in = rpc_identifiers_as_strings.begin();
            in != rpc_identifiers_as_strings.end();
@@ -144,7 +143,7 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
     ReadablePropertyConstIterator<string> it = store.GetStringPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing string " << it.Key();
-      (*out)[it.Key()] = StringToVariant(it.Value(&e));
+      (*out)[it.Key()] = StringToVariant(it.value());
     }
   }
   {
@@ -152,7 +151,7 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
         store.GetStringmapPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing Stringmap " << it.Key();
-      (*out)[it.Key()]= StringmapToVariant(it.Value(&e));
+      (*out)[it.Key()]= StringmapToVariant(it.value());
     }
   }
   {
@@ -160,7 +159,7 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
         store.GetStringmapsPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing Stringmaps " << it.Key();
-      (*out)[it.Key()]= StringmapsToVariant(it.Value(&e));
+      (*out)[it.Key()]= StringmapsToVariant(it.value());
     }
   }
   {
@@ -168,28 +167,28 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
         store.GetStringsPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing Strings " << it.Key();
-      (*out)[it.Key()] = StringsToVariant(it.Value(&e));
+      (*out)[it.Key()] = StringsToVariant(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint8> it = store.GetUint8PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing uint8 " << it.Key();
-      (*out)[it.Key()] = ByteToVariant(it.Value(&e));
+      (*out)[it.Key()] = ByteToVariant(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint16> it = store.GetUint16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing uint16 " << it.Key();
-      (*out)[it.Key()] = Uint16ToVariant(it.Value(&e));
+      (*out)[it.Key()] = Uint16ToVariant(it.value());
     }
   }
   {
     ReadablePropertyConstIterator<uint32> it = store.GetUint32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing uint32 " << it.Key();
-      (*out)[it.Key()] = Uint32ToVariant(it.Value(&e));
+      (*out)[it.Key()] = Uint32ToVariant(it.value());
     }
   }
   {
@@ -197,7 +196,7 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
         store.GetRpcIdentifierPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing RpcIdentifier " << it.Key();
-      (*out)[it.Key()] = PathToVariant(it.Value(&e));
+      (*out)[it.Key()] = PathToVariant(it.value());
     }
   }
   return true;
