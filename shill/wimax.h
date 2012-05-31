@@ -52,6 +52,7 @@ class WiMax : public Device {
   FRIEND_TEST(WiMaxTest, OnConnectComplete);
   FRIEND_TEST(WiMaxTest, OnNetworksChanged);
   FRIEND_TEST(WiMaxTest, OnServiceStopped);
+  FRIEND_TEST(WiMaxTest, OnStatusChanged);
   FRIEND_TEST(WiMaxTest, StartStop);
 
   static const int kTimeoutDefault;

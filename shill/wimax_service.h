@@ -63,6 +63,8 @@ class WiMaxService : public Service {
   static std::string CreateStorageIdentifier(const WiMaxNetworkId &id,
                                              const std::string &name);
 
+  virtual void ClearPassphrase();
+
   // Inherited from Service.
   virtual bool TechnologyIs(const Technology::Identifier type) const;
   virtual void Connect(Error *error);

@@ -24,6 +24,7 @@ class MockWiMaxService : public WiMaxService {
   MOCK_METHOD0(Stop, void());
   MOCK_CONST_METHOD0(IsStarted, bool());
   MOCK_METHOD1(SetState, void(ConnectState state));
+  MOCK_METHOD0(ClearPassphrase, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxService);

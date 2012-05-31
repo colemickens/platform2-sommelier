@@ -119,6 +119,7 @@ TEST_F(WiMaxServiceTest, StartStop) {
   static const char kName[] = "My WiMAX Network";
   const uint32 kIdentifier = 0x1234abcd;
   const int kStrength = 66;
+  EXPECT_FALSE(service_->connectable());
   EXPECT_FALSE(service_->IsStarted());
   EXPECT_EQ(0, service_->strength());
   EXPECT_FALSE(service_->proxy_.get());
@@ -126,13 +127,14 @@ TEST_F(WiMaxServiceTest, StartStop) {
   EXPECT_CALL(*proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
   EXPECT_CALL(*proxy_, SignalStrength(_)).WillOnce(Return(kStrength));
   EXPECT_CALL(*proxy_, set_signal_strength_changed_callback(_));
+  service_->need_passphrase_ = false;
   EXPECT_TRUE(service_->Start(proxy_.release()));
   EXPECT_TRUE(service_->IsStarted());
   EXPECT_EQ(kStrength, service_->strength());
   EXPECT_EQ(kName, service_->network_name());
   EXPECT_EQ(kTestName, service_->friendly_name());
   EXPECT_EQ(kTestNetworkId, service_->network_id());
-  EXPECT_FALSE(service_->connectable());
+  EXPECT_TRUE(service_->connectable());
   EXPECT_TRUE(service_->proxy_.get());
 
   service_->device_ = device_;
@@ -159,14 +161,20 @@ TEST_F(WiMaxServiceTest, SetEAP) {
   // Not started.
   eap.password = "TestPassword";
   base_service->set_eap(eap);
-  EXPECT_TRUE(service_->need_passphrase_);
+  EXPECT_FALSE(service_->need_passphrase_);
   EXPECT_FALSE(base_service->connectable());
 
   // Connectable.
   service_->proxy_.reset(proxy_.release());
   base_service->set_eap(eap);
-  EXPECT_TRUE(service_->need_passphrase_);
+  EXPECT_FALSE(service_->need_passphrase_);
   EXPECT_TRUE(base_service->connectable());
+
+  // Reset password.
+  service_->ClearPassphrase();
+  EXPECT_TRUE(service_->need_passphrase_);
+  EXPECT_FALSE(base_service->connectable());
+  EXPECT_TRUE(base_service->eap().password.empty());
 }
 
 TEST_F(WiMaxServiceTest, ConvertIdentifierToNetworkId) {
@@ -195,14 +203,23 @@ TEST_F(WiMaxServiceTest, Save) {
 }
 
 TEST_F(WiMaxServiceTest, Connect) {
+  // Connect but not connectable.
+  Error error;
+  EXPECT_FALSE(service_->connectable());
+  service_->Connect(&error);
+  EXPECT_EQ(Error::kOperationFailed, error.type());
+  service_->set_connectable(true);
+
+  // No carrier device available.
   MockWiMaxProvider provider;
   scoped_refptr<MockWiMax> null_device;
   EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&provider));
   EXPECT_CALL(provider, SelectCarrier(_)).WillOnce(Return(null_device));
-  Error error;
+  error.Reset();
   service_->Connect(&error);
   EXPECT_EQ(Error::kNoCarrier, error.type());
 
+  // Successful connect.
   EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&provider));
   EXPECT_CALL(provider, SelectCarrier(_)).WillOnce(Return(device_));
   EXPECT_CALL(*device_, ConnectTo(_, _));
@@ -210,14 +227,17 @@ TEST_F(WiMaxServiceTest, Connect) {
   service_->Connect(&error);
   EXPECT_TRUE(error.IsSuccess());
 
+  // Connect while already connected.
   service_->Connect(&error);
   EXPECT_EQ(Error::kAlreadyConnected, error.type());
 
+  // Successful disconnect.
   EXPECT_CALL(*device_, DisconnectFrom(_, _));
   error.Reset();
   service_->Disconnect(&error);
   EXPECT_TRUE(error.IsSuccess());
 
+  // Disconnect while not connected.
   service_->Disconnect(&error);
   EXPECT_EQ(Error::kNotConnected, error.type());
 }

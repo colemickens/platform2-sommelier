@@ -159,4 +159,33 @@ TEST_F(WiMaxTest, OnConnectComplete) {
   EXPECT_FALSE(device_->pending_service_);
 }
 
+TEST_F(WiMaxTest, OnStatusChanged) {
+  scoped_refptr<MockWiMaxService> service(
+      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+
+  device_->pending_service_ = service;
+  EXPECT_CALL(*service, SetState(Service::kStateFailure));
+  EXPECT_CALL(*service, ClearPassphrase());
+  device_->OnStatusChanged(wimax_manager::kDeviceStatusScanning);
+  EXPECT_FALSE(device_->pending_service_);
+
+  device_->SelectService(service);
+  EXPECT_CALL(*service, SetState(Service::kStateFailure));
+  EXPECT_CALL(*service, SetState(Service::kStateIdle));
+  EXPECT_CALL(*service, ClearPassphrase()).Times(0);
+  device_->OnStatusChanged(wimax_manager::kDeviceStatusScanning);
+  EXPECT_FALSE(device_->selected_service());
+
+  device_->pending_service_ = service;
+  device_->SelectService(service);
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  EXPECT_CALL(*service, ClearPassphrase()).Times(0);
+  device_->OnStatusChanged(wimax_manager::kDeviceStatusConnecting);
+  EXPECT_TRUE(device_->pending_service_);
+  EXPECT_TRUE(device_->selected_service());
+
+  EXPECT_CALL(*service, SetState(Service::kStateIdle));
+  device_->SelectService(NULL);
+}
+
 }  // namespace shill

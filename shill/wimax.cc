@@ -228,6 +228,10 @@ void WiMax::OnStatusChanged(wimax_manager::DeviceStatus status) {
     default:
       if (pending_service_) {
         pending_service_->SetState(Service::kStateFailure);
+        // For now, assume that failing to connect to a live network indicates
+        // bad user credentials. Reset the password to trigger the user/password
+        // dialog in the UI.
+        pending_service_->ClearPassphrase();
         pending_service_ = NULL;
       }
       if (selected_service()) {

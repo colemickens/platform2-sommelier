@@ -115,8 +115,8 @@ bool WiMaxService::Start(WiMaxNetworkProxyInterface *proxy) {
   SetStrength(signal_strength);
   proxy->set_signal_strength_changed_callback(
       Bind(&WiMaxService::OnSignalStrengthChanged, Unretained(this)));
-  UpdateConnectable();
   proxy_.reset(local_proxy.release());
+  UpdateConnectable();
   LOG(INFO) << "WiMAX service started: " << GetStorageIdentifier();
   return true;
 }
@@ -133,6 +133,13 @@ void WiMaxService::Connect(Error *error) {
   if (device_) {
     Error::PopulateAndLog(
         error, Error::kAlreadyConnected, "Already connected.");
+    return;
+  }
+  if (!connectable()) {
+    LOG(ERROR) << "Can't connect. Service " << GetStorageIdentifier()
+               << " is not connectable.";
+    Error::PopulateAndLog(error, Error::kOperationFailed,
+                          Error::GetDefaultMessage(Error::kOperationFailed));
     return;
   }
   WiMaxRefPtr carrier = manager()->wimax_provider()->SelectCarrier(this);
@@ -179,19 +186,12 @@ bool WiMaxService::Is8021x() const {
 
 void WiMaxService::set_eap(const EapCredentials &eap) {
   Service::set_eap(eap);
+  need_passphrase_ = eap.identity.empty() || eap.password.empty();
   UpdateConnectable();
 }
 
 void WiMaxService::UpdateConnectable() {
-  // Don't use Service::Is8021xConnectable because we don't support the full set
-  // of authentication methods.
-  bool is_connectable = false;
-  if (IsStarted()) {
-    if (!eap().identity.empty()) {
-      is_connectable = !eap().password.empty();
-    }
-  }
-  set_connectable(is_connectable);
+  set_connectable(IsStarted() && !need_passphrase_);
 }
 
 void WiMaxService::OnSignalStrengthChanged(int strength) {
@@ -212,6 +212,7 @@ bool WiMaxService::Save(StoreInterface *storage) {
 bool WiMaxService::Unload() {
   // The base method also disconnects the service.
   Service::Unload();
+  ClearPassphrase();
   // Notify the WiMAX provider that this service has been unloaded. If the
   // provider releases ownership of this service, it needs to be deregistered.
   return manager()->wimax_provider()->OnServiceUnloaded(this);
@@ -243,6 +244,13 @@ string WiMaxService::CreateStorageIdentifier(const WiMaxNetworkId &id,
   StringToLowerASCII(&storage_id);
   replace_if(storage_id.begin(), storage_id.end(), &Service::IllegalChar, '_');
   return storage_id;
+}
+
+void WiMaxService::ClearPassphrase() {
+  EapCredentials creds = eap();
+  creds.password.clear();
+  // Updates the service credentials and connectability status.
+  set_eap(creds);
 }
 
 }  // namespace shill
