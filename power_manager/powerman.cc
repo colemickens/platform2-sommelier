@@ -70,11 +70,11 @@ void PowerManDaemon::Init() {
   string wakeup_inputs_str;
   std::vector<string> wakeup_inputs;
 
-  if (prefs_->GetString(kWakeupInput, &wakeup_inputs_str))
+  if (prefs_->GetString(kWakeupInputPref, &wakeup_inputs_str))
     base::SplitString(wakeup_inputs_str, '\n', &wakeup_inputs);
-  CHECK(prefs_->GetInt64(kRetrySuspendMs, &retry_suspend_ms_));
-  CHECK(prefs_->GetInt64(kRetrySuspendAttempts, &retry_suspend_attempts_));
-  CHECK(prefs_->GetInt64(kUseLid, &use_input_for_lid));
+  CHECK(prefs_->GetInt64(kRetrySuspendMsPref, &retry_suspend_ms_));
+  CHECK(prefs_->GetInt64(kRetrySuspendAttemptsPref, &retry_suspend_attempts_));
+  CHECK(prefs_->GetInt64(kUseLidPref, &use_input_for_lid));
   // Retrys will occur no more than once a minute.
   CHECK_GE(retry_suspend_ms_, 60000);
   // Only 1-10 retries prior to just shutting down.

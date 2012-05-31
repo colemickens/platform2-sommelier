@@ -56,9 +56,10 @@ class InternalBacklightControllerTest : public ::testing::Test {
                               Return(true)));
     EXPECT_CALL(backlight_, SetBrightnessLevel(_))
         .WillRepeatedly(Return(false));
-    prefs_.SetDouble(kPluggedBrightnessOffset, kPluggedBrightnessPercent);
-    prefs_.SetDouble(kUnpluggedBrightnessOffset, kUnpluggedBrightnessPercent);
-    prefs_.SetInt64(kMinVisibleBacklightLevel, 1);
+    prefs_.SetDouble(kPluggedBrightnessOffsetPref, kPluggedBrightnessPercent);
+    prefs_.SetDouble(kUnpluggedBrightnessOffsetPref,
+                     kUnpluggedBrightnessPercent);
+    prefs_.SetInt64(kMinVisibleBacklightLevelPref, 1);
     CHECK(controller_.Init());
   }
 
@@ -232,7 +233,7 @@ TEST_F(InternalBacklightControllerTest, KeepBacklightOnAfterAutomatedChange) {
 TEST_F(InternalBacklightControllerTest, MinBrightnessLevel) {
   // Set a minimum visible backlight level and reinitialize to load it.
   const int kMinLevel = 10;
-  prefs_.SetInt64(kMinVisibleBacklightLevel, kMinLevel);
+  prefs_.SetInt64(kMinVisibleBacklightLevelPref, kMinLevel);
   ASSERT_TRUE(controller_.Init());
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
@@ -263,7 +264,7 @@ TEST_F(InternalBacklightControllerTest, MinBrightnessLevel) {
   // Now set a lower minimum visible level and check that we don't overshoot it
   // when increasing from the backlight-off state.
   const int kNewMinLevel = 1;
-  prefs_.SetInt64(kMinVisibleBacklightLevel, kNewMinLevel);
+  prefs_.SetInt64(kMinVisibleBacklightLevelPref, kNewMinLevel);
   ASSERT_TRUE(controller_.Init());
   const double kNewMinPercent = controller_.LevelToPercent(kNewMinLevel);
   ASSERT_LT(kNewMinPercent, kMinPercent);
@@ -282,7 +283,7 @@ TEST_F(InternalBacklightControllerTest, MinBrightnessLevel) {
 // Test the case where the minimum visible backlight level matches the maximum
 // level exposed by hardware.
 TEST_F(InternalBacklightControllerTest, MinBrightnessLevelMatchesMax) {
-  prefs_.SetInt64(kMinVisibleBacklightLevel, kMaxBrightnessLevel);
+  prefs_.SetInt64(kMinVisibleBacklightLevelPref, kMaxBrightnessLevel);
   ASSERT_TRUE(controller_.Init());
 #ifdef HAS_ALS
   // The controller avoids adjusting the brightness until it gets its first

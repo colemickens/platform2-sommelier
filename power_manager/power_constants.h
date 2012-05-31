@@ -7,34 +7,37 @@
 
 namespace power_manager {
 
-extern const char kPluggedBrightnessOffset[];
-extern const char kUnpluggedBrightnessOffset[];
-extern const char kLowBatterySuspendPercent[];
-extern const char kCleanShutdownTimeoutMs[];
-extern const char kPluggedDimMs[];
-extern const char kPluggedOffMs[];
-extern const char kUnpluggedDimMs[];
-extern const char kUnpluggedOffMs[];
-extern const char kUnpluggedSuspendMs[];
-extern const char kEnforceLock[];
-extern const char kDisableIdleSuspend[];
-extern const char kUseLid[];
-extern const char kLockOnIdleSuspend[];
-extern const char kLockMs[];
-extern const char kRetrySuspendMs[];
-extern const char kRetrySuspendAttempts[];
-extern const char kUseXScreenSaver[];
-extern const char kPluggedSuspendMs[];
-extern const char kMinVisibleBacklightLevel[];
-extern const char kReactMs[];
-extern const char kFuzzMs[];
-extern const char kStateMaxDisabledDurationSec[];
+// Preference names.
+extern const char kPluggedBrightnessOffsetPref[];
+extern const char kUnpluggedBrightnessOffsetPref[];
+extern const char kLowBatterySuspendPercentPref[];
+extern const char kCleanShutdownTimeoutMsPref[];
+extern const char kPluggedDimMsPref[];
+extern const char kPluggedOffMsPref[];
+extern const char kUnpluggedDimMsPref[];
+extern const char kUnpluggedOffMsPref[];
+extern const char kUnpluggedSuspendMsPref[];
+extern const char kEnforceLockPref[];
+extern const char kDisableIdleSuspendPref[];
+extern const char kUseLidPref[];
+extern const char kLockOnIdleSuspendPref[];
+extern const char kLockMsPref[];
+extern const char kRetrySuspendMsPref[];
+extern const char kRetrySuspendAttemptsPref[];
+extern const char kUseXScreenSaverPref[];
+extern const char kPluggedSuspendMsPref[];
+extern const char kMinVisibleBacklightLevelPref[];
+extern const char kDisableALSPref[];
+extern const char kWakeupInputPref[];
+extern const char kReactMsPref[];
+extern const char kFuzzMsPref[];
+extern const char kStateMaxDisabledDurationSecPref[];
+
+// Miscellaneous constants.
 extern const char kBacklightPath[];
 extern const char kBacklightPattern[];
 extern const char kKeyboardBacklightPath[];
 extern const char kKeyboardBacklightPattern[];
-extern const char kDisableALS[];
-extern const char kWakeupInput[];
 
 // Interface names.
 extern const char kRootPowerManagerInterface[];

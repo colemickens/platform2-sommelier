@@ -177,21 +177,21 @@ void Daemon::ReadSettings() {
   int64 use_xscreensaver, enforce_lock;
   int64 disable_idle_suspend;
   int64 low_battery_suspend_percent;
-  CHECK(prefs_->GetInt64(kLowBatterySuspendPercent,
+  CHECK(prefs_->GetInt64(kLowBatterySuspendPercentPref,
                          &low_battery_suspend_percent));
-  CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMs,
+  CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMsPref,
                          &clean_shutdown_timeout_ms_));
-  CHECK(prefs_->GetInt64(kPluggedDimMs, &plugged_dim_ms_));
-  CHECK(prefs_->GetInt64(kPluggedOffMs, &plugged_off_ms_));
-  CHECK(prefs_->GetInt64(kPluggedSuspendMs, &plugged_suspend_ms_));
-  CHECK(prefs_->GetInt64(kUnpluggedDimMs, &unplugged_dim_ms_));
-  CHECK(prefs_->GetInt64(kUnpluggedOffMs, &unplugged_off_ms_));
-  CHECK(prefs_->GetInt64(kUnpluggedSuspendMs, &unplugged_suspend_ms_));
-  CHECK(prefs_->GetInt64(kReactMs, &react_ms_));
-  CHECK(prefs_->GetInt64(kFuzzMs, &fuzz_ms_));
-  CHECK(prefs_->GetInt64(kEnforceLock, &enforce_lock));
-  CHECK(prefs_->GetInt64(kUseXScreenSaver, &use_xscreensaver));
-  if (prefs_->GetInt64(kDisableIdleSuspend, &disable_idle_suspend) &&
+  CHECK(prefs_->GetInt64(kPluggedDimMsPref, &plugged_dim_ms_));
+  CHECK(prefs_->GetInt64(kPluggedOffMsPref, &plugged_off_ms_));
+  CHECK(prefs_->GetInt64(kPluggedSuspendMsPref, &plugged_suspend_ms_));
+  CHECK(prefs_->GetInt64(kUnpluggedDimMsPref, &unplugged_dim_ms_));
+  CHECK(prefs_->GetInt64(kUnpluggedOffMsPref, &unplugged_off_ms_));
+  CHECK(prefs_->GetInt64(kUnpluggedSuspendMsPref, &unplugged_suspend_ms_));
+  CHECK(prefs_->GetInt64(kReactMsPref, &react_ms_));
+  CHECK(prefs_->GetInt64(kFuzzMsPref, &fuzz_ms_));
+  CHECK(prefs_->GetInt64(kEnforceLockPref, &enforce_lock));
+  CHECK(prefs_->GetInt64(kUseXScreenSaverPref, &use_xscreensaver));
+  if (prefs_->GetInt64(kDisableIdleSuspendPref, &disable_idle_suspend) &&
       disable_idle_suspend) {
     LOG(INFO) << "Idle suspend feature disabled";
     plugged_suspend_ms_ = INT64_MAX;
@@ -223,12 +223,12 @@ void Daemon::ReadSettings() {
 
   // Store unmodified timeout values for switching between projecting and non-
   // projecting timeouts.
-  base_timeout_values_[kPluggedDimMs]       = plugged_dim_ms_;
-  base_timeout_values_[kPluggedOffMs]       = plugged_off_ms_;
-  base_timeout_values_[kPluggedSuspendMs]   = plugged_suspend_ms_;
-  base_timeout_values_[kUnpluggedDimMs]     = unplugged_dim_ms_;
-  base_timeout_values_[kUnpluggedOffMs]     = unplugged_off_ms_;
-  base_timeout_values_[kUnpluggedSuspendMs] = unplugged_suspend_ms_;
+  base_timeout_values_[kPluggedDimMsPref]       = plugged_dim_ms_;
+  base_timeout_values_[kPluggedOffMsPref]       = plugged_off_ms_;
+  base_timeout_values_[kPluggedSuspendMsPref]   = plugged_suspend_ms_;
+  base_timeout_values_[kUnpluggedDimMsPref]     = unplugged_dim_ms_;
+  base_timeout_values_[kUnpluggedOffMsPref]     = unplugged_off_ms_;
+  base_timeout_values_[kUnpluggedSuspendMsPref] = unplugged_suspend_ms_;
 
   // Initialize from prefs as might be used before AC plug status evaluated.
   dim_ms_ = unplugged_dim_ms_;
@@ -242,15 +242,15 @@ void Daemon::ReadSettings() {
 
 void Daemon::ReadLockScreenSettings() {
   int64 lock_on_idle_suspend = 0;
-  if (prefs_->GetInt64(kLockOnIdleSuspend, &lock_on_idle_suspend) &&
+  if (prefs_->GetInt64(kLockOnIdleSuspendPref, &lock_on_idle_suspend) &&
       lock_on_idle_suspend) {
     LOG(INFO) << "Enabling screen lock on idle and suspend";
-    CHECK(prefs_->GetInt64(kLockMs, &default_lock_ms_));
+    CHECK(prefs_->GetInt64(kLockMsPref, &default_lock_ms_));
   } else {
     LOG(INFO) << "Disabling screen lock on idle and suspend";
     default_lock_ms_ = INT64_MAX;
   }
-  base_timeout_values_[kLockMs] = default_lock_ms_;
+  base_timeout_values_[kLockMsPref] = default_lock_ms_;
   lock_on_idle_suspend_ = lock_on_idle_suspend;
 }
 
@@ -1540,13 +1540,13 @@ void Daemon::RetrieveSessionState() {
 }
 
 void Daemon::AdjustIdleTimeoutsForProjection() {
-  plugged_dim_ms_       = base_timeout_values_[kPluggedDimMs];
-  plugged_off_ms_       = base_timeout_values_[kPluggedOffMs];
-  plugged_suspend_ms_   = base_timeout_values_[kPluggedSuspendMs];
-  unplugged_dim_ms_     = base_timeout_values_[kUnpluggedDimMs];
-  unplugged_off_ms_     = base_timeout_values_[kUnpluggedOffMs];
-  unplugged_suspend_ms_ = base_timeout_values_[kUnpluggedSuspendMs];
-  default_lock_ms_      = base_timeout_values_[kLockMs];
+  plugged_dim_ms_       = base_timeout_values_[kPluggedDimMsPref];
+  plugged_off_ms_       = base_timeout_values_[kPluggedOffMsPref];
+  plugged_suspend_ms_   = base_timeout_values_[kPluggedSuspendMsPref];
+  unplugged_dim_ms_     = base_timeout_values_[kUnpluggedDimMsPref];
+  unplugged_off_ms_     = base_timeout_values_[kUnpluggedOffMsPref];
+  unplugged_suspend_ms_ = base_timeout_values_[kUnpluggedSuspendMsPref];
+  default_lock_ms_      = base_timeout_values_[kLockMsPref];
 
   if (monitor_reconfigure_->is_projecting()) {
     LOG(INFO) << "External display projection: multiplying idle times by "

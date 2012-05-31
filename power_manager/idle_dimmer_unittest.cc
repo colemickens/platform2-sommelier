@@ -50,8 +50,8 @@ class IdleDimmerTest : public Test {
         .WillRepeatedly(DoAll(SaveArg<0>(&current_brightness_),
                               Return(true)));
 
-    prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightnessP);
-    prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightnessP);
+    prefs_.SetInt64(kPluggedBrightnessOffsetPref, kPluggedBrightnessP);
+    prefs_.SetInt64(kUnpluggedBrightnessOffsetPref, kUnpluggedBrightnessP);
 
     CHECK(backlight_ctl_.Init());
   }

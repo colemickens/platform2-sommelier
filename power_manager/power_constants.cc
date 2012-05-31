@@ -6,34 +6,34 @@
 
 namespace power_manager {
 
-const char kPluggedBrightnessOffset[] = "plugged_brightness_offset";
-const char kUnpluggedBrightnessOffset[] = "unplugged_brightness_offset";
-const char kLowBatterySuspendPercent[] = "low_battery_suspend_percent";
-const char kCleanShutdownTimeoutMs[] = "clean_shutdown_timeout_ms";
-const char kPluggedDimMs[] = "plugged_dim_ms";
-const char kPluggedOffMs[] = "plugged_off_ms";
-const char kUnpluggedDimMs[] = "unplugged_dim_ms";
-const char kUnpluggedOffMs[] = "unplugged_off_ms";
-const char kUnpluggedSuspendMs[] = "unplugged_suspend_ms";
-const char kEnforceLock[] = "enforce_lock";
-const char kDisableIdleSuspend[] = "disable_idle_suspend";
-const char kUseLid[] = "use_lid";
-const char kLockOnIdleSuspend[] = "lock_on_idle_suspend";
-const char kLockMs[] = "lock_ms";
-const char kRetrySuspendMs[] = "retry_suspend_ms";
-const char kRetrySuspendAttempts[] = "retry_suspend_attempts";
-const char kPluggedSuspendMs[] = "plugged_suspend_ms";
-const char kUseXScreenSaver[] = "use_xscreensaver";
-const char kMinVisibleBacklightLevel[] = "min_visible_backlight_level";
-const char kDisableALS[] = "disable_als";
-const char kWakeupInput[] = "wakeup_input_device_names";
-
+const char kPluggedBrightnessOffsetPref[] = "plugged_brightness_offset";
+const char kUnpluggedBrightnessOffsetPref[] = "unplugged_brightness_offset";
+const char kLowBatterySuspendPercentPref[] = "low_battery_suspend_percent";
+const char kCleanShutdownTimeoutMsPref[] = "clean_shutdown_timeout_ms";
+const char kPluggedDimMsPref[] = "plugged_dim_ms";
+const char kPluggedOffMsPref[] = "plugged_off_ms";
+const char kUnpluggedDimMsPref[] = "unplugged_dim_ms";
+const char kUnpluggedOffMsPref[] = "unplugged_off_ms";
+const char kUnpluggedSuspendMsPref[] = "unplugged_suspend_ms";
+const char kEnforceLockPref[] = "enforce_lock";
+const char kDisableIdleSuspendPref[] = "disable_idle_suspend";
+const char kUseLidPref[] = "use_lid";
+const char kLockOnIdleSuspendPref[] = "lock_on_idle_suspend";
+const char kLockMsPref[] = "lock_ms";
+const char kRetrySuspendMsPref[] = "retry_suspend_ms";
+const char kRetrySuspendAttemptsPref[] = "retry_suspend_attempts";
+const char kPluggedSuspendMsPref[] = "plugged_suspend_ms";
+const char kUseXScreenSaverPref[] = "use_xscreensaver";
+const char kMinVisibleBacklightLevelPref[] = "min_visible_backlight_level";
+const char kDisableALSPref[] = "disable_als";
+const char kWakeupInputPref[] = "wakeup_input_device_names";
 // The minimum delta between timers when we want to give a user time to react.
-const char kReactMs[] = "react_ms";
+const char kReactMsPref[] = "react_ms";
 // The minimum delta between timers to avoid timer precision issues.
-const char kFuzzMs[] = "fuzz_ms";
+const char kFuzzMsPref[] = "fuzz_ms";
 // The maximum duration in seconds the state machine can be disabled for
-const char kStateMaxDisabledDurationSec[] = "state_max_disabled_duration_sec";
+const char kStateMaxDisabledDurationSecPref[] =
+    "state_max_disabled_duration_sec";
 
 const char kBacklightPath[] = "/sys/class/backlight";
 const char kBacklightPattern[] = "*";

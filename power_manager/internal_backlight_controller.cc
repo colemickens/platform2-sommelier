@@ -35,8 +35,8 @@ const double kIdleBrightnessFraction = 0.1;
 // 1.0], that we'll remain at before turning the backlight off entirely.  This
 // is arbitrarily chosen but seems to be a reasonable marginally-visible
 // brightness for a darkened room on current devices: http://crosbug.com/24569.
-// A higher level can be set via the kMinVisibleBacklightLevel setting.  This is
-// a fraction rather than a percent so it won't change if
+// A higher level can be set via the kMinVisibleBacklightLevelPref setting.
+// This is a fraction rather than a percent so it won't change if
 // kDefaultLevelToPercentExponent is modified.
 const double kDefaultMinVisibleBrightnessFraction = 0.0065;
 
@@ -487,7 +487,7 @@ double InternalBacklightController::ClampPercentToVisibleRange(double percent) {
 }
 
 void InternalBacklightController::ReadPrefs() {
-  if (!prefs_->GetInt64(kMinVisibleBacklightLevel, &min_visible_level_))
+  if (!prefs_->GetInt64(kMinVisibleBacklightLevelPref, &min_visible_level_))
     min_visible_level_ = 1;
   min_visible_level_ = std::max(
       static_cast<int64>(
@@ -496,8 +496,9 @@ void InternalBacklightController::ReadPrefs() {
   CHECK_GT(min_visible_level_, 0);
   min_visible_level_ = std::min(min_visible_level_, max_level_);
 
-  CHECK(prefs_->GetDouble(kPluggedBrightnessOffset, &plugged_offset_percent_));
-  CHECK(prefs_->GetDouble(kUnpluggedBrightnessOffset,
+  CHECK(prefs_->GetDouble(kPluggedBrightnessOffsetPref,
+                          &plugged_offset_percent_));
+  CHECK(prefs_->GetDouble(kUnpluggedBrightnessOffsetPref,
                           &unplugged_offset_percent_));
   CHECK_GE(plugged_offset_percent_, -kMaxPercent);
   CHECK_LE(plugged_offset_percent_, kMaxPercent);
@@ -512,10 +513,12 @@ void InternalBacklightController::ReadPrefs() {
 void InternalBacklightController::WritePrefs() {
   if (!is_initialized_)
     return;
-  if (plugged_state_ == kPowerConnected)
-    prefs_->SetDouble(kPluggedBrightnessOffset, plugged_offset_percent_);
-  else if (plugged_state_ == kPowerDisconnected)
-    prefs_->SetDouble(kUnpluggedBrightnessOffset, unplugged_offset_percent_);
+  if (plugged_state_ == kPowerConnected) {
+    prefs_->SetDouble(kPluggedBrightnessOffsetPref, plugged_offset_percent_);
+  } else if (plugged_state_ == kPowerDisconnected) {
+    prefs_->SetDouble(kUnpluggedBrightnessOffsetPref,
+                      unplugged_offset_percent_);
+  }
 }
 
 bool InternalBacklightController::WriteBrightness(bool adjust_brightness_offset,

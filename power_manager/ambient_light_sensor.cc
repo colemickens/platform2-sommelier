@@ -93,8 +93,7 @@ bool AmbientLightSensor::Init() {
   // TODO: In addition to disable_als, we should add another prefs file
   // that allows polling ALS as usual but prevents backlight changes from
   // happening. This will be useful for power and system profiling.
-  if (prefs_->GetInt64(kDisableALS, &disable_als) &&
-      disable_als) {
+  if (prefs_->GetInt64(kDisableALSPref, &disable_als) && disable_als) {
     LOG(INFO) << "Not using ambient light sensor";
     return false;
   }

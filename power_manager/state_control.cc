@@ -276,7 +276,7 @@ bool StateControl::IsStateDisabled(StateControlStates state) {
 void StateControl::ReadSettings(PowerPrefs* prefs) {
   int64 value;
 
-  if (prefs->GetInt64(kStateMaxDisabledDurationSec, &value)) {
+  if (prefs->GetInt64(kStateMaxDisabledDurationSecPref, &value)) {
     LOG(INFO) << "Read in " << value;
     max_duration_ = static_cast<unsigned int>(value);
   }

@@ -85,8 +85,9 @@ class DaemonTest : public Test {
                               Return(true)));
     EXPECT_CALL(backlight_, SetBrightnessLevel(_))
         .WillRepeatedly(Return(true));
-    prefs_.SetDouble(kPluggedBrightnessOffset, kPluggedBrightnessPercent);
-    prefs_.SetDouble(kUnpluggedBrightnessOffset, kUnpluggedBrightnessPercent);
+    prefs_.SetDouble(kPluggedBrightnessOffsetPref, kPluggedBrightnessPercent);
+    prefs_.SetDouble(kUnpluggedBrightnessOffsetPref,
+                     kUnpluggedBrightnessPercent);
 #ifdef IS_DESKTOP
     backlight_ctl_.set_disable_dbus_for_testing(true);
 #endif
@@ -719,21 +720,21 @@ TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
 
   // Set prefs that are read by ReadSettings().  Use 0 for ones that we don't
   // care about.
-  prefs_.SetInt64(kLowBatterySuspendPercent, 0);
-  prefs_.SetInt64(kCleanShutdownTimeoutMs, 0);
-  prefs_.SetInt64(kPluggedDimMs, kPluggedDimTimeMs);
-  prefs_.SetInt64(kPluggedOffMs, kPluggedOffTimeMs);
-  prefs_.SetInt64(kPluggedSuspendMs, kPluggedSuspendTimeMs);
-  prefs_.SetInt64(kUnpluggedDimMs, kUnpluggedDimTimeMs);
-  prefs_.SetInt64(kUnpluggedOffMs, kUnpluggedOffTimeMs);
-  prefs_.SetInt64(kUnpluggedSuspendMs, kUnpluggedSuspendTimeMs);
-  prefs_.SetInt64(kReactMs, 0);
-  prefs_.SetInt64(kFuzzMs, 0);
-  prefs_.SetInt64(kEnforceLock, 0);
-  prefs_.SetInt64(kUseXScreenSaver, 0);
-  prefs_.SetInt64(kDisableIdleSuspend, 0);
-  prefs_.SetInt64(kLockOnIdleSuspend, 1);
-  prefs_.SetInt64(kLockMs, kLockTimeMs);
+  prefs_.SetInt64(kLowBatterySuspendPercentPref, 0);
+  prefs_.SetInt64(kCleanShutdownTimeoutMsPref, 0);
+  prefs_.SetInt64(kPluggedDimMsPref, kPluggedDimTimeMs);
+  prefs_.SetInt64(kPluggedOffMsPref, kPluggedOffTimeMs);
+  prefs_.SetInt64(kPluggedSuspendMsPref, kPluggedSuspendTimeMs);
+  prefs_.SetInt64(kUnpluggedDimMsPref, kUnpluggedDimTimeMs);
+  prefs_.SetInt64(kUnpluggedOffMsPref, kUnpluggedOffTimeMs);
+  prefs_.SetInt64(kUnpluggedSuspendMsPref, kUnpluggedSuspendTimeMs);
+  prefs_.SetInt64(kReactMsPref, 0);
+  prefs_.SetInt64(kFuzzMsPref, 0);
+  prefs_.SetInt64(kEnforceLockPref, 0);
+  prefs_.SetInt64(kUseXScreenSaverPref, 0);
+  prefs_.SetInt64(kDisableIdleSuspendPref, 0);
+  prefs_.SetInt64(kLockOnIdleSuspendPref, 1);
+  prefs_.SetInt64(kLockMsPref, kLockTimeMs);
 
   // Check that the settings are loaded correctly.
   EXPECT_CALL(monitor_reconfigure_, is_projecting())
