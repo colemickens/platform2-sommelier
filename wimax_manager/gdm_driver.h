@@ -35,6 +35,7 @@ class GdmDriver : public Driver,
   bool OpenDevice(GdmDevice *device);
   bool CloseDevice(GdmDevice *device);
   bool GetDeviceStatus(GdmDevice *device);
+  bool GetDeviceRFInfo(GdmDevice *device);
   bool SetDeviceEAPParameters(GdmDevice *device,
                               GCT_API_EAP_PARAM *eap_parameters);
   bool AutoSelectProfileForDevice(GdmDevice *device);

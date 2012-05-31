@@ -4,11 +4,15 @@
 
 #include "wimax_manager/gdm_device.h"
 
+#include <set>
+#include <vector>
+
 #include <base/logging.h>
 #include <base/memory/scoped_vector.h>
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "wimax_manager/device_dbus_adaptor.h"
 #include "wimax_manager/gdm_driver.h"
 #include "wimax_manager/network.h"
 #include "wimax_manager/network_dbus_adaptor.h"
@@ -230,6 +234,10 @@ bool GdmDevice::UpdateStatus() {
     LOG(ERROR) << "Failed to get status of device '" << name() << "'";
     return false;
   }
+  if (!driver_->GetDeviceRFInfo(this)) {
+    LOG(ERROR) << "Failed to get RF information of device '" << name() << "'";
+    return false;
+  }
   return true;
 }
 
@@ -325,10 +333,6 @@ bool GdmDevice::ConstructEAPParameters(
   }
 
   return true;
-}
-
-void GdmDevice::set_mac_address(const uint8 mac_address[6]) {
-  memcpy(mac_address_, mac_address, sizeof(mac_address_));
 }
 
 }  // namespace wimax_manager

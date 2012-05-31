@@ -6,6 +6,7 @@
 #define WIMAX_MANAGER_DEVICE_H_
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
@@ -13,6 +14,7 @@
 #include <base/values.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "wimax_manager/byte_identifier.h"
 #include "wimax_manager/dbus_adaptable.h"
 #include "wimax_manager/network.h"
 
@@ -34,6 +36,11 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
 
   uint8 index() const { return index_; }
   const std::string &name() const { return name_; }
+  const ByteIdentifier &mac_address() const { return mac_address_; }
+  const ByteIdentifier &base_station_id() const { return base_station_id_; }
+  const int frequency() const { return frequency_; }
+  const std::vector<int> &cinr() const { return cinr_; }
+  const std::vector<int> &rssi() const { return rssi_; }
   const NetworkMap &networks() const { return networks_; }
   const DeviceStatus status() const { return status_; }
 
@@ -42,13 +49,24 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
 
  protected:
   void UpdateNetworks();
+  void UpdateRFInfo();
 
+  void SetMACAddress(const ByteIdentifier &mac_address);
+  void SetBaseStationId(const ByteIdentifier &base_station_id);
+  void set_frequency(int frequency) { frequency_ = frequency; }
+  void set_cinr(const std::vector<int> &cinr) { cinr_ = cinr; }
+  void set_rssi(const std::vector<int> &rssi) { rssi_ = rssi; }
   NetworkMap *mutable_networks() { return &networks_; }
   void SetStatus(DeviceStatus status);
 
  private:
   uint8 index_;
   std::string name_;
+  ByteIdentifier mac_address_;
+  ByteIdentifier base_station_id_;
+  int frequency_;
+  std::vector<int> cinr_;
+  std::vector<int> rssi_;
   NetworkMap networks_;
   int scan_interval_;
   DeviceStatus status_;

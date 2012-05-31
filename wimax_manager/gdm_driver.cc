@@ -238,17 +238,11 @@ bool GdmDriver::OpenDevice(GdmDevice *device) {
   if (ret != GCT_API_RET_SUCCESS)
     return CloseDevice(device);
 
-  device->set_mac_address(device_info.macAddress);
+  device->SetMACAddress(ByteIdentifier(device_info.macAddress,
+                                       arraysize(device_info.macAddress)));
 
   LOG(INFO) << "Opened device '" << device->name()
-            << "': MAC address = "
-            << base::StringPrintf("%2x:%02x:%02x:%02x:%02x:%02x",
-                                  device_info.macAddress[0],
-                                  device_info.macAddress[1],
-                                  device_info.macAddress[2],
-                                  device_info.macAddress[3],
-                                  device_info.macAddress[4],
-                                  device_info.macAddress[5]);
+            << "': MAC address = " << device->mac_address().GetHexString();
   return true;
 }
 
@@ -274,6 +268,31 @@ bool GdmDriver::GetDeviceStatus(GdmDevice *device) {
             << "': status = '" << GetDeviceStatusDescription(device_status)
             << "', connection progress = '"
             << GetConnectionProgressDescription(connection_progress) << "'";
+  return true;
+}
+
+bool GdmDriver::GetDeviceRFInfo(GdmDevice *device) {
+  GDEV_ID device_id = GetDeviceId(device);
+  GCT_API_RF_INFORM rf_info;
+  GCT_API_RET ret = GAPI_GetRFInform(&device_id, &rf_info);
+  if (ret != GCT_API_RET_SUCCESS)
+    return false;
+
+  device->SetBaseStationId(ByteIdentifier(rf_info.bsId,
+                                          arraysize(rf_info.bsId)));
+  device->set_frequency(rf_info.Frequency);
+
+  vector<int> cinr;
+  cinr.push_back(rf_info.CINR);
+  cinr.push_back(rf_info.CINR2);
+  device->set_cinr(cinr);
+
+  vector<int> rssi;
+  rssi.push_back(rf_info.RSSI);
+  rssi.push_back(rf_info.RSSI2);
+  device->set_rssi(rssi);
+
+  device->UpdateRFInfo();
   return true;
 }
 

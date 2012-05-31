@@ -21,6 +21,11 @@
     </signal>
     <property name="Index" type="y" access="read" />
     <property name="Name" type="s" access="read" />
+    <property name="MACAddress" type="s" access="read" />
+    <property name="BaseStationId" type="s" access="read" />
+    <property name="Frequency" type="i" access="read" />
+    <property name="CINRs" type="ai" access="read" />
+    <property name="RSSIs" type="ai" access="read" />
     <property name="Networks" type="ao" access="read" />
     <property name="Status" type="i" access="read" />
   </interface>

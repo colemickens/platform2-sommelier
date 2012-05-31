@@ -70,6 +70,11 @@ DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection *connection,
       device_(device) {
   Index = device->index();
   Name = device->name();
+  MACAddress = device->mac_address().GetHexString();
+  BaseStationId = device->base_station_id().GetHexString();
+  Frequency = device->frequency();
+  CINRs = device->cinr();
+  RSSIs = device->rssi();
   Networks = vector<DBus::Path>();
   Status = device->status();
 }
@@ -129,6 +134,10 @@ void DeviceDBusAdaptor::Disconnect(DBus::Error &error) {  // NOLINT
   }
 }
 
+void DeviceDBusAdaptor::UpdateMACAddress() {
+  MACAddress = device_->mac_address().GetHexString();
+}
+
 void DeviceDBusAdaptor::UpdateNetworks() {
   vector<DBus::Path> network_paths;
   const NetworkMap &networks = device_->networks();
@@ -138,6 +147,13 @@ void DeviceDBusAdaptor::UpdateNetworks() {
   }
   Networks = network_paths;
   NetworksChanged(network_paths);
+}
+
+void DeviceDBusAdaptor::UpdateRFInfo() {
+  BaseStationId = device_->base_station_id().GetHexString();
+  Frequency = device_->frequency();
+  CINRs = device_->cinr();
+  RSSIs = device_->rssi();
 }
 
 void DeviceDBusAdaptor::UpdateStatus() {

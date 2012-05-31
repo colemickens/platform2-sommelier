@@ -32,7 +32,9 @@ class DeviceDBusAdaptor : public org::chromium::WiMaxManager::Device_adaptor,
                        DBus::Error &error);  // NOLINT
   virtual void Disconnect(DBus::Error &error);  // NOLINT
 
+  void UpdateMACAddress();
   void UpdateNetworks();
+  void UpdateRFInfo();
   void UpdateStatus();
 
  private:
