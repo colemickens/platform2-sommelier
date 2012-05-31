@@ -1295,6 +1295,9 @@ void WiFi::HandlePowerStateChange(PowerManager::SuspendState new_state) {
     if (!scan_pending_ && IsIdle()) {
       // Not scanning/connecting/connected, so let's get things rolling.
       Scan(NULL);
+    } else {
+      SLOG(WiFi, 1) << __func__
+                    << " skipping scan, already scanning or connected.";
     }
   }
 }

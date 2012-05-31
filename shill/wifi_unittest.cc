@@ -50,6 +50,7 @@
 #include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
+#include "shill/scope_logger.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
 #include "shill/wpa_supplicant.h"
@@ -203,6 +204,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
 
   virtual void SetUp() {
+    // EnableScopes... so that we can EXPECT_CALL for scoped log messages.
+    ScopeLogger::GetInstance()->EnableScopesByName("wifi");
     wifi_->proxy_factory_ = &proxy_factory_;
     static_cast<Device *>(wifi_)->rtnl_handler_ = &rtnl_handler_;
     wifi_->set_dhcp_provider(&dhcp_provider_);
@@ -226,6 +229,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     // services reference a WiFi instance, creating a cycle.)
     wifi_->Stop(NULL, ResultCallback());
     wifi_->set_dhcp_provider(NULL);
+    // Reset scope logging, to avoid interfering with other tests.
+    ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   }
 
  protected:
@@ -655,6 +660,7 @@ TEST_F(WiFiMainTest, PowerChangeDoesNotStartScanWhenNotIdle) {
   WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
   WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
   Error error;
+  ScopedMockLog log;
   service->AddEndpoint(ap);
   service->AutoConnect();
   EXPECT_FALSE(wifi()->IsIdle());
@@ -662,6 +668,8 @@ TEST_F(WiFiMainTest, PowerChangeDoesNotStartScanWhenNotIdle) {
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
   ASSERT_FALSE(power_state_callback().is_null());
   ASSERT_FALSE(wifi()->IsIdle());
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, EndsWith("already scanning or connected.")));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
   power_state_callback().Run(PowerManagerProxyDelegate::kOn);
   dispatcher_.DispatchPendingEvents();
