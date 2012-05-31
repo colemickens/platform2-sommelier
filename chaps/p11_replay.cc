@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,7 @@
 #include <base/string_number_conversions.h>
 #include <base/time.h>
 #include <chromeos/syslog_logging.h>
+#include <openssl/rsa.h>
 
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
@@ -46,6 +47,7 @@ CK_SLOT_ID Initialize() {
     LOG(INFO) << "No slots.";
     exit(-1);
   }
+  LOG(INFO) << "Choosing slot " << slot_list[0];
   return slot_list[0];
 }
 
@@ -121,11 +123,12 @@ void Find(CK_SESSION_HANDLE session,
 }
 
 // Sign some data with a private key.
-void Sign(CK_SESSION_HANDLE session) {
+void Sign(CK_SESSION_HANDLE session, const string& label) {
   CK_OBJECT_CLASS class_value = CKO_PRIVATE_KEY;
   CK_ATTRIBUTE attributes[] = {
     {CKA_CLASS, &class_value, sizeof(class_value)},
-    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)}
+    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
+    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
   };
   vector<CK_OBJECT_HANDLE> objects;
   Find(session, attributes, arraysize(attributes), &objects);
@@ -157,6 +160,7 @@ void Sign(CK_SESSION_HANDLE session) {
 // Generates a test key pair.
 void GenerateKeyPair(CK_SESSION_HANDLE session,
                      int key_size_bits,
+                     const string& label,
                      bool is_temp) {
   CK_MECHANISM mechanism;
   mechanism.mechanism = CKM_RSA_PKCS_KEY_PAIR_GEN;
@@ -175,6 +179,7 @@ void GenerateKeyPair(CK_SESSION_HANDLE session,
     {CKA_MODULUS_BITS, &bits, sizeof(bits)},
     {CKA_PUBLIC_EXPONENT, e, sizeof(e)},
     {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
+    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
   };
   CK_ATTRIBUTE private_attributes[] = {
     {CKA_DECRYPT, &true_value, sizeof(true_value)},
@@ -184,6 +189,7 @@ void GenerateKeyPair(CK_SESSION_HANDLE session,
     {CKA_TOKEN, &true_value, sizeof(true_value)},
     {CKA_PRIVATE, &true_value, sizeof(true_value)},
     {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
+    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
   };
   CK_OBJECT_HANDLE public_key_handle = 0;
   CK_OBJECT_HANDLE private_key_handle = 0;
@@ -204,6 +210,89 @@ void GenerateKeyPair(CK_SESSION_HANDLE session,
     result = C_DestroyObject(session, private_key_handle);
     LOG(INFO) << "C_DestroyObject: " << chaps::CK_RVToString(result);
   }
+}
+
+string bn2bin(BIGNUM* bn) {
+  string bin;
+  bin.resize(BN_num_bytes(bn));
+  bin.resize(BN_bn2bin(bn, ConvertStringToByteBuffer(bin.data())));
+  return bin;
+}
+
+// Generates a test key pair locally and injects it.
+void InjectKeyPair(CK_SESSION_HANDLE session,
+                   int key_size_bits,
+                   const string& label) {
+  RSA* rsa = RSA_generate_key(key_size_bits, 0x10001, NULL, NULL);
+  if (!rsa) {
+    LOG(ERROR) << "Failed to locally generate key pair.";
+    exit(-1);
+  }
+  string n = bn2bin(rsa->n);
+  string d = bn2bin(rsa->d);
+  string p = bn2bin(rsa->p);
+  string q = bn2bin(rsa->q);
+  string dmp1 = bn2bin(rsa->dmp1);
+  string dmq1 = bn2bin(rsa->dmq1);
+  string iqmp = bn2bin(rsa->iqmp);
+  RSA_free(rsa);
+  CK_ULONG bits = key_size_bits;
+  CK_BYTE e[] = {1, 0, 1};
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  CK_OBJECT_CLASS pub_class = CKO_PUBLIC_KEY;
+  CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
+  CK_KEY_TYPE key_type = CKK_RSA;
+  CK_ATTRIBUTE public_attributes[] = {
+    {CKA_CLASS, &pub_class, sizeof(pub_class)},
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+    {CKA_ENCRYPT, &true_value, sizeof(true_value)},
+    {CKA_VERIFY, &true_value, sizeof(true_value)},
+    {CKA_WRAP, &false_value, sizeof(false_value)},
+    {CKA_TOKEN, &true_value, sizeof(true_value)},
+    {CKA_PRIVATE, &false_value, sizeof(false_value)},
+    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
+    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+    {CKA_MODULUS_BITS, &bits, sizeof(bits)},
+    {CKA_PUBLIC_EXPONENT, e, sizeof(e)},
+    {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length()},
+  };
+  CK_ATTRIBUTE private_attributes[] = {
+    {CKA_CLASS, &priv_class, sizeof(priv_class)},
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+    {CKA_DECRYPT, &true_value, sizeof(true_value)},
+    {CKA_SIGN, &true_value, sizeof(true_value)},
+    {CKA_UNWRAP, &false_value, sizeof(false_value)},
+    {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+    {CKA_TOKEN, &true_value, sizeof(true_value)},
+    {CKA_PRIVATE, &true_value, sizeof(true_value)},
+    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
+    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+    {CKA_PUBLIC_EXPONENT, e, sizeof(e)},
+    {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length()},
+    {CKA_PRIVATE_EXPONENT, const_cast<char*>(d.c_str()), d.length()},
+    {CKA_PRIME_1, const_cast<char*>(p.c_str()), p.length()},
+    {CKA_PRIME_2, const_cast<char*>(q.c_str()), q.length()},
+    {CKA_EXPONENT_1, const_cast<char*>(dmp1.c_str()), dmp1.length()},
+    {CKA_EXPONENT_2, const_cast<char*>(dmq1.c_str()), dmq1.length()},
+    {CKA_COEFFICIENT, const_cast<char*>(iqmp.c_str()), iqmp.length()},
+  };
+  CK_OBJECT_HANDLE public_key_handle = 0;
+  CK_RV result = C_CreateObject(session,
+                                public_attributes,
+                                arraysize(public_attributes),
+                                &public_key_handle);
+  LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
+  if (result != CKR_OK)
+    exit(-1);
+  CK_OBJECT_HANDLE private_key_handle = 0;
+  result = C_CreateObject(session,
+                          private_attributes,
+                          arraysize(private_attributes),
+                          &private_key_handle);
+  LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
+  if (result != CKR_OK)
+    exit(-1);
 }
 
 // Deletes all test keys previously created.
@@ -241,12 +330,18 @@ void TearDown(CK_SESSION_HANDLE session, bool logout) {
 void PrintHelp() {
   printf("Usage: p11_replay [COMMAND]\n");
   printf("Commands:\n");
-  printf("  --generate : Generates a key pair suitable for replay tests.\n");
+  printf("  --generate [--label=<key_label> --key_size=<size_in_bits>]"
+         " : Generates a key pair suitable for replay tests.\n");
+  printf("  --inject [--label=<key_label> --key_size=<size_in_bits>]"
+         " : Locally generates a key pair suitable for replay tests and injects"
+         " it into the token.\n");
   printf("  --generate_delete : Generates a key pair and deletes it. This is "
          "useful for comparing key generation on different TPM models\n");
-  printf("  --replay_vpn : Replays a L2TP/IPSEC VPN negotiation.\n");
-  printf("  --replay_wifi : Replays a EAP-TLS Wifi negotiation. This is the "
-         "default command if no command is specified.\n");
+  printf("  --replay_vpn [--label=<key_label>]"
+         " : Replays a L2TP/IPSEC VPN negotiation.\n");
+  printf("  --replay_wifi [--label=<key_label>]"
+         " : Replays a EAP-TLS Wifi negotiation. This is the default command if"
+         " no command is specified.\n");
   printf("  --logout : Logs out once all other commands have finished.\n");
   printf("  --cleanup : Deletes all test keys.\n");
 }
@@ -269,40 +364,47 @@ int main(int argc, char** argv) {
     return 0;
   }
   bool generate = cl->HasSwitch("generate");
+  bool inject = cl->HasSwitch("inject");
   bool generate_delete = cl->HasSwitch("generate_delete");
   bool vpn = cl->HasSwitch("replay_vpn");
   bool wifi = cl->HasSwitch("replay_wifi") || (cl->GetSwitches().size() == 0);
   bool logout = cl->HasSwitch("logout");
   bool cleanup = cl->HasSwitch("cleanup");
-  if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup) {
+  if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup &&
+      !inject) {
     PrintHelp();
     return 0;
   }
 
-  chromeos::InitLog(chromeos::kLogToStderr);
+  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   base::TimeTicks start_ticks = base::TimeTicks::Now();
   CK_SLOT_ID slot = Initialize();
   CK_SESSION_HANDLE session = OpenSession(slot);
   PrintTicks(&start_ticks);
+  string label = "_default";
+  if (cl->HasSwitch("label"))
+    label = cl->GetSwitchValueASCII("label");
+  int key_size_bits = 2048;
+  if (cl->HasSwitch("key_size") &&
+      !base::StringToInt(cl->GetSwitchValueASCII("key_size"), &key_size_bits))
+    key_size_bits = 2048;
   if (generate || generate_delete) {
-    int key_size_bits = 2048;
-    if (cl->HasSwitch("key_size") &&
-        !base::StringToInt(cl->GetSwitchValueASCII("key_size"), &key_size_bits))
-      key_size_bits = 2048;
     session = Login(slot, false, session);
     PrintTicks(&start_ticks);
-    GenerateKeyPair(session, key_size_bits, generate_delete);
+    GenerateKeyPair(session, key_size_bits, label, generate_delete);
     PrintTicks(&start_ticks);
+  } else if (inject) {
+    InjectKeyPair(session, key_size_bits, label);
   }
   if (vpn || wifi) {
     printf("Replay 1 of 2\n");
     session = Login(slot, vpn, session);
-    Sign(session);
+    Sign(session, label);
     PrintTicks(&start_ticks);
     printf("Replay 2 of 2\n");
     CK_SESSION_HANDLE session2 = OpenSession(slot);
     session2 = Login(slot, vpn, session2);
-    Sign(session2);
+    Sign(session2, label);
     PrintTicks(&start_ticks);
     C_CloseSession(session2);
   }

@@ -388,7 +388,7 @@ bool SlotManagerImpl::GetSession(int session_id, Session** session) const {
 }
 
 void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
-  VLOG(2) << "SlotManagerImpl::OnLogin enter";
+  VLOG(1) << "SlotManagerImpl::OnLogin enter";
   // If we're already managing this token, ignore the event.
   if (path_slot_map_.find(path) != path_slot_map_.end()) {
     LOG(WARNING) << "Login event received for existing slot.";
@@ -431,12 +431,12 @@ void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
   slot_list_[slot_id].token_object_pool = object_pool;
   slot_list_[slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = slot_id;
-  LOG(INFO) << "Slot ready for token at " << path.value();
-  VLOG(2) << "SlotManagerImpl::OnLogin success";
+  LOG(INFO) << "Slot " << slot_id << " ready for token at " << path.value();
+  VLOG(1) << "SlotManagerImpl::OnLogin success";
 }
 
 void SlotManagerImpl::OnLogout(const FilePath& path) {
-  VLOG(2) << "SlotManagerImpl::OnLogout enter";
+  VLOG(1) << "SlotManagerImpl::OnLogout enter";
   // If we're not managing this token, ignore the event.
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
     LOG(WARNING) << "Logout event received for unknown path: " << path.value();
@@ -459,7 +459,9 @@ void SlotManagerImpl::OnLogout(const FilePath& path) {
   slot_list_[slot_id].token_object_pool.reset();
   slot_list_[slot_id].slot_info.flags &= ~CKF_TOKEN_PRESENT;
   path_slot_map_.erase(path);
-  VLOG(2) << "SlotManagerImpl::OnLogout success";
+  LOG(INFO) << "Token at " << path.value() << " has been removed from slot "
+            << slot_id;
+  VLOG(1) << "SlotManagerImpl::OnLogout success";
 }
 
 void SlotManagerImpl::OnChangeAuthData(const FilePath& path,

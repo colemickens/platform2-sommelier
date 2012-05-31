@@ -558,6 +558,7 @@ void TPMUtilityImpl::UnloadKeysForSlot(int slot) {
     Tspi_Context_CloseObject(tsp_context_, *it);
   }
   slot_handles_.erase(slot);
+  LOG(INFO) << "Unloaded keys for slot " << slot;
   VLOG(1) << "TPMUtilityImpl::UnloadKeysForSlot success";
 }
 
