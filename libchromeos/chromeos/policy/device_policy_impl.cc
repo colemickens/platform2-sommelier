@@ -362,6 +362,22 @@ bool DevicePolicyImpl::GetTargetVersionPrefix(
   return true;
 }
 
+// Writes the value of the scatter_factor_in_seconds policy in
+// |scatter_factor_in_seconds|. Returns true on success.
+bool DevicePolicyImpl::GetScatterFactorInSeconds(
+    int64* scatter_factor_in_seconds) const {
+  if (!device_policy_.has_auto_update_settings())
+    return false;
+
+  const enterprise_management::AutoUpdateSettingsProto& proto =
+      device_policy_.auto_update_settings();
+  if (!proto.has_scatter_factor_in_seconds())
+    return false;
+
+  *scatter_factor_in_seconds = proto.scatter_factor_in_seconds();
+  return true;
+}
+
 // Writes the value of the OpenNetworkConfiguration policy in
 // |open_network_configuration|. Returns true on success.
 bool DevicePolicyImpl::GetOpenNetworkConfiguration(

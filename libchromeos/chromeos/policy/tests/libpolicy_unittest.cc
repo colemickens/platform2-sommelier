@@ -125,6 +125,11 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetReleaseChannel(&string_value));
   ASSERT_EQ("stable-channel", string_value);
 
+  // TODO: Update policy file for these methods:
+  // GetUpdateDisabled,
+  // GetTargetVersionPrefix
+  // GetScatterFactorInSeconds
+
   ASSERT_TRUE(policy.GetOpenNetworkConfiguration(&string_value));
   ASSERT_EQ("{}", string_value);
 
@@ -152,6 +157,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
 
   // Check that we cannot read any fields out of the sample protobuf.
   int int_value;
+  int64 int64_value;
   std::vector<std::string> list_value;
   bool bool_value;
   std::string string_value;
@@ -173,6 +179,9 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   ASSERT_FALSE(policy.GetProxyPacUrl(&string_value));
   ASSERT_FALSE(policy.GetProxyBypassList(&string_value));
   ASSERT_FALSE(policy.GetReleaseChannel(&string_value));
+  ASSERT_FALSE(policy.GetUpdateDisabled(&bool_value));
+  ASSERT_FALSE(policy.GetTargetVersionPrefix(&string_value));
+  ASSERT_FALSE(policy.GetScatterFactorInSeconds(&int64_value));
   ASSERT_FALSE(policy.GetOpenNetworkConfiguration(&string_value));
 }
 

@@ -109,6 +109,11 @@ class DevicePolicy {
   virtual bool GetTargetVersionPrefix(
       std::string* target_version_prefix) const = 0;
 
+  // Writes the value of the scatter_factor_in_seconds policy in
+  // |scatter_factor_in_seconds|. Returns true on success.
+  virtual bool GetScatterFactorInSeconds(
+      int64* scatter_factor_in_seconds) const = 0;
+
   // Writes the value of the OpenNetworkConfiguration policy in
   // |open_network_configuration|. Returns true on success.
   virtual bool GetOpenNetworkConfiguration(

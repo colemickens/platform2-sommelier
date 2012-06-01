@@ -64,6 +64,7 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_CONST_METHOD1(GetReleaseChannel, bool(std::string*));
   MOCK_CONST_METHOD1(GetUpdateDisabled, bool(bool*));
   MOCK_CONST_METHOD1(GetTargetVersionPrefix, bool(std::string*));
+  MOCK_CONST_METHOD1(GetScatterFactorInSeconds, bool(int64*));
   MOCK_CONST_METHOD1(GetOpenNetworkConfiguration, bool(std::string*));
   MOCK_CONST_METHOD1(GetOwner, bool(std::string*));
 
