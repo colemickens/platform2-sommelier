@@ -846,6 +846,8 @@ void Daemon::RegisterDBusMessageHandler() {
                        &Daemon::HandleStateOverrideRequestMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kHandleVideoActivityMethod,
                        &Daemon::HandleVideoActivityMethod);
+  AddDBusMethodHandler(kPowerManagerInterface, kHandleUserActivityMethod,
+                       &Daemon::HandleUserActivityMethod);
 
   CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
                                    NULL));
@@ -1220,6 +1222,11 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
   }
   video_detector_->HandleActivity(
       base::TimeTicks::FromInternalValue(last_activity_time_internal));
+  return NULL;
+}
+
+DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* /* message */) {
+  // TODO(crosbug.com/31322): make use of user activity information.
   return NULL;
 }
 
