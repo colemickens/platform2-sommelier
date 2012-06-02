@@ -13,6 +13,28 @@ class NetworkTest : public testing::Test {
   NetworkRefPtr network_;
 };
 
+TEST_F(NetworkTest, DecodeCINR) {
+  int encoded_cinr = 0;
+  int max_encoded_cinr = Network::kMaxCINR - Network::kMinCINR;
+  int cinr = Network::kMinCINR;
+  while (encoded_cinr <= max_encoded_cinr) {
+    EXPECT_EQ(cinr++, Network::DecodeCINR(encoded_cinr++));
+  }
+  EXPECT_EQ(Network::kMinCINR, Network::DecodeCINR(-1));
+  EXPECT_EQ(Network::kMaxCINR, Network::DecodeCINR(max_encoded_cinr + 1));
+}
+
+TEST_F(NetworkTest, DecodeRSSI) {
+  int encoded_rssi = 0;
+  int max_encoded_rssi = Network::kMaxRSSI - Network::kMinRSSI;
+  int rssi = Network::kMinRSSI;
+  while (encoded_rssi <= max_encoded_rssi) {
+    EXPECT_EQ(rssi++, Network::DecodeRSSI(encoded_rssi++));
+  }
+  EXPECT_EQ(Network::kMinRSSI, Network::DecodeRSSI(-1));
+  EXPECT_EQ(Network::kMaxRSSI, Network::DecodeRSSI(max_encoded_rssi + 1));
+}
+
 TEST_F(NetworkTest, GetSignalStrength) {
   static const int kExpectedStrengths[] = {
     0, 1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24,

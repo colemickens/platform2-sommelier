@@ -29,13 +29,16 @@ class Network : public base::RefCounted<Network>,
  public:
   typedef uint32 Identifier;
 
-  static const int kMaxCINR = 53;
-  static const int kMinCINR = -10;
-  static const int kMaxRSSI = -40;
-  static const int kMinRSSI = -123;
+  static const int kMaxCINR;
+  static const int kMinCINR;
+  static const int kMaxRSSI;
+  static const int kMinRSSI;
 
   Network(Identifier identifier, const std::string &name, NetworkType type,
           int cinr, int rssi);
+
+  static int DecodeCINR(int encoded_cinr);
+  static int DecodeRSSI(int encoded_rssi);
 
   void UpdateFrom(const Network &network);
   int GetSignalStrength() const;

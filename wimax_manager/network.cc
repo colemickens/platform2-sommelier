@@ -10,6 +10,12 @@ using std::string;
 
 namespace wimax_manager {
 
+// static
+const int Network::kMaxCINR = 53;
+const int Network::kMinCINR = -10;
+const int Network::kMaxRSSI = -40;
+const int Network::kMinRSSI = -123;
+
 Network::Network(Identifier identifier, const string &name, NetworkType type,
                  int cinr, int rssi)
     : identifier_(identifier), name_(name), type_(type),
@@ -17,6 +23,26 @@ Network::Network(Identifier identifier, const string &name, NetworkType type,
 }
 
 Network::~Network() {
+}
+
+// static
+int Network::DecodeCINR(int encoded_cinr) {
+  int cinr = encoded_cinr + kMinCINR;
+  if (cinr < kMinCINR)
+    return kMinCINR;
+  if (cinr > kMaxCINR)
+    return kMaxCINR;
+  return cinr;
+}
+
+// static
+int Network::DecodeRSSI(int encoded_rssi) {
+  int rssi = encoded_rssi + kMinRSSI;
+  if (rssi < kMinRSSI)
+    return kMinRSSI;
+  if (rssi > kMaxRSSI)
+    return kMaxRSSI;
+  return rssi;
 }
 
 void Network::UpdateFrom(const Network &network) {

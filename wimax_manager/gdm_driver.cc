@@ -283,13 +283,13 @@ bool GdmDriver::GetDeviceRFInfo(GdmDevice *device) {
   device->set_frequency(rf_info.Frequency);
 
   vector<int> cinr;
-  cinr.push_back(rf_info.CINR);
-  cinr.push_back(rf_info.CINR2);
+  cinr.push_back(Network::DecodeCINR(rf_info.CINR));
+  cinr.push_back(Network::DecodeCINR(rf_info.CINR2));
   device->set_cinr(cinr);
 
   vector<int> rssi;
-  rssi.push_back(rf_info.RSSI);
-  rssi.push_back(rf_info.RSSI2);
+  rssi.push_back(Network::DecodeRSSI(rf_info.RSSI));
+  rssi.push_back(Network::DecodeRSSI(rf_info.RSSI2));
   device->set_rssi(rssi);
 
   device->UpdateRFInfo();
@@ -379,8 +379,8 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
     }
 
     NetworkType network_type = ConvertNetworkType(network_list[i].networkType);
-    int network_cinr = network_list[i].CINR + Network::kMinCINR;
-    int network_rssi = network_list[i].RSSI + Network::kMinRSSI;
+    int network_cinr = Network::DecodeCINR(network_list[i].CINR);
+    int network_rssi = Network::DecodeRSSI(network_list[i].RSSI);
     LOG(INFO) << base::StringPrintf(
         "Found network '%s': type = '%s', id = %08x, CINR = %d, RSSI = %d",
         network_name.c_str(), GetNetworkTypeDescription(network_type).c_str(),
