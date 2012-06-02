@@ -881,3 +881,22 @@ Properties	boolean AutoConnect [readwrite]
 		string WiFi.SSID [readonly]
 			(WiFi only) The service's SSID. Must have a non-zero
 			length less than or equal to 32.
+
+		dict WiFi.VendorInformation [readonly]
+			(WiFi only) Information about the vendor of the
+			AP, gleaned from WPS and vendor-specific information
+			elements in the beacon and probe respondss.
+
+			string Manufacturer [readonly]
+				Device manufacturer name as supplied by WPS IE.
+			string ModelName [readonly]
+				Device model name as supplied by WPS IE.
+			string ModelNumber [readonly]
+				Device model number as supplied by WPS IE.
+			string DeviceName [readonly]
+				Device name as supplied by WPS IE.
+			string OUIList [readonly]
+				Space separated list of OUI identifiers for
+				vendor-specific IEs that were neither the
+				Microsoft nor Epigram identifiers (the former
+				two are used for platform-neutral information).

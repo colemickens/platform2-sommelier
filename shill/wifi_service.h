@@ -188,6 +188,7 @@ class WiFiService : public Service {
   std::string hex_ssid_;
   std::string storage_identifier_;
   std::string bssid_;
+  Stringmap vendor_information_;
 
   // Track whether or not we've warned about large signal values.
   // Used to avoid spamming the log.

@@ -4,6 +4,8 @@
 
 #include "shill/wifi_endpoint.h"
 
+#include <algorithm>
+
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/stringprintf.h>
@@ -48,7 +50,13 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
       properties.find(wpa_supplicant::kBSSPropertyFrequency);
   if (it != properties.end())
     frequency_ = it->second.reader().get_uint16();
-  physical_mode_ = DeterminePhyMode(properties, frequency_);
+
+  Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+  if (!ParseIEs(properties, &phy_mode, &vendor_information_)) {
+    phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
+  }
+  physical_mode_ = phy_mode;
+
   network_mode_ = ParseMode(
       properties.find(wpa_supplicant::kBSSPropertyMode)->second);
   security_mode_ = ParseSecurity(properties);
@@ -87,8 +95,43 @@ void WiFiEndpoint::PropertiesChanged(
   }
 }
 
+
+map<string, string> WiFiEndpoint::GetVendorInformation() const {
+  map<string, string> vendor_information;
+  if (!vendor_information_.wps_manufacturer.empty()) {
+    vendor_information[kVendorWPSManufacturerProperty] =
+        vendor_information_.wps_manufacturer;
+  }
+  if (!vendor_information_.wps_model_name.empty()) {
+    vendor_information[kVendorWPSModelNameProperty] =
+        vendor_information_.wps_model_name;
+  }
+  if (!vendor_information_.wps_model_number.empty()) {
+    vendor_information[kVendorWPSModelNumberProperty] =
+        vendor_information_.wps_model_number;
+  }
+  if (!vendor_information_.wps_device_name.empty()) {
+    vendor_information[kVendorWPSDeviceNameProperty] =
+        vendor_information_.wps_device_name;
+  }
+  if (!vendor_information_.oui_list.empty()) {
+    vector<string> oui_list;
+    set<uint32_t>::const_iterator it;
+    for (it = vendor_information_.oui_list.begin();
+         it != vendor_information_.oui_list.end();
+         ++it) {
+      oui_list.push_back(
+          StringPrintf("%02x-%02x-%02x",
+              *it >> 16, (*it >> 8) & 0xff, *it & 0xff));
+    }
+    vendor_information[kVendorOUIListProperty] =
+        JoinString(oui_list, ' ');
+  }
+  return vendor_information;
+}
+
 // static
-uint32_t WiFiEndpoint::ModeStringToUint(const std::string &mode_string) {
+uint32_t WiFiEndpoint::ModeStringToUint(const string &mode_string) {
   if (mode_string == flimflam::kModeManaged)
     return wpa_supplicant::kNetworkModeInfrastructureInt;
   else if (mode_string == flimflam::kModeAdhoc)
@@ -252,7 +295,7 @@ void WiFiEndpoint::ParseKeyManagementMethods(
 }
 
 // static
-Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyMode(
+Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
     const map<string, ::DBus::Variant> &properties, uint16 frequency) {
   uint32_t max_rate = 0;
   map<string, ::DBus::Variant>::const_iterator it =
@@ -264,13 +307,6 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyMode(
   }
 
   Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
-  it = properties.find(wpa_supplicant::kBSSPropertyIEs);
-  if (it != properties.end()) {
-    phy_mode = ParseIEsForPhyMode(it->second.operator vector<uint8_t>());
-    if (phy_mode != Metrics::kWiFiNetworkPhyModeUndef)
-      return phy_mode;
-  }
-
   if (frequency < 3000) {
     // 2.4GHz legacy, check for tx rate for 11b-only
     // (note 22M is valid)
@@ -286,29 +322,116 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyMode(
 }
 
 // static
-Metrics::WiFiNetworkPhyMode WiFiEndpoint::ParseIEsForPhyMode(
-    const vector<uint8_t> &ies) {
-  // Format of an information element:
-  //    1       1           3           1 - 252
-  // +------+--------+------------+----------------+
-  // | Type | Length | OUI        | Data           |
-  // +------+--------+------------+----------------+
-  Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
-  vector<uint8_t>::const_iterator it;
-  for (it = ies.begin();
-       it + 1 < ies.end();  // +1 to ensure Length field is in valid memory
-       it += 2 + *(it + 1)) {
-    if (*it == IEEE_80211::kElemIdErp) {
-      phy_mode = Metrics::kWiFiNetworkPhyMode11g;
-      continue;  // NB: Continue to check for HT
-    }
-    if (*it == IEEE_80211::kElemIdHTCap || *it == IEEE_80211::kElemIdHTInfo) {
-      phy_mode = Metrics::kWiFiNetworkPhyMode11n;
-      break;
-    }
+bool WiFiEndpoint::ParseIEs(
+    const map<string, ::DBus::Variant> &properties,
+    Metrics::WiFiNetworkPhyMode *phy_mode,
+    VendorInformation *vendor_information) {
+
+  map<string, ::DBus::Variant>::const_iterator ies_property =
+      properties.find(wpa_supplicant::kBSSPropertyIEs);
+  if (ies_property == properties.end()) {
+    SLOG(WiFi, 2) << __func__ << ": No IE property in BSS.";
+    return false;
   }
 
-  return phy_mode;
+  vector<uint8_t> ies = ies_property->second.operator vector<uint8_t>();
+
+
+  // Format of an information element:
+  //    1       1          1 - 252
+  // +------+--------+----------------+
+  // | Type | Length | Data           |
+  // +------+--------+----------------+
+  *phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+  bool found_ht = false;
+  bool found_erp = false;
+  int ie_len = 0;
+  vector<uint8_t>::iterator it;
+  for (it = ies.begin();
+       std::distance(it, ies.end()) > 1;  // Ensure Length field is within PDU.
+       it += ie_len) {
+    ie_len = 2 + *(it + 1);
+    if (std::distance(it, ies.end()) < ie_len) {
+      LOG(ERROR) << __func__ << ": IE extends past containing PDU.";
+      break;
+    }
+    switch (*it) {
+      case IEEE_80211::kElemIdErp:
+        if (!found_ht) {
+          *phy_mode = Metrics::kWiFiNetworkPhyMode11g;
+        }
+        found_erp = true;
+        break;
+      case IEEE_80211::kElemIdHTCap:
+      case IEEE_80211::kElemIdHTInfo:
+        *phy_mode = Metrics::kWiFiNetworkPhyMode11n;
+        found_ht = true;
+        break;
+      case IEEE_80211::kElemIdVendor:
+        ParseVendorIE(it + 2, it + ie_len, vendor_information);
+        break;
+    }
+  }
+  return found_ht || found_erp;
+}
+
+// static
+void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,
+                                 vector<uint8_t>::const_iterator end,
+                                 VendorInformation *vendor_information) {
+  // Format of an vendor-specific information element (with type
+  // and length field for the IE removed by the caller):
+  //        3           1       1 - 248
+  // +------------+----------+----------------+
+  // | OUI        | OUI Type | Data           |
+  // +------------+----------+----------------+
+
+  if (std::distance(ie, end) < 4) {
+    LOG(ERROR) << __func__ << ": no room in IE for OUI and type field.";
+    return;
+  }
+  uint32_t oui = (*ie << 16) | (*(ie + 1) << 8) | *(ie + 2);
+  uint8_t oui_type = *(ie + 3);
+  ie += 4;
+
+  if (oui == IEEE_80211::kOUIVendorMicrosoft &&
+      oui_type == IEEE_80211::kOUIMicrosoftWPS) {
+    // Format of a WPS data element:
+    //    2       2
+    // +------+--------+----------------+
+    // | Type | Length | Data           |
+    // +------+--------+----------------+
+    while (std::distance(ie, end) >= 4) {
+      int element_type = (*ie << 8) | *(ie + 1);
+      int element_length = (*(ie + 2) << 8) | *(ie + 3);
+      ie += 4;
+      if (std::distance(ie, end) < element_length) {
+        LOG(ERROR) << __func__ << ": WPS element extends past containing PDU.";
+        break;
+      }
+      string s(ie, ie + element_length);
+      if (IsStringASCII(s)) {
+        switch (element_type) {
+          case IEEE_80211::kWPSElementManufacturer:
+            vendor_information->wps_manufacturer = s;
+            break;
+          case IEEE_80211::kWPSElementModelName:
+            vendor_information->wps_model_name = s;
+            break;
+          case IEEE_80211::kWPSElementModelNumber:
+            vendor_information->wps_model_number = s;
+            break;
+          case IEEE_80211::kWPSElementDeviceName:
+            vendor_information->wps_device_name = s;
+            break;
+        }
+      }
+      ie += element_length;
+    }
+  } else if (oui != IEEE_80211::kOUIVendorEpigram &&
+             oui != IEEE_80211::kOUIVendorMicrosoft) {
+    vendor_information->oui_list.insert(oui);
+  }
 }
 
 }  // namespace shill

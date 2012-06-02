@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/ieee80211.h"
+#include "shill/mock_log.h"
 #include "shill/mock_wifi.h"
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
@@ -25,6 +26,7 @@ using std::set;
 using std::string;
 using std::vector;
 using ::testing::_;
+using testing::HasSubstr;
 using ::testing::NiceMock;
 
 namespace shill {
@@ -84,9 +86,39 @@ class WiFiEndpointTest : public PropertyStoreTest {
 
   void AddIE(uint8_t type, vector<uint8_t> *ies) {
     ies->push_back(type);           // type
-    ies->push_back(4);              // length
-    ies->insert(ies->end(), 3, 0);  // OUI
+    ies->push_back(1);              // length
     ies->push_back(0);              // data
+  }
+
+  void AddVendorIE(uint32_t oui, uint8_t vendor_type,
+                   const vector<uint8_t> &data,
+                   vector<uint8_t> *ies) {
+    ies->push_back(IEEE_80211::kElemIdVendor);  // type
+    ies->push_back(4 + data.size());            // length
+    ies->push_back((oui >> 16) & 0xff);         // OUI MSByte
+    ies->push_back((oui >> 8) & 0xff);          // OUI middle octet
+    ies->push_back(oui & 0xff);                 // OUI LSByte
+    ies->push_back(vendor_type);                // OUI Type
+    ies->insert(ies->end(), data.begin(), data.end());
+  }
+
+  void AddWPSElement(uint16_t type, const string &value,
+                     vector<uint8_t> *wps) {
+    wps->push_back(type >> 8);                   // type MSByte
+    wps->push_back(type);                        // type LSByte
+    CHECK(value.size() < kuint16max);
+    wps->push_back((value.size() >> 8) & 0xff);  // length MSByte
+    wps->push_back(value.size() & 0xff);         // length LSByte
+    wps->insert(wps->end(), value.begin(), value.end());
+  }
+
+  map<string, ::DBus::Variant> MakeBSSPropertiesWithIEs(
+      const vector<uint8_t> &ies) {
+    map<string, ::DBus::Variant> properties;
+    ::DBus::MessageIter writer =
+          properties[wpa_supplicant::kBSSPropertyIEs].writer();
+    writer << ies;
+    return properties;
   }
 
   WiFiEndpoint *MakeOpenEndpoint(ProxyFactory *proxy_factory,
@@ -174,52 +206,11 @@ TEST_F(WiFiEndpointTest, SSIDWithNull) {
   EXPECT_EQ("?", endpoint->ssid_string());
 }
 
-TEST_F(WiFiEndpointTest, DeterminePhyMode) {
-  {
-    map<string, ::DBus::Variant> properties;
-    vector<uint8_t> ies;
-    AddIE(IEEE_80211::kElemIdErp, &ies);
-    ::DBus::MessageIter writer =
-        properties[wpa_supplicant::kBSSPropertyIEs].writer();
-    writer << ies;
-    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11g,
-              WiFiEndpoint::DeterminePhyMode(properties, 2400));
-  }
-  {
-    map<string, ::DBus::Variant> properties;
-    vector<uint8_t> ies;
-    AddIE(IEEE_80211::kElemIdHTCap, &ies);
-    ::DBus::MessageIter writer =
-        properties[wpa_supplicant::kBSSPropertyIEs].writer();
-    writer << ies;
-    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n,
-              WiFiEndpoint::DeterminePhyMode(properties, 2400));
-  }
-  {
-    map<string, ::DBus::Variant> properties;
-    vector<uint8_t> ies;
-    AddIE(IEEE_80211::kElemIdHTInfo, &ies);
-    ::DBus::MessageIter writer =
-        properties[wpa_supplicant::kBSSPropertyIEs].writer();
-    writer << ies;
-    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n,
-              WiFiEndpoint::DeterminePhyMode(properties, 2400));
-  }
-  {
-    map<string, ::DBus::Variant> properties;
-    vector<uint8_t> ies;
-    AddIE(IEEE_80211::kElemIdErp, &ies);
-    AddIE(IEEE_80211::kElemIdHTCap, &ies);
-    ::DBus::MessageIter writer =
-        properties[wpa_supplicant::kBSSPropertyIEs].writer();
-    writer << ies;
-    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n,
-              WiFiEndpoint::DeterminePhyMode(properties, 2400));
-  }
+TEST_F(WiFiEndpointTest, DeterminePhyModeFromFrequency) {
   {
     map<string, ::DBus::Variant> properties;
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11a,
-              WiFiEndpoint::DeterminePhyMode(properties, 3200));
+              WiFiEndpoint::DeterminePhyModeFromFrequency(properties, 3200));
   }
   {
     map<string, ::DBus::Variant> properties;
@@ -228,7 +219,7 @@ TEST_F(WiFiEndpointTest, DeterminePhyMode) {
         properties[wpa_supplicant::kBSSPropertyRates].writer();
     writer << rates;
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11b,
-              WiFiEndpoint::DeterminePhyMode(properties, 2400));
+              WiFiEndpoint::DeterminePhyModeFromFrequency(properties, 2400));
   }
   {
     map<string, ::DBus::Variant> properties;
@@ -237,7 +228,189 @@ TEST_F(WiFiEndpointTest, DeterminePhyMode) {
         properties[wpa_supplicant::kBSSPropertyRates].writer();
     writer << rates;
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11g,
-              WiFiEndpoint::DeterminePhyMode(properties, 2400));
+              WiFiEndpoint::DeterminePhyModeFromFrequency(properties, 2400));
+  }
+}
+
+TEST_F(WiFiEndpointTest, ParseIEs) {
+  {
+    vector<uint8_t> ies;
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, phy_mode);
+  }
+  {
+    vector<uint8_t> ies;
+    AddIE(IEEE_80211::kElemIdErp, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11g, phy_mode);
+  }
+  {
+    vector<uint8_t> ies;
+    AddIE(IEEE_80211::kElemIdHTCap, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, phy_mode);
+  }
+  {
+    vector<uint8_t> ies;
+    AddIE(IEEE_80211::kElemIdHTInfo, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, phy_mode);
+  }
+  {
+    vector<uint8_t> ies;
+    AddIE(IEEE_80211::kElemIdErp, &ies);
+    AddIE(IEEE_80211::kElemIdHTCap, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+    EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, phy_mode);
+  }
+}
+
+TEST_F(WiFiEndpointTest, ParseVendorIEs) {
+  {
+    ScopedMockLog log;
+    EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                         HasSubstr("no room in IE for OUI and type field.")))
+        .Times(1);
+    vector<uint8_t> ies;
+    AddIE(IEEE_80211::kElemIdVendor, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+  }
+  {
+    vector<uint8_t> ies;
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+    EXPECT_EQ("", vendor_information.wps_manufacturer);
+    EXPECT_EQ("", vendor_information.wps_model_name);
+    EXPECT_EQ("", vendor_information.wps_model_number);
+    EXPECT_EQ("", vendor_information.wps_device_name);
+    EXPECT_EQ(0, vendor_information.oui_list.size());
+  }
+  {
+    ScopedMockLog log;
+    EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                         HasSubstr("IE extends past containing PDU"))).Times(1);
+    vector<uint8_t> ies;
+    AddVendorIE(0, 0, vector<uint8_t>(), &ies);
+    ies.resize(ies.size() - 1);  // Cause an underrun in the data.
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+  }
+  {
+    vector<uint8_t> ies;
+    const uint32_t kVendorOUI = 0xaabbcc;
+    AddVendorIE(kVendorOUI, 0, vector<uint8_t>(), &ies);
+    AddVendorIE(IEEE_80211::kOUIVendorMicrosoft, 0, vector<uint8_t>(), &ies);
+    AddVendorIE(IEEE_80211::kOUIVendorEpigram, 0, vector<uint8_t>(), &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+    EXPECT_EQ("", vendor_information.wps_manufacturer);
+    EXPECT_EQ("", vendor_information.wps_model_name);
+    EXPECT_EQ("", vendor_information.wps_model_number);
+    EXPECT_EQ("", vendor_information.wps_device_name);
+    EXPECT_EQ(1, vendor_information.oui_list.size());
+    EXPECT_FALSE(vendor_information.oui_list.find(kVendorOUI) ==
+                 vendor_information.oui_list.end());
+
+    WiFiEndpointRefPtr endpoint =
+        MakeOpenEndpoint(NULL, NULL, string(1, 0), "00:00:00:00:00:01");
+    endpoint->vendor_information_ = vendor_information;
+    map<string, string> vendor_stringmap(endpoint->GetVendorInformation());
+    EXPECT_FALSE(ContainsKey(vendor_stringmap, kVendorWPSManufacturerProperty));
+    EXPECT_FALSE(ContainsKey(vendor_stringmap, kVendorWPSModelNameProperty));
+    EXPECT_FALSE(ContainsKey(vendor_stringmap, kVendorWPSModelNumberProperty));
+    EXPECT_FALSE(ContainsKey(vendor_stringmap, kVendorWPSDeviceNameProperty));
+    EXPECT_EQ("aa-bb-cc", vendor_stringmap[kVendorOUIListProperty]);
+  }
+  {
+    ScopedMockLog log;
+    EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                         HasSubstr("WPS element extends past containing PDU")))
+        .Times(1);
+    vector<uint8_t> ies;
+    vector<uint8_t> wps;
+    AddWPSElement(IEEE_80211::kWPSElementManufacturer, "foo", &wps);
+    wps.resize(wps.size() - 1);  // Cause an underrun in the data.
+    AddVendorIE(IEEE_80211::kOUIVendorMicrosoft,
+                IEEE_80211::kOUIMicrosoftWPS, wps, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+    EXPECT_EQ("", vendor_information.wps_manufacturer);
+  }
+  {
+    vector<uint8_t> ies;
+    vector<uint8_t> wps;
+    const string kManufacturer("manufacturer");
+    const string kModelName("modelname");
+    const string kModelNumber("modelnumber");
+    const string kDeviceName("devicename");
+    AddWPSElement(IEEE_80211::kWPSElementManufacturer, kManufacturer, &wps);
+    AddWPSElement(IEEE_80211::kWPSElementModelName, kModelName, &wps);
+    AddWPSElement(IEEE_80211::kWPSElementModelNumber, kModelNumber, &wps);
+    AddWPSElement(IEEE_80211::kWPSElementDeviceName, kDeviceName, &wps);
+    AddVendorIE(IEEE_80211::kOUIVendorMicrosoft,
+                IEEE_80211::kOUIMicrosoftWPS, wps, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+    EXPECT_EQ(kManufacturer, vendor_information.wps_manufacturer);
+    EXPECT_EQ(kModelName, vendor_information.wps_model_name);
+    EXPECT_EQ(kModelNumber, vendor_information.wps_model_number);
+    EXPECT_EQ(kDeviceName, vendor_information.wps_device_name);
+
+    WiFiEndpointRefPtr endpoint =
+        MakeOpenEndpoint(NULL, NULL, string(1, 0), "00:00:00:00:00:01");
+    endpoint->vendor_information_ = vendor_information;
+    map<string, string> vendor_stringmap(endpoint->GetVendorInformation());
+    EXPECT_EQ(kManufacturer, vendor_stringmap[kVendorWPSManufacturerProperty]);
+    EXPECT_EQ(kModelName, vendor_stringmap[kVendorWPSModelNameProperty]);
+    EXPECT_EQ(kModelNumber, vendor_stringmap[kVendorWPSModelNumberProperty]);
+    EXPECT_EQ(kDeviceName, vendor_stringmap[kVendorWPSDeviceNameProperty]);
+    EXPECT_FALSE(ContainsKey(vendor_stringmap, kVendorOUIListProperty));
+  }
+  {
+    vector<uint8_t> ies;
+    vector<uint8_t> wps;
+    const string kManufacturer("manufacturer");
+    const string kModelName("modelname");
+    AddWPSElement(IEEE_80211::kWPSElementManufacturer, kManufacturer, &wps);
+    wps.resize(wps.size() - 1);  // Insert a non-ASCII character in the WPS.
+    wps.push_back(0x80);
+    AddWPSElement(IEEE_80211::kWPSElementModelName, kModelName, &wps);
+    AddVendorIE(IEEE_80211::kOUIVendorMicrosoft,
+                IEEE_80211::kOUIMicrosoftWPS, wps, &ies);
+    Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
+    WiFiEndpoint::VendorInformation vendor_information;
+    WiFiEndpoint::ParseIEs(MakeBSSPropertiesWithIEs(ies),
+                           &phy_mode, &vendor_information);
+    EXPECT_EQ("", vendor_information.wps_manufacturer);
+    EXPECT_EQ(kModelName, vendor_information.wps_model_name);
   }
 }
 

@@ -26,6 +26,13 @@ class SupplicantBSSProxyInterface;
 
 class WiFiEndpoint : public Endpoint {
  public:
+  struct VendorInformation {
+    std::string wps_manufacturer;
+    std::string wps_model_name;
+    std::string wps_model_number;
+    std::string wps_device_name;
+    std::set<uint32_t> oui_list;
+  };
   WiFiEndpoint(ProxyFactory *proxy_factory,
                const WiFiRefPtr &device,
                const std::string &rpc_id,
@@ -46,6 +53,10 @@ class WiFiEndpoint : public Endpoint {
   // in chromeos/dbus/service_constants.h, to uints used by supplicant
   static uint32_t ModeStringToUint(const std::string &mode_string);
 
+  // Returns a stringmap containing information gleaned about the
+  // vendor of this AP.
+  std::map<std::string, std::string> GetVendorInformation() const;
+
   const std::vector<uint8_t> &ssid() const;
   const std::string &ssid_string() const;
   const std::string &ssid_hex() const;
@@ -56,16 +67,19 @@ class WiFiEndpoint : public Endpoint {
   uint16 physical_mode() const;
   const std::string &network_mode() const;
   const std::string &security_mode() const;
+  const VendorInformation &vendor_information() const;
 
  private:
   friend class WiFiEndpointTest;
   friend class WiFiObjectTest;  // for MakeOpenEndpoint
   friend class WiFiServiceTest;  // for MakeOpenEndpoint
   // these test cases need access to the KeyManagement enum
+  FRIEND_TEST(WiFiEndpointTest, DeterminePhyModeFromFrequency);
+  FRIEND_TEST(WiFiEndpointTest, ParseIEs);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsPSK);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK);
-  FRIEND_TEST(WiFiEndpointTest, DeterminePhyMode);
+  FRIEND_TEST(WiFiEndpointTest, ParseVendorIEs);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, EndpointModified);
 
   enum KeyManagement {
@@ -95,12 +109,19 @@ class WiFiEndpoint : public Endpoint {
   // Determine the negotiated operating mode for the channel by looking at
   // the information elements, frequency and data rates.  The information
   // elements and data rates live in |properties|.
-  static Metrics::WiFiNetworkPhyMode DeterminePhyMode(
+  static Metrics::WiFiNetworkPhyMode DeterminePhyModeFromFrequency(
       const std::map<std::string, ::DBus::Variant> &properties,
       uint16 frequency);
-  // Parse information elements to determine the physical mode.
-  static Metrics::WiFiNetworkPhyMode ParseIEsForPhyMode(
-      const std::vector<uint8_t> &ies);
+  // Parse information elements to determine the physical mode and vendor
+  // information associated with the AP.  Returns true if a physical mode
+  // was determined from the IE elements, false otherwise.
+  static bool ParseIEs(const std::map<std::string, ::DBus::Variant> &properties,
+                       Metrics::WiFiNetworkPhyMode *phy_mode,
+                       VendorInformation *vendor_information);
+  // Parse a single vendor information element.
+  static void ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
+                            std::vector<uint8_t>::const_iterator end,
+                            VendorInformation *vendor_information);
 
   // TODO(quiche): make const?
   std::vector<uint8_t> ssid_;
@@ -116,6 +137,7 @@ class WiFiEndpoint : public Endpoint {
   // (not necessarily the same as wpa_supplicant names)
   std::string network_mode_;
   std::string security_mode_;
+  VendorInformation vendor_information_;
 
   ProxyFactory *proxy_factory_;
   WiFiRefPtr device_;

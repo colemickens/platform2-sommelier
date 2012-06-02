@@ -80,6 +80,8 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store->RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
   store->RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
   store->RegisterConstString(flimflam::kWifiBSsid, &bssid_);
+  store->RegisterConstStringmap(kWifiVendorInformationProperty,
+                                &vendor_information_);
 
   hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
   string ssid_string(
@@ -477,16 +479,15 @@ void WiFiService::UpdateFromEndpoints() {
     }
   }
 
-  uint16 frequency;
-  int16 signal;
+  uint16 frequency = 0;
+  int16 signal = std::numeric_limits<int16>::min();
   string bssid;
-  if (!representative_endpoint) {
-    frequency = 0;
-    signal = std::numeric_limits<int16>::min();
-  } else {
+  Stringmap vendor_information;
+  if (representative_endpoint) {
     frequency = representative_endpoint->frequency();
     signal = representative_endpoint->signal_strength();
     bssid = representative_endpoint->bssid_string();
+    vendor_information = representative_endpoint->GetVendorInformation();
   }
 
   if (frequency_ != frequency) {
@@ -496,6 +497,11 @@ void WiFiService::UpdateFromEndpoints() {
   if (bssid_ != bssid) {
     bssid_ = bssid;
     adaptor()->EmitStringChanged(flimflam::kWifiBSsid, bssid_);
+  }
+  if (vendor_information_ != vendor_information) {
+    vendor_information_ = vendor_information;
+    adaptor()->EmitStringmapChanged(kWifiVendorInformationProperty,
+                                    vendor_information_);
   }
   SetStrength(SignalToStrength(signal));
 }
