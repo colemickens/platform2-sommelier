@@ -1601,8 +1601,10 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
   InitiateConnect(service);
   ReportCurrentBSSChanged("bss1");
   EXPECT_EQ(frequency1, service->frequency_);
+  EXPECT_EQ("00:00:00:00:00:01", service->bssid_);
   ReportCurrentBSSChanged("bss2");
   EXPECT_EQ(frequency2, service->frequency_);
+  EXPECT_EQ("00:00:00:00:00:02", service->bssid_);
 }
 
 TEST_F(WiFiMainTest, ConfiguredServiceRegistration) {

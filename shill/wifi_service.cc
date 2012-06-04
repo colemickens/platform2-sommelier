@@ -79,6 +79,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store->RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
   store->RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
   store->RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
+  store->RegisterConstString(flimflam::kWifiBSsid, &bssid_);
 
   hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
   string ssid_string(
@@ -490,7 +491,6 @@ void WiFiService::UpdateFromEndpoints() {
   const WiFiEndpoint *representative_endpoint = NULL;
 
   if (current_endpoint_) {
-    // TODO: Copy BSSID here (crosbug.com/22377).
     representative_endpoint = current_endpoint_;
   } else  {
     int16 best_signal = std::numeric_limits<int16>::min();
@@ -505,17 +505,23 @@ void WiFiService::UpdateFromEndpoints() {
 
   uint16 frequency;
   int16 signal;
+  string bssid;
   if (!representative_endpoint) {
     frequency = 0;
     signal = std::numeric_limits<int16>::min();
   } else {
     frequency = representative_endpoint->frequency();
     signal = representative_endpoint->signal_strength();
+    bssid = representative_endpoint->bssid_string();
   }
 
   if (frequency_ != frequency) {
     frequency_ = frequency;
     adaptor()->EmitUint16Changed(flimflam::kWifiFrequency, frequency_);
+  }
+  if (bssid_ != bssid) {
+    bssid_ = bssid;
+    adaptor()->EmitStringChanged(flimflam::kWifiBSsid, bssid_);
   }
   SetStrength(SignalToStrength(signal));
 }

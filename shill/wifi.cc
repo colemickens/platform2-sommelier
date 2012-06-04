@@ -546,9 +546,6 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   // not both.
   CHECK(current_service_.get() != pending_service_.get() ||
         current_service_.get() == NULL);
-
-  // TODO(quiche): Update BSSID property on the Service
-  // (crosbug.com/22377).
 }
 
 void WiFi::HandleDisconnect() {

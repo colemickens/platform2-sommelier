@@ -191,6 +191,7 @@ class WiFiService : public Service {
   uint16 physical_mode_;
   std::string hex_ssid_;
   std::string storage_identifier_;
+  std::string bssid_;
 
   // Track whether or not we've warned about large signal values.
   // Used to avoid spamming the log.
