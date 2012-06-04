@@ -1046,6 +1046,18 @@ void Manager::SetCheckPortalList(const string &portal_list, Error *error) {
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
+  if (args.ContainsString(flimflam::kTypeProperty) &&
+      args.GetString(flimflam::kTypeProperty) == flimflam::kTypeVPN) {
+     // GetService on a VPN service should actually perform ConfigureService.
+     // TODO(pstew): Remove this hack and change Chrome to use ConfigureService
+     // instead, when we no longer need to support flimflam.  crosbug.com/31523
+     return ConfigureService(args, error);
+  }
+  return GetServiceInner(args, error);
+}
+
+ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
+                                       Error *error) {
   if (args.ContainsString(flimflam::kGuidProperty)) {
     SLOG(Manager, 2) << __func__ << ": searching by GUID";
     ServiceRefPtr service =
@@ -1094,7 +1106,8 @@ WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
-void Manager::ConfigureService(const KeyValueStore &args, Error *error) {
+ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
+                                        Error *error) {
   ProfileRefPtr profile = ActiveProfile();
   bool profile_specified = args.ContainsString(flimflam::kProfileProperty);
   if (profile_specified) {
@@ -1103,21 +1116,21 @@ void Manager::ConfigureService(const KeyValueStore &args, Error *error) {
     if (!profile) {
       Error::PopulateAndLog(error, Error::kInvalidArguments,
                             "Invalid profile name " + profile_rpcid);
-      return;
+      return NULL;
     }
   }
 
-  ServiceRefPtr service = GetService(args, error);
+  ServiceRefPtr service = GetServiceInner(args, error);
   if (error->IsFailure() || !service) {
     LOG(ERROR) << "GetService failed; returning upstream error.";
-    return;
+    return NULL;
   }
 
   // Overwrite the profile data with the resulting configured service.
   if (!profile->UpdateService(service)) {
     Error::PopulateAndLog(error, Error::kInternalError,
                           "Unable to save service to profile");
-    return;
+    return NULL;
   }
 
   if (HasService(service)) {
@@ -1137,6 +1150,8 @@ void Manager::ConfigureService(const KeyValueStore &args, Error *error) {
 
   // Notify the service that a profile has been configured for it.
   service->OnProfileConfigured();
+
+  return service;
 }
 
 void Manager::RecheckPortal(Error */*error*/) {

@@ -50,11 +50,13 @@ namespace shill {
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::ContainerEq;
+using ::testing::DoAll;
 using ::testing::InSequence;
 using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::SaveArg;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
@@ -1156,6 +1158,9 @@ TEST_F(ManagerTest, GetServiceVPNUnknownType) {
   KeyValueStore args;
   Error e;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
+  scoped_refptr<MockProfile> profile(
+      new StrictMock<MockProfile>(control_interface(), manager(), ""));
+  AdoptProfile(manager(), profile);
   ServiceRefPtr service = manager()->GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_FALSE(service);
@@ -1168,9 +1173,20 @@ TEST_F(ManagerTest, GetServiceVPN) {
   args.SetString(flimflam::kProviderTypeProperty, flimflam::kProviderOpenVpn);
   args.SetString(flimflam::kProviderHostProperty, "10.8.0.1");
   args.SetString(flimflam::kProviderNameProperty, "vpn-name");
+  scoped_refptr<MockProfile> profile(
+      new StrictMock<MockProfile>(control_interface(), manager(), ""));
+  AdoptProfile(manager(), profile);
+  ServiceRefPtr updated_service;
+  EXPECT_CALL(*profile, UpdateService(_))
+      .WillOnce(DoAll(SaveArg<0>(&updated_service), Return(true)));
+  ServiceRefPtr configured_service;
+  EXPECT_CALL(*profile, ConfigureService(_))
+      .WillOnce(DoAll(SaveArg<0>(&configured_service), Return(true)));
   ServiceRefPtr service = manager()->GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   EXPECT_TRUE(service);
+  EXPECT_EQ(service, updated_service);
+  EXPECT_EQ(service, configured_service);
 }
 
 TEST_F(ManagerTest, GetServiceWiMaxNoNetworkId) {

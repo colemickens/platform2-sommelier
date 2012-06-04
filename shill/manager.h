@@ -100,7 +100,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
-  void ConfigureService(const KeyValueStore &args, Error *error);
+  ServiceRefPtr ConfigureService(const KeyValueStore &args, Error *error);
 
   // Request portal detection checks on each registered device until a portal
   // detection attempt starts on one of them.
@@ -261,6 +261,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::vector<std::string> EnumerateWatchedServices(Error *error);
   std::string GetActiveProfileRpcIdentifier(Error *error);
   std::string GetCheckPortalList(Error *error);
+  ServiceRefPtr GetServiceInner(const KeyValueStore &args, Error *error);
   void SetCheckPortalList(const std::string &portal_list, Error *error);
   void EmitDeviceProperties();
 
