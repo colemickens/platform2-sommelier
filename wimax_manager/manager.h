@@ -29,6 +29,10 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
   bool Initialize();
   bool Finalize();
   bool ScanDevices();
+  void CancelDeviceScan();
+
+  void Suspend();
+  void Resume();
 
   const std::vector<Device *> &devices() const { return devices_.get(); }
 

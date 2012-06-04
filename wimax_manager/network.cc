@@ -18,8 +18,11 @@ const int Network::kMinRSSI = -123;
 
 Network::Network(Identifier identifier, const string &name, NetworkType type,
                  int cinr, int rssi)
-    : identifier_(identifier), name_(name), type_(type),
-      cinr_(cinr), rssi_(rssi) {
+    : identifier_(identifier),
+      name_(name),
+      type_(type),
+      cinr_(cinr),
+      rssi_(rssi) {
 }
 
 Network::~Network() {

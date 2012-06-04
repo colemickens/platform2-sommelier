@@ -47,6 +47,12 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   int scan_interval() const { return scan_interval_; }
   void set_scan_interval(int scan_interval) { scan_interval_ = scan_interval; }
 
+  // TODO(benchan): Temporarily workaround for crosbug.com/p/10150.
+  bool entering_suspend_mode() const { return entering_suspend_mode_; }
+  void set_entering_suspend_mode(bool entering_suspend_mode) {
+    entering_suspend_mode_ = entering_suspend_mode;
+  }
+
  protected:
   void UpdateNetworks();
   void UpdateRFInfo();
@@ -70,6 +76,9 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   NetworkMap networks_;
   int scan_interval_;
   DeviceStatus status_;
+
+  // TODO(benchan): Temporarily workaround for crosbug.com/p/10150.
+  bool entering_suspend_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

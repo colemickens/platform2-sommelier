@@ -59,14 +59,9 @@ bool Manager::Initialize() {
 }
 
 bool Manager::Finalize() {
-  // Cancel any pending device scan.
-  if (device_scan_timeout_id_ != 0) {
-    g_source_remove(device_scan_timeout_id_);
-    device_scan_timeout_id_ = 0;
-  }
-  num_device_scans_ = 0;
-
+  CancelDeviceScan();
   devices_.reset();
+  dbus_adaptor()->UpdateDevices();
 
   if (!driver_.get())
     return true;
@@ -107,6 +102,30 @@ bool Manager::ScanDevices() {
         kDefaultDeviceScanIntervalInSeconds, OnDeviceScanNeeded, this);
   }
   return true;
+}
+
+void Manager::CancelDeviceScan() {
+  // Cancel any pending device scan.
+  if (device_scan_timeout_id_ != 0) {
+    g_source_remove(device_scan_timeout_id_);
+    device_scan_timeout_id_ = 0;
+  }
+  num_device_scans_ = 0;
+}
+
+void Manager::Suspend() {
+  CancelDeviceScan();
+
+  // TODO(benchan): Temporarily workaround for crosbug.com/p/10150.
+  for (size_t i = 0; i < devices_.size(); ++i)
+    devices_[i]->set_entering_suspend_mode(true);
+
+  devices_.reset();
+  dbus_adaptor()->UpdateDevices();
+}
+
+void Manager::Resume() {
+  ScanDevices();
 }
 
 }  // namespace wimax_manager

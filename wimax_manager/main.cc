@@ -15,6 +15,8 @@
 
 #include "wimax_manager/manager.h"
 #include "wimax_manager/manager_dbus_adaptor.h"
+#include "wimax_manager/power_manager.h"
+#include "wimax_manager/power_manager_dbus_proxy.h"
 
 DEFINE_bool(foreground, false,
             "Don't daemon()ize; run in foreground.");
@@ -71,6 +73,10 @@ int main(int argc, char** argv) {
   wimax_manager::Manager manager;
   manager.CreateDBusAdaptor();
   CHECK(manager.Initialize()) << "Failed to initialize WiMAX manager";
+
+  wimax_manager::PowerManager power_manager(&manager);
+  power_manager.CreateDBusProxy();
+  power_manager.Initialize();
 
   g_main_loop_run(loop);
   g_main_loop_unref(loop);

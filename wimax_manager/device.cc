@@ -42,10 +42,14 @@ string GetDeviceStatusDescription(DeviceStatus device_status) {
 }  // namespace
 
 Device::Device(uint8 index, const string &name)
-    : index_(index), name_(name), mac_address_(kMACAddressLength),
-      base_station_id_(kBaseStationIdLength), frequency_(0),
+    : index_(index),
+      name_(name),
+      mac_address_(kMACAddressLength),
+      base_station_id_(kBaseStationIdLength),
+      frequency_(0),
       scan_interval_(kDefaultScanIntervalInSeconds),
-      status_(kDeviceStatusUninitialized) {
+      status_(kDeviceStatusUninitialized),
+      entering_suspend_mode_(false) {
 }
 
 Device::~Device() {

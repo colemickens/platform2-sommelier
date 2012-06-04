@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE node PUBLIC
+ "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+
+<node name="/org/chromium/PowerManager">
+  <interface name="org.chromium.PowerManager">
+    <method name="RegisterSuspendDelay">
+      <arg name="delay_ms" direction="in" type="u" />
+    </method>
+    <method name="UnregisterSuspendDelay" />
+    <signal name="SuspendDelay">
+      <arg name="sequence_number" type="u"/>
+    </signal>
+    <signal name="PowerStateChanged">
+      <arg name="new_power_state" type="s" />
+    </signal>
+  </interface>
+</node>
