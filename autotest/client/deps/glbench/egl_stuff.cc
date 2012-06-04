@@ -10,9 +10,9 @@
 
 
 EGLDisplay g_egl_display = EGL_NO_DISPLAY;
-static EGLConfig egl_config = NULL;
-static EGLSurface egl_surface = NULL;
-static EGLContext egl_context = NULL;
+static EGLConfig g_egl_config = NULL;
+static EGLSurface g_egl_surface = NULL;
+static EGLContext g_egl_context = NULL;
 
 // TODO(ihf): This is a f'ugly macro. Rework this one day.
 #define CHECK_EGL() do { \
@@ -25,14 +25,14 @@ bool Init() {
 
   EGLNativeWindowType native_window =
       static_cast<EGLNativeWindowType>(g_xlib_window);
-  egl_surface = eglCreateWindowSurface(g_egl_display, egl_config,
+  g_egl_surface = eglCreateWindowSurface(g_egl_display, g_egl_config,
                                        native_window, NULL);
   CHECK_EGL();
   return true;
 }
 
 XVisualInfo* GetXVisual() {
-  if (!egl_config) {
+  if (!g_egl_config) {
     EGLint attribs[] = {
       EGL_RED_SIZE, 1,
       EGL_GREEN_SIZE, 1,
@@ -57,7 +57,7 @@ XVisualInfo* GetXVisual() {
     eglGetConfigs(g_egl_display, NULL, 0, &num_configs);
     CHECK_EGL();
 
-    eglChooseConfig(g_egl_display, attribs, &egl_config, 1, &num_configs);
+    eglChooseConfig(g_egl_display, attribs, &g_egl_config, 1, &num_configs);
     CHECK_EGL();
   }
 
@@ -66,7 +66,7 @@ XVisualInfo* GetXVisual() {
   // resolved.
 #if 0
   EGLint visual_id;
-  eglGetConfigAttrib(g_egl_display, egl_config, EGL_NATIVE_VISUAL_ID,
+  eglGetConfigAttrib(g_egl_display, g_egl_config, EGL_NATIVE_VISUAL_ID,
                      &visual_id);
   CHECK_EGL();
   XVisualInfo vinfo_template;
@@ -89,31 +89,31 @@ bool InitContext() {
     EGL_CONTEXT_CLIENT_VERSION, 2,
     EGL_NONE
   };
-  EGLContext egl_context = eglCreateContext(g_egl_display, egl_config,
+  g_egl_context = eglCreateContext(g_egl_display, g_egl_config,
                                             NULL, attribs);
   CHECK_EGL();
 
-  eglMakeCurrent(g_egl_display, egl_surface, egl_surface, egl_context);
+  eglMakeCurrent(g_egl_display, g_egl_surface, g_egl_surface, g_egl_context);
   CHECK_EGL();
 
-  eglQuerySurface(g_egl_display, egl_surface, EGL_WIDTH, &g_width);
-  eglQuerySurface(g_egl_display, egl_surface, EGL_HEIGHT, &g_height);
+  eglQuerySurface(g_egl_display, g_egl_surface, EGL_WIDTH, &g_width);
+  eglQuerySurface(g_egl_display, g_egl_surface, EGL_HEIGHT, &g_height);
 
   return true;
 }
 
 void DestroyContext() {
   eglMakeCurrent(g_egl_display, NULL, NULL, NULL);
-  eglDestroyContext(g_egl_display, egl_context);
+  eglDestroyContext(g_egl_display, g_egl_context);
 }
 
 void TerminateGL() {
-  eglDestroySurface(g_egl_display, egl_surface);
+  eglDestroySurface(g_egl_display, g_egl_surface);
   eglTerminate(g_egl_display);
 }
 
 void SwapBuffers() {
-  eglSwapBuffers(g_egl_display, egl_surface);
+  eglSwapBuffers(g_egl_display, g_egl_surface);
 }
 
 bool SwapInterval(int interval) {

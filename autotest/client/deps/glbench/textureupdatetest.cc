@@ -130,10 +130,10 @@ bool TextureUpdateTest::Run() {
   for (unsigned int f = 0; f < arraysize(flavors); f++) {
     flavor_ = flavors[f];
     int sizes[] = {32, 128, 256, 512, 768, 1024, 1536, 2048};
-    for (unsigned int i = 0; i < arraysize(sizes); i++) {
+    for (unsigned int j = 0; j < arraysize(sizes); j++) {
       std::string name = "mtexel_sec_" + flavor_names[f] + "_" +
-          base::IntToString(sizes[i]);
-      width_ = height_ = sizes[i];
+          base::IntToString(sizes[j]);
+      width_ = height_ = sizes[j];
       for (int i = 0; i < kNumberOfTextures; ++i) {
         pixels_[i].reset(new char[width_ * height_]);
         memset(pixels_[i].get(), 255, width_ * height_);
@@ -142,6 +142,9 @@ bool TextureUpdateTest::Run() {
     }
   }
 
+  for (int i = 0; i < kNumberOfTextures; ++i) {
+    pixels_[i].reset();
+  }
   glDeleteTextures(1, &texname);
   glDeleteProgram(program_);
   return true;

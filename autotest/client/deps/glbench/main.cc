@@ -95,7 +95,10 @@ int main(int argc, char *argv[]) {
     for (unsigned int i = 0; i < arraysize(tests); i++) {
       if (!test_is_enabled(tests[i], enabled_tests))
         continue;
-      InitContext();
+      if (!InitContext()) {
+        printf("InitContext failed\n");
+        return 1;
+      }
       tests[i]->Run();
       DestroyContext();
     }

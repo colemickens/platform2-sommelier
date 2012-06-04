@@ -30,7 +30,8 @@ uint64_t TimeTest(TestBase* test, int iter) {
     return time2 - time1;
 }
 
-#define MAX_ITERATION_DURATION_MS 1000000
+// Maximum iteration time of 0.1s for regression approach
+#define MAX_ITERATION_DURATION_US 100000
 
 // Benchmark some draw commands, by running it many times.
 // We want to measure the marginal cost, so we try more and more
@@ -39,8 +40,15 @@ uint64_t TimeTest(TestBase* test, int iter) {
 // a few samples.
 bool Bench(TestBase* test, float *slope, int64_t *bias) {
   // Do one iteration in case the driver needs to set up states.
-  if (TimeTest(test, 1) > MAX_ITERATION_DURATION_MS)
-    return false;
+  uint64_t initial_time = TimeTest(test, 1);
+  if (initial_time > MAX_ITERATION_DURATION_US) {
+    // The test is too slow to do the regression,
+    // so just return a single result.
+    *slope = static_cast<float>(TimeTest(test, 1));
+    *bias = 0;
+    return true;
+  }
+
   int64_t count = 0;
   int64_t sum_x = 0;
   int64_t sum_y = 0;
@@ -131,7 +139,7 @@ void RunTest(TestBase* test, const char* testname,
              coefficient * (inverse ? 1.f / slope : slope),
              name_png);
     } else {
-      printf("# Warning: %s is scales nonlinear, returning zero.\n",
+      printf("# Warning: %s scales non-linearly, returning zero.\n",
              testname);
       printf("%-45s=          0   []\n", testname);
     }
