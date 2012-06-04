@@ -51,6 +51,7 @@ const char kTokenLabel[] = "User-Specific TPM Token";
 const char kTokenModel[] = "";
 const char kTokenSerialNumber[] = "Not Available";
 const int kUserKeySize = 32;
+const int kAuthDataHashVersion = 1;
 
 const struct MechanismInfo {
   CK_MECHANISM_TYPE type;
@@ -89,19 +90,29 @@ const struct MechanismInfo {
   {CKM_AES_CBC_PAD, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}}
 };
 
-// Verifies authorization data against a hash stored in the token database.
+// Computes an authorization data hash as it is stored in the database.
+string HashAuthData(const string& auth_data) {
+  string version(1, kAuthDataHashVersion);
+  string hash = Sha512(auth_data);
+  string hash_byte = hash.substr(0, 1);
+  chromeos::SecureMemset(const_cast<char*>(hash.data()), 0, hash.length());
+  return version + hash_byte;
+}
+
+// Sanity checks authorization data by comparing against a hash stored in the
+// token database.
 // Args:
 //   auth_data_hash - A hash of the authorization data to be verified.
 //   saved_auth_data_hash - The hash currently stored in the database.
-bool VerifyAuthData(const string& auth_data_hash,
-                    const string& saved_auth_data_hash) {
-  if (saved_auth_data_hash.empty())
+// Returns:
+//   False if both hash values are valid and they do not match.
+bool SanityCheckAuthData(const string& auth_data_hash,
+                         const string& saved_auth_data_hash) {
+  CHECK(auth_data_hash.length() == 2);
+  if (saved_auth_data_hash.length() != 2 ||
+      saved_auth_data_hash[0] != kAuthDataHashVersion)
     return true;
-  if (auth_data_hash.length() != saved_auth_data_hash.length())
-    return false;
-  return (0 == chromeos::SafeMemcmp(auth_data_hash.data(),
-                                    saved_auth_data_hash.data(),
-                                    saved_auth_data_hash.length()));
+  return (auth_data_hash[1] == saved_auth_data_hash[1]);
 }
 
 // Performs expensive tasks required to initialize a token.
@@ -161,7 +172,7 @@ TokenInitThread::TokenInitThread(int slot_id,
       object_pool_(object_pool) {}
 
 void TokenInitThread::ThreadMain() {
-  string auth_data_hash = Sha512(auth_data_);
+  string auth_data_hash = HashAuthData(auth_data_);
   string saved_auth_data_hash;
   string auth_key_blob;
   string encrypted_master_key;
@@ -180,7 +191,7 @@ void TokenInitThread::ThreadMain() {
     // Don't send the auth data to the TPM if it fails to verify against the
     // saved hash.
     object_pool_->GetInternalBlob(kAuthDataHash, &saved_auth_data_hash);
-    if (!VerifyAuthData(auth_data_hash, saved_auth_data_hash) ||
+    if (!SanityCheckAuthData(auth_data_hash, saved_auth_data_hash) ||
         !tpm_utility_->Authenticate(slot_id_,
                                     Sha1(auth_data_),
                                     auth_key_blob,
@@ -488,7 +499,7 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
   // Before we attempt the change, sanity check old_auth_data.
   string saved_auth_data_hash;
   object_pool->GetInternalBlob(kAuthDataHash, &saved_auth_data_hash);
-  if (!VerifyAuthData(Sha512(old_auth_data), saved_auth_data_hash)) {
+  if (!SanityCheckAuthData(HashAuthData(old_auth_data), saved_auth_data_hash)) {
     LOG(ERROR) << "Old authorization data is not correct.";
     return;
   }
@@ -507,7 +518,7 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
     LOG(ERROR) << "Failed to write changed auth blob for token at "
                << path.value();
   } else if (!object_pool->SetInternalBlob(kAuthDataHash,
-                                           Sha512(new_auth_data))) {
+                                           HashAuthData(new_auth_data))) {
     LOG(ERROR) << "Failed to write auth data hash for token at "
                << path.value();
   }
