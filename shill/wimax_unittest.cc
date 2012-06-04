@@ -188,4 +188,37 @@ TEST_F(WiMaxTest, OnStatusChanged) {
   device_->SelectService(NULL);
 }
 
+TEST_F(WiMaxTest, DropService) {
+  scoped_refptr<NiceMock<MockWiMaxService> > service0(
+      new NiceMock<MockWiMaxService>(
+          &control_,
+          reinterpret_cast<EventDispatcher *>(NULL),
+          &metrics_,
+          &manager_));
+  scoped_refptr<MockWiMaxService> service1(
+      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+  device_->SelectService(service0);
+  device_->pending_service_ = service1;
+
+  EXPECT_CALL(*service0, SetState(Service::kStateIdle)).Times(2);
+  EXPECT_CALL(*service1, SetState(Service::kStateIdle));
+  device_->DropService(Service::kStateIdle);
+  EXPECT_FALSE(device_->selected_service());
+  EXPECT_FALSE(device_->pending_service_);
+
+  // Expect no crash.
+  device_->DropService(Service::kStateFailure);
+}
+
+TEST_F(WiMaxTest, OnDeviceVanished) {
+  device_->proxy_.reset(proxy_.release());
+  scoped_refptr<MockWiMaxService> service(
+      new MockWiMaxService(&control_, NULL, &metrics_, &manager_));
+  device_->pending_service_ = service;
+  EXPECT_CALL(*service, SetState(Service::kStateIdle));
+  device_->OnDeviceVanished();
+  EXPECT_FALSE(device_->proxy_.get());
+  EXPECT_FALSE(device_->pending_service_);
+}
+
 }  // namespace shill

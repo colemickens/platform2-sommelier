@@ -42,6 +42,10 @@ class WiMax : public Device {
   // Signaled by |service| when stopped.
   virtual void OnServiceStopped(const WiMaxServiceRefPtr &service);
 
+  // Signaled by WiMaxProvider when the RPC device disappears. The provider will
+  // deregister and destroy the device after invoking this method.
+  virtual void OnDeviceVanished();
+
   const RpcIdentifier &path() const { return path_; }
   bool scanning() const { return scanning_; }
   const std::set<RpcIdentifier> &networks() const { return networks_; }
@@ -49,7 +53,9 @@ class WiMax : public Device {
  private:
   friend class WiMaxTest;
   FRIEND_TEST(WiMaxProviderTest, OnNetworksChanged);
+  FRIEND_TEST(WiMaxTest, DropService);
   FRIEND_TEST(WiMaxTest, OnConnectComplete);
+  FRIEND_TEST(WiMaxTest, OnDeviceVanished);
   FRIEND_TEST(WiMaxTest, OnNetworksChanged);
   FRIEND_TEST(WiMaxTest, OnServiceStopped);
   FRIEND_TEST(WiMaxTest, OnStatusChanged);
@@ -68,6 +74,7 @@ class WiMax : public Device {
   void OnNetworksChanged(const RpcIdentifiers &networks);
   void OnStatusChanged(wimax_manager::DeviceStatus status);
 
+  void DropService(Service::ConnectState state);
   void DropConnection();
 
   const RpcIdentifier path_;

@@ -170,9 +170,11 @@ TEST_F(WiMaxProviderTest, CreateDevice) {
 
 TEST_F(WiMaxProviderTest, DestroyDeadDevices) {
   for (int i = 0; i < 4; i++) {
-    provider_.devices_[GetTestLinkName(i)] =
+    scoped_refptr<MockWiMax> device(
         new MockWiMax(&control_, NULL, &metrics_, &manager_,
-                      GetTestLinkName(i), "", i, GetTestPath(i));
+                      GetTestLinkName(i), "", i, GetTestPath(i)));
+    EXPECT_CALL(*device, OnDeviceVanished()).Times((i == 0 || i == 3) ? 0 : 1);
+    provider_.devices_[GetTestLinkName(i)] = device;
   }
   for (int i = 4; i < 8; i++) {
     provider_.pending_devices_[GetTestLinkName(i)] = GetTestPath(i);

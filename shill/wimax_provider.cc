@@ -85,9 +85,11 @@ void WiMaxProvider::OnNetworksChanged() {
   // Removes dead networks from |networks_|.
   for (map<RpcIdentifier, NetworkInfo>::iterator it = networks_.begin();
        it != networks_.end(); ) {
-    if (ContainsKey(live_networks, it->first)) {
+    const RpcIdentifier &path = it->first;
+    if (ContainsKey(live_networks, path)) {
       ++it;
     } else {
+      LOG(INFO) << "WiMAX network disappeared: " << path;
       networks_.erase(it++);
     }
   }
@@ -255,7 +257,9 @@ void WiMaxProvider::DestroyDeadDevices(const RpcIdentifiers &live_devices) {
     if (find(live_devices.begin(), live_devices.end(), it->second->path()) ==
         live_devices.end()) {
       LOG(INFO) << "Destroying device: " << it->first;
-      manager_->device_info()->DeregisterDevice(it->second);
+      const WiMaxRefPtr &device = it->second;
+      device->OnDeviceVanished();
+      manager_->device_info()->DeregisterDevice(device);
       devices_.erase(it++);
     } else {
       ++it;
@@ -276,6 +280,7 @@ void WiMaxProvider::RetrieveNetworkInfo(const RpcIdentifier &path) {
     // Nothing to do, the network info is already available.
     return;
   }
+  LOG(INFO) << "WiMAX network appeared: " << path;
   scoped_ptr<WiMaxNetworkProxyInterface> proxy(
       proxy_factory_->CreateWiMaxNetworkProxy(path));
   Error error;
