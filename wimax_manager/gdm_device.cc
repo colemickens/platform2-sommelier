@@ -311,6 +311,10 @@ bool GdmDevice::Connect(const Network &network,
   if (!ConstructEAPParameters(parameters, &eap_parameters))
     return false;
 
+  // TODO(benchan): Remove this hack after testing.
+  if (network.identifier() == 0x00000002)
+    eap_parameters.type = GCT_WIMAX_EAP_TLS;
+
   if (!driver_->SetDeviceEAPParameters(this, &eap_parameters)) {
     LOG(ERROR) << "Failed to set EAP parameters on device '" << name() << "'";
     return false;
