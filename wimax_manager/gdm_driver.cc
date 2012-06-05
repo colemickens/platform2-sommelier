@@ -355,6 +355,27 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
   if (ret != GCT_API_RET_SUCCESS)
     return false;
 
+  // After connected to a network, the NSP info returned by GAPI_GetNetworkList
+  // no longer contains updated CINR and RSSI values. The following code works
+  // around the issue by getting the CINR and RSSI values via GAPI_GetRFInform
+  // when the device is in the connected state.
+  bool use_link_info = false;
+  int link_cinr = Network::kMinCINR;
+  int link_rssi = Network::kMinRSSI;
+  WIMAX_API_DEVICE_STATUS device_status;
+  WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress;
+  ret = GAPI_GetDeviceStatus(&device_id, &device_status, &connection_progress);
+  if (ret == GCT_API_RET_SUCCESS &&
+      device_status == WIMAX_API_DEVICE_STATUS_Data_Connected) {
+    GCT_API_RF_INFORM rf_info;
+    ret = GAPI_GetRFInform(&device_id, &rf_info);
+    if (ret == GCT_API_RET_SUCCESS) {
+      use_link_info = true;
+      link_cinr = Network::DecodeCINR(rf_info.CINR);
+      link_rssi = Network::DecodeRSSI(rf_info.RSSI);
+    }
+  }
+
   LOG(INFO) << "Number of networks: " << num_networks;
   for (size_t i = 0; i < num_networks; ++i) {
     uint32 network_id = network_list[i].NSPid;
@@ -379,8 +400,10 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
     }
 
     NetworkType network_type = ConvertNetworkType(network_list[i].networkType);
-    int network_cinr = Network::DecodeCINR(network_list[i].CINR);
-    int network_rssi = Network::DecodeRSSI(network_list[i].RSSI);
+    int network_cinr =
+        use_link_info ? link_cinr : Network::DecodeCINR(network_list[i].CINR);
+    int network_rssi =
+        use_link_info ? link_rssi : Network::DecodeRSSI(network_list[i].RSSI);
     LOG(INFO) << base::StringPrintf(
         "Found network '%s': type = '%s', id = %08x, CINR = %d, RSSI = %d",
         network_name.c_str(), GetNetworkTypeDescription(network_type).c_str(),
