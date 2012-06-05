@@ -81,6 +81,7 @@ class DevicePolicyService : public PolicyService {
 
   // Takes ownership of |policy_store|, |policy_key|, |system_utils|, and |nss|.
   DevicePolicyService(const FilePath& serial_recovery_flag_file,
+                      const FilePath& policy_file,
                       PolicyStore* policy_store,
                       OwnerKey* policy_key,
                       const scoped_refptr<base::MessageLoopProxy>& main_loop,
@@ -108,6 +109,7 @@ class DevicePolicyService : public PolicyService {
   void UpdateSerialNumberRecoveryFlagFile();
 
   const FilePath serial_recovery_flag_file_;
+  const FilePath policy_file_;
   scoped_ptr<NssUtil> nss_;
   LoginMetrics* metrics_;
   OwnerKeyLossMitigator* mitigator_;

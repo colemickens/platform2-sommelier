@@ -42,6 +42,7 @@ DevicePolicyService* DevicePolicyService::Create(
     const scoped_refptr<base::MessageLoopProxy>& main_loop) {
   NssUtil* nss = NssUtil::Create();
   return new DevicePolicyService(FilePath(kSerialRecoveryFlagFile),
+                                 FilePath(kPolicyPath),
                                  new PolicyStore(FilePath(kPolicyPath)),
                                  new OwnerKey(nss->GetOwnerKeyFilePath()),
                                  main_loop,
@@ -100,6 +101,7 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
 
 DevicePolicyService::DevicePolicyService(
     const FilePath& serial_recovery_flag_file,
+    const FilePath& policy_file,
     PolicyStore* policy_store,
     OwnerKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
@@ -108,6 +110,7 @@ DevicePolicyService::DevicePolicyService(
     OwnerKeyLossMitigator* mitigator)
     : PolicyService(policy_store, policy_key, main_loop),
       serial_recovery_flag_file_(serial_recovery_flag_file),
+      policy_file_(policy_file),
       nss_(nss),
       metrics_(metrics),
       mitigator_(mitigator) {
@@ -281,10 +284,26 @@ bool DevicePolicyService::CurrentUserIsOwner(const std::string& current_user) {
 void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
   const em::PolicyFetchResponse& policy(store()->Get());
   em::PolicyData policy_data;
+  int64 policy_size = 0;
+  bool recovery_needed = false;
+  if (!file_util::GetFileSize(FilePath(policy_file_), &policy_size) ||
+      !policy_size) {
+    recovery_needed = true;
+  }
   if (policy.has_policy_data() &&
       policy_data.ParseFromString(policy.policy_data()) &&
       !policy_data.request_token().empty() &&
       policy_data.valid_serial_number_missing()) {
+    recovery_needed = true;
+  }
+
+  // We need to recreate the machine info file if |valid_serial_number_missing|
+  // is set to true in the protobuf or if the policy file is missing or empty
+  // and we need to re-enroll.
+  // TODO(pastarmovj,wad): Only check if file is missing if enterprise enrolled.
+  // To check that we need to access the install attributes here.
+  // For more info see: http://crosbug.com/31537
+  if (recovery_needed) {
     if (file_util::WriteFile(serial_recovery_flag_file_, NULL, 0) != 0) {
       PLOG(WARNING) << "Failed to write "
                     << serial_recovery_flag_file_.value();

@@ -35,7 +35,8 @@ bool PolicyStore::LoadOrCreate() {
     return false;
   }
   if (!policy_.ParseFromString(polstr)) {
-    LOG(ERROR) << "Policy on disk could not be parsed!";
+    LOG(ERROR) << "Policy on disk could not be parsed and will be deleted!";
+    file_util::Delete(policy_path_, false);
     return false;
   }
   return true;

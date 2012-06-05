@@ -36,7 +36,8 @@ MockChildJob::MockChildJob() {
 MockChildJob::~MockChildJob() {}
 
 MockDevicePolicyService::MockDevicePolicyService()
-    : DevicePolicyService(FilePath(""), NULL, NULL, NULL, NULL, NULL, NULL) {}
+    : DevicePolicyService(FilePath(""), FilePath(""),
+                          NULL, NULL, NULL, NULL, NULL, NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
 
 MockFileChecker::MockFileChecker(std::string filename)

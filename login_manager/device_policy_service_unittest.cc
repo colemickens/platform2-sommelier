@@ -75,6 +75,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     serial_recovery_flag_file_ =
         tmpdir_.path().AppendASCII("serial_recovery_flag");
+    policy_file_ =
+        tmpdir_.path().AppendASCII("policy");
   }
 
   void InitPolicy(const em::ChromeDeviceSettingsProto& settings,
@@ -118,6 +120,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
     service_ = new DevicePolicyService(serial_recovery_flag_file_,
+                                       policy_file_,
                                        store_, key_,
                                        message_loop,
                                        nss,
@@ -299,6 +302,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   ScopedTempDir tmpdir_;
   FilePath serial_recovery_flag_file_;
+  FilePath policy_file_;
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
@@ -741,6 +745,9 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileInitialization) {
   EXPECT_CALL(*metrics_.get(), SendPolicyFilesStatus(_))
       .Times(AnyNumber());
 
+  // Fake the policy file existence.
+  file_util::WriteFile(policy_file_, ".", 1);
+
   em::ChromeDeviceSettingsProto settings;
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
   EXPECT_TRUE(service_->Initialize());
@@ -749,9 +756,18 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileInitialization) {
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
   EXPECT_TRUE(service_->Initialize());
   EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
+
+  // Fake the policy file gone.
+  file_util::Delete(policy_file_, false);
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
+  EXPECT_TRUE(service_->Initialize());
+  EXPECT_TRUE(file_util::PathExists(serial_recovery_flag_file_));
 }
 
 TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
+  // Fake the policy file existence.
+  file_util::WriteFile(policy_file_, ".", 1);
+
   InitService(new MockNssUtil);
   em::ChromeDeviceSettingsProto settings;
   EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
