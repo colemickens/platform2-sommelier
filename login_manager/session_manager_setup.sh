@@ -129,12 +129,18 @@ if [ -f /root/.forget_usernames ] ; then
   SKIP_OOBE="--login-screen=login"
 fi
 
-# To always force WebUI OOBE. This works ok with test images as they
+# To always force OOBE. This works ok with test images as they
 # are always started with OOBE.
-if [ -f /root/.test_repeat_webui_oobe ] ; then
+if [ -f /root/.test_repeat_oobe ] ; then
   rm -f "${DATA_DIR}/.oobe_completed"
   rm -f "${DATA_DIR}/Local State"
   SKIP_OOBE=
+fi
+
+NEW_OOBE_FLAGS=
+# For testing new OOBE/sign in flow.
+if [ -f /root/.enable_new_oobe ] ; then
+  NEW_OOBE_FLAGS="--enable-new-oobe"
 fi
 
 # For recovery image, do NOT display OOBE or login window
@@ -361,4 +367,5 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
+            ${NEW_OOBE_FLAGS} \
     ${WM_SCRIPT:+-- "${WM_SCRIPT}"}
