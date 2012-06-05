@@ -68,11 +68,6 @@ class Device : public base::RefCounted<Device> {
   // report false.
   virtual bool IsUnderlyingDeviceEnabled() const;
 
-  // TODO(gauravsh): We do not really need this since technology() can be used
-  //                 to get a device's technology for direct comparison.
-  // Base method always returns false.
-  virtual bool TechnologyIs(const Technology::Identifier type) const;
-
   virtual void LinkEvent(unsigned flags, unsigned change);
 
   // The default implementation sets |error| to kNotSupported.

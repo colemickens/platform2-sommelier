@@ -26,7 +26,6 @@ class Ethernet : public Device {
 
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
-  virtual bool TechnologyIs(Technology::Identifier type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
 
  private:

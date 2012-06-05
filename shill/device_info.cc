@@ -118,10 +118,10 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
                   << device->interface_index() << ")";
   CHECK(!GetDevice(device->interface_index()).get());
   infos_[device->interface_index()].device = device;
-  if (device->TechnologyIs(Technology::kCellular) ||
-      device->TechnologyIs(Technology::kEthernet) ||
-      device->TechnologyIs(Technology::kWifi) ||
-      device->TechnologyIs(Technology::kWiMax)) {
+  if ((device->technology() == Technology::kCellular) ||
+      (device->technology() == Technology::kEthernet) ||
+      (device->technology() == Technology::kWifi) ||
+      (device->technology() == Technology::kWiMax)) {
     manager_->RegisterDevice(device);
   }
 }
@@ -131,8 +131,8 @@ void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
 
   SLOG(Device, 2) << __func__ << "(" << device->link_name() << ", "
                   << interface_index << ")";
-  CHECK(device->TechnologyIs(Technology::kCellular) ||
-        device->TechnologyIs(Technology::kWiMax));
+  CHECK((device->technology() == Technology::kCellular) ||
+        (device->technology() == Technology::kWiMax));
 
   // Release reference to the device
   map<int, Info>::iterator iter = infos_.find(interface_index);

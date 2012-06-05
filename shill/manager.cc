@@ -584,7 +584,7 @@ void Manager::EnableTechnology(const std::string &technology_name,
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();
        it != devices_.end(); ++it) {
     DeviceRefPtr device = *it;
-    if (device->TechnologyIs(id) && !device->enabled()) {
+    if (device->technology() == id && !device->enabled()) {
       device->SetEnabledPersistent(true, error, callback);
       // Continue with other devices even if one fails
       // TODO(ers): Decide whether an error should be returned
@@ -614,7 +614,7 @@ void Manager::DisableTechnology(const std::string &technology_name,
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();
        it != devices_.end(); ++it) {
     DeviceRefPtr device = *it;
-    if (device->TechnologyIs(id) && device->enabled()) {
+    if (device->technology() == id && device->enabled()) {
       device->SetEnabledPersistent(false, error, callback);
       // Continue with other devices even if one fails
       // TODO(ers): Decide whether an error should be returned
@@ -798,7 +798,7 @@ void Manager::FilterByTechnology(Technology::Identifier tech,
   CHECK(found);
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
-    if ((*it)->TechnologyIs(tech))
+    if ((*it)->technology() == tech)
       found->push_back(*it);
   }
 }

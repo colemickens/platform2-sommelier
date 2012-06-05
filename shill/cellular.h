@@ -160,7 +160,6 @@ class Cellular : public Device {
   // Inherited from Device.
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
-  virtual bool TechnologyIs(Technology::Identifier type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
   virtual void Scan(Error *error);
   virtual void RegisterOnNetwork(const std::string &network_id,

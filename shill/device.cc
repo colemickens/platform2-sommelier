@@ -149,10 +149,6 @@ Device::~Device() {
   SLOG(Device, 2) << "Device " << link_name_ << " destroyed.";
 }
 
-bool Device::TechnologyIs(const Technology::Identifier /*type*/) const {
-  return false;
-}
-
 void Device::LinkEvent(unsigned flags, unsigned change) {
   SLOG(Device, 2) << "Device " << link_name_
                   << std::showbase << std::hex

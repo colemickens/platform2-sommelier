@@ -215,12 +215,12 @@ TEST_F(ManagerTest, Contains) {
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
-  ON_CALL(*mock_devices_[0].get(), TechnologyIs(Technology::kEthernet))
-      .WillByDefault(Return(true));
-  ON_CALL(*mock_devices_[1].get(), TechnologyIs(Technology::kWifi))
-      .WillByDefault(Return(true));
-  ON_CALL(*mock_devices_[2].get(), TechnologyIs(Technology::kCellular))
-      .WillByDefault(Return(true));
+  ON_CALL(*mock_devices_[0].get(), technology())
+      .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*mock_devices_[1].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*mock_devices_[2].get(), technology())
+      .WillByDefault(Return(Technology::kCellular));
 
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
@@ -253,10 +253,10 @@ TEST_F(ManagerTest, DeviceRegistrationWithProfile) {
 }
 
 TEST_F(ManagerTest, DeviceDeregistration) {
-  ON_CALL(*mock_devices_[0].get(), TechnologyIs(Technology::kEthernet))
-      .WillByDefault(Return(true));
-  ON_CALL(*mock_devices_[1].get(), TechnologyIs(Technology::kWifi))
-      .WillByDefault(Return(true));
+  ON_CALL(*mock_devices_[0].get(), technology())
+      .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*mock_devices_[1].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
 
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
@@ -1100,11 +1100,11 @@ TEST_F(ManagerTest, RequestScan) {
     Error error;
     manager()->RegisterDevice(mock_devices_[0].get());
     manager()->RegisterDevice(mock_devices_[1].get());
-    EXPECT_CALL(*mock_devices_[0], TechnologyIs(Technology::kWifi))
-        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mock_devices_[0], technology())
+        .WillRepeatedly(Return(Technology::kWifi));
     EXPECT_CALL(*mock_devices_[0], Scan(_));
-    EXPECT_CALL(*mock_devices_[1], TechnologyIs(Technology::kWifi))
-        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*mock_devices_[1], technology())
+        .WillRepeatedly(Return(Technology::kUnknown));
     EXPECT_CALL(*mock_devices_[1], Scan(_)).Times(0);
     manager()->RequestScan(flimflam::kTypeWifi, &error);
   }
@@ -2113,8 +2113,8 @@ TEST_F(ManagerTest, EnableTechnology) {
   manager()->EnableTechnology(flimflam::kTypeEthernet, &error, callback);
   EXPECT_TRUE(error.IsSuccess());
 
-  ON_CALL(*mock_devices_[0], TechnologyIs(Technology::kEthernet))
-      .WillByDefault(Return(true));
+  ON_CALL(*mock_devices_[0], technology())
+      .WillByDefault(Return(Technology::kEthernet));
 
   manager()->RegisterDevice(mock_devices_[0]);
 
@@ -2138,8 +2138,8 @@ TEST_F(ManagerTest, DisableTechnology) {
   manager()->DisableTechnology(flimflam::kTypeEthernet, &error, callback);
   EXPECT_TRUE(error.IsSuccess());
 
-  ON_CALL(*mock_devices_[0], TechnologyIs(Technology::kEthernet))
-      .WillByDefault(Return(true));
+  ON_CALL(*mock_devices_[0], technology())
+      .WillByDefault(Return(Technology::kEthernet));
 
   manager()->RegisterDevice(mock_devices_[0]);
 

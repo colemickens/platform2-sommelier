@@ -34,8 +34,6 @@ class MockDevice : public Device {
                                           Error* error,
                                           const ResultCallback &callback));
   MOCK_METHOD1(Scan, void(Error *error));
-  MOCK_CONST_METHOD1(TechnologyIs,
-                     bool(const Technology::Identifier technology));
   MOCK_METHOD1(Load, bool(StoreInterface *storage));
   MOCK_METHOD1(Save, bool(StoreInterface *storage));
   MOCK_METHOD0(DisableIPv6, void());

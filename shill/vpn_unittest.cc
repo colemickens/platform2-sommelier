@@ -43,9 +43,9 @@ class VPNTest : public testing::Test {
 const char VPNTest::kTestDeviceName[] = "tun0";
 const int VPNTest::kTestInterfaceIndex = 5;
 
-TEST_F(VPNTest, TechnologyIs) {
-  EXPECT_TRUE(vpn_->TechnologyIs(Technology::kVPN));
-  EXPECT_FALSE(vpn_->TechnologyIs(Technology::kEthernet));
+TEST_F(VPNTest, technology) {
+  EXPECT_TRUE(vpn_->technology() == Technology::kVPN);
+  EXPECT_FALSE(vpn_->technology() == Technology::kEthernet);
 }
 
 }  // namespace shill

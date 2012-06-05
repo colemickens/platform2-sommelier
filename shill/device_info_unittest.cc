@@ -402,7 +402,7 @@ TEST_F(DeviceInfoTest, DeviceBlackList) {
 
   DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
   ASSERT_TRUE(device.get());
-  EXPECT_TRUE(device->TechnologyIs(Technology::kBlacklisted));
+  EXPECT_TRUE(device->technology() == Technology::kBlacklisted);
 }
 
 TEST_F(DeviceInfoTest, DeviceAddressList) {

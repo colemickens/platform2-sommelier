@@ -41,9 +41,6 @@ class DeviceStub : public Device {
              const EnabledStateChangedCallback &/*callback*/) {}
   void Stop(Error */*error*/,
             const EnabledStateChangedCallback &/*callback*/) {}
-  bool TechnologyIs(const Technology::Identifier type) const {
-    return type == technology();
-  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DeviceStub);

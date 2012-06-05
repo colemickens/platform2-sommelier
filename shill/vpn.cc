@@ -38,10 +38,6 @@ void VPN::Stop(Error *error, const EnabledStateChangedCallback &callback) {
     error->Reset();
 }
 
-bool VPN::TechnologyIs(const Technology::Identifier type) const {
-  return type == Technology::kVPN;
-}
-
 void VPN::SelectService(const VPNServiceRefPtr &service) {
   SLOG(VPN, 2) << __func__;
   Device::SelectService(service);

@@ -86,11 +86,6 @@ TEST_F(WiMaxTest, Constructor) {
   EXPECT_FALSE(device_->scanning());
 }
 
-TEST_F(WiMaxTest, TechnologyIs) {
-  EXPECT_TRUE(device_->TechnologyIs(Technology::kWiMax));
-  EXPECT_FALSE(device_->TechnologyIs(Technology::kEthernet));
-}
-
 TEST_F(WiMaxTest, StartStop) {
   EXPECT_FALSE(device_->proxy_.get());
   EXPECT_CALL(*proxy_, Enable(_, _, _));

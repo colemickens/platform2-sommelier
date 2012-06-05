@@ -35,7 +35,6 @@ MockDevice::MockDevice(ControlInterface *control_interface,
              address,
              interface_index,
              Technology::kUnknown) {
-  ON_CALL(*this, TechnologyIs(_)).WillByDefault(Return(false));
   DefaultValue<Technology::Identifier>::Set(Technology::kUnknown);
 }
 

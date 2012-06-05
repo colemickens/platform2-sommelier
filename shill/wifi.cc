@@ -265,10 +265,6 @@ void WiFi::Scan(Error */*error*/) {
   dispatcher()->PostTask(Bind(&WiFi::ScanTask, weak_ptr_factory_.GetWeakPtr()));
 }
 
-bool WiFi::TechnologyIs(const Technology::Identifier type) const {
-  return type == Technology::kWifi;
-}
-
 bool WiFi::IsConnectingTo(const WiFiService &service) const {
   return pending_service_ == &service ||
       (current_service_ == &service &&

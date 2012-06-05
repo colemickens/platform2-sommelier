@@ -173,10 +173,6 @@ TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
                                         &error));
 }
 
-TEST_F(DeviceTest, TechnologyIs) {
-  EXPECT_FALSE(device_->TechnologyIs(Technology::kEthernet));
-}
-
 TEST_F(DeviceTest, DestroyIPConfig) {
   ASSERT_FALSE(device_->ipconfig_.get());
   device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);

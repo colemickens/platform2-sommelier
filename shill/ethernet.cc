@@ -76,10 +76,6 @@ void Ethernet::Stop(Error *error, const EnabledStateChangedCallback &callback) {
     error->Reset();       // indicate immediate completion
 }
 
-bool Ethernet::TechnologyIs(const Technology::Identifier type) const {
-  return type == Technology::kEthernet;
-}
-
 void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
   Device::LinkEvent(flags, change);
   if ((flags & IFF_LOWER_UP) != 0 && !link_up_) {

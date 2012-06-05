@@ -23,8 +23,6 @@ class VPN : public Device {
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
 
-  virtual bool TechnologyIs(const Technology::Identifier type) const;
-
   virtual void UpdateIPConfig(const IPConfig::Properties &properties);
   virtual void OnDisconnected();
 

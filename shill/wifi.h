@@ -122,7 +122,6 @@ class WiFi : public Device {
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
   virtual bool Load(StoreInterface *storage);
   virtual void Scan(Error *error);
-  virtual bool TechnologyIs(const Technology::Identifier type) const;
   virtual bool IsConnectingTo(const WiFiService &service) const;
 
   // Called by SupplicantInterfaceProxy, in response to events from

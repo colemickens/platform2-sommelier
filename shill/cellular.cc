@@ -374,10 +374,6 @@ void Cellular::DestroyService() {
   SelectService(NULL);
 }
 
-bool Cellular::TechnologyIs(const Technology::Identifier type) const {
-  return type == Technology::kCellular;
-}
-
 void Cellular::Connect(Error *error) {
   SLOG(Cellular, 2) << __func__;
   if (state_ == kStateConnected || state_ == kStateLinked) {

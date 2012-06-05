@@ -33,7 +33,6 @@ class WiMax : public Device {
   // Inherited from Device.
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
-  virtual bool TechnologyIs(const Technology::Identifier type) const;
   virtual void Scan(Error *error);
 
   virtual void ConnectTo(const WiMaxServiceRefPtr &service, Error *error);

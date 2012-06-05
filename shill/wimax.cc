@@ -75,10 +75,6 @@ void WiMax::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   }
 }
 
-bool WiMax::TechnologyIs(const Technology::Identifier type) const {
-  return type == Technology::kWiMax;
-}
-
 void WiMax::Scan(Error *error) {
   SLOG(WiMax, 2) << __func__;
   if (scanning_) {
