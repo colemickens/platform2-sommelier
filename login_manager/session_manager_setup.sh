@@ -7,7 +7,7 @@
 # Set up to start the X server ASAP, then let the startup run in the
 # background while we set up other stuff.
 XAUTH_FILE="/var/run/chromelogin.auth"
-MCOOKIE=$(head -c 8 /dev/urandom | openssl md5)  # speed this up?
+MCOOKIE=$(mcookie)
 xauth -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE}
 
 # The X server sends SIGUSR1 to its parent once it's ready to accept
