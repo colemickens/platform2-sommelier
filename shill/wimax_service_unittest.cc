@@ -94,11 +94,6 @@ TEST_F(WiMaxServiceTest, GetConnectParameters) {
   }
 }
 
-TEST_F(WiMaxServiceTest, TechnologyIs) {
-  EXPECT_TRUE(service_->TechnologyIs(Technology::kWiMax));
-  EXPECT_FALSE(service_->TechnologyIs(Technology::kEthernet));
-}
-
 TEST_F(WiMaxServiceTest, GetDeviceRpcId) {
   Error error;
   EXPECT_EQ("/", service_->GetDeviceRpcId(&error));

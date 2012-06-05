@@ -1463,16 +1463,10 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   // Technology
-  EXPECT_CALL(*mock_service0.get(), TechnologyIs(Technology::kWifi))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_service1.get(), TechnologyIs(Technology::kEthernet))
-      .WillRepeatedly(Return(true));
-  // NB: Redefine default (false) return values so we don't use the default rule
-  // which makes the logs noisier
-  EXPECT_CALL(*mock_service0.get(), TechnologyIs(Ne(Technology::kWifi)))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*mock_service1.get(), TechnologyIs(Ne(Technology::kEthernet)))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_service0.get(), technology())
+      .WillRepeatedly(Return((Technology::kWifi)));
+  EXPECT_CALL(*mock_service1.get(), technology())
+      .WillRepeatedly(Return(Technology::kEthernet));
 
   Error error;
   // Default technology ordering should favor Ethernet over WiFi.

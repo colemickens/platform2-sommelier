@@ -66,7 +66,6 @@ class CellularService : public Service {
   virtual void ActivateCellularModem(const std::string &carrier,
                                      Error *error,
                                      const ResultCallback &callback);
-  virtual bool TechnologyIs(const Technology::Identifier type) const;
 
   virtual std::string GetStorageIdentifier() const;
   void SetStorageIdentifier(const std::string &identifier);

@@ -27,9 +27,6 @@ class EthernetService : public Service {
                   const EthernetRefPtr &device);
   ~EthernetService();
 
-  // Inherited from Service.
-  virtual bool TechnologyIs(const Technology::Identifier type) const;
-
   // ethernet_<MAC>
   virtual std::string GetStorageIdentifier() const;
 

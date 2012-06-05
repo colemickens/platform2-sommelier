@@ -68,11 +68,6 @@ class VPNServiceTest : public testing::Test {
   VPNServiceRefPtr service_;
 };
 
-TEST_F(VPNServiceTest, TechnologyIs) {
-  EXPECT_TRUE(service_->TechnologyIs(Technology::kVPN));
-  EXPECT_FALSE(service_->TechnologyIs(Technology::kEthernet));
-}
-
 TEST_F(VPNServiceTest, Connect) {
   EXPECT_TRUE(service_->connectable());
   Error error;

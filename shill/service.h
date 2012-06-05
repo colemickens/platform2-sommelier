@@ -181,9 +181,6 @@ class Service : public base::RefCounted<Service> {
                                      Error *error,
                                      const ResultCallback &callback);
 
-  // Base method always returns false.
-  virtual bool TechnologyIs(const Technology::Identifier type) const;
-
   virtual bool IsActive(Error *error);
 
   virtual ConnectState state() const { return state_; }

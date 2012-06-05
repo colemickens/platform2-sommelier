@@ -262,10 +262,6 @@ void Service::ActivateCellularModem(const string &/*carrier*/,
                         "Service doesn't support cellular modem activation.");
 }
 
-bool Service::TechnologyIs(const Technology::Identifier /*type*/) const {
-  return false;
-}
-
 bool Service::IsActive(Error */*error*/) {
   return state_ != kStateUnknown &&
     state_ != kStateIdle &&
@@ -691,7 +687,7 @@ bool Service::Compare(ServiceRefPtr a,
   for (vector<Technology::Identifier>::const_iterator it = tech_order.begin();
        it != tech_order.end();
        ++it) {
-    if (DecideBetween(a->TechnologyIs(*it), b->TechnologyIs(*it), &ret)) {
+    if (DecideBetween(a->technology() == *it, b->technology() == *it, &ret)) {
       *reason = kServiceSortTechnology;
       return ret;
     }

@@ -46,10 +46,6 @@ EthernetService::EthernetService(ControlInterface *control_interface,
 
 EthernetService::~EthernetService() { }
 
-bool EthernetService::TechnologyIs(const Technology::Identifier type) const {
-  return ethernet_->TechnologyIs(type);
-}
-
 std::string EthernetService::GetDeviceRpcId(Error */*error*/) {
   return ethernet_->GetRpcIdentifier();
 }

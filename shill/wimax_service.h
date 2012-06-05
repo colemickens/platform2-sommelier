@@ -66,7 +66,6 @@ class WiMaxService : public Service {
   virtual void ClearPassphrase();
 
   // Inherited from Service.
-  virtual bool TechnologyIs(const Technology::Identifier type) const;
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
   virtual std::string GetStorageIdentifier() const;

@@ -38,10 +38,6 @@ VPNService::VPNService(ControlInterface *control,
 
 VPNService::~VPNService() {}
 
-bool VPNService::TechnologyIs(const Technology::Identifier type) const {
-  return type == Technology::kVPN;
-}
-
 void VPNService::Connect(Error *error) {
   SLOG(VPN, 2) << __func__ << " @ " << friendly_name();
   if (IsConnected() || IsConnecting()) {

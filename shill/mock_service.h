@@ -30,8 +30,6 @@ class MockService : public Service {
   MOCK_METHOD1(Connect, void(Error *error));
   MOCK_METHOD1(Disconnect, void(Error *error));
   MOCK_METHOD1(CalculateState, std::string(Error *error));
-  MOCK_CONST_METHOD1(TechnologyIs,
-                     bool(const Technology::Identifier technology));
   MOCK_CONST_METHOD0(state, ConnectState());
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_CONST_METHOD0(IsConnected, bool());

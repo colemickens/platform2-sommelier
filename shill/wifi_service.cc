@@ -145,10 +145,6 @@ void WiFiService::AutoConnect() {
   }
 }
 
-bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
-  return wifi_->TechnologyIs(type);
-}
-
 bool WiFiService::IsAutoConnectable(const char **reason) const {
   if (!Service::IsAutoConnectable(reason)) {
     return false;

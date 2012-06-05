@@ -125,10 +125,6 @@ bool WiMaxService::IsStarted() const {
   return proxy_.get();
 }
 
-bool WiMaxService::TechnologyIs(const Technology::Identifier type) const {
-  return type == Technology::kWiMax;
-}
-
 void WiMaxService::Connect(Error *error) {
   if (device_) {
     Error::PopulateAndLog(

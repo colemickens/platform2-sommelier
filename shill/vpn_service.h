@@ -26,7 +26,6 @@ class VPNService : public Service {
   virtual ~VPNService();
 
   // Inherited from Service.
-  virtual bool TechnologyIs(const Technology::Identifier type) const;
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
   virtual std::string GetStorageIdentifier() const;
