@@ -1061,6 +1061,7 @@ TEST_F(WiFiMainTest, Stop) {
   EXPECT_CALL(*manager(), DeregisterService(_));
   StopWiFi();
   EXPECT_TRUE(GetScanTimer().IsCancelled());
+  EXPECT_FALSE(wifi()->weak_ptr_factory_.HasWeakPtrs());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceOpen) {
@@ -2051,6 +2052,18 @@ TEST_F(WiFiMainTest, EAPCertification) {
       .append_string(kSubject.c_str());
   EXPECT_CALL(*service, AddEAPCertification(kSubject, kDepth)).Times(1);
   ReportCertification(args);
+}
+
+TEST_F(WiFiMainTest, PendingScanDoesNotCrashAfterStop) {
+  // Scan is one task that should be skipped after Stop. Others are
+  // skipped by the same mechanism (invalidating weak pointers), so we
+  // don't test them individually.
+  //
+  // Note that we can't test behavior by setting expectations on the
+  // supplicant_interface_proxy_, since that is destroyed when we StopWiFi().
+  StartWiFi();
+  StopWiFi();
+  dispatcher_.DispatchPendingEvents();
 }
 
 }  // namespace shill

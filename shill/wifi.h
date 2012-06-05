@@ -161,6 +161,7 @@ class WiFi : public Device {
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
+  FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsOpen);  // SuspectCredentials
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPANeverConnected);  // as above
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);  // ""

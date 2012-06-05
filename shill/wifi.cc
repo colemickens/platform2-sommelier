@@ -235,7 +235,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
     error->Reset();       // indicate immediate completion
-  // TODO(quiche): Anything else to do?
+  weak_ptr_factory_.InvalidateWeakPtrs();
 
   SLOG(WiFi, 3) << "WiFi " << link_name() << " supplicant_process_proxy_ "
                 << (supplicant_process_proxy_.get() ?
