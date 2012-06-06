@@ -34,6 +34,7 @@ class CellularServiceTest : public testing::Test {
                              Cellular::kTypeGSM,
                              "",
                              "",
+                             "",
                              NULL)),
         service_(new CellularService(&control_, NULL, &metrics_, NULL,
                                      device_)),

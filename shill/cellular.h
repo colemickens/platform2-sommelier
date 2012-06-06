@@ -91,9 +91,12 @@ class Cellular : public Device {
     DISALLOW_COPY_AND_ASSIGN(Operator);
   };
 
-  // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
-  // the ModemManager.Modem DBus object path (e.g.,
+  // |owner| is the ModemManager DBus service owner (e.g., ":1.17").
+  // |path| is the ModemManager.Modem DBus object path (e.g.,
   // "/org/chromium/ModemManager/Gobi/0").
+  // |service| is the modem mananager service name (e.g.,
+  // /org/freeDesktop/ModemManager, /org/freedesktop/ModemManager1
+  // or /org/chromium/ModemManager).
   Cellular(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
            Metrics *metrics,
@@ -103,6 +106,7 @@ class Cellular : public Device {
            int interface_index,
            Type type,
            const std::string &owner,
+           const std::string &service,
            const std::string &path,
            mobile_provider_db *provider_db);
   virtual ~Cellular();
@@ -275,7 +279,8 @@ class Cellular : public Device {
 
   scoped_ptr<CellularCapability> capability_;
 
-  const std::string dbus_owner_;  // ModemManager.Modem
+  const std::string dbus_owner_;  // :x.y
+  const std::string dbus_service_;  // org.*.ModemManager*
   const std::string dbus_path_;  // ModemManager.Modem
 
   mobile_provider_db *provider_db_;

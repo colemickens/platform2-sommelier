@@ -43,6 +43,7 @@ class CellularCapabilityCDMATest : public testing::Test {
                                Cellular::kTypeCDMA,
                                "",
                                "",
+                               "",
                                NULL)),
         proxy_(new MockModemCDMAProxy()),
         capability_(NULL) {}

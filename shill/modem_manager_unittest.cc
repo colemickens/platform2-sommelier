@@ -64,8 +64,8 @@ class ModemManagerTest : public Test {
 
   virtual void SetUp() {
     modem_.reset(new StrictModem(
-        kOwner, kModemPath, &control_interface_, &dispatcher_, &metrics_,
-        &manager_, static_cast<mobile_provider_db *>(NULL)));
+        kOwner, kService, kModemPath, &control_interface_, &dispatcher_,
+        &metrics_, &manager_, static_cast<mobile_provider_db *>(NULL)));
   }
  protected:
   static const char kService[];

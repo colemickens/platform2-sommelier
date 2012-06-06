@@ -74,6 +74,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
                                Cellular::kTypeUniversal,
                                "",
                                "",
+                               "",
                                NULL)),
         service_(new MockCellularService(&control_,
                                          &dispatcher_,

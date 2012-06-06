@@ -66,6 +66,7 @@ class ModemManager {
   Manager *manager() const { return manager_; }
   Metrics *metrics() const { return metrics_; }
   const std::string &owner() const { return owner_; }
+  const std::string &service() const { return service_; }
   const std::string &path() const { return path_; }
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
   mobile_provider_db *provider_db() const { return provider_db_; }

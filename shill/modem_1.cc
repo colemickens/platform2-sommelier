@@ -21,14 +21,15 @@ const char kDefaultNetfilesPath[] = "/sys/class/net";
 } // namespace {}
 
 Modem1::Modem1(const string &owner,
+               const string &service,
                const string &path,
                ControlInterface *control_interface,
                EventDispatcher *dispatcher,
                Metrics *metrics,
                Manager *manager,
                mobile_provider_db *provider_db)
-    : Modem(owner, path, control_interface, dispatcher, metrics, manager,
-            provider_db),
+    : Modem(owner, service, path, control_interface, dispatcher, metrics,
+            manager, provider_db),
       netfiles_path_(kDefaultNetfilesPath) {
 }
 

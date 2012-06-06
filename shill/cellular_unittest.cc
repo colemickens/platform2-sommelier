@@ -71,6 +71,7 @@ class CellularPropertyTest : public PropertyStoreTest {
                              Cellular::kTypeGSM,
                              "",
                              "",
+                             "",
                              NULL)) {}
   virtual ~CellularPropertyTest() {}
 
@@ -127,6 +128,7 @@ class CellularTest : public testing::Test {
                              3,
                              Cellular::kTypeGSM,
                              kDBusOwner,
+                             kDBusService,
                              kDBusPath,
                              NULL)),
         proxy_(new MockModemProxy()),
@@ -288,6 +290,7 @@ class CellularTest : public testing::Test {
   static const char kTestDeviceName[];
   static const char kTestDeviceAddress[];
   static const char kDBusOwner[];
+  static const char kDBusService[];
   static const char kDBusPath[];
   static const char kTestCarrier[];
   static const char kMEID[];
@@ -378,6 +381,7 @@ class CellularTest : public testing::Test {
 const char CellularTest::kTestDeviceName[] = "usb0";
 const char CellularTest::kTestDeviceAddress[] = "00:01:02:03:04:05";
 const char CellularTest::kDBusOwner[] = ":1.19";
+const char CellularTest::kDBusService[] = "org.chromium.ModemManager";
 const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
 const char CellularTest::kTestCarrier[] = "The Cellular Carrier";
 const char CellularTest::kMEID[] = "01234567EF8901";

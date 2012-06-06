@@ -36,6 +36,7 @@ class Modem {
   // the ModemManager.Modem DBus object path (e.g.,
   // "/org/chromium/ModemManager/Gobi/0").
   Modem(const std::string &owner,
+        const std::string &service,
         const std::string &path,
         ControlInterface *control_interface,
         EventDispatcher *dispatcher,
@@ -54,6 +55,7 @@ class Modem {
   void OnDeviceInfoAvailable(const std::string &link_name);
 
   const std::string &owner() const { return owner_; }
+  const std::string &service() const { return service_; }
   const std::string &path() const { return path_; }
 
   void set_type(Cellular::Type type) { type_ = type; }
@@ -109,6 +111,7 @@ class Modem {
   DBusPropertiesMap initial_modem_properties_;
 
   const std::string owner_;
+  const std::string service_;
   const std::string path_;
 
   CellularRefPtr device_;
@@ -132,6 +135,7 @@ class Modem {
 class ModemClassic : public Modem {
  public:
   ModemClassic(const std::string &owner,
+               const std::string &service,
                const std::string &path,
                ControlInterface *control_interface,
                EventDispatcher *dispatcher,
@@ -155,6 +159,7 @@ class ModemClassic : public Modem {
 class Modem1 : public Modem {
  public:
   Modem1(const std::string &owner,
+         const std::string &service,
          const std::string &path,
          ControlInterface *control_interface,
          EventDispatcher *dispatcher,

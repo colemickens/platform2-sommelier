@@ -26,6 +26,7 @@ const char Modem::kPropertyIPMethod[] = "IpMethod";
 const char Modem::kPropertyType[] = "Type";
 
 Modem::Modem(const string &owner,
+             const string &service,
              const string &path,
              ControlInterface *control_interface,
              EventDispatcher *dispatcher,
@@ -33,6 +34,7 @@ Modem::Modem(const string &owner,
              Manager *manager,
              mobile_provider_db *provider_db)
     : owner_(owner),
+      service_(service),
       path_(path),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
@@ -86,6 +88,7 @@ Cellular *Modem::ConstructCellular(const string &link_name,
                       interface_index,
                       type_,
                       owner_,
+                      service_,
                       path_,
                       provider_db_);
 }

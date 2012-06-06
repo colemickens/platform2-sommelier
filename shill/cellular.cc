@@ -96,6 +96,7 @@ Cellular::Cellular(ControlInterface *control_interface,
                    int interface_index,
                    Type type,
                    const string &owner,
+                   const string &service,
                    const string &path,
                    mobile_provider_db *provider_db)
     : Device(control_interface,
@@ -109,11 +110,14 @@ Cellular::Cellular(ControlInterface *control_interface,
       state_(kStateDisabled),
       modem_state_(kModemStateUnknown),
       dbus_owner_(owner),
+      dbus_service_(service),
       dbus_path_(path),
       provider_db_(provider_db),
       allow_roaming_(false) {
   PropertyStore *store = this->mutable_store();
+  // TODO(jglasgow): kDBusConnectionProperty is deprecated.
   store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
+  store->RegisterConstString(flimflam::kDBusServiceProperty, &dbus_service_);
   store->RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
   HelpRegisterDerivedString(flimflam::kTechnologyFamilyProperty,
                             &Cellular::GetTechnologyFamily,

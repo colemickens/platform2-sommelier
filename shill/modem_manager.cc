@@ -159,6 +159,7 @@ void ModemManagerClassic::AddModemClassic(const string &path) {
     return;
   }
   shared_ptr<ModemClassic> modem(new ModemClassic(owner(),
+                                                  service(),
                                                   path,
                                                   control_interface(),
                                                   dispatcher(),
@@ -247,6 +248,7 @@ void ModemManager1::AddModem1(const string &path,
     return;
   }
   shared_ptr<Modem1> modem1(new Modem1(owner(),
+                                       service(),
                                        path,
                                        control_interface(),
                                        dispatcher(),

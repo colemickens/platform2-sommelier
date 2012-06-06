@@ -38,6 +38,7 @@ namespace {
 const int kTestInterfaceIndex = 5;
 const char kLinkName[] = "usb0";
 const char kOwner[] = ":1.18";
+const char kService[] = "org.chromium.ModemManager";
 const char kPath[] = "/org/chromium/ModemManager/Gobi/0";
 const unsigned char kAddress[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
 const char kAddressAsString[] = "000102030405";
@@ -54,6 +55,7 @@ class Modem1Test : public Test {
         modem_(
             new Modem1(
                 kOwner,
+                kService,
                 kPath,
                 &control_interface_,
                 &dispatcher_,
@@ -108,6 +110,7 @@ void Modem1Test::SetUp() {
   ASSERT_TRUE(file_util::CreateSymbolicLink(device_dir, symlink));
 
   EXPECT_EQ(kOwner, modem_->owner_);
+  EXPECT_EQ(kService, modem_->service_);
   EXPECT_EQ(kPath, modem_->path_);
   ReplaceSingletons();
   expected_address_ = ByteString(kAddress, arraysize(kAddress));

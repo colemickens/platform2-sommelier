@@ -16,6 +16,7 @@ namespace shill {
 class MockModem : public Modem {
  public:
   MockModem(const std::string &owner,
+            const std::string &service,
             const std::string &path,
             ControlInterface *control_interface,
             EventDispatcher *dispatcher,

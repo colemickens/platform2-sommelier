@@ -18,10 +18,12 @@ MockCellular::MockCellular(ControlInterface *control_interface,
                            int interface_index,
                            Type type,
                            const std::string &owner,
+                           const std::string &service,
                            const std::string &path,
                            mobile_provider_db *provider_db)
     : Cellular(control_interface, dispatcher, metrics, manager, link_name,
-               address, interface_index, type, owner, path, provider_db) {}
+               address, interface_index, type, owner, service, path,
+               provider_db) {}
 
 MockCellular::~MockCellular() {}
 

@@ -58,6 +58,7 @@ class CellularCapabilityTest : public testing::Test {
                                Cellular::kTypeGSM,
                                "",
                                "",
+                               "",
                                NULL)),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),

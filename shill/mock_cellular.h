@@ -25,6 +25,7 @@ class MockCellular : public Cellular {
                int interface_index,
                Type type,
                const std::string &owner,
+               const std::string &service,
                const std::string &path,
                mobile_provider_db *provider_db);
   virtual ~MockCellular();
