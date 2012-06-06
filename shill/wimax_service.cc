@@ -194,7 +194,7 @@ void WiMaxService::set_eap(const EapCredentials &eap) {
 }
 
 void WiMaxService::UpdateConnectable() {
-  set_connectable(IsStarted() && !need_passphrase_);
+  SetConnectable(IsStarted() && !need_passphrase_);
 }
 
 void WiMaxService::OnSignalStrengthChanged(int strength) {

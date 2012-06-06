@@ -550,6 +550,36 @@ TEST_F(ServiceTest, SetCheckPortal) {
   }
 }
 
+TEST_F(ServiceTest, SetConnectable) {
+  EXPECT_FALSE(service_->connectable());
+
+  ServiceMockAdaptor *adaptor =
+      dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+
+  EXPECT_CALL(*adaptor, EmitBoolChanged(_, _)).Times(0);
+  EXPECT_CALL(mock_manager_, HasService(_)).Times(0);
+  service_->SetConnectable(false);
+  EXPECT_FALSE(service_->connectable());
+
+  EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kConnectableProperty, true));
+  EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(false));
+  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
+  service_->SetConnectable(true);
+  EXPECT_TRUE(service_->connectable());
+
+  EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kConnectableProperty, false));
+  EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(true));
+  EXPECT_CALL(mock_manager_, UpdateService(_));
+  service_->SetConnectable(false);
+  EXPECT_FALSE(service_->connectable());
+
+  EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kConnectableProperty, true));
+  EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(true));
+              EXPECT_CALL(mock_manager_, UpdateService(_));
+  service_->SetConnectable(true);
+  EXPECT_TRUE(service_->connectable());
+}
+
 // Make sure a property is registered as a write only property
 // by reading and comparing all string properties returned on the store.
 // Subtle: We need to convert the test argument back and forth between

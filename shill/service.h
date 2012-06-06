@@ -298,7 +298,11 @@ class Service : public base::RefCounted<Service> {
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
   bool connectable() const { return connectable_; }
+  // TODO(petkov): Remove this method in favor of SetConnectable.
   void set_connectable(bool connectable);
+  // Sets the connectable property of the service. Broadcasts the new value and
+  // alerts the manager if necessary.
+  void SetConnectable(bool connectable);
 
   virtual bool explicitly_disconnected() const {
     return explicitly_disconnected_;
@@ -480,6 +484,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
   FRIEND_TEST(ServiceTest, SetProperty);
   FRIEND_TEST(ServiceTest, SetCheckPortal);
+  FRIEND_TEST(ServiceTest, SetConnectable);
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, Unload);
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);

@@ -752,6 +752,17 @@ void Service::set_connectable(bool connectable) {
   adaptor_->EmitBoolChanged(flimflam::kConnectableProperty, connectable_);
 }
 
+void Service::SetConnectable(bool connectable) {
+  if (connectable_ == connectable) {
+    return;
+  }
+  connectable_ = connectable;
+  adaptor_->EmitBoolChanged(flimflam::kConnectableProperty, connectable_);
+  if (manager_->HasService(this)) {
+    manager_->UpdateService(this);
+  }
+}
+
 string Service::CalculateState(Error */*error*/) {
   switch (state_) {
     case kStateIdle:

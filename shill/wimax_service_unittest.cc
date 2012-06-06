@@ -60,6 +60,11 @@ class WiMaxServiceTest : public testing::Test {
     service_->device_ = NULL;
   }
 
+  void ExpectUpdateService() {
+    EXPECT_CALL(manager_, HasService(_)).WillOnce(Return(true));
+    EXPECT_CALL(manager_, UpdateService(_));
+  }
+
   scoped_ptr<MockWiMaxNetworkProxy> proxy_;
   NiceMockControl control_;
   MockManager manager_;
@@ -122,6 +127,7 @@ TEST_F(WiMaxServiceTest, StartStop) {
   EXPECT_CALL(*proxy_, Identifier(_)).WillOnce(Return(kIdentifier));
   EXPECT_CALL(*proxy_, SignalStrength(_)).WillOnce(Return(kStrength));
   EXPECT_CALL(*proxy_, set_signal_strength_changed_callback(_));
+  ExpectUpdateService();
   service_->need_passphrase_ = false;
   EXPECT_TRUE(service_->Start(proxy_.release()));
   EXPECT_TRUE(service_->IsStarted());
@@ -134,6 +140,7 @@ TEST_F(WiMaxServiceTest, StartStop) {
 
   service_->device_ = device_;
   EXPECT_CALL(*device_, OnServiceStopped(_));
+  ExpectUpdateService();
   service_->Stop();
   EXPECT_FALSE(service_->IsStarted());
   EXPECT_EQ(0, service_->strength());
@@ -161,11 +168,13 @@ TEST_F(WiMaxServiceTest, SetEAP) {
 
   // Connectable.
   service_->proxy_.reset(proxy_.release());
+  ExpectUpdateService();
   base_service->set_eap(eap);
   EXPECT_FALSE(service_->need_passphrase_);
   EXPECT_TRUE(base_service->connectable());
 
   // Reset password.
+  ExpectUpdateService();
   service_->ClearPassphrase();
   EXPECT_TRUE(service_->need_passphrase_);
   EXPECT_FALSE(base_service->connectable());
