@@ -169,6 +169,7 @@ void WiMaxService::Disconnect(Error *error) {
   // TODO(benchan,petkov): Find a better way to allow users to change the
   // EAP credentials.
   need_passphrase_ = true;
+  UpdateConnectable();
 }
 
 string WiMaxService::GetStorageIdentifier() const {
