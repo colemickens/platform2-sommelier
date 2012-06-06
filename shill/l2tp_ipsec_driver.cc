@@ -68,9 +68,8 @@ L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
                                  Manager *manager,
                                  DeviceInfo *device_info,
                                  GLib *glib)
-    : VPNDriver(manager, kProperties, arraysize(kProperties)),
+    : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
       control_(control),
-      dispatcher_(dispatcher),
       metrics_(metrics),
       device_info_(device_info),
       glib_(glib),
@@ -90,6 +89,7 @@ bool L2TPIPSecDriver::ClaimInterface(const string &link_name,
 }
 
 void L2TPIPSecDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
+  StartConnectTimeout();
   service_ = service;
   service_->SetState(Service::kStateConfiguring);
   rpc_task_.reset(new RPCTask(control_, this));
@@ -104,7 +104,7 @@ void L2TPIPSecDriver::Disconnect() {
 }
 
 void L2TPIPSecDriver::OnConnectionDisconnected() {
-  SLOG(VPN, 2) << __func__;
+  LOG(ERROR) << "VPN connection disconnected.";
   Cleanup(Service::kStateFailure);
 }
 
@@ -115,6 +115,7 @@ string L2TPIPSecDriver::GetProviderType() const {
 void L2TPIPSecDriver::Cleanup(Service::ConnectState state) {
   SLOG(VPN, 2) << __func__
                << "(" << Service::ConnectStateToString(state) << ")";
+  StopConnectTimeout();
   DeletePSKFile();
   if (child_watch_tag_) {
     glib_->SourceRemove(child_watch_tag_);
@@ -322,7 +323,7 @@ void L2TPIPSecDriver::OnL2TPIPSecVPNDied(GPid pid, gint status, gpointer data) {
 }
 
 void L2TPIPSecDriver::GetLogin(string *user, string *password) {
-  SLOG(VPN, 2) << __func__;
+  LOG(INFO) << "Login requested.";
   string user_property =
       args()->LookupString(flimflam::kL2tpIpsecUserProperty, "");
   if (user_property.empty()) {
@@ -373,7 +374,7 @@ void L2TPIPSecDriver::ParseIPConfiguration(
 
 void L2TPIPSecDriver::Notify(
     const string &reason, const map<string, string> &dict) {
-  SLOG(VPN, 2) << __func__ << "(" << reason << ")";
+  LOG(INFO) << "IP configuration received: " << reason;
 
   if (reason != "connect") {
     device_->OnDisconnected();
@@ -396,12 +397,13 @@ void L2TPIPSecDriver::Notify(
   }
 
   if (!device_) {
-    device_ = new VPN(control_, dispatcher_, metrics_, manager(),
+    device_ = new VPN(control_, dispatcher(), metrics_, manager(),
                       interface_name, interface_index);
   }
   device_->SetEnabled(true);
   device_->SelectService(service_);
   device_->UpdateIPConfig(properties);
+  StopConnectTimeout();
 }
 
 KeyValueStore L2TPIPSecDriver::GetProvider(Error *error) {

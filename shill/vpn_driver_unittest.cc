@@ -35,6 +35,7 @@ using testing::Test;
 namespace shill {
 
 namespace {
+
 const char kHostProperty[] = "VPN.Host";
 const char kOTPProperty[] = "VPN.OTP";
 const char kPINProperty[] = "VPN.PIN";
@@ -50,7 +51,7 @@ const char kStorageID[] = "vpn_service_id";
 
 class VPNDriverUnderTest : public VPNDriver {
  public:
-  VPNDriverUnderTest(Manager *manager);
+  VPNDriverUnderTest(EventDispatcher *dispatcher, Manager *manager);
   virtual ~VPNDriverUnderTest() {}
 
   // Inherited from VPNDriver.
@@ -77,15 +78,16 @@ const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
   { flimflam::kProviderNameProperty, 0 },
 };
 
-VPNDriverUnderTest::VPNDriverUnderTest(Manager *manager)
-    : VPNDriver(manager, kProperties, arraysize(kProperties)) {}
+VPNDriverUnderTest::VPNDriverUnderTest(
+    EventDispatcher *dispatcher, Manager *manager)
+    : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)) {}
 
 class VPNDriverTest : public Test {
  public:
   VPNDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
         manager_(&control_, &dispatcher_, &metrics_, &glib_),
-        driver_(&manager_) {}
+        driver_(&dispatcher_, &manager_) {}
 
   virtual ~VPNDriverTest() {}
 
@@ -238,6 +240,24 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
     EXPECT_TRUE(store.SetStringProperty(kPINProperty, kValue, &error));
     EXPECT_EQ(kValue, GetArgs()->GetString(kPINProperty));
   }
+}
+
+TEST_F(VPNDriverTest, ConnectTimeout) {
+  EXPECT_EQ(&dispatcher_, driver_.dispatcher_);
+  EXPECT_TRUE(driver_.connect_timeout_callback_.IsCancelled());
+  EXPECT_FALSE(driver_.IsConnectTimeoutStarted());
+  EXPECT_EQ(VPNDriver::kDefaultConnectTimeoutSeconds,
+            driver_.connect_timeout_seconds_);
+  driver_.connect_timeout_seconds_ = 0;
+  driver_.StartConnectTimeout();
+  EXPECT_FALSE(driver_.connect_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(driver_.IsConnectTimeoutStarted());
+  driver_.dispatcher_ = NULL;
+  driver_.StartConnectTimeout();  // Expect no crash.
+  EXPECT_CALL(driver_, OnConnectionDisconnected());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_TRUE(driver_.connect_timeout_callback_.IsCancelled());
+  EXPECT_FALSE(driver_.IsConnectTimeoutStarted());
 }
 
 }  // namespace shill

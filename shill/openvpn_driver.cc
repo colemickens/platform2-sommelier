@@ -123,9 +123,8 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
                              Manager *manager,
                              DeviceInfo *device_info,
                              GLib *glib)
-    : VPNDriver(manager, kProperties, arraysize(kProperties)),
+    : VPNDriver(dispatcher, manager, kProperties, arraysize(kProperties)),
       control_(control),
-      dispatcher_(dispatcher),
       metrics_(metrics),
       device_info_(device_info),
       glib_(glib),
@@ -142,6 +141,7 @@ OpenVPNDriver::~OpenVPNDriver() {
 void OpenVPNDriver::Cleanup(Service::ConnectState state) {
   SLOG(VPN, 2) << __func__ << "(" << Service::ConnectStateToString(state)
                << ")";
+  StopConnectTimeout();
   management_server_->Stop();
   if (!tls_auth_file_.empty()) {
     file_util::Delete(tls_auth_file_, false);
@@ -243,7 +243,7 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   SLOG(VPN, 2) << "Claiming " << link_name << " for OpenVPN tunnel";
 
   CHECK(!device_);
-  device_ = new VPN(control_, dispatcher_, metrics_, manager(),
+  device_ = new VPN(control_, dispatcher(), metrics_, manager(),
                     link_name, interface_index);
 
   device_->SetEnabled(true);
@@ -262,7 +262,7 @@ void OpenVPNDriver::GetLogin(string */*user*/, string */*password*/) {
 
 void OpenVPNDriver::Notify(const string &reason,
                            const map<string, string> &dict) {
-  SLOG(VPN, 2) << __func__ << "(" << reason << ")";
+  LOG(INFO) << "IP configuration received: " << reason;
   if (reason != "up") {
     device_->OnDisconnected();
     return;
@@ -270,6 +270,7 @@ void OpenVPNDriver::Notify(const string &reason,
   IPConfig::Properties properties;
   ParseIPConfiguration(dict, &properties);
   device_->UpdateIPConfig(properties);
+  StopConnectTimeout();
 }
 
 // static
@@ -396,8 +397,8 @@ void OpenVPNDriver::SetRoutes(const RouteOptions &routes,
   }
 }
 
-void OpenVPNDriver::Connect(const VPNServiceRefPtr &service,
-                            Error *error) {
+void OpenVPNDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
+  StartConnectTimeout();
   service_ = service;
   service_->SetState(Service::kStateConfiguring);
   if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
@@ -578,7 +579,7 @@ void OpenVPNDriver::InitPKCS11Options(vector<string> *options) {
 
 bool OpenVPNDriver::InitManagementChannelOptions(
     vector<string> *options, Error *error) {
-  if (!management_server_->Start(dispatcher_, &sockets_, options)) {
+  if (!management_server_->Start(dispatcher(), &sockets_, options)) {
     Error::PopulateAndLog(
         error, Error::kInternalError, "Unable to setup management channel.");
     return false;
@@ -625,12 +626,13 @@ void OpenVPNDriver::Disconnect() {
 }
 
 void OpenVPNDriver::OnConnectionDisconnected() {
-  SLOG(VPN, 2) << __func__;
+  LOG(ERROR) << "VPN connection disconnected.";
   Cleanup(Service::kStateFailure);
 }
 
 void OpenVPNDriver::OnReconnecting() {
   SLOG(VPN, 2) << __func__;
+  StartConnectTimeout();
   if (device_) {
     device_->OnDisconnected();
   }

@@ -26,7 +26,6 @@ namespace shill {
 class ControlInterface;
 class DeviceInfo;
 class Error;
-class EventDispatcher;
 class Metrics;
 class NSS;
 class OpenVPNManagementServer;
@@ -53,10 +52,9 @@ class OpenVPNDriver : public VPNDriver,
                               int interface_index);
   virtual void Disconnect();
   virtual void OnConnectionDisconnected();
+  virtual std::string GetProviderType() const;
 
   virtual void OnReconnecting();
-
-  virtual std::string GetProviderType() const;
 
   virtual void Cleanup(Service::ConnectState state);
 
@@ -152,7 +150,6 @@ class OpenVPNDriver : public VPNDriver,
                       const std::map<std::string, std::string> &dict);
 
   ControlInterface *control_;
-  EventDispatcher *dispatcher_;
   Metrics *metrics_;
   DeviceInfo *device_info_;
   GLib *glib_;

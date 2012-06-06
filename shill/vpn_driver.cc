@@ -8,6 +8,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/connection.h"
+#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/property_store.h"
@@ -18,12 +19,19 @@ using std::string;
 
 namespace shill {
 
-VPNDriver::VPNDriver(Manager *manager,
+// static
+const int VPNDriver::kDefaultConnectTimeoutSeconds = 60;
+
+VPNDriver::VPNDriver(EventDispatcher *dispatcher,
+                     Manager *manager,
                      const Property *properties,
                      size_t property_count)
-    : manager_(manager),
+    : weak_ptr_factory_(this),
+      dispatcher_(dispatcher),
+      manager_(manager),
       properties_(properties),
-      property_count_(property_count) {}
+      property_count_(property_count),
+      connect_timeout_seconds_(kDefaultConnectTimeoutSeconds) {}
 
 VPNDriver::~VPNDriver() {}
 
@@ -150,6 +158,32 @@ KeyValueStore VPNDriver::GetProvider(Error *error) {
   }
 
   return provider_properties;
+}
+
+void VPNDriver::StartConnectTimeout() {
+  SLOG(VPN, 2) << __func__;
+  if (IsConnectTimeoutStarted()) {
+    return;
+  }
+  connect_timeout_callback_.Reset(
+      Bind(&VPNDriver::OnConnectTimeout, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostDelayedTask(
+      connect_timeout_callback_.callback(), connect_timeout_seconds_ * 1000);
+}
+
+void VPNDriver::StopConnectTimeout() {
+  SLOG(VPN, 2) << __func__;
+  connect_timeout_callback_.Cancel();
+}
+
+bool VPNDriver::IsConnectTimeoutStarted() const {
+  return !connect_timeout_callback_.IsCancelled();
+}
+
+void VPNDriver::OnConnectTimeout() {
+  LOG(ERROR) << "VPN connection timeout.";
+  StopConnectTimeout();
+  OnConnectionDisconnected();
 }
 
 }  // namespace shill

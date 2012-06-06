@@ -192,6 +192,7 @@ TEST_F(OpenVPNDriverTest, Connect) {
   driver_->Connect(service_, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
+  EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
 }
 
 TEST_F(OpenVPNDriverTest, ConnectTunnelFailure) {
@@ -202,6 +203,7 @@ TEST_F(OpenVPNDriverTest, ConnectTunnelFailure) {
   driver_->Connect(service_, &error);
   EXPECT_EQ(Error::kInternalError, error.type());
   EXPECT_TRUE(driver_->tunnel_interface_.empty());
+  EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
 }
 
 namespace {
@@ -215,15 +217,19 @@ MATCHER_P(IsIPAddress, address, "") {
 TEST_F(OpenVPNDriverTest, Notify) {
   map<string, string> config;
   driver_->device_ = device_;
+  driver_->StartConnectTimeout();
   EXPECT_CALL(*device_, UpdateIPConfig(_));
   driver_->Notify("up", config);
+  EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
 }
 
 TEST_F(OpenVPNDriverTest, NotifyFail) {
   map<string, string> dict;
   driver_->device_ = device_;
+  driver_->StartConnectTimeout();
   EXPECT_CALL(*device_, OnDisconnected());
   driver_->Notify("fail", dict);
+  EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
 }
 
 TEST_F(OpenVPNDriverTest, GetRouteOptionEntry) {
@@ -561,6 +567,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->tunnel_interface_ = kInterfaceName;
   driver_->device_ = device_;
   driver_->service_ = service_;
+  driver_->StartConnectTimeout();
   FilePath tls_auth_file;
   EXPECT_TRUE(file_util::CreateTemporaryFile(&tls_auth_file));
   EXPECT_FALSE(tls_auth_file.empty());
@@ -583,6 +590,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_FALSE(driver_->service_);
   EXPECT_FALSE(file_util::PathExists(tls_auth_file));
   EXPECT_TRUE(driver_->tls_auth_file_.empty());
+  EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
 }
 
 namespace {
@@ -658,6 +666,7 @@ TEST_F(OpenVPNDriverTest, OnReconnecting) {
   EXPECT_CALL(*device_, OnDisconnected());
   EXPECT_CALL(*service_, SetState(Service::kStateAssociating));
   driver_->OnReconnecting();
+  EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
 }
 
 TEST_F(OpenVPNDriverTest, VerifyPaths) {

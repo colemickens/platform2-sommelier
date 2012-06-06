@@ -152,6 +152,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   FilePath psk_file = SetupPSKFile();
+  driver_->StartConnectTimeout();
   driver_->Cleanup(Service::kStateFailure);
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(driver_->psk_file_.empty());
@@ -160,6 +161,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_FALSE(driver_->rpc_task_.get());
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
+  EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
 }
 
 TEST_F(L2TPIPSecDriverTest, DeletePSKFile) {
@@ -402,6 +404,7 @@ TEST_F(L2TPIPSecDriverTest, Connect) {
   Error error;
   driver_->Connect(service_, &error);
   EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
 }
 
 TEST_F(L2TPIPSecDriverTest, Disconnect) {
@@ -502,16 +505,20 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   EXPECT_CALL(*device_, UpdateIPConfig(_));
   driver_->device_ = device_;
   FilePath psk_file = SetupPSKFile();
+  driver_->StartConnectTimeout();
   driver_->Notify("connect", config);
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(driver_->psk_file_.empty());
+  EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
 }
 
 TEST_F(L2TPIPSecDriverTest, NotifyFail) {
   map<string, string> dict;
   driver_->device_ = device_;
   EXPECT_CALL(*device_, OnDisconnected());
+  driver_->StartConnectTimeout();
   driver_->Notify("fail", dict);
+  EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
 }
 
 TEST_F(L2TPIPSecDriverTest, VerifyPaths) {

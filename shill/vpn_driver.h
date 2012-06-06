@@ -8,6 +8,8 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/cancelable_callback.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
@@ -17,6 +19,7 @@
 namespace shill {
 
 class Error;
+class EventDispatcher;
 class Manager;
 class PropertyStore;
 class StoreInterface;
@@ -54,24 +57,48 @@ class VPNDriver {
     int flags;
   };
 
-  VPNDriver(Manager *manager,
+  VPNDriver(EventDispatcher *dispatcher,
+            Manager *manager,
             const Property *properties,
             size_t property_count);
 
+  EventDispatcher *dispatcher() const { return dispatcher_; }
   Manager *manager() const { return manager_; }
 
   virtual KeyValueStore GetProvider(Error *error);
 
+  // Initializes a callback that will invoke OnConnectTimeout. The timeout will
+  // not be restarted if it's already scheduled.
+  void StartConnectTimeout();
+  // Cancels the connect timeout callback, if any, previously scheduled through
+  // StartConnectTimeout.
+  void StopConnectTimeout();
+  // Returns true if a connect timeout is scheduled, false otherwise.
+  bool IsConnectTimeoutStarted() const;
+
  private:
+  FRIEND_TEST(VPNDriverTest, ConnectTimeout);
+
+  static const int kDefaultConnectTimeoutSeconds;
+
   void ClearMappedProperty(const size_t &index, Error *error);
   std::string GetMappedProperty(const size_t &index, Error *error);
   void SetMappedProperty(
       const size_t &index, const std::string &value, Error *error);
 
+  // Called if a connect timeout scheduled through StartConnectTimeout
+  // fires. Marks the callback as stopped and invokes OnConnectionDisconnected.
+  void OnConnectTimeout();
+
+  base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;
+  EventDispatcher *dispatcher_;
   Manager *manager_;
   const Property * const properties_;
   const size_t property_count_;
   KeyValueStore args_;
+
+  base::CancelableClosure connect_timeout_callback_;
+  int connect_timeout_seconds_;
 
   DISALLOW_COPY_AND_ASSIGN(VPNDriver);
 };

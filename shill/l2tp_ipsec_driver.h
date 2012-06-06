@@ -21,7 +21,6 @@ namespace shill {
 
 class ControlInterface;
 class DeviceInfo;
-class EventDispatcher;
 class GLib;
 class Metrics;
 class NSS;
@@ -50,6 +49,7 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, AppendFlag);
   FRIEND_TEST(L2TPIPSecDriverTest, AppendValueOption);
   FRIEND_TEST(L2TPIPSecDriverTest, Cleanup);
+  FRIEND_TEST(L2TPIPSecDriverTest, Connect);
   FRIEND_TEST(L2TPIPSecDriverTest, DeletePSKFile);
   FRIEND_TEST(L2TPIPSecDriverTest, Disconnect);
   FRIEND_TEST(L2TPIPSecDriverTest, GetLogin);
@@ -110,7 +110,6 @@ class L2TPIPSecDriver : public VPNDriver,
                       const std::map<std::string, std::string> &dict);
 
   ControlInterface *control_;
-  EventDispatcher *dispatcher_;
   Metrics *metrics_;
   DeviceInfo *device_info_;
   GLib *glib_;
