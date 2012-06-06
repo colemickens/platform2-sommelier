@@ -90,8 +90,7 @@ MonitorReconfigure::MonitorReconfigure()
       is_projecting_(false),
       projection_callback_(NULL),
       projection_callback_data_(NULL),
-      backlight_ctl_(NULL),
-      force_disable_reconfigure_(false) {
+      backlight_ctl_(NULL) {
 }
 
 MonitorReconfigure::MonitorReconfigure(BacklightController* backlight_ctl)
@@ -106,8 +105,7 @@ MonitorReconfigure::MonitorReconfigure(BacklightController* backlight_ctl)
       is_projecting_(false),
       projection_callback_(NULL),
       projection_callback_data_(NULL),
-      backlight_ctl_(backlight_ctl),
-      force_disable_reconfigure_(false) {
+      backlight_ctl_(backlight_ctl) {
 }
 
 MonitorReconfigure::~MonitorReconfigure() {
@@ -199,24 +197,14 @@ RRCrtc MonitorReconfigure::FindUsableCrtc(const std::set<RRCrtc>& used_crtcs,
 
 void MonitorReconfigure::SetScreenOn() {
   LOG(INFO) << "MonitorReconfigure::SetScreenOn()";
-  if (force_disable_reconfigure_) {
-    SendSetScreenPowerSignal(POWER_STATE_ON,
-                             OUTPUT_SELECTION_ALL_DISPLAYS);
-  } else {
-    Run(true);
-  }
+  SendSetScreenPowerSignal(POWER_STATE_ON,
+                           OUTPUT_SELECTION_ALL_DISPLAYS);
 }
 
 void MonitorReconfigure::SetScreenOff() {
   LOG(INFO) << "MonitorReconfigure::SetScreenOff()";
-  if (force_disable_reconfigure_) {
-    SendSetScreenPowerSignal(POWER_STATE_OFF,
-                             OUTPUT_SELECTION_ALL_DISPLAYS);
-  } else if (SetupXrandr()) {
-    DisableAllOutputs();
-    last_configuration_time_= Time::Now();
-    ClearXrandr();
-  }
+  SendSetScreenPowerSignal(POWER_STATE_OFF,
+                           OUTPUT_SELECTION_ALL_DISPLAYS);
 }
 
 void MonitorReconfigure::SetInternalPanelOn() {
@@ -224,92 +212,16 @@ void MonitorReconfigure::SetInternalPanelOn() {
     return;
 
   LOG(INFO) << "MonitorReconfigure::SetInternalPanelOn()";
-  if (force_disable_reconfigure_) {
-    is_internal_panel_enabled_ = true;
-    SendSetScreenPowerSignal(POWER_STATE_ON,
-                             OUTPUT_SELECTION_INTERNAL_ONLY);
-    return;
-  }
-
-  if (!SetupXrandr())
-    return;
-
-  for (int i = 0; i < screen_info_->noutput; i++) {
-    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
-                                                  screen_info_,
-                                                  screen_info_->outputs[i]);
-    if (IsInternalPanel(output_info)) {
-      if (output_info->connection == RR_Connected) {
-        // Restore the panel output.
-        usable_outputs_.push_back(screen_info_->outputs[i]);
-        usable_outputs_info_.push_back(output_info);
-
-        RRCrtc crtc;
-        RRMode mode;
-        int x, y;
-
-        // If we don't have a valid saved panel state, we restore the
-        // panel to a default state.
-        if (internal_panel_state_.crtc == 0) {
-          LOG(INFO) << "Restore panel to a default state";
-          if (output_info->ncrtc == 0 || output_info->nmode == 0) {
-            LOG(WARNING) << "Panel does not have usable crtc/mode at all";
-            break;
-          }
-          // Use the highest resolution.
-          vector<ResolutionSelector::Mode> lcd_modes;
-          SortModesByResolution(usable_outputs_[0], &lcd_modes);
-          mode = lcd_modes[0].id;
-          // Use the first usable crtc.
-          crtc = output_info->crtcs[0];
-          x = y = 0;
-        } else {  // Use saved panel state.
-          LOG(INFO) << "Restore panel to a saved state.";
-          crtc = internal_panel_state_.crtc;
-          mode = internal_panel_state_.mode;
-          x =  internal_panel_state_.position_x;
-          y =  internal_panel_state_.position_y;
-        }
-
-        usable_outputs_crtc_.push_back(crtc);
-        EnableUsableOutput(0, mode, &x, &y);
-        last_configuration_time_= Time::Now();
-        CHECK(DPMSEnable(display_));
-        CHECK(DPMSForceLevel(display_, DPMSModeOn));
-        // So ClearUsableOutputsInfo() won't double free it.
-        usable_outputs_info_.pop_back();
-      }
-    }
-    XRRFreeOutputInfo(output_info);
-  }
-  ClearUsableOutputsInfo();
-  ClearXrandr();
+  is_internal_panel_enabled_ = true;
+  SendSetScreenPowerSignal(POWER_STATE_ON,
+                           OUTPUT_SELECTION_INTERNAL_ONLY);
 }
 
 void MonitorReconfigure::SetInternalPanelOff() {
   LOG(INFO) << "MonitorReconfigure::SetInternalPanelOff()";
-  if (force_disable_reconfigure_) {
-    is_internal_panel_enabled_ = false;
-    SendSetScreenPowerSignal(POWER_STATE_OFF,
-                             OUTPUT_SELECTION_INTERNAL_ONLY);
-    return;
-  }
-
-  if (!SetupXrandr())
-    return;
-
-  for (int i = 0; i < screen_info_->noutput; i++) {
-    XRROutputInfo* output_info = XRRGetOutputInfo(display_,
-                                                  screen_info_,
-                                                  screen_info_->outputs[i]);
-    if (IsInternalPanel(output_info) && output_info->crtc != None) {
-      DisableOutputCrtc(output_info, output_info->crtc);
-      is_internal_panel_enabled_ = false;
-      last_configuration_time_= Time::Now();
-    }
-    XRRFreeOutputInfo(output_info);
-  }
-  ClearXrandr();
+  is_internal_panel_enabled_ = false;
+  SendSetScreenPowerSignal(POWER_STATE_OFF,
+                           OUTPUT_SELECTION_INTERNAL_ONLY);
 }
 
 void MonitorReconfigure::DisableOutputCrtc(XRROutputInfo* output_info,
@@ -405,10 +317,6 @@ void MonitorReconfigure::EnableUsableOutput(int idx,
 
 bool MonitorReconfigure::HasInternalPanelConnection() {
   return internal_panel_connection_ == RR_Connected;
-}
-
-void MonitorReconfigure::ForceDisableReconfigure() {
-  force_disable_reconfigure_ = true;
 }
 
 // TODO(miletus@) : Need to have a different way to check panel connection for
@@ -713,80 +621,6 @@ void  MonitorReconfigure::SwitchMode() {
 }
 
 void MonitorReconfigure::Run(bool force_reconfigure) {
-  if (force_disable_reconfigure_) {
-    // TODO: Remove this logic removed once Chrome's replacement code has
-    // landed.
-    return;
-  }
-  ClearUsableOutputsInfo();
-
-  if (!SetupXrandr())
-    return;
-
-  std::vector<OutputInfo> current_outputs;
-  DetermineOutputs(&current_outputs);
-
-  if (usable_outputs_.size() == 0 ||
-      (!force_reconfigure && !NeedReconfigure(current_outputs))) {
-    saved_outputs_.swap(current_outputs);
-    ClearUsableOutputsInfo();
-    ClearXrandr();
-    return;
-  }
-
-  last_configuration_time_= Time::Now();
-
-  vector<ResolutionSelector::Mode> lcd_modes;
-    SortModesByResolution(usable_outputs_[0], &lcd_modes);
-
-  vector<ResolutionSelector::Mode> external_modes;
-  if (usable_outputs_.size() >= 2)
-    SortModesByResolution(usable_outputs_[1], &external_modes);
-
-  ResolutionSelector selector;
-  ResolutionSelector::Mode lcd_resolution;
-  ResolutionSelector::Mode external_resolution;
-  ResolutionSelector::Mode screen_resolution;
-
-  if (usable_outputs_.size() == 1) {
-    // If there is only one output, find the best resolution of the output
-    // and RunClone().
-    CHECK(selector.FindBestResolutions(lcd_modes,
-                                       external_modes,
-                                       &lcd_resolution,
-                                       &external_resolution,
-                                       &screen_resolution));
-    RunClone(lcd_resolution, external_resolution, screen_resolution);
-  } else {
-    // If Ctrl+F4 triggered monitor reconfigure, we move to the next
-    // dual head mode.
-    if (need_switch_mode_)
-      dual_head_mode_ = static_cast<DualHeadMode>(
-          (dual_head_mode_ + 1) % kModeLast);
-
-    // Dual head mode.
-    if (dual_head_mode_ == kModeFirstMonitorPrimary ||
-        dual_head_mode_ == kModeSecondMonitorPrimary) {
-      RunExtended();
-    } else {
-      // If Clone mode is needed, check that if common resolution exists
-      // between the 2 displays. If not, move to the next dual head mode.
-      if (selector.FindCommonResolutions(lcd_modes,
-                                         external_modes,
-                                         &lcd_resolution,
-                                         &external_resolution,
-                                         &screen_resolution)) {
-        RunClone(lcd_resolution, external_resolution, screen_resolution);
-      } else {
-        dual_head_mode_ = kModeFirstMonitorPrimary;
-        RunExtended();
-      }
-    }
-  }
-
-  saved_outputs_.swap(current_outputs);
-  ClearUsableOutputsInfo();
-  ClearXrandr();
 }
 
 void MonitorReconfigure::SetProjectionCallback(void (*func)(void*),

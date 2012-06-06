@@ -84,9 +84,6 @@ class MonitorReconfigure : public XEventObserverInterface {
   // Return whether the device has panel output connected.
   bool HasInternalPanelConnection();
 
-  // Called to shut down monitor reconfiguration support.
-  void ForceDisableReconfigure();
-
  private:
   struct ConnectionState {
     ConnectionState(RRCrtc crtc, RRMode mode, int position_x, int position_y);
@@ -264,11 +261,6 @@ class MonitorReconfigure : public XEventObserverInterface {
 
   // Not owned.
   BacklightController* backlight_ctl_;
-
-  // Temporary flag used to selectively disable monitor configuration.  This
-  // flag is set when Chrome sends the DBus message to notify us that it will
-  // handle those cases.
-  bool force_disable_reconfigure_;
 
   DISALLOW_COPY_AND_ASSIGN(MonitorReconfigure);
 };
