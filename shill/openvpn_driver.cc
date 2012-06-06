@@ -20,13 +20,16 @@
 #include "shill/manager.h"
 #include "shill/nss.h"
 #include "shill/openvpn_management_server.h"
+#include "shill/process_killer.h"
 #include "shill/rpc_task.h"
 #include "shill/scope_logger.h"
 #include "shill/sockets.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
+using base::Closure;
 using base::SplitString;
+using base::WeakPtr;
 using std::map;
 using std::string;
 using std::vector;
@@ -34,6 +37,7 @@ using std::vector;
 namespace shill {
 
 namespace {
+
 const char kOpenVPNForeignOptionPrefix[] = "foreign_option_";
 const char kOpenVPNIfconfigBroadcast[] = "ifconfig_broadcast";
 const char kOpenVPNIfconfigLocal[] = "ifconfig_local";
@@ -55,6 +59,7 @@ const char kOpenVPNPingRestartProperty[] = "OpenVPN.PingRestart";
 const char kOpenVPNTLSAuthProperty[] = "OpenVPN.TLSAuth";
 const char kOpenVPNVerbProperty[] = "OpenVPN.Verb";
 const char kVPNMTUProperty[] = "VPN.MTU";
+
 }  // namespace
 
 // static
@@ -130,6 +135,7 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       glib_(glib),
       management_server_(new OpenVPNManagementServer(this, glib)),
       nss_(NSS::GetInstance()),
+      process_killer_(ProcessKiller::GetInstance()),
       lsb_release_file_(kLSBReleaseFile),
       pid_(0),
       child_watch_tag_(0) {}
@@ -150,19 +156,26 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state) {
   if (child_watch_tag_) {
     glib_->SourceRemove(child_watch_tag_);
     child_watch_tag_ = 0;
-    CHECK(pid_);
-    kill(pid_, SIGTERM);
-  }
-  if (pid_) {
-    glib_->SpawnClosePID(pid_);
-    pid_ = 0;
   }
   rpc_task_.reset();
+  int interface_index = -1;
   if (device_) {
-    int interface_index = device_->interface_index();
+    interface_index = device_->interface_index();
     device_->OnDisconnected();
     device_->SetEnabled(false);
     device_ = NULL;
+  }
+  if (pid_) {
+    Closure callback;
+    if (interface_index >= 0) {
+      callback =
+          Bind(&DeleteInterface, device_info_->AsWeakPtr(), interface_index);
+      interface_index = -1;
+    }
+    process_killer_->Kill(pid_, callback);
+    pid_ = 0;
+  }
+  if (interface_index >= 0) {
     device_info_->DeleteInterface(interface_index);
   }
   tunnel_interface_.clear();
@@ -230,8 +243,18 @@ void OpenVPNDriver::OnOpenVPNDied(GPid pid, gint status, gpointer data) {
   OpenVPNDriver *me = reinterpret_cast<OpenVPNDriver *>(data);
   me->child_watch_tag_ = 0;
   CHECK_EQ(pid, me->pid_);
+  me->pid_ = 0;
   me->Cleanup(Service::kStateFailure);
   // TODO(petkov): Figure if we need to restart the connection.
+}
+
+// static
+void OpenVPNDriver::DeleteInterface(WeakPtr<DeviceInfo> device_info,
+                                    int interface_index) {
+  if (device_info) {
+    LOG(INFO) << "Deleting interface " << interface_index;
+    device_info->DeleteInterface(interface_index);
+  }
 }
 
 bool OpenVPNDriver::ClaimInterface(const string &link_name,

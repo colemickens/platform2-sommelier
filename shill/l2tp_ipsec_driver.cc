@@ -13,10 +13,12 @@
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/nss.h"
+#include "shill/process_killer.h"
 #include "shill/scope_logger.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
+using base::Closure;
 using std::map;
 using std::string;
 using std::vector;
@@ -74,6 +76,7 @@ L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
       device_info_(device_info),
       glib_(glib),
       nss_(NSS::GetInstance()),
+      process_killer_(ProcessKiller::GetInstance()),
       pid_(0),
       child_watch_tag_(0) {}
 
@@ -120,11 +123,9 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state) {
   if (child_watch_tag_) {
     glib_->SourceRemove(child_watch_tag_);
     child_watch_tag_ = 0;
-    CHECK(pid_);
-    kill(pid_, SIGTERM);
   }
   if (pid_) {
-    glib_->SpawnClosePID(pid_);
+    process_killer_->Kill(pid_, Closure());
     pid_ = 0;
   }
   if (device_) {
@@ -318,6 +319,7 @@ void L2TPIPSecDriver::OnL2TPIPSecVPNDied(GPid pid, gint status, gpointer data) {
   L2TPIPSecDriver *me = reinterpret_cast<L2TPIPSecDriver *>(data);
   me->child_watch_tag_ = 0;
   CHECK_EQ(pid, me->pid_);
+  me->pid_ = 0;
   me->Cleanup(Service::kStateFailure);
   // TODO(petkov): Figure if we need to restart the connection.
 }

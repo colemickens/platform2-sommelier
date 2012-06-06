@@ -17,6 +17,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_nss.h"
+#include "shill/mock_process_killer.h"
 #include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
 #include "shill/property_store_inspector.h"
@@ -49,6 +50,7 @@ class L2TPIPSecDriverTest : public testing::Test,
         device_(new MockVPN(&control_, &dispatcher_, &metrics_, &manager_,
                             kInterfaceName, kInterfaceIndex)) {
     driver_->nss_ = &nss_;
+    driver_->process_killer_ = &process_killer_;
   }
 
   virtual ~L2TPIPSecDriverTest() {}
@@ -98,6 +100,7 @@ class L2TPIPSecDriverTest : public testing::Test,
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockVPN> device_;
   MockNSS nss_;
+  MockProcessKiller process_killer_;
 };
 
 const char L2TPIPSecDriverTest::kInterfaceName[] = "ppp0";
@@ -144,7 +147,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_CALL(glib_, SourceRemove(kTag));
   const int kPID = 123456;
   driver_->pid_ = kPID;
-  EXPECT_CALL(glib_, SpawnClosePID(kPID));
+  EXPECT_CALL(process_killer_, Kill(kPID, _));
   driver_->device_ = device_;
   driver_->service_ = service_;
   EXPECT_CALL(*device_, OnDisconnected());
@@ -352,7 +355,7 @@ TEST_F(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied) {
   const int kPID = 99999;
   driver_->child_watch_tag_ = 333;
   driver_->pid_ = kPID;
-  EXPECT_CALL(glib_, SpawnClosePID(kPID));
+  EXPECT_CALL(process_killer_, Kill(_, _)).Times(0);
   L2TPIPSecDriver::OnL2TPIPSecVPNDied(kPID, 2, driver_);
   EXPECT_EQ(0, driver_->child_watch_tag_);
   EXPECT_EQ(0, driver_->pid_);

@@ -21,6 +21,13 @@
 #include "shill/sockets.h"
 #include "shill/vpn_driver.h"
 
+namespace base {
+
+template<typename T>
+class WeakPtr;
+
+}  // namespace base;
+
 namespace shill {
 
 class ControlInterface;
@@ -29,6 +36,7 @@ class Error;
 class Metrics;
 class NSS;
 class OpenVPNManagementServer;
+class ProcessKiller;
 
 class OpenVPNDriver : public VPNDriver,
                       public RPCTaskDelegate {
@@ -74,6 +82,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, Cleanup);
   FRIEND_TEST(OpenVPNDriverTest, Connect);
   FRIEND_TEST(OpenVPNDriverTest, ConnectTunnelFailure);
+  FRIEND_TEST(OpenVPNDriverTest, DeleteInterface);
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
   FRIEND_TEST(OpenVPNDriverTest, InitEnvironment);
@@ -141,6 +150,11 @@ class OpenVPNDriver : public VPNDriver,
   // Called when the openpvn process exits.
   static void OnOpenVPNDied(GPid pid, gint status, gpointer data);
 
+  // Standalone callback used to delete the tunnel interface when the openvpn
+  // process dies.
+  static void DeleteInterface(base::WeakPtr<DeviceInfo> device_info,
+                              int interface_index);
+
   // Inherit from VPNDriver to add custom properties.
   virtual KeyValueStore GetProvider(Error *error);
 
@@ -156,6 +170,7 @@ class OpenVPNDriver : public VPNDriver,
   Sockets sockets_;
   scoped_ptr<OpenVPNManagementServer> management_server_;
   NSS *nss_;
+  ProcessKiller *process_killer_;
   FilePath lsb_release_file_;
 
   VPNServiceRefPtr service_;

@@ -24,6 +24,7 @@ class DeviceInfo;
 class GLib;
 class Metrics;
 class NSS;
+class ProcessKiller;
 
 class L2TPIPSecDriver : public VPNDriver,
                         public RPCTaskDelegate {
@@ -114,6 +115,7 @@ class L2TPIPSecDriver : public VPNDriver,
   DeviceInfo *device_info_;
   GLib *glib_;
   NSS *nss_;
+  ProcessKiller *process_killer_;
 
   VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;

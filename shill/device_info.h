@@ -14,6 +14,7 @@
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/byte_string.h"
@@ -30,7 +31,7 @@ class RoutingTable;
 class RTNLHandler;
 class RTNLMessage;
 
-class DeviceInfo {
+class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
  public:
   struct AddressData {
     AddressData()
@@ -51,7 +52,7 @@ class DeviceInfo {
              EventDispatcher *dispatcher,
              Metrics *metrics,
              Manager *manager);
-  ~DeviceInfo();
+  virtual ~DeviceInfo();
 
   void AddDeviceToBlackList(const std::string &device_name);
   bool IsDeviceBlackListed(const std::string &device_name);
