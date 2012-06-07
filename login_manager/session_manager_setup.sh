@@ -353,6 +353,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --scroll-pixels=3 \
             --ui-enable-partial-swap \
             --ui-enable-per-tile-painting \
+            --ui-prioritize-in-gpu-process \
             --use-cras \
             --user-data-dir="$DATA_DIR" \
             --no-protector \
