@@ -257,6 +257,7 @@ fi
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
   HIGHDPI_FLAGS="--allow-webui-compositing --default-device-scale-factor=2"
+  HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-text-subpixel-positioning"
 fi
 
 # If screensaver use isn't disabled, set screensaver.
