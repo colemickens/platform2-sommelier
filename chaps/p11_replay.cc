@@ -336,7 +336,8 @@ void PrintHelp() {
          " : Locally generates a key pair suitable for replay tests and injects"
          " it into the token.\n");
   printf("  --generate_delete : Generates a key pair and deletes it. This is "
-         "useful for comparing key generation on different TPM models\n");
+         "useful for comparing key generation on different TPM models.\n");
+  printf("  --list_objects : Lists all token objects.\n");
   printf("  --replay_vpn [--label=<key_label>]"
          " : Replays a L2TP/IPSEC VPN negotiation.\n");
   printf("  --replay_wifi [--label=<key_label>]"
@@ -352,6 +353,15 @@ void PrintTicks(base::TimeTicks* start_ticks) {
   *start_ticks = now;
   long long int value = delta.InMillisecondsRoundedUp();
   printf("Elapsed: %lldms\n", value);
+}
+
+void PrintObjects(const vector<CK_OBJECT_HANDLE>& objects) {
+  for (size_t i = 0; i < objects.size(); ++i) {
+    if (i > 0)
+      printf(", ");
+    printf("%d", static_cast<int>(objects[i]));
+  }
+  printf("\n");
 }
 
 }  // namespace
@@ -370,8 +380,9 @@ int main(int argc, char** argv) {
   bool wifi = cl->HasSwitch("replay_wifi") || (cl->GetSwitches().size() == 0);
   bool logout = cl->HasSwitch("logout");
   bool cleanup = cl->HasSwitch("cleanup");
+  bool list_objects = cl->HasSwitch("list_objects");
   if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup &&
-      !inject) {
+      !inject && !list_objects) {
     PrintHelp();
     return 0;
   }
@@ -395,6 +406,22 @@ int main(int argc, char** argv) {
     PrintTicks(&start_ticks);
   } else if (inject) {
     InjectKeyPair(session, key_size_bits, label);
+  }
+  if (list_objects) {
+    vector<CK_OBJECT_HANDLE> objects;
+    CK_BBOOL priv_value = CK_FALSE;
+    CK_ATTRIBUTE priv = {CKA_PRIVATE, &priv_value, sizeof(priv_value)};
+    Find(session, &priv, 1, &objects);
+    printf("Public Objects:\n");
+    PrintObjects(objects);
+    PrintTicks(&start_ticks);
+    objects.clear();
+    Login(slot, false, session);
+    priv_value = CK_TRUE;
+    Find(session, &priv, 1, &objects);
+    printf("Private Objects:\n");
+    PrintObjects(objects);
+    PrintTicks(&start_ticks);
   }
   if (vpn || wifi) {
     printf("Replay 1 of 2\n");
