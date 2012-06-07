@@ -11,6 +11,7 @@
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/string_util.h>
+#include <chromeos/process.h>
 #include <chromeos/utility.h>
 
 #include "crypto.h"
@@ -137,6 +138,10 @@ class Lockbox {
   // Does NOT take ownership of the pointer.
   virtual void set_tpm(Tpm* tpm) { tpm_ = tpm; }
 
+  // Replaces the process spawning implementation.
+  // Does NOT take ownership of the pointer.
+  virtual void set_process(chromeos::Process* p) { process_ = p; }
+
   // Replaces the default NVRAM structure version.
   virtual void set_nvram_version(uint32_t version) { nvram_version_ = version; }
 
@@ -159,6 +164,10 @@ class Lockbox {
   static const uint32_t kReservedNvramBytesV1;
   static const uint32_t kReservedNvramBytesV2;
 
+  // Literals for running mount-encrypted helper.
+  static const char * const kMountEncrypted;
+  static const char * const kMountEncryptedFinalize;
+
  protected:
   // Returns true if we have the authorization needed to create/destroy
   // NVRAM spaces.
@@ -174,10 +183,14 @@ class Lockbox {
   // Parse a serialized size from the front of |blob|.
   virtual bool ParseSizeBlob(const chromeos::Blob& blob, uint32_t* size) const;
 
+  // Call out to the mount-encrypted helper to encrypt the key.
+  virtual void FinalizeMountEncrypted(chromeos::Blob &entropy) const;
+
  private:
   Tpm* tpm_;
   uint32_t nvram_index_;
   uint32_t nvram_version_;
+  chromeos::Process* process_;
   scoped_ptr<Crypto> default_crypto_;
   Crypto* crypto_;
   scoped_ptr<LockboxContents> contents_;

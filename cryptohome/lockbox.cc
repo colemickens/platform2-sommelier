@@ -13,6 +13,9 @@
 #include <stdint.h>
 
 #include <base/logging.h>
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <base/string_split.h>
 #include <base/threading/platform_thread.h>
 #include <base/time.h>
 #include <chromeos/utility.h>
@@ -34,12 +37,15 @@ const uint32_t Lockbox::kReservedNvramBytesV2 = kReservedSizeBytes +
                                                 kReservedFlagsBytes +
                                                 kReservedSaltBytesV2 +
                                                 kReservedDigestBytes;
+const char * const Lockbox::kMountEncrypted = "/sbin/mount-encrypted";
+const char * const Lockbox::kMountEncryptedFinalize = "finalize";
 
 
 Lockbox::Lockbox(Tpm* tpm, uint32_t nvram_index)
   : tpm_(tpm),
     nvram_index_(nvram_index),
     nvram_version_(kNvramVersionDefault),
+    process_(new chromeos::ProcessImpl()),
     default_crypto_(new Crypto()),
     crypto_(default_crypto_.get()),
     contents_(new LockboxContents()) {
@@ -321,9 +327,10 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
     *error = kErrorIdNvramFailedToLock;
     return false;
   }
-  return true;
 
-  LOG(INFO) << "Store()'d " << blob.size() << " bytes";
+  // Call out to mount-encrypted now that salt has been written.
+  FinalizeMountEncrypted(nvram_version_ == 1 ? nvram_blob : salt);
+
   return true;
 }
 
@@ -358,4 +365,51 @@ bool Lockbox::ParseSizeBlob(const chromeos::Blob& blob, uint32_t* size) const {
   *size = ntohl(stored_size);
   return true;
 }
+
+void Lockbox::FinalizeMountEncrypted(chromeos::Blob &entropy) const {
+  SecureBlob hash(0);
+  std::string hex;
+  FilePath outfile_path;
+  FILE *outfile;
+  int rc;
+
+  // Take hash of entropy and convert to hex string for cmdline.
+  crypto_->GetSha256(entropy, 0, entropy.size(), &hash);
+  hex = chromeos::AsciiEncode(hash);
+
+  process_->Reset(0);
+  process_->AddArg(kMountEncrypted);
+  process_->AddArg(kMountEncryptedFinalize);
+  process_->AddArg(hex);
+
+  // Redirect stdout/stderr somewhere useful for error reporting.
+  outfile = file_util::CreateAndOpenTemporaryFile(&outfile_path);
+  if (outfile) {
+    process_->BindFd(fileno(outfile), STDOUT_FILENO);
+    process_->BindFd(fileno(outfile), STDERR_FILENO);
+  }
+
+  rc = process_->Run();
+
+  if (rc && outfile) {
+    std::vector<std::string> output;
+    std::vector<std::string>::iterator it;
+    std::string contents;
+
+    LOG(ERROR) << "Request to finalize mount-encrypted failed (rc:"
+               << rc << "):";
+    if (file_util::ReadFileToString(outfile_path, &contents)) {
+      base::SplitString(contents, '\n', &output);
+      for (it = output.begin(); it < output.end(); it++) {
+        LOG(ERROR) << *it;
+      }
+    }
+  }
+
+  if (outfile)
+    fclose(outfile);
+
+  return;
+}
+
 }  // namespace cryptohome

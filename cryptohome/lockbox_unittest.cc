@@ -8,6 +8,7 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <chromeos/process_mock.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <vector>
@@ -51,11 +52,22 @@ class LockboxTest : public ::testing::Test {
 
   void DoStore(Lockbox* lockbox, SecureBlob* nvram_data,
                uint32_t nvram_version) {
-    uint32_t salt_size = (nvram_version == Lockbox::kNvramVersion1
-                                        ? Lockbox::kReservedSaltBytesV1
-                                        : Lockbox::kReservedSaltBytesV2);
+    uint32_t salt_size;
+    const char *salt_hash;
+
+    if (nvram_version == Lockbox::kNvramVersion1) {
+      salt_size = Lockbox::kReservedSaltBytesV1;
+      // sha256 of entire V1 lockbox NVRAM area.
+      salt_hash = "f5f68c0c7ea1ccddc742b4b690e7c0ded9be59d33bcd56f9c7a7f7b273044a82";
+    } else {
+      salt_size = Lockbox::kReservedSaltBytesV2;
+      // sha256 of 32 'A's.
+      salt_hash = "22a48051594c1949deed7040850c1f0f8764537f5191be56732d16a54c1d8153";
+    }
+
     lockbox->set_tpm(&tpm_);
     lockbox->set_nvram_version(nvram_version);
+    lockbox->set_process(&process_);
     Lockbox::ErrorId error;
 
     // Ensure a connected, owned TPM.
@@ -89,6 +101,13 @@ class LockboxTest : public ::testing::Test {
         .Times(1)
         .WillOnce(Return(true));
     }
+    EXPECT_CALL(process_, Reset(0)).Times(1);
+    EXPECT_CALL(process_, AddArg("/sbin/mount-encrypted")).Times(1);
+    EXPECT_CALL(process_, AddArg("finalize")).Times(1);
+    EXPECT_CALL(process_, AddArg(salt_hash)).Times(1);
+    EXPECT_CALL(process_, BindFd(_, 1)).Times(1);
+    EXPECT_CALL(process_, BindFd(_, 2)).Times(1);
+    EXPECT_CALL(process_, Run()).Times(1).WillOnce(Return(0));
     EXPECT_TRUE(lockbox->Store(file_data_, &error));
   }
 
@@ -102,6 +121,7 @@ class LockboxTest : public ::testing::Test {
   Lockbox lockbox_;
   Crypto crypto_;
   NiceMock<MockTpm> tpm_;
+  NiceMock<chromeos::ProcessMock> process_;
   chromeos::Blob file_data_;
 
  private:
