@@ -415,8 +415,6 @@ if [ -e /var/lib/enterprise_serial_number_recovery -o \
   touch $MACHINE_INFO
   chmod go-stwx $MACHINE_INFO
   chmod go+r $MACHINE_INFO
-  # Dump machine info from mosys
-  mosys -k smbios info system >> $MACHINE_INFO
   # We need serial numbers for enterprise enrollment process.
   # Dump full information in the VPD.
   dump_vpd_log --full --stdout >> $MACHINE_INFO
