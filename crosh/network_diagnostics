@@ -167,8 +167,10 @@ get_status () {
   pid=$(pgrep ${1})
   if [ -n "${pid}" ] ; then
     pass "${1} is running, pid ${pid}"
+    return 0
   else
     fail "${1} is stopped"
+    return 1
   fi
 }
 
@@ -331,6 +333,7 @@ diag_ping () {
         fail "We were successfully able to join the network, but we cannot"
         fail "seem to reach the router right now.  This is either a link"
         fail "level issue or the router is down."
+        diag_linkall
       fi
       failures=$[failures + 1]
     else
@@ -494,12 +497,13 @@ diag_link () {
 }
 
 diag_linkall () {
+  fn_enter_once ${FUNCNAME} || return
   for ifc in $(get_iflist); do
     diag_link ${ifc}
   done
 }
 
-# Perform generic diagonostics on a network interface
+# Perform generic diagnostics on a network interface
 diag_if () {
   fn_enter ${FUNCNAME} $*
   ifc=$1
@@ -538,6 +542,7 @@ diag_ifall () {
   if [ ${good_ifs} -eq 0 ] ; then
     fail "No good interfaces found.  You are not connected to a network."
     get_status flimflam
+    get_status shill
     get_status wpa_supplicant
     get_status cromo
     return 1
@@ -625,7 +630,7 @@ diag_cellular_dbus () {
 # Probe process status of flimflam and its process descendants
 diag_flimflam () {
   fn_enter_once ${FUNCNAME} || return
-  local status=$(get_status flimflam)
+  local status=$(get_status flimflam || get_status shill)
   echo "${status}"
   if ! echo ${status} | fgrep -q 'running'; then
     return
@@ -634,6 +639,8 @@ diag_flimflam () {
   ps jx | awk '/^ *'${pid}'/ {print $10,$11,$12}' | sort | uniq -c
   echo "Listing of /var/run/flimflam"
   ls -al /var/run/flimflam
+  echo "Listing of /var/run/shill"
+  ls -al /var/run/shill
   diag_flimflam_dbus
 }
 
