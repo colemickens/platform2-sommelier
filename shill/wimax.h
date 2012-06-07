@@ -55,6 +55,7 @@ class WiMax : public Device {
   FRIEND_TEST(WiMaxTest, DropService);
   FRIEND_TEST(WiMaxTest, OnConnectComplete);
   FRIEND_TEST(WiMaxTest, OnDeviceVanished);
+  FRIEND_TEST(WiMaxTest, OnEnableComplete);
   FRIEND_TEST(WiMaxTest, OnNetworksChanged);
   FRIEND_TEST(WiMaxTest, OnServiceStopped);
   FRIEND_TEST(WiMaxTest, OnStatusChanged);

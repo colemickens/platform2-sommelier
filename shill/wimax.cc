@@ -187,12 +187,11 @@ void WiMax::OnEnableComplete(const EnabledStateChangedCallback &callback,
   if (error.IsFailure()) {
     proxy_.reset();
   } else {
-    LOG(INFO) << "WiMAX device " << link_name() << " enabled. "
-              << "Initiating network scan.";
-    // Scan for networks to allow service creation when the network list becomes
-    // available.
+    LOG(INFO) << "WiMAX device " << link_name() << " enabled.";
+    // Updates the live networks based on the current WiMaxManager.Device
+    // networks. The RPC device will signal when the network set changes.
     Error e;
-    Scan(&e);
+    OnNetworksChanged(proxy_->Networks(&e));
   }
   callback.Run(error);
 }

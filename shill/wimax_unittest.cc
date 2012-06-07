@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/stringprintf.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
@@ -18,6 +19,8 @@
 #include "shill/nice_mock_control.h"
 #include "shill/proxy_factory.h"
 
+using base::Bind;
+using base::Unretained;
 using std::string;
 using testing::_;
 using testing::NiceMock;
@@ -60,6 +63,13 @@ class WiMaxTest : public testing::Test {
     WiMaxTest *test_;
 
     DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
+  };
+
+  class Target {
+   public:
+    virtual ~Target() {}
+
+    MOCK_METHOD1(EnabledStateChanged, void(const Error &error));
   };
 
   virtual void SetUp() {
@@ -214,6 +224,29 @@ TEST_F(WiMaxTest, OnDeviceVanished) {
   device_->OnDeviceVanished();
   EXPECT_FALSE(device_->proxy_.get());
   EXPECT_FALSE(device_->pending_service_);
+}
+
+TEST_F(WiMaxTest, OnEnableComplete) {
+  MockWiMaxProvider provider;
+  EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&provider));
+  RpcIdentifiers networks(1, "path");
+  EXPECT_CALL(*proxy_, Networks(_)).WillOnce(Return(networks));
+  device_->proxy_.reset(proxy_.release());
+  EXPECT_CALL(provider, OnNetworksChanged());
+  Target target;
+  EXPECT_CALL(target, EnabledStateChanged(_));
+  EnabledStateChangedCallback callback(
+      Bind(&Target::EnabledStateChanged, Unretained(&target)));
+  Error error;
+  device_->OnEnableComplete(callback, error);
+  EXPECT_EQ(1, device_->networks_.size());
+  EXPECT_TRUE(ContainsKey(device_->networks_, "path"));
+
+  EXPECT_TRUE(device_->proxy_.get());
+  error.Populate(Error::kOperationFailed);
+  EXPECT_CALL(target, EnabledStateChanged(_));
+  device_->OnEnableComplete(callback, error);
+  EXPECT_FALSE(device_->proxy_.get());
 }
 
 }  // namespace shill

@@ -53,6 +53,7 @@ class WiMaxDeviceProxyInterface {
   // Properties.
   virtual uint8 Index(Error *error) = 0;
   virtual std::string Name(Error *error) = 0;
+  virtual RpcIdentifiers Networks(Error *error) = 0;
 };
 
 }  // namespace shill

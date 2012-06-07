@@ -107,6 +107,20 @@ string WiMaxDeviceProxy::Name(Error *error) {
   return string();
 }
 
+RpcIdentifiers WiMaxDeviceProxy::Networks(Error *error) {
+  SLOG(DBus, 2) << __func__;
+  vector<DBus::Path> dbus_paths;
+  try {
+    dbus_paths = proxy_.Networks();
+  } catch (const DBus::Error &e) {
+    FromDBusError(e, error);
+    return RpcIdentifiers();
+  }
+  RpcIdentifiers rpc_networks;
+  DBusProperties::ConvertPathsToRpcIdentifiers(dbus_paths, &rpc_networks);
+  return rpc_networks;
+}
+
 void WiMaxDeviceProxy::Invoke(const Callback<void(void *, int)> &method,
                               Error *error,
                               const ResultCallback &callback,

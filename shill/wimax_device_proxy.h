@@ -43,6 +43,7 @@ class WiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
       const StatusChangedCallback &callback);
   virtual uint8 Index(Error *error);
   virtual std::string Name(Error *error);
+  virtual RpcIdentifiers Networks(Error *error);
 
  private:
   class Proxy : public org::chromium::WiMaxManager::Device_proxy,

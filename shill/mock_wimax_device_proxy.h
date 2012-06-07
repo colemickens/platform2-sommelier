@@ -40,6 +40,7 @@ class MockWiMaxDeviceProxy : public WiMaxDeviceProxyInterface {
                void(const StatusChangedCallback &callback));
   MOCK_METHOD1(Index, uint8(Error *error));
   MOCK_METHOD1(Name, std::string(Error *error));
+  MOCK_METHOD1(Networks, RpcIdentifiers(Error *error));
 
   DISALLOW_COPY_AND_ASSIGN(MockWiMaxDeviceProxy);
 };
