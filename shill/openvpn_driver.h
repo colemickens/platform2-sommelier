@@ -152,7 +152,7 @@ class OpenVPNDriver : public VPNDriver,
 
   // Standalone callback used to delete the tunnel interface when the openvpn
   // process dies.
-  static void DeleteInterface(base::WeakPtr<DeviceInfo> device_info,
+  static void DeleteInterface(const base::WeakPtr<DeviceInfo> &device_info,
                               int interface_index);
 
   // Inherit from VPNDriver to add custom properties.

@@ -249,7 +249,7 @@ void OpenVPNDriver::OnOpenVPNDied(GPid pid, gint status, gpointer data) {
 }
 
 // static
-void OpenVPNDriver::DeleteInterface(WeakPtr<DeviceInfo> device_info,
+void OpenVPNDriver::DeleteInterface(const WeakPtr<DeviceInfo> &device_info,
                                     int interface_index) {
   if (device_info) {
     LOG(INFO) << "Deleting interface " << interface_index;
