@@ -1,42 +1,24 @@
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
-/* License to copy and use this software is granted provided that it is
- * identified as "RSA Security Inc. PKCS #11 Cryptographic Token Interface
- * (Cryptoki)" in all material mentioning or referencing this software.
+#ifndef CHAPS_PKCS11_CRYPTOKI_H_
+#define CHAPS_PKCS11_CRYPTOKI_H_
 
- * License is also granted to make and use derivative works provided that
- * such works are identified as "derived from the RSA Security Inc. PKCS #11
- * Cryptographic Token Interface (Cryptoki)" in all material mentioning or
- * referencing the derived work.
-
- * RSA Security Inc. makes no representations concerning either the
- * merchantability of this software or the suitability of this software for
- * any particular purpose. It is provided "as is" without express or implied
- * warranty of any kind.
- */
-
-/* UNIX version */
-
-#ifndef ___CRYPTOKI_H_INC___
-#define ___CRYPTOKI_H_INC___
-
+// The following defines are required by pkcs11.h.
 #define CK_PTR *
-
-#define CK_DEFINE_FUNCTION(returnType, name) \
-  returnType name
-
-#define CK_DECLARE_FUNCTION(returnType, name) \
-  returnType name
-
-#define CK_DECLARE_FUNCTION_POINTER(returnType, name) \
-  returnType (CK_PTR name)
-
-#define CK_CALLBACK_FUNCTION(returnType, name) \
-  returnType (CK_PTR name)
-
+#define CK_DEFINE_FUNCTION(return_type, function_name) \
+    return_type function_name
+#define CK_DECLARE_FUNCTION(return_type, function_name) \
+    return_type function_name
+#define CK_DECLARE_FUNCTION_POINTER(return_type, function_name) \
+    return_type (CK_PTR function_name)
+#define CK_CALLBACK_FUNCTION(return_type, function_name) \
+    return_type (CK_PTR function_name)
 #ifndef NULL_PTR
 #define NULL_PTR 0
 #endif
 
 #include "pkcs11.h"
 
-#endif /* ___CRYPTOKI_H_INC___ */
+#endif  // CHAPS_PKCS11_CRYPTOKI_H_

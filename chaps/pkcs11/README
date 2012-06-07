@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,7 +6,7 @@ The following header files are provided as part of the PKCS #11 specification:
 * pkcs11.h
 * pkcs11t.h
 * pkcs11f.h
-* cryptoki.h (modified for the Chromium OS platform)
+* cryptoki.h (replaced for Chromium OS)
 
 The original files can be downloaded from here:
 http://www.rsa.com/rsalabs/node.asp?id=2133
