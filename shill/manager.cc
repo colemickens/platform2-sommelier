@@ -101,9 +101,8 @@ Manager::Manager(ControlInterface *control_interface,
   HelpRegisterDerivedString(flimflam::kDefaultTechnologyProperty,
                             &Manager::DefaultTechnology,
                             NULL);
-  HelpRegisterDerivedStrings(flimflam::kDevicesProperty,
-                             &Manager::EnumerateDevices,
-                             NULL);
+  HelpRegisterConstDerivedRpcIdentifiers(flimflam::kDevicesProperty,
+                                         &Manager::EnumerateDevices);
   HelpRegisterDerivedStrings(flimflam::kEnabledTechnologiesProperty,
                              &Manager::EnabledTechnologies,
                              NULL);
@@ -111,18 +110,16 @@ Manager::Manager(ControlInterface *control_interface,
   store_.RegisterString(flimflam::kPortalURLProperty, &props_.portal_url);
   store_.RegisterInt32(kPortalCheckIntervalProperty,
                        &props_.portal_check_interval_seconds);
-  HelpRegisterDerivedStrings(flimflam::kProfilesProperty,
-                             &Manager::EnumerateProfiles,
-                             NULL);
+  HelpRegisterConstDerivedRpcIdentifiers(flimflam::kProfilesProperty,
+                                         &Manager::EnumerateProfiles);
   store_.RegisterString(kHostNameProperty, &props_.host_name);
   HelpRegisterDerivedString(flimflam::kStateProperty,
                             &Manager::CalculateState,
                             NULL);
   HelpRegisterConstDerivedRpcIdentifiers(flimflam::kServicesProperty,
                                          &Manager::EnumerateAvailableServices);
-  HelpRegisterDerivedStrings(flimflam::kServiceWatchListProperty,
-                             &Manager::EnumerateWatchedServices,
-                             NULL);
+  HelpRegisterConstDerivedRpcIdentifiers(flimflam::kServiceWatchListProperty,
+                                         &Manager::EnumerateWatchedServices);
 
   // Set default technology order "by hand", to avoid invoking side
   // effects of SetTechnologyOrder.
@@ -995,8 +992,8 @@ vector<string> Manager::EnabledTechnologies(Error */*error*/) {
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 
-vector<string> Manager::EnumerateDevices(Error */*error*/) {
-  vector<string> device_rpc_ids;
+RpcIdentifiers Manager::EnumerateDevices(Error */*error*/) {
+  RpcIdentifiers device_rpc_ids;
   for (vector<DeviceRefPtr>::const_iterator it = devices_.begin();
        it != devices_.end();
        ++it) {
@@ -1005,8 +1002,8 @@ vector<string> Manager::EnumerateDevices(Error */*error*/) {
   return device_rpc_ids;
 }
 
-vector<string> Manager::EnumerateProfiles(Error */*error*/) {
-  vector<string> profile_rpc_ids;
+RpcIdentifiers Manager::EnumerateProfiles(Error */*error*/) {
+  RpcIdentifiers profile_rpc_ids;
   for (vector<ProfileRefPtr>::const_iterator it = profiles_.begin();
        it != profiles_.end();
        ++it) {
@@ -1025,7 +1022,7 @@ vector<string> Manager::EnumerateAvailableServices(Error */*error*/) {
   return service_rpc_ids;
 }
 
-vector<string> Manager::EnumerateWatchedServices(Error *error) {
+RpcIdentifiers Manager::EnumerateWatchedServices(Error *error) {
   // TODO(cmasone): Filter this list for services in appropriate states.
   return EnumerateAvailableServices(error);
 }

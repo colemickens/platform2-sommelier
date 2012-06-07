@@ -183,6 +183,14 @@ class ManagerTest : public PropertyStoreTest {
     return error.type();
   }
 
+  void AddMockProfileToManager(Manager *manager) {
+    scoped_refptr<MockProfile> profile(
+        new MockProfile(control_interface(), manager, ""));
+    EXPECT_CALL(*profile, GetRpcIdentifier())
+        .WillRepeatedly(Return("/"));
+    AdoptProfile(manager, profile);
+  }
+
  protected:
   typedef scoped_refptr<MockService> MockServiceRefPtr;
 
@@ -403,8 +411,7 @@ TEST_F(ManagerTest, DeregisterUnregisteredService) {
 }
 
 TEST_F(ManagerTest, GetProperties) {
-  ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
-  AdoptProfile(manager(), profile);
+  AddMockProfileToManager(manager());
   map<string, ::DBus::Variant> props;
   Error error(Error::kInvalidProperty, "");
   {
@@ -433,8 +440,7 @@ TEST_F(ManagerTest, GetProperties) {
 }
 
 TEST_F(ManagerTest, GetDevicesProperty) {
-  ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
-  AdoptProfile(manager(), profile);
+  AddMockProfileToManager(manager());
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   {
@@ -442,15 +448,14 @@ TEST_F(ManagerTest, GetDevicesProperty) {
     ::DBus::Error dbus_error;
     DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kDevicesProperty) == props.end());
-    Strings devices =
-        props[flimflam::kDevicesProperty].operator vector<string>();
+    vector < ::DBus::Path> devices =
+        props[flimflam::kDevicesProperty].operator vector< ::DBus::Path>();
     EXPECT_EQ(2, devices.size());
   }
 }
 
 TEST_F(ManagerTest, GetServicesProperty) {
-  ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
-  AdoptProfile(manager(), profile);
+  AddMockProfileToManager(manager());
   map<string, ::DBus::Variant> props;
   ::DBus::Error dbus_error;
   DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);

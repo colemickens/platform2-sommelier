@@ -255,10 +255,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::vector<std::string> ConnectedTechnologies(Error *error);
   std::string DefaultTechnology(Error *error);
   std::vector<std::string> EnabledTechnologies(Error *error);
-  std::vector<std::string> EnumerateDevices(Error *error);
-  std::vector<std::string> EnumerateProfiles(Error *error);
+  RpcIdentifiers EnumerateDevices(Error *error);
+  RpcIdentifiers EnumerateProfiles(Error *error);
   // TODO(cmasone): This should be implemented by filtering |services_|.
-  std::vector<std::string> EnumerateWatchedServices(Error *error);
+  RpcIdentifiers EnumerateWatchedServices(Error *error);
   std::string GetActiveProfileRpcIdentifier(Error *error);
   std::string GetCheckPortalList(Error *error);
   ServiceRefPtr GetServiceInner(const KeyValueStore &args, Error *error);
