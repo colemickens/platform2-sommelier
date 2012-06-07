@@ -5,10 +5,6 @@
 #ifndef POWER_MANAGER_VIDEO_DETECTOR_H_
 #define POWER_MANAGER_VIDEO_DETECTOR_H_
 
-#ifdef USE_X11_ACTIVITY_DETECTION
-#include <X11/Xlib.h>
-#endif
-
 #include "base/time.h"
 #include "power_manager/activity_detector_interface.h"
 
@@ -39,20 +35,6 @@ class VideoDetector : public ActivityDetectorInterface {
   virtual void HandleActivity(const base::TimeTicks& last_activity_time);
 
  private:
-  // Returns whatever last video time information is available.  If no such
-  // information was provided from HandleActivity() earlier, it requests it from
-  // X instead.
-  bool GetTimeSinceVideoActivity(int64* time_since_activity_ms);
-
-#ifdef USE_X11_ACTIVITY_DETECTION
-  bool GetRootWindowProperty(Atom property, unsigned char** data);
-
-  // Atom for the video time property of the root window.
-  Atom video_time_atom_;
-
-  Window root_window_;
-#endif
-
   // Timestamp of last known video time, based on Chrome notifications.
   base::TimeTicks last_video_time_;
 
