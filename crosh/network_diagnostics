@@ -640,8 +640,9 @@ diag_flimflam () {
 # Try to connect to a host
 diag_webget () {
   local host=${1}
-  echo "Trying to contact ${host} ... "
-  curl -s https://${host}/ > /dev/null
+  local timeout_secs=10
+  echo "Trying to contact ${host} ... (waiting up to ${timeout_secs} seconds)"
+  curl -s https://${host}/ --max-time ${timeout_secs} > /dev/null
   local err=$?
 
   case ${err} in
