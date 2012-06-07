@@ -15,6 +15,7 @@
 namespace {
 
 bool DBusMessageIterToPrimitiveValue(DBus::MessageIter& iter, Value** result) {
+  DBus::MessageIter subiter;
   switch (iter.type()) {
     case DBUS_TYPE_BYTE:
       *result = Value::CreateIntegerValue(iter.get_byte());
@@ -57,7 +58,11 @@ bool DBusMessageIterToPrimitiveValue(DBus::MessageIter& iter, Value** result) {
     case DBUS_TYPE_UNIX_FD:
       *result = Value::CreateIntegerValue(iter.get_int32());
       return true;
+    case DBUS_TYPE_VARIANT:
+      subiter = iter.recurse();
+      return chromeos::DBusMessageIterToValue(subiter, result);
     default:
+      LOG(ERROR) << "Unhandled primitive type: " << iter.type();
       return false;
   }
 }
