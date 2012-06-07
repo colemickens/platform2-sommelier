@@ -154,7 +154,7 @@ LIBPOWERD_OBJS = power_state_control.pb.o power_supply_properties.pb.o \
                  async_file_reader.o audio_detector.o file_tagger.o \
                  idle_detector.o metrics_constants.o metrics_store.o \
                  monitor_reconfigure.o power_supply.o powerd.o \
-                 powerd_metrics.o resolution_selector.o rolling_average.o \
+                 powerd_metrics.o rolling_average.o \
                  screen_locker.o state_control.o suspender.o video_detector.o \
                  xevent_observer.o
 CXX_STATIC_LIBRARY(libpowerd.pie.a): $(LIBPOWERD_OBJS)
@@ -325,22 +325,6 @@ CXX_BINARY(powerman_unittest): CPPFLAGS += $(POWERMAN_UNITTEST_FLAGS)
 CXX_BINARY(powerman_unittest): LDLIBS += $(POWERMAN_UNITTEST_LIBS)
 clean: CXX_BINARY(powerman_unittest)
 tests: TEST(CXX_BINARY(powerman_unittest))
-
-RESOLUTION_SELECTOR_UNITTEST_FLAGS = $(GLIB_FLAGS)
-RESOLUTION_SELECTOR_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock
-RESOLUTION_SELECTOR_UNITTEST_OBJS = resolution_selector_unittest.o \
-                                    resolution_selector.o
-CXX_BINARY(resolution_selector_unittest): $(RESOLUTION_SELECTOR_UNITTEST_OBJS) \
-	CXX_STATIC_LIBRARY(libtestrunner.pie.a) \
-	CXX_STATIC_LIBRARY(libbacklight_controller.pie.a) \
-	CXX_STATIC_LIBRARY(libbacklight.pie.a) \
-	CXX_STATIC_LIBRARY(libpower_prefs.pie.a)
-CXX_BINARY(resolution_selector_unittest): CPPFLAGS += \
-	$(RESOLUTION_SELECTOR_UNITTEST_FLAGS)
-CXX_BINARY(resolution_selector_unittest): LDLIBS += \
-	$(RESOLUTION_SELECTOR_UNITTEST_LIBS)
-clean: CXX_BINARY(resolution_selector_unittest)
-tests: TEST(CXX_BINARY(resolution_selector_unittest))
 
 state_control_unittest.o.depends: power_state_control.pb.cc
 STATE_CONTROL_UNITTEST_FLAGS = $(POWERD_FLAGS)

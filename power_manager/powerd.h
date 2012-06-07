@@ -44,12 +44,6 @@ class MonitorReconfigure;
 class PowerButtonHandler;
 class StateControl;
 
-typedef int KeyModifier;
-const KeyModifier kModifierNone  = 0;
-const KeyModifier kModifierCtrl  = 1;
-const KeyModifier kModifierShift = 2;
-const KeyModifier kModifierAlt   = 4;
-
 typedef std::vector<int64> IdleThresholds;
 
 enum PluggedState {
@@ -504,9 +498,6 @@ class Daemon : public IdleObserver,
   // For listening to udev events.
   struct udev_monitor* udev_monitor_;
   struct udev* udev_;
-
-  // The current key modifiers.
-  KeyModifier modifiers_;
 
   // Persistent storage for metrics that need to exist for more then one session
   MetricsStore metrics_store_;

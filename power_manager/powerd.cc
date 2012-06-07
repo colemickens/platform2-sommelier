@@ -127,7 +127,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       battery_discharge_rate_metric_last_(0),
       current_session_state_("stopped"),
       udev_(NULL),
-      modifiers_(kModifierNone),
       state_control_(new StateControl(this)),
       poll_power_supply_timer_id_(0) {}
 
@@ -876,6 +875,7 @@ bool Daemon::HandleButtonEventSignal(DBusMessage* message) {
     return true;
   }
 
+  // TODO:  Stop sending key events to powerd.
   if (strcmp(button_name, kPowerButtonName) == 0) {
     // TODO: Use |timestamp| instead if libbase/libchrome ever gets updated to a
     // recent-enough version that base::TimeTicks::FromInternalValue() is
@@ -885,19 +885,15 @@ bool Daemon::HandleButtonEventSignal(DBusMessage* message) {
     // Chrome handles lock button presses directly.
   } else if (strcmp(button_name, power_manager::kKeyLeftCtrl) == 0 ||
              strcmp(button_name, power_manager::kKeyRightCtrl) == 0) {
-      modifiers_ = (modifiers_ & ~power_manager::kModifierCtrl) |
-                   (power_manager::kModifierCtrl * down);
+    // Do nothing - this will acknowledge the event until we can remove it.
   } else if (strcmp(button_name, power_manager::kKeyLeftShift) == 0 ||
              strcmp(button_name, power_manager::kKeyRightShift) == 0) {
-      modifiers_ = (modifiers_ & ~power_manager::kModifierShift) |
-                   (power_manager::kModifierShift * down);
+    // Do nothing - this will acknowledge the event until we can remove it.
   } else if (strcmp(button_name, power_manager::kKeyLeftAlt) == 0 ||
              strcmp(button_name, power_manager::kKeyRightAlt) == 0) {
-      modifiers_ = (modifiers_ & ~power_manager::kModifierAlt) |
-                   (power_manager::kModifierAlt * down);
+    // Do nothing - this will acknowledge the event until we can remove it.
   } else if (strcmp(button_name, kKeyF4) == 0) {
-    if (modifiers_ == kModifierCtrl && down && monitor_reconfigure_)
-      monitor_reconfigure_->SwitchMode();
+    // Do nothing - this will acknowledge the event until we can remove it.
   } else {
     NOTREACHED() << "Unhandled button '" << button_name << "'";
   }
@@ -1523,8 +1519,6 @@ gboolean Daemon::PrefChangeHandler(const char* name,
 void Daemon::HandleResume() {
   file_tagger_.HandleResumeEvent();
   power_supply_.SetSuspendState(false);
-  // Monitor reconfigure will set the backlight if needed.
-  monitor_reconfigure_->Run(false);
 }
 
 void Daemon::RetrieveSessionState() {
