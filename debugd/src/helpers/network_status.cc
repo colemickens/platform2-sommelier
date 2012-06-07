@@ -113,7 +113,7 @@ Value* GetDevice(DBus::Connection& conn, DBus::Path& path) { // NOLINT
     props.erase("IPConfigs");
   }
   Value* v = NULL;
-  chromeos::DBusPropertyMapToValue(props, &v);
+  CHECK(chromeos::DBusPropertyMapToValue(props, &v));
   DictionaryValue* dv = reinterpret_cast<DictionaryValue*>(v);
   if (ipconfigs)
     dv->Set("ipconfigs", ipconfigs);
