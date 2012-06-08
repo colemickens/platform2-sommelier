@@ -15,6 +15,7 @@ const int Network::kMaxCINR = 53;
 const int Network::kMinCINR = -10;
 const int Network::kMaxRSSI = -40;
 const int Network::kMinRSSI = -123;
+const Network::Identifier Network::kInvalidIdentifier = 0;
 
 Network::Network(Identifier identifier, const string &name, NetworkType type,
                  int cinr, int rssi)

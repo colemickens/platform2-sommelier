@@ -33,6 +33,7 @@ class Network : public base::RefCounted<Network>,
   static const int kMinCINR;
   static const int kMaxRSSI;
   static const int kMinRSSI;
+  static const Identifier kInvalidIdentifier;
 
   Network(Identifier identifier, const std::string &name, NetworkType type,
           int cinr, int rssi);

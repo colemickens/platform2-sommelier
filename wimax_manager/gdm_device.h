@@ -46,6 +46,7 @@ class GdmDevice : public Device {
 
   bool Open();
   bool Close();
+  void ClearCurrentConnectionProfile();
 
   static bool ConstructEAPParameters(
       const base::DictionaryValue &connect_parameters,
@@ -61,6 +62,8 @@ class GdmDevice : public Device {
   WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress_;
   guint scan_timeout_id_;
   guint status_update_timeout_id_;
+  Network::Identifier current_network_identifier_;
+  std::string current_user_identity_;
 
   DISALLOW_COPY_AND_ASSIGN(GdmDevice);
 };

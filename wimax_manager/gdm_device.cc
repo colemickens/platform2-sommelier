@@ -29,6 +29,14 @@ namespace {
 
 const int kStatusUpdateIntervalInSeconds = 3;
 
+string GetEAPUserIdentity(const DictionaryValue &parameters) {
+  string user_identity;
+  if (parameters.GetString(kEAPUserIdentity, &user_identity))
+    return user_identity;
+
+  return string();
+}
+
 template <size_t N>
 bool CopyEAPParameterToUInt8Array(const DictionaryValue &parameters,
                                   const string &key, UINT8 (&uint8_array)[N]) {
@@ -69,6 +77,15 @@ gboolean OnStatusUpdate(gpointer data) {
   return TRUE;
 }
 
+gboolean OnDeferredStatusUpdate(gpointer data) {
+  CHECK(data);
+
+  reinterpret_cast<GdmDevice *>(data)->dbus_adaptor()->UpdateStatus();
+
+  // Return FALSE as this is a one-shot update.
+  return FALSE;
+}
+
 }  // namespace
 
 GdmDevice::GdmDevice(uint8 index, const string &name,
@@ -78,7 +95,8 @@ GdmDevice::GdmDevice(uint8 index, const string &name,
       open_(false),
       connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging),
       scan_timeout_id_(0),
-      status_update_timeout_id_(0) {
+      status_update_timeout_id_(0),
+      current_network_identifier_(Network::kInvalidIdentifier) {
 }
 
 GdmDevice::~GdmDevice() {
@@ -113,6 +131,8 @@ bool GdmDevice::Close() {
     LOG(ERROR) << "Failed to close device '" << name() << "'";
     return false;
   }
+
+  ClearCurrentConnectionProfile();
 
   open_ = false;
   return true;
@@ -162,6 +182,8 @@ bool GdmDevice::Enable() {
 bool GdmDevice::Disable() {
   if (!driver_ || !open_)
     return false;
+
+  ClearCurrentConnectionProfile();
 
   // Cancel the periodic calls to OnNetworkScan().
   if (scan_timeout_id_ != 0) {
@@ -254,6 +276,31 @@ bool GdmDevice::Connect(const Network &network,
   if (networks().empty())
     return false;
 
+  if (!driver_->GetDeviceStatus(this)) {
+    LOG(ERROR) << "Failed to get status of device '" << name() << "'";
+    return false;
+  }
+
+  // TODO(benchan): Refactor this code into Device base class.
+  string user_identity = GetEAPUserIdentity(parameters);
+  if (status() == kDeviceStatusConnecting ||
+      status() == kDeviceStatusConnected) {
+    if (current_network_identifier_ == network.identifier() &&
+        current_user_identity_ == user_identity) {
+      // The device status may remain unchanged, schedule a deferred call to
+      // DeviceDBusAdaptor::UpdateStatus() to explicitly notify the connection
+      // manager about the current device status.
+      g_timeout_add_seconds(1, OnDeferredStatusUpdate, this);
+      return true;
+    }
+
+    if (!driver_->DisconnectDeviceFromNetwork(this)) {
+      LOG(ERROR) << "Failed to disconnect device '" << name()
+                 << "' from network";
+      return false;
+    }
+  }
+
   GCT_API_EAP_PARAM eap_parameters;
   if (!ConstructEAPParameters(parameters, &eap_parameters))
     return false;
@@ -269,6 +316,9 @@ bool GdmDevice::Connect(const Network &network,
                << network.identifier() << ")";
     return false;
   }
+
+  current_network_identifier_ = network.identifier();
+  current_user_identity_ = user_identity;
   return true;
 }
 
@@ -281,11 +331,18 @@ bool GdmDevice::Disconnect() {
     return false;
   }
 
+  ClearCurrentConnectionProfile();
+
   if (!driver_->GetDeviceStatus(this)) {
     LOG(ERROR) << "Failed to get status of device '" << name() << "'";
     return false;
   }
   return true;
+}
+
+void GdmDevice::ClearCurrentConnectionProfile() {
+  current_network_identifier_ = Network::kInvalidIdentifier;
+  current_user_identity_.clear();
 }
 
 // static
