@@ -48,6 +48,7 @@ base_libs = [
                 chromeos/dbus/dbus.cc
                 chromeos/dbus/error_constants.cc
                 chromeos/process.cc
+                chromeos/secure_blob.cc
                 chromeos/syslog_logging.cc
                 chromeos/utility.cc
                 """,
@@ -149,6 +150,7 @@ env_test.ParseConfig(PKG_CONFIG + ' --cflags --libs dbus-1 glib-2.0 ' +
 
 unittest_sources =['chromeos/glib/object_unittest.cc',
                    'chromeos/process_test.cc',
+                   'chromeos/secure_blob_unittest.cc',
                    'chromeos/utility_test.cc']
 unittest_main = ['testrunner.cc']
 unittest_cmd = env_test.Program('unittests',
