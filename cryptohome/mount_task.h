@@ -414,8 +414,6 @@ class MountTaskUpdateCurrentUserActivityTimestamp : public MountTask {
 // Implements asynchronous initialization of Pkcs11.
 class MountTaskPkcs11Init : public MountTask {
  public:
-  static const std::string kPkcs11InitCmd[];
-
   MountTaskPkcs11Init(MountTaskObserver* observer, Mount* mount);
   virtual ~MountTaskPkcs11Init() { }
 
@@ -423,8 +421,6 @@ class MountTaskPkcs11Init : public MountTask {
 
  private:
   scoped_ptr<MountTaskResult> pkcs11_init_result_;
-  scoped_ptr<chromeos::ProcessImpl> default_pkcs11_initializer_;
-  chromeos::ProcessImpl* pkcs11_initializer_;
   DISALLOW_COPY_AND_ASSIGN(MountTaskPkcs11Init);
 };
 

@@ -138,18 +138,10 @@ void MountTaskUpdateCurrentUserActivityTimestamp::Run() {
   MountTask::Notify();
 }
 
-// static
-const std::string MountTaskPkcs11Init::kPkcs11InitCmd[] = {
-  "/usr/sbin/cryptohome",
-  "--syslog",
-  "--action=pkcs11_init" };
-
 MountTaskPkcs11Init::MountTaskPkcs11Init(MountTaskObserver* observer,
                                          Mount* mount)
     : MountTask(observer, mount, UsernamePasskey()),
-      pkcs11_init_result_(new MountTaskResult(kPkcs11InitResultEventType)),
-      default_pkcs11_initializer_(new chromeos::ProcessImpl),
-      pkcs11_initializer_(default_pkcs11_initializer_.get()) {
+      pkcs11_init_result_(new MountTaskResult(kPkcs11InitResultEventType)) {
   set_result(pkcs11_init_result_.get());
 }
 
@@ -158,14 +150,7 @@ void MountTaskPkcs11Init::Run() {
     // This will send an insertion event to the Chaps daemon with appropriate
     // authorization data.
     mount_->InsertPkcs11Token();
-    // Initialization needs to be performed in its own child process to prevent
-    // the cryptohomed from being killed if the session manager decided to kill
-    // all processes with open files in the user's cryptohome.
-    for (size_t i = 0; i < arraysize(kPkcs11InitCmd); ++i)
-      pkcs11_initializer_->AddArg(kPkcs11InitCmd[i]);
-    int init_rv = pkcs11_initializer_->Run();
-    LOG(INFO) << kPkcs11InitCmd[0] << " exited with status: " << init_rv;
-    result()->set_return_status(!init_rv);
+    result()->set_return_status(1);
   }
   MountTask::Notify();
 }
