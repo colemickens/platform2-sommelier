@@ -6,7 +6,6 @@
 #include "chromeos_install_config.h"
 #include "chromeos_legacy.h"
 #include "chromeos_postinst.h"
-#include "chromeos_test_utils.h"
 
 #include <getopt.h>
 #include <stdio.h>
@@ -19,7 +18,6 @@ const char* usage = (
     "cros_installer:\n"
     "   --help\n"
     "   --debug\n"
-    "   --test\n"
     "   cros_installer postinst <install_dev> <mount_point> [ args ]\n"
     "     --bios [ secure | legacy | efi | uboot ]\n"
     "     --legacy\n"
@@ -30,24 +28,6 @@ int showHelp() {
   return 1;
 }
 
-bool StrToBiosType(string name, BiosType* bios_type) {
-  if (name == "secure")
-    *bios_type = kBiosTypeSecure;
-  else if (name == "uboot")
-    *bios_type = kBiosTypeUBoot;
-  else if (name == "legacy")
-    *bios_type = kBiosTypeLegacy;
-  else if (name == "efi")
-    *bios_type = kBiosTypeEFI;
-  else {
-    printf("Bios type %s is not one of secure, legacy, efi, or uboot\n",
-           name.c_str());
-    return false;
-  }
-
-  return true;
-}
-
 int main(int argc, char** argv) {
 
   struct option long_options[] = {
@@ -55,7 +35,6 @@ int main(int argc, char** argv) {
     {"debug", no_argument, NULL, 'd'},
     {"help", no_argument, NULL, 'h'},
     {"postcommit", no_argument, NULL, 'p'},
-    {"test", no_argument, NULL, 't'},
     {NULL, 0, NULL, 0},
   };
 
@@ -94,11 +73,6 @@ int main(int argc, char** argv) {
         // This is an outdated argument. When we receive it, we just
         // exit with success right away.
         printf("Received --postcommit. This is a successful no-op.\n");
-        exit(0);
-
-      case 't':
-        // Cheesy gtest replacement for now...
-        Test();
         exit(0);
 
       default:

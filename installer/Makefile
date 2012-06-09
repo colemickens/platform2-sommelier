@@ -12,20 +12,21 @@ LDFLAGS += -ldump_kernel_config -lcgpt-cc -ldm-bht
 
 CXX_STATIC_BINARY(cros_installer): \
 		$(C_OBJECTS) \
-		$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS))
+		$(filter-out testrunner.o %_unittest.o,$(CXX_OBJECTS))
 
 clean: CLEAN(cros_installer)
 all: CXX_STATIC_BINARY(cros_installer)
-# Convenience target.
 cros_installer: CXX_STATIC_BINARY(cros_installer)
 
-CXX_BINARY(cros_installer_test): \
+
+UNITTEST_LIBS = -lgmock -lgtest
+CXX_BINARY(cros_installer_unittest): LDFLAGS += $(UNITTEST_LIBS)
+CXX_BINARY(cros_installer_unittest): \
 		$(C_OBJECTS) \
-		$(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS))
+		$(filter-out %_main.o,$(CXX_OBJECTS))
 
-clean: CLEAN(cros_installer_test)
+clean: CLEAN(cros_installer_unittest)
 
-all: CXX_BINARY(cros_installer_test)
+all: CXX_BINARY(cros_installer_unittest)
 
-TEST(cros_installer): GTEST_ARGS = --test
-tests: TEST(cros_installer) TEST(CXX_BINARY(cros_installer_test))
+tests: TEST(CXX_BINARY(cros_installer_unittest))

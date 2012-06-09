@@ -8,7 +8,8 @@
 *~
 *.o
 *.d
+*.test
 
 # Built executables
 cros_installer
-cros_installer_test
+cros_installer_unittest

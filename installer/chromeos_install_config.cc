@@ -10,6 +10,24 @@
 
 using std::string;
 
+bool StrToBiosType(string name, BiosType* bios_type) {
+  if (name == "secure")
+    *bios_type = kBiosTypeSecure;
+  else if (name == "uboot")
+    *bios_type = kBiosTypeUBoot;
+  else if (name == "legacy")
+    *bios_type = kBiosTypeLegacy;
+  else if (name == "efi")
+    *bios_type = kBiosTypeEFI;
+  else {
+    printf("Bios type %s is not one of secure, legacy, efi, or uboot\n",
+           name.c_str());
+    return false;
+  }
+
+  return true;
+}
+
 // TODO(jaysri): Unduplicate these methods.
 //
 // This #define and this function are copied from cgpt.h and

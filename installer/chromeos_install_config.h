@@ -17,6 +17,8 @@ enum BiosType {
   kBiosTypeEFI,
 };
 
+bool StrToBiosType(std::string name, BiosType* bios_type);
+
 // We commonly need to have the same data about devices in multiple formats
 // during the install process. This class allows us to have a partition
 // device in whichever format is currently most useful.
