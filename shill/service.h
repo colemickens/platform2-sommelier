@@ -202,6 +202,9 @@ class Service : public base::RefCounted<Service> {
     // state and |failed_time_|.
     return state() == kStateFailure || failed_time_ > 0;
   }
+  virtual bool IsPortalled() const {
+    return state() == kStatePortal;
+  }
 
   virtual ConnectFailure failure() const { return failure_; }
   // Records the failure mode and time. Sets the Service state to "Failure".
@@ -502,6 +505,7 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortIsConnected[];
   static const char kServiceSortIsConnecting[];
   static const char kServiceSortIsFailed[];
+  static const char kServiceSortIsPortalled[];
   static const char kServiceSortPriority[];
   static const char kServiceSortSecurityEtc[];
   static const char kServiceSortTechnology[];

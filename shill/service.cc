@@ -56,6 +56,7 @@ const char Service::kServiceSortFavorite[] = "Favorite";
 const char Service::kServiceSortIsConnected[] = "IsConnected";
 const char Service::kServiceSortIsConnecting[] = "IsConnecting";
 const char Service::kServiceSortIsFailed[] = "IsFailed";
+const char Service::kServiceSortIsPortalled[] = "IsPortal";
 const char Service::kServiceSortPriority[] = "Priority";
 const char Service::kServiceSortSecurityEtc[] = "SecurityEtc";
 const char Service::kServiceSortTechnology[] = "Technology";
@@ -642,7 +643,10 @@ bool Service::Compare(ServiceRefPtr a,
       return ret;
     }
 
-    // TODO(pstew): Services don't know about portal state yet
+    if (DecideBetween(!a->IsPortalled(), !b->IsPortalled(), &ret)) {
+      *reason = kServiceSortIsPortalled;
+      return ret;
+    }
 
     if (DecideBetween(a->IsConnecting(), b->IsConnecting(), &ret)) {
       *reason = kServiceSortIsConnecting;

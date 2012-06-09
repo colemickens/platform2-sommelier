@@ -1530,11 +1530,19 @@ TEST_F(ManagerTest, SortServices) {
 
   // Connected.
   EXPECT_CALL(*mock_service0.get(), state())
-      .WillRepeatedly(Return(Service::kStateConnected));
+      .WillRepeatedly(Return(Service::kStatePortal));
   EXPECT_CALL(*mock_service0.get(), IsConnected())
       .WillRepeatedly(Return(true));
   manager()->UpdateService(mock_service0);
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+
+  // Portal.
+  EXPECT_CALL(*mock_service1.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*mock_service1.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  manager()->UpdateService(mock_service1);
+  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
   manager()->DeregisterService(mock_service0);
   manager()->DeregisterService(mock_service1);
