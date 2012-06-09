@@ -131,22 +131,27 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
     return;
   }
 
-  IPAddress gateway_address(properties.address_family);
+  IPAddress gateway(properties.address_family);
   if (!properties.gateway.empty() &&
-      !gateway_address.SetAddressFromString(properties.gateway)) {
+      !gateway.SetAddressFromString(properties.gateway)) {
     LOG(ERROR) << "Gateway address " << properties.peer_address
                << " is invalid";
     return;
   }
 
-  if (!FixGatewayReachability(&local, &peer, gateway_address)) {
+  if (!FixGatewayReachability(&local, &peer, gateway)) {
     LOG(WARNING) << "Expect limited network connectivity.";
   }
 
+  LOG(INFO) << __func__ << ": Installing with parameters:"
+            << " local=" << local.ToString()
+            << " broadcast=" << broadcast.ToString()
+            << " peer=" << peer.ToString()
+            << " gateway=" << gateway.ToString();
   rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast, peer);
 
-  if (gateway_address.IsValid()) {
-    routing_table_->SetDefaultRoute(interface_index_, gateway_address,
+  if (gateway.IsValid()) {
+    routing_table_->SetDefaultRoute(interface_index_, gateway,
                                     GetMetric(is_default_));
   }
 
@@ -185,6 +190,7 @@ void Connection::SetIsDefault(bool is_default) {
       device->RequestPortalDetection();
     }
   }
+  routing_table_->FlushCache();
 }
 
 void Connection::RequestRouting() {

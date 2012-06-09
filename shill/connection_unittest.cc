@@ -26,6 +26,7 @@
 using std::string;
 using std::vector;
 using testing::_;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::StrictMock;
@@ -208,13 +209,18 @@ TEST_F(ConnectionTest, AddConfig) {
       .WillOnce(Return(device));
   EXPECT_CALL(*device.get(), RequestPortalDetection())
       .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, FlushCache())
+      .WillOnce(Return(true));
   connection_->SetIsDefault(true);
+  Mock::VerifyAndClearExpectations(&routing_table_);
   EXPECT_TRUE(connection_->is_default());
 
   EXPECT_CALL(routing_table_,
               SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                Connection::kNonDefaultMetricBase +
                                kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_, FlushCache())
+      .WillOnce(Return(true));
   connection_->SetIsDefault(false);
   EXPECT_FALSE(connection_->is_default());
 }
@@ -301,7 +307,10 @@ TEST_F(ConnectionTest, AddConfigReverse) {
       .WillOnce(Return(device));
   EXPECT_CALL(*device.get(), RequestPortalDetection())
       .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, FlushCache())
+      .WillOnce(Return(true));
   connection_->SetIsDefault(true);
+  Mock::VerifyAndClearExpectations(&routing_table_);
 
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0,

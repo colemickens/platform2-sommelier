@@ -500,6 +500,9 @@ bool RoutingTable::RequestRouteToHost(const IPAddress &address,
                                       int interface_index,
                                       int tag,
                                       const Query::Callback &callback) {
+  // Make sure we don't get a cached response that is no longer valid.
+  FlushCache();
+
   RTNLMessage message(
       RTNLMessage::kTypeRoute,
       RTNLMessage::kModeQuery,
