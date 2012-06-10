@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -53,8 +53,10 @@ string CryptoProvider::Decrypt(const string &ciphertext) {
       string to_decrypt = ciphertext;
       to_decrypt.erase(0, prefix.size());
       string plaintext;
-      LOG_IF(WARNING, !crypto->Decrypt(to_decrypt, &plaintext))
-          << "Crypto module " << crypto->GetID() << " failed to decrypt.";
+      if (!crypto->Decrypt(to_decrypt, &plaintext)) {
+        LOG(WARNING) << "Crypto module " << crypto->GetID()
+                     << " failed to decrypt.";
+      }
       return plaintext;
     }
   }
