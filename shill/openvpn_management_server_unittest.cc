@@ -43,7 +43,7 @@ class OpenVPNManagementServerTest : public testing::Test {
 
   void SetSockets() { server_.sockets_ = &sockets_; }
   void SetDispatcher() { server_.dispatcher_ = &dispatcher_; }
-  void ExpectNotStarted() { !server_.IsStarted(); }
+  void ExpectNotStarted() { EXPECT_FALSE(server_.IsStarted()); }
 
   void SetConnectedSocket() {
     server_.connected_socket_ = kConnectedSocket;
