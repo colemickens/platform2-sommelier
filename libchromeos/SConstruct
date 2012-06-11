@@ -63,14 +63,6 @@ base_libs = [
     'libs' : '',
     'pc_libs' : 'openssl ' + common_pc_libs,
   },
-  {
-    'name' : 'pcre',
-    'sources' : """
-                chromeos/string.cc
-                """,
-    'libs' : '',
-    'pc_libs' : 'libpcrecpp ' + common_pc_libs,
-  },
 ]
 
 env = common_env()
