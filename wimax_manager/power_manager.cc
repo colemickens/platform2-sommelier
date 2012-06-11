@@ -56,10 +56,15 @@ void PowerManager::RegisterSuspendDelay(uint32 delay_ms) {
 }
 
 void PowerManager::UnregisterSuspendDelay() {
-  if (!suspend_delay_registered_ || !dbus_proxy())
+  if (!suspend_delay_registered_)
     return;
 
-  LOG(INFO) << "Unregister suspend delay";
+  if (!dbus_proxy()) {
+    suspend_delay_registered_ = false;
+    return;
+  }
+
+  LOG(INFO) << "Unregister suspend delay.";
   try {
     dbus_proxy()->UnregisterSuspendDelay();
     suspend_delay_registered_ = false;

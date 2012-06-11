@@ -25,7 +25,7 @@ DBusService::~DBusService() {
 
 void DBusService::Initialize() {
   if (NameHasOwner(power_manager::kPowerManagerServiceName))
-    CreatePowerManager();
+    SetPowerManager(new(std::nothrow) PowerManager(manager_));
 }
 
 void DBusService::Finalize() {
@@ -51,17 +51,27 @@ void DBusService::OnNameOwnerChanged(const std::string &name,
   if (name == power_manager::kPowerManagerServiceName) {
     LOG(INFO) << "Owner of '" << name << "' changed from '"
               << old_owner << "' to '" << new_owner << "'.";
-    if (new_owner.empty()) {
-      power_manager_.reset();
-    } else {
-      CreatePowerManager();
-    }
+    if (new_owner.empty())
+      SetPowerManager(NULL);
+    else
+      SetPowerManager(new(std::nothrow) PowerManager(manager_));
   }
 }
 
-void DBusService::CreatePowerManager() {
+void DBusService::SetPowerManager(PowerManager *power_manager) {
+  // The old power manager instance no longer exists, invalidate its DBus
+  // proxy to prevent calling UnregisterSuspendDelay on it at destruction.
+  if (power_manager_.get()) {
+    LOG(INFO) << "Destroy old power manager proxy.";
+    power_manager_->InvalidateDBusProxy();
+    power_manager_.reset();
+  }
+
+  if (!power_manager)
+    return;
+
   LOG(INFO) << "Create a new power manager proxy.";
-  power_manager_.reset(new(std::nothrow) PowerManager(manager_));
+  power_manager_.reset(power_manager);
   CHECK(power_manager_.get());
   power_manager_->CreateDBusProxy();
   power_manager_->Initialize();

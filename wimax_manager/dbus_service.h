@@ -31,7 +31,7 @@ class DBusService : public DBusProxiable<DBusService, DBusServiceDBusProxy> {
                           const std::string &new_owner);
 
  private:
-  void CreatePowerManager();
+  void SetPowerManager(PowerManager *power_manager);
 
   Manager *manager_;
   scoped_ptr<PowerManager> power_manager_;

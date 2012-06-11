@@ -29,6 +29,10 @@ class DBusProxiable {
     CHECK(dbus_proxy_.get());
   }
 
+  void InvalidateDBusProxy() {
+    dbus_proxy_.reset();
+  }
+
   Proxy *dbus_proxy() const { return dbus_proxy_.get(); }
 
  private:

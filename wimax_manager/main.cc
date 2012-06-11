@@ -15,8 +15,6 @@
 
 #include "wimax_manager/manager.h"
 #include "wimax_manager/manager_dbus_adaptor.h"
-#include "wimax_manager/power_manager.h"
-#include "wimax_manager/power_manager_dbus_proxy.h"
 
 DEFINE_bool(foreground, false,
             "Don't daemon()ize; run in foreground.");
