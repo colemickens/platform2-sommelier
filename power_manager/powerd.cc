@@ -834,6 +834,8 @@ void Daemon::RegisterDBusMessageHandler() {
                        &Daemon::HandleVideoActivityMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kHandleUserActivityMethod,
                        &Daemon::HandleUserActivityMethod);
+  AddDBusMethodHandler(kPowerManagerInterface, kSetIsProjectingMethod,
+                       &Daemon::HandleSetIsProjectingMethod);
 
   CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
                                    NULL));
@@ -1221,6 +1223,27 @@ DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
   idle_->HandleUserActivity(
       base::TimeTicks::FromInternalValue(last_activity_time_internal));
   return NULL;
+}
+
+DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
+  DBusMessage* reply = NULL;
+  DBusError error;
+  dbus_error_init(&error);
+  bool is_projecting = false;
+  dbus_bool_t args_ok =
+      dbus_message_get_args(message, &error,
+                            DBUS_TYPE_BOOLEAN, &is_projecting,
+                            DBUS_TYPE_INVALID);
+  if (args_ok) {
+    monitor_reconfigure_->SetIsProjecting(is_projecting);
+  } else {
+    // The message was malformed so log this and return an error.
+    LOG(WARNING) << kSetIsProjectingMethod << ": Error reading args: "
+                 << error.message;
+    reply = util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
+                                       "Invalid arguments passed to method");
+  }
+  return reply;
 }
 
 void Daemon::AddDBusSignalHandler(const std::string& interface,

@@ -67,6 +67,10 @@ class MonitorReconfigure : public XEventObserverInterface {
   // dual head modes.
   void SwitchMode();
 
+  // Sets the |is_projecting_| ivar, calling the projection callback if the
+  // value changes.
+  void SetIsProjecting(bool is_projecting);
+
   // Returns whether an external monitor is connected.
   virtual bool is_projecting() const { return is_projecting_; }
 

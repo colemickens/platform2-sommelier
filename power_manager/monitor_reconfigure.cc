@@ -623,6 +623,13 @@ void  MonitorReconfigure::SwitchMode() {
 void MonitorReconfigure::Run(bool force_reconfigure) {
 }
 
+void MonitorReconfigure::SetIsProjecting(bool is_projecting) {
+  bool old_value = is_projecting_;
+  is_projecting_ = is_projecting;
+  if ((is_projecting_ != old_value) && (projection_callback_ != NULL))
+    projection_callback_(projection_callback_data_);
+}
+
 void MonitorReconfigure::SetProjectionCallback(void (*func)(void*),
                                                void* data) {
   projection_callback_ = func;
