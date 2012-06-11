@@ -65,13 +65,12 @@ bool VPNDriver::Save(StoreInterface *storage,
     }
     bool credential = (properties_[i].flags & Property::kCredential);
     const string property = properties_[i].property;
-    string value;
-    if (!credential || save_credentials) {
-      value = args_.LookupString(property, "");
-    }
-    if (value.empty()) {
+    if (!args_.ContainsString(property) || (credential && !save_credentials)) {
       storage->DeleteKey(storage_id, property);
-    } else if (credential) {
+      continue;
+    }
+    string value = args_.GetString(property);
+    if (credential) {
       storage->SetCryptedString(storage_id, property, value);
     } else {
       storage->SetString(storage_id, property, value);
@@ -146,15 +145,16 @@ KeyValueStore VPNDriver::GetProvider(Error *error) {
     if ((properties_[i].flags & Property::kWriteOnly)) {
       continue;
     }
-    string value = args_.LookupString(properties_[i].property, "");
-    if (!value.empty()) {
-      // Chomp off leading "Provider." from properties that have this prefix.
-      string prop = properties_[i].property;
-      if (StartsWithASCII(prop, provider_prefix, false)) {
-        prop = prop.substr(provider_prefix.length());
-      }
-      provider_properties.SetString(prop, value);
+    string prop = properties_[i].property;
+    if (!args_.ContainsString(prop)) {
+      continue;
     }
+    string value = args_.GetString(prop);
+    // Chomp off leading "Provider." from properties that have this prefix.
+    if (StartsWithASCII(prop, provider_prefix, false)) {
+      prop = prop.substr(provider_prefix.length());
+    }
+    provider_properties.SetString(prop, value);
   }
 
   return provider_properties;

@@ -39,6 +39,7 @@ namespace {
 const char kHostProperty[] = "VPN.Host";
 const char kOTPProperty[] = "VPN.OTP";
 const char kPINProperty[] = "VPN.PIN";
+const char kPSKProperty[] = "VPN.PSK";
 const char kPasswordProperty[] = "VPN.Password";
 const char kPortProperty[] = "VPN.Port";
 
@@ -73,6 +74,7 @@ const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
   { kHostProperty, 0 },
   { kOTPProperty, Property::kEphemeral },
   { kPINProperty, Property::kWriteOnly },
+  { kPSKProperty, Property::kCredential },
   { kPasswordProperty, Property::kCredential },
   { kPortProperty, 0 },
   { flimflam::kProviderNameProperty, 0 },
@@ -129,6 +131,8 @@ bool VPNDriverTest::GetProviderProperty(const PropertyStore &store,
 
 TEST_F(VPNDriverTest, Load) {
   MockStore storage;
+  GetArgs()->SetString(kHostProperty, "1.2.3.4");
+  GetArgs()->SetString(kPSKProperty, "1234");
   EXPECT_CALL(storage, GetString(kStorageID, _, _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(storage, GetString(_, kOTPProperty, _)).Times(0);
@@ -137,20 +141,30 @@ TEST_F(VPNDriverTest, Load) {
       .WillOnce(DoAll(SetArgumentPointee<2>(string(kPort)), Return(true)));
   EXPECT_CALL(storage, GetString(kStorageID, kPINProperty, _))
       .WillOnce(DoAll(SetArgumentPointee<2>(string(kPIN)), Return(true)));
+  EXPECT_CALL(storage, GetCryptedString(kStorageID, kPSKProperty, _))
+      .WillOnce(Return(false));
   EXPECT_CALL(storage, GetCryptedString(kStorageID, kPasswordProperty, _))
       .WillOnce(DoAll(SetArgumentPointee<2>(string(kPassword)), Return(true)));
   EXPECT_TRUE(driver_.Load(&storage, kStorageID));
   EXPECT_EQ(kPort, GetArgs()->LookupString(kPortProperty, ""));
   EXPECT_EQ(kPIN, GetArgs()->LookupString(kPINProperty, ""));
   EXPECT_EQ(kPassword, GetArgs()->LookupString(kPasswordProperty, ""));
+
+  // Properties missing from the persistent store should be deleted.
+  EXPECT_FALSE(GetArgs()->ContainsString(kHostProperty));
+  EXPECT_FALSE(GetArgs()->ContainsString(kPSKProperty));
 }
 
-TEST_F(VPNDriverTest, Store) {
+TEST_F(VPNDriverTest, Save) {
+  SetArg(flimflam::kProviderNameProperty, "");
   SetArg(kPINProperty, kPIN);
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
   SetArg(kOTPProperty, "987654");
   MockStore storage;
+  EXPECT_CALL(storage,
+              SetString(kStorageID, flimflam::kProviderNameProperty, ""))
+      .WillOnce(Return(true));
   EXPECT_CALL(storage, SetString(kStorageID, kPortProperty, kPort))
       .WillOnce(Return(true));
   EXPECT_CALL(storage, SetString(kStorageID, kPINProperty, kPIN))
@@ -160,18 +174,22 @@ TEST_F(VPNDriverTest, Store) {
       .WillOnce(Return(true));
   EXPECT_CALL(storage, SetCryptedString(_, kOTPProperty, _)).Times(0);
   EXPECT_CALL(storage, SetString(_, kOTPProperty, _)).Times(0);
-  EXPECT_CALL(storage, DeleteKey(kStorageID, _)).Times(AnyNumber());
+  EXPECT_CALL(storage, DeleteKey(kStorageID, flimflam::kProviderNameProperty))
+      .Times(0);
+  EXPECT_CALL(storage, DeleteKey(kStorageID, kPSKProperty)).Times(1);
   EXPECT_CALL(storage, DeleteKey(kStorageID, kHostProperty)).Times(1);
   EXPECT_TRUE(driver_.Save(&storage, kStorageID, true));
 }
 
-TEST_F(VPNDriverTest, StoreNoCredentials) {
+TEST_F(VPNDriverTest, SaveNoCredentials) {
   SetArg(kPasswordProperty, kPassword);
+  SetArg(kPSKProperty, "");
   MockStore storage;
   EXPECT_CALL(storage, SetString(_, kPasswordProperty, _)).Times(0);
   EXPECT_CALL(storage, SetCryptedString(_, kPasswordProperty, _)).Times(0);
   EXPECT_CALL(storage, DeleteKey(kStorageID, _)).Times(AnyNumber());
   EXPECT_CALL(storage, DeleteKey(kStorageID, kPasswordProperty)).Times(1);
+  EXPECT_CALL(storage, DeleteKey(kStorageID, kPSKProperty)).Times(1);
   EXPECT_TRUE(driver_.Save(&storage, kStorageID, false));
 }
 
@@ -200,6 +218,7 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
   SetArg(flimflam::kProviderNameProperty, kProviderName);
+  SetArg(kHostProperty, "");
 
   // We should not be able to read a property out of the driver args using the
   // key to the args directly.
@@ -209,6 +228,13 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   string value;
   EXPECT_TRUE(GetProviderProperty(store, kPortProperty, &value));
   EXPECT_EQ(kPort, value);
+
+  // We should be able to read empty properties from the "Provider" stringmap.
+  {
+    string value;
+    EXPECT_TRUE(GetProviderProperty(store, kHostProperty, &value));
+    EXPECT_TRUE(value.empty());
+  }
 
   // Properties that start with the prefix "Provider." should be mapped to the
   // name in the Properties dict with the prefix removed.
