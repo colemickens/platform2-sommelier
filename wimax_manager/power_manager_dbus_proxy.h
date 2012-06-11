@@ -5,6 +5,8 @@
 #ifndef WIMAX_MANAGER_POWER_MANAGER_DBUS_PROXY_H_
 #define WIMAX_MANAGER_POWER_MANAGER_DBUS_PROXY_H_
 
+#include <string>
+
 #include "wimax_manager/dbus_bindings/power_manager.h"
 #include "wimax_manager/dbus_proxy.h"
 

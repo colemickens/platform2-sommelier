@@ -74,10 +74,6 @@ int main(int argc, char** argv) {
   manager.CreateDBusAdaptor();
   CHECK(manager.Initialize()) << "Failed to initialize WiMAX manager";
 
-  wimax_manager::PowerManager power_manager(&manager);
-  power_manager.CreateDBusProxy();
-  power_manager.Initialize();
-
   g_main_loop_run(loop);
   g_main_loop_unref(loop);
 

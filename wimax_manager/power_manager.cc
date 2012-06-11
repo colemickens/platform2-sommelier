@@ -92,7 +92,7 @@ void PowerManager::OnSuspendDelay(uint32 sequence_number) {
   SuspendReady(sequence_number);
 }
 
-void PowerManager::PowerStateChanged(const std::string &new_power_state) {
+void PowerManager::OnPowerStateChanged(const std::string &new_power_state) {
   LOG(INFO) << "Power state changed to '" << new_power_state << "'.";
   if (suspended_ && new_power_state == "on") {
     wimax_manager_->Resume();

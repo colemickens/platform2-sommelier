@@ -14,6 +14,7 @@
 #include <base/memory/scoped_vector.h>
 
 #include "wimax_manager/dbus_adaptable.h"
+#include "wimax_manager/dbus_service.h"
 
 namespace wimax_manager {
 
@@ -42,6 +43,7 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
 
   int num_device_scans_;
   guint device_scan_timeout_id_;
+  DBusService dbus_service_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

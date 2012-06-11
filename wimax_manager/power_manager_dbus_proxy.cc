@@ -30,7 +30,7 @@ void PowerManagerDBusProxy::SuspendDelay(const uint32_t &sequence_number) {
 }
 
 void PowerManagerDBusProxy::PowerStateChanged(const string &new_power_state) {
-  power_manager_->PowerStateChanged(new_power_state);
+  power_manager_->OnPowerStateChanged(new_power_state);
 }
 
 }  // namespace wimax_manager

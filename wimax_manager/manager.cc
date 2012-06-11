@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 
+#include "wimax_manager/dbus_service_dbus_proxy.h"
 #include "wimax_manager/device.h"
 #include "wimax_manager/device_dbus_adaptor.h"
 #include "wimax_manager/gdm_driver.h"
@@ -30,7 +31,10 @@ gboolean OnDeviceScanNeeded(gpointer data) {
 
 }  // namespace
 
-Manager::Manager() : num_device_scans_(0), device_scan_timeout_id_(0) {
+Manager::Manager()
+    : num_device_scans_(0),
+      device_scan_timeout_id_(0),
+      dbus_service_(this) {
 }
 
 Manager::~Manager() {
@@ -40,6 +44,9 @@ Manager::~Manager() {
 bool Manager::Initialize() {
   if (driver_.get())
     return true;
+
+  dbus_service_.CreateDBusProxy();
+  dbus_service_.Initialize();
 
   driver_.reset(new(std::nothrow) GdmDriver());
   if (!driver_.get()) {
@@ -72,6 +79,7 @@ bool Manager::Finalize() {
   }
 
   driver_.reset();
+  dbus_service_.Finalize();
   return true;
 }
 

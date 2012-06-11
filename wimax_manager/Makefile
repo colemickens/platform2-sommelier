@@ -44,6 +44,10 @@ GEN_DBUSXX_ADAPTOR(wimax_manager/dbus_bindings/network.h): \
 	$(SRC)/dbus_bindings/org.chromium.WiMaxManager.Network.xml
 clean: CLEAN(wimax_manager/dbus_bindings/network.h)
 
+GEN_DBUSXX_PROXY(wimax_manager/dbus_bindings/dbus_service.h): \
+	$(SRC)/dbus_bindings/org.freedesktop.DBus.xml
+clean: CLEAN(wimax_manager/dbus_bindings/dbus_service.h)
+
 GEN_DBUSXX_PROXY(wimax_manager/dbus_bindings/power_manager.h): \
 	$(SRC)/dbus_bindings/org.chromium.PowerManager.xml
 clean: CLEAN(wimax_manager/dbus_bindings/power_manager.h)
@@ -53,6 +57,7 @@ $(patsubst %.o,%.o.depends,$(CXX_OBJECTS)): \
 	GEN_DBUSXX_ADAPTOR(wimax_manager/dbus_bindings/device.h) \
 	GEN_DBUSXX_ADAPTOR(wimax_manager/dbus_bindings/manager.h) \
 	GEN_DBUSXX_ADAPTOR(wimax_manager/dbus_bindings/network.h) \
+	GEN_DBUSXX_PROXY(wimax_manager/dbus_bindings/dbus_service.h) \
 	GEN_DBUSXX_PROXY(wimax_manager/dbus_bindings/power_manager.h)
 
 CXX_BINARY(wimax-manager): $(filter-out testrunner.o %_unittest.o,$(CXX_OBJECTS))
