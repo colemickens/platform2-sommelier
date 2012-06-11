@@ -26,6 +26,7 @@ bool DebugDaemon::Init() {
   route_tool_ = new RouteTool();
   systrace_tool_ = new SystraceTool();
   tracepath_tool_ = new TracePathTool();
+  log_tool_ = new LogTool();
   try {
     // TODO(ellyjones): Remove this when crosbug.com/23964 is fixed
     dbus_->request_name(kDebugDaemonService);
@@ -81,7 +82,7 @@ void DebugDaemon::SystraceStop(const DBus::FileDescriptor& outfd,
   return systrace_tool_->Stop(outfd, error);
 }
 
-std::string DebugDaemon::SystraceStatus(DBus::Error& error) {
+std::string DebugDaemon::SystraceStatus(DBus::Error& error) { // NOLINT dbuscxx
   return systrace_tool_->Status(error);
 }
 
@@ -108,7 +109,14 @@ void DebugDaemon::GetDebugLogs(const DBus::FileDescriptor& fd,
 void DebugDaemon::SetDebugMode(const std::string& subsystem,
                                DBus::Error& error) {
   debug_mode_tool_->SetDebugMode(subsystem, &error);
-  return;
+}
+
+std::string DebugDaemon::GetLog(const std::string& name, DBus::Error& error) {
+  return log_tool_->GetLog(name, error);
+}
+
+std::map<std::string, std::string> DebugDaemon::GetAllLogs(DBus::Error& error) { // NOLINT dbuscxx
+  return log_tool_->GetAllLogs(error);
 }
 
 };  // namespace debugd

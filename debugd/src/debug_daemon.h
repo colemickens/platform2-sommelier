@@ -13,6 +13,7 @@
 #include "adaptors/org.chromium.debugd.h"
 #include "debug_logs_tool.h"
 #include "debug_mode_tool.h"
+#include "log_tool.h"
 #include "modem_status_tool.h"
 #include "network_status_tool.h"
 #include "ping_tool.h"
@@ -56,6 +57,9 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   void set_network_status_tool(NetworkStatusTool* tool) {
     network_status_tool_ = tool;
   }
+  void set_log_tool(LogTool* tool) {
+    log_tool_ = tool;
+  }
 
   // Public methods below this point are part of the DBus interface presented by
   // this object, and are documented in </share/org.chromium.debugd.xml>.
@@ -75,7 +79,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                              DBus::Error& error);
   virtual void SystraceStop(const DBus::FileDescriptor& outfd,
                             DBus::Error& error);
-  virtual std::string SystraceStatus(DBus::Error& error);
+  virtual std::string SystraceStatus(DBus::Error& error); // NOLINT dbuscxx
   virtual std::vector<std::string> GetRoutes(const std::map<std::string,
                                                             DBus::Variant>&
                                                  options,
@@ -85,6 +89,8 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   virtual void GetDebugLogs(const DBus::FileDescriptor& fd,
                             DBus::Error& error);
   virtual void SetDebugMode(const std::string& subsystem, DBus::Error& error);
+  virtual std::string GetLog(const std::string& name, DBus::Error& error); // NOLINT
+  virtual std::map<std::string, std::string> GetAllLogs(DBus::Error& error); // NOLINT
 
  private:
   DBus::Connection* dbus_;
@@ -92,6 +98,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
 
   DebugLogsTool* debug_logs_tool_;
   DebugModeTool* debug_mode_tool_;
+  LogTool* log_tool_;
   ModemStatusTool* modem_status_tool_;
   NetworkStatusTool* network_status_tool_;
   PingTool* ping_tool_;

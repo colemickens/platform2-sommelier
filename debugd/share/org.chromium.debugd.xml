@@ -176,5 +176,19 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="GetLog">
+      <tp:docstring>
+        Fetches the contents of a single system log, identified by name. See
+        /src/log_tool.cc for a list of valid names.
+      </tp:docstring>
+      <arg name="log" type="s" direction="in" />
+      <arg name="contents" type="s" direction="out" />
+    </method>
+    <method name="GetAllLogs">
+      <tp:docstring>
+        Returns all the system logs.
+      </tp:docstring>
+      <arg name="logs" type="a{ss}" direction="out" />
+    </method>
   </interface>
 </node>
