@@ -52,7 +52,7 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
                                     Sockets *sockets,
                                     vector<string> *options) {
   SLOG(VPN, 2) << __func__;
-  if (sockets_) {
+  if (IsStarted()) {
     return true;
   }
 
@@ -103,7 +103,7 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
 
 void OpenVPNManagementServer::Stop() {
   SLOG(VPN, 2) << __func__;
-  if (!sockets_) {
+  if (!IsStarted()) {
     return;
   }
   input_handler_.reset();
@@ -139,7 +139,7 @@ void OpenVPNManagementServer::OnInput(InputData *data) {
   SplitString(
       string(reinterpret_cast<char *>(data->buf), data->len), '\n', &messages);
   for (vector<string>::const_iterator it = messages.begin();
-       it != messages.end(); ++it) {
+       it != messages.end() && IsStarted(); ++it) {
     ProcessMessage(*it);
   }
 }
@@ -158,7 +158,6 @@ void OpenVPNManagementServer::ProcessMessage(const string &message) {
 }
 
 bool OpenVPNManagementServer::ProcessInfoMessage(const string &message) {
-  SLOG(VPN, 2) << __func__ << "(" << message << ")";
   if (!StartsWithASCII(message, ">INFO:", true)) {
     return false;
   }
@@ -168,7 +167,6 @@ bool OpenVPNManagementServer::ProcessInfoMessage(const string &message) {
 
 bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
     const string &message) {
-  SLOG(VPN, 2) << __func__ << "(" << message << ")";
   if (!StartsWithASCII(message, ">PASSWORD:Need ", true)) {
     return false;
   }
@@ -214,7 +212,10 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
   string otp =
       driver_->args()->LookupString(flimflam::kOpenVPNOTPProperty, "");
   if (user.empty() || password.empty() || otp.empty()) {
-    NOTIMPLEMENTED() << ": Missing credentials.";
+    NOTIMPLEMENTED() << ": Missing credentials:"
+                     << (user.empty() ? " no-user" : "")
+                     << (password.empty() ? " no-password" : "")
+                     << (otp.empty() ? " no-otp" : "");
     driver_->Cleanup(Service::kStateFailure);
     return;
   }
@@ -249,7 +250,6 @@ void OpenVPNManagementServer::SupplyTPMToken(const string &tag) {
 
 bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
     const string &message) {
-  SLOG(VPN, 2) << __func__ << "(" << message << ")";
   if (!StartsWithASCII(message, ">PASSWORD:Verification Failed:", true)) {
     return false;
   }
@@ -269,7 +269,6 @@ bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
 // <local-ip> is a dotted-quad for the local IPv4 address (when available)
 // <remote-ip> is a dotted-quad for the remote IPv4 address (when available)
 bool OpenVPNManagementServer::ProcessStateMessage(const string &message) {
-  SLOG(VPN, 2) << __func__ << "(" << message << ")";
   if (!StartsWithASCII(message, ">STATE:", true)) {
     return false;
   }

@@ -18,6 +18,7 @@
 using std::string;
 using std::vector;
 using testing::_;
+using testing::Assign;
 using testing::Return;
 using testing::ReturnNew;
 
@@ -42,7 +43,7 @@ class OpenVPNManagementServerTest : public testing::Test {
 
   void SetSockets() { server_.sockets_ = &sockets_; }
   void SetDispatcher() { server_.dispatcher_ = &dispatcher_; }
-  void ExpectNotStarted() { EXPECT_TRUE(server_.sockets_ == NULL); }
+  void ExpectNotStarted() { !server_.IsStarted(); }
 
   void SetConnectedSocket() {
     server_.connected_socket_ = kConnectedSocket;
@@ -200,6 +201,20 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
     EXPECT_CALL(driver_, OnReconnecting());
     server_.OnInput(&data);
   }
+}
+
+TEST_F(OpenVPNManagementServerTest, OnInputStop) {
+  string s =
+      ">PASSWORD:Verification Failed: .\n"
+      ">STATE:123,RECONNECTING,detail,...,...";
+  InputData data = CreateInputDataFromString(s);
+  SetSockets();
+  // Stops the server after the first message is processed.
+  EXPECT_CALL(driver_, Cleanup(Service::kStateFailure))
+      .WillOnce(Assign(&server_.sockets_, reinterpret_cast<Sockets *>(NULL)));
+  // The second message should not be processed.
+  EXPECT_CALL(driver_, OnReconnecting()).Times(0);
+  server_.OnInput(&data);
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessMessage) {

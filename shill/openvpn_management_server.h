@@ -38,6 +38,7 @@ class OpenVPNManagementServer {
  private:
   friend class OpenVPNManagementServerTest;
   FRIEND_TEST(OpenVPNManagementServerTest, OnInput);
+  FRIEND_TEST(OpenVPNManagementServerTest, OnInputStop);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReady);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReadyAcceptFail);
   FRIEND_TEST(OpenVPNManagementServerTest, ParseNeedPasswordTag);
@@ -78,6 +79,8 @@ class OpenVPNManagementServer {
   void SupplyTPMToken(const std::string &tag);
 
   static std::string ParseNeedPasswordTag(const std::string &message);
+
+  bool IsStarted() const { return sockets_; }
 
   OpenVPNDriver *driver_;
   GLib *glib_;
