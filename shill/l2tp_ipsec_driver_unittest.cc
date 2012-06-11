@@ -464,6 +464,7 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
     EXPECT_FALSE(props.LookupBool(flimflam::kPassphraseRequiredProperty, true));
     EXPECT_FALSE(
         props.LookupBool(flimflam::kL2tpIpsecPskRequiredProperty, true));
+    EXPECT_FALSE(props.ContainsString(flimflam::kL2tpIpsecPasswordProperty));
   }
 }
 

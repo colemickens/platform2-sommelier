@@ -727,6 +727,7 @@ TEST_F(OpenVPNDriverTest, GetProvider) {
         inspector.GetKeyValueStoreProperty(
             flimflam::kProviderProperty, &props));
     EXPECT_FALSE(props.LookupBool(flimflam::kPassphraseRequiredProperty, true));
+    EXPECT_FALSE(props.ContainsString(flimflam::kOpenVPNPasswordProperty));
   }
 }
 
