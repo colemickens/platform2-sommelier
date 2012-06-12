@@ -14,51 +14,7 @@
 # Further, the path at present is /bin:/usr/bin:/usr/bin/X11
 # so (e.g.) lspci needs the full path.
 
-CLIENT_ID,/usr/share/userfeedback/scripts/get_log "/home/chronos/Consent To Send Stats"
-LOGDATE,/bin/date
-Xorg.0.log,/usr/share/userfeedback/scripts/get_log /var/log/Xorg.0.log
-alsa_controls,/usr/bin/amixer -c0 contents
-bios_info,/usr/share/userfeedback/scripts/get_log /var/log/bios_info.txt
-bios_log,cat /sys/firmware/log | /usr/share/userfeedback/scripts/get_log /dev/stdin 2000
-board-specific, /usr/share/userfeedback/scripts/get_board_specific_info
-boot_times,/usr/share/userfeedback/scripts/get_log /tmp/boot-times-sent
-chrome_log,/usr/share/userfeedback/scripts/get_log /home/chronos/user/log/chrome,ascii
-chrome_system_log,/usr/share/userfeedback/scripts/get_log /var/log/chrome/chrome,ascii
-cpu,uname -p
-cpuinfo,cat /proc/cpuinfo
 cras,/usr/bin/cras_test_client --dump_server_info
-dmesg,/bin/dmesg
-ec_info,/usr/share/userfeedback/scripts/get_log /var/log/ec_info.txt
 env,set
-font_info,/usr/share/userfeedback/scripts/font_info
-hardware_class,crossystem hwid
-hostname,hostname
-hw_platform,uname -i
-ifconfig,/sbin/ifconfig -a
-login-times,/usr/share/userfeedback/scripts/get_log /home/chronos/user/login-times
-logout-times,/usr/share/userfeedback/scripts/get_log /home/chronos/user/logout-times
-lsmod,lsmod
-lspci,/usr/sbin/lspci
-lsusb,lsusb
-meminfo,cat /proc/meminfo
-memory_spd_info,/usr/share/userfeedback/scripts/get_log /var/log/memory_spd_info.txt
-mm-status,/usr/share/userfeedback/scripts/mm-status
-network-devices,/usr/bin/connectivity show devices
-network-services,/usr/bin/connectivity show services
-power-supply-info,power-supply-info
-powerd.LATEST,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerd.LATEST
-powerd.out,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerd.out
-powerm.LATEST,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerm.LATEST
-powerm.out,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerm.out
-ps,/bin/ps ux
-syslog,/usr/share/userfeedback/scripts/getmsgs --last '2 hours' /var/log/messages
-touchpad,/opt/google/touchpad/tpcontrol status
-touchpad_activity,/opt/google/touchpad/generate_userfeedback
-ui_log,/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST
-uname,/bin/uname -a
-update_engine.log,cat $(ls -1tr /var/log/update_engine | tail -5 | sed s.^./var/log/update_engine/.) | /usr/share/userfeedback/scripts/get_log /dev/stdin 2000
-verified boot,/usr/share/userfeedback/scripts/get_log /var/log/debug_vboot_noisy.log
-vpd_2.0,/usr/share/userfeedback/scripts/get_log /var/log/vpd_2.0.txt
 setxkbmap,/usr/bin/setxkbmap -print -query
-wifi_status,/usr/bin/network_diagnostics --wifi --no-log
 xrandr,/usr/bin/xrandr --verbose
