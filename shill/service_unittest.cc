@@ -81,6 +81,20 @@ TEST_F(ServiceTest, Constructor) {
   EXPECT_FALSE(service_->has_ever_connected());
 }
 
+TEST_F(ServiceTest, CalculateState) {
+  service_->state_ = Service::kStateConnected;
+  Error error;
+  EXPECT_EQ(flimflam::kStateReady, service_->CalculateState(&error));
+  EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(ServiceTest, CalculateTechnology) {
+  service_->technology_ = Technology::kWifi;
+  Error error;
+  EXPECT_EQ(flimflam::kTypeWifi, service_->CalculateTechnology(&error));
+  EXPECT_TRUE(error.IsSuccess());
+}
+
 TEST_F(ServiceTest, GetProperties) {
   map<string, ::DBus::Variant> props;
   Error error(Error::kInvalidProperty, "");

@@ -291,6 +291,7 @@ class Metrics {
   scoped_ptr<chromeos_metrics::Timer> time_online_timer_;
   scoped_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
   scoped_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
+  bool collect_bootstats_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };

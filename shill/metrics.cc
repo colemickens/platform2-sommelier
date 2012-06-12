@@ -8,6 +8,7 @@
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <metrics/bootstat.h>
 
 #include "shill/scope_logger.h"
 #include "shill/wifi_service.h"
@@ -96,7 +97,8 @@ Metrics::Metrics()
       was_online_(false),
       time_online_timer_(new chromeos_metrics::Timer),
       time_to_drop_timer_(new chromeos_metrics::Timer),
-      time_resume_to_ready_timer_(new chromeos_metrics::Timer) {
+      time_resume_to_ready_timer_(new chromeos_metrics::Timer),
+      collect_bootstats_(true) {
   metrics_library_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
@@ -323,6 +325,14 @@ void Metrics::NotifyServiceStateChanged(const Service *service,
 
   if (new_state == Service::kStateFailure)
     SendServiceFailure(service);
+
+  if (collect_bootstats_) {
+    bootstat_log(
+        StringPrintf("network-%s-%s",
+                     Technology::NameFromIdentifier(
+                         service->technology()).c_str(),
+                     service->GetStateString().c_str()).c_str());
+  }
 
   if (new_state != Service::kStateConnected)
     return;

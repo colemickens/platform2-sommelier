@@ -26,7 +26,6 @@ class ServiceUnderTest : public Service {
                    Manager *manager);
   virtual ~ServiceUnderTest();
 
-  virtual std::string CalculateState(Error *error);
   virtual std::string GetRpcIdentifier() const;
   virtual std::string GetDeviceRpcId(Error *error);
   virtual std::string GetStorageIdentifier() const;

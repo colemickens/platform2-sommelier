@@ -976,9 +976,9 @@ vector<string> Manager::ConnectedTechnologies(Error */*error*/) {
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 
-string Manager::DefaultTechnology(Error *error) {
+string Manager::DefaultTechnology(Error */*error*/) {
   return (!services_.empty() && services_[0]->IsConnected()) ?
-      services_[0]->GetTechnologyString(error) : "";
+      services_[0]->GetTechnologyString() : "";
 }
 
 vector<string> Manager::EnabledTechnologies(Error */*error*/) {

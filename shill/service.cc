@@ -207,7 +207,7 @@ Service::Service(ControlInterface *control_interface,
   store_.RegisterString(flimflam::kProxyConfigProperty, &proxy_config_);
   store_.RegisterBool(flimflam::kSaveCredentialsProperty, &save_credentials_);
   HelpRegisterDerivedString(flimflam::kTypeProperty,
-                            &Service::GetTechnologyString,
+                            &Service::CalculateTechnology,
                             NULL);
   // flimflam::kSecurityProperty: Registered in WiFiService
   HelpRegisterDerivedString(flimflam::kStateProperty,
@@ -289,8 +289,7 @@ void Service::SetState(ConnectState state) {
   }
   manager_->UpdateService(this);
   metrics_->NotifyServiceStateChanged(this, state);
-  Error error;
-  adaptor_->EmitStringChanged(flimflam::kStateProperty, CalculateState(&error));
+  adaptor_->EmitStringChanged(flimflam::kStateProperty, GetStateString());
 }
 
 void Service::SetFailure(ConnectFailure failure) {
@@ -363,7 +362,7 @@ bool Service::Unload() {
 bool Service::Save(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
 
-  storage->SetString(id, kStorageType, GetTechnologyString(NULL));
+  storage->SetString(id, kStorageType, GetTechnologyString());
 
   // TODO(petkov): We could choose to simplify the saving code by removing most
   // conditionals thus saving even default values.
@@ -618,8 +617,12 @@ const char *Service::ConnectStateToString(const ConnectState &state) {
   return "Invalid";
 }
 
-string Service::GetTechnologyString(Error */*error*/) {
+string Service::GetTechnologyString() const {
   return Technology::NameFromIdentifier(technology());
+}
+
+string Service::CalculateTechnology(Error */*error*/) {
+  return GetTechnologyString();
 }
 
 // static
@@ -767,7 +770,7 @@ void Service::SetConnectable(bool connectable) {
   }
 }
 
-string Service::CalculateState(Error */*error*/) {
+string Service::GetStateString() const {
   switch (state_) {
     case kStateIdle:
       return flimflam::kStateIdle;
@@ -789,6 +792,10 @@ string Service::CalculateState(Error */*error*/) {
     default:
       return "";
   }
+}
+
+string Service::CalculateState(Error */*error*/) {
+  return GetStateString();
 }
 
 bool Service::IsAutoConnectable(const char **reason) const {

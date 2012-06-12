@@ -51,6 +51,7 @@ class MetricsTest : public PropertyStoreTest {
 
   virtual void SetUp() {
     metrics_.set_library(&library_);
+    metrics_.collect_bootstats_ = false;
   }
 
  protected:

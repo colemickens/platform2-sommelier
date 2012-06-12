@@ -72,7 +72,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   const std::string path_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
-  MockMetrics metrics_;
+  testing::NiceMock<MockMetrics> metrics_;
   MockGLib glib_;
   Manager manager_;
 };

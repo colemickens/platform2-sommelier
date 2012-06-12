@@ -17,7 +17,7 @@ BUILDDIR = build
 LIBDIR = /usr/lib
 SCRIPTDIR = $(LIBDIR)/flimflam/scripts
 CPPFLAGS += -DSCRIPTDIR=\"$(SCRIPTDIR)\"
-BASE_LIBS = -lcares -lmobile-provider -lmetrics -lminijail
+BASE_LIBS = -lbootstat -lcares -lmobile-provider -lmetrics -lminijail
 BASE_INCLUDE_DIRS = -iquote.. -iquote $(BUILDDIR)
 BASE_LIB_DIRS =
 

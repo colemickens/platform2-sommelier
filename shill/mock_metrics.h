@@ -17,6 +17,8 @@ class MockMetrics : public Metrics {
   virtual ~MockMetrics();
 
   MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service *service));
+  MOCK_METHOD2(NotifyServiceStateChanged,
+               void(const Service *service, Service::ConnectState new_state));
   MOCK_METHOD3(SendEnumToUMA, bool(const std::string &name, int sample,
                                    int max));
   MOCK_METHOD5(SendToUMA, bool(const std::string &name, int sample, int min,

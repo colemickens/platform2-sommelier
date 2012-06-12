@@ -27,8 +27,6 @@ ServiceUnderTest::ServiceUnderTest(ControlInterface *control_interface,
 
 ServiceUnderTest::~ServiceUnderTest() {}
 
-string ServiceUnderTest::CalculateState(Error */*error*/) { return ""; }
-
 string ServiceUnderTest::GetRpcIdentifier() const {
   return ServiceMockAdaptor::kRpcId;
 }

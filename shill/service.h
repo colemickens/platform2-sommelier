@@ -187,6 +187,7 @@ class Service : public base::RefCounted<Service> {
   // Updates the state of the Service and alerts the manager.  Also
   // clears |failure_| if the new state isn't a failure.
   virtual void SetState(ConnectState state);
+  std::string GetStateString() const;
 
   // State utility functions
   virtual bool IsConnected() const {
@@ -335,7 +336,7 @@ class Service : public base::RefCounted<Service> {
   uint16 strength() const { return strength_; }
 
   virtual Technology::Identifier technology() const { return technology_; }
-  std::string GetTechnologyString(Error *error);
+  std::string GetTechnologyString() const;
 
   const EapCredentials &eap() const { return eap_; }
   virtual void set_eap(const EapCredentials &eap);
@@ -390,6 +391,7 @@ class Service : public base::RefCounted<Service> {
   static bool IllegalChar(char a) { return !LegalChar(a); }
 
   virtual std::string CalculateState(Error *error);
+  std::string CalculateTechnology(Error *error);
 
   // Returns whether this service is in a state conducive to auto-connect.
   // This should include any tests used for computing connectable(),
@@ -472,6 +474,8 @@ class Service : public base::RefCounted<Service> {
   friend class VPNServiceTest;
   friend class WiFiServiceTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
+  FRIEND_TEST(ServiceTest, CalculateState);
+  FRIEND_TEST(ServiceTest, CalculateTechnology);
   FRIEND_TEST(ServiceTest, Certification);
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
   FRIEND_TEST(ServiceTest, ConfigureStringProperty);
