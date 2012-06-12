@@ -341,6 +341,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-sync-tabs \
             --enable-sync-tabs-for-other-clients \
             --enable-threaded-compositing \
+            --enable-ui-release-front-surface \
             --enterprise-enrollment-initial-modulus=5 \
             --enterprise-enrollment-modulus-limit=12 \
             --force-compositing-mode \
