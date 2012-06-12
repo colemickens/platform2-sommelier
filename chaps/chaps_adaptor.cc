@@ -15,6 +15,7 @@
 
 using base::AutoLock;
 using base::Lock;
+using chromeos::SecureBlob;
 using std::string;
 using std::vector;
 
@@ -46,7 +47,9 @@ void ChapsAdaptor::OnLogin(const string& path,
   VLOG(1) << "CALL: " << __func__;
   if (login_listener_)
     login_listener_->OnLogin(FilePath(path),
-                             ConvertByteVectorToString(auth_data));
+                             SecureBlob(&auth_data.front(), auth_data.size()));
+  chromeos::SecureMemset(const_cast<uint8_t*>(&auth_data.front()), 0,
+                         auth_data.size());
 }
 
 void ChapsAdaptor::OnLogout(const string& path,
@@ -64,9 +67,14 @@ void ChapsAdaptor::OnChangeAuthData(const string& path,
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   if (login_listener_)
-    login_listener_->OnChangeAuthData(FilePath(path),
-                                      ConvertByteVectorToString(old_auth_data),
-                                      ConvertByteVectorToString(new_auth_data));
+    login_listener_->OnChangeAuthData(
+        FilePath(path),
+        SecureBlob(&old_auth_data.front(), old_auth_data.size()),
+        SecureBlob(&new_auth_data.front(), new_auth_data.size()));
+  chromeos::SecureMemset(const_cast<uint8_t*>(&old_auth_data.front()), 0,
+                         old_auth_data.size());
+  chromeos::SecureMemset(const_cast<uint8_t*>(&new_auth_data.front()), 0,
+                         new_auth_data.size());
 }
 
 void ChapsAdaptor::SetLogLevel(const int32_t& level,

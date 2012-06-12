@@ -55,11 +55,12 @@ class SlotManagerImpl : public SlotManager,
   virtual bool GetSession(int session_id, Session** session) const;
 
   // LoginEventListener methods.
-  virtual void OnLogin(const FilePath& path, const std::string& auth_data);
+  virtual void OnLogin(const FilePath& path,
+                       const chromeos::SecureBlob& auth_data);
   virtual void OnLogout(const FilePath& path);
   virtual void OnChangeAuthData(const FilePath& path,
-                                const std::string& old_auth_data,
-                                const std::string& new_auth_data);
+                                const chromeos::SecureBlob& old_auth_data,
+                                const chromeos::SecureBlob& new_auth_data);
   // HandleGenerator methods.
   virtual int CreateHandle();
 

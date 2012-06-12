@@ -19,6 +19,7 @@
 #include "chaps/object_mock.h"
 #include "chaps/object_store_mock.h"
 
+using chromeos::SecureBlob;
 using std::map;
 using std::string;
 using std::vector;
@@ -103,7 +104,8 @@ TEST_F(TestObjectPool, Init) {
   persistent_objects[1].is_private = true;
   persistent_objects[2].blob = "not_valid_protobuf";
   persistent_objects[2].is_private = false;
-  string key(32, 'A');
+  string tmp(32, 'A');
+  SecureBlob key(tmp.data(), tmp.length());
   EXPECT_CALL(*store_, GetInternalBlob(_, _)).WillRepeatedly(Return(false));
   EXPECT_CALL(*store_, SetInternalBlob(_, _)).WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, SetEncryptionKey(key))
@@ -145,6 +147,7 @@ TEST_F(TestObjectPool, Init) {
 // Test the methods that should just pass through to the object store.
 TEST_F(TestObjectPool, StorePassThrough) {
   string s("test");
+  SecureBlob blob("test", 4);
   EXPECT_CALL(*store_, GetInternalBlob(1, _))
       .WillOnce(Return(false))
       .WillOnce(Return(true));
@@ -155,18 +158,18 @@ TEST_F(TestObjectPool, StorePassThrough) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*store_, LoadPrivateObjectBlobs(_))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*store_, SetEncryptionKey(s))
+  EXPECT_CALL(*store_, SetEncryptionKey(blob))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
   EXPECT_FALSE(pool2_->GetInternalBlob(1, &s));
   EXPECT_FALSE(pool2_->SetInternalBlob(1, s));
-  EXPECT_TRUE(pool2_->SetEncryptionKey(s));
+  EXPECT_TRUE(pool2_->SetEncryptionKey(blob));
   EXPECT_FALSE(pool_->GetInternalBlob(1, &s));
   EXPECT_TRUE(pool_->GetInternalBlob(1, &s));
   EXPECT_FALSE(pool_->SetInternalBlob(1, s));
   EXPECT_TRUE(pool_->SetInternalBlob(1, s));
-  EXPECT_FALSE(pool_->SetEncryptionKey(s));
-  EXPECT_TRUE(pool_->SetEncryptionKey(s));
+  EXPECT_FALSE(pool_->SetEncryptionKey(blob));
+  EXPECT_TRUE(pool_->SetEncryptionKey(blob));
 }
 
 // Test basic object management operations.

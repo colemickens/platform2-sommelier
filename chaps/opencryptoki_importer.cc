@@ -20,6 +20,7 @@
 #include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
+using chromeos::SecureBlob;
 using std::map;
 using std::string;
 using std::vector;
@@ -297,10 +298,10 @@ bool OpencryptokiImporter::LoadKeyHierarchy(bool load_private) {
   if (root_blob.empty() || leaf_blob.empty())
     return false;
   // Load the root key.
-  if (!tpm_->LoadKey(slot_, root_blob, "", &root_key))
+  if (!tpm_->LoadKey(slot_, root_blob, SecureBlob(), &root_key))
     return false;
   // Load the leaf key.
-  string leaf_auth_data = Sha1(kDefaultAuthData);
+  SecureBlob leaf_auth_data = Sha1(SecureBlob(kDefaultAuthData, 6));
   if (!tpm_->LoadKeyWithParent(slot_,
                                leaf_blob,
                                leaf_auth_data,
@@ -311,7 +312,7 @@ bool OpencryptokiImporter::LoadKeyHierarchy(bool load_private) {
 }
 
 bool OpencryptokiImporter::DecryptMasterKey(const string& encrypted_master_key,
-                                            string* master_key) {
+                                            SecureBlob* master_key) {
   if (!LoadKeyHierarchy(true)) {
     LOG(ERROR) << "Failed to load private key hierarchy.";
     return false;
@@ -319,10 +320,17 @@ bool OpencryptokiImporter::DecryptMasterKey(const string& encrypted_master_key,
   // Trousers defines the handle value 0 as NULL_HKEY so this check works.
   CHECK(private_leaf_key_);
   // The master key is encrypted with a simple bind to the private leaf key.
-  return tpm_->Unbind(private_leaf_key_, encrypted_master_key, master_key);
+  string master_key_str;
+  if (!tpm_->Unbind(private_leaf_key_, encrypted_master_key, &master_key_str)) {
+    LOG(ERROR) << "Failed to decrypt master key.";
+    return false;
+  }
+  *master_key = SecureBlob(master_key_str.data(), master_key_str.length());
+  ClearString(master_key_str);
+  return true;
 }
 
-bool OpencryptokiImporter::DecryptObject(const string& key,
+bool OpencryptokiImporter::DecryptObject(const SecureBlob& key,
                                          const string& encrypted_object_data,
                                          string* object_data) {
   // Objects are encrypted with AES-256-CBC and a hard-coded IV.
@@ -441,7 +449,7 @@ bool OpencryptokiImporter::DecryptPendingObjects() {
       LOG(ERROR) << "Failed to read encrypted master key.";
       return false;
     }
-    string master_key;
+    SecureBlob master_key;
     if (!DecryptMasterKey(encrypted_master_key, &master_key)) {
       LOG(ERROR) << "Failed to decrypt the master key.";
       return false;

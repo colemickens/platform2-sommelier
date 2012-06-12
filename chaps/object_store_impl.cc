@@ -22,6 +22,7 @@
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
 
+using chromeos::SecureBlob;
 using std::map;
 using std::string;
 using std::vector;
@@ -47,10 +48,7 @@ const int ObjectStoreImpl::kBlobVersion = 1;
 
 ObjectStoreImpl::ObjectStoreImpl() {}
 
-ObjectStoreImpl::~ObjectStoreImpl() {
-  // TODO(dkrahn): Use SecureBlob. See crosbug.com/27681.
-  chromeos::SecureMemset(const_cast<char*>(key_.data()), 0, key_.length());
-}
+ObjectStoreImpl::~ObjectStoreImpl() {}
 
 bool ObjectStoreImpl::Init(const FilePath& database_path) {
   LOG(INFO) << "Opening database in: " << database_path.value();
@@ -120,9 +118,9 @@ bool ObjectStoreImpl::SetInternalBlob(int blob_id, const string& blob) {
   return true;
 }
 
-bool ObjectStoreImpl::SetEncryptionKey(const string& key) {
-  if (key.length() != static_cast<size_t>(kAESKeySizeBytes)) {
-    LOG(ERROR) << "Unexpected key size: " << key.length();
+bool ObjectStoreImpl::SetEncryptionKey(const SecureBlob& key) {
+  if (key.size() != static_cast<size_t>(kAESKeySizeBytes)) {
+    LOG(ERROR) << "Unexpected key size: " << key.size();
     return false;
   }
   key_ = key;
@@ -235,7 +233,8 @@ bool ObjectStoreImpl::Encrypt(const ObjectBlob& plain_text,
     return false;
   }
   cipher_text->is_private = plain_text.is_private;
-  string key = plain_text.is_private ? key_ : kObfuscationKey;
+  SecureBlob obfuscation_key(kObfuscationKey, 32);
+  SecureBlob& key = plain_text.is_private ? key_ : obfuscation_key;
   string cipher_text_no_hmac;
   if (!RunCipher(true, key, string(), plain_text.blob, &cipher_text_no_hmac))
     return false;
@@ -252,7 +251,8 @@ bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
     return false;
   }
   plain_text->is_private = cipher_text.is_private;
-  string key = cipher_text.is_private ? key_ : kObfuscationKey;
+  SecureBlob obfuscation_key(kObfuscationKey, 32);
+  SecureBlob& key = cipher_text.is_private ? key_ : obfuscation_key;
   string cipher_text_no_hmac;
   if (!VerifyAndStripHMAC(cipher_text.blob,
                           key,
@@ -272,12 +272,12 @@ bool ObjectStoreImpl::Decrypt(const ObjectBlob& cipher_text,
                    &plain_text->blob);
 }
 
-string ObjectStoreImpl::AppendHMAC(const string& input, const string& key) {
+string ObjectStoreImpl::AppendHMAC(const string& input, const SecureBlob& key) {
   return input + HmacSha512(input, key);
 }
 
 bool ObjectStoreImpl::VerifyAndStripHMAC(const string& input,
-                                         const string& key,
+                                         const SecureBlob& key,
                                          string* stripped) {
   if (input.size() < static_cast<size_t>(kHMACSizeBytes)) {
     LOG(ERROR) << "Failed to verify blob integrity.";

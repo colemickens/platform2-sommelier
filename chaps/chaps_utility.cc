@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/secure_blob.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -26,6 +27,7 @@
 #include "chaps/chaps.h"
 #include "pkcs11/cryptoki.h"
 
+using chromeos::SecureBlob;
 using std::string;
 using std::stringstream;
 using std::vector;
@@ -533,10 +535,20 @@ string Sha1(const string& input) {
   return ConvertByteBufferToString(digest, SHA_DIGEST_LENGTH);
 }
 
-string Sha512(const string& input) {
+SecureBlob Sha1(const SecureBlob& input) {
+  unsigned char digest[SHA_DIGEST_LENGTH];
+  SHA1(const_cast<uint8_t*>(&input[0]), input.size(), digest);
+  SecureBlob hash(digest, SHA_DIGEST_LENGTH);
+  chromeos::SecureMemset(digest, 0, SHA_DIGEST_LENGTH);
+  return hash;
+}
+
+SecureBlob Sha512(const SecureBlob& input) {
   unsigned char digest[SHA512_DIGEST_LENGTH];
-  SHA512(ConvertStringToByteBuffer(input.data()), input.length(), digest);
-  return ConvertByteBufferToString(digest, SHA512_DIGEST_LENGTH);
+  SHA512(const_cast<uint8_t*>(&input[0]), input.size(), digest);
+  SecureBlob hash(digest, SHA512_DIGEST_LENGTH);
+  chromeos::SecureMemset(digest, 0, SHA512_DIGEST_LENGTH);
+  return hash;
 }
 
 ScopedOpenSSL::ScopedOpenSSL() {
@@ -559,11 +571,12 @@ std::string GetOpenSSLError() {
   return error_string;
 }
 
-std::string HmacSha512(const std::string& input, const std::string& key) {
+std::string HmacSha512(const std::string& input,
+                       const chromeos::SecureBlob& key) {
   const int kSha512OutputSize = 64;
   unsigned char mac[kSha512OutputSize];
   HMAC(EVP_sha512(),
-       ConvertStringToByteBuffer(key.data()), key.length(),
+       const_cast<uint8_t*>(&key.front()), key.size(),
        ConvertStringToByteBuffer(input.data()), input.length(),
        mac, NULL);
   return ConvertByteBufferToString(mac, kSha512OutputSize);
@@ -624,7 +637,7 @@ bool SetProcessUserAndGroup(const char* user_name,
 }
 
 bool RunCipherInternal(bool is_encrypt,
-                       const string& key,
+                       const SecureBlob& key,
                        const string& iv,
                        const string& input,
                        string* output) {
@@ -637,7 +650,7 @@ bool RunCipherInternal(bool is_encrypt,
   if (!EVP_CipherInit_ex(&cipher_context,
                          EVP_aes_256_cbc(),
                          NULL,
-                         ConvertStringToByteBuffer(key.data()),
+                         const_cast<uint8_t*>(&key.front()),
                          ConvertStringToByteBuffer(iv.data()),
                          is_encrypt)) {
     LOG(ERROR) << "EVP_CipherInit_ex failed: " << GetOpenSSLError();
@@ -678,7 +691,7 @@ bool RunCipherInternal(bool is_encrypt,
 }
 
 bool RunCipher(bool is_encrypt,
-               const string& key,
+               const SecureBlob& key,
                const string& iv,
                const string& input,
                string* output) {

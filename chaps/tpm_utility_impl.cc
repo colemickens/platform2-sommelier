@@ -20,6 +20,7 @@
 #include "chaps/chaps_utility.h"
 
 using base::AutoLock;
+using chromeos::SecureBlob;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssObject;
@@ -221,25 +222,28 @@ bool TPMUtilityImpl::Init() {
 }
 
 bool TPMUtilityImpl::Authenticate(int slot_id,
-                                  const string& auth_data,
+                                  const SecureBlob& auth_data,
                                   const string& auth_key_blob,
                                   const string& encrypted_master_key,
-                                  string* master_key) {
+                                  SecureBlob* master_key) {
   VLOG(1) << "TPMUtilityImpl::Authenticate enter";
   if (!Init())
     return false;
   int key_handle = 0;
   if (!LoadKey(slot_id, auth_key_blob, auth_data, &key_handle))
     return false;
-  if (!Unbind(key_handle, encrypted_master_key, master_key))
+  string master_key_str;
+  if (!Unbind(key_handle, encrypted_master_key, &master_key_str))
     return false;
+  *master_key = SecureBlob(master_key_str.data(), master_key_str.length());
+  ClearString(master_key_str);
   VLOG(1) << "TPMUtilityImpl::Authenticate success";
   return true;
 }
 
 bool TPMUtilityImpl::ChangeAuthData(int slot_id,
-                                    const string& old_auth_data,
-                                    const string& new_auth_data,
+                                    const SecureBlob& old_auth_data,
+                                    const SecureBlob& new_auth_data,
                                     const string& old_auth_key_blob,
                                     string* new_auth_key_blob) {
   VLOG(1) << "TPMUtilityImpl::ChangeAuthData enter";
@@ -266,11 +270,10 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
     LOG(ERROR) << "Tspi_Context_CreateObject - " << ResultToString(result);
     return false;
   }
-  result = Tspi_Policy_SetSecret(
-      policy,
-      TSS_SECRET_MODE_SHA1,
-      new_auth_data.length(),
-      ConvertStringToByteBuffer(new_auth_data.data()));
+  result = Tspi_Policy_SetSecret(policy,
+                                 TSS_SECRET_MODE_SHA1,
+                                 new_auth_data.size(),
+                                 const_cast<BYTE*>(&new_auth_data.front()));
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
     return false;
@@ -336,7 +339,7 @@ bool TPMUtilityImpl::StirRandom(const string& entropy_data) {
 bool TPMUtilityImpl::GenerateKey(int slot,
                                  int modulus_bits,
                                  const string& public_exponent,
-                                 const string& auth_data,
+                                 const SecureBlob& auth_data,
                                  string* key_blob,
                                  int* key_handle) {
   VLOG(1) << "TPMUtilityImpl::GenerateKey enter";
@@ -411,7 +414,7 @@ bool TPMUtilityImpl::WrapKey(int slot,
                              const string& public_exponent,
                              const string& modulus,
                              const string& prime_factor,
-                             const string& auth_data,
+                             const SecureBlob& auth_data,
                              string* key_blob,
                              int* key_handle) {
   VLOG(1) << "TPMUtilityImpl::WrapKey enter";
@@ -488,7 +491,7 @@ bool TPMUtilityImpl::WrapKey(int slot,
 
 bool TPMUtilityImpl::LoadKey(int slot,
                              const string& key_blob,
-                             const string& auth_data,
+                             const SecureBlob& auth_data,
                              int* key_handle) {
   // Use the SRK as the parent. This is the normal case.
   return LoadKeyWithParent(slot, key_blob, auth_data, srk_, key_handle);
@@ -496,7 +499,7 @@ bool TPMUtilityImpl::LoadKey(int slot,
 
 bool TPMUtilityImpl::LoadKeyWithParent(int slot,
                                        const string& key_blob,
-                                       const string& auth_data,
+                                       const SecureBlob& auth_data,
                                        int parent_key_handle,
                                        int* key_handle) {
   if (!Init())
@@ -534,8 +537,8 @@ bool TPMUtilityImpl::LoadKeyWithParent(int slot,
   } else {
     result = Tspi_Policy_SetSecret(policy,
                                    TSS_SECRET_MODE_SHA1,
-                                   auth_data.length(),
-                                   ConvertStringToByteBuffer(auth_data.data()));
+                                   auth_data.size(),
+                                   const_cast<BYTE*>(&auth_data.front()));
     if (result != TSS_SUCCESS) {
       LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
       return false;
@@ -672,7 +675,7 @@ int TPMUtilityImpl::CreateHandle(int slot,
 }
 
 bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
-                                     const string& auth_data,
+                                     const SecureBlob& auth_data,
                                      bool auth_only) {
   ScopedTssPolicy policy(tsp_context_);
   TSS_RESULT result = Tspi_Context_CreateObject(tsp_context_,
@@ -688,8 +691,8 @@ bool TPMUtilityImpl::CreateKeyPolicy(TSS_HKEY key,
   } else {
     result = Tspi_Policy_SetSecret(policy,
                                    TSS_SECRET_MODE_SHA1,
-                                   auth_data.length(),
-                                   ConvertStringToByteBuffer(auth_data.data()));
+                                   auth_data.size(),
+                                   const_cast<BYTE*>(&auth_data.front()));
   }
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);

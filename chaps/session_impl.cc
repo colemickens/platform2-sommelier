@@ -27,6 +27,7 @@
 #include "chaps/tpm_utility.h"
 #include "pkcs11/cryptoki.h"
 
+using chromeos::SecureBlob;
 using std::hex;
 using std::map;
 using std::set;
@@ -529,7 +530,8 @@ CK_RV SessionImpl::GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
     if (!tpm_utility_->GenerateKey(slot_id_,
                                    modulus_bits,
                                    public_exponent,
-                                   auth_data,
+                                   SecureBlob(auth_data.data(),
+                                              auth_data.length()),
                                    &key_blob,
                                    &tpm_key_handle))
       return CKR_FUNCTION_FAILED;
@@ -934,6 +936,7 @@ bool SessionImpl::GetTPMKeyHandle(const Object* key, int* key_handle) {
     // Only private keys are loaded into the TPM. All public key operations do
     // not use the TPM (and use OpenSSL instead).
     if (key->GetObjectClass() == CKO_PRIVATE_KEY) {
+      string auth_data = key->GetAttributeString(kAuthDataAttribute);
       if (key->GetAttributeBool(kLegacyAttribute, false)) {
         // This is a legacy key and it needs to be loaded with the legacy root
         // key.
@@ -944,7 +947,7 @@ bool SessionImpl::GetTPMKeyHandle(const Object* key, int* key_handle) {
         if (!tpm_utility_->LoadKeyWithParent(
             slot_id_,
             key->GetAttributeString(kKeyBlobAttribute),
-            key->GetAttributeString(kAuthDataAttribute),
+            SecureBlob(auth_data.data(), auth_data.length()),
             root_key_handle,
             key_handle))
           return false;
@@ -952,7 +955,7 @@ bool SessionImpl::GetTPMKeyHandle(const Object* key, int* key_handle) {
         if (!tpm_utility_->LoadKey(
             slot_id_,
             key->GetAttributeString(kKeyBlobAttribute),
-            key->GetAttributeString(kAuthDataAttribute),
+            SecureBlob(auth_data.data(), auth_data.length()),
             key_handle))
           return false;
       }
@@ -981,7 +984,7 @@ bool SessionImpl::LoadLegacyRootKeys() {
   }
   if (!tpm_utility_->LoadKey(slot_id_,
                              private_blob,
-                             "",
+                             SecureBlob(),
                              &private_root_key_)) {
     LOG(ERROR) << "Failed to load legacy private root key.";
     return false;
@@ -992,7 +995,8 @@ bool SessionImpl::LoadLegacyRootKeys() {
     LOG(ERROR) << "Failed to read legacy public root key blob.";
     return false;
   }
-  if (!tpm_utility_->LoadKey(slot_id_, public_blob, "", &public_root_key_)) {
+  if (!tpm_utility_->LoadKey(slot_id_, public_blob, SecureBlob(),
+                             &public_root_key_)) {
     LOG(ERROR) << "Failed to load legacy public root key.";
     return false;
   }
@@ -1278,7 +1282,7 @@ CK_RV SessionImpl::WrapPrivateKey(Object* object) {
                                object->GetAttributeString(CKA_PUBLIC_EXPONENT),
                                object->GetAttributeString(CKA_MODULUS),
                                prime,
-                               auth_data,
+                               SecureBlob(auth_data.data(), auth_data.length()),
                                &key_blob,
                                &tpm_key_handle))
       return CKR_FUNCTION_FAILED;

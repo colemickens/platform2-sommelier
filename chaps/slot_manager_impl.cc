@@ -16,6 +16,7 @@
 #include <base/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
@@ -27,6 +28,7 @@
 #include "pkcs11/cryptoki.h"
 
 using base::AutoLock;
+using chromeos::SecureBlob;
 using std::map;
 using std::string;
 using std::tr1::shared_ptr;
@@ -91,11 +93,10 @@ const struct MechanismInfo {
 };
 
 // Computes an authorization data hash as it is stored in the database.
-string HashAuthData(const string& auth_data) {
+string HashAuthData(const SecureBlob& auth_data) {
   string version(1, kAuthDataHashVersion);
-  string hash = Sha512(auth_data);
-  string hash_byte = hash.substr(0, 1);
-  chromeos::SecureMemset(const_cast<char*>(hash.data()), 0, hash.length());
+  SecureBlob hash = Sha512(auth_data);
+  string hash_byte(1, static_cast<const char>(hash[0]));
   return version + hash_byte;
 }
 
@@ -121,7 +122,7 @@ class TokenInitThread : public base::PlatformThread::Delegate {
   // This class will not take ownership of any pointers.
   TokenInitThread(int slot_id,
                   FilePath path,
-                  const string& auth_data,
+                  const SecureBlob& auth_data,
                   TPMUtility* tpm_utility,
                   ObjectPool* object_pool);
 
@@ -131,11 +132,11 @@ class TokenInitThread : public base::PlatformThread::Delegate {
   void ThreadMain();
 
  private:
-  bool InitializeKeyHierarchy(string* master_key);
+  bool InitializeKeyHierarchy(SecureBlob* master_key);
 
   int slot_id_;
   FilePath path_;
-  string auth_data_;
+  SecureBlob auth_data_;
   TPMUtility* tpm_utility_;
   ObjectPool* object_pool_;
 };
@@ -162,7 +163,7 @@ class TokenTermThread : public base::PlatformThread::Delegate {
 
 TokenInitThread::TokenInitThread(int slot_id,
                                  FilePath path,
-                                 const string& auth_data,
+                                 const SecureBlob& auth_data,
                                  TPMUtility* tpm_utility,
                                  ObjectPool* object_pool)
     : slot_id_(slot_id),
@@ -176,7 +177,7 @@ void TokenInitThread::ThreadMain() {
   string saved_auth_data_hash;
   string auth_key_blob;
   string encrypted_master_key;
-  string master_key;
+  SecureBlob master_key;
   // Determine whether the key hierarchy has already been initialized based on
   // whether the relevant blobs exist.
   if (!object_pool_->GetInternalBlob(kEncryptedAuthKey, &auth_key_blob) ||
@@ -220,11 +221,13 @@ void TokenInitThread::ThreadMain() {
   }
 }
 
-bool TokenInitThread::InitializeKeyHierarchy(string* master_key) {
-  if (!tpm_utility_->GenerateRandom(kUserKeySize, master_key)) {
+bool TokenInitThread::InitializeKeyHierarchy(SecureBlob* master_key) {
+  string master_key_str;
+  if (!tpm_utility_->GenerateRandom(kUserKeySize, &master_key_str)) {
     LOG(ERROR) << "Failed to generate user encryption key.";
     return false;
   }
+  *master_key = SecureBlob(master_key_str.data(), master_key_str.length());
   string auth_key_blob;
   int auth_key_handle;
   const int key_size = 2048;
@@ -240,17 +243,18 @@ bool TokenInitThread::InitializeKeyHierarchy(string* master_key) {
   }
   string encrypted_master_key;
   if (!tpm_utility_->Bind(auth_key_handle,
-                          *master_key,
+                          master_key_str,
                           &encrypted_master_key)) {
     LOG(ERROR) << "Failed to bind user encryption key.";
     return false;
   }
   if (!object_pool_->SetInternalBlob(kEncryptedAuthKey, auth_key_blob) ||
       !object_pool_->SetInternalBlob(kEncryptedMasterKey,
-                                    encrypted_master_key)) {
+                                     encrypted_master_key)) {
     LOG(ERROR) << "Failed to write key hierarchy blobs.";
     return false;
   }
+  ClearString(master_key_str);
   return true;
 }
 
@@ -398,7 +402,8 @@ bool SlotManagerImpl::GetSession(int session_id, Session** session) const {
   return true;
 }
 
-void SlotManagerImpl::OnLogin(const FilePath& path, const string& auth_data) {
+void SlotManagerImpl::OnLogin(const FilePath& path,
+                              const SecureBlob& auth_data) {
   VLOG(1) << "SlotManagerImpl::OnLogin enter";
   // If we're already managing this token, ignore the event.
   if (path_slot_map_.find(path) != path_slot_map_.end()) {
@@ -476,8 +481,8 @@ void SlotManagerImpl::OnLogout(const FilePath& path) {
 }
 
 void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
-                                       const string& old_auth_data,
-                                       const string& new_auth_data) {
+                                       const SecureBlob& old_auth_data,
+                                       const SecureBlob& new_auth_data) {
   // This event can be handled whether or not we are already managing the token
   // but if we're not, we won't start until a Login event comes in.
   ObjectPool* object_pool = NULL;

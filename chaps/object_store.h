@@ -8,6 +8,8 @@
 #include <map>
 #include <string>
 
+#include <chromeos/secure_blob.h>
+
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
@@ -40,7 +42,7 @@ class ObjectStore {
   // SetEncryptionKey sets the encryption key used to encrypt all private object
   // blobs. This method must be called before any object blob methods (e.g.
   // InsertObjectBlob, DeleteObjectBlob, ...) can proceed successfully.
-  virtual bool SetEncryptionKey(const std::string& key) = 0;
+  virtual bool SetEncryptionKey(const chromeos::SecureBlob& key) = 0;
   // Inserts a new blob.
   virtual bool InsertObjectBlob(const ObjectBlob& blob,
                                 int* blob_id) = 0;

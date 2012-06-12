@@ -20,6 +20,7 @@
 #include "session_mock.h"
 #include "tpm_utility_mock.h"
 
+using chromeos::SecureBlob;
 using std::string;
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -35,6 +36,10 @@ const char kAuthData[] = "000000";
 const char kNewAuthData[] = "111111";
 const char kDefaultPubExp[] = {1, 0, 1};
 const int kDefaultPubExpSize = 3;
+
+SecureBlob MakeBlob(const char* auth_data_str) {
+  return Sha1(SecureBlob(auth_data_str, strlen(auth_data_str)));
+}
 
 // Creates and sets default expectations on a ObjectPoolMock instance. Returns
 // a pointer to the new object.
@@ -57,7 +62,7 @@ ObjectPool* CreateObjectPoolMock() {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*object_pool, SetInternalBlob(2, string()))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*object_pool, SetEncryptionKey(string("master_key")))
+  EXPECT_CALL(*object_pool, SetEncryptionKey(_))
       .WillRepeatedly(Return(true));
   return object_pool;
 }
@@ -67,15 +72,15 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
   EXPECT_CALL(*tpm, Init()).WillRepeatedly(Return(true));
   EXPECT_CALL(*tpm, UnloadKeysForSlot(_)).Times(AnyNumber());
   EXPECT_CALL(*tpm, Authenticate(_,
-                                 Sha1(kAuthData),
+                                 MakeBlob(kAuthData),
                                  string("auth_key_blob"),
                                  string("encrypted_master_key"),
                                  _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<4>(string("master_key")),
+      .WillRepeatedly(DoAll(SetArgumentPointee<4>(MakeBlob("master_key")),
                             Return(true)));
   EXPECT_CALL(*tpm, ChangeAuthData(_,
-                                   Sha1(kAuthData),
-                                   Sha1(kNewAuthData),
+                                   MakeBlob(kAuthData),
+                                   MakeBlob(kNewAuthData),
                                    string("auth_key_blob"),
                                    _))
       .WillRepeatedly(
@@ -85,7 +90,7 @@ void ConfigureTPMUtility(TPMUtilityMock* tpm) {
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(string("master_key")),
                             Return(true)));
   string exponent(kDefaultPubExp, kDefaultPubExpSize);
-  EXPECT_CALL(*tpm, GenerateKey(1, 2048, exponent, kAuthData, _, _))
+  EXPECT_CALL(*tpm, GenerateKey(1, 2048, exponent, MakeBlob(kAuthData), _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<4>(string("auth_key_blob")),
                             SetArgumentPointee<5>(1),
                             Return(true)));

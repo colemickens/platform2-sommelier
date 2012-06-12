@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/file_path.h>
+#include <chromeos/secure_blob.h>
 
 namespace chaps {
 
@@ -24,11 +25,11 @@ namespace chaps {
 class LoginEventListener {
  public:
   virtual void OnLogin(const FilePath& path,
-                       const std::string& auth_data) = 0;
+                       const chromeos::SecureBlob& auth_data) = 0;
   virtual void OnLogout(const FilePath& path) = 0;
   virtual void OnChangeAuthData(const FilePath& path,
-                                const std::string& old_auth_data,
-                                const std::string& new_auth_data) = 0;
+                                const chromeos::SecureBlob& old_auth_data,
+                                const chromeos::SecureBlob& new_auth_data) = 0;
 };
 
 }  // namespace

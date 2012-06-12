@@ -45,7 +45,7 @@ class ObjectPoolImpl : public ObjectPool {
   virtual bool Init();
   virtual bool GetInternalBlob(int blob_id, std::string* blob);
   virtual bool SetInternalBlob(int blob_id, const std::string& blob);
-  virtual bool SetEncryptionKey(const std::string& key);
+  virtual bool SetEncryptionKey(const chromeos::SecureBlob& key);
   virtual bool Insert(Object* object);
   virtual bool Import(Object* object);
   virtual bool Delete(const Object* object);

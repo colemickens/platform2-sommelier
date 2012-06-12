@@ -19,13 +19,13 @@ class TPMUtilityMock : public TPMUtility {
 
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD5(Authenticate, bool(int,
+                                  const chromeos::SecureBlob&,
                                   const std::string&,
                                   const std::string&,
-                                  const std::string&,
-                                  std::string*));
+                                  chromeos::SecureBlob*));
   MOCK_METHOD5(ChangeAuthData, bool(int,
-                                    const std::string&,
-                                    const std::string&,
+                                    const chromeos::SecureBlob&,
+                                    const chromeos::SecureBlob&,
                                     const std::string&,
                                     std::string*));
   MOCK_METHOD2(GenerateRandom, bool(int, std::string*));
@@ -33,7 +33,7 @@ class TPMUtilityMock : public TPMUtility {
   MOCK_METHOD6(GenerateKey, bool(int,
                                  int,
                                  const std::string&,
-                                 const std::string&,
+                                 const chromeos::SecureBlob&,
                                  std::string*,
                                  int*));
   MOCK_METHOD3(GetPublicKey, bool(int, std::string*, std::string*));
@@ -41,16 +41,16 @@ class TPMUtilityMock : public TPMUtility {
                              const std::string&,
                              const std::string&,
                              const std::string&,
-                             const std::string&,
+                             const chromeos::SecureBlob&,
                              std::string*,
                              int*));
   MOCK_METHOD4(LoadKey, bool(int,
                              const std::string&,
-                             const std::string&,
+                             const chromeos::SecureBlob&,
                              int*));
   MOCK_METHOD5(LoadKeyWithParent, bool(int,
                                        const std::string&,
-                                       const std::string&,
+                                       const chromeos::SecureBlob&,
                                        int,
                                        int*));
   MOCK_METHOD1(UnloadKeysForSlot, void(int));

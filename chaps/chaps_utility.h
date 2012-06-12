@@ -11,6 +11,7 @@
 
 #include <base/basictypes.h>
 #include <base/logging.h>
+#include <chromeos/secure_blob.h>
 
 #include "chaps/chaps.h"
 #include "pkcs11/cryptoki.h"
@@ -193,9 +194,10 @@ class PreservedByteVector {
 
 // Computes and returns a SHA-1 hash of the given input.
 std::string Sha1(const std::string& input);
+chromeos::SecureBlob Sha1(const chromeos::SecureBlob& input);
 
 // Computes and returns a SHA-512 hash of the given input.
-std::string Sha512(const std::string& input);
+chromeos::SecureBlob Sha512(const chromeos::SecureBlob& input);
 
 // Initializes the OpenSSL library on construction and terminates the library on
 // destruction.
@@ -209,7 +211,8 @@ class ScopedOpenSSL {
 std::string GetOpenSSLError();
 
 // Computes a message authentication code using HMAC and SHA-512.
-std::string HmacSha512(const std::string& input, const std::string& key);
+std::string HmacSha512(const std::string& input,
+                       const chromeos::SecureBlob& key);
 
 // Sets the user and group for the current process. If 'real' is set to true,
 // the supplementary group list is initialized before changing the uid. The real
@@ -226,13 +229,17 @@ bool SetProcessUserAndGroup(const char* user, const char* group, bool real);
 // 'iv' is left empty, a random IV will be generated and appended to the cipher-
 // text on encryption.
 bool RunCipher(bool is_encrypt,
-               const std::string& key,
+               const chromeos::SecureBlob& key,
                const std::string& iv,
                const std::string& input,
                std::string* output);
 
 // Returns true if the given attribute type has an integral value.
 bool IsIntegralAttribute(CK_ATTRIBUTE_TYPE type);
+
+inline void ClearString(const std::string& str) {
+  chromeos::SecureMemset(const_cast<char*>(str.data()), 0, str.length());
+}
 
 }  // namespace chaps
 

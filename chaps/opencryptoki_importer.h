@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/file_path.h>
+#include <chromeos/secure_blob.h>
 
 #include "chaps/object.h"
 
@@ -63,11 +64,11 @@ class OpencryptokiImporter : public ObjectImporter {
   // Uses the TPM to decrypt the opencryptoki master key. Returns true on
   // success.
   bool DecryptMasterKey(const std::string& encrypted_master_key,
-                        std::string* master_key);
+                        chromeos::SecureBlob* master_key);
 
   // Decrypts an object that was encrypted with the opencryptoki master key.
   // Returns true on success.
-  bool DecryptObject(const std::string& key,
+  bool DecryptObject(const chromeos::SecureBlob& key,
                      const std::string& encrypted_object_data,
                      std::string* object_data);
 

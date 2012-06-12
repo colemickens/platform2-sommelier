@@ -27,7 +27,7 @@ class ObjectStoreFake : public ObjectStore {
     internal_blobs_[blob_id] = blob;
     return true;
   }
-  virtual bool SetEncryptionKey(const std::string& key) {
+  virtual bool SetEncryptionKey(const chromeos::SecureBlob& key) {
     return true;
   }
   virtual bool InsertObjectBlob(const ObjectBlob& blob,

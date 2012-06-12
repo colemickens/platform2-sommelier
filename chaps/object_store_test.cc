@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 #include <openssl/err.h>
 
+using chromeos::SecureBlob;
 using std::map;
 using std::string;
 
@@ -32,6 +33,10 @@ class TestObjectStoreEncryption : public ::testing::Test {
     ObjectBlob blob = {blob_data, true};
     return blob;
   }
+  SecureBlob MakeKey(int size_bytes, int content) {
+    string tmp(size_bytes, static_cast<char>(content));
+    return SecureBlob(tmp.data(), tmp.length());
+  }
   bool Equals(const ObjectBlob& blob1, const ObjectBlob& blob2) {
     return (blob1.is_private == blob2.is_private &&
             blob1.blob == blob2.blob);
@@ -43,17 +48,17 @@ TEST_F(TestObjectStoreEncryption, EncryptionInit) {
   ObjectBlob input = MakeBlob(string(10, 0x00)), output;
   EXPECT_FALSE(store.Encrypt(input, &output));
   EXPECT_FALSE(store.Decrypt(input, &output));
-  EXPECT_FALSE(store.SetEncryptionKey(string()));
-  EXPECT_FALSE(store.SetEncryptionKey(string(16, 0xAA)));
-  EXPECT_FALSE(store.SetEncryptionKey(string(31, 0xAA)));
-  EXPECT_FALSE(store.SetEncryptionKey(string(33, 0xAA)));
-  EXPECT_TRUE(store.SetEncryptionKey(string(32, 0xAA)));
+  EXPECT_FALSE(store.SetEncryptionKey(MakeKey(0, 0)));
+  EXPECT_FALSE(store.SetEncryptionKey(MakeKey(16, 0xAA)));
+  EXPECT_FALSE(store.SetEncryptionKey(MakeKey(31, 0xAA)));
+  EXPECT_FALSE(store.SetEncryptionKey(MakeKey(33, 0xAA)));
+  EXPECT_TRUE(store.SetEncryptionKey(MakeKey(32, 0xAA)));
   EXPECT_TRUE(TestEncryption(store, input));
 }
 
 TEST_F(TestObjectStoreEncryption, Encryption) {
   ObjectStoreImpl store;
-  string key(32, 0xAA);
+  SecureBlob key(MakeKey(32, 0xAA));
   ASSERT_TRUE(store.SetEncryptionKey(key));
   ObjectBlob blob = MakeBlob(string(64, 0xBB));
   // On AES block boundary.
@@ -103,7 +108,7 @@ TEST_F(TestObjectStoreEncryption, Encryption) {
 
 TEST_F(TestObjectStoreEncryption, CBCMode) {
   ObjectStoreImpl store;
-  string key(32, 0xAA);
+  SecureBlob key(MakeKey(32, 0xAA));
   ASSERT_TRUE(store.SetEncryptionKey(key));
   ObjectBlob two_identical_blocks = MakeBlob(string(32, 0xBB));
   ObjectBlob encrypted;
@@ -117,7 +122,8 @@ TEST(TestObjectStore, InsertLoad) {
   ObjectStoreImpl store;
   const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
   store.Init(FilePath(database));
-  string key(32, 'A');
+  string tmp(32, 'A');
+  SecureBlob key(tmp.data(), tmp.length());
   EXPECT_TRUE(store.SetEncryptionKey(key));
   map<int,ObjectBlob> objects, objects2;
   EXPECT_TRUE(store.LoadPublicObjectBlobs(&objects));
@@ -158,7 +164,8 @@ TEST(TestObjectStore, UpdateDelete) {
   ObjectStoreImpl store;
   const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
   store.Init(FilePath(database));
-  string key(32, 'A');
+  string tmp(32, 'A');
+  SecureBlob key(tmp.data(), tmp.length());
   EXPECT_TRUE(store.SetEncryptionKey(key));
   int handle1;
   ObjectBlob blob1 = {"blob1", false};
@@ -194,7 +201,8 @@ TEST(TestObjectStore, DeleteAll) {
   ObjectStoreImpl store;
   const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
   store.Init(FilePath(database));
-  string key(32, 'A');
+  string tmp(32, 'A');
+  SecureBlob key(tmp.data(), tmp.length());
   EXPECT_TRUE(store.SetEncryptionKey(key));
   // Insert a few blobs and make sure only internal blobs survive DeleteAll.
   int handle1;

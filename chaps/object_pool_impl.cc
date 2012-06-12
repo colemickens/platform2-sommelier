@@ -24,6 +24,7 @@
 
 using base::AutoLock;
 using base::AutoUnlock;
+using chromeos::SecureBlob;
 using std::map;
 using std::string;
 using std::tr1::shared_ptr;
@@ -83,7 +84,7 @@ bool ObjectPoolImpl::SetInternalBlob(int blob_id, const string& blob) {
   return false;
 }
 
-bool ObjectPoolImpl::SetEncryptionKey(const string& key) {
+bool ObjectPoolImpl::SetEncryptionKey(const SecureBlob& key) {
   AutoLock lock(lock_);
   if (key.empty())
     LOG(WARNING) << "WARNING: Private object services will not be available.";

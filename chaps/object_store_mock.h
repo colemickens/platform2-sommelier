@@ -20,7 +20,7 @@ class ObjectStoreMock : public ObjectStore {
   MOCK_METHOD2(SetInternalBlob,
       bool(int blob_id, const std::string& blob));
   MOCK_METHOD1(SetEncryptionKey,
-      bool(const std::string& key));
+      bool(const chromeos::SecureBlob& key));
   MOCK_METHOD2(InsertObjectBlob,
       bool(const ObjectBlob& blob, int* blob_id));
   MOCK_METHOD1(DeleteObjectBlob,

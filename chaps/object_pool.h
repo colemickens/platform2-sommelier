@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/secure_blob.h>
+
 namespace chaps {
 
 class Object;
@@ -52,7 +54,7 @@ class ObjectPool {
   // object data in memory and no obligation to encrypt public object blobs.
   // If the encryption key is not available and will not be available during the
   // lifetime of the pool, this method should be called with zero-length key.
-  virtual bool SetEncryptionKey(const std::string& key) = 0;
+  virtual bool SetEncryptionKey(const chromeos::SecureBlob& key) = 0;
   // This method takes ownership of the 'object' pointer on success.
   virtual bool Insert(Object* object) = 0;
   // Imports an object from an external source. Like 'Insert', this method takes

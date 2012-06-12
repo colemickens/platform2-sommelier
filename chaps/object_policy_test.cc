@@ -26,6 +26,7 @@ class TestObjectPolicy: public ::testing::Test {
  public:
   TestObjectPolicy() {
     object_.SetupFake();
+    EXPECT_CALL(object_, GetObjectClass()).Times(AnyNumber());
     EXPECT_CALL(object_, GetAttributeBool(_, _)).Times(AnyNumber());
     EXPECT_CALL(object_, SetAttributeBool(_, _)).Times(AnyNumber());
     EXPECT_CALL(object_, GetAttributeInt(_, _)).Times(AnyNumber());
