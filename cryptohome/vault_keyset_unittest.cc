@@ -7,6 +7,7 @@
 #include "vault_keyset.h"
 
 #include <base/logging.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -16,6 +17,7 @@
 #include "mock_platform.h"
 
 namespace cryptohome {
+using chromeos::SecureBlob;
 using std::string;
 
 using ::testing::_;

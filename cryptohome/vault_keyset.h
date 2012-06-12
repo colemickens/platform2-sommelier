@@ -6,9 +6,9 @@
 #define VAULT_KEYSET_H_
 
 #include <base/basictypes.h>
+#include <chromeos/secure_blob.h>
 
 #include "cryptohome_common.h"
-#include "secure_blob.h"
 #include "vault_keyset.pb.h"
 
 namespace cryptohome {
@@ -27,29 +27,29 @@ class VaultKeyset {
 
   void FromVaultKeyset(const VaultKeyset& vault_keyset);
   void FromKeys(const VaultKeysetKeys& keys);
-  bool FromKeysBlob(const SecureBlob& keys_blob);
+  bool FromKeysBlob(const chromeos::SecureBlob& keys_blob);
   bool ToKeys(VaultKeysetKeys* keys) const;
-  bool ToKeysBlob(SecureBlob* keys_blob) const;
+  bool ToKeysBlob(chromeos::SecureBlob* keys_blob) const;
 
   void CreateRandom();
 
-  const SecureBlob& FEK() const;
-  const SecureBlob& FEK_SIG() const;
-  const SecureBlob& FEK_SALT() const;
-  const SecureBlob& FNEK() const;
-  const SecureBlob& FNEK_SIG() const;
-  const SecureBlob& FNEK_SALT() const;
+  const chromeos::SecureBlob& FEK() const;
+  const chromeos::SecureBlob& FEK_SIG() const;
+  const chromeos::SecureBlob& FEK_SALT() const;
+  const chromeos::SecureBlob& FNEK() const;
+  const chromeos::SecureBlob& FNEK_SIG() const;
+  const chromeos::SecureBlob& FNEK_SALT() const;
 
-  bool Load(const std::string& filename, const SecureBlob& key);
-  bool Save(const std::string& filename, const SecureBlob& key);
+  bool Load(const std::string& filename, const chromeos::SecureBlob& key);
+  bool Save(const std::string& filename, const chromeos::SecureBlob& key);
 
  private:
-  SecureBlob fek_;
-  SecureBlob fek_sig_;
-  SecureBlob fek_salt_;
-  SecureBlob fnek_;
-  SecureBlob fnek_sig_;
-  SecureBlob fnek_salt_;
+  chromeos::SecureBlob fek_;
+  chromeos::SecureBlob fek_sig_;
+  chromeos::SecureBlob fek_salt_;
+  chromeos::SecureBlob fnek_;
+  chromeos::SecureBlob fnek_sig_;
+  chromeos::SecureBlob fnek_salt_;
 
   Platform* platform_;
   Crypto* crypto_;

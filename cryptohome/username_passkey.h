@@ -11,6 +11,7 @@
 #include "credentials.h"
 
 #include <base/basictypes.h>
+#include <chromeos/secure_blob.h>
 #include <string>
 
 namespace cryptohome {
@@ -29,11 +30,11 @@ class UsernamePasskey : public Credentials {
   // Overridden from cryptohome::Credentials
   std::string username() const;
   std::string GetObfuscatedUsername(const chromeos::Blob &system_salt) const;
-  void GetPasskey(SecureBlob* passkey) const;
+  void GetPasskey(chromeos::SecureBlob* passkey) const;
 
  private:
   std::string username_;
-  SecureBlob passkey_;
+  chromeos::SecureBlob passkey_;
 
   DISALLOW_COPY_AND_ASSIGN(UsernamePasskey);
 };

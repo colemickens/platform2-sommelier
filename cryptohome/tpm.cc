@@ -26,6 +26,7 @@
 #include "tpm_init.h"
 
 using base::PlatformThread;
+using chromeos::SecureBlob;
 using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;

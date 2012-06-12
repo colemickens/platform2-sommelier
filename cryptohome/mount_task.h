@@ -29,6 +29,7 @@
 #include <base/threading/thread.h>
 #include <base/synchronization/waitable_event.h>
 #include <chromeos/process.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
 #include "cryptohome_event_source.h"
@@ -305,7 +306,7 @@ class MountTaskMigratePasskey : public MountTask {
   virtual void Run();
 
  private:
-  SecureBlob old_key_;
+  chromeos::SecureBlob old_key_;
   HomeDirs* homedirs_;
 
   DISALLOW_COPY_AND_ASSIGN(MountTaskMigratePasskey);

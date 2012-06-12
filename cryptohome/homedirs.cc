@@ -14,6 +14,8 @@
 #include "user_oldest_activity_timestamp_cache.h"
 #include "vault_keyset.h"
 
+using chromeos::SecureBlob;
+
 namespace cryptohome {
 
 const char *kShadowRoot = "/home/.shadow";

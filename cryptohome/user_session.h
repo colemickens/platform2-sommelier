@@ -15,9 +15,9 @@
 #define CRYPTOHOME_USER_SESSION_H_
 
 #include <base/basictypes.h>
+#include <chromeos/secure_blob.h>
 
 #include "credentials.h"
-#include "secure_blob.h"
 
 namespace cryptohome {
 
@@ -33,7 +33,7 @@ class UserSession {
   // Parameters
   //   crypto - The crypto context to use for this session
   //   salt - The salt to use for the username
-  virtual void Init(Crypto* crypto, const SecureBlob& salt);
+  virtual void Init(Crypto* crypto, const chromeos::SecureBlob& salt);
 
   // Assigns a user to the UserSession object.  The random blob is created and
   // encrypted with the supplied credentials.
@@ -75,9 +75,9 @@ class UserSession {
   std::string obfuscated_username_;
   std::string username_;
   Crypto* crypto_;
-  SecureBlob username_salt_;
-  SecureBlob key_salt_;
-  SecureBlob cipher_;
+  chromeos::SecureBlob username_salt_;
+  chromeos::SecureBlob key_salt_;
+  chromeos::SecureBlob cipher_;
 
   DISALLOW_COPY_AND_ASSIGN(UserSession);
 };

@@ -9,6 +9,7 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <chromeos/process_mock.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <vector>
@@ -16,9 +17,9 @@
 #include "mock_lockbox.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
-#include "secure_blob.h"
 
 namespace cryptohome {
+using chromeos::SecureBlob;
 using std::string;
 using ::testing::_;
 using ::testing::DoAll;

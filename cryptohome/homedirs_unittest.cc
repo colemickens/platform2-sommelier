@@ -5,6 +5,7 @@
 #include "homedirs.h"
 
 #include <chromeos/cryptohome.h>
+#include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <policy/mock_device_policy.h>
@@ -15,6 +16,7 @@
 #include "username_passkey.h"
 
 namespace cryptohome {
+using chromeos::SecureBlob;
 using std::string;
 using ::testing::DoAll;
 using ::testing::InSequence;

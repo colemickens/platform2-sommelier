@@ -10,6 +10,8 @@
 
 #include "crypto.h"
 
+using chromeos::SecureBlob;
+
 namespace cryptohome {
 
 const int kUserSessionSaltLength = 16;

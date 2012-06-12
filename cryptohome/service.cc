@@ -20,6 +20,7 @@
 #include <base/time.h>
 #include <base/values.h>
 #include <chromeos/dbus/dbus.h>
+#include <chromeos/secure_blob.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 #include <string>
@@ -32,10 +33,11 @@
 #include "marshal.glibmarshal.h"
 #include "mount.h"
 #include "platform.h"
-#include "secure_blob.h"
 #include "tpm.h"
 #include "username_passkey.h"
 #include "vault_keyset.pb.h"
+
+using chromeos::SecureBlob;
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
 // modifying the files afterward.

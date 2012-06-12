@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/time.h>
 #include <chromeos/cryptohome.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
@@ -29,12 +30,12 @@
 #include "mock_platform.h"
 #include "mock_tpm.h"
 #include "mock_user_session.h"
-#include "secure_blob.h"
 #include "username_passkey.h"
 #include "vault_keyset.h"
 #include "vault_keyset.pb.h"
 
 namespace cryptohome {
+using chromeos::SecureBlob;
 using std::string;
 using ::testing::InSequence;
 using ::testing::NiceMock;
@@ -87,7 +88,7 @@ class MountTest : public ::testing::Test {
 
   bool LoadSerializedKeyset(const std::string& key_path,
                             cryptohome::SerializedVaultKeyset* serialized) {
-    cryptohome::SecureBlob contents;
+    SecureBlob contents;
     Platform platform;
     if (!platform.ReadFile(key_path, &contents)) {
       return false;
@@ -137,7 +138,7 @@ TEST_F(MountTest, BadInitTest) {
   mount.set_use_tpm(false);
   set_policy(&mount, false, "", false);
 
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[0].password,
                                         system_salt_, &passkey);
   UsernamePasskey up(kDefaultUsers[0].username, passkey);
@@ -157,7 +158,7 @@ TEST_F(MountTest, CurrentCredentialsTest) {
   mount.set_use_tpm(false);
   set_policy(&mount, false, "", false);
 
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[3].password,
                                         system_salt_, &passkey);
   UsernamePasskey up(kDefaultUsers[3].username, passkey);
@@ -189,7 +190,7 @@ TEST_F(MountTest, BadDecryptTest) {
   mount.set_use_tpm(false);
   set_policy(&mount, false, "", false);
 
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey("bogus", system_salt_, &passkey);
   UsernamePasskey up(kDefaultUsers[4].username, passkey);
 
@@ -350,7 +351,7 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   mount.set_platform(&platform);
 
   // Test user at index 5 was not created by the test data
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[5].password,
                                         system_salt_, &passkey);
   UsernamePasskey up(kDefaultUsers[5].username, passkey);
@@ -388,7 +389,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   set_policy(&mount, false, "", false);
   homedirs.set_shadow_root(kImageDir);
 
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[6].password,
                                         system_salt_, &passkey);
   UsernamePasskey up(kDefaultUsers[6].username, passkey);
@@ -451,7 +452,7 @@ TEST_F(MountTest, MountCryptohome) {
 
   EXPECT_TRUE(mount.Init());
 
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[10].password,
                                         system_salt_, &passkey);
   UsernamePasskey up(kDefaultUsers[10].username, passkey);
@@ -491,7 +492,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
 
   EXPECT_TRUE(mount.Init());
 
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[11].password,
                                         system_salt_, &passkey);
   UsernamePasskey up(kDefaultUsers[11].username, passkey);
@@ -539,7 +540,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   EXPECT_TRUE(mount.Init());
 
   // Test user at index 12 hasn't been created
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[12].password,
                                         system_salt_, &passkey);
   UsernamePasskey up(kDefaultUsers[12].username, passkey);
@@ -586,7 +587,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
 
   EXPECT_TRUE(mount.Init());
 
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[9].password,
                                         system_salt_, &passkey);
   UsernamePasskey up(kDefaultUsers[9].username, passkey);
@@ -681,7 +682,7 @@ class AltImageTest : public MountTest {
     image_path_.reset(new FilePath[user_count]);
     username_passkey_.reset(new UsernamePasskey[user_count]);
     for (int user = 0; user != user_count; user++) {
-      cryptohome::SecureBlob passkey;
+      SecureBlob passkey;
       cryptohome::Crypto::PasswordToPasskey(users[user].password,
                                             system_salt_, &passkey);
       username_passkey_[user].Assign(

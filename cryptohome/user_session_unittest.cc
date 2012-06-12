@@ -6,6 +6,7 @@
 
 #include "user_session.h"
 
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <string>
@@ -13,6 +14,8 @@
 #include "crypto.h"
 #include "mock_platform.h"
 #include "username_passkey.h"
+
+using chromeos::SecureBlob;
 
 namespace cryptohome {
 

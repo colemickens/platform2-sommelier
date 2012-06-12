@@ -10,6 +10,8 @@
 #include "platform.h"
 #include "vault_keyset.h"
 
+using chromeos::SecureBlob;
+
 namespace cryptohome {
 
 VaultKeyset::VaultKeyset(Platform* platform, Crypto* crypto)

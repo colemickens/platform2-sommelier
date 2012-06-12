@@ -20,6 +20,7 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/syslog_logging.h>
 #include <chromeos/utility.h>
 
@@ -29,11 +30,11 @@
 #include "mount.h"
 #include "pkcs11_init.h"
 #include "platform.h"
-#include "secure_blob.h"
 #include "tpm.h"
 #include "username_passkey.h"
 #include "vault_keyset.pb.h"
 
+using chromeos::SecureBlob;
 using std::string;
 
 namespace switches {
@@ -168,7 +169,7 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
 
   std::string trimmed_password;
   TrimString(password, "\r\n", &trimmed_password);
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(trimmed_password.c_str(),
                                         GetSystemSalt(proxy), &passkey);
   *password_out = std::string(static_cast<char*>(passkey.data()),
@@ -576,7 +577,7 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    cryptohome::UsernamePasskey up(user.c_str(), cryptohome::SecureBlob());
+    cryptohome::UsernamePasskey up(user.c_str(), SecureBlob());
     printf("%s\n", up.GetObfuscatedUsername(GetSystemSalt(proxy)).c_str());
   } else if (!strcmp(switches::kActions[switches::ACTION_DUMP_KEYSET],
                      action.c_str())) {
@@ -586,12 +587,12 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    cryptohome::UsernamePasskey up(user.c_str(), cryptohome::SecureBlob());
+    cryptohome::UsernamePasskey up(user.c_str(), SecureBlob());
 
     string vault_path = StringPrintf("/home/.shadow/%s/master.0",
         up.GetObfuscatedUsername(GetSystemSalt(proxy)).c_str());
 
-    cryptohome::SecureBlob contents;
+    SecureBlob contents;
     if (!platform.ReadFile(vault_path, &contents)) {
       printf("Couldn't load keyset contents: %s.\n", vault_path.c_str());
       return 1;
@@ -612,7 +613,7 @@ int main(int argc, char **argv) {
         & cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED) {
       printf("    SCRYPT_WRAPPED\n");
     }
-    cryptohome::SecureBlob blob(serialized.salt().length());
+    SecureBlob blob(serialized.salt().length());
     serialized.salt().copy(static_cast<char*>(blob.data()),
                            serialized.salt().length(), 0);
     printf("  Salt:\n");

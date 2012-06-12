@@ -18,7 +18,10 @@
 #include <base/string_split.h>
 #include <base/threading/platform_thread.h>
 #include <base/time.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
+
+using chromeos::SecureBlob;
 
 namespace cryptohome {
 const uint32_t Lockbox::kNvramVersion1 = 1;

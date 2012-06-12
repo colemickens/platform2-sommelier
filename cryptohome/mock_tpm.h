@@ -8,6 +8,7 @@
 #include "tpm.h"
 
 #include <base/logging.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
 #include <gmock/gmock.h>
@@ -43,17 +44,17 @@ class MockTpm : public Tpm {
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD6(Encrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
                                    unsigned int, const chromeos::Blob&,
-                                   SecureBlob*, TpmRetryAction*));
+                                   chromeos::SecureBlob*, TpmRetryAction*));
   MOCK_METHOD6(Decrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
                                    unsigned int, const chromeos::Blob&,
-                                   SecureBlob*, TpmRetryAction*));
-  MOCK_METHOD2(GetPublicKey, bool(SecureBlob*, TpmRetryAction*));
+                                   chromeos::SecureBlob*, TpmRetryAction*));
+  MOCK_METHOD2(GetPublicKey, bool(chromeos::SecureBlob*, TpmRetryAction*));
   MOCK_METHOD1(GetOwnerPassword, bool(chromeos::Blob*));
   MOCK_CONST_METHOD0(IsEnabled, bool());
   MOCK_METHOD2(GetRandomData, bool(size_t, chromeos::Blob*));
   MOCK_METHOD3(DefineLockOnceNvram, bool(uint32_t, size_t, uint32_t));
-  MOCK_METHOD2(WriteNvram, bool(uint32_t, const SecureBlob&));
-  MOCK_METHOD2(ReadNvram, bool(uint32_t, SecureBlob*));
+  MOCK_METHOD2(WriteNvram, bool(uint32_t, const chromeos::SecureBlob&));
+  MOCK_METHOD2(ReadNvram, bool(uint32_t, chromeos::SecureBlob*));
   MOCK_METHOD1(DestroyNvram, bool(uint32_t));
   MOCK_METHOD1(IsNvramDefined, bool(uint32_t));
   MOCK_METHOD1(IsNvramLocked, bool(uint32_t));
@@ -62,8 +63,8 @@ class MockTpm : public Tpm {
  private:
   bool Xor(const chromeos::Blob& data, const chromeos::Blob& password,
            unsigned int password_rounds, const chromeos::Blob& salt,
-           SecureBlob* data_out, TpmRetryAction* retry_action) {
-    SecureBlob local_data_out(data.size());
+           chromeos::SecureBlob* data_out, TpmRetryAction* retry_action) {
+    chromeos::SecureBlob local_data_out(data.size());
     for (unsigned int i = 0; i < local_data_out.size(); i++) {
       local_data_out[i] = data[i] ^ 0x1e;
     }
@@ -71,7 +72,8 @@ class MockTpm : public Tpm {
     return true;
   }
 
-  bool GetBlankPublicKey(SecureBlob* blob, TpmRetryAction* retry_action) {
+  bool GetBlankPublicKey(chromeos::SecureBlob* blob,
+                         TpmRetryAction* retry_action) {
     blob->resize(0);
     return true;
   }

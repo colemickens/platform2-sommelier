@@ -8,7 +8,7 @@
 #ifndef CRYPTOHOME_CREDENTIALS_H_
 #define CRYPTOHOME_CREDENTIALS_H_
 
-#include "secure_blob.h"
+#include <chromeos/secure_blob.h>
 
 namespace cryptohome {
 
@@ -34,7 +34,7 @@ class Credentials {
   // Parameters
   //  passkey - A SecureBlob containing the passkey
   //
-  virtual void GetPasskey(SecureBlob* passkey) const = 0;
+  virtual void GetPasskey(chromeos::SecureBlob* passkey) const = 0;
 };
 
 }  // namespace cryptohome

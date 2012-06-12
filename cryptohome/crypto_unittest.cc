@@ -14,6 +14,7 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <vector>
@@ -23,6 +24,7 @@
 #include "sha_test_vectors.h"
 
 namespace cryptohome {
+using chromeos::SecureBlob;
 using std::string;
 using ::testing::Return;
 using ::testing::_;

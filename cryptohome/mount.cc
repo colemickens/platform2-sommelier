@@ -28,6 +28,7 @@
 #include "vault_keyset.h"
 #include "vault_keyset.pb.h"
 
+using chromeos::SecureBlob;
 using std::string;
 
 namespace cryptohome {

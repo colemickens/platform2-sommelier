@@ -31,6 +31,7 @@ extern "C" {
 #include <ecryptfs.h>
 }
 
+using chromeos::SecureBlob;
 using std::string;
 
 namespace cryptohome {

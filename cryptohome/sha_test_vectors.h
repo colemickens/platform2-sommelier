@@ -10,9 +10,8 @@
 #include <openssl/sha.h>
 
 #include <base/basictypes.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
-
-#include "secure_blob.h"
 
 namespace cryptohome {
 
@@ -23,7 +22,7 @@ class ShaTestVectors {
 
   ~ShaTestVectors() { }
   const chromeos::Blob* input(int index) const { return &input_[index]; }
-  const SecureBlob* output(int index) const { return &output_[index]; }
+  const chromeos::SecureBlob* output(int index) const { return &output_[index];}
   size_t count() const { return 3; }  // sizeof(input_); }
 
   static const char* kOneBlockMessage;
@@ -32,7 +31,7 @@ class ShaTestVectors {
   static const uint8_t kSha256Results[][SHA256_DIGEST_LENGTH];
  private:
   chromeos::Blob input_[3];
-  SecureBlob output_[3];
+  chromeos::SecureBlob output_[3];
 };
 
 }  // namespace cryptohome

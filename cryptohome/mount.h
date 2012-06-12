@@ -19,6 +19,7 @@
 #include <base/time.h>
 #include <base/values.h>
 #include <chaps/login_event_client.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <policy/device_policy.h>
@@ -29,7 +30,6 @@
 #include "homedirs.h"
 #include "mount_stack.h"
 #include "platform.h"
-#include "secure_blob.h"
 #include "user_session.h"
 #include "user_oldest_activity_timestamp_cache.h"
 #include "vault_keyset.h"
@@ -610,7 +610,7 @@ class Mount {
   //   force - Whether to force creation of a new salt
   //   salt (OUT) - The user's salt
   void GetUserSalt(const Credentials& credentials, bool force_new,
-                   SecureBlob* salt) const;
+                   chromeos::SecureBlob* salt) const;
 
   // Ensures that a specified directory exists, with all path components but the
   // last one owned by kMountOwnerUid:kMountOwnerGid and the last component
@@ -700,7 +700,7 @@ class Mount {
 
   // Derives PKCS #11 token authorization data from a passkey. This may take up
   // to ~100ms (dependant on CPU / memory performance). Returns true on success.
-  bool DeriveTokenAuthData(const SecureBlob& passkey,
+  bool DeriveTokenAuthData(const chromeos::SecureBlob& passkey,
                            std::string* auth_data);
 
   // The uid of the shared user.  Ownership of the user's vault is set to this
@@ -734,7 +734,7 @@ class Mount {
   std::string skel_source_;
 
   // Stores the global system salt
-  cryptohome::SecureBlob system_salt_;
+  chromeos::SecureBlob system_salt_;
 
   // Whether to change ownership of the vault file
   bool set_vault_ownership_;
@@ -775,12 +775,12 @@ class Mount {
 
   // Used to track the user's passkey. PKCS #11 initialization consumes and
   // clears this value.
-  SecureBlob pkcs11_passkey_;
+  chromeos::SecureBlob pkcs11_passkey_;
 
   // Used to track the user's old passkey during passkey migration. PKCS #11
   // initialization consumes and clears this value. This value is valid only if
   // is_pkcs11_passkey_migration_required_ is set to true.
-  SecureBlob pkcs11_old_passkey_;
+  chromeos::SecureBlob pkcs11_old_passkey_;
 
   // Used to track whether passkey migration has occurred and PKCS #11 migration
   // of authorization data based on the passkey needs to be performed also.

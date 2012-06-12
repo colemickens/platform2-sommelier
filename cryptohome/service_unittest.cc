@@ -9,6 +9,7 @@
 #include <base/at_exit.h>
 #include <base/threading/platform_thread.h>
 #include <base/file_util.h>
+#include <chromeos/secure_blob.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
@@ -19,10 +20,10 @@
 #include "mock_install_attributes.h"
 #include "mock_mount.h"
 #include "mock_tpm.h"
-#include "secure_blob.h"
 #include "username_passkey.h"
 
 using base::PlatformThread;
+using chromeos::SecureBlob;
 
 namespace cryptohome {
 using ::testing::Return;
@@ -135,7 +136,7 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   service.set_initialize_tpm(false);
   service.Initialize();
 
-  cryptohome::SecureBlob passkey;
+  SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[7].password,
                                         system_salt_, &passkey);
   std::string passkey_string(static_cast<const char*>(passkey.const_data()),

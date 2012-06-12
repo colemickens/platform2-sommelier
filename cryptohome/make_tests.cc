@@ -12,6 +12,7 @@
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/cryptohome.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
@@ -20,11 +21,11 @@
 #include "mock_platform.h"
 #include "mock_tpm.h"
 #include "mount.h"
-#include "secure_blob.h"
 #include "username_passkey.h"
 #include "vault_keyset.h"
 
 namespace cryptohome {
+using chromeos::SecureBlob;
 using ::testing::NiceMock;
 
 // struct TestUserInfo {

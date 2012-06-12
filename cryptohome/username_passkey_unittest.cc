@@ -8,9 +8,12 @@
 
 #include <string.h>  // For memset(), memcpy()
 
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 #include <string>
+
+using chromeos::SecureBlob;
 
 namespace cryptohome {
 

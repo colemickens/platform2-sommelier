@@ -12,8 +12,8 @@
 
 #include <base/basictypes.h>
 #include <base/file_path.h>
+#include <chromeos/secure_blob.h>
 
-#include "secure_blob.h"
 #include "tpm.h"
 #include "vault_keyset.h"
 #include "vault_keyset.pb.h"
@@ -91,9 +91,9 @@ class Crypto {
   //   padding - The padding method to use
   //   unwrapped (OUT) - The unwrapped (decrypted) data
   bool AesDecrypt(const chromeos::Blob& wrapped, unsigned int start,
-                  unsigned int count, const SecureBlob& key,
-                  const SecureBlob& iv, PaddingScheme padding,
-                  SecureBlob* unwrapped) const;
+                  unsigned int count, const chromeos::SecureBlob& key,
+                  const chromeos::SecureBlob& iv, PaddingScheme padding,
+                  chromeos::SecureBlob* unwrapped) const;
 
   // AES encrypts the plain text data using the specified key
   //
@@ -106,23 +106,25 @@ class Crypto {
   //   padding - The padding method to use
   //   wrapped - On success, the encrypted data
   bool AesEncrypt(const chromeos::Blob& unwrapped, unsigned int start,
-                  unsigned int count, const SecureBlob& key,
-                  const SecureBlob& iv, PaddingScheme padding,
-                  SecureBlob* wrapped) const;
+                  unsigned int count, const chromeos::SecureBlob& key,
+                  const chromeos::SecureBlob& iv, PaddingScheme padding,
+                  chromeos::SecureBlob* wrapped) const;
 
   // Same as AesDecrypt, but allows using either CBC or ECB
   bool AesDecryptSpecifyBlockMode(const chromeos::Blob& wrapped,
                                   unsigned int start, unsigned int count,
-                                  const SecureBlob& key, const SecureBlob& iv,
+                                  const chromeos::SecureBlob& key,
+                                  const chromeos::SecureBlob& iv,
                                   PaddingScheme padding, BlockMode block_mode,
-                                  SecureBlob* unwrapped) const;
+                                  chromeos::SecureBlob* unwrapped) const;
 
   // Same as AesEncrypt, but allows using either CBC or ECB
   bool AesEncryptSpecifyBlockMode(const chromeos::Blob& unwrapped,
                                   unsigned int start, unsigned int count,
-                                  const SecureBlob& key, const SecureBlob& iv,
+                                  const chromeos::SecureBlob& key,
+                                  const chromeos::SecureBlob& iv,
                                   PaddingScheme padding, BlockMode block_mode,
-                                  SecureBlob* wrapped) const;
+                                  chromeos::SecureBlob* wrapped) const;
 
   // Creates a new RSA key
   //
@@ -130,7 +132,9 @@ class Crypto {
   //   key_bits - The key size to generate
   //   n (OUT) - the modulus
   //   p (OUT) - the private key
-  bool CreateRsaKey(unsigned int key_bits, SecureBlob* n, SecureBlob* p) const;
+  bool CreateRsaKey(unsigned int key_bits,
+                    chromeos::SecureBlob* n,
+                    chromeos::SecureBlob* p) const;
 
   // Decrypts an encrypted vault keyset.  The vault keyset should be the output
   // of EncryptVaultKeyset().
@@ -142,7 +146,7 @@ class Crypto {
   //   error (OUT) - The specific error code on failure
   //   vault_keyset (OUT) - The decrypted vault keyset on success
   bool DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
-                          const SecureBlob& vault_key,
+                          const chromeos::SecureBlob& vault_key,
                           unsigned int* crypt_flags, CryptoError* error,
                           VaultKeyset* vault_keyset) const;
 
@@ -155,8 +159,8 @@ class Crypto {
   //                    when encrypting the keyset
   //   encrypted_keyset - On success, the encrypted vault keyset
   bool EncryptVaultKeyset(const VaultKeyset& vault_keyset,
-                          const SecureBlob& vault_key,
-                          const SecureBlob& vault_key_salt,
+                          const chromeos::SecureBlob& vault_key,
+                          const chromeos::SecureBlob& vault_key_salt,
                           SerializedVaultKeyset* serialized) const;
 
   // Converts the passkey directly to an AES key.  This method derives the key
@@ -170,7 +174,8 @@ class Crypto {
   //   iv (OUT) - The initialization vector
   bool PasskeyToAesKey(const chromeos::Blob& passkey,
                        const chromeos::Blob& salt, unsigned int rounds,
-                       SecureBlob* key, SecureBlob* iv) const;
+                       chromeos::SecureBlob* key,
+                       chromeos::SecureBlob* iv) const;
 
   // Converts the passkey to authorization data for a TPM-backed crypto token.
   //
@@ -180,7 +185,7 @@ class Crypto {
   //   auth_data (OUT) - The token authorization data.
   bool PasskeyToTokenAuthData(const chromeos::Blob& passkey,
                               const FilePath& salt_file,
-                              SecureBlob* auth_data) const;
+                              chromeos::SecureBlob* auth_data) const;
 
   // Gets an existing salt, or creates one if it doesn't exist
   //
@@ -190,7 +195,7 @@ class Crypto {
   //   force - If true, forces creation of a new salt even if the file exists
   //   salt (OUT) - The salt
   bool GetOrCreateSalt(const FilePath& path, unsigned int length, bool force,
-                       SecureBlob* salt) const;
+                       chromeos::SecureBlob* salt) const;
 
   // Adds the specified key to the ecryptfs keyring so that the cryptohome can
   // be mounted.  Clears the user keyring first.
@@ -210,11 +215,11 @@ class Crypto {
 
   // Gets the SHA1 hash of the data provided
   void GetSha1(const chromeos::Blob& data, unsigned int start,
-               unsigned int count, SecureBlob* hash) const;
+               unsigned int count, chromeos::SecureBlob* hash) const;
 
   // Gets the SHA256 hash of the data provided
   void GetSha256(const chromeos::Blob& data, unsigned int start,
-                 unsigned int count, SecureBlob* hash) const;
+                 unsigned int count, chromeos::SecureBlob* hash) const;
 
   // Encodes a binary blob to hex-ascii
   //
@@ -234,7 +239,7 @@ class Crypto {
   //   passkey (OUT) - The passkey
   static void PasswordToPasskey(const char* password,
                                 const chromeos::Blob& salt,
-                                SecureBlob* passkey);
+                                chromeos::SecureBlob* passkey);
 
   // Ensures that the TPM is connected
   CryptoError EnsureTpm(bool disconnect_first) const;
@@ -282,25 +287,26 @@ class Crypto {
   //   key - The key to add
   //   key_sig - The key's (ascii) signature
   //   salt - The salt
-  bool PushVaultKey(const SecureBlob& key, const std::string& key_sig,
-                           const SecureBlob& salt) const;
+  bool PushVaultKey(const chromeos::SecureBlob& key,
+                    const std::string& key_sig,
+                    const chromeos::SecureBlob& salt) const;
 
-  bool EncryptTPM(const SecureBlob& blob,
-                  const SecureBlob& key,
-                  const SecureBlob& salt,
+  bool EncryptTPM(const chromeos::SecureBlob& blob,
+                  const chromeos::SecureBlob& key,
+                  const chromeos::SecureBlob& salt,
                   SerializedVaultKeyset* serialized) const;
 
-  bool EncryptScrypt(const SecureBlob& blob,
-                     const SecureBlob& key,
+  bool EncryptScrypt(const chromeos::SecureBlob& blob,
+                     const chromeos::SecureBlob& key,
                      SerializedVaultKeyset* serialized) const;
 
   bool DecryptTPM(const SerializedVaultKeyset& serialized,
-                  const SecureBlob& key,
+                  const chromeos::SecureBlob& key,
                   CryptoError* error,
                   VaultKeyset* vault_keyset) const;
 
   bool DecryptScrypt(const SerializedVaultKeyset& serialized,
-                     const SecureBlob& key,
+                     const chromeos::SecureBlob& key,
                      CryptoError* error,
                      VaultKeyset* keyset) const;
 

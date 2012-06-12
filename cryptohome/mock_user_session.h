@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include "user_session.h"
 
 #include <base/logging.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
 #include <gmock/gmock.h>
@@ -34,7 +35,7 @@ class MockUserSession : public UserSession {
         .WillByDefault(Invoke(&user_session_, &UserSession::Verify));
   }
   ~MockUserSession() {}
-  MOCK_METHOD2(Init, void(Crypto*, const SecureBlob&));
+  MOCK_METHOD2(Init, void(Crypto*, const chromeos::SecureBlob&));
   MOCK_METHOD1(SetUser, bool(const Credentials&));
   MOCK_METHOD0(Reset, void(void));
   MOCK_CONST_METHOD1(CheckUser, bool(const Credentials&));

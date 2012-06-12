@@ -13,12 +13,12 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
 #include <chaps/login_event_client.h>
+#include <chromeos/secure_blob.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 #include <string>
 
 #include "crypto.h"
-#include "secure_blob.h"
 #include "vault_keyset.pb.h"
 
 namespace cryptohome {
@@ -51,7 +51,7 @@ class HomeDirs {
 
   // Returns the system salt, creating a new one if necessary. If loading the
   // system salt fails, returns false, and blob is unchanged.
-  virtual bool GetSystemSalt(SecureBlob *blob);
+  virtual bool GetSystemSalt(chromeos::SecureBlob *blob);
 
   // Returns the owner's obfuscated username.
   virtual bool GetOwner(std::string* owner);
@@ -69,7 +69,7 @@ class HomeDirs {
   // Migrates the cryptohome for the supplied obfuscated username from the
   // supplied old key to the supplied new key.
   virtual bool Migrate(const Credentials& newcreds,
-                       const SecureBlob& oldkey);
+                       const chromeos::SecureBlob& oldkey);
 
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
@@ -143,7 +143,7 @@ class HomeDirs {
   scoped_ptr<Crypto> default_crypto_;
   Crypto* crypto_;
   base::TimeDelta old_user_last_activity_time_;
-  SecureBlob system_salt_;
+  chromeos::SecureBlob system_salt_;
   chaps::LoginEventClient chaps_event_client_;
 
   friend class HomeDirsTest;

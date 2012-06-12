@@ -7,11 +7,13 @@
 #include <openssl/sha.h>
 
 #include <base/logging.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
 #include "crypto.h"
 
 namespace cryptohome {
+using chromeos::SecureBlob;
 using std::string;
 
 UsernamePasskey::UsernamePasskey(const char *username,

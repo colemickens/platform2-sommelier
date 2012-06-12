@@ -11,6 +11,7 @@
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
+#include <chromeos/secure_blob.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 #include <metrics/metrics_library.h>
@@ -234,7 +235,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   GMainLoop* loop_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome* cryptohome_;
-  SecureBlob system_salt_;
+  chromeos::SecureBlob system_salt_;
   cryptohome::Mount* mount_;
   cryptohome::Crypto* crypto_;
   scoped_ptr<Platform> default_platform_;
