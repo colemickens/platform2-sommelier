@@ -17,8 +17,8 @@ namespace wimax_manager {
 
 namespace {
 
-const int kMaxNumberOfDeviceScans = 10;
-const int kDefaultDeviceScanIntervalInSeconds = 3;
+const int kMaxNumberOfDeviceScans = 15;
+const int kDefaultDeviceScanIntervalInSeconds = 1;
 
 gboolean OnDeviceScanNeeded(gpointer data) {
   CHECK(data);
