@@ -333,6 +333,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-device-policy \
             --enable-gview \
             --enable-logging \
+            --enable-mobile-dialog \
             --enable-onc-policy \
             --enable-partial-swap \
             --enable-per-tile-painting \
