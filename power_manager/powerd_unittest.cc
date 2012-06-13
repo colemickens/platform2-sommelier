@@ -781,6 +781,7 @@ TEST_F(DaemonTest, UpdateAveragedTimesChargingAndCalculating) {
 
   empty_average_.ExpectClear();
   full_average_.ExpectGetAverage(kBatteryTime);
+  empty_average_.ExpectGetAverage(0);
 
   daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
 
@@ -793,8 +794,10 @@ TEST_F(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating) {
   status_.is_calculating_battery_time = false;
   status_.battery_time_to_full = kBatteryTime;
 
-  empty_average_.ExpectClear();
   full_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
+  empty_average_.ExpectClear();
+  full_average_.ExpectGetAverage(kBatteryTime);
+  empty_average_.ExpectGetAverage(0);
 
   daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
 
@@ -806,8 +809,9 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndCalculating) {
   status_.line_power_on = false;
   status_.is_calculating_battery_time = true;
 
-  empty_average_.ExpectGetAverage(kBatteryTime);
   full_average_.ExpectClear();
+  full_average_.ExpectGetAverage(0);
+  empty_average_.ExpectGetAverage(kBatteryTime);
 
   daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
 
@@ -822,6 +826,8 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
 
   empty_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
   full_average_.ExpectClear();
+  full_average_.ExpectGetAverage(0);
+  empty_average_.ExpectGetAverage(kBatteryTime);
 
   daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
 

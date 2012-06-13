@@ -166,6 +166,9 @@ void Daemon::Init() {
   power_supply_.Init();
   power_supply_.GetPowerStatus(&power_status_, false);
   OnPowerEvent(this, power_status_);
+  UpdateAveragedTimes(&power_status_,
+                      &time_to_empty_average_,
+                      &time_to_full_average_);
   file_tagger_.Init();
   backlight_controller_->SetObserver(this);
   monitor_reconfigure_->SetProjectionCallback(
@@ -1297,10 +1300,10 @@ gboolean Daemon::PollPowerSupply() {
 }
 
 gboolean Daemon::HandlePollPowerSupply() {
+  OnPowerEvent(this, power_status_);
   UpdateAveragedTimes(&power_status_,
                       &time_to_empty_average_,
                       &time_to_full_average_);
-  OnPowerEvent(this, power_status_);
   // Send a signal once the power supply status has been obtained.
   DBusMessage* message = dbus_message_new_signal(kPowerManagerServicePath,
                                                  kPowerManagerInterface,
@@ -1318,26 +1321,17 @@ void Daemon::UpdateAveragedTimes(PowerStatus* status,
                                  RollingAverage* empty_average,
                                  RollingAverage* full_average) {
   if (status->line_power_on) {
-    if (status->is_calculating_battery_time) {
-      status->averaged_battery_time_to_full =
-          full_average->GetAverage();
-    } else {
-      status->averaged_battery_time_to_full =
-          full_average->AddSample(status->battery_time_to_full);
-    }
+    if (!status->is_calculating_battery_time)
+      full_average->AddSample(status->battery_time_to_full);
     empty_average->Clear();
-    status->averaged_battery_time_to_empty = 0;
   } else {
-    if (status->is_calculating_battery_time) {
-      status->averaged_battery_time_to_empty =
-          empty_average->GetAverage();
-    } else {
-      status->averaged_battery_time_to_empty =
-          empty_average->AddSample(status->battery_time_to_empty);
-    }
+    if (!status->is_calculating_battery_time)
+      empty_average->AddSample(status->battery_time_to_empty);
     full_average->Clear();
-    status->averaged_battery_time_to_full = 0;
   }
+
+  status->averaged_battery_time_to_full = full_average->GetAverage();
+  status->averaged_battery_time_to_empty = empty_average->GetAverage();
 }
 
 void Daemon::OnLowBattery(double battery_percentage) {
