@@ -330,7 +330,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --device-management-url="$DMSERVER" \
             --disable-seccomp-sandbox \
             --enable-accelerated-plugins \
-            --enable-applist-v2 \
             --enable-device-policy \
             --enable-gview \
             --enable-logging \
