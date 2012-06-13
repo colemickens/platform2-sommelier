@@ -39,7 +39,8 @@ uint64_t TimeTest(TestBase* test, int iter) {
 // eliminate constant cost), and we do a linear regression on
 // a few samples.
 bool Bench(TestBase* test, float *slope, int64_t *bias) {
-  // Do one iteration in case the driver needs to set up states.
+  // Do two iterations because initial timings can vary wildly.
+  TimeTest(test, 1);
   uint64_t initial_time = TimeTest(test, 1);
   if (initial_time > MAX_ITERATION_DURATION_US) {
     // The test is too slow to do the regression,
