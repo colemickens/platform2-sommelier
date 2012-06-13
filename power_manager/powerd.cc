@@ -1051,17 +1051,17 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
     return util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
                                       "Invalid arguments passed to method");
   }
-  TransitionStyle style = TRANSITION_GRADUAL;
+  TransitionStyle style = TRANSITION_FAST;
   switch (dbus_style) {
     case kBrightnessTransitionGradual:
-      style = TRANSITION_GRADUAL;
+      style = TRANSITION_FAST;
       break;
     case kBrightnessTransitionInstant:
       style = TRANSITION_INSTANT;
       break;
     default:
       LOG(WARNING) << "Invalid transition style passed ( " << dbus_style
-                  << " ).  Using default gradual transition";
+                  << " ).  Using default fast transition";
   }
   backlight_controller_->SetCurrentBrightnessPercent(
       percent, BRIGHTNESS_CHANGE_USER_INITIATED, style);

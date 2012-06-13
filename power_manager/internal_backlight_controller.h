@@ -101,7 +101,7 @@ class InternalBacklightController : public BacklightController {
                        BrightnessChangeCause cause,
                        TransitionStyle style);
 
-  // Changes the brightness to |target_level|.  Use style = TRANSITION_GRADUAL
+  // Changes the brightness to |target_level|.  Use style = TRANSITION_FAST
   // to change brightness with smoothing effects.
   bool SetBrightness(int64 target_level, TransitionStyle style);
 

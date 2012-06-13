@@ -45,8 +45,9 @@ enum BrightnessChangeCause {
 
 // Different ways to transition brightness levels.
 enum TransitionStyle {
-  TRANSITION_GRADUAL,
   TRANSITION_INSTANT,
+  TRANSITION_FAST,
+  TRANSITION_SLOW,
 };
 
 // Interface for observing changes made by the backlight controller.

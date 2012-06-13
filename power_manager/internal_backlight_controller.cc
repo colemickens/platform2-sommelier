@@ -41,8 +41,9 @@ const double kIdleBrightnessFraction = 0.1;
 const double kDefaultMinVisibleBrightnessFraction = 0.0065;
 
 // Gradually animate backlight level to new brightness by breaking up the
-// transition into this many steps.
-const int kBacklightAnimationFrames = 8;
+// transition into multiple steps.
+const int kFastBacklightAnimationFrames = 8;
+const int kSlowBacklightAnimationFrames = 66;
 
 // Time between backlight animation frames, in milliseconds.
 const int kBacklightAnimationMs = 30;
@@ -61,10 +62,10 @@ const int kBacklightAnimationMaxMs = static_cast<int>(
 const int64 kMaxBrightnessSteps = 16;
 
 // Number of light sensor responses required to overcome temporal hysteresis.
-const int kAlsHystResponse = 4;
+const int kAlsHystResponse = 2;
 
 // Backlight change (in %) required to overcome light sensor level hysteresis.
-const int kAlsHystPercent = 5;
+const int kAlsHystPercent = 3;
 
 // Value for |level_to_percent_exponent_|, assuming that at least
 // |kMinLevelsForNonLinearScale| brightness levels are available -- if not, we
@@ -243,7 +244,7 @@ bool InternalBacklightController::IncreaseBrightness(
   if (new_percent == target_percent_)
     return false;
   *current_offset_percent_ = new_percent - als_offset_percent_;
-  return WriteBrightness(true, cause, TRANSITION_GRADUAL);
+  return WriteBrightness(true, cause, TRANSITION_FAST);
 }
 
 bool InternalBacklightController::DecreaseBrightness(
@@ -262,7 +263,7 @@ bool InternalBacklightController::DecreaseBrightness(
   if (new_percent == target_percent_ || (!allow_off && new_percent == 0))
     return false;
   *current_offset_percent_ = new_percent - als_offset_percent_;
-  return WriteBrightness(true, cause, TRANSITION_GRADUAL);
+  return WriteBrightness(true, cause, TRANSITION_FAST);
 }
 
 bool InternalBacklightController::SetPowerState(PowerState new_state) {
@@ -282,7 +283,7 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
 
   state_ = new_state;
 
-  TransitionStyle style = TRANSITION_GRADUAL;
+  TransitionStyle style = TRANSITION_FAST;
   // Save the active backlight level if transitioning away from it.
   // Restore the saved value if returning to active state.
   if (old_state == BACKLIGHT_ACTIVE) {
@@ -393,14 +394,14 @@ bool InternalBacklightController::OnPlugEvent(bool is_plugged) {
   if (is_first_time) {
     if (has_seen_als_event_) {
       return WriteBrightness(
-        true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
+        true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
     }
     LOG(INFO) << "First time OnPlugEvent() called, skip the backlight "
               << "brightness adjustment since no ALS value available yet.";
     return true;
   }
 #endif  // defined(HAS_ALS)
-  return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
+  return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
 }
 
 void InternalBacklightController::SetAlsBrightnessOffsetPercent(
@@ -428,7 +429,7 @@ void InternalBacklightController::SetAlsBrightnessOffsetPercent(
     als_adjustment_count_++;
     LOG(INFO) << "Immediate ALS-triggered brightness adjustment.";
     AppendAlsResponse(-1);
-    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
+    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
     return;
   }
 
@@ -451,7 +452,7 @@ void InternalBacklightController::SetAlsBrightnessOffsetPercent(
     als_temporal_count_++;
   } else {
     als_temporal_state_ = new_state;
-    als_temporal_count_ = 0;
+    als_temporal_count_ = 1;
   }
   if (als_temporal_count_ >= kAlsHystResponse) {
     als_temporal_count_ = 0;
@@ -459,7 +460,7 @@ void InternalBacklightController::SetAlsBrightnessOffsetPercent(
     LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
     DumpAlsResponses();
     // ALS adjustment should not change brightness offset.
-    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
+    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_SLOW);
   }
 }
 
@@ -478,7 +479,7 @@ int InternalBacklightController::GetNumUserAdjustments() const {
 void InternalBacklightController::OnBacklightDeviceChanged() {
   LOG(INFO) << "Backlight device changed; reinitializing controller";
   if (Init())
-    WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_GRADUAL);
+    WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
 }
 
 double InternalBacklightController::ClampPercentToVisibleRange(double percent) {
@@ -616,14 +617,15 @@ bool InternalBacklightController::SetBrightness(int64 target_level,
     return true;
   }
 
-  // else if (style == TRANSITION_GRADUAL)
   // The following check will require this code to be updated should more styles
   // be added in the future.
-  DCHECK_EQ(style, TRANSITION_GRADUAL);
+  DCHECK(style == TRANSITION_FAST || style == TRANSITION_SLOW);
 
   // We don't want to take more steps than there are adjustment levels between
   // the start brightness and the end brightness.
-  int64 num_steps = std::min(abs(diff), kBacklightAnimationFrames);
+  int num_frames = style == TRANSITION_FAST ? kFastBacklightAnimationFrames :
+                                              kSlowBacklightAnimationFrames;
+  int64 num_steps = std::min(abs(diff), num_frames);
   if (num_steps <= 1) {
     SetBrightnessHard(target_level, target_level);
     return true;
@@ -692,7 +694,6 @@ void InternalBacklightController::SetBrightnessHard(int64 level,
       monitor_reconfigure_->HasInternalPanelConnection())
     monitor_reconfigure_->SetInternalPanelOn();
 
-  DLOG(INFO) << "Setting brightness to " << level;
   if (!backlight_->SetBrightnessLevel(level))
     DLOG(INFO) << "Could not set brightness to " << level;
 
