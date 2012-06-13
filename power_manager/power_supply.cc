@@ -86,10 +86,12 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
     return true;
   }
   int64 value;
+  bool line_power_status_found = false;
   if (line_power_info_ && file_util::PathExists(line_power_path_)) {
     line_power_info_->GetInt64("online", &value);
     // Return the line power status.
     status->line_power_on = static_cast<bool>(value);
+    line_power_status_found = true;
   }
 
   // If no battery was found, or if the previously found path doesn't exist
@@ -103,8 +105,23 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
   battery_info_->GetInt64("present", &value);
   status->battery_is_present = static_cast<bool>(value);
   // If there is no battery present, we can skip the rest of the readings.
-  if (!status->battery_is_present)
+  if (!status->battery_is_present) {
+    // No battery but still running means AC power must be present.
+    if (!line_power_status_found)
+      status->line_power_on = true;
     return true;
+  }
+
+  // Attempt to determine line power status from nominal battery status.
+  if (!line_power_status_found) {
+    std::string battery_status_string;
+    status->line_power_on = false;
+    if (battery_info_->GetString("status", &battery_status_string) &&
+        (battery_status_string == "Charging" ||
+         battery_status_string == "Fully charged")) {
+      status->line_power_on = true;
+    }
+  }
 
   double battery_voltage = battery_info_->ReadScaledDouble("voltage_now");
   status->battery_voltage = battery_voltage;
