@@ -47,7 +47,11 @@ class ExternalBacklight : public BacklightInterface {
   SIGNAL_CALLBACK_0(ExternalBacklight, gboolean, ScanForDisplays);
 
   // Indicates to other processes that the display device has changed.
-  void SendDisplayChangedSignal();
+  // Returns true if the signal was sent successfully.
+  bool SendDisplayChangedSignal();
+
+  // GLib wrapper timeout for retrying SendDisplayChangedSignal().
+  SIGNAL_CALLBACK_0(ExternalBacklight, gboolean, RetrySendDisplayChangedSignal);
 
   // Indicates that there is a valid display device handle.
   bool HasValidHandle() { return (i2c_handle_ >= 0); }
@@ -64,6 +68,9 @@ class ExternalBacklight : public BacklightInterface {
   struct udev* udev_;
 
   bool is_scan_scheduled_;  // Flag to prevent redundant device scans.
+
+  // Timeout ID for retrying a brightness read.
+  guint retry_send_display_changed_source_id_;
 
   DISALLOW_COPY_AND_ASSIGN(ExternalBacklight);
 };

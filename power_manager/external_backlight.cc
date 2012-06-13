@@ -38,6 +38,8 @@ const char kDRMUdevSubsystem[] = "drm";
 
 const int kBufSize = 1000;  // Buffer size for reading from an input stream.
 const int kScanForDisplaysDelayMs = 2000;
+// Time in ms to wait before retrying SendDisplayChangedSignal().
+const int kRetrySendDisplayChangedSignalDelayMs = 100;
 
 const int kDDCAddress = 0x37;
 const int kDDCWriteAddress = kDDCAddress << 1;
@@ -159,9 +161,14 @@ namespace power_manager {
 ExternalBacklight::ExternalBacklight()
     : i2c_handle_(-1),
       udev_(NULL),
-      is_scan_scheduled_(false) {}
+      is_scan_scheduled_(false),
+      retry_send_display_changed_source_id_(0) {}
 
 ExternalBacklight::~ExternalBacklight() {
+  if (retry_send_display_changed_source_id_) {
+    g_source_remove(retry_send_display_changed_source_id_);
+    retry_send_display_changed_source_id_ = 0;
+  }
   if (!HasValidHandle())
     return;
   close(i2c_handle_);
@@ -292,6 +299,11 @@ gboolean ExternalBacklight::ScanForDisplays() {
     i2c_path_.clear();
   }
 
+  if (retry_send_display_changed_source_id_) {
+    g_source_remove(retry_send_display_changed_source_id_);
+    retry_send_display_changed_source_id_ = 0;
+  }
+
   if (device_list.empty()) {
     SendDisplayChangedSignal();
     return false;
@@ -303,14 +315,18 @@ gboolean ExternalBacklight::ScanForDisplays() {
   i2c_handle_ = open(i2c_path_.c_str(), O_RDWR);
   if (!HasValidHandle())
     LOG(WARNING) << "Unable to open display device handle.";
-  SendDisplayChangedSignal();
+  if (!SendDisplayChangedSignal()) {
+    retry_send_display_changed_source_id_ =
+        g_timeout_add(kRetrySendDisplayChangedSignalDelayMs,
+                      RetrySendDisplayChangedSignalThunk, this);
+  }
   return false;
 }
 
-void ExternalBacklight::SendDisplayChangedSignal() {
+bool ExternalBacklight::SendDisplayChangedSignal() {
   int64 current_level = 0, max_level = 0;
   if (!ReadBrightnessLevels(&current_level, &max_level))
-    return;
+    return false;
 
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
@@ -328,6 +344,16 @@ void ExternalBacklight::SendDisplayChangedSignal() {
                            DBUS_TYPE_INVALID);
   if (!dbus_connection_send(connection, signal, NULL))
     LOG(ERROR) << "Failed to send signal.";
+  return true;
+}
+
+gboolean ExternalBacklight::RetrySendDisplayChangedSignal() {
+  LOG(INFO) << "Retrying SendDisplayChangedSignal().";
+  if (SendDisplayChangedSignal()) {
+    retry_send_display_changed_source_id_ = 0;
+    return FALSE;  // If successfully sent signal, do not retry.
+  }
+  return TRUE;
 }
 
 bool ExternalBacklight::ReadBrightnessLevels(int64* current_level,
@@ -350,6 +376,12 @@ bool ExternalBacklight::ReadBrightnessLevels(int64* current_level,
   if (!DDCRead(i2c_handle_, kDDCBrightnessIndex,
                &current_level8, &max_level8)) {
     LOG(WARNING) << "DDC read failed.";
+    return false;
+  }
+  LOG(INFO) << "Read DDC brightness: " << static_cast<int>(current_level8)
+            << "/" << static_cast<int>(max_level8);
+  if (max_level8 == 0) {
+    LOG(ERROR) << "Invalid max brightness level read from DDC.";
     return false;
   }
 
