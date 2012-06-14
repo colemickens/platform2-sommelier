@@ -68,7 +68,7 @@ class WiMaxServiceTest : public testing::Test {
   scoped_ptr<MockWiMaxNetworkProxy> proxy_;
   NiceMockControl control_;
   MockManager manager_;
-  MockMetrics metrics_;
+  NiceMock<MockMetrics> metrics_;
   scoped_refptr<MockWiMax> device_;
   WiMaxServiceRefPtr service_;
 };
@@ -238,6 +238,7 @@ TEST_F(WiMaxServiceTest, Connect) {
   // Successful disconnect.
   EXPECT_CALL(*device_, DisconnectFrom(_, _));
   error.Reset();
+  ExpectUpdateService();
   service_->Disconnect(&error);
   EXPECT_TRUE(error.IsSuccess());
 

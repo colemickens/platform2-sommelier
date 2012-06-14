@@ -7,6 +7,8 @@
 
 #include <set>
 
+#include <base/cancelable_callback.h>
+#include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -52,6 +54,8 @@ class WiMax : public Device {
  private:
   friend class WiMaxTest;
   FRIEND_TEST(WiMaxProviderTest, OnNetworksChanged);
+  FRIEND_TEST(WiMaxTest, ConnectTimeout);
+  FRIEND_TEST(WiMaxTest, ConnectTo);
   FRIEND_TEST(WiMaxTest, DropService);
   FRIEND_TEST(WiMaxTest, OnConnectComplete);
   FRIEND_TEST(WiMaxTest, OnDeviceVanished);
@@ -61,7 +65,8 @@ class WiMax : public Device {
   FRIEND_TEST(WiMaxTest, OnStatusChanged);
   FRIEND_TEST(WiMaxTest, StartStop);
 
-  static const int kTimeoutDefault;
+  static const int kDefaultConnectTimeoutSeconds;
+  static const int kDefaultRPCTimeoutSeconds;
 
   void OnScanNetworksComplete(const Error &error);
   void OnConnectComplete(const Error &error);
@@ -77,14 +82,31 @@ class WiMax : public Device {
   void DropService(Service::ConnectState state);
   void DropConnection();
 
+  // Initializes a callback that will invoke OnConnectTimeout. The timeout will
+  // not be restarted if it's already scheduled.
+  void StartConnectTimeout();
+  // Cancels the connect timeout callback, if any, previously scheduled through
+  // StartConnectTimeout.
+  void StopConnectTimeout();
+  // Returns true if a connect timeout is scheduled, false otherwise.
+  bool IsConnectTimeoutStarted() const;
+  // Called if a connect timeout scheduled through StartConnectTimeout
+  // fires. Marks the callback as stopped and invokes DropService.
+  void OnConnectTimeout();
+
   const RpcIdentifier path_;
 
+  base::WeakPtrFactory<WiMax> weak_ptr_factory_;
   scoped_ptr<WiMaxDeviceProxyInterface> proxy_;
   bool scanning_;
   WiMaxServiceRefPtr pending_service_;
   std::set<RpcIdentifier> networks_;
+  wimax_manager::DeviceStatus status_;
 
   ProxyFactory *proxy_factory_;
+
+  base::CancelableClosure connect_timeout_callback_;
+  int connect_timeout_seconds_;
 
   DISALLOW_COPY_AND_ASSIGN(WiMax);
 };

@@ -173,6 +173,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(ManagerTest, EnableTechnology);
   FRIEND_TEST(ManagerTest, DisableTechnology);
   FRIEND_TEST(WiFiMainTest, Connect);
+  FRIEND_TEST(WiMaxTest, ConnectTimeout);
 
   // Each device must implement this method to do the work needed to
   // enable the device to operate for establishing network connections.
