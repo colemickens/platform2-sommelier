@@ -172,6 +172,10 @@ ExternalBacklight::~ExternalBacklight() {
 bool ExternalBacklight::Init() {
   RegisterUdevEventHandler();
   ScanForDisplays();
+  // Schedule a backup call to ScanForDisplays() in case the system was slow in
+  // picking up some displays.
+  is_scan_scheduled_ = true;
+  g_timeout_add(kScanForDisplaysDelayMs, ScanForDisplaysThunk, this);
   return true;
 }
 
