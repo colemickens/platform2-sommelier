@@ -40,8 +40,9 @@ _CREATE_BUILDDIR := $(shell mkdir -p $(BUILD_DBUS_BINDINGS_DIR))
 DBUS_ADAPTOR_HEADERS :=
 
 DBUS_PROXY_HEADERS = \
-	dbus-properties.h \
 	dbus-objectmanager.h \
+	dbus-properties.h \
+	dbus-service.h \
 	dhcpcd.h \
 	power_manager.h \
 	supplicant-bss.h \
@@ -123,6 +124,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	dbus_objectmanager_proxy.o \
 	dbus_properties.o \
 	dbus_properties_proxy.o \
+	dbus_service_proxy.o \
 	default_profile.o \
 	device.o \
 	device_dbus_adaptor.o \
@@ -268,6 +270,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_control.o \
 	mock_dbus_objectmanager_proxy.o \
 	mock_dbus_properties_proxy.o \
+	mock_dbus_service_proxy.o \
 	mock_device.o \
 	mock_device_info.o \
 	mock_dhcp_config.o \

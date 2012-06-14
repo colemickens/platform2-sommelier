@@ -18,6 +18,7 @@ namespace shill {
 
 class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxyInterface;
+class DBusServiceProxyInterface;
 class DHCPProxyInterface;
 class ModemCDMAProxyInterface;
 class ModemGSMCardProxyInterface;
@@ -62,6 +63,8 @@ class ProxyFactory {
   virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
       const std::string &path,
       const std::string &service);
+
+  virtual DBusServiceProxyInterface *CreateDBusServiceProxy();
 
   virtual ModemManagerProxyInterface *CreateModemManagerProxy(
       ModemManagerClassic *manager,

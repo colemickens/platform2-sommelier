@@ -8,6 +8,7 @@
 
 #include "shill/dbus_objectmanager_proxy.h"
 #include "shill/dbus_properties_proxy.h"
+#include "shill/dbus_service_proxy.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/mm1_modem_modem3gpp_proxy.h"
 #include "shill/mm1_modem_modemcdma_proxy.h"
@@ -60,6 +61,10 @@ DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
     const string &path,
     const string &service) {
   return new DBusPropertiesProxy(connection(), path, service);
+}
+
+DBusServiceProxyInterface *ProxyFactory::CreateDBusServiceProxy() {
+  return new DBusServiceProxy(connection());
 }
 
 ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
