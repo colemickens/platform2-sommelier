@@ -18,6 +18,7 @@
 using std::string;
 using std::vector;
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 
@@ -441,6 +442,7 @@ TEST_F(TestService, Login) {
   EXPECT_CALL(slot_manager_, GetSession(1, _))
     .WillOnce(Return(false))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, WaitForPrivateObjects()).Times(AnyNumber());
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->Login(1, CKU_USER, NULL));
   string bad_pin("1234");
   string good_pin("111111");

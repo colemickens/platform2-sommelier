@@ -314,6 +314,9 @@ uint32_t ChapsServiceImpl::Login(uint64_t session_id,
   CHECK(session);
   // We have no notion of a security officer role.
   LOG_CK_RV_AND_RETURN_IF(user_type == CKU_SO, CKR_PIN_INCORRECT);
+  LOG_CK_RV_AND_RETURN_IF(user_type != CKU_USER &&
+                          user_type != CKU_CONTEXT_SPECIFIC,
+                          CKR_USER_TYPE_INVALID);
   // For backwards compatibility we'll accept the hard-coded pin previously used
   // with openCryptoki.  We'll also accept a protected authentication path
   // operation (i.e. a null pin).

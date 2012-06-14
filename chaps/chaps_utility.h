@@ -43,7 +43,7 @@ inline void CopyVectorToCharBuffer(const std::vector<uint8_t>& source,
 }
 
 // RVToString stringifies a PKCS #11 return value.  E.g. CKR_OK --> "CKR_OK".
-const char* CK_RVToString(CK_RV value);
+EXPORT_SPEC const char* CK_RVToString(CK_RV value);
 
 // AttributeToString stringifies a PKCS #11 attribute type.
 std::string AttributeToString(CK_ATTRIBUTE_TYPE attribute);

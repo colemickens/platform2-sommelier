@@ -12,7 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "chaps/attributes.pb.h"
+#include "attributes.pb.h"
 #include "chaps/chaps_factory_mock.h"
 #include "chaps/handle_generator_mock.h"
 #include "chaps/object_importer_mock.h"

@@ -10,6 +10,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
 
 using chromeos::SecureBlob;
 using std::map;
@@ -228,5 +229,8 @@ TEST(TestObjectStore, DeleteAll) {
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   ERR_load_crypto_strings();
+  // /dev/urandom is not available in qemu so give some fake entropy.
+  unsigned char seed[256];
+  RAND_seed(seed, sizeof(seed));
   return RUN_ALL_TESTS();
 }

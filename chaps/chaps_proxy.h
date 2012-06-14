@@ -9,7 +9,7 @@
 #include <base/memory/scoped_ptr.h>
 
 #include "chaps/chaps_interface.h"
-#include "chaps/chaps_proxy_generated.h"
+#include "chaps_proxy_generated.h"
 
 namespace chaps {
 

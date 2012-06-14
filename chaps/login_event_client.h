@@ -9,6 +9,8 @@
 
 #include <base/basictypes.h>
 
+#include "pkcs11/cryptoki.h"
+
 namespace chaps {
 
 class ChapsProxyImpl;
@@ -18,7 +20,7 @@ class ChapsProxyImpl;
 //   if (!client.Init())
 //     ...
 //   client.FireLoginEvent(...);
-class LoginEventClient {
+class EXPORT_SPEC LoginEventClient {
  public:
   LoginEventClient();
   virtual ~LoginEventClient();

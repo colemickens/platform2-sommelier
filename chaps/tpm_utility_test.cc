@@ -40,13 +40,15 @@ static BIGNUM* ConvertToBIGNUM(const string& big_integer) {
 
 class TestTPMUtility: public ::testing::Test {
  public:
+  TestTPMUtility() : tpm_("") {}
+
   void SetUp() {
     size_ = 1024;
     e_ = string("\x1\x0\x1", 3);
     unsigned char random[20];
     RAND_bytes(random, 20);
     auth_ = string((char*)random, 20);
-    ASSERT_TRUE(tpm_.Init(""));
+    ASSERT_TRUE(tpm_.Init());
   }
 
   void TestKey() {

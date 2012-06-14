@@ -5,6 +5,8 @@
 # Top-level Makefile for chaps.
 
 # Pull in chromium os defaults
+OUT ?= $(PWD)/build-opt-local
+
 include common.mk
 
 PKG_CONFIG ?= pkg-config
@@ -17,231 +19,226 @@ PC_DEPS = dbus-c++-1 protobuf openssl \
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-INCLUDE_DIRS = -I$(OUT)include -I.. $(PC_CFLAGS)
-LIB_DIRS = -L$(OUT)
+CXXFLAGS += -I$(SRC)/.. -I$(OUT) $(PC_CFLAGS) -DNDEBUG
+LDLIBS += $(PC_LIBS)
 
-CXXFLAGS := $(INCLUDE_DIRS) $(CXXFLAGS) -DNDEBUG
-LDFLAGS += $(LIB_DIRS) $(PC_LIBS)
-
-COMMON = $(OUT)chaps_utility.o $(OUT)attributes.pb.o $(OUT)attributes.o
-MOCK = $(OUT)chaps_factory_mock.o \
-       $(OUT)object_mock.o \
-       $(OUT)object_policy_mock.o \
-       $(OUT)object_pool_mock.o \
-       $(OUT)object_store_mock.o \
-       $(OUT)session_mock.o \
-       $(OUT)slot_manager_mock.o \
-       $(OUT)tpm_utility_mock.o \
-       $(OUT)object_importer_mock.o
-
-# Rules
-chaps_proxy_generated.h: chaps_interface.xml
+# Rules for Generated Code
+chaps_proxy_generated.h: $(SRC)/chaps_interface.xml
 	$(DBUSXX_XML2CPP) $< --proxy=$@
-RM_ON_CLEAN += chaps_proxy_generated.h
+clean: CLEAN(chaps_proxy_generated.h)
 
-chaps_adaptor_generated.h: chaps_interface.xml
+chaps_proxy.o.depends \
+chapsd_test.o.depends \
+chaps.o.depends \
+chaps_event_generator.o.depends \
+login_event_client.o.depends: chaps_proxy_generated.h
+
+chaps_adaptor_generated.h: $(SRC)/chaps_interface.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
-RM_ON_CLEAN += chaps_adaptor_generated.h
+clean: CLEAN(chaps_adaptor_generated.h)
 
-attributes.pb.h: attributes.proto
-	$(PROTOC) -I. --cpp_out=. $<
-RM_ON_CLEAN += attributes.pb.h attributes.pb.cc
+chaps_adaptor.o.depends \
+chapsd.o.depends : chaps_adaptor_generated.h
 
-attributes.pb.cc: attributes.pb.h
-	@echo
+attributes.pb.h attributes.pb.cc: $(SRC)/attributes.proto
+	$(PROTOC) -I$(SRC) --cpp_out=$(OUT) $<
+clean: CLEAN(attributes.pb.h attributes.pb.cc)
+$(eval $(call add_object_rules,attributes.pb.o,CXX,cc))
 
-$(OUT)object_pool_impl.o \
-$(OUT)object_pool_impl.pie.o \
-$(OUT)object_pool_impl.pic.o \
-$(OUT)object_pool_test.o \
-$(OUT)object_pool_test.pie.o \
-$(OUT)object_pool_test.pic.o \
-$(OUT)attributes.o \
-$(OUT)attributes.pie.o \
-$(OUT)attributes.pic.o: attributes.pb.h
+object_pool_impl.o.depends \
+object_pool_test.o.depends \
+attributes.o.depends: attributes.pb.h
 
-# TODO(dkrahn): Upgrade to the newest common.mk and use '.depends' for these
-# dependencies (crosbug.com/28051).
-$(OUT)chaps_adaptor.o \
-$(OUT)chaps_adaptor.pie.o \
-$(OUT)chaps_adaptor.pic.o \
-$(OUT)chapsd.o \
-$(OUT)chapsd.pie.o \
-$(OUT)chapsd.pic.o : chaps_adaptor_generated.h
+# Common Files
+COMMON_OBJS = chaps_utility.o attributes.pb.o attributes.o
 
-$(OUT)chaps_proxy.o \
-$(OUT)chaps_proxy.pie.o \
-$(OUT)chaps_proxy.pic.o \
-$(OUT)chapsd_test.o \
-$(OUT)chapsd_test.pie.o \
-$(OUT)chapsd_test.pic.o \
-$(OUT)chaps.o \
-$(OUT)chaps.pie.o \
-$(OUT)chaps.pic.o \
-$(OUT)chaps_event_generator.o \
-$(OUT)chaps_event_generator.pie.o \
-$(OUT)chaps_event_generator.pic.o \
-$(OUT)login_event_client.o \
-$(OUT)login_event_client.pie.o \
-$(OUT)login_event_client.pic.o: chaps_proxy_generated.h
+# Chaps Daemon
+chapsd_OBJS = $(COMMON_OBJS) \
+              chapsd.o \
+              chaps_service.o \
+              chaps_service_redirect.o \
+              chaps_adaptor.o \
+              slot_manager_impl.o \
+              session_impl.o \
+              object_impl.o \
+              object_policy_common.o \
+              object_policy_data.o \
+              object_policy_cert.o \
+              object_policy_key.o \
+              object_policy_public_key.o \
+              object_policy_private_key.o \
+              object_policy_secret_key.o \
+              object_pool_impl.o \
+              tpm_utility_impl.o \
+              chaps_factory_impl.o \
+              object_store_impl.o \
+              opencryptoki_importer.o
+chapsd_LIBS = -ldl -ltspi -lleveldb -lmemenv
+CXX_BINARY(chapsd): $(chapsd_OBJS)
+CXX_BINARY(chapsd): LDLIBS += $(chapsd_LIBS)
+clean: CLEAN(chapsd)
+all: CXX_BINARY(chapsd)
 
-$(OUT)libchaps.so: $(COMMON) \
-                   $(OUT)chaps.o \
-                   $(OUT)chaps_proxy.o \
-                   $(OUT)login_event_client.o
-	$(call cxx_library)
-RM_ON_CLEAN += $(OUT)libchaps.so
+# Chaps Client Library
+libchaps_OBJS = $(COMMON_OBJS) chaps.o chaps_proxy.o login_event_client.o
+CXX_LIBRARY(libchaps.so): $(libchaps_OBJS)
+clean: CLEAN(libchaps.so)
+all: CXX_LIBRARY(libchaps.so)
 
-$(OUT)chapsd: $(COMMON) \
-              $(OUT)chapsd.o \
-              $(OUT)chaps_service.o \
-              $(OUT)chaps_service_redirect.o \
-              $(OUT)chaps_adaptor.o \
-              $(OUT)slot_manager_impl.o \
-              $(OUT)session_impl.o \
-              $(OUT)object_impl.o \
-              $(OUT)object_policy_common.o \
-              $(OUT)object_policy_data.o \
-              $(OUT)object_policy_cert.o \
-              $(OUT)object_policy_key.o \
-              $(OUT)object_policy_public_key.o \
-              $(OUT)object_policy_private_key.o \
-              $(OUT)object_policy_secret_key.o \
-              $(OUT)object_pool_impl.o \
-              $(OUT)tpm_utility_impl.o \
-              $(OUT)chaps_factory_impl.o \
-              $(OUT)object_store_impl.o \
-              $(OUT)opencryptoki_importer.o
-	$(call cxx_binary, -ldl -ltspi -lleveldb -lmemenv)
-RM_ON_CLEAN += $(OUT)chapsd
+# Chaps Client CLI App
+chaps_client_OBJS = $(COMMON_OBJS) chaps_client.o chaps_proxy.o \
+                    login_event_client.o
+CXX_BINARY(chaps_client): $(chaps_client_OBJS)
+clean: CLEAN(chaps_client)
+all: CXX_BINARY(chaps_client)
 
-$(OUT)chaps_client: $(OUT)chaps_client.o lib
-	$(call cxx_binary, -lchaps)
-RM_ON_CLEAN += $(OUT)chaps_client
+# PKCS #11 Replay Utility
+p11_replay_OBJS = p11_replay.o
+CXX_BINARY(p11_replay): $(p11_replay_OBJS) CXX_LIBRARY(libchaps.so)
+clean: CLEAN(p11_replay)
+all: CXX_BINARY(p11_replay)
 
-$(OUT)chapsd_test: $(OUT)chapsd_test.o $(OUT)chaps_service_redirect.o
-	$(call cxx_binary, -lgtest -lgflags -lchaps -ldl)
-RM_ON_CLEAN += $(OUT)chapsd_test
+# Common Test Dependencies
+MOCK_OBJS = chaps_factory_mock.o \
+            object_mock.o \
+            object_policy_mock.o \
+            object_pool_mock.o \
+            object_store_mock.o \
+            session_mock.o \
+            slot_manager_mock.o \
+            tpm_utility_mock.o \
+            object_importer_mock.o
 
-$(OUT)chaps_test: $(OUT)chaps_test.o $(OUT)chaps_proxy_mock.o $(OUT)libchaps.so
-	$(call cxx_binary, -lgtest -lgmock)
-RM_ON_CLEAN += $(OUT)chaps_test
+GMOCK_LIBS = -lgtest -lgmock
 
-$(OUT)chaps_live_test: $(OUT)chaps_test.o
-	$(call cxx_binary, -lgtest -lgmock -lchaps)
-RM_ON_CLEAN += $(OUT)chaps_live_test
+# QEMU will not run death-tests, generate RSA keys, or handle the import sample
+# tarball. These tests need to be filtered out.
+qemu_test_exclusions = *DeathTest* \
+                       *ImportSample* \
+                       TestSession.RSA* \
+                       TestSession.KeyTypeMismatch \
+                       TestSession.KeyFunctionPermission \
+                       TestSession.BadKeySize \
+                       TestSession.BadSignature
+# We want $(space)=' '.
+space :=
+space +=
+qemu_test_filter := -$(subst $(space),:,$(strip $(qemu_test_exclusions)))
+tests: override GTEST_ARGS.qemu.arm := --gtest_filter=$(qemu_test_filter)
 
-$(OUT)p11_replay: $(OUT)p11_replay.o lib
-	$(call cxx_binary, -lchaps)
-RM_ON_CLEAN += $(OUT)p11_replay
+# Unit Tests
+chaps_test_OBJS = $(COMMON_OBJS) chaps_test.o chaps_proxy_mock.o
+chaps_test_LIBS = $(GMOCK_LIBS)
+CXX_BINARY(chaps_test): $(chaps_test_OBJS) CXX_LIBRARY(libchaps.so)
+CXX_BINARY(chaps_test): LDLIBS += $(chaps_test_LIBS)
+clean: CLEAN(chaps_test)
+tests: TEST(CXX_BINARY(chaps_test))
 
-$(OUT)chaps_event_generator: $(COMMON) \
-                             $(OUT)chaps_event_generator.o \
-                             $(OUT)chaps_proxy.o
-	$(call cxx_binary)
-RM_ON_CLEAN += $(OUT)chaps_event_generator
+chaps_service_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
+                          chaps_service_test.o chaps_service.o
+chaps_service_test_LIBS = $(GMOCK_LIBS)
+CXX_BINARY(chaps_service_test): $(chaps_service_test_OBJS)
+CXX_BINARY(chaps_service_test): LDLIBS += $(chaps_service_test_LIBS)
+clean: CLEAN(chaps_service_test)
+tests: TEST(CXX_BINARY(chaps_service_test))
 
-$(OUT)chaps_service_test: $(COMMON) $(MOCK) \
-                          $(OUT)chaps_service_test.o \
-                          $(OUT)chaps_service.o
-	$(call cxx_binary, -lgtest -lgmock)
-RM_ON_CLEAN += $(OUT)chaps_service_test
+slot_manager_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
+                         slot_manager_test.o slot_manager_impl.o
+slot_manager_test_LIBS = $(GMOCK_LIBS)
+CXX_BINARY(slot_manager_test): $(slot_manager_test_OBJS)
+CXX_BINARY(slot_manager_test): LDLIBS += $(slot_manager_test_LIBS)
+clean: CLEAN(slot_manager_test)
+tests: TEST(CXX_BINARY(slot_manager_test))
 
-$(OUT)slot_manager_test: $(COMMON) $(MOCK) \
-                         $(OUT)slot_manager_test.o \
-                         $(OUT)slot_manager_impl.o
-	$(call cxx_binary, -lgtest -lgmock)
-RM_ON_CLEAN += $(OUT)slot_manager_test
+session_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) session_test.o session_impl.o
+session_test_LIBS = $(GMOCK_LIBS)
+CXX_BINARY(session_test): $(session_test_OBJS)
+CXX_BINARY(session_test): LDLIBS += $(session_test_LIBS)
+clean: CLEAN(session_test)
+tests: TEST(CXX_BINARY(session_test))
 
-$(OUT)session_test: $(COMMON) $(MOCK) \
-                    $(OUT)session_test.o \
-                    $(OUT)session_impl.o
-	$(call cxx_binary, -lgtest -lgmock)
-RM_ON_CLEAN += $(OUT)session_test
+object_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) object_test.o object_impl.o
+object_test_LIBS = $(GMOCK_LIBS)
+CXX_BINARY(object_test): $(object_test_OBJS)
+CXX_BINARY(object_test): LDLIBS += $(object_test_LIBS)
+clean: CLEAN(object_test)
+tests: TEST(CXX_BINARY(object_test))
 
-$(OUT)object_test: $(COMMON) $(MOCK) \
-                    $(OUT)object_test.o \
-                    $(OUT)object_impl.o
-	$(call cxx_binary, -lgtest -lgmock)
-RM_ON_CLEAN += $(OUT)object_test
+object_policy_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
+                          object_policy_test.o \
+                          object_policy_common.o \
+                          object_policy_data.o \
+                          object_policy_cert.o \
+                          object_policy_key.o \
+                          object_policy_public_key.o \
+                          object_policy_private_key.o \
+                          object_policy_secret_key.o
+object_policy_test_LIBS = $(GMOCK_LIBS)
+CXX_BINARY(object_policy_test): $(object_policy_test_OBJS)
+CXX_BINARY(object_policy_test): LDLIBS += $(object_policy_test_LIBS)
+clean: CLEAN(object_policy_test)
+tests: TEST(CXX_BINARY(object_policy_test))
 
-$(OUT)object_policy_test: $(COMMON) $(MOCK) \
-                          $(OUT)object_policy_test.o \
-                          $(OUT)object_policy_common.o \
-                          $(OUT)object_policy_data.o \
-                          $(OUT)object_policy_cert.o \
-                          $(OUT)object_policy_key.o \
-                          $(OUT)object_policy_public_key.o \
-                          $(OUT)object_policy_private_key.o \
-                          $(OUT)object_policy_secret_key.o
-	$(call cxx_binary, -lgtest -lgmock)
-RM_ON_CLEAN += $(OUT)object_policy_test
+object_pool_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
+                        object_pool_test.o object_pool_impl.o
+object_pool_test_LIBS = $(GMOCK_LIBS)
+CXX_BINARY(object_pool_test): $(object_pool_test_OBJS)
+CXX_BINARY(object_pool_test): LDLIBS += $(object_pool_test_LIBS)
+clean: CLEAN(object_pool_test)
+tests: TEST(CXX_BINARY(object_pool_test))
 
-$(OUT)object_pool_test: $(COMMON) $(MOCK) \
-                        $(OUT)object_pool_test.o \
-                        $(OUT)object_pool_impl.o
-	$(call cxx_binary, -lgtest -lgmock)
-RM_ON_CLEAN += $(OUT)object_pool_test
+object_store_test_OBJS = $(COMMON_OBJS) object_store_test.o object_store_impl.o
+object_store_test_LIBS = -lgtest -lleveldb -lmemenv
+CXX_BINARY(object_store_test): $(object_store_test_OBJS)
+CXX_BINARY(object_store_test): LDLIBS += $(object_store_test_LIBS)
+clean: CLEAN(object_store_test)
+tests: TEST(CXX_BINARY(object_store_test))
 
-$(OUT)object_store_test: $(COMMON) \
-                        $(OUT)object_store_test.o \
-                        $(OUT)object_store_impl.o
-	$(call cxx_binary, -lgtest -lleveldb -lmemenv)
-RM_ON_CLEAN += $(OUT)object_store_test
+opencryptoki_importer_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
+                                  opencryptoki_importer_test.o \
+                                  opencryptoki_importer.o
+opencryptoki_importer_test_LIBS = $(GMOCK_LIBS)
+CXX_BINARY(opencryptoki_importer_test): $(opencryptoki_importer_test_OBJS)
+CXX_BINARY(opencryptoki_importer_test): LDLIBS += \
+                                        $(opencryptoki_importer_test_LIBS)
+clean: CLEAN(opencryptoki_importer_test)
+tests: $(OUT)/opencryptoki_sample_token.tgz
+$(OUT)/opencryptoki_sample_token.tgz:
+	cp $(SRC)/opencryptoki_sample_token.tgz $@
+clean: CLEAN(opencryptoki_sample_token.tgz)
+tests: TEST(CXX_BINARY(opencryptoki_importer_test))
 
-$(OUT)tpm_utility_test: $(COMMON) $(MOCK) \
-                        $(OUT)tpm_utility_test.o \
-                        $(OUT)tpm_utility_impl.o
-	$(call cxx_binary, -lgtest -lgmock -ltspi)
-RM_ON_CLEAN += $(OUT)tpm_utility_test
+import_random: override GTEST_ARGS := \
+    --gtest_repeat=100 \
+    --gtest_break_on_failure \
+    --gtest_filter=RandomizedTests/TestImporterWithModifier.ImportSample/*
+import_random: override GTEST_ARGS.qemu.arm := --gtest_filter=-*
+import_random: TEST(CXX_BINARY(opencryptoki_importer_test))
+more_tests: import_random
 
-$(OUT)opencryptoki_importer_test: $(COMMON) $(MOCK) \
-                                  $(OUT)opencryptoki_importer_test.o \
-                                  $(OUT)opencryptoki_importer.o
-	$(call cxx_binary, -lgtest -lgmock)
-RM_ON_CLEAN += $(OUT)opencryptoki_importer_test
+# Live Tests
+# Note: These tests require a live system with gtest and gmock installed. These
+# cannot be run without a real TPM and cannot be run with autotest. These tests
+# do not need to be run regularly but may be useful in the future and so have
+# been kept around. To run these tests:
+# 1) Add the targets to 'all'.
+# 2) Add 'dobin' instructions to the ebuild and install on target device.
+# 3) On the target system, login as any user and open a shell.
+# 4) Run 'sudo tpm_utility_test'.
+# 5) Run 'sudo chapsd_test'.
+# 6) Run 'chapsd_test --use_dbus'.
+chapsd_test_OBJS = $(COMMON_OBJS) chapsd_test.o chaps_proxy.o \
+                   chaps_service_redirect.o
+chapsd_test_LIBS = -lgtest -lgflags -ldl
+CXX_BINARY(chapsd_test): $(chapsd_test_OBJS) CXX_LIBRARY(libchaps.so)
+CXX_BINARY(chapsd_test): LDLIBS += $(chapsd_test_LIBS)
+clean: CLEAN(chapsd_test)
 
-# Some shortcuts
-all: $(OUT)libchaps.so $(OUT)chapsd $(OUT)chaps_client $(OUT)p11_replay
-
-lib: $(OUT)libchaps.so
-
-chapsd: $(OUT)chapsd
-	@echo
-
-chapsd_test: $(OUT)chapsd_test
-	@echo
-
-dbus-headers: chaps_adaptor_generated.h \
-              chaps_proxy_generated.h
-
-protobufs: attributes.pb.h
-
-tests: $(OUT)chaps_test \
-       $(OUT)chaps_service_test \
-       $(OUT)slot_manager_test \
-       $(OUT)session_test \
-       $(OUT)object_test \
-       $(OUT)object_policy_test \
-       $(OUT)object_pool_test \
-       $(OUT)object_store_test \
-       $(OUT)opencryptoki_importer_test
-
-live_tests: $(OUT)chapsd_test \
-            $(OUT)chaps_event_generator \
-            $(OUT)tpm_utility_test
-
-runtests: tests
-	$(OUT)chaps_test
-	$(OUT)chaps_service_test
-	$(OUT)slot_manager_test
-	$(OUT)session_test
-	$(OUT)object_test
-	$(OUT)object_policy_test
-	$(OUT)object_pool_test
-	$(OUT)object_store_test
-	$(OUT)opencryptoki_importer_test
-	$(OUT)opencryptoki_importer_test --gtest_repeat=100 \
-	    --gtest_break_on_failure \
-	    --gtest_filter=RandomizedTests/TestImporterWithModifier.ImportSample/*
+tpm_utility_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
+                        tpm_utility_test.o \
+                        tpm_utility_impl.o
+tpm_utility_test_LIBS = $(GMOCK_LIBS) -ltspi
+CXX_BINARY(tpm_utility_test): $(tpm_utility_test_OBJS)
+CXX_BINARY(tpm_utility_test): LDLIBS += $(tpm_utility_test_LIBS)
+clean: CLEAN(tpm_utility_test)
 

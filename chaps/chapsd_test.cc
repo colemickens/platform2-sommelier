@@ -28,7 +28,7 @@ static chaps::ChapsInterface* CreateChapsInstance() {
       return proxy.release();
   } else {
     scoped_ptr<chaps::ChapsServiceRedirect> service(
-        new chaps::ChapsServiceRedirect("libopencryptoki.so"));
+        new chaps::ChapsServiceRedirect("libchaps.so"));
     if (service->Init())
       return service.release();
   }
@@ -153,7 +153,7 @@ TEST_F(TestP11, SlotList) {
   EXPECT_LT(0, slot_list.size());
   printf("Slots: ");
   for (size_t i = 0; i < slot_list.size(); ++i) {
-    printf("%d ", slot_list[i]);
+    printf("%d ", static_cast<int>(slot_list[i]));
   }
   printf("\n");
   result = chaps_->GetSlotList(false, NULL);
@@ -225,7 +225,7 @@ TEST_F(TestP11, MechList) {
   uint32_t result = chaps_->GetMechanismList(0, &mech_list);
   EXPECT_EQ(CKR_OK, result);
   EXPECT_LT(0, mech_list.size());
-  printf("Mech List [0]: %d\n", mech_list[0]);
+  printf("Mech List [0]: %d\n", static_cast<int>(mech_list[0]));
   result = chaps_->GetMechanismList(0, NULL);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, result);
   result = chaps_->GetMechanismList(17, &mech_list);
@@ -239,7 +239,8 @@ TEST_F(TestP11, MechInfo) {
   uint32_t result = chaps_->GetMechanismInfo(0, CKM_RSA_PKCS, &min_key_size,
                                          &max_key_size, &flags);
   EXPECT_EQ(CKR_OK, result);
-  printf("RSA Key Sizes: %d - %d\n", min_key_size, max_key_size);
+  printf("RSA Key Sizes: %d - %d\n", static_cast<int>(min_key_size),
+         static_cast<int>(max_key_size));
   result = chaps_->GetMechanismInfo(0,
                                     0xFFFF,
                                     &min_key_size, &max_key_size,
@@ -297,7 +298,7 @@ TEST_F(TestP11PublicSession, GetSessionInfo) {
   EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(session_id_, &slot_id, &state,
                                            &flags, &device_error));
   EXPECT_EQ(0, slot_id);
-  EXPECT_EQ(CKS_RW_PUBLIC_SESSION, state);
+  EXPECT_TRUE(state == CKS_RW_PUBLIC_SESSION || state == CKS_RW_USER_FUNCTIONS);
   EXPECT_EQ(CKF_SERIAL_SESSION|CKF_RW_SESSION, flags);
   uint64_t readonly_session_id;
   ASSERT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION,
@@ -306,7 +307,7 @@ TEST_F(TestP11PublicSession, GetSessionInfo) {
                                            &state, &flags, &device_error));
   EXPECT_EQ(CKR_OK, chaps_->CloseSession(readonly_session_id));
   EXPECT_EQ(0, slot_id);
-  EXPECT_EQ(CKS_RO_PUBLIC_SESSION, state);
+  EXPECT_TRUE(state == CKS_RO_PUBLIC_SESSION || state == CKS_RO_USER_FUNCTIONS);
   EXPECT_EQ(CKF_SERIAL_SESSION, flags);
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             chaps_->GetSessionInfo(17, &slot_id, &state, &flags,
@@ -349,12 +350,13 @@ TEST_F(TestP11PublicSession, Login) {
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             chaps_->Login(17, CKU_USER, &user_pin_));
   EXPECT_EQ(CKR_USER_TYPE_INVALID, chaps_->Login(session_id_, 17, &user_pin_));
-  EXPECT_NE(CKR_OK, chaps_->Login(session_id_, CKU_USER, NULL));
+  EXPECT_EQ(CKR_OK, chaps_->Login(session_id_, CKU_USER, NULL));
   EXPECT_EQ(CKR_OK, chaps_->Login(session_id_, CKU_USER, &user_pin_));
 }
 
 TEST_F(TestP11PublicSession, Logout) {
-  EXPECT_EQ(CKR_USER_NOT_LOGGED_IN, chaps_->Logout(session_id_));
+  CK_RV result = chaps_->Logout(session_id_);
+  EXPECT_TRUE(result == CKR_USER_NOT_LOGGED_IN || result == CKR_OK);
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->Logout(17));
   ASSERT_EQ(CKR_OK, chaps_->Login(session_id_, CKU_USER, &user_pin_));
   EXPECT_EQ(CKR_OK, chaps_->Logout(session_id_));
@@ -437,7 +439,7 @@ TEST_F(TestP11Object, GetAttributeValue) {
 TEST_F(TestP11Object, SetAttributeValue) {
   CK_BYTE buffer[100];
   memset(buffer, 0xAA, sizeof(buffer));
-  CK_ATTRIBUTE attributes[1] = {{CKA_VALUE, buffer, sizeof(buffer)}};
+  CK_ATTRIBUTE attributes[1] = {{CKA_LABEL, buffer, sizeof(buffer)}};
   vector<uint8_t> serial;
   ASSERT_TRUE(SerializeAttributes(attributes, 1, &serial));
   EXPECT_EQ(CKR_OK, chaps_->SetAttributeValue(session_id_,
@@ -664,12 +666,7 @@ TEST_F(TestP11PublicSession, Digest) {
   uint64_t key_handle = 0;
   ASSERT_EQ(CKR_OK, chaps_->CreateObject(session_id_, key, &key_handle));
   EXPECT_EQ(CKR_OK, chaps_->DigestInit(session_id_, CKM_SHA_1, parameter));
-  EXPECT_EQ(CKR_OK, chaps_->DigestKey(session_id_, key_handle));
-  vector<uint8_t> digest3;
-  EXPECT_EQ(CKR_OK,
-            chaps_->DigestFinal(session_id_, max_out_length, &not_used,
-                                &digest3));
-  EXPECT_TRUE(std::equal(digest.begin(), digest.end(), digest3.begin()));
+  EXPECT_EQ(CKR_KEY_INDIGESTIBLE, chaps_->DigestKey(session_id_, key_handle));
 }
 
 TEST_F(TestP11PublicSession, Sign) {

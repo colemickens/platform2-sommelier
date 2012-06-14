@@ -82,13 +82,13 @@ static CK_RV HandlePKCS11Output(CK_RV result,
 namespace chaps {
 
 // Helpers to support a mock proxy (useful in testing).
-void EnableMockProxy(ChapsInterface* proxy, bool is_initialized) {
+EXPORT_SPEC void EnableMockProxy(ChapsInterface* proxy, bool is_initialized) {
   g_proxy.reset(proxy);
   g_is_using_mock = true;
   g_is_initialized = is_initialized;
 }
 
-void DisableMockProxy() {
+EXPORT_SPEC void DisableMockProxy() {
   // We want to release, not reset b/c we don't own the mock proxy.
   ChapsInterface* ignore = g_proxy.release();
   (void)ignore;

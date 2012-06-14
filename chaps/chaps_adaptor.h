@@ -7,7 +7,7 @@
 
 #include <base/basictypes.h>
 
-#include "chaps/chaps_adaptor_generated.h"
+#include "chaps_adaptor_generated.h"
 
 namespace base {
   class Lock;
