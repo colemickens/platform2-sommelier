@@ -232,8 +232,9 @@ TEST_F(WiMaxServiceTest, Connect) {
   EXPECT_TRUE(error.IsSuccess());
 
   // Connect while already connected.
+  // TODO(benchan): Check for error if we populate error again after changing
+  // the way that Chrome handles Error::kAlreadyConnected situation.
   service_->Connect(&error);
-  EXPECT_EQ(Error::kAlreadyConnected, error.type());
 
   // Successful disconnect.
   EXPECT_CALL(*device_, DisconnectFrom(_, _));

@@ -127,8 +127,10 @@ bool WiMaxService::IsStarted() const {
 
 void WiMaxService::Connect(Error *error) {
   if (device_) {
-    Error::PopulateAndLog(
-        error, Error::kAlreadyConnected, "Already connected.");
+    // TODO(benchan): Populate error again after changing the way that
+    // Chrome handles Error::kAlreadyConnected situation.
+    LOG(WARNING) << "Service " << GetStorageIdentifier()
+                 << " is already being connected or already connected.";
     return;
   }
   if (!connectable()) {
