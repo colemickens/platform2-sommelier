@@ -302,19 +302,16 @@ else
 fi
 
 # Make sure required /var subdirectories exist.
-for d in cache db empty lib lib/ureadahead lock log log/metrics \
-         log/window_manager run tmp; do
-  mkdir -p -m 0755 /var/$d
-done
+mkdir -p -m 0755 /var/cache /var/db /var/empty /var/lib/ureadahead \
+                 /var/lock /var/log/metrics /var/log/window_manager \
+                 /var/run /var/tmp
 
 # /var/tmp must be world-writable and sticky
 chmod 1777 /var/tmp
 # /home/root must be group-writable and sticky
 chmod 1771 /home/root
 # Selected directories must belong to the chronos user.
-chown chronos:chronos /home/chronos
-chown chronos:chronos /var/log/metrics
-chown chronos:chronos /var/log/window_manager
+chown chronos:chronos /home/chronos /var/log/metrics /var/log/window_manager
 
 # If we're mod_for_test, both /home and /tmp need to be mounted without noexec
 #mod_for_test#mount -n -o remount,exec,suid /home
@@ -413,8 +410,7 @@ if [ -e /var/lib/enterprise_serial_number_recovery -o \
         ! -e /root/.forget_usernames \) ]; then
   MACHINE_INFO=/tmp/machine-info
   touch $MACHINE_INFO
-  chmod go-stwx $MACHINE_INFO
-  chmod go+r $MACHINE_INFO
+  chmod 0644 $MACHINE_INFO
   # We need serial numbers for enterprise enrollment process.
   # Dump full information in the VPD.
   dump_vpd_log --full --stdout >> $MACHINE_INFO
