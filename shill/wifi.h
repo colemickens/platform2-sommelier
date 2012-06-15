@@ -156,6 +156,7 @@ class WiFi : public Device {
  private:
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiScanTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
+  FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
@@ -164,7 +165,7 @@ class WiFi : public Device {
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsOpen);  // SuspectCredentials
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPANeverConnected);  // as above
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);  // ""
-  FRIEND_TEST(WiFiPropertyTest, ClearDerivedProperty);  // bgscan_method_
+  FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiScanTest, FastRescan);  // kFastScanIntervalSeconds
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
@@ -174,6 +175,7 @@ class WiFi : public Device {
   static const uint16 kDefaultBgscanShortIntervalSeconds;
   static const int32 kDefaultBgscanSignalThresholdDbm;
   static const uint16 kDefaultScanIntervalSeconds;
+  static const uint16 kBackgroundScanIntervalSeconds;
   static const char kManagerErrorSSIDTooLong[];
   static const char kManagerErrorSSIDTooShort[];
   static const char kManagerErrorSSIDRequired[];
@@ -187,8 +189,9 @@ class WiFi : public Device {
   static const int kNumFastScanAttempts;
   static const int kFastScanIntervalSeconds;
 
-  std::string CreateBgscanConfigString();
-  std::string GetBgscanMethod(Error */* error */) { return bgscan_method_; }
+  void AppendBgscan(WiFiService *service,
+                    std::map<std::string, DBus::Variant> *service_params) const;
+  std::string GetBgscanMethod(const int &argument, Error *error);
   uint16 GetBgscanShortInterval(Error */* error */) {
     return bgscan_short_interval_seconds_;
   }
@@ -196,10 +199,12 @@ class WiFi : public Device {
     return bgscan_signal_threshold_dbm_;
   }
   uint16 GetScanInterval(Error */* error */) { return scan_interval_seconds_; }
-  void SetBgscanMethod(const std::string &method, Error *error);
+  void SetBgscanMethod(
+      const int &argument, const std::string &method, Error *error);
   void SetBgscanShortInterval(const uint16 &seconds, Error *error);
   void SetBgscanSignalThreshold(const int32 &dbm, Error *error);
   void SetScanInterval(const uint16 &seconds, Error *error);
+  void ClearBgscanMethod(const int &argument, Error *error);
 
   WiFiServiceRefPtr CreateServiceForEndpoint(
       const WiFiEndpoint &endpoint, bool hidden_ssid);
@@ -232,11 +237,6 @@ class WiFi : public Device {
       const std::string &name,
       int32(WiFi::*get)(Error *error),
       void(WiFi::*set)(const int32 &value, Error *error));
-  void HelpRegisterDerivedString(
-      PropertyStore *store,
-      const std::string &name,
-      std::string(WiFi::*get)(Error *error),
-      void(WiFi::*set)(const std::string &value, Error *error));
   void HelpRegisterDerivedUint16(
       PropertyStore *store,
       const std::string &name,

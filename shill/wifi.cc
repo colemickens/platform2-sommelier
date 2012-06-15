@@ -62,6 +62,8 @@ const char *WiFi::kDefaultBgscanMethod =
 const uint16 WiFi::kDefaultBgscanShortIntervalSeconds = 30;
 const int32 WiFi::kDefaultBgscanSignalThresholdDbm = -50;
 const uint16 WiFi::kDefaultScanIntervalSeconds = 180;
+// Scan interval while connected.
+const uint16 WiFi::kBackgroundScanIntervalSeconds = 3601;
 // Note that WiFi generates some manager-level errors, because it implements
 // the Manager.GetWiFiService flimflam API. The API is implemented here,
 // rather than in manager, to keep WiFi-specific logic in the right place.
@@ -104,16 +106,23 @@ WiFi::WiFi(ControlInterface *control_interface,
       need_bss_flush_(false),
       resumed_at_((struct timeval){0}),
       fast_scans_remaining_(kNumFastScanAttempts),
-      bgscan_method_(kDefaultBgscanMethod),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_pending_(false),
       scan_interval_seconds_(kDefaultScanIntervalSeconds) {
   PropertyStore *store = this->mutable_store();
-  HelpRegisterDerivedString(store,
-                            flimflam::kBgscanMethodProperty,
-                            &WiFi::GetBgscanMethod,
-                            &WiFi::SetBgscanMethod);
+  store->RegisterDerivedString(
+      flimflam::kBgscanMethodProperty,
+      StringAccessor(
+          // TODO(petkov): CustomMappedAccessor is used for convenience because
+          // it provides a way to define a custom clearer (unlike
+          // CustomAccessor). We need to implement a fully custom accessor with
+          // no extra argument.
+          new CustomMappedAccessor<WiFi, string, int>(this,
+                                                      &WiFi::ClearBgscanMethod,
+                                                      &WiFi::GetBgscanMethod,
+                                                      &WiFi::SetBgscanMethod,
+                                                      0)));  // Unused.
   HelpRegisterDerivedUint16(store,
                             flimflam::kBgscanShortIntervalProperty,
                             &WiFi::GetBgscanShortInterval,
@@ -337,10 +346,8 @@ void WiFi::ConnectTo(WiFiService *service,
     const uint32_t scan_ssid = 1;  // "True": Use directed probe.
     service_params[wpa_supplicant::kNetworkPropertyScanSSID].writer().
         append_uint32(scan_ssid);
-    service_params[wpa_supplicant::kNetworkPropertyBgscan].writer().
-        append_string(CreateBgscanConfigString().c_str());
-    network_path =
-        supplicant_interface_proxy_->AddNetwork(service_params);
+    AppendBgscan(service, &service_params);
+    network_path = supplicant_interface_proxy_->AddNetwork(service_params);
     rpcid_by_service_[service] = network_path;
   } catch (const DBus::Error &e) {  // NOLINT
     LOG(ERROR) << "exception while adding network: " << e.what();
@@ -438,19 +445,44 @@ void WiFi::NotifyEndpointChanged(const WiFiEndpoint &endpoint) {
   DCHECK(service);
   if (service) {
     service->NotifyEndpointUpdated(endpoint);
-    return;
   }
 }
 
-string WiFi::CreateBgscanConfigString() {
-  return StringPrintf("%s:%d:%d:%d",
-                      bgscan_method_.c_str(),
-                      bgscan_short_interval_seconds_,
-                      bgscan_signal_threshold_dbm_,
-                      scan_interval_seconds_);
+void WiFi::AppendBgscan(WiFiService *service,
+                        map<string, DBus::Variant> *service_params) const {
+  int scan_interval = kBackgroundScanIntervalSeconds;
+  string method = bgscan_method_;
+  if (method.empty()) {
+    // If multiple APs are detected for this SSID, configure the default method.
+    // Otherwise, disable background scanning completely.
+    if (service->GetEndpointCount() > 1) {
+      method = kDefaultBgscanMethod;
+    } else {
+      LOG(INFO) << "Background scan disabled -- single Endpoint for Service.";
+      return;
+    }
+  } else {
+    // If the background scan method was explicitly specified, honor the
+    // configured background scan interval.
+    scan_interval = scan_interval_seconds_;
+  }
+  DCHECK(!method.empty());
+  string config_string = StringPrintf("%s:%d:%d:%d",
+                                      method.c_str(),
+                                      bgscan_short_interval_seconds_,
+                                      bgscan_signal_threshold_dbm_,
+                                      scan_interval);
+  LOG(INFO) << "Background scan: " << config_string;
+  (*service_params)[wpa_supplicant::kNetworkPropertyBgscan].writer()
+      .append_string(config_string.c_str());
 }
 
-void WiFi::SetBgscanMethod(const string &method, Error *error) {
+string WiFi::GetBgscanMethod(const int &/*argument*/, Error */* error */) {
+  return bgscan_method_.empty() ? kDefaultBgscanMethod : bgscan_method_;
+}
+
+void WiFi::SetBgscanMethod(
+    const int &/*argument*/, const string &method, Error *error) {
   if (method != wpa_supplicant::kNetworkBgscanMethodSimple &&
       method != wpa_supplicant::kNetworkBgscanMethodLearn) {
     const string error_message =
@@ -490,6 +522,10 @@ void WiFi::SetScanInterval(const uint16 &seconds, Error */*error*/) {
   // supplicant). However, we do not update |pending_service_| or
   // |current_service_|, because supplicant does not allow for
   // reconfiguration without disconnect and reconnect.
+}
+
+void WiFi::ClearBgscanMethod(const int &/*argument*/, Error */*error*/) {
+  bgscan_method_.clear();
 }
 
 // To avoid creating duplicate services, call FindServiceForEndpoint
@@ -892,7 +928,8 @@ void WiFi::BSSAddedTask(
     if (manager()->HasService(service)) {
       manager()->UpdateService(service);
     } else {
-      DCHECK_EQ(1, service->NumEndpoints());  // Expect registered by now if >1.
+      // Expect registered by now if >1.
+      DCHECK_EQ(1, service->GetEndpointCount());
       manager()->RegisterService(service);
     }
   } else {
@@ -1247,16 +1284,6 @@ void WiFi::HelpRegisterDerivedInt32(
   store->RegisterDerivedInt32(
       name,
       Int32Accessor(new CustomAccessor<WiFi, int32>(this, get, set)));
-}
-
-void WiFi::HelpRegisterDerivedString(
-    PropertyStore *store,
-    const string &name,
-    string(WiFi::*get)(Error *error),
-    void(WiFi::*set)(const string &value, Error *error)) {
-  store->RegisterDerivedString(
-      name,
-      StringAccessor(new CustomAccessor<WiFi, string>(this, get, set)));
 }
 
 void WiFi::HelpRegisterDerivedUint16(

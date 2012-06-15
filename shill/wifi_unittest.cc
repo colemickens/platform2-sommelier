@@ -18,6 +18,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/stringprintf.h>
 #include <base/string_number_conversions.h>
+#include <base/string_split.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
@@ -48,6 +49,7 @@
 #include "shill/mock_time.h"
 #include "shill/mock_wifi_service.h"
 #include "shill/nice_mock_control.h"
+#include "shill/property_store_inspector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 #include "shill/scope_logger.h"
@@ -143,10 +145,17 @@ TEST_F(WiFiPropertyTest, SetProperty) {
   }
 }
 
-TEST_F(WiFiPropertyTest, ClearDerivedProperty) {
+TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
   EXPECT_NE(wpa_supplicant::kNetworkBgscanMethodLearn,
             WiFi::kDefaultBgscanMethod);
-  EXPECT_EQ(WiFi::kDefaultBgscanMethod, device_->bgscan_method_);
+  EXPECT_TRUE(device_->bgscan_method_.empty());
+
+  string method;
+  PropertyStoreInspector inspector(&device_->store());
+  EXPECT_TRUE(inspector.GetStringProperty(flimflam::kBgscanMethodProperty,
+                                          &method));
+  EXPECT_EQ(WiFi::kDefaultBgscanMethod, method);
+  EXPECT_EQ(wpa_supplicant::kNetworkBgscanMethodSimple, method);
 
   ::DBus::Error error;
   EXPECT_TRUE(DBusAdaptor::SetProperty(
@@ -156,10 +165,16 @@ TEST_F(WiFiPropertyTest, ClearDerivedProperty) {
           wpa_supplicant::kNetworkBgscanMethodLearn),
       &error));
   EXPECT_EQ(wpa_supplicant::kNetworkBgscanMethodLearn, device_->bgscan_method_);
+  EXPECT_TRUE(inspector.GetStringProperty(flimflam::kBgscanMethodProperty,
+                                          &method));
+  EXPECT_EQ(wpa_supplicant::kNetworkBgscanMethodLearn, method);
 
   EXPECT_TRUE(DBusAdaptor::ClearProperty(
       device_->mutable_store(), flimflam::kBgscanMethodProperty, &error));
-  EXPECT_EQ(WiFi::kDefaultBgscanMethod, device_->bgscan_method_);
+  EXPECT_TRUE(inspector.GetStringProperty(flimflam::kBgscanMethodProperty,
+                                          &method));
+  EXPECT_EQ(WiFi::kDefaultBgscanMethod, method);
+  EXPECT_TRUE(device_->bgscan_method_.empty());
 }
 
 class WiFiObjectTest : public ::testing::TestWithParam<string> {
@@ -458,6 +473,21 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(*storage, GetString(StrEq(*id), flimflam::kSSIDProperty, _))
         .WillRepeatedly(DoAll(SetArgumentPointee<2>(hex_ssid), Return(true)));
   }
+
+  bool SetBgscanMethod(const string &method) {
+    ::DBus::Error error;
+    return DBusAdaptor::SetProperty(
+        wifi_->mutable_store(),
+        flimflam::kBgscanMethodProperty,
+        DBusAdaptor::StringToVariant(method),
+        &error);
+  }
+
+  void AppendBgscan(WiFiService *service,
+                    std::map<std::string, DBus::Variant> *service_params) {
+    wifi_->AppendBgscan(service, service_params);
+  }
+
   void ReportCertification(const map<string, ::DBus::Variant> &properties) {
     wifi_->CertificationTask(properties);
   }
@@ -1654,9 +1684,9 @@ TEST_F(WiFiMainTest, IsIdle) {
   EXPECT_FALSE(wifi()->IsIdle());
 }
 
-MATCHER(WiFiAddedArgs, "") {
+MATCHER_P(WiFiAddedArgs, bgscan, "") {
   return ContainsKey(arg, wpa_supplicant::kNetworkPropertyScanSSID) &&
-      ContainsKey(arg, wpa_supplicant::kNetworkPropertyBgscan);
+      ContainsKey(arg, wpa_supplicant::kNetworkPropertyBgscan) == bgscan;
 }
 
 TEST_F(WiFiMainTest, AddNetworkArgs) {
@@ -1667,8 +1697,70 @@ TEST_F(WiFiMainTest, AddNetworkArgs) {
   StartWiFi();
   ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
   WiFiService *service(GetServices().begin()->get());
-  EXPECT_CALL(supplicant_interface_proxy, AddNetwork(WiFiAddedArgs()));
+  EXPECT_CALL(supplicant_interface_proxy, AddNetwork(WiFiAddedArgs(true)));
+  EXPECT_TRUE(SetBgscanMethod(wpa_supplicant::kNetworkBgscanMethodSimple));
   InitiateConnect(service);
+}
+
+TEST_F(WiFiMainTest, AddNetworkArgsNoBgscan) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+  WiFiService *service(GetServices().begin()->get());
+  EXPECT_CALL(supplicant_interface_proxy, AddNetwork(WiFiAddedArgs(false)));
+  InitiateConnect(service);
+}
+
+TEST_F(WiFiMainTest, AppendBgscan) {
+  StartWiFi();
+  WiFiEndpointRefPtr ap1 = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap1);
+  service->AddEndpoint(ap1);
+  EXPECT_EQ(1, service->GetEndpointCount());
+  {
+    // 1 endpoint, default bgscan method -- background scan disabled.
+    std::map<std::string, DBus::Variant> params;
+    AppendBgscan(service.get(), &params);
+    EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyBgscan));
+  }
+  WiFiEndpointRefPtr ap2 = MakeEndpoint("an_ssid", "01:02:03:04:05:06");
+  service->AddEndpoint(ap2);
+  EXPECT_EQ(2, service->GetEndpointCount());
+  {
+    // 2 endpoints, default bgscan method -- background scan frequency reduced.
+    map<string, DBus::Variant> params;
+    AppendBgscan(service.get(), &params);
+    string config_string;
+    EXPECT_TRUE(
+        DBusProperties::GetString(params,
+                                  wpa_supplicant::kNetworkPropertyBgscan,
+                                  &config_string));
+    vector<string> elements;
+    base::SplitString(config_string, ':', &elements);
+    ASSERT_EQ(4, elements.size());
+    EXPECT_EQ(WiFi::kDefaultBgscanMethod, elements[0]);
+    EXPECT_EQ(StringPrintf("%d", WiFi::kBackgroundScanIntervalSeconds),
+              elements[3]);
+  }
+  {
+    // Explicit bgscan method -- regular background scan frequency.
+    EXPECT_TRUE(SetBgscanMethod(wpa_supplicant::kNetworkBgscanMethodSimple));
+    std::map<std::string, DBus::Variant> params;
+    AppendBgscan(service.get(), &params);
+    string config_string;
+    EXPECT_TRUE(
+        DBusProperties::GetString(params,
+                                  wpa_supplicant::kNetworkPropertyBgscan,
+                                  &config_string));
+    vector<string> elements;
+    base::SplitString(config_string, ':', &elements);
+    ASSERT_EQ(4, elements.size());
+    EXPECT_EQ(StringPrintf("%d", WiFi::kDefaultScanIntervalSeconds),
+              elements[3]);
+  }
 }
 
 TEST_F(WiFiMainTest, StateAndIPIgnoreLinkEvent) {

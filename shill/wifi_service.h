@@ -48,14 +48,12 @@ class WiFiService : public Service {
   virtual void AutoConnect();
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
-
   virtual bool IsConnecting() const;
-
-  virtual void AddEndpoint(const WiFiEndpointConstRefPtr endpoint);
-  virtual void RemoveEndpoint(const WiFiEndpointConstRefPtr endpoint);
-  bool NumEndpoints() const { return endpoints_.size(); }
   virtual bool Is8021x() const;
 
+  void AddEndpoint(const WiFiEndpointConstRefPtr &endpoint);
+  void RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint);
+  int GetEndpointCount() const { return endpoints_.size(); }
 
   // Called to update the identity of the currently connected endpoint.
   // To indicate that there is no currently connect endpoint, call with

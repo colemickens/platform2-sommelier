@@ -175,13 +175,13 @@ bool WiFiService::IsConnecting() const {
   return wifi_->IsConnectingTo(*this);
 }
 
-void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr endpoint) {
+void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr &endpoint) {
   DCHECK(endpoint->ssid() == ssid());
   endpoints_.insert(endpoint);
   UpdateFromEndpoints();
 }
 
-void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr endpoint) {
+void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint) {
   set<WiFiEndpointConstRefPtr>::iterator i = endpoints_.find(endpoint);
   DCHECK(i != endpoints_.end());
   if (i == endpoints_.end()) {

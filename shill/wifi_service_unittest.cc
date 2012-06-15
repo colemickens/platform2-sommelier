@@ -992,6 +992,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitUint8Changed(
       flimflam::kSignalStrengthProperty, kOkEndpointStrength));
   service->AddEndpoint(ok_endpoint);
+  EXPECT_EQ(1, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Endpoint with stronger signal updates values.
@@ -1002,6 +1003,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitUint8Changed(
       flimflam::kSignalStrengthProperty, kGoodEndpointStrength));
   service->AddEndpoint(good_endpoint);
+  EXPECT_EQ(2, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Endpoint with lower signal does not change values.
@@ -1010,6 +1012,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor,
               EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
   service->AddEndpoint(bad_endpoint);
+  EXPECT_EQ(3, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing non-optimal endpoint does not change values.
@@ -1018,6 +1021,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor,
               EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
   service->RemoveEndpoint(bad_endpoint);
+  EXPECT_EQ(2, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing optimal endpoint updates values.
@@ -1028,6 +1032,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitUint8Changed(
       flimflam::kSignalStrengthProperty, kOkEndpointStrength));
   service->RemoveEndpoint(good_endpoint);
+  EXPECT_EQ(1, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing last endpoint updates values (and doesn't crash).
@@ -1035,6 +1040,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _));
   EXPECT_CALL(adaptor, EmitUint8Changed(flimflam::kSignalStrengthProperty, _));
   service->RemoveEndpoint(ok_endpoint);
+  EXPECT_EQ(0, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 }
 
@@ -1045,6 +1051,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
   service->AddEndpoint(bad_endpoint);
   service->AddEndpoint(ok_endpoint);
+  EXPECT_EQ(2, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Setting current endpoint forces adoption of its values, even if it
@@ -1064,6 +1071,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   EXPECT_CALL(adaptor,
               EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
   service->AddEndpoint(good_endpoint);
+  EXPECT_EQ(3, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing a better endpoint doesn't matter, when current endpoint is set.
@@ -1101,6 +1109,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, EndpointModified) {
   EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
   service->AddEndpoint(ok_endpoint);
   service->AddEndpoint(good_endpoint);
+  EXPECT_EQ(2, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Updating sub-optimal Endpoint doesn't update Service.
