@@ -416,19 +416,6 @@ if [ -e /var/lib/enterprise_serial_number_recovery -o \
   dump_vpd_log --full --stdout >> $MACHINE_INFO
 fi
 
-# Check if we need to run post install tasks. The tasks should be safe
-# to be run more than once, as we'll rerun the tasks in case the device
-# shuts down before completing the tasks, though it's unlikely to happen.
-INSTALL_COMPLETED=/mnt/stateful_partition/.install_completed
-if [ -f "${INSTALL_COMPLETED}" ]; then
-  # Remove XKB cache files, as the files may be incompatible after upgrade.
-  # TODO(wad,satorux) move this to ui.conf.
-  rm -f /var/lib/xkb/*.xkm
-
-  # This has to be done at the end of the block.
-  rm -f "${INSTALL_COMPLETED}"
-fi
-
 #
 # Note that ureadahead depends on some of the operations above.
 # Notably, the command requires /var to be mounted, because the pack
