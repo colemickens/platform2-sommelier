@@ -9,7 +9,6 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <libudev.h>
 
 #include <map>
 #include <string>
@@ -36,6 +35,10 @@
 #include "power_manager/screen_locker.h"
 #include "power_manager/signal_callback.h"
 #include "power_manager/suspender.h"
+
+// Forward declarations of structs from libudev.h.
+struct udev;
+struct udev_monitor;
 
 namespace power_manager {
 

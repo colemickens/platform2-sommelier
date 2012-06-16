@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <dbus/dbus.h>
+#include <dbus/dbus-glib-lowlevel.h>
+
 #include <algorithm>
 #include <map>
 

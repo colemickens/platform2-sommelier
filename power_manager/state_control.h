@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_STATE_CONTROL_H_
 #define POWER_MANAGER_STATE_CONTROL_H_
 
-#include <dbus/dbus.h>
-#include <dbus/dbus-glib-lowlevel.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include <map>

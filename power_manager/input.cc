@@ -6,7 +6,7 @@
 
 #include <dirent.h>
 #include <fcntl.h>
-#include <glib.h>
+#include <libudev.h>
 #include <linux/input.h>
 
 #include "base/file_util.h"

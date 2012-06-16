@@ -6,13 +6,16 @@
 #define POWER_MANAGER_INPUT_H_
 
 #include <glib.h>
-#include <libudev.h>
 
 #include <map>
 #include <string>
 #include <vector>
 
 #include "base/basictypes.h"
+
+// Forward declarations of structs from libudev.h.
+struct udev;
+struct udev_monitor;
 
 namespace power_manager {
 

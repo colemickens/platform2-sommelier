@@ -7,7 +7,6 @@
 
 #include <sys/types.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <libudev.h>
 
 #include "base/file_path.h"
 #include "base/time.h"

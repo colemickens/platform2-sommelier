@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <glib.h>
 #include <inttypes.h>
+#include <libudev.h>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 #include <sys/ioctl.h>

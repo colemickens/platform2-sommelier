@@ -5,6 +5,7 @@
 #include "power_manager/powerd.h"
 
 #include <glib-object.h>
+#include <libudev.h>
 #include <stdint.h>
 #include <sys/inotify.h>
 #include <X11/Xlib.h>

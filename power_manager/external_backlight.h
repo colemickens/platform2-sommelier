@@ -6,7 +6,6 @@
 #define POWER_MANAGER_EXTERNAL_BACKLIGHT_H_
 
 #include <glib.h>
-#include <libudev.h>
 #include <list>
 #include <map>
 #include <string>
@@ -17,6 +16,10 @@
 #include "power_manager/signal_callback.h"
 
 typedef int gboolean;  // Forward declaration of bool type used by glib.
+
+// Forward declarations of structs from libudev.h.
+struct udev;
+struct udev_monitor;
 
 namespace power_manager {
 
