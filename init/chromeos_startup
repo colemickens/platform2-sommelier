@@ -381,41 +381,6 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a ! -e $OOBE_COMPLETE ]; then
   fi
 fi
 
-# /tmp/machine-info contains the serial number and other information that may
-# identify the device. This information is required by OOBE and enterprise
-# enrollment, but we don't want it around otherwise for privacy reasons. Thus,
-# we generate as long as /home/.shadow/install_attributes.pb is not present.
-# That file is created by cryptohome once the device has been
-# enterprise-enrolled or been claimed by a local user.
-#
-# Old versions of Chromium OS (11 and earlier) didn't have the code generating
-# install_attributes.pb in cryptohome when claiming the device, so the check
-# would fail for users upgrading from devices that have been setup originally
-# on these versions. Our best-effort attmept at catching this is to also check
-# for /var/lib/whitelist/owner.key. Note that this may not work perfectly once
-# we have support for transitioning ownership.
-#
-# We currently also check /root/.forget_usernames in order to not generate
-# /tmp/machine-info on test images. This is because test images are used for
-# measuring boot times and these should not include additional steps that are
-# not present when the device is in steady state (i.e. OOBE complete and
-# enterprise-enrolled or claimed by a local user).
-#
-# TODO(yjlou, mnissler):
-#   Fix dump_vpd_log to not take 10+ seconds.
-#   http://code.google.com/p/chromium-os/issues/detail?id=21525
-if [ -e /var/lib/enterprise_serial_number_recovery -o \
-     \( ! -e /home/.shadow/install_attributes.pb -a \
-        ! -e /var/lib/whitelist/owner.key -a \
-        ! -e /root/.forget_usernames \) ]; then
-  MACHINE_INFO=/tmp/machine-info
-  touch $MACHINE_INFO
-  chmod 0644 $MACHINE_INFO
-  # We need serial numbers for enterprise enrollment process.
-  # Dump full information in the VPD.
-  dump_vpd_log --full --stdout >> $MACHINE_INFO
-fi
-
 #
 # Note that ureadahead depends on some of the operations above.
 # Notably, the command requires /var to be mounted, because the pack
