@@ -55,8 +55,8 @@ enum PluggedState {
   kPowerUnknown,
 };
 
-class Daemon : public IdleObserver,
-               public BacklightControllerObserver {
+class Daemon : public BacklightControllerObserver,
+               public IdleObserver {
  public:
   // Note that keyboard_backlight is an optional parameter (it can be NULL)
   // and that the memory is owned by the caller.
@@ -422,7 +422,7 @@ class Daemon : public IdleObserver,
 
   // Sets idle timeouts based on whether the system is projecting to an
   // external display.
-  SIGNAL_CALLBACK_0(Daemon, void, AdjustIdleTimeoutsForProjection);
+  void AdjustIdleTimeoutsForProjection();
 
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
@@ -521,6 +521,9 @@ class Daemon : public IdleObserver,
   // Rolling averages used to iron out instabilities in the time estimates
   RollingAverage time_to_empty_average_;
   RollingAverage time_to_full_average_;
+
+  // Flag indicating whether the system is projecting to an external display.
+  bool is_projecting_;
 };
 
 }  // namespace power_manager

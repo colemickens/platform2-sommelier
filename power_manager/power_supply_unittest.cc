@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <gtest/gtest.h>
-#include <X11/extensions/XTest.h>
 
 #include <cmath>
 #include <map>

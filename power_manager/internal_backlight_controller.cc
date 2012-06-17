@@ -690,8 +690,7 @@ gboolean InternalBacklightController::SetBrightnessStep() {
 
 void InternalBacklightController::SetBrightnessHard(int64 level,
                                                     int64 target_level) {
-  if (level != 0 && target_level != 0 && monitor_reconfigure_ &&
-      monitor_reconfigure_->HasInternalPanelConnection())
+  if (level != 0 && target_level != 0 && monitor_reconfigure_)
     monitor_reconfigure_->SetInternalPanelOn();
 
   if (!backlight_->SetBrightnessLevel(level))
@@ -705,8 +704,7 @@ void InternalBacklightController::SetBrightnessHard(int64 level,
       monitor_reconfigure_->SetScreenOff();
     // If backlight is 0 but we are in ACTIVE state, we turn off the internal
     // panel only.
-    else if (state_ == BACKLIGHT_ACTIVE &&
-             monitor_reconfigure_->HasInternalPanelConnection())
+    else if (state_ == BACKLIGHT_ACTIVE)
       monitor_reconfigure_->SetInternalPanelOff();
   }
 }

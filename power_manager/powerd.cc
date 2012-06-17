@@ -8,8 +8,6 @@
 #include <libudev.h>
 #include <stdint.h>
 #include <sys/inotify.h>
-#include <X11/Xlib.h>
-#include <X11/extensions/dpms.h>
 
 #include <algorithm>
 #include <cmath>
@@ -129,7 +127,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       current_session_state_("stopped"),
       udev_(NULL),
       state_control_(new StateControl(this)),
-      poll_power_supply_timer_id_(0) {
+      poll_power_supply_timer_id_(0),
+      is_projecting_(false) {
   idle_->AddObserver(this);
 }
 
@@ -147,18 +146,6 @@ void Daemon::Init() {
       << "Unable to initialize metrics store, so we are going to drop number of"
       << " sessions per charge data";
 
-  Display* display = util::GetDisplay();
-  if (!DPMSCapable(display)) {
-    LOG(WARNING) << "X Server not DPMS capable";
-  } else {
-    CHECK(DPMSEnable(display));
-    CHECK(DPMSSetTimeouts(display, 0, 0, 0));
-  }
-  CHECK(XSetScreenSaver(display,
-                        0,                 // 0 display timeout
-                        0,                 // 0 alteration timeout
-                        DefaultBlanking,
-                        DefaultExposures));
   locker_.Init(use_xscreensaver_, lock_on_idle_suspend_);
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
@@ -174,8 +161,6 @@ void Daemon::Init() {
                       &time_to_full_average_);
   file_tagger_.Init();
   backlight_controller_->SetObserver(this);
-  monitor_reconfigure_->SetProjectionCallback(
-      &AdjustIdleTimeoutsForProjectionThunk, this);
 }
 
 void Daemon::ReadSettings() {
@@ -238,9 +223,6 @@ void Daemon::ReadSettings() {
   // Initialize from prefs as might be used before AC plug status evaluated.
   dim_ms_ = unplugged_dim_ms_;
   off_ms_ = unplugged_off_ms_;
-
-  if (monitor_reconfigure_->is_projecting())
-    AdjustIdleTimeoutsForProjection();
 
   state_control_->ReadSettings(prefs_);
 }
@@ -1237,7 +1219,10 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
                             DBUS_TYPE_BOOLEAN, &is_projecting,
                             DBUS_TYPE_INVALID);
   if (args_ok) {
-    monitor_reconfigure_->SetIsProjecting(is_projecting);
+    if (is_projecting != is_projecting_) {
+      is_projecting_ = is_projecting;
+      AdjustIdleTimeoutsForProjection();
+    }
   } else {
     // The message was malformed so log this and return an error.
     LOG(WARNING) << kSetIsProjectingMethod << ": Error reading args: "
@@ -1562,7 +1547,7 @@ void Daemon::AdjustIdleTimeoutsForProjection() {
   unplugged_suspend_ms_ = base_timeout_values_[kUnpluggedSuspendMsPref];
   default_lock_ms_      = base_timeout_values_[kLockMsPref];
 
-  if (monitor_reconfigure_->is_projecting()) {
+  if (is_projecting_) {
     LOG(INFO) << "External display projection: multiplying idle times by "
               << kProjectionTimeoutFactor;
     plugged_dim_ms_ *= kProjectionTimeoutFactor;

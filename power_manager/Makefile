@@ -155,8 +155,7 @@ LIBPOWERD_OBJS = power_state_control.pb.o power_supply_properties.pb.o \
                  idle_detector.o metrics_constants.o metrics_store.o \
                  monitor_reconfigure.o power_supply.o powerd.o \
                  powerd_metrics.o rolling_average.o \
-                 screen_locker.o state_control.o suspender.o video_detector.o \
-                 xevent_observer.o
+                 screen_locker.o state_control.o suspender.o video_detector.o
 CXX_STATIC_LIBRARY(libpowerd.pie.a): $(LIBPOWERD_OBJS)
 CXX_STATIC_LIBRARY(libpowerd.pie.a): CPPFLAGS += $(LIBPOWERD_FLAGS)
 CXX_STATIC_LIBRARY(libpowerd.pie.a): LDLIBS += $(LIBPOWERD_LIBS)

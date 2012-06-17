@@ -76,17 +76,6 @@ bool GetWakeupCount(unsigned int* value) {
   return false;
 }
 
-Display* GetDisplay() {
-  // The cached X display handle.
-  static Display* display = NULL;
-
-  // TODO(crosbug.com/30636): Make sure this gets updated if X server restarts.
-  if (!display)
-    display = XOpenDisplay(NULL);
-  CHECK(display);
-  return display;
-}
-
 bool GetUintFromFile(const char* filename, unsigned int* value) {
   std::string buf;
 
