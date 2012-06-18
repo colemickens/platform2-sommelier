@@ -618,8 +618,12 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
   }
   const RTNLMessage::AddressStatus &status = msg.address_status();
   IPAddress address(msg.family(),
-                    msg.GetAttribute(IFA_ADDRESS),
+                    msg.HasAttribute(IFA_LOCAL) ?
+                    msg.GetAttribute(IFA_LOCAL) : msg.GetAttribute(IFA_ADDRESS),
                     status.prefix_len);
+
+  SLOG_IF(Device, 2, msg.HasAttribute(IFA_LOCAL))
+      << "Found local address attribute for interface " << interface_index;
 
   vector<AddressData> &address_list = infos_[interface_index].ip_addresses;
   vector<AddressData>::iterator iter;
