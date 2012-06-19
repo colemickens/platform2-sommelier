@@ -337,7 +337,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-mobile-dialog \
             --enable-onc-policy \
             --enable-partial-swap \
-            --enable-per-tile-painting \
             --enable-smooth-scrolling \
             --enable-sync-tabs \
             --enable-sync-tabs-for-other-clients \
