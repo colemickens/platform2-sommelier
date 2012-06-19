@@ -120,9 +120,9 @@ int main(int argc, char* argv[]) {
     kStateExit
   } state = kStateScreenShot1;
   float seconds_delay_for_next_state[] = {
-      FLAGS_screenshot1_sec,
-      FLAGS_screenshot2_sec,
-      FLAGS_cooldown_sec,
+      static_cast<float>(FLAGS_screenshot1_sec),
+      static_cast<float>(FLAGS_screenshot2_sec),
+      static_cast<float>(FLAGS_cooldown_sec),
       0
   };
 
