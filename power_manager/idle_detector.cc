@@ -21,8 +21,18 @@ IdleDetector::~IdleDetector() {
   ClearTimeouts();
 }
 
-void IdleDetector::Init(IdleObserver* observer) {
-  observer_ = observer;
+void IdleDetector::AddObserver(IdleObserver* observer) {
+  if (!observer_)
+    observer_ = observer;
+  else
+    LOG(WARNING) << "Attempting to overwrite an existing registered observer.";
+}
+
+void IdleDetector::RemoveObserver(IdleObserver* observer) {
+  if (observer_ == observer)
+    observer_ = NULL;
+  else
+    LOG(WARNING) << "Observer was not registered with IdleDetector.";
 }
 
 void IdleDetector::AddIdleTimeout(int64 idle_timeout_ms) {

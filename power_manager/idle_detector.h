@@ -34,8 +34,9 @@ class IdleDetector {
   IdleDetector();
   ~IdleDetector();
 
-  // Initialize the object with the given |observer|.
-  void Init(IdleObserver* observer);
+  // Register/unregister an IdleObserver.
+  void AddObserver(IdleObserver* observer);
+  void RemoveObserver(IdleObserver* observer);
 
   // Add a timeout value. Idle events will be fired every time
   // the user either becomes newly idle (due to exceeding an idle

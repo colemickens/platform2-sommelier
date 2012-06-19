@@ -129,16 +129,18 @@ Daemon::Daemon(BacklightController* backlight_controller,
       current_session_state_("stopped"),
       udev_(NULL),
       state_control_(new StateControl(this)),
-      poll_power_supply_timer_id_(0) {}
+      poll_power_supply_timer_id_(0) {
+  idle_->AddObserver(this);
+}
 
 Daemon::~Daemon() {
   if (udev_)
     udev_unref(udev_);
+  idle_->RemoveObserver(this);
 }
 
 void Daemon::Init() {
   ReadSettings();
-  idle_->Init(this);
   prefs_->StartPrefWatching(&(PrefChangeHandler), this);
   MetricInit();
   LOG_IF(ERROR, (!metrics_store_.Init()))
