@@ -140,7 +140,8 @@ fi
 NEW_OOBE_FLAGS=
 # For testing new OOBE/sign in flow.
 if [ -f /root/.enable_new_oobe ] ; then
-  NEW_OOBE_FLAGS="--enable-new-oobe"
+  NEW_OOBE_FLAGS="--enable-new-oobe --allow-webui-compositing \
+                  --enable-html5-camera"
 fi
 
 # For recovery image, do NOT display OOBE or login window
