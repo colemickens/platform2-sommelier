@@ -79,7 +79,7 @@ static struct Log logs[] = {
   // Changed from 'ps ux' to 'ps aux' since we're running as debugd, not chronos
   { "ps", "/bin/ps aux" },
   { "syslog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
-              "/var/log/messages" },
+              " /var/log/messages" },
   { "touchpad", "/opt/google/touchpad/tpcontrol status" },
   { "touchpad_activity", "/opt/google/touchpad/generate_userfeedback" },
   { "ui_log", "/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST" },
