@@ -121,7 +121,7 @@ locate_gpt() {
 #   START_STATEFUL
 install_gpt() {
   local outdev=$1
-  local rootfs_img_sectors=$2
+  local rootfs_img_sectors=$(roundup $2)
   local stateful_img_sectors=$3
   local pmbrcode=$4
   local esp_img_sectors=$5
@@ -173,10 +173,6 @@ install_gpt() {
 
   # Here are the size limits that we're currently requiring
   local max_kern_sectors=32768        # 16MiB
-  local max_rootfs_sectors=$((${rootfs_size} * 2 * 1024))  # 2GiB by default
-  if [ "$rootfs_img_sectors" -gt "$max_rootfs_sectors" ]; then
-    max_rootfs_sectors=$(roundup $rootfs_img_sectors)
-  fi
   local max_oem_sectors=32768         # 16MiB
   local max_reserved_sectors=131072   # 64MiB
   local max_esp_sectors=32768         # 16MiB
@@ -222,7 +218,7 @@ install_gpt() {
 
     # Full install, use max sizes and create both A & B images.
     NUM_KERN_SECTORS=$max_kern_sectors
-    NUM_ROOTFS_SECTORS=$max_rootfs_sectors
+    NUM_ROOTFS_SECTORS=$rootfs_img_sectors
     NUM_OEM_SECTORS=$max_oem_sectors
     NUM_ESP_SECTORS=$max_esp_sectors
     NUM_RWFW_SECTORS=$max_rwfw_sectors
@@ -266,7 +262,7 @@ install_gpt() {
     # Make sure we keep space for a second kernel as it is used during recovery.
     local num_kern_b_sectors=$NUM_KERN_SECTORS
     local kern_b_priority=0
-    NUM_ROOTFS_SECTORS=$(roundup $rootfs_img_sectors)
+    NUM_ROOTFS_SECTORS=$rootfs_img_sectors
     local num_rootfs_a_sectors=$NUM_ROOTFS_SECTORS
     local num_rootfs_b_sectors=1
     NUM_OEM_SECTORS=$max_oem_sectors
