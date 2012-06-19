@@ -24,6 +24,7 @@
 #include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/dbus_adaptor.h"
+#include "shill/dbus_manager.h"
 #include "shill/default_profile.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -148,6 +149,9 @@ void Manager::AddDeviceToBlackList(const string &device_name) {
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
+  dbus_manager_.reset(new DBusManager());
+  dbus_manager_->Start();
+
   power_manager_.reset(new PowerManager(ProxyFactory::GetInstance()));
   // TODO(ers): weak ptr for metrics_?
   PowerManager::PowerStateCallback cb =
@@ -193,6 +197,8 @@ void Manager::Stop() {
   // Some unit tests do not call Manager::Start().
   if (power_manager_.get())
     power_manager_->RemoveStateChangeCallback(Metrics::kMetricPowerManagerKey);
+
+  dbus_manager_.reset();
 }
 
 void Manager::InitializeProfiles() {

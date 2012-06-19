@@ -121,6 +121,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	crypto_rot47.o \
 	dbus_adaptor.o \
 	dbus_control.o \
+	dbus_manager.o \
 	dbus_objectmanager_proxy.o \
 	dbus_properties.o \
 	dbus_properties_proxy.o \
@@ -242,6 +243,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	crypto_rot47_unittest.o \
 	connection_unittest.o \
 	dbus_adaptor_unittest.o \
+	dbus_manager_unittest.o \
 	dbus_properties_unittest.o \
 	default_profile_unittest.o \
 	device_info_unittest.o \

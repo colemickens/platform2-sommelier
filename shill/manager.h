@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MANAGER_
-#define SHILL_MANAGER_
+#ifndef SHILL_MANAGER_H_
+#define SHILL_MANAGER_H_
 
 #include <string>
 #include <vector>
@@ -30,6 +30,7 @@
 namespace shill {
 
 class ControlInterface;
+class DBusManager;
 class Error;
 class EventDispatcher;
 class ManagerAdaptorInterface;
@@ -302,6 +303,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   const FilePath storage_path_;
   const std::string user_storage_format_;
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
+  scoped_ptr<DBusManager> dbus_manager_;
   DeviceInfo device_info_;
   ModemInfo modem_info_;
   VPNProvider vpn_provider_;
@@ -342,4 +344,4 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
 }  // namespace shill
 
-#endif  // SHILL_MANAGER_
+#endif  // SHILL_MANAGER_H_

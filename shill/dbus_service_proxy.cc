@@ -52,7 +52,7 @@ void DBusServiceProxy::FromDBusError(const DBus::Error &dbus_error,
 
 DBusServiceProxy::Proxy::Proxy(DBus::Connection *connection)
     : DBus::ObjectProxy(*connection,
-                        dbus::kDBusServiceName, dbus::kDBusServicePath) {}
+                        dbus::kDBusServicePath, dbus::kDBusServiceName) {}
 
 DBusServiceProxy::Proxy::~Proxy() {}
 
