@@ -18,15 +18,15 @@ class RollingAverage {
   RollingAverage();
   virtual ~RollingAverage();
 
-  virtual void Init(unsigned int max_window_size);
+  virtual void Init(unsigned int window_size);
 
+  virtual void ChangeWindowSize(unsigned int window_size);
   virtual int64 AddSample(int64 sample);
   virtual int64 GetAverage();
   virtual void Clear();
 
  protected:
   void DeleteSample();
-  void InsertSample(int64 sample);
   bool IsFull();
 
  private:
@@ -34,7 +34,11 @@ class RollingAverage {
   FRIEND_TEST(RollingAverageTest, InitSuccess);
   FRIEND_TEST(RollingAverageTest, InitSamplePresent);
   FRIEND_TEST(RollingAverageTest, InitTotalNonZero);
-  FRIEND_TEST(RollingAverageTest, InitWindowSizeSet);
+  FRIEND_TEST(RollingAverageTest, InitCurrentWindowSizeSet);
+  FRIEND_TEST(RollingAverageTest, ChangeWindowSizeSame);
+  FRIEND_TEST(RollingAverageTest, ChangeWindowSizeGreater);
+  FRIEND_TEST(RollingAverageTest, ChangeWindowSizeLesser);
+  FRIEND_TEST(RollingAverageTest, ChangeWindowSizeUnderflow);
   FRIEND_TEST(RollingAverageTest, AddSampleFull);
   FRIEND_TEST(RollingAverageTest, AddSampleEmpty);
   FRIEND_TEST(RollingAverageTest, AddSampleNegativeValue);
@@ -43,8 +47,6 @@ class RollingAverage {
   FRIEND_TEST(RollingAverageTest, ClearSuccess);
   FRIEND_TEST(RollingAverageTest, DeleteSampleSuccess);
   FRIEND_TEST(RollingAverageTest, DeleteSampleEmpty);
-  FRIEND_TEST(RollingAverageTest, InsertSampleSuccess);
-  FRIEND_TEST(RollingAverageTest, InsertSampleFull);
   FRIEND_TEST(RollingAverageTest, IsFullFalse);
   FRIEND_TEST(RollingAverageTest, IsFullTrue);
   FRIEND_TEST(RollingAverageTest, IsFullUninitialized);
@@ -52,7 +54,7 @@ class RollingAverage {
 
   std::queue<int64> sample_window_;
   int64 running_total_;
-  unsigned int max_window_size_;
+  unsigned int current_window_size_;
 
   DISALLOW_COPY_AND_ASSIGN(RollingAverage);
 };  // class RollingAverage

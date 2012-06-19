@@ -12,21 +12,35 @@ namespace power_manager {
 
 RollingAverage::RollingAverage()
     : running_total_(0),
-      max_window_size_(0) {
+      current_window_size_(0) {
 }
 
 RollingAverage::~RollingAverage() {
 }
 
-void RollingAverage::Init(unsigned int max_window_size) {
+void RollingAverage::Init(unsigned int window_size) {
   LOG_IF(WARNING,
          (sample_window_.size() != 0)
-         ||  (running_total_ != 0)
-         || (max_window_size_ == 0))
+         ||  (running_total_ != 0))
       << "Attempting to initialize RollingAverage when already initialized, "
       << "resetting instead!";
   Clear();
-  max_window_size_ = max_window_size;
+  current_window_size_ = window_size;
+}
+
+void RollingAverage::ChangeWindowSize(unsigned int window_size) {
+  if (window_size == 0) {
+    LOG(ERROR) << "Called ChangeWindowSize with value of 0!";
+    return;
+  }
+
+  LOG(INFO) << "ChangeWindowSize: from = " << current_window_size_
+            << ", to = " << window_size;
+  if (current_window_size_ > window_size) {
+    while(sample_window_.size() > window_size)
+      DeleteSample();
+  }
+  current_window_size_ = window_size;
 }
 
 int64 RollingAverage::AddSample(int64 sample) {
@@ -35,10 +49,17 @@ int64 RollingAverage::AddSample(int64 sample) {
     return GetAverage();
   }
 
-  if (IsFull())
-    DeleteSample();
-  InsertSample(sample);
-
+  if (IsFull()) {
+    int i = 0;
+    while (IsFull()) {
+      DeleteSample();
+      ++i;
+    }
+    LOG_IF(WARNING, i > 1)
+        << "Removed " << i - 1 << " extra samples when adding new sample value";
+  }
+  running_total_ += sample;
+  sample_window_.push(sample);
   return GetAverage();
 }
 
@@ -63,18 +84,10 @@ void RollingAverage::DeleteSample() {
   }
 }
 
-void RollingAverage::InsertSample(int64 sample) {
-  LOG_IF(ERROR, sample_window_.size() >= max_window_size_)
-      << "Inserting sample when max size already reached";
-
-  running_total_ += sample;
-  sample_window_.push(sample);
-}
-
 bool RollingAverage::IsFull() {
-  LOG_IF(ERROR, sample_window_.size() > max_window_size_)
-      << "Number of entries in sample window is greater then the max value";
-  return (sample_window_.size() >= max_window_size_);
+  LOG_IF(ERROR, sample_window_.size() > current_window_size_)
+      << "Number of entries in sample window is greater than the current size!";
+  return (sample_window_.size() >= current_window_size_);
 }
 
 }  // namespace power_manager

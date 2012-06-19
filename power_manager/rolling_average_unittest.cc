@@ -18,55 +18,94 @@ class RollingAverageTest : public Test {
  public:
   RollingAverageTest() {}
 
+  virtual void SetUp() {
+    rolling_average_.Init(kTestWindowSize);
+  }
+
+  virtual void TearDown() {
+    rolling_average_.Clear();
+    rolling_average_.current_window_size_ = 0;
+  }
+
  protected:
   RollingAverage rolling_average_;
 };  // class RollingAverageTest
 
 TEST_F(RollingAverageTest, InitSuccess) {
+  TearDown();
+
   rolling_average_.Init(kTestWindowSize);
 
   EXPECT_EQ(rolling_average_.sample_window_.size(), 0);
   EXPECT_EQ(rolling_average_.running_total_, 0);
-  EXPECT_EQ(rolling_average_.max_window_size_, kTestWindowSize);
+  EXPECT_EQ(rolling_average_.current_window_size_, kTestWindowSize);
 }
 
 TEST_F(RollingAverageTest, InitSamplePresent) {
+  TearDown();
   rolling_average_.sample_window_.push(kTestSample);
 
   rolling_average_.Init(kTestWindowSize);
 
   EXPECT_EQ(rolling_average_.sample_window_.size(), 0);
   EXPECT_EQ(rolling_average_.running_total_, 0);
-  EXPECT_EQ(rolling_average_.max_window_size_, kTestWindowSize);
+  EXPECT_EQ(rolling_average_.current_window_size_, kTestWindowSize);
 }
 
 TEST_F(RollingAverageTest, InitTotalNonZero) {
+  TearDown();
   rolling_average_.running_total_ = kTestSample;
 
   rolling_average_.Init(kTestWindowSize);
 
   EXPECT_EQ(rolling_average_.sample_window_.size(), 0);
   EXPECT_EQ(rolling_average_.running_total_, 0);
-  EXPECT_EQ(rolling_average_.max_window_size_, kTestWindowSize);
+  EXPECT_EQ(rolling_average_.current_window_size_, kTestWindowSize);
 }
 
-TEST_F(RollingAverageTest, InitWindowSizeSet) {
-  rolling_average_.max_window_size_ = kTestWindowSize;
+TEST_F(RollingAverageTest, InitCurrentWindowSizeSet) {
+  TearDown();
+  rolling_average_.current_window_size_ = kTestWindowSize;
 
   rolling_average_.Init(kTestWindowSize);
 
   EXPECT_EQ(rolling_average_.sample_window_.size(), 0);
   EXPECT_EQ(rolling_average_.running_total_, 0);
-  EXPECT_EQ(rolling_average_.max_window_size_, kTestWindowSize);
+  EXPECT_EQ(rolling_average_.current_window_size_, kTestWindowSize);
+}
+
+TEST_F(RollingAverageTest, ChangeWindowSizeSame) {
+  rolling_average_.ChangeWindowSize(kTestWindowSize);
+
+  EXPECT_EQ(rolling_average_.current_window_size_, kTestWindowSize);
+}
+
+TEST_F(RollingAverageTest, ChangeWindowSizeGreater) {
+  rolling_average_.current_window_size_ = kTestWindowSize / 2;
+  rolling_average_.ChangeWindowSize((kTestWindowSize / 2) + 1);
+
+  EXPECT_EQ(rolling_average_.current_window_size_, (kTestWindowSize / 2) + 1);
+}
+
+TEST_F(RollingAverageTest, ChangeWindowSizeLesser) {
+  rolling_average_.ChangeWindowSize(1);
+
+  EXPECT_EQ(rolling_average_.current_window_size_, 1);
+}
+
+TEST_F(RollingAverageTest, ChangeWindowSizeUnderflow) {
+  rolling_average_.ChangeWindowSize(0);
+
+  EXPECT_EQ(rolling_average_.current_window_size_, kTestWindowSize);
 }
 
 TEST_F(RollingAverageTest, AddSampleFull) {
-  rolling_average_.Init(kTestWindowSize);
   for (unsigned int i = 0; i < kTestWindowSize; i++)
     rolling_average_.sample_window_.push(0);
 
   EXPECT_EQ(rolling_average_.AddSample(kTestSample),
             (kTestSample / kTestWindowSize));
+
   EXPECT_EQ(kTestSample, rolling_average_.running_total_);
   for (unsigned int i = 0; i < kTestWindowSize - 1; i++) {
     EXPECT_EQ(rolling_average_.sample_window_.front(), 0);
@@ -76,7 +115,6 @@ TEST_F(RollingAverageTest, AddSampleFull) {
 }
 
 TEST_F(RollingAverageTest, AddSampleEmpty) {
-  rolling_average_.Init(kTestWindowSize);
   EXPECT_EQ(rolling_average_.AddSample(kTestSample), kTestSample);
   EXPECT_EQ(rolling_average_.sample_window_.front(), kTestSample);
 }
@@ -84,17 +122,16 @@ TEST_F(RollingAverageTest, AddSampleEmpty) {
 TEST_F(RollingAverageTest, AddSampleNegativeValue) {
   // Invalid samples should cause the current average to be returned and the
   // sample to be discarded.
-  rolling_average_.Init(kTestWindowSize);
   EXPECT_EQ(rolling_average_.AddSample(kTestSample), kTestSample);
   EXPECT_EQ(rolling_average_.AddSample(-kTestSample), kTestSample);
 }
 
 TEST_F(RollingAverageTest, GetAverageFull) {
-  rolling_average_.Init(kTestWindowSize);
   for (unsigned int i = 0; i < kTestWindowSize; i++) {
     rolling_average_.sample_window_.push(kTestSample);
     rolling_average_.running_total_ += kTestSample;
   }
+
   EXPECT_EQ(rolling_average_.GetAverage(), kTestSample);
 }
 
@@ -103,19 +140,18 @@ TEST_F(RollingAverageTest, GetAverageEmpty) {
 }
 
 TEST_F(RollingAverageTest, ClearSuccess) {
-  rolling_average_.Init(kTestWindowSize);
   for (unsigned int i = 0; i < kTestWindowSize; i++) {
     rolling_average_.sample_window_.push(kTestSample);
     rolling_average_.running_total_ += kTestSample;
   }
   rolling_average_.Clear();
+
   EXPECT_EQ(rolling_average_.GetAverage(), 0);
   EXPECT_TRUE(rolling_average_.sample_window_.empty());
 }
 
 TEST_F(RollingAverageTest, DeleteSampleSuccess) {
   int64 expected_total = 0;
-  rolling_average_.Init(kTestWindowSize);
   for (unsigned int i = 0; i < kTestWindowSize; i++) {
     rolling_average_.sample_window_.push(1 + i);
     rolling_average_.running_total_ += 1 + i;
@@ -123,6 +159,7 @@ TEST_F(RollingAverageTest, DeleteSampleSuccess) {
   }
 
   rolling_average_.DeleteSample();
+
   expected_total -= 1;
   EXPECT_EQ(rolling_average_.running_total_, expected_total);
   EXPECT_EQ(rolling_average_.sample_window_.size(), kTestWindowSize - 1);
@@ -133,42 +170,14 @@ TEST_F(RollingAverageTest, DeleteSampleSuccess) {
 }
 
 TEST_F(RollingAverageTest, DeleteSampleEmpty) {
-  rolling_average_.Init(kTestWindowSize);
-
   rolling_average_.DeleteSample();
 }
 
-TEST_F(RollingAverageTest, InsertSampleSuccess) {
-  rolling_average_.Init(kTestWindowSize);
-
-  rolling_average_.InsertSample(kTestSample);
-  EXPECT_EQ(rolling_average_.sample_window_.size(), 1);
-  EXPECT_EQ(rolling_average_.running_total_, kTestSample);
-  EXPECT_EQ(rolling_average_.sample_window_.front(), kTestSample);
-}
-
-TEST_F(RollingAverageTest, InsertSampleFull) {
-  rolling_average_.Init(kTestWindowSize);
-
-  for (unsigned int i = 0; i < kTestWindowSize; i++)
-    rolling_average_.InsertSample(kTestSample);
-
-  rolling_average_.InsertSample(kTestSample);
-
-  // Inserting when full is an error, but not fatal
-  EXPECT_EQ(rolling_average_.sample_window_.size(), kTestWindowSize + 1);
-  EXPECT_EQ(rolling_average_.running_total_,
-            kTestSample * (kTestWindowSize + 1));
-}
-
 TEST_F(RollingAverageTest, IsFullFalse) {
-  rolling_average_.Init(kTestWindowSize);
-
   EXPECT_FALSE(rolling_average_.IsFull());
 }
 
 TEST_F(RollingAverageTest, IsFullTrue) {
-  rolling_average_.Init(kTestWindowSize);
   for (unsigned int i = 0; i < kTestWindowSize; i++)
     rolling_average_.AddSample(kTestSample);
 
@@ -176,6 +185,7 @@ TEST_F(RollingAverageTest, IsFullTrue) {
 }
 
 TEST_F(RollingAverageTest, IsFullUninitialized) {
+  TearDown();
   EXPECT_TRUE(rolling_average_.IsFull());
 }
 

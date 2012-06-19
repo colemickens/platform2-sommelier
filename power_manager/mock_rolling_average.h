@@ -22,6 +22,20 @@ class MockRollingAverage : public RollingAverage {
                 .RetiresOnSaturation();
   }
 
+  MOCK_METHOD1(ChangeWindowSize, void(unsigned int window_size));
+  void ExpectChangeWindowSize(unsigned int window_size) {
+    EXPECT_CALL(*this, ChangeWindowSize(window_size))
+                .Times(1)
+                .RetiresOnSaturation();
+  }
+
+  MOCK_METHOD0(ResetWindowSize, void());
+  void ExpectResetWindowSize() {
+    EXPECT_CALL(*this, ResetWindowSize())
+                .Times(1)
+                .RetiresOnSaturation();
+  }
+
   MOCK_METHOD1(AddSample, int64(int64 sample));
   void ExpectAddSample(int64 sample, int64 ret_val) {
     EXPECT_CALL(*this, AddSample(sample))
