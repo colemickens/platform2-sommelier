@@ -6,6 +6,7 @@
 #define POWER_MANAGER_ASYNC_FILE_READER_H_
 
 #include <aio.h>
+#include <unistd.h>
 #include <string>
 
 #include "base/basictypes.h"

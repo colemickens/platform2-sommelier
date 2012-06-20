@@ -4,6 +4,7 @@
 
 #include "power_manager/util_dbus.h"
 
+#include <unistd.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include "base/basictypes.h"
