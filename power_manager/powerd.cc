@@ -401,8 +401,9 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
 }
 
 // SetActive will transition to Normal state. Used for transitioning on events
-// that do not result in activity monitored by X, i.e. lid open.
+// that do not result in activity monitored by chrome, i.e. lid open.
 void Daemon::SetActive() {
+  idle_->HandleUserActivity(base::TimeTicks::Now());
   int64 idle_time_ms = idle_->GetIdleTimeMs();
   SetIdleOffset(idle_time_ms, kIdleNormal);
   SetIdleState(idle_time_ms);
