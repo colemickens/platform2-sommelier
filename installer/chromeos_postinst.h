@@ -16,13 +16,11 @@ bool ConfigureInstall(
     BiosType bios_type,
     InstallConfig* install_config);
 
-// Find the current kernel command line and use it to find the
+// Find the new kernel's command line and use it to find the
 // current bios type.
-// Exported for testing.
-bool DetectBiosType(BiosType* bios_type);
+bool DetectBiosType(InstallConfig* install_config);
 
 // Find out bios type in use from a kernel command line.
-// Exported for testing.
 bool KernelConfigToBiosType(const std::string& kernel_config, BiosType* type);
 
 // Perform the post install operation. This is used after a kernel and
