@@ -8,6 +8,7 @@
 #include <chromeos/libminijail.h>
 
 #include <stdlib.h>
+#include <unistd.h>
 
 void Sandbox::Enter() {
   if (getuid() != 0 && geteuid() != 0)
