@@ -108,6 +108,10 @@ class Daemon : public BacklightControllerObserver,
 
  private:
   friend class DaemonTest;
+  FRIEND_TEST(DaemonTest, AdjustWindowSizeMax);
+  FRIEND_TEST(DaemonTest, AdjustWindowSizeMin);
+  FRIEND_TEST(DaemonTest, AdjustWindowSizeCalc);
+  FRIEND_TEST(DaemonTest, ExtendTimeoutsWhenProjecting);
   FRIEND_TEST(DaemonTest, GenerateBacklightLevelMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricInterval);
@@ -132,13 +136,12 @@ class Daemon : public BacklightControllerObserver,
               GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow);
   FRIEND_TEST(DaemonTest,
               GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow);
-  FRIEND_TEST(DaemonTest, SendThermalMetrics);
   FRIEND_TEST(DaemonTest, HandleNumOfSessionsPerChargeOnSetPlugged);
   FRIEND_TEST(DaemonTest, PowerButtonDownMetric);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
   FRIEND_TEST(DaemonTest, SendMetric);
   FRIEND_TEST(DaemonTest, SendMetricWithPowerState);
-  FRIEND_TEST(DaemonTest, ExtendTimeoutsWhenProjecting);
+  FRIEND_TEST(DaemonTest, SendThermalMetrics);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesChargingAndCalculating);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndCalculating);
@@ -276,6 +279,12 @@ class Daemon : public BacklightControllerObserver,
   void UpdateAveragedTimes(PowerStatus* status,
                            RollingAverage* empty_average,
                            RollingAverage* full_average);
+
+  // Given the current battery time estimate adjust the rolling
+  // average window sizes to give the desired linear tapering.
+  void AdjustWindowSize(int64 battery_time,
+                        RollingAverage* empty_average,
+                        RollingAverage* full_average);
 
   // Checks for extremely low battery condition.
   void OnLowBattery(double battery_percentage);

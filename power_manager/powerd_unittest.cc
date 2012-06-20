@@ -54,6 +54,10 @@ static const int kSessionLength = 5;
 static const int kAdjustmentsOffset = 100;
 static const int kNumOfSessionsPerCharge = 100;
 static const int64 kBatteryTime = 23;
+static const int64 kRollingAverageTaperTimeMid =
+    kRollingAverageTaperTimeMin + kRollingAverageTaperTimeDiff/2;
+static const unsigned int kRollingAverageSampleWindowMid =
+    kRollingAverageSampleWindowMin + kRollingAverageSampleWindowDiff/2;
 
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 
@@ -258,6 +262,27 @@ class DaemonTest : public Test {
   Daemon daemon_;
 };
 
+TEST_F(DaemonTest, AdjustWindowSizeMax) {
+  full_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMax);
+  empty_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMax);
+  daemon_.AdjustWindowSize(
+      kRollingAverageTaperTimeMax, &empty_average_, &full_average_);
+}
+
+TEST_F(DaemonTest, AdjustWindowSizeMin) {
+  full_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMin);
+  empty_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMin);
+  daemon_.AdjustWindowSize(
+      kRollingAverageTaperTimeMin, &empty_average_, &full_average_);
+}
+
+TEST_F(DaemonTest, AdjustWindowSizeCalc) {
+  full_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMid);
+  empty_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMid);
+  daemon_.AdjustWindowSize(
+      kRollingAverageTaperTimeMid, &empty_average_, &full_average_);
+}
+
 TEST_F(DaemonTest, CheckMetricInterval) {
   EXPECT_FALSE(CheckMetricInterval(29, 0, 30));
   EXPECT_TRUE(CheckMetricInterval(30, 0, 30));
@@ -265,6 +290,97 @@ TEST_F(DaemonTest, CheckMetricInterval) {
   EXPECT_FALSE(CheckMetricInterval(39, 30, 10));
   EXPECT_TRUE(CheckMetricInterval(40, 30, 10));
   EXPECT_TRUE(CheckMetricInterval(41, 30, 10));
+}
+
+TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
+  const int64 kPluggedDimTimeMs = 10000;
+  const int64 kPluggedOffTimeMs = 20000;
+  const int64 kPluggedSuspendTimeMs = 40000;
+  const int64 kUnpluggedDimTimeMs = 15000;
+  const int64 kUnpluggedOffTimeMs = 25000;
+  const int64 kUnpluggedSuspendTimeMs = 45000;
+
+  const int64 kLockTimeMs = 30000;
+
+  // Set prefs that are read by ReadSettings().  Use 0 for ones that we don't
+  // care about.
+  prefs_.SetInt64(kLowBatterySuspendPercentPref, 0);
+  prefs_.SetInt64(kCleanShutdownTimeoutMsPref, 0);
+  prefs_.SetInt64(kPluggedDimMsPref, kPluggedDimTimeMs);
+  prefs_.SetInt64(kPluggedOffMsPref, kPluggedOffTimeMs);
+  prefs_.SetInt64(kPluggedSuspendMsPref, kPluggedSuspendTimeMs);
+  prefs_.SetInt64(kUnpluggedDimMsPref, kUnpluggedDimTimeMs);
+  prefs_.SetInt64(kUnpluggedOffMsPref, kUnpluggedOffTimeMs);
+  prefs_.SetInt64(kUnpluggedSuspendMsPref, kUnpluggedSuspendTimeMs);
+  prefs_.SetInt64(kReactMsPref, 0);
+  prefs_.SetInt64(kFuzzMsPref, 0);
+  prefs_.SetInt64(kEnforceLockPref, 0);
+  prefs_.SetInt64(kUseXScreenSaverPref, 0);
+  prefs_.SetInt64(kDisableIdleSuspendPref, 0);
+  prefs_.SetInt64(kLockOnIdleSuspendPref, 1);
+  prefs_.SetInt64(kLockMsPref, kLockTimeMs);
+
+  // Check that the settings are loaded correctly.
+  daemon_.is_projecting_ = false;
+  daemon_.ReadSettings();
+  EXPECT_EQ(kPluggedDimTimeMs, daemon_.plugged_dim_ms_);
+  EXPECT_EQ(kPluggedOffTimeMs, daemon_.plugged_off_ms_);
+  EXPECT_EQ(kPluggedSuspendTimeMs, daemon_.plugged_suspend_ms_);
+  EXPECT_EQ(kUnpluggedDimTimeMs, daemon_.unplugged_dim_ms_);
+  EXPECT_EQ(kUnpluggedOffTimeMs, daemon_.unplugged_off_ms_);
+  EXPECT_EQ(kUnpluggedSuspendTimeMs, daemon_.unplugged_suspend_ms_);
+  EXPECT_EQ(kLockTimeMs, daemon_.default_lock_ms_);
+
+  // When we start projecting, all of the timeouts should be increased.
+  daemon_.is_projecting_ = true;
+  daemon_.AdjustIdleTimeoutsForProjection();
+  EXPECT_GT(daemon_.plugged_dim_ms_, kPluggedDimTimeMs);
+  EXPECT_GT(daemon_.plugged_off_ms_, kPluggedOffTimeMs);
+  EXPECT_GT(daemon_.plugged_suspend_ms_, kPluggedSuspendTimeMs);
+  EXPECT_GT(daemon_.unplugged_dim_ms_, kUnpluggedDimTimeMs);
+  EXPECT_GT(daemon_.unplugged_off_ms_, kUnpluggedOffTimeMs);
+  EXPECT_GT(daemon_.unplugged_suspend_ms_, kUnpluggedSuspendTimeMs);
+  EXPECT_GT(daemon_.default_lock_ms_, kLockTimeMs);
+
+  // Check that the lock timeout remains higher than the screen-off timeout
+  // (http://crosbug.com/24847).
+  EXPECT_GT(daemon_.default_lock_ms_, daemon_.plugged_off_ms_);
+
+  // Stop projecting and check that we go back to the previous values.
+  daemon_.is_projecting_ = false;
+  daemon_.AdjustIdleTimeoutsForProjection();
+  EXPECT_EQ(kPluggedDimTimeMs, daemon_.plugged_dim_ms_);
+  EXPECT_EQ(kPluggedOffTimeMs, daemon_.plugged_off_ms_);
+  EXPECT_EQ(kPluggedSuspendTimeMs, daemon_.plugged_suspend_ms_);
+  EXPECT_EQ(kUnpluggedDimTimeMs, daemon_.unplugged_dim_ms_);
+  EXPECT_EQ(kUnpluggedOffTimeMs, daemon_.unplugged_off_ms_);
+  EXPECT_EQ(kUnpluggedSuspendTimeMs, daemon_.unplugged_suspend_ms_);
+  EXPECT_EQ(kLockTimeMs, daemon_.default_lock_ms_);
+}
+
+TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
+  daemon_.plugged_state_ = kPowerDisconnected;
+  daemon_.SetPlugged(kPowerDisconnected);
+  daemon_.backlight_controller_->OnPlugEvent(kPowerDisconnected);
+  daemon_.backlight_controller_->SetPowerState(BACKLIGHT_DIM);
+  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
+  daemon_.backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE);
+  daemon_.plugged_state_ = kPowerDisconnected;
+
+  double current_percent = 0.0;
+  ASSERT_TRUE(daemon_.backlight_controller_->
+              GetCurrentBrightnessPercent(&current_percent));
+  int64 current_percent_int = static_cast<int64>(lround(current_percent));
+
+  ExpectEnumMetric("Power.BacklightLevelOnBattery",
+                   current_percent_int,
+                   kMetricBacklightLevelMax);
+  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
+  daemon_.plugged_state_ = kPowerConnected;
+  ExpectEnumMetric("Power.BacklightLevelOnAC",
+                   current_percent_int,
+                   kMetricBacklightLevelMax);
+  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetric) {
@@ -654,30 +770,22 @@ TEST_F(DaemonTest, SendMetricWithPowerState) {
       /* min */ 1, /* max */ 100, /* buckets */ 50));
 }
 
-TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
-  daemon_.plugged_state_ = kPowerDisconnected;
-  daemon_.SetPlugged(kPowerDisconnected);
-  daemon_.backlight_controller_->OnPlugEvent(kPowerDisconnected);
-  daemon_.backlight_controller_->SetPowerState(BACKLIGHT_DIM);
-  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
-  daemon_.backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE);
-  daemon_.plugged_state_ = kPowerDisconnected;
+TEST_F(DaemonTest, SendThermalMetrics) {
+  int aborted = 5;
+  int turned_on = 10;
+  int multiple = 2;
+  int total = aborted + turned_on;
 
-  double current_percent = 0.0;
-  ASSERT_TRUE(
-      daemon_.backlight_controller_->GetCurrentBrightnessPercent(
-          &current_percent));
-  int64 current_percent_int = static_cast<int64>(lround(current_percent));
-
-  ExpectEnumMetric("Power.BacklightLevelOnBattery",
-                   current_percent_int,
-                   kMetricBacklightLevelMax);
-  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
-  daemon_.plugged_state_ = kPowerConnected;
-  ExpectEnumMetric("Power.BacklightLevelOnAC",
-                   current_percent_int,
-                   kMetricBacklightLevelMax);
-  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
+  ExpectEnumMetric(kMetricThermalAbortedFanTurnOnName,
+                   static_cast<int>(round(100 * aborted / total)),
+                   kMetricThermalAbortedFanTurnOnMax);
+  ExpectEnumMetric(kMetricThermalMultipleFanTurnOnName,
+                   static_cast<int>(round(100 * multiple / total)),
+                   kMetricThermalMultipleFanTurnOnMax);
+  daemon_.SendThermalMetrics(aborted, turned_on, multiple);
+  // The next call should fail and not send a metric.
+  // If it does, spurious SendEnumMetric calls will trigger a test failure
+  daemon_.SendThermalMetrics(0, 0, multiple);
 }
 
 TEST_F(DaemonTest, PowerButtonDownMetric) {
@@ -706,72 +814,6 @@ TEST_F(DaemonTest, PowerButtonDownMetric) {
   daemon_.SendPowerButtonMetric(false, up_time);
 }
 
-TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
-  const int64 kPluggedDimTimeMs = 10000;
-  const int64 kPluggedOffTimeMs = 20000;
-  const int64 kPluggedSuspendTimeMs = 40000;
-  const int64 kUnpluggedDimTimeMs = 15000;
-  const int64 kUnpluggedOffTimeMs = 25000;
-  const int64 kUnpluggedSuspendTimeMs = 45000;
-
-  const int64 kLockTimeMs = 30000;
-
-  // Set prefs that are read by ReadSettings().  Use 0 for ones that we don't
-  // care about.
-  prefs_.SetInt64(kLowBatterySuspendPercentPref, 0);
-  prefs_.SetInt64(kCleanShutdownTimeoutMsPref, 0);
-  prefs_.SetInt64(kPluggedDimMsPref, kPluggedDimTimeMs);
-  prefs_.SetInt64(kPluggedOffMsPref, kPluggedOffTimeMs);
-  prefs_.SetInt64(kPluggedSuspendMsPref, kPluggedSuspendTimeMs);
-  prefs_.SetInt64(kUnpluggedDimMsPref, kUnpluggedDimTimeMs);
-  prefs_.SetInt64(kUnpluggedOffMsPref, kUnpluggedOffTimeMs);
-  prefs_.SetInt64(kUnpluggedSuspendMsPref, kUnpluggedSuspendTimeMs);
-  prefs_.SetInt64(kReactMsPref, 0);
-  prefs_.SetInt64(kFuzzMsPref, 0);
-  prefs_.SetInt64(kEnforceLockPref, 0);
-  prefs_.SetInt64(kUseXScreenSaverPref, 0);
-  prefs_.SetInt64(kDisableIdleSuspendPref, 0);
-  prefs_.SetInt64(kLockOnIdleSuspendPref, 1);
-  prefs_.SetInt64(kLockMsPref, kLockTimeMs);
-
-  // Check that the settings are loaded correctly.
-  daemon_.is_projecting_ = false;
-  daemon_.ReadSettings();
-  EXPECT_EQ(kPluggedDimTimeMs, daemon_.plugged_dim_ms_);
-  EXPECT_EQ(kPluggedOffTimeMs, daemon_.plugged_off_ms_);
-  EXPECT_EQ(kPluggedSuspendTimeMs, daemon_.plugged_suspend_ms_);
-  EXPECT_EQ(kUnpluggedDimTimeMs, daemon_.unplugged_dim_ms_);
-  EXPECT_EQ(kUnpluggedOffTimeMs, daemon_.unplugged_off_ms_);
-  EXPECT_EQ(kUnpluggedSuspendTimeMs, daemon_.unplugged_suspend_ms_);
-  EXPECT_EQ(kLockTimeMs, daemon_.default_lock_ms_);
-
-  // When we start projecting, all of the timeouts should be increased.
-  daemon_.is_projecting_ = true;
-  daemon_.AdjustIdleTimeoutsForProjection();
-  EXPECT_GT(daemon_.plugged_dim_ms_, kPluggedDimTimeMs);
-  EXPECT_GT(daemon_.plugged_off_ms_, kPluggedOffTimeMs);
-  EXPECT_GT(daemon_.plugged_suspend_ms_, kPluggedSuspendTimeMs);
-  EXPECT_GT(daemon_.unplugged_dim_ms_, kUnpluggedDimTimeMs);
-  EXPECT_GT(daemon_.unplugged_off_ms_, kUnpluggedOffTimeMs);
-  EXPECT_GT(daemon_.unplugged_suspend_ms_, kUnpluggedSuspendTimeMs);
-  EXPECT_GT(daemon_.default_lock_ms_, kLockTimeMs);
-
-  // Check that the lock timeout remains higher than the screen-off timeout
-  // (http://crosbug.com/24847).
-  EXPECT_GT(daemon_.default_lock_ms_, daemon_.plugged_off_ms_);
-
-  // Stop projecting and check that we go back to the previous values.
-  daemon_.is_projecting_ = false;
-  daemon_.AdjustIdleTimeoutsForProjection();
-  EXPECT_EQ(kPluggedDimTimeMs, daemon_.plugged_dim_ms_);
-  EXPECT_EQ(kPluggedOffTimeMs, daemon_.plugged_off_ms_);
-  EXPECT_EQ(kPluggedSuspendTimeMs, daemon_.plugged_suspend_ms_);
-  EXPECT_EQ(kUnpluggedDimTimeMs, daemon_.unplugged_dim_ms_);
-  EXPECT_EQ(kUnpluggedOffTimeMs, daemon_.unplugged_off_ms_);
-  EXPECT_EQ(kUnpluggedSuspendTimeMs, daemon_.unplugged_suspend_ms_);
-  EXPECT_EQ(kLockTimeMs, daemon_.default_lock_ms_);
-}
-
 TEST_F(DaemonTest, UpdateAveragedTimesChargingAndCalculating) {
   status_.line_power_on = true;
   status_.is_calculating_battery_time = true;
@@ -793,6 +835,8 @@ TEST_F(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating) {
 
   full_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
   empty_average_.ExpectClear();
+  full_average_.ExpectChangeWindowSize(1);
+  empty_average_.ExpectChangeWindowSize(1);
   full_average_.ExpectGetAverage(kBatteryTime);
   empty_average_.ExpectGetAverage(0);
 
@@ -823,6 +867,8 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
 
   empty_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
   full_average_.ExpectClear();
+  full_average_.ExpectChangeWindowSize(1);
+  empty_average_.ExpectChangeWindowSize(1);
   full_average_.ExpectGetAverage(0);
   empty_average_.ExpectGetAverage(kBatteryTime);
 
@@ -830,24 +876,6 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
 
   EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_empty);
   EXPECT_EQ(0, status_.averaged_battery_time_to_full);
-}
-
-TEST_F(DaemonTest, SendThermalMetrics) {
-  int aborted = 5;
-  int turned_on = 10;
-  int multiple = 2;
-  int total = aborted + turned_on;
-
-  ExpectEnumMetric(kMetricThermalAbortedFanTurnOnName,
-                   static_cast<int>(round(100 * aborted / total)),
-                   kMetricThermalAbortedFanTurnOnMax);
-  ExpectEnumMetric(kMetricThermalMultipleFanTurnOnName,
-                   static_cast<int>(round(100 * multiple / total)),
-                   kMetricThermalMultipleFanTurnOnMax);
-  daemon_.SendThermalMetrics(aborted, turned_on, multiple);
-  // The next call should fail and not send a metric.
-  // If it does, spurious SendEnumMetric calls will trigger a test failure
-  daemon_.SendThermalMetrics(0, 0, multiple);
 }
 
 }  // namespace power_manager

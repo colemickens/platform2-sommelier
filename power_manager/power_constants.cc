@@ -72,4 +72,22 @@ const char kPowerStateChanged[] = "PowerStateChanged";
 const char kLidOpenFile[] = "lid_opened";
 const char kUserActiveFile[] = "user_active";
 
+// Control parameters for the battery time rolling averages
+// The current normal sample rate is 0.5 Hz, so this gives us a window of ~5
+// minutes.
+const unsigned int kRollingAverageSampleWindowMax = 10;
+// Minimal window size that will be used for rolling averages.
+const unsigned int kRollingAverageSampleWindowMin = 1;
+const unsigned int kRollingAverageSampleWindowDiff =
+    kRollingAverageSampleWindowMax - kRollingAverageSampleWindowMin;
+
+// Battery remaining time that we want to start tapering from
+// |kRollingAverageSampleWindow| to using the raw value, in seconds
+const unsigned int kRollingAverageTaperTimeMax = 60*60;
+// Battery remaining time that we want to be done tapering from
+// |kRollingAverageSampleWindow| to using the raw value, in seconds
+const unsigned int kRollingAverageTaperTimeMin = 10*60;
+const unsigned int kRollingAverageTaperTimeDiff =
+    kRollingAverageTaperTimeMax - kRollingAverageTaperTimeMin;
+
 }  // namespace power_manager

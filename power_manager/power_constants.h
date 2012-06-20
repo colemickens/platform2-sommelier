@@ -73,6 +73,14 @@ extern const char kPowerStateChanged[];
 extern const char kLidOpenFile[];
 extern const char kUserActiveFile[];
 
+// Control parameters for the battery time rolling averages
+extern const unsigned int kRollingAverageSampleWindowMax;
+extern const unsigned int kRollingAverageSampleWindowMin;
+extern const unsigned int kRollingAverageSampleWindowDiff;
+extern const unsigned int kRollingAverageTaperTimeMax;
+extern const unsigned int kRollingAverageTaperTimeMin;
+extern const unsigned int kRollingAverageTaperTimeDiff;
+
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_POWER_CONSTANTS_H_

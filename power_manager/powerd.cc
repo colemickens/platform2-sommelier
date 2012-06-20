@@ -69,10 +69,6 @@ std::set<std::string> kValidStates(
 // Minimum time a user must be idle to have returned from idle
 const int64 kMinTimeForIdle = 10;
 
-// The current normal sample rate is 0.5 Hz, so this gives us a window of ~5
-// minutes.
-const unsigned int kRollingAverageSampleWindow = 10;
-
 }  // namespace
 
 namespace power_manager {
@@ -148,8 +144,8 @@ void Daemon::Init() {
   RegisterDBusMessageHandler();
   RetrieveSessionState();
   suspender_.Init(run_dir_);
-  time_to_empty_average_.Init(kRollingAverageSampleWindow);
-  time_to_full_average_.Init(kRollingAverageSampleWindow);
+  time_to_empty_average_.Init(kRollingAverageSampleWindowMax);
+  time_to_full_average_.Init(kRollingAverageSampleWindowMax);
   power_supply_.Init();
   power_supply_.GetPowerStatus(&power_status_, false);
   OnPowerEvent(this, power_status_);
@@ -1310,18 +1306,53 @@ gboolean Daemon::HandlePollPowerSupply() {
 void Daemon::UpdateAveragedTimes(PowerStatus* status,
                                  RollingAverage* empty_average,
                                  RollingAverage* full_average) {
+  int64 battery_time = 0;
   if (status->line_power_on) {
     if (!status->is_calculating_battery_time)
       full_average->AddSample(status->battery_time_to_full);
     empty_average->Clear();
+    battery_time = status->battery_time_to_full;
   } else {
     if (!status->is_calculating_battery_time)
       empty_average->AddSample(status->battery_time_to_empty);
     full_average->Clear();
+    battery_time = status->battery_time_to_empty;
   }
+
+  if (!status->is_calculating_battery_time)
+    AdjustWindowSize(battery_time, empty_average, full_average);
 
   status->averaged_battery_time_to_full = full_average->GetAverage();
   status->averaged_battery_time_to_empty = empty_average->GetAverage();
+}
+
+// For the rolling averages we want the window size to taper off in a
+// linear fashion from |kRollingAverageSampleWindowMax| to
+// |kRollingAverageSampleWindowMin| on the battery time remaining
+// interval from |kRollingAverageTaperTimeMax| to
+// |kRollingAverageTaperTimeMin|. The two point equation for the line
+// is:
+//   (x - x0)/(x1 - x0) = (t - t0)/(t1 - t0)
+// which solved for x is:
+//   x = (t - t0)*(x1 - x0)/(t1 - t0) + x0
+// We let x be the size of the window and t be the battery time
+// remaining.
+void Daemon::AdjustWindowSize(int64 battery_time,
+                              RollingAverage* empty_average,
+                              RollingAverage* full_average) {
+  unsigned int window_size = kRollingAverageSampleWindowMax;
+  if (battery_time >= kRollingAverageTaperTimeMax) {
+    window_size = kRollingAverageSampleWindowMax;
+  } else if (battery_time <= kRollingAverageTaperTimeMin) {
+    window_size = kRollingAverageSampleWindowMin;
+  } else {
+    window_size = (battery_time - kRollingAverageTaperTimeMin);
+    window_size *= kRollingAverageSampleWindowDiff;
+    window_size /= kRollingAverageTaperTimeDiff;
+    window_size += kRollingAverageSampleWindowMin;
+  }
+  full_average->ChangeWindowSize(window_size);
+  empty_average->ChangeWindowSize(window_size);
 }
 
 void Daemon::OnLowBattery(double battery_percentage) {
