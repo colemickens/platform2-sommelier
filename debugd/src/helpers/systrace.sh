@@ -73,10 +73,20 @@ tracing_disable()
 
 tracing_enable_events()
 {
-    logger -t systrace "enable events $@"
+    local events_enabled
+    local events_failed
     for ev; do
-        echo ${ev} >> ${tracing_path}/set_event # NB: note >>
+        # NB: note >>
+        if echo ${ev} >> ${tracing_path}/set_event; then
+            events_enabled="${events_enabled} ${ev}"
+        else
+            events_failed="${events_failed} ${ev}"
+        fi
     done
+    logger -t systrace "enable events ${events_enabled}"
+    if [ -n "${events_failed}" ]; then
+        logger -t systrace "Warning, events ${events_failed} were not enabled"
+    fi
 }
 
 tracing_reset()
