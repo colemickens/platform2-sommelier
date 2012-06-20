@@ -25,7 +25,6 @@
 #include "power_manager/activity_detector_interface.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/metrics_constants.h"
-#include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_supply.h"
 #include "power_manager/state_control.h"
@@ -101,7 +100,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
                ActivityDetectorInterface* video_detector,
                ActivityDetectorInterface* audio_detector,
                IdleDetector* idle,
-               MonitorReconfigure* monitor_reconfigure,
                BacklightInterface* keyboard_backlight,
                const FilePath& run_dir)
     : backlight_controller_(backlight_controller),
@@ -110,7 +108,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       video_detector_(video_detector),
       audio_detector_(audio_detector),
       idle_(idle),
-      monitor_reconfigure_(monitor_reconfigure),
       keyboard_backlight_(keyboard_backlight),
       low_battery_suspend_percent_(0),
       clean_shutdown_initiated_(false),
@@ -161,6 +158,10 @@ void Daemon::Init() {
                       &time_to_full_average_);
   file_tagger_.Init();
   backlight_controller_->SetObserver(this);
+
+  // TODO(crosbug.com/31927): Send a signal to announce that powerd has started.
+  // This is necessary for receiving external display projection status from
+  // Chrome, for instance.
 }
 
 void Daemon::ReadSettings() {

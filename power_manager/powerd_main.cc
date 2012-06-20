@@ -100,6 +100,7 @@ int main(int argc, char* argv[]) {
   power_manager::PowerPrefs prefs(prefs_dir, default_prefs_dir);
   g_type_init();
 
+  power_manager::MonitorReconfigure monitor_reconfigure;
 #ifdef IS_DESKTOP
   power_manager::ExternalBacklightClient backlight;
   if (!backlight.Init())
@@ -116,6 +117,7 @@ int main(int argc, char* argv[]) {
 #else
   power_manager::InternalBacklightController backlight_ctl(&backlight, &prefs);
 #endif
+  backlight_ctl.SetMonitorReconfigure(&monitor_reconfigure);
   if (!backlight_ctl.Init())
     LOG(WARNING) << "Cannot initialize backlight controller";
 
@@ -138,9 +140,6 @@ int main(int argc, char* argv[]) {
   audio_detector.Init();
   power_manager::IdleDetector idle;
   metrics_lib.Init();
-  power_manager::MonitorReconfigure monitor_reconfigure(&backlight_ctl);
-  if (!monitor_reconfigure.Init())
-    LOG(WARNING) << "Cannot initialize monitor reconfigure";
   FilePath run_dir(FLAGS_run_dir);
   power_manager::Daemon daemon(&backlight_ctl,
                                &prefs,
@@ -148,7 +147,6 @@ int main(int argc, char* argv[]) {
                                &video_detector,
                                &audio_detector,
                                &idle,
-                               &monitor_reconfigure,
                                keylight.get(),
                                run_dir);
 

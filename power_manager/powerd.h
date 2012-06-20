@@ -43,7 +43,6 @@ struct udev_monitor;
 namespace power_manager {
 
 class ActivityDetectorInterface;
-class MonitorReconfigure;
 class PowerButtonHandler;
 class StateControl;
 
@@ -66,7 +65,6 @@ class Daemon : public BacklightControllerObserver,
          ActivityDetectorInterface* video_detector,
          ActivityDetectorInterface* audio_detector,
          IdleDetector* idle,
-         MonitorReconfigure* monitor_reconfigure,
          BacklightInterface* keyboard_backlight,
          const FilePath& run_dir);
   ~Daemon();
@@ -430,7 +428,6 @@ class Daemon : public BacklightControllerObserver,
   ActivityDetectorInterface* video_detector_;
   ActivityDetectorInterface* audio_detector_;
   IdleDetector* idle_;
-  MonitorReconfigure* monitor_reconfigure_;
   BacklightInterface* keyboard_backlight_;
   double low_battery_suspend_percent_;
   bool clean_shutdown_initiated_;

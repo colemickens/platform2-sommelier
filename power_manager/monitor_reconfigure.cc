@@ -14,34 +14,20 @@
 namespace power_manager {
 
 MonitorReconfigure::MonitorReconfigure()
-    : is_internal_panel_enabled_(true),
-      backlight_ctl_(NULL) {
-}
-
-MonitorReconfigure::MonitorReconfigure(BacklightController* backlight_ctl)
-    : is_internal_panel_enabled_(true),
-      backlight_ctl_(backlight_ctl) {
+    : is_internal_panel_enabled_(true) {
 }
 
 MonitorReconfigure::~MonitorReconfigure() {
 }
 
-bool MonitorReconfigure::Init() {
-  if (backlight_ctl_)
-    backlight_ctl_->SetMonitorReconfigure(this);
-  return true;
-}
-
 void MonitorReconfigure::SetScreenOn() {
   LOG(INFO) << "MonitorReconfigure::SetScreenOn()";
-  SendSetScreenPowerSignal(POWER_STATE_ON,
-                           OUTPUT_SELECTION_ALL_DISPLAYS);
+  SendSetScreenPowerSignal(POWER_STATE_ON, OUTPUT_SELECTION_ALL_DISPLAYS);
 }
 
 void MonitorReconfigure::SetScreenOff() {
   LOG(INFO) << "MonitorReconfigure::SetScreenOff()";
-  SendSetScreenPowerSignal(POWER_STATE_OFF,
-                           OUTPUT_SELECTION_ALL_DISPLAYS);
+  SendSetScreenPowerSignal(POWER_STATE_OFF, OUTPUT_SELECTION_ALL_DISPLAYS);
 }
 
 void MonitorReconfigure::SetInternalPanelOn() {
@@ -50,15 +36,16 @@ void MonitorReconfigure::SetInternalPanelOn() {
 
   LOG(INFO) << "MonitorReconfigure::SetInternalPanelOn()";
   is_internal_panel_enabled_ = true;
-  SendSetScreenPowerSignal(POWER_STATE_ON,
-                           OUTPUT_SELECTION_INTERNAL_ONLY);
+  SendSetScreenPowerSignal(POWER_STATE_ON, OUTPUT_SELECTION_INTERNAL_ONLY);
 }
 
 void MonitorReconfigure::SetInternalPanelOff() {
+  if (!is_internal_panel_enabled_)
+    return;
+
   LOG(INFO) << "MonitorReconfigure::SetInternalPanelOff()";
   is_internal_panel_enabled_ = false;
-  SendSetScreenPowerSignal(POWER_STATE_OFF,
-                           OUTPUT_SELECTION_INTERNAL_ONLY);
+  SendSetScreenPowerSignal(POWER_STATE_OFF, OUTPUT_SELECTION_INTERNAL_ONLY);
 }
 
 void MonitorReconfigure::SendSetScreenPowerSignal(ScreenPowerState power_state,

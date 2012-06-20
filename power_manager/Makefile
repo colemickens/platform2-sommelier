@@ -265,9 +265,11 @@ POWERD_UNITTEST_OBJS = powerd_unittest.o metrics_store_unittest.o \
                        rolling_average_unittest.o
 ifeq ($(USE_IS_DESKTOP),)
 POWERD_UNITTEST_OBJS += internal_backlight_controller_unittest.o \
-                        idle_dimmer_unittest.o plug_dimmer_unittest.o
+                        idle_dimmer_unittest.o monitor_reconfigure.o \
+                        plug_dimmer_unittest.o
 else
-POWERD_UNITTEST_OBJS += external_backlight_controller_unittest.o
+POWERD_UNITTEST_OBJS += external_backlight_controller_unittest.o \
+                        monitor_reconfigure.o
 endif
 
 CXX_BINARY(powerd_unittest): $(POWERD_UNITTEST_OBJS) \

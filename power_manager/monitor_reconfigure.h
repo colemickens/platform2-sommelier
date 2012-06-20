@@ -9,8 +9,6 @@
 
 namespace power_manager {
 
-class BacklightController;
-
 enum ScreenPowerState {
     POWER_STATE_INVALID,
     POWER_STATE_ON,
@@ -28,17 +26,8 @@ enum ScreenPowerOutputSelection {
 // the external monitor.
 class MonitorReconfigure {
  public:
-  // We need a default constructor for unit tests.
   MonitorReconfigure();
-
-  // |backlight_ctl| is a pointer to the backlight controller for the internal
-  // screen.
-  explicit MonitorReconfigure(BacklightController* backlight_ctl);
-
   virtual ~MonitorReconfigure();
-
-  // Initialization.
-  bool Init();
 
   // Public interface for turning on/off all the screens (displays).
   void SetScreenOn();
@@ -58,9 +47,6 @@ class MonitorReconfigure {
 
   // Whether the internal panel output is enabled.
   bool is_internal_panel_enabled_;
-
-  // Not owned.
-  BacklightController* backlight_ctl_;
 
   DISALLOW_COPY_AND_ASSIGN(MonitorReconfigure);
 };
