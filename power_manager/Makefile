@@ -67,8 +67,7 @@ GLIB_FLAGS := $(shell $(PKG_CONFIG) --cflags $(GLIB_DEPS))
 GLIB_LIBS := $(shell $(PKG_CONFIG) --libs $(GLIB_DEPS))
 
 BACKLIGHT_FLAGS = $(GLIB_FLAGS) $(DBUS_FLAGS)
-BACKLIGHT_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -lX11 -lXrandr \
-                 -ludev
+BACKLIGHT_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev
 LIBBACKLIGHT_OBJS = ambient_light_sensor.o async_file_reader.o backlight.o \
                     external_backlight.o external_backlight_client.o \
                     power_constants.o
@@ -128,8 +127,8 @@ clean: CLEAN(libpower_prefs.pie.a)
 LIBPOWERD_DEPS = libchromeos-$(BASE_VER)
 LIBPOWERD_FLAGS := $(GLIB_FLAGS) $(DBUS_FLAGS) \
                    $(shell $(PKG_CONFIG) --cflags $(LIBPOWERD_DEPS))
-LIBPOWERD_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lXext -lgflags -lmetrics -lX11 \
-                  -lXrandr -ludev -lprotobuf-lite \
+LIBPOWERD_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev \
+                  -lprotobuf-lite \
                   $(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
 
 LIBUTIL_OBJS = util.o inotify.o
@@ -179,7 +178,7 @@ all: CXX_BINARY(powerd)
 LIBPOWERMAN_DEPS = libchromeos-$(BASE_VER)
 LIBPOWERMAN_FLAGS := $(GLIB_FLAGS) $(DBUS_FLAGS) \
                      $(shell $(PKG_CONFIG) --cflags $(LIBPOWERMAN_DEPS))
-LIBPOWERMAN_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev -lX11 \
+LIBPOWERMAN_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev \
                     $(shell $(PKG_CONFIG) --libs $(LIBPOWERMAN_DEPS))
 LIBPOWERMAN_OBJS = powerman.o external_backlight.o input.o powerman_metrics.o
 CXX_STATIC_LIBRARY(libpowerman.pie.a): $(LIBPOWERMAN_OBJS)
@@ -215,7 +214,6 @@ POWERSTATETOOL_DEPS = libchromeos-$(BASE_VER)
 POWERSTATETOOL_FLAGS := $(GLIB_FLAGS) $(DBUS_FLAGS) \
                         $(shell $(PKG_CONFIG) --cflags $(POWERSTATETOOL_DEPS))
 POWERSTATETOOL_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lprotobuf-lite \
-                       -lX11 \
                        $(shell $(PKG_CONFIG) --libs $(POWERSTATETOOL_DEPS))
 POWERSTATETOOL_OBJS = power_state_control.pb.o power_state_tool.o \
                       power_constants.o
@@ -230,7 +228,7 @@ BACKLIGHTDBUSTOOL_DEPS = libchromeos-$(BASE_VER)
 BACKLIGHTDBUSTOOL_FLAGS := $(GLIB_FLAGS) $(DBUS_FLAGS) \
 	$(shell $(PKG_CONFIG) --cflags $(POWERSTATETOOL_DEPS))
 BACKLIGHTDBUSTOOL_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lrt -lpthread -lgflags \
-                          -lprotobuf-lite -lX11 \
+                          -lprotobuf-lite \
                           $(shell $(PKG_CONFIG) --libs $(POWERSTATETOOL_DEPS))
 BACKLIGHTDBUSTOOL_OBJS = backlight_dbus_tool.o power_constants.o
 CXX_BINARY(backlight_dbus_tool): $(BACKLIGHTDBUSTOOL_OBJS) \
@@ -246,7 +244,7 @@ CXX_STATIC_LIBRARY(libtestrunner.pie.a): $(LIBTESTRUNNER_OBJS)
 clean: CLEAN(libtestrunner.pie.a)
 
 BACKLIGHT_UNITTEST_FLAGS = $(GLIB_FLAGS)
-BACKLIGHT_UNITTEST_LIBS = $(GLIB_LIBS) -lgmock -lgtest -lXext
+BACKLIGHT_UNITTEST_LIBS = $(GLIB_LIBS) -lgmock -lgtest
 BACKLIGHT_UNITTEST_OBJS = backlight_unittest.o
 CXX_BINARY(backlight_unittest): $(BACKLIGHT_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libtestrunner.pie.a) \
@@ -259,8 +257,7 @@ clean: CXX_BINARY(backlight_unittest)
 tests: TEST(CXX_BINARY(backlight_unittest))
 
 POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
-POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock -lX11 -lXext -lXrandr \
-                       -lXtst
+POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock
 POWERD_UNITTEST_OBJS = powerd_unittest.o metrics_store_unittest.o \
                        rolling_average_unittest.o
 ifeq ($(USE_IS_DESKTOP),)
@@ -286,7 +283,7 @@ clean: CXX_BINARY(powerd_unittest)
 tests: TEST(CXX_BINARY(powerd_unittest))
 
 FILE_TAGGER_UNITTEST_FLAGS = $(POWERD_FLAGS)
-FILE_TAGGER_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock -lXtst
+FILE_TAGGER_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock
 FILE_TAGGER_UNITTEST_OBJS = file_tagger_unittest.o
 CXX_BINARY(file_tagger_unittest): $(FILE_TAGGER_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libtestrunner.pie.a) \
@@ -301,7 +298,7 @@ clean: CXX_BINARY(file_tagger_unittest)
 tests: TEST(CXX_BINARY(file_tagger_unittest))
 
 POWER_SUPPLY_UNITTEST_FLAGS = $(POWERD_FLAGS)
-POWER_SUPPLY_UNITTEST_LIBS = $(POWERD_LIBS)  -lgtest -lgmock -lXtst
+POWER_SUPPLY_UNITTEST_LIBS = $(POWERD_LIBS)  -lgtest -lgmock
 POWER_SUPPLY_UNITTEST_OBJS = power_supply_unittest.o
 CXX_BINARY(power_supply_unittest): $(POWER_SUPPLY_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libtestrunner.pie.a) \
@@ -329,7 +326,7 @@ tests: TEST(CXX_BINARY(powerman_unittest))
 
 state_control_unittest.o.depends: power_state_control.pb.cc
 STATE_CONTROL_UNITTEST_FLAGS = $(POWERD_FLAGS)
-STATE_CONTROL_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock -lXtst
+STATE_CONTROL_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock
 STATE_CONTROL_UNITTEST_OBJS = state_control_unittest.o state_control.o
 CXX_BINARY(state_control_unittest): $(STATE_CONTROL_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libtestrunner.pie.a) \
@@ -345,7 +342,7 @@ clean: CXX_BINARY(state_control_unittest)
 tests: TEST(CXX_BINARY(state_control_unittest))
 
 ASYNC_FILE_READER_UNITTEST_FLAGS = $(GLIB_FLAGS)
-ASYNC_FILE_READER_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock -lXtst
+ASYNC_FILE_READER_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock
 ASYNC_FILE_READER_UNITTEST_OBJS = async_file_reader_unittest.o \
                                   async_file_reader.o
 CXX_BINARY(async_file_reader_unittest): $(ASYNC_FILE_READER_UNITTEST_OBJS) \
@@ -358,7 +355,7 @@ clean: CXX_BINARY(async_file_reader_unittest)
 tests: TEST(CXX_BINARY(async_file_reader_unittest))
 
 UTIL_UNITTEST_FLAGS = $(LIBUTIL_FLAGS)
-UTIL_UNITTEST_LIBS = $(LIBUTIL_LIBS) -lgtest -lgmock -lX11
+UTIL_UNITTEST_LIBS = $(LIBUTIL_LIBS) -lgtest -lgmock
 UTIL_UNITTEST_OBJS = util_unittest.o util.o
 CXX_BINARY(util_unittest): $(UTIL_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(libtestrunner.pie.a)
