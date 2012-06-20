@@ -46,6 +46,8 @@ gfx_events="
 power_events="
     power:cpu_idle
     power:cpu_frequency
+    cpufreq_interactive:cpufreq_interactive_boost
+    cpufreq_interactive:cpufreq_interactive_unboost
 "
 # TODO(sleffler) calculate based on enabled events
 buffer_size_running=7040           # ring-buffer size in kb / cpu
