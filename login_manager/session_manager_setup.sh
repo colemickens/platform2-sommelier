@@ -360,6 +360,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --user-data-dir="$DATA_DIR" \
             --no-protector \
             --disable-gpu-sandbox \
+            --allow-webui-compositing \
             "$REGISTER_PLUGINS" \
             ${ACCELERATED_FLAGS} \
             ${AURA_FLAGS} \
