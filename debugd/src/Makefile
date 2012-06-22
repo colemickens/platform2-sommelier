@@ -10,7 +10,6 @@ PC_DEPS = dbus-1 dbus-c++-1 libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 CXXFLAGS += $(PC_CFLAGS)
-LIB_DIRS += $(PC_LIBS)
 
 # Need this to come after the PC_* flags since our
 # sub-module.mk files utilize them.
