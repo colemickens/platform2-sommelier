@@ -58,7 +58,7 @@
       <arg type="b" name="create_if_missing" direction="in" />
       <arg type="b" name="deprecated_replace_tracked_subdirectories" direction="in" />
       <arg type="as" name="deprecated_tracked_subdirectories" direction="in" />
-      <arg type="i" name="error" direction="out" />
+      <arg type="i" name="error_num" direction="out" />
       <arg type="b" name="done" direction="out" />
     </method>
     <method name="AsyncMount">
@@ -70,7 +70,7 @@
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="MountGuest">
-      <arg type="i" name="error" direction="out" />
+      <arg type="i" name="error_num" direction="out" />
       <arg type="b" name="done" direction="out" />
     </method>
     <method name="AsyncMountGuest">
