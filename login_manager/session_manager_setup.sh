@@ -358,7 +358,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --use-cras \
             --user-data-dir="$DATA_DIR" \
             --no-protector \
-            --disable-gpu-sandbox \
+            --enable-gpu-sandbox \
             --allow-webui-compositing \
             "$REGISTER_PLUGINS" \
             ${ACCELERATED_FLAGS} \
