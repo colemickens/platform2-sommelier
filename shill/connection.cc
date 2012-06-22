@@ -274,16 +274,23 @@ bool Connection::FixGatewayReachability(IPAddress *local,
                << " is unreachable from local address/prefix "
                << local->ToString() << "/" << local->prefix();
 
+  bool found_new_prefix = false;
   size_t original_prefix = local->prefix();
-  size_t prefix = original_prefix - 1;
-  for (; prefix >= local->GetMinPrefixLength(); --prefix) {
-    local->set_prefix(prefix);
-    if (local->CanReachAddress(gateway)) {
-      break;
+  // Only try to expand the netmask if the configured prefix is
+  // less than "all ones".  This special-cases the "all-ones"
+  // prefix as a forced conversion to point-to-point networking.
+  if (local->prefix() < IPAddress::GetMaxPrefixLength(local->family())) {
+    size_t prefix = original_prefix - 1;
+    for (; prefix >= local->GetMinPrefixLength(); --prefix) {
+      local->set_prefix(prefix);
+      if (local->CanReachAddress(gateway)) {
+        found_new_prefix = true;
+        break;
+      }
     }
   }
 
-  if (prefix < local->GetMinPrefixLength()) {
+  if (!found_new_prefix) {
     // Restore the original prefix since we cannot find a better one.
     local->set_prefix(original_prefix);
     DCHECK(!peer->IsValid());
@@ -292,7 +299,8 @@ bool Connection::FixGatewayReachability(IPAddress *local,
     return true;
   }
 
-  LOG(WARNING) << "Mitigating this by setting local prefix to " << prefix;
+  LOG(WARNING) << "Mitigating this by setting local prefix to "
+               << local->prefix();
   return true;
 }
 

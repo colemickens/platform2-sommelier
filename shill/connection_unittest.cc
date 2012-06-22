@@ -460,7 +460,7 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   // Peer should remain unchanged.
   EXPECT_FALSE(peer.IsValid());
 
-  // Should change models to assuming peer-to-pear because we cannot
+  // Should change models to assuming point-to-point because we cannot
   // plausibly expand the prefix past 8.
   local.set_prefix(kPrefix);
   static const char kUnreachableGateway[] = "11.242.2.14";
@@ -472,8 +472,24 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   // Peer address should be set to the gateway address.
   EXPECT_TRUE(peer.Equals(gateway));
 
+  // Should also use point-to-point model if the netmask is set to the
+  // "all-ones" addresss, even if this address could have been made
+  // accessible by plausibly changing the prefix.
+  const int kIPv4MaxPrefix =
+      IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4);
+  local.set_prefix(kIPv4MaxPrefix);
+  ASSERT_TRUE(gateway.SetAddressFromString(kExpandableGateway));
+  peer = IPAddress(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
+  // Prefix should not have changed.
+  EXPECT_EQ(kIPv4MaxPrefix, local.prefix());
+  // Peer address should be set to the gateway address.
+  EXPECT_TRUE(peer.Equals(gateway));
+
   // If this is a peer-to-peer interface and the peer matches the gateway,
   // we should succeed.
+  local.set_prefix(kPrefix);
+  ASSERT_TRUE(gateway.SetAddressFromString(kUnreachableGateway));
   ASSERT_TRUE(peer.SetAddressFromString(kUnreachableGateway));
   EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
   EXPECT_EQ(kPrefix, local.prefix());
