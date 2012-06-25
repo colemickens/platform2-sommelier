@@ -30,6 +30,7 @@
 #include "shill/ieee80211.h"
 #include "shill/key_value_store.h"
 #include "shill/manager.h"
+#include "shill/mock_dbus_manager.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
@@ -197,6 +198,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
             new NiceMock<MockSupplicantBSSProxy>()),
         dhcp_config_(new MockDHCPConfig(&control_interface_,
                                         kDeviceName)),
+        dbus_manager_(new NiceMock<MockDBusManager>()),
         proxy_factory_(this),
         power_manager_(new MockPowerManager(&proxy_factory_)) {
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
@@ -215,6 +217,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     // |manager_| takes ownership of |power_manager_|.
     manager_.set_power_manager(power_manager_);
 
+    manager_.dbus_manager_.reset(dbus_manager_);  // Transfers ownership.
+
     wifi_->time_ = &time_;
   }
 
@@ -226,6 +230,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->set_dhcp_provider(&dhcp_provider_);
     ON_CALL(manager_, device_info()).
         WillByDefault(Return(&device_info_));
+    EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
     EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
     EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
   }
@@ -388,15 +393,33 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   uint16_t GetScanInterval() {
     return wifi_->GetScanInterval(NULL);
   }
-  void StartWiFi() {
-    EXPECT_CALL(*power_manager_, AddStateChangeCallback(wifi_->UniqueName(), _))
-        .WillOnce(SaveArg<1>(&power_state_callback_));
+  void StartWiFi(bool supplicant_present) {
+    if (supplicant_present) {
+      EXPECT_CALL(*power_manager_,
+                  AddStateChangeCallback(wifi_->UniqueName(), _))
+          .WillOnce(SaveArg<1>(&power_state_callback_));
+    }
+    wifi_->supplicant_present_ = supplicant_present;
     wifi_->SetEnabled(true);  // Start(NULL, ResultCallback());
+  }
+  void StartWiFi() {
+    StartWiFi(true);
   }
   void StopWiFi() {
     EXPECT_CALL(*power_manager_,
                 RemoveStateChangeCallback(wifi_->UniqueName()));
     wifi_->SetEnabled(false);  // Stop(NULL, ResultCallback());
+  }
+  void OnSupplicantAppear() {
+    wifi_->OnSupplicantAppear(":1.7");
+    EXPECT_TRUE(wifi_->supplicant_present_);
+  }
+  void OnSupplicantVanish() {
+    wifi_->OnSupplicantVanish();
+    EXPECT_FALSE(wifi_->supplicant_present_);
+  }
+  bool GetSupplicantPresent() {
+    return wifi_->supplicant_present_;
   }
   WiFiServiceRefPtr GetOpenService(const char *service_type,
                                    const char *ssid,
@@ -549,6 +572,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   scoped_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
+  NiceMock<MockDBusManager> *dbus_manager_;
 
  private:
   TestProxyFactory proxy_factory_;
@@ -620,6 +644,48 @@ TEST_F(WiFiMainTest, ProxiesSetUpDuringStart) {
   EXPECT_FALSE(GetSupplicantInterfaceProxy() == NULL);
 }
 
+TEST_F(WiFiMainTest, SupplicantPresent) {
+  EXPECT_FALSE(GetSupplicantPresent());
+}
+
+TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
+  EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
+
+  EXPECT_CALL(*dbus_manager_, WatchName(wpa_supplicant::kDBusAddr, _, _));
+  StartWiFi(false);  // No supplicant present.
+  EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
+
+  OnSupplicantAppear();
+  EXPECT_FALSE(GetSupplicantProcessProxy() == NULL);
+}
+
+TEST_F(WiFiMainTest, OnSupplicantAppearStopped) {
+  EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
+
+  OnSupplicantAppear();
+  EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
+}
+
+TEST_F(WiFiMainTest, OnSupplicantVanishStarted) {
+  EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
+
+  StartWiFi();
+  EXPECT_FALSE(GetSupplicantProcessProxy() == NULL);
+  EXPECT_TRUE(GetSupplicantPresent());
+
+  EXPECT_CALL(*manager(), DeregisterDevice(_));
+  EXPECT_CALL(*manager(), RegisterDevice(_));
+  OnSupplicantVanish();
+  EXPECT_FALSE(GetSupplicantPresent());
+}
+
+TEST_F(WiFiMainTest, OnSupplicantVanishStopped) {
+  OnSupplicantAppear();
+  EXPECT_TRUE(GetSupplicantPresent());
+  EXPECT_CALL(*manager(), DeregisterDevice(_)).Times(0);
+  OnSupplicantVanish();
+}
+
 TEST_F(WiFiMainTest, CleanStart) {
   EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_));
   EXPECT_CALL(*supplicant_process_proxy_, GetInterface(_))
@@ -641,7 +707,7 @@ TEST_F(WiFiMainTest, Restart) {
       .WillRepeatedly(Throw(
           DBus::Error(
               "fi.w1.wpa_supplicant1.InterfaceExists",
-              "test thew fi.w1.wpa_supplicant1.InterfaceExists")));
+              "test threw fi.w1.wpa_supplicant1.InterfaceExists")));
   EXPECT_CALL(*supplicant_process_proxy_, GetInterface(_));
   EXPECT_CALL(*supplicant_interface_proxy_, Scan(_));
   StartWiFi();

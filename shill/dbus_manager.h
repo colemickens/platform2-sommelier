@@ -11,6 +11,7 @@
 
 #include <base/basictypes.h>
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -24,9 +25,12 @@ class DBusManager {
  public:
   typedef base::Callback<void(const std::string &owner)> AppearedCallback;
   typedef base::Closure VanishedCallback;
+  typedef base::CancelableCallback<void(
+      const std::string &owner)> CancelableAppearedCallback;
+  typedef base::CancelableClosure CancelableVanishedCallback;
 
   DBusManager();
-  ~DBusManager();
+  virtual ~DBusManager();
 
   void Start();
   void Stop();
@@ -36,9 +40,9 @@ class DBusManager {
   // is invoked if non-null. |on_appear| or |on_vanish| will be notified once
   // asynchronously if the service has or doesn't have an owner, respectively,
   // when WatchName is invoked.
-  void WatchName(const std::string &name,
-                 const AppearedCallback &on_appear,
-                 const VanishedCallback &on_vanish);
+  virtual void WatchName(const std::string &name,
+                         const AppearedCallback &on_appear,
+                         const VanishedCallback &on_vanish);
 
  private:
   friend class DBusManagerTest;

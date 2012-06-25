@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DEVICE_
-#define SHILL_DEVICE_
+#ifndef SHILL_DEVICE_H_
+#define SHILL_DEVICE_H_
 
 #include <string>
 #include <vector>
@@ -50,7 +50,6 @@ class Device : public base::RefCounted<Device> {
          const std::string &address,
          int interface_index,
          Technology::Identifier technology);
-  virtual ~Device();
 
   // Enable or disable the device.
   virtual void SetEnabled(bool enable);
@@ -156,6 +155,7 @@ class Device : public base::RefCounted<Device> {
   DeviceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
  protected:
+  friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
@@ -174,6 +174,8 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(ManagerTest, DisableTechnology);
   FRIEND_TEST(WiFiMainTest, Connect);
   FRIEND_TEST(WiMaxTest, ConnectTimeout);
+
+  virtual ~Device();
 
   // Each device must implement this method to do the work needed to
   // enable the device to operate for establishing network connections.
@@ -213,6 +215,10 @@ class Device : public base::RefCounted<Device> {
   // is the callback that was passed to SetEnabled().
   void OnEnabledStateChanged(const ResultCallback &callback,
                              const Error &error);
+
+  // Drops the currently selected service along with its IP configuration and
+  // connection, if any.
+  void DropConnection();
 
   // If there's an IP configuration in |ipconfig_|, releases the IP address and
   // destroys the configuration instance.
@@ -402,4 +408,4 @@ class Device : public base::RefCounted<Device> {
 
 }  // namespace shill
 
-#endif  // SHILL_DEVICE_
+#endif  // SHILL_DEVICE_H_

@@ -33,7 +33,7 @@ class DBusManagerTest : public testing::Test {
  protected:
   class TestProxyFactory : public ProxyFactory {
    public:
-    TestProxyFactory(DBusManagerTest *test) : test_(test) {}
+    explicit TestProxyFactory(DBusManagerTest *test) : test_(test) {}
 
     virtual DBusServiceProxyInterface *CreateDBusServiceProxy() {
       return test_->proxy_.release();

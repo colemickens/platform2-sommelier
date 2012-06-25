@@ -286,6 +286,12 @@ bool Device::Save(StoreInterface *storage) {
   return true;
 }
 
+void Device::DropConnection() {
+  SLOG(Device, 2) << __func__;
+  DestroyIPConfig();
+  SelectService(NULL);
+}
+
 void Device::DestroyIPConfig() {
   DisableIPv6();
   if (ipconfig_.get()) {

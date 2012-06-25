@@ -179,6 +179,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     return props_.portal_url;
   }
 
+  DBusManager *dbus_manager() const { return dbus_manager_.get(); }
   virtual DeviceInfo *device_info() { return &device_info_; }
   virtual ModemInfo *modem_info() { return &modem_info_; }
   virtual VPNProvider *vpn_provider() { return &vpn_provider_; }

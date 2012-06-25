@@ -296,12 +296,6 @@ void WiMax::DropService(Service::ConnectState state) {
   }
 }
 
-void WiMax::DropConnection() {
-  SLOG(WiMax, 2) << __func__;
-  DestroyIPConfig();
-  SelectService(NULL);
-}
-
 void WiMax::StartConnectTimeout() {
   SLOG(WiMax, 2) << __func__;
   if (IsConnectTimeoutStarted()) {

@@ -80,7 +80,6 @@ class WiMax : public Device {
   void OnStatusChanged(wimax_manager::DeviceStatus status);
 
   void DropService(Service::ConnectState state);
-  void DropConnection();
 
   // Initializes a callback that will invoke OnConnectTimeout. The timeout will
   // not be restarted if it's already scheduled.

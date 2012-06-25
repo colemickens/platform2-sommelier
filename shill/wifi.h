@@ -92,6 +92,7 @@
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/dbus_manager.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/power_manager.h"
@@ -256,11 +257,22 @@ class WiFi : public Device {
   // Initiates a scan, if idle. Reschedules the scan timer regardless.
   void ScanTimerHandler();
 
+  void OnSupplicantAppear(const std::string &owner);
+  void OnSupplicantVanish();
+
+  void ConnectToSupplicant();
+
+  void Restart();
+
   base::WeakPtrFactory<WiFi> weak_ptr_factory_;
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
   Time *time_;
+
+  DBusManager::CancelableAppearedCallback on_supplicant_appear_;
+  DBusManager::CancelableVanishedCallback on_supplicant_vanish_;
+  bool supplicant_present_;
 
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   scoped_ptr<SupplicantInterfaceProxyInterface> supplicant_interface_proxy_;

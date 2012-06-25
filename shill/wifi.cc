@@ -100,6 +100,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       weak_ptr_factory_(this),
       proxy_factory_(ProxyFactory::GetInstance()),
       time_(Time::GetInstance()),
+      supplicant_present_(false),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
       clear_cached_credentials_pending_(false),
@@ -147,81 +148,33 @@ WiFi::WiFi(ControlInterface *control_interface,
 WiFi::~WiFi() {}
 
 void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
-  ::DBus::Path interface_path;
-
-  supplicant_process_proxy_.reset(
-      proxy_factory_->CreateSupplicantProcessProxy(
-          wpa_supplicant::kDBusPath, wpa_supplicant::kDBusAddr));
-  try {
-    map<string, DBus::Variant> create_interface_args;
-    create_interface_args[wpa_supplicant::kInterfacePropertyName].writer().
-        append_string(link_name().c_str());
-    create_interface_args[wpa_supplicant::kInterfacePropertyDriver].writer().
-        append_string(wpa_supplicant::kDriverNL80211);
-    create_interface_args[
-        wpa_supplicant::kInterfacePropertyConfigFile].writer().
-        append_string(SCRIPTDIR "/wpa_supplicant.conf");
-    interface_path =
-        supplicant_process_proxy_->CreateInterface(create_interface_args);
-  } catch (const DBus::Error &e) {  // NOLINT
-    if (!strcmp(e.name(), wpa_supplicant::kErrorInterfaceExists)) {
-      interface_path =
-          supplicant_process_proxy_->GetInterface(link_name());
-      // TODO(quiche): Is it okay to crash here, if device is missing?
-    } else {
-      // TODO(quiche): Log error.
-    }
+  SLOG(WiFi, 2) << "WiFi " << link_name() << " starting.";
+  if (enabled()) {
+    return;
   }
-
-  supplicant_interface_proxy_.reset(
-      proxy_factory_->CreateSupplicantInterfaceProxy(
-          this, interface_path, wpa_supplicant::kDBusAddr));
-
-  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
-                                                IFF_UP);
-  // TODO(quiche) Set ApScan=1 and BSSExpireAge=190, like flimflam does?
-
-  // Clear out any networks that might previously have been configured
-  // for this interface.
-  supplicant_interface_proxy_->RemoveAllNetworks();
-
-  // Flush interface's BSS cache, so that we get BSSAdded signals for
-  // all BSSes (not just new ones since the last scan).
-  supplicant_interface_proxy_->FlushBSS(0);
-
-  try {
-    // TODO(pstew): Disable fast_reauth until supplicant can properly deal
-    // with RADIUS servers that respond strangely to such requests.
-    // crosbug.com/25630
-    supplicant_interface_proxy_->SetFastReauth(false);
-  } catch (const DBus::Error &e) {  // NOLINT
-    LOG(INFO) << "Failed to disable fast_reauth."
-              << "May be running an older version of wpa_supplicant.";
-  }
-
-  try {
-    // Helps with passing WiFiRomaing.001SSIDSwitchBack.
-    supplicant_interface_proxy_->SetScanInterval(kRescanIntervalSeconds);
-  } catch (const DBus::Error &e) {  // NOLINT
-    LOG(INFO) << "Failed to set scan_interval. "
-              << "May be running an older version of wpa_supplicant.";
-  }
-
-  // Register for power state changes.  HandlePowerStateChange() will be called
-  // when the power state changes.
-  manager()->power_manager()->AddStateChangeCallback(
-      UniqueName(),
-      Bind(&WiFi::HandlePowerStateChange, weak_ptr_factory_.GetWeakPtr()));
-
-  Scan(NULL);
-  StartScanTimer();
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
-  if (error)
+  if (error) {
     error->Reset();       // indicate immediate completion
+  }
+  if (on_supplicant_appear_.IsCancelled()) {
+    // Registers the WPA supplicant appear/vanish callbacks only once per WiFi
+    // device instance.
+    on_supplicant_appear_.Reset(
+        Bind(&WiFi::OnSupplicantAppear, Unretained(this)));
+    on_supplicant_vanish_.Reset(
+        Bind(&WiFi::OnSupplicantVanish, Unretained(this)));
+    manager()->dbus_manager()->WatchName(wpa_supplicant::kDBusAddr,
+                                         on_supplicant_appear_.callback(),
+                                         on_supplicant_vanish_.callback());
+  }
+  // Connect to WPA supplicant if it's already present. If not, we'll connect to
+  // it when it appears.
+  ConnectToSupplicant();
 }
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " stopping.";
+  DropConnection();
   // TODO(quiche): Remove interface from supplicant.
   StopScanTimer();
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
@@ -240,6 +193,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   services_.clear();                  // breaks reference cycles
   current_service_ = NULL;            // breaks a reference cycle
   pending_service_ = NULL;            // breaks a reference cycle
+  scan_pending_ = false;
 
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
@@ -1080,17 +1034,13 @@ void WiFi::ScanTask() {
   }
 
   // TODO(quiche): Indicate scanning in UI. crosbug.com/14887
-  // FIXME(gauravsh): A scan can fail if, for example, wpa_supplicant
-  // was restarted. This is done by a few of the 802.1x tests.
-  // crosbug.com/25657
   try {
     supplicant_interface_proxy_->Scan(scan_args);
     scan_pending_ = true;
   } catch (const DBus::Error &e) {  // NOLINT
-    LOG(WARNING) << "Scan failed. Attempting to re-connect to the supplicant.";
-    EnabledStateChangedCallback null_callback;
-    Stop(NULL, null_callback);
-    Start(NULL, null_callback);
+    // A scan may fail if, for example, the wpa_supplicant vanishing
+    // notification is posted after this task has already started running.
+    LOG(WARNING) << "Scan failed: " << e.what();
   }
 }
 
@@ -1354,6 +1304,115 @@ void WiFi::ScanTimerHandler() {
     }
   }
   StartScanTimer();
+}
+
+void WiFi::OnSupplicantAppear(const string &/*owner*/) {
+  LOG(INFO) << "WPA supplicant appeared.";
+  if (supplicant_present_) {
+    return;
+  }
+  supplicant_present_ = true;
+  ConnectToSupplicant();
+}
+
+void WiFi::OnSupplicantVanish() {
+  LOG(INFO) << "WPA supplicant vanished.";
+  if (!supplicant_present_) {
+    return;
+  }
+  supplicant_present_ = false;
+  // Restart the WiFi device if it's started already. This will effectively
+  // suspend the device until the WPA supplicant reappears.
+  if (enabled()) {
+    Restart();
+  }
+}
+
+void WiFi::ConnectToSupplicant() {
+  LOG(INFO) << link_name() << ": " << (enabled() ? "enabled" : "disabled")
+            << " supplicant: "
+            << (supplicant_present_ ? "present" : "absent")
+            << " proxy: "
+            << (supplicant_process_proxy_.get() ? "non-null" : "null");
+  if (!enabled() || !supplicant_present_ || supplicant_process_proxy_.get()) {
+    return;
+  }
+  supplicant_process_proxy_.reset(
+      proxy_factory_->CreateSupplicantProcessProxy(
+          wpa_supplicant::kDBusPath, wpa_supplicant::kDBusAddr));
+  ::DBus::Path interface_path;
+  try {
+    map<string, DBus::Variant> create_interface_args;
+    create_interface_args[wpa_supplicant::kInterfacePropertyName].writer().
+        append_string(link_name().c_str());
+    create_interface_args[wpa_supplicant::kInterfacePropertyDriver].writer().
+        append_string(wpa_supplicant::kDriverNL80211);
+    create_interface_args[
+        wpa_supplicant::kInterfacePropertyConfigFile].writer().
+        append_string(SCRIPTDIR "/wpa_supplicant.conf");
+    interface_path =
+        supplicant_process_proxy_->CreateInterface(create_interface_args);
+  } catch (const DBus::Error &e) {  // NOLINT
+    if (!strcmp(e.name(), wpa_supplicant::kErrorInterfaceExists)) {
+      interface_path =
+          supplicant_process_proxy_->GetInterface(link_name());
+      // TODO(quiche): Is it okay to crash here, if device is missing?
+    } else {
+      // TODO(quiche): Log error.
+    }
+  }
+
+  supplicant_interface_proxy_.reset(
+      proxy_factory_->CreateSupplicantInterfaceProxy(
+          this, interface_path, wpa_supplicant::kDBusAddr));
+
+  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
+                                                IFF_UP);
+  // TODO(quiche) Set ApScan=1 and BSSExpireAge=190, like flimflam does?
+
+  // Clear out any networks that might previously have been configured
+  // for this interface.
+  supplicant_interface_proxy_->RemoveAllNetworks();
+
+  // Flush interface's BSS cache, so that we get BSSAdded signals for
+  // all BSSes (not just new ones since the last scan).
+  supplicant_interface_proxy_->FlushBSS(0);
+
+  try {
+    // TODO(pstew): Disable fast_reauth until supplicant can properly deal
+    // with RADIUS servers that respond strangely to such requests.
+    // crosbug.com/25630
+    supplicant_interface_proxy_->SetFastReauth(false);
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(INFO) << "Failed to disable fast_reauth."
+              << "May be running an older version of wpa_supplicant.";
+  }
+
+  try {
+    // Helps with passing WiFiRomaing.001SSIDSwitchBack.
+    supplicant_interface_proxy_->SetScanInterval(kRescanIntervalSeconds);
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(INFO) << "Failed to set scan_interval. "
+              << "May be running an older version of wpa_supplicant.";
+  }
+
+  // Register for power state changes.  HandlePowerStateChange() will be called
+  // when the power state changes.
+  manager()->power_manager()->AddStateChangeCallback(
+      UniqueName(),
+      Bind(&WiFi::HandlePowerStateChange, weak_ptr_factory_.GetWeakPtr()));
+
+  Scan(NULL);
+  StartScanTimer();
+}
+
+void WiFi::Restart() {
+  LOG(INFO) << link_name() << " restarting.";
+  WiFiRefPtr me = this;  // Make sure we don't get destructed.
+  // Go through the manager rather than starting and stopping the device
+  // directly so that the device can be configured with the profile.
+  manager()->DeregisterDevice(me);
+  manager()->RegisterDevice(me);
 }
 
 }  // namespace shill
