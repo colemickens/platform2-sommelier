@@ -196,7 +196,8 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
   CalculateRemainingTime(status);
 
   if (battery_charge_full > 0 && battery_charge_full_design > 0)
-    status->battery_percentage = 100. * battery_charge / battery_charge_full;
+    status->battery_percentage =
+        std::min(100., 100. * battery_charge / battery_charge_full);
   else
     status->battery_percentage = -1;
 
