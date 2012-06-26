@@ -193,6 +193,7 @@ void Manager::Stop() {
   vpn_provider_.Stop();
   modem_info_.Stop();
   device_info_.Stop();
+  sort_services_task_.Cancel();
 
   // Some unit tests do not call Manager::Start().
   if (power_manager_.get())
@@ -843,7 +844,19 @@ void Manager::HelpRegisterDerivedStrings(
 }
 
 void Manager::SortServices() {
+  // We might be called in the middle of a series of events that
+  // may result in multiple calls to Manager::SortServices, or within
+  // an outer loop that may also be traversing the services_ list.
+  // Defer this work to the event loop.
+  if (sort_services_task_.IsCancelled()) {
+    sort_services_task_.Reset(Bind(&Manager::SortServicesTask, AsWeakPtr()));
+    dispatcher_->PostTask(sort_services_task_.callback());
+  }
+}
+
+void Manager::SortServicesTask() {
   SLOG(Manager, 4) << "In " << __func__;
+  sort_services_task_.Cancel();
   ServiceRefPtr default_service;
 
   if (!services_.empty()) {
@@ -903,13 +916,6 @@ bool Manager::MatchProfileWithService(const ServiceRefPtr &service) {
 }
 
 void Manager::AutoConnect() {
-  // We might be called in the middle of another request (e.g., as a
-  // consequence of Service::SetState calling UpdateService). To avoid
-  // re-entrancy issues in dbus-c++, defer to the event loop.
-  dispatcher_->PostTask(Bind(&Manager::AutoConnectTask, AsWeakPtr()));
-}
-
-void Manager::AutoConnectTask() {
   if (services_.empty()) {
     LOG(INFO) << "No services.";
     return;

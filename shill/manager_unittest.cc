@@ -191,6 +191,12 @@ class ManagerTest : public PropertyStoreTest {
     AdoptProfile(manager, profile);
   }
 
+  void CompleteServiceSort() {
+    EXPECT_FALSE(manager()->sort_services_task_.IsCancelled());
+    dispatcher()->DispatchPendingEvents();
+    EXPECT_TRUE(manager()->sort_services_task_.IsCancelled());
+  }
+
  protected:
   typedef scoped_refptr<MockService> MockServiceRefPtr;
 
@@ -213,6 +219,9 @@ class ManagerTest : public PropertyStoreTest {
 };
 
 bool ManagerTest::ServiceOrderIs(ServiceRefPtr svc0, ServiceRefPtr svc1) {
+  if (!manager()->sort_services_task_.IsCancelled()) {
+    manager()->SortServicesTask();
+  }
   return (svc0.get() == manager()->services_[0].get() &&
           svc1.get() == manager()->services_[1].get());
 }
@@ -937,9 +946,13 @@ TEST_F(ManagerTest, HandleProfileEntryDeletionWithUnload) {
       .WillRepeatedly(Return(entry_name));
 
   manager()->RegisterService(s_will_remove0);
+  CompleteServiceSort();
   manager()->RegisterService(s_will_not_remove0);
+  CompleteServiceSort();
   manager()->RegisterService(s_will_remove1);
+  CompleteServiceSort();
   manager()->RegisterService(s_will_not_remove1);
+  CompleteServiceSort();
 
   // One for each service added above.
   ASSERT_EQ(4, manager()->services_.size());
@@ -1013,9 +1026,13 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
       .Times(5);  // Once for each registration, and one after profile pop.
 
   manager()->RegisterService(s_will_remove0);
+  CompleteServiceSort();
   manager()->RegisterService(s_will_not_remove0);
+  CompleteServiceSort();
   manager()->RegisterService(s_will_remove1);
+  CompleteServiceSort();
   manager()->RegisterService(s_will_not_remove1);
+  CompleteServiceSort();
 
   // One for each service added above.
   ASSERT_EQ(4, manager()->services_.size());
@@ -1048,6 +1065,7 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
 
   // This will pop profile1, which should cause all our profiles to unload.
   manager()->PopProfileInternal();
+  CompleteServiceSort();
 
   // 2 of the 4 services added above should have been unregistered and
   // removed, leaving 2.
@@ -1454,7 +1472,7 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   // Asking explictly to sort services should not change anything
-  manager()->SortServices();
+  manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   // Two otherwise equal services should be reordered by strength
@@ -1475,7 +1493,7 @@ TEST_F(ManagerTest, SortServices) {
 
   Error error;
   // Default technology ordering should favor Ethernet over WiFi.
-  manager()->SortServices();
+  manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
   manager()->SetTechnologyOrder(string(flimflam::kTypeWifi) + "," +
@@ -1570,44 +1588,48 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->RegisterService(mock_service0);
+  CompleteServiceSort();
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->RegisterService(mock_service1);
+  CompleteServiceSort();
 
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
-  manager()->SortServices();
+  manager()->SortServicesTask();
 
   mock_service1->set_priority(1);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
-  manager()->SortServices();
+  manager()->SortServicesTask();
 
   mock_service1->set_priority(0);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
-  manager()->SortServices();
+  manager()->SortServicesTask();
 
   mock_service0->set_mock_connection(mock_connection0);
   mock_service1->set_mock_connection(mock_connection1);
 
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
-  manager()->SortServices();
+  manager()->SortServicesTask();
 
   mock_service1->set_priority(1);
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(false));
   EXPECT_CALL(*mock_connection1.get(), SetIsDefault(true));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service1.get()));
-  manager()->SortServices();
+  manager()->SortServicesTask();
 
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   mock_service1->set_mock_connection(NULL);
   manager()->DeregisterService(mock_service1);
+  CompleteServiceSort();
 
   mock_service0->set_mock_connection(NULL);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->DeregisterService(mock_service0);
+  CompleteServiceSort();
 
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
-  manager()->SortServices();
+  manager()->SortServicesTask();
 }
 
 TEST_F(ManagerTest, AvailableTechnologies) {
@@ -1734,11 +1756,13 @@ TEST_F(ManagerTest, DefaultTechnology) {
       .WillByDefault(Return(Technology::kEthernet));
 
   manager()->RegisterService(disconnected_service);
+  CompleteServiceSort();
   Error error;
   EXPECT_THAT(manager()->DefaultTechnology(&error), StrEq(""));
 
 
   manager()->RegisterService(connected_service);
+  CompleteServiceSort();
   // Connected service should be brought to the front now.
   string expected_technology =
       Technology::NameFromIdentifier(Technology::kWifi);
@@ -2078,6 +2102,7 @@ TEST_F(ManagerTest, CalculateStateOnline) {
 
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
+  CompleteServiceSort();
 
   EXPECT_EQ("online", manager()->CalculateState(NULL));
 

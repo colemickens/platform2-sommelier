@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/cancelable_callback.h>
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
@@ -251,7 +252,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   WiFiServiceRefPtr GetWifiService(const KeyValueStore &args, Error *error);
 
   void AutoConnect();
-  void AutoConnectTask();
   std::vector<std::string> AvailableTechnologies(Error *error);
   std::vector<std::string> ConnectedTechnologies(Error *error);
   std::string DefaultTechnology(Error *error);
@@ -287,6 +287,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void PopProfileInternal();
   bool OrderServices(ServiceRefPtr a, ServiceRefPtr b);
   void SortServices();
+  void SortServicesTask();
   bool MatchProfileWithService(const ServiceRefPtr &service);
 
   // For unit testing.
@@ -339,6 +340,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   Properties props_;
   PropertyStore store_;
 
+  base::CancelableClosure sort_services_task_;
   HookTable termination_actions_;
 };
 
