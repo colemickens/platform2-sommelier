@@ -45,6 +45,12 @@ bool ConfigureInstall(
   string boot_dev = MakePartitionDev(root.base_device(),
                                      12);
 
+  // if we don't know the bios type, detect it. Errors are logged
+  // by the detect method.
+  if (( bios_type == kBiosTypeUnknown) && !DetectBiosType(&bios_type)) {
+    return false;
+  }
+
   // Put the actual values on the result structure
   install_config->slot = slot;
   install_config->root = root;
@@ -52,17 +58,19 @@ bool ConfigureInstall(
   install_config->boot = Partition(boot_dev);
   install_config->bios_type = bios_type;
 
-  // If the bios type is known, there is no need to detect it, and we are done.
-  if (bios_type != kBiosTypeUnknown)
-    return true;
-
-  return DetectBiosType(install_config);
+  return true;
 }
 
-bool DetectBiosType(InstallConfig* install_config) {
-  // Look up the new kernel's command line.
-  string kernel_cmd_line = DumpKernelConfig(install_config->kernel.device());
-  return KernelConfigToBiosType(kernel_cmd_line, &install_config->bios_type);
+bool DetectBiosType(BiosType* bios_type) {
+
+  // Look up the current kernel command line
+  string kernel_cmd_line;
+  if (!ReadFileToString("/proc/cmdline", &kernel_cmd_line)) {
+    printf("Can't read kernel commandline options\n");
+    return false;
+  }
+
+  return KernelConfigToBiosType(kernel_cmd_line, bios_type);
 }
 
 bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
