@@ -133,7 +133,7 @@ done:
 bool YuvToRgbTest::SetupTextures() {
   bool ret = false;
   size_t size = 0;
-  char evenodd[2] = {0, 255};
+  char evenodd[2] = {0, -1};
   char* pixels = static_cast<char *>(MmapFile(YUV2RGB_NAME, &size));
   const int luma_size = YUV2RGB_WIDTH * YUV2RGB_PIXEL_HEIGHT;
   const int chroma_size = YUV2RGB_WIDTH/2 * YUV2RGB_PIXEL_HEIGHT/2;
