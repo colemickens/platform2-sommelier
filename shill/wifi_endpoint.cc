@@ -76,7 +76,7 @@ void WiFiEndpoint::Start() {
 
 void WiFiEndpoint::PropertiesChanged(
     const map<string, ::DBus::Variant> &properties) {
-  LOG(INFO) << __func__;
+  SLOG(WiFi, 2) << __func__;
   map<string, ::DBus::Variant>::const_iterator properties_it =
       properties.find(wpa_supplicant::kBSSPropertySignal);
   if (properties_it != properties.end()) {

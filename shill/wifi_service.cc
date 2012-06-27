@@ -125,26 +125,6 @@ WiFiService::~WiFiService() {
   LOG(INFO) << __func__;
 }
 
-void WiFiService::AutoConnect() {
-  const char *reason;
-  if (IsAutoConnectable(&reason)) {
-    // Execute immediately, for two reasons:
-    //
-    // 1. We need IsAutoConnectable to return the correct value for
-    //    other WiFiServices, and that depends on WiFi's state.
-    //
-    // 2. We should probably limit the extent to which we queue up
-    //    actions (such as AutoConnect) which depend on current state.
-    //    If we queued AutoConnects, we could build a long queue of
-    //    useless work (one AutoConnect per Service), which blocks
-    //    more timely work.
-    Connect(NULL);
-  } else {
-    LOG(INFO) << "Suppressed autoconnect to " << friendly_name() << " "
-              << "(" << reason << ")";
-  }
-}
-
 bool WiFiService::IsAutoConnectable(const char **reason) const {
   if (!Service::IsAutoConnectable(reason)) {
     return false;

@@ -971,8 +971,6 @@ void Manager::AutoConnect() {
   for (vector<ServiceRefPtr>::iterator it = services_.begin();
        it != services_.end(); ++it) {
     if ((*it)->auto_connect()) {
-      LOG(INFO) << "Requesting autoconnect to service "
-                << (*it)->friendly_name() << ".";
       (*it)->AutoConnect();
     }
   }

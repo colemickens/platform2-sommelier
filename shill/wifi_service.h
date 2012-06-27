@@ -45,7 +45,6 @@ class WiFiService : public Service {
   ~WiFiService();
 
   // Inherited from Service.
-  virtual void AutoConnect();
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
   virtual bool IsConnecting() const;

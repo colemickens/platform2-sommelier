@@ -236,8 +236,9 @@ Service::~Service() {
 }
 
 void Service::AutoConnect() {
-  const char *reason;
-  if (this->IsAutoConnectable(&reason)) {
+  const char *reason = NULL;
+  if (IsAutoConnectable(&reason)) {
+    LOG(INFO) << "Auto-connecting to " << friendly_name();
     Error error;
     Connect(&error);
   } else {
