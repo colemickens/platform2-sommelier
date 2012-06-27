@@ -105,7 +105,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       audio_detector_(audio_detector),
       idle_(idle),
       keyboard_backlight_(keyboard_backlight),
-      low_battery_suspend_percent_(0),
+      low_battery_suspend_time_s_(0),
       clean_shutdown_initiated_(false),
       low_battery_(false),
       enforce_lock_(false),
@@ -163,9 +163,9 @@ void Daemon::Init() {
 void Daemon::ReadSettings() {
   int64 use_xscreensaver, enforce_lock;
   int64 disable_idle_suspend;
-  int64 low_battery_suspend_percent;
-  CHECK(prefs_->GetInt64(kLowBatterySuspendPercentPref,
-                         &low_battery_suspend_percent));
+  int64 low_battery_suspend_time_s;
+  CHECK(prefs_->GetInt64(kLowBatterySuspendTimePref,
+                         &low_battery_suspend_time_s));
   CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMsPref,
                          &clean_shutdown_timeout_ms_));
   CHECK(prefs_->GetInt64(kPluggedDimMsPref, &plugged_dim_ms_));
@@ -185,13 +185,13 @@ void Daemon::ReadSettings() {
     unplugged_suspend_ms_ = INT64_MAX;
   }
   ReadLockScreenSettings();
-  if (low_battery_suspend_percent >= 0 && low_battery_suspend_percent <= 100) {
-    low_battery_suspend_percent_ = low_battery_suspend_percent;
+  if (low_battery_suspend_time_s >= 0) {
+    low_battery_suspend_time_s_ = low_battery_suspend_time_s;
   } else {
-    LOG(INFO) << "Unreasonable low battery suspend percent threshold:"
-              << low_battery_suspend_percent;
+    LOG(INFO) << "Unreasonable low battery suspend time threshold:"
+              << low_battery_suspend_time_s;
     LOG(INFO) << "Disabling low battery suspend.";
-    low_battery_suspend_percent_ = 0;
+    low_battery_suspend_time_s_ = 0;
   }
   lock_ms_ = default_lock_ms_;
   enforce_lock_ = enforce_lock;
@@ -449,7 +449,7 @@ void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
   daemon->GenerateMetricsOnPowerEvent(info);
   // Do not emergency suspend if no battery exists.
   if (info.battery_is_present)
-    daemon->OnLowBattery(info.battery_percentage);
+    daemon->OnLowBattery(info.battery_time_to_empty);
 }
 
 void Daemon::AddIdleThreshold(int64 threshold) {
@@ -1355,30 +1355,33 @@ void Daemon::AdjustWindowSize(int64 battery_time,
   empty_average->ChangeWindowSize(window_size);
 }
 
-void Daemon::OnLowBattery(double battery_percentage) {
-  if (!low_battery_suspend_percent_) {
-    LOG(INFO) << "Battery percent : "
-              << battery_percentage << "%";
+void Daemon::OnLowBattery(int64 time_remaining_s) {
+  if (!low_battery_suspend_time_s_) {
+    LOG(INFO) << "Battery time remaining : "
+              << time_remaining_s << " seconds";
     low_battery_ = false;
     return;
   }
   if (kPowerDisconnected == plugged_state_ && !low_battery_ &&
-      battery_percentage <= low_battery_suspend_percent_ &&
-      battery_percentage >= 0) {
+      time_remaining_s <= low_battery_suspend_time_s_ &&
+      time_remaining_s > 0) {
     // Shut the system down when low battery condition is encountered.
     LOG(INFO) << "Low battery condition detected. Shutting down immediately.";
     low_battery_ = true;
     file_tagger_.HandleLowBatteryEvent();
     OnRequestShutdown();
-  } else if (battery_percentage < 0) {
-    LOG(INFO) << "Battery is at " << battery_percentage << "%, may not be "
-              << "fully initialized yet.";
+  } else if (time_remaining_s < 0) {
+    LOG(INFO) << "Battery is at " << time_remaining_s << " seconds remaining, may"
+              << " not be fully initialized yet.";
   } else if (kPowerConnected == plugged_state_ ||
-             battery_percentage > low_battery_suspend_percent_ ) {
+             time_remaining_s > low_battery_suspend_time_s_ ) {
     LOG(INFO) << "Battery condition is safe (plugged in or not low) : "
-              << battery_percentage << "%";
+              << time_remaining_s << " seconds";
     low_battery_ = false;
     file_tagger_.HandleSafeBatteryEvent();
+  } else if (time_remaining_s == 0) {
+    LOG(INFO) << "Battery is at 0 seconds remaining, either we are charging or "
+              << "not fully initialized yet.";
   } else {
     // Either a spurious reading after we have requested suspend, or the user
     // has woken the system up intentionally without rectifying the battery

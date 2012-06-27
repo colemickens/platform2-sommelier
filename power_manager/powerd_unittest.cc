@@ -304,7 +304,7 @@ TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
 
   // Set prefs that are read by ReadSettings().  Use 0 for ones that we don't
   // care about.
-  prefs_.SetInt64(kLowBatterySuspendPercentPref, 0);
+  prefs_.SetInt64(kLowBatterySuspendTimePref, 0);
   prefs_.SetInt64(kCleanShutdownTimeoutMsPref, 0);
   prefs_.SetInt64(kPluggedDimMsPref, kPluggedDimTimeMs);
   prefs_.SetInt64(kPluggedOffMsPref, kPluggedOffTimeMs);

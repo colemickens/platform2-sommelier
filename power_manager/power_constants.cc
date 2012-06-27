@@ -8,7 +8,7 @@ namespace power_manager {
 
 const char kPluggedBrightnessOffsetPref[] = "plugged_brightness_offset";
 const char kUnpluggedBrightnessOffsetPref[] = "unplugged_brightness_offset";
-const char kLowBatterySuspendPercentPref[] = "low_battery_suspend_percent";
+const char kLowBatterySuspendTimePref[] = "low_battery_suspend_time_s";
 const char kCleanShutdownTimeoutMsPref[] = "clean_shutdown_timeout_ms";
 const char kPluggedDimMsPref[] = "plugged_dim_ms";
 const char kPluggedOffMsPref[] = "plugged_off_ms";
