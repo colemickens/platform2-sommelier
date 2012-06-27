@@ -140,13 +140,13 @@ Device::Device(ControlInterface *control_interface,
 
   // flimflam::kScanningProperty: Registered in WiFi, Cellular
   // flimflam::kScanIntervalProperty: Registered in WiFi, Cellular
-
-  // TODO(pstew): Initialize Interface monitor, so we can detect new interfaces
-  SLOG(Device, 2) << "Device " << link_name_ << " index " << interface_index;
+  LOG(INFO) << "Device created: " << link_name_
+            << " index " << interface_index_;
 }
 
 Device::~Device() {
-  SLOG(Device, 2) << "Device " << link_name_ << " destroyed.";
+  LOG(INFO) << "Device destructed: " << link_name_
+            << " index " << interface_index_;
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {

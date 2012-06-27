@@ -369,7 +369,7 @@ void Cellular::CreateService() {
 }
 
 void Cellular::DestroyService() {
-  SLOG(Cellular, 2) << __func__;
+  LOG(INFO) << "Destroying service for device " << link_name();
   DestroyIPConfig();
   if (service_) {
     manager()->DeregisterService(service_);

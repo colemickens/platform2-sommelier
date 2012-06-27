@@ -49,7 +49,9 @@ Modem::Modem(const string &owner,
 }
 
 Modem::~Modem() {
-  if (device_.get()) {
+  LOG(INFO) << "Modem destructed: " << owner_ << " at " << path_;
+  if (device_) {
+    device_->DestroyService();
     manager_->device_info()->DeregisterDevice(device_);
   }
 }

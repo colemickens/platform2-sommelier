@@ -35,6 +35,7 @@ class MockCellular : public Cellular {
                                              const DBusPropertiesMap &,
                                              const std::vector<std::string> &));
   MOCK_METHOD1(set_modem_state, void(ModemState));
+  MOCK_METHOD0(DestroyService, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockCellular);

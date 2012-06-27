@@ -162,7 +162,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
                      Return(true)));
 
   // modem will take ownership
-  MockCellular* cellular = new MockCellular(
+  MockCellular *cellular = new MockCellular(
       &control_interface_,
       &dispatcher_,
       &metrics_,
@@ -187,10 +187,13 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
       HasDBusPropertyWithValueU32(kSentinel, kSentinelValue),
       _));
   EXPECT_CALL(info_, RegisterDevice(_));
-  EXPECT_CALL(info_, DeregisterDevice(_));
   modem_->OnDeviceInfoAvailable(kLinkName);
 
   EXPECT_TRUE(modem_->device_.get());
+
+  // Add expectations for the evental |modem_| destruction.
+  EXPECT_CALL(*cellular, DestroyService());
+  EXPECT_CALL(info_, DeregisterDevice(_));
 }
 
 TEST_F(ModemTest, EarlyDeviceProperties) {

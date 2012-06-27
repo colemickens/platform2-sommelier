@@ -131,6 +131,11 @@ class Cellular : public Device {
 
   const CellularServiceRefPtr &service() const { return service_; }
 
+  // Deregisters and destructs the current service and destroys the connection,
+  // if any. This also eliminates the circular references between this device
+  // and the associated service, allowing eventual device destruction.
+  virtual void DestroyService();
+
   static std::string GetStateString(State state);
 
   std::string CreateFriendlyServiceName();
@@ -247,7 +252,6 @@ class Cellular : public Device {
   void InitCapability(Type type, ProxyFactory *proxy_factory);
 
   void CreateService();
-  void DestroyService();
 
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //
