@@ -1,0 +1,34 @@
+#!/bin/sh
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+NCPU=$(grep '^processor' /proc/cpuinfo | wc -l)
+
+SUMMARIZE_TIME='
+  BEGIN {
+    printf "%5s %4s %5s %4s  %s\n", "time", "%cpu", "dt", "%dt", "event"
+  }
+
+  {
+    # input lines are like this:
+    #  $1 = time since boot
+    #  $2 = idle time since boot (normalized for NCPU)
+    #  $3 = event name
+    uptime = $1 ; idle = $2
+    cum_util = (200 * (uptime - idle) / uptime + 1) / 2
+    delta = uptime - prev
+    util = (200 * (delta - idle + prev_idle) / delta + 1) / 2
+    prev = uptime ; prev_idle = idle
+    printf "%5d %3d%% %5d %3d%%  %s\n", uptime, cum_util, delta, util, $3
+  }
+'
+
+# Pipeline explained:
+#  1st awk program: extract raw time data, and perform some simple
+#    conversions.
+#  sort: sort the data by the uptime timestamp.
+#  sed: remove '/tmp/uptime-' from the event name.
+#  2nd awk program:  produce the summarized output
+awk '{print 1000*$1, 1000*$2/'$NCPU', FILENAME}' /tmp/uptime-* |
+  sort -k 1n | sed 's=[^ ]*uptime-==' | awk "$SUMMARIZE_TIME"
