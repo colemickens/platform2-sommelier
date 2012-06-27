@@ -251,6 +251,18 @@ endif
 RANLIB ?= ranlib
 ECHO = /bin/echo -e
 
+ifeq ($(lastword $(subst /, ,$(CC))),clang)
+CDRIVER = clang
+else
+CDRIVER = gcc
+endif
+
+ifeq ($(lastword $(subst /, ,$(CXX))),clang++)
+CXXDRIVER = clang
+else
+CXXDRIVER = gcc
+endif
+
 ifeq ($(PROFILING),1)
   $(warning PROFILING=1 disables relocatable executables.)
 endif
@@ -260,10 +272,12 @@ endif
 #  CXXFLAGS := -mahflag $(CXXFLAGS) # Prepend to the list
 #  CXXFLAGS := $(filter-out badflag,$(CXXFLAGS)) # Filter out a value
 # The same goes for CFLAGS.
-COMMON_CFLAGS := -Wall -Werror -fstack-protector-strong -fno-strict-aliasing \
-  -ggdb3 -Wa,--noexecstack -O1 -fvisibility=internal -Wformat=2
-CXXFLAGS += $(COMMON_CFLAGS)
-CFLAGS += $(COMMON_CFLAGS)
+COMMON_CFLAGS-gcc := -fstack-protector-strong -fvisibility=internal -ggdb3 \
+  -Wa,--noexecstack
+COMMON_CFLAGS-clang := -fstack-protector-all -fvisibility=hidden -ggdb
+COMMON_CFLAGS := -Wall -Werror -fno-strict-aliasing -O1 -Wformat=2
+CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER))
+CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER))
 CPPFLAGS += -D_FORTIFY_SOURCE=2
 
 ifeq ($(PROFILING),1)
