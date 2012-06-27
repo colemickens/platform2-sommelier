@@ -232,6 +232,17 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
     return;
   }
 
+  for (vector<ProfileRefPtr>::const_iterator it = profiles_.begin();
+       it != profiles_.end();
+       ++it) {
+    if ((*it)->MatchesIdentifier(ident)) {
+      Error::PopulateAndLog(error, Error::kAlreadyExists,
+                            "Profile name " + name + " is already on stack");
+      *path = (*it)->GetRpcIdentifier();
+      return;
+    }
+  }
+
   ProfileRefPtr profile;
   if (ident.user.empty()) {
     profile = new DefaultProfile(control_interface_,
@@ -733,6 +744,8 @@ void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
   for (it = services_.begin(); it != services_.end(); ++it) {
     if (to_forget->UniqueName() == (*it)->UniqueName()) {
       DCHECK(!(*it)->connection());
+      (*it)->Unload();
+      (*it)->set_profile(NULL);
       services_.erase(it);
       SortServices();
       return;
@@ -746,6 +759,7 @@ bool Manager::UnloadService(vector<ServiceRefPtr>::iterator *service_iterator) {
   }
 
   DCHECK(!(**service_iterator)->connection());
+  (**service_iterator)->set_profile(NULL);
   *service_iterator = services_.erase(*service_iterator);
 
   return true;

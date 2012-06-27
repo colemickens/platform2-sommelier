@@ -803,6 +803,34 @@ TEST_F(ManagerTest, RemoveProfile) {
   }
 }
 
+TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
+  // It's much easier to use real Glib in creating a Manager for this
+  // test here since we want the storage side-effects.
+  GLib glib;
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  Manager manager(control_interface(),
+                  dispatcher(),
+                  metrics(),
+                  &glib,
+                  run_path(),
+                  storage_path(),
+                  temp_dir.path().value());
+
+  const char kProfile0[] = "profile0";
+  FilePath profile_path(
+      FilePath(storage_path()).Append(string(kProfile0) + ".profile"));
+
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
+  ASSERT_TRUE(file_util::PathExists(profile_path));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
+
+  // Ensure that even if the backing filestore is removed, we still can't
+  // create a profile twice.
+  ASSERT_TRUE(file_util::Delete(profile_path, false));
+  EXPECT_EQ(Error::kAlreadyExists, TestCreateProfile(&manager, kProfile0));
+}
+
 // Use this matcher instead of passing RefPtrs directly into the arguments
 // of EXPECT_CALL() because otherwise we may create un-cleaned-up references at
 // system teardown.
@@ -1059,7 +1087,7 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
   EXPECT_CALL(*s_will_remove1, Unload())
       .WillOnce(Return(true));
   EXPECT_CALL(*s_will_not_remove0, Unload())
-      .WillOnce(Return(false));
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*s_will_not_remove1, Unload())
       .WillOnce(Return(false));
 
@@ -1072,6 +1100,16 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
   EXPECT_EQ(2, manager()->services_.size());
   EXPECT_EQ(s_will_not_remove0.get(), manager()->services_[0].get());
   EXPECT_EQ(s_will_not_remove1.get(), manager()->services_[1].get());
+
+  // Expect the unloaded services to lose their profile reference.
+  EXPECT_FALSE(s_will_remove0->profile());
+  EXPECT_FALSE(s_will_remove1->profile());
+
+  // If we explicitly deregister a service, the effect should be the same
+  // with respect to the profile reference.
+  ASSERT_TRUE(s_will_not_remove0->profile());
+  manager()->DeregisterService(s_will_not_remove0);
+  EXPECT_FALSE(s_will_not_remove0->profile());
 }
 
 TEST_F(ManagerTest, SetProperty) {
