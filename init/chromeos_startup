@@ -271,38 +271,23 @@ done
 # /mnt/stateful_partition above.
 mount_or_fail -n --bind /mnt/stateful_partition/home /home
 
-# TODO(keescook): using "mount-encrypted" is not yet the default for
-# ChromeOS, but it is available for testing. This test is optional for now,
-# but is intended to be removed and to make using mount-encrypted
-# mandatory in the future. crosbug.com/22172
-if [ -f /home/chronos/.enable_mount-encrypted ] ||
-   [ -f /mnt/stateful_partition/encrypted.key ]; then
-    # Create, possibly migrate from the unencrypted stateful partition,
-    # and bind mount the /var and /home/chronos mounts from the encrypted
-    # filesystem /mnt/stateful_partition/encrypted, all managed by the
-    # "mount-encrypted" helper.
-    # Since /var is managed by mount-encrypted, it should not be created
-    # in the unencrypted stateful partition. Its mount point in the root
-    # filesystem exists already from the rootfs image.
-    # Since /home is still mounted from the unencrypted stateful partition,
-    # having /home/chronos already doesn't matter. It will be created by
-    # mount-encrypted if it is missing.
-    # These mounts inherit nodev,noexec,nosuid from the encrypted filesystem
-    # /mnt/stateful_partition/encrypted.
-    remember_mount /var
-    remember_mount /home/chronos
-    mount-encrypted >/tmp/mount-encrypted.log 2>&1
-    rc=$?
-    echo "rc:$rc" >>/tmp/mount-encrypted.log
-    if [ $rc -ne 0 ]; then
-        cat /tmp/mount-encrypted.log >/dev/tty1
-        cleanup_mounts
-    fi
-else
-    # Create and mount /var.  This mount inherits nodev,noexec,nosuid from
-    # /mnt/stateful_partition above.
-    mkdir -p -m 0755 /mnt/stateful_partition/var
-    mount_or_fail -n --bind /mnt/stateful_partition/var /var
+# Create, possibly migrate from, the unencrypted stateful partition,
+# and bind mount the /var and /home/chronos mounts from the encrypted
+# filesystem /mnt/stateful_partition/encrypted, all managed by the
+# "mount-encrypted" helper.
+# Since /var is managed by mount-encrypted, it should not be created
+# in the unencrypted stateful partition. Its mount point in the root
+# filesystem exists already from the rootfs image.
+# Since /home is still mounted from the unencrypted stateful partition,
+# having /home/chronos already doesn't matter. It will be created by
+# mount-encrypted if it is missing.
+# These mounts inherit nodev,noexec,nosuid from the encrypted filesystem
+# /mnt/stateful_partition/encrypted.
+remember_mount /var
+remember_mount /home/chronos
+mount-encrypted >/tmp/mount-encrypted.log 2>&1
+if [ $? -ne 0 ]; then
+    cleanup_mounts
 fi
 
 # Make sure required /var subdirectories exist.
