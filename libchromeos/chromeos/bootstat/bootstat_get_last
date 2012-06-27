@@ -1,6 +1,5 @@
 #!/bin/sh
-
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -34,6 +33,12 @@ while [ $# -gt 0 ]; do
       continue
     ;;
   esac
-  getfield $FIELD $(tail -1 /tmp/${TAG}-${EVENT})
+  # The 'boot-complete' upstart job tests for whether an event has
+  # been recorded by calling this script, so it's not an error if
+  # the requested event doesn't exist.
+  EVENTFILE="/tmp/${TAG}-${EVENT}"
+  if [ -f "$EVENTFILE" ]; then
+    getfield $FIELD $(tail -1 "$EVENTFILE")
+  fi
   shift
 done
