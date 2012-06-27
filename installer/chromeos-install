@@ -1,5 +1,5 @@
 #!/bin/sh -u
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -483,9 +483,11 @@ loop_offset_cleanup
 # being in the stateful partition at startup.  We make some
 # exceptions for dev images (only), as enumerated below:
 #
-# var/db/pkg
-# var/lib/portage
-#   These are included to support gmerge.
+# var_overlay
+#   These are included to support gmerge, and must be kept in
+#   sync with those listed in /etc/init/var-overlay.conf:
+#      db/pkg
+#      lib/portage
 #
 # dev_image
 #   This provides tools specifically chosen to be mounted at
@@ -500,8 +502,8 @@ loop_offset_setup $DST $START_STATEFUL
 mount_on_loop_dev readwrite
 if [ -f "${ROOT}"/root/.dev_mode ]; then
   DIRLIST="
-      var/db/pkg
-      var/lib/portage
+      var_overlay/db/pkg
+      var_overlay/lib/portage
       dev_image
   "
   for DIR in ${DIRLIST}; do
