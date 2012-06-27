@@ -95,10 +95,13 @@ void IdleDetector::ResetAlarms() {
 }
 
 gboolean IdleDetector::HandleAlarm(Alarm* alarm) {
+  is_idle_ = true;
+  // Clear the source tag to show that this alarm has having been triggered.
+  alarm->source_id = 0;
+  // Invoke the idle event observer callback last, because it could possibly
+  // call ClearTimeouts() and delete |alarm|.
   if (observer_)
     observer_->OnIdleEvent(true, GetIdleTimeMs());
-  is_idle_ = true;
-  alarm->source_id = 0;
   return FALSE;
 }
 
