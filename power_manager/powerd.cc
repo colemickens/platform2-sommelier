@@ -1328,7 +1328,8 @@ void Daemon::UpdateAveragedTimes(PowerStatus* status,
     battery_time = status->battery_time_to_full;
   } else {
     if (!status->is_calculating_battery_time)
-      empty_average->AddSample(status->battery_time_to_empty);
+      empty_average->AddSample(status->battery_time_to_empty
+                               - low_battery_suspend_time_s_);
     full_average->Clear();
     battery_time = status->battery_time_to_empty;
   }

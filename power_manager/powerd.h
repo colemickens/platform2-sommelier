@@ -146,6 +146,7 @@ class Daemon : public BacklightControllerObserver,
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndCalculating);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating);
+  FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithSetThreshold);
 
   enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
                    kIdleSuspend };

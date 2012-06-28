@@ -54,6 +54,8 @@ static const int kSessionLength = 5;
 static const int kAdjustmentsOffset = 100;
 static const int kNumOfSessionsPerCharge = 100;
 static const int64 kBatteryTime = 23;
+static const int64 kThresholdTime = 7;
+static const int64 kAdjustedBatteryTime = kBatteryTime - kThresholdTime;
 static const int64 kRollingAverageTaperTimeMid =
     kRollingAverageTaperTimeMin + kRollingAverageTaperTimeDiff/2;
 static const unsigned int kRollingAverageSampleWindowMid =
@@ -866,6 +868,24 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
   status_.battery_time_to_empty = kBatteryTime;
 
   empty_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
+  full_average_.ExpectClear();
+  full_average_.ExpectChangeWindowSize(1);
+  empty_average_.ExpectChangeWindowSize(1);
+  full_average_.ExpectGetAverage(0);
+  empty_average_.ExpectGetAverage(kBatteryTime);
+
+  daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
+
+  EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_empty);
+  EXPECT_EQ(0, status_.averaged_battery_time_to_full);
+}
+
+TEST_F(DaemonTest, UpdateAveragedTimesWithSetThreshold) {
+  status_.line_power_on = false;
+  status_.is_calculating_battery_time = false;
+  status_.battery_time_to_empty = kBatteryTime;
+  daemon_.low_battery_suspend_time_s_ = kThresholdTime;
+  empty_average_.ExpectAddSample(kAdjustedBatteryTime, kAdjustedBatteryTime);
   full_average_.ExpectClear();
   full_average_.ExpectChangeWindowSize(1);
   empty_average_.ExpectChangeWindowSize(1);
