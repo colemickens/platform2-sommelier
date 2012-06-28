@@ -357,7 +357,8 @@ void WiMaxProvider::StopDeadServices() {
   SLOG(WiMax, 2) << __func__ << "(" << networks_.size() << ")";
   for (map<string, WiMaxServiceRefPtr>::iterator it = services_.begin();
        it != services_.end(); ) {
-    const WiMaxServiceRefPtr &service = it->second;
+    // Keeps a local reference until we're done with this service.
+    WiMaxServiceRefPtr service = it->second;
     if (service->IsStarted() &&
         !ContainsKey(networks_, service->GetNetworkObjectPath())) {
       service->Stop();
@@ -365,8 +366,12 @@ void WiMaxProvider::StopDeadServices() {
       // live. They need to be deregistered and destroyed when the network
       // disappears.
       if (service->is_default()) {
-        manager_->DeregisterService(service);
+        // Removes |service| from the managed service set before deregistering
+        // it from Manager to ensure correct iterator increment (consider
+        // Manager::DeregisterService -> WiMaxService::Unload ->
+        // WiMaxProvider::OnServiceUnloaded -> services_.erase).
         services_.erase(it++);
+        manager_->DeregisterService(service);
         continue;
       }
     }
@@ -376,10 +381,11 @@ void WiMaxProvider::StopDeadServices() {
 
 void WiMaxProvider::DestroyAllServices() {
   SLOG(WiMax, 2) << __func__;
-  for (map<string, WiMaxServiceRefPtr>::iterator it = services_.begin();
-       it != services_.end(); services_.erase(it++)) {
-    const WiMaxServiceRefPtr &service = it->second;
-    // Stop the service so that it can notify its carrier device, if any.
+  while (!services_.empty()) {
+    // Keeps a local reference until we're done with this service.
+    WiMaxServiceRefPtr service = services_.begin()->second;
+    services_.erase(services_.begin());
+    // Stops the service so that it can notify its carrier device, if any.
     service->Stop();
     manager_->DeregisterService(service);
     LOG(INFO) << "Deregistered WiMAX service: "
