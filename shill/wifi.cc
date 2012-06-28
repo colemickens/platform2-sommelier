@@ -1358,7 +1358,8 @@ void WiFi::ConnectToSupplicant() {
           supplicant_process_proxy_->GetInterface(link_name());
       // TODO(quiche): Is it okay to crash here, if device is missing?
     } else {
-      // TODO(quiche): Log error.
+      LOG(ERROR) << __func__ << ": Failed to create interface with supplicant.";
+      return;
     }
   }
 
