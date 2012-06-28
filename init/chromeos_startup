@@ -326,9 +326,34 @@ if [ "$CROS_DEBUG" = "1" -o -f /root/.dev_mode ]; then
   if [ ! -d /mnt/stateful_partition/dev_image ]; then
     mkdir -p -m 0755 /mnt/stateful_partition/dev_image
   fi
-  # Mount and then remount to enable exec/suid
+  # Mount and then remount to enable exec/suid.
   mount_or_fail -n --bind /mnt/stateful_partition/dev_image /usr/local
   mount -n -o remount,exec,suid /usr/local
+
+  # Set up /var elements needed by gmerge.
+  # TODO(keescook) Use dev/test package installs instead of piling more
+  # things here (crosbug.com/14091).
+  BASE=/mnt/stateful_partition/var_overlay
+  if [ -d ${BASE} ]; then
+    # Keep this list in sync with the var_overlay elements in the DIRLIST
+    # found in chromeos-install from chromeos-base/chromeos-installer.
+    DIRLIST="
+      db/pkg
+      lib/portage
+    "
+    for DIR in ${DIRLIST}; do
+      if [ ! -d ${BASE}/${DIR} ]; then
+        continue
+      fi
+      DEST=/var/${DIR}
+      if [ -e ${DEST} ]; then
+        continue
+      fi
+      PARENT=$(dirname ${DEST})
+      mkdir -p ${PARENT}
+      ln -sf ${BASE}/${DIR} ${DEST}
+    done
+  fi
 fi
 
 mount_or_fail -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
