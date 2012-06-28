@@ -162,7 +162,6 @@ void Daemon::Init() {
 
 void Daemon::ReadSettings() {
   int64 use_xscreensaver, enforce_lock;
-  int64 disable_idle_suspend;
   int64 low_battery_suspend_time_s;
   CHECK(prefs_->GetInt64(kLowBatterySuspendTimePref,
                          &low_battery_suspend_time_s));
@@ -170,20 +169,14 @@ void Daemon::ReadSettings() {
                          &clean_shutdown_timeout_ms_));
   CHECK(prefs_->GetInt64(kPluggedDimMsPref, &plugged_dim_ms_));
   CHECK(prefs_->GetInt64(kPluggedOffMsPref, &plugged_off_ms_));
-  CHECK(prefs_->GetInt64(kPluggedSuspendMsPref, &plugged_suspend_ms_));
   CHECK(prefs_->GetInt64(kUnpluggedDimMsPref, &unplugged_dim_ms_));
   CHECK(prefs_->GetInt64(kUnpluggedOffMsPref, &unplugged_off_ms_));
-  CHECK(prefs_->GetInt64(kUnpluggedSuspendMsPref, &unplugged_suspend_ms_));
   CHECK(prefs_->GetInt64(kReactMsPref, &react_ms_));
   CHECK(prefs_->GetInt64(kFuzzMsPref, &fuzz_ms_));
   CHECK(prefs_->GetInt64(kEnforceLockPref, &enforce_lock));
   CHECK(prefs_->GetInt64(kUseXScreenSaverPref, &use_xscreensaver));
-  if (prefs_->GetInt64(kDisableIdleSuspendPref, &disable_idle_suspend) &&
-      disable_idle_suspend) {
-    LOG(INFO) << "Idle suspend feature disabled";
-    plugged_suspend_ms_ = INT64_MAX;
-    unplugged_suspend_ms_ = INT64_MAX;
-  }
+
+  ReadSuspendSettings();
   ReadLockScreenSettings();
   if (low_battery_suspend_time_s >= 0) {
     low_battery_suspend_time_s_ = low_battery_suspend_time_s;
@@ -236,6 +229,27 @@ void Daemon::ReadLockScreenSettings() {
   }
   base_timeout_values_[kLockMsPref] = default_lock_ms_;
   lock_on_idle_suspend_ = lock_on_idle_suspend;
+}
+
+void Daemon::ReadSuspendSettings() {
+  int64 disable_idle_suspend = 0;
+  if (prefs_->GetInt64(kDisableIdleSuspendPref, &disable_idle_suspend) &&
+      disable_idle_suspend) {
+    LOG(INFO) << "Idle suspend feature disabled";
+    plugged_suspend_ms_ = INT64_MAX;
+    unplugged_suspend_ms_ = INT64_MAX;
+  } else {
+    CHECK(prefs_->GetInt64(kPluggedSuspendMsPref, &plugged_suspend_ms_));
+    CHECK(prefs_->GetInt64(kUnpluggedSuspendMsPref, &unplugged_suspend_ms_));
+
+    LOG(INFO) << "Idle suspend enabled. plugged_suspend_ms_ = "
+              << plugged_suspend_ms_ << " unplugged_suspend_ms = "
+              << unplugged_suspend_ms_;
+  }
+  // Store unmodified timeout values for switching between projecting and
+  // non-projecting timeouts.
+  base_timeout_values_[kPluggedSuspendMsPref]   = plugged_suspend_ms_;
+  base_timeout_values_[kUnpluggedSuspendMsPref] = unplugged_suspend_ms_;
 }
 
 void Daemon::Run() {
@@ -1525,10 +1539,14 @@ gboolean Daemon::PrefChangeHandler(const char* name,
                                    unsigned int,      // mask
                                    gpointer data) {
   Daemon* daemon = static_cast<Daemon*>(data);
-  if (!strcmp(name, "lock_on_idle_suspend")) {
+  if (!strcmp(name, kLockOnIdleSuspendPref)) {
     daemon->ReadLockScreenSettings();
     daemon->locker_.Init(daemon->use_xscreensaver_,
                          daemon->lock_on_idle_suspend_);
+    daemon->SetIdleOffset(0, kIdleNormal);
+  }
+  if (!strcmp(name, kDisableIdleSuspendPref)) {
+    daemon->ReadSuspendSettings();
     daemon->SetIdleOffset(0, kIdleNormal);
   }
   return TRUE;

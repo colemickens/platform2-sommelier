@@ -168,6 +168,9 @@ class Daemon : public BacklightControllerObserver,
   // Reads lock screen settings
   void ReadLockScreenSettings();
 
+  // Reads suspend disable/timeout settings
+  void ReadSuspendSettings();
+
   // Initializes metrics
   void MetricInit();
 
