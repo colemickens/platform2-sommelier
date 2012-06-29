@@ -10,7 +10,7 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mobile_provider.h>
-#include <mm/ModemManager-names.h>
+#include <ModemManager/ModemManager-names.h>
 
 #include <string>
 #include <vector>

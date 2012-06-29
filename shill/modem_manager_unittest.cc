@@ -4,7 +4,7 @@
 
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
-#include <mm/ModemManager-names.h>
+#include <ModemManager/ModemManager-names.h>
 
 #include "shill/manager.h"
 #include "shill/mock_control.h"

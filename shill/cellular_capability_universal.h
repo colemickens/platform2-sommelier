@@ -13,7 +13,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <mm/ModemManager-enums.h>
+#include <ModemManager/ModemManager-enums.h>
 
 #include "shill/accessor_interface.h"
 #include "shill/cellular.h"

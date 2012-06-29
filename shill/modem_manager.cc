@@ -10,7 +10,7 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <mm/mm-modem.h>
-#include <mm/ModemManager-names.h>
+#include <ModemManager/ModemManager-names.h>
 
 #include "shill/error.h"
 #include "shill/modem.h"

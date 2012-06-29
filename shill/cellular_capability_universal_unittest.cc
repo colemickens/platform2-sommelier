@@ -11,7 +11,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <mobile_provider.h>
-#include <mm/ModemManager-names.h>
+#include <ModemManager/ModemManager-names.h>
 
 #include "shill/cellular.h"
 #include "shill/cellular_service.h"

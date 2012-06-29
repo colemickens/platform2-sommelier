@@ -7,8 +7,8 @@
 #include <base/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <mm/ModemManager-enums.h>
-#include <mm/ModemManager-names.h>
+#include <ModemManager/ModemManager-enums.h>
+#include <ModemManager/ModemManager-names.h>
 
 #include "shill/dbus_property_matchers.h"
 #include "shill/event_dispatcher.h"
