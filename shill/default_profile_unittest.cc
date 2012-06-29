@@ -22,6 +22,7 @@
 #include "shill/mock_store.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
+#include "shill/resolver.h"
 
 using std::map;
 using std::string;
@@ -131,6 +132,11 @@ TEST_F(DefaultProfileTest, Save) {
                         DefaultProfile::kStoragePortalCheckInterval,
                         "0"))
       .WillOnce(Return(true));
+  EXPECT_CALL(*storage.get(),
+              SetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageShortDNSTimeoutTechnologies,
+                        ""))
+      .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), Flush()).WillOnce(Return(true));
 
   EXPECT_CALL(*device_.get(), Save(storage.get())).Times(0);
@@ -169,6 +175,11 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
                         DefaultProfile::kStoragePortalCheckInterval,
                         _))
       .WillOnce(Return(false));
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageShortDNSTimeoutTechnologies,
+                        _))
+      .WillOnce(Return(false));
   profile_->set_storage(storage.release());
 
   ASSERT_TRUE(profile_->LoadManagerProperties(&manager_props));
@@ -180,6 +191,8 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_EQ(PortalDetector::kDefaultURL, manager_props.portal_url);
   EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
             manager_props.portal_check_interval_seconds);
+  EXPECT_EQ(Resolver::kDefaultShortTimeoutTechnologies,
+            manager_props.short_dns_timeout_technologies);
 }
 
 TEST_F(DefaultProfileTest, LoadManagerProperties) {
@@ -215,6 +228,13 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                         _))
       .WillOnce(DoAll(SetArgumentPointee<2>(portal_check_interval_string),
                       Return(true)));
+  const string short_dns_timeout_technologies("wimax,cellular");
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageShortDNSTimeoutTechnologies,
+                        _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(short_dns_timeout_technologies),
+                      Return(true)));
   profile_->set_storage(storage.release());
 
   Manager::Properties manager_props;
@@ -226,6 +246,8 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_EQ(portal_url, manager_props.portal_url);
   EXPECT_EQ(portal_check_interval_int,
             manager_props.portal_check_interval_seconds);
+  EXPECT_EQ(short_dns_timeout_technologies,
+            manager_props.short_dns_timeout_technologies);
 }
 
 TEST_F(DefaultProfileTest, GetStoragePath) {

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,6 +20,15 @@ namespace shill {
 // of an ipconfig into a "resolv.conf" formatted file.
 class Resolver {
  public:
+  enum TimeoutParameters {
+    kDefaultTimeout,
+    kShortTimeout
+  };
+
+  // The default comma-separated list of technologies for which short
+  // DNS timeouts should be enabled.
+  static const char kDefaultShortTimeoutTechnologies[];
+
   virtual ~Resolver();
 
   // Since this is a singleton, use Resolver::GetInstance()->Foo()
@@ -27,14 +36,16 @@ class Resolver {
 
   virtual void set_path(const FilePath &path) { path_ = path; }
 
-  // Set the default domain name service parameters, given an ipconfig entry
-  virtual bool SetDNSFromIPConfig(const IPConfigRefPtr &ipconfig);
+  // Set the default domain name service parameters, given an ipconfig entry.
+  virtual bool SetDNSFromIPConfig(const IPConfigRefPtr &ipconfig,
+                                  TimeoutParameters timeout);
 
-  // Set the default domain name service parameters, given an ipconfig entry
+  // Set the default domain name service parameters, given an ipconfig entry.
   virtual bool SetDNSFromLists(const std::vector<std::string> &dns_servers,
-                               const std::vector<std::string> &domain_search);
+                               const std::vector<std::string> &domain_search,
+                               TimeoutParameters timeout);
 
-  // Remove any created domain name service file
+  // Remove any created domain name service file.
   virtual bool ClearDNS();
 
  protected:
@@ -43,6 +54,9 @@ class Resolver {
  private:
   friend struct base::DefaultLazyInstanceTraits<Resolver>;
   friend class ResolverTest;
+
+  static const char kDefaultTimeoutOptions[];
+  static const char kShortTimeoutOptions[];
 
   FilePath path_;
 

@@ -57,6 +57,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     // Whether to ARP for the default gateway in the DHCP client after
     // acquiring a lease.
     bool arp_gateway;
+    // Comma separated list of technologies on which to use a short DNS
+    // timeout to improve performance.
+    std::string short_dns_timeout_technologies;
   };
 
   Manager(ControlInterface *control_interface,
@@ -174,6 +177,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Return whether a service belongs to the ephemeral profile.
   virtual bool IsServiceEphemeral(const ServiceConstRefPtr &service) const;
+
+  // Return whether a technology is enabled for using short DNS timeouts.
+  bool IsTechnologyShortDNSTimeoutEnabled(Technology::Identifier tech) const;
 
   std::string CalculateState(Error *error);
 

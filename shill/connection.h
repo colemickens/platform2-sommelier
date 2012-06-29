@@ -16,13 +16,13 @@
 #include "shill/ip_address.h"
 #include "shill/ipconfig.h"
 #include "shill/refptr_types.h"
+#include "shill/resolver.h"
 #include "shill/technology.h"
 
 namespace shill {
 
 class DeviceInfo;
 class RTNLHandler;
-class Resolver;
 class RoutingTable;
 struct RoutingTableEntry;
 
@@ -65,7 +65,8 @@ class Connection : public base::RefCounted<Connection> {
   Connection(int interface_index,
              const std::string &interface_name,
              Technology::Identifier technology_,
-             const DeviceInfo *device_info);
+             const DeviceInfo *device_info,
+             bool is_short_dns_timeout_enabled);
 
   // Add the contents of an IPConfig reference to the list of managed state.
   // This will replace all previous state for this address family.
@@ -156,6 +157,9 @@ class Connection : public base::RefCounted<Connection> {
   // Binders to clients -- usually to upper connections or related services and
   // devices.
   std::deque<Binder *> binders_;
+
+  // Keep track of what sort of DNS timeout to use for this connection.
+  Resolver::TimeoutParameters dns_timeout_parameters_;
 
   // Store cached copies of singletons for speed/ease of testing
   const DeviceInfo *device_info_;

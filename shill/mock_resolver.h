@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,10 +20,12 @@ class MockResolver : public Resolver {
   MockResolver();
   virtual ~MockResolver();
 
-  MOCK_METHOD1(SetDNSFromIPConfig, bool(const IPConfigRefPtr &ipconfig));
-  MOCK_METHOD2(SetDNSFromLists,
+  MOCK_METHOD2(SetDNSFromIPConfig, bool(const IPConfigRefPtr &ipconfig,
+                                        TimeoutParameters timeout));
+  MOCK_METHOD3(SetDNSFromLists,
                bool(const std::vector<std::string> &dns_servers,
-                    const std::vector<std::string> &domain_search));
+                    const std::vector<std::string> &domain_search,
+                    TimeoutParameters timeout));
   MOCK_METHOD0(ClearDNS, bool());
 
  private:

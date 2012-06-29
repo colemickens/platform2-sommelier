@@ -406,6 +406,13 @@ Properties 	object ActiveProfile [readwrite]
 			Note: Currently shill reports the entire service
 			list, unfiltered.
 
+		string ShortDNSTimeoutTechnologies [readwrite]
+
+			The list of technologies for which a short DNS
+			timeout will be used, in order to improve retry
+			performance.  This is a comma-separated string;
+			e.g. "wifi,wimax,vpn".
+
 		string State [readonly]
 
 			The global connection state of a system. Possible

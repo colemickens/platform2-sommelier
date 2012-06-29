@@ -63,7 +63,8 @@ void Connection::Binder::OnDisconnect() {
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        Technology::Identifier technology,
-                       const DeviceInfo *device_info)
+                       const DeviceInfo *device_info,
+                       bool is_short_dns_timeout_enabled)
     : weak_ptr_factory_(this),
       is_default_(false),
       has_broadcast_domain_(false),
@@ -78,6 +79,7 @@ Connection::Connection(int interface_index,
           // Connection owns a single instance of |lower_binder_| so it's safe
           // to use an Unretained callback.
           Bind(&Connection::OnLowerDisconnect, Unretained(this))),
+      dns_timeout_parameters_(Resolver::kDefaultTimeout),
       device_info_(device_info),
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
@@ -85,6 +87,9 @@ Connection::Connection(int interface_index,
   SLOG(Connection, 2) << __func__ << "(" << interface_index << ", "
                       << interface_name << ", "
                       << Technology::NameFromIdentifier(technology) << ")";
+  if (is_short_dns_timeout_enabled) {
+    dns_timeout_parameters_ = Resolver::kShortTimeout;
+  }
 }
 
 Connection::~Connection() {
@@ -178,7 +183,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   ipconfig_rpc_identifier_ = config->GetRpcIdentifier();
 
   if (is_default_) {
-    resolver_->SetDNSFromIPConfig(config);
+    resolver_->SetDNSFromIPConfig(config, dns_timeout_parameters_);
   }
 
   local_ = local;
@@ -199,7 +204,8 @@ void Connection::SetIsDefault(bool is_default) {
   is_default_ = is_default;
 
   if (is_default) {
-    resolver_->SetDNSFromLists(dns_servers_, dns_domain_search_);
+    resolver_->SetDNSFromLists(dns_servers_, dns_domain_search_,
+                               dns_timeout_parameters_);
     DeviceRefPtr device = device_info_->GetDevice(interface_index_);
     if (device) {
       device->RequestPortalDetection();

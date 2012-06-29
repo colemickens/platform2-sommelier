@@ -123,6 +123,8 @@ Manager::Manager(ControlInterface *control_interface,
                                          &Manager::EnumerateAvailableServices);
   HelpRegisterConstDerivedRpcIdentifiers(flimflam::kServiceWatchListProperty,
                                          &Manager::EnumerateWatchedServices);
+  store_.RegisterString(shill::kShortDNSTimeoutTechnologiesProperty,
+                        &props_.short_dns_timeout_technologies);
 
   // Set default technology order "by hand", to avoid invoking side
   // effects of SetTechnologyOrder.
@@ -529,6 +531,18 @@ void Manager::SetStartupPortalList(const string &portal_list) {
 
 bool Manager::IsServiceEphemeral(const ServiceConstRefPtr &service) const {
   return service->profile() == ephemeral_profile_;
+}
+
+bool Manager::IsTechnologyShortDNSTimeoutEnabled(
+    Technology::Identifier tech) const {
+  Error error;
+  vector<Technology::Identifier> short_dns_technologies;
+  return Technology::GetTechnologyVectorFromString(
+      props_.short_dns_timeout_technologies,
+      &short_dns_technologies,
+      &error) &&
+      std::find(short_dns_technologies.begin(), short_dns_technologies.end(),
+                tech) != short_dns_technologies.end();
 }
 
 const ProfileRefPtr &Manager::ActiveProfile() const {

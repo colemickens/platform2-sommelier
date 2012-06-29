@@ -71,6 +71,7 @@ class DefaultProfile : public Profile {
   static const char kStorageOfflineMode[];
   static const char kStoragePortalCheckInterval[];
   static const char kStoragePortalURL[];
+  static const char kStorageShortDNSTimeoutTechnologies[];
 
   const FilePath storage_path_;
   const std::string profile_id_;

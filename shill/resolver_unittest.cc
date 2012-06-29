@@ -29,7 +29,12 @@ const char kExpectedOutput[] =
   "nameserver 8.8.8.8\n"
   "nameserver 8.8.9.9\n"
   "search chromium.org google.com\n"
-  "options single-request timeout:1\n";
+  "options single-request timeout:1 attempts:3\n";
+const char kExpectedShortTimeoutOutput[] =
+  "nameserver 8.8.8.8\n"
+  "nameserver 8.8.9.9\n"
+  "search chromium.org google.com\n"
+  "options single-request timeout-ms:300 attempts:15\n";
 }  // namespace {}
 
 class ResolverTest : public Test {
@@ -75,9 +80,32 @@ TEST_F(ResolverTest, NonEmpty) {
   properties.domain_search.push_back(kSearchDomain1);
   ipconfig->UpdateProperties(properties, true);
 
-  EXPECT_TRUE(resolver_->SetDNSFromIPConfig(ipconfig));
+  EXPECT_TRUE(resolver_->SetDNSFromIPConfig(
+      ipconfig, Resolver::kDefaultTimeout));
   EXPECT_TRUE(file_util::PathExists(path_));
   EXPECT_EQ(kExpectedOutput, ReadFile());
+
+  EXPECT_TRUE(resolver_->ClearDNS());
+}
+
+TEST_F(ResolverTest, ShortTimeout) {
+  EXPECT_FALSE(file_util::PathExists(path_));
+  EXPECT_TRUE(resolver_->ClearDNS());
+
+  // Add DNS info from an IPConfig entry
+  MockControl control;
+  IPConfigRefPtr ipconfig(new IPConfig(&control, kTestDeviceName0));
+  IPConfig::Properties properties;
+  properties.dns_servers.push_back(kNameServer0);
+  properties.dns_servers.push_back(kNameServer1);
+  properties.domain_search.push_back(kSearchDomain0);
+  properties.domain_search.push_back(kSearchDomain1);
+  ipconfig->UpdateProperties(properties, true);
+
+  EXPECT_TRUE(resolver_->SetDNSFromIPConfig(
+      ipconfig, Resolver::kShortTimeout));
+  EXPECT_TRUE(file_util::PathExists(path_));
+  EXPECT_EQ(kExpectedShortTimeoutOutput, ReadFile());
 
   EXPECT_TRUE(resolver_->ClearDNS());
 }
@@ -91,7 +119,8 @@ TEST_F(ResolverTest, Empty) {
   IPConfig::Properties properties;
   ipconfig->UpdateProperties(properties, true);
 
-  EXPECT_TRUE(resolver_->SetDNSFromIPConfig(ipconfig));
+  EXPECT_TRUE(resolver_->SetDNSFromIPConfig(
+      ipconfig, Resolver::kDefaultTimeout));
   EXPECT_FALSE(file_util::PathExists(path_));
 }
 
