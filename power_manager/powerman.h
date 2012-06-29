@@ -77,13 +77,15 @@ class PowerManDaemon {
   // contains the new state of this input device.
   static void OnInputEvent(void* object, InputType type, int value);
 
-  // Standard handler for dbus messages. |data| contains a pointer to a
-  // PowerManDaemon object.
-  static DBusHandlerResult DBusMessageHandler(DBusConnection*,
-                                              DBusMessage* message,
-                                              void* data);
   // Methods for handling input events.
   void HandlePowerButtonEvent(ButtonState value);
+
+  // Standard handlers for dbus method calls and signals. |data| contains a
+  // pointer to a Daemon object.
+  static DBusHandlerResult MainDBusMethodHandler(
+      DBusConnection*, DBusMessage* message, void* data);
+  static DBusHandlerResult MainDBusSignalHandler(
+      DBusConnection*, DBusMessage* message, void* data);
 
   // Callbacks for handling dbus messages.
   void HandleCheckLidStateSignal(DBusMessage* message);

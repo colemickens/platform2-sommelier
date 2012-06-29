@@ -237,49 +237,59 @@ bool PowerManDaemon::CancelDBusRequest() {
   return cancel;
 }
 
-DBusHandlerResult PowerManDaemon::DBusMessageHandler(
+DBusHandlerResult PowerManDaemon::MainDBusMethodHandler(
     DBusConnection* connection, DBusMessage* message, void* data) {
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
   CHECK(daemon);
-
-  // Filter out error messages -- should not be getting them.
-  int type = dbus_message_get_type(message);
-  if (type == DBUS_MESSAGE_TYPE_ERROR) {
-    util::LogDBusError(message);
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  }
 
   // Look up and call the corresponding dbus message handler.
   std::string interface = dbus_message_get_interface(message);
   std::string member = dbus_message_get_member(message);
   DBusInterfaceMemberPair dbus_message_pair = std::make_pair(interface, member);
-
-  if (type == DBUS_MESSAGE_TYPE_METHOD_CALL) {
-    DBusMethodHandlerTable::iterator iter =
-        daemon->dbus_method_handler_table_.find(dbus_message_pair);
-    if (iter == daemon->dbus_method_handler_table_.end())
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    LOG(INFO) << "Got " << member << " method call";
-    DBusMethodHandler callback = iter->second;
-    DBusMessage* reply = (daemon->*callback)(message);
-
-    // Must send a reply if it is a message.
-    CHECK(reply);
-    dbus_connection_send(connection, reply, NULL);
-    dbus_message_unref(reply);
-
-    return DBUS_HANDLER_RESULT_HANDLED;
-  } else if (type == DBUS_MESSAGE_TYPE_SIGNAL) {
-    DBusSignalHandlerTable::iterator iter =
-        daemon->dbus_signal_handler_table_.find(dbus_message_pair);
-    if (iter == daemon->dbus_signal_handler_table_.end())
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    LOG(INFO) << "Got " << member << " signal";
-    DBusSignalHandler callback = iter->second;
-    (daemon->*callback)(message);
-    // Do not send a reply if it is a signal.
+  DBusMethodHandlerTable::iterator iter =
+      daemon->dbus_method_handler_table_.find(dbus_message_pair);
+  if (iter == daemon->dbus_method_handler_table_.end()) {
+    LOG(ERROR) << "Could not find handler for " << interface << ":" << member
+               << " in method handler table.";
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
-  return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+  LOG(INFO) << "Got " << member << " method call";
+  DBusMethodHandler callback = iter->second;
+  DBusMessage* reply = (daemon->*callback)(message);
+
+  // Must send a reply if it is a message.
+  if (!reply)
+    reply = util::CreateEmptyDBusReply(message);
+  // If the send reply fails, it is due to lack of memory.
+  CHECK(dbus_connection_send(connection, reply, NULL));
+  dbus_message_unref(reply);
+
+  return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+DBusHandlerResult PowerManDaemon::MainDBusSignalHandler(
+    DBusConnection* connection, DBusMessage* message, void* data) {
+  if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_SIGNAL)
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+  PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
+  CHECK(daemon);
+  // Look up and call the corresponding dbus message handler.
+  std::string interface = dbus_message_get_interface(message);
+  std::string member = dbus_message_get_member(message);
+  DBusInterfaceMemberPair dbus_message_pair = std::make_pair(interface, member);
+  DBusSignalHandlerTable::iterator iter =
+      daemon->dbus_signal_handler_table_.find(dbus_message_pair);
+  // Quietly skip this signal if it has no handler.
+  if (iter == daemon->dbus_signal_handler_table_.end())
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+  LOG(INFO) << "Got " << member << " signal";
+  DBusSignalHandler callback = iter->second;
+
+  (daemon->*callback)(message);
+  return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 void PowerManDaemon::HandlePowerButtonEvent(ButtonState value) {
@@ -419,8 +429,6 @@ void PowerManDaemon::AddDBusMethodHandler(const std::string& interface,
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(connection);
-  util::AddDBusMethodMatch(
-      connection, interface, kPowerManagerServicePath, member);
   dbus_method_handler_table_[std::make_pair(interface, member)] = handler;
 }
 
@@ -484,14 +492,20 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
   AddDBusSignalHandler(login_manager::kSessionManagerInterface,
                        login_manager::kSessionManagerSessionStateChanged,
                        &PowerManDaemon::HandleSessionManagerStateChangedSignal);
+  CHECK(dbus_connection_add_filter(
+      connection, &MainDBusSignalHandler, this, NULL));
 
   AddDBusMethodHandler(kRootPowerManagerInterface, kExternalBacklightGetMethod,
                        &PowerManDaemon::HandleExternalBacklightGetMethod);
   AddDBusMethodHandler(kRootPowerManagerInterface, kExternalBacklightSetMethod,
                        &PowerManDaemon::HandleExternalBacklightSetMethod);
-
-  CHECK(dbus_connection_add_filter(
-      connection, &DBusMessageHandler, this, NULL));
+  DBusObjectPathVTable vtable;
+  memset(&vtable, 0, sizeof(vtable));
+  vtable.message_function = &MainDBusMethodHandler;
+  CHECK(dbus_connection_register_object_path(connection,
+                                             kPowerManagerServicePath,
+                                             &vtable,
+                                             this));
 
   DBusGProxy* proxy = dbus_g_proxy_new_for_name(
       chromeos::dbus::GetSystemBusConnection().g_connection(),

@@ -201,11 +201,12 @@ class Daemon : public BacklightControllerObserver,
   // Registers udev event handler with GIO.
   void RegisterUdevEventHandler();
 
-  // Standard handler for dbus messages. |data| contains a pointer to a
-  // Daemon object.
-  static DBusHandlerResult DBusMessageHandler(DBusConnection*,
-                                              DBusMessage* message,
-                                              void* data);
+  // Standard handlers for dbus method calls and signals. |data| contains a
+  // pointer to a Daemon object.
+  static DBusHandlerResult MainDBusMethodHandler(
+      DBusConnection*, DBusMessage* message, void* data);
+  static DBusHandlerResult MainDBusSignalHandler(
+      DBusConnection*, DBusMessage* message, void* data);
 
   // Registers the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
