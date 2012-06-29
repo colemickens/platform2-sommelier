@@ -772,4 +772,13 @@ TEST_F(CellularTest, ConnectAddsTerminationAction) {
   dispatcher_.DispatchPendingEvents();
 }
 
+TEST_F(CellularTest, SetAllowRoaming) {
+  EXPECT_FALSE(device_->allow_roaming_);
+  EXPECT_CALL(manager_, UpdateDevice(_));
+  Error error;
+  device_->SetAllowRoaming(true, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(device_->allow_roaming_);
+}
+
 }  // namespace shill

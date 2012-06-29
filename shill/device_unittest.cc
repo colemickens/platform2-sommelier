@@ -323,6 +323,22 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   OnIPConfigUpdated(ipconfig.get(), true);
 }
 
+TEST_F(DeviceTest, SetEnabledPersistent) {
+  EXPECT_FALSE(device_->enabled_);
+  EXPECT_FALSE(device_->enabled_pending_);
+  device_->enabled_persistent_ = false;
+  StrictMock<MockManager> manager(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  glib());
+  EXPECT_CALL(manager, UpdateDevice(_));
+  device_->manager_ = &manager;
+  Error error;
+  device_->SetEnabledPersistent(true, &error, ResultCallback());
+  EXPECT_TRUE(device_->enabled_persistent_);
+  EXPECT_TRUE(device_->enabled_pending_);
+}
+
 TEST_F(DeviceTest, Start) {
   EXPECT_FALSE(device_->running_);
   EXPECT_FALSE(device_->enabled_);

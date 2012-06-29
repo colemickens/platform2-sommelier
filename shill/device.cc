@@ -754,7 +754,7 @@ void Device::SetEnabledInternal(bool enable,
 
   if (persist) {
     enabled_persistent_ = enable;
-    manager_->SaveActiveProfile();
+    manager_->UpdateDevice(this);
   }
 
   enabled_pending_ = enable;

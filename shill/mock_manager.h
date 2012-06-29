@@ -34,6 +34,7 @@ class MockManager : public Manager {
   MOCK_METHOD1(RegisterService, void(const ServiceRefPtr &to_manage));
   MOCK_METHOD1(UpdateService, void(const ServiceRefPtr &to_update));
   MOCK_METHOD1(DeregisterService, void(const ServiceRefPtr &to_forget));
+  MOCK_METHOD1(UpdateDevice, void(const DeviceRefPtr &to_update));
   MOCK_METHOD1(RecheckPortalOnService, void(const ServiceRefPtr &service));
   MOCK_METHOD2(HandleProfileEntryDeletion,
                bool (const ProfileRefPtr &profile,

@@ -112,6 +112,12 @@ class Profile : public base::RefCounted<Profile> {
   std::vector<std::string> EnumerateAvailableServices(Error *error);
   std::vector<std::string> EnumerateEntries(Error *error);
 
+  // Clobbers persisted notion of |device| with data from |device|. Returns true
+  // if |device| was found and updated, false otherwise. The base implementation
+  // always returns false -- currently devices are persisted only in
+  // DefaultProfile.
+  virtual bool UpdateDevice(const DeviceRefPtr &device);
+
   // Write all in-memory state to disk via |storage_|.
   virtual bool Save();
 

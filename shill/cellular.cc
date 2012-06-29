@@ -575,7 +575,7 @@ void Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
     return;
   }
   allow_roaming_ = value;
-  manager()->SaveActiveProfile();
+  manager()->UpdateDevice(this);
 
   // Use AllowRoaming() instead of allow_roaming_ in order to
   // incorporate provider preferences when evaluating if a disconnect

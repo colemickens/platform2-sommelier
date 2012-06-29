@@ -265,4 +265,15 @@ TEST_F(DefaultProfileTest, ConfigureService) {
   EXPECT_TRUE(profile_->ConfigureService(ethernet_service));
 }
 
+TEST_F(DefaultProfileTest, UpdateDevice) {
+  scoped_ptr<MockStore> storage(new MockStore());
+  EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
+  EXPECT_CALL(*device_, Save(storage.get()))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  profile_->set_storage(storage.release());
+  EXPECT_TRUE(profile_->UpdateDevice(device_));
+  EXPECT_FALSE(profile_->UpdateDevice(device_));
+}
+
 }  // namespace shill

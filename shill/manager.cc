@@ -138,9 +138,7 @@ Manager::Manager(ControlInterface *control_interface,
   SLOG(Manager, 2) << "Manager initialized.";
 }
 
-Manager::~Manager() {
-  profiles_.clear();
-}
+Manager::~Manager() {}
 
 void Manager::AddDeviceToBlackList(const string &device_name) {
   device_info_.AddDeviceToBlackList(device_name);
@@ -534,12 +532,6 @@ bool Manager::IsActiveProfile(const ProfileRefPtr &profile) const {
           ActiveProfile().get() == profile.get());
 }
 
-void Manager::SaveActiveProfile() {
-  if (!profiles_.empty()) {
-    ActiveProfile()->Save();
-  }
-}
-
 bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
                                    const ProfileRefPtr &destination) {
   const ProfileRefPtr from = to_move->profile();
@@ -658,28 +650,24 @@ void Manager::UpdateEnabledTechnologies() {
 }
 
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
-  SLOG(Manager, 2) << __func__ << "(" << to_manage->FriendlyName() << ")";
-  vector<DeviceRefPtr>::iterator it;
-  for (it = devices_.begin(); it != devices_.end(); ++it) {
+  LOG(INFO) << "Device " << to_manage->FriendlyName() << " registered.";
+  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
     if (to_manage.get() == it->get())
       return;
   }
   devices_.push_back(to_manage);
 
-  // We are applying device properties from the DefaultProfile, and adding
-  // the union of hidden services in all loaded profiles to the device.
+  // We are applying device properties from the DefaultProfile, and adding the
+  // union of hidden services in all loaded profiles to the device.
   for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
-       it != profiles_.end();
-       ++it) {
+       it != profiles_.end(); ++it) {
     // Load device configuration, if any exists, as well as hidden services.
     (*it)->ConfigureDevice(to_manage);
-
-    // Currently the only profile for which "Save" is implemented is the
-    // DefaultProfile.  It iterates over all Devices and stores their state.
-    // We perform the Save now in case the device we have just registered
-    // is new and needs to be added to the stored DefaultProfile.
-    (*it)->Save();
   }
+
+  // If |to_manage| is new, it needs to be persisted.
+  UpdateDevice(to_manage);
 
   // In normal usage, running_ will always be true when we are here, however
   // unit tests sometimes do things in otherwise invalid states.
@@ -785,6 +773,20 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
     SaveServiceToProfile(to_update);
   }
   SortServices();
+}
+
+void Manager::UpdateDevice(const DeviceRefPtr &to_update) {
+  LOG(INFO) << "Device " << to_update->link_name() << " updated: "
+            << (to_update->enabled_persistent() ? "enabled" : "disabled");
+  // Saves the device to the topmost profile that accepts it. Normally, this
+  // would be the only DefaultProfile at the bottom of the stack except in
+  // autotests that push a second test-only DefaultProfile.
+  for (vector<ProfileRefPtr>::reverse_iterator rit = profiles_.rbegin();
+       rit != profiles_.rend(); ++rit) {
+    if ((*rit)->UpdateDevice(to_update)) {
+      return;
+    }
+  }
 }
 
 void Manager::SaveServiceToProfile(const ServiceRefPtr &to_update) {

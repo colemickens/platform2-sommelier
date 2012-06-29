@@ -72,7 +72,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   const ProfileRefPtr &ActiveProfile() const;
   bool IsActiveProfile(const ProfileRefPtr &profile) const;
-  virtual void SaveActiveProfile();
   bool MoveServiceToProfile(const ServiceRefPtr &to_move,
                             const ProfileRefPtr &destination);
   ProfileRefPtr LookupProfileByRpcIdentifier(const std::string &profile_rpcid);
@@ -93,6 +92,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // for disconnecting the Service before-hand.
   virtual void DeregisterService(const ServiceRefPtr &to_forget);
   virtual void UpdateService(const ServiceRefPtr &to_update);
+
+  // Persists |to_update| into an appropriate profile.
+  virtual void UpdateDevice(const DeviceRefPtr &to_update);
 
   void FilterByTechnology(Technology::Identifier tech,
                           std::vector<DeviceRefPtr> *found);

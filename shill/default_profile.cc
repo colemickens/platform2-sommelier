@@ -132,6 +132,10 @@ bool DefaultProfile::Save() {
   return Profile::Save();
 }
 
+bool DefaultProfile::UpdateDevice(const DeviceRefPtr &device) {
+  return device->Save(storage()) && storage()->Flush();
+}
+
 bool DefaultProfile::GetStoragePath(FilePath *path) {
   *path = storage_path_.Append(base::StringPrintf("%s.profile",
                                                   profile_id_.c_str()));

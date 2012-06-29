@@ -45,6 +45,9 @@ class DefaultProfile : public Profile {
   // Returns true on success, false on failure.
   virtual bool Save();
 
+  // Inherited from Profile.
+  virtual bool UpdateDevice(const DeviceRefPtr &device);
+
  protected:
   // Sets |path| to the persistent store file path for the default, global
   // profile. Returns true on success, and false if unable to determine an

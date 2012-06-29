@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -278,6 +278,10 @@ vector<string> Profile::EnumerateEntries(Error */*error*/) {
   }
 
   return service_groups;
+}
+
+bool Profile::UpdateDevice(const DeviceRefPtr &device) {
+  return false;
 }
 
 void Profile::HelpRegisterDerivedStrings(

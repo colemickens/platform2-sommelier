@@ -223,6 +223,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
+  FRIEND_TEST(CellularTest, SetAllowRoaming);
   FRIEND_TEST(CellularTest, StartModemCallback);
   FRIEND_TEST(CellularTest, StartModemCallbackFail);
   FRIEND_TEST(CellularTest, StopModemCallback);

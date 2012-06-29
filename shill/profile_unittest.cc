@@ -356,4 +356,8 @@ TEST_F(ProfileTest, InitStorage) {
                                  Error::kSuccess));
 }
 
+TEST_F(ProfileTest, UpdateDevice) {
+  EXPECT_FALSE(profile_->UpdateDevice(NULL));
+}
+
 }  // namespace shill

@@ -186,8 +186,8 @@ class ManagerTest : public PropertyStoreTest {
   void AddMockProfileToManager(Manager *manager) {
     scoped_refptr<MockProfile> profile(
         new MockProfile(control_interface(), manager, ""));
-    EXPECT_CALL(*profile, GetRpcIdentifier())
-        .WillRepeatedly(Return("/"));
+    EXPECT_CALL(*profile, GetRpcIdentifier()).WillRepeatedly(Return("/"));
+    EXPECT_CALL(*profile, UpdateDevice(_)).WillRepeatedly(Return(false));
     AdoptProfile(manager, profile);
   }
 
@@ -265,7 +265,7 @@ TEST_F(ManagerTest, DeviceRegistrationWithProfile) {
   DeviceRefPtr device_ref(mock_devices_[0].get());
   AdoptProfile(manager(), profile);  // Passes ownership.
   EXPECT_CALL(*profile, ConfigureDevice(device_ref));
-  EXPECT_CALL(*profile, Save());
+  EXPECT_CALL(*profile, UpdateDevice(device_ref));
   manager()->RegisterDevice(mock_devices_[0]);
 }
 
@@ -1911,6 +1911,20 @@ TEST_F(ManagerTest, SaveSuccessfulService) {
   EXPECT_CALL(*profile.get(), AdoptService(expect_service))
       .WillOnce(Return(true));
   manager()->UpdateService(service);
+}
+
+TEST_F(ManagerTest, UpdateDevice) {
+  MockProfile *profile0 = new MockProfile(control_interface(), manager(), "");
+  MockProfile *profile1 = new MockProfile(control_interface(), manager(), "");
+  MockProfile *profile2 = new MockProfile(control_interface(), manager(), "");
+  AdoptProfile(manager(), profile0);  // Passes ownership.
+  AdoptProfile(manager(), profile1);  // Passes ownership.
+  AdoptProfile(manager(), profile2);  // Passes ownership.
+  DeviceRefPtr device_ref(mock_devices_[0].get());
+  EXPECT_CALL(*profile0, UpdateDevice(device_ref)).Times(0);
+  EXPECT_CALL(*profile1, UpdateDevice(device_ref)).WillOnce(Return(true));
+  EXPECT_CALL(*profile2, UpdateDevice(device_ref)).WillOnce(Return(false));
+  manager()->UpdateDevice(mock_devices_[0]);
 }
 
 TEST_F(ManagerTest, EnumerateProfiles) {

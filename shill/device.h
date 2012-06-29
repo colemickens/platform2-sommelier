@@ -164,6 +164,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
+  FRIEND_TEST(DeviceTest, SetEnabledPersistent);
   FRIEND_TEST(DeviceTest, SetServiceConnectedState);
   FRIEND_TEST(DeviceTest, Start);
   FRIEND_TEST(DeviceTest, Stop);
