@@ -217,34 +217,38 @@ fi
 
 # Check if we have an update to stateful pending.
 # Note:  THIS MUST BE DONE BEFORE CLOBBER STATE.
-VAR_NEW="/mnt/stateful_partition/var_new"
-DEVELOPER_NEW="/mnt/stateful_partition/dev_image_new"
 STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
 if [ -f "$STATEFUL_UPDATE" ] ; then
+  # To remain compatible with the prior update_stateful tarballs, expect
+  # the "var_new" unpack location, but move it into the new "var_overlay"
+  # target location.
+  VAR_TARGET="/mnt/stateful_partition/var"
+  VAR_NEW="${VAR_TARGET}_new"
+  VAR_OLD="${VAR_TARGET}_old"
+  VAR_TARGET="${VAR_TARGET}_overlay"
+  DEVELOPER_TARGET="/mnt/stateful_partition/dev_image"
+  DEVELOPER_NEW="${DEVELOPER_TARGET}_new"
+  DEVELOPER_OLD="${DEVELOPER_TARGET}_old"
   STATEFUL_UPDATE_ARGS=$(cat "$STATEFUL_UPDATE")
   # Remove old state in case this process got interrupted by a reset, this is
   # usually a no-op.
-  rm -rf /mnt/stateful_partition/dev_image_old \
-    /mnt/stateful_partition/var_old
+  rm -rf "$DEVELOPER_OLD" "$VAR_OLD"
   # The moves can fail if they were previously interrupted mid-op.
-  mv /mnt/stateful_partition/dev_image \
-    /mnt/stateful_partition/dev_image_old || true
-  mv /mnt/stateful_partition/var /mnt/stateful_partition/var_old || true
-  mv "$DEVELOPER_NEW" /mnt/stateful_partition/dev_image || true
-  mv "$VAR_NEW" /mnt/stateful_partition/var || true
+  mv "$DEVELOPER_TARGET" "$DEVELOPER_OLD" || true
+  mv "$VAR_TARGET" "$VAR_OLD" || true
+  mv "$DEVELOPER_NEW" "$DEVELOPER_TARGET" || true
+  mv "$VAR_NEW" "$VAR_TARGET" || true
   # Check for clobber.
   if [ "$STATEFUL_UPDATE_ARGS" = "clobber" ]; then
-    # Removes all dirs except the new dev_image and var.
+    # Removes all dirs except the new dev_image and var_overlay.
     find /mnt/stateful_partition -mindepth 1 -maxdepth 1 |
-      grep -v -e dev_image\$ -e var\$ |
+      grep -v -e dev_image\$ -e var_overlay\$ |
       xargs -d "\n" rm -rf
     # Let's really be done before coming back.
     sync
   else
     # Backgrounded to take off boot path.
-    rm -rf "$STATEFUL_UPDATE" \
-      /mnt/stateful_partition/dev_image_old \
-      /mnt/stateful_partition/var_old &
+    rm -rf "$STATEFUL_UPDATE" "$DEVELOPER_OLD" "$VAR_OLD" &
   fi
 fi
 
