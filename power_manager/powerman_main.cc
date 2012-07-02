@@ -11,9 +11,11 @@
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
-#include "power_manager/backlight_interface.h"
-#include "power_manager/external_backlight.h"
 #include "power_manager/powerman.h"
+
+#ifdef IS_DESKTOP
+#include "power_manager/external_backlight.h"
+#endif
 
 using std::string;
 
@@ -44,7 +46,6 @@ static string GetTimeAsString(time_t utime) {
   return string(str);
 }
 
-
 int main(int argc, char* argv[]) {
   g_type_init();
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -73,13 +74,19 @@ int main(int argc, char* argv[]) {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
 
+#ifdef IS_DESKTOP
   power_manager::ExternalBacklight backlight;
   backlight.Init();
+#endif
 
   FilePath run_dir(FLAGS_run_dir);
   power_manager::PowerManDaemon daemon(&prefs,
                                        &metrics_lib,
+#ifdef IS_DESKTOP
                                        &backlight,
+#else
+                                       NULL,
+#endif
                                        run_dir);
   daemon.Init();
   daemon.Run();

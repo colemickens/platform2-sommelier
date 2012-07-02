@@ -180,7 +180,8 @@ LIBPOWERMAN_FLAGS := $(GLIB_FLAGS) $(DBUS_FLAGS) \
                      $(shell $(PKG_CONFIG) --cflags $(LIBPOWERMAN_DEPS))
 LIBPOWERMAN_LIBS := $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev \
                     $(shell $(PKG_CONFIG) --libs $(LIBPOWERMAN_DEPS))
-LIBPOWERMAN_OBJS = powerman.o external_backlight.o input.o powerman_metrics.o
+LIBPOWERMAN_OBJS = powerman.o external_backlight.o input.o power_constants.o \
+                   powerman_metrics.o
 CXX_STATIC_LIBRARY(libpowerman.pie.a): $(LIBPOWERMAN_OBJS)
 CXX_STATIC_LIBRARY(libpowerman.pie.a): CPPFLAGS += $(LIBPOWERMAN_FLAGS)
 CXX_STATIC_LIBRARY(libpowerman.pie.a): LDLIBS += $(LIBPOWERMAN_LIBS)
