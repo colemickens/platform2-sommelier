@@ -81,11 +81,11 @@ static struct Log logs[] = {
   { "syslog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/messages" },
   { "touchpad", "/opt/google/touchpad/tpcontrol status" },
-  { "touchpad_activity", "/opt/google/touchpad/generate_userfeedback" },
+  { "touchpad_activity", "/opt/google/touchpad/generate_userfeedback alt" },
   { "ui_log", "/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST" },
   { "uname", "/bin/uname -a" },
   { "update_engine.log", "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
-         "s.^./var/log/update_engine/.)" },
+         " s.^./var/log/update_engine/.)" },
   { "verified boot", "/bin/cat /var/log/debug_vboot_noisy.log" },
   { "vpd_2.0", "/bin/cat /var/log/vpd_2.0.txt" },
   { "wifi_status", "/usr/bin/network_diagnostics --wifi --no-log" },

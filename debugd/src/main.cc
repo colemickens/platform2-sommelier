@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <base/command_line.h>
@@ -53,6 +54,14 @@ void make_tmpfs() {
     PLOG(FATAL) << "mount() failed";
 }
 
+// @brief Sets up directories needed by helper programs.
+//
+void setup_dirs() {
+  int r = mkdir("/debugd/touchpad", S_IRWXU);
+  if (r < 0)
+    PLOG(FATAL) << "mkdir(\"/debugd/touchpad\") failed";
+}
+
 // @brief Launch all our helper programs.
 void launch_helpers() {
   for (int i = 0; kHelpers[i]; ++i) {
@@ -82,6 +91,7 @@ int __attribute__((visibility("default"))) main(int argc, char* argv[]) {
   enter_vfs_namespace();
   make_tmpfs();
   enter_sandbox();
+  setup_dirs();
   launch_helpers();
   start();
   return 0;
