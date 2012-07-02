@@ -292,6 +292,10 @@ void OpenVPNDriver::Notify(const string &reason,
     return;
   }
   IPConfig::Properties properties;
+  if (device_->ipconfig()) {
+    // On restart/reconnect, update the existing IP configuration.
+    properties = device_->ipconfig()->properties();
+  }
   ParseIPConfiguration(dict, &properties);
   device_->UpdateIPConfig(properties);
   StopConnectTimeout();
@@ -304,8 +308,10 @@ void OpenVPNDriver::ParseIPConfiguration(
   ForeignOptions foreign_options;
   RouteOptions routes;
   properties->address_family = IPAddress::kFamilyIPv4;
-  properties->subnet_prefix = IPAddress::GetMaxPrefixLength(
-      properties->address_family);
+  if (!properties->subnet_prefix) {
+    properties->subnet_prefix =
+        IPAddress::GetMaxPrefixLength(properties->address_family);
+  }
   for (map<string, string>::const_iterator it = configuration.begin();
        it != configuration.end(); ++it) {
     const string &key = it->first;
@@ -353,15 +359,28 @@ void OpenVPNDriver::ParseIPConfiguration(
 // static
 void OpenVPNDriver::ParseForeignOptions(const ForeignOptions &options,
                                         IPConfig::Properties *properties) {
+  vector<string> domain_search;
+  vector<string> dns_servers;
   for (ForeignOptions::const_iterator it = options.begin();
        it != options.end(); ++it) {
-    ParseForeignOption(it->second, properties);
+    ParseForeignOption(it->second, &domain_search, &dns_servers);
   }
+  if (!domain_search.empty()) {
+    properties->domain_search.swap(domain_search);
+  }
+  LOG_IF(WARNING, properties->domain_search.empty())
+      << "No search domains provided.";
+  if (!dns_servers.empty()) {
+    properties->dns_servers.swap(dns_servers);
+  }
+  LOG_IF(WARNING, properties->dns_servers.empty())
+      << "No DNS servers provided.";
 }
 
 // static
 void OpenVPNDriver::ParseForeignOption(const string &option,
-                                       IPConfig::Properties *properties) {
+                                       vector<string> *domain_search,
+                                       vector<string> *dns_servers) {
   SLOG(VPN, 2) << __func__ << "(" << option << ")";
   vector<string> tokens;
   SplitString(option, ' ', &tokens);
@@ -369,9 +388,9 @@ void OpenVPNDriver::ParseForeignOption(const string &option,
     return;
   }
   if (LowerCaseEqualsASCII(tokens[1], "domain")) {
-    properties->domain_search.push_back(tokens[2]);
+    domain_search->push_back(tokens[2]);
   } else if (LowerCaseEqualsASCII(tokens[1], "dns")) {
-    properties->dns_servers.push_back(tokens[2]);
+    dns_servers->push_back(tokens[2]);
   }
 }
 
@@ -410,6 +429,7 @@ void OpenVPNDriver::ParseRouteOption(
 // static
 void OpenVPNDriver::SetRoutes(const RouteOptions &routes,
                               IPConfig::Properties *properties) {
+  vector<IPConfig::Route> new_routes;
   for (RouteOptions::const_iterator it = routes.begin();
        it != routes.end(); ++it) {
     const IPConfig::Route &route = it->second;
@@ -417,8 +437,12 @@ void OpenVPNDriver::SetRoutes(const RouteOptions &routes,
       LOG(WARNING) << "Ignoring incomplete route: " << it->first;
       continue;
     }
-    properties->routes.push_back(route);
+    new_routes.push_back(route);
   }
+  if (!new_routes.empty()) {
+    properties->routes.swap(new_routes);
+  }
+  LOG_IF(WARNING, properties->routes.empty()) << "No routes provided.";
 }
 
 void OpenVPNDriver::Connect(const VPNServiceRefPtr &service, Error *error) {

@@ -314,6 +314,10 @@ uint32 Connection::GetMetric(bool is_default) {
 bool Connection::PinHostRoute(const IPConfig::Properties &properties) {
   SLOG(Connection, 2) << __func__;
   if (properties.gateway.empty() || properties.trusted_ip.empty()) {
+    LOG_IF(ERROR, properties.gateway.empty())
+        << "No gateway -- unable to pin host route.";
+    LOG_IF(ERROR, properties.trusted_ip.empty())
+        << "No trusted IP -- unable to pin host route.";
     return false;
   }
 

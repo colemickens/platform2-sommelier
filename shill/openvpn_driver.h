@@ -125,7 +125,8 @@ class OpenVPNDriver : public VPNDriver,
   static void ParseForeignOptions(const ForeignOptions &options,
                                   IPConfig::Properties *properties);
   static void ParseForeignOption(const std::string &option,
-                                 IPConfig::Properties *properties);
+                                 std::vector<std::string> *domain_search,
+                                 std::vector<std::string> *dns_servers);
   static IPConfig::Route *GetRouteOptionEntry(const std::string &prefix,
                                               const std::string &key,
                                               RouteOptions *routes);

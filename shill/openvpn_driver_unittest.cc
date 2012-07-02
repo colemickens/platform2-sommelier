@@ -41,6 +41,7 @@ using testing::_;
 using testing::AnyNumber;
 using testing::DoAll;
 using testing::ElementsAreArray;
+using testing::Field;
 using testing::Ne;
 using testing::NiceMock;
 using testing::Return;
@@ -222,9 +223,20 @@ TEST_F(OpenVPNDriverTest, Notify) {
   map<string, string> config;
   driver_->device_ = device_;
   driver_->StartConnectTimeout();
-  EXPECT_CALL(*device_, UpdateIPConfig(_));
+  EXPECT_CALL(*device_,
+              UpdateIPConfig(Field(&IPConfig::Properties::address, "")));
   driver_->Notify("up", config);
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
+
+  // Tests that existing properties are reused if no new ones provided.
+  IPConfigRefPtr ipconfig(new IPConfig(&control_, device_->link_name()));
+  IPConfig::Properties props;
+  props.address = "1.2.3.4";
+  ipconfig->set_properties(props);
+  device_->set_ipconfig(ipconfig);
+  EXPECT_CALL(*device_,
+              UpdateIPConfig(Field(&IPConfig::Properties::address, "1.2.3.4")));
+  driver_->Notify("up", config);
 }
 
 TEST_F(OpenVPNDriverTest, NotifyFail) {
@@ -296,29 +308,40 @@ TEST_F(OpenVPNDriverTest, SetRoutes) {
   EXPECT_EQ(kGateway2, props.routes[1].gateway);
   EXPECT_EQ(kNetmask2, props.routes[1].netmask);
   EXPECT_EQ(kNetwork2, props.routes[1].host);
+
+  // Tests that the routes are not reset if no new routes are supplied.
+  OpenVPNDriver::SetRoutes(OpenVPNDriver::RouteOptions(), &props);
+  EXPECT_EQ(2, props.routes.size());
 }
 
 TEST_F(OpenVPNDriverTest, ParseForeignOption) {
+  vector<string> domain_search;
+  vector<string> dns_servers;
   IPConfig::Properties props;
-  OpenVPNDriver::ParseForeignOption("", &props);
-  OpenVPNDriver::ParseForeignOption("dhcp-option DOMAIN", &props);
-  OpenVPNDriver::ParseForeignOption("dhcp-option DOMAIN zzz.com foo", &props);
-  OpenVPNDriver::ParseForeignOption("dhcp-Option DOmAIN xyz.com", &props);
-  ASSERT_EQ(1, props.domain_search.size());
-  EXPECT_EQ("xyz.com", props.domain_search[0]);
-  OpenVPNDriver::ParseForeignOption("dhcp-option DnS 1.2.3.4", &props);
-  ASSERT_EQ(1, props.dns_servers.size());
-  EXPECT_EQ("1.2.3.4", props.dns_servers[0]);
+  OpenVPNDriver::ParseForeignOption("", &domain_search, &dns_servers);
+  OpenVPNDriver::ParseForeignOption(
+      "dhcp-option DOMAIN", &domain_search, &dns_servers);
+  OpenVPNDriver::ParseForeignOption(
+      "dhcp-option DOMAIN zzz.com foo", &domain_search, &dns_servers);
+  OpenVPNDriver::ParseForeignOption(
+      "dhcp-Option DOmAIN xyz.com", &domain_search, &dns_servers);
+  ASSERT_EQ(1, domain_search.size());
+  EXPECT_EQ("xyz.com", domain_search[0]);
+  OpenVPNDriver::ParseForeignOption(
+      "dhcp-option DnS 1.2.3.4", &domain_search, &dns_servers);
+  ASSERT_EQ(1, dns_servers.size());
+  EXPECT_EQ("1.2.3.4", dns_servers[0]);
 }
 
 TEST_F(OpenVPNDriverTest, ParseForeignOptions) {
-  // Basically test that std::map is a sorted container.
+  // This also tests that std::map is a sorted container.
   map<int, string> options;
   options[5] = "dhcp-option DOMAIN five.com";
   options[2] = "dhcp-option DOMAIN two.com";
   options[8] = "dhcp-option DOMAIN eight.com";
   options[7] = "dhcp-option DOMAIN seven.com";
   options[4] = "dhcp-option DOMAIN four.com";
+  options[10] = "dhcp-option dns 1.2.3.4";
   IPConfig::Properties props;
   OpenVPNDriver::ParseForeignOptions(options, &props);
   ASSERT_EQ(5, props.domain_search.size());
@@ -327,10 +350,28 @@ TEST_F(OpenVPNDriverTest, ParseForeignOptions) {
   EXPECT_EQ("five.com", props.domain_search[2]);
   EXPECT_EQ("seven.com", props.domain_search[3]);
   EXPECT_EQ("eight.com", props.domain_search[4]);
+  ASSERT_EQ(1, props.dns_servers.size());
+  EXPECT_EQ("1.2.3.4", props.dns_servers[0]);
+
+  // Test that the DNS properties are not updated if no new DNS properties are
+  // supplied.
+  OpenVPNDriver::ParseForeignOptions(map<int, string>(), &props);
+  EXPECT_EQ(5, props.domain_search.size());
+  ASSERT_EQ(1, props.dns_servers.size());
 }
 
 TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   map<string, string> config;
+  IPConfig::Properties props;
+
+  OpenVPNDriver::ParseIPConfiguration(config, &props);
+  EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
+  EXPECT_EQ(32, props.subnet_prefix);
+
+  props.subnet_prefix = 18;
+  OpenVPNDriver::ParseIPConfiguration(config, &props);
+  EXPECT_EQ(18, props.subnet_prefix);
+
   config["ifconfig_loCal"] = "4.5.6.7";
   config["ifconfiG_broadcast"] = "1.2.255.255";
   config["ifconFig_netmAsk"] = "255.255.255.0";
@@ -348,7 +389,6 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   config["route_gateway_2"] = kGateway2;
   config["route_gateway_1"] = kGateway1;
   config["foo"] = "bar";
-  IPConfig::Properties props;
   OpenVPNDriver::ParseIPConfiguration(config, &props);
   EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
   EXPECT_EQ("4.5.6.7", props.address);
