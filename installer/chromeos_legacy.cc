@@ -5,6 +5,7 @@
 #include "chromeos_legacy.h"
 
 #include <stdio.h>
+#include <unistd.h>
 
 #include "inst_util.h"
 
