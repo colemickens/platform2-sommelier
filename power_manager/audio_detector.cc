@@ -34,8 +34,7 @@ AudioDetector::~AudioDetector() {}
 
 void AudioDetector::Init() {
   if (!audio_file_.Init(kAudioStatusPath))
-    LOG(WARNING) << "No audio status file found, audio detection will be "
-                 << "disabled.";
+    LOG(WARNING) << "No audio status file found.";
 }
 
 bool AudioDetector::GetActivity(int64 activity_threshold_ms,
@@ -73,11 +72,14 @@ bool AudioDetector::Disable() {
 }
 
 gboolean AudioDetector::Poll() {
-  if (!IsPollingEnabled()) {
-    LOG(ERROR) << "Polling not enabled or audio status file not found.";
+  if (!polling_enabled_) {
+    LOG(ERROR) << "Polling not enabled.";
     return FALSE;
   }
-
+  if (!audio_file_.HasOpenedFile() && !audio_file_.Init(kAudioStatusPath)) {
+    LOG(WARNING) << "Audio status file not found, continuing to poll for it.";
+    return TRUE;
+  }
   audio_file_.StartRead(&read_cb_, &error_cb_);
   return FALSE;
 }
