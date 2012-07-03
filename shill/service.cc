@@ -232,17 +232,18 @@ Service::Service(ControlInterface *control_interface,
 }
 
 Service::~Service() {
+  LOG(INFO) << "Service destroyed: " << friendly_name_;
   metrics_->DeregisterService(this);
 }
 
 void Service::AutoConnect() {
   const char *reason = NULL;
   if (IsAutoConnectable(&reason)) {
-    LOG(INFO) << "Auto-connecting to " << friendly_name();
+    LOG(INFO) << "Auto-connecting to " << friendly_name_;
     Error error;
     Connect(&error);
   } else {
-    LOG(INFO) << "Suppressed autoconnect to " << friendly_name() << " "
+    LOG(INFO) << "Suppressed autoconnect to " << friendly_name_ << " "
               << "(" << reason << ")";
   }
 }

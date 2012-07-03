@@ -256,7 +256,7 @@ void WiFi::Certification(const map<string, ::DBus::Variant> &properties) {
 }
 
 void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
-  LOG(INFO) << "In " << __func__ << "(): called";
+  SLOG(WiFi, 2) << __func__;
   // Called from D-Bus signal handler, but may need to send a D-Bus
   // message. So defer work to event loop.
   dispatcher()->PostTask(Bind(&WiFi::PropertiesChangedTask,
@@ -1309,6 +1309,11 @@ void WiFi::ScanTimerHandler() {
 void WiFi::OnSupplicantAppear(const string &/*owner*/) {
   LOG(INFO) << "WPA supplicant appeared.";
   if (supplicant_present_) {
+    // Restart the WiFi device if it's started already. This will reset the
+    // state and connect the device to the new WPA supplicant instance.
+    if (enabled()) {
+      Restart();
+    }
     return;
   }
   supplicant_present_ = true;

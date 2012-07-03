@@ -121,9 +121,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   IgnoreParameterForConfigure(flimflam::kWifiHiddenSsid);
 }
 
-WiFiService::~WiFiService() {
-  LOG(INFO) << __func__;
-}
+WiFiService::~WiFiService() {}
 
 bool WiFiService::IsAutoConnectable(const char **reason) const {
   if (!Service::IsAutoConnectable(reason)) {

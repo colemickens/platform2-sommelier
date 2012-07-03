@@ -657,6 +657,12 @@ TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
 
   OnSupplicantAppear();
   EXPECT_FALSE(GetSupplicantProcessProxy() == NULL);
+
+  // If supplicant reappears while the device is started, the device should be
+  // restarted.
+  EXPECT_CALL(*manager(), DeregisterDevice(_));
+  EXPECT_CALL(*manager(), RegisterDevice(_));
+  OnSupplicantAppear();
 }
 
 TEST_F(WiFiMainTest, OnSupplicantAppearStopped) {
@@ -664,6 +670,11 @@ TEST_F(WiFiMainTest, OnSupplicantAppearStopped) {
 
   OnSupplicantAppear();
   EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
+
+  // If supplicant reappears while the device is stopped, the device should not
+  // be restarted.
+  EXPECT_CALL(*manager(), DeregisterDevice(_)).Times(0);
+  OnSupplicantAppear();
 }
 
 TEST_F(WiFiMainTest, OnSupplicantVanishStarted) {
@@ -676,7 +687,6 @@ TEST_F(WiFiMainTest, OnSupplicantVanishStarted) {
   EXPECT_CALL(*manager(), DeregisterDevice(_));
   EXPECT_CALL(*manager(), RegisterDevice(_));
   OnSupplicantVanish();
-  EXPECT_FALSE(GetSupplicantPresent());
 }
 
 TEST_F(WiFiMainTest, OnSupplicantVanishStopped) {
