@@ -197,6 +197,12 @@ bool GdmDevice::Disable() {
     status_update_timeout_id_ = 0;
   }
 
+  NetworkMap *networks = mutable_networks();
+  if (!networks->empty()) {
+    networks->clear();
+    UpdateNetworks();
+  }
+
   // TODO(benchan): Temporarily skip powering off the RF explicitly due to
   // crosbug.com/p/10150.
   if (entering_suspend_mode())
