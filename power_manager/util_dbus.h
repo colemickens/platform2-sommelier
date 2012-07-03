@@ -15,8 +15,9 @@ struct DBusMessage;
 namespace power_manager {
 namespace util {
 
-// Queries session manager to see if the user is logged into Chrome.
-bool IsUserLoggedIn();
+// Queries session manager to see if the user has started a Chrome session,
+// whether signed in with an account or as guest.
+bool IsSessionStarted();
 
 // Sends a message |signal| to the session manager.
 void SendSignalToSessionManager(const char* signal);
