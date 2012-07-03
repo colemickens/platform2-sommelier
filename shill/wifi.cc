@@ -175,12 +175,8 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " stopping.";
   DropConnection();
-  // TODO(quiche): Remove interface from supplicant.
   StopScanTimer();
-  supplicant_interface_proxy_.reset();  // breaks a reference cycle
-  supplicant_process_proxy_.reset();
   endpoint_by_rpcid_.clear();
-  rpcid_by_service_.clear();
   manager()->power_manager()->RemoveStateChangeCallback(UniqueName());
 
   for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
@@ -190,7 +186,11 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
                   << (*it)->friendly_name();
     manager()->DeregisterService(*it);
   }
+  rpcid_by_service_.clear();
   services_.clear();                  // breaks reference cycles
+  supplicant_interface_proxy_.reset();  // breaks a reference cycle
+  // TODO(quiche): Remove interface from supplicant.
+  supplicant_process_proxy_.reset();
   current_service_ = NULL;            // breaks a reference cycle
   pending_service_ = NULL;            // breaks a reference cycle
   scan_pending_ = false;
@@ -353,6 +353,15 @@ void WiFi::DisconnectFrom(WiFiService *service) {
   }
 
   pending_service_ = NULL;
+
+  if (!supplicant_present_) {
+    LOG(INFO) << "In " << __func__ << "(): "
+              << "wpa_supplicant is not present; silently resetting "
+              << "current_service_.";
+    current_service_ = NULL;
+    return;
+  }
+
   try {
     supplicant_interface_proxy_->Disconnect();
     // We'll call RemoveNetwork and reset |current_service_| after

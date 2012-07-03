@@ -70,6 +70,7 @@ using ::testing::DoAll;
 using ::testing::EndsWith;
 using ::testing::InSequence;
 using ::testing::Invoke;
+using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -253,6 +254,17 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   }
 
+  // Needs to be public since it is called via Invoke().
+  void StopWiFi() {
+    EXPECT_CALL(*power_manager_,
+                RemoveStateChangeCallback(wifi_->UniqueName()));
+    wifi_->SetEnabled(false);  // Stop(NULL, ResultCallback());
+  }
+
+  void UnloadService(const ServiceRefPtr &service) {
+    service->Unload();
+  }
+
  protected:
   typedef scoped_refptr<MockWiFiService> MockWiFiServiceRefPtr;
 
@@ -405,11 +417,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void StartWiFi() {
     StartWiFi(true);
   }
-  void StopWiFi() {
-    EXPECT_CALL(*power_manager_,
-                RemoveStateChangeCallback(wifi_->UniqueName()));
-    wifi_->SetEnabled(false);  // Stop(NULL, ResultCallback());
-  }
   void OnSupplicantAppear() {
     wifi_->OnSupplicantAppear(":1.7");
     EXPECT_TRUE(wifi_->supplicant_present_);
@@ -495,6 +502,28 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         .WillRepeatedly(DoAll(SetArgumentPointee<2>(true), Return(true)));
     EXPECT_CALL(*storage, GetString(StrEq(*id), flimflam::kSSIDProperty, _))
         .WillRepeatedly(DoAll(SetArgumentPointee<2>(hex_ssid), Return(true)));
+  }
+
+  WiFiService *SetupConnectedService(const DBus::Path &network_path) {
+    EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+    EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
+    EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+    EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
+    if (!network_path.empty()) {
+      EXPECT_CALL(*supplicant_interface_proxy_, AddNetwork(_))
+          .WillOnce(Return(network_path));
+    }
+
+    StartWiFi();
+    ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+    WiFiService *service(GetServices().begin()->get());
+    InitiateConnect(service);
+    ReportCurrentBSSChanged("bss0");
+    ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+
+    EXPECT_EQ(service, GetCurrentService());
+
+    return service;
   }
 
   bool SetBgscanMethod(const string &method) {
@@ -694,6 +723,24 @@ TEST_F(WiFiMainTest, OnSupplicantVanishStopped) {
   EXPECT_TRUE(GetSupplicantPresent());
   EXPECT_CALL(*manager(), DeregisterDevice(_)).Times(0);
   OnSupplicantVanish();
+}
+
+TEST_F(WiFiMainTest, OnSupplicantVanishedWhileConnected) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+  WiFiService *service(SetupConnectedService(DBus::Path()));
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+                       EndsWith("silently resetting current_service_.")));
+  EXPECT_CALL(*manager(), DeregisterDevice(_))
+      .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::StopWiFi));
+  EXPECT_CALL(*manager(), DeregisterService(ServiceRefPtr(service)))
+      .WillOnce(Invoke(this, &WiFiObjectTest::UnloadService));
+  EXPECT_CALL(supplicant_interface_proxy, Disconnect()).Times(0);
+  EXPECT_CALL(*manager(), RegisterDevice(_));
+  OnSupplicantVanish();
+  EXPECT_TRUE(GetCurrentService() == NULL);
 }
 
 TEST_F(WiFiMainTest, CleanStart) {
@@ -1062,21 +1109,9 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithCurrent) {
 }
 
 TEST_F(WiFiMainTest, DisconnectCurrentService) {
-  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
-  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
-  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
-  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
-
-  StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
-  WiFiService *service(GetServices().begin()->get());
-  InitiateConnect(service);
-  ReportCurrentBSSChanged("bss0");
-  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
-
-  EXPECT_EQ(service, GetCurrentService());
+  WiFiService *service(SetupConnectedService(DBus::Path()));
   EXPECT_CALL(supplicant_interface_proxy, Disconnect());
   InitiateDisconnect(service);
 
@@ -1128,25 +1163,10 @@ TEST_F(WiFiMainTest, DisconnectInvalidService) {
 }
 
 TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
-  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
-  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
-  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
-  EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
-
-  StartWiFi();
-  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
-
-  WiFiService *service(GetServices().begin()->get());
   DBus::Path fake_path("/fake/path");
-  EXPECT_CALL(supplicant_interface_proxy, AddNetwork(_))
-      .WillOnce(Return(fake_path));
-  InitiateConnect(service);
-  ReportCurrentBSSChanged("bss0");
-  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
-
-  EXPECT_EQ(service, GetCurrentService());
+  WiFiService *service(SetupConnectedService(fake_path));
   EXPECT_CALL(supplicant_interface_proxy, Disconnect())
       .WillRepeatedly(Throw(
           DBus::Error(
@@ -1168,6 +1188,17 @@ TEST_F(WiFiMainTest, Stop) {
   StopWiFi();
   EXPECT_TRUE(GetScanTimer().IsCancelled());
   EXPECT_FALSE(wifi()->weak_ptr_factory_.HasWeakPtrs());
+}
+
+TEST_F(WiFiMainTest, StopWhileConnected) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+  WiFiService *service(SetupConnectedService(DBus::Path()));
+  EXPECT_CALL(*manager(), DeregisterService(ServiceRefPtr(service)))
+      .WillOnce(Invoke(this, &WiFiObjectTest::UnloadService));
+  EXPECT_CALL(supplicant_interface_proxy, Disconnect());
+  StopWiFi();
+  EXPECT_TRUE(GetCurrentService() == NULL);
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceOpen) {
