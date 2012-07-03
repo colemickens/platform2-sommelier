@@ -12,6 +12,7 @@
 
 #include "shill/glib.h"
 #include "shill/key_file_store.h"
+#include "shill/mock_dbus_manager.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_manager.h"
@@ -52,12 +53,15 @@ string GetTestNetworkPath(uint32 identifier) {
 class WiMaxProviderTest : public testing::Test {
  public:
   WiMaxProviderTest()
-      : manager_proxy_(new MockWiMaxManagerProxy()),
+      : wimax_manager_proxy_(new MockWiMaxManagerProxy()),
         network_proxy_(new MockWiMaxNetworkProxy()),
         proxy_factory_(this),
         manager_(&control_, NULL, &metrics_, NULL),
         device_info_(&control_, NULL, &metrics_, &manager_),
-        provider_(&control_, NULL, &metrics_, &manager_) {}
+        dbus_manager_(new MockDBusManager()),
+        provider_(&control_, NULL, &metrics_, &manager_) {
+    manager_.dbus_manager_.reset(dbus_manager_);  // Transfers ownership.
+  }
 
   virtual ~WiMaxProviderTest() {}
 
@@ -67,7 +71,7 @@ class WiMaxProviderTest : public testing::Test {
     explicit TestProxyFactory(WiMaxProviderTest *test) : test_(test) {}
 
     virtual WiMaxManagerProxyInterface *CreateWiMaxManagerProxy() {
-      return test_->manager_proxy_.release();
+      return test_->wimax_manager_proxy_.release();
     }
 
     virtual WiMaxNetworkProxyInterface *CreateWiMaxNetworkProxy(
@@ -89,29 +93,50 @@ class WiMaxProviderTest : public testing::Test {
     provider_.proxy_factory_ = NULL;
   }
 
-  scoped_ptr<MockWiMaxManagerProxy> manager_proxy_;
+  scoped_ptr<MockWiMaxManagerProxy> wimax_manager_proxy_;
   scoped_ptr<MockWiMaxNetworkProxy> network_proxy_;
   TestProxyFactory proxy_factory_;
   NiceMockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
   MockDeviceInfo device_info_;
+  MockDBusManager *dbus_manager_;
   WiMaxProvider provider_;
 };
 
 TEST_F(WiMaxProviderTest, StartStop) {
-  EXPECT_FALSE(provider_.manager_proxy_.get());
-  EXPECT_CALL(*manager_proxy_, set_devices_changed_callback(_)).Times(1);
-  EXPECT_CALL(*manager_proxy_, Devices(_)).WillOnce(Return(RpcIdentifiers()));
+  EXPECT_TRUE(provider_.on_wimax_manager_appear_.IsCancelled());
+  EXPECT_FALSE(provider_.wimax_manager_proxy_.get());
+  EXPECT_CALL(*dbus_manager_,
+              WatchName(wimax_manager::kWiMaxManagerServiceName, _, _));
   provider_.Start();
-  EXPECT_TRUE(provider_.manager_proxy_.get());
+  EXPECT_FALSE(provider_.on_wimax_manager_appear_.IsCancelled());
+  EXPECT_FALSE(provider_.wimax_manager_proxy_.get());
   provider_.Start();
-  EXPECT_TRUE(provider_.manager_proxy_.get());
+  EXPECT_CALL(*wimax_manager_proxy_, set_devices_changed_callback(_)).Times(1);
+  EXPECT_CALL(*wimax_manager_proxy_, Devices(_))
+      .WillOnce(Return(RpcIdentifiers()));
+  provider_.OnWiMaxManagerAppear(":0.11");
+  EXPECT_TRUE(provider_.wimax_manager_proxy_.get());
   provider_.pending_devices_[GetTestLinkName(2)] = GetTestPath(2);
   provider_.Stop();
-  EXPECT_FALSE(provider_.manager_proxy_.get());
+  EXPECT_TRUE(provider_.on_wimax_manager_appear_.IsCancelled());
+  EXPECT_FALSE(provider_.wimax_manager_proxy_.get());
   EXPECT_TRUE(provider_.pending_devices_.empty());
   provider_.Stop();
+}
+
+TEST_F(WiMaxProviderTest, ConnectDisconnectWiMaxManager) {
+  EXPECT_FALSE(provider_.wimax_manager_proxy_.get());
+  EXPECT_CALL(*wimax_manager_proxy_, set_devices_changed_callback(_)).Times(1);
+  EXPECT_CALL(*wimax_manager_proxy_, Devices(_))
+      .WillOnce(Return(RpcIdentifiers()));
+  provider_.ConnectToWiMaxManager();
+  EXPECT_TRUE(provider_.wimax_manager_proxy_.get());
+  provider_.pending_devices_[GetTestLinkName(2)] = GetTestPath(2);
+  provider_.DisconnectFromWiMaxManager();
+  EXPECT_FALSE(provider_.wimax_manager_proxy_.get());
+  EXPECT_TRUE(provider_.pending_devices_.empty());
 }
 
 TEST_F(WiMaxProviderTest, OnDevicesChanged) {

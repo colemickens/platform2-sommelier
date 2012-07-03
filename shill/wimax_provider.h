@@ -12,6 +12,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
+#include "shill/dbus_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/wimax_network_proxy_interface.h"
 
@@ -59,6 +60,7 @@ class WiMaxProvider {
 
  private:
   friend class WiMaxProviderTest;
+  FRIEND_TEST(WiMaxProviderTest, ConnectDisconnectWiMaxManager);
   FRIEND_TEST(WiMaxProviderTest, CreateDevice);
   FRIEND_TEST(WiMaxProviderTest, CreateServicesFromProfile);
   FRIEND_TEST(WiMaxProviderTest, DestroyAllServices);
@@ -80,6 +82,10 @@ class WiMaxProvider {
     WiMaxNetworkId id;
     std::string name;
   };
+
+  void ConnectToWiMaxManager();
+  void DisconnectFromWiMaxManager();
+  void OnWiMaxManagerAppear(const std::string &owner);
 
   void OnDevicesChanged(const RpcIdentifiers &devices);
 
@@ -118,7 +124,11 @@ class WiMaxProvider {
   Metrics *metrics_;
   Manager *manager_;
 
-  scoped_ptr<WiMaxManagerProxyInterface> manager_proxy_;
+  // Monitor WiMaxManager DBus name ownership to detect daemon presence.
+  DBusManager::CancelableAppearedCallback on_wimax_manager_appear_;
+  DBusManager::CancelableVanishedCallback on_wimax_manager_vanish_;
+
+  scoped_ptr<WiMaxManagerProxyInterface> wimax_manager_proxy_;
 
   // Key is the interface link name.
   std::map<std::string, RpcIdentifier> pending_devices_;

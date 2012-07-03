@@ -45,22 +45,55 @@ WiMaxProvider::~WiMaxProvider() {}
 
 void WiMaxProvider::Start() {
   SLOG(WiMax, 2) << __func__;
-  if (manager_proxy_.get()) {
+  if (!on_wimax_manager_appear_.IsCancelled()) {
     return;
   }
-  manager_proxy_.reset(proxy_factory_->CreateWiMaxManagerProxy());
-  manager_proxy_->set_devices_changed_callback(
-      Bind(&WiMaxProvider::OnDevicesChanged, Unretained(this)));
-  Error error;
-  OnDevicesChanged(manager_proxy_->Devices(&error));
+  // Registers a watcher for the WiMaxManager service. This provider will
+  // connect to it if/when the OnWiMaxManagerAppear callback is invoked.
+  on_wimax_manager_appear_.Reset(
+      Bind(&WiMaxProvider::OnWiMaxManagerAppear, Unretained(this)));
+  on_wimax_manager_vanish_.Reset(
+      Bind(&WiMaxProvider::DisconnectFromWiMaxManager, Unretained(this)));
+  manager_->dbus_manager()->WatchName(
+      wimax_manager::kWiMaxManagerServiceName,
+      on_wimax_manager_appear_.callback(),
+      on_wimax_manager_vanish_.callback());
 }
 
 void WiMaxProvider::Stop() {
   SLOG(WiMax, 2) << __func__;
-  manager_proxy_.reset();
-  DestroyDeadDevices(RpcIdentifiers());
-  networks_.clear();
+  // TODO(petkov): Deregister the watcher from DBusManager to avoid potential
+  // memory leaks (crosbug.com/32226).
+  on_wimax_manager_appear_.Cancel();
+  on_wimax_manager_vanish_.Cancel();
+  DisconnectFromWiMaxManager();
   DestroyAllServices();
+}
+
+void WiMaxProvider::ConnectToWiMaxManager() {
+  DCHECK(!wimax_manager_proxy_.get());
+  LOG(INFO) << "Connecting to WiMaxManager.";
+  wimax_manager_proxy_.reset(proxy_factory_->CreateWiMaxManagerProxy());
+  wimax_manager_proxy_->set_devices_changed_callback(
+      Bind(&WiMaxProvider::OnDevicesChanged, Unretained(this)));
+  Error error;
+  OnDevicesChanged(wimax_manager_proxy_->Devices(&error));
+}
+
+void WiMaxProvider::DisconnectFromWiMaxManager() {
+  SLOG(WiMax, 2) << __func__;
+  if (!wimax_manager_proxy_.get()) {
+    return;
+  }
+  LOG(INFO) << "Disconnecting from WiMaxManager.";
+  wimax_manager_proxy_.reset();
+  OnDevicesChanged(RpcIdentifiers());
+}
+
+void WiMaxProvider::OnWiMaxManagerAppear(const string &owner) {
+  SLOG(WiMax, 2) << __func__ << "(" << owner << ")";
+  DisconnectFromWiMaxManager();
+  ConnectToWiMaxManager();
 }
 
 void WiMaxProvider::OnDeviceInfoAvailable(const string &link_name) {
