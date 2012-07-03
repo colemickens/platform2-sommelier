@@ -21,15 +21,11 @@ bool IsUserLoggedIn();
 // Sends a message |signal| to the session manager.
 void SendSignalToSessionManager(const char* signal);
 
-// TODO(crosbug.com/30645): The following SendSignal functions do not follow a
-// consistent naming scheme.  There's also an overloaded function in there.  It
-// would be good not to have to overload it.
-
 // Sends a message |signal| to the privileged power daemon.
 void SendSignalToPowerM(const char* signal);
 
 // Sends a message |signal| with |value| to the privileged power daemon.
-void SendSignalToPowerM(const char* signal, uint32 value);
+void SendSignalWithUintToPowerM(const char* signal, uint32 value);
 
 // Sends a message |signal| to the unprivileged power daemon.
 void SendSignalToPowerD(const char* signal);

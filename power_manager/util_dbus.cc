@@ -86,7 +86,7 @@ void SendSignalToPowerM(const char* signal_name) {
   dbus_message_unref(signal);
 }
 
-void SendSignalToPowerM(const char* signal_name, uint32 value) {
+void SendSignalWithUintToPowerM(const char* signal_name, uint32 value) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               kPowerManagerServicePath,
                               kRootPowerManagerInterface);
@@ -94,9 +94,7 @@ void SendSignalToPowerM(const char* signal_name, uint32 value) {
                                                 kRootPowerManagerInterface,
                                                 signal_name);
   CHECK(signal);
-  dbus_message_append_args(signal,
-                           DBUS_TYPE_UINT32, &value,
-                           DBUS_TYPE_INVALID);
+  dbus_message_append_args(signal, DBUS_TYPE_UINT32, &value, DBUS_TYPE_INVALID);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   dbus_message_unref(signal);
 }

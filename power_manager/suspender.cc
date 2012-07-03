@@ -250,7 +250,7 @@ void Suspender::Suspend() {
   util::RemoveStatusFile(user_active_file_);
   file_tagger_->HandleSuspendEvent();
   if (wakeup_count_valid_) {
-    util::SendSignalToPowerM(kSuspendSignal, wakeup_count_);
+    util::SendSignalWithUintToPowerM(kSuspendSignal, wakeup_count_);
   } else {
     util::SendSignalToPowerM(kSuspendSignal);
   }
