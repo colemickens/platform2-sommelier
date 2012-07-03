@@ -109,7 +109,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       clean_shutdown_initiated_(false),
       low_battery_(false),
       enforce_lock_(false),
-      use_xscreensaver_(false),
       plugged_state_(kPowerUnknown),
       file_tagger_(FilePath(kTaggedFilePath)),
       shutdown_state_(kShutdownNone),
@@ -139,7 +138,7 @@ void Daemon::Init() {
       << "Unable to initialize metrics store, so we are going to drop number of"
       << " sessions per charge data";
 
-  locker_.Init(use_xscreensaver_, lock_on_idle_suspend_);
+  locker_.Init(lock_on_idle_suspend_);
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
   RetrieveSessionState();
@@ -161,7 +160,7 @@ void Daemon::Init() {
 }
 
 void Daemon::ReadSettings() {
-  int64 use_xscreensaver, enforce_lock;
+  int64 enforce_lock;
   int64 low_battery_suspend_time_s;
   CHECK(prefs_->GetInt64(kLowBatterySuspendTimePref,
                          &low_battery_suspend_time_s));
@@ -174,7 +173,6 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->GetInt64(kReactMsPref, &react_ms_));
   CHECK(prefs_->GetInt64(kFuzzMsPref, &fuzz_ms_));
   CHECK(prefs_->GetInt64(kEnforceLockPref, &enforce_lock));
-  CHECK(prefs_->GetInt64(kUseXScreenSaverPref, &use_xscreensaver));
 
   ReadSuspendSettings();
   ReadLockScreenSettings();
@@ -188,7 +186,6 @@ void Daemon::ReadSettings() {
   }
   lock_ms_ = default_lock_ms_;
   enforce_lock_ = enforce_lock;
-  use_xscreensaver_ = use_xscreensaver;
 
   // Check that timeouts are sane.
   CHECK(kMetricIdleMin >= fuzz_ms_);
@@ -1542,8 +1539,7 @@ gboolean Daemon::PrefChangeHandler(const char* name,
   Daemon* daemon = static_cast<Daemon*>(data);
   if (!strcmp(name, kLockOnIdleSuspendPref)) {
     daemon->ReadLockScreenSettings();
-    daemon->locker_.Init(daemon->use_xscreensaver_,
-                         daemon->lock_on_idle_suspend_);
+    daemon->locker_.Init(daemon->lock_on_idle_suspend_);
     daemon->SetIdleOffset(0, kIdleNormal);
   }
   if (!strcmp(name, kDisableIdleSuspendPref)) {

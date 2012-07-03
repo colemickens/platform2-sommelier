@@ -317,7 +317,6 @@ TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
   prefs_.SetInt64(kReactMsPref, 0);
   prefs_.SetInt64(kFuzzMsPref, 0);
   prefs_.SetInt64(kEnforceLockPref, 0);
-  prefs_.SetInt64(kUseXScreenSaverPref, 0);
   prefs_.SetInt64(kDisableIdleSuspendPref, 0);
   prefs_.SetInt64(kLockOnIdleSuspendPref, 1);
   prefs_.SetInt64(kLockMsPref, kLockTimeMs);

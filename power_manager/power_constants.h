@@ -24,7 +24,6 @@ extern const char kLockOnIdleSuspendPref[];
 extern const char kLockMsPref[];
 extern const char kRetrySuspendMsPref[];
 extern const char kRetrySuspendAttemptsPref[];
-extern const char kUseXScreenSaverPref[];
 extern const char kPluggedSuspendMsPref[];
 extern const char kMinVisibleBacklightLevelPref[];
 extern const char kDisableALSPref[];

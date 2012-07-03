@@ -23,7 +23,6 @@ const char kLockMsPref[] = "lock_ms";
 const char kRetrySuspendMsPref[] = "retry_suspend_ms";
 const char kRetrySuspendAttemptsPref[] = "retry_suspend_attempts";
 const char kPluggedSuspendMsPref[] = "plugged_suspend_ms";
-const char kUseXScreenSaverPref[] = "use_xscreensaver";
 const char kMinVisibleBacklightLevelPref[] = "min_visible_backlight_level";
 const char kDisableALSPref[] = "disable_als";
 const char kWakeupInputPref[] = "wakeup_input_device_names";

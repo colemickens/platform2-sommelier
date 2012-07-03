@@ -11,24 +11,18 @@
 namespace power_manager {
 
 ScreenLocker::ScreenLocker()
-    : use_xscreensaver_(false),
-      locked_(false),
+    : locked_(false),
       lock_on_suspend_(false) {
 }
 
-void ScreenLocker::Init(bool use_xscreensaver, bool lock_on_suspend) {
-  use_xscreensaver_ = use_xscreensaver;
+void ScreenLocker::Init(bool lock_on_suspend) {
   lock_on_suspend_ = lock_on_suspend;
 }
 
 void ScreenLocker::LockScreen() {
   LOG(INFO) << "Locking screen";
-  if (use_xscreensaver_) {
-    util::Launch("xscreensaver-command -lock");
-  } else {
-    util::SendSignalToSessionManager("LockScreen");
-    last_lock_request_time_ = base::TimeTicks::Now();
-  }
+  util::SendSignalToSessionManager("LockScreen");
+  last_lock_request_time_ = base::TimeTicks::Now();
 }
 
 }  // namespace power_manager

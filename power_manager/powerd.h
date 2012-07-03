@@ -462,7 +462,6 @@ class Daemon : public BacklightControllerObserver,
   int64 offset_ms_;
   bool enforce_lock_;
   bool lock_on_idle_suspend_;
-  bool use_xscreensaver_;
   PluggedState plugged_state_;
   FileTagger file_tagger_;
   ShutdownState shutdown_state_;

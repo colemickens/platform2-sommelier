@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,9 +14,7 @@ class ScreenLocker {
  public:
   ScreenLocker();
 
-  // Initializer. If |use_xscreensaver| is set, use xscreensaver to
-  // lock the screen. Otherwise, we use Chrome.
-  void Init(bool use_xscreensaver, bool lock_on_idle_suspend);
+  void Init(bool lock_on_idle_suspend);
 
   // Ask the session manager to lock the screen.
   // Note that |locked_| won't be updated immediately.
@@ -30,10 +28,6 @@ class ScreenLocker {
   bool lock_on_suspend_enabled() const { return lock_on_suspend_; }
 
  private:
-  // If |use_xscreensaver| is set, use xscreensaver to lock the screen.
-  // Otherwise, we use Chrome to lock the screen.
-  bool use_xscreensaver_;
-
   // Whether the screen is currently locked.
   // Note that this is updated in response to ScreenIsLocked and
   // ScreenIsUnlocked messages from Chrome, which are received asynchronously
