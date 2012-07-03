@@ -794,10 +794,6 @@ void Daemon::RegisterDBusMessageHandler() {
   CHECK(dbus_connection_add_filter(
       connection, &MainDBusSignalHandler, this, NULL));
 
-  AddDBusMethodHandler(kPowerManagerInterface, kRequestLockScreenMethod,
-                       &Daemon::HandleRequestLockScreenMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kRequestUnlockScreenMethod,
-                       &Daemon::HandleRequestUnlockScreenMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kScreenIsLockedMethod,
                        &Daemon::HandleScreenIsLockedMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kScreenIsUnlockedMethod,
@@ -961,16 +957,6 @@ bool Daemon::HandleStateOverrideCancelSignal(DBusMessage* message) {
     dbus_error_free(&error);
   }
   return true;
-}
-
-DBusMessage* Daemon::HandleRequestLockScreenMethod(DBusMessage* message) {
-  locker_.LockScreen();
-  return NULL;
-}
-
-DBusMessage* Daemon::HandleRequestUnlockScreenMethod(DBusMessage* message) {
-  util::SendSignalToSessionManager("UnlockScreen");
-  return NULL;
 }
 
 DBusMessage* Daemon::HandleScreenIsLockedMethod(DBusMessage* message) {
