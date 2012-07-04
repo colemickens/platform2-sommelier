@@ -17,8 +17,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <string>
-#include <vector>
+#include <set>
 
 #include "base/logging.h"
 #include "base/file_util.h"
@@ -160,8 +159,7 @@ bool DDCRead(int handle, uint8 index, uint8* value, uint8* max_value) {
 namespace power_manager {
 
 ExternalBacklight::ExternalBacklight()
-    : i2c_handle_(-1),
-      udev_(NULL),
+    : udev_(NULL),
       is_scan_scheduled_(false),
       retry_send_display_changed_source_id_(0) {}
 
@@ -170,9 +168,11 @@ ExternalBacklight::~ExternalBacklight() {
     g_source_remove(retry_send_display_changed_source_id_);
     retry_send_display_changed_source_id_ = 0;
   }
-  if (!HasValidHandle())
-    return;
-  close(i2c_handle_);
+  for (I2CDeviceList::iterator iter = display_devices_.begin();
+       iter != display_devices_.end();
+       ++iter) {
+    close(iter->second);
+  }
   if (udev_)
     udev_unref(udev_);
 }
@@ -204,9 +204,12 @@ bool ExternalBacklight::SetBrightnessLevel(int64 level) {
     LOG(ERROR) << "SetBrightness level " << level << " is invalid.";
     return false;
   }
-  if (!DDCWrite(i2c_handle_, kDDCBrightnessIndex, static_cast<int8>(level))) {
-    LOG(WARNING) << "DDC write failed.";
-    return false;
+  int8 level8 = static_cast<int8>(level);
+  for (I2CDeviceList::const_iterator iter = display_devices_.begin();
+       iter != display_devices_.end();
+       ++iter) {
+    if (!DDCWrite(iter->second, kDDCBrightnessIndex, level8))
+      LOG(WARNING) << "DDC write failed.";
   }
   return true;
 }
@@ -277,45 +280,67 @@ gboolean ExternalBacklight::ScanForDisplays() {
     LOG(ERROR) << "Unable to call ddccontrol.";
     return false;
   }
+
+  std::set<std::string> found_devices;
   char buf[kBufSize];
-  std::string new_device;
-  std::vector<std::string> device_list;
   while (fgets(buf, kBufSize, fp) != NULL) {
-    TrimWhitespaceASCII(buf, TRIM_ALL, &new_device);
-    // If a previously found device still exists, there is nothing to do.
-    if (!i2c_path_.empty() && i2c_path_ == new_device) {
-      LOG(INFO) << i2c_path_ << " still exists, not changing anything.";
-      fclose(fp);
-      return false;
+    std::string device_name;
+    TrimWhitespaceASCII(buf, TRIM_ALL, &device_name);
+    found_devices.insert(device_name);
+
+    // Open the device if it doesn't exist already.
+    if (display_devices_.count(device_name))
+      continue;
+    int handle = open(device_name.c_str(), O_RDWR);
+    if (handle < 0) {
+      LOG(ERROR) << "Unable to open handle to display device " << device_name;
+      continue;
     }
-    device_list.push_back(new_device);
+    display_devices_[device_name] = handle;
   }
   fclose(fp);
 
-  if (!i2c_path_.empty()) {
-    // If a previously found device does not exist anymore, close it.
-    // TODO(sque): does this need a semaphore?
-    close(i2c_handle_);
-    i2c_handle_ = -1;
-    i2c_path_.clear();
+  // If previously found devices don't exist anymore, close them.
+  // TODO(sque): make sure this doesn't clobber an existing handle that's
+  // being used elsewhere.
+  for (I2CDeviceList::iterator iter = display_devices_.begin();
+       iter != display_devices_.end(); /* |iter| advanced in loop */ ) {
+    if (found_devices.count(iter->first) > 0) {
+      ++iter;
+      continue;
+    }
+    // Update the primary device name if the previous primary device is gone.
+    if (iter->first == primary_device_)
+      primary_device_.clear();
+    close(iter->second);
+    // Advance iterator to the next device before erasing the current device, to
+    // avoid ending up with an invalid iterator.
+    display_devices_.erase(iter++);
   }
 
+  // Stop any existing pending SendDisplayChangedSignal events, as this function
+  // will issue a new one.
   if (retry_send_display_changed_source_id_) {
     g_source_remove(retry_send_display_changed_source_id_);
     retry_send_display_changed_source_id_ = 0;
   }
 
-  if (device_list.empty()) {
+  // If no devices remain, signal a display device change and quit.
+  if (display_devices_.empty()) {
     SendDisplayChangedSignal();
     return false;
   }
-  // Open a new device if one was found.
-  // TODO(sque): Take all new devices, not just one.
-  LOG(INFO) << "Selecting external backlight device at " << device_list.front();
-  i2c_path_ = device_list.front();
-  i2c_handle_ = open(i2c_path_.c_str(), O_RDWR);
+
+  // Choose a new device as the primary device if the old one was removed, or if
+  // none has been found until now.
+  if (HasValidHandle())
+    return false;
+  primary_device_ = display_devices_.begin()->first;
+  LOG(INFO) << "Selecting primary display device " << primary_device_;
   if (!HasValidHandle())
-    LOG(WARNING) << "Unable to open display device handle.";
+    LOG(WARNING) << "Invalid handle for device " << primary_device_;
+
+  // Finally, send signal to indicate the display was updated.
   if (!SendDisplayChangedSignal()) {
     retry_send_display_changed_source_id_ =
         g_timeout_add(kRetrySendDisplayChangedSignalDelayMs,
@@ -374,7 +399,7 @@ bool ExternalBacklight::ReadBrightnessLevels(int64* current_level,
 
   uint8 current_level8 = 0;
   uint8 max_level8 = 0;
-  if (!DDCRead(i2c_handle_, kDDCBrightnessIndex,
+  if (!DDCRead(display_devices_[primary_device_], kDDCBrightnessIndex,
                &current_level8, &max_level8)) {
     LOG(WARNING) << "DDC read failed.";
     return false;

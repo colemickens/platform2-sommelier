@@ -6,7 +6,6 @@
 #define POWER_MANAGER_EXTERNAL_BACKLIGHT_H_
 
 #include <glib.h>
-#include <list>
 #include <map>
 #include <string>
 
@@ -38,6 +37,9 @@ class ExternalBacklight : public BacklightInterface {
   virtual bool SetBrightnessLevel(int64 level);
 
  private:
+  // This contains a set of i2c devices, represented as name-handle pairs.
+  typedef std::map<std::string, int> I2CDeviceList;
+
   // Handles i2c and display  udev events.
   static gboolean UdevEventHandler(GIOChannel* source,
                                    GIOCondition condition,
@@ -57,14 +59,17 @@ class ExternalBacklight : public BacklightInterface {
   SIGNAL_CALLBACK_0(ExternalBacklight, gboolean, RetrySendDisplayChangedSignal);
 
   // Indicates that there is a valid display device handle.
-  bool HasValidHandle() { return (i2c_handle_ >= 0); }
+  bool HasValidHandle() const { return !primary_device_.empty(); }
 
   // Reads the current and maximum brightness levels into the supplied pointers.
   // Either pointer can be NULL.
   bool ReadBrightnessLevels(int64* current_level, int64* max_level);
 
-  std::string i2c_path_;
-  int i2c_handle_;
+  // A list of display devices currently connected via i2c.
+  I2CDeviceList display_devices_;
+
+  // The primary display device.
+  std::string primary_device_;
 
   // For listening to udev events.
   struct udev_monitor* udev_monitor_;
