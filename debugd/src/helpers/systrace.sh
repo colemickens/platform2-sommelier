@@ -41,6 +41,8 @@ gfx_events="
     i915:i915_flip_request
     i915:i915_flip_complete
     i915:i915_gem_object_pwrite
+    exynos:exynos_flip_request
+    exynos:exynos_flip_complete
     drm:drm_vblank_event
 "
 power_events="
