@@ -17,7 +17,7 @@
 namespace power_manager {
 namespace util {
 
-bool IsSessionStarted() {
+bool IsUserLoggedIn() {
   DBusGConnection* connection =
       chromeos::dbus::GetSystemBusConnection().g_connection();
   CHECK(connection);
