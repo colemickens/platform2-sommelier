@@ -125,6 +125,10 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetReleaseChannel(&string_value));
   ASSERT_EQ("stable-channel", string_value);
 
+  bool_value = false;
+  ASSERT_TRUE(policy.GetReleaseChannelDelegated(&bool_value));
+  ASSERT_TRUE(bool_value);
+
   bool_value = true;
   ASSERT_TRUE(policy.GetUpdateDisabled(&bool_value));
   ASSERT_FALSE(bool_value);

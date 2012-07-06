@@ -103,6 +103,11 @@ class DevicePolicy {
   // Returns true on success.
   virtual bool GetReleaseChannel(std::string* release_channel) const = 0;
 
+  // Writes the value of the release_channel_delegated policy in
+  // |release_channel_delegated|. Returns true on success.
+  virtual bool GetReleaseChannelDelegated(
+      bool* release_channel_delegated) const = 0;
+
   // Writes the value of the update_disabled policy in |update_disabled|.
   // Returns true on success.
   virtual bool GetUpdateDisabled(bool* update_disabled) const = 0;

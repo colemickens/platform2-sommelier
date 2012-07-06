@@ -313,6 +313,20 @@ bool DevicePolicyImpl::GetReleaseChannel(
   return true;
 }
 
+bool DevicePolicyImpl::GetReleaseChannelDelegated(
+    bool* release_channel_delegated) const {
+  if (!device_policy_.has_release_channel())
+    return false;
+
+  const enterprise_management::ReleaseChannelProto& proto =
+      device_policy_.release_channel();
+  if (!proto.has_release_channel_delegated())
+    return false;
+
+  *release_channel_delegated = proto.release_channel_delegated();
+  return true;
+}
+
 bool DevicePolicyImpl::GetUpdateDisabled(
     bool* update_disabled) const {
   if (!device_policy_.has_auto_update_settings())

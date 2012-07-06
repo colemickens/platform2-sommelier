@@ -47,6 +47,8 @@ class DevicePolicyImpl : public DevicePolicy {
   virtual bool GetProxyPacUrl(std::string* proxy_pac) const;
   virtual bool GetProxyBypassList(std::string* proxy_bypass_list) const;
   virtual bool GetReleaseChannel(std::string* release_channel) const;
+  virtual bool GetReleaseChannelDelegated(
+      bool* release_channel_delegated) const;
   virtual bool GetUpdateDisabled(bool* update_disabled) const;
   virtual bool GetTargetVersionPrefix(
       std::string* target_version_prefix) const;
