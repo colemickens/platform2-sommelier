@@ -47,6 +47,7 @@ using base::Bind;
 using base::StringPrintf;
 using base::Unretained;
 using std::map;
+using std::set;
 using std::string;
 using std::vector;
 
@@ -70,6 +71,7 @@ const char *DeviceInfo::kModemDrivers[] = {
     "GobiNet"
 };
 const char DeviceInfo::kTunDeviceName[] = "/dev/net/tun";
+const int DeviceInfo::kDelayedDeviceCreationSeconds = 5;
 
 DeviceInfo::DeviceInfo(ControlInterface *control_interface,
                        EventDispatcher *dispatcher,
@@ -111,11 +113,14 @@ void DeviceInfo::Stop() {
   link_listener_.reset();
   address_listener_.reset();
   infos_.clear();
+  delayed_devices_callback_.Cancel();
+  delayed_devices_.clear();
 }
 
 void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
   SLOG(Device, 2) << __func__ << "(" << device->link_name() << ", "
                   << device->interface_index() << ")";
+  delayed_devices_.erase(device->interface_index());
   CHECK(!GetDevice(device->interface_index()).get());
   infos_[device->interface_index()].device = device;
   if ((device->technology() == Technology::kCellular) ||
@@ -176,8 +181,8 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
 
   string contents;
   if (!GetDeviceInfoContents(iface_name, kInterfaceUevent, &contents)) {
-    SLOG(Device, 2) << StringPrintf("%s: device %s has no uevent file",
-                                    __func__, iface_name.c_str());
+    LOG(INFO) << StringPrintf("%s: device %s has no uevent file",
+                              __func__, iface_name.c_str());
     return Technology::kUnknown;
   }
 
@@ -251,11 +256,15 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
 
   // For cdc_ether devices, make sure it's a modem because this driver
   // can be used for other ethernet devices.
-  if (driver_name == kDriverCdcEther &&
-      IsCdcEtherModemDevice(iface_name)) {
-    SLOG(Device, 2) << StringPrintf("%s: device %s is a modem cdc_ether device",
-                                    __func__, iface_name.c_str());
-    return Technology::kCellular;
+  if (driver_name == kDriverCdcEther) {
+    if (IsCdcEtherModemDevice(iface_name)) {
+      LOG(INFO) << StringPrintf("%s: device %s is a modem cdc_ether "
+                                "device", __func__, iface_name.c_str());
+      return Technology::kCellular;
+    }
+    SLOG(Device, 2) << StringPrintf("%s: device %s is a cdc_ether "
+                                    "device", __func__, iface_name.c_str());
+    return Technology::kCDCEthernet;
   }
 
   // Special case for the virtio driver, used when run under KVM. See also
@@ -340,6 +349,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
                                       int interface_index,
                                       Technology::Identifier technology) {
   DeviceRefPtr device;
+  delayed_devices_.erase(interface_index);
 
   switch (technology) {
     case Technology::kCellular:
@@ -397,6 +407,18 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       SLOG(Device, 2) << "Bringing up loopback device " << link_name
                       << " at index " << interface_index;
       rtnl_handler_->SetInterfaceFlags(interface_index, IFF_UP, IFF_UP);
+      return NULL;
+    case Technology::kCDCEthernet:
+      // CDCEnternet devices are of indeterminate type when they are
+      // initially created.  Some time later, tty devices may or may
+      // not appear under the same USB device root, which will identify
+      // it as a modem.  Alternatively, ModemManager may discover the
+      // device and create and register a Cellular device.  In either
+      // case, we should delay creating a Device until we can make a
+      // better determination of what type this Device should be.
+      LOG(INFO) << "Delaying creation of device for " << link_name
+                << " at index " << interface_index;
+      DelayDeviceCreation(interface_index);
       return NULL;
     default:
       // We will not manage this device in shill.  Do not create a device
@@ -590,6 +612,7 @@ void DeviceInfo::RemoveInfo(int interface_index) {
     }
     indices_.erase(iter->second.name);
     infos_.erase(iter);
+    delayed_devices_.erase(interface_index);
   } else {
     SLOG(Device, 2) << __func__ << ": Unknown device index: "
                     << interface_index;
@@ -644,6 +667,48 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
     address_list.push_back(AddressData(address, status.flags, status.scope));
     SLOG(Device, 2) << "Add address " << address.ToString()
                     << " for interface " << interface_index;
+  }
+}
+
+void DeviceInfo::DelayDeviceCreation(int interface_index) {
+  delayed_devices_.insert(interface_index);
+  delayed_devices_callback_.Reset(
+      Bind(&DeviceInfo::DelayedDeviceCreationTask, AsWeakPtr()));
+  dispatcher_->PostDelayedTask(delayed_devices_callback_.callback(),
+                               kDelayedDeviceCreationSeconds * 1000);
+}
+
+// Re-evaluate the technology type for each delayed device.
+void DeviceInfo::DelayedDeviceCreationTask() {
+  while (!delayed_devices_.empty()) {
+    set<int>::iterator it = delayed_devices_.begin();
+    int dev_index = *it;
+    delayed_devices_.erase(it);
+
+    DCHECK(ContainsKey(infos_, dev_index));
+    DCHECK(!GetDevice(dev_index));
+
+    const string &link_name = infos_[dev_index].name;
+    Technology::Identifier technology = GetDeviceTechnology(link_name);
+
+    if (technology == Technology::kCDCEthernet) {
+      LOG(INFO) << "In " << __func__ << ": device " << link_name
+                << " is now assumed to be regular Ethernet.";
+      technology = Technology::kEthernet;
+    } else if (technology != Technology::kCellular) {
+      LOG(WARNING) << "In " << __func__ << ": device " << link_name
+                   << " is unexpected technology "
+                   << Technology::NameFromIdentifier(technology);
+    }
+    string address =
+        StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
+    DCHECK(!address.empty());
+
+    DeviceRefPtr device = CreateDevice(link_name, address, dev_index,
+                                       technology);
+    if (device) {
+      RegisterDevice(device);
+    }
   }
 }
 

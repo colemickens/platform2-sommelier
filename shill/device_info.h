@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
@@ -82,6 +83,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   virtual int GetIndex(const std::string &interface_name) const;
 
  private:
+  friend class DeviceInfoDelayedCreationTest;
   friend class DeviceInfoTechnologyTest;
   friend class DeviceInfoTest;
   FRIEND_TEST(CellularTest, StartLinked);
@@ -127,14 +129,16 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   static const char *kModemDrivers[];
   // Path to the tun device.
   static const char kTunDeviceName[];
+  // Time to wait before registering devices which need extra time to detect.
+  static const int kDelayedDeviceCreationSeconds;
 
   // Create a Device object for the interface named |linkname|, with a
   // string-form MAC address |address|, whose kernel interface index
   // is |interface_index| and detected technology is |technology|.
-  DeviceRefPtr CreateDevice(const std::string &link_name,
-                            const std::string &address,
-                            int interface_index,
-                            Technology::Identifier technology);
+  virtual DeviceRefPtr CreateDevice(const std::string &link_name,
+                                    const std::string &address,
+                                    int interface_index,
+                                    Technology::Identifier technology);
 
   // Return the FilePath for a given |path_name| in the device sysinfo for
   // a specific interface |iface_name|.
@@ -155,7 +159,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
                                  FilePath *path_out);
   // Classify the device named |iface_name|, and return an identifier
   // indicating its type.
-  Technology::Identifier GetDeviceTechnology(const std::string &iface_name);
+  virtual Technology::Identifier GetDeviceTechnology(
+      const std::string &iface_name);
   // Checks the device specified by |iface_name| to see if it's a modem device.
   // This method assumes that |iface_name| has already been determined to be
   // using the cdc_ether driver.
@@ -172,7 +177,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   const Info *GetInfo(int interface_index) const;
   void RemoveInfo(int interface_index);
-  void EnableDeviceIPv6Privacy(const std::string &link_name);
+  void DelayDeviceCreation(int interface_index);
+  void DelayedDeviceCreationTask();
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
@@ -188,6 +194,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   scoped_ptr<RTNLListener> address_listener_;
   std::set<std::string> black_list_;
   FilePath device_info_root_;
+
+  base::CancelableClosure delayed_devices_callback_;
+  std::set<int> delayed_devices_;
 
   // Cache copy of singleton pointers.
   RoutingTable *routing_table_;

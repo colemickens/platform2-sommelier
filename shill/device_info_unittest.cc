@@ -49,13 +49,15 @@ using testing::Test;
 
 namespace shill {
 
-class TestEventDispatcher : public EventDispatcher {
+class TestEventDispatcherForDeviceInfo : public EventDispatcher {
  public:
   virtual IOHandler *CreateInputHandler(
       int /*fd*/,
       const Callback<void(InputData*)> &/*callback*/) {
     return NULL;
   }
+  MOCK_METHOD2(PostDelayedTask, bool(const base::Closure &task,
+                                     int64 delay_ms));
 };
 
 class DeviceInfoTest : public Test {
@@ -92,6 +94,13 @@ class DeviceInfoTest : public Test {
                                      technology);
   }
 
+  virtual std::set<int> &GetDelayedDevices() {
+    return device_info_.delayed_devices_;
+  }
+
+  int GetDelayedDeviceCreationSeconds() {
+    return DeviceInfo::kDelayedDeviceCreationSeconds * 1000;
+  }
 
  protected:
   static const int kTestDeviceIndex;
@@ -119,7 +128,7 @@ class DeviceInfoTest : public Test {
   MockMetrics metrics_;
   StrictMock<MockManager> manager_;
   DeviceInfo device_info_;
-  TestEventDispatcher dispatcher_;
+  TestEventDispatcherForDeviceInfo dispatcher_;
   MockRoutingTable routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
 };
@@ -382,6 +391,21 @@ TEST_F(DeviceInfoTest, CreateDeviceLoopback) {
               SetInterfaceFlags(kTestDeviceIndex, IFF_UP, IFF_UP)).Times(1);
   EXPECT_FALSE(CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kLoopback));
+}
+
+TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
+  // A cdc_ether device should be postponed to a task.
+  EXPECT_CALL(manager_, modem_info()).Times(0);
+  EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
+  EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
+  EXPECT_CALL(dispatcher_,
+              PostDelayedTask(_, GetDelayedDeviceCreationSeconds()));
+  EXPECT_TRUE(GetDelayedDevices().empty());
+  EXPECT_FALSE(CreateDevice(
+      kTestDeviceName, "address", kTestDeviceIndex, Technology::kCDCEthernet));
+  EXPECT_FALSE(GetDelayedDevices().empty());
+  EXPECT_EQ(1, GetDelayedDevices().size());
+  EXPECT_EQ(kTestDeviceIndex, *GetDelayedDevices().begin());
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceUnknown) {
@@ -686,7 +710,7 @@ TEST_F(DeviceInfoTechnologyTest, CDCEtherModem3) {
 TEST_F(DeviceInfoTechnologyTest, CDCEtherNonModem) {
   CreateInfoSymLink("device", "device_dir");
   CreateInfoSymLink("device_dir/driver", "cdc_ether");
-  EXPECT_EQ(Technology::kEthernet, GetDeviceTechnology());
+  EXPECT_EQ(Technology::kCDCEthernet, GetDeviceTechnology());
 }
 
 TEST_F(DeviceInfoTechnologyTest, PseudoModem) {
@@ -699,6 +723,84 @@ TEST_F(DeviceInfoTechnologyTest, PseudoModem) {
   CreateInfoSymLink("device", "device_dir");
   CreateInfoSymLink("device_dir/driver", "cdc_ether");
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+}
+
+class DeviceInfoForDelayedCreationTest : public DeviceInfo {
+ public:
+  DeviceInfoForDelayedCreationTest(ControlInterface *control_interface,
+                                   EventDispatcher *dispatcher,
+                                   Metrics *metrics,
+                                   Manager *manager)
+      : DeviceInfo(control_interface, dispatcher, metrics, manager) {}
+  MOCK_METHOD4(CreateDevice, DeviceRefPtr(const std::string &link_name,
+                                          const std::string &address,
+                                          int interface_index,
+                                          Technology::Identifier technology));
+  MOCK_METHOD1(GetDeviceTechnology,
+               Technology::Identifier(const string &iface_name));
+};
+
+class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
+ public:
+  DeviceInfoDelayedCreationTest()
+      : DeviceInfoTest(),
+        test_device_info_(
+            &control_interface_, &dispatcher_, &metrics_, &manager_) {}
+  virtual ~DeviceInfoDelayedCreationTest() {}
+
+  virtual std::set<int> &GetDelayedDevices() {
+    return test_device_info_.delayed_devices_;
+  }
+
+  void DelayedDeviceCreationTask() {
+    test_device_info_.DelayedDeviceCreationTask();
+  }
+
+  void AddDelayedDevice() {
+    scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+    EXPECT_CALL(test_device_info_, GetDeviceTechnology(kTestDeviceName))
+        .WillOnce(Return(Technology::kCDCEthernet));
+    EXPECT_CALL(test_device_info_, CreateDevice(
+        kTestDeviceName, _, kTestDeviceIndex, Technology::kCDCEthernet))
+        .WillOnce(Return(DeviceRefPtr()));
+    test_device_info_.AddLinkMsgHandler(*message);
+    Mock::VerifyAndClearExpectations(&test_device_info_);
+    // We need to insert the device index ourselves since we have mocked
+    // out CreateDevice.  This insertion is tested in CreateDeviceCDCEthernet
+    // above.
+    GetDelayedDevices().insert(kTestDeviceIndex);
+  }
+
+ protected:
+  DeviceInfoForDelayedCreationTest test_device_info_;
+};
+
+TEST_F(DeviceInfoDelayedCreationTest, NoDevices) {
+  EXPECT_TRUE(GetDelayedDevices().empty());
+  EXPECT_CALL(test_device_info_, GetDeviceTechnology(_)).Times(0);
+  DelayedDeviceCreationTask();
+}
+
+TEST_F(DeviceInfoDelayedCreationTest, EthernetDevice) {
+  AddDelayedDevice();
+  EXPECT_CALL(test_device_info_, GetDeviceTechnology(_))
+      .WillOnce(Return(Technology::kCDCEthernet));
+  EXPECT_CALL(test_device_info_, CreateDevice(
+      kTestDeviceName, _, kTestDeviceIndex, Technology::kEthernet))
+      .WillOnce(Return(DeviceRefPtr()));
+  DelayedDeviceCreationTask();
+  EXPECT_TRUE(GetDelayedDevices().empty());
+}
+
+TEST_F(DeviceInfoDelayedCreationTest, CellularDevice) {
+  AddDelayedDevice();
+  EXPECT_CALL(test_device_info_, GetDeviceTechnology(_))
+      .WillOnce(Return(Technology::kCellular));
+  EXPECT_CALL(test_device_info_, CreateDevice(
+      kTestDeviceName, _, kTestDeviceIndex, Technology::kCellular))
+      .WillOnce(Return(DeviceRefPtr()));
+  DelayedDeviceCreationTask();
+  EXPECT_TRUE(GetDelayedDevices().empty());
 }
 
 }  // namespace shill
