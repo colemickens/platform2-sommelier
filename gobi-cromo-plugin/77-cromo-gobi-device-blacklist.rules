@@ -201,6 +201,9 @@ ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="920b", ENV{ID_MM_DEVICE_IGNORE}="1"
 # Qualcomm Gobi 3000 Modem device
 ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="920d", ENV{ID_MM_DEVICE_IGNORE}="1"
 
+# Option Gobi 3000 Modem device
+ATTRS{idVendor}=="0af0", ATTRS{idProduct}=="8120", ENV{ID_MM_DEVICE_IGNORE}="1"
+
 # Sony Gobi 3000 Modem device
 ATTRS{idVendor}=="12D1", ATTRS{idProduct}=="14F1", ENV{ID_MM_DEVICE_IGNORE}="1"
 
