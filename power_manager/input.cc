@@ -96,7 +96,6 @@ Input::~Input() {
   }
   if (lid_fd_ >= 0)
     close(lid_fd_);
-    LOG(INFO) << "~Input done";
 }
 
 bool Input::Init(const vector<string>& wakeup_input_names) {
@@ -384,7 +383,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   if (0 == strncmp("LNXPWRBN", phys, 8)) {
     LOG(INFO) << "Skipping interface : " << phys;
     return false;
-}
+  }
 #else
   // Skip input events that are on the built in keyboard.
   // Many of these devices advertise a power key but do not physically have one.
@@ -433,11 +432,11 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     if (IS_BIT_SET(SW_LID, switch_events)) {
       num_lid_events_++;
       if (!watch_added) {
-          LOG(INFO) << "Watching this event for lid switch!";
-          channel = g_io_channel_unix_new(fd);
-          watch_id =
-              g_io_add_watch(channel, G_IO_IN, &(Input::EventHandler), this);
-          watch_added = true;
+        LOG(INFO) << "Watching this event for lid switch!";
+        channel = g_io_channel_unix_new(fd);
+        watch_id =
+            g_io_add_watch(channel, G_IO_IN, &(Input::EventHandler), this);
+        watch_added = true;
       } else {
         LOG(INFO) << "Watched event also has a lid!";
       }
