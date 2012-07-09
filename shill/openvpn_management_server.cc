@@ -42,7 +42,9 @@ OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver *driver,
       sockets_(NULL),
       socket_(-1),
       dispatcher_(NULL),
-      connected_socket_(-1) {}
+      connected_socket_(-1),
+      hold_waiting_(false),
+      hold_release_(false) {}
 
 OpenVPNManagementServer::~OpenVPNManagementServer() {
   OpenVPNManagementServer::Stop();
@@ -90,6 +92,11 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
   options->push_back(inet_ntoa(addr.sin_addr));
   options->push_back(IntToString(ntohs(addr.sin_port)));
   options->push_back("--management-client");
+
+  options->push_back("--management-hold");
+  hold_release_ = false;
+  hold_waiting_ = false;
+
   options->push_back("--management-query-passwords");
   driver_->AppendFlag(
       flimflam::kOpenVPNAuthUserPassProperty, "--auth-user-pass", options);
@@ -118,6 +125,22 @@ void OpenVPNManagementServer::Stop() {
     socket_ = -1;
   }
   sockets_ = NULL;
+}
+
+void OpenVPNManagementServer::ReleaseHold() {
+  SLOG(VPN, 2) << __func__;
+  hold_release_ = true;
+  if (!hold_waiting_) {
+    return;
+  }
+  LOG(INFO) << "Releasing hold.";
+  hold_waiting_ = false;
+  SendHoldRelease();
+}
+
+void OpenVPNManagementServer::Hold() {
+  SLOG(VPN, 2) << __func__;
+  hold_release_ = false;
 }
 
 void OpenVPNManagementServer::OnReady(int fd) {
@@ -152,7 +175,8 @@ void OpenVPNManagementServer::ProcessMessage(const string &message) {
   if (!ProcessInfoMessage(message) &&
       !ProcessNeedPasswordMessage(message) &&
       !ProcessFailedPasswordMessage(message) &&
-      !ProcessStateMessage(message)) {
+      !ProcessStateMessage(message) &&
+      !ProcessHoldMessage(message)) {
     LOG(WARNING) << "OpenVPN management message ignored: " << message;
   }
 }
@@ -284,6 +308,18 @@ bool OpenVPNManagementServer::ProcessStateMessage(const string &message) {
   return true;
 }
 
+bool OpenVPNManagementServer::ProcessHoldMessage(const string &message) {
+  if (!StartsWithASCII(message, ">HOLD:Waiting for hold release", true)) {
+    return false;
+  }
+  LOG(INFO) << "Processing hold message.";
+  hold_waiting_ = true;
+  if (hold_release_) {
+    ReleaseHold();
+  }
+  return true;
+}
+
 void OpenVPNManagementServer::Send(const string &data) {
   SLOG(VPN, 2) << __func__;
   ssize_t len = sockets_->Send(connected_socket_, data.data(), data.size(), 0);
@@ -306,6 +342,11 @@ void OpenVPNManagementServer::SendPassword(const string &tag,
                                            const string &password) {
   SLOG(VPN, 2) << __func__;
   Send(StringPrintf("password \"%s\" \"%s\"\n", tag.c_str(), password.c_str()));
+}
+
+void OpenVPNManagementServer::SendHoldRelease() {
+  SLOG(VPN, 2) << __func__;
+  Send("hold release\n");
 }
 
 }  // namespace shill

@@ -95,6 +95,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, Notify);
   FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
   FRIEND_TEST(OpenVPNDriverTest, OnConnectionDisconnected);
+  FRIEND_TEST(OpenVPNDriverTest, OnDefaultServiceChanged);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
   FRIEND_TEST(OpenVPNDriverTest, OnReconnecting);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
@@ -164,6 +165,8 @@ class OpenVPNDriver : public VPNDriver,
   virtual void Notify(const std::string &reason,
                       const std::map<std::string, std::string> &dict);
 
+  void OnDefaultServiceChanged(const ServiceRefPtr &service);
+
   ControlInterface *control_;
   Metrics *metrics_;
   DeviceInfo *device_info_;
@@ -186,6 +189,9 @@ class OpenVPNDriver : public VPNDriver,
 
   // Child exit watch callback source tag.
   unsigned int child_watch_tag_;
+
+  // Default service watch callback tag.
+  int default_service_callback_tag_;
 
   DISALLOW_COPY_AND_ASSIGN(OpenVPNDriver);
 };

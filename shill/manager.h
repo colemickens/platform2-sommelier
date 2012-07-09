@@ -5,6 +5,7 @@
 #ifndef SHILL_MANAGER_H_
 #define SHILL_MANAGER_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -39,6 +40,8 @@ class Metrics;
 
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
+  typedef base::Callback<void(const ServiceRefPtr &service)> ServiceCallback;
+
   struct Properties {
    public:
     Properties()
@@ -229,6 +232,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void RunTerminationActions(int timeout_ms,
                              const base::Callback<void(const Error &)> &done);
 
+  // Registers a |callback| that's invoked whenever the default service
+  // changes. Returns a unique tag that can be used to deregister the
+  // callback. A tag equal to 0 is invalid.
+  virtual int RegisterDefaultServiceCallback(const ServiceCallback &callback);
+  virtual void DeregisterDefaultServiceCallback(int tag);
+
  private:
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
@@ -240,14 +249,15 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
+  FRIEND_TEST(ManagerTest, DisableTechnology);
+  FRIEND_TEST(ManagerTest, EnableTechnology);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
   FRIEND_TEST(ManagerTest, HandleProfileEntryDeletionWithUnload);
+  FRIEND_TEST(ManagerTest, NotifyDefaultServiceChanged);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
-  FRIEND_TEST(ManagerTest, EnableTechnology);
-  FRIEND_TEST(ManagerTest, DisableTechnology);
 
   static const char kErrorNoDevice[];
   static const char kErrorTypeRequired[];
@@ -289,10 +299,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       void(Manager::*set)(const Strings&, Error *));
 
   void PopProfileInternal();
-  bool OrderServices(ServiceRefPtr a, ServiceRefPtr b);
   void SortServices();
   void SortServicesTask();
   bool MatchProfileWithService(const ServiceRefPtr &service);
+
+  void NotifyDefaultServiceChanged(const ServiceRefPtr &service);
 
   // For unit testing.
   void set_metrics(Metrics *metrics) { metrics_ = metrics; }
@@ -346,6 +357,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   base::CancelableClosure sort_services_task_;
   HookTable termination_actions_;
+
+  // Maps tags to callbacks for monitoring default service changes.
+  std::map<int, ServiceCallback> default_service_callbacks_;
+  int default_service_callback_tag_;
 };
 
 }  // namespace shill

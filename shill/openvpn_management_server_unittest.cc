@@ -71,6 +71,11 @@ class OpenVPNManagementServerTest : public testing::Test {
     ExpectSend("password \"User-Specific TPM Token FOO\" \"987654\"\n");
   }
 
+  void ExpectHoldRelease() {
+    SetConnectedSocket();
+    ExpectSend("hold release\n");
+  }
+
   InputData CreateInputDataFromString(const string &str) {
     InputData data(
         reinterpret_cast<unsigned char *>(const_cast<char *>(str.data())),
@@ -193,13 +198,16 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
         ">PASSWORD:Need 'Auth' SC:user/password/otp\n"
         ">PASSWORD:Need 'User-Specific TPM Token FOO' ...\n"
         ">PASSWORD:Verification Failed: .\n"
-        ">STATE:123,RECONNECTING,detail,...,...";
+        ">STATE:123,RECONNECTING,detail,...,...\n"
+        ">HOLD:Waiting for hold release";
     InputData data = CreateInputDataFromString(s);
     ExpectStaticChallengeResponse();
     ExpectPINResponse();
     EXPECT_CALL(driver_, Cleanup(Service::kStateFailure));
     EXPECT_CALL(driver_, OnReconnecting());
+    EXPECT_FALSE(server_.hold_waiting_);
     server_.OnInput(&data);
+    EXPECT_TRUE(server_.hold_waiting_);
   }
 }
 
@@ -285,6 +293,24 @@ TEST_F(OpenVPNManagementServerTest, PerformStaticChallenge) {
   EXPECT_FALSE(driver_.args()->ContainsString(flimflam::kOpenVPNOTPProperty));
 }
 
+TEST_F(OpenVPNManagementServerTest, ProcessHoldMessage) {
+  EXPECT_FALSE(server_.hold_release_);
+  EXPECT_FALSE(server_.hold_waiting_);
+
+  EXPECT_FALSE(server_.ProcessHoldMessage("foo"));
+
+  EXPECT_TRUE(server_.ProcessHoldMessage(">HOLD:Waiting for hold release"));
+  EXPECT_FALSE(server_.hold_release_);
+  EXPECT_TRUE(server_.hold_waiting_);
+
+  ExpectHoldRelease();
+  server_.hold_release_ = true;
+  server_.hold_waiting_ = false;
+  EXPECT_TRUE(server_.ProcessHoldMessage(">HOLD:Waiting for hold release"));
+  EXPECT_TRUE(server_.hold_release_);
+  EXPECT_FALSE(server_.hold_waiting_);
+}
+
 TEST_F(OpenVPNManagementServerTest, SupplyTPMTokenNoPIN) {
   EXPECT_CALL(driver_, Cleanup(Service::kStateFailure));
   server_.SupplyTPMToken("User-Specific TPM Token FOO");
@@ -325,6 +351,30 @@ TEST_F(OpenVPNManagementServerTest, ProcessFailedPasswordMessage) {
   EXPECT_CALL(driver_, Cleanup(Service::kStateFailure));
   EXPECT_TRUE(
       server_.ProcessFailedPasswordMessage(">PASSWORD:Verification Failed: ."));
+}
+
+TEST_F(OpenVPNManagementServerTest, SendHoldRelease) {
+  ExpectHoldRelease();
+  server_.SendHoldRelease();
+}
+
+TEST_F(OpenVPNManagementServerTest, Hold) {
+  EXPECT_FALSE(server_.hold_release_);
+  EXPECT_FALSE(server_.hold_waiting_);
+
+  server_.ReleaseHold();
+  EXPECT_TRUE(server_.hold_release_);
+  EXPECT_FALSE(server_.hold_waiting_);
+
+  server_.Hold();
+  EXPECT_FALSE(server_.hold_release_);
+  EXPECT_FALSE(server_.hold_waiting_);
+
+  server_.hold_waiting_ = true;
+  ExpectHoldRelease();
+  server_.ReleaseHold();
+  EXPECT_TRUE(server_.hold_release_);
+  EXPECT_FALSE(server_.hold_waiting_);
 }
 
 }  // namespace shill

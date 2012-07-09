@@ -35,8 +35,19 @@ class OpenVPNManagementServer {
 
   virtual void Stop();
 
+  // Releases openvpn's hold if it's waiting for a hold release (i.e., if
+  // |hold_waiting_| is true). Otherwise, sets |hold_release_| to true
+  // indicating that the hold can be released as soon as openvpn requests.
+  virtual void ReleaseHold();
+
+  // Holds openvpn so that it doesn't connect or reconnect automatically (i.e.,
+  // sets |hold_release_| to false). Note that this method neither drops an
+  // existing connection, nor sends any commands to the openvpn client.
+  virtual void Hold();
+
  private:
   friend class OpenVPNManagementServerTest;
+  FRIEND_TEST(OpenVPNManagementServerTest, Hold);
   FRIEND_TEST(OpenVPNManagementServerTest, OnInput);
   FRIEND_TEST(OpenVPNManagementServerTest, OnInputStop);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReady);
@@ -45,6 +56,7 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallenge);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessFailedPasswordMessage);
+  FRIEND_TEST(OpenVPNManagementServerTest, ProcessHoldMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessInfoMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC);
@@ -52,6 +64,7 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageUnknown);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessStateMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, Send);
+  FRIEND_TEST(OpenVPNManagementServerTest, SendHoldRelease);
   FRIEND_TEST(OpenVPNManagementServerTest, SendPassword);
   FRIEND_TEST(OpenVPNManagementServerTest, SendState);
   FRIEND_TEST(OpenVPNManagementServerTest, SendUsername);
@@ -68,12 +81,14 @@ class OpenVPNManagementServer {
   void SendState(const std::string &state);
   void SendUsername(const std::string &tag, const std::string &username);
   void SendPassword(const std::string &tag, const std::string &password);
+  void SendHoldRelease();
 
   void ProcessMessage(const std::string &message);
   bool ProcessInfoMessage(const std::string &message);
   bool ProcessNeedPasswordMessage(const std::string &message);
   bool ProcessFailedPasswordMessage(const std::string &message);
   bool ProcessStateMessage(const std::string &message);
+  bool ProcessHoldMessage(const std::string &message);
 
   void PerformStaticChallenge(const std::string &tag);
   void SupplyTPMToken(const std::string &tag);
@@ -94,6 +109,9 @@ class OpenVPNManagementServer {
   EventDispatcher *dispatcher_;
   int connected_socket_;
   scoped_ptr<IOHandler> input_handler_;
+
+  bool hold_waiting_;
+  bool hold_release_;
 
   DISALLOW_COPY_AND_ASSIGN(OpenVPNManagementServer);
 };

@@ -29,6 +29,7 @@
 
 using base::Closure;
 using base::SplitString;
+using base::Unretained;
 using base::WeakPtr;
 using std::map;
 using std::string;
@@ -139,7 +140,8 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       process_killer_(ProcessKiller::GetInstance()),
       lsb_release_file_(kLSBReleaseFile),
       pid_(0),
-      child_watch_tag_(0) {}
+      child_watch_tag_(0),
+      default_service_callback_tag_(0) {}
 
 OpenVPNDriver::~OpenVPNDriver() {
   Cleanup(Service::kStateIdle);
@@ -153,6 +155,10 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state) {
   if (!tls_auth_file_.empty()) {
     file_util::Delete(tls_auth_file_, false);
     tls_auth_file_.clear();
+  }
+  if (default_service_callback_tag_) {
+    manager()->DeregisterDefaultServiceCallback(default_service_callback_tag_);
+    default_service_callback_tag_ = 0;
   }
   if (child_watch_tag_) {
     glib_->SourceRemove(child_watch_tag_);
@@ -269,7 +275,6 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   CHECK(!device_);
   device_ = new VPN(control_, dispatcher(), metrics_, manager(),
                     link_name, interface_index);
-
   device_->SetEnabled(true);
   device_->SelectService(service_);
 
@@ -277,6 +282,9 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   if (!SpawnOpenVPN()) {
     Cleanup(Service::kStateFailure);
   }
+  default_service_callback_tag_ =
+      manager()->RegisterDefaultServiceCallback(
+          Bind(&OpenVPNDriver::OnDefaultServiceChanged, Unretained(this)));
   return true;
 }
 
@@ -632,6 +640,14 @@ bool OpenVPNDriver::InitManagementChannelOptions(
         error, Error::kInternalError, "Unable to setup management channel.");
     return false;
   }
+  // If there's a connected default service already, allow the openvpn client to
+  // establish connection as soon as it's started. Otherwise, hold the client
+  // until an underlying service connects and OnDefaultServiceChanged is
+  // invoked.
+  ServiceRefPtr service = manager()->GetDefaultService();
+  if (service && service->IsConnected()) {
+    management_server_->ReleaseHold();
+  }
   return true;
 }
 
@@ -681,6 +697,11 @@ void OpenVPNDriver::OnConnectionDisconnected() {
 void OpenVPNDriver::OnReconnecting() {
   SLOG(VPN, 2) << __func__;
   StartConnectTimeout();
+  // On restart/reconnect, drop the VPN connection, if any. The openvpn client
+  // might be in hold state if the VPN connection was previously established
+  // successfully. The hold will be released by OnDefaultServiceChanged when a
+  // new default service connects. This ensures that the client will use a fully
+  // functional underlying connection to reconnect.
   if (device_) {
     device_->OnDisconnected();
   }
@@ -737,6 +758,22 @@ void OpenVPNDriver::InitEnvironment(vector<string> *environment) {
   string platform_version = lsb_release[kChromeOSReleaseVersion];
   if (!platform_version.empty()) {
     environment->push_back("IV_PLAT_REL=" + platform_version);
+  }
+}
+
+void OpenVPNDriver::OnDefaultServiceChanged(const ServiceRefPtr &service) {
+  SLOG(VPN, 2) << __func__
+               << "(" << (service ? service->friendly_name() : "-") << ")";
+  // Allow the openvpn client to connect/reconnect only over a connected
+  // underlying default service. If there's no default connected service, hold
+  // the openvpn client until an underlying connection is established. If the
+  // default service is our VPN service, hold the openvpn client on reconnect so
+  // that the VPN connection can be torn down fully before a new connection
+  // attempt is made over the underlying service.
+  if (service && service != service_ && service->IsConnected()) {
+    management_server_->ReleaseHold();
+  } else {
+    management_server_->Hold();
   }
 }
 

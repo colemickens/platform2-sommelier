@@ -200,6 +200,17 @@ class ManagerTest : public PropertyStoreTest {
  protected:
   typedef scoped_refptr<MockService> MockServiceRefPtr;
 
+  class ServiceWatcher : public base::SupportsWeakPtr<ServiceWatcher> {
+   public:
+    ServiceWatcher() {}
+    virtual ~ServiceWatcher() {}
+
+    MOCK_METHOD1(OnDefaultServiceChanged, void(const ServiceRefPtr &service));
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(ServiceWatcher);
+  };
+
   MockServiceRefPtr MakeAutoConnectableService() {
     MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
                                                           dispatcher(),
@@ -1666,13 +1677,23 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   manager()->SortServicesTask();
 
+  ServiceWatcher service_watcher;
+  int tag =
+      manager()->RegisterDefaultServiceCallback(
+          Bind(&ServiceWatcher::OnDefaultServiceChanged,
+               service_watcher.AsWeakPtr()));
+  EXPECT_EQ(1, tag);
+
   mock_service1->set_priority(1);
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(false));
   EXPECT_CALL(*mock_connection1.get(), SetIsDefault(true));
+  EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_));
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service1.get()));
   manager()->SortServicesTask();
 
+  manager()->DeregisterDefaultServiceCallback(tag);
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
+  EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_)).Times(0);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(mock_service0.get()));
   mock_service1->set_mock_connection(NULL);
   manager()->DeregisterService(mock_service1);
@@ -1685,6 +1706,61 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->SortServicesTask();
+}
+
+TEST_F(ManagerTest, NotifyDefaultServiceChanged) {
+  EXPECT_EQ(0, manager()->default_service_callback_tag_);
+  EXPECT_TRUE(manager()->default_service_callbacks_.empty());
+
+  MockMetrics mock_metrics;
+  manager()->set_metrics(&mock_metrics);
+
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(
+          control_interface(), dispatcher(), metrics(), manager()));
+  ServiceRefPtr service = mock_service;
+  ServiceRefPtr null_service;
+
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  manager()->NotifyDefaultServiceChanged(null_service);
+
+  ServiceWatcher service_watcher1;
+  ServiceWatcher service_watcher2;
+  int tag1 =
+      manager()->RegisterDefaultServiceCallback(
+          Bind(&ServiceWatcher::OnDefaultServiceChanged,
+               service_watcher1.AsWeakPtr()));
+  EXPECT_EQ(1, tag1);
+  int tag2 =
+      manager()->RegisterDefaultServiceCallback(
+          Bind(&ServiceWatcher::OnDefaultServiceChanged,
+               service_watcher2.AsWeakPtr()));
+  EXPECT_EQ(2, tag2);
+
+  EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(null_service));
+  EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(null_service));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
+  manager()->NotifyDefaultServiceChanged(null_service);
+
+  EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(service));
+  EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(service));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(service.get()));
+  manager()->NotifyDefaultServiceChanged(mock_service);
+
+  manager()->DeregisterDefaultServiceCallback(tag1);
+  EXPECT_CALL(service_watcher1, OnDefaultServiceChanged(_)).Times(0);
+  EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(service));
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(service.get()));
+  manager()->NotifyDefaultServiceChanged(mock_service);
+  EXPECT_EQ(1, manager()->default_service_callbacks_.size());
+
+  manager()->DeregisterDefaultServiceCallback(tag2);
+  EXPECT_CALL(service_watcher2, OnDefaultServiceChanged(_)).Times(0);
+  EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(service.get()));
+  manager()->NotifyDefaultServiceChanged(mock_service);
+
+  EXPECT_EQ(2, manager()->default_service_callback_tag_);
+  EXPECT_TRUE(manager()->default_service_callbacks_.empty());
 }
 
 TEST_F(ManagerTest, AvailableTechnologies) {

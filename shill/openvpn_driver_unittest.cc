@@ -23,6 +23,7 @@
 #include "shill/mock_nss.h"
 #include "shill/mock_openvpn_management_server.h"
 #include "shill/mock_process_killer.h"
+#include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
@@ -71,6 +72,7 @@ class OpenVPNDriverTest : public testing::Test,
   virtual ~OpenVPNDriverTest() {}
 
   virtual void TearDown() {
+    driver_->default_service_callback_tag_ = 0;
     driver_->child_watch_tag_ = 0;
     driver_->pid_ = 0;
     driver_->device_ = NULL;
@@ -433,6 +435,8 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(nss_, GetPEMCertfile(kCaCertNSS, _)).WillOnce(Return(empty_cert));
+  ServiceRefPtr null_service;
+  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(null_service));
 
   Error error;
   vector<string> options;
@@ -506,17 +510,40 @@ TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
 
 TEST_F(OpenVPNDriverTest, InitManagementChannelOptions) {
   vector<string> options;
+  Error error;
+
   EXPECT_CALL(*management_server_,
               Start(&dispatcher_, &driver_->sockets_, &options))
+      .Times(4)
       .WillOnce(Return(false))
-      .WillOnce(Return(true));
+      .WillRepeatedly(Return(true));
 
-  Error error;
+  // Management server fails to start.
   EXPECT_FALSE(driver_->InitManagementChannelOptions(&options, &error));
   EXPECT_EQ(Error::kInternalError, error.type());
   EXPECT_EQ("Unable to setup management channel.", error.message());
 
+  // Start with a connected default service.
+  scoped_refptr<MockService> mock_service(
+      new MockService(&control_, &dispatcher_, &metrics_, &manager_));
+  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(mock_service));
+  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*management_server_, ReleaseHold());
   error.Reset();
+  EXPECT_TRUE(driver_->InitManagementChannelOptions(&options, &error));
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Start with a disconnected default service.
+  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(mock_service));
+  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(false));
+  EXPECT_CALL(*management_server_, ReleaseHold()).Times(0);
+  EXPECT_TRUE(driver_->InitManagementChannelOptions(&options, &error));
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Start with no default service.
+  ServiceRefPtr null_service;
+  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(null_service));
+  EXPECT_CALL(*management_server_, ReleaseHold()).Times(0);
   EXPECT_TRUE(driver_->InitManagementChannelOptions(&options, &error));
   EXPECT_TRUE(error.IsSuccess());
 }
@@ -592,20 +619,29 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   static const char kHost[] = "192.168.2.254";
   SetArg(flimflam::kProviderHostProperty, kHost);
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
+  ServiceRefPtr null_service;
+  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(null_service));
   EXPECT_CALL(glib_, SpawnAsyncWithPipesCWD(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).WillOnce(Return(1));
+  const int kServiceCallbackTag = 1;
+  EXPECT_EQ(0, driver_->default_service_callback_tag_);
+  EXPECT_CALL(manager_, RegisterDefaultServiceCallback(_))
+      .WillOnce(Return(kServiceCallbackTag));
   EXPECT_TRUE(driver_->ClaimInterface(kInterfaceName, kInterfaceIndex));
   ASSERT_TRUE(driver_->device_);
   EXPECT_EQ(kInterfaceIndex, driver_->device_->interface_index());
+  EXPECT_EQ(kServiceCallbackTag, driver_->default_service_callback_tag_);
 }
 
 TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->Cleanup(Service::kStateIdle);  // Ensure no crash.
 
-  const unsigned int kTag = 123;
+  const unsigned int kChildTag = 123;
   const int kPID = 123456;
-  driver_->child_watch_tag_ = kTag;
+  const int kServiceCallbackTag = 5;
+  driver_->default_service_callback_tag_ = kServiceCallbackTag;
+  driver_->child_watch_tag_ = kChildTag;
   driver_->pid_ = kPID;
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
@@ -619,7 +655,8 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->tls_auth_file_ = tls_auth_file;
   // Stop will be called twice -- once by Cleanup and once by the destructor.
   EXPECT_CALL(*management_server_, Stop()).Times(2);
-  EXPECT_CALL(glib_, SourceRemove(kTag));
+  EXPECT_CALL(glib_, SourceRemove(kChildTag));
+  EXPECT_CALL(manager_, DeregisterDefaultServiceCallback(kServiceCallbackTag));
   EXPECT_CALL(process_killer_, Kill(kPID, _));
   EXPECT_CALL(device_info_, DeleteInterface(_)).Times(0);
   EXPECT_CALL(*device_, OnDisconnected());
@@ -627,6 +664,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
   driver_->Cleanup(Service::kStateFailure);
   EXPECT_EQ(0, driver_->child_watch_tag_);
+  EXPECT_EQ(0, driver_->default_service_callback_tag_);
   EXPECT_EQ(0, driver_->pid_);
   EXPECT_FALSE(driver_->rpc_task_.get());
   EXPECT_TRUE(driver_->tunnel_interface_.empty());
@@ -659,6 +697,10 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
   EXPECT_CALL(*management_server_, Start(_, _, _))
       .Times(2)
       .WillRepeatedly(Return(true));
+  ServiceRefPtr null_service;
+  EXPECT_CALL(manager_, GetDefaultService())
+      .Times(2)
+      .WillRepeatedly(Return(null_service));
 
   const int kPID = 234678;
   EXPECT_CALL(glib_,
@@ -808,6 +850,28 @@ TEST_F(OpenVPNDriverTest, DeleteInterface) {
   EXPECT_FALSE(weak);
   // Expect no crash.
   OpenVPNDriver::DeleteInterface(weak, kInterfaceIndex);
+}
+
+TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {
+  driver_->service_ = service_;
+
+  ServiceRefPtr null_service;
+  EXPECT_CALL(*management_server_, Hold());
+  driver_->OnDefaultServiceChanged(null_service);
+
+  EXPECT_CALL(*management_server_, Hold());
+  driver_->OnDefaultServiceChanged(service_);
+
+  scoped_refptr<MockService> mock_service(
+      new MockService(&control_, &dispatcher_, &metrics_, &manager_));
+
+  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(false));
+  EXPECT_CALL(*management_server_, Hold());
+  driver_->OnDefaultServiceChanged(mock_service);
+
+  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(true));
+  EXPECT_CALL(*management_server_, ReleaseHold());
+  driver_->OnDefaultServiceChanged(mock_service);
 }
 
 }  // namespace shill

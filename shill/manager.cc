@@ -49,6 +49,7 @@
 using base::Bind;
 using base::StringPrintf;
 using base::Unretained;
+using std::map;
 using std::set;
 using std::string;
 using std::vector;
@@ -84,7 +85,8 @@ Manager::Manager(ControlInterface *control_interface,
       metrics_(metrics),
       glib_(glib),
       use_startup_portal_list_(false),
-      termination_actions_(dispatcher) {
+      termination_actions_(dispatcher),
+      default_service_callback_tag_(0) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             NULL);
@@ -819,6 +821,24 @@ void Manager::RunTerminationActions(
   termination_actions_.Run(timeout_ms, done);
 }
 
+int Manager::RegisterDefaultServiceCallback(const ServiceCallback &callback) {
+  default_service_callbacks_[++default_service_callback_tag_] = callback;
+  return default_service_callback_tag_;
+}
+
+void Manager::DeregisterDefaultServiceCallback(int tag) {
+  default_service_callbacks_.erase(tag);
+}
+
+void Manager::NotifyDefaultServiceChanged(const ServiceRefPtr &service) {
+  for (map<int, ServiceCallback>::const_iterator it =
+           default_service_callbacks_.begin();
+       it != default_service_callbacks_.end(); ++it) {
+    it->second.Run(service);
+  }
+  metrics_->NotifyDefaultServiceChanged(service);
+}
+
 void Manager::FilterByTechnology(Technology::Identifier tech,
                                  vector<DeviceRefPtr> *found) {
   CHECK(found);
@@ -907,19 +927,18 @@ void Manager::SortServicesTask() {
 
   if (!services_.empty()) {
     ConnectionRefPtr default_connection = default_service->connection();
-    if (default_connection.get() &&
-        (services_[0]->connection().get() != default_connection.get())) {
+    if (default_connection &&
+        services_[0]->connection() != default_connection) {
       default_connection->SetIsDefault(false);
     }
-    if (services_[0]->connection().get()) {
+    if (services_[0]->connection()) {
       services_[0]->connection()->SetIsDefault(true);
       default_service = services_[0];
     } else {
       default_service = NULL;
     }
   }
-  metrics_->NotifyDefaultServiceChanged(default_service);
-
+  NotifyDefaultServiceChanged(default_service);
   AutoConnect();
 }
 

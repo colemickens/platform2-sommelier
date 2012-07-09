@@ -20,6 +20,8 @@ class MockOpenVPNManagementServer : public OpenVPNManagementServer {
                            Sockets *sockets,
                            std::vector<std::string> *options));
   MOCK_METHOD0(Stop, void());
+  MOCK_METHOD0(ReleaseHold, void());
+  MOCK_METHOD0(Hold, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockOpenVPNManagementServer);
