@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,6 +21,8 @@
 
 namespace chromeos {
 
+bool ReturnTrue() { return true; }
+
 Process::Process() {
 }
 
@@ -31,7 +33,8 @@ bool Process::ProcessExists(pid_t pid) {
   return file_util::DirectoryExists(FilePath(StringPrintf("/proc/%d", pid)));
 }
 
-ProcessImpl::ProcessImpl() : pid_(0), uid_(-1), gid_(-1) {
+ProcessImpl::ProcessImpl() : pid_(0), uid_(-1), gid_(-1),
+                             pre_exec_(base::Bind(&ReturnTrue)) {
 }
 
 ProcessImpl::~ProcessImpl() {
@@ -72,6 +75,10 @@ void ProcessImpl::SetUid(uid_t uid) {
 
 void ProcessImpl::SetGid(gid_t gid) {
   gid_ = gid;
+}
+
+void ProcessImpl::SetPreExecCallback(const PreExecCallback& cb) {
+  pre_exec_ = cb;
 }
 
 int ProcessImpl::GetPipe(int child_fd) {
@@ -121,23 +128,11 @@ bool ProcessImpl::PopulatePipeMap() {
 }
 
 bool ProcessImpl::Start() {
-  // Copy off a writeable version of arguments.  Exec wants to be able
-  // to write both the array and the strings.
-  int total_args_size = 0;
-
-  for (size_t i = 0; i < arguments_.size(); ++i) {
-    total_args_size += arguments_[i].size() + 1;
-  }
-
-  scoped_array<char> buffer(new char[total_args_size]);
   scoped_array<char*> argv(new char*[arguments_.size() + 1]);
 
-  char* buffer_pointer = &buffer[0];
-  for (size_t i = 0; i < arguments_.size(); ++i) {
-    argv[i] = buffer_pointer;
-    strcpy(buffer_pointer, arguments_[i].c_str());
-    buffer_pointer += arguments_[i].size() + 1;
-  }
+  for (size_t i = 0; i < arguments_.size(); ++i)
+    argv[i] = const_cast<char*>(arguments_[i].c_str());
+
   argv[arguments_.size()] = NULL;
 
   if (!PopulatePipeMap()) {
@@ -193,6 +188,10 @@ bool ProcessImpl::Start() {
     if (uid_ >= 0 && setresuid(uid_, uid_, uid_) < 0) {
       int saved_errno = errno;
       LOG(ERROR) << "Unable to set UID to " << uid_ << ": " << saved_errno;
+      _exit(kErrorExitStatus);
+    }
+    if (!pre_exec_.Run()) {
+      LOG(ERROR) << "Pre-exec callback failed";
       _exit(kErrorExitStatus);
     }
     execv(argv[0], &argv[0]);

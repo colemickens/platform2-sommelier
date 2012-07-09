@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,7 @@ static const char kBinCp[] = "/bin/cp";
 static const char kBinEcho[] = "/bin/echo";
 static const char kBinFalse[] = "/bin/false";
 static const char kBinSleep[] = "/bin/sleep";
+static const char kBinTrue[] = "/bin/true";
 
 using chromeos::Process;
 using chromeos::ProcessImpl;
@@ -297,4 +298,12 @@ TEST_F(ProcessTest, Reset) {
   process_.Reset(0);
   process_.AddArg(kBinEcho);
   EXPECT_EQ(0, process_.Run());
+}
+
+bool ReturnFalse() { return false; }
+
+TEST_F(ProcessTest, PreExecCallback) {
+  process_.AddArg(kBinTrue);
+  process_.SetPreExecCallback(base::Bind(&ReturnFalse));
+  ASSERT_NE(0, process_.Run());
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,6 +11,8 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 
@@ -61,6 +63,13 @@ class Process {
 
   // Set the real/effective/saved group ID of the child process.
   virtual void SetGid(gid_t gid) = 0;
+
+  typedef base::Callback<bool(void)> PreExecCallback; // NOLINT not a cast
+
+  // Set the pre-exec callback. This is called after all setup is complete but
+  // before we exec() the process. The callback may return false to cause Start
+  // to return false without starting the process.
+  virtual void SetPreExecCallback(const PreExecCallback& cb) = 0;
 
   // Gets the pipe file descriptor mapped to the process's |child_fd|.
   virtual int GetPipe(int child_fd) = 0;
@@ -120,6 +129,7 @@ class ProcessImpl : public Process {
   virtual void BindFd(int parent_fd, int child_fd);
   virtual void SetUid(uid_t uid);
   virtual void SetGid(gid_t gid);
+  virtual void SetPreExecCallback(const PreExecCallback& cb);
   virtual int GetPipe(int child_fd);
   virtual bool Start();
   virtual int Wait();
@@ -159,6 +169,7 @@ class ProcessImpl : public Process {
   PipeMap pipe_map_;
   uid_t uid_;
   gid_t gid_;
+  PreExecCallback pre_exec_;
 };
 
 }  // namespace chromeos

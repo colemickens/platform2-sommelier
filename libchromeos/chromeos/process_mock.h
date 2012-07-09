@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,6 +23,7 @@ class ProcessMock : public Process {
   MOCK_METHOD2(BindFd, void(int parent_fd, int child_fd));
   MOCK_METHOD1(SetUid, void(uid_t));
   MOCK_METHOD1(SetGid, void(gid_t));
+  MOCK_METHOD1(SetPreExecCallback, void(const PreExecCallback&));
   MOCK_METHOD1(GetPipe, int(int child_fd));
   MOCK_METHOD0(Start, bool());
   MOCK_METHOD0(Wait, int());
