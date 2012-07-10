@@ -36,7 +36,11 @@ layout. Default: (empty)."
 DEFINE_string pmbr_code "" "Path to PMBR code to be installed. Default: (empty)"
 DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
 DEFINE_boolean large_test_partitions ${FLAGS_FALSE} \
-"Make partitions 9 and 10 large (for filesystem testing).  Default: false"
+  "Make partitions 9 and 10 large (for filesystem testing).  Default: false"
+DEFINE_boolean skip_postinstall ${FLAGS_FALSE} \
+  "Skip postinstall for situations where you're building for a \
+  non-native arch. Note that this will probably break verity.  Default: false"
+
 
 # Parse command line
 FLAGS "$@" || exit 1
@@ -469,12 +473,15 @@ fi
 # Now run the postinstall script on one new rootfs. Note that even though
 # we're passing the new destination partition number as an arg, the postinst
 # script had better not try to access it, for the reasons we just gave.
-loop_offset_setup ${DST} ${START_ROOTFS_A}
-mount_on_loop_dev
-sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${DST} 3) \
-  ${SUB_CMD_DEBUG_FLAG}
-umount_from_loop_dev
-loop_offset_cleanup
+# We can't run this if the target arch isn't the same as the host arch
+if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
+  loop_offset_setup ${DST} ${START_ROOTFS_A}
+  mount_on_loop_dev
+  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${DST} 3) \
+    ${SUB_CMD_DEBUG_FLAG}
+  umount_from_loop_dev
+  loop_offset_cleanup
+fi
 
 #
 # Install the stateful partition content

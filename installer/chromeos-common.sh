@@ -460,3 +460,19 @@ get_disk_info() {
   done
   echo '[Unknown]'
 }
+
+install_hybrid_mbr() {
+  # Creates a hybrid MBR which points the MBR partition 1 to GPT
+  # partition 12 (ESP). This is useful on ARM boards that boot
+  # from MBR formatted disks only
+  info "Creating hybrid MBR"
+  locate_gpt
+  local start_esp=$(partoffset "$1" 12)
+  local num_esp_sectors=$(partsize "$1" 12)
+  sudo sfdisk "${1}" <<EOF
+unit: sectors
+
+disk1 : start=   $start_esp, size=    $num_esp_sectors, Id= c, bootable
+disk2 : start=   1, size=    1, Id= ee
+EOF
+}
