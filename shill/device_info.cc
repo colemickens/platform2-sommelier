@@ -72,6 +72,7 @@ const char *DeviceInfo::kModemDrivers[] = {
 };
 const char DeviceInfo::kTunDeviceName[] = "/dev/net/tun";
 const int DeviceInfo::kDelayedDeviceCreationSeconds = 5;
+const int DeviceInfo::kRequestLinkStatisticsIntervalSeconds = 60;
 
 DeviceInfo::DeviceInfo(ControlInterface *control_interface,
                        EventDispatcher *dispatcher,
@@ -107,12 +108,17 @@ void DeviceInfo::Start() {
       new RTNLListener(RTNLHandler::kRequestAddr, address_callback_));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink |
                              RTNLHandler::kRequestAddr);
+  request_link_statistics_callback_.Reset(
+      Bind(&DeviceInfo::RequestLinkStatistics, AsWeakPtr()));
+  dispatcher_->PostDelayedTask(request_link_statistics_callback_.callback(),
+                               kRequestLinkStatisticsIntervalSeconds * 1000);
 }
 
 void DeviceInfo::Stop() {
   link_listener_.reset();
   address_listener_.reset();
   infos_.clear();
+  request_link_statistics_callback_.Cancel();
   delayed_devices_callback_.Cancel();
   delayed_devices_.clear();
 }
@@ -454,6 +460,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
   infos_[dev_index].has_addresses_only = false;
   infos_[dev_index].flags = flags;
 
+  RetrieveLinkStatistics(dev_index, msg);
+
   DeviceRefPtr device = GetDevice(dev_index);
   if (new_device) {
     CHECK(!device);
@@ -562,6 +570,18 @@ bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) const {
     return false;
   }
   *flags = info->flags;
+  return true;
+}
+
+bool DeviceInfo::GetByteCounts(int interface_index,
+                               uint64 *rx_bytes,
+                               uint64 *tx_bytes) const {
+  const Info *info = GetInfo(interface_index);
+  if (!info) {
+    return false;
+  }
+  *rx_bytes = info->rx_bytes;
+  *tx_bytes = info->tx_bytes;
   return true;
 }
 
@@ -710,6 +730,34 @@ void DeviceInfo::DelayedDeviceCreationTask() {
       RegisterDevice(device);
     }
   }
+}
+
+void DeviceInfo::RetrieveLinkStatistics(int interface_index,
+                                        const RTNLMessage &msg) {
+  if (!msg.HasAttribute(IFLA_STATS64)) {
+    return;
+  }
+  ByteString stats_bytes(msg.GetAttribute(IFLA_STATS64));
+  struct rtnl_link_stats64 stats;
+  if (stats_bytes.GetLength() < sizeof(stats)) {
+    LOG(WARNING) << "Link statistics size is too small: "
+                 << stats_bytes.GetLength() << " < " << sizeof(stats);
+    return;
+  }
+
+  memcpy(&stats, stats_bytes.GetConstData(), sizeof(stats));
+  SLOG(Device, 2) << "Link statistics for "
+                  << " interface index " << interface_index << ": "
+                  << "receive: " << stats.rx_bytes << "; "
+                  << "transmit: " << stats.tx_bytes << ".";
+  infos_[interface_index].rx_bytes = stats.rx_bytes;
+  infos_[interface_index].tx_bytes = stats.tx_bytes;
+}
+
+void DeviceInfo::RequestLinkStatistics() {
+  rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
+  dispatcher_->PostDelayedTask(request_link_statistics_callback_.callback(),
+                               kRequestLinkStatisticsIntervalSeconds * 1000);
 }
 
 }  // namespace shill

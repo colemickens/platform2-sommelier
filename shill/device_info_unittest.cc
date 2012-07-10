@@ -98,8 +98,12 @@ class DeviceInfoTest : public Test {
     return device_info_.delayed_devices_;
   }
 
-  int GetDelayedDeviceCreationSeconds() {
+  int GetDelayedDeviceCreationMilliseconds() {
     return DeviceInfo::kDelayedDeviceCreationSeconds * 1000;
+  }
+
+  int GetRequestLinkStatisticsIntervalMilliseconds() {
+    return DeviceInfo::kRequestLinkStatisticsIntervalSeconds * 1000;
   }
 
  protected:
@@ -113,6 +117,8 @@ class DeviceInfoTest : public Test {
   static const char kTestIPAddress2[];
   static const char kTestIPAddress3[];
   static const char kTestIPAddress4[];
+  static const int kReceiveByteCount;
+  static const int kTransmitByteCount;
 
   RTNLMessage *BuildLinkMessage(RTNLMessage::Mode mode);
   RTNLMessage *BuildLinkMessageWithInterfaceName(RTNLMessage::Mode mode,
@@ -144,6 +150,8 @@ const int DeviceInfoTest::kTestIPAddressPrefix1 = 64;
 const char DeviceInfoTest::kTestIPAddress2[] = "fe80::1aa9:5ff:abcd:1235";
 const char DeviceInfoTest::kTestIPAddress3[] = "fe80::1aa9:5ff:abcd:1236";
 const char DeviceInfoTest::kTestIPAddress4[] = "fe80::1aa9:5ff:abcd:1237";
+const int DeviceInfoTest::kReceiveByteCount = 1234;
+const int DeviceInfoTest::kTransmitByteCount = 5678;
 
 RTNLMessage *DeviceInfoTest::BuildLinkMessageWithInterfaceName(
     RTNLMessage::Mode mode, const string &interface_name) {
@@ -207,6 +215,8 @@ TEST_F(DeviceInfoTest, StartStop) {
 
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink |
                                          RTNLHandler::kRequestAddr));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(
+      _, GetRequestLinkStatisticsIntervalMilliseconds()));
   device_info_.Start();
   EXPECT_TRUE(device_info_.link_listener_.get());
   EXPECT_TRUE(device_info_.address_listener_.get());
@@ -220,6 +230,13 @@ TEST_F(DeviceInfoTest, StartStop) {
   EXPECT_FALSE(device_info_.link_listener_.get());
   EXPECT_FALSE(device_info_.address_listener_.get());
   EXPECT_TRUE(device_info_.infos_.empty());
+}
+
+TEST_F(DeviceInfoTest, RequestLinkStatistics) {
+  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(
+      _, GetRequestLinkStatisticsIntervalMilliseconds()));
+  device_info_.RequestLinkStatistics();
 }
 
 TEST_F(DeviceInfoTest, DeviceEnumeration) {
@@ -251,6 +268,46 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
   EXPECT_FALSE(device_info_.GetFlags(kTestDeviceIndex, NULL));
   EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
+}
+
+TEST_F(DeviceInfoTest, GetByteCounts) {
+  uint64 rx_bytes, tx_bytes;
+  EXPECT_FALSE(device_info_.GetByteCounts(
+      kTestDeviceIndex, &rx_bytes, &tx_bytes));
+
+  // No link statistics in the message.
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  SendMessageToDeviceInfo(*message);
+  EXPECT_TRUE(device_info_.GetByteCounts(
+      kTestDeviceIndex, &rx_bytes, &tx_bytes));
+  EXPECT_EQ(0, rx_bytes);
+  EXPECT_EQ(0, tx_bytes);
+
+  // Short link statistics message.
+  message.reset(BuildLinkMessage(RTNLMessage::kModeAdd));
+  struct rtnl_link_stats64 stats;
+  memset(&stats, 0, sizeof(stats));
+  stats.rx_bytes = kReceiveByteCount;
+  stats.tx_bytes = kTransmitByteCount;
+  ByteString stats_bytes0(reinterpret_cast<const unsigned char*>(&stats),
+                          sizeof(stats) - 1);
+  message->SetAttribute(IFLA_STATS64, stats_bytes0);
+  SendMessageToDeviceInfo(*message);
+  EXPECT_TRUE(device_info_.GetByteCounts(
+      kTestDeviceIndex, &rx_bytes, &tx_bytes));
+  EXPECT_EQ(0, rx_bytes);
+  EXPECT_EQ(0, tx_bytes);
+
+  // Correctly sized link statistics message.
+  message.reset(BuildLinkMessage(RTNLMessage::kModeAdd));
+  ByteString stats_bytes1(reinterpret_cast<const unsigned char*>(&stats),
+                          sizeof(stats));
+  message->SetAttribute(IFLA_STATS64, stats_bytes1);
+  SendMessageToDeviceInfo(*message);
+  EXPECT_TRUE(device_info_.GetByteCounts(
+      kTestDeviceIndex, &rx_bytes, &tx_bytes));
+  EXPECT_EQ(kReceiveByteCount, rx_bytes);
+  EXPECT_EQ(kTransmitByteCount, tx_bytes);
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceCellular) {
@@ -399,7 +456,7 @@ TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
   EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, GetDelayedDeviceCreationSeconds()));
+              PostDelayedTask(_, GetDelayedDeviceCreationMilliseconds()));
   EXPECT_TRUE(GetDelayedDevices().empty());
   EXPECT_FALSE(CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kCDCEthernet));

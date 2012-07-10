@@ -73,6 +73,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   virtual DeviceRefPtr GetDevice(int interface_index) const;
   virtual bool GetMACAddress(int interface_index, ByteString *address) const;
   virtual bool GetFlags(int interface_index, unsigned int *flags) const;
+  virtual bool GetByteCounts(int interface_index,
+                             uint64 *rx_bytes, uint64 *tx_bytes) const;
   virtual bool GetAddresses(int interface_index,
                             std::vector<AddressData> *addresses) const;
   virtual void FlushAddresses(int interface_index) const;
@@ -88,16 +90,20 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   friend class DeviceInfoTest;
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(DeviceInfoTest, HasSubdir);  // For HasSubdir.
+  FRIEND_TEST(DeviceInfoTest, RequestLinkStatistics);
   FRIEND_TEST(DeviceInfoTest, StartStop);
 
   struct Info {
-    Info() : flags(0), has_addresses_only(false) {}
+    Info() : flags(0), rx_bytes(0), tx_bytes(0), has_addresses_only(false) {}
 
     DeviceRefPtr device;
     std::string name;
     ByteString mac_address;
     std::vector<AddressData> ip_addresses;
     unsigned int flags;
+    uint64 rx_bytes;
+    uint64 tx_bytes;
+
     // This flag indicates that link information has not been retrieved yet;
     // only the ip_addresses field is valid.
     bool has_addresses_only;
@@ -131,6 +137,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   static const char kTunDeviceName[];
   // Time to wait before registering devices which need extra time to detect.
   static const int kDelayedDeviceCreationSeconds;
+  // Time interval for polling for link statistics.
+  static const int kRequestLinkStatisticsIntervalSeconds;
 
   // Create a Device object for the interface named |linkname|, with a
   // string-form MAC address |address|, whose kernel interface index
@@ -179,6 +187,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   void RemoveInfo(int interface_index);
   void DelayDeviceCreation(int interface_index);
   void DelayedDeviceCreationTask();
+  void RetrieveLinkStatistics(int interface_index, const RTNLMessage &msg);
+  void RequestLinkStatistics();
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
@@ -195,8 +205,12 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   std::set<std::string> black_list_;
   FilePath device_info_root_;
 
+  // Keep track of devices that require a delayed call to CreateDevice().
   base::CancelableClosure delayed_devices_callback_;
   std::set<int> delayed_devices_;
+
+  // Maintain a callback for the periodic link statistics poll task.
+  base::CancelableClosure request_link_statistics_callback_;
 
   // Cache copy of singleton pointers.
   RoutingTable *routing_table_;
