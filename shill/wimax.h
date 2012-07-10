@@ -47,6 +47,9 @@ class WiMax : public Device {
   // deregister and destroy the device after invoking this method.
   virtual void OnDeviceVanished();
 
+  // Returns true if this device is not connecting or connected to a service.
+  virtual bool IsIdle() const;
+
   const RpcIdentifier &path() const { return path_; }
   bool scanning() const { return scanning_; }
   const std::set<RpcIdentifier> &networks() const { return networks_; }
@@ -57,6 +60,7 @@ class WiMax : public Device {
   FRIEND_TEST(WiMaxTest, ConnectTimeout);
   FRIEND_TEST(WiMaxTest, ConnectTo);
   FRIEND_TEST(WiMaxTest, DropService);
+  FRIEND_TEST(WiMaxTest, IsIdle);
   FRIEND_TEST(WiMaxTest, OnConnectComplete);
   FRIEND_TEST(WiMaxTest, OnDeviceVanished);
   FRIEND_TEST(WiMaxTest, OnEnableComplete);

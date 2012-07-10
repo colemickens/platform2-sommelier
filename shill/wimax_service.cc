@@ -25,6 +25,8 @@ namespace shill {
 
 const char WiMaxService::kStorageNetworkId[] = "NetworkId";
 const char WiMaxService::kNetworkIdProperty[] = "NetworkId";
+const char WiMaxService::kAutoConnBusy[] = "busy";
+
 
 WiMaxService::WiMaxService(ControlInterface *control,
                            EventDispatcher *dispatcher,
@@ -184,6 +186,19 @@ string WiMaxService::GetDeviceRpcId(Error *error) {
   }
   error->Populate(Error::kNotSupported);
   return "/";
+}
+
+bool WiMaxService::IsAutoConnectable(const char **reason) const {
+  if (!Service::IsAutoConnectable(reason)) {
+    return false;
+  }
+  WiMaxRefPtr device = manager()->wimax_provider()->SelectCarrier(this);
+  DCHECK(device);
+  if (!device->IsIdle()) {
+    *reason = kAutoConnBusy;
+    return false;
+  }
+  return true;
 }
 
 bool WiMaxService::Is8021x() const {

@@ -473,6 +473,7 @@ class Service : public base::RefCounted<Service> {
   friend class ServiceAdaptorInterface;
   friend class VPNServiceTest;
   friend class WiFiServiceTest;
+  friend class WiMaxServiceTest;
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
   FRIEND_TEST(ServiceTest, CalculateState);
   FRIEND_TEST(ServiceTest, CalculateTechnology);

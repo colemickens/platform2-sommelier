@@ -56,7 +56,7 @@ class WiMaxProvider {
   void CreateServicesFromProfile(const ProfileRefPtr &profile);
 
   // Selects and returns a WiMAX device to connect |service| through.
-  virtual WiMaxRefPtr SelectCarrier(const WiMaxServiceRefPtr &service);
+  virtual WiMaxRefPtr SelectCarrier(const WiMaxServiceConstRefPtr &service);
 
  private:
   friend class WiMaxProviderTest;

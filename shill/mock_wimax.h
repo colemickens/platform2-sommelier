@@ -37,6 +37,7 @@ class MockWiMax : public WiMax {
                                Error *error));
   MOCK_METHOD2(DisconnectFrom, void(const ServiceRefPtr &service,
                                     Error *error));
+  MOCK_CONST_METHOD0(IsIdle, bool());
   MOCK_METHOD1(OnServiceStopped, void(const WiMaxServiceRefPtr &service));
   MOCK_METHOD0(OnDeviceVanished, void());
 

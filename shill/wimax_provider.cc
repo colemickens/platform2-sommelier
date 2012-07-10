@@ -212,7 +212,8 @@ void WiMaxProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   }
 }
 
-WiMaxRefPtr WiMaxProvider::SelectCarrier(const WiMaxServiceRefPtr &service) {
+WiMaxRefPtr WiMaxProvider::SelectCarrier(
+    const WiMaxServiceConstRefPtr &service) {
   SLOG(WiMax, 2) << __func__ << "(" << service->GetStorageIdentifier() << ")";
   if (devices_.empty()) {
     LOG(ERROR) << "No WiMAX devices available.";

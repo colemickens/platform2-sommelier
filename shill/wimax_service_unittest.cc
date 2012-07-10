@@ -65,6 +65,10 @@ class WiMaxServiceTest : public testing::Test {
     EXPECT_CALL(manager_, UpdateService(_));
   }
 
+  void SetConnectable(bool connectable) {
+    service_->connectable_ = connectable;
+  }
+
   scoped_ptr<MockWiMaxNetworkProxy> proxy_;
   NiceMockControl control_;
   MockManager manager_;
@@ -212,7 +216,7 @@ TEST_F(WiMaxServiceTest, Connect) {
   EXPECT_FALSE(service_->connectable());
   service_->Connect(&error);
   EXPECT_EQ(Error::kOperationFailed, error.type());
-  service_->set_connectable(true);
+  SetConnectable(true);
 
   // No carrier device available.
   MockWiMaxProvider provider;
@@ -280,6 +284,31 @@ TEST_F(WiMaxServiceTest, SetState) {
   base_service->SetState(Service::kStateFailure);
   EXPECT_EQ(Service::kStateFailure, service_->state());
   EXPECT_FALSE(service_->device_);
+}
+
+TEST_F(WiMaxServiceTest, IsAutoConnectable) {
+  EXPECT_FALSE(service_->connectable());
+  const char *reason = "";
+
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+
+  MockWiMaxProvider provider;
+  EXPECT_CALL(manager_, wimax_provider())
+      .Times(2)
+      .WillRepeatedly(Return(&provider));
+
+  SetConnectable(true);
+  EXPECT_CALL(provider, SelectCarrier(_)).WillOnce(Return(device_));
+  EXPECT_CALL(*device_, IsIdle()).WillOnce(Return(false));
+  reason = "";
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_EQ(WiMaxService::kAutoConnBusy, reason);
+
+  EXPECT_CALL(provider, SelectCarrier(_)).WillOnce(Return(device_));
+  EXPECT_CALL(*device_, IsIdle()).WillOnce(Return(true));
+  reason = "";
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ("", reason);
 }
 
 }  // namespace shill

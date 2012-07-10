@@ -78,12 +78,17 @@ class WiMaxService : public Service {
  private:
   friend class WiMaxServiceTest;
   FRIEND_TEST(WiMaxServiceTest, GetDeviceRpcId);
+  FRIEND_TEST(WiMaxServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiMaxServiceTest, OnSignalStrengthChanged);
   FRIEND_TEST(WiMaxServiceTest, SetEAP);
   FRIEND_TEST(WiMaxServiceTest, SetState);
   FRIEND_TEST(WiMaxServiceTest, StartStop);
 
+  static const char kAutoConnBusy[];
+
+  // Inherited from Service.
   virtual std::string GetDeviceRpcId(Error *error);
+  virtual bool IsAutoConnectable(const char **reason) const;
 
   void OnSignalStrengthChanged(int strength);
 

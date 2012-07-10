@@ -312,4 +312,19 @@ TEST_F(WiMaxTest, ConnectTo) {
   device_->pending_service_ = NULL;
 }
 
+TEST_F(WiMaxTest, IsIdle) {
+  EXPECT_TRUE(device_->IsIdle());
+  scoped_refptr<NiceMock<MockWiMaxService> > service(
+      new NiceMock<MockWiMaxService>(
+          &control_,
+          reinterpret_cast<EventDispatcher *>(NULL),
+          &metrics_,
+          &manager_));
+  device_->pending_service_ = service;
+  EXPECT_FALSE(device_->IsIdle());
+  device_->pending_service_ = NULL;
+  device_->SelectService(service);
+  EXPECT_FALSE(device_->IsIdle());
+}
+
 }  // namespace shill

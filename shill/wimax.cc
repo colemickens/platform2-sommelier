@@ -164,6 +164,10 @@ void WiMax::DisconnectFrom(const ServiceRefPtr &service, Error *error) {
   }
 }
 
+bool WiMax::IsIdle() const {
+  return !pending_service_ && !selected_service();
+}
+
 void WiMax::OnServiceStopped(const WiMaxServiceRefPtr &service) {
   SLOG(WiMax, 2) << __func__;
   if (service == selected_service()) {
