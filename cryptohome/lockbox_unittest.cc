@@ -159,7 +159,7 @@ TEST_F(LockboxTest, CreateFirstInstall) {
 
   // Create the new space.
   EXPECT_CALL(tpm_,
-              DefineLockOnceNvram(0xdeadbeef, Lockbox::kReservedNvramBytesV1,
+              DefineLockOnceNvram(0xdeadbeef, Lockbox::kReservedNvramBytesV2,
                                   0))
     .WillOnce(Return(true));
   EXPECT_TRUE(lockbox_.Create(&error));
@@ -190,7 +190,7 @@ TEST_F(LockboxTest, CreateOnReinstallWithFullAuth) {
 
   // Create the new space.
   EXPECT_CALL(tpm_,
-              DefineLockOnceNvram(0xdeadbeef, Lockbox::kReservedNvramBytesV1,
+              DefineLockOnceNvram(0xdeadbeef, Lockbox::kReservedNvramBytesV2,
                                   0))
     .WillOnce(Return(true));
   EXPECT_TRUE(lockbox_.Create(&error));
@@ -278,7 +278,7 @@ TEST_F(LockboxTest, StoreLockedNvram) {
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
     .WillOnce(Return(true));
   chromeos::Blob salt(7, 'A');
-  EXPECT_CALL(tpm_, GetRandomData(Lockbox::kReservedSaltBytesV1, _))
+  EXPECT_CALL(tpm_, GetRandomData(Lockbox::kReservedSaltBytesV2, _))
     .Times(1)
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
   EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef))
@@ -300,7 +300,7 @@ TEST_F(LockboxTest, StoreNoNvram) {
     .WillRepeatedly(Return(true));
 
   chromeos::Blob salt(7, 'A');
-  EXPECT_CALL(tpm_, GetRandomData(Lockbox::kReservedSaltBytesV1, _))
+  EXPECT_CALL(tpm_, GetRandomData(Lockbox::kReservedSaltBytesV2, _))
     .Times(1)
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
 
@@ -350,7 +350,7 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV1) {
 
 TEST_F(LockboxTest, LoadAndVerifyOkTpmV2) {
   SecureBlob nvram_data(0);
-  GenerateNvramData(&nvram_data, Lockbox::kNvramVersion2);
+  GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault);
 
   // Ensure a connected, owned TPM.
   EXPECT_CALL(tpm_, IsConnected())
@@ -420,7 +420,7 @@ TEST_F(LockboxTest, LoadAndVerifyBadHash) {
   // Truncate the hash.
   nvram_data.resize(nvram_data.size() - Lockbox::kReservedDigestBytes);
   // Fill with 0s.
-  nvram_data.resize(Lockbox::kReservedNvramBytesV1);
+  nvram_data.resize(Lockbox::kReservedNvramBytesV2);
   EXPECT_CALL(tpm_, ReadNvram(0xdeadbeef, _))
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<1>(nvram_data), Return(true)));

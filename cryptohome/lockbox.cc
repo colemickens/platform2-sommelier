@@ -26,7 +26,7 @@ using chromeos::SecureBlob;
 namespace cryptohome {
 const uint32_t Lockbox::kNvramVersion1 = 1;
 const uint32_t Lockbox::kNvramVersion2 = 2;
-const uint32_t Lockbox::kNvramVersionDefault = 1;
+const uint32_t Lockbox::kNvramVersionDefault = 2;
 const uint32_t Lockbox::kReservedSizeBytes = sizeof(uint32_t);
 const uint32_t Lockbox::kReservedFlagsBytes = sizeof(uint8_t);
 const uint32_t Lockbox::kReservedSaltBytesV1 = 7;
