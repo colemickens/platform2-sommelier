@@ -424,6 +424,9 @@ void WiFi::AppendBgscan(WiFiService *service,
       LOG(INFO) << "Background scan disabled -- single Endpoint for Service.";
       return;
     }
+  } else if (method.compare(wpa_supplicant::kNetworkBgscanMethodNone) == 0) {
+      LOG(INFO) << "Background scan disabled -- chose None method.";
+      return;
   } else {
     // If the background scan method was explicitly specified, honor the
     // configured background scan interval.
@@ -447,7 +450,8 @@ string WiFi::GetBgscanMethod(const int &/*argument*/, Error */* error */) {
 void WiFi::SetBgscanMethod(
     const int &/*argument*/, const string &method, Error *error) {
   if (method != wpa_supplicant::kNetworkBgscanMethodSimple &&
-      method != wpa_supplicant::kNetworkBgscanMethodLearn) {
+      method != wpa_supplicant::kNetworkBgscanMethodLearn &&
+      method != wpa_supplicant::kNetworkBgscanMethodNone) {
     const string error_message =
         StringPrintf("Unrecognized bgscan method %s", method.c_str());
     LOG(WARNING) << error_message;

@@ -44,6 +44,9 @@ extern const char kKeyManagementMethodSuffixEAP[];
 extern const char kKeyManagementMethodSuffixPSK[];
 extern const char kKeyModeNone[];
 extern const char kNetworkBgscanMethodLearn[];
+// None is not a real method name, but we interpret 'none' as a request that
+// no background scan parameter should be supplied to wpa_supplicant.
+extern const char kNetworkBgscanMethodNone[];
 extern const char kNetworkBgscanMethodSimple[];
 extern const char kNetworkModeInfrastructure[];
 extern const char kNetworkModeAdHoc[];

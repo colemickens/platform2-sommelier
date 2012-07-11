@@ -42,7 +42,10 @@ const char kInterfaceStateScanning[]       = "scanning";
 const char kKeyManagementMethodSuffixEAP[] = "-eap";
 const char kKeyManagementMethodSuffixPSK[] = "-psk";
 const char kKeyModeNone[]           = "NONE";
-const char kNetworkBgscanMethodLearn[] = "learn";
+const char kNetworkBgscanMethodLearn[]  = "learn";
+// None is not a real method name, but we interpret 'none' as a request that
+// no background scan parameter should be supplied to wpa_supplicant.
+const char kNetworkBgscanMethodNone[]   = "none";
 const char kNetworkBgscanMethodSimple[] = "simple";
 const char kNetworkModeInfrastructure[] = "infrastructure";
 const char kNetworkModeAdHoc[]       = "ad-hoc";
