@@ -317,15 +317,20 @@ chmod 1771 /home/root
 # Selected directories must belong to the chronos user.
 chown chronos:chronos /home/chronos /var/log/metrics /var/log/window_manager
 
-# If we're mod_for_test, both /home and /tmp need to be mounted without noexec
-#mod_for_test#mount -n -o remount,exec,suid /home
-#mod_for_test#mount -n -o remount,exec,suid /tmp
+mount_or_fail -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
+touch /var/run/.ramfs  # TODO: Is this needed?
+mount_or_fail -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
+touch /var/lock/.ramfs # TODO: Is this needed?
+mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
 # Mount stateful partition for dev packages
 # TODO(arkaitzr@chromium.org) - Only use CROS_DEBUG when cros_debug is
 # correctly set in a test VM after updating itself to itself (that is, it does
 # not fail cros_au_test_harness).
 if [ "$CROS_DEBUG" = "1" -o -f /root/.dev_mode ]; then
+  # Capture a snapshot of "normal" mount state here, for auditability,
+  # before we start applying devmode-specific changes.
+  mount > /var/log/mount_options.log
   # Create dev_image directory in base images in developer mode.
   if [ ! -d /mnt/stateful_partition/dev_image ]; then
     mkdir -p -m 0755 /mnt/stateful_partition/dev_image
@@ -359,12 +364,6 @@ if [ "$CROS_DEBUG" = "1" -o -f /root/.dev_mode ]; then
     done
   fi
 fi
-
-mount_or_fail -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
-touch /var/run/.ramfs  # TODO: Is this needed?
-mount_or_fail -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
-touch /var/lock/.ramfs # TODO: Is this needed?
-mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
 # Enable crash reporting for all future exec'd processes, even those that have
 # gone through setuid.
