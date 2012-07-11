@@ -250,9 +250,11 @@ else
                      --ppapi-flash-args=enable-hardware-decoder=1"
 fi
 
-# TODO(katierh): Remove this when Mali drivers fixed, crosbug.com/p/8085
-if is_board daisy || is_board ironhide; then
-  export MALI_FORCE_WINDOW_CONFIG_ID=10
+# TODO(anush): Remove once daisy development cycle is done
+# security P0 chromium-os:32488
+NACL_FLAGS=
+if is_board daisy; then
+  NACL_FLAGS="--enable-nacl"
 fi
 
 HIGHDPI_FLAGS=
@@ -372,4 +374,5 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
             ${NEW_OOBE_FLAGS} \
+            ${NACL_FLAGS} \
     ${WM_SCRIPT:+-- "${WM_SCRIPT}"}
