@@ -75,6 +75,7 @@ typedef std::tr1::shared_ptr<
 typedef std::tr1::shared_ptr<AccessorInterface<uint8> > Uint8Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<uint16> > Uint16Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<uint32> > Uint32Accessor;
+typedef std::tr1::shared_ptr<AccessorInterface<uint64> > Uint64Accessor;
 
 }  // namespace shill
 

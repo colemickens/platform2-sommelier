@@ -60,6 +60,9 @@ const ::DBus::Variant PropertyStoreTest::kUint16V =
 // static
 const ::DBus::Variant PropertyStoreTest::kUint32V =
     DBusAdaptor::Uint32ToVariant(0);
+// static
+const ::DBus::Variant PropertyStoreTest::kUint64V =
+    DBusAdaptor::Uint64ToVariant(0);
 
 PropertyStoreTest::PropertyStoreTest()
     : internal_error_(Error::GetName(Error::kInternalError)),
@@ -101,7 +104,8 @@ INSTANTIATE_TEST_CASE_P(
            PropertyStoreTest::kStringmapV,
            PropertyStoreTest::kStringsV,
            PropertyStoreTest::kUint16V,
-           PropertyStoreTest::kUint32V));
+           PropertyStoreTest::kUint32V,
+           PropertyStoreTest::kUint64V));
 
 template <typename T>
 class PropertyStoreTypedTest : public PropertyStoreTest {

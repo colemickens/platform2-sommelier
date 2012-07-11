@@ -44,6 +44,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   static const ::DBus::Variant kStringsV;
   static const ::DBus::Variant kUint16V;
   static const ::DBus::Variant kUint32V;
+  static const ::DBus::Variant kUint64V;
 
   PropertyStoreTest();
   virtual ~PropertyStoreTest();

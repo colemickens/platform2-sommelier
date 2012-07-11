@@ -42,6 +42,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
         ex_byte_(0xff),
         ex_uint16_(65535),
         ex_uint32_(2000000),
+        ex_uint64_(8589934591LL),
         ex_int16_(-32768),
         ex_int32_(-65536),
         ex_path_("/"),
@@ -56,6 +57,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
         strings_v_(DBusAdaptor::StringsToVariant(ex_strings_)),
         uint16_v_(DBusAdaptor::Uint16ToVariant(ex_uint16_)),
         uint32_v_(DBusAdaptor::Uint32ToVariant(ex_uint32_)),
+        uint64_v_(DBusAdaptor::Uint64ToVariant(ex_uint64_)),
         device_(new MockDevice(control_interface(),
                                dispatcher(),
                                metrics(),
@@ -85,6 +87,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
   ByteArrays ex_bytearrays_;
   uint16 ex_uint16_;
   uint32 ex_uint32_;
+  uint64 ex_uint64_;
   int16 ex_int16_;
   int32 ex_int32_;
   ::DBus::Path ex_path_;
@@ -107,6 +110,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
   ::DBus::Variant strings_v_;
   ::DBus::Variant uint16_v_;
   ::DBus::Variant uint32_v_;
+  ::DBus::Variant uint64_v_;
 
   DeviceRefPtr device_;
   ServiceRefPtr service_;
@@ -129,6 +133,9 @@ TEST_F(DBusAdaptorTest, Conversions) {
 
   EXPECT_EQ(0, PropertyStoreTest::kUint32V.reader().get_uint32());
   EXPECT_EQ(ex_uint32_, uint32_v_.reader().get_uint32());
+
+  EXPECT_EQ(0, PropertyStoreTest::kUint64V.reader().get_uint64());
+  EXPECT_EQ(ex_uint64_, uint64_v_.reader().get_uint64());
 
   EXPECT_EQ(0, PropertyStoreTest::kInt32V.reader().get_int32());
   EXPECT_EQ(ex_int32_, int32_v_.reader().get_int32());
@@ -158,6 +165,7 @@ TEST_F(DBusAdaptorTest, Signatures) {
   EXPECT_TRUE(DBusAdaptor::IsStrings(strings_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsUint16(uint16_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsUint32(uint32_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsUint64(uint64_v_.signature()));
 
   EXPECT_FALSE(DBusAdaptor::IsBool(byte_v_.signature()));
   EXPECT_FALSE(DBusAdaptor::IsStrings(string_v_.signature()));
@@ -165,7 +173,7 @@ TEST_F(DBusAdaptorTest, Signatures) {
 
 TEST_F(DBusAdaptorTest, SetProperty) {
   MockPropertyStore store;
-  ::DBus::Error e1, e2, e3, e4, e5, e6, e7, e8, e9, e10;
+  ::DBus::Error e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11;
 
   EXPECT_CALL(store, Contains(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(store, SetBoolProperty("", _, _)).WillOnce(Return(true));
@@ -180,6 +188,7 @@ TEST_F(DBusAdaptorTest, SetProperty) {
   EXPECT_CALL(store, SetUint8Property("", _, _)).WillOnce(Return(true));
   EXPECT_CALL(store, SetUint16Property("", _, _)).WillOnce(Return(true));
   EXPECT_CALL(store, SetUint32Property("", _, _)).WillOnce(Return(true));
+  EXPECT_CALL(store, SetUint64Property("", _, _)).WillOnce(Return(true));
 
   string string_path("/false/path");
   ::DBus::Path path(string_path);
@@ -195,8 +204,9 @@ TEST_F(DBusAdaptorTest, SetProperty) {
   EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", int32_v_, &e6));
   EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint16_v_, &e7));
   EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint32_v_, &e8));
-  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", stringmap_v_, &e9));
-  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", byte_v_, &e10));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint64_v_, &e9));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", stringmap_v_, &e10));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", byte_v_, &e11));
 }
 
 void SetError(const string &/*name*/, Error *error) {

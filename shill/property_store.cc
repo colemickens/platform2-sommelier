@@ -38,6 +38,7 @@ bool PropertyStore::Contains(const string &prop) const {
           ContainsKey(uint8_properties_, prop) ||
           ContainsKey(uint16_properties_, prop) ||
           ContainsKey(uint32_properties_, prop) ||
+          ContainsKey(uint64_properties_, prop) ||
           ContainsKey(rpc_identifier_properties_, prop) ||
           ContainsKey(rpc_identifiers_properties_, prop));
 }
@@ -97,6 +98,12 @@ bool PropertyStore::SetUint32Property(const string &name,
   return SetProperty(name, value, error, uint32_properties_, "a uint32");
 }
 
+bool PropertyStore::SetUint64Property(const string &name,
+                                      uint64 value,
+                                      Error *error) {
+  return SetProperty(name, value, error, uint64_properties_, "a uint64");
+}
+
 bool PropertyStore::SetRpcIdentifierProperty(const string &name,
                                              const RpcIdentifier &value,
                                              Error *error) {
@@ -129,6 +136,8 @@ bool PropertyStore::ClearProperty(const string &name, Error *error) {
     uint16_properties_[name]->Clear(error);
   } else if (ContainsKey(uint32_properties_, name)) {
     uint32_properties_[name]->Clear(error);
+  } else if (ContainsKey(uint64_properties_, name)) {
+    uint64_properties_[name]->Clear(error);
   } else if (ContainsKey(rpc_identifier_properties_, name)) {
     rpc_identifier_properties_[name]->Clear(error);
   } else if (ContainsKey(rpc_identifiers_properties_, name)) {
@@ -207,6 +216,11 @@ ReadablePropertyConstIterator<uint16> PropertyStore::GetUint16PropertiesIter()
 ReadablePropertyConstIterator<uint32> PropertyStore::GetUint32PropertiesIter()
     const {
   return ReadablePropertyConstIterator<uint32>(uint32_properties_);
+}
+
+ReadablePropertyConstIterator<uint64> PropertyStore::GetUint64PropertiesIter()
+    const {
+  return ReadablePropertyConstIterator<uint64>(uint64_properties_);
 }
 
 void PropertyStore::RegisterBool(const string &name, bool *prop) {
@@ -475,6 +489,13 @@ void PropertyStore::RegisterDerivedUint16(const string &name,
   DCHECK(!Contains(name) || ContainsKey(uint16_properties_, name))
       << "(Already registered " << name << ")";
   uint16_properties_[name] = acc;
+}
+
+void PropertyStore::RegisterDerivedUint64(const string &name,
+                                          const Uint64Accessor &acc) {
+  DCHECK(!Contains(name) || ContainsKey(uint64_properties_, name))
+      << "(Already registered " << name << ")";
+  uint64_properties_[name] = acc;
 }
 
 // private methods

@@ -72,6 +72,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static ::DBus::Variant StringsToVariant(const Strings &value);
   static ::DBus::Variant Uint16ToVariant(uint16 value);
   static ::DBus::Variant Uint32ToVariant(uint32 value);
+  static ::DBus::Variant Uint64ToVariant(uint64 value);
 
   static bool IsBool(::DBus::Signature signature);
   static bool IsByte(::DBus::Signature signature);
@@ -86,6 +87,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool IsStrings(::DBus::Signature signature);
   static bool IsUint16(::DBus::Signature signature);
   static bool IsUint32(::DBus::Signature signature);
+  static bool IsUint64(::DBus::Signature signature);
   static bool IsKeyValueStore(::DBus::Signature signature);
 
  protected:

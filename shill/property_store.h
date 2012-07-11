@@ -68,6 +68,10 @@ class PropertyStore {
                                  uint32 value,
                                  Error *error);
 
+  virtual bool SetUint64Property(const std::string &name,
+                                 uint64 value,
+                                 Error *error);
+
   virtual bool SetRpcIdentifierProperty(const std::string &name,
                                         const RpcIdentifier &value,
                                         Error *error);
@@ -109,6 +113,7 @@ class PropertyStore {
   ReadablePropertyConstIterator<uint8> GetUint8PropertiesIter() const;
   ReadablePropertyConstIterator<uint16> GetUint16PropertiesIter() const;
   ReadablePropertyConstIterator<uint32> GetUint32PropertiesIter() const;
+  ReadablePropertyConstIterator<uint64> GetUint64PropertiesIter() const;
 
   // Methods for registering a property.
   //
@@ -172,6 +177,8 @@ class PropertyStore {
                               const StringsAccessor &accessor);
   void RegisterDerivedUint16(const std::string &name,
                              const Uint16Accessor &accessor);
+  void RegisterDerivedUint64(const std::string &name,
+                             const Uint64Accessor &accessor);
 
  private:
   template <class V>
@@ -197,6 +204,7 @@ class PropertyStore {
   std::map<std::string, Uint8Accessor> uint8_properties_;
   std::map<std::string, Uint16Accessor> uint16_properties_;
   std::map<std::string, Uint32Accessor> uint32_properties_;
+  std::map<std::string, Uint64Accessor> uint64_properties_;
 
   DISALLOW_COPY_AND_ASSIGN(PropertyStore);
 };

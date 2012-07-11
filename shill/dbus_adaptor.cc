@@ -76,6 +76,8 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
     store->SetUint16Property(name, value.reader().get_uint16(), &e);
   else if (DBusAdaptor::IsUint32(value.signature()))
     store->SetUint32Property(name, value.reader().get_uint32(), &e);
+  else if (DBusAdaptor::IsUint64(value.signature()))
+    store->SetUint64Property(name, value.reader().get_uint64(), &e);
   else if (DBusAdaptor::IsKeyValueStore(value.signature())) {
     SLOG(DBus, 1) << " can't yet handle setting type " << value.signature();
     e.Populate(Error::kInternalError);
@@ -189,6 +191,13 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
     for ( ; !it.AtEnd(); it.Advance()) {
       SLOG(DBus, 5) << __func__ << " serializing uint32 " << it.Key();
       (*out)[it.Key()] = Uint32ToVariant(it.value());
+    }
+  }
+  {
+    ReadablePropertyConstIterator<uint64> it = store.GetUint64PropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      SLOG(DBus, 5) << __func__ << " serializing uint64 " << it.Key();
+      (*out)[it.Key()] = Uint64ToVariant(it.value());
     }
   }
   {
@@ -369,6 +378,13 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
+::DBus::Variant DBusAdaptor::Uint64ToVariant(uint64 value) {
+  ::DBus::Variant v;
+  v.writer().append_uint64(value);
+  return v;
+}
+
+// static
 bool DBusAdaptor::IsBool(::DBus::Signature signature) {
   return signature == ::DBus::type<bool>::sig();
 }
@@ -431,6 +447,11 @@ bool DBusAdaptor::IsUint16(::DBus::Signature signature) {
 // static
 bool DBusAdaptor::IsUint32(::DBus::Signature signature) {
   return signature == ::DBus::type<uint32>::sig();
+}
+
+// static
+bool DBusAdaptor::IsUint64(::DBus::Signature signature) {
+  return signature == ::DBus::type<uint64>::sig();
 }
 
 // static
