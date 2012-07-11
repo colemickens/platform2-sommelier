@@ -111,6 +111,9 @@ class Device : public base::RefCounted<Device> {
   // Returns true if portal detection was started.
   virtual bool RestartPortalDetection();
 
+  // Reset the persisted byte counters associated with the device.
+  void ResetByteCounters();
+
   // Requests that portal detection be done, if this device has the default
   // connection.  Returns true if portal detection was started.
   virtual bool RequestPortalDetection();
@@ -162,6 +165,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
   FRIEND_TEST(DeviceTest, GetProperties);
+  FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, SetEnabledPersistent);
@@ -296,6 +300,10 @@ class Device : public base::RefCounted<Device> {
       const std::string &name,
       RpcIdentifiers(Device::*get)(Error *));
 
+  void HelpRegisterConstDerivedUint64(
+      const std::string &name,
+      uint64(Device::*get)(Error *));
+
   // Property getters reserved for subclasses
   ControlInterface *control_interface() const { return control_interface_; }
   Metrics *metrics() const { return metrics_; }
@@ -304,6 +312,7 @@ class Device : public base::RefCounted<Device> {
 
  private:
   friend class DeviceAdaptorInterface;
+  friend class DeviceByteCountTest;
   friend class DevicePortalDetectionTest;
   friend class DeviceTest;
   friend class CellularTest;
@@ -321,6 +330,8 @@ class Device : public base::RefCounted<Device> {
   static const char kIPFlagReversePathFilterLooseMode[];
   static const char kStoragePowered[];
   static const char kStorageIPConfigs[];
+  static const char kStorageReceiveByteCount[];
+  static const char kStorageTransmitByteCount[];
 
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();
@@ -342,6 +353,10 @@ class Device : public base::RefCounted<Device> {
 
   std::vector<std::string> AvailableIPConfigs(Error *error);
   std::string GetRpcConnectionIdentifier();
+
+  // Get receive and transmit byte counters.
+  uint64 GetReceiveByteCount(Error *error);
+  uint64 GetTransmitByteCount(Error *error);
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
@@ -396,6 +411,11 @@ class Device : public base::RefCounted<Device> {
   // This includes all failure/timeout attempts and the final successful
   // attempt.
   int portal_attempts_to_online_;
+
+  // Keep track of the offset between the interface-reported byte counters
+  // and our persisted value.
+  uint64 receive_byte_offset_;
+  uint64 transmit_byte_offset_;
 
   // Maintain a reference to the connected / connecting service
   ServiceRefPtr selected_service_;

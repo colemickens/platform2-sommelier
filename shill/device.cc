@@ -62,12 +62,14 @@ const char Device::kIPFlagReversePathFilter[] = "rp_filter";
 const char Device::kIPFlagReversePathFilterEnabled[] = "1";
 // static
 const char Device::kIPFlagReversePathFilterLooseMode[] = "2";
-
 // static
 const char Device::kStoragePowered[] = "Powered";
-
 // static
 const char Device::kStorageIPConfigs[] = "IPConfigs";
+// static
+const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
+// static
+const char Device::kStorageTransmitByteCount[] = "TransmitByteCount";
 
 Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
@@ -96,6 +98,8 @@ Device::Device(ControlInterface *control_interface,
                                      weak_ptr_factory_.GetWeakPtr())),
       technology_(technology),
       portal_attempts_to_online_(0),
+      receive_byte_offset_(0),
+      transmit_byte_offset_(0),
       dhcp_provider_(DHCPProvider::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
   store_.RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
@@ -140,6 +144,16 @@ Device::Device(ControlInterface *control_interface,
 
   // flimflam::kScanningProperty: Registered in WiFi, Cellular
   // flimflam::kScanIntervalProperty: Registered in WiFi, Cellular
+
+  if (manager_ && manager_->device_info()) {  // Unit tests may not have these.
+    manager_->device_info()->GetByteCounts(
+        interface_index_, &receive_byte_offset_, &transmit_byte_offset_);
+    HelpRegisterConstDerivedUint64(shill::kReceiveByteCountProperty,
+                                   &Device::GetReceiveByteCount);
+    HelpRegisterConstDerivedUint64(shill::kTransmitByteCountProperty,
+                                   &Device::GetTransmitByteCount);
+  }
+
   LOG(INFO) << "Device created: " << link_name_
             << " index " << interface_index_;
 }
@@ -267,7 +281,23 @@ bool Device::Load(StoreInterface *storage) {
   }
   enabled_persistent_ = true;
   storage->GetBool(id, kStoragePowered, &enabled_persistent_);
-  // TODO(cmasone): What does it mean to load an IPConfig identifier??
+  uint64 rx_byte_count = 0, tx_byte_count = 0;
+
+  manager_->device_info()->GetByteCounts(
+      interface_index_, &rx_byte_count, &tx_byte_count);
+  // If there is a byte-count present in the profile, the return value
+  // of Device::Get*ByteCount() should be the this stored value plus
+  // whatever additional bytes we receive since time-of-load.  We
+  // accomplish this by the subtractions below, which can validly
+  // roll over "negative" in the subtractions below and in Get*ByteCount.
+  uint64 profile_byte_count;
+  if (storage->GetUint64(id, kStorageReceiveByteCount, &profile_byte_count)) {
+    receive_byte_offset_ = rx_byte_count - profile_byte_count;
+  }
+  if (storage->GetUint64(id, kStorageTransmitByteCount, &profile_byte_count)) {
+    transmit_byte_offset_ = tx_byte_count - profile_byte_count;
+  }
+
   return true;
 }
 
@@ -283,6 +313,8 @@ bool Device::Save(StoreInterface *storage) {
     ipconfig_->Save(storage, suffix);
     storage->SetString(id, kStorageIPConfigs, SerializeIPConfigs(suffix));
   }
+  storage->SetUint64(id, kStorageReceiveByteCount, GetReceiveByteCount(NULL));
+  storage->SetUint64(id, kStorageTransmitByteCount, GetTransmitByteCount(NULL));
   return true;
 }
 
@@ -344,6 +376,15 @@ void Device::HelpRegisterConstDerivedRpcIdentifiers(
       name,
       RpcIdentifiersAccessor(
           new CustomAccessor<Device, RpcIdentifiers>(this, get, NULL)));
+}
+
+void Device::HelpRegisterConstDerivedUint64(
+    const string &name,
+    uint64(Device::*get)(Error *)) {
+  store_.RegisterDerivedUint64(
+      name,
+      Uint64Accessor(
+          new CustomAccessor<Device, uint64>(this, get, NULL)));
 }
 
 void Device::ConfigureStaticIPTask() {
@@ -512,6 +553,12 @@ bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
     return false;
   }
   return true;
+}
+
+void Device::ResetByteCounters() {
+  manager_->device_info()->GetByteCounts(
+      interface_index_, &receive_byte_offset_, &transmit_byte_offset_);
+  manager_->UpdateDevice(this);
 }
 
 bool Device::RestartPortalDetection() {
@@ -699,6 +746,20 @@ vector<string> Device::AvailableIPConfigs(Error */*error*/) {
 
 string Device::GetRpcConnectionIdentifier() {
   return adaptor_->GetRpcConnectionIdentifier();
+}
+
+uint64 Device::GetReceiveByteCount(Error */*error*/) {
+  uint64 rx_byte_count = 0, tx_byte_count = 0;
+  manager_->device_info()->GetByteCounts(
+      interface_index_, &rx_byte_count, &tx_byte_count);
+  return rx_byte_count - receive_byte_offset_;
+}
+
+uint64 Device::GetTransmitByteCount(Error */*error*/) {
+  uint64 rx_byte_count = 0, tx_byte_count = 0;
+  manager_->device_info()->GetByteCounts(
+      interface_index_, &rx_byte_count, &tx_byte_count);
+  return tx_byte_count - transmit_byte_offset_;
 }
 
 bool Device::IsUnderlyingDeviceEnabled() const {

@@ -67,6 +67,7 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   virtual void ChangePin(const std::string &old_pin,
                          const std::string &new_pin,
                          ::DBus::Error &error);
+  virtual void ResetByteCounters(::DBus::Error &error);
 
  private:
   Device *device_;

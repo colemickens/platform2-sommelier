@@ -170,4 +170,8 @@ void DeviceDBusAdaptor::ChangePin(
   ReturnResultOrDefer(tag, e, &error);
 }
 
+void DeviceDBusAdaptor::ResetByteCounters(DBus::Error &error) {
+  device_->ResetByteCounters();
+}
+
 }  // namespace shill

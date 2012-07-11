@@ -142,6 +142,12 @@ Methods		dict GetProperties()
 			more attempt is made to register, after switching back
 			to automatic registration mode.
 
+		void ResetByteCounters()
+
+			Reset the device's persisted counters of transmitted
+			and received bytes.  See RecieveByteCount and
+			TransmitByteCount properties below.
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
@@ -422,6 +428,14 @@ Properties	string Address [readonly]
 			example would be modifications via the "ifconfig"
 			command line utility.
 
+		uint64 ReceiveByteCount [readonly]
+
+			The number of bytes received on this interface.
+			This value is persisted and accumulated across
+			connection manager restarts.  Shill retrieves
+			these counters from all interfaces every 60 seconds
+			so this value returned might be slightly old.
+
 		uint16 ScanInterval [readwrite]
 
                         (Defined in WiFi and Cellular)
@@ -443,6 +457,14 @@ Properties	string Address [readonly]
 
 			Indicates that a device is currently performing a
 			network scan.
+
+		uint64 TransmitByteCount [readonly]
+
+			The number of bytes transmitted on this interface.
+			This value is persisted and accumulated across
+			connection manager restarts.  Shill retrieves
+			these counters from all interfaces every 60 seconds
+			so this value returned might be slightly old.
 
 		string Type [readonly]
 

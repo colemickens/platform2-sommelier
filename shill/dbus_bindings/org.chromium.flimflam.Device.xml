@@ -44,6 +44,7 @@
 			<arg type="s" direction="in"/>
 			<arg type="s" direction="in"/>
 		</method>
+		<method name="ResetByteCounters"/>
 		<signal name="PropertyChanged">
 			<arg type="s"/>
 			<arg type="v"/>

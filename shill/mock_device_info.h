@@ -32,6 +32,9 @@ class MockDeviceInfo : public DeviceInfo {
   MOCK_CONST_METHOD1(GetIndex, int(const std::string &interface_name));
   MOCK_CONST_METHOD2(GetMACAddress, bool(int interface_index,
                                          ByteString* address));
+  MOCK_CONST_METHOD3(GetByteCounts, bool(int interface_index,
+                                         uint64 *rx_bytes,
+                                         uint64 *tx_bytes));
   MOCK_CONST_METHOD2(GetFlags, bool(int interface_index,
                                     unsigned int* flags));
   MOCK_CONST_METHOD2(GetAddresses, bool(int interface_index,
