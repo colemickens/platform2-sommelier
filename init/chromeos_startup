@@ -52,12 +52,27 @@ fi
 # TODO(sosa@chromium.org) - Use kernel flag
 BOOT_SPLASH_PID=
 if [ -z "$IS_FACTORY_MODE" ]; then
-  # Moblin trick: Disable blinking cursor. Without this a splash screen
-  # will show a distinct cursor shape even when the cursor is set to none.
+  # Disable blinking cursor. Without this, a splash screen will show a distinct
+  # cursor shape even when the cursor is set to none.
   echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
+
+  # Use differently-sized images depending on the framebuffer width.
+  WIDTH=$(ply-image --print-resolution | cut -d ' ' -f 1)
+  ASSETS=/usr/share/chromeos-assets
+  ASSETS_200=$ASSETS/images_200_percent
+  ASSETS_100=$ASSETS/images_100_percent
+  # TODO(derat): Remove ASSETS_OLD and delete the files in images/ once
+  # DPI-specific Chromium assets are checked in.
+  ASSETS_OLD=$ASSETS/images
+  if [ $WIDTH -gt 1920 -a -e "$ASSETS_200/boot_splash_frame01.png" ]; then
+    BOOT_IMAGES="$ASSETS_200"/boot_splash_frame*.png
+  elif [ -e "$ASSETS_100/boot_splash_frame01.png" ]; then
+    BOOT_IMAGES="$ASSETS_100"/boot_splash_frame*.png
+  else
+    BOOT_IMAGES="$ASSETS_OLD"/boot_splash_frame*.png
+  fi
   ply-image --gamma /usr/share/color/bin/internal_display.bin \
-    --clear 0xfefefe \
-    /usr/share/chromeos-assets/images/boot_splash_frame*.png &
+    --clear 0xfefefe $BOOT_IMAGES &
   BOOT_SPLASH_PID="$!"
 fi
 
