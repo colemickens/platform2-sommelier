@@ -1448,6 +1448,12 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
 
     current_user_ = user;
     session_start_ = base::Time::Now();
+
+    // Sending up the PowerSupply information, so that the display gets it as
+    // soon as possible
+    SchedulePollPowerSupply();
+    power_supply_.GetPowerStatus(&power_status_, false);
+    HandlePollPowerSupply();
     DLOG(INFO) << "Session started for "
                << (current_user_.empty() ? "guest" : "non-guest user");
   } else if (current_session_state_ != state) {
