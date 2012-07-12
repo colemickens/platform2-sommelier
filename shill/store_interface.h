@@ -77,6 +77,19 @@ class StoreInterface {
                       const std::string &key,
                       int value) = 0;
 
+  // Gets a 64-bit unsigned integer |value| associated with |group|:|key|.
+  // Returns true on success and false on failure (including when the
+  // |group|:|key| is not present in the store).
+  virtual bool GetUint64(const std::string &group,
+                         const std::string &key,
+                         uint64 *value) const = 0;
+
+  // Associates |group|:|key| with a 64-bit unsigned integer |value|. Returns
+  // true on success, false otherwise.
+  virtual bool SetUint64(const std::string &group,
+                         const std::string &key,
+                         uint64 value) = 0;
+
   // Gets a string list |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
   // in the store).

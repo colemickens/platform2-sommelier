@@ -6,6 +6,7 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -248,6 +249,38 @@ bool KeyFileStore::SetInt(const string &group, const string &key, int value) {
   CHECK(key_file_);
   glib_->KeyFileSetInteger(key_file_, group.c_str(), key.c_str(), value);
   return true;
+}
+
+bool KeyFileStore::GetUint64(
+    const string &group, const string &key, uint64 *value) const {
+  // Read the value in as a string and then convert to uint64 because glib's
+  // g_key_file_set_uint64 appears not to work correctly on 32-bit platforms
+  // in unit tests.
+  string data_string;
+  if (!GetString(group, key, &data_string)) {
+    return false;
+  }
+
+  uint64 data;
+  if (!base::StringToUint64(data_string, &data)) {
+    SLOG(Storage, 10) << "Failed to convert (" << group << ":" << key << "): "
+                      << "string to uint64 conversion failed";
+    return false;
+  }
+
+  if (value) {
+    *value = data;
+  }
+
+  return true;
+}
+
+bool KeyFileStore::SetUint64(
+    const string &group, const string &key, uint64 value) {
+  // Convert the value to a string first, then save the value because glib's
+  // g_key_file_get_uint64 appears not to work on 32-bit platforms in our
+  // unit tests.
+  return SetString(group, key, base::Uint64ToString(value));
 }
 
 bool KeyFileStore::GetStringList(const string &group,

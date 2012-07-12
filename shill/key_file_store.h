@@ -67,6 +67,12 @@ class KeyFileStore : public StoreInterface {
   virtual bool SetInt(const std::string &group,
                       const std::string &key,
                       int value);
+  virtual bool GetUint64(const std::string &group,
+                         const std::string &key,
+                         uint64 *value) const;
+  virtual bool SetUint64(const std::string &group,
+                         const std::string &key,
+                         uint64 value);
   virtual bool GetStringList(const std::string &group,
                              const std::string &key,
                              std::vector<std::string> *value) const;
