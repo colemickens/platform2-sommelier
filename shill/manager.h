@@ -194,10 +194,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   GLib *glib() const { return glib_; }
   virtual const FilePath &run_path() const { return run_path_; }
 
-  std::vector<DeviceRefPtr>::iterator devices_begin() {
-    return devices_.begin();
-  }
-  std::vector<DeviceRefPtr>::iterator devices_end() { return devices_.end(); }
   void set_startup_profiles(const std::vector<std::string> &startup_profiles) {
     startup_profiles_ = startup_profiles;
   }

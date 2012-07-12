@@ -122,13 +122,6 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStoragePortalCheckInterval,
                        base::IntToString(props_.portal_check_interval_seconds));
-  vector<DeviceRefPtr>::iterator it;
-  for (it = manager()->devices_begin(); it != manager()->devices_end(); ++it) {
-    if (!(*it)->Save(storage())) {
-      LOG(ERROR) << "Could not save " << (*it)->UniqueName();
-      return false;
-    }
-  }
   return Profile::Save();
 }
 

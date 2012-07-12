@@ -172,13 +172,21 @@ void Manager::Start() {
 
 void Manager::Stop() {
   running_ = false;
-  // Persist profile, device, service information to disk.
-  vector<ProfileRefPtr>::iterator it;
-  for (it = profiles_.begin(); it != profiles_.end(); ++it) {
+  // Persist device information to disk;
+  vector<DeviceRefPtr>::iterator devices_it;
+  for (devices_it = devices_.begin(); devices_it != devices_.end();
+       ++devices_it) {
+    UpdateDevice(*devices_it);
+  }
+
+  // Persist profile, service information to disk.
+  vector<ProfileRefPtr>::iterator profiles_it;
+  for (profiles_it = profiles_.begin(); profiles_it != profiles_.end();
+       ++profiles_it) {
     // Since this happens in a loop, the current manager state is stored to
     // all default profiles in the stack.  This is acceptable because the
     // only time multiple default profiles are loaded are during autotests.
-    (*it)->Save();
+    (*profiles_it)->Save();
   }
 
   vector<ServiceRefPtr>::iterator services_it;
@@ -686,6 +694,7 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_forget.get() == it->get()) {
       SLOG(Manager, 2) << "Deregistered device: " << to_forget->UniqueName();
+      UpdateDevice(to_forget);
       to_forget->SetEnabled(false);
       devices_.erase(it);
       EmitDeviceProperties();

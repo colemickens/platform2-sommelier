@@ -133,7 +133,7 @@ TEST_F(DefaultProfileTest, Save) {
       .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), Flush()).WillOnce(Return(true));
 
-  EXPECT_CALL(*device_.get(), Save(storage.get())).WillOnce(Return(true));
+  EXPECT_CALL(*device_.get(), Save(storage.get())).Times(0);
   profile_->set_storage(storage.release());
 
   manager()->RegisterDevice(device_);

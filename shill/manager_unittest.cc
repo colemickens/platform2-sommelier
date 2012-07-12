@@ -292,11 +292,16 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
 
+  MockProfile *profile = new MockProfile(control_interface(), manager(), "");
+  AdoptProfile(manager(), profile);  // Passes ownership.
+
   EXPECT_CALL(*mock_devices_[0].get(), SetEnabled(false));
+  EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[0])));
   manager()->DeregisterDevice(mock_devices_[0]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
 
   EXPECT_CALL(*mock_devices_[1].get(), SetEnabled(false));
+  EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[1])));
   manager()->DeregisterDevice(mock_devices_[1]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
 }
@@ -1900,14 +1905,22 @@ TEST_F(ManagerTest, DefaultTechnology) {
   EXPECT_THAT(manager()->DefaultTechnology(&error), StrEq(expected_technology));
 }
 
-TEST_F(ManagerTest, DisconnectServicesOnStop) {
-  scoped_refptr<MockService> mock_service(
+TEST_F(ManagerTest, Stop) {
+  scoped_refptr<MockProfile> profile(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
+  AdoptProfile(manager(), profile);
+  scoped_refptr<MockService> service(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
                                 metrics(),
                                 manager()));
-  manager()->RegisterService(mock_service);
-  EXPECT_CALL(*mock_service.get(), Disconnect(_)).Times(1);
+  manager()->RegisterService(service);
+  manager()->RegisterDevice(mock_devices_[0]);
+  EXPECT_CALL(*profile.get(),
+              UpdateDevice(DeviceRefPtr(mock_devices_[0].get())))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*profile.get(), Save()).WillOnce(Return(true));
+  EXPECT_CALL(*service.get(), Disconnect(_)).Times(1);
   manager()->Stop();
 }
 
@@ -2338,6 +2351,5 @@ TEST_F(ManagerTest, DisableTechnology) {
   manager()->DisableTechnology(flimflam::kTypeEthernet, &error, callback);
   EXPECT_TRUE(error.IsOngoing());
 }
-
 
 }  // namespace shill
