@@ -138,6 +138,19 @@ if [ -f /root/.enable_new_oobe ] ; then
                   --enable-html5-camera"
 fi
 
+SSLKEYLOGFILE=/var/log/sslkeys.log
+if use_flag_is_set dangerous_sslkeylogfile &&
+   [ -f "$SSLKEYLOGFILE" ]; then
+  # Exporting this environment variable turns on a useful diagnostic
+  # feature in Chrome/NSS, which can allow users to decrypt their own
+  # SSL traffic later with e.g. Wireshark. We key this off of both a
+  # USE flag stored on rootfs (which, essentially, locks this feature
+  # off for normal systems), and, the logfile itself (which makes this
+  # feature easy to toggle on/off, on systems like mod-for-test
+  # images, where the USE flag has been customized to permit its use).
+  export SSLKEYLOGFILE
+fi
+
 # For recovery image, do NOT display OOBE or login window
 if [ -f /mnt/stateful_partition/.recovery ]; then
   # Verify recovery UI HTML file exists
