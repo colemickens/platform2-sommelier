@@ -527,14 +527,24 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
     return false;
   struct input_event events[64];
   gint fd = g_io_channel_unix_get_fd(source);
-  unsigned int read_size = read(fd, events, sizeof(struct input_event) * 64);
-  if (read_size < static_cast<int>(sizeof(struct input_event))) {
-    LOG(ERROR) << "failed reading";
+  ssize_t read_size = read(fd, events, sizeof(events));
+  if (read_size < 0) {
+    PLOG(ERROR) << "Read failed in Input::EventHandler";
     return true;
   }
+  ssize_t num_events = read_size / sizeof(struct input_event);
+  if (num_events < 1) {
+    LOG(ERROR) << "Short read in Input::EventHandler";
+    return true;
+  }
+  if ((num_events * sizeof(struct input_event)) != read_size) {
+    LOG(WARNING) << "Read size, not a discrete number of input_events in "
+                 << "Input::EventHandler";
+  }
+
   if (!input->handler_)
     return true;
-  for (unsigned int i = 0; i < read_size / sizeof(struct input_event); i++) {
+  for (ssize_t i = 0; i < num_events; i++) {
     InputType input_type = GetInputType(events[i]);
     if (input_type == INPUT_UNHANDLED)
       continue;
