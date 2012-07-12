@@ -53,7 +53,6 @@ static struct Log logs[] = {
   { "chrome_system_log", "/bin/cat /var/log/chrome/chrome" },
   { "cpu", "/usr/bin/uname -p" },
   { "cpuinfo", "/bin/cat /proc/cpuinfo" },
-  { "cras", "/usr/libexec/debugd/helpers/cras_server_info" },
   { "dmesg", "/bin/dmesg" },
   { "ec_info", "/bin/cat /var/log/ec_info.txt" },
   { "font_info", "/usr/share/userfeedback/scripts/font_info" },
