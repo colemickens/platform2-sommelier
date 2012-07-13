@@ -248,8 +248,6 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   // complexity here, and only developers do upgrade from USB.
   if (!RemovePackFiles("/var/lib/ureadahead")) {
     printf("RemovePackFiles Failed\n");
-    if (is_factory_install)
-      return false;
   }
 
   // Create a file indicating that the install is completed. The file
