@@ -9,6 +9,7 @@
 #include <cmath>
 
 #include "base/logging.h"
+#include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/idle_detector.h"
 #include "power_manager/metrics_constants.h"
@@ -896,5 +897,23 @@ TEST_F(DaemonTest, UpdateAveragedTimesWithSetThreshold) {
   EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_empty);
   EXPECT_EQ(0, status_.averaged_battery_time_to_full);
 }
+
+// TODO: Replace MockBacklight with TestBacklight from
+// external_backlight_controller_unittest.cc and enable this test for desktop
+// machines.  MockBacklight doesn't save and return the level that's set, so the
+// GetTargetBrightnessPercent() calls below always return a dummy value.
+#ifndef IS_DESKTOP
+// Test that the backlight is turned on when the power button is pressed:
+// http://crosbug.com/32570
+TEST_F(DaemonTest, TurnBacklightOnForPowerButton) {
+  backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE);
+  ASSERT_TRUE(
+      backlight_ctl_.SetCurrentBrightnessPercent(
+          0.0, BRIGHTNESS_CHANGE_USER_INITIATED, TRANSITION_INSTANT));
+  ASSERT_DOUBLE_EQ(0.0, backlight_ctl_.GetTargetBrightnessPercent());
+  daemon_.OnButtonEvent(kPowerButtonName, true, base::TimeTicks::Now());
+  EXPECT_GT(backlight_ctl_.GetTargetBrightnessPercent(), 0.0);
+}
+#endif
 
 }  // namespace power_manager

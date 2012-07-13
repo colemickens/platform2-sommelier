@@ -147,6 +147,7 @@ class Daemon : public BacklightControllerObserver,
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndCalculating);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithSetThreshold);
+  FRIEND_TEST(DaemonTest, TurnBacklightOnForPowerButton);
 
   enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
                    kIdleSuspend };
@@ -305,6 +306,12 @@ class Daemon : public BacklightControllerObserver,
   // Invoked by RetrieveSessionState() and also in response to
   // SessionStateChanged D-Bus signals.
   void OnSessionStateChange(const char* state, const char* user);
+
+  // Handles notification from powerm that a button has been pressed or
+  // released.
+  void OnButtonEvent(const std::string& button_name,
+                     bool down,
+                     const base::TimeTicks& timestamp);
 
   // Sends metrics in response to the power button being pressed or released.
   // Called by HandleButtonEventSignal().

@@ -21,7 +21,6 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "chromeos/glib/object.h"
-#include "cros/chromeos_wm_ipc_enums.h"
 #include "power_manager/activity_detector_interface.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/metrics_constants.h"
@@ -873,28 +872,8 @@ bool Daemon::HandleButtonEventSignal(DBusMessage* message) {
     return true;
   }
 
-  // TODO:  Stop sending key events to powerd.
-  if (strcmp(button_name, kPowerButtonName) == 0) {
-    // TODO: Use |timestamp| instead if libbase/libchrome ever gets updated to a
-    // recent-enough version that base::TimeTicks::FromInternalValue() is
-    // available: http://crosbug.com/16623
-    SendPowerButtonMetric(down, base::TimeTicks::Now());
-  } else if (strcmp(button_name, kLockButtonName) == 0) {
-    // Chrome handles lock button presses directly.
-  } else if (strcmp(button_name, power_manager::kKeyLeftCtrl) == 0 ||
-             strcmp(button_name, power_manager::kKeyRightCtrl) == 0) {
-    // Do nothing - this will acknowledge the event until we can remove it.
-  } else if (strcmp(button_name, power_manager::kKeyLeftShift) == 0 ||
-             strcmp(button_name, power_manager::kKeyRightShift) == 0) {
-    // Do nothing - this will acknowledge the event until we can remove it.
-  } else if (strcmp(button_name, power_manager::kKeyLeftAlt) == 0 ||
-             strcmp(button_name, power_manager::kKeyRightAlt) == 0) {
-    // Do nothing - this will acknowledge the event until we can remove it.
-  } else if (strcmp(button_name, kKeyF4) == 0) {
-    // Do nothing - this will acknowledge the event until we can remove it.
-  } else {
-    NOTREACHED() << "Unhandled button '" << button_name << "'";
-  }
+  OnButtonEvent(
+      button_name, down, base::TimeTicks::FromInternalValue(timestamp));
   return true;
 }
 
@@ -1469,6 +1448,20 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
                                   session_start_);
   }
   current_session_state_ = state;
+}
+
+void Daemon::OnButtonEvent(const std::string& button_name,
+                           bool down,
+                           const base::TimeTicks& timestamp) {
+  if (button_name == kPowerButtonName) {
+    // If the user manually set the brightness to 0, increase it a bit:
+    // http://crosbug.com/32570
+    if (backlight_controller_->IsBacklightActiveOff()) {
+      backlight_controller_->IncreaseBrightness(
+          BRIGHTNESS_CHANGE_USER_INITIATED);
+    }
+    SendPowerButtonMetric(down, timestamp);
+  }
 }
 
 void Daemon::SendPowerButtonMetric(bool down,
