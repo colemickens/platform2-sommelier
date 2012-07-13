@@ -61,15 +61,10 @@ if [ -z "$IS_FACTORY_MODE" ]; then
   ASSETS=/usr/share/chromeos-assets
   ASSETS_200=$ASSETS/images_200_percent
   ASSETS_100=$ASSETS/images_100_percent
-  # TODO(derat): Remove ASSETS_OLD and delete the files in images/ once
-  # DPI-specific Chromium assets are checked in.
-  ASSETS_OLD=$ASSETS/images
   if [ $WIDTH -gt 1920 -a -e "$ASSETS_200/boot_splash_frame01.png" ]; then
     BOOT_IMAGES="$ASSETS_200"/boot_splash_frame*.png
-  elif [ -e "$ASSETS_100/boot_splash_frame01.png" ]; then
-    BOOT_IMAGES="$ASSETS_100"/boot_splash_frame*.png
   else
-    BOOT_IMAGES="$ASSETS_OLD"/boot_splash_frame*.png
+    BOOT_IMAGES="$ASSETS_100"/boot_splash_frame*.png
   fi
   ply-image --gamma /usr/share/color/bin/internal_display.bin \
     --clear 0xfefefe $BOOT_IMAGES &
