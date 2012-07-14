@@ -13,7 +13,7 @@ Running unit tests
 - build the shill_unittest target
 - run the resulting shill_unittest binary
 - if you're using our ebuild scripts, you can do both by running
-  (chroot)$ FEATURES="test" emerge-x86-generic shill
+  (chroot)$ cros_run_unit_tests -p shill
 - run the unit tests from your host machine under gdb
   (chroot)$ FEATURES="test noclean" emerge-x86-generic shill
   (chroot)$ gdb_x86_local --board x86-generic \
@@ -24,7 +24,8 @@ Running unit tests
 
 - for an incremental workflow, you can setup like this:
   (chroot)$ cros_workon --board x86-generic shill
-- incrementally build like this:
+- incrementally build like this (note: this may not work if your
+  host architecture does not match that of the target):
   (chroot)$ CXXFLAGS=-g cros_workon_make --board x86-generic --reconf --test shill
 - and then debug tests like this:
   (chroot)$ gdb_x86_local --board x86-generic /path/to/checkout/src/platform/shill/shill_unittest
