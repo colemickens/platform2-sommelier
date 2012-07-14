@@ -328,6 +328,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   const WiFiServiceRefPtr &GetPendingService() {
     return wifi_->pending_service_;
   }
+  const base::CancelableClosure &GetPendingTimeout() {
+    return wifi_->pending_timeout_callback_;
+  }
   const base::CancelableClosure &GetScanTimer() {
     return wifi_->scan_timer_callback_;
   }
@@ -517,8 +520,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     StartWiFi();
     ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
     WiFiService *service(GetServices().begin()->get());
+    EXPECT_TRUE(GetPendingTimeout().IsCancelled());
     InitiateConnect(service);
+    EXPECT_FALSE(GetPendingTimeout().IsCancelled());
     ReportCurrentBSSChanged("bss0");
+    EXPECT_TRUE(GetPendingTimeout().IsCancelled());
     ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
 
     EXPECT_EQ(service, GetCurrentService());
@@ -1057,6 +1063,8 @@ TEST_F(WiFiMainTest, Connect) {
     InitiateConnect(service);
     EXPECT_EQ(static_cast<Service *>(service),
               wifi()->selected_service_.get());
+    EXPECT_EQ(Service::kStateAssociating, service->state());
+    EXPECT_FALSE(GetPendingTimeout().IsCancelled());
   }
 }
 
@@ -1106,6 +1114,7 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithCurrent) {
   EXPECT_EQ(service0, GetCurrentService());
   // |pending_service_| is updated immediately.
   EXPECT_TRUE(GetPendingService() == NULL);
+  EXPECT_TRUE(GetPendingTimeout().IsCancelled());
 }
 
 TEST_F(WiFiMainTest, DisconnectCurrentService) {
@@ -1147,6 +1156,29 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
 
   EXPECT_EQ(service0, GetCurrentService());
   EXPECT_EQ(service1, GetPendingService());
+  EXPECT_FALSE(GetPendingTimeout().IsCancelled());
+}
+
+TEST_F(WiFiMainTest, TimeoutPendingService) {
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  const base::CancelableClosure &pending_timeout = GetPendingTimeout();
+  EXPECT_TRUE(pending_timeout.IsCancelled());
+
+  InSequence seq;
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
+  EXPECT_CALL(*service, SetState(Service::kStateAssociating));
+  InitiateConnect(service);
+  EXPECT_FALSE(pending_timeout.IsCancelled());
+  EXPECT_EQ(service, GetPendingService());
+
+  EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
+  pending_timeout.callback().Run();
+  EXPECT_EQ(NULL, GetPendingService().get());
+
+  // Verify expectations now, because WiFi may report other state changes
+  // when WiFi is Stop()-ed (during TearDown()).
+  Mock::VerifyAndClearExpectations(service.get());
 }
 
 TEST_F(WiFiMainTest, DisconnectInvalidService) {
@@ -1562,6 +1594,7 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
+  EXPECT_CALL(*service.get(), SetState(Service::kStateAssociating));
   EXPECT_CALL(*service.get(), SetState(Service::kStateConfiguring));
   InitiateConnect(service);
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);

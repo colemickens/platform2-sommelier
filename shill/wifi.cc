@@ -81,6 +81,7 @@ const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
 const time_t WiFi::kRescanIntervalSeconds = 1;
 const int WiFi::kNumFastScanAttempts = 3;
 const int WiFi::kFastScanIntervalSeconds = 10;
+const int WiFi::kPendingTimeoutSeconds = 15;
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -194,6 +195,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   current_service_ = NULL;            // breaks a reference cycle
   pending_service_ = NULL;            // breaks a reference cycle
   scan_pending_ = false;
+  StopPendingTimer();
 
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
@@ -289,14 +291,13 @@ void WiFi::ConnectTo(WiFiService *service,
   }
 
   if (pending_service_ && pending_service_ != service) {
+    // Since wpa_supplicant has not yet set CurrentBSS, we can't depend
+    // on this to drive the service state back to idle.  Do that here.
+    pending_service_->SetState(Service::kStateIdle);
     DisconnectFrom(pending_service_);
   }
 
   try {
-    // TODO(quiche): Set a timeout here. In the normal case, we expect
-    // that, if wpa_supplicant fails to connect, it will eventually send
-    // a signal that its CurrentBSS has changed. But there may be cases
-    // where the signal is not sent. (crosbug.com/23206)
     const uint32_t scan_ssid = 1;  // "True": Use directed probe.
     service_params[wpa_supplicant::kNetworkPropertyScanSSID].writer().
         append_uint32(scan_ssid);
@@ -309,7 +310,7 @@ void WiFi::ConnectTo(WiFiService *service,
   }
 
   supplicant_interface_proxy_->SelectNetwork(network_path);
-  pending_service_ = service;
+  SetPendingService(service);
   CHECK(current_service_.get() != pending_service_.get());
 
   // SelectService here (instead of in LinkEvent, like Ethernet), so
@@ -352,7 +353,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     return;
   }
 
-  pending_service_ = NULL;
+  SetPendingService(NULL);
 
   if (!supplicant_present_) {
     LOG(INFO) << "In " << __func__ << "(): "
@@ -540,7 +541,14 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
     HandleRoam(new_bss);
   }
 
-  SelectService(current_service_);
+  // If we are selecting a new service, or if we're clearing selection
+  // of a something other than the pending service, call SelectService.
+  // Otherwise skip SelectService, since this will cause the pending
+  // service to be marked as Idle.
+  if (current_service_ || selected_service() != pending_service_) {
+    SelectService(current_service_);
+  }
+
   // Invariant check: a Service can either be current, or pending, but
   // not both.
   CHECK(current_service_.get() != pending_service_.get() ||
@@ -596,7 +604,7 @@ void WiFi::HandleDisconnect() {
     // The attempt to connect to |pending_service_| failed. Clear
     // |pending_service_|, to indicate we're no longer in the middle
     // of a connect request.
-    pending_service_ = NULL;
+    SetPendingService(NULL);
   } else if (pending_service_.get()) {
     // We've attributed the disconnection to what was the
     // |current_service_|, rather than the |pending_service_|.
@@ -689,7 +697,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     // Boring case: we've connected to the service we asked
     // for. Simply update |current_service_| and |pending_service_|.
     current_service_ = service;
-    pending_service_ = NULL;
+    SetPendingService(NULL);
     return;
   }
 
@@ -1317,6 +1325,34 @@ void WiFi::ScanTimerHandler() {
     }
   }
   StartScanTimer();
+}
+
+void WiFi::StartPendingTimer() {
+  pending_timeout_callback_.Reset(
+      Bind(&WiFi::PendingTimeoutHandler, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(pending_timeout_callback_.callback(),
+                                kPendingTimeoutSeconds * 1000);
+}
+
+void WiFi::StopPendingTimer() {
+  pending_timeout_callback_.Cancel();
+}
+
+void WiFi::SetPendingService(const WiFiServiceRefPtr &service) {
+  if (service) {
+    service->SetState(Service::kStateAssociating);
+    StartPendingTimer();
+  } else if (pending_service_) {
+    StopPendingTimer();
+  }
+  pending_service_ = service;
+}
+
+void WiFi::PendingTimeoutHandler() {
+  LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
+  CHECK(pending_service_);
+  pending_service_->SetFailure(Service::kFailureOutOfRange);
+  DisconnectFrom(pending_service_);
 }
 
 void WiFi::OnSupplicantAppear(const string &/*owner*/) {
