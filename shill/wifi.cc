@@ -230,12 +230,6 @@ void WiFi::Scan(Error */*error*/) {
   dispatcher()->PostTask(Bind(&WiFi::ScanTask, weak_ptr_factory_.GetWeakPtr()));
 }
 
-bool WiFi::IsConnectingTo(const WiFiService &service) const {
-  return pending_service_ == &service ||
-      (current_service_ == &service &&
-       service.state() != Service::kStateConnected);
-}
-
 void WiFi::BSSAdded(const ::DBus::Path &path,
                     const map<string, ::DBus::Variant> &properties) {
   // Called from a D-Bus signal handler, and may need to send a D-Bus
@@ -717,6 +711,14 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     // can. Update |current_service_| to keep it in sync with
     // supplicant.
     current_service_ = service;
+
+    // If this service isn't already marked as actively connecting (likely,
+    // since this service is a bit of a surprise) set the service as
+    // associating.
+    if (!current_service_->IsConnecting()) {
+      current_service_->SetState(Service::kStateAssociating);
+    }
+
     return;
   }
 

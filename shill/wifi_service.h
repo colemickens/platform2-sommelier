@@ -47,7 +47,6 @@ class WiFiService : public Service {
   // Inherited from Service.
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
-  virtual bool IsConnecting() const;
   virtual bool Is8021x() const;
 
   void AddEndpoint(const WiFiEndpointConstRefPtr &endpoint);

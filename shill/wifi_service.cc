@@ -148,13 +148,6 @@ bool WiFiService::IsAutoConnectable(const char **reason) const {
   return true;
 }
 
-bool WiFiService::IsConnecting() const {
-  // WiFi does not move us into the associating state until it gets
-  // feedback from wpa_supplicant. So, to answer whether or
-  // not we're connecting, we consult with |wifi_|.
-  return wifi_->IsConnectingTo(*this);
-}
-
 void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr &endpoint) {
   DCHECK(endpoint->ssid() == ssid());
   endpoints_.insert(endpoint);
