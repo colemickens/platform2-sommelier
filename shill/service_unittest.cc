@@ -297,11 +297,16 @@ TEST_F(ServiceTest, Unload) {
 TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kFailureUnknown, service_->failure());
+  const string unknown_error(
+      Service::ConnectFailureToString(Service::kFailureUnknown));
+  EXPECT_EQ(unknown_error, service_->error());
 
   ServiceRefPtr service_ref(service_);
 
   EXPECT_CALL(*dynamic_cast<ServiceMockAdaptor *>(service_->adaptor_.get()),
               EmitStringChanged(flimflam::kStateProperty, _)).Times(7);
+  EXPECT_CALL(*dynamic_cast<ServiceMockAdaptor *>(service_->adaptor_.get()),
+              EmitStringChanged(flimflam::kErrorProperty, _)).Times(4);
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateConnected);
   // A second state change shouldn't cause another update
@@ -319,11 +324,15 @@ TEST_F(ServiceTest, State) {
   EXPECT_GT(service_->failed_time_, 0);
   EXPECT_EQ(Service::kStateFailure, service_->state());
   EXPECT_EQ(Service::kFailureOutOfRange, service_->failure());
+  const string out_of_range_error(
+      Service::ConnectFailureToString(Service::kFailureOutOfRange));
+  EXPECT_EQ(out_of_range_error, service_->error());
 
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateConnected);
   EXPECT_FALSE(service_->IsFailed());
   EXPECT_EQ(service_->failed_time_, 0);
+  EXPECT_EQ(unknown_error, service_->error());
 
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetFailureSilent(Service::kFailurePinMissing);
@@ -331,6 +340,9 @@ TEST_F(ServiceTest, State) {
   EXPECT_GT(service_->failed_time_, 0);
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_EQ(Service::kFailurePinMissing, service_->failure());
+  const string pin_missing_error(
+      Service::ConnectFailureToString(Service::kFailurePinMissing));
+  EXPECT_EQ(pin_missing_error, service_->error());
 
   // If the Service has a Profile, the profile should be saved when
   // the service enters kStateConnected. (The case where the service

@@ -91,15 +91,20 @@ class Service : public base::RefCounted<Service> {
 
   enum ConnectFailure {
     kFailureUnknown,
-    kFailureActivationFailure,
+    kFailureActivation,
     kFailureOutOfRange,
     kFailurePinMissing,
-    kFailureConfigurationFailed,
-    kFailureBadCredentials,
+    kFailureDHCP,
+    kFailureBadPassphrase,
     kFailureNeedEVDO,
     kFailureNeedHomeNetwork,
-    kFailureOTASPFailure,
-    kFailureAAAFailure,
+    kFailureOTASP,
+    kFailureAAA,
+    kFailureBadWEPKey,
+    kFailureConnect,
+    kFailureDNSLookup,
+    kFailureHTTPGet,
+    kFailurePPPAuth,
     kFailureMax
   };
   enum ConnectState {
@@ -456,6 +461,10 @@ class Service : public base::RefCounted<Service> {
 
   // Ignore |parameter| when performing a Configure() operation.
   void IgnoreParameterForConfigure(const std::string &parameter);
+
+  // Update the service's string-based "Error" RPC property based on the
+  // failure_ enum.
+  void UpdateErrorProperty();
 
   // Property accessors reserved for subclasses
   EventDispatcher *dispatcher() const { return dispatcher_; }

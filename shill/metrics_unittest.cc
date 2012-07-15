@@ -112,9 +112,9 @@ TEST_F(MetricsTest, TimeToOnline) {
 
 TEST_F(MetricsTest, ServiceFailure) {
   EXPECT_CALL(*service_.get(), failure())
-      .WillRepeatedly(Return(Service::kFailureBadCredentials));
+      .WillRepeatedly(Return(Service::kFailureBadPassphrase));
   EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricNetworkServiceErrors,
-                                      Service::kFailureBadCredentials,
+                                      Service::kFailureBadPassphrase,
                                       Metrics::kMetricNetworkServiceErrorsMax));
   metrics_.RegisterService(service_);
   metrics_.NotifyServiceStateChanged(service_, Service::kStateFailure);

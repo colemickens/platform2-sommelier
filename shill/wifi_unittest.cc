@@ -2183,7 +2183,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailure) {
   ReportStateChanged(wpa_supplicant::kInterfaceState4WayHandshake);
   EXPECT_FALSE(service->has_ever_connected());
 
-  EXPECT_CALL(*service, SetFailure(Service::kFailureBadCredentials));
+  EXPECT_CALL(*service, SetFailure(Service::kFailureBadPassphrase));
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("Bad passphrase?")));
   ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);

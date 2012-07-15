@@ -107,6 +107,7 @@ Service::Service(ControlInterface *control_interface,
       auto_connect_(false),
       check_portal_(kCheckPortalAuto),
       connectable_(false),
+      error_(ConnectFailureToString(failure_)),
       explicitly_disconnected_(false),
       favorite_(false),
       priority_(kPriorityNone),
@@ -289,6 +290,7 @@ void Service::SetState(ConnectState state) {
     has_ever_connected_ = true;
     SaveToProfile();
   }
+  UpdateErrorProperty();
   manager_->UpdateService(this);
   metrics_->NotifyServiceStateChanged(this, state);
   adaptor_->EmitStringChanged(flimflam::kStateProperty, GetStateString());
@@ -297,6 +299,7 @@ void Service::SetState(ConnectState state) {
 void Service::SetFailure(ConnectFailure failure) {
   failure_ = failure;
   failed_time_ = time(NULL);
+  UpdateErrorProperty();
   SetState(kStateFailure);
 }
 
@@ -305,6 +308,7 @@ void Service::SetFailureSilent(ConnectFailure failure) {
   // |failed_time_|.
   SetState(kStateIdle);
   failure_ = failure;
+  UpdateErrorProperty();
   failed_time_ = time(NULL);
 }
 
@@ -570,24 +574,34 @@ const char *Service::ConnectFailureToString(const ConnectFailure &state) {
   switch (state) {
     case kFailureUnknown:
       return "Unknown";
-    case kFailureActivationFailure:
-      return "Activation Failure";
-    case kFailureOutOfRange:
-      return "Out of range";
-    case kFailurePinMissing:
-      return "PIN missing";
-    case kFailureConfigurationFailed:
-      return "Configuration Failed";
-    case kFailureBadCredentials:
-      return "Bad Credentials";
+    case kFailureAAA:
+      return flimflam::kErrorAaaFailed;
+    case kFailureActivation:
+      return flimflam::kErrorActivationFailed;
+    case kFailureBadPassphrase:
+      return flimflam::kErrorBadPassphrase;
+    case kFailureBadWEPKey:
+      return flimflam::kErrorBadWEPKey;
+    case kFailureConnect:
+      return flimflam::kErrorConnectFailed;
+    case kFailureDNSLookup:
+      return flimflam::kErrorDNSLookupFailed;
+    case kFailureDHCP:
+      return flimflam::kErrorDhcpFailed;
+    case kFailureHTTPGet:
+      return flimflam::kErrorHTTPGetFailed;
     case kFailureNeedEVDO:
-      return "Need EVDO";
+      return flimflam::kErrorNeedEvdo;
     case kFailureNeedHomeNetwork:
-      return "Need Home Network";
-    case kFailureOTASPFailure:
-      return "OTASP Failure";
-    case kFailureAAAFailure:
-      return "AAA Failure";
+      return flimflam::kErrorNeedHomeNetwork;
+    case kFailureOTASP:
+      return flimflam::kErrorOtaspFailed;
+    case kFailureOutOfRange:
+      return flimflam::kErrorOutOfRange;
+    case kFailurePinMissing:
+      return flimflam::kErrorPinMissing;
+    case kFailurePPPAuth:
+      return flimflam::kErrorPppAuthFailed;
     case kFailureMax:
       return "Max failure error code";
   }
@@ -1070,6 +1084,15 @@ void Service::SetStrength(uint8 strength) {
   }
   strength_ = strength;
   adaptor_->EmitUint8Changed(flimflam::kSignalStrengthProperty, strength);
+}
+
+void Service::UpdateErrorProperty() {
+  const string error(ConnectFailureToString(failure_));
+  if (error == error_) {
+    return;
+  }
+  error_ = error;
+  adaptor_->EmitStringChanged(flimflam::kErrorProperty, error);
 }
 
 }  // namespace shill

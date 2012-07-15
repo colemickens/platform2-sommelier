@@ -585,12 +585,14 @@ void WiFi::HandleDisconnect() {
                 << affected_service->friendly_name();
   if (SuspectCredentials(*affected_service)) {
     // If we suspect bad credentials, set failure, to trigger an error
-    // mole in Chrome. Failure is a transient state, and we'll
-    // transition out of it immediately (after this if block).
-    affected_service->SetFailure(Service::kFailureBadCredentials);
+    // mole in Chrome. Failure is a transient state, so we'll
+    // transition out of it immediately after with SetFailureSilent.
+    affected_service->SetFailure(Service::kFailureBadPassphrase);
+    affected_service->SetFailureSilent(Service::kFailureBadPassphrase);
     LOG(ERROR) << "Connection failure during 4-Way Handshake. Bad passphrase?";
+  } else {
+    affected_service->SetFailureSilent(Service::kFailureUnknown);
   }
-  affected_service->SetFailureSilent(Service::kFailureUnknown);
   affected_service->NotifyCurrentEndpoint(NULL);
   metrics()->NotifyServiceDisconnect(affected_service);
 
