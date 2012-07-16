@@ -330,7 +330,7 @@ mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 if [ "$CROS_DEBUG" = "1" -o -f /root/.dev_mode ]; then
   # Capture a snapshot of "normal" mount state here, for auditability,
   # before we start applying devmode-specific changes.
-  mount > /var/log/mount_options.log
+  cat /proc/mounts > /var/log/mount_options.log
   # Create dev_image directory in base images in developer mode.
   if [ ! -d /mnt/stateful_partition/dev_image ]; then
     mkdir -p -m 0755 /mnt/stateful_partition/dev_image
