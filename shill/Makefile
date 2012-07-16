@@ -152,6 +152,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	ipconfig_dbus_adaptor.o \
 	key_file_store.o \
 	key_value_store.o \
+	link_monitor.o \
 	l2tp_ipsec_driver.o \
 	manager.o \
 	manager_dbus_adaptor.o \
@@ -261,6 +262,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	key_file_store_unittest.o \
 	key_value_store_unittest.o \
 	l2tp_ipsec_driver_unittest.o \
+	link_monitor_unittest.o \
 	manager_unittest.o \
 	metrics_unittest.o \
 	mock_adaptors.o \
