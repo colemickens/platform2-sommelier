@@ -455,6 +455,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
 
 void Service::InitializeTpmComplete(bool status, bool took_ownership) {
   if (took_ownership) {
+    gboolean mounted = FALSE;
     timer_collection_->UpdateTimer(TimerCollection::kTpmTakeOwnershipTimer,
                                    false);
     // When TPM initialization finishes, we need to tell every Mount to
@@ -479,6 +480,12 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     // Initialize the install-time locked attributes since we
     // can't do it prior to ownership.
     InitializeInstallAttributes(true);
+    // If we mounted before the TPM finished initialization, we must
+    // finalize the install attributes now too, otherwise it takes a
+    // full re-login cycle to finalize.
+    if (IsMounted(&mounted, NULL) && mounted &&
+        install_attrs_->is_first_install())
+      install_attrs_->Finalize();
   }
   // The event source will free this object
   TpmInitStatus* tpm_init_status = new TpmInitStatus();
