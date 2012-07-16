@@ -376,6 +376,14 @@ void WiFiService::Connect(Error *error) {
   params[wpa_supplicant::kNetworkPropertyMode].writer().
       append_uint32(WiFiEndpoint::ModeStringToUint(mode_));
 
+  if (mode_ == flimflam::kModeAdhoc && frequency_ != 0) {
+    // Frequency is required in order to successfully conntect to an IBSS
+    // with wpa_supplicant.  If we have one from our endpoint, insert it
+    // here.
+    params[wpa_supplicant::kNetworkPropertyFrequency].writer().
+        append_int32(frequency_);
+  }
+
   if (Is8021x()) {
     // Is EAP key management is not set, set to a default.
     if (GetEAPKeyManagement().empty())

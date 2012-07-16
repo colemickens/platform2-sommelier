@@ -69,6 +69,7 @@ const char kNetworkPropertyEapPin[] = "pin";
 const char kNetworkPropertyEapSubjectMatch[] = "subject_match";
 const char kNetworkPropertyEngine[] = "engine";
 const char kNetworkPropertyEngineId[] = "engine_id";
+const char kNetworkPropertyFrequency[] = "frequency";
 const char kNetworkPropertyMode[]   = "mode";
 const char kNetworkPropertyScanSSID[] = "scan_ssid";
 const char kNetworkPropertySSID[]   = "ssid";

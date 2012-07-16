@@ -331,6 +331,11 @@ MATCHER(EAPSecurityArgs, "") {
       ContainsKey(arg, wpa_supplicant::kNetworkPropertyCaPath);
 }
 
+MATCHER_P(FrequencyArg, has_arg, "") {
+  return has_arg ==
+      ContainsKey(arg, wpa_supplicant::kNetworkPropertyFrequency);
+}
+
 TEST_F(WiFiServiceTest, ConnectTaskWPA) {
   vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
@@ -402,6 +407,69 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
   wifi_service->set_eap(eap);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), EAPSecurityArgs()));
+  wifi_service->Connect(NULL);
+}
+
+TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiEndpointRefPtr endpoint_nofreq =
+      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint_freq =
+      MakeEndpoint("a", "00:00:00:00:00:02", 2412, 0);
+
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityNone,
+                                                   false);
+  wifi_service->AddEndpoint(endpoint_freq);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), FrequencyArg(false)));
+  wifi_service->Connect(NULL);
+
+  wifi_service = new WiFiService(control_interface(),
+                                 dispatcher(),
+                                 metrics(),
+                                 manager(),
+                                 wifi(),
+                                 ssid,
+                                 flimflam::kModeAdhoc,
+                                 flimflam::kSecurityNone,
+                                 false);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), FrequencyArg(false)));
+  wifi_service->Connect(NULL);
+
+  wifi_service = new WiFiService(control_interface(),
+                                 dispatcher(),
+                                 metrics(),
+                                 manager(),
+                                 wifi(),
+                                 ssid,
+                                 flimflam::kModeAdhoc,
+                                 flimflam::kSecurityNone,
+                                 false);
+  wifi_service->AddEndpoint(endpoint_nofreq);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), FrequencyArg(false)));
+  wifi_service->Connect(NULL);
+
+  wifi_service = new WiFiService(control_interface(),
+                                 dispatcher(),
+                                 metrics(),
+                                 manager(),
+                                 wifi(),
+                                 ssid,
+                                 flimflam::kModeAdhoc,
+                                 flimflam::kSecurityNone,
+                                 false);
+  wifi_service->AddEndpoint(endpoint_freq);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), FrequencyArg(true)));
   wifi_service->Connect(NULL);
 }
 

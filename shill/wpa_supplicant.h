@@ -70,6 +70,7 @@ extern const char kNetworkPropertyEapPin[];
 extern const char kNetworkPropertyEapSubjectMatch[];
 extern const char kNetworkPropertyEngine[];
 extern const char kNetworkPropertyEngineId[];
+extern const char kNetworkPropertyFrequency[];
 extern const char kNetworkPropertyMode[];
 extern const char kNetworkPropertySSID[];
 extern const char kNetworkPropertyScanSSID[];
