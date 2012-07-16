@@ -1901,6 +1901,17 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     EXPECT_EQ(StringPrintf("%d", WiFi::kDefaultScanIntervalSeconds),
               elements[3]);
   }
+  {
+    // No scan method, simply returns without appending properties
+    EXPECT_TRUE(SetBgscanMethod(wpa_supplicant::kNetworkBgscanMethodNone));
+    std::map<std::string, DBus::Variant> params;
+    AppendBgscan(service.get(), &params);
+    string config_string;
+    EXPECT_FALSE(
+        DBusProperties::GetString(params,
+                                  wpa_supplicant::kNetworkPropertyBgscan,
+                                  &config_string));
+  }
 }
 
 TEST_F(WiFiMainTest, StateAndIPIgnoreLinkEvent) {
