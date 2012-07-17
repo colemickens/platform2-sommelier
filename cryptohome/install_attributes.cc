@@ -284,7 +284,8 @@ Value* InstallAttributes::GetStatus() {
   DictionaryValue* dv = new DictionaryValue();
   dv->SetBoolean("initialized", is_initialized());
   dv->SetInteger("version", version());
-  dv->SetInteger("lockbox_index", kLockboxIndex);
+  dv->SetInteger("lockbox_index", lockbox()->nvram_index());
+  dv->SetInteger("lockbox_nvram_version", lockbox()->nvram_version());
   dv->SetBoolean("secure", is_secure());
   dv->SetBoolean("invalid", is_invalid());
   dv->SetBoolean("first_install", is_first_install());

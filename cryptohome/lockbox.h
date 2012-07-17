@@ -142,6 +142,10 @@ class Lockbox {
   // Does NOT take ownership of the pointer.
   virtual void set_process(chromeos::Process* p) { process_ = p; }
 
+  // Return NVRAM index.
+  virtual uint32_t nvram_index() const { return nvram_index_; }
+  // Return NVRAM version.
+  virtual uint32_t nvram_version() const { return nvram_version_; }
   // Replaces the default NVRAM structure version.
   virtual void set_nvram_version(uint32_t version) { nvram_version_ = version; }
 
