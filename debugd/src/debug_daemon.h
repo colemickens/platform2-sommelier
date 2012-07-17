@@ -13,6 +13,7 @@
 #include "adaptors/org.chromium.debugd.h"
 #include "debug_logs_tool.h"
 #include "debug_mode_tool.h"
+#include "example_tool.h"
 #include "log_tool.h"
 #include "modem_status_tool.h"
 #include "network_status_tool.h"
@@ -91,6 +92,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   virtual void SetDebugMode(const std::string& subsystem, DBus::Error& error);
   virtual std::string GetLog(const std::string& name, DBus::Error& error); // NOLINT
   virtual std::map<std::string, std::string> GetAllLogs(DBus::Error& error); // NOLINT
+  virtual std::string GetExample(DBus::Error& error); // NOLINT
 
  private:
   DBus::Connection* dbus_;
@@ -98,13 +100,14 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
 
   DebugLogsTool* debug_logs_tool_;
   DebugModeTool* debug_mode_tool_;
+  ExampleTool* example_tool_;
   LogTool* log_tool_;
   ModemStatusTool* modem_status_tool_;
   NetworkStatusTool* network_status_tool_;
   PingTool* ping_tool_;
   RouteTool* route_tool_;
-  SystraceTool *systrace_tool_;
-  TracePathTool *tracepath_tool_;
+  SystraceTool* systrace_tool_;
+  TracePathTool* tracepath_tool_;
 };
 
 };  // namespace debugd

@@ -190,5 +190,11 @@
       </tp:docstring>
       <arg name="logs" type="a{ss}" direction="out" />
     </method>
+    <method name="GetExample">
+      <tp:docstring>
+        Example method. See /doc/hacking.md.
+      </tp:docstring>
+      <arg name="result" type="s" direction="out" />
+    </method>
   </interface>
 </node>

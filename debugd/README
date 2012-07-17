@@ -1,4 +1,5 @@
 Documentation for debugd is stored in /doc.
 
-/doc/design: High-level design, goals, interactions.
-/doc/implementation: Lower-level implementation.
+/doc/design.md: High-level design, goals, interactions.
+/doc/implementation.md: Lower-level implementation.
+/doc/hacking.md: How to hack on debugd

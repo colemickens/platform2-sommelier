@@ -20,6 +20,7 @@ DebugDaemon::DebugDaemon(DBus::Connection* connection,
 bool DebugDaemon::Init() {
   debug_logs_tool_ = new DebugLogsTool();
   debug_mode_tool_ = new DebugModeTool(dbus_);
+  example_tool_ = new ExampleTool();
   modem_status_tool_ = new ModemStatusTool();
   network_status_tool_ = new NetworkStatusTool();
   ping_tool_ = new PingTool();
@@ -117,6 +118,10 @@ std::string DebugDaemon::GetLog(const std::string& name, DBus::Error& error) {
 
 std::map<std::string, std::string> DebugDaemon::GetAllLogs(DBus::Error& error) { // NOLINT dbuscxx
   return log_tool_->GetAllLogs(error);
+}
+
+std::string DebugDaemon::GetExample(DBus::Error& error) { // NOLINT dbuscxx
+  return example_tool_->GetExample(error);
 }
 
 };  // namespace debugd
