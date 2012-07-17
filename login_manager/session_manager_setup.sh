@@ -122,15 +122,9 @@ export BROWSER=${CHROME}
 USER_ID=$(id -u ${USER})
 
 SKIP_OOBE=
-# For test automation.  If file exists, do not remember last username and skip
-# out-of-box-experience windows except the login window
-if [ -f /root/.forget_usernames ] ; then
-  rm -f "${DATA_DIR}/Local State"
-  SKIP_OOBE="--login-screen=login"
-fi
 
-# To always force OOBE. This works ok with test images as they
-# are always started with OOBE.
+# To always force OOBE. This works ok with test images so that they
+# always start with OOBE.
 if [ -f /root/.test_repeat_oobe ] ; then
   rm -f "${DATA_DIR}/.oobe_completed"
   rm -f "${DATA_DIR}/Local State"
