@@ -13,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/ip_address.h"
 #include "shill/ipconfig.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
@@ -20,7 +21,6 @@
 namespace shill {
 
 class DeviceInfo;
-class IPAddress;
 class RTNLHandler;
 class Resolver;
 class RoutingTable;
@@ -77,6 +77,7 @@ class Connection : public base::RefCounted<Connection> {
   virtual void SetIsDefault(bool is_default);
 
   virtual const std::string &interface_name() const { return interface_name_; }
+  virtual int interface_index() const { return interface_index_; }
   virtual const std::vector<std::string> &dns_servers() const {
     return dns_servers_;
   }
@@ -98,6 +99,7 @@ class Connection : public base::RefCounted<Connection> {
   friend class base::RefCounted<Connection>;
 
   virtual ~Connection();
+  virtual bool CreateGatewayRoute();
 
  private:
   friend class ConnectionTest;
@@ -137,6 +139,7 @@ class Connection : public base::RefCounted<Connection> {
   base::WeakPtrFactory<Connection> weak_ptr_factory_;
 
   bool is_default_;
+  bool has_broadcast_domain_;
   int routing_request_count_;
   int interface_index_;
   const std::string interface_name_;
@@ -144,6 +147,8 @@ class Connection : public base::RefCounted<Connection> {
   std::vector<std::string> dns_servers_;
   std::vector<std::string> dns_domain_search_;
   std::string ipconfig_rpc_identifier_;
+  IPAddress local_;
+  IPAddress gateway_;
 
   // A binder to a lower Connection that this Connection depends on, if any.
   Binder lower_binder_;

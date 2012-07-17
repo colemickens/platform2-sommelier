@@ -26,6 +26,7 @@ class MockConnection : public Connection {
   MOCK_CONST_METHOD0(interface_name, const std::string &());
   MOCK_CONST_METHOD0(dns_servers, const std::vector<std::string> &());
   MOCK_METHOD1(RequestHostRoute, bool(const IPAddress &destination));
+  MOCK_METHOD0(CreateGatewayRoute, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockConnection);

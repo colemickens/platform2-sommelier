@@ -30,6 +30,9 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD3(ConfigureRoutes, bool(int interface_index,
                                      const IPConfigRefPtr &ipconfig,
                                      uint32 metric));
+  MOCK_METHOD3(CreateLinkRoute, bool(int interface_index,
+                                     const IPAddress &local_address,
+                                     const IPAddress &remote_address));
   MOCK_METHOD1(FlushRoutes, void(int interface_index));
   MOCK_METHOD1(FlushRoutesWithTag, void(int tag));
   MOCK_METHOD0(FlushCache, bool());

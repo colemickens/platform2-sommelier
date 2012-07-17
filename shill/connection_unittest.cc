@@ -29,6 +29,7 @@ using testing::_;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
 using testing::StrictMock;
 using testing::Test;
 
@@ -105,6 +106,18 @@ class ConnectionTest : public Test {
   bool PinHostRoute(ConnectionRefPtr connection,
                     const IPConfig::Properties &properties) {
     return connection->PinHostRoute(properties);
+  }
+
+  const IPAddress &GetLocalAddress(ConnectionRefPtr connection) {
+    return connection->local_;
+  }
+
+  const IPAddress &GetGatewayAddress(ConnectionRefPtr connection) {
+    return connection->gateway_;
+  }
+
+  bool GetHasBroadcastDomain(ConnectionRefPtr connection) {
+    return connection->has_broadcast_domain_;
   }
 
  protected:
@@ -190,6 +203,22 @@ TEST_F(ConnectionTest, AddConfig) {
                               ipconfig_,
                               Connection::kDefaultMetric));
   connection_->UpdateFromIPConfig(ipconfig_);
+  IPAddress test_local_address(local_address_);
+  test_local_address.set_prefix(kPrefix0);
+  EXPECT_TRUE(test_local_address.Equals(GetLocalAddress(connection_)));
+  EXPECT_TRUE(gateway_address_.Equals(GetGatewayAddress(connection_)));
+  EXPECT_TRUE(GetHasBroadcastDomain(connection_));
+
+  EXPECT_CALL(routing_table_,
+              CreateLinkRoute(kTestDeviceInterfaceIndex0,
+                              IsIPAddress(local_address_, kPrefix0),
+                              IsIPAddress(gateway_address_, 0)))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false));
+  EXPECT_TRUE(connection_->CreateGatewayRoute());
+  EXPECT_FALSE(connection_->CreateGatewayRoute());
+  connection_->has_broadcast_domain_ = false;
+  EXPECT_FALSE(connection_->CreateGatewayRoute());
 
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                                Connection::kDefaultMetric));
@@ -243,6 +272,7 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
                               ipconfig_,
                               Connection::kDefaultMetric));
   connection_->UpdateFromIPConfig(ipconfig_);
+  EXPECT_FALSE(GetHasBroadcastDomain(connection_));
 }
 
 TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
@@ -683,14 +713,28 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
       kTestDeviceInterfaceIndex1, RoutingTableEntry());
   EXPECT_FALSE(binder->IsBound());
 
-  // Check that the upper connection is bound to the lower connection.
-  device->connection_ = connection;
+  // Create a mock connection that will be used fo binding.
+  scoped_refptr<MockConnection> mock_connection(
+      new StrictMock<MockConnection>(device_info_.get()));
+  EXPECT_CALL(*device_info_.get(),
+      FlushAddresses(mock_connection->interface_index()));
+  const string kInterfaceName(kTestDeviceName0);
+  EXPECT_CALL(*mock_connection, interface_name())
+      .WillRepeatedly(ReturnRef(kInterfaceName));
+  device->connection_ = mock_connection;
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
       .WillOnce(Return(device));
+
+  // Check that the the binding process completes, causing its upper
+  // connection to create a gateway route.
+  EXPECT_CALL(*mock_connection, CreateGatewayRoute())
+      .WillOnce(Return(true));
   connection_->OnRouteQueryResponse(
       kTestDeviceInterfaceIndex1, RoutingTableEntry());
+
+  // Check that the upper connection is bound to the lower connection.
   EXPECT_TRUE(binder->IsBound());
-  EXPECT_EQ(connection.get(), binder->connection().get());
+  EXPECT_EQ(mock_connection.get(), binder->connection().get());
 
   device->connection_ = NULL;
   AddDestructorExpectations();

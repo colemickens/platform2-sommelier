@@ -66,10 +66,13 @@ Connection::Connection(int interface_index,
                        const DeviceInfo *device_info)
     : weak_ptr_factory_(this),
       is_default_(false),
+      has_broadcast_domain_(false),
       routing_request_count_(0),
       interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
+      local_(IPAddress::kFamilyUnknown),
+      gateway_(IPAddress::kFamilyUnknown),
       lower_binder_(
           interface_name_,
           // Connection owns a single instance of |lower_binder_| so it's safe
@@ -169,6 +172,10 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   if (is_default_) {
     resolver_->SetDNSFromIPConfig(config);
   }
+
+  local_ = local;
+  gateway_ = gateway;
+  has_broadcast_domain_ = !peer.IsValid();
 }
 
 void Connection::SetIsDefault(bool is_default) {
@@ -347,6 +354,21 @@ void Connection::OnRouteQueryResponse(int interface_index,
     return;
   }
   lower_binder_.Attach(connection);
+  connection->CreateGatewayRoute();
+}
+
+bool Connection::CreateGatewayRoute() {
+  // Ensure that the gateway for the lower connection remains reachable,
+  // since we may create routes that conflict with it.
+  if (!has_broadcast_domain_) {
+    return false;
+  }
+  // It is not worth keeping track of this route, since it is benign,
+  // and only pins persistent state that was already true of the connection.
+  // If DHCP parameters change later (without the connection having been
+  // destroyed and recreated), the binding processes will likely terminate
+  // and restart, causing a new link route to be created.
+  return routing_table_->CreateLinkRoute(interface_index_, local_, gateway_);
 }
 
 void Connection::OnLowerDisconnect() {

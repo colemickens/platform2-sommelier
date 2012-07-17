@@ -105,17 +105,17 @@ class IPAddress {
   // of |b|.  Returns an IPAddress containing the result of the operation.
   // It is an error if |this| and |b| are not of the same address family
   // or if either are not valid,
-  IPAddress MaskWith(const IPAddress &b);
+  IPAddress MaskWith(const IPAddress &b) const;
 
   // Perform an OR operation between the address data of |this| and that
   // of |b|.  Returns an IPAddress containing the result of the operation.
   // It is an error if |this| and |b| are not of the same address family
   // or if either are not valid,
-  IPAddress MergeWith(const IPAddress &b);
+  IPAddress MergeWith(const IPAddress &b) const;
 
   // Return an address that represents the network-part of the address,
   // i.e, the address with all but the prefix bits masked out.
-  IPAddress GetNetworkPart();
+  IPAddress GetNetworkPart() const;
 
   // Return the default broadcast address for the IP address, by setting
   // all of the host-part bits to 1.
@@ -125,7 +125,7 @@ class IPAddress {
   // |b| without an intervening gateway.  It tests whether the network
   // part of |b| is the same as the network part of |this|, using the
   // prefix of |this|.  Returns true if |b| is reachable, false otherwise.
-  bool CanReachAddress(const IPAddress &b);
+  bool CanReachAddress(const IPAddress &b) const;
 
  private:
   Family family_;

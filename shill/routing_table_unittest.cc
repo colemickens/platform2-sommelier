@@ -175,10 +175,13 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
       IPAddress(arg->family(),
                 arg->GetAttribute(RTA_DST),
                 status.dst_prefix).Equals(entry.dst) &&
-      !arg->HasAttribute(RTA_SRC) &&
-      arg->HasAttribute(RTA_GATEWAY) &&
-      IPAddress(arg->family(),
-                arg->GetAttribute(RTA_GATEWAY)).Equals(entry.gateway) &&
+      ((!arg->HasAttribute(RTA_SRC) && entry.src.IsDefault()) ||
+       (arg->HasAttribute(RTA_SRC) && IPAddress(arg->family(),
+                 arg->GetAttribute(RTA_SRC),
+                 status.src_prefix).Equals(entry.src))) &&
+      ((!arg->HasAttribute(RTA_GATEWAY) && entry.gateway.IsDefault()) ||
+       (arg->HasAttribute(RTA_GATEWAY) && IPAddress(arg->family(),
+                arg->GetAttribute(RTA_GATEWAY)).Equals(entry.gateway))) &&
       arg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) &&
       oif == index &&
       arg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&
@@ -768,6 +771,38 @@ TEST_F(RoutingTableTest, CancelQueryCallback) {
                                 entry,
                                 kTestRequestSeq,
                                 RTPROT_UNSPEC);
+}
+
+TEST_F(RoutingTableTest, CreateLinkRoute) {
+  IPAddress local_address(IPAddress::kFamilyIPv4);
+  ASSERT_TRUE(local_address.SetAddressFromString(kTestNetAddress0));
+  local_address.set_prefix(kTestRemotePrefix4);
+  IPAddress remote_address(IPAddress::kFamilyIPv4);
+  ASSERT_TRUE(remote_address.SetAddressFromString(kTestNetAddress1));
+  IPAddress default_address(IPAddress::kFamilyIPv4);
+  IPAddress remote_address_with_prefix(remote_address);
+  remote_address_with_prefix.set_prefix(
+      IPAddress::GetMaxPrefixLength(remote_address_with_prefix.family()));
+  RoutingTableEntry entry(remote_address_with_prefix,
+                          local_address,
+                          default_address,
+                          0,
+                          RT_SCOPE_LINK,
+                          false);
+  EXPECT_CALL(rtnl_handler_,
+              SendMessage(IsRoutingPacket(RTNLMessage::kModeAdd,
+                                          kTestDeviceIndex0,
+                                          entry,
+                                          NLM_F_CREATE | NLM_F_EXCL)))
+      .Times(1);
+  EXPECT_TRUE(routing_table_->CreateLinkRoute(kTestDeviceIndex0,
+                                              local_address,
+                                              remote_address));
+
+  ASSERT_TRUE(remote_address.SetAddressFromString(kTestRemoteAddress4));
+  EXPECT_FALSE(routing_table_->CreateLinkRoute(kTestDeviceIndex0,
+                                               local_address,
+                                               remote_address));
 }
 
 }  // namespace shill

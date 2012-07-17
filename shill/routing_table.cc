@@ -533,4 +533,31 @@ bool RoutingTable::RequestRouteToHost(const IPAddress &address,
   return true;
 }
 
+bool RoutingTable::CreateLinkRoute(int interface_index,
+                                   const IPAddress &local_address,
+                                   const IPAddress &remote_address) {
+  if (!local_address.CanReachAddress(remote_address)) {
+    LOG(ERROR) << __func__ << " failed: "
+               << remote_address.ToString() << " is not reachable from "
+               << local_address.ToString();
+    return false;
+  }
+
+  IPAddress default_address(local_address.family());
+  default_address.SetAddressToDefault();
+  IPAddress destination_address(remote_address);
+  destination_address.set_prefix(
+      IPAddress::GetMaxPrefixLength(remote_address.family()));
+  SLOG(Route, 2) << "Creating link route to " << destination_address.ToString()
+                 << " from " << local_address.ToString()
+                 << " on interface index " << interface_index;
+  return AddRoute(interface_index,
+                  RoutingTableEntry(destination_address,
+                                    local_address,
+                                    default_address,
+                                    0,
+                                    RT_SCOPE_LINK,
+                                    false));
+}
+
 }  // namespace shill

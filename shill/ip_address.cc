@@ -210,7 +210,7 @@ string IPAddress::ToString() const {
   return out;
 }
 
-IPAddress IPAddress::MaskWith(const IPAddress &b) {
+IPAddress IPAddress::MaskWith(const IPAddress &b) const {
   CHECK(IsValid());
   CHECK(b.IsValid());
   CHECK_EQ(family(), b.family());
@@ -221,7 +221,7 @@ IPAddress IPAddress::MaskWith(const IPAddress &b) {
   return IPAddress(family(), address_bytes);
 }
 
-IPAddress IPAddress::MergeWith(const IPAddress &b) {
+IPAddress IPAddress::MergeWith(const IPAddress &b) const {
   CHECK(IsValid());
   CHECK(b.IsValid());
   CHECK_EQ(family(), b.family());
@@ -232,7 +232,7 @@ IPAddress IPAddress::MergeWith(const IPAddress &b) {
   return IPAddress(family(), address_bytes);
 }
 
-IPAddress IPAddress::GetNetworkPart() {
+IPAddress IPAddress::GetNetworkPart() const {
   return MaskWith(GetAddressMaskFromPrefix(family(), prefix()));
 }
 
@@ -243,7 +243,7 @@ IPAddress IPAddress::GetDefaultBroadcast() {
   return MergeWith(IPAddress(family(), broadcast_bytes));
 }
 
-bool IPAddress::CanReachAddress(const IPAddress &b) {
+bool IPAddress::CanReachAddress(const IPAddress &b) const {
   CHECK_EQ(family(), b.family());
   IPAddress b_prefixed(b);
   b_prefixed.set_prefix(prefix());

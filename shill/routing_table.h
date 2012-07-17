@@ -77,6 +77,13 @@ class RoutingTable {
                                const IPConfigRefPtr &ipconfig,
                                uint32 metric);
 
+  // Create a route to a link-attached remote host.  |remote_address|
+  // must be directly reachable from |local_address|.  Returns true
+  // on successfully sending the route request, false othrewise.
+  virtual bool CreateLinkRoute(int interface_index,
+                               const IPAddress &local_address,
+                               const IPAddress &remote_address);
+
   // Remove routes associated with interface.
   // Route entries are immediately purged from our copy of the routing table.
   virtual void FlushRoutes(int interface_index);
