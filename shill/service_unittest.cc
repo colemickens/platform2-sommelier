@@ -702,7 +702,6 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
       flimflam::kEapPhase2AuthProperty,
       flimflam::kEapAnonymousIdentityProperty,
       flimflam::kEapPrivateKeyPasswordProperty,
-      flimflam::kEapKeyMgmtProperty,
       flimflam::kEapCaCertNssProperty,
       flimflam::kEapUseSystemCAsProperty
   };
@@ -713,6 +712,7 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
     service->OnPropertyChanged(eap_credential_properties[i]);
   for (size_t i = 0; i < arraysize(eap_non_credential_properties); ++i)
     service->OnPropertyChanged(eap_non_credential_properties[i]);
+  service->OnPropertyChanged(flimflam::kEapKeyMgmtProperty);
 
   service->set_is_8021x(true);
 
@@ -723,6 +723,14 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
     service->OnPropertyChanged(eap_credential_properties[i]);
     Mock::VerifyAndClearExpectations(service.get());
   }
+
+  // The key management property is a special case.  While not strictly
+  // a credential, it can change which credentials are used.  Therefore it
+  // should also trigger a call to set_eap();
+  EXPECT_CALL(*service, set_eap(_)).Times(1);
+  service->OnPropertyChanged(flimflam::kEapKeyMgmtProperty);
+  Mock::VerifyAndClearExpectations(service.get());
+
   EXPECT_CALL(*service, set_eap(_)).Times(0);
   for (size_t i = 0; i < arraysize(eap_non_credential_properties); ++i)
     service->OnPropertyChanged(eap_non_credential_properties[i]);

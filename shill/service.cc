@@ -738,6 +738,7 @@ void Service::OnPropertyChanged(const string &property) {
        property == flimflam::kEAPPINProperty ||
        property == flimflam::kEapCaCertIDProperty ||
        property == flimflam::kEapIdentityProperty ||
+       property == flimflam::kEapKeyMgmtProperty ||
        property == flimflam::kEapPasswordProperty ||
        property == flimflam::kEapPrivateKeyProperty)) {
     // This notifies subclassess that EAP parameters have been changed.
