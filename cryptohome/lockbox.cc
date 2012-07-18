@@ -394,19 +394,25 @@ void Lockbox::FinalizeMountEncrypted(chromeos::Blob &entropy) const {
 
   rc = process_->Run();
 
-  if (rc && outfile) {
-    std::vector<std::string> output;
-    std::vector<std::string>::iterator it;
-    std::string contents;
+  if (rc) {
+    LOG(ERROR) << "Request to finalize encrypted mount failed ('"
+               << kMountEncrypted << " "
+               << kMountEncryptedFinalize << " "
+               << hex << "', rc:" << rc << ")";
+    if (outfile) {
+      std::vector<std::string> output;
+      std::vector<std::string>::iterator it;
+      std::string contents;
 
-    LOG(ERROR) << "Request to finalize mount-encrypted failed (rc:"
-               << rc << "):";
-    if (file_util::ReadFileToString(outfile_path, &contents)) {
-      base::SplitString(contents, '\n', &output);
-      for (it = output.begin(); it < output.end(); it++) {
-        LOG(ERROR) << *it;
+      if (file_util::ReadFileToString(outfile_path, &contents)) {
+        base::SplitString(contents, '\n', &output);
+        for (it = output.begin(); it < output.end(); it++) {
+          LOG(ERROR) << *it;
+        }
       }
     }
+  } else {
+    LOG(INFO) << "Encrypted partition finalized.";
   }
 
   if (outfile)
