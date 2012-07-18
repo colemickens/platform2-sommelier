@@ -295,7 +295,7 @@ mount_or_fail -n --bind /mnt/stateful_partition/home /home
 # /mnt/stateful_partition/encrypted.
 remember_mount /var
 remember_mount /home/chronos
-mount-encrypted >/tmp/mount-encrypted.log 2>&1
+mount-encrypted ${IS_FACTORY_MODE:+factory} >/tmp/mount-encrypted.log 2>&1
 if [ $? -ne 0 ]; then
     cleanup_mounts
 fi
