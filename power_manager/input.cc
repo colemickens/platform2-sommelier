@@ -536,7 +536,8 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
     LOG(ERROR) << "Short read in Input::EventHandler";
     return true;
   }
-  if ((num_events * sizeof(struct input_event)) != read_size) {
+  if ((num_events * sizeof(struct input_event)) !=
+      static_cast<size_t>(read_size)) {
     LOG(WARNING) << "Read size, not a discrete number of input_events in "
                  << "Input::EventHandler";
   }
