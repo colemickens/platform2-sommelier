@@ -29,6 +29,7 @@ class EthernetService : public Service {
 
   // ethernet_<MAC>
   virtual std::string GetStorageIdentifier() const;
+  virtual bool IsAutoDetectByDefault() const { return true; }
 
  private:
   static const char kServiceType[];

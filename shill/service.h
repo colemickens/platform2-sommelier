@@ -188,6 +188,9 @@ class Service : public base::RefCounted<Service> {
 
   virtual bool IsActive(Error *error);
 
+  // Returns whether services of this type should be auto-connect by default.
+  virtual bool IsAutoConnectByDefault() const { return false; }
+
   virtual ConnectState state() const { return state_; }
   // Updates the state of the Service and alerts the manager.  Also
   // clears |failure_| if the new state isn't a failure.

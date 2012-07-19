@@ -351,7 +351,7 @@ bool Service::Load(StoreInterface *storage) {
 }
 
 bool Service::Unload() {
-  auto_connect_ = false;
+  auto_connect_ = IsAutoConnectByDefault();
   check_portal_ = kCheckPortalAuto;
   favorite_ = false;
   priority_ = kPriorityNone;
