@@ -32,14 +32,20 @@ class ByteString {
     return *this;
   }
 
+  unsigned char *GetData() { return data_.data(); }
+  const unsigned char *GetConstData() const { return data_.data(); }
+  size_t GetLength() const { return data_.size(); }
+
+  // Returns a ByteString containing |length| bytes from the ByteString
+  // starting at |offset|.  This function truncates the returned string
+  // if part (or all) of this requested data lies outside the bounds of
+  // this ByteString.
+  ByteString GetSubstring(size_t offset, size_t length) const;
+
   // Inserts a uint32 into a ByteString in cpu-order
   static ByteString CreateFromCPUUInt32(uint32 val);
   // Inserts a uint32 into a ByteString in network-order
   static ByteString CreateFromNetUInt32(uint32 val);
-
-  unsigned char *GetData() { return data_.data(); }
-  const unsigned char *GetConstData() const { return data_.data(); }
-  size_t GetLength() const { return data_.size(); }
 
   // Converts to a uint32 from a host-order value stored in the ByteString
   // Returns true on success

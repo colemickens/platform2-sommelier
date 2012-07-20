@@ -81,6 +81,16 @@ TEST_F(ByteStringTest, NonEmpty) {
   EXPECT_TRUE(bs6.Equals(bs1));
 }
 
+TEST_F(ByteStringTest, SubString) {
+  ByteString bs1(kTest1, sizeof(kTest1));
+  ByteString bs2(kTest1 + 3, 4);
+  EXPECT_TRUE(bs2.Equals(bs1.GetSubstring(3, 4)));
+  const int kMargin = sizeof(kTest1) - 3;
+  ByteString bs3(kTest1 + kMargin, sizeof(kTest1) - kMargin);
+  EXPECT_TRUE(bs3.Equals(bs1.GetSubstring(kMargin, sizeof(kTest1))));
+  EXPECT_TRUE(bs1.GetSubstring(sizeof(kTest1), 10).IsEmpty());
+}
+
 TEST_F(ByteStringTest, UInt32) {
   ByteString bs1 = ByteString::CreateFromNetUInt32(kTest2Uint32);
   uint32 val;

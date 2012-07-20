@@ -12,6 +12,16 @@ using std::string;
 
 namespace shill {
 
+ByteString ByteString::GetSubstring(size_t offset, size_t length) const {
+  if (offset > GetLength()) {
+    offset = GetLength();
+  }
+  if (length > GetLength() - offset) {
+    length = GetLength() - offset;
+  }
+  return ByteString(GetConstData() + offset, length);
+}
+
 // static
 ByteString ByteString::CreateFromCPUUInt32(uint32 val) {
   return ByteString(reinterpret_cast<unsigned char *>(&val), sizeof(val));

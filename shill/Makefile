@@ -105,6 +105,7 @@ DBUS_PROXY_BINDINGS = \
 	$(addprefix $(BUILD_DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
 
 SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
+	arp_packet.o \
 	async_connection.o \
 	byte_string.o \
 	cellular.o \
@@ -231,6 +232,7 @@ SHILL_MAIN_OBJ = $(BUILDDIR)/shill_main.o
 
 TEST_BIN = shill_unittest
 TEST_OBJS = $(addprefix $(BUILDDIR)/, \
+	arp_packet_unittest.o \
 	async_connection_unittest.o \
 	byte_string_unittest.o \
 	cellular_capability_cdma_unittest.o \
