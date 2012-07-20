@@ -307,7 +307,7 @@ void CellularCapabilityUniversal::Disconnect(Error *error,
   if (bearer_path_.empty()) {
     LOG(WARNING) << "In " << __func__ << "(): "
                  << "Ignoring attempt to disconnect without bearer";
-  } else {
+  } else if (modem_simple_proxy_.get()) {
     modem_simple_proxy_->Disconnect(bearer_path_,
                                     error,
                                     callback,

@@ -148,6 +148,10 @@ class CellularCapabilityUniversalTest : public testing::Test {
     capability_->modem_simple_proxy_.reset(modem_simple_proxy_.release());
   }
 
+  void ReleaseCapabilityProxies() {
+    capability_->ReleaseProxies();
+  }
+
   MOCK_METHOD1(TestCallback, void(const Error &error));
 
  protected:
@@ -345,10 +349,20 @@ TEST_F(CellularCapabilityUniversalTest, StopModemConnected) {
 TEST_F(CellularCapabilityUniversalTest, DisconnectModemNoBearer) {
   Error error;
   ResultCallback disconnect_callback;
-  mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
-  EXPECT_CALL(*modem_simple_proxy,
+  EXPECT_CALL(*modem_simple_proxy_,
               Disconnect(_, _, _, CellularCapability::kTimeoutDefault))
       .Times(0);
+  capability_->Disconnect(&error, disconnect_callback);
+}
+
+TEST_F(CellularCapabilityUniversalTest, DisconnectNoProxy) {
+  Error error;
+  ResultCallback disconnect_callback;
+  capability_->bearer_path_ = "/foo";
+  EXPECT_CALL(*modem_simple_proxy_,
+              Disconnect(_, _, _, CellularCapability::kTimeoutDefault))
+      .Times(0);
+  ReleaseCapabilityProxies();
   capability_->Disconnect(&error, disconnect_callback);
 }
 

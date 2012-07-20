@@ -106,6 +106,10 @@ class CellularCapabilityTest : public testing::Test {
     return dynamic_cast<CellularCapabilityGSM *>(cellular_->capability_.get());
   }
 
+  void ReleaseCapabilityProxies() {
+    capability_->ReleaseProxies();
+  }
+
   void InvokeEnable(bool enable, Error *error,
                     const ResultCallback &callback, int timeout) {
     callback.Run(Error());
@@ -430,6 +434,15 @@ TEST_F(CellularCapabilityTest, StopModemDisconnectFail) {
   capability_->StopModem(
       &error, Bind(&CellularCapabilityTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularCapabilityTest, DisconnectNoProxy) {
+  Error error;
+  ResultCallback disconnect_callback;
+  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDefault))
+      .Times(0);
+  ReleaseCapabilityProxies();
+  capability_->Disconnect(&error, disconnect_callback);
 }
 
 }  // namespace shill

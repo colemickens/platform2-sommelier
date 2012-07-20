@@ -226,7 +226,8 @@ void CellularCapabilityClassic::Connect(const DBusPropertiesMap &properties,
 void CellularCapabilityClassic::Disconnect(Error *error,
                                     const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
-  proxy_->Disconnect(error, callback, kTimeoutDefault);
+  if (proxy_.get())
+    proxy_->Disconnect(error, callback, kTimeoutDefault);
 }
 
 void CellularCapabilityClassic::Activate(const string &/*carrier*/,

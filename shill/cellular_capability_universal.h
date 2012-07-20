@@ -117,18 +117,19 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kE362ModelId[];
 
   friend class CellularTest;
-  friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityTest;
+  friend class CellularCapabilityUniversalTest;
+  FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
+  FRIEND_TEST(CellularCapabilityUniversalTest, ConnectApns);
+  FRIEND_TEST(CellularCapabilityUniversalTest, DisconnectNoProxy);
+  FRIEND_TEST(CellularCapabilityUniversalTest, GetTypeString);
+  FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
+  FRIEND_TEST(CellularCapabilityUniversalTest, ScanFailure);
+  FRIEND_TEST(CellularCapabilityUniversalTest, SimPropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, StartModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
-  FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalTest, SimPropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
-  FRIEND_TEST(CellularCapabilityUniversalTest, ScanFailure);
-  FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
-  FRIEND_TEST(CellularCapabilityUniversalTest, ConnectApns);
-  FRIEND_TEST(CellularCapabilityUniversalTest, GetTypeString);
 
   // Methods used in starting a modem
   void Start_EnableModemCompleted(const ResultCallback &callback,
