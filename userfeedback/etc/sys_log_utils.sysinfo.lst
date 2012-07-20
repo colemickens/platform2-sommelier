@@ -18,3 +18,4 @@ cras,/usr/bin/cras_test_client --dump_server_info
 env,set
 setxkbmap,/usr/bin/setxkbmap -print -query
 xrandr,/usr/bin/xrandr --verbose
+debugd,/usr/bin/dbus-send --system --print-reply --dest=org.chromium.debugd /org/chromium/debugd org.chromium.debugd.GetAllLogs
