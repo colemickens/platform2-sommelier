@@ -823,36 +823,6 @@ cmd_modem_set_carrier() {
   /usr/bin/modem set-carrier "$@"
 }
 
-# TODO(keescook): Remove once this is the default. crosbug.com/22172
-cmd_mount_encrypted() {
-  local flag_file="/home/chronos/.enable_mount-encrypted"
-  local key_file="/mnt/stateful_partition/encrypted.key"
-  local enabled=0
-  local changed=0
-  if [ -r ${flag_file} ] || [ -f ${key_file} ]; then
-    enabled=1
-  fi
-  if [ -z "$1" ]; then
-    if [ ${enabled} -eq 1 ]; then
-      echo "Currently enabled"
-    else
-      echo "Currently disabled"
-    fi
-    return
-  fi
-  if [ "$1" = "on" ]; then
-    if [ $enabled -eq 0 ]; then
-      changed=1;
-    fi
-    touch "${flag_file}"
-  else
-    echo "Please wipe stateful partition (go through recovery) to disable."
-  fi
-  if [ $changed -eq 1 ]; then
-    echo "You must reboot for this to take effect."
-  fi
-}
-
 cmd_set_apn() {
   /usr/bin/set_apn "$@"
 }
