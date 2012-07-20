@@ -105,6 +105,7 @@ DBUS_PROXY_BINDINGS = \
 	$(addprefix $(BUILD_DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
 
 SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
+	arp_client.o \
 	arp_packet.o \
 	async_connection.o \
 	byte_string.o \
@@ -232,6 +233,7 @@ SHILL_MAIN_OBJ = $(BUILDDIR)/shill_main.o
 
 TEST_BIN = shill_unittest
 TEST_OBJS = $(addprefix $(BUILDDIR)/, \
+	arp_client_unittest.o \
 	arp_packet_unittest.o \
 	async_connection_unittest.o \
 	byte_string_unittest.o \
@@ -269,6 +271,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	metrics_unittest.o \
 	mock_adaptors.o \
 	mock_ares.o \
+	mock_arp_client.o \
 	mock_async_connection.o \
 	mock_cellular.o \
 	mock_cellular_service.o \

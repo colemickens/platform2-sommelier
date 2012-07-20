@@ -13,6 +13,8 @@
 
 namespace shill {
 
+const size_t ArpPacket::kMinPayloadSize = ETH_ZLEN - ETH_HLEN;
+
 ArpPacket::ArpPacket()
     : local_ip_address_(IPAddress::kFamilyUnknown),
       remote_ip_address_(IPAddress::kFamilyUnknown) {}
@@ -156,6 +158,10 @@ bool ArpPacket::FormatRequest(ByteString *packet) const {
   packet->Append(local_ip_address_.address());
   packet->Append(remote_mac_address_);
   packet->Append(remote_ip_address_.address());
+
+  if (packet->GetLength() < kMinPayloadSize) {
+    packet->Append(ByteString(kMinPayloadSize - packet->GetLength()));
+  }
 
   return true;
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <linux/filter.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -21,6 +22,9 @@ class Sockets {
 
   // accept
   virtual int Accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+
+  // getsockopt(sockfd, SOL_SOCKET, SO_ATTACH_FILTER, ...)
+  virtual int AttachFilter(int sockfd, struct sock_fprog *pf);
 
   // bind
   virtual int Bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
@@ -53,6 +57,10 @@ class Sockets {
 
   // listen
   virtual int Listen(int sockfd, int backlog);
+
+  // recvfrom
+  virtual ssize_t RecvFrom(int sockfd, void *buf, size_t len, int flags,
+                           struct sockaddr *src_addr, socklen_t *addrlen);
 
   // send
   virtual ssize_t Send(int sockfd, const void *buf, size_t len, int flags);

@@ -31,6 +31,8 @@ const uint8 kMACAddress0[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05 };
 const uint8 kMACAddress1[] = { 0x88, 0x87, 0x86, 0x85, 0x84, 0x83 };
 const uint8 kMACBroadcast[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 const uint8 kInsertedByte[] = { 0x00 };
+const size_t kArpPaddingSizeV4 = 18;
+const size_t kArpPaddingSizeV6 = 0;
 }  // namespace {}
 
 class ArpPacketTest : public Test {
@@ -173,6 +175,10 @@ TEST_F(ArpPacketTest, ParseReplyIPv4) {
   EXPECT_TRUE(ipv4_address1_.Equals(packet_.remote_ip_address()));
   EXPECT_TRUE(mac_address0_.Equals(packet_.local_mac_address()));
   EXPECT_TRUE(mac_address1_.Equals(packet_.remote_mac_address()));
+
+  // Parse should succeed with arbitrary trailing padding.
+  arp_bytes.Append(ByteString(1000));
+  EXPECT_TRUE(packet_.ParseReply(arp_bytes));
 }
 
 TEST_F(ArpPacketTest, ParseReplyIPv6) {
@@ -245,6 +251,7 @@ TEST_F(ArpPacketTest, FormatRequestIPv4) {
   expected_bytes.Append(ipv4_address0_.address());
   expected_bytes.Append(mac_address1_);
   expected_bytes.Append(ipv4_address1_.address());
+  expected_bytes.Append(ByteString(kArpPaddingSizeV4));
   EXPECT_TRUE(expected_bytes.Equals(arp_bytes));
 }
 
@@ -261,6 +268,7 @@ TEST_F(ArpPacketTest, FormatRequestIPv6) {
   expected_bytes.Append(ipv6_address0_.address());
   expected_bytes.Append(mac_address0_);
   expected_bytes.Append(ipv6_address1_.address());
+  expected_bytes.Append(ByteString(kArpPaddingSizeV6));
   EXPECT_TRUE(expected_bytes.Equals(arp_bytes));
 }
 

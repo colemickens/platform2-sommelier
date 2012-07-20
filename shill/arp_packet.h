@@ -50,6 +50,10 @@ class ArpPacket {
  private:
   friend class ArpPacketTest;
 
+  // The minimum number of bytes of ARP payload which will produce the
+  // smallest valid Ethernet frame.
+  static const size_t kMinPayloadSize;
+
   IPAddress local_ip_address_;
   IPAddress remote_ip_address_;
   ByteString local_mac_address_;

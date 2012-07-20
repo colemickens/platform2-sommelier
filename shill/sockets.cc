@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,6 +20,10 @@ Sockets::~Sockets() {}
 
 int Sockets::Accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
   return accept(sockfd, addr, addrlen);
+}
+
+int Sockets::AttachFilter(int sockfd, struct sock_fprog *pf) {
+  return setsockopt(sockfd, SOL_SOCKET, SO_ATTACH_FILTER, pf, sizeof(*pf));
 }
 
 int Sockets::Bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
@@ -75,6 +79,11 @@ int Sockets::Ioctl(int d, int request, void *argp) {
 
 int Sockets::Listen(int sockfd, int backlog) {
   return listen(sockfd, backlog);
+}
+
+ssize_t Sockets::RecvFrom(int sockfd, void *buf, size_t len, int flags,
+                          struct sockaddr *src_addr, socklen_t *addrlen) {
+  return recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
 }
 
 ssize_t Sockets::Send(int sockfd, const void *buf, size_t len, int flags) {
