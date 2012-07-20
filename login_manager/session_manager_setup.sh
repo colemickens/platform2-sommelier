@@ -90,9 +90,9 @@ if [ -f /mnt/stateful_partition/etc/enable_chromium_minidumps ] ; then
   export CHROME_HEADLESS=1
   # If possible we would like to have the crash reports located somewhere else
   if [ ! -f ~/.config/google-chrome/Crash\ Reports ] ; then
-    mkdir -p /mnt/stateful_partition/var/minidumps/
-    chown chronos /mnt/stateful_partition/var/minidumps/
-    ln -s /mnt/stateful_partition/var/minidumps/ \
+    mkdir -p /var/minidumps/
+    chown chronos /var/minidumps/
+    ln -s /var/minidumps/ \
       ~/.config/google-chrome/Crash\ Reports
   fi
 fi
@@ -154,12 +154,12 @@ fi
 # Enables gathering of chrome dumps.  In stateful partition so testers
 # can enable getting core dumps after build time.
 if [ -f /mnt/stateful_partition/etc/enable_chromium_coredumps ] ; then
-  mkdir -p /mnt/stateful_partition/var/coredumps/
+  mkdir -p /var/coredumps/
   # Chrome runs and chronos so we need to change the permissions of this folder
   # so it can write there when it crashes
-  chown chronos /mnt/stateful_partition/var/coredumps/
+  chown chronos /var/coredumps/
   ulimit -c unlimited
-  echo "/mnt/stateful_partition/var/coredumps/core.%e.%p" > \
+  echo "/var/coredumps/core.%e.%p" > \
     /proc/sys/kernel/core_pattern
 fi
 
