@@ -16,6 +16,7 @@
 #include "example_tool.h"
 #include "log_tool.h"
 #include "modem_status_tool.h"
+#include "netif_tool.h"
 #include "network_status_tool.h"
 #include "ping_tool.h"
 #include "route_tool.h"
@@ -93,6 +94,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   virtual std::string GetLog(const std::string& name, DBus::Error& error); // NOLINT
   virtual std::map<std::string, std::string> GetAllLogs(DBus::Error& error); // NOLINT
   virtual std::string GetExample(DBus::Error& error); // NOLINT
+  virtual std::string GetInterfaces(DBus::Error& error); // NOLINT
 
  private:
   DBus::Connection* dbus_;
@@ -103,6 +105,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   ExampleTool* example_tool_;
   LogTool* log_tool_;
   ModemStatusTool* modem_status_tool_;
+  NetifTool* netif_tool_;
   NetworkStatusTool* network_status_tool_;
   PingTool* ping_tool_;
   RouteTool* route_tool_;

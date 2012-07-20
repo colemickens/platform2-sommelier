@@ -22,6 +22,7 @@ bool DebugDaemon::Init() {
   debug_mode_tool_ = new DebugModeTool(dbus_);
   example_tool_ = new ExampleTool();
   modem_status_tool_ = new ModemStatusTool();
+  netif_tool_ = new NetifTool();
   network_status_tool_ = new NetworkStatusTool();
   ping_tool_ = new PingTool();
   route_tool_ = new RouteTool();
@@ -122,6 +123,10 @@ std::map<std::string, std::string> DebugDaemon::GetAllLogs(DBus::Error& error) {
 
 std::string DebugDaemon::GetExample(DBus::Error& error) { // NOLINT dbuscxx
   return example_tool_->GetExample(error);
+}
+
+std::string DebugDaemon::GetInterfaces(DBus::Error& error) { // NOLINT dbuscxx
+  return netif_tool_->GetInterfaces(&error);
 }
 
 };  // namespace debugd

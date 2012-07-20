@@ -196,5 +196,11 @@
       </tp:docstring>
       <arg name="result" type="s" direction="out" />
     </method>
+    <method name="GetInterfaces">
+      <tp:docstring>
+        Returns information about network interfaces as a JSON string.
+      </tp:docstring>
+      <arg name="result" type="s" direction="out" />
+    </method>
   </interface>
 </node>
