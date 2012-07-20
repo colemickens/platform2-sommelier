@@ -304,10 +304,15 @@ void CellularCapabilityUniversal::Connect(const DBusPropertiesMap &properties,
 void CellularCapabilityUniversal::Disconnect(Error *error,
                                              const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
-  modem_simple_proxy_->Disconnect(bearer_path_,
-                                  error,
-                                  callback,
-                                  kTimeoutDefault);
+  if (bearer_path_.empty()) {
+    LOG(WARNING) << "In " << __func__ << "(): "
+                 << "Ignoring attempt to disconnect without bearer";
+  } else {
+    modem_simple_proxy_->Disconnect(bearer_path_,
+                                    error,
+                                    callback,
+                                    kTimeoutDefault);
+  }
 }
 
 void CellularCapabilityUniversal::Activate(const string &carrier,

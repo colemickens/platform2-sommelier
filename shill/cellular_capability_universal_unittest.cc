@@ -342,6 +342,16 @@ TEST_F(CellularCapabilityUniversalTest, StopModemConnected) {
   disable_callback.Run(Error(Error::kSuccess));
 }
 
+TEST_F(CellularCapabilityUniversalTest, DisconnectModemNoBearer) {
+  Error error;
+  ResultCallback disconnect_callback;
+  mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
+  EXPECT_CALL(*modem_simple_proxy,
+              Disconnect(_, _, _, CellularCapability::kTimeoutDefault))
+      .Times(0);
+  capability_->Disconnect(&error, disconnect_callback);
+}
+
 TEST_F(CellularCapabilityUniversalTest, PropertiesChanged) {
   // Set up mock modem properties
   DBusPropertiesMap modem_properties;
