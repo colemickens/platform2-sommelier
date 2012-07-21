@@ -188,6 +188,7 @@ PEPPER_PATH=/opt/google/chrome/pepper
 REGISTER_PLUGINS=
 COMMA=
 FLASH_FLAGS=
+PPAPI_FLASH_FLAGS=
 for file in $(find $PEPPER_PATH -name '*.info'); do
   FILE_NAME=
   PLUGIN_NAME=
@@ -208,6 +209,9 @@ for file in $(find $PEPPER_PATH -name '*.info'); do
     # Flash is treated specially.
     FLASH_FLAGS="--ppapi-flash-path=${FILE_NAME}"
     FLASH_FLAGS="${FLASH_FLAGS} --ppapi-flash-version=${VERSION}"
+    PPAPI_FLASH_FLAGS="--ppapi-flash-args=enable_hw_video_decode=0"
+    PPAPI_FLASH_FLAGS="${PPAPI_FLASH_FLAGS},enable_stagevideo_auto=0"
+    PPAPI_FLASH_FLAGS="${PPAPI_FLASH_FLAGS},enable_trace_to_console=0"
   else
     PLUGIN_STRING="${PLUGIN_STRING};${MIME_TYPES}"
     REGISTER_PLUGINS="${REGISTER_PLUGINS}${COMMA}${PLUGIN_STRING}"
@@ -240,8 +244,7 @@ fi
 if [ "$(uname -m)" != "armv7l" ] ; then
   ACCELERATED_FLAGS="--enable-accelerated-layers"
 else
-  ACCELERATED_FLAGS="--use-gl=egl \
-                     --ppapi-flash-args=enable-hardware-decoder=1"
+  ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
 # TODO(anush): Remove once daisy development cycle is done
@@ -347,7 +350,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --login-manager \
             --login-profile=user \
             --no-first-run \
-            --ppapi-flash-args=enable_stagevideo_auto=0 \
             --reload-killed-tabs \
             --scroll-pixels=3 \
             --ui-enable-partial-swap \
@@ -370,4 +372,5 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${ASAN_FLAGS} \
             ${NEW_OOBE_FLAGS} \
             ${NACL_FLAGS} \
+            ${PPAPI_FLASH_FLAGS} \
     ${WM_SCRIPT:+-- "${WM_SCRIPT}"}
