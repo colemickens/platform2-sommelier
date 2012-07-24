@@ -52,8 +52,7 @@ bool UserSession::SetUser(const Credentials& credentials) {
     return false;
   }
 
-  return crypto_->AesEncrypt(plaintext, 0, plaintext.size(), aes_key, aes_iv,
-                             Crypto::kPaddingCryptohomeDefault, &cipher_);
+  return crypto_->AesEncrypt(plaintext, aes_key, aes_iv, &cipher_);
 }
 
 void UserSession::Reset() {
@@ -88,8 +87,7 @@ bool UserSession::Verify(const Credentials& credentials) const {
   }
 
   SecureBlob plaintext;
-  return crypto_->AesDecrypt(cipher_, 0, cipher_.size(), aes_key, aes_iv,
-                             Crypto::kPaddingCryptohomeDefault, &plaintext);
+  return crypto_->AesDecrypt(cipher_, aes_key, aes_iv, &plaintext);
 }
 
 void UserSession::GetObfuscatedUsername(std::string* username) const {

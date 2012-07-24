@@ -132,12 +132,13 @@ unsigned int Crypto::GetAesBlockSize() const {
   return EVP_CIPHER_block_size(EVP_aes_256_cbc());
 }
 
-bool Crypto::AesEncrypt(const chromeos::Blob& plain_text, unsigned int start,
-                        unsigned int count, const SecureBlob& key,
-                        const SecureBlob& iv, PaddingScheme padding,
-                        SecureBlob* encrypted) const {
-  return AesEncryptSpecifyBlockMode(plain_text, start, count, key, iv, padding,
-                                    kCbc, encrypted);
+bool Crypto::AesEncrypt(const chromeos::Blob& plaintext,
+                        const SecureBlob& key,
+                        const SecureBlob& iv,
+                        SecureBlob* ciphertext) const {
+  return AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(), key, iv,
+                                    kPaddingCryptohomeDefault, kCbc,
+                                    ciphertext);
 }
 
 // AesEncryptSpecifyBlockMode encrypts the bytes in plain_text using AES,
@@ -154,14 +155,6 @@ bool Crypto::AesEncrypt(const chromeos::Blob& plain_text, unsigned int start,
 //     is used.  This is described in more detail in the README file.  There is
 //     no padding in this case, and the size of plain_text needs to be a
 //     multiple of the AES block size (16 bytes)
-//   - kPaddingLibraryDefault merely defers padding to OpenSSL's implementation,
-//     which is PKCS#5.  PKCS#5 padding pads the plaintext to the AES block
-//     size, extending an etire block if the plaintext is already a multiple of
-//     the block size.  The padding is such that the decryption will weakly
-//     verify the contents, though as stated in the OpenSSL documents, this has
-//     a greater than 1/256 chance of random data passing the verification.  It
-//     exists as an option merely for migrating older keysets, which used PKCS#5
-//     padding.
 //   - kPaddingCryptohomeDefault appends a SHA1 hash of the plaintext in
 //     plain_text before passing it to OpenSSL, which still uses PKCS#5 padding
 //     so that we do not have to re-implement block-multiple padding ourselves.
@@ -207,12 +200,6 @@ bool Crypto::AesEncryptSpecifyBlockMode(const chromeos::Blob& plain_text,
       // INT_MAX, but needed_size is itself an unsigned.  The block size and
       // digest length are fixed by the algorithm.
       needed_size += block_size + SHA_DIGEST_LENGTH;
-      break;
-    case kPaddingLibraryDefault:
-      // The AES block size is not enough for this to overflow, as needed_size
-      // is initialized to count, which must be <= INT_MAX, but needed_size is
-      // itself an unsigned.  The block size is fixed by the algorithm.
-      needed_size += block_size;
       break;
     case kPaddingNone:
       if (count % block_size) {
@@ -312,50 +299,42 @@ bool Crypto::AesEncryptSpecifyBlockMode(const chromeos::Blob& plain_text,
   return true;
 }
 
-void Crypto::GetSha1(const chromeos::Blob& data, unsigned int start,
-                     unsigned int count, SecureBlob* hash) const {
-  if (start > data.size() ||
-      ((start + count) > data.size()) ||
-      ((start + count) < start)) {
-    return;
-  }
+SecureBlob Crypto::GetSha1(const chromeos::Blob& data) const {
   SHA_CTX sha_context;
   unsigned char md_value[SHA_DIGEST_LENGTH];
+  SecureBlob hash;
 
   SHA1_Init(&sha_context);
-  SHA1_Update(&sha_context, &data[start], count);
+  SHA1_Update(&sha_context, &data[0], data.size());
   SHA1_Final(md_value, &sha_context);
-  hash->resize(sizeof(md_value));
-  memcpy(hash->data(), md_value, sizeof(md_value));
+  hash.resize(sizeof(md_value));
+  memcpy(hash.data(), md_value, sizeof(md_value));
   // Zero the stack to match expectations set by SecureBlob.
   chromeos::SecureMemset(md_value, 0, sizeof(md_value));
+  return hash;
 }
 
-void Crypto::GetSha256(const chromeos::Blob& data, unsigned int start,
-                       unsigned int count, SecureBlob* hash) const {
-  if (start > data.size() ||
-      ((start + count) > data.size()) ||
-      ((start + count) < start)) {
-    return;
-  }
+SecureBlob Crypto::GetSha256(const chromeos::Blob& data) const {
   SHA256_CTX sha_context;
   unsigned char md_value[SHA256_DIGEST_LENGTH];
+  SecureBlob hash;
 
   SHA256_Init(&sha_context);
-  SHA256_Update(&sha_context, &data[start], count);
+  SHA256_Update(&sha_context, &data[0], data.size());
   SHA256_Final(md_value, &sha_context);
-  hash->resize(sizeof(md_value));
-  memcpy(hash->data(), md_value, sizeof(md_value));
+  hash.resize(sizeof(md_value));
+  memcpy(hash.data(), md_value, sizeof(md_value));
   // Zero the stack to match expectations set by SecureBlob.
   chromeos::SecureMemset(md_value, 0, sizeof(md_value));
+  return hash;
 }
 
-bool Crypto::AesDecrypt(const chromeos::Blob& encrypted, unsigned int start,
-                        unsigned int count, const SecureBlob& key,
-                        const SecureBlob& iv, PaddingScheme padding,
-                        SecureBlob* plain_text) const {
-  return AesDecryptSpecifyBlockMode(encrypted, start, count, key, iv, padding,
-                                    kCbc, plain_text);
+bool Crypto::AesDecrypt(const chromeos::Blob& ciphertext,
+                        const SecureBlob& key,
+                        const SecureBlob& iv,
+                        SecureBlob* plaintext) const {
+  return AesDecryptSpecifyBlockMode(ciphertext, 0, ciphertext.size(), key, iv,
+                                    kPaddingCryptohomeDefault, kCbc, plaintext);
 }
 
 // This is the reverse operation of AesEncryptSpecifyBlockMode above.  See that
@@ -723,17 +702,16 @@ void Crypto::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
 
 bool Crypto::IsTPMPubkeyHash(const string& hash,
                              CryptoError* error) const {
-  SecureBlob pub_key;
+  SecureBlob pub_key_hash;
   Tpm::TpmRetryAction retry_action;
-  if (!tpm_->GetPublicKey(&pub_key, &retry_action)) {
+  retry_action = tpm_->GetPublicKeyHash(&pub_key_hash);
+  if (retry_action != Tpm::RetryNone) {
     LOG(ERROR) << "Unable to get the cryptohome public key from the TPM.";
     if (error)
       // This is a fatal error only if we don't get a transient error code.
       *error = TpmErrorToCrypto(retry_action);
     return false;
   }
-  SecureBlob pub_key_hash;
-  GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
   if ((hash.size() != pub_key_hash.size()) ||
       (chromeos::SafeMemcmp(hash.data(),
               pub_key_hash.data(),
@@ -832,8 +810,7 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
     return false;
   }
 
-  if (!AesDecrypt(local_encrypted_keyset, 0, local_encrypted_keyset.size(),
-                  aes_key, iv, kPaddingCryptohomeDefault, &plain_text)) {
+  if (!AesDecrypt(local_encrypted_keyset, aes_key, iv, &plain_text)) {
     LOG(ERROR) << "AES decryption failed.";
     if (error)
       *error = CE_OTHER_CRYPTO;
@@ -871,11 +848,18 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
       *error = CE_SCRYPT_CRYPTO;
     return false;
   }
+  // TODO(ellyjones): size underflow?
   decrypted.resize(out_len);
-  SecureBlob hash;
-  unsigned int hash_offset = decrypted.size() - SHA_DIGEST_LENGTH;
-  GetSha1(decrypted, 0, hash_offset, &hash);
-  if (chromeos::SafeMemcmp(hash.data(), &decrypted[hash_offset],
+  SecureBlob included_hash(SHA_DIGEST_LENGTH);
+  if (decrypted.size() < SHA_DIGEST_LENGTH) {
+    LOG(ERROR) << "Message length underflow: " << decrypted.size() << " bytes?";
+    return false;
+  }
+  memcpy(&included_hash[0], &decrypted[decrypted.size() - SHA_DIGEST_LENGTH],
+         SHA_DIGEST_LENGTH);
+  decrypted.resize(decrypted.size() - SHA_DIGEST_LENGTH);
+  chromeos::Blob hash = GetSha1(decrypted);
+  if (chromeos::SafeMemcmp(hash.data(), &included_hash[0],
                            hash.size())) {
     LOG(ERROR) << "Scrypt hash verification failed";
     if (error) {
@@ -883,7 +867,6 @@ bool Crypto::DecryptScrypt(const SerializedVaultKeyset& serialized,
     }
     return false;
   }
-  decrypted.resize(hash_offset);
   keyset->FromKeysBlob(decrypted);
   return true;
 }
@@ -939,22 +922,18 @@ bool Crypto::EncryptTPM(const SecureBlob& blob,
     return false;
   }
 
-  if (!AesEncrypt(blob, 0, blob.size(), aes_key, iv, kPaddingCryptohomeDefault,
-                  &cipher_text)) {
+  if (!AesEncrypt(blob, aes_key, iv, &cipher_text)) {
     LOG(ERROR) << "AES encryption failed.";
     return false;
   }
 
-  SecureBlob pub_key;
   // Allow this to fail.  It is not absolutely necessary; it allows us to
   // detect a TPM clear.  If this fails due to a transient issue, then on next
   // successful login, the vault keyset will be re-saved anyway.
-  if (tpm_->GetPublicKey(&pub_key, &retry_action)) {
-    SecureBlob pub_key_hash;
-    GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
+  SecureBlob pub_key_hash;
+  if (tpm_->GetPublicKeyHash(&pub_key_hash) == Tpm::RetryNone)
     serialized->set_tpm_public_key_hash(pub_key_hash.const_data(),
                                         pub_key_hash.size());
-  }
 
   unsigned int flags = serialized->flags();
   serialized->set_password_rounds(rounds);
@@ -969,8 +948,7 @@ bool Crypto::EncryptScrypt(const SecureBlob& blob,
                            SerializedVaultKeyset* serialized) const {
   // Append the SHA1 hash of the keyset blob
   SecureBlob cipher_text;
-  SecureBlob hash;
-  GetSha1(blob, 0, blob.size(), &hash);
+  SecureBlob hash = GetSha1(blob);
   SecureBlob local_blob(blob.size() + hash.size());
   memcpy(&local_blob[0], blob.const_data(), blob.size());
   memcpy(&local_blob[blob.size()], hash.data(), hash.size());

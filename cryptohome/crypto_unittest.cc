@@ -329,10 +329,9 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
 TEST_F(CryptoTest, GetSha1FipsTest) {
   Crypto crypto;
   ShaTestVectors vectors(1);
-  SecureBlob digest;
   for (size_t i = 0; i < vectors.count(); ++i) {
-    crypto.GetSha1(*vectors.input(i), 0, vectors.input(i)->size(), &digest);
-    std::string computed(reinterpret_cast<const char*>(digest.const_data()),
+    SecureBlob digest = crypto.GetSha1(*vectors.input(i));
+    std::string computed(reinterpret_cast<const char*>(digest.data()),
                          digest.size());
     std::string expected(
       reinterpret_cast<const char*>(vectors.output(i)->const_data()),
@@ -344,10 +343,9 @@ TEST_F(CryptoTest, GetSha1FipsTest) {
 TEST_F(CryptoTest, GetSha256FipsTest) {
   Crypto crypto;
   ShaTestVectors vectors(256);
-  SecureBlob digest;
   for (size_t i = 0; i < vectors.count(); ++i) {
-    crypto.GetSha256(*vectors.input(i), 0, vectors.input(i)->size(), &digest);
-    std::string computed(reinterpret_cast<const char*>(digest.const_data()),
+    SecureBlob digest = crypto.GetSha256(*vectors.input(i));
+    std::string computed(reinterpret_cast<const char*>(digest.data()),
                          digest.size());
     std::string expected(
       reinterpret_cast<const char*>(vectors.output(i)->const_data()),

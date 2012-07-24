@@ -30,16 +30,11 @@ class Crypto {
   //     multiple of the crypto algorithm's block size.  This is used in the
   //     encryption of the vault keyset as described in the Protection
   //     Mechanisms section of the README file.
-  //   kPaddingLibraryDefault - Use OpenSSL default padding (PKCS#5), which
-  //     allows the plaintext to be marginally verified on decrypt, and
-  //     automatically handles plaintext that is not a multiple of the block
-  //     size.
   //   kPaddingCryptohomeDefault - The default padding, which adds a SHA1 hash
   //     to the end of the plaintext before encryption so that the contents can
   //     be verified.
   enum PaddingScheme {
     kPaddingNone = 0,
-    kPaddingLibraryDefault = 1,
     kPaddingCryptohomeDefault = 2,
   };
 
@@ -84,47 +79,41 @@ class Crypto {
   //
   // Parameters
   //   wrapped - The blob containing the encrypted data
-  //   start - The position in the blob to start with
-  //   count - The count of bytes to decrypt
   //   key - The AES key to use in decryption
   //   iv - The initialization vector to use
-  //   padding - The padding method to use
-  //   unwrapped (OUT) - The unwrapped (decrypted) data
-  bool AesDecrypt(const chromeos::Blob& wrapped, unsigned int start,
-                  unsigned int count, const chromeos::SecureBlob& key,
-                  const chromeos::SecureBlob& iv, PaddingScheme padding,
-                  chromeos::SecureBlob* unwrapped) const;
+  //   plaintext - The unwrapped (decrypted) data
+  bool AesDecrypt(const chromeos::Blob& ciphertext,
+                  const chromeos::SecureBlob& key,
+                  const chromeos::SecureBlob& iv,
+                  chromeos::SecureBlob* plaintext) const;
 
   // AES encrypts the plain text data using the specified key
   //
   // Parameters
-  //   unwrapped - The plain text data to encrypt
-  //   start - The position in the blob to start with
-  //   count - The count of bytes to encrypt
+  //   plaintext - The plain text data to encrypt
   //   key - The AES key to use
   //   iv - The initialization vector to use
-  //   padding - The padding method to use
-  //   wrapped - On success, the encrypted data
-  bool AesEncrypt(const chromeos::Blob& unwrapped, unsigned int start,
-                  unsigned int count, const chromeos::SecureBlob& key,
-                  const chromeos::SecureBlob& iv, PaddingScheme padding,
-                  chromeos::SecureBlob* wrapped) const;
+  //   ciphertext - On success, the encrypted data
+  bool AesEncrypt(const chromeos::Blob& plaintext,
+                  const chromeos::SecureBlob& key,
+                  const chromeos::SecureBlob& iv,
+                  chromeos::SecureBlob* ciphertext) const;
 
   // Same as AesDecrypt, but allows using either CBC or ECB
-  bool AesDecryptSpecifyBlockMode(const chromeos::Blob& wrapped,
+  bool AesDecryptSpecifyBlockMode(const chromeos::Blob& ciphertext,
                                   unsigned int start, unsigned int count,
                                   const chromeos::SecureBlob& key,
                                   const chromeos::SecureBlob& iv,
                                   PaddingScheme padding, BlockMode block_mode,
-                                  chromeos::SecureBlob* unwrapped) const;
+                                  chromeos::SecureBlob* plaintext) const;
 
   // Same as AesEncrypt, but allows using either CBC or ECB
-  bool AesEncryptSpecifyBlockMode(const chromeos::Blob& unwrapped,
+  bool AesEncryptSpecifyBlockMode(const chromeos::Blob& plaintext,
                                   unsigned int start, unsigned int count,
                                   const chromeos::SecureBlob& key,
                                   const chromeos::SecureBlob& iv,
                                   PaddingScheme padding, BlockMode block_mode,
-                                  chromeos::SecureBlob* wrapped) const;
+                                  chromeos::SecureBlob* ciphertext) const;
 
   // Creates a new RSA key
   //
@@ -214,12 +203,10 @@ class Crypto {
   void ClearKeyset() const;
 
   // Gets the SHA1 hash of the data provided
-  void GetSha1(const chromeos::Blob& data, unsigned int start,
-               unsigned int count, chromeos::SecureBlob* hash) const;
+  chromeos::SecureBlob GetSha1(const chromeos::Blob& data) const;
 
   // Gets the SHA256 hash of the data provided
-  void GetSha256(const chromeos::Blob& data, unsigned int start,
-                 unsigned int count, chromeos::SecureBlob* hash) const;
+  chromeos::SecureBlob GetSha256(const chromeos::Blob& data) const;
 
   // Encodes a binary blob to hex-ascii
   //

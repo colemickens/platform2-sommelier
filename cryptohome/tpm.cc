@@ -741,21 +741,19 @@ bool Tpm::Decrypt(const chromeos::Blob& data, const chromeos::Blob& password,
   return true;
 }
 
-bool Tpm::GetPublicKey(SecureBlob* blob, Tpm::TpmRetryAction* retry_action) {
-  *retry_action = Tpm::RetryNone;
-  if (!IsConnected()) {
-    if (!Connect(retry_action)) {
-      return false;
-    }
-  }
+Tpm::TpmRetryAction Tpm::GetPublicKeyHash(SecureBlob* hash) {
+  TpmRetryAction ret = Tpm::RetryNone;
+  if (!IsConnected() && !Connect(&ret))
+    return ret;
 
   TSS_RESULT result = TSS_SUCCESS;
-  if (!GetPublicKeyBlob(context_handle_, key_handle_, blob, &result)) {
-    *retry_action = HandleError(result);
-    return false;
+  SecureBlob pubkey;
+  if (!GetPublicKeyBlob(context_handle_, key_handle_, &pubkey, &result)) {
+    return HandleError(result);
   }
 
-  return true;
+  *hash = crypto_->GetSha1(pubkey);
+  return RetryNone;
 }
 
 // Begin private methods

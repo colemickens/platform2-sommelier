@@ -115,8 +115,8 @@ class Tpm {
                        chromeos::SecureBlob* data_out,
                        TpmRetryAction* retry_action);
 
-  // Retrieves the Public key component of the cryptohome RSA key
-  bool GetPublicKey(chromeos::SecureBlob* blob, TpmRetryAction* retry_action);
+  // Retrieves the sha1sum of the public key component of the cryptohome RSA key
+  TpmRetryAction GetPublicKeyHash(chromeos::SecureBlob* hash);
 
   // Gets the TPM status information as a Value.
   //

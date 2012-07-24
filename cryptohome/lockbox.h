@@ -188,7 +188,7 @@ class Lockbox {
   virtual bool ParseSizeBlob(const chromeos::Blob& blob, uint32_t* size) const;
 
   // Call out to the mount-encrypted helper to encrypt the key.
-  virtual void FinalizeMountEncrypted(chromeos::Blob &entropy) const;
+  virtual void FinalizeMountEncrypted(const chromeos::Blob &entropy) const;
 
  private:
   Tpm* tpm_;

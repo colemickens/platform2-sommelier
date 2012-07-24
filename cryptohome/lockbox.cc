@@ -219,8 +219,7 @@ bool Lockbox::Verify(const chromeos::Blob& blob, ErrorId* error) {
                     contents_->salt,
                     contents_->salt + contents_->salt_size);
 
-  SecureBlob hash(0);
-  crypto_->GetSha256(salty_blob, 0, salty_blob.size(), &hash);
+  SecureBlob hash = crypto_->GetSha256(salty_blob);
   // Maybe release the duplicate blob data.
   // TODO(wad) Add Crypto::GatherSha256 which takes a vector of blobs.
   salty_blob.resize(0);
@@ -300,10 +299,8 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   chromeos::Blob salty_blob(blob);
   salty_blob.insert(salty_blob.end(), salt.begin(), salt.end());
 
-  SecureBlob nvram_blob(0);
-
   // Insert the hash into the NVRAM.
-  crypto_->GetSha256(salty_blob, 0, salty_blob.size(), &nvram_blob);
+  SecureBlob nvram_blob = crypto_->GetSha256(salty_blob);
   DCHECK(kReservedDigestBytes == nvram_blob.size());
   memcpy(contents_->hash, &nvram_blob[0], sizeof(contents_->hash));
 
@@ -324,7 +321,8 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   //   [size_blob][flags][salt][hash_blob]
 
   // Write the hash to nvram
-  if (!tpm_->WriteNvram(nvram_index_, nvram_blob)) {
+  if (!tpm_->WriteNvram(nvram_index_, SecureBlob(nvram_blob.begin(),
+                        nvram_blob.end()))) {
     LOG(ERROR) << "Store() failed to write the attribute hash to NVRAM";
     *error = kErrorIdTpmError;
     return false;
@@ -381,15 +379,14 @@ bool Lockbox::ParseSizeBlob(const chromeos::Blob& blob, uint32_t* size) const {
   return true;
 }
 
-void Lockbox::FinalizeMountEncrypted(chromeos::Blob &entropy) const {
-  SecureBlob hash(0);
+void Lockbox::FinalizeMountEncrypted(const chromeos::Blob &entropy) const {
   std::string hex;
   FilePath outfile_path;
   FILE *outfile;
   int rc;
 
   // Take hash of entropy and convert to hex string for cmdline.
-  crypto_->GetSha256(entropy, 0, entropy.size(), &hash);
+  SecureBlob hash = crypto_->GetSha256(entropy);
   hex = chromeos::AsciiEncode(hash);
 
   process_->Reset(0);
