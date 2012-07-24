@@ -200,9 +200,7 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
     if (message.find("SC:") != string::npos) {
       PerformStaticChallenge(tag);
     } else {
-      NOTIMPLEMENTED()
-          << ": User/password (no-OTP) authentication not implemented.";
-      driver_->Cleanup(Service::kStateFailure);
+      PerformAuthentication(tag);
     }
   } else if (StartsWithASCII(tag, "User-Specific TPM Token", true)) {
     SupplyTPMToken(tag);
@@ -259,6 +257,23 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
   glib_->Free(b64_password);
   // Don't reuse OTP.
   driver_->args()->RemoveString(flimflam::kOpenVPNOTPProperty);
+}
+
+void OpenVPNManagementServer::PerformAuthentication(const string &tag) {
+  LOG(INFO) << "Perform authentication: " << tag;
+  string user =
+      driver_->args()->LookupString(flimflam::kOpenVPNUserProperty, "");
+  string password =
+      driver_->args()->LookupString(flimflam::kOpenVPNPasswordProperty, "");
+  if (user.empty() || password.empty()) {
+    NOTIMPLEMENTED() << ": Missing credentials:"
+                     << (user.empty() ? " no-user" : "")
+                     << (password.empty() ? " no-password" : "");
+    driver_->Cleanup(Service::kStateFailure);
+    return;
+  }
+  SendUsername(tag, user);
+  SendPassword(tag, password);
 }
 
 void OpenVPNManagementServer::SupplyTPMToken(const string &tag) {
@@ -320,6 +335,18 @@ bool OpenVPNManagementServer::ProcessHoldMessage(const string &message) {
   return true;
 }
 
+// static
+string OpenVPNManagementServer::EscapeToQuote(const string &str) {
+  string escaped;
+  for (string::const_iterator it = str.begin(); it != str.end(); ++it) {
+    if (*it == '\\' || *it == '"') {
+      escaped += '\\';
+    }
+    escaped += *it;
+  }
+  return escaped;
+}
+
 void OpenVPNManagementServer::Send(const string &data) {
   SLOG(VPN, 2) << __func__;
   ssize_t len = sockets_->Send(connected_socket_, data.data(), data.size(), 0);
@@ -341,7 +368,9 @@ void OpenVPNManagementServer::SendUsername(const string &tag,
 void OpenVPNManagementServer::SendPassword(const string &tag,
                                            const string &password) {
   SLOG(VPN, 2) << __func__;
-  Send(StringPrintf("password \"%s\" \"%s\"\n", tag.c_str(), password.c_str()));
+  Send(StringPrintf("password \"%s\" \"%s\"\n",
+                    tag.c_str(),
+                    EscapeToQuote(password).c_str()));
 }
 
 void OpenVPNManagementServer::SendHoldRelease() {

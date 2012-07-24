@@ -65,6 +65,14 @@ class OpenVPNManagementServerTest : public testing::Test {
     ExpectSend("password \"Auth\" \"SCRV1:eW95bw==:MTIzNDU2\"\n");
   }
 
+  void ExpectAuthenticationResponse() {
+    driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
+    driver_.args()->SetString(flimflam::kOpenVPNPasswordProperty, "yoyo");
+    SetConnectedSocket();
+    ExpectSend("username \"Auth\" jojo\n");
+    ExpectSend("password \"Auth\" \"yoyo\"\n");
+  }
+
   void ExpectPINResponse() {
     driver_.args()->SetString(flimflam::kOpenVPNPinProperty, "987654");
     SetConnectedSocket();
@@ -254,6 +262,13 @@ TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {
   EXPECT_FALSE(driver_.args()->ContainsString(flimflam::kOpenVPNOTPProperty));
 }
 
+TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuth) {
+  ExpectAuthenticationResponse();
+  EXPECT_TRUE(
+      server_.ProcessNeedPasswordMessage(
+          ">PASSWORD:Need 'Auth' username/password"));
+}
+
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageTPMToken) {
   ExpectPINResponse();
   EXPECT_TRUE(
@@ -291,6 +306,18 @@ TEST_F(OpenVPNManagementServerTest, PerformStaticChallenge) {
   ExpectStaticChallengeResponse();
   server_.PerformStaticChallenge("Auth");
   EXPECT_FALSE(driver_.args()->ContainsString(flimflam::kOpenVPNOTPProperty));
+}
+
+TEST_F(OpenVPNManagementServerTest, PerformAuthenticationNoCreds) {
+  EXPECT_CALL(driver_, Cleanup(Service::kStateFailure)).Times(2);
+  server_.PerformAuthentication("Auth");
+  driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
+  server_.PerformAuthentication("Auth");
+}
+
+TEST_F(OpenVPNManagementServerTest, PerformAuthentication) {
+  ExpectAuthenticationResponse();
+  server_.PerformAuthentication("Auth");
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessHoldMessage) {
@@ -342,8 +369,8 @@ TEST_F(OpenVPNManagementServerTest, SendUsername) {
 
 TEST_F(OpenVPNManagementServerTest, SendPassword) {
   SetConnectedSocket();
-  ExpectSend("password \"Auth\" \"foobar\"\n");
-  server_.SendPassword("Auth", "foobar");
+  ExpectSend("password \"Auth\" \"foo\\\"bar\"\n");
+  server_.SendPassword("Auth", "foo\"bar");
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessFailedPasswordMessage) {
@@ -375,6 +402,15 @@ TEST_F(OpenVPNManagementServerTest, Hold) {
   server_.ReleaseHold();
   EXPECT_TRUE(server_.hold_release_);
   EXPECT_FALSE(server_.hold_waiting_);
+}
+
+TEST_F(OpenVPNManagementServerTest, EscapeToQuote) {
+  EXPECT_EQ("", OpenVPNManagementServer::EscapeToQuote(""));
+  EXPECT_EQ("foo './", OpenVPNManagementServer::EscapeToQuote("foo './"));
+  EXPECT_EQ("\\\\", OpenVPNManagementServer::EscapeToQuote("\\"));
+  EXPECT_EQ("\\\"", OpenVPNManagementServer::EscapeToQuote("\""));
+  EXPECT_EQ("\\\\\\\"foo\\\\bar\\\"",
+            OpenVPNManagementServer::EscapeToQuote("\\\"foo\\bar\""));
 }
 
 }  // namespace shill

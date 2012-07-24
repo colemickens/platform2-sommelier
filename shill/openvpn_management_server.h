@@ -47,18 +47,22 @@ class OpenVPNManagementServer {
 
  private:
   friend class OpenVPNManagementServerTest;
+  FRIEND_TEST(OpenVPNManagementServerTest, EscapeToQuote);
   FRIEND_TEST(OpenVPNManagementServerTest, Hold);
   FRIEND_TEST(OpenVPNManagementServerTest, OnInput);
   FRIEND_TEST(OpenVPNManagementServerTest, OnInputStop);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReady);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReadyAcceptFail);
   FRIEND_TEST(OpenVPNManagementServerTest, ParseNeedPasswordTag);
+  FRIEND_TEST(OpenVPNManagementServerTest, PerformAuthentication);
+  FRIEND_TEST(OpenVPNManagementServerTest, PerformAuthenticationNoCreds);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallenge);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessFailedPasswordMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessHoldMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessInfoMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessMessage);
+  FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuth);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageTPMToken);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageUnknown);
@@ -91,9 +95,15 @@ class OpenVPNManagementServer {
   bool ProcessHoldMessage(const std::string &message);
 
   void PerformStaticChallenge(const std::string &tag);
+  void PerformAuthentication(const std::string &tag);
   void SupplyTPMToken(const std::string &tag);
 
   static std::string ParseNeedPasswordTag(const std::string &message);
+
+  // Escapes |str| per OpenVPN's command parsing rules assuming |str| will be
+  // sent over the management interface quoted (i.e., whitespace is not
+  // escaped).
+  static std::string EscapeToQuote(const std::string &str);
 
   bool IsStarted() const { return sockets_; }
 
