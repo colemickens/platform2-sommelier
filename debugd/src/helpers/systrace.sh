@@ -51,6 +51,12 @@ power_events="
     cpufreq_interactive:cpufreq_interactive_boost
     cpufreq_interactive:cpufreq_interactive_unboost
 "
+
+input_events="
+    irq:irq_threaded_handler_entry
+    irq:irq_threaded_handler_exit
+"
+
 # TODO(sleffler) calculate based on enabled events
 buffer_size_running=7040           # ring-buffer size in kb / cpu
 buffer_size_idle=1408              # ring-buffer size while idle
@@ -103,6 +109,7 @@ parse_category()
 {
     case $1 in
     gfx)    echo "${gfx_events}";;
+    input)  echo "${input_events}";;
     power)  echo "${power_events}";;
     sched)  echo "${sched_events}";;
     workq)  echo "${workq_events}";;
@@ -110,7 +117,8 @@ parse_category()
     all)    echo "${sched_events}
                   ${workq_events}
                   ${power_events}
-                  ${gfx_events}";;
+                  ${gfx_events}
+                  ${input_events}";;
     *)
       echo "Unknown category \'${category}\'" >&2
       exit
