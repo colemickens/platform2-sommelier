@@ -68,12 +68,6 @@ class Tpm {
   //   open_key - Whether or not to open (load) the cryptohome TPM key
   virtual bool Init(Crypto* crypto, Platform* platform, bool open_key);
 
-  // Read a status bit from the TPM
-  //
-  // Parameters
-  //   status_file - The special file to read the status bit from
-  virtual bool GetStatusBit(const char* status_file);
-
   // Tries to connect to the TPM
   virtual bool Connect(TpmRetryAction* retry_action);
 
@@ -116,23 +110,8 @@ class Tpm {
                        chromeos::SecureBlob* data_out,
                        TpmRetryAction* retry_action);
 
-  // Returns the maximum number of RSA keys that the TPM can hold simultaneously
-  unsigned int GetMaxRsaKeyCount();
-
-  // Retrieves the TPM-wrapped cryptohome RSA key
-  bool GetKey(chromeos::SecureBlob* blob, TpmRetryAction* retry_action);
   // Retrieves the Public key component of the cryptohome RSA key
   bool GetPublicKey(chromeos::SecureBlob* blob, TpmRetryAction* retry_action);
-  // Loads the cryptohome RSA key from the specified TPM-wrapped key
-  bool LoadKey(const chromeos::SecureBlob& blob, TpmRetryAction* retry_action);
-
-  // Gets the TPM status information
-  //
-  // Parameters
-  //   check_crypto - Whether to check if encrypt/decrypt works (may take
-  //                  longer)
-  //   status (OUT) - The TpmStatusInfo structure containing the results
-  void GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status);
 
   // Gets the TPM status information as a Value.
   //
@@ -160,9 +139,6 @@ class Tpm {
   // currently being taken (such as on a separate thread).
   virtual bool IsOwned() const { return is_owned_; }
 
-  // Returns whether or not the SRK is available
-  bool IsSrkAvailable() const { return is_srk_available_; }
-
   // Returns whether or not the TPM is being owned
   bool IsBeingOwned() const { return is_being_owned_; }
 
@@ -182,14 +158,12 @@ class Tpm {
   // Parameters
   //   index - The index of the space
   //   length - The number of bytes to allocate
-  //   flags - any space-specific flags (currently ignored)
   // TODO(wad) Add PCR compositing via flags.
   // TODO(wad) Should this just be a factory for a TpmNvram class?
-  // Returns false if the index, length, or flags are invalid or the required
+  // Returns false if the index or length invalid or the required
   // authorization is not possible.
   virtual bool DefineLockOnceNvram(uint32_t index,
-                                   size_t length,
-                                   uint32_t flags);
+                                   size_t length);
 
   // Destroys a defined NVRAM space
   //
@@ -250,19 +224,19 @@ class Tpm {
     crypto_ = value;
   }
 
-  void set_rsa_key_bits(unsigned int value) {
-    rsa_key_bits_ = value;
-  }
-
-  void set_key_file(const std::string& value) {
-    key_file_ = value;
-  }
-
  protected:
   // Default constructor
   Tpm();
 
  private:
+  // Gets the TPM status information
+  //
+  // Parameters
+  //   check_crypto - Whether to check if encrypt/decrypt works (may take
+  //                  longer)
+  //   status (OUT) - The TpmStatusInfo structure containing the results
+  void GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status);
+
   bool IsTransient(TSS_RESULT result);
 
   TpmRetryAction HandleError(TSS_RESULT result);
@@ -311,11 +285,6 @@ class Tpm {
   bool GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                         chromeos::SecureBlob* data_out, TSS_RESULT* result);
 
-  bool LoadKeyBlob(TSS_HCONTEXT context_handle,
-                   const chromeos::SecureBlob& blob,
-                   TSS_HKEY* key_handle, TSS_RESULT* result);
-
- private:
   // Tries to connect to the TPM
   virtual TSS_HCONTEXT ConnectContext();
 
@@ -339,13 +308,6 @@ class Tpm {
 
   // Saves the TpmStatus object
   bool StoreTpmStatus(const TpmStatus& serialized);
-
-  // Returns the maximum simultaneously-loaded RSA key count for the TPM
-  // specified by the context handle
-  //
-  // Parameters
-  //   context_handle - The context handle for the TPM session
-  unsigned int GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle);
 
   // Returns the size of the specified NVRAM space.
   //
@@ -391,13 +353,6 @@ class Tpm {
   // Parameters
   //   context_handle - The context handle for the TPM session
   bool CreateEndorsementKey(TSS_HCONTEXT context_handle);
-
-  // Delegates ownership authority
-  //
-  // Parameters
-  //   context_handle - The context handle for the TPM session
-  bool DelegateTpmOwnership(TSS_HCONTEXT context_handle, TSS_HTPM tpm_handle,
-                            chromeos::SecureBlob* delegation_blob);
 
   // Checks to see if the endorsement key is available by attempting to get its
   // public key
@@ -473,12 +428,10 @@ class Tpm {
 
   // Member variables
   bool initialized_;
-  unsigned int rsa_key_bits_;
   chromeos::SecureBlob srk_auth_;
   Crypto* crypto_;
   TSS_HCONTEXT context_handle_;
   TSS_HKEY key_handle_;
-  std::string key_file_;
 
   // If TPM ownership is taken, owner_password_ contains the password used
   chromeos::SecureBlob owner_password_;
@@ -492,9 +445,6 @@ class Tpm {
 
   // Indicates if the TPM is owned
   bool is_owned_;
-
-  // Indicates if the SRK is available
-  bool is_srk_available_;
 
   // Indicates if the TPM is being owned
   bool is_being_owned_;

@@ -42,6 +42,7 @@ namespace cryptohome {
 
 const unsigned char kDefaultSrkAuth[] = { };
 const unsigned int kDefaultTpmRsaKeyBits = 2048;
+const unsigned int kDefaultTpmRsaKeyFlag = TSS_KEY_SIZE_2048;
 const unsigned int kDefaultDiscardableWrapPasswordLength = 32;
 const char kDefaultCryptohomeKeyFile[] = "/home/.shadow/cryptohome.key";
 const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0, 0, 0,
@@ -78,17 +79,14 @@ Tpm* Tpm::GetSingleton() {
 
 Tpm::Tpm()
     : initialized_(false),
-      rsa_key_bits_(kDefaultTpmRsaKeyBits),
       srk_auth_(kDefaultSrkAuth, sizeof(kDefaultSrkAuth)),
       crypto_(NULL),
       context_handle_(0),
       key_handle_(0),
-      key_file_(kDefaultCryptohomeKeyFile),
       owner_password_(),
       password_sync_lock_(),
       is_disabled_(true),
       is_owned_(false),
-      is_srk_available_(false),
       is_being_owned_(false),
       platform_(NULL) {
 }
@@ -165,17 +163,6 @@ bool Tpm::Init(Crypto* crypto, Platform* platform, bool open_key) {
   }
 
   return true;
-}
-
-bool Tpm::GetStatusBit(const char* status_file) {
-  std::string contents;
-  if (!file_util::ReadFileToString(FilePath(status_file), &contents)) {
-    return false;
-  }
-  if (contents.size() < 1) {
-    return false;
-  }
-  return (contents[0] != '0');
 }
 
 bool Tpm::Connect(TpmRetryAction* retry_action) {
@@ -380,20 +367,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_VOLATILE;
   if (!create_in_tpm) {
     init_flags |= TSS_KEY_MIGRATABLE;
-    switch (rsa_key_bits_) {
-      case 2048:
-        init_flags |= TSS_KEY_SIZE_2048;
-        break;
-      case 1024:
-        init_flags |= TSS_KEY_SIZE_1024;
-        break;
-      case 512:
-        init_flags |= TSS_KEY_SIZE_512;
-        break;
-      default:
-        LOG(INFO) << "Key size is unknown.";
-        return false;
-    }
+    init_flags |= kDefaultTpmRsaKeyFlag;
   }
   ScopedTssKey local_key_handle(context_handle);
   if (TPM_ERROR(*result = Tspi_Context_CreateObject(context_handle,
@@ -464,7 +438,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
 
     SecureBlob n;
     SecureBlob p;
-    if (!crypto_->CreateRsaKey(rsa_key_bits_, &n, &p)) {
+    if (!crypto_->CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
       LOG(ERROR) << "Error creating RSA key";
       return false;
     }
@@ -525,7 +499,7 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
 
   // First, try loading the key from the key file
   SecureBlob raw_key;
-  if (platform_->ReadFile(key_file_, &raw_key)) {
+  if (platform_->ReadFile(kDefaultCryptohomeKeyFile, &raw_key)) {
     if (TPM_ERROR(*result = Tspi_Context_LoadKeyByBlob(
                                     context_handle,
                                     srk_handle,
@@ -675,7 +649,7 @@ bool Tpm::SaveCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   Platform platform;
   int previous_mask = platform.SetMask(cryptohome::kDefaultUmask);
   unsigned int data_written = file_util::WriteFile(
-      FilePath(key_file_),
+      FilePath(kDefaultCryptohomeKeyFile),
       static_cast<const char*>(raw_key.const_data()),
       raw_key.size());
   platform.SetMask(previous_mask);
@@ -685,42 +659,6 @@ bool Tpm::SaveCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
     return false;
   }
   return true;
-}
-
-unsigned int Tpm::GetMaxRsaKeyCount() {
-  if (context_handle_ == 0) {
-    return -1;
-  }
-
-  return GetMaxRsaKeyCountForContext(context_handle_);
-}
-
-unsigned int Tpm::GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) {
-  unsigned int count = 0;
-  TSS_RESULT result;
-  TSS_HTPM tpm_handle;
-  if (TPM_ERROR(result = Tspi_Context_GetTpmObject(context_handle,
-                                                   &tpm_handle))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_GetTpmObject";
-    return count;
-  }
-
-  UINT32 cap_length = 0;
-  ScopedTssMemory cap(context_handle);
-  UINT32 subcap = TSS_TPMCAP_PROP_MAXKEYS;
-  if (TPM_ERROR(result = Tspi_TPM_GetCapability(tpm_handle,
-                                                TSS_TPMCAP_PROPERTY,
-                                                sizeof(subcap),
-                                                reinterpret_cast<BYTE*>(
-                                                  &subcap),
-                                                &cap_length, cap.ptr()))) {
-    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
-    return count;
-  }
-  if (cap_length == sizeof(unsigned int)) {
-    count = *(reinterpret_cast<unsigned int*>(cap.value()));
-  }
-  return count;
 }
 
 bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
@@ -803,22 +741,6 @@ bool Tpm::Decrypt(const chromeos::Blob& data, const chromeos::Blob& password,
   return true;
 }
 
-bool Tpm::GetKey(SecureBlob* blob, Tpm::TpmRetryAction* retry_action) {
-  *retry_action = Tpm::RetryNone;
-  if (!IsConnected()) {
-    if (!Connect(retry_action)) {
-      return false;
-    }
-  }
-
-  TSS_RESULT result = TSS_SUCCESS;
-  if (!GetKeyBlob(context_handle_, key_handle_, blob, &result)) {
-    *retry_action = HandleError(result);
-    return false;
-  }
-  return true;
-}
-
 bool Tpm::GetPublicKey(SecureBlob* blob, Tpm::TpmRetryAction* retry_action) {
   *retry_action = Tpm::RetryNone;
   if (!IsConnected()) {
@@ -833,25 +755,6 @@ bool Tpm::GetPublicKey(SecureBlob* blob, Tpm::TpmRetryAction* retry_action) {
     return false;
   }
 
-  return true;
-}
-
-bool Tpm::LoadKey(const SecureBlob& blob, Tpm::TpmRetryAction* retry_action) {
-  *retry_action = Tpm::RetryNone;
-  if (!IsConnected()) {
-    if (!Connect(retry_action)) {
-      return false;
-    }
-  }
-
-  TSS_HKEY local_key_handle;
-  TSS_RESULT result = TSS_SUCCESS;
-  if (!LoadKeyBlob(context_handle_, blob, &local_key_handle, &result)) {
-    *retry_action = HandleError(result);
-    return false;
-  }
-
-  key_handle_ = local_key_handle;
   return true;
 }
 
@@ -1048,39 +951,6 @@ bool Tpm::GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   memcpy(local_data.data(), blob.value(), blob_size);
   chromeos::SecureMemset(blob.value(), 0, blob_size);
   data_out->swap(local_data);
-  return true;
-}
-
-bool Tpm::LoadKeyBlob(TSS_HCONTEXT context_handle, const SecureBlob& blob,
-                      TSS_HKEY* key_handle, TSS_RESULT* result) {
-  *result = TSS_SUCCESS;
-
-  ScopedTssKey srk_handle(context_handle);
-  if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
-    return false;
-  }
-
-  ScopedTssKey local_key_handle(context_handle);
-  if (TPM_ERROR(*result = Tspi_Context_LoadKeyByBlob(context_handle,
-                                                     srk_handle,
-                                                     blob.size(),
-                                                     const_cast<BYTE*>(
-                                                       static_cast<const BYTE*>(
-                                                         blob.const_data())),
-                                                     local_key_handle.ptr()))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_LoadKeyByBlob";
-    return false;
-  }
-
-  unsigned int size_n;
-  ScopedTssMemory public_key(context_handle);
-  if (TPM_ERROR(*result = Tspi_Key_GetPubKey(local_key_handle, &size_n,
-                                             public_key.ptr()))) {
-    TPM_LOG(ERROR, *result) << "Error calling Tspi_Key_GetPubKey";
-    return false;
-  }
-
-  *key_handle = local_key_handle.release();
   return true;
 }
 
@@ -1693,10 +1563,8 @@ bool Tpm::InitializeTpm(bool* OUT_took_ownership) {
                                                     TSS_PS_TYPE_SYSTEM,
                                                     SRK_UUID,
                                                     &srk_handle))) {
-    is_srk_available_ = false;
   } else {
     Tspi_Context_CloseObject(context_handle, srk_handle);
-    is_srk_available_ = true;
   }
 
   // If we can open the TPM with the default password, then we still need to
@@ -1817,7 +1685,7 @@ bool Tpm::DestroyNvram(uint32_t index) {
 }
 
 // TODO(wad) Make this a wrapper around a generic DefineNvram().
-bool Tpm::DefineLockOnceNvram(uint32_t index, size_t length, uint32_t flags) {
+bool Tpm::DefineLockOnceNvram(uint32_t index, size_t length) {
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {

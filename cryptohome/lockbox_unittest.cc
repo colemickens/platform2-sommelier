@@ -159,8 +159,7 @@ TEST_F(LockboxTest, CreateFirstInstall) {
 
   // Create the new space.
   EXPECT_CALL(tpm_,
-              DefineLockOnceNvram(0xdeadbeef, Lockbox::kReservedNvramBytesV2,
-                                  0))
+              DefineLockOnceNvram(0xdeadbeef, Lockbox::kReservedNvramBytesV2))
     .WillOnce(Return(true));
   EXPECT_TRUE(lockbox_.Create(&error));
 }
@@ -190,8 +189,7 @@ TEST_F(LockboxTest, CreateOnReinstallWithFullAuth) {
 
   // Create the new space.
   EXPECT_CALL(tpm_,
-              DefineLockOnceNvram(0xdeadbeef, Lockbox::kReservedNvramBytesV2,
-                                  0))
+              DefineLockOnceNvram(0xdeadbeef, Lockbox::kReservedNvramBytesV2))
     .WillOnce(Return(true));
   EXPECT_TRUE(lockbox_.Create(&error));
 }
