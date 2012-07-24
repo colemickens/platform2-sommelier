@@ -17,17 +17,8 @@ namespace base { class Time; }
 
 namespace cryptohome {
 
-// Default mount options
-extern const int kDefaultMountOptions;
-// Default length to use in call to getpwnam_r if the system default is not
-// available
-extern const int kDefaultPwnameLength;
 // Default umask
 extern const int kDefaultUmask;
-// Where to find mtab
-extern const std::string kMtab;
-// The procfs dir
-extern const std::string kProcDir;
 
 class ProcessInformation;
 
@@ -79,14 +70,6 @@ class Platform {
   virtual bool IsDirectoryMountedWith(const std::string& directory,
                                       const std::string& from);
 
-  // Terminates or kills processes (except the current) that have files open on
-  // the specified path.  Returns true if it tried to kill any processes.
-  //
-  // Parameters
-  //   path - The path to check if the process has open files on
-  //   hard - If true, send a SIGKILL instead of SIGTERM
-  virtual bool TerminatePidsWithOpenFiles(const std::string& path, bool hard);
-
   // GetProcessesWithOpenFiles
   //
   // Parameters
@@ -94,68 +77,6 @@ class Platform {
   //   pids (OUT) - The PIDs found
   void GetProcessesWithOpenFiles(const std::string& path_in,
                                  std::vector<ProcessInformation>* processes);
-
-  // Returns a vector of PIDs that have files open on the given path
-  //
-  // Parameters
-  //   path - The path to check if the process has open files on
-  //   pids (OUT) - The PIDs found
-  void LookForOpenFiles(const std::string& path_in, std::vector<pid_t>* pids);
-
-  // Returns true if child is a file or folder below or equal to parent.  If
-  // parent is a directory, it should end with a '/' character.
-  //
-  // Parameters
-  //   parent - The parent directory
-  //   child - The child directory/file
-  bool IsPathChild(const std::string& parent, const std::string& child);
-
-  // Returns the target of the specified link
-  //
-  // Parameters
-  //   link_path - The link to check
-  std::string ReadLink(const std::string& link_path);
-
-  // Returns the process and open file information for the specified process id
-  // with files open on the given path
-  //
-  // Parameters
-  //   pid - The process to check
-  //   path_in - The file path to check for
-  //   process_info (OUT) - The ProcessInformation to store the results in
-  void GetProcessOpenFileInformation(pid_t pid, const std::string& path_in,
-                                     ProcessInformation* process_info);
-
-  // Terminates or kills processes (except the current) that have the user ID
-  // specified.  Returns true if it tried to kill any processes.
-  //
-  // Parameters
-  //   path - The path to check if the process has open files on
-  //   hard - If true, send a SIGKILL instead of SIGTERM
-  virtual bool TerminatePidsForUser(const uid_t uid, bool hard);
-
-  // Returns a vector of PIDs whose Real, Effective, Saved, or File UID is equal
-  // to that requested
-  //
-  // Parameters
-  //   uid - the user ID to search for
-  //   pids (OUT) - the list of PIDs
-  void GetPidsForUser(uid_t uid, std::vector<pid_t>* pids);
-
-  // Terminates or kills processes (except the current) that have the name
-  // specified.  Returns true if it tried to kill any processes.
-  //
-  // Parameters
-  //   name - The process name to search for.
-  //   hard - If true, send a SIGKILL instead of SIGTERM.
-  virtual bool TerminatePidsByName(const std::string& name, bool hard);
-
-  // Returns a vector of PIDs with a given name.
-  //
-  // Parameters
-  //   name - The process name to search for.
-  //   pids (OUT) - The list of PIDs.
-  void GetPidsByName(const std::string& name, std::vector<pid_t>* pids);
 
   // Calls the platform stat() function to obtain the ownership of
   // a given path. The path may be a directory or a file.
@@ -193,26 +114,6 @@ class Platform {
   //   path - The path to change the permissions on
   //   mode - the mode to change the permissions to
   virtual bool SetPermissions(const std::string& path, mode_t mode) const;
-
-  // Calls the platform chown() function recursively on the directory
-  //
-  // Parameters
-  //   directory - The directory to set ownership on
-  //   user_id - The user_id to assign ownership to
-  //   group_id - The group_id to assign ownership to
-  virtual bool SetOwnershipRecursive(const std::string& directory,
-                                     uid_t user_id,
-                                     gid_t group_id) const;
-
-  // Calls the platform chmod() function recursively on the directory
-  //
-  // Parameters
-  //   directory - The directory to change the permissions on
-  //   dir_mode - the directory mode to change the permissions to
-  //   file_mode - the file mode to change the permissions to
-  virtual bool SetPermissionsRecursive(const std::string& directory,
-                                       mode_t dir_mode,
-                                       mode_t file_mode) const;
 
   // Sets the path accessible by a group with specified permissions
   //
@@ -257,14 +158,6 @@ class Platform {
   // Clears the user keyring
   static void ClearUserKeyring();
 
-  // Creates a symbolic link from one path to the other
-  //
-  // Returns true on success or if the symlink already exists. False on failure.
-  // Parameters
-  //  oldpath - source path that the symlink points to
-  //  newpath - symlink to create which points to the source path
-  virtual bool Symlink(const std::string& oldpath, const std::string& newpath);
-
   // Returns true if the specified file exists.
   //
   // Parameters
@@ -298,16 +191,6 @@ class Platform {
   // Create a directory with the given path
   virtual bool CreateDirectory(const std::string& path);
 
-  // Enumerate all files under a given path subtree
-  //
-  // Parameters
-  //  path - string containing the file path
-  //  recursive - whether to recurse into subdirectories
-  //  file_list - vector of strings to add the enumerated files to.
-  virtual bool EnumerateFiles(const std::string& path,
-                              bool is_recursive,
-                              std::vector<std::string>* file_list);
-
   // Enumerate all directory entries in a given directory
   //
   // Parameters
@@ -317,19 +200,6 @@ class Platform {
   virtual bool EnumerateDirectoryEntries(const std::string& path,
                                          bool is_recursive,
                                          std::vector<std::string>* ent_list);
-
-  // Sets the calling process effective uid/gid and optionally store old ones
-  //
-  // Parameters
-  //  uid - effective uid to set
-  //  gid - effective gid to set
-  //  saved_uid - if non-null, pointer to the location to store the old uid
-  //  saved_gid - if non-null, pointer to the location to store the old gid
-  virtual bool SetProcessId(uid_t uid, gid_t gid, uid_t* saved_uid,
-                            gid_t* saved_gid);
-
-  // Call the platform function to flush the disk buffer caches.
-  virtual bool Sync();
 
   // Look up information about a file or directory
   //
@@ -345,29 +215,40 @@ class Platform {
   //  to
   virtual bool Rename(const std::string& from, const std::string& to);
 
-  // Overrides the default mount options
-  void set_mount_options(int value) {
-    mount_options_ = value;
-  }
-
-  // Overrides the default mtab file
-  void set_mtab_file(const std::string& value) {
-    mtab_file_ = value;
-  }
-
-  // Overrides the default procfs dir
-  void set_proc_dir(const std::string& value) {
-    proc_dir_ = value;
-  }
-
   // Retuns the current time.
   virtual base::Time GetCurrentTime() const;
 
  private:
-  int mount_options_;
-  int umask_;
-  std::string mtab_file_;
-  std::string proc_dir_;
+  // Returns the process and open file information for the specified process id
+  // with files open on the given path
+  //
+  // Parameters
+  //   pid - The process to check
+  //   path_in - The file path to check for
+  //   process_info (OUT) - The ProcessInformation to store the results in
+  void GetProcessOpenFileInformation(pid_t pid, const std::string& path_in,
+                                     ProcessInformation* process_info);
+
+  // Returns a vector of PIDs that have files open on the given path
+  //
+  // Parameters
+  //   path - The path to check if the process has open files on
+  //   pids (OUT) - The PIDs found
+  void LookForOpenFiles(const std::string& path_in, std::vector<pid_t>* pids);
+
+  // Returns true if child is a file or folder below or equal to parent.  If
+  // parent is a directory, it should end with a '/' character.
+  //
+  // Parameters
+  //   parent - The parent directory
+  //   child - The child directory/file
+  bool IsPathChild(const std::string& parent, const std::string& child);
+
+  // Returns the target of the specified link
+  //
+  // Parameters
+  //   link_path - The link to check
+  std::string ReadLink(const std::string& link_path);
 
   DISALLOW_COPY_AND_ASSIGN(Platform);
 };

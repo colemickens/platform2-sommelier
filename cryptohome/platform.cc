@@ -23,6 +23,7 @@
 #include <base/string_split.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
+#include <base/sys_info.h>
 #include <base/time.h>
 #include <chromeos/utility.h>
 
@@ -59,12 +60,7 @@ const int kDefaultUmask = S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH
 const std::string kMtab = "/etc/mtab";
 const std::string kProcDir = "/proc";
 
-Platform::Platform()
-    : mount_options_(kDefaultMountOptions),
-      umask_(kDefaultUmask),
-      mtab_file_(kMtab),
-      proc_dir_(kProcDir) {
-}
+Platform::Platform() { }
 
 Platform::~Platform() {
 }
@@ -74,7 +70,7 @@ bool Platform::IsDirectoryMounted(const std::string& directory) {
   // listed.  This works because Chrome OS is a controlled environment and the
   // only way /home/chronos/user should be mounted is if cryptohome mounted it.
   string contents;
-  if (file_util::ReadFileToString(FilePath(mtab_file_), &contents)) {
+  if (file_util::ReadFileToString(FilePath(kMtab), &contents)) {
     if (contents.find(StringPrintf(" %s ", directory.c_str()))
         != string::npos) {
       return true;
@@ -89,7 +85,7 @@ bool Platform::IsDirectoryMountedWith(const std::string& directory,
   // and the user's vault path are present.  Assumes this user is mounted if it
   // finds both.  This will need to change if simultaneous login is implemented.
   string contents;
-  if (file_util::ReadFileToString(FilePath(mtab_file_), &contents)) {
+  if (file_util::ReadFileToString(FilePath(kMtab), &contents)) {
     if ((contents.find(StringPrintf(" %s ", directory.c_str()))
          != string::npos)
         && (contents.find(StringPrintf("%s ",
@@ -104,7 +100,7 @@ bool Platform::IsDirectoryMountedWith(const std::string& directory,
 bool Platform::Mount(const std::string& from, const std::string& to,
                      const std::string& type,
                      const std::string& mount_options) {
-  if (mount(from.c_str(), to.c_str(), type.c_str(), mount_options_,
+  if (mount(from.c_str(), to.c_str(), type.c_str(), kDefaultMountOptions,
             mount_options.c_str())) {
     return false;
   }
@@ -112,7 +108,8 @@ bool Platform::Mount(const std::string& from, const std::string& to,
 }
 
 bool Platform::Bind(const std::string& from, const std::string& to) {
-  if (mount(from.c_str(), to.c_str(), NULL, mount_options_ | MS_BIND, NULL))
+  if (mount(from.c_str(), to.c_str(), NULL, kDefaultMountOptions | MS_BIND,
+            NULL))
     return false;
   return true;
 }
@@ -137,22 +134,6 @@ bool Platform::Unmount(const std::string& path, bool lazy, bool* was_busy) {
     *was_busy = false;
   }
   return true;
-}
-
-bool Platform::TerminatePidsWithOpenFiles(const std::string& path, bool hard) {
-  std::vector<pid_t> pids;
-  LookForOpenFiles(path, &pids);
-  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); ++it) {
-    pid_t pid = static_cast<pid_t>(*it);
-    if (pid != getpid()) {
-      if (!hard) {
-        kill(pid, SIGTERM);
-      } else {
-        kill(pid, SIGKILL);
-      }
-    }
-  }
-  return (pids.size() != 0);
 }
 
 void Platform::GetProcessesWithOpenFiles(
@@ -231,7 +212,7 @@ void Platform::LookForOpenFiles(const std::string& path_in,
   std::string path = file_path.value();
 
   // Open /proc
-  file_util::FileEnumerator proc_dir_enum(FilePath(proc_dir_), false,
+  file_util::FileEnumerator proc_dir_enum(FilePath(kProcDir), false,
       file_util::FileEnumerator::DIRECTORIES);
 
   int linkbuf_length = path.length();
@@ -301,122 +282,6 @@ bool Platform::IsPathChild(const std::string& parent,
   return false;
 }
 
-bool Platform::TerminatePidsForUser(const uid_t uid, bool hard) {
-  std::vector<pid_t> pids;
-  GetPidsForUser(uid, &pids);
-  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); ++it) {
-    pid_t pid = static_cast<pid_t>(*it);
-    if (pid != getpid()) {
-      if (!hard) {
-        kill(pid, SIGTERM);
-      } else {
-        kill(pid, SIGKILL);
-      }
-    }
-  }
-  return (pids.size() != 0);
-}
-
-void Platform::GetPidsForUser(uid_t uid, std::vector<pid_t>* pids) {
-  // Open /proc
-  file_util::FileEnumerator proc_dir_enum(FilePath(proc_dir_), false,
-      file_util::FileEnumerator::DIRECTORIES);
-
-  // List PIDs in /proc
-  FilePath pid_path;
-  while (!(pid_path = proc_dir_enum.Next()).empty()) {
-    const char* pid_str = pid_path.BaseName().value().c_str();
-    pid_t pid = 0;
-    if (!base::StringToInt(pid_str, &pid) || pid <= 1) {
-      continue;
-    }
-    // Open /proc/<pid>/status
-    FilePath status_path = pid_path.Append("status");
-    string contents;
-    if (!file_util::ReadFileToString(status_path, &contents)) {
-      continue;
-    }
-
-    size_t uid_loc = contents.find("Uid:");
-    if (uid_loc == string::npos) {
-      continue;
-    }
-    uid_loc += 4;
-
-    size_t uid_end = contents.find("\n", uid_loc);
-    if (uid_end == string::npos) {
-      continue;
-    }
-
-    contents = contents.substr(uid_loc, uid_end - uid_loc);
-
-    std::vector<std::string> tokens;
-    Tokenize(contents, " \t", &tokens);
-
-    for (std::vector<std::string>::iterator it = tokens.begin();
-        it != tokens.end(); ++it) {
-      std::string& value = *it;
-      if (value.length() == 0) {
-        continue;
-      }
-      uid_t check_uid = 0;
-      if (!StringToUint(value.c_str(), &check_uid))
-        continue;
-      if (check_uid == uid) {
-        pids->push_back(pid);
-        break;
-      }
-    }
-  }
-}
-
-bool Platform::TerminatePidsByName(const string& name, bool hard) {
-  std::vector<pid_t> pids;
-  GetPidsByName(name, &pids);
-  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); ++it) {
-    pid_t pid = static_cast<pid_t>(*it);
-    if (pid != getpid()) {
-      if (!hard) {
-        kill(pid, SIGTERM);
-      } else {
-        kill(pid, SIGKILL);
-      }
-    }
-  }
-  return (pids.size() != 0);
-}
-
-void Platform::GetPidsByName(const string& name, std::vector<pid_t>* pids) {
-  // Open /proc.
-  file_util::FileEnumerator proc_dir_enum(FilePath(proc_dir_), false,
-      file_util::FileEnumerator::DIRECTORIES);
-  // List PIDs in /proc.
-  FilePath pid_path;
-  while (!(pid_path = proc_dir_enum.Next()).empty()) {
-    const char* pid_str = pid_path.BaseName().value().c_str();
-    pid_t pid = 0;
-    if (!base::StringToInt(pid_str, &pid) || pid <= 1)
-      continue;
-    // Open /proc/<pid>/status.
-    FilePath status_path = pid_path.Append("status");
-    string contents;
-    if (!file_util::ReadFileToString(status_path, &contents))
-      continue;
-    // Parse the process name from the status file.
-    // E.g. "Name: chrome".
-    size_t name_loc = contents.find("Name:\t");
-    if (name_loc == string::npos)
-      continue;
-    name_loc += 6;
-    size_t name_end = contents.find("\n", name_loc);
-    if (name_end == string::npos)
-      continue;
-    string proc_name = contents.substr(name_loc, name_end - name_loc);
-    if (name == proc_name)
-      pids->push_back(pid);
-  }
-}
-
 bool Platform::GetOwnership(const string& path,
                             uid_t* user_id, gid_t* group_id) const {
   struct stat path_status;
@@ -456,76 +321,6 @@ bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
     PLOG(ERROR) << "chmod() of " << path.c_str() << " to (" << std::oct << mode
                 << ") failed.";
     return false;
-  }
-  return true;
-}
-
-bool Platform::SetOwnershipRecursive(const std::string& directory,
-                                     uid_t user_id,
-                                     gid_t group_id) const {
-  std::vector<std::string> to_recurse;
-  to_recurse.push_back(directory);
-  while (to_recurse.size()) {
-    std::string current_dir = to_recurse.back();
-    to_recurse.pop_back();
-
-    FilePath next_path;
-
-    // Push the subdirectories to the back of the vector
-    file_util::FileEnumerator dir_enumerator(
-        FilePath(current_dir),
-        false,  // do not recurse into subdirectories.
-        file_util::FileEnumerator::DIRECTORIES);
-    while (!(next_path = dir_enumerator.Next()).empty()) {
-      to_recurse.push_back(next_path.value());
-    }
-
-    // Handle the files
-    file_util::FileEnumerator file_enumerator(FilePath(current_dir), false,
-                                              file_util::FileEnumerator::FILES);
-    while (!(next_path = file_enumerator.Next()).empty()) {
-      if (!SetOwnership(next_path.value(), user_id, group_id))
-        return false;
-    }
-
-    // Set permissions on the directory itself
-    if (!SetOwnership(current_dir, user_id, group_id))
-      return false;
-  }
-  return true;
-}
-
-bool Platform::SetPermissionsRecursive(const std::string& directory,
-                                       mode_t dir_mode,
-                                       mode_t file_mode) const {
-  std::vector<std::string> to_recurse;
-  to_recurse.push_back(directory);
-  while (to_recurse.size()) {
-    std::string current_dir = to_recurse.back();
-    to_recurse.pop_back();
-
-    FilePath next_path;
-
-    // Push the subdirectories to the back of the vector
-    file_util::FileEnumerator dir_enumerator(
-        FilePath(current_dir),
-        false,  // do not recurse into subdirectories.
-        file_util::FileEnumerator::DIRECTORIES);
-    while (!(next_path = dir_enumerator.Next()).empty()) {
-      to_recurse.push_back(next_path.value());
-    }
-
-    // Handle the files
-    file_util::FileEnumerator file_enumerator(FilePath(current_dir), false,
-                                              file_util::FileEnumerator::FILES);
-    while (!(next_path = file_enumerator.Next()).empty()) {
-      if (!SetPermissions(next_path.value(), file_mode))
-        return false;
-    }
-
-    // Set permissions on the directory itself
-    if (!SetPermissions(current_dir, dir_mode))
-      return false;
   }
   return true;
 }
@@ -583,25 +378,11 @@ bool Platform::GetGroupId(const std::string& group, gid_t* group_id) const {
 }
 
 int64 Platform::AmountOfFreeDiskSpace(const string& path) const {
-  struct statvfs stats;
-  if (statvfs(path.c_str(), &stats) != 0) {
-    return -1;
-  }
-  return static_cast<int64>(stats.f_bavail) * stats.f_frsize;
+  return base::SysInfo::AmountOfFreeDiskSpace(FilePath(path));
 }
 
 void Platform::ClearUserKeyring() {
   keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
-}
-
-bool Platform::Symlink(const std::string& oldpath, const std::string& newpath) {
-  int rc = symlink(oldpath.c_str(), newpath.c_str());
-  if (rc && errno != EEXIST) {
-    PLOG(ERROR) << "Error creating symbolic link from " << newpath << " to "
-                << oldpath << ".";
-    return false;
-  }
-  return true;
 }
 
 bool Platform::FileExists(const std::string& path) {
@@ -672,16 +453,6 @@ bool Platform::DeleteFile(const std::string& path, bool is_recursive) {
   return file_util::Delete(FilePath(path), is_recursive);
 }
 
-bool Platform::EnumerateFiles(const std::string& path,
-                    bool recursive,
-                    std::vector<std::string>* file_list) {
-  file_util::FileEnumerator dir_enum(FilePath(path), recursive,
-                                     file_util::FileEnumerator::FILES);
-  for (FilePath path = dir_enum.Next(); !path.empty(); path = dir_enum.Next())
-    file_list->push_back(path.value());
-  return true;
-}
-
 bool Platform::EnumerateDirectoryEntries(const std::string& path,
                                          bool recursive,
                                          std::vector<std::string>* ent_list) {
@@ -691,25 +462,6 @@ bool Platform::EnumerateDirectoryEntries(const std::string& path,
   file_util::FileEnumerator ent_enum(FilePath(path), recursive, ft);
   for (FilePath path = ent_enum.Next(); !path.empty(); path = ent_enum.Next())
     ent_list->push_back(path.value());
-  return true;
-}
-
-bool Platform::SetProcessId(uid_t uid, gid_t gid, uid_t* saved_uid,
-                            gid_t* saved_gid) {
-  if (saved_uid)
-    *saved_uid = geteuid();
-  if (saved_gid)
-    *saved_gid = getegid();
-  if (setegid(gid) < 0 || seteuid(uid) < 0) {
-    PLOG(ERROR) << "Unable to set priviledges to " << uid
-                << ":" << gid;
-    return false;
-  }
-  return true;
-}
-
-bool Platform::Sync() {
-  sync();
   return true;
 }
 

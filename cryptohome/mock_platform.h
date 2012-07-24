@@ -50,10 +50,6 @@ class MockPlatform : public Platform {
         .WillByDefault(Invoke(this, &MockPlatform::MockGetUserId));
     ON_CALL(*this, GetGroupId(_, _))
         .WillByDefault(Invoke(this, &MockPlatform::MockGetGroupId));
-    ON_CALL(*this, TerminatePidsWithOpenFiles(_, _))
-        .WillByDefault(Return(false));
-    ON_CALL(*this, TerminatePidsForUser(_, _))
-        .WillByDefault(Return(false));
     ON_CALL(*this, GetCurrentTime())
         .WillByDefault(Return(base::Time::NowFromSystemTime()));
     ON_CALL(*this, DeleteFile(_, _))
@@ -79,14 +75,10 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(IsDirectoryMounted, bool(const std::string&));
   MOCK_METHOD2(IsDirectoryMountedWith, bool(const std::string&,
                                             const std::string&));
-  MOCK_METHOD2(TerminatePidsWithOpenFiles, bool(const std::string&, bool));
-  MOCK_METHOD2(TerminatePidsForUser, bool(const uid_t, bool));
   MOCK_CONST_METHOD3(GetOwnership, bool(const std::string&, uid_t*, gid_t*));
   MOCK_CONST_METHOD3(SetOwnership, bool(const std::string&, uid_t, gid_t));
   MOCK_CONST_METHOD2(GetPermissions, bool(const std::string&, mode_t*));
   MOCK_CONST_METHOD2(SetPermissions, bool(const std::string&, mode_t));
-  MOCK_CONST_METHOD3(SetOwnershipRecursive, bool(const std::string&,
-                                                 uid_t, gid_t));
   MOCK_CONST_METHOD3(SetGroupAccessible, bool(const std::string&,
                                               gid_t group_id,
                                               mode_t group_mode));
