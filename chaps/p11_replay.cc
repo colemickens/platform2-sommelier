@@ -14,11 +14,15 @@
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
+#include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
+#include <base/string_util.h>
 #include <base/time.h>
 #include <chromeos/syslog_logging.h>
 #include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
@@ -29,6 +33,12 @@ using std::vector;
 
 namespace {
 const char* kKeyID = "test";
+
+typedef enum {
+  kPrivateKey,
+  kPublicKey,
+  kCertificate,
+} CryptoObjectType;
 
 // Initializes the library and finds an appropriate slot.
 CK_SLOT_ID Initialize() {
@@ -219,63 +229,95 @@ string bn2bin(BIGNUM* bn) {
   return bin;
 }
 
-// Generates a test key pair locally and injects it.
-void InjectKeyPair(CK_SESSION_HANDLE session,
-                   int key_size_bits,
-                   const string& label) {
-  RSA* rsa = RSA_generate_key(key_size_bits, 0x10001, NULL, NULL);
-  if (!rsa) {
-    LOG(ERROR) << "Failed to locally generate key pair.";
-    exit(-1);
-  }
+string name2bin(X509_NAME* name) {
+  string bin;
+  bin.resize(i2d_X509_NAME(name, NULL));
+  uint8_t* data_start = ConvertStringToByteBuffer(bin.data());
+  i2d_X509_NAME(name, &data_start);
+  return bin;
+}
+
+string asn1integer2bin(ASN1_INTEGER* serial_number) {
+  string bin;
+  bin.resize(i2d_ASN1_INTEGER(serial_number, NULL));
+  uint8_t* data_start = ConvertStringToByteBuffer(bin.data());
+  i2d_ASN1_INTEGER(serial_number, &data_start);
+  return bin;
+}
+
+void CreatePrivateKey(CK_SESSION_HANDLE session,
+                      const vector<uint8_t>& object_id,
+                      string label,
+                      RSA* rsa) {
+  CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
+  CK_KEY_TYPE key_type = CKK_RSA;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
   string n = bn2bin(rsa->n);
+  string e = bn2bin(rsa->e);
   string d = bn2bin(rsa->d);
   string p = bn2bin(rsa->p);
   string q = bn2bin(rsa->q);
   string dmp1 = bn2bin(rsa->dmp1);
   string dmq1 = bn2bin(rsa->dmq1);
   string iqmp = bn2bin(rsa->iqmp);
-  RSA_free(rsa);
-  CK_ULONG bits = key_size_bits;
-  CK_BYTE e[] = {1, 0, 1};
+
+  CK_ATTRIBUTE private_attributes[] = {
+    {CKA_CLASS, &priv_class, sizeof(priv_class) },
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type) },
+    {CKA_DECRYPT, &true_value, sizeof(true_value) },
+    {CKA_SIGN, &true_value, sizeof(true_value) },
+    {CKA_UNWRAP, &false_value, sizeof(false_value) },
+    {CKA_SENSITIVE, &true_value, sizeof(true_value) },
+    {CKA_TOKEN, &true_value, sizeof(true_value) },
+    {CKA_PRIVATE, &true_value, sizeof(true_value) },
+    {CKA_ID, const_cast<uint8_t*>(&object_id[0]), object_id.size() },
+    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
+    {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length() },
+    {CKA_PUBLIC_EXPONENT, const_cast<char*>(e.c_str()), e.length() },
+    {CKA_PRIVATE_EXPONENT, const_cast<char*>(d.c_str()), d.length() },
+    {CKA_PRIME_1, const_cast<char*>(p.c_str()), p.length() },
+    {CKA_PRIME_2, const_cast<char*>(q.c_str()), q.length() },
+    {CKA_EXPONENT_1, const_cast<char*>(dmp1.c_str()), dmp1.length() },
+    {CKA_EXPONENT_2, const_cast<char*>(dmq1.c_str()), dmq1.length() },
+    {CKA_COEFFICIENT, const_cast<char*>(iqmp.c_str()), iqmp.length() },
+  };
+  CK_OBJECT_HANDLE private_key_handle = 0;
+  CK_RV result = C_CreateObject(session,
+                                private_attributes,
+                                arraysize(private_attributes),
+                                &private_key_handle);
+  LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
+  if (result != CKR_OK) {
+    exit(-1);
+  }
+}
+
+void CreatePublicKey(CK_SESSION_HANDLE session,
+                     const vector<uint8_t>& object_id,
+                     const string label,
+                     int key_size_bits,
+                     RSA* rsa) {
   CK_BBOOL false_value = CK_FALSE;
   CK_BBOOL true_value = CK_TRUE;
   CK_OBJECT_CLASS pub_class = CKO_PUBLIC_KEY;
-  CK_OBJECT_CLASS priv_class = CKO_PRIVATE_KEY;
   CK_KEY_TYPE key_type = CKK_RSA;
+  CK_ULONG bits = key_size_bits;
+  string n = bn2bin(rsa->n);
+  string e = bn2bin(rsa->e);
   CK_ATTRIBUTE public_attributes[] = {
-    {CKA_CLASS, &pub_class, sizeof(pub_class)},
-    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
-    {CKA_ENCRYPT, &true_value, sizeof(true_value)},
-    {CKA_VERIFY, &true_value, sizeof(true_value)},
-    {CKA_WRAP, &false_value, sizeof(false_value)},
-    {CKA_TOKEN, &true_value, sizeof(true_value)},
-    {CKA_PRIVATE, &false_value, sizeof(false_value)},
-    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
+    {CKA_CLASS, &pub_class, sizeof(pub_class) },
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type) },
+    {CKA_ENCRYPT, &true_value, sizeof(true_value) },
+    {CKA_VERIFY, &true_value, sizeof(true_value) },
+    {CKA_WRAP, &false_value, sizeof(false_value) },
+    {CKA_TOKEN, &true_value, sizeof(true_value) },
+    {CKA_PRIVATE, &false_value, sizeof(false_value) },
+    {CKA_ID, const_cast<uint8_t*>(&object_id[0]), object_id.size() },
     {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
-    {CKA_MODULUS_BITS, &bits, sizeof(bits)},
-    {CKA_PUBLIC_EXPONENT, e, sizeof(e)},
-    {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length()},
-  };
-  CK_ATTRIBUTE private_attributes[] = {
-    {CKA_CLASS, &priv_class, sizeof(priv_class)},
-    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
-    {CKA_DECRYPT, &true_value, sizeof(true_value)},
-    {CKA_SIGN, &true_value, sizeof(true_value)},
-    {CKA_UNWRAP, &false_value, sizeof(false_value)},
-    {CKA_SENSITIVE, &true_value, sizeof(true_value)},
-    {CKA_TOKEN, &true_value, sizeof(true_value)},
-    {CKA_PRIVATE, &true_value, sizeof(true_value)},
-    {CKA_ID, const_cast<char*>(kKeyID), strlen(kKeyID)},
-    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
-    {CKA_PUBLIC_EXPONENT, e, sizeof(e)},
-    {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length()},
-    {CKA_PRIVATE_EXPONENT, const_cast<char*>(d.c_str()), d.length()},
-    {CKA_PRIME_1, const_cast<char*>(p.c_str()), p.length()},
-    {CKA_PRIME_2, const_cast<char*>(q.c_str()), q.length()},
-    {CKA_EXPONENT_1, const_cast<char*>(dmp1.c_str()), dmp1.length()},
-    {CKA_EXPONENT_2, const_cast<char*>(dmq1.c_str()), dmq1.length()},
-    {CKA_COEFFICIENT, const_cast<char*>(iqmp.c_str()), iqmp.length()},
+    {CKA_MODULUS_BITS, &bits, sizeof(bits) },
+    {CKA_MODULUS, const_cast<char*>(n.c_str()), n.length() },
+    {CKA_PUBLIC_EXPONENT, const_cast<char*>(e.c_str()), e.length() },
   };
   CK_OBJECT_HANDLE public_key_handle = 0;
   CK_RV result = C_CreateObject(session,
@@ -285,14 +327,97 @@ void InjectKeyPair(CK_SESSION_HANDLE session,
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
-  CK_OBJECT_HANDLE private_key_handle = 0;
-  result = C_CreateObject(session,
-                          private_attributes,
-                          arraysize(private_attributes),
-                          &private_key_handle);
+}
+
+void CreateCertificate(CK_SESSION_HANDLE session,
+                       const string& value,
+                       const vector<uint8_t>& object_id,
+                       X509* cert) {
+  string subject = name2bin(cert->cert_info->subject);
+  string issuer = name2bin(cert->cert_info->issuer);
+  string serial = asn1integer2bin(cert->cert_info->serialNumber);
+  CK_OBJECT_CLASS clazz = CKO_CERTIFICATE;
+  CK_CERTIFICATE_TYPE cert_type = CKC_X_509;
+  CK_BBOOL is_true = CK_TRUE;
+  CK_ATTRIBUTE attributes[] = {
+    {CKA_CLASS, &clazz, sizeof(clazz) },
+    {CKA_CERTIFICATE_TYPE, &cert_type, sizeof(cert_type) },
+    {CKA_TOKEN, &is_true, sizeof(is_true) },
+    {CKA_VALUE, const_cast<char*>(value.c_str()), value.length() },
+    {CKA_ID, const_cast<uint8_t*>(&object_id[0]), object_id.size() },
+    {CKA_SUBJECT, const_cast<char*>(subject.c_str()), subject.length()},
+    {CKA_ISSUER, const_cast<char*>(issuer.c_str()), issuer.length() },
+    {CKA_SERIAL_NUMBER, const_cast<char*>(serial.c_str()), serial.length() },
+  };
+  CK_OBJECT_HANDLE handle = 0;
+  CK_RV result = C_CreateObject(session,
+                                attributes,
+                                arraysize(attributes),
+                                &handle);
   LOG(INFO) << "C_CreateObject: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
+}
+
+void ReadInObject(CK_SESSION_HANDLE session,
+                  const string& input_path,
+                  const vector<uint8_t>& object_id,
+                  CryptoObjectType type) {
+  const FilePath path(input_path);
+  string object_data;
+  if (!file_util::ReadFileToString(path, &object_data)) {
+    LOG(ERROR) << "Failed to read object from file.";
+    exit(-1);
+  }
+  const unsigned char* data_start =
+      reinterpret_cast<const unsigned char*>(object_data.c_str());
+
+  if (type == kCertificate) {
+    X509* certificate = d2i_X509(NULL, &data_start, object_data.length());
+    if (!certificate) {
+      LOG(ERROR) << "OpenSSL error in X509 certificate parsing.";
+      exit(-1);
+    }
+    CreateCertificate(session, object_data, object_id, certificate);
+    X509_free(certificate);
+  } else if (type == kPrivateKey) {
+    RSA* rsa = d2i_RSAPrivateKey(NULL, &data_start, object_data.length());
+    if (!rsa) {
+      LOG(ERROR) << "OpenSSL error in RSA private key parsing.";
+      exit(-1);
+    }
+    CreatePrivateKey(session, object_id, "testing_key", rsa);
+    RSA_free(rsa);
+  } else if (type == kPublicKey) {
+    RSA* rsa = d2i_RSAPublicKey(NULL, &data_start, object_data.length());
+    if (!rsa) {
+      LOG(ERROR) << "OpenSSL error in RSA public key parsing.";
+      exit(-1);
+    }
+    int key_size_bits = RSA_size(rsa) * 8;
+    // Round the key up to the nearest 256 bit boundary
+    key_size_bits = (key_size_bits / 256 + 1) * 256;
+    CreatePublicKey(session, object_id, "testing_key", key_size_bits, rsa);
+    RSA_free(rsa);
+  } else {
+    LOG(ERROR) << "Unknown cryptographic object type.  Aborting.";
+    exit(-1);
+  }
+}
+
+// Generates a test key pair locally and injects it.
+void InjectKeyPair(CK_SESSION_HANDLE session,
+                   int key_size_bits,
+                   const string& label) {
+  RSA* rsa = RSA_generate_key(key_size_bits, 0x10001, NULL, NULL);
+  if (!rsa) {
+    LOG(ERROR) << "Failed to locally generate key pair.";
+    exit(-1);
+  }
+  vector<uint8_t> id(kKeyID, kKeyID + strlen(kKeyID));
+  CreatePublicKey(session, id, label, key_size_bits, rsa);
+  CreatePrivateKey(session, id, label, rsa);
+  RSA_free(rsa);
 }
 
 // Deletes all test keys previously created.
@@ -343,6 +468,10 @@ void PrintHelp() {
   printf("  --replay_wifi [--label=<key_label>]"
          " : Replays a EAP-TLS Wifi negotiation. This is the default command if"
          " no command is specified.\n");
+  printf("  --import --path=<path to file> --type=<cert, privkey, pubkey>"
+         " --id=<token id str>"
+         " : Reads an object into the token.  Accepts DER formatted"
+         " certificates and DER formatted private keys.\n");
   printf("  --logout : Logs out once all other commands have finished.\n");
   printf("  --cleanup : Deletes all test keys.\n");
 }
@@ -381,8 +510,12 @@ int main(int argc, char** argv) {
   bool logout = cl->HasSwitch("logout");
   bool cleanup = cl->HasSwitch("cleanup");
   bool list_objects = cl->HasSwitch("list_objects");
+  bool import = cl->HasSwitch("import") &&
+      cl->HasSwitch("path") &&
+      cl->HasSwitch("type") &&
+      cl->HasSwitch("id");
   if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup &&
-      !inject && !list_objects) {
+      !inject && !list_objects && !import) {
     PrintHelp();
     return 0;
   }
@@ -406,6 +539,34 @@ int main(int argc, char** argv) {
     PrintTicks(&start_ticks);
   } else if (inject) {
     InjectKeyPair(session, key_size_bits, label);
+  } else if (import) {
+    vector<uint8_t> object_id;
+    if (!base::HexStringToBytes(cl->GetSwitchValueASCII("id"), &object_id)) {
+      LOG(ERROR) << "Invalid arg, expecting hex string for id (like b18aa8).";
+      exit(-1);
+    }
+    if (base::strcasecmp("cert",
+        cl->GetSwitchValueASCII("type").c_str()) == 0) {
+      ReadInObject(session,
+                   cl->GetSwitchValueASCII("path"),
+                   object_id,
+                   kCertificate);
+    } else if (base::strcasecmp("privkey",
+        cl->GetSwitchValueASCII("type").c_str()) == 0) {
+      ReadInObject(session,
+                   cl->GetSwitchValueASCII("path"),
+                   object_id,
+                   kPrivateKey);
+    } else if (base::strcasecmp("pubkey",
+        cl->GetSwitchValueASCII("type").c_str()) == 0) {
+      ReadInObject(session,
+                   cl->GetSwitchValueASCII("path"),
+                   object_id,
+                   kPublicKey);
+    } else {
+      LOG(ERROR) << "Invalid token type.";
+      exit(-1);
+    }
   }
   if (list_objects) {
     vector<CK_OBJECT_HANDLE> objects;
