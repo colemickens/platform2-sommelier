@@ -10,6 +10,8 @@
 #include <base/threading/platform_thread.h>
 #include <base/time.h>
 
+#include "remote_attestation.h"
+
 using base::kNullThreadHandle;
 using base::PlatformThread;
 
@@ -87,6 +89,12 @@ Tpm* TpmInit::get_tpm() {
 void TpmInit::Init(TpmInitCallback* notify_callback) {
   notify_callback_ = notify_callback;
   tpm_init_task_->Init(this);
+  Tpm* tpm = get_tpm();
+  if (tpm && IsTpmReady()) {
+    RemoteAttestation remote_attestation(tpm);
+    if (!remote_attestation.IsInitialized())
+      remote_attestation.InitializeAsync();
+  }
 }
 
 bool TpmInit::GetRandomData(int length, chromeos::Blob* data) {
@@ -142,11 +150,20 @@ void TpmInit::ThreadMain() {
   if (initialize_took_ownership_) {
     LOG(ERROR) << "TPM initialization took " << initialization_time_ << "ms";
   }
-  task_done_ = true;
   if (notify_callback_) {
     notify_callback_->InitializeTpmComplete(initialize_result,
                                             initialize_took_ownership_);
   }
+
+  RemoteAttestation remote_attestation(tpm_init_task_->get_tpm());
+  if (!remote_attestation.IsInitialized()) {
+    start = base::TimeTicks::Now();
+    remote_attestation.Initialize();
+    delta = (base::TimeTicks::Now() - start);
+    LOG(ERROR) << "Remote attestation initialization took "
+               << delta.InMilliseconds() << "ms";
+  }
+  task_done_ = true;
 }
 
 }  // namespace cryptohome

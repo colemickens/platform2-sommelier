@@ -41,6 +41,11 @@ class Tpm {
     Fatal
   };
 
+  enum TpmOwnerDependency {
+    kInstallAttributes,
+    kRemoteAttestation
+  };
+
   struct TpmStatusInfo {
     bool Enabled;
     bool BeingOwned;
@@ -126,8 +131,12 @@ class Tpm {
   //   owner_password (OUT) - The random owner password used
   virtual bool GetOwnerPassword(chromeos::Blob* owner_password);
 
-  // Clears the owner password from storage
+  // Clears the owner password from storage if no dependencies exist.
   void ClearStoredOwnerPassword();
+
+  // Removes the given owner dependency. When all dependencies have been removed
+  // the owner password can be cleared.
+  virtual void RemoveOwnerDependency(TpmOwnerDependency dependency);
 
   // Returns whether or not the TPM is enabled.  This method call returns a
   // cached result because querying the TPM directly will block if ownership is

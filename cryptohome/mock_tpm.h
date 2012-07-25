@@ -50,6 +50,7 @@ class MockTpm : public Tpm {
                                    chromeos::SecureBlob*, TpmRetryAction*));
   MOCK_METHOD2(GetPublicKey, bool(chromeos::SecureBlob*, TpmRetryAction*));
   MOCK_METHOD1(GetOwnerPassword, bool(chromeos::Blob*));
+  MOCK_METHOD1(RemoveOwnerDependency, void(Tpm::TpmOwnerDependency));
   MOCK_CONST_METHOD0(IsEnabled, bool());
   MOCK_METHOD2(GetRandomData, bool(size_t, chromeos::Blob*));
   MOCK_METHOD2(DefineLockOnceNvram, bool(uint32_t, size_t));

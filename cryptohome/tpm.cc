@@ -1546,7 +1546,9 @@ bool Tpm::InitializeTpm(bool* OUT_took_ownership) {
     took_ownership = true;
 
     tpm_status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                         TpmStatus::USES_WELL_KNOWN_OWNER);
+                         TpmStatus::USES_WELL_KNOWN_OWNER |
+                         TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
+                         TpmStatus::REMOTE_ATTESTATION_NEEDS_OWNER);
     tpm_status.clear_owner_password();
     StoreTpmStatus(tpm_status);
   }
@@ -1589,7 +1591,9 @@ bool Tpm::InitializeTpm(bool* OUT_took_ownership) {
     CreateOwnerPassword(&owner_password);
 
     tpm_status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
-                         TpmStatus::USES_RANDOM_OWNER);
+                         TpmStatus::USES_RANDOM_OWNER |
+                         TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
+                         TpmStatus::REMOTE_ATTESTATION_NEEDS_OWNER);
     if (!StoreOwnerPassword(owner_password, &tpm_status)) {
       tpm_status.clear_owner_password();
     }
@@ -1983,6 +1987,12 @@ bool Tpm::WriteNvram(uint32_t index, const SecureBlob& blob) {
 void Tpm::ClearStoredOwnerPassword() {
   TpmStatus tpm_status;
   if (LoadTpmStatus(&tpm_status)) {
+    int32 dependency_flags = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
+                             TpmStatus::REMOTE_ATTESTATION_NEEDS_OWNER;
+    if (tpm_status.flags() & dependency_flags) {
+      // The password is still needed, do not clear.
+      return;
+    }
     if (tpm_status.has_owner_password()) {
       tpm_status.clear_owner_password();
       StoreTpmStatus(tpm_status);
@@ -1991,6 +2001,25 @@ void Tpm::ClearStoredOwnerPassword() {
   password_sync_lock_.Acquire();
   owner_password_.resize(0);
   password_sync_lock_.Release();
+}
+
+void Tpm::RemoveOwnerDependency(TpmOwnerDependency dependency) {
+  int32 flag_to_clear = TpmStatus::NONE;
+  switch (dependency) {
+    case kInstallAttributes:
+      flag_to_clear = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER;
+      break;
+    case kRemoteAttestation:
+      flag_to_clear = TpmStatus::REMOTE_ATTESTATION_NEEDS_OWNER;
+      break;
+    default:
+      CHECK(false);
+  }
+  TpmStatus tpm_status;
+  if (!LoadTpmStatus(&tpm_status))
+    return;
+  tpm_status.set_flags(tpm_status.flags() & ~flag_to_clear);
+  StoreTpmStatus(tpm_status);
 }
 
 bool Tpm::LoadTpmStatus(TpmStatus* serialized) {

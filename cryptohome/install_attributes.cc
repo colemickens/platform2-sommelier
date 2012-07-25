@@ -88,7 +88,6 @@ bool InstallAttributes::Init() {
       set_is_initialized(true);
       return true;
     }
-
     if (!lockbox()->Create(&error_id)) {
       if (error_id == Lockbox::kErrorIdInsufficientAuthorization)
         LOG(ERROR) << "First install, but no TPM credentials provided.";
@@ -97,6 +96,7 @@ bool InstallAttributes::Init() {
     }
 
     set_is_initialized(true);
+    lockbox_->tpm()->RemoveOwnerDependency(Tpm::kInstallAttributes);
     return true;
   }
 

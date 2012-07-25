@@ -72,9 +72,13 @@ class InstallAttributesTest : public ::testing::Test {
     EXPECT_TRUE(install_attrs->PrepareSystem());
 
     // Assume authorization and working tpm.
+    EXPECT_CALL(lockbox_, tpm())
+      .WillRepeatedly(Return(&tpm_));
     if (install_attrs->is_secure()) {
       EXPECT_CALL(lockbox_, Create(_))
         .WillOnce(Return(true));
+      EXPECT_CALL(tpm_, RemoveOwnerDependency(Tpm::kInstallAttributes))
+        .Times(1);
     }
     EXPECT_TRUE(install_attrs->Init());
 
@@ -150,6 +154,8 @@ TEST_F(InstallAttributesTest, OobeWithTpmBadWrite) {
   EXPECT_TRUE(install_attrs_.PrepareSystem());
 
   // Assume authorization and working tpm.
+  EXPECT_CALL(lockbox_, tpm())
+    .WillRepeatedly(Return(&tpm_));
   EXPECT_CALL(lockbox_, Create(_))
     .WillOnce(Return(true));
   EXPECT_TRUE(install_attrs_.Init());

@@ -10,6 +10,8 @@ message TpmStatus {
     OWNED_BY_THIS_INSTALL = 1;
     USES_WELL_KNOWN_OWNER = 2;
     USES_RANDOM_OWNER = 4;
+    INSTALL_ATTRIBUTES_NEEDS_OWNER = 8;
+    REMOTE_ATTESTATION_NEEDS_OWNER = 16;
   }
   required int32 flags = 1;
   optional bytes delegation_credentials = 2;
