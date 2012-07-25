@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_POWER_MANAGER_
-#define SHILL_POWER_MANAGER_
+#ifndef SHILL_POWER_MANAGER_H_
+#define SHILL_POWER_MANAGER_H_
 
 // This class instantiates a PowerManagerProxy and distributes power events to
 // registered users.  It also provides a means for calling methods on the
@@ -58,6 +58,8 @@ class PowerManager : public PowerManagerProxyDelegate {
   explicit PowerManager(ProxyFactory *proxy_factory);
   virtual ~PowerManager();
 
+  SuspendState power_state() const { return power_state_; }
+
   // Methods inherited from PowerManagerProxyDelegate.
   virtual void OnSuspendDelay(uint32 sequence_number);
   virtual void OnPowerStateChanged(SuspendState new_power_state);
@@ -78,6 +80,8 @@ class PowerManager : public PowerManagerProxyDelegate {
   // TODO(gmorain): Add registration for the OnSuspendDelay event.
 
  private:
+  friend class ManagerTest;
+
   typedef std::map<const std::string, PowerStateCallback>
     StateChangeCallbackMap;
 
@@ -86,9 +90,11 @@ class PowerManager : public PowerManagerProxyDelegate {
   const scoped_ptr<PowerManagerProxyInterface> power_manager_proxy_;
   StateChangeCallbackMap state_change_callbacks_;
 
+  SuspendState power_state_;
+
   DISALLOW_COPY_AND_ASSIGN(PowerManager);
 };
 
 }  // namespace shill
 
-#endif  // SHILL_POWER_MANAGER_
+#endif  // SHILL_POWER_MANAGER_H_

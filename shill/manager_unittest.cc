@@ -31,12 +31,14 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_wifi.h"
 #include "shill/mock_wifi_service.h"
 #include "shill/property_store_unittest.h"
+#include "shill/proxy_factory.h"
 #include "shill/service_under_test.h"
 #include "shill/wifi_service.h"
 #include "shill/wimax_service.h"
@@ -64,7 +66,8 @@ using ::testing::Test;
 class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
-      : mock_wifi_(new NiceMock<MockWiFi>(control_interface(),
+      : power_manager_(new MockPowerManager(&proxy_factory_)),
+        mock_wifi_(new NiceMock<MockWiFi>(control_interface(),
                                           dispatcher(),
                                           metrics(),
                                           manager(),
@@ -211,6 +214,31 @@ class ManagerTest : public PropertyStoreTest {
     DISALLOW_COPY_AND_ASSIGN(ServiceWatcher);
   };
 
+  class TestProxyFactory : public ProxyFactory {
+   public:
+    TestProxyFactory() {}
+
+    virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
+        PowerManagerProxyDelegate */*delegate*/) {
+      return NULL;
+    }
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
+  };
+
+  void SetPowerState(PowerManagerProxyDelegate::SuspendState state) {
+    power_manager_->power_state_ = state;
+  }
+
+  void SetPowerManager() {
+    manager()->set_power_manager(power_manager_.release());
+  }
+
+  void OnPowerStateChanged(PowerManagerProxyDelegate::SuspendState state) {
+    manager()->OnPowerStateChanged(state);
+  }
+
   MockServiceRefPtr MakeAutoConnectableService() {
     MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
                                                           dispatcher(),
@@ -221,6 +249,8 @@ class ManagerTest : public PropertyStoreTest {
     return service;
   }
 
+  TestProxyFactory proxy_factory_;
+  scoped_ptr<MockPowerManager> power_manager_;
   scoped_refptr<MockWiFi> mock_wifi_;
   vector<scoped_refptr<MockDevice> > mock_devices_;
   scoped_ptr<MockDeviceInfo> device_info_;
@@ -2074,6 +2104,50 @@ TEST_F(ManagerTest, AutoConnectOnDeregister) {
 
   EXPECT_CALL(*service1.get(), AutoConnect());
   manager()->DeregisterService(service2);
+  dispatcher()->DispatchPendingEvents();
+}
+
+TEST_F(ManagerTest, AutoConnectOnPowerStateMem) {
+  MockServiceRefPtr service = MakeAutoConnectableService();
+  SetPowerState(PowerManagerProxyDelegate::kMem);
+  SetPowerManager();
+  EXPECT_CALL(*service, AutoConnect()).Times(0);
+  manager()->RegisterService(service);
+  dispatcher()->DispatchPendingEvents();
+}
+
+TEST_F(ManagerTest, AutoConnectOnPowerStateOn) {
+  MockServiceRefPtr service = MakeAutoConnectableService();
+  SetPowerState(PowerManagerProxyDelegate::kOn);
+  SetPowerManager();
+  EXPECT_CALL(*service, AutoConnect());
+  manager()->RegisterService(service);
+  dispatcher()->DispatchPendingEvents();
+}
+
+TEST_F(ManagerTest, AutoConnectOnPowerStateUnknown) {
+  MockServiceRefPtr service = MakeAutoConnectableService();
+  SetPowerState(PowerManagerProxyDelegate::kUnknown);
+  SetPowerManager();
+  EXPECT_CALL(*service, AutoConnect());
+  manager()->RegisterService(service);
+  dispatcher()->DispatchPendingEvents();
+}
+
+TEST_F(ManagerTest, OnPowerStateChanged) {
+  MockServiceRefPtr service = MakeAutoConnectableService();
+  SetPowerState(PowerManagerProxyDelegate::kOn);
+  SetPowerManager();
+  EXPECT_CALL(*service, AutoConnect());
+  manager()->RegisterService(service);
+  dispatcher()->DispatchPendingEvents();
+
+  OnPowerStateChanged(PowerManagerProxyDelegate::kOn);
+  EXPECT_CALL(*service, AutoConnect());
+  dispatcher()->DispatchPendingEvents();
+
+  OnPowerStateChanged(PowerManagerProxyDelegate::kMem);
+  EXPECT_CALL(*service, AutoConnect()).Times(0);
   dispatcher()->DispatchPendingEvents();
 }
 

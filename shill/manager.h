@@ -301,6 +301,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   void NotifyDefaultServiceChanged(const ServiceRefPtr &service);
 
+  void OnPowerStateChanged(PowerManagerProxyDelegate::SuspendState power_state);
+
   // For unit testing.
   void set_metrics(Metrics *metrics) { metrics_ = metrics; }
 

@@ -57,6 +57,12 @@ class PowerManagerTest : public Test {
   PowerManagerProxyDelegate *const delegate_;
 };
 
+TEST_F(PowerManagerTest, OnPowerStateChanged) {
+  EXPECT_EQ(PowerManagerProxyDelegate::kUnknown, power_manager_.power_state());
+  power_manager_.OnPowerStateChanged(PowerManagerProxyDelegate::kOn);
+  EXPECT_EQ(PowerManagerProxyDelegate::kOn, power_manager_.power_state());
+}
+
 TEST_F(PowerManagerTest, Add) {
   const string kKey = "Zaphod";
   EXPECT_CALL(*this, TestCallback1(PowerManagerProxyDelegate::kOn));

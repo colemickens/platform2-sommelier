@@ -19,8 +19,8 @@ using std::string;
 namespace shill {
 
 PowerManager::PowerManager(ProxyFactory *proxy_factory)
-    : power_manager_proxy_(proxy_factory->CreatePowerManagerProxy(this)) {
-}
+    : power_manager_proxy_(proxy_factory->CreatePowerManagerProxy(this)),
+      power_state_(kUnknown) {}
 
 PowerManager::~PowerManager() {
 }
@@ -51,7 +51,9 @@ void PowerManager::OnSuspendDelay(uint32 /* sequence_number */) {
 }
 
 void PowerManager::OnPowerStateChanged(SuspendState new_power_state) {
-  SLOG(Power, 2) << __func__ << " new_power_state " << new_power_state;
+  LOG(INFO) << "Power state changed: "
+            << power_state_ << "->" << new_power_state;
+  power_state_ = new_power_state;
   for (StateChangeCallbackMap::const_iterator it =
            state_change_callbacks_.begin();
        it != state_change_callbacks_.end(); ++it) {

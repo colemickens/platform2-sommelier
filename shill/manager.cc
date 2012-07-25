@@ -153,6 +153,9 @@ void Manager::Start() {
   dbus_manager_->Start();
 
   power_manager_.reset(new PowerManager(ProxyFactory::GetInstance()));
+  power_manager_->AddStateChangeCallback(
+      "manager",
+      Bind(&Manager::OnPowerStateChanged, AsWeakPtr()));
   // TODO(ers): weak ptr for metrics_?
   PowerManager::PowerStateCallback cb =
       Bind(&Metrics::NotifyPowerStateChange, Unretained(metrics_));
@@ -202,11 +205,7 @@ void Manager::Stop() {
   modem_info_.Stop();
   device_info_.Stop();
   sort_services_task_.Cancel();
-
-  // Some unit tests do not call Manager::Start().
-  if (power_manager_.get())
-    power_manager_->RemoveStateChangeCallback(Metrics::kMetricPowerManagerKey);
-
+  power_manager_.reset();
   dbus_manager_.reset();
 }
 
@@ -848,6 +847,13 @@ void Manager::NotifyDefaultServiceChanged(const ServiceRefPtr &service) {
   metrics_->NotifyDefaultServiceChanged(service);
 }
 
+void Manager::OnPowerStateChanged(
+    PowerManagerProxyDelegate::SuspendState power_state) {
+  if (power_state == PowerManagerProxyDelegate::kOn) {
+    SortServices();
+  }
+}
+
 void Manager::FilterByTechnology(Technology::Identifier tech,
                                  vector<DeviceRefPtr> *found) {
   CHECK(found);
@@ -966,8 +972,14 @@ bool Manager::MatchProfileWithService(const ServiceRefPtr &service) {
 }
 
 void Manager::AutoConnect() {
+  if (power_manager_.get() &&
+      power_manager_->power_state() != PowerManagerProxyDelegate::kOn &&
+      power_manager_->power_state() != PowerManagerProxyDelegate::kUnknown) {
+    LOG(INFO) << "Auto-connect suppressed -- power state is not 'on'.";
+    return;
+  }
   if (services_.empty()) {
-    LOG(INFO) << "No services.";
+    LOG(INFO) << "Auto-connect suppressed -- no services.";
     return;
   }
 
