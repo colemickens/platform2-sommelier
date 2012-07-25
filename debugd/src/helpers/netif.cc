@@ -9,7 +9,7 @@
 //       "flags": [ "up", "broadcast", "running", "multi", "lower-up" ],
 //       "ipv4": {
 //          "addrs": [ "172.31.197.126" ],
-//          "destionation": "172.31.197.255",
+//          "destination": "172.31.197.255",
 //          "mask": "255.255.254.0"
 //       },
 //       "ipv6": {
@@ -22,7 +22,7 @@
 //       "flags": [ "up", "loopback", "running", "lower-up" ],
 //       "ipv4": {
 //          "addrs": [ "127.0.0.1" ],
-//          "destionation": "127.0.0.1",
+//          "destination": "127.0.0.1",
 //          "mask": "255.0.0.0"
 //       },
 //       "ipv6": {
@@ -179,7 +179,7 @@ void NetInterface::AddAddress(struct ifaddrs *ifa) {
       ipv4_->Set("mask",
                  Value::CreateStringValue(sockaddr2str(ifa->ifa_netmask)));
     if (!ipv4_->HasKey("destination"))
-      ipv4_->Set("destionation",
+      ipv4_->Set("destination",
                  Value::CreateStringValue(sockaddr2str(ifa->ifa_broadaddr)));
   } else if (ifa->ifa_addr->sa_family == AF_INET6) {
     // An IPv6 address.
