@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -12,7 +12,7 @@ CLOBBER_LOG_FILE="clobber.log"
 
 # Temp folder is always accessible (by tmpfs), but stateful partition may be not
 # available. To verify that, check the existence of STATEFUL_LOG_FOLDER.
-STATEFUL_LOG_FOLDER="/mnt/stateful_partition/var/log/"
+STATEFUL_LOG_FOLDER="/mnt/stateful_partition/unencrypted/"
 STATEFUL_LOG_PATH="$STATEFUL_LOG_FOLDER/$CLOBBER_LOG_FILE"
 TMP_LOG_PATH="/tmp/$CLOBBER_LOG_FILE"
 MAX_KEEP_LOG_LINES=512

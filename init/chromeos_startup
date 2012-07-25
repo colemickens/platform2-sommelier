@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -273,7 +273,7 @@ if [ -O "$RESET_FILE" ]; then
 fi
 
 # Make sure unencrypted stateful partition has the needed directories.
-for d in home home/chronos home/root home/user; do
+for d in home home/chronos home/root home/user unencrypted; do
   mkdir -p -m 0755 /mnt/stateful_partition/$d
 done
 
