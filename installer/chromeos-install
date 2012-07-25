@@ -382,7 +382,7 @@ else
 
   tracked_mount -o ro "$ROOTFS_IMG_LOOP" "$ROOT"
   tracked_mount -o ro "$STATEFUL_IMG_LOOP" "$ROOT"/mnt/stateful_partition
-  tracked_mount --bind "$ROOT"/mnt/stateful_partition/var "$ROOT"/var
+  tracked_mount --bind "$ROOT"/mnt/stateful_partition/var_overlay "$ROOT"/var
 fi
 
 if [ -n "${FLAGS_pmbr_code}" ]; then
