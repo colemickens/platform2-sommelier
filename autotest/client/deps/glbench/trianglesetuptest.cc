@@ -57,7 +57,7 @@ bool TriangleSetupTest::Run() {
 
   GLint color_uniform = glGetUniformLocation(program, "color");
 
-  GLuint *indices = NULL;
+  GLushort *indices = NULL;
   GLuint index_buffer = 0;
   GLsizeiptr index_buffer_size = 0;
 

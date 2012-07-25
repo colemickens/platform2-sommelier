@@ -201,10 +201,10 @@ void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
 bool DrawElementsTestFunc::TestFunc(int iter) {
   glClearColor(0, 1.f, 0, 1.f);
   glClear(GL_COLOR_BUFFER_BIT);
-  glDrawElements(GL_TRIANGLES, count_, GL_UNSIGNED_INT, 0);
+  glDrawElements(GL_TRIANGLES, count_, GL_UNSIGNED_SHORT, 0);
   glFlush();
   for (int i = 0 ; i < iter-1; ++i) {
-    glDrawElements(GL_TRIANGLES, count_, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, count_, GL_UNSIGNED_SHORT, 0);
   }
   return true;
 }

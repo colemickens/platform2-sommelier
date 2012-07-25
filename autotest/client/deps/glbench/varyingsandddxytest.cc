@@ -171,7 +171,7 @@ bool VaryingsAndDdxyShaderTest::Run() {
   GLuint vertex_buffer = SetupVBO(GL_ARRAY_BUFFER,
                                   vertex_buffer_size, vertices);
 
-  GLuint *indices = NULL;
+  GLushort *indices = NULL;
   GLuint index_buffer = 0;
   GLsizeiptr index_buffer_size = 0;
 

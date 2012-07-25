@@ -119,11 +119,14 @@ void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
 // Generates a mesh of 2*width*height triangles.  The ratio of front facing to
 // back facing triangles is culled_ratio/RAND_MAX.  Returns the number of
 // vertices in the mesh.
-int CreateMesh(GLuint **indices, GLsizeiptr *size,
+int CreateMesh(GLushort **indices, GLsizeiptr *size,
                       int width, int height, int culled_ratio) {
   srand(0);
 
-  GLuint *iptr = *indices = new GLuint[2 * 3 * (width * height)];
+  // We use 16 bit indices for compatibility with GL ES
+  CHECK(height * width + width + height <= 65535);
+
+  GLushort *iptr = *indices = new GLushort[2 * 3 * (width * height)];
   const int swath_height = 4;
 
   CHECK(width % swath_height == 0 && height % swath_height == 0);
@@ -131,10 +134,10 @@ int CreateMesh(GLuint **indices, GLsizeiptr *size,
   for (int j = 0; j < height; j += swath_height) {
     for (int i = 0; i < width; i++) {
       for (int j2 = 0; j2 < swath_height; j2++) {
-        GLuint first = (j + j2) * (width + 1) + i;
-        GLuint second = first + 1;
-        GLuint third = first + (width + 1);
-        GLuint fourth = third + 1;
+        GLushort first = (j + j2) * (width + 1) + i;
+        GLushort second = first + 1;
+        GLushort third = first + (width + 1);
+        GLushort fourth = third + 1;
 
         bool flag = rand() < culled_ratio;
         *iptr++ = first;
@@ -147,7 +150,7 @@ int CreateMesh(GLuint **indices, GLsizeiptr *size,
       }
     }
   }
-  *size = (iptr - *indices) * sizeof(GLuint);
+  *size = (iptr - *indices) * sizeof(GLushort);
 
   return iptr - *indices;
 }

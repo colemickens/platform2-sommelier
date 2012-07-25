@@ -23,7 +23,7 @@ GLuint SetupTexture(GLsizei size_log2);
 GLuint SetupVBO(GLenum target, GLsizeiptr size, const GLvoid *data);
 void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
                    GLfloat size_x, GLfloat size_y, int width, int height);
-int CreateMesh(GLuint **indices, GLsizeiptr *size,
+int CreateMesh(GLushort **indices, GLsizeiptr *size,
                       int width, int height, int culled_ratio);
 GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src);
 GLuint InitShaderProgramWithHeader(const char* header,
