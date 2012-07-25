@@ -15,6 +15,7 @@
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/file_tagger.h"
 #include "power_manager/power_constants.h"
+#include "power_manager/powerd.h"
 #include "power_manager/util.h"
 #include "power_manager/util_dbus.h"
 
@@ -42,7 +43,8 @@ Suspender::Suspender(ScreenLocker* locker, FileTagger* file_tagger)
       suspend_sequence_number_(0),
       wakeup_count_valid_(false) {}
 
-void Suspender::Init(const FilePath& run_dir) {
+void Suspender::Init(const FilePath& run_dir, Daemon* daemon) {
+  daemon_ = daemon;
   user_active_file_ = run_dir.Append(kUserActiveFile);
   RegisterDBusMessageHandler();
 }
@@ -120,8 +122,10 @@ void Suspender::SuspendReady(DBusMessage* message) {
 }
 
 void Suspender::CancelSuspend() {
-  if (suspend_requested_)
+  if (suspend_requested_) {
     LOG(INFO) << "Suspend canceled mid flight.";
+    daemon_->ResumePollPowerSupply();
+  }
   suspend_requested_ = false;
   suspend_delays_outstanding_ = 0;
 }
@@ -247,6 +251,7 @@ void Suspender::RegisterDBusMessageHandler() {
 }
 
 void Suspender::Suspend() {
+  daemon_->HaltPollPowerSupply();
   util::RemoveStatusFile(user_active_file_);
   file_tagger_->HandleSuspendEvent();
   if (wakeup_count_valid_) {

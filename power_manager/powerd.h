@@ -106,6 +106,14 @@ class Daemon : public BacklightControllerObserver,
   void OnKeyboardBrightnessChanged(double brightness_percent,
                                    BrightnessChangeCause cause);
 
+  // Removes the current power supply polling timer.
+  void HaltPollPowerSupply();
+
+  // Removes the current power supply polling timer. It then schedules an
+  // immediate poll that knows the value is suspect and another in 5s once the
+  // battery state has settled.
+  void ResumePollPowerSupply();
+
  private:
   friend class DaemonTest;
   FRIEND_TEST(DaemonTest, AdjustWindowSizeMax);
@@ -247,14 +255,14 @@ class Daemon : public BacklightControllerObserver,
                             const std::string& member,
                             DBusMethodHandler handler);
 
-  // Removes the previous polling timer and replaces it with one that fires
-  // every 5s and calls ShortPollPowerSupply. The nature of this callback will
-  // cause the timer to only fire once and then return to the regular
-  // PollPowerSupply.
+  // Removes the previous power supply polling timer and replaces it with one
+  // that fires every 5s and calls ShortPollPowerSupply. The nature of this
+  // callback will cause the timer to only fire once and then return to the
+  // regular PollPowerSupply.
   void ScheduleShortPollPowerSupply();
 
-  // Removes the previous polling timer and replaces it with one that fires
-  // every 30s and calls PollPowerSupply.
+  // Removes the previous power supply polling timer and replaces it with one
+  // that fires every 30s and calls PollPowerSupply.
   void SchedulePollPowerSupply();
 
   // Handles polling the power supply due to change in its state. Reschedules

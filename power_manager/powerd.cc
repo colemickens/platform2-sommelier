@@ -142,7 +142,7 @@ void Daemon::Init() {
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
   RetrieveSessionState();
-  suspender_.Init(run_dir_);
+  suspender_.Init(run_dir_, this);
   time_to_empty_average_.Init(kRollingAverageSampleWindowMax);
   time_to_full_average_.Init(kRollingAverageSampleWindowMax);
   power_supply_.Init();
@@ -648,6 +648,16 @@ void Daemon::OnKeyboardBrightnessChanged(double brightness_percent,
                               kKeyboardBrightnessChangedSignal);
 }
 
+void Daemon::HaltPollPowerSupply() {
+  if (poll_power_supply_timer_id_ > 0)
+    g_source_remove(poll_power_supply_timer_id_);
+}
+
+void Daemon::ResumePollPowerSupply() {
+  ScheduleShortPollPowerSupply();
+  EventPollPowerSupply();
+}
+
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
                                   GIOCondition /* condition */,
                                   gpointer data) {
@@ -664,8 +674,7 @@ gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
 
     // Rescheduling the timer to fire 5s from now to make sure that it doesn't
     // get a bogus value from being too close to this event.
-    daemon->ScheduleShortPollPowerSupply();
-    daemon->EventPollPowerSupply();
+    daemon->ResumePollPowerSupply();
   } else {
     LOG(ERROR) << "Can't get receive_device()";
     return FALSE;
@@ -1233,16 +1242,14 @@ void Daemon::AddDBusMethodHandler(const std::string& interface,
 }
 
 void Daemon::ScheduleShortPollPowerSupply() {
-  if (poll_power_supply_timer_id_ > 0)
-    g_source_remove(poll_power_supply_timer_id_);
+  HaltPollPowerSupply();
   poll_power_supply_timer_id_ = g_timeout_add(kBatteryPollShortIntervalMs,
                                               ShortPollPowerSupplyThunk,
                                               this);
 }
 
 void Daemon::SchedulePollPowerSupply() {
-  if (poll_power_supply_timer_id_ > 0)
-    g_source_remove(poll_power_supply_timer_id_);
+  HaltPollPowerSupply();
   poll_power_supply_timer_id_ = g_timeout_add(kBatteryPollIntervalMs,
                                               PollPowerSupplyThunk,
                                               this);
@@ -1431,9 +1438,7 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
 
     // Sending up the PowerSupply information, so that the display gets it as
     // soon as possible
-    SchedulePollPowerSupply();
-    power_supply_.GetPowerStatus(&power_status_, false);
-    HandlePollPowerSupply();
+    ResumePollPowerSupply();
     DLOG(INFO) << "Session started for "
                << (current_user_.empty() ? "guest" : "non-guest user");
   } else if (current_session_state_ != state) {
@@ -1539,6 +1544,9 @@ gboolean Daemon::PrefChangeHandler(const char* name,
 }
 
 void Daemon::HandleResume() {
+  time_to_empty_average_.Clear();
+  time_to_full_average_.Clear();
+  ResumePollPowerSupply();
   file_tagger_.HandleResumeEvent();
   power_supply_.SetSuspendState(false);
 }

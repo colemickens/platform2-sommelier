@@ -17,13 +17,14 @@
 
 namespace power_manager {
 
+class Daemon;
 class FileTagger;
 
 class Suspender {
  public:
   Suspender(ScreenLocker* locker, FileTagger* file_tagger);
 
-  void Init(const FilePath& run_dir);
+  void Init(const FilePath& run_dir, Daemon* daemon);
 
   // Suspend the computer, locking the screen first.
   void RequestSuspend();
@@ -102,6 +103,9 @@ class Suspender {
   // Number of wake events received at start of current suspend operation
   unsigned int wakeup_count_;
   bool wakeup_count_valid_;
+
+  // Reference to the owning daemon, so that this class can callback to it
+  Daemon* daemon_;
 
   DISALLOW_COPY_AND_ASSIGN(Suspender);
 };
