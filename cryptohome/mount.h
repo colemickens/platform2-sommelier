@@ -37,22 +37,10 @@
 
 namespace cryptohome {
 
-// The directory to mount the user's cryptohome at
-extern const char kDefaultHomeDir[];
 // The directory in which to create the user's PKCS #11 token database.
 extern const char kChapsTokenDir[];
 // The path to the PKCS #11 token salt file.
 extern const char kTokenSaltFile[];
-// The directory containing the system salt and the user vaults
-extern const char kDefaultShadowRoot[];
-// The default shared user (chronos)
-extern const char kDefaultSharedUser[];
-// The default shared access group (chronos-access)
-extern const char kDefaultSharedAccessGroup[];
-// The default skeleton source (/etc/skel)
-extern const char kDefaultSkeletonSource[];
-// The incognito user
-extern const char kIncognitoUser[];
 // Directories that we intend to track (make pass-through in cryptohome vault)
 extern const char kCacheDir[];
 extern const char kDownloadsDir[];
@@ -126,6 +114,8 @@ class Mount {
   //
   // Parameters
   //   credentials - The credentials for which to test the mount point.
+  // TODO(ellyjones): factor this into IsCryptohomeMountedForUser() with an
+  // |*ephemeral| arg or something.
   virtual bool IsVaultMountedForUser(const Credentials& credentials) const;
 
   // Checks if the cryptohome vault exists for the given credentials and creates
@@ -138,49 +128,12 @@ class Mount {
   virtual bool EnsureCryptohome(const Credentials& credentials,
                                 bool* created) const;
 
-  // Checks if the cryptohome vault exists for the given credentials
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user whose cryptohome
-  //     should be checked.
-  virtual bool DoesCryptohomeExist(const Credentials& credentials) const;
-
-  // Creates the cryptohome salt, key, and vault for the specified credentials
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user whose cryptohome
-  //     should be created.
-  virtual bool CreateCryptohome(const Credentials& credentials) const;
-
-  // Creates the the tracked subdirectories in a user's cryptohome
-  // If the cryptohome did not have tracked directories, but had them untracked,
-  // migrate their contents.
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  //   is_new - True, if the cryptohome is being created and there is
-  //            no need in migration
-  virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
-                                           bool is_new) const;
-
-  // Deletes Cache tracking directory of the given vault
-  virtual void DeleteCacheCallback(const FilePath& vault);
-
-  // Adds the user, by vault, to the cache of the oldest activity timestamps.
-  //
-  // Parameters
-  //   vault - The FilePath of the desired user's vault
-  virtual void AddUserTimestampToCacheCallback(const FilePath& vault);
-
   // Checks free disk space and if it falls below minimum
   // (kMinFreeSpace), performs cleanup. Returns true if cleanup
   // started (but maybe could not do anything), false if disk space
   // was enough.
+  // TODO(ellyjones): delete this in favor of HomeDirs
   virtual bool DoAutomaticFreeDiskSpaceControl();
-
-  // Changes the group ownership and permissions on those directories inside
-  // the cryptohome that need to be accessible by other system daemons
-  virtual bool SetupGroupAccess() const;
 
   // Updates current user activity timestamp. This is called daily.
   // So we may not consider current user as old (and delete it soon after she
@@ -205,58 +158,12 @@ class Mount {
   //   credentials - The Credentials to attempt to decrypt the key with
   virtual bool AreValid(const Credentials& credentials);
 
-  // Migrates from the home-in-encfs setup to the home-in-subdir setup. Instead
-  // of storing all the user's files in the root of the encfs, we store them in
-  // a subdirectory of it to make room for a root-owned, user-encrypted volume.
-  //
-  // Parameters
-  //   dir - directory to migrate
-  virtual void MigrateToUserHome(const std::string& dir) const;
-
   // Mounts a guest home directory to the cryptohome mount point
   virtual bool MountGuestCryptohome();
-
-  // Returns the system salt
-  virtual void GetSystemSalt(chromeos::Blob* salt) const;
-
-  virtual bool LoadVaultKeyset(const Credentials& credentials,
-                               SerializedVaultKeyset* encrypted_keyset) const;
-
-  virtual bool LoadVaultKeysetForUser(
-      const std::string& obfuscated_username,
-      SerializedVaultKeyset* encrypted_keyset) const;
-
-  virtual bool StoreVaultKeyset(
-      const Credentials& credentials,
-      const SerializedVaultKeyset& encrypted_keyset) const;
-
-  virtual bool StoreVaultKeysetForUser(
-      const std::string& obfuscated_username,
-      const SerializedVaultKeyset& encrypted_keyset) const;
-
-  // Used to disable setting vault ownership
-  void set_set_vault_ownership(bool value) {
-    set_vault_ownership_ = value;
-  }
-
-  // Used to override the default home directory
-  void set_home_dir(const std::string& value) {
-    home_dir_ = value;
-  }
 
   // Used to override the default shadow root
   void set_shadow_root(const std::string& value) {
     shadow_root_ = value;
-  }
-
-  // Get the shadow root
-  std::string get_shadow_root() {
-    return shadow_root_;
-  }
-
-  // Used to override the default shared username
-  void set_shared_user(const std::string& value) {
-    default_username_ = value;
   }
 
   // Used to override the default skeleton directory
@@ -289,20 +196,118 @@ class Mount {
     current_user_ = value;
   }
 
-  // Get the user session
-  UserSession* get_current_user() {
-    return current_user_;
+
+  // Set/get last access timestamp cache instance for test purposes.
+  UserOldestActivityTimestampCache* user_timestamp_cache() const {
+    return user_timestamp_;
   }
 
-  // Manually set the logged in user
-  void set_current_user_credentials(const Credentials& credentials) {
-    current_user_->SetUser(credentials);
+  // Set/get a flag, that this machine is enterprise owned.
+  void set_enterprise_owned(bool value) {
+    enterprise_owned_ = value;
+    homedirs_.set_enterprise_owned(value);
   }
 
-  // Manually clear the current logged-in user
-  void reset_current_user_credentials() {
-    current_user_->Reset();
+  // Set/get time delta of last user's activity to be considered as old.
+  void set_old_user_last_activity_time(base::TimeDelta value) {
+    old_user_last_activity_time_ = value;
+    homedirs_.set_old_user_last_activity_time(value);
   }
+
+  // Flag indicating if PKCS#11 is ready.
+  typedef enum {
+    kUninitialized = 0,  // PKCS#11 initialization hasn't been attempted.
+    kIsWaitingOnTPM,  // PKCS#11 initialization is waiting on TPM ownership,
+    kIsBeingInitialized,  // PKCS#11 is being attempted asynchronously.
+    kIsInitialized,  // PKCS#11 was attempted and succeeded.
+    kIsFailed,  // PKCS#11 was attempted and failed.
+    kInvalidState,  // We should never be in this state.
+  } Pkcs11State;
+
+  void set_pkcs11_state(Pkcs11State value) {
+    pkcs11_state_ = value;
+  }
+
+  Pkcs11State pkcs11_state() {
+    return pkcs11_state_;
+  }
+
+  // Returns the status of this mount as a Value
+  //
+  // The returned object is a dictionary whose keys describe the mount. Current
+  // keys are: "keysets", "mounted", "owner" and "enterprise".
+  virtual Value* GetStatus();
+
+  // Inserts the current user's PKCS #11 token.
+  bool InsertPkcs11Token();
+
+  // Removes the current user's PKCS #11 token.
+  void RemovePkcs11Token();
+
+ protected:
+  FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
+  friend class MakeTests;
+  friend class MountTest;
+  friend class EphemeralTest;
+
+  // Used to override the policy provider for testing (takes ownership)
+  void set_policy_provider(policy::PolicyProvider* provider) {
+    policy_provider_.reset(provider);
+    homedirs_.set_policy_provider(provider);
+  }
+
+ private:
+  // Checks if the cryptohome vault exists for the given credentials
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user whose cryptohome
+  //     should be checked.
+  virtual bool DoesCryptohomeExist(const Credentials& credentials) const;
+
+  // Creates the the tracked subdirectories in a user's cryptohome
+  // If the cryptohome did not have tracked directories, but had them untracked,
+  // migrate their contents.
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  //   is_new - True, if the cryptohome is being created and there is
+  //            no need in migration
+  virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
+                                           bool is_new) const;
+
+  // Creates the cryptohome salt, key, and vault for the specified credentials
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user whose cryptohome
+  //     should be created.
+  virtual bool CreateCryptohome(const Credentials& credentials) const;
+
+  // Migrates from the home-in-encfs setup to the home-in-subdir setup. Instead
+  // of storing all the user's files in the root of the encfs, we store them in
+  // a subdirectory of it to make room for a root-owned, user-encrypted volume.
+  //
+  // Parameters
+  //   dir - directory to migrate
+  virtual void MigrateToUserHome(const std::string& dir) const;
+
+  // Changes the group ownership and permissions on those directories inside
+  // the cryptohome that need to be accessible by other system daemons
+  virtual bool SetupGroupAccess() const;
+
+  virtual bool LoadVaultKeyset(const Credentials& credentials,
+                               SerializedVaultKeyset* encrypted_keyset) const;
+
+  virtual bool LoadVaultKeysetForUser(
+      const std::string& obfuscated_username,
+      SerializedVaultKeyset* encrypted_keyset) const;
+
+  virtual bool StoreVaultKeyset(
+      const Credentials& credentials,
+      const SerializedVaultKeyset& encrypted_keyset) const;
+
+  virtual bool StoreVaultKeysetForUser(
+      const std::string& obfuscated_username,
+      const SerializedVaultKeyset& encrypted_keyset) const;
 
   // Encrypts and adds the VaultKeyset to the serialized store
   //
@@ -342,12 +347,6 @@ class Mount {
                           SerializedVaultKeyset* serialized,
                           MountError* error) const;
 
-  // Remove the key file and (old) salt file if they exist
-  //
-  // Parameters
-  //   credentials - The user credentials to remove the files for
-  bool RemoveOldFiles(const Credentials& credentials) const;
-
   // Cache the old key file and salt file during migration
   //
   // Parameters
@@ -366,20 +365,11 @@ class Mount {
   //   files - The file names to remove
   bool DeleteCacheFiles(const std::vector<std::string>& files) const;
 
-  // Gets the directory in the shadow root where the user's salt, key, and vault
-  // are stored.
+  // Gets the user's salt file name
   //
   // Parameters
   //   credentials - The Credentials representing the user
-  std::string GetUserDirectory(const Credentials& credentials) const;
-
-  // Gets the directory in the shadow root where the user's salt, key, and vault
-  // are stored.
-  //
-  // Parameters
-  //   obfuscated_username - Obfuscated username field of the Credentials
-  std::string GetUserDirectoryForUser(
-      const std::string& obfuscated_username) const;
+  std::string GetUserSaltFile(const Credentials& credentials) const;
 
   // Gets the user's key file name
   //
@@ -394,11 +384,20 @@ class Mount {
   std::string GetUserKeyFileForUser(
       const std::string& obfuscated_username) const;
 
-  // Gets the user's salt file name
+  // Gets the directory in the shadow root where the user's salt, key, and vault
+  // are stored.
   //
   // Parameters
   //   credentials - The Credentials representing the user
-  std::string GetUserSaltFile(const Credentials& credentials) const;
+  std::string GetUserDirectory(const Credentials& credentials) const;
+
+  // Gets the directory in the shadow root where the user's salt, key, and vault
+  // are stored.
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the Credentials
+  std::string GetUserDirectoryForUser(
+      const std::string& obfuscated_username) const;
 
   // Gets the directory representing the user's ephemeral cryptohome.
   //
@@ -458,58 +457,6 @@ class Mount {
   // Reloads the device policy.
   void ReloadDevicePolicy();
 
-  // Set/get last access timestamp cache instance for test purposes.
-  UserOldestActivityTimestampCache* user_timestamp_cache() const {
-    return user_timestamp_;
-  }
-  void set_user_timestamp_cache(UserOldestActivityTimestampCache* cache) {
-    user_timestamp_ = cache;
-  }
-
-  // Set/get a flag, that this machine is enterprise owned.
-  bool enterprise_owned() const {
-    return enterprise_owned_;
-  }
-  void set_enterprise_owned(bool value) {
-    enterprise_owned_ = value;
-    homedirs_.set_enterprise_owned(value);
-  }
-
-  // Set/get time delta of last user's activity to be considered as old.
-  base::TimeDelta old_user_last_activity_time() const {
-    return old_user_last_activity_time_;
-  }
-  void set_old_user_last_activity_time(base::TimeDelta value) {
-    old_user_last_activity_time_ = value;
-    homedirs_.set_old_user_last_activity_time(value);
-  }
-
-  // Flag indicating if PKCS#11 is ready.
-  typedef enum {
-    kUninitialized = 0,  // PKCS#11 initialization hasn't been attempted.
-    kIsWaitingOnTPM,  // PKCS#11 initialization is waiting on TPM ownership,
-    kIsBeingInitialized,  // PKCS#11 is being attempted asynchronously.
-    kIsInitialized,  // PKCS#11 was attempted and succeeded.
-    kIsFailed,  // PKCS#11 was attempted and failed.
-    kInvalidState,  // We should never be in this state.
-  } Pkcs11State;
-
-  void set_pkcs11_state(Pkcs11State value) {
-    pkcs11_state_ = value;
-  }
-
-  Pkcs11State pkcs11_state() {
-    return pkcs11_state_;
-  }
-
-  HomeDirs* homedirs() { return &homedirs_; }
-
-  // Returns the status of this mount as a Value
-  //
-  // The returned object is a dictionary whose keys describe the mount. Current
-  // keys are: "keysets", "mounted", "owner" and "enterprise".
-  virtual Value* GetStatus();
-
   // Checks Chaps Directory and makes sure that it has the correct
   // permissions, owner uid and gid. If any of these values are
   // incorrect, permissions_check is set to false. If the directory
@@ -522,25 +469,6 @@ class Mount {
   //   permissions_check - set to false if permissions, uid or gid is incorrect
   bool CheckChapsDirectory(bool* permissions_check);
 
-  // Inserts the current user's PKCS #11 token.
-  bool InsertPkcs11Token();
-
-  // Removes the current user's PKCS #11 token.
-  void RemovePkcs11Token();
-
- protected:
-  FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
-  friend class MakeTests;
-  friend class MountTest;
-  friend class EphemeralTest;
-
-  // Used to override the policy provider for testing (takes ownership)
-  void set_policy_provider(policy::PolicyProvider* provider) {
-    policy_provider_.reset(provider);
-    homedirs_.set_policy_provider(provider);
-  }
-
- private:
   // Ensures that the device policy is loaded.
   //
   // Parameters
@@ -719,11 +647,7 @@ class Mount {
   // Downloads directory to this gid.
   gid_t default_access_group_;
 
-  // The shared user name.  This user's uid/gid is used for vault ownership.
-  std::string default_username_;
-
   // The file path to mount cryptohome at.  Defaults to /home/chronos/user
-  std::string home_dir_;
   std::string mount_point_;
 
   // Where to store the system salt and user salt/key/vault.  Defaults to
@@ -735,9 +659,6 @@ class Mount {
 
   // Stores the global system salt
   chromeos::SecureBlob system_salt_;
-
-  // Whether to change ownership of the vault file
-  bool set_vault_ownership_;
 
   // The crypto implementation
   scoped_ptr<Crypto> default_crypto_;
@@ -795,6 +716,18 @@ class Mount {
   MountStack mounts_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
+  FRIEND_TEST(MountTest, UserActivityTimestampUpdated);
+  FRIEND_TEST(MountTest, GoodReDecryptTest);
+  FRIEND_TEST(MountTest, MountCryptohomeNoChange);
+  FRIEND_TEST(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadPerms);
+  FRIEND_TEST(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID);
+  FRIEND_TEST(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID);
+  FRIEND_TEST(MountTest,
+              CheckChapsDirectoryCalledWithNonexistingDirWithFatalError);
+  FRIEND_TEST(MountTest,
+              CheckChapsDirectoryCalledWithExistingDirWithFatalError);
+  FRIEND_TEST(MountTest, CheckChapsDirectoryCalledWithExistingDir);
+  friend class DoAutomaticFreeDiskSpaceControlTest;
 
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };

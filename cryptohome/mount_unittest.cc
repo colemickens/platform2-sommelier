@@ -198,7 +198,7 @@ TEST_F(MountTest, BadDecryptTest) {
   ASSERT_FALSE(mount.AreValid(up));
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDir){
+TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDir) {
   Mount mount;
   NiceMock<MockPlatform> platform;
   NiceMock<MockTpm> tpm;
@@ -215,7 +215,7 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDir){
   EXPECT_TRUE(permissions_status);
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadPerms){
+TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadPerms) {
   Mount mount;
   NiceMock<MockPlatform> platform;
   mode_t bad_perms = S_IXGRP;
@@ -229,13 +229,13 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadPerms){
   EXPECT_CALL(platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, GetPermissions(_, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(bad_perms),Return(true)));
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(bad_perms), Return(true)));
   bool permissions_status = false;
   EXPECT_TRUE(mount.CheckChapsDirectory(&permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID){
+TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID) {
   Mount mount;
   NiceMock<MockPlatform> platform;
   NiceMock<MockTpm> tpm;
@@ -258,7 +258,7 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID){
   EXPECT_FALSE(permissions_status);
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID){
+TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID) {
   Mount mount;
   NiceMock<MockPlatform> platform;
   NiceMock<MockTpm> tpm;
@@ -281,7 +281,7 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID){
   EXPECT_FALSE(permissions_status);
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithNonexistingDirWithFatalError){
+TEST_F(MountTest, CheckChapsDirectoryCalledWithNonexistingDirWithFatalError) {
   Mount mount;
   NiceMock<MockPlatform> platform;
   NiceMock<MockTpm> tpm;
@@ -310,7 +310,7 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithNonexistingDirWithFatalError){
   EXPECT_FALSE(permissions_status);
 }
 
-TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithFatalError){
+TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithFatalError) {
   Mount mount;
   NiceMock<MockPlatform> platform;
   NiceMock<MockTpm> tpm;
@@ -344,7 +344,6 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
   set_policy(&mount, false, "", false);
-  mount.set_set_vault_ownership(false);
   homedirs.set_shadow_root(kImageDir);
 
   NiceMock<MockPlatform> platform;
@@ -416,24 +415,6 @@ TEST_F(MountTest, GoodReDecryptTest) {
              cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED));
 
   ASSERT_TRUE(homedirs.AreCredentialsValid(up));
-}
-
-TEST_F(MountTest, SystemSaltTest) {
-  // checks that cryptohome reads the system salt
-  Mount mount;
-  NiceMock<MockTpm> tpm;
-  mount.get_crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  set_policy(&mount, false, "", false);
-
-  EXPECT_TRUE(mount.Init());
-  chromeos::Blob system_salt;
-  mount.GetSystemSalt(&system_salt);
-  ASSERT_TRUE((system_salt.size() == system_salt_.size()));
-  ASSERT_EQ(0, chromeos::SafeMemcmp(&system_salt[0], &system_salt_[0],
-                                    system_salt.size()));
 }
 
 TEST_F(MountTest, MountCryptohome) {

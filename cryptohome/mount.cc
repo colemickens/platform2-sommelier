@@ -88,12 +88,9 @@ Mount::Mount()
       chaps_user_(-1),
       default_group_(-1),
       default_access_group_(-1),
-      default_username_(kDefaultSharedUser),
-      home_dir_(kDefaultHomeDir),
       shadow_root_(kDefaultShadowRoot),
       skel_source_(kDefaultSkeletonSource),
       system_salt_(),
-      set_vault_ownership_(true),
       default_crypto_(new Crypto()),
       crypto_(default_crypto_.get()),
       default_platform_(new Platform()),
@@ -131,7 +128,7 @@ bool Mount::Init() {
     result = false;
 
   // Get the user id and group id of the default user
-  if (!platform_->GetUserId(default_username_, &default_user_,
+  if (!platform_->GetUserId(kDefaultSharedUser, &default_user_,
                            &default_group_)) {
     result = false;
   }
@@ -391,8 +388,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   CreateTrackedSubdirectories(credentials, created);
 
   string user_home = GetMountedUserHomePath(credentials);
-  if (!BindForUser(current_user_, user_home, home_dir_)) {
-    PLOG(ERROR) << "Bind mount failed: " << user_home << " -> " << home_dir_;
+  if (!BindForUser(current_user_, user_home, kDefaultHomeDir)) {
+    PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
+                << kDefaultHomeDir;
     UnmountAllForUser(current_user_);
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
@@ -478,9 +476,9 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
     UnmountAllForUser(current_user_);
     return false;
   }
-  if (!BindForUser(current_user_, user_multi_home, home_dir_)) {
+  if (!BindForUser(current_user_, user_multi_home, kDefaultHomeDir)) {
     LOG(ERROR) << "Bind mount of ephemeral user home from " << user_multi_home
-               << " to " << home_dir_ << " failed: " << errno;
+               << " to " << kDefaultHomeDir << " failed: " << errno;
     UnmountAllForUser(current_user_);
     return false;
   }
@@ -488,13 +486,11 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
 }
 
 bool Mount::SetUpEphemeralCryptohome(const std::string& home_dir) {
-  if (set_vault_ownership_) {
-    if (!platform_->SetOwnership(home_dir, default_user_, default_group_)) {
-      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                 << default_group_ << ") of path: " << home_dir;
-      UnmountAllForUser(current_user_);
-      return false;
-    }
+  if (!platform_->SetOwnership(home_dir, default_user_, default_group_)) {
+    LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
+               << default_group_ << ") of path: " << home_dir;
+    UnmountAllForUser(current_user_);
+    return false;
   }
   CopySkeleton();
 
@@ -636,23 +632,23 @@ bool Mount::UnmountCryptohome() {
 }
 
 bool Mount::IsCryptohomeMounted() const {
-  return platform_->IsDirectoryMounted(home_dir_);
+  return platform_->IsDirectoryMounted(kDefaultHomeDir);
 }
 
 bool Mount::IsCryptohomeMountedForUser(const Credentials& credentials) const {
   const std::string obfuscated_owner =
       credentials.GetObfuscatedUsername(system_salt_);
   return (platform_->IsDirectoryMountedWith(
-              home_dir_,
+              kDefaultHomeDir,
               GetUserVaultPath(obfuscated_owner)) ||
           platform_->IsDirectoryMountedWith(
-              home_dir_,
+              kDefaultHomeDir,
               GetUserEphemeralPath(obfuscated_owner)));
 }
 
 bool Mount::IsVaultMountedForUser(const Credentials& credentials) const {
   return platform_->IsDirectoryMountedWith(
-      home_dir_,
+      kDefaultHomeDir,
       GetUserVaultPath(credentials.GetObfuscatedUsername(system_salt_)));
 }
 
@@ -733,16 +729,14 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
       LOG(INFO) << "Creating pass-through directories "
                 << shadowside_dir.value();
       file_util::CreateDirectory(shadowside_dir);
-      if (set_vault_ownership_) {
-        if (!platform_->SetOwnership(shadowside_dir.value(),
-                                     default_user_, default_group_)) {
-          LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                     << default_group_ << ") of tracked directory path: "
-                     << shadowside_dir.value();
-          file_util::Delete(shadowside_dir, true);
-          result = false;
-          continue;
-        }
+      if (!platform_->SetOwnership(shadowside_dir.value(),
+                                   default_user_, default_group_)) {
+        LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
+                   << default_group_ << ") of tracked directory path: "
+                   << shadowside_dir.value();
+        file_util::Delete(shadowside_dir, true);
+        result = false;
+        continue;
       }
     }
   }
@@ -795,44 +789,11 @@ void Mount::DoForEveryUnmountedCryptohome(
     if (!file_util::DirectoryExists(vault_path)) {
       continue;
     }
-    if (platform_->IsDirectoryMountedWith(home_dir_, vault_path.value())) {
+    if (platform_->IsDirectoryMountedWith(kDefaultHomeDir,
+                                          vault_path.value())) {
       continue;
     }
     cryptohome_cb.Run(vault_path);
-  }
-}
-
-// Deletes specified directory contents, but leaves the directory itself.
-static void DeleteDirectoryContents(const FilePath& dir) {
-  file_util::FileEnumerator subdir_enumerator(
-      dir,
-      false,
-      static_cast<file_util::FileEnumerator::FileType>(
-          file_util::FileEnumerator::FILES |
-          file_util::FileEnumerator::DIRECTORIES |
-          file_util::FileEnumerator::SHOW_SYM_LINKS));
-  for (FilePath subdir_path = subdir_enumerator.Next(); !subdir_path.empty();
-       subdir_path = subdir_enumerator.Next()) {
-    file_util::Delete(subdir_path, true);
-  }
-}
-
-void Mount::DeleteCacheCallback(const FilePath& vault) {
-  LOG(WARNING) << "Deleting Cache for user " << vault.value();
-  DeleteDirectoryContents(vault.Append(kCacheDir));
-}
-
-void Mount::AddUserTimestampToCacheCallback(const FilePath& vault) {
-  const FilePath user_dir = vault.DirName();
-  const std::string obfuscated_username = user_dir.BaseName().value();
-  SerializedVaultKeyset serialized;
-  LoadVaultKeysetForUser(obfuscated_username, &serialized);
-  if (serialized.has_last_activity_timestamp()) {
-    const base::Time timestamp = base::Time::FromInternalValue(
-        serialized.last_activity_timestamp());
-    user_timestamp_->AddExistingUser(user_dir, timestamp);
-  } else {
-    user_timestamp_->AddExistingUserNotime(user_dir);
   }
 }
 
@@ -841,9 +802,6 @@ bool Mount::DoAutomaticFreeDiskSpaceControl() {
 }
 
 bool Mount::SetupGroupAccess() const {
-  if (!set_vault_ownership_)
-    return true;
-
   // Make the following directories group accessible by other system daemons:
   //   /home/chronos/user
   //   /home/chronos/user/Downloads
@@ -853,10 +811,11 @@ bool Mount::SetupGroupAccess() const {
     FilePath path;
     bool optional;
   } kGroupAccessiblePaths[] = {
-    { FilePath(home_dir_), false },
-    { FilePath(home_dir_).Append(kDownloadsDir), false },
-    { FilePath(home_dir_).Append(kGCacheDir), true },
-    { FilePath(home_dir_).Append(kGCacheDir).Append(kGCacheVersionDir), true },
+    { FilePath(kDefaultHomeDir), false },
+    { FilePath(kDefaultHomeDir).Append(kDownloadsDir), false },
+    { FilePath(kDefaultHomeDir).Append(kGCacheDir), true },
+    { FilePath(kDefaultHomeDir).Append(kGCacheDir).Append(kGCacheVersionDir),
+      true },
   };
 
   mode_t mode = S_IXGRP;
@@ -1080,12 +1039,12 @@ bool Mount::MountGuestCryptohome() {
   current_user_->Reset();
 
   // Attempt to mount guestfs
-  if (!MountForUser(current_user_, "guestfs", home_dir_, kEphemeralMountType,
-                    kEphemeralMountPerms)) {
+  if (!MountForUser(current_user_, "guestfs", kDefaultHomeDir,
+                    kEphemeralMountType, kEphemeralMountPerms)) {
     LOG(ERROR) << "Cryptohome mount failed: " << errno << " for guestfs";
     return false;
   }
-  return SetUpEphemeralCryptohome(home_dir_);
+  return SetUpEphemeralCryptohome(kDefaultHomeDir);
 }
 
 string Mount::GetUserDirectory(const Credentials& credentials) const {
@@ -1179,8 +1138,7 @@ void Mount::ReloadDevicePolicy() {
   EnsureDevicePolicyLoaded(true);
 }
 
-bool Mount::CheckChapsDirectory(bool* permissions_status)
-{
+bool Mount::CheckChapsDirectory(bool* permissions_status) {
   // If the Chaps database directory does not exist, create it.
   DCHECK(permissions_status);
   *permissions_status = true;
@@ -1291,14 +1249,13 @@ void Mount::RecursiveCopy(const FilePath& destination,
   while (!(next_path = file_enumerator.Next()).empty()) {
     FilePath file_name = next_path.BaseName();
     FilePath destination_file = destination.Append(file_name);
+    // TODO(ellyjones): use Platform
     file_util::CopyFile(next_path, destination_file);
-    if (set_vault_ownership_) {
-      if (chown(destination_file.value().c_str(), default_user_,
-               default_group_)) {
-        LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                   << default_group_ << ") of skeleton path: "
-                   << destination_file.value().c_str();
-      }
+    if (chown(destination_file.value().c_str(), default_user_,
+             default_group_)) {
+      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
+                 << default_group_ << ") of skeleton path: "
+                 << destination_file.value().c_str();
     }
   }
   file_util::FileEnumerator dir_enumerator(source, false,
@@ -1308,13 +1265,11 @@ void Mount::RecursiveCopy(const FilePath& destination,
     FilePath destination_dir = destination.Append(dir_name);
     LOG(INFO) << "RecursiveCopy: " << destination_dir.value();
     file_util::CreateDirectory(destination_dir);
-    if (set_vault_ownership_) {
-      if (chown(destination_dir.value().c_str(), default_user_,
-               default_group_)) {
-        LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                   << default_group_ << ") of skeleton path: "
-                   << destination_dir.value().c_str();
-      }
+    if (chown(destination_dir.value().c_str(), default_user_,
+             default_group_)) {
+      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
+                 << default_group_ << ") of skeleton path: "
+                 << destination_dir.value().c_str();
     }
     RecursiveCopy(destination_dir, next_path);
   }
@@ -1407,23 +1362,7 @@ void Mount::CopySkeletonForUser(const Credentials& credentials) const {
 }
 
 void Mount::CopySkeleton() const {
-  RecursiveCopy(FilePath(home_dir_), FilePath(skel_source_));
-}
-
-bool Mount::RemoveOldFiles(const Credentials& credentials) const {
-  FilePath key_file(GetUserKeyFile(credentials));
-  if (file_util::PathExists(key_file)) {
-    if (!file_util::Delete(key_file, false)) {
-      return false;
-    }
-  }
-  FilePath salt_file(GetUserSaltFile(credentials));
-  if (file_util::PathExists(salt_file)) {
-    if (!file_util::Delete(salt_file, false)) {
-      return false;
-    }
-  }
-  return true;
+  RecursiveCopy(FilePath(kDefaultHomeDir), FilePath(skel_source_));
 }
 
 bool Mount::CacheOldFiles(const std::vector<std::string>& files) const {
@@ -1468,10 +1407,6 @@ bool Mount::DeleteCacheFiles(const std::vector<std::string>& files) const {
     }
   }
   return true;
-}
-
-void Mount::GetSystemSalt(chromeos::Blob* salt) const {
-  *salt = system_salt_;
 }
 
 void Mount::GetUserSalt(const Credentials& credentials, bool force,
@@ -1567,7 +1502,7 @@ Value* Mount::GetStatus() {
   dv->Set("keysets", keysets);
   dv->SetBoolean("mounted", IsCryptohomeMounted());
   dv->SetString("owner", GetObfuscatedOwner());
-  dv->SetBoolean("enterprise", enterprise_owned());
+  dv->SetBoolean("enterprise", enterprise_owned_);
   return dv;
 }
 
