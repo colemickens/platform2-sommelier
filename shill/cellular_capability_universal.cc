@@ -238,14 +238,12 @@ void CellularCapabilityUniversal::Start_EnableModemCompleted(
 
 void CellularCapabilityUniversal::StopModem(Error *error,
                                             const ResultCallback &callback) {
-  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   CHECK(error);
-  Cellular::State state = cellular()->state();
-  bool connected = (state == Cellular::kStateConnected ||
-                    state == Cellular::kStateLinked);
+  Cellular::ModemState state = cellular()->modem_state();
+  SLOG(Cellular, 2) << __func__ << "(" << state << ")";
 
-  if (connected) {
+  if (cellular()->IsModemRegistered()) {
     string all_bearers("/");  // "/" means all bearers.  See Modemanager docs.
     modem_simple_proxy_->Disconnect(
         all_bearers,

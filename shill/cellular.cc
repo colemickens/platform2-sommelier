@@ -217,6 +217,12 @@ bool Cellular::IsUnderlyingDeviceEnabled() const {
   return IsEnabledModemState(modem_state_);
 }
 
+bool Cellular::IsModemRegistered() const {
+  return (modem_state_ == Cellular::kModemStateRegistered ||
+          modem_state_ == Cellular::kModemStateConnecting ||
+          modem_state_ == Cellular::kModemStateConnected);
+}
+
 // static
 bool Cellular::IsEnabledModemState(ModemState state) {
   switch (state) {
@@ -549,9 +555,13 @@ void Cellular::OnModemStateChanged(ModemState old_state,
         capability_->SetUnregistered(new_state == kModemStateSearching);
         HandleNewRegistrationState();
       } else {
-        SLOG(Cellular, 2) << __func__ << "Ignoring state change to Enabled";
+        SLOG(Cellular, 2) << __func__ << ": Ignoring state change to Enabled";
       }
+      // Intentionally falls through.
     case kModemStateRegistered:
+      // If the modem state changes from Connecting/Connected/Disconnecting
+      // to Registered/Enabled/Searching, then it's an indication that the
+      // modem has been disconnected or got disconnected by the network.
       if (old_state == kModemStateConnected ||
           old_state == kModemStateConnecting ||
           old_state == kModemStateDisconnecting)
@@ -561,7 +571,10 @@ void Cellular::OnModemStateChanged(ModemState old_state,
       OnConnecting();
       break;
     case kModemStateConnected:
-      OnConnected();
+      if (old_state == kModemStateConnecting)
+        OnConnected();
+      else
+        SLOG(Cellular, 2) << __func__ << ": Ignoring state change to Connected";
       break;
     default:
       break;

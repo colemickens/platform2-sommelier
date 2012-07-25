@@ -683,6 +683,28 @@ TEST_F(CellularTest, ModemStateChangeDisable) {
   EXPECT_FALSE(device_->enabled());
 }
 
+TEST_F(CellularTest, ModemStateChangeStaleConnected) {
+  // Test to make sure that we ignore stale modem Connected state transitions.
+  // When a modem is asked to connect and before the connect completes, the
+  // modem is disabled, it may send a stale Connected state transition after
+  // it has been disabled.
+  device_->state_ = Cellular::kStateDisabled;
+  device_->OnModemStateChanged(Cellular::kModemStateEnabling,
+                               Cellular::kModemStateConnected,
+                               0);
+  EXPECT_EQ(Cellular::kStateDisabled, device_->state());
+}
+
+TEST_F(CellularTest, ModemStateChangeValidConnected) {
+  device_->state_ = Cellular::kStateEnabled;
+  device_->service_ = new CellularService(
+      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
+  device_->OnModemStateChanged(Cellular::kModemStateConnecting,
+                               Cellular::kModemStateConnected,
+                               0);
+  EXPECT_EQ(Cellular::kStateConnected, device_->state());
+}
+
 TEST_F(CellularTest, StartModemCallback) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);

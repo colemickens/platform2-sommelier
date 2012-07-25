@@ -332,7 +332,7 @@ TEST_F(CellularCapabilityUniversalTest, StopModemConnected) {
               Disconnect(::DBus::Path("/"), _, _,
                          CellularCapability::kTimeoutDefault))
       .WillOnce(SaveArg<2>(&disconnect_callback));
-  capability_->cellular()->state_ = Cellular::kStateConnected;
+  capability_->cellular()->modem_state_ = Cellular::kModemStateConnected;
   capability_->StopModem(&error, callback);
   EXPECT_TRUE(error.IsSuccess());
 

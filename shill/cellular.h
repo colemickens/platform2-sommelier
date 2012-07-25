@@ -145,6 +145,7 @@ class Cellular : public Device {
   void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }
   bool IsUnderlyingDeviceEnabled() const;
+  bool IsModemRegistered() const;
   static bool IsEnabledModemState(ModemState state);
 
   mobile_provider_db *provider_db() const { return provider_db_; }
@@ -223,6 +224,8 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
+  FRIEND_TEST(CellularTest, ModemStateChangeStaleConnected);
+  FRIEND_TEST(CellularTest, ModemStateChangeValidConnected);
   FRIEND_TEST(CellularTest, SetAllowRoaming);
   FRIEND_TEST(CellularTest, StartModemCallback);
   FRIEND_TEST(CellularTest, StartModemCallbackFail);
