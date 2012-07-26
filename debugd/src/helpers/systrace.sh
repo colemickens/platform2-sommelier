@@ -48,6 +48,8 @@ gfx_events="
 power_events="
     power:cpu_idle
     power:cpu_frequency
+    mali:mali_dvfs_set_clock
+    mali:mali_dvfs_set_voltage
     cpufreq_interactive:cpufreq_interactive_boost
     cpufreq_interactive:cpufreq_interactive_unboost
 "
