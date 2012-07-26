@@ -1,5 +1,6 @@
 #!/bin/sh
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,6 +9,7 @@
 
 . /usr/lib/mm.sh
 . /usr/lib/connectivity-common.sh
+. /usr/lib/modem-common.sh
 
 # Wait for a modem to reset itself and come back with a new dbus name
 # args:
@@ -157,7 +159,11 @@ factory_reset () {
 }
 
 status () {
-	/usr/share/userfeedback/scripts/mm-status
+	all_modem_status 2>/dev/null
+}
+
+status_feedback () {
+	all_modem_status 2>/dev/null | mask_modem_properties
 }
 
 update_prl () {
@@ -282,6 +288,9 @@ case "$cmd" in
 		;;
 	status)
 		status "$@"
+		;;
+	status-feedback)
+		status_feedback "$@"
 		;;
 	update-prl)
 		update_prl "$@"
