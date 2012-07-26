@@ -2195,13 +2195,12 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailure) {
   EXPECT_FALSE(service->has_ever_connected());
 
   EXPECT_CALL(*service, SetFailure(Service::kFailureBadPassphrase));
+  EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
+  EXPECT_CALL(*service, SetState(_)).Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("Bad passphrase?")));
   ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
-  EXPECT_EQ(Service::kStateIdle, service->state());
-  EXPECT_TRUE(service->IsFailed());
 }
-
 
 // Scanning tests will use a mock of the event dispatcher instead of a real
 // one.

@@ -28,6 +28,7 @@ class MockWiFiService : public WiFiService {
   virtual ~MockWiFiService();
 
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
+  MOCK_METHOD1(SetFailureSilent, void(ConnectFailure failure));
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_METHOD2(AddEAPCertification, bool(const std::string &name,
                                          size_t depth));
