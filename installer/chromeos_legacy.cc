@@ -120,6 +120,11 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config) {
 
 bool RunEfiPostInstall(const InstallConfig& install_config) {
   printf("Running EfiPostInstall\n");
-  printf("!!!Not yet supported!!!\n");
-  return false;
+  // TODO(dgarret) Support EFI by fixing GRUB configuration files.
+  printf("EFI BIOS is temporarily not supported.\n"
+         "You probably need to manually edit the GRUB configuration files "
+         "after installation.\n");
+  // 'true' is required here to prevent blocking factory installation for most
+  // partner devices, until EFI is officially supported.
+  return true;
 }
