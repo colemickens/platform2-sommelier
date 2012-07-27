@@ -24,7 +24,7 @@ LDLIBS += -lpolicy-$(BASE_VER) -lmetrics $(PC_LIBS) \
 	-lcrypto -lecryptfs -levent -lkeyutils -lchaps -lprotobuf \
 	-lpthread -lscrypt -ltspi
 
-PROTOS := install_attributes tpm_status vault_keyset
+PROTOS := install_attributes tpm_status vault_keyset remote_attestation
 PB_HDRS := $(patsubst %,%.pb.h,$(PROTOS))
 PB_SRCS := $(patsubst %,%.pb.cc,$(PROTOS))
 PB_OBJS := $(patsubst %.cc,%.o,$(PB_SRCS))

@@ -7,6 +7,7 @@
 #include <limits>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
 #include <openssl/sha.h>
@@ -145,6 +146,16 @@ SecureBlob CryptoLib::Sha256(const chromeos::Blob& data) {
   return hash;
 }
 
+chromeos::SecureBlob CryptoLib::HmacSha512(const chromeos::SecureBlob& key,
+                                           const chromeos::Blob& data) {
+  const int kSha512OutputSize = 64;
+  unsigned char mac[kSha512OutputSize];
+  HMAC(EVP_sha512(),
+       const_cast<unsigned char*>(&key.front()), key.size(),
+       &data.front(), data.size(),
+       mac, NULL);
+  return chromeos::SecureBlob(mac, kSha512OutputSize);
+}
 
 size_t CryptoLib::GetAesBlockSize() {
   return EVP_CIPHER_block_size(EVP_aes_256_cbc());

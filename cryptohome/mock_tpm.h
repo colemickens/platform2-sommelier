@@ -35,6 +35,18 @@ class MockTpm : public Tpm {
         .WillByDefault(Invoke(this, &MockTpm::GetBlankPublicKey));
     ON_CALL(*this, Init(_, _))
         .WillByDefault(Return(true));
+    ON_CALL(*this, GetEndorsementPublicKey(_))
+        .WillByDefault(Return(true));
+    ON_CALL(*this, MakeIdentity(_,_,_,_,_,_,_,_))
+        .WillByDefault(Return(true));
+    ON_CALL(*this, QuotePCR0(_,_,_,_,_))
+        .WillByDefault(Return(true));
+    ON_CALL(*this, SealToPCR0(_,_))
+        .WillByDefault(Return(true));
+    ON_CALL(*this, Unseal(_,_))
+        .WillByDefault(Return(true));
+    ON_CALL(*this, GetRandomData(_,_))
+        .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomData));
   }
   ~MockTpm() {}
   MOCK_METHOD2(Init, bool(Platform*, bool));
@@ -60,6 +72,22 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(IsNvramDefined, bool(uint32_t));
   MOCK_METHOD1(IsNvramLocked, bool(uint32_t));
   MOCK_METHOD1(GetNvramSize, unsigned int(uint32_t));
+  MOCK_METHOD1(GetEndorsementPublicKey, bool(chromeos::SecureBlob*));
+  MOCK_METHOD8(MakeIdentity, bool(chromeos::SecureBlob*,
+                                  chromeos::SecureBlob*,
+                                  chromeos::SecureBlob*,
+                                  chromeos::SecureBlob*,
+                                  chromeos::SecureBlob*,
+                                  chromeos::SecureBlob*,
+                                  chromeos::SecureBlob*,
+                                  chromeos::SecureBlob*));
+  MOCK_METHOD5(QuotePCR0, bool(const chromeos::SecureBlob&,
+                               const chromeos::SecureBlob&,
+                               chromeos::SecureBlob*,
+                               chromeos::SecureBlob*,
+                               chromeos::SecureBlob*));
+  MOCK_METHOD2(SealToPCR0, bool(const chromeos::Blob&, chromeos::Blob*));
+  MOCK_METHOD2(Unseal, bool(const chromeos::Blob&, chromeos::Blob*));
 
  private:
   bool Xor(const chromeos::Blob& data, const chromeos::Blob& password,
@@ -76,6 +104,11 @@ class MockTpm : public Tpm {
   bool GetBlankPublicKey(chromeos::SecureBlob* blob,
                          TpmRetryAction* retry_action) {
     blob->resize(0);
+    return true;
+  }
+
+  bool FakeGetRandomData(size_t num_bytes, chromeos::Blob* blob) {
+    blob->resize(num_bytes);
     return true;
   }
 };

@@ -16,6 +16,7 @@
 #include <base/values.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
+#include <openssl/rsa.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
 
@@ -228,6 +229,79 @@ class Tpm {
     memcpy(srk_auth_.data(), value.const_data(), srk_auth_.size());
   }
 
+  // Get the endorsement public key. This method requires TPM owner privilege.
+  //
+  // Parameters
+  //   ek_public_key - The EK public key in DER encoded form.
+  //
+  // Returns true on success.
+  virtual bool GetEndorsementPublicKey(chromeos::SecureBlob* ek_public_key);
+
+  // Creates an Attestation Identity Key (AIK). This method requires TPM owner
+  // privilege.
+  //
+  // Parameters
+  //   identity_public_key - The AIK public key in DER encoded form.
+  //   identity_key_blob - The AIK key in blob form.
+  //   identity_binding - The EK-AIK binding (i.e. public key signature).
+  //   identity_label - The label used to create the identity binding.
+  //   pca_public_key - The public key of the temporary PCA used to create the
+  //                    identity binding in serialized TPM_PUBKEY form.
+  //   endorsement_credential - The endorsement credential.
+  //   platform_credential - The platform credential.
+  //   conformance_credential - The conformance credential.
+  //
+  // Returns true on success.
+  virtual bool MakeIdentity(chromeos::SecureBlob* identity_public_key,
+                            chromeos::SecureBlob* identity_key_blob,
+                            chromeos::SecureBlob* identity_binding,
+                            chromeos::SecureBlob* identity_label,
+                            chromeos::SecureBlob* pca_public_key,
+                            chromeos::SecureBlob* endorsement_credential,
+                            chromeos::SecureBlob* platform_credential,
+                            chromeos::SecureBlob* conformance_credential);
+
+  // Generates a quote of PCR0 with the given identity key. PCR0 is used to
+  // differentiate normal mode from developer mode.
+  //
+  // Parameters
+  //   identity_key_blob - The AIK blob, as provided by MakeIdentity.
+  //   external_data - Data to be added to the quote, this must be at least 160
+  //                   bits in length and only the first 160 bits will be used.
+  //   pcr_value - The value of PCR0 at the time of quote. This is more reliable
+  //               than separately reading the PCR value because it is not
+  //               susceptible to race conditions.
+  //   quoted_data - The exact data that was quoted (i.e. the TPM_QUOTE_INFO
+  //                 structure), this can make verifying the quote easier.
+  //   quote - The generated quote.
+  //
+  // Returns true on success.
+  virtual bool QuotePCR0(const chromeos::SecureBlob& identity_key_blob,
+                         const chromeos::SecureBlob& external_data,
+                         chromeos::SecureBlob* pcr_value,
+                         chromeos::SecureBlob* quoted_data,
+                         chromeos::SecureBlob* quote);
+
+  // Seals a secret to PCR0 with the SRK.
+  //
+  // Parameters
+  //   value - The value to be sealed.
+  //   sealed_value - The sealed value.
+  //
+  // Returns true on success.
+  virtual bool SealToPCR0(const chromeos::Blob& value,
+                          chromeos::Blob* sealed_value);
+
+  // Unseals a secret previously sealed with the SRK.
+  //
+  // Parameters
+  //   sealed_value - The sealed value.
+  //   value - The original value.
+  //
+  // Returns true on success.
+  virtual bool Unseal(const chromeos::Blob& sealed_value,
+                      chromeos::Blob* value);
+
  protected:
   // Default constructor
   Tpm();
@@ -429,6 +503,29 @@ class Tpm {
   // Parameters
   //   tpm_handle = The TPM handle
   bool TestTpmAuth(TSS_HTPM tpm_handle);
+
+  // Decrypts and parses an identity request.
+  //
+  // Parameters
+  //   pca_key - The private key of the Privacy CA.
+  //   request - The identity request data.
+  //   identityBinding - The EK-AIK binding (i.e. public key signature).
+  //   endorsementCredential - The endorsement credential.
+  //   platformCredential - The platform credential.
+  //   conformanceCredential - The conformance credential.
+  bool DecryptIdentityRequest(RSA* pca_key, const chromeos::SecureBlob& request,
+                              chromeos::SecureBlob* identity_binding,
+                              chromeos::SecureBlob* endorsement_credential,
+                              chromeos::SecureBlob* platform_credential,
+                              chromeos::SecureBlob* conformance_credential);
+
+  // Creates a DER encoded RSA public key given a serialized TPM_PUBKEY.
+  //
+  // Parameters
+  //   public_key - A serialized TPM_PUBKEY as returned by Tspi_Key_GetPubKey.
+  //   public_key_der - The same public key in DER encoded form.
+  bool ConvertPublicKeyToDER(const chromeos::SecureBlob& public_key,
+                             chromeos::SecureBlob* public_key_der);
 
   // Member variables
   bool initialized_;

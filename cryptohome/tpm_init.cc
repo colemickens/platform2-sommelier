@@ -92,8 +92,8 @@ void TpmInit::Init(TpmInitCallback* notify_callback) {
   Tpm* tpm = get_tpm();
   if (tpm && IsTpmReady()) {
     RemoteAttestation remote_attestation(tpm);
-    if (!remote_attestation.IsInitialized())
-      remote_attestation.InitializeAsync();
+    if (!remote_attestation.IsPreparedForEnrollment())
+      remote_attestation.PrepareForEnrollmentAsync();
   }
 }
 
@@ -156,9 +156,9 @@ void TpmInit::ThreadMain() {
   }
 
   RemoteAttestation remote_attestation(tpm_init_task_->get_tpm());
-  if (!remote_attestation.IsInitialized()) {
+  if (!remote_attestation.IsPreparedForEnrollment()) {
     start = base::TimeTicks::Now();
-    remote_attestation.Initialize();
+    remote_attestation.PrepareForEnrollment();
     delta = (base::TimeTicks::Now() - start);
     LOG(ERROR) << "Remote attestation initialization took "
                << delta.InMilliseconds() << "ms";

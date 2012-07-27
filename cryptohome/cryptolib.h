@@ -12,6 +12,7 @@
 namespace cryptohome {
 
 extern const unsigned int kDefaultPasswordRounds;
+extern const unsigned int kWellKnownExponent;
 
 class CryptoLib {
  public:
@@ -33,6 +34,9 @@ class CryptoLib {
                            chromeos::SecureBlob* p);
   static chromeos::SecureBlob Sha1(const chromeos::Blob& data);
   static chromeos::SecureBlob Sha256(const chromeos::Blob& data);
+  static chromeos::SecureBlob HmacSha512(const chromeos::SecureBlob& key,
+                                         const chromeos::Blob& data);
+
   static size_t GetAesBlockSize();
   static bool PasskeyToAesKey(const chromeos::Blob& passkey,
                               const chromeos::Blob& salt,
