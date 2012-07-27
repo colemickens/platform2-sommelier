@@ -32,6 +32,7 @@ const char *const kScopeNames[] = {
   "http",
   "httpproxy",
   "inet",
+  "link",
   "manager",
   "metrics",
   "modem",

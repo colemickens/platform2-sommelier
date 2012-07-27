@@ -95,6 +95,9 @@ class Connection : public base::RefCounted<Connection> {
   // Request a host route through this connection.
   virtual bool RequestHostRoute(const IPAddress &destination);
 
+  virtual const IPAddress &local() const { return local_; }
+  virtual const IPAddress &gateway() const { return gateway_; }
+
  protected:
   friend class base::RefCounted<Connection>;
 

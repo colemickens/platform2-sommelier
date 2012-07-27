@@ -43,6 +43,7 @@ TEST_F(ScopeLoggerTest, GetAllScopeNames) {
             "http+"
             "httpproxy+"
             "inet+"
+            "link+"
             "manager+"
             "metrics+"
             "modem+"

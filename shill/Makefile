@@ -291,6 +291,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_glib.o \
 	mock_http_request.o \
 	mock_ipconfig.o \
+	mock_link_monitor.o \
 	mock_log.o \
 	mock_log_unittest.o \
 	mock_manager.o \
