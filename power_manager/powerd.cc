@@ -54,8 +54,9 @@ const int64 kBatteryPollIntervalMs = 30000;
 // Time between battery event and next poll, in milliseconds.
 const int64 kBatteryPollShortIntervalMs = 5000;
 
-// How frequently audio should be checked before suspending.
-const int64 kAudioCheckIntervalMs = 1000;
+// How long after last known audio activity to consider audio not to be playing,
+// in milliseconds.
+const int64 kAudioActivityThresholdMs = 5000;
 
 // Valid string values for the state value of Session Manager
 const std::string kValidStateStrings[] = { "started", "stopping", "stopped" };
@@ -522,7 +523,7 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
       idle_time_ms >= suspend_ms_) {
     int64 audio_time_ms = 0;
     bool audio_is_playing = false;
-    CHECK(audio_detector_->GetActivity(kAudioCheckIntervalMs,
+    CHECK(audio_detector_->GetActivity(kAudioActivityThresholdMs,
                                        &audio_time_ms,
                                        &audio_is_playing));
     if (audio_is_playing) {
