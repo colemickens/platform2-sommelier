@@ -331,6 +331,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --disable-seccomp-sandbox \
             --enable-accelerated-plugins \
             --enable-device-policy \
+            --enable-fixed-position-compositing \
             --enable-gview \
             --enable-logging \
             --enable-mobile-dialog \
