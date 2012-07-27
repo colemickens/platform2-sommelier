@@ -67,7 +67,7 @@ static struct Log logs[] = {
   { "lsusb", "lsusb" },
   { "meminfo", "cat /proc/meminfo" },
   { "memory_spd_info", "/bin/cat /var/log/memory_spd_info.txt" },
-  { "mm-status", "/usr/share/userfeedback/scripts/mm-status" },
+  { "mm-status", "/usr/bin/modem status-feedback" },
   { "network-devices", "/usr/bin/connectivity show devices" },
   { "network-services", "/usr/bin/connectivity show services" },
   { "power-supply-info", "/usr/bin/power-supply-info" },
