@@ -39,6 +39,8 @@
 // Forward declarations of structs from libudev.h.
 struct udev;
 struct udev_monitor;
+// From cras_client.h
+struct cras_client;
 
 namespace power_manager {
 
@@ -449,6 +451,11 @@ class Daemon : public BacklightControllerObserver,
   // external display.
   void AdjustIdleTimeoutsForProjection();
 
+  // Checks if power should be maintained due to attached speakers.  This is
+  // true for stumpy whenever the headphone jack is used and it avoids a nasty
+  // buzzing sound when suspended.
+  bool ShouldStayAwakeForHeadphoneJack();
+
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
@@ -547,6 +554,9 @@ class Daemon : public BacklightControllerObserver,
 
   // Flag indicating whether the system is projecting to an external display.
   bool is_projecting_;
+
+  // Chrome OS audio server client.  Used to check if headphone jack is plugged.
+  cras_client* cras_client_;
 };
 
 }  // namespace power_manager

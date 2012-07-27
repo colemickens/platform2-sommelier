@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd.h"
 
+#include <cras_client.h>
 #include <glib-object.h>
 #include <libudev.h>
 #include <stdint.h>
@@ -121,6 +122,18 @@ Daemon::Daemon(BacklightController* backlight_controller,
       state_control_(new StateControl(this)),
       poll_power_supply_timer_id_(0),
       is_projecting_(false) {
+  // Create a client and connect it to the CRAS server.
+  if (cras_client_create(&cras_client_)) {
+    LOG(WARNING) << "Couldn't create CRAS client.";
+    cras_client_ = NULL;
+  }
+  if (cras_client_connect(cras_client_) ||
+      cras_client_run_thread(cras_client_)) {
+    LOG(WARNING) << "Couldn't connect CRAS client.";
+    cras_client_destroy(cras_client_);
+    cras_client_ = NULL;
+  }
+
   idle_->AddObserver(this);
 }
 
@@ -128,6 +141,11 @@ Daemon::~Daemon() {
   if (udev_)
     udev_unref(udev_);
   idle_->RemoveObserver(this);
+
+  if (cras_client_) {
+    cras_client_stop(cras_client_);
+    cras_client_destroy(cras_client_);
+  }
 }
 
 void Daemon::Init() {
@@ -526,8 +544,9 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     CHECK(audio_detector_->GetActivity(kAudioActivityThresholdMs,
                                        &audio_time_ms,
                                        &audio_is_playing));
-    if (audio_is_playing) {
-      LOG(INFO) << "Delaying suspend because audio is playing.";
+    if (audio_is_playing || ShouldStayAwakeForHeadphoneJack()) {
+      LOG(INFO) << "Delaying suspend because " <<
+          (audio_is_playing ? "audio is playing." : "headphones are attached.");
       // Increase the suspend offset by the react time.  Since the offset is
       // calculated relative to the ORIGINAL [un]plugged_suspend_ms_ value, we
       // need to use that here.
@@ -1612,6 +1631,15 @@ void Daemon::AdjustIdleTimeoutsForProjection() {
     if (default_lock_ms_ != INT64_MAX)
       default_lock_ms_ *= kProjectionTimeoutFactor;
   }
+}
+
+bool Daemon::ShouldStayAwakeForHeadphoneJack() {
+#ifdef STAY_AWAKE_PLUGGED_DEVICE
+  if (cras_client_ &&
+      cras_client_output_dev_plugged(cras_client_, STAY_AWAKE_PLUGGED_DEVICE))
+    return true;
+#endif
+  return false;
 }
 
 }  // namespace power_manager
