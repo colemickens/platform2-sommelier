@@ -10,6 +10,12 @@ error() {
   echo "ERROR: $@" >/dev/stderr
 }
 
+# Prints an error message to stderr and exits with a status code 1.
+error_exit() {
+  error "$@"
+  exit 1
+}
+
 # Generates a small snippet of code to take a single argument out of our
 # parameter list, and complain (and exit) if it's not present. Used in other
 # places like: $(needarg foo), which binds foo to $1.
@@ -20,7 +26,7 @@ needarg() {
   # a *command*, which it isn't. The eval forces bash to reparse the code
   # before executing it.
   echo eval "$1=\"\$1\";
-      [ -z \"\$$1\" ] && echo 'Missing arg: $1' && usage;
+      [ -z \"\$$1\" ] && echo 'Missing argument: $1' && usage;
       shift"
 }
 
@@ -82,9 +88,9 @@ extract_dbus_match() {
 
 # Invokes a DBus method on a DBus object.
 dbus_call() {
-  local dest=$1
-  local object=$2
-  local method=$3
+  local dest="$1"
+  local object="$2"
+  local method="$3"
   shift 3
 
   dbus-send --system --print-reply --fixed --dest="${dest}" \
@@ -93,10 +99,10 @@ dbus_call() {
 
 # Gets a DBus property of an interface of a DBus object.
 dbus_property() {
-  local dest=$1
-  local object=$2
-  local interface=$3
-  local property=$4
+  local dest="$1"
+  local object="$2"
+  local interface="$3"
+  local property="$4"
 
   dbus_call "${dest}" "${object}" org.freedesktop.DBus.Properties.Get \
     "string:${interface}" "string:${property}"
@@ -104,9 +110,9 @@ dbus_property() {
 
 # Gets all DBus properties of an interface of a DBus object.
 dbus_properties() {
-  local dest=$1
-  local object=$2
-  local interface=$3
+  local dest="$1"
+  local object="$2"
+  local interface="$3"
 
   dbus_call "${dest}" "${object}" org.freedesktop.DBus.Properties.GetAll \
     "string:${interface}"
@@ -185,7 +191,7 @@ format_dbus_dict() {
 
 # Indents non-empty lines with two spaces per indent level.
 indent() {
-  local level=$1
+  local level="$1"
   local space
 
   [ -n "${level}" ] || level=1

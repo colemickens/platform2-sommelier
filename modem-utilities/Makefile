@@ -6,7 +6,6 @@ all:
 	echo "Scripts only.  Nothing to make."
 
 install:
-	install -D mm.sh $(DESTDIR)/usr/lib/mm.sh
 	install -D modem-common.sh $(DESTDIR)/usr/lib/modem-common.sh
 	install -D connectivity-common.sh $(DESTDIR)/usr/lib/connectivity-common.sh
 

@@ -18,7 +18,7 @@ MM_IMODEM_GSM_NETWORK=${MM_IMODEM_GSM}.Network
 MM_IMODEM_CDMA=${MM_IMODEM}.Cdma
 
 mm_modem_gsm_properties() {
-  local modem=$1
+  local modem="$1"
   local imei=$(dbus_call "${MM}" "${modem}" "${MM_IMODEM_GSM_CARD}.GetImei")
   local imsi=$(dbus_call "${MM}" "${modem}" "${MM_IMODEM_GSM_CARD}.GetImsi")
   local band=$(dbus_call "${MM}" "${modem}" "${MM_IMODEM_GSM_NETWORK}.GetBand")
@@ -43,7 +43,7 @@ mm_modem_gsm_properties() {
 }
 
 mm_modem_cdma_properties() {
-  local modem=$1
+  local modem="$1"
   local esn=$(dbus_call "${MM}" "${modem}" "${MM_IMODEM_CDMA}.GetEsn")
   local signal_quality=$(dbus_call "${MM}" "${modem}" \
     "${MM_IMODEM_CDMA}.GetSignalQuality")
@@ -64,16 +64,16 @@ mm_modem_cdma_properties() {
 }
 
 mm_modem_properties() {
-  local modem=$1
+  local modem="$1"
   local modem_type=$(dbus_property "${MM}" "${modem}" "${MM_IMODEM}" Type)
 
   echo
   echo "Modem ${modem}:"
   echo "  GetStatus:"
-  dbus_call "${MM}" "${modem}" ${MM_IMODEM_SIMPLE}.GetStatus \
+  dbus_call "${MM}" "${modem}" "${MM_IMODEM_SIMPLE}.GetStatus" \
     | format_dbus_dict | indent 2
   echo "  GetInfo:"
-  dbus_call "${MM}" "${modem}" ${MM_IMODEM}.GetInfo \
+  dbus_call "${MM}" "${modem}" "${MM_IMODEM}.GetInfo" \
     | unpack_tuple Manufacturer Modem Version | indent 2
   echo "  Properties:"
   dbus_properties "${MM}" "${modem}" "${MM_IMODEM}" \
@@ -92,11 +92,29 @@ mm_modem_properties() {
   esac
 }
 
-mm_modems() {
-  dbus_call "${MM}" "${MM_OBJECT}" "${MM_IMANAGER}.EnumerateDevices" \
-    | awk '{ print $2 }'
+mm_modem_status() {
+  local modem="$1"
+  local property="$2"
+
+  dbus_call "${MM}" "${modem}" "${MM_IMODEM_SIMPLE}.GetStatus" \
+    2>/dev/null | awk "/\/${property}/ { print \$2 }"
 }
 
+mm_modem_activation_state() {
+  local modem="$1"
+
+  mm_modem_status "${modem}" activation_state
+}
+
+mm_modems() {
+  dbus_call "${MM}" "${MM_OBJECT}" "${MM_IMANAGER}.EnumerateDevices" \
+    2>/dev/null | awk '{ print $2 }'
+}
+
+is_mm_modem() {
+  local modem="$1"
+  test $(expr match "${modem}" "${MM_OBJECT}/") -gt 0
+}
 
 #
 # For modems managed by org.freedesktop.ModemManager1
@@ -115,7 +133,7 @@ mm1_modem_sim() {
 }
 
 mm1_modem_properties() {
-  local modem=$1
+  local modem="$1"
   local sim=$(mm1_modem_sim "${modem}")
 
   echo
@@ -141,9 +159,14 @@ mm1_modem_properties() {
 }
 
 mm1_modems() {
-  mmcli -L | awk '/\/org\/freedesktop\/ModemManager1\/Modem\// { print $1 }'
+  mmcli -L 2>/dev/null \
+    | awk '/\/org\/freedesktop\/ModemManager1\/Modem\// { print $1 }'
 }
 
+is_mm1_modem() {
+  local modem="$1"
+  test $(expr match "${modem}" "${MM1_OBJECT}/") -gt 0
+}
 
 #
 # Common stuff
@@ -161,4 +184,10 @@ all_modem_status() {
   for modem in $(mm1_modems); do
     mm1_modem_properties "${modem}"
   done
+}
+
+default_modem() {
+  local modem=$(mm_modems | head -1)
+  [ -z "${modem}" ] && modem=$(mm1_modems | head -1)
+  echo "${modem}"
 }
