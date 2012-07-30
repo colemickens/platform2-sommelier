@@ -331,6 +331,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   const base::CancelableClosure &GetPendingTimeout() {
     return wifi_->pending_timeout_callback_;
   }
+  const base::CancelableClosure &GetReconnectTimeout() {
+    return wifi_->reconnect_timeout_callback_;
+  }
   const base::CancelableClosure &GetScanTimer() {
     return wifi_->scan_timer_callback_;
   }
@@ -518,12 +521,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     }
 
     StartWiFi();
-    ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+    ReportBSS(kBSSName, kSSIDName, "00:00:00:00:00:00", 0, 0,
+              kNetworkModeAdHoc);
     WiFiService *service(GetServices().begin()->get());
     EXPECT_TRUE(GetPendingTimeout().IsCancelled());
     InitiateConnect(service);
     EXPECT_FALSE(GetPendingTimeout().IsCancelled());
-    ReportCurrentBSSChanged("bss0");
+    ReportCurrentBSSChanged(kBSSName);
     EXPECT_TRUE(GetPendingTimeout().IsCancelled());
     ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
 
@@ -601,6 +605,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   static const char kDeviceAddress[];
   static const char kNetworkModeAdHoc[];
   static const char kNetworkModeInfrastructure[];
+  static const char kBSSName[];
+  static const char kSSIDName[];
 
   scoped_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
   scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
@@ -619,6 +625,8 @@ const char WiFiObjectTest::kDeviceName[] = "wlan0";
 const char WiFiObjectTest::kDeviceAddress[] = "000102030405";
 const char WiFiObjectTest::kNetworkModeAdHoc[] = "ad-hoc";
 const char WiFiObjectTest::kNetworkModeInfrastructure[] = "infrastructure";
+const char WiFiObjectTest::kBSSName[] = "bss0";
+const char WiFiObjectTest::kSSIDName[] = "ssid0";
 
 void WiFiObjectTest::RemoveBSS(const ::DBus::Path &bss_path) {
   wifi_->BSSRemovedTask(bss_path);
@@ -1231,6 +1239,28 @@ TEST_F(WiFiMainTest, StopWhileConnected) {
   EXPECT_CALL(supplicant_interface_proxy, Disconnect());
   StopWiFi();
   EXPECT_TRUE(GetCurrentService() == NULL);
+}
+
+TEST_F(WiFiMainTest, ReconnectTimer) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+  WiFiService *service(SetupConnectedService(DBus::Path()));
+  service->SetState(Service::kStateConnected);
+  EXPECT_TRUE(GetReconnectTimeout().IsCancelled());
+  ReportStateChanged(wpa_supplicant::kInterfaceStateDisconnected);
+  EXPECT_FALSE(GetReconnectTimeout().IsCancelled());
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  EXPECT_TRUE(GetReconnectTimeout().IsCancelled());
+  ReportStateChanged(wpa_supplicant::kInterfaceStateDisconnected);
+  EXPECT_FALSE(GetReconnectTimeout().IsCancelled());
+  ReportCurrentBSSChanged(kBSSName);
+  EXPECT_TRUE(GetReconnectTimeout().IsCancelled());
+  ReportStateChanged(wpa_supplicant::kInterfaceStateDisconnected);
+  EXPECT_FALSE(GetReconnectTimeout().IsCancelled());
+  EXPECT_CALL(supplicant_interface_proxy, Disconnect());
+  GetReconnectTimeout().callback().Run();
+  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
+  EXPECT_TRUE(GetReconnectTimeout().IsCancelled());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceOpen) {

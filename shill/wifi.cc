@@ -82,6 +82,7 @@ const time_t WiFi::kRescanIntervalSeconds = 1;
 const int WiFi::kNumFastScanAttempts = 3;
 const int WiFi::kFastScanIntervalSeconds = 10;
 const int WiFi::kPendingTimeoutSeconds = 15;
+const int WiFi::kReconnectTimeoutSeconds = 10;
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -196,6 +197,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   pending_service_ = NULL;            // breaks a reference cycle
   scan_pending_ = false;
   StopPendingTimer();
+  StopReconnectTimer();
 
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
@@ -348,6 +350,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
   }
 
   SetPendingService(NULL);
+  StopReconnectTimer();
 
   if (!supplicant_present_) {
     LOG(INFO) << "In " << __func__ << "(): "
@@ -512,6 +515,12 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   SLOG(WiFi, 3) << "WiFi " << link_name() << " CurrentBSS "
                 << supplicant_bss_ << " -> " << new_bss;
   supplicant_bss_ = new_bss;
+
+  // Any change in CurrentBSS means supplicant is actively changing our
+  // connectivity.  We no longer need to track any previously pending
+  // reconnect.
+  StopReconnectTimer();
+
   if (new_bss == wpa_supplicant::kCurrentBSSNull) {
     HandleDisconnect();
     if (!GetHiddenSSIDList().empty()) {
@@ -1091,10 +1100,11 @@ void WiFi::StateChanged(const string &new_state) {
     return;
   }
 
-  if (new_state == wpa_supplicant::kInterfaceStateCompleted &&
-      !affected_service->IsConnected()) {
-    if (AcquireIPConfigWithLeaseName(
-            affected_service->GetStorageIdentifier())) {
+  if (new_state == wpa_supplicant::kInterfaceStateCompleted) {
+    if (affected_service->IsConnected()) {
+      StopReconnectTimer();
+    } else if (AcquireIPConfigWithLeaseName(
+                   affected_service->GetStorageIdentifier())) {
       LOG(INFO) << link_name() << " is up; started L3 configuration.";
       affected_service->SetState(Service::kStateConfiguring);
     } else {
@@ -1115,6 +1125,14 @@ void WiFi::StateChanged(const string &new_state) {
     // we depend on wpa_supplicant eventually reporting that CurrentBSS
     // has changed. But there may be cases where that signal is not sent.
     // (crosbug.com/23207)
+  } else if (new_state == wpa_supplicant::kInterfaceStateDisconnected &&
+             affected_service == current_service_ &&
+             affected_service->IsConnected()) {
+    // This means that wpa_supplicant failed in a re-connect attempt, but
+    // may still be reconnecting.  Give wpa_supplicant a limited amount of
+    // time to transition out this condition by either connecting or changing
+    // CurrentBSS.
+    StartReconnectTimer();
   } else {
     // Other transitions do not affect Service state.
     //
@@ -1355,6 +1373,26 @@ void WiFi::PendingTimeoutHandler() {
   CHECK(pending_service_);
   pending_service_->SetFailure(Service::kFailureOutOfRange);
   DisconnectFrom(pending_service_);
+}
+
+void WiFi::StartReconnectTimer() {
+  LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
+  reconnect_timeout_callback_.Reset(
+      Bind(&WiFi::ReconnectTimeoutHandler, weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostDelayedTask(reconnect_timeout_callback_.callback(),
+                                kReconnectTimeoutSeconds * 1000);
+}
+
+void WiFi::StopReconnectTimer() {
+  SLOG(WiFi, 2) << "WiFi Device " << link_name() << ": " << __func__;
+  reconnect_timeout_callback_.Cancel();
+}
+
+void WiFi::ReconnectTimeoutHandler() {
+  LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
+  CHECK(current_service_);
+  current_service_->SetFailureSilent(Service::kFailureConnect);
+  DisconnectFrom(current_service_);
 }
 
 void WiFi::OnSupplicantAppear(const string &/*owner*/) {

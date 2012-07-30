@@ -189,6 +189,7 @@ class WiFi : public Device {
   static const int kNumFastScanAttempts;
   static const int kFastScanIntervalSeconds;
   static const int kPendingTimeoutSeconds;
+  static const int kReconnectTimeoutSeconds;
 
   void AppendBgscan(WiFiService *service,
                     std::map<std::string, DBus::Variant> *service_params) const;
@@ -263,6 +264,14 @@ class WiFi : public Device {
   void StopPendingTimer();
   // Aborts a pending network that is taking too long to connect.
   void PendingTimeoutHandler();
+  // Starts a timer in order to limit the length of an attempt to
+  // reconnect to the current network.
+  void StartReconnectTimer();
+  // Stops any pending reconnect timer.
+  void StopReconnectTimer();
+  // Disconnects from the current service that is taking too long
+  // to reconnect on its own.
+  void ReconnectTimeoutHandler();
   // Sets the current pending service.  If the argument is non-NULL,
   // the Pending timer is started and the associated service is set
   // to "Associating", otherwise it is stopped.
@@ -315,6 +324,9 @@ class WiFi : public Device {
   // Executes when a pending service connect timer expires. Calls
   // PendingTimeoutHandler.
   base::CancelableClosure pending_timeout_callback_;
+  // Executes when a reconnecting service timer expires. Calls
+  // ReconnectTimeoutHandler.
+  base::CancelableClosure reconnect_timeout_callback_;
   // Number of remaining fast scans to be done during startup and disconnect.
   int fast_scans_remaining_;
 
