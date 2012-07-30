@@ -363,6 +363,11 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       SLOG(Device, 2) << "Cellular link " << link_name
                       << " at index " << interface_index
                       << " -- notifying ModemInfo.";
+
+      // The MAC address provided by RTNL is not reliable for Gobi 2K modems.
+      // Clear it here, and it will be fetched from the kernel is
+      // GetMacAddress().
+      infos_[interface_index].mac_address.Clear();
       manager_->modem_info()->OnDeviceInfoAvailable(link_name);
       break;
     case Technology::kEthernet:
@@ -530,8 +535,45 @@ bool DeviceInfo::GetMACAddress(int interface_index, ByteString *address) const {
   if (!info) {
     return false;
   }
-  *address = info->mac_address;
-  return true;
+  // |mac_address| from RTNL is not used for some devices, in which case it will
+  // be empty here.
+  if (!info->mac_address.IsEmpty()) {
+    *address = info->mac_address;
+    return true;
+  }
+
+  // Ask the kernel for the MAC address.
+  *address = GetMACAddressFromKernel(interface_index);
+  return !address->IsEmpty();
+}
+
+ByteString DeviceInfo::GetMACAddressFromKernel(int interface_index) const {
+  ByteString mac_address;
+  mac_address.Clear();
+  // TODO(gmorain): Use ScopedSocketCloser instead.
+  const int fd = socket(PF_INET, SOCK_DGRAM, 0);
+  if (fd < 0) {
+    LOG(ERROR) << __func__ << ": Unable to open socket: " << fd;
+    return mac_address;
+  }
+  struct ifreq ifr;
+  memset(&ifr, 0, sizeof(ifr));
+  ifr.ifr_ifindex = interface_index;
+  int err = HANDLE_EINTR(ioctl(fd, SIOCGIFNAME, &ifr));
+  if (err < 0) {
+    LOG(ERROR) << __func__ << ": Unable to read ifname: " << errno;
+    close(fd);
+    return mac_address;
+  }
+  err = HANDLE_EINTR(ioctl(fd, SIOCGIFHWADDR, &ifr));
+  close(fd);
+  if (err < 0) {
+    LOG(ERROR) << __func__ << ": Unable to read MAC address: " << errno;
+    return mac_address;
+  }
+  mac_address.Resize(IFHWADDRLEN);
+  memcpy(mac_address.GetData(), ifr.ifr_hwaddr.sa_data, IFHWADDRLEN);
+  return mac_address;
 }
 
 bool DeviceInfo::GetAddresses(int interface_index,

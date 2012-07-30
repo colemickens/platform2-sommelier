@@ -72,6 +72,10 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   virtual DeviceRefPtr GetDevice(int interface_index) const;
   virtual bool GetMACAddress(int interface_index, ByteString *address) const;
+
+  // Queries the kernel for a MAC address for |interface_index|.  Returns an
+  // empty ByteString on failure.
+  virtual ByteString GetMACAddressFromKernel(int interface_index) const;
   virtual bool GetFlags(int interface_index, unsigned int *flags) const;
   virtual bool GetByteCounts(int interface_index,
                              uint64 *rx_bytes, uint64 *tx_bytes) const;
