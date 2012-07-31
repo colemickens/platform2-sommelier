@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,6 +13,7 @@
 #include "shill/ip_address.h"
 #include "shill/rtnl_message.h"
 
+using std::string;
 using testing::Test;
 
 namespace shill {
@@ -487,10 +488,10 @@ TEST_F(RTNLMessageTest, NewLinkWlan0) {
                 kNewLinkMessageWlan0InterfaceIndex,
                 kNewLinkMessageWlan0InterfaceFlags,
                 kNewLinkMessageWlan0InterfaceFlagsChange,
-                ByteString(kNewLinkMessageWlan0MACAddress, false),
-                ByteString(kNewLinkMessageWlan0InterfaceName, true),
+                ByteString(string(kNewLinkMessageWlan0MACAddress), false),
+                ByteString(string(kNewLinkMessageWlan0InterfaceName), true),
                 kNewLinkMessageWlan0MTU,
-                ByteString(kNewLinkMessageWlan0Qdisc, true),
+                ByteString(string(kNewLinkMessageWlan0Qdisc), true),
                 kNewLinkMessageWlan0OperState);
 }
 
@@ -500,10 +501,10 @@ TEST_F(RTNLMessageTest, DelLinkEth0) {
                 kDelLinkMessageEth0InterfaceIndex,
                 kDelLinkMessageEth0InterfaceFlags,
                 kDelLinkMessageEth0InterfaceFlagsChange,
-                ByteString(kDelLinkMessageEth0MACAddress, false),
-                ByteString(kDelLinkMessageEth0InterfacName, true),
+                ByteString(string(kDelLinkMessageEth0MACAddress), false),
+                ByteString(string(kDelLinkMessageEth0InterfacName), true),
                 kDelLinkMessageEth0MTU,
-                ByteString(kDelLinkMessageEth0Qdisc, true),
+                ByteString(string(kDelLinkMessageEth0Qdisc), true),
                 kDelLinkMessageEth0OperState);
 }
 

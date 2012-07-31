@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,6 +19,7 @@ const char kTest2HexString[] = "0102030A";
 const unsigned int kTest2Uint32 = 0x0102030a;
 const unsigned char kTest3[] = { 0, 0, 0, 0 };
 const char kTest4[] = "Hello world";
+const char kTest5[] = { 0, 1, 2, 3 };
 }  // namespace {}
 
 class ByteStringTest : public Test {
@@ -69,16 +70,23 @@ TEST_F(ByteStringTest, NonEmpty) {
   EXPECT_FALSE(bs2.Equals(bs1));
   EXPECT_FALSE(bs3.Equals(bs1));
 
-  ByteString bs4(kTest4, false);
+  ByteString bs4(std::string(kTest4), false);
   EXPECT_EQ(strlen(kTest4), bs4.GetLength());
   EXPECT_EQ(0, memcmp(kTest4, bs4.GetData(), bs4.GetLength()));
 
-  ByteString bs5(kTest4, true);
+  ByteString bs5(std::string(kTest4), true);
   EXPECT_EQ(strlen(kTest4) + 1, bs5.GetLength());
   EXPECT_EQ(0, memcmp(kTest4, bs5.GetData(), bs5.GetLength()));
 
   ByteString bs6(kTest1, sizeof(kTest1));
   EXPECT_TRUE(bs6.Equals(bs1));
+
+  ByteString bs7(kTest5, sizeof(kTest5));
+  ASSERT_TRUE(bs7.GetData() != NULL);
+  EXPECT_EQ(sizeof(kTest5), bs7.GetLength());
+  for (unsigned int i = 0; i < sizeof(kTest5); i++) {
+    EXPECT_EQ(bs7.GetData()[i], kTest5[i]);
+  }
 }
 
 TEST_F(ByteStringTest, SubString) {

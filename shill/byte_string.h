@@ -1,9 +1,9 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_BYTE_STRING_
-#define SHILL_BYTE_STRING_
+#ifndef SHILL_BYTE_STRING_H_
+#define SHILL_BYTE_STRING_H_
 
 #include <string>
 #include <vector>
@@ -18,8 +18,16 @@ class ByteString {
   ByteString() {}
   ByteString(const ByteString &b) : data_(b.data_) {}
   explicit ByteString(size_t length) : data_(length) {}
+
   ByteString(const unsigned char *data, size_t length)
       : data_(data, data + length) {}
+
+  ByteString(const char *data, size_t length)
+      : data_(data, data + length) {}
+
+  ByteString(const signed char *data, size_t length)
+      : data_(data, data + length) {}
+
   ByteString(const std::string &data, bool copy_terminator)
     : data_(reinterpret_cast<const unsigned char *>(data.c_str()),
             reinterpret_cast<const unsigned char *>(data.c_str() +
@@ -91,4 +99,4 @@ class ByteString {
 }  // namespace shill
 
 
-#endif  // SHILL_BYTE_STRING_
+#endif  // SHILL_BYTE_STRING_H_

@@ -31,6 +31,7 @@ class Metrics;
 class RoutingTable;
 class RTNLHandler;
 class RTNLMessage;
+class Sockets;
 
 class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
  public:
@@ -76,6 +77,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Queries the kernel for a MAC address for |interface_index|.  Returns an
   // empty ByteString on failure.
   virtual ByteString GetMACAddressFromKernel(int interface_index) const;
+
   virtual bool GetFlags(int interface_index, unsigned int *flags) const;
   virtual bool GetByteCounts(int interface_index,
                              uint64 *rx_bytes, uint64 *tx_bytes) const;
@@ -199,6 +201,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   void RetrieveLinkStatistics(int interface_index, const RTNLMessage &msg);
   void RequestLinkStatistics();
 
+  void set_sockets(Sockets* sockets) { sockets_.reset(sockets); }
+
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   Metrics *metrics_;
@@ -224,6 +228,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Cache copy of singleton pointers.
   RoutingTable *routing_table_;
   RTNLHandler *rtnl_handler_;
+
+  // A member of the class so that a mock can be injected for testing.
+  scoped_ptr<Sockets> sockets_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceInfo);
 };

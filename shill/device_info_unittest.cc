@@ -10,6 +10,7 @@
 #include <linux/if_tun.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <linux/rtnetlink.h>
+#include <linux/sockios.h>
 #include <net/if_arp.h>
 
 #include <base/file_util.h>
@@ -42,7 +43,10 @@ using std::map;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::DoAll;
+using testing::ElementsAreArray;
 using testing::Mock;
+using testing::NotNull;
 using testing::Return;
 using testing::StrictMock;
 using testing::Test;
@@ -106,6 +110,11 @@ class DeviceInfoTest : public Test {
     return DeviceInfo::kRequestLinkStatisticsIntervalSeconds * 1000;
   }
 
+  void SetSockets() {
+    mock_sockets_ = new MockSockets();
+    device_info_.set_sockets(mock_sockets_);
+  }
+
  protected:
   static const int kTestDeviceIndex;
   static const char kTestDeviceName[];
@@ -138,6 +147,7 @@ class DeviceInfoTest : public Test {
   TestEventDispatcherForDeviceInfo dispatcher_;
   MockRoutingTable routing_table_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
+  MockSockets *mock_sockets_;  // Owned by DeviceInfo.
 };
 
 const int DeviceInfoTest::kTestDeviceIndex = 123456;
@@ -698,6 +708,83 @@ TEST_F(DeviceInfoTest, HasSubdir) {
                                     FilePath("greatgrandchild")));
   EXPECT_FALSE(DeviceInfo::HasSubdir(temp_dir.path(),
                                      FilePath("nonexistent")));
+}
+
+TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnknownDevice) {
+  SetSockets();
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0)).Times(0);
+  ByteString mac_address =
+      device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
+  EXPECT_TRUE(mac_address.IsEmpty());
+}
+
+TEST_F(DeviceInfoTest, GetMACAddressFromKernelUnableToOpenSocket) {
+  SetSockets();
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
+      .WillOnce(Return(-1));
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  SendMessageToDeviceInfo(*message);
+  EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
+  ByteString mac_address =
+      device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
+  EXPECT_TRUE(mac_address.IsEmpty());
+}
+
+TEST_F(DeviceInfoTest, GetMACAddressFromKernelIoctlFails) {
+  SetSockets();
+  const int kFd = 99;
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
+      .WillOnce(Return(kFd));
+  EXPECT_CALL(*mock_sockets_, Ioctl(kFd, SIOCGIFHWADDR, NotNull()))
+      .WillOnce(Return(-1));
+  EXPECT_CALL(*mock_sockets_, Close(kFd));
+
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  SendMessageToDeviceInfo(*message);
+  EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
+
+  ByteString mac_address =
+      device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
+  EXPECT_TRUE(mac_address.IsEmpty());
+}
+
+MATCHER_P2(IfreqEquals, ifindex, ifname, "") {
+  const struct ifreq *const ifr = static_cast<struct ifreq *>(arg);
+  return (ifr != NULL) &&
+      (ifr->ifr_ifindex == ifindex) &&
+      (strcmp(ifname, ifr->ifr_name) == 0);
+}
+
+ACTION_P(SetIfreq, ifr) {
+  struct ifreq *const ifr_arg = static_cast<struct ifreq *>(arg2);
+  *ifr_arg = ifr;
+}
+
+TEST_F(DeviceInfoTest, GetMACAddressFromKernel) {
+  SetSockets();
+  const int kFd = 99;
+  struct ifreq ifr;
+  static char kMacAddress[] = {0x00, 0x01, 0x02, 0xaa, 0xbb, 0xcc};
+  memcpy(ifr.ifr_hwaddr.sa_data, kMacAddress, sizeof(kMacAddress));
+  EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
+      .WillOnce(Return(kFd));
+  EXPECT_CALL(*mock_sockets_,
+              Ioctl(kFd, SIOCGIFHWADDR,
+                    IfreqEquals(kTestDeviceIndex, kTestDeviceName)))
+      .WillOnce(DoAll(SetIfreq(ifr), Return(0)));
+  EXPECT_CALL(*mock_sockets_, Close(kFd));
+
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  SendMessageToDeviceInfo(*message);
+  EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
+
+  ByteString mac_address =
+      device_info_.GetMACAddressFromKernel(kTestDeviceIndex);
+  EXPECT_THAT(kMacAddress,
+              ElementsAreArray(mac_address.GetData(), sizeof(kMacAddress)));
 }
 
 class DeviceInfoTechnologyTest : public DeviceInfoTest {

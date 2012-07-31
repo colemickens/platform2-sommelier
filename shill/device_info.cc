@@ -39,6 +39,7 @@
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
 #include "shill/service.h"
+#include "shill/sockets.h"
 #include "shill/virtio_ethernet.h"
 #include "shill/wifi.h"
 
@@ -87,7 +88,8 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
       address_listener_(NULL),
       device_info_root_(kDeviceInfoRoot),
       routing_table_(RoutingTable::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()) {
+      rtnl_handler_(RTNLHandler::GetInstance()),
+      sockets_(new Sockets()) {
 }
 
 DeviceInfo::~DeviceInfo() {}
@@ -451,7 +453,6 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
          msg.mode() == RTNLMessage::kModeAdd);
   int dev_index = msg.interface_index();
   Technology::Identifier technology = Technology::kUnknown;
-
   unsigned int flags = msg.link_status().flags;
   unsigned int change = msg.link_status().change;
   bool new_device =
@@ -547,32 +548,29 @@ bool DeviceInfo::GetMACAddress(int interface_index, ByteString *address) const {
 }
 
 ByteString DeviceInfo::GetMACAddressFromKernel(int interface_index) const {
-  ByteString mac_address;
-  mac_address.Clear();
-  // TODO(gmorain): Use ScopedSocketCloser instead.
-  const int fd = socket(PF_INET, SOCK_DGRAM, 0);
+  const Info *info = GetInfo(interface_index);
+  if (!info) {
+    return ByteString();
+  }
+
+  const int fd = sockets_->Socket(PF_INET, SOCK_DGRAM, 0);
   if (fd < 0) {
     LOG(ERROR) << __func__ << ": Unable to open socket: " << fd;
-    return mac_address;
+    return ByteString();
   }
+
+  ScopedSocketCloser socket_closer(sockets_.get(), fd);
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   ifr.ifr_ifindex = interface_index;
-  int err = HANDLE_EINTR(ioctl(fd, SIOCGIFNAME, &ifr));
-  if (err < 0) {
-    LOG(ERROR) << __func__ << ": Unable to read ifname: " << errno;
-    close(fd);
-    return mac_address;
-  }
-  err = HANDLE_EINTR(ioctl(fd, SIOCGIFHWADDR, &ifr));
-  close(fd);
+  strcpy(ifr.ifr_ifrn.ifrn_name, info->name.c_str());
+  int err = sockets_->Ioctl(fd, SIOCGIFHWADDR, &ifr);
   if (err < 0) {
     LOG(ERROR) << __func__ << ": Unable to read MAC address: " << errno;
-    return mac_address;
+    return ByteString();
   }
-  mac_address.Resize(IFHWADDRLEN);
-  memcpy(mac_address.GetData(), ifr.ifr_hwaddr.sa_data, IFHWADDRLEN);
-  return mac_address;
+
+  return ByteString(ifr.ifr_hwaddr.sa_data, IFHWADDRLEN);
 }
 
 bool DeviceInfo::GetAddresses(int interface_index,
