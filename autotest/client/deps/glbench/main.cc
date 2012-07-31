@@ -99,6 +99,7 @@ int main(int argc, char *argv[]) {
         printf("InitContext failed\n");
         return 1;
       }
+      glbench::ClearBuffers();
       tests[i]->Run();
       DestroyContext();
     }

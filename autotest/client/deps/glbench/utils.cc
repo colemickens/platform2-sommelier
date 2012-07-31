@@ -222,4 +222,14 @@ GLuint InitShaderProgramWithHeaders(const char** headers,
   return program;
 }
 
+void ClearBuffers() {
+  glClearColor(1.f, 0, 0, 1.f);
+  glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+  SwapBuffers();
+  glClearColor(0, 1.f, 0, 1.f);
+  glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+  SwapBuffers();
+  glClearColor(0, 0, 0.f, 0.f);
+}
+
 } // namespace glbench

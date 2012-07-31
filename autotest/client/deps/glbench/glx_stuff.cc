@@ -63,14 +63,6 @@ bool InitContext() {
     return false;
   }
 
-  glClearColor(1.f, 0, 0, 1.f);
-  glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-  SwapBuffers();
-  glClearColor(0, 1.f, 0, 1.f);
-  glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-  SwapBuffers();
-  glClearColor(0, 0, 0.f, 0.f);
-
   const GLubyte *str = glGetString(GL_EXTENSIONS);
   if (!str || !strstr(reinterpret_cast<const char *>(str),
                       "GL_ARB_vertex_buffer_object"))
