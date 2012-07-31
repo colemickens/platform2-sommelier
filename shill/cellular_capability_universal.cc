@@ -142,6 +142,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
                              &hardware_revision_);
   store->RegisterConstString(flimflam::kImeiProperty, &imei_);
   store->RegisterConstString(flimflam::kImsiProperty, &imsi_);
+  store->RegisterConstString(flimflam::kIccidProperty, &sim_identifier_);
   store->RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
   store->RegisterConstString(flimflam::kMdnProperty, &mdn_);
   store->RegisterConstString(flimflam::kMeidProperty, &meid_);

@@ -113,6 +113,7 @@ Device::Device(ControlInterface *control_interface,
   // flimflam::kEsnProperty: Registered in Cellular
   // flimflam::kHomeProviderProperty: Registered in Cellular
   // flimflam::kImeiProperty: Registered in Cellular
+  // flimflam::kIccidProperty: Registered in Cellular
   // flimflam::kImsiProperty: Registered in Cellular
   // flimflam::kManufacturerProperty: Registered in Cellular
   // flimflam::kMdnProperty: Registered in Cellular

@@ -243,6 +243,12 @@ Properties	string Address [readonly]
 			(Cellular only) The International Mobile Equipment
 			Identity of the modem.
 
+		string Cellular.ICCID [readonly]
+
+			(Cellular only) For GSM / LTE modems, the Integrated
+			Circuit Card Identifer of the SIM card installed in
+			the device.
+
 		string Cellular.IMSI [readonly]
 
 			(Cellular only) For GSM modems, the International
