@@ -51,12 +51,17 @@ class LockboxTest : public ::testing::Test {
 
   virtual void TearDown() { }
 
+  // Perform an NVRAM store.
+  // lockbox: Lockbox object to operate on.
+  // nvram_data: the Blob of data to store into NVRAM.
+  // nvram_version: the default NVRAM version layout for Lockbox object.
+  // defined_nvram_size: the size of the defined NVRAM to test V2->V1 code.
   void DoStore(Lockbox* lockbox, SecureBlob* nvram_data,
-               uint32_t nvram_version) {
+               uint32_t nvram_version, uint32_t defined_nvram_size) {
     uint32_t salt_size;
     const char *salt_hash;
 
-    if (nvram_version == Lockbox::kNvramVersion1) {
+    if (defined_nvram_size == Lockbox::kReservedNvramBytesV1) {
       salt_size = Lockbox::kReservedSaltBytesV1;
       // sha256 of entire V1 lockbox NVRAM area.
       salt_hash = "f5f68c0c7ea1ccddc742b4b690e7c0ded9be59d33bcd56f9c7a7f7b273044a82";
@@ -78,10 +83,6 @@ class LockboxTest : public ::testing::Test {
     EXPECT_CALL(tpm_, IsOwned())
       .Times(1)
       .WillRepeatedly(Return(true));
-    chromeos::Blob salt(salt_size, 'A');
-    EXPECT_CALL(tpm_, GetRandomData(salt_size, _))
-      .Times(1)
-      .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
 
     // Destory calls with no file or existing NVRAM space.
     EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
@@ -90,6 +91,12 @@ class LockboxTest : public ::testing::Test {
       InSequence s;
       EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef))
         .WillOnce(Return(false));
+      EXPECT_CALL(tpm_, GetNvramSize(0xdeadbeef))
+        .WillOnce(Return(defined_nvram_size));
+      chromeos::Blob salt(salt_size, 'A');
+      EXPECT_CALL(tpm_, GetRandomData(salt_size, _))
+        .Times(1)
+        .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
       EXPECT_CALL(tpm_, WriteNvram(0xdeadbeef, _))
         .Times(1)
         .WillOnce(DoAll(SaveArg<1>(nvram_data), Return(true)));
@@ -112,9 +119,11 @@ class LockboxTest : public ::testing::Test {
     EXPECT_TRUE(lockbox->Store(file_data_, &error));
   }
 
-  void GenerateNvramData(SecureBlob* nvram, uint32_t version) {
+  // Populate the mock NVRAM with valid data.
+  void GenerateNvramData(SecureBlob* nvram, uint32_t version,
+                         uint32_t defined_nvram_size) {
     Lockbox throwaway_lockbox(NULL, 0xdeadbeef);
-    DoStore(&throwaway_lockbox, nvram, version);
+    DoStore(&throwaway_lockbox, nvram, version, defined_nvram_size);
     Mock::VerifyAndClearExpectations(&tpm_);
   }
 
@@ -260,7 +269,8 @@ TEST_F(LockboxTest, DestroyWithOldData) {
 
 TEST_F(LockboxTest, StoreOk) {
   SecureBlob nvram_data;
-  DoStore(&lockbox_, &nvram_data, Lockbox::kNvramVersionDefault);
+  DoStore(&lockbox_, &nvram_data, Lockbox::kNvramVersionDefault,
+          Lockbox::kReservedNvramBytesV2);
 }
 
 TEST_F(LockboxTest, StoreLockedNvram) {
@@ -275,12 +285,29 @@ TEST_F(LockboxTest, StoreLockedNvram) {
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
     .WillOnce(Return(true));
-  chromeos::Blob salt(7, 'A');
-  EXPECT_CALL(tpm_, GetRandomData(Lockbox::kReservedSaltBytesV2, _))
-    .Times(1)
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
   EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef))
     .WillOnce(Return(true));
+  EXPECT_FALSE(lockbox_.Store(file_data_, &error));
+  EXPECT_EQ(error, Lockbox::kErrorIdNvramInvalid);
+}
+
+TEST_F(LockboxTest, StoreUnlockedNvramSizeBad) {
+  Lockbox::ErrorId error;
+
+  // Ensure a connected, owned TPM.
+  EXPECT_CALL(tpm_, IsConnected())
+    .Times(1)
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, IsOwned())
+    .Times(1)
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
+    .WillOnce(Return(true));
+  EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef))
+    .WillOnce(Return(false));
+  // Return a bad NVRAM size.
+  EXPECT_CALL(tpm_, GetNvramSize(0xdeadbeef))
+    .WillOnce(Return(0));
   EXPECT_FALSE(lockbox_.Store(file_data_, &error));
   EXPECT_EQ(error, Lockbox::kErrorIdNvramInvalid);
 }
@@ -296,11 +323,6 @@ TEST_F(LockboxTest, StoreNoNvram) {
   EXPECT_CALL(tpm_, IsOwned())
     .Times(1)
     .WillRepeatedly(Return(true));
-
-  chromeos::Blob salt(7, 'A');
-  EXPECT_CALL(tpm_, GetRandomData(Lockbox::kReservedSaltBytesV2, _))
-    .Times(1)
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
 
   EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
     .WillOnce(Return(false));
@@ -322,9 +344,35 @@ TEST_F(LockboxTest, StoreTpmNotReady) {
   EXPECT_EQ(error, Lockbox::kErrorIdTpmError);
 }
 
+TEST_F(LockboxTest, LoadAndVerifyOkTpmDefault) {
+  SecureBlob nvram_data(0);
+  GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault,
+                    Lockbox::kReservedNvramBytesV2);
+
+  // Ensure a connected, owned TPM.
+  EXPECT_CALL(tpm_, IsConnected())
+    .Times(1)
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, IsOwned())
+    .Times(1)
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
+    .WillOnce(Return(true));
+  EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef))
+    .WillOnce(Return(true));
+  EXPECT_CALL(tpm_, ReadNvram(0xdeadbeef, _))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<1>(nvram_data), Return(true)));
+
+  Lockbox::ErrorId error;
+  EXPECT_TRUE(lockbox_.Load(&error));
+  EXPECT_TRUE(lockbox_.Verify(file_data_, &error));
+}
+
 TEST_F(LockboxTest, LoadAndVerifyOkTpmV1) {
   SecureBlob nvram_data(0);
-  GenerateNvramData(&nvram_data, Lockbox::kNvramVersion1);
+  GenerateNvramData(&nvram_data, Lockbox::kNvramVersion1,
+                    Lockbox::kReservedNvramBytesV1);
 
   // Ensure a connected, owned TPM.
   EXPECT_CALL(tpm_, IsConnected())
@@ -348,7 +396,33 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV1) {
 
 TEST_F(LockboxTest, LoadAndVerifyOkTpmV2) {
   SecureBlob nvram_data(0);
-  GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault);
+  GenerateNvramData(&nvram_data, Lockbox::kNvramVersion2,
+                    Lockbox::kReservedNvramBytesV2);
+
+  // Ensure a connected, owned TPM.
+  EXPECT_CALL(tpm_, IsConnected())
+    .Times(1)
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, IsOwned())
+    .Times(1)
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm_, IsNvramDefined(0xdeadbeef))
+    .WillOnce(Return(true));
+  EXPECT_CALL(tpm_, IsNvramLocked(0xdeadbeef))
+    .WillOnce(Return(true));
+  EXPECT_CALL(tpm_, ReadNvram(0xdeadbeef, _))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<1>(nvram_data), Return(true)));
+
+  Lockbox::ErrorId error;
+  EXPECT_TRUE(lockbox_.Load(&error));
+  EXPECT_TRUE(lockbox_.Verify(file_data_, &error));
+}
+
+TEST_F(LockboxTest, LoadAndVerifyOkTpmV2Downgrade) {
+  SecureBlob nvram_data(0);
+  GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault,
+                    Lockbox::kReservedNvramBytesV1);
 
   // Ensure a connected, owned TPM.
   EXPECT_CALL(tpm_, IsConnected())
@@ -372,7 +446,8 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV2) {
 
 TEST_F(LockboxTest, LoadAndVerifyBadSize) {
   SecureBlob nvram_data(0);
-  GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault);
+  GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault,
+                    Lockbox::kReservedNvramBytesV2);
 
   // Ensure a connected, owned TPM.
   EXPECT_CALL(tpm_, IsConnected())
@@ -402,7 +477,8 @@ TEST_F(LockboxTest, LoadAndVerifyBadSize) {
 
 TEST_F(LockboxTest, LoadAndVerifyBadHash) {
   SecureBlob nvram_data(0);
-  GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault);
+  GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault,
+                    Lockbox::kReservedNvramBytesV2);
 
   // Ensure a connected, owned TPM.
   EXPECT_CALL(tpm_, IsConnected())
@@ -431,7 +507,8 @@ TEST_F(LockboxTest, LoadAndVerifyBadHash) {
 
 TEST_F(LockboxTest, LoadAndVerifyBadData) {
   SecureBlob nvram_data(0);
-  GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault);
+  GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault,
+                    Lockbox::kReservedNvramBytesV2);
 
   // Ensure a connected, owned TPM.
   EXPECT_CALL(tpm_, IsConnected())

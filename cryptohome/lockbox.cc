@@ -152,12 +152,14 @@ bool Lockbox::Load(ErrorId* error) {
   switch (nvram_data.size()) {
   case kReservedNvramBytesV1:
     contents_->salt_size = kReservedSaltBytesV1;
+    nvram_version_ = kNvramVersion1;
     break;
   case kReservedNvramBytesV2:
     contents_->salt_size = kReservedSaltBytesV2;
+    nvram_version_ = kNvramVersion2;
     break;
   default:
-    LOG(ERROR) << "Load() unexpected NVRAM size.";
+    LOG(ERROR) << "Load() found unexpected NVRAM size: " << nvram_data.size();
     *error = kErrorIdNvramInvalid;
     return false;
   }
@@ -237,23 +239,44 @@ bool Lockbox::Verify(const chromeos::Blob& blob, ErrorId* error) {
 }
 
 bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
+  unsigned int nvram_size;
+
   if (!TpmIsReady()) {
     LOG(ERROR) << "Store() called when TPM was not ready!";
     *error = kErrorIdTpmError;
     return false;
   }
 
+  // Ensure we have the space ready.
+  if (!tpm_->IsNvramDefined(nvram_index_)) {
+    LOG(ERROR) << "Store() called with no NVRAM space.";
+    *error = kErrorIdNoNvramSpace;
+    return false;
+  }
+  if (tpm_->IsNvramLocked(nvram_index_)) {
+    LOG(ERROR) << "Store() called with a locked NVRAM space.";
+    *error = kErrorIdNvramInvalid;
+    return false;
+  }
+  // Check defined NVRAM size.
+  nvram_size = tpm_->GetNvramSize(nvram_index_);
+  switch (nvram_size) {
+  case kReservedNvramBytesV1:
+    contents_->salt_size = kReservedSaltBytesV1;
+    nvram_version_ = kNvramVersion1;
+    break;
+  case kReservedNvramBytesV2:
+    contents_->salt_size = kReservedSaltBytesV2;
+    nvram_version_ = kNvramVersion2;
+    break;
+  default:
+    LOG(ERROR) << "Store() found unexpected NVRAM size " << nvram_size << ".";
+    *error = kErrorIdNvramInvalid;
+    return false;
+  }
+
   // Grab a salt from the TPM.
   chromeos::Blob salt(0);
-  switch (nvram_version_) {
-  case kNvramVersion1:
-    contents_->salt_size = kReservedSaltBytesV1;
-    break;
-  case kNvramVersion2:
-  default:
-    contents_->salt_size = kReservedSaltBytesV2;
-    break;
-  }
   if (!tpm_->GetRandomData(contents_->salt_size, &salt)) {
     LOG(ERROR) << "Store() failed to get a salt from the TPM.";
     *error = kErrorIdTpmError;
@@ -300,17 +323,6 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   // The resulting NVRAM space should look like:
   //   [size_blob][flags][salt][hash_blob]
 
-  // Ensure we have the spaces ready.
-  if (!tpm_->IsNvramDefined(nvram_index_)) {
-    LOG(ERROR) << "Store() called with no NVRAM space.";
-    *error = kErrorIdNoNvramSpace;
-    return false;
-  }
-  if (tpm_->IsNvramLocked(nvram_index_)) {
-    LOG(ERROR) << "Store() called with a locked NVRAM space.";
-    *error = kErrorIdNvramInvalid;
-    return false;
-  }
   // Write the hash to nvram
   if (!tpm_->WriteNvram(nvram_index_, nvram_blob)) {
     LOG(ERROR) << "Store() failed to write the attribute hash to NVRAM";
