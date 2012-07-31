@@ -60,6 +60,7 @@ static struct Log logs[] = {
   { "hostname", "/bin/hostname" },
   { "hw_platform", "/usr/bin/uname -i" },
   { "ifconfig", "/sbin/ifconfig -a" },
+  { "kernel-crashes", "/bin/cat /var/spool/crash/kernel.*.kcrash" },
   { "login-times", "/bin/cat /home/chronos/user/login-times" },
   { "logout-times", "/bin/cat /home/chronos/user/logout-times" },
   { "lsmod", "lsmod" },
