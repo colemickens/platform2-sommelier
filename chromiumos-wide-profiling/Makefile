@@ -21,7 +21,7 @@ TESTS = $(TEST_SOURCES:.cc=.$(TEST_SUFFIX))
 
 ALL_SOURCES = $(MAIN_SOURCES) $(COMMON_SOURCES) $(TEST_SOURCES)
 
-all: $(PROGRAMS) $(TESTS)
+all: $(PROGRAMS)
 	@echo Sources compiled!
 
 -include $(ALL_SOURCES:.cc=.d)
