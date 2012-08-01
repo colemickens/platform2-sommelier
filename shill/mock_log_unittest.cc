@@ -23,7 +23,10 @@ class MockLogTest : public testing::Test {
   }
   void SlogSomething(const string &message) const {
     ScopeLogger::GetInstance()->EnableScopesByName("manager");
+    ScopeLogger::GetInstance()->set_verbose_level(2);
     SLOG(Manager, 2) << message;
+    ScopeLogger::GetInstance()->EnableScopesByName("-manager");
+    ScopeLogger::GetInstance()->set_verbose_level(0);
   }
 };
 

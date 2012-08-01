@@ -226,6 +226,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   virtual void SetUp() {
     // EnableScopes... so that we can EXPECT_CALL for scoped log messages.
     ScopeLogger::GetInstance()->EnableScopesByName("wifi");
+    ScopeLogger::GetInstance()->set_verbose_level(3);
     wifi_->proxy_factory_ = &proxy_factory_;
     static_cast<Device *>(wifi_)->rtnl_handler_ = &rtnl_handler_;
     wifi_->set_dhcp_provider(&dhcp_provider_);
@@ -252,6 +253,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->set_dhcp_provider(NULL);
     // Reset scope logging, to avoid interfering with other tests.
     ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+    ScopeLogger::GetInstance()->set_verbose_level(0);
   }
 
   // Needs to be public since it is called via Invoke().

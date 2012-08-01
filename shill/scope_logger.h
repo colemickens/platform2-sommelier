@@ -36,7 +36,7 @@
 
 #define SLOG_IS_ON(scope, verbose_level) \
   ::shill::ScopeLogger::GetInstance()->IsLogEnabled( \
-      ::shill::ScopeLogger::k##scope, -verbose_level)
+      ::shill::ScopeLogger::k##scope, verbose_level)
 
 #define SLOG_STREAM(verbose_level) \
   ::logging::LogMessage(__FILE__, __LINE__, -verbose_level).stream()

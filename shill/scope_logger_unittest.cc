@@ -129,20 +129,33 @@ TEST_F(ScopeLoggerTest, SetScopeEnabled) {
 }
 
 TEST_F(ScopeLoggerTest, SetVerboseLevel) {
-  logger_.SetScopeEnabled(ScopeLogger::kService, true);
-  EXPECT_TRUE(logger_.IsLogEnabled(ScopeLogger::kService, 0));
-  EXPECT_FALSE(logger_.IsLogEnabled(ScopeLogger::kService, 1));
-  EXPECT_FALSE(logger_.IsLogEnabled(ScopeLogger::kService, 2));
+  ScopeLogger *logger = ScopeLogger::GetInstance();
+  logger->SetScopeEnabled(ScopeLogger::kService, true);
+  EXPECT_TRUE(logger->IsLogEnabled(ScopeLogger::kService, 0));
+  EXPECT_FALSE(logger->IsLogEnabled(ScopeLogger::kService, 1));
+  EXPECT_FALSE(logger->IsLogEnabled(ScopeLogger::kService, 2));
+  EXPECT_TRUE(SLOG_IS_ON(Service, 0));
+  EXPECT_FALSE(SLOG_IS_ON(Service, 1));
+  EXPECT_FALSE(SLOG_IS_ON(Service, 2));
 
-  logger_.set_verbose_level(1);
-  EXPECT_TRUE(logger_.IsLogEnabled(ScopeLogger::kService, 0));
-  EXPECT_TRUE(logger_.IsLogEnabled(ScopeLogger::kService, 1));
-  EXPECT_FALSE(logger_.IsLogEnabled(ScopeLogger::kService, 2));
+  logger->set_verbose_level(1);
+  EXPECT_TRUE(logger->IsLogEnabled(ScopeLogger::kService, 0));
+  EXPECT_TRUE(logger->IsLogEnabled(ScopeLogger::kService, 1));
+  EXPECT_FALSE(logger->IsLogEnabled(ScopeLogger::kService, 2));
+  EXPECT_TRUE(SLOG_IS_ON(Service, 0));
+  EXPECT_TRUE(SLOG_IS_ON(Service, 1));
+  EXPECT_FALSE(SLOG_IS_ON(Service, 2));
 
-  logger_.set_verbose_level(2);
-  EXPECT_TRUE(logger_.IsLogEnabled(ScopeLogger::kService, 0));
-  EXPECT_TRUE(logger_.IsLogEnabled(ScopeLogger::kService, 1));
-  EXPECT_TRUE(logger_.IsLogEnabled(ScopeLogger::kService, 2));
+  logger->set_verbose_level(2);
+  EXPECT_TRUE(logger->IsLogEnabled(ScopeLogger::kService, 0));
+  EXPECT_TRUE(logger->IsLogEnabled(ScopeLogger::kService, 1));
+  EXPECT_TRUE(logger->IsLogEnabled(ScopeLogger::kService, 2));
+  EXPECT_TRUE(SLOG_IS_ON(Service, 0));
+  EXPECT_TRUE(SLOG_IS_ON(Service, 1));
+  EXPECT_TRUE(SLOG_IS_ON(Service, 2));
+
+  logger->set_verbose_level(0);
+  logger->SetScopeEnabled(ScopeLogger::kService, false);
 }
 
 }  // namespace shill
