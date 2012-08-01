@@ -119,8 +119,7 @@ parse_category()
     all)    echo "${sched_events}
                   ${workq_events}
                   ${power_events}
-                  ${gfx_events}
-                  ${input_events}";;
+                  ${gfx_events}";;
     *)
       echo "Unknown category \'${category}\'" >&2
       exit
