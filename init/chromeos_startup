@@ -273,7 +273,8 @@ if [ -O "$RESET_FILE" ]; then
 fi
 
 # Make sure unencrypted stateful partition has the needed directories.
-for d in home home/chronos home/root home/user unencrypted; do
+for d in home home/chronos home/root home/user \
+         unencrypted/cache unencrypted/preserve; do
   mkdir -p -m 0755 /mnt/stateful_partition/$d
 done
 
