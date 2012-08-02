@@ -25,6 +25,7 @@
 #include <policy/mock_device_policy.h>
 
 #include "crypto.h"
+#include "cryptolib.h"
 #include "homedirs.h"
 #include "make_tests.h"
 #include "mock_platform.h"
@@ -1155,7 +1156,8 @@ TEST_F(MountTest, MountForUserOrderingTest) {
   Crypto crypto;
   SecureBlob salt;
   salt.resize(16);
-  crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()), salt.size());
+  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(salt.data()),
+                             salt.size());
   session.Init(salt);
   UsernamePasskey up("username", SecureBlob("password", 8));
   EXPECT_TRUE(session.SetUser(up));

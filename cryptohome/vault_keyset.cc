@@ -7,6 +7,7 @@
 
 #include "crypto.h"
 #include "cryptohome_common.h"
+#include "cryptolib.h"
 #include "platform.h"
 #include "vault_keyset.h"
 
@@ -120,22 +121,22 @@ bool VaultKeyset::ToKeysBlob(SecureBlob* keys_blob) const {
 void VaultKeyset::CreateRandom() {
   CHECK(crypto_);
   fek_.resize(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  crypto_->GetSecureRandom(&fek_[0], fek_.size());
+  CryptoLib::GetSecureRandom(&fek_[0], fek_.size());
 
   fek_sig_.resize(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  crypto_->GetSecureRandom(&fek_sig_[0], fek_sig_.size());
+  CryptoLib::GetSecureRandom(&fek_sig_[0], fek_sig_.size());
 
   fek_salt_.resize(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  crypto_->GetSecureRandom(&fek_salt_[0], fek_salt_.size());
+  CryptoLib::GetSecureRandom(&fek_salt_[0], fek_salt_.size());
 
   fnek_.resize(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  crypto_->GetSecureRandom(&fnek_[0], fnek_.size());
+  CryptoLib::GetSecureRandom(&fnek_[0], fnek_.size());
 
   fnek_sig_.resize(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  crypto_->GetSecureRandom(&fnek_sig_[0], fnek_sig_.size());
+  CryptoLib::GetSecureRandom(&fnek_sig_[0], fnek_sig_.size());
 
   fnek_salt_.resize(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  crypto_->GetSecureRandom(&fnek_salt_[0], fnek_salt_.size());
+  CryptoLib::GetSecureRandom(&fnek_salt_[0], fnek_salt_.size());
 }
 
 const SecureBlob& VaultKeyset::FEK() const {
@@ -186,7 +187,7 @@ bool VaultKeyset::Save(const std::string& filename, const SecureBlob& key) {
   CHECK(crypto_);
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   unsigned char* salt_buf = static_cast<unsigned char*>(salt.data());
-  crypto_->GetSecureRandom(salt_buf, salt.size());
+  CryptoLib::GetSecureRandom(salt_buf, salt.size());
   if (!crypto_->EncryptVaultKeyset(*this, key, salt, &serialized_))
     return false;
 

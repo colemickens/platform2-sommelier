@@ -22,24 +22,6 @@ namespace cryptohome {
 
 class Crypto {
  public:
-  // PaddingScheme dictates the padding at the end of the ciphertext:
-  //   kPaddingNone - Do not use padding.  The input plaintext must be a
-  //     multiple of the crypto algorithm's block size.  This is used in the
-  //     encryption of the vault keyset as described in the Protection
-  //     Mechanisms section of the README file.
-  //   kPaddingCryptohomeDefault - The default padding, which adds a SHA1 hash
-  //     to the end of the plaintext before encryption so that the contents can
-  //     be verified.
-  enum PaddingScheme {
-    kPaddingNone = 0,
-    kPaddingCryptohomeDefault = 2,
-  };
-
-  enum BlockMode {
-    kEcb = 1,
-    kCbc = 2,
-  };
-
   enum CryptoError {
     CE_NONE = 0,
     CE_TPM_FATAL,
@@ -59,68 +41,6 @@ class Crypto {
 
   // Initializes Crypto
   bool Init(Platform* platform);
-
-  // Returns random bytes of the given length using OpenSSL's random number
-  // generator.  The random number generator is automatically seeded from
-  // /dev/urandom by OpenSSL.
-  //
-  // Parameters
-  //   rand (OUT) - Where to store the random bytes
-  //   length - The number of random bytes to store in rand
-  void GetSecureRandom(unsigned char* rand, unsigned int length) const;
-
-  // Gets the AES block size
-  unsigned int GetAesBlockSize() const;
-
-  // AES decrypts the wrapped blob
-  //
-  // Parameters
-  //   wrapped - The blob containing the encrypted data
-  //   key - The AES key to use in decryption
-  //   iv - The initialization vector to use
-  //   plaintext - The unwrapped (decrypted) data
-  bool AesDecrypt(const chromeos::Blob& ciphertext,
-                  const chromeos::SecureBlob& key,
-                  const chromeos::SecureBlob& iv,
-                  chromeos::SecureBlob* plaintext) const;
-
-  // AES encrypts the plain text data using the specified key
-  //
-  // Parameters
-  //   plaintext - The plain text data to encrypt
-  //   key - The AES key to use
-  //   iv - The initialization vector to use
-  //   ciphertext - On success, the encrypted data
-  bool AesEncrypt(const chromeos::Blob& plaintext,
-                  const chromeos::SecureBlob& key,
-                  const chromeos::SecureBlob& iv,
-                  chromeos::SecureBlob* ciphertext) const;
-
-  // Same as AesDecrypt, but allows using either CBC or ECB
-  bool AesDecryptSpecifyBlockMode(const chromeos::Blob& ciphertext,
-                                  unsigned int start, unsigned int count,
-                                  const chromeos::SecureBlob& key,
-                                  const chromeos::SecureBlob& iv,
-                                  PaddingScheme padding, BlockMode block_mode,
-                                  chromeos::SecureBlob* plaintext) const;
-
-  // Same as AesEncrypt, but allows using either CBC or ECB
-  bool AesEncryptSpecifyBlockMode(const chromeos::Blob& plaintext,
-                                  unsigned int start, unsigned int count,
-                                  const chromeos::SecureBlob& key,
-                                  const chromeos::SecureBlob& iv,
-                                  PaddingScheme padding, BlockMode block_mode,
-                                  chromeos::SecureBlob* ciphertext) const;
-
-  // Creates a new RSA key
-  //
-  // Parameters
-  //   key_bits - The key size to generate
-  //   n (OUT) - the modulus
-  //   p (OUT) - the private key
-  bool CreateRsaKey(unsigned int key_bits,
-                    chromeos::SecureBlob* n,
-                    chromeos::SecureBlob* p) const;
 
   // Decrypts an encrypted vault keyset.  The vault keyset should be the output
   // of EncryptVaultKeyset().
@@ -148,20 +68,6 @@ class Crypto {
                           const chromeos::SecureBlob& vault_key,
                           const chromeos::SecureBlob& vault_key_salt,
                           SerializedVaultKeyset* serialized) const;
-
-  // Converts the passkey directly to an AES key.  This method derives the key
-  // using the default OpenSSL conversion method.
-  //
-  // Parameters
-  //   passkey - The passkey (hash, currently) to create the key from
-  //   salt - The salt used in creating the key
-  //   rounds - The number of SHA rounds to perform
-  //   key (OUT) - The AES key
-  //   iv (OUT) - The initialization vector
-  bool PasskeyToAesKey(const chromeos::Blob& passkey,
-                       const chromeos::Blob& salt, unsigned int rounds,
-                       chromeos::SecureBlob* key,
-                       chromeos::SecureBlob* iv) const;
 
   // Converts the passkey to authorization data for a TPM-backed crypto token.
   //
@@ -198,21 +104,6 @@ class Crypto {
 
   // Clears the user's kernel keyring
   void ClearKeyset() const;
-
-  // Gets the SHA1 hash of the data provided
-  chromeos::SecureBlob GetSha1(const chromeos::Blob& data) const;
-
-  // Gets the SHA256 hash of the data provided
-  chromeos::SecureBlob GetSha256(const chromeos::Blob& data) const;
-
-  // Encodes a binary blob to hex-ascii
-  //
-  // Parameters
-  //   blob - The binary blob to convert
-  //   buffer (IN/OUT) - Where to store the converted blob
-  //   buffer_length - The size of the buffer
-  static void AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
-                                  unsigned int buffer_length);
 
   // Converts a null-terminated password to a passkey (ascii-encoded first half
   // of the salted SHA1 hash of the password).

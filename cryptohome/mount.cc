@@ -22,6 +22,7 @@
 
 #include "crypto.h"
 #include "cryptohome_common.h"
+#include "cryptolib.h"
 #include "homedirs.h"
 #include "platform.h"
 #include "username_passkey.h"
@@ -1000,8 +1001,8 @@ bool Mount::AddVaultKeyset(const Credentials& credentials,
 
   // Encrypt the vault keyset
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  crypto_->GetSecureRandom(static_cast<unsigned char*>(salt.data()),
-                           salt.size());
+  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(salt.data()),
+                             salt.size());
 
   if (!crypto_->EncryptVaultKeyset(vault_keyset, passkey, salt, serialized)) {
     LOG(ERROR) << "Encrypting vault keyset failed";
