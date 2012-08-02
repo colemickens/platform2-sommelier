@@ -146,6 +146,14 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
     LOG(WARNING) << "Expect limited network connectivity.";
   }
 
+  if (device_info_->HasOtherAddress(interface_index_, local)) {
+    // The address has changed for this interface.  We need to flush
+    // everything and start over.
+    LOG(INFO) << __func__ << ": Flushing old addresses and routes.";
+    routing_table_->FlushRoutes(interface_index_);
+    device_info_->FlushAddresses(interface_index_);
+  }
+
   LOG(INFO) << __func__ << ": Installing with parameters:"
             << " local=" << local.ToString()
             << " broadcast=" << broadcast.ToString()

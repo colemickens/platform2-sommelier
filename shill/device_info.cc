@@ -606,6 +606,33 @@ void DeviceInfo::FlushAddresses(int interface_index) const {
   }
 }
 
+bool DeviceInfo::HasOtherAddress(
+    int interface_index, const IPAddress &this_address) const {
+  SLOG(Device, 3) << __func__ << "(" << interface_index << ")";
+  const Info *info = GetInfo(interface_index);
+  if (!info) {
+    return false;
+  }
+  const vector<AddressData> &addresses = info->ip_addresses;
+  vector<AddressData>::const_iterator iter;
+  bool has_other_address = false;
+  bool has_this_address = false;
+  for (iter = addresses.begin(); iter != addresses.end(); ++iter) {
+    if (iter->address.family() != this_address.family()) {
+      continue;
+    }
+    if (iter->address.address().Equals(this_address.address())) {
+      has_this_address = true;
+    } else if (this_address.family() == IPAddress::kFamilyIPv4) {
+      has_other_address = true;
+    } else if ((iter->scope == RT_SCOPE_UNIVERSE &&
+                (iter->flags & IFA_F_TEMPORARY) == 0)) {
+      has_other_address = true;
+    }
+  }
+  return has_other_address && !has_this_address;
+}
+
 bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) const {
   const Info *info = GetInfo(interface_index);
   if (!info) {

@@ -120,6 +120,14 @@ class ConnectionTest : public Test {
     return connection->has_broadcast_domain_;
   }
 
+  uint32 GetDefaultMetric() {
+      return Connection::kDefaultMetric;
+  }
+
+  uint32 GetNonDefaultMetricBase() {
+      return Connection::kNonDefaultMetricBase;
+  }
+
  protected:
   class DisconnectCallbackTarget {
    public:
@@ -188,6 +196,10 @@ TEST_F(ConnectionTest, InitState) {
 }
 
 TEST_F(ConnectionTest, AddConfig) {
+  EXPECT_CALL(*device_info_,
+              HasOtherAddress(kTestDeviceInterfaceIndex0,
+                              IsIPAddress(local_address_, kPrefix0)))
+      .WillOnce(Return(false));
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0,
                                   IsIPAddress(local_address_, kPrefix0),
@@ -196,12 +208,12 @@ TEST_F(ConnectionTest, AddConfig) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(kTestDeviceInterfaceIndex0,
                               IsIPAddress(gateway_address_, 0),
-                              Connection::kNonDefaultMetricBase +
+                              GetNonDefaultMetricBase() +
                               kTestDeviceInterfaceIndex0));
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
-                              Connection::kDefaultMetric));
+                              GetDefaultMetric()));
   connection_->UpdateFromIPConfig(ipconfig_);
   IPAddress test_local_address(local_address_);
   test_local_address.set_prefix(kPrefix0);
@@ -221,7 +233,7 @@ TEST_F(ConnectionTest, AddConfig) {
   EXPECT_FALSE(connection_->CreateGatewayRoute());
 
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
-                                               Connection::kDefaultMetric));
+                                               GetDefaultMetric()));
   EXPECT_CALL(resolver_, SetDNSFromLists(
       ipconfig_->properties().dns_servers,
       ipconfig_->properties().domain_search));
@@ -246,7 +258,7 @@ TEST_F(ConnectionTest, AddConfig) {
 
   EXPECT_CALL(routing_table_,
               SetDefaultMetric(kTestDeviceInterfaceIndex0,
-                               Connection::kNonDefaultMetricBase +
+                               GetNonDefaultMetricBase() +
                                kTestDeviceInterfaceIndex0));
   EXPECT_CALL(routing_table_, FlushCache())
       .WillOnce(Return(true));
@@ -261,6 +273,10 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
   properties_.peer_address = kPeerAddress;
   properties_.gateway = string();
   UpdateProperties();
+  EXPECT_CALL(*device_info_,
+              HasOtherAddress(kTestDeviceInterfaceIndex0,
+                              IsIPAddress(local_address_, kPrefix0)))
+      .WillOnce(Return(false));
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0,
                                   IsIPAddress(local_address_, kPrefix0),
@@ -270,7 +286,7 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
-                              Connection::kDefaultMetric));
+                              GetDefaultMetric()));
   connection_->UpdateFromIPConfig(ipconfig_);
   EXPECT_FALSE(GetHasBroadcastDomain(connection_));
 }
@@ -282,6 +298,10 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
 
   // Connection should override with a prefix which will allow the
   // gateway to be reachable.
+  EXPECT_CALL(*device_info_,
+              HasOtherAddress(kTestDeviceInterfaceIndex0,
+                              IsIPAddress(local_address_, kPrefix0)))
+      .WillOnce(Return(false));
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0,
                                   IsIPAddress(local_address_, kPrefix0),
@@ -290,12 +310,12 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
   EXPECT_CALL(routing_table_,
               SetDefaultRoute(kTestDeviceInterfaceIndex0,
                               IsIPAddress(gateway_address_, 0),
-                              Connection::kNonDefaultMetricBase +
+                              GetNonDefaultMetricBase() +
                               kTestDeviceInterfaceIndex0));
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
-                              Connection::kDefaultMetric));
+                              GetDefaultMetric()));
   connection_->UpdateFromIPConfig(ipconfig_);
 
   // Assign a gateway address that violates the minimum plausible prefix
@@ -308,6 +328,10 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
   // Connection cannot override this prefix, so it will switch to a
   // model where the peer address is set to the value of the gateway
   // address.
+  EXPECT_CALL(*device_info_,
+              HasOtherAddress(kTestDeviceInterfaceIndex0,
+                              IsIPAddress(local_address_, kPrefix1)))
+      .WillOnce(Return(false));
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0,
                                   IsIPAddress(local_address_, kPrefix1),
@@ -322,7 +346,7 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
 
 TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
-                                               Connection::kDefaultMetric));
+                                               GetDefaultMetric()));
   vector<string> empty_list;
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
@@ -342,6 +366,10 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   connection_->SetIsDefault(true);
   Mock::VerifyAndClearExpectations(&routing_table_);
 
+  EXPECT_CALL(*device_info_,
+              HasOtherAddress(kTestDeviceInterfaceIndex0,
+                              IsIPAddress(local_address_, kPrefix0)))
+      .WillOnce(Return(false));
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0,
                                   IsIPAddress(local_address_, kPrefix0),
@@ -349,13 +377,37 @@ TEST_F(ConnectionTest, AddConfigReverse) {
                                   IsIPAddress(default_address_, 0)));
   EXPECT_CALL(routing_table_, SetDefaultRoute(kTestDeviceInterfaceIndex0,
                                               IsIPAddress(gateway_address_, 0),
-                                              Connection::kDefaultMetric));
+                                              GetDefaultMetric()));
   EXPECT_CALL(routing_table_,
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
-                              Connection::kDefaultMetric));
+                              GetDefaultMetric()));
   EXPECT_CALL(resolver_, SetDNSFromIPConfig(ipconfig_));
 
+  connection_->UpdateFromIPConfig(ipconfig_);
+}
+
+TEST_F(ConnectionTest, HasOtherAddress) {
+  EXPECT_CALL(*device_info_,
+              HasOtherAddress(kTestDeviceInterfaceIndex0,
+                              IsIPAddress(local_address_, kPrefix0)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(*device_info_, FlushAddresses(kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(rtnl_handler_,
+              AddInterfaceAddress(kTestDeviceInterfaceIndex0,
+                                  IsIPAddress(local_address_, kPrefix0),
+                                  IsIPAddress(broadcast_address_, 0),
+                                  IsIPAddress(default_address_, 0)));
+  EXPECT_CALL(routing_table_,
+              SetDefaultRoute(kTestDeviceInterfaceIndex0,
+                              IsIPAddress(gateway_address_, 0),
+                              GetNonDefaultMetricBase() +
+                              kTestDeviceInterfaceIndex0));
+  EXPECT_CALL(routing_table_,
+              ConfigureRoutes(kTestDeviceInterfaceIndex0,
+                              ipconfig_,
+                              GetDefaultMetric()));
   connection_->UpdateFromIPConfig(ipconfig_);
 }
 

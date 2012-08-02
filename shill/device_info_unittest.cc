@@ -117,6 +117,7 @@ class DeviceInfoTest : public Test {
   static const char kTestIPAddress2[];
   static const char kTestIPAddress3[];
   static const char kTestIPAddress4[];
+  static const char kTestIPAddress5[];
   static const int kReceiveByteCount;
   static const int kTransmitByteCount;
 
@@ -150,6 +151,7 @@ const int DeviceInfoTest::kTestIPAddressPrefix1 = 64;
 const char DeviceInfoTest::kTestIPAddress2[] = "fe80::1aa9:5ff:abcd:1235";
 const char DeviceInfoTest::kTestIPAddress3[] = "fe80::1aa9:5ff:abcd:1236";
 const char DeviceInfoTest::kTestIPAddress4[] = "fe80::1aa9:5ff:abcd:1237";
+const char DeviceInfoTest::kTestIPAddress5[] = "192.168.1.2";
 const int DeviceInfoTest::kReceiveByteCount = 1234;
 const int DeviceInfoTest::kTransmitByteCount = 5678;
 
@@ -592,6 +594,93 @@ TEST_F(DeviceInfoTest, FlushAddressList) {
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
                                                     IsIPAddress(address2)));
   device_info_.FlushAddresses(kTestDeviceIndex);
+}
+
+TEST_F(DeviceInfoTest, HasOtherAddress) {
+  scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
+  SendMessageToDeviceInfo(*message);
+
+  IPAddress address0(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(address0.SetAddressFromString(kTestIPAddress0));
+
+  // There are no addresses on this interface.
+  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address0));
+
+  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
+                                    address0,
+                                    0,
+                                    RT_SCOPE_UNIVERSE));
+  SendMessageToDeviceInfo(*message);
+
+  IPAddress address1(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(address1.SetAddressFromString(kTestIPAddress1));
+  address1.set_prefix(kTestIPAddressPrefix1);
+  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
+                                    address1,
+                                    0,
+                                    RT_SCOPE_LINK));
+  SendMessageToDeviceInfo(*message);
+
+  IPAddress address2(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(address2.SetAddressFromString(kTestIPAddress2));
+  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
+                                    address2,
+                                    IFA_F_TEMPORARY,
+                                    RT_SCOPE_UNIVERSE));
+  SendMessageToDeviceInfo(*message);
+
+  IPAddress address3(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(address3.SetAddressFromString(kTestIPAddress3));
+
+  // The only IPv6 addresses on this interface are either flagged as
+  // temporary, or they are not universally scoped.
+  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address3));
+
+
+  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
+                                    address3,
+                                    0,
+                                    RT_SCOPE_UNIVERSE));
+  SendMessageToDeviceInfo(*message);
+
+  // address0 is on this interface.
+  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address0));
+  // address1 is on this interface.
+  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address1));
+  // address2 is on this interface.
+  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address2));
+  // address3 is on this interface.
+  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address3));
+
+  IPAddress address4(IPAddress::kFamilyIPv6);
+  EXPECT_TRUE(address4.SetAddressFromString(kTestIPAddress4));
+
+  // address4 is not on this interface, but address3 is, and is a qualified
+  // IPv6 address.
+  EXPECT_TRUE(device_info_.HasOtherAddress(kTestDeviceIndex, address4));
+
+  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
+                                    address4,
+                                    IFA_F_PERMANENT,
+                                    RT_SCOPE_UNIVERSE));
+  SendMessageToDeviceInfo(*message);
+
+  // address4 is now on this interface.
+  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address4));
+
+  IPAddress address5(IPAddress::kFamilyIPv4);
+  EXPECT_TRUE(address5.SetAddressFromString(kTestIPAddress5));
+  // address5 is not on this interface, but address0 is.
+  EXPECT_TRUE(device_info_.HasOtherAddress(kTestDeviceIndex, address5));
+
+  message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
+                                    address5,
+                                    IFA_F_PERMANENT,
+                                    RT_SCOPE_UNIVERSE));
+  SendMessageToDeviceInfo(*message);
+
+  // address5 is now on this interface.
+  EXPECT_FALSE(device_info_.HasOtherAddress(kTestDeviceIndex, address5));
 }
 
 TEST_F(DeviceInfoTest, HasSubdir) {

@@ -81,7 +81,12 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
                              uint64 *rx_bytes, uint64 *tx_bytes) const;
   virtual bool GetAddresses(int interface_index,
                             std::vector<AddressData> *addresses) const;
+  // Flush all addresses associated with |interface_index|.
   virtual void FlushAddresses(int interface_index) const;
+  // Returns whether this interface does not have |this_address|
+  // but has another non-temporary address of the same family.
+  virtual bool HasOtherAddress(
+      int interface_index, const IPAddress &this_address) const;
   virtual bool CreateTunnelInterface(std::string *interface_name) const;
   virtual bool DeleteInterface(int interface_index) const;
 

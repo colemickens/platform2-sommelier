@@ -104,9 +104,6 @@ class Connection : public base::RefCounted<Connection> {
  private:
   friend class ConnectionTest;
   FRIEND_TEST(ConnectionTest, AddConfig);
-  FRIEND_TEST(ConnectionTest, AddConfigReverse);
-  FRIEND_TEST(ConnectionTest, AddConfigWithBrokenNetmask);
-  FRIEND_TEST(ConnectionTest, AddConfigWithPeer);
   FRIEND_TEST(ConnectionTest, Binder);
   FRIEND_TEST(ConnectionTest, Binders);
   FRIEND_TEST(ConnectionTest, Destructor);
