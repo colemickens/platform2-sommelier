@@ -89,6 +89,11 @@ class SessionManagerDBusTest : public SessionManagerTest {
         .WillOnce(Return(false));
   }
 
+  void ExpectChildJobClearOneTimeArgument(MockChildJob* job) {
+    EXPECT_CALL(*job, ClearOneTimeArgument())
+        .Times(1);
+  }
+
   void ExpectGuestSession(const std::string& email_string, MockChildJob* job) {
     ExpectSessionBoilerplate(email_string, true, false, job);
   }
@@ -519,6 +524,7 @@ TEST_F(SessionManagerDBusTest, RestartJobUnknownPid) {
 
 TEST_F(SessionManagerDBusTest, RestartJob) {
   MockChildJob* job = CreateTrivialMockJob();
+  ExpectChildJobClearOneTimeArgument(job);
   manager_->test_api().set_child_pid(0, kDummyPid);
   EXPECT_CALL(utils_, kill(-kDummyPid, getuid(), SIGKILL))
       .WillOnce(Return(0));

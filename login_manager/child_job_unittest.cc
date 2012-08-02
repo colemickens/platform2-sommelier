@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -171,6 +171,19 @@ TEST_F(ChildJobTest, SetExtraArguments) {
   ASSERT_EQ(extra_args.size(), job_->extra_arguments_.size());
   for (size_t i = 0; i < extra_args.size(); ++i)
     EXPECT_EQ(extra_args[i], job_->extra_arguments_[i]);
+}
+
+TEST_F(ChildJobTest, AddExtraOneTimeArgument) {
+  std::string argument("--san");
+  job_->AddOneTimeArgument(argument);
+
+  // Make sure regular arguments are untouched.
+  ASSERT_EQ(arraysize(kArgv), job_->arguments_.size());
+  for (size_t i = 0; i < arraysize(kArgv); ++i)
+    EXPECT_EQ(kArgv[i], job_->arguments_[i]);
+
+  ASSERT_EQ(argument.size(), job_->extra_one_time_argument_.size());
+  EXPECT_EQ(argument, job_->extra_one_time_argument_);
 }
 
 TEST_F(ChildJobTest, CreateArgv) {

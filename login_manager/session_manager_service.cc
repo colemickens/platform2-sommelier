@@ -176,6 +176,8 @@ const char SessionManagerService::kDemoUser[] = "demouser";
 // static
 const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
 // static
+const char SessionManagerService::kFirstBootFlag[] = "--first-boot";
+// static
 const char SessionManagerService::kTestingChannelFlag[] =
     "--testing-channel=NamedTestingInterface:";
 // static
@@ -438,9 +440,15 @@ bool SessionManagerService::Shutdown() {
 }
 
 void SessionManagerService::RunChildren() {
+  bool first_boot = false;
+  if (!file_util::PathExists(FilePath(LoginMetrics::kChromeUptimeFile)))
+    first_boot = true;
+
   login_metrics_->RecordStats("chrome-exec");
   for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
     ChildJobInterface* child_job = child_jobs_[i_child];
+    if (first_boot)
+      child_job->AddOneTimeArgument(kFirstBootFlag);
     LOG(INFO) << "Running child " << child_job->GetName() << "...";
     child_pids_[i_child] = RunChild(child_job);
   }
@@ -454,6 +462,7 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
     child_job->Run();
     exit(1);  // Run() is not supposed to return.
   }
+  child_job->ClearOneTimeArgument();
   // TODO(cmasone): Remove the watcher when the child exits.
   child_watchers_.push_back(g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
                                                    pid,

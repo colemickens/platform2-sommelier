@@ -50,6 +50,12 @@ class SessionManagerProcessTest : public SessionManagerTest {
     ALWAYS, NEVER
   };
 
+  void ExpectChildJobBoilerplate(MockChildJob* job, int clear_count) {
+    EXPECT_CALL(*job, ClearOneTimeArgument()).Times(clear_count);
+    EXPECT_CALL(*job, AddOneTimeArgument(
+        SessionManagerService::kFirstBootFlag)).Times(1);
+  }
+
   // Configures |file_checker_| to allow child restarting according to
   // |child_runs|.
   void SetFileCheckerPolicy(RestartPolicy child_runs) {
@@ -106,6 +112,7 @@ TEST_F(SessionManagerProcessTest, BadExitChildFlagFileStop) {
   MockChildJob* job = new MockChildJob();
   EXPECT_CALL(*job, RecordTime()).Times(1);
   EXPECT_CALL(*job, ShouldStop()).Times(1).WillOnce(Return(false));
+  ExpectChildJobBoilerplate(job, 1);
   InitManager(job, NULL);
 
   EXPECT_CALL(*file_checker_, exists())
@@ -125,6 +132,7 @@ TEST_F(SessionManagerProcessTest, BadExitChildOnSignal) {
   MockChildJob* job = new MockChildJob();
   EXPECT_CALL(*job, RecordTime()).Times(1);
   EXPECT_CALL(*job, ShouldStop()).Times(1).WillOnce(Return(true));
+  ExpectChildJobBoilerplate(job, 1);
   InitManager(job, NULL);
   SetFileCheckerPolicy(ALWAYS);
 
@@ -139,6 +147,8 @@ TEST_F(SessionManagerProcessTest, BadExitChildOnSignal) {
 TEST_F(SessionManagerProcessTest, BadExitChild1) {
   MockChildJob* job1 = new MockChildJob;
   MockChildJob* job2 = new MockChildJob;
+  ExpectChildJobBoilerplate(job1, 2);
+  ExpectChildJobBoilerplate(job2, 1);
   InitManager(job1, job2);
 
   SetFileCheckerPolicy(ALWAYS);
@@ -164,6 +174,8 @@ TEST_F(SessionManagerProcessTest, BadExitChild1) {
 TEST_F(SessionManagerProcessTest, BadExitChild2) {
   MockChildJob* job1 = new MockChildJob;
   MockChildJob* job2 = new MockChildJob;
+  ExpectChildJobBoilerplate(job1, 1);
+  ExpectChildJobBoilerplate(job2, 2);
   InitManager(job1, job2);
 
   SetFileCheckerPolicy(ALWAYS);
@@ -192,6 +204,7 @@ TEST_F(SessionManagerProcessTest, CleanExitChild) {
       .Times(1);
   EXPECT_CALL(*job, ShouldStop())
       .WillOnce(Return(true));
+  ExpectChildJobBoilerplate(job, 1);
 
   MockChildProcess proc(kDummyPid, 0, manager_->test_api());
   EXPECT_CALL(utils_, fork())
@@ -203,6 +216,8 @@ TEST_F(SessionManagerProcessTest, CleanExitChild) {
 TEST_F(SessionManagerProcessTest, CleanExitChild2) {
   MockChildJob* job1 = new MockChildJob;
   MockChildJob* job2 = new MockChildJob;
+  ExpectChildJobBoilerplate(job1, 1);
+  ExpectChildJobBoilerplate(job2, 1);
   InitManager(job1, job2);
   // Let the manager cause the clean exit.
   manager_->test_api().set_exit_on_child_done(false);
@@ -228,6 +243,8 @@ TEST_F(SessionManagerProcessTest, CleanExitChild2) {
 TEST_F(SessionManagerProcessTest, LockedExit) {
   MockChildJob* job1 = new MockChildJob;
   MockChildJob* job2 = new MockChildJob;
+  ExpectChildJobBoilerplate(job1, 1);
+  ExpectChildJobBoilerplate(job2, 1);
   InitManager(job1, job2);
   // Let the manager cause the clean exit.
   manager_->test_api().set_exit_on_child_done(false);
@@ -254,6 +271,7 @@ TEST_F(SessionManagerProcessTest, LockedExit) {
 
 TEST_F(SessionManagerProcessTest, MustStopChild) {
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+  ExpectChildJobBoilerplate(job, 1);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
   EXPECT_CALL(*job, ShouldStop())

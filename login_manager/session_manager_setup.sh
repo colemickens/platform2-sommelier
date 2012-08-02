@@ -131,13 +131,6 @@ if [ -f /root/.test_repeat_oobe ] ; then
   SKIP_OOBE=
 fi
 
-NEW_OOBE_FLAGS=
-# For testing new OOBE/sign in flow.
-if [ -f /root/.enable_new_oobe ] ; then
-  NEW_OOBE_FLAGS="--enable-new-oobe --allow-webui-compositing \
-                  --enable-html5-camera"
-fi
-
 SSLKEYLOGFILE=/var/log/sslkeys.log
 if use_flag_is_set dangerous_sslkeylogfile &&
    [ -f "$SSLKEYLOGFILE" ]; then
@@ -377,6 +370,5 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
-            ${NEW_OOBE_FLAGS} \
             ${PPAPI_FLASH_FLAGS} \
     ${WM_SCRIPT:+-- "${WM_SCRIPT}"}

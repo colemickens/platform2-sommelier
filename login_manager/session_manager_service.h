@@ -332,6 +332,10 @@ class SessionManagerService
   // The flag to pass to chrome to open a named socket for testing.
   static const char kTestingChannelFlag[];
 
+  // The flag to pass to chrome on a first boot.
+  // Not passed when Chrome is started after signout.
+  static const char kFirstBootFlag[];
+
   // Payloads for signals_[kSignakSessionStateChanged];
   static const char kStarted[];
   static const char kStopping[];

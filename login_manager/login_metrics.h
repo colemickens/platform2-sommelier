@@ -11,7 +11,12 @@
 
 namespace login_manager {
 class LoginMetrics {
-public:
+ public:
+  // Uptime stats file created when session_manager executes Chrome.
+  // For any case of reload after crash no stats are recorded.
+  // For any signout stats are recorded.
+  static const char kChromeUptimeFile[];
+
   enum PolicyFileState {
     GOOD = 0,
     MALFORMED = 1,

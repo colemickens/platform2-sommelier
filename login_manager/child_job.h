@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -68,6 +68,12 @@ class ChildJobInterface {
   // Sets extra command line arguments for the job from a string vector.
   virtual void SetExtraArguments(const std::vector<std::string>& arguments) = 0;
 
+   // Adds a single extra argument that may be cleared once needed.
+   virtual void AddOneTimeArgument(const std::string& argument) = 0;
+
+   // Clears one time extra argument.
+   virtual void ClearOneTimeArgument() = 0;
+
   // Potential exit codes for Run().
   static const int kCantSetUid;
   static const int kCantSetGid;
@@ -95,6 +101,8 @@ class ChildJob : public ChildJobInterface {
   virtual const std::string GetName() const;
   virtual void SetArguments(const std::string& arguments);
   virtual void SetExtraArguments(const std::vector<std::string>& arguments);
+  virtual void AddOneTimeArgument(const std::string& argument);
+  virtual void ClearOneTimeArgument();
 
   // The flag to pass to chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
@@ -133,6 +141,9 @@ class ChildJob : public ChildJobInterface {
   // Extra arguments to pass to exec.
   std::vector<std::string> extra_arguments_;
 
+  // Extra one time argument.
+  std::string extra_one_time_argument_;
+
   // UID to set for job's process before exec is called.
   uid_t desired_uid_;
 
@@ -156,6 +167,7 @@ class ChildJob : public ChildJobInterface {
   FRIEND_TEST(ChildJobTest, StartStopSessionFromLoginTest);
   FRIEND_TEST(ChildJobTest, SetArguments);
   FRIEND_TEST(ChildJobTest, SetExtraArguments);
+  FRIEND_TEST(ChildJobTest, AddExtraOneTimeArgument);
   FRIEND_TEST(ChildJobTest, CreateArgv);
   DISALLOW_COPY_AND_ASSIGN(ChildJob);
 };

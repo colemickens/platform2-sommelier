@@ -12,6 +12,9 @@
 
 namespace login_manager {
 
+// static
+const char LoginMetrics::kChromeUptimeFile[] = "/tmp/uptime-chrome-exec";
+
 //static
 const char LoginMetrics::kLoginUserTypeMetric[] = "Login.UserType";
 //static

@@ -176,6 +176,14 @@ void ChildJob::SetExtraArguments(const std::vector<std::string>& arguments) {
   extra_arguments_.assign(arguments.begin(), arguments.end());
 }
 
+void ChildJob::AddOneTimeArgument(const std::string& argument) {
+  extra_one_time_argument_ = argument;
+}
+
+void ChildJob::ClearOneTimeArgument() {
+  extra_one_time_argument_.clear();
+}
+
 void ChildJob::CopyArgsToArgv(const std::vector<std::string>& arguments,
                               char const** argv) const {
   for (size_t i = 0; i < arguments.size(); ++i) {
@@ -188,9 +196,18 @@ void ChildJob::CopyArgsToArgv(const std::vector<std::string>& arguments,
 
 char const** ChildJob::CreateArgv() const {
   size_t total_size = arguments_.size() + extra_arguments_.size();
+  if (!extra_one_time_argument_.empty())
+    total_size++;
+
   char const** argv = new char const*[total_size + 1];
   CopyArgsToArgv(arguments_, argv);
   CopyArgsToArgv(extra_arguments_, argv + arguments_.size());
+  if (!extra_one_time_argument_.empty()) {
+    std::vector<std::string> one_time_argument;
+    one_time_argument.push_back(extra_one_time_argument_);
+    CopyArgsToArgv(one_time_argument,
+                   argv + arguments_.size() + extra_arguments_.size());
+  }
   // Need to append NULL at the end.
   argv[total_size] = NULL;
   return argv;
