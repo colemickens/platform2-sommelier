@@ -72,7 +72,7 @@ require() {
 
 # Removes the indexes output by the --fixed option of dbus-send
 stripindexes() {
-  sed -e 's/^\/[[:digit:]]\+\///' -e 's/[^[:space:]]*/\0:/' -e 's/^/	/'
+  sed -e 's/^\/[[:digit:]]\+\///' -e 's/[^[:space:]]*/\0:/' -e 's/^/  /'
 }
 
 # Prints values for dbus-send --fixed output lines whose keys match

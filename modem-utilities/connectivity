@@ -1,92 +1,110 @@
 #!/bin/dash
 
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 . /usr/lib/connectivity-common.sh
 
 OCF=org.chromium.flimflam
+MASKED_PROPERTIES="
+  Address
+  Cellular.ESN
+  Cellular.ICCID
+  Cellular.IMEI
+  Cellular.IMSI
+  Cellular.MDN
+  Cellular.MEID
+  Cellular.MIN
+  Cellular.UsageUrl
+  EAP.AnonymousIdentity
+  EAP.CACertID
+  EAP.CACertNSS
+  EAP.CertID
+  EAP.EAP
+  EAP.Identity
+  EAP.InnerEAP
+  EAP.KeyID
+  EAP.PIN
+  EAP.PrivateKey
+  EAP.SubjectMatch
+  WiFi.BSSID
+  WiFi.HexSSID
+  WiFi.SSID
+"
+MASKED_PROPERTIES_PATTERN=$(echo ${MASKED_PROPERTIES} | sed 's/ /|/g')
 
-# Simplifies calls to dbus-send
-# TODO:	 harmonize this with the dbus in ./modem
-dbus () {
-	local dest=$1
-	local obj=$2
-	local meth=$3
-	shift 3
-
-	dbus-send --system --print-reply --fixed \
-		--dest=$dest $obj $meth "$@"
+mask_properties() {
+  sed -E "s/\<(${MASKED_PROPERTIES_PATTERN}): (.+)/\1: *** MASKED ***/i"
 }
 
-# returns a list of flimflam objects of the specified kind
-get_flimflam_objects () {
-	# NB: add s to pluralize kind
-	local kind=${1}s
-	local filter=$2
+# Returns a list of flimflam objects of the specified kind.
+get_flimflam_objects() {
+  # NB: add s to pluralize kind
+  local kind="${1}s"
+  local filter="$2"
 
-	dbus ${OCF} / ${OCF}.Manager.GetProperties \
-		| extract_dbus_match ${kind} \
-		| grep ${filter}
+  dbus_call "${OCF}" / "${OCF}.Manager.GetProperties" \
+    | extract_dbus_match "${kind}" \
+    | grep "${filter}"
 }
 
-print_properties () {
-	local kind=${1}
-	local object=${2}
-	dbus ${OCF} ${object} ${OCF}.${kind}.GetProperties | stripindexes
+print_properties() {
+  local kind="$1"
+  local object="$2"
+
+  dbus_call "${OCF}" "${object}" "${OCF}.${kind}.GetProperties" | stripindexes
 }
 
-die () {
-	echo $* > /dev/stderr
-	exit 1
+normalize_kind() {
+  local kind="${1%s}"  # Remove trailing s
+
+  case "${kind}" in
+    [Ss]ervice)
+      echo -n Service
+      ;;
+    [Dd]evice)
+      echo -n Device
+      ;;
+    *)
+      error_exit "Did not understand connection manager entity ${kind}."
+      ;;
+  esac
 }
 
-normalize_kind () {
-	local kind=${1%s}		  # remove trailing s
-	case $kind in
-		[Ss]ervice)
-			echo -n Service
-			;;
-		[Dd]evice)
-			echo -n Device
-			;;
-		*)
-			die Did not understand connection manager entity $kind
-			;;
-	esac
-}
+show() {
+  $(needarg raw_kind)
+  $(arg_or_default filter .)
 
-show () {
-	$(needarg raw_kind)
-	$(arg_or_default filter .)
+  local kind=$(normalize_kind "${raw_kind}")
+  local objects="$(get_flimflam_objects ${kind} ${filter})"
 
-	local kind=$(normalize_kind "${raw_kind}")
-	local objects="$(get_flimflam_objects ${kind} ${filter})"
-
-	for object in ${objects}; do
-		echo $object
-		print_properties ${kind} ${object}
-		echo
-	done
+  for object in ${objects}; do
+    echo "${object}"
+    print_properties "${kind}" "${object}"
+    echo
+  done
 }
 
 usage() {
-	cat <<EOF
+  cat <<EOF
 Usage: $0 <command> [args...]
-  show {Devices|Services|Networks} [-filter regex]
-	Show these objects and their properties: If filter is supplied,
-	use it to filter object names.
+  show {Devices|Services} [-filter regex]
+        Show these objects and their properties: If a filter is supplied,
+        use it to filter object names.
 EOF
-	exit
+  exit
 }
 
 $(needarg cmd)
 case "$cmd" in
-	show)
-		show "$@"
-		;;
-	*)
-		usage
-		;;
+  show)
+    show "$@"
+    ;;
+  show-feedback)
+    show "$@" | mask_properties
+    ;;
+  *)
+    usage
+    ;;
 esac
