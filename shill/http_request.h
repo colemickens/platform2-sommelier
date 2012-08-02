@@ -25,7 +25,7 @@ class DNSClient;
 class Error;
 class EventDispatcher;
 class HTTPURL;
-class InputData;
+struct InputData;
 class IOHandler;
 class IPAddress;
 class Sockets;

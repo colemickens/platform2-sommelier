@@ -17,7 +17,7 @@ namespace shill {
 
 class EventDispatcher;
 class GLib;
-class InputData;
+struct InputData;
 class IOHandler;
 class OpenVPNDriver;
 class Sockets;

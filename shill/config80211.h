@@ -55,7 +55,7 @@
 namespace shill {
 
 class Error;
-class InputData;
+struct InputData;
 class Nl80211Message;
 
 // Provides a transport-independent ability to receive status from the wifi

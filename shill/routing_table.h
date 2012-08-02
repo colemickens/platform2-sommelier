@@ -23,7 +23,7 @@ namespace shill {
 
 class RTNLHandler;
 class RTNLListener;
-class RoutingTableEntry;
+struct RoutingTableEntry;
 
 // This singleton maintains an in-process copy of the routing table on
 // a per-interface basis.  It offers the ability for other modules to

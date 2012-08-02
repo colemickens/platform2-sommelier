@@ -51,12 +51,6 @@ const char kPath[] = "/org/chromium/ModemManager/Gobi/0";
 const unsigned char kAddress[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
 const char kAddressAsString[] = "000102030405";
 
-ACTION(SetInterfaceIndex) {
-  if (arg2) {
-    reinterpret_cast<struct ifreq *>(arg2)->ifr_ifindex = kTestInterfaceIndex;
-  }
-}
-
 }  // namespace
 
 class ModemTest : public Test {

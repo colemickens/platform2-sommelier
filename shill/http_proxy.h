@@ -22,7 +22,7 @@ class AsyncConnection;
 class DNSClient;
 class Error;
 class EventDispatcher;
-class InputData;
+struct InputData;
 class IOHandler;
 class IPAddress;
 class Sockets;

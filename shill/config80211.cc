@@ -266,7 +266,7 @@ void Config80211::OnRawNlMessageReceived(InputData *data) {
     // architectures).
     size_t bytes_left = end - buf;
     if (((bytes_left < (offsetof(nlmsghdr, nlmsg_len) +
-                        sizeof(nlmsghdr::nlmsg_len))) ||
+                        sizeof(msg->nlmsg_len))) ||
          (bytes_left < msg->nlmsg_len))) {
       LOG(ERROR) << "Discarding incomplete message.";
       return;
