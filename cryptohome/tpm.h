@@ -27,7 +27,6 @@
 
 namespace cryptohome {
 
-class Crypto;
 class TpmInit;
 
 extern const TSS_UUID kCryptohomeWellKnownUuid;
@@ -71,7 +70,7 @@ class Tpm {
   //   crypto - The Crypto instance to use (for generating an RSA key, entropy,
   //            etc.)
   //   open_key - Whether or not to open (load) the cryptohome TPM key
-  virtual bool Init(Crypto* crypto, Platform* platform, bool open_key);
+  virtual bool Init(Platform* platform, bool open_key);
 
   // Tries to connect to the TPM
   virtual bool Connect(TpmRetryAction* retry_action);
@@ -227,10 +226,6 @@ class Tpm {
   void set_srk_auth(const chromeos::SecureBlob& value) {
     srk_auth_.resize(value.size());
     memcpy(srk_auth_.data(), value.const_data(), srk_auth_.size());
-  }
-
-  void set_crypto(Crypto* value) {
-    crypto_ = value;
   }
 
  protected:
@@ -438,7 +433,6 @@ class Tpm {
   // Member variables
   bool initialized_;
   chromeos::SecureBlob srk_auth_;
-  Crypto* crypto_;
   TSS_HCONTEXT context_handle_;
   TSS_HKEY key_handle_;
 

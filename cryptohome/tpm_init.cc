@@ -33,7 +33,7 @@ class TpmInitTask : public PlatformThread::Delegate {
   void Init(TpmInit* init) {
     init_ = init;
     if (tpm_)
-      tpm_->Init(NULL, platform_, false);
+      tpm_->Init(platform_, false);
   }
 
   virtual void ThreadMain() {

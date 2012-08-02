@@ -20,7 +20,7 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
 
-#include "crypto.h"
+#include "cryptolib.h"
 #include "platform.h"
 #include "tpm_init.h"
 
@@ -79,7 +79,6 @@ Tpm* Tpm::GetSingleton() {
 Tpm::Tpm()
     : initialized_(false),
       srk_auth_(kDefaultSrkAuth, sizeof(kDefaultSrkAuth)),
-      crypto_(NULL),
       context_handle_(0),
       key_handle_(0),
       owner_password_(),
@@ -94,14 +93,12 @@ Tpm::~Tpm() {
   Disconnect();
 }
 
-bool Tpm::Init(Crypto* crypto, Platform* platform, bool open_key) {
+bool Tpm::Init(Platform* platform, bool open_key) {
   if (initialized_) {
     return false;
   }
   initialized_ = true;
-  DCHECK(crypto);
   DCHECK(platform);
-  crypto_ = crypto;
   platform_ = platform;
 
   // Migrate any old status files from old location to new location.
@@ -418,7 +415,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
     // be migrated, but to create the key outside of the TPM, we have to do it
     // this way.
     SecureBlob migration_password(kDefaultDiscardableWrapPasswordLength);
-    crypto_->GetSecureRandom(
+    CryptoLib::GetSecureRandom(
         static_cast<unsigned char*>(migration_password.data()),
         migration_password.size());
     if (TPM_ERROR(*result = Tspi_Policy_SetSecret(policy_handle,
@@ -437,7 +434,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
 
     SecureBlob n;
     SecureBlob p;
-    if (!crypto_->CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
+    if (!CryptoLib::CreateRsaKey(kDefaultTpmRsaKeyBits, &n, &p)) {
       LOG(ERROR) << "Error creating RSA key";
       return false;
     }
@@ -751,7 +748,7 @@ Tpm::TpmRetryAction Tpm::GetPublicKeyHash(SecureBlob* hash) {
     return HandleError(result);
   }
 
-  *hash = crypto_->GetSha1(pubkey);
+  *hash = CryptoLib::Sha1(pubkey);
   return RetryNone;
 }
 
@@ -803,7 +800,7 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
 
   SecureBlob aes_key;
   SecureBlob iv;
-  if (!crypto_->PasskeyToAesKey(password,
+  if (!CryptoLib::PasskeyToAesKey(password,
                                 salt,
                                 password_rounds,
                                 &aes_key,
@@ -812,7 +809,7 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
     return false;
   }
 
-  unsigned int aes_block_size = crypto_->GetAesBlockSize();
+  unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
   if (aes_block_size > local_data.size()) {
     LOG(ERROR) << "Encrypted data is too small.";
     return false;
@@ -820,9 +817,10 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
   unsigned int offset = local_data.size() - aes_block_size;
 
   SecureBlob passkey_part;
-  if (!crypto_->AesEncryptSpecifyBlockMode(local_data, offset, aes_block_size,
-                                           aes_key, iv, Crypto::kPaddingNone,
-                                           Crypto::kEcb, &passkey_part)) {
+  if (!CryptoLib::AesEncryptSpecifyBlockMode(local_data, offset, aes_block_size,
+                                             aes_key, iv,
+                                             CryptoLib::kPaddingNone,
+                                             CryptoLib::kEcb, &passkey_part)) {
     LOG(ERROR) << "AES encryption failed.";
     return false;
   }
@@ -847,16 +845,16 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
 
   SecureBlob aes_key;
   SecureBlob iv;
-  if (!crypto_->PasskeyToAesKey(password,
-                                salt,
-                                password_rounds,
-                                &aes_key,
-                                &iv)) {
+  if (!CryptoLib::PasskeyToAesKey(password,
+                                  salt,
+                                  password_rounds,
+                                  &aes_key,
+                                  &iv)) {
     LOG(ERROR) << "Failure converting passkey to key";
     return false;
   }
 
-  unsigned int aes_block_size = crypto_->GetAesBlockSize();
+  unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
   if (aes_block_size > data.size()) {
     LOG(ERROR) << "Input data is too small.";
     return false;
@@ -864,9 +862,9 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
   unsigned int offset = data.size() - aes_block_size;
 
   SecureBlob passkey_part;
-  if (!crypto_->AesDecryptSpecifyBlockMode(data, offset, aes_block_size,
-                                           aes_key, iv, Crypto::kPaddingNone,
-                                           Crypto::kEcb, &passkey_part)) {
+  if (!CryptoLib::AesDecryptSpecifyBlockMode(data, offset, aes_block_size,
+                                           aes_key, iv, CryptoLib::kPaddingNone,
+                                           CryptoLib::kEcb, &passkey_part)) {
     LOG(ERROR) << "AES decryption failed.";
     return false;
   }
@@ -1095,11 +1093,12 @@ void Tpm::CreateOwnerPassword(SecureBlob* password) {
   // Generate a random owner password.  The default is a 12-character,
   // hex-encoded password created from 6 bytes of random data.
   SecureBlob random(kOwnerPasswordLength / 2);
-  crypto_->GetSecureRandom(static_cast<unsigned char*>(random.data()),
-                           random.size());
+  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(random.data()),
+                             random.size());
   SecureBlob tpm_password(kOwnerPasswordLength);
-  crypto_->AsciiEncodeToBuffer(random, static_cast<char*>(tpm_password.data()),
-                               tpm_password.size());
+  CryptoLib::AsciiEncodeToBuffer(random,
+                                 static_cast<char*>(tpm_password.data()),
+                                 tpm_password.size());
   password->swap(tpm_password);
 }
 

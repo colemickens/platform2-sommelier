@@ -98,7 +98,7 @@ bool Crypto::Init(Platform* platform) {
     tpm_ = Tpm::GetSingleton();
   }
   if (tpm_) {
-    tpm_->Init(this, platform, true);
+    tpm_->Init(platform, true);
   }
   return true;
 }
