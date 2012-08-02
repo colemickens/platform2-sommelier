@@ -323,7 +323,11 @@ main() {
   shift
   shift
 
-  # light-up the screen if possible
+  # Wait until the boot-alert-ready abstract job has started, indicating that
+  # it's safe to display an alert onscreen.
+  initctl emit boot-alert-request
+
+  # Light up the screen if possible.
   if [ -x /usr/sbin/lightup_screen ]; then
     /usr/sbin/lightup_screen >/dev/null 2>&1
   fi

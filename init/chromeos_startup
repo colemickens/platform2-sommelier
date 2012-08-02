@@ -12,7 +12,6 @@ cleanup_mounts()
     umount -n ${mount_point}
   done
   # Leave /mnt/stateful_partition mounted for clobber-state to handle.
-  [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
   chromeos-boot-alert self_repair /dev/tty1
   clobber-log --repair "$STATE_DEV" "Self-repair incoherent stateful partition"
   exec clobber-state "fast keepimg"
@@ -46,29 +45,6 @@ bootstat pre-startup
 IS_FACTORY_MODE=
 if [ -f /root/.factory_test -o -f /root/.factory_installer ]; then
   IS_FACTORY_MODE=1
-fi
-
-# Splash screen! Unless we are in noninteractive mode.
-# TODO(sosa@chromium.org) - Use kernel flag
-BOOT_SPLASH_PID=
-if [ -z "$IS_FACTORY_MODE" ]; then
-  # Disable blinking cursor. Without this, a splash screen will show a distinct
-  # cursor shape even when the cursor is set to none.
-  echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
-
-  # Use differently-sized images depending on the framebuffer width.
-  WIDTH=$(ply-image --print-resolution | cut -d ' ' -f 1)
-  ASSETS=/usr/share/chromeos-assets
-  ASSETS_200=$ASSETS/images_200_percent
-  ASSETS_100=$ASSETS/images_100_percent
-  if [ $WIDTH -gt 1920 -a -e "$ASSETS_200/boot_splash_frame01.png" ]; then
-    BOOT_IMAGES="$ASSETS_200"/boot_splash_frame*.png
-  else
-    BOOT_IMAGES="$ASSETS_100"/boot_splash_frame*.png
-  fi
-  ply-image --gamma /usr/share/color/bin/internal_display.bin \
-    --clear 0xfefefe $BOOT_IMAGES &
-  BOOT_SPLASH_PID="$!"
 fi
 
 mkdir -p /dev/shm /dev/pts
@@ -113,7 +89,6 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
          "$STATE_DEV" /mnt/stateful_partition; then
     # Try to rebuild the stateful partition by  clobber-state
     # (for security concern, we don't use fast mode)
-    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert self_repair /dev/tty1
     clobber-log --repair "$STATE_DEV" "Self-repair corrupted stateful partition"
     exec clobber-state "keepimg"
@@ -150,7 +125,6 @@ if ! crossystem "fwupdate_tries?0" "mainfw_type?normal" &&
     Alex | ZGB )
       if [ "$(crossystem mainfw_type)" = developer ]; then
         tries=0  # Prevents updates if we're in developer mode
-        [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
         chromeos-boot-alert dev_fwcheck /dev/tty1
       fi
       ;;
@@ -161,7 +135,6 @@ if ! crossystem "fwupdate_tries?0" "mainfw_type?normal" &&
     # More messages on console for developer mode and dev builds.
     [ "$CROS_DEBUG" = "1" ] &&
       FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS" || true
-    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert update_firmware /dev/tty1
     (date && "$FIRMWARE_UPDATE_SCRIPT" --mode=startup 2>&1) |
       tee -a $FIRMWARE_UPDATE_LOGS
@@ -193,7 +166,6 @@ if [ ${DEV_MODE} -eq 1 ]; then
   # For platforms using separated normal/developer firmware, we need to display
   # an extra page for developer mode warning.
   if [ "${FW_TYPE}" != "developer" ]; then
-    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert warn_dev /dev/tty1
   fi
 fi
@@ -206,7 +178,6 @@ if [ ${DEV_MODE} -eq 1 -a ! -O ${DEV_MODE_FILE} ]; then
   # TODO(wad) just have the dev_mode build stamp the stateful.
   if [ ! -f /root/.dev_mode ]; then
     # TODO(wad) Throw up a splash.
-    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert enter_dev /dev/tty1
     # TODO(wad,wfrichar) Have user input sudo/vt2 password here.
     echo "keepimg" > ${RESET_FILE}
@@ -218,7 +189,6 @@ elif [ ${DEV_MODE} -eq 0 -a -O ${DEV_MODE_FILE} ]; then
   # When coming back from developer mode, we don't need to clobber
   # as aggressively. Fast will do the trick.
   if [ ! -f /root/.dev_mode ]; then
-    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert leave_dev /dev/tty1
     echo "fast keepimg" > ${RESET_FILE}
     clobber-log -- "Leave developer mode"
@@ -265,7 +235,6 @@ fi
 # Check if the stateful partition has requested self-destruction
 # This is used for the factory install process
 if [ -O "$RESET_FILE" ]; then
-  [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
   chromeos-boot-alert wipe /dev/tty1 \
     /mnt/stateful_partition/wipe_splash.png
   ARGS="$(cat ${RESET_FILE})"
