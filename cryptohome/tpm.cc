@@ -21,7 +21,6 @@
 #include <trousers/trousers.h>
 
 #include "crypto.h"
-#include "mount.h"
 #include "platform.h"
 #include "tpm_init.h"
 
