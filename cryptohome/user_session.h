@@ -21,8 +21,6 @@
 
 namespace cryptohome {
 
-class Crypto;
-
 class UserSession {
  public:
   UserSession();
@@ -33,7 +31,7 @@ class UserSession {
   // Parameters
   //   crypto - The crypto context to use for this session
   //   salt - The salt to use for the username
-  virtual void Init(Crypto* crypto, const chromeos::SecureBlob& salt);
+  virtual void Init(const chromeos::SecureBlob& salt);
 
   // Assigns a user to the UserSession object.  The random blob is created and
   // encrypted with the supplied credentials.
@@ -74,7 +72,6 @@ class UserSession {
  private:
   std::string obfuscated_username_;
   std::string username_;
-  Crypto* crypto_;
   chromeos::SecureBlob username_salt_;
   chromeos::SecureBlob key_salt_;
   chromeos::SecureBlob cipher_;

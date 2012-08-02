@@ -23,6 +23,7 @@ extern "C" {
 }
 
 #include "cryptohome_common.h"
+#include "cryptolib.h"
 #include "platform.h"
 #include "username_passkey.h"
 
@@ -71,10 +72,6 @@ const unsigned int kScryptHeaderLength = 128;
 // The number of hash rounds we originally used when converting a password to a
 // key.  This is used when converting older cryptohome vault keysets.
 const unsigned int kDefaultLegacyPasswordRounds = 1;
-
-// The current number of hash rounds we use.  Large enough to be a measurable
-// amount of time, but not add too much overhead to login (around 10ms).
-const unsigned int kDefaultPasswordRounds = 1337;
 
 // AES key size in bytes (256-bit).  This key size is used for all key creation,
 // though we currently only use 128 bits for the eCryptfs File Encryption Key

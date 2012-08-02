@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 #include <string>
 
-#include "crypto.h"
+#include "cryptolib.h"
 #include "mock_platform.h"
 #include "username_passkey.h"
 
@@ -26,10 +26,9 @@ class UserSessionTest : public ::testing::Test {
   virtual ~UserSessionTest() { }
 
   void SetUp() {
-    Crypto crypto;
     salt.resize(16);
-    crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
-                           salt.size());
+    CryptoLib::GetSecureRandom(static_cast<unsigned char*>(salt.data()),
+                               salt.size());
   }
 
  protected:
@@ -41,17 +40,15 @@ class UserSessionTest : public ::testing::Test {
 
 TEST_F(UserSessionTest, InitTest) {
   UsernamePasskey up("username", SecureBlob("password", 8));
-  Crypto crypto;
   UserSession session;
-  session.Init(&crypto, salt);
+  session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
 }
 
 TEST_F(UserSessionTest, CheckUserTest) {
   UsernamePasskey up("username", SecureBlob("password", 8));
-  Crypto crypto;
   UserSession session;
-  session.Init(&crypto, salt);
+  session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
   EXPECT_TRUE(session.CheckUser(up));
 }
@@ -59,9 +56,8 @@ TEST_F(UserSessionTest, CheckUserTest) {
 TEST_F(UserSessionTest, ReInitTest) {
   UsernamePasskey up("username", SecureBlob("password", 8));
   UsernamePasskey up_new("username2", SecureBlob("password2", 9));
-  Crypto crypto;
   UserSession session;
-  session.Init(&crypto, salt);
+  session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
   EXPECT_TRUE(session.SetUser(up_new));
   EXPECT_FALSE(session.CheckUser(up));
@@ -70,9 +66,8 @@ TEST_F(UserSessionTest, ReInitTest) {
 
 TEST_F(UserSessionTest, ResetTest) {
   UsernamePasskey up("username", SecureBlob("password", 8));
-  Crypto crypto;
   UserSession session;
-  session.Init(&crypto, salt);
+  session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
   session.Reset();
   EXPECT_FALSE(session.CheckUser(up));
@@ -80,9 +75,8 @@ TEST_F(UserSessionTest, ResetTest) {
 
 TEST_F(UserSessionTest, VerifyTest) {
   UsernamePasskey up("username", SecureBlob("password", 8));
-  Crypto crypto;
   UserSession session;
-  session.Init(&crypto, salt);
+  session.Init(salt);
   EXPECT_TRUE(session.SetUser(up));
   EXPECT_TRUE(session.Verify(up));
 }

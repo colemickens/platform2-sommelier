@@ -183,6 +183,23 @@ bool CryptoLib::PasskeyToAesKey(const chromeos::Blob& passkey,
   return true;
 }
 
+bool CryptoLib::AesEncrypt(const chromeos::Blob& plaintext,
+                           const SecureBlob& key,
+                           const SecureBlob& iv,
+                           SecureBlob* ciphertext) {
+  return AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(), key, iv,
+                                    kPaddingCryptohomeDefault, kCbc,
+                                    ciphertext);
+}
+
+bool CryptoLib::AesDecrypt(const chromeos::Blob& ciphertext,
+                           const SecureBlob& key,
+                           const SecureBlob& iv,
+                           SecureBlob* plaintext) {
+  return AesDecryptSpecifyBlockMode(ciphertext, 0, ciphertext.size(), key, iv,
+                                    kPaddingCryptohomeDefault, kCbc, plaintext);
+}
+
 // This is the reverse operation of AesEncryptSpecifyBlockMode above.  See that
 // method for a description of how padding and block_mode affect the crypto
 // operations.  This method automatically removes and verifies the padding, so

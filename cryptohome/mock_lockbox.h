@@ -30,9 +30,6 @@ class MockLockbox : public Lockbox {
   MOCK_METHOD1(set_tpm, void(Tpm*));  // NOLINT
   MOCK_METHOD0(tpm, Tpm*());
 
-  MOCK_METHOD1(set_crypto, void(Crypto*));  // NOLINT
-  MOCK_METHOD0(crypto, Crypto*());
-
   MOCK_METHOD1(set_platform, void(Platform*));  // NOLINT
   MOCK_METHOD0(platform, Platform*());
 

@@ -21,6 +21,8 @@
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
+#include "cryptolib.h"
+
 using chromeos::SecureBlob;
 
 namespace cryptohome {
@@ -49,8 +51,6 @@ Lockbox::Lockbox(Tpm* tpm, uint32_t nvram_index)
     nvram_index_(nvram_index),
     nvram_version_(kNvramVersionDefault),
     process_(new chromeos::ProcessImpl()),
-    default_crypto_(new Crypto()),
-    crypto_(default_crypto_.get()),
     contents_(new LockboxContents()) {
 }
 
@@ -219,7 +219,7 @@ bool Lockbox::Verify(const chromeos::Blob& blob, ErrorId* error) {
                     contents_->salt,
                     contents_->salt + contents_->salt_size);
 
-  SecureBlob hash = crypto_->GetSha256(salty_blob);
+  SecureBlob hash = CryptoLib::Sha256(salty_blob);
   // Maybe release the duplicate blob data.
   // TODO(wad) Add Crypto::GatherSha256 which takes a vector of blobs.
   salty_blob.resize(0);
@@ -300,7 +300,7 @@ bool Lockbox::Store(const chromeos::Blob& blob, ErrorId* error) {
   salty_blob.insert(salty_blob.end(), salt.begin(), salt.end());
 
   // Insert the hash into the NVRAM.
-  SecureBlob nvram_blob = crypto_->GetSha256(salty_blob);
+  SecureBlob nvram_blob = CryptoLib::Sha256(salty_blob);
   DCHECK(kReservedDigestBytes == nvram_blob.size());
   memcpy(contents_->hash, &nvram_blob[0], sizeof(contents_->hash));
 
@@ -386,7 +386,7 @@ void Lockbox::FinalizeMountEncrypted(const chromeos::Blob &entropy) const {
   int rc;
 
   // Take hash of entropy and convert to hex string for cmdline.
-  SecureBlob hash = crypto_->GetSha256(entropy);
+  SecureBlob hash = CryptoLib::Sha256(entropy);
   hex = chromeos::AsciiEncode(hash);
 
   process_->Reset(0);

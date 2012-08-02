@@ -11,6 +11,8 @@
 
 namespace cryptohome {
 
+extern const unsigned int kDefaultPasswordRounds;
+
 class CryptoLib {
  public:
   CryptoLib();
@@ -37,6 +39,30 @@ class CryptoLib {
                               unsigned int rounds,
                               chromeos::SecureBlob* key,
                               chromeos::SecureBlob* iv);
+
+  // AES decrypts the wrapped blob
+  //
+  // Parameters
+  //   wrapped - The blob containing the encrypted data
+  //   key - The AES key to use in decryption
+  //   iv - The initialization vector to use
+  //   plaintext - The unwrapped (decrypted) data
+  static bool AesDecrypt(const chromeos::Blob& ciphertext,
+                        const chromeos::SecureBlob& key,
+                        const chromeos::SecureBlob& iv,
+                        chromeos::SecureBlob* plaintext);
+
+  // AES encrypts the plain text data using the specified key
+  //
+  // Parameters
+  //   plaintext - The plain text data to encrypt
+  //   key - The AES key to use
+  //   iv - The initialization vector to use
+  //   ciphertext - On success, the encrypted data
+  static bool AesEncrypt(const chromeos::Blob& plaintext,
+                         const chromeos::SecureBlob& key,
+                         const chromeos::SecureBlob& iv,
+                         chromeos::SecureBlob* ciphertext);
   // Same as AesDecrypt, but allows using either CBC or ECB
   static bool AesDecryptSpecifyBlockMode(const chromeos::Blob& ciphertext,
                                          unsigned int start, unsigned int count,

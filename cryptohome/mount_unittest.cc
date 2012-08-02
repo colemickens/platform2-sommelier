@@ -167,7 +167,7 @@ TEST_F(MountTest, CurrentCredentialsTest) {
 
   NiceMock<MockUserSession> user_session;
   Crypto crypto;
-  user_session.Init(&crypto, SecureBlob());
+  user_session.Init(SecureBlob());
   user_session.SetUser(up);
   mount.set_current_user(&user_session);
 
@@ -1156,7 +1156,7 @@ TEST_F(MountTest, MountForUserOrderingTest) {
   SecureBlob salt;
   salt.resize(16);
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()), salt.size());
-  session.Init(&crypto, salt);
+  session.Init(salt);
   UsernamePasskey up("username", SecureBlob("password", 8));
   EXPECT_TRUE(session.SetUser(up));
 

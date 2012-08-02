@@ -14,7 +14,6 @@
 #include <chromeos/process.h>
 #include <chromeos/utility.h>
 
-#include "crypto.h"
 #include "tpm.h"
 
 
@@ -128,12 +127,6 @@ class Lockbox {
   // - false if the data could not be persisted.
   virtual bool Store(const chromeos::Blob& data, ErrorId* error);
 
-  // Replaces the crypto implementation.
-  // Does NOT take ownership of the pointer.
-  virtual void set_crypto(Crypto* crypto) { crypto_ = crypto; }
-
-  virtual Crypto* crypto() { return crypto_; }
-
   // Replaces the tpm implementation.
   // Does NOT take ownership of the pointer.
   virtual void set_tpm(Tpm* tpm) { tpm_ = tpm; }
@@ -195,8 +188,6 @@ class Lockbox {
   uint32_t nvram_index_;
   uint32_t nvram_version_;
   chromeos::Process* process_;
-  scoped_ptr<Crypto> default_crypto_;
-  Crypto* crypto_;
   scoped_ptr<LockboxContents> contents_;
 
   DISALLOW_COPY_AND_ASSIGN(Lockbox);

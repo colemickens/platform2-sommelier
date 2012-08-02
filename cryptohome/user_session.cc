@@ -8,7 +8,7 @@
 
 #include <openssl/evp.h>
 
-#include "crypto.h"
+#include "cryptolib.h"
 
 using chromeos::SecureBlob;
 
@@ -17,14 +17,11 @@ namespace cryptohome {
 const int kUserSessionSaltLength = 16;
 const int kUserSessionIdLength = 128;
 
-UserSession::UserSession()
-    : crypto_(NULL) {
-}
+UserSession::UserSession() { }
 
 UserSession::~UserSession() { }
 
-void UserSession::Init(Crypto* crypto, const SecureBlob& salt) {
-  crypto_ = crypto;
+void UserSession::Init(const SecureBlob& salt) {
   username_salt_.assign(salt.begin(), salt.end());
 }
 
@@ -33,26 +30,26 @@ bool UserSession::SetUser(const Credentials& credentials) {
   username_ = credentials.username();
 
   key_salt_.resize(PKCS5_SALT_LEN);
-  crypto_->GetSecureRandom(static_cast<unsigned char*>(key_salt_.data()),
-                           key_salt_.size());
+  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(key_salt_.data()),
+                             key_salt_.size());
   SecureBlob plaintext(kUserSessionIdLength);
-  crypto_->GetSecureRandom(static_cast<unsigned char*>(plaintext.data()),
-                           plaintext.size());
+  CryptoLib::GetSecureRandom(static_cast<unsigned char*>(plaintext.data()),
+                             plaintext.size());
 
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);
 
   SecureBlob aes_key;
   SecureBlob aes_iv;
-  if (!crypto_->PasskeyToAesKey(passkey,
-                                key_salt_,
-                                cryptohome::kDefaultPasswordRounds,
-                                &aes_key,
-                                &aes_iv)) {
+  if (!CryptoLib::PasskeyToAesKey(passkey,
+                                  key_salt_,
+                                  cryptohome::kDefaultPasswordRounds,
+                                  &aes_key,
+                                  &aes_iv)) {
     return false;
   }
 
-  return crypto_->AesEncrypt(plaintext, aes_key, aes_iv, &cipher_);
+  return CryptoLib::AesEncrypt(plaintext, aes_key, aes_iv, &cipher_);
 }
 
 void UserSession::Reset() {
@@ -78,16 +75,16 @@ bool UserSession::Verify(const Credentials& credentials) const {
 
   SecureBlob aes_key;
   SecureBlob aes_iv;
-  if (!crypto_->PasskeyToAesKey(passkey,
-                                key_salt_,
-                                cryptohome::kDefaultPasswordRounds,
-                                &aes_key,
-                                &aes_iv)) {
+  if (!CryptoLib::PasskeyToAesKey(passkey,
+                                  key_salt_,
+                                  cryptohome::kDefaultPasswordRounds,
+                                  &aes_key,
+                                  &aes_iv)) {
     return false;
   }
 
   SecureBlob plaintext;
-  return crypto_->AesDecrypt(cipher_, aes_key, aes_iv, &plaintext);
+  return CryptoLib::AesDecrypt(cipher_, aes_key, aes_iv, &plaintext);
 }
 
 void UserSession::GetObfuscatedUsername(std::string* username) const {

@@ -17,13 +17,11 @@ namespace cryptohome {
 using ::testing::_;
 using ::testing::Invoke;
 
-class Crypto;
-
 class MockUserSession : public UserSession {
  public:
   MockUserSession()
       : user_session_() {
-    ON_CALL(*this, Init(_, _))
+    ON_CALL(*this, Init(_))
         .WillByDefault(Invoke(&user_session_, &UserSession::Init));
     ON_CALL(*this, SetUser(_))
         .WillByDefault(Invoke(&user_session_, &UserSession::SetUser));
@@ -35,7 +33,7 @@ class MockUserSession : public UserSession {
         .WillByDefault(Invoke(&user_session_, &UserSession::Verify));
   }
   ~MockUserSession() {}
-  MOCK_METHOD2(Init, void(Crypto*, const chromeos::SecureBlob&));
+  MOCK_METHOD1(Init, void(const chromeos::SecureBlob&));
   MOCK_METHOD1(SetUser, bool(const Credentials&));
   MOCK_METHOD0(Reset, void(void));
   MOCK_CONST_METHOD1(CheckUser, bool(const Credentials&));
