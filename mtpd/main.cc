@@ -17,6 +17,11 @@
 #include <chromeos/syslog_logging.h>
 #include <gflags/gflags.h>
 
+#include "mtpd/daemon.h"
+
+using mtpd::Daemon;
+
+// TODO(thestig) Use base::CommandLine and drop gflags.
 DEFINE_bool(foreground, false,
             "Don't daemon()ize; run in foreground.");
 DEFINE_int32(minloglevel, logging::LOG_WARNING,
@@ -35,6 +40,18 @@ void SetupLogging() {
   }
   chromeos::InitLog(log_flags);
   logging::SetMinLogLevel(FLAGS_minloglevel);
+}
+
+// This callback will be invoked once there is a new device event that
+// should be processed by the Daemon::ProcessDeviceEvents().
+gboolean DeviceEventCallback(GIOChannel* source,
+                             GIOCondition condition,
+                             gpointer data) {
+  Daemon* daemon = reinterpret_cast<Daemon*>(data);
+  daemon->ProcessDeviceEvents();
+  // This function should always return true so that the main loop
+  // continues to select on device event file descriptor.
+  return true;
 }
 
 // This callback will be inovked when this process receives SIGINT or SIGTERM.
@@ -73,6 +90,21 @@ int main(int argc, char** argv) {
   DBus::Glib::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   dispatcher.attach(NULL);
+
+  LOG(INFO) << "Creating the mtpd server";
+  DBus::Connection server_conn = DBus::Connection::SystemBus();
+  // TODO(thestig) Move string constants to system_api/dbus/service_constants.h.
+  //server_conn.request_name(mtpd::kMtpdServiceName);
+  server_conn.request_name("org.chromium.Mtpd");
+  Daemon daemon(&server_conn);
+
+  // Set up a monitor for handling device events.
+  g_io_add_watch_full(g_io_channel_unix_new(daemon.GetDeviceEventDescriptor()),
+                      G_PRIORITY_HIGH_IDLE,
+                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
+                      DeviceEventCallback,
+                      &daemon,
+                      NULL);
 
   g_main_loop_run(loop);
 
