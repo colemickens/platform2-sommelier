@@ -2,59 +2,63 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "remote_attestation.h"
+#include "attestation.h"
 
 #include <string>
 
 #include <base/file_util.h>
+#include <base/time.h>
 #include <chromeos/secure_blob.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
 
+#include "attestation.pb.h"
 #include "cryptolib.h"
-#include "remote_attestation.pb.h"
 #include "tpm.h"
 
 using std::string;
 
 namespace cryptohome {
 
-const size_t RemoteAttestation::kQuoteExternalDataSize = 20;
-const size_t RemoteAttestation::kCipherKeySize = 32;
-const size_t RemoteAttestation::kCipherBlockSize = 16;
-const char* RemoteAttestation::kDefaultDatabasePath =
+const size_t Attestation::kQuoteExternalDataSize = 20;
+const size_t Attestation::kCipherKeySize = 32;
+const size_t Attestation::kCipherBlockSize = 16;
+const char* Attestation::kDefaultDatabasePath =
     "/home/.shadow/attestation.epb";
 
-bool RemoteAttestation::IsPreparedForEnrollment() {
+bool Attestation::IsPreparedForEnrollment() {
   base::AutoLock lock(prepare_lock_);
-  if (!is_prepared_) {
+  if (!is_prepared_ && tpm_) {
     EncryptedDatabase encrypted_db;
     AttestationDatabase db;
     if (!LoadDatabase(&encrypted_db)) {
-      LOG(INFO) << "Remote Attestation: Attestation data not found.";
+      LOG(INFO) << "Attestation: Attestation data not found.";
       return false;
     }
     if (!DecryptDatabase(encrypted_db, &db)) {
-      LOG(ERROR) << "Remote Attestation: Attestation data invalid.";
+      LOG(ERROR) << "Attestation: Attestation data invalid.";
       return false;
     }
-    LOG(INFO) << "Remote Attestation: Valid attestation data exists.";
+    LOG(INFO) << "Attestation: Valid attestation data exists.";
+    // Make sure the owner password is not being held on our account.
+    tpm_->RemoveOwnerDependency(Tpm::kAttestation);
     is_prepared_ = true;
   }
   return is_prepared_;
 }
 
-void RemoteAttestation::PrepareForEnrollment() {
+void Attestation::PrepareForEnrollment() {
   // If there is no TPM, we have no work to do.
   if (!tpm_)
     return;
   if (IsPreparedForEnrollment())
     return;
-  LOG(INFO) << "Remote Attestation: Initializing...";
+  base::TimeTicks start = base::TimeTicks::Now();
+  LOG(INFO) << "Attestation: Preparing for enrollment...";
   chromeos::SecureBlob ek_public_key;
   if (!tpm_->GetEndorsementPublicKey(&ek_public_key)) {
-    LOG(ERROR) << "Remote Attestation: Failed to get EK public key.";
+    LOG(ERROR) << "Attestation: Failed to get EK public key.";
     return;
   }
   // Create an AIK.
@@ -70,14 +74,14 @@ void RemoteAttestation::PrepareForEnrollment() {
                           &identity_binding, &identity_label, &pca_public_key,
                           &endorsement_credential, &platform_credential,
                           &conformance_credential)) {
-    LOG(ERROR) << "Remote Attestation: Failed to make AIK.";
+    LOG(ERROR) << "Attestation: Failed to make AIK.";
     return;
   }
 
   // Quote PCR0.
   chromeos::SecureBlob external_data;
   if (!tpm_->GetRandomData(kQuoteExternalDataSize, &external_data)) {
-    LOG(ERROR) << "Remote Attestation: GetRandomData failed.";
+    LOG(ERROR) << "Attestation: GetRandomData failed.";
     return;
   }
   chromeos::SecureBlob quoted_pcr_value;
@@ -85,7 +89,7 @@ void RemoteAttestation::PrepareForEnrollment() {
   chromeos::SecureBlob quote;
   if (!tpm_->QuotePCR0(identity_key_blob, external_data, &quoted_pcr_value,
                        &quoted_data, &quote)) {
-    LOG(ERROR) << "Remote Attestation: Failed to generate quote.";
+    LOG(ERROR) << "Attestation: Failed to generate quote.";
     return;
   }
 
@@ -119,35 +123,32 @@ void RemoteAttestation::PrepareForEnrollment() {
   quote_pb->set_quoted_pcr_value(quoted_pcr_value.data(),
                                  quoted_pcr_value.size());
   if (!tpm_->GetRandomData(kCipherKeySize, &database_key_)) {
-    LOG(ERROR) << "Remote Attestation: GetRandomData failed.";
+    LOG(ERROR) << "Attestation: GetRandomData failed.";
     return;
   }
   chromeos::SecureBlob sealed_key;
   if (!tpm_->SealToPCR0(database_key_, &sealed_key)) {
-    LOG(ERROR) << "Remote Attestation: Failed to seal cipher key.";
+    LOG(ERROR) << "Attestation: Failed to seal cipher key.";
     return;
   }
   EncryptedDatabase encrypted_pb;
   encrypted_pb.set_sealed_key(sealed_key.data(), sealed_key.size());
   if (!EncryptDatabase(database_pb, &encrypted_pb)) {
-    LOG(ERROR) << "Remote Attestation: Failed to encrypt db.";
+    LOG(ERROR) << "Attestation: Failed to encrypt db.";
     return;
   }
   if (!StoreDatabase(encrypted_pb)) {
-    LOG(ERROR) << "Remote Attestation: Failed to store db.";
+    LOG(ERROR) << "Attestation: Failed to store db.";
     return;
   }
-  LOG(INFO) << "Remote Attestation: Initialization successful.";
-  tpm_->RemoveOwnerDependency(Tpm::kRemoteAttestation);
+  tpm_->RemoveOwnerDependency(Tpm::kAttestation);
+  base::TimeDelta delta = (base::TimeTicks::Now() - start);
+  LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
+            << "ms).";
 }
 
-void RemoteAttestation::PrepareForEnrollmentAsync() {
-  // TODO(dkrahn): Implement this.
-  PrepareForEnrollment();
-}
-
-bool RemoteAttestation::EncryptDatabase(const AttestationDatabase& db,
-                                        EncryptedDatabase* encrypted_db) {
+bool Attestation::EncryptDatabase(const AttestationDatabase& db,
+                                  EncryptedDatabase* encrypted_db) {
   chromeos::SecureBlob iv;
   if (!tpm_->GetRandomData(kCipherBlockSize, &iv)) {
     LOG(ERROR) << "GetRandomData failed.";
@@ -171,8 +172,8 @@ bool RemoteAttestation::EncryptDatabase(const AttestationDatabase& db,
   return true;
 }
 
-bool RemoteAttestation::DecryptDatabase(const EncryptedDatabase& encrypted_db,
-                                        AttestationDatabase* db) {
+bool Attestation::DecryptDatabase(const EncryptedDatabase& encrypted_db,
+                                  AttestationDatabase* db) {
   chromeos::SecureBlob sealed_key(encrypted_db.sealed_key().data(),
                                   encrypted_db.sealed_key().length());
   if (!tpm_->Unseal(sealed_key, &database_key_)) {
@@ -204,7 +205,7 @@ bool RemoteAttestation::DecryptDatabase(const EncryptedDatabase& encrypted_db,
   return true;
 }
 
-string RemoteAttestation::ComputeHMAC(const EncryptedDatabase& encrypted_db) {
+string Attestation::ComputeHMAC(const EncryptedDatabase& encrypted_db) {
   chromeos::SecureBlob hmac_input(encrypted_db.iv().length() +
                                   encrypted_db.encrypted_data().length());
   memcpy(&hmac_input[0], encrypted_db.iv().data(), encrypted_db.iv().length());
@@ -215,7 +216,7 @@ string RemoteAttestation::ComputeHMAC(const EncryptedDatabase& encrypted_db) {
   return string(reinterpret_cast<char*>(hmac.data()), hmac.size());
 }
 
-bool RemoteAttestation::StoreDatabase(const EncryptedDatabase& encrypted_db) {
+bool Attestation::StoreDatabase(const EncryptedDatabase& encrypted_db) {
   string database_serial;
   if (!encrypted_db.SerializeToString(&database_serial)) {
     LOG(ERROR) << "Failed to serialize encrypted db.";
@@ -229,7 +230,7 @@ bool RemoteAttestation::StoreDatabase(const EncryptedDatabase& encrypted_db) {
   return true;
 }
 
-bool RemoteAttestation::LoadDatabase(EncryptedDatabase* encrypted_db) {
+bool Attestation::LoadDatabase(EncryptedDatabase* encrypted_db) {
   string serial;
   if (!file_util::ReadFileToString(database_path_, &serial)) {
     return false;

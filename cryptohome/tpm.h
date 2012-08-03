@@ -43,7 +43,7 @@ class Tpm {
 
   enum TpmOwnerDependency {
     kInstallAttributes,
-    kRemoteAttestation
+    kAttestation
   };
 
   struct TpmStatusInfo {

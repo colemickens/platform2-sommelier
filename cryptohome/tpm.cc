@@ -1434,7 +1434,7 @@ bool Tpm::InitializeTpm(bool* OUT_took_ownership) {
     tpm_status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
                          TpmStatus::USES_WELL_KNOWN_OWNER |
                          TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                         TpmStatus::REMOTE_ATTESTATION_NEEDS_OWNER);
+                         TpmStatus::ATTESTATION_NEEDS_OWNER);
     tpm_status.clear_owner_password();
     StoreTpmStatus(tpm_status);
   }
@@ -1479,7 +1479,7 @@ bool Tpm::InitializeTpm(bool* OUT_took_ownership) {
     tpm_status.set_flags(TpmStatus::OWNED_BY_THIS_INSTALL |
                          TpmStatus::USES_RANDOM_OWNER |
                          TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                         TpmStatus::REMOTE_ATTESTATION_NEEDS_OWNER);
+                         TpmStatus::ATTESTATION_NEEDS_OWNER);
     if (!StoreOwnerPassword(owner_password, &tpm_status)) {
       tpm_status.clear_owner_password();
     }
@@ -1874,7 +1874,7 @@ void Tpm::ClearStoredOwnerPassword() {
   TpmStatus tpm_status;
   if (LoadTpmStatus(&tpm_status)) {
     int32 dependency_flags = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER |
-                             TpmStatus::REMOTE_ATTESTATION_NEEDS_OWNER;
+                             TpmStatus::ATTESTATION_NEEDS_OWNER;
     if (tpm_status.flags() & dependency_flags) {
       // The password is still needed, do not clear.
       return;
@@ -1895,8 +1895,8 @@ void Tpm::RemoveOwnerDependency(TpmOwnerDependency dependency) {
     case kInstallAttributes:
       flag_to_clear = TpmStatus::INSTALL_ATTRIBUTES_NEEDS_OWNER;
       break;
-    case kRemoteAttestation:
-      flag_to_clear = TpmStatus::REMOTE_ATTESTATION_NEEDS_OWNER;
+    case kAttestation:
+      flag_to_clear = TpmStatus::ATTESTATION_NEEDS_OWNER;
       break;
     default:
       CHECK(false);

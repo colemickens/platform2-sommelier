@@ -8,6 +8,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/utility.h>
 
+#include "attestation.h"
 #include "tpm.h"
 
 #ifndef CRYPTOHOME_TPM_INIT_H_
@@ -88,6 +89,7 @@ class TpmInit {
   bool task_done_;
   bool initialize_took_ownership_;
   int64_t initialization_time_;
+  scoped_ptr<Attestation> attestation_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmInit);
 };

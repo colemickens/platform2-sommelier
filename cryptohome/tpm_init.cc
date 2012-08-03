@@ -10,7 +10,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time.h>
 
-#include "remote_attestation.h"
+#include "attestation.h"
 
 using base::kNullThreadHandle;
 using base::PlatformThread;
@@ -90,10 +90,12 @@ void TpmInit::Init(TpmInitCallback* notify_callback) {
   notify_callback_ = notify_callback;
   tpm_init_task_->Init(this);
   Tpm* tpm = get_tpm();
-  if (tpm && IsTpmReady()) {
-    RemoteAttestation remote_attestation(tpm);
-    if (!remote_attestation.IsPreparedForEnrollment())
-      remote_attestation.PrepareForEnrollmentAsync();
+  // We only want to kick off attestation work if the TPM is owned but the owner
+  // password has not been cleared.
+  chromeos::SecureBlob password;
+  if (tpm && IsTpmReady() && GetTpmPassword(&password)) {
+    attestation_.reset(new Attestation(tpm));
+    attestation_->PrepareForEnrollmentAsync();
   }
 }
 
@@ -154,15 +156,8 @@ void TpmInit::ThreadMain() {
     notify_callback_->InitializeTpmComplete(initialize_result,
                                             initialize_took_ownership_);
   }
-
-  RemoteAttestation remote_attestation(tpm_init_task_->get_tpm());
-  if (!remote_attestation.IsPreparedForEnrollment()) {
-    start = base::TimeTicks::Now();
-    remote_attestation.PrepareForEnrollment();
-    delta = (base::TimeTicks::Now() - start);
-    LOG(ERROR) << "Remote attestation initialization took "
-               << delta.InMilliseconds() << "ms";
-  }
+  Attestation attestation(tpm_init_task_->get_tpm());
+  attestation.PrepareForEnrollment();
   task_done_ = true;
 }
 

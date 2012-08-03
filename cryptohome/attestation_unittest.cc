@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "remote_attestation.h"
+#include "attestation.h"
 
 #include <base/file_util.h>
 #include <gmock/gmock.h>
@@ -16,27 +16,27 @@ namespace cryptohome {
 
 static const char* kTestPath = "/tmp/attestation_test.epb";
 
-class RemoteAttestationTest : public testing::Test {
+class AttestationTest : public testing::Test {
  public:
-  RemoteAttestationTest() : attestation_(&tpm_) {
+  AttestationTest() : attestation_(&tpm_) {
     file_util::Delete(FilePath(kTestPath), true);
     attestation_.set_database_path(kTestPath);
   }
-  virtual ~RemoteAttestationTest() {
+  virtual ~AttestationTest() {
     file_util::Delete(FilePath(kTestPath), true);
   }
  protected:
   NiceMock<MockTpm> tpm_;
-  RemoteAttestation attestation_;
+  Attestation attestation_;
 };
 
-TEST(RemoteAttestationTest_, NullTpm) {
-  RemoteAttestation without_tpm(NULL);
+TEST(AttestationTest_, NullTpm) {
+  Attestation without_tpm(NULL);
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
 }
 
-TEST_F(RemoteAttestationTest, PrepareForEnrollment) {
+TEST_F(AttestationTest, PrepareForEnrollment) {
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.IsPreparedForEnrollment());
 }
