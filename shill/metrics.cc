@@ -19,10 +19,19 @@ using std::tr1::shared_ptr;
 namespace shill {
 
 // static
+// Our disconnect enumeration values are 0 (System Disconnect) and
+// 1 (User Disconnect), see histograms.xml, but Chrome needs a minimum
+// enum value of 1 and the minimum number of buckets needs to be 3 (see
+// histogram.h).  Instead of remapping System Disconnect to 1 and
+// User Disconnect to 2, we can just leave the enumerated values as-is
+// because Chrome implicitly creates a [0-1) bucket for us.  Using Min=1,
+// Max=2 and NumBuckets=3 gives us the following three buckets:
+// [0-1), [1-2), [2-INT_MAX).  We end up with an extra bucket [2-INT_MAX)
+// that we can safely ignore.
 const char Metrics::kMetricDisconnect[] = "Network.Shill.%s.Disconnect";
-const int Metrics::kMetricDisconnectMax = 1;
-const int Metrics::kMetricDisconnectMin = 0;
-const int Metrics::kMetricDisconnectNumBuckets = 2;
+const int Metrics::kMetricDisconnectMax = 2;
+const int Metrics::kMetricDisconnectMin = 1;
+const int Metrics::kMetricDisconnectNumBuckets = 3;
 
 const char Metrics::kMetricNetworkChannel[] = "Network.Shill.%s.Channel";
 const int Metrics::kMetricNetworkChannelMax = Metrics::kWiFiChannelMax;
