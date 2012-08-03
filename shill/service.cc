@@ -483,6 +483,7 @@ void Service::SetConnection(const ConnectionRefPtr &connection) {
     http_proxy_->Start(dispatcher_, sockets_.get());
   } else {
     http_proxy_.reset();
+    static_ip_parameters_.ClearSavedParameters();
   }
   connection_ = connection;
 }

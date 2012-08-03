@@ -29,6 +29,8 @@ class KeyValueStore {
  public:
   KeyValueStore();
 
+  void Clear();
+
   bool ContainsBool(const std::string &name) const;
   bool ContainsInt(const std::string &name) const;
   bool ContainsString(const std::string &name) const;

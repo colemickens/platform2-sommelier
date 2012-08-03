@@ -38,8 +38,6 @@ class StaticIpParametersTest : public Test {
  public:
   StaticIpParametersTest() {}
 
-  void PopulateParams();
-  void PopulateProps();
   void ExpectEmpty() {
     EXPECT_TRUE(props_.address.empty());
     EXPECT_TRUE(props_.gateway.empty());
@@ -170,6 +168,67 @@ TEST_F(StaticIpParametersTest, Profile) {
   EXPECT_CALL(store, SetInt(kID, "StaticIP.Prefixlen", kPrefixLen))
       .WillOnce(Return(true));
   static_params_.Save(&store, kID);
+}
+
+TEST_F(StaticIpParametersTest, SavedParameters) {
+  const int32 kOffset = 1234;
+  const string kPrefix("xxx");
+  PropertyStore store;
+  static_params_.PlumbPropertyStore(&store);
+  Error error;
+  store.SetStringProperty("StaticIP.Address", kPrefix + kAddress, &error);
+  store.SetStringProperty("StaticIP.Gateway", kPrefix + kGateway, &error);
+  store.SetInt32Property("StaticIP.Mtu", kOffset + kMtu, &error);
+  store.SetStringProperty(
+      "StaticIP.NameServers", kPrefix + kNameServers, &error);
+  store.SetStringProperty(
+      "StaticIP.PeerAddress", kPrefix + kPeerAddress, &error);
+  store.SetInt32Property("StaticIP.Prefixlen", kOffset + kPrefixLen, &error);
+  Populate();
+  static_params_.ApplyTo(&props_);
+
+  PropertyStoreInspector inspector(&store);
+  string string_value;
+  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.Address", &string_value));
+  EXPECT_EQ(kAddress, string_value);
+  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.Gateway", &string_value));
+  EXPECT_EQ(kGateway, string_value);
+  int32 int_value;
+  EXPECT_TRUE(inspector.GetInt32Property("SavedIP.Mtu", &int_value));
+  EXPECT_EQ(kMtu, int_value);
+  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.NameServers",
+                                          &string_value));
+  EXPECT_EQ(kNameServers, string_value);
+  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.PeerAddress",
+                                          &string_value));
+  EXPECT_EQ(kPeerAddress, string_value);
+  EXPECT_TRUE(inspector.GetInt32Property("SavedIP.Prefixlen",
+                                         &int_value));
+  EXPECT_EQ(kPrefixLen, int_value);
+
+  store.ClearProperty("StaticIP.Address", &error);
+  store.ClearProperty("StaticIP.Gateway", &error);
+  store.ClearProperty("StaticIP.Mtu", &error);
+  store.ClearProperty( "StaticIP.NameServers", &error);
+  store.ClearProperty( "StaticIP.PeerAddress", &error);
+  store.ClearProperty("StaticIP.Prefixlen", &error);
+
+  static_params_.ApplyTo(&props_);
+  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.Address", &string_value));
+  EXPECT_EQ(kPrefix + kAddress, string_value);
+  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.Gateway", &string_value));
+  EXPECT_EQ(kPrefix + kGateway, string_value);
+  EXPECT_TRUE(inspector.GetInt32Property("SavedIP.Mtu", &int_value));
+  EXPECT_EQ(kOffset + kMtu, int_value);
+  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.NameServers",
+                                          &string_value));
+  EXPECT_EQ(kPrefix + kNameServers, string_value);
+  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.PeerAddress",
+                                          &string_value));
+  EXPECT_EQ(kPrefix + kPeerAddress, string_value);
+  EXPECT_TRUE(inspector.GetInt32Property("SavedIP.Prefixlen",
+                                         &int_value));
+  EXPECT_EQ(kOffset + kPrefixLen, int_value);
 }
 
 }  // namespace shill

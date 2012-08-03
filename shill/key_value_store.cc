@@ -14,6 +14,13 @@ namespace shill {
 
 KeyValueStore::KeyValueStore() {}
 
+void KeyValueStore::Clear() {
+  bool_properties_.clear();
+  int_properties_.clear();
+  string_properties_.clear();
+  uint_properties_.clear();
+}
+
 bool KeyValueStore::ContainsBool(const string &name) const {
   return ContainsKey(bool_properties_, name);
 }

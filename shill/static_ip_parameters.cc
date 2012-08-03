@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 #include <base/string_split.h>
+#include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
@@ -23,6 +24,8 @@ namespace shill {
 
 // static
 const char StaticIPParameters::kConfigKeyPrefix[] = "StaticIP.";
+// static
+const char StaticIPParameters::kSavedConfigKeyPrefix[] = "SavedIP.";
 // static
 const StaticIPParameters::Property StaticIPParameters::kProperties[] = {
   { flimflam::kAddressProperty, Property::kTypeString },
@@ -41,6 +44,7 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore *store) {
   for (size_t i = 0; i < arraysize(kProperties); ++i) {
     const Property &property = kProperties[i];
     const string name(string(kConfigKeyPrefix) + property.name);
+    const string saved_name(string(kSavedConfigKeyPrefix) + property.name);
     switch (property.type) {
       case Property::kTypeInt32:
         store->RegisterDerivedInt32(
@@ -51,6 +55,15 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore *store) {
                     &StaticIPParameters::ClearMappedProperty,
                     &StaticIPParameters::GetMappedInt32Property,
                     &StaticIPParameters::SetMappedInt32Property,
+                    i)));
+        store->RegisterDerivedInt32(
+            saved_name,
+            Int32Accessor(
+                new CustomMappedAccessor<StaticIPParameters, int32, size_t>(
+                    this,
+                    &StaticIPParameters::ClearMappedSavedProperty,
+                    &StaticIPParameters::GetMappedSavedInt32Property,
+                    &StaticIPParameters::SetMappedSavedInt32Property,
                     i)));
          break;
       case Property::kTypeString:
@@ -63,6 +76,15 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore *store) {
                     &StaticIPParameters::ClearMappedProperty,
                     &StaticIPParameters::GetMappedStringProperty,
                     &StaticIPParameters::SetMappedStringProperty,
+                    i)));
+        store->RegisterDerivedString(
+            saved_name,
+            StringAccessor(
+                new CustomMappedAccessor<StaticIPParameters, string, size_t>(
+                    this,
+                    &StaticIPParameters::ClearMappedSavedProperty,
+                    &StaticIPParameters::GetMappedSavedStringProperty,
+                    &StaticIPParameters::SetMappedSavedStringProperty,
                     i)));
         break;
       default:
@@ -137,21 +159,24 @@ void StaticIPParameters::Save(
 }
 
 void StaticIPParameters::ApplyInt(
-    const string &property, int32 *value_out) const {
+    const string &property, int32 *value_out) {
+  saved_args_.SetInt(property, *value_out);
   if (args_.ContainsInt(property)) {
     *value_out = args_.GetInt(property);
   }
 }
 
 void StaticIPParameters::ApplyString(
-    const string &property, string *value_out) const {
+    const string &property, string *value_out) {
+  saved_args_.SetString(property, *value_out);
   if (args_.ContainsString(property)) {
     *value_out = args_.GetString(property);
   }
 }
 
 void StaticIPParameters::ApplyStrings(
-    const string &property, vector<string> *value_out) const {
+    const string &property, vector<string> *value_out) {
+  saved_args_.SetString(property, JoinString(*value_out, ','));
   if (args_.ContainsString(property)) {
     vector<string> values;
     string value(args_.GetString(property));
@@ -163,19 +188,24 @@ void StaticIPParameters::ApplyStrings(
 }
 
 
-void StaticIPParameters::ApplyTo(IPConfig::Properties *props) const {
+void StaticIPParameters::ApplyTo(IPConfig::Properties *props) {
   if (props->address_family == IPAddress::kFamilyUnknown) {
     // In situations where no address is supplied (bad or missing DHCP config)
     // supply an address family ourselves.
     // TODO(pstew): Guess from the address values.
     props->address_family = IPAddress::kFamilyIPv4;
   }
+  ClearSavedParameters();
   ApplyString(flimflam::kAddressProperty, &props->address);
   ApplyString(flimflam::kGatewayProperty, &props->gateway);
   ApplyInt(flimflam::kMtuProperty, &props->mtu);
   ApplyStrings(flimflam::kNameServersProperty, &props->dns_servers);
   ApplyString(flimflam::kPeerAddressProperty, &props->peer_address);
   ApplyInt(flimflam::kPrefixlenProperty, &props->subnet_prefix);
+}
+
+void StaticIPParameters::ClearSavedParameters() {
+  saved_args_.Clear();
 }
 
 bool StaticIPParameters::ContainsAddress() const {
@@ -210,6 +240,11 @@ void StaticIPParameters::ClearMappedProperty(
   }
 }
 
+void StaticIPParameters::ClearMappedSavedProperty(
+    const size_t &index, Error *error) {
+  error->Populate(Error::kInvalidArguments, "Property is read-only");
+}
+
 int32 StaticIPParameters::GetMappedInt32Property(
     const size_t &index, Error *error) {
   CHECK(index < arraysize(kProperties));
@@ -220,6 +255,18 @@ int32 StaticIPParameters::GetMappedInt32Property(
     return 0;
   }
   return args_.GetInt(key);
+}
+
+int32 StaticIPParameters::GetMappedSavedInt32Property(
+    const size_t &index, Error *error) {
+  CHECK(index < arraysize(kProperties));
+
+  const string &key = kProperties[index].name;
+  if (!saved_args_.ContainsInt(key)) {
+    error->Populate(Error::kNotFound, "Property is not set");
+    return 0;
+  }
+  return saved_args_.GetInt(key);
 }
 
 string StaticIPParameters::GetMappedStringProperty(
@@ -234,16 +281,38 @@ string StaticIPParameters::GetMappedStringProperty(
   return args_.GetString(key);
 }
 
+string StaticIPParameters::GetMappedSavedStringProperty(
+    const size_t &index, Error *error) {
+  CHECK(index < arraysize(kProperties));
+
+  const string &key = kProperties[index].name;
+  if (!saved_args_.ContainsString(key)) {
+    error->Populate(Error::kNotFound, "Property is not set");
+    return string();
+  }
+  return saved_args_.GetString(key);
+}
+
 void StaticIPParameters::SetMappedInt32Property(
     const size_t &index, const int32 &value, Error *error) {
   CHECK(index < arraysize(kProperties));
   args_.SetInt(kProperties[index].name, value);
 }
 
+void StaticIPParameters::SetMappedSavedInt32Property(
+    const size_t &index, const int32 &value, Error *error) {
+  error->Populate(Error::kInvalidArguments, "Property is read-only");
+}
+
 void StaticIPParameters::SetMappedStringProperty(
     const size_t &index, const string &value, Error *error) {
   CHECK(index < arraysize(kProperties));
   args_.SetString(kProperties[index].name, value);
+}
+
+void StaticIPParameters::SetMappedSavedStringProperty(
+    const size_t &index, const string &value, Error *error) {
+  error->Populate(Error::kInvalidArguments, "Property is read-only");
 }
 
 }  // namespace shill

@@ -803,6 +803,25 @@ Properties	boolean AutoConnect [readwrite]
 			will display the result of the merged network
 			parameters.
 
+		string SavedIP.Address [readonly]
+		string SavedIP.Gateway [readonly]
+		int32 SavedIP.Mtu [readonly]
+		string SavedIP.NameServers [readonly]
+		string SavedIP.PeerAddress [readonly]
+		int32 SavedIP.Prefixlen [readonly]
+
+			The properties above are set on a service to present
+			the configuration that was recieved from the DHCP
+			server prior to applying any "StaticIP.*" parameters
+			during the most recent connection attempt.  All
+			parameters are saved regardless of whether they were
+			overridden.
+
+			Note that if a "StaticIP.*" parameter is set on
+			a service, but the service has not been re-connected,
+			the IPConfig object will still contain the true
+			value that the interface is set to.
+
 		uint8 Strength [readonly]
 
 			Indicates the signal strength of the service. This

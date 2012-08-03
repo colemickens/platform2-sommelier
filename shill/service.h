@@ -383,6 +383,9 @@ class Service : public base::RefCounted<Service> {
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
+  StaticIPParameters *mutable_static_ip_parameters() {
+    return &static_ip_parameters_;
+  }
   const StaticIPParameters &static_ip_parameters() const {
     return static_ip_parameters_;
   }

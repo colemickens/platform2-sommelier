@@ -99,7 +99,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
-  void ApplyStaticIPParameters(const StaticIPParameters &static_ip_parameters);
+  void ApplyStaticIPParameters(StaticIPParameters *static_ip_parameters);
 
   // |id_suffix| is used to generate a storage ID that binds this instance
   // to its associated device.

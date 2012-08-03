@@ -101,8 +101,8 @@ void IPConfig::Refresh(Error */*error*/) {
 }
 
 void IPConfig::ApplyStaticIPParameters(
-    const StaticIPParameters &static_ip_parameters) {
-  static_ip_parameters.ApplyTo(&properties_);
+    StaticIPParameters *static_ip_parameters) {
+  static_ip_parameters->ApplyTo(&properties_);
 }
 
 bool IPConfig::Load(StoreInterface *storage, const string &id_suffix) {

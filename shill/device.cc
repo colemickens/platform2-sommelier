@@ -415,7 +415,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     CreateConnection();
     if (selected_service_) {
       ipconfig->ApplyStaticIPParameters(
-          selected_service_->static_ip_parameters());
+          selected_service_->mutable_static_ip_parameters());
     }
     connection_->UpdateFromIPConfig(ipconfig);
     // SetConnection must occur after the UpdateFromIPConfig so the
