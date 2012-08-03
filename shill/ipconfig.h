@@ -94,6 +94,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
   virtual bool RenewIP();
   virtual bool ReleaseIP();
 
+  // Refresh IP configuration.  Called by the DBus Adaptor "Refresh" call.
+  void Refresh(Error *error);
+
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
   void ApplyStaticIPParameters(const StaticIPParameters &static_ip_parameters);

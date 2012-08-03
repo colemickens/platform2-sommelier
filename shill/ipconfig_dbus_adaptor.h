@@ -49,10 +49,8 @@ class IPConfigDBusAdaptor : public org::chromium::flimflam::IPConfig_adaptor,
                            const ::DBus::Variant &value,
                            ::DBus::Error &error);
   virtual void ClearProperty(const std::string &name, ::DBus::Error &error);
-  // TODO(cmasone): implement these stubs.
   virtual void Remove(::DBus::Error &error);
-  virtual void MoveBefore(const ::DBus::Path& , ::DBus::Error &error);
-  virtual void MoveAfter(const ::DBus::Path& , ::DBus::Error &error);
+  virtual void Refresh(::DBus::Error &error);
 
  private:
   IPConfig *ipconfig_;

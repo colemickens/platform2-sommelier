@@ -92,14 +92,11 @@ void IPConfigDBusAdaptor::Remove(::DBus::Error &/*error*/) {
   SLOG(DBus, 2) << __func__;
 }
 
-void IPConfigDBusAdaptor::MoveBefore(const ::DBus::Path& /*path*/,
-                                     ::DBus::Error &/*error*/) {
+void IPConfigDBusAdaptor::Refresh(::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
-}
-
-void IPConfigDBusAdaptor::MoveAfter(const ::DBus::Path& /*path*/,
-                                    ::DBus::Error &/*error*/) {
-  SLOG(DBus, 2) << __func__;
+  Error e;
+  ipconfig_->Refresh(&e);
+  e.ToDBusError(&error);
 }
 
 }  // namespace shill

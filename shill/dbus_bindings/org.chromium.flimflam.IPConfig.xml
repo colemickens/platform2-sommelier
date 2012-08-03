@@ -20,12 +20,7 @@
 			<arg type="s" direction="in"/>
 		</method>
 		<method name="Remove"/>
-		<method name="MoveBefore">
-			<arg type="o" direction="in"/>
-		</method>
-		<method name="MoveAfter">
-			<arg type="o" direction="in"/>
-		</method>
+		<method name="Refresh"/>
 		<signal name="PropertyChanged">
 			<arg type="s"/>
 			<arg type="v"/>

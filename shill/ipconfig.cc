@@ -96,6 +96,10 @@ bool IPConfig::ReleaseIP() {
   return false;
 }
 
+void IPConfig::Refresh(Error */*error*/) {
+  RenewIP();
+}
+
 void IPConfig::ApplyStaticIPParameters(
     const StaticIPParameters &static_ip_parameters) {
   static_ip_parameters.ApplyTo(&properties_);
