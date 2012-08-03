@@ -19,6 +19,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store_matcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
@@ -102,6 +103,10 @@ class CellularCapabilityGSMTest : public testing::Test {
   void InvokeGetIMSI2(Error *error, const GSMIdentifierCallback &callback,
                       int timeout) {
     callback.Run("310240123456789", Error());
+  }
+  void InvokeGetIMSIFails(Error *error, const GSMIdentifierCallback &callback,
+                          int timeout) {
+    callback.Run("", Error(Error::kOperationFailed));
   }
   void InvokeGetMSISDN(Error *error, const GSMIdentifierCallback &callback,
                        int timeout) {
@@ -350,13 +355,45 @@ TEST_F(CellularCapabilityGSMTest, GetIMSI) {
   SetCardProxy();
   ResultCallback callback = Bind(&CellularCapabilityGSMTest::TestCallback,
                                  Unretained(this));
-  ASSERT_TRUE(capability_->imsi_.empty());
+  EXPECT_TRUE(capability_->imsi_.empty());
   capability_->GetIMSI(callback);
   EXPECT_EQ(kIMSI, capability_->imsi_);
   capability_->imsi_.clear();
   InitProviderDB();
   capability_->GetIMSI(callback);
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
+}
+
+// In this test, the call to the proxy's GetIMSI() will always indicate failure,
+// which will cause the retry logic to call the proxy again a number of times.
+// Eventually, the retries expire.
+TEST_F(CellularCapabilityGSMTest, GetIMSIFails) {
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(logging::LOG_INFO, "cellular_capability_gsm.cc",
+                       ::testing::StartsWith("GetIMSI failed - ")));
+  EXPECT_CALL(*card_proxy_, GetIMSI(_, _, CellularCapability::kTimeoutDefault))
+      .Times(CellularCapabilityGSM::kGetIMSIRetryLimit + 1)
+      .WillRepeatedly(Invoke(this,
+                             &CellularCapabilityGSMTest::InvokeGetIMSIFails));
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  SetCardProxy();
+  ResultCallback callback = Bind(&CellularCapabilityGSMTest::TestCallback,
+                                 Unretained(this));
+  EXPECT_TRUE(capability_->imsi_.empty());
+
+  capability_->get_imsi_retries_ = 0;
+  EXPECT_EQ(CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds,
+            capability_->get_imsi_retry_delay_milliseconds_);
+
+  // Set the delay to zero to speed up the test.
+  capability_->get_imsi_retry_delay_milliseconds_ = 0;
+  capability_->GetIMSI(callback);
+  for (int i = 0; i < CellularCapabilityGSM::kGetIMSIRetryLimit; ++i) {
+    dispatcher_.DispatchPendingEvents();
+  }
+  EXPECT_EQ(CellularCapabilityGSM::kGetIMSIRetryLimit + 1,
+            capability_->get_imsi_retries_);
+  EXPECT_TRUE(capability_->imsi_.empty());
 }
 
 TEST_F(CellularCapabilityGSMTest, GetMSISDN) {
@@ -921,6 +958,5 @@ TEST_F(CellularCapabilityGSMTest, ConnectFailureNoService) {
                        Bind(&CellularCapabilityGSMTest::TestCallback,
                             Unretained(this)));
 }
-
 
 }  // namespace shill

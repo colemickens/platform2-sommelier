@@ -47,6 +47,10 @@ const char CellularCapabilityGSM::kPropertyEnabledFacilityLocks[] =
 const char CellularCapabilityGSM::kPropertyUnlockRequired[] = "UnlockRequired";
 const char CellularCapabilityGSM::kPropertyUnlockRetries[] = "UnlockRetries";
 
+const int CellularCapabilityGSM::kGetIMSIRetryLimit = 10;
+const int64 CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 200;
+
+
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
                                              ProxyFactory *proxy_factory)
     : CellularCapabilityClassic(cellular, proxy_factory),
@@ -54,6 +58,8 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
       home_provider_(NULL),
+      get_imsi_retries_(0),
+      get_imsi_retry_delay_milliseconds_(kGetIMSIRetryDelayMilliseconds),
       scanning_(false),
       scan_interval_(0) {
   SLOG(Cellular, 2) << "Cellular capability constructed: GSM";
@@ -135,6 +141,7 @@ void CellularCapabilityGSM::StartModem(Error *error,
                           weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityGSM::GetIMEI,
                         weak_ptr_factory_.GetWeakPtr(), cb));
+  get_imsi_retries_ = 0;
   tasks->push_back(Bind(&CellularCapabilityGSM::GetIMSI,
                         weak_ptr_factory_.GetWeakPtr(), cb));
   tasks->push_back(Bind(&CellularCapabilityGSM::GetSPN,
@@ -865,10 +872,21 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback &callback,
     SLOG(Cellular, 2) << "IMSI: " << imsi;
     imsi_ = imsi;
     SetHomeProvider();
+    callback.Run(error);
   } else {
-    SLOG(Cellular, 2) << "GetIMSI failed - " << error;
+    if (get_imsi_retries_++ < kGetIMSIRetryLimit) {
+      SLOG(Cellular, 2) << "GetIMSI failed - " << error << ". Retrying";
+      base::Callback<void(void)> retry_get_imsi_cb =
+          Bind(&CellularCapabilityGSM::GetIMSI,
+               weak_ptr_factory_.GetWeakPtr(), callback);
+      cellular()->dispatcher()->PostDelayedTask(
+          retry_get_imsi_cb,
+          get_imsi_retry_delay_milliseconds_);
+    } else {
+      LOG(INFO) << "GetIMSI failed - " << error;
+      callback.Run(error);
+    }
   }
-  callback.Run(error);
 }
 
 void CellularCapabilityGSM::OnGetSPNReply(const ResultCallback &callback,

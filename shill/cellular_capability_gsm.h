@@ -91,6 +91,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMEI);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMSI);
+  FRIEND_TEST(CellularCapabilityGSMTest, GetIMSIFails);
   FRIEND_TEST(CellularCapabilityGSMTest, GetMSISDN);
   FRIEND_TEST(CellularCapabilityGSMTest, GetSPN);
   FRIEND_TEST(CellularCapabilityGSMTest, RequirePIN);
@@ -134,6 +135,11 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   static const char kPropertyUnlockRequired[];
   static const char kPropertyUnlockRetries[];
 
+  // Calls to the proxy's GetIMSI() will be retried this many times.
+  static const int kGetIMSIRetryLimit;
+
+  // This much time will pass between retries of GetIMSI().
+  static const int64 kGetIMSIRetryDelayMilliseconds;
 
   void SetAccessTechnology(uint32 access_technology);
 
@@ -208,6 +214,13 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   std::string spn_;
   mobile_provider *home_provider_;
   std::string desired_network_;
+
+  // The number of times GetIMSI() has been retried.
+  int get_imsi_retries_;
+
+  // Amount of time to wait between retries of GetIMSI.  Defaults to
+  // kGetIMSIRetryDelayMilliseconds, but can be altered by a unit test.
+  int64 get_imsi_retry_delay_milliseconds_;
 
   // Properties.
   std::string selected_network_;
