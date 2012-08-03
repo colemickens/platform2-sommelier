@@ -233,7 +233,8 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
 }
 
 // Represents that the OOBE process was interrupted by
-// a reboot or crash prior to Finalize() being called.
+// a reboot or crash prior to Finalize() being called, but
+// after the Lockbox was Created.
 // Since InstallAttributes Set/Finalize is not atomic, there
 // is always the risk of data loss due to failure of the device.
 // It will fail-safe however (by failing empty).
@@ -253,6 +254,37 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+  EXPECT_TRUE(install_attrs_.Init());
+  EXPECT_TRUE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_TRUE(install_attrs_.is_initialized());
+
+  // Should be empty.
+  EXPECT_EQ(0, install_attrs_.Count());
+}
+
+// Represents that the OOBE process was interrupted by
+// a reboot or crash prior to Finalize() being called, and
+// before the Lockbox was Created.
+TEST_F(InstallAttributesTest, NormalBootNoSpace) {
+  // Normally, it should be impossible to populate the filesystem
+  // with any data.  We put this here to show anything that may be
+  // read in is ignored.
+  chromeos::Blob serialized_data;
+  PopulateOobeData(&serialized_data);
+  // Check the baseline.
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_TRUE(install_attrs_.is_secure());
+
+  Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramSpace;
+  EXPECT_CALL(lockbox_, Load(_))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+  EXPECT_CALL(lockbox_, Create(_))
+    .Times(1)
+    .WillOnce(Return(true));
   EXPECT_TRUE(install_attrs_.Init());
   EXPECT_TRUE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());
@@ -340,6 +372,35 @@ TEST_F(InstallAttributesTest, LegacyBoot) {
   EXPECT_CALL(lockbox_, Load(_))
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+  Lockbox::ErrorId create_error_id = Lockbox::kErrorIdInsufficientAuthorization;
+  EXPECT_CALL(lockbox_, Create(_))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<0>(create_error_id), Return(false)));
+  EXPECT_TRUE(install_attrs_.Init());
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_TRUE(install_attrs_.is_initialized());
+
+  // Should be empty.
+  EXPECT_EQ(0, install_attrs_.Count());
+}
+
+// If the Lockbox Create fails for reasons other than bad password, it
+// should still be treated as a LegacyBoot.
+TEST_F(InstallAttributesTest, LegacyBootUnexpected) {
+  // Check the baseline.
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+
+  Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramSpace;
+  EXPECT_CALL(lockbox_, Load(_))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<0>(error_id), Return(false)));
+  Lockbox::ErrorId create_error_id = Lockbox::kErrorIdTpmError;
+  EXPECT_CALL(lockbox_, Create(_))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<0>(create_error_id), Return(false)));
   EXPECT_TRUE(install_attrs_.Init());
   EXPECT_FALSE(install_attrs_.is_first_install());
   EXPECT_FALSE(install_attrs_.is_invalid());

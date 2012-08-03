@@ -103,18 +103,28 @@ bool InstallAttributes::Init() {
   if (is_secure() && !lockbox()->Load(&error_id)) {
     // There are two non-terminal error cases:
     // 1. No NVRAM space is defined.  This will occur on systems that
-    //    are autoupdated with this code but never went through the OOBE.
+    //    are autoupdated with this code but never went through the OOBE,
+    //    or if creation was interrupted after TPM Ownership happened.
     // 2. NVRAM space exists and is unlocked. It means the system was powered
     //    off before any data was stored.
     switch (error_id) {
     case Lockbox::kErrorIdNoNvramSpace:
-      DLOG(INFO) << "Legacy install.";
+      LOG(INFO) << "Resuming interrupted InstallAttributes. (Create needed.)";
+      if (!lockbox()->Create(&error_id)) {
+        if (error_id == Lockbox::kErrorIdInsufficientAuthorization)
+          DLOG(INFO) << "Legacy install. (Can never create NVRAM space.)";
+        else
+          LOG(ERROR) << "Create failed, Lockbox error: " << error_id;
+      } else {
+        // Create worked, so act like the kErrorIdNoNvramData path now.
+        set_is_first_install(true);
+      }
       set_is_initialized(true);
       // No data.
       return true;
       break;
     case Lockbox::kErrorIdNoNvramData:
-      LOG(INFO) << "Resuming interrupted InstallAttributes.";
+      LOG(INFO) << "Resuming interrupted InstallAttributes. (Store needed.)";
       set_is_first_install(true);
       set_is_initialized(true);
       // Since we write when we finalize, we don't try to reparse.
