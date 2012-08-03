@@ -76,5 +76,7 @@ Boot switch status:
 Boot reason $(bootreason)
 Boot firmware: $(crossystem 'mainfw_act')
 Active EC code: $(crossystem 'ecfw_act')
+Raw log:
+$(crossystem --all)
 END
 
