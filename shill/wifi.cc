@@ -1376,6 +1376,11 @@ void WiFi::PendingTimeoutHandler() {
 }
 
 void WiFi::StartReconnectTimer() {
+  if (!reconnect_timeout_callback_.IsCancelled()) {
+    LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__
+              << ": reconnect timer already running.";
+    return;
+  }
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   reconnect_timeout_callback_.Reset(
       Bind(&WiFi::ReconnectTimeoutHandler, weak_ptr_factory_.GetWeakPtr()));
@@ -1390,6 +1395,7 @@ void WiFi::StopReconnectTimer() {
 
 void WiFi::ReconnectTimeoutHandler() {
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
+  reconnect_timeout_callback_.Cancel();
   CHECK(current_service_);
   current_service_->SetFailureSilent(Service::kFailureConnect);
   DisconnectFrom(current_service_);

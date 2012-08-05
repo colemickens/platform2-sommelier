@@ -155,7 +155,7 @@ class WiFi : public Device {
 
  private:
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
-  friend class WiFiScanTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
+  friend class WiFiTimerTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
@@ -166,7 +166,7 @@ class WiFi : public Device {
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPANeverConnected);  // as above
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);  // ""
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
-  FRIEND_TEST(WiFiScanTest, FastRescan);  // kFastScanIntervalSeconds
+  FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<WiFiService *, std::string> ReverseServiceMap;

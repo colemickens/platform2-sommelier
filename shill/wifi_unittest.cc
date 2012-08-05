@@ -333,8 +333,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   const base::CancelableClosure &GetPendingTimeout() {
     return wifi_->pending_timeout_callback_;
   }
-  const base::CancelableClosure &GetReconnectTimeout() {
+  const base::CancelableClosure &GetReconnectTimeoutCallback() {
     return wifi_->reconnect_timeout_callback_;
+  }
+  int GetReconnectTimeoutSeconds() {
+    return WiFi::kReconnectTimeoutSeconds;
   }
   const base::CancelableClosure &GetScanTimer() {
     return wifi_->scan_timer_callback_;
@@ -558,6 +561,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void RestartFastScanAttempts() {
     wifi_->RestartFastScanAttempts();
+  }
+
+  void StartReconnectTimer() {
+    wifi_->StartReconnectTimer();
+  }
+
+  void StopReconnectTimer() {
+    wifi_->StopReconnectTimer();
   }
 
   NiceMockControl *control_interface() {
@@ -1248,21 +1259,21 @@ TEST_F(WiFiMainTest, ReconnectTimer) {
       *supplicant_interface_proxy_;
   WiFiService *service(SetupConnectedService(DBus::Path()));
   service->SetState(Service::kStateConnected);
-  EXPECT_TRUE(GetReconnectTimeout().IsCancelled());
+  EXPECT_TRUE(GetReconnectTimeoutCallback().IsCancelled());
   ReportStateChanged(wpa_supplicant::kInterfaceStateDisconnected);
-  EXPECT_FALSE(GetReconnectTimeout().IsCancelled());
+  EXPECT_FALSE(GetReconnectTimeoutCallback().IsCancelled());
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
-  EXPECT_TRUE(GetReconnectTimeout().IsCancelled());
+  EXPECT_TRUE(GetReconnectTimeoutCallback().IsCancelled());
   ReportStateChanged(wpa_supplicant::kInterfaceStateDisconnected);
-  EXPECT_FALSE(GetReconnectTimeout().IsCancelled());
+  EXPECT_FALSE(GetReconnectTimeoutCallback().IsCancelled());
   ReportCurrentBSSChanged(kBSSName);
-  EXPECT_TRUE(GetReconnectTimeout().IsCancelled());
+  EXPECT_TRUE(GetReconnectTimeoutCallback().IsCancelled());
   ReportStateChanged(wpa_supplicant::kInterfaceStateDisconnected);
-  EXPECT_FALSE(GetReconnectTimeout().IsCancelled());
+  EXPECT_FALSE(GetReconnectTimeoutCallback().IsCancelled());
   EXPECT_CALL(supplicant_interface_proxy, Disconnect());
-  GetReconnectTimeout().callback().Run();
+  GetReconnectTimeoutCallback().callback().Run();
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);
-  EXPECT_TRUE(GetReconnectTimeout().IsCancelled());
+  EXPECT_TRUE(GetReconnectTimeoutCallback().IsCancelled());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceOpen) {
@@ -2236,9 +2247,9 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailure) {
 
 // Scanning tests will use a mock of the event dispatcher instead of a real
 // one.
-class WiFiScanTest : public WiFiObjectTest {
+class WiFiTimerTest : public WiFiObjectTest {
  public:
-  WiFiScanTest() : WiFiObjectTest(&mock_dispatcher_) {}
+  WiFiTimerTest() : WiFiObjectTest(&mock_dispatcher_) {}
 
  protected:
   void ExpectInitialScanSequence();
@@ -2246,7 +2257,7 @@ class WiFiScanTest : public WiFiObjectTest {
   StrictMock<MockEventDispatcher> mock_dispatcher_;
 };
 
-void WiFiScanTest::ExpectInitialScanSequence() {
+void WiFiTimerTest::ExpectInitialScanSequence() {
   // Choose a number of iterations some multiple higher than the fast scan
   // count.
   const int kScanTimes = WiFi::kNumFastScanAttempts * 4;
@@ -2278,7 +2289,7 @@ void WiFiScanTest::ExpectInitialScanSequence() {
   }
 }
 
-TEST_F(WiFiScanTest, FastRescan) {
+TEST_F(WiFiTimerTest, FastRescan) {
   // This PostTask is a result of the call to Scan(NULL), and is meant to
   // post a task to call Scan() on the wpa_supplicant proxy immediately.
   EXPECT_CALL(mock_dispatcher_, PostTask(_));
@@ -2296,6 +2307,34 @@ TEST_F(WiFiScanTest, FastRescan) {
   RestartFastScanAttempts();
 
   ExpectInitialScanSequence();
+}
+
+TEST_F(WiFiTimerTest, ReconnectTimer) {
+  EXPECT_CALL(mock_dispatcher_, PostTask(_)).Times(AnyNumber());
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _)).Times(AnyNumber());
+  SetupConnectedService(DBus::Path());
+  Mock::VerifyAndClearExpectations(&mock_dispatcher_);
+
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
+      _, GetReconnectTimeoutSeconds() * 1000)).Times(1);
+  StartReconnectTimer();
+  Mock::VerifyAndClearExpectations(&mock_dispatcher_);
+  StopReconnectTimer();
+
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
+      _, GetReconnectTimeoutSeconds() * 1000)).Times(1);
+  StartReconnectTimer();
+  Mock::VerifyAndClearExpectations(&mock_dispatcher_);
+  GetReconnectTimeoutCallback().callback().Run();
+
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
+      _, GetReconnectTimeoutSeconds() * 1000)).Times(1);
+  StartReconnectTimer();
+  Mock::VerifyAndClearExpectations(&mock_dispatcher_);
+
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(
+      _, GetReconnectTimeoutSeconds() * 1000)).Times(0);
+  StartReconnectTimer();
 }
 
 TEST_F(WiFiMainTest, EAPCertification) {
