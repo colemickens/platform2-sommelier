@@ -38,6 +38,7 @@ using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
+using testing::StrEq;
 
 namespace shill {
 
@@ -369,7 +370,7 @@ TEST_F(CellularCapabilityGSMTest, GetIMSI) {
 // Eventually, the retries expire.
 TEST_F(CellularCapabilityGSMTest, GetIMSIFails) {
   ScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOG_INFO, "cellular_capability_gsm.cc",
+  EXPECT_CALL(log, Log(logging::LOG_INFO, StrEq("cellular_capability_gsm.cc"),
                        ::testing::StartsWith("GetIMSI failed - ")));
   EXPECT_CALL(*card_proxy_, GetIMSI(_, _, CellularCapability::kTimeoutDefault))
       .Times(CellularCapabilityGSM::kGetIMSIRetryLimit + 1)
