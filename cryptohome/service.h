@@ -173,6 +173,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean TpmIsBeingOwned(gboolean* OUT_owning, GError** error);
   virtual gboolean TpmCanAttemptOwnership(GError** error);
   virtual gboolean TpmClearStoredPassword(GError** error);
+  virtual gboolean TpmIsAttestationPrepared(gboolean* OUT_prepared,
+                                            GError** error);
+  virtual gboolean TpmVerifyAttestationData(gboolean* OUT_verified,
+                                            GError** error);
 
   // Returns the label of the TPM token along with its user PIN.
   virtual gboolean Pkcs11GetTpmTokenInfo(gchar** OUT_label,

@@ -143,6 +143,22 @@ void TpmInit::ClearStoredTpmPassword() {
   tpm_init_task_->get_tpm()->ClearStoredOwnerPassword();
 }
 
+bool TpmInit::IsAttestationPrepared() {
+  Tpm* tpm = get_tpm();
+  if (!tpm || !IsTpmReady())
+    return false;
+  Attestation attestation(tpm);
+  return attestation.IsPreparedForEnrollment();
+}
+
+bool TpmInit::VerifyAttestationData() {
+  Tpm* tpm = get_tpm();
+  if (!tpm || !IsTpmReady())
+    return false;
+  Attestation attestation(tpm);
+  return attestation.Verify();
+}
+
 void TpmInit::ThreadMain() {
   base::TimeTicks start = base::TimeTicks::Now();
   bool initialize_result = tpm_init_task_->get_tpm()->InitializeTpm(

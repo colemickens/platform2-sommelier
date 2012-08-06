@@ -1765,7 +1765,14 @@ bool Tpm::ReadNvram(uint32_t index, SecureBlob* blob) {
     LOG(ERROR) << "Could not connect to the TPM";
     return false;
   }
+  return ReadNvramForContext(context_handle, tpm_handle, 0, index, blob);
+}
 
+bool Tpm::ReadNvramForContext(TSS_HCONTEXT context_handle,
+                              TSS_HTPM tpm_handle,
+                              TSS_HPOLICY policy_handle,
+                              uint32_t index,
+                              SecureBlob* blob) {
   if (!IsNvramDefinedForContext(context_handle, tpm_handle, index)) {
     LOG(ERROR) << "Cannot read from non-existent NVRAM space.";
     return false;
@@ -1789,24 +1796,47 @@ bool Tpm::ReadNvram(uint32_t index, SecureBlob* blob) {
     return false;
   }
 
-  unsigned int size = GetNvramSizeForContext(context_handle, tpm_handle, index);
+  if (policy_handle) {
+    result = Tspi_Policy_AssignToObject(policy_handle, nv_handle);
+    if (TPM_ERROR(result)) {
+      TPM_LOG(ERROR, result) << "Could not set NVRAM object policy.";
+      return false;
+    }
+  }
+
+  UINT32 size = GetNvramSizeForContext(context_handle, tpm_handle, index);
   if (size == 0) {
     LOG(ERROR) << "NvramSize is too small.";
     // TODO(wad) get attrs so we can explore more
     return false;
   }
-  ScopedTssMemory space_data(context_handle);
-  if ((result = Tspi_NV_ReadValue(nv_handle, 0, &size, space_data.ptr()))) {
-    TPM_LOG(ERROR, result) << "Could not read to NVRAM space: " << index;
-    return false;
-  }
-  if (!space_data.value()) {
-    LOG(ERROR) << "No data read from NVRAM space: " << index;
-    return false;
-  }
   blob->resize(size);
-  memcpy(blob->data(), space_data.value(), size);
 
+  // Read from NVRAM in conservatively small chunks. This is a limitation of the
+  // TPM that is left for the application layer to deal with. The maximum size
+  // that is supported here can vary between vendors / models, so we'll be
+  // conservative. FWIW, the Infineon chips seem to handle up to 1024.
+  const UINT32 kMaxDataSize = 128;
+  UINT32 offset = 0;
+  while (offset < size) {
+    UINT32 chunk_size = size - offset;
+    if (chunk_size > kMaxDataSize)
+      chunk_size = kMaxDataSize;
+    ScopedTssMemory space_data(context_handle);
+    if ((result = Tspi_NV_ReadValue(nv_handle, offset, &chunk_size,
+                                    space_data.ptr()))) {
+      TPM_LOG(ERROR, result) << "Could not read from NVRAM space: " << index;
+      return false;
+    }
+    if (!space_data.value()) {
+      LOG(ERROR) << "No data read from NVRAM space: " << index;
+      return false;
+    }
+    CHECK(offset + chunk_size <= blob->size());
+    unsigned char* buffer = const_cast<unsigned char*>(&blob->front() + offset);
+    memcpy(buffer, space_data.value(), chunk_size);
+    offset += chunk_size;
+  }
   return true;
 }
 
@@ -2011,6 +2041,82 @@ bool Tpm::GetEndorsementPublicKey(chromeos::SecureBlob* ek_public_key) {
   return true;
 }
 
+bool Tpm::GetEndorsementCredential(chromeos::SecureBlob* credential) {
+  // Connect to the TPM as the owner.
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "GetEndorsementCredential: Could not connect to the TPM.";
+    return false;
+  }
+
+  // Use the owner secret to authorize reading the blob.
+  ScopedTssPolicy policy_handle(context_handle);
+  TSS_RESULT result;
+  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_POLICY,
+                                     TSS_POLICY_USAGE, policy_handle.ptr());
+  if (TPM_ERROR(result)) {
+    LOG(ERROR) << "GetEndorsementCredential: Could not create policy.";
+    return false;
+  }
+  result = Tspi_Policy_SetSecret(policy_handle, TSS_SECRET_MODE_PLAIN,
+                                 owner_password_.size(),
+                                 static_cast<BYTE*>(owner_password_.data()));
+  if (TPM_ERROR(result)) {
+    LOG(ERROR) << "GetEndorsementCredential: Could not set owner secret.";
+    return false;
+  }
+
+  // Read the EK cert from NVRAM.
+  SecureBlob nvram_value;
+  if (!ReadNvramForContext(context_handle, tpm_handle, policy_handle,
+                           TSS_NV_DEFINED | TPM_NV_INDEX_EKCert,
+                           &nvram_value)) {
+    LOG(ERROR) << "GetEndorsementCredential: Failed to read NVRAM.";
+    return false;
+  }
+
+  // Sanity check the contents of the data and extract the X.509 certificate.
+  // We are expecting data in the form of a TCG_PCCLIENT_STORED_CERT with an
+  // embedded TCG_FULL_CERT. Details can be found in the TCG PC Specific
+  // Implementation Specification v1.21 section 7.4.
+  const uint8_t kStoredCertHeader[] = {0x10, 0x01, 0x00};
+  const uint8_t kFullCertHeader[] = {0x10, 0x02};
+  const size_t kTotalHeaderBytes = 7;
+  const size_t kStoredCertHeaderOffset = 0;
+  const size_t kFullCertLengthOffset = 3;
+  const size_t kFullCertHeaderOffset = 5;
+  if (nvram_value.size() < kTotalHeaderBytes) {
+    LOG(ERROR) << "Malformed EK certificate: Bad header.";
+    return false;
+  }
+  if (memcmp(kStoredCertHeader,
+             &nvram_value[kStoredCertHeaderOffset],
+             arraysize(kStoredCertHeader)) != 0) {
+    LOG(ERROR) << "Malformed EK certificate: Bad PCCLIENT_STORED_CERT.";
+    return false;
+  }
+  if (memcmp(kFullCertHeader,
+             &nvram_value[kFullCertHeaderOffset],
+             arraysize(kFullCertHeader)) != 0) {
+    LOG(ERROR) << "Malformed EK certificate: Bad PCCLIENT_FULL_CERT.";
+    return false;
+  }
+  // The size value is represented by two bytes in network order.
+  size_t full_cert_size = (nvram_value[kFullCertLengthOffset] << 8) |
+                          nvram_value[kFullCertLengthOffset + 1];
+  if (full_cert_size + kFullCertHeaderOffset > nvram_value.size()) {
+    LOG(ERROR) << "Malformed EK certificate: Bad size.";
+    return false;
+  }
+  // The X.509 certificate follows the header bytes.
+  size_t full_cert_end = kTotalHeaderBytes + full_cert_size -
+                         arraysize(kFullCertHeader);
+  credential->assign(nvram_value.begin() + kTotalHeaderBytes,
+                     nvram_value.begin() + full_cert_end);
+  return true;
+}
+
 bool Tpm::DecryptIdentityRequest(RSA* pca_key,
                                  const chromeos::SecureBlob& request,
                                  chromeos::SecureBlob* identity_binding,
@@ -2143,7 +2249,8 @@ bool Tpm::ConvertPublicKeyToDER(const chromeos::SecureBlob& public_key,
   return true;
 }
 
-bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key,
+bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
+                       chromeos::SecureBlob* identity_public_key,
                        chromeos::SecureBlob* identity_key_blob,
                        chromeos::SecureBlob* identity_binding,
                        chromeos::SecureBlob* identity_label,
@@ -2274,7 +2381,15 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key,
   }
   chromeos::SecureMemset(request.value(), 0, request_length);
 
-  // Get the AIK public key in DER encoded form.
+  // We need the endorsement credential. If CollateIdentityRequest does not
+  // provide it, read it manually.
+  if (endorsement_credential->size() == 0 &&
+      !GetEndorsementCredential(endorsement_credential)) {
+    LOG(ERROR) << "MakeIdentity: Failed to get endorsement credential.";
+    return false;
+  }
+
+  // Get the AIK public key.
   UINT32 identity_public_key_length = 0;
   ScopedTssMemory identity_public_key_buf(context_handle);
   result = Tspi_GetAttribData(identity_key,
@@ -2286,11 +2401,12 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key,
     TPM_LOG(ERROR, result) << "MakeIdentity: Failed to read public key.";
     return false;
   }
-  chromeos::SecureBlob identity_public_key_blob(identity_public_key_buf.value(),
-                                                identity_public_key_length);
+  identity_public_key->assign(
+      &identity_public_key_buf.value()[0],
+      &identity_public_key_buf.value()[identity_public_key_length]);
   chromeos::SecureMemset(identity_public_key_buf.value(), 0,
                          identity_public_key_length);
-  if (!ConvertPublicKeyToDER(identity_public_key_blob, identity_public_key)) {
+  if (!ConvertPublicKeyToDER(*identity_public_key, identity_public_key_der)) {
     return false;
   }
 
@@ -2510,6 +2626,125 @@ bool Tpm::Unseal(const chromeos::Blob& sealed_value, chromeos::Blob* value) {
   }
   value->assign(&dec_data.value()[0], &dec_data.value()[dec_data_length]);
   chromeos::SecureMemset(dec_data.value(), 0, dec_data_length);
+  return true;
+}
+
+bool Tpm::CreateCertifiedKey(const chromeos::SecureBlob& identity_key_blob,
+                             const chromeos::SecureBlob& external_data,
+                             chromeos::SecureBlob* certified_public_key,
+                             chromeos::SecureBlob* certified_key_blob,
+                             chromeos::SecureBlob* certified_key_info,
+                             chromeos::SecureBlob* certified_key_proof) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "CreateCertifiedKey: Failed to connect to the TPM.";
+    return false;
+  }
+
+  // Load the Storage Root Key.
+  TSS_RESULT result;
+  ScopedTssKey srk_handle(context_handle);
+  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
+    TPM_LOG(INFO, result) << "CreateCertifiedKey: Failed to load SRK.";
+    return false;
+  }
+
+  // Load the AIK (which is wrapped by the SRK).
+  ScopedTssKey identity_key(context_handle);
+  result = Tspi_Context_LoadKeyByBlob(
+      context_handle, srk_handle, identity_key_blob.size(),
+      const_cast<BYTE*>(&identity_key_blob.front()), identity_key.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to load AIK.";
+    return false;
+  }
+
+  // Create a non-migratable signing key.
+  ScopedTssKey signing_key(context_handle);
+  UINT32 init_flags = TSS_KEY_TYPE_SIGNING |
+                      TSS_KEY_NOT_MIGRATABLE |
+                      TSS_KEY_VOLATILE |
+                      kDefaultTpmRsaKeyFlag;
+  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_RSAKEY,
+                                     init_flags, signing_key.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to create object.";
+    return false;
+  }
+  result = Tspi_SetAttribUint32(signing_key,
+                                TSS_TSPATTRIB_KEY_INFO,
+                                TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
+                                TSS_SS_RSASSAPKCS1V15_DER);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to set signature "
+                           << "scheme.";
+    return false;
+  }
+  result = Tspi_Key_CreateKey(signing_key, srk_handle, 0);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to create key.";
+    return false;
+  }
+  result = Tspi_Key_LoadKey(signing_key, srk_handle);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to load key.";
+    return false;
+  }
+
+  // Certify the signing key.
+  TSS_VALIDATION validation;
+  memset(&validation, 0, sizeof(validation));
+  validation.ulExternalDataLength = external_data.size();
+  validation.rgbExternalData = const_cast<BYTE*>(&external_data.front());
+  result = Tspi_Key_CertifyKey(signing_key, identity_key, &validation);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to certify key.";
+    return false;
+  }
+  ScopedTssMemory scoped_certified_data(0, validation.rgbData);
+  ScopedTssMemory scoped_proof(0, validation.rgbValidationData);
+
+  // Get the certified public key.
+  UINT32 public_key_length = 0;
+  ScopedTssMemory public_key_buf(context_handle);
+  result = Tspi_GetAttribData(signing_key,
+                              TSS_TSPATTRIB_KEY_BLOB,
+                              TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY,
+                              &public_key_length,
+                              public_key_buf.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to read public key.";
+    return false;
+  }
+  SecureBlob public_key(public_key_buf.value(), public_key_length);
+  chromeos::SecureMemset(public_key_buf.value(), 0, public_key_length);
+  if (!ConvertPublicKeyToDER(public_key, certified_public_key)) {
+    return false;
+  }
+
+  // Get the certified key blob so we can load it later.
+  UINT32 blob_length = 0;
+  ScopedTssMemory blob(context_handle);
+  result = Tspi_GetAttribData(signing_key,
+                              TSS_TSPATTRIB_KEY_BLOB,
+                              TSS_TSPATTRIB_KEYBLOB_BLOB,
+                              &blob_length, blob.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to read key blob.";
+    return false;
+  }
+  certified_key_blob->assign(&blob.value()[0], &blob.value()[blob_length]);
+  chromeos::SecureMemset(blob.value(), 0, blob_length);
+
+  // Get the data that was certified.
+  certified_key_info->assign(&validation.rgbData[0],
+                             &validation.rgbData[validation.ulDataLength]);
+
+  // Get the certification proof.
+  certified_key_proof->assign(
+      &validation.rgbValidationData[0],
+      &validation.rgbValidationData[validation.ulValidationDataLength]);
   return true;
 }
 

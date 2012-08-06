@@ -37,7 +37,7 @@ class MockTpm : public Tpm {
         .WillByDefault(Return(true));
     ON_CALL(*this, GetEndorsementPublicKey(_))
         .WillByDefault(Return(true));
-    ON_CALL(*this, MakeIdentity(_, _, _, _, _, _, _, _))
+    ON_CALL(*this, MakeIdentity(_, _, _, _, _, _, _, _, _))
         .WillByDefault(Return(true));
     ON_CALL(*this, QuotePCR0(_, _, _, _, _))
         .WillByDefault(Return(true));
@@ -73,7 +73,8 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(IsNvramLocked, bool(uint32_t));
   MOCK_METHOD1(GetNvramSize, unsigned int(uint32_t));
   MOCK_METHOD1(GetEndorsementPublicKey, bool(chromeos::SecureBlob*));
-  MOCK_METHOD8(MakeIdentity, bool(chromeos::SecureBlob*,
+  MOCK_METHOD9(MakeIdentity, bool(chromeos::SecureBlob*,
+                                  chromeos::SecureBlob*,
                                   chromeos::SecureBlob*,
                                   chromeos::SecureBlob*,
                                   chromeos::SecureBlob*,

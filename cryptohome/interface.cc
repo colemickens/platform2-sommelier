@@ -210,6 +210,16 @@ gboolean cryptohome_tpm_clear_stored_password(Cryptohome *self,
                                               GError **error) {
   CRYPTOHOME_WRAP_METHOD_NO_ARGS(TpmClearStoredPassword);
 }
+gboolean cryptohome_tpm_is_attestation_prepared(Cryptohome *self,
+                                                gboolean *OUT_prepared,
+                                                GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmIsAttestationPrepared, OUT_prepared);
+}
+gboolean cryptohome_tpm_verify_attestation_data(Cryptohome *self,
+                                                gboolean *OUT_verified,
+                                                GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmVerifyAttestationData, OUT_verified);
+}
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               gchar **OUT_label,
                                               gchar **OUT_user_pin,

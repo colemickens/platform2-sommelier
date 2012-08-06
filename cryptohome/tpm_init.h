@@ -71,6 +71,12 @@ class TpmInit {
   // Clears the TPM password from memory and disk
   virtual void ClearStoredTpmPassword();
 
+  // Returns true if attestation data has been prepared for enrollment.
+  virtual bool IsAttestationPrepared();
+
+  // Returns true if all attestation data can be validated.
+  virtual bool VerifyAttestationData();
+
   virtual void set_tpm(Tpm* value);
 
   virtual Tpm* get_tpm();

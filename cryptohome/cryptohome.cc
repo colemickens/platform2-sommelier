@@ -62,6 +62,7 @@ namespace switches {
     "install_attributes_finalize",
     "pkcs11_token_status",
     "pkcs11_terminate",
+    "tpm_verify_attestation",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -84,7 +85,8 @@ namespace switches {
     ACTION_INSTALL_ATTRIBUTES_GET,
     ACTION_INSTALL_ATTRIBUTES_FINALIZE,
     ACTION_PKCS11_TOKEN_STATUS,
-    ACTION_PKCS11_TERMINATE };
+    ACTION_PKCS11_TERMINATE,
+    ACTION_TPM_VERIFY_ATTESTATION };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
@@ -883,6 +885,19 @@ int main(int argc, char **argv) {
             user.c_str(),
             &chromeos::Resetter(&error).lvalue())) {
       printf("PKCS #11 terminate call failed: %s.\n", error->message);
+    }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_VERIFY_ATTESTATION],
+      action.c_str())) {
+    chromeos::glib::ScopedError error;
+    gboolean result = FALSE;
+    if (!org_chromium_CryptohomeInterface_tpm_verify_attestation_data(
+        proxy.gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmVerifyAttestationData call failed: %s.\n", error->message);
+    }
+    if (result == FALSE) {
+      printf("TPM attestation data is not valid.\n");
+      return 1;
     }
   } else {
     printf("Unknown action or no action given.  Available actions:\n");

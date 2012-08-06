@@ -223,11 +223,20 @@ class Tpm {
   // Returns true on success.
   virtual bool GetEndorsementPublicKey(chromeos::SecureBlob* ek_public_key);
 
+  // Get the endorsement credential. This method requires TPM owner privilege.
+  //
+  // Parameters
+  //   credential - The EK credential as it is stored in NVRAM.
+  //
+  // Returns true on success.
+  virtual bool GetEndorsementCredential(chromeos::SecureBlob* credential);
+
   // Creates an Attestation Identity Key (AIK). This method requires TPM owner
   // privilege.
   //
   // Parameters
-  //   identity_public_key - The AIK public key in DER encoded form.
+  //   identity_public_key_der - The AIK public key in DER encoded form.
+  //   identity_public_key - The AIK public key in serialized TPM_PUBKEY form.
   //   identity_key_blob - The AIK key in blob form.
   //   identity_binding - The EK-AIK binding (i.e. public key signature).
   //   identity_label - The label used to create the identity binding.
@@ -238,7 +247,8 @@ class Tpm {
   //   conformance_credential - The conformance credential.
   //
   // Returns true on success.
-  virtual bool MakeIdentity(chromeos::SecureBlob* identity_public_key,
+  virtual bool MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
+                            chromeos::SecureBlob* identity_public_key,
                             chromeos::SecureBlob* identity_key_blob,
                             chromeos::SecureBlob* identity_binding,
                             chromeos::SecureBlob* identity_label,
@@ -287,6 +297,21 @@ class Tpm {
   // Returns true on success.
   virtual bool Unseal(const chromeos::Blob& sealed_value,
                       chromeos::Blob* value);
+
+  // Creates a certified non-migratable signing key.
+  //
+  // Parameters
+  //   identity_key_blob - The AIK key blob, as provided by MakeIdentity.
+  //   certified_public_key - The certified public key in DER encoded form.
+  //   certified_key_blob - The certified key in blob form.
+  //   certified_key_info - The key info that was signed (TPM_CERTIFY_INFO).
+  //   certified_key_proof - The signature of the certified key info by the AIK.
+  virtual bool CreateCertifiedKey(const chromeos::SecureBlob& identity_key_blob,
+                                  const chromeos::SecureBlob& external_data,
+                                  chromeos::SecureBlob* certified_public_key,
+                                  chromeos::SecureBlob* certified_key_blob,
+                                  chromeos::SecureBlob* certified_key_info,
+                                  chromeos::SecureBlob* certified_key_proof);
 
  protected:
   // Default constructor
@@ -393,6 +418,13 @@ class Tpm {
   bool IsNvramLockedForContext(TSS_HCONTEXT context_handle,
                                TSS_HTPM tpm_handle,
                                uint32_t index);
+
+  // Reads an NVRAM space using the given context.
+  bool ReadNvramForContext(TSS_HCONTEXT context_handle,
+                           TSS_HTPM tpm_handle,
+                           TSS_HPOLICY policy_handle,
+                           uint32_t index,
+                           chromeos::SecureBlob* blob);
 
   // Returns whether or not the TPM is disabled by checking a flag in the TPM's
   // entry in /sys/class/misc

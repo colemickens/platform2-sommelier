@@ -965,6 +965,18 @@ gboolean Service::TpmClearStoredPassword(GError** error) {
   return TRUE;
 }
 
+gboolean Service::TpmIsAttestationPrepared(gboolean* OUT_prepared,
+                                           GError** error) {
+  *OUT_prepared = tpm_init_->IsAttestationPrepared();
+  return TRUE;
+}
+
+gboolean Service::TpmVerifyAttestationData(gboolean* OUT_verified,
+                                           GError** error) {
+  *OUT_verified = tpm_init_->VerifyAttestationData();
+  return TRUE;
+}
+
 // Returns true if all Pkcs11 tokens are ready.
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   // TODO(gauravsh): Give out more information here. The state of PKCS#11
