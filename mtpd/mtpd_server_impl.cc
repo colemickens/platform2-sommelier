@@ -5,13 +5,12 @@
 #include "mtpd/mtpd_server_impl.h"
 
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 
 namespace mtpd {
 
-// TODO(thestig) Use string constants from
-// system_api/dbus/service_constants.h.
 MtpdServer::MtpdServer(DBus::Connection& connection)
-    : DBus::ObjectAdaptor(connection, "/org/chromium/Mtpd") {
+    : DBus::ObjectAdaptor(connection, kMtpdServicePath) {
 }
 
 MtpdServer::~MtpdServer() {

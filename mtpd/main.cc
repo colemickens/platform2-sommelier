@@ -93,9 +93,7 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Creating the mtpd server";
   DBus::Connection server_conn = DBus::Connection::SystemBus();
-  // TODO(thestig) Move string constants to system_api/dbus/service_constants.h.
-  //server_conn.request_name(mtpd::kMtpdServiceName);
-  server_conn.request_name("org.chromium.Mtpd");
+  server_conn.request_name(mtpd::kMtpdServiceName);
   Daemon daemon(&server_conn);
 
   // Set up a monitor for handling device events.

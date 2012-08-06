@@ -5,6 +5,7 @@
 #include "mtpd/file_entry.h"
 
 #include <base/time.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "string_helpers.h"
 
@@ -24,16 +25,15 @@ FileEntry::~FileEntry() {
 }
 
 DBusFileEntry FileEntry::ToDBusFormat() const {
-  // TODO(thestig) Move string constants to system_api/dbus/service_constants.h.
   DBusFileEntry entry;
-  entry["ItemId"].writer().append_uint32(item_id_);
-  entry["ParentId"].writer().append_uint32(parent_id_);
-  entry["FileName"].writer().append_string(
+  entry[kItemId].writer().append_uint32(item_id_);
+  entry[kParentId].writer().append_uint32(parent_id_);
+  entry[kFileName].writer().append_string(
       EnsureUTF8String(file_name_).c_str());
-  entry["FileSize"].writer().append_uint64(file_size_);
-  entry["ModificationDate"].writer().append_int64(
+  entry[kFileSize].writer().append_uint64(file_size_);
+  entry[kModificationDate].writer().append_int64(
       base::Time::FromTimeT(modification_date_).ToInternalValue());
-  entry["FileType"].writer().append_uint16(file_type_);
+  entry[kFileType].writer().append_uint16(file_type_);
   return entry;
 }
 

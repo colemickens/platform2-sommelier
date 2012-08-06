@@ -4,6 +4,8 @@
 
 #include "mtpd/storage_info.h"
 
+#include <chromeos/dbus/service_constants.h>
+
 #include "string_helpers.h"
 
 namespace mtpd {
@@ -33,22 +35,21 @@ StorageInfo::~StorageInfo() {
 }
 
 DBusMTPStorage StorageInfo::ToDBusFormat() const {
-  // TODO(thestig) Move string constants to system_api/dbus/service_constants.h.
   DBusMTPStorage entry;
-  entry["Vendor"].writer().append_string(EnsureUTF8String(vendor_).c_str());
-  entry["VendorId"].writer().append_uint16(vendor_id_);
-  entry["Product"].writer().append_string(EnsureUTF8String(product_).c_str());
-  entry["ProductId"].writer().append_uint16(product_id_);
-  entry["DeviceFlags"].writer().append_uint32(device_flags_);
-  entry["StorageType"].writer().append_uint16(storage_type_);
-  entry["FilesystemType"].writer().append_uint16(filesystem_type_);
-  entry["AccessCapability"].writer().append_uint16(access_capability_);
-  entry["MaxCapacity"].writer().append_uint64(max_capacity_);
-  entry["FreeSpaceInBytes"].writer().append_uint64(free_space_in_bytes_);
-  entry["FreeSpaceInObjects"].writer().append_uint64(free_space_in_objects_);
-  entry["StorageDescription"].writer().append_string(
+  entry[kVendor].writer().append_string(EnsureUTF8String(vendor_).c_str());
+  entry[kVendorId].writer().append_uint16(vendor_id_);
+  entry[kProduct].writer().append_string(EnsureUTF8String(product_).c_str());
+  entry[kProductId].writer().append_uint16(product_id_);
+  entry[kDeviceFlags].writer().append_uint32(device_flags_);
+  entry[kStorageType].writer().append_uint16(storage_type_);
+  entry[kFilesystemType].writer().append_uint16(filesystem_type_);
+  entry[kAccessCapability].writer().append_uint16(access_capability_);
+  entry[kMaxCapacity].writer().append_uint64(max_capacity_);
+  entry[kFreeSpaceInBytes].writer().append_uint64(free_space_in_bytes_);
+  entry[kFreeSpaceInObjects].writer().append_uint64(free_space_in_objects_);
+  entry[kStorageDescription].writer().append_string(
       EnsureUTF8String(storage_description_).c_str());
-  entry["VolumeIdentifier"].writer().append_string(
+  entry[kVolumeIdentifier].writer().append_string(
       EnsureUTF8String(volume_identifier_).c_str());
   return entry;
 }
