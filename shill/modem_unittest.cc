@@ -98,11 +98,6 @@ class ModemTest : public Test {
     ModemTest *test_;
   };
 
-  CellularCapabilityGSM *GetCapabilityGSM() {
-    return dynamic_cast<CellularCapabilityGSM *>(
-        modem_->device_->capability_.get());
-  }
-
   MockGLib glib_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
@@ -170,11 +165,12 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
       kLinkName,
       kAddressAsString,
       kTestInterfaceIndex,
-      Cellular::kTypeGSM,
+      Cellular::kTypeCDMA,
       kOwner,
       kService,
       kPath,
-      static_cast<mobile_provider_db *>(NULL));
+      static_cast<mobile_provider_db *>(NULL),
+      ProxyFactory::GetInstance());
 
   EXPECT_CALL(*modem_,
               ConstructCellular(StrEq(kLinkName),

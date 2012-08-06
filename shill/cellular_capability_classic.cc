@@ -142,7 +142,8 @@ void CellularCapabilityClassic::StepCompletedCallback(
     return;
   }
   delete tasks;
-  callback.Run(error);
+  if (!callback.is_null())
+    callback.Run(error);
 }
 
 // always called from an async context

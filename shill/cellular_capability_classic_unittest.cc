@@ -48,6 +48,16 @@ class CellularCapabilityTest : public testing::Test {
  public:
   CellularCapabilityTest()
       : manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        create_gsm_card_proxy_from_factory_(false),
+        proxy_(new MockModemProxy()),
+        simple_proxy_(new MockModemSimpleProxy()),
+        cdma_proxy_(new MockModemCDMAProxy()),
+        gsm_card_proxy_(new MockModemGSMCardProxy()),
+        gsm_network_proxy_(new MockModemGSMNetworkProxy()),
+        proxy_factory_(this),
+        capability_(NULL),
+        device_adaptor_(NULL),
+        provider_db_(NULL),
         cellular_(new Cellular(&control_,
                                &dispatcher_,
                                NULL,
@@ -59,16 +69,8 @@ class CellularCapabilityTest : public testing::Test {
                                "",
                                "",
                                "",
-                               NULL)),
-        proxy_(new MockModemProxy()),
-        simple_proxy_(new MockModemSimpleProxy()),
-        cdma_proxy_(new MockModemCDMAProxy()),
-        gsm_card_proxy_(new MockModemGSMCardProxy()),
-        gsm_network_proxy_(new MockModemGSMNetworkProxy()),
-        proxy_factory_(this),
-        capability_(NULL),
-        device_adaptor_(NULL),
-        provider_db_(NULL) {}
+                               NULL,
+                               &proxy_factory_)) {}
 
   virtual ~CellularCapabilityTest() {
     cellular_->service_ = NULL;
@@ -177,7 +179,12 @@ class CellularCapabilityTest : public testing::Test {
     virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
         const string &/*path*/,
         const string &/*service*/) {
-      return test_->gsm_card_proxy_.release();
+      // TODO(benchan): This code conditionally returns a NULL pointer to avoid
+      // CellularCapabilityGSM::InitProperties (and thus
+      // CellularCapabilityGSM::GetIMSI) from being called during the
+      // construction. Remove this workaround after refactoring the tests.
+      return test_->create_gsm_card_proxy_from_factory_ ?
+          test_->gsm_card_proxy_.release() : NULL;
     }
 
     virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
@@ -205,9 +212,13 @@ class CellularCapabilityTest : public testing::Test {
   }
 
   void SetCellularType(Cellular::Type type) {
-    cellular_->InitCapability(type, &proxy_factory_);
+    cellular_->InitCapability(type);
     capability_ = dynamic_cast<CellularCapabilityClassic *>(
         cellular_->capability_.get());
+  }
+
+  void AllowCreateGSMCardProxyFromFactory() {
+    create_gsm_card_proxy_from_factory_ = true;
   }
 
   NiceMockControl control_;
@@ -215,8 +226,8 @@ class CellularCapabilityTest : public testing::Test {
   MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
-  CellularRefPtr cellular_;
   MockRTNLHandler rtnl_handler_;
+  bool create_gsm_card_proxy_from_factory_;
   scoped_ptr<MockModemProxy> proxy_;
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
   scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
@@ -226,6 +237,7 @@ class CellularCapabilityTest : public testing::Test {
   CellularCapabilityClassic *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
   mobile_provider_db *provider_db_;
+  CellularRefPtr cellular_;
 };
 
 const char CellularCapabilityTest::kTestMobileProviderDBPath[] =

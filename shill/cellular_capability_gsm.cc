@@ -77,6 +77,22 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
   store->RegisterConstStringmaps(flimflam::kCellularApnListProperty,
                                  &apn_list_);
   scanning_supported_ = true;
+
+  // TODO(benchan): This is a hack to initialize the GSM card proxy for GetIMSI
+  // before InitProxies is called. There are side-effects of calling InitProxies
+  // before the device is enabled. It's better to refactor InitProxies such that
+  // proxies can be created when the cellular device/capability is constructed,
+  // but callbacks for DBus signal updates are not set up until the device is
+  // enabled.
+  card_proxy_.reset(
+      proxy_factory->CreateModemGSMCardProxy(cellular->dbus_path(),
+                                             cellular->dbus_owner()));
+  // TODO(benchan): To allow unit testing using a mock proxy without further
+  // complicating the code, the test proxy factory is set up to return a NULL
+  // pointer when CellularCapabilityGSM is constructed. Refactor the code to
+  // avoid this hack.
+  if (card_proxy_.get())
+    InitProperties();
 }
 
 KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {
@@ -102,9 +118,13 @@ void CellularCapabilityGSM::HelpRegisterDerivedKeyValueStore(
 
 void CellularCapabilityGSM::InitProxies() {
   CellularCapabilityClassic::InitProxies();
-  card_proxy_.reset(
-      proxy_factory()->CreateModemGSMCardProxy(cellular()->dbus_path(),
-                                               cellular()->dbus_owner()));
+  // TODO(benchan): Remove this check after refactoring the proxy
+  // initialization.
+  if (!card_proxy_.get()) {
+    card_proxy_.reset(
+        proxy_factory()->CreateModemGSMCardProxy(cellular()->dbus_path(),
+                                                 cellular()->dbus_owner()));
+  }
   network_proxy_.reset(
       proxy_factory()->CreateModemGSMNetworkProxy(cellular()->dbus_path(),
                                                   cellular()->dbus_owner()));
@@ -117,6 +137,19 @@ void CellularCapabilityGSM::InitProxies() {
   network_proxy_->set_registration_info_callback(
       Bind(&CellularCapabilityGSM::OnRegistrationInfoSignal,
            weak_ptr_factory_.GetWeakPtr()));
+}
+
+void CellularCapabilityGSM::InitProperties() {
+  CellularTaskList *tasks = new CellularTaskList();
+  ResultCallback cb_ignore_error =
+      Bind(&CellularCapabilityGSM::StepCompletedCallback,
+           weak_ptr_factory_.GetWeakPtr(), ResultCallback(), true, tasks);
+  // Chrome uses IMSI to determine if a SIM is present before allowing the
+  // modem to be enabled, so shill needs to obtain IMSI even before the device
+  // is enabled.
+  tasks->push_back(Bind(&CellularCapabilityGSM::GetIMSI,
+                        weak_ptr_factory_.GetWeakPtr(), cb_ignore_error));
+  RunNextStep(tasks);
 }
 
 void CellularCapabilityGSM::StartModem(Error *error,

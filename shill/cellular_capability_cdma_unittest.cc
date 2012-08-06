@@ -19,6 +19,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/nice_mock_control.h"
+#include "shill/proxy_factory.h"
 
 using base::Bind;
 using base::Unretained;
@@ -44,7 +45,8 @@ class CellularCapabilityCDMATest : public testing::Test {
                                "",
                                "",
                                "",
-                               NULL)),
+                               NULL,
+                               ProxyFactory::GetInstance())),
         proxy_(new MockModemCDMAProxy()),
         capability_(NULL) {}
 

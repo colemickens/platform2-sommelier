@@ -64,6 +64,16 @@ class CellularCapabilityUniversalTest : public testing::Test {
  public:
   CellularCapabilityUniversalTest()
       : manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
+        modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
+        modem_proxy_(new mm1::MockModemProxy()),
+        modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
+        sim_proxy_(new mm1::MockSimProxy()),
+        properties_proxy_(new MockDBusPropertiesProxy()),
+        proxy_factory_(this),
+        capability_(NULL),
+        device_adaptor_(NULL),
+        provider_db_(NULL),
         cellular_(new Cellular(&control_,
                                &dispatcher_,
                                NULL,
@@ -75,21 +85,13 @@ class CellularCapabilityUniversalTest : public testing::Test {
                                "",
                                "",
                                "",
-                               NULL)),
+                               NULL,
+                               &proxy_factory_)),
         service_(new MockCellularService(&control_,
                                          &dispatcher_,
                                          &metrics_,
                                          &manager_,
-                                         cellular_)),
-        modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
-        modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
-        modem_proxy_(new mm1::MockModemProxy()),
-        modem_simple_proxy_(new mm1::MockModemSimpleProxy()),
-        sim_proxy_(new mm1::MockSimProxy()),
-        properties_proxy_(new MockDBusPropertiesProxy()),
-        proxy_factory_(this),
-        capability_(NULL),
-        device_adaptor_(NULL) {}
+                                         cellular_)) {}
 
   virtual ~CellularCapabilityUniversalTest() {
     cellular_->service_ = NULL;
@@ -100,7 +102,6 @@ class CellularCapabilityUniversalTest : public testing::Test {
   virtual void SetUp() {
     capability_ = dynamic_cast<CellularCapabilityUniversal *>(
         cellular_->capability_.get());
-    capability_->proxy_factory_ = &proxy_factory_;
     device_adaptor_ =
         dynamic_cast<NiceMock<DeviceMockAdaptor> *>(cellular_->adaptor());
     cellular_->service_ = service_;
@@ -208,8 +209,6 @@ class CellularCapabilityUniversalTest : public testing::Test {
   MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
-  CellularRefPtr cellular_;
-  MockCellularService *service_;  // owned by cellular_
   scoped_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
   scoped_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
   scoped_ptr<mm1::MockModemProxy> modem_proxy_;
@@ -220,6 +219,8 @@ class CellularCapabilityUniversalTest : public testing::Test {
   CellularCapabilityUniversal *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
   mobile_provider_db *provider_db_;
+  CellularRefPtr cellular_;
+  MockCellularService *service_;  // owned by cellular_
   DBusPropertyMapsCallback scan_callback_;  // saved for testing scan operations
   DBusPathCallback connect_callback_;  // saved for testing connect operations
 };

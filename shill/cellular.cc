@@ -98,7 +98,8 @@ Cellular::Cellular(ControlInterface *control_interface,
                    const string &owner,
                    const string &service,
                    const string &path,
-                   mobile_provider_db *provider_db)
+                   mobile_provider_db *provider_db,
+                   ProxyFactory *proxy_factory)
     : Device(control_interface,
              dispatcher,
              metrics,
@@ -113,6 +114,7 @@ Cellular::Cellular(ControlInterface *control_interface,
       dbus_service_(service),
       dbus_path_(path),
       provider_db_(provider_db),
+      proxy_factory_(proxy_factory),
       allow_roaming_(false) {
   PropertyStore *store = this->mutable_store();
   // TODO(jglasgow): kDBusConnectionProperty is deprecated.
@@ -128,7 +130,7 @@ Cellular::Cellular(ControlInterface *control_interface,
   store->RegisterConstStringmap(flimflam::kHomeProviderProperty,
                                 &home_provider_.ToDict());
   // For now, only a single capability is supported.
-  InitCapability(type, ProxyFactory::GetInstance());
+  InitCapability(type);
 
   SLOG(Cellular, 2) << "Cellular device " << this->link_name()
                     << " initialized.";
@@ -268,19 +270,19 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback &callback,
   callback.Run(error);
 }
 
-void Cellular::InitCapability(Type type, ProxyFactory *proxy_factory) {
+void Cellular::InitCapability(Type type) {
   // TODO(petkov): Consider moving capability construction into a factory that's
   // external to the Cellular class.
   SLOG(Cellular, 2) << __func__ << "(" << type << ")";
   switch (type) {
     case kTypeGSM:
-      capability_.reset(new CellularCapabilityGSM(this, proxy_factory));
+      capability_.reset(new CellularCapabilityGSM(this, proxy_factory_));
       break;
     case kTypeCDMA:
-      capability_.reset(new CellularCapabilityCDMA(this, proxy_factory));
+      capability_.reset(new CellularCapabilityCDMA(this, proxy_factory_));
       break;
     case kTypeUniversal:
-      capability_.reset(new CellularCapabilityUniversal(this, proxy_factory));
+      capability_.reset(new CellularCapabilityUniversal(this, proxy_factory_));
       break;
     default: NOTREACHED();
   }

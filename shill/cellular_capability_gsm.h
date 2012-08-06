@@ -81,6 +81,11 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
  protected:
   virtual void InitProxies();
   virtual void ReleaseProxies();
+
+  // Initializes properties, such as IMSI, which are required before the device
+  // is enabled.
+  virtual void InitProperties();
+
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
 
  private:

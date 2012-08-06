@@ -108,7 +108,8 @@ class Cellular : public Device {
            const std::string &owner,
            const std::string &service,
            const std::string &path,
-           mobile_provider_db *provider_db);
+           mobile_provider_db *provider_db,
+           ProxyFactory *proxy_factory);
   virtual ~Cellular();
 
   // Load configuration for the device from |storage|.
@@ -253,7 +254,7 @@ class Cellular : public Device {
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
 
-  void InitCapability(Type type, ProxyFactory *proxy_factory);
+  void InitCapability(Type type);
 
   void CreateService();
 
@@ -292,6 +293,7 @@ class Cellular : public Device {
   const std::string dbus_path_;  // ModemManager.Modem
 
   mobile_provider_db *provider_db_;
+  ProxyFactory *proxy_factory_;
 
   CellularServiceRefPtr service_;
 

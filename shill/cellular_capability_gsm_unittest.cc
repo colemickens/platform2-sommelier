@@ -53,7 +53,16 @@ MATCHER(IsFailure, "") {
 class CellularCapabilityGSMTest : public testing::Test {
  public:
   CellularCapabilityGSMTest()
-      : cellular_(new Cellular(&control_,
+      : create_card_proxy_from_factory_(false),
+        proxy_(new MockModemProxy()),
+        simple_proxy_(new MockModemSimpleProxy()),
+        card_proxy_(new MockModemGSMCardProxy()),
+        network_proxy_(new MockModemGSMNetworkProxy()),
+        proxy_factory_(this),
+        capability_(NULL),
+        device_adaptor_(NULL),
+        provider_db_(NULL),
+        cellular_(new Cellular(&control_,
                                &dispatcher_,
                                &metrics_,
                                NULL,
@@ -64,15 +73,8 @@ class CellularCapabilityGSMTest : public testing::Test {
                                "",
                                "",
                                "",
-                               NULL)),
-        proxy_(new MockModemProxy()),
-        simple_proxy_(new MockModemSimpleProxy()),
-        card_proxy_(new MockModemGSMCardProxy()),
-        network_proxy_(new MockModemGSMNetworkProxy()),
-        proxy_factory_(this),
-        capability_(NULL),
-        device_adaptor_(NULL),
-        provider_db_(NULL) {}
+                               NULL,
+                               &proxy_factory_)) {}
 
   virtual ~CellularCapabilityGSMTest() {
     cellular_->service_ = NULL;
@@ -219,7 +221,12 @@ class CellularCapabilityGSMTest : public testing::Test {
     virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
         const string &/*path*/,
         const string &/*service*/) {
-      return test_->card_proxy_.release();
+      // TODO(benchan): This code conditionally returns a NULL pointer to avoid
+      // CellularCapabilityGSM::InitProperties (and thus
+      // CellularCapabilityGSM::GetIMSI) from being called during the
+      // construction. Remove this workaround after refactoring the tests.
+      return test_->create_card_proxy_from_factory_ ?
+          test_->card_proxy_.release() : NULL;
     }
 
     virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
@@ -242,10 +249,6 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   void SetNetworkProxy() {
     capability_->network_proxy_.reset(network_proxy_.release());
-  }
-
-  void SetProxyFactory() {
-    capability_->proxy_factory_ = &proxy_factory_;
   }
 
   void SetAccessTechnology(uint32 technology) {
@@ -298,13 +301,18 @@ class CellularCapabilityGSMTest : public testing::Test {
   }
 
   void InitProxies() {
+    AllowCreateCardProxyFromFactory();
     capability_->InitProxies();
+  }
+
+  void AllowCreateCardProxyFromFactory() {
+    create_card_proxy_from_factory_ = true;
   }
 
   NiceMockControl control_;
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
-  CellularRefPtr cellular_;
+  bool create_card_proxy_from_factory_;
   scoped_ptr<MockModemProxy> proxy_;
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
   scoped_ptr<MockModemGSMCardProxy> card_proxy_;
@@ -313,6 +321,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   CellularCapabilityGSM *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
   mobile_provider_db *provider_db_;
+  CellularRefPtr cellular_;
   ScanResultsCallback scan_callback_;  // saved for testing scan operations
 };
 
@@ -901,7 +910,7 @@ TEST_F(CellularCapabilityGSMTest, StartModemSuccess) {
   EXPECT_CALL(*card_proxy_,
               GetMSISDN(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetMSISDN));
-  SetProxyFactory();
+  AllowCreateCardProxyFromFactory();
 
   Error error;
   capability_->StartModem(
@@ -917,7 +926,7 @@ TEST_F(CellularCapabilityGSMTest, StartModemGetSPNFail) {
   EXPECT_CALL(*card_proxy_,
               GetMSISDN(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetMSISDN));
-  SetProxyFactory();
+  AllowCreateCardProxyFromFactory();
 
   Error error;
   capability_->StartModem(
@@ -933,7 +942,7 @@ TEST_F(CellularCapabilityGSMTest, StartModemGetMSISDNFail) {
   EXPECT_CALL(*card_proxy_,
               GetMSISDN(_, _, CellularCapability::kTimeoutDefault))
       .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeGetMSISDNFail));
-  SetProxyFactory();
+  AllowCreateCardProxyFromFactory();
 
   Error error;
   capability_->StartModem(
@@ -950,7 +959,6 @@ TEST_F(CellularCapabilityGSMTest, ConnectFailureNoService) {
               Connect(_, _, _, CellularCapabilityGSM::kTimeoutConnect))
        .WillOnce(Invoke(this, &CellularCapabilityGSMTest::InvokeConnectFail));
   EXPECT_CALL(*this, TestCallback(IsFailure()));
-  SetProxyFactory();
   InitProxies();
   EXPECT_FALSE(capability_->cellular()->service());
   Error error;

@@ -68,11 +68,12 @@ class CellularPropertyTest : public PropertyStoreTest {
                              "usb0",
                              "00:01:02:03:04:05",
                              3,
-                             Cellular::kTypeGSM,
+                             Cellular::kTypeCDMA,
                              "",
                              "",
                              "",
-                             NULL)) {}
+                             NULL,
+                             ProxyFactory::GetInstance())) {}
   virtual ~CellularPropertyTest() {}
 
  protected:
@@ -119,6 +120,14 @@ class CellularTest : public testing::Test {
         device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         dhcp_config_(new MockDHCPConfig(&control_interface_,
                                         kTestDeviceName)),
+        create_gsm_card_proxy_from_factory_(false),
+        proxy_(new MockModemProxy()),
+        simple_proxy_(new MockModemSimpleProxy()),
+        cdma_proxy_(new MockModemCDMAProxy()),
+        gsm_card_proxy_(new MockModemGSMCardProxy()),
+        gsm_network_proxy_(new MockModemGSMNetworkProxy()),
+        proxy_factory_(this),
+        provider_db_(NULL),
         device_(new Cellular(&control_interface_,
                              &dispatcher_,
                              &metrics_,
@@ -130,16 +139,8 @@ class CellularTest : public testing::Test {
                              kDBusOwner,
                              kDBusService,
                              kDBusPath,
-                             NULL)),
-        proxy_(new MockModemProxy()),
-        simple_proxy_(new MockModemSimpleProxy()),
-        cdma_proxy_(new MockModemCDMAProxy()),
-        gsm_card_proxy_(new MockModemGSMCardProxy()),
-        gsm_network_proxy_(new MockModemGSMNetworkProxy()),
-        proxy_factory_(this),
-        provider_db_(NULL) {
-    device_->capability_->proxy_factory_ = &proxy_factory_;
-  }
+                             NULL,
+                             &proxy_factory_)) {}
 
   virtual ~CellularTest() {
     mobile_provider_close_db(provider_db_);
@@ -325,7 +326,12 @@ class CellularTest : public testing::Test {
     virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
         const string &/*path*/,
         const string &/*service*/) {
-      return test_->gsm_card_proxy_.release();
+      // TODO(benchan): This code conditionally returns a NULL pointer to avoid
+      // CellularCapabilityGSM::InitProperties (and thus
+      // CellularCapabilityGSM::GetIMSI) from being called during the
+      // construction. Remove this workaround after refactoring the tests.
+      return test_->create_gsm_card_proxy_from_factory_ ?
+          test_->gsm_card_proxy_.release() : NULL;
     }
 
     virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
@@ -340,8 +346,12 @@ class CellularTest : public testing::Test {
   void StartRTNLHandler();
   void StopRTNLHandler();
 
+  void AllowCreateGSMCardProxyFromFactory() {
+    create_gsm_card_proxy_from_factory_ = true;
+  }
+
   void SetCellularType(Cellular::Type type) {
-    device_->InitCapability(type, &proxy_factory_);
+    device_->InitCapability(type);
   }
 
   CellularCapabilityClassic *GetCapabilityClassic() {
@@ -368,7 +378,7 @@ class CellularTest : public testing::Test {
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
 
-  CellularRefPtr device_;
+  bool create_gsm_card_proxy_from_factory_;
   scoped_ptr<MockModemProxy> proxy_;
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
   scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
@@ -376,6 +386,7 @@ class CellularTest : public testing::Test {
   scoped_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   TestProxyFactory proxy_factory_;
   mobile_provider_db *provider_db_;
+  CellularRefPtr device_;
 };
 
 const char CellularTest::kTestDeviceName[] = "usb0";
@@ -456,6 +467,8 @@ TEST_F(CellularTest, StartGSMRegister) {
                              &CellularTest::InvokeGetSignalQuality));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   EXPECT_CALL(manager_, RegisterService(_));
+  AllowCreateGSMCardProxyFromFactory();
+
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());

@@ -92,7 +92,8 @@ Cellular *Modem::ConstructCellular(const string &link_name,
                       owner_,
                       service_,
                       path_,
-                      provider_db_);
+                      provider_db_,
+                      ProxyFactory::GetInstance());
 }
 
 void Modem::CreateDeviceFromModemProperties(

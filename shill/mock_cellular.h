@@ -27,10 +27,10 @@ class MockCellular : public Cellular {
                const std::string &owner,
                const std::string &service,
                const std::string &path,
-               mobile_provider_db *provider_db);
+               mobile_provider_db *provider_db,
+               ProxyFactory *proxy_factory);
   virtual ~MockCellular();
 
-  MOCK_METHOD2(InitCapability, void(Type, ProxyFactory *));
   MOCK_METHOD3(OnDBusPropertiesChanged, void(const std::string &,
                                              const DBusPropertiesMap &,
                                              const std::vector<std::string> &));
