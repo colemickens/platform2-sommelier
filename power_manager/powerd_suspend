@@ -127,6 +127,11 @@ if suspend_cancel; then
     log_msg "Cancel suspend at kernel"
 else
     log_msg "Finalizing suspend"
+    # Make sure that hwclock is cached for when we wake up, this way we don't
+    # wait for io and get a more accurate time for wakeup
+    if [ $FLAGS_test -eq $FLAGS_TRUE ]; then
+        /sbin/hwclock > /dev/null
+    fi
     # - suspends to ram
     echo -n mem > /sys/power/state
 fi
@@ -135,7 +140,8 @@ if [ $cancel -eq 0 ]; then
     # On resume:
     if [ $FLAGS_test -eq $FLAGS_TRUE ]; then
         # - records the hwclock time at resume. It is read by power_Resume test.
-        /sbin/hwclock --utc --debug > /var/run/power_manager/hwclock-on-resume &
+        TIME=$(/sbin/hwclock --utc --debug)
+        echo ${TIME} > /var/run/power_manager/hwclock-on-resume &
         log_msg "Recorded hwclock time for test"
     fi
 
