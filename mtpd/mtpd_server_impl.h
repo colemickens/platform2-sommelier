@@ -74,6 +74,12 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   void ProcessDeviceEvents();
 
  private:
+  // Handle to StorageName map.
+  typedef std::map<std::string, std::string> HandleMap;
+
+  HandleMap handle_map_;
+
+  // Device manager needs to be last, so it is the first to be destroyed.
   DeviceManager device_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(MtpdServer);

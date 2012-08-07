@@ -9,6 +9,8 @@
 #include <set>
 
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
+#include <base/string_split.h>
 #include <base/stringprintf.h>
 #include <chromeos/callback.h>
 
@@ -71,6 +73,27 @@ DeviceManager::~DeviceManager() {
   RemoveDevices(true /* remove all */);
 }
 
+// static
+bool DeviceManager::ParseStorageName(const std::string& storage_name,
+                                     std::string* usb_bus_str,
+                                     uint32_t* storage_id) {
+  std::vector<std::string> split_str;
+  base::SplitString(storage_name, ':', &split_str);
+  if (split_str.size() != 3)
+    return false;
+
+  if (split_str[0] != kUsbPrefix)
+    return false;
+
+  uint32_t id = 0;
+  if (!base::StringToUint(split_str[2], &id))
+    return false;
+
+  *usb_bus_str = base::StringPrintf("%s:%s", kUsbPrefix, split_str[1].c_str());
+  *storage_id = id;
+  return true;
+}
+
 int DeviceManager::GetDeviceEventDescriptor() const {
   return udev_monitor_fd_;
 }
@@ -98,6 +121,26 @@ std::vector<std::string> DeviceManager::EnumerateStorage() {
     }
   }
   return ret;
+}
+
+bool DeviceManager::HasStorage(const std::string& storage_name) {
+  return GetStorageInfo(storage_name) != NULL;
+}
+
+const StorageInfo* DeviceManager::GetStorageInfo(
+    const std::string& storage_name) {
+  std::string usb_bus_str;
+  uint32_t storage_id = 0;
+  if (!ParseStorageName(storage_name, &usb_bus_str, &storage_id))
+    return NULL;
+
+  MtpDeviceMap::const_iterator device_it = device_map_.find(usb_bus_str);
+  if (device_it == device_map_.end())
+    return NULL;
+
+  const MtpStorageMap& storage_map = device_it->second.second;
+  MtpStorageMap::const_iterator storage_it = storage_map.find(storage_id);
+  return (storage_it != storage_map.end()) ? &(storage_it->second) : NULL;
 }
 
 void DeviceManager::HandleDeviceNotification(udev_device* device) {

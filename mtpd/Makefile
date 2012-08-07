@@ -34,6 +34,16 @@ $(patsubst %.o,%.o.depends,$(CXX_OBJECTS)): mtpd_server/mtpd_server.h
 CXX_BINARY(mtpd): $(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS))
 clean: CLEAN(mtpd)
 
+mtpd_testrunner: $(filter-out %main.o,$(CXX_OBJECTS))
+	$(call cxx_binary, -lgtest)
+clean: CLEAN(mtpd_testrunner)
+
 # Some shortcuts
 mtpd: CXX_BINARY(mtpd)
 all: mtpd
+
+user_tests: TEST(mtpd_testrunner)
+.PHONY: user_tests
+
+tests:
+	$(MAKE) user_tests

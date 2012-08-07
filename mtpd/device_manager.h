@@ -41,6 +41,19 @@ class DeviceManager {
   // Returns a vector of attached MTP storages.
   std::vector<std::string> EnumerateStorage();
 
+  // Returns true if |storage_name| is attached.
+  bool HasStorage(const std::string& storage_name);
+
+  // Returns storage metadata for |storage_name|.
+  const StorageInfo* GetStorageInfo(const std::string& storage_name);
+
+  // Exposed for testing.
+  // |storage_name| should be in the form of "usb:bus_location:storage_id".
+  // Returns true and fills |usb_bus_str| and |storage_id| on success.
+  static bool ParseStorageName(const std::string& storage_name,
+                               std::string* usb_bus_str,
+                               uint32_t* storage_id);
+
  private:
   // Key: MTP storage id, Value: metadata for the given storage.
   typedef std::map<uint32_t, StorageInfo> MtpStorageMap;

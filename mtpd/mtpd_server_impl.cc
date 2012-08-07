@@ -5,9 +5,18 @@
 #include "mtpd/mtpd_server_impl.h"
 
 #include <base/logging.h>
+#include <base/rand_util.h>
+#include <base/stl_util.h>
+#include <base/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace mtpd {
+
+namespace {
+
+const char kInvalidHandleErrorMessage[] = "Invalid handle ";
+
+}  // namespace
 
 MtpdServer::MtpdServer(DBus::Connection& connection)
     : DBus::ObjectAdaptor(connection, kMtpdServicePath),
@@ -23,20 +32,42 @@ std::vector<std::string> MtpdServer::EnumerateStorage(DBus::Error &error) {
 
 DBusMTPStorage MtpdServer::GetStorageInfo(const std::string& storageName,
                                           DBus::Error &error) {
-  NOTIMPLEMENTED();
-  return DBusMTPStorage();
+  const StorageInfo* info = device_manager_.GetStorageInfo(storageName);
+  return info ? info->ToDBusFormat() : DBusMTPStorage();
 }
 
 std::string MtpdServer::OpenStorage(const std::string& storageName,
                                     const std::string& mode,
                                     DBus::Error &error) {
-  NOTIMPLEMENTED();
-  return std::string();
+  // TODO(thestig) Handle read-write and possibly append-only modes.
+  if (mode != kReadOnlyMode) {
+    std::string error_msg = "Cannot open " + storageName + " in mode: " + mode;
+    error.set(kMtpdServiceError, error_msg.c_str());
+    return std::string();
+  }
+
+  if (!device_manager_.HasStorage(storageName)) {
+    std::string error_msg = "Cannot open unknown storage " + storageName;
+    error.set(kMtpdServiceError, error_msg.c_str());
+    return std::string();
+  }
+
+  std::string id;
+  uint32 random_data[4];
+  do {
+    base::RandBytes(random_data, sizeof(random_data));
+    id = base::HexEncode(random_data, sizeof(random_data));
+  } while (ContainsKey(handle_map_, id));
+
+  handle_map_.insert(std::make_pair(id, storageName));
+  return id;
 }
 
 void MtpdServer::CloseStorage(const std::string& handle, DBus::Error &error) {
-  NOTIMPLEMENTED();
-  return;
+  if (handle_map_.erase(handle) == 0) {
+    std::string error_msg = kInvalidHandleErrorMessage + handle;
+    error.set(kMtpdServiceError, error_msg.c_str());
+  }
 }
 
 DBusFileEntries MtpdServer::ReadDirectoryByPath(const std::string& handle,

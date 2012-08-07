@@ -10,6 +10,7 @@
 
 #include <dbus-c++/glib-integration.h>
 
+#include <base/at_exit.h>
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
@@ -70,6 +71,9 @@ int main(int argc, char** argv) {
   google::SetUsageMessage(kUsageMessage);
   google::ParseCommandLineFlags(&argc, &argv, true);
   CommandLine::Init(argc, argv);
+  // Needed by base::RandBytes() and other Chromium bits that expects
+  // an AtExitManager to exist.
+  base::AtExitManager exit_manager;
 
   SetupLogging();
 
