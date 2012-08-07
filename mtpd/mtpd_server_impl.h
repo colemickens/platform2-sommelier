@@ -11,9 +11,10 @@
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 
+#include "mtpd/device_event_delegate.h"
+#include "mtpd/device_manager.h"
 #include "mtpd/file_entry.h"
 #include "mtpd_server/mtpd_server.h"
-#include "mtpd/storage_info.h"
 
 namespace mtpd {
 
@@ -30,7 +31,8 @@ class DeviceManager;
 // At this point the server should be attached to the main loop.
 
 class MtpdServer : public org::chromium::Mtpd_adaptor,
-                   public DBus::ObjectAdaptor {
+                   public DBus::ObjectAdaptor,
+                   public DeviceEventDelegate {
  public:
   explicit MtpdServer(DBus::Connection& connection);
   virtual ~MtpdServer();
@@ -61,6 +63,10 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
       DBus::Error &error) OVERRIDE;
   virtual bool IsAlive(DBus::Error &error) OVERRIDE;
 
+  // DeviceEventDelegate implementation.
+  virtual void StorageAttached(const std::string& storage_name) OVERRIDE;
+  virtual void StorageDetached(const std::string& storage_name) OVERRIDE;
+
   // Returns a file descriptor for monitoring device events.
   int GetDeviceEventDescriptor() const;
 
@@ -68,6 +74,8 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   void ProcessDeviceEvents();
 
  private:
+  DeviceManager device_manager_;
+
   DISALLOW_COPY_AND_ASSIGN(MtpdServer);
 };
 

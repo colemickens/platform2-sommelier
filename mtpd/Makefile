@@ -16,13 +16,13 @@ GEN_DBUSXX(%):
 
 BASE_VER ?= 125070
 PC_DEPS = dbus-c++-1 glib-2.0 gthread-2.0 gobject-2.0 libmtp \
-	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+	libchrome-$(BASE_VER) libchromeos-$(BASE_VER) protobuf
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += -I$(SRC)/include -I$(SRC)/.. -I$(SRC) -I$(OUT) \
 	-I$(OUT)mtpd_server $(PC_CFLAGS)
-LDLIBS += -lgflags $(PC_LIBS)
+LDLIBS += -lgflags -ludev $(PC_LIBS)
 
 GEN_DBUSXX(mtpd_server/mtpd_server.h): $(SRC)/mtpd.xml
 mtpd_server/mtpd_server.h: GEN_DBUSXX(mtpd_server/mtpd_server.h)

@@ -10,15 +10,15 @@
 namespace mtpd {
 
 MtpdServer::MtpdServer(DBus::Connection& connection)
-    : DBus::ObjectAdaptor(connection, kMtpdServicePath) {
+    : DBus::ObjectAdaptor(connection, kMtpdServicePath),
+      device_manager_(this) {
 }
 
 MtpdServer::~MtpdServer() {
 }
 
 std::vector<std::string> MtpdServer::EnumerateStorage(DBus::Error &error) {
-  NOTIMPLEMENTED();
-  return std::vector<std::string>();
+  return device_manager_.EnumerateStorage();
 }
 
 DBusMTPStorage MtpdServer::GetStorageInfo(const std::string& storageName,
@@ -68,17 +68,25 @@ std::vector<uint8_t> MtpdServer::ReadFileById(const std::string& handle,
 }
 
 bool MtpdServer::IsAlive(DBus::Error &error) {
-  NOTIMPLEMENTED();
   return true;
 }
 
+void MtpdServer::StorageAttached(const std::string& storage_name) {
+  // Fire DBus signal.
+  MTPStorageAttached(storage_name);
+}
+
+void MtpdServer::StorageDetached(const std::string& storage_name) {
+  // Fire DBus signal.
+  MTPStorageDetached(storage_name);
+}
+
 int MtpdServer::GetDeviceEventDescriptor() const {
-  NOTIMPLEMENTED();
-  return -1;
+  return device_manager_.GetDeviceEventDescriptor();
 }
 
 void MtpdServer::ProcessDeviceEvents() {
-  NOTIMPLEMENTED();
+  device_manager_.ProcessDeviceEvents();
 }
 
 }  // namespace mtpd
