@@ -26,6 +26,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/http_proxy.h"
+#include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -135,6 +136,8 @@ Device::Device(ControlInterface *control_interface,
   HelpRegisterDerivedString(flimflam::kTypeProperty,
                             &Device::GetTechnologyString,
                             NULL);
+  HelpRegisterConstDerivedUint64(shill::kLinkMonitorResponseTimeProperty,
+                                 &Device::GetLinkMonitorResponseTime);
 
   // TODO(cmasone): Chrome doesn't use this...does anyone?
   // store_.RegisterConstBool(flimflam::kReconnectProperty, &reconnect_);
@@ -442,6 +445,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     // to the Connected state because this call may immediately transition
     // to the Online state.
     StartPortalDetection();
+    StartLinkMonitor();
   } else {
     // TODO(pstew): This logic gets yet more complex when multiple
     // IPConfig types are run in parallel (e.g. DHCP and DHCP6)
@@ -493,6 +497,7 @@ void Device::CreateConnection() {
 void Device::DestroyConnection() {
   SLOG(Device, 2) << __func__;
   StopPortalDetection();
+  StopLinkMonitor();
   if (selected_service_.get()) {
     selected_service_->SetConnection(NULL);
   }
@@ -666,6 +671,40 @@ void Device::StopPortalDetection() {
   portal_detector_.reset();
 }
 
+void Device::set_link_monitor(LinkMonitor *link_monitor) {
+  link_monitor_.reset(link_monitor);
+}
+
+bool Device::StartLinkMonitor() {
+  if (!manager_->IsTechnologyLinkMonitorEnabled(technology())) {
+    SLOG(Device, 2) << "Device " << FriendlyName()
+                    << ": Link Monitoring is disabled.";
+    return false;
+  }
+
+  if (!link_monitor()) {
+    set_link_monitor(
+      new LinkMonitor(
+          connection_, dispatcher_, metrics(), manager_->device_info(),
+          Bind(&Device::OnLinkMonitorFailure, weak_ptr_factory_.GetWeakPtr())));
+  }
+
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Link Monitor starting.";
+  return link_monitor_->Start();
+}
+
+void Device::StopLinkMonitor() {
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Link Monitor stopping.";
+  link_monitor_.reset();
+}
+
+void Device::OnLinkMonitorFailure() {
+  LOG(ERROR) << "Device " << FriendlyName()
+             << ": Link Monitor indicates failure.";
+}
+
 void Device::SetServiceConnectedState(Service::ConnectState state) {
   DCHECK(selected_service_.get());
 
@@ -759,6 +798,17 @@ vector<string> Device::AvailableIPConfigs(Error */*error*/) {
 
 string Device::GetRpcConnectionIdentifier() {
   return adaptor_->GetRpcConnectionIdentifier();
+}
+
+uint64 Device::GetLinkMonitorResponseTime(Error *error) {
+  if (!link_monitor_.get()) {
+    // It is not strictly an error that the link monitor does not
+    // exist, but returning an error here allows the GetProperties
+    // call in our Adaptor to omit this parameter.
+    error->Populate(Error::kNotFound, "Device is not running LinkMonitor");
+    return 0;
+  }
+  return link_monitor_->GetResponseTimeMilliseconds();
 }
 
 uint64 Device::GetReceiveByteCount(Error */*error*/) {

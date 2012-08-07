@@ -33,6 +33,7 @@ class DeviceAdaptorInterface;
 class Endpoint;
 class Error;
 class EventDispatcher;
+class LinkMonitor;
 class Manager;
 class Metrics;
 class RTNLHandler;
@@ -296,6 +297,15 @@ class Device : public base::RefCounted<Device> {
   // Stop portal detection if it is running.
   void StopPortalDetection();
 
+  // Initiate link monitoring, if enabled for this device type.
+  bool StartLinkMonitor();
+
+  // Stop link monitoring if it is running.
+  void StopLinkMonitor();
+
+  // Respond to a LinkMonitor failure in a Device-specific manner.
+  virtual void OnLinkMonitorFailure();
+
   // Set the state of the selected service, with checks to make sure
   // the service is already in a connected state before doing so.
   void SetServiceConnectedState(Service::ConnectState state);
@@ -325,6 +335,8 @@ class Device : public base::RefCounted<Device> {
   Metrics *metrics() const { return metrics_; }
   Manager *manager() const { return manager_; }
   bool running() const { return running_; }
+  const LinkMonitor *link_monitor() const { return link_monitor_.get(); }
+  void set_link_monitor(LinkMonitor *link_monitor);
 
  private:
   friend class DeviceAdaptorInterface;
@@ -369,6 +381,9 @@ class Device : public base::RefCounted<Device> {
 
   std::vector<std::string> AvailableIPConfigs(Error *error);
   std::string GetRpcConnectionIdentifier();
+
+  // Get the LinkMonitor's average response time.
+  uint64 GetLinkMonitorResponseTime(Error *error);
 
   // Get receive and transmit byte counters.
   uint64 GetReceiveByteCount(Error *error);
@@ -420,6 +435,7 @@ class Device : public base::RefCounted<Device> {
   base::WeakPtrFactory<Device> weak_ptr_factory_;
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
   scoped_ptr<PortalDetector> portal_detector_;
+  scoped_ptr<LinkMonitor> link_monitor_;
   base::Callback<void(const PortalDetector::Result &)>
       portal_detector_callback_;
   Technology::Identifier technology_;

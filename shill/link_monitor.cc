@@ -28,6 +28,7 @@ using std::string;
 namespace shill {
 
 const unsigned int LinkMonitor::kTestPeriodMilliseconds = 5000;
+const char LinkMonitor::kDefaultLinkMonitorTechnologies[] = "wifi";
 const unsigned int LinkMonitor::kFailureThreshold = 5;
 const unsigned int LinkMonitor::kMaxResponseSampleFilterDepth = 5;
 

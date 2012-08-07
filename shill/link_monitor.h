@@ -40,6 +40,9 @@ class LinkMonitor {
   // The number of milliseconds between ARP requests.  Needed by Metrics.
   static const unsigned int kTestPeriodMilliseconds;
 
+  // The default list of technologies for which link monitoring is enabled.
+  static const char kDefaultLinkMonitorTechnologies[];
+
   LinkMonitor(const ConnectionRefPtr &connection,
               EventDispatcher *dispatcher,
               Metrics *metrics,

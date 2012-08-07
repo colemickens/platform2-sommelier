@@ -2389,6 +2389,14 @@ TEST_F(ManagerTest, StartupPortalList) {
   EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kPPP));
 }
 
+TEST_F(ManagerTest, LinkMonitorEnabled) {
+  const string kEnabledTechnologies("wifi,vpn");
+  manager()->props_.link_monitor_technologies = kEnabledTechnologies;
+  EXPECT_TRUE(manager()->IsTechnologyLinkMonitorEnabled(Technology::kWifi));
+  EXPECT_FALSE(
+      manager()->IsTechnologyLinkMonitorEnabled(Technology::kCellular));
+}
+
 TEST_F(ManagerTest, EnableTechnology) {
   Error error(Error::kOperationInitiated);
   ResultCallback callback;

@@ -329,6 +329,13 @@ Properties 	object ActiveProfile [readwrite]
 			The default for this name is empty, which
 			means that the system will not report a hostname.
 
+		string LinkMonitorTechnologies [readwrite]
+
+			The list of technologies for which thie Link
+			Monitor will be enabled.  The Link monitor
+			periodically checks for connectivity to the
+			default gateway using ARP requests.
+
 		boolean OfflineMode [readwrite]
 
 			The offline mode indicates the global setting for

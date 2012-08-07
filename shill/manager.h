@@ -60,6 +60,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     // Comma separated list of technologies on which to use a short DNS
     // timeout to improve performance.
     std::string short_dns_timeout_technologies;
+    // Comma-separated list of technologies for which link-monitoring is
+    // enabled.
+    std::string link_monitor_technologies;
   };
 
   Manager(ControlInterface *control_interface,
@@ -181,6 +184,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Return whether a technology is enabled for using short DNS timeouts.
   bool IsTechnologyShortDNSTimeoutEnabled(Technology::Identifier tech) const;
 
+  // Return whether a technology is enabled for link monitoring.
+  virtual bool IsTechnologyLinkMonitorEnabled(
+      Technology::Identifier technology) const;
+
   std::string CalculateState(Error *error);
 
   virtual int GetPortalCheckInterval() const {
@@ -254,6 +261,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, EnableTechnology);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
   FRIEND_TEST(ManagerTest, HandleProfileEntryDeletionWithUnload);
+  FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, NotifyDefaultServiceChanged);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
   FRIEND_TEST(ManagerTest, SortServices);
@@ -281,6 +289,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   ServiceRefPtr GetServiceInner(const KeyValueStore &args, Error *error);
   void SetCheckPortalList(const std::string &portal_list, Error *error);
   void EmitDefaultService();
+  bool IsTechnologyInList(const std::string &technology_list,
+                          Technology::Identifier tech) const;
   void EmitDeviceProperties();
 
   // Unload a service while iterating through |services_|.  Returns true if

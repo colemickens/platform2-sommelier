@@ -414,6 +414,13 @@ Properties	string Address [readonly]
 			the currently used IPConfig.  In the future, use
 			the "IPConfig" property of the Service.
 
+		int32 LinkMonitorResponseTime [readonly]
+
+			Latest running average of the link monitor response
+			time for this device in milliseconds, if the link
+			monitor is active.  This property is only visible
+			if a link monitor is active on this device.
+
 		string Name [readonly]
 
 			The device name (for example "Wireless" etc.)

@@ -47,6 +47,8 @@ class MockManager : public Manager {
   MOCK_METHOD1(IsPortalDetectionEnabled, bool(Technology::Identifier tech));
   MOCK_CONST_METHOD1(IsServiceEphemeral,
                      bool(const ServiceConstRefPtr &service));
+  MOCK_CONST_METHOD1(IsTechnologyLinkMonitorEnabled,
+                     bool(Technology::Identifier tech));
   MOCK_CONST_METHOD0(GetPortalCheckURL, const std::string &());
   MOCK_CONST_METHOD0(GetPortalCheckInterval, int());
 

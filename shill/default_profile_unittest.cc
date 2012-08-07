@@ -15,6 +15,7 @@
 
 #include "shill/key_file_store.h"
 #include "shill/glib.h"
+#include "shill/link_monitor.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -123,6 +124,11 @@ TEST_F(DefaultProfileTest, Save) {
                                         DefaultProfile::kStorageCheckPortalList,
                                         ""))
       .WillOnce(Return(true));
+  EXPECT_CALL(*storage.get(),
+              SetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageLinkMonitorTechnologies,
+                        ""))
+      .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStoragePortalURL,
                                         ""))
@@ -166,6 +172,11 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
                                         DefaultProfile::kStorageCheckPortalList,
                                         &manager_props.check_portal_list))
       .WillOnce(Return(false));
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageLinkMonitorTechnologies,
+                        _))
+      .WillOnce(Return(false));
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStoragePortalURL,
                                         &manager_props.portal_url))
@@ -180,6 +191,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
                         DefaultProfile::kStorageShortDNSTimeoutTechnologies,
                         _))
       .WillOnce(Return(false));
+
   profile_->set_storage(storage.release());
 
   ASSERT_TRUE(profile_->LoadManagerProperties(&manager_props));
@@ -188,6 +200,8 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_FALSE(manager_props.offline_mode);
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager_props.check_portal_list);
+  EXPECT_EQ(LinkMonitor::kDefaultLinkMonitorTechnologies,
+            manager_props.link_monitor_technologies);
   EXPECT_EQ(PortalDetector::kDefaultURL, manager_props.portal_url);
   EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
             manager_props.portal_check_interval_seconds);
@@ -215,6 +229,13 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                                         DefaultProfile::kStorageCheckPortalList,
                                         _))
       .WillOnce(DoAll(SetArgumentPointee<2>(portal_list), Return(true)));
+  const string link_monitor_technologies("ethernet,wimax");
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageLinkMonitorTechnologies,
+                        _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(link_monitor_technologies),
+                      Return(true)));
   const string portal_url("http://www.chromium.org");
   EXPECT_CALL(*storage.get(), GetString(DefaultProfile::kStorageId,
                                         DefaultProfile::kStoragePortalURL,
@@ -243,6 +264,8 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_EQ(host_name, manager_props.host_name);
   EXPECT_TRUE(manager_props.offline_mode);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);
+  EXPECT_EQ(link_monitor_technologies,
+            manager_props.link_monitor_technologies);
   EXPECT_EQ(portal_url, manager_props.portal_url);
   EXPECT_EQ(portal_check_interval_int,
             manager_props.portal_check_interval_seconds);

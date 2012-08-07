@@ -111,6 +111,8 @@ Manager::Manager(ControlInterface *control_interface,
   HelpRegisterDerivedStrings(flimflam::kEnabledTechnologiesProperty,
                              &Manager::EnabledTechnologies,
                              NULL);
+  store_.RegisterString(shill::kLinkMonitorTechnologiesProperty,
+                        &props_.link_monitor_technologies);
   store_.RegisterBool(flimflam::kOfflineModeProperty, &props_.offline_mode);
   store_.RegisterString(flimflam::kPortalURLProperty, &props_.portal_url);
   store_.RegisterInt32(kPortalCheckIntervalProperty,
@@ -521,14 +523,19 @@ RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error */*error*/) {
   return default_service ? default_service->GetRpcIdentifier() : "/";
 }
 
-bool Manager::IsPortalDetectionEnabled(Technology::Identifier tech) {
+bool Manager::IsTechnologyInList(const string &technology_list,
+                                 Technology::Identifier tech) const {
   Error error;
-  vector<Technology::Identifier> portal_technologies;
-  return Technology::GetTechnologyVectorFromString(GetCheckPortalList(NULL),
-                                                   &portal_technologies,
+  vector<Technology::Identifier> technologies;
+  return Technology::GetTechnologyVectorFromString(technology_list,
+                                                   &technologies,
                                                    &error) &&
-      std::find(portal_technologies.begin(), portal_technologies.end(),
-                tech) != portal_technologies.end();
+      std::find(technologies.begin(), technologies.end(), tech) !=
+          technologies.end();
+}
+
+bool Manager::IsPortalDetectionEnabled(Technology::Identifier tech) {
+  return IsTechnologyInList(GetCheckPortalList(NULL), tech);
 }
 
 void Manager::SetStartupPortalList(const string &portal_list) {
@@ -541,15 +548,13 @@ bool Manager::IsServiceEphemeral(const ServiceConstRefPtr &service) const {
 }
 
 bool Manager::IsTechnologyShortDNSTimeoutEnabled(
-    Technology::Identifier tech) const {
-  Error error;
-  vector<Technology::Identifier> short_dns_technologies;
-  return Technology::GetTechnologyVectorFromString(
-      props_.short_dns_timeout_technologies,
-      &short_dns_technologies,
-      &error) &&
-      std::find(short_dns_technologies.begin(), short_dns_technologies.end(),
-                tech) != short_dns_technologies.end();
+    Technology::Identifier technology) const {
+  return IsTechnologyInList(props_.short_dns_timeout_technologies, technology);
+}
+
+bool Manager::IsTechnologyLinkMonitorEnabled(
+    Technology::Identifier technology) const {
+  return IsTechnologyInList(props_.link_monitor_technologies, technology);
 }
 
 const ProfileRefPtr &Manager::ActiveProfile() const {

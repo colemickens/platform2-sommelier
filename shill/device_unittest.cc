@@ -29,6 +29,7 @@
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_ipconfig.h"
+#include "shill/mock_link_monitor.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_portal_detector.h"
@@ -118,6 +119,26 @@ class DeviceTest : public PropertyStoreTest {
 
   void SetConnection(ConnectionRefPtr connection) {
     device_->connection_ = connection;
+  }
+
+  void SetLinkMonitor(LinkMonitor *link_monitor) {
+    device_->set_link_monitor(link_monitor);  // Passes ownership.
+  }
+
+  bool StartLinkMonitor() {
+    return device_->StartLinkMonitor();
+  }
+
+  void StopLinkMonitor() {
+    device_->StopLinkMonitor();
+  }
+
+  uint64 GetLinkMonitorResponseTime(Error *error) {
+    return device_->GetLinkMonitorResponseTime(error);
+  }
+
+  void SetManager(Manager *manager) {
+    device_->manager_ = manager;
   }
 
   MockControl control_interface_;
@@ -338,7 +359,7 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
                                   metrics(),
                                   glib());
   EXPECT_CALL(manager, UpdateDevice(_));
-  device_->manager_ = &manager;
+  SetManager(&manager);
   Error error;
   device_->SetEnabledPersistent(true, &error, ResultCallback());
   EXPECT_TRUE(device_->enabled_persistent_);
@@ -396,6 +417,51 @@ TEST_F(DeviceTest, ResumeWithoutIPConfig) {
   device_->OnAfterResume();
 }
 
+TEST_F(DeviceTest, LinkMonitor) {
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  &manager));
+  SelectService(service);
+  SetConnection(connection.get());
+  MockLinkMonitor *link_monitor = new StrictMock<MockLinkMonitor>();
+  SetLinkMonitor(link_monitor);  // Passes ownership.
+  SetManager(&manager);
+  EXPECT_CALL(*link_monitor, Start()).Times(0);
+  EXPECT_CALL(manager, IsTechnologyLinkMonitorEnabled(Technology::kUnknown))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_FALSE(StartLinkMonitor());
+
+  EXPECT_CALL(*link_monitor, Start())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_FALSE(StartLinkMonitor());
+  EXPECT_TRUE(StartLinkMonitor());
+
+  unsigned int kResponseTime = 123;
+  EXPECT_CALL(*link_monitor, GetResponseTimeMilliseconds())
+      .WillOnce(Return(kResponseTime));
+  {
+    Error error;
+    EXPECT_EQ(kResponseTime, GetLinkMonitorResponseTime(&error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  StopLinkMonitor();
+  {
+    Error error;
+    EXPECT_EQ(0, GetLinkMonitorResponseTime(&error));
+    EXPECT_FALSE(error.IsSuccess());
+  }
+}
+
 class DevicePortalDetectionTest : public DeviceTest {
  public:
   DevicePortalDetectionTest()
@@ -415,7 +481,7 @@ class DevicePortalDetectionTest : public DeviceTest {
     SelectService(service_);
     SetConnection(connection_.get());
     device_->portal_detector_.reset(portal_detector_);  // Passes ownership.
-    device_->manager_ = &manager_;
+    SetManager(&manager_);
   }
 
  protected:

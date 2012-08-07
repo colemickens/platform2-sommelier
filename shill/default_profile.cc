@@ -13,6 +13,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
+#include "shill/link_monitor.h"
 #include "shill/manager.h"
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
@@ -32,6 +33,9 @@ const char DefaultProfile::kStorageArpGateway[] = "ArpGateway";
 const char DefaultProfile::kStorageCheckPortalList[] = "CheckPortalList";
 // static
 const char DefaultProfile::kStorageHostName[] = "HostName";
+// static
+const char DefaultProfile::kStorageLinkMonitorTechnologies[] =
+    "LinkMonitorTechnologies";
 // static
 const char DefaultProfile::kStorageName[] = "Name";
 // static
@@ -61,6 +65,8 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
                              &manager_props.check_portal_list);
   store->RegisterConstString(flimflam::kCountryProperty,
                              &manager_props.country);
+  store->RegisterConstString(shill::kLinkMonitorTechnologiesProperty,
+                             &manager_props.link_monitor_technologies);
   store->RegisterConstBool(flimflam::kOfflineModeProperty,
                            &manager_props.offline_mode);
   store->RegisterConstString(flimflam::kPortalURLProperty,
@@ -83,6 +89,12 @@ bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
                             kStorageCheckPortalList,
                             &manager_props->check_portal_list)) {
     manager_props->check_portal_list = PortalDetector::kDefaultCheckPortalList;
+  }
+  if (!storage()->GetString(kStorageId,
+                            kStorageLinkMonitorTechnologies,
+                            &manager_props->link_monitor_technologies)) {
+    manager_props->link_monitor_technologies =
+        LinkMonitor::kDefaultLinkMonitorTechnologies;
   }
   if (!storage()->GetString(kStorageId, kStoragePortalURL,
                             &manager_props->portal_url)) {
@@ -128,6 +140,9 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStorageCheckPortalList,
                        props_.check_portal_list);
+  storage()->SetString(kStorageId,
+                       kStorageLinkMonitorTechnologies,
+                       props_.link_monitor_technologies);
   storage()->SetString(kStorageId,
                        kStoragePortalURL,
                        props_.portal_url);
