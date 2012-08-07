@@ -82,18 +82,35 @@ factory_wipe_firmware() {
 # Kernel devs to go along with these are sda2, sda4 respectively.
 ROOT_DEV=$(rootdev -s)
 STATE_DEV=${ROOT_DEV%[0-9]*}1
+STATE_PATH="/mnt/stateful_partition"
 OTHER_ROOT_DEV=$(echo $ROOT_DEV | tr '35' '53')
 KERNEL_DEV=$(echo $ROOT_DEV | tr '35' '24')
 OTHER_KERNEL_DEV=$(echo $OTHER_ROOT_DEV | tr '35' '24')
 WIPE_PART_NUM=${OTHER_ROOT_DEV##[/a-z]*[/a-z]}
 # Save the option before wipe-out
-WIPE_OPTION_FILE="/mnt/stateful_partition/factory_wipe_option"
+WIPE_OPTION_FILE="${STATE_PATH}/factory_wipe_option"
 if [ -O ${WIPE_OPTION_FILE} ]; then
   WIPE_OPTION=$(cat ${WIPE_OPTION_FILE})
 else
   WIPE_OPTION=
 fi
+# Discover type of device holding the stateful partition; assume SSD.
+# Since there doesn't seem to be a good way to get from a partition name
+# to the base device name beyond simple heuristics, just find the device
+# with the same major number but with minor 0.
+ROTATIONAL=0
+MAJOR=$(stat -c %t ${STATE_DEV})
+for i in $(find /dev -type b); do
+  if [ "$(stat -c %t:%T $i)" = "${MAJOR}:0" ]; then
+    ROTATIONAL_PATH="/sys/block/$(basename ${i})/queue/rotational"
+    if [ -r "${ROTATIONAL_PATH}" ]; then
+      ROTATIONAL=$(cat "${ROTATIONAL_PATH}")
+      break
+    fi
+  fi
+done
 
+# Sanity check root device partition number.
 if [ "$WIPE_PART_NUM" != "3" ] && [ "$WIPE_PART_NUM" != "5" ]
 then
   echo "Invalid partition to wipe, $WIPE_PART_NUM (${OTHER_ROOT_DEV})"
@@ -103,7 +120,31 @@ fi
 # Preserve the log file
 clobber-log --preserve "$SCRIPT" "$@"
 
-umount /mnt/stateful_partition
+# Can only do filesystem-based targetted clobbering if the filesystem
+# is actually mounted. If the filesystem is not mounted (e.g. due to
+# corruption), we cannot do this optimization.
+if grep -q " ${STATE_PATH} " /proc/mounts ; then
+  # Rotational drives take too long to wipe, so just shred contents since
+  # the stateful filesystem is not mounted with "data=journal", and in-place
+  # updates really are overwriting the block contents. Shredding will wipe
+  # out the encrypted partition and eCryptFS keys so the backing files can
+  # just be removed. Once shredding is done, force HDDs onto the "fast" wipe
+  # path to avoid hours of zeroing.
+  if [ "$ROTATIONAL" = "1" ]; then
+    # Directly remove things that are already encrypted (which are also the
+    # large things), or are static from images.
+    rm -rf "${STATE_PATH}/encrypted.block" \
+           "${STATE_PATH}/var_overlay" \
+           "${STATE_PATH}/dev_image"
+    find "${STATE_PATH}/home/.shadow" -maxdepth 2 -type d -name vault -print0 |
+      xargs -r0 rm -rf
+    # Shred everything else. We care about contents not filenames, so do not
+    # use "-u" since metadata updates via fdatasync dominate the shred time.
+    find "${STATE_PATH}"/. -type f -print0 | xargs -r0 shred -fz
+    FAST_WIPE="fast"
+  fi
+fi
+umount -n "${STATE_PATH}"
 
 if [ "$FAST_WIPE" = "fast" ]; then
   # factory_wipe_firmware can be executed in parallel.
@@ -118,7 +159,6 @@ if [ "$FAST_WIPE" = "fast" ]; then
     dd bs=4M count=1 if=/dev/zero of=${OTHER_ROOT_DEV}
     dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
   fi
-  /sbin/mkfs.ext4 "$STATE_DEV"
 else
 
   if [ -z "${KEEPIMG}" ]; then
@@ -128,13 +168,13 @@ else
 
   # Wipe everything on the stateful partition.
   wipedev ${STATE_DEV}
-
-  /sbin/mkfs.ext4 "$STATE_DEV"
-  # TODO(wad) tune2fs.
 fi
 
+/sbin/mkfs.ext4 "$STATE_DEV"
+# TODO(wad) tune2fs.
+
 # Mount the fresh image for last minute additions.
-mount -n -t ext4 "${STATE_DEV}" /mnt/stateful_partition
+mount -n -t ext4 "${STATE_DEV}" "${STATE_PATH}"
 
 # Restore the log file
 clobber-log --restore "$SCRIPT" "$@"

@@ -11,7 +11,7 @@ cleanup_mounts()
   for mount_point in ${UNDO_MOUNTS}; do
     umount -n ${mount_point}
   done
-  umount -n /mnt/stateful_partition
+  # Leave /mnt/stateful_partition mounted for clobber-state to handle.
   [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
   chromeos-boot-alert self_repair /dev/tty1
   clobber-log --repair "$STATE_DEV" "Self-repair incoherent stateful partition"
