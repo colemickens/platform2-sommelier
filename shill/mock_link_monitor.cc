@@ -9,7 +9,7 @@
 namespace shill {
 
 MockLinkMonitor::MockLinkMonitor()
-    : LinkMonitor(NULL, NULL, NULL, FailureCallback()) {}
+    : LinkMonitor(NULL, NULL, NULL, NULL, FailureCallback()) {}
 
 MockLinkMonitor::~MockLinkMonitor() {}
 

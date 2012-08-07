@@ -20,6 +20,7 @@ class ArpClient;
 class DeviceInfo;
 class EventDispatcher;
 class IOHandler;
+class Metrics;
 class Time;
 
 // LinkMonitor tracks the status of a connection by sending ARP
@@ -31,8 +32,12 @@ class LinkMonitor {
  public:
   typedef base::Closure FailureCallback;
 
+  // The number of milliseconds between ARP requests.  Needed by Metrics.
+  static const unsigned int kTestPeriodMilliseconds;
+
   LinkMonitor(const ConnectionRefPtr &connection,
               EventDispatcher *dispatcher,
+              Metrics *metrics,
               DeviceInfo *device_info,
               const FailureCallback &failure_callback);
   virtual ~LinkMonitor();
@@ -51,9 +56,6 @@ class LinkMonitor {
  private:
   friend class LinkMonitorForTest;
   friend class LinkMonitorTest;
-
-  // The number of milliseconds between ARP requests.
-  static const unsigned int kTestPeriodMilliseconds;
 
   // When the sum of consecutive unicast and broadcast failures
   // equals this value, the failure callback is called, the counters
@@ -87,6 +89,7 @@ class LinkMonitor {
 
   ConnectionRefPtr connection_;
   EventDispatcher *dispatcher_;
+  Metrics *metrics_;
   DeviceInfo *device_info_;
   FailureCallback failure_callback_;
   ByteString local_mac_address_;

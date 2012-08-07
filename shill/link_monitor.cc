@@ -18,6 +18,7 @@
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
+#include "shill/metrics.h"
 #include "shill/scope_logger.h"
 #include "shill/shill_time.h"
 
@@ -33,10 +34,12 @@ const unsigned int LinkMonitor::kMaxResponseSampleFilterDepth = 5;
 
 LinkMonitor::LinkMonitor(const ConnectionRefPtr &connection,
                          EventDispatcher *dispatcher,
+                         Metrics *metrics,
                          DeviceInfo *device_info,
                          const FailureCallback &failure_callback)
     : connection_(connection),
       dispatcher_(dispatcher),
+      metrics_(metrics),
       device_info_(device_info),
       failure_callback_(failure_callback),
       broadcast_failure_count_(0),
@@ -56,6 +59,8 @@ bool LinkMonitor::Start() {
   if (!device_info_->GetMACAddress(
     connection_->interface_index(), &local_mac_address_)) {
     LOG(ERROR) << "Could not get local MAC address.";
+    metrics_->NotifyLinkMonitorFailure(
+        connection_->technology(), Metrics::kLinkMonitorMacAddressNotFound);
     Stop();
     return false;
   }
@@ -89,6 +94,8 @@ void LinkMonitor::AddResponseTimeSample(
     unsigned int response_time_milliseconds) {
   SLOG(Link, 2) << "In " << __func__ << " with sample "
                 << response_time_milliseconds << ".";
+  metrics_->NotifyLinkMonitorResponseTimeSampleAdded(
+      connection_->technology(), response_time_milliseconds);
   response_sample_bucket_ += response_time_milliseconds;
   if (response_sample_count_ < kMaxResponseSampleFilterDepth) {
     ++response_sample_count_;
@@ -113,7 +120,7 @@ bool LinkMonitor::CreateClient() {
   arp_client_.reset(new ArpClient(connection_->interface_index()));
 
   if (!arp_client_->Start()) {
-   return false;
+    return false;
   }
   receive_response_handler_.reset(
     dispatcher_->CreateReadyHandler(
@@ -141,6 +148,9 @@ bool LinkMonitor::AddMissedResponse() {
                << " unicast failures.";
     failure_callback_.Run();
     Stop();
+    metrics_->NotifyLinkMonitorFailure(
+        connection_->technology(),
+        Metrics::kLinkMonitorFailureThresholdReached);
     return true;
   }
   is_unicast_ = !is_unicast_;
@@ -206,6 +216,8 @@ bool LinkMonitor::SendRequest() {
     if (!CreateClient()) {
       LOG(ERROR) << "Failed to start ARP client.";
       Stop();
+      metrics_->NotifyLinkMonitorFailure(
+          connection_->technology(), Metrics::kLinkMonitorClientStartFailure);
       return false;
     }
   } else if (AddMissedResponse()) {
@@ -239,6 +251,8 @@ bool LinkMonitor::SendRequest() {
   if (!arp_client_->TransmitRequest(request)) {
     LOG(ERROR) << "Failed to send ARP request.  Stopping.";
     Stop();
+    metrics_->NotifyLinkMonitorFailure(
+        connection_->technology(), Metrics::kLinkMonitorTransmitFailure);
     return false;
   }
 

@@ -116,6 +116,15 @@ class Metrics {
     kPortalResultMax
   };
 
+  enum LinkMonitorFailure {
+    kLinkMonitorMacAddressNotFound = 0,
+    kLinkMonitorClientStartFailure = 1,
+    kLinkMonitorTransmitFailure = 2,
+    kLinkMonitorFailureThresholdReached = 3,
+
+    kLinkMonitorFailureMax
+  };
+
   static const char kMetricDisconnect[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -165,6 +174,13 @@ class Metrics {
 
   static const char kMetricPowerManagerKey[];
 
+  // LinkMonitor statistics.
+  static const char kMetricLinkMonitorFailure[];
+  static const char kMetricLinkMonitorResponseTimeSample[];
+  static const int kMetricLinkMonitorResponseTimeSampleMin;
+  static const int kMetricLinkMonitorResponseTimeSampleMax;
+  static const int kMetricLinkMonitorResponseTimeSampleNumBuckets;
+
   Metrics();
   virtual ~Metrics();
 
@@ -210,6 +226,16 @@ class Metrics {
 
   // Notifies this object of a power management state change.
   void NotifyPowerStateChange(PowerManager::SuspendState new_state);
+
+  // Notifies this object of a failure in LinkMonitor.
+  void NotifyLinkMonitorFailure(
+      Technology::Identifier technology, LinkMonitorFailure failure);
+
+  // Notifies this object that LinkMonitor has added a response time sample
+  // for |connection| with a value of |response_time_milliseconds|.
+  void NotifyLinkMonitorResponseTimeSampleAdded(
+      Technology::Identifier technology,
+      unsigned int response_time_milliseconds);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

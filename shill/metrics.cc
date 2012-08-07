@@ -10,6 +10,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/bootstat.h>
 
+#include "shill/link_monitor.h"
 #include "shill/scope_logger.h"
 #include "shill/wifi_service.h"
 
@@ -99,6 +100,17 @@ const uint16 Metrics::kWiFiFrequency5825 = 5825;
 
 // static
 const char Metrics::kMetricPowerManagerKey[] = "metrics";
+
+// static
+const char Metrics::kMetricLinkMonitorFailure[] =
+    "Network.Shill.%s.LinkMonitorFailure";
+const char Metrics::kMetricLinkMonitorResponseTimeSample[] =
+    "Network.Shill.%s.LinkMonitorResponseTimeSample";
+const int Metrics::kMetricLinkMonitorResponseTimeSampleMin = 0;
+const int Metrics::kMetricLinkMonitorResponseTimeSampleMax =
+    LinkMonitor::kTestPeriodMilliseconds;
+const int Metrics::kMetricLinkMonitorResponseTimeSampleNumBuckets = 50;
+
 
 Metrics::Metrics()
     : library_(&metrics_library_),
@@ -375,6 +387,25 @@ void Metrics::NotifyPowerStateChange(PowerManager::SuspendState new_state) {
   } else {
     time_resume_to_ready_timer_->Reset();
   }
+}
+
+void Metrics::NotifyLinkMonitorFailure(
+    Technology::Identifier technology, LinkMonitorFailure failure) {
+  string histogram = GetFullMetricName(kMetricLinkMonitorFailure,
+                                       technology);
+  SendEnumToUMA(histogram, failure, kLinkMonitorFailureMax);
+}
+
+void Metrics::NotifyLinkMonitorResponseTimeSampleAdded(
+    Technology::Identifier technology,
+    unsigned int response_time_milliseconds) {
+  string histogram = GetFullMetricName(kMetricLinkMonitorResponseTimeSample,
+                                       technology);
+  SendToUMA(histogram,
+            response_time_milliseconds,
+            kMetricLinkMonitorResponseTimeSampleMin,
+            kMetricLinkMonitorResponseTimeSampleMax,
+            kMetricLinkMonitorResponseTimeSampleNumBuckets);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

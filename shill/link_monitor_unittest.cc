@@ -15,6 +15,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_sockets.h"
 #include "shill/mock_time.h"
 #include "shill/scope_logger.h"
@@ -48,8 +49,9 @@ class LinkMonitorForTest : public LinkMonitor {
  public:
   LinkMonitorForTest(const ConnectionRefPtr &connection,
                      EventDispatcher *dispatcher,
+                     Metrics *metrics,
                      DeviceInfo *device_info)
-      : LinkMonitor(connection, dispatcher, device_info,
+      : LinkMonitor(connection, dispatcher, metrics, device_info,
                     Bind(&LinkMonitorForTest::FailureCallback,
                          Unretained(this))) {}
 
@@ -76,7 +78,7 @@ class LinkMonitorTest : public Test {
             reinterpret_cast<Metrics*>(NULL),
             reinterpret_cast<Manager*>(NULL)),
         connection_(new StrictMock<MockConnection>(&device_info_)),
-        monitor_(connection_, &dispatcher_, &device_info_),
+        monitor_(connection_, &dispatcher_, &metrics_, &device_info_),
         client_(NULL),
         next_client_(new StrictMock<MockArpClient>()),
         gateway_ip_(IPAddress::kFamilyIPv4),
@@ -221,6 +223,7 @@ class LinkMonitorTest : public Test {
   }
 
   MockEventDispatcher dispatcher_;
+  StrictMock<MockMetrics> metrics_;
   MockControl control_;
   NiceMock<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
@@ -253,6 +256,9 @@ TEST_F(LinkMonitorTest, StartFailedGetMACAddress) {
       Log(logging::LOG_ERROR, _,
           HasSubstr("Could not get local MAC address"))).Times(1);
   EXPECT_CALL(device_info_, GetMACAddress(0, _)).WillOnce(Return(false));
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      HasSubstr("LinkMonitorFailure"), Metrics::kLinkMonitorMacAddressNotFound,
+      _));
   EXPECT_CALL(monitor_, CreateClient()).Times(0);
   EXPECT_FALSE(monitor_.Start());
   ExpectReset();
@@ -264,6 +270,9 @@ TEST_F(LinkMonitorTest, StartFailedCreateClient) {
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
           HasSubstr("Failed to start ARP client"))).Times(1);
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      HasSubstr("LinkMonitorFailure"), Metrics::kLinkMonitorClientStartFailure,
+      _));
   EXPECT_CALL(device_info_, GetMACAddress(0, _)).WillOnce(Return(true));
   EXPECT_CALL(monitor_, CreateClient()).WillOnce(Return(false));
   EXPECT_FALSE(monitor_.Start());
@@ -276,6 +285,9 @@ TEST_F(LinkMonitorTest, StartFailedTransmitRequest) {
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
           HasSubstr("Failed to send ARP"))).Times(1);
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      HasSubstr("LinkMonitorFailure"), Metrics::kLinkMonitorTransmitFailure,
+      _));
   EXPECT_CALL(device_info_, GetMACAddress(0, _)).WillOnce(Return(true));
   EXPECT_CALL(monitor_, CreateClient())
       .WillOnce(Invoke(this, &LinkMonitorTest::CreateMockClient));
@@ -319,6 +331,9 @@ TEST_F(LinkMonitorTest, ReplyReception) {
   EXPECT_FALSE(monitor_.GetResponseTimeMilliseconds());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("Found gateway"))).Times(1);
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorResponseTimeSample"), kResponseTime,
+       _, _, _)).Times(1);
   ReceiveCorrectResponse();
   EXPECT_FALSE(GetArpClient());
   EXPECT_EQ(kResponseTime, monitor_.GetResponseTimeMilliseconds());
@@ -326,6 +341,9 @@ TEST_F(LinkMonitorTest, ReplyReception) {
 }
 
 TEST_F(LinkMonitorTest, TimeoutBroadcast) {
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorResponseTimeSample"), GetTestPeriodMilliseconds(),
+      _, _, _)).Times(GetFailureThreshold());
   StartMonitor();
   for (unsigned int i = 1; i < GetFailureThreshold(); ++i) {
     ExpectTransmit(false);
@@ -341,6 +359,9 @@ TEST_F(LinkMonitorTest, TimeoutBroadcast) {
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
           HasSubstr("monitor has reached the failure threshold"))).Times(1);
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      HasSubstr("LinkMonitorFailure"),
+      Metrics::kLinkMonitorFailureThresholdReached, _));
   EXPECT_FALSE(GetSendRequestCallback().IsCancelled());
   ExpectNoTransmit();
   EXPECT_CALL(monitor_, FailureCallback());
@@ -350,6 +371,14 @@ TEST_F(LinkMonitorTest, TimeoutBroadcast) {
 
 TEST_F(LinkMonitorTest, TimeoutUnicast) {
   StartMonitor();
+  // Successful broadcast receptions.
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorResponseTimeSample"), 0, _, _, _))
+      .Times(GetFailureThreshold());
+  // Unsuccessful unicast receptions.
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorResponseTimeSample"), GetTestPeriodMilliseconds(),
+      _, _, _)).Times(GetFailureThreshold());
   ReceiveCorrectResponse();
   for (unsigned int i = 1; i < GetFailureThreshold(); ++i) {
     // Failed unicast ARP.
@@ -373,6 +402,9 @@ TEST_F(LinkMonitorTest, TimeoutUnicast) {
   EXPECT_CALL(log,
       Log(logging::LOG_ERROR, _,
           HasSubstr("monitor has reached the failure threshold"))).Times(1);
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      HasSubstr("LinkMonitorFailure"),
+      Metrics::kLinkMonitorFailureThresholdReached, _));
   EXPECT_FALSE(GetSendRequestCallback().IsCancelled());
   ExpectNoTransmit();
   EXPECT_CALL(monitor_, FailureCallback());
@@ -384,6 +416,9 @@ TEST_F(LinkMonitorTest, Average) {
   const unsigned int kSamples[] = { 200, 950, 1200, 4096, 5000,
                                    86, 120, 3060, 842, 750 };
   const unsigned int filter_depth = GetMaxResponseSampleFilterDepth();
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorResponseTimeSample"), _, _, _, _))
+      .Times(arraysize(kSamples));
   ASSERT_GT(arraysize(kSamples), filter_depth);
   StartMonitor();
   unsigned int i = 0;
@@ -408,6 +443,9 @@ TEST_F(LinkMonitorTest, ImpulseResponse) {
   const unsigned int kNormalValue = 50;
   const unsigned int kExceptionalValue = 5000;
   const unsigned int filter_depth = GetMaxResponseSampleFilterDepth();
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorResponseTimeSample"), _, _, _, _))
+      .Times(AnyNumber());
   StartMonitor();
   for (unsigned int i = 0; i < filter_depth * 2; ++i) {
     AdvanceTime(kNormalValue);

@@ -98,6 +98,7 @@ class Connection : public base::RefCounted<Connection> {
 
   virtual const IPAddress &local() const { return local_; }
   virtual const IPAddress &gateway() const { return gateway_; }
+  Technology::Identifier technology() const { return technology_; }
 
  protected:
   friend class base::RefCounted<Connection>;
