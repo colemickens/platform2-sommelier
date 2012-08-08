@@ -47,9 +47,6 @@ class Tpm {
   };
 
   struct TpmStatusInfo {
-    bool Enabled;
-    bool BeingOwned;
-    bool Owned;
     TSS_RESULT LastTpmError;
     bool CanConnect;
     bool CanLoadSrk;

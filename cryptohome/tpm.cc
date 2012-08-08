@@ -1959,9 +1959,6 @@ Value* Tpm::GetStatusValue(TpmInit* init) {
   TpmStatusInfo status;
   GetStatus(true, &status);
 
-  dv->SetBoolean("enabled", status.Enabled);
-  dv->SetBoolean("owned", status.Owned);
-  dv->SetBoolean("being_owned", status.BeingOwned);
   dv->SetBoolean("can_connect", status.CanConnect);
   dv->SetBoolean("can_load_srk", status.CanLoadSrk);
   dv->SetBoolean("can_load_srk_pubkey", status.CanLoadSrkPublicKey);
