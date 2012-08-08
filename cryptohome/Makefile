@@ -19,7 +19,7 @@ PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CXXFLAGS += -Wall -Werror -fno-exceptions
-CPPFLAGS += $(PC_CFLAGS)
+CPPFLAGS += -I$(OUT) $(PC_CFLAGS)
 LDLIBS += -lpolicy-$(BASE_VER) -lmetrics $(PC_LIBS) \
 	-lcrypto -lecryptfs -levent -lkeyutils -lchaps -lprotobuf \
 	-lpthread -lscrypt -ltspi
