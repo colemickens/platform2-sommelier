@@ -235,20 +235,21 @@ endef
 # Default variable values
 #
 
-OBJCOPY ?= objcopy
-STRIP ?= strip
+# Only override toolchain vars if they are from make.
+CROSS_COMPILE ?=
+define override_var
+ifneq ($(filter undefined default,$(origin $1)),)
+$1 = $(CROSS_COMPILE)$2
+endif
+endef
+$(eval $(call override_var,AR,ar))
+$(eval $(call override_var,CC,gcc))
+$(eval $(call override_var,CXX,g++))
+$(eval $(call override_var,OBJCOPY,objcopy))
+$(eval $(call override_var,RANLIB,ranlib))
+$(eval $(call override_var,STRIP,strip))
+
 RMDIR ?= rmdir
-# Only override CC and CXX if they are from make.
-ifeq ($(origin CC), default)
-  CC = gcc
-endif
-ifeq ($(origin CXX), default)
-  CXX = g++
-endif
-ifeq ($(origin RANLIB), default)
-  RANLIB = ranlib
-endif
-RANLIB ?= ranlib
 ECHO = /bin/echo -e
 
 ifeq ($(lastword $(subst /, ,$(CC))),clang)
