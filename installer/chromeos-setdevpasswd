@@ -4,4 +4,5 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+mkdir -p /mnt/stateful_partition/etc
 echo "chronos:$(openssl passwd -1)" > /mnt/stateful_partition/etc/devmode.passwd
