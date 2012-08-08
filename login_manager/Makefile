@@ -14,11 +14,11 @@ PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 nss \
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CPPFLAGS += -I.. -DOS_CHROMEOS $(PC_CFLAGS)
+CPPFLAGS += -I$(SRC)/.. -I$(OUT) -DOS_CHROMEOS $(PC_CFLAGS)
 LDLIBS += -lbootstat -lchrome_crypto $(PC_LIBS) -lprotobuf-lite -lmetrics
 
 # Special logic for generating dbus service bindings.
-DBUS_SOURCE = session_manager.xml
+DBUS_SOURCE = $(SRC)/session_manager.xml
 DBUS_SERVER = server.h
 $(DBUS_SERVER): $(DBUS_SOURCE)
 	dbus-binding-tool --mode=glib-server \
@@ -26,13 +26,13 @@ $(DBUS_SERVER): $(DBUS_SOURCE)
 clean: CLEAN($(DBUS_SERVER))
 
 # Special logic for generating protobuffer bindings.
-PROTO_PATH = $(ROOT)/usr/include/proto
+PROTO_PATH = $(SYSROOT)/usr/include/proto
 PROTO_BINDINGS = chrome_device_policy.pb.cc device_management_backend.pb.cc
 PROTO_HEADERS = $(patsubst %.cc,%.h,$(PROTO_BINDINGS))
 PROTO_OBJS = chrome_device_policy.pb.o device_management_backend.pb.o
 $(PROTO_HEADERS): %.h: %.cc ;
 $(PROTO_BINDINGS): %.pb.cc: $(PROTO_PATH)/%.proto
-	protoc --proto_path=$(PROTO_PATH) --cpp_out=. $<
+	protoc --proto_path=$(PROTO_PATH) --cpp_out=$(OUT) $<
 clean: CLEAN($(PROTO_BINDINGS))
 clean: CLEAN($(PROTO_HEADERS))
 clean: CLEAN($(PROTO_OBJS))
@@ -61,11 +61,12 @@ clean: CLEAN($(KEYGEN_BIN))
 CXX_BINARY($(SESSION_BIN)): $(SESSION_OBJS)
 clean: CLEAN($(SESSION_BIN))
 
-$(TEST_BIN): $(TEST_OBJS)
-	$(call cxx_binary, -lgtest -lgmock)
-clean: CLEAN($(TEST_BIN))
+CXX_BINARY($(TEST_BIN)): $(TEST_OBJS) | CXX_BINARY($(KEYGEN_BIN))
+CXX_BINARY($(TEST_BIN)): CPPFLAGS += -DUNIT_TEST
+CXX_BINARY($(TEST_BIN)): LDLIBS += -lgtest -lgmock
+clean: CLEAN(CXX_BINARY($(TEST_BIN)))
+tests: TEST(CXX_BINARY($(TEST_BIN)))
 
+all: login_manager
 login_manager: \
   CXX_BINARY($(KEYGEN_BIN)) CXX_BINARY($(SESSION_BIN))
-
-tests: CXX_BINARY($(KEYGEN_BIN)) TEST($(TEST_BIN))
