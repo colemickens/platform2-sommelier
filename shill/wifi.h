@@ -123,6 +123,10 @@ class WiFi : public Device {
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
   virtual bool Load(StoreInterface *storage);
   virtual void Scan(Error *error);
+  // Callback for system resume. If this WiFi device is idle, a scan
+  // is initiated. Additionally, the base class implementation is
+  // invoked unconditionally.
+  void OnAfterResume();
 
   // Called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
@@ -245,9 +249,6 @@ class WiFi : public Device {
       uint16(WiFi::*get)(Error *error),
       void(WiFi::*set)(const uint16 &value, Error *error));
 
-  // If this WiFi device is idle and |new_state| indicates a resume event, a
-  // scan is initiated.
-  void HandlePowerStateChange(PowerManager::SuspendState new_state);
   // Restart fast scanning after disconnection.
   void RestartFastScanAttempts();
   // Schedules a scan attempt at time |scan_interval_seconds_| in the

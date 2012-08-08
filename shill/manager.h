@@ -207,7 +207,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   const std::string &GetHostName() const { return props_.host_name; }
 
   virtual void UpdateEnabledTechnologies();
-  PowerManager *power_manager() const { return power_manager_.get(); }
 
   // Writes the service |to_update| to persistant storage.  If the service's is
   // ephemeral, it is moved to the current profile.

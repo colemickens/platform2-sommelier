@@ -32,7 +32,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/power_manager.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -178,7 +177,6 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   DropConnection();
   StopScanTimer();
   endpoint_by_rpcid_.clear();
-  manager()->power_manager()->RemoveStateChangeCallback(UniqueName());
 
   for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
@@ -1286,29 +1284,29 @@ void WiFi::HelpRegisterDerivedUint16(
       Uint16Accessor(new CustomAccessor<WiFi, uint16>(this, get, set)));
 }
 
-void WiFi::HandlePowerStateChange(PowerManager::SuspendState new_state) {
+void WiFi::OnAfterResume() {
   LOG(INFO) << __func__;
-  if (new_state == PowerManagerProxyDelegate::kOn) {
-    // We want to flush the BSS cache, but we don't want to conflict
-    // with a running scan or an active connection attempt. So record
-    // the need to flush, and take care of flushing when the next scan
-    // completes.
-    //
-    // Note that supplicant will automatically expire old cache
-    // entries (after, e.g., a BSS is not found in two consecutive
-    // scans). However, our explicit flush accelerates re-association
-    // in cases where a BSS disappeared while we were asleep. (See,
-    // e.g. WiFiRoaming.005SuspendRoam.)
-    time_->GetTimeMonotonic(&resumed_at_);
-    need_bss_flush_ = true;
+  Device::OnAfterResume();  // May refresh ipconfig_
 
-    if (!scan_pending_ && IsIdle()) {
-      // Not scanning/connecting/connected, so let's get things rolling.
-      Scan(NULL);
-    } else {
-      SLOG(WiFi, 1) << __func__
-                    << " skipping scan, already scanning or connected.";
-    }
+  // We want to flush the BSS cache, but we don't want to conflict
+  // with a running scan or an active connection attempt. So record
+  // the need to flush, and take care of flushing when the next scan
+  // completes.
+  //
+  // Note that supplicant will automatically expire old cache
+  // entries (after, e.g., a BSS is not found in two consecutive
+  // scans). However, our explicit flush accelerates re-association
+  // in cases where a BSS disappeared while we were asleep. (See,
+  // e.g. WiFiRoaming.005SuspendRoam.)
+  time_->GetTimeMonotonic(&resumed_at_);
+  need_bss_flush_ = true;
+
+  if (!scan_pending_ && IsIdle()) {
+    // Not scanning/connecting/connected, so let's get things rolling.
+    Scan(NULL);
+  } else {
+    SLOG(WiFi, 1) << __func__
+                  << " skipping scan, already scanning or connected.";
   }
 }
 
@@ -1495,12 +1493,6 @@ void WiFi::ConnectToSupplicant() {
     LOG(INFO) << "Failed to set scan_interval. "
               << "May be running an older version of wpa_supplicant.";
   }
-
-  // Register for power state changes.  HandlePowerStateChange() will be called
-  // when the power state changes.
-  manager()->power_manager()->AddStateChangeCallback(
-      UniqueName(),
-      Bind(&WiFi::HandlePowerStateChange, weak_ptr_factory_.GetWeakPtr()));
 
   Scan(NULL);
   StartScanTimer();
