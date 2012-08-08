@@ -246,6 +246,7 @@ $(eval $(call override_var,AR,ar))
 $(eval $(call override_var,CC,gcc))
 $(eval $(call override_var,CXX,g++))
 $(eval $(call override_var,OBJCOPY,objcopy))
+$(eval $(call override_var,PKG_CONFIG,pkg-config))
 $(eval $(call override_var,RANLIB,ranlib))
 $(eval $(call override_var,STRIP,strip))
 
