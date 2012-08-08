@@ -37,15 +37,15 @@ class MockTpm : public Tpm {
         .WillByDefault(Return(true));
     ON_CALL(*this, GetEndorsementPublicKey(_))
         .WillByDefault(Return(true));
-    ON_CALL(*this, MakeIdentity(_,_,_,_,_,_,_,_))
+    ON_CALL(*this, MakeIdentity(_, _, _, _, _, _, _, _))
         .WillByDefault(Return(true));
-    ON_CALL(*this, QuotePCR0(_,_,_,_,_))
+    ON_CALL(*this, QuotePCR0(_, _, _, _, _))
         .WillByDefault(Return(true));
-    ON_CALL(*this, SealToPCR0(_,_))
+    ON_CALL(*this, SealToPCR0(_, _))
         .WillByDefault(Return(true));
-    ON_CALL(*this, Unseal(_,_))
+    ON_CALL(*this, Unseal(_, _))
         .WillByDefault(Return(true));
-    ON_CALL(*this, GetRandomData(_,_))
+    ON_CALL(*this, GetRandomData(_, _))
         .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomData));
   }
   ~MockTpm() {}
@@ -54,10 +54,10 @@ class MockTpm : public Tpm {
   MOCK_CONST_METHOD0(IsOwned, bool());
   MOCK_METHOD1(Connect, bool(TpmRetryAction*));  // NOLINT
   MOCK_METHOD0(Disconnect, void());
-  MOCK_METHOD6(Encrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
+  MOCK_METHOD6(Encrypt, bool(const chromeos::SecureBlob&, const chromeos::Blob&,
                                    unsigned int, const chromeos::Blob&,
                                    chromeos::SecureBlob*, TpmRetryAction*));
-  MOCK_METHOD6(Decrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
+  MOCK_METHOD6(Decrypt, bool(const chromeos::SecureBlob&, const chromeos::Blob&,
                                    unsigned int, const chromeos::Blob&,
                                    chromeos::SecureBlob*, TpmRetryAction*));
   MOCK_METHOD2(GetPublicKey, bool(chromeos::SecureBlob*, TpmRetryAction*));

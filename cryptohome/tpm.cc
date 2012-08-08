@@ -320,8 +320,10 @@ void Tpm::GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status) {
     memset(password.data(), 'B', password.size());
     memset(salt.data(), 'C', salt.size());
     memset(data_out.data(), 'D', data_out.size());
-    if (!EncryptBlob(context_handle, key_handle, data, password,
-                     13, salt, &data_out, &result)) {
+    SecureBlob key;
+    CryptoLib::PasskeyToAesKey(password, salt, 13, &key, NULL);
+    if (!EncryptBlob(context_handle, key_handle, data, key, &data_out,
+                     &result)) {
       status->LastTpmError = result;
       return;
     }
@@ -329,8 +331,8 @@ void Tpm::GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status) {
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (!DecryptBlob(context_handle, key_handle, data_out, password,
-                     13, salt, &data, &result)) {
+    if (!DecryptBlob(context_handle, key_handle, data_out, key, &data,
+                     &result)) {
       status->LastTpmError = result;
       return;
     }
@@ -699,7 +701,8 @@ bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
   return (*context_handle != 0);
 }
 
-bool Tpm::Encrypt(const chromeos::Blob& data, const chromeos::Blob& password,
+bool Tpm::Encrypt(const chromeos::SecureBlob& data,
+                  const chromeos::Blob& password,
                   unsigned int password_rounds, const chromeos::Blob& salt,
                   SecureBlob* data_out, Tpm::TpmRetryAction* retry_action) {
   *retry_action = Tpm::RetryNone;
@@ -709,16 +712,20 @@ bool Tpm::Encrypt(const chromeos::Blob& data, const chromeos::Blob& password,
     }
   }
 
+  SecureBlob key;
+  CryptoLib::PasskeyToAesKey(password, salt, password_rounds, &key, NULL);
+
   TSS_RESULT result = TSS_SUCCESS;
-  if (!EncryptBlob(context_handle_, key_handle_, data, password,
-                   password_rounds, salt, data_out, &result)) {
+  if (!EncryptBlob(context_handle_, key_handle_, data, key, data_out,
+                   &result)) {
     *retry_action = HandleError(result);
     return false;
   }
   return true;
 }
 
-bool Tpm::Decrypt(const chromeos::Blob& data, const chromeos::Blob& password,
+bool Tpm::Decrypt(const chromeos::SecureBlob& data,
+                  const chromeos::Blob& password,
                   unsigned int password_rounds, const chromeos::Blob& salt,
                   SecureBlob* data_out, Tpm::TpmRetryAction* retry_action) {
   *retry_action = Tpm::RetryNone;
@@ -728,9 +735,12 @@ bool Tpm::Decrypt(const chromeos::Blob& data, const chromeos::Blob& password,
     }
   }
 
+  SecureBlob key;
+  CryptoLib::PasskeyToAesKey(password, salt, password_rounds, &key, NULL);
+
   TSS_RESULT result = TSS_SUCCESS;
-  if (!DecryptBlob(context_handle_, key_handle_, data, password,
-                   password_rounds, salt, data_out, &result)) {
+  if (!DecryptBlob(context_handle_, key_handle_, data, key, data_out,
+                   &result)) {
     *retry_action = HandleError(result);
     return false;
   }
@@ -755,11 +765,9 @@ Tpm::TpmRetryAction Tpm::GetPublicKeyHash(SecureBlob* hash) {
 // Begin private methods
 bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
                       TSS_HKEY key_handle,
-                      const chromeos::Blob& data,
-                      const chromeos::Blob& password,
-                      unsigned int password_rounds,
-                      const chromeos::Blob& salt,
-                      SecureBlob* data_out,
+                      const SecureBlob& plaintext,
+                      const SecureBlob& key,
+                      SecureBlob* ciphertext,
                       TSS_RESULT* result) {
   *result = TSS_SUCCESS;
 
@@ -775,8 +783,9 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
 
   // TODO(fes): Check RSA key modulus size, return an error or block input
 
-  if (TPM_ERROR(*result = Tspi_Data_Bind(enc_handle, key_handle, data.size(),
-                                         const_cast<BYTE *>(&data[0])))) {
+  if (TPM_ERROR(*result = Tspi_Data_Bind(enc_handle, key_handle,
+                                         plaintext.size(),
+                                         const_cast<BYTE *>(&plaintext[0])))) {
     TPM_LOG(ERROR, *result) << "Error calling Tspi_Data_Bind";
     return false;
   }
@@ -798,17 +807,6 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
   enc_data.reset();
   enc_handle.reset();
 
-  SecureBlob aes_key;
-  SecureBlob iv;
-  if (!CryptoLib::PasskeyToAesKey(password,
-                                salt,
-                                password_rounds,
-                                &aes_key,
-                                &iv)) {
-    LOG(ERROR) << "Failure converting passkey to key";
-    return false;
-  }
-
   unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
   if (aes_block_size > local_data.size()) {
     LOG(ERROR) << "Encrypted data is too small.";
@@ -818,7 +816,7 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
 
   SecureBlob passkey_part;
   if (!CryptoLib::AesEncryptSpecifyBlockMode(local_data, offset, aes_block_size,
-                                             aes_key, iv,
+                                             key, SecureBlob(0),
                                              CryptoLib::kPaddingNone,
                                              CryptoLib::kEcb, &passkey_part)) {
     LOG(ERROR) << "AES encryption failed.";
@@ -829,41 +827,29 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
       << aes_block_size;
   memcpy(&local_data[offset], passkey_part.data(), passkey_part.size());
 
-  data_out->swap(local_data);
+  ciphertext->swap(local_data);
   return true;
 }
 
 bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
                       TSS_HKEY key_handle,
-                      const chromeos::Blob& data,
-                      const chromeos::Blob& password,
-                      unsigned int password_rounds,
-                      const chromeos::Blob& salt,
-                      SecureBlob* data_out,
+                      const SecureBlob& ciphertext,
+                      const SecureBlob& key,
+                      SecureBlob* plaintext,
                       TSS_RESULT* result) {
   *result = TSS_SUCCESS;
 
-  SecureBlob aes_key;
-  SecureBlob iv;
-  if (!CryptoLib::PasskeyToAesKey(password,
-                                  salt,
-                                  password_rounds,
-                                  &aes_key,
-                                  &iv)) {
-    LOG(ERROR) << "Failure converting passkey to key";
-    return false;
-  }
-
   unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
-  if (aes_block_size > data.size()) {
+  if (aes_block_size > ciphertext.size()) {
     LOG(ERROR) << "Input data is too small.";
     return false;
   }
-  unsigned int offset = data.size() - aes_block_size;
+  unsigned int offset = ciphertext.size() - aes_block_size;
 
   SecureBlob passkey_part;
-  if (!CryptoLib::AesDecryptSpecifyBlockMode(data, offset, aes_block_size,
-                                           aes_key, iv, CryptoLib::kPaddingNone,
+  if (!CryptoLib::AesDecryptSpecifyBlockMode(ciphertext, offset, aes_block_size,
+                                           key, SecureBlob(0),
+                                           CryptoLib::kPaddingNone,
                                            CryptoLib::kEcb, &passkey_part)) {
     LOG(ERROR) << "AES decryption failed.";
     return false;
@@ -871,7 +857,7 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
   PLOG_IF(FATAL, passkey_part.size() != aes_block_size)
       << "Output block size error: " << passkey_part.size() << ", expected: "
       << aes_block_size;
-  SecureBlob local_data(data.begin(), data.end());
+  SecureBlob local_data(ciphertext.begin(), ciphertext.end());
   memcpy(&local_data[offset], passkey_part.data(), passkey_part.size());
 
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
@@ -903,8 +889,8 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
     return false;
   }
 
-  data_out->resize(dec_data_length);
-  memcpy(data_out->data(), dec_data.value(), dec_data_length);
+  plaintext->resize(dec_data_length);
+  memcpy(plaintext->data(), dec_data.value(), dec_data_length);
   chromeos::SecureMemset(dec_data.value(), 0, dec_data_length);
 
   return true;
@@ -2196,7 +2182,7 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key,
   // request. For that we need to spoof a Privacy CA (PCA).
   class ScopedRSAKey {
    public:
-    ScopedRSAKey(RSA* rsa) : rsa_(rsa) {}
+    explicit ScopedRSAKey(RSA* rsa) : rsa_(rsa) {}
     ~ScopedRSAKey() { if (rsa_) RSA_free(rsa_); }
     RSA* get() { return rsa_; }
    private:

@@ -92,7 +92,7 @@ class Tpm {
   //                     the password
   //   salt - The salt used in converting the password to the UP
   //   data_out (OUT) - The encrypted data
-  virtual bool Encrypt(const chromeos::Blob& data,
+  virtual bool Encrypt(const chromeos::SecureBlob& data,
                        const chromeos::Blob& password,
                        unsigned int password_rounds,
                        const chromeos::Blob& salt,
@@ -108,7 +108,7 @@ class Tpm {
   //                     the password
   //   salt - The salt used in converting the password to the UP
   //   data_out (OUT) - The decrypted data
-  virtual bool Decrypt(const chromeos::Blob& data,
+  virtual bool Decrypt(const chromeos::SecureBlob& data,
                        const chromeos::Blob& password,
                        unsigned int password_rounds,
                        const chromeos::Blob& salt,
@@ -348,14 +348,14 @@ class Tpm {
                                  TSS_RESULT* result);
 
   bool EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                   const chromeos::Blob& data, const chromeos::Blob& password,
-                   unsigned int password_rounds, const chromeos::Blob& salt,
-                   chromeos::SecureBlob* data_out, TSS_RESULT* result);
+                   const chromeos::SecureBlob& plaintext,
+                   const chromeos::SecureBlob& key,
+                   chromeos::SecureBlob* ciphertext, TSS_RESULT* result);
 
   bool DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                   const chromeos::Blob& data, const chromeos::Blob& password,
-                   unsigned int password_rounds, const chromeos::Blob& salt,
-                   chromeos::SecureBlob* data_out, TSS_RESULT* result);
+                   const chromeos::SecureBlob& ciphertext,
+                   const chromeos::SecureBlob& key,
+                   chromeos::SecureBlob* plaintext, TSS_RESULT* result);
 
   bool GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                   chromeos::SecureBlob* data_out, TSS_RESULT* result);
