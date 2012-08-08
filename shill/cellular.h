@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dbus_properties.h"
@@ -282,6 +283,8 @@ class Cellular : public Device {
   // When shill terminates or ChromeOS suspends, this function is called to
   // disconnect from the cellular network.
   void StartTermination();
+
+  base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 
   State state_;
   ModemState modem_state_;

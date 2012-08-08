@@ -108,6 +108,7 @@ Cellular::Cellular(ControlInterface *control_interface,
              address,
              interface_index,
              Technology::kCellular),
+      weak_ptr_factory_(this),
       state_(kStateDisabled),
       modem_state_(kModemStateUnknown),
       dbus_owner_(owner),
@@ -204,15 +205,19 @@ void Cellular::Start(Error *error,
   if (state_ != kStateDisabled) {
     return;
   }
-  capability_->StartModem(error,
-                          Bind(&Cellular::StartModemCallback, this, callback));
+  ResultCallback cb = Bind(&Cellular::StartModemCallback,
+                           weak_ptr_factory_.GetWeakPtr(),
+                           callback);
+  capability_->StartModem(error, cb);
 }
 
 void Cellular::Stop(Error *error,
                     const EnabledStateChangedCallback &callback) {
   SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
-  capability_->StopModem(error,
-                         Bind(&Cellular::StopModemCallback, this, callback));
+  ResultCallback cb = Bind(&Cellular::StopModemCallback,
+                           weak_ptr_factory_.GetWeakPtr(),
+                           callback);
+  capability_->StopModem(error, cb);
 }
 
 bool Cellular::IsUnderlyingDeviceEnabled() const {
@@ -404,9 +409,8 @@ void Cellular::Connect(Error *error) {
 
   DBusPropertiesMap properties;
   capability_->SetupConnectProperties(&properties);
-  // TODO(njw): Should a weak pointer be used here instead?
-  // Would require something like a WeakPtrFactory on the class.
-  ResultCallback cb = Bind(&Cellular::OnConnectReply, this);
+  ResultCallback cb = Bind(&Cellular::OnConnectReply,
+                           weak_ptr_factory_.GetWeakPtr());
   OnConnecting();
   capability_->Connect(properties, error, cb);
 }
@@ -455,8 +459,8 @@ void Cellular::Disconnect(Error *error) {
         error, Error::kNotConnected, "Not connected; request ignored.");
     return;
   }
-  // TODO(njw): See Connect() about possible weak ptr for 'this'.
-  ResultCallback cb = Bind(&Cellular::OnDisconnectReply, this);
+  ResultCallback cb = Bind(&Cellular::OnDisconnectReply,
+                           weak_ptr_factory_.GetWeakPtr());
   capability_->Disconnect(error, cb);
 }
 
