@@ -21,6 +21,7 @@
 #include <chromeos/syslog_logging.h>
 
 #include "shill/dbus_control.h"
+#include "shill/memory_log.h"
 #include "shill/scope_logger.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
@@ -94,6 +95,7 @@ void SetupLogging(bool foreground, char *daemon_name) {
     log_flags |= chromeos::kLogToStderr;
   }
   chromeos::InitLog(log_flags);
+  shill::MemoryLog::InstallLogInterceptor();
 
   if (!foreground) {
     vector<char *> logger_command_line;

@@ -18,11 +18,16 @@
 using testing::_;
 
 namespace {
-  const char kTestStr1[] = "What does Mr Wallace look like?";
-  const char kTestStr2[] = "And now little man, I give the watch to you.";
-  const char kTestStr3[] = "This is a tasty burger!";
 
-} // namespace
+const char kTestStr1[] = "What does Mr Wallace look like?";
+const char kTestStr2[] = "And now little man, I give the watch to you.";
+const char kTestStr3[] = "This is a tasty burger!";
+const char kTestStr1WithPrefix[] = "memlog: What does Mr Wallace look like?";
+const char kTestStr2WithPrefix[] =
+    "memlog: And now little man, I give the watch to you.";
+const char kTestStr3WithPrefix[] = "memlog: This is a tasty burger!";
+
+}  // namespace
 
 namespace shill {
 
@@ -41,8 +46,8 @@ class MemoryLogTest : public testing::Test {
 
 TEST_F(MemoryLogTest, ScopedLoggerStillWorks) {
   ScopedMockLog log;
-  EXPECT_CALL(log, Log(_, _, kTestStr1));
-  EXPECT_CALL(log, Log(_, _, kTestStr2));
+  EXPECT_CALL(log, Log(_, _, kTestStr1WithPrefix));
+  EXPECT_CALL(log, Log(_, _, kTestStr2WithPrefix));
   SMLOG(WiFi, 2) << "does not get through";
   ScopeLogger::GetInstance()->EnableScopesByName("+wifi");
   // Verbose levels are inverted.
@@ -57,8 +62,8 @@ TEST_F(MemoryLogTest, ScopedLoggerStillWorks) {
 TEST_F(MemoryLogTest, NormalLoggingStillWorks) {
   ::logging::SetMinLogLevel(logging::LOG_WARNING);
   ScopedMockLog log;
-  EXPECT_CALL(log, Log(_, _, kTestStr1));
-  EXPECT_CALL(log, Log(_, _, kTestStr2));
+  EXPECT_CALL(log, Log(_, _, kTestStr1WithPrefix));
+  EXPECT_CALL(log, Log(_, _, kTestStr2WithPrefix));
   MLOG(ERROR) << kTestStr1;
   MLOG(INFO) << "does not propagate down";
   // It would be nice if the compiler didn't optimize out my conditional check.
@@ -67,14 +72,14 @@ TEST_F(MemoryLogTest, NormalLoggingStillWorks) {
 
 TEST_F(MemoryLogTest, MemoryLogIsLogging) {
   ScopedMockLog log;
-  EXPECT_CALL(log, Log(_, _, kTestStr1));
-  EXPECT_CALL(log, Log(_, _, kTestStr2));
+  EXPECT_CALL(log, Log(_, _, kTestStr1WithPrefix));
+  EXPECT_CALL(log, Log(_, _, kTestStr2WithPrefix));
   ::logging::SetMinLogLevel(logging::LOG_WARNING);
   ASSERT_EQ(0, MemoryLog::GetInstance()->current_size_bytes());
   MLOG(WARNING) << kTestStr1;
   MLOG(WARNING) << kTestStr2;
   // LT because of the prefixes prepended by the logger
-  ASSERT_LT(strlen(kTestStr1) + strlen(kTestStr2),
+  ASSERT_LT(strlen(kTestStr1WithPrefix) + strlen(kTestStr2WithPrefix),
             MemoryLog::GetInstance()->current_size_bytes());
   ASSERT_EQ(2, MemoryLog::GetInstance()->TestGetNumberMessages());
   MemoryLog::GetInstance()->Clear();
@@ -101,7 +106,7 @@ TEST_F(MemoryLogTest, MemoryLogLimitingWorks) {
   MemoryLog::GetInstance()->SetMaximumSize(0);
   ASSERT_EQ(0, MemoryLog::GetInstance()->current_size_bytes());
   // Can't log if we don't have room, but the messages should still get to LOG
-  EXPECT_CALL(log, Log(_, _, kTestStr3));
+  EXPECT_CALL(log, Log(_, _, kTestStr3WithPrefix));
   MLOG(WARNING) << kTestStr3;
   ASSERT_EQ(0, MemoryLog::GetInstance()->current_size_bytes());
   ASSERT_EQ(0, MemoryLog::GetInstance()->TestGetNumberMessages());
@@ -118,18 +123,50 @@ TEST_F(MemoryLogTest, MemoryLogFlushToDiskWorks) {
   ASSERT_EQ(3, MemoryLog::GetInstance()->TestGetNumberMessages());
   // Because of all the prefixed metadata on each log message, the stuff sent to
   // disk should be bigger than the original strings put together.
-  ASSERT_LT(strlen(kTestStr1) + strlen(kTestStr2) + strlen(kTestStr3),
+  size_t minimal_message_length = strlen(kTestStr1WithPrefix) +
+      strlen(kTestStr2WithPrefix) + strlen(kTestStr3WithPrefix);
+  ASSERT_LT(minimal_message_length,
             MemoryLog::GetInstance()->FlushToDisk(test_path.value().c_str()));
   std::string file_contents;
   ASSERT_TRUE(file_util::ReadFileToString(test_path, &file_contents));
   // Log should contain all three messages
-  ASSERT_NE(file_contents.find(kTestStr1), std::string::npos);
-  ASSERT_NE(file_contents.find(kTestStr2), std::string::npos);
-  ASSERT_NE(file_contents.find(kTestStr3), std::string::npos);
+  ASSERT_NE(file_contents.find(kTestStr1WithPrefix), std::string::npos);
+  ASSERT_NE(file_contents.find(kTestStr2WithPrefix), std::string::npos);
+  ASSERT_NE(file_contents.find(kTestStr3WithPrefix), std::string::npos);
   // Preserve message order
-  ASSERT_LT(file_contents.find(kTestStr1), file_contents.find(kTestStr2));
-  ASSERT_LT(file_contents.find(kTestStr2), file_contents.find(kTestStr3));
+  ASSERT_LT(file_contents.find(kTestStr1WithPrefix),
+            file_contents.find(kTestStr2WithPrefix));
+  ASSERT_LT(file_contents.find(kTestStr2WithPrefix),
+            file_contents.find(kTestStr3WithPrefix));
   ASSERT_TRUE(temp_dir.Delete());
+}
+
+TEST_F(MemoryLogTest, MemoryLogMessageInterceptorWorks) {
+  ASSERT_EQ(0, MemoryLog::GetInstance()->TestGetNumberMessages());
+  NOTIMPLEMENTED();
+  ASSERT_EQ(0, MemoryLog::GetInstance()->TestGetNumberMessages());
+  MemoryLog::InstallLogInterceptor();
+  NOTIMPLEMENTED();
+  ASSERT_EQ(1, MemoryLog::GetInstance()->TestGetNumberMessages());
+  // Make sure we're not double logging.
+  MLOG(ERROR) << kTestStr1;
+  ASSERT_EQ(2, MemoryLog::GetInstance()->TestGetNumberMessages());
+  // SMLOG_IF works with the intercepting handler.
+  SMLOG_IF(WiFi, 3, strlen("two") == 3) << kTestStr2;
+  ASSERT_EQ(3, MemoryLog::GetInstance()->TestGetNumberMessages());
+  SMLOG_IF(WiFi, 3, strlen("one") == 2) << "does not get through again";
+  ASSERT_EQ(3, MemoryLog::GetInstance()->TestGetNumberMessages());
+  // Similarly, MLOG_IF works with the handler.
+  MLOG_IF(ERROR, strlen("two") == 3) << kTestStr2;
+  ASSERT_EQ(4, MemoryLog::GetInstance()->TestGetNumberMessages());
+  MLOG_IF(ERROR, strlen("one") == 2) << "does not get through again";
+  ASSERT_EQ(4, MemoryLog::GetInstance()->TestGetNumberMessages());
+  MemoryLog::UninstallLogInterceptor();
+  NOTIMPLEMENTED();
+  ASSERT_EQ(4, MemoryLog::GetInstance()->TestGetNumberMessages());
+  // Normal log messages still get through.
+  MLOG(ERROR) << kTestStr2;
+  ASSERT_EQ(5, MemoryLog::GetInstance()->TestGetNumberMessages());
 }
 
 }  // namespace shill
