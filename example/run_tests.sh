@@ -8,6 +8,8 @@
 
 set -e
 
+cd "$(dirname "$0")"
+
 log() {
   echo "$@"
   echo "$@" 1>&2
