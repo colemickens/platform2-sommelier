@@ -9,9 +9,9 @@
 #include <base/stringprintf.h>
 
 #include "shill/key_value_store.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/proxy_factory.h"
-#include "shill/scope_logger.h"
 #include "shill/wimax_device_proxy_interface.h"
 #include "shill/wimax_service.h"
 

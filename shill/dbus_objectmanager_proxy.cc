@@ -3,10 +3,8 @@
 // found in the LICENSE file.
 #include "shill/dbus_objectmanager_proxy.h"
 
-#include <base/logging.h>
-
 #include "shill/cellular_error.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using std::string;
 

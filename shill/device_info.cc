@@ -22,7 +22,6 @@
 
 #include <base/bind.h>
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
@@ -33,12 +32,12 @@
 #include "shill/device.h"
 #include "shill/device_stub.h"
 #include "shill/ethernet.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
-#include "shill/scope_logger.h"
 #include "shill/service.h"
 #include "shill/virtio_ethernet.h"
 #include "shill/wifi.h"

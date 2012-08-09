@@ -6,7 +6,6 @@
 
 #include <algorithm>
 
-#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/stringprintf.h>
 #include <base/string_number_conversions.h>
@@ -14,8 +13,8 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/ieee80211.h"
+#include "shill/logging.h"
 #include "shill/proxy_factory.h"
-#include "shill/scope_logger.h"
 #include "shill/supplicant_bss_proxy_interface.h"
 #include "shill/wifi.h"
 #include "shill/wifi_endpoint.h"

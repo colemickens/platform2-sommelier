@@ -4,10 +4,10 @@
 
 #include "shill/dhcpcd_proxy.h"
 
-#include <base/logging.h>
+#include <limits>
 
 #include "shill/dhcp_provider.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using std::string;
 using std::vector;
@@ -34,7 +34,7 @@ DHCPCDListener::Proxy::Proxy(DBus::Connection *connection,
 void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
   SLOG(DBus, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
-  unsigned int pid;
+  unsigned int pid = std::numeric_limits<unsigned int>::max();
   try {
     ri >> pid;
   } catch (const DBus::Error &e) {
@@ -74,7 +74,7 @@ void DHCPCDListener::Proxy::StatusChangedSignal(
     const DBus::SignalMessage &signal) {
   SLOG(DBus, 2) << __func__;
   DBus::MessageIter ri = signal.reader();
-  unsigned int pid;
+  unsigned int pid = std::numeric_limits<unsigned int>::max();
   try {
     ri >> pid;
   } catch (const DBus::Error &e) {

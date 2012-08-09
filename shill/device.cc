@@ -14,7 +14,6 @@
 
 #include <base/bind.h>
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -27,12 +26,12 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/http_proxy.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
 #include "shill/rtnl_handler.h"
-#include "shill/scope_logger.h"
 #include "shill/service.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"

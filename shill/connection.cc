@@ -8,10 +8,10 @@
 #include <linux/rtnetlink.h>
 
 #include "shill/device_info.h"
+#include "shill/logging.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
-#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::Closure;

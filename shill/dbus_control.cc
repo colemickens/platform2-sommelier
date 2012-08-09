@@ -6,12 +6,12 @@
 
 #include <string>
 
-#include <base/logging.h>
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/util.h>
 
 #include "shill/device_dbus_adaptor.h"
 #include "shill/ipconfig_dbus_adaptor.h"
+#include "shill/logging.h"
 #include "shill/manager_dbus_adaptor.h"
 #include "shill/profile_dbus_adaptor.h"
 #include "shill/rpc_task_dbus_adaptor.h"

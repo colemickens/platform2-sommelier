@@ -6,14 +6,12 @@
 #include <string>
 
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/memory_log.h"
+#include "shill/logging.h"
 #include "shill/mock_log.h"
-#include "shill/scope_logger.h"
 
 using testing::_;
 
@@ -48,15 +46,15 @@ TEST_F(MemoryLogTest, ScopedLoggerStillWorks) {
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, kTestStr1WithPrefix));
   EXPECT_CALL(log, Log(_, _, kTestStr2WithPrefix));
-  SMLOG(WiFi, 2) << "does not get through";
+  SLOG(WiFi, 2) << "does not get through";
   ScopeLogger::GetInstance()->EnableScopesByName("+wifi");
   // Verbose levels are inverted.
   ScopeLogger::GetInstance()->set_verbose_level(3);
-  SMLOG(WiFi, 2) << kTestStr1;
+  SLOG(WiFi, 2) << kTestStr1;
   // It would be nice if the compiler didn't optimize out my conditional check.
-  SMLOG_IF(WiFi, 3, strlen("two") == 3) << kTestStr2;
-  SMLOG_IF(WiFi, 3, strlen("one") == 2) << "does not get through again";
-  SMLOG(WiFi, 4) << "spanish inquisition";
+  SLOG_IF(WiFi, 3, strlen("two") == 3) << kTestStr2;
+  SLOG_IF(WiFi, 3, strlen("one") == 2) << "does not get through again";
+  SLOG(WiFi, 4) << "spanish inquisition";
 }
 
 TEST_F(MemoryLogTest, NormalLoggingStillWorks) {
@@ -151,10 +149,10 @@ TEST_F(MemoryLogTest, MemoryLogMessageInterceptorWorks) {
   // Make sure we're not double logging.
   MLOG(ERROR) << kTestStr1;
   ASSERT_EQ(2, MemoryLog::GetInstance()->TestGetNumberMessages());
-  // SMLOG_IF works with the intercepting handler.
-  SMLOG_IF(WiFi, 3, strlen("two") == 3) << kTestStr2;
+  // SLOG_IF works with the intercepting handler.
+  SLOG_IF(WiFi, 3, strlen("two") == 3) << kTestStr2;
   ASSERT_EQ(3, MemoryLog::GetInstance()->TestGetNumberMessages());
-  SMLOG_IF(WiFi, 3, strlen("one") == 2) << "does not get through again";
+  SLOG_IF(WiFi, 3, strlen("one") == 2) << "does not get through again";
   ASSERT_EQ(3, MemoryLog::GetInstance()->TestGetNumberMessages());
   // Similarly, MLOG_IF works with the handler.
   MLOG_IF(ERROR, strlen("two") == 3) << kTestStr2;

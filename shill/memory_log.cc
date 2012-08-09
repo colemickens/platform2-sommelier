@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/memory_log.h"
+
 #include <stdio.h>
 
 #include <ctime>
@@ -11,7 +13,7 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 
-#include "shill/memory_log.h"
+#include "shill/logging.h"
 #include "shill/shill_time.h"
 
 namespace shill {

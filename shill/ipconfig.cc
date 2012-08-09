@@ -4,13 +4,12 @@
 
 #include "shill/ipconfig.h"
 
-#include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/error.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/store_interface.h"
 

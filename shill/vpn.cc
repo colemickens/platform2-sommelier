@@ -7,8 +7,8 @@
 #include <netinet/ether.h>
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
 
+#include "shill/logging.h"
 #include "shill/rtnl_handler.h"
-#include "shill/scope_logger.h"
 #include "shill/vpn_service.h"
 
 using std::string;

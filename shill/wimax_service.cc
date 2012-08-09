@@ -12,8 +12,8 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/key_value_store.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/scope_logger.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 #include "shill/wimax.h"

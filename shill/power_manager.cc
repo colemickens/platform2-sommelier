@@ -7,12 +7,11 @@
 #include <map>
 #include <string>
 
-#include <base/logging.h>
 #include <base/stl_util.h>
 
+#include "shill/logging.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/proxy_factory.h"
-#include "shill/scope_logger.h"
 
 using std::string;
 

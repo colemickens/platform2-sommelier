@@ -6,7 +6,7 @@
 
 #include <string>
 
-#include <base/logging.h>
+#include "shill/logging.h"
 
 using std::string;
 

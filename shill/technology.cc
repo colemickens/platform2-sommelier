@@ -8,12 +8,12 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/string_split.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
+#include "shill/logging.h"
 
 namespace shill {
 

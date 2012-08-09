@@ -8,8 +8,8 @@
 
 #include "shill/dbus_service_proxy_interface.h"
 #include "shill/error.h"
+#include "shill/logging.h"
 #include "shill/proxy_factory.h"
-#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::Unretained;

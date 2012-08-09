@@ -7,13 +7,13 @@
 
 #include <vector>
 
-#include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
 #include "shill/byte_string.h"
+#include "shill/logging.h"
 #include "shill/mock_control.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/routing_table.h"

@@ -5,11 +5,10 @@
 #include "shill/wimax_device_proxy.h"
 
 #include <base/bind.h>
-#include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using base::Bind;
 using base::Callback;

@@ -5,7 +5,6 @@
 #include "shill/cellular_capability_universal.h"
 
 #include <base/bind.h>
-#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -19,9 +18,9 @@
 #include "shill/cellular_service.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
+#include "shill/logging.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
-#include "shill/scope_logger.h"
 
 #ifdef MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN
 #error "Do not include mm-modem.h"

@@ -12,7 +12,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <base/logging.h>
+#include "shill/logging.h"
 
 namespace shill {
 

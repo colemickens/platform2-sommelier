@@ -4,11 +4,9 @@
 
 #include "shill/rpc_task_dbus_adaptor.h"
 
-#include <base/logging.h>
-
 #include "shill/error.h"
+#include "shill/logging.h"
 #include "shill/rpc_task.h"
-#include "shill/scope_logger.h"
 
 using std::map;
 using std::string;

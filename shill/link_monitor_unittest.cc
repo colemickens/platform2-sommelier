@@ -9,6 +9,7 @@
 
 #include "shill/arp_packet.h"
 #include "shill/ip_address.h"
+#include "shill/logging.h"
 #include "shill/mock_arp_client.h"
 #include "shill/mock_control.h"
 #include "shill/mock_connection.h"
@@ -18,7 +19,6 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_sockets.h"
 #include "shill/mock_time.h"
-#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::Unretained;

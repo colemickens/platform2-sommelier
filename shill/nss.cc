@@ -4,13 +4,12 @@
 
 #include "shill/nss.h"
 
-#include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 
 #include "shill/glib.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using base::HexEncode;
 using base::StringPrintf;

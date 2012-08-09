@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST

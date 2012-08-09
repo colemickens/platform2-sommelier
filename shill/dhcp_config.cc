@@ -8,7 +8,6 @@
 #include <sys/wait.h>
 
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -17,9 +16,9 @@
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/ip_address.h"
+#include "shill/logging.h"
 #include "shill/minijail.h"
 #include "shill/proxy_factory.h"
-#include "shill/scope_logger.h"
 
 using std::string;
 using std::vector;

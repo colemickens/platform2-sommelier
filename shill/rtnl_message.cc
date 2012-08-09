@@ -4,11 +4,11 @@
 
 #include "shill/rtnl_message.h"
 
-#include <base/logging.h>
-
 #include <sys/socket.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+
+#include "shill/logging.h"
 
 namespace shill {
 

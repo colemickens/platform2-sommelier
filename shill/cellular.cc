@@ -13,7 +13,6 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/logging.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mobile_provider.h>
@@ -28,12 +27,12 @@
 #include "shill/device_info.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
-#include "shill/scope_logger.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 

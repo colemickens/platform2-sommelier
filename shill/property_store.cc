@@ -9,12 +9,11 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/logging.h>
 #include <base/stl_util.h>
 
 #include "shill/error.h"
+#include "shill/logging.h"
 #include "shill/property_accessor.h"
-#include "shill/scope_logger.h"
 
 using std::map;
 using std::string;

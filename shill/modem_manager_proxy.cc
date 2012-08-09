@@ -4,10 +4,8 @@
 
 #include "shill/modem_manager_proxy.h"
 
-#include <base/logging.h>
-
+#include "shill/logging.h"
 #include "shill/modem_manager.h"
-#include "shill/scope_logger.h"
 
 using std::string;
 using std::vector;

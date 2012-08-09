@@ -11,7 +11,7 @@
 
 #include "shill/device.h"
 #include "shill/error.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using base::Bind;
 using std::map;

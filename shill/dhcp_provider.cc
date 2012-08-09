@@ -4,13 +4,11 @@
 
 #include "shill/dhcp_provider.h"
 
-#include <base/logging.h>
-
 #include "shill/control_interface.h"
 #include "shill/dhcp_config.h"
 #include "shill/dhcpcd_proxy.h"
+#include "shill/logging.h"
 #include "shill/proxy_factory.h"
-#include "shill/scope_logger.h"
 
 using std::string;
 

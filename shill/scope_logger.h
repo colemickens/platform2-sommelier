@@ -10,59 +10,12 @@
 
 #include <base/basictypes.h>
 #include <base/lazy_instance.h>
-#include <base/logging.h>
 #include <gtest/gtest_prod.h>
-
-// Helper macros to enable logging based on scope and verbose level.
-//
-// The SLOG macro and its variants are similar to the LOG and VLOG macros
-// defined in base/logging.h, except that the SLOG macros take an additional
-// |scope| argument to enable logging only if |scope| is enabled.
-//
-// Like VLOG, SLOG macros internally map verbosity to LOG severity using
-// negative values, i.e. SLOG(scope, 1) corresponds to LOG(-1).
-//
-// Example usages:
-//  SLOG(Service, 1) << "Printed when the 'service' scope is enabled and "
-//                      "the verbose level is greater than or equal to 1";
-//
-//  SLOG_IF(Service, 1, (size > 1024))
-//      << "Printed when the 'service' scope is enabled, the verbose level "
-//         "is greater than or equal to 1, and size is more than 1024";
-//
-//  SPLOG and SPLOG_IF are similar to SLOG and SLOG_IF, respectively, but
-//  append the last system error to the message in string form, which is
-//  taken from errno.
-
-#define SLOG_IS_ON(scope, verbose_level) \
-  ::shill::ScopeLogger::GetInstance()->IsLogEnabled( \
-      ::shill::ScopeLogger::k##scope, verbose_level)
-
-#define SLOG_STREAM(verbose_level) \
-  ::logging::LogMessage(__FILE__, __LINE__, -verbose_level).stream()
-
-#define SLOG(scope, verbose_level) \
-  LAZY_STREAM(SLOG_STREAM(verbose_level), SLOG_IS_ON(scope, verbose_level))
-
-#define SLOG_IF(scope, verbose_level, condition) \
-  LAZY_STREAM(SLOG_STREAM(verbose_level), \
-              SLOG_IS_ON(scope, verbose_level) && (condition))
-
-#define SPLOG_STREAM(verbose_level) \
-  ::logging::ErrnoLogMessage(__FILE__, __LINE__, -verbose_level, \
-                             ::logging::GetLastSystemErrorCode()).stream()
-
-#define SPLOG(scope, verbose_level) \
-  LAZY_STREAM(SPLOG_STREAM(verbose_level), SLOG_IS_ON(scope, verbose_level))
-
-#define SPLOG_IF(scope, verbose_level, condition) \
-  LAZY_STREAM(SPLOG_STREAM(verbose_level), \
-              SLOG_IS_ON(scope, verbose_level) && (condition))
 
 namespace shill {
 
 // A class that enables logging based on scope and verbose level. It is not
-// intended to be used directly but via the SLOG() macros.
+// intended to be used directly but via the SLOG() macros in shill/logging.h
 class ScopeLogger {
  public:
   // Logging scopes.

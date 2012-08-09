@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
@@ -19,9 +18,9 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular_service.h"
 #include "shill/error.h"
+#include "shill/logging.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
-#include "shill/scope_logger.h"
 
 using base::Bind;
 using std::string;

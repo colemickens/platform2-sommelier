@@ -13,7 +13,6 @@
 #include <net/if_arp.h>
 
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop.h>
 #include <base/scoped_temp_dir.h>
@@ -23,6 +22,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/ip_address.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"

@@ -4,12 +4,11 @@
 
 #include "shill/proxy_factory.h"
 
-#include <base/logging.h>
-
 #include "shill/dbus_objectmanager_proxy.h"
 #include "shill/dbus_properties_proxy.h"
 #include "shill/dbus_service_proxy.h"
 #include "shill/dhcpcd_proxy.h"
+#include "shill/logging.h"
 #include "shill/mm1_modem_modem3gpp_proxy.h"
 #include "shill/mm1_modem_modemcdma_proxy.h"
 #include "shill/mm1_modem_proxy.h"

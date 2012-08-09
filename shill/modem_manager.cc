@@ -7,12 +7,12 @@
 #include <algorithm>
 
 #include <base/bind.h>
-#include <base/logging.h>
 #include <base/stl_util.h>
 #include <mm/mm-modem.h>
 #include <ModemManager/ModemManager-names.h>
 
 #include "shill/error.h"
+#include "shill/logging.h"
 #include "shill/modem.h"
 #include "shill/modem_manager_proxy.h"
 #include "shill/proxy_factory.h"

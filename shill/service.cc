@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
@@ -21,12 +20,12 @@
 #include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/http_proxy.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
-#include "shill/scope_logger.h"
 #include "shill/service_dbus_adaptor.h"
 #include "shill/sockets.h"
 #include "shill/store_interface.h"

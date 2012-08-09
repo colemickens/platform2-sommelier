@@ -6,13 +6,13 @@
 
 #include <string.h>
 
-#include <base/logging.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
 #include "shill/ip_address.h"
+#include "shill/logging.h"
 #include "shill/property_accessor.h"
 #include "shill/property_store.h"
 #include "shill/store_interface.h"

@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/logging.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 

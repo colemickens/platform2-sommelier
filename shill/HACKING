@@ -109,7 +109,7 @@ To keep the shill source code consistent, please follow the conventions below:
   be caught by const reference in general.
 
 - When adding verbose log messages for debug purposes, use the SLOG marco and
-  its variants (see scope_logger.h for details).
+  its variants (see logging.h for details).
 
   - Choose the appropriate scope and verbose level for log messages. E.g.
 

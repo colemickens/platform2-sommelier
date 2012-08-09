@@ -7,7 +7,6 @@
 #include <arpa/inet.h>
 
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
@@ -17,12 +16,12 @@
 #include "shill/device_info.h"
 #include "shill/dhcp_config.h"
 #include "shill/error.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/nss.h"
 #include "shill/openvpn_management_server.h"
 #include "shill/process_killer.h"
 #include "shill/rpc_task.h"
-#include "shill/scope_logger.h"
 #include "shill/sockets.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"

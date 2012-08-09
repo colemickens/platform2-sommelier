@@ -8,7 +8,6 @@
 #include <netinet/in.h>
 
 #include <base/bind.h>
-#include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
@@ -17,8 +16,8 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
+#include "shill/logging.h"
 #include "shill/openvpn_driver.h"
-#include "shill/scope_logger.h"
 #include "shill/sockets.h"
 
 using base::Bind;

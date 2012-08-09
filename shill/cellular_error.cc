@@ -6,7 +6,6 @@
 
 #include <string>
 
-#include <base/logging.h>
 #include <mm/mm-modem.h>
 
 using std::string;

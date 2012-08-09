@@ -22,17 +22,16 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/hash_tables.h>
-#include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/stringprintf.h>
 
 #include "shill/byte_string.h"
+#include "shill/logging.h"
 #include "shill/routing_table_entry.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
-#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::Unretained;

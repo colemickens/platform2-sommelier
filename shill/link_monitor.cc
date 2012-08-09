@@ -7,7 +7,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/logging.h>
 #include <base/stringprintf.h>
 #include <base/string_util.h>
 
@@ -18,8 +17,8 @@
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
+#include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/scope_logger.h"
 #include "shill/shill_time.h"
 
 using base::Bind;

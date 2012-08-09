@@ -7,7 +7,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using ::std::string;
 using ::testing::_;
@@ -68,7 +68,8 @@ TEST_F(MockLogTest, MatchMessageContainsBracketAndNewline) {
 TEST_F(MockLogTest, MatchSlog) {
   ScopedMockLog log;
   const string kMessage("Something");
-  EXPECT_CALL(log, Log(_, _, kMessage));
+  const string kMessageWithPrefix("memlog: Something");
+  EXPECT_CALL(log, Log(_, _, kMessageWithPrefix));
   SlogSomething(kMessage);
 }
 

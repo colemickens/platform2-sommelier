@@ -11,15 +11,14 @@
 
 #include <base/bind.h>
 #include <base/file_path.h>
-#include <base/logging.h>
 
 #include "shill/dhcp_provider.h"
 #include "shill/error.h"
+#include "shill/logging.h"
 #include "shill/nss.h"
 #include "shill/proxy_factory.h"
 #include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
-#include "shill/scope_logger.h"
 #include "shill/shill_config.h"
 
 using base::Bind;

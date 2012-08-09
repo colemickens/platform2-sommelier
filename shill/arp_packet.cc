@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include <string.h>
 
-#include <base/logging.h>
+#include "shill/logging.h"
 
 namespace shill {
 

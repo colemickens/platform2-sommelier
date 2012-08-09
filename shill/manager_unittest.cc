@@ -10,7 +10,6 @@
 #include <glib.h>
 
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/scoped_temp_dir.h>
 #include <base/stl_util.h>
 #include <base/stringprintf.h>

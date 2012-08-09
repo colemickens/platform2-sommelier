@@ -20,7 +20,7 @@
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 #include "shill/shill_ares.h"
 #include "shill/shill_time.h"
 

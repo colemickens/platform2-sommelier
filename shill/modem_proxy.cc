@@ -5,11 +5,10 @@
 #include "shill/modem_proxy.h"
 
 #include <base/bind.h>
-#include <base/logging.h>
 
 #include "shill/cellular_error.h"
 #include "shill/error.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using base::Bind;
 using base::Callback;

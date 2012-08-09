@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using std::map;
 using std::string;

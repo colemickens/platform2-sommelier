@@ -10,10 +10,9 @@
 #include <netinet/in.h>
 #include <string.h>
 
-#include <base/logging.h>
-
 #include "shill/arp_packet.h"
 #include "shill/byte_string.h"
+#include "shill/logging.h"
 #include "shill/sockets.h"
 
 namespace shill {

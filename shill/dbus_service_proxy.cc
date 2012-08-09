@@ -7,7 +7,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using std::string;
 

@@ -8,7 +8,7 @@
 
 #include "shill/cellular_error.h"
 #include "shill/error.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using base::Bind;
 using base::Callback;

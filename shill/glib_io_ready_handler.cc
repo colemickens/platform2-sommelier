@@ -4,10 +4,11 @@
 
 #include "shill/glib_io_ready_handler.h"
 
-#include <base/logging.h>
 #include <glib.h>
 #include <stdio.h>
 #include <sys/socket.h>
+
+#include "shill/logging.h"
 
 using base::Callback;
 

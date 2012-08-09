@@ -15,6 +15,7 @@
 #include "shill/dbus_adaptor.h"
 #include "shill/error.h"
 #include "shill/ipconfig.h"
+#include "shill/logging.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
@@ -30,7 +31,6 @@
 #include "shill/nice_mock_control.h"
 #include "shill/property_store_inspector.h"
 #include "shill/rpc_task.h"
-#include "shill/scope_logger.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 

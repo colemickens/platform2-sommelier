@@ -4,10 +4,10 @@
 
 #include "shill/modem_info.h"
 
-#include <base/logging.h>
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
+#include "shill/logging.h"
 #include "shill/modem_manager.h"
 
 using std::string;

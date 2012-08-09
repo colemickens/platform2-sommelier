@@ -4,11 +4,11 @@
 
 #include "shill/error.h"
 
-#include <base/logging.h>
 #include <base/stringprintf.h>
 #include <dbus-c++/error.h>
 
 #include "shill/dbus_adaptor.h"
+#include "shill/logging.h"
 
 using std::string;
 

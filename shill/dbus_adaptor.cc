@@ -8,15 +8,14 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
-#include <base/logging.h>
 #include <dbus-c++/dbus.h>
 
 #include "shill/accessor_interface.h"
 #include "shill/dbus_adaptor.h"
 #include "shill/error.h"
 #include "shill/key_value_store.h"
+#include "shill/logging.h"
 #include "shill/property_store.h"
-#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::Owned;

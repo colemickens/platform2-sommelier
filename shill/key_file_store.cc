@@ -5,13 +5,12 @@
 #include "shill/key_file_store.h"
 
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using std::set;
 using std::string;

@@ -6,7 +6,6 @@
 
 #include <base/bind.h>
 #include <base/cancelable_callback.h>
-#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop_proxy.h>
 #include <base/stringprintf.h>
@@ -14,6 +13,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/io_handler.h"
+#include "shill/logging.h"
 #include "shill/mock_control.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"

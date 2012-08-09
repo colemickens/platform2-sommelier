@@ -4,10 +4,8 @@
 
 #include "shill/modem_cdma_proxy.h"
 
-#include <base/logging.h>
-
 #include "shill/cellular_error.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using std::string;
 

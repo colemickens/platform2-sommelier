@@ -8,7 +8,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using std::map;
 using std::string;

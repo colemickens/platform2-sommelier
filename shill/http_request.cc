@@ -7,7 +7,6 @@
 #include <string>
 
 #include <base/bind.h>
-#include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
 
@@ -18,7 +17,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/http_url.h"
 #include "shill/ip_address.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 #include "shill/sockets.h"
 
 using base::Bind;

@@ -10,7 +10,6 @@
 
 #include <base/file_path.h>
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
@@ -19,6 +18,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/key_file_store.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/service.h"

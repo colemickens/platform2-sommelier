@@ -9,7 +9,7 @@
 
 #include <dbus-c++/dbus.h>
 
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 #include "shill/wifi_endpoint.h"
 
 using std::map;

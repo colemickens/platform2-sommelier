@@ -8,15 +8,14 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/logging.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
 
 #include "shill/cellular.h"
 #include "shill/cellular_service.h"
+#include "shill/logging.h"
 #include "shill/proxy_factory.h"
-#include "shill/scope_logger.h"
 
 using base::Bind;
 using std::string;

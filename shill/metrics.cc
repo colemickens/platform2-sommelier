@@ -4,14 +4,13 @@
 
 #include "shill/metrics.h"
 
-#include <base/logging.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/bootstat.h>
 
 #include "shill/link_monitor.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 #include "shill/wifi_service.h"
 
 using std::string;

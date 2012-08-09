@@ -14,7 +14,6 @@
 
 #include <base/bind.h>
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/stringprintf.h>
 #include <base/string_util.h>
@@ -33,12 +32,12 @@
 #include "shill/event_dispatcher.h"
 #include "shill/hook_table.h"
 #include "shill/key_file_store.h"
+#include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/resolver.h"
-#include "shill/scope_logger.h"
 #include "shill/service.h"
 #include "shill/service_sorter.h"
 #include "shill/vpn_service.h"

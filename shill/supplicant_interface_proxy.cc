@@ -7,10 +7,9 @@
 #include <map>
 #include <string>
 
-#include <base/logging.h>
 #include <dbus-c++/dbus.h>
 
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 #include "shill/wifi.h"
 
 using std::map;

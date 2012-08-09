@@ -4,12 +4,12 @@
 
 #include "shill/crypto_provider.h"
 
-#include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/string_util.h>
 
 #include "shill/crypto_des_cbc.h"
 #include "shill/crypto_rot47.h"
+#include "shill/logging.h"
 
 using std::string;
 

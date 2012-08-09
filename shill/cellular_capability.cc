@@ -9,8 +9,8 @@
 
 #include "shill/cellular.h"
 #include "shill/error.h"
+#include "shill/logging.h"
 #include "shill/property_accessor.h"
-#include "shill/scope_logger.h"
 
 using base::Closure;
 using std::string;

@@ -6,16 +6,15 @@
 
 #include <algorithm>
 
-#include <base/logging.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/error.h"
 #include "shill/l2tp_ipsec_driver.h"
+#include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/openvpn_driver.h"
 #include "shill/profile.h"
-#include "shill/scope_logger.h"
 #include "shill/store_interface.h"
 #include "shill/vpn_service.h"
 

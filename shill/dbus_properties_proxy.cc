@@ -4,7 +4,7 @@
 
 #include "shill/dbus_properties_proxy.h"
 
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 namespace shill {
 

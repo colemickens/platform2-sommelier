@@ -8,13 +8,12 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
 #include <dbus-c++/dbus.h>
 
 #include "shill/error.h"
+#include "shill/logging.h"
 #include "shill/profile.h"
 #include "shill/profile_dbus_property_exporter.h"
-#include "shill/scope_logger.h"
 #include "shill/service.h"
 
 using std::map;

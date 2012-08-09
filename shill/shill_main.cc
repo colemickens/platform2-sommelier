@@ -15,14 +15,12 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/file_path.h>
-#include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <chromeos/syslog_logging.h>
 
 #include "shill/dbus_control.h"
-#include "shill/memory_log.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 

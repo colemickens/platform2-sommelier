@@ -8,7 +8,7 @@
 #include <string>
 
 #include "shill/error.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 #include "shill/service.h"
 
 using std::map;

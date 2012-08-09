@@ -12,7 +12,7 @@
 #include <base/stringprintf.h>
 
 #include "shill/ipconfig.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using base::StringPrintf;
 using std::string;

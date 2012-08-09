@@ -8,13 +8,12 @@
 #include <string>
 #include <vector>
 
-#include <base/logging.h>
 #include <base/stringprintf.h>
 #include <dbus-c++/dbus.h>
 
 #include "shill/error.h"
 #include "shill/ipconfig.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using base::StringPrintf;
 using std::map;

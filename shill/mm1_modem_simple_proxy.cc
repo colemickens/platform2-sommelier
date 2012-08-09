@@ -4,10 +4,8 @@
 
 #include "shill/mm1_modem_simple_proxy.h"
 
-#include <base/logging.h>
-
 #include "shill/cellular_error.h"
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 using std::string;
 
