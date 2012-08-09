@@ -57,8 +57,8 @@ int main(int argc, char* argv[]) {
   const std::string server = "http://chromeoswideprofiling.appspot.com/upload";
   // Profiling event TODO: support multiple events
   const std::string event = "cycles";
-  // Profiling frequency in ms (smaller # = higher resolution profile)
-  const std::string freq = "100";
+  // Profiling frequency in Hz (Higher # = more samples per second)
+  const std::string freq = "1000";
   // Profiling duration in seconds
   const std::string time = "2";
   // Sleep time in seconds between record runs.
