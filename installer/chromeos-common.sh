@@ -91,7 +91,9 @@ locate_gpt() {
 
 # This installs a GPT into the specified device or file, using the given
 # components. If the target is a block device or the FORCE_FULL arg is "true"
-# we'll do a full install. Otherwise, it'll be just enough to boot.
+# we'll do a full install, and in that case we also check to see if
+# the device is rotational and put the root partitions closer to the
+# front of the disk. Otherwise, it'll be just enough to boot.
 # Invoke as: command (not subshell)
 # Args:
 #   TARGET
@@ -100,6 +102,9 @@ locate_gpt() {
 #   PMBRCODE
 #   ESP_IMG_SECTORS
 #   FORCE_FULL
+#   ROOTFS_DEFAULT_SIZE
+#   LARGE_TEST_PARTITIONS
+#   FORCE_ROTATIONAL
 # Return: nothing
 # Side effects: Sets these global variables describing the GPT partitions
 #   (all units are 512-byte sectors):
@@ -129,6 +134,7 @@ install_gpt() {
   local rootfs_default_size=2048  # 2GiB
   local rootfs_size="${7:-$rootfs_default_size}"
   local large_test_partitions="${8:-${FLAGS_FALSE}}"
+  local force_rotational="${9:-${FLAGS_FALSE}}"
 
   if [ "$rootfs_size" = "default" ]; then
     rootfs_size=$rootfs_default_size
@@ -160,13 +166,16 @@ install_gpt() {
   #   Secondary GPT Table (16KiB)
   #   Secondary GPT Header (512 bytes)
   #
+  # Note that if a rotating disk is detected, then Rootfs B and A will go
+  # before Stateful.
+  #
   # Please refer to the official ChromeOS documentation for the details and
   # explanation behind the layout and partition numbering scheme. The short
   # version is that 1) we want to avoid ever changing the purpose or number of
   # an existing partition, 2) we want to be able to add new partitions later
-  # without breaking current scripts, and 3) we may someday need to increase
-  # the size of the rootfs during an upgrade, which means shrinking the size of
-  # the stateful partition on a live system.
+  # without breaking current scripts, and 3) we have decided that resizing the
+  # root partitions is risky, and as such we've made them 2GiB even though we
+  # are currently only using approximately 1GiB.
   #
   # The EFI GPT spec requires that all valid partitions be at least one sector
   # in size, and non-overlapping.
@@ -220,6 +229,17 @@ install_gpt() {
       local sudo=""
     fi
 
+    if [ "$force_rotational" -eq ${FLAGS_FALSE} ] ; then
+      # Check for the rotational flag if it's there
+      sysfs_rot_file="/sys/class/block/$(basename $outdev)/queue/rotational"
+      if [ -r "$sysfs_rot_file" ] ; then
+        sysfs_rot_flag="$(cat $sysfs_rot_file)"
+        if [ "$sysfs_rot_flag" -eq "1" ] ; then
+          force_rotational=${FLAGS_TRUE}
+        fi
+      fi
+    fi
+
     # Full install, use max sizes and create both A & B images.
     NUM_KERN_SECTORS=$max_kern_sectors
     NUM_ROOTFS_SECTORS=$max_rootfs_sectors
@@ -239,18 +259,25 @@ install_gpt() {
     START_OEM=$(($START_KERN_B + $NUM_KERN_SECTORS))
     START_RESERVED=$(($START_OEM + $NUM_OEM_SECTORS))
     START_ESP=$(($START_RESERVED + $NUM_RESERVED_SECTORS))
-    START_STATEFUL=$(($START_ESP + $NUM_ESP_SECTORS))
 
     local total_sectors=$(numsectors $outdev)
     local start_gpt_footer=$(($total_sectors - $num_footer_sectors))
     local end_useful=$(rounddown $start_gpt_footer)
-
-    START_ROOTFS_A=$(($end_useful - $NUM_ROOTFS_SECTORS))
     local num_rootfs_a_sectors=$NUM_ROOTFS_SECTORS
-    START_ROOTFS_B=$(($START_ROOTFS_A - $NUM_ROOTFS_SECTORS))
     local num_rootfs_b_sectors=$NUM_ROOTFS_SECTORS
 
-    NUM_STATEFUL_SECTORS=$(($START_ROOTFS_B - $START_STATEFUL))
+    if [ "$force_rotational" -eq ${FLAGS_TRUE} ] ; then
+      # rotational is true, put ROOTFS_B and ROOTFS_A ahead of stateful
+      START_ROOTFS_B=$(($START_ESP + $NUM_ESP_SECTORS))
+      START_ROOTFS_A=$(($START_ROOTFS_B + $NUM_ROOTFS_SECTORS))
+      START_STATEFUL=$(($START_ROOTFS_A + $NUM_ROOTFS_SECTORS))
+      NUM_STATEFUL_SECTORS=$(($end_useful - $START_STATEFUL))
+    else
+      START_STATEFUL=$(($START_ESP + $NUM_ESP_SECTORS))
+      START_ROOTFS_A=$(($end_useful - $NUM_ROOTFS_SECTORS))
+      START_ROOTFS_B=$(($START_ROOTFS_A - $NUM_ROOTFS_SECTORS))
+      NUM_STATEFUL_SECTORS=$(($START_ROOTFS_B - $START_STATEFUL))
+    fi
   else
     # Just a local file.
     local sudo=
