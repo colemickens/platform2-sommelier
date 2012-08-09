@@ -56,7 +56,11 @@ class LinkMonitor {
   // time.  Returns zero if no samples are available.  For each
   // missed ARP response, the sample is assumed to be the full
   // test period.
-  virtual unsigned int GetResponseTimeMilliseconds();
+  virtual unsigned int GetResponseTimeMilliseconds() const;
+
+  // Returns true if the LinkMonitor was ever able to find the default
+  // gateway via broadcast ARP.
+  virtual bool IsGatewayFound() const;
 
  private:
   friend class LinkMonitorForTest;

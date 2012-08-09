@@ -88,7 +88,7 @@ void LinkMonitor::Stop() {
   timerclear(&sent_request_at_);
 }
 
-unsigned int LinkMonitor::GetResponseTimeMilliseconds() {
+unsigned int LinkMonitor::GetResponseTimeMilliseconds() const {
   return response_sample_count_ ?
       response_sample_bucket_ / response_sample_count_ : 0;
 }
@@ -125,6 +125,8 @@ bool LinkMonitor::CreateClient() {
   if (!arp_client_->Start()) {
     return false;
   }
+  SLOG(Link, 4) << "Created ARP client; listening on socket "
+                << arp_client_->socket() << ".";
   receive_response_handler_.reset(
     dispatcher_->CreateReadyHandler(
         arp_client_->socket(),
@@ -169,6 +171,10 @@ bool LinkMonitor::AddMissedResponse() {
   return false;
 }
 
+bool LinkMonitor::IsGatewayFound() const {
+  return !gateway_mac_address_.IsZero();
+}
+
 void LinkMonitor::ReceiveResponse(int fd) {
   SLOG(Link, 2) << "In " << __func__ << ".";
   ArpPacket packet;
@@ -177,17 +183,19 @@ void LinkMonitor::ReceiveResponse(int fd) {
     return;
   }
 
-  if (!connection_->local().Equals(packet.local_ip_address())) {
+  if (!connection_->local().address().Equals(
+           packet.remote_ip_address().address())) {
     SLOG(Link, 4) << "Response is not for our IP address.";
     return;
   }
 
-  if (!local_mac_address_.Equals(packet.local_mac_address())) {
+  if (!local_mac_address_.Equals(packet.remote_mac_address())) {
     SLOG(Link, 4) << "Response is not for our MAC address.";
     return;
   }
 
-  if (!connection_->gateway().Equals(packet.remote_ip_address())) {
+  if (!connection_->gateway().address().Equals(
+           packet.local_ip_address().address())) {
     SLOG(Link, 4) << "Response is not from the gateway IP address.";
     return;
   }
@@ -208,9 +216,9 @@ void LinkMonitor::ReceiveResponse(int fd) {
     broadcast_failure_count_ = 0;
   }
 
-  if (!gateway_mac_address_.Equals(packet.remote_mac_address())) {
-    const ByteString &new_mac_address = packet.remote_mac_address();
-    if (gateway_mac_address_.IsZero()) {
+  if (!gateway_mac_address_.Equals(packet.local_mac_address())) {
+    const ByteString &new_mac_address = packet.local_mac_address();
+    if (!IsGatewayFound()) {
       SLOG(Link, 2) << "Found gateway at "
                     << HardwareAddressToString(new_mac_address);
     } else {
@@ -248,7 +256,7 @@ bool LinkMonitor::SendRequest() {
   }
 
   ByteString destination_mac_address(gateway_mac_address_.GetLength());
-  if (gateway_mac_address_.IsZero()) {
+  if (!IsGatewayFound()) {
     // The remote MAC addess is set by convention to be all-zeroes in the
     // ARP header if not known.  The ArpClient will translate an all-zeroes
     // remote address into a send to the broadcast (all-ones) address in

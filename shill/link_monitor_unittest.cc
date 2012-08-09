@@ -221,7 +221,7 @@ class LinkMonitorTest : public Test {
     monitor_.ReceiveResponse(0);
   }
   void ReceiveCorrectResponse() {
-    ReceiveResponse(local_ip_, local_mac_, gateway_ip_, gateway_mac_);
+    ReceiveResponse(gateway_ip_, gateway_mac_, local_ip_, local_mac_);
   }
 
   MockEventDispatcher dispatcher_;
@@ -316,17 +316,17 @@ TEST_F(LinkMonitorTest, ReplyReception) {
 
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("not for our IP"))).Times(1);
-  ReceiveResponse(gateway_ip_, local_mac_, gateway_ip_, gateway_mac_);
+  ReceiveResponse(gateway_ip_, gateway_mac_, gateway_ip_, local_mac_);
   Mock::VerifyAndClearExpectations(&log);
 
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("not for our MAC"))).Times(1);
-  ReceiveResponse(local_ip_, gateway_mac_, gateway_ip_, gateway_mac_);
+  ReceiveResponse(gateway_ip_, gateway_mac_, local_ip_, gateway_mac_);
   Mock::VerifyAndClearExpectations(&log);
 
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("not from the gateway"))).Times(1);
-  ReceiveResponse(local_ip_, local_mac_, local_ip_, gateway_mac_);
+  ReceiveResponse(local_ip_, gateway_mac_, local_ip_, local_mac_);
   Mock::VerifyAndClearExpectations(&log);
 
   EXPECT_TRUE(GetArpClient());
