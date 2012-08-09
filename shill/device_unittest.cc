@@ -382,6 +382,20 @@ TEST_F(DeviceTest, Stop) {
   EXPECT_FALSE(device_->selected_service_.get());
 }
 
+TEST_F(DeviceTest, ResumeWithIPConfig) {
+  scoped_refptr<MockIPConfig> ipconfig =
+      new MockIPConfig(control_interface(), kDeviceName);
+  device_->set_ipconfig(ipconfig);
+  EXPECT_CALL(*ipconfig, RenewIP());
+  device_->OnAfterResume();
+}
+
+TEST_F(DeviceTest, ResumeWithoutIPConfig) {
+  // Just test that we don't crash in this case.
+  ASSERT_EQ(NULL, device_->ipconfig().get());
+  device_->OnAfterResume();
+}
+
 class DevicePortalDetectionTest : public DeviceTest {
  public:
   DevicePortalDetectionTest()

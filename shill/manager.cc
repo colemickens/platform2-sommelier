@@ -865,6 +865,15 @@ void Manager::OnPowerStateChanged(
     PowerManagerProxyDelegate::SuspendState power_state) {
   if (power_state == PowerManagerProxyDelegate::kOn) {
     SortServices();
+    vector<DeviceRefPtr>::iterator it;
+    for (it = devices_.begin(); it != devices_.end(); ++it) {
+      (*it)->OnAfterResume();
+    }
+  } else if (power_state == PowerManagerProxyDelegate::kMem) {
+    vector<DeviceRefPtr>::iterator it;
+    for (it = devices_.begin(); it != devices_.end(); ++it) {
+      (*it)->OnBeforeSuspend();
+    }
   }
 }
 

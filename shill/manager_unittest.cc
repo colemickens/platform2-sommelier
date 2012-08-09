@@ -54,6 +54,7 @@ using ::testing::AnyNumber;
 using ::testing::ContainerEq;
 using ::testing::DoAll;
 using ::testing::InSequence;
+using ::testing::Mock;
 using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -2140,15 +2141,20 @@ TEST_F(ManagerTest, OnPowerStateChanged) {
   SetPowerManager();
   EXPECT_CALL(*service, AutoConnect());
   manager()->RegisterService(service);
+  manager()->RegisterDevice(mock_devices_[0]);
   dispatcher()->DispatchPendingEvents();
 
+  EXPECT_CALL(*mock_devices_[0], OnAfterResume());
   OnPowerStateChanged(PowerManagerProxyDelegate::kOn);
   EXPECT_CALL(*service, AutoConnect());
   dispatcher()->DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(mock_devices_[0]);
 
+  EXPECT_CALL(*mock_devices_[0], OnBeforeSuspend());
   OnPowerStateChanged(PowerManagerProxyDelegate::kMem);
   EXPECT_CALL(*service, AutoConnect()).Times(0);
   dispatcher()->DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(mock_devices_[0]);
 }
 
 TEST_F(ManagerTest, RecheckPortal) {

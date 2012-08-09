@@ -319,6 +319,17 @@ bool Device::Save(StoreInterface *storage) {
   return true;
 }
 
+void Device::OnBeforeSuspend() {
+  // Nothing to be done in the general case.
+}
+
+void Device::OnAfterResume() {
+  if (ipconfig_) {
+    SLOG(Device, 3) << "Renewing IP address on resume.";
+    ipconfig_->RenewIP();
+  }
+}
+
 void Device::DropConnection() {
   SLOG(Device, 2) << __func__;
   DestroyIPConfig();

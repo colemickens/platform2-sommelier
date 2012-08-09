@@ -45,6 +45,8 @@ class MockDevice : public Device {
   MOCK_METHOD0(RequestPortalDetection, bool());
   MOCK_CONST_METHOD1(IsConnectedToService, bool(const ServiceRefPtr &service));
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
+  MOCK_METHOD0(OnBeforeSuspend, void());
+  MOCK_METHOD0(OnAfterResume, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDevice);

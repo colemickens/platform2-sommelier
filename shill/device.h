@@ -157,6 +157,22 @@ class Device : public base::RefCounted<Device> {
 
   DeviceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
+  // Suspend event handler. Called by Manager before the system
+  // suspends. For this callback to be useful, the device must specify
+  // a suspend delay. Otherwise, there is no guarantee that the device
+  // will have time to complete its suspend actions, before the system
+  // is suspended.
+  //
+  // TODO(quiche): Add support for suspend delays. crosbug.com/33412
+  virtual void OnBeforeSuspend();
+
+  // Resume event handler. Called by Manager as the system resumes.
+  // The base class implementation takes care of renewing a DHCP lease
+  // (if necessary). Derived classes may implement any technology
+  // specific requirements by overriding, but should include a call to
+  // the base class implementation.
+  virtual void OnAfterResume();
+
  protected:
   friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
