@@ -65,6 +65,13 @@ void ManagerDBusAdaptor::EmitStringsChanged(const string &name,
   PropertyChanged(name, DBusAdaptor::StringsToVariant(value));
 }
 
+void ManagerDBusAdaptor::EmitRpcIdentifierChanged(
+    const string &name,
+    const string &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
+  PropertyChanged(name, DBusAdaptor::PathToVariant(value));
+}
+
 void ManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const string &name,
     const vector<string> &value) {

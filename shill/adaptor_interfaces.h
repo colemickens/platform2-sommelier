@@ -76,6 +76,9 @@ class ManagerAdaptorInterface {
                                  const std::string &value) = 0;
   virtual void EmitStringsChanged(const std::string &name,
                                   const std::vector<std::string> &value) = 0;
+  virtual void EmitRpcIdentifierChanged(
+      const std::string &name,
+      const std::string &value) = 0;
   virtual void EmitRpcIdentifierArrayChanged(
       const std::string &name,
       const std::vector<std::string> &value) = 0;

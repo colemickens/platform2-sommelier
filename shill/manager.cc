@@ -104,6 +104,9 @@ Manager::Manager(ControlInterface *control_interface,
   HelpRegisterDerivedString(flimflam::kDefaultTechnologyProperty,
                             &Manager::DefaultTechnology,
                             NULL);
+  HelpRegisterConstDerivedRpcIdentifier(
+      shill::kDefaultServiceProperty,
+      &Manager::GetDefaultServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(flimflam::kDevicesProperty,
                                          &Manager::EnumerateDevices);
   HelpRegisterDerivedStrings(flimflam::kEnabledTechnologiesProperty,
@@ -514,6 +517,11 @@ ServiceRefPtr Manager::GetDefaultService() const {
   return services_[0];
 }
 
+RpcIdentifier Manager::GetDefaultServiceRpcIdentifier(Error */*error*/) {
+  ServiceRefPtr default_service = GetDefaultService();
+  return default_service ? default_service->GetRpcIdentifier() : "/";
+}
+
 bool Manager::IsPortalDetectionEnabled(Technology::Identifier tech) {
   Error error;
   vector<Technology::Identifier> portal_technologies;
@@ -859,6 +867,16 @@ void Manager::NotifyDefaultServiceChanged(const ServiceRefPtr &service) {
     it->second.Run(service);
   }
   metrics_->NotifyDefaultServiceChanged(service);
+  EmitDefaultService();
+}
+
+void Manager::EmitDefaultService() {
+  RpcIdentifier rpc_identifier = GetDefaultServiceRpcIdentifier(NULL);
+  if (rpc_identifier != default_service_rpc_identifier_) {
+    adaptor_->EmitRpcIdentifierChanged(shill::kDefaultServiceProperty,
+                                       rpc_identifier);
+    default_service_rpc_identifier_ = rpc_identifier;
+  }
 }
 
 void Manager::OnPowerStateChanged(
@@ -894,6 +912,15 @@ ServiceRefPtr Manager::FindService(const string& name) {
       return *it;
   }
   return NULL;
+}
+
+void Manager::HelpRegisterConstDerivedRpcIdentifier(
+    const string &name,
+    RpcIdentifier(Manager::*get)(Error *error)) {
+  store_.RegisterDerivedRpcIdentifier(
+      name,
+      RpcIdentifierAccessor(
+          new CustomAccessor<Manager, RpcIdentifier>(this, get, NULL)));
 }
 
 void Manager::HelpRegisterConstDerivedRpcIdentifiers(

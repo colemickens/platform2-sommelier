@@ -278,8 +278,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   RpcIdentifiers EnumerateWatchedServices(Error *error);
   std::string GetActiveProfileRpcIdentifier(Error *error);
   std::string GetCheckPortalList(Error *error);
+  RpcIdentifier GetDefaultServiceRpcIdentifier(Error *error);
   ServiceRefPtr GetServiceInner(const KeyValueStore &args, Error *error);
   void SetCheckPortalList(const std::string &portal_list, Error *error);
+  void EmitDefaultService();
   void EmitDeviceProperties();
 
   // Unload a service while iterating through |services_|.  Returns true if
@@ -288,6 +290,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // increment |service_iterator|).
   bool UnloadService(std::vector<ServiceRefPtr>::iterator *service_iterator);
 
+  void HelpRegisterConstDerivedRpcIdentifier(
+      const std::string &name,
+      RpcIdentifier(Manager::*get)(Error *));
   void HelpRegisterConstDerivedRpcIdentifiers(
       const std::string &name,
       RpcIdentifiers(Manager::*get)(Error *));
@@ -347,6 +352,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // The priority order of technologies
   std::vector<Technology::Identifier> technology_order_;
+
+  // This is the last Service RPC Identifier for which we emitted a
+  // "DefaultService" signal for.
+  RpcIdentifier default_service_rpc_identifier_;
 
   // Manager can be optionally configured with a list of technologies to
   // do portal detection on at startup.  We need to keep track of that list

@@ -201,6 +201,10 @@ class ManagerTest : public PropertyStoreTest {
     EXPECT_TRUE(manager()->sort_services_task_.IsCancelled());
   }
 
+  RpcIdentifier GetDefaultServiceRpcIdentifier() {
+    return manager()->GetDefaultServiceRpcIdentifier(NULL);
+  }
+
  protected:
   typedef scoped_refptr<MockService> MockServiceRefPtr;
 
@@ -2197,6 +2201,7 @@ TEST_F(ManagerTest, RecheckPortalOnService) {
 
 TEST_F(ManagerTest, GetDefaultService) {
   EXPECT_FALSE(manager()->GetDefaultService().get());
+  EXPECT_EQ("/", GetDefaultServiceRpcIdentifier());
 
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(control_interface(),
@@ -2206,11 +2211,13 @@ TEST_F(ManagerTest, GetDefaultService) {
 
   manager()->RegisterService(mock_service);
   EXPECT_FALSE(manager()->GetDefaultService().get());
+  EXPECT_EQ("/", GetDefaultServiceRpcIdentifier());
 
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(device_info_.get()));
   mock_service->set_mock_connection(mock_connection);
   EXPECT_EQ(mock_service.get(), manager()->GetDefaultService().get());
+  EXPECT_EQ(mock_service->GetRpcIdentifier(), GetDefaultServiceRpcIdentifier());
 
   mock_service->set_mock_connection(NULL);
   manager()->DeregisterService(mock_service);
