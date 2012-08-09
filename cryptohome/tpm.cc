@@ -701,10 +701,10 @@ bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
   return (*context_handle != 0);
 }
 
-bool Tpm::Encrypt(const chromeos::SecureBlob& data,
-                  const chromeos::Blob& password,
-                  unsigned int password_rounds, const chromeos::Blob& salt,
-                  SecureBlob* data_out, Tpm::TpmRetryAction* retry_action) {
+bool Tpm::Encrypt(const chromeos::SecureBlob& plaintext,
+                  const chromeos::SecureBlob& key,
+                  chromeos::SecureBlob* ciphertext,
+                  Tpm::TpmRetryAction* retry_action) {
   *retry_action = Tpm::RetryNone;
   if (!IsConnected()) {
     if (!Connect(retry_action)) {
@@ -712,11 +712,8 @@ bool Tpm::Encrypt(const chromeos::SecureBlob& data,
     }
   }
 
-  SecureBlob key;
-  CryptoLib::PasskeyToAesKey(password, salt, password_rounds, &key, NULL);
-
   TSS_RESULT result = TSS_SUCCESS;
-  if (!EncryptBlob(context_handle_, key_handle_, data, key, data_out,
+  if (!EncryptBlob(context_handle_, key_handle_, plaintext, key, ciphertext,
                    &result)) {
     *retry_action = HandleError(result);
     return false;
@@ -724,10 +721,10 @@ bool Tpm::Encrypt(const chromeos::SecureBlob& data,
   return true;
 }
 
-bool Tpm::Decrypt(const chromeos::SecureBlob& data,
-                  const chromeos::Blob& password,
-                  unsigned int password_rounds, const chromeos::Blob& salt,
-                  SecureBlob* data_out, Tpm::TpmRetryAction* retry_action) {
+bool Tpm::Decrypt(const chromeos::SecureBlob& ciphertext,
+                  const chromeos::SecureBlob& key,
+                  chromeos::SecureBlob* plaintext,
+                  Tpm::TpmRetryAction* retry_action) {
   *retry_action = Tpm::RetryNone;
   if (!IsConnected()) {
     if (!Connect(retry_action)) {
@@ -735,11 +732,8 @@ bool Tpm::Decrypt(const chromeos::SecureBlob& data,
     }
   }
 
-  SecureBlob key;
-  CryptoLib::PasskeyToAesKey(password, salt, password_rounds, &key, NULL);
-
   TSS_RESULT result = TSS_SUCCESS;
-  if (!DecryptBlob(context_handle_, key_handle_, data, key, data_out,
+  if (!DecryptBlob(context_handle_, key_handle_, ciphertext, key, plaintext,
                    &result)) {
     *retry_action = HandleError(result);
     return false;

@@ -82,34 +82,23 @@ class Tpm {
   // Encrypts a data blob using the TPM cryptohome RSA key
   //
   // Parameters
-  //   data - The data to encrypt (must be small enough to fit into a single RSA
-  //          decrypt--Tpm does not do blocking)
-  //   password - The password to use as the UP in the method described above
-  //   password_rounds - The number of hash rounds to use creating a key from
-  //                     the password
-  //   salt - The salt used in converting the password to the UP
-  //   data_out (OUT) - The encrypted data
-  virtual bool Encrypt(const chromeos::SecureBlob& data,
-                       const chromeos::Blob& password,
-                       unsigned int password_rounds,
-                       const chromeos::Blob& salt,
-                       chromeos::SecureBlob* data_out,
+  //   plaintext - One RSA message to encrypt
+  //   key - AES key to encrypt with
+  //   ciphertext
+  virtual bool Encrypt(const chromeos::SecureBlob& plaintext,
+                       const chromeos::SecureBlob& key,
+                       chromeos::SecureBlob* ciphertext,
                        TpmRetryAction* retry_action);
 
   // Decrypts a data blob using the TPM cryptohome RSA key
   //
   // Parameters
-  //   data - The encrypted data
-  //   password - The password to use as the UP in the method described above
-  //   password_rounds - The number of hash rounds to use creating a key from
-  //                     the password
-  //   salt - The salt used in converting the password to the UP
-  //   data_out (OUT) - The decrypted data
-  virtual bool Decrypt(const chromeos::SecureBlob& data,
-                       const chromeos::Blob& password,
-                       unsigned int password_rounds,
-                       const chromeos::Blob& salt,
-                       chromeos::SecureBlob* data_out,
+  //   ciphertext - One RSA message to decrypt
+  //   key - AES key to decrypt with
+  //   plaintext
+  virtual bool Decrypt(const chromeos::SecureBlob& ciphertext,
+                       const chromeos::SecureBlob& key,
+                       chromeos::SecureBlob* plaintext,
                        TpmRetryAction* retry_action);
 
   // Retrieves the sha1sum of the public key component of the cryptohome RSA key

@@ -23,9 +23,9 @@ class Crypto;
 class MockTpm : public Tpm {
  public:
   MockTpm() {
-    ON_CALL(*this, Encrypt(_, _, _, _, _, _))
+    ON_CALL(*this, Encrypt(_, _, _, _))
         .WillByDefault(Invoke(this, &MockTpm::Xor));
-    ON_CALL(*this, Decrypt(_, _, _, _, _, _))
+    ON_CALL(*this, Decrypt(_, _, _, _))
         .WillByDefault(Invoke(this, &MockTpm::Xor));
     ON_CALL(*this, IsConnected())
         .WillByDefault(Return(true));
@@ -54,11 +54,11 @@ class MockTpm : public Tpm {
   MOCK_CONST_METHOD0(IsOwned, bool());
   MOCK_METHOD1(Connect, bool(TpmRetryAction*));  // NOLINT
   MOCK_METHOD0(Disconnect, void());
-  MOCK_METHOD6(Encrypt, bool(const chromeos::SecureBlob&, const chromeos::Blob&,
-                                   unsigned int, const chromeos::Blob&,
+  MOCK_METHOD4(Encrypt, bool(const chromeos::SecureBlob&,
+                             const chromeos::SecureBlob&,
                                    chromeos::SecureBlob*, TpmRetryAction*));
-  MOCK_METHOD6(Decrypt, bool(const chromeos::SecureBlob&, const chromeos::Blob&,
-                                   unsigned int, const chromeos::Blob&,
+  MOCK_METHOD4(Decrypt, bool(const chromeos::SecureBlob&,
+                             const chromeos::SecureBlob&,
                                    chromeos::SecureBlob*, TpmRetryAction*));
   MOCK_METHOD2(GetPublicKey, bool(chromeos::SecureBlob*, TpmRetryAction*));
   MOCK_METHOD1(GetOwnerPassword, bool(chromeos::Blob*));
@@ -90,14 +90,15 @@ class MockTpm : public Tpm {
   MOCK_METHOD2(Unseal, bool(const chromeos::Blob&, chromeos::Blob*));
 
  private:
-  bool Xor(const chromeos::Blob& data, const chromeos::Blob& password,
-           unsigned int password_rounds, const chromeos::Blob& salt,
-           chromeos::SecureBlob* data_out, TpmRetryAction* retry_action) {
-    chromeos::SecureBlob local_data_out(data.size());
+  bool Xor(const chromeos::SecureBlob& plaintext,
+           const chromeos::SecureBlob& key,
+           chromeos::SecureBlob* ciphertext,
+           TpmRetryAction* retry_action) {
+    chromeos::SecureBlob local_data_out(plaintext.size());
     for (unsigned int i = 0; i < local_data_out.size(); i++) {
-      local_data_out[i] = data[i] ^ 0x1e;
+      local_data_out[i] = plaintext[i] ^ 0x1e;
     }
-    data_out->swap(local_data_out);
+    ciphertext->swap(local_data_out);
     return true;
   }
 

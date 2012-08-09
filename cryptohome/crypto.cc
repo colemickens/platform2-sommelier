@@ -363,8 +363,9 @@ bool Crypto::DecryptTPM(const SerializedVaultKeyset& serialized,
   SecureBlob tpm_key(serialized.tpm_key().length());
   serialized.tpm_key().copy(static_cast<char*>(tpm_key.data()),
                             serialized.tpm_key().length(), 0);
-  if (!tpm_->Decrypt(tpm_key, vault_key, rounds, salt,
-                     &local_vault_key, &retry_action)) {
+  SecureBlob key;
+  CryptoLib::PasskeyToAesKey(vault_key, salt, rounds, &key, NULL);
+  if (!tpm_->Decrypt(tpm_key, key, &local_vault_key, &retry_action)) {
     LOG(ERROR) << "The TPM failed to unwrap the intermediate key with the "
                << "supplied credentials";
     if (error)
@@ -484,10 +485,12 @@ bool Crypto::EncryptTPM(const SecureBlob& blob,
                              local_blob.size());
   Tpm::TpmRetryAction retry_action;
   SecureBlob tpm_key;
+  SecureBlob derived_key;
+  CryptoLib::PasskeyToAesKey(key, salt, rounds, &derived_key, NULL);
   // Encrypt the VKK using the TPM and the user's passkey.  The output is an
   // encrypted blob in tpm_key, which is stored in the serialized vault
   // keyset.
-  if (!tpm_->Encrypt(local_blob, key, rounds, salt, &tpm_key, &retry_action)) {
+  if (!tpm_->Encrypt(local_blob, derived_key, &tpm_key, &retry_action)) {
     LOG(ERROR) << "Failed to wrap vkk with creds.";
     return false;
   }

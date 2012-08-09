@@ -283,8 +283,8 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   EXPECT_CALL(tpm, Init(_, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(tpm, Encrypt(_, _, _, _, _, _));
-  EXPECT_CALL(tpm, Decrypt(_, _, _, _, _, _));
+  EXPECT_CALL(tpm, Encrypt(_, _, _, _));
+  EXPECT_CALL(tpm, Decrypt(_, _, _, _));
   EXPECT_CALL(tpm, IsConnected())
       .WillRepeatedly(Return(true));
 
@@ -376,8 +376,8 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   crypto.set_use_tpm(true);
 
   EXPECT_CALL(tpm, Init(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(tpm, Encrypt(_, _, _, _, _, _));
-  EXPECT_CALL(tpm, Decrypt(_, _, _, _, _, _));
+  EXPECT_CALL(tpm, Encrypt(_, _, _, _));
+  EXPECT_CALL(tpm, Decrypt(_, _, _, _));
 
   crypto.Init(&platform);
 
