@@ -30,7 +30,6 @@ class Timer;
 
 namespace shill {
 
-class Configuration;
 class ControlInterface;
 class Endpoint;
 class Error;
@@ -595,7 +594,6 @@ class Service : public base::RefCounted<Service> {
   std::string friendly_name_;  // MAY be same as |unique_name_|
   bool available_;
   bool configured_;
-  Configuration *configuration_;
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
   scoped_ptr<HTTPProxy> http_proxy_;
   ConnectionRefPtr connection_;
