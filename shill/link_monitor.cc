@@ -59,13 +59,16 @@ bool LinkMonitor::Start() {
     connection_->interface_index(), &local_mac_address_)) {
     LOG(ERROR) << "Could not get local MAC address.";
     metrics_->NotifyLinkMonitorFailure(
-        connection_->technology(), Metrics::kLinkMonitorMacAddressNotFound);
+        connection_->technology(),
+        Metrics::kLinkMonitorMacAddressNotFound,
+        0, 0, 0);
     Stop();
     return false;
   }
   gateway_mac_address_ = ByteString(local_mac_address_.GetLength());
   send_request_callback_.Reset(
       Bind(&LinkMonitor::SendRequestTask, Unretained(this)));
+  time_->GetTimeMonotonic(&started_monitoring_at_);
   return SendRequest();
 }
 
@@ -81,6 +84,7 @@ void LinkMonitor::Stop() {
   response_sample_count_ = 0;
   receive_response_handler_.reset();
   send_request_callback_.Cancel();
+  timerclear(&started_monitoring_at_);
   timerclear(&sent_request_at_);
 }
 
@@ -146,10 +150,19 @@ bool LinkMonitor::AddMissedResponse() {
                << unicast_failure_count_
                << " unicast failures.";
     failure_callback_.Run();
-    Stop();
+
+    struct timeval now, elapsed_time;
+    time_->GetTimeMonotonic(&now);
+    timersub(&now, &started_monitoring_at_, &elapsed_time);
+
     metrics_->NotifyLinkMonitorFailure(
         connection_->technology(),
-        Metrics::kLinkMonitorFailureThresholdReached);
+        Metrics::kLinkMonitorFailureThresholdReached,
+        elapsed_time.tv_sec,
+        broadcast_failure_count_,
+        unicast_failure_count_);
+
+    Stop();
     return true;
   }
   is_unicast_ = !is_unicast_;
@@ -216,7 +229,9 @@ bool LinkMonitor::SendRequest() {
       LOG(ERROR) << "Failed to start ARP client.";
       Stop();
       metrics_->NotifyLinkMonitorFailure(
-          connection_->technology(), Metrics::kLinkMonitorClientStartFailure);
+          connection_->technology(),
+          Metrics::kLinkMonitorClientStartFailure,
+          0, 0, 0);
       return false;
     }
   } else if (AddMissedResponse()) {
@@ -251,7 +266,8 @@ bool LinkMonitor::SendRequest() {
     LOG(ERROR) << "Failed to send ARP request.  Stopping.";
     Stop();
     metrics_->NotifyLinkMonitorFailure(
-        connection_->technology(), Metrics::kLinkMonitorTransmitFailure);
+        connection_->technology(), Metrics::kLinkMonitorTransmitFailure,
+        0, 0, 0);
     return false;
   }
 

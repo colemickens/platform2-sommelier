@@ -105,11 +105,24 @@ const char Metrics::kMetricLinkMonitorFailure[] =
     "Network.Shill.%s.LinkMonitorFailure";
 const char Metrics::kMetricLinkMonitorResponseTimeSample[] =
     "Network.Shill.%s.LinkMonitorResponseTimeSample";
-const int Metrics::kMetricLinkMonitorResponseTimeSampleMin = 0;
-const int Metrics::kMetricLinkMonitorResponseTimeSampleMax =
+const unsigned int Metrics::kMetricLinkMonitorResponseTimeSampleMin = 0;
+const unsigned int Metrics::kMetricLinkMonitorResponseTimeSampleMax =
     LinkMonitor::kTestPeriodMilliseconds;
 const int Metrics::kMetricLinkMonitorResponseTimeSampleNumBuckets = 50;
-
+const char Metrics::kMetricLinkMonitorSecondsToFailure[] =
+    "Network.Shill.%s.LinkMonitorSecondsToFailure";
+const unsigned int Metrics::kMetricLinkMonitorSecondsToFailureMin = 0;
+const unsigned int Metrics::kMetricLinkMonitorSecondsToFailureMax = 7200;
+const int Metrics::kMetricLinkMonitorSecondsToFailureNumBuckets = 50;
+const char Metrics::kMetricLinkMonitorBroadcastErrorsAtFailure[] =
+    "Network.Shill.%s.LinkMonitorBroadcastErrorsAtFailure";
+const char Metrics::kMetricLinkMonitorUnicastErrorsAtFailure[] =
+    "Network.Shill.%s.LinkMonitorUnicastErrorsAtFailure";
+const unsigned int Metrics::kMetricLinkMonitorErrorCountMin = 0;
+const unsigned int Metrics::kMetricLinkMonitorErrorCountMax =
+    LinkMonitor::kFailureThreshold;
+const int Metrics::kMetricLinkMonitorErrorCountNumBuckets =
+    LinkMonitor::kFailureThreshold + 1;
 
 Metrics::Metrics()
     : library_(&metrics_library_),
@@ -389,10 +402,41 @@ void Metrics::NotifyPowerStateChange(PowerManager::SuspendState new_state) {
 }
 
 void Metrics::NotifyLinkMonitorFailure(
-    Technology::Identifier technology, LinkMonitorFailure failure) {
+    Technology::Identifier technology,
+    LinkMonitorFailure failure,
+    unsigned int seconds_to_failure,
+    unsigned int broadcast_error_count,
+    unsigned int unicast_error_count) {
   string histogram = GetFullMetricName(kMetricLinkMonitorFailure,
                                        technology);
   SendEnumToUMA(histogram, failure, kLinkMonitorFailureMax);
+
+  if (failure == kLinkMonitorFailureThresholdReached) {
+    if (seconds_to_failure > kMetricLinkMonitorSecondsToFailureMax) {
+      seconds_to_failure = kMetricLinkMonitorSecondsToFailureMax;
+    }
+    histogram = GetFullMetricName(kMetricLinkMonitorSecondsToFailure,
+                                  technology);
+    SendToUMA(histogram,
+              seconds_to_failure,
+              kMetricLinkMonitorSecondsToFailureMin,
+              kMetricLinkMonitorSecondsToFailureMax,
+              kMetricLinkMonitorSecondsToFailureNumBuckets);
+    histogram = GetFullMetricName(kMetricLinkMonitorBroadcastErrorsAtFailure,
+                                  technology);
+    SendToUMA(histogram,
+              broadcast_error_count,
+              kMetricLinkMonitorErrorCountMin,
+              kMetricLinkMonitorErrorCountMax,
+              kMetricLinkMonitorErrorCountNumBuckets);
+    histogram = GetFullMetricName(kMetricLinkMonitorUnicastErrorsAtFailure,
+                                  technology);
+    SendToUMA(histogram,
+              unicast_error_count,
+              kMetricLinkMonitorErrorCountMin,
+              kMetricLinkMonitorErrorCountMax,
+              kMetricLinkMonitorErrorCountNumBuckets);
+  }
 }
 
 void Metrics::NotifyLinkMonitorResponseTimeSampleAdded(

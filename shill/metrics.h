@@ -177,9 +177,18 @@ class Metrics {
   // LinkMonitor statistics.
   static const char kMetricLinkMonitorFailure[];
   static const char kMetricLinkMonitorResponseTimeSample[];
-  static const int kMetricLinkMonitorResponseTimeSampleMin;
-  static const int kMetricLinkMonitorResponseTimeSampleMax;
+  static const unsigned int kMetricLinkMonitorResponseTimeSampleMin;
+  static const unsigned int kMetricLinkMonitorResponseTimeSampleMax;
   static const int kMetricLinkMonitorResponseTimeSampleNumBuckets;
+  static const char kMetricLinkMonitorSecondsToFailure[];
+  static const unsigned int kMetricLinkMonitorSecondsToFailureMin;
+  static const unsigned int kMetricLinkMonitorSecondsToFailureMax;
+  static const int kMetricLinkMonitorSecondsToFailureNumBuckets;
+  static const char kMetricLinkMonitorBroadcastErrorsAtFailure[];
+  static const char kMetricLinkMonitorUnicastErrorsAtFailure[];
+  static const unsigned int kMetricLinkMonitorErrorCountMin;
+  static const unsigned int kMetricLinkMonitorErrorCountMax;
+  static const int kMetricLinkMonitorErrorCountNumBuckets;
 
   Metrics();
   virtual ~Metrics();
@@ -229,7 +238,11 @@ class Metrics {
 
   // Notifies this object of a failure in LinkMonitor.
   void NotifyLinkMonitorFailure(
-      Technology::Identifier technology, LinkMonitorFailure failure);
+      Technology::Identifier technology,
+      LinkMonitorFailure failure,
+      unsigned int seconds_to_failure,
+      unsigned int broadcast_error_count,
+      unsigned int unicast_error_count);
 
   // Notifies this object that LinkMonitor has added a response time sample
   // for |connection| with a value of |response_time_milliseconds|.

@@ -32,6 +32,11 @@ class LinkMonitor {
  public:
   typedef base::Closure FailureCallback;
 
+  // When the sum of consecutive unicast and broadcast failures
+  // equals this value, the failure callback is called, the counters
+  // are reset, and the link monitoring quiesces.  Needed by Metrics.
+  static const unsigned int kFailureThreshold;
+
   // The number of milliseconds between ARP requests.  Needed by Metrics.
   static const unsigned int kTestPeriodMilliseconds;
 
@@ -56,11 +61,6 @@ class LinkMonitor {
  private:
   friend class LinkMonitorForTest;
   friend class LinkMonitorTest;
-
-  // When the sum of consecutive unicast and broadcast failures
-  // equals this value, the failure callback is called, the counters
-  // are reset, and the link monitoring quiesces.
-  static const unsigned int kFailureThreshold;
 
   // The number of samples to compute a "strict" average over.  When
   // more samples than this number arrive, this determines how "slow"
@@ -118,6 +118,9 @@ class LinkMonitor {
   // When the timer expires this will call SendRequest() through the
   // void callback function SendRequestTask().
   base::CancelableClosure send_request_callback_;
+
+  // The time at which the link monitor started.
+  struct timeval started_monitoring_at_;
 
   // The time at which the last ARP request was sent.
   struct timeval sent_request_at_;

@@ -96,6 +96,8 @@ class LinkMonitorTest : public Test {
       ScopeLogger::GetInstance()->set_verbose_level(4);
     }
     monitor_.time_ = &time_;
+    time_val_.tv_sec = 0;
+    time_val_.tv_usec = 0;
     EXPECT_CALL(time_, GetTimeMonotonic(_))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));
     EXPECT_TRUE(local_ip_.SetAddressFromString(kLocalIPAddress));
@@ -345,8 +347,14 @@ TEST_F(LinkMonitorTest, TimeoutBroadcast) {
       HasSubstr("LinkMonitorResponseTimeSample"), GetTestPeriodMilliseconds(),
       _, _, _)).Times(GetFailureThreshold());
   StartMonitor();
+  // This value doesn't match real life (the timer in this scenario should
+  // advance by LinkMonitor::kTestPeriodMilliseconds), but this demonstrates
+  // the LinkMonitorSecondsToFailure independent from the response-time
+  // figures.
+  const int kTimeIncrement = 1000;
   for (unsigned int i = 1; i < GetFailureThreshold(); ++i) {
     ExpectTransmit(false);
+    AdvanceTime(kTimeIncrement);
     TriggerRequestTimer();
     EXPECT_FALSE(IsUnicast());
     EXPECT_EQ(i, GetBroadcastFailureCount());
@@ -362,9 +370,17 @@ TEST_F(LinkMonitorTest, TimeoutBroadcast) {
   EXPECT_CALL(metrics_, SendEnumToUMA(
       HasSubstr("LinkMonitorFailure"),
       Metrics::kLinkMonitorFailureThresholdReached, _));
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorSecondsToFailure"),
+      kTimeIncrement * GetFailureThreshold() / 1000, _, _, _));
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("BroadcastErrorsAtFailure"), GetFailureThreshold(), _, _, _));
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("UnicastErrorsAtFailure"), 0, _, _, _));
   EXPECT_FALSE(GetSendRequestCallback().IsCancelled());
   ExpectNoTransmit();
   EXPECT_CALL(monitor_, FailureCallback());
+  AdvanceTime(kTimeIncrement);
   TriggerRequestTimer();
   ExpectReset();
 }
@@ -405,6 +421,12 @@ TEST_F(LinkMonitorTest, TimeoutUnicast) {
   EXPECT_CALL(metrics_, SendEnumToUMA(
       HasSubstr("LinkMonitorFailure"),
       Metrics::kLinkMonitorFailureThresholdReached, _));
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorSecondsToFailure"), 0, _, _, _));
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("BroadcastErrorsAtFailure"), 0, _, _, _));
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("UnicastErrorsAtFailure"), GetFailureThreshold(), _, _, _));
   EXPECT_FALSE(GetSendRequestCallback().IsCancelled());
   ExpectNoTransmit();
   EXPECT_CALL(monitor_, FailureCallback());
