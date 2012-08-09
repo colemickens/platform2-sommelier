@@ -243,6 +243,7 @@ if use_flag_is_set aura; then
   fi
   if use_flag_is_set disable_login_animations; then
     AURA_FLAGS="$AURA_FLAGS --disable-login-animations"
+    AURA_FLAGS="$AURA_FLAGS --disable-boot-animation"
   fi
 fi
 
