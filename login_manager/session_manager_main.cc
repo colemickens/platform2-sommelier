@@ -135,5 +135,8 @@ int main(int argc, char* argv[]) {
   LOG_IF(FATAL, !manager->Register(chromeos::dbus::GetSystemBusConnection()))
     << "Failed";
   LOG_IF(FATAL, !manager->Run()) << "Failed";
-  return 0;
+
+  LOG_IF(WARNING, manager->exit_code() != SessionManagerService::SUCCESS)
+      << "session_manager exiting with code " << manager->exit_code();
+  return manager->exit_code();
 }

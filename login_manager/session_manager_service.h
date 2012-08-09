@@ -62,6 +62,11 @@ class SessionManagerService
       public chromeos::dbus::AbstractDbusService,
       public login_manager::PolicyService::Delegate {
  public:
+  enum ExitCode {
+    SUCCESS = 0,
+    CRASH_WHILE_SCREEN_LOCKED = 1,
+    CHILD_EXITING_TOO_FAST = 2
+  };
 
   SessionManagerService(std::vector<ChildJobInterface*> child_jobs,
                         SystemUtils* system);
@@ -159,6 +164,8 @@ class SessionManagerService
     uid_ = uid;
     set_uid_ = true;
   }
+
+  ExitCode exit_code() { return exit_code_; }
 
   // Runs the command specified on the command line as |desired_uid_| and
   // watches it, restarting it whenever it exits abnormally -- UNLESS
@@ -314,7 +321,7 @@ class SessionManagerService
   gboolean StopSessionService(gchar *name, gboolean *OUT_done, GError **error);
   static bool IsValidSessionService(const gchar *name);
 
-  // |data| is a SessionManagerService*
+  // |data| is a SessionManagerService*.
   static void HandleKeygenExit(GPid pid, gint status, gpointer data);
 
   // Perform very, very basic validation of |email_address|.
@@ -349,6 +356,7 @@ class SessionManagerService
 
  private:
   // D-Bus signals.
+  // TODO(cmasone): Fix naming convention.
   enum Signals {
     kSignalSessionStateChanged,
     kSignalLoginPromptVisible,
@@ -363,12 +371,12 @@ class SessionManagerService
   static void SIGINTHandler(int signal);
   static void SIGTERMHandler(int signal);
 
-  // |data| is a SessionManagerService*
+  // |data| is a SessionManagerService*.
   static DBusHandlerResult FilterMessage(DBusConnection* conn,
                                          DBusMessage* message,
                                          void* data);
 
-  // |data| is a SessionManagerService*
+  // |data| is a SessionManagerService*.
   static void HandleChildExit(GPid pid, gint status, gpointer data);
 
   // |data| is a SessionManagerService*.  This is a wrapper around
@@ -378,9 +386,14 @@ class SessionManagerService
                              GIOCondition condition,
                              gpointer data);
 
-  // So that we can enqueue an event that will exit the main loop.
+  // So that we can post a QuitClosure to the main event loop, causing its
+  // eventual termination.
   // |data| is a SessionManagerService*
   static gboolean ServiceShutdown(gpointer data);
+
+  // Sets the proccess' exit code immediately and posts a QuitClosure to the
+  // main event loop.
+  void SetExitAndServiceShutdown(ExitCode code);
 
   // Setup any necessary signal handlers.
   void SetupHandlers();
@@ -479,6 +492,7 @@ class SessionManagerService
 
   bool shutting_down_;
   bool shutdown_already_;
+  ExitCode exit_code_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
 };

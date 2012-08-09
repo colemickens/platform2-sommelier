@@ -243,7 +243,8 @@ SessionManagerService::SessionManagerService(
       machine_info_file_(kMachineInfoFile),
       screen_locked_(false),
       set_uid_(false),
-      shutting_down_(false) {
+      shutting_down_(false),
+      exit_code_(SUCCESS) {
   int pipefd[2];
   PLOG_IF(DFATAL, pipe2(pipefd, O_CLOEXEC) < 0) << "Failed to create pipe";
   g_shutdown_pipe_read_fd = pipefd[0];
@@ -460,7 +461,7 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
   if (pid == 0) {
     RevertHandlers();
     child_job->Run();
-    exit(1);  // Run() is not supposed to return.
+    exit(ChildJobInterface::kCantExec);  // Run() is not supposed to return.
   }
   child_job->ClearOneTimeArgument();
   // TODO(cmasone): Remove the watcher when the child exits.
@@ -914,20 +915,19 @@ void SessionManagerService::HandleChildExit(GPid pid,
     manager->child_pids_[i_child] = -1;
   }
 
-  LOG(ERROR) << StringPrintf(
-      "Process %s(%d) exited.",
-      child_job ? child_job->GetName().c_str() : "",
-      pid);
+  LOG(ERROR) << StringPrintf("Process %s(%d) exited.",
+                             child_job ? child_job->GetName().c_str() : "",
+                             pid);
   if (manager->screen_locked_) {
     LOG(ERROR) << "Screen locked, shutting down";
-    ServiceShutdown(data);
+    manager->SetExitAndServiceShutdown(CRASH_WHILE_SCREEN_LOCKED);
     return;
   }
 
   if (child_job) {
     if (manager->ShouldStopChild(child_job)) {
-      LOG(INFO) << "Child stopped, shutting down";
-      ServiceShutdown(data);
+      LOG(WARNING) << "Child stopped, shutting down";
+      manager->SetExitAndServiceShutdown(CHILD_EXITING_TOO_FAST);
     } else if (manager->ShouldRunChildren()) {
       // TODO(cmasone): deal with fork failing in RunChild()
       LOG(INFO) << StringPrintf(
@@ -950,6 +950,11 @@ gboolean SessionManagerService::HandleKill(GIOChannel* source,
   // supposed to exit.  So, don't even bother to read it.
   LOG(INFO) << "SessionManagerService - data on pipe, so exiting";
   return ServiceShutdown(data);
+}
+
+void SessionManagerService::SetExitAndServiceShutdown(ExitCode code) {
+  exit_code_ = code;
+  ServiceShutdown(this);
 }
 
 gboolean SessionManagerService::ServiceShutdown(gpointer data) {
