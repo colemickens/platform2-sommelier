@@ -32,6 +32,7 @@ class SupplicantInterfaceProxy
   virtual void ClearCachedCredentials();
   virtual void Disconnect();
   virtual void FlushBSS(const uint32_t &age);
+  virtual void Reassociate();
   virtual void RemoveAllNetworks();
   virtual void RemoveNetwork(const ::DBus::Path &network);
   virtual void Scan(

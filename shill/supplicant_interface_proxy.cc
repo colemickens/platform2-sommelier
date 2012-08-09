@@ -68,6 +68,16 @@ void SupplicantInterfaceProxy::FlushBSS(const uint32_t &age) {
   }
 }
 
+void SupplicantInterfaceProxy::Reassociate() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.Reassociate();
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
+  }
+}
+
 void SupplicantInterfaceProxy::RemoveAllNetworks() {
   SLOG(DBus, 2) << __func__;
   try {

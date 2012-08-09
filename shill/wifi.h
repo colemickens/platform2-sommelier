@@ -157,12 +157,16 @@ class WiFi : public Device {
   // characters were changed.
   static bool SanitizeSSID(std::string *ssid);
 
+  // Called by Linkmonitor (overriden from Device superclass).
+  virtual void OnLinkMonitorFailure();
+
  private:
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
+  FRIEND_TEST(WiFiMainTest, LinkMonitorFailure);  // set_link_monitor()
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
   FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_

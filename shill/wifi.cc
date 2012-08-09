@@ -29,6 +29,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
 #include "shill/ieee80211.h"
+#include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
@@ -1262,6 +1263,30 @@ bool WiFi::SanitizeSSID(string *ssid) {
   }
 
   return changed;
+}
+
+void WiFi::OnLinkMonitorFailure() {
+  // If we have never found the gateway, let's be conservative and not
+  // do anything, in case this network topology does not have a gateway.
+  if (!link_monitor()->IsGatewayFound()) {
+    LOG(INFO) << "In " << __func__ << "(): "
+              << "Skipping reassociate since gateway was never found.";
+    return;
+  }
+
+  if (!supplicant_present_) {
+    LOG(ERROR) << "In " << __func__ << "(): "
+               << "wpa_supplicant is not present.  Cannot reassociate.";
+    return;
+  }
+
+  try {
+    supplicant_interface_proxy_->Reassociate();
+    LOG(INFO) << "In " << __func__ << "(): Called Reassociate().";
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << "In " << __func__ << "(): failed to call Reassociate().";
+    return;
+  }
 }
 
 void WiFi::HelpRegisterDerivedInt32(

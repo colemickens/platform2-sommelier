@@ -417,9 +417,8 @@ Properties	string Address [readonly]
 		int32 LinkMonitorResponseTime [readonly]
 
 			Latest running average of the link monitor response
-			time for this device in milliseconds, if the link
-			monitor is active.  This property is only visible
-			if a link monitor is active on this device.
+			for this device in milliseconds, if the link monitor
+			is active.
 
 		string Name [readonly]
 

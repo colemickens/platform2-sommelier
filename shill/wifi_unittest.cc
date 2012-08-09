@@ -37,6 +37,7 @@
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/mock_link_monitor.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -555,6 +556,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void StopReconnectTimer() {
     wifi_->StopReconnectTimer();
+  }
+
+  void SetLinkMonitor(LinkMonitor *link_monitor) {
+    wifi_->set_link_monitor(link_monitor);
+  }
+
+  void OnLinkMonitorFailure() {
+    wifi_->OnLinkMonitorFailure();
   }
 
   NiceMockControl *control_interface() {
@@ -2171,6 +2180,29 @@ TEST_F(WiFiMainTest, NoScanOnDisconnectWithoutHidden) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
   ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, LinkMonitorFailure) {
+  StartWiFi();
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  MockLinkMonitor *link_monitor = new StrictMock<MockLinkMonitor>();
+  SetLinkMonitor(link_monitor);
+  EXPECT_CALL(*link_monitor, IsGatewayFound())
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+                       EndsWith("gateway was never found."))).Times(1);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reassociate()).Times(0);
+  OnLinkMonitorFailure();
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+                       EndsWith("Called Reassociate()."))).Times(1);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Reassociate()).Times(1);
+  OnLinkMonitorFailure();
+  OnSupplicantVanish();
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       EndsWith("Cannot reassociate."))).Times(1);
+  OnLinkMonitorFailure();
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsOpen) {
