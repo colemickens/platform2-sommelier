@@ -68,8 +68,7 @@ TEST_F(MockLogTest, MatchMessageContainsBracketAndNewline) {
 TEST_F(MockLogTest, MatchSlog) {
   ScopedMockLog log;
   const string kMessage("Something");
-  const string kMessageWithPrefix("memlog: Something");
-  EXPECT_CALL(log, Log(_, _, kMessageWithPrefix));
+  EXPECT_CALL(log, Log(_, _, kMessage));
   SlogSomething(kMessage);
 }
 

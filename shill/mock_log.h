@@ -51,8 +51,9 @@
 // For some examples, see mock_log_unittest.cc.
 
 #include <string>
-#include <base/logging.h>
 #include <gmock/gmock.h>
+
+#include "shill/logging.h"
 
 namespace shill {
 

@@ -6,11 +6,11 @@
 #define SHILL_PROPERTY_ACCESSOR_
 
 #include <base/basictypes.h>
-#include <base/logging.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST.
 
 #include "shill/accessor_interface.h"
 #include "shill/error.h"
+#include "shill/logging.h"
 
 namespace shill {
 

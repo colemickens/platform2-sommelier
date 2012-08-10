@@ -31,10 +31,6 @@ const char *const kLogSeverityNames[logging::LOG_NUM_SEVERITIES] = {
   "INFO", "WARNING", "ERROR", "ERROR_REPORT", "FATAL"
 };
 
-// Size is one bigger to hold the null at the end.
-const char kMemoryLogPrefix[] = "memlog: ";
-const size_t kMemoryLogPrefixLength = arraysize(kMemoryLogPrefix) - 1;
-
 logging::LogMessageHandlerFunction nested_message_handler = NULL;
 
 bool LogMessageInterceptor(int severity,
@@ -44,8 +40,8 @@ bool LogMessageInterceptor(int severity,
                            const std::string &str) {
   if (message_start < str.size() &&
       strncmp(str.c_str() + message_start,
-              kMemoryLogPrefix,
-              kMemoryLogPrefixLength)) {
+              MemoryLog::kMemoryLogPrefix,
+              strlen(MemoryLog::kMemoryLogPrefix))) {
     // Stream this in to rewrite the prefix into memory log format.
     MemoryLogMessage(file,
                      line,
@@ -64,6 +60,7 @@ bool LogMessageInterceptor(int severity,
 
 }  // namespace
 
+const char MemoryLog::kMemoryLogPrefix[] = "memlog: ";
 
 // static
 MemoryLog *MemoryLog::GetInstance() {
@@ -81,9 +78,9 @@ void MemoryLog::UninstallLogInterceptor() {
   if (logging::GetLogMessageHandler() == LogMessageInterceptor) {
     logging::SetLogMessageHandler(nested_message_handler);
   } else  {
-    MLOG(ERROR) << "Tried to uninstall MemoryLog message handler, but found"
-                << " another handler installed over top of MemoryLog's"
-                << " handler.  Leaving all handlers installed.";
+    LOG(ERROR) << "Tried to uninstall MemoryLog message handler, but found"
+               << " another handler installed over top of MemoryLog's"
+               << " handler.  Leaving all handlers installed.";
   }
 }
 
@@ -190,7 +187,7 @@ void MemoryLogMessage::Init() {
 
   // Let the memlog prefix hit the real logging.  This allows our interceptor
   // to discard messages that have already gotten into the memlog.
-  stream_ << kMemoryLogPrefix;
+  stream_ << MemoryLog::kMemoryLogPrefix;
 }
 
 }  // namespace shill

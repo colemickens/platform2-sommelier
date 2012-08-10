@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <string>
 
-#include <base/logging.h>
+#include "shill/logging.h"
 
 namespace shill {
 

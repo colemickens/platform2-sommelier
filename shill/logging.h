@@ -60,9 +60,13 @@
 
 // TODO(wiley) Add SLOG macros (crosbug.com/33416)
 
-#define MLOG(severity) MLOG_SEVERITY_STREAM(severity)
+// Redefine these macros to route messages through the MemoryLog
+#undef LOG
+#undef LOG_IF
 
-#define MLOG_IF(severity, condition) \
+#define LOG(severity) MLOG_SEVERITY_STREAM(severity)
+
+#define LOG_IF(severity, condition) \
     LAZY_STREAM(MLOG_SEVERITY_STREAM(severity), condition)
 
 // TODO(wiley) Add MPLOG macros (crosbug.com/33416)
