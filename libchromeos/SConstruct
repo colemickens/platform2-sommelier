@@ -143,6 +143,7 @@ env_test.ParseConfig(PKG_CONFIG + ' --cflags --libs dbus-1 glib-2.0 ' +
 unittest_sources =['chromeos/glib/object_unittest.cc',
                    'chromeos/process_test.cc',
                    'chromeos/secure_blob_unittest.cc',
+                   'chromeos/syslog_logging_unittest.cc',
                    'chromeos/utility_test.cc']
 unittest_main = ['testrunner.cc']
 unittest_cmd = env_test.Program('unittests',

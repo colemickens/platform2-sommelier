@@ -71,10 +71,22 @@ static bool HandleMessage(int severity,
     syslog(severity, "%s", str);
   if (s_accumulate)
     s_accumulated.append(str);
-  return !s_log_to_stderr;
+  return !s_log_to_stderr && severity != kSyslogCritical;
 }
 
 namespace chromeos {
+void SetLogFlags(int log_flags) {
+  s_log_to_syslog = (log_flags & kLogToSyslog) != 0;
+  s_log_to_stderr = (log_flags & kLogToStderr) != 0;
+  s_log_header = (log_flags & kLogHeader) != 0;
+}
+int GetLogFlags() {
+  int flags = 0;
+  flags |= (s_log_to_syslog) ?kLogToSyslog :0;
+  flags |= (s_log_to_stderr) ?kLogToStderr :0;
+  flags |= (s_log_header) ?kLogHeader :0;
+  return flags;
+}
 void InitLog(int init_flags) {
   logging::InitLogging("/dev/null",
                        logging::LOG_ONLY_TO_SYSTEM_DEBUG_LOG,
@@ -82,9 +94,7 @@ void InitLog(int init_flags) {
                        logging::APPEND_TO_OLD_LOG_FILE,
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
   logging::SetLogMessageHandler(HandleMessage);
-  s_log_to_syslog = (init_flags & kLogToSyslog) != 0;
-  s_log_to_stderr = (init_flags & kLogToStderr) != 0;
-  s_log_header = (init_flags & kLogHeader) != 0;
+  SetLogFlags(init_flags);
 }
 void OpenLog(const char* ident, bool log_pid) {
   s_ident = ident;

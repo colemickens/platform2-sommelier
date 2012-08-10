@@ -15,8 +15,13 @@ enum InitFlags {
   kLogHeader = 4,
 };
 
-// Initialize logging subsystem.  |flags| indicates
+// Initialize logging subsystem.  |init_flags| is a bitfield, with bits defined
+// in InitFlags above.
 void InitLog(int init_flags);
+// Gets the current logging flags.
+int GetLogFlags();
+// Sets the current logging flags.
+void SetLogFlags(int log_flags);
 // Convenience function for configuring syslog via openlog.  Users
 // could call openlog directly except for naming collisions between
 // base/logging.h and syslog.h.  Similarly users cannot pass the
