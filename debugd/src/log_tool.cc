@@ -40,7 +40,7 @@ struct Log {
   const char *command;
 };
 
-static struct Log logs[] = {
+static const Log common_logs[] = {
   { "CLIENT_ID", "/bin/cat '/home/chronos/Consent To Send Stats'" },
   { "LOGDATE", "/bin/date" },
   { "Xorg.0.log", "/bin/cat /var/log/Xorg.0.log" },
@@ -68,9 +68,6 @@ static struct Log logs[] = {
   { "lsusb", "lsusb" },
   { "meminfo", "cat /proc/meminfo" },
   { "memory_spd_info", "/bin/cat /var/log/memory_spd_info.txt" },
-  { "mm-status", "/usr/bin/modem status-feedback" },
-  { "network-devices", "/usr/bin/connectivity show-feedback devices" },
-  { "network-services", "/usr/bin/connectivity show-feedback services" },
   { "power-supply-info", "/usr/bin/power-supply-info" },
   { "powerd.LATEST", "/bin/cat /var/log/power_manager/powerd.LATEST" },
   { "powerd.out", "/bin/cat /var/log/power_manager/powerd.out" },
@@ -97,22 +94,62 @@ static struct Log logs[] = {
   // { "env", "set" },
   // { "setxkbmap", "/usr/bin/setxkbmap -print -query" },
   // { "xrandr", "/usr/bin/xrandr --verbose" }
+  { NULL, NULL }
+};
+
+static const Log extra_logs[] = {
+  { "mm-status", "/usr/bin/modem status" },
+  { "network-devices", "/usr/bin/connectivity show devices" },
+  { "network-services", "/usr/bin/connectivity show services" },
+  { NULL, NULL }
+};
+
+static struct Log feedback_logs[] = {
+  { "mm-status", "/usr/bin/modem status-feedback" },
+  { "network-devices", "/usr/bin/connectivity show-feedback devices" },
+  { "network-services", "/usr/bin/connectivity show-feedback services" },
+  { NULL, NULL }
 };
 
 LogTool::LogTool() { }
 LogTool::~LogTool() { }
 
-string LogTool::GetLog(const string& name, DBus::Error& error) { // NOLINT
-  for (unsigned int i = 0; i < arraysize(logs); i++)
-    if (!strcmp(name.c_str(), logs[i].name))
-      return Run(logs[i].command);
-  return "<invalid log name>";
+bool GetNamedLogFrom(const string& name, const struct Log* logs,
+                     string* result) {
+  for (size_t i = 0; logs[i].name; i++) {
+    if (name == logs[i].name) {
+      *result = Run(logs[i].command);
+      return true;
+    }
+  }
+  *result = "<invalid log name>";
+  return false;
 }
 
-std::map<string, string> LogTool::GetAllLogs(DBus::Error& error) { // NOLINT
-  std::map<string, string> result;
-  for (unsigned int i = 0; i < arraysize(logs); i++)
-    result[logs[i].name] = Run(logs[i].command);
+string LogTool::GetLog(const string& name, DBus::Error& error) { // NOLINT
+  string result;
+     GetNamedLogFrom(name, common_logs, &result)
+  || GetNamedLogFrom(name, extra_logs, &result)
+  || GetNamedLogFrom(name, feedback_logs, &result);
+  return result;
+}
+
+void GetLogsFrom(const struct Log* logs, LogTool::LogMap* map) {
+  for (size_t i = 0; logs[i].name; i++)
+    (*map)[logs[i].name] = Run(logs[i].command);
+}
+
+LogTool::LogMap LogTool::GetAllLogs(DBus::Error& error) { // NOLINT
+  LogMap result;
+  GetLogsFrom(common_logs, &result);
+  GetLogsFrom(extra_logs, &result);
+  return result;
+}
+
+LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Error& error) { // NOLINT
+  LogMap result;
+  GetLogsFrom(common_logs, &result);
+  GetLogsFrom(feedback_logs, &result);
   return result;
 }
 

@@ -17,8 +17,11 @@ class LogTool {
   LogTool();
   ~LogTool();
 
+  typedef std::map<std::string, std::string> LogMap;
+
   std::string GetLog(const std::string& name, DBus::Error& error); // NOLINT
-  std::map<std::string, std::string> GetAllLogs(DBus::Error& error); // NOLINT
+  LogMap GetAllLogs(DBus::Error& error); // NOLINT
+  LogMap GetFeedbackLogs(DBus::Error& error); // NOLINT
  private:
   DISALLOW_COPY_AND_ASSIGN(LogTool);
 };

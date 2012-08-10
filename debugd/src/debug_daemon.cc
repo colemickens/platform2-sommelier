@@ -121,6 +121,11 @@ std::map<std::string, std::string> DebugDaemon::GetAllLogs(DBus::Error& error) {
   return log_tool_->GetAllLogs(error);
 }
 
+std::map<std::string, std::string> DebugDaemon::GetFeedbackLogs(
+    DBus::Error& error) { // NOLINT dbuscxx
+  return log_tool_->GetFeedbackLogs(error);
+}
+
 std::string DebugDaemon::GetExample(DBus::Error& error) { // NOLINT dbuscxx
   return example_tool_->GetExample(error);
 }
