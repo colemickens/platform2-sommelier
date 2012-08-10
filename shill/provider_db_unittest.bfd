@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 serviceproviders:2.0
@@ -37,3 +37,8 @@ apn:1,internet2.voicestream.com,,
 name:,Internet (old)
 apn:1,internet3.voicestream.com,,
 name:,Internet with VPN (old)
+provider:2,1,0,1
+name:,Cubic
+name:,CUBIC
+networks:
+apn:0,mtoom.com,mtoom,mtoom

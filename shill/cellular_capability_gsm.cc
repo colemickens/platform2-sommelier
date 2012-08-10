@@ -473,7 +473,7 @@ void CellularCapabilityGSM::SetHomeProvider() {
   }
   home_provider_ = provider;
   Cellular::Operator oper;
-  if (provider->networks) {
+  if (provider->networks && provider->networks[0]) {
     oper.SetCode(provider->networks[0]);
   }
   if (provider->country) {

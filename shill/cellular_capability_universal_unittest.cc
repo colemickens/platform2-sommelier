@@ -97,6 +97,10 @@ class CellularCapabilityUniversalTest : public testing::Test {
     cellular_->service_ = NULL;
     capability_ = NULL;
     device_adaptor_ = NULL;
+    if (provider_db_) {
+      mobile_provider_close_db(provider_db_);
+      provider_db_ = NULL;
+    }
   }
 
   virtual void SetUp() {
@@ -734,6 +738,52 @@ TEST_F(CellularCapabilityUniversalTest, GetTypeString) {
   }
   capability_->access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
   ASSERT_EQ(capability_->GetTypeString(), "");
+}
+
+TEST_F(CellularCapabilityUniversalTest, SetHomeProvider) {
+  static const char kTestCarrier[] = "The Cellular Carrier";
+  static const char kCountry[] = "us";
+  static const char kCode[] = "310160";
+  capability_->imsi_ = "310240123456789";
+
+  capability_->SetHomeProvider();  // No mobile provider DB available.
+  EXPECT_TRUE(cellular_->home_provider().GetName().empty());
+  EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
+  EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
+
+  InitProviderDB();
+  capability_->SetHomeProvider();
+  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
+  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
+  EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
+  EXPECT_EQ(4, capability_->apn_list_.size());
+  ASSERT_TRUE(capability_->home_provider_);
+  EXPECT_FALSE(capability_->home_provider_->requires_roaming);
+
+  Cellular::Operator oper;
+  cellular_->set_home_provider(oper);
+  capability_->spn_ = kTestCarrier;
+  capability_->SetHomeProvider();
+  EXPECT_EQ(kTestCarrier, cellular_->home_provider().GetName());
+  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
+  EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
+
+  static const char kCubic[] = "Cubic";
+  capability_->spn_ = kCubic;
+  capability_->SetHomeProvider();
+  EXPECT_EQ(kCubic, cellular_->home_provider().GetName());
+  EXPECT_EQ("", cellular_->home_provider().GetCode());
+  ASSERT_TRUE(capability_->home_provider_);
+  EXPECT_TRUE(capability_->home_provider_->requires_roaming);
+
+  static const char kCUBIC[] = "CUBIC";
+  capability_->spn_ = kCUBIC;
+  capability_->home_provider_ = NULL;
+  capability_->SetHomeProvider();
+  EXPECT_EQ(kCUBIC, cellular_->home_provider().GetName());
+  EXPECT_EQ("", cellular_->home_provider().GetCode());
+  ASSERT_TRUE(capability_->home_provider_);
+  EXPECT_TRUE(capability_->home_provider_->requires_roaming);
 }
 
 }  // namespace shill

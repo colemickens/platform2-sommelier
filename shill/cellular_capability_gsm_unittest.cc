@@ -78,8 +78,10 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   virtual ~CellularCapabilityGSMTest() {
     cellular_->service_ = NULL;
-    mobile_provider_close_db(provider_db_);
-    provider_db_ = NULL;
+    if (provider_db_) {
+      mobile_provider_close_db(provider_db_);
+      provider_db_ = NULL;
+    }
     capability_ = NULL;
     device_adaptor_ = NULL;
   }
@@ -656,6 +658,8 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
   EXPECT_EQ(4, capability_->apn_list_.size());
+  ASSERT_TRUE(capability_->home_provider_);
+  EXPECT_FALSE(capability_->home_provider_->requires_roaming);
 
   Cellular::Operator oper;
   cellular_->set_home_provider(oper);
@@ -664,6 +668,23 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kTestCarrier, cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
+
+  static const char kCubic[] = "Cubic";
+  capability_->spn_ = kCubic;
+  capability_->SetHomeProvider();
+  EXPECT_EQ(kCubic, cellular_->home_provider().GetName());
+  EXPECT_EQ("", cellular_->home_provider().GetCode());
+  ASSERT_TRUE(capability_->home_provider_);
+  EXPECT_TRUE(capability_->home_provider_->requires_roaming);
+
+  static const char kCUBIC[] = "CUBIC";
+  capability_->spn_ = kCUBIC;
+  capability_->home_provider_ = NULL;
+  capability_->SetHomeProvider();
+  EXPECT_EQ(kCUBIC, cellular_->home_provider().GetName());
+  EXPECT_EQ("", cellular_->home_provider().GetCode());
+  ASSERT_TRUE(capability_->home_provider_);
+  EXPECT_TRUE(capability_->home_provider_->requires_roaming);
 }
 
 namespace {
