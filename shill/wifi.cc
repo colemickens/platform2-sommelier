@@ -285,9 +285,6 @@ void WiFi::ConnectTo(WiFiService *service,
   }
 
   if (pending_service_ && pending_service_ != service) {
-    // Since wpa_supplicant has not yet set CurrentBSS, we can't depend
-    // on this to drive the service state back to idle.  Do that here.
-    pending_service_->SetState(Service::kStateIdle);
     DisconnectFrom(pending_service_);
   }
 
@@ -345,6 +342,12 @@ void WiFi::DisconnectFrom(WiFiService *service) {
                  << service->friendly_name()
                  << " which is not the current service.";
     return;
+  }
+
+  if (pending_service_) {
+    // Since wpa_supplicant has not yet set CurrentBSS, we can't depend
+    // on this to drive the service state back to idle.  Do that here.
+    pending_service_->SetState(Service::kStateIdle);
   }
 
   SetPendingService(NULL);
@@ -1381,6 +1384,8 @@ void WiFi::StopPendingTimer() {
 }
 
 void WiFi::SetPendingService(const WiFiServiceRefPtr &service) {
+  SLOG(WiFi, 2) << "WiFi " << link_name() << " setting pending service to "
+                << (service ? service->friendly_name(): "NULL");
   if (service) {
     service->SetState(Service::kStateAssociating);
     StartPendingTimer();
@@ -1393,8 +1398,10 @@ void WiFi::SetPendingService(const WiFiServiceRefPtr &service) {
 void WiFi::PendingTimeoutHandler() {
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   CHECK(pending_service_);
-  pending_service_->SetFailure(Service::kFailureOutOfRange);
+  // Take a reference since pending_service_ will reset below.
+  ServiceRefPtr service = pending_service_;
   DisconnectFrom(pending_service_);
+  service->SetFailure(Service::kFailureOutOfRange);
 }
 
 void WiFi::StartReconnectTimer() {

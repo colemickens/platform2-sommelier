@@ -1082,8 +1082,10 @@ TEST_F(WiFiMainTest, DisconnectPendingService) {
   InitiateConnect(service);
 
   EXPECT_FALSE(GetPendingService() == NULL);
+  EXPECT_TRUE(service->IsConnecting());
   EXPECT_CALL(supplicant_interface_proxy, Disconnect());
   InitiateDisconnect(service);
+  EXPECT_FALSE(service->IsConnecting());
 
   EXPECT_TRUE(GetPendingService() == NULL);
 }
@@ -1175,8 +1177,12 @@ TEST_F(WiFiMainTest, TimeoutPendingService) {
   EXPECT_FALSE(pending_timeout.IsCancelled());
   EXPECT_EQ(service, GetPendingService());
 
-  EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
-  pending_timeout.callback().Run();
+  {
+    InSequence seq;
+    EXPECT_CALL(*service, SetState(Service::kStateIdle));
+    EXPECT_CALL(*service, SetFailure(Service::kFailureOutOfRange));
+    pending_timeout.callback().Run();
+  }
   EXPECT_EQ(NULL, GetPendingService().get());
 
   // Verify expectations now, because WiFi may report other state changes
