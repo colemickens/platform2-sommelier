@@ -795,34 +795,9 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
     return false;
   }
 
-  SecureBlob local_data(enc_data_length);
-  memcpy(local_data.data(), enc_data.value(), enc_data_length);
-  // We're done with enc_* so let's free it now.
-  enc_data.reset();
-  enc_handle.reset();
-
-  unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
-  if (aes_block_size > local_data.size()) {
-    LOG(ERROR) << "Encrypted data is too small.";
-    return false;
-  }
-  unsigned int offset = local_data.size() - aes_block_size;
-
-  SecureBlob passkey_part;
-  if (!CryptoLib::AesEncryptSpecifyBlockMode(local_data, offset, aes_block_size,
-                                             key, SecureBlob(0),
-                                             CryptoLib::kPaddingNone,
-                                             CryptoLib::kEcb, &passkey_part)) {
-    LOG(ERROR) << "AES encryption failed.";
-    return false;
-  }
-  PLOG_IF(FATAL, passkey_part.size() != aes_block_size)
-      << "Output block size error: " << passkey_part.size() << ", expected: "
-      << aes_block_size;
-  memcpy(&local_data[offset], passkey_part.data(), passkey_part.size());
-
-  ciphertext->swap(local_data);
-  return true;
+  SecureBlob enc_data_blob(enc_data_length);
+  memcpy(&enc_data_blob[0], enc_data.ptr(), enc_data_length);
+  return ObscureRSAMessage(enc_data_blob, key, ciphertext);
 }
 
 bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
@@ -833,26 +808,8 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
                       TSS_RESULT* result) {
   *result = TSS_SUCCESS;
 
-  unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
-  if (aes_block_size > ciphertext.size()) {
-    LOG(ERROR) << "Input data is too small.";
-    return false;
-  }
-  unsigned int offset = ciphertext.size() - aes_block_size;
-
-  SecureBlob passkey_part;
-  if (!CryptoLib::AesDecryptSpecifyBlockMode(ciphertext, offset, aes_block_size,
-                                           key, SecureBlob(0),
-                                           CryptoLib::kPaddingNone,
-                                           CryptoLib::kEcb, &passkey_part)) {
-    LOG(ERROR) << "AES decryption failed.";
-    return false;
-  }
-  PLOG_IF(FATAL, passkey_part.size() != aes_block_size)
-      << "Output block size error: " << passkey_part.size() << ", expected: "
-      << aes_block_size;
-  SecureBlob local_data(ciphertext.begin(), ciphertext.end());
-  memcpy(&local_data[offset], passkey_part.data(), passkey_part.size());
+  SecureBlob local_data;
+  UnobscureRSAMessage(ciphertext, key, &local_data);
 
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
   ScopedTssKey enc_handle(context_handle);
@@ -887,6 +844,77 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
   memcpy(plaintext->data(), dec_data.value(), dec_data_length);
   chromeos::SecureMemset(dec_data.value(), 0, dec_data_length);
 
+  return true;
+}
+
+// Obscure (and deobscure) RSA messages.
+// Let k be a key derived from the user passphrase. On disk, we store
+// m = ObscureRSAMessage(RSA-on-TPM(random-data), k). The reason for this
+// function is the existence of an ambiguity in the TPM spec: the format of data
+// returned by Tspi_Data_Bind is unspecified, so it's _possible_ (although does
+// not happen in practice) that RSA-on-TPM(random-data) could start with some
+// kind of ASN.1 header or whatever (some known data). If this was true, and we
+// encrypted all of RSA-on-TPM(random-data), then one could test values of k by
+// decrypting RSA-on-TPM(random-data) and looking for the known header, which
+// would allow brute-forcing the user passphrase without talking to the TPM.
+//
+// Therefore, we instead encrypt _one block_ of RSA-on-TPM(random-data) with AES
+// in ECB mode; we pick the last AES block, in the hope that that block will be
+// part of the RSA message. TODO(ellyjones): why? if the TPM could add a header,
+// it could also add a footer, and we'd be just as sunk.
+//
+// If we do encrypt part of the RSA message, the entirety of
+// RSA-on-TPM(random-data) should be impossible to decrypt, without encrypting
+// any known plaintext. This approach also requires brute-force attempts on k to
+// go through the TPM, since there's no way to test a potential decryption
+// without doing UnRSA-on-TPM() to see if the message is valid now.
+bool Tpm::ObscureRSAMessage(const chromeos::SecureBlob& plaintext,
+                            const chromeos::SecureBlob& key,
+                            chromeos::SecureBlob* ciphertext) {
+  unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
+  if (plaintext.size() < aes_block_size * 2) {
+    LOG(ERROR) << "Plaintext is too small.";
+    return false;
+  }
+  unsigned int offset = plaintext.size() - aes_block_size;
+
+  SecureBlob obscured_chunk;
+  if (!CryptoLib::AesEncryptSpecifyBlockMode(plaintext, offset, aes_block_size,
+                                             key, SecureBlob(0),
+                                             CryptoLib::kPaddingNone,
+                                             CryptoLib::kEcb,
+                                             &obscured_chunk)) {
+    LOG(ERROR) << "AES encryption failed.";
+    return false;
+  }
+  ciphertext->resize(plaintext.size());
+  memcpy(&ciphertext[0], &plaintext[0], plaintext.size());
+  memcpy(&ciphertext[offset], &obscured_chunk[0], obscured_chunk.size());
+  return true;
+}
+
+bool Tpm::UnobscureRSAMessage(const chromeos::SecureBlob& ciphertext,
+                              const chromeos::SecureBlob& key,
+                              chromeos::SecureBlob* plaintext) {
+  unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
+  if (ciphertext.size() < aes_block_size * 2) {
+    LOG(ERROR) << "Ciphertext is is too small.";
+    return false;
+  }
+  unsigned int offset = ciphertext.size() - aes_block_size;
+
+  SecureBlob unobscured_chunk;
+  if (!CryptoLib::AesDecryptSpecifyBlockMode(ciphertext, offset, aes_block_size,
+                                           key, SecureBlob(0),
+                                           CryptoLib::kPaddingNone,
+                                           CryptoLib::kEcb,
+                                           &unobscured_chunk)) {
+    LOG(ERROR) << "AES decryption failed.";
+    return false;
+  }
+  plaintext->resize(ciphertext.size());
+  memcpy(&plaintext[0], &ciphertext[0], ciphertext.size());
+  memcpy(&plaintext[offset], &unobscured_chunk[0], unobscured_chunk.size());
   return true;
 }
 

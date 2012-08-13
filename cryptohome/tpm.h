@@ -513,6 +513,28 @@ class Tpm {
   bool ConvertPublicKeyToDER(const chromeos::SecureBlob& public_key,
                              chromeos::SecureBlob* public_key_der);
 
+  // Obscure an RSA message by encrypting part of it.
+  // The TPM could _in theory_ produce an RSA message (as a response from Bind)
+  // that contains a header of a known format. If it did, and we encrypted the
+  // whole message with a passphrase-derived AES key, then one could test
+  // passphrase correctness by trial-decrypting the header. Instead, encrypt
+  // only part of the message, and hope the part we encrypt is part of the RSA
+  // message.
+  //
+  // In practice, this never makes any difference, because no TPM does that; the
+  // result is always a bare PKCS1.5-padded RSA-encrypted message, which is
+  // (as far as the author knows, although no proof is known) indistinguishable
+  // from random data, and hence the attack this would protect against is
+  // infeasible.
+  //
+  // Have a look at tpm.cc for the gory details.
+  bool ObscureRSAMessage(const chromeos::SecureBlob& plaintext,
+                         const chromeos::SecureBlob& key,
+                         chromeos::SecureBlob* ciphertext);
+  bool UnobscureRSAMessage(const chromeos::SecureBlob& ciphertext,
+                           const chromeos::SecureBlob& key,
+                           chromeos::SecureBlob* plaintext);
+
   // Member variables
   bool initialized_;
   chromeos::SecureBlob srk_auth_;
