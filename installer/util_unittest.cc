@@ -17,6 +17,12 @@ using std::string;
 
 class UtilTest : public ::testing::Test { };
 
+const string GetSourceFile(const string& file) {
+  static const char *srcdir = getenv("SRC");
+
+  return srcdir ? string(srcdir) + "/" + file : file;
+}
+
 TEST(UtilTest, StringPrintfTest) {
   EXPECT_EQ(StringPrintf(""), "");
   EXPECT_EQ(StringPrintf("Stuff"), "Stuff");
@@ -67,11 +73,12 @@ TEST(UtilTest, ReadFileToStringTest) {
   EXPECT_EQ(ReadFileToString("/tmp", &result), false);
 
   // A file with known contents
-  EXPECT_EQ(ReadFileToString("lsb-release-test.txt", &result), true);
+  EXPECT_EQ(ReadFileToString(GetSourceFile("lsb-release-test.txt"), &result),
+            true);
   EXPECT_EQ(result, LSB_CONTENTS);
 
   // A larger file, but without known contents
-  EXPECT_EQ(ReadFileToString("LICENSE", &result), true);
+  EXPECT_EQ(ReadFileToString(GetSourceFile("LICENSE"), &result), true);
 }
 
 TEST(UtilTest, WriteStringToFileTest) {
@@ -133,8 +140,9 @@ TEST(UtilTest, CopyFileTest) {
   EXPECT_EQ(contents, read_contents);
 
   // Copy larger file to existent
-  EXPECT_EQ(CopyFile("LICENSE", file2), true);
-  EXPECT_EQ(ReadFileToString("LICENSE", &license_contents), true);
+  string license_file = GetSourceFile("LICENSE");
+  EXPECT_EQ(CopyFile(license_file, file2), true);
+  EXPECT_EQ(ReadFileToString(license_file, &license_contents), true);
   EXPECT_EQ(ReadFileToString(file2, &read_contents), true);
   EXPECT_EQ(license_contents, read_contents);
 
@@ -144,25 +152,26 @@ TEST(UtilTest, CopyFileTest) {
 
 TEST(UtilTest, LsbReleaseValueTest) {
   string result_string;
+  string lsb_file = GetSourceFile("lsb-release-test.txt");
 
   EXPECT_EQ(LsbReleaseValue("bogus",
                             "CHROMEOS_RELEASE_BOARD",
                             &result_string),
             false);
 
-  EXPECT_EQ(LsbReleaseValue("lsb-release-test.txt",
+  EXPECT_EQ(LsbReleaseValue(lsb_file,
                             "CHROMEOS_RELEASE_BOARD",
                             &result_string),
             true);
   EXPECT_EQ(result_string, "x86-mario");
 
-  EXPECT_EQ(LsbReleaseValue("lsb-release-test.txt",
+  EXPECT_EQ(LsbReleaseValue(lsb_file,
                             "CHROMEOS_RELEASE",
                             &result_string),
             true);
   EXPECT_EQ(result_string, "1568.0.2012_01_19_1424");
 
-  EXPECT_EQ(LsbReleaseValue("lsb-release-test.txt",
+  EXPECT_EQ(LsbReleaseValue(lsb_file,
                             "CHROMEOS_AUSERVER",
                             &result_string),
             true);
