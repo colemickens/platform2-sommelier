@@ -529,7 +529,10 @@ class GobiModemHelper {
                           DBus::Error& error) = 0;
 
   DISALLOW_COPY_AND_ASSIGN(GobiModemHelper);
+
  protected:
+  static const char kErrorUnknownCarrier[];
+
   gobi::Sdk* sdk_;
 };
 

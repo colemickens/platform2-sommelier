@@ -74,6 +74,10 @@ static const int kMinSignalStrengthDbm = -113;
 // 0 bars to kSignalStrengthNumLevels-1 bars.
 static const int kSignalStrengthNumLevels = 6;
 
+// static
+// Error message returned by SetCarrier() when an unknown carrier is specified.
+const char GobiModemHelper::kErrorUnknownCarrier[] = "Unknown carrier name";
+
 // Encapsulates a separate thread that calls sdk->StartDataSession.
 // We need to run this on a separate thread so that we can continue to
 // process DBus messages (including requests to cancel the call to

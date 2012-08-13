@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,7 +21,7 @@ void Gobi3KModemHelper::SetCarrier(GobiModem *modem,
   if (!fw) {
     LOG(WARNING) << "No such carrier: " << carrier_name << ": "
                  << gobifw_lasterror();
-    error.set(kFirmwareLoadError, gobifw_lasterror());
+    error.set(kFirmwareLoadError, kErrorUnknownCarrier);
     return;
   }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,7 +18,7 @@ void Gobi2KModemHelper::SetCarrier(GobiModem *modem,
   if (carrier == NULL) {
     // TODO(rochberg):  Do we need to sanitize this string?
     LOG(WARNING) << "Could not parse carrier: " << carrier_name;
-    error.set(kFirmwareLoadError, "Unknown carrier name");
+    error.set(kFirmwareLoadError, kErrorUnknownCarrier);
     return;
   }
 
