@@ -8,6 +8,7 @@
 #include <deque>
 #include <string>
 #include <sstream>
+#include <unistd.h>
 
 #include <base/basictypes.h>
 #include <base/lazy_instance.h>
