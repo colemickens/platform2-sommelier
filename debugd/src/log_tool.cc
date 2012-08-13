@@ -22,7 +22,7 @@ typedef vector<string> Strings;
 string Run(const string& cmdline) {
   string output;
   ProcessWithOutput p;
-  string tailed_cmdline = cmdline + " | tail -c 32768";
+  string tailed_cmdline = cmdline + " | tail -c 256K";
   if (!p.Init())
     return "<not available>";
   p.AddArg(kShell);
