@@ -337,27 +337,12 @@ ESP_IMG_OFFSET=0
 prepare_disk
 
 # What do we expect & require to have on the source device?
-if [ -r "$FLAGS_gpt_layout" ]; then
-  . $FLAGS_gpt_layout
-  # verify all values are loaded
-  if ! check_non_empty_values "$STATEFUL_IMG_SECTORS" \
-    "$KERNEL_IMG_SECTORS" "$ROOTFS_IMG_SECTORS" \
-    "$OEM_IMG_SECTORS" "$ESP_IMG_SECTORS"; then
-      echo "Error: invalid GPT layout in ${FLAGS_gpt_layout}."
-      exit 1
-  fi
-elif [ -z "$FLAGS_payload_image" ]; then
+if [ -z "$FLAGS_payload_image" ]; then
   STATEFUL_IMG=$(make_partition_dev ${SRC} 1)
   KERNEL_IMG=$(make_partition_dev ${SRC} 2)
   ROOTFS_IMG=$(make_partition_dev ${SRC} 3)
   OEM_IMG=$(make_partition_dev ${SRC} 8)
   ESP_IMG=$(make_partition_dev ${SRC} 12)
-
-  STATEFUL_IMG_SECTORS=$(numsectors $STATEFUL_IMG)
-  KERNEL_IMG_SECTORS=$(numsectors $KERNEL_IMG)
-  ROOTFS_IMG_SECTORS=$(numsectors $ROOTFS_IMG)
-  OEM_IMG_SECTORS=$(numsectors $OEM_IMG)
-  ESP_IMG_SECTORS=$(numsectors $ESP_IMG)
 else
   KERNEL_IMG=${FLAGS_payload_image}
   ROOTFS_IMG=${FLAGS_payload_image}
@@ -365,11 +350,6 @@ else
   ESP_IMG=${FLAGS_payload_image}
 
   locate_gpt
-  STATEFUL_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 1)
-  KERNEL_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 2)
-  ROOTFS_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 3)
-  OEM_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 8)
-  ESP_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 12)
 
   STATEFUL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 1)
   KERNEL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 2)
@@ -405,11 +385,11 @@ else
   sudo dd bs=512 count=1 if=$SRC of=$PMBRCODE
 fi
 
-# Creates the GPT with default rootfs size (the "default" parameter).
-install_gpt ${DST} ${ROOTFS_IMG_SECTORS} ${STATEFUL_IMG_SECTORS} \
-  ${PMBRCODE} ${ESP_IMG_SECTORS} false default \
-  ${FLAGS_large_test_partitions}
+# Write the GPT using the board specific script.
+. "/usr/sbin/write_gpt.sh"
+write_base_table ${DST} ${PMBRCODE}
 sudo /sbin/blockdev --rereadpt ${DST}
+legacy_offset_size_export "${DST}"
 
 # TODO(tgao): add support for arm recovery
 
