@@ -22,3 +22,4 @@ xrandr,/usr/bin/xrandr --verbose
 debugd,/usr/bin/dbus-send --system --print-reply --dest=org.chromium.debugd /org/chromium/debugd org.chromium.debugd.GetFeedbackLogs
 hack-33025-touchpad,/opt/google/touchpad/tpcontrol
 hack-33025-touchpad_activity,/opt/google/touchpad/generate_userfeedback
+hack-33025-touchscreen_activity,/opt/google/touchscreen/touchscreen_feedback
