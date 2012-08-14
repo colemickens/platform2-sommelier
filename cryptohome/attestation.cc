@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <string>
 
+#include <arpa/inet.h>
 #include <base/file_util.h>
 #include <base/time.h>
 #include <chromeos/secure_blob.h>
@@ -29,6 +30,7 @@ const size_t Attestation::kQuoteExternalDataSize = 20;
 const size_t Attestation::kCipherKeySize = 32;
 const size_t Attestation::kCipherBlockSize = 16;
 const size_t Attestation::kNonceSize = 20;  // As per TPM_NONCE definition.
+const size_t Attestation::kDigestSize = 20;  // As per TPM_DIGEST definition.
 const char* Attestation::kDefaultDatabasePath =
     "/home/.shadow/attestation.epb";
 
@@ -140,6 +142,15 @@ void Attestation::PrepareForEnrollment() {
     return;
   }
 
+  // Create a delegate so we can activate the AIK later.
+  SecureBlob delegate_blob;
+  SecureBlob delegate_secret;
+  if (!tpm_->CreateDelegate(identity_key_blob, &delegate_blob,
+                            &delegate_secret)) {
+    LOG(ERROR) << "Attestation: Failed to create delegate.";
+    return;
+  }
+
   // Assemble a protobuf to store locally.
   base::AutoLock lock(prepare_lock_);
   TPMCredentials* credentials_pb = database_pb_.mutable_credentials();
@@ -170,6 +181,10 @@ void Attestation::PrepareForEnrollment() {
   quote_pb->set_quoted_data(quoted_data.data(), quoted_data.size());
   quote_pb->set_quoted_pcr_value(quoted_pcr_value.data(),
                                  quoted_pcr_value.size());
+  Delegation* delegate_pb = database_pb_.mutable_delegate();
+  delegate_pb->set_blob(delegate_blob.data(), delegate_blob.size());
+  delegate_pb->set_secret(delegate_secret.data(), delegate_secret.size());
+
   if (!tpm_->GetRandomData(kCipherKeySize, &database_key_)) {
     LOG(ERROR) << "Attestation: GetRandomData failed.";
     return;
@@ -209,9 +224,11 @@ bool Attestation::Verify() {
     return false;
   }
   const TPMCredentials& credentials = database_pb_.credentials();
+  SecureBlob ek_public_key = ConvertStringToBlob(
+      credentials.endorsement_public_key());
   if (!VerifyEndorsementCredential(
           ConvertStringToBlob(credentials.endorsement_credential()),
-          ConvertStringToBlob(credentials.endorsement_public_key()))) {
+          ek_public_key)) {
     LOG(ERROR) << "Attestation: Bad endorsement credential.";
     return false;
   }
@@ -245,6 +262,20 @@ bool Attestation::Verify() {
     LOG(ERROR) << "Attestation: Bad certified key.";
     return false;
   }
+  // TODO(dkrahn): Enable this check. It is currently disabled until we can get
+  // support for owner delegation in trousers (crosbug.com/33597).
+  //  SecureBlob delegate_blob =
+  //      ConvertStringToBlob(database_pb_.delegate().blob());
+  //  SecureBlob delegate_secret =
+  //      ConvertStringToBlob(database_pb_.delegate().secret());
+  //  SecureBlob aik_public_key_tpm = ConvertStringToBlob(
+  //      database_pb_.identity_binding().identity_public_key());
+  //  if (!VerifyActivateIdentity(delegate_blob, delegate_secret,
+  //                              identity_key_blob, aik_public_key_tpm,
+  //                              ek_public_key)) {
+  //    LOG(ERROR) << "Attestation: Failed to verify owner delegation.";
+  //    return false;
+  //  }
   LOG(INFO) << "Attestation: Verified OK.";
   return true;
 }
@@ -255,6 +286,15 @@ SecureBlob Attestation::ConvertStringToBlob(const string& s) {
 
 string Attestation::ConvertBlobToString(const chromeos::Blob& blob) {
   return string(reinterpret_cast<const char*>(&blob.front()), blob.size());
+}
+
+SecureBlob Attestation::SecureCat(const SecureBlob& blob1,
+                                  const SecureBlob& blob2) {
+  SecureBlob result(blob1.size() + blob2.size());
+  unsigned char* buffer = const_cast<unsigned char*>(&result.front());
+  memcpy(buffer, blob1.const_data(), blob1.size());
+  memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
+  return SecureBlob(result.begin(), result.end());
 }
 
 bool Attestation::EncryptDatabase(const AttestationDatabase& db,
@@ -316,12 +356,9 @@ bool Attestation::DecryptDatabase(const EncryptedDatabase& encrypted_db,
 }
 
 string Attestation::ComputeHMAC(const EncryptedDatabase& encrypted_db) {
-  SecureBlob hmac_input(encrypted_db.iv().length() +
-                        encrypted_db.encrypted_data().length());
-  memcpy(&hmac_input[0], encrypted_db.iv().data(), encrypted_db.iv().length());
-  memcpy(&hmac_input[encrypted_db.iv().length()],
-         encrypted_db.encrypted_data().data(),
-         encrypted_db.encrypted_data().length());
+  SecureBlob hmac_input = SecureCat(
+      ConvertStringToBlob(encrypted_db.iv()),
+      ConvertStringToBlob(encrypted_db.encrypted_data()));
   return ConvertBlobToString(CryptoLib::HmacSha512(database_key_, hmac_input));
 }
 
@@ -394,20 +431,13 @@ bool Attestation::VerifyIdentityBinding(const IdentityBinding& binding) {
   // Reconstruct and hash a serialized TPM_IDENTITY_CONTENTS structure.
   const unsigned char header[] = {1, 1, 0, 0, 0, 0, 0, 0x79};
   string label_ca = binding.identity_label() + binding.pca_public_key();
-  SecureBlob label_ca_digest =
-      CryptoLib::Sha1(ConvertStringToBlob(label_ca));
+  SecureBlob label_ca_digest = CryptoLib::Sha1(ConvertStringToBlob(label_ca));
   ClearString(&label_ca);
-  SecureBlob contents(arraysize(header) +
-                      label_ca_digest.size() +
-                      binding.identity_public_key().size());
-  unsigned char* buffer = const_cast<unsigned char*>(&contents[0]);
-  int offset = 0;
-  memcpy(&buffer[offset], header, arraysize(header));
-  offset += arraysize(header);
-  memcpy(&buffer[offset], label_ca_digest.data(), label_ca_digest.size());
-  offset += label_ca_digest.size();
-  memcpy(&buffer[offset], binding.identity_public_key().data(),
-         binding.identity_public_key().size());
+  // The signed data is header + digest + pubkey.
+  SecureBlob contents = SecureCat(SecureCat(
+      SecureBlob(header, arraysize(header)),
+      label_ca_digest),
+      ConvertStringToBlob(binding.identity_public_key()));
   // Now verify the signature.
   if (!VerifySignature(ConvertStringToBlob(binding.identity_public_key_der()),
                        contents,
@@ -429,12 +459,11 @@ bool Attestation::VerifyQuote(const SecureBlob& aik_public_key,
 
   // Check that the quoted value matches the given PCR value. We can verify this
   // by reconstructing the TPM_PCR_COMPOSITE structure the TPM would create.
-  const int pcr_value_size = quote.quoted_pcr_value().size();
-  const uint8_t header[] = {0, 2, 1, 0, 0, 0, 0, pcr_value_size};
-  SecureBlob pcr_composite(arraysize(header) + pcr_value_size);
-  memcpy(&pcr_composite[0], header, arraysize(header));
-  memcpy(&pcr_composite[arraysize(header)], quote.quoted_pcr_value().data(),
-         pcr_value_size);
+  const uint8_t header[] = {0, 2, 1, 0, 0, 0, 0,
+                            quote.quoted_pcr_value().size()};
+  SecureBlob pcr_composite = SecureCat(
+      SecureBlob(header, arraysize(header)),
+      ConvertStringToBlob(quote.quoted_pcr_value()));
   SecureBlob pcr_digest = CryptoLib::Sha1(pcr_composite);
   SecureBlob quoted_data = ConvertStringToBlob(quote.quoted_data());
   if (search(quoted_data.begin(), quoted_data.end(),
@@ -450,7 +479,7 @@ bool Attestation::VerifyQuote(const SecureBlob& aik_public_key,
     settings_blob[1] = kKnownPCRValues[i].recovery_mode_enabled;
     settings_blob[2] = kKnownPCRValues[i].firmware_type;
     SecureBlob settings_digest = CryptoLib::Sha1(settings_blob);
-    chromeos::Blob extend_pcr_value(20, 0);
+    chromeos::Blob extend_pcr_value(kDigestSize, 0);
     extend_pcr_value.insert(extend_pcr_value.end(), settings_digest.begin(),
                             settings_digest.end());
     SecureBlob final_pcr_value = CryptoLib::Sha1(extend_pcr_value);
@@ -582,10 +611,85 @@ void Attestation::ClearDatabase() {
     ClearString(quote->mutable_quoted_data());
     ClearString(quote->mutable_quoted_pcr_value());
   }
+  if (database_pb_.has_delegate()) {
+    Delegation* delegate = database_pb_.mutable_delegate();
+    ClearString(delegate->mutable_blob());
+    ClearString(delegate->mutable_secret());
+  }
 }
 
 void Attestation::ClearString(string* s) {
   chromeos::SecureMemset(const_cast<char*>(s->data()), 0, s->length());
+}
+
+bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
+                                         const SecureBlob& delegate_secret,
+                                         const SecureBlob& identity_key_blob,
+                                         const SecureBlob& identity_public_key,
+                                         const SecureBlob& ek_public_key) {
+  const char* kTestCredential = "test";
+  const uint8_t kAlgAES256 = 9;  // This comes from TPM_ALG_AES256.
+  const uint8_t kEncModeCBC = 2;  // This comes from TPM_SYM_MODE_CBC.
+  const uint8_t kAsymContentHeader[] =
+      {0, 0, 0, kAlgAES256, 0, kEncModeCBC, 0, kCipherKeySize};
+  const uint8_t kSymContentHeader[12] = {0};
+
+  // Generate an AES key and encrypt the credential.
+  SecureBlob aes_key(kCipherKeySize);
+  CryptoLib::GetSecureRandom(const_cast<unsigned char*>(&aes_key.front()),
+                             aes_key.size());
+  SecureBlob credential(kTestCredential, strlen(kTestCredential));
+  SecureBlob encrypted_credential;
+  if (!tpm_->TssCompatibleEncrypt(aes_key, credential, &encrypted_credential)) {
+    LOG(ERROR) << "Failed to encrypt credential.";
+    return false;
+  }
+
+  // Construct a TPM_ASYM_CA_CONTENTS structure.
+  SecureBlob public_key_digest = CryptoLib::Sha1(identity_public_key);
+  SecureBlob asym_content = SecureCat(SecureCat(
+      SecureBlob(kAsymContentHeader, arraysize(kAsymContentHeader)),
+      aes_key),
+      public_key_digest);
+
+  // Encrypt the TPM_ASYM_CA_CONTENTS with the EK public key.
+  const unsigned char* asn1_ptr = &ek_public_key[0];
+  RSA* rsa = d2i_RSAPublicKey(NULL, &asn1_ptr, ek_public_key.size());
+  if (!rsa) {
+    LOG(ERROR) << "Failed to decode EK public key.";
+    return false;
+  }
+  SecureBlob encrypted_asym_content;
+  if (!tpm_->TpmCompatibleOAEPEncrypt(rsa, asym_content,
+                                      &encrypted_asym_content)) {
+    LOG(ERROR) << "Failed to encrypt with EK public key.";
+    return false;
+  }
+
+  // Construct a TPM_SYM_CA_ATTESTATION structure.
+  uint32_t length = htonl(encrypted_credential.size());
+  SecureBlob length_blob(sizeof(uint32_t));
+  memcpy(length_blob.data(), &length, sizeof(uint32_t));
+  SecureBlob sym_content = SecureCat(SecureCat(
+      length_blob,
+      SecureBlob(kSymContentHeader, arraysize(kSymContentHeader))),
+      encrypted_credential);
+
+  // Attempt to activate the identity.
+  SecureBlob credential_out;
+  if (!tpm_->ActivateIdentity(delegate_blob, delegate_secret, identity_key_blob,
+                              encrypted_asym_content, sym_content,
+                              &credential_out)) {
+    LOG(ERROR) << "Failed to activate identity.";
+    return false;
+  }
+  if (credential.size() != credential_out.size() ||
+      chromeos::SafeMemcmp(credential.data(), credential_out.data(),
+                           credential.size()) != 0) {
+    LOG(ERROR) << "Invalid identity credential.";
+    return false;
+  }
+  return true;
 }
 
 }

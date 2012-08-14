@@ -66,6 +66,7 @@ class Attestation : public base::PlatformThread::Delegate {
   static const size_t kCipherKeySize;
   static const size_t kCipherBlockSize;
   static const size_t kNonceSize;
+  static const size_t kDigestSize;
   static const char* kDefaultDatabasePath;
   static const struct CertificateAuthority {
     const char* issuer;
@@ -90,6 +91,10 @@ class Attestation : public base::PlatformThread::Delegate {
 
   // Moves data from a chromeos::Blob container to a std::string container.
   std::string ConvertBlobToString(const chromeos::Blob& blob);
+
+  // Concatenates two SecureBlobs.
+  chromeos::SecureBlob SecureCat(const chromeos::SecureBlob& blob1,
+                                 const chromeos::SecureBlob& blob2);
 
   // Serializes and encrypts an attestation database.
   bool EncryptDatabase(const AttestationDatabase& db,
@@ -138,6 +143,13 @@ class Attestation : public base::PlatformThread::Delegate {
 
   // Clears the memory of a std::string.
   void ClearString(std::string* s);
+
+  // Performs AIK activation with a fake credential.
+  bool VerifyActivateIdentity(const chromeos::SecureBlob& delegate_blob,
+                              const chromeos::SecureBlob& delegate_secret,
+                              const chromeos::SecureBlob& identity_key_blob,
+                              const chromeos::SecureBlob& identity_public_key,
+                              const chromeos::SecureBlob& ek_public_key);
 
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };

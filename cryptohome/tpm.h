@@ -313,6 +313,54 @@ class Tpm {
                                   chromeos::SecureBlob* certified_key_info,
                                   chromeos::SecureBlob* certified_key_proof);
 
+  // Creates a TPM owner delegate for future use.
+  //
+  // Parameters
+  //   identity_key_blob - The AIK key blob, as provided by MakeIdentity.
+  //   delegate_blob - The blob for the owner delegation.
+  //   delegate_secret - The delegate secret that will be required to perform
+  //                     privileged operations in the future.
+  virtual bool CreateDelegate(const chromeos::SecureBlob& identity_key_blob,
+                              chromeos::SecureBlob* delegate_blob,
+                              chromeos::SecureBlob* delegate_secret);
+
+  // Activates an AIK by using the EK to decrypt the AIK credential.
+  //
+  // Parameters
+  //
+  //   delegate_blob - The delegate blob, as provided by CreateDelegate.
+  //   delegate_secret - The secret to be used for delegate authorization.
+  //   identity_key_blob - The AIK key blob, as provided by MakeIdentity.
+  //   encrypted_asym_ca - Encrypted TPM_ASYM_CA_CONTENTS from the CA.
+  //   encrypted_sym_ca - Encrypted TPM_SYM_CA_CONTENTS from the CA.
+  //   identity_credential - The AIK credential created by the CA.
+  virtual bool ActivateIdentity(const chromeos::SecureBlob& delegate_blob,
+                                const chromeos::SecureBlob& delegate_secret,
+                                const chromeos::SecureBlob& identity_key_blob,
+                                const chromeos::SecureBlob& encrypted_asym_ca,
+                                const chromeos::SecureBlob& encrypted_sym_ca,
+                                chromeos::SecureBlob* identity_credential);
+
+  // Encrypts data in a TSS compatible way using AES-256-CBC.
+  //
+  // Parameters
+  //   key - The AES key.
+  //   input - The data to be encrypted.
+  //   output - The encrypted data.
+  virtual bool TssCompatibleEncrypt(const chromeos::SecureBlob& key,
+                                    const chromeos::SecureBlob& input,
+                                    chromeos::SecureBlob* output);
+
+  // Encrypts data using the TPM_ES_RSAESOAEP_SHA1_MGF1 scheme.
+  //
+  // Parameters
+  //   key - The RSA public key.
+  //   input - The data to be encrypted.
+  //   output - The encrypted data.
+  virtual bool TpmCompatibleOAEPEncrypt(RSA* key,
+                                        const chromeos::SecureBlob& input,
+                                        chromeos::SecureBlob* output);
+
  protected:
   // Default constructor
   Tpm();
@@ -340,6 +388,12 @@ class Tpm {
   // authorization is successfully acquired.
   bool ConnectContextAsOwner(TSS_HCONTEXT* context_handle,
                              TSS_HTPM* tpm_handle);
+
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
+  // its matching TPM object authorized by the given delegation.
+  bool ConnectContextAsDelegate(const chromeos::SecureBlob& delegate_blob,
+                                const chromeos::SecureBlob& delegate_secret,
+                                TSS_HCONTEXT* context, TSS_HTPM* tpm);
 
   // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
   // its matching TPM object iff the context can be created and a TPM object
@@ -515,6 +569,19 @@ class Tpm {
   bool GetTpmWithAuth(TSS_HCONTEXT context_handle,
                       const chromeos::SecureBlob& owner_password,
                       TSS_HTPM* tpm_handle);
+
+  // Gets a handle to the TPM from the specified context with the given
+  // delegation.
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session
+  //   delegate_blob - The delegate blob to use when getting the handle
+  //   delegate_secret - The delegate secret to use when getting the handle
+  //   tpm_handle (OUT) - The handle for the TPM on success
+  bool GetTpmWithDelegation(TSS_HCONTEXT context_handle,
+                            const chromeos::SecureBlob& delegate_blob,
+                            const chromeos::SecureBlob& delegate_secret,
+                            TSS_HTPM* tpm_handle);
 
   // Test the TPM auth by calling Tspi_TPM_GetStatus
   //

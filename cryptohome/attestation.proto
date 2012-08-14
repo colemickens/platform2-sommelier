@@ -50,6 +50,14 @@ message Quote {
   optional bytes quoted_pcr_value = 3;
 }
 
+// Holds owner delegation information.
+message Delegation {
+  // The delegate owner blob.
+  optional bytes blob = 1;
+  // The authorization secret.
+  optional bytes secret = 2;
+}
+
 // This message holds all information to be sent to the attestation server in
 // order to complete enrollment.
 message AttestationEnrollment {
@@ -64,6 +72,7 @@ message AttestationDatabase {
   optional IdentityBinding identity_binding = 3;
   optional IdentityKey identity_key = 4;
   optional Quote pcr0_quote = 5;
+  optional Delegation delegate = 6;
 }
 
 // Holds encrypted data and information required to decrypt it.

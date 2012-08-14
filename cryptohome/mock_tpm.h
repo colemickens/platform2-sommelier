@@ -47,6 +47,8 @@ class MockTpm : public Tpm {
         .WillByDefault(Return(true));
     ON_CALL(*this, GetRandomData(_, _))
         .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomData));
+    ON_CALL(*this, CreateDelegate(_, _, _))
+        .WillByDefault(Return(true));
   }
   ~MockTpm() {}
   MOCK_METHOD2(Init, bool(Platform*, bool));
@@ -89,6 +91,9 @@ class MockTpm : public Tpm {
                                chromeos::SecureBlob*));
   MOCK_METHOD2(SealToPCR0, bool(const chromeos::Blob&, chromeos::Blob*));
   MOCK_METHOD2(Unseal, bool(const chromeos::Blob&, chromeos::Blob*));
+  MOCK_METHOD3(CreateDelegate, bool(const chromeos::SecureBlob&,
+                                    chromeos::SecureBlob*,
+                                    chromeos::SecureBlob*));
 
  private:
   bool Xor(const chromeos::SecureBlob& plaintext,

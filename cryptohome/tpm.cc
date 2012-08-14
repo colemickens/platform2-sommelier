@@ -30,6 +30,7 @@ using trousers::ScopedTssContext;
 using trousers::ScopedTssKey;
 using trousers::ScopedTssMemory;
 using trousers::ScopedTssNvStore;
+using trousers::ScopedTssObject;
 using trousers::ScopedTssPcrs;
 using trousers::ScopedTssPolicy;
 
@@ -63,6 +64,9 @@ const char kTpmOwnedWithWellKnown = 'W';
 const char kTpmOwnedWithRandom = 'R';
 const unsigned int kTpmBootPCR = 0;
 const unsigned int kTpmPCRLocality = 1;
+const int kDelegateSecretSize = 20;
+const int kDelegateFamilyLabel = 1;
+const int kDelegateEntryLabel = 2;
 
 Tpm* Tpm::singleton_ = NULL;
 base::Lock Tpm::singleton_lock_;
@@ -269,6 +273,33 @@ bool Tpm::ConnectContextAsUser(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
   }
   return true;
 }
+
+bool Tpm::ConnectContextAsDelegate(const SecureBlob& delegate_blob,
+                                   const SecureBlob& delegate_secret,
+                                   TSS_HCONTEXT* context, TSS_HTPM* tpm) {
+  *context = 0;
+  *tpm = 0;
+
+  if (!is_owned_ || is_being_owned_) {
+    LOG(ERROR) << "ConnectContextAsDelegate: TPM is unowned.";
+    return false;
+  }
+
+  if ((*context = ConnectContext()) == 0) {
+    LOG(ERROR) << "ConnectContextAsDelegate: Could not open the TPM.";
+    return false;
+  }
+
+  if (!GetTpmWithDelegation(*context, delegate_blob, delegate_secret, tpm)) {
+    LOG(ERROR) << "ConnectContextAsDelegate: Failed to authorize.";
+    Tspi_Context_Close(*context);
+    *context = 0;
+    *tpm = 0;
+    return false;
+  }
+  return true;
+}
+
 
 void Tpm::GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status) {
   memset(status, 0, sizeof(Tpm::TpmStatusInfo));
@@ -1330,6 +1361,45 @@ bool Tpm::GetTpmWithAuth(TSS_HCONTEXT context_handle,
   return true;
 }
 
+bool Tpm::GetTpmWithDelegation(TSS_HCONTEXT context_handle,
+                               const SecureBlob& delegate_blob,
+                               const SecureBlob& delegate_secret,
+                               TSS_HTPM* tpm_handle) {
+  TSS_HTPM local_tpm_handle;
+  if (!GetTpm(context_handle, &local_tpm_handle)) {
+    return false;
+  }
+
+  TSS_RESULT result;
+  TSS_HPOLICY tpm_usage_policy;
+  if (TPM_ERROR(result = Tspi_GetPolicyObject(local_tpm_handle,
+                                              TSS_POLICY_USAGE,
+                                              &tpm_usage_policy))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
+    return false;
+  }
+
+  BYTE* secret_buffer = const_cast<BYTE*>(&delegate_secret.front());
+  if (TPM_ERROR(result = Tspi_Policy_SetSecret(tpm_usage_policy,
+                                               TSS_SECRET_MODE_PLAIN,
+                                               delegate_secret.size(),
+                                               secret_buffer))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Policy_SetSecret";
+    return false;
+  }
+
+  if (TPM_ERROR(result = Tspi_SetAttribData(
+      tpm_usage_policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+      TSS_TSPATTRIB_POLDEL_OWNERBLOB, delegate_blob.size(),
+      const_cast<BYTE*>(&delegate_blob.front())))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_SetAttribData";
+    return false;
+  }
+
+  *tpm_handle = local_tpm_handle;
+  return true;
+}
+
 bool Tpm::TestTpmAuth(TSS_HTPM tpm_handle) {
   // Call Tspi_TPM_GetStatus to test the authentication
   TSS_RESULT result;
@@ -2158,7 +2228,7 @@ bool Tpm::DecryptIdentityRequest(RSA* pca_key,
   chromeos::SecureBlob proof_serial;
   proof_serial.resize(request_parsed.symSize);
   UINT32 proof_serial_length = proof_serial.size();
-  result = Trspi_SymDecrypt(symmetric_key.algId, TR_SYM_MODE_CBC,
+  result = Trspi_SymDecrypt(symmetric_key.algId, TPM_ES_SYM_CBC_PKCS5PAD,
                             symmetric_key.data, NULL,
                             request_parsed.symBlob, request_parsed.symSize,
                             &proof_serial.front(), &proof_serial_length);
@@ -2268,6 +2338,7 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
     LOG(ERROR) << "MakeIdentity: Could not connect to the TPM.";
     return false;
   }
+
   // Load the Storage Root Key.
   TSS_RESULT result;
   ScopedTssKey srk_handle(context_handle);
@@ -2275,6 +2346,7 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
     TPM_LOG(INFO, result) << "MakeIdentity: Cannot load SRK.";
     return false;
   }
+
   // The easiest way to create an AIK and get all the information we need out of
   // the TPM is to call Tspi_TPM_CollateIdentityRequest and disassemble the
   // request. For that we need to spoof a Privacy CA (PCA).
@@ -2359,6 +2431,7 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
     TPM_LOG(ERROR, result) << "MakeIdentity: Failed to create key object.";
     return false;
   }
+
   // Create the identity and receive the request intended for the PCA.
   UINT32 request_length = 0;
   ScopedTssMemory request(context_handle);
@@ -2371,6 +2444,7 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
     TPM_LOG(ERROR, result) << "MakeIdentity: Failed to make identity.";
     return false;
   }
+
   // Decrypt and parse the identity request.
   chromeos::SecureBlob request_blob(request.value(), request_length);
   if (!DecryptIdentityRequest(fake_pca_key.get(), request_blob,
@@ -2424,7 +2498,6 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
   identity_key_blob->assign(&blob.value()[0],
                             &blob.value()[blob_length]);
   chromeos::SecureMemset(blob.value(), 0, blob_length);
-
   return true;
 }
 
@@ -2433,6 +2506,7 @@ bool Tpm::QuotePCR0(const chromeos::SecureBlob& identity_key_blob,
                     chromeos::SecureBlob* pcr_value,
                     chromeos::SecureBlob* quoted_data,
                     chromeos::SecureBlob* quote) {
+  CHECK(pcr_value && quoted_data && quote);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2455,6 +2529,7 @@ bool Tpm::QuotePCR0(const chromeos::SecureBlob& identity_key_blob,
     TPM_LOG(ERROR, result) << "QuotePCR0: Failed to load AIK.";
     return false;
   }
+
   // Create a PCRS object and select index 0.
   ScopedTssPcrs pcrs(context_handle);
   result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_PCRS,
@@ -2504,6 +2579,7 @@ bool Tpm::QuotePCR0(const chromeos::SecureBlob& identity_key_blob,
 
 bool Tpm::SealToPCR0(const chromeos::Blob& value,
                      chromeos::Blob* sealed_value) {
+  CHECK(sealed_value);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2581,6 +2657,7 @@ bool Tpm::SealToPCR0(const chromeos::Blob& value,
 }
 
 bool Tpm::Unseal(const chromeos::Blob& sealed_value, chromeos::Blob* value) {
+  CHECK(value);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2635,6 +2712,8 @@ bool Tpm::CreateCertifiedKey(const chromeos::SecureBlob& identity_key_blob,
                              chromeos::SecureBlob* certified_key_blob,
                              chromeos::SecureBlob* certified_key_info,
                              chromeos::SecureBlob* certified_key_proof) {
+  CHECK(certified_public_key && certified_key_blob && certified_key_info &&
+        certified_key_proof);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
   if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
@@ -2745,6 +2824,226 @@ bool Tpm::CreateCertifiedKey(const chromeos::SecureBlob& identity_key_blob,
   certified_key_proof->assign(
       &validation.rgbValidationData[0],
       &validation.rgbValidationData[validation.ulValidationDataLength]);
+  return true;
+}
+
+bool Tpm::CreateDelegate(const SecureBlob& identity_key_blob,
+                         SecureBlob* delegate_blob,
+                         SecureBlob* delegate_secret) {
+  CHECK(delegate_blob && delegate_secret);
+
+  // Connect to the TPM as the owner.
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "CreateDelegate: Could not connect to the TPM.";
+    return false;
+  }
+
+  // Load the Storage Root Key.
+  TSS_RESULT result;
+  ScopedTssKey srk_handle(context_handle);
+  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
+    TPM_LOG(INFO, result) << "CreateDelegate: Failed to load SRK.";
+    return false;
+  }
+
+  // Load the AIK (which is wrapped by the SRK).
+  ScopedTssKey identity_key(context_handle);
+  result = Tspi_Context_LoadKeyByBlob(
+      context_handle, srk_handle, identity_key_blob.size(),
+      const_cast<BYTE*>(&identity_key_blob.front()), identity_key.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to load AIK.";
+    return false;
+  }
+
+  // Generate a delegate secret.
+  if (!GetRandomData(kDelegateSecretSize, delegate_secret)) {
+    return false;
+  }
+
+  // Create an owner delegation policy.
+  ScopedTssPolicy policy(context_handle);
+  result = Tspi_Context_CreateObject(context_handle, TSS_OBJECT_TYPE_POLICY,
+                                     TSS_POLICY_USAGE, policy.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create policy.";
+    return false;
+  }
+  result = Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_PLAIN,
+                                 delegate_secret->size(),
+                                 &delegate_secret->front());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set policy secret.";
+    return false;
+  }
+  result = Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                                TSS_TSPATTRIB_POLDEL_TYPE,
+                                TSS_DELEGATIONTYPE_OWNER);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set delegation type.";
+    return false;
+  }
+  // These are the privileged operations we will allow the delegate to perform.
+  const UINT32 permissions = TPM_DELEGATE_ActivateIdentity |
+                             TPM_DELEGATE_DAA_Join | TPM_DELEGATE_DAA_Sign;
+  result = Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                                TSS_TSPATTRIB_POLDEL_PER1, permissions);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set permissions.";
+    return false;
+  }
+  result = Tspi_SetAttribUint32(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                                TSS_TSPATTRIB_POLDEL_PER2, 0);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to set permissions.";
+    return false;
+  }
+
+  // Create a delegation family.
+  ScopedTssObject<TSS_HDELFAMILY> family(context_handle);
+  result = Tspi_TPM_Delegate_AddFamily(tpm_handle, kDelegateFamilyLabel,
+                                       family.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create family.";
+    return false;
+  }
+
+  // Create the delegation.
+  result = Tspi_TPM_Delegate_CreateDelegation(tpm_handle, kDelegateEntryLabel,
+                                              0, 0, family, policy);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to create delegation.";
+    return false;
+  }
+
+  // Enable the delegation family.
+  result = Tspi_SetAttribUint32(family, TSS_TSPATTRIB_DELFAMILY_STATE,
+                                TSS_TSPATTRIB_DELFAMILYSTATE_ENABLED, TRUE);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to enable family.";
+    return false;
+  }
+
+  // Save the delegation blob for later.
+  ScopedTssMemory blob(context_handle);
+  UINT32 blob_length = 0;
+  result = Tspi_GetAttribData(policy, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
+                              TSS_TSPATTRIB_POLDEL_OWNERBLOB, &blob_length,
+                              blob.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "CreateDelegate: Failed to get delegate blob.";
+    return false;
+  }
+  delegate_blob->assign(&blob.value()[0], &blob.value()[blob_length]);
+  chromeos::SecureMemset(blob.value(), 0, blob_length);
+  return true;
+}
+
+bool Tpm::ActivateIdentity(const chromeos::SecureBlob& delegate_blob,
+                           const chromeos::SecureBlob& delegate_secret,
+                           const chromeos::SecureBlob& identity_key_blob,
+                           const chromeos::SecureBlob& encrypted_asym_ca,
+                           const chromeos::SecureBlob& encrypted_sym_ca,
+                           chromeos::SecureBlob* identity_credential) {
+  CHECK(identity_credential);
+
+  // Connect to the TPM as the owner delegate.
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsDelegate(delegate_blob, delegate_secret,
+                                context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "ActivateIdentity: Could not connect to the TPM.";
+    return false;
+  }
+
+  // Load the Storage Root Key.
+  TSS_RESULT result;
+  ScopedTssKey srk_handle(context_handle);
+  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
+    TPM_LOG(INFO, result) << "ActivateIdentity: Failed to load SRK.";
+    return false;
+  }
+
+  // Load the AIK (which is wrapped by the SRK).
+  ScopedTssKey identity_key(context_handle);
+  result = Tspi_Context_LoadKeyByBlob(
+      context_handle, srk_handle, identity_key_blob.size(),
+      const_cast<BYTE*>(&identity_key_blob.front()), identity_key.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "ActivateIdentity: Failed to load AIK.";
+    return false;
+  }
+
+  BYTE* encrypted_asym_ca_buffer =
+      const_cast<BYTE*>(&encrypted_asym_ca.front());
+  BYTE* encrypted_sym_ca_buffer = const_cast<BYTE*>(&encrypted_sym_ca.front());
+  UINT32 credential_length = 0;
+  ScopedTssMemory credential_buffer(context_handle);
+  result = Tspi_TPM_ActivateIdentity(tpm_handle, identity_key,
+                                     encrypted_asym_ca.size(),
+                                     encrypted_asym_ca_buffer,
+                                     encrypted_sym_ca.size(),
+                                     encrypted_sym_ca_buffer,
+                                     &credential_length,
+                                     credential_buffer.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "ActivateIdentity: Failed to activate identity.";
+    return false;
+  }
+  identity_credential->assign(&credential_buffer.value()[0],
+                              &credential_buffer.value()[credential_length]);
+  chromeos::SecureMemset(credential_buffer.value(), 0, credential_length);
+  return true;
+}
+
+bool Tpm::TssCompatibleEncrypt(const chromeos::SecureBlob& key,
+                               const chromeos::SecureBlob& input,
+                               chromeos::SecureBlob* output) {
+  CHECK(output);
+  BYTE* key_buffer = const_cast<BYTE*>(&key.front());
+  BYTE* in_buffer = const_cast<BYTE*>(&input.front());
+  // Save room for padding and a prepended iv.
+  output->resize(input.size() + 48);
+  BYTE* out_buffer = const_cast<BYTE*>(&output->front());
+  UINT32 out_length = output->size();
+  TSS_RESULT result = Trspi_SymEncrypt(TPM_ALG_AES256, TPM_ES_SYM_CBC_PKCS5PAD,
+                                       key_buffer, NULL,
+                                       in_buffer, input.size(),
+                                       out_buffer, &out_length);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Trspi_SymEncrypt failed.";
+    return false;
+  }
+  output->resize(out_length);
+  return true;
+}
+
+bool Tpm::TpmCompatibleOAEPEncrypt(RSA* key,
+                                   const chromeos::SecureBlob& input,
+                                   chromeos::SecureBlob* output) {
+  CHECK(output);
+  // The custom OAEP parameter as specified in TPM Main Part 1, Section 31.1.1.
+  unsigned char oaep_param[4] = {'T', 'C', 'P', 'A'};
+  SecureBlob padded_input(RSA_size(key));
+  unsigned char* padded_buffer = const_cast<unsigned char*>(&padded_input[0]);
+  unsigned char* input_buffer = const_cast<unsigned char*>(&input[0]);
+  int result = RSA_padding_add_PKCS1_OAEP(padded_buffer, padded_input.size(),
+                                          input_buffer, input.size(),
+                                          oaep_param, arraysize(oaep_param));
+  if (!result) {
+    LOG(ERROR) << "Failed to add OAEP padding.";
+    return false;
+  }
+  output->resize(padded_input.size());
+  unsigned char* output_buffer = const_cast<unsigned char*>(&output->front());
+  result = RSA_public_encrypt(padded_input.size(), padded_buffer,
+                              output_buffer, key, RSA_NO_PADDING);
+  if (result == -1) {
+    LOG(ERROR) << "Failed to encrypt OAEP padded input.";
+    return false;
+  }
   return true;
 }
 
