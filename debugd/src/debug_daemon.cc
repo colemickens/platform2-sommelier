@@ -21,6 +21,7 @@ bool DebugDaemon::Init() {
   debug_logs_tool_ = new DebugLogsTool();
   debug_mode_tool_ = new DebugModeTool(dbus_);
   example_tool_ = new ExampleTool();
+  icmp_tool_ = new ICMPTool();
   modem_status_tool_ = new ModemStatusTool();
   netif_tool_ = new NetifTool();
   network_status_tool_ = new NetworkStatusTool();
@@ -132,6 +133,10 @@ std::string DebugDaemon::GetExample(DBus::Error& error) { // NOLINT dbuscxx
 
 std::string DebugDaemon::GetInterfaces(DBus::Error& error) { // NOLINT dbuscxx
   return netif_tool_->GetInterfaces(&error);
+}
+
+std::string DebugDaemon::TestICMP(const std::string& host, DBus::Error& error) { // NOLINT dbuscxx
+  return icmp_tool_->TestICMP(host, &error);
 }
 
 };  // namespace debugd

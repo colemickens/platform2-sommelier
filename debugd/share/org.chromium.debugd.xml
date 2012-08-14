@@ -208,5 +208,12 @@
       </tp:docstring>
       <arg name="result" type="s" direction="out" />
     </method>
+    <method name="TestICMP">
+      <tp:docstring>
+        Tests ICMP connectivity to a specified host.
+      </tp:docstring>
+      <arg name="host" type="s" direction="in" />
+      <arg name="result" type="s" direction="out" />
+    </method>
   </interface>
 </node>

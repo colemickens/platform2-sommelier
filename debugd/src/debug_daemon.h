@@ -14,6 +14,7 @@
 #include "debug_logs_tool.h"
 #include "debug_mode_tool.h"
 #include "example_tool.h"
+#include "icmp_tool.h"
 #include "log_tool.h"
 #include "modem_status_tool.h"
 #include "netif_tool.h"
@@ -97,6 +98,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
       GetFeedbackLogs(DBus::Error& error); // NOLINT
   virtual std::string GetExample(DBus::Error& error); // NOLINT
   virtual std::string GetInterfaces(DBus::Error& error); // NOLINT
+  virtual std::string TestICMP(const std::string& host, DBus::Error& error); // NOLINT
 
  private:
   DBus::Connection* dbus_;
@@ -105,6 +107,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   DebugLogsTool* debug_logs_tool_;
   DebugModeTool* debug_mode_tool_;
   ExampleTool* example_tool_;
+  ICMPTool* icmp_tool_;
   LogTool* log_tool_;
   ModemStatusTool* modem_status_tool_;
   NetifTool* netif_tool_;
