@@ -47,7 +47,9 @@ class IpsecManagerTest : public ::testing::Test {
     ipsec_run_path_ = test_path_.Append("run").value();
     ipsec_up_file_ = FilePath(ipsec_run_path_).Append("up").value();
     WriteFile(psk_file_, "secret");
-    file_util::CopyFile(cwd.Append("testdata/cacert.der"),
+    const char *srcvar = getenv("SRC");
+    FilePath srcdir = srcvar ? FilePath(srcvar) : cwd;
+    file_util::CopyFile(srcdir.Append("testdata/cacert.der"),
                         FilePath(server_ca_file_));
     chromeos::ClearLog();
     starter_ = new ProcessMock;
