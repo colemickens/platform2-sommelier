@@ -93,7 +93,6 @@ void SetupLogging(bool foreground, char *daemon_name) {
     log_flags |= chromeos::kLogToStderr;
   }
   chromeos::InitLog(log_flags);
-  shill::MemoryLog::InstallLogInterceptor();
 
   if (!foreground) {
     vector<char *> logger_command_line;

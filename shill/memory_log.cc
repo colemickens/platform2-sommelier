@@ -31,57 +31,11 @@ const char *const kLogSeverityNames[logging::LOG_NUM_SEVERITIES] = {
   "INFO", "WARNING", "ERROR", "ERROR_REPORT", "FATAL"
 };
 
-logging::LogMessageHandlerFunction nested_message_handler = NULL;
-
-bool LogMessageInterceptor(int severity,
-                           const char *file,
-                           int line,
-                           size_t message_start,
-                           const std::string &str) {
-  if (message_start < str.size() &&
-      strncmp(str.c_str() + message_start,
-              MemoryLog::kMemoryLogPrefix,
-              strlen(MemoryLog::kMemoryLogPrefix))) {
-    // Stream this in to rewrite the prefix into memory log format.
-    MemoryLogMessage(file,
-                     line,
-                     severity,
-                     false).stream() << (str.c_str() + message_start);
-  }
-
-  // Signal that logging should continue processing this message.
-  bool ret = false;
-  if (nested_message_handler) {
-    // If the nested handler wants to bypass logging, let it.
-    ret = nested_message_handler(severity, file, line, message_start, str);
-  }
-  return ret;
-}
-
 }  // namespace
-
-const char MemoryLog::kMemoryLogPrefix[] = "memlog: ";
 
 // static
 MemoryLog *MemoryLog::GetInstance() {
   return g_memory_log.Pointer();
-}
-
-// static
-void MemoryLog::InstallLogInterceptor() {
-  nested_message_handler = logging::GetLogMessageHandler();
-  logging::SetLogMessageHandler(LogMessageInterceptor);
-}
-
-// static
-void MemoryLog::UninstallLogInterceptor() {
-  if (logging::GetLogMessageHandler() == LogMessageInterceptor) {
-    logging::SetLogMessageHandler(nested_message_handler);
-  } else  {
-    LOG(ERROR) << "Tried to uninstall MemoryLog message handler, but found"
-               << " another handler installed over top of MemoryLog's"
-               << " handler.  Leaving all handlers installed.";
-  }
 }
 
 MemoryLog::MemoryLog()
@@ -184,10 +138,6 @@ void MemoryLogMessage::Init() {
   stream_ << ":" << filename << "(" << line_ << ") ";
 
   message_start_ = stream_.tellp();
-
-  // Let the memlog prefix hit the real logging.  This allows our interceptor
-  // to discard messages that have already gotten into the memlog.
-  stream_ << MemoryLog::kMemoryLogPrefix;
 }
 
 }  // namespace shill

@@ -31,23 +31,8 @@ namespace shill {
 
 class MemoryLog {
  public:
-  // Prefix prepended to every message passing through MemoryLog.
-  static const char kMemoryLogPrefix[];
-
   // Returns a singleton of this class.
   static MemoryLog *GetInstance();
-  // Installs a message handler that traps log messages that evaded MemoryLog
-  // earlier.  These messages come from places like *CHECK, NOT_IMPLEMENTED, and
-  // similar logging calls.  This will attempt to save the previous handler and
-  // call it recursively.  It is the callers responsibility to ensure that no
-  // other thread is logging or touching the log handlers at the same time.
-  static void InstallLogInterceptor();
-  // Reinstalls the message handler in place when our interceptor was installed.
-  // It is up to the caller to ensure that no logging takes place during this
-  // call, and no other threads are touching the log message handlers.  The
-  // caller is also responsible for guaranteeing our handler is uninstalled in
-  // the reverse order it was installed in (LIFO).
-  static void UninstallLogInterceptor();
 
   ~MemoryLog();
   // Appends this message to the log, dropping the oldest messages until the log

@@ -38,6 +38,8 @@ class MemoryLogTest : public testing::Test {
   }
 };
 
+class MemoryLogDeathTest : public testing::Test { };
+
 TEST_F(MemoryLogTest, ScopedLoggerStillWorks) {
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, kTestStr1));
@@ -62,6 +64,12 @@ TEST_F(MemoryLogTest, NormalLoggingStillWorks) {
   LOG(INFO) << "does not propagate down";
   // It would be nice if the compiler didn't optimize out my conditional check.
   LOG_IF(WARNING, strlen("two") == 3) << kTestStr2;
+}
+
+// Test that no matter what we did, CHECK still kills the process.
+TEST_F(MemoryLogDeathTest, CheckLogsStillWork) {
+  EXPECT_DEATH( { CHECK(false) << "diediedie"; },
+                "Check failed: false. diediedie");
 }
 
 TEST_F(MemoryLogTest, MemoryLogIsLogging) {
@@ -133,36 +141,23 @@ TEST_F(MemoryLogTest, MemoryLogFlushToDiskWorks) {
   EXPECT_TRUE(temp_dir.Delete());
 }
 
-// Test that messages we're logging that don't go through the MessageLog still
-// end up in the message log when we have our handler installed.
+// Test that most messages go through MemoryLog
 TEST_F(MemoryLogTest, MemoryLogMessageInterceptorWorks) {
   ASSERT_EQ(0, MemoryLog::GetInstance()->TestGetNumberMessages());
-  // Have to use this weird syntax because most normal macros wind up logging
-  // via LOG, thus getting sent through MemoryLog.
-  LOG_STREAM(ERROR) << "Doesn't get caught";
-  ASSERT_EQ(0, MemoryLog::GetInstance()->TestGetNumberMessages());
-  MemoryLog::InstallLogInterceptor();
-  LOG_STREAM(ERROR) << "Caught this one!";
-  ASSERT_EQ(1, MemoryLog::GetInstance()->TestGetNumberMessages());
   // Make sure we're not double logging.
   LOG(ERROR) << kTestStr1;
-  ASSERT_EQ(2, MemoryLog::GetInstance()->TestGetNumberMessages());
-  // SLOG_IF works with the intercepting handler.
+  ASSERT_EQ(1, MemoryLog::GetInstance()->TestGetNumberMessages());
   SLOG_IF(WiFi, 3, strlen("two") == 3) << kTestStr2;
-  ASSERT_EQ(3, MemoryLog::GetInstance()->TestGetNumberMessages());
+  ASSERT_EQ(2, MemoryLog::GetInstance()->TestGetNumberMessages());
   SLOG_IF(WiFi, 3, strlen("one") == 2) << "does not get through again";
-  ASSERT_EQ(3, MemoryLog::GetInstance()->TestGetNumberMessages());
-  // Similarly, LOG_IF works with the handler.
+  ASSERT_EQ(2, MemoryLog::GetInstance()->TestGetNumberMessages());
   LOG_IF(ERROR, strlen("two") == 3) << kTestStr2;
-  ASSERT_EQ(4, MemoryLog::GetInstance()->TestGetNumberMessages());
+  ASSERT_EQ(3, MemoryLog::GetInstance()->TestGetNumberMessages());
   LOG_IF(ERROR, strlen("one") == 2) << "does not get through again";
+  ASSERT_EQ(3, MemoryLog::GetInstance()->TestGetNumberMessages());
+  NOTIMPLEMENTED();
   ASSERT_EQ(4, MemoryLog::GetInstance()->TestGetNumberMessages());
-  MemoryLog::UninstallLogInterceptor();
-  LOG_STREAM(ERROR) << "Doesn't get caught";
-  ASSERT_EQ(4, MemoryLog::GetInstance()->TestGetNumberMessages());
-  // Normal log messages still get through.
-  LOG(ERROR) << kTestStr2;
-  ASSERT_EQ(5, MemoryLog::GetInstance()->TestGetNumberMessages());
+
 }
 
 }  // namespace shill
