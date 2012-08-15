@@ -23,6 +23,7 @@
 #include "shill/glib.h"
 #include "shill/key_file_store.h"
 #include "shill/key_value_store.h"
+#include "shill/logging.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
@@ -679,6 +680,50 @@ TEST_F(ManagerTest, CreateProfile) {
 
   // We should fail in creating it a second time (already exists).
   EXPECT_EQ(Error::kAlreadyExists, TestCreateProfile(&manager, kProfile));
+}
+
+// We receive PopProfile when a user logs out, and it should always trigger a
+// MemoryLog Clear() call.
+TEST_F(ManagerTest, PopProfileShouldClearMemoryLog) {
+  GLib glib;
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  Manager manager(control_interface(),
+                  dispatcher(),
+                  metrics(),
+                  &glib,
+                  run_path(),
+                  storage_path(),
+                  temp_dir.path().value());
+  const char kProfile0[] = "~user/profile0";
+  const char kPurgedMessage[] = "This message should be purged";
+  // Create a profile and push it on the stack, leave one uncreated
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
+
+  // Popping a profile which isn't on top should still clear the log.
+  LOG(INFO) << kPurgedMessage;
+  EXPECT_TRUE(MemoryLog::GetInstance()->TestContainsMessageWithText(
+      kPurgedMessage));
+  EXPECT_EQ(Error::kNotSupported, TestPopProfile(&manager, "~user/profile1"));
+  EXPECT_FALSE(MemoryLog::GetInstance()->TestContainsMessageWithText(
+      kPurgedMessage));
+
+  // Popping an invalid profile name should do the same thing.
+  LOG(INFO) << kPurgedMessage;
+  EXPECT_TRUE(MemoryLog::GetInstance()->TestContainsMessageWithText(
+      kPurgedMessage));
+  EXPECT_EQ(Error::kInvalidArguments, TestPopProfile(&manager, "~"));
+  EXPECT_FALSE(MemoryLog::GetInstance()->TestContainsMessageWithText(
+      kPurgedMessage));
+
+  // Successful pops also purge the message log.
+  LOG(INFO) << kPurgedMessage;
+  EXPECT_TRUE(MemoryLog::GetInstance()->TestContainsMessageWithText(
+      kPurgedMessage));
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kProfile0));
+  EXPECT_FALSE(MemoryLog::GetInstance()->TestContainsMessageWithText(
+      kPurgedMessage));
 }
 
 TEST_F(ManagerTest, PushPopProfile) {

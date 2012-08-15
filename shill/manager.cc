@@ -389,6 +389,11 @@ void Manager::PopProfileInternal() {
 
 void Manager::PopProfile(const string &name, Error *error) {
   SLOG(Manager, 2) << __func__ << " " << name;
+  // This signal is sent when a user logs out of a session.  Regardless of
+  // whether we find their profile to remove, lets clear the network related
+  // logs.
+  MemoryLog::GetInstance()->Clear();
+  LOG(INFO) << "Cleared the memory log on logout event.";
   Profile::Identifier ident;
   if (profiles_.empty()) {
     Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");

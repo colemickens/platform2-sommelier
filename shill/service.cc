@@ -255,6 +255,7 @@ void Service::Connect(Error */*error*/) {
 
 void Service::Disconnect(Error */*error*/) {
   explicitly_disconnected_ = true;
+  MemoryLog::GetInstance()->FlushToDisk();
 }
 
 void Service::ActivateCellularModem(const string &/*carrier*/,
