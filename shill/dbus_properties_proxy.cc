@@ -23,10 +23,10 @@ DBusPropertiesMap DBusPropertiesProxy::GetAll(const string &interface_name) {
   try {
     return proxy_.GetAll(interface_name);
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << " interface name: " << interface_name;
-    return DBusPropertiesMap();  // Make the compiler happy.
   }
+  return DBusPropertiesMap();
 }
 
 void DBusPropertiesProxy::set_properties_changed_callback(
