@@ -58,6 +58,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   CellularCapabilityUniversal(Cellular *cellular, ProxyFactory *proxy_factory);
 
   // Inherited from CellularCapability.
+  // Checks the modem state.  If the state is kModemStateDisabled, then the
+  // modem is enabled.  Otherwise, the enable command is buffered until the
+  // modem becomes disabled.  ModemManager rejects the enable command if the
+  // modem is not disabled, for exmaple, if it is initializing insted.
   virtual void StartModem(Error *error, const ResultCallback &callback);
   virtual void StopModem(Error *error, const ResultCallback &callback);
   virtual void Connect(const DBusPropertiesMap &properties, Error *error,
@@ -135,6 +139,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfo);
 
   // Methods used in starting a modem
+  void EnableModem(Error *error, const ResultCallback &callback);
   void Start_EnableModemCompleted(const ResultCallback &callback,
                                   const Error &error);
 
@@ -285,6 +290,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   Stringmaps apn_list_;
   std::string sim_path_;
   DBus::Path bearer_path_;
+
+  // If the modem is not in a state to be enabled when StartModem is called,
+  // enabling is deferred using this callback.
+  base::Closure deferred_enable_modem_callback_;
 
   static unsigned int friendly_service_name_id_;
 

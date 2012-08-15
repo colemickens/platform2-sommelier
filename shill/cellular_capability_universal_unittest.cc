@@ -41,6 +41,7 @@ using base::Unretained;
 using std::string;
 using std::vector;
 using testing::InSequence;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
@@ -276,21 +277,47 @@ TEST_F(CellularCapabilityUniversalTest, StartModem) {
               GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP))
       .WillOnce(Return(modem3gpp_properties));
 
+  // Let the modem report that it is initializing.  StartModem() should defer
+  // enabling the modem until its state changes to disabled.
+  EXPECT_CALL(*modem_proxy_, State())
+      .WillOnce(Return(Cellular::kModemStateInitializing));
+
   // After setup we lose pointers to the proxies, so it is hard to set
   // expectations.
   SetUp();
 
   Error error;
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  EXPECT_CALL(*this, TestCallback(_)).Times(0);
   ResultCallback callback =
       Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
   capability_->StartModem(&error, callback);
+
+  // Verify that the modem has not been eabled.
+  EXPECT_TRUE(capability_->imei_.empty());
+  EXPECT_EQ(0, capability_->access_technologies_);
+  Mock::VerifyAndClearExpectations(this);
+
+  // Change the state to kModemStateDisabling and verify that it still has not
+  // been eabled.
+  EXPECT_CALL(*this, TestCallback(_)).Times(0);
+  capability_->OnModemStateChangedSignal(Cellular::kModemStateInitializing,
+                                         Cellular::kModemStateDisabling, 0);
+  EXPECT_TRUE(capability_->imei_.empty());
+  EXPECT_EQ(0, capability_->access_technologies_);
+  Mock::VerifyAndClearExpectations(this);
+
+  // Change the state of the modem to disabled and verify that it gets enabled.
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  capability_->OnModemStateChangedSignal(Cellular::kModemStateDisabling,
+                                         Cellular::kModemStateDisabled, 0);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kImei, capability_->imei_);
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
 }
 
 TEST_F(CellularCapabilityUniversalTest, StartModemFail) {
+  EXPECT_CALL(*modem_proxy_, State())
+          .WillOnce(Return(Cellular::kModemStateDisabled));
   EXPECT_CALL(*modem_proxy_,
               Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(

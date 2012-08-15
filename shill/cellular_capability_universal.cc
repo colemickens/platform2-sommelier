@@ -207,19 +207,43 @@ void CellularCapabilityUniversal::InitProxies() {
 void CellularCapabilityUniversal::StartModem(Error *error,
                                              const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
-
   InitProxies();
 
-  // Start by trying to enable the modem
+  // ModemManager must be in the disabled state to accept the Enable command.
+  Cellular::ModemState state =
+      static_cast<Cellular::ModemState>(modem_proxy_->State());
+  if (state == Cellular::kModemStateDisabled) {
+    EnableModem(error, callback);
+  } else if (!cellular()->IsUnderlyingDeviceEnabled()) {
+    SLOG(Cellular, 2) << "Enabling of modem deferred because state is "
+                      << state;
+    deferred_enable_modem_callback_ =
+        Bind(&CellularCapabilityUniversal::EnableModem,
+             weak_ptr_factory_.GetWeakPtr(), static_cast<Error *>(NULL),
+             callback);
+  } else {
+    callback.Run(*error);
+  }
+}
+
+void CellularCapabilityUniversal::EnableModem(Error *error,
+                                              const ResultCallback &callback) {
+  SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
+  Error local_error;
   modem_proxy_->Enable(
       true,
-      error,
+      &local_error,
       Bind(&CellularCapabilityUniversal::Start_EnableModemCompleted,
            weak_ptr_factory_.GetWeakPtr(), callback),
       kTimeoutEnable);
-  if (error->IsFailure())
-    callback.Run(*error);
+  if (local_error.IsFailure()) {
+    SLOG(Cellular, 2) << __func__ << "Call to modem_proxy_->Enable() failed";
+    callback.Run(local_error);
+  }
+  if (error) {
+    error->CopyFrom(local_error);
+  }
 }
 
 void CellularCapabilityUniversal::Start_EnableModemCompleted(
@@ -259,6 +283,7 @@ void CellularCapabilityUniversal::StopModem(Error *error,
                         callback);
     cellular()->dispatcher()->PostTask(task);
   }
+  deferred_enable_modem_callback_.Reset();
 }
 
 void CellularCapabilityUniversal::Stop_DisconnectCompleted(
@@ -1049,6 +1074,10 @@ void CellularCapabilityUniversal::OnModemStateChanged(
   bool was_enabled = cellular()->IsUnderlyingDeviceEnabled();
   if (Cellular::IsEnabledModemState(state))
     cellular()->set_modem_state(state);
+  SLOG(Cellular, 2) << __func__ << ": prev_modem_state: " << prev_modem_state
+                    << " was_enabled: " << was_enabled
+                    << " cellular state: "
+                    << cellular()->GetStateString(cellular()->state());
   if (prev_modem_state != Cellular::kModemStateUnknown &&
       prev_modem_state != Cellular::kModemStateEnabling &&
       !was_enabled &&
@@ -1185,6 +1214,12 @@ void CellularCapabilityUniversal::OnModemStateChangedSignal(
   cellular()->OnModemStateChanged(static_cast<Cellular::ModemState>(old_state),
                                   static_cast<Cellular::ModemState>(new_state),
                                   reason);
+  if (!deferred_enable_modem_callback_.is_null() &&
+      (new_state == Cellular::kModemStateDisabled)) {
+    SLOG(Cellular, 2) << "Enabling modem after deferring";
+    deferred_enable_modem_callback_.Run();
+    deferred_enable_modem_callback_.Reset();
+  }
 }
 
 void CellularCapabilityUniversal::OnSignalQualityChanged(uint32 quality) {
