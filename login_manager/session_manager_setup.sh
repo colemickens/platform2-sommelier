@@ -245,6 +245,11 @@ if use_flag_is_set aura; then
     AURA_FLAGS="$AURA_FLAGS --disable-login-animations"
     AURA_FLAGS="$AURA_FLAGS --disable-boot-animation"
   fi
+  # TODO(dpolukhin): Remove this flag when animation issue fixed
+  # crbug.com/143148
+  if use_flag_is_set disable_oobe_animation; then
+    AURA_FLAGS="$AURA_FLAGS --disable-oobe-animation"
+  fi
 fi
 
 # Setup GPU & acceleration flags which differ between x86/ARM SoC
