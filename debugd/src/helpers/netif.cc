@@ -32,7 +32,10 @@
 //    },
 //    "wlan0": {
 //       "flags": [ "broadcast", "multi" ],
-//       "mac": "68A3C41B264C"
+//       "mac": "68A3C41B264C",
+//       "signal-strengths": {
+//          "A9F1BDF1DAB1NVT4F4F59": 62
+//       }
 //    },
 //    "wwan0": {
 //       "flags": [ "broadcast", "multi" ],
@@ -61,6 +64,9 @@
 #include <base/string_util.h>
 #include <base/values.h>
 #include <chromeos/utility.h>
+
+#include "proxies/org.chromium.flimflam.Manager.h"
+#include "proxies/org.chromium.flimflam.Service.h"
 
 std::string getmac(int fd, const char *ifname) {
   struct ifreq ifr;
@@ -126,6 +132,31 @@ ListValue *flags2list(unsigned int flags) {
   return lv;
 }
 
+// Duplicated from </src/helpers/network_status.cc>. Need to figure out how to
+// refactor these.
+class ManagerProxy
+    : public org::chromium::flimflam::Manager_proxy,
+      public DBus::ObjectProxy {
+  public:
+    ManagerProxy(DBus::Connection& connection, const char* path, // NOLINT
+                 const char* service) :
+        DBus::ObjectProxy(connection, path, service) { }
+    virtual ~ManagerProxy() { }
+    virtual void PropertyChanged(const std::string&, const DBus::Variant&) { }
+    virtual void StateChanged(const std::string&) { }
+};
+
+class ServiceProxy
+    : public org::chromium::flimflam::Service_proxy,
+      public DBus::ObjectProxy {
+  public:
+    ServiceProxy(DBus::Connection& connection, const char* path, // NOLINT
+                 const char* service) :
+        DBus::ObjectProxy(connection, path, service) { }
+    virtual ~ServiceProxy() { }
+    virtual void PropertyChanged(const std::string&, const DBus::Variant&) { }
+};
+
 class NetInterface {
  public:
   NetInterface(int fd, const char *name);
@@ -133,6 +164,7 @@ class NetInterface {
 
   bool Init();
   void AddAddress(struct ifaddrs *ifa);
+  void AddSignalStrength(const std::string& name, int strength);
   Value *ToValue();
 
  private:
@@ -142,19 +174,26 @@ class NetInterface {
   DictionaryValue *ipv6_;
   ListValue *flags_;
   std::string mac_;
+  DictionaryValue *signal_strengths_;
 
   void AddAddressTo(DictionaryValue *dv, struct sockaddr *sa);
 };
 
 NetInterface::NetInterface(int fd, const char *name)
     : fd_(fd), name_(name), ipv4_(NULL),
-      ipv6_(NULL), flags_(NULL) { }
+      ipv6_(NULL), flags_(NULL), signal_strengths_(NULL) { }
 
 NetInterface::~NetInterface() { }
 
 bool NetInterface::Init() {
   mac_ = getmac(fd_, name_);
   return true;
+}
+
+void NetInterface::AddSignalStrength(const std::string& name, int strength) {
+  if (!signal_strengths_)
+    signal_strengths_ = new DictionaryValue();
+  signal_strengths_->SetInteger(name, strength);
 }
 
 void NetInterface::AddAddressTo(DictionaryValue *dv, struct sockaddr *sa) {
@@ -197,8 +236,44 @@ Value *NetInterface::ToValue() {
     dv->Set("ipv6", ipv6_);
   if (flags_)
     dv->Set("flags", flags_);
+  if (signal_strengths_)
+    dv->Set("signal-strengths", signal_strengths_);
   dv->Set("mac", Value::CreateStringValue(mac_));
   return dv;
+}
+
+std::string DevicePathToName(const std::string& path) {
+  const char *kPrefix = "/device/";
+  if (path.find(kPrefix) == 0)
+    return path.substr(strlen(kPrefix));
+  return "?";
+}
+
+void AddSignalStrengths(std::map<std::string, NetInterface*> *interfaces) {
+  const char *kFlimflamPath = "/";
+  const char *kFlimflamService = "org.chromium.flimflam";
+  DBus::BusDispatcher dispatcher;
+  DBus::default_dispatcher = &dispatcher;
+  DBus::Connection conn = DBus::Connection::SystemBus();
+  ManagerProxy manager(conn, kFlimflamPath, kFlimflamService);
+
+  std::map<std::string, DBus::Variant> props = manager.GetProperties();
+  DBus::Variant& devices = props["Services"];
+  // This can throw an exception :(
+  std::vector<DBus::Path> paths = devices;
+  for (std::vector<DBus::Path>::iterator it = paths.begin();
+       it != paths.end(); ++it) {
+    ServiceProxy service = ServiceProxy(conn, it->c_str(), kFlimflamService);
+    std::map<std::string, DBus::Variant> props = service.GetProperties();
+    // So can this :(
+    uint8_t strength = props["Strength"];
+    std::string name = props["Name"];
+    DBus::Path devpath = props["Device"];
+    std::string devname = DevicePathToName(devpath);
+    if (interfaces->count(devname)) {
+      interfaces->find(devname)->second->AddSignalStrength(name, strength);
+    }
+  }
 }
 
 int main() {
@@ -225,6 +300,8 @@ int main() {
     }
     interfaces[ifa->ifa_name]->AddAddress(ifa);
   }
+
+  AddSignalStrengths(&interfaces);
 
   for (std::map<std::string, NetInterface*>::iterator it = interfaces.begin();
        it != interfaces.end(); ++it)
