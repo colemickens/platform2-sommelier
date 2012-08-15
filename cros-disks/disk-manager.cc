@@ -71,6 +71,19 @@ DiskManager::~DiskManager() {
 
 bool DiskManager::Initialize() {
   RegisterDefaultFilesystems();
+
+  // Initialize |disks_detected_| with auto-mountable devices that already
+  // exist when disk manager starts since there is no udev add event that adds
+  // these devices to |disks_detected_|.
+  vector<Disk> disks = EnumerateDisks();
+  for (vector<Disk>::const_iterator disk_iterator = disks.begin();
+       disk_iterator != disks.end(); ++disk_iterator) {
+    if (disk_iterator->is_auto_mountable()) {
+      disks_detected_.insert(
+          std::make_pair(disk_iterator->native_path(), set<string>()));
+    }
+  }
+
   return MountManager::Initialize();
 }
 
