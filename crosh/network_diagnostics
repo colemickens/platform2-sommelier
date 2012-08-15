@@ -451,10 +451,8 @@ diag_link_wifi () {
   fn_enter ${FUNCNAME} $*
   ifc=$1
 
-  echo -n "${ifc}: "
-  ${IW} dev ${ifc} link
-  ${IW} dev ${ifc} station dump
-  ${IW} dev ${ifc} survey dump
+  echo "wifi stats (all interfaces):"
+  diag_wifi
 
   last_connect=$(grep -n "${ifc}: connect SSID" /var/log/messages{.1,})
   if [ -z "${last_connect}" ] ; then
@@ -487,6 +485,8 @@ diag_link_wifi () {
 
 # Print out WiFi debugging info
 diag_wifi () {
+  fn_enter_once ${FUNCNAME} || return
+
   for dir in /sys/kernel/debug/ieee80211/phy*/ath9k; do
     [ -d "${dir}" ] && head -1000 ${dir}/{dma,interrupt,recv,xmit,samples} | \
       mac_anonymize
