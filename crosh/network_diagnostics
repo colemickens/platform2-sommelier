@@ -39,7 +39,7 @@ pass () {
 }
 fail () {
     echo "FAIL: $*"
-    fail_count=$[fail_count+1]
+    fail_count=$((fail_count+1))
 }
 
 # Create a unique filename -- this is a "non secure" implementation (we would
@@ -67,7 +67,7 @@ do_netmask () {
   local -a mask=($(do_address_parts $2))
   local -a ret
   for part in ${!ip[@]}; do
-    ret+=($[ip[part] & mask[part]])
+    ret+=($((ip[part] & mask[part])))
   done
   (IFS=.; echo "${ret[*]}")
 }
@@ -115,7 +115,7 @@ get_tracelink () {
       fail "Gave up after ${link_count} steps"
       return
     fi
-    link_count=$[link_count + 1]
+    link_count=$((link_count + 1))
     file=${new_file}
   done
   fail "${file} does not exist"
@@ -172,6 +172,82 @@ get_status () {
     fail "${1} is stopped"
     return 1
   fi
+}
+
+# Join the rest of the arguments using the first argument as a delimiter.
+join () {
+  local delim=$1
+  shift
+  echo $(IFS="${delim}"; echo "$*")
+}
+
+seconds_compare () {
+  local test_time=$1
+  local reference_time=$2
+  if [ $test_time -gt $reference_time ] ; then
+    echo "$((test_time - reference_time)) seconds from now"
+  else
+    echo "$((reference_time - test_time)) seconds ago"
+  fi
+}
+
+# Read a DHCPCD lease file
+read_dhcp_lease () {
+  local file=$1
+  local message_types=(UNKNOWN DISCOVER OFFER REQUEST DECLINE \
+                       ACK NACK RELEASE INFORM)
+  local now=$(date +%s)
+  local lease_start=$(stat -c %Z $file)
+  local lease_age=$((now-lease_start))
+  echo "  Lease file age: $lease_age"
+  local lease_int=($(od --address-radix=n --format=u1 \
+                         --output-duplicates ${file}))
+  local lease_hex=($(od --address-radix=n --format=x1 \
+                         --output-duplicates ${file}))
+  echo "  Client MAC address: $(join : ${lease_hex[*]:28:6})"
+  echo "  Leased address: $(join . ${lease_int[*]:16:4})"
+  local server_address=$(join . ${lease_int[*]:20:4})
+  if [ "${server_address}" != "0.0.0.0" ]; then
+    echo "  Server address: ${server_address}"
+  fi
+  if [ "${lease_hex[*]:236:4}" != "63 82 53 63" ] ; then
+    echo "  This lease file does not contain the DHCP magic number (RFC 2131)"
+    return
+  fi
+  local idx=240
+  while [ -n "${lease_int[$idx]}" -a -n "${lease_int[$((idx+1))]}" ] ; do
+    local opt=${lease_int[$idx]}
+    local len=${lease_int[$((idx+1))]}
+    local data_int=(${lease_int[*]:$((idx+2)):$len})
+    local data_hex=(${lease_hex[*]:$((idx+2)):$len})
+    idx=$((idx + 2 + len))
+    case $opt in
+      0)
+        break
+        ;;
+      1)
+        echo "  Netmask: $(join . ${data_int[*]})"
+        ;;
+      51)
+        local lease_time=$(printf "%d"  0x$(join '' ${data_hex[*]}))
+        local lease_time_comment=$(seconds_compare $lease_time $lease_age)
+        echo "  Lease Time: ${lease_time} seconds (${lease_time_comment})"
+        ;;
+      53)
+        echo "  Message type: ${message_types[$data_int]-UNKNOWN}"
+        ;;
+      58)
+        local renew_time=$(printf "%d"  0x$(join '' ${data_hex[*]}))
+        local renew_time_comment=$(seconds_compare $renew_time $lease_age)
+        echo "  Renew Time: $renew_time seconds (${renew_time_comment})"
+        ;;
+      59)
+        local rebind_time=$(printf "%d"  0x$(join '' ${data_hex[*]}))
+        local rebind_time_comment=$(seconds_compare $rebind_time $lease_age)
+        echo "  Rebinding Time: $rebind_time seconds (${rebind_time_comment})"
+        ;;
+    esac
+  done
 }
 
 # Anonymize MAC addresses so they are not transmitted
@@ -304,12 +380,12 @@ diag_route () {
     ifinfo=$(get_if_route ${ip})
     gwinfo=$(get_gw_route ${ip})
     if [ -n "${ifinfo}" ]; then
-      diag_arp ${ip} ${ifinfo} || failures=$[failures + 1]
+      diag_arp ${ip} ${ifinfo} || failures=$((failures + 1))
     elif [ -n "${gwinfo}" ]; then
-      diag_arp ${gwinfo} || failures=$[failures + 1]
+      diag_arp ${gwinfo} || failures=$((failures + 1))
     else
       fail "No route to host ${ip}"
-      diag_ifall || failures=$[failures + 1]
+      diag_ifall || failures=$((failures + 1))
     fi
   done
 
@@ -332,10 +408,11 @@ diag_ping () {
       else
         fail "We were successfully able to join the network, but we cannot"
         fail "seem to reach the router right now.  This is either a link"
-        fail "level issue or the router is down."
+        fail "level issue, the router is down, or our lease is expired."
         diag_linkall
+        diag_dhcp_lease
       fi
-      failures=$[failures + 1]
+      failures=$((failures + 1))
     else
       pass "address ${ip}: ping OK"
     fi
@@ -389,7 +466,7 @@ diag_link_wifi () {
   file=${lastconn_info[0]}
   line=${lastconn_info[1]}
   size=$(wc -l ${file} | awk '{print $1}')
-  tail=$[size - line + 1]
+  tail=$((size - line + 1))
   state_changes=$(tail -${tail} ${file} | grep 'state change')
   last_state_change=$(grep 'state change' ${file} | tail -1 | \
                       sed -e 's/.*state change //')
@@ -537,7 +614,7 @@ diag_ifall () {
 
   local good_ifs=0
   for ifc in $(get_iflist); do
-    diag_if ${ifc} && good_ifs=$[good_ifs + 1]
+    diag_if ${ifc} && good_ifs=$((good_ifs + 1))
   done
   if [ ${good_ifs} -eq 0 ] ; then
     fail "No good interfaces found.  You are not connected to a network."
@@ -563,7 +640,7 @@ diag_nameservers () {
     echo "Testing connectivity to nameservers"
     if diag_ping $(get_nameservers); then
       fail "We can reach the nameservers but were not able to resolve hostnames"
-      fail "You may be behind a captive portar or there may be a DNS"
+      fail "You may be behind a captive portal or there may be a DNS"
       fail "configuration problem"
     fi
   fi
@@ -625,6 +702,16 @@ diag_cellular_dbus () {
     /org/chromium/ModemManager \
     org.freedesktop.ModemManager.EnumerateDevices || \
     fail "Could not contact ModemManager!"
+}
+
+# Read lease information
+diag_dhcp_lease () {
+  fn_enter ${FUNCNAME} $*
+  local lease_dir=/var/lib/dhcpcd
+  for file in ${lease_dir}/*.lease; do
+    echo "DHCP Lease file ${file}"
+    read_dhcp_lease ${file}
+  done
 }
 
 # Probe process status of flimflam and its process descendants
@@ -754,7 +841,7 @@ monitor_get_stats () {
     else
       prev=${mon_last[${param}]-0}
     fi
-    val=$[mon_current[${param}] - $prev]
+    val=$((mon_current[${param}] - $prev))
     mon_last[${param}]=${mon_current[${param}]}
     echo -n " ${param}:${val}"
   done
@@ -848,6 +935,10 @@ main () {
         --date)
           default_run=no
           diag_date ${test_host}
+          ;;
+        --dhcp)
+          default_run=no
+          diag_dhcp_lease
           ;;
         --flimflam)
           default_run=no
