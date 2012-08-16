@@ -97,6 +97,8 @@ class PowerManDaemon {
   void HandleSessionManagerStateChangedSignal(DBusMessage* message);
   DBusMessage* HandleExternalBacklightGetMethod(DBusMessage* message);
   DBusMessage* HandleExternalBacklightSetMethod(DBusMessage* message);
+  DBusMessage* HandleDisableTouchDevicesMethod(DBusMessage* message);
+  DBusMessage* HandleEnableTouchDevicesMethod(DBusMessage* message);
 
   void AddDBusSignalHandler(const std::string& interface,
                             const std::string& member,
@@ -167,6 +169,10 @@ class PowerManDaemon {
   // Lock and unlock virtual terminal switching.
   void LockVTSwitch();
   void UnlockVTSwitch();
+
+  // Disable and Enable touch devices on lid close/open
+  void DisableTouchDevices();
+  void EnableTouchDevices(bool display_on);
 
   // Acquire the console file handle.
   bool GetConsole();

@@ -50,6 +50,8 @@ extern const char kSuspendSignal[];
 extern const char kShutdownSignal[];
 extern const char kExternalBacklightGetMethod[];
 extern const char kExternalBacklightSetMethod[];
+extern const char kDisableTouchDevicesMethod[];
+extern const char kEnableTouchDevicesMethod[];
 
 // powerm -> powerd constants.
 extern const char kLidClosed[];

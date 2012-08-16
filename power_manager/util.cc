@@ -43,6 +43,12 @@ void Launch(const char* command) {
   }
 }
 
+void Run(const char* command) {
+  LOG(INFO) << "Run " << command;
+  if (system(command) != 0)
+    LOG(ERROR) << "Run " << command << " failed.";
+}
+
 void CreateStatusFile(const FilePath& file) {
   if (!file_util::WriteFile(file, NULL, 0) == -1)
     LOG(ERROR) << "Unable to create " << file.value();

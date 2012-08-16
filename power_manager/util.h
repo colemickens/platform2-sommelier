@@ -15,6 +15,9 @@ bool OOBECompleted();
 // Issue command asynchronously.
 void Launch(const char* command);
 
+// Issue command synchronously.
+void Run(const char* command);
+
 // Status file creation and removal.
 void CreateStatusFile(const FilePath& file);
 void RemoveStatusFile(const FilePath& file);

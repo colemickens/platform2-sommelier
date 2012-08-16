@@ -45,6 +45,9 @@ class MonitorReconfigure {
   void SendSetScreenPowerSignal(ScreenPowerState power_state,
       ScreenPowerOutputSelection output_selection);
 
+  void DisableTouchDevices();
+  void EnableTouchDevices(bool display_on);
+
   // Whether the internal panel output is enabled.
   bool is_internal_panel_enabled_;
 
