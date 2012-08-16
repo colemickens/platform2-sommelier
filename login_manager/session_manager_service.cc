@@ -201,7 +201,9 @@ namespace {
 // during test runs) in which case kKillTimeoutChromeCrashHandling is used.
 const int kKillTimeout = 3;
 
-const int kMaxArgumentsSize = 1024;
+// A buffer of this size is used to parse the command line to restart a
+// process like restarting Chrome for the guest mode.
+const int kMaxArgumentsSize = 1024 * 8;
 
 // TODO(mkrebs): Remove CollectChrome timeout and file when
 // crosbug.com/5872 is fixed.
