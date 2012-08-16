@@ -47,4 +47,5 @@ main.o.depends: adaptors/org.chromium.debugd.h
 debug_daemon.o.depends: adaptors/org.chromium.debugd.h
 debug_mode_tool.o.depends: proxies/org.chromium.flimflam.Manager.h \
                            proxies/org.freedesktop.DBus.Properties.h \
-                           proxies/org.freedesktop.ModemManager.h
+                           proxies/org.freedesktop.ModemManager.h \
+                           proxies/org.freedesktop.ModemManager1.h
