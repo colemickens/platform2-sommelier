@@ -239,6 +239,9 @@ bool PowerManDaemon::CancelDBusRequest() {
 
 DBusHandlerResult PowerManDaemon::MainDBusMethodHandler(
     DBusConnection* connection, DBusMessage* message, void* data) {
+  if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_METHOD_CALL)
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
   CHECK(daemon);
 

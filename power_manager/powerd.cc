@@ -711,6 +711,9 @@ void Daemon::RegisterUdevEventHandler() {
 DBusHandlerResult Daemon::MainDBusMethodHandler(DBusConnection* connection,
                                                 DBusMessage* message,
                                                 void* data) {
+  if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_METHOD_CALL)
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
   Daemon* daemon = static_cast<Daemon*>(data);
   CHECK(daemon);
   // Look up and call the corresponding dbus message handler.
