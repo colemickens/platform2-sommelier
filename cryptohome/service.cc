@@ -526,7 +526,7 @@ gboolean Service::AsyncCheckKey(gchar *userid,
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
   // Freed by the message loop
   MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount_, &event_source_);
+      new MountTaskObserverBridge(NULL, &event_source_);
   for (MountMap::iterator it = mounts_.begin(); it != mounts_.end(); ++it) {
     // Fast path - because we can check credentials on a Mount very fast, we can
     // afford to check them synchronously here and post the result
@@ -580,7 +580,7 @@ gboolean Service::AsyncMigrateKey(gchar *userid,
   UsernamePasskey credentials(userid, SecureBlob(to_key, strlen(to_key)));
 
   MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount_, &event_source_);
+      new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<MountTaskMigratePasskey> mount_task =
       new MountTaskMigratePasskey(bridge, homedirs_, credentials, from_key);
   *OUT_async_id = mount_task->sequence_id();
@@ -601,7 +601,7 @@ gboolean Service::Remove(gchar *userid,
   MountTaskResult result;
   base::WaitableEvent event(true, false);
   MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount_, &event_source_);
+      new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<MountTaskRemove> mount_task =
       new MountTaskRemove(bridge, NULL, credentials, homedirs_);
   mount_task->set_result(&result);
@@ -618,7 +618,7 @@ gboolean Service::AsyncRemove(gchar *userid,
                               GError **error) {
   UsernamePasskey credentials(userid, chromeos::Blob());
   MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount_, &event_source_);
+      new MountTaskObserverBridge(NULL, &event_source_);
   if (mount_->IsCryptohomeMountedForUser(credentials)) {
     scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
     mount_task->result()->set_return_status(false);
@@ -889,7 +889,7 @@ gboolean Service::DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
   MountTaskResult result;
   base::WaitableEvent event(true, false);
   MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount_, &event_source_);
+      new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task =
       new MountTaskAutomaticFreeDiskSpace(bridge, mount_);
   mount_task->set_result(&result);
@@ -904,7 +904,7 @@ gboolean Service::DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
 gboolean Service::AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
                                                        GError **error) {
   MountTaskObserverBridge* bridge =
-      new MountTaskObserverBridge(mount_, &event_source_);
+      new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task =
       new MountTaskAutomaticFreeDiskSpace(bridge, mount_);
   *OUT_async_id = mount_task->sequence_id();
