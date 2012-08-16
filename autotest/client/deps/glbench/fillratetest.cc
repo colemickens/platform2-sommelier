@@ -102,8 +102,8 @@ bool FillRateTest::Run() {
   GLuint texture_uniform = glGetUniformLocation(program, "texture");
   glUniform1i(texture_uniform, 0);
 
-  GLuint scale_uinform = glGetUniformLocation(program, "scale");
-  glUniform1f(scale_uinform, 1.f);
+  GLuint scale_uniform = glGetUniformLocation(program, "scale");
+  glUniform1f(scale_uniform, 1.f);
 
   FillRateTestNormal("fill_tex_nearest");
 
@@ -112,21 +112,21 @@ bool FillRateTest::Run() {
   FillRateTestNormal("fill_tex_bilinear");
 
   // lod = 0.5
-  glUniform1f(scale_uinform, 0.7071f);
+  glUniform1f(scale_uniform, 0.7071f);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                   GL_LINEAR_MIPMAP_LINEAR);
   FillRateTestNormalSubWindow("fill_tex_trilinear_linear_05",
                               0.7071f * g_width, 0.7071f * g_height);
 
   // lod = 0.4
-  glUniform1f(scale_uinform, 0.758f);
+  glUniform1f(scale_uniform, 0.758f);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                   GL_LINEAR_MIPMAP_LINEAR);
   FillRateTestNormalSubWindow("fill_tex_trilinear_linear_04",
                               0.758f * g_width, 0.758f * g_height);
 
   // lod = 0.1
-  glUniform1f(scale_uinform, 0.933f);
+  glUniform1f(scale_uniform, 0.933f);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                   GL_LINEAR_MIPMAP_LINEAR);
   FillRateTestNormalSubWindow("fill_tex_trilinear_linear_01",

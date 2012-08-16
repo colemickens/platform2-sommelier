@@ -210,6 +210,8 @@ done:
 
 
 bool YuvToRgbTest::Run() {
+  glClearColor(0.f, 1.f, 0.f, 1.f);
+
   GLuint program = 0;
   GLuint vertex_buffer = 0;
   GLfloat vertices[8] = {

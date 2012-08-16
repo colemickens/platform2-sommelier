@@ -153,6 +153,7 @@ void RunTest(TestBase* test, const char* testname,
 }
 
 bool DrawArraysTestFunc::TestFunc(int iter) {
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glFlush();
   for (int i = 0; i < iter-1; ++i) {
@@ -187,10 +188,16 @@ void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
   RunTest(this, buffer, g_width * g_height, true);
   glDisable(GL_BLEND);
 
+  // We are relying on the default depth clear value of 1 here.
+  // Fragments should have depth 0.
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_NOTEQUAL);
   snprintf(buffer, buffer_len, "mpixels_sec_%s_depth_neq", name);
   RunTest(this, buffer, g_width * g_height, true);
+
+  // The DrawArrays call invoked by this test shouldn't render anything
+  // because every fragment will fail the depth test.  Therefore we
+  // should see the clear color.
   glDepthFunc(GL_NEVER);
   snprintf(buffer, buffer_len, "mpixels_sec_%s_depth_never", name);
   RunTest(this, buffer, g_width * g_height, true);
