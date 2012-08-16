@@ -258,6 +258,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	dhcp_provider_unittest.o \
 	dns_client_unittest.o \
 	error_unittest.o \
+	ethernet_service_unittest.o \
 	hook_table_unittest.o \
 	http_proxy_unittest.o \
 	http_request_unittest.o \
@@ -289,6 +290,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_dhcp_provider.o \
 	mock_dhcp_proxy.o \
 	mock_dns_client.o \
+	mock_ethernet.o \
 	mock_event_dispatcher.o \
 	mock_glib.o \
 	mock_http_request.o \

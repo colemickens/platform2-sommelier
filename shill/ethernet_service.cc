@@ -54,4 +54,14 @@ string EthernetService::GetStorageIdentifier() const {
                             kServiceType, ethernet_->address().c_str());
 }
 
+void EthernetService::SetAutoConnect(const bool &connect, Error *error) {
+  if (!connect) {
+    Error::PopulateAndLog(
+        error, Error::kInvalidArguments,
+        "Auto-connect on Ethernet services must not be disabled.");
+    return;
+  }
+  Service::SetAutoConnect(connect, error);
+}
+
 }  // namespace shill

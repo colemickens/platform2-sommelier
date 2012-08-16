@@ -472,6 +472,9 @@ class Service : public base::RefCounted<Service> {
   // failure_ enum.
   void UpdateErrorProperty();
 
+  // RPC setter for the the "AutoConnect" property.
+  virtual void SetAutoConnect(const bool &connect, Error *error);
+
   // Property accessors reserved for subclasses
   EventDispatcher *dispatcher() const { return dispatcher_; }
   const std::string &GetEAPKeyManagement() const;
@@ -484,6 +487,7 @@ class Service : public base::RefCounted<Service> {
   void set_favorite(bool favorite) { favorite_ = favorite; }
 
  private:
+  friend class EthernetServiceTest;
   friend class MetricsTest;
   friend class ServiceAdaptorInterface;
   friend class VPNServiceTest;
@@ -532,7 +536,6 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortUniqueName[];
 
   bool GetAutoConnect(Error *error);
-  void SetAutoConnect(const bool &connect, Error *error);
 
   std::string GetCheckPortal(Error *error);
   void SetCheckPortal(const std::string &check_portal, Error *error);
