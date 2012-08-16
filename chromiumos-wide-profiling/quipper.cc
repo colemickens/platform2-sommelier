@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
   // Location of perf binary, now assuming perf is in the path.
   const std::string perf_binary = "perf";
   // Server to hold perf.data.gz
-  const std::string server = "http://chromeoswideprofiling.appspot.com/upload";
+  const std::string server = GAE_SERVER;
   // Profiling event TODO: support multiple events
   const std::string event = "cycles";
   // Profiling frequency in Hz (Higher # = more samples per second)

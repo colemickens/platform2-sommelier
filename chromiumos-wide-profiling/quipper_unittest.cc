@@ -18,7 +18,7 @@ const std::string perf_data = "/tmp/perf.data";
 const std::string event = "cycles";
 const std::string freq = "100";
 const std::string interval = "2";
-const std::string server = "http://chromeoswideprofiling.appspot.com";
+const std::string server = GAE_SERVER;
 const std::string dummy_board = "dummy_board";
 const std::string dummy_version = "dummy_version";
 

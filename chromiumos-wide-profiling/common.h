@@ -12,5 +12,6 @@
 #define COMPRESSED_EXTENSION ".gz"
 #define PERF_OUTPUT_LINE_LEN 128
 #define UNKNOWN_MACHINE_DETAIL "Unknown"
-#endif
 
+#define GAE_SERVER "https://chromeoswideprofiling.appspot.com/upload"
+#endif
