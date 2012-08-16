@@ -581,8 +581,12 @@ void CellularCapabilityUniversal::InitAPNList() {
     }
     apn_list_.push_back(props);
   }
-  cellular()->adaptor()->EmitStringmapsChanged(
-      flimflam::kCellularApnListProperty, apn_list_);
+  if (cellular()->adaptor()) {
+    cellular()->adaptor()->EmitStringmapsChanged(
+        flimflam::kCellularApnListProperty, apn_list_);
+  } else {
+    LOG(ERROR) << "Null RPC service adaptor.";
+  }
 }
 
 // always called from an async context
