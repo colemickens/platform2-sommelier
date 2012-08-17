@@ -210,7 +210,7 @@ class CellularTest : public testing::Test {
   }
   void InvokeGetSPN(Error *error, const GSMIdentifierCallback &callback,
                     int timeout) {
-    callback.Run(kTestCarrier, Error());
+    callback.Run(kTestCarrierSPN, Error());
   }
   void InvokeGetRegistrationInfo(Error *error,
                                  const RegistrationInfoCallback &callback,
@@ -294,6 +294,7 @@ class CellularTest : public testing::Test {
   static const char kDBusService[];
   static const char kDBusPath[];
   static const char kTestCarrier[];
+  static const char kTestCarrierSPN[];
   static const char kMEID[];
   static const char kIMEI[];
   static const char kIMSI[];
@@ -395,6 +396,7 @@ const char CellularTest::kDBusOwner[] = ":1.19";
 const char CellularTest::kDBusService[] = "org.chromium.ModemManager";
 const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
 const char CellularTest::kTestCarrier[] = "The Cellular Carrier";
+const char CellularTest::kTestCarrierSPN[] = "Home Provider";
 const char CellularTest::kMEID[] = "01234567EF8901";
 const char CellularTest::kIMEI[] = "987654321098765";
 const char CellularTest::kIMSI[] = "123456789012345";
@@ -475,7 +477,7 @@ TEST_F(CellularTest, StartGSMRegister) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(kIMEI, GetCapabilityGSM()->imei_);
   EXPECT_EQ(kIMSI, GetCapabilityGSM()->imsi_);
-  EXPECT_EQ(kTestCarrier, GetCapabilityGSM()->spn_);
+  EXPECT_EQ(kTestCarrierSPN, GetCapabilityGSM()->spn_);
   EXPECT_EQ(kMSISDN, GetCapabilityGSM()->mdn_);
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
@@ -485,7 +487,7 @@ TEST_F(CellularTest, StartGSMRegister) {
   EXPECT_EQ(kStrength, device_->service_->strength());
   EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->service_->roaming_state());
   EXPECT_EQ(kNetworkID, device_->service_->serving_operator().GetCode());
-  EXPECT_EQ("Orange", device_->service_->serving_operator().GetName());
+  EXPECT_EQ(kTestCarrier, device_->service_->serving_operator().GetName());
   EXPECT_EQ("ch", device_->service_->serving_operator().GetCountry());
 }
 

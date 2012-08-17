@@ -121,6 +121,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularCapabilityUniversalTest;
   FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalTest, ConnectApns);
+  FRIEND_TEST(CellularCapabilityUniversalTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalTest, DisconnectNoProxy);
   FRIEND_TEST(CellularCapabilityUniversalTest, GetTypeString);
   FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
@@ -131,6 +132,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, StartModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
+  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfo);
 
   // Methods used in starting a modem
   void Start_EnableModemCompleted(const ResultCallback &callback,

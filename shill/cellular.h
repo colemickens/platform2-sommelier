@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_
-#define SHILL_CELLULAR_
+#ifndef SHILL_CELLULAR_H_
+#define SHILL_CELLULAR_H_
 
 #include <string>
 #include <vector>
@@ -216,6 +216,15 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityCDMATest, GetRegistrationState);
   FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
+  FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
+  FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
+  FRIEND_TEST(CellularCapabilityTest, EnableModemSucceed);
+  FRIEND_TEST(CellularCapabilityTest, FinishEnable);
+  FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
+  FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
+  FRIEND_TEST(CellularCapabilityUniversalTest, CreateFriendlyServiceName);
+  FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
+  FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
   FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
@@ -237,14 +246,6 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
-  FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
-  FRIEND_TEST(CellularCapabilityTest, EnableModemSucceed);
-  FRIEND_TEST(CellularCapabilityTest, FinishEnable);
-  FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
-  FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
-  FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
-  FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
 
   // Names of properties in storage
   static const char kAllowRoaming[];
@@ -311,4 +312,4 @@ class Cellular : public Device {
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_
+#endif  // SHILL_CELLULAR_H_

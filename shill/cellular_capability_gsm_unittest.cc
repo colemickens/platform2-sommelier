@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <mm/mm-modem.h>
@@ -30,6 +31,7 @@
 #include "shill/proxy_factory.h"
 
 using base::Bind;
+using base::StringPrintf;
 using base::Unretained;
 using std::string;
 using std::vector;
@@ -631,6 +633,14 @@ TEST_F(CellularCapabilityGSMTest, UpdateOperatorInfo) {
   EXPECT_EQ(kOperatorName, capability_->serving_operator_.GetName());
   EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
   EXPECT_EQ(kOperatorName, cellular_->service()->serving_operator().GetName());
+
+  static const char kTestOperator[] = "Testcom";
+  capability_->serving_operator_.SetName(kTestOperator);
+  capability_->serving_operator_.SetCountry("");
+  capability_->UpdateOperatorInfo();
+  EXPECT_EQ(kTestOperator, capability_->serving_operator_.GetName());
+  EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
+  EXPECT_EQ(kTestOperator, cellular_->service()->serving_operator().GetName());
 }
 
 TEST_F(CellularCapabilityGSMTest, UpdateStatus) {
@@ -767,19 +777,27 @@ TEST_F(CellularCapabilityGSMTest, CreateFriendlyServiceName) {
   CellularCapabilityGSM::friendly_service_name_id_ = 0;
   EXPECT_EQ("GSMNetwork0", capability_->CreateFriendlyServiceName());
   EXPECT_EQ("GSMNetwork1", capability_->CreateFriendlyServiceName());
+
   capability_->serving_operator_.SetCode("1234");
   EXPECT_EQ("cellular_1234", capability_->CreateFriendlyServiceName());
+
   static const char kTestCarrier[] = "A GSM Carrier";
   capability_->carrier_ = kTestCarrier;
   EXPECT_EQ(kTestCarrier, capability_->CreateFriendlyServiceName());
+
+  static const char kHomeProvider[] = "The GSM Home Provider";
+  cellular_->home_provider_.SetName(kHomeProvider);
+  EXPECT_EQ(kTestCarrier, capability_->CreateFriendlyServiceName());
+  capability_->registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
+  EXPECT_EQ(kHomeProvider, capability_->CreateFriendlyServiceName());
+
   static const char kTestOperator[] = "A GSM Operator";
   capability_->serving_operator_.SetName(kTestOperator);
   EXPECT_EQ(kTestOperator, capability_->CreateFriendlyServiceName());
-  static const char kHomeProvider[] = "The GSM Home Provider";
-  cellular_->home_provider_.SetName(kHomeProvider);
-  EXPECT_EQ(kTestOperator, capability_->CreateFriendlyServiceName());
-  capability_->registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
-  EXPECT_EQ(kHomeProvider, capability_->CreateFriendlyServiceName());
+
+  capability_->registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
+  EXPECT_EQ(StringPrintf("%s | %s", kHomeProvider, kTestOperator),
+            capability_->CreateFriendlyServiceName());
 }
 
 TEST_F(CellularCapabilityGSMTest, SetStorageIdentifier) {

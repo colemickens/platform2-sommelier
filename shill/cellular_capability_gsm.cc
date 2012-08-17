@@ -439,19 +439,28 @@ void CellularCapabilityGSM::GetProperties(const ResultCallback &callback) {
 }
 
 string CellularCapabilityGSM::CreateFriendlyServiceName() {
-  SLOG(Cellular, 2) << __func__;
-  if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME &&
-      !cellular()->home_provider().GetName().empty()) {
-    return cellular()->home_provider().GetName();
+  SLOG(Cellular, 2) << __func__ << ": " << GetRoamingStateString();
+  string name = serving_operator_.GetName();
+  string home_provider_name = cellular()->home_provider().GetName();
+  if (!name.empty()) {
+    // If roaming, try to show "<home-provider> | <serving-operator>", per 3GPP
+    // rules (TS 31.102 and annex A of 122.101).
+    if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING &&
+        !home_provider_name.empty()) {
+      return home_provider_name + " | " + name;
+    }
+    return name;
   }
-  if (!serving_operator_.GetName().empty()) {
-    return serving_operator_.GetName();
+  if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME &&
+      !home_provider_name.empty()) {
+    return home_provider_name;
   }
   if (!carrier_.empty()) {
     return carrier_;
   }
-  if (!serving_operator_.GetCode().empty()) {
-    return "cellular_" + serving_operator_.GetCode();
+  string serving_operator_code = serving_operator_.GetCode();
+  if (!serving_operator_code.empty()) {
+    return "cellular_" + serving_operator_code;
   }
   return base::StringPrintf("GSMNetwork%u", friendly_service_name_id_++);
 }
@@ -488,6 +497,8 @@ void CellularCapabilityGSM::SetHomeProvider() {
     oper.SetName(spn_);
   }
   cellular()->set_home_provider(oper);
+  SLOG(Cellular, 2) << "Home provider: " << oper.GetCode() << ", "
+                    << oper.GetName() << ", " << oper.GetCountry();
   InitAPNList();
 }
 
@@ -500,15 +511,17 @@ void CellularCapabilityGSM::UpdateOperatorInfo() {
         mobile_provider_lookup_by_network(cellular()->provider_db(),
                                           network_id.c_str());
     if (provider) {
-      const char *provider_name = mobile_provider_get_name(provider);
-      if (provider_name && *provider_name) {
-        serving_operator_.SetName(provider_name);
-        if (provider->country) {
-          serving_operator_.SetCountry(provider->country);
+      if (serving_operator_.GetName().empty()) {
+        const char *provider_name = mobile_provider_get_name(provider);
+        if (provider_name && *provider_name) {
+          serving_operator_.SetName(provider_name);
         }
-        SLOG(Cellular, 2) << "Operator name: " << serving_operator_.GetName()
-                          << ", country: " << serving_operator_.GetCountry();
       }
+      if (provider->country && *provider->country) {
+        serving_operator_.SetCountry(provider->country);
+      }
+      SLOG(Cellular, 2) << "Operator name: " << serving_operator_.GetName()
+                        << ", country: " << serving_operator_.GetCountry();
     } else {
       SLOG(Cellular, 2) << "GSM provider not found.";
     }

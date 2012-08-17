@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <mobile_provider.h>
@@ -35,6 +36,7 @@
 #include "shill/proxy_factory.h"
 
 using base::Bind;
+using base::StringPrintf;
 using base::Unretained;
 using std::string;
 using std::vector;
@@ -113,6 +115,11 @@ class CellularCapabilityUniversalTest : public testing::Test {
 
   virtual void TearDown() {
     capability_->proxy_factory_ = NULL;
+  }
+
+  void SetService() {
+    cellular_->service_ = new CellularService(
+        &control_, &dispatcher_, &metrics_, NULL, cellular_);
   }
 
   void InitProviderDB() {
@@ -784,6 +791,48 @@ TEST_F(CellularCapabilityUniversalTest, SetHomeProvider) {
   EXPECT_EQ("", cellular_->home_provider().GetCode());
   ASSERT_TRUE(capability_->home_provider_);
   EXPECT_TRUE(capability_->home_provider_->requires_roaming);
+}
+
+TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfo) {
+  static const char kOperatorName[] = "Swisscom";
+  InitProviderDB();
+  capability_->serving_operator_.SetCode("22801");
+  SetService();
+  capability_->UpdateOperatorInfo();
+  EXPECT_EQ(kOperatorName, capability_->serving_operator_.GetName());
+  EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
+  EXPECT_EQ(kOperatorName, cellular_->service()->serving_operator().GetName());
+
+  static const char kTestOperator[] = "Testcom";
+  capability_->serving_operator_.SetName(kTestOperator);
+  capability_->serving_operator_.SetCountry("");
+  capability_->UpdateOperatorInfo();
+  EXPECT_EQ(kTestOperator, capability_->serving_operator_.GetName());
+  EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
+  EXPECT_EQ(kTestOperator, cellular_->service()->serving_operator().GetName());
+}
+
+TEST_F(CellularCapabilityUniversalTest, CreateFriendlyServiceName) {
+  CellularCapabilityUniversal::friendly_service_name_id_ = 0;
+  EXPECT_EQ("GSMNetwork0", capability_->CreateFriendlyServiceName());
+  EXPECT_EQ("GSMNetwork1", capability_->CreateFriendlyServiceName());
+
+  capability_->serving_operator_.SetCode("1234");
+  EXPECT_EQ("cellular_1234", capability_->CreateFriendlyServiceName());
+
+  static const char kHomeProvider[] = "The GSM Home Provider";
+  cellular_->home_provider_.SetName(kHomeProvider);
+  EXPECT_EQ("cellular_1234", capability_->CreateFriendlyServiceName());
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
+  EXPECT_EQ(kHomeProvider, capability_->CreateFriendlyServiceName());
+
+  static const char kTestOperator[] = "A GSM Operator";
+  capability_->serving_operator_.SetName(kTestOperator);
+  EXPECT_EQ(kTestOperator, capability_->CreateFriendlyServiceName());
+
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING;
+  EXPECT_EQ(StringPrintf("%s | %s", kHomeProvider, kTestOperator),
+            capability_->CreateFriendlyServiceName());
 }
 
 }  // namespace shill
