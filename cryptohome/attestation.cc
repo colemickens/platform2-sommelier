@@ -459,11 +459,12 @@ bool Attestation::VerifyQuote(const SecureBlob& aik_public_key,
 
   // Check that the quoted value matches the given PCR value. We can verify this
   // by reconstructing the TPM_PCR_COMPOSITE structure the TPM would create.
-  const uint8_t header[] = {static_cast<uint8_t>(0), static_cast<uint8_t>(2),
-                            static_cast<uint8_t>(1), static_cast<uint8_t>(0),
-                            static_cast<uint8_t>(0), static_cast<uint8_t>(0),
-                            static_cast<uint8_t>(0),
-                            quote.quoted_pcr_value().size()};
+  const uint8_t header[] = {
+    static_cast<uint8_t>(0), static_cast<uint8_t>(2),
+    static_cast<uint8_t>(1), static_cast<uint8_t>(0),
+    static_cast<uint8_t>(0), static_cast<uint8_t>(0),
+    static_cast<uint8_t>(0),
+    static_cast<uint8_t>(quote.quoted_pcr_value().size())};
   SecureBlob pcr_composite = SecureCat(
       SecureBlob(header, arraysize(header)),
       ConvertStringToBlob(quote.quoted_pcr_value()));
