@@ -77,6 +77,9 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   // Handle to StorageName map.
   typedef std::map<std::string, std::string> HandleMap;
 
+  // Returns the StorageName for a handle, or an empty string on failure.
+  std::string LookupHandle(const std::string& handle);
+
   HandleMap handle_map_;
 
   // Device manager needs to be last, so it is the first to be destroyed.

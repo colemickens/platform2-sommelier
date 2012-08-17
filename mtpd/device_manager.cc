@@ -8,7 +8,9 @@
 
 #include <set>
 
+#include <base/file_util.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <base/stringprintf.h>
@@ -17,6 +19,9 @@
 #include "mtpd/device_event_delegate.h"
 
 namespace {
+
+// The root node in a storage, as defined by the PTP/MTP standards.
+const uint32_t kPtpGohRootParent = 0xFFFFFFFF;
 
 const char kPtpInterfaceSignature[] = "6/1/1";
 const char kUsbPrefix[] = "usb";
@@ -37,6 +42,37 @@ std::string RawDeviceToString(const LIBMTP_raw_device_t& device) {
 std::string StorageToString(const std::string& usb_bus_str,
                             uint32_t storage_id) {
   return base::StringPrintf("%s:%u", usb_bus_str.c_str(), storage_id);
+}
+
+// Returns true if |path_component| is a folder and writes |path_component|'s id
+// to |file_id|.
+bool IsFolder(const LIBMTP_file_t* path_component,
+              size_t component_idx,
+              size_t num_path_components,
+              uint32_t* file_id) {
+  if (path_component->filetype != LIBMTP_FILETYPE_FOLDER)
+    return false;
+
+  *file_id = path_component->item_id;
+  return true;
+}
+
+// Given |path_component|, which is the (0-based) |component_idx| out of
+// |num_path_components|, returns true and writes |path_component|'s id to
+// |file_id| under the following conditions:
+// |path_component| is a folder and not the last component.
+// |path_component| is a file and the last component.
+bool IsValidComponentInFilePath(const LIBMTP_file_t* path_component,
+                                size_t component_idx,
+                                size_t num_path_components,
+                                uint32_t* file_id) {
+  bool is_file = (path_component->filetype != LIBMTP_FILETYPE_FOLDER);
+  bool is_last = (component_idx == num_path_components - 1);
+  if (is_file != is_last)
+    return false;
+
+  *file_id = path_component->item_id;
+  return true;
 }
 
 }  // namespace
@@ -141,6 +177,150 @@ const StorageInfo* DeviceManager::GetStorageInfo(
   const MtpStorageMap& storage_map = device_it->second.second;
   MtpStorageMap::const_iterator storage_it = storage_map.find(storage_id);
   return (storage_it != storage_map.end()) ? &(storage_it->second) : NULL;
+}
+
+bool DeviceManager::ReadDirectoryByPath(const std::string& storage_name,
+                                        const std::string& file_path,
+                                        DBusFileEntries* out) {
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+
+  uint32_t file_id = 0;
+  if (!PathToFileId(mtp_device, storage_id, file_path, IsFolder, &file_id))
+    return false;
+  return ReadDirectory(mtp_device, storage_id, file_id, out);
+}
+
+bool DeviceManager::ReadDirectoryById(const std::string& storage_name,
+                                      uint32_t file_id,
+                                      DBusFileEntries* out) {
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+  return ReadDirectory(mtp_device, storage_id, file_id, out);
+}
+
+bool DeviceManager::ReadFileByPath(const std::string& storage_name,
+                                   const std::string& file_path,
+                                   std::vector<uint8_t>* out) {
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+
+  uint32_t file_id = 0;
+  if (!PathToFileId(mtp_device, storage_id, file_path,
+                    IsValidComponentInFilePath, &file_id)) {
+    return false;
+  }
+  return ReadFile(mtp_device, storage_id, file_id, out);
+}
+
+bool DeviceManager::ReadFileById(const std::string& storage_name,
+                                 uint32_t file_id,
+                                 std::vector<uint8_t>* out) {
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+  return ReadFile(mtp_device, storage_id, file_id, out);
+}
+
+bool DeviceManager::PathToFileId(LIBMTP_mtpdevice_t* device,
+                                 uint32_t storage_id,
+                                 const std::string& file_path,
+                                 ProcessPathComponentFunc process_func,
+                                 uint32_t* file_id) {
+  std::vector<FilePath::StringType> path_components;
+  FilePath(file_path).GetComponents(&path_components);
+  uint32_t current_file_id = kPtpGohRootParent;
+  const size_t num_path_components = path_components.size();
+  for (size_t i = 0; i < num_path_components; ++i) {
+    if (path_components[i] == "/")
+      continue;
+
+    const LIBMTP_file_t* files =
+        LIBMTP_Get_Files_And_Folders(device, storage_id, current_file_id);
+    // Iterate through all files.
+    const uint32_t old_file_id = current_file_id;
+    for (const LIBMTP_file_t* file = files; file != NULL; file = file->next) {
+      if (file->filename != path_components[i])
+        continue;
+
+      // Found matching file name. See if it is valid.
+      if (!process_func(file, i, num_path_components, &current_file_id))
+        return false;
+    }
+    // If no matching component was found.
+    if (old_file_id == current_file_id)
+      return false;
+  }
+  // Successfully iterated through all path components.
+  *file_id = current_file_id;
+  return true;
+}
+
+bool DeviceManager::ReadDirectory(LIBMTP_mtpdevice_t* device,
+                                  uint32_t storage_id,
+                                  uint32_t file_id,
+                                  DBusFileEntries* out) {
+  const LIBMTP_file_t* files =
+      LIBMTP_Get_Files_And_Folders(device, storage_id, file_id);
+  if (!files)
+    return false;
+
+  for (const LIBMTP_file_t* file = files; file != NULL; file = file->next)
+    out->push_back(FileEntry(*file).ToDBusFormat());
+  return true;
+}
+
+bool DeviceManager::ReadFile(LIBMTP_mtpdevice_t* device,
+                             uint32_t storage_id,
+                             uint32_t file_id,
+                             std::vector<uint8_t>* out) {
+  FilePath path;
+  if (!file_util::CreateTemporaryFile(&path))
+    return false;
+
+  bool ret = false;
+  int transfer_status = LIBMTP_Get_File_To_File(device,
+                                                file_id,
+                                                path.value().c_str(),
+                                                NULL,
+                                                NULL);
+  if (transfer_status == 0) {
+    std::string data;
+    if (file_util::ReadFileToString(path, &data)) {
+      out->insert(out->begin(), data.begin(), data.end());
+      ret = true;
+    }
+  }
+  file_util::Delete(path, false);
+  return ret;
+}
+
+bool DeviceManager::GetDeviceAndStorageId(const std::string& storage_name,
+                                          LIBMTP_mtpdevice_t** mtp_device,
+                                          uint32_t* storage_id) {
+  std::string usb_bus_str;
+  uint32_t id = 0;
+  if (!ParseStorageName(storage_name, &usb_bus_str, &id))
+    return false;
+
+  MtpDeviceMap::const_iterator device_it = device_map_.find(usb_bus_str);
+  if (device_it == device_map_.end())
+    return false;
+
+  const MtpStorageMap& storage_map = device_it->second.second;
+  if (!ContainsKey(storage_map, id))
+    return false;
+
+  *storage_id = id;
+  *mtp_device = device_it->second.first;
+  return true;
 }
 
 void DeviceManager::HandleDeviceNotification(udev_device* device) {

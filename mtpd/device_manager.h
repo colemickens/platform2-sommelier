@@ -15,6 +15,7 @@
 
 #include <base/basictypes.h>
 
+#include "mtpd/file_entry.h"
 #include "mtpd/storage_info.h"
 
 extern "C" {
@@ -54,6 +55,36 @@ class DeviceManager {
                                std::string* usb_bus_str,
                                uint32_t* storage_id);
 
+  // Reads entries from |file_path| on |storage_name|.
+  // On success, returns true and writes the file entries from |file_path| into
+  // |out|. Otherwise returns false.
+  bool ReadDirectoryByPath(const std::string& storage_name,
+                           const std::string& file_path,
+                           DBusFileEntries* out);
+
+  // Reads entries from |file_id| on |storage_name|.
+  // |file_id| is the unique identifier for a directory on |storage_name|.
+  // On success, returns true and writes the file entries from |file_id| into
+  // |out|. Otherwise returns false.
+  bool ReadDirectoryById(const std::string& storage_name,
+                         uint32_t file_id,
+                         DBusFileEntries* out);
+
+  // Reads the contents of |file_path| on |storage_name|.
+  // On success, returns true and writes the file contents from |file_path| into
+  // |out|. Otherwise returns false.
+  bool ReadFileByPath(const std::string& storage_name,
+                         const std::string& file_path,
+                         std::vector<uint8_t>* out);
+
+  // Reads the contents of |file_id| on |storage_name|.
+  // |file_id| is the unique identifier for a directory on |storage_name|.
+  // On success, returns true and writes the file contents from |file_id| into
+  // |out|. Otherwise returns false.
+  bool ReadFileById(const std::string& storage_name,
+                         uint32_t file_id,
+                         std::vector<uint8_t>* out);
+
  private:
   // Key: MTP storage id, Value: metadata for the given storage.
   typedef std::map<uint32_t, StorageInfo> MtpStorageMap;
@@ -61,6 +92,44 @@ class DeviceManager {
   typedef std::pair<LIBMTP_mtpdevice_t*, MtpStorageMap> MtpDevice;
   // Key: device bus location, Value: MtpDevice.
   typedef std::map<std::string, MtpDevice> MtpDeviceMap;
+  // Function to process path components.
+  typedef bool (*ProcessPathComponentFunc)(const LIBMTP_file_t*, size_t,
+                                           size_t, uint32_t*);
+
+  // On storage with |storage_id| on |device|, looks up the file id for
+  // |file_path| using |process_func| to determine if the components in
+  // |file_path| are valid.
+  // On success, returns true, and write the file id to |file_id|.
+  // Otherwise returns false.
+  bool PathToFileId(LIBMTP_mtpdevice_t* device,
+                    uint32_t storage_id,
+                    const std::string& file_path,
+                    ProcessPathComponentFunc process_func,
+                    uint32_t* file_id);
+
+  // Reads entries from |device|'s storage with |storage_id|.
+  // |file_id| is the unique identifier for a directory on the given storage.
+  // On success, returns true and writes the file entries from |file_id| into
+  // |out|. Otherwise returns false.
+  bool ReadDirectory(LIBMTP_mtpdevice_t* device,
+                     uint32_t storage_id,
+                     uint32_t file_id,
+                     DBusFileEntries* out);
+
+  // Reads the contents of |file_id| from |device|'s storage with |storage_id|.
+  // |file_id| is the unique identifier for a directory on the given storage.
+  // On success, returns true and writes the file entries from |file_id| into
+  // |out|. Otherwise returns false.
+  bool ReadFile(LIBMTP_mtpdevice_t* device,
+                     uint32_t storage_id,
+                     uint32_t file_id,
+                     std::vector<uint8_t>* out);
+
+  // Helper function that returns the libmtp device handle and storage id for a
+  // given |storage_name|.
+  bool GetDeviceAndStorageId(const std::string& storage_name,
+                             LIBMTP_mtpdevice_t** mtp_device,
+                             uint32_t* storage_id);
 
   // Callback for udev when something changes for |device|.
   void HandleDeviceNotification(udev_device* device);

@@ -73,29 +73,77 @@ void MtpdServer::CloseStorage(const std::string& handle, DBus::Error &error) {
 DBusFileEntries MtpdServer::ReadDirectoryByPath(const std::string& handle,
                                                 const std::string& filePath,
                                                 DBus::Error &error) {
-  NOTIMPLEMENTED();
-  return DBusFileEntries();
+  std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty()) {
+    std::string error_msg = kInvalidHandleErrorMessage + handle;
+    error.set(kMtpdServiceError, error_msg.c_str());
+    return DBusFileEntries();
+  }
+
+  DBusFileEntries directory_listing;
+  if (!device_manager_.ReadDirectoryByPath(storage_name,
+                                           filePath,
+                                           &directory_listing)) {
+    error.set(kMtpdServiceError, "ReadDirectoryByPath failed");
+    return DBusFileEntries();
+  }
+  return directory_listing;
 }
 
 DBusFileEntries MtpdServer::ReadDirectoryById(const std::string& handle,
                                               const uint32_t& fileId,
                                               DBus::Error &error) {
-  NOTIMPLEMENTED();
-  return DBusFileEntries();
+  std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty()) {
+    std::string error_msg = kInvalidHandleErrorMessage + handle;
+    error.set(kMtpdServiceError, error_msg.c_str());
+    return DBusFileEntries();
+  }
+
+  DBusFileEntries directory_listing;
+  if (!device_manager_.ReadDirectoryById(storage_name,
+                                         fileId,
+                                         &directory_listing)) {
+    error.set(kMtpdServiceError, "ReadDirectoryById failed");
+    return DBusFileEntries();
+  }
+  return directory_listing;
 }
 
 std::vector<uint8_t> MtpdServer::ReadFileByPath(const std::string& handle,
                                                 const std::string& filePath,
                                                 DBus::Error &error) {
-  NOTIMPLEMENTED();
-  return std::vector<uint8_t>();
+  std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty()) {
+    std::string error_msg = kInvalidHandleErrorMessage + handle;
+    error.set(kMtpdServiceError, error_msg.c_str());
+    return std::vector<uint8_t>();
+  }
+
+  std::vector<uint8_t> file_contents;
+  if (!device_manager_.ReadFileByPath(storage_name, filePath, &file_contents)) {
+    error.set(kMtpdServiceError, "ReadFileByPath failed");
+    return std::vector<uint8_t>();
+  }
+  return file_contents;
 }
 
 std::vector<uint8_t> MtpdServer::ReadFileById(const std::string& handle,
                                               const uint32_t& fileId,
                                               DBus::Error &error) {
-  NOTIMPLEMENTED();
-  return std::vector<uint8_t>();
+  std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty()) {
+    std::string error_msg = kInvalidHandleErrorMessage + handle;
+    error.set(kMtpdServiceError, error_msg.c_str());
+    return std::vector<uint8_t>();
+  }
+
+  std::vector<uint8_t> file_contents;
+  if (!device_manager_.ReadFileById(storage_name, fileId, &file_contents)) {
+    error.set(kMtpdServiceError, "ReadFileById failed");
+    return std::vector<uint8_t>();
+  }
+  return file_contents;
 }
 
 bool MtpdServer::IsAlive(DBus::Error &error) {
@@ -118,6 +166,11 @@ int MtpdServer::GetDeviceEventDescriptor() const {
 
 void MtpdServer::ProcessDeviceEvents() {
   device_manager_.ProcessDeviceEvents();
+}
+
+std::string MtpdServer::LookupHandle(const std::string& handle) {
+  HandleMap::const_iterator it = handle_map_.find(handle);
+  return (it == handle_map_.end()) ? std::string() : it->second;
 }
 
 }  // namespace mtpd
