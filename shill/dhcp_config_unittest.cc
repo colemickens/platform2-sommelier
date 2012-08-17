@@ -399,6 +399,7 @@ TEST_F(DHCPConfigTest, ReleaseIPArpGW) {
 TEST_F(DHCPConfigTest, RenewIP) {
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   config_->pid_ = 456;
+  EXPECT_FALSE(config_->RenewIP());  // Expect no crash with NULL proxy.
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
   config_->proxy_.reset(proxy_.release());
   EXPECT_TRUE(config_->RenewIP());

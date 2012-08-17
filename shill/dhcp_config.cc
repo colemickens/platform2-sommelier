@@ -109,6 +109,10 @@ bool DHCPConfig::RenewIP() {
   if (!pid_) {
     return false;
   }
+  if (!proxy_.get()) {
+    LOG(ERROR) << "Unable to renew IP before acquiring destination.";
+    return false;
+  }
   proxy_->Rebind(device_name());
   StartDHCPTimeout();
   return true;
