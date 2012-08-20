@@ -144,6 +144,11 @@ bool Tpm::Init(Platform* platform, bool open_key) {
     file_util::Delete(FilePath(kTpmOwnedFile), false);
     file_util::Delete(FilePath(kTpmStatusFile), false);
   }
+  if (successful_check && is_owned_) {
+    if (!file_util::PathExists(FilePath(kTpmOwnedFile))) {
+      file_util::WriteFile(FilePath(kTpmOwnedFile), NULL, 0);
+    }
+  }
   TpmStatus tpm_status;
   if (LoadTpmStatus(&tpm_status)) {
     if (tpm_status.has_owner_password()) {
