@@ -38,6 +38,7 @@ class UserBoundNlMessage {
     kTypeOther,  // Specified in the message but not listed, here.
     kTypeError
   };
+
   // TODO(wdg): break 'Attribute' into its own class to handle
   // nested attributes better.
 

@@ -131,91 +131,135 @@ bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
   // strings describing the status.
   if (!connect_status_map_) {
     connect_status_map_ = new map<uint16_t, string>;
-    (*connect_status_map_)[0] = "Successful";
-    (*connect_status_map_)[1] = "Unspecified failure";
-    (*connect_status_map_)[2] = "Previous authentication no longer valid";
-    (*connect_status_map_)[3] = "Deauthenticated because sending station is "
-        "leaving (or has left) the IBSS or ESS";
-    (*connect_status_map_)[7] = "Class 3 frame received from non-authenticated "
-        "station";
-    (*connect_status_map_)[10] = "Cannot support all requested capabilities in "
-        "the capability information field";
-    (*connect_status_map_)[11] = "Reassociation denied due to inability to "
-        "confirm that association exists";
-    (*connect_status_map_)[12] = "Association denied due to reason outside the "
-        "scope of this standard";
-    (*connect_status_map_)[13] = "Responding station does not support the "
-        "specified authentication algorithm";
-    (*connect_status_map_)[14] = "Received an authentication frame with "
-        "authentication transaction sequence number out of expected sequence";
-    (*connect_status_map_)[15] = "Authentication rejected because of challenge "
-        "failure";
-    (*connect_status_map_)[16] = "Authentication rejected due to timeout "
-        "waiting for next frame in sequence";
-    (*connect_status_map_)[17] = "Association denied because AP is unable to "
-        "handle additional associated STA";
-    (*connect_status_map_)[18] = "Association denied due to requesting station "
-        "not supporting all of the data rates in the BSSBasicRateSet parameter";
-    (*connect_status_map_)[19] = "Association denied due to requesting station "
-        "not supporting the short preamble option";
-    (*connect_status_map_)[20] = "Association denied due to requesting station "
-        "not supporting the PBCC modulation option";
-    (*connect_status_map_)[21] = "Association denied due to requesting station "
-        "not supporting the channel agility option";
-    (*connect_status_map_)[22] = "Association request rejected because "
-        "Spectrum Management capability is required";
-    (*connect_status_map_)[23] = "Association request rejected because the "
-        "information in the Power Capability element is unacceptable";
-    (*connect_status_map_)[24] = "Association request rejected because the "
-        "information in the Supported Channels element is unacceptable";
-    (*connect_status_map_)[25] = "Association request rejected due to "
-        "requesting station not supporting the short slot time option";
-    (*connect_status_map_)[26] = "Association request rejected due to "
-        "requesting station not supporting the ER-PBCC modulation option";
-    (*connect_status_map_)[27] = "Association denied due to requesting STA not "
-        "supporting HT features";
-    (*connect_status_map_)[28] = "R0KH Unreachable";
-    (*connect_status_map_)[29] = "Association denied because the requesting "
-        "STA does not support the PCO transition required by the AP";
-    (*connect_status_map_)[30] = "Association request rejected temporarily; "
-        "try again later";
-    (*connect_status_map_)[31] = "Robust Management frame policy violation";
-    (*connect_status_map_)[32] = "Unspecified, QoS related failure";
-    (*connect_status_map_)[33] = "Association denied due to QAP having "
-        "insufficient bandwidth to handle another QSTA";
-    (*connect_status_map_)[34] = "Association denied due to poor channel "
-        "conditions";
-    (*connect_status_map_)[35] = "Association (with QBSS) denied due to "
-        "requesting station not supporting the QoS facility";
-    (*connect_status_map_)[37] = "The request has been declined";
-    (*connect_status_map_)[38] = "The request has not been successful as one "
-        "or more parameters have invalid values";
-    (*connect_status_map_)[39] = "The TS has not been created because the "
-        "request cannot be honored. However, a suggested Tspec is provided so "
-        "that the initiating QSTA may attempt to send another TS with the "
-        "suggested changes to the TSpec";
-    (*connect_status_map_)[40] = "Invalid Information Element";
-    (*connect_status_map_)[41] = "Group Cipher is not valid";
-    (*connect_status_map_)[42] = "Pairwise Cipher is not valid";
-    (*connect_status_map_)[43] = "AKMP is not valid";
-    (*connect_status_map_)[44] = "Unsupported RSN IE version";
-    (*connect_status_map_)[45] = "Invalid RSN IE Capabilities";
-    (*connect_status_map_)[46] = "Cipher suite is rejected per security policy";
-    (*connect_status_map_)[47] = "The TS has not been created. However, the HC "
-        "may be capable of creating a TS, in response to a request, after the "
-        "time indicated in the TS Delay element";
-    (*connect_status_map_)[48] = "Direct link is not allowed in the BSS by "
-        "policy";
-    (*connect_status_map_)[49] = "Destination STA is not present within this "
-        "QBSS";
-    (*connect_status_map_)[50] = "The destination STA is not a QSTA";
-    (*connect_status_map_)[51] = "Association denied because Listen Interval "
-        "is too large";
-    (*connect_status_map_)[52] = "Invalid Fast BSS Transition Action Frame "
-        "Count";
-    (*connect_status_map_)[53] = "Invalid PMKID";
-    (*connect_status_map_)[54] = "Invalid MDIE";
-    (*connect_status_map_)[55] = "Invalid FTIE";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusSuccessful] = "Successful";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusFailure] =
+        "Unspecified failure";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusNoLongerValid] =
+        "Previous authentication no longer valid";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusSenderHasLeft] =
+        "Deauthenticated because sending station is leaving (or has left) the "
+        "IBSS or ESS";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusNonAuthenticated] =
+        "Class 3 frame received from non-authenticated station";
+    (*connect_status_map_)[
+        IEEE_80211::kConnectStatusAllCapabilitiesNotSupported] =
+        "Cannot support all requested capabilities in the capability "
+        "information field";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusCantConfirmAssociation] =
+        "Reassociation denied due to inability to confirm that association "
+        "exists";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusAssociationDenied] =
+        "Association denied due to reason outside the scope of this standard";
+    (*connect_status_map_)[
+        IEEE_80211::kConnectStatusAuthenticationUnsupported] =
+        "Responding station does not support the specified authentication "
+        "algorithm";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusOutOfSequence] =
+        "Received an authentication frame with authentication transaction "
+        "sequence number out of expected sequence";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusChallengeFailure] =
+        "Authentication rejected because of challenge failure";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusFrameTimeout] =
+        "Authentication rejected due to timeout waiting for next frame in "
+        "sequence";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusMaxSta] = "Association "
+        "denied because AP is unable to handle additional associated STA";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusDataRateUnsupported] =
+        "Association denied due to requesting station not supporting all of "
+        "the data rates in the BSSBasicRateSet parameter";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusShortPreambleUnsupported] =
+        "Association denied due to requesting station not supporting the "
+        "short preamble option";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusPbccUnsupported] =
+        "Association denied due to requesting station not supporting the PBCC "
+        "modulation option";
+    (*connect_status_map_)[
+        IEEE_80211::kConnectStatusChannelAgilityUnsupported] =
+        "Association denied due to requesting station not supporting the "
+        "channel agility option";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusNeedSpectrumManagement] =
+        "Association request rejected because Spectrum Management capability "
+        "is required";
+    (*connect_status_map_)[
+        IEEE_80211::kConnectStatusUnacceptablePowerCapability] =
+        "Association request rejected because the information in the Power "
+        "Capability element is unacceptable";
+    (*connect_status_map_)[
+        IEEE_80211::kConnectStatusUnacceptableSupportedChannelInfo] =
+        "Association request rejected because the information in the "
+        "Supported Channels element is unacceptable";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusShortTimeSlotRequired] =
+        "Association request rejected due to requesting station not "
+        "supporting the short slot time option";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusErPbccRequired] =
+        "Association request rejected due to requesting station not supporting "
+        "the ER-PBCC modulation option";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusHtFeaturesRequired] =
+        "Association denied due to requesting STA not supporting HT features";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusR0khUnreachable] = "R0KH "
+        "Unreachable";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusPcoTransitionRequired] =
+        "Association denied because the requesting STA does not support the "
+        "PCO transition required by the AP";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusRejectedTemporarily] =
+        "Association request rejected temporarily; try again later";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusRobustPolicyViolated] =
+        "Robust Management frame policy violation";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusQosFailure] =
+        "Unspecified, QoS related failure";
+    (*connect_status_map_)[
+        IEEE_80211::kConnectStatusInsufficientBandwithForQsta] =
+        "Association denied due to QAP having insufficient bandwidth to handle "
+        "another QSTA";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusPoorConditions] =
+        "Association denied due to poor channel conditions";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusQosNotSupported] =
+        "Association (with QBSS) denied due to requesting station not "
+        "supporting the QoS facility";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusDeclined] = "The request "
+        "has been declined";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidParameterValues] =
+        "The request has not been successful as one or more parameters have "
+        "invalid values";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusCannotBeHonored] = "The "
+        "TS has not been created because the request cannot be honored. "
+        "However, a suggested Tspec is provided so that the initiating QSTA "
+        "may attempt to send another TS with the suggested changes to the "
+        "TSpec";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidInfoElement] =
+        "Invalid Information Element";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusGroupCipherInvalid] =
+        "Group Cipher is not valid";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusPairwiseCipherInvalid] =
+        "Pairwise Cipher is not valid";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusAkmpInvalid] = "AKMP is "
+        "not valid";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusUnsupportedRsnIeVersion] =
+      "Unsupported RSN IE version";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidRsnIeCaps] =
+        "Invalid RSN IE Capabilities";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusCipherSuiteRejected] =
+        "Cipher suite is rejected per security policy";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusTsDelayNotMet] = "The TS "
+        "has not been created. However, the HC may be capable of creating a "
+        "TS, in response to a request, after the time indicated in the TS "
+        "Delay element";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusDirectLinkIllegal] =
+        "Direct link is not allowed in the BSS by policy";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusStaNotInQbss] =
+        "Destination STA is not present within this QBSS";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusStaNotInQsta] = "The "
+        "destination STA is not a QSTA";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusExcessiveListenInterval] =
+        "Association denied because Listen Interval is too large";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidFastBssFrameCount] =
+        "Invalid Fast BSS Transition Action Frame Count";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidPmkid] =
+        "Invalid PMKID";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidMdie] =
+        "Invalid MDIE";
+    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidFtie] =
+        "Invalid FTIE";
   }
 
   return true;
@@ -1751,15 +1795,8 @@ UserBoundNlMessage *UserBoundNlMessageFactory::CreateMessage(nlmsghdr *msg) {
       message.reset(new ConnectMessage()); break;
     case DeauthenticateMessage::kCommand:
       message.reset(new DeauthenticateMessage()); break;
-
-#if 0
-    // TODO(wdg): our version of 'iw' doesn't have this so I can't put it in
-    // without breaking the diff.  Remove the 'if 0' after the unit tests are
-    // added.
     case DeleteStationMessage::kCommand:
       message.reset(new DeleteStationMessage()); break;
-#endif
-
     case DisassociateMessage::kCommand:
       message.reset(new DisassociateMessage()); break;
     case DisconnectMessage::kCommand:

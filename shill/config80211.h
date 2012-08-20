@@ -167,43 +167,6 @@ class Config80211 {
   DISALLOW_COPY_AND_ASSIGN(Config80211);
 };
 
-
-// Example Config80211 callback object; the callback prints a description of
-// each message with its attributes.  You want to make it a singleton so that
-// its life isn't dependent on any other object (plus, since this handles
-// global events from msg80211, you only want/need one).
-class Callback80211Object {
- public:
-  Callback80211Object();
-  virtual ~Callback80211Object();
-
-  // Get a pointer to the singleton Callback80211Object.
-  static Callback80211Object *GetInstance();
-
-  // Install ourselves as a callback.  Done automatically by constructor.
-  bool InstallAsCallback();
-
-  // Deinstall ourselves as a callback.  Done automatically by destructor.
-  bool DeinstallAsCallback();
-
-  // Simple accessor.
-  void set_config80211(Config80211 *config80211) { config80211_ = config80211; }
-
- protected:
-  friend struct base::DefaultLazyInstanceTraits<Callback80211Object>;
-
- private:
-  // When installed, this is the method Config80211 will call when it gets a
-  // message from the mac80211 drivers.
-  void Config80211MessageCallback(const UserBoundNlMessage &msg);
-
-  Config80211 *config80211_;
-
-  // Config80211MessageCallback method bound to this object to install as a
-  // callback.
-  base::WeakPtrFactory<Callback80211Object> weak_ptr_factory_;
-};
-
 }  // namespace shill
 
 #endif  // SHILL_CONFIG80211_H_

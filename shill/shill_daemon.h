@@ -9,7 +9,6 @@
 
 #include <base/memory/scoped_ptr.h>
 
-#include "shill/config80211.h"
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
@@ -18,7 +17,9 @@
 
 namespace shill {
 
+class Callback80211Object;
 class Config;
+class Config80211;
 class ControlInterface;
 class DHCPProvider;
 class Error;

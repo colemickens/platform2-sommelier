@@ -110,6 +110,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	arp_packet.o \
 	async_connection.o \
 	byte_string.o \
+	callback80211_object.o \
 	cellular.o \
 	cellular_capability.o \
 	cellular_capability_cdma.o \

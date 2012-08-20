@@ -12,6 +12,8 @@
 #include <base/bind.h>
 #include <base/file_path.h>
 
+#include "shill/callback80211_object.h"
+#include "shill/config80211.h"
 #include "shill/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/logging.h"

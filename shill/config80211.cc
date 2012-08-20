@@ -24,7 +24,6 @@
 using base::Bind;
 using base::LazyInstance;
 using base::StringAppendF;
-using base::StringPrintf;
 using std::map;
 using std::string;
 
@@ -32,7 +31,6 @@ namespace shill {
 
 namespace {
 LazyInstance<Config80211> g_config80211 = LAZY_INSTANCE_INITIALIZER;
-LazyInstance<Callback80211Object> g_callback80211 = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
 map<Config80211::EventType, std::string> *Config80211::event_types_ = NULL;
@@ -173,55 +171,6 @@ int Config80211::OnNlMessageReceived(struct nl_msg *raw_message,
   SLOG(WiFi, 5) << output;
 
   return NL_SKIP;  // Skip current message, continue parsing buffer.
-}
-
-// Callback80211Object
-
-Callback80211Object::Callback80211Object() :
-    config80211_(NULL),
-    weak_ptr_factory_(this) {
-}
-
-Callback80211Object::~Callback80211Object() {
-  DeinstallAsCallback();
-}
-
-void Callback80211Object::Config80211MessageCallback(
-    const UserBoundNlMessage &msg) {
-  SLOG(WiFi, 2) << "Received " << msg.GetMessageTypeString()
-                << " (" << + msg.GetMessageType() << ")";
-  scoped_ptr<UserBoundNlMessage::AttributeNameIterator> i;
-
-  for (i.reset(msg.GetAttributeNameIterator()); !i->AtEnd(); i->Advance()) {
-    string value = "<unknown>";
-    msg.GetAttributeString(i->GetName(), &value);
-    SLOG(WiFi, 2) << "   Attr:" << msg.StringFromAttributeName(i->GetName())
-                  << "=" << value
-                  << " Type:" << msg.GetAttributeTypeString(i->GetName());
-  }
-}
-
-bool Callback80211Object::InstallAsCallback() {
-  if (config80211_) {
-    Config80211::Callback callback =
-        Bind(&Callback80211Object::Config80211MessageCallback,
-             weak_ptr_factory_.GetWeakPtr());
-    config80211_->SetDefaultCallback(callback);
-    return true;
-  }
-  return false;
-}
-
-bool Callback80211Object::DeinstallAsCallback() {
-  if (config80211_) {
-    config80211_->UnsetDefaultCallback();
-    return true;
-  }
-  return false;
-}
-
-Callback80211Object *Callback80211Object::GetInstance() {
-  return g_callback80211.Pointer();
 }
 
 }  // namespace shill.
