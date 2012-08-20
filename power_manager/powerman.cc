@@ -331,16 +331,22 @@ void PowerManDaemon::HandleRequestCleanShutdownSignal(DBusMessage*) {  // NOLINT
 
 void PowerManDaemon::HandlePowerStateChangedSignal(DBusMessage* message) {
   const char* state = '\0';
+  int32 power_rc = -1;
   DBusError error;
   dbus_error_init(&error);
   if (dbus_message_get_args(message, &error,
                             DBUS_TYPE_STRING, &state,
+                            DBUS_TYPE_INT32, &power_rc,
                             DBUS_TYPE_INVALID)) {
     // on == resume via powerd_suspend
     if (g_str_equal(state, "on") == TRUE) {
       LOG(INFO) << "Resuming has commenced";
-      GenerateMetricsOnResumeEvent();
-      retry_suspend_count_ = 0;
+      if (power_rc == 0) {
+        GenerateMetricsOnResumeEvent();
+        retry_suspend_count_ = 0;
+      } else {
+        LOG(INFO) << "Suspend attempt failed";
+      }
 #ifdef SUSPEND_LOCK_VT
       UnlockVTSwitch();     // Allow virtual terminal switching again.
 #endif

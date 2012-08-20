@@ -921,10 +921,12 @@ bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {  // NOLINT
 
 bool Daemon::HandlePowerStateChangedSignal(DBusMessage* message) {
   const char* state = '\0';
+  int32 power_rc = -1;
   DBusError error;
   dbus_error_init(&error);
   if (dbus_message_get_args(message, &error,
                             DBUS_TYPE_STRING, &state,
+                            DBUS_TYPE_INT32, &power_rc,
                             DBUS_TYPE_INVALID)) {
     OnPowerStateChange(state);
   } else {
