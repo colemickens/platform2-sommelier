@@ -107,6 +107,9 @@ bool DBusMessageIterToValue(DBus::MessageIter& message, Value** v);
 bool DBusPropertyMapToValue(std::map<std::string, DBus::Variant>&
                             properties, Value** v);
 
+// Return a random printable string representing |len| bytes of randomness.
+bool SecureRandomString(size_t len, std::string* result);
+
 }  // namespace chromeos
 
 

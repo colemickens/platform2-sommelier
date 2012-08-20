@@ -9,8 +9,9 @@
 #include <string>
 #include <vector>
 
-#include "base/logging.h"
+#include <base/logging.h>
 #include <dbus/dbus.h>
+#include <fcntl.h>
 
 namespace {
 
@@ -224,6 +225,26 @@ bool DBusPropertyMapToValue(std::map<std::string, DBus::Variant>& properties,
     dv->Set(it->first, v);
   }
   *v = static_cast<Value*>(dv);
+  return true;
+}
+
+bool SecureRandom(uint8_t *buf, size_t len) {
+  int fd = open("/dev/urandom", O_RDONLY);
+  if (fd < 0)
+    return false;
+  if (read(fd, buf, len) != len) {
+    close(fd);
+    return false;
+  }
+  close(fd);
+  return true;
+}
+
+bool SecureRandomString(size_t len, std::string* result) {
+  char rbuf[len];
+  if (!SecureRandom(reinterpret_cast<uint8_t*>(rbuf), len))
+    return false;
+  *result = base::HexEncode(rbuf, len);
   return true;
 }
 
