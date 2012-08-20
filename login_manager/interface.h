@@ -106,6 +106,12 @@ gboolean session_manager_restart_job(SessionManager *self,
                                      gchar *arguments,
                                      gboolean *OUT_done,
                                      GError **error);
+gboolean session_manager_restart_job_with_auth(SessionManager *self,
+                                               gint pid,
+                                               gchar *cookie,
+                                               gchar *arguments,
+                                               gboolean *OUT_done,
+                                               GError **error);
 gboolean session_manager_start_session_service(SessionManager *self,
                                                gchar *name,
                                                gboolean *OUT_done,

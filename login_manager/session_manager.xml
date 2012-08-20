@@ -118,6 +118,15 @@
       <arg type="s" name="command_line" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
+    <method name="RestartJobWithAuth">
+      <!-- PID of the job to restart -->
+      <arg type="i" name="pid" direction="in" />
+      <!-- Authentication cookie -->
+      <arg type="s" name="cookie" direction="in" />
+      <!-- Command line arguments to restart the job with -->
+      <arg type="s" name="command_line" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
     <!-- These two methods start and stop per-session services. Per-session
          services are ordinary upstart services that are stopped when the
          session ends. -->

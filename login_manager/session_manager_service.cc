@@ -36,6 +36,7 @@
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/utility.h>
 
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
@@ -113,6 +114,8 @@ void DBusGMethodCompletion::Failure(const PolicyService::Error& error) {
   context_ = NULL;
   delete this;
 }
+
+size_t SessionManagerService::kCookieEntropyBytes = 16;
 
 // static
 // Common code between SIG{HUP, INT, TERM}Handler.
@@ -253,6 +256,9 @@ SessionManagerService::SessionManagerService(
   g_shutdown_pipe_write_fd = pipefd[1];
 
   memset(signals_, 0, sizeof(signals_));
+  if (!chromeos::SecureRandomString(kCookieEntropyBytes, &cookie_))
+    LOG(FATAL) << "Can't generate auth cookie.";
+
   SetupHandlers();
 }
 
@@ -461,6 +467,8 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
   child_job->RecordTime();
   int pid = system_->fork();
   if (pid == 0) {
+    if (setenv("CROS_SESSION_MANAGER_COOKIE", cookie_.c_str(), 1))
+      exit(1);
     RevertHandlers();
     child_job->Run();
     exit(ChildJobInterface::kCantExec);  // Run() is not supposed to return.
@@ -833,6 +841,22 @@ gboolean SessionManagerService::RestartJob(gint pid,
                       OUT_done, error);
 }
 
+gboolean SessionManagerService::RestartJobWithAuth(gint pid,
+                                                   gchar* cookie,
+                                                   gchar* arguments,
+                                                   gboolean* OUT_done,
+                                                   GError** error) {
+  // This method isn't filtered - instead, we check for cookie validity.
+  if (!IsValidCookie(cookie)) {
+    *OUT_done = FALSE;
+    const char msg[] = "Invalid auth cookie.";
+    LOG(ERROR) << msg;
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_SERVICE, msg);
+    return FALSE;
+  }
+  return RestartJob(pid, arguments, OUT_done, error);
+}
+
 gboolean SessionManagerService::StartSessionService(gchar *name,
                                                     gboolean *OUT_done,
                                                     GError **error) {
@@ -1195,6 +1219,13 @@ gboolean SessionManagerService::RetrievePolicyFromService(
   LOG(ERROR) << msg;
   system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
   return FALSE;
+}
+
+bool SessionManagerService::IsValidCookie(const char *cookie) {
+  size_t len = strlen(cookie) < cookie_.size()
+             ? strlen(cookie)
+             : cookie_.size();
+  return chromeos::SafeMemcmp(cookie, cookie_.data(), len) == 0;
 }
 
 }  // namespace login_manager

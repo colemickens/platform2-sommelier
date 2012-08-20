@@ -564,4 +564,17 @@ TEST_F(SessionManagerDBusTest, RestartJobWrongPid) {
   EXPECT_EQ(FALSE, out);
 }
 
+TEST_F(SessionManagerDBusTest, RestartJobWithAuthBadCookie) {
+  TrivialInitManager();
+  manager_->test_api().set_child_pid(0, kDummyPid);
+
+  gboolean out;
+  gint pid = kDummyPid;
+  gchar cookie[] = "bogus-cookie";
+  gchar arguments[] = "dummy";
+  EXPECT_EQ(FALSE, manager_->RestartJobWithAuth(pid, cookie, arguments, &out,
+                                                NULL));
+  EXPECT_EQ(FALSE, out);
+}
+
 }  // namespace login_manager

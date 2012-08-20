@@ -184,6 +184,16 @@ gboolean session_manager_restart_job(SessionManager *self,
   SESSION_MANAGER_WRAP_METHOD(RestartJob, pid, arguments, OUT_done, error);
 }
 
+gboolean session_manager_restart_job_with_auth(SessionManager *self,
+                                               gint pid,
+                                               gchar *cookie,
+                                               gchar *arguments,
+                                               gboolean *OUT_done,
+                                               GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(RestartJobWithAuth, pid, cookie, arguments,
+                              OUT_done, error);
+}
+
 gboolean session_manager_start_session_service(SessionManager *self,
                                                gchar *name,
                                                gboolean *OUT_done,

@@ -316,6 +316,15 @@ class SessionManagerService
                       gboolean* OUT_done,
                       GError** error);
 
+  // Restarts job with specified pid as RestartJob(), but authenticates the
+  // caller based on a supplied cookie value also known to the session manager
+  // rather than pid.
+  gboolean RestartJobWithAuth(gint pid,
+                              gchar* cookie,
+                              gchar* arguments,
+                              gboolean* OUT_done,
+                              GError** error);
+
   // Manage per-session services, which die when the session ends.
   gboolean StartSessionService(gchar *name, gboolean *OUT_done, GError **error);
   gboolean StopSessionService(gchar *name, gboolean *OUT_done, GError **error);
@@ -444,6 +453,8 @@ class SessionManagerService
                                      GArray** policy_blob,
                                      GError** error);
 
+  bool IsValidCookie(const char *cookie);
+
   static const uint32 kMaxEmailSize;
   static const char kEmailSeparator;
   static const char kLegalCharacters[];
@@ -493,6 +504,9 @@ class SessionManagerService
   bool shutting_down_;
   bool shutdown_already_;
   ExitCode exit_code_;
+
+  static size_t kCookieEntropyBytes;
+  std::string cookie_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
 };
