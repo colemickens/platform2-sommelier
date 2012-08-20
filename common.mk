@@ -161,8 +161,7 @@ MAKECMDGOALS ?= all
 _all::
 %::
 	$(if $(filter 0,$(RUN_ONCE)), \
-	  $(QUIET)mkdir -p "$(OUT)" && \
-	  cd $(OUT) && \
+	  cd "$(OUT)" && \
 	  $(MAKE) -r -I "$(SRC)" -f "$(CURDIR)/Makefile" \
 	    SRC="$(CURDIR)" OUT="$(OUT)" $(foreach g,$(MAKECMDGOALS),"$(g)"),)
 	$(eval RUN_ONCE := 1)
@@ -182,10 +181,15 @@ ifeq ($(words $(filter-out Makefile common.mk %.d $(SRC)/Makefile \
 # Helper macros
 #
 
+# Create the directory if it doesn't yet exist.
+define auto_mkdir
+  $(if $(wildcard $(dir $1)),$2,$(QUIET)mkdir -p "$(dir $1)")
+endef
+
 # Creates the actual archive with an index.
 # The target $@ must end with .pic.a or .pie.a.
 define update_archive
-  $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
+  $(call auto_mkdir,$(TARGET_OR_MEMBER))
   $(QUIET)# Create the archive in one step to avoid parallel use accessing it
   $(QUIET)# before all the symbols are present.
   @$(ECHO) "AR		$(subst \
@@ -338,7 +342,7 @@ TARGET_OR_MEMBER = $(lastword $(subst $(LP), ,$(subst $(RP),,$(or $%,$@))))
 # all non-.o files.
 define COMPILE_BINARY_implementation
   @$(ECHO) "LD$(1)		$(subst $(PWD)/,,$(TARGET_OR_MEMBER))"
-  $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
+  $(call auto_mkdir,$(TARGET_OR_MEMBER))
   $(QUIET)$($(1)) $(COMPILE_PIE_FLAGS) -o $(TARGET_OR_MEMBER) \
     $(2) $(LDFLAGS) \
     $(filter %.o %.a,$(^:.o=.pie.o)) \
@@ -362,7 +366,7 @@ endef
 COMMA := ,
 define COMPILE_LIBRARY_implementation
   @$(ECHO) "SHARED$(1)	$(subst $(PWD)/,,$(TARGET_OR_MEMBER))"
-  $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
+  $(call auto_mkdir,$(TARGET_OR_MEMBER))
   $(QUIET)$($(1)) -shared -Wl,-E -o $(TARGET_OR_MEMBER) \
     $(2) $(LDFLAGS) \
     $(if $(filter %.a,$^),-Wl$(COMMA)--whole-archive,) \
@@ -517,30 +521,30 @@ CXX_OBJECTS = $(patsubst $(SRC)/%.cc,%.o,$(wildcard $(SRC)/*.cc))
 # $(5) source dir: _only_ if $(SRC). Leave blank for obj tree.
 define add_object_rules
 $(patsubst %.o,%.pie.o,$(1)): %.pie.o: $(5)%.$(3) %.o.depends
-	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(call auto_mkdir,$$@)
 	$$(call OBJECT_PATTERN_implementation,$(2),\
           $$(basename $$@),$$($(4)) $$(CPPFLAGS) $$(OBJ_PIE_FLAG))
 
 $(patsubst %.o,%.pic.o,$(1)): %.pic.o: $(5)%.$(3) %.o.depends
-	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(call auto_mkdir,$$@)
 	$$(call OBJECT_PATTERN_implementation,$(2),\
           $$(basename $$@),$$($(4)) $$(CPPFLAGS) -fPIC)
 
 # Placeholder for depends
 $(patsubst %.o,%.o.depends,$(1)):
-	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(call auto_mkdir,$$@)
 	$$(QUIET)touch "$$@"
 
 $(1): %.o: %.pic.o %.pie.o
-	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(call auto_mkdir,$$@)
 	$$(QUIET)touch "$$@"
 endef
 
 define OBJECT_PATTERN_implementation
   @$(ECHO) "$(1)		$(subst $(SRC)/,,$<) -> $(2).o"
-  $(QUIET)mkdir -p "$(dir $(2))"
+  $(call auto_mkdir,$@)
   $(QUIET)$($(1)) -c -MD -MF $(2).d $(3) -o $(2).o $<
-  $(QUIET)# Wrap all the deps in $(wildcard) so a missing header
+  $(QUIET)# Wrap all the deps in $$(wildcard) so a missing header
   $(QUIET)# won't cause weirdness.  First we remove newlines and \,
   $(QUIET)# then wrap it.
   $(QUIET)sed -i -e :j -e '$$!N;s|\\\s*\n| |;tj' \
