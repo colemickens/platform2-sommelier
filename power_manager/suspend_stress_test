@@ -1,0 +1,92 @@
+#!/bin/sh
+
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+. /usr/share/misc/shflags
+
+DEFINE_integer count 10000 "number of iterations" c
+DEFINE_integer suspend_max 10 "Max seconds to suspend"
+DEFINE_integer suspend_min 5 "Min seconds to suspend"
+DEFINE_integer wake_max 10 "Max seconds to stay awake for"
+DEFINE_integer wake_min 5 "Min seconds to stay awake for"
+DEFINE_boolean backup_rtc ${FLAGS_FALSE} "Use second rtc if present for backup"
+DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
+
+get_failed_count() {
+  awk '$1 == "fail:" { print $2 }' /sys/kernel/debug/suspend_stats
+}
+
+random() {
+  hexdump -n 2 -e '/2 "%u"' /dev/urandom
+}
+
+boolean_value() {
+  if [ $1 -eq ${FLAGS_TRUE} ]; then
+    echo "true"
+  else
+    echo "false"
+  fi
+}
+
+FLAGS "$@" || exit 1
+
+if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ] &&
+  [ ! -e /sys/class/rtc/rtc1/wakealarm ]; then
+  echo "rtc1 not present, not setting second wakealarm"
+  FLAGS_backup_rtc=${FLAGS_FALSE}
+fi
+
+echo "Running ${FLAGS_count} iterations with:"
+echo "  suspend: ${FLAGS_suspend_min}-${FLAGS_suspend_max} seconds"
+echo "  wake: ${FLAGS_wake_min}-${FLAGS_wake_max} seconds"
+echo "  backup_rtc: $(boolean_value ${FLAGS_backup_rtc})"
+echo "  errors_fatal: $(boolean_value ${FLAGS_errors_fatal})"
+
+initial_failed=$(get_failed_count)
+suspend_interval=$(( FLAGS_suspend_max - FLAGS_suspend_min + 1 ))
+wake_interval=$(( FLAGS_wake_max - FLAGS_wake_min + 1 ))
+
+cur=0
+firmware_errors=0
+while [ ${cur} -lt ${FLAGS_count} ]; do
+  : $(( cur += 1 ))
+  printf "Suspend ${cur} of ${FLAGS_count}: "
+
+  sus_time=$(( ( $(random) % suspend_interval ) + FLAGS_suspend_min ))
+  printf "sleep for ${sus_time} seconds..."
+  echo 0 > /sys/class/rtc/rtc0/wakealarm
+  echo "+${sus_time}" > /sys/class/rtc/rtc0/wakealarm
+  if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ]; then
+    echo 0 > /sys/class/rtc/rtc1/wakealarm
+    echo "+$(( sus_time + 5 ))" > /sys/class/rtc/rtc1/wakealarm
+  fi
+
+  powerd_suspend >/dev/null 2>&1
+
+  # look for errors in firmware log
+  if [ -f /sys/firmware/log ] && grep ERROR /sys/firmware/log; then
+    echo "Firmware error found, stopping test."
+    : $(( firmware_errors += 1 ))
+    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+      exit 5
+    fi
+  fi
+  # Make sure suspend succeeded
+  if [ $(get_failed_count) -gt ${initial_failed} ]; then
+    echo "Suspend failed, stopping test."
+    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+      exit 6
+    fi
+  fi
+
+  wake_time=$(( ( $(random) % wake_interval ) + FLAGS_wake_min ))
+  printf " wake for ${wake_time} seconds..."
+  sleep ${wake_time}
+  echo ""
+done
+
+echo "Finished ${cur} iterations."
+echo "suspend_failures: $(( $(get_failed_count) - ${initial_failed} ))"
+echo "firmware log errors: ${firmware_errors}"
