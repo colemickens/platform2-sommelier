@@ -130,13 +130,21 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
   // The battery voltage used in calculating time remaining.  This may or may
   // not be the same as the instantaneous voltage |battery_voltage|, as voltage
   // levels vary over the time the battery is charged or discharged.
-  double nominal_voltage;
+  double nominal_voltage = -1.0;
   if (file_util::PathExists(battery_path_.Append("voltage_min_design")))
     nominal_voltage = battery_info_->ReadScaledDouble("voltage_min_design");
   else if (file_util::PathExists(battery_path_.Append("voltage_max_design")))
     nominal_voltage = battery_info_->ReadScaledDouble("voltage_max_design");
-  else
+
+  // Nominal voltage is not required to obtain charge level.  If it is missing,
+  // just log a message, set to |battery_voltage| so time remaining
+  // calculations will function, and proceed.
+  if (nominal_voltage <= 0) {
+    LOG(WARNING) << "Invalid voltage_min/max_design reading: "
+                 << nominal_voltage << "V."
+                 << " Time remaining calculations will not be available.";
     nominal_voltage = battery_voltage;
+  }
   status->nominal_voltage = nominal_voltage;
 
   // ACPI has two different battery types: charge_battery and energy_battery.
@@ -159,10 +167,11 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
         battery_info_->ReadScaledDouble("charge_full_design");
     battery_charge = battery_info_->ReadScaledDouble("charge_now");
   } else if (file_util::PathExists(battery_path_.Append("energy_full"))) {
-    if (nominal_voltage <= 0 || battery_voltage <= 0) {
-      LOG(WARNING) << "Non valid voltage_nominal/now readings for "
-                   << "energy-to-charge conversion : "
-                   << nominal_voltage << "/" << battery_voltage;
+    // Valid |battery_voltage| is required to determine the charge so return
+    // early if it is not present.
+    if (battery_voltage <= 0) {
+      LOG(WARNING) << "Invalid voltage_now reading for energy-to-charge"
+                   << " conversion: " << battery_voltage;
       return false;
     }
     battery_charge_full =
