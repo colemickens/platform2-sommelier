@@ -16,6 +16,18 @@ namespace {
 
 const char kInvalidHandleErrorMessage[] = "Invalid handle ";
 
+void SetInvalidHandleError(const std::string& handle, DBus::Error* error) {
+  std::string error_msg = kInvalidHandleErrorMessage + handle;
+  error->set(kMtpdServiceError, error_msg.c_str());
+}
+
+template<typename ReturnType>
+ReturnType InvalidHandle(const std::string& handle, DBus::Error* error) {
+  SetInvalidHandleError(handle, error);
+  return ReturnType();
+}
+
+
 }  // namespace
 
 MtpdServer::MtpdServer(DBus::Connection& connection)
@@ -26,19 +38,19 @@ MtpdServer::MtpdServer(DBus::Connection& connection)
 MtpdServer::~MtpdServer() {
 }
 
-std::vector<std::string> MtpdServer::EnumerateStorage(DBus::Error &error) {
+std::vector<std::string> MtpdServer::EnumerateStorage(DBus::Error& error) {
   return device_manager_.EnumerateStorage();
 }
 
 DBusMTPStorage MtpdServer::GetStorageInfo(const std::string& storageName,
-                                          DBus::Error &error) {
+                                          DBus::Error& error) {
   const StorageInfo* info = device_manager_.GetStorageInfo(storageName);
   return info ? info->ToDBusFormat() : DBusMTPStorage();
 }
 
 std::string MtpdServer::OpenStorage(const std::string& storageName,
                                     const std::string& mode,
-                                    DBus::Error &error) {
+                                    DBus::Error& error) {
   // TODO(thestig) Handle read-write and possibly append-only modes.
   if (mode != kReadOnlyMode) {
     std::string error_msg = "Cannot open " + storageName + " in mode: " + mode;
@@ -63,22 +75,17 @@ std::string MtpdServer::OpenStorage(const std::string& storageName,
   return id;
 }
 
-void MtpdServer::CloseStorage(const std::string& handle, DBus::Error &error) {
-  if (handle_map_.erase(handle) == 0) {
-    std::string error_msg = kInvalidHandleErrorMessage + handle;
-    error.set(kMtpdServiceError, error_msg.c_str());
-  }
+void MtpdServer::CloseStorage(const std::string& handle, DBus::Error& error) {
+  if (handle_map_.erase(handle) == 0)
+    SetInvalidHandleError(handle, &error);
 }
 
 DBusFileEntries MtpdServer::ReadDirectoryByPath(const std::string& handle,
                                                 const std::string& filePath,
-                                                DBus::Error &error) {
+                                                DBus::Error& error) {
   std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty()) {
-    std::string error_msg = kInvalidHandleErrorMessage + handle;
-    error.set(kMtpdServiceError, error_msg.c_str());
-    return DBusFileEntries();
-  }
+  if (storage_name.empty())
+    return InvalidHandle<DBusFileEntries>(handle, &error);
 
   DBusFileEntries directory_listing;
   if (!device_manager_.ReadDirectoryByPath(storage_name,
@@ -92,13 +99,10 @@ DBusFileEntries MtpdServer::ReadDirectoryByPath(const std::string& handle,
 
 DBusFileEntries MtpdServer::ReadDirectoryById(const std::string& handle,
                                               const uint32_t& fileId,
-                                              DBus::Error &error) {
+                                              DBus::Error& error) {
   std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty()) {
-    std::string error_msg = kInvalidHandleErrorMessage + handle;
-    error.set(kMtpdServiceError, error_msg.c_str());
-    return DBusFileEntries();
-  }
+  if (storage_name.empty())
+    return InvalidHandle<DBusFileEntries>(handle, &error);
 
   DBusFileEntries directory_listing;
   if (!device_manager_.ReadDirectoryById(storage_name,
@@ -112,13 +116,10 @@ DBusFileEntries MtpdServer::ReadDirectoryById(const std::string& handle,
 
 std::vector<uint8_t> MtpdServer::ReadFileByPath(const std::string& handle,
                                                 const std::string& filePath,
-                                                DBus::Error &error) {
+                                                DBus::Error& error) {
   std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty()) {
-    std::string error_msg = kInvalidHandleErrorMessage + handle;
-    error.set(kMtpdServiceError, error_msg.c_str());
-    return std::vector<uint8_t>();
-  }
+  if (storage_name.empty())
+    return InvalidHandle<std::vector<uint8_t> >(handle, &error);
 
   std::vector<uint8_t> file_contents;
   if (!device_manager_.ReadFileByPath(storage_name, filePath, &file_contents)) {
@@ -130,13 +131,10 @@ std::vector<uint8_t> MtpdServer::ReadFileByPath(const std::string& handle,
 
 std::vector<uint8_t> MtpdServer::ReadFileById(const std::string& handle,
                                               const uint32_t& fileId,
-                                              DBus::Error &error) {
+                                              DBus::Error& error) {
   std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty()) {
-    std::string error_msg = kInvalidHandleErrorMessage + handle;
-    error.set(kMtpdServiceError, error_msg.c_str());
-    return std::vector<uint8_t>();
-  }
+  if (storage_name.empty())
+    return InvalidHandle<std::vector<uint8_t> >(handle, &error);
 
   std::vector<uint8_t> file_contents;
   if (!device_manager_.ReadFileById(storage_name, fileId, &file_contents)) {
@@ -146,7 +144,7 @@ std::vector<uint8_t> MtpdServer::ReadFileById(const std::string& handle,
   return file_contents;
 }
 
-bool MtpdServer::IsAlive(DBus::Error &error) {
+bool MtpdServer::IsAlive(DBus::Error& error) {
   return true;
 }
 

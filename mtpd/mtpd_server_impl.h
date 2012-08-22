@@ -39,29 +39,27 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
 
   // org::chromium::Mtpd_adaptor implementation.
   virtual std::vector<std::string> EnumerateStorage(
-      DBus::Error &error) OVERRIDE;
+      DBus::Error& error) OVERRIDE;
   virtual DBusMTPStorage GetStorageInfo(const std::string& storageName,
-                                        DBus::Error &error) OVERRIDE;
+                                        DBus::Error& error) OVERRIDE;
   virtual std::string OpenStorage(const std::string& storageName,
                                   const std::string& mode,
-                                  DBus::Error &error) OVERRIDE;
+                                  DBus::Error& error) OVERRIDE;
   virtual void CloseStorage(const std::string& handle,
-                            DBus::Error &error) OVERRIDE;
+                            DBus::Error& error) OVERRIDE;
   virtual DBusFileEntries ReadDirectoryByPath(const std::string& handle,
                                               const std::string& filePath,
-                                              DBus::Error &error) OVERRIDE;
+                                              DBus::Error& error) OVERRIDE;
   virtual DBusFileEntries ReadDirectoryById(const std::string& handle,
                                             const uint32_t& fileId,
-                                            DBus::Error &error) OVERRIDE;
-  virtual std::vector<uint8_t> ReadFileByPath(
-      const std::string& handle,
-      const std::string& filePath,
-      DBus::Error &error) OVERRIDE;
-  virtual std::vector<uint8_t> ReadFileById(
-      const std::string& handle,
-      const uint32_t& fileId,
-      DBus::Error &error) OVERRIDE;
-  virtual bool IsAlive(DBus::Error &error) OVERRIDE;
+                                            DBus::Error& error) OVERRIDE;
+  virtual std::vector<uint8_t> ReadFileByPath(const std::string& handle,
+                                              const std::string& filePath,
+                                              DBus::Error& error) OVERRIDE;
+  virtual std::vector<uint8_t> ReadFileById(const std::string& handle,
+                                            const uint32_t& fileId,
+                                            DBus::Error& error) OVERRIDE;
+  virtual bool IsAlive(DBus::Error& error) OVERRIDE;
 
   // DeviceEventDelegate implementation.
   virtual void StorageAttached(const std::string& storage_name) OVERRIDE;

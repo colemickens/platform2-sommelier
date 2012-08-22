@@ -216,7 +216,7 @@ bool DeviceManager::ReadFileByPath(const std::string& storage_name,
                     IsValidComponentInFilePath, &file_id)) {
     return false;
   }
-  return ReadFile(mtp_device, storage_id, file_id, out);
+  return ReadFile(mtp_device, file_id, out);
 }
 
 bool DeviceManager::ReadFileById(const std::string& storage_name,
@@ -226,7 +226,7 @@ bool DeviceManager::ReadFileById(const std::string& storage_name,
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
-  return ReadFile(mtp_device, storage_id, file_id, out);
+  return ReadFile(mtp_device, file_id, out);
 }
 
 bool DeviceManager::PathToFileId(LIBMTP_mtpdevice_t* device,
@@ -278,7 +278,6 @@ bool DeviceManager::ReadDirectory(LIBMTP_mtpdevice_t* device,
 }
 
 bool DeviceManager::ReadFile(LIBMTP_mtpdevice_t* device,
-                             uint32_t storage_id,
                              uint32_t file_id,
                              std::vector<uint8_t>* out) {
   FilePath path;

@@ -56,7 +56,7 @@ class DeviceManager {
                                uint32_t* storage_id);
 
   // Reads entries from |file_path| on |storage_name|.
-  // On success, returns true and writes the file entries from |file_path| into
+  // On success, returns true and writes the file entries of |file_path| into
   // |out|. Otherwise returns false.
   bool ReadDirectoryByPath(const std::string& storage_name,
                            const std::string& file_path,
@@ -64,14 +64,14 @@ class DeviceManager {
 
   // Reads entries from |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
-  // On success, returns true and writes the file entries from |file_id| into
+  // On success, returns true and writes the file entries of |file_id| into
   // |out|. Otherwise returns false.
   bool ReadDirectoryById(const std::string& storage_name,
                          uint32_t file_id,
                          DBusFileEntries* out);
 
   // Reads the contents of |file_path| on |storage_name|.
-  // On success, returns true and writes the file contents from |file_path| into
+  // On success, returns true and writes the file contents of |file_path| into
   // |out|. Otherwise returns false.
   bool ReadFileByPath(const std::string& storage_name,
                          const std::string& file_path,
@@ -79,7 +79,7 @@ class DeviceManager {
 
   // Reads the contents of |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
-  // On success, returns true and writes the file contents from |file_id| into
+  // On success, returns true and writes the file contents of |file_id| into
   // |out|. Otherwise returns false.
   bool ReadFileById(const std::string& storage_name,
                          uint32_t file_id,
@@ -109,21 +109,20 @@ class DeviceManager {
 
   // Reads entries from |device|'s storage with |storage_id|.
   // |file_id| is the unique identifier for a directory on the given storage.
-  // On success, returns true and writes the file entries from |file_id| into
+  // On success, returns true and writes the file entries of |file_id| into
   // |out|. Otherwise returns false.
   bool ReadDirectory(LIBMTP_mtpdevice_t* device,
                      uint32_t storage_id,
                      uint32_t file_id,
                      DBusFileEntries* out);
 
-  // Reads the contents of |file_id| from |device|'s storage with |storage_id|.
-  // |file_id| is the unique identifier for a directory on the given storage.
-  // On success, returns true and writes the file entries from |file_id| into
+  // Reads the contents of |file_id| from |device|.
+  // |file_id| is the unique identifier for a file on the given storage.
+  // On success, returns true and writes the file contents of |file_id| into
   // |out|. Otherwise returns false.
   bool ReadFile(LIBMTP_mtpdevice_t* device,
-                     uint32_t storage_id,
-                     uint32_t file_id,
-                     std::vector<uint8_t>* out);
+                uint32_t file_id,
+                std::vector<uint8_t>* out);
 
   // Helper function that returns the libmtp device handle and storage id for a
   // given |storage_name|.
