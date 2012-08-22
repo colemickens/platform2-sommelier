@@ -44,37 +44,6 @@ std::string StorageToString(const std::string& usb_bus_str,
   return base::StringPrintf("%s:%u", usb_bus_str.c_str(), storage_id);
 }
 
-// Returns true if |path_component| is a folder and writes |path_component|'s id
-// to |file_id|.
-bool IsFolder(const LIBMTP_file_t* path_component,
-              size_t component_idx,
-              size_t num_path_components,
-              uint32_t* file_id) {
-  if (path_component->filetype != LIBMTP_FILETYPE_FOLDER)
-    return false;
-
-  *file_id = path_component->item_id;
-  return true;
-}
-
-// Given |path_component|, which is the (0-based) |component_idx| out of
-// |num_path_components|, returns true and writes |path_component|'s id to
-// |file_id| under the following conditions:
-// |path_component| is a folder and not the last component.
-// |path_component| is a file and the last component.
-bool IsValidComponentInFilePath(const LIBMTP_file_t* path_component,
-                                size_t component_idx,
-                                size_t num_path_components,
-                                uint32_t* file_id) {
-  bool is_file = (path_component->filetype != LIBMTP_FILETYPE_FOLDER);
-  bool is_last = (component_idx == num_path_components - 1);
-  if (is_file != is_last)
-    return false;
-
-  *file_id = path_component->item_id;
-  return true;
-}
-
 }  // namespace
 
 namespace mtpd {
@@ -127,6 +96,48 @@ bool DeviceManager::ParseStorageName(const std::string& storage_name,
 
   *usb_bus_str = base::StringPrintf("%s:%s", kUsbPrefix, split_str[1].c_str());
   *storage_id = id;
+  return true;
+}
+
+// static
+bool DeviceManager::IsFolder(const LIBMTP_file_t* path_component,
+                             size_t component_idx,
+                             size_t num_path_components,
+                             uint32_t* file_id) {
+  if (path_component->filetype != LIBMTP_FILETYPE_FOLDER)
+    return false;
+
+  *file_id = path_component->item_id;
+  return true;
+}
+
+// static
+bool DeviceManager::IsValidComponentInFilePath(
+    const LIBMTP_file_t* path_component,
+    size_t component_idx,
+    size_t num_path_components,
+    uint32_t* file_id) {
+  bool is_file = (path_component->filetype != LIBMTP_FILETYPE_FOLDER);
+  bool is_last = (component_idx == num_path_components - 1);
+  if (is_file != is_last)
+    return false;
+
+  *file_id = path_component->item_id;
+  return true;
+}
+
+// static
+bool DeviceManager::IsValidComponentInFileOrFolderPath(
+    const LIBMTP_file_t* path_component,
+    size_t component_idx,
+    size_t num_path_components,
+    uint32_t* file_id) {
+  bool is_file = (path_component->filetype != LIBMTP_FILETYPE_FOLDER);
+  bool is_last = (component_idx == num_path_components - 1);
+  if (is_file && !is_last)
+    return false;
+
+  *file_id = path_component->item_id;
   return true;
 }
 
@@ -229,6 +240,32 @@ bool DeviceManager::ReadFileById(const std::string& storage_name,
   return ReadFile(mtp_device, file_id, out);
 }
 
+bool DeviceManager::GetFileInfoByPath(const std::string& storage_name,
+                                      const std::string& file_path,
+                                      DBusFileEntry* out) {
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+
+  uint32_t file_id = 0;
+  if (!PathToFileId(mtp_device, storage_id, file_path,
+                    IsValidComponentInFileOrFolderPath, &file_id)) {
+    return false;
+  }
+  return GetFileInfo(mtp_device, file_id, out);
+}
+
+bool DeviceManager::GetFileInfoById(const std::string& storage_name,
+                                    uint32_t file_id,
+                                    DBusFileEntry* out) {
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+  return GetFileInfo(mtp_device, file_id, out);
+}
+
 bool DeviceManager::PathToFileId(LIBMTP_mtpdevice_t* device,
                                  uint32_t storage_id,
                                  const std::string& file_path,
@@ -299,6 +336,17 @@ bool DeviceManager::ReadFile(LIBMTP_mtpdevice_t* device,
   }
   file_util::Delete(path, false);
   return ret;
+}
+
+bool DeviceManager::GetFileInfo(LIBMTP_mtpdevice_t* device,
+                                uint32_t file_id,
+                                DBusFileEntry* out) {
+  LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(device, file_id);
+  if (!file)
+    return false;
+
+  *out = FileEntry(*file).ToDBusFormat();
+  return true;
 }
 
 bool DeviceManager::GetDeviceAndStorageId(const std::string& storage_name,

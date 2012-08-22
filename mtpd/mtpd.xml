@@ -136,6 +136,33 @@
       </arg>
     </method>
 
+    <method name="GetFileInfoByPath">
+      <arg name="handle" type="s" direction="in">
+      <tp:docstring>
+        Handle to the storage from OpenStorage.
+      </tp:docstring>
+      </arg>
+      <arg name="filePath" type="s" direction="in">
+      <tp:docstring>
+        Absolute path with root as the root of the storage.
+      </tp:docstring>
+      </arg>
+      <arg name="info" type="a{sv}" direction="out" tp:type="FileEntry">
+      </arg>
+    </method>
+
+    <method name="GetFileInfoById">
+      <arg name="handle" type="s" direction="in">
+      <tp:docstring>
+        Handle to the storage from OpenStorage.
+      </tp:docstring>
+      </arg>
+      <arg name="fileId" type="u" direction="in">
+      </arg>
+      <arg name="info" type="a{sv}" direction="out" tp:type="FileEntry">
+      </arg>
+    </method>
+
     <method name="IsAlive">
       <tp:docstring>
         Test method to verify that the MTP service is working.

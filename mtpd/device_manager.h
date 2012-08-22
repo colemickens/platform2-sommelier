@@ -30,6 +30,10 @@ class DeviceEventDelegate;
 
 class DeviceManager {
  public:
+  // Function to process path components. Exposed for testing.
+  typedef bool (*ProcessPathComponentFunc)(const LIBMTP_file_t*, size_t, size_t,
+                                           uint32_t*);
+
   explicit DeviceManager(DeviceEventDelegate* delegate);
   ~DeviceManager();
 
@@ -54,6 +58,37 @@ class DeviceManager {
   static bool ParseStorageName(const std::string& storage_name,
                                std::string* usb_bus_str,
                                uint32_t* storage_id);
+
+  // Exposed for testing.
+  // Returns true if |path_component| is a folder and writes |path_component|'s
+  // id to |file_id|.
+  static bool IsFolder(const LIBMTP_file_t* path_component,
+                       size_t component_idx,
+                       size_t num_path_components,
+                       uint32_t* file_id);
+
+  // Exposed for testing.
+  // Given |path_component|, which is the (0-based) |component_idx| out of
+  // |num_path_components|, returns true and writes |path_component|'s id to
+  // |file_id| under the following conditions:
+  // |path_component| is a folder and not the last component.
+  // |path_component| is a file and the last component.
+  static bool IsValidComponentInFilePath(const LIBMTP_file_t* path_component,
+                                         size_t component_idx,
+                                         size_t num_path_components,
+                                         uint32_t* file_id);
+
+  // Exposed for testing.
+  // Given |path_component|, which is the (0-based) |component_idx| out of
+  // |num_path_components|, returns true and writes |path_component|'s id to
+  // |file_id| under the following conditions:
+  // |path_component| is a folder or
+  // |path_component| is a file and the last component.
+  static bool IsValidComponentInFileOrFolderPath(
+      const LIBMTP_file_t* path_component,
+      size_t component_idx,
+      size_t num_path_components,
+      uint32_t* file_id);
 
   // Reads entries from |file_path| on |storage_name|.
   // On success, returns true and writes the file entries of |file_path| into
@@ -85,6 +120,21 @@ class DeviceManager {
                          uint32_t file_id,
                          std::vector<uint8_t>* out);
 
+  // Reads the metafile for |file_path| on |storage_name|.
+  // On success, returns true and writes the metadata of |file_path| into
+  // |out|. Otherwise returns false.
+  bool GetFileInfoByPath(const std::string& storage_name,
+                         const std::string& file_path,
+                         DBusFileEntry* out);
+
+  // Reads the metadata for |file_id| on |storage_name|.
+  // |file_id| is the unique identifier for a directory on |storage_name|.
+  // On success, returns true and writes the metadata of |file_id| into
+  // |out|. Otherwise returns false.
+  bool GetFileInfoById(const std::string& storage_name,
+                       uint32_t file_id,
+                       DBusFileEntry* out);
+
  private:
   // Key: MTP storage id, Value: metadata for the given storage.
   typedef std::map<uint32_t, StorageInfo> MtpStorageMap;
@@ -92,9 +142,6 @@ class DeviceManager {
   typedef std::pair<LIBMTP_mtpdevice_t*, MtpStorageMap> MtpDevice;
   // Key: device bus location, Value: MtpDevice.
   typedef std::map<std::string, MtpDevice> MtpDeviceMap;
-  // Function to process path components.
-  typedef bool (*ProcessPathComponentFunc)(const LIBMTP_file_t*, size_t,
-                                           size_t, uint32_t*);
 
   // On storage with |storage_id| on |device|, looks up the file id for
   // |file_path| using |process_func| to determine if the components in
@@ -123,6 +170,14 @@ class DeviceManager {
   bool ReadFile(LIBMTP_mtpdevice_t* device,
                 uint32_t file_id,
                 std::vector<uint8_t>* out);
+
+  // Reads the metadata of |file_id| from |device|.
+  // |file_id| is the unique identifier for a file on the given device.
+  // On success, returns true and writes the metadata of |file_id| into |out|.
+  // Otherwise returns false.
+  bool GetFileInfo(LIBMTP_mtpdevice_t* device,
+                   uint32_t file_id,
+                   DBusFileEntry* out);
 
   // Helper function that returns the libmtp device handle and storage id for a
   // given |storage_name|.

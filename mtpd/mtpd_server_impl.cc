@@ -144,6 +144,36 @@ std::vector<uint8_t> MtpdServer::ReadFileById(const std::string& handle,
   return file_contents;
 }
 
+DBusFileEntry MtpdServer::GetFileInfoByPath(const std::string& handle,
+                                            const std::string& filePath,
+                                            DBus::Error& error) {
+  std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty())
+    return InvalidHandle<DBusFileEntry>(handle, &error);
+
+  DBusFileEntry entry;
+  if (!device_manager_.GetFileInfoByPath(storage_name, filePath, &entry)) {
+    error.set(kMtpdServiceError, "GetFileInfoByPath failed");
+    return DBusFileEntry();
+  }
+  return entry;
+}
+
+DBusFileEntry MtpdServer::GetFileInfoById(const std::string& handle,
+                                          const uint32_t& fileId,
+                                          DBus::Error& error) {
+  std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty())
+    return InvalidHandle<DBusFileEntry>(handle, &error);
+
+  DBusFileEntry entry;
+  if (!device_manager_.GetFileInfoById(storage_name, fileId, &entry)) {
+    error.set(kMtpdServiceError, "GetFileInfoById failed");
+    return DBusFileEntry();
+  }
+  return entry;
+}
+
 bool MtpdServer::IsAlive(DBus::Error& error) {
   return true;
 }
