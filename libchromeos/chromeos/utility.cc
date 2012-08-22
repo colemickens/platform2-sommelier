@@ -7,6 +7,7 @@
 
 #include <cstring>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 #include <base/logging.h>
