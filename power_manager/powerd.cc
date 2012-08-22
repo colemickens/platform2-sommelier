@@ -269,7 +269,7 @@ void Daemon::ReadSuspendSettings() {
 
 void Daemon::Run() {
   GMainLoop* loop = g_main_loop_new(NULL, false);
-  SchedulePollPowerSupply();
+  ResumePollPowerSupply();
   g_main_loop_run(loop);
 }
 
