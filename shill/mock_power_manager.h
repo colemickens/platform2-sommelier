@@ -21,7 +21,11 @@ class MockPowerManager : public PowerManager {
   MOCK_METHOD2(AddStateChangeCallback,
                void(const std::string &key,
                     const PowerStateCallback &callback));
+  MOCK_METHOD2(AddSuspendDelayCallback,
+               void(const std::string &key,
+                    const SuspendDelayCallback &callback));
   MOCK_METHOD1(RemoveStateChangeCallback, void(const std::string &key));
+  MOCK_METHOD1(RemoveSuspendDelayCallback, void(const std::string &key));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPowerManager);

@@ -53,6 +53,11 @@ class PowerManager : public PowerManagerProxyDelegate {
   //   void HandlePowerStateChange(PowerStateCallbacks::SuspendState);
   typedef base::Callback<void(SuspendState)> PowerStateCallback;
 
+  // This callback is called prior to a suspend event.  When it is OK for the
+  // system to suspend, this callback should call SuspendActionComplete(),
+  // passing it the sequence number passed to this callback.
+  typedef base::Callback<void(uint32)> SuspendDelayCallback;
+
   // |proxy_factory| creates the PowerManagerProxy.  Usually this is
   // ProxyFactory::GetInstance().  Use a fake for testing.
   explicit PowerManager(ProxyFactory *proxy_factory);
@@ -73,11 +78,19 @@ class PowerManager : public PowerManagerProxyDelegate {
   virtual void AddStateChangeCallback(const std::string &key,
                                       const PowerStateCallback &callback);
 
-  // Unregisters a callback identified by |key|.  The callback must have been
-  // previously registered and not yet removed.  The callback is deleted.
+  // Registers a suspend delay callback with the power manager.  This callback
+  // will be called prior to a suspend event by the amount specified in the most
+  // recent call to RegisterSuspendDelay().  |key| must be unique.
+  virtual void AddSuspendDelayCallback(const std::string &key,
+                                       const SuspendDelayCallback &callback);
+
+  // Unregisters a power state change callback identified by |key|.  The
+  // callback must have been previously registered and not yet removed.
   virtual void RemoveStateChangeCallback(const std::string &key);
 
-  // TODO(gmorain): Add registration for the OnSuspendDelay event.
+  // Unregisters a suspend delay callback identified by |key|.  The callback
+  // must have been previously registered and not yet removed.
+  virtual void RemoveSuspendDelayCallback(const std::string &key);
 
  private:
   friend class ManagerTest;
@@ -85,10 +98,27 @@ class PowerManager : public PowerManagerProxyDelegate {
   typedef std::map<const std::string, PowerStateCallback>
     StateChangeCallbackMap;
 
+  typedef std::map<const std::string, SuspendDelayCallback>
+    SuspendDelayCallbackMap;
+
+  template<class Callback>
+  void AddCallback(const std::string &key, const Callback &callback,
+                   std::map<const std::string, Callback> *callback_map);
+
+  template<class Callback>
+  void RemoveCallback(const std::string &key,
+                      std::map<const std::string, Callback> *callback_map);
+
+  template<class Param, class Callback>
+  void OnEvent(const Param &param,
+               std::map<const std::string, Callback> *callback_map) const;
+
+
   // The power manager proxy created by this class.  It dispatches the inherited
   // delegate methods of this object when changes in the power state occur.
   const scoped_ptr<PowerManagerProxyInterface> power_manager_proxy_;
   StateChangeCallbackMap state_change_callbacks_;
+  SuspendDelayCallbackMap suspend_delay_callbacks_;
 
   SuspendState power_state_;
 
