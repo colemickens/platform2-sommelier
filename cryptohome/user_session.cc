@@ -91,8 +91,4 @@ void UserSession::GetObfuscatedUsername(std::string* username) const {
   username->assign(obfuscated_username_);
 }
 
-void UserSession::GetUsername(std::string* username) const {
-  username->assign(username_);
-}
-
 }  // namespace cryptohome

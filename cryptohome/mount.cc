@@ -278,8 +278,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   if (!mount_args.create_if_missing && !DoesCryptohomeExist(credentials)) {
     if (mount_error) {
-      LOG(ERROR) << "Asked to mount nonexistent user: "
-                 << credentials.username();
+      LOG(ERROR) << "Asked to mount nonexistent user";
       *mount_error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
     }
     return false;
