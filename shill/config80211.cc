@@ -123,8 +123,6 @@ void Config80211::SetWifiState(WifiState new_state) {
   if (new_state == kWifiUp) {
     SubscribedEvents::const_iterator i;
     for (i = subscribed_events_.begin(); i != subscribed_events_.end(); ++i) {
-      string event_type_string;
-      GetEventTypeString(*i, &event_type_string);
       ActuallySubscribeToEvents(*i);
     }
   }
@@ -132,8 +130,6 @@ void Config80211::SetWifiState(WifiState new_state) {
 }
 
 bool Config80211::SubscribeToEvents(EventType type) {
-  string event_type_string;
-  GetEventTypeString(type, &event_type_string);
   bool it_worked = true;
   if (!ContainsKey(subscribed_events_, type)) {
     if (wifi_state_ == kWifiUp) {
@@ -149,8 +145,6 @@ bool Config80211::SubscribeToEvents(EventType type) {
 
 bool Config80211::ActuallySubscribeToEvents(EventType type) {
   string group_name;
-  string event_type_string;
-  GetEventTypeString(type, &event_type_string);
 
   if (!GetEventTypeString(type, &group_name)) {
     return false;

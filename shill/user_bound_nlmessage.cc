@@ -72,7 +72,8 @@ const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
 
 const uint32_t UserBoundNlMessage::kIllegalMessage = 0xFFFFFFFF;
 const int UserBoundNlMessage::kEthernetAddressBytes = 6;
-map<uint16_t, string> *UserBoundNlMessage::connect_status_map_ = NULL;
+map<uint16_t, string> *UserBoundNlMessage::reason_code_string_ = NULL;
+map<uint16_t, string> *UserBoundNlMessage::status_code_string_ = NULL;
 
 // The nl messages look like this:
 //
@@ -129,137 +130,196 @@ bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
   // Convert integer values provided by libnl (for example, from the
   // NL80211_ATTR_STATUS_CODE or NL80211_ATTR_REASON_CODE attribute) into
   // strings describing the status.
-  if (!connect_status_map_) {
-    connect_status_map_ = new map<uint16_t, string>;
-    (*connect_status_map_)[IEEE_80211::kConnectStatusSuccessful] = "Successful";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusFailure] =
-        "Unspecified failure";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusNoLongerValid] =
+  if (!reason_code_string_) {
+    reason_code_string_ = new map<uint16_t, string>;
+    (*reason_code_string_)[IEEE_80211::kReasonCodeUnspecified] =
+        "Unspecified reason";
+    (*reason_code_string_)[
+        IEEE_80211::kReasonCodePreviousAuthenticationInvalid] =
         "Previous authentication no longer valid";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusSenderHasLeft] =
-        "Deauthenticated because sending station is leaving (or has left) the "
-        "IBSS or ESS";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusNonAuthenticated] =
-        "Class 3 frame received from non-authenticated station";
-    (*connect_status_map_)[
-        IEEE_80211::kConnectStatusAllCapabilitiesNotSupported] =
+    (*reason_code_string_)[IEEE_80211::kReasonCodeSenderHasLeft] =
+        "Deauthentcated because sending STA is leaving (or has left) IBSS or "
+        "ESS";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeInactivity] =
+        "Disassociated due to inactivity";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeTooManySTAs] =
+        "Disassociated because AP is unable to handle all currently associated "
+        "STAs";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeNonAuthenticated] =
+        "Class 2 frame received from nonauthenticated STA";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeNonAssociated] =
+        "Class 3 frame received from nonassociated STA";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeDisassociatedHasLeft] =
+        "Disassociated because sending STA is leaving (or has left) BSS";
+    (*reason_code_string_)[
+        IEEE_80211::kReasonCodeReassociationNotAuthenticated] =
+        "STA requesting (re)association is not authenticated with responding "
+        "STA";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeUnacceptablePowerCapability] =
+        "Disassociated because the information in the Power Capability "
+        "element is unacceptable";
+    (*reason_code_string_)[
+        IEEE_80211::kReasonCodeUnacceptableSupportedChannelInfo] =
+        "Disassociated because the information in the Supported Channels "
+        "element is unacceptable";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeInvalidInfoElement] =
+        "Invalid information element, i.e., an information element defined in "
+        "this standard for which the content does not meet the specifications "
+        "in Clause 7";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeMICFailure] =
+        "Message integrity code (MIC) failure";
+    (*reason_code_string_)[IEEE_80211::kReasonCode4WayTimeout] =
+        "4-Way Handshake timeout";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeGroupKeyHandshakeTimeout] =
+        "Group Key Handshake timeout";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeDifferenIE] =
+        "Information element in 4-Way Handshake different from "
+        "(Re)Association Request/Probe Response/Beacon frame";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeGroupCipherInvalid] =
+        "Invalid group cipher";
+    (*reason_code_string_)[IEEE_80211::kReasonCodePairwiseCipherInvalid] =
+        "Invalid pairwise cipher";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeAkmpInvalid] =
+        "Invalid AKMP";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeUnsupportedRsnIeVersion] =
+        "Unsupported RSN information element version";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeInvalidRsnIeCaps] =
+        "Invalid RSN information element capabilities";
+    (*reason_code_string_)[IEEE_80211::kReasonCode8021XAuth] =
+        "IEEE 802.1X authentication failed";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeCipherSuiteRejected] =
+        "Cipher suite rejected because of the security policy";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeUnspecifiedQoS] =
+        "Disassociated for unspecified, QoS-related reason";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeQoSBandwidth] =
+        "Disassociated because QoS AP lacks sufficient bandwidth for this "
+        "QoS STA";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeiPoorConditions] =
+        "Disassociated because excessive number of frames need to be "
+        "acknowledged, but are not acknowledged due to AP transmissions "
+        "and/or poor channel conditions";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeOutsideTxop] =
+        "Disassociated because STA is transmitting outside the limits of its "
+        "TXOPs";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeStaLeaving] =
+        "Requested from peer STA as the STA is leaving the BSS (or resetting)";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeUnacceptableMechanism] =
+        "Requested from peer STA as it does not want to use the mechanism";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeSetupRequired] =
+        "Requested from peer STA as the STA received frames using the "
+        "mechanism for which a setup is required";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeTimeout] =
+        "Requested from peer STA due to timeout";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeCipherSuiteNotSupported] =
+        "Peer STA does not support the requested cipher suite";
+    (*reason_code_string_)[IEEE_80211::kReasonCodeInvalid] = "<INVALID REASON>";
+  }
+
+  if (!status_code_string_) {
+    status_code_string_ = new map<uint16_t, string>;
+    (*status_code_string_)[IEEE_80211::kStatusCodeSuccessful] = "Successful";
+    (*status_code_string_)[IEEE_80211::kStatusCodeFailure] =
+        "Unspecified failure";
+    (*status_code_string_)[IEEE_80211::kStatusCodeAllCapabilitiesNotSupported] =
         "Cannot support all requested capabilities in the capability "
         "information field";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusCantConfirmAssociation] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeCantConfirmAssociation] =
         "Reassociation denied due to inability to confirm that association "
         "exists";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusAssociationDenied] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeAssociationDenied] =
         "Association denied due to reason outside the scope of this standard";
-    (*connect_status_map_)[
-        IEEE_80211::kConnectStatusAuthenticationUnsupported] =
+    (*status_code_string_)[
+        IEEE_80211::kStatusCodeAuthenticationUnsupported] =
         "Responding station does not support the specified authentication "
         "algorithm";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusOutOfSequence] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeOutOfSequence] =
         "Received an authentication frame with authentication transaction "
         "sequence number out of expected sequence";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusChallengeFailure] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeChallengeFailure] =
         "Authentication rejected because of challenge failure";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusFrameTimeout] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeFrameTimeout] =
         "Authentication rejected due to timeout waiting for next frame in "
         "sequence";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusMaxSta] = "Association "
-        "denied because AP is unable to handle additional associated STA";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusDataRateUnsupported] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeMaxSta] =
+        "Association denied because AP is unable to handle additional "
+        "associated STA";
+    (*status_code_string_)[IEEE_80211::kStatusCodeDataRateUnsupported] =
         "Association denied due to requesting station not supporting all of "
         "the data rates in the BSSBasicRateSet parameter";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusShortPreambleUnsupported] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeShortPreambleUnsupported] =
         "Association denied due to requesting station not supporting the "
         "short preamble option";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusPbccUnsupported] =
+    (*status_code_string_)[IEEE_80211::kStatusCodePbccUnsupported] =
         "Association denied due to requesting station not supporting the PBCC "
         "modulation option";
-    (*connect_status_map_)[
-        IEEE_80211::kConnectStatusChannelAgilityUnsupported] =
+    (*status_code_string_)[
+        IEEE_80211::kStatusCodeChannelAgilityUnsupported] =
         "Association denied due to requesting station not supporting the "
         "channel agility option";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusNeedSpectrumManagement] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeNeedSpectrumManagement] =
         "Association request rejected because Spectrum Management capability "
         "is required";
-    (*connect_status_map_)[
-        IEEE_80211::kConnectStatusUnacceptablePowerCapability] =
+    (*status_code_string_)[
+        IEEE_80211::kStatusCodeUnacceptablePowerCapability] =
         "Association request rejected because the information in the Power "
         "Capability element is unacceptable";
-    (*connect_status_map_)[
-        IEEE_80211::kConnectStatusUnacceptableSupportedChannelInfo] =
+    (*status_code_string_)[
+        IEEE_80211::kStatusCodeUnacceptableSupportedChannelInfo] =
         "Association request rejected because the information in the "
         "Supported Channels element is unacceptable";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusShortTimeSlotRequired] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeShortTimeSlotRequired] =
         "Association request rejected due to requesting station not "
-        "supporting the short slot time option";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusErPbccRequired] =
-        "Association request rejected due to requesting station not supporting "
-        "the ER-PBCC modulation option";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusHtFeaturesRequired] =
-        "Association denied due to requesting STA not supporting HT features";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusR0khUnreachable] = "R0KH "
-        "Unreachable";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusPcoTransitionRequired] =
-        "Association denied because the requesting STA does not support the "
-        "PCO transition required by the AP";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusRejectedTemporarily] =
-        "Association request rejected temporarily; try again later";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusRobustPolicyViolated] =
-        "Robust Management frame policy violation";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusQosFailure] =
+        "supporting the Short Slot Time option";
+    (*status_code_string_)[IEEE_80211::kStatusCodeDssOfdmRequired] =
+        "Association request rejected due to requesting station not "
+        "supporting the DSSS-OFDM option";
+    (*status_code_string_)[IEEE_80211::kStatusCodeQosFailure] =
         "Unspecified, QoS related failure";
-    (*connect_status_map_)[
-        IEEE_80211::kConnectStatusInsufficientBandwithForQsta] =
+    (*status_code_string_)[
+        IEEE_80211::kStatusCodeInsufficientBandwithForQsta] =
         "Association denied due to QAP having insufficient bandwidth to handle "
         "another QSTA";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusPoorConditions] =
+    (*status_code_string_)[IEEE_80211::kStatusCodePoorConditions] =
         "Association denied due to poor channel conditions";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusQosNotSupported] =
-        "Association (with QBSS) denied due to requesting station not "
+    (*status_code_string_)[IEEE_80211::kStatusCodeQosNotSupported] =
+        "Association (with QoS BSS) denied due to requesting station not "
         "supporting the QoS facility";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusDeclined] = "The request "
-        "has been declined";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidParameterValues] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeDeclined] =
+        "The request has been declined";
+    (*status_code_string_)[IEEE_80211::kStatusCodeInvalidParameterValues] =
         "The request has not been successful as one or more parameters have "
         "invalid values";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusCannotBeHonored] = "The "
-        "TS has not been created because the request cannot be honored. "
+    (*status_code_string_)[IEEE_80211::kStatusCodeCannotBeHonored] =
+        "The TS has not been created because the request cannot be honored. "
         "However, a suggested Tspec is provided so that the initiating QSTA "
         "may attempt to send another TS with the suggested changes to the "
         "TSpec";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidInfoElement] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeInvalidInfoElement] =
         "Invalid Information Element";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusGroupCipherInvalid] =
-        "Group Cipher is not valid";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusPairwiseCipherInvalid] =
-        "Pairwise Cipher is not valid";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusAkmpInvalid] = "AKMP is "
-        "not valid";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusUnsupportedRsnIeVersion] =
-      "Unsupported RSN IE version";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidRsnIeCaps] =
-        "Invalid RSN IE Capabilities";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusCipherSuiteRejected] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeGroupCipherInvalid] =
+        "Invalid Group Cipher";
+    (*status_code_string_)[IEEE_80211::kStatusCodePairwiseCipherInvalid] =
+        "Invalid Pairwise Cipher";
+    (*status_code_string_)[IEEE_80211::kStatusCodeAkmpInvalid] = "Invalid AKMP";
+    (*status_code_string_)[IEEE_80211::kStatusCodeUnsupportedRsnIeVersion] =
+        "Unsupported RSN Information Element version";
+    (*status_code_string_)[IEEE_80211::kStatusCodeInvalidRsnIeCaps] =
+        "Invalid RSN Information Element Capabilities";
+    (*status_code_string_)[IEEE_80211::kStatusCodeCipherSuiteRejected] =
         "Cipher suite is rejected per security policy";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusTsDelayNotMet] = "The TS "
-        "has not been created. However, the HC may be capable of creating a "
-        "TS, in response to a request, after the time indicated in the TS "
-        "Delay element";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusDirectLinkIllegal] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeTsDelayNotMet] =
+        "The TS has not been created. However, the HC may be capable of "
+        "creating a TS, in response to a request, after the time indicated in "
+        "the TS Delay element";
+    (*status_code_string_)[IEEE_80211::kStatusCodeDirectLinkIllegal] =
         "Direct link is not allowed in the BSS by policy";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusStaNotInQbss] =
-        "Destination STA is not present within this QBSS";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusStaNotInQsta] = "The "
-        "destination STA is not a QSTA";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusExcessiveListenInterval] =
+    (*status_code_string_)[IEEE_80211::kStatusCodeStaNotInBss] =
+        "Destination STA is not present within this BSS";
+    (*status_code_string_)[IEEE_80211::kStatusCodeStaNotInQsta] =
+        "The destination STA is not a QoS STA";
+    (*status_code_string_)[IEEE_80211::kStatusCodeExcessiveListenInterval] =
         "Association denied because Listen Interval is too large";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidFastBssFrameCount] =
-        "Invalid Fast BSS Transition Action Frame Count";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidPmkid] =
-        "Invalid PMKID";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidMdie] =
-        "Invalid MDIE";
-    (*connect_status_map_)[IEEE_80211::kConnectStatusInvalidFtie] =
-        "Invalid FTIE";
+    (*status_code_string_)[IEEE_80211::kStatusCodeInvalid] = "<INVALID STATUS>";
   }
 
   return true;
@@ -1044,19 +1104,40 @@ string UserBoundNlMessage::StringFromSsid(const uint8_t len,
 }
 
 // static
-string UserBoundNlMessage::StringFromStatus(uint16_t status) {
+string UserBoundNlMessage::StringFromReason(uint16_t status) {
   map<uint16_t, string>::const_iterator match;
-  match = connect_status_map_->find(status);
-  if (match == connect_status_map_->end()) {
+  match = reason_code_string_->find(status);
+  if (match == reason_code_string_->end()) {
     string output;
-    StringAppendF(&output, "<Unknown Status:%u>", status);
+    if (status < IEEE_80211::kReasonCodeMax) {
+      StringAppendF(&output, "<Reserved Reason:%u>", status);
+    } else {
+      StringAppendF(&output, "<Unknown Reason:%u>", status);
+    }
     return output;
   }
   return match->second;
 }
 
-Nl80211Frame::Nl80211Frame(const uint8_t *raw_frame, int frame_byte_count) :
-    frame_type_(kIllegalFrameType), status_(0), frame_(0), byte_count_(0) {
+// static
+string UserBoundNlMessage::StringFromStatus(uint16_t status) {
+  map<uint16_t, string>::const_iterator match;
+  match = status_code_string_->find(status);
+  if (match == status_code_string_->end()) {
+    string output;
+    if (status < IEEE_80211::kStatusCodeMax) {
+      StringAppendF(&output, "<Reserved Status:%u>", status);
+    } else {
+      StringAppendF(&output, "<Unknown Status:%u>", status);
+    }
+    return output;
+  }
+  return match->second;
+}
+
+Nl80211Frame::Nl80211Frame(const uint8_t *raw_frame, int frame_byte_count)
+  : frame_type_(kIllegalFrameType), reason_(UINT16_MAX), status_(UINT16_MAX),
+    frame_(0), byte_count_(0) {
   if (raw_frame == NULL)
     return;
 
@@ -1085,7 +1166,7 @@ Nl80211Frame::Nl80211Frame(const uint8_t *raw_frame, int frame_byte_count) :
 
     case kDisassocFrameType:
     case kDeauthFrameType:
-      status_ = le16toh(frame->u.deauthentiate_message.reason_code);
+      reason_ = le16toh(frame->u.deauthentiate_message.reason_code);
       break;
 
     default:
@@ -1099,7 +1180,7 @@ Nl80211Frame::~Nl80211Frame() {
   frame_ = NULL;
 }
 
-bool Nl80211Frame::ToString(string *output) {
+bool Nl80211Frame::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "NULL |output|";
     return false;
@@ -1134,13 +1215,13 @@ bool Nl80211Frame::ToString(string *output) {
 
     case kDisassocFrameType:
       StringAppendF(output, "; Disassoc reason %u: %s",
-                    status_,
-                    UserBoundNlMessage::StringFromStatus(status_).c_str());
+                    reason_,
+                    UserBoundNlMessage::StringFromReason(reason_).c_str());
       break;
     case kDeauthFrameType:
       StringAppendF(output, "; Deauth reason %u: %s",
-                    status_,
-                    UserBoundNlMessage::StringFromStatus(status_).c_str());
+                    reason_,
+                    UserBoundNlMessage::StringFromReason(reason_).c_str());
       break;
 
     default:
@@ -1157,7 +1238,7 @@ bool Nl80211Frame::ToString(string *output) {
   return true;
 }
 
-bool Nl80211Frame::IsEqual(const Nl80211Frame &other) {
+bool Nl80211Frame::IsEqual(const Nl80211Frame &other) const {
   if (byte_count_ != other.byte_count_) {
     return false;
   }
@@ -1170,6 +1251,7 @@ bool Nl80211Frame::IsEqual(const Nl80211Frame &other) {
 
   return true;
 }
+
 
 //
 // Specific UserBoundNlMessage types.
@@ -1292,7 +1374,7 @@ string DisconnectMessage::ToString() const {
   uint16_t reason = UINT16_MAX;
   if (GetU16Attribute(NL80211_ATTR_REASON_CODE, &reason)) {
     StringAppendF(&output, " reason: %u: %s",
-                  reason, StringFromStatus(reason).c_str());
+                  reason, StringFromReason(reason).c_str());
   }
   return output;
 }
@@ -1877,8 +1959,7 @@ UserBoundNlMessageDataCollector::UserBoundNlMessageDataCollector() {
 }
 
 void UserBoundNlMessageDataCollector::CollectDebugData(
-    const UserBoundNlMessage &message, nlmsghdr *msg)
-{
+    const UserBoundNlMessage &message, nlmsghdr *msg) {
   if (!msg) {
     LOG(ERROR) << "NULL |msg| parameter";
     return;
@@ -1900,7 +1981,7 @@ void UserBoundNlMessageDataCollector::CollectDebugData(
 
     size_t bytes = nlmsg_total_size(payload_bytes);
     unsigned char *rawdata = reinterpret_cast<unsigned char *>(msg);
-    for (size_t i=0; i<bytes; ++i) {
+    for (size_t i = 0; i < bytes; ++i) {
       LOG(INFO) << "  0x"
                  << std::hex << std::setfill('0') << std::setw(2)
                  << + rawdata[i] << ",";

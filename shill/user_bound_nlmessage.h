@@ -156,9 +156,10 @@ class UserBoundNlMessage {
   // as a NULL |arg|), |value| is set to a bogus MAC address.
   static std::string StringFromMacAddress(const uint8_t *arg);
 
-  // Returns a string representing the passed-in |status|, the value of which
-  // has been acquired from libnl (for example, from the
+  // Returns a string representing the passed-in |status| or |reason|, the
+  // value of which has been acquired from libnl (for example, from the
   // NL80211_ATTR_STATUS_CODE or NL80211_ATTR_REASON_CODE attribute).
+  static std::string StringFromReason(uint16_t reason);
   static std::string StringFromStatus(uint16_t status);
 
   // Returns a string that describes this message.
@@ -199,7 +200,8 @@ class UserBoundNlMessage {
   static const int kEthernetAddressBytes;
 
   nlmsghdr *message_;
-  static std::map<uint16_t, std::string> *connect_status_map_;
+  static std::map<uint16_t, std::string> *reason_code_string_;
+  static std::map<uint16_t, std::string> *status_code_string_;
   std::map<nl80211_attrs, nlattr *> attributes_;
 
   DISALLOW_COPY_AND_ASSIGN(UserBoundNlMessage);
@@ -220,8 +222,10 @@ class Nl80211Frame {
 
   Nl80211Frame(const uint8_t *frame, int frame_byte_count);
   ~Nl80211Frame();
-  bool ToString(std::string *output);
-  bool IsEqual(const Nl80211Frame &other);
+  bool ToString(std::string *output) const;
+  bool IsEqual(const Nl80211Frame &other) const;
+  uint16_t reason() const { return reason_; }
+  uint16_t status() const { return status_; }
 
  private:
   static const uint8_t kMinimumFrameByteCount;
@@ -230,6 +234,7 @@ class Nl80211Frame {
   std::string mac_from_;
   std::string mac_to_;
   uint8_t frame_type_;
+  uint16_t reason_;
   uint16_t status_;
   uint8_t *frame_;
   int byte_count_;

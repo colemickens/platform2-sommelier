@@ -108,6 +108,7 @@ void Daemon::Start() {
       Config80211::kEventTypeMlme };
 
     // Install |callback80211_| in the Config80211 singleton.
+    callback80211_->set_metrics(&metrics_);
     callback80211_->set_config80211(config80211_);
     callback80211_->InstallAsCallback();
 

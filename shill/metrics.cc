@@ -9,6 +9,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/bootstat.h>
 
+#include "shill/ieee80211.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/wifi_service.h"
@@ -123,6 +124,17 @@ const unsigned int Metrics::kMetricLinkMonitorErrorCountMax =
     LinkMonitor::kFailureThreshold;
 const int Metrics::kMetricLinkMonitorErrorCountNumBuckets =
     LinkMonitor::kFailureThreshold + 1;
+
+// static
+const char Metrics::kMetricLinkClientDisconnectReason[] =
+    "Network.Shill.WiFi.ClientDisconnectReason";
+const char Metrics::kMetricLinkApDisconnectReason[] =
+    "Network.Shill.WiFi.ApDisconnectReason";
+const char Metrics::kMetricLinkClientDisconnectType[] =
+    "Network.Shill.WiFi.ClientDisconnectType";
+const char Metrics::kMetricLinkApDisconnectType[] =
+    "Network.Shill.WiFi.ApDisconnectType";
+
 
 Metrics::Metrics()
     : library_(&metrics_library_),
@@ -449,6 +461,39 @@ void Metrics::NotifyLinkMonitorResponseTimeSampleAdded(
             kMetricLinkMonitorResponseTimeSampleMin,
             kMetricLinkMonitorResponseTimeSampleMax,
             kMetricLinkMonitorResponseTimeSampleNumBuckets);
+}
+
+void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
+                                    IEEE_80211::WiFiReasonCode reason) {
+  string metric_disconnect_reason;
+  string metric_disconnect_type;
+  WiFiStatusType type;
+
+  if (by_whom == kDisconnectedByAp) {
+    metric_disconnect_reason = kMetricLinkApDisconnectReason;
+    metric_disconnect_type = kMetricLinkApDisconnectType;
+    type = kStatusCodeTypeByAp;
+  } else {
+    metric_disconnect_reason = kMetricLinkClientDisconnectReason;
+    metric_disconnect_type = kMetricLinkClientDisconnectType;
+    switch(reason) {
+      case IEEE_80211::kReasonCodeSenderHasLeft:
+      case IEEE_80211::kReasonCodeDisassociatedHasLeft:
+        type = kStatusCodeTypeByUser;
+        break;
+
+      case IEEE_80211::kReasonCodeInactivity:
+        type = kStatusCodeTypeConsideredDead;
+        break;
+
+      default:
+        type = kStatusCodeTypeByClient;
+        break;
+    }
+  }
+  SendEnumToUMA(metric_disconnect_reason, reason,
+                IEEE_80211::kStatusCodeMax);
+  SendEnumToUMA(metric_disconnect_type, type, kStatusCodeTypeMax);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

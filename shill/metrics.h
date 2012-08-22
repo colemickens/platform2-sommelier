@@ -11,6 +11,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
+#include "shill/ieee80211.h"
 #include "shill/portal_detector.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
@@ -125,6 +126,19 @@ class Metrics {
     kLinkMonitorFailureMax
   };
 
+  enum WiFiStatusType {
+    kStatusCodeTypeByAp,
+    kStatusCodeTypeByClient,
+    kStatusCodeTypeByUser,
+    kStatusCodeTypeConsideredDead,
+    kStatusCodeTypeMax
+  };
+
+  enum WiFiDisconnectByWhom {
+    kDisconnectedByAp,
+    kDisconnectedNotByAp
+  };
+
   static const char kMetricDisconnect[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -190,6 +204,11 @@ class Metrics {
   static const unsigned int kMetricLinkMonitorErrorCountMax;
   static const int kMetricLinkMonitorErrorCountNumBuckets;
 
+  static const char kMetricLinkClientDisconnectReason[];
+  static const char kMetricLinkApDisconnectReason[];
+  static const char kMetricLinkClientDisconnectType[];
+  static const char kMetricLinkApDisconnectType[];
+
   Metrics();
   virtual ~Metrics();
 
@@ -249,6 +268,10 @@ class Metrics {
   void NotifyLinkMonitorResponseTimeSampleAdded(
       Technology::Identifier technology,
       unsigned int response_time_milliseconds);
+
+  // Notifies this object of WiFi disconnect.
+  void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
+                             IEEE_80211::WiFiReasonCode reason);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

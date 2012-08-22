@@ -100,8 +100,8 @@ class Config80211 {
 
   // This represents whether the cfg80211/mac80211 are installed in the kernel.
   enum WifiState {
-    kWifiUp=10,
-    kWifiDown=20
+    kWifiUp,
+    kWifiDown
   };
 
   virtual ~Config80211();
@@ -149,6 +149,8 @@ class Config80211 {
 
  private:
   friend class Config80211Test;
+  typedef std::map<EventType, std::string> EventTypeStrings;
+  typedef std::set<EventType> SubscribedEvents;
 
   // Sign-up to receive and log multicast events of a specific type (assumes
   // wifi is up).
@@ -174,12 +176,10 @@ class Config80211 {
   // TODO(wdg): implement the following.
   // std::map<uint32_t, Callback> message_callback_;
 
-  typedef std::map<EventType, std::string> EventTypeStrings;
   static EventTypeStrings *event_types_;
 
   WifiState wifi_state_;
 
-  typedef std::set<EventType> SubscribedEvents;
   SubscribedEvents subscribed_events_;
 
   // Hooks needed to be called by shill's EventDispatcher.

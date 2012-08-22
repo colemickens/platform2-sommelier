@@ -16,10 +16,10 @@
 #include <base/bind.h>
 #include <base/lazy_instance.h>
 
-#include "shill/config80211.h"
-
 namespace shill {
 
+class Config80211;
+class Metrics;
 class UserBoundNlMessage;
 
 // Example Config80211 callback object; the callback prints a description of
@@ -43,6 +43,9 @@ class Callback80211Object {
   // Simple accessor.
   void set_config80211(Config80211 *config80211) { config80211_ = config80211; }
 
+  // Simple accessor.
+  void set_metrics(Metrics *metrics) { metrics_ = metrics; }
+
  protected:
   friend struct base::DefaultLazyInstanceTraits<Callback80211Object>;
 
@@ -54,6 +57,8 @@ class Callback80211Object {
   static const char kMetricLinkDisconnectCount[];
 
   Config80211 *config80211_;
+
+  Metrics *metrics_;
 
   // Config80211MessageCallback method bound to this object to install as a
   // callback.
