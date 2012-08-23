@@ -1331,9 +1331,12 @@ void Daemon::UpdateAveragedTimes(PowerStatus* status,
     battery_time = status->battery_time_to_empty;
   }
 
-  if (!status->is_calculating_battery_time)
-    AdjustWindowSize(battery_time, empty_average, full_average);
-
+  if (!status->is_calculating_battery_time) {
+    if (!status->line_power_on)
+      AdjustWindowSize(battery_time, empty_average, full_average);
+    else
+      empty_average->ChangeWindowSize(kRollingAverageSampleWindowMax);
+  }
   status->averaged_battery_time_to_full = full_average->GetAverage();
   status->averaged_battery_time_to_empty = empty_average->GetAverage();
 }
@@ -1363,7 +1366,6 @@ void Daemon::AdjustWindowSize(int64 battery_time,
     window_size /= kRollingAverageTaperTimeDiff;
     window_size += kRollingAverageSampleWindowMin;
   }
-  full_average->ChangeWindowSize(window_size);
   empty_average->ChangeWindowSize(window_size);
 }
 

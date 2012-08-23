@@ -266,21 +266,18 @@ class DaemonTest : public Test {
 };
 
 TEST_F(DaemonTest, AdjustWindowSizeMax) {
-  full_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMax);
   empty_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMax);
   daemon_.AdjustWindowSize(
       kRollingAverageTaperTimeMax, &empty_average_, &full_average_);
 }
 
 TEST_F(DaemonTest, AdjustWindowSizeMin) {
-  full_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMin);
   empty_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMin);
   daemon_.AdjustWindowSize(
       kRollingAverageTaperTimeMin, &empty_average_, &full_average_);
 }
 
 TEST_F(DaemonTest, AdjustWindowSizeCalc) {
-  full_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMid);
   empty_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMid);
   daemon_.AdjustWindowSize(
       kRollingAverageTaperTimeMid, &empty_average_, &full_average_);
@@ -837,8 +834,7 @@ TEST_F(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating) {
 
   full_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
   empty_average_.ExpectClear();
-  full_average_.ExpectChangeWindowSize(1);
-  empty_average_.ExpectChangeWindowSize(1);
+  empty_average_.ExpectChangeWindowSize(10);
   full_average_.ExpectGetAverage(kBatteryTime);
   empty_average_.ExpectGetAverage(0);
 
@@ -869,7 +865,6 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
 
   empty_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
   full_average_.ExpectClear();
-  full_average_.ExpectChangeWindowSize(1);
   empty_average_.ExpectChangeWindowSize(1);
   full_average_.ExpectGetAverage(0);
   empty_average_.ExpectGetAverage(kBatteryTime);
@@ -887,7 +882,6 @@ TEST_F(DaemonTest, UpdateAveragedTimesWithSetThreshold) {
   daemon_.low_battery_suspend_time_s_ = kThresholdTime;
   empty_average_.ExpectAddSample(kAdjustedBatteryTime, kAdjustedBatteryTime);
   full_average_.ExpectClear();
-  full_average_.ExpectChangeWindowSize(1);
   empty_average_.ExpectChangeWindowSize(1);
   full_average_.ExpectGetAverage(0);
   empty_average_.ExpectGetAverage(kBatteryTime);

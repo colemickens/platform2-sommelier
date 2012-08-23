@@ -34,6 +34,9 @@ void RollingAverage::ChangeWindowSize(unsigned int window_size) {
     return;
   }
 
+  if (current_window_size_ == window_size)
+    return;
+
   LOG(INFO) << "ChangeWindowSize: from = " << current_window_size_
             << ", to = " << window_size;
   if (current_window_size_ > window_size) {
