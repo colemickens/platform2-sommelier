@@ -122,7 +122,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       udev_(NULL),
       state_control_(new StateControl(this)),
       poll_power_supply_timer_id_(0),
-      is_projecting_(false) {
+      is_projecting_(false),
+      shutdown_reason_(kShutdownReasonUnknown) {
   // Create a client and connect it to the CRAS server.
   if (cras_client_create(&cras_client_)) {
     LOG(WARNING) << "Couldn't create CRAS client.";
@@ -985,6 +986,7 @@ DBusMessage* Daemon::HandleScreenIsUnlockedMethod(DBusMessage* message) {
 }
 
 DBusMessage* Daemon::HandleRequestShutdownMethod(DBusMessage* message) {
+  shutdown_reason_ = kShutdownReasonUserRequest;
   OnRequestShutdown();
   return NULL;
 }
@@ -1411,6 +1413,7 @@ void Daemon::OnLowBattery(int64 time_remaining_s) {
     LOG(INFO) << "Low battery condition detected. Shutting down immediately.";
     low_battery_ = true;
     file_tagger_.HandleLowBatteryEvent();
+    shutdown_reason_ = kShutdownReasonLowBattery;
     OnRequestShutdown();
   } else if (time_remaining_s < 0) {
     LOG(INFO) << "Battery is at " << time_remaining_s << " seconds remaining, may"
@@ -1553,8 +1556,9 @@ void Daemon::SendPowerButtonMetric(bool down,
 
 void Daemon::Shutdown() {
   if (shutdown_state_ == kShutdownPowerOff) {
-    LOG(INFO) << "Shutting down";
-    util::SendSignalToPowerM(kShutdownSignal);
+    LOG(INFO) << "Shutting down, reason: " << shutdown_reason_;
+    util::SendSignalWithStringToPowerM(kShutdownSignal,
+                                       shutdown_reason_.c_str());
   } else if (shutdown_state_ == kShutdownRestarting) {
     LOG(INFO) << "Restarting";
     util::SendSignalToPowerM(kRestartSignal);
@@ -1575,6 +1579,10 @@ void Daemon::Suspend() {
     // set the backlight correctly upon resume.
     backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
   } else {
+    if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED)
+      shutdown_reason_ = kShutdownReasonIdle;
+    else
+      shutdown_reason_ = kShutdownReasonLidClosed;
     LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
     OnRequestShutdown();
   }

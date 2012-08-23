@@ -134,7 +134,7 @@ gboolean PowerManDaemon::RetrySuspend(unsigned int lid_id) {
       retry_suspend_count_++;
       if (retry_suspend_count_ > retry_suspend_attempts_) {
         LOG(ERROR) << "Retry suspend attempts failed ... shutting down";
-        Shutdown();
+        Shutdown(kShutdownReasonSuspendFailed);
       } else {
         LOG(WARNING) << "Retry suspend " << retry_suspend_count_;
         if (!util::GetWakeupCount(&wakeup_count)) {
@@ -319,15 +319,24 @@ void PowerManDaemon::HandleSuspendSignal(DBusMessage* message) {
   Suspend(message);
 }
 
-void PowerManDaemon::HandleShutdownSignal(DBusMessage*) {  // NOLINT
-  Shutdown();
+void PowerManDaemon::HandleShutdownSignal(DBusMessage* message) {
+  const char* reason = '\0';
+  DBusError error;
+  dbus_error_init(&error);
+  if (dbus_message_get_args(message, &error,
+                            DBUS_TYPE_STRING, &reason,
+                            DBUS_TYPE_INVALID) == FALSE) {
+    reason = kShutdownReasonUnknown;
+    dbus_error_free(&error);
+  }
+  Shutdown(reason);
 }
 
 void PowerManDaemon::HandleRestartSignal(DBusMessage*) {  // NOLINT
   Restart();
 }
 
-void PowerManDaemon::HandleRequestCleanShutdownSignal(DBusMessage*) {  // NOLINT
+void PowerManDaemon::HandleRequestCleanShutdownSignal(DBusMessage*) { // NOLINT
   util::Launch("initctl emit power-manager-clean-shutdown");
 }
 
@@ -592,8 +601,11 @@ void PowerManDaemon::SendButtonEventSignal(const std::string& button_name,
   dbus_message_unref(signal);
 }
 
-void PowerManDaemon::Shutdown() {
-  util::Launch("shutdown -P now");
+void PowerManDaemon::Shutdown(const std::string& reason) {
+  std::string command = "initctl emit --no-wait runlevel RUNLEVEL=0";
+  if (!reason.empty())
+    command += std::string(" SHUTDOWN_REASON=") + reason;
+  util::Launch(command.c_str());
 }
 
 void PowerManDaemon::Restart() {

@@ -159,7 +159,9 @@ class PowerManDaemon {
 
   // Restart, shutdown, and suspend the system.
   void Restart();
-  void Shutdown();
+  // The |reason| parameter is passed as the SHUTDOWN_REASON parameter to
+  // initctl.
+  void Shutdown(const std::string& reason);
   // Suspend(unsigned int, bool) is the real function. The other three redirect
   void Suspend(unsigned int wakeup_count, bool wakeup_count_valid);
   void Suspend();  // call suspend ignoring wakeup_count

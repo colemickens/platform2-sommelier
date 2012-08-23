@@ -557,6 +557,10 @@ class Daemon : public BacklightControllerObserver,
 
   // Chrome OS audio server client.  Used to check if headphone jack is plugged.
   cras_client* cras_client_;
+
+  // String that indicates reason for shutting down.  See power_constants.cc for
+  // valid values.
+  std::string shutdown_reason_;
 };
 
 }  // namespace power_manager

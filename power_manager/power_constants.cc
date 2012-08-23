@@ -93,4 +93,18 @@ const unsigned int kRollingAverageTaperTimeMin = 10*60;
 const unsigned int kRollingAverageTaperTimeDiff =
     kRollingAverageTaperTimeMax - kRollingAverageTaperTimeMin;
 
+// Reasons for shutting down.
+const char kShutdownReasonUnknown[] = "unknown";
+// Explicit user request such as pressing the power key or the power button in
+// the Chrome UI.
+const char kShutdownReasonUserRequest[] = "user-request";
+// Closed the lid at login screen, resulting in shutdown instead of suspend.
+const char kShutdownReasonLidClosed[] = "lid-closed";
+// Idle at login screen, resulting in shutdown instead of suspend.
+const char kShutdownReasonIdle[] = "idle";
+// Shutting down due to low battery.
+const char kShutdownReasonLowBattery[] = "low-battery";
+// Shutting down because suspend attempts failed.
+const char kShutdownReasonSuspendFailed[] = "suspend-failed";
+
 }  // namespace power_manager

@@ -83,6 +83,14 @@ extern const unsigned int kRollingAverageTaperTimeMax;
 extern const unsigned int kRollingAverageTaperTimeMin;
 extern const unsigned int kRollingAverageTaperTimeDiff;
 
+// Reasons for shutting down
+extern const char kShutdownReasonUnknown[];
+extern const char kShutdownReasonUserRequest[];
+extern const char kShutdownReasonLidClosed[];
+extern const char kShutdownReasonIdle[];
+extern const char kShutdownReasonLowBattery[];
+extern const char kShutdownReasonSuspendFailed[];
+
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_POWER_CONSTANTS_H_
