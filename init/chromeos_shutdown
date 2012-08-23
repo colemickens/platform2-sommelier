@@ -73,5 +73,11 @@ fi
 # Just in case something didn't unmount properly above.
 sync
 
+# Display low battery icon if shutting down due to low battery.
+# SHUTDOWN_REASON is passed in with the runlevel event from power manager.
+if [ "$SHUTDOWN_REASON" = "low-battery" ]; then
+  display_low_battery_alert
+fi
+
 # Ensure that we always claim success.
 exit 0
