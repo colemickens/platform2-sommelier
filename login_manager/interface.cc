@@ -172,9 +172,17 @@ gboolean session_manager_lock_screen(SessionManager *self,
                                      GError **error) {
   SESSION_MANAGER_WRAP_METHOD(LockScreen, error);
 }
+gboolean session_manager_handle_lock_screen_shown(SessionManager *self,
+                                                  GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(HandleLockScreenShown, error);
+}
 gboolean session_manager_unlock_screen(SessionManager *self,
                                        GError **error) {
   SESSION_MANAGER_WRAP_METHOD(UnlockScreen, error);
+}
+gboolean session_manager_handle_lock_screen_dismissed(SessionManager *self,
+                                                      GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(HandleLockScreenDismissed, error);
 }
 gboolean session_manager_restart_job(SessionManager *self,
                                      gint pid,

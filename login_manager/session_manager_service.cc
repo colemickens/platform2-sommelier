@@ -786,16 +786,28 @@ gboolean SessionManagerService::RetrieveSessionState(gchar** OUT_state,
 }
 
 gboolean SessionManagerService::LockScreen(GError** error) {
-  screen_locked_ = TRUE;
   system_->SendSignalToChromium(chromium::kLockScreenSignal, NULL);
   LOG(INFO) << "LockScreen";
   return TRUE;
 }
 
+gboolean SessionManagerService::HandleLockScreenShown(GError** error) {
+  screen_locked_ = true;
+  // TODO(haruki): Broadcast ScreenIsLockedSignal.
+  LOG(INFO) << "HandleLockScreenShown";
+  return TRUE;
+}
+
 gboolean SessionManagerService::UnlockScreen(GError** error) {
-  screen_locked_ = FALSE;
   system_->SendSignalToChromium(chromium::kUnlockScreenSignal, NULL);
   LOG(INFO) << "UnlockScreen";
+  return TRUE;
+}
+
+gboolean SessionManagerService::HandleLockScreenDismissed(GError** error) {
+  screen_locked_ = false;
+  // TODO(haruki): Broadcast ScreenIsUnlockedSignal.
+  LOG(INFO) << "HandleLockScreenDismissed";
   return TRUE;
 }
 

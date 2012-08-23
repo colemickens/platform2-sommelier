@@ -301,13 +301,25 @@ class SessionManagerService
   // Get information about the current session.
   gboolean RetrieveSessionState(gchar** OUT_state, gchar** OUT_user);
 
-  // Handles LockScreen request from PowerManager. It switches itself to
-  // lock mode, and emit LockScreen signal to Chromium Browser.
+  // Handles LockScreen request from Chromium or PowerManager. It emits
+  // LockScreen signal to Chromium Browser to tell it to lock the screen. The
+  // browser should call the HandleScreenLocked method when the screen is
+  // actually locked.
   gboolean LockScreen(GError** error);
 
-  // Handles UnlockScreen request from PowerManager. It switches itself to
-  // unlock mode, and emit UnlockScreen signal to Chromium Browser.
+  // Intended to be called by Chromium. Updates canonical system-locked state,
+  // and broadcasts ScreenIsLocked signal over DBus.
+  gboolean HandleLockScreenShown(GError** error);
+
+  // Handles UnlockScreen request from Chromium. It emits UnlockScreen
+  // signal to Chromium Browser to tell it to unlock the screen. The browser
+  // should call the HandleScreenUnlocked method when the screen is actually
+  // unlocked.
   gboolean UnlockScreen(GError** error);
+
+  // Intended to be called by Chromium. Updates canonical system-locked state,
+  // and broadcasts ScreenIsUnlocked signal over DBus.
+  gboolean HandleLockScreenDismissed(GError** error);
 
   // Restarts job with specified pid replacing its command line arguments
   // with provided.

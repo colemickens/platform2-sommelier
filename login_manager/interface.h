@@ -99,8 +99,12 @@ gboolean session_manager_retrieve_session_state(SessionManager *self,
 
 gboolean session_manager_unlock_screen(SessionManager *self,
                                        GError **error);
+gboolean session_manager_handle_lock_screen_dismissed(SessionManager *self,
+                                                      GError **error);
 gboolean session_manager_lock_screen(SessionManager *self,
                                      GError **error);
+gboolean session_manager_handle_lock_screen_shown(SessionManager *self,
+                                                  GError **error);
 gboolean session_manager_restart_job(SessionManager *self,
                                      gint pid,
                                      gchar *arguments,

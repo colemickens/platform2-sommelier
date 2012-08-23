@@ -108,8 +108,14 @@
     <method name="LockScreen">
       <!-- Lock screen -->
     </method>
+    <method name="HandleLockScreenShown">
+      <!-- Handle notification from Chrome that the lock screen is visible -->
+    </method>
     <method name="UnlockScreen">
       <!-- Unlock screen -->
+    </method>
+    <method name="HandleLockScreenDismissed">
+      <!-- Handle notification from Chrome that the lock screen is hidden -->
     </method>
     <method name="RestartJob">
       <!-- PID of the job to restart -->
