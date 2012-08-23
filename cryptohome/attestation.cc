@@ -271,20 +271,18 @@ bool Attestation::Verify() {
     LOG(ERROR) << "Attestation: Bad certified key.";
     return false;
   }
-  // TODO(dkrahn): Enable this check. It is currently disabled until we can get
-  // support for owner delegation in trousers (crosbug.com/33597).
-  //  SecureBlob delegate_blob =
-  //      ConvertStringToBlob(database_pb_.delegate().blob());
-  //  SecureBlob delegate_secret =
-  //      ConvertStringToBlob(database_pb_.delegate().secret());
-  //  SecureBlob aik_public_key_tpm = ConvertStringToBlob(
-  //      database_pb_.identity_binding().identity_public_key());
-  //  if (!VerifyActivateIdentity(delegate_blob, delegate_secret,
-  //                              identity_key_blob, aik_public_key_tpm,
-  //                              ek_public_key)) {
-  //    LOG(ERROR) << "Attestation: Failed to verify owner delegation.";
-  //    return false;
-  //  }
+  SecureBlob delegate_blob =
+      ConvertStringToBlob(database_pb_.delegate().blob());
+  SecureBlob delegate_secret =
+      ConvertStringToBlob(database_pb_.delegate().secret());
+  SecureBlob aik_public_key_tpm = ConvertStringToBlob(
+      database_pb_.identity_binding().identity_public_key());
+  if (!VerifyActivateIdentity(delegate_blob, delegate_secret,
+                              identity_key_blob, aik_public_key_tpm,
+                              ek_public_key)) {
+    LOG(ERROR) << "Attestation: Failed to verify owner delegation.";
+    return false;
+  }
   LOG(INFO) << "Attestation: Verified OK.";
   return true;
 }
