@@ -13,6 +13,7 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <base/stl_util.h>
 #include <base/stringprintf.h>
 
 #include "shill/io_handler.h"
@@ -24,7 +25,6 @@
 using base::Bind;
 using base::LazyInstance;
 using base::StringAppendF;
-using std::map;
 using std::string;
 
 namespace shill {
@@ -33,10 +33,11 @@ namespace {
 LazyInstance<Config80211> g_config80211 = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
-map<Config80211::EventType, std::string> *Config80211::event_types_ = NULL;
+Config80211::EventTypeStrings *Config80211::event_types_ = NULL;
 
 Config80211::Config80211()
-    : dispatcher_(NULL),
+    : wifi_state_(kWifiDown),
+      dispatcher_(NULL),
       weak_ptr_factory_(this),
       dispatcher_callback_(Bind(&Config80211::HandleIncomingEvents,
                               weak_ptr_factory_.GetWeakPtr())),
@@ -54,6 +55,11 @@ Config80211 *Config80211::GetInstance() {
   return g_config80211.Pointer();
 }
 
+void Config80211::Reset() {
+  wifi_state_ = kWifiDown;
+  subscribed_events_.clear();
+}
+
 bool Config80211::Init(EventDispatcher *dispatcher) {
   if (!sock_) {
     sock_ = new Nl80211Socket;
@@ -68,7 +74,7 @@ bool Config80211::Init(EventDispatcher *dispatcher) {
   }
 
   if (!event_types_) {
-    event_types_ = new std::map<EventType, std::string>;
+    event_types_ = new EventTypeStrings;
     (*event_types_)[Config80211::kEventTypeConfig] = "config";
     (*event_types_)[Config80211::kEventTypeScan] = "scan";
     (*event_types_)[Config80211::kEventTypeRegulatory] = "regulatory";
@@ -98,7 +104,7 @@ bool Config80211::GetEventTypeString(EventType type, string *value) {
     return false;
   }
 
-  map<EventType, string>::iterator match = (*event_types_).find(type);
+  EventTypeStrings::iterator match = (*event_types_).find(type);
   if (match == (*event_types_).end()) {
     LOG(ERROR) << "Event type " << type << " not found";
     return false;
@@ -107,8 +113,44 @@ bool Config80211::GetEventTypeString(EventType type, string *value) {
   return true;
 }
 
+void Config80211::SetWifiState(WifiState new_state) {
+  if (wifi_state_ == new_state) {
+    return;
+  }
+
+  // If we're newly-up, subscribe to all the event types that have been
+  // requested.
+  if (new_state == kWifiUp) {
+    SubscribedEvents::const_iterator i;
+    for (i = subscribed_events_.begin(); i != subscribed_events_.end(); ++i) {
+      string event_type_string;
+      GetEventTypeString(*i, &event_type_string);
+      ActuallySubscribeToEvents(*i);
+    }
+  }
+  wifi_state_ = new_state;
+}
+
 bool Config80211::SubscribeToEvents(EventType type) {
+  string event_type_string;
+  GetEventTypeString(type, &event_type_string);
+  bool it_worked = true;
+  if (!ContainsKey(subscribed_events_, type)) {
+    if (wifi_state_ == kWifiUp) {
+      it_worked = ActuallySubscribeToEvents(type);
+    }
+    // |subscribed_events_| is a list of events to which we want to subscribe
+    // when wifi comes up (including when it comes _back_ up after it goes
+    // down sometime in the future).
+    subscribed_events_.insert(type);
+  }
+  return it_worked;
+}
+
+bool Config80211::ActuallySubscribeToEvents(EventType type) {
   string group_name;
+  string event_type_string;
+  GetEventTypeString(type, &event_type_string);
 
   if (!GetEventTypeString(type, &group_name)) {
     return false;
@@ -116,7 +158,6 @@ bool Config80211::SubscribeToEvents(EventType type) {
   if (!sock_->AddGroupMembership(group_name)) {
     return false;
   }
-
   // No sequence checking for multicast messages.
   if (!sock_->DisableSequenceChecking()) {
     return false;

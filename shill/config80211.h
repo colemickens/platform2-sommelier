@@ -63,6 +63,7 @@
 
 #include <iomanip>
 #include <map>
+#include <set>
 #include <string>
 
 #include <base/basictypes.h>
@@ -97,6 +98,12 @@ class Config80211 {
     kEventTypeCount
   };
 
+  // This represents whether the cfg80211/mac80211 are installed in the kernel.
+  enum WifiState {
+    kWifiUp=10,
+    kWifiDown=20
+  };
+
   virtual ~Config80211();
 
   // This is a singleton -- use Config80211::GetInstance()->Foo()
@@ -127,8 +134,13 @@ class Config80211 {
   // Return a string corresponding to the passed-in EventType.
   static bool GetEventTypeString(EventType type, std::string *value);
 
-  // Sign-up to receive and log multicast events of a specific type.
+  // Sign-up to receive and log multicast events of a specific type (once wifi
+  // is up).
   bool SubscribeToEvents(EventType type);
+
+  // Indicate that the mac80211 driver is up and, ostensibly, accepting event
+  // subscription requests or down.
+  void SetWifiState(WifiState new_state);
 
  protected:
   friend struct base::DefaultLazyInstanceTraits<Config80211>;
@@ -137,6 +149,10 @@ class Config80211 {
 
  private:
   friend class Config80211Test;
+
+  // Sign-up to receive and log multicast events of a specific type (assumes
+  // wifi is up).
+  bool ActuallySubscribeToEvents(EventType type);
 
   // EventDispatcher calls this when data is available on our socket.  This
   // callback reads data from the driver, parses that data, and logs it.
@@ -147,6 +163,10 @@ class Config80211 {
   // them.
   static int OnNlMessageReceived(struct nl_msg *msg, void *arg);
 
+  // Just for tests, this method turns off WiFi and clears the subscribed
+  // events list.
+  void Reset();
+
   // Config80211 Callback, OnNlMessageReceived invokes this User-supplied
   // callback object when _it_ gets called to read libnl data.
   Callback default_callback_;
@@ -154,7 +174,13 @@ class Config80211 {
   // TODO(wdg): implement the following.
   // std::map<uint32_t, Callback> message_callback_;
 
-  static std::map<EventType, std::string> *event_types_;
+  typedef std::map<EventType, std::string> EventTypeStrings;
+  static EventTypeStrings *event_types_;
+
+  WifiState wifi_state_;
+
+  typedef std::set<EventType> SubscribedEvents;
+  SubscribedEvents subscribed_events_;
 
   // Hooks needed to be called by shill's EventDispatcher.
   EventDispatcher *dispatcher_;

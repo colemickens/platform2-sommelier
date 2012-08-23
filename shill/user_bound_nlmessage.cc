@@ -1851,11 +1851,6 @@ UserBoundNlMessage *UserBoundNlMessageFactory::CreateMessage(nlmsghdr *msg) {
     return NULL;
   }
 
-//#if 0  // If we're collecting data for unit tests, uncommnet this.
-  UserBoundNlMessageDataCollector::GetInstance()->CollectDebugData(*message,
-                                                                   msg);
-//#endif // 0
-
   return message.release();
 }
 
@@ -1897,20 +1892,20 @@ void UserBoundNlMessageDataCollector::CollectDebugData(
     doit = node->second;
 
   if (doit) {
-    LOG(ERROR) << "@@const unsigned char "
+    LOG(INFO) << "@@const unsigned char "
                << "k" << message.GetMessageTypeString()
-               << "[] = { ";
+               << "[] = {";
 
     int payload_bytes = nlmsg_len(msg);
 
     size_t bytes = nlmsg_total_size(payload_bytes);
     unsigned char *rawdata = reinterpret_cast<unsigned char *>(msg);
     for (size_t i=0; i<bytes; ++i) {
-      LOG(ERROR) << "  0x"
+      LOG(INFO) << "  0x"
                  << std::hex << std::setfill('0') << std::setw(2)
                  << + rawdata[i] << ",";
     }
-    LOG(ERROR) << "};";
+    LOG(INFO) << "};";
     need_to_print[message.GetMessageType()] = false;
   }
 }

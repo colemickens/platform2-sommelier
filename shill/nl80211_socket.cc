@@ -65,6 +65,7 @@ bool Nl80211Socket::Init() {
     return false;
   }
 
+  LOG(INFO) << "Nl80211Socket initialized successfully";
   return true;
 }
 
@@ -80,6 +81,7 @@ bool Nl80211Socket::AddGroupMembership(const string &group_name) {
       return false;
     }
   }
+  LOG(INFO) << " Group " << group_name << " added successfully";
   return true;
 }
 

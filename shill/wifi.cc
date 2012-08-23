@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <glib.h>
 
+#include "shill/config80211.h"
 #include "shill/control_interface.h"
 #include "shill/dbus_adaptor.h"
 #include "shill/device.h"
@@ -171,6 +172,10 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
   // Connect to WPA supplicant if it's already present. If not, we'll connect to
   // it when it appears.
   ConnectToSupplicant();
+  Config80211 *config80211 = Config80211::GetInstance();
+  if (config80211) {
+    config80211->SetWifiState(Config80211::kWifiUp);
+  }
 }
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {

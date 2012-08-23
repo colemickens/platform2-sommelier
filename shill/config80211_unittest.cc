@@ -344,6 +344,7 @@ class Config80211Test : public Test {
     EXPECT_NE(config80211_, reinterpret_cast<Config80211 *>(NULL));
     config80211_->sock_ = &socket_;
     EXPECT_TRUE(config80211_->Init(reinterpret_cast<EventDispatcher *>(NULL)));
+    config80211_->Reset();
   }
 
   Config80211 *config80211_;
@@ -382,31 +383,57 @@ TEST_F(Config80211Test, AddLinkTest) {
   // Create a default callback.
   TestCallbackObject callback_object;
 
-  // Install the callback and subscribe to events using it.
+  // Install the callback and subscribe to events using it, wifi down
+  // (shouldn't actually send the subscription request).
+  EXPECT_CALL(socket_, AddGroupMembership(_)).Times(0);
+  EXPECT_CALL(socket_, DisableSequenceChecking()).Times(0);
+  EXPECT_CALL(socket_, SetNetlinkCallback(_,_)).Times(0);
+
   config80211_->SetDefaultCallback(callback_object.GetCallback());
-  Config80211::EventType event_type = Config80211::kEventTypeScan;
-  string event_type_string;
-  EXPECT_TRUE(Config80211::GetEventTypeString(event_type, &event_type_string));
-  EXPECT_CALL(socket_, AddGroupMembership(event_type_string))
+  Config80211::EventType scan_event = Config80211::kEventTypeScan;
+  string scan_event_string;
+  EXPECT_TRUE(Config80211::GetEventTypeString(scan_event, &scan_event_string));
+  EXPECT_TRUE(config80211_->SubscribeToEvents(scan_event));
+
+  // Wifi up, should subscribe to events.
+  EXPECT_CALL(socket_, AddGroupMembership(scan_event_string))
       .WillOnce(Return(true));
   EXPECT_CALL(socket_, DisableSequenceChecking())
       .WillOnce(Return(true));
   EXPECT_CALL(socket_, SetNetlinkCallback(
       _, IsEqualToCallback(&callback_object.GetCallback())))
       .WillOnce(Return(true));
+  config80211_->SetWifiState(Config80211::kWifiUp);
 
-  EXPECT_TRUE(config80211_->SubscribeToEvents(event_type));
+  // Second subscribe, same event (should do nothing).
+  EXPECT_CALL(socket_, AddGroupMembership(_)).Times(0);
+  EXPECT_CALL(socket_, DisableSequenceChecking()).Times(0);
+  EXPECT_CALL(socket_, SetNetlinkCallback(_,_)).Times(0);
+  EXPECT_TRUE(config80211_->SubscribeToEvents(scan_event));
 
-  // Deinstall the callback.
-  config80211_->UnsetDefaultCallback();
-  EXPECT_TRUE(Config80211::GetEventTypeString(event_type, &event_type_string));
-  EXPECT_CALL(socket_, AddGroupMembership(event_type_string))
+  // Bring the wifi back down.
+  config80211_->SetWifiState(Config80211::kWifiDown);
+
+  // Subscribe to a new event with the wifi down (should still do nothing).
+  Config80211::EventType mlme_event = Config80211::kEventTypeMlme;
+  string mlme_event_string;
+  EXPECT_TRUE(Config80211::GetEventTypeString(mlme_event, &mlme_event_string));
+  EXPECT_TRUE(config80211_->SubscribeToEvents(mlme_event));
+
+  // Wifi up (again), should subscribe to the original scan event and the new
+  // mlme event.
+  EXPECT_CALL(socket_, AddGroupMembership(scan_event_string))
       .WillOnce(Return(true));
-  EXPECT_CALL(socket_, DisableSequenceChecking()).WillOnce(Return(true));
-  EXPECT_CALL(socket_, SetNetlinkCallback(_,
-                                          IsEqualToCallback(NULL)
-                                          )).WillOnce(Return(true));
-  EXPECT_TRUE(config80211_->SubscribeToEvents(event_type));
+  EXPECT_CALL(socket_, AddGroupMembership(mlme_event_string))
+      .WillOnce(Return(true));
+  EXPECT_CALL(socket_, DisableSequenceChecking())
+      .Times(2)
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(socket_, SetNetlinkCallback(
+      _, IsEqualToCallback(&callback_object.GetCallback())))
+      .Times(2)
+      .WillRepeatedly(Return(true));
+  config80211_->SetWifiState(Config80211::kWifiUp);
 }
 
 TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {
