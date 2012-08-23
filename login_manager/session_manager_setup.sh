@@ -263,7 +263,6 @@ HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
   HIGHDPI_FLAGS="--allow-webui-compositing --load-2x-resources"
   HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-text-subpixel-positioning"
-  HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-hidpi-pdf-plugin"
 fi
 
 # If screensaver use isn't disabled, set screensaver.
