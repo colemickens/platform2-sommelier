@@ -306,6 +306,18 @@ bool SuspendOkTrampoline(void *arg) {
   return !modem->is_connecting_or_connected();
 }
 
+bool OnSuspendedTrampoline(void *arg) {
+  GobiModem *modem = static_cast<GobiModem*>(arg);
+  modem->OnSuspended();
+  return true;
+}
+
+bool OnResumedTrampoline(void *arg) {
+  GobiModem *modem = static_cast<GobiModem*>(arg);
+  modem->OnResumed();
+  return true;
+}
+
 GobiModem::GobiModem(DBus::Connection& connection,
                      const DBus::Path& path,
                      const gobi::DeviceElement& device,
@@ -353,6 +365,11 @@ void GobiModem::Init() {
   handler_->server().exit_ok_hooks().Add(hooks_name_, ExitOkTrampoline, this);
   RegisterStartSuspend(hooks_name_);
   handler_->server().suspend_ok_hooks().Add(hooks_name_, SuspendOkTrampoline,
+                                            this);
+  handler_->server().on_suspended_hooks().Add(hooks_name_,
+                                              OnSuspendedTrampoline,
+                                              this);
+  handler_->server().on_resumed_hooks().Add(hooks_name_, OnResumedTrampoline,
                                             this);
 }
 
@@ -639,6 +656,11 @@ void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
     error.set(kConnectError, "Cromo is exiting");
     return;
   }
+  if (suspending_) {
+    LOG(WARNING) << "Connect operation is ignored when suspending";
+    error.set(kConnectError, "Connect operation is ignored when suspending");
+    return;
+  }
   if (session_starter_in_flight_) {
     LOG(WARNING) << "Session start already in flight";
     error.set(kConnectError, "Connect already in progress");
@@ -712,10 +734,6 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter) {
 
   DBus::Error error;
   if (starter->return_value_ == 0) {
-    // TODO(connectivity): There has got to be a better place to clear
-    // this flag.
-    suspending_ = false;
-
     session_id_ = starter->session_id_;
 
     if (pending_enable_ != NULL) {
@@ -1642,6 +1660,17 @@ bool GobiModem::StartSuspend() {
 bool StartSuspendTrampoline(void *arg) {
   GobiModem *modem = static_cast<GobiModem*>(arg);
   return modem->StartSuspend();
+}
+
+void GobiModem::OnSuspended() {
+  LOG(INFO) << "OnSuspended";
+}
+
+void GobiModem::OnResumed() {
+  // cromo always call this method after OnSuspended either due to a resume
+  // event or due to a suspend completion timeout.
+  LOG(INFO) << "OnResumed";
+  suspending_ = false;
 }
 
 void GobiModem::RegisterStartSuspend(const std::string &name) {

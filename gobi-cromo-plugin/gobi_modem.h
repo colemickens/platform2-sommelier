@@ -441,6 +441,8 @@ class GobiModem
   bool ExitOk();
   bool StartSuspend();
   bool SuspendOk();
+  void OnSuspended();
+  void OnResumed();
   void RegisterStartSuspend(const std::string& name);
 
   // Resets the device by kicking it off the USB and allowing it back
@@ -458,6 +460,8 @@ class GobiModem
   friend bool ExitOkTrampoline(void *arg);
   friend bool StartSuspendTrampoline(void *arg);
   friend bool SuspendOkTrampoline(void *arg);
+  friend bool OnSuspendedTrampoline(void *arg);
+  friend bool OnResumedTrampoline(void *arg);
 
   scoped_ptr<MetricsLibraryInterface> metrics_lib_;
 
