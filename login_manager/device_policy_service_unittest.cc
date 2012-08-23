@@ -55,6 +55,10 @@ MATCHER_P(StatusEq, status, "") {
           arg.defunct_prefs_file_state == status.defunct_prefs_file_state);
 }
 
+MATCHER_P(PolicyEq, policy, "") {
+  return arg.SerializeAsString() == policy.SerializeAsString();
+}
+
 }  // namespace
 
 namespace login_manager {
@@ -246,6 +250,13 @@ class DevicePolicyServiceTest : public ::testing::Test {
     loop_.RunAllPending();
   }
 
+  void ExpectKeyPopulated(bool key_populated) {
+    EXPECT_CALL(*key_, HaveCheckedDisk())
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*key_, IsPopulated())
+        .WillRepeatedly(Return(key_populated));
+  }
+
   LoginMetrics::PolicyFileState SimulateNullPolicy() {
     EXPECT_CALL(*store_, Get())
         .WillRepeatedly(ReturnRef(new_policy_proto_));
@@ -326,6 +337,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   ExpectGetPolicy(s, new_policy_proto_);
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
+  ExpectKeyPopulated(true);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -349,6 +361,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
   ExpectGetPolicy(s, new_policy_proto_);
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
+  ExpectKeyPopulated(true);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -374,6 +387,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
   ExpectGetPolicy(s, new_policy_proto_);
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
+  ExpectKeyPopulated(true);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -392,6 +406,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
+  ExpectKeyPopulated(true);
 
   PolicyService::Error error;
   bool is_owner = true;
@@ -409,6 +424,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
   ExpectGetPolicy(s, policy_proto_);
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
+  ExpectKeyPopulated(true);
 
   PolicyService::Error error;
   bool is_owner = true;
@@ -428,6 +444,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .InSequence(s)
       .WillOnce(Return(true));
+  ExpectKeyPopulated(true);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -435,6 +452,44 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
                                                  &is_owner,
                                                  &error));
   EXPECT_TRUE(is_owner);
+}
+
+TEST_F(DevicePolicyServiceTest,
+       CheckAndHandleOwnerLogin_MissingPublicKeyOwner) {
+  InitService(new KeyFailUtil);
+  ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
+
+  Sequence s;
+  ExpectGetPolicy(s, policy_proto_);
+  EXPECT_CALL(*mitigator_, Mitigate(_))
+      .InSequence(s)
+      .WillOnce(Return(true));
+  ExpectKeyPopulated(true);
+
+  PolicyService::Error error;
+  bool is_owner = false;
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
+                                                 &is_owner,
+                                                 &error));
+  EXPECT_TRUE(is_owner);
+}
+
+TEST_F(DevicePolicyServiceTest,
+       CheckAndHandleOwnerLogin_MissingPublicKeyNonOwner) {
+  InitService(new KeyFailUtil);
+  ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
+
+  Sequence s;
+  ExpectGetPolicy(s, policy_proto_);
+  EXPECT_CALL(*mitigator_, Mitigate(_)).Times(0);
+  ExpectKeyPopulated(false);
+
+  PolicyService::Error error;
+  bool is_owner = true;
+  EXPECT_TRUE(service_->CheckAndHandleOwnerLogin("other@somwhere",
+                                                 &is_owner,
+                                                 &error));
+  EXPECT_FALSE(is_owner);
 }
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
@@ -446,6 +501,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .InSequence(s)
       .WillOnce(Return(false));
+  ExpectKeyPopulated(true);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -475,6 +531,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
   ExpectGetPolicy(s, new_policy_proto_);
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
+  ExpectKeyPopulated(true);
 
   PolicyService::Error error;
   bool is_owner = false;
@@ -493,6 +550,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
   EXPECT_CALL(*key_, PopulateFromBuffer(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(true));
+  EXPECT_CALL(*store_, Set(PolicyEq(em::PolicyFetchResponse())));
   ExpectInstallNewOwnerPolicy(s);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
@@ -507,9 +565,13 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
+  EXPECT_CALL(*key_, IsPopulated())
+      .InSequence(s)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*key_, ClobberCompromisedKey(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(true));
+  EXPECT_CALL(*store_, Set(_)).Times(0);
   ExpectInstallNewOwnerPolicy(s);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
@@ -524,6 +586,9 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
+  EXPECT_CALL(*key_, IsPopulated())
+      .InSequence(s)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*key_, ClobberCompromisedKey(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(true));
@@ -548,6 +613,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
   EXPECT_CALL(*key_, PopulateFromBuffer(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(true));
+  EXPECT_CALL(*store_, Set(PolicyEq(em::PolicyFetchResponse())));
   ExpectInstallNewOwnerPolicy(s);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
@@ -582,6 +648,9 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
+  EXPECT_CALL(*key_, IsPopulated())
+      .InSequence(s)
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*key_, ClobberCompromisedKey(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(false));
@@ -599,10 +668,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NssFailure) {
 TEST_F(DevicePolicyServiceTest, KeyMissing_Present) {
   InitService(new MockNssUtil);
 
-  EXPECT_CALL(*key_, HaveCheckedDisk())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*key_, IsPopulated())
-      .WillRepeatedly(Return(true));
+  ExpectKeyPopulated(true);
 
   EXPECT_FALSE(service_->KeyMissing());
 }
@@ -621,10 +687,7 @@ TEST_F(DevicePolicyServiceTest, KeyMissing_NoDiskCheck) {
 TEST_F(DevicePolicyServiceTest, KeyMissing_CheckedAndMissing) {
   InitService(new MockNssUtil);
 
-  EXPECT_CALL(*key_, HaveCheckedDisk())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*key_, IsPopulated())
-      .WillRepeatedly(Return(false));
+  ExpectKeyPopulated(false);
 
   EXPECT_TRUE(service_->KeyMissing());
 }

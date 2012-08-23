@@ -84,12 +84,21 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
   if (!CurrentUserHasOwnerKey(pub_key, &error))
    return false;
 
-  // If we're not mitigating a key loss, we should be able to populate |key_|.
-  // If we're mitigating a key loss, we should be able to clobber |key_|.
-  if ((!mitigator_->Mitigating() && !key()->PopulateFromBuffer(pub_key)) ||
-      (mitigator_->Mitigating() && !key()->ClobberCompromisedKey(pub_key))) {
-    return false;
+  if (mitigator_->Mitigating()) {
+    // Mitigating: Depending on whether the public key is still present, either
+    // clobber or populate regularly.
+    if (!(key()->IsPopulated() ? key()->ClobberCompromisedKey(pub_key)
+                               : key()->PopulateFromBuffer(pub_key))) {
+      return false;
+    }
+  } else {
+    // Not mitigating, so regular key population should work.
+    if (!key()->PopulateFromBuffer(pub_key))
+      return false;
+    // Clear policy in case we're re-establishing ownership.
+    store()->Set(em::PolicyFetchResponse());
   }
+
   if (StoreOwnerProperties(current_user, &error)) {
     PersistKey();
     PersistPolicy();

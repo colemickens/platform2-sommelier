@@ -30,6 +30,7 @@
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_metrics.h"
+#include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_system_utils.h"
 
@@ -107,7 +108,8 @@ class SessionManagerDBusTest : public SessionManagerTest {
     ExpectSessionBoilerplate(email_string, false, true, job);
   }
 
-  void ExpectStartSessionUnowned(const std::string& email_string) {
+  void ExpectStartSessionUnowned(const std::string& email_string,
+                                 bool mitigating) {
     MockChildJob* job = CreateTrivialMockJob();
     EXPECT_CALL(*job, StartSession(email_string))
         .Times(1);
@@ -123,12 +125,10 @@ class SessionManagerDBusTest : public SessionManagerTest {
     EXPECT_CALL(*device_policy_service_, KeyMissing())
         .WillOnce(Return(true));
 
-    MockKeyGenerator* gen = new MockKeyGenerator;
-    EXPECT_CALL(*gen, Start(_, _))
-        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mitigator_, Mitigating())
+        .WillRepeatedly(Return(mitigating));
 
     manager_->set_uid(getuid());
-    manager_->test_api().set_keygen(gen);
 
     ExpectUserPolicySetup();
 
@@ -292,7 +292,13 @@ TEST_F(SessionManagerDBusTest, StartSessionNew) {
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
-  ExpectStartSessionUnowned(email);
+  ExpectStartSessionUnowned(email, false);
+
+  MockKeyGenerator* gen = new MockKeyGenerator;
+  EXPECT_CALL(*gen, Start(_, _))
+      .WillRepeatedly(Return(true));
+  manager_->test_api().set_keygen(gen);
+
   MockUtils();
 
   ScopedError error;
@@ -369,6 +375,25 @@ TEST_F(SessionManagerDBusTest, StartSessionRemovesMachineInfo) {
                                          &Resetter(&error).lvalue()));
 
   EXPECT_FALSE(file_util::PathExists(machine_info_file));
+}
+
+TEST_F(SessionManagerDBusTest, StartSessionKeyMitigation) {
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  ExpectStartSessionUnowned(email, true);
+
+  MockKeyGenerator* gen = new MockKeyGenerator;
+  EXPECT_CALL(*gen, Start(_, _)).Times(0);
+  manager_->test_api().set_keygen(gen);
+
+  MockUtils();
+
+  ScopedError error;
+  EXPECT_EQ(TRUE, manager_->StartSession(email,
+                                         nothing,
+                                         &out,
+                                         &Resetter(&error).lvalue()));
 }
 
 TEST_F(SessionManagerDBusTest, StopSession) {

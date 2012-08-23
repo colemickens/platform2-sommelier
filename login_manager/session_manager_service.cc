@@ -38,8 +38,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/utility.h>
 
-#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
+#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/interface.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
@@ -649,7 +649,9 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     system_->BroadcastSignal(session_manager_,
                              signals_[kSignalSessionStateChanged],
                              kStarted, current_user_.c_str());
-    if (device_policy_->KeyMissing() && !current_user_is_incognito_) {
+    if (device_policy_->KeyMissing() &&
+        !mitigator_->Mitigating() &&
+        !current_user_is_incognito_) {
       gen_->Start(set_uid_ ? uid_ : 0, this);
     }
     // Delete the machine-info file. It contains device-identifiable data such
