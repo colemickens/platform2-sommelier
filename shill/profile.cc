@@ -87,6 +87,12 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
     Error::PopulateAndLog(error, Error::kInternalError,
         base::StringPrintf("Could not open profile storage for %s:%s",
                            name_.user.c_str(), name_.identifier.c_str()));
+    if (already_exists) {
+      // The profile contents is corrupt, or we do not have access to
+      // this file.  Move this file out of the way so a future open attempt
+      // will succeed, assuming the failure reason was the former.
+      storage->MarkAsCorrupted();
+    }
     return false;
   }
   if (!already_exists) {

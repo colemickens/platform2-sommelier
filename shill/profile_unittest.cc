@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stringprintf.h>
 #include <base/string_util.h>
@@ -354,6 +355,22 @@ TEST_F(ProfileTest, InitStorage) {
   // Then test that with "create or open" we succeed.
   EXPECT_TRUE(ProfileInitStorage(id2, Profile::kCreateOrOpenExisting, false,
                                  Error::kSuccess));
+
+  // Corrupt the profile storage.
+  string suffix(base::StringPrintf("/%s.profile", id.identifier.c_str()));
+  FilePath final_path(
+      base::StringPrintf(storage_path().c_str(), id.user.c_str()) + suffix);
+  string data = "]corrupt_data[";
+  EXPECT_EQ(data.size(),
+            file_util::WriteFile(final_path, data.data(), data.size()));
+
+  // Then test that we fail to open this file.
+  EXPECT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
+                                  Error::kInternalError));
+
+  // But then on a second try the file no longer exists.
+  ASSERT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
+                                  Error::kNotFound));
 }
 
 TEST_F(ProfileTest, UpdateDevice) {

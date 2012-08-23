@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -100,6 +100,19 @@ TEST_F(KeyFileStoreTest, OpenFail) {
   WriteKeyFile("garbage\n");
   EXPECT_FALSE(store_.Open());
   EXPECT_FALSE(store_.key_file_);
+}
+
+TEST_F(KeyFileStoreTest, MarkAsCorrupted) {
+  EXPECT_FALSE(store_.MarkAsCorrupted());
+  EXPECT_FALSE(store_.IsNonEmpty());
+  WriteKeyFile("garbage\n");
+  EXPECT_TRUE(store_.IsNonEmpty());
+  EXPECT_TRUE(file_util::PathExists(store_.path()));
+  EXPECT_TRUE(store_.MarkAsCorrupted());
+  EXPECT_FALSE(store_.IsNonEmpty());
+  EXPECT_FALSE(file_util::PathExists(store_.path()));
+  EXPECT_TRUE(
+      file_util::PathExists(FilePath(store_.path().value() + ".corrupted")));
 }
 
 TEST_F(KeyFileStoreTest, GetGroups) {

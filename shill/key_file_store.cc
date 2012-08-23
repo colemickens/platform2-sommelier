@@ -18,6 +18,8 @@ using std::vector;
 
 namespace shill {
 
+const char KeyFileStore::kCorruptSuffix[] = ".corrupted";
+
 KeyFileStore::KeyFileStore(GLib *glib)
     : glib_(glib),
       crypto_(glib),
@@ -102,6 +104,21 @@ bool KeyFileStore::Flush() {
   }
   glib_->Free(data);
   return success;
+}
+
+bool KeyFileStore::MarkAsCorrupted() {
+  LOG(INFO) << "In " << __func__ << " for " << path_.value();
+  if (path_.empty()) {
+    LOG(ERROR) << "Empty key file path.";
+    return false;
+  }
+  string corrupted_path = path_.value() + kCorruptSuffix;
+  int ret =  rename(path_.value().c_str(), corrupted_path.c_str());
+  if (ret != 0) {
+    PLOG(ERROR) << "File rename failed";
+    return false;
+  }
+  return true;
 }
 
 set<string> KeyFileStore::GetGroups() const {

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -40,6 +40,11 @@ class KeyFileStore : public StoreInterface {
   // This method does not complete gracefully if invoked on a store
   // that has not been opened successfully or has been closed already.
   bool Close();
+
+  // Mark the underlying file store as corrupted, moving the data file
+  // to a new filename.  This will prevent the file from being re-opened
+  // the next time Open() is called.
+  bool MarkAsCorrupted();
 
   // Inherited from StoreInterface.
   virtual bool Flush();
@@ -88,6 +93,8 @@ class KeyFileStore : public StoreInterface {
  private:
   FRIEND_TEST(KeyFileStoreTest, OpenClose);
   FRIEND_TEST(KeyFileStoreTest, OpenFail);
+
+  static const char kCorruptSuffix[];
 
   void ReleaseKeyFile();
 
