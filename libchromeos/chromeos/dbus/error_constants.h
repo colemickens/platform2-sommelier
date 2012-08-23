@@ -27,10 +27,11 @@ typedef enum {
                                         // disk failed.
   CHROMEOS_LOGIN_ERROR_DECODE_FAIL,     // Decoding signature failed.
   CHROMEOS_LOGIN_ERROR_ILLEGAL_USER,    // The user is not on the whitelist.
-  CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY,// No value set for given property.
-  CHROMEOS_LOGIN_ERROR_ILLEGAL_SERVICE, // service is not whitelisted.
+  CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY,  // No value set for given property.
+  CHROMEOS_LOGIN_ERROR_ILLEGAL_SERVICE,  // service is not whitelisted.
   CHROMEOS_LOGIN_ERROR_START_FAIL,      // service start failure.
   CHROMEOS_LOGIN_ERROR_STOP_FAIL,       // service stop failure.
+  CHROMEOS_LOGIN_ERROR_ALREADY_SESSION,  // a session has already been started
 } ChromeOSLoginError;
 
 }  // namespace login_manager
