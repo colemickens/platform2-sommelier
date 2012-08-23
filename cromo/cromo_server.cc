@@ -44,11 +44,15 @@ CromoServer::CromoServer(DBus::Connection& connection)
       conn_(connection),
       powerd_up_(false),
       max_suspend_delay_(0),
+      suspend_nonce_(0),
+      suspend_completion_timeout_(0),
       metrics_lib_(new MetricsLibrary()) {
   metrics_lib_->Init();
 }
 
 CromoServer::~CromoServer() {
+  CancelSuspendCompletionTimeout();
+
   for (ModemHandlers::iterator it = modem_handlers_.begin();
        it != modem_handlers_.end(); ++it) {
     delete *it;
@@ -128,6 +132,13 @@ void CromoServer::CheckForPowerDaemon() {
   }
 }
 
+gboolean AssumeSuspendCancelled(void *arg) {
+  LOG(INFO) << "Assume suspend cancelled";
+  CromoServer *srv = static_cast<CromoServer*>(arg);
+  srv->PowerStateChanged("on");
+  return FALSE;
+}
+
 void CromoServer::SuspendReady() {
   unsigned long duration = time_ms() - suspend_start_time_;
   metrics_lib_->SendToUMA("Network.3G.SuspendTime", duration, 0, 10000, 20);
@@ -137,6 +148,15 @@ void CromoServer::SuspendReady() {
   msg.destination(power_manager::kPowerManagerInterface);
   msg.writer().append_uint32(suspend_nonce_);
   conn_.send(msg, NULL);
+
+  // HACK: The suspend request may be cancelled but power manager does not
+  // notify such event (crosbug.com/33852). As a workaround, if cromo does not
+  // receive a PowerStateChanged("mem") signal within 5 seconds, it assumes the
+  // suspend request is cancelled.
+  CancelSuspendCompletionTimeout();
+  LOG(INFO) << "Schedule a suspend completion timeout";
+  suspend_completion_timeout_ =
+      g_timeout_add_seconds(5, AssumeSuspendCancelled, this);
 }
 
 bool CromoServer::CheckSuspendReady() {
@@ -152,6 +172,16 @@ bool CromoServer::CheckSuspendReady() {
 gboolean test_for_suspend(void *arg) {
   CromoServer *srv = static_cast<CromoServer*>(arg);
   return !srv->CheckSuspendReady();
+}
+
+void CromoServer::PowerStateChanged(const std::string& new_power_state) {
+  LOG(INFO) << "PowerStateChanged: " << new_power_state;
+  if (new_power_state == "mem") {
+    CancelSuspendCompletionTimeout();
+    on_suspended_hooks_.Run();
+  } else if (new_power_state == "on") {
+    on_resumed_hooks_.Run();
+  }
 }
 
 void CromoServer::SuspendDelay(unsigned int nonce) {
@@ -205,6 +235,14 @@ gboolean CromoServer::RegisterSuspendDelayCallback(gpointer arg) {
 
 void CromoServer::RegisterSuspendDelay() {
   g_idle_add(RegisterSuspendDelayCallback, this);
+}
+
+void CromoServer::CancelSuspendCompletionTimeout() {
+  if (suspend_completion_timeout_) {
+    LOG(INFO) << "Cancel suspend completion timeout";
+    g_source_remove(suspend_completion_timeout_);
+    suspend_completion_timeout_ = 0;
+  }
 }
 
 void CromoServer::UnregisterStartSuspend(const std::string& name) {

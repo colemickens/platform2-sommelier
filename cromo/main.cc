@@ -12,6 +12,7 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/syslog_logging.h>
 #include <dbus-c++/glib-integration.h>
@@ -142,6 +143,15 @@ class MessageHandler : public DBus::Callback_Base<bool, const DBus::Message&> {
       return true;
     }
 
+    bool PowerStateChanged(const DBus::Message& param) const {
+      DBus::MessageIter iter;
+      const char *new_power_state;
+      iter = param.reader();
+      new_power_state = iter.get_string();
+      srv_->PowerStateChanged(new_power_state ? new_power_state : "");
+      return true;
+    }
+
     bool SuspendDelay(const DBus::Message& param) const {
       unsigned int seqnum;
       DBus::MessageIter iter;
@@ -154,6 +164,10 @@ class MessageHandler : public DBus::Callback_Base<bool, const DBus::Message&> {
     bool call(const DBus::Message& param) const {
       if (param.is_signal(kDBusInterface, kDBusNameOwnerChanged)) {
         return NameOwnerChanged(param);
+      }
+      if (param.is_signal(power_manager::kPowerManagerInterface,
+                          power_manager::kPowerStateChangedSignal)) {
+        return PowerStateChanged(param);
       }
       if (param.is_signal(power_manager::kPowerManagerInterface,
                           power_manager::kSuspendDelay)) {
@@ -201,14 +215,18 @@ int main(int argc, char* argv[]) {
   conn.request_name(CromoServer::kServiceName);
 
   server = new CromoServer(conn);
-  char buf[256];
-  snprintf(buf, sizeof(buf), "type='signal',interface='%s',member='%s'",
-           kDBusInterface, kDBusNameOwnerChanged);
-  conn.add_match(buf);
-  snprintf(buf, sizeof(buf), "type='signal',interface='%s',member='%s'",
-           power_manager::kPowerManagerInterface,
-           power_manager::kSuspendDelay);
-  conn.add_match(buf);
+  std::string match =
+      base::StringPrintf("type='signal',interface='%s',member='%s'",
+                         kDBusInterface, kDBusNameOwnerChanged);
+  conn.add_match(match.c_str());
+  match = base::StringPrintf("type='signal',interface='%s',member='%s'",
+                             power_manager::kPowerManagerInterface,
+                             power_manager::kPowerStateChangedSignal);
+  conn.add_match(match.c_str());
+  match = base::StringPrintf("type='signal',interface='%s',member='%s'",
+                             power_manager::kPowerManagerInterface,
+                             power_manager::kSuspendDelay);
+  conn.add_match(match.c_str());
   DBus::MessageSlot mslot;
   mslot = new MessageHandler(server);
   if (!conn.add_filter(mslot)) {

@@ -54,6 +54,8 @@ class CromoServer
   HookTable& start_exit_hooks() { return start_exit_hooks_; }
   HookTable& exit_ok_hooks() { return exit_ok_hooks_; }
   HookTable& suspend_ok_hooks() { return suspend_ok_hooks_; }
+  HookTable& on_suspended_hooks() { return on_suspended_hooks_; }
+  HookTable& on_resumed_hooks() { return on_resumed_hooks_; }
 
   // Registers a suspend delay. The maximum delay specified is the longest time
   // it will take before the caller's suspend_ok_hook will return true.
@@ -77,10 +79,14 @@ class CromoServer
   HookTable start_suspend_hooks_;
   HookTable suspend_ok_hooks_;
 
+  HookTable on_suspended_hooks_;
+  HookTable on_resumed_hooks_;
+
   DBus::Connection conn_;
 
   void PowerDaemonUp();
   void PowerDaemonDown();
+  void PowerStateChanged(const std::string& new_power_state);
   void SuspendDelay(unsigned int seqnum);
 
   typedef std::map<const std::string, unsigned int> SuspendDelayMap;
@@ -91,6 +97,7 @@ class CromoServer
   bool CheckSuspendReady();
   static gboolean RegisterSuspendDelayCallback(void *arg);
   void RegisterSuspendDelay();
+  void CancelSuspendCompletionTimeout();
 
   unsigned int MaxSuspendDelay();
 
@@ -98,6 +105,7 @@ class CromoServer
 
   unsigned int max_suspend_delay_;
   unsigned int suspend_nonce_;
+  guint suspend_completion_timeout_;
 
   scoped_ptr<MetricsLibraryInterface> metrics_lib_;
   unsigned long long suspend_start_time_;
@@ -105,6 +113,7 @@ class CromoServer
   DISALLOW_COPY_AND_ASSIGN(CromoServer);
 
   friend class MessageHandler;
+  friend gboolean AssumeSuspendCancelled(void *arg);
   friend gboolean test_for_suspend(void *arg);
 };
 
