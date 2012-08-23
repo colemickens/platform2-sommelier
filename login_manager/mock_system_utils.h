@@ -22,15 +22,16 @@ class MockSystemUtils : public SystemUtils {
   MockSystemUtils();
   ~MockSystemUtils();
   MOCK_METHOD3(kill, int(pid_t pid, uid_t uid, int signal));
-  MOCK_METHOD1(time, time_t(time_t*));
+  MOCK_METHOD1(time, time_t(time_t*)); // NOLINT
   MOCK_METHOD0(fork, pid_t(void));
   MOCK_METHOD0(IsDevMode, int(void));
+  MOCK_METHOD1(Exists, bool(const FilePath&));
+  MOCK_METHOD3(AtomicFileWrite, bool(const FilePath&, const char*, int));
   MOCK_METHOD2(ChildIsGone, bool(pid_t child_spec, int timeout));
   MOCK_METHOD2(EnsureAndReturnSafeFileSize,
                bool(const FilePath& file, int32* file_size_32));
   MOCK_METHOD2(EnsureAndReturnSafeSize,
                bool(int64 size_64, int32* size_32));
-  MOCK_METHOD0(TouchResetFile, bool(void));
   MOCK_METHOD4(BroadcastSignal, void(gobject::SessionManager*,
                                      guint,
                                      const char*,

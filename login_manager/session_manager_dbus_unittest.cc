@@ -577,4 +577,28 @@ TEST_F(SessionManagerDBusTest, RestartJobWithAuthBadCookie) {
   EXPECT_EQ(FALSE, out);
 }
 
+TEST_F(SessionManagerDBusTest, StartDeviceWipeAlreadyLoggedIn) {
+  TrivialInitManager();
+  MockUtils();
+  FilePath logged_in_path(SessionManagerService::kLoggedInFlag);
+  EXPECT_CALL(utils_, Exists(logged_in_path))
+    .WillOnce(Return(true));
+  GError *error = NULL;
+  EXPECT_EQ(FALSE, manager_->StartDeviceWipe(&error));
+}
+
+TEST_F(SessionManagerDBusTest, StartDeviceWipe) {
+  TrivialInitManager();
+  MockUtils();
+  FilePath logged_in_path(SessionManagerService::kLoggedInFlag);
+  FilePath reset_path(SessionManagerService::kResetFile);
+  EXPECT_CALL(utils_, Exists(logged_in_path))
+    .WillOnce(Return(false));
+  EXPECT_CALL(utils_, AtomicFileWrite(reset_path, _, _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(utils_, SendSignalToPowerManager(_))
+    .WillOnce(Return());
+  EXPECT_EQ(TRUE, manager_->StartDeviceWipe(NULL));
+}
+
 }  // namespace login_manager

@@ -325,6 +325,8 @@ class SessionManagerService
                               gboolean* OUT_done,
                               GError** error);
 
+  gboolean StartDeviceWipe(GError** error);
+
   // Manage per-session services, which die when the session ends.
   gboolean StartSessionService(gchar *name, gboolean *OUT_done, GError **error);
   gboolean StopSessionService(gchar *name, gboolean *OUT_done, GError **error);
@@ -464,6 +466,8 @@ class SessionManagerService
   // The name of the pref that Chrome sets to track who the owner is.
   static const char kDeviceOwnerPref[];
   static const char *kValidSessionServices[];
+  static const char kLoggedInFlag[];
+  static const char kResetFile[];
 
   // TODO(cmasone): consider tracking job, pid and watcher in one struct.
   std::vector<ChildJobInterface*> child_jobs_;
@@ -507,6 +511,8 @@ class SessionManagerService
 
   static size_t kCookieEntropyBytes;
   std::string cookie_;
+  FRIEND_TEST(SessionManagerDBusTest, StartDeviceWipeAlreadyLoggedIn);
+  FRIEND_TEST(SessionManagerDBusTest, StartDeviceWipe);
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
 };

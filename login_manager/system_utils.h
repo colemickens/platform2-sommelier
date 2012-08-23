@@ -53,6 +53,9 @@ class SystemUtils {
 
   virtual bool EnsureAndReturnSafeSize(int64 size_64, int32* size_32);
 
+  // Returns whether a file exists.
+  virtual bool Exists(const FilePath& file);
+
   // Removes a file.
   virtual bool RemoveFile(const FilePath& filename);
 
@@ -62,8 +65,6 @@ class SystemUtils {
   virtual bool AtomicFileWrite(const FilePath& filename,
                                const char* data,
                                int size);
-
-  virtual bool TouchResetFile();
 
   // Broadcasts |signal| over DBus, originating from |origin|, adding
   // |payload| and |user| as args.  It is an error to pass NULL for

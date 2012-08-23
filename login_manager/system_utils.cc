@@ -29,9 +29,6 @@ namespace gobject {
 struct SessionManager;
 }
 
-//static
-const char SystemUtils::kResetFile[] =
-    "/mnt/stateful_partition/factory_install_reset";
 const char SystemUtils::kSignalSuccess[] = "success";
 const char SystemUtils::kSignalFailure[] = "failure";
 
@@ -112,6 +109,10 @@ bool SystemUtils::EnsureAndReturnSafeSize(int64 size_64, int32* size_32) {
   return true;
 }
 
+bool SystemUtils::Exists(const FilePath& file) {
+  return file_util::PathExists(file);
+}
+
 bool SystemUtils::RemoveFile(const FilePath& filename) {
   return file_util::Delete(filename, false);
 }
@@ -127,15 +128,6 @@ bool SystemUtils::AtomicFileWrite(const FilePath& filename,
 
   return (file_util::ReplaceFile(scratch_file, filename) &&
           chmod(filename.value().c_str(), (S_IRUSR | S_IWUSR | S_IROTH)) == 0);
-}
-
-bool SystemUtils::TouchResetFile() {
-  FilePath reset_file(kResetFile);
-  const char fast[] = "fast";
-  if (file_util::WriteFile(reset_file, fast, strlen(fast)) != strlen(fast)) {
-    LOG(FATAL) << "Can't write reset file to disk!!!!";
-  }
-  return true;
 }
 
 void SystemUtils::BroadcastSignal(gobject::SessionManager* origin,

@@ -163,39 +163,31 @@ void SessionManagerService::SIGTERMHandler(int signal) {
   GracefulShutdownHandler(signal);
 }
 
-// static
 const uint32 SessionManagerService::kMaxEmailSize = 200;
-// static
 const char SessionManagerService::kEmailSeparator = '@';
-// static
 const char SessionManagerService::kLegalCharacters[] =
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     ".@1234567890-+_";
-// static
 const char SessionManagerService::kIncognitoUser[] = "";
-// static
 const char SessionManagerService::kDemoUser[] = "demouser";
-// static
 const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
-// static
 const char SessionManagerService::kFirstBootFlag[] = "--first-boot";
-// static
 const char SessionManagerService::kTestingChannelFlag[] =
     "--testing-channel=NamedTestingInterface:";
-// static
 const char SessionManagerService::kStarted[] = "started";
-// static
 const char SessionManagerService::kStopping[] = "stopping";
-// static
 const char SessionManagerService::kStopped[] = "stopped";
-// static
 const char SessionManagerService::kFlagFileDir[] = "/var/run/session_manager";
-// static
 const char *SessionManagerService::kValidSessionServices[] = {
   "tor",
   NULL
 };
+
+const char SessionManagerService::kLoggedInFlag[] =
+    "/var/run/session_manager/logged_in";
+const char SessionManagerService::kResetFile[] =
+    "/mnt/stateful_partition/factory_install_reset";
 
 namespace {
 
@@ -665,6 +657,8 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     if (!file_util::Delete(FilePath(machine_info_file_), false))
       PLOG(WARNING) << "Failed to delete " << machine_info_file_.value();
   }
+
+  system_->AtomicFileWrite(FilePath(kLoggedInFlag), "1", 1);
 
   return *OUT_done;
 }
@@ -1226,6 +1220,21 @@ bool SessionManagerService::IsValidCookie(const char *cookie) {
              ? strlen(cookie)
              : cookie_.size();
   return chromeos::SafeMemcmp(cookie, cookie_.data(), len) == 0;
+}
+
+gboolean SessionManagerService::StartDeviceWipe(GError** error) {
+  const char *contents = "fast";
+  const FilePath reset_path(kResetFile);
+  const FilePath session_path(kLoggedInFlag);
+  if (system_->Exists(session_path)) {
+    const char msg[] = "A user has already logged in this boot.";
+    LOG(ERROR) << msg;
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ALREADY_SESSION, msg);
+    return FALSE;
+  }
+  system_->AtomicFileWrite(reset_path, contents, strlen(contents));
+  system_->SendSignalToPowerManager(power_manager::kRequestRestartSignal);
+  return TRUE;
 }
 
 }  // namespace login_manager

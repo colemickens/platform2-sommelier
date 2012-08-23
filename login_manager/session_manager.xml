@@ -138,5 +138,9 @@
       <arg type="s" name="name" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
+    <method name="StartDeviceWipe">
+      <!-- Initiates a wipe of the device's state -->
+      <arg type="b" name="done" direction="out" />
+    </method>
   </interface>
 </node>

@@ -208,6 +208,11 @@ gboolean session_manager_stop_session_service(SessionManager *self,
   SESSION_MANAGER_WRAP_METHOD(StopSessionService, name, OUT_done, error);
 }
 
+gboolean session_manager_start_device_wipe(SessionManager *self,
+                                           GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(StartDeviceWipe, error);
+}
+
 #undef SESSION_MANAGER_WRAP_METHOD
 
 }  // namespace gobject
