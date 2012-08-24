@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Use differently-sized images depending on the framebuffer width.
+WIDTH=$(ply-image --print-resolution | cut -d ' ' -f 1)
+ASSETS=/usr/share/chromeos-assets
+ASSETS_200=$ASSETS/images_200_percent
+ASSETS_100=$ASSETS/images_100_percent
+if [ $WIDTH -gt 1920 -a -e "$ASSETS_200/battery_alert_01.png" ]; then
+  IMAGES="$ASSETS_200"/battery_alert*.png
+else
+  IMAGES="$ASSETS_100"/battery_alert*.png
+fi
+
+# Repeat the image sequence a few times.
+ANIMATION="$IMAGES $IMAGES $IMAGES"
+ply-image --clear 0x000000 --frame-interval=500 $ANIMATION
