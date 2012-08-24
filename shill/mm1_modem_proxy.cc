@@ -252,15 +252,6 @@ const std::string ModemProxy::Device() {
     return std::string();  // Make the compiler happy.
   }
 }
-const std::string ModemProxy::Driver() {
-  SLOG(DBus, 2) << __func__;
-  try {
-    return proxy_.Driver();
-  } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
-    return std::string();  // Make the compiler happy.
-  }
-}
 const std::string ModemProxy::Plugin() {
   SLOG(DBus, 2) << __func__;
   try {

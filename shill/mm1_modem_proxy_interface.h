@@ -79,7 +79,6 @@ class ModemProxyInterface {
   virtual const std::string Revision() = 0;
   virtual const std::string DeviceIdentifier() = 0;
   virtual const std::string Device() = 0;
-  virtual const std::string Driver() = 0;
   virtual const std::string Plugin() = 0;
   virtual const std::string EquipmentIdentifier() = 0;
   virtual uint32_t UnlockRequired() = 0;

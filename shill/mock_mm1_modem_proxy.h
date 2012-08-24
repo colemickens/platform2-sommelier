@@ -71,7 +71,6 @@ class MockModemProxy : public ModemProxyInterface {
   MOCK_METHOD0(Revision, const std::string());
   MOCK_METHOD0(DeviceIdentifier, const std::string());
   MOCK_METHOD0(Device, const std::string());
-  MOCK_METHOD0(Driver, const std::string());
   MOCK_METHOD0(Plugin, const std::string());
   MOCK_METHOD0(EquipmentIdentifier, const std::string());
   MOCK_METHOD0(UnlockRequired, uint32_t());
