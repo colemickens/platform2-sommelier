@@ -32,7 +32,7 @@ const size_t Attestation::kCipherBlockSize = 16;
 const size_t Attestation::kNonceSize = 20;  // As per TPM_NONCE definition.
 const size_t Attestation::kDigestSize = 20;  // As per TPM_DIGEST definition.
 const char* Attestation::kDefaultDatabasePath =
-    "/home/.shadow/attestation.epb";
+    "/mnt/stateful_partition/unencrypted/preserve/attestation.epb";
 
 const Attestation::CertificateAuthority Attestation::kKnownEndorsementCA[] = {
   {"IFX TPM EK Intermediate CA 06",
