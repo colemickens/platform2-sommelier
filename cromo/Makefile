@@ -107,6 +107,12 @@ all : $(TARGETS)
 %unittest :
 	$(CXX) $^ $(LDLIBS_UNITTEST) -o $@
 
+# We need to disable unused variable warnings for sms*unittes for gcc 4.7.
+# gTest framework defines _testinfo for every test case, which is not usually
+# used by a test case, which causes unused variable warnings.
+sms%unittest.o: sms%unittest.cc
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -Wno-unused-variable -c $^ -o $@
+
 system-glue: $(patsubst %,$(DBUSIFACEDIR)/%,$(XMLFILES))
 	@for xml in $(XMLFILES); do \
 		hdr=$$(./iface2header "$(XMLPREFIX)" $(EMPTY) $$xml); \

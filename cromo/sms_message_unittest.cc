@@ -255,9 +255,12 @@ TEST(CreateSmsMessage, NationalSenderNumber) {
   EXPECT_EQ(1, sms->part_count());
 }
 
+#define CC(x) static_cast<char>(x)
 static const char kExpected8bitData[] = {
-  0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37, 0xde
+  CC(0xe8), CC(0x32), CC(0x9b), CC(0xfd), CC(0x46),
+  CC(0x97), CC(0xd9), CC(0xec), CC(0x37), CC(0xde)
 };
+#undef CC
 
 TEST(CreateSmsMessage, 8BitData) {
   static const uint8_t kPdu[] = {
