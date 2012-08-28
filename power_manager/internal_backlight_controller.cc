@@ -180,6 +180,12 @@ bool InternalBacklightController::Init() {
   idle_brightness_percent_ = ClampPercentToVisibleRange(
       LevelToPercent(lround(kIdleBrightnessFraction * max_level_)));
 
+  // If the current brightness is 0, the internal panel must be off.  Update
+  // |monitor_reconfigure_| of this state so that it will properly turn on
+  // the panel later.
+  if (target_level_ == 0 && monitor_reconfigure_)
+    monitor_reconfigure_->set_is_internal_panel_enabled(false);
+
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "
             << step_percent_ << "% step and minimum-visible level of "
             << min_visible_level_ << "; current level is " << target_level_
@@ -313,6 +319,16 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
     // active level.
     if (old_state == BACKLIGHT_SUSPENDED)
       style = TRANSITION_INSTANT;
+  } else if (old_state == BACKLIGHT_UNINITIALIZED &&
+             new_state == BACKLIGHT_ACTIVE &&
+             target_percent_ < LevelToPercent(min_visible_level_)) {
+    // If this is the first-time initialization and the current brightness is
+    // less than the minimum visible level, set brightness to the minimum level.
+    // TODO(sque, crosbug.com/p/12243): Expand this to be called when session
+    // is restarted.
+    SetCurrentBrightnessPercent(LevelToPercent(min_visible_level_),
+                                BRIGHTNESS_CHANGE_AUTOMATED,
+                                TRANSITION_FAST);
   }
 
   if (new_state == BACKLIGHT_SUSPENDED) {

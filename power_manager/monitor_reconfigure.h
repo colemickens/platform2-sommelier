@@ -37,6 +37,12 @@ class MonitorReconfigure {
   void SetInternalPanelOn();
   void SetInternalPanelOff();
 
+  // Manually set the internal panel status flag, which is initialized to true
+  // by default, but that's not always the correct value.
+  void set_is_internal_panel_enabled(bool enabled) {
+    is_internal_panel_enabled_ = enabled;
+  }
+
  private:
   // Sends the DBus signal to set the screen power signal (which is caught by
   // Chrome to enable/disable outputs).
