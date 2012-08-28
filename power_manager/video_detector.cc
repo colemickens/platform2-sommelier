@@ -10,9 +10,33 @@
 
 namespace power_manager {
 
-VideoDetector::VideoDetector() {}
+VideoDetector::VideoDetector() { }
 
-void VideoDetector::Init() {}
+void VideoDetector::Init() { }
+
+bool VideoDetector::AddObserver(VideoDetectorObserver* observer) {
+  if (observer == NULL) {
+    LOG(WARNING) << "Attempted to add a NULL observer for VideoDetector!";
+    return false;
+  }
+  if (observers_.insert(observer).second == false) {
+    LOG(WARNING) << "Observer was already added to VideoDetector";
+    return false;
+  }
+  return true;
+}
+
+bool VideoDetector::RemoveObserver(VideoDetectorObserver* observer) {
+  if (observer == NULL) {
+    LOG(WARNING) << "Attempted to remove a NULL observer for VideoDetector!";
+    return false;
+  }
+  if(observers_.erase(observer) == 0) {
+    LOG(WARNING) << "Observer was not present in VideoDetector";
+    return false;
+  }
+  return true;
+}
 
 bool VideoDetector::GetActivity(int64 activity_threshold_ms,
                                 int64* time_since_activity_ms,
@@ -42,6 +66,14 @@ bool VideoDetector::GetActivity(int64 activity_threshold_ms,
 
 void VideoDetector::HandleActivity(const base::TimeTicks& last_activity_time) {
   last_video_time_ = last_activity_time;
+  int64 last_activity_time_ms = (last_activity_time
+                                 - base::TimeTicks()).InMilliseconds();
+  for (VideoDetectorObservers::iterator iter = observers_.begin();
+       iter != observers_.end();
+       ++iter) {
+    VideoDetectorObserver* observer = *iter;
+    observer->OnVideoDetectorEvent(last_activity_time_ms);
+  }
 }
 
 }  // namespace power_manager
