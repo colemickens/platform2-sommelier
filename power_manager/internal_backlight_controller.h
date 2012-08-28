@@ -209,6 +209,11 @@ class InternalBacklightController : public BacklightController {
   // use in the steady state while the backlight is on.
   int64 min_visible_level_;
 
+  // Indicates whether transitions between 0 and |min_visible_level_| must be
+  // instant, i.e. the brightness may not smoothly transition between those
+  // levels.
+  bool instant_transitions_below_min_level_;
+
   // Percentage by which we offset the brightness in response to increase and
   // decrease requests.
   double step_percent_;

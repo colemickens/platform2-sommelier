@@ -124,6 +124,7 @@ InternalBacklightController::InternalBacklightController(
       target_percent_(0.0),
       max_level_(0),
       min_visible_level_(0),
+      instant_transitions_below_min_level_(false),
       step_percent_(1.0),
       idle_brightness_percent_(kIdleBrightnessFraction * 100.0),
       level_to_percent_exponent_(kDefaultLevelToPercentExponent),
@@ -525,6 +526,11 @@ void InternalBacklightController::ReadPrefs() {
   double min_percent = LevelToPercent(min_visible_level_);
   plugged_offset_percent_ = std::max(min_percent, plugged_offset_percent_);
   unplugged_offset_percent_ = std::max(min_percent, unplugged_offset_percent_);
+
+  int64 instant_transition_pref = false;
+  prefs_->GetInt64(kInstantTransitionsBelowMinLevelPref,
+                   &instant_transition_pref);
+  instant_transitions_below_min_level_ = (instant_transition_pref != 0);
 }
 
 void InternalBacklightController::WritePrefs() {
@@ -628,6 +634,13 @@ bool InternalBacklightController::SetBrightness(int64 target_level,
   if (diff == 0)
     return true;
 
+  // If the transition is from 0 to |min_visible_level_|, do it instantly to
+  // avoid setting backlight to somewhere in the middle of that range.
+  if (current_level < target_level && target_level == min_visible_level_ &&
+      instant_transitions_below_min_level_) {
+    style = TRANSITION_INSTANT;
+  }
+
   if (style == TRANSITION_INSTANT) {
     SetBrightnessHard(target_level, target_level);
     return true;
@@ -677,7 +690,16 @@ gboolean InternalBacklightController::SetBrightnessStep() {
       round(gradual_transition_start_level_ + elapsed_time_fraction *
             (target_level_ - gradual_transition_start_level_)));
 
-  SetBrightnessHard(current_brightness, target_level_);
+  // If instant transitions are required below |min_visible_level_|, and this is
+  // a transition from >= |min_visible_level_| to 0, skip all steps below the
+  // min level.  This allows for a delay before turning off the screen, so the
+  // UI can show the slider going to 0.
+  bool skip_transition_step =
+      current_brightness < min_visible_level_ &&
+      current_brightness != 0 &&
+      instant_transitions_below_min_level_;
+  if (!skip_transition_step)
+    SetBrightnessHard(current_brightness, target_level_);
 
   // Add a check for transition intervals that are too long or too short.
   // Too long means the transition events are blocked by other events.
