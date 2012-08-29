@@ -445,6 +445,10 @@ bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
   return true;
 }
 
+bool Platform::ReadFileToString(const std::string& path, std::string* string) {
+  return file_util::ReadFileToString(FilePath(path), string);
+}
+
 bool Platform::CreateDirectory(const std::string& path) {
   return file_util::CreateDirectory(FilePath(path));
 }
@@ -475,6 +479,12 @@ bool Platform::Stat(const std::string& path, struct stat *buf) {
 
 bool Platform::Rename(const std::string& from, const std::string& to) {
   return rename(from.c_str(), to.c_str()) == 0;
+}
+
+bool Platform::Copy(const std::string& from, const std::string& to) {
+  FilePath from_path(from);
+  FilePath to_path(to);
+  return file_util::CopyDirectory(from_path, to_path, true);
 }
 
 }  // namespace cryptohome

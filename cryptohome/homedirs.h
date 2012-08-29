@@ -55,6 +55,7 @@ class HomeDirs {
 
   // Returns the owner's obfuscated username.
   virtual bool GetOwner(std::string* owner);
+  virtual bool GetPlainOwner(std::string* owner);
 
   // Removes the cryptohome for the named user.
   virtual bool Remove(const std::string& username);

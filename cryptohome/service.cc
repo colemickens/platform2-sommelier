@@ -33,6 +33,7 @@
 #include "marshal.glibmarshal.h"
 #include "mount.h"
 #include "platform.h"
+#include "stateful_recovery.h"
 #include "tpm.h"
 #include "username_passkey.h"
 #include "vault_keyset.pb.h"
@@ -312,6 +313,9 @@ bool Service::Initialize() {
   mount_thread_.message_loop()->PostTask(
       FROM_HERE,
       base::Bind(&Service::AutoCleanupCallback, base::Unretained(this)));
+
+  StatefulRecovery recovery(platform_, homedirs_);
+  recovery.RecoverIfNeeded();
 
   return result;
 }

@@ -173,6 +173,7 @@ class Platform {
   //  path - Path of the file to read
   //  blob - blob to populate
   virtual bool ReadFile(const std::string& path, chromeos::Blob* blob);
+  virtual bool ReadFileToString(const std::string& path, std::string* string);
 
   // Writes the entirety of the data to the given file.
   //
@@ -217,6 +218,9 @@ class Platform {
 
   // Retuns the current time.
   virtual base::Time GetCurrentTime() const;
+
+  // Copies from to to.
+  virtual bool Copy(const std::string& from, const std::string& to);
 
  private:
   // Returns the process and open file information for the specified process id
