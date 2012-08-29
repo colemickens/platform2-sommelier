@@ -428,12 +428,27 @@ void DeviceManager::AddDevices(GSource* source) {
       continue;
     }
 
+    // Fetch fallback vendor / product info.
+    scoped_ptr_malloc<char> duplicated_string;
+    duplicated_string.reset(LIBMTP_Get_Manufacturername(mtp_device));
+    std::string fallback_vendor;
+    if (duplicated_string.get())
+      fallback_vendor = duplicated_string.get();
+
+    duplicated_string.reset(LIBMTP_Get_Modelname(mtp_device));
+    std::string fallback_product;
+    if (duplicated_string.get())
+      fallback_product = duplicated_string.get();
+
     // Iterate through storages on the device and add them.
     MtpStorageMap storage_map;
     for (LIBMTP_devicestorage_t* storage = mtp_device->storage;
          storage != NULL;
          storage = storage->next) {
-      StorageInfo info(raw_devices[i].device_entry, *storage);
+      StorageInfo info(raw_devices[i].device_entry,
+                       *storage,
+                       fallback_vendor,
+                       fallback_product);
       storage_map.insert(std::make_pair(storage->id, info));
       delegate_->StorageAttached(StorageToString(usb_bus_str, storage->id));
       LOG(INFO) << "Added storage " << storage->id

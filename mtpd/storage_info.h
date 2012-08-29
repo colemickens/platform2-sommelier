@@ -20,7 +20,9 @@ typedef std::map<std::string, DBus::Variant> DBusMTPStorage;
 class StorageInfo {
  public:
   StorageInfo(const LIBMTP_device_entry_t& device,
-              const LIBMTP_devicestorage_t& storage);
+              const LIBMTP_devicestorage_t& storage,
+              const std::string& fallback_vendor,
+              const std::string& fallback_product);
   ~StorageInfo();
 
   DBusMTPStorage ToDBusFormat() const;

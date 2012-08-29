@@ -11,7 +11,9 @@
 namespace mtpd {
 
 StorageInfo::StorageInfo(const LIBMTP_device_entry_t& device,
-                         const LIBMTP_devicestorage_t& storage)
+                         const LIBMTP_devicestorage_t& storage,
+                         const std::string& fallback_vendor,
+                         const std::string& fallback_product)
     : vendor_id_(device.vendor_id),
       product_id_(device.product_id),
       device_flags_(device.device_flags),
@@ -21,10 +23,8 @@ StorageInfo::StorageInfo(const LIBMTP_device_entry_t& device,
       max_capacity_(storage.MaxCapacity),
       free_space_in_bytes_(storage.FreeSpaceInBytes),
       free_space_in_objects_(storage.FreeSpaceInObjects) {
-  if (device.vendor)
-    vendor_ = device.vendor;
-  if (device.product)
-    product_ = device.product;
+  vendor_ = device.vendor ? device.vendor : fallback_vendor;
+  product_ = device.product ? device.product : fallback_product;
   if (storage.StorageDescription)
     storage_description_ = storage.StorageDescription;
   if (storage.VolumeIdentifier)
