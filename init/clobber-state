@@ -22,7 +22,16 @@ fi
 FACTORY_WIPE=$(echo "$@" | grep -sq factory && echo "factory")
 FAST_WIPE=$(echo "$@" | grep -sq fast && echo "fast")
 KEEPIMG=$(echo "$@" | grep -sq keepimg && echo "keepimg")
+SAFE_WIPE=$(echo "$@" | grep -sq safe && echo "safe")
 FACTORY_WIPE_FIRMWARE_PID=""
+
+# Files in the preserve directory that we must preserve for stateful wipe:
+PRESERVE_DIR="/mnt/stateful_partition/unencrypted/preserve"
+PRESERVED_FILES="attestation.epb"
+PRESERVED_TAR="/tmp/preserve.tar"
+if [ "$SAFE_WIPE" = "safe" ]; then
+  tar cf $PRESERVED_TAR -C $PRESERVE_DIR --no-recursion $PRESERVED_FILES
+fi
 
 wipedev() {
   DEV="$1"
@@ -192,6 +201,13 @@ fi
 
 # Mount the fresh image for last minute additions.
 mount -n -t ext4 "${STATE_DEV}" "${STATE_PATH}"
+
+
+# If /tmp/preserve.tar exists copy over its contents to the proper location.
+if [ "$SAFE_WIPE" = "safe" ]; then
+  mkdir -p -m 0755 $PRESERVE_DIR
+  tar xfp $PRESERVED_TAR -C $PRESERVE_DIR
+fi
 
 # Restore the log file
 clobber-log --restore "$SCRIPT" "$@"
