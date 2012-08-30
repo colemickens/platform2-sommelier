@@ -114,7 +114,9 @@ class LinkMonitorTest : public Test {
   }
 
   void AdvanceTime(unsigned int time_ms) {
-    struct timeval adv_time = { time_ms/1000, (time_ms % 1000) * 1000 };
+    struct timeval adv_time = {
+      static_cast<time_t>(time_ms/1000),
+      static_cast<time_t>((time_ms % 1000) * 1000) };
     timeradd(&time_val_, &adv_time, &time_val_);
     EXPECT_CALL(time_, GetTimeMonotonic(_))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(time_val_), Return(0)));

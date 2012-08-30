@@ -123,7 +123,8 @@ TYPED_TEST(PropertyStoreTypedTest, ClearProperty) {
   PropertyStore store;
   Error error;
   TypeParam property;
-  RegisterProperty(store, "some property", &property);
+  // |this| required due to two-phase lookup.
+  this->RegisterProperty(store, "some property", &property);
   EXPECT_TRUE(store.ClearProperty("some property", &error));
 }
 

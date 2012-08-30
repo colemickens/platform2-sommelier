@@ -118,7 +118,7 @@ class DeviceInfoTest : public Test {
  protected:
   static const int kTestDeviceIndex;
   static const char kTestDeviceName[];
-  static const char kTestMACAddress[];
+  static const uint8_t kTestMACAddress[];
   static const char kTestIPAddress0[];
   static const int kTestIPAddressPrefix0;
   static const char kTestIPAddress1[];
@@ -152,8 +152,8 @@ class DeviceInfoTest : public Test {
 
 const int DeviceInfoTest::kTestDeviceIndex = 123456;
 const char DeviceInfoTest::kTestDeviceName[] = "test-device";
-const char DeviceInfoTest::kTestMACAddress[] = {
-  0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
+const uint8_t DeviceInfoTest::kTestMACAddress[] = {
+   0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
 const char DeviceInfoTest::kTestIPAddress0[] = "192.168.1.1";
 const int DeviceInfoTest::kTestIPAddressPrefix0 = 24;
 const char DeviceInfoTest::kTestIPAddress1[] = "fe80::1aa9:5ff:abcd:1234";
@@ -766,7 +766,7 @@ TEST_F(DeviceInfoTest, GetMACAddressFromKernel) {
   SetSockets();
   const int kFd = 99;
   struct ifreq ifr;
-  static char kMacAddress[] = {0x00, 0x01, 0x02, 0xaa, 0xbb, 0xcc};
+  static uint8_t kMacAddress[] = {0x00, 0x01, 0x02, 0xaa, 0xbb, 0xcc};
   memcpy(ifr.ifr_hwaddr.sa_data, kMacAddress, sizeof(kMacAddress));
   EXPECT_CALL(*mock_sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
       .WillOnce(Return(kFd));
