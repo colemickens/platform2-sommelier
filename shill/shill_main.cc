@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <errno.h>
-#include <glib.h>
 #include <glib-unix.h>
 #include <stdio.h>
 #include <time.h>
@@ -21,6 +20,7 @@
 
 #include "shill/dbus_control.h"
 #include "shill/logging.h"
+#include "shill/minijail.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 
@@ -80,6 +80,7 @@ static const char kHelpMessage[] = "\n"
 namespace {
 
 const char *kLoggerCommand = "/usr/bin/logger";
+const char *kLoggerUser = "syslog";
 
 }  // namespace
 
@@ -103,17 +104,13 @@ void SetupLogging(bool foreground, char *daemon_name) {
     logger_command_line.push_back(const_cast<char *>("--tag"));
     logger_command_line.push_back(daemon_name);
     logger_command_line.push_back(NULL);
-    if (!g_spawn_async_with_pipes(NULL,
-                                  logger_command_line.data(),
-                                  NULL,
-                                  G_SPAWN_STDERR_TO_DEV_NULL,
-                                  NULL,
-                                  NULL,
-                                  NULL,
-                                  &logger_stdin_fd,
-                                  NULL,
-                                  NULL,
-                                  NULL)) {
+
+    shill::Minijail *minijail = shill::Minijail::GetInstance();
+    struct minijail *jail = minijail->New();
+    minijail->DropRoot(jail, kLoggerUser);
+
+    if (!minijail->RunPipeAndDestroy(jail, logger_command_line,
+                                     NULL, &logger_stdin_fd)) {
       LOG(ERROR) << "Unable to spawn logger. "
                  << "Writes to stderr will be discarded.";
       return;
