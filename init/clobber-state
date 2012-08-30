@@ -139,7 +139,7 @@ if grep -q " ${STATE_PATH} " /proc/mounts ; then
   # out the encrypted partition and eCryptFS keys so the backing files can
   # just be removed. Once shredding is done, force HDDs onto the "fast" wipe
   # path to avoid hours of zeroing.
-  if [ "$ROTATIONAL" = "1" ]; then
+  if [ "$ROTATIONAL" = "1" ] && [ "$FAST_WIPE" != "fast" ]; then
     (
       # Directly remove things that are already encrypted (which are also the
       # large things), or are static from images.
@@ -153,19 +153,17 @@ if grep -q " ${STATE_PATH} " /proc/mounts ; then
       # use "-u" since metadata updates via fdatasync dominate the shred time.
       find "${STATE_PATH}"/. -type f -print0 | xargs -r0 shred -fz
     ) &
-    if [ "$FAST_WIPE" != "fast" ]; then
-      # For non-fast wipe, force a minimum of a 5 minute delay.
-      DELAY=300
-      ( stty -F /dev/tty1 raw -echo -cread
-        ( c=0
-          while [ "$c" -lt "$DELAY" ]; do
-            echo -n .
-            sleep 1
-            c=$(( c + 1 ))
-          done
-        ) | pv -etp -s "$DELAY" 2>/dev/tty1 >/dev/null
-      ) >/dev/tty1
-    fi
+    # For non-fast wipe, force a minimum of a 5 minute delay.
+    DELAY=300
+    ( stty -F /dev/tty1 raw -echo -cread
+      ( c=0
+        while [ "$c" -lt "$DELAY" ]; do
+          echo -n .
+          sleep 1
+          c=$(( c + 1 ))
+        done
+      ) | pv -etp -s "$DELAY" 2>/dev/tty1 >/dev/null
+    ) >/dev/tty1
     wait
     FAST_WIPE="fast"
   fi
