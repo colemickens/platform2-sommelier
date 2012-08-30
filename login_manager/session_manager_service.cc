@@ -1225,7 +1225,7 @@ bool SessionManagerService::IsValidCookie(const char *cookie) {
 }
 
 gboolean SessionManagerService::StartDeviceWipe(GError** error) {
-  const char *contents = "fast";
+  const char *contents = "fast safe";
   const FilePath reset_path(kResetFile);
   const FilePath session_path(kLoggedInFlag);
   if (system_->Exists(session_path)) {
