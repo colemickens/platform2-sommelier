@@ -185,6 +185,13 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
     return false;
   }
 
+  // This cache file might be invalidated, and will be recreated on next boot.
+  // Error ignored, since we don't care if it didn't exist to start with.
+  string network_driver_cache = "/var/lib/preload-network-drivers";
+  printf("Clearing network driver boot cache: %s.\n",
+         network_driver_cache.c_str());
+  unlink(network_driver_cache.c_str());
+
   printf("Syncing filesystems before changing boot order...\n");
   sync();
 
