@@ -230,7 +230,7 @@ void CellularCapabilityUniversal::EnableModem(Error *error,
                                               const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
-  Error local_error;
+  Error local_error(Error::kOperationInitiated);
   modem_proxy_->Enable(
       true,
       &local_error,

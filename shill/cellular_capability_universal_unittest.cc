@@ -329,7 +329,7 @@ TEST_F(CellularCapabilityUniversalTest, StartModemFail) {
 
   Error error;
   capability_->StartModem(&error, callback);
-  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(error.IsOngoing());
 }
 
 TEST_F(CellularCapabilityUniversalTest, StopModem) {
