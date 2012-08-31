@@ -45,7 +45,8 @@ CPPFLAGS += $(CPPFLAGS-y)
 # TODO(rharrison:crosbug.com/30056): Once I have written the protobuf macros,
 #                                    use them here
 SYSTEM_API_PROTO_BINDINGS = power_state_control.pb.cc \
-                            power_supply_properties.pb.cc
+                            power_supply_properties.pb.cc \
+                            video_activity_update.pb.cc
 SYSTEM_API_PROTO_PATH = $(SYSROOT)/usr/include/chromeos/dbus
 SYSTEM_API_PROTO_HEADERS = $(patsubst %.cc,%.h,$(SYSTEM_API_PROTO_BINDINGS))
 SYSTEM_API_PROTO_OBJS = $(patsubst %.cc,%.o,$(SYSTEM_API_PROTO_BINDINGS))
@@ -151,13 +152,15 @@ CXX_STATIC_LIBRARY(libutil_dbus.pie.a): LDLIBS += $(LIBUTIL_DBUS_LIBS)
 clean: CLEAN(libutil_dbus.pie.a)
 
 powerd.o.depends: power_supply_properties.pb.h
+powerd.o.depends: video_activity_update.pb.h
 state_control.o.depends: power_supply_properties.pb.h
 LIBPOWERD_OBJS = power_state_control.pb.o power_supply_properties.pb.o \
                  async_file_reader.o audio_detector.o file_tagger.o \
                  idle_detector.o metrics_constants.o metrics_store.o \
                  monitor_reconfigure.o power_supply.o powerd.o \
                  powerd_metrics.o rolling_average.o \
-                 screen_locker.o state_control.o suspender.o video_detector.o
+                 screen_locker.o state_control.o suspender.o \
+                 video_activity_update.pb.o video_detector.o
 CXX_STATIC_LIBRARY(libpowerd.pie.a): $(LIBPOWERD_OBJS)
 CXX_STATIC_LIBRARY(libpowerd.pie.a): CPPFLAGS += $(LIBPOWERD_FLAGS)
 CXX_STATIC_LIBRARY(libpowerd.pie.a): LDLIBS += $(LIBPOWERD_LIBS)
@@ -328,7 +331,7 @@ CXX_BINARY(powerman_unittest): LDLIBS += $(POWERMAN_UNITTEST_LIBS)
 clean: CXX_BINARY(powerman_unittest)
 tests: TEST(CXX_BINARY(powerman_unittest))
 
-state_control_unittest.o.depends: power_state_control.pb.cc
+state_control_unittest.o.depends: power_state_control.pb.h
 STATE_CONTROL_UNITTEST_FLAGS = $(POWERD_FLAGS)
 STATE_CONTROL_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock
 STATE_CONTROL_UNITTEST_OBJS = state_control_unittest.o state_control.o

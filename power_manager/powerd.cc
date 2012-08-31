@@ -31,6 +31,7 @@
 #include "power_manager/util.h"
 #include "power_manager/util_dbus.h"
 #include "power_supply_properties.pb.h"
+#include "video_activity_update.pb.h"
 
 using std::map;
 using std::max;
@@ -1187,21 +1188,45 @@ DBusMessage* Daemon::HandleStateOverrideRequestMethod(DBusMessage* message) {
 }
 
 DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
+  DBusMessage* ret_val = NULL;
   DBusError error;
   dbus_error_init(&error);
-  int64 last_activity_time_internal = 0;
-  if (!dbus_message_get_args(message, &error,
-                             DBUS_TYPE_INT64, &last_activity_time_internal,
+
+  char** serialized_buf = NULL;
+  int buf_size = 0;
+  VideoActivityUpdate protobuf;
+  if (dbus_message_get_args(message, &error,
+                             DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+                             &serialized_buf, &buf_size,
                              DBUS_TYPE_INVALID)) {
-    LOG(WARNING) << kHandleVideoActivityMethod
-                << ": Error reading args: " << error.message;
-    dbus_error_free(&error);
-    return util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
-                                      "Invalid arguments passed to method");
+
+    if (!protobuf.ParseFromArray(*serialized_buf, buf_size)) {
+      LOG(ERROR) << "Failed to parse protocol buffer from array";
+      return ret_val;
+    }
+    video_detector_->HandleActivity(
+        base::TimeTicks::FromInternalValue(protobuf.last_activity_time()));
+  } else {
+    // If the first read fails assume we are dealing with a version of Chrome
+    // that uses the old format.
+    // TODO(rharrison): Remove this code path once
+    // http://codereview.chromium.org/10905026/ is rolled into ChromeOS builds
+    dbus_error_init(&error);
+    int64 last_activity_time_internal = 0;
+    if (!dbus_message_get_args(message, &error,
+                               DBUS_TYPE_INT64, &last_activity_time_internal,
+                               DBUS_TYPE_INVALID)) {
+      LOG(WARNING) << kHandleVideoActivityMethod
+                   << ": Error reading args: " << error.message;
+      dbus_error_free(&error);
+      ret_val = util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
+                                         "Invalid arguments passed to method");
+    }
+    video_detector_->HandleActivity(
+        base::TimeTicks::FromInternalValue(last_activity_time_internal));
+
   }
-  video_detector_->HandleActivity(
-      base::TimeTicks::FromInternalValue(last_activity_time_internal));
-  return NULL;
+  return ret_val;
 }
 
 DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
