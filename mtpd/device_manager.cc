@@ -192,7 +192,7 @@ const StorageInfo* DeviceManager::GetStorageInfo(
 
 bool DeviceManager::ReadDirectoryByPath(const std::string& storage_name,
                                         const std::string& file_path,
-                                        DBusFileEntries* out) {
+                                        std::vector<FileEntry>* out) {
   LIBMTP_mtpdevice_t* mtp_device = NULL;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
@@ -206,7 +206,7 @@ bool DeviceManager::ReadDirectoryByPath(const std::string& storage_name,
 
 bool DeviceManager::ReadDirectoryById(const std::string& storage_name,
                                       uint32_t file_id,
-                                      DBusFileEntries* out) {
+                                      std::vector<FileEntry>* out) {
   LIBMTP_mtpdevice_t* mtp_device = NULL;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
@@ -242,7 +242,7 @@ bool DeviceManager::ReadFileById(const std::string& storage_name,
 
 bool DeviceManager::GetFileInfoByPath(const std::string& storage_name,
                                       const std::string& file_path,
-                                      DBusFileEntry* out) {
+                                      FileEntry* out) {
   LIBMTP_mtpdevice_t* mtp_device = NULL;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
@@ -258,7 +258,7 @@ bool DeviceManager::GetFileInfoByPath(const std::string& storage_name,
 
 bool DeviceManager::GetFileInfoById(const std::string& storage_name,
                                     uint32_t file_id,
-                                    DBusFileEntry* out) {
+                                    FileEntry* out) {
   LIBMTP_mtpdevice_t* mtp_device = NULL;
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
@@ -303,14 +303,14 @@ bool DeviceManager::PathToFileId(LIBMTP_mtpdevice_t* device,
 bool DeviceManager::ReadDirectory(LIBMTP_mtpdevice_t* device,
                                   uint32_t storage_id,
                                   uint32_t file_id,
-                                  DBusFileEntries* out) {
+                                  std::vector<FileEntry>* out) {
   const LIBMTP_file_t* files =
       LIBMTP_Get_Files_And_Folders(device, storage_id, file_id);
   if (!files)
     return false;
 
   for (const LIBMTP_file_t* file = files; file != NULL; file = file->next)
-    out->push_back(FileEntry(*file).ToDBusFormat());
+    out->push_back(FileEntry(*file));
   return true;
 }
 
@@ -340,12 +340,12 @@ bool DeviceManager::ReadFile(LIBMTP_mtpdevice_t* device,
 
 bool DeviceManager::GetFileInfo(LIBMTP_mtpdevice_t* device,
                                 uint32_t file_id,
-                                DBusFileEntry* out) {
+                                FileEntry* out) {
   LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(device, file_id);
   if (!file)
     return false;
 
-  *out = FileEntry(*file).ToDBusFormat();
+  *out = FileEntry(*file);
   return true;
 }
 

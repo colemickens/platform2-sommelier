@@ -7,31 +7,33 @@
 
 #include <libmtp.h>
 
-#include <dbus-c++/dbus.h>
-#include <map>
 #include <string>
 #include <vector>
 
 #include <base/basictypes.h>
 
-namespace mtpd {
+#include "mtp_file_entry.pb.h"
 
-typedef std::map<std::string, DBus::Variant> DBusFileEntry;
-typedef std::vector<DBusFileEntry> DBusFileEntries;
+namespace mtpd {
 
 class FileEntry {
  public:
   explicit FileEntry(const LIBMTP_file_struct& file);
+  FileEntry();
   ~FileEntry();
 
-  DBusFileEntry ToDBusFormat() const;
+  MtpFileEntry ToProtobuf() const;
+  std::string ToDBusFormat() const;
+
+  static std::string EmptyFileEntriesToDBusFormat();
+  static std::string FileEntriesToDBusFormat(std::vector<FileEntry>& entries);
 
  private:
   uint32_t item_id_;
   uint32_t parent_id_;
   std::string file_name_;
   uint64_t file_size_;
-  time_t modification_date_;
+  time_t modification_time_;
   LIBMTP_filetype_t file_type_;
 };
 

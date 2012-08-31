@@ -2,40 +2,6 @@
 
 <node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Mtpd">
-    <tp:struct name="MTPStorage">
-      <tp:docstring>
-        From LIBMTP_devicestorage_struct, LIBMTP_raw_device_struct, and
-        LIBMTP_device_entry_struct.
-      </tp:docstring>
-      <!-- LIBMTP_device_entry_struct //-->
-      <tp:member name="Vendor" type="s"> </tp:member>
-      <tp:member name="VendorId" type="q"> </tp:member>
-      <tp:member name="Product" type="s"> </tp:member>
-      <tp:member name="ProductId" type="q"> </tp:member>
-      <tp:member name="DeviceFlags" type="u"> </tp:member>
-      <!-- LIBMTP_devicestorage_struct //-->
-      <tp:member name="StorageType" type="q"> </tp:member>
-      <tp:member name="FilesystemType" type="q"> </tp:member>
-      <tp:member name="AccessCapability" type="q"> </tp:member>
-      <tp:member name="MaxCapacity" type="t"> </tp:member>
-      <tp:member name="FreeSpaceInBytes" type="t"> </tp:member>
-      <tp:member name="FreeSpaceInObjects" type="t"> </tp:member>
-      <tp:member name="StorageDescription" type="s"> </tp:member>
-      <tp:member name="VolumeIdentifier" type="s"> </tp:member>
-    </tp:struct>
-
-    <tp:struct name="FileEntry" array-name="FileEntries">
-      <tp:docstring>
-        From LIBMTP_file_struct.
-      </tp:docstring>
-      <tp:member name="ItemId" type="u"> </tp:member>
-      <tp:member name="ParentId" type="u"> </tp:member>
-      <tp:member name="FileName" type="s"> </tp:member>
-      <tp:member name="FileSize" type="t"> </tp:member>
-      <tp:member name="ModificationDate" type="x"> </tp:member>
-      <tp:member name="FileType" type="q"> </tp:member>
-    </tp:struct>
-
     <method name="EnumerateStorage">
       <arg name="storageList" type="as" direction="out">
       <tp:docstring>
@@ -51,7 +17,7 @@
         Storage name is in the same format as EnumerateStorage.
       </tp:docstring>
       </arg>
-      <arg name="storageInfo" type="a{sv}" direction="out" tp:type="MTPStorage">
+      <arg name="storageInfo" type="s" direction="out">
       </arg>
     </method>
 
@@ -93,7 +59,7 @@
         Absolute path with root as the root of the storage.
       </tp:docstring>
       </arg>
-      <arg name="results" type="aa{sv}" direction="out" tp:type="FileEntries">
+      <arg name="results" type="s" direction="out">
       </arg>
     </method>
 
@@ -105,7 +71,7 @@
       </arg>
       <arg name="fileId" type="u" direction="in">
       </arg>
-      <arg name="results" type="aa{sv}" direction="out" tp:type="FileEntries">
+      <arg name="results" type="s" direction="out">
       </arg>
     </method>
 
@@ -147,7 +113,7 @@
         Absolute path with root as the root of the storage.
       </tp:docstring>
       </arg>
-      <arg name="info" type="a{sv}" direction="out" tp:type="FileEntry">
+      <arg name="info" type="s" direction="out">
       </arg>
     </method>
 
@@ -159,7 +125,7 @@
       </arg>
       <arg name="fileId" type="u" direction="in">
       </arg>
-      <arg name="info" type="a{sv}" direction="out" tp:type="FileEntry">
+      <arg name="info" type="s" direction="out">
       </arg>
     </method>
 

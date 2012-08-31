@@ -7,15 +7,11 @@
 
 #include <libmtp.h>
 
-#include <dbus-c++/dbus.h>
-#include <map>
 #include <string>
 
 #include <base/basictypes.h>
 
 namespace mtpd {
-
-typedef std::map<std::string, DBus::Variant> DBusMTPStorage;
 
 class StorageInfo {
  public:
@@ -23,9 +19,10 @@ class StorageInfo {
               const LIBMTP_devicestorage_t& storage,
               const std::string& fallback_vendor,
               const std::string& fallback_product);
+  StorageInfo();
   ~StorageInfo();
 
-  DBusMTPStorage ToDBusFormat() const;
+  std::string ToDBusFormat() const;
 
  private:
   std::string vendor_;

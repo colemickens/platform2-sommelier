@@ -4,8 +4,10 @@
 
 #include "mtpd/storage_info.h"
 
+#include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "mtp_storage_info.pb.h"
 #include "string_helpers.h"
 
 namespace mtpd {
@@ -31,27 +33,40 @@ StorageInfo::StorageInfo(const LIBMTP_device_entry_t& device,
     volume_identifier_ = storage.VolumeIdentifier;
 }
 
+StorageInfo::StorageInfo()
+    : vendor_id_(0),
+      product_id_(0),
+      device_flags_(0),
+      storage_type_(0),
+      filesystem_type_(0),
+      access_capability_(0),
+      max_capacity_(0),
+      free_space_in_bytes_(0),
+      free_space_in_objects_(0) {
+}
+
 StorageInfo::~StorageInfo() {
 }
 
-DBusMTPStorage StorageInfo::ToDBusFormat() const {
-  DBusMTPStorage entry;
-  entry[kVendor].writer().append_string(EnsureUTF8String(vendor_).c_str());
-  entry[kVendorId].writer().append_uint16(vendor_id_);
-  entry[kProduct].writer().append_string(EnsureUTF8String(product_).c_str());
-  entry[kProductId].writer().append_uint16(product_id_);
-  entry[kDeviceFlags].writer().append_uint32(device_flags_);
-  entry[kStorageType].writer().append_uint16(storage_type_);
-  entry[kFilesystemType].writer().append_uint16(filesystem_type_);
-  entry[kAccessCapability].writer().append_uint16(access_capability_);
-  entry[kMaxCapacity].writer().append_uint64(max_capacity_);
-  entry[kFreeSpaceInBytes].writer().append_uint64(free_space_in_bytes_);
-  entry[kFreeSpaceInObjects].writer().append_uint64(free_space_in_objects_);
-  entry[kStorageDescription].writer().append_string(
-      EnsureUTF8String(storage_description_).c_str());
-  entry[kVolumeIdentifier].writer().append_string(
-      EnsureUTF8String(volume_identifier_).c_str());
-  return entry;
+std::string StorageInfo::ToDBusFormat() const {
+  MtpStorageInfo protobuf;
+  protobuf.set_vendor(vendor_);
+  protobuf.set_vendor_id(vendor_id_);
+  protobuf.set_product(product_);
+  protobuf.set_product_id(product_id_);
+  protobuf.set_device_flags(device_flags_);
+  protobuf.set_storage_type(storage_type_);
+  protobuf.set_filesystem_type(filesystem_type_);
+  protobuf.set_access_capability(access_capability_);
+  protobuf.set_max_capacity(max_capacity_);
+  protobuf.set_free_space_in_bytes(free_space_in_bytes_);
+  protobuf.set_free_space_in_objects(free_space_in_objects_);
+  protobuf.set_storage_description(storage_description_);
+  protobuf.set_volume_identifier(volume_identifier_);
+
+  std::string serialized_proto;
+  CHECK(protobuf.SerializeToString(&serialized_proto));
+  return serialized_proto;
 }
 
 }  // namespace mtpd

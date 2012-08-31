@@ -95,7 +95,7 @@ class DeviceManager {
   // |out|. Otherwise returns false.
   bool ReadDirectoryByPath(const std::string& storage_name,
                            const std::string& file_path,
-                           DBusFileEntries* out);
+                           std::vector<FileEntry>* out);
 
   // Reads entries from |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
@@ -103,7 +103,7 @@ class DeviceManager {
   // |out|. Otherwise returns false.
   bool ReadDirectoryById(const std::string& storage_name,
                          uint32_t file_id,
-                         DBusFileEntries* out);
+                         std::vector<FileEntry>* out);
 
   // Reads the contents of |file_path| on |storage_name|.
   // On success, returns true and writes the file contents of |file_path| into
@@ -125,7 +125,7 @@ class DeviceManager {
   // |out|. Otherwise returns false.
   bool GetFileInfoByPath(const std::string& storage_name,
                          const std::string& file_path,
-                         DBusFileEntry* out);
+                         FileEntry* out);
 
   // Reads the metadata for |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
@@ -133,7 +133,7 @@ class DeviceManager {
   // |out|. Otherwise returns false.
   bool GetFileInfoById(const std::string& storage_name,
                        uint32_t file_id,
-                       DBusFileEntry* out);
+                       FileEntry* out);
 
  private:
   // Key: MTP storage id, Value: metadata for the given storage.
@@ -161,7 +161,7 @@ class DeviceManager {
   bool ReadDirectory(LIBMTP_mtpdevice_t* device,
                      uint32_t storage_id,
                      uint32_t file_id,
-                     DBusFileEntries* out);
+                     std::vector<FileEntry>* out);
 
   // Reads the contents of |file_id| from |device|.
   // |file_id| is the unique identifier for a file on the given storage.
@@ -177,7 +177,7 @@ class DeviceManager {
   // Otherwise returns false.
   bool GetFileInfo(LIBMTP_mtpdevice_t* device,
                    uint32_t file_id,
-                   DBusFileEntry* out);
+                   FileEntry* out);
 
   // Helper function that returns the libmtp device handle and storage id for a
   // given |storage_name|.
