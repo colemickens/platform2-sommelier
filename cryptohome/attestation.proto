@@ -60,10 +60,40 @@ message Delegation {
 
 // This message holds all information to be sent to the attestation server in
 // order to complete enrollment.
-message AttestationEnrollment {
-  optional TPMCredentials credentials = 1;
-  optional IdentityBinding identity_binding = 2;
+message AttestationEnrollmentRequest {
+  // The EK cert, in X.509 form.
+  optional bytes endorsement_credential = 1;
+  // The AIK public key, in TPM_PUBKEY form.
+  optional bytes identity_public_key = 2;
+  // PCR0 quoted by AIK.
   optional Quote pcr0_quote = 3;
+}
+
+// These two fields are sutible for passing to Tspi_TPM_ActivateIdentity()
+// directly.
+message EncryptedIdentityCredential {
+  // TPM_ASYM_CA_CONTENTS, encrypted with EK public key.
+  optional bytes asym_ca_contents = 1;
+  // TPM_SYM_CA_ATTESTATION, encrypted with the key in aysm_ca_contents.
+  optional bytes sym_ca_attestation = 2;
+}
+
+enum ResponseStatus {
+  OK = 0;
+  // Internal server error.
+  SERVER_ERROR = 1;
+  // The server cannot parse the request.
+  BAD_REQUEST = 2;
+  // The server rejects the request.
+  REJECT = 3;
+}
+
+// The response from the attestation server.
+message AttestationEnrollmentResponse {
+  optional ResponseStatus status = 1;
+  // Detail response message. Included when the result is not OK.
+  optional string detail = 2;
+  optional EncryptedIdentityCredential encrypted_identity_credential = 3;
 }
 
 // Holds all information that a client stores locally.
