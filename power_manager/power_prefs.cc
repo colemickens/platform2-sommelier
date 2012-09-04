@@ -50,7 +50,6 @@ bool PowerPrefs::GetString(const char* name, string* buf) {
     TrimWhitespaceASCII(*buf, TRIM_TRAILING, buf);
     return true;
   }
-  LOG(ERROR) << "Could not read " << path.value();
   return false;
 }
 
@@ -73,7 +72,6 @@ bool PowerPrefs::GetInt64(const char* name, int64* value) {
     else
       LOG(ERROR) << "Garbage found in " << path.value();
   }
-  LOG(INFO) << "Could not read " << path.value();
   return false;
 }
 
@@ -104,7 +102,6 @@ bool PowerPrefs::GetDouble(const char* name, double* value) {
     else
       LOG(ERROR) << "Garbage found in " << path.value();
   }
-  LOG(INFO) << "Could not read " << path.value();
   return false;
 }
 
