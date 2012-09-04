@@ -298,6 +298,24 @@ bool SessionManagerService::Initialize() {
                    NULL,            // Use default marshaller.
                    G_TYPE_NONE,     // return type
                    0);              // num params
+  signals_[kSignalScreenIsLocked] =
+      g_signal_new("screen_is_locked",
+                   gobject::session_manager_get_type(),
+                   G_SIGNAL_RUN_LAST,
+                   0,               // class offset
+                   NULL, NULL,      // accumulator and data
+                   NULL,            // Use default marshaller.
+                   G_TYPE_NONE,     // return type
+                   0);              // num params
+  signals_[kSignalScreenIsUnlocked] =
+      g_signal_new("screen_is_unlocked",
+                   gobject::session_manager_get_type(),
+                   G_SIGNAL_RUN_LAST,
+                   0,               // class offset
+                   NULL, NULL,      // accumulator and data
+                   NULL,            // Use default marshaller.
+                   G_TYPE_NONE,     // return type
+                   0);              // num params
 
   LOG(INFO) << "SessionManagerService starting";
   if (!Reset())
@@ -793,8 +811,9 @@ gboolean SessionManagerService::LockScreen(GError** error) {
 
 gboolean SessionManagerService::HandleLockScreenShown(GError** error) {
   screen_locked_ = true;
-  // TODO(haruki): Broadcast ScreenIsLockedSignal.
   LOG(INFO) << "HandleLockScreenShown";
+  system_->BroadcastSignalNoArgs(session_manager_,
+                                 signals_[kSignalScreenIsLocked]);
   return TRUE;
 }
 
@@ -806,8 +825,9 @@ gboolean SessionManagerService::UnlockScreen(GError** error) {
 
 gboolean SessionManagerService::HandleLockScreenDismissed(GError** error) {
   screen_locked_ = false;
-  // TODO(haruki): Broadcast ScreenIsUnlockedSignal.
   LOG(INFO) << "HandleLockScreenDismissed";
+  system_->BroadcastSignalNoArgs(session_manager_,
+                                 signals_[kSignalScreenIsUnlocked]);
   return TRUE;
 }
 

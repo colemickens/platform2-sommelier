@@ -383,6 +383,8 @@ class SessionManagerService
   enum Signals {
     kSignalSessionStateChanged,
     kSignalLoginPromptVisible,
+    kSignalScreenIsLocked,
+    kSignalScreenIsUnlocked,
     kNumSignals
   };
 
