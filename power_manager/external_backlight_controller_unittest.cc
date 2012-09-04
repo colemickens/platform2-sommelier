@@ -282,15 +282,15 @@ TEST_F(ExternalBacklightControllerTest, NotifyObserver) {
   controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_DOUBLE_EQ(controller_.GetTargetBrightnessPercent(),
-                   observer.changes()[0].first);
-  EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].second);
+                   observer.changes()[0].percent);
+  EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].cause);
 
   observer.Clear();
   controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_DOUBLE_EQ(controller_.GetTargetBrightnessPercent(),
-                   observer.changes()[0].first);
-  EXPECT_EQ(BRIGHTNESS_CHANGE_USER_INITIATED, observer.changes()[0].second);
+                   observer.changes()[0].percent);
+  EXPECT_EQ(BRIGHTNESS_CHANGE_USER_INITIATED, observer.changes()[0].cause);
 }
 
 }  // namespace power_manager

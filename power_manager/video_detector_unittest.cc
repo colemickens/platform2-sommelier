@@ -67,8 +67,8 @@ TEST_F(VideoDetectorTest, RemoveObserverNULL) {
 TEST_F(VideoDetectorTest, HandleActivityObservers) {
   base::TimeTicks test_time = base::TimeTicks::Now();
   EXPECT_TRUE(video_detector_.AddObserver(&observer_));
-  observer_.ExpectOnVideoDetectorEvent(
-      (test_time - base::TimeTicks()).InMilliseconds());
+  observer_.ExpectOnVideoDetectorEvent(test_time, false);
+  video_detector_.HandleFullscreenChange(false);
   video_detector_.HandleActivity(test_time);
   EXPECT_TRUE(video_detector_.last_video_time_ == test_time);
 }

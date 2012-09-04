@@ -15,15 +15,17 @@ namespace power_manager {
 
 class MockVideoDetectorObserver : public VideoDetectorObserver {
  public:
-  MOCK_METHOD1(OnVideoDetectorEvent,
-               void(int64 last_activity_time_ms));
-  void ExpectOnVideoDetectorEvent(int64 last_activity_time_ms) {
-    EXPECT_CALL(*this, OnVideoDetectorEvent(last_activity_time_ms))
+  MOCK_METHOD2(OnVideoDetectorEvent,
+               void(base::TimeTicks last_activity_time,
+                    bool is_fullscreen));
+  void ExpectOnVideoDetectorEvent(base::TimeTicks last_activity_time,
+                                  bool is_fullscreen) {
+    EXPECT_CALL(*this, OnVideoDetectorEvent(last_activity_time,
+                                            is_fullscreen))
                 .Times(1)
                 .RetiresOnSaturation();
   }
 };  // class MockVideoDetectorObserver
-
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_MOCK_VIDEO_DETECTOR_OBSERVER_H_

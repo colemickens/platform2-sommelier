@@ -50,13 +50,16 @@ enum TransitionStyle {
   TRANSITION_SLOW,
 };
 
+class BacklightController;
+
 // Interface for observing changes made by the backlight controller.
 class BacklightControllerObserver {
  public:
   // Invoked when the brightness level is changed.  |brightness_percent| is the
   // current brightness in the range [0, 100].
-  virtual void OnScreenBrightnessChanged(double brightness_percent,
-                                         BrightnessChangeCause cause) {}
+  virtual void OnBrightnessChanged(double brightness_percent,
+                                   BrightnessChangeCause cause,
+                                   BacklightController* source) {}
 
  protected:
   virtual ~BacklightControllerObserver() {}

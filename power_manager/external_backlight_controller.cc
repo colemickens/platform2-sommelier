@@ -109,7 +109,7 @@ bool ExternalBacklightController::SetCurrentBrightnessPercent(
   if (cause == BRIGHTNESS_CHANGE_USER_INITIATED)
     num_user_adjustments_++;
   if (observer_)
-    observer_->OnScreenBrightnessChanged(GetTargetBrightnessPercent(), cause);
+    observer_->OnBrightnessChanged(GetTargetBrightnessPercent(), cause, this);
   return true;
 }
 

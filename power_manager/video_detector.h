@@ -21,7 +21,8 @@ class VideoDetectorObserver {
  public:
   // VideoDetector event handler. This handler is called whenever a new video
   // event is received by the VideoDetector.
-  virtual void OnVideoDetectorEvent(int64 last_activity_time_ms) = 0;
+  virtual void OnVideoDetectorEvent(base::TimeTicks last_activity_time,
+                                    bool is_fullscreen) = 0;
 
  protected:
   virtual ~VideoDetectorObserver() {}
@@ -58,6 +59,10 @@ class VideoDetector : public ActivityDetectorInterface {
   // video activity time in |last_video_time_|.
   virtual void HandleActivity(const base::TimeTicks& last_activity_time);
 
+  // Call to notify the detector of the current fullscreeniness of any video
+  // playing. This should be called before HandleActivity.
+  void HandleFullscreenChange(bool is_fullscreen);
+
  private:
   friend class VideoDetectorTest;
   FRIEND_TEST(VideoDetectorTest, AddObserver);
@@ -72,6 +77,9 @@ class VideoDetector : public ActivityDetectorInterface {
 
   // Set of non-owned pointer to object listening for video detection events.
   VideoDetectorObservers observers_;
+
+  // Value that was received from Chrome at the last update
+  bool is_fullscreen_;
 
   DISALLOW_COPY_AND_ASSIGN(VideoDetector);
 };

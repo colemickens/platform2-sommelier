@@ -17,6 +17,7 @@
 #include "power_manager/mock_backlight.h"
 #include "power_manager/mock_metrics_store.h"
 #include "power_manager/mock_rolling_average.h"
+#include "power_manager/mock_video_detector.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
 
@@ -74,7 +75,7 @@ class DaemonTest : public Test {
         backlight_ctl_(&backlight_, &prefs_),
 #endif
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
-                &audio_detector_, &idle_, &keylight_,
+                &audio_detector_, &idle_, NULL,
                 FilePath(".")) {}
 
   virtual void SetUp() {
@@ -243,7 +244,7 @@ class DaemonTest : public Test {
   }
 
   StrictMock<MockBacklight> backlight_;
-  StrictMock<MockActivityDetector> video_detector_;
+  StrictMock<MockVideoDetector> video_detector_;
   StrictMock<MockActivityDetector> audio_detector_;
   StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;
@@ -254,7 +255,6 @@ class DaemonTest : public Test {
 #else
   InternalBacklightController backlight_ctl_;
 #endif
-  StrictMock<MockBacklight> keylight_;
 
   StrictMock<MockRollingAverage> empty_average_;
   StrictMock<MockRollingAverage> full_average_;

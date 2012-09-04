@@ -17,10 +17,16 @@ namespace power_manager {
 // Simple helper class that logs backlight brightness changes.
 class MockBacklightControllerObserver : public BacklightControllerObserver {
  public:
+  struct ChangeTuple {
+    double percent;
+    BrightnessChangeCause cause;
+    BacklightController* source;
+  };  // struct ChangeTuple
+
   MockBacklightControllerObserver() {}
   virtual ~MockBacklightControllerObserver() {}
 
-  std::vector<std::pair<double, BrightnessChangeCause> > changes() const {
+  std::vector<struct ChangeTuple> changes() const {
     return changes_;
   }
 
@@ -29,14 +35,19 @@ class MockBacklightControllerObserver : public BacklightControllerObserver {
   }
 
   // BacklightControllerObserver implementation:
-  virtual void OnScreenBrightnessChanged(double brightness_percent,
-                                         BrightnessChangeCause cause) {
-    changes_.push_back(std::make_pair(brightness_percent, cause));
+  virtual void OnBrightnessChanged(double brightness_percent,
+                                   BrightnessChangeCause cause,
+                                   BacklightController* source) {
+    struct ChangeTuple change;
+    change.percent = brightness_percent;
+    change.cause = cause;
+    change.source = source;
+    changes_.push_back(change);
   }
 
  private:
   // Received changes, in oldest-to-newest order.
-  std::vector<std::pair<double, BrightnessChangeCause> > changes_;
+  std::vector<struct ChangeTuple> changes_;
 
   DISALLOW_COPY_AND_ASSIGN(MockBacklightControllerObserver);
 };

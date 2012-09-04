@@ -28,6 +28,7 @@
 #include "power_manager/file_tagger.h"
 #include "power_manager/idle_detector.h"
 #include "power_manager/inotify.h"
+#include "power_manager/keyboard_backlight_controller.h"
 #include "power_manager/metrics_store.h"
 #include "power_manager/power_prefs.h"
 #include "power_manager/power_supply.h"
@@ -59,15 +60,15 @@ enum PluggedState {
 class Daemon : public BacklightControllerObserver,
                public IdleObserver {
  public:
-  // Note that keyboard_backlight is an optional parameter (it can be NULL)
-  // and that the memory is owned by the caller.
+  // Note that keyboard_controller is an optional parameter (it can be NULL) and
+  // that the memory is owned by the caller.
   Daemon(BacklightController* ctl,
          PowerPrefs* prefs,
          MetricsLibraryInterface* metrics_lib,
-         ActivityDetectorInterface* video_detector,
+         VideoDetector* video_detector,
          ActivityDetectorInterface* audio_detector,
          IdleDetector* idle,
-         BacklightInterface* keyboard_backlight,
+         KeyboardBacklightController* keyboard_controller,
          const FilePath& run_dir);
   ~Daemon();
 
@@ -99,14 +100,9 @@ class Daemon : public BacklightControllerObserver,
   virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms);
 
   // Overridden from BacklightControllerObserver:
-  virtual void OnScreenBrightnessChanged(double brightness_percent,
-                                         BrightnessChangeCause cause);
-
-  // Intended to override KeyboardBacklightControllerObserver once it exists
-  // ...for now, called privately by DecreaseKeyboardBrightness() /
-  // IncreaseKeyboardBrightness()
-  void OnKeyboardBrightnessChanged(double brightness_percent,
-                                   BrightnessChangeCause cause);
+  virtual void OnBrightnessChanged(double brightness_percent,
+                                   BrightnessChangeCause cause,
+                                   BacklightController* source);
 
   // Removes the current power supply polling timer.
   void HaltPollPowerSupply();
@@ -464,10 +460,10 @@ class Daemon : public BacklightControllerObserver,
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
-  ActivityDetectorInterface* video_detector_;
+  VideoDetector* video_detector_;
   ActivityDetectorInterface* audio_detector_;
   IdleDetector* idle_;
-  BacklightInterface* keyboard_backlight_;
+  KeyboardBacklightController* keyboard_controller_;  // non-owned
   int64 low_battery_suspend_time_s_;
   bool clean_shutdown_initiated_;
   bool low_battery_;

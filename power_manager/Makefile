@@ -156,9 +156,9 @@ powerd.o.depends: video_activity_update.pb.h
 state_control.o.depends: power_supply_properties.pb.h
 LIBPOWERD_OBJS = power_state_control.pb.o power_supply_properties.pb.o \
                  async_file_reader.o audio_detector.o file_tagger.o \
-                 idle_detector.o metrics_constants.o metrics_store.o \
-                 monitor_reconfigure.o power_supply.o powerd.o \
-                 powerd_metrics.o rolling_average.o \
+                 idle_detector.o keyboard_backlight_controller.o \
+                 metrics_constants.o metrics_store.o monitor_reconfigure.o \
+                 power_supply.o powerd.o powerd_metrics.o rolling_average.o \
                  screen_locker.o state_control.o suspender.o \
                  video_activity_update.pb.o video_detector.o
 CXX_STATIC_LIBRARY(libpowerd.pie.a): $(LIBPOWERD_OBJS)
@@ -265,7 +265,8 @@ tests: TEST(CXX_BINARY(backlight_unittest))
 
 POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
 POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock
-POWERD_UNITTEST_OBJS = powerd_unittest.o metrics_store_unittest.o \
+POWERD_UNITTEST_OBJS = keyboard_backlight_controller_unittest.o \
+	               powerd_unittest.o metrics_store_unittest.o \
                        rolling_average_unittest.o
 ifeq ($(USE_IS_DESKTOP),)
 POWERD_UNITTEST_OBJS += internal_backlight_controller_unittest.o \

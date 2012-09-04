@@ -10,7 +10,7 @@
 
 namespace power_manager {
 
-VideoDetector::VideoDetector() { }
+VideoDetector::VideoDetector() : is_fullscreen_(false) { }
 
 void VideoDetector::Init() { }
 
@@ -41,7 +41,7 @@ bool VideoDetector::RemoveObserver(VideoDetectorObserver* observer) {
 bool VideoDetector::GetActivity(int64 activity_threshold_ms,
                                 int64* time_since_activity_ms,
                                 bool* is_active) {
-  CHECK(NULL != is_active);
+  CHECK(is_active);
   if (last_video_time_.is_null()) {
     // This is not an error condition.  It just means there has been no video
     // activity information passed from Chrome.
@@ -66,14 +66,16 @@ bool VideoDetector::GetActivity(int64 activity_threshold_ms,
 
 void VideoDetector::HandleActivity(const base::TimeTicks& last_activity_time) {
   last_video_time_ = last_activity_time;
-  int64 last_activity_time_ms = (last_activity_time
-                                 - base::TimeTicks()).InMilliseconds();
   for (VideoDetectorObservers::iterator iter = observers_.begin();
        iter != observers_.end();
        ++iter) {
     VideoDetectorObserver* observer = *iter;
-    observer->OnVideoDetectorEvent(last_activity_time_ms);
+    observer->OnVideoDetectorEvent(last_activity_time, is_fullscreen_);
   }
+}
+
+void VideoDetector::HandleFullscreenChange(bool is_fullscreen) {
+  is_fullscreen_ = is_fullscreen;
 }
 
 }  // namespace power_manager

@@ -98,10 +98,10 @@ enum {
 Daemon::Daemon(BacklightController* backlight_controller,
                PowerPrefs* prefs,
                MetricsLibraryInterface* metrics_lib,
-               ActivityDetectorInterface* video_detector,
+               VideoDetector* video_detector,
                ActivityDetectorInterface* audio_detector,
                IdleDetector* idle,
-               BacklightInterface* keyboard_backlight,
+               KeyboardBacklightController* keyboard_controller,
                const FilePath& run_dir)
     : backlight_controller_(backlight_controller),
       prefs_(prefs),
@@ -109,7 +109,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       video_detector_(video_detector),
       audio_detector_(audio_detector),
       idle_(idle),
-      keyboard_backlight_(keyboard_backlight),
+      keyboard_controller_(keyboard_controller),
       low_battery_suspend_time_s_(0),
       clean_shutdown_initiated_(false),
       low_battery_(false),
@@ -451,16 +451,25 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     // fade from suspend, we would want to have this state to make sure the
     // backlight is set to zero when suspended.
     backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
+    if (keyboard_controller_)
+      keyboard_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
     audio_detector_->Disable();
     Suspend();
   } else if (idle_time_ms >= off_ms_ &&
              !state_control_->IsStateDisabled(kIdleBlankDisabled)) {
-    if (util::IsSessionStarted())
+    if (util::IsSessionStarted()) {
       backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF);
+      if (keyboard_controller_)
+        keyboard_controller_->SetPowerState(BACKLIGHT_IDLE_OFF);
+    }
   } else if (idle_time_ms >= dim_ms_ &&
              !state_control_->IsStateDisabled(kIdleDimDisabled)) {
     backlight_controller_->SetPowerState(BACKLIGHT_DIM);
+    if (keyboard_controller_)
+      keyboard_controller_->SetPowerState(BACKLIGHT_DIM);
   } else if (backlight_controller_->GetPowerState() != BACKLIGHT_ACTIVE) {
+    if (keyboard_controller_)
+      keyboard_controller_->SetPowerState(BACKLIGHT_ACTIVE);
     if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
       if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED) {
         util::CreateStatusFile(FilePath(run_dir_).Append(kUserActiveFile));
@@ -599,35 +608,15 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
 }
 
 void Daemon::AdjustKeyboardBrightness(int direction) {
-  if (!keyboard_backlight_)
+  if (!keyboard_controller_)
     return;
 
-  // TODO(dianders): Implement the equivalent of backlight_controller for
-  // keyboard.  This function is a bit hacky until then.
-  const int64 kNumKeylightLevels = 16;
-  int64 level, max_level;
-
-  if (!keyboard_backlight_->GetMaxBrightnessLevel(&max_level) ||
-      !keyboard_backlight_->GetCurrentBrightnessLevel(&level)) {
-    LOG(WARNING) << "Failed to get keyboard backlight brightness";
-    return;
+  if (direction > 0) {
+    keyboard_controller_->IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+  } else if (direction < 0) {
+    keyboard_controller_->DecreaseBrightness(true,
+                                             BRIGHTNESS_CHANGE_USER_INITIATED);
   }
-
-  // Try to move by 1-step, handling corner cases:
-  // 1. kNumKeylightLevels > max_level
-  // 2. Step would take us less than 0 or more than max.
-  int64 step_size = max(static_cast<int64>(1),
-                        (max_level + 1) / kNumKeylightLevels);
-  level = level + (direction * step_size);
-  level = max(static_cast<int64>(0), min(max_level, level));
-
-  if (!keyboard_backlight_->SetBrightnessLevel(level)) {
-    LOG(WARNING) << "Failed to set keyboard backlight brightness";
-    return;
-  }
-
-  OnKeyboardBrightnessChanged((100.0 * level) / max_level,
-                              BRIGHTNESS_CHANGE_USER_INITIATED);
 }
 
 void Daemon::SendBrightnessChangedSignal(double brightness_percent,
@@ -663,16 +652,19 @@ void Daemon::SendBrightnessChangedSignal(double brightness_percent,
   dbus_message_unref(signal);
 }
 
-void Daemon::OnScreenBrightnessChanged(double brightness_percent,
-                                       BrightnessChangeCause cause) {
-  SendBrightnessChangedSignal(brightness_percent, cause,
-                              kBrightnessChangedSignal);
-}
-
-void Daemon::OnKeyboardBrightnessChanged(double brightness_percent,
-                                         BrightnessChangeCause cause) {
-  SendBrightnessChangedSignal(brightness_percent, cause,
-                              kKeyboardBrightnessChangedSignal);
+void Daemon::OnBrightnessChanged(double brightness_percent,
+                                 BrightnessChangeCause cause,
+                                 BacklightController* source) {
+  if (source == backlight_controller_) {
+    SendBrightnessChangedSignal(brightness_percent, cause,
+                                kBrightnessChangedSignal);
+  } else if (source == keyboard_controller_ && keyboard_controller_) {
+    SendBrightnessChangedSignal(brightness_percent, cause,
+                                kKeyboardBrightnessChangedSignal);
+  } else {
+    NOTREACHED() << "Received a brightness change callback from an unknown "
+                 << "backlight controller";
+  }
 }
 
 void Daemon::HaltPollPowerSupply() {
@@ -1223,27 +1215,15 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
       LOG(ERROR) << "Failed to parse protocol buffer from array";
       return ret_val;
     }
+    video_detector_->HandleFullscreenChange(protobuf.is_fullscreen());
     video_detector_->HandleActivity(
         base::TimeTicks::FromInternalValue(protobuf.last_activity_time()));
   } else {
-    // If the first read fails assume we are dealing with a version of Chrome
-    // that uses the old format.
-    // TODO(rharrison): Remove this code path once
-    // http://codereview.chromium.org/10905026/ is rolled into ChromeOS builds
-    dbus_error_init(&error);
-    int64 last_activity_time_internal = 0;
-    if (!dbus_message_get_args(message, &error,
-                               DBUS_TYPE_INT64, &last_activity_time_internal,
-                               DBUS_TYPE_INVALID)) {
-      LOG(WARNING) << kHandleVideoActivityMethod
-                   << ": Error reading args: " << error.message;
-      dbus_error_free(&error);
-      ret_val = util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
+    LOG(WARNING) << kHandleVideoActivityMethod
+                 << ": Error reading args: " << error.message;
+    dbus_error_free(&error);
+    ret_val = util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
                                          "Invalid arguments passed to method");
-    }
-    video_detector_->HandleActivity(
-        base::TimeTicks::FromInternalValue(last_activity_time_internal));
-
   }
   return ret_val;
 }
@@ -1592,6 +1572,8 @@ void Daemon::Suspend() {
     // When going to suspend, notify the backlight controller so it will know to
     // set the backlight correctly upon resume.
     backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
+    if (keyboard_controller_)
+      keyboard_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
   } else {
     if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED)
       shutdown_reason_ = kShutdownReasonIdle;
