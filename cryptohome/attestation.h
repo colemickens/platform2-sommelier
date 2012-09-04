@@ -101,20 +101,20 @@ class Attestation : public base::PlatformThread::Delegate {
 
   // Serializes and encrypts an attestation database.
   bool EncryptDatabase(const AttestationDatabase& db,
-                       EncryptedDatabase* encrypted_db);
+                       EncryptedData* encrypted_db);
 
   // Decrypts and parses an attestation database.
-  bool DecryptDatabase(const EncryptedDatabase& encrypted_db,
+  bool DecryptDatabase(const EncryptedData& encrypted_db,
                        AttestationDatabase* db);
 
   // Computes an encrypted database HMAC.
-  std::string ComputeHMAC(const EncryptedDatabase& encrypted_db);
+  std::string ComputeHMAC(const EncryptedData& encrypted_db);
 
   // Writes an encrypted database to a persistent storage location.
-  bool StoreDatabase(const EncryptedDatabase& encrypted_db);
+  bool StoreDatabase(const EncryptedData& encrypted_db);
 
   // Reads a database from a persistent storage location.
-  bool LoadDatabase(EncryptedDatabase* encrypted_db);
+  bool LoadDatabase(EncryptedData* encrypted_db);
 
   // Verifies an endorsement credential against known Chrome OS issuers.
   bool VerifyEndorsementCredential(const chromeos::SecureBlob& credential,

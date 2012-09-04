@@ -62,7 +62,7 @@ message Delegation {
 // order to complete enrollment.
 message AttestationEnrollmentRequest {
   // The EK cert, in X.509 form.
-  optional bytes endorsement_credential = 1;
+  optional EncryptedData endorsement_credential = 1;
   // The AIK public key, in TPM_PUBKEY form.
   optional bytes identity_public_key = 2;
   // PCR0 quoted by AIK.
@@ -130,9 +130,9 @@ message AttestationDatabase {
 }
 
 // Holds encrypted data and information required to decrypt it.
-message EncryptedDatabase {
-  // A key that has been sealed to the TPM.
-  optional bytes sealed_key = 2;
+message EncryptedData {
+  // A key that has been sealed to the TPM or wrapped by another key.
+  optional bytes wrapped_key = 2;
   // The initialization vector used during encryption.
   optional bytes iv = 3;
   // MAC of (iv || encrypted_data).

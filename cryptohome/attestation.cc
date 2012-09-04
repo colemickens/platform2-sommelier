@@ -87,7 +87,7 @@ const Attestation::PCRValue Attestation::kKnownPCRValues[] = {
 bool Attestation::IsPreparedForEnrollment() {
   base::AutoLock lock(prepare_lock_);
   if (!is_prepared_ && tpm_) {
-    EncryptedDatabase encrypted_db;
+    EncryptedData encrypted_db;
     if (!LoadDatabase(&encrypted_db)) {
       LOG(INFO) << "Attestation: Attestation data not found.";
       return false;
@@ -203,8 +203,8 @@ void Attestation::PrepareForEnrollment() {
     LOG(ERROR) << "Attestation: Failed to seal cipher key.";
     return;
   }
-  EncryptedDatabase encrypted_pb;
-  encrypted_pb.set_sealed_key(sealed_key.data(), sealed_key.size());
+  EncryptedData encrypted_pb;
+  encrypted_pb.set_wrapped_key(sealed_key.data(), sealed_key.size());
   if (!EncryptDatabase(database_pb_, &encrypted_pb)) {
     LOG(ERROR) << "Attestation: Failed to encrypt db.";
     return;
@@ -223,7 +223,7 @@ bool Attestation::Verify() {
   if (!tpm_)
     return false;
   LOG(INFO) << "Attestation: Verifying data.";
-  EncryptedDatabase encrypted_db;
+  EncryptedData encrypted_db;
   if (!LoadDatabase(&encrypted_db)) {
     LOG(INFO) << "Attestation: Attestation data not found.";
     return false;
@@ -319,7 +319,7 @@ SecureBlob Attestation::SecureCat(const SecureBlob& blob1,
 }
 
 bool Attestation::EncryptDatabase(const AttestationDatabase& db,
-                                  EncryptedDatabase* encrypted_db) {
+                                  EncryptedData* encrypted_db) {
   SecureBlob iv;
   if (!tpm_->GetRandomData(kCipherBlockSize, &iv)) {
     LOG(ERROR) << "GetRandomData failed.";
@@ -343,10 +343,10 @@ bool Attestation::EncryptDatabase(const AttestationDatabase& db,
   return true;
 }
 
-bool Attestation::DecryptDatabase(const EncryptedDatabase& encrypted_db,
+bool Attestation::DecryptDatabase(const EncryptedData& encrypted_db,
                                   AttestationDatabase* db) {
-  SecureBlob sealed_key(encrypted_db.sealed_key().data(),
-                        encrypted_db.sealed_key().length());
+  SecureBlob sealed_key(encrypted_db.wrapped_key().data(),
+                        encrypted_db.wrapped_key().length());
   if (!tpm_->Unseal(sealed_key, &database_key_)) {
     LOG(ERROR) << "Cannot unseal database key.";
     return false;
@@ -376,14 +376,14 @@ bool Attestation::DecryptDatabase(const EncryptedDatabase& encrypted_db,
   return true;
 }
 
-string Attestation::ComputeHMAC(const EncryptedDatabase& encrypted_db) {
+string Attestation::ComputeHMAC(const EncryptedData& encrypted_db) {
   SecureBlob hmac_input = SecureCat(
       ConvertStringToBlob(encrypted_db.iv()),
       ConvertStringToBlob(encrypted_db.encrypted_data()));
   return ConvertBlobToString(CryptoLib::HmacSha512(database_key_, hmac_input));
 }
 
-bool Attestation::StoreDatabase(const EncryptedDatabase& encrypted_db) {
+bool Attestation::StoreDatabase(const EncryptedData& encrypted_db) {
   string database_serial;
   if (!encrypted_db.SerializeToString(&database_serial)) {
     LOG(ERROR) << "Failed to serialize encrypted db.";
@@ -397,7 +397,7 @@ bool Attestation::StoreDatabase(const EncryptedDatabase& encrypted_db) {
   return true;
 }
 
-bool Attestation::LoadDatabase(EncryptedDatabase* encrypted_db) {
+bool Attestation::LoadDatabase(EncryptedData* encrypted_db) {
   string serial;
   if (!file_util::ReadFileToString(database_path_, &serial)) {
     return false;
