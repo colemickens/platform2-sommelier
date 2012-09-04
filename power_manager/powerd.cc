@@ -822,11 +822,20 @@ void Daemon::RegisterDBusMessageHandler() {
   AddDBusSignalHandler(login_manager::kSessionManagerInterface,
                        login_manager::kSessionManagerSessionStateChanged,
                        &Daemon::HandleSessionManagerSessionStateChangedSignal);
+  AddDBusSignalHandler(login_manager::kSessionManagerInterface,
+                       login_manager::kScreenIsLockedSignal,
+                       &Daemon::HandleSessionManagerScreenIsLockedSignal);
+  AddDBusSignalHandler(login_manager::kSessionManagerInterface,
+                       login_manager::kScreenIsUnlockedSignal,
+                       &Daemon::HandleSessionManagerScreenIsUnlockedSignal);
   AddDBusSignalHandler(kPowerManagerInterface, kStateOverrideCancel,
                        &Daemon::HandleStateOverrideCancelSignal);
   CHECK(dbus_connection_add_filter(
       connection, &MainDBusSignalHandler, this, NULL));
 
+  // TODO(haruki): Remove HandleScreenIsLockedMethod and
+  // HandleScreenIsUnlockedMethod after chrome has been updated to stop calling
+  // them.
   AddDBusMethodHandler(kPowerManagerInterface, kScreenIsLockedMethod,
                        &Daemon::HandleScreenIsLockedMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kScreenIsUnlockedMethod,
@@ -958,6 +967,21 @@ bool Daemon::HandleSessionManagerSessionStateChangedSignal(
   return false;
 }
 
+bool Daemon::HandleSessionManagerScreenIsLockedSignal(
+    DBusMessage* message) {
+  LOG(INFO) << "HandleSessionManagerScreenIsLockedSignal";
+  locker_.set_locked(true);
+  suspender_.CheckSuspend();
+  return true;
+}
+
+bool Daemon::HandleSessionManagerScreenIsUnlockedSignal(
+    DBusMessage* message) {
+  LOG(INFO) << "HandleSessionManagerScreenIsUnlockedSignal";
+  locker_.set_locked(false);
+  return true;
+}
+
 bool Daemon::HandleStateOverrideCancelSignal(DBusMessage* message) {
   DBusError error;
   dbus_error_init(&error);
@@ -975,13 +999,14 @@ bool Daemon::HandleStateOverrideCancelSignal(DBusMessage* message) {
 }
 
 DBusMessage* Daemon::HandleScreenIsLockedMethod(DBusMessage* message) {
-  locker_.set_locked(true);
-  suspender_.CheckSuspend();
+  // TODO(haruki): Remove this method after chrome has been updated to stop
+  // calling it.
   return NULL;
 }
 
 DBusMessage* Daemon::HandleScreenIsUnlockedMethod(DBusMessage* message) {
-  locker_.set_locked(false);
+  // TODO(haruki): Remove this method after chrome has been updated to stop
+  // calling it.
   return NULL;
 }
 

@@ -230,6 +230,8 @@ class Daemon : public BacklightControllerObserver,
   bool HandleCleanShutdownSignal(DBusMessage* message);
   bool HandlePowerStateChangedSignal(DBusMessage* message);
   bool HandleSessionManagerSessionStateChangedSignal(DBusMessage* message);
+  bool HandleSessionManagerScreenIsLockedSignal(DBusMessage* message);
+  bool HandleSessionManagerScreenIsUnlockedSignal(DBusMessage* message);
   bool HandleStateOverrideCancelSignal(DBusMessage* message);
   DBusMessage* HandleScreenIsLockedMethod(DBusMessage* message);
   DBusMessage* HandleScreenIsUnlockedMethod(DBusMessage* message);
