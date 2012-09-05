@@ -153,11 +153,10 @@ fi
 # Find our destination device
 if [ -z "$FLAGS_dst" ]; then
   if [ "$ARCH" = "INTEL" ]; then
-    # This finds the first ATA device listed by parted. This is duplicated logic
-    # from platform/initramfs/recovery_init.sh
-    SD_INFO=$(parted -l -s -m)
+    # This finds the first ATA device listed by parted.
+    SD_INFO=$(sudo parted -l -s -m 2> /dev/null)
     DST=$(expr "${SD_INFO}" : ".*\(/dev/sd[^:]*\)[^;]*:ATA\ ")
-    if [ "$DST" == 0 ]; then
+    if [ -z "$DST" ]; then
       # As a backup, install to /dev/sda
       DST=/dev/sda
     fi
