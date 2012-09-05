@@ -23,7 +23,17 @@ namespace {
 // The root node in a storage, as defined by the PTP/MTP standards.
 const uint32_t kPtpGohRootParent = 0xFFFFFFFF;
 
-const char kPtpInterfaceSignature[] = "6/1/1";
+// Used to identify a PTP USB device interface.
+const char kPtpUsbInterfaceClass[] = "6";
+const char kPtpUsbInterfaceSubClass[] = "1";
+const char kPtpUsbInterfaceProtocol[] = "1";
+
+// Used to identify a vendor-specific USB device interface.
+// Manufacturers sometimes do not report MTP/PTP capable devices using the
+// well known PTP interface class. See libgphoto2 and libmtp device databases
+// for examples.
+const char kVendorSpecificUsbInterfaceClass[] = "255";
+
 const char kUsbPrefix[] = "usb";
 const char kUDevEventType[] = "udev";
 const char kUDevUsbSubsystem[] = "usb";
@@ -376,11 +386,36 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
   if (!action || !interface)
     return;
 
-  const std::string kEventAction(action);
+  // Check the USB interface. Since this gets called many times by udev for a
+  // given physical action, use the udev "INTERFACE" event property as a quick
+  // way of getting one unique and interesting udev event for a given physical
+  // action. At the same time, do some light filtering and ignore events for
+  // uninteresting devices.
   const std::string kEventInterface(interface);
-  if (kEventInterface != kPtpInterfaceSignature)
+  std::vector<std::string> split_usb_interface;
+  base::SplitString(kEventInterface, '/', &split_usb_interface);
+  if (split_usb_interface.size() != 3)
     return;
 
+  // Check to see if the device has a vendor-specific interface class.
+  // In this case, continue and let libmtp figure it out.
+  const std::string& usb_interface_class = split_usb_interface[0];
+  const std::string& usb_interface_subclass = split_usb_interface[1];
+  const std::string& usb_interface_protocol = split_usb_interface[2];
+  bool is_interesting_device =
+      (usb_interface_class == kVendorSpecificUsbInterfaceClass);
+  if (!is_interesting_device) {
+    // Many MTP/PTP devices have this PTP interface.
+    is_interesting_device =
+        (usb_interface_class == kPtpUsbInterfaceClass &&
+         usb_interface_subclass == kPtpUsbInterfaceSubClass &&
+         usb_interface_protocol == kPtpUsbInterfaceProtocol);
+  }
+  if (!is_interesting_device)
+    return;
+
+  // Handle the action.
+  const std::string kEventAction(action);
   if (kEventAction == "add") {
     // Some devices do not respond well when immediately probed. Thus there is
     // a 1 second wait here to give the device to settle down.
@@ -395,7 +430,8 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
     RemoveDevices(false /* !remove_all */);
     return;
   }
-  NOTREACHED();
+  // udev notes the existence of other actions like "change" and "move", but
+  // they have never been observed with real MTP/PTP devices in testing.
 }
 
 void DeviceManager::AddDevices(GSource* source) {
