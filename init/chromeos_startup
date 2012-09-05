@@ -281,6 +281,9 @@ chmod 1777 /var/tmp
 chmod 1771 /home/root
 # Selected directories must belong to the chronos user.
 chown chronos:chronos /home/chronos /var/log/metrics /var/log/window_manager
+# rsyslog needs to be able to create new logfiles, but not delete other logs
+chgrp syslog /var/log
+chmod 1775 /var/log
 
 mount_or_fail -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
 touch /var/run/.ramfs  # TODO: Is this needed?

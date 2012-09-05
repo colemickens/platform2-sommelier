@@ -32,6 +32,7 @@ rotate_logs() {
   for x in messages secure faillog session_manager; do
     rotate_file "/var/log/${x}"
   done
+  chown syslog /var/log/{messages,secure}
   sudo pkill -HUP rsyslogd
 }
 

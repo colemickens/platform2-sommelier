@@ -7,6 +7,11 @@ $ModLoad immark.so # provides --MARK-- message capability
 $ModLoad imuxsock.so # provides support for local system logging (e.g. via logger command)
 $ModLoad imklog.so # kernel logging (formerly provided by rklogd)
 
+$PrivDropToUser syslog
+$PrivDropToGroup syslog
+
+$SystemLogRateLimitInterval 0
+
 # Log all kernel messages to the console.
 # Logging much else clutters up the screen.
 #kern.*                                                 /dev/console
