@@ -90,7 +90,7 @@ void SessionManagerTest::InitManager(MockChildJob* job1, MockChildJob* job2) {
     jobs.push_back(job2);
   }
   ASSERT_TRUE(MessageLoop::current() == NULL);
-  manager_ = new SessionManagerService(jobs, &real_utils_);
+  manager_ = new SessionManagerService(jobs, 3, &real_utils_);
   manager_->set_file_checker(file_checker_);
   manager_->set_mitigator(mitigator_);
   manager_->test_api().set_exit_on_child_done(true);

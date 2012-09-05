@@ -37,7 +37,7 @@ class KeyGeneratorTest : public ::testing::Test {
   virtual void SetUp() {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     std::vector<ChildJobInterface*> jobs;
-    manager_ = new SessionManagerService(jobs, &utils_);
+    manager_ = new SessionManagerService(jobs, 3, &utils_);
   }
 
   virtual void TearDown() {

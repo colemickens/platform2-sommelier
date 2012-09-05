@@ -189,22 +189,21 @@ const char SessionManagerService::kLoggedInFlag[] =
 const char SessionManagerService::kResetFile[] =
     "/mnt/stateful_partition/factory_install_reset";
 
-namespace {
+// TODO(mkrebs): Remove CollectChrome timeout and file when
+// crosbug.com/5872 is fixed.
+// When crash-reporter based crash reporting of Chrome is enabled
+// (which should only be during test runs) we use
+// kKillTimeoutCollectChrome instead of the kill timeout specified at
+// the command line.
+const int SessionManagerService::kKillTimeoutCollectChrome = 60;
+const char SessionManagerService::kCollectChromeFile[] =
+    "/mnt/stateful_partition/etc/collect_chrome_crashes";
 
-// Time we wait for child job to die (in seconds) unless crash-reporter
-// based crash reporting of Chrome is enabled (which should only be
-// during test runs) in which case kKillTimeoutChromeCrashHandling is used.
-const int kKillTimeout = 3;
+namespace {
 
 // A buffer of this size is used to parse the command line to restart a
 // process like restarting Chrome for the guest mode.
 const int kMaxArgumentsSize = 1024 * 8;
-
-// TODO(mkrebs): Remove CollectChrome timeout and file when
-// crosbug.com/5872 is fixed.
-const int kKillTimeoutCollectChrome = 60;
-static const char kCollectChromeFile[] =
-    "/mnt/stateful_partition/etc/collect_chrome_crashes";
 
 // File that contains world-readable machine statistics. Should be removed once
 // the user session starts.
@@ -223,10 +222,12 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
 
 SessionManagerService::SessionManagerService(
     std::vector<ChildJobInterface*> child_jobs,
+    int kill_timeout,
     SystemUtils* utils)
     : child_jobs_(child_jobs.begin(), child_jobs.end()),
       child_pids_(child_jobs.size(), -1),
       exit_on_child_done_(false),
+      kill_timeout_(kill_timeout),
       session_manager_(NULL),
       main_loop_(g_main_loop_new(NULL, FALSE)),
       dont_use_directly_(new MessageLoopForUI),
@@ -397,11 +398,11 @@ void SessionManagerService::OnKeyPersisted(bool success) {
   system_->SendStatusSignalToChromium(chromium::kOwnerKeySetSignal, success);
 }
 
-int GetKillTimeout() {
+int SessionManagerService::GetKillTimeout() {
   if (file_util::PathExists(FilePath(kCollectChromeFile)))
     return kKillTimeoutCollectChrome;
   else
-    return kKillTimeout;
+    return kill_timeout_;
 }
 
 bool SessionManagerService::Run() {

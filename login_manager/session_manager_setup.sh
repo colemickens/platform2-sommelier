@@ -299,6 +299,15 @@ chown -R chronos /tmp/cgroup/cpu/chrome_renderers
 # For i18n keyboard support (crbug.com/116999)
 export LC_CTYPE=en_US.utf8
 
+# On platforms with rotational disks, Chrome takes longer to shut down.
+# As such, we need to change our baseline assumption about what "taking too long
+# to shutdown" means and wait for longer before killing Chrome and triggering
+# a report.
+KILL_TIMEOUT_FLAG=
+if use_flag_is_set has_hdd; then
+  KILL_TIMEOUT_FLAG="--kill-timeout=12"
+fi
+
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
 #
@@ -330,7 +339,7 @@ ply-image --clear 0x000000 &
 #
 export PATH=/bin:/usr/bin:/usr/bin/X11
 
-exec /sbin/session_manager --uid=${USER_ID} -- \
+exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
     $CHROME --apps-gallery-title="Web Store" \
             --apps-gallery-url="https://chrome.google.com/webstore/" \
             --compress-sys-feedback \

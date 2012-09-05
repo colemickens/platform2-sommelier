@@ -69,6 +69,7 @@ class SessionManagerService
   };
 
   SessionManagerService(std::vector<ChildJobInterface*> child_jobs,
+                        int kill_timeout,
                         SystemUtils* system);
   virtual ~SessionManagerService();
 
@@ -441,6 +442,9 @@ class SessionManagerService
   // found, -1 if not.
   int FindChildByPid(int pid);
 
+  // Returns appropriate child-killing timeout, depending on flag file state.
+  int GetKillTimeout();
+
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(int timeout);
 
@@ -483,11 +487,14 @@ class SessionManagerService
   static const char kLoggedInFlag[];
   static const char kResetFile[];
 
+  static const int kKillTimeoutCollectChrome;
+  static const char kCollectChromeFile[];
   // TODO(cmasone): consider tracking job, pid and watcher in one struct.
   std::vector<ChildJobInterface*> child_jobs_;
   std::vector<int> child_pids_;
   std::vector<guint> child_watchers_;
   bool exit_on_child_done_;
+  int kill_timeout_;
 
   gobject::SessionManager* session_manager_;
   GMainLoop* main_loop_;

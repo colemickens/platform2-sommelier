@@ -27,7 +27,7 @@ class RegenMitigatorTest : public ::testing::Test {
 
   virtual void SetUp() {
     std::vector<ChildJobInterface*> jobs;
-    manager_ = new SessionManagerService(jobs, &utils_);
+    manager_ = new SessionManagerService(jobs, 3, &utils_);
   }
 
   virtual void TearDown() {

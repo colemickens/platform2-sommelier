@@ -54,6 +54,11 @@ static const char kDisableChromeRestartFileDefault[] =
 // starting it.
 static const char kUid[] = "uid";
 
+// Name of flag specifying the time (in s) to wait for children to exit
+// gracefully before killing them with a SIGABRT.
+static const char kKillTimeout[] = "kill-timeout";
+static const int kKillTimeoutDefault = 3;
+
 // Flag that causes session manager to show the help message and exit.
 static const char kHelp[] = "help";
 // The help message shown if help flag is passed to the program.
@@ -63,6 +68,9 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "    chrome binary and exit. (default: /var/run/disable_chrome_restart)\n"
 "  --uid=[number]\n"
 "    Numeric uid to transition to prior to execution.\n"
+"  --kill-timeout=[number in seconds]\n"
+"    Number of seconds to wait for children to exit gracefully before\n"
+"    killing them with a SIGABRT.\n"
 "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
 "    Supplies the required program to execute and its arguments.\n"
 "    Multiple programs can be executed by delimiting them with addition --\n"
@@ -99,7 +107,19 @@ int main(int argc, char* argv[]) {
       uid = static_cast<uid_t>(uid_value);
       uid_set = true;
     } else {
-      DLOG(WARNING) << "failed to parse uid, defaulting to none.";
+      DLOG(WARNING) << "Failed to parse uid, defaulting to none.";
+    }
+  }
+
+  // Parse kill timeout if it's present.
+  int kill_timeout = switches::kKillTimeoutDefault;
+  if (cl->HasSwitch(switches::kKillTimeout)) {
+    string timeout_flag = cl->GetSwitchValueASCII(switches::kKillTimeout);
+    int from_flag = 0;
+    if (base::StringToInt(timeout_flag, &from_flag)) {
+      kill_timeout = from_flag;
+    } else {
+      DLOG(WARNING) << "Failed to parse uid, defaulting to " << kill_timeout;
     }
   }
 
@@ -117,7 +137,7 @@ int main(int argc, char* argv[]) {
 
   ::g_type_init();
   scoped_refptr<SessionManagerService> manager =
-      new SessionManagerService(child_jobs, &system);
+      new SessionManagerService(child_jobs, kill_timeout, &system);
 
   string magic_chrome_file =
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
