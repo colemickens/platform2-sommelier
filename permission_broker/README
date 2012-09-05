@@ -1,0 +1,2 @@
+The Permission Broker is a ChromeOS process that is responsible for servicing
+requests for greater access to device nodes within the system.
