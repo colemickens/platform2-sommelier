@@ -129,17 +129,14 @@ fi
 # Preserve the log file
 clobber-log --preserve "$SCRIPT" "$@"
 
-# Can only do filesystem-based targetted clobbering if the filesystem
-# is actually mounted. If the filesystem is not mounted (e.g. due to
-# corruption), we cannot do this optimization.
-if grep -q " ${STATE_PATH} " /proc/mounts ; then
-  # Rotational drives take too long to wipe, so just shred contents since
-  # the stateful filesystem is not mounted with "data=journal", and in-place
-  # updates really are overwriting the block contents. Shredding will wipe
-  # out the encrypted partition and eCryptFS keys so the backing files can
-  # just be removed. Once shredding is done, force HDDs onto the "fast" wipe
-  # path to avoid hours of zeroing.
-  if [ "$ROTATIONAL" = "1" ] && [ "$FAST_WIPE" != "fast" ]; then
+# On a non-fast wipe, rotational drives take too long. Override to run them
+# through "fast" mode, with a forced delay. Sensitive contents should already
+# be encrypted.
+if [ "$FAST_WIPE" != "fast" ] && [ "$ROTATIONAL" = "1" ]; then
+  # If the stateful filesystem is available, do some best-effort content
+  # shredding. Since the filesystem is not mounted with "data=journal", the
+  # writes really are overwriting the block contents (unlike on an SSD).
+  if grep -q " ${STATE_PATH} " /proc/mounts ; then
     (
       # Directly remove things that are already encrypted (which are also the
       # large things), or are static from images.
@@ -153,21 +150,23 @@ if grep -q " ${STATE_PATH} " /proc/mounts ; then
       # use "-u" since metadata updates via fdatasync dominate the shred time.
       find "${STATE_PATH}"/. -type f -print0 | xargs -r0 shred -fz
     ) &
-    # For non-fast wipe, force a minimum of a 5 minute delay.
-    DELAY=300
-    ( stty -F /dev/tty1 raw -echo -cread
-      ( c=0
-        while [ "$c" -lt "$DELAY" ]; do
-          echo -n .
-          sleep 1
-          c=$(( c + 1 ))
-        done
-      ) | pv -etp -s "$DELAY" 2>/dev/tty1 >/dev/null
-    ) >/dev/tty1
-    wait
-    FAST_WIPE="fast"
   fi
+  # Since the above rm/shred combo can be very fast, force a minimum of a 5
+  # minute delay for this mode.
+  DELAY=300
+  ( stty -F /dev/tty1 raw -echo -cread
+    ( c=0
+      while [ "$c" -lt "$DELAY" ]; do
+        echo -n .
+        sleep 1
+        c=$(( c + 1 ))
+      done
+    ) | pv -etp -s "$DELAY" 2>/dev/tty1 >/dev/null
+  ) >/dev/tty1
+  wait
+  FAST_WIPE="fast"
 fi
+# Make sure the stateful partition has been unmounted.
 umount -n "${STATE_PATH}"
 
 if [ "$FAST_WIPE" = "fast" ]; then
