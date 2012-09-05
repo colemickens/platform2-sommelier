@@ -77,6 +77,9 @@ class TpmInit {
   // Returns true if all attestation data can be validated.
   virtual bool VerifyAttestationData();
 
+  // Returns true if the EK certificate can be validated.
+  virtual bool VerifyEK();
+
   virtual void set_tpm(Tpm* value);
 
   virtual Tpm* get_tpm();

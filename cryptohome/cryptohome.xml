@@ -117,6 +117,9 @@
     <method name="TpmVerifyAttestationData">
       <arg type="b" name="verified" direction="out" />
     </method>
+    <method name="TpmVerifyEK">
+      <arg type="b" name="verified" direction="out" />
+    </method>
     <method name="Pkcs11IsTpmTokenReady">
       <arg type="b" name="ready" direction="out" />
     </method>

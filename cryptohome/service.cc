@@ -981,6 +981,11 @@ gboolean Service::TpmVerifyAttestationData(gboolean* OUT_verified,
   return TRUE;
 }
 
+gboolean Service::TpmVerifyEK(gboolean* OUT_verified, GError** error) {
+  *OUT_verified = tpm_init_->VerifyEK();
+  return TRUE;
+}
+
 // Returns true if all Pkcs11 tokens are ready.
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   // TODO(gauravsh): Give out more information here. The state of PKCS#11

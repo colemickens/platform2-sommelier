@@ -48,6 +48,9 @@ class Attestation : public base::PlatformThread::Delegate {
   // if all data is valid.
   virtual bool Verify();
 
+  // Verifies the EK credential.
+  virtual bool VerifyEK();
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = FilePath(path);

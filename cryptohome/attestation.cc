@@ -287,6 +287,20 @@ bool Attestation::Verify() {
   return true;
 }
 
+bool Attestation::VerifyEK() {
+  SecureBlob ek_cert;
+  if (!tpm_->GetEndorsementCredential(&ek_cert)) {
+    LOG(ERROR) << "VerifyEK: Failed to get EK cert.";
+    return false;
+  }
+  SecureBlob ek_public_key;
+  if (!tpm_->GetEndorsementPublicKey(&ek_public_key)) {
+    LOG(ERROR) << "VerifyEK: Failed to get EK public key.";
+    return false;
+  }
+  return VerifyEndorsementCredential(ek_cert, ek_public_key);
+}
+
 SecureBlob Attestation::ConvertStringToBlob(const string& s) {
   return SecureBlob(s.data(), s.length());
 }

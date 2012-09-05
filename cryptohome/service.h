@@ -177,6 +177,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                             GError** error);
   virtual gboolean TpmVerifyAttestationData(gboolean* OUT_verified,
                                             GError** error);
+  virtual gboolean TpmVerifyEK(gboolean* OUT_verified, GError** error);
 
   // Returns the label of the TPM token along with its user PIN.
   virtual gboolean Pkcs11GetTpmTokenInfo(gchar** OUT_label,

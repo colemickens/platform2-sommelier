@@ -159,6 +159,14 @@ bool TpmInit::VerifyAttestationData() {
   return attestation.Verify();
 }
 
+bool TpmInit::VerifyEK() {
+  Tpm* tpm = get_tpm();
+  if (!tpm || !IsTpmReady())
+    return false;
+  Attestation attestation(tpm);
+  return attestation.VerifyEK();
+}
+
 void TpmInit::ThreadMain() {
   base::TimeTicks start = base::TimeTicks::Now();
   bool initialize_result = tpm_init_task_->get_tpm()->InitializeTpm(
