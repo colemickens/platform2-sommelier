@@ -1192,15 +1192,18 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
   DBusError error;
   dbus_error_init(&error);
 
-  char** serialized_buf = NULL;
+  char* serialized_buf = NULL;
   int buf_size = 0;
   VideoActivityUpdate protobuf;
   if (dbus_message_get_args(message, &error,
                              DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
                              &serialized_buf, &buf_size,
                              DBUS_TYPE_INVALID)) {
-
-    if (!protobuf.ParseFromArray(*serialized_buf, buf_size)) {
+    if (serialized_buf == NULL) {
+      LOG(ERROR) << "Received array is NULL!";
+      return NULL;
+    }
+    if (!protobuf.ParseFromArray(serialized_buf, buf_size)) {
       LOG(ERROR) << "Failed to parse protocol buffer from array";
       return ret_val;
     }
