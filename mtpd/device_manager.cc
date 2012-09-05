@@ -20,8 +20,17 @@
 
 namespace {
 
-// The root node in a storage, as defined by the PTP/MTP standards.
+// For GetObjectHandles PTP operations, this tells GetObjectHandles to only
+// list the objects of the root of a store.
+// Use this when referring to the root node in the context of ReadDirectory().
+// This is an implementation detail that is not exposed to the outside.
 const uint32_t kPtpGohRootParent = 0xFFFFFFFF;
+
+// TODO(thestig) Put this constant in system_api.
+// The id of the root node in a storage, as defined by the PTP/MTP standards.
+// Use this when referring to the root node in the context of GetFileInfo().
+const uint32_t kRootFileId = 0;
+
 
 // Used to identify a PTP USB device interface.
 const char kPtpUsbInterfaceClass[] = "6";
@@ -221,6 +230,8 @@ bool DeviceManager::ReadDirectoryById(const std::string& storage_name,
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
+  if (file_id == kRootFileId)
+    file_id = kPtpGohRootParent;
   return ReadDirectory(mtp_device, storage_id, file_id, out);
 }
 
@@ -263,7 +274,10 @@ bool DeviceManager::GetFileInfoByPath(const std::string& storage_name,
                     IsValidComponentInFileOrFolderPath, &file_id)) {
     return false;
   }
-  return GetFileInfo(mtp_device, file_id, out);
+
+  if (file_id == kPtpGohRootParent)
+    file_id = kRootFileId;
+  return GetFileInfo(mtp_device, storage_id, file_id, out);
 }
 
 bool DeviceManager::GetFileInfoById(const std::string& storage_name,
@@ -273,7 +287,41 @@ bool DeviceManager::GetFileInfoById(const std::string& storage_name,
   uint32_t storage_id = 0;
   if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
     return false;
-  return GetFileInfo(mtp_device, file_id, out);
+  return GetFileInfo(mtp_device, storage_id, file_id, out);
+}
+
+bool DeviceManager::AddStorageForTest(const std::string& storage_name,
+                                      const StorageInfo& storage_info) {
+  std::string device_location;
+  uint32_t storage_id;
+  if (!ParseStorageName(storage_name, &device_location, &storage_id))
+    return false;
+
+  MtpDeviceMap::iterator it = device_map_.find(device_location);
+  if (it == device_map_.end()) {
+    // New device case.
+    MtpStorageMap new_storage_map;
+    new_storage_map.insert(std::make_pair(storage_id, storage_info));
+    MtpDevice new_mtp_device =
+        std::make_pair(static_cast<LIBMTP_mtpdevice_t*>(NULL),
+                       new_storage_map);
+    device_map_.insert(std::make_pair(device_location, new_mtp_device));
+    return true;
+  }
+
+  // Existing device case.
+  // There should be no real LIBMTP_mtpdevice_t device for this dummy storage.
+  MtpDevice& existing_mtp_device = it->second;
+  if (existing_mtp_device.first)
+    return false;
+
+  // And the storage should not already exist.
+  MtpStorageMap& existing_mtp_storage_map = existing_mtp_device.second;
+  if (ContainsKey(existing_mtp_storage_map, storage_id))
+    return false;
+
+  existing_mtp_storage_map.insert(std::make_pair(storage_id, storage_info));
+  return true;
 }
 
 bool DeviceManager::PathToFileId(LIBMTP_mtpdevice_t* device,
@@ -327,6 +375,10 @@ bool DeviceManager::ReadDirectory(LIBMTP_mtpdevice_t* device,
 bool DeviceManager::ReadFile(LIBMTP_mtpdevice_t* device,
                              uint32_t file_id,
                              std::vector<uint8_t>* out) {
+  // The root node is a virtual node and cannot be read from.
+  if (file_id == kRootFileId)
+    return false;
+
   FilePath path;
   if (!file_util::CreateTemporaryFile(&path))
     return false;
@@ -349,13 +401,26 @@ bool DeviceManager::ReadFile(LIBMTP_mtpdevice_t* device,
 }
 
 bool DeviceManager::GetFileInfo(LIBMTP_mtpdevice_t* device,
+                                uint32_t storage_id,
                                 uint32_t file_id,
                                 FileEntry* out) {
-  LIBMTP_file_t* file = LIBMTP_Get_Filemetadata(device, file_id);
+  LIBMTP_file_t* file = (file_id == kRootFileId) ?
+      LIBMTP_new_file_t() :
+      LIBMTP_Get_Filemetadata(device, file_id);
   if (!file)
     return false;
 
+  // LIBMTP_Get_Filemetadata() does not know how to handle the root node, so
+  // fill in relevant fields in the struct manually. The rest of the struct has
+  // already been initialized by LIBMTP_new_file_t().
+  if (file_id == kRootFileId) {
+    file->storage_id = storage_id;
+    file->filename = strdup("/");
+    file->filetype = LIBMTP_FILETYPE_FOLDER;
+  }
+
   *out = FileEntry(*file);
+  LIBMTP_destroy_file_t(file);
   return true;
 }
 
@@ -548,6 +613,10 @@ void DeviceManager::RemoveDevices(bool remove_all) {
     // Delete the device's map entry and cleanup.
     LIBMTP_mtpdevice_t* mtp_device = device_it->second.first;
     device_map_.erase(device_it);
+
+    // |mtp_device| can be NULL in testing.
+    if (!mtp_device)
+      continue;
 
     // When |remove_all| is false, the device has already been detached
     // and this runs after the fact. As such, this call will very

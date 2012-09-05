@@ -99,6 +99,7 @@ class DeviceManager {
 
   // Reads entries from |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
+  // For the root node, pass in |kRootFileId|.
   // On success, returns true and writes the file entries of |file_id| into
   // |out|. Otherwise returns false.
   bool ReadDirectoryById(const std::string& storage_name,
@@ -114,6 +115,7 @@ class DeviceManager {
 
   // Reads the contents of |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
+  // |file_id| should never refer to the root node.
   // On success, returns true and writes the file contents of |file_id| into
   // |out|. Otherwise returns false.
   bool ReadFileById(const std::string& storage_name,
@@ -129,11 +131,21 @@ class DeviceManager {
 
   // Reads the metadata for |file_id| on |storage_name|.
   // |file_id| is the unique identifier for a directory on |storage_name|.
+  // For the root node, pass in |kRootFileId|.
   // On success, returns true and writes the metadata of |file_id| into
   // |out|. Otherwise returns false.
   bool GetFileInfoById(const std::string& storage_name,
                        uint32_t file_id,
                        FileEntry* out);
+
+ protected:
+  // Used in testing to add dummy storages.
+  // Returns whether the test storage has been successfully added.
+  // The dummy storage has no physical device backing it, so this should only
+  // be used when testing functionality that does not require communicating
+  // with a real device.
+  bool AddStorageForTest(const std::string& storage_name,
+                         const StorageInfo& storage_info);
 
  private:
   // Key: MTP storage id, Value: metadata for the given storage.
@@ -148,6 +160,8 @@ class DeviceManager {
   // |file_path| are valid.
   // On success, returns true, and write the file id to |file_id|.
   // Otherwise returns false.
+  // For the root node, |file_id| is set to |kPtpGohRootParent|, which may or
+  // may not be appropriate for a given context.
   bool PathToFileId(LIBMTP_mtpdevice_t* device,
                     uint32_t storage_id,
                     const std::string& file_path,
@@ -156,6 +170,7 @@ class DeviceManager {
 
   // Reads entries from |device|'s storage with |storage_id|.
   // |file_id| is the unique identifier for a directory on the given storage.
+  // For the root node, pass in |kPtpGohRootParent|.
   // On success, returns true and writes the file entries of |file_id| into
   // |out|. Otherwise returns false.
   bool ReadDirectory(LIBMTP_mtpdevice_t* device,
@@ -165,17 +180,21 @@ class DeviceManager {
 
   // Reads the contents of |file_id| from |device|.
   // |file_id| is the unique identifier for a file on the given storage.
+  // |file_id| should never refer to the root node.
   // On success, returns true and writes the file contents of |file_id| into
   // |out|. Otherwise returns false.
   bool ReadFile(LIBMTP_mtpdevice_t* device,
                 uint32_t file_id,
                 std::vector<uint8_t>* out);
 
-  // Reads the metadata of |file_id| from |device|.
+  // Reads the metadata of |file_id| from a storage on |device| with
+  // |storage_id|.
   // |file_id| is the unique identifier for a file on the given device.
+  // For the root node, pass in |kRootFileId|.
   // On success, returns true and writes the metadata of |file_id| into |out|.
   // Otherwise returns false.
   bool GetFileInfo(LIBMTP_mtpdevice_t* device,
+                   uint32_t storage_id,
                    uint32_t file_id,
                    FileEntry* out);
 

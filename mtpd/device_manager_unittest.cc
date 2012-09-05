@@ -9,6 +9,10 @@
 
 #include <gtest/gtest.h>
 
+#include <base/compiler_specific.h>
+
+#include "mtpd/device_event_delegate.h"
+
 namespace mtpd {
 namespace {
 
@@ -105,6 +109,35 @@ TEST(DeviceManagerTest, ParseStorageName) {
   }
 }
 
+class TestDeviceEventDelegate : public DeviceEventDelegate {
+ public:
+  TestDeviceEventDelegate() {}
+  ~TestDeviceEventDelegate() {}
+
+  // DeviceEventDelegate implementation.
+  virtual void StorageAttached(const std::string& storage_name) OVERRIDE {}
+  virtual void StorageDetached(const std::string& storage_name) OVERRIDE {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(TestDeviceEventDelegate);
+};
+
+class TestDeviceManager : public DeviceManager {
+ public:
+  explicit TestDeviceManager(DeviceEventDelegate* delegate)
+      : DeviceManager(delegate) {
+  }
+  ~TestDeviceManager() {}
+
+  bool AddStorage(const std::string& storage_name,
+                  const StorageInfo& storage_info) {
+    return AddStorageForTest(storage_name, storage_info);
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(TestDeviceManager);
+};
+
 TEST(DeviceManager, IsFolder) {
   EXPECT_TRUE(TestPathToId(DeviceManager::IsFolder,
                            kFolderPathTestCase,
@@ -166,6 +199,43 @@ TEST(DeviceManager, IsValidComponentInFileOrFolderPath) {
   EXPECT_FALSE(TestPathToId(DeviceManager::IsValidComponentInFileOrFolderPath,
                             kInvalidFilePathTestCase2,
                             arraysize(kInvalidFilePathTestCase2)));
+}
+
+// Devices do not actually have a root node, so one is synthesized.
+TEST(DeviceManager, GetFileInfoForSynthesizedRootNode) {
+  const std::string kDummyStorageName = "usb:1,2:65432";
+  StorageInfo dummy_storage_info;
+  TestDeviceEventDelegate dummy_device_event_delegate;
+  TestDeviceManager device_manager(&dummy_device_event_delegate);
+  bool ret = device_manager.AddStorage(kDummyStorageName, dummy_storage_info);
+  EXPECT_TRUE(ret);
+
+  FileEntry file_entry;
+  ret = device_manager.GetFileInfoById(kDummyStorageName, 0, &file_entry);
+  EXPECT_TRUE(ret);
+
+  EXPECT_EQ(0, file_entry.item_id());
+  EXPECT_EQ(0, file_entry.parent_id());
+  EXPECT_EQ("/", file_entry.file_name());
+  EXPECT_EQ(0, file_entry.file_size());
+  EXPECT_EQ(0, file_entry.modification_time());
+  EXPECT_EQ(LIBMTP_FILETYPE_FOLDER, file_entry.file_type());
+}
+
+// Devices do not actually have a root node, and it is not possible to read
+// from the synthesized one.
+TEST(DeviceManager, ReadFileFromSynthesizedRootNodeFails) {
+  const std::string kDummyStorageName = "usb:1,2:65432";
+  StorageInfo dummy_storage_info;
+  TestDeviceEventDelegate dummy_device_event_delegate;
+  TestDeviceManager device_manager(&dummy_device_event_delegate);
+  bool ret = device_manager.AddStorage(kDummyStorageName, dummy_storage_info);
+  EXPECT_TRUE(ret);
+
+  std::vector<uint8_t> data;
+  ret = device_manager.ReadFileById(kDummyStorageName, 0, &data);
+  EXPECT_FALSE(ret);
+  EXPECT_TRUE(data.empty());
 }
 
 }  // namespace

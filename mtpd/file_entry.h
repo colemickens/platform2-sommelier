@@ -28,6 +28,13 @@ class FileEntry {
   static std::string EmptyFileEntriesToDBusFormat();
   static std::string FileEntriesToDBusFormat(std::vector<FileEntry>& entries);
 
+  uint32_t item_id() const { return item_id_; }
+  uint32_t parent_id() const { return parent_id_; }
+  const std::string& file_name() const { return file_name_; }
+  uint64_t file_size() const { return file_size_; }
+  time_t modification_time() const { return modification_time_; }
+  LIBMTP_filetype_t file_type() const { return file_type_; }
+
  private:
   uint32_t item_id_;
   uint32_t parent_id_;
