@@ -10,6 +10,7 @@
 #include "shill/cellular.h"
 #include "shill/error.h"
 #include "shill/logging.h"
+#include "shill/modem_gobi_proxy_interface.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 
@@ -28,6 +29,7 @@ const char CellularCapabilityClassic::kConnectPropertyApnPassword[] =
 const char CellularCapabilityClassic::kConnectPropertyHomeOnly[] = "home_only";
 const char CellularCapabilityClassic::kConnectPropertyPhoneNumber[] = "number";
 const char CellularCapabilityClassic::kModemPropertyEnabled[] = "Enabled";
+const int CellularCapabilityClassic::kTimeoutSetCarrierMilliseconds = 120000;
 
 static Cellular::ModemState ConvertClassicToModemState(uint32 classic_state) {
   ModemClassicState cstate =
@@ -99,6 +101,7 @@ void CellularCapabilityClassic::ReleaseProxies() {
   SLOG(Cellular, 2) << __func__;
   proxy_.reset();
   simple_proxy_.reset();
+  gobi_proxy_.reset();
 }
 
 void CellularCapabilityClassic::FinishEnable(const ResultCallback &callback) {
@@ -268,6 +271,19 @@ void CellularCapabilityClassic::ChangePIN(const string &/*old_pin*/,
                                    Error *error,
                                    const ResultCallback &/*callback*/) {
   OnUnsupportedOperation(__func__, error);
+}
+
+void CellularCapabilityClassic::SetCarrier(const string &carrier,
+                                           Error *error,
+                                           const ResultCallback &callback) {
+  LOG(INFO) << __func__ << "(" << carrier << ")";
+  if (!gobi_proxy_.get()) {
+    gobi_proxy_.reset(proxy_factory()->CreateModemGobiProxy(
+        cellular()->dbus_path(), cellular()->dbus_owner()));
+  }
+  CHECK(error);
+  gobi_proxy_->SetCarrier(carrier, error, callback,
+                          kTimeoutSetCarrierMilliseconds);
 }
 
 void CellularCapabilityClassic::Scan(Error *error,

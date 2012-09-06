@@ -164,7 +164,7 @@ void DeviceDBusAdaptor::UnblockPin(
 void DeviceDBusAdaptor::ChangePin(
     const string &old_pin, const string &new_pin, DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
-  Error e;
+  Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   device_->ChangePIN(old_pin, new_pin, &e, GetMethodReplyCallback(tag));
   ReturnResultOrDefer(tag, e, &error);
@@ -172,6 +172,14 @@ void DeviceDBusAdaptor::ChangePin(
 
 void DeviceDBusAdaptor::ResetByteCounters(DBus::Error &error) {
   device_->ResetByteCounters();
+}
+
+void DeviceDBusAdaptor::SetCarrier(const string &carrier, DBus::Error &error) {
+  SLOG(DBus, 2) << __func__ << "(" << carrier << ")";
+  Error e(Error::kOperationInitiated);
+  DBus::Tag *tag = new DBus::Tag();
+  device_->SetCarrier(carrier, &e, GetMethodReplyCallback(tag));
+  ReturnResultOrDefer(tag, e, &error);
 }
 
 }  // namespace shill

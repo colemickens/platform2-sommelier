@@ -23,6 +23,7 @@ class DHCPProxyInterface;
 class ModemCDMAProxyInterface;
 class ModemGSMCardProxyInterface;
 class ModemGSMNetworkProxyInterface;
+class ModemGobiProxyInterface;
 class ModemManagerClassic;
 class ModemManagerProxyInterface;
 class ModemProxyInterface;
@@ -87,6 +88,10 @@ class ProxyFactory {
       const std::string &service);
 
   virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
+      const std::string &path,
+      const std::string &service);
+
+  virtual ModemGobiProxyInterface *CreateModemGobiProxy(
       const std::string &path,
       const std::string &service);
 

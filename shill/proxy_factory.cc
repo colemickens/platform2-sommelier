@@ -15,6 +15,7 @@
 #include "shill/mm1_modem_simple_proxy.h"
 #include "shill/mm1_sim_proxy.h"
 #include "shill/modem_cdma_proxy.h"
+#include "shill/modem_gobi_proxy.h"
 #include "shill/modem_gsm_card_proxy.h"
 #include "shill/modem_gsm_network_proxy.h"
 #include "shill/modem_manager_proxy.h"
@@ -101,6 +102,12 @@ ModemGSMNetworkProxyInterface *ProxyFactory::CreateModemGSMNetworkProxy(
     const string &path,
     const string &service) {
   return new ModemGSMNetworkProxy(connection(), path, service);
+}
+
+ModemGobiProxyInterface *ProxyFactory::CreateModemGobiProxy(
+    const string &path,
+    const string &service) {
+  return new ModemGobiProxy(connection(), path, service);
 }
 
 // Proxies for ModemManager1 interfaces

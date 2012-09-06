@@ -187,6 +187,8 @@ class Cellular : public Device {
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
                          Error *error, const ResultCallback &callback);
+  virtual void SetCarrier(const std::string &carrier,
+                          Error *error, const ResultCallback &callback);
 
   void StartModemCallback(const EnabledStateChangedCallback &callback,
                           const Error &error);

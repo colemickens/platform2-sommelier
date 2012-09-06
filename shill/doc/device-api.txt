@@ -142,6 +142,15 @@ Methods		dict GetProperties()
 			more attempt is made to register, after switching back
 			to automatic registration mode.
 
+		void SetCarrier(string carrier)
+
+			(Cellular only) Set the modem carrier firmware. For
+			example, switch between CDMA (Verizon Wireless/Sprint)
+			and Generic UMTS.
+
+			Possible Errors: [service].Error.Failure
+					 [service].Error.NotSupported
+
 		void ResetByteCounters()
 
 			Reset the device's persisted counters of transmitted

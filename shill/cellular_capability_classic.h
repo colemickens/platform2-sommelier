@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_CAPABILITY_CLASSIC_
-#define SHILL_CELLULAR_CAPABILITY_CLASSIC_
+#ifndef SHILL_CELLULAR_CAPABILITY_CLASSIC_H_
+#define SHILL_CELLULAR_CAPABILITY_CLASSIC_H_
 
 #include <string>
 #include <vector>
@@ -25,6 +25,7 @@ namespace shill {
 class Cellular;
 class Error;
 class EventDispatcher;
+class ModemGobiProxyInterface;
 class ProxyFactory;
 
 enum ModemClassicState {
@@ -50,6 +51,7 @@ class CellularCapabilityClassic : public CellularCapability {
   static const char kConnectPropertyHomeOnly[];
   static const char kConnectPropertyPhoneNumber[];
   static const char kModemPropertyEnabled[];
+  static const int kTimeoutSetCarrierMilliseconds;
 
   // |cellular| is the parent Cellular device.
   CellularCapabilityClassic(Cellular *cellular, ProxyFactory *proxy_factory);
@@ -79,6 +81,9 @@ class CellularCapabilityClassic : public CellularCapability {
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
                          Error *error, const ResultCallback &callback);
+
+  virtual void SetCarrier(const std::string &carrier,
+                          Error *error, const ResultCallback &callback);
 
   virtual void Scan(Error *error, const ResultCallback &callback);
 
@@ -185,10 +190,11 @@ class CellularCapabilityClassic : public CellularCapability {
   base::WeakPtrFactory<CellularCapabilityClassic> weak_ptr_factory_;
 
   scoped_ptr<ModemProxyInterface> proxy_;
+  scoped_ptr<ModemGobiProxyInterface> gobi_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityClassic);
 };
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_CAPABILITY_CLASSIC_
+#endif  // SHILL_CELLULAR_CAPABILITY_CLASSIC_H_

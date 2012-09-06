@@ -45,6 +45,7 @@ DBUS_PROXY_HEADERS = \
 	dbus-properties.h \
 	dbus-service.h \
 	dhcpcd.h \
+	modem-gobi.h \
 	power_manager.h \
 	supplicant-bss.h \
 	supplicant-interface.h \
@@ -174,6 +175,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	modem_1.o \
 	modem_cdma_proxy.o \
 	modem_classic.o \
+	modem_gobi_proxy.o \
 	modem_gsm_card_proxy.o \
 	modem_gsm_network_proxy.o \
 	modem_info.o \
@@ -316,6 +318,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_mm1_sim_proxy.o \
 	mock_modem.o \
 	mock_modem_cdma_proxy.o \
+	mock_modem_gobi_proxy.o \
 	mock_modem_gsm_card_proxy.o \
 	mock_modem_gsm_network_proxy.o \
 	mock_modem_info.o \

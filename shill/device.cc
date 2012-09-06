@@ -216,6 +216,13 @@ void Device::ChangePIN(const string &/*old_pin*/,
                         "Device doesn't support ChangePIN.");
 }
 
+void Device::SetCarrier(const string &/*carrier*/,
+                        Error *error, const ResultCallback &/*callback*/) {
+  SLOG(Device, 2) << __func__;
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support SetCarrier.");
+}
+
 void Device::DisableIPv6() {
   SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "1");
 }

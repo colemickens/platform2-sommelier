@@ -19,6 +19,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem_cdma_proxy.h"
+#include "shill/mock_modem_gobi_proxy.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/mock_modem_proxy.h"
@@ -54,6 +55,7 @@ class CellularCapabilityTest : public testing::Test {
         cdma_proxy_(new MockModemCDMAProxy()),
         gsm_card_proxy_(new MockModemGSMCardProxy()),
         gsm_network_proxy_(new MockModemGSMNetworkProxy()),
+        gobi_proxy_(new MockModemGobiProxy()),
         proxy_factory_(this),
         capability_(NULL),
         device_adaptor_(NULL),
@@ -144,6 +146,10 @@ class CellularCapabilityTest : public testing::Test {
     info._3 = kHWRev;
     callback.Run(info, Error());
   }
+  void InvokeSetCarrier(const string &carrier, Error *error,
+                        const ResultCallback &callback, int timeout) {
+    callback.Run(Error());
+  }
 
   MOCK_METHOD1(TestCallback, void(const Error &error));
 
@@ -193,6 +199,12 @@ class CellularCapabilityTest : public testing::Test {
       return test_->gsm_network_proxy_.release();
     }
 
+    virtual ModemGobiProxyInterface *CreateModemGobiProxy(
+        const string &/*path*/,
+        const string &/*service*/) {
+      return test_->gobi_proxy_.release();
+    }
+
    private:
     CellularCapabilityTest *test_;
   };
@@ -233,6 +245,7 @@ class CellularCapabilityTest : public testing::Test {
   scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
   scoped_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
   scoped_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
+  scoped_ptr<MockModemGobiProxy> gobi_proxy_;
   TestProxyFactory proxy_factory_;
   CellularCapabilityClassic *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
@@ -342,6 +355,21 @@ TEST_F(CellularCapabilityTest, AllowRoaming) {
   cellular_->SetAllowRoaming(false, NULL);
   EXPECT_FALSE(cellular_->GetAllowRoaming(NULL));
   EXPECT_EQ(Cellular::kStateRegistered, cellular_->state_);
+}
+
+TEST_F(CellularCapabilityTest, SetCarrier) {
+  static const char kCarrier[] = "Generic UMTS";
+  EXPECT_CALL(
+      *gobi_proxy_,
+      SetCarrier(kCarrier, _, _,
+                 CellularCapabilityClassic::kTimeoutSetCarrierMilliseconds))
+      .WillOnce(Invoke(this, &CellularCapabilityTest::InvokeSetCarrier));
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  Error error;
+  capability_->SetCarrier(kCarrier, &error,
+                          Bind(&CellularCapabilityTest::TestCallback,
+                               Unretained(this)));
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 MATCHER_P(HasApn, apn, "") {

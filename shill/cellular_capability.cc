@@ -81,4 +81,10 @@ void CellularCapability::Scan(Error *error,
   OnUnsupportedOperation(__func__, error);
 }
 
+void CellularCapability::SetCarrier(const std::string &/*carrier*/,
+                                    Error *error,
+                                    const ResultCallback &/*callback*/) {
+  OnUnsupportedOperation(__func__, error);
+}
+
 }  // namespace shill

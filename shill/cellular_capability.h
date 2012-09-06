@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_CAPABILITY_
-#define SHILL_CELLULAR_CAPABILITY_
+#ifndef SHILL_CELLULAR_CAPABILITY_H_
+#define SHILL_CELLULAR_CAPABILITY_H_
 
 #include <string>
 #include <vector>
@@ -129,6 +129,10 @@ class CellularCapability {
                          const std::string &new_pin,
                          Error *error, const ResultCallback &callback);
 
+  // The default implementation fails by returning an error.
+  virtual void SetCarrier(const std::string &carrier,
+                          Error *error, const ResultCallback &callback);
+
   // Asks the modem to scan for networks.
   //
   // The default implementation fails by filling error with
@@ -203,4 +207,4 @@ class CellularCapability {
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_CAPABILITY_
+#endif  // SHILL_CELLULAR_CAPABILITY_H_
