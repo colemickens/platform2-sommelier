@@ -97,7 +97,10 @@ int main(int argc, char* argv[]) {
   FilePath default_prefs_dir(FLAGS_default_prefs_dir.empty() ?
                              "/usr/share/power_manager" :
                              FLAGS_default_prefs_dir);
-  power_manager::PowerPrefs prefs(prefs_dir, default_prefs_dir);
+  std::vector<FilePath> pref_paths;
+  pref_paths.push_back(prefs_dir);
+  pref_paths.push_back(default_prefs_dir);
+  power_manager::PowerPrefs prefs(pref_paths);
   g_type_init();
 
   power_manager::MonitorReconfigure monitor_reconfigure;

@@ -66,7 +66,6 @@ void PowerSupply::Init() {
 
 bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
   CHECK(status);
-
   status->is_calculating_battery_time = is_calculating;
 
   // Look for battery path if none has been found yet.
@@ -244,12 +243,12 @@ bool PowerSupply::GetPowerInformation(PowerInformation* info) {
   // POWER_SUPPLY_PROP_VENDOR does not seem to be a valid property
   // defined in <linux/power_supply.y>.
   if (file_util::PathExists(battery_path_.Append("manufacturer")))
-    battery_info_->ReadString("manufacturer", &info->battery_vendor);
+    battery_info_->GetString("manufacturer", &info->battery_vendor);
   else
-    battery_info_->ReadString("vendor", &info->battery_vendor);
-  battery_info_->ReadString("model_name", &info->battery_model);
-  battery_info_->ReadString("serial_number", &info->battery_serial);
-  battery_info_->ReadString("technology", &info->battery_technology);
+    battery_info_->GetString("vendor", &info->battery_vendor);
+  battery_info_->GetString("model_name", &info->battery_model);
+  battery_info_->GetString("serial_number", &info->battery_serial);
+  battery_info_->GetString("technology", &info->battery_technology);
 
   switch (info->power_status.battery_state) {
     case BATTERY_STATE_CHARGING:
@@ -451,13 +450,6 @@ double PowerSupply::PowerInfoReader::ReadScaledDouble(const char* name) {
   if (GetInt64(name, &value))
     return kDoubleScaleFactor * value;
   return -1.;
-}
-
-bool PowerSupply::PowerInfoReader::ReadString(const char* name,
-                                              std::string* str) {
-  bool result = file_util::ReadFileToString(pref_path().Append(name), str);
-  TrimWhitespaceASCII(*str, TRIM_TRAILING, str);
-  return result;
 }
 
 }  // namespace power_manager

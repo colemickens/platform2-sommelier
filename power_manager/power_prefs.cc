@@ -5,7 +5,6 @@
 #include "power_manager/power_prefs.h"
 
 #include <sys/inotify.h>
-#include <string>
 
 #include "base/logging.h"
 #include "base/file_util.h"
@@ -18,19 +17,43 @@ namespace power_manager {
 
 static const int kFileWatchMask = IN_MODIFY | IN_CREATE | IN_DELETE;
 
-PowerPrefs::PowerPrefs(const FilePath& pref_path, const FilePath& default_path)
-    : pref_path_(pref_path),
-      default_path_(default_path) {}
+PowerPrefs::PowerPrefs(const FilePath& pref_path)
+    : pref_paths_(std::vector<FilePath>(1, pref_path)) {}
+
+PowerPrefs::PowerPrefs(const std::vector<FilePath>& pref_paths)
+    : pref_paths_(pref_paths) {}
 
 bool PowerPrefs::StartPrefWatching(Inotify::InotifyCallback callback,
                                    gpointer data) {
   LOG(INFO) << "Starting to watch pref directory.";
   if (!notifier_.Init(callback, data))
     return false;
-  if (0 > notifier_.AddWatch(pref_path_.value().c_str(), kFileWatchMask))
+  CHECK(!pref_paths_.empty());
+  if (notifier_.AddWatch(pref_paths_[0].value().c_str(), kFileWatchMask) > 0)
     return false;
   notifier_.Start();
   return true;
+}
+
+void PowerPrefs::GetPrefStrings(const std::string& name,
+                                bool read_all,
+                                std::vector<PrefReadResult>* results) {
+  CHECK(results);
+  for (std::vector<FilePath>::const_iterator iter = pref_paths_.begin();
+       iter != pref_paths_.end();
+       ++iter) {
+    FilePath path = iter->Append(name);
+    string buf;
+    if (file_util::ReadFileToString(path, &buf)) {
+      TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+      PrefReadResult result;
+      result.path = path.value();
+      result.value = buf;
+      results->push_back(result);
+      if (!read_all)
+        return;
+    }
+  }
 }
 
 bool PowerPrefs::GetString(const char* name, string* buf) {
@@ -38,45 +61,32 @@ bool PowerPrefs::GetString(const char* name, string* buf) {
     LOG(ERROR) << "Invalid return buffer!";
     return false;
   }
-
-  FilePath path = pref_path_.Append(name);
-  if (file_util::ReadFileToString(path, buf)) {
-    TrimWhitespaceASCII(*buf, TRIM_TRAILING, buf);
-    return true;
-  }
-  path = default_path_.Append(name);
-  buf->clear();
-  if (file_util::ReadFileToString(path, buf)) {
-    TrimWhitespaceASCII(*buf, TRIM_TRAILING, buf);
-    return true;
-  }
-  return false;
+  std::vector<PrefReadResult> results;
+  GetPrefStrings(name, false, &results);
+  if (results.empty())
+    return false;
+  *buf = results[0].value;
+  return true;
 }
 
 bool PowerPrefs::GetInt64(const char* name, int64* value) {
-  FilePath path = pref_path_.Append(name);
-  string buf;
-  if (file_util::ReadFileToString(path, &buf)) {
-    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
-    if (base::StringToInt64(buf, value))
+  std::vector<PrefReadResult> results;
+  GetPrefStrings(name, true, &results);
+
+  for (std::vector<PrefReadResult>::const_iterator iter = results.begin();
+       iter != results.end();
+       ++iter) {
+    if (base::StringToInt64(iter->value, value))
       return true;
     else
-      LOG(ERROR) << "Garbage found in " << path.value();
-  }
-  path = default_path_.Append(name);
-  buf.clear();
-  if (file_util::ReadFileToString(path, &buf)) {
-    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
-    if (base::StringToInt64(buf, value))
-      return true;
-    else
-      LOG(ERROR) << "Garbage found in " << path.value();
+      LOG(ERROR) << "Garbage found in " << iter->path;
   }
   return false;
 }
 
 bool PowerPrefs::SetInt64(const char* name, int64 value) {
-  FilePath path = pref_path_.Append(name);
+  CHECK(!pref_paths_.empty());
+  FilePath path = pref_paths_[0].Append(name);
   string buf = base::Int64ToString(value);
   int status = file_util::WriteFile(path, buf.data(), buf.size());
   LOG_IF(ERROR, -1 == status) << "Failed to write to " << path.value();
@@ -84,29 +94,23 @@ bool PowerPrefs::SetInt64(const char* name, int64 value) {
 }
 
 bool PowerPrefs::GetDouble(const char* name, double* value) {
-  FilePath path = pref_path_.Append(name);
-  string buf;
-  if (file_util::ReadFileToString(path, &buf)) {
-    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
-    if (base::StringToDouble(buf, value))
+  std::vector<PrefReadResult> results;
+  GetPrefStrings(name, true, &results);
+
+  for (std::vector<PrefReadResult>::const_iterator iter = results.begin();
+       iter != results.end();
+       ++iter) {
+    if (base::StringToDouble(iter->value, value))
       return true;
     else
-      LOG(ERROR) << "Garbage found in " << path.value();
-  }
-  path = default_path_.Append(name);
-  buf.clear();
-  if (file_util::ReadFileToString(path, &buf)) {
-    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
-    if (base::StringToDouble(buf, value))
-      return true;
-    else
-      LOG(ERROR) << "Garbage found in " << path.value();
+      LOG(ERROR) << "Garbage found in " << iter->path;
   }
   return false;
 }
 
 bool PowerPrefs::SetDouble(const char* name, double value) {
-  FilePath path = pref_path_.Append(name);
+  CHECK(!pref_paths_.empty());
+  FilePath path = pref_paths_[0].Append(name);
   string buf = base::DoubleToString(value);
   int status = file_util::WriteFile(path, buf.data(), buf.size());
   LOG_IF(ERROR, -1 == status) << "Failed to write to " << path.value();

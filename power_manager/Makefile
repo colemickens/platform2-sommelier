@@ -370,3 +370,13 @@ CXX_BINARY(util_unittest): CPPFLAGS +=$(UTIL_UNITTEST_FLAGS)
 CXX_BINARY(util_unittest): LDLIBS += $(UTIL_UNITTEST_LIBS)
 clean: CXX_BINARY(util_unittest)
 tests: TEST(CXX_BINARY(util_unittest))
+
+POWER_PREFS_UNITTEST_FLAGS = $(GLIB_FLAGS)
+POWER_PREFS_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock
+POWER_PREFS_UNITTEST_OBJS = inotify.o power_prefs_unittest.o power_prefs.o
+CXX_BINARY(power_prefs_unittest): $(POWER_PREFS_UNITTEST_OBJS) \
+	CXX_STATIC_LIBRARY(libtestrunner.pie.a)
+CXX_BINARY(power_prefs_unittest): CPPFLAGS +=$(POWER_PREFS_UNITTEST_FLAGS)
+CXX_BINARY(power_prefs_unittest): LDLIBS += $(POWER_PREFS_UNITTEST_LIBS)
+clean: CXX_BINARY(power_prefs_unittest)
+tests: TEST(CXX_BINARY(power_prefs_unittest))

@@ -28,7 +28,7 @@ static const int64 kRetrySuspendAttempts = 10;
 class PowerManDaemonTest : public Test {
  public:
   PowerManDaemonTest()
-      : prefs_(FilePath("config"), FilePath("config")),
+      : prefs_(FilePath("config")),
         daemon_(&prefs_, &metrics_lib_, &backlight_, FilePath(".")) {}
 
   virtual void SetUp() {

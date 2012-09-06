@@ -123,10 +123,9 @@ class PowerSupply {
   // Make this public for unit testing purposes, but keep objects private.
   class PowerInfoReader : public PowerPrefs {
    public:
-    explicit PowerInfoReader(const FilePath& path) : PowerPrefs(path, path) {}
+    explicit PowerInfoReader(const FilePath& path) : PowerPrefs(path) {}
 
     double ReadScaledDouble(const char* name);
-    bool ReadString(const char* name, std::string* str);
   };
 
   // Find sysfs directories to read from.

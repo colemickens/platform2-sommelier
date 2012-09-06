@@ -33,8 +33,7 @@ static const int64 kUnpluggedBrightnessP = kUnpluggedBrightness * 100 /
 class PlugDimmerTest : public Test {
  public:
   PlugDimmerTest()
-      : prefs_(FilePath("/tmp"),
-        FilePath("/tmp")),
+      : prefs_(FilePath("/tmp")),
         backlight_ctl_(&backlight_, &prefs_),
         current_brightness_(0),
         target_brightness_(0) {

@@ -67,7 +67,7 @@ bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 class DaemonTest : public Test {
  public:
   DaemonTest()
-      : prefs_(FilePath("."), FilePath(".")),
+      : prefs_(FilePath(".")),
 #ifdef IS_DESKTOP
         backlight_ctl_(&backlight_),
 #else

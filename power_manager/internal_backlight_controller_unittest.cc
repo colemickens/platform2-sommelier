@@ -43,7 +43,7 @@ const int kAlsSamplesToTriggerAdjustment = 5;
 class InternalBacklightControllerTest : public ::testing::Test {
  public:
   InternalBacklightControllerTest()
-      : prefs_(FilePath("."), FilePath(".")),
+      : prefs_(FilePath(".")),
         controller_(&backlight_, &prefs_) {
   }
 
