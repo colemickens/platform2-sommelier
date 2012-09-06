@@ -154,7 +154,10 @@ if [ $cancel -eq 0 ]; then
     if [ -e "/sys/firmware/log" ]; then
         # Grep /sys/firmware/log for WAK
         wakeup_source=$(grep -A1 -B1 "PM1_STS: WAK" /sys/firmware/log)
-        log_msg $wakeup_source
+        if [ -z "${wakeup_source}" ]; then
+            wakeup_source="unknown"
+        fi
+        log_msg "wake source: ${wakeup_source}"
     fi
 
     # - sends UMA metrics on resume
