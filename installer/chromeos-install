@@ -469,10 +469,7 @@ fast_dd 512 ${ESP_IMG_SECTORS} ${START_ESP} ${ESP_IMG_OFFSET} \
 if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
   echo "Clearing the stateful partition..."
   loop_offset_setup $DST $START_STATEFUL
-  # We want to do the ext4 inode init during install rather than during
-  # first boot because it can make for a bad user experience, especially
-  # on slow rotating disks where it might compete with the first sync.
-  sudo mkfs.ext4 -F -b 4096 -L "H-STATE" -E lazy_itable_init=0 ${LOOP_DEV} \
+  sudo mkfs.ext4 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
     $(($NUM_STATEFUL_SECTORS / 8))
   # Need to synchronize before releasing loop device, otherwise calling
   # loop_offset_cleanup may return "device busy" error.
