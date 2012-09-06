@@ -262,6 +262,9 @@ fi
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
   HIGHDPI_FLAGS="--allow-webui-compositing"
+  # TODO(flackr): Remove --enable-text-subpixel-positioning when chrome rolls
+  # past r154767 (See http://crbug.com/145020).
+  HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-text-subpixel-positioning"
   HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-webkit-text-subpixel-positioning"
 fi
 
