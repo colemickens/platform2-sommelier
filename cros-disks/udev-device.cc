@@ -38,6 +38,8 @@ const char kPropertyBlkIdFilesystemUUID[] = "UUID";
 const char kPropertyCDROM[] = "ID_CDROM";
 const char kPropertyCDROMDVD[] = "ID_CDROM_DVD";
 const char kPropertyCDROMMedia[] = "ID_CDROM_MEDIA";
+const char kPropertyCDROMMediaTrackCountData[] =
+    "ID_CDROM_MEDIA_TRACK_COUNT_DATA";
 const char kPropertyDeviceType[] = "DEVTYPE";
 const char kPropertyDeviceTypeUSBDevice[] = "usb_device";
 const char kPropertyFilesystemUsage[] = "ID_FS_USAGE";
@@ -242,6 +244,14 @@ bool UdevDevice::IsAutoMountable() const {
 bool UdevDevice::IsHidden() {
   if (IsPropertyTrue(kPropertyPresentationHide))
     return true;
+
+  // Hide an optical disc without any data track.
+  // udev/cdrom_id only sets ID_CDROM_MEDIA_TRACK_COUNT_DATA when there is at
+  // least one data track.
+  if (IsPropertyTrue(kPropertyCDROM) &&
+      !HasProperty(kPropertyCDROMMediaTrackCountData)) {
+    return true;
+  }
 
   // Hide a device that is neither marked as a partition nor a filesystem,
   // unless it has no valid partitions (e.g. the device is unformatted or
