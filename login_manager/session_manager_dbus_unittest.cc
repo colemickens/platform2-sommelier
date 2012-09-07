@@ -403,23 +403,6 @@ TEST_F(SessionManagerDBusTest, StopSession) {
   manager_->StopSession(nothing, &out, NULL);
 }
 
-TEST_F(SessionManagerDBusTest, SetOwnerKeyShouldFail) {
-  TrivialInitManager();
-  EXPECT_CALL(utils_,
-              SendStatusSignalToChromium(
-                  StrEq(chromium::kOwnerKeySetSignal), false))
-      .Times(1);
-  MockUtils();
-
-  GError* error = NULL;
-  const char fake_key_data[] = "fake_key";
-  GArray* fake_key = CreateArray(fake_key_data, strlen(fake_key_data));
-  EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key, &error));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, error->code);
-  g_array_free(fake_key, TRUE);
-  g_error_free(error);
-}
-
 TEST_F(SessionManagerDBusTest, StorePolicyNoSession) {
   TrivialInitManager();
   const std::string fake_policy("fake policy");

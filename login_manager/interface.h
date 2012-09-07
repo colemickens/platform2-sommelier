@@ -53,34 +53,6 @@ gboolean session_manager_stop_session(SessionManager *self,
                                       gboolean *OUT_done,
                                       GError **error);
 
-gboolean session_manager_set_owner_key(SessionManager *self,
-                                       GArray *public_key_der,
-                                       GError **error);
-gboolean session_manager_unwhitelist(SessionManager *self,
-                                     gchar *email_address,
-                                     GArray *signature,
-                                     GError **error);
-gboolean session_manager_check_whitelist(SessionManager *self,
-                                         gchar *email_address,
-                                         GArray **OUT_signature,
-                                         GError **error);
-gboolean session_manager_enumerate_whitelisted(SessionManager *self,
-                                               gchar ***OUT_whitelist,
-                                               GError **error);
-gboolean session_manager_whitelist(SessionManager *self,
-                                   gchar *email_address,
-                                   GArray *signature,
-                                   GError **error);
-gboolean session_manager_store_property(SessionManager *self,
-                                        gchar *name,
-                                        gchar *value,
-                                        GArray *signature,
-                                        GError **error);
-gboolean session_manager_retrieve_property(SessionManager *self,
-                                           gchar *name,
-                                           gchar **OUT_value,
-                                           GArray **OUT_signature,
-                                           GError **error);
 gboolean session_manager_store_policy(SessionManager *self,
                                       GArray *policy_blob,
                                       DBusGMethodInvocation* context);

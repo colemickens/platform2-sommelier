@@ -89,60 +89,6 @@ gboolean session_manager_stop_session(SessionManager* self,
                                       GError** error) {
   SESSION_MANAGER_WRAP_METHOD(StopSession, unique_identifier, OUT_done, error);
 }
-gboolean session_manager_set_owner_key(SessionManager *self,
-                                       GArray *public_key_der,
-                                       GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(SetOwnerKey, public_key_der, error);
-}
-gboolean session_manager_unwhitelist(SessionManager *self,
-                                     gchar *email_address,
-                                     GArray *signature,
-                                     GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(DeprecatedError,
-                              "Unwhitelist is now deprecated.",
-                              error);
-}
-gboolean session_manager_check_whitelist(SessionManager *self,
-                                         gchar *email_address,
-                                         GArray **OUT_signature,
-                                         GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(DeprecatedError,
-                              "CheckWhitelist is now deprecated.",
-                              error);
-}
-gboolean session_manager_enumerate_whitelisted(SessionManager *self,
-                                               gchar ***OUT_whitelist,
-                                               GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(DeprecatedError,
-                              "EnumerateWhitelisted is now deprecated.",
-                              error);
-}
-gboolean session_manager_whitelist(SessionManager *self,
-                                   gchar *email_address,
-                                   GArray *signature,
-                                   GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(DeprecatedError,
-                              "Whitelist is now deprecated.",
-                              error);
-}
-gboolean session_manager_store_property(SessionManager *self,
-                                        gchar *name,
-                                        gchar *value,
-                                        GArray *signature,
-                                        GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(DeprecatedError,
-                              "StoreProperty is now deprecated.",
-                              error);
-}
-gboolean session_manager_retrieve_property(SessionManager *self,
-                                           gchar *name,
-                                           gchar **OUT_value,
-                                           GArray **OUT_signature,
-                                           GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(DeprecatedError,
-                              "RetrieveProperty is now deprecated.",
-                              error);
-}
 gboolean session_manager_store_policy(SessionManager *self,
                                       GArray *policy_blob,
                                       DBusGMethodInvocation* context) {

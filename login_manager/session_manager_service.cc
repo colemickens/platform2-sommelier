@@ -728,16 +728,6 @@ gboolean SessionManagerService::StopSession(gchar* unique_identifier,
   return *OUT_done = TRUE;
 }
 
-gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
-                                            GError** error) {
-  const char msg[] = "The session_manager now sets the Owner's public key.";
-  LOG(ERROR) << msg;
-  system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
-  // Just to be safe, send back a nACK in addition to returning an error.
-  SendSignal(chromium::kOwnerKeySetSignal, false);
-  return FALSE;
-}
-
 void SessionManagerService::SendBooleanReply(DBusGMethodInvocation* context,
                                              bool succeeded) {
   if (context)
@@ -1189,14 +1179,6 @@ void SessionManagerService::DeregisterChildWatchers() {
   for (size_t i = 0; i < child_watchers_.size(); ++i)
     g_source_remove(child_watchers_[i]);
   child_watchers_.clear();
-}
-
-gboolean SessionManagerService::DeprecatedError(const char* msg,
-                                                GError** error) {
-  LOG(ERROR) << msg;
-  system_->SetGError(error, CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, msg);
-  SendSignal(chromium::kPropertyChangeCompleteSignal, false);
-  return FALSE;
 }
 
 void SessionManagerService::SendSignal(const char signal_name[],

@@ -250,16 +250,6 @@ class SessionManagerService
                        gboolean* OUT_done,
                        GError** error);
 
-  // If no owner key is currently set, uses the DER-encoded public key
-  // provided in |public_key_der| as the key belonging to the owner of
-  // this device.  All future requests to Whitelist an email address
-  // or to store a property MUST be digitally signed by the private
-  // key associated with this public key.
-  // Returns TRUE if the key is accepted and successfully recorded.
-  // If the key is rejected, because we already have one or for any other
-  // reason, we return FALSE and set |error| appropriately.
-  gboolean SetOwnerKey(GArray* public_key_der, GError** error);
-
   // |policy_blob| is a serialized protobuffer containing a device policy
   // and a signature over that policy.  Verify the sig and persist
   // |policy_blob| to disk.
