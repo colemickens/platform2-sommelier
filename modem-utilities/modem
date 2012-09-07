@@ -163,14 +163,13 @@ factory_reset() {
   if [ "${technology}" = "CDMA" ]; then
     cat <<-EOF
 
-    WARNING: Unless you have been instructed to do so by a Verizon
-    Wireless customer service representative, factory resetting your
-    modem will prevent you from re-connecting to the Verizon Wireless.
+    WARNING: Unless you have been instructed to do so by a cellular service
+    provider customer service representative, factory resetting your modem will
+    prevent you from re-connecting to your cellular service.
 
-    If you have been instructed to issue the 'modem factory-reset'
-    command, please make sure to issue the 'modem activate'
-    command afterwards to re-activate your modem.  Do not use the
-    graphic user interface to do so.
+    If you have been instructed to issue the 'modem factory-reset' command,
+    please make sure to issue the 'modem activate' command afterwards to
+    re-activate your modem.  Do not use the graphic user interface to do so.
 
 EOF
     $(arg_or_prompt continue n)
@@ -292,16 +291,55 @@ set_madison_config() {
   echo "Please reboot (or restart cromo) to use the new config group."
 }
 
+send_at_command() {
+  local modem_tty=/dev/ttyUSB1
+  [ -c "${modem_tty}" ] || error_exit "Missing modem tty device."
+  $(needarg cmd)
+  /usr/sbin/chat -e ABORT '\nERROR' '' "${cmd}" '\nOK' 2> >(tr -s '\n\r') \
+    < "${modem_tty}" > "${modem_tty}"
+}
+
+get_oma_status() {
+  send_at_command 'AT+OMADM=?'
+}
+
+start_oma() {
+  send_at_command 'AT+OMADM=1'
+  send_at_command 'AT+OMADM=2'
+}
+
+get_prl() {
+  send_at_command 'AT$PRL?'
+}
+
+ciprl_update() {
+  send_at_command 'AT+PRL=1'
+  send_at_command 'AT+PRL=2'
+}
+
+get_service() {
+  send_at_command 'AT+SERVICE?'
+}
+
 usage() {
   echo "Usage: $0 <command> [args...]"
   echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
   echo "  activate-manual [-modem <modem>] [args...]   Activate modem manually"
+  echo "  ciprl-update                                " \
+    "Enable and perform client initiated PRL update"
   echo "  connect [-modem <modem>] [phone number]      Connect modem"
   echo "  factory-reset [-modem <modem>] [<spc>]       Factory-reset the modem"
+  echo "  get-oma-status                               Current OMA-DM setting"
+  echo "  get-prl                                      Current PRL"
+  echo "  get-service                                 " \
+    "Integer index of data service"
+  echo "  set-carrier [-modem <modem>] <carrier-name> " \
+    "Set modem carrier firmware"
+  echo "  set-madison-config <config-group-name>       Set Madison config group"
+  echo "  start-oma                                   " \
+    "Enable and launch OMA session"
   echo "  status                                       Display modem status"
   echo "  update-prl [-modem <modem>] <prl-file-name>  Install a PRL file"
-  echo "  set-carrier [-modem <modem>] <carrier-name>  Set modem carrier firmware"
-  echo "  set-madison-config <config-group-name>       Set Madison config group"
   exit 0
 }
 
@@ -313,11 +351,32 @@ case "${cmd}" in
   activate-manual)
     activate_manual "$@"
     ;;
+  ciprl-update)
+    ciprl_update "$@"
+    ;;
   connect)
     connect "$@"
     ;;
   factory-reset)
     factory_reset "$@"
+    ;;
+  get-oma-status)
+    get_oma_status "$@"
+    ;;
+  get-prl)
+    get_prl "$@"
+    ;;
+  get-service)
+    get_service "$@"
+    ;;
+  set-carrier)
+    set_carrier "$@"
+    ;;
+  set-madison-config)
+    set_madison_config "$@"
+    ;;
+  start-oma)
+    start_oma "$@"
     ;;
   status)
     status "$@"
@@ -327,12 +386,6 @@ case "${cmd}" in
     ;;
   update-prl)
     update_prl "$@"
-    ;;
-  set-carrier)
-    set_carrier "$@"
-    ;;
-  set-madison-config)
-    set_madison_config "$@"
     ;;
   *)
     usage
