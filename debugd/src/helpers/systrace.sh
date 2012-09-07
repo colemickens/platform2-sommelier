@@ -52,6 +52,8 @@ power_events="
     mali:mali_dvfs_set_voltage
     cpufreq_interactive:cpufreq_interactive_boost
     cpufreq_interactive:cpufreq_interactive_unboost
+    exynos_busfreq:exynos_busfreq_target_int
+    exynos_busfreq:exynos_busfreq_target_mif
 "
 
 input_events="
