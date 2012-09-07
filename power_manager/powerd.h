@@ -464,6 +464,10 @@ class Daemon : public BacklightControllerObserver,
   // on/off.
   void SetPowerState(PowerState state);
 
+  // Checks cras to determine if audio has been playing recently.
+  // "Recently" is defined by |kAudioActivityThresholdMs| in powerd.cc.
+  bool IsAudioPlaying();
+
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;

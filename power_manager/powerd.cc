@@ -634,11 +634,7 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   if (is_idle &&
       backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED &&
       idle_time_ms >= suspend_ms_) {
-    int64 audio_time_ms = 0;
-    bool audio_is_playing = false;
-    CHECK(audio_detector_->GetActivity(kAudioActivityThresholdMs,
-                                       &audio_time_ms,
-                                       &audio_is_playing));
+    bool audio_is_playing = IsAudioPlaying();
     if (audio_is_playing || ShouldStayAwakeForHeadphoneJack()) {
       LOG(INFO) << "Delaying suspend because " <<
           (audio_is_playing ? "audio is playing." : "headphones are attached.");
@@ -1802,6 +1798,25 @@ void Daemon::SetPowerState(PowerState state) {
   if (light_sensor_ && power_state_ != state)
     light_sensor_->EnableOrDisableSensor(state == BACKLIGHT_ACTIVE);
   power_state_ = state;
+}
+
+bool Daemon::IsAudioPlaying() {
+  struct timespec last_audio_time;
+  if (cras_client_get_num_active_streams(cras_client_, &last_audio_time) > 0)
+    return true;
+  struct timespec time_now;
+  if (clock_gettime(CLOCK_MONOTONIC, &time_now)) {
+    LOG(WARNING) << "Could not read current clock time.";
+    return false;
+  }
+  int64 delta_seconds = time_now.tv_sec - last_audio_time.tv_sec;
+  int64 delta_ns = time_now.tv_nsec - last_audio_time.tv_nsec;
+  CHECK(delta_seconds >= 0);
+  base::TimeDelta last_audio_time_delta =
+      base::TimeDelta::FromSeconds(delta_seconds) +
+      base::TimeDelta::FromMicroseconds(
+          delta_ns / base::Time::kNanosecondsPerMicrosecond);
+  return last_audio_time_delta.InMilliseconds() < kAudioActivityThresholdMs;
 }
 
 }  // namespace power_manager
