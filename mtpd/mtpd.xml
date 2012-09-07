@@ -17,7 +17,7 @@
         Storage name is in the same format as EnumerateStorage.
       </tp:docstring>
       </arg>
-      <arg name="storageInfo" type="s" direction="out">
+      <arg name="storageInfo" type="ay" direction="out">
       </arg>
     </method>
 
@@ -59,7 +59,7 @@
         Absolute path with root as the root of the storage.
       </tp:docstring>
       </arg>
-      <arg name="results" type="s" direction="out">
+      <arg name="results" type="ay" direction="out">
       </arg>
     </method>
 
@@ -71,7 +71,7 @@
       </arg>
       <arg name="fileId" type="u" direction="in">
       </arg>
-      <arg name="results" type="s" direction="out">
+      <arg name="results" type="ay" direction="out">
       </arg>
     </method>
 
@@ -113,7 +113,7 @@
         Absolute path with root as the root of the storage.
       </tp:docstring>
       </arg>
-      <arg name="info" type="s" direction="out">
+      <arg name="info" type="ay" direction="out">
       </arg>
     </method>
 
@@ -125,7 +125,7 @@
       </arg>
       <arg name="fileId" type="u" direction="in">
       </arg>
-      <arg name="info" type="s" direction="out">
+      <arg name="info" type="ay" direction="out">
       </arg>
     </method>
 

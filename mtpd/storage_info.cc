@@ -48,7 +48,7 @@ StorageInfo::StorageInfo()
 StorageInfo::~StorageInfo() {
 }
 
-std::string StorageInfo::ToDBusFormat() const {
+std::vector<uint8_t> StorageInfo::ToDBusFormat() const {
   MtpStorageInfo protobuf;
   protobuf.set_vendor(vendor_);
   protobuf.set_vendor_id(vendor_id_);
@@ -64,8 +64,10 @@ std::string StorageInfo::ToDBusFormat() const {
   protobuf.set_storage_description(storage_description_);
   protobuf.set_volume_identifier(volume_identifier_);
 
-  std::string serialized_proto;
-  CHECK(protobuf.SerializeToString(&serialized_proto));
+  int size = protobuf.ByteSize();
+  std::vector<uint8_t> serialized_proto;
+  serialized_proto.resize(size);
+  CHECK(protobuf.SerializeToArray(&serialized_proto[0], size));
   return serialized_proto;
 }
 

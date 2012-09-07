@@ -68,21 +68,23 @@ MtpFileEntry FileEntry::ToProtobuf() const {
   return protobuf;
 }
 
-std::string FileEntry::ToDBusFormat() const {
+std::vector<uint8_t> FileEntry::ToDBusFormat() const {
   MtpFileEntry protobuf = ToProtobuf();
-  std::string serialized_proto;
-  CHECK(protobuf.SerializeToString(&serialized_proto));
+  int size = protobuf.ByteSize();
+  std::vector<uint8_t> serialized_proto;
+  serialized_proto.resize(size);
+  CHECK(protobuf.SerializeToArray(&serialized_proto[0], size));
   return serialized_proto;
 }
 
 // static
-std::string FileEntry::EmptyFileEntriesToDBusFormat() {
+std::vector<uint8_t> FileEntry::EmptyFileEntriesToDBusFormat() {
   std::vector<FileEntry> dummy;
   return FileEntriesToDBusFormat(dummy);
 }
 
 // static
-std::string FileEntry::FileEntriesToDBusFormat(
+std::vector<uint8_t> FileEntry::FileEntriesToDBusFormat(
     std::vector<FileEntry>& entries) {
   MtpFileEntries protobuf;
 
@@ -91,9 +93,11 @@ std::string FileEntry::FileEntriesToDBusFormat(
     MtpFileEntry* added_entry = protobuf.add_file_entries();
     *added_entry = entry_protobuf;
   }
-  std::string serialized_proto;
-  CHECK(protobuf.SerializeToString(&serialized_proto));
-  return std::string();
+  int size = protobuf.ByteSize();
+  std::vector<uint8_t> serialized_proto;
+  serialized_proto.resize(size);
+  CHECK(protobuf.SerializeToArray(&serialized_proto[0], size));
+  return serialized_proto;
 }
 
 }  // namespace mtpd

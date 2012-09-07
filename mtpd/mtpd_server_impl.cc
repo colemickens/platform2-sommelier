@@ -42,10 +42,10 @@ std::vector<std::string> MtpdServer::EnumerateStorage(DBus::Error& error) {
   return device_manager_.EnumerateStorage();
 }
 
-std::string MtpdServer::GetStorageInfo(const std::string& storageName,
-                                          DBus::Error& error) {
+std::vector<uint8_t> MtpdServer::GetStorageInfo(const std::string& storageName,
+                                                DBus::Error& error) {
   const StorageInfo* info = device_manager_.GetStorageInfo(storageName);
-  return info ? info->ToDBusFormat() : std::string();
+  return info ? info->ToDBusFormat() : StorageInfo().ToDBusFormat();
 }
 
 std::string MtpdServer::OpenStorage(const std::string& storageName,
@@ -80,9 +80,10 @@ void MtpdServer::CloseStorage(const std::string& handle, DBus::Error& error) {
     SetInvalidHandleError(handle, &error);
 }
 
-std::string MtpdServer::ReadDirectoryByPath(const std::string& handle,
-                                            const std::string& filePath,
-                                            DBus::Error& error) {
+std::vector<uint8_t> MtpdServer::ReadDirectoryByPath(
+    const std::string& handle,
+    const std::string& filePath,
+    DBus::Error& error) {
   std::string storage_name = LookupHandle(handle);
   if (storage_name.empty()) {
     SetInvalidHandleError(handle, &error);
@@ -99,9 +100,9 @@ std::string MtpdServer::ReadDirectoryByPath(const std::string& handle,
   return FileEntry::FileEntriesToDBusFormat(directory_listing);
 }
 
-std::string MtpdServer::ReadDirectoryById(const std::string& handle,
-                                          const uint32_t& fileId,
-                                          DBus::Error& error) {
+std::vector<uint8_t> MtpdServer::ReadDirectoryById(const std::string& handle,
+                                                   const uint32_t& fileId,
+                                                   DBus::Error& error) {
   std::string storage_name = LookupHandle(handle);
   if (storage_name.empty()) {
     SetInvalidHandleError(handle, &error);
@@ -148,9 +149,9 @@ std::vector<uint8_t> MtpdServer::ReadFileById(const std::string& handle,
   return file_contents;
 }
 
-std::string MtpdServer::GetFileInfoByPath(const std::string& handle,
-                                          const std::string& filePath,
-                                          DBus::Error& error) {
+std::vector<uint8_t> MtpdServer::GetFileInfoByPath(const std::string& handle,
+                                                   const std::string& filePath,
+                                                   DBus::Error& error) {
   std::string storage_name = LookupHandle(handle);
   if (storage_name.empty()) {
     SetInvalidHandleError(handle, &error);
@@ -165,9 +166,9 @@ std::string MtpdServer::GetFileInfoByPath(const std::string& handle,
   return entry.ToDBusFormat();
 }
 
-std::string MtpdServer::GetFileInfoById(const std::string& handle,
-                                        const uint32_t& fileId,
-                                        DBus::Error& error) {
+std::vector<uint8_t> MtpdServer::GetFileInfoById(const std::string& handle,
+                                                 const uint32_t& fileId,
+                                                 DBus::Error& error) {
   std::string storage_name = LookupHandle(handle);
   if (storage_name.empty()) {
     SetInvalidHandleError(handle, &error);

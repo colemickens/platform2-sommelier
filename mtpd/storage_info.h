@@ -8,6 +8,7 @@
 #include <libmtp.h>
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 
@@ -22,7 +23,7 @@ class StorageInfo {
   StorageInfo();
   ~StorageInfo();
 
-  std::string ToDBusFormat() const;
+  std::vector<uint8_t> ToDBusFormat() const;
 
  private:
   std::string vendor_;
