@@ -27,6 +27,7 @@ chaps_proxy_generated.h: $(SRC)/chaps_interface.xml
 	$(DBUSXX_XML2CPP) $< --proxy=$@
 clean: CLEAN(chaps_proxy_generated.h)
 
+chaps_client.o.depends \
 chaps_proxy.o.depends \
 chapsd_test.o.depends \
 chaps.o.depends \
@@ -241,4 +242,3 @@ tpm_utility_test_LIBS = $(GMOCK_LIBS) -ltspi
 CXX_BINARY(tpm_utility_test): $(tpm_utility_test_OBJS)
 CXX_BINARY(tpm_utility_test): LDLIBS += $(tpm_utility_test_LIBS)
 clean: CLEAN(tpm_utility_test)
-
