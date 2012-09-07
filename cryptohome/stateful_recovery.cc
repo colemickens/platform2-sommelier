@@ -1,89 +1,63 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+//
+// Provides the implementation of StatefulRecovery.
+
+#include <unistd.h>
+#include <linux/reboot.h>
+#include <sys/reboot.h>
 
 #include <base/string_util.h>
 #include <chromeos/utility.h>
 #include <string>
 
-#include "homedirs.h"
 #include "platform.h"
 #include "stateful_recovery.h"
-#include "username_passkey.h"
 
 using std::string;
 
 namespace cryptohome {
 
 const char *StatefulRecovery::kFlagFile =
-    "/mnt/stateful_partition/decrypt_stateful_hack";
+    "/mnt/stateful_partition/decrypt_stateful";
 const char *StatefulRecovery::kRecoverSource =
     "/mnt/stateful_partition/encrypted";
 const char *StatefulRecovery::kRecoverDestination =
     "/mnt/stateful_partition/decrypted";
 
-StatefulRecovery::StatefulRecovery(Platform* platform, HomeDirs* homedirs)
-    : platform_(platform), homedirs_(homedirs) { }
+StatefulRecovery::StatefulRecovery(Platform* platform)
+    : requested_(false), platform_(platform) { }
 StatefulRecovery::~StatefulRecovery() { }
 
-void StatefulRecovery::RecoverIfNeeded() {
-  if (ShouldRecover())
-    Recover();
-}
-
-bool StatefulRecovery::ShouldRecover() {
-  if (!ParseFlagFile())
-    return false;
-  if (IsFirmwareWriteProtected())
-    return false;
-  if (!IsAuthTokenValid())
-    return false;
-  return true;
+bool StatefulRecovery::Requested() {
+  requested_ = ParseFlagFile();
+  return requested_;
 }
 
 bool StatefulRecovery::Recover() {
+  if (!requested_)
+    return false;
   return platform_->Copy(kRecoverSource, kRecoverDestination);
+}
+
+void StatefulRecovery::PerformReboot() {
+  // TODO(wad) Replace with a mockable helper.
+  if (system("/usr/bin/crossystem recovery_request=1") != 0) {
+    LOG(ERROR) << "Failed to set recovery request!";
+  }
+  sync();
+  reboot(LINUX_REBOOT_CMD_RESTART);
 }
 
 bool StatefulRecovery::ParseFlagFile() {
   std::string contents;
   if (!platform_->ReadFileToString(kFlagFile, &contents))
     return false;
-  std::vector<string> fields;
-  // The two fields: version, authtoken
-  if (Tokenize(contents, " ", &fields) != 2) {
-    LOG(ERROR) << "Malformed decryption hack";
-    return false;
-  }
-  if (fields[0] != "0") {
+  // One field at present -- the version.
+  if (contents != "1") {
     // TODO(ellyjones): UMA stat?
-    LOG(ERROR) << "Decryption hack version is bogus: " << fields[0];
-    return false;
-  }
-  authtoken_ = fields[1];
-  return true;
-}
-
-bool StatefulRecovery::IsAuthTokenValid() {
-  // Current auth token format: hex encoding of the owner's passkey (as derived
-  // by PasswordToPasskey). We test this passkey against the owner's account (as
-  // stored in the system policy), and if it matches, the auth token is valid.
-  string owner;
-  if (!homedirs_->GetPlainOwner(&owner))
-    // No system owner. Fail open.
-    return true;
-  chromeos::Blob passkey(authtoken_.begin(), authtoken_.end());
-  UsernamePasskey up(owner.c_str(), passkey);
-  if (!homedirs_->AreCredentialsValid(up)) {
-    LOG(ERROR) << "Auth token invalid for user " << owner;
-    return false;
-  }
-  return true;
-}
-
-bool StatefulRecovery::IsFirmwareWriteProtected() {
-  if (system("/usr/bin/crossystem wpsw_boot?1") != 0) {
-    LOG(ERROR) << "Firmware write protect not set.";
+    LOG(ERROR) << "Bogus stateful recovery request file: " << contents;
     return false;
   }
   return true;

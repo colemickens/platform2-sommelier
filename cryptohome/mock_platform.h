@@ -31,6 +31,8 @@ ACTION(CallCreateDirectory) {
   return file_util::CreateDirectory(FilePath(arg0));
 }
 ACTION(CallReadFile) { return Platform().ReadFile(arg0, arg1); }
+ACTION(CallReadFileToString) { return Platform().ReadFileToString(arg0, arg1); }
+ACTION(CallCopy) { return Platform().Copy(arg0, arg1); }
 ACTION(CallRename) { return Platform().Rename(arg0, arg1); }
 
 class MockPlatform : public Platform {
@@ -52,6 +54,8 @@ class MockPlatform : public Platform {
         .WillByDefault(Invoke(this, &MockPlatform::MockGetGroupId));
     ON_CALL(*this, GetCurrentTime())
         .WillByDefault(Return(base::Time::NowFromSystemTime()));
+    ON_CALL(*this, Copy(_, _))
+        .WillByDefault(CallCopy());
     ON_CALL(*this, DeleteFile(_, _))
         .WillByDefault(CallDeleteFile());
     ON_CALL(*this, EnumerateDirectoryEntries(_, _, _))
@@ -64,6 +68,8 @@ class MockPlatform : public Platform {
       .WillByDefault(CallCreateDirectory());
     ON_CALL(*this, ReadFile(_, _))
         .WillByDefault(CallReadFile());
+    ON_CALL(*this, ReadFileToString(_, _))
+        .WillByDefault(CallReadFileToString());
     ON_CALL(*this, Rename(_, _))
         .WillByDefault(CallRename());
   }
@@ -89,9 +95,11 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(FileExists, bool(const std::string&));
   MOCK_METHOD2(Stat, bool(const std::string&, struct stat*));
   MOCK_METHOD2(ReadFile, bool(const std::string&, chromeos::Blob*));
+  MOCK_METHOD2(ReadFileToString, bool(const std::string&, std::string*));
   MOCK_METHOD2(Rename, bool(const std::string&, const std::string&));
   MOCK_METHOD2(WriteFile, bool(const std::string&, const chromeos::Blob&));
   MOCK_CONST_METHOD0(GetCurrentTime, base::Time());
+  MOCK_METHOD2(Copy, bool(const std::string&, const std::string&));
   MOCK_METHOD3(EnumerateDirectoryEntries, bool(const std::string&, bool,
                                                std::vector<std::string>*));
   MOCK_METHOD2(DeleteFile, bool(const std::string&, bool));

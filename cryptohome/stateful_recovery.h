@@ -4,49 +4,41 @@
 
 namespace cryptohome {
 
-class HomeDirs;
 class Platform;
 
-// This class handles recovery of encrypted data from the stateful partition
-// when necessary. Right now, data on the stateful partition is encrypted under
-// a PCR0-bound key stored in the TPM. Unfortunately, for RMAed devices, this
-// makes extracting system logs that we need to do diagnosis pretty irritating,
-// so this class supplies a backdoor, authenticated by (a hash of) the machine
-// owner's passphrase. The flow is:
-// If there is a request file (see the .cc file for the exact path) present AND
-// it contains a passkey (in the PasswordToPasskey sense, see crypto.cc) AND
-// that passkey is correct for the owner's cryptohome AND firmware write protect
-// is disabled, copy the contents of /mnt/stateful/encrypted to
-// /mnt/stateful/decrypted.
+// This class handles recovery of encrypted data from the stateful partition.
+// At present, it provides a simple way to export the encrypted data while the
+// feature is maturing by checking for the existence of a file on the
+// unencrypted portion of stateful.
+//
+// Once the feature has seen satisfactory airtime and all
+// related tooling is robust, this class will implement a tighter mechanism
+// for recovering the encrypted data in stateful that requires physical device
+// modification or device owner modification:
+//   http://crosbug.com/34219
+//
 class StatefulRecovery {
  public:
-  explicit StatefulRecovery(Platform* platform, HomeDirs* homedirs);
+  explicit StatefulRecovery(Platform* platform);
   ~StatefulRecovery();
 
-  virtual void RecoverIfNeeded();
- private:
-  // Returns true if we should recover stateful contents.
-  bool ShouldRecover();
+  // Returns true if recovery was requested by the device user.
+  virtual bool Requested();
   // Returns true if it successfully recovered stateful contents.
-  bool Recover();
-
-  // Check for and parse the aforementioned request flag file.
-  bool ParseFlagFile();
-  // Return whether the auth token we got from the flag file is good. Currently,
-  // this is the owner's passkey.
-  bool IsAuthTokenValid();
-  // Return whether the system's firmware is currently write-protected.
-  bool IsFirmwareWriteProtected();
-
-  std::string authtoken_;
-  std::string destpath_;
-
-  Platform* platform_;
-  HomeDirs* homedirs_;
+  virtual bool Recover();
+  // On Chrome hardware, sets the recovery request field and reboots.
+  virtual void PerformReboot();
 
   static const char *kRecoverSource;
   static const char *kRecoverDestination;
   static const char *kFlagFile;
+ private:
+  // Returns true if a flag file indicating a recovery request exists and
+  // contains the expected content.
+  bool ParseFlagFile();
+
+  bool requested_;
+  Platform* platform_;
 };
 
 }  // namespace cryptohome

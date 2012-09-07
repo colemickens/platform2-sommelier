@@ -314,8 +314,12 @@ bool Service::Initialize() {
       FROM_HERE,
       base::Bind(&Service::AutoCleanupCallback, base::Unretained(this)));
 
-  StatefulRecovery recovery(platform_, homedirs_);
-  recovery.RecoverIfNeeded();
+  StatefulRecovery recovery(platform_);
+  if (recovery.Requested()) {
+    if (recovery.Recover())
+      LOG(INFO) << "A stateful recovery was performed successfully.";
+    recovery.PerformReboot();
+  }
 
   return result;
 }
