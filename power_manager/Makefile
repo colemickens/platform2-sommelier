@@ -349,7 +349,7 @@ clean: CXX_BINARY(state_control_unittest)
 tests: TEST(CXX_BINARY(state_control_unittest))
 
 ASYNC_FILE_READER_UNITTEST_FLAGS = $(GLIB_FLAGS)
-ASYNC_FILE_READER_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock
+ASYNC_FILE_READER_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock -lrt
 ASYNC_FILE_READER_UNITTEST_OBJS = async_file_reader_unittest.o \
                                   async_file_reader.o
 CXX_BINARY(async_file_reader_unittest): $(ASYNC_FILE_READER_UNITTEST_OBJS) \

@@ -26,10 +26,8 @@ Inotify::~Inotify() {
     LOG(INFO) << "cleaning inotify";
     if (gio_watch_id_ > 0)
       g_source_remove(gio_watch_id_);
-    int fd = g_io_channel_unix_get_fd(channel_);
-    g_io_channel_shutdown(channel_, true, NULL);
+    g_io_channel_shutdown(channel_, TRUE, NULL);
     g_io_channel_unref(channel_);
-    close(fd);
     LOG(INFO) << "done!";
   }
 }
@@ -45,6 +43,12 @@ bool Inotify::Init(InotifyCallback callback, gpointer data) {
     LOG(ERROR) << "Error creating gio channel for Inotify.";
     return false;
   }
+  g_io_channel_set_close_on_unref(channel_, TRUE);
+  if (g_io_channel_set_encoding(channel_, NULL, NULL) != G_IO_STATUS_NORMAL) {
+    LOG(ERROR) << "Error setting encoding of gio channel for Inotify.";
+    return false;
+  }
+  g_io_channel_set_buffered(channel_, FALSE);
   callback_ = callback;
   callback_data_ = data;
   return true;
@@ -82,9 +86,10 @@ gboolean Inotify::CallbackHandler(GIOChannel* source,
   InotifyCallback callback = inotifier->callback_;
   gpointer callback_data = inotifier->callback_data_;
   char buf[kInotifyBufferSize];
-  gsize len;
-  GIOError error = g_io_channel_read(source, buf, kInotifyBufferSize, &len);
-  if (G_IO_ERROR_NONE != error) {
+  gsize len = 0;
+  GIOStatus status = g_io_channel_read_chars(source, buf, kInotifyBufferSize,
+                                             &len, NULL);
+  if (status != G_IO_STATUS_NORMAL) {
     LOG(ERROR) << "Error reading from inotify!";
     return false;
   }
