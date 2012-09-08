@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,8 @@
 
 #include <stdio.h>
 #include <glib.h>
+
+#include "shill/logging.h"
 
 using base::Callback;
 
@@ -16,17 +18,16 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
                                   gpointer data) {
   GlibIOInputHandler *handler = reinterpret_cast<GlibIOInputHandler *>(data);
   unsigned char buf[4096];
-  gsize len;
-  GIOError err;
+  gsize len = 0;
   gboolean ret = TRUE;
 
   if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
     return FALSE;
 
-  err = g_io_channel_read(chan, reinterpret_cast<gchar *>(buf), sizeof(buf),
-                          &len);
-  if (err) {
-    if (err == G_IO_ERROR_AGAIN)
+  GIOStatus status = g_io_channel_read_chars(
+      chan, reinterpret_cast<gchar *>(buf), sizeof(buf), &len, NULL);
+  if (status != G_IO_STATUS_NORMAL) {
+    if (status == G_IO_STATUS_AGAIN)
       return TRUE;
     len = 0;
     ret = FALSE;
@@ -43,6 +44,11 @@ GlibIOInputHandler::GlibIOInputHandler(
     : channel_(g_io_channel_unix_new(fd)),
       callback_(callback),
       source_id_(G_MAXUINT) {
+  // To avoid blocking in g_io_channel_read_chars() due to its internal buffer,
+  // set the channel to unbuffered, which in turns requires encoding to be NULL.
+  // This assumes raw binary data are read from |fd| via the channel.
+  CHECK_EQ(G_IO_STATUS_NORMAL, g_io_channel_set_encoding(channel_, NULL, NULL));
+  g_io_channel_set_buffered(channel_, FALSE);
   g_io_channel_set_close_on_unref(channel_, TRUE);
 }
 
