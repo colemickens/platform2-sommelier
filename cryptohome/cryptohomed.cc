@@ -12,7 +12,7 @@
 #include <base/logging.h>
 #include <chromeos/syslog_logging.h>
 #include <dbus/dbus.h>
-#include <glib/gthread.h>
+#include <glib.h>
 
 #include "platform.h"
 
