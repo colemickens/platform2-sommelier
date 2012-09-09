@@ -99,6 +99,7 @@ int main(int argc, char* argv[]) {
                              FLAGS_default_prefs_dir);
   std::vector<FilePath> pref_paths;
   pref_paths.push_back(prefs_dir);
+  pref_paths.push_back(default_prefs_dir.Append("board_specific"));
   pref_paths.push_back(default_prefs_dir);
   power_manager::PowerPrefs prefs(pref_paths);
   g_type_init();
