@@ -49,6 +49,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   // Device name prefix for modem pseudo devices used in testing.
   static const char kModemPseudoDeviceNamePrefix[];
+  // Device name prefix for virtual ethernet devices used in testing.
+  static const char kEthernetPseudoDeviceNamePrefix[];
 
   DeviceInfo(ControlInterface *control_interface,
              EventDispatcher *dispatcher,

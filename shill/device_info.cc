@@ -55,6 +55,7 @@ namespace shill {
 
 // static
 const char DeviceInfo::kModemPseudoDeviceNamePrefix[] = "pseudomodem";
+const char DeviceInfo::kEthernetPseudoDeviceNamePrefix[] = "pseudoethernet";
 const char DeviceInfo::kDeviceInfoRoot[] = "/sys/class/net";
 const char DeviceInfo::kDriverCdcEther[] = "cdc_ether";
 const char DeviceInfo::kDriverGdmWiMax[] = "gdm_wimax";
@@ -214,6 +215,14 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
         "%s: device %s is a pseudo modem for testing",
         __func__, iface_name.c_str());
     return Technology::kCellular;
+  }
+
+  // Special case for pseudo ethernet devices which are used for testing.
+  if (iface_name.find(kEthernetPseudoDeviceNamePrefix) == 0) {
+    SLOG(Device, 2) << StringPrintf(
+        "%s: device %s is a virtual ethernet device for testing",
+        __func__, iface_name.c_str());
+    return Technology::kEthernet;
   }
 
   FilePath driver_path;
