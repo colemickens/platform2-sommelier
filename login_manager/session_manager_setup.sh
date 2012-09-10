@@ -259,6 +259,13 @@ else
   ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
+# Disable accelerated 2D canvas except on link
+# This acceleration should be enabled everywhere once the bugs are fixed,
+# or disabled in M23 before it goes stable (see http://crosbug.com/34278).
+if ! is_board link; then
+  ACCELERATED_FLAGS="$ACCELERATED_FLAGS --disable-accelerated-2d-canvas"
+fi
+
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
   HIGHDPI_FLAGS="--allow-webui-compositing"
@@ -347,7 +354,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             --apps-gallery-url="https://chrome.google.com/webstore/" \
             --compress-sys-feedback \
             --device-management-url="$DMSERVER" \
-            --disable-accelerated-2d-canvas \
             --disable-seccomp-sandbox \
             --enable-accelerated-plugins \
             --enable-fixed-position-compositing \
