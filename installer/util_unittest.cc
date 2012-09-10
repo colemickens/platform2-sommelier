@@ -399,3 +399,9 @@ TEST(UtilTest, SetKernelArgTest) {
   EXPECT_EQ(SetKernelArg("ver", "", &working_config), false);
   EXPECT_EQ(working_config, kernel_config);
 }
+
+TEST(UtilTest, IsReadonlyTest) {
+  EXPECT_EQ(IsReadonly("/dev/sda3"), false);
+  EXPECT_EQ(IsReadonly("/dev/dm-0"), true);
+  EXPECT_EQ(IsReadonly("/dev/dm-1"), true);
+}

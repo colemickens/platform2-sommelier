@@ -57,7 +57,7 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
 
   // Prepare the new default.cfg
 
-  string verity_enabled = ((kernel_config_root == "/dev/dm-0") ?
+  string verity_enabled = (IsReadonly(kernel_config_root) ?
                            "chromeos-vhd" : "chromeos-hd");
 
   string default_syslinux_cfg = StringPrintf("DEFAULT %s.%s\n",

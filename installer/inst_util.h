@@ -81,4 +81,10 @@ bool SetKernelArg(const std::string& tag,
                   const std::string& value,
                   std::string* kernel_config);
 
+// IsReadonly determines if the name devices should be treated as
+// read-only. This is based on the device name being prefixed with
+// "/dev/dm". This catches both cases where verity may be /dev/dm-0
+// or /dev/dm-1.
+bool IsReadonly(const std::string& device);
+
 #endif // INST_UTIL_H_

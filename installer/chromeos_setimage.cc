@@ -19,6 +19,31 @@ using std::string;
 // except for post install, so only it's use case is required
 // here. I think.
 //
+// New dm argument syntax:
+// TODO(taysom:defect 32847)
+// In the future, the <num> field will be mandatory.
+//
+// <device>        ::= [<num>] <device-mapper>+
+// <device-mapper> ::= <head> "," <target>+
+// <head>          ::= <name> <uuid> <mode> [<num>]
+// <target>        ::= <start> <length> <type> <options> ","
+// <mode>          ::= "ro" | "rw"
+// <uuid>          ::= xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx | "none"
+// <type>          ::= "verity" | "bootcache" | ...
+//
+// Notes:
+//  1. uuid is a label for the device and we set it to "none".
+//  2. The <num> field will be optional initially and assumed to be 1.
+//     Once all the scripts that set these fields have been set, it will
+//     made mandatory.
+//
+// Coming attractions:
+// The upstream version of verity does not use name/value pairs for
+// arguments. All arguments are positional. The current code for
+// finding the root_hexdigest and salt will need to change accordingly.
+//
+// Don't know if we can make the code parse both types of arguments.
+
 
 bool SetImage(const InstallConfig& install_config) {
 
@@ -51,23 +76,27 @@ bool SetImage(const InstallConfig& install_config) {
   std::vector<string> dm_parts;
   SplitString(dm_config, ',', &dm_parts);
 
-  if (dm_parts.size() != 2) {
-    printf("Unexpected dm configuration for kernel '%s'\n", dm_config.c_str());
+  // Extract verity specific options
+  string verity_args;
+  for (unsigned i = 0; i < dm_parts.size(); i++) {
+    if (dm_parts[i].find(" verity ") != string::npos) {
+      verity_args = dm_parts[i];
+      break;
+    }
+  }
+  if (verity_args.empty()) {
+    printf("Didn't find verity '%s'\n", dm_config.c_str());
     return false;
   }
 
-  // Extract dm specific options
-  string verity_preamble = dm_parts[0];
-  string dm_kernel_cfg = dm_parts[1];
-
   // Extract specific verity arguments
-  string rootfs_sectors = ExtractKernelArg(dm_kernel_cfg, "hashstart");
-  string verity_algorithm = ExtractKernelArg(dm_kernel_cfg, "alg");
-  string expected_hash = ExtractKernelArg(dm_kernel_cfg,
+  string rootfs_sectors = ExtractKernelArg(verity_args, "hashstart");
+  string verity_algorithm = ExtractKernelArg(verity_args, "alg");
+  string expected_hash = ExtractKernelArg(verity_args,
                                                "root_hexdigest");
-  string salt = ExtractKernelArg(dm_kernel_cfg, "salt");
+  string salt = ExtractKernelArg(verity_args, "salt");
 
-  bool enable_rootfs_verification = (kernel_config_root == "/dev/dm-0");
+  bool enable_rootfs_verification = IsReadonly(kernel_config_root);
 
   if (!enable_rootfs_verification)
     MakeFileSystemRw(install_config.root.device(), true);

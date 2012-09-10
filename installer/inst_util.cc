@@ -591,3 +591,10 @@ bool SetKernelArg(const string& key,
   kernel_config->replace(value_offset, value_length, adjusted_value);
   return true;
 }
+
+// For the purposes of ChromeOS, devices that start with
+// "/dev/dm" are to be treated as read-only.
+bool IsReadonly(const string& device) {
+  string readonlydev("/dev/dm");
+  return device.substr(0, readonlydev.size()) == readonlydev;
+}
