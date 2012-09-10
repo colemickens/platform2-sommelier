@@ -178,6 +178,10 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   if (!config->properties().dns_servers.empty()) {
     dns_servers_ = config->properties().dns_servers;
     dns_domain_search_ = config->properties().domain_search;
+    if (dns_domain_search_.empty() &&
+        !config->properties().domain_name.empty()) {
+      dns_domain_search_.push_back(config->properties().domain_name + ".");
+    }
   }
 
   ipconfig_rpc_identifier_ = config->GetRpcIdentifier();

@@ -431,6 +431,28 @@ TEST_F(ConnectionTest, AddConfigShortTimeout) {
   AddDestructorExpectations();
 }
 
+TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
+  const string kDomainName("chromium.org");
+  properties_.domain_search.clear();
+  properties_.domain_name = kDomainName;
+  UpdateProperties();
+  EXPECT_CALL(*device_info_, HasOtherAddress(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _));
+  EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _));
+  EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _));
+  connection_->UpdateFromIPConfig(ipconfig_);
+
+  EXPECT_CALL(routing_table_, SetDefaultMetric(_, _));
+  vector<string> domain_search_list;
+  domain_search_list.push_back(kDomainName + ".");
+  EXPECT_CALL(resolver_, SetDNSFromLists(_, domain_search_list, _));
+  DeviceRefPtr device;
+  EXPECT_CALL(*device_info_, GetDevice(_)).WillOnce(Return(device));
+  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
+  connection_->SetIsDefault(true);
+}
+
 TEST_F(ConnectionTest, HasOtherAddress) {
   EXPECT_CALL(*device_info_,
               HasOtherAddress(kTestDeviceInterfaceIndex0,
