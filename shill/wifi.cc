@@ -1243,18 +1243,6 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
     // The Service will be registered if/when we find Endpoints for it.
   }
 
-  if ((security_method == flimflam::kSecurityWep ||
-       security_method == flimflam::kSecurityPsk ||
-       security_method == flimflam::kSecurityWpa ||
-       security_method == flimflam::kSecurityRsn) &&
-      args.ContainsString(flimflam::kPassphraseProperty)) {
-    service->SetPassphrase(args.GetString(flimflam::kPassphraseProperty),
-                           error);
-    if (error->IsFailure()) {
-      return NULL;
-    }
-  }
-
   service->Configure(args, error);
 
   // TODO(pstew): Schedule a task to forget up all non-hidden services that

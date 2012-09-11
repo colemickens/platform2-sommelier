@@ -72,8 +72,6 @@ class WiFiService : public Service {
   const std::string &key_management() const { return GetEAPKeyManagement(); }
   const std::vector<uint8_t> &ssid() const { return ssid_; }
 
-  void SetPassphrase(const std::string &passphrase, Error *error);
-
   // Overrride Load and Save from parent Service class.  We will call
   // the parent method.
   virtual bool IsLoadableFrom(StoreInterface *storage) const;
@@ -103,6 +101,7 @@ class WiFiService : public Service {
 
  private:
   friend class WiFiServiceSecurityTest;
+  friend class WiFiServiceTest;  // SetPassphrase
   friend class WiFiServiceUpdateFromEndpointsTest;  // SignalToStrength
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
@@ -167,6 +166,9 @@ class WiFiService : public Service {
   std::string GetSpecificStorageIdentifier() const;
   std::string GetStorageIdentifierForSecurity(
       const std::string &security) const;
+
+  // Validate then apply a passphrase for this service.
+  void SetPassphrase(const std::string &passphrase, Error *error);
 
   // Populate the |params| map with available 802.1x EAP properties.
   void Populate8021xProperties(std::map<std::string, DBus::Variant> *params);

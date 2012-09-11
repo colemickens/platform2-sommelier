@@ -119,7 +119,6 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   IgnoreParameterForConfigure(flimflam::kModeProperty);
   IgnoreParameterForConfigure(flimflam::kSSIDProperty);
   IgnoreParameterForConfigure(flimflam::kSecurityProperty);
-  IgnoreParameterForConfigure(flimflam::kPassphraseProperty);
 }
 
 WiFiService::~WiFiService() {}
