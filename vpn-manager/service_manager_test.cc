@@ -32,7 +32,7 @@ class MockService : public ServiceManager {
 class ServiceManagerTest : public ::testing::Test {
  public:
   void SetUp() {
-    test_path_ = FilePath("test");
+    test_path_ = FilePath("service_manager_testdir");
     file_util::Delete(test_path_, true);
     file_util::CreateDirectory(test_path_);
     temp_path_ = test_path_.Append("service");

@@ -27,7 +27,7 @@ using ::testing::Return;
 class L2tpManagerTest : public ::testing::Test {
  public:
   void SetUp() {
-    test_path_ = FilePath("test");
+    test_path_ = FilePath("l2tp_manager_testdir");
     ServiceManager::temp_path_ = new FilePath(test_path_);
     file_util::Delete(test_path_, true);
     file_util::CreateDirectory(test_path_);
@@ -70,9 +70,11 @@ std::string L2tpManagerTest::GetExpectedConfig(std::string remote_address_text,
       "require authentication = yes\n"
       "name = me\n"
       "%s"
-      "pppoptfile = test/pppd.config\n"
-      "length bit = yes\n", remote_address_text.c_str(),
-      debug ? "ppp debug = yes\n" : "");
+      "pppoptfile = %s/pppd.config\n"
+      "length bit = yes\n",
+      remote_address_text.c_str(),
+      debug ? "ppp debug = yes\n" : "",
+      test_path_.value().c_str());
 }
 
 TEST_F(L2tpManagerTest, FormatL2tpdConfiguration) {
@@ -144,9 +146,9 @@ TEST_F(L2tpManagerTest, Start) {
   EXPECT_CALL(*l2tpd_, Reset(0));
   EXPECT_CALL(*l2tpd_, AddArg(L2TPD));
   EXPECT_CALL(*l2tpd_, AddArg("-c"));
-  EXPECT_CALL(*l2tpd_, AddArg("test/l2tpd.conf"));
+  EXPECT_CALL(*l2tpd_, AddArg(test_path_.value() + "/l2tpd.conf"));
   EXPECT_CALL(*l2tpd_, AddArg("-C"));
-  EXPECT_CALL(*l2tpd_, AddArg("test/l2tpd.control"));
+  EXPECT_CALL(*l2tpd_, AddArg(test_path_.value() + "/l2tpd.control"));
   EXPECT_CALL(*l2tpd_, AddArg("-D"));
   EXPECT_CALL(*l2tpd_, RedirectUsingPipe(STDERR_FILENO, false));
   EXPECT_CALL(*l2tpd_, Start());

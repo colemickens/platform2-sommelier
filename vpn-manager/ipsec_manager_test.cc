@@ -28,7 +28,7 @@ class IpsecManagerTest : public ::testing::Test {
   void SetUp() {
     FilePath cwd;
     file_util::GetCurrentDirectory(&cwd);
-    test_path_ = cwd.Append("test");
+    test_path_ = cwd.Append("ipsec_manager_testdir");
     file_util::Delete(test_path_, true);
     file_util::CreateDirectory(test_path_);
     stateful_container_ = test_path_.Append("etc");
