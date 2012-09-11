@@ -546,14 +546,16 @@ void DeviceManager::AddDevices(GSource* source) {
     for (LIBMTP_devicestorage_t* storage = mtp_device->storage;
          storage != NULL;
          storage = storage->next) {
-      StorageInfo info(raw_devices[i].device_entry,
+      const std::string storage_name =
+          StorageToString(usb_bus_str, storage->id);
+      StorageInfo info(storage_name,
+                       raw_devices[i].device_entry,
                        *storage,
                        fallback_vendor,
                        fallback_product);
       storage_map.insert(std::make_pair(storage->id, info));
-      delegate_->StorageAttached(StorageToString(usb_bus_str, storage->id));
-      LOG(INFO) << "Added storage " << storage->id
-                << " on device " << usb_bus_str;
+      delegate_->StorageAttached(storage_name);
+      LOG(INFO) << "Added storage " << storage_name;
     }
     device_map_.insert(
         std::make_pair(usb_bus_str, std::make_pair(mtp_device, storage_map)));

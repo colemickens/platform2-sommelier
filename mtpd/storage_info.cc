@@ -12,11 +12,13 @@
 
 namespace mtpd {
 
-StorageInfo::StorageInfo(const LIBMTP_device_entry_t& device,
+StorageInfo::StorageInfo(const std::string& storage_name,
+                         const LIBMTP_device_entry_t& device,
                          const LIBMTP_devicestorage_t& storage,
                          const std::string& fallback_vendor,
                          const std::string& fallback_product)
-    : vendor_id_(device.vendor_id),
+    : storage_name_(storage_name),
+      vendor_id_(device.vendor_id),
       product_id_(device.product_id),
       device_flags_(device.device_flags),
       storage_type_(storage.StorageType),
@@ -50,6 +52,7 @@ StorageInfo::~StorageInfo() {
 
 std::vector<uint8_t> StorageInfo::ToDBusFormat() const {
   MtpStorageInfo protobuf;
+  protobuf.set_storage_name(storage_name_);
   protobuf.set_vendor(vendor_);
   protobuf.set_vendor_id(vendor_id_);
   protobuf.set_product(product_);
