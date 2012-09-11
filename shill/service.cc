@@ -353,6 +353,7 @@ bool Service::Unload() {
   auto_connect_ = IsAutoConnectByDefault();
   check_portal_ = kCheckPortalAuto;
   favorite_ = false;
+  guid_ = "";
   priority_ = kPriorityNone;
   proxy_config_ = "";
   save_credentials_ = true;

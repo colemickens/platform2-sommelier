@@ -283,15 +283,17 @@ TEST_F(ServiceTest, Unload) {
       .Times(AtLeast(1))
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(string_value), Return(true)));
   ASSERT_TRUE(service_->Load(&storage));
-  // TODO(pstew): A single string property in the service is tested as
+  // TODO(pstew): Only two string properties in the service are tested as
   // a sentinel that properties are being set and reset at the right times.
   // However, since property load/store is essentially a manual process,
   // it is error prone and should either be exhaustively unit-tested or
   // a generic framework for registering loaded/stored properties should
   // be created. crosbug.com/24859
   EXPECT_EQ(string_value, service_->ui_data_);
+  EXPECT_EQ(string_value, service_->guid_);
   service_->Unload();
   EXPECT_EQ(string(""), service_->ui_data_);
+  EXPECT_EQ(string(""), service_->guid_);
 }
 
 TEST_F(ServiceTest, State) {
