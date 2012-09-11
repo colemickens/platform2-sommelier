@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,15 +31,35 @@ class USBDeviceInfo {
   // Returns true on success.
   bool RetrieveFromFile(const std::string& path);
 
+  // Gets the vendor and product name that correspond to |vendor_id| and
+  // |product_id| from a USB ID database at |ids_file|.
+  bool GetVendorAndProductName(const std::string& ids_file,
+                               const std::string& vendor_id,
+                               const std::string& product_id,
+                               std::string* vendor_name,
+                               std::string* product_name);
+
  private:
   // Converts from string to enum of a device media type.
   DeviceMediaType ConvertToDeviceMediaType(const std::string& str) const;
+
+  // Returns true if |line| contains a 4-digit hex identifier and a name
+  // separated by two spaces, i.e. "<4-digit hex ID>  <descriptive name>".
+  // The extracted identifier and name are returned via |id| and |name|,
+  // respectively.
+  bool ExtractIdAndName(const std::string& line,
+                        std::string* id, std::string* name) const;
+
+  // Returns true if |line| is skippable, i.e. an empty or comment line.
+  bool IsLineSkippable(const std::string& line) const;
 
   // A map from an ID string, in form of <vendor id>:<product id>, to a
   // USBDeviceEntry struct.
   std::map<std::string, USBDeviceEntry> entries_;
 
   FRIEND_TEST(USBDeviceInfoTest, ConvertToDeviceMediaType);
+  FRIEND_TEST(USBDeviceInfoTest, ExtractIdAndName);
+  FRIEND_TEST(USBDeviceInfoTest, IsLineSkippable);
 
   DISALLOW_COPY_AND_ASSIGN(USBDeviceInfo);
 };

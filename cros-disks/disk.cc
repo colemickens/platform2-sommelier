@@ -31,12 +31,6 @@ Disk::Disk()
       is_rotational_(false),
       is_read_only_(false),
       is_virtual_(true),
-      mount_paths_(),
-      native_path_(),
-      device_file_(),
-      uuid_(),
-      label_(),
-      drive_model_(),
       media_type_(DEVICE_MEDIA_UNKNOWN),
       device_capacity_(0),
       bytes_remaining_(0) {
@@ -80,6 +74,10 @@ DBusDisk Disk::ToDBusFormat() const {
   disk[kDeviceFile].writer().append_string(device_file().c_str());
   disk[kIdUuid].writer().append_string(uuid().c_str());
   disk[kIdLabel].writer().append_string(label().c_str());
+  disk[kVendorId].writer().append_string(vendor_id().c_str());
+  disk[kVendorName].writer().append_string(vendor_name().c_str());
+  disk[kProductId].writer().append_string(product_id().c_str());
+  disk[kProductName].writer().append_string(product_name().c_str());
   disk[kDriveModel].writer().append_string(drive_model().c_str());
   disk[kDriveIsRotational].writer().append_bool(is_rotational());
   disk[kDeviceMediaType].writer().append_uint32(media_type());

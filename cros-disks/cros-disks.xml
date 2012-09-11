@@ -13,6 +13,10 @@
       <tp:member name="DeviceIsVirtual" type="b"> </tp:member>
       <tp:member name="IdUuid" type="s"> </tp:member>
       <tp:member name="IdLabel" type="s"> </tp:member>
+      <tp:member name="VendorId" type="s"> </tp:member>
+      <tp:member name="VendorName" type="s"> </tp:member>
+      <tp:member name="ProductId" type="s"> </tp:member>
+      <tp:member name="ProductName" type="s"> </tp:member>
       <tp:member name="DeviceFile" type="s"> </tp:member>
       <tp:member name="DriveModel" type="s"> </tp:member>
       <tp:member name="DriveIsRotational" type="b"> </tp:member>

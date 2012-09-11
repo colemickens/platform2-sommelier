@@ -108,6 +108,26 @@ class Disk {
   std::string label() const { return label_; }
   void set_label(const std::string& label) { label_ = label; }
 
+  std::string vendor_id() const { return vendor_id_; }
+  void set_vendor_id(const std::string& vendor_id) {
+    vendor_id_ = vendor_id;
+  }
+
+  std::string vendor_name() const { return vendor_name_; }
+  void set_vendor_name(const std::string& vendor_name) {
+    vendor_name_ = vendor_name;
+  }
+
+  std::string product_id() const { return product_id_; }
+  void set_product_id(const std::string& product_id) {
+    product_id_ = product_id;
+  }
+
+  std::string product_name() const { return product_name_; }
+  void set_product_name(const std::string& product_name) {
+    product_name_ = product_name;
+  }
+
   std::string drive_model() const { return drive_model_; }
   void set_drive_model(const std::string& drive_model) {
     drive_model_ = drive_model;
@@ -142,6 +162,10 @@ class Disk {
   std::string filesystem_type_;
   std::string uuid_;
   std::string label_;
+  std::string vendor_id_;
+  std::string vendor_name_;
+  std::string product_id_;
+  std::string product_name_;
   std::string drive_model_;
   DeviceMediaType media_type_;
   uint64 device_capacity_;

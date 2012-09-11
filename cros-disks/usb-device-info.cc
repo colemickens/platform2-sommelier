@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -52,8 +52,7 @@ bool USBDeviceInfo::RetrieveFromFile(const string& path) {
 
   string line;
   while (reader.ReadLine(&line)) {
-    // Skip an empty or comment line.
-    if (line.empty() || StartsWithASCII(line, "#", true))
+    if (IsLineSkippable(line))
       continue;
 
     vector<string> tokens;
@@ -66,6 +65,55 @@ bool USBDeviceInfo::RetrieveFromFile(const string& path) {
   return true;
 }
 
+bool USBDeviceInfo::GetVendorAndProductName(
+    const string& ids_file, const string& vendor_id, const string& product_id,
+    string* vendor_name, string* product_name) {
+  vendor_name->clear();
+  product_name->clear();
+
+  FileReader reader;
+  if (!reader.Open(FilePath(ids_file))) {
+    LOG(ERROR) << "Failed to retrieve USB identifier database at '"
+               << ids_file << "'";
+    return false;
+  }
+
+  bool found_vendor = false;
+  string line;
+  while (reader.ReadLine(&line)) {
+    if (IsLineSkippable(line))
+      continue;
+
+    string id, name;
+    // If the target vendor ID is found, search for a matching product ID.
+    if (found_vendor) {
+      if (line[0] == '\t' &&
+          ExtractIdAndName(line.substr(1), &id, &name)) {
+        if (id == product_id) {
+          *product_name = name;
+          break;
+        }
+        continue;
+      }
+
+      // If the line does not contain any product info, assume a new
+      // section has started and no product info will be found for the
+      // target ID. Return immediately.
+      break;
+    }
+
+    // Skip forward until the target vendor ID is found.
+    if (ExtractIdAndName(line, &id, &name)) {
+      if (id == vendor_id) {
+        *vendor_name = name;
+        found_vendor = true;
+      }
+    }
+  }
+
+  return found_vendor;
+}
+
 DeviceMediaType USBDeviceInfo::ConvertToDeviceMediaType(
     const string& str) const {
   if (str == "sd") {
@@ -75,6 +123,26 @@ DeviceMediaType USBDeviceInfo::ConvertToDeviceMediaType(
   } else {
     return DEVICE_MEDIA_USB;
   }
+}
+
+bool USBDeviceInfo::IsLineSkippable(const string& line) const {
+  string trimmed_line;
+  // Trim only ASCII whitespace for now.
+  TrimWhitespaceASCII(line, TRIM_ALL, &trimmed_line);
+  return trimmed_line.empty() || StartsWithASCII(trimmed_line, "#", true);
+}
+
+bool USBDeviceInfo::ExtractIdAndName(
+    const string& line, string* id, string* name) const {
+  if ((line.length() > 6) &&
+      IsHexDigit(line[0]) && IsHexDigit(line[1]) &&
+      IsHexDigit(line[2]) && IsHexDigit(line[3]) &&
+      (line[4] == ' ') && (line[5] == ' ')) {
+    *id = StringToLowerASCII(line.substr(0, 4));
+    *name = line.substr(6);
+    return true;
+  }
+  return false;
 }
 
 }  // namespace cros_disks

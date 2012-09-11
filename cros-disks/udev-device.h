@@ -56,6 +56,11 @@ class UdevDevice {
   // Gets the device media type used on the device.
   DeviceMediaType GetDeviceMediaType() const;
 
+  // Gets the USB vendor and product ID of the device. Returns true if the
+  // IDs are found.
+  bool GetVendorAndProductId(std::string* vendor_id,
+                             std::string* product_id) const;
+
   // Checks if a device should be auto-mounted. Currently, all external
   // disk devices, which are neither on the boot device nor virtual,
   // are considered auto-mountable.

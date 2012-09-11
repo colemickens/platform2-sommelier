@@ -49,6 +49,7 @@ const char kPropertyPresentationHide[] = "UDISKS_PRESENTATION_HIDE";
 const char kPropertyRotationRate[] = "ID_ATA_ROTATION_RATE_RPM";
 const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
 const char kUSBDeviceInfoFile[] = "/opt/google/cros-disks/usb-device-info";
+const char kUSBIdentifierDatabase[] = "/usr/share/misc/usb.ids";
 const char* kNonAutoMountableFilesystemLabels[] = {
   "C-ROOT", "C-STATE", NULL
 };
@@ -193,6 +194,17 @@ DeviceMediaType UdevDevice::GetDeviceMediaType() const {
   if (IsPropertyTrue(kPropertyCDROM))
     return DEVICE_MEDIA_OPTICAL_DISC;
 
+  string vendor_id, product_id;
+  if (GetVendorAndProductId(&vendor_id, &product_id)) {
+    USBDeviceInfo info;
+    info.RetrieveFromFile(kUSBDeviceInfoFile);
+    return info.GetDeviceMediaType(vendor_id, product_id);
+  }
+  return DEVICE_MEDIA_UNKNOWN;
+}
+
+bool UdevDevice::GetVendorAndProductId(
+    string* vendor_id, string* product_id) const {
   // Search up the parent device tree to obtain the vendor and product ID
   // of the first device with a device type "usb_device". Then look up the
   // media type based on the vendor and product ID from a USB device info file.
@@ -200,19 +212,18 @@ DeviceMediaType UdevDevice::GetDeviceMediaType() const {
     const char *device_type =
         udev_device_get_property_value(dev, kPropertyDeviceType);
     if (device_type && strcmp(device_type, kPropertyDeviceTypeUSBDevice) == 0) {
-      const char *vendor_id =
+      const char *vendor_id_attr =
           udev_device_get_sysattr_value(dev, kAttributeIdVendor);
-      const char *product_id =
+      const char *product_id_attr =
           udev_device_get_sysattr_value(dev, kAttributeIdProduct);
-      if (vendor_id && product_id) {
-        USBDeviceInfo info;
-        info.RetrieveFromFile(kUSBDeviceInfoFile);
-        return info.GetDeviceMediaType(vendor_id, product_id);
+      if (vendor_id_attr && product_id_attr) {
+        *vendor_id = vendor_id_attr;
+        *product_id = product_id_attr;
+        return true;
       }
     }
   }
-
-  return DEVICE_MEDIA_UNKNOWN;
+  return false;
 }
 
 bool UdevDevice::IsMediaAvailable() const {
@@ -364,6 +375,21 @@ Disk UdevDevice::ToDisk() {
   disk.set_drive_model(EnsureUTF8String(GetProperty(kPropertyModel)));
   disk.set_label(
       EnsureUTF8String(GetPropertyFromBlkId(kPropertyBlkIdFilesystemLabel)));
+
+  string vendor_id, product_id;
+  if (GetVendorAndProductId(&vendor_id, &product_id)) {
+    disk.set_vendor_id(vendor_id);
+    disk.set_product_id(product_id);
+
+    string vendor_name, product_name;
+    USBDeviceInfo info;
+    if (info.GetVendorAndProductName(kUSBIdentifierDatabase,
+                                     vendor_id, product_id,
+                                     &vendor_name, &product_name)) {
+      disk.set_vendor_name(EnsureUTF8String(vendor_name));
+      disk.set_product_name(EnsureUTF8String(product_name));
+    }
+  }
 
   const char *dev_file = udev_device_get_devnode(dev_);
   if (dev_file)
