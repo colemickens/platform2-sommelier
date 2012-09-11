@@ -191,7 +191,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   ipconfig_rpc_identifier_ = config->GetRpcIdentifier();
 
   if (is_default_) {
-    resolver_->SetDNSFromIPConfig(config, dns_timeout_parameters_);
+    PushDNSConfig();
   }
 
   local_ = local;
@@ -212,18 +212,24 @@ void Connection::SetIsDefault(bool is_default) {
   is_default_ = is_default;
 
   if (is_default) {
-    vector<string> domain_search = dns_domain_search_;
-    if (domain_search.empty() && !dns_domain_name_.empty()) {
-      domain_search.push_back(dns_domain_name_ + ".");
-    }
-    resolver_->SetDNSFromLists(dns_servers_, domain_search,
-                               dns_timeout_parameters_);
+    PushDNSConfig();
     DeviceRefPtr device = device_info_->GetDevice(interface_index_);
     if (device) {
       device->RequestPortalDetection();
     }
   }
   routing_table_->FlushCache();
+}
+
+void Connection::PushDNSConfig() {
+  vector<string> domain_search = dns_domain_search_;
+  if (domain_search.empty() && !dns_domain_name_.empty()) {
+    SLOG(Connection, 2) << "Setting domain search to domain name "
+                        << dns_domain_name_;
+    domain_search.push_back(dns_domain_name_ + ".");
+  }
+  resolver_->SetDNSFromLists(dns_servers_, domain_search,
+                             dns_timeout_parameters_);
 }
 
 void Connection::RequestRouting() {

@@ -386,8 +386,9 @@ TEST_F(ConnectionTest, AddConfigReverse) {
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
                               GetDefaultMetric()));
-  EXPECT_CALL(resolver_, SetDNSFromIPConfig(ipconfig_,
-                                            Resolver::kDefaultTimeout));
+  EXPECT_CALL(resolver_, SetDNSFromLists(ipconfig_->properties().dns_servers,
+                                         ipconfig_->properties().domain_search,
+                                         Resolver::kDefaultTimeout));
 
   connection_->UpdateFromIPConfig(ipconfig_);
 }
@@ -425,8 +426,9 @@ TEST_F(ConnectionTest, AddConfigShortTimeout) {
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
   connection->SetIsDefault(true);
   EXPECT_CALL(*device_info_, HasOtherAddress(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(resolver_, SetDNSFromIPConfig(ipconfig_,
-                                            Resolver::kShortTimeout));
+  EXPECT_CALL(resolver_, SetDNSFromLists(ipconfig_->properties().dns_servers,
+                                         ipconfig_->properties().domain_search,
+                                         Resolver::kShortTimeout));
   connection->UpdateFromIPConfig(ipconfig_);
   AddDestructorExpectations();
 }

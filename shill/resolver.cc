@@ -38,21 +38,12 @@ Resolver* Resolver::GetInstance() {
   return g_resolver.Pointer();
 }
 
-bool Resolver::SetDNSFromIPConfig(const IPConfigRefPtr &ipconfig,
-                                  TimeoutParameters timeout) {
-  SLOG(Resolver, 2) << __func__;
-
-  CHECK(!path_.empty());
-
-  const IPConfig::Properties &props = ipconfig->properties();
-
-  return SetDNSFromLists(props.dns_servers, props.domain_search, timeout);
-}
-
 bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
                                const std::vector<std::string> &domain_search,
                                TimeoutParameters timeout) {
   SLOG(Resolver, 2) << __func__;
+
+  CHECK(!path_.empty());
 
   if (dns_servers.empty() && domain_search.empty()) {
     SLOG(Resolver, 2) << "DNS list is empty";

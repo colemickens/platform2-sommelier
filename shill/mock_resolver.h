@@ -20,8 +20,6 @@ class MockResolver : public Resolver {
   MockResolver();
   virtual ~MockResolver();
 
-  MOCK_METHOD2(SetDNSFromIPConfig, bool(const IPConfigRefPtr &ipconfig,
-                                        TimeoutParameters timeout));
   MOCK_METHOD3(SetDNSFromLists,
                bool(const std::vector<std::string> &dns_servers,
                     const std::vector<std::string> &domain_search,

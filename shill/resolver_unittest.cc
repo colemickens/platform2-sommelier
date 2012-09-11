@@ -10,7 +10,6 @@
 #include <base/stringprintf.h>
 #include <gtest/gtest.h>
 
-#include "shill/ipconfig.h"
 #include "shill/mock_control.h"
 
 using std::string;
@@ -70,18 +69,16 @@ TEST_F(ResolverTest, NonEmpty) {
   EXPECT_FALSE(file_util::PathExists(path_));
   EXPECT_TRUE(resolver_->ClearDNS());
 
-  // Add DNS info from an IPConfig entry
   MockControl control;
-  IPConfigRefPtr ipconfig(new IPConfig(&control, kTestDeviceName0));
-  IPConfig::Properties properties;
-  properties.dns_servers.push_back(kNameServer0);
-  properties.dns_servers.push_back(kNameServer1);
-  properties.domain_search.push_back(kSearchDomain0);
-  properties.domain_search.push_back(kSearchDomain1);
-  ipconfig->UpdateProperties(properties, true);
+  vector<string> dns_servers;
+  vector<string> domain_search;
+  dns_servers.push_back(kNameServer0);
+  dns_servers.push_back(kNameServer1);
+  domain_search.push_back(kSearchDomain0);
+  domain_search.push_back(kSearchDomain1);
 
-  EXPECT_TRUE(resolver_->SetDNSFromIPConfig(
-      ipconfig, Resolver::kDefaultTimeout));
+  EXPECT_TRUE(resolver_->SetDNSFromLists(
+      dns_servers, domain_search, Resolver::kDefaultTimeout));
   EXPECT_TRUE(file_util::PathExists(path_));
   EXPECT_EQ(kExpectedOutput, ReadFile());
 
@@ -92,18 +89,16 @@ TEST_F(ResolverTest, ShortTimeout) {
   EXPECT_FALSE(file_util::PathExists(path_));
   EXPECT_TRUE(resolver_->ClearDNS());
 
-  // Add DNS info from an IPConfig entry
   MockControl control;
-  IPConfigRefPtr ipconfig(new IPConfig(&control, kTestDeviceName0));
-  IPConfig::Properties properties;
-  properties.dns_servers.push_back(kNameServer0);
-  properties.dns_servers.push_back(kNameServer1);
-  properties.domain_search.push_back(kSearchDomain0);
-  properties.domain_search.push_back(kSearchDomain1);
-  ipconfig->UpdateProperties(properties, true);
+  vector<string> dns_servers;
+  vector<string> domain_search;
+  dns_servers.push_back(kNameServer0);
+  dns_servers.push_back(kNameServer1);
+  domain_search.push_back(kSearchDomain0);
+  domain_search.push_back(kSearchDomain1);
 
-  EXPECT_TRUE(resolver_->SetDNSFromIPConfig(
-      ipconfig, Resolver::kShortTimeout));
+  EXPECT_TRUE(resolver_->SetDNSFromLists(
+      dns_servers, domain_search, Resolver::kShortTimeout));
   EXPECT_TRUE(file_util::PathExists(path_));
   EXPECT_EQ(kExpectedShortTimeoutOutput, ReadFile());
 
@@ -113,14 +108,12 @@ TEST_F(ResolverTest, ShortTimeout) {
 TEST_F(ResolverTest, Empty) {
   EXPECT_FALSE(file_util::PathExists(path_));
 
-  // Use empty ifconfig
   MockControl control;
-  IPConfigRefPtr ipconfig(new IPConfig(&control, kTestDeviceName0));
-  IPConfig::Properties properties;
-  ipconfig->UpdateProperties(properties, true);
+  vector<string> dns_servers;
+  vector<string> domain_search;
 
-  EXPECT_TRUE(resolver_->SetDNSFromIPConfig(
-      ipconfig, Resolver::kDefaultTimeout));
+  EXPECT_TRUE(resolver_->SetDNSFromLists(
+      dns_servers, domain_search, Resolver::kDefaultTimeout));
   EXPECT_FALSE(file_util::PathExists(path_));
 }
 

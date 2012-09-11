@@ -36,11 +36,9 @@ class Resolver {
 
   virtual void set_path(const FilePath &path) { path_ = path; }
 
-  // Set the default domain name service parameters, given an ipconfig entry.
-  virtual bool SetDNSFromIPConfig(const IPConfigRefPtr &ipconfig,
-                                  TimeoutParameters timeout);
-
-  // Set the default domain name service parameters, given an ipconfig entry.
+  // Install domain name service parameters, given a list of
+  // DNS servers in |dns_servers|, a list of DNS search suffixes in
+  // |domain_search| and a DNS timeout parameter in |timeout|.
   virtual bool SetDNSFromLists(const std::vector<std::string> &dns_servers,
                                const std::vector<std::string> &domain_search,
                                TimeoutParameters timeout);

@@ -138,6 +138,9 @@ class Connection : public base::RefCounted<Connection> {
 
   void OnLowerDisconnect();
 
+  // Send our DNS configuration to the resolver.
+  void PushDNSConfig();
+
   base::WeakPtrFactory<Connection> weak_ptr_factory_;
 
   bool is_default_;
