@@ -31,7 +31,7 @@ const int PortalDetector::kDefaultCheckIntervalSeconds = 30;
 const char PortalDetector::kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
 const char PortalDetector::kDefaultURL[] =
     "http://clients3.google.com/generate_204";
-const char PortalDetector::kResponseExpected[] = "HTTP/1.1 204";
+const char PortalDetector::kResponseExpected[] = "HTTP/?.? 204";
 
 const int PortalDetector::kMaxRequestAttempts = 3;
 const int PortalDetector::kMinTimeBetweenAttemptsSeconds = 3;
@@ -195,8 +195,10 @@ void PortalDetector::RequestReadCallback(const ByteString &response_data) {
     compare_length = response_expected.length();
   }
 
-  if (ByteString(response_expected.substr(0, compare_length), false).Equals(
-          ByteString(response_data.GetConstData(), compare_length))) {
+  if (MatchPattern(string(reinterpret_cast<const char *>(
+                              response_data.GetConstData()),
+                          compare_length),
+                   response_expected.substr(0, compare_length))) {
     if (expected_length_received) {
       CompleteAttempt(Result(kPhaseContent, kStatusSuccess));
     }

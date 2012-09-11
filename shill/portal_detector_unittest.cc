@@ -392,6 +392,24 @@ TEST_F(PortalDetectorTest, ReadCompleteHeader) {
   AppendReadData(response_expected.substr(partial_size));
 }
 
+TEST_F(PortalDetectorTest, ReadMatchingHeader) {
+  const string kResponse("HTTP/9.8 204");
+
+  StartAttempt();
+
+  EXPECT_CALL(callback_target(),
+              ResultCallback(IsResult(
+                  PortalDetector::Result(
+                      PortalDetector::kPhaseContent,
+                      PortalDetector::kStatusSuccess,
+                      kNumAttempts,
+                      true))));
+  EXPECT_CALL(*http_request(), Stop())
+      .Times(2);
+
+  AppendReadData(kResponse);
+}
+
 struct ResultMapping {
   ResultMapping() : http_result(HTTPRequest::kResultUnknown), portal_result() {}
   ResultMapping(HTTPRequest::Result in_http_result,
