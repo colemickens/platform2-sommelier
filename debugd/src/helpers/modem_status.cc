@@ -116,16 +116,24 @@ Value* Modem::GetStatus(DBus::Connection& conn) { // NOLINT
 
   ModemSimpleProxy simple = ModemSimpleProxy(conn, path_.c_str(), service_);
   Value* status = NULL;
-  std::map<std::string, DBus::Variant> statusmap = simple.GetStatus();
+  std::map<std::string, DBus::Variant> statusmap;
+  try {
+    statusmap = simple.GetStatus();
+    // cpplint thinks this is a function call
+  } catch(DBus::Error e) {}
   if (chromeos::DBusPropertyMapToValue(statusmap, &status))
     result->Set("status", status);
-
   ModemProxy modem = ModemProxy(conn, path_.c_str(), service_);
-  DBus::Struct<std::string, std::string, std::string> infomap = modem.GetInfo();
   DictionaryValue* infodict = new DictionaryValue();
-  infodict->SetString("manufacturer", infomap._1);
-  infodict->SetString("modem", infomap._2);
-  infodict->SetString("version", infomap._3);
+  try {
+    DBus::Struct<std::string,
+                 std::string,
+                 std::string> infomap = modem.GetInfo();
+    infodict->SetString("manufacturer", infomap._1);
+    infodict->SetString("modem", infomap._2);
+    infodict->SetString("version", infomap._3);
+    // cpplint thinks this is a function call
+  } catch(DBus::Error e) {}
   result->Set("info", infodict);
 
   DictionaryValue* props = new DictionaryValue();
