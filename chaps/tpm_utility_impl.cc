@@ -135,7 +135,8 @@ TPMUtilityImpl::TPMUtilityImpl(const string& srk_auth_data)
       srk_(0),
       srk_auth_data_(srk_auth_data),
       srk_public_loaded_(false),
-      default_exponent_("\x1\x0\x1", 3) {}
+      default_exponent_("\x1\x0\x1", 3),
+      last_handle_(0) {}
 
 TPMUtilityImpl::~TPMUtilityImpl() {
   LOG(INFO) << "Unloading keys for all slots.";
@@ -144,8 +145,8 @@ TPMUtilityImpl::~TPMUtilityImpl() {
   for (it = slot_handles_.begin(); it != slot_handles_.end(); ++it) {
     set<int>* slot_handles = &it->second.handles_;
     for (it2 = slot_handles->begin(); it2 != slot_handles->end(); ++it2) {
-      Tspi_Key_UnloadKey(*it2);
-      Tspi_Context_CloseObject(tsp_context_, *it2);
+      Tspi_Key_UnloadKey(GetTssHandle(*it2));
+      Tspi_Context_CloseObject(tsp_context_, GetTssHandle(*it2));
     }
   }
   // These can't use ScopedTssObject because they must be closed before the
@@ -278,12 +279,12 @@ bool TPMUtilityImpl::ChangeAuthData(int slot_id,
     LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
     return false;
   }
-  result = Tspi_ChangeAuth(key_handle, srk_, policy.release());
+  result = Tspi_ChangeAuth(GetTssHandle(key_handle), srk_, policy.release());
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_ChangeAuth - " << ResultToString(result);
     return false;
   }
-  if (!GetKeyBlob(key_handle, new_auth_key_blob))
+  if (!GetKeyBlob(GetTssHandle(key_handle), new_auth_key_blob))
     return false;
   VLOG(1) << "TPMUtilityImpl::ChangeAuthData success";
   return true;
@@ -384,7 +385,7 @@ bool TPMUtilityImpl::GenerateKey(int slot,
   }
   if (!GetKeyBlob(key, key_blob))
     return false;
-  *key_handle = CreateHandle(slot, key.release(), *key_blob);
+  *key_handle = CreateHandle(slot, key.release(), *key_blob, auth_data);
   VLOG(1) << "TPMUtilityImpl::GenerateKey success";
   return true;
 }
@@ -396,12 +397,12 @@ bool TPMUtilityImpl::GetPublicKey(int key_handle,
   if (!Init())
     return false;
   AutoLock lock(lock_);
-  if (!GetKeyAttributeData(key_handle,
+  if (!GetKeyAttributeData(GetTssHandle(key_handle),
                            TSS_TSPATTRIB_RSAKEY_INFO,
                            TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT,
                            public_exponent))
     return false;
-  if (!GetKeyAttributeData(key_handle,
+  if (!GetKeyAttributeData(GetTssHandle(key_handle),
                            TSS_TSPATTRIB_RSAKEY_INFO,
                            TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
                            modulus))
@@ -484,7 +485,7 @@ bool TPMUtilityImpl::WrapKey(int slot,
   }
   if (!GetKeyBlob(key, key_blob))
     return false;
-  *key_handle = CreateHandle(slot, key.release(), *key_blob);
+  *key_handle = CreateHandle(slot, key.release(), *key_blob, auth_data);
   VLOG(1) << "TPMUtilityImpl::WrapKey success";
   return true;
 }
@@ -509,42 +510,10 @@ bool TPMUtilityImpl::LoadKeyWithParent(int slot,
     return true;
   VLOG(1) << "TPMUtilityImpl::LoadKeyWithParent enter";
   ScopedTssKey key(tsp_context_);
-  TSS_RESULT result = Tspi_Context_LoadKeyByBlob(
-      tsp_context_,
-      parent_key_handle,
-      key_blob.length(),
-      ConvertStringToByteBuffer(key_blob.data()),
-      key.ptr());
-  if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Tspi_Context_LoadKeyByBlob - " << ResultToString(result);
+  if (!LoadKeyInternal(GetTssHandle(parent_key_handle), key_blob, auth_data,
+                       key.ptr()))
     return false;
-  }
-  TSS_HPOLICY policy;
-  result = Tspi_GetPolicyObject(key, TSS_POLICY_USAGE, &policy);
-  if (result != TSS_SUCCESS) {
-    LOG(ERROR) << "Tspi_GetPolicyObject - " << ResultToString(result);
-    return false;
-  }
-  if (policy == default_policy_) {
-    if (!CreateKeyPolicy(key, auth_data, true))
-      return false;
-  } else if (auth_data.empty()) {
-    result = Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_NONE, 0, NULL);
-    if (result != TSS_SUCCESS) {
-      LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
-      return false;
-    }
-  } else {
-    result = Tspi_Policy_SetSecret(policy,
-                                   TSS_SECRET_MODE_SHA1,
-                                   auth_data.size(),
-                                   const_cast<BYTE*>(&auth_data.front()));
-    if (result != TSS_SUCCESS) {
-      LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
-      return false;
-    }
-  }
-  *key_handle = CreateHandle(slot, key.release(), key_blob);
+  *key_handle = CreateHandle(slot, key.release(), key_blob, auth_data);
   VLOG(1) << "TPMUtilityImpl::LoadKeyWithParent success";
   return true;
 }
@@ -557,8 +526,8 @@ void TPMUtilityImpl::UnloadKeysForSlot(int slot) {
   set<int>* handles = &slot_handles_[slot].handles_;
   set<int>::iterator it;
   for (it = handles->begin(); it != handles->end(); ++it) {
-    Tspi_Key_UnloadKey(*it);
-    Tspi_Context_CloseObject(tsp_context_, *it);
+    Tspi_Key_UnloadKey(GetTssHandle(*it));
+    Tspi_Context_CloseObject(tsp_context_, GetTssHandle(*it));
   }
   slot_handles_.erase(slot);
   LOG(INFO) << "Unloaded keys for slot " << slot;
@@ -575,9 +544,8 @@ bool TPMUtilityImpl::Bind(int key_handle,
   TSSEncryptedData encrypted(tsp_context_);
   if (!encrypted.Create())
     return false;
-  TSS_HKEY key = key_handle;
   TSS_RESULT result = Tspi_Data_Bind(encrypted,
-                                     key,
+                                     GetTssHandle(key_handle),
                                      input.length(),
                                      ConvertStringToByteBuffer(input.data()));
   if (result != TSS_SUCCESS) {
@@ -604,8 +572,18 @@ bool TPMUtilityImpl::Unbind(int key_handle,
     return false;
   UINT32 length = 0;
   BYTE* buffer = NULL;
-  TSS_HKEY key = key_handle;
-  TSS_RESULT result = Tspi_Data_Unbind(encrypted, key, &length, &buffer);
+  TSS_RESULT result = Tspi_Data_Unbind(encrypted, GetTssHandle(key_handle),
+                                       &length, &buffer);
+  if (result == (TSS_LAYER_TCS | TCS_E_KM_LOADFAILED)) {
+    // On some TPMs, the TCS layer will fail to reload a key that has been
+    // evicted. If this occurs, we can attempt to reload the key manually and
+    // then try the operation again.
+    LOG(WARNING) << "TCS load failure: attempting to reload key.";
+    if (!ReloadKey(key_handle))
+      return false;
+    result = Tspi_Data_Unbind(encrypted, GetTssHandle(key_handle), &length,
+                              &buffer);
+  }
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Data_Unbind - " << ResultToString(result);
     return false;
@@ -626,10 +604,19 @@ bool TPMUtilityImpl::Sign(int key_handle,
   TSSHash hash(tsp_context_);
   if (!hash.Create(input))
     return false;
-  TSS_HKEY key = key_handle;
   UINT32 length = 0;
   BYTE* buffer = NULL;
-  TSS_RESULT result = Tspi_Hash_Sign(hash, key, &length, &buffer);
+  TSS_RESULT result = Tspi_Hash_Sign(hash, GetTssHandle(key_handle), &length,
+                                     &buffer);
+  if (result == (TSS_LAYER_TCS | TCS_E_KM_LOADFAILED)) {
+    // On some TPMs, the TCS layer will fail to reload a key that has been
+    // evicted. If this occurs, we can attempt to reload the key manually and
+    // then try the operation again.
+    LOG(WARNING) << "TCS load failure: attempting to reload key.";
+    if (!ReloadKey(key_handle))
+      return false;
+    result = Tspi_Hash_Sign(hash, GetTssHandle(key_handle), &length, &buffer);
+  }
   if (result != TSS_SUCCESS) {
     LOG(ERROR) << "Tspi_Hash_Sign - " << ResultToString(result);
     return false;
@@ -650,10 +637,9 @@ bool TPMUtilityImpl::Verify(int key_handle,
   TSSHash hash(tsp_context_);
   if (!hash.Create(input))
     return false;
-  TSS_HKEY key = key_handle;
   TSS_RESULT result = Tspi_Hash_VerifySignature(
       hash,
-      key,
+      GetTssHandle(key_handle),
       signature.length(),
       ConvertStringToByteBuffer(signature.data()));
   if (result != TSS_SUCCESS) {
@@ -666,11 +652,16 @@ bool TPMUtilityImpl::Verify(int key_handle,
 
 int TPMUtilityImpl::CreateHandle(int slot,
                                  TSS_HKEY key,
-                                 const string& key_blob) {
-  int handle = key;
+                                 const string& key_blob,
+                                 const SecureBlob& auth_data) {
+  int handle = ++last_handle_;
   HandleInfo* handle_info = &slot_handles_[slot];
   handle_info->handles_.insert(handle);
   handle_info->blob_handle_[key_blob] = handle;
+  KeyInfo* key_info = &handle_info_[handle];
+  key_info->tss_handle = key;
+  key_info->blob = key_blob;
+  key_info->auth_data = auth_data;
   return handle;
 }
 
@@ -827,6 +818,15 @@ bool TPMUtilityImpl::GetSRKPublicKey() {
   return true;
 }
 
+TSS_HKEY TPMUtilityImpl::GetTssHandle(int key_handle) {
+  if (static_cast<TSS_HKEY>(key_handle) == srk_)
+    return srk_;
+  map<int, KeyInfo>::iterator it = handle_info_.find(key_handle);
+  if (it == handle_info_.end())
+    return 0;
+  return it->second.tss_handle;
+}
+
 bool TPMUtilityImpl::IsAlreadyLoaded(int slot,
                                      const string& key_blob,
                                      int* key_handle) {
@@ -835,6 +835,65 @@ bool TPMUtilityImpl::IsAlreadyLoaded(int slot,
   if (it == handle_info->blob_handle_.end())
     return false;
   *key_handle = it->second;
+  return true;
+}
+
+bool TPMUtilityImpl::LoadKeyInternal(TSS_HKEY parent,
+                                     const string& key_blob,
+                                     const SecureBlob& auth_data,
+                                     TSS_HKEY* key) {
+  TSS_RESULT result = Tspi_Context_LoadKeyByBlob(
+      tsp_context_,
+      parent,
+      key_blob.length(),
+      ConvertStringToByteBuffer(key_blob.data()),
+      key);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Tspi_Context_LoadKeyByBlob - " << ResultToString(result);
+    return false;
+  }
+  TSS_HPOLICY policy;
+  result = Tspi_GetPolicyObject(*key, TSS_POLICY_USAGE, &policy);
+  if (result != TSS_SUCCESS) {
+    LOG(ERROR) << "Tspi_GetPolicyObject - " << ResultToString(result);
+    return false;
+  }
+  if (policy == default_policy_) {
+    if (!CreateKeyPolicy(*key, auth_data, true))
+      return false;
+  } else if (auth_data.empty()) {
+    result = Tspi_Policy_SetSecret(policy, TSS_SECRET_MODE_NONE, 0, NULL);
+    if (result != TSS_SUCCESS) {
+      LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
+      return false;
+    }
+  } else {
+    result = Tspi_Policy_SetSecret(policy,
+                                   TSS_SECRET_MODE_SHA1,
+                                   auth_data.size(),
+                                   const_cast<BYTE*>(&auth_data.front()));
+    if (result != TSS_SUCCESS) {
+      LOG(ERROR) << "Tspi_Policy_SetSecret - " << ResultToString(result);
+      return false;
+    }
+  }
+  return true;
+}
+
+bool TPMUtilityImpl::ReloadKey(int key_handle) {
+  KeyInfo* key_info = &handle_info_[key_handle];
+  // Unload the current handle.
+  Tspi_Key_UnloadKey(key_info->tss_handle);
+  Tspi_Context_CloseObject(tsp_context_, key_info->tss_handle);
+  key_info->tss_handle = 0;
+  // Load the same key blob again.
+  ScopedTssKey scoped_key(tsp_context_);
+  if (!LoadKeyInternal(srk_, key_info->blob, key_info->auth_data,
+                       scoped_key.ptr())) {
+    LOG(ERROR) << "Failed to reload key.";
+    return false;
+  }
+  key_info->tss_handle = scoped_key.release();
   return true;
 }
 

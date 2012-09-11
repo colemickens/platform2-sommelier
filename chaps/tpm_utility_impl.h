@@ -84,7 +84,17 @@ class TPMUtilityImpl : public TPMUtility {
     std::map<std::string, int> blob_handle_;
   };
 
-  int CreateHandle(int slot, TSS_HKEY key, const std::string& key_blob);
+  // Holds key information for each key handle.
+  struct KeyInfo {
+    TSS_HKEY tss_handle;
+    std::string blob;
+    chromeos::SecureBlob auth_data;
+  };
+
+  int CreateHandle(int slot,
+                   TSS_HKEY key,
+                   const std::string& key_blob,
+                   const chromeos::SecureBlob& auth_data);
   bool CreateKeyPolicy(TSS_HKEY key,
                        const chromeos::SecureBlob& auth_data,
                        bool auth_only);
@@ -95,7 +105,13 @@ class TPMUtilityImpl : public TPMUtility {
   bool GetKeyBlob(TSS_HKEY key, std::string* blob);
   TSS_FLAG GetKeyFlags(int modulus_bits);
   bool GetSRKPublicKey();
+  TSS_HKEY GetTssHandle(int key_handle);
   bool IsAlreadyLoaded(int slot, const std::string& key_blob, int* key_handle);
+  bool LoadKeyInternal(TSS_HKEY parent,
+                       const std::string& key_blob,
+                       const chromeos::SecureBlob& auth_data,
+                       TSS_HKEY* key);
+  bool ReloadKey(int key_handle);
 
   bool is_initialized_;
   trousers::ScopedTssContext tsp_context_;
@@ -105,7 +121,9 @@ class TPMUtilityImpl : public TPMUtility {
   bool srk_public_loaded_;
   const std::string default_exponent_;
   std::map<int, HandleInfo> slot_handles_;
+  std::map<int, KeyInfo> handle_info_;
   base::Lock lock_;
+  int last_handle_;
 
   DISALLOW_COPY_AND_ASSIGN(TPMUtilityImpl);
 };
