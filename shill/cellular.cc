@@ -447,6 +447,7 @@ void Cellular::OnConnected() {
   SetState(kStateConnected);
   if (!capability_->AllowRoaming() &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
+    LOG(INFO) << "Disconnecting due to roaming.";
     Disconnect(NULL);
   } else {
     EstablishLink();
@@ -484,19 +485,38 @@ void Cellular::OnDisconnectReply(const Error &error) {
 
 void Cellular::OnDisconnected() {
   SLOG(Cellular, 2) << __func__;
-  if (state_ == kStateConnected || state_ == kStateLinked) {
-    SetState(kStateRegistered);
-    SetServiceFailureSilent(Service::kFailureUnknown);
-    DestroyIPConfig();
-    rtnl_handler()->SetInterfaceFlags(interface_index(), 0, IFF_UP);
-  } else {
+  if (!DisconnectCleanup()) {
     LOG(WARNING) << "Disconnect occurred while in state "
                  << GetStateString(state_);
   }
 }
 
 void Cellular::OnDisconnectFailed() {
-  // TODO(ers): Signal failure.
+  SLOG(Cellular, 2) << __func__;
+  // If the modem is in the disconnecting state, then
+  // the disconnect should eventually succeed, so do
+  // nothing.
+  if (modem_state_ == kModemStateDisconnecting) {
+    LOG(WARNING) << "Ignoring failed disconnect while modem is disconnecting.";
+    return;
+  }
+
+  // OnDisconnectFailed got called because no bearers
+  // to disconnect were found. Which means that we shouldn't
+  // really remain in the connected/linked state if we
+  // are in one of those.
+  if (!DisconnectCleanup()) {
+    // otherwise, no-op
+    LOG(WARNING) << "Ignoring failed disconnect while in state "
+                 << GetStateString(state_);
+  }
+
+  // TODO(armansito): In either case, shill ends up thinking
+  // that it's disconnected, while for some reason the underlying
+  // modem might still actually be connected. In that case the UI
+  // would be reflecting an incorrect state and a further connection
+  // request would fail. We should perhaps tear down the modem and
+  // restart it here.
 }
 
 void Cellular::EstablishLink() {
@@ -618,5 +638,15 @@ void Cellular::StartTermination() {
   Disconnect(&error);
 }
 
+bool Cellular::DisconnectCleanup() {
+  if (state_ == kStateConnected || state_ == kStateLinked) {
+    SetState(kStateRegistered);
+    SetServiceFailureSilent(Service::kFailureUnknown);
+    DestroyIPConfig();
+    rtnl_handler()->SetInterfaceFlags(interface_index(), 0, IFF_UP);
+    return true;
+  }
+  return false;
+}
 
 }  // namespace shill

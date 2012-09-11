@@ -239,7 +239,7 @@ class CellularTest : public testing::Test {
     callback.Run(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
                  MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
                  Error());
- }
+  }
   void InvokeConnect(DBusPropertiesMap props, Error *error,
                      const ResultCallback &callback, int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
@@ -259,6 +259,12 @@ class CellularTest : public testing::Test {
                         int timeout) {
     if (!callback.is_null())
       callback.Run(Error());
+  }
+  void InvokeDisconnectFail(Error *error, const ResultCallback &callback,
+                            int timeout) {
+    error->Populate(Error::kOperationFailed);
+    if (!callback.is_null())
+      callback.Run(*error);
   }
 
   void ExpectCdmaStartModem(string network_technology) {
@@ -608,6 +614,27 @@ TEST_F(CellularTest, Disconnect) {
   GetCapabilityClassic()->proxy_.reset(proxy_.release());
   device_->Disconnect(&error);
   EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
+}
+
+TEST_F(CellularTest, DisconnectFailure) {
+  // Test the case where the underlying modem state is set
+  // to disconnecting, but shill thinks it's still connected
+  Error error;
+  device_->state_ = Cellular::kStateConnected;
+  EXPECT_CALL(*proxy_,
+              Disconnect(_, _, CellularCapability::kTimeoutDefault))
+       .Times(2)
+       .WillRepeatedly(Invoke(this, &CellularTest::InvokeDisconnectFail));
+  GetCapabilityClassic()->proxy_.reset(proxy_.release());
+  device_->modem_state_ = Cellular::kModemStateDisconnecting;
+  device_->Disconnect(&error);
+  EXPECT_TRUE(error.IsFailure());
+  EXPECT_EQ(Cellular::kStateConnected, device_->state_);
+
+  device_->modem_state_ = Cellular::kModemStateConnected;
+  device_->Disconnect(&error);
+  EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
 

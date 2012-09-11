@@ -235,6 +235,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
   FRIEND_TEST(CellularTest, DisableModem);
   FRIEND_TEST(CellularTest, Disconnect);
+  FRIEND_TEST(CellularTest, DisconnectFailure);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
   FRIEND_TEST(CellularTest, ModemStateChangeStaleConnected);
@@ -286,6 +287,10 @@ class Cellular : public Device {
   // When shill terminates or ChromeOS suspends, this function is called to
   // disconnect from the cellular network.
   void StartTermination();
+
+  // This function does the final cleanup once a disconnect request terminates.
+  // Returns true, if the device state is successfully changed.
+  bool DisconnectCleanup();
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 

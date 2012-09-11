@@ -166,6 +166,7 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
   FRIEND_TEST(CellularTest, Disconnect);
+  FRIEND_TEST(CellularTest, DisconnectFailure);
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
 
