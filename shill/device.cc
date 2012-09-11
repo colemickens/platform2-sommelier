@@ -451,7 +451,9 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     // Subtle: Start portal detection after transitioning the service
     // to the Connected state because this call may immediately transition
     // to the Online state.
-    StartPortalDetection();
+    if (selected_service_) {
+      StartPortalDetection();
+    }
     StartLinkMonitor();
   } else {
     // TODO(pstew): This logic gets yet more complex when multiple

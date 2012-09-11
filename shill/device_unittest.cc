@@ -350,6 +350,15 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   OnIPConfigUpdated(ipconfig.get(), true);
 }
 
+TEST_F(DeviceTest, IPConfigUpdatedSuccessNoSelectedService) {
+  // Make sure shill doesn't crash if a service is disabled immediately
+  // after receiving its IP config (selected_service_ is NULL in this case).
+  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
+                                                          kDeviceName);
+  SelectService(NULL);
+  OnIPConfigUpdated(ipconfig.get(), true);
+}
+
 TEST_F(DeviceTest, SetEnabledPersistent) {
   EXPECT_FALSE(device_->enabled_);
   EXPECT_FALSE(device_->enabled_pending_);
