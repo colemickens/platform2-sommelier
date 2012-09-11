@@ -18,6 +18,7 @@ using base::Closure;
 using base::Unretained;
 using std::deque;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -174,14 +175,17 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   // Install any explicitly configured routes at the default metric.
   routing_table_->ConfigureRoutes(interface_index_, config, kDefaultMetric);
 
-  // Save a copy of the last non-null DNS config
+  // Save a copy of the last non-null DNS config.
   if (!config->properties().dns_servers.empty()) {
     dns_servers_ = config->properties().dns_servers;
+  }
+
+  if (!config->properties().domain_search.empty()) {
     dns_domain_search_ = config->properties().domain_search;
-    if (dns_domain_search_.empty() &&
-        !config->properties().domain_name.empty()) {
-      dns_domain_search_.push_back(config->properties().domain_name + ".");
-    }
+  }
+
+  if (!config->properties().domain_name.empty()) {
+    dns_domain_name_ = config->properties().domain_name;
   }
 
   ipconfig_rpc_identifier_ = config->GetRpcIdentifier();
@@ -208,7 +212,11 @@ void Connection::SetIsDefault(bool is_default) {
   is_default_ = is_default;
 
   if (is_default) {
-    resolver_->SetDNSFromLists(dns_servers_, dns_domain_search_,
+    vector<string> domain_search = dns_domain_search_;
+    if (domain_search.empty() && !dns_domain_name_.empty()) {
+      domain_search.push_back(dns_domain_name_ + ".");
+    }
+    resolver_->SetDNSFromLists(dns_servers_, domain_search,
                                dns_timeout_parameters_);
     DeviceRefPtr device = device_info_->GetDevice(interface_index_);
     if (device) {

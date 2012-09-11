@@ -148,6 +148,7 @@ class Connection : public base::RefCounted<Connection> {
   Technology::Identifier technology_;
   std::vector<std::string> dns_servers_;
   std::vector<std::string> dns_domain_search_;
+  std::string dns_domain_name_;
   std::string ipconfig_rpc_identifier_;
   IPAddress local_;
   IPAddress gateway_;
