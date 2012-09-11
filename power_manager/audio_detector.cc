@@ -32,10 +32,7 @@ AudioDetector::AudioDetector()
 
 AudioDetector::~AudioDetector() {}
 
-void AudioDetector::Init() {
-  if (!audio_file_.Init(kAudioStatusPath))
-    LOG(WARNING) << "No audio status file found.";
-}
+void AudioDetector::Init() {}
 
 bool AudioDetector::GetActivity(int64 activity_threshold_ms,
                                 int64* time_since_activity_ms,
@@ -52,23 +49,15 @@ bool AudioDetector::GetActivity(int64 activity_threshold_ms,
   return true;
 }
 
-bool AudioDetector::Enable() {
+void AudioDetector::Enable() {
   if (IsPollingEnabled())
-    return true;
+    return;
   polling_enabled_ = true;
-  // Attempt to open the audio file if it's not open already.
-  if (!audio_file_.HasOpenedFile())
-    Init();
-  if (IsPollingEnabled()) {
-    Poll();
-    return true;
-  }
-  return false;
+  Poll();
 }
 
-bool AudioDetector::Disable() {
+void AudioDetector::Disable() {
   polling_enabled_ = false;
-  return true;
 }
 
 gboolean AudioDetector::Poll() {
@@ -76,11 +65,15 @@ gboolean AudioDetector::Poll() {
     LOG(ERROR) << "Polling not enabled.";
     return FALSE;
   }
-  if (!audio_file_.HasOpenedFile() && !audio_file_.Init(kAudioStatusPath)) {
+  // Close and reopen the audio status file because when the status changes, the
+  // handle becomes stale.  This is a temporary measure to deal with this quirk
+  // until we use cras for audio detection.
+  audio_file_.reset(new AsyncFileReader);
+  if (!audio_file_->Init(kAudioStatusPath)) {
     LOG(WARNING) << "Audio status file not found, continuing to poll for it.";
     return TRUE;
   }
-  audio_file_.StartRead(&read_cb_, &error_cb_);
+  audio_file_->StartRead(&read_cb_, &error_cb_);
   return FALSE;
 }
 
@@ -100,7 +93,7 @@ void AudioDetector::ErrorCallback() {
 }
 
 bool AudioDetector::IsPollingEnabled() const {
-  return polling_enabled_ && audio_file_.HasOpenedFile();
+  return polling_enabled_;
 }
 
 }  // namespace power_manager

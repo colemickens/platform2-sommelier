@@ -20,8 +20,8 @@ class MockVideoDetector : public VideoDetector {
                bool(int64 activity_threshold_ms,
                     int64* time_since_activity_ms,
                     bool* is_active));
-  MOCK_METHOD0(Enable, bool());
-  MOCK_METHOD0(Disable, bool());
+  MOCK_METHOD0(Enable, void(void));
+  MOCK_METHOD0(Disable, void(void));
   MOCK_METHOD1(HandleActivity,
                void(const base::TimeTicks& last_activity_time));
 };

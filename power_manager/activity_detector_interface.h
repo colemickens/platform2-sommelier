@@ -29,8 +29,8 @@ class ActivityDetectorInterface {
 
   // Turns activity detection on and off.  This is useful for cases where the
   // detection is polling-based, for example.
-  virtual bool Enable() = 0;
-  virtual bool Disable() = 0;
+  virtual void Enable() = 0;
+  virtual void Disable() = 0;
 
   // Called by external activity sources to notify detector of activity.
   // This does not have to be implemented by classes using this interface, so it

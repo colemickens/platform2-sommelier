@@ -8,6 +8,7 @@
 #include "base/basictypes.h"
 #include "base/callback.h"
 #include "base/file_path.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "power_manager/activity_detector_interface.h"
 #include "power_manager/async_file_reader.h"
@@ -31,8 +32,8 @@ class AudioDetector : public ActivityDetectorInterface {
   virtual bool GetActivity(int64 activity_threshold_ms,
                            int64* time_since_activity_ms,
                            bool* is_active);
-  virtual bool Enable();
-  virtual bool Disable();
+  virtual void Enable();
+  virtual void Disable();
 
  private:
   // For polling audio status.
@@ -53,7 +54,7 @@ class AudioDetector : public ActivityDetectorInterface {
   bool polling_enabled_;
 
   // For asynchronous file access.
-  AsyncFileReader audio_file_;
+  scoped_ptr<AsyncFileReader> audio_file_;
 
   // Callbacks for asynchronous file I/O.
   base::Callback<void(const std::string&)> read_cb_;

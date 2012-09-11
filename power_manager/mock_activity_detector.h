@@ -14,8 +14,8 @@ namespace power_manager {
 class MockActivityDetector : public ActivityDetectorInterface {
   public:
     MOCK_METHOD3(GetActivity, bool(int64, int64*, bool*));
-    MOCK_METHOD0(Enable, bool(void));
-    MOCK_METHOD0(Disable, bool(void));
+    MOCK_METHOD0(Enable, void(void));
+    MOCK_METHOD0(Disable, void(void));
 };
 
 }  // namespace power_manager

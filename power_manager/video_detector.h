@@ -52,8 +52,8 @@ class VideoDetector : public ActivityDetectorInterface {
                            bool* is_active);
 
   // These are not used by the video detector, which is not poll-driven.
-  virtual bool Enable() { return true; }
-  virtual bool Disable() { return true; }
+  virtual void Enable() {}
+  virtual void Disable() {}
 
   // Call this to notify detector of video activity updates.  Stores the last
   // video activity time in |last_video_time_|.
