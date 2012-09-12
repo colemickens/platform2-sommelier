@@ -82,6 +82,14 @@ CellularCapabilityClassic::CellularCapabilityClassic(
   store->RegisterConstString(flimflam::kMeidProperty, &meid_);
   store->RegisterConstString(flimflam::kMinProperty, &min_);
   store->RegisterConstString(flimflam::kModelIDProperty, &model_id_);
+
+  // This class is currently instantiated only for Gobi modems so setup the
+  // supported carriers list appropriately and expose it over RPC.
+  supported_carriers_.push_back(shill::kCarrierGenericUMTS);
+  supported_carriers_.push_back(shill::kCarrierSprint);
+  supported_carriers_.push_back(shill::kCarrierVerizon);
+  store->RegisterConstStrings(shill::kSupportedCarriersProperty,
+                              &supported_carriers_);
 }
 
 CellularCapabilityClassic::~CellularCapabilityClassic() {}

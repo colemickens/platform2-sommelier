@@ -146,7 +146,8 @@ Methods		dict GetProperties()
 
 			(Cellular only) Set the modem carrier firmware. For
 			example, switch between CDMA (Verizon Wireless/Sprint)
-			and Generic UMTS.
+			and Generic UMTS. The Cellular.SupportedCarriers
+			property lists all supported carriers.
 
 			Possible Errors: [service].Error.Failure
 					 [service].Error.NotSupported
@@ -365,6 +366,12 @@ Properties	string Address [readonly]
 				unlocked (LockType is ""), but at the same
 				time locking can be enabled (LockEnabled is
 				True).
+
+		array{string} Cellular.SupportedCarriers [readonly]
+
+			(Cellular only) A list of supported carriers. Each
+			carrier can be used as an argument to the SetCarrier
+			method.
 
 		array{dict} Cellular.FoundNetworks [readonly] [GSM only]
 

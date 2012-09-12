@@ -192,6 +192,8 @@ class CellularCapabilityClassic : public CellularCapability {
   scoped_ptr<ModemProxyInterface> proxy_;
   scoped_ptr<ModemGobiProxyInterface> gobi_proxy_;
 
+  Strings supported_carriers_;
+
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityClassic);
 };
 
