@@ -833,13 +833,6 @@ void Daemon::RegisterDBusMessageHandler() {
   CHECK(dbus_connection_add_filter(
       connection, &MainDBusSignalHandler, this, NULL));
 
-  // TODO(haruki): Remove HandleScreenIsLockedMethod and
-  // HandleScreenIsUnlockedMethod after chrome has been updated to stop calling
-  // them.
-  AddDBusMethodHandler(kPowerManagerInterface, kScreenIsLockedMethod,
-                       &Daemon::HandleScreenIsLockedMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kScreenIsUnlockedMethod,
-                       &Daemon::HandleScreenIsUnlockedMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kRequestShutdownMethod,
                        &Daemon::HandleRequestShutdownMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kRequestRestartMethod,
@@ -996,18 +989,6 @@ bool Daemon::HandleStateOverrideCancelSignal(DBusMessage* message) {
     dbus_error_free(&error);
   }
   return true;
-}
-
-DBusMessage* Daemon::HandleScreenIsLockedMethod(DBusMessage* message) {
-  // TODO(haruki): Remove this method after chrome has been updated to stop
-  // calling it.
-  return NULL;
-}
-
-DBusMessage* Daemon::HandleScreenIsUnlockedMethod(DBusMessage* message) {
-  // TODO(haruki): Remove this method after chrome has been updated to stop
-  // calling it.
-  return NULL;
 }
 
 DBusMessage* Daemon::HandleRequestShutdownMethod(DBusMessage* message) {
