@@ -182,6 +182,19 @@ EOF
   wait_for_modem_reset "${modem}" 40
 }
 
+reset() {
+  $(arg_or_default modem $(default_modem))
+  [ -z "${modem}" ] && error_exit "No modem found."
+
+  if is_mm1_modem "${modem}"; then
+    mmcli -m "${modem}" --reset
+  else
+    dbus_call "${MM}" "${modem}" org.chromium.ModemManager.Modem.Gobi.SoftReset
+  fi
+
+  wait_for_modem_reset "${modem}" 40
+}
+
 status() {
   all_modem_status 2>/dev/null
 }
@@ -333,6 +346,7 @@ usage() {
   echo "  get-prl                                      Current PRL"
   echo "  get-service                                 " \
     "Integer index of data service"
+  echo "  reset [-modem <modem>]                       Reset the modem"
   echo "  set-carrier [-modem <modem>] <carrier-name> " \
     "Set modem carrier firmware"
   echo "  set-madison-config <config-group-name>       Set Madison config group"
@@ -368,6 +382,9 @@ case "${cmd}" in
     ;;
   get-service)
     get_service "$@"
+    ;;
+  reset)
+    reset "$@"
     ;;
   set-carrier)
     set_carrier "$@"
