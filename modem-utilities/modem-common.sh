@@ -191,3 +191,32 @@ default_modem() {
   [ -z "${modem}" ] && modem=$(mm1_modems | head -1)
   echo "${modem}"
 }
+
+# Returns all modem managers that are currently running.
+modem_managers() {
+  dbus_call org.freedesktop.DBus /org/freedesktop/DBus \
+      org.freedesktop.DBus.ListNames | awk '/ModemManager/ { print $2 }'
+}
+
+# Sets the log level of the specified modem manager.
+set_modem_manager_logging() {
+  local manager="$1"
+  local level="$2"
+
+  case "$manager" in
+    org.chromium.ModemManager)
+      dbus_call "${manager}" "${MM_OBJECT}" "${MM_IMANAGER}.SetLogging" \
+        "string:${level}"
+      ;;
+    org.freedesktop.ModemManager1)
+      if [ "${level}" = "error" ]; then
+        level=err
+      fi
+      dbus_call "${manager}" "${MM1_OBJECT}" "${MM1_IMANAGER}.SetLogging" \
+        "string:${level}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}

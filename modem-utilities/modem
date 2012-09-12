@@ -273,6 +273,27 @@ set_carrier() {
     "string:${carrier}"
 }
 
+set_logging() {
+  local level="$1"
+  local manager
+
+  if [ -z "${level}" ]; then
+    echo "Valid logging levels are: debug, info, warn, error"
+    return
+  fi
+
+  case "${level}" in
+    debug|info|warn|error)
+      for manager in $(modem_managers); do
+        set_modem_manager_logging "${manager}" "${level}"
+      done
+      ;;
+    *)
+      error_exit "'${level}' is not a valid logging level."
+      ;;
+  esac
+}
+
 MADISON_CONFIG_GROUP_LOCATION=/var/lib/cromo/madison-config-group
 
 set_madison_config() {
@@ -349,6 +370,7 @@ usage() {
   echo "  reset [-modem <modem>]                       Reset the modem"
   echo "  set-carrier [-modem <modem>] <carrier-name> " \
     "Set modem carrier firmware"
+  echo "  set-logging (debug|info|warn|error)          Set logging level"
   echo "  set-madison-config <config-group-name>       Set Madison config group"
   echo "  start-oma                                   " \
     "Enable and launch OMA session"
@@ -388,6 +410,9 @@ case "${cmd}" in
     ;;
   set-carrier)
     set_carrier "$@"
+    ;;
+  set-logging)
+    set_logging "$@"
     ;;
   set-madison-config)
     set_madison_config "$@"
