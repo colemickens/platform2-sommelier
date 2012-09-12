@@ -4,6 +4,7 @@
 
 #include "shill/link_monitor.h"
 
+#include <string>
 #include <vector>
 
 #include <base/bind.h>
@@ -27,10 +28,10 @@ using std::string;
 
 namespace shill {
 
-const unsigned int LinkMonitor::kTestPeriodMilliseconds = 5000;
+const int LinkMonitor::kTestPeriodMilliseconds = 5000;
 const char LinkMonitor::kDefaultLinkMonitorTechnologies[] = "wifi";
-const unsigned int LinkMonitor::kFailureThreshold = 5;
-const unsigned int LinkMonitor::kMaxResponseSampleFilterDepth = 5;
+const int LinkMonitor::kFailureThreshold = 5;
+const int LinkMonitor::kMaxResponseSampleFilterDepth = 5;
 
 LinkMonitor::LinkMonitor(const ConnectionRefPtr &connection,
                          EventDispatcher *dispatcher,
@@ -47,7 +48,8 @@ LinkMonitor::LinkMonitor(const ConnectionRefPtr &connection,
       is_unicast_(false),
       response_sample_count_(0),
       response_sample_bucket_(0),
-      time_(Time::GetInstance()) {}
+      time_(Time::GetInstance()) {
+}
 
 LinkMonitor::~LinkMonitor() {
   Stop();
@@ -57,7 +59,7 @@ bool LinkMonitor::Start() {
   Stop();
 
   if (!device_info_->GetMACAddress(
-    connection_->interface_index(), &local_mac_address_)) {
+           connection_->interface_index(), &local_mac_address_)) {
     LOG(ERROR) << "Could not get local MAC address.";
     metrics_->NotifyLinkMonitorFailure(
         connection_->technology(),
@@ -68,7 +70,7 @@ bool LinkMonitor::Start() {
   }
   gateway_mac_address_ = ByteString(local_mac_address_.GetLength());
   send_request_callback_.Reset(
-      Bind(&LinkMonitor::SendRequestTask, Unretained(this)));
+      Bind(base::IgnoreResult(&LinkMonitor::SendRequest), Unretained(this)));
   time_->GetTimeMonotonic(&started_monitoring_at_);
   return SendRequest();
 }
@@ -89,13 +91,12 @@ void LinkMonitor::Stop() {
   timerclear(&sent_request_at_);
 }
 
-unsigned int LinkMonitor::GetResponseTimeMilliseconds() const {
+int LinkMonitor::GetResponseTimeMilliseconds() const {
   return response_sample_count_ ?
       response_sample_bucket_ / response_sample_count_ : 0;
 }
 
-void LinkMonitor::AddResponseTimeSample(
-    unsigned int response_time_milliseconds) {
+void LinkMonitor::AddResponseTimeSample(int response_time_milliseconds) {
   SLOG(Link, 2) << "In " << __func__ << " with sample "
                 << response_time_milliseconds << ".";
   metrics_->NotifyLinkMonitorResponseTimeSampleAdded(
@@ -285,10 +286,6 @@ bool LinkMonitor::SendRequest() {
   dispatcher_->PostDelayedTask(send_request_callback_.callback(),
                                kTestPeriodMilliseconds);
   return true;
-}
-
-void LinkMonitor::SendRequestTask() {
-  SendRequest();
 }
 
 }  // namespace shill

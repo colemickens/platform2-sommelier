@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/arp_packet.h"
+#include "shill/byte_string.h"
 #include "shill/ip_address.h"
 #include "shill/logging.h"
 #include "shill/mock_arp_client.h"
@@ -22,6 +23,7 @@
 
 using base::Bind;
 using base::Unretained;
+using std::string;
 using testing::_;
 using testing::AnyNumber;
 using testing::HasSubstr;
@@ -42,7 +44,7 @@ const char kLocalIPAddress[] = "10.0.1.1";
 const uint8 kLocalMACAddress[] = { 0, 1, 2, 3, 4, 5 };
 const char kRemoteIPAddress[] = "10.0.1.2";
 const uint8 kRemoteMACAddress[] = { 6, 7, 8, 9, 10, 11 };
-}  // namespace {}
+}  // namespace
 
 
 class LinkMonitorForTest : public LinkMonitor {
@@ -52,13 +54,17 @@ class LinkMonitorForTest : public LinkMonitor {
                      Metrics *metrics,
                      DeviceInfo *device_info)
       : LinkMonitor(connection, dispatcher, metrics, device_info,
-                    Bind(&LinkMonitorForTest::FailureCallback,
+                    Bind(&LinkMonitorForTest::FailureCallbackHandler,
                          Unretained(this))) {}
 
   virtual ~LinkMonitorForTest() {}
 
   MOCK_METHOD0(CreateClient, bool());
-  MOCK_METHOD0(FailureCallback, void());
+
+  // This does not override any methods in LinkMonitor, but is used here
+  // in unit tests to support expectations when the LinkMonitor notifies
+  // its client of a failure.
+  MOCK_METHOD0(FailureCallbackHandler, void());
 };
 
 MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
@@ -113,7 +119,7 @@ class LinkMonitorTest : public Test {
     }
   }
 
-  void AdvanceTime(unsigned int time_ms) {
+  void AdvanceTime(int time_ms) {
     struct timeval adv_time = {
       static_cast<time_t>(time_ms/1000),
       static_cast<time_t>((time_ms % 1000) * 1000) };
@@ -133,6 +139,10 @@ class LinkMonitorTest : public Test {
     return true;
   }
 
+  string HardwareAddressToString(const ByteString &address) {
+    return LinkMonitor::HardwareAddressToString(address);
+  }
+
  protected:
   void ExpectReset() {
     EXPECT_FALSE(monitor_.GetResponseTimeMilliseconds());
@@ -149,20 +159,20 @@ class LinkMonitorTest : public Test {
   const base::CancelableClosure &GetSendRequestCallback() {
     return monitor_.send_request_callback_;
   }
-  unsigned int GetBroadcastFailureCount() {
+  int GetBroadcastFailureCount() {
     return monitor_.broadcast_failure_count_;
   }
-  unsigned int GetUnicastFailureCount() {
+  int GetUnicastFailureCount() {
     return monitor_.unicast_failure_count_;
   }
   bool IsUnicast() { return monitor_.is_unicast_; }
-  unsigned int GetTestPeriodMilliseconds() {
+  int GetTestPeriodMilliseconds() {
     return LinkMonitor::kTestPeriodMilliseconds;
   }
-  unsigned int GetFailureThreshold() {
+  int GetFailureThreshold() {
     return LinkMonitor::kFailureThreshold;
   }
-  unsigned int GetMaxResponseSampleFilterDepth() {
+  int GetMaxResponseSampleFilterDepth() {
     return LinkMonitor::kMaxResponseSampleFilterDepth;
   }
   void ExpectTransmit(bool is_unicast) {
@@ -312,7 +322,7 @@ TEST_F(LinkMonitorTest, Stop) {
 
 TEST_F(LinkMonitorTest, ReplyReception) {
   StartMonitor();
-  const unsigned int kResponseTime = 1234;
+  const int kResponseTime = 1234;
   AdvanceTime(kResponseTime);
   ScopedMockLog log;
 
@@ -354,7 +364,7 @@ TEST_F(LinkMonitorTest, TimeoutBroadcast) {
   // the LinkMonitorSecondsToFailure independent from the response-time
   // figures.
   const int kTimeIncrement = 1000;
-  for (unsigned int i = 1; i < GetFailureThreshold(); ++i) {
+  for (int i = 1; i < GetFailureThreshold(); ++i) {
     ExpectTransmit(false);
     AdvanceTime(kTimeIncrement);
     TriggerRequestTimer();
@@ -381,7 +391,7 @@ TEST_F(LinkMonitorTest, TimeoutBroadcast) {
       HasSubstr("UnicastErrorsAtFailure"), 0, _, _, _));
   EXPECT_FALSE(GetSendRequestCallback().IsCancelled());
   ExpectNoTransmit();
-  EXPECT_CALL(monitor_, FailureCallback());
+  EXPECT_CALL(monitor_, FailureCallbackHandler());
   AdvanceTime(kTimeIncrement);
   TriggerRequestTimer();
   ExpectReset();
@@ -398,7 +408,7 @@ TEST_F(LinkMonitorTest, TimeoutUnicast) {
       HasSubstr("LinkMonitorResponseTimeSample"), GetTestPeriodMilliseconds(),
       _, _, _)).Times(GetFailureThreshold());
   ReceiveCorrectResponse();
-  for (unsigned int i = 1; i < GetFailureThreshold(); ++i) {
+  for (int i = 1; i < GetFailureThreshold(); ++i) {
     // Failed unicast ARP.
     ExpectTransmit(true);
     TriggerRequestTimer();
@@ -431,22 +441,22 @@ TEST_F(LinkMonitorTest, TimeoutUnicast) {
       HasSubstr("UnicastErrorsAtFailure"), GetFailureThreshold(), _, _, _));
   EXPECT_FALSE(GetSendRequestCallback().IsCancelled());
   ExpectNoTransmit();
-  EXPECT_CALL(monitor_, FailureCallback());
+  EXPECT_CALL(monitor_, FailureCallbackHandler());
   TriggerRequestTimer();
   ExpectReset();
 }
 
 TEST_F(LinkMonitorTest, Average) {
-  const unsigned int kSamples[] = { 200, 950, 1200, 4096, 5000,
-                                   86, 120, 3060, 842, 750 };
-  const unsigned int filter_depth = GetMaxResponseSampleFilterDepth();
+  const int kSamples[] = { 200, 950, 1200, 4096, 5000,
+                           86, 120, 3060, 842, 750 };
+  const size_t filter_depth = GetMaxResponseSampleFilterDepth();
   EXPECT_CALL(metrics_, SendToUMA(
       HasSubstr("LinkMonitorResponseTimeSample"), _, _, _, _))
       .Times(arraysize(kSamples));
   ASSERT_GT(arraysize(kSamples), filter_depth);
   StartMonitor();
-  unsigned int i = 0;
-  unsigned int sum = 0;
+  size_t i = 0;
+  int sum = 0;
   for (; i < filter_depth; ++i) {
     AdvanceTime(kSamples[i]);
     ReceiveCorrectResponse();
@@ -464,14 +474,14 @@ TEST_F(LinkMonitorTest, Average) {
 }
 
 TEST_F(LinkMonitorTest, ImpulseResponse) {
-  const unsigned int kNormalValue = 50;
-  const unsigned int kExceptionalValue = 5000;
-  const unsigned int filter_depth = GetMaxResponseSampleFilterDepth();
+  const int kNormalValue = 50;
+  const int kExceptionalValue = 5000;
+  const int filter_depth = GetMaxResponseSampleFilterDepth();
   EXPECT_CALL(metrics_, SendToUMA(
       HasSubstr("LinkMonitorResponseTimeSample"), _, _, _, _))
       .Times(AnyNumber());
   StartMonitor();
-  for (unsigned int i = 0; i < filter_depth * 2; ++i) {
+  for (int i = 0; i < filter_depth * 2; ++i) {
     AdvanceTime(kNormalValue);
     ReceiveCorrectResponse();
     EXPECT_EQ(kNormalValue, monitor_.GetResponseTimeMilliseconds());
@@ -481,16 +491,16 @@ TEST_F(LinkMonitorTest, ImpulseResponse) {
   ReceiveCorrectResponse();
   // Our expectation is that an impulse input will be a
   // impulse_height / (filter_depth + 1) increase to the running average.
-  unsigned int expected_impulse_response =
+  int expected_impulse_response =
       kNormalValue + (kExceptionalValue - kNormalValue) / (filter_depth + 1);
   EXPECT_EQ(expected_impulse_response, monitor_.GetResponseTimeMilliseconds());
   SendNextRequest();
 
   // From here, if we end up continuing to receive normal values, our
   // running average should decay backwards to the normal value.
-  const unsigned int failsafe = 100;
-  unsigned int last_value = monitor_.GetResponseTimeMilliseconds();
-  for (unsigned int i = 0; i < failsafe && last_value != kNormalValue; ++i) {
+  const int failsafe = 100;
+  int last_value = monitor_.GetResponseTimeMilliseconds();
+  for (int i = 0; i < failsafe && last_value != kNormalValue; ++i) {
     AdvanceTime(kNormalValue);
     ReceiveCorrectResponse();
     // We should advance monotonically (but not necessarily linearly)
@@ -500,6 +510,15 @@ TEST_F(LinkMonitorTest, ImpulseResponse) {
     last_value = monitor_.GetResponseTimeMilliseconds();
   }
   EXPECT_EQ(kNormalValue, last_value);
+}
+
+TEST_F(LinkMonitorTest, HardwareAddressToString) {
+  const uint8 address0[] = { 0, 1, 2, 3, 4, 5 };
+  EXPECT_EQ("00:01:02:03:04:05",
+            HardwareAddressToString(ByteString(address0, arraysize(address0))));
+  const uint8 address1[] = { 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd };
+  EXPECT_EQ("88:99:aa:bb:cc:dd",
+            HardwareAddressToString(ByteString(address1, arraysize(address1))));
 }
 
 }  // namespace shill

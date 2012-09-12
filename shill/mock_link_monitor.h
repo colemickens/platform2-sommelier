@@ -18,7 +18,7 @@ class MockLinkMonitor : public LinkMonitor {
 
   MOCK_METHOD0(Start, bool());
   MOCK_METHOD0(Stop, void());
-  MOCK_CONST_METHOD0(GetResponseTimeMilliseconds, unsigned int());
+  MOCK_CONST_METHOD0(GetResponseTimeMilliseconds, int());
   MOCK_CONST_METHOD0(IsGatewayFound, bool());
 
   DISALLOW_COPY_AND_ASSIGN(MockLinkMonitor);

@@ -197,17 +197,17 @@ class Metrics {
   // LinkMonitor statistics.
   static const char kMetricLinkMonitorFailure[];
   static const char kMetricLinkMonitorResponseTimeSample[];
-  static const unsigned int kMetricLinkMonitorResponseTimeSampleMin;
-  static const unsigned int kMetricLinkMonitorResponseTimeSampleMax;
+  static const int kMetricLinkMonitorResponseTimeSampleMin;
+  static const int kMetricLinkMonitorResponseTimeSampleMax;
   static const int kMetricLinkMonitorResponseTimeSampleNumBuckets;
   static const char kMetricLinkMonitorSecondsToFailure[];
-  static const unsigned int kMetricLinkMonitorSecondsToFailureMin;
-  static const unsigned int kMetricLinkMonitorSecondsToFailureMax;
+  static const int kMetricLinkMonitorSecondsToFailureMin;
+  static const int kMetricLinkMonitorSecondsToFailureMax;
   static const int kMetricLinkMonitorSecondsToFailureNumBuckets;
   static const char kMetricLinkMonitorBroadcastErrorsAtFailure[];
   static const char kMetricLinkMonitorUnicastErrorsAtFailure[];
-  static const unsigned int kMetricLinkMonitorErrorCountMin;
-  static const unsigned int kMetricLinkMonitorErrorCountMax;
+  static const int kMetricLinkMonitorErrorCountMin;
+  static const int kMetricLinkMonitorErrorCountMax;
   static const int kMetricLinkMonitorErrorCountNumBuckets;
 
   static const char kMetricLinkClientDisconnectReason[];
@@ -268,15 +268,15 @@ class Metrics {
   void NotifyLinkMonitorFailure(
       Technology::Identifier technology,
       LinkMonitorFailure failure,
-      unsigned int seconds_to_failure,
-      unsigned int broadcast_error_count,
-      unsigned int unicast_error_count);
+      int seconds_to_failure,
+      int broadcast_error_count,
+      int unicast_error_count);
 
   // Notifies this object that LinkMonitor has added a response time sample
   // for |connection| with a value of |response_time_milliseconds|.
   void NotifyLinkMonitorResponseTimeSampleAdded(
       Technology::Identifier technology,
-      unsigned int response_time_milliseconds);
+      int response_time_milliseconds);
 
   // Notifies this object of WiFi disconnect.
   void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
