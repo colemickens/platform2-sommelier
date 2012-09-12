@@ -456,6 +456,11 @@ class Daemon : public BacklightControllerObserver,
   // buzzing sound when suspended.
   bool ShouldStayAwakeForHeadphoneJack();
 
+  // Attempts to connect to ChromeOS audio server.  Used in glib main loop.
+  // Returns TRUE if it does not connect, so it tries again.
+  // Returns FALSE if it successfully connected, so it stops trying.
+  SIGNAL_CALLBACK_0(Daemon, gboolean, ConnectToCras);
+
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
@@ -557,6 +562,10 @@ class Daemon : public BacklightControllerObserver,
 
   // Chrome OS audio server client.  Used to check if headphone jack is plugged.
   cras_client* cras_client_;
+
+  // Indicates whether the cras client has connected to cras server and is up
+  // and running.
+  bool connected_to_cras_;
 
   // String that indicates reason for shutting down.  See power_constants.cc for
   // valid values.

@@ -71,6 +71,9 @@ std::set<std::string> kValidStates(
 // Minimum time a user must be idle to have returned from idle
 const int64 kMinTimeForIdle = 10;
 
+// Delay before retrying connecting to ChromeOS audio server.
+const int64 kCrasRetryConnectMs = 1000;
+
 }  // namespace
 
 namespace power_manager {
@@ -123,19 +126,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       state_control_(new StateControl(this)),
       poll_power_supply_timer_id_(0),
       is_projecting_(false),
+      connected_to_cras_(false),
       shutdown_reason_(kShutdownReasonUnknown) {
-  // Create a client and connect it to the CRAS server.
-  if (cras_client_create(&cras_client_)) {
-    LOG(WARNING) << "Couldn't create CRAS client.";
-    cras_client_ = NULL;
-  }
-  if (cras_client_connect(cras_client_) ||
-      cras_client_run_thread(cras_client_)) {
-    LOG(WARNING) << "Couldn't connect CRAS client.";
-    cras_client_destroy(cras_client_);
-    cras_client_ = NULL;
-  }
-
   idle_->AddObserver(this);
 }
 
@@ -145,7 +137,8 @@ Daemon::~Daemon() {
   idle_->RemoveObserver(this);
 
   if (cras_client_) {
-    cras_client_stop(cras_client_);
+    if (connected_to_cras_)
+      cras_client_stop(cras_client_);
     cras_client_destroy(cras_client_);
   }
 }
@@ -173,6 +166,19 @@ void Daemon::Init() {
                       &time_to_full_average_);
   file_tagger_.Init();
   backlight_controller_->SetObserver(this);
+
+  // Create a client and connect it to the CRAS server.
+  if (cras_client_create(&cras_client_)) {
+    LOG(WARNING) << "Couldn't create CRAS client.";
+    cras_client_ = NULL;
+  }
+  if (cras_client_connect(cras_client_) ||
+      cras_client_run_thread(cras_client_)) {
+    LOG(WARNING) << "Couldn't connect CRAS client, trying again later.";
+    g_timeout_add(kCrasRetryConnectMs, ConnectToCrasThunk, this);
+  } else {
+    connected_to_cras_ = true;
+  }
 
   // TODO(crosbug.com/31927): Send a signal to announce that powerd has started.
   // This is necessary for receiving external display projection status from
@@ -1686,6 +1692,17 @@ bool Daemon::ShouldStayAwakeForHeadphoneJack() {
     return true;
 #endif
   return false;
+}
+
+gboolean Daemon::ConnectToCras() {
+  if (cras_client_connect(cras_client_) ||
+      cras_client_run_thread(cras_client_)) {
+    LOG(WARNING) << "Couldn't connect CRAS client, trying again later.";
+    return TRUE;
+  }
+  LOG(INFO) << "CRAS client successfully connected to CRAS server.";
+  connected_to_cras_ = true;
+  return FALSE;
 }
 
 }  // namespace power_manager
