@@ -38,7 +38,7 @@ class MockSystemUtils : public SystemUtils {
                                      const char*));
   MOCK_METHOD2(SendSignalToChromium, void(const char*, const char*));
   MOCK_METHOD2(SendStatusSignalToChromium, void(const char*, bool));
-  MOCK_METHOD1(SendSignalToPowerManager, void(const char*));
+  MOCK_METHOD1(CallMethodOnPowerManager, void(const char*));
   MOCK_CONST_METHOD1(AppendToClobberLog, void(const char*));
   MOCK_METHOD3(SetAndSendGError, void(ChromeOSLoginError,
                                       DBusGMethodInvocation*,

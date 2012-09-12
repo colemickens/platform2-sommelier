@@ -592,7 +592,8 @@ TEST_F(SessionManagerDBusTest, StartDeviceWipeAlreadyLoggedIn) {
   EXPECT_CALL(utils_, Exists(logged_in_path))
     .WillOnce(Return(true));
   GError *error = NULL;
-  EXPECT_EQ(FALSE, manager_->StartDeviceWipe(&error));
+  gboolean done = FALSE;
+  EXPECT_EQ(FALSE, manager_->StartDeviceWipe(&done, &error));
 }
 
 TEST_F(SessionManagerDBusTest, StartDeviceWipe) {
@@ -604,9 +605,11 @@ TEST_F(SessionManagerDBusTest, StartDeviceWipe) {
     .WillOnce(Return(false));
   EXPECT_CALL(utils_, AtomicFileWrite(reset_path, _, _))
     .WillOnce(Return(true));
-  EXPECT_CALL(utils_, SendSignalToPowerManager(_))
+  EXPECT_CALL(utils_, CallMethodOnPowerManager(_))
     .WillOnce(Return());
-  EXPECT_EQ(TRUE, manager_->StartDeviceWipe(NULL));
+  gboolean done = FALSE;
+  EXPECT_EQ(TRUE, manager_->StartDeviceWipe(&done, NULL));
+  EXPECT_TRUE(done);
 }
 
 }  // namespace login_manager

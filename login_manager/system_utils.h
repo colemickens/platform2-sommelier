@@ -97,7 +97,7 @@ class SystemUtils {
   // http://code.google.com/p/chromium-os/issues/detail?id=5929
   //
   // Sends |signal_name| to power manager.
-  virtual void SendSignalToPowerManager(const char* signal_name);
+  virtual void CallMethodOnPowerManager(const char* method_name);
 
   // Makes a best-effort attempt to append |msg| to the system log that is
   // persisted across stateful partition wipes.
@@ -126,6 +126,13 @@ class SystemUtils {
   static void SendSignalTo(const char* interface,
                            const char* signal_name,
                            const char* payload);
+
+  // Call |interface|.|method_name| on object |path| provided by service
+  // |destination| with no arguments. Blocks until the called method returns.
+  static void CallMethodOn(const char* destination,
+                           const char* path,
+                           const char* interface,
+                           const char* method_name);
 
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);
 };

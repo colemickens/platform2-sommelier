@@ -155,8 +155,11 @@ void SystemUtils::SendStatusSignalToChromium(const char* signal_name,
                status ? kSignalSuccess : kSignalFailure);
 }
 
-void SystemUtils::SendSignalToPowerManager(const char* signal_name) {
-  SendSignalTo(power_manager::kPowerManagerInterface, signal_name, NULL);
+void SystemUtils::CallMethodOnPowerManager(const char* method_name) {
+  CallMethodOn(power_manager::kPowerManagerServiceName,
+               power_manager::kPowerManagerServicePath,
+               power_manager::kPowerManagerInterface,
+               method_name);
 }
 
 void SystemUtils::SendSignalTo(const char* interface,
@@ -178,6 +181,23 @@ void SystemUtils::SendSignalTo(const char* interface,
   }
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   ::dbus_message_unref(signal);
+}
+
+void SystemUtils::CallMethodOn(const char* destination,
+                               const char* path,
+                               const char* interface,
+                               const char* method_name) {
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              destination, path, interface);
+  if (!proxy) {
+    LOG(ERROR) << "No proxy; can't call " << interface << "." << method_name;
+    return;
+  }
+  GError* error = NULL;
+  ::dbus_g_proxy_call(proxy.gproxy(), method_name, &error, G_TYPE_INVALID,
+                      G_TYPE_INVALID);
+  if (error)
+    LOG(ERROR) << interface << "." << path << " failed: " << error->message;
 }
 
 void SystemUtils::AppendToClobberLog(const char* msg) const {

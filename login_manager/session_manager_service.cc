@@ -1239,7 +1239,8 @@ bool SessionManagerService::IsValidCookie(const char *cookie) {
   return chromeos::SafeMemcmp(cookie, cookie_.data(), len) == 0;
 }
 
-gboolean SessionManagerService::StartDeviceWipe(GError** error) {
+gboolean SessionManagerService::StartDeviceWipe(gboolean* OUT_done,
+                                                GError** error) {
   const char *contents = "fast safe";
   const FilePath reset_path(kResetFile);
   const FilePath session_path(kLoggedInFlag);
@@ -1250,7 +1251,8 @@ gboolean SessionManagerService::StartDeviceWipe(GError** error) {
     return FALSE;
   }
   system_->AtomicFileWrite(reset_path, contents, strlen(contents));
-  system_->SendSignalToPowerManager(power_manager::kRequestRestartSignal);
+  system_->CallMethodOnPowerManager(power_manager::kRequestRestartSignal);
+  *OUT_done = TRUE;
   return TRUE;
 }
 

@@ -97,6 +97,7 @@ gboolean session_manager_stop_session_service(SessionManager *self,
                                               gboolean *OUT_done,
                                               GError **error);
 gboolean session_manager_start_device_wipe(SessionManager *self,
+                                           gboolean *OUT_done,
                                            GError **error);
 }  // namespace gobject
 }  // namespace login_manager

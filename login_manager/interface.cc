@@ -163,8 +163,9 @@ gboolean session_manager_stop_session_service(SessionManager *self,
 }
 
 gboolean session_manager_start_device_wipe(SessionManager *self,
+                                           gboolean *OUT_done,
                                            GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(StartDeviceWipe, error);
+  SESSION_MANAGER_WRAP_METHOD(StartDeviceWipe, OUT_done, error);
 }
 
 #undef SESSION_MANAGER_WRAP_METHOD

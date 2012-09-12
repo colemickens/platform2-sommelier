@@ -328,7 +328,10 @@ class SessionManagerService
                               gboolean* OUT_done,
                               GError** error);
 
-  gboolean StartDeviceWipe(GError** error);
+  // Starts a wipe of the device by touching a flag file, then rebooting to
+  // allow early-boot code to wipe parts of stateful we need wiped. Have a look
+  // at /src/platform/init/chromeos_startup for the gory details.
+  gboolean StartDeviceWipe(gboolean *OUT_done, GError** error);
 
   // Manage per-session services, which die when the session ends.
   gboolean StartSessionService(gchar *name, gboolean *OUT_done, GError **error);
