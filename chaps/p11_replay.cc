@@ -539,6 +539,7 @@ int main(int argc, char** argv) {
     PrintTicks(&start_ticks);
   } else if (inject) {
     InjectKeyPair(session, key_size_bits, label);
+    PrintTicks(&start_ticks);
   } else if (import) {
     vector<uint8_t> object_id;
     if (!base::HexStringToBytes(cl->GetSwitchValueASCII("id"), &object_id)) {
@@ -567,6 +568,7 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Invalid token type.";
       exit(-1);
     }
+    PrintTicks(&start_ticks);
   }
   if (list_objects) {
     vector<CK_OBJECT_HANDLE> objects;
