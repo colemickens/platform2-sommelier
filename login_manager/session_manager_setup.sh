@@ -285,7 +285,11 @@ fi
 
 TOUCHUI_FLAGS=
 if use_flag_is_set touchui; then
-  TOUCHUI_FLAGS="--enable-touch-calibration --enable-touch-events"
+  TOUCHUI_FLAGS="
+    --enable-touch-calibration
+    --enable-touch-events
+    --disable-gesture-tap-highlight
+  "
 fi
 
 # Device Manager Server used to fetch the enterprise policy, if applicable.
