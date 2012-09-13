@@ -232,7 +232,6 @@ class Daemon : public BacklightControllerObserver,
   bool HandleSessionManagerSessionStateChangedSignal(DBusMessage* message);
   bool HandleSessionManagerScreenIsLockedSignal(DBusMessage* message);
   bool HandleSessionManagerScreenIsUnlockedSignal(DBusMessage* message);
-  bool HandleStateOverrideCancelSignal(DBusMessage* message);
   DBusMessage* HandleRequestShutdownMethod(DBusMessage* message);
   DBusMessage* HandleRequestRestartMethod(DBusMessage* message);
   DBusMessage* HandleDecreaseScreenBrightnessMethod(DBusMessage* message);
@@ -245,6 +244,7 @@ class Daemon : public BacklightControllerObserver,
   DBusMessage* HandleRequestIdleNotificationMethod(DBusMessage* message);
   DBusMessage* HandleGetPowerSupplyPropertiesMethod(DBusMessage* message);
   DBusMessage* HandleStateOverrideRequestMethod(DBusMessage* message);
+  DBusMessage* HandleStateOverrideCancelMethod(DBusMessage* message);
   DBusMessage* HandleVideoActivityMethod(DBusMessage* message);
   DBusMessage* HandleUserActivityMethod(DBusMessage* message);
   DBusMessage* HandleSetIsProjectingMethod(DBusMessage* message);

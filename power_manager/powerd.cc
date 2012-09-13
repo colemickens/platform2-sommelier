@@ -834,8 +834,6 @@ void Daemon::RegisterDBusMessageHandler() {
   AddDBusSignalHandler(login_manager::kSessionManagerInterface,
                        login_manager::kScreenIsUnlockedSignal,
                        &Daemon::HandleSessionManagerScreenIsUnlockedSignal);
-  AddDBusSignalHandler(kPowerManagerInterface, kStateOverrideCancel,
-                       &Daemon::HandleStateOverrideCancelSignal);
   CHECK(dbus_connection_add_filter(
       connection, &MainDBusSignalHandler, this, NULL));
 
@@ -863,6 +861,8 @@ void Daemon::RegisterDBusMessageHandler() {
                        &Daemon::HandleGetPowerSupplyPropertiesMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kStateOverrideRequest,
                        &Daemon::HandleStateOverrideRequestMethod);
+  AddDBusMethodHandler(kPowerManagerInterface, kStateOverrideCancel,
+                       &Daemon::HandleStateOverrideCancelMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kHandleVideoActivityMethod,
                        &Daemon::HandleVideoActivityMethod);
   AddDBusMethodHandler(kPowerManagerInterface, kHandleUserActivityMethod,
@@ -978,22 +978,6 @@ bool Daemon::HandleSessionManagerScreenIsUnlockedSignal(
     DBusMessage* message) {
   LOG(INFO) << "HandleSessionManagerScreenIsUnlockedSignal";
   locker_.set_locked(false);
-  return true;
-}
-
-bool Daemon::HandleStateOverrideCancelSignal(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-  int request_id;
-  if (dbus_message_get_args(message, &error,
-                            DBUS_TYPE_INT32, &request_id,
-                            DBUS_TYPE_INVALID)) {
-    state_control_->RemoveOverrideAndUpdate(request_id);
-  } else {
-    LOG(WARNING) << kStateOverrideCancel << ": Error reading args: "
-                 << error.message;
-    dbus_error_free(&error);
-  }
   return true;
 }
 
@@ -1199,6 +1183,24 @@ DBusMessage* Daemon::HandleStateOverrideRequestMethod(DBusMessage* message) {
     error.message;
   return util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
                                     "Invalid arguments passed to method");
+}
+
+DBusMessage* Daemon::HandleStateOverrideCancelMethod(DBusMessage* message) {
+  DBusError error;
+  dbus_error_init(&error);
+  int request_id;
+  if (dbus_message_get_args(message, &error,
+                            DBUS_TYPE_INT32, &request_id,
+                            DBUS_TYPE_INVALID)) {
+    state_control_->RemoveOverrideAndUpdate(request_id);
+  } else {
+    LOG(WARNING) << kStateOverrideCancel << ": Error reading args: "
+                 << error.message;
+    dbus_error_free(&error);
+    return util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
+                                      "Invalid arguments passed to method");
+  }
+  return NULL;
 }
 
 DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
