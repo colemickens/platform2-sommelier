@@ -297,7 +297,8 @@ class Daemon : public BacklightControllerObserver,
                         RollingAverage* full_average);
 
   // Checks for extremely low battery condition.
-  void OnLowBattery(int64 time_remaining_s);
+  void OnLowBattery(int64 time_threshold_s,
+                    int64 time_remaining_s);
 
   // Timeout handler for clean shutdown. If we don't hear back from
   // clean shutdown because the stopping is taking too long or hung,
@@ -464,7 +465,8 @@ class Daemon : public BacklightControllerObserver,
   ActivityDetectorInterface* audio_detector_;
   IdleDetector* idle_;
   KeyboardBacklightController* keyboard_controller_;  // non-owned
-  int64 low_battery_suspend_time_s_;
+  int64 low_battery_shutdown_time_s_;
+  double low_battery_shutdown_percent_;
   int64 sample_window_max_;
   int64 sample_window_min_;
   int64 sample_window_diff_;

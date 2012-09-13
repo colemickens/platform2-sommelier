@@ -318,7 +318,8 @@ TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
   // Set prefs that are read by ReadSettings().  Use 0 for ones that we don't
   // care about. Setting the window tapering prefs to sane values so the checks
   // for them don't get tripped.
-  prefs_.SetInt64(kLowBatterySuspendTimePref, 0);
+  prefs_.SetInt64(kLowBatteryShutdownTimePref, 1);
+  prefs_.SetInt64(kLowBatteryShutdownPercentPref, 0);
   prefs_.SetInt64(kSampleWindowMaxPref, kSampleWindowMax);
   prefs_.SetInt64(kSampleWindowMinPref, kSampleWindowMin);
   prefs_.SetInt64(kTaperTimeMaxPref, kTaperTimeMax);
@@ -880,8 +881,10 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
   status_.line_power_on = false;
   status_.is_calculating_battery_time = false;
   status_.battery_time_to_empty = kBatteryTime;
+  daemon_.low_battery_shutdown_time_s_ = kThresholdTime;
+  daemon_.low_battery_shutdown_percent_ = 0.0;
 
-  empty_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
+  empty_average_.ExpectAddSample(kAdjustedBatteryTime, kAdjustedBatteryTime);
   full_average_.ExpectClear();
   empty_average_.ExpectChangeWindowSize(1);
   full_average_.ExpectGetAverage(0);
@@ -897,7 +900,9 @@ TEST_F(DaemonTest, UpdateAveragedTimesWithSetThreshold) {
   status_.line_power_on = false;
   status_.is_calculating_battery_time = false;
   status_.battery_time_to_empty = kBatteryTime;
-  daemon_.low_battery_suspend_time_s_ = kThresholdTime;
+  daemon_.low_battery_shutdown_time_s_ = kThresholdTime;
+  daemon_.low_battery_shutdown_percent_ = 0.0;
+
   empty_average_.ExpectAddSample(kAdjustedBatteryTime, kAdjustedBatteryTime);
   full_average_.ExpectClear();
   empty_average_.ExpectChangeWindowSize(1);
