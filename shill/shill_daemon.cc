@@ -87,6 +87,12 @@ void Daemon::Quit() {
 
 void Daemon::TerminationActionsCompleted(const Error & error) {
   SLOG(Daemon, 1) << "Finished termination actions.  Result: " << error;
+  Metrics::TerminationActionResult result = error.IsSuccess() ?
+      Metrics::kTerminationActionSuccess :
+      Metrics::kTerminationActionFailure;
+  metrics_.SendEnumToUMA(Metrics::kMetricTerminationActionResult,
+                         result,
+                         Metrics::kTerminationActionResultMax);
   dispatcher_.PostTask(MessageLoop::QuitClosure());
 }
 

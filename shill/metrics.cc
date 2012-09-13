@@ -82,6 +82,9 @@ const int Metrics::kMetricPortalAttemptsToOnlineNumBuckets = 10;
 
 const char Metrics::kMetricPortalResult[] = "Network.Shill.%s.PortalResult";
 
+const char Metrics::kMetricTerminationActionResult[] =
+    "Network.Shill.TerminationActionResult";
+
 // static
 const uint16 Metrics::kWiFiBandwidth5MHz = 5;
 const uint16 Metrics::kWiFiBandwidth20MHz = 20;

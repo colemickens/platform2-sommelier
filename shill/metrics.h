@@ -139,6 +139,12 @@ class Metrics {
     kDisconnectedNotByAp
   };
 
+  enum TerminationActionResult {
+    kTerminationActionSuccess,
+    kTerminationActionFailure,
+    kTerminationActionResultMax
+  };
+
   static const char kMetricDisconnect[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -208,6 +214,9 @@ class Metrics {
   static const char kMetricLinkApDisconnectReason[];
   static const char kMetricLinkClientDisconnectType[];
   static const char kMetricLinkApDisconnectType[];
+
+  // Shill termination action statistics.
+  static const char kMetricTerminationActionResult[];
 
   Metrics();
   virtual ~Metrics();
