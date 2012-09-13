@@ -441,7 +441,8 @@ void Cellular::OnConnected() {
     VLOG(2) << "Already connected";
     return;
   }
-  Closure start_cb = Bind(&Cellular::StartTermination, this);
+  Closure start_cb = Bind(&Cellular::StartTermination,
+                          weak_ptr_factory_.GetWeakPtr());
   manager()->AddTerminationAction(FriendlyName(), start_cb);
   SetState(kStateConnected);
   if (!capability_->AllowRoaming() &&
