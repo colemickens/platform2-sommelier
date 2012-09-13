@@ -17,6 +17,13 @@ using std::string;
 using std::vector;
 using testing::Test;
 
+// TODO(benchan): Remove this workaround after finishing glib 2.32 migration.
+#ifdef GLIB_VERSION_2_32
+#define KEY_FILE_EXTRA_NEW_LINE
+#else
+#define KEY_FILE_EXTRA_NEW_LINE "\n"
+#endif
+
 namespace shill {
 
 namespace {
@@ -194,7 +201,7 @@ TEST_F(KeyFileStoreTest, DeleteKey) {
   EXPECT_TRUE(store_.DeleteKey(kGroup, "random-key"));
   EXPECT_FALSE(store_.DeleteKey("random-group", kKeyAlive));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf("\n"
+  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
                                "[%s]\n"
                                "%s=%d\n",
                                kGroup, kKeyAlive, kValueAlive),
@@ -214,7 +221,7 @@ TEST_F(KeyFileStoreTest, DeleteGroup) {
   EXPECT_TRUE(store_.DeleteGroup(kGroupB));
   EXPECT_TRUE(store_.DeleteGroup("group-d"));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf("\n"
+  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
                                "[%s]\n"
                                "\n"
                                "[%s]\n",
@@ -249,7 +256,7 @@ TEST_F(KeyFileStoreTest, SetString) {
   ASSERT_TRUE(store_.SetString(kGroup, kKey1, kValue1));
   ASSERT_TRUE(store_.SetString(kGroup, kKey2, kValue2));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf("\n"
+  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
                                "[%s]\n"
                                "%s=%s\n"
                                "%s=%s\n",
@@ -296,7 +303,7 @@ TEST_F(KeyFileStoreTest, SetBool) {
   ASSERT_TRUE(store_.SetBool(kGroup, kKeyTrue, true));
   ASSERT_TRUE(store_.SetBool(kGroup, kKeyFalse, false));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf("\n"
+  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
                                "[%s]\n"
                                "%s=true\n"
                                "%s=false\n",
@@ -351,7 +358,7 @@ TEST_F(KeyFileStoreTest, SetInt) {
   ASSERT_TRUE(store_.SetInt(kGroup, kKey1, kValue1));
   ASSERT_TRUE(store_.SetInt(kGroup, kKey2, kValue2));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf("\n"
+  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
                                "[%s]\n"
                                "%s=%d\n"
                                "%s=%d\n",
@@ -398,7 +405,7 @@ TEST_F(KeyFileStoreTest, SetUint64) {
   ASSERT_TRUE(store_.Open());
   ASSERT_TRUE(store_.SetUint64(kGroup, kKey, kValue));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf("\n"
+  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
                                "[%s]\n"
                                "%s=%s\n",
                                kGroup, kKey,
@@ -505,7 +512,7 @@ TEST_F(KeyFileStoreTest, SetStringList) {
     ASSERT_TRUE(store_.SetStringList(kGroup, kKeyValues, value));
   }
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf("\n"
+  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
                                "[%s]\n"
                                "%s=\n"
                                "%s=;%s;\n"
@@ -543,7 +550,7 @@ TEST_F(KeyFileStoreTest, SetCryptedString) {
   ASSERT_TRUE(store_.Open());
   ASSERT_TRUE(store_.SetCryptedString(kGroup, kKey, kPlainText));
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf("\n"
+  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
                                "[%s]\n"
                                "%s=%s\n",
                                kGroup, kKey, kROT47Text),
@@ -763,7 +770,7 @@ TEST_F(KeyFileStoreTest, Combo) {
   }
 
   ASSERT_TRUE(store_.Close());
-  EXPECT_EQ(base::StringPrintf("\n"
+  EXPECT_EQ(base::StringPrintf(KEY_FILE_EXTRA_NEW_LINE
                                "[%s]\n"
                                "%s=%s;\n"
                                "%s=%d\n"
