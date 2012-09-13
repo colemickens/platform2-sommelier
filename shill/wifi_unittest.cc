@@ -1593,6 +1593,19 @@ TEST_F(WiFiMainTest, ScanHidden) {
   dispatcher_.DispatchPendingEvents();
 }
 
+TEST_F(WiFiMainTest, ScanWiFiDisabledAfterResume) {
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, EndsWith(
+      "Ignoring scan request while device is not enabled."))).Times(1);
+  EXPECT_CALL(*supplicant_interface_proxy_, Scan(_)).Times(0);
+  StartWiFi();
+  StopWiFi();
+  // A scan is queued when WiFi resumes.
+  OnAfterResume();
+  dispatcher_.DispatchPendingEvents();
+}
+
 TEST_F(WiFiMainTest, InitialSupplicantState) {
   EXPECT_EQ(WiFi::kInterfaceStateUnknown, GetSupplicantState());
 }

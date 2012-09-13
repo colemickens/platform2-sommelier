@@ -1061,6 +1061,14 @@ void WiFi::ScanDoneTask() {
 
 void WiFi::ScanTask() {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " scan requested.";
+  if (!enabled()) {
+    SLOG(WiFi, 2) << "Ignoring scan request while device is not enabled.";
+    return;
+  }
+  if (!supplicant_present_ || !supplicant_interface_proxy_.get()) {
+    SLOG(WiFi, 2) << "Ignoring scan request while supplicant is not present.";
+    return;
+  }
   map<string, DBus::Variant> scan_args;
   scan_args[wpa_supplicant::kPropertyScanType].writer().
       append_string(wpa_supplicant::kScanTypeActive);
