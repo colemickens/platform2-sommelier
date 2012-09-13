@@ -253,6 +253,9 @@ class WiFi : public Device {
       uint16(WiFi::*get)(Error *error),
       void(WiFi::*set)(const uint16 &value, Error *error));
 
+  // Remove a network entry from wpa_supplicant, and catch any exception
+  // that occurs.  Returns false if an exception occurred, true otherwise.
+  bool RemoveNetwork(const ::DBus::Path &network);
   // Restart fast scanning after disconnection.
   void RestartFastScanAttempts();
   // Schedules a scan attempt at time |scan_interval_seconds_| in the

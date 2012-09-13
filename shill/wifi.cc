@@ -381,13 +381,22 @@ void WiFi::DisconnectFrom(WiFiService *service) {
                    << service->friendly_name() << ": "
                    << "could not find supplicant network to disable.";
     } else {
-      supplicant_interface_proxy_->RemoveNetwork(rpcid_it->second);
+      RemoveNetwork(rpcid_it->second);
     }
     current_service_ = NULL;
   }
 
   CHECK(current_service_ == NULL ||
         current_service_.get() != pending_service_.get());
+}
+
+bool WiFi::RemoveNetwork(const ::DBus::Path &network) {
+  try {
+    supplicant_interface_proxy_->RemoveNetwork(network);
+  } catch (const DBus::Error &e) {  // NOLINT
+    return false;
+  }
+  return true;
 }
 
 bool WiFi::IsIdle() const {
@@ -592,7 +601,9 @@ void WiFi::HandleDisconnect() {
   } else {
     // TODO(quiche): Reconsider giving up immediately. Maybe give
     // wpa_supplicant some time to retry, first.
-    supplicant_interface_proxy_->RemoveNetwork(rpcid_it->second);
+    if (!RemoveNetwork(rpcid_it->second)) {
+      LOG(FATAL) << "RemoveNetwork for " << rpcid_it->second << " failed.";
+    }
   }
 
   SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "

@@ -92,7 +92,8 @@ void SupplicantInterfaceProxy::RemoveNetwork(const ::DBus::Path &network) {
   try {
     return proxy_.RemoveNetwork(network);
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
   }
 }
 
