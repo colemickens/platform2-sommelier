@@ -58,10 +58,16 @@ static const int kNumOfSessionsPerCharge = 100;
 static const int64 kBatteryTime = 23;
 static const int64 kThresholdTime = 7;
 static const int64 kAdjustedBatteryTime = kBatteryTime - kThresholdTime;
-static const int64 kRollingAverageTaperTimeMid =
-    kRollingAverageTaperTimeMin + kRollingAverageTaperTimeDiff/2;
-static const unsigned int kRollingAverageSampleWindowMid =
-    kRollingAverageSampleWindowMin + kRollingAverageSampleWindowDiff/2;
+static const unsigned int kSampleWindowMax = 10;
+static const unsigned int kSampleWindowMin = 1;
+static const unsigned int kSampleWindowDiff = kSampleWindowMax
+                                              - kSampleWindowMin;
+static const unsigned int kSampleWindowMid = kSampleWindowMin
+                                             + kSampleWindowDiff / 2;
+const unsigned int kTaperTimeMax = 60*60;
+const unsigned int kTaperTimeMin = 10*60;
+const unsigned int kTaperTimeDiff = kTaperTimeMax - kTaperTimeMin;
+static const int64 kTaperTimeMid = kTaperTimeMin + kTaperTimeDiff/2;
 
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 
@@ -97,6 +103,14 @@ class DaemonTest : public Test {
 #endif
     CHECK(backlight_ctl_.Init());
     ResetPowerStatus(&status_);
+    // Setting up the window taper values, since they are needed in some of
+    // the tests.
+    daemon_.sample_window_max_ = kSampleWindowMax;
+    daemon_.sample_window_min_ = kSampleWindowMin;
+    daemon_.sample_window_diff_ = kSampleWindowDiff;
+    daemon_.taper_time_max_s_ = kTaperTimeMax;
+    daemon_.taper_time_min_s_ = kTaperTimeMin;
+    daemon_.taper_time_diff_s_ = kTaperTimeDiff;
   }
 
  protected:
@@ -266,21 +280,20 @@ class DaemonTest : public Test {
 };
 
 TEST_F(DaemonTest, AdjustWindowSizeMax) {
-  empty_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMax);
-  daemon_.AdjustWindowSize(
-      kRollingAverageTaperTimeMax, &empty_average_, &full_average_);
+  empty_average_.ExpectChangeWindowSize(kSampleWindowMax);
+
+  daemon_.AdjustWindowSize(kTaperTimeMax, &empty_average_, &full_average_);
 }
 
 TEST_F(DaemonTest, AdjustWindowSizeMin) {
-  empty_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMin);
-  daemon_.AdjustWindowSize(
-      kRollingAverageTaperTimeMin, &empty_average_, &full_average_);
+  empty_average_.ExpectChangeWindowSize(kSampleWindowMin);
+  daemon_.AdjustWindowSize(kTaperTimeMin, &empty_average_, &full_average_);
 }
 
 TEST_F(DaemonTest, AdjustWindowSizeCalc) {
-  empty_average_.ExpectChangeWindowSize(kRollingAverageSampleWindowMid);
+  empty_average_.ExpectChangeWindowSize(kSampleWindowMid);
   daemon_.AdjustWindowSize(
-      kRollingAverageTaperTimeMid, &empty_average_, &full_average_);
+      kTaperTimeMid, &empty_average_, &full_average_);
 }
 
 TEST_F(DaemonTest, CheckMetricInterval) {
@@ -303,8 +316,13 @@ TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
   const int64 kLockTimeMs = 30000;
 
   // Set prefs that are read by ReadSettings().  Use 0 for ones that we don't
-  // care about.
+  // care about. Setting the window tapering prefs to sane values so the checks
+  // for them don't get tripped.
   prefs_.SetInt64(kLowBatterySuspendTimePref, 0);
+  prefs_.SetInt64(kSampleWindowMaxPref, kSampleWindowMax);
+  prefs_.SetInt64(kSampleWindowMinPref, kSampleWindowMin);
+  prefs_.SetInt64(kTaperTimeMaxPref, kTaperTimeMax);
+  prefs_.SetInt64(kTaperTimeMinPref, kTaperTimeMax);
   prefs_.SetInt64(kCleanShutdownTimeoutMsPref, 0);
   prefs_.SetInt64(kPluggedDimMsPref, kPluggedDimTimeMs);
   prefs_.SetInt64(kPluggedOffMsPref, kPluggedOffTimeMs);

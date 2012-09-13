@@ -111,6 +111,12 @@ Daemon::Daemon(BacklightController* backlight_controller,
       idle_(idle),
       keyboard_controller_(keyboard_controller),
       low_battery_suspend_time_s_(0),
+      sample_window_max_(0),
+      sample_window_min_(0),
+      sample_window_diff_(0),
+      taper_time_max_s_(0),
+      taper_time_min_s_(0),
+      taper_time_diff_s_(0),
       clean_shutdown_initiated_(false),
       low_battery_(false),
       enforce_lock_(false),
@@ -156,8 +162,8 @@ void Daemon::Init() {
   RegisterDBusMessageHandler();
   RetrieveSessionState();
   suspender_.Init(run_dir_, this);
-  time_to_empty_average_.Init(kRollingAverageSampleWindowMax);
-  time_to_full_average_.Init(kRollingAverageSampleWindowMax);
+  time_to_empty_average_.Init(sample_window_max_);
+  time_to_full_average_.Init(sample_window_max_);
   power_supply_.Init();
   power_supply_.GetPowerStatus(&power_status_, false);
   OnPowerEvent(this, power_status_);
@@ -190,6 +196,10 @@ void Daemon::ReadSettings() {
   int64 low_battery_suspend_time_s;
   CHECK(prefs_->GetInt64(kLowBatterySuspendTimePref,
                          &low_battery_suspend_time_s));
+  CHECK(prefs_->GetInt64(kSampleWindowMaxPref, &sample_window_max_));
+  CHECK(prefs_->GetInt64(kSampleWindowMinPref, &sample_window_min_));
+  CHECK(prefs_->GetInt64(kTaperTimeMaxPref, &taper_time_max_s_));
+  CHECK(prefs_->GetInt64(kTaperTimeMinPref, &taper_time_min_s_));
   CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMsPref,
                          &clean_shutdown_timeout_ms_));
   CHECK(prefs_->GetInt64(kPluggedDimMsPref, &plugged_dim_ms_));
@@ -210,6 +220,30 @@ void Daemon::ReadSettings() {
     LOG(INFO) << "Disabling low battery suspend.";
     low_battery_suspend_time_s_ = 0;
   }
+  CHECK(sample_window_max_ > 0);
+  CHECK(sample_window_min_ > 0);
+  if (sample_window_max_ < sample_window_min_) {
+    LOG(WARNING) << "Sampling window minimum was greater then the maximum, "
+                 << "swapping!";
+    int64 sample_window_temp = sample_window_max_;
+    sample_window_max_ = sample_window_min_;
+    sample_window_min_ = sample_window_temp;
+  }
+  LOG(INFO) << "Using Sample Window Max = " << sample_window_max_
+            << " and Min = " << sample_window_min_;
+  sample_window_diff_ = sample_window_max_ - sample_window_min_;
+  CHECK(taper_time_max_s_ > 0);
+  CHECK(taper_time_min_s_ > 0);
+  if (taper_time_max_s_ < taper_time_min_s_) {
+    LOG(WARNING) << "Taper time minimum was greater then the maximum, "
+                 << "swapping!";
+    int64 taper_time_temp = taper_time_max_s_;
+    taper_time_max_s_ = taper_time_min_s_;
+    taper_time_min_s_ = taper_time_temp;
+  }
+  LOG(INFO) << "Using Taper Time Max(secs) = " << taper_time_max_s_
+            << " and Min(secs) = " << taper_time_min_s_;
+  taper_time_diff_s_ = taper_time_max_s_ - taper_time_min_s_;
   lock_ms_ = default_lock_ms_;
   enforce_lock_ = enforce_lock;
 
@@ -1359,18 +1393,16 @@ void Daemon::UpdateAveragedTimes(PowerStatus* status,
     if (!status->line_power_on)
       AdjustWindowSize(battery_time, empty_average, full_average);
     else
-      empty_average->ChangeWindowSize(kRollingAverageSampleWindowMax);
+      empty_average->ChangeWindowSize(sample_window_max_);
   }
   status->averaged_battery_time_to_full = full_average->GetAverage();
   status->averaged_battery_time_to_empty = empty_average->GetAverage();
 }
 
-// For the rolling averages we want the window size to taper off in a
-// linear fashion from |kRollingAverageSampleWindowMax| to
-// |kRollingAverageSampleWindowMin| on the battery time remaining
-// interval from |kRollingAverageTaperTimeMax| to
-// |kRollingAverageTaperTimeMin|. The two point equation for the line
-// is:
+// For the rolling averages we want the window size to taper off in a linear
+// fashion from |sample_window_max| to |sample_window_min| on the battery time
+// remaining interval from |taper_time_max_s_| to |taper_time_min_s_|. The two
+// point equation for the line is:
 //   (x - x0)/(x1 - x0) = (t - t0)/(t1 - t0)
 // which solved for x is:
 //   x = (t - t0)*(x1 - x0)/(t1 - t0) + x0
@@ -1379,16 +1411,16 @@ void Daemon::UpdateAveragedTimes(PowerStatus* status,
 void Daemon::AdjustWindowSize(int64 battery_time,
                               RollingAverage* empty_average,
                               RollingAverage* full_average) {
-  unsigned int window_size = kRollingAverageSampleWindowMax;
-  if (battery_time >= kRollingAverageTaperTimeMax) {
-    window_size = kRollingAverageSampleWindowMax;
-  } else if (battery_time <= kRollingAverageTaperTimeMin) {
-    window_size = kRollingAverageSampleWindowMin;
+  unsigned int window_size = sample_window_max_;
+  if (battery_time >= taper_time_max_s_) {
+    window_size = sample_window_max_;
+  } else if (battery_time <= taper_time_min_s_) {
+    window_size = sample_window_min_;
   } else {
-    window_size = (battery_time - kRollingAverageTaperTimeMin);
-    window_size *= kRollingAverageSampleWindowDiff;
-    window_size /= kRollingAverageTaperTimeDiff;
-    window_size += kRollingAverageSampleWindowMin;
+    window_size = (battery_time - taper_time_min_s_);
+    window_size *= sample_window_diff_;
+    window_size /= taper_time_diff_s_;
+    window_size += sample_window_min_;
   }
   empty_average->ChangeWindowSize(window_size);
 }

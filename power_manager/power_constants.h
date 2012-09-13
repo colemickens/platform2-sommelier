@@ -32,6 +32,10 @@ extern const char kWakeupInputPref[];
 extern const char kReactMsPref[];
 extern const char kFuzzMsPref[];
 extern const char kStateMaxDisabledDurationSecPref[];
+extern const char kSampleWindowMaxPref[];
+extern const char kSampleWindowMinPref[];
+extern const char kTaperTimeMaxPref[];
+extern const char kTaperTimeMinPref[];
 
 // Miscellaneous constants.
 extern const char kBacklightPath[];
@@ -74,14 +78,6 @@ extern const char kPowerStateChanged[];
 // Files to signal powerd_suspend whether suspend should be cancelled.
 extern const char kLidOpenFile[];
 extern const char kUserActiveFile[];
-
-// Control parameters for the battery time rolling averages
-extern const unsigned int kRollingAverageSampleWindowMax;
-extern const unsigned int kRollingAverageSampleWindowMin;
-extern const unsigned int kRollingAverageSampleWindowDiff;
-extern const unsigned int kRollingAverageTaperTimeMax;
-extern const unsigned int kRollingAverageTaperTimeMin;
-extern const unsigned int kRollingAverageTaperTimeDiff;
 
 // Reasons for shutting down
 extern const char kShutdownReasonUnknown[];

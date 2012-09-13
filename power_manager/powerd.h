@@ -465,6 +465,12 @@ class Daemon : public BacklightControllerObserver,
   IdleDetector* idle_;
   KeyboardBacklightController* keyboard_controller_;  // non-owned
   int64 low_battery_suspend_time_s_;
+  int64 sample_window_max_;
+  int64 sample_window_min_;
+  int64 sample_window_diff_;
+  int64 taper_time_max_s_;
+  int64 taper_time_min_s_;
+  int64 taper_time_diff_s_;
   bool clean_shutdown_initiated_;
   bool low_battery_;
   int64 clean_shutdown_timeout_ms_;
