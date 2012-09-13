@@ -6,6 +6,7 @@ ioctl: 1
 write: 1
 timerfd_settime: 1
 mmap2: 1
+mremap: 1
 close: 1
 open: 1
 poll: 1
@@ -58,4 +59,5 @@ setsid: 1
 chdir: 1
 dup2: 1
 unlink: 1
+tgkill: 1
 ARM_set_tls: 1
