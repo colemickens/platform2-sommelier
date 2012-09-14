@@ -329,10 +329,6 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   return true;
 }
 
-// This program is called after an AutoUpdate or USB install. This script is
-// a simple wrapper that performs the minimal setup necessary to run
-// chromeos-chroot-postinst inside an install root chroot.
-
 bool RunPostInstall(const string& install_dir,
                     const string& install_dev,
                     BiosType bios_type) {

@@ -5,8 +5,8 @@
 # found in the LICENSE file.
 
 # This script is called after an AutoUpdate or USB install. This script is a
-# simple wrapper that performs the minimal setup necessary to run
-# chromeos-chroot-postinst inside an install root chroot.
+# simple wrapper to convert from the hardcoded command line to the new
+# executable command line.
 
 INSTALL_ROOT=$(dirname "$0")
 
