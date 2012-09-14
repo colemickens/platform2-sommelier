@@ -294,6 +294,7 @@ TEST_F(ServiceTest, Unload) {
   service_->Unload();
   EXPECT_EQ(string(""), service_->ui_data_);
   EXPECT_EQ(string(""), service_->guid_);
+  EXPECT_FALSE(service_->explicitly_disconnected_);
 }
 
 TEST_F(ServiceTest, State) {

@@ -362,6 +362,7 @@ bool Service::Unload() {
   UnloadEapCredentials();
   Error error;  // Ignored.
   Disconnect(&error);
+  explicitly_disconnected_ = false;
   return false;
 }
 
