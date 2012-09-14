@@ -76,7 +76,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kSecurityProperty, &security_);
 
   store->RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
-  store->RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
+  store->RegisterBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
   store->RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
   store->RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
   store->RegisterConstString(flimflam::kWifiBSsid, &bssid_);
@@ -120,7 +120,6 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   IgnoreParameterForConfigure(flimflam::kSSIDProperty);
   IgnoreParameterForConfigure(flimflam::kSecurityProperty);
   IgnoreParameterForConfigure(flimflam::kPassphraseProperty);
-  IgnoreParameterForConfigure(flimflam::kWifiHiddenSsid);
 }
 
 WiFiService::~WiFiService() {}
