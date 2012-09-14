@@ -32,14 +32,7 @@ mount -n -o remount,ro /
 # Kill any that may prevent us from unmounting the stateful partition
 # or the crypto-home and then unmount. These should be all that we need
 # to unmount for a clean shutdown.
-kill_with_open_files_on /mnt/stateful_partition /home/chronos
-
-# Unmount our stateful mount points. If any of these fail we do a best-effort
-# attempt to touch a /var/log file for future inspection.
-/usr/sbin/cryptohome --action=unmount
-if [ $? -ne 0 ] ; then
-  mount > /var/log/shutdown_cryptohome_umount_failure
-fi
+kill_with_open_files_on /mnt/stateful_partition /home/chronos /var
 
 # join hwclock setting, already in progress.  If the job has already been
 # finished and reaped, we need to suppress error output.  It seems that anything
@@ -54,7 +47,7 @@ logevent stop
 /sbin/crash_reporter --clean_shutdown
 
 # Lazy umount the tmpfs dirs under /var so we can immediately umount it.
-umount -n -l /var/tmp /var/run /var/lock
+umount -n -l /var/run /var/lock
 if [ -e /dev/mapper/encstateful ]; then
   mount-encrypted umount >/tmp/umount-encrypted.log 2>&1
   if [ $? -ne 0 ] ; then
