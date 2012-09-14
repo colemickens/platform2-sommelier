@@ -48,8 +48,10 @@ exit_group: 1
 geteuid32: 1
 pipe2: 1
 gettimeofday: 1
+time: 1
 setsid: 1
 chdir: 1
 dup2: 1
 unlink: 1
 tgkill: 1
+_llseek: 1
