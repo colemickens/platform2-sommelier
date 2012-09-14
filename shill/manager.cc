@@ -494,9 +494,13 @@ ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
     }
   }
 
-  Error::PopulateAndLog(error, Error::kNotFound,
+  string error_string(
       StringPrintf("Entry %s is not registered in the manager",
                    entry_name.c_str()));
+  if (error) {
+    error->Populate(Error::kNotFound, error_string);
+  }
+  SLOG(Manager, 2) << error_string;
   return NULL;
 }
 
@@ -509,9 +513,13 @@ ServiceRefPtr Manager::GetServiceWithGUID(
     }
   }
 
-  Error::PopulateAndLog(error, Error::kNotFound,
+  string error_string(
       StringPrintf("Service wth GUID %s is not registered in the manager",
                    guid.c_str()));
+  if (error) {
+    error->Populate(Error::kNotFound, error_string);
+  }
+  SLOG(Manager, 2) << error_string;
   return NULL;
 }
 
