@@ -54,6 +54,12 @@ void ServiceDBusAdaptor::EmitIntChanged(const string &name, int value) {
   PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
+void ServiceDBusAdaptor::EmitRpcIdentifierChanged(const string &name,
+                                                  const string &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
+  PropertyChanged(name, DBusAdaptor::PathToVariant(value));
+}
+
 void ServiceDBusAdaptor::EmitStringChanged(const string &name,
                                            const string &value) {
   SLOG(DBus, 2) << __func__ << ": " << name;

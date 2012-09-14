@@ -491,7 +491,10 @@ Properties	boolean AutoConnect [readwrite]
 			The object path of the associated IP configuration.
 			This value only exists when the service is connected,
 			and is used used to retrieve Layer 3 configuration
-			state.
+			state.  A PropertyChanged signal for this object path
+			is emitted every time the IP address is configured
+			(for example during DHCP renewals), although the
+			actual value may not have changed.
 
 		boolean IsActive [readonly]
 

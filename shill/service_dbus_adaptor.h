@@ -40,6 +40,8 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   virtual void EmitUint16Changed(const std::string &name, uint16 value);
   virtual void EmitUintChanged(const std::string &name, uint32 value);
   virtual void EmitIntChanged(const std::string &name, int value);
+  virtual void EmitRpcIdentifierChanged(
+      const std::string &name, const std::string &value);
   virtual void EmitStringChanged(
       const std::string &name, const std::string &value);
   virtual void EmitStringmapChanged(const std::string &name,

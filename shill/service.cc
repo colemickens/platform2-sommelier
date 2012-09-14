@@ -480,6 +480,8 @@ void Service::MakeFavorite() {
 
 void Service::SetConnection(const ConnectionRefPtr &connection) {
   if (connection.get()) {
+    // TODO(pstew): Make this function testable by using a factory here.
+    // http://crosbug.com/34528
     http_proxy_.reset(new HTTPProxy(connection));
     http_proxy_->Start(dispatcher_, sockets_.get());
   } else {
@@ -487,6 +489,11 @@ void Service::SetConnection(const ConnectionRefPtr &connection) {
     static_ip_parameters_.ClearSavedParameters();
   }
   connection_ = connection;
+  Error error;
+  string ipconfig = GetIPConfigRpcIdentifier(&error);
+  if (error.IsSuccess()) {
+    adaptor_->EmitRpcIdentifierChanged(shill::kIPConfigProperty, ipconfig);
+  }
 }
 
 bool Service::Is8021xConnectable() const {

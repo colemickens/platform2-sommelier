@@ -47,6 +47,8 @@ class VPNServiceTest : public testing::Test {
   virtual void SetUp() {
     ON_CALL(*connection_, interface_name())
         .WillByDefault(ReturnRef(interface_name_));
+    ON_CALL(*connection_, ipconfig_rpc_identifier())
+        .WillByDefault(ReturnRef(ipconfig_rpc_identifier_));
   }
 
   virtual void TearDown() {
@@ -58,6 +60,7 @@ class VPNServiceTest : public testing::Test {
   }
 
   std::string interface_name_;
+  std::string ipconfig_rpc_identifier_;
   MockVPNDriver *driver_;  // Owned by |service_|.
   NiceMockControl control_;
   MockManager manager_;
