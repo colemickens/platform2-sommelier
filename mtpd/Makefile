@@ -57,9 +57,8 @@ mtpd_server/mtpd_server.h: GEN_DBUSXX(mtpd_server/mtpd_server.h)
 clean: CLEAN(mtpd_server/mtpd_server.h)
 
 # Require the header to be generated first.
-$(patsubst %.o,%.o.depends,$(CXX_OBJECTS)): mtpd_server/mtpd_server.h
-file_entry.o.depends: mtp_file_entry.pb.h
-storage_info.o.depends: mtp_storage_info.pb.h
+$(patsubst %.o,%.o.depends,$(CXX_OBJECTS)): mtpd_server/mtpd_server.h \
+	mtp_file_entry.pb.h mtp_storage_info.pb.h
 
 CXX_BINARY(mtpd): $(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS)) \
 	mtp_file_entry.pb.o mtp_storage_info.pb.o
