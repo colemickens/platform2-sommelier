@@ -23,23 +23,14 @@
 using mtpd::Daemon;
 
 // TODO(thestig) Use base::CommandLine and drop gflags.
-DEFINE_bool(foreground, false,
-            "Don't daemon()ize; run in foreground.");
 DEFINE_int32(minloglevel, logging::LOG_WARNING,
              "Messages logged at a lower level than "
              "this don't actually get logged anywhere");
 
 static const char kUsageMessage[] = "Chromium OS MTP Daemon";
 
-// Always logs to the syslog and logs to stderr if
-// we are running in the foreground.
 void SetupLogging() {
-  int log_flags = 0;
-  log_flags |= chromeos::kLogToSyslog;
-  if (FLAGS_foreground) {
-    log_flags |= chromeos::kLogToStderr;
-  }
-  chromeos::InitLog(log_flags);
+  chromeos::InitLog(chromeos::kLogToSyslog);
   logging::SetMinLogLevel(FLAGS_minloglevel);
 }
 
@@ -76,11 +67,6 @@ int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
 
   SetupLogging();
-
-  if (!FLAGS_foreground) {
-    LOG(INFO) << "Daemonizing";
-    PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "daemon() failed";
-  }
 
   LOG(INFO) << "Creating a GMainLoop";
   GMainLoop* loop = g_main_loop_new(g_main_context_default(), FALSE);
