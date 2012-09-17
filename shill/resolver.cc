@@ -4,6 +4,7 @@
 
 #include "shill/resolver.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -24,6 +25,7 @@ namespace {
 base::LazyInstance<Resolver> g_resolver = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
+const char Resolver::kDefaultIgnoredSearchList[] = "gateway.2wire.net";
 const char Resolver::kDefaultShortTimeoutTechnologies[] = "ethernet,wifi";
 const char Resolver::kDefaultTimeoutOptions[] =
     "options single-request timeout:1 attempts:3";
@@ -38,8 +40,8 @@ Resolver* Resolver::GetInstance() {
   return g_resolver.Pointer();
 }
 
-bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
-                               const std::vector<std::string> &domain_search,
+bool Resolver::SetDNSFromLists(const vector<string> &dns_servers,
+                               const vector<string> &domain_search,
                                TimeoutParameters timeout) {
   SLOG(Resolver, 2) << __func__;
 
@@ -57,8 +59,18 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
     lines.push_back("nameserver " + *iter);
   }
 
-  if (!domain_search.empty()) {
-    lines.push_back("search " + JoinString(domain_search, ' '));
+  vector<string> filtered_domain_search;
+  for (iter = domain_search.begin();
+       iter != domain_search.end(); ++iter) {
+    if (std::find(ignored_search_list_.begin(),
+                  ignored_search_list_.end(),
+                  *iter) == ignored_search_list_.end()) {
+      filtered_domain_search.push_back(*iter);
+    }
+  }
+
+  if (!filtered_domain_search.empty()) {
+    lines.push_back("search " + JoinString(filtered_domain_search, ' '));
   }
 
   // Send queries one-at-a-time, rather than parallelizing IPv4

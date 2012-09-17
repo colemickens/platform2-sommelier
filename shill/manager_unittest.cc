@@ -33,6 +33,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
+#include "shill/mock_resolver.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_wifi.h"
@@ -203,6 +204,18 @@ class ManagerTest : public PropertyStoreTest {
 
   RpcIdentifier GetDefaultServiceRpcIdentifier() {
     return manager()->GetDefaultServiceRpcIdentifier(NULL);
+  }
+
+  void SetResolver(Resolver *resolver) {
+    manager()->resolver_ = resolver;
+  }
+
+  void SetIgnoredDNSSearchPaths(const string &search_paths) {
+     manager()->SetIgnoredDNSSearchPaths(search_paths, NULL);
+  }
+
+  const string &GetIgnoredDNSSearchPaths() {
+    return manager()->props_.ignored_dns_search_paths;
   }
 
  protected:
@@ -2489,6 +2502,30 @@ TEST_F(ManagerTest, DisableTechnology) {
   error.Populate(Error::kOperationInitiated);
   manager()->DisableTechnology(flimflam::kTypeEthernet, &error, callback);
   EXPECT_TRUE(error.IsOngoing());
+}
+
+TEST_F(ManagerTest, IgnoredSearchList) {
+  scoped_ptr<MockResolver> resolver(new StrictMock<MockResolver>());
+  SetResolver(resolver.get());
+  vector<string> ignored_paths;
+  EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
+  SetIgnoredDNSSearchPaths("");
+  EXPECT_EQ("", GetIgnoredDNSSearchPaths());
+
+  const string kIgnored0 = "chromium.org";
+  ignored_paths.push_back(kIgnored0);
+  EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
+  SetIgnoredDNSSearchPaths(kIgnored0);
+  EXPECT_EQ(kIgnored0, GetIgnoredDNSSearchPaths());
+
+  const string kIgnored1 = "google.com";
+  const string kIgnoredSum = kIgnored0 + "," + kIgnored1;
+  ignored_paths.push_back(kIgnored1);
+  EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
+  SetIgnoredDNSSearchPaths(kIgnoredSum);
+  EXPECT_EQ(kIgnoredSum, GetIgnoredDNSSearchPaths());
+
+  SetResolver(Resolver::GetInstance());
 }
 
 }  // namespace shill

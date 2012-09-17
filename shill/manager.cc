@@ -16,6 +16,7 @@
 #include <base/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/stringprintf.h>
+#include <base/string_split.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -77,6 +78,7 @@ Manager::Manager(ControlInterface *control_interface,
       modem_info_(control_interface, dispatcher, metrics, this, glib),
       vpn_provider_(control_interface, dispatcher, metrics, this),
       wimax_provider_(control_interface, dispatcher, metrics, this),
+      resolver_(Resolver::GetInstance()),
       running_(false),
       connect_profiles_to_rpc_(true),
       ephemeral_profile_(new EphemeralProfile(control_interface, this)),
@@ -111,6 +113,9 @@ Manager::Manager(ControlInterface *control_interface,
   HelpRegisterDerivedStrings(flimflam::kEnabledTechnologiesProperty,
                              &Manager::EnabledTechnologies,
                              NULL);
+  HelpRegisterDerivedString(shill::kIgnoredDNSSearchPathsProperty,
+                            &Manager::GetIgnoredDNSSearchPaths,
+                            &Manager::SetIgnoredDNSSearchPaths);
   store_.RegisterString(shill::kLinkMonitorTechnologiesProperty,
                         &props_.link_monitor_technologies);
   store_.RegisterBool(flimflam::kOfflineModeProperty, &props_.offline_mode);
@@ -168,7 +173,7 @@ void Manager::Start() {
   power_manager_->AddStateChangeCallback(Metrics::kMetricPowerManagerKey, cb);
 
   CHECK(file_util::CreateDirectory(run_path_)) << run_path_.value();
-  Resolver::GetInstance()->set_path(run_path_.Append("resolv.conf"));
+  resolver_->set_path(run_path_.Append("resolv.conf"));
 
   InitializeProfiles();
   running_ = true;
@@ -227,7 +232,7 @@ void Manager::InitializeProfiles() {
                                          props_));
   CHECK(default_profile->InitStorage(glib_, Profile::kCreateOrOpenExisting,
                                      NULL));
-  CHECK(default_profile->LoadManagerProperties(&props_));
+  CHECK(LoadProperties(default_profile));
   profiles_.push_back(default_profile.release());
   Error error;
   string path;
@@ -328,7 +333,7 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
       return;
     }
 
-    if (!default_profile->LoadManagerProperties(&props_)) {
+    if (!LoadProperties(default_profile)) {
       Error::PopulateAndLog(error, Error::kInvalidArguments,
                             "Could not load Manager properties from profile " +
                             name);
@@ -850,6 +855,14 @@ void Manager::SaveServiceToProfile(const ServiceRefPtr &to_update) {
   }
 }
 
+bool Manager::LoadProperties(const scoped_refptr<DefaultProfile> &profile) {
+  if (!profile->LoadManagerProperties(&props_)) {
+    return false;
+  }
+  SetIgnoredDNSSearchPaths(props_.ignored_dns_search_paths, NULL);
+  return true;
+}
+
 void Manager::AddTerminationAction(const std::string &name,
                                    const base::Closure &start) {
   termination_actions_.Add(name, start);
@@ -1178,6 +1191,20 @@ string Manager::GetCheckPortalList(Error */*error*/) {
 void Manager::SetCheckPortalList(const string &portal_list, Error *error) {
   props_.check_portal_list = portal_list;
   use_startup_portal_list_ = false;
+}
+
+string Manager::GetIgnoredDNSSearchPaths(Error */*error*/) {
+  return props_.ignored_dns_search_paths;
+}
+
+void Manager::SetIgnoredDNSSearchPaths(const string &ignored_paths,
+                                       Error */*error*/) {
+  props_.ignored_dns_search_paths = ignored_paths;
+  vector<string> ignored_path_list;
+  if (!ignored_paths.empty()) {
+    base::SplitString(ignored_paths, ',', &ignored_path_list);
+  }
+  resolver_->set_ignored_search_list(ignored_path_list);
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)

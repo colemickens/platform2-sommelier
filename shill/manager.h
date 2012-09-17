@@ -33,10 +33,12 @@ namespace shill {
 
 class ControlInterface;
 class DBusManager;
+class DefaultProfile;
 class Error;
 class EventDispatcher;
 class ManagerAdaptorInterface;
 class Metrics;
+class Resolver;
 
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
@@ -63,6 +65,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     // Comma-separated list of technologies for which link-monitoring is
     // enabled.
     std::string link_monitor_technologies;
+    // Comma-separated list of DNS search paths to be ignored.
+    std::string ignored_dns_search_paths;
   };
 
   Manager(ControlInterface *control_interface,
@@ -286,8 +290,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::string GetActiveProfileRpcIdentifier(Error *error);
   std::string GetCheckPortalList(Error *error);
   RpcIdentifier GetDefaultServiceRpcIdentifier(Error *error);
+  std::string GetIgnoredDNSSearchPaths(Error *error);
   ServiceRefPtr GetServiceInner(const KeyValueStore &args, Error *error);
   void SetCheckPortalList(const std::string &portal_list, Error *error);
+  void SetIgnoredDNSSearchPaths(const std::string &ignored_paths, Error *error);
   void EmitDefaultService();
   bool IsTechnologyInList(const std::string &technology_list,
                           Technology::Identifier tech) const;
@@ -298,6 +304,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // |service_iterator|), false otherwise (meaning the caller should
   // increment |service_iterator|).
   bool UnloadService(std::vector<ServiceRefPtr>::iterator *service_iterator);
+
+  // Load Manager default properties from |profile|.
+  bool LoadProperties(const scoped_refptr<DefaultProfile> &profile);
 
   void HelpRegisterConstDerivedRpcIdentifier(
       const std::string &name,
@@ -342,6 +351,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   ModemInfo modem_info_;
   VPNProvider vpn_provider_;
   WiMaxProvider wimax_provider_;
+  // Hold pointer to singleton Resolver instance for testing purposes.
+  Resolver *resolver_;
   bool running_;
   // Used to facilitate unit tests which can't use RPC.
   bool connect_profiles_to_rpc_;

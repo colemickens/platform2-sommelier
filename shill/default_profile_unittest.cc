@@ -126,6 +126,11 @@ TEST_F(DefaultProfileTest, Save) {
       .WillOnce(Return(true));
   EXPECT_CALL(*storage.get(),
               SetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageIgnoredDNSSearchPaths,
+                        ""))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*storage.get(),
+              SetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageLinkMonitorTechnologies,
                         ""))
       .WillOnce(Return(true));
@@ -174,6 +179,11 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
       .WillOnce(Return(false));
   EXPECT_CALL(*storage.get(),
               GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageIgnoredDNSSearchPaths,
+                        &manager_props.ignored_dns_search_paths))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
                         DefaultProfile::kStorageLinkMonitorTechnologies,
                         _))
       .WillOnce(Return(false));
@@ -200,6 +210,8 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_FALSE(manager_props.offline_mode);
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager_props.check_portal_list);
+  EXPECT_EQ(Resolver::kDefaultIgnoredSearchList,
+            manager_props.ignored_dns_search_paths);
   EXPECT_EQ(LinkMonitor::kDefaultLinkMonitorTechnologies,
             manager_props.link_monitor_technologies);
   EXPECT_EQ(PortalDetector::kDefaultURL, manager_props.portal_url);
@@ -229,6 +241,12 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                                         DefaultProfile::kStorageCheckPortalList,
                                         _))
       .WillOnce(DoAll(SetArgumentPointee<2>(portal_list), Return(true)));
+  const string ignored_paths("chromium.org,google.com");
+  EXPECT_CALL(*storage.get(),
+              GetString(DefaultProfile::kStorageId,
+                        DefaultProfile::kStorageIgnoredDNSSearchPaths,
+                        _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(ignored_paths), Return(true)));
   const string link_monitor_technologies("ethernet,wimax");
   EXPECT_CALL(*storage.get(),
               GetString(DefaultProfile::kStorageId,
@@ -264,6 +282,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_EQ(host_name, manager_props.host_name);
   EXPECT_TRUE(manager_props.offline_mode);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);
+  EXPECT_EQ(ignored_paths, manager_props.ignored_dns_search_paths);
   EXPECT_EQ(link_monitor_technologies,
             manager_props.link_monitor_technologies);
   EXPECT_EQ(portal_url, manager_props.portal_url);

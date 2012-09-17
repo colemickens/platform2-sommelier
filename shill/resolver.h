@@ -25,6 +25,14 @@ class Resolver {
     kShortTimeout
   };
 
+  // The default comma-separated list of search-list prefixes that
+  // should be ignored when writing out a DNS configuration.  These
+  // are usually preconfigured by a DHCP server and are not of real
+  // value to the user.  This will release DNS bandwidth for searches
+  // we expect will have a better chance of getting what the user is
+  // looking for.
+  static const char kDefaultIgnoredSearchList[];
+
   // The default comma-separated list of technologies for which short
   // DNS timeouts should be enabled.
   static const char kDefaultShortTimeoutTechnologies[];
@@ -46,6 +54,13 @@ class Resolver {
   // Remove any created domain name service file.
   virtual bool ClearDNS();
 
+  // Sets the list of ignored DNS search suffixes.  This list will be used
+  // to filter the domain_search parameter of later SetDNSFromLists() calls.
+  virtual void set_ignored_search_list(
+      const std::vector<std::string> &ignored_list) {
+    ignored_search_list_ = ignored_list;
+  }
+
  protected:
   Resolver();
 
@@ -57,6 +72,7 @@ class Resolver {
   static const char kShortTimeoutOptions[];
 
   FilePath path_;
+  std::vector<std::string> ignored_search_list_;
 
   DISALLOW_COPY_AND_ASSIGN(Resolver);
 };

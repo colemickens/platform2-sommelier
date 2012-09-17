@@ -33,7 +33,8 @@ class DefaultProfile : public Profile {
                  const Manager::Properties &manager_props);
   virtual ~DefaultProfile();
 
-  // Loads global configuration into manager properties.
+  // Loads global configuration into manager properties.  This should
+  // only be called by the Manager.
   virtual bool LoadManagerProperties(Manager::Properties *manager_props);
 
   // Override the Profile superclass implementation to accept all Ethernet
@@ -67,6 +68,7 @@ class DefaultProfile : public Profile {
   static const char kStorageArpGateway[];
   static const char kStorageCheckPortalList[];
   static const char kStorageHostName[];
+  static const char kStorageIgnoredDNSSearchPaths[];
   static const char kStorageLinkMonitorTechnologies[];
   static const char kStorageName[];
   static const char kStorageOfflineMode[];

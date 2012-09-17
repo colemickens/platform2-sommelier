@@ -34,6 +34,9 @@ const char DefaultProfile::kStorageCheckPortalList[] = "CheckPortalList";
 // static
 const char DefaultProfile::kStorageHostName[] = "HostName";
 // static
+const char DefaultProfile::kStorageIgnoredDNSSearchPaths[] =
+    "IgnoredDNSSearchPaths";
+// static
 const char DefaultProfile::kStorageLinkMonitorTechnologies[] =
     "LinkMonitorTechnologies";
 // static
@@ -65,6 +68,8 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
                              &manager_props.check_portal_list);
   store->RegisterConstString(flimflam::kCountryProperty,
                              &manager_props.country);
+  store->RegisterConstString(shill::kIgnoredDNSSearchPathsProperty,
+                             &manager_props.ignored_dns_search_paths);
   store->RegisterConstString(shill::kLinkMonitorTechnologiesProperty,
                              &manager_props.link_monitor_technologies);
   store->RegisterConstBool(flimflam::kOfflineModeProperty,
@@ -89,6 +94,12 @@ bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
                             kStorageCheckPortalList,
                             &manager_props->check_portal_list)) {
     manager_props->check_portal_list = PortalDetector::kDefaultCheckPortalList;
+  }
+  if (!storage()->GetString(kStorageId,
+                            kStorageIgnoredDNSSearchPaths,
+                            &manager_props->ignored_dns_search_paths)) {
+    manager_props->ignored_dns_search_paths =
+        Resolver::kDefaultIgnoredSearchList;
   }
   if (!storage()->GetString(kStorageId,
                             kStorageLinkMonitorTechnologies,
@@ -140,6 +151,9 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStorageCheckPortalList,
                        props_.check_portal_list);
+  storage()->SetString(kStorageId,
+                       kStorageIgnoredDNSSearchPaths,
+                       props_.ignored_dns_search_paths);
   storage()->SetString(kStorageId,
                        kStorageLinkMonitorTechnologies,
                        props_.link_monitor_technologies);
