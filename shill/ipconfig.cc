@@ -60,9 +60,8 @@ void IPConfig::Init() {
                              &properties_.peer_address);
   store_.RegisterConstInt32(flimflam::kPrefixlenProperty,
                             &properties_.subnet_prefix);
-  // TODO(cmasone): Does anyone use this?
-  // store_.RegisterStrings(flimflam::kSearchDomainsProperty,
-  //                        &properties_.domain_search);
+  store_.RegisterConstStrings(shill::kSearchDomainsProperty,
+                              &properties_.domain_search);
   SLOG(Inet, 2) << __func__ << " device: " << device_name();
 }
 
