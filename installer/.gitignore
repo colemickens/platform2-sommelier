@@ -4,12 +4,8 @@
 # any tracked files which get ignored after the change.
 #
 
-# Intermediate files
+# Editor noise.
 *~
-*.o
-*.d
-*.test
 
-# Built executables
-cros_installer
-cros_installer_unittest
+# Build output directory.
+build/
