@@ -37,6 +37,7 @@ extern const char kSampleWindowMaxPref[];
 extern const char kSampleWindowMinPref[];
 extern const char kTaperTimeMaxPref[];
 extern const char kTaperTimeMinPref[];
+extern const char kPowerSupplyFullFactorPref[];
 
 // Miscellaneous constants.
 extern const char kBacklightPath[];

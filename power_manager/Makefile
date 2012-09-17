@@ -91,7 +91,7 @@ all: CXX_BINARY(backlight-tool)
 POWERSUPPLY_FLAGS = $(GLIB_FLAGS)
 POWERSUPPLY_LIBS = $(GLIB_LIBS) -lgflags
 
-LIBPOWER_SUPPLY_OBJS=power_supply.o power_prefs.o inotify.o
+LIBPOWER_SUPPLY_OBJS=inotify.o power_constants.o power_supply.o power_prefs.o
 CXX_STATIC_LIBRARY(libpower_supply.pie.a): $(LIBPOWER_SUPPLY_OBJS)
 CXX_STATIC_LIBRARY(libpower_supply.pie.a): CPPFLAGS += $(POWERSUPPLY_FLAGS)
 CXX_STATIC_LIBRARY(libpower_supply.pie.a): LDLIBS += $(POWERSUPPLY_LIBS)

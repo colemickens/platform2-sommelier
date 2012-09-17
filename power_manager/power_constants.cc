@@ -40,6 +40,7 @@ const char kSampleWindowMaxPref[] = "sample_window_max";
 const char kSampleWindowMinPref[] = "sample_window_min";
 const char kTaperTimeMaxPref[] = "taper_time_max_s";
 const char kTaperTimeMinPref[] = "taper_time_min_s";
+const char kPowerSupplyFullFactorPref[] = "power_supply_full_factor";
 
 const char kBacklightPath[] = "/sys/class/backlight";
 const char kBacklightPattern[] = "*";

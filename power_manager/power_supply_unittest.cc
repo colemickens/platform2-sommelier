@@ -71,7 +71,7 @@ class PowerSupplyTest : public ::testing::Test {
     ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
     EXPECT_TRUE(temp_dir_generator_->IsValid());
     // Initialize the file tagger
-    power_supply_.reset(new PowerSupply(temp_dir_generator_->path()));
+    power_supply_.reset(new PowerSupply(temp_dir_generator_->path(), NULL));
   }
 
  protected:

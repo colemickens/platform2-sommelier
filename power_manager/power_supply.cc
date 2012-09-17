@@ -9,6 +9,7 @@
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_util.h"
+#include "power_manager/power_constants.h"
 
 namespace {
 
@@ -29,6 +30,9 @@ const base::TimeDelta kHysteresisTimeFast = base::TimeDelta::FromSeconds(10);
 // Allow three minutes before deciding on a new acceptable time.
 const base::TimeDelta kHysteresisTime = base::TimeDelta::FromMinutes(3);
 
+// If a battery is at >= 99% charge on AC with no current, report it as full.
+const double kDefaultFullFactor = 0.99;
+
 // Converts time from hours to seconds.
 inline double HoursToSecondsDouble(double num_hours) {
   return num_hours * 3600.;
@@ -42,15 +46,17 @@ inline int64 HoursToSecondsInt(double num_hours) {
 
 namespace power_manager {
 
-PowerSupply::PowerSupply(const FilePath& power_supply_path)
-    : line_power_info_(NULL),
+PowerSupply::PowerSupply(const FilePath& power_supply_path, PowerPrefs* prefs)
+    : prefs_(prefs),
+      line_power_info_(NULL),
       battery_info_(NULL),
       power_supply_path_(power_supply_path),
       acceptable_variance_(kAcceptableVariance),
       hysteresis_time_(kHysteresisTimeFast),
       found_acceptable_time_range_(false),
       time_now_func(base::Time::Now),
-      is_suspended_(false) {}
+      is_suspended_(false),
+      full_factor_(kDefaultFullFactor) {}
 
 PowerSupply::~PowerSupply() {
   // Clean up allocated objects.
@@ -62,6 +68,10 @@ PowerSupply::~PowerSupply() {
 
 void PowerSupply::Init() {
   GetPowerSupplyPaths();
+  if (prefs_)
+    prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
+  CHECK_GT(full_factor_, 0);
+  CHECK_LE(full_factor_, 1.);
 }
 
 bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
@@ -213,7 +223,9 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
   // in sysfs, as that can be inconsistent with the numerical readings.
   status->battery_state = BATTERY_STATE_UNKNOWN;
   if (status->line_power_on) {
-    if (battery_charge >= battery_charge_full) {
+    if (battery_charge >= battery_charge_full ||
+        (battery_charge >= battery_charge_full * full_factor_ &&
+         battery_current == 0)) {
       status->battery_state = BATTERY_STATE_FULLY_CHARGED;
     } else {
       if (battery_current <= 0)

@@ -97,7 +97,7 @@ struct PowerInformation {
 // charge and voltage level, current, etc.
 class PowerSupply {
  public:
-  explicit PowerSupply(const FilePath& power_supply_path);
+  explicit PowerSupply(const FilePath& power_supply_path, PowerPrefs *prefs);
   ~PowerSupply();
 
   void Init();
@@ -142,6 +142,9 @@ class PowerSupply {
   // the hysteresis times.
   void AdjustHysteresisTimes(const base::TimeDelta& offset);
 
+  // Used to read power supply-related prefs.
+  PowerPrefs* prefs_;
+
   // Used for reading line power and battery status from sysfs.
   PowerInfoReader* line_power_info_;
   PowerInfoReader* battery_info_;
@@ -168,6 +171,10 @@ class PowerSupply {
 
   base::Time suspend_time_;
   bool is_suspended_;
+
+  // The fraction of full charge at which the battery can be considered "full"
+  // if there is no more charging current.  Should be in the range (0, 100].
+  double full_factor_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerSupply);
 };

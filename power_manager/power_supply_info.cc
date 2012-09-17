@@ -96,7 +96,7 @@ class InfoDisplay {
 
 int main(int, char*[]) {
   FilePath path(kPowerStatusPath);
-  power_manager::PowerSupply power_supply(path);
+  power_manager::PowerSupply power_supply(path, NULL);
   power_supply.Init();
 
   power_manager::PowerInformation power_info;
