@@ -15,7 +15,6 @@
 #include "cros-disks/format-manager.h"
 #include "cros-disks/metrics.h"
 #include "cros-disks/platform.h"
-#include "cros-disks/power-manager-proxy.h"
 #include "cros-disks/session-manager-proxy.h"
 
 namespace cros_disks {
@@ -43,7 +42,6 @@ class Daemon {
   FormatManager format_manager_;
   CrosDisksServer server_;
   DeviceEventModerator event_moderator_;
-  PowerManagerProxy power_manager_proxy_;
   SessionManagerProxy session_manager_proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);

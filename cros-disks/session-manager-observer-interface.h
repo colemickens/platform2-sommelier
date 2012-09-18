@@ -16,6 +16,12 @@ class SessionManagerObserverInterface {
  public:
   virtual ~SessionManagerObserverInterface() {}
 
+  // This method is called when the screen is locked.
+  virtual void OnScreenIsLocked() = 0;
+
+  // This method is called when the screen is unlocked.
+  virtual void OnScreenIsUnlocked() = 0;
+
   // This method is called when a session has started.
   virtual void OnSessionStarted(const std::string& user) = 0;
 

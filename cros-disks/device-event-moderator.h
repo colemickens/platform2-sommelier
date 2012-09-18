@@ -10,7 +10,6 @@
 #include <base/basictypes.h>
 
 #include "cros-disks/device-event-queue.h"
-#include "cros-disks/power-manager-observer-interface.h"
 #include "cros-disks/session-manager-observer-interface.h"
 
 namespace cros_disks {
@@ -26,8 +25,7 @@ class DeviceEventSourceInterface;
 // event is temporarily queued and only dispatched after a new user session
 // starts or the screen is unlocked. This is to minimize the chance of device
 // insertion attacks when the system is not actively used.
-class DeviceEventModerator : public PowerManagerObserverInterface,
-                             public SessionManagerObserverInterface {
+class DeviceEventModerator : public SessionManagerObserverInterface {
  public:
   DeviceEventModerator(DeviceEventDispatcherInterface* event_dispatcher,
                        DeviceEventSourceInterface* event_source);
@@ -37,11 +35,11 @@ class DeviceEventModerator : public PowerManagerObserverInterface,
   // Dispatches all queued device events through the event dispatcher.
   void DispatchQueuedDeviceEvents();
 
-  // Implements the PowerManagerObserverInterface interface to handle
+  // Implements the SessionManagerObserverInterface interface to handle
   // the event when the screen is locked.
   virtual void OnScreenIsLocked();
 
-  // Implements the PowerManagerObserverInterface interface to handle
+  // Implements the SessionManagerObserverInterface interface to handle
   // the event when the screen is unlocked.
   virtual void OnScreenIsUnlocked();
 

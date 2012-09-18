@@ -19,6 +19,8 @@ SessionManagerProxy::SessionManagerProxy(DBus::Connection* connection)
       DBus::ObjectProxy(*connection,
                         login_manager::kSessionManagerServicePath,
                         login_manager::kSessionManagerServiceName) {
+  connect_signal(SessionManagerProxy, ScreenIsLocked, OnScreenIsLocked);
+  connect_signal(SessionManagerProxy, ScreenIsUnlocked, OnScreenIsUnlocked);
   connect_signal(SessionManagerProxy, SessionStateChanged,
                  OnSessionStateChanged);
 }
@@ -30,6 +32,17 @@ void SessionManagerProxy::AddObserver(
     SessionManagerObserverInterface* observer) {
   CHECK(observer) << "Invalid observer object";
   observer_list_.AddObserver(observer);
+}
+
+void SessionManagerProxy::OnScreenIsLocked(const DBus::SignalMessage& signal) {
+  FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
+                    OnScreenIsLocked());
+}
+
+void SessionManagerProxy::OnScreenIsUnlocked(
+    const DBus::SignalMessage& signal) {
+  FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
+                    OnScreenIsUnlocked());
 }
 
 void SessionManagerProxy::OnSessionStateChanged(

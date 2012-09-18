@@ -177,6 +177,14 @@ void CrosDisksServer::OnFormatCompleted(const string& device_path,
   FormatCompleted(error_type, device_path);
 }
 
+void CrosDisksServer::OnScreenIsLocked() {
+  // no-op
+}
+
+void CrosDisksServer::OnScreenIsUnlocked() {
+  // no-op
+}
+
 void CrosDisksServer::OnSessionStarted(const string& user) {
   for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
        manager_iter != mount_managers_.end(); ++manager_iter) {

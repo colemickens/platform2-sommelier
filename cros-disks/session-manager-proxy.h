@@ -26,6 +26,12 @@ class SessionManagerProxy : public DBus::InterfaceProxy,
   void AddObserver(SessionManagerObserverInterface* observer);
 
  private:
+  // Handles the ScreenIsLocked DBus signal.
+  void OnScreenIsLocked(const DBus::SignalMessage& signal);
+
+  // Handles the ScreenIsUnlocked DBus signal.
+  void OnScreenIsUnlocked(const DBus::SignalMessage& signal);
+
   // Handles the SessionStateChanged DBus signal.
   void OnSessionStateChanged(const DBus::SignalMessage& signal);
 

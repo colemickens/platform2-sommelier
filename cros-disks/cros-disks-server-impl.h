@@ -109,6 +109,14 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                                  FormatErrorType error_type);
 
   // Implements the SessionManagerObserverInterface interface to handle
+  // the event when the screen is locked.
+  virtual void OnScreenIsLocked();
+
+  // Implements the SessionManagerObserverInterface interface to handle
+  // the event when the screen is unlocked.
+  virtual void OnScreenIsUnlocked();
+
+  // Implements the SessionManagerObserverInterface interface to handle
   // the event when the session has been started.
   virtual void OnSessionStarted(const std::string& user);
 

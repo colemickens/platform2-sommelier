@@ -21,7 +21,6 @@ Daemon::Daemon(DBus::Connection* dbus_connection)
       server_(*dbus_connection, &platform_, &archive_manager_,
               &disk_manager_, &format_manager_),
       event_moderator_(&server_, &disk_manager_),
-      power_manager_proxy_(dbus_connection),
       session_manager_proxy_(dbus_connection) {
 }
 
@@ -35,8 +34,6 @@ void Daemon::Initialize() {
   CHECK(archive_manager_.Initialize())
       << "Failed to initialize the archive manager";
   CHECK(disk_manager_.Initialize()) << "Failed to initialize the disk manager";
-
-  power_manager_proxy_.AddObserver(&event_moderator_);
 
   session_manager_proxy_.AddObserver(&server_);
   session_manager_proxy_.AddObserver(&event_moderator_);
