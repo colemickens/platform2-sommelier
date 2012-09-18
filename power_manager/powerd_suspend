@@ -74,6 +74,14 @@ suspend_cancel() {
     fi
 }
 
+# Send suspend status to UMA.
+#   0 - success
+#   1 - failure (in kernel)
+#   2 - cancelled
+send_uma_status() {
+  /usr/bin/metrics_client -e Power.SuspendStatus $1 3 &
+}
+
 cleanup_for_resume() {
     rm -f "/var/run/power_manager/lid_opened"
     rm -f "/var/run/power_manager/chronos/user_active"
@@ -126,6 +134,9 @@ sync
 suspend_rc=-1
 if suspend_cancel; then
     log_msg "Cancel suspend at kernel"
+
+    # Send suspend status: 2 (cancel)
+    send_uma_status 2
 else
     log_msg "Finalizing suspend"
     # Make sure that hwclock is cached for when we wake up, this way we don't
@@ -140,6 +151,9 @@ else
         log_msg "Error writing to /sys/power/state"
         log_msg -f /sys/kernel/debug/suspend_stats
     fi
+
+    # Send suspend status: 0 (success) or 1 (failure)
+    send_uma_status $suspend_rc
 fi
 
 if [ $cancel -eq 0 ]; then
