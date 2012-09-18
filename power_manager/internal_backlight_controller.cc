@@ -18,6 +18,7 @@
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs_interface.h"
+#include "power_manager/util.h"
 
 namespace {
 
@@ -75,27 +76,6 @@ const double kDefaultLevelToPercentExponent = 0.5;
 // Minimum number of brightness levels needed before we use a non-linear mapping
 // between levels and percents.
 const double kMinLevelsForNonLinearMapping = 100;
-
-// String names for power states.
-const char* PowerStateToString(power_manager::PowerState state) {
-  switch (state) {
-    case power_manager::BACKLIGHT_ACTIVE:
-      return "state(ACTIVE)";
-    case power_manager::BACKLIGHT_DIM:
-      return "state(DIM)";
-    case power_manager::BACKLIGHT_ALREADY_DIMMED:
-      return "state(ALREADY_DIMMED)";
-    case power_manager::BACKLIGHT_IDLE_OFF:
-      return "state(IDLE_OFF)";
-    case power_manager::BACKLIGHT_SUSPENDED:
-      return "state(SUSPENDED)";
-    case power_manager::BACKLIGHT_UNINITIALIZED:
-      return "state(UNINITIALIZED)";
-    default:
-      NOTREACHED();
-      return "";
-  }
-}
 
 }  // namespace
 
@@ -358,8 +338,8 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
     light_sensor_->EnableOrDisableSensor(state_);
   als_temporal_state_ = ALS_HYST_IMMEDIATE;
 
-  LOG(INFO) << PowerStateToString(old_state) << " -> "
-            << PowerStateToString(new_state);
+  LOG(INFO) << util::PowerStateToString(old_state) << " -> "
+            << util::PowerStateToString(new_state);
   return true;
 }
 

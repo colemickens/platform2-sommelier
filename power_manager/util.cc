@@ -97,5 +97,25 @@ bool GetUintFromFile(const char* filename, unsigned int* value) {
   return false;
 }
 
+const char* PowerStateToString(power_manager::PowerState state) {
+  switch (state) {
+    case power_manager::BACKLIGHT_ACTIVE:
+      return "state(ACTIVE)";
+    case power_manager::BACKLIGHT_DIM:
+      return "state(DIM)";
+    case power_manager::BACKLIGHT_ALREADY_DIMMED:
+      return "state(ALREADY_DIMMED)";
+    case power_manager::BACKLIGHT_IDLE_OFF:
+      return "state(IDLE_OFF)";
+    case power_manager::BACKLIGHT_SUSPENDED:
+      return "state(SUSPENDED)";
+    case power_manager::BACKLIGHT_UNINITIALIZED:
+      return "state(UNINITIALIZED)";
+    default:
+      NOTREACHED();
+      return "";
+  }
+}
+
 }  // namespace util
 }  // namespace power_manager

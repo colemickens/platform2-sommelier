@@ -8,9 +8,11 @@
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/backlight_interface.h"
 #include "power_manager/keyboard_backlight_controller.h"
+#include "power_manager/util.h"
 
 namespace power_manager {
 
+const double kTargetPercentDim = 20.0;
 const double kTargetPercentMax = 100.0;
 const double kTargetPercentMin = 0.0;
 
@@ -87,6 +89,7 @@ bool KeyboardBacklightController::SetCurrentBrightnessPercent(
     double percent,
     BrightnessChangeCause cause,
     TransitionStyle style) { // ignored
+  percent = std::max(std::min(percent, kTargetPercentMax), kTargetPercentMin);
   target_percent_ = percent;
   if (!backlight_enabled_)
     return true;
@@ -100,6 +103,9 @@ bool KeyboardBacklightController::SetCurrentBrightnessPercent(
 
 bool KeyboardBacklightController::IncreaseBrightness(
     BrightnessChangeCause cause) {
+  if (state_ != BACKLIGHT_ACTIVE)
+    return false;
+
   return SetCurrentBrightnessPercent(target_percent_
                                      + kBrightnessPercentChangeIncrement,
                                      cause,
@@ -109,6 +115,9 @@ bool KeyboardBacklightController::IncreaseBrightness(
 bool KeyboardBacklightController::DecreaseBrightness(
     bool allow_off,
     BrightnessChangeCause cause) {
+  if (state_ != BACKLIGHT_ACTIVE)
+    return false;
+
   return SetCurrentBrightnessPercent(target_percent_
                                      - kBrightnessPercentChangeIncrement,
                                      cause,
@@ -121,9 +130,43 @@ bool KeyboardBacklightController::SetPowerState(PowerState new_state) {
 
   CHECK(new_state != BACKLIGHT_UNINITIALIZED);
 
+  PowerState old_state = state_;
   state_ = new_state;
+  int64 new_level;
+  switch (state_) {
+    case BACKLIGHT_ACTIVE:
+      new_level = PercentToLevel(target_percent_);
+      break;
+    case BACKLIGHT_DIM:
+      new_level = PercentToLevel(kTargetPercentDim);
+      new_level = new_level > current_level_ ? current_level_ : new_level;
+      break;
+    case BACKLIGHT_IDLE_OFF:
+    case BACKLIGHT_SUSPENDED:
+      new_level = PercentToLevel(kTargetPercentMin);
+      break;
+    default:
+      new_level = current_level_;
+      break;
+  };
+
+  if (new_level == current_level_ && state_ == BACKLIGHT_DIM) {
+    new_state = BACKLIGHT_ALREADY_DIMMED;
+  } else {
+    new_level = backlight_enabled_ ? new_level : 0;
+    SetBrightnessLevel(new_level);
+    if (observer_) {
+      observer_->OnBrightnessChanged(LevelToPercent(new_level),
+                                     BRIGHTNESS_CHANGE_AUTOMATED,
+                                     this);
+    }
+  }
   if (sensor_)
     sensor_->EnableOrDisableSensor(state_);
+
+  LOG(INFO) << util::PowerStateToString(old_state) << " -> "
+            << util::PowerStateToString(new_state);
+
   return true;
 }
 

@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_UTIL_H_
 #define POWER_MANAGER_UTIL_H_
 
+#include "power_manager/backlight_controller.h"
+
 class FilePath;
 
 namespace power_manager {
@@ -30,6 +32,9 @@ bool GetWakeupCount(unsigned int* value);
 // in the file well.  They are read in as signed values and then cast
 // to unsigned ints.  So -10 => 4294967286
 bool GetUintFromFile(const char* filename, unsigned int* value);
+
+// String names for power states.
+const char* PowerStateToString(PowerState state);
 
 }  // namespace util
 }  // namespace power_manager
