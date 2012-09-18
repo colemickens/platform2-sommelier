@@ -1521,8 +1521,9 @@ void Daemon::OnLowBattery(int64 time_threshold_s, int64 time_remaining_s) {
               << " not be fully initialized yet.";
   } else if (kPowerConnected == plugged_state_ ||
              time_remaining_s > time_threshold_s) {
-    LOG(INFO) << "Battery condition is safe (plugged in or not low) : "
-              << time_remaining_s << " seconds";
+    LOG(INFO) << "Battery condition is safe.  AC is "
+              << (kPowerConnected == plugged_state_ ? "" : "un")
+              << "plugged.  " << time_remaining_s << " seconds remaining.";
     low_battery_ = false;
     file_tagger_.HandleSafeBatteryEvent();
   } else if (time_remaining_s == 0) {
