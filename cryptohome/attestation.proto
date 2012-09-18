@@ -69,7 +69,7 @@ message AttestationEnrollmentRequest {
   optional Quote pcr0_quote = 3;
 }
 
-// These two fields are sutible for passing to Tspi_TPM_ActivateIdentity()
+// These two fields are suitable for passing to Tspi_TPM_ActivateIdentity()
 // directly.
 message EncryptedIdentityCredential {
   // TPM_ASYM_CA_CONTENTS, encrypted with EK public key.
@@ -88,12 +88,36 @@ enum ResponseStatus {
   REJECT = 3;
 }
 
-// The response from the attestation server.
+// The response from the attestation server for the enrollment request.
 message AttestationEnrollmentResponse {
   optional ResponseStatus status = 1;
   // Detail response message. Included when the result is not OK.
   optional string detail = 2;
   optional EncryptedIdentityCredential encrypted_identity_credential = 3;
+}
+
+// The certificate request to be sent to the attestation server.
+message AttestationCertificateRequest {
+  // The AIK cert in X.509 format.
+  optional bytes identity_credential = 1;
+  // Set this field to true to include detail information (e.g. device mode) in
+  // the issued certificate.
+  optional bool is_cert_for_owner = 2;
+  // A certified public key in TPM_PUBKEY.
+  optional bytes certified_public_key = 3;
+  // The serialized TPM_CERTIFY_INFO for the certified key.
+  optional bytes certified_key_info = 4;
+  // The signature of the TPM_CERTIFY_INFO by the AIK.
+  optional bytes certified_key_proof = 5;
+}
+
+// The response from the attestation server for the certificate request.
+message AttestationCertificateResponse {
+  optional ResponseStatus status = 1;
+  // Detail response message. Included when the result is not OK.
+  optional string detail = 2;
+  // The credential of the ceritified key in X.509 format.
+  optional bytes certified_key_credential = 3;
 }
 
 // Holds all information that a client stores locally.
