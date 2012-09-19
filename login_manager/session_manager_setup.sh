@@ -360,7 +360,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             --device-management-url="$DMSERVER" \
             --disable-seccomp-sandbox \
             --enable-accelerated-plugins \
-            --enable-fixed-position-compositing \
             --enable-gview \
             --enable-logging \
             --enable-mobile-dialog \
