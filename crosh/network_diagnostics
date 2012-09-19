@@ -347,14 +347,17 @@ diag_arp () {
   fn_enter ${FUNCNAME} $*
   local ip=$1
   local ifc=$2
+  local failures=0
 
   if [ -n "${ip}" ] ; then
     arp=$(${ARP} -an | awk '/('${ip}').*'${ifc}'$/ { print $4 }')
     if [ -z "${arp}" ]; then
       fail "Arp table does not contain entry for ${ip}"
+      failures=$((failures + 1))
     elif [ "${arp}" = "<incomplete>" ] ; then
       fail "Can't arp for ${ip}"
       diag_ip_collision ${ifc}
+      failures=$((failures + 1))
     else
       pass "ARP for ${ip} is ${arp}" | mac_anonymize
     fi
@@ -362,7 +365,7 @@ diag_arp () {
 
   fn_enter_once ${FUNCNAME}_table && ${ARP} -an | mac_anonymize
 
-  return 1
+  return ${failures}
 }
 
 show_routes () {
@@ -375,7 +378,7 @@ show_routes () {
 # Make sure we have a route to each host
 diag_route () {
   fn_enter ${FUNCNAME} $*
-  failures=0
+  local failures=0
   for ip in $*; do
     ifinfo=$(get_if_route ${ip})
     gwinfo=$(get_gw_route ${ip})
