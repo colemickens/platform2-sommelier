@@ -14,24 +14,25 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/syslog_logging.h>
-#include <gflags/gflags.h>
 
 #include "mtpd/daemon.h"
 
 using mtpd::Daemon;
 
-// TODO(thestig) Use base::CommandLine and drop gflags.
-DEFINE_int32(minloglevel, logging::LOG_WARNING,
-             "Messages logged at a lower level than "
-             "this don't actually get logged anywhere");
-
-static const char kUsageMessage[] = "Chromium OS MTP Daemon";
+// Messages logged at a level lower than this don't get logged anywhere.
+static const char kMinLogLevelSwitch[] = "minloglevel";
 
 void SetupLogging() {
   chromeos::InitLog(chromeos::kLogToSyslog);
-  logging::SetMinLogLevel(FLAGS_minloglevel);
+
+  std::string log_level_str =
+      CommandLine::ForCurrentProcess()->GetSwitchValueASCII(kMinLogLevelSwitch);
+  int log_level = 0;
+  if (base::StringToInt(log_level_str, &log_level) && log_level >= 0)
+    logging::SetMinLogLevel(log_level);
 }
 
 // This callback will be invoked once there is a new device event that
@@ -51,6 +52,7 @@ gboolean TerminationSignalCallback(gpointer data) {
   LOG(INFO) << "Received a signal to terminate the daemon";
   GMainLoop* loop = reinterpret_cast<GMainLoop*>(data);
   g_main_loop_quit(loop);
+
   // This function can return false to remove this signal handler as we are
   // quitting the main loop anyway.
   return false;
@@ -59,13 +61,12 @@ gboolean TerminationSignalCallback(gpointer data) {
 int main(int argc, char** argv) {
   ::g_type_init();
   g_thread_init(NULL);
-  google::SetUsageMessage(kUsageMessage);
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  CommandLine::Init(argc, argv);
+
   // Needed by base::RandBytes() and other Chromium bits that expects
   // an AtExitManager to exist.
   base::AtExitManager exit_manager;
 
+  CommandLine::Init(argc, argv);
   SetupLogging();
 
   LOG(INFO) << "Creating a GMainLoop";

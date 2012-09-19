@@ -23,7 +23,7 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += -I$(SRC)/include -I$(SRC)/.. -I$(SRC) -I$(OUT) \
 	-I$(OUT)mtpd_server $(PC_CFLAGS)
-LDLIBS += -lgflags -ludev $(PC_LIBS)
+LDLIBS += -ludev $(PC_LIBS)
 
 ## protobuffer targets
 # Detailed instructions on how to work with these rules can be found in the
