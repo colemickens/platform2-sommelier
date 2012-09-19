@@ -78,11 +78,10 @@ class DaemonTest : public Test {
 #ifdef IS_DESKTOP
         backlight_ctl_(&backlight_),
 #else
-        backlight_ctl_(&backlight_, &prefs_),
+        backlight_ctl_(&backlight_, &prefs_, NULL),
 #endif
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
-                &audio_detector_, &idle_, NULL,
-                FilePath(".")) {}
+                &audio_detector_, &idle_, NULL, NULL, FilePath(".")) {}
 
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor.

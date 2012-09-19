@@ -27,7 +27,7 @@ class KeyboardBacklightControllerTest : public Test {
   KeyboardBacklightControllerTest() { }
 
   virtual void SetUp() {
-    controller_.reset(new KeyboardBacklightController(&backlight_));
+    controller_.reset(new KeyboardBacklightController(&backlight_, NULL));
   }
 
   virtual void TearDown() {

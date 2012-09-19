@@ -32,10 +32,8 @@ static const int kLuxHi = 1000;
 // Alternatively, we could use a higher kLuxLo.
 static const int kLuxOffset = 4;
 
-AmbientLightSensor::AmbientLightSensor(BacklightController* controller,
-                                       PowerPrefsInterface* prefs)
-    : controller_(controller),
-      prefs_(prefs),
+AmbientLightSensor::AmbientLightSensor()
+    : prefs_(NULL),
       is_polling_(false),
       disable_polling_(false),
       still_deferring_(false),
@@ -88,7 +86,8 @@ bool AmbientLightSensor::DeferredInit() {
   return false;
 }
 
-bool AmbientLightSensor::Init() {
+bool AmbientLightSensor::Init(PowerPrefsInterface* prefs) {
+  prefs_ = prefs;
   int64 disable_als;
   // TODO: In addition to disable_als, we should add another prefs file
   // that allows polling ALS as usual but prevents backlight changes from
@@ -97,23 +96,28 @@ bool AmbientLightSensor::Init() {
     LOG(INFO) << "Not using ambient light sensor";
     return false;
   }
-  if (controller_)
-    controller_->SetAmbientLightSensor(this);
   return true;
 }
 
-void AmbientLightSensor::EnableOrDisableSensor(PowerState state) {
-  if (state != BACKLIGHT_ACTIVE) {
+void AmbientLightSensor::AddObserver(AmbientLightSensorObserver* observer) {
+  observer_list_.AddObserver(observer);
+}
+
+void AmbientLightSensor::RemoveObserver(AmbientLightSensorObserver* observer) {
+  observer_list_.RemoveObserver(observer);
+}
+
+void AmbientLightSensor::EnableOrDisableSensor(bool enable) {
+  if (!enable) {
     LOG(INFO) << "Disabling light sensor poll";
     disable_polling_ = true;
     return;
   }
 
   // We want to poll.
-  // There is a possible race between setting disable_polling_ = true above
-  // and now setting it false.  If BacklightController rapidly transitions
-  // the backlight into and out of dim, we might try to turn on polling when
-  // it is already on.
+  // There is a possible race between setting disable_polling_ = true above and
+  // now setting it false.  If powerd rapidly transitions the backlight into and
+  // out of dim, we might try to turn on polling when it is already on.
   // is_polling_ resolves the race.  No locking is needed in this single
   // threaded application.
   disable_polling_ = false;
@@ -124,6 +128,14 @@ void AmbientLightSensor::EnableOrDisableSensor(PowerState state) {
   LOG(INFO) << "Enabling light sensor poll";
   is_polling_ = true;
   g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
+}
+
+double AmbientLightSensor::GetAmbientLightPercent() const {
+  return (lux_value_ != -1) ? Tsl2563LuxToPercent(lux_value_) : -1.0;
+}
+
+int AmbientLightSensor::GetAmbientLightLux() const {
+  return lux_value_;
 }
 
 gboolean AmbientLightSensor::ReadAls() {
@@ -142,13 +154,13 @@ gboolean AmbientLightSensor::ReadAls() {
 }
 
 void AmbientLightSensor::ReadCallback(const std::string& data) {
-  int value = -1;
   std::string trimmed_data;
   TrimWhitespaceASCII(data, TRIM_ALL, &trimmed_data);
-  if (base::StringToInt(trimmed_data, &value)) {
-    if (controller_)
-      controller_->SetAlsBrightnessOffsetPercent(Tsl2563LuxToPercent(value));
-  } else {
+  lux_value_ = -1;
+  if (base::StringToInt(trimmed_data, &lux_value_)) {
+    FOR_EACH_OBSERVER(AmbientLightSensorObserver, observer_list_,
+                      OnAmbientLightChanged(this));
+  } else{
     LOG(ERROR) << "Could not read lux value from ALS file contents: ["
                << trimmed_data << "]";
   }
@@ -172,7 +184,7 @@ void AmbientLightSensor::ErrorCallback() {
   g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
 }
 
-double AmbientLightSensor::Tsl2563LuxToPercent(int luxval) {
+double AmbientLightSensor::Tsl2563LuxToPercent(int luxval) const {
   // Notes on tsl2563 Ambient Light Response (_ALR) table:
   //
   // measurement location: lux file value, intended luma level
