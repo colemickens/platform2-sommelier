@@ -10,6 +10,7 @@
 #include "shill/cellular_capability.h"
 #include "shill/cellular_capability_cdma.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/nice_mock_control.h"
@@ -19,16 +20,18 @@ using std::string;
 using testing::_;
 using testing::InSequence;
 using testing::NiceMock;
+using testing::Return;
 
 namespace shill {
 
 class CellularServiceTest : public testing::Test {
  public:
   CellularServiceTest()
-      : device_(new Cellular(&control_,
+      : manager_(&control_, &dispatcher_, &metrics_, NULL),
+        device_(new Cellular(&control_,
                              NULL,
                              &metrics_,
-                             NULL,
+                             &manager_,
                              "usb0",
                              kAddress,
                              3,
@@ -38,7 +41,7 @@ class CellularServiceTest : public testing::Test {
                              "",
                              NULL,
                              ProxyFactory::GetInstance())),
-        service_(new CellularService(&control_, NULL, &metrics_, NULL,
+        service_(new CellularService(&control_, NULL, &metrics_, &manager_,
                                      device_)),
         adaptor_(NULL) {}
 
@@ -59,7 +62,9 @@ class CellularServiceTest : public testing::Test {
   static const char kAddress[];
 
   NiceMockControl control_;
+  EventDispatcher dispatcher_;
   MockMetrics metrics_;
+  MockManager manager_;
   CellularRefPtr device_;
   CellularServiceRefPtr service_;
   NiceMock<ServiceMockAdaptor> *adaptor_;  // Owned by |service_|.
@@ -69,6 +74,60 @@ const char CellularServiceTest::kAddress[] = "000102030405";
 
 TEST_F(CellularServiceTest, Constructor) {
   EXPECT_TRUE(service_->connectable());
+}
+
+TEST_F(CellularServiceTest, SetActivationState) {
+  {
+    InSequence call_sequence;
+    EXPECT_CALL(*adaptor_, EmitStringChanged(
+        flimflam::kActivationStateProperty,
+        flimflam::kActivationStateNotActivated));
+    EXPECT_CALL(*adaptor_, EmitBoolChanged(
+        flimflam::kConnectableProperty, false));
+    EXPECT_CALL(*adaptor_, EmitStringChanged(
+        flimflam::kActivationStateProperty,
+        flimflam::kActivationStateActivating));
+    EXPECT_CALL(*adaptor_, EmitBoolChanged(
+        flimflam::kConnectableProperty, true));
+    EXPECT_CALL(*adaptor_, EmitStringChanged(
+        flimflam::kActivationStateProperty,
+        flimflam::kActivationStatePartiallyActivated));
+    EXPECT_CALL(*adaptor_, EmitStringChanged(
+        flimflam::kActivationStateProperty,
+        flimflam::kActivationStateActivated));
+    EXPECT_CALL(*adaptor_, EmitStringChanged(
+        flimflam::kActivationStateProperty,
+        flimflam::kActivationStateNotActivated));
+    EXPECT_CALL(*adaptor_, EmitBoolChanged(
+        flimflam::kConnectableProperty, false));
+  }
+  EXPECT_CALL(manager_, HasService(_)).WillRepeatedly(Return(false));
+
+  EXPECT_TRUE(service_->activation_state().empty());
+  EXPECT_TRUE(service_->connectable());
+
+  service_->SetActivationState(flimflam::kActivationStateNotActivated);
+  EXPECT_EQ(flimflam::kActivationStateNotActivated,
+            service_->activation_state());
+  EXPECT_FALSE(service_->connectable());
+
+  service_->SetActivationState(flimflam::kActivationStateActivating);
+  EXPECT_EQ(flimflam::kActivationStateActivating, service_->activation_state());
+  EXPECT_TRUE(service_->connectable());
+
+  service_->SetActivationState(flimflam::kActivationStatePartiallyActivated);
+  EXPECT_EQ(flimflam::kActivationStatePartiallyActivated,
+            service_->activation_state());
+  EXPECT_TRUE(service_->connectable());
+
+  service_->SetActivationState(flimflam::kActivationStateActivated);
+  EXPECT_EQ(flimflam::kActivationStateActivated, service_->activation_state());
+  EXPECT_TRUE(service_->connectable());
+
+  service_->SetActivationState(flimflam::kActivationStateNotActivated);
+  EXPECT_EQ(flimflam::kActivationStateNotActivated,
+            service_->activation_state());
+  EXPECT_FALSE(service_->connectable());
 }
 
 TEST_F(CellularServiceTest, SetNetworkTechnology) {

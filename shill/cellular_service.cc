@@ -294,6 +294,7 @@ void CellularService::SetActivationState(const string &state) {
   }
   activation_state_ = state;
   adaptor()->EmitStringChanged(flimflam::kActivationStateProperty, state);
+  SetConnectable(state != flimflam::kActivationStateNotActivated);
 }
 
 void CellularService::SetOLP(const OLP &olp) {
