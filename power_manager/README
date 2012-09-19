@@ -1,50 +1,14 @@
-On Chrome OS, we want to dim the screen when the user is idle. To do this,
-the power manager subscribes for idle notifications from XSync, and adjusts
-the backlight based on whether or not the user is idle.
+The power manager makes power-related policy decisions via C++ code running
+in userspace.  This repository contains the following directories:
 
-Executable programs:
-  * backlight-tool (backlight_tool.cc)
-    Simple tool to get and set the brightness level of the display backlight.
-  * powerd (powerd.cc)
-    Upper power manager. Adjusts device status based on whether the
-    user is idle and on video activity indicator from Chrome.
-    This daemon is responsible for dimming the backlight or turning off the
-    screen based on user idle, and it is responsible for adjusting backlight
-    intensity based on user input and ambient light condition. The daemon also
-    monitors plug state (on ac or on battery) and battery state-of-charge.
-  * powerm (powerman_daemon.cc)
-    Lower power manager. Provides infrastructure for invoking suspend to RAM and
-    system shutdown. Handles input events for hall effect sensor (lid) and power
-    button.
-  * xidle-example (examples/xidle_example.cc)
-    Prints console notifications when the user is and is not idle.
-
-Main Classes:
-  * AmbientLightSensor (ambient_light_sensor.{cc,h})
-    Polls the ambient light sensor for current lighting conditions.
-  * Backlight (backlight.{cc,h})
-    Get and set the brightness level of the display backlight.
-  * BacklightController (backlight_controller.{cc,h})
-    Adjusts the backlight based on whether the user is idle.
-  * VideoDetector (video_detector.{cc,h})
-    Polls the root window for video activity timestamp posted by the window
-    manager. Allows powerd to defer idle when video has been playing recently.
-  * XIdle (xidle.{cc,h})
-    Receive notifications from the X Server when the user is marked as
-    idle, or as no longer idle
-
-Unit tests:
-  * idle_dimmer_unittest.cc:
-    Tests the BacklightController class.
-  * xidle_unittest.cc:
-    Tests the XIdle class with a real X server (or a virtual framebuffer).
-
-Autotests:
-  * hardware_Backlight
-    Verifies that backlight-tool can adjust brightness.
-  * power_Backlight
-    Verifies that adjusting the brightness with the backlight-tool changes the
-    amount of power used by the machine.
+  common:  C++ code shared between powerd and powerm.
+  config:  Configuration files installed to /usr/share/power_manager.
+  dbus:    D-Bus policy configuration files.
+  powerd:  "Upper" power manager daemon running as the chronos user.
+  powerm:  "Lower" power manager daemon running as the root user.
+  scripts: Assorted shell scripts.
+  tools:   C++ utility programs; may depend on powerd and powerm code.
+  udev:    udev configuration files and scripts.
 
 Configs:
   * keyboard_backlight_steps:
