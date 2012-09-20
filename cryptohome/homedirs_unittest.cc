@@ -14,6 +14,7 @@
 #include "mock_platform.h"
 #include "mock_tpm.h"
 #include "username_passkey.h"
+#include "user_oldest_activity_timestamp_cache.h"
 
 namespace cryptohome {
 using chromeos::SecureBlob;

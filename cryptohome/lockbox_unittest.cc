@@ -129,7 +129,6 @@ class LockboxTest : public ::testing::Test {
 
   static const char* kFileData;
   Lockbox lockbox_;
-  Crypto crypto_;
   NiceMock<MockTpm> tpm_;
   NiceMock<chromeos::ProcessMock> process_;
   chromeos::Blob file_data_;

@@ -5,9 +5,11 @@
 #ifndef CRYPTOHOME_MOCK_PLATFORM_H_
 #define CRYPTOHOME_MOCK_PLATFORM_H_
 
-#include "mount.h"
-
+#include <base/file_util.h>
+#include <base/time.h>
 #include <gmock/gmock.h>
+
+#include "platform.h"
 
 namespace cryptohome {
 using ::testing::_;
