@@ -1014,6 +1014,21 @@ TEST_F(MountManagerTest, ExtractSupportedUnmountOptions) {
   options_.push_back("force");
   EXPECT_TRUE(manager_.ExtractUnmountOptions(options_, &unmount_flags));
   EXPECT_EQ(expected_unmount_flags, unmount_flags);
+
+  unmount_flags = 0;
+  expected_unmount_flags = MNT_DETACH;
+  options_.clear();
+  options_.push_back("lazy");
+  EXPECT_TRUE(manager_.ExtractUnmountOptions(options_, &unmount_flags));
+  EXPECT_EQ(expected_unmount_flags, unmount_flags);
+
+  unmount_flags = 0;
+  expected_unmount_flags = MNT_FORCE | MNT_DETACH;
+  options_.clear();
+  options_.push_back("force");
+  options_.push_back("lazy");
+  EXPECT_TRUE(manager_.ExtractUnmountOptions(options_, &unmount_flags));
+  EXPECT_EQ(expected_unmount_flags, unmount_flags);
 }
 
 // Verifies that MountManager::ExtractUnmountOptions() returns false when

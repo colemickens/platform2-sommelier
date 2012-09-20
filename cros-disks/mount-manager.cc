@@ -35,6 +35,8 @@ const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
 const char kMountOptionMountLabelPrefix[] = "mountlabel=";
 // Literal for unmount option: "force".
 const char kUnmountOptionForce[] = "force";
+// Literal for unmount option: "lazy".
+const char kUnmountOptionLazy[] = "lazy";
 // Maximum number of trials on creating a mount directory using
 // Platform::CreateOrReuseEmptyDirectoryWithFallback().
 // A value of 100 seems reasonable and enough to handle directory name
@@ -339,6 +341,8 @@ bool MountManager::ExtractUnmountOptions(const vector<string>& options,
     const string& option = *option_iterator;
     if (option == kUnmountOptionForce) {
       *unmount_flags |= MNT_FORCE;
+    } else if (option == kUnmountOptionLazy) {
+      *unmount_flags |= MNT_DETACH;
     } else {
       LOG(ERROR) << "Got unsupported unmount option: " << option;
       return false;
