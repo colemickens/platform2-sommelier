@@ -59,8 +59,6 @@ const char kSuspendSignal[] = "SuspendSignal";
 const char kShutdownSignal[] = "ShutdownSignal";
 const char kExternalBacklightGetMethod[] = "ExternalBacklightGet";
 const char kExternalBacklightSetMethod[] = "ExternalBacklightSet";
-const char kDisableTouchDevicesMethod[] = "DisableTouchDevices";
-const char kEnableTouchDevicesMethod[] = "EnableTouchDevices";
 
 // powerm -> powerd signals.
 const char kLidClosed[] = "LidClosed";

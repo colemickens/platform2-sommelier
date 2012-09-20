@@ -433,31 +433,6 @@ DBusMessage* PowerManDaemon::HandleExternalBacklightSetMethod(
   return dbus_message_new_method_return(message);
 }
 
-DBusMessage* PowerManDaemon::HandleDisableTouchDevicesMethod(
-    DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-
-  DisableTouchDevices();
-  return dbus_message_new_method_return(message);
-}
-
-DBusMessage* PowerManDaemon::HandleEnableTouchDevicesMethod(
-    DBusMessage* message) {
-  bool display_on = true;
-  DBusError error;
-  dbus_error_init(&error);
-  if (dbus_message_get_args(message, &error,
-                            DBUS_TYPE_BOOLEAN, &display_on,
-                            DBUS_TYPE_INVALID)) {
-    EnableTouchDevices(display_on);
-  } else {
-    LOG(WARNING) << "Unable to read " << kEnableTouchDevicesMethod << " args";
-    dbus_error_free(&error);
-  }
-  return dbus_message_new_method_return(message);
-}
-
 void PowerManDaemon::AddDBusSignalHandler(const std::string& interface,
                                           const std::string& member,
                                           DBusSignalHandler handler) {
@@ -544,10 +519,6 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
                        &PowerManDaemon::HandleExternalBacklightGetMethod);
   AddDBusMethodHandler(kRootPowerManagerInterface, kExternalBacklightSetMethod,
                        &PowerManDaemon::HandleExternalBacklightSetMethod);
-  AddDBusMethodHandler(kRootPowerManagerInterface, kDisableTouchDevicesMethod,
-                       &PowerManDaemon::HandleDisableTouchDevicesMethod);
-  AddDBusMethodHandler(kRootPowerManagerInterface, kEnableTouchDevicesMethod,
-                       &PowerManDaemon::HandleEnableTouchDevicesMethod);
 
   DBusObjectPathVTable vtable;
   memset(&vtable, 0, sizeof(vtable));

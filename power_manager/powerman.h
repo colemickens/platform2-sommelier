@@ -97,8 +97,6 @@ class PowerManDaemon {
   void HandleSessionManagerStateChangedSignal(DBusMessage* message);
   DBusMessage* HandleExternalBacklightGetMethod(DBusMessage* message);
   DBusMessage* HandleExternalBacklightSetMethod(DBusMessage* message);
-  DBusMessage* HandleDisableTouchDevicesMethod(DBusMessage* message);
-  DBusMessage* HandleEnableTouchDevicesMethod(DBusMessage* message);
 
   void AddDBusSignalHandler(const std::string& interface,
                             const std::string& member,
