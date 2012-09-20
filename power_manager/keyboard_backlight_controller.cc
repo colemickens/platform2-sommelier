@@ -25,10 +25,6 @@ const int64 kVideoTimeoutIntervalMs = 7000;
 // The percentage change caused by each increment/decrement call.
 const double kBrightnessPercentChangeIncrement = 10.0;
 
-// ALS Threshold for determining whether or not we turn on the backlight. This
-// is a very coarse system and requires refinement.
-const double kAlsPercentThreshold = 50.0;
-
 KeyboardBacklightController::KeyboardBacklightController(
     BacklightInterface* backlight)
     : is_initialized_ (false),
@@ -176,16 +172,7 @@ PowerState KeyboardBacklightController::GetPowerState() const {
 
 void KeyboardBacklightController::SetAlsBrightnessOffsetPercent(
     double percent) {
-  num_als_adjustments_++;
-  if (percent <= kAlsPercentThreshold) { // Dim/no light conditions
-    SetCurrentBrightnessPercent(kTargetPercentMax,
-                                BRIGHTNESS_CHANGE_AUTOMATED,
-                                TRANSITION_INSTANT);
-  } else { // Office or brighter
-    SetCurrentBrightnessPercent(kTargetPercentMin,
-                                BRIGHTNESS_CHANGE_AUTOMATED,
-                                TRANSITION_INSTANT);
-  }
+  NOTIMPLEMENTED();
 }
 
 bool KeyboardBacklightController::IsBacklightActiveOff() {

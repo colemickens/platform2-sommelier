@@ -124,39 +124,6 @@ TEST_F(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent) {
   EXPECT_EQ(1, observer.changes().size());
 }
 
-TEST_F(KeyboardBacklightControllerTest, SetAlsBrightnessOffsetPercent) {
-  controller_->max_level_ = kTestMaxLevel;
-
-  // ALS turns on the backlight.
-  controller_->current_level_ = 0;
-  controller_->target_percent_ = 0.0;
-  controller_->backlight_enabled_ = true;
-  controller_->observer_ = NULL;
-  controller_->num_als_adjustments_ = 0;
-  controller_->num_user_adjustments_ = 0;
-  backlight_.ExpectSetBrightnessLevel(kTestMaxLevel, true);
-  controller_->SetAlsBrightnessOffsetPercent(0);
-  EXPECT_EQ(kTestMaxLevel, controller_->current_level_);
-  EXPECT_EQ(kTestMaxPercent, controller_->target_percent_);
-  EXPECT_EQ(1, controller_->num_als_adjustments_);
-  EXPECT_EQ(0, controller_->num_user_adjustments_);
-  Mock::VerifyAndClearExpectations(&backlight_);
-
-  // ALS turns off the backlight.
-  controller_->current_level_ = kTestCurrentLevel;
-  controller_->target_percent_ = kTestCurrentPercent;
-  controller_->backlight_enabled_ = true;
-  controller_->observer_ = NULL;
-  controller_->num_als_adjustments_ = 0;
-  controller_->num_user_adjustments_ = 0;
-  backlight_.ExpectSetBrightnessLevel(0, true);
-  controller_->SetAlsBrightnessOffsetPercent(kTestMaxPercent);
-  EXPECT_EQ(0, controller_->current_level_);
-  EXPECT_EQ(0.0, controller_->target_percent_);
-  EXPECT_EQ(1, controller_->num_als_adjustments_);
-  EXPECT_EQ(0, controller_->num_user_adjustments_);
-}
-
 TEST_F(KeyboardBacklightControllerTest, OnVideoDetectorEvent) {
   controller_->max_level_ = kTestMaxLevel;
 

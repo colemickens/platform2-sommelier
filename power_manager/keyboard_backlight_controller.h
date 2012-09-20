@@ -58,7 +58,6 @@ class KeyboardBacklightController : public BacklightController,
   FRIEND_TEST(KeyboardBacklightControllerTest, Init);
   FRIEND_TEST(KeyboardBacklightControllerTest, GetCurrentBrightnessPercent);
   FRIEND_TEST(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent);
-  FRIEND_TEST(KeyboardBacklightControllerTest, SetAlsBrightnessOffsetPercent);
   FRIEND_TEST(KeyboardBacklightControllerTest, OnVideoDetectorEvent);
   FRIEND_TEST(KeyboardBacklightControllerTest, UpdateBacklightEnabled);
   FRIEND_TEST(KeyboardBacklightControllerTest, SetBrightnessLevel);

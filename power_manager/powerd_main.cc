@@ -138,7 +138,6 @@ int main(int argc, char* argv[]) {
     LOG(WARNING) << "Cannot initialize keyboard backlight!";
     keyboard_light.reset(NULL);
   }
-  scoped_ptr<power_manager::AmbientLightSensor> kbd_als;
   if (keyboard_light.get()) {
     keyboard_controller.reset(
         new power_manager::KeyboardBacklightController(keyboard_light.get()));
@@ -146,13 +145,6 @@ int main(int argc, char* argv[]) {
       LOG(WARNING) << "Cannot initialize keyboard controller!";
       keyboard_controller.reset(NULL);
     }
-  }
-  if (keyboard_controller.get()) {
-    kbd_als.reset(
-        new power_manager::AmbientLightSensor(keyboard_controller.get(),
-                                              &prefs));
-    if (!kbd_als->Init())
-      LOG(WARNING) << "Cannot initialize light sensor for keyboard controller!";
   }
 #endif
   MetricsLibrary metrics_lib;
