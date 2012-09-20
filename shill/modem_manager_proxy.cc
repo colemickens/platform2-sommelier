@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,9 +25,9 @@ vector<DBus::Path> ModemManagerProxy::EnumerateDevices() {
   try {
     return proxy_.EnumerateDevices();
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
-    return vector<DBus::Path>();  // Make the compiler happy.
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
   }
+  return vector<DBus::Path>();
 }
 
 ModemManagerProxy::Proxy::Proxy(DBus::Connection *connection,
