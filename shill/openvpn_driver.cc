@@ -452,6 +452,22 @@ void OpenVPNDriver::SetRoutes(const RouteOptions &routes,
   LOG_IF(WARNING, properties->routes.empty()) << "No routes provided.";
 }
 
+// static
+bool OpenVPNDriver::SplitPortFromHost(
+    const string &host, string *name, string *port) {
+  vector<string> tokens;
+  SplitString(host, ':', &tokens);
+  int port_number = 0;
+  if (tokens.size() != 2 || tokens[0].empty() || tokens[1].empty() ||
+      !IsAsciiDigit(tokens[1][0]) ||
+      !base::StringToInt(tokens[1], &port_number) || port_number > kuint16max) {
+    return false;
+  }
+  *name = tokens[0];
+  *port = tokens[1];
+  return true;
+}
+
 void OpenVPNDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
   StartConnectTimeout();
   service_ = service;
@@ -473,8 +489,18 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   }
   options->push_back("--client");
   options->push_back("--tls-client");
+
   options->push_back("--remote");
-  options->push_back(vpnhost);
+  string host_name, host_port;
+  if (SplitPortFromHost(vpnhost, &host_name, &host_port)) {
+    DCHECK(!host_name.empty());
+    DCHECK(!host_port.empty());
+    options->push_back(host_name);
+    options->push_back(host_port);
+  } else {
+    options->push_back(vpnhost);
+  }
+
   options->push_back("--nobind");
   options->push_back("--persist-key");
   options->push_back("--persist-tun");

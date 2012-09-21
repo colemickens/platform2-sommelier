@@ -90,6 +90,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, InitManagementChannelOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitNSSOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
+  FRIEND_TEST(OpenVPNDriverTest, InitOptionsHostWithPort);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
   FRIEND_TEST(OpenVPNDriverTest, InitPKCS11Options);
   FRIEND_TEST(OpenVPNDriverTest, Notify);
@@ -105,6 +106,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, ParseRouteOption);
   FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
+  FRIEND_TEST(OpenVPNDriverTest, SplitPortFromHost);
   FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
 
   static const char kOpenVPNPath[];
@@ -136,6 +138,12 @@ class OpenVPNDriver : public VPNDriver,
                                RouteOptions *routes);
   static void SetRoutes(const RouteOptions &routes,
                         IPConfig::Properties *properties);
+
+  // If |host| is in the "name:port" format, sets up |name| and |port|
+  // appropriately and returns true. Otherwise, returns false.
+  static bool SplitPortFromHost(const std::string &host,
+                                std::string *name,
+                                std::string *port);
 
   void InitOptions(std::vector<std::string> *options, Error *error);
   bool InitNSSOptions(std::vector<std::string> *options, Error *error);

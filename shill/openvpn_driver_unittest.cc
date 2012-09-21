@@ -316,6 +316,29 @@ TEST_F(OpenVPNDriverTest, SetRoutes) {
   EXPECT_EQ(2, props.routes.size());
 }
 
+TEST_F(OpenVPNDriverTest, SplitPortFromHost) {
+  string name, port;
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("", NULL, NULL));
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("", &name, &port));
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("v.com", &name, &port));
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("v.com:", &name, &port));
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost(":1234", &name, &port));
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("v.com:f:1234", &name, &port));
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("v.com:x", &name, &port));
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("v.com:-1", &name, &port));
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("v.com:+1", &name, &port));
+  EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("v.com:65536", &name, &port));
+  EXPECT_TRUE(OpenVPNDriver::SplitPortFromHost("v.com:0", &name, &port));
+  EXPECT_EQ("v.com", name);
+  EXPECT_EQ("0", port);
+  EXPECT_TRUE(OpenVPNDriver::SplitPortFromHost("w.com:65535", &name, &port));
+  EXPECT_EQ("w.com", name);
+  EXPECT_EQ("65535", port);
+  EXPECT_TRUE(OpenVPNDriver::SplitPortFromHost("x.com:12345", &name, &port));
+  EXPECT_EQ("x.com", name);
+  EXPECT_EQ("12345", port);
+}
+
 TEST_F(OpenVPNDriverTest, ParseForeignOption) {
   vector<string> domain_search;
   vector<string> dns_servers;
@@ -457,6 +480,27 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   ExpectInFlags(options, "--pkcs11-id", kID);
   EXPECT_TRUE(std::find(options.begin(), options.end(), "--syslog") !=
               options.end());
+}
+
+TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
+  SetArg(flimflam::kProviderHostProperty, "v.com:1234");
+  driver_->rpc_task_.reset(new RPCTask(&control_, this));
+  driver_->tunnel_interface_ = kInterfaceName;
+  EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
+  ServiceRefPtr null_service;
+  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(null_service));
+
+  Error error;
+  vector<string> options;
+  driver_->InitOptions(&options, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  vector<string>::const_iterator it =
+      std::find(options.begin(), options.end(), "--remote");
+  ASSERT_TRUE(it != options.end());
+  ASSERT_TRUE(++it != options.end());
+  EXPECT_EQ("v.com", *it);
+  ASSERT_TRUE(++it != options.end());
+  EXPECT_EQ("1234", *it);
 }
 
 TEST_F(OpenVPNDriverTest, InitNSSOptions) {
