@@ -125,6 +125,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       allowed_modes_(MM_MODEM_MODE_NONE),
       preferred_mode_(MM_MODEM_MODE_NONE),
       home_provider_(NULL),
+      provider_requires_roaming_(false),
       scanning_supported_(true),
       scanning_(false),
       scan_interval_(0) {
@@ -151,6 +152,8 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
                              &selected_network_);
   store->RegisterConstStringmaps(flimflam::kFoundNetworksProperty,
                                  &found_networks_);
+  store->RegisterConstBool(shill::kProviderRequiresRoamingProperty,
+                           &provider_requires_roaming_);
   store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
   store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
   HelpRegisterDerivedKeyValueStore(
@@ -459,9 +462,7 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
 }
 
 bool CellularCapabilityUniversal::AllowRoaming() {
-  bool requires_roaming =
-      home_provider_ ? home_provider_->requires_roaming : false;
-  return requires_roaming || allow_roaming_property();
+  return provider_requires_roaming_ || allow_roaming_property();
 }
 
 void CellularCapabilityUniversal::GetProperties() {
@@ -521,7 +522,7 @@ void CellularCapabilityUniversal::SetHomeProvider() {
   // Even if provider is the same as home_provider_, it is possible
   // that the spn_ has changed.  Run all the code below.
   home_provider_ = provider;
-
+  provider_requires_roaming_ = home_provider_->requires_roaming;
   Cellular::Operator oper;
   if (provider->networks && provider->networks[0]) {
     oper.SetCode(provider->networks[0]);
@@ -539,7 +540,8 @@ void CellularCapabilityUniversal::SetHomeProvider() {
   }
   cellular()->set_home_provider(oper);
   SLOG(Cellular, 2) << "Home provider: " << oper.GetCode() << ", "
-                    << oper.GetName() << ", " << oper.GetCountry();
+                    << oper.GetName() << ", " << oper.GetCountry()
+                    << (provider_requires_roaming_ ? ", roaming required" : "");
   InitAPNList();
 }
 

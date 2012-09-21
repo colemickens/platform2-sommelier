@@ -652,15 +652,30 @@ TEST_F(CellularCapabilityGSMTest, UpdateStatus) {
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
 }
 
+TEST_F(CellularCapabilityGSMTest, AllowRoaming) {
+  EXPECT_FALSE(cellular_->allow_roaming_);
+  EXPECT_FALSE(capability_->provider_requires_roaming_);
+  EXPECT_FALSE(capability_->AllowRoaming());
+  capability_->provider_requires_roaming_ = true;
+  EXPECT_TRUE(capability_->AllowRoaming());
+  capability_->provider_requires_roaming_ = false;
+  cellular_->allow_roaming_ = true;
+  EXPECT_TRUE(capability_->AllowRoaming());
+}
+
 TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   static const char kCountry[] = "us";
   static const char kCode[] = "310160";
   capability_->imsi_ = "310240123456789";
 
+  EXPECT_FALSE(capability_->home_provider_);
+  EXPECT_FALSE(capability_->provider_requires_roaming_);
+
   capability_->SetHomeProvider();  // No mobile provider DB available.
   EXPECT_TRUE(cellular_->home_provider().GetName().empty());
   EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
   EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
+  EXPECT_FALSE(capability_->provider_requires_roaming_);
 
   InitProviderDB();
   capability_->SetHomeProvider();
@@ -669,7 +684,7 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
   EXPECT_EQ(4, capability_->apn_list_.size());
   ASSERT_TRUE(capability_->home_provider_);
-  EXPECT_FALSE(capability_->home_provider_->requires_roaming);
+  EXPECT_FALSE(capability_->provider_requires_roaming_);
 
   Cellular::Operator oper;
   cellular_->set_home_provider(oper);
@@ -678,6 +693,7 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kTestCarrier, cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
+  EXPECT_FALSE(capability_->provider_requires_roaming_);
 
   static const char kCubic[] = "Cubic";
   capability_->spn_ = kCubic;
@@ -685,7 +701,7 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kCubic, cellular_->home_provider().GetName());
   EXPECT_EQ("", cellular_->home_provider().GetCode());
   ASSERT_TRUE(capability_->home_provider_);
-  EXPECT_TRUE(capability_->home_provider_->requires_roaming);
+  EXPECT_TRUE(capability_->provider_requires_roaming_);
 
   static const char kCUBIC[] = "CUBIC";
   capability_->spn_ = kCUBIC;
@@ -694,7 +710,7 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kCUBIC, cellular_->home_provider().GetName());
   EXPECT_EQ("", cellular_->home_provider().GetCode());
   ASSERT_TRUE(capability_->home_provider_);
-  EXPECT_TRUE(capability_->home_provider_->requires_roaming);
+  EXPECT_TRUE(capability_->provider_requires_roaming_);
 }
 
 namespace {

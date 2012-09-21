@@ -92,6 +92,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   friend class CellularTest;
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityTest;
+  FRIEND_TEST(CellularCapabilityGSMTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityGSMTest, CreateDeviceFromProperties);
   FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityGSMTest, GetIMEI);
@@ -218,6 +219,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   Cellular::Operator serving_operator_;
   std::string spn_;
   mobile_provider *home_provider_;
+  bool provider_requires_roaming_;
   std::string desired_network_;
 
   // The number of times GetIMSI() has been retried.

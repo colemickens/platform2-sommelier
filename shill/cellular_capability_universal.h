@@ -123,6 +123,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularTest;
   friend class CellularCapabilityTest;
   friend class CellularCapabilityUniversalTest;
+  FRIEND_TEST(CellularCapabilityUniversalTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalTest, ConnectApns);
   FRIEND_TEST(CellularCapabilityUniversalTest, CreateFriendlyServiceName);
@@ -266,6 +267,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::string sim_identifier_;
   std::string operator_id_;
   mobile_provider *home_provider_;
+  bool provider_requires_roaming_;
   std::string desired_network_;
 
   // Properties.

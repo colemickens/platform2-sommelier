@@ -57,6 +57,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
       home_provider_(NULL),
+      provider_requires_roaming_(false),
       get_imsi_retries_(0),
       get_imsi_retry_delay_milliseconds_(kGetIMSIRetryDelayMilliseconds),
       scanning_(false),
@@ -67,6 +68,8 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
                              &selected_network_);
   store->RegisterConstStringmaps(flimflam::kFoundNetworksProperty,
                                  &found_networks_);
+  store->RegisterConstBool(shill::kProviderRequiresRoamingProperty,
+                           &provider_requires_roaming_);
   store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
   store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
   HelpRegisterDerivedKeyValueStore(
@@ -330,9 +333,7 @@ void CellularCapabilityGSM::OnConnectReply(const ResultCallback &callback,
 }
 
 bool CellularCapabilityGSM::AllowRoaming() {
-  bool requires_roaming =
-      home_provider_ ? home_provider_->requires_roaming : false;
-  return requires_roaming || allow_roaming_property();
+  return provider_requires_roaming_ || allow_roaming_property();
 }
 
 // always called from an async context
@@ -481,6 +482,7 @@ void CellularCapabilityGSM::SetHomeProvider() {
     return;
   }
   home_provider_ = provider;
+  provider_requires_roaming_ = home_provider_->requires_roaming;
   Cellular::Operator oper;
   if (provider->networks && provider->networks[0]) {
     oper.SetCode(provider->networks[0]);
@@ -498,7 +500,8 @@ void CellularCapabilityGSM::SetHomeProvider() {
   }
   cellular()->set_home_provider(oper);
   SLOG(Cellular, 2) << "Home provider: " << oper.GetCode() << ", "
-                    << oper.GetName() << ", " << oper.GetCountry();
+                    << oper.GetName() << ", " << oper.GetCountry()
+                    << (provider_requires_roaming_ ? ", roaming required" : "");
   InitAPNList();
 }
 

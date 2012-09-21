@@ -217,6 +217,7 @@ class Cellular : public Device {
   friend class ModemTest;
   FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityCDMATest, GetRegistrationState);
+  FRIEND_TEST(CellularCapabilityGSMTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
@@ -224,6 +225,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityTest, FinishEnable);
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
+  FRIEND_TEST(CellularCapabilityUniversalTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
