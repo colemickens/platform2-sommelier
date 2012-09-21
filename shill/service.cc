@@ -119,8 +119,6 @@ Service::Service(ControlInterface *control_interface,
       dispatcher_(dispatcher),
       unique_name_(base::UintToString(serial_number_++)),
       friendly_name_(unique_name_),
-      available_(false),
-      configured_(false),
       adaptor_(control_interface->CreateServiceAdaptor(this)),
       metrics_(metrics),
       manager_(manager),
@@ -354,6 +352,7 @@ bool Service::Unload() {
   check_portal_ = kCheckPortalAuto;
   favorite_ = false;
   guid_ = "";
+  has_ever_connected_ = false;
   priority_ = kPriorityNone;
   proxy_config_ = "";
   save_credentials_ = true;

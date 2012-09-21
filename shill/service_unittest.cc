@@ -282,6 +282,12 @@ TEST_F(ServiceTest, Unload) {
   EXPECT_CALL(storage, GetString(storage_id_, _, _))
       .Times(AtLeast(1))
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(string_value), Return(true)));
+  EXPECT_CALL(storage, GetBool(storage_id_, _, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(true), Return(true)));
+  EXPECT_FALSE(service_->explicitly_disconnected_);
+  service_->explicitly_disconnected_ = true;
+  EXPECT_FALSE(service_->has_ever_connected_);
   ASSERT_TRUE(service_->Load(&storage));
   // TODO(pstew): Only two string properties in the service are tested as
   // a sentinel that properties are being set and reset at the right times.
@@ -291,10 +297,14 @@ TEST_F(ServiceTest, Unload) {
   // be created. crosbug.com/24859
   EXPECT_EQ(string_value, service_->ui_data_);
   EXPECT_EQ(string_value, service_->guid_);
+  EXPECT_FALSE(service_->explicitly_disconnected_);
+  EXPECT_TRUE(service_->has_ever_connected_);
+  service_->explicitly_disconnected_ = true;
   service_->Unload();
   EXPECT_EQ(string(""), service_->ui_data_);
   EXPECT_EQ(string(""), service_->guid_);
   EXPECT_FALSE(service_->explicitly_disconnected_);
+  EXPECT_FALSE(service_->has_ever_connected_);
 }
 
 TEST_F(ServiceTest, State) {

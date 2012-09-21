@@ -592,8 +592,6 @@ class Service : public base::RefCounted<Service> {
   static unsigned int serial_number_;
   std::string unique_name_;  // MUST be unique amongst service instances
   std::string friendly_name_;  // MAY be same as |unique_name_|
-  bool available_;
-  bool configured_;
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
   scoped_ptr<HTTPProxy> http_proxy_;
   ConnectionRefPtr connection_;
