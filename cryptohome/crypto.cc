@@ -27,9 +27,10 @@ extern "C" {
 #include "platform.h"
 #include "username_passkey.h"
 
-// Included last because it has conflicting defines
+// Included last because they both have conflicting defines :(
 extern "C" {
 #include <ecryptfs.h>
+#include <keyutils.h>
 }
 
 using chromeos::SecureBlob;
@@ -215,7 +216,7 @@ bool Crypto::AddKeyset(const VaultKeyset& vault_keyset,
 }
 
 void Crypto::ClearKeyset() const {
-  Platform::ClearUserKeyring();
+  keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
 }
 
 Crypto::CryptoError Crypto::TpmErrorToCrypto(

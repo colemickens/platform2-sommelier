@@ -27,11 +27,6 @@
 #include <base/time.h>
 #include <chromeos/utility.h>
 
-// Included last to avoid redefinition problems
-extern "C" {
-#include <keyutils.h>
-}
-
 using base::SplitString;
 using std::string;
 
@@ -379,10 +374,6 @@ bool Platform::GetGroupId(const std::string& group, gid_t* group_id) const {
 
 int64 Platform::AmountOfFreeDiskSpace(const string& path) const {
   return base::SysInfo::AmountOfFreeDiskSpace(FilePath(path));
-}
-
-void Platform::ClearUserKeyring() {
-  keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
 }
 
 bool Platform::FileExists(const std::string& path) {
