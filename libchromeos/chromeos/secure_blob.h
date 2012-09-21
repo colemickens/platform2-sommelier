@@ -19,6 +19,7 @@ class SecureBlob : public chromeos::Blob {
   SecureBlob(chromeos::Blob::const_iterator begin,
              chromeos::Blob::const_iterator end);
   explicit SecureBlob(int size);
+  explicit SecureBlob(const std::string& str);
   SecureBlob(const unsigned char* from, int from_length);
   SecureBlob(const char* from, int from_length);
   virtual ~SecureBlob();

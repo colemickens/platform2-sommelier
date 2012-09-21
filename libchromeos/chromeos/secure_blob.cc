@@ -19,6 +19,11 @@ SecureBlob::SecureBlob(int size)
     : chromeos::Blob(size) {
 }
 
+SecureBlob::SecureBlob(const std::string& from)
+    : chromeos::Blob(from.length()) {
+  memcpy(data(), from.c_str(), from.length());
+}
+
 SecureBlob::SecureBlob(const unsigned char* from, int from_length)
     : chromeos::Blob(from_length) {
   memcpy(data(), from, from_length);
