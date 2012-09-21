@@ -186,6 +186,7 @@ void HTTPRequest::OnConnectCompletion(bool success, int fd) {
                << server_hostname_
                << ": "
                << server_async_connection_->error();
+    // |this| could be freed as a result of calling SendStatus().
     SendStatus(kResultConnectionFailure);
     return;
   }

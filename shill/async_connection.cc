@@ -102,16 +102,21 @@ void AsyncConnection::Stop() {
 
 void AsyncConnection::OnConnectCompletion(int fd) {
   CHECK_EQ(fd_, fd);
+  bool success = false;
+  int returned_fd = -1;
 
   if (sockets_->GetSocketError(fd_) != 0) {
     error_ = sockets_->ErrorString();
     PLOG(ERROR) << "Async GetSocketError returns failure";
-    callback_.Run(false, -1);
   } else {
-    callback_.Run(true, fd_);  // Passes ownership
+    returned_fd = fd_;
     fd_ = -1;
+    success = true;
   }
   Stop();
+
+  // Run the callback last, since it may end up freeing this instance.
+  callback_.Run(success, returned_fd);  // Passes ownership
 }
 
 }  // namespace shill

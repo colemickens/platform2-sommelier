@@ -39,18 +39,22 @@ const int kSocketFD = 60708;
 class AsyncConnectionTest : public Test {
  public:
   AsyncConnectionTest()
-      : async_connection_(kInterfaceName, &dispatcher_, &sockets_,
-                          callback_target_.callback()),
+      : async_connection_(
+            new AsyncConnection(kInterfaceName, &dispatcher_, &sockets_,
+                                callback_target_.callback())),
         address_(IPAddress::kFamilyIPv4) { }
 
   virtual void SetUp() {
     EXPECT_TRUE(address_.SetAddressFromString(kConnectAddress));
   }
   virtual void TearDown() {
-    if (async_connection_.fd_ >= 0) {
+    if (async_connection_.get() && async_connection_->fd_ >= 0) {
       EXPECT_CALL(sockets(), Close(kSocketFD))
           .WillOnce(Return(0));
     }
+  }
+  void InvokeFreeConnection(bool /*success*/, int /*fd*/) {
+    async_connection_.reset();
   }
 
  protected:
@@ -68,14 +72,14 @@ class AsyncConnectionTest : public Test {
   };
 
   void ExpectReset() {
-    EXPECT_STREQ(kInterfaceName, async_connection_.interface_name_.c_str());
-    EXPECT_EQ(&dispatcher_, async_connection_.dispatcher_);
-    EXPECT_EQ(&sockets_, async_connection_.sockets_);
+    EXPECT_STREQ(kInterfaceName, async_connection_->interface_name_.c_str());
+    EXPECT_EQ(&dispatcher_, async_connection_->dispatcher_);
+    EXPECT_EQ(&sockets_, async_connection_->sockets_);
     EXPECT_TRUE(callback_target_.callback().
-                Equals(async_connection_.callback_));
-    EXPECT_EQ(-1, async_connection_.fd_);
-    EXPECT_FALSE(async_connection_.connect_completion_callback_.is_null());
-    EXPECT_FALSE(async_connection_.connect_completion_handler_.get());
+                Equals(async_connection_->callback_));
+    EXPECT_EQ(-1, async_connection_->fd_);
+    EXPECT_FALSE(async_connection_->connect_completion_callback_.is_null());
+    EXPECT_FALSE(async_connection_->connect_completion_handler_.get());
   }
 
   void StartConnection() {
@@ -96,14 +100,14 @@ class AsyncConnectionTest : public Test {
   }
 
   void OnConnectCompletion(int fd) {
-    async_connection_.OnConnectCompletion(fd);
+    async_connection_->OnConnectCompletion(fd);
   }
-  AsyncConnection &async_connection() { return async_connection_; }
+  AsyncConnection &async_connection() { return *async_connection_.get(); }
   StrictMock<MockSockets> &sockets() { return sockets_; }
   MockEventDispatcher &dispatcher() { return dispatcher_; }
   const IPAddress &address() { return address_; }
-  int fd() { return async_connection_.fd_; }
-  void set_fd(int fd) { async_connection_.fd_ = fd; }
+  int fd() { return async_connection_->fd_; }
+  void set_fd(int fd) { async_connection_->fd_ = fd; }
   StrictMock<ConnectCallbackTarget> &callback_target() {
     return callback_target_;
   }
@@ -112,7 +116,7 @@ class AsyncConnectionTest : public Test {
   MockEventDispatcher dispatcher_;
   StrictMock<MockSockets> sockets_;
   StrictMock<ConnectCallbackTarget> callback_target_;
-  AsyncConnection async_connection_;
+  scoped_ptr<AsyncConnection> async_connection_;
   IPAddress address_;
 };
 
@@ -246,6 +250,28 @@ TEST_F(AsyncConnectionTest, SynchronousSuccess) {
   EXPECT_CALL(callback_target(), CallTarget(true, kSocketFD));
   EXPECT_TRUE(async_connection().Start(address(), kConnectPort));
   ExpectReset();
+}
+
+TEST_F(AsyncConnectionTest, FreeOnSuccessCallback) {
+  StartConnection();
+  EXPECT_CALL(sockets(), GetSocketError(kSocketFD))
+      .WillOnce(Return(0));
+  EXPECT_CALL(callback_target(), CallTarget(true, kSocketFD))
+      .WillOnce(Invoke(this, &AsyncConnectionTest::InvokeFreeConnection));
+  OnConnectCompletion(kSocketFD);
+}
+
+TEST_F(AsyncConnectionTest, FreeOnFailureCallback) {
+  StartConnection();
+  EXPECT_CALL(sockets(), GetSocketError(kSocketFD))
+      .WillOnce(Return(1));
+  EXPECT_CALL(callback_target(), CallTarget(false, -1))
+      .WillOnce(Invoke(this, &AsyncConnectionTest::InvokeFreeConnection));
+  EXPECT_CALL(sockets(), Error())
+      .WillOnce(Return(kErrorNumber));
+  EXPECT_CALL(sockets(), Close(kSocketFD))
+      .WillOnce(Return(0));
+  OnConnectCompletion(kSocketFD);
 }
 
 }  // namespace shill
