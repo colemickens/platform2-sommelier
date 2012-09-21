@@ -30,6 +30,14 @@ boolean_value() {
   fi
 }
 
+dump_stats_and_exit() {
+  echo ""
+  echo "Finished ${cur} iterations."
+  echo "Suspend_failures: $(( $(get_failed_count) - ${initial_failed} ))"
+  echo "Firmware log errors: ${firmware_errors}"
+  exit 0
+}
+
 FLAGS "$@" || exit 1
 
 if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ] &&
@@ -48,8 +56,11 @@ initial_failed=$(get_failed_count)
 suspend_interval=$(( FLAGS_suspend_max - FLAGS_suspend_min + 1 ))
 wake_interval=$(( FLAGS_wake_max - FLAGS_wake_min + 1 ))
 
+trap dump_stats_and_exit INT
+
 cur=0
 firmware_errors=0
+last_failed=${initial_failed}
 while [ ${cur} -lt ${FLAGS_count} ]; do
   : $(( cur += 1 ))
   printf "Suspend ${cur} of ${FLAGS_count}: "
@@ -74,11 +85,14 @@ while [ ${cur} -lt ${FLAGS_count} ]; do
     fi
   fi
   # Make sure suspend succeeded
-  if [ $(get_failed_count) -gt ${initial_failed} ]; then
-    echo "Suspend failed, stopping test."
+  cur_failed=$(get_failed_count)
+  if [ ${cur_failed} -gt ${last_failed} ]; then
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+      echo "Suspend failed, stopping test."
       exit 6
     fi
+    printf "(suspend failed, ignoring)"
+    last_failed=${cur_failed}
   fi
 
   wake_time=$(( ( $(random) % wake_interval ) + FLAGS_wake_min ))
@@ -87,6 +101,4 @@ while [ ${cur} -lt ${FLAGS_count} ]; do
   echo ""
 done
 
-echo "Finished ${cur} iterations."
-echo "suspend_failures: $(( $(get_failed_count) - ${initial_failed} ))"
-echo "firmware log errors: ${firmware_errors}"
+dump_stats_and_exit
