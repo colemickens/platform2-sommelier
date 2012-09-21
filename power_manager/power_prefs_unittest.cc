@@ -11,6 +11,7 @@
 #include "base/scoped_temp_dir.h"
 #include "base/string_number_conversions.h"
 #include "power_manager/power_prefs.h"
+#include "power_manager/signal_callback.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -30,9 +31,81 @@ const char kGarbageString[] = "This is garbage";
 const char kIntTestFileName[] = "intfile";
 const char kDoubleTestFileName[] = "doublefile";
 
+// The test crashes after this many milliseconds if an expected preference
+// change notification is never received.
+const guint kPrefChangeTimeoutMs = 60 * 1000;
+
 }  // namespace
 
 namespace power_manager {
+
+// Simple class that runs a GLib main loop until it sees a pref get changed.
+// Tests should pass &OnPrefChangedThunk to PowerPrefs::StartPrefWatching(),
+// update a pref file, and then call RunUntilPrefChanged().
+class TestPrefObserver {
+ public:
+  TestPrefObserver() : loop_(g_main_loop_new(NULL, FALSE)), timeout_id_(0) {}
+  ~TestPrefObserver() {
+    if (timeout_id_)
+      g_source_remove(timeout_id_);
+    g_main_loop_unref(loop_);
+    loop_ = NULL;
+  }
+
+  // Runs |loop_| until OnPrefChanged() is called, then quits the loop
+  // and returns a string containing the name of the pref that was changed.
+  std::string RunUntilPrefChanged() {
+    timeout_id_ = g_timeout_add(kPrefChangeTimeoutMs, OnTimeoutThunk, this);
+    g_main_loop_run(loop_);
+    return pref_name_;
+  }
+
+  // Listens for preference change notifications.  Cancels |timeout_id_|, quits
+  // the main loop, and updates |pref_name_|.
+  SIGNAL_CALLBACK_3(TestPrefObserver,
+                    gboolean,
+                    OnPrefChanged,
+                    const char*,
+                    int,
+                    unsigned int);
+
+  // Triggers a crash.
+  SIGNAL_CALLBACK_0(TestPrefObserver,
+                    gboolean,
+                    OnTimeout);
+
+ private:
+  GMainLoop* loop_;  // not owned
+
+  // Name of the last pref that was changed.
+  std::string pref_name_;
+
+  // ID of the timeout that was installed to run OnTimeout().  0 if not present.
+  guint timeout_id_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestPrefObserver);
+};
+
+gboolean TestPrefObserver::OnPrefChanged(const char* name,
+                                         int handle,
+                                         unsigned int mask) {
+  // OnPrefChanged() can be called multiple times for a single update.  For
+  // example, when a file is first written, we'll get notified both about it
+  // being created and about it being modified.
+  if (timeout_id_) {
+    g_source_remove(timeout_id_);
+    timeout_id_ = 0;
+  }
+  g_main_loop_quit(loop_);
+  pref_name_ = name;
+  return TRUE;
+}
+
+gboolean TestPrefObserver::OnTimeout() {
+  timeout_id_ = 0;
+  CHECK(false) << "Timeout exceeded; pref change notification not received";
+  return FALSE;
+}
 
 class PowerPrefsTest : public Test {
  public:
@@ -232,6 +305,30 @@ TEST_F(PowerPrefsTest, TestThreeDirectoriesGarbage) {
   EXPECT_TRUE(prefs.GetDouble(kDoubleTestFileName, &double_value));
   EXPECT_EQ(kIntTestValue, int_value);
   EXPECT_EQ(kDoubleTestValue, double_value);
+}
+
+// Make sure that PowerPrefs correctly notifies about changes to pref files.
+TEST_F(PowerPrefsTest, WatchPrefs) {
+  const char kPrefName[] = "foo";
+  const char kPrefValue[] = "1";
+  const FilePath kFilePath = paths_[0].Append(kPrefName);
+
+  // Create a pref file.
+  PowerPrefs prefs(paths_);
+  TestPrefObserver observer;
+  prefs.StartPrefWatching(&TestPrefObserver::OnPrefChangedThunk, &observer);
+  EXPECT_EQ(strlen(kPrefValue),
+            file_util::WriteFile(kFilePath, kPrefValue, strlen(kPrefValue)));
+  EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());
+
+  // Write to the file again.
+  EXPECT_EQ(strlen(kPrefValue),
+            file_util::WriteFile(kFilePath, kPrefValue, strlen(kPrefValue)));
+  EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());
+
+  // Remove the file.
+  EXPECT_TRUE(file_util::Delete(kFilePath, false));
+  EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());
 }
 
 }  // namespace power_manager

@@ -29,7 +29,7 @@ bool PowerPrefs::StartPrefWatching(Inotify::InotifyCallback callback,
   if (!notifier_.Init(callback, data))
     return false;
   CHECK(!pref_paths_.empty());
-  if (notifier_.AddWatch(pref_paths_[0].value().c_str(), kFileWatchMask) > 0)
+  if (notifier_.AddWatch(pref_paths_[0].value().c_str(), kFileWatchMask) < 0)
     return false;
   notifier_.Start();
   return true;

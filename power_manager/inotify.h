@@ -13,6 +13,7 @@ namespace power_manager {
 
 class Inotify {
  public:
+  // Implementations should return TRUE unless they want the watch to cease.
   typedef gboolean (*InotifyCallback)(const char* name,   // path name to watch
                                       int watch_handle,   // watch handle
                                       unsigned int mask,  // inotify mask
