@@ -171,8 +171,7 @@ class PowerManDaemon {
   void UnlockVTSwitch();
 
   // Disable and Enable touch devices on lid close/open
-  void DisableTouchDevices();
-  void EnableTouchDevices(bool display_on);
+  void SetTouchDevices(bool enable);
 
   // Acquire the console file handle.
   bool GetConsole();

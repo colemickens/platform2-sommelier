@@ -94,10 +94,12 @@ void PowerManDaemon::Init() {
     LOG(INFO) << "PowerM Daemon Init - lid "
               << (lidstate_ == LID_STATE_CLOSED ? "closed." : "opened.");
     if (lidstate_ == LID_STATE_CLOSED) {
+      SetTouchDevices(false);
       input_.DisableWakeInputs();
       LOG(INFO) << "PowerM Daemon Init - lid is closed; generating event";
       OnInputEvent(this, INPUT_LID, input_lidstate);
     } else {
+      SetTouchDevices(true);
       input_.EnableWakeInputs();
     }
   }
@@ -176,7 +178,7 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
         break;
       }
       if (daemon->lidstate_ == LID_STATE_CLOSED) {
-        daemon->DisableTouchDevices();
+        daemon->SetTouchDevices(false);
         daemon->input_.DisableWakeInputs();
         util::SendSignalToPowerD(kLidClosed);
         // Check that powerd stuck around to act on  this event.  If not,
@@ -186,7 +188,7 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
                                                        daemon->lid_id_,
                                                        daemon->powerd_id_));
       } else {
-        daemon->EnableTouchDevices(true);
+        daemon->SetTouchDevices(true);
         daemon->input_.EnableWakeInputs();
         util::CreateStatusFile(daemon->lid_open_file_);
         util::SendSignalToPowerD(kLidOpened);
@@ -676,22 +678,17 @@ void PowerManDaemon::UnlockVTSwitch() {
     LOG(INFO) << "Invoked ioctl(VT_UNLOCKSWITCH)";
 }
 
-void PowerManDaemon::DisableTouchDevices() {
+void PowerManDaemon::SetTouchDevices(bool enable) {
 #ifdef TOUCH_DEVICE
-  util::Run("/opt/google/touch/touch-control.sh --disable");
-#endif // TOUCH_DEVICE
-}
-
-void PowerManDaemon::EnableTouchDevices(bool display_on) {
-#ifdef TOUCH_DEVICE
-  if (lidstate_ == LID_STATE_CLOSED) {
-    // Do not allow the touchscreen to be enabled when the lid is closed.
-    return;
+  if (enable) {
+    if (lidstate_ == LID_STATE_CLOSED) {
+      // Do not allow the touchscreen to be enabled when the lid is closed.
+      return;
+    }
+    util::Launch("/opt/google/touch/touch-control.sh --enable");
+  } else {
+    util::Run("/opt/google/touch/touch-control.sh --disable");
   }
-  if (display_on)
-    util::Launch("/opt/google/touch/touch-control.sh --enable --display=on");
-  else
-    util::Launch("/opt/google/touch/touch-control.sh --enable --display=off");
 #endif // TOUCH_DEVICE
 }
 
