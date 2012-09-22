@@ -15,6 +15,7 @@
 #include <base/string_split.h>
 #include <base/stringprintf.h>
 #include <chromeos/callback.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "mtpd/device_event_delegate.h"
 
@@ -25,12 +26,6 @@ namespace {
 // Use this when referring to the root node in the context of ReadDirectory().
 // This is an implementation detail that is not exposed to the outside.
 const uint32_t kPtpGohRootParent = 0xFFFFFFFF;
-
-// TODO(thestig) Put this constant in system_api.
-// The id of the root node in a storage, as defined by the PTP/MTP standards.
-// Use this when referring to the root node in the context of GetFileInfo().
-const uint32_t kRootFileId = 0;
-
 
 // Used to identify a PTP USB device interface.
 const char kPtpUsbInterfaceClass[] = "6";

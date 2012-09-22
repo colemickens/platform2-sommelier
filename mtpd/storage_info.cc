@@ -8,7 +8,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "mtp_storage_info.pb.h"
-#include "string_helpers.h"
+#include "mtpd/string_helpers.h"
 
 namespace mtpd {
 
