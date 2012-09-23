@@ -38,6 +38,10 @@ extern const char kSampleWindowMinPref[];
 extern const char kTaperTimeMaxPref[];
 extern const char kTaperTimeMinPref[];
 extern const char kPowerSupplyFullFactorPref[];
+extern const char kKeyboardBacklightDimPercentPref[];
+extern const char kKeyboardBacklightMaxPercentPref[];
+extern const char kKeyboardBacklightMinPercentPref[];
+extern const char kKeyboardBacklightStepsPref[];
 
 // Miscellaneous constants.
 extern const char kBacklightPath[];

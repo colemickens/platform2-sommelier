@@ -46,3 +46,50 @@ Autotests:
     Verifies that adjusting the brightness with the backlight-tool changes the
     amount of power used by the machine.
 
+Configs:
+  * keyboard_backlight_steps:
+    This file is used to specify the brightness steps that the keyboard
+    backlight will use in response to the ALS. If you don't want to use the
+    ALS to control this backlight, remove the file from the device. The file is
+    a series of lines in the format:
+
+    <backlight percentage> <decrease threshold> <increase threshold>
+
+    The thresholds are in raw lux values outputted from the ambient light
+    sensor. Values of -1 for a threshold indicate an infinite positive or
+    negative value depending on the context. An example:
+
+    20.0 20 35
+
+    This means set to 20% of max, if the lux value is decreasing and above 20 or
+    the lux value is increasing and below 35. These thresholds indicate when the
+    brightness level should leave this step. When specifying the thresholds you
+    should end up with a contiguous block of overlapping intervals, such that
+    once you decrease into a level you need to increase above the decrease
+    threshold of the previous step to return to it. This is done to eliminate
+    situations where the lux level is slightly unstable and the light flickers
+    between steps. Non-overlapping intervals will likely have flickering and the
+    behaviour of discontinuous intervals is undefined.
+
+    You should have a set of intervals that look something like this, though
+    with possibly more or fewer steps, differently sized intervals, etc:
+
+    |
+    |
+    |
+    |
+    |
+KBL |                      |------------| E
+    |                 |----------| D
+    |          |----------| C
+    |    |----------| B
+    |--------| A
+  0 |                               |-------------------------- F
+    |__________________________________________________________
+    0                        ALS Lux Value
+
+    The steps file would be in the following order: A, B, C, D, E, F.
+    A would have a -1 for a decrease threshold and F would have a -1 for an
+    increase threshold. What ever the backlight percentage is for E should be
+    the value that appears in keyboard_backlight_max_percent and the backlight
+    percentage for F should appear in keyboard_backlight_min_percent.

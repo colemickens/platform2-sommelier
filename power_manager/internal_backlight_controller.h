@@ -79,13 +79,6 @@ class InternalBacklightController : public BacklightController {
   FRIEND_TEST(DaemonTest,
               GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow);
 
-  enum AlsHysteresisState {
-    ALS_HYST_IDLE,
-    ALS_HYST_DOWN,
-    ALS_HYST_UP,
-    ALS_HYST_IMMEDIATE,
-  };
-
   // Clamp |percent| to fit between LevelToPercent(min_visible_level_) and 100.
   double ClampPercentToVisibleRange(double percent);
 

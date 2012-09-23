@@ -66,6 +66,13 @@ class BacklightControllerObserver {
 class BacklightController : public BacklightInterfaceObserver,
                             public AmbientLightSensorObserver {
  public:
+  enum AlsHysteresisState {
+    ALS_HYST_IDLE,
+    ALS_HYST_DOWN,
+    ALS_HYST_UP,
+    ALS_HYST_IMMEDIATE,
+  };
+
   BacklightController() {}
   virtual ~BacklightController() {}
 

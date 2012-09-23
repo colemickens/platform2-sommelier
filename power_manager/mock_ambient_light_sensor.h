@@ -11,6 +11,7 @@
 
 #include "power_manager/ambient_light_sensor.h"
 
+using ::testing::_;
 using ::testing::Return;
 
 namespace power_manager {
@@ -27,6 +28,12 @@ class MockAmbientLightSensor : public AmbientLightSensor {
   MOCK_METHOD1(AddObserver, void(AmbientLightSensorObserver* obs));
   void ExpectAddObserver(AmbientLightSensorObserver* obs) {
     EXPECT_CALL(*this, AddObserver(obs))
+        .Times(1)
+        .RetiresOnSaturation();
+  }
+
+  void ExpectAddObserver() {
+    EXPECT_CALL(*this, AddObserver(_))
         .Times(1)
         .RetiresOnSaturation();
   }

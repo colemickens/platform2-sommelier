@@ -265,8 +265,7 @@ tests: TEST(CXX_BINARY(backlight_unittest))
 
 POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
 POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock
-POWERD_UNITTEST_OBJS = keyboard_backlight_controller_unittest.o \
-	               powerd_unittest.o metrics_store_unittest.o \
+POWERD_UNITTEST_OBJS = powerd_unittest.o metrics_store_unittest.o \
                        rolling_average_unittest.o
 ifeq ($(USE_IS_DESKTOP),)
 POWERD_UNITTEST_OBJS += internal_backlight_controller_unittest.o \
@@ -275,6 +274,10 @@ POWERD_UNITTEST_OBJS += internal_backlight_controller_unittest.o \
 else
 POWERD_UNITTEST_OBJS += external_backlight_controller_unittest.o \
                         monitor_reconfigure.o video_detector_unittest.o
+endif
+
+ifneq ($(USE_HAS_KEYBOARD_BACKLIGHT),)
+POWERD_UNITTEST_OBJS += keyboard_backlight_controller_unittest.o
 endif
 
 CXX_BINARY(powerd_unittest): $(POWERD_UNITTEST_OBJS) \

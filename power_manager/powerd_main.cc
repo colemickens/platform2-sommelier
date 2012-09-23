@@ -146,7 +146,8 @@ int main(int argc, char* argv[]) {
   if (keyboard_light.get()) {
     keyboard_controller.reset(
         new power_manager::KeyboardBacklightController(keyboard_light.get(),
-                                                       NULL));
+                                                       &prefs,
+                                                       als.get()));
     if (!keyboard_controller->Init()) {
       LOG(WARNING) << "Cannot initialize keyboard controller!";
       keyboard_controller.reset(NULL);
