@@ -21,12 +21,12 @@ class KeyboardBacklightControllerTest;
 class KeyboardBacklightController : public BacklightController,
                                     public VideoDetectorObserver {
  public:
-  explicit KeyboardBacklightController(BacklightInterface* backlight,
-                                       AmbientLightSensor* sensor);
+  explicit KeyboardBacklightController(BacklightInterface* backlight);
   virtual ~KeyboardBacklightController();
 
   // Implementation of BacklightController
   virtual bool Init() OVERRIDE;
+  virtual void SetAmbientLightSensor(AmbientLightSensor* sensor) OVERRIDE;
   virtual void SetMonitorReconfigure(
       MonitorReconfigure* monitor_reconfigure) OVERRIDE { };
   virtual void SetObserver(BacklightControllerObserver* observer) OVERRIDE;
@@ -41,15 +41,13 @@ class KeyboardBacklightController : public BacklightController,
   virtual bool SetPowerState(PowerState new_state) OVERRIDE;
   virtual PowerState GetPowerState() const OVERRIDE;
   virtual bool OnPlugEvent(bool is_plugged) OVERRIDE { return true; };
+  virtual void SetAlsBrightnessOffsetPercent(double percent) OVERRIDE;
   virtual bool IsBacklightActiveOff() OVERRIDE;
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
 
-  // Implementation of BacklightInterfaceObserver
+  // BacklightInterfaceObserver implementation:
   virtual void OnBacklightDeviceChanged() OVERRIDE;
-
-  // Implementation of AmbientLightSensorObserver
-  virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) OVERRIDE;
 
   // Implementation of VideoDetectorObserver
   virtual void OnVideoDetectorEvent(base::TimeTicks last_activity_time,
@@ -89,8 +87,9 @@ class KeyboardBacklightController : public BacklightController,
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;
 
-  // Light sensor we need to register for updates from.  Non-owned.
-  AmbientLightSensor* light_sensor_;
+  // Ambient light snesor associated with this controller. This pointer is used
+  // for updating the sensor about the status of the backlight. Non-owned.
+  AmbientLightSensor* sensor_;
 
   // Observer that needs to be alerted of changes. Normally this is the powerd
   // daemon. Non-owned.

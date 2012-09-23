@@ -102,7 +102,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
                ActivityDetectorInterface* audio_detector,
                IdleDetector* idle,
                KeyboardBacklightController* keyboard_controller,
-               AmbientLightSensor* als,
                const FilePath& run_dir)
     : backlight_controller_(backlight_controller),
       prefs_(prefs),
@@ -111,7 +110,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       audio_detector_(audio_detector),
       idle_(idle),
       keyboard_controller_(keyboard_controller),
-      light_sensor_(als),
       low_battery_shutdown_time_s_(0),
       low_battery_shutdown_percent_(0.0),
       sample_window_max_(0),
@@ -129,7 +127,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       suspender_(&locker_, &file_tagger_),
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath), prefs),
-      power_state_(BACKLIGHT_UNINITIALIZED),
       battery_discharge_rate_metric_last_(0),
       current_session_state_("stopped"),
       udev_(NULL),
@@ -524,25 +521,32 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     // useful in future development.  For example, if we want to implement
     // fade from suspend, we would want to have this state to make sure the
     // backlight is set to zero when suspended.
-    SetPowerState(BACKLIGHT_SUSPENDED);
+    backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
+    if (keyboard_controller_)
+      keyboard_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
     audio_detector_->Disable();
     Suspend();
   } else if (idle_time_ms >= off_ms_ &&
              !state_control_->IsStateDisabled(kIdleBlankDisabled)) {
-    if (util::IsSessionStarted())
-      SetPowerState(BACKLIGHT_IDLE_OFF);
+    if (util::IsSessionStarted()) {
+      backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF);
+      if (keyboard_controller_)
+        keyboard_controller_->SetPowerState(BACKLIGHT_IDLE_OFF);
+    }
   } else if (idle_time_ms >= dim_ms_ &&
              !state_control_->IsStateDisabled(kIdleDimDisabled)) {
-    SetPowerState(BACKLIGHT_DIM);
+    backlight_controller_->SetPowerState(BACKLIGHT_DIM);
+    if (keyboard_controller_)
+      keyboard_controller_->SetPowerState(BACKLIGHT_DIM);
   } else if (backlight_controller_->GetPowerState() != BACKLIGHT_ACTIVE) {
+    if (keyboard_controller_)
+      keyboard_controller_->SetPowerState(BACKLIGHT_ACTIVE);
     if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
       if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED) {
         util::CreateStatusFile(FilePath(run_dir_).Append(kUserActiveFile));
         suspender_.CancelSuspend();
       }
     }
-    if (keyboard_controller_)
-      keyboard_controller_->SetPowerState(BACKLIGHT_ACTIVE);
     audio_detector_->Disable();
   } else if (idle_time_ms < react_ms_ && locker_.is_locked()) {
     BrightenScreenIfOff();
@@ -1675,7 +1679,9 @@ void Daemon::Suspend() {
     suspender_.RequestSuspend();
     // When going to suspend, notify the backlight controller so it will know to
     // set the backlight correctly upon resume.
-    SetPowerState(BACKLIGHT_SUSPENDED);
+    backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
+    if (keyboard_controller_)
+      keyboard_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
   } else {
     if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED)
       shutdown_reason_ = kShutdownReasonIdle;
@@ -1789,16 +1795,6 @@ gboolean Daemon::ConnectToCras() {
   LOG(INFO) << "CRAS client successfully connected to CRAS server.";
   connected_to_cras_ = true;
   return FALSE;
-}
-
-void Daemon::SetPowerState(PowerState state) {
-  backlight_controller_->SetPowerState(state);
-  if (keyboard_controller_)
-    keyboard_controller_->SetPowerState(state);
-
-  if (light_sensor_ && power_state_ != state)
-    light_sensor_->EnableOrDisableSensor(state == BACKLIGHT_ACTIVE);
-  power_state_ = state;
 }
 
 }  // namespace power_manager

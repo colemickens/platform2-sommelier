@@ -233,7 +233,7 @@ TEST_F(ExternalBacklightControllerTest, CountAdjustments) {
   // The external controller ignores ALS readings.
   const int kNumAmbientLightSensorReadings = 20;
   for (int i = 0; i < kNumAmbientLightSensorReadings; ++i)
-    controller_.OnAmbientLightChanged(NULL);
+    controller_.SetAlsBrightnessOffsetPercent(10.0);
   EXPECT_EQ(0, controller_.GetNumAmbientLightSensorAdjustments());
 }
 

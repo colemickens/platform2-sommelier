@@ -29,6 +29,7 @@ class ExternalBacklightController : public BacklightController {
 
   // BacklightController implementation:
   virtual bool Init() OVERRIDE;
+  virtual void SetAmbientLightSensor(AmbientLightSensor* sensor) OVERRIDE;
   virtual void SetMonitorReconfigure(
       MonitorReconfigure* monitor_reconfigure) OVERRIDE;
   virtual void SetObserver(BacklightControllerObserver* observer) OVERRIDE;
@@ -43,15 +44,13 @@ class ExternalBacklightController : public BacklightController {
   virtual bool SetPowerState(PowerState state) OVERRIDE;
   virtual PowerState GetPowerState() const OVERRIDE;
   virtual bool OnPlugEvent(bool is_plugged) OVERRIDE;
+  virtual void SetAlsBrightnessOffsetPercent(double percent) OVERRIDE;
   virtual bool IsBacklightActiveOff() OVERRIDE;
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
 
   // BacklightInterfaceObserver implementation:
   virtual void OnBacklightDeviceChanged() OVERRIDE;
-
-  // Implementation of AmbientLightSensorObserver
-  virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) OVERRIDE;
 
  private:
   friend class ExternalBacklightControllerTest;

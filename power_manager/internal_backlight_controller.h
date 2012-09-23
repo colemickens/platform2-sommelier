@@ -28,8 +28,7 @@ namespace power_manager {
 class InternalBacklightController : public BacklightController {
  public:
   InternalBacklightController(BacklightInterface* backlight,
-                              PowerPrefsInterface* prefs,
-                              AmbientLightSensor* sensor);
+                              PowerPrefsInterface* prefs);
   virtual ~InternalBacklightController();
 
   double target_percent() const { return target_percent_; }
@@ -40,6 +39,7 @@ class InternalBacklightController : public BacklightController {
 
   // BacklightController implementation:
   virtual bool Init() OVERRIDE;
+  virtual void SetAmbientLightSensor(AmbientLightSensor* sensor) OVERRIDE;
   virtual void SetMonitorReconfigure(
       MonitorReconfigure* monitor_reconfigure) OVERRIDE;
   virtual void SetObserver(BacklightControllerObserver* observer) OVERRIDE;
@@ -54,6 +54,7 @@ class InternalBacklightController : public BacklightController {
   virtual bool SetPowerState(PowerState state) OVERRIDE;
   virtual PowerState GetPowerState() const OVERRIDE;
   virtual bool OnPlugEvent(bool is_plugged) OVERRIDE;
+  virtual void SetAlsBrightnessOffsetPercent(double percent) OVERRIDE;
   virtual bool IsBacklightActiveOff() OVERRIDE;
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
@@ -61,12 +62,8 @@ class InternalBacklightController : public BacklightController {
   // BacklightInterfaceObserver implementation:
   virtual void OnBacklightDeviceChanged();
 
-  // Implementation of AmbientLightSensorObserver
-  virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) OVERRIDE;
-
  private:
   friend class DaemonTest;
-  friend class InternalBacklightControllerTest;
   FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
   FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
   FRIEND_TEST(DaemonTest,
@@ -141,7 +138,7 @@ class InternalBacklightController : public BacklightController {
   // Interface for saving preferences. Non-owned.
   PowerPrefsInterface* prefs_;
 
-  // Light sensor we need to register for updates from.  Non-owned.
+  // Light sensor we need to enable/disable on power events.  Non-owned.
   AmbientLightSensor* light_sensor_;
 
   // Use MonitorReconfigure to turn on/off the display.

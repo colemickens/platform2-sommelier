@@ -104,13 +104,6 @@ int main(int argc, char* argv[]) {
   power_manager::PowerPrefs prefs(pref_paths);
   g_type_init();
 
-  scoped_ptr<power_manager::AmbientLightSensor> als;
-#ifndef IS_DESKTOP
-  als.reset(new power_manager::AmbientLightSensor());
-  if (!als->Init(&prefs))
-    LOG(WARNING) << "Cannot initialize light sensor";
-#endif
-
   power_manager::MonitorReconfigure monitor_reconfigure;
 #ifdef IS_DESKTOP
   power_manager::ExternalBacklightClient backlight;
@@ -126,13 +119,15 @@ int main(int argc, char* argv[]) {
 #ifdef IS_DESKTOP
   power_manager::ExternalBacklightController backlight_ctl(&backlight);
 #else
-  power_manager::InternalBacklightController backlight_ctl(&backlight,
-                                                           &prefs,
-                                                           als.get());
+  power_manager::InternalBacklightController backlight_ctl(&backlight, &prefs);
 #endif
   backlight_ctl.SetMonitorReconfigure(&monitor_reconfigure);
   if (!backlight_ctl.Init())
     LOG(WARNING) << "Cannot initialize backlight controller";
+
+  power_manager::AmbientLightSensor als(&backlight_ctl, &prefs);
+  if (!als.Init())
+    LOG(WARNING) << "Cannot initialize light sensor";
 
   scoped_ptr<power_manager::KeyboardBacklightController> keyboard_controller;
 #ifdef HAS_KEYBOARD_BACKLIGHT
@@ -145,15 +140,13 @@ int main(int argc, char* argv[]) {
   }
   if (keyboard_light.get()) {
     keyboard_controller.reset(
-        new power_manager::KeyboardBacklightController(keyboard_light.get(),
-                                                       NULL));
+        new power_manager::KeyboardBacklightController(keyboard_light.get()));
     if (!keyboard_controller->Init()) {
       LOG(WARNING) << "Cannot initialize keyboard controller!";
       keyboard_controller.reset(NULL);
     }
   }
 #endif
-
   MetricsLibrary metrics_lib;
   power_manager::VideoDetector video_detector;
   video_detector.Init();
@@ -171,7 +164,6 @@ int main(int argc, char* argv[]) {
                                &audio_detector,
                                &idle,
                                keyboard_controller.get(),
-                               als.get(),
                                run_dir);
 
   daemon.Init();

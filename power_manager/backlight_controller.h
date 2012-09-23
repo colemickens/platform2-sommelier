@@ -6,26 +6,29 @@
 #define POWER_MANAGER_BACKLIGHT_CONTROLLER_H_
 
 #include "base/basictypes.h"
-#include "power_manager/ambient_light_sensor.h"
 #include "power_manager/backlight_interface.h"
 
 namespace power_manager {
 
 class AmbientLightSensor;
-class AmbientLightSensorObserver;
 class MonitorReconfigure;
 
 enum PowerState {
   // User is active.
   BACKLIGHT_ACTIVE,
+
   // Dimmed due to inactivity.
   BACKLIGHT_DIM,
+
   // Got a request to go to BACKLIGHT_DIM while already at a lower level.
   BACKLIGHT_ALREADY_DIMMED,
+
   // Turned backlight off due to inactivity.
   BACKLIGHT_IDLE_OFF,
+
   // Machine is suspended.
   BACKLIGHT_SUSPENDED,
+
   // State has not yet been set.
   BACKLIGHT_UNINITIALIZED
 };
@@ -63,8 +66,7 @@ class BacklightControllerObserver {
 };
 
 // Interface implemented by classes that control the backlight.
-class BacklightController : public BacklightInterfaceObserver,
-                            public AmbientLightSensorObserver {
+class BacklightController : public BacklightInterfaceObserver {
  public:
   BacklightController() {}
   virtual ~BacklightController() {}
@@ -73,6 +75,7 @@ class BacklightController : public BacklightInterfaceObserver,
   // backlight device changes.
   virtual bool Init() = 0;
 
+  virtual void SetAmbientLightSensor(AmbientLightSensor* sensor) = 0;
   virtual void SetMonitorReconfigure(
       MonitorReconfigure* monitor_reconfigure) = 0;
   virtual void SetObserver(BacklightControllerObserver* observer) = 0;
@@ -116,6 +119,10 @@ class BacklightController : public BacklightInterfaceObserver,
   // appropriately.  Returns true if the brightness was set and false
   // otherwise.
   virtual bool OnPlugEvent(bool is_plugged) = 0;
+
+  // Update the brightness offset that is applied based on the current amount of
+  // ambient light.
+  virtual void SetAlsBrightnessOffsetPercent(double percent) = 0;
 
   // Determine whether the user has manually turned backlight down to zero.
   virtual bool IsBacklightActiveOff() = 0;

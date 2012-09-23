@@ -83,11 +83,10 @@ namespace power_manager {
 
 InternalBacklightController::InternalBacklightController(
     BacklightInterface* backlight,
-    PowerPrefsInterface* prefs,
-    AmbientLightSensor* sensor)
+    PowerPrefsInterface* prefs)
     : backlight_(backlight),
       prefs_(prefs),
-      light_sensor_(sensor),
+      light_sensor_(NULL),
       monitor_reconfigure_(NULL),
       observer_(NULL),
       has_seen_als_event_(false),
@@ -120,10 +119,6 @@ InternalBacklightController::InternalBacklightController(
 
 InternalBacklightController::~InternalBacklightController() {
   backlight_->set_observer(NULL);
-  if (light_sensor_) {
-    light_sensor_->RemoveObserver(this);
-    light_sensor_ = NULL;
-  }
 }
 
 double InternalBacklightController::LevelToPercent(int64 raw_level) {
@@ -138,8 +133,6 @@ int64 InternalBacklightController::PercentToLevel(double percent) {
 }
 
 bool InternalBacklightController::Init() {
-  if (light_sensor_)
-    light_sensor_->AddObserver(this);
   if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
       !backlight_->GetCurrentBrightnessLevel(&target_level_)) {
     LOG(ERROR) << "Querying backlight during initialization failed";
@@ -180,6 +173,11 @@ bool InternalBacklightController::Init() {
             << " (" << target_percent_ << "%)";
   is_initialized_ = true;
   return true;
+}
+
+void InternalBacklightController::SetAmbientLightSensor(
+    AmbientLightSensor* sensor) {
+  light_sensor_ = sensor;
 }
 
 void InternalBacklightController::SetMonitorReconfigure(
@@ -336,6 +334,8 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
   if (new_state == BACKLIGHT_DIM && target_percent_ < idle_brightness_percent_)
     new_state = BACKLIGHT_ALREADY_DIMMED;
 
+  if (light_sensor_)
+    light_sensor_->EnableOrDisableSensor(state_);
   als_temporal_state_ = ALS_HYST_IMMEDIATE;
 
   LOG(INFO) << util::PowerStateToString(old_state) << " -> "
@@ -401,42 +401,12 @@ bool InternalBacklightController::OnPlugEvent(bool is_plugged) {
   return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
 }
 
-bool InternalBacklightController::IsBacklightActiveOff() {
-  return state_ == BACKLIGHT_ACTIVE && target_percent_ == 0;
-}
-
-int InternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
-  return als_adjustment_count_;
-}
-
-int InternalBacklightController::GetNumUserAdjustments() const {
-  return user_adjustment_count_;
-}
-
-void InternalBacklightController::OnBacklightDeviceChanged() {
-  LOG(INFO) << "Backlight device changed; reinitializing controller";
-  if (Init())
-    WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
-}
-
-void InternalBacklightController::OnAmbientLightChanged(
-    AmbientLightSensor* sensor) {
+void InternalBacklightController::SetAlsBrightnessOffsetPercent(
+    double percent) {
 #ifndef HAS_ALS
   LOG(WARNING) << "Got ALS reading from platform supposed to have no ALS. "
                << "Please check the platform ALS configuration.";
 #endif
-
-  if (light_sensor_ != sensor) {
-    LOG(WARNING) << "Received AmbientLightChange from unknown sensor";
-    return;
-  }
-
-  double percent = sensor->GetAmbientLightPercent();
-  if (percent < 0.0) {
-    LOG(WARNING) << "ALS doesn't have valid value after sending "
-                 << "OnAmbientLightChanged";
-    return;
-  }
 
   if (!is_initialized_)
     return;
@@ -446,6 +416,7 @@ void InternalBacklightController::OnAmbientLightChanged(
   if (state_ == BACKLIGHT_IDLE_OFF || IsBacklightActiveOff())
     return;
 
+  percent = std::max(0.0, percent);
   als_offset_percent_ = percent;
   has_seen_als_event_ = true;
 
@@ -488,6 +459,24 @@ void InternalBacklightController::OnAmbientLightChanged(
     // ALS adjustment should not change brightness offset.
     WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_SLOW);
   }
+}
+
+bool InternalBacklightController::IsBacklightActiveOff() {
+  return state_ == BACKLIGHT_ACTIVE && target_percent_ == 0;
+}
+
+int InternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
+  return als_adjustment_count_;
+}
+
+int InternalBacklightController::GetNumUserAdjustments() const {
+  return user_adjustment_count_;
+}
+
+void InternalBacklightController::OnBacklightDeviceChanged() {
+  LOG(INFO) << "Backlight device changed; reinitializing controller";
+  if (Init())
+    WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
 }
 
 double InternalBacklightController::ClampPercentToVisibleRange(double percent) {

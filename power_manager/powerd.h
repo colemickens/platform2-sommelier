@@ -69,7 +69,6 @@ class Daemon : public BacklightControllerObserver,
          ActivityDetectorInterface* audio_detector,
          IdleDetector* idle,
          KeyboardBacklightController* keyboard_controller,
-         AmbientLightSensor* als,
          const FilePath& run_dir);
   ~Daemon();
 
@@ -459,11 +458,6 @@ class Daemon : public BacklightControllerObserver,
   // Returns FALSE if it successfully connected, so it stops trying.
   SIGNAL_CALLBACK_0(Daemon, gboolean, ConnectToCras);
 
-  // Send changes to the backlight power state to the backlight
-  // controllers. This also will determine if the ALS needs to be toggled
-  // on/off.
-  void SetPowerState(PowerState state);
-
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
@@ -471,7 +465,6 @@ class Daemon : public BacklightControllerObserver,
   ActivityDetectorInterface* audio_detector_;
   IdleDetector* idle_;
   KeyboardBacklightController* keyboard_controller_;  // non-owned
-  AmbientLightSensor* light_sensor_; // non-owned
   int64 low_battery_shutdown_time_s_;
   double low_battery_shutdown_percent_;
   int64 sample_window_max_;
@@ -506,7 +499,6 @@ class Daemon : public BacklightControllerObserver,
   Suspender suspender_;
   FilePath run_dir_;
   PowerSupply power_supply_;
-  PowerState power_state_;
   base::Time session_start_;
 
   // Timestamp the last generated battery discharge rate metric.

@@ -61,6 +61,12 @@ bool ExternalBacklightController::Init() {
   return true;
 }
 
+void ExternalBacklightController::SetAmbientLightSensor(
+    AmbientLightSensor* sensor) {
+  // Desktop systems aren't expected to have a light sensor.
+  NOTIMPLEMENTED();
+}
+
 void ExternalBacklightController::SetMonitorReconfigure(
     MonitorReconfigure* monitor_reconfigure) {
   monitor_reconfigure_ = monitor_reconfigure;
@@ -155,6 +161,12 @@ bool ExternalBacklightController::OnPlugEvent(bool is_plugged) {
   return false;
 }
 
+void ExternalBacklightController::SetAlsBrightnessOffsetPercent(
+    double percent) {
+  // Desktop systems aren't expected to have a light sensor.
+  NOTIMPLEMENTED();
+}
+
 bool ExternalBacklightController::IsBacklightActiveOff() {
   return false;
 }
@@ -169,12 +181,6 @@ int ExternalBacklightController::GetNumUserAdjustments() const {
 
 void ExternalBacklightController::OnBacklightDeviceChanged() {
   Init();
-}
-
-void ExternalBacklightController::OnAmbientLightChanged(
-    AmbientLightSensor* sensor) {
-  // Desktop systems are not expected to have an ALS
-  NOTIMPLEMENTED();
 }
 
 double ExternalBacklightController::LevelToPercent(int64 level) {

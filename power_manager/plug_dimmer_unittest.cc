@@ -34,7 +34,7 @@ class PlugDimmerTest : public Test {
  public:
   PlugDimmerTest()
       : prefs_(FilePath("/tmp")),
-        backlight_ctl_(&backlight_, &prefs_, NULL),
+        backlight_ctl_(&backlight_, &prefs_),
         current_brightness_(0),
         target_brightness_(0) {
     EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))

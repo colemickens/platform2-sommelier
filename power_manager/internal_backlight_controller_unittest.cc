@@ -10,7 +10,6 @@
 
 #include "base/logging.h"
 #include "power_manager/internal_backlight_controller.h"
-#include "power_manager/mock_ambient_light_sensor.h"
 #include "power_manager/mock_backlight.h"
 #include "power_manager/mock_backlight_controller_observer.h"
 #include "power_manager/power_constants.h"
@@ -18,7 +17,6 @@
 
 using ::testing::_;
 using ::testing::DoAll;
-using ::testing::Mock;
 using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
@@ -46,7 +44,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
  public:
   InternalBacklightControllerTest()
       : prefs_(FilePath(".")),
-        controller_(&backlight_, &prefs_, &light_sensor_) {
+        controller_(&backlight_, &prefs_) {
   }
 
   virtual void SetUp() {
@@ -62,18 +60,11 @@ class InternalBacklightControllerTest : public ::testing::Test {
     prefs_.SetDouble(kUnpluggedBrightnessOffsetPref,
                      kUnpluggedBrightnessPercent);
     prefs_.SetInt64(kMinVisibleBacklightLevelPref, 1);
-    light_sensor_.ExpectAddObserver(&controller_);
     CHECK(controller_.Init());
-  }
-
-  virtual void TearDown() {
-    if (controller_.light_sensor_ != NULL)
-      light_sensor_.ExpectRemoveObserver(&controller_);
   }
 
  protected:
   ::testing::StrictMock<MockBacklight> backlight_;
-  ::testing::StrictMock<MockAmbientLightSensor> light_sensor_;
   PowerPrefs prefs_;
   InternalBacklightController controller_;
 };
@@ -170,10 +161,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   // Set an initial state.
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(false));
-
-  light_sensor_.ExpectGetAmbientLightPercent(16);
-  controller_.OnAmbientLightChanged(&light_sensor_);
-  Mock::VerifyAndClearExpectations(&light_sensor_);
+  controller_.SetAlsBrightnessOffsetPercent(16);
 
   MockBacklightControllerObserver observer;
   controller_.SetObserver(&observer);
@@ -197,11 +185,8 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   // Send enough ambient light sensor samples to trigger a brightness change.
   observer.Clear();
   double old_percent = controller_.GetTargetBrightnessPercent();
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
-    light_sensor_.ExpectGetAmbientLightPercent(32);
-    controller_.OnAmbientLightChanged(&light_sensor_);
-    Mock::VerifyAndClearExpectations(&light_sensor_);
-  }
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    controller_.SetAlsBrightnessOffsetPercent(32);
   ASSERT_NE(old_percent, controller_.GetTargetBrightnessPercent());
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_DOUBLE_EQ(controller_.GetTargetBrightnessPercent(),
@@ -234,20 +219,14 @@ TEST_F(InternalBacklightControllerTest, KeepBacklightOnAfterAutomatedChange) {
   // we can.
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
-    light_sensor_.ExpectGetAmbientLightPercent(100.0);
-    controller_.OnAmbientLightChanged(&light_sensor_);
-    Mock::VerifyAndClearExpectations(&light_sensor_);
-  }
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    controller_.SetAlsBrightnessOffsetPercent(100.0);
   for (int i = 0; i < kStepsToHitLimit; ++i)
     controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
 
   // After we set the ALS offset to 0%, the backlight should still be on.
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
-    light_sensor_.ExpectGetAmbientLightPercent(0.0);
-    controller_.OnAmbientLightChanged(&light_sensor_);
-    Mock::VerifyAndClearExpectations(&light_sensor_);
-  }
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    controller_.SetAlsBrightnessOffsetPercent(0.0);
   EXPECT_GT(controller_.GetTargetBrightnessPercent(), 0.0);
 }
 
@@ -255,7 +234,6 @@ TEST_F(InternalBacklightControllerTest, MinBrightnessLevel) {
   // Set a minimum visible backlight level and reinitialize to load it.
   const int kMinLevel = 10;
   prefs_.SetInt64(kMinVisibleBacklightLevelPref, kMinLevel);
-  light_sensor_.ExpectAddObserver(&controller_);
   ASSERT_TRUE(controller_.Init());
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
@@ -287,7 +265,6 @@ TEST_F(InternalBacklightControllerTest, MinBrightnessLevel) {
   // when increasing from the backlight-off state.
   const int kNewMinLevel = 1;
   prefs_.SetInt64(kMinVisibleBacklightLevelPref, kNewMinLevel);
-  light_sensor_.ExpectAddObserver(&controller_);
   ASSERT_TRUE(controller_.Init());
   const double kNewMinPercent = controller_.LevelToPercent(kNewMinLevel);
   ASSERT_LT(kNewMinPercent, kMinPercent);
@@ -307,14 +284,11 @@ TEST_F(InternalBacklightControllerTest, MinBrightnessLevel) {
 // level exposed by hardware.
 TEST_F(InternalBacklightControllerTest, MinBrightnessLevelMatchesMax) {
   prefs_.SetInt64(kMinVisibleBacklightLevelPref, kMaxBrightnessLevel);
-  light_sensor_.ExpectAddObserver(&controller_);
   ASSERT_TRUE(controller_.Init());
 #ifdef HAS_ALS
   // The controller avoids adjusting the brightness until it gets its first
   // reading from the ambient light sensor.
-  light_sensor_.ExpectGetAmbientLightPercent(0.0);
-  controller_.OnAmbientLightChanged(&light_sensor_);
-  Mock::VerifyAndClearExpectations(&light_sensor_);
+  controller_.SetAlsBrightnessOffsetPercent(0.0);
 #endif
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
@@ -334,9 +308,7 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
 #ifdef HAS_ALS
   // The controller avoids adjusting the brightness until it gets its first
   // reading from the ambient light sensor.
-  light_sensor_.ExpectGetAmbientLightPercent(0.0);
-  controller_.OnAmbientLightChanged(&light_sensor_);
-  Mock::VerifyAndClearExpectations(&light_sensor_);
+  controller_.SetAlsBrightnessOffsetPercent(0.0);
 #endif
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
@@ -384,7 +356,6 @@ TEST_F(InternalBacklightControllerTest, ChangeBacklightDevice) {
                             Return(true)));
 
   // Check that there's a single step between 100% and 0%.
-  light_sensor_.ExpectAddObserver(&controller_);
   controller_.OnBacklightDeviceChanged();
   EXPECT_DOUBLE_EQ(100.0, controller_.GetTargetBrightnessPercent());
   controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
@@ -403,7 +374,6 @@ TEST_F(InternalBacklightControllerTest, ChangeBacklightDevice) {
                             Return(true)));
 
   // We should permit more steps now.
-  light_sensor_.ExpectAddObserver(&controller_);
   controller_.OnBacklightDeviceChanged();
   EXPECT_DOUBLE_EQ(100.0, controller_.GetTargetBrightnessPercent());
   controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
@@ -428,7 +398,6 @@ TEST_F(InternalBacklightControllerTest, NonLinearMapping) {
       .WillRepeatedly(DoAll(SetArgumentPointee<0>(kSmallMaxBrightnessLevel),
                             Return(true)));
 
-  light_sensor_.ExpectAddObserver(&controller_);
   controller_.OnBacklightDeviceChanged();
   for (int i = 0; i <= kSmallMaxBrightnessLevel; ++i) {
     double percent = 100.0 * i / kSmallMaxBrightnessLevel;
@@ -444,7 +413,6 @@ TEST_F(InternalBacklightControllerTest, NonLinearMapping) {
   EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
       .WillRepeatedly(DoAll(SetArgumentPointee<0>(kLargeMaxBrightnessLevel),
                             Return(true)));
-  light_sensor_.ExpectAddObserver(&controller_);
   controller_.OnBacklightDeviceChanged();
 
   EXPECT_DOUBLE_EQ(0.0, controller_.LevelToPercent(0));
