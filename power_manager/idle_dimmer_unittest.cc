@@ -36,7 +36,7 @@ class IdleDimmerTest : public Test {
  public:
   IdleDimmerTest()
       : prefs_(FilePath("/tmp")),
-        backlight_ctl_(&backlight_, &prefs_),
+        backlight_ctl_(&backlight_, &prefs_, NULL),
         current_brightness_(0),
         target_brightness_(0) {
     EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))

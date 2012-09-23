@@ -26,10 +26,11 @@ const int64 kVideoTimeoutIntervalMs = 7000;
 const double kBrightnessPercentChangeIncrement = 10.0;
 
 KeyboardBacklightController::KeyboardBacklightController(
-    BacklightInterface* backlight)
+    BacklightInterface* backlight,
+    AmbientLightSensor* sensor)
     : is_initialized_ (false),
       backlight_(backlight),
-      sensor_(NULL),
+      light_sensor_(sensor),
       observer_(NULL),
       state_(BACKLIGHT_UNINITIALIZED),
       is_video_playing_(false),
@@ -46,10 +47,16 @@ KeyboardBacklightController::KeyboardBacklightController(
 }
 
 KeyboardBacklightController::~KeyboardBacklightController() {
+  if (light_sensor_) {
+    light_sensor_->RemoveObserver(this);
+    light_sensor_ = NULL;
+  }
   HaltVideoTimeout();
 }
 
 bool KeyboardBacklightController::Init() {
+  if (light_sensor_)
+    light_sensor_->AddObserver(this);
   if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
       !backlight_->GetCurrentBrightnessLevel(&current_level_)) {
     LOG(ERROR) << "Querying backlight during initialization failed";
@@ -59,11 +66,6 @@ bool KeyboardBacklightController::Init() {
   target_percent_ = LevelToPercent(current_level_);
   is_initialized_ = true;
   return true;
-}
-
-void KeyboardBacklightController::SetAmbientLightSensor(
-    AmbientLightSensor* sensor) {
-  sensor_ = sensor;
 }
 
 void KeyboardBacklightController::SetObserver(
@@ -157,8 +159,6 @@ bool KeyboardBacklightController::SetPowerState(PowerState new_state) {
                                      this);
     }
   }
-  if (sensor_)
-    sensor_->EnableOrDisableSensor(state_);
 
   LOG(INFO) << util::PowerStateToString(old_state) << " -> "
             << util::PowerStateToString(new_state);
@@ -168,11 +168,6 @@ bool KeyboardBacklightController::SetPowerState(PowerState new_state) {
 
 PowerState KeyboardBacklightController::GetPowerState() const {
   return state_;
-}
-
-void KeyboardBacklightController::SetAlsBrightnessOffsetPercent(
-    double percent) {
-  NOTIMPLEMENTED();
 }
 
 bool KeyboardBacklightController::IsBacklightActiveOff() {
@@ -197,6 +192,11 @@ void KeyboardBacklightController::OnBacklightDeviceChanged() {
   }
 }
 
+void KeyboardBacklightController::OnAmbientLightChanged(
+    AmbientLightSensor* sensor) {
+  // TODO(rharrison): Implement response behaviour to ALS input.
+  NOTIMPLEMENTED();
+}
 
 void KeyboardBacklightController::OnVideoDetectorEvent(
     base::TimeTicks last_activity_time,

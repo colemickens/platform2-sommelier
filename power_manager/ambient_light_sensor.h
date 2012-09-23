@@ -7,49 +7,48 @@
 
 #include <glib.h>
 
+#include "base/observer_list.h"
 #include "power_manager/async_file_reader.h"
-#include "power_manager/backlight_controller.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_prefs_interface.h"
 #include "power_manager/signal_callback.h"
 
 namespace power_manager {
 
-// Get ambient light sensor data and feed it into the backlight interface.
-//
-// Example usage:
-//   // Initialization:
-//   power_manager::BacklightController backlight_ctl(&backlight, &prefs);
-//   CHECK(backlight_ctl.Init()) << "fatal";
-//   power_manager::AmbientLightSensor als(&backlight_ctl);
-//   if (!als.Init())
-//     LOG(WARNING) << "not fatal, but we get no light sensor events";
-//
-//   // BacklightController enables or disables the light sensor as the
-//   // backlight power state changes:
-//   backlight_ctl.light_sensor_->EnableOrDisableSensor(BACKLIGHT_ON,
-//                                                      BACKLIGHT_ACTIVE);
-//
-//   // BacklightController receives light sensor events in its
-//   // SetAlsBrightnessOffsetPercent() method:
-//   void BacklightController::SetAlsBrightnessOffsetPercent(double percent) {
-//     LOG(INFO) << "Light sensor sets an als offset of " << percent
-//   }
+class AmbientLightSensor;
+
+class AmbientLightSensorObserver {
+ public:
+  virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) = 0;
+};
 
 class AmbientLightSensor {
  public:
-  explicit AmbientLightSensor(BacklightController* controller,
-                              PowerPrefsInterface* prefs);
+  AmbientLightSensor();
   ~AmbientLightSensor();
 
   // Initialize the AmbientLightSensor object.
   // Open the lux file so we can read ambient light data.
   // On success, return true; otherwise return false.
-  bool Init();
+  virtual bool Init(PowerPrefsInterface* prefs);
 
-  // The backlight controller sends us power state events so we can
-  // enable and disable polling.
-  void EnableOrDisableSensor(PowerState state);
+  // Boilerplate Utility methods allowing observers to be registered and
+  // de-registered with the sensor.
+  virtual void AddObserver(AmbientLightSensorObserver* observer);
+  virtual void RemoveObserver(AmbientLightSensorObserver* observer);
+
+  // The Daemon toggles the sensor on and off depending on the current power
+  // state of the backlights. This just turns off polling and does not require a
+  // reinitialization to come back from.
+  virtual void EnableOrDisableSensor(bool enable);
+
+  // Used by observers in their callback to get the adjustment percentage
+  // suggested by the current ambient light. -1.0 is considered an error value.
+  virtual double GetAmbientLightPercent() const;
+
+  // Used by observers in their callback to get the raw reading from the sensor
+  // for the ambient light level. -1 is considered an error value.
+  virtual int GetAmbientLightLux() const;
 
  private:
   // Handler for a periodic event that reads the ambient light sensor.
@@ -64,13 +63,18 @@ class AmbientLightSensor {
 
   // Return a luma level normalized to 100 based on the tsl2563 lux value.
   // The luma level will modify the controller's brightness calculation.
-  double Tsl2563LuxToPercent(int luxval);
+  double Tsl2563LuxToPercent(int luxval) const;
 
-  // Use this to send AmbientLightSensor events to BacklightController.
-  BacklightController* controller_;
+  // List of backlight controllers that are currently interested in updates from
+  // this sensor.
+  ObserverList<AmbientLightSensorObserver> observer_list_;
 
   // Interface for saving preferences. Non-owned.
   PowerPrefsInterface* prefs_;
+
+  // Lux value read by the class. If this read did not succeed or no read has
+  // occured yet this variable is set to -1.
+  int lux_value_;
 
   // These flags are used to turn on and off polling.
   bool is_polling_;

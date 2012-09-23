@@ -11,6 +11,8 @@
 
 #include "power_manager/rolling_average.h"
 
+using ::testing::Return;
+
 namespace power_manager {
 
 class MockRollingAverage : public RollingAverage {
