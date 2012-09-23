@@ -93,6 +93,13 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     clobber-log --repair "$STATE_DEV" "Self-repair corrupted stateful partition"
     exec clobber-state "keepimg"
   fi
+
+  # Mount the OEM partition.
+  # mount_or_fail isn't used since this partition only has a filesystem
+  # on some boards.
+  OEM_DEV=${ROOTDEV_TYPE}8
+  mount -n -t ext4 -o nodev,noexec,nosuid,commit=600,ro \
+    "$OEM_DEV" /usr/share/oem
 fi
 
 # Sanity check the date (crosbug.com/13200)
