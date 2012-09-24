@@ -201,7 +201,7 @@ legacy_offset_size_export() {
   START_KERN_A=$(partoffset $1 2)
   START_ROOTFS_A=$(partoffset $1 3)
   START_KERN_B=$(partoffset $1 4)
-  START_ROOTFS_A=$(partoffset $1 5)
+  START_ROOTFS_B=$(partoffset $1 5)
   START_OEM=$(partoffset $1 8)
   START_RWFW=$(partoffset $1 11)
   START_ESP=$(partoffset $1 12)
