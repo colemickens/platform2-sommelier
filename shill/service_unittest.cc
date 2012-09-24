@@ -22,6 +22,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_profile.h"
@@ -72,6 +73,25 @@ class ServiceTest : public PropertyStoreTest {
   MockManager mock_manager_;
   scoped_refptr<ServiceUnderTest> service_;
   string storage_id_;
+};
+
+class AllMockServiceTest : public testing::Test {
+ public:
+  AllMockServiceTest()
+      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+        service_(new ServiceUnderTest(&control_interface_,
+                                      &dispatcher_,
+                                      &metrics_,
+                                      &manager_)) { }
+  virtual ~AllMockServiceTest() {}
+
+ protected:
+  MockControl control_interface_;
+  StrictMock<MockEventDispatcher> dispatcher_;
+  MockGLib glib_;
+  NiceMock<MockMetrics> metrics_;
+  MockManager manager_;
+  scoped_refptr<ServiceUnderTest> service_;
 };
 
 TEST_F(ServiceTest, Constructor) {
@@ -451,6 +471,88 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   service_->SetState(Service::kStateAssociating);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(Service::kAutoConnConnecting, reason);
+}
+
+TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
+  const char *reason;
+  service_->set_connectable(true);
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+
+  // The very first AutoConnect() doesn't trigger any throttling.
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _)).Times(0);
+  service_->AutoConnect();
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+
+  // The second call does trigger some throttling.
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_,
+      Service::kMinAutoConnectCooldownTimeMilliseconds));
+  service_->AutoConnect();
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnThrottled, reason);
+
+  // Calling AutoConnect() again before the cooldown terminates does not change
+  // the timeout.
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _)).Times(0);
+  service_->AutoConnect();
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnThrottled, reason);
+
+  // Once the timeout expires, we can AutoConnect() again.
+  service_->ReEnableAutoConnectTask();
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+
+  // Timeouts increase exponentially.
+  uint64 next_cooldown_time = service_->auto_connect_cooldown_milliseconds_;
+  EXPECT_EQ(next_cooldown_time,
+            Service::kAutoConnectCooldownBackoffFactor *
+            Service::kMinAutoConnectCooldownTimeMilliseconds);
+  while (next_cooldown_time <=
+         Service::kMaxAutoConnectCooldownTimeMilliseconds) {
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, next_cooldown_time));
+    service_->AutoConnect();
+    Mock::VerifyAndClearExpectations(&dispatcher_);
+    EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+    EXPECT_STREQ(Service::kAutoConnThrottled, reason);
+    service_->ReEnableAutoConnectTask();
+    next_cooldown_time *= Service::kAutoConnectCooldownBackoffFactor;
+  }
+
+  // Once we hit our cap, future timeouts are the same.
+  for (int32 i = 0; i < 2; i++) {
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_,
+        Service::kMaxAutoConnectCooldownTimeMilliseconds));
+    service_->AutoConnect();
+    Mock::VerifyAndClearExpectations(&dispatcher_);
+    EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+    EXPECT_STREQ(Service::kAutoConnThrottled, reason);
+    service_->ReEnableAutoConnectTask();
+  }
+
+  // Connecting successfully resets our cooldown.
+  service_->SetState(Service::kStateConnected);
+  service_->SetState(Service::kStateIdle);
+  reason = "";
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ("", reason);
+  EXPECT_EQ(service_->auto_connect_cooldown_milliseconds_, 0);
+
+  // But future AutoConnects behave as before
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_,
+      Service::kMinAutoConnectCooldownTimeMilliseconds)).Times(1);
+  service_->AutoConnect();
+  service_->AutoConnect();
+  Mock::VerifyAndClearExpectations(&dispatcher_);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnThrottled, reason);
+
+  // Cooldowns are forgotten if we go through a suspend/resume cycle.
+  service_->OnAfterResume();
+  reason = "";
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ("", reason);
 }
 
 TEST_F(ServiceTest, ConfigureBadProperty) {

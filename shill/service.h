@@ -12,8 +12,10 @@
 #include <set>
 #include <vector>
 
+#include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/adaptor_interfaces.h"
@@ -380,6 +382,9 @@ class Service : public base::RefCounted<Service> {
   // the RPC adaptor.
   virtual void OnPropertyChanged(const std::string &property);
 
+  // Called by the manager once after a resume.
+  virtual void OnAfterResume();
+
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
   StaticIPParameters *mutable_static_ip_parameters() {
@@ -492,6 +497,7 @@ class Service : public base::RefCounted<Service> {
   friend class VPNServiceTest;
   friend class WiFiServiceTest;
   friend class WiMaxServiceTest;
+  FRIEND_TEST(AllMockServiceTest, AutoConnectWithFailures);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
   FRIEND_TEST(ServiceTest, CalculateState);
   FRIEND_TEST(ServiceTest, CalculateTechnology);
@@ -514,11 +520,13 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, Unload);
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);
+  FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
 
   static const char kAutoConnConnected[];
   static const char kAutoConnConnecting[];
   static const char kAutoConnExplicitDisconnect[];
   static const char kAutoConnNotConnectable[];
+  static const char kAutoConnThrottled[];
 
   static const size_t kEAPMaxCertificationElements;
 
@@ -533,6 +541,10 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortSecurityEtc[];
   static const char kServiceSortTechnology[];
   static const char kServiceSortUniqueName[];
+
+  static const uint64 kMaxAutoConnectCooldownTimeMilliseconds;
+  static const uint64 kMinAutoConnectCooldownTimeMilliseconds;
+  static const uint64 kAutoConnectCooldownBackoffFactor;
 
   bool GetAutoConnect(Error *error);
 
@@ -551,6 +563,11 @@ class Service : public base::RefCounted<Service> {
 
   // Returns TCP port of service's HTTP proxy in host order.
   uint16 GetHTTPProxyPort(Error *error);
+
+  void ReEnableAutoConnectTask();
+  // Disables autoconnect and posts a task to re-enable it after a cooldown.
+  // Note that autoconnect could be disabled for other reasons as well.
+  void ThrottleFutureAutoConnects();
 
   // Saves settings to profile, if we have one. Unlike
   // SaveServiceToProfile, SaveToProfile never assigns this service
@@ -584,6 +601,9 @@ class Service : public base::RefCounted<Service> {
   // Whether or not this service has ever reached kStateConnected.
   bool has_ever_connected_;
 
+  base::CancelableClosure reenable_auto_connect_task_;
+  uint64 auto_connect_cooldown_milliseconds_ ;
+
   ProfileRefPtr profile_;
   PropertyStore store_;
   std::set<std::string> parameters_ignored_for_configure_;
@@ -599,6 +619,7 @@ class Service : public base::RefCounted<Service> {
   Metrics *metrics_;
   Manager *manager_;
   scoped_ptr<Sockets> sockets_;
+  base::WeakPtrFactory<Service> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

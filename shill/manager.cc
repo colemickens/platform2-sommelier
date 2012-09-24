@@ -912,6 +912,10 @@ void Manager::EmitDefaultService() {
 void Manager::OnPowerStateChanged(
     PowerManagerProxyDelegate::SuspendState power_state) {
   if (power_state == PowerManagerProxyDelegate::kOn) {
+    vector<ServiceRefPtr>::iterator sit;
+    for (sit = services_.begin(); sit != services_.end(); ++sit) {
+      (*sit)->OnAfterResume();
+    }
     SortServices();
     vector<DeviceRefPtr>::iterator it;
     for (it = devices_.begin(); it != devices_.end(); ++it) {

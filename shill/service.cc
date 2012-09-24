@@ -30,6 +30,7 @@
 #include "shill/sockets.h"
 #include "shill/store_interface.h"
 
+using base::Bind;
 using std::map;
 using std::string;
 using std::vector;
@@ -40,6 +41,7 @@ const char Service::kAutoConnConnected[] = "connected";
 const char Service::kAutoConnConnecting[] = "connecting";
 const char Service::kAutoConnExplicitDisconnect[] = "explicitly disconnected";
 const char Service::kAutoConnNotConnectable[] = "not connectable";
+const char Service::kAutoConnThrottled[] = "throttled";
 
 const size_t Service::kEAPMaxCertificationElements = 10;
 
@@ -93,6 +95,10 @@ const char Service::kStorageUIData[] = "UIData";
 const uint8 Service::kStrengthMax = 100;
 const uint8 Service::kStrengthMin = 0;
 
+const uint64 Service::kMaxAutoConnectCooldownTimeMilliseconds = 30 * 60 * 1000;
+const uint64 Service::kMinAutoConnectCooldownTimeMilliseconds = 1000;
+const uint64 Service::kAutoConnectCooldownBackoffFactor = 2;
+
 // static
 unsigned int Service::serial_number_ = 0;
 
@@ -116,13 +122,15 @@ Service::Service(ControlInterface *control_interface,
       technology_(technology),
       failed_time_(0),
       has_ever_connected_(false),
+      auto_connect_cooldown_milliseconds_(0),
       dispatcher_(dispatcher),
       unique_name_(base::UintToString(serial_number_++)),
       friendly_name_(unique_name_),
       adaptor_(control_interface->CreateServiceAdaptor(this)),
       metrics_(metrics),
       manager_(manager),
-      sockets_(new Sockets()) {
+      sockets_(new Sockets()),
+      weak_ptr_factory_(this) {
   HelpRegisterDerivedBool(flimflam::kAutoConnectProperty,
                           &Service::GetAutoConnect,
                           &Service::SetAutoConnect);
@@ -237,6 +245,7 @@ void Service::AutoConnect() {
   const char *reason = NULL;
   if (IsAutoConnectable(&reason)) {
     LOG(INFO) << "Auto-connecting to " << friendly_name_;
+    ThrottleFutureAutoConnects();
     Error error;
     Connect(&error);
   } else {
@@ -281,16 +290,44 @@ void Service::SetState(ConnectState state) {
   state_ = state;
   if (state != kStateFailure) {
     failure_ = kFailureUnknown;
-    failed_time_ = 0;
   }
   if (state == kStateConnected) {
+    failed_time_ = 0;
     has_ever_connected_ = true;
     SaveToProfile();
+    // When we succeed in connecting, forget that connects failed in the past.
+    // Give services one chance at a fast autoconnect retry by resetting the
+    // cooldown to 0 to indicate that the last connect was successful.
+    auto_connect_cooldown_milliseconds_  = 0;
+    reenable_auto_connect_task_.Cancel();
   }
   UpdateErrorProperty();
   manager_->UpdateService(this);
   metrics_->NotifyServiceStateChanged(this, state);
   adaptor_->EmitStringChanged(flimflam::kStateProperty, GetStateString());
+}
+
+void Service::ReEnableAutoConnectTask() {
+  // Kill the thing blocking AutoConnect().
+  reenable_auto_connect_task_.Cancel();
+  // Post to the manager, giving it an opportunity to AutoConnect again.
+  manager_->UpdateService(this);
+}
+
+void Service::ThrottleFutureAutoConnects() {
+  if (auto_connect_cooldown_milliseconds_ > 0) {
+    LOG(INFO) << "Throttling autoconnect to " << friendly_name_ << " for "
+              << auto_connect_cooldown_milliseconds_ << " milliseconds.";
+    reenable_auto_connect_task_.Reset(Bind(&Service::ReEnableAutoConnectTask,
+                                           weak_ptr_factory_.GetWeakPtr()));
+    dispatcher_->PostDelayedTask(reenable_auto_connect_task_.callback(),
+                                 auto_connect_cooldown_milliseconds_);
+  }
+  auto_connect_cooldown_milliseconds_ =
+      std::min(kMaxAutoConnectCooldownTimeMilliseconds,
+               std::max(kMinAutoConnectCooldownTimeMilliseconds,
+                        auto_connect_cooldown_milliseconds_ *
+                        kAutoConnectCooldownBackoffFactor));
 }
 
 void Service::SetFailure(ConnectFailure failure) {
@@ -762,6 +799,12 @@ void Service::OnPropertyChanged(const string &property) {
   }
 }
 
+void Service::OnAfterResume() {
+  // Forget old autoconnect failures across suspend/resume.
+  auto_connect_cooldown_milliseconds_  = 0;
+  reenable_auto_connect_task_.Cancel();
+}
+
 string Service::GetIPConfigRpcIdentifier(Error *error) {
   if (!connection_) {
     error->Populate(Error::kNotFound);
@@ -841,6 +884,11 @@ bool Service::IsAutoConnectable(const char **reason) const {
 
   if (explicitly_disconnected_) {
     *reason = kAutoConnExplicitDisconnect;
+    return false;
+  }
+
+  if (!reenable_auto_connect_task_.IsCancelled()) {
+    *reason = kAutoConnThrottled;
     return false;
   }
 
