@@ -43,9 +43,9 @@ static const int DEBUG = 0;
 #undef DEFINE_ERROR
 #undef DEFINE_MM_ERROR
 
-static const char *k2kNetworkDriver = "QCUSBNet2k";
-static const char *k3kNetworkDriver = "GobiNet";
-static const char *kUnifiedNetworkDriver = "gobi";
+static const char k2kNetworkDriver[] = "QCUSBNet2k";
+static const char k3kNetworkDriver[] = "GobiNet";
+static const char kUnifiedNetworkDriver[] = "gobi";
 
 using utilities::DBusPropertyMap;
 
@@ -1515,13 +1515,11 @@ void GobiModem::DataBearerTechnologyHandler(ULONG technology) {
 void GobiModem::SetDeviceProperties()
 {
   struct udev *udev = udev_new();
-
   if (udev == NULL) {
     LOG(WARNING) << "udev == NULL";
     return;
   }
 
-  struct udev_list_entry *entry;
   struct udev_enumerate *udev_enumerate = enumerate_net_devices(udev);
   if (udev_enumerate == NULL) {
     LOG(WARNING) << "udev_enumerate == NULL";
@@ -1529,9 +1527,10 @@ void GobiModem::SetDeviceProperties()
     return;
   }
 
+  struct udev_list_entry *entry;
   for (entry = udev_enumerate_get_list_entry(udev_enumerate);
-      entry != NULL;
-      entry = udev_list_entry_get_next(entry)) {
+       entry != NULL;
+       entry = udev_list_entry_get_next(entry)) {
 
     std::string syspath(udev_list_entry_get_name(entry));
 
@@ -1542,12 +1541,16 @@ void GobiModem::SetDeviceProperties()
 
     std::string driver;
     struct udev_device *parent = udev_device_get_parent(udev_device);
-    if (parent != NULL)
-      driver = udev_device_get_driver(parent);
+    if (parent != NULL) {
+      const char *udev_driver = udev_device_get_driver(parent);
+      if (udev_driver != NULL) {
+        driver = udev_driver;
+      }
+    }
 
-    if (driver.compare(k2kNetworkDriver) == 0 ||
-        driver.compare(k3kNetworkDriver) == 0 ||
-        driver.compare(kUnifiedNetworkDriver) == 0) {
+    if (driver == k2kNetworkDriver ||
+        driver == k3kNetworkDriver ||
+        driver == kUnifiedNetworkDriver) {
       // Extract last portion of syspath...
       size_t found = syspath.find_last_of('/');
       if (found != std::string::npos) {
