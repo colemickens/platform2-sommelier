@@ -19,6 +19,7 @@
 
 #include "attestation.pb.h"
 #include "cryptolib.h"
+#include "platform.h"
 #include "tpm.h"
 
 using chromeos::SecureBlob;
@@ -92,6 +93,19 @@ const Attestation::PCRValue Attestation::kKnownPCRValues[] = {
   { true,  true,  kVerified  },
   { true,  true,  kDeveloper }
 };
+
+Attestation::Attestation(Tpm* tpm, Platform* platform)
+    : tpm_(tpm),
+      platform_(platform),
+      is_prepared_(false),
+      database_path_(kDefaultDatabasePath),
+      thread_(base::kNullThreadHandle) {}
+
+Attestation::~Attestation() {
+  if (thread_ != base::kNullThreadHandle)
+    base::PlatformThread::Join(thread_);
+  ClearDatabase();
+}
 
 bool Attestation::IsPreparedForEnrollment() {
   base::AutoLock lock(prepare_lock_);
@@ -403,10 +417,12 @@ bool Attestation::StoreDatabase(const EncryptedData& encrypted_db) {
     LOG(ERROR) << "Failed to write db.";
     return false;
   }
+  CheckDatabasePermissions();
   return true;
 }
 
 bool Attestation::LoadDatabase(EncryptedData* encrypted_db) {
+  CheckDatabasePermissions();
   string serial;
   if (!file_util::ReadFileToString(database_path_, &serial)) {
     return false;
@@ -416,6 +432,17 @@ bool Attestation::LoadDatabase(EncryptedData* encrypted_db) {
     return false;
   }
   return true;
+}
+
+void Attestation::CheckDatabasePermissions() {
+  const mode_t kMask = 0007;  // No permissions for 'others'.
+  CHECK(platform_);
+  mode_t permissions = 0;
+  if (!platform_->GetPermissions(database_path_.value(), &permissions))
+    return;
+  if ((permissions & kMask) == 0)
+    return;
+  platform_->SetPermissions(database_path_.value(), permissions & ~kMask);
 }
 
 bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,

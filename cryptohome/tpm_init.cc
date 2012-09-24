@@ -63,7 +63,8 @@ TpmInit::TpmInit(Platform* platform)
       initialize_called_(false),
       task_done_(false),
       initialize_took_ownership_(false),
-      initialization_time_(0) {
+      initialization_time_(0),
+      platform_(platform) {
 }
 
 TpmInit::~TpmInit() {
@@ -94,7 +95,7 @@ void TpmInit::Init(TpmInitCallback* notify_callback) {
   // password has not been cleared.
   chromeos::SecureBlob password;
   if (tpm && IsTpmReady() && GetTpmPassword(&password)) {
-    attestation_.reset(new Attestation(tpm));
+    attestation_.reset(new Attestation(tpm, platform_));
     attestation_->PrepareForEnrollmentAsync();
   }
 }
@@ -147,7 +148,7 @@ bool TpmInit::IsAttestationPrepared() {
   Tpm* tpm = get_tpm();
   if (!tpm || !IsTpmReady())
     return false;
-  Attestation attestation(tpm);
+  Attestation attestation(tpm, platform_);
   return attestation.IsPreparedForEnrollment();
 }
 
@@ -155,7 +156,7 @@ bool TpmInit::VerifyAttestationData() {
   Tpm* tpm = get_tpm();
   if (!tpm || !IsTpmReady())
     return false;
-  Attestation attestation(tpm);
+  Attestation attestation(tpm, platform_);
   return attestation.Verify();
 }
 
@@ -163,7 +164,7 @@ bool TpmInit::VerifyEK() {
   Tpm* tpm = get_tpm();
   if (!tpm || !IsTpmReady())
     return false;
-  Attestation attestation(tpm);
+  Attestation attestation(tpm, platform_);
   return attestation.VerifyEK();
 }
 
@@ -180,7 +181,7 @@ void TpmInit::ThreadMain() {
     notify_callback_->InitializeTpmComplete(initialize_result,
                                             initialize_took_ownership_);
   }
-  Attestation attestation(tpm_init_task_->get_tpm());
+  Attestation attestation(tpm_init_task_->get_tpm(), platform_);
   attestation.PrepareForEnrollment();
   task_done_ = true;
 }

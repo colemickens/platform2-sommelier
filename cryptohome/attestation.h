@@ -15,6 +15,7 @@
 
 namespace cryptohome {
 
+class Platform;
 class Tpm;
 
 // This class performs tasks which enable attestation enrollment.  These tasks
@@ -23,15 +24,8 @@ class Tpm;
 // a platform does not have a TPM, this class does nothing.
 class Attestation : public base::PlatformThread::Delegate {
  public:
-  Attestation(Tpm* tpm) : tpm_(tpm),
-                          is_prepared_(false),
-                          database_path_(kDefaultDatabasePath),
-                          thread_(base::kNullThreadHandle) {}
-  virtual ~Attestation() {
-    if (thread_ != base::kNullThreadHandle)
-      base::PlatformThread::Join(thread_);
-    ClearDatabase();
-  }
+  Attestation(Tpm* tpm, Platform* platform);
+  virtual ~Attestation();
 
   // Returns true if the attestation enrollment blobs already exist.
   virtual bool IsPreparedForEnrollment();
@@ -82,6 +76,7 @@ class Attestation : public base::PlatformThread::Delegate {
   } kKnownPCRValues[];
 
   Tpm* tpm_;
+  Platform* platform_;
   bool is_prepared_;
   base::Lock prepare_lock_;
   chromeos::SecureBlob database_key_;
@@ -115,6 +110,9 @@ class Attestation : public base::PlatformThread::Delegate {
 
   // Reads a database from a persistent storage location.
   bool LoadDatabase(EncryptedData* encrypted_db);
+
+  // Ensures permissions of the database file are correct.
+  void CheckDatabasePermissions();
 
   // Verifies an endorsement credential against known Chrome OS issuers.
   bool VerifyEndorsementCredential(const chromeos::SecureBlob& credential,

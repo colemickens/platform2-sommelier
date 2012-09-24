@@ -99,6 +99,7 @@ class TpmInit {
   bool initialize_took_ownership_;
   int64_t initialization_time_;
   scoped_ptr<Attestation> attestation_;
+  Platform* platform_;
 
   DISALLOW_COPY_AND_ASSIGN(TpmInit);
 };

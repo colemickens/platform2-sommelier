@@ -8,6 +8,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "mock_platform.h"
 #include "mock_tpm.h"
 
 using ::testing::NiceMock;
@@ -18,7 +19,7 @@ static const char* kTestPath = "/tmp/attestation_test.epb";
 
 class AttestationTest : public testing::Test {
  public:
-  AttestationTest() : attestation_(&tpm_) {
+  AttestationTest() : attestation_(&tpm_, &platform_) {
     file_util::Delete(FilePath(kTestPath), true);
     attestation_.set_database_path(kTestPath);
   }
@@ -27,11 +28,12 @@ class AttestationTest : public testing::Test {
   }
  protected:
   NiceMock<MockTpm> tpm_;
+  NiceMock<MockPlatform> platform_;
   Attestation attestation_;
 };
 
 TEST(AttestationTest_, NullTpm) {
-  Attestation without_tpm(NULL);
+  Attestation without_tpm(NULL, NULL);
   without_tpm.PrepareForEnrollment();
   EXPECT_FALSE(without_tpm.IsPreparedForEnrollment());
 }
@@ -42,4 +44,3 @@ TEST_F(AttestationTest, PrepareForEnrollment) {
 }
 
 }
-
