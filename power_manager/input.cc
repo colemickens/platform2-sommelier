@@ -36,13 +36,6 @@ power_manager::InputType GetInputType(const struct input_event& event) {
     switch (event.code) {
       case KEY_POWER:     return power_manager::INPUT_POWER_BUTTON;
       case KEY_F13:       return power_manager::INPUT_LOCK_BUTTON;
-      case KEY_F4:        return power_manager::INPUT_KEY_F4;
-      case KEY_LEFTCTRL:  return power_manager::INPUT_KEY_LEFT_CTRL;
-      case KEY_RIGHTCTRL: return power_manager::INPUT_KEY_RIGHT_CTRL;
-      case KEY_LEFTALT:   return power_manager::INPUT_KEY_LEFT_ALT;
-      case KEY_RIGHTALT:  return power_manager::INPUT_KEY_RIGHT_ALT;
-      case KEY_LEFTSHIFT: return power_manager::INPUT_KEY_LEFT_SHIFT;
-      case KEY_RIGHTSHIFT:return power_manager::INPUT_KEY_RIGHT_SHIFT;
       default:            return power_manager::INPUT_UNHANDLED;
     }
   }
@@ -58,13 +51,6 @@ const char* InputTypeToString(power_manager::InputType type) {
     case power_manager::INPUT_LID:            return "input(LID)";
     case power_manager::INPUT_POWER_BUTTON:   return "input(POWER_BUTTON)";
     case power_manager::INPUT_LOCK_BUTTON:    return "input(LOCK_BUTTON)";
-    case power_manager::INPUT_KEY_LEFT_CTRL:  return "input(KEY_LEFT_CTRL)";
-    case power_manager::INPUT_KEY_RIGHT_CTRL: return "input(KEY_RIGHT_CTRL)";
-    case power_manager::INPUT_KEY_LEFT_ALT:   return "input(KEY_LEFT_ALT)";
-    case power_manager::INPUT_KEY_RIGHT_ALT:  return "input(KEY_RIGHT_ALT)";
-    case power_manager::INPUT_KEY_LEFT_SHIFT: return "input(KEY_LEFT_SHIFT)";
-    case power_manager::INPUT_KEY_RIGHT_SHIFT:return "input(KEY_RIGHT_SHIFT)";
-    case power_manager::INPUT_KEY_F4:         return "input(KEY_F4)";
     case power_manager::INPUT_UNHANDLED:      return "input(UNHANDLED)";
     default:                                  NOTREACHED(); return "";
   }

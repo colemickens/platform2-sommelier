@@ -64,13 +64,6 @@ extern const char kLidOpened[];
 extern const char kPowerButtonDown[];
 extern const char kPowerButtonUp[];
 extern const char kExternalBacklightUpdate[];
-extern const char kKeyLeftCtrl[];
-extern const char kKeyRightCtrl[];
-extern const char kKeyLeftAlt[];
-extern const char kKeyRightAlt[];
-extern const char kKeyLeftShift[];
-extern const char kKeyRightShift[];
-extern const char kKeyF4[];
 
 // Broadcast signals.
 extern const char kPowerStateChanged[];

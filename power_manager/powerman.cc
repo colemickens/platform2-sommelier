@@ -201,27 +201,6 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
     case INPUT_LOCK_BUTTON:
       daemon->SendButtonEventSignal(kLockButtonName, GetButtonState(value));
       break;
-    case INPUT_KEY_LEFT_CTRL:
-      daemon->SendButtonEventSignal(kKeyLeftCtrl, GetButtonState(value));
-      break;
-    case INPUT_KEY_RIGHT_CTRL:
-      daemon->SendButtonEventSignal(kKeyRightCtrl, GetButtonState(value));
-      break;
-    case INPUT_KEY_LEFT_ALT:
-      daemon->SendButtonEventSignal(kKeyLeftAlt, GetButtonState(value));
-      break;
-    case INPUT_KEY_RIGHT_ALT:
-      daemon->SendButtonEventSignal(kKeyRightAlt, GetButtonState(value));
-      break;
-    case INPUT_KEY_LEFT_SHIFT:
-      daemon->SendButtonEventSignal(kKeyLeftShift, GetButtonState(value));
-      break;
-    case INPUT_KEY_RIGHT_SHIFT:
-      daemon->SendButtonEventSignal(kKeyRightShift, GetButtonState(value));
-      break;
-    case INPUT_KEY_F4:
-      daemon->SendButtonEventSignal(kKeyF4, GetButtonState(value));
-      break;
     default: {
       LOG(ERROR) << "Bad input type.";
       NOTREACHED();
