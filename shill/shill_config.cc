@@ -14,7 +14,8 @@ const char Config::kDefaultRunDirectory[] = "/var/run/shill";
 // static
 const char Config::kDefaultStorageDirectory[] = "/var/cache/shill";
 // static
-const char Config::kDefaultUserStorageFormat[] = "/home/%s/user/shill";
+const char Config::kDefaultUserStorageFormat[] =
+    "/var/run/shill/user_profiles/%s";
 // static
 const char Config::kFlimflamRunDirectory[] = "/var/run/flimflam";
 // static
