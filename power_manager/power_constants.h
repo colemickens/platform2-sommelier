@@ -42,6 +42,7 @@ extern const char kKeyboardBacklightDimPercentPref[];
 extern const char kKeyboardBacklightMaxPercentPref[];
 extern const char kKeyboardBacklightMinPercentPref[];
 extern const char kKeyboardBacklightStepsPref[];
+extern const char kRequireUsbInputDeviceToSuspendPref[];
 
 // Miscellaneous constants.
 extern const char kBacklightPath[];

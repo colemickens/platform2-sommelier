@@ -155,6 +155,7 @@ class Daemon : public BacklightControllerObserver,
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithSetThreshold);
   FRIEND_TEST(DaemonTest, TurnBacklightOnForPowerButton);
+  FRIEND_TEST(DaemonTest, DetectUSBDevices);
 
   enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
                    kIdleSuspend };
@@ -468,6 +469,10 @@ class Daemon : public BacklightControllerObserver,
   // "Recently" is defined by |kAudioActivityThresholdMs| in powerd.cc.
   bool IsAudioPlaying();
 
+  // Checks if any USB input devices are connected, by scanning sysfs for input
+  // devices whose paths contain "usb".
+  bool USBInputDeviceConnected() const;
+
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
@@ -586,6 +591,14 @@ class Daemon : public BacklightControllerObserver,
   // String that indicates reason for shutting down.  See power_constants.cc for
   // valid values.
   std::string shutdown_reason_;
+
+  // Flag indicating that this system needs a USB input device connected before
+  // suspending, otherwise it cannot wake up from suspend.
+  bool require_usb_input_device_to_suspend_;
+
+  // Used by USBInputDeviceConnected() instead of the default input path, if
+  // this string is non-empty.  Used for testing purposes.
+  std::string sysfs_input_path_for_testing_;
 };
 
 }  // namespace power_manager

@@ -8,7 +8,9 @@
 
 #include <cmath>
 
+#include "base/file_util.h"
 #include "base/logging.h"
+#include "base/scoped_temp_dir.h"
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/idle_detector.h"
@@ -931,5 +933,56 @@ TEST_F(DaemonTest, TurnBacklightOnForPowerButton) {
   EXPECT_GT(backlight_ctl_.GetTargetBrightnessPercent(), 0.0);
 }
 #endif
+
+TEST_F(DaemonTest, DetectUSBDevices) {
+  ScopedTempDir temp_dir;
+  // Create temp directory to be used in place of the default sysfs path.
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  daemon_.sysfs_input_path_for_testing_ = temp_dir.path().value();
+
+  // Test the detector on empty directory.
+  EXPECT_FALSE(daemon_.USBInputDeviceConnected());
+
+  // Create a bunch of non-usb paths.
+  ASSERT_TRUE(file_util::CreateSymbolicLink(
+                  temp_dir.path().Append("../../foo0/dev:1/00:00"),
+                  temp_dir.path().Append("input0")));
+  ASSERT_TRUE(file_util::CreateSymbolicLink(
+                  temp_dir.path().Append("../../bar4/dev:2/00:00"),
+                  temp_dir.path().Append("input1")));
+  ASSERT_TRUE(file_util::CreateSymbolicLink(
+                  temp_dir.path().Append("../../goo3/dev:3/00:00"),
+                  temp_dir.path().Append("input2")));
+  EXPECT_FALSE(daemon_.USBInputDeviceConnected());
+
+  // Create a "fake usb" path that contains "usb" as part of another word
+  ASSERT_TRUE(file_util::CreateSymbolicLink(
+                  temp_dir.path().Append("../../busbreaker/00:00"),
+                  temp_dir.path().Append("input3")));
+  EXPECT_FALSE(daemon_.USBInputDeviceConnected());
+
+  // Create a true usb path.
+  ASSERT_TRUE(file_util::CreateSymbolicLink(
+                  temp_dir.path().Append("../../usb3/dev:3/00:00"),
+                  temp_dir.path().Append("input4")));
+  EXPECT_TRUE(daemon_.USBInputDeviceConnected());
+
+  // Clear directory and create a usb path.
+  ASSERT_TRUE(temp_dir.Delete());
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  daemon_.sysfs_input_path_for_testing_ = temp_dir.path().value();
+  ASSERT_TRUE(file_util::CreateSymbolicLink(
+                  temp_dir.path().Append("../../usb/dev:5/00:00"),
+                  temp_dir.path().Append("input10")));
+  EXPECT_TRUE(daemon_.USBInputDeviceConnected());
+
+  // Clear directory and create a non-symlink usb path.  It should not counted
+  // because all the input paths should be symlinks.
+  ASSERT_TRUE(temp_dir.Delete());
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  daemon_.sysfs_input_path_for_testing_ = temp_dir.path().value();
+  ASSERT_TRUE(file_util::CreateDirectory(temp_dir.path().Append("usb12")));
+  EXPECT_FALSE(daemon_.USBInputDeviceConnected());
+}
 
 }  // namespace power_manager

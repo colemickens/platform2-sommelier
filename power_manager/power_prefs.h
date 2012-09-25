@@ -30,6 +30,7 @@ class PowerPrefs : public PowerPrefsInterface {
   virtual bool SetInt64(const char* name, int64 value);
   virtual bool GetDouble(const char* name, double* value);
   virtual bool SetDouble(const char* name, double value);
+  virtual bool GetBool(const char* name, bool* value);
 
  private:
   // Result of a pref file read operation.

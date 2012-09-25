@@ -117,4 +117,12 @@ bool PowerPrefs::SetDouble(const char* name, double value) {
   return -1 != status;
 }
 
+bool PowerPrefs::GetBool(const char* name, bool* value) {
+  int64 int_value = 0;
+  if (!GetInt64(name, &int_value))
+    return false;
+  *value = static_cast<bool>(int_value);
+  return true;
+}
+
 }  // namespace power_manager

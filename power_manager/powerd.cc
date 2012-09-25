@@ -74,6 +74,10 @@ const int64 kMinTimeForIdle = 10;
 // Delay before retrying connecting to ChromeOS audio server.
 const int64 kCrasRetryConnectMs = 1000;
 
+const char kSysClassInputPath[] = "/sys/class/input";
+const char kInputMatchPattern[] = "input*";
+const char kUsbMatchString[] = "usb";
+
 }  // namespace
 
 namespace power_manager {
@@ -137,7 +141,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       poll_power_supply_timer_id_(0),
       is_projecting_(false),
       connected_to_cras_(false),
-      shutdown_reason_(kShutdownReasonUnknown) {
+      shutdown_reason_(kShutdownReasonUnknown),
+      require_usb_input_device_to_suspend_(false) {
   idle_->AddObserver(this);
 }
 
@@ -342,6 +347,8 @@ void Daemon::ReadSuspendSettings() {
     LOG(INFO) << "Idle suspend enabled. plugged_suspend_ms_ = "
               << plugged_suspend_ms_ << " unplugged_suspend_ms = "
               << unplugged_suspend_ms_;
+    prefs_->GetBool(kRequireUsbInputDeviceToSuspendPref,
+                    &require_usb_input_device_to_suspend_);
   }
   // Store unmodified timeout values for switching between projecting and
   // non-projecting timeouts.
@@ -635,9 +642,17 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
       backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED &&
       idle_time_ms >= suspend_ms_) {
     bool audio_is_playing = IsAudioPlaying();
+    bool delay_suspend = false;
     if (audio_is_playing || ShouldStayAwakeForHeadphoneJack()) {
       LOG(INFO) << "Delaying suspend because " <<
           (audio_is_playing ? "audio is playing." : "headphones are attached.");
+      delay_suspend = true;
+    } else if (require_usb_input_device_to_suspend_ &&
+               !USBInputDeviceConnected()) {
+      LOG(INFO) << "Delaying suspend because no USB input device is connected.";
+      delay_suspend = true;
+    }
+    if (delay_suspend) {
       // Increase the suspend offset by the react time.  Since the offset is
       // calculated relative to the ORIGINAL [un]plugged_suspend_ms_ value, we
       // need to use that here.
@@ -1821,6 +1836,38 @@ bool Daemon::IsAudioPlaying() {
       base::TimeDelta::FromMicroseconds(
           delta_ns / base::Time::kNanosecondsPerMicrosecond);
   return last_audio_time_delta.InMilliseconds() < kAudioActivityThresholdMs;
+}
+
+bool Daemon::USBInputDeviceConnected() const {
+  file_util::FileEnumerator enumerator(
+      FilePath(sysfs_input_path_for_testing_.empty() ?
+               kSysClassInputPath : sysfs_input_path_for_testing_),
+      false,
+      static_cast<file_util::FileEnumerator::FileType>(
+          file_util::FileEnumerator::FILES |
+          file_util::FileEnumerator::SHOW_SYM_LINKS),
+      kInputMatchPattern);
+  for (FilePath path = enumerator.Next();
+       !path.empty();
+       path = enumerator.Next()) {
+    FilePath symlink_path;
+    if (!file_util::ReadSymbolicLink(path, &symlink_path))
+      continue;
+    const std::string& path_string = symlink_path.value();
+    size_t position = path_string.find(kUsbMatchString);
+    if (position == std::string::npos)
+      continue;
+    // Now that the string "usb" has been found, make sure it is a whole word
+    // and not just part of another word like "busbreaker".
+    bool usb_at_word_head =
+        position == 0 || !IsAsciiAlpha(path_string.at(position - 1));
+    bool usb_at_word_tail =
+        position + strlen(kUsbMatchString) == path_string.size() ||
+        !IsAsciiAlpha(path_string.at(position + strlen(kUsbMatchString)));
+    if (usb_at_word_head && usb_at_word_tail)
+      return true;
+  }
+  return false;
 }
 
 }  // namespace power_manager
