@@ -372,6 +372,11 @@ void L2TPIPSecDriver::ParseIPConfiguration(
       SLOG(VPN, 2) << "Key ignored.";
     }
   }
+
+  // There is no IPv6 support for L2TP/IPsec VPN at this moment, so create a
+  // blackhole route for IPv6 traffic after establishing a IPv4 VPN.
+  // TODO(benchan): Generalize this when IPv6 support is added.
+  properties->blackhole_ipv6 = true;
 }
 
 void L2TPIPSecDriver::Notify(

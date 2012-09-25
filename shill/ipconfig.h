@@ -38,6 +38,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   struct Properties {
     Properties() : address_family(IPAddress::kFamilyUnknown),
                    subnet_prefix(0),
+                   blackhole_ipv6(false),
                    mtu(0) {}
 
     IPAddress::Family address_family;
@@ -54,6 +55,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
     // route installed.  This is usually the external IP address of the VPN
     // server.
     std::string trusted_ip;
+    bool blackhole_ipv6;
     int32 mtu;
     std::vector<Route> routes;
   };

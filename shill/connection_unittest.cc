@@ -539,6 +539,22 @@ TEST_F(ConnectionTest, RequestHostRoute) {
   AddDestructorExpectations();
 }
 
+TEST_F(ConnectionTest, BlackholeIPv6) {
+  properties_.blackhole_ipv6 = true;
+  UpdateProperties();
+  EXPECT_CALL(*device_info_, HasOtherAddress(_, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _));
+  EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _));
+  EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _));
+  EXPECT_CALL(routing_table_,
+              CreateBlackholeRoute(kTestDeviceInterfaceIndex0,
+                                   IPAddress::kFamilyIPv6,
+                                   Connection::kDefaultMetric))
+      .WillOnce(Return(true));
+  connection_->UpdateFromIPConfig(ipconfig_);
+}
+
 TEST_F(ConnectionTest, PinHostRoute) {
   static const char kGateway[] = "10.242.2.13";
   static const char kNetwork[] = "10.242.2.1";

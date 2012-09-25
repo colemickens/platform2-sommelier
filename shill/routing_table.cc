@@ -532,6 +532,41 @@ bool RoutingTable::RequestRouteToHost(const IPAddress &address,
   return true;
 }
 
+bool RoutingTable::CreateBlackholeRoute(int interface_index,
+                                        const IPAddress::Family &family,
+                                        uint32 metric) {
+
+  SLOG(Route, 2) << base::StringPrintf(
+      "%s: index %d family %s metric %d",
+      __func__, interface_index,
+      IPAddress::GetAddressFamilyName(family).c_str(), metric);
+
+  RTNLMessage message(
+      RTNLMessage::kTypeRoute,
+      RTNLMessage::kModeAdd,
+      NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL,
+      0,
+      0,
+      0,
+      family);
+
+  message.set_route_status(RTNLMessage::RouteStatus(
+      0,
+      0,
+      RT_TABLE_MAIN,
+      RTPROT_BOOT,
+      RT_SCOPE_UNIVERSE,
+      RTN_BLACKHOLE,
+      0));
+
+  message.SetAttribute(RTA_PRIORITY,
+                       ByteString::CreateFromCPUUInt32(metric));
+  message.SetAttribute(RTA_OIF,
+                       ByteString::CreateFromCPUUInt32(interface_index));
+
+  return rtnl_handler_->SendMessage(&message);
+}
+
 bool RoutingTable::CreateLinkRoute(int interface_index,
                                    const IPAddress &local_address,
                                    const IPAddress &remote_address) {

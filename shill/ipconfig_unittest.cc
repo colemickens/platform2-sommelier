@@ -79,6 +79,7 @@ TEST_F(IPConfigTest, UpdateProperties) {
   properties.domain_name = "foo.org";
   properties.domain_search.push_back("zoo.org");
   properties.domain_search.push_back("zoo.com");
+  properties.blackhole_ipv6 = true;
   properties.mtu = 700;
   ipconfig_->UpdateProperties(properties, true);
   EXPECT_EQ("1.2.3.4", ipconfig_->properties().address);
@@ -92,6 +93,7 @@ TEST_F(IPConfigTest, UpdateProperties) {
   EXPECT_EQ("zoo.org", ipconfig_->properties().domain_search[0]);
   EXPECT_EQ("zoo.com", ipconfig_->properties().domain_search[1]);
   EXPECT_EQ("foo.org", ipconfig_->properties().domain_name);
+  EXPECT_TRUE(ipconfig_->properties().blackhole_ipv6);
   EXPECT_EQ(700, ipconfig_->properties().mtu);
 }
 

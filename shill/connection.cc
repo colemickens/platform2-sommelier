@@ -175,6 +175,12 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   // Install any explicitly configured routes at the default metric.
   routing_table_->ConfigureRoutes(interface_index_, config, kDefaultMetric);
 
+  if (properties.blackhole_ipv6) {
+    routing_table_->CreateBlackholeRoute(interface_index_,
+                                         IPAddress::kFamilyIPv6,
+                                         kDefaultMetric);
+  }
+
   // Save a copy of the last non-null DNS config.
   if (!config->properties().dns_servers.empty()) {
     dns_servers_ = config->properties().dns_servers;

@@ -434,6 +434,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ(kGateway2, props.routes[1].gateway);
   EXPECT_EQ(kNetmask2, props.routes[1].netmask);
   EXPECT_EQ(kNetwork2, props.routes[1].host);
+  EXPECT_FALSE(props.blackhole_ipv6);
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {

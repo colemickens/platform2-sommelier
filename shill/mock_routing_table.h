@@ -30,6 +30,9 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD3(ConfigureRoutes, bool(int interface_index,
                                      const IPConfigRefPtr &ipconfig,
                                      uint32 metric));
+  MOCK_METHOD3(CreateBlackholeRoute, bool(int interface_index,
+                                          const IPAddress::Family &family,
+                                          uint32 metric));
   MOCK_METHOD3(CreateLinkRoute, bool(int interface_index,
                                      const IPAddress &local_address,
                                      const IPAddress &remote_address));

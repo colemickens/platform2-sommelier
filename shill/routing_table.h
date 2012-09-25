@@ -77,6 +77,12 @@ class RoutingTable {
                                const IPConfigRefPtr &ipconfig,
                                uint32 metric);
 
+  // Create a blackhole route for a given IP family.  Returns true
+  // on successfully sending the route request, false othrewise.
+  virtual bool CreateBlackholeRoute(int interface_index,
+                                    const IPAddress::Family &family,
+                                    uint32 metric);
+
   // Create a route to a link-attached remote host.  |remote_address|
   // must be directly reachable from |local_address|.  Returns true
   // on successfully sending the route request, false othrewise.

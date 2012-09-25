@@ -116,6 +116,7 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, InitState);
   FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
   FRIEND_TEST(ConnectionTest, RequestHostRoute);
+  FRIEND_TEST(ConnectionTest, BlackholeIPv6);
   FRIEND_TEST(VPNServiceTest, OnConnectionDisconnected);
 
   static const uint32 kDefaultMetric;

@@ -490,6 +490,7 @@ TEST_F(L2TPIPSecDriverTest, ParseIPConfiguration) {
   EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
   EXPECT_EQ("2.2.2.2", props.dns_servers[1]);
   EXPECT_EQ("ppp0", interface_name);
+  EXPECT_TRUE(props.blackhole_ipv6);
 }
 
 namespace {
