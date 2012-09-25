@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
+#include "base/bind.h"
+#include "base/callback.h"
 #include "base/file_path.h"
 #include "base/time.h"
 #include "metrics/metrics_library.h"
@@ -52,8 +54,10 @@ class PowerManDaemon {
   };
 
   typedef std::pair<std::string, std::string> DBusInterfaceMemberPair;
-  typedef void (PowerManDaemon::*DBusSignalHandler)(DBusMessage*);
-  typedef DBusMessage* (PowerManDaemon::*DBusMethodHandler)(DBusMessage*);
+  typedef base::Callback<void(DBusMessage*)> DBusSignalHandler;
+  typedef base::Callback<DBusMessage*(DBusMessage*)> DBusMethodHandler;
+  typedef void (PowerManDaemon::*DBusSignalHandlerFunc)(DBusMessage*);
+  typedef DBusMessage* (PowerManDaemon::*DBusMethodHandlerFunc)(DBusMessage*);
 
   typedef std::map<DBusInterfaceMemberPair, DBusSignalHandler>
       DBusSignalHandlerTable;
@@ -100,11 +104,11 @@ class PowerManDaemon {
 
   void AddDBusSignalHandler(const std::string& interface,
                             const std::string& member,
-                            DBusSignalHandler handler);
+                            DBusSignalHandlerFunc handler);
 
   void AddDBusMethodHandler(const std::string& interface,
                             const std::string& member,
-                            DBusMethodHandler handler);
+                            DBusMethodHandlerFunc handler);
 
   bool CancelDBusRequest();
 

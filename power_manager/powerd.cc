@@ -837,8 +837,8 @@ DBusHandlerResult Daemon::MainDBusMethodHandler(DBusConnection* connection,
   }
 
   LOG(INFO) << "Got " << member << " method call";
-  DBusMethodHandler callback = iter->second;
-  DBusMessage* reply = (daemon->*callback)(message);
+  const DBusMethodHandler& callback = iter->second;
+  DBusMessage* reply = callback.Run(message);
 
   // Must send a reply if it is a message.
   if (!reply)
@@ -869,9 +869,9 @@ DBusHandlerResult Daemon::MainDBusSignalHandler(DBusConnection* connection,
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
   LOG(INFO) << "Got " << member << " signal";
-  DBusSignalHandler callback = iter->second;
+  const DBusSignalHandler& callback = iter->second;
 
-  if ((daemon->*callback)(message))
+  if (callback.Run(message))
     return DBUS_HANDLER_RESULT_HANDLED;
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -1383,21 +1383,23 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
 
 void Daemon::AddDBusSignalHandler(const std::string& interface,
                                   const std::string& member,
-                                  DBusSignalHandler handler) {
+                                  DBusSignalHandlerFunc handler) {
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(connection);
   util::AddDBusSignalMatch(connection, interface, member);
-  dbus_signal_handler_table_[std::make_pair(interface, member)] = handler;
+  dbus_signal_handler_table_[std::make_pair(interface, member)] =
+      base::Bind(handler, base::Unretained(this));
 }
 
 void Daemon::AddDBusMethodHandler(const std::string& interface,
                                   const std::string& member,
-                                  DBusMethodHandler handler) {
+                                  DBusMethodHandlerFunc handler) {
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(connection);
-  dbus_method_handler_table_[std::make_pair(interface, member)] = handler;
+  dbus_method_handler_table_[std::make_pair(interface, member)] =
+      base::Bind(handler, base::Unretained(this));
 }
 
 void Daemon::ScheduleShortPollPowerSupply() {

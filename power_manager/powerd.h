@@ -17,6 +17,8 @@
 
 #include <ctime>
 
+#include "base/bind.h"
+#include "base/callback.h"
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
@@ -164,8 +166,10 @@ class Daemon : public BacklightControllerObserver,
                        kShutdownPowerOff };
 
   typedef std::pair<std::string, std::string> DBusInterfaceMemberPair;
-  typedef bool (Daemon::*DBusSignalHandler)(DBusMessage*);
-  typedef DBusMessage* (Daemon::*DBusMethodHandler)(DBusMessage*);
+  typedef base::Callback<bool(DBusMessage*)> DBusSignalHandler;
+  typedef base::Callback<DBusMessage*(DBusMessage*)> DBusMethodHandler;
+  typedef bool (Daemon::*DBusSignalHandlerFunc)(DBusMessage*);
+  typedef DBusMessage* (Daemon::*DBusMethodHandlerFunc)(DBusMessage*);
 
   typedef std::map<DBusInterfaceMemberPair, DBusSignalHandler>
       DBusSignalHandlerTable;
@@ -249,11 +253,11 @@ class Daemon : public BacklightControllerObserver,
 
   void AddDBusSignalHandler(const std::string& interface,
                             const std::string& member,
-                            DBusSignalHandler handler);
+                            DBusSignalHandlerFunc handler);
 
   void AddDBusMethodHandler(const std::string& interface,
                             const std::string& member,
-                            DBusMethodHandler handler);
+                            DBusMethodHandlerFunc handler);
 
   // Removes the previous power supply polling timer and replaces it with one
   // that fires every 5s and calls ShortPollPowerSupply. The nature of this
