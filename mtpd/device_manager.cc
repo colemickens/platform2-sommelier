@@ -8,13 +8,13 @@
 
 #include <set>
 
+#include <base/bind.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <base/stringprintf.h>
-#include <chromeos/callback.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "device_event_delegate.h"
@@ -43,8 +43,9 @@ const char kUDevEventType[] = "udev";
 const char kUDevUsbSubsystem[] = "usb";
 
 gboolean GlibRunClosure(gpointer data) {
-  chromeos::Closure* callback = reinterpret_cast<chromeos::Closure*>(data);
-  callback->Run();
+  base::Closure* cb = reinterpret_cast<base::Closure*>(data);
+  cb->Run();
+  delete cb;
   return FALSE;
 }
 
@@ -66,7 +67,8 @@ DeviceManager::DeviceManager(DeviceEventDelegate* delegate)
     : udev_(udev_new()),
       udev_monitor_(NULL),
       udev_monitor_fd_(-1),
-      delegate_(delegate) {
+      delegate_(delegate),
+      weak_ptr_factory_(this) {
   // Set up udev monitoring.
   CHECK(delegate_);
   CHECK(udev_);
@@ -480,9 +482,11 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
     // Some devices do not respond well when immediately probed. Thus there is
     // a 1 second wait here to give the device to settle down.
     GSource* source = g_timeout_source_new_seconds(1);
-    chromeos::Closure* closure =
-        chromeos::NewCallback(this, &DeviceManager::AddDevices, source);
-    g_source_set_callback(source, &GlibRunClosure, closure, NULL);
+    base::Closure* cb =
+        new base::Closure(base::Bind(&DeviceManager::AddDevices,
+                                     weak_ptr_factory_.GetWeakPtr(),
+                                     source));
+    g_source_set_callback(source, &GlibRunClosure, cb, NULL);
     g_source_attach(source, NULL);
     return;
   }

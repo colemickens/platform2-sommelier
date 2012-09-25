@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/memory/weak_ptr.h>
 
 #include "file_entry.h"
 #include "storage_info.h"
@@ -229,6 +230,8 @@ class DeviceManager {
 
   // Map of devices and storages.
   MtpDeviceMap device_map_;
+
+  base::WeakPtrFactory<DeviceManager> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceManager);
 };
