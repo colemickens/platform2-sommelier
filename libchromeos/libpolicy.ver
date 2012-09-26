@@ -12,6 +12,7 @@
       policy::*;
       typeinfo*for*policy::*;
       vtable*for*policy*;
+      _VTV*::__vtable_map;
     };
 
   local: *;
