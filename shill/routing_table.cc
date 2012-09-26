@@ -533,9 +533,8 @@ bool RoutingTable::RequestRouteToHost(const IPAddress &address,
 }
 
 bool RoutingTable::CreateBlackholeRoute(int interface_index,
-                                        const IPAddress::Family &family,
+                                        IPAddress::Family family,
                                         uint32 metric) {
-
   SLOG(Route, 2) << base::StringPrintf(
       "%s: index %d family %s metric %d",
       __func__, interface_index,

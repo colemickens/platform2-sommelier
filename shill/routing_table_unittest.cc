@@ -382,7 +382,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                                                IPAddress::kFamilyIPv4,
                                                &test_entry));
 
-  // Add a route to a gatway address.
+  // Add a route to a gateway address.
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(gateway_address.SetAddressFromString(kTestNetAddress0));
 

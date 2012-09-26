@@ -50,7 +50,7 @@ const int32 kPrefix0 = 24;
 const int32 kPrefix1 = 31;
 const char kSearchDomain0[] = "chromium.org";
 const char kSearchDomain1[] = "google.com";
-}  // namespace {}
+}  // namespace
 
 class ConnectionTest : public Test {
  public:
@@ -862,7 +862,7 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
   EXPECT_CALL(*device_info_, GetDevice(kTestDeviceInterfaceIndex1))
       .WillOnce(Return(device));
 
-  // Check that the the binding process completes, causing its upper
+  // Check that the binding process completes, causing its upper
   // connection to create a gateway route.
   EXPECT_CALL(*mock_connection, CreateGatewayRoute())
       .WillOnce(Return(true));

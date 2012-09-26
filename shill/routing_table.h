@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ROUTING_TABLE_
-#define SHILL_ROUTING_TABLE_
+#ifndef SHILL_ROUTING_TABLE_H_
+#define SHILL_ROUTING_TABLE_H_
 
 #include <deque>
 #include <string>
@@ -71,21 +71,21 @@ class RoutingTable {
                                const IPAddress &gateway_address,
                                uint32 metric);
 
-  // Configure routing table entries from the "routes" portion of |ipconifg|.
+  // Configure routing table entries from the "routes" portion of |ipconfig|.
   // Returns true if all routes were installed successfully, false otherwise.
   virtual bool ConfigureRoutes(int interface_index,
                                const IPConfigRefPtr &ipconfig,
                                uint32 metric);
 
   // Create a blackhole route for a given IP family.  Returns true
-  // on successfully sending the route request, false othrewise.
+  // on successfully sending the route request, false otherwise.
   virtual bool CreateBlackholeRoute(int interface_index,
-                                    const IPAddress::Family &family,
+                                    IPAddress::Family family,
                                     uint32 metric);
 
   // Create a route to a link-attached remote host.  |remote_address|
   // must be directly reachable from |local_address|.  Returns true
-  // on successfully sending the route request, false othrewise.
+  // on successfully sending the route request, false otherwise.
   virtual bool CreateLinkRoute(int interface_index,
                                const IPAddress &local_address,
                                const IPAddress &remote_address);
@@ -162,4 +162,4 @@ class RoutingTable {
 
 }  // namespace shill
 
-#endif  // SHILL_ROUTING_TABLE_
+#endif  // SHILL_ROUTING_TABLE_H_
