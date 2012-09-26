@@ -25,7 +25,7 @@ class AmbientLightSensorObserver {
 class AmbientLightSensor {
  public:
   AmbientLightSensor();
-  ~AmbientLightSensor();
+  virtual ~AmbientLightSensor();
 
   // Initialize the AmbientLightSensor object.
   // Open the lux file so we can read ambient light data.
