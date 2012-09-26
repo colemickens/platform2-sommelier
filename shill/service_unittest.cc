@@ -444,7 +444,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   // We should not auto-connect to a Service that a user has
   // deliberately disconnected.
   Error error;
-  service_->Disconnect(&error);
+  service_->UserInitiatedDisconnect(&error);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(Service::kAutoConnExplicitDisconnect, reason);
 
@@ -456,9 +456,13 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // A deliberate Connect should also re-enable auto-connect.
-  service_->Disconnect(&error);
+  service_->UserInitiatedDisconnect(&error);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   service_->Connect(&error);
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+
+  // A non-user initiated Disconnect doesn't change anything.
+  service_->Disconnect(&error);
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // TODO(quiche): After we have resume handling in place, test that

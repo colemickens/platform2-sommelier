@@ -261,8 +261,17 @@ void Service::Connect(Error */*error*/) {
 }
 
 void Service::Disconnect(Error */*error*/) {
-  explicitly_disconnected_ = true;
   MemoryLog::GetInstance()->FlushToDisk();
+}
+
+void Service::DisconnectWithFailure(ConnectFailure failure, Error *error) {
+  Disconnect(error);
+  SetFailure(failure);
+}
+
+void Service::UserInitiatedDisconnect(Error *error) {
+  Disconnect(error);
+  explicitly_disconnected_ = true;
 }
 
 void Service::ActivateCellularModem(const string &/*carrier*/,
@@ -387,6 +396,7 @@ bool Service::Load(StoreInterface *storage) {
 bool Service::Unload() {
   auto_connect_ = IsAutoConnectByDefault();
   check_portal_ = kCheckPortalAuto;
+  explicitly_disconnected_ = false;
   favorite_ = false;
   guid_ = "";
   has_ever_connected_ = false;
@@ -398,7 +408,6 @@ bool Service::Unload() {
   UnloadEapCredentials();
   Error error;  // Ignored.
   Disconnect(&error);
-  explicitly_disconnected_ = false;
   return false;
 }
 

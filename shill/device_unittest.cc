@@ -315,7 +315,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailure) {
                                   metrics(),
                                   manager()));
   SelectService(service);
-  EXPECT_CALL(*service.get(), SetState(Service::kStateDisconnected));
+  EXPECT_CALL(*service.get(), DisconnectWithFailure(Service::kFailureDHCP, _));
   EXPECT_CALL(*service.get(), SetConnection(IsNullRefPtr()));
   OnIPConfigUpdated(NULL, false);
 }

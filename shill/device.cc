@@ -486,7 +486,10 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
       return;
     }
 
-    SetServiceState(Service::kStateDisconnected);
+    if (selected_service_) {
+      Error error;
+      selected_service_->DisconnectWithFailure(Service::kFailureDHCP, &error);
+    }
     DestroyConnection();
   }
 }

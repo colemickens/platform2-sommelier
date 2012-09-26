@@ -109,7 +109,7 @@ void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
 void ServiceDBusAdaptor::Disconnect(::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
   Error e;
-  service_->Disconnect(&e);
+  service_->UserInitiatedDisconnect(&e);
   e.ToDBusError(&error);
 }
 

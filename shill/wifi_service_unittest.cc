@@ -878,7 +878,7 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   dispatcher()->DispatchPendingEvents();
 
   Error error;
-  service->Disconnect(&error);
+  service->UserInitiatedDisconnect(&error);
   dispatcher()->DispatchPendingEvents();
   EXPECT_FALSE(service->IsAutoConnectable(&reason));
 }
