@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+AR ?= ar
 CXX ?= g++
 CXXFLAGS ?= -fno-strict-aliasing
 CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -Wno-unused-result \
@@ -17,26 +18,35 @@ BUILDDIR = build
 LIBDIR = /usr/lib
 SCRIPTDIR = $(LIBDIR)/flimflam/scripts
 CPPFLAGS += -DSCRIPTDIR=\"$(SCRIPTDIR)\"
-BASE_LIBS = -lbootstat -lcares -lmobile-provider -lmetrics -lminijail -lnl
-BASE_INCLUDE_DIRS = -iquote.. -iquote $(BUILDDIR)
-BASE_LIB_DIRS =
-
-LIBS = $(BASE_LIBS)
 
 BASE_VER = 125070
-PC_DEPS = dbus-c++-1 glib-2.0 gio-2.0 libchrome-$(BASE_VER) \
-	libchromeos-$(BASE_VER) ModemManager
-INCLUDE_DIRS := $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
-LIB_DIRS := $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
-
-TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
-TEST_LIB_DIRS = $(LIB_DIRS)
+COMMON_PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+SHILL_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1 gio-2.0 glib-2.0 ModemManager
+NSS_GET_CERT_PC_DEPS = $(COMMON_PC_DEPS) nss
+INCLUDE_DIRS = \
+	-iquote.. \
+	-iquote $(BUILDDIR) \
+	$(shell $(PKG_CONFIG) --cflags $(NSS_GET_CERT_PC_DEPS) $(SHILL_PC_DEPS))
+SHILL_LIBS = \
+	-lbootstat \
+	-lcares \
+	-lmobile-provider \
+	-lmetrics \
+	-lminijail \
+	-lnl \
+	$(shell $(PKG_CONFIG) --libs $(SHILL_PC_DEPS))
+NSS_GET_CERT_LIBS = $(shell $(PKG_CONFIG) --libs $(NSS_GET_CERT_PC_DEPS))
+TEST_LIBS = $(SHILL_LIBS) $(NSS_GET_CERT_LIBS) -lgmock -lgtest
 
 DBUS_BINDINGS_DIR = dbus_bindings
 BUILD_DBUS_BINDINGS_DIR = $(BUILDDIR)/shill/$(DBUS_BINDINGS_DIR)
 
-# Creating $(BUILD_DBUS_BINDINGS_DIR) will also create $(BUILDDIR).
-_CREATE_BUILDDIR := $(shell mkdir -p $(BUILD_DBUS_BINDINGS_DIR))
+BUILD_SHIMS_DIR = $(BUILDDIR)/shims
+
+_CREATE_BUILDDIR := $(shell mkdir -p \
+	$(BUILDDIR) \
+	$(BUILD_DBUS_BINDINGS_DIR) \
+	$(BUILD_SHIMS_DIR))
 
 DBUS_ADAPTOR_HEADERS :=
 
@@ -106,6 +116,7 @@ DBUS_ADAPTOR_BINDINGS = \
 DBUS_PROXY_BINDINGS = \
 	$(addprefix $(BUILD_DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
 
+SHILL_LIB = $(BUILDDIR)/shill.a
 SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	arp_client.o \
 	arp_packet.o \
@@ -384,6 +395,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	service_under_test.o \
 	service_unittest.o \
 	shill_unittest.o \
+	shims/certificates_unittest.o \
 	static_ip_parameters_unittest.o \
 	technology_unittest.o \
 	testrunner.o \
@@ -399,9 +411,22 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	wimax_unittest.o \
 	)
 
-.PHONY: all clean
+NSS_GET_CERT_OBJS = $(BUILD_SHIMS_DIR)/certificates.o
+NSS_GET_CERT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/nss_get_cert.o
+NSS_GET_CERT_BIN = $(BUILD_SHIMS_DIR)/nss-get-cert
 
-all: $(SHILL_BIN) $(TEST_BIN)
+OBJS = \
+	$(NSS_GET_CERT_MAIN_OBJ) \
+	$(NSS_GET_CERT_OBJS) \
+	$(SHILL_MAIN_OBJ) \
+	$(SHILL_OBJS) \
+	$(TEST_OBJS)
+
+.PHONY: all clean shims
+
+all: $(SHILL_BIN) $(TEST_BIN) shims
+
+shims: $(NSS_GET_CERT_BIN)
 
 $(BUILD_DBUS_BINDINGS_DIR)/%.xml: $(DBUS_BINDINGS_DIR)/%.xml
 	cp $< $@
@@ -417,13 +442,18 @@ $(BUILDDIR)/%.o: %.cc
 
 $(SHILL_OBJS): $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
 
-$(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_OBJS)
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LDFLAGS) $^ $(LIB_DIRS) $(LIBS) \
-		-o $@
+$(SHILL_LIB): $(SHILL_OBJS)
+	$(AR) rcs $@ $^
+
+$(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_LIB)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(SHILL_LIBS) -o $@
+
+$(NSS_GET_CERT_BIN): $(NSS_GET_CERT_MAIN_OBJ) $(NSS_GET_CERT_OBJS) $(SHILL_LIB)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NSS_GET_CERT_LIBS) -o $@
 
 $(TEST_BIN): CPPFLAGS += -DUNIT_TEST -DSYSROOT=\"$(SYSROOT)\"
-$(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(TEST_LIB_DIRS) $(TEST_LIBS) -o $@
+$(TEST_BIN): $(TEST_OBJS) $(NSS_GET_CERT_OBJS) $(SHILL_LIB)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(TEST_LIBS) -o $@
 
 clean:
 	rm -rf \
@@ -431,6 +461,4 @@ clean:
 		$(SHILL_BIN) \
 		$(TEST_BIN)
 
--include $(SHILL_OBJS:.o=.d)
--include $(SHILL_MAIN_OBJ:.o=.d)
--include $(TEST_OBJS:.o=.d)
+-include $(OBJS:.o=.d)
