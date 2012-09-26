@@ -178,6 +178,20 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean TpmVerifyAttestationData(gboolean* OUT_verified,
                                             GError** error);
   virtual gboolean TpmVerifyEK(gboolean* OUT_verified, GError** error);
+  virtual gboolean TpmAttestationCreateEnrollRequest(GArray** OUT_pca_request,
+                                                     GError** error);
+  virtual gboolean TpmAttestationEnroll(GArray* pca_response,
+                                        gboolean* OUT_success,
+                                        GError** error);
+  virtual gboolean TpmAttestationCreateCertRequest(gboolean is_cert_for_owner,
+                                                   GArray** OUT_pca_request,
+                                                   GError** error);
+  virtual gboolean TpmAttestationFinishCertRequest(GArray* pca_response,
+                                                   GArray** OUT_cert,
+                                                   gboolean* OUT_success,
+                                                   GError** error);
+  virtual gboolean TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
+                                            GError** error);
 
   // Returns the label of the TPM token along with its user PIN.
   virtual gboolean Pkcs11GetTpmTokenInfo(gchar** OUT_label,

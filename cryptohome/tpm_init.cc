@@ -87,6 +87,16 @@ Tpm* TpmInit::get_tpm() {
   return NULL;
 }
 
+Attestation* TpmInit::get_attestation() {
+  if (!attestation_.get()) {
+    Tpm* tpm = get_tpm();
+    if (tpm && IsTpmReady())
+      attestation_.reset(new Attestation(tpm, platform_));
+      attestation_->Initialize();
+  }
+  return attestation_.get();
+}
+
 void TpmInit::Init(TpmInitCallback* notify_callback) {
   notify_callback_ = notify_callback;
   tpm_init_task_->Init(this);
@@ -95,8 +105,9 @@ void TpmInit::Init(TpmInitCallback* notify_callback) {
   // password has not been cleared.
   chromeos::SecureBlob password;
   if (tpm && IsTpmReady() && GetTpmPassword(&password)) {
-    attestation_.reset(new Attestation(tpm, platform_));
-    attestation_->PrepareForEnrollmentAsync();
+    Attestation* attestation = get_attestation();
+    if (attestation)
+      attestation->PrepareForEnrollmentAsync();
   }
 }
 
@@ -145,27 +156,24 @@ void TpmInit::ClearStoredTpmPassword() {
 }
 
 bool TpmInit::IsAttestationPrepared() {
-  Tpm* tpm = get_tpm();
-  if (!tpm || !IsTpmReady())
+  Attestation* attestation = get_attestation();
+  if (!attestation)
     return false;
-  Attestation attestation(tpm, platform_);
-  return attestation.IsPreparedForEnrollment();
+  return attestation->IsPreparedForEnrollment();
 }
 
 bool TpmInit::VerifyAttestationData() {
-  Tpm* tpm = get_tpm();
-  if (!tpm || !IsTpmReady())
+  Attestation* attestation = get_attestation();
+  if (!attestation)
     return false;
-  Attestation attestation(tpm, platform_);
-  return attestation.Verify();
+  return attestation->Verify();
 }
 
 bool TpmInit::VerifyEK() {
-  Tpm* tpm = get_tpm();
-  if (!tpm || !IsTpmReady())
+  Attestation* attestation = get_attestation();
+  if (!attestation)
     return false;
-  Attestation attestation(tpm, platform_);
-  return attestation.VerifyEK();
+  return attestation->VerifyEK();
 }
 
 void TpmInit::ThreadMain() {
@@ -181,8 +189,9 @@ void TpmInit::ThreadMain() {
     notify_callback_->InitializeTpmComplete(initialize_result,
                                             initialize_took_ownership_);
   }
-  Attestation attestation(tpm_init_task_->get_tpm(), platform_);
-  attestation.PrepareForEnrollment();
+  Attestation* attestation = get_attestation();
+  if (attestation)
+    attestation->PrepareForEnrollment();
   task_done_ = true;
 }
 

@@ -990,6 +990,77 @@ gboolean Service::TpmVerifyEK(gboolean* OUT_verified, GError** error) {
   return TRUE;
 }
 
+gboolean Service::TpmAttestationCreateEnrollRequest(GArray** OUT_pca_request,
+                                                    GError** error) {
+  *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    return TRUE;
+  }
+  chromeos::SecureBlob blob;
+  if (attestation->CreateEnrollRequest(&blob))
+    g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
+  return TRUE;
+}
+
+gboolean Service::TpmAttestationEnroll(GArray* pca_response,
+                                       gboolean* OUT_success,
+                                       GError** error) {
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    *OUT_success = FALSE;
+    return TRUE;
+  }
+  chromeos::SecureBlob blob(pca_response->data, pca_response->len);
+  *OUT_success = attestation->Enroll(blob);
+  return TRUE;
+}
+
+gboolean Service::TpmAttestationCreateCertRequest(gboolean is_cert_for_owner,
+                                                  GArray** OUT_pca_request,
+                                                  GError** error) {
+  *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    return TRUE;
+  }
+  chromeos::SecureBlob blob;
+  if (attestation->CreateCertRequest(is_cert_for_owner, &blob))
+    g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
+  return TRUE;
+}
+
+gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
+                                                  GArray** OUT_cert,
+                                                  gboolean* OUT_success,
+                                                  GError** error) {
+  *OUT_cert = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    *OUT_success = FALSE;
+    return TRUE;
+  }
+  chromeos::SecureBlob response_blob(pca_response->data, pca_response->len);
+  chromeos::SecureBlob cert_blob;
+  *OUT_success = attestation->FinishCertRequest(response_blob, &cert_blob);
+  if (*OUT_success)
+    g_array_append_vals(*OUT_cert, &cert_blob.front(), cert_blob.size());
+  return TRUE;
+}
+
+gboolean Service::TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
+                                           GError** error) {
+  *OUT_is_enrolled = FALSE;
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (attestation)
+    *OUT_is_enrolled = attestation->IsEnrolled();
+  return TRUE;
+}
+
 // Returns true if all Pkcs11 tokens are ready.
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   // TODO(gauravsh): Give out more information here. The state of PKCS#11

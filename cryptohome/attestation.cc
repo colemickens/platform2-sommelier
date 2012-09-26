@@ -97,7 +97,6 @@ const Attestation::PCRValue Attestation::kKnownPCRValues[] = {
 Attestation::Attestation(Tpm* tpm, Platform* platform)
     : tpm_(tpm),
       platform_(platform),
-      is_prepared_(false),
       database_path_(kDefaultDatabasePath),
       thread_(base::kNullThreadHandle) {}
 
@@ -107,24 +106,34 @@ Attestation::~Attestation() {
   ClearDatabase();
 }
 
-bool Attestation::IsPreparedForEnrollment() {
-  base::AutoLock lock(prepare_lock_);
-  if (!is_prepared_ && tpm_) {
+void Attestation::Initialize() {
+  base::AutoLock lock(database_pb_lock_);
+  if (tpm_) {
     EncryptedData encrypted_db;
     if (!LoadDatabase(&encrypted_db)) {
       LOG(INFO) << "Attestation: Attestation data not found.";
-      return false;
+      return;
     }
     if (!DecryptDatabase(encrypted_db, &database_pb_)) {
-      LOG(ERROR) << "Attestation: Attestation data invalid.";
-      return false;
+      LOG(WARNING) << "Attestation: Attestation data invalid.  "
+                      "This is normal if the TPM has been cleared.";
+      return;
     }
     LOG(INFO) << "Attestation: Valid attestation data exists.";
     // Make sure the owner password is not being held on our account.
     tpm_->RemoveOwnerDependency(Tpm::kAttestation);
-    is_prepared_ = true;
   }
-  return is_prepared_;
+}
+
+bool Attestation::IsPreparedForEnrollment() {
+  base::AutoLock lock(database_pb_lock_);
+  return database_pb_.has_credentials();
+}
+
+bool Attestation::IsEnrolled() {
+  base::AutoLock lock(database_pb_lock_);
+  return (database_pb_.has_identity_key() &&
+          database_pb_.identity_key().has_identity_credential());
 }
 
 void Attestation::PrepareForEnrollment() {
@@ -184,7 +193,7 @@ void Attestation::PrepareForEnrollment() {
   }
 
   // Assemble a protobuf to store locally.
-  base::AutoLock lock(prepare_lock_);
+  base::AutoLock lock(database_pb_lock_);
   TPMCredentials* credentials_pb = database_pb_.mutable_credentials();
   credentials_pb->set_endorsement_public_key(ek_public_key.data(),
                                              ek_public_key.size());
@@ -322,6 +331,24 @@ bool Attestation::VerifyEK() {
     return false;
   }
   return VerifyEndorsementCredential(ek_cert, ek_public_key);
+}
+
+bool Attestation::CreateEnrollRequest(SecureBlob* pca_request) {
+  return false;
+}
+
+bool Attestation::Enroll(const SecureBlob& pca_response) {
+  return false;
+}
+
+bool Attestation::CreateCertRequest(bool is_cert_for_owner,
+                                 SecureBlob* pca_request) {
+  return false;
+}
+
+bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
+                                    SecureBlob* attestation_cert) {
+  return false;
 }
 
 SecureBlob Attestation::ConvertStringToBlob(const string& s) {

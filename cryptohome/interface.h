@@ -150,6 +150,27 @@ gboolean cryptohome_tpm_verify_attestation_data(Cryptohome *self,
 gboolean cryptohome_tpm_verify_ek(Cryptohome *self,
                                   gboolean *OUT_verified,
                                   GError **error);
+gboolean cryptohome_tpm_attestation_create_enroll_request(
+    Cryptohome *self,
+    GArray** OUT_pca_request,
+    GError** error);
+gboolean cryptohome_tpm_attestation_enroll(Cryptohome *self,
+                                           GArray* pca_response,
+                                           gboolean* OUT_success,
+                                           GError** error);
+gboolean cryptohome_tpm_attestation_create_cert_request(
+    Cryptohome *self,
+    gboolean is_cert_for_owner,
+    GArray** OUT_pca_request,
+    GError** error);
+gboolean cryptohome_tpm_attestation_finish_cert_request(Cryptohome *self,
+                                                        GArray* pca_response,
+                                                        GArray** OUT_cert,
+                                                        gboolean* OUT_success,
+                                                        GError** error);
+gboolean cryptohome_tpm_is_attestation_enrolled(Cryptohome *self,
+                                                gboolean *OUT_is_enrolled,
+                                                GError **error);
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               gchar **OUT_label,
                                               gchar **OUT_user_pin,

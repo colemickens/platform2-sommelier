@@ -225,6 +225,42 @@ gboolean cryptohome_tpm_verify_ek(Cryptohome *self,
                                   GError **error) {
   CRYPTOHOME_WRAP_METHOD(TpmVerifyEK, OUT_verified);
 }
+gboolean cryptohome_tpm_attestation_create_enroll_request(
+    Cryptohome *self,
+    GArray** OUT_pca_request,
+    GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationCreateEnrollRequest, OUT_pca_request);
+}
+gboolean cryptohome_tpm_attestation_enroll(Cryptohome *self,
+                                           GArray* pca_response,
+                                           gboolean* OUT_success,
+                                           GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationEnroll, pca_response, OUT_success);
+}
+gboolean cryptohome_tpm_attestation_create_cert_request(
+    Cryptohome *self,
+    gboolean is_cert_for_owner,
+    GArray** OUT_pca_request,
+    GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationCreateCertRequest,
+                         is_cert_for_owner,
+                         OUT_pca_request);
+}
+gboolean cryptohome_tpm_attestation_finish_cert_request(Cryptohome *self,
+                                                        GArray* pca_response,
+                                                        GArray** OUT_cert,
+                                                        gboolean* OUT_success,
+                                                        GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationFinishCertRequest,
+                         pca_response,
+                         OUT_cert,
+                         OUT_success);
+}
+gboolean cryptohome_tpm_is_attestation_enrolled(Cryptohome *self,
+                                                gboolean *OUT_is_enrolled,
+                                                GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmIsAttestationEnrolled, OUT_is_enrolled);
+}
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               gchar **OUT_label,
                                               gchar **OUT_user_pin,

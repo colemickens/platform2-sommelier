@@ -64,6 +64,11 @@ namespace switches {
     "pkcs11_terminate",
     "tpm_verify_attestation",
     "tpm_verify_ek",
+    "tpm_attestation_status",
+    "tpm_attestation_start_enroll",
+    "tpm_attestation_finish_enroll",
+    "tpm_attestation_start_cert_request",
+    "tpm_attestation_finish_cert_request",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -88,7 +93,13 @@ namespace switches {
     ACTION_PKCS11_TOKEN_STATUS,
     ACTION_PKCS11_TERMINATE,
     ACTION_TPM_VERIFY_ATTESTATION,
-    ACTION_TPM_VERIFY_EK };
+    ACTION_TPM_VERIFY_EK,
+    ACTION_TPM_ATTESTATION_STATUS,
+    ACTION_TPM_ATTESTATION_START_ENROLL,
+    ACTION_TPM_ATTESTATION_FINISH_ENROLL,
+    ACTION_TPM_ATTESTATION_START_CERTREQ,
+    ACTION_TPM_ATTESTATION_FINISH_CERTREQ,
+  };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
@@ -97,13 +108,14 @@ namespace switches {
   static const char kCreateSwitch[] = "create";
   static const char kAttrNameSwitch[] = "name";
   static const char kAttrValueSwitch[] = "value";
+  static const char kFileSwitch[] = "file";
 }  // namespace switches
 
 chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
   chromeos::glib::ScopedError error;
-  GArray* salt;
+  chromeos::glib::ScopedArray salt;
   if (!org_chromium_CryptohomeInterface_get_system_salt(proxy.gproxy(),
-      &salt,
+      &chromeos::Resetter(&salt).lvalue(),
       &chromeos::Resetter(&error).lvalue())) {
     LOG(ERROR) << "GetSystemSalt failed: " << error->message;
     return chromeos::Blob();
@@ -116,7 +128,6 @@ chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
   } else {
     system_salt.clear();
   }
-  g_array_free(salt, false);
   return system_salt;
 }
 
@@ -180,6 +191,15 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
                               passkey.size());
 
   return true;
+}
+
+FilePath GetFile(const CommandLine* cl) {
+  const char kDefaultFilePath[] = "/tmp/__cryptohome";
+  FilePath file_path(cl->GetSwitchValueASCII(switches::kFileSwitch));
+  if (file_path.empty()) {
+    return FilePath(kDefaultFilePath);
+  }
+  return file_path;
 }
 
 bool ConfirmRemove(const std::string& user) {
@@ -784,11 +804,11 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    GArray *value = NULL;
+    chromeos::glib::ScopedArray value;
     if (!org_chromium_CryptohomeInterface_install_attributes_get(
         proxy.gproxy(),
         name.c_str(),
-        &value,
+        &chromeos::Resetter(&value).lvalue(),
         &result,
         &chromeos::Resetter(&error).lvalue())) {
        printf("Get() failed: %s.\n", error->message);
@@ -799,7 +819,6 @@ int main(int argc, char **argv) {
     } else {
       return 1;
     }
-    g_array_free(value, false);
   } else if (!strcmp(
       switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_SET],
       action.c_str())) {
@@ -828,17 +847,16 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    GArray *value_ary = g_array_new(FALSE, FALSE, 1);
-    g_array_append_vals(value_ary, value.c_str(), value.size() + 1);
+    chromeos::glib::ScopedArray value_ary(g_array_new(FALSE, FALSE, 1));
+    g_array_append_vals(value_ary.get(), value.c_str(), value.size() + 1);
     if (!org_chromium_CryptohomeInterface_install_attributes_set(
         proxy.gproxy(),
         name.c_str(),
-        value_ary,
+        value_ary.get(),
         &result,
         &chromeos::Resetter(&error).lvalue())) {
        printf("Set() failed: %s.\n", error->message);
     }
-    g_array_free(value_ary, false);
     if (result == FALSE)
       return 1;
   } else if (!strcmp(
@@ -913,6 +931,102 @@ int main(int argc, char **argv) {
       printf("TPM endorsement key is not valid.\n");
       return 1;
     }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_STATUS],
+      action.c_str())) {
+    chromeos::glib::ScopedError error;
+    gboolean result = FALSE;
+    if (!org_chromium_CryptohomeInterface_tpm_is_attestation_prepared(
+        proxy.gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmIsAttestationPrepared call failed: %s.\n", error->message);
+    } else {
+      printf("Attestation Prepared: %s\n", (result ? "true" : "false"));
+    }
+    if (!org_chromium_CryptohomeInterface_tpm_is_attestation_enrolled(
+        proxy.gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmIsAttestationEnrolled call failed: %s.\n", error->message);
+    } else {
+      printf("Attestation Enrolled: %s\n", (result ? "true" : "false"));
+    }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_START_ENROLL],
+      action.c_str())) {
+    chromeos::glib::ScopedError error;
+    chromeos::glib::ScopedArray data;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_create_enroll_request(
+        proxy.gproxy(),
+        &chromeos::Resetter(&data).lvalue(),
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmAttestationCreateEnrollRequest call failed: %s.\n",
+             error->message);
+      return 1;
+    }
+    file_util::WriteFile(GetFile(cl), data->data, data->len);
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_ENROLL],
+      action.c_str())) {
+    string contents;
+    if (!file_util::ReadFileToString(GetFile(cl), &contents)) {
+      printf("Failed to read input file.\n");
+      return 1;
+    }
+    chromeos::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
+    g_array_append_vals(data.get(), contents.data(), contents.length());
+    gboolean success = FALSE;
+    chromeos::glib::ScopedError error;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_enroll(
+        proxy.gproxy(), data.get(), &success,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmAttestationEnroll call failed: %s.\n", error->message);
+      return 1;
+    }
+    if (!success) {
+      printf("Attestation enrollment failed.\n");
+      return 1;
+    }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_START_CERTREQ],
+      action.c_str())) {
+    chromeos::glib::ScopedError error;
+    chromeos::glib::ScopedArray data;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
+        proxy.gproxy(),
+        TRUE,
+        &chromeos::Resetter(&data).lvalue(),
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmAttestationCreateCertRequest call failed: %s.\n",
+             error->message);
+      return 1;
+    }
+    file_util::WriteFile(GetFile(cl), data->data, data->len);
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_CERTREQ],
+      action.c_str())) {
+    string contents;
+    if (!file_util::ReadFileToString(GetFile(cl), &contents)) {
+      printf("Failed to read input file.\n");
+      return 1;
+    }
+    chromeos::glib::ScopedArray data(g_array_new(FALSE, FALSE, 1));
+    g_array_append_vals(data.get(), contents.data(), contents.length());
+    gboolean success = FALSE;
+    chromeos::glib::ScopedError error;
+    chromeos::glib::ScopedArray cert;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_finish_cert_request(
+        proxy.gproxy(),
+        data.get(),
+        &chromeos::Resetter(&cert).lvalue(),
+        &success,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmAttestationFinishCertRequest call failed: %s.\n",
+             error->message);
+      return 1;
+    }
+    if (!success) {
+      printf("Attestation certificate request failed.\n");
+      return 1;
+    }
+    file_util::WriteFile(GetFile(cl), cert->data, cert->len);
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

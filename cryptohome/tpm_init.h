@@ -84,6 +84,9 @@ class TpmInit {
 
   virtual Tpm* get_tpm();
 
+  // Returns NULL if attestation is not available.
+  virtual Attestation* get_attestation();
+
  private:
   virtual void ThreadMain();
 
