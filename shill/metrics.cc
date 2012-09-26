@@ -43,6 +43,11 @@ const int Metrics::kMetricNetworkSecurityMax = Metrics::kWiFiSecurityMax;
 const char Metrics::kMetricNetworkServiceErrors[] =
     "Network.Shill.ServiceErrors";
 const int Metrics::kMetricNetworkServiceErrorsMax = Service::kFailureMax;
+const char Metrics::kMetricNetworkSignalStrength[] =
+     "Network.Shill.%s.SignalStrength";
+const int Metrics::kMetricNetworkSignalStrengthMax = 200;
+const int Metrics::kMetricNetworkSignalStrengthMin = 0;
+const int Metrics::kMetricNetworkSignalStrengthNumBuckets = 40;
 
 const char Metrics::kMetricTimeOnlineSeconds[] = "Network.Shill.%s.TimeOnline";
 const int Metrics::kMetricTimeOnlineSecondsMax = 8 * 60 * 60;  // 8 hours

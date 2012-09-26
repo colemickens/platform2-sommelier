@@ -57,7 +57,8 @@ class MetricsTest : public PropertyStoreTest {
  protected:
   void ExpectCommonPostReady(Metrics::WiFiChannel channel,
                              Metrics::WiFiNetworkPhyMode mode,
-                             Metrics::WiFiSecurity security) {
+                             Metrics::WiFiSecurity security,
+                             int signal_strength) {
     EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Channel",
                                         channel,
                                         Metrics::kMetricNetworkChannelMax));
@@ -67,6 +68,12 @@ class MetricsTest : public PropertyStoreTest {
     EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Security",
                                         security,
                                         Metrics::kWiFiSecurityMax));
+    EXPECT_CALL(library_,
+                SendToUMA("Network.Shill.Wifi.SignalStrength",
+                          signal_strength,
+                          Metrics::kMetricNetworkSignalStrengthMin,
+                          Metrics::kMetricNetworkSignalStrengthMax,
+                          Metrics::kMetricNetworkSignalStrengthNumBuckets));
   }
 
   Metrics metrics_;  // This must be destroyed after service_ and wifi_service_
@@ -137,14 +144,17 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
       new chromeos_metrics::TimerMock;
   metrics_.set_time_resume_to_ready_timer(mock_time_resume_to_ready_timer);
 
+  const int kStrength = -42;
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurityWep);
+                        Metrics::kWiFiSecurityWep,
+                        -kStrength);
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady",
                                   _, _, _, _)).Times(0);
   wifi_service_->frequency_ = 2412;
   wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   wifi_service_->security_ = flimflam::kSecurityWep;
+  wifi_service_->raw_signal_strength_ = kStrength;
   metrics_.RegisterService(wifi_service_);
   metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConnected);
   Mock::VerifyAndClearExpectations(&library_);
@@ -152,7 +162,8 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   // Simulate a system suspend, resume and an AP reconnect.
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurityWep);
+                        Metrics::kWiFiSecurityWep,
+                        -kStrength);
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady",
                                   Ge(0),
                                   Metrics::kTimerHistogramMillisecondsMin,
@@ -169,7 +180,8 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   // Make sure subsequent connects do not count towards TimeResumeToReady.
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
-                        Metrics::kWiFiSecurityWep);
+                        Metrics::kWiFiSecurityWep,
+                        -kStrength);
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady",
                                   _, _, _, _)).Times(0);
   metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConnected);

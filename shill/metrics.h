@@ -157,6 +157,10 @@ class Metrics {
   static const int kMetricNetworkSecurityMax;
   static const char kMetricNetworkServiceErrors[];
   static const int kMetricNetworkServiceErrorsMax;
+  static const char kMetricNetworkSignalStrength[];
+  static const int kMetricNetworkSignalStrengthMin;
+  static const int kMetricNetworkSignalStrengthMax;
+  static const int kMetricNetworkSignalStrengthNumBuckets;
   static const char kMetricTimeOnlineSeconds[];
   static const int kMetricTimeOnlineSecondsMax;
   static const int kMetricTimeOnlineSecondsMin;

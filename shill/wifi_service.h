@@ -186,6 +186,8 @@ class WiFiService : public Service {
   // TODO(quiche): I noticed this is not hooked up to anything.  In fact, it
   // was undefined until now. crosbug.com/26490
   uint16 physical_mode_;
+  // The raw dBm signal strength from the associated endpoint.
+  int16 raw_signal_strength_;
   std::string hex_ssid_;
   std::string storage_identifier_;
   std::string bssid_;

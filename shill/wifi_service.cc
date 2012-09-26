@@ -63,6 +63,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       hidden_ssid_(hidden_ssid),
       frequency_(0),
       physical_mode_(0),
+      raw_signal_strength_(0),
       wifi_(device),
       ssid_(ssid),
       nss_(NSS::GetInstance()) {
@@ -334,6 +335,17 @@ void WiFiService::SendPostReadyStateMetrics(
       security_uma,
       Metrics::kMetricNetworkSecurityMax);
 
+  // We invert the sign of the signal strength value, since UMA histograms
+  // cannot represent negative numbers (it stores them but cannot display
+  // them), and dBm values of interest start at 0 and go negative from there.
+  metrics()->SendToUMA(
+      metrics()->GetFullMetricName(Metrics::kMetricNetworkSignalStrength,
+                                   technology()),
+      -raw_signal_strength_,
+      Metrics::kMetricNetworkSignalStrengthMin,
+      Metrics::kMetricNetworkSignalStrengthMax,
+      Metrics::kMetricNetworkSignalStrengthNumBuckets);
+
   if (time_resume_to_ready_milliseconds > 0) {
     metrics()->SendToUMA(
         metrics()->GetFullMetricName(
@@ -482,9 +494,12 @@ void WiFiService::UpdateFromEndpoints() {
   int16 signal = std::numeric_limits<int16>::min();
   string bssid;
   Stringmap vendor_information;
+  // Represent "unknown raw signal strength" as 0.
+  raw_signal_strength_ = 0;
   if (representative_endpoint) {
     frequency = representative_endpoint->frequency();
     signal = representative_endpoint->signal_strength();
+    raw_signal_strength_ = signal;
     bssid = representative_endpoint->bssid_string();
     vendor_information = representative_endpoint->GetVendorInformation();
   }
