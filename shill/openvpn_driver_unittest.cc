@@ -448,17 +448,14 @@ TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {
 TEST_F(OpenVPNDriverTest, InitOptions) {
   static const char kHost[] = "192.168.2.254";
   static const char kTLSAuthContents[] = "SOME-RANDOM-CONTENTS\n";
-  static const char kCaCertNSS[] = "{1234}";
   static const char kID[] = "TestPKCS11ID";
   FilePath empty_cert;
   SetArg(flimflam::kProviderHostProperty, kHost);
   SetArg(flimflam::kOpenVPNTLSAuthContentsProperty, kTLSAuthContents);
-  SetArg(flimflam::kOpenVPNCaCertNSSProperty, kCaCertNSS);
   SetArg(flimflam::kOpenVPNClientCertIdProperty, kID);
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(nss_, GetPEMCertfile(kCaCertNSS, _)).WillOnce(Return(empty_cert));
   ServiceRefPtr null_service;
   EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(null_service));
 
@@ -479,6 +476,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
       file_util::ReadFileToString(driver_->tls_auth_file_, &contents));
   EXPECT_EQ(kTLSAuthContents, contents);
   ExpectInFlags(options, "--pkcs11-id", kID);
+  ExpectInFlags(options, "--capath", OpenVPNDriver::kDefaultCACertificatesPath);
   EXPECT_TRUE(std::find(options.begin(), options.end(), "--syslog") !=
               options.end());
 }
@@ -504,34 +502,49 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
   EXPECT_EQ("1234", *it);
 }
 
-TEST_F(OpenVPNDriverTest, InitNSSOptions) {
+TEST_F(OpenVPNDriverTest, InitCAOptions) {
   static const char kHost[] = "192.168.2.254";
+  static const char kCaCert[] = "foo";
   static const char kCaCertNSS[] = "{1234}";
   static const char kNSSCertfile[] = "/tmp/nss-cert";
+
+  Error error;
+  vector<string> options;
+  EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
+  EXPECT_TRUE(error.IsSuccess());
+  ExpectInFlags(options, "--capath", OpenVPNDriver::kDefaultCACertificatesPath);
+
+  options.clear();
+  SetArg(flimflam::kOpenVPNCaCertProperty, kCaCert);
+  EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
+  ExpectInFlags(options, "--ca", kCaCert);
+  EXPECT_TRUE(error.IsSuccess());
+
+  SetArg(flimflam::kOpenVPNCaCertNSSProperty, kCaCertNSS);
+  EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("Can't specify both CACert and CACertNSS.", error.message());
+
+  SetArg(flimflam::kOpenVPNCaCertProperty, "");
+  SetArg(flimflam::kProviderHostProperty, kHost);
   FilePath empty_cert;
   FilePath nss_cert(kNSSCertfile);
-  SetArg(flimflam::kProviderHostProperty, kHost);
-  SetArg(flimflam::kOpenVPNCaCertNSSProperty, kCaCertNSS);
   EXPECT_CALL(nss_,
               GetPEMCertfile(kCaCertNSS,
                              ElementsAreArray(kHost, arraysize(kHost) - 1)))
       .WillOnce(Return(empty_cert))
       .WillOnce(Return(nss_cert));
 
-  Error error;
-  vector<string> options;
-  EXPECT_TRUE(driver_->InitNSSOptions(&options, &error));
-  EXPECT_TRUE(error.IsSuccess());
-  EXPECT_TRUE(options.empty());
-  EXPECT_TRUE(driver_->InitNSSOptions(&options, &error));
+  error.Reset();
+  EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("Unable to extract NSS CA certificate: {1234}", error.message());
+
+  error.Reset();
+  options.clear();
+  EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
   ExpectInFlags(options, "--ca", kNSSCertfile);
   EXPECT_TRUE(error.IsSuccess());
-
-  SetArg(flimflam::kOpenVPNCaCertProperty, "foo");
-  options.clear();
-  EXPECT_FALSE(driver_->InitNSSOptions(&options, &error));
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-  EXPECT_EQ("Can't specify both CACert and CACertNSS.", error.message());
 }
 
 TEST_F(OpenVPNDriverTest, InitPKCS11Options) {

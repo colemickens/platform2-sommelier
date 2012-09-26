@@ -85,10 +85,10 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, DeleteInterface);
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
+  FRIEND_TEST(OpenVPNDriverTest, InitCAOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitEnvironment);
   FRIEND_TEST(OpenVPNDriverTest, InitLoggingOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitManagementChannelOptions);
-  FRIEND_TEST(OpenVPNDriverTest, InitNSSOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsHostWithPort);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
@@ -108,6 +108,8 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, SplitPortFromHost);
   FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
+
+  static const char kDefaultCACertificatesPath[];
 
   static const char kOpenVPNPath[];
   static const char kOpenVPNScript[];
@@ -146,7 +148,7 @@ class OpenVPNDriver : public VPNDriver,
                                 std::string *port);
 
   void InitOptions(std::vector<std::string> *options, Error *error);
-  bool InitNSSOptions(std::vector<std::string> *options, Error *error);
+  bool InitCAOptions(std::vector<std::string> *options, Error *error);
   void InitPKCS11Options(std::vector<std::string> *options);
   bool InitManagementChannelOptions(
       std::vector<std::string> *options, Error *error);
