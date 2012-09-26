@@ -1802,6 +1802,10 @@ void Daemon::SetPowerState(PowerState state) {
 
 bool Daemon::IsAudioPlaying() {
   struct timespec last_audio_time;
+  if (!connected_to_cras_) {
+    LOG(WARNING) << "Not connected to CRAS, assuming no audio playing.";
+    return false;
+  }
   if (cras_client_get_num_active_streams(cras_client_, &last_audio_time) > 0)
     return true;
   struct timespec time_now;
