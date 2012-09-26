@@ -225,6 +225,8 @@ void CellularCapabilityUniversal::StartModem(Error *error,
              weak_ptr_factory_.GetWeakPtr(), static_cast<Error *>(NULL),
              callback);
   } else {
+    // Call GetProperties() here to sync up with the modem state
+    GetProperties();
     callback.Run(*error);
   }
 }
