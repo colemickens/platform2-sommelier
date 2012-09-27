@@ -197,21 +197,6 @@ DBusMessage* CreateDBusErrorReply(DBusMessage* message,
   return dbus_message_new_error(message, error_name, error_message);
 }
 
-void AddDBusSignalMatch(DBusConnection* connection,
-                        const std::string& interface,
-                        const std::string& member) {
-  std::string filter;
-  filter = base::StringPrintf("type='signal', interface='%s', member='%s'",
-                        interface.c_str(), member.c_str());
-  DBusError error;
-  dbus_error_init(&error);
-  dbus_bus_add_match(connection, filter.c_str(), &error);
-  if (dbus_error_is_set(&error)) {
-    LOG(ERROR) << "Failed to add a match: " << error.name << ", message="
-               << error.message;
-  }
-}
-
 void LogDBusError(DBusMessage* message) {
   if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_ERROR) {
     LOG(ERROR) << "Received message of non-error type in LogDBusError";

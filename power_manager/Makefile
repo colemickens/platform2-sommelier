@@ -143,7 +143,7 @@ CXX_STATIC_LIBRARY(libutil.pie.a): CPPFLAGS += $(LIBUTIL_FLAGS)
 CXX_STATIC_LIBRARY(libutil.pie.a): LDLIBS += $(LIBUTIL_LIBS)
 clean: CLEAN(libutil.pie.a)
 
-LIBUTIL_DBUS_OBJS = util_dbus.o
+LIBUTIL_DBUS_OBJS = util_dbus.o util_dbus_handler.o
 LIBUTIL_DBUS_FLAGS = $(DBUS_FLAGS) $(GLIB_FLAGS)
 LIBUTIL_DBUS_LIBS = $(DBUS_LIBS) $(GLIB_LIBS)
 CXX_STATIC_LIBRARY(libutil_dbus.pie.a): $(LIBUTIL_DBUS_OBJS)

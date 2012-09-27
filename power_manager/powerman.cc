@@ -14,11 +14,10 @@
 #include <string>
 #include <vector>
 
+#include "base/bind.h"
 #include "base/file_util.h"
 #include "base/string_split.h"
 #include "base/string_util.h"
-#include "base/stringprintf.h"
-#include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/backlight_interface.h"
 #include "power_manager/power_constants.h"
@@ -220,64 +219,6 @@ bool PowerManDaemon::CancelDBusRequest() {
   return cancel;
 }
 
-DBusHandlerResult PowerManDaemon::MainDBusMethodHandler(
-    DBusConnection* connection, DBusMessage* message, void* data) {
-  if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_METHOD_CALL)
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-  PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
-  CHECK(daemon);
-
-  // Look up and call the corresponding dbus message handler.
-  std::string interface = dbus_message_get_interface(message);
-  std::string member = dbus_message_get_member(message);
-  DBusInterfaceMemberPair dbus_message_pair = std::make_pair(interface, member);
-  DBusMethodHandlerTable::iterator iter =
-      daemon->dbus_method_handler_table_.find(dbus_message_pair);
-  if (iter == daemon->dbus_method_handler_table_.end()) {
-    LOG(ERROR) << "Could not find handler for " << interface << ":" << member
-               << " in method handler table.";
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  }
-
-  LOG(INFO) << "Got " << member << " method call";
-  const DBusMethodHandler& callback = iter->second;
-  DBusMessage* reply = callback.Run(message);
-
-  // Must send a reply if it is a message.
-  if (!reply)
-    reply = util::CreateEmptyDBusReply(message);
-  // If the send reply fails, it is due to lack of memory.
-  CHECK(dbus_connection_send(connection, reply, NULL));
-  dbus_message_unref(reply);
-
-  return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-DBusHandlerResult PowerManDaemon::MainDBusSignalHandler(
-    DBusConnection* connection, DBusMessage* message, void* data) {
-  if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_SIGNAL)
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-  PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
-  CHECK(daemon);
-  // Look up and call the corresponding dbus message handler.
-  std::string interface = dbus_message_get_interface(message);
-  std::string member = dbus_message_get_member(message);
-  DBusInterfaceMemberPair dbus_message_pair = std::make_pair(interface, member);
-  DBusSignalHandlerTable::iterator iter =
-      daemon->dbus_signal_handler_table_.find(dbus_message_pair);
-  // Quietly skip this signal if it has no handler.
-  if (iter == daemon->dbus_signal_handler_table_.end())
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-  LOG(INFO) << "Got " << member << " signal";
-  const DBusSignalHandler& callback = iter->second;
-
-  callback.Run(message);
-  return DBUS_HANDLER_RESULT_HANDLED;
-}
-
 void PowerManDaemon::HandlePowerButtonEvent(ButtonState value) {
   // Forward the signal to be handled by powerd and chrome
   SendButtonEventSignal(kPowerButtonName, value);
@@ -290,17 +231,19 @@ void PowerManDaemon::HandlePowerButtonEvent(ButtonState value) {
   }
 }
 
-void PowerManDaemon::HandleCheckLidStateSignal(DBusMessage*) {  // NOLINT
+bool PowerManDaemon::HandleCheckLidStateSignal(DBusMessage*) {  // NOLINT
   if (lidstate_ == LID_STATE_CLOSED) {
     util::SendSignalToPowerD(kLidClosed);
   }
+  return true;
 }
 
-void PowerManDaemon::HandleSuspendSignal(DBusMessage* message) {
+bool PowerManDaemon::HandleSuspendSignal(DBusMessage* message) {
   Suspend(message);
+  return true;
 }
 
-void PowerManDaemon::HandleShutdownSignal(DBusMessage* message) {
+bool PowerManDaemon::HandleShutdownSignal(DBusMessage* message) {
   const char* reason = '\0';
   DBusError error;
   dbus_error_init(&error);
@@ -311,17 +254,20 @@ void PowerManDaemon::HandleShutdownSignal(DBusMessage* message) {
     dbus_error_free(&error);
   }
   Shutdown(reason);
+  return true;
 }
 
-void PowerManDaemon::HandleRestartSignal(DBusMessage*) {  // NOLINT
+bool PowerManDaemon::HandleRestartSignal(DBusMessage*) {  // NOLINT
   Restart();
+  return true;
 }
 
-void PowerManDaemon::HandleRequestCleanShutdownSignal(DBusMessage*) { // NOLINT
+bool PowerManDaemon::HandleRequestCleanShutdownSignal(DBusMessage*) { // NOLINT
   util::Launch("initctl emit power-manager-clean-shutdown");
+  return true;
 }
 
-void PowerManDaemon::HandlePowerStateChangedSignal(DBusMessage* message) {
+bool PowerManDaemon::HandlePowerStateChangedSignal(DBusMessage* message) {
   const char* state = '\0';
   int32 power_rc = -1;
   DBusError error;
@@ -349,9 +295,10 @@ void PowerManDaemon::HandlePowerStateChangedSignal(DBusMessage* message) {
     LOG(WARNING) << "Unable to read " << kPowerStateChanged << " args";
     dbus_error_free(&error);
   }
+  return true;
 }
 
-void PowerManDaemon::HandleSessionManagerStateChangedSignal(
+bool PowerManDaemon::HandleSessionManagerStateChangedSignal(
     DBusMessage* message) {
   DBusError error;
   dbus_error_init(&error);
@@ -375,6 +322,7 @@ void PowerManDaemon::HandleSessionManagerStateChangedSignal(
                  << " args";
     dbus_error_free(&error);
   }
+  return true;
 }
 
 DBusMessage* PowerManDaemon::HandleExternalBacklightGetMethod(
@@ -412,27 +360,6 @@ DBusMessage* PowerManDaemon::HandleExternalBacklightSetMethod(
     dbus_error_free(&error);
   }
   return dbus_message_new_method_return(message);
-}
-
-void PowerManDaemon::AddDBusSignalHandler(const std::string& interface,
-                                          const std::string& member,
-                                          DBusSignalHandlerFunc handler) {
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-  util::AddDBusSignalMatch(connection, interface, member);
-  dbus_signal_handler_table_[std::make_pair(interface, member)] =
-      base::Bind(handler, base::Unretained(this));
-}
-
-void PowerManDaemon::AddDBusMethodHandler(const std::string& interface,
-                                          const std::string& member,
-                                          DBusMethodHandlerFunc handler) {
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-  dbus_method_handler_table_[std::make_pair(interface, member)] =
-      base::Bind(handler, base::Unretained(this));
 }
 
 void PowerManDaemon::DBusNameOwnerChangedHandler(
@@ -480,36 +407,52 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
                << (dbus_error_is_set(&error) ? error.message : "Unknown error");
   }
 
-  AddDBusSignalHandler(kRootPowerManagerInterface, kCheckLidStateSignal,
-                       &PowerManDaemon::HandleCheckLidStateSignal);
-  AddDBusSignalHandler(kRootPowerManagerInterface, kSuspendSignal,
-                       &PowerManDaemon::HandleSuspendSignal);
-  AddDBusSignalHandler(kRootPowerManagerInterface, kShutdownSignal,
-                       &PowerManDaemon::HandleShutdownSignal);
-  AddDBusSignalHandler(kRootPowerManagerInterface, kRestartSignal,
-                       &PowerManDaemon::HandleRestartSignal);
-  AddDBusSignalHandler(kRootPowerManagerInterface, kRequestCleanShutdown,
-                       &PowerManDaemon::HandleRequestCleanShutdownSignal);
-  AddDBusSignalHandler(kPowerManagerInterface, kPowerStateChanged,
-                       &PowerManDaemon::HandlePowerStateChangedSignal);
-  AddDBusSignalHandler(login_manager::kSessionManagerInterface,
-                       login_manager::kSessionManagerSessionStateChanged,
-                       &PowerManDaemon::HandleSessionManagerStateChangedSignal);
-  CHECK(dbus_connection_add_filter(
-      connection, &MainDBusSignalHandler, this, NULL));
+  dbus_handler_.AddDBusSignalHandler(
+      kRootPowerManagerInterface,
+      kCheckLidStateSignal,
+      base::Bind(&PowerManDaemon::HandleCheckLidStateSignal,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      kRootPowerManagerInterface,
+      kSuspendSignal,
+      base::Bind(&PowerManDaemon::HandleSuspendSignal, base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      kRootPowerManagerInterface,
+      kShutdownSignal,
+      base::Bind(&PowerManDaemon::HandleShutdownSignal,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      kRootPowerManagerInterface,
+      kRestartSignal,
+      base::Bind(&PowerManDaemon::HandleRestartSignal, base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      kRootPowerManagerInterface,
+      kRequestCleanShutdown,
+      base::Bind(&PowerManDaemon::HandleRequestCleanShutdownSignal,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      kPowerManagerInterface,
+      kPowerStateChanged,
+      base::Bind(&PowerManDaemon::HandlePowerStateChangedSignal,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerSessionStateChanged,
+      base::Bind(&PowerManDaemon::HandleSessionManagerStateChangedSignal,
+                 base::Unretained(this)));
 
-  AddDBusMethodHandler(kRootPowerManagerInterface, kExternalBacklightGetMethod,
-                       &PowerManDaemon::HandleExternalBacklightGetMethod);
-  AddDBusMethodHandler(kRootPowerManagerInterface, kExternalBacklightSetMethod,
-                       &PowerManDaemon::HandleExternalBacklightSetMethod);
+  dbus_handler_.AddDBusMethodHandler(
+      kRootPowerManagerInterface,
+      kExternalBacklightGetMethod,
+      base::Bind(&PowerManDaemon::HandleExternalBacklightGetMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kRootPowerManagerInterface,
+      kExternalBacklightSetMethod,
+      base::Bind(&PowerManDaemon::HandleExternalBacklightSetMethod,
+                 base::Unretained(this)));
 
-  DBusObjectPathVTable vtable;
-  memset(&vtable, 0, sizeof(vtable));
-  vtable.message_function = &MainDBusMethodHandler;
-  CHECK(dbus_connection_register_object_path(connection,
-                                             kPowerManagerServicePath,
-                                             &vtable,
-                                             this));
+  dbus_handler_.Start();
 
   DBusGProxy* proxy = dbus_g_proxy_new_for_name(
       chromeos::dbus::GetSystemBusConnection().g_connection(),
@@ -524,7 +467,6 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
   dbus_g_proxy_connect_signal(proxy, "NameOwnerChanged",
                               G_CALLBACK(DBusNameOwnerChangedHandler),
                               this, NULL);
-  LOG(INFO) << "DBus monitoring started";
 }
 
 void PowerManDaemon::SendButtonEventSignal(const std::string& button_name,

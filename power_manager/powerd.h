@@ -17,8 +17,6 @@
 
 #include <ctime>
 
-#include "base/bind.h"
-#include "base/callback.h"
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
@@ -38,6 +36,7 @@
 #include "power_manager/screen_locker.h"
 #include "power_manager/signal_callback.h"
 #include "power_manager/suspender.h"
+#include "power_manager/util_dbus_handler.h"
 
 // Forward declarations of structs from libudev.h.
 struct udev;
@@ -165,17 +164,6 @@ class Daemon : public BacklightControllerObserver,
   enum ShutdownState { kShutdownNone, kShutdownRestarting,
                        kShutdownPowerOff };
 
-  typedef std::pair<std::string, std::string> DBusInterfaceMemberPair;
-  typedef base::Callback<bool(DBusMessage*)> DBusSignalHandler;
-  typedef base::Callback<DBusMessage*(DBusMessage*)> DBusMethodHandler;
-  typedef bool (Daemon::*DBusSignalHandlerFunc)(DBusMessage*);
-  typedef DBusMessage* (Daemon::*DBusMethodHandlerFunc)(DBusMessage*);
-
-  typedef std::map<DBusInterfaceMemberPair, DBusSignalHandler>
-      DBusSignalHandlerTable;
-  typedef std::map<DBusInterfaceMemberPair, DBusMethodHandler>
-      DBusMethodHandlerTable;
-
   // Reads settings from disk
   void ReadSettings();
 
@@ -214,13 +202,6 @@ class Daemon : public BacklightControllerObserver,
   // Registers udev event handler with GIO.
   void RegisterUdevEventHandler();
 
-  // Standard handlers for dbus method calls and signals. |data| contains a
-  // pointer to a Daemon object.
-  static DBusHandlerResult MainDBusMethodHandler(
-      DBusConnection*, DBusMessage* message, void* data);
-  static DBusHandlerResult MainDBusSignalHandler(
-      DBusConnection*, DBusMessage* message, void* data);
-
   // Registers the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 
@@ -250,14 +231,6 @@ class Daemon : public BacklightControllerObserver,
   DBusMessage* HandleVideoActivityMethod(DBusMessage* message);
   DBusMessage* HandleUserActivityMethod(DBusMessage* message);
   DBusMessage* HandleSetIsProjectingMethod(DBusMessage* message);
-
-  void AddDBusSignalHandler(const std::string& interface,
-                            const std::string& member,
-                            DBusSignalHandlerFunc handler);
-
-  void AddDBusMethodHandler(const std::string& interface,
-                            const std::string& member,
-                            DBusMethodHandlerFunc handler);
 
   // Removes the previous power supply polling timer and replaces it with one
   // that fires every 5s and calls ShortPollPowerSupply. The nature of this
@@ -574,9 +547,8 @@ class Daemon : public BacklightControllerObserver,
   // needed for removing the timer when we want to interrupt polling.
   guint32 poll_power_supply_timer_id_;
 
-  // These are lookup tables that map dbus message interface/names to handlers.
-  DBusSignalHandlerTable dbus_signal_handler_table_;
-  DBusMethodHandlerTable dbus_method_handler_table_;
+  // This is the DBus helper object that dispatches DBus messages to handlers
+  util::DBusHandler dbus_handler_;
 
   // Rolling averages used to iron out instabilities in the time estimates
   RollingAverage time_to_empty_average_;

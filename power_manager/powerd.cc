@@ -15,11 +15,10 @@
 #include <set>
 #include <vector>
 
+#include "base/bind.h"
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_util.h"
-#include "base/stringprintf.h"
-#include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "chromeos/glib/object.h"
 #include "power_manager/activity_detector_interface.h"
@@ -816,66 +815,6 @@ void Daemon::RegisterUdevEventHandler() {
             << kPowerSupplyUdevSubsystem;
 }
 
-DBusHandlerResult Daemon::MainDBusMethodHandler(DBusConnection* connection,
-                                                DBusMessage* message,
-                                                void* data) {
-  if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_METHOD_CALL)
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-  Daemon* daemon = static_cast<Daemon*>(data);
-  CHECK(daemon);
-  // Look up and call the corresponding dbus message handler.
-  std::string interface = dbus_message_get_interface(message);
-  std::string member = dbus_message_get_member(message);
-  DBusInterfaceMemberPair dbus_message_pair = std::make_pair(interface, member);
-  DBusMethodHandlerTable::iterator iter =
-      daemon->dbus_method_handler_table_.find(dbus_message_pair);
-  if (iter == daemon->dbus_method_handler_table_.end()) {
-    LOG(ERROR) << "Could not find handler for " << interface << ":" << member
-               << " in method handler table.";
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  }
-
-  LOG(INFO) << "Got " << member << " method call";
-  const DBusMethodHandler& callback = iter->second;
-  DBusMessage* reply = callback.Run(message);
-
-  // Must send a reply if it is a message.
-  if (!reply)
-    reply = util::CreateEmptyDBusReply(message);
-  // If the send reply fails, it is due to lack of memory.
-  CHECK(dbus_connection_send(connection, reply, NULL));
-  dbus_message_unref(reply);
-
-  return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-DBusHandlerResult Daemon::MainDBusSignalHandler(DBusConnection* connection,
-                                                DBusMessage* message,
-                                                void* data) {
-  if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_SIGNAL)
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-  Daemon* daemon = static_cast<Daemon*>(data);
-  CHECK(daemon);
-  // Look up and call the corresponding dbus message handler.
-  std::string interface = dbus_message_get_interface(message);
-  std::string member = dbus_message_get_member(message);
-  DBusInterfaceMemberPair dbus_message_pair = std::make_pair(interface, member);
-  DBusSignalHandlerTable::iterator iter =
-      daemon->dbus_signal_handler_table_.find(dbus_message_pair);
-  // Quietly skip this signal if it has no handler.
-  if (iter == daemon->dbus_signal_handler_table_.end())
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-  LOG(INFO) << "Got " << member << " signal";
-  const DBusSignalHandler& callback = iter->second;
-
-  if (callback.Run(message))
-    return DBUS_HANDLER_RESULT_HANDLED;
-  return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 void Daemon::RegisterDBusMessageHandler() {
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
@@ -894,71 +833,123 @@ void Daemon::RegisterDBusMessageHandler() {
     dbus_error_free(&error);
   }
 
-  AddDBusSignalHandler(kPowerManagerInterface, kRequestSuspendSignal,
-                       &Daemon::HandleRequestSuspendSignal);
-  AddDBusSignalHandler(kPowerManagerInterface, kLidClosed,
-                       &Daemon::HandleLidClosedSignal);
-  AddDBusSignalHandler(kPowerManagerInterface, kLidOpened,
-                       &Daemon::HandleLidOpenedSignal);
-  AddDBusSignalHandler(kPowerManagerInterface, kButtonEventSignal,
-                       &Daemon::HandleButtonEventSignal);
-  AddDBusSignalHandler(kPowerManagerInterface, kCleanShutdown,
-                       &Daemon::HandleCleanShutdownSignal);
-  AddDBusSignalHandler(kPowerManagerInterface, kPowerStateChangedSignal,
-                       &Daemon::HandlePowerStateChangedSignal);
-  AddDBusSignalHandler(login_manager::kSessionManagerInterface,
-                       login_manager::kSessionManagerSessionStateChanged,
-                       &Daemon::HandleSessionManagerSessionStateChangedSignal);
-  AddDBusSignalHandler(login_manager::kSessionManagerInterface,
-                       login_manager::kScreenIsLockedSignal,
-                       &Daemon::HandleSessionManagerScreenIsLockedSignal);
-  AddDBusSignalHandler(login_manager::kSessionManagerInterface,
-                       login_manager::kScreenIsUnlockedSignal,
-                       &Daemon::HandleSessionManagerScreenIsUnlockedSignal);
-  CHECK(dbus_connection_add_filter(
-      connection, &MainDBusSignalHandler, this, NULL));
+  dbus_handler_.AddDBusSignalHandler(
+      kPowerManagerInterface,
+      kRequestSuspendSignal,
+      base::Bind(&Daemon::HandleRequestSuspendSignal, base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      kPowerManagerInterface,
+      kLidClosed,
+      base::Bind(&Daemon::HandleLidClosedSignal, base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      kPowerManagerInterface,
+      kLidOpened,
+      base::Bind(&Daemon::HandleLidOpenedSignal, base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      kPowerManagerInterface,
+      kButtonEventSignal,
+      base::Bind(&Daemon::HandleButtonEventSignal, base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      kPowerManagerInterface,
+      kCleanShutdown,
+      base::Bind(&Daemon::HandleCleanShutdownSignal, base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      kPowerManagerInterface,
+      kPowerStateChangedSignal,
+      base::Bind(&Daemon::HandlePowerStateChangedSignal,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      login_manager::kSessionManagerInterface,
+      login_manager::kSessionManagerSessionStateChanged,
+      base::Bind(&Daemon::HandleSessionManagerSessionStateChangedSignal,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      login_manager::kSessionManagerInterface,
+      login_manager::kScreenIsLockedSignal,
+      base::Bind(&Daemon::HandleSessionManagerScreenIsLockedSignal,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      login_manager::kSessionManagerInterface,
+      login_manager::kScreenIsUnlockedSignal,
+      base::Bind(&Daemon::HandleSessionManagerScreenIsUnlockedSignal,
+                 base::Unretained(this)));
 
-  AddDBusMethodHandler(kPowerManagerInterface, kRequestShutdownMethod,
-                       &Daemon::HandleRequestShutdownMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kRequestRestartMethod,
-                       &Daemon::HandleRequestRestartMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kDecreaseScreenBrightness,
-                       &Daemon::HandleDecreaseScreenBrightnessMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kIncreaseScreenBrightness,
-                       &Daemon::HandleIncreaseScreenBrightnessMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kGetScreenBrightnessPercent,
-                       &Daemon::HandleGetScreenBrightnessMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kSetScreenBrightnessPercent,
-                       &Daemon::HandleSetScreenBrightnessMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kDecreaseKeyboardBrightness,
-                       &Daemon::HandleDecreaseKeyboardBrightnessMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kIncreaseKeyboardBrightness,
-                       &Daemon::HandleIncreaseKeyboardBrightnessMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kGetIdleTime,
-                       &Daemon::HandleGetIdleTimeMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kRequestIdleNotification,
-                       &Daemon::HandleRequestIdleNotificationMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kGetPowerSupplyPropertiesMethod,
-                       &Daemon::HandleGetPowerSupplyPropertiesMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kStateOverrideRequest,
-                       &Daemon::HandleStateOverrideRequestMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kStateOverrideCancel,
-                       &Daemon::HandleStateOverrideCancelMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kHandleVideoActivityMethod,
-                       &Daemon::HandleVideoActivityMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kHandleUserActivityMethod,
-                       &Daemon::HandleUserActivityMethod);
-  AddDBusMethodHandler(kPowerManagerInterface, kSetIsProjectingMethod,
-                       &Daemon::HandleSetIsProjectingMethod);
-  DBusObjectPathVTable vtable;
-  memset(&vtable, 0, sizeof(vtable));
-  vtable.message_function = &MainDBusMethodHandler;
-  CHECK(dbus_connection_register_object_path(connection,
-                                             kPowerManagerServicePath,
-                                             &vtable,
-                                             this));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kRequestShutdownMethod,
+      base::Bind(&Daemon::HandleRequestShutdownMethod, base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kRequestRestartMethod,
+      base::Bind(&Daemon::HandleRequestRestartMethod, base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kDecreaseScreenBrightness,
+      base::Bind(&Daemon::HandleDecreaseScreenBrightnessMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kIncreaseScreenBrightness,
+      base::Bind(&Daemon::HandleIncreaseScreenBrightnessMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kGetScreenBrightnessPercent,
+      base::Bind(&Daemon::HandleGetScreenBrightnessMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kSetScreenBrightnessPercent,
+      base::Bind(&Daemon::HandleSetScreenBrightnessMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kDecreaseKeyboardBrightness,
+      base::Bind(&Daemon::HandleDecreaseKeyboardBrightnessMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kIncreaseKeyboardBrightness,
+      base::Bind(&Daemon::HandleIncreaseKeyboardBrightnessMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kGetIdleTime,
+      base::Bind(&Daemon::HandleGetIdleTimeMethod, base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kRequestIdleNotification,
+      base::Bind(&Daemon::HandleRequestIdleNotificationMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kGetPowerSupplyPropertiesMethod,
+      base::Bind(&Daemon::HandleGetPowerSupplyPropertiesMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kStateOverrideRequest,
+      base::Bind(&Daemon::HandleStateOverrideRequestMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kStateOverrideCancel,
+      base::Bind(&Daemon::HandleStateOverrideCancelMethod,
+                 base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kHandleVideoActivityMethod,
+      base::Bind(&Daemon::HandleVideoActivityMethod, base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kHandleUserActivityMethod,
+      base::Bind(&Daemon::HandleUserActivityMethod, base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kSetIsProjectingMethod,
+      base::Bind(&Daemon::HandleSetIsProjectingMethod, base::Unretained(this)));
 
-  LOG(INFO) << "D-Bus monitoring started";
+  dbus_handler_.Start();
 }
 
 bool Daemon::HandleRequestSuspendSignal(DBusMessage*) {  // NOLINT
@@ -1379,27 +1370,6 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
                                        "Invalid arguments passed to method");
   }
   return reply;
-}
-
-void Daemon::AddDBusSignalHandler(const std::string& interface,
-                                  const std::string& member,
-                                  DBusSignalHandlerFunc handler) {
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-  util::AddDBusSignalMatch(connection, interface, member);
-  dbus_signal_handler_table_[std::make_pair(interface, member)] =
-      base::Bind(handler, base::Unretained(this));
-}
-
-void Daemon::AddDBusMethodHandler(const std::string& interface,
-                                  const std::string& member,
-                                  DBusMethodHandlerFunc handler) {
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-  dbus_method_handler_table_[std::make_pair(interface, member)] =
-      base::Bind(handler, base::Unretained(this));
 }
 
 void Daemon::ScheduleShortPollPowerSupply() {

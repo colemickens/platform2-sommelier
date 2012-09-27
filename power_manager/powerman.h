@@ -8,14 +8,13 @@
 #include <sys/types.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
-#include "base/bind.h"
-#include "base/callback.h"
 #include "base/file_path.h"
 #include "base/time.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/input.h"
 #include "power_manager/power_prefs.h"
 #include "power_manager/powerd.h"
+#include "power_manager/util_dbus_handler.h"
 
 namespace power_manager {
 
@@ -53,17 +52,6 @@ class PowerManDaemon {
     BUTTON_REPEAT,
   };
 
-  typedef std::pair<std::string, std::string> DBusInterfaceMemberPair;
-  typedef base::Callback<void(DBusMessage*)> DBusSignalHandler;
-  typedef base::Callback<DBusMessage*(DBusMessage*)> DBusMethodHandler;
-  typedef void (PowerManDaemon::*DBusSignalHandlerFunc)(DBusMessage*);
-  typedef DBusMessage* (PowerManDaemon::*DBusMethodHandlerFunc)(DBusMessage*);
-
-  typedef std::map<DBusInterfaceMemberPair, DBusSignalHandler>
-      DBusSignalHandlerTable;
-  typedef std::map<DBusInterfaceMemberPair, DBusMethodHandler>
-      DBusMethodHandlerTable;
-
   inline static ButtonState GetButtonState(int value) {
     // value == 0 is button up.
     // value == 1 is button down.
@@ -84,31 +72,16 @@ class PowerManDaemon {
   // Methods for handling input events.
   void HandlePowerButtonEvent(ButtonState value);
 
-  // Standard handlers for dbus method calls and signals. |data| contains a
-  // pointer to a Daemon object.
-  static DBusHandlerResult MainDBusMethodHandler(
-      DBusConnection*, DBusMessage* message, void* data);
-  static DBusHandlerResult MainDBusSignalHandler(
-      DBusConnection*, DBusMessage* message, void* data);
-
   // Callbacks for handling dbus messages.
-  void HandleCheckLidStateSignal(DBusMessage* message);
-  void HandleSuspendSignal(DBusMessage* message);
-  void HandleShutdownSignal(DBusMessage* message);
-  void HandleRestartSignal(DBusMessage* message);
-  void HandleRequestCleanShutdownSignal(DBusMessage* message);
-  void HandlePowerStateChangedSignal(DBusMessage* message);
-  void HandleSessionManagerStateChangedSignal(DBusMessage* message);
+  bool HandleCheckLidStateSignal(DBusMessage* message);
+  bool HandleSuspendSignal(DBusMessage* message);
+  bool HandleShutdownSignal(DBusMessage* message);
+  bool HandleRestartSignal(DBusMessage* message);
+  bool HandleRequestCleanShutdownSignal(DBusMessage* message);
+  bool HandlePowerStateChangedSignal(DBusMessage* message);
+  bool HandleSessionManagerStateChangedSignal(DBusMessage* message);
   DBusMessage* HandleExternalBacklightGetMethod(DBusMessage* message);
   DBusMessage* HandleExternalBacklightSetMethod(DBusMessage* message);
-
-  void AddDBusSignalHandler(const std::string& interface,
-                            const std::string& member,
-                            DBusSignalHandlerFunc handler);
-
-  void AddDBusMethodHandler(const std::string& interface,
-                            const std::string& member,
-                            DBusMethodHandlerFunc handler);
 
   bool CancelDBusRequest();
 
@@ -201,9 +174,8 @@ class PowerManDaemon {
   base::TimeTicks lid_ticks_;          // log time for every lid event
   int console_fd_;
 
-  // These are lookup tables that map dbus message interface/names to handlers.
-  DBusSignalHandlerTable dbus_signal_handler_table_;
-  DBusMethodHandlerTable dbus_method_handler_table_;
+  // This is the DBus helper object that dispatches DBus messages to handlers
+  util::DBusHandler dbus_handler_;
 };
 
 }  // namespace power_manager

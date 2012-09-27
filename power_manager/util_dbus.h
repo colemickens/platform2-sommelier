@@ -53,11 +53,6 @@ DBusMessage* CreateDBusErrorReply(DBusMessage* message,
                                   const char* error_name,
                                   const char* error_message);
 
-// Adds a signal match rule to a dbus connection.
-void AddDBusSignalMatch(DBusConnection* connection,
-                        const std::string& interface,
-                        const std::string& member);
-
 // Parse out the error message and log it for debugging.
 void LogDBusError(DBusMessage* message);
 
