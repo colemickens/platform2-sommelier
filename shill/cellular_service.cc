@@ -343,7 +343,7 @@ void CellularService::PerformOutOfCreditsDetection(ConnectState curr_state,
 
 void CellularService::OutOfCreditsReconnect() {
   Error error;
-  Connect(&error);
+  Connect(&error, __func__);
 }
 
 void CellularService::ResetOutOfCreditsState() {
@@ -393,12 +393,12 @@ void CellularService::AutoConnect() {
   is_auto_connecting_ = false;
 }
 
-void CellularService::Connect(Error *error) {
+void CellularService::Connect(Error *error, const char *reason) {
   if (num_connect_attempts_ == 0)
     SetOutOfCredits(false);
   connect_start_time_ = base::Time::Now();
   num_connect_attempts_++;
-  Service::Connect(error);
+  Service::Connect(error, reason);
   cellular_->Connect(error);
   if (error->IsFailure())
     ResetOutOfCreditsState();

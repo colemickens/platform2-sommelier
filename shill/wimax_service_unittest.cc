@@ -215,7 +215,7 @@ TEST_F(WiMaxServiceTest, Connect) {
   // Connect but not connectable.
   Error error;
   EXPECT_FALSE(service_->connectable());
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   EXPECT_EQ(Error::kOperationFailed, error.type());
   SetConnectable(true);
 
@@ -225,7 +225,7 @@ TEST_F(WiMaxServiceTest, Connect) {
   EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&provider));
   EXPECT_CALL(provider, SelectCarrier(_)).WillOnce(Return(null_device));
   error.Reset();
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   EXPECT_EQ(Error::kNoCarrier, error.type());
 
   // Successful connect.
@@ -233,13 +233,13 @@ TEST_F(WiMaxServiceTest, Connect) {
   EXPECT_CALL(provider, SelectCarrier(_)).WillOnce(Return(device_));
   EXPECT_CALL(*device_, ConnectTo(_, _));
   error.Reset();
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
 
   // Connect while already connected.
   // TODO(benchan): Check for error if we populate error again after changing
   // the way that Chrome handles Error::kAlreadyConnected situation.
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
 
   // Successful disconnect.
   EXPECT_CALL(*device_, DisconnectFrom(_, _));

@@ -133,10 +133,10 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   IgnoreParameterForConfigure(flimflam::kSSIDProperty);
   IgnoreParameterForConfigure(flimflam::kSecurityProperty);
 
-  // Log the |unique_name| to |friendly_name| mapping for debugging purposes at
-  // non-default log level.
-  SLOG(WiFi, 1) << "Constructed WiFi service " << unique_name()
-                << " name: " << friendly_name();
+  // Log the |unique_name| to |friendly_name| mapping for debugging purposes.
+  // The latter will be tagged for scrubbing.
+  LOG(INFO) << "Constructed WiFi service " << unique_name()
+            << " name: " << WiFi::LogSSID(friendly_name());
 }
 
 WiFiService::~WiFiService() {}
@@ -426,8 +426,7 @@ void WiFiService::HelpRegisterWriteOnlyDerivedString(
               this, set, clear, default_value)));
 }
 
-void WiFiService::Connect(Error *error) {
-  LOG(INFO) << "Connect to service " << unique_name();
+void WiFiService::Connect(Error *error, const char *reason) {
   std::map<string, DBus::Variant> params;
   DBus::MessageIter writer;
 
@@ -521,6 +520,10 @@ void WiFiService::Connect(Error *error) {
     // Nothing special to do here.
   } else {
     LOG(ERROR) << "Can't connect. Unsupported security method " << security_;
+    Error::PopulateAndLog(error,
+                          Error::kInvalidArguments,
+                          Error::GetDefaultMessage(Error::kInvalidArguments));
+    return;
   }
 
   params[WPASupplicant::kNetworkPropertyEapKeyManagement].writer().
@@ -538,11 +541,11 @@ void WiFiService::Connect(Error *error) {
   writer = params[WPASupplicant::kNetworkPropertySSID].writer();
   writer << ssid_;
 
+  Service::Connect(error, reason);
   wifi->ConnectTo(this, params);
 }
 
 void WiFiService::Disconnect(Error *error) {
-  LOG(INFO) << __func__;
   Service::Disconnect(error);
   if (!wifi_) {
     // If we are connecting to a hidden service, but have not yet found

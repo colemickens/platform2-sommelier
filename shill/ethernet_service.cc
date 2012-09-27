@@ -45,7 +45,8 @@ EthernetService::EthernetService(ControlInterface *control_interface,
 
 EthernetService::~EthernetService() { }
 
-void EthernetService::Connect(Error */*error*/) {
+void EthernetService::Connect(Error *error, const char *reason) {
+  Service::Connect(error, reason);
   ethernet_->ConnectTo(this);
 }
 

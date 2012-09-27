@@ -418,7 +418,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA) {
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskRSN) {
@@ -426,7 +426,7 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 }
 
 TEST_F(WiFiServiceTest, ConnectConditions) {
@@ -437,7 +437,7 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
   wifi_service->set_profile(mock_profile);
   // With nothing else going on, the service should attempt to connect.
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
-  wifi_service->Connect(&error);
+  wifi_service->Connect(&error, "in test");
   Mock::VerifyAndClearExpectations(wifi());
 
   // But if we're already "connecting" or "connected" then we shouldn't attempt
@@ -445,15 +445,15 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), _)).Times(0);
   wifi_service->SetState(Service::kStateAssociating);
-  wifi_service->Connect(&error);
+  wifi_service->Connect(&error, "in test");
   wifi_service->SetState(Service::kStateConfiguring);
-  wifi_service->Connect(&error);
+  wifi_service->Connect(&error, "in test");
   wifi_service->SetState(Service::kStateConnected);
-  wifi_service->Connect(&error);
+  wifi_service->Connect(&error, "in test");
   wifi_service->SetState(Service::kStatePortal);
-  wifi_service->Connect(&error);
+  wifi_service->Connect(&error, "in test");
   wifi_service->SetState(Service::kStateOnline);
-  wifi_service->Connect(&error);
+  wifi_service->Connect(&error, "in test");
   Mock::VerifyAndClearExpectations(wifi());
 }
 
@@ -462,7 +462,7 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 }
 
 TEST_F(WiFiServiceTest, ConnectTask8021x) {
@@ -472,7 +472,7 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
   eap.password = "mumble";
   service->set_eap(eap);
   EXPECT_CALL(*wifi(), ConnectTo(service.get(), EAPSecurityArgs()));
-  service->Connect(NULL);
+  service->Connect(NULL, "in test");
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
@@ -486,7 +486,7 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
   wifi_service->AddEndpoint(endpoint_freq);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), FrequencyArg(false)));
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 
   wifi_service = new WiFiService(control_interface(),
                                  dispatcher(),
@@ -500,7 +500,7 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), FrequencyArg(false)));
   SetWiFiForService(wifi_service, wifi());
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 
   wifi_service = new WiFiService(control_interface(),
                                  dispatcher(),
@@ -515,7 +515,7 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
   SetWiFiForService(wifi_service, wifi());
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), FrequencyArg(false)));
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 
   wifi_service = new WiFiService(control_interface(),
                                  dispatcher(),
@@ -530,7 +530,7 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
   SetWiFiForService(wifi_service, wifi());
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), FrequencyArg(true)));
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
@@ -543,7 +543,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPA80211wSecurityArgs()));
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 }
 
 MATCHER(WEPSecurityArgsKeyIndex0, "") {
@@ -584,27 +584,27 @@ TEST_F(WiFiServiceTest, ConnectTaskWEP) {
   wifi_service->SetPassphrase("0:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex0()));
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 
   wifi_service->SetPassphrase("abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex0()));
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 
   wifi_service->SetPassphrase("1:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex1()));
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 
   wifi_service->SetPassphrase("2:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex2()));
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 
   wifi_service->SetPassphrase("3:abcdefghijklm", &error);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex3()));
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 }
 
 
@@ -625,7 +625,7 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   wifi_service->set_eap(eap);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), DynamicWEPArgs()));
-  wifi_service->Connect(NULL);
+  wifi_service->Connect(NULL, "in test");
 }
 
 TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {

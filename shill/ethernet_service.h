@@ -28,7 +28,7 @@ class EthernetService : public Service {
   ~EthernetService();
 
   // Inherited from Service.
-  virtual void Connect(Error *error);
+  virtual void Connect(Error *error, const char *reason);
   virtual void Disconnect(Error *error);
 
   // ethernet_<MAC>

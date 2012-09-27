@@ -27,7 +27,7 @@ class MockService : public Service {
   virtual ~MockService();
 
   MOCK_METHOD0(AutoConnect, void());
-  MOCK_METHOD1(Connect, void(Error *error));
+  MOCK_METHOD2(Connect, void(Error *error, const char *reason));
   MOCK_METHOD1(Disconnect, void(Error *error));
   MOCK_METHOD2(DisconnectWithFailure, void(Service::ConnectFailure failure,
                                            Error *error));

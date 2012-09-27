@@ -51,7 +51,7 @@ class WiFiService : public Service {
   ~WiFiService();
 
   // Inherited from Service.
-  virtual void Connect(Error *error);
+  virtual void Connect(Error *error, const char *reason);
   virtual void Disconnect(Error *error);
   virtual bool Is8021x() const;
 

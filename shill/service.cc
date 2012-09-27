@@ -265,10 +265,10 @@ Service::~Service() {
 void Service::AutoConnect() {
   const char *reason = NULL;
   if (IsAutoConnectable(&reason)) {
+    Error error;
     LOG(INFO) << "Auto-connecting to service " << unique_name_;
     ThrottleFutureAutoConnects();
-    Error error;
-    Connect(&error);
+    Connect(&error, __func__);
   } else {
     if (reason == kAutoConnConnected || reason == kAutoConnBusy) {
       SLOG(Service, 1)
@@ -281,13 +281,15 @@ void Service::AutoConnect() {
   }
 }
 
-void Service::Connect(Error */*error*/) {
+void Service::Connect(Error */*error*/, const char *reason) {
+  LOG(INFO) << "Connect to service " << unique_name() <<": " << reason;
   explicitly_disconnected_ = false;
   // clear any failure state from a previous connect attempt
   SetState(kStateIdle);
 }
 
 void Service::Disconnect(Error */*error*/) {
+  LOG(INFO) << "Disconnecting from service " << unique_name_;
   MemoryLog::GetInstance()->FlushToDisk();
 }
 
@@ -385,7 +387,8 @@ void Service::ReEnableAutoConnectTask() {
 
 void Service::ThrottleFutureAutoConnects() {
   if (auto_connect_cooldown_milliseconds_ > 0) {
-    LOG(INFO) << "Throttling autoconnect to service " << unique_name_ << " for "
+    LOG(INFO) << "Throttling future autoconnects to service " << unique_name_
+              << ". Next autoconnect in "
               << auto_connect_cooldown_milliseconds_ << " milliseconds.";
     reenable_auto_connect_task_.Reset(Bind(&Service::ReEnableAutoConnectTask,
                                            weak_ptr_factory_.GetWeakPtr()));

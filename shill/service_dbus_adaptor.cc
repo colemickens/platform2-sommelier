@@ -116,7 +116,7 @@ vector<bool> ServiceDBusAdaptor::ClearProperties(const vector<string> &names,
 void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
   Error e;
-  service_->Connect(&e);
+  service_->Connect(&e, "D-Bus RPC");
   e.ToDBusError(&error);
 }
 

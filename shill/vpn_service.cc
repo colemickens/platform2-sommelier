@@ -42,14 +42,13 @@ VPNService::VPNService(ControlInterface *control,
 
 VPNService::~VPNService() {}
 
-void VPNService::Connect(Error *error) {
-  LOG(INFO) << "Connect to service " << unique_name();
+void VPNService::Connect(Error *error, const char *reason) {
   if (IsConnected() || IsConnecting()) {
     Error::PopulateAndLog(
         error, Error::kAlreadyConnected, "VPN service already connected.");
     return;
   }
-  Service::Connect(error);
+  Service::Connect(error, reason);
   driver_->Connect(this, error);
 }
 

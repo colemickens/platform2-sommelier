@@ -126,7 +126,7 @@ bool WiMaxService::IsStarted() const {
   return proxy_.get();
 }
 
-void WiMaxService::Connect(Error *error) {
+void WiMaxService::Connect(Error *error, const char *reason) {
   if (device_) {
     // TODO(benchan): Populate error again after changing the way that
     // Chrome handles Error::kAlreadyConnected situation.
@@ -147,7 +147,7 @@ void WiMaxService::Connect(Error *error) {
         error, Error::kNoCarrier, "No suitable WiMAX device available.");
     return;
   }
-  Service::Connect(error);
+  Service::Connect(error, reason);
   carrier->ConnectTo(this, error);
   if (error->IsSuccess()) {
     // Associate with the carrier device if the connection process has been

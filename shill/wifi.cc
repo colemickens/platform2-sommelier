@@ -904,6 +904,8 @@ void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
       (service->IsConnecting() || service->IsConnected());
 
   if (disconnect_service) {
+    LOG(INFO) << "Disconnecting from service " << service->unique_name()
+              << ": BSSRemoved";
     DisconnectFrom(service);
   }
 }

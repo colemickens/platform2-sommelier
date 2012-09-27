@@ -595,7 +595,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   // A deliberate Connect should also re-enable auto-connect.
   service_->UserInitiatedDisconnect(&error);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // A non-user initiated Disconnect doesn't change anything.

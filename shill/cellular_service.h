@@ -63,7 +63,7 @@ class CellularService : public Service {
 
   // Inherited from Service.
   virtual void AutoConnect();
-  virtual void Connect(Error *error);
+  virtual void Connect(Error *error, const char *reason);
   virtual void Disconnect(Error *error);
   virtual void ActivateCellularModem(const std::string &carrier,
                                      Error *error,

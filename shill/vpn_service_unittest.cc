@@ -107,7 +107,7 @@ TEST_F(VPNServiceTest, Connect) {
   EXPECT_TRUE(service_->connectable());
   Error error;
   EXPECT_CALL(*driver_, Connect(_, &error));
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
 }
 
@@ -115,11 +115,11 @@ TEST_F(VPNServiceTest, ConnectAlreadyConnected) {
   Error error;
   EXPECT_CALL(*driver_, Connect(_, _)).Times(0);
   SetServiceState(Service::kStateOnline);
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   EXPECT_EQ(Error::kAlreadyConnected, error.type());
   error.Reset();
   SetServiceState(Service::kStateConfiguring);
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   EXPECT_EQ(Error::kAlreadyConnected, error.type());
 }
 

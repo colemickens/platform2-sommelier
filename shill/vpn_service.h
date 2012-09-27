@@ -26,7 +26,7 @@ class VPNService : public Service {
   virtual ~VPNService();
 
   // Inherited from Service.
-  virtual void Connect(Error *error);
+  virtual void Connect(Error *error, const char *reason);
   virtual void Disconnect(Error *error);
   virtual std::string GetStorageIdentifier() const;
   virtual bool Load(StoreInterface *storage);

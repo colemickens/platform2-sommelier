@@ -1376,7 +1376,7 @@ void Manager::ConnectToBestServicesTask() {
       // prevent it from attempting a connection which we'd like to ignore
       // for the purposes of this user-initiated action.
       Error error;
-      (*it)->Connect(&error);
+      (*it)->Connect(&error, __func__);
       if (error.IsFailure()) {
         LOG(ERROR) << "Connection failed: " << error.message();
       }

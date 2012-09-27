@@ -404,7 +404,7 @@ TEST_F(CellularServiceTest, OutOfCreditsDetected) {
   service_->set_enforce_out_of_credits_detection(true);
   EXPECT_CALL(*device_, Connect(_)).Times(3);
   Error error;
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   service_->SetState(Service::kStateAssociating);
   service_->SetState(Service::kStateFailure);
   EXPECT_TRUE(service_->out_of_credits_detection_in_progress_);
@@ -428,7 +428,7 @@ TEST_F(CellularServiceTest, OutOfCreditsDetectionNotSkippedAfterSlowResume) {
           CellularService::kOutOfCreditsResumeIgnoreSeconds + 1);
   EXPECT_CALL(*device_, Connect(_)).Times(3);
   Error error;
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   service_->SetState(Service::kStateAssociating);
   service_->SetState(Service::kStateFailure);
   EXPECT_TRUE(service_->out_of_credits_detection_in_progress_);
@@ -448,7 +448,7 @@ TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedAfterResume) {
   service_->OnAfterResume();
   EXPECT_CALL(*device_, Connect(_));
   Error error;
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   service_->SetState(Service::kStateConnected);
   service_->SetState(Service::kStateIdle);
   EXPECT_FALSE(service_->out_of_credits_);
@@ -462,7 +462,7 @@ TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedExplicitDisconnect) {
   service_->set_enforce_out_of_credits_detection(true);
   EXPECT_CALL(*device_, Connect(_));
   Error error;
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   service_->SetState(Service::kStateConnected);
   service_->UserInitiatedDisconnect(&error);
   service_->SetState(Service::kStateIdle);
@@ -477,7 +477,7 @@ TEST_F(CellularServiceTest, OutOfCreditsNotDetectedConnectionNotDropped) {
   service_->set_enforce_out_of_credits_detection(true);
   EXPECT_CALL(*device_, Connect(_));
   Error error;
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   service_->SetState(Service::kStateAssociating);
   service_->SetState(Service::kStateConfiguring);
   service_->SetState(Service::kStateConnected);
@@ -492,7 +492,7 @@ TEST_F(CellularServiceTest, OutOfCreditsNotDetectedIntermittentNetwork) {
   service_->set_enforce_out_of_credits_detection(true);
   EXPECT_CALL(*device_, Connect(_));
   Error error;
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   service_->SetState(Service::kStateConnected);
   service_->connect_start_time_ =
       base::Time::Now() -
@@ -509,7 +509,7 @@ TEST_F(CellularServiceTest, OutOfCreditsNotDetectedIntermittentNetwork) {
 TEST_F(CellularServiceTest, OutOfCreditsNotEnforced) {
   EXPECT_CALL(*device_, Connect(_));
   Error error;
-  service_->Connect(&error);
+  service_->Connect(&error, "in test");
   service_->SetState(Service::kStateConnected);
   service_->SetState(Service::kStateIdle);
   EXPECT_FALSE(service_->out_of_credits_);

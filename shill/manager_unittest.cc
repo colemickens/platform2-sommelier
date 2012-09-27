@@ -3383,11 +3383,11 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   // The connected services should be at the top.
   EXPECT_TRUE(ServiceOrderIs(wifi_service2, cell_service));
 
-  EXPECT_CALL(*wifi_service0.get(), Connect(_)).Times(1);
-  EXPECT_CALL(*wifi_service1.get(), Connect(_)).Times(0);  // Lower priority.
-  EXPECT_CALL(*wifi_service2.get(), Connect(_)).Times(0);  // Lower priority.
-  EXPECT_CALL(*cell_service.get(), Connect(_)).Times(0);  // Already connected.
-  EXPECT_CALL(*vpn_service.get(), Connect(_)).Times(0);  // Not auto-connect.
+  EXPECT_CALL(*wifi_service0.get(), Connect(_, _)).Times(1);
+  EXPECT_CALL(*wifi_service1.get(), Connect(_, _)).Times(0);  // Lower prio.
+  EXPECT_CALL(*wifi_service2.get(), Connect(_, _)).Times(0);  // Lower prio.
+  EXPECT_CALL(*cell_service.get(), Connect(_, _)).Times(0);  // Is connected.
+  EXPECT_CALL(*vpn_service.get(), Connect(_, _)).Times(0);  // Not autoconnect.
 
   manager()->ConnectToBestServices(NULL);
   dispatcher()->DispatchPendingEvents();
