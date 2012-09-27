@@ -44,7 +44,6 @@ static const Log common_logs[] = {
   { "CLIENT_ID", "/bin/cat '/home/chronos/Consent To Send Stats'" },
   { "LOGDATE", "/bin/date" },
   { "Xorg.0.log", "/bin/cat /var/log/Xorg.0.log" },
-  { "alsa_controls", "/usr/bin/amixer -c0 contents" },
   { "bios_info", "/bin/cat /var/log/bios_info.txt" },
   { "board-specific",
         "/usr/share/userfeedback/scripts/get_board_specific_info" },
