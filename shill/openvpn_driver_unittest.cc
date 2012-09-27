@@ -107,9 +107,15 @@ class OpenVPNDriverTest : public testing::Test,
     return driver_->args();
   }
 
+  void RemoveStringArg(const string &arg) {
+    driver_->args()->RemoveString(arg);
+  }
+
   // Used to assert that a flag appears in the options.
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
+  void ExpectInFlags(const vector<string> &options, const string &flag);
+  void ExpectNotInFlags(const vector<string> &options, const string &flag);
 
   void SetupLSBRelease();
 
@@ -169,6 +175,18 @@ void OpenVPNDriverTest::ExpectInFlags(const vector<string> &options,
   if (it != options.end())
     return;  // Don't crash below.
   EXPECT_EQ(value, *it);
+}
+
+void OpenVPNDriverTest::ExpectInFlags(const vector<string> &options,
+                                      const string &flag) {
+  EXPECT_TRUE(std::find(options.begin(), options.end(), flag) !=
+              options.end());
+}
+
+void OpenVPNDriverTest::ExpectNotInFlags(const vector<string> &options,
+                                         const string &flag) {
+  EXPECT_TRUE(std::find(options.begin(), options.end(), flag) ==
+              options.end());
 }
 
 void OpenVPNDriverTest::SetupLSBRelease() {
@@ -477,8 +495,8 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   EXPECT_EQ(kTLSAuthContents, contents);
   ExpectInFlags(options, "--pkcs11-id", kID);
   ExpectInFlags(options, "--capath", OpenVPNDriver::kDefaultCACertificatesPath);
-  EXPECT_TRUE(std::find(options.begin(), options.end(), "--syslog") !=
-              options.end());
+  ExpectInFlags(options, "--syslog");
+  ExpectInFlags(options, "--auth-user-pass");
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
@@ -545,6 +563,47 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
   ExpectInFlags(options, "--ca", kNSSCertfile);
   EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
+  static const char kTestValue[] = "foo";
+  vector<string> options;
+
+  // No key or cert, assume user/password authentication.
+  driver_->InitClientAuthOptions(&options);
+  ExpectInFlags(options, "--auth-user-pass");
+  ExpectNotInFlags(options, "--key");
+  ExpectNotInFlags(options, "--cert");
+
+  // Cert available, no user/password.
+  options.clear();
+  SetArg(OpenVPNDriver::kOpenVPNCertProperty, kTestValue);
+  driver_->InitClientAuthOptions(&options);
+  ExpectNotInFlags(options, "--auth-user-pass");
+  ExpectNotInFlags(options, "--key");
+  ExpectInFlags(options, "--cert", kTestValue);
+
+  // Key available, no user/password.
+  options.clear();
+  SetArg(OpenVPNDriver::kOpenVPNKeyProperty, kTestValue);
+  driver_->InitClientAuthOptions(&options);
+  ExpectNotInFlags(options, "--auth-user-pass");
+  ExpectInFlags(options, "--key", kTestValue);
+
+  // Key available, AuthUserPass set.
+  options.clear();
+  SetArg(flimflam::kOpenVPNAuthUserPassProperty, kTestValue);
+  driver_->InitClientAuthOptions(&options);
+  ExpectInFlags(options, "--auth-user-pass");
+  ExpectInFlags(options, "--key", kTestValue);
+
+  // Key available, User set.
+  options.clear();
+  RemoveStringArg(flimflam::kOpenVPNAuthUserPassProperty);
+  SetArg(flimflam::kOpenVPNUserProperty, "user");
+  driver_->InitClientAuthOptions(&options);
+  ExpectInFlags(options, "--auth-user-pass");
+  ExpectInFlags(options, "--key", kTestValue);
 }
 
 TEST_F(OpenVPNDriverTest, InitPKCS11Options) {

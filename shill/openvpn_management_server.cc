@@ -97,8 +97,6 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
   hold_waiting_ = false;
 
   options->push_back("--management-query-passwords");
-  driver_->AppendFlag(
-      flimflam::kOpenVPNAuthUserPassProperty, "--auth-user-pass", options);
   if (driver_->AppendValueOption(flimflam::kOpenVPNStaticChallengeProperty,
                                  "--static-challenge",
                                  options)) {

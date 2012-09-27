@@ -86,6 +86,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, Disconnect);
   FRIEND_TEST(OpenVPNDriverTest, GetRouteOptionEntry);
   FRIEND_TEST(OpenVPNDriverTest, InitCAOptions);
+  FRIEND_TEST(OpenVPNDriverTest, InitClientAuthOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitEnvironment);
   FRIEND_TEST(OpenVPNDriverTest, InitLoggingOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitManagementChannelOptions);
@@ -108,6 +109,9 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, SplitPortFromHost);
   FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
+
+  static const char kOpenVPNCertProperty[];
+  static const char kOpenVPNKeyProperty[];
 
   static const char kDefaultCACertificatesPath[];
 
@@ -149,6 +153,7 @@ class OpenVPNDriver : public VPNDriver,
 
   void InitOptions(std::vector<std::string> *options, Error *error);
   bool InitCAOptions(std::vector<std::string> *options, Error *error);
+  void InitClientAuthOptions(std::vector<std::string> *options);
   void InitPKCS11Options(std::vector<std::string> *options);
   bool InitManagementChannelOptions(
       std::vector<std::string> *options, Error *error);

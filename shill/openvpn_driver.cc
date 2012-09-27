@@ -51,8 +51,6 @@ const char kOpenVPNTunMTU[] = "tun_mtu";
 const char kDefaultPKCS11Provider[] = "libchaps.so";
 
 // TODO(petkov): Move to chromeos/dbus/service_constants.h.
-const char kOpenVPNCertProperty[] = "OpenVPN.Cert";
-const char kOpenVPNKeyProperty[] = "OpenVPN.Key";
 const char kOpenVPNPingProperty[] = "OpenVPN.Ping";
 const char kOpenVPNPingExitProperty[] = "OpenVPN.PingExit";
 const char kOpenVPNPingRestartProperty[] = "OpenVPN.PingRestart";
@@ -62,6 +60,9 @@ const char kVPNMTUProperty[] = "VPN.MTU";
 
 }  // namespace
 
+// TODO(petkov): Move to chromeos/dbus/service_constants.h.
+const char OpenVPNDriver::kOpenVPNCertProperty[] = "OpenVPN.Cert";
+const char OpenVPNDriver::kOpenVPNKeyProperty[] = "OpenVPN.Key";
 // static
 const char OpenVPNDriver::kDefaultCACertificatesPath[] = "/etc/ssl/certs";
 // static
@@ -560,11 +561,10 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   AppendValueOption(kOpenVPNPingExitProperty, "--ping-exit", options);
   AppendValueOption(kOpenVPNPingRestartProperty, "--ping-restart", options);
 
-  AppendValueOption(kOpenVPNCertProperty, "--cert", options);
   AppendValueOption(
       flimflam::kOpenVPNNsCertTypeProperty, "--ns-cert-type", options);
-  AppendValueOption(kOpenVPNKeyProperty, "--key", options);
 
+  InitClientAuthOptions(options);
   InitPKCS11Options(options);
 
   // TLS suport.
@@ -671,6 +671,19 @@ void OpenVPNDriver::InitPKCS11Options(vector<string> *options) {
     options->push_back(provider);
     options->push_back("--pkcs11-id");
     options->push_back(id);
+  }
+}
+
+void OpenVPNDriver::InitClientAuthOptions(vector<string> *options) {
+  bool has_cert = AppendValueOption(kOpenVPNCertProperty, "--cert", options);
+  bool has_key = AppendValueOption(kOpenVPNKeyProperty, "--key", options);
+  // If the AuthUserPass property is set, or the User property is non-empty, or
+  // there's neither a key, nor a cert available, specify user-password client
+  // authentication.
+  if (args()->ContainsString(flimflam::kOpenVPNAuthUserPassProperty) ||
+      !args()->LookupString(flimflam::kOpenVPNUserProperty, "").empty() ||
+      (!has_cert && !has_key)) {
+    options->push_back("--auth-user-pass");
   }
 }
 
