@@ -63,8 +63,16 @@ void CrosDisksServer::Format(const string& path,
 bool CrosDisksServer::FormatDevice(const string& path,
                                    const string& filesystem_type,
                                    DBus::Error &error) {  // NOLINT
-  FormatErrorType error_type =
-      format_manager_->StartFormatting(path, filesystem_type);
+  FormatErrorType error_type = FORMAT_ERROR_NONE;
+  Disk disk;
+  if (!disk_manager_->GetDiskByDevicePath(path, &disk)) {
+    error_type = FORMAT_ERROR_INVALID_DEVICE_PATH;
+  } else if (disk.is_on_boot_device()) {
+    error_type = FORMAT_ERROR_DEVICE_NOT_ALLOWED;
+  } else {
+    error_type = format_manager_->StartFormatting(path, filesystem_type);
+  }
+
   if (error_type != FORMAT_ERROR_NONE) {
     LOG(ERROR) << "Could not format device '" << path
                << "' as filesystem '" << filesystem_type << "'";
