@@ -578,7 +578,8 @@ void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
         info.battery_time_to_empty
         * (daemon->low_battery_shutdown_percent_
            / info.battery_percentage);
-    daemon->OnLowBattery(time_threshold_s, info.battery_time_to_empty);
+    daemon->OnLowBattery(time_threshold_s, info.battery_time_to_empty,
+                         info.battery_time_to_full, info.battery_percentage);
   }
 }
 
@@ -1482,7 +1483,8 @@ void Daemon::AdjustWindowSize(int64 battery_time,
   empty_average->ChangeWindowSize(window_size);
 }
 
-void Daemon::OnLowBattery(int64 time_threshold_s, int64 time_remaining_s) {
+void Daemon::OnLowBattery(int64 time_threshold_s, int64 time_remaining_s,
+                          int64 time_full_s, double battery_percentage) {
   if (!time_threshold_s) {
     LOG(INFO) << "Battery time remaining : "
               << time_remaining_s << " seconds";
@@ -1503,9 +1505,15 @@ void Daemon::OnLowBattery(int64 time_threshold_s, int64 time_remaining_s) {
               << "may not be fully initialized yet.";
   } else if (kPowerConnected == plugged_state_ ||
              time_remaining_s > time_threshold_s) {
-    LOG(INFO) << "Battery condition is safe.  AC is "
-              << (kPowerConnected == plugged_state_ ? "" : "un")
-              << "plugged.  " << time_remaining_s << " seconds remaining.";
+    if (kPowerConnected == plugged_state_) {
+      LOG(INFO) << "Battery condition is safe (" << battery_percentage
+                << "%).  AC is plugged.  "
+                << time_full_s << " seconds to full charge.";
+    } else {
+      LOG(INFO) << "Battery condition is safe (" << battery_percentage
+                << "%).  AC is unplugged.  "
+                << time_remaining_s << " seconds remaining.";
+    }
     low_battery_ = false;
     file_tagger_.HandleSafeBatteryEvent();
   } else if (time_remaining_s == 0) {

@@ -277,7 +277,9 @@ class Daemon : public BacklightControllerObserver,
 
   // Checks for extremely low battery condition.
   void OnLowBattery(int64 time_threshold_s,
-                    int64 time_remaining_s);
+                    int64 time_remaining_s,
+                    int64 time_full_s,
+                    double battery_percentage);
 
   // Timeout handler for clean shutdown. If we don't hear back from
   // clean shutdown because the stopping is taking too long or hung,
