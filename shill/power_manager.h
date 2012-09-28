@@ -34,12 +34,14 @@
 #include <string>
 
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 #include <base/memory/scoped_ptr.h>
 
 #include "shill/power_manager_proxy_interface.h"
 
 namespace shill {
 
+class EventDispatcher;
 class ProxyFactory;
 
 class PowerManager : public PowerManagerProxyDelegate {
@@ -58,9 +60,12 @@ class PowerManager : public PowerManagerProxyDelegate {
   // passing it the sequence number passed to this callback.
   typedef base::Callback<void(uint32)> SuspendDelayCallback;
 
+  static const int kSuspendTimeoutMilliseconds;
+
   // |proxy_factory| creates the PowerManagerProxy.  Usually this is
   // ProxyFactory::GetInstance().  Use a fake for testing.
-  explicit PowerManager(ProxyFactory *proxy_factory);
+  PowerManager(EventDispatcher *dispatcher,
+               ProxyFactory *proxy_factory);
   virtual ~PowerManager();
 
   SuspendState power_state() const { return power_state_; }
@@ -69,8 +74,10 @@ class PowerManager : public PowerManagerProxyDelegate {
   virtual void OnSuspendDelay(uint32 sequence_number);
   virtual void OnPowerStateChanged(SuspendState new_power_state);
 
-  // TODO(gmorain): Add descriptive comment.
-  void RegisterSuspendDelay(const uint32_t &delay_ms);
+  // See corresponding methods in PowerManagerProxyInterface.
+  virtual void RegisterSuspendDelay(uint32 delay_ms);
+  virtual void UnregisterSuspendDelay();
+  virtual void SuspendReady(uint32 suspend_ready);
 
   // Registers a power state change callback with the power manager.  When a
   // power state change occurs, this callback will be called with the new power
@@ -94,12 +101,15 @@ class PowerManager : public PowerManagerProxyDelegate {
 
  private:
   friend class ManagerTest;
+  friend class PowerManagerTest;
 
   typedef std::map<const std::string, PowerStateCallback>
     StateChangeCallbackMap;
 
   typedef std::map<const std::string, SuspendDelayCallback>
     SuspendDelayCallbackMap;
+
+  void OnSuspendTimeout();
 
   template<class Callback>
   void AddCallback(const std::string &key, const Callback &callback,
@@ -113,12 +123,14 @@ class PowerManager : public PowerManagerProxyDelegate {
   void OnEvent(const Param &param,
                std::map<const std::string, Callback> *callback_map) const;
 
+  EventDispatcher *dispatcher_;
 
   // The power manager proxy created by this class.  It dispatches the inherited
   // delegate methods of this object when changes in the power state occur.
   const scoped_ptr<PowerManagerProxyInterface> power_manager_proxy_;
   StateChangeCallbackMap state_change_callbacks_;
   SuspendDelayCallbackMap suspend_delay_callbacks_;
+  base::CancelableClosure suspend_timeout_;
 
   SuspendState power_state_;
 

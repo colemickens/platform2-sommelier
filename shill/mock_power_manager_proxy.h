@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,8 @@ class MockPowerManagerProxy : public PowerManagerProxyInterface {
   virtual ~MockPowerManagerProxy();
 
   MOCK_METHOD1(RegisterSuspendDelay, void(uint32 delay_ms));
+  MOCK_METHOD0(UnregisterSuspendDelay, void());
+  MOCK_METHOD1(SuspendReady, void(uint32 sequence_number));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPowerManagerProxy);

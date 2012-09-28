@@ -46,9 +46,6 @@ class Daemon {
  private:
   friend class ShillDaemonTest;
 
-  // Time to wait for termination actions to complete.
-  static const int kTerminationActionsTimeout;  // ms
-
   // Causes the dispatcher message loop to terminate, calls Stop(), and returns
   // to the main function which started the daemon.  Called when the termination
   // actions are completed.

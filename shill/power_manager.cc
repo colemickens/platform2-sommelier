@@ -9,6 +9,7 @@
 
 #include <base/stl_util.h>
 
+#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/proxy_factory.h"
@@ -18,8 +19,12 @@ using std::string;
 
 namespace shill {
 
-PowerManager::PowerManager(ProxyFactory *proxy_factory)
-    : power_manager_proxy_(proxy_factory->CreatePowerManagerProxy(this)),
+const int PowerManager::kSuspendTimeoutMilliseconds = 15 * 1000;
+
+PowerManager::PowerManager(EventDispatcher *dispatcher,
+                           ProxyFactory *proxy_factory)
+    : dispatcher_(dispatcher),
+      power_manager_proxy_(proxy_factory->CreatePowerManagerProxy(this)),
       power_state_(kUnknown) {}
 
 PowerManager::~PowerManager() {
@@ -48,19 +53,42 @@ void PowerManager::RemoveSuspendDelayCallback(const string &key) {
 }
 
 void PowerManager::OnSuspendDelay(uint32 sequence_number) {
-  SLOG(Power, 2) << __func__ << " sequence number " << sequence_number;
+  LOG(INFO) << __func__ << "(" << sequence_number << ")";
+  // Change the power state to suspending as soon as this signal is received so
+  // that the manager can suppress auto-connect, for example. Schedules a
+  // suspend timeout in case the suspend attempt failed or got interrupted, and
+  // there's no proper notification from the power manager.
+  power_state_ = kSuspending;
+  suspend_timeout_.Reset(
+      base::Bind(&PowerManager::OnSuspendTimeout, base::Unretained(this)));
+  dispatcher_->PostDelayedTask(suspend_timeout_.callback(),
+                               kSuspendTimeoutMilliseconds);
   OnEvent(sequence_number, &suspend_delay_callbacks_);
 }
 
 void PowerManager::OnPowerStateChanged(SuspendState new_power_state) {
   LOG(INFO) << "Power state changed: "
             << power_state_ << "->" << new_power_state;
+  suspend_timeout_.Cancel();
   power_state_ = new_power_state;
   OnEvent(new_power_state, &state_change_callbacks_);
 }
 
-void PowerManager::RegisterSuspendDelay(const uint32_t &delay_ms) {
+void PowerManager::RegisterSuspendDelay(uint32 delay_ms) {
   power_manager_proxy_->RegisterSuspendDelay(delay_ms);
+}
+
+void PowerManager::UnregisterSuspendDelay() {
+  power_manager_proxy_->UnregisterSuspendDelay();
+}
+
+void PowerManager::SuspendReady(uint32 sequence_number) {
+  power_manager_proxy_->SuspendReady(sequence_number);
+}
+
+void PowerManager::OnSuspendTimeout() {
+  LOG(ERROR) << "Suspend timed out -- assuming power-on state.";
+  OnPowerStateChanged(kOn);
 }
 
 template<class Callback>

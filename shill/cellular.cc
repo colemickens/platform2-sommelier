@@ -634,6 +634,7 @@ void Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
 }
 
 void Cellular::StartTermination() {
+  LOG(INFO) << __func__;
   Error error;
   Disconnect(&error);
 }

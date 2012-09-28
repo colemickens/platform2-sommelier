@@ -67,7 +67,11 @@ class HookTable {
   void Run(int timeout_ms,
            const base::Callback<void(const Error &)> &done);
 
+  bool IsEmpty() const { return hook_table_.empty(); }
+
  private:
+  friend class HookTableTest;
+
   // For each action, there is a |start| callback which is stored in this
   // structure.
   struct HookAction {

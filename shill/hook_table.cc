@@ -97,6 +97,7 @@ bool HookTable::AllActionsComplete() {
 
 void HookTable::ActionsTimedOut() {
   done_cb_.Run(Error(Error::kOperationTimeout));
+  done_cb_.Reset();
 }
 
 }  // namespace shill

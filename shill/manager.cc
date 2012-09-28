@@ -61,6 +61,8 @@ const char Manager::kErrorNoDevice[] = "no wifi devices available";
 const char Manager::kErrorTypeRequired[] = "must specify service type";
 const char Manager::kErrorUnsupportedServiceType[] =
     "service type is unsupported";
+const int Manager::kTerminationActionsTimeoutMilliseconds = 3000;
+const char Manager::kPowerManagerKey[] = "manager";
 
 Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
@@ -163,9 +165,10 @@ void Manager::Start() {
   dbus_manager_.reset(new DBusManager());
   dbus_manager_->Start();
 
-  power_manager_.reset(new PowerManager(ProxyFactory::GetInstance()));
+  power_manager_.reset(
+      new PowerManager(dispatcher_, ProxyFactory::GetInstance()));
   power_manager_->AddStateChangeCallback(
-      "manager",
+      kPowerManagerKey,
       Bind(&Manager::OnPowerStateChanged, AsWeakPtr()));
   // TODO(ers): weak ptr for metrics_?
   PowerManager::PowerStateCallback cb =
@@ -863,22 +866,37 @@ bool Manager::LoadProperties(const scoped_refptr<DefaultProfile> &profile) {
   return true;
 }
 
-void Manager::AddTerminationAction(const std::string &name,
+void Manager::AddTerminationAction(const string &name,
                                    const base::Closure &start) {
+  if (termination_actions_.IsEmpty() && power_manager_.get()) {
+    power_manager_->AddSuspendDelayCallback(
+        kPowerManagerKey,
+        Bind(&Manager::OnSuspendDelay, AsWeakPtr()));
+    power_manager_->RegisterSuspendDelay(
+        kTerminationActionsTimeoutMilliseconds);
+  }
   termination_actions_.Add(name, start);
 }
 
-void Manager::TerminationActionComplete(const std::string &name) {
+void Manager::TerminationActionComplete(const string &name) {
   termination_actions_.ActionComplete(name);
 }
 
-void Manager::RemoveTerminationAction(const std::string &name) {
+void Manager::RemoveTerminationAction(const string &name) {
+  if (termination_actions_.IsEmpty()) {
+    return;
+  }
   termination_actions_.Remove(name);
+  if (termination_actions_.IsEmpty() && power_manager_.get()) {
+    power_manager_->UnregisterSuspendDelay();
+    power_manager_->RemoveSuspendDelayCallback(kPowerManagerKey);
+  }
 }
 
 void Manager::RunTerminationActions(
-    int timeout_ms, const base::Callback<void(const Error &)> &done) {
-  termination_actions_.Run(timeout_ms, done);
+    const base::Callback<void(const Error &)> &done) {
+  LOG(INFO) << "Running termination actions.";
+  termination_actions_.Run(kTerminationActionsTimeoutMilliseconds, done);
 }
 
 int Manager::RegisterDefaultServiceCallback(const ServiceCallback &callback) {
@@ -927,6 +945,17 @@ void Manager::OnPowerStateChanged(
       (*it)->OnBeforeSuspend();
     }
   }
+}
+
+void Manager::OnSuspendDelay(uint32 sequence_number) {
+  RunTerminationActions(
+      Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr(), sequence_number));
+}
+
+void Manager::OnSuspendActionsComplete(uint32 sequence_number,
+                                       const Error &error) {
+  LOG(INFO) << "Finished suspend actions.  Result: " << error;
+  power_manager_->SuspendReady(sequence_number);
 }
 
 void Manager::FilterByTechnology(Technology::Identifier tech,

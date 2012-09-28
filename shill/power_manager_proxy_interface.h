@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_POWER_MANAGER_PROXY_INTERFACE_
-#define SHILL_POWER_MANAGER_PROXY_INTERFACE_
+#ifndef SHILL_POWER_MANAGER_PROXY_INTERFACE_H_
+#define SHILL_POWER_MANAGER_PROXY_INTERFACE_H_
 
 #include <base/basictypes.h>
 
@@ -17,7 +17,6 @@ namespace shill {
 // called. You retain ownership of the delegate and must ensure that the proxy
 // is deleted before the delegate.
 
-
 class PowerManagerProxyInterface {
  public:
   virtual ~PowerManagerProxyInterface() {}
@@ -27,12 +26,10 @@ class PowerManagerProxyInterface {
   // PowerManager broadcasts a SuspendDelay signal and suspends the system after
   // the maximal registered timeout expires or all registered clients are ready
   // to suspend. Clients tell PowerManager that they are ready through the
-  // SuspendReady signal.
-  //
-  // TODO(petkov): Implement SuspendReady signal sending to
-  // PowerManager. Unfortunately, SuspendReady is declared as a signal when it
-  // should be a method.
+  // SuspendReady interface.
   virtual void RegisterSuspendDelay(uint32 delay_ms) = 0;
+  virtual void UnregisterSuspendDelay() = 0;
+  virtual void SuspendReady(uint32 sequence_number) = 0;
 };
 
 // PowerManager signal delegate to be associated with the proxy.
@@ -44,6 +41,7 @@ class PowerManagerProxyDelegate {
     kStandby,
     kMem,
     kDisk,
+    kSuspending,  // Internal to shill.
     // Place new states above kUnknown.
     kUnknown
   };
@@ -63,4 +61,4 @@ class PowerManagerProxyDelegate {
 
 }  // namespace shill
 
-#endif  // SHILL_POWER_MANAGER_PROXY_INTERFACE_
+#endif  // SHILL_POWER_MANAGER_PROXY_INTERFACE_H_

@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_power_manager_proxy.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/proxy_factory.h"
@@ -55,7 +56,7 @@ class PowerManagerTest : public Test {
   static const uint32 kSequence2 = 456;
 
   PowerManagerTest()
-      : power_manager_(&factory_),
+      : power_manager_(&dispatcher_, &factory_),
         delegate_(factory_.delegate()) {
     state_change_callback1_ =
         Bind(&PowerManagerTest::StateChangeAction1, Unretained(this));
@@ -73,6 +74,19 @@ class PowerManagerTest : public Test {
   MOCK_METHOD1(SuspendDelayAction2, void(uint32));
 
  protected:
+  void OnSuspendDelay(uint32 sequence_number) {
+    EXPECT_CALL(dispatcher_,
+                PostDelayedTask(_, PowerManager::kSuspendTimeoutMilliseconds));
+    factory_.delegate()->OnSuspendDelay(sequence_number);
+    EXPECT_EQ(PowerManagerProxyDelegate::kSuspending,
+              power_manager_.power_state());
+  }
+
+  void OnSuspendTimeout() {
+    power_manager_.OnSuspendTimeout();
+  }
+
+  MockEventDispatcher dispatcher_;
   FakeProxyFactory factory_;
   PowerManager power_manager_;
   PowerManagerProxyDelegate *const delegate_;
@@ -101,7 +115,8 @@ TEST_F(PowerManagerTest, AddStateChangeCallback) {
 TEST_F(PowerManagerTest, AddSuspendDelayCallback) {
   EXPECT_CALL(*this, SuspendDelayAction1(kSequence1));
   power_manager_.AddSuspendDelayCallback(kKey1, suspend_delay_callback1_);
-  factory_.delegate()->OnSuspendDelay(kSequence1);
+  EXPECT_EQ(PowerManagerProxyDelegate::kUnknown, power_manager_.power_state());
+  OnSuspendDelay(kSequence1);
   power_manager_.RemoveSuspendDelayCallback(kKey1);
 }
 
@@ -127,8 +142,8 @@ TEST_F(PowerManagerTest, AddMultipleSuspendDelayRunMultiple) {
   EXPECT_CALL(*this, SuspendDelayAction2(kSequence2));
   power_manager_.AddSuspendDelayCallback(kKey2, suspend_delay_callback2_);
 
-  factory_.delegate()->OnSuspendDelay(kSequence1);
-  factory_.delegate()->OnSuspendDelay(kSequence2);
+  OnSuspendDelay(kSequence1);
+  OnSuspendDelay(kSequence2);
 }
 
 TEST_F(PowerManagerTest, RemoveStateChangeCallback) {
@@ -159,13 +174,13 @@ TEST_F(PowerManagerTest, RemoveSuspendDelayCallback) {
   EXPECT_CALL(*this, SuspendDelayAction2(kSequence2)).Times(0);
   power_manager_.AddSuspendDelayCallback(kKey2, suspend_delay_callback2_);
 
-  factory_.delegate()->OnSuspendDelay(kSequence1);
+  OnSuspendDelay(kSequence1);
 
   power_manager_.RemoveSuspendDelayCallback(kKey2);
-  factory_.delegate()->OnSuspendDelay(kSequence2);
+  OnSuspendDelay(kSequence2);
 
   power_manager_.RemoveSuspendDelayCallback(kKey1);
-  factory_.delegate()->OnSuspendDelay(kSequence1);
+  OnSuspendDelay(kSequence1);
 }
 
 typedef PowerManagerTest PowerManagerDeathTest;
@@ -212,5 +227,21 @@ TEST_F(PowerManagerTest, RegisterSuspendDelay) {
   power_manager_.RegisterSuspendDelay(kDelay);
 }
 
+TEST_F(PowerManagerTest, UnregisterSuspendDelay) {
+  EXPECT_CALL(*factory_.proxy(), UnregisterSuspendDelay());
+  power_manager_.UnregisterSuspendDelay();
+}
+
+TEST_F(PowerManagerTest, SuspendReady) {
+  const uint32 kSeqNumber = 12345;
+  EXPECT_CALL(*factory_.proxy(), SuspendReady(kSeqNumber));
+  power_manager_.SuspendReady(kSeqNumber);
+}
+
+TEST_F(PowerManagerTest, OnSuspendTimeout) {
+  EXPECT_EQ(PowerManagerProxyDelegate::kUnknown, power_manager_.power_state());
+  OnSuspendTimeout();
+  EXPECT_EQ(PowerManagerProxyDelegate::kOn, power_manager_.power_state());
+}
 
 }  // namespace shill

@@ -30,10 +30,6 @@ using std::vector;
 
 namespace shill {
 
-// TODO(gmorain): 3 seconds may or may not be enough.  Add an UMA stat to see
-// how often the timeout occurs.  crosbug.com/31475.
-const int Daemon::kTerminationActionsTimeout = 3000;  // ms
-
 Daemon::Daemon(Config *config, ControlInterface *control)
     : config_(config),
       control_(control),
@@ -80,8 +76,7 @@ void Daemon::Quit() {
   // Stop() prevents autoconnect from attempting to immediately connect to
   // services after they have been disconnected.
   Stop();
-  manager_->RunTerminationActions(kTerminationActionsTimeout,
-                                  Bind(&Daemon::TerminationActionsCompleted,
+  manager_->RunTerminationActions(Bind(&Daemon::TerminationActionsCompleted,
                                        Unretained(this)));
 }
 

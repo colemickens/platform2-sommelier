@@ -68,7 +68,7 @@ using ::testing::Test;
 class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
-      : power_manager_(new MockPowerManager(&proxy_factory_)),
+      : power_manager_(new MockPowerManager(NULL, &proxy_factory_)),
         mock_wifi_(new NiceMock<MockWiFi>(control_interface(),
                                           dispatcher(),
                                           metrics(),
@@ -245,6 +245,27 @@ class ManagerTest : public PropertyStoreTest {
     DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
   };
 
+  class TerminationActionTest :
+      public base::SupportsWeakPtr<TerminationActionTest> {
+   public:
+    static const char kActionName[];
+
+    TerminationActionTest() : manager_(NULL) {}
+    virtual ~TerminationActionTest() {}
+
+    MOCK_METHOD1(Done, void(const Error &error));
+
+    void Action() {
+      manager_->TerminationActionComplete("action");
+    }
+
+    void set_manager(Manager *manager) { manager_ = manager; }
+
+   private:
+    Manager *manager_;
+    DISALLOW_COPY_AND_ASSIGN(TerminationActionTest);
+  };
+
   void SetPowerState(PowerManagerProxyDelegate::SuspendState state) {
     power_manager_->power_state_ = state;
   }
@@ -253,8 +274,20 @@ class ManagerTest : public PropertyStoreTest {
     manager()->set_power_manager(power_manager_.release());
   }
 
+  HookTable *GetTerminationActions() {
+    return &manager()->termination_actions_;
+  }
+
   void OnPowerStateChanged(PowerManagerProxyDelegate::SuspendState state) {
     manager()->OnPowerStateChanged(state);
+  }
+
+  void OnSuspendDelay(uint32 sequence_number) {
+    manager()->OnSuspendDelay(sequence_number);
+  }
+
+  void OnSuspendActionsComplete(uint32 sequence_number, const Error &error) {
+    manager()->OnSuspendActionsComplete(sequence_number, error);
   }
 
   MockServiceRefPtr MakeAutoConnectableService() {
@@ -276,6 +309,8 @@ class ManagerTest : public PropertyStoreTest {
   // This pointer is owned by the manager, and only tracked here for EXPECT*()
   ManagerMockAdaptor *manager_adaptor_;
 };
+
+const char ManagerTest::TerminationActionTest::kActionName[] = "action";
 
 bool ManagerTest::ServiceOrderIs(ServiceRefPtr svc0, ServiceRefPtr svc1) {
   if (!manager()->sort_services_task_.IsCancelled()) {
@@ -2169,6 +2204,15 @@ TEST_F(ManagerTest, AutoConnectOnDeregister) {
   dispatcher()->DispatchPendingEvents();
 }
 
+TEST_F(ManagerTest, AutoConnectOnPowerStateSuspending) {
+  MockServiceRefPtr service = MakeAutoConnectableService();
+  SetPowerState(PowerManagerProxyDelegate::kSuspending);
+  SetPowerManager();
+  EXPECT_CALL(*service, AutoConnect()).Times(0);
+  manager()->RegisterService(service);
+  dispatcher()->DispatchPendingEvents();
+}
+
 TEST_F(ManagerTest, AutoConnectOnPowerStateMem) {
   MockServiceRefPtr service = MakeAutoConnectableService();
   SetPowerState(PowerManagerProxyDelegate::kMem);
@@ -2216,6 +2260,84 @@ TEST_F(ManagerTest, OnPowerStateChanged) {
   EXPECT_CALL(*service, AutoConnect()).Times(0);
   dispatcher()->DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(mock_devices_[0]);
+}
+
+TEST_F(ManagerTest, AddTerminationAction) {
+  EXPECT_CALL(*power_manager_, AddSuspendDelayCallback(_, _));
+  EXPECT_CALL(*power_manager_, RegisterSuspendDelay(_));
+  SetPowerManager();
+  EXPECT_TRUE(GetTerminationActions()->IsEmpty());
+  manager()->AddTerminationAction("action1", base::Closure());
+  EXPECT_FALSE(GetTerminationActions()->IsEmpty());
+  manager()->AddTerminationAction("action2", base::Closure());
+}
+
+TEST_F(ManagerTest, RemoveTerminationAction) {
+  static const char kKey1[] = "action1";
+  static const char kKey2[] = "action2";
+
+  MockPowerManager &power_manager = *power_manager_;
+  SetPowerManager();
+
+  // Removing an action when the hook table is empty should not result in any
+  // calls to the power manager.
+  EXPECT_CALL(power_manager, UnregisterSuspendDelay()).Times(0);
+  EXPECT_CALL(power_manager, RemoveSuspendDelayCallback(_)).Times(0);
+  EXPECT_TRUE(GetTerminationActions()->IsEmpty());
+  manager()->RemoveTerminationAction("unknown");
+  Mock::VerifyAndClearExpectations(&power_manager);
+
+  manager()->AddTerminationAction(kKey1, base::Closure());
+  EXPECT_FALSE(GetTerminationActions()->IsEmpty());
+  manager()->AddTerminationAction(kKey2, base::Closure());
+
+  // Removing an action that ends up with a non-empty hook table should not
+  // result in any calls to the power manager.
+  EXPECT_CALL(power_manager, UnregisterSuspendDelay()).Times(0);
+  EXPECT_CALL(power_manager, RemoveSuspendDelayCallback(_)).Times(0);
+  manager()->RemoveTerminationAction(kKey1);
+  EXPECT_FALSE(GetTerminationActions()->IsEmpty());
+  Mock::VerifyAndClearExpectations(&power_manager);
+
+  // Removing the last action should trigger unregistering from the power
+  // manager.
+  EXPECT_CALL(power_manager, UnregisterSuspendDelay());
+  EXPECT_CALL(power_manager, RemoveSuspendDelayCallback(_));
+  manager()->RemoveTerminationAction(kKey2);
+  EXPECT_TRUE(GetTerminationActions()->IsEmpty());
+}
+
+TEST_F(ManagerTest, RunTerminationActions) {
+  TerminationActionTest test_action;
+  const string kActionName = "action";
+
+  EXPECT_CALL(test_action, Done(_));
+  manager()->RunTerminationActions(Bind(&TerminationActionTest::Done,
+                                        test_action.AsWeakPtr()));
+
+  manager()->AddTerminationAction(TerminationActionTest::kActionName,
+                                  Bind(&TerminationActionTest::Action,
+                                       test_action.AsWeakPtr()));
+  test_action.set_manager(manager());
+  EXPECT_CALL(test_action, Done(_));
+  manager()->RunTerminationActions(Bind(&TerminationActionTest::Done,
+                                        test_action.AsWeakPtr()));
+}
+
+TEST_F(ManagerTest, OnSuspendDelay) {
+  const uint32 kSeqNumber = 123;
+  EXPECT_TRUE(GetTerminationActions()->IsEmpty());
+  EXPECT_CALL(*power_manager_, SuspendReady(kSeqNumber));
+  SetPowerManager();
+  OnSuspendDelay(kSeqNumber);
+}
+
+TEST_F(ManagerTest, OnSuspendActionsComplete) {
+  const uint32 kSeqNumber = 54321;
+  Error error;
+  EXPECT_CALL(*power_manager_, SuspendReady(kSeqNumber));
+  SetPowerManager();
+  OnSuspendActionsComplete(kSeqNumber, error);
 }
 
 TEST_F(ManagerTest, RecheckPortal) {

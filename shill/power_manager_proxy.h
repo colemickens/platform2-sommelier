@@ -24,6 +24,8 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
 
   // Inherited from PowerManagerProxyInterface.
   virtual void RegisterSuspendDelay(uint32 delay_ms);
+  virtual void UnregisterSuspendDelay();
+  virtual void SuspendReady(uint32 sequence_number);
 
  private:
   // Only this factory method can create a PowerManagerProxy.

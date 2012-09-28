@@ -38,6 +38,10 @@ class HookTableTest : public testing::Test {
   HookTableTest()
       : hook_table_(&event_dispatcher_) {}
 
+  base::Callback<void(const Error &)> *GetDoneCallback() {
+    return &hook_table_.done_cb_;
+  }
+
   EventDispatcher event_dispatcher_;
   HookTable hook_table_;
 };
@@ -101,8 +105,9 @@ TEST_F(HookTableTest, ActionTimesOut) {
 
   // Cause the event dispatcher to exit after kTimeout + 1 ms.
   event_dispatcher_.PostDelayedTask(MessageLoop::QuitClosure(),
-                                    kTimeout * + 1);
+                                    kTimeout + 1);
   event_dispatcher_.DispatchForever();
+  EXPECT_TRUE(GetDoneCallback()->is_null());
 }
 
 TEST_F(HookTableTest, MultipleActionsAllSucceed) {
@@ -194,6 +199,14 @@ TEST_F(HookTableTest, ActionCompleteFollowedByRemove) {
   hook_table_.Add(kName, start_cb);
   hook_table_.ActionComplete(kName);
   hook_table_.Remove(kName);
+}
+
+TEST_F(HookTableTest, IsEmpty) {
+  EXPECT_TRUE(hook_table_.IsEmpty());
+  hook_table_.Add(kName, Closure());
+  EXPECT_FALSE(hook_table_.IsEmpty());
+  hook_table_.Remove(kName);
+  EXPECT_TRUE(hook_table_.IsEmpty());
 }
 
 class SomeClass : public base::RefCounted<SomeClass> {

@@ -7,6 +7,8 @@
     <method name="RegisterSuspendDelay">
       <arg name="delay_ms" direction="in" type="u"/>
     </method>
+    <method name="UnregisterSuspendDelay">
+    </method>
     <signal name="SuspendDelay">
       <arg name="sequence_number" type="u"/>
     </signal>

@@ -822,7 +822,7 @@ TEST_F(CellularTest, ConnectAddsTerminationAction) {
   // with the manager, then running the termination action will result in a
   // disconnect.
   manager_.RunTerminationActions(
-      0, Bind(&CellularTest::TestCallback, Unretained(this)));
+      Bind(&CellularTest::TestCallback, Unretained(this)));
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   dispatcher_.DispatchPendingEvents();
 
@@ -832,7 +832,7 @@ TEST_F(CellularTest, ConnectAddsTerminationAction) {
   // termination actions..  If the termination action is not removed, then
   // TestCallback will be called with kOperationTimeout.
   manager_.RunTerminationActions(
-      0, Bind(&CellularTest::TestCallback, Unretained(this)));
+      Bind(&CellularTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
 

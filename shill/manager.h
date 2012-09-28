@@ -238,11 +238,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Removes the action associtated with |name|.
   void RemoveTerminationAction(const std::string &name);
 
-  // Runs the termination actions.  If all actions complete within |timeout_ms|,
-  // |done| is called with a value of Error::kSuccess.  Otherwise, it is called
-  // with Error::kOperationTimeout.
-  void RunTerminationActions(int timeout_ms,
-                             const base::Callback<void(const Error &)> &done);
+  // Runs the termination actions.  If all actions complete within
+  // |kTerminationActionsTimeoutMilliseconds|, |done| is called with a value of
+  // Error::kSuccess.  Otherwise, it is called with Error::kOperationTimeout.
+  void RunTerminationActions(const base::Callback<void(const Error &)> &done);
 
   // Registers a |callback| that's invoked whenever the default service
   // changes. Returns a unique tag that can be used to deregister the
@@ -275,6 +274,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   static const char kErrorNoDevice[];
   static const char kErrorTypeRequired[];
   static const char kErrorUnsupportedServiceType[];
+
+  // Time to wait for termination actions to complete.
+  static const int kTerminationActionsTimeoutMilliseconds;
+
+  static const char kPowerManagerKey[];
 
   WiFiServiceRefPtr GetWifiService(const KeyValueStore &args, Error *error);
 
@@ -331,6 +335,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void NotifyDefaultServiceChanged(const ServiceRefPtr &service);
 
   void OnPowerStateChanged(PowerManagerProxyDelegate::SuspendState power_state);
+  void OnSuspendDelay(uint32 sequence_number);
+
+  void OnSuspendActionsComplete(uint32 sequence_number, const Error &error);
 
   // For unit testing.
   void set_metrics(Metrics *metrics) { metrics_ = metrics; }
@@ -389,6 +396,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   PropertyStore store_;
 
   base::CancelableClosure sort_services_task_;
+
+  // TODO(petkov): Currently this handles both terminate and suspend
+  // actions. Rename all relevant identifiers to capture this.
   HookTable termination_actions_;
 
   // Maps tags to callbacks for monitoring default service changes.

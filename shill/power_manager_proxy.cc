@@ -19,12 +19,35 @@ PowerManagerProxy::PowerManagerProxy(PowerManagerProxyDelegate *delegate,
 PowerManagerProxy::~PowerManagerProxy() {}
 
 void PowerManagerProxy::RegisterSuspendDelay(uint32 delay_ms) {
-  SLOG(DBus, 2) << __func__;
+  LOG(INFO) << __func__ << "(" << delay_ms << ")";
   try {
     proxy_.RegisterSuspendDelay(delay_ms);
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << "delay ms: " << delay_ms;
+  }
+}
+
+void PowerManagerProxy::UnregisterSuspendDelay() {
+  LOG(INFO) << __func__;
+  try {
+    proxy_.UnregisterSuspendDelay();
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+  }
+}
+
+void PowerManagerProxy::SuspendReady(uint32 sequence_number) {
+  // TODO(petkov): Fix this code after SuspendReady is converted to a method
+  // call on the PowerManager DBus interface.
+  LOG(INFO) << __func__  << "(" << sequence_number << ")";
+  DBus::SignalMessage signal(power_manager::kPowerManagerServicePath,
+                             power_manager::kPowerManagerInterface,
+                             power_manager::kSuspendReady);
+  DBus::MessageIter message = signal.writer();
+  message << sequence_number;
+  if (!proxy_.conn().send(signal)) {
+    LOG(ERROR) << "Failed to signal suspend ready (" << sequence_number << ").";
   }
 }
 
@@ -37,15 +60,14 @@ PowerManagerProxy::Proxy::Proxy(PowerManagerProxyDelegate *delegate,
 
 PowerManagerProxy::Proxy::~Proxy() {}
 
-// TODO(quiche): make this signal work again. crosbug.com/27475
 void PowerManagerProxy::Proxy::SuspendDelay(const uint32_t &sequence_number) {
-  SLOG(DBus, 2) << __func__ << "(" << sequence_number << ")";
+  LOG(INFO) << __func__ << "(" << sequence_number << ")";
   delegate_->OnSuspendDelay(sequence_number);
 }
 
 void PowerManagerProxy::Proxy::PowerStateChanged(
     const string &new_power_state) {
-  SLOG(DBus, 2) << __func__ << "(" << new_power_state << ")";
+  LOG(INFO) << __func__ << "(" << new_power_state << ")";
 
   PowerManagerProxyDelegate::SuspendState suspend_state;
   if (new_power_state == "on") {
