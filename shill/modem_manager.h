@@ -179,9 +179,9 @@ class ModemManager1 : public ModemManager {
 
  protected:
   void AddModem1(const std::string &path,
-                 const DBusInterfaceToProperties &i_to_p);
+                 const DBusInterfaceToProperties &properties);
   virtual void InitModem1(std::tr1::shared_ptr<Modem1> modem,
-                          const DBusInterfaceToProperties &i_to_p);
+                          const DBusInterfaceToProperties &properties);
 
   // ModemManager methods
   virtual void Connect(const std::string &owner);
@@ -190,7 +190,7 @@ class ModemManager1 : public ModemManager {
   // DBusObjectManagerProxyDelegate signal methods
   virtual void OnInterfacesAddedSignal(
       const ::DBus::Path &object_path,
-      const DBusInterfaceToProperties &interface_to_properties);
+      const DBusInterfaceToProperties &properties);
   virtual void OnInterfacesRemovedSignal(
       const ::DBus::Path &object_path,
       const std::vector<std::string> &interfaces);
@@ -209,6 +209,7 @@ class ModemManager1 : public ModemManager {
 
   DISALLOW_COPY_AND_ASSIGN(ModemManager1);
 };
+
 }  // namespace shill
 
 #endif  // SHILL_MODEM_MANAGER_H_

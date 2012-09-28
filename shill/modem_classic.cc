@@ -56,7 +56,10 @@ void ModemClassic::CreateDeviceClassic(
     LOG(ERROR) << "Unsupported IP method: " << ip_method;
     return;
   }
-  CreateDeviceFromModemProperties(modem_properties);
+
+  DBusInterfaceToProperties properties;
+  properties[MM_MODEM_INTERFACE] = modem_properties;
+  CreateDeviceFromModemProperties(properties);
 }
 
 string ModemClassic::GetModemInterface(void) const {

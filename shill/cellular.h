@@ -251,6 +251,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
+  FRIEND_TEST(Modem1Test, CreateDeviceMM1);
 
   // Names of properties in storage
   static const char kAllowRoaming[];

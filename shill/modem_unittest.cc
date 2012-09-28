@@ -132,8 +132,9 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   static const char kSentinel[] = "sentinel";
   static const uint32 kSentinelValue = 17;
 
-  DBusPropertiesMap properties;
-  properties[kSentinel].writer().append_uint32(kSentinelValue);
+  DBusInterfaceToProperties properties;
+  properties[MM_MODEM_INTERFACE][kSentinel].writer().append_uint32(
+      kSentinelValue);
 
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillRepeatedly(DoAll(
       SetArgumentPointee<1>(string(kLinkName)),
@@ -200,9 +201,17 @@ TEST_F(ModemTest, EarlyDeviceProperties) {
 }
 
 TEST_F(ModemTest, CreateDeviceEarlyFailures) {
-  DBusPropertiesMap properties;
+  DBusInterfaceToProperties properties;
 
   EXPECT_CALL(*modem_, ConstructCellular(_, _, _)).Times(0);
+  EXPECT_CALL(*modem_, GetModemInterface()).
+      WillRepeatedly(Return(MM_MODEM_INTERFACE));
+
+  // No modem interface properties:  no device created
+  modem_->CreateDeviceFromModemProperties(properties);
+  EXPECT_FALSE(modem_->device_.get());
+
+  properties[MM_MODEM_INTERFACE] = DBusPropertiesMap();
 
   // No link name:  no device created
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(Return(false));

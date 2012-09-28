@@ -243,7 +243,7 @@ void ModemManager1::Disconnect() {
 }
 
 void ModemManager1::AddModem1(const string &path,
-                              const DBusInterfaceToProperties &i_to_p) {
+                              const DBusInterfaceToProperties &properties) {
   if (ModemExists(path)) {
     return;
   }
@@ -256,24 +256,24 @@ void ModemManager1::AddModem1(const string &path,
                                        manager(),
                                        provider_db()));
   RecordAddedModem(modem1);
-  InitModem1(modem1, i_to_p);
+  InitModem1(modem1, properties);
 }
 
 void ModemManager1::InitModem1(shared_ptr<Modem1> modem,
-                               const DBusInterfaceToProperties &i_to_p) {
+                               const DBusInterfaceToProperties &properties) {
   if (modem == NULL) {
     return;
   }
-  modem->CreateDeviceMM1(i_to_p);
+  modem->CreateDeviceMM1(properties);
 }
 
 // signal methods
 // Also called by OnGetManagedObjectsReply
 void ModemManager1::OnInterfacesAddedSignal(
     const ::DBus::Path &object_path,
-    const DBusInterfaceToProperties &interface_to_properties) {
-  if (ContainsKey(interface_to_properties, MM_DBUS_INTERFACE_MODEM)) {
-    AddModem1(object_path, interface_to_properties);
+    const DBusInterfaceToProperties &properties) {
+  if (ContainsKey(properties, MM_DBUS_INTERFACE_MODEM)) {
+    AddModem1(object_path, properties);
   } else {
     LOG(ERROR) << "Interfaces added, but not modem interface.";
   }

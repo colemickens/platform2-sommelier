@@ -5,6 +5,7 @@
 #include "shill/modem.h"
 
 #include <base/file_util.h>
+#include <base/stl_util.h>
 #include <ModemManager/ModemManager-enums.h>
 #include <ModemManager/ModemManager-names.h>
 
@@ -80,11 +81,9 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
   return false;
 }
 
-void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &i_to_p) {
+void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &properties) {
   Init();
-  DBusInterfaceToProperties::const_iterator modem_properties =
-      i_to_p.find(MM_DBUS_INTERFACE_MODEM);
-  if (modem_properties == i_to_p.end()) {
+  if (!ContainsKey(properties, MM_DBUS_INTERFACE_MODEM)) {
     LOG(ERROR) << "Cellular device with no modem properties";
     return;
   }
@@ -92,9 +91,7 @@ void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &i_to_p) {
 
   // We cannot check the IP method to make sure it's not PPP. The IP
   // method will be checked later when the bearer object is fetched.
-  // TODO(jglasgow): We should pass i_to_p because there are lots of
-  // properties we might want
-  CreateDeviceFromModemProperties(modem_properties->second);
+  CreateDeviceFromModemProperties(properties);
 }
 
 string Modem1::GetModemInterface(void) const {

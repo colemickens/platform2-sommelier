@@ -313,11 +313,11 @@ class ModemManager1Test : public ModemManagerTest {
   static DBusObjectsWithProperties GetModemWithProperties() {
     DBusPropertiesMap o_fd_mm1_modem;
 
-    DBusInterfaceToProperties i_to_p;
-    i_to_p[MM_DBUS_INTERFACE_MODEM] = o_fd_mm1_modem;
+    DBusInterfaceToProperties properties;
+    properties[MM_DBUS_INTERFACE_MODEM] = o_fd_mm1_modem;
 
     DBusObjectsWithProperties objects_with_properties;
-    objects_with_properties[kModemPath] = i_to_p;
+    objects_with_properties[kModemPath] = properties;
 
     return objects_with_properties;
   }

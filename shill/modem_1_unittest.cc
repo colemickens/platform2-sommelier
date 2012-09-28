@@ -10,6 +10,7 @@
 #include <ModemManager/ModemManager-enums.h>
 #include <ModemManager/ModemManager-names.h>
 
+#include "shill/cellular_capability.h"
 #include "shill/dbus_property_matchers.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
@@ -129,7 +130,7 @@ void Modem1Test::TearDown() {
 }
 
 TEST_F(Modem1Test, CreateDeviceMM1) {
-  DBusInterfaceToProperties i_to_p;
+  DBusInterfaceToProperties properties;
   DBusPropertiesMap modem_properties;
   DBus::Variant lock;
   lock.writer().append_uint32(MM_MODEM_LOCK_NONE);
@@ -137,10 +138,19 @@ TEST_F(Modem1Test, CreateDeviceMM1) {
   DBus::Variant device_variant;
   device_variant.writer().append_string(device_.c_str());
   modem_properties[MM_MODEM_PROPERTY_DEVICE] = device_variant;
-  i_to_p[MM_DBUS_INTERFACE_MODEM] = modem_properties;
+  properties[MM_DBUS_INTERFACE_MODEM] = modem_properties;
 
-  modem_->CreateDeviceMM1(i_to_p);
+  DBusPropertiesMap modem3gpp_properties;
+  DBus::Variant registration_state_variant;
+  registration_state_variant.writer().append_uint32(
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME);
+  modem3gpp_properties[MM_MODEM_MODEM3GPP_PROPERTY_REGISTRATIONSTATE] =
+      registration_state_variant;
+  properties[MM_DBUS_INTERFACE_MODEM_MODEM3GPP] = modem3gpp_properties;
+
+  modem_->CreateDeviceMM1(properties);
   EXPECT_TRUE(modem_->device().get());
+  EXPECT_TRUE(modem_->device()->capability_->IsRegistered());
 }
 
 }  // namespace shill

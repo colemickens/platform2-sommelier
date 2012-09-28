@@ -71,7 +71,7 @@ void Modem::OnDeviceInfoAvailable(const string &link_name) {
     // CreateDeviceFromModemProperties() and saved our initial
     // properties already
     pending_device_info_ = false;
-    CreateDeviceFromModemProperties(initial_modem_properties_);
+    CreateDeviceFromModemProperties(initial_properties_);
   }
 }
 
@@ -96,13 +96,20 @@ Cellular *Modem::ConstructCellular(const string &link_name,
 }
 
 void Modem::CreateDeviceFromModemProperties(
-    const DBusPropertiesMap &modem_properties) {
+    const DBusInterfaceToProperties &properties) {
   SLOG(Modem, 2) << __func__;
 
   if (device_.get()) {
     return;
   }
-  if (!GetLinkName(modem_properties, &link_name_)) {
+
+  DBusInterfaceToProperties::const_iterator properties_it =
+      properties.find(GetModemInterface());
+  if (properties_it == properties.end()) {
+    LOG(ERROR) << "Unable to find modem interface properties.";
+    return;
+  }
+  if (!GetLinkName(properties_it->second, &link_name_)) {
     LOG(ERROR) << "Unable to create cellular device without a link name.";
     return;
   }
@@ -125,7 +132,7 @@ void Modem::CreateDeviceFromModemProperties(
                                               &address_bytes)) {
     // Save our properties, wait for OnDeviceInfoAvailable to be called.
     LOG(WARNING) << "No hardware address, device creation pending device info.";
-    initial_modem_properties_ = modem_properties;
+    initial_properties_ = properties;
     pending_device_info_ = true;
     return;
   }
@@ -134,8 +141,11 @@ void Modem::CreateDeviceFromModemProperties(
   device_ = ConstructCellular(link_name_, address, interface_index);
 
   // Give the device a chance to extract any capability-specific properties.
-  device_->OnDBusPropertiesChanged(GetModemInterface(), modem_properties,
-                                    vector<string>());
+  for (properties_it = properties.begin(); properties_it != properties.end();
+       ++properties_it) {
+    device_->OnDBusPropertiesChanged(
+        properties_it->first, properties_it->second, vector<string>());
+  }
 
   manager_->device_info()->RegisterDevice(device_);
 }

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MODEM_
-#define SHILL_MODEM_
+#ifndef SHILL_MODEM_H_
+#define SHILL_MODEM_H_
 
 #include <string>
 #include <vector>
@@ -45,12 +45,12 @@ class Modem {
         mobile_provider_db *provider_db);
   ~Modem();
 
-  // Asynchronously initializes support for the modem.  If the
-  // |modem_properties| are valid and the MAC address is present,
+  // Asynchronously initializes support for the modem.
+  // If the |properties| are valid and the MAC address is present,
   // constructs and registers a Cellular device in |device_| based on
-  // |modem_properties|.
+  // |properties|.
   virtual void CreateDeviceFromModemProperties(
-      const DBusPropertiesMap &modem_properties);
+      const DBusInterfaceToProperties &properties);
 
   void OnDeviceInfoAvailable(const std::string &link_name);
 
@@ -108,7 +108,7 @@ class Modem {
   // ModemManager.Modem properties and watch for property changes
   scoped_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
 
-  DBusPropertiesMap initial_modem_properties_;
+  DBusInterfaceToProperties initial_properties_;
 
   const std::string owner_;
   const std::string service_;
@@ -169,7 +169,7 @@ class Modem1 : public Modem {
   virtual ~Modem1();
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.
-  void CreateDeviceMM1(const DBusInterfaceToProperties &i_to_p);
+  void CreateDeviceMM1(const DBusInterfaceToProperties &properties);
 
  protected:
   virtual bool GetLinkName(const DBusPropertiesMap &modem_properties,
@@ -186,4 +186,4 @@ class Modem1 : public Modem {
 
 }  // namespace shill
 
-#endif  // SHILL_MODEM_
+#endif  // SHILL_MODEM_H_
