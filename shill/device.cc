@@ -534,6 +534,8 @@ void Device::SelectService(const ServiceRefPtr &service) {
     // Just in case the Device subclass has not already done so, make
     // sure the previously selected service has its connection removed.
     selected_service_->SetConnection(NULL);
+    StopLinkMonitor();
+    StopPortalDetection();
   }
   selected_service_ = service;
 }

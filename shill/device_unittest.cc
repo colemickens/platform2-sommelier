@@ -125,6 +125,10 @@ class DeviceTest : public PropertyStoreTest {
     device_->set_link_monitor(link_monitor);  // Passes ownership.
   }
 
+  bool HasLinkMonitor() {
+    return device_->link_monitor();
+  }
+
   bool StartLinkMonitor() {
     return device_->StartLinkMonitor();
   }
@@ -469,6 +473,32 @@ TEST_F(DeviceTest, LinkMonitor) {
     EXPECT_EQ(0, GetLinkMonitorResponseTime(&error));
     EXPECT_FALSE(error.IsSuccess());
   }
+}
+
+TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {
+  scoped_refptr<MockConnection> connection(
+      new StrictMock<MockConnection>(&device_info_));
+  MockManager manager(control_interface(),
+                      dispatcher(),
+                      metrics(),
+                      glib());
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  metrics(),
+                                  &manager));
+  SelectService(service);
+  SetConnection(connection.get());
+  MockLinkMonitor *link_monitor = new StrictMock<MockLinkMonitor>();
+  SetLinkMonitor(link_monitor);  // Passes ownership.
+  SetManager(&manager);
+  EXPECT_CALL(*service.get(), state())
+      .WillOnce(Return(Service::kStateIdle));
+  EXPECT_CALL(*service.get(), SetState(_));
+  EXPECT_CALL(*service.get(), SetConnection(_));
+  EXPECT_TRUE(HasLinkMonitor());
+  SelectService(NULL);
+  EXPECT_FALSE(HasLinkMonitor());
 }
 
 class DevicePortalDetectionTest : public DeviceTest {
@@ -818,6 +848,16 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
   EXPECT_CALL(*service_.get(), SetState(Service::kStatePortal));
   SetServiceConnectedState(Service::kStatePortal);
   ExpectPortalDetectorSet();
+}
+
+TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
+  ExpectPortalDetectorSet();
+  EXPECT_CALL(*service_.get(), state())
+      .WillOnce(Return(Service::kStateIdle));
+  EXPECT_CALL(*service_.get(), SetState(_));
+  EXPECT_CALL(*service_.get(), SetConnection(_));
+  SelectService(NULL);
+  ExpectPortalDetectorReset();
 }
 
 class DeviceByteCountTest : public DeviceTest {
