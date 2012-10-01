@@ -391,9 +391,6 @@ fi
 #
 ureadahead &
 
-# Some things freak out if no hostname is set.
-hostname localhost
-
 bootstat post-startup
 
 # Always return success to avoid killing init
