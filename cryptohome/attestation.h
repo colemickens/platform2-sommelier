@@ -131,6 +131,7 @@ class Attestation : public base::PlatformThread::Delegate {
   static const size_t kNonceSize;
   static const size_t kDigestSize;
   static const char* kDefaultDatabasePath;
+  static const char* kDefaultPCAPublicKey;
   static const struct CertificateAuthority {
     const char* issuer;
     const char* modulus;  // In hex format.
@@ -168,13 +169,17 @@ class Attestation : public base::PlatformThread::Delegate {
                        AttestationDatabase* db);
 
   // Computes an encrypted database HMAC.
-  std::string ComputeHMAC(const EncryptedData& encrypted_db);
+  std::string ComputeHMAC(const EncryptedData& encrypted_data,
+                          const chromeos::SecureBlob& hmac_key);
 
   // Writes an encrypted database to a persistent storage location.
   bool StoreDatabase(const EncryptedData& encrypted_db);
 
   // Reads a database from a persistent storage location.
   bool LoadDatabase(EncryptedData* encrypted_db);
+
+  // Persists any changes made to database_pb_.
+  bool PersistDatabaseChanges();
 
   // Ensures permissions of the database file are correct.
   void CheckDatabasePermissions();
@@ -216,6 +221,10 @@ class Attestation : public base::PlatformThread::Delegate {
                               const chromeos::SecureBlob& identity_key_blob,
                               const chromeos::SecureBlob& identity_public_key,
                               const chromeos::SecureBlob& ek_public_key);
+
+  // Encrypts the endorsement credential with the Privacy CA public key.
+  bool EncryptEndorsementCredential(const chromeos::SecureBlob& credential,
+                                    EncryptedData* encrypted_credential);
 
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };

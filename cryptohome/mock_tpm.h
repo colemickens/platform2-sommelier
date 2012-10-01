@@ -39,6 +39,8 @@ class MockTpm : public Tpm {
         .WillByDefault(Return(true));
     ON_CALL(*this, MakeIdentity(_, _, _, _, _, _, _, _, _))
         .WillByDefault(Return(true));
+    ON_CALL(*this, ActivateIdentity(_, _, _, _, _, _))
+        .WillByDefault(Return(true));
     ON_CALL(*this, QuotePCR0(_, _, _, _, _))
         .WillByDefault(Return(true));
     ON_CALL(*this, SealToPCR0(_, _))
@@ -48,6 +50,8 @@ class MockTpm : public Tpm {
     ON_CALL(*this, GetRandomData(_, _))
         .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomData));
     ON_CALL(*this, CreateDelegate(_, _, _))
+        .WillByDefault(Return(true));
+    ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _))
         .WillByDefault(Return(true));
   }
   ~MockTpm() {}
@@ -84,6 +88,12 @@ class MockTpm : public Tpm {
                                   chromeos::SecureBlob*,
                                   chromeos::SecureBlob*,
                                   chromeos::SecureBlob*));
+  MOCK_METHOD6(ActivateIdentity, bool(const chromeos::SecureBlob&,
+                                      const chromeos::SecureBlob&,
+                                      const chromeos::SecureBlob&,
+                                      const chromeos::SecureBlob&,
+                                      const chromeos::SecureBlob&,
+                                      chromeos::SecureBlob*));
   MOCK_METHOD5(QuotePCR0, bool(const chromeos::SecureBlob&,
                                const chromeos::SecureBlob&,
                                chromeos::SecureBlob*,
@@ -94,6 +104,13 @@ class MockTpm : public Tpm {
   MOCK_METHOD3(CreateDelegate, bool(const chromeos::SecureBlob&,
                                     chromeos::SecureBlob*,
                                     chromeos::SecureBlob*));
+  MOCK_METHOD7(CreateCertifiedKey, bool(const chromeos::SecureBlob&,
+                                        const chromeos::SecureBlob&,
+                                        chromeos::SecureBlob*,
+                                        chromeos::SecureBlob*,
+                                        chromeos::SecureBlob*,
+                                        chromeos::SecureBlob*,
+                                        chromeos::SecureBlob*));
 
  private:
   bool Xor(const chromeos::SecureBlob& plaintext,

@@ -302,16 +302,19 @@ class Tpm {
   //
   // Parameters
   //   identity_key_blob - The AIK key blob, as provided by MakeIdentity.
-  //   certified_public_key - The certified public key in DER encoded form.
+  //   certified_public_key - The certified public key in TPM_PUBKEY form.
+  //   certified_public_key_der - The certified public key in DER encoded form.
   //   certified_key_blob - The certified key in blob form.
   //   certified_key_info - The key info that was signed (TPM_CERTIFY_INFO).
   //   certified_key_proof - The signature of the certified key info by the AIK.
-  virtual bool CreateCertifiedKey(const chromeos::SecureBlob& identity_key_blob,
-                                  const chromeos::SecureBlob& external_data,
-                                  chromeos::SecureBlob* certified_public_key,
-                                  chromeos::SecureBlob* certified_key_blob,
-                                  chromeos::SecureBlob* certified_key_info,
-                                  chromeos::SecureBlob* certified_key_proof);
+  virtual bool CreateCertifiedKey(
+      const chromeos::SecureBlob& identity_key_blob,
+      const chromeos::SecureBlob& external_data,
+      chromeos::SecureBlob* certified_public_key,
+      chromeos::SecureBlob* certified_public_key_der,
+      chromeos::SecureBlob* certified_key_blob,
+      chromeos::SecureBlob* certified_key_info,
+      chromeos::SecureBlob* certified_key_proof);
 
   // Creates a TPM owner delegate for future use.
   //

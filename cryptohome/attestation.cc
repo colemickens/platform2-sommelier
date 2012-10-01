@@ -35,6 +35,17 @@ const size_t Attestation::kDigestSize = 20;  // As per TPM_DIGEST definition.
 const char* Attestation::kDefaultDatabasePath =
     "/mnt/stateful_partition/unencrypted/preserve/attestation.epb";
 
+// This has been extracted from the Chrome OS PCA's encryption certificate.
+const char* Attestation::kDefaultPCAPublicKey =
+    "A2976637E113CC457013F4334312A416395B08D4B2A9724FC9BAD65D0290F39C"
+    "866D1163C2CD6474A24A55403C968CF78FA153C338179407FE568C6E550949B1"
+    "B3A80731BA9311EC16F8F66060A2C550914D252DB90B44D19BC6C15E923FFCFB"
+    "E8A366038772803EE57C7D7E5B3D5E8090BF0960D4F6A6644CB9A456708508F0"
+    "6C19245486C3A49F807AB07C65D5E9954F4F8832BC9F882E9EE1AAA2621B1F43"
+    "4083FD98758745CBFFD6F55DA699B2EE983307C14C9990DDFB48897F26DF8FB2"
+    "CFFF03E631E62FAE59CBF89525EDACD1F7BBE0BA478B5418E756FF3E14AC9970"
+    "D334DB04A1DF267D2343C75E5D282A287060D345981ABDA0B2506AD882579FEF";
+
 const Attestation::CertificateAuthority Attestation::kKnownEndorsementCA[] = {
   {"IFX TPM EK Intermediate CA 06",
    "de9e58a353313d21d683c687d6aaaab240248717557c077161c5e515f41d8efa"
@@ -255,15 +266,7 @@ bool Attestation::Verify() {
   if (!tpm_)
     return false;
   LOG(INFO) << "Attestation: Verifying data.";
-  EncryptedData encrypted_db;
-  if (!LoadDatabase(&encrypted_db)) {
-    LOG(INFO) << "Attestation: Attestation data not found.";
-    return false;
-  }
-  if (!DecryptDatabase(encrypted_db, &database_pb_)) {
-    LOG(ERROR) << "Attestation: Attestation data invalid.";
-    return false;
-  }
+  base::AutoLock lock(database_pb_lock_);
   const TPMCredentials& credentials = database_pb_.credentials();
   SecureBlob ek_public_key = ConvertStringToBlob(
       credentials.endorsement_public_key());
@@ -291,15 +294,17 @@ bool Attestation::Verify() {
   SecureBlob identity_key_blob = ConvertStringToBlob(
       database_pb_.identity_key().identity_key_blob());
   SecureBlob public_key;
+  SecureBlob public_key_der;
   SecureBlob key_blob;
   SecureBlob key_info;
   SecureBlob proof;
-  if (!tpm_->CreateCertifiedKey(identity_key_blob, nonce, &public_key,
+  if (!tpm_->CreateCertifiedKey(identity_key_blob, nonce,
+                                &public_key, &public_key_der,
                                 &key_blob, &key_info, &proof)) {
     LOG(ERROR) << "Attestation: Failed to create certified key.";
     return false;
   }
-  if (!VerifyCertifiedKey(aik_public_key, public_key, key_info, proof)) {
+  if (!VerifyCertifiedKey(aik_public_key, public_key_der, key_info, proof)) {
     LOG(ERROR) << "Attestation: Bad certified key.";
     return false;
   }
@@ -322,33 +327,142 @@ bool Attestation::Verify() {
 bool Attestation::VerifyEK() {
   SecureBlob ek_cert;
   if (!tpm_->GetEndorsementCredential(&ek_cert)) {
-    LOG(ERROR) << "VerifyEK: Failed to get EK cert.";
+    LOG(ERROR) << __func__ << ": Failed to get EK cert.";
     return false;
   }
   SecureBlob ek_public_key;
   if (!tpm_->GetEndorsementPublicKey(&ek_public_key)) {
-    LOG(ERROR) << "VerifyEK: Failed to get EK public key.";
+    LOG(ERROR) << __func__ << ": Failed to get EK public key.";
     return false;
   }
   return VerifyEndorsementCredential(ek_cert, ek_public_key);
 }
 
 bool Attestation::CreateEnrollRequest(SecureBlob* pca_request) {
-  return false;
+  if (!IsPreparedForEnrollment()) {
+    LOG(ERROR) << __func__ << ": Enrollment is not possible, attestation data "
+               << "does not exist.";
+    return false;
+  }
+  base::AutoLock lock(database_pb_lock_);
+  AttestationEnrollmentRequest request_pb;
+  if (!EncryptEndorsementCredential(
+      ConvertStringToBlob(database_pb_.credentials().endorsement_credential()),
+      request_pb.mutable_encrypted_endorsement_credential())) {
+    LOG(ERROR) << __func__ << ": Failed to encrypt EK cert.";
+    return false;
+  }
+  request_pb.set_identity_public_key(
+      database_pb_.identity_binding().identity_public_key());
+  *request_pb.mutable_pcr0_quote() = database_pb_.pcr0_quote();
+  string tmp;
+  if (!request_pb.SerializeToString(&tmp)) {
+    LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
+    return false;
+  }
+  *pca_request = ConvertStringToBlob(tmp);
+  return true;
 }
 
 bool Attestation::Enroll(const SecureBlob& pca_response) {
-  return false;
+  AttestationEnrollmentResponse response_pb;
+  if (!response_pb.ParseFromArray(pca_response.const_data(),
+                                  pca_response.size())) {
+    LOG(ERROR) << __func__ << ": Failed to parse response from Privacy CA.";
+    return false;
+  }
+  if (response_pb.status() != OK) {
+    LOG(ERROR) << __func__ << ": Error received from Privacy CA: "
+               << response_pb.detail();
+    return false;
+  }
+  SecureBlob delegate_blob = ConvertStringToBlob(
+      database_pb_.delegate().blob());
+  SecureBlob delegate_secret = ConvertStringToBlob(
+      database_pb_.delegate().secret());
+  SecureBlob aik_blob = ConvertStringToBlob(
+      database_pb_.identity_key().identity_key_blob());
+  SecureBlob encrypted_asym = ConvertStringToBlob(
+      response_pb.encrypted_identity_credential().asym_ca_contents());
+  SecureBlob encrypted_sym = ConvertStringToBlob(
+      response_pb.encrypted_identity_credential().sym_ca_attestation());
+  SecureBlob aik_credential;
+  if (!tpm_->ActivateIdentity(delegate_blob, delegate_secret,
+                              aik_blob, encrypted_asym, encrypted_sym,
+                              &aik_credential)) {
+    LOG(ERROR) << __func__ << ": Failed to activate identity.";
+    return false;
+  }
+  database_pb_.mutable_identity_key()->set_identity_credential(
+      ConvertBlobToString(aik_credential));
+  // TODO(dkrahn): Remove credentials and identity_binding from the database.
+  if (!PersistDatabaseChanges()) {
+    LOG(ERROR) << __func__ << ": Failed to persist database changes.";
+    return false;
+  }
+  LOG(INFO) << "Attestation: Enrollment complete.";
+  return true;
 }
 
 bool Attestation::CreateCertRequest(bool is_cert_for_owner,
                                  SecureBlob* pca_request) {
-  return false;
+  if (!IsEnrolled()) {
+    LOG(ERROR) << __func__ << ": Device is not enrolled for attestation.";
+    return false;
+  }
+  AttestationCertificateRequest request_pb;
+  request_pb.set_identity_credential(
+      database_pb_.identity_key().identity_credential());
+  request_pb.set_is_cert_for_owner(is_cert_for_owner);
+  SecureBlob nonce;
+  if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
+    LOG(ERROR) << __func__ << ": GetRandomData failed.";
+    return false;
+  }
+  SecureBlob identity_key_blob = ConvertStringToBlob(
+      database_pb_.identity_key().identity_key_blob());
+  SecureBlob public_key;
+  SecureBlob public_key_der;
+  SecureBlob key_blob;
+  SecureBlob key_info;
+  SecureBlob proof;
+  if (!tpm_->CreateCertifiedKey(identity_key_blob, nonce,
+                                &public_key, &public_key_der,
+                                &key_blob, &key_info, &proof)) {
+    LOG(ERROR) << __func__ << ": Failed to create certified key.";
+    return false;
+  }
+  // TODO(dkrahn): Save certified key blob and public key for later.
+  request_pb.set_certified_public_key(ConvertBlobToString(public_key));
+  request_pb.set_certified_key_info(ConvertBlobToString(key_info));
+  request_pb.set_certified_key_proof(ConvertBlobToString(proof));
+  string tmp;
+  if (!request_pb.SerializeToString(&tmp)) {
+    LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
+    return false;
+  }
+  *pca_request = ConvertStringToBlob(tmp);
+  return true;
 }
 
 bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
                                     SecureBlob* attestation_cert) {
-  return false;
+  AttestationCertificateResponse response_pb;
+  if (!response_pb.ParseFromArray(pca_response.const_data(),
+                                  pca_response.size())) {
+    LOG(ERROR) << __func__ << ": Failed to parse response from Privacy CA.";
+    return false;
+  }
+  if (response_pb.status() != OK) {
+    LOG(ERROR) << __func__ << ": Error received from Privacy CA: "
+               << response_pb.detail();
+    return false;
+  }
+  *attestation_cert = ConvertStringToBlob(
+      response_pb.certified_key_credential());
+  // TODO(dkrahn): Save credential in association with certified key blob.
+  LOG(INFO) << "Attestation: Certified key credential received.";
+  return true;
 }
 
 SecureBlob Attestation::ConvertStringToBlob(const string& s) {
@@ -389,7 +503,7 @@ bool Attestation::EncryptDatabase(const AttestationDatabase& db,
   encrypted_db->set_encrypted_data(encrypted_data.data(),
                                    encrypted_data.size());
   encrypted_db->set_iv(iv.data(), iv.size());
-  encrypted_db->set_mac(ComputeHMAC(*encrypted_db));
+  encrypted_db->set_mac(ComputeHMAC(*encrypted_db, database_key_));
   return true;
 }
 
@@ -401,7 +515,7 @@ bool Attestation::DecryptDatabase(const EncryptedData& encrypted_db,
     LOG(ERROR) << "Cannot unseal database key.";
     return false;
   }
-  string mac = ComputeHMAC(encrypted_db);
+  string mac = ComputeHMAC(encrypted_db, database_key_);
   if (mac.length() != encrypted_db.mac().length()) {
     LOG(ERROR) << "Corrupted database.";
     return false;
@@ -426,11 +540,12 @@ bool Attestation::DecryptDatabase(const EncryptedData& encrypted_db,
   return true;
 }
 
-string Attestation::ComputeHMAC(const EncryptedData& encrypted_db) {
+string Attestation::ComputeHMAC(const EncryptedData& encrypted_data,
+                                const SecureBlob& hmac_key) {
   SecureBlob hmac_input = SecureCat(
-      ConvertStringToBlob(encrypted_db.iv()),
-      ConvertStringToBlob(encrypted_db.encrypted_data()));
-  return ConvertBlobToString(CryptoLib::HmacSha512(database_key_, hmac_input));
+      ConvertStringToBlob(encrypted_data.iv()),
+      ConvertStringToBlob(encrypted_data.encrypted_data()));
+  return ConvertBlobToString(CryptoLib::HmacSha512(hmac_key, hmac_input));
 }
 
 bool Attestation::StoreDatabase(const EncryptedData& encrypted_db) {
@@ -459,6 +574,16 @@ bool Attestation::LoadDatabase(EncryptedData* encrypted_db) {
     return false;
   }
   return true;
+}
+
+bool Attestation::PersistDatabaseChanges() {
+  // Load the existing encrypted structure so we don't need to re-seal the key.
+  EncryptedData encrypted_db;
+  if (!LoadDatabase(&encrypted_db))
+    return false;
+  if (!EncryptDatabase(database_pb_, &encrypted_db))
+    return false;
+  return StoreDatabase(encrypted_db);
 }
 
 void Attestation::CheckDatabasePermissions() {
@@ -777,6 +902,62 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
     LOG(ERROR) << "Invalid identity credential.";
     return false;
   }
+  return true;
+}
+
+bool Attestation::EncryptEndorsementCredential(
+    const SecureBlob& credential,
+    EncryptedData* encrypted_credential) {
+  // Encrypt the credential with a generated AES key.
+  SecureBlob aes_key;
+  if (!tpm_->GetRandomData(kCipherKeySize, &aes_key)) {
+    LOG(ERROR) << "GetRandomData failed.";
+    return false;
+  }
+  SecureBlob aes_iv;
+  if (!tpm_->GetRandomData(kCipherBlockSize, &aes_iv)) {
+    LOG(ERROR) << "GetRandomData failed.";
+    return false;
+  }
+  SecureBlob encrypted_data;
+  if (!CryptoLib::AesEncrypt(credential, aes_key, aes_iv, &encrypted_data)) {
+    LOG(ERROR) << "AesEncrypt failed.";
+    return false;
+  }
+  encrypted_credential->set_encrypted_data(encrypted_data.data(),
+                                           encrypted_data.size());
+  encrypted_credential->set_iv(aes_iv.data(), aes_iv.size());
+  encrypted_credential->set_mac(ComputeHMAC(*encrypted_credential, aes_key));
+
+  // Wrap the AES key with the PCA public key.
+  RSA* rsa = RSA_new();
+  if (!rsa)
+    return false;
+  rsa->e = BN_new();
+  if (!rsa->e) {
+    RSA_free(rsa);
+    return false;
+  }
+  BN_set_word(rsa->e, kWellKnownExponent);
+  rsa->n = BN_new();
+  if (!rsa->n) {
+    RSA_free(rsa);
+    return false;
+  }
+  BN_hex2bn(&rsa->n, kDefaultPCAPublicKey);
+  string encrypted_key;
+  encrypted_key.resize(RSA_size(rsa));
+  unsigned char* buffer = reinterpret_cast<unsigned char*>(
+      const_cast<char*>(encrypted_key.data()));
+  int length = RSA_public_encrypt(aes_key.size(),
+                                  const_cast<unsigned char*>(&aes_key.front()),
+                                  buffer, rsa, RSA_PKCS1_OAEP_PADDING);
+  if (length == -1) {
+    LOG(ERROR) << "RSA_public_encrypt failed.";
+    return false;
+  }
+  encrypted_key.resize(length);
+  encrypted_credential->set_wrapped_key(encrypted_key);
   return true;
 }
 

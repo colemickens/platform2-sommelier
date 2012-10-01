@@ -2745,6 +2745,7 @@ bool Tpm::Unseal(const chromeos::Blob& sealed_value, chromeos::Blob* value) {
 bool Tpm::CreateCertifiedKey(const chromeos::SecureBlob& identity_key_blob,
                              const chromeos::SecureBlob& external_data,
                              chromeos::SecureBlob* certified_public_key,
+                             chromeos::SecureBlob* certified_public_key_der,
                              chromeos::SecureBlob* certified_key_blob,
                              chromeos::SecureBlob* certified_key_info,
                              chromeos::SecureBlob* certified_key_proof) {
@@ -2832,9 +2833,10 @@ bool Tpm::CreateCertifiedKey(const chromeos::SecureBlob& identity_key_blob,
     TPM_LOG(ERROR, result) << "CreateCertifiedKey: Failed to read public key.";
     return false;
   }
-  SecureBlob public_key(public_key_buf.value(), public_key_length);
+  certified_public_key->assign(&public_key_buf.value()[0],
+                               &public_key_buf.value()[public_key_length]);
   chromeos::SecureMemset(public_key_buf.value(), 0, public_key_length);
-  if (!ConvertPublicKeyToDER(public_key, certified_public_key)) {
+  if (!ConvertPublicKeyToDER(*certified_public_key, certified_public_key_der)) {
     return false;
   }
 
