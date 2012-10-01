@@ -166,6 +166,11 @@ DEV_MODE_FILE="/mnt/stateful_partition/.developer_mode"
 # If in factory mode or a wipe process is already scheduled, don't change it.
 if [ -n "$IS_FACTORY_MODE" -o -O "$RESET_FILE" ]; then
   DEV_MODE=2
+  # If a wipe was scheduled, but did not finish, notify user of a self-repair.
+  if [ -O "$RESET_FILE" ]; then
+    chromeos-boot-alert self_repair /dev/tty1
+    clobber-log --repair "$STATE_DEV" "Interrupted wipe"
+  fi
 fi
 
 if [ ${DEV_MODE} -eq 1 ]; then

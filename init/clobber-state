@@ -148,7 +148,10 @@ if [ "$FAST_WIPE" != "fast" ] && [ "$ROTATIONAL" = "1" ]; then
         xargs -r0 rm -rf
       # Shred everything else. We care about contents not filenames, so do not
       # use "-u" since metadata updates via fdatasync dominate the shred time.
+      # Note that if the count-down is interrupted, the reset file continues
+      # to exist, which correctly continues to indicate a needed wipe.
       find "${STATE_PATH}"/. -type f -print0 | xargs -r0 shred -fz
+      sync
     ) &
   fi
   # Since the above rm/shred combo can be very fast, force a minimum of a 5
