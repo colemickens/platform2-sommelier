@@ -23,3 +23,6 @@ debugd,/usr/bin/dbus-send --system --print-reply --dest=org.chromium.debugd /org
 hack-33025-touchpad,/opt/google/touchpad/tpcontrol status
 hack-33025-touchpad_activity,/opt/google/touchpad/generate_userfeedback
 hack-33025-touchscreen_activity,/opt/google/touchscreen/touchscreen_feedback
+chrome_user_log,/bin/cat /home/chronos/user/log/chrome
+login-times,/bin/cat /home/chronos/user/login-times
+logout-times,/bin/cat /home/chronos/user/logout-times
