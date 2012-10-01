@@ -48,7 +48,6 @@ static const Log common_logs[] = {
   { "board-specific",
         "/usr/share/userfeedback/scripts/get_board_specific_info" },
   { "boot_times", "/bin/cat /tmp/boot-times-sent" },
-  { "chrome_log", "/bin/cat /home/chronos/user/log/chrome" },
   { "chrome_system_log", "/bin/cat /var/log/chrome/chrome" },
   { "cpu", "/usr/bin/uname -p" },
   { "cpuinfo", "/bin/cat /proc/cpuinfo" },
@@ -60,8 +59,6 @@ static const Log common_logs[] = {
   { "hw_platform", "/usr/bin/uname -i" },
   { "ifconfig", "/sbin/ifconfig -a" },
   { "kernel-crashes", "/bin/cat /var/spool/crash/kernel.*.kcrash" },
-  { "login-times", "/bin/cat /home/chronos/user/login-times" },
-  { "logout-times", "/bin/cat /home/chronos/user/logout-times" },
   { "lsmod", "lsmod" },
   { "lspci", "/usr/sbin/lspci" },
   { "lsusb", "lsusb" },
@@ -85,6 +82,14 @@ static const Log common_logs[] = {
   { "verified boot", "/bin/cat /var/log/debug_vboot_noisy.log" },
   { "vpd_2.0", "/bin/cat /var/log/vpd_2.0.txt" },
   { "wifi_status", "/usr/bin/network_diagnostics --wifi --no-log" },
+
+
+  // Stuff pulled out of the original list because debugd is running under
+  // a VFS namespace and does not have access to later cryptohome mounts.
+  // This includes anything under /home/chronos/user/*
+  // { "chrome_log", "/bin/cat /home/chronos/user/log/chrome" },
+  // { "login-times", "/bin/cat /home/chronos/user/login-times" },
+  // { "logout-times", "/bin/cat /home/chronos/user/logout-times" },
 
   // Stuff pulled out of the original list. These need access to the running X
   // session, which we'd rather not give to debugd, or return info specific to
