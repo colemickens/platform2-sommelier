@@ -812,6 +812,8 @@ void Service::OnAfterResume() {
   // Forget old autoconnect failures across suspend/resume.
   auto_connect_cooldown_milliseconds_  = 0;
   reenable_auto_connect_task_.Cancel();
+  // Forget if the user disconnected us, we might be able to connect now.
+  explicitly_disconnected_ = false;
 }
 
 string Service::GetIPConfigRpcIdentifier(Error *error) {

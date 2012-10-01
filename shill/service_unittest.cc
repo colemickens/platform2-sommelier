@@ -465,8 +465,11 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   service_->Disconnect(&error);
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
-  // TODO(quiche): After we have resume handling in place, test that
-  // we re-enable auto-connect on resume. crosbug.com/25213
+  // A resume also re-enables auto-connect.
+  service_->UserInitiatedDisconnect(&error);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  service_->OnAfterResume();
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   service_->SetState(Service::kStateConnected);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
