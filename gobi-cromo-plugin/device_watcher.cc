@@ -111,8 +111,8 @@ void DeviceWatcher::StartPolling(int interval_secs,
 }
 
 void DeviceWatcher::StopPolling() {
-  LOG(INFO) << "StopPolling()";
   if (timeout_id_ != 0) {
+    LOG(INFO) << "StopPolling()";
     g_source_remove(timeout_id_);
     timeout_id_ = 0;
   }

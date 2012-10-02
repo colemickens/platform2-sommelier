@@ -94,7 +94,22 @@ void GobiModemHandler::HandleUdevMessage(const char *action,
   if (strstr(device, "/dev/") == device)
     device += strlen("/dev/");
 
+  // If this method is called due to an udev event after the poller is started
+  // but before the polling callback is invoked, the GetDeviceList() call below
+  // may potentially "absorb" any changes in the device list, which means the
+  // GetDeviceList() call in the polling callback will return false and keep the
+  // polling continuously running. Thus, we stop any scheduled polling here to
+  // prevent that from happening.
+  device_watcher_->StopPolling();
+
   bool saw_changes = GetDeviceList();
+  if (0 == strcmp("change", action)) {
+    // No need to start poller as there is no device added or removed.
+    // Otherwise, if we start the poller, it won't be stopped as
+    // GetDeviceList() will return false.
+    return;
+  }
+
   if (0 == strcmp("add" , action) && DevicePresentByControlPath(device)) {
     LOG(INFO) << "Device already present";
     return;    // Do not start poller
@@ -185,12 +200,15 @@ bool GobiModemHandler::GetDeviceList() {
   rc = sdk_->QCWWANEnumerateDevices(&num_devices,
                                     reinterpret_cast<BYTE*>(devices));
   if (rc != 0) {
+    LOG(ERROR) << "QCWWANEnumerateDevices returned " << rc;
     return false;
   }
 
   ++scan_generation_;
   bool something_changed = false;
 
+  LOG(INFO) << "QCWWANEnumerateDevices found " << static_cast<int>(num_devices)
+            << " device(s)";
   for (size_t i = 0; i < num_devices; ++i) {
     ControlPathToModem::iterator p =
         control_path_to_modem_.find(devices[i].deviceNode);
