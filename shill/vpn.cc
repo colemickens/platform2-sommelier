@@ -53,8 +53,10 @@ void VPN::UpdateIPConfig(const IPConfig::Properties &properties) {
 }
 
 void VPN::OnDisconnected() {
+  // TODO(petkov): Remove this method and update all callsites to invoke
+  // DropConnection directly.
   SLOG(VPN, 2) << __func__;
-  OnIPConfigUpdated(ipconfig(), false);
+  DropConnection();
 }
 
 }  // namespace shill
