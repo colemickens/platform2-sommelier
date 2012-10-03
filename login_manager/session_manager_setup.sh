@@ -364,7 +364,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             --enable-logging \
             --enable-mobile-dialog \
             --enable-partial-swap \
-            --enable-per-tile-painting \
             --enable-smooth-scrolling \
             --enable-sync-tabs \
             --enable-sync-tabs-for-other-clients \
