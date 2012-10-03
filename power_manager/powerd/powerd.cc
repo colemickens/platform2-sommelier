@@ -379,7 +379,7 @@ void Daemon::SetPlugged(bool plugged) {
   // has been on AC for and thus our metric would not tell us anything about the
   // battery state when the user decided to charge.
   if (plugged_state_ != kPowerUnknown) {
-    GenerateBatteryRemainingWhenChargeStartsMetric(
+    GenerateBatteryInfoWhenChargeStartsMetric(
         plugged ? kPowerConnected : kPowerDisconnected,
         power_status_);
   }

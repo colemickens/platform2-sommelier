@@ -105,7 +105,7 @@ bool Daemon::GenerateBatteryDischargeRateMetric(const PowerStatus& info,
   return true;
 }
 
-void Daemon::GenerateBatteryRemainingWhenChargeStartsMetric(
+void Daemon::GenerateBatteryInfoWhenChargeStartsMetric(
     const PluggedState& plugged_state,
     const PowerStatus& power_status) {
   // Need to make sure that we are actually charging a battery
@@ -119,6 +119,14 @@ void Daemon::GenerateBatteryRemainingWhenChargeStartsMetric(
                                 charge,
                                 kMetricBatteryRemainingWhenChargeStartsMax))
       << "Unable to send battery remaining when charge starts metric!";
+
+  charge = static_cast<int>(round(power_status.battery_charge_full /
+                                  power_status.battery_charge_full_design *
+                                  100));
+
+  LOG_IF(ERROR, !SendEnumMetric(kMetricBatteryChargeHealthName, charge,
+                            kMetricBatteryChargeHealthMax))
+      << "Unable to send battery charge health metric!";
 }
 
 void Daemon::GenerateEndOfSessionMetrics(const PowerStatus& info,

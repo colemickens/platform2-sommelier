@@ -190,10 +190,12 @@ class DaemonTest : public Test {
   }
 
   // Adds a metrics library mock expectation for the remaining battery
-  // charge metric with the given |sample|.
-  void ExpectBatteryRemainingWhenChargeStartsMetric(int sample) {
+  // info metric with the given |sample|.
+  void ExpectBatteryInfoWhenChargeStartsMetric(int sample) {
     ExpectEnumMetric(kMetricBatteryRemainingWhenChargeStartsName, sample,
                      kMetricBatteryRemainingWhenChargeStartsMax);
+    ExpectEnumMetric(kMetricBatteryChargeHealthName, sample,
+                     kMetricBatteryChargeHealthMax);
   }
 
   // Adds a metrics library mock expectation for the remaining battery at end of
@@ -464,37 +466,40 @@ TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive) {
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
-TEST_F(DaemonTest, GenerateBatteryRemainingWhenChargeStartsMetric) {
+TEST_F(DaemonTest, GenerateBatteryInfoWhenChargeStartsMetric) {
   const double battery_percentages[] = { 10.1, 10.7,
                                          20.4, 21.6,
                                          60.4, 61.6,
-                                         82.4, 82.5 };
+                                         82.4, 82.5,
+                                         102.4, 111.6};
   size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
   status_.battery_is_present = true;
   plugged_state_ = kPowerDisconnected;
-  daemon_.GenerateBatteryRemainingWhenChargeStartsMetric(plugged_state_,
+  daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
                                                          status_);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   plugged_state_ = kPowerUnknown;
-  daemon_.GenerateBatteryRemainingWhenChargeStartsMetric(plugged_state_,
+  daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
                                                          status_);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   status_.battery_is_present = false;
   plugged_state_ = kPowerConnected;
-  daemon_.GenerateBatteryRemainingWhenChargeStartsMetric(plugged_state_,
+  daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
                                                          status_);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   status_.battery_is_present = true;
+  status_.battery_charge_full_design = 100;
   for (size_t i = 0; i < num_percentages; i++) {
     status_.battery_percentage = battery_percentages[i];
+    status_.battery_charge_full = battery_percentages[i];
     int expected_percentage = round(status_.battery_percentage);
 
-    ExpectBatteryRemainingWhenChargeStartsMetric(expected_percentage);
-    daemon_.GenerateBatteryRemainingWhenChargeStartsMetric(plugged_state_,
+    ExpectBatteryInfoWhenChargeStartsMetric(expected_percentage);
+    daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
                                                            status_);
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }

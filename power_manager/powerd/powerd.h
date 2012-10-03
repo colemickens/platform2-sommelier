@@ -127,7 +127,7 @@ class Daemon : public BacklightControllerObserver,
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric);
-  FRIEND_TEST(DaemonTest, GenerateBatteryRemainingWhenChargeStartsMetric);
+  FRIEND_TEST(DaemonTest, GenerateBatteryInfoWhenChargeStartsMetric);
   FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
   FRIEND_TEST(DaemonTest, GenerateLengthOfSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateLengthOfSessionMetricOverflow);
@@ -331,10 +331,10 @@ class Daemon : public BacklightControllerObserver,
   bool GenerateBatteryDischargeRateMetric(const PowerStatus& info,
                                           time_t now);
 
-  // Generates a remaining battery charge when charge starts UMA metric sample
-  // if the current state is correct. Returns true if a sample was sent to UMA,
-  // false otherwise.
-  void GenerateBatteryRemainingWhenChargeStartsMetric(
+  // Generates a remaining battery charge and percent of full charge when charge
+  // starts UMA metric sample if the current state is correct. Returns true if a
+  // sample was sent to UMA, false otherwise.
+  void GenerateBatteryInfoWhenChargeStartsMetric(
       const PluggedState& plugged_state,
       const PowerStatus& info);
 

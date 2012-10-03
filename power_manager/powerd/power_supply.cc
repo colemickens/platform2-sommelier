@@ -194,6 +194,7 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
     return false;
   }
   status->battery_charge_full = battery_charge_full;
+  status->battery_charge_full_design = battery_charge_full_design;
   status->battery_charge = battery_charge;
 
   // Sometimes current could be negative.  Ignore it and use |line_power_on| to

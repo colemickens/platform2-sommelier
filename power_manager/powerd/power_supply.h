@@ -42,6 +42,8 @@ struct PowerStatus {
 
   // Battery full charge level in ampere-hours.
   double battery_charge_full;
+  // Battery full design charge level in ampere-hours.
+  double battery_charge_full_design;
 
   // The battery voltage used in calculating time remaining.  This may or may
   // not be the same as the instantaneous voltage |battery_voltage|, as voltage

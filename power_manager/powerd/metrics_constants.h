@@ -25,6 +25,8 @@ extern const int kMetricIdleAfterDimMin;
 extern const int kMetricIdleAfterDimMax;
 extern const int kMetricIdleAfterDimBuckets;
 extern const char kMetricIdleAfterScreenOffName[];
+extern const char kMetricBatteryChargeHealthName[];
+extern const int kMetricBatteryChargeHealthMax;
 extern const char kMetricBatteryDischargeRateName[];
 extern const int kMetricBatteryDischargeRateMin;
 extern const int kMetricBatteryDischargeRateMax;

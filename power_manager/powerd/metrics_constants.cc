@@ -24,6 +24,11 @@ const int kMetricIdleAfterDimMax = 10 * 60 * 1000;
 const int kMetricIdleAfterDimBuckets = 50;
 const char kMetricIdleAfterScreenOffName[] = "Power.IdleTimeAfterScreenOff";
 
+const char kMetricBatteryChargeHealthName[] =
+    "Power.BatteryChargeHealth";  // %
+// >100% to account for new batteries which often charge above full
+const int kMetricBatteryChargeHealthMax = 111;
+
 const char kMetricBatteryDischargeRateName[] =
     "Power.BatteryDischargeRate";  // mW
 const int kMetricBatteryDischargeRateMin = 1000;
