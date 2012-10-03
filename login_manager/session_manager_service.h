@@ -113,8 +113,23 @@ class SessionManagerService
     // Set whether a session has been started.
     void set_session_started(bool started, const std::string& email) {
       session_manager_service_->session_started_ = started;
+      session_manager_service_->current_user_is_incognito_ = false;
       if (started)
         session_manager_service_->current_user_ = email;
+      else
+        session_manager_service_->current_user_.clear();
+    }
+
+    // Set whether a Guest session has been started.
+    void set_guest_session_started(bool started) {
+      session_manager_service_->session_started_ = started;
+      if (started) {
+        session_manager_service_->current_user_ = kIncognitoUser;
+        session_manager_service_->current_user_is_incognito_ = true;
+      } else {
+        session_manager_service_->current_user_.clear();
+        session_manager_service_->current_user_is_incognito_ = false;
+      }
     }
 
     void set_machine_info_file(const FilePath& file) {

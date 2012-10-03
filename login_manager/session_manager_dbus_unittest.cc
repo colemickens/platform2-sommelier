@@ -585,6 +585,29 @@ TEST_F(SessionManagerDBusTest, RestartJobWithAuthBadCookie) {
   EXPECT_EQ(FALSE, out);
 }
 
+TEST_F(SessionManagerDBusTest, LockScreen) {
+  TrivialInitManager();
+  EXPECT_CALL(utils_,
+              SendSignalToChromium(StrEq(chromium::kLockScreenSignal), NULL))
+      .Times(1);
+  MockUtils();
+
+  GError *error = NULL;
+  EXPECT_EQ(TRUE, manager_->LockScreen(&error));
+}
+
+TEST_F(SessionManagerDBusTest, LockScreenGuest) {
+  TrivialInitManager();
+  EXPECT_CALL(utils_,
+              SendSignalToChromium(StrEq(chromium::kLockScreenSignal), NULL))
+      .Times(0);
+  MockUtils();
+
+  manager_->test_api().set_guest_session_started(true);
+  GError *error = NULL;
+  EXPECT_EQ(FALSE, manager_->LockScreen(&error));
+}
+
 TEST_F(SessionManagerDBusTest, StartDeviceWipeAlreadyLoggedIn) {
   TrivialInitManager();
   MockUtils();

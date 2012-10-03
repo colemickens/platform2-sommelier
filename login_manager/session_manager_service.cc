@@ -795,6 +795,10 @@ gboolean SessionManagerService::RetrieveSessionState(gchar** OUT_state,
 }
 
 gboolean SessionManagerService::LockScreen(GError** error) {
+  if (current_user_is_incognito_) {
+    LOG(WARNING) << "Attempt to lock screen during Guest session.";
+    return FALSE;
+  }
   system_->SendSignalToChromium(chromium::kLockScreenSignal, NULL);
   LOG(INFO) << "LockScreen";
   return TRUE;
