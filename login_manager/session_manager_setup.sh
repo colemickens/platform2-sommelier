@@ -297,8 +297,7 @@ DMSERVER="https://m.google.com/devicemanagement/data/api"
 
 # Set up cgroups for chrome. We create two task groups, one for at most one
 # foreground renderer and one for all the background renderers and set the
-# background group to the lowest possible priority, and constrain it to no
-# more than 20% of the CPU.
+# background group to the lowest possible priority.
 mkdir -p /tmp/cgroup/cpu
 if ! grep -q '^cgroup /tmp/cgroup/cpu cgroup' /proc/mounts; then
   mount -t cgroup cgroup /tmp/cgroup/cpu -o cpu
@@ -307,7 +306,6 @@ mkdir -p /tmp/cgroup/cpu/chrome_renderers
 mkdir -p /tmp/cgroup/cpu/chrome_renderers/foreground
 mkdir -p /tmp/cgroup/cpu/chrome_renderers/background
 echo "2" > /tmp/cgroup/cpu/chrome_renderers/background/cpu.shares
-echo "20000" > /tmp/cgroup/cpu/chrome_renderers/background/cpu.cfs_quota_us
 chown -R chronos /tmp/cgroup/cpu/chrome_renderers
 
 # For i18n keyboard support (crbug.com/116999)
