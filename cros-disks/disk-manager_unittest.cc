@@ -10,6 +10,7 @@
 #include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/scoped_temp_dir.h>
+#include <base/stl_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -262,16 +263,54 @@ TEST_F(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions) {
             manager_.DoUnmount(source_path, options));
 }
 
-// TODO(benchan): Make GetDiskByDevicePath mockable so that we can cover
-// differnet scenarios for EjectDevice.
-TEST_F(DiskManagerTest, EjectDeviceWithNonexistentDevicePath) {
-  EXPECT_CALL(device_ejector_, Eject(_)).Times(0);
-  EXPECT_FALSE(manager_.EjectDevice("/dev/nonexistent-path"));
+TEST_F(DiskManagerTest, ScheduleEjectOnUnmount) {
+  string mount_path = "/media/removable/disk";
+  Disk disk;
+  disk.set_device_file("/dev/sr0");
+  EXPECT_FALSE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
+  EXPECT_FALSE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+
+  disk.set_media_type(DEVICE_MEDIA_OPTICAL_DISC);
+  EXPECT_TRUE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
+  EXPECT_TRUE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+
+  disk.set_media_type(DEVICE_MEDIA_DVD);
+  manager_.devices_to_eject_on_unmount_.clear();
+  EXPECT_TRUE(manager_.ScheduleEjectOnUnmount(mount_path, disk));
+  EXPECT_TRUE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
 }
 
-TEST_F(DiskManagerTest, EjectDeviceWithNonOpticalDiscDevice) {
+TEST_F(DiskManagerTest, EjectDeviceOfMountPath) {
+  string mount_path = "/media/removable/disk";
+  string device_file = "/dev/sr0";
+  manager_.devices_to_eject_on_unmount_[mount_path] = device_file;
+  EXPECT_CALL(device_ejector_, Eject(_)).WillOnce(Return(true));
+  EXPECT_TRUE(manager_.EjectDeviceOfMountPath(mount_path));
+  EXPECT_FALSE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+}
+
+TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed) {
+  string mount_path = "/media/removable/disk";
+  string device_file = "/dev/sr0";
+  manager_.devices_to_eject_on_unmount_[mount_path] = device_file;
+  EXPECT_CALL(device_ejector_, Eject(_)).WillOnce(Return(false));
+  EXPECT_FALSE(manager_.EjectDeviceOfMountPath(mount_path));
+  EXPECT_FALSE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+}
+
+TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenExplicitlyDisabled) {
+  string mount_path = "/media/removable/disk";
+  string device_file = "/dev/sr0";
+  manager_.devices_to_eject_on_unmount_[mount_path] = device_file;
+  manager_.eject_device_on_unmount_ = false;
   EXPECT_CALL(device_ejector_, Eject(_)).Times(0);
-  EXPECT_FALSE(manager_.EjectDevice("/dev/loop0"));
+  EXPECT_FALSE(manager_.EjectDeviceOfMountPath(mount_path));
+  EXPECT_FALSE(ContainsKey(manager_.devices_to_eject_on_unmount_, mount_path));
+}
+
+TEST_F(DiskManagerTest, EjectDeviceOfMountPathWhenMountPathExcluded) {
+  EXPECT_CALL(device_ejector_, Eject(_)).Times(0);
+  EXPECT_FALSE(manager_.EjectDeviceOfMountPath("/media/removable/disk"));
 }
 
 }  // namespace cros_disks

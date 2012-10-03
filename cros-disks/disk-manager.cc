@@ -434,7 +434,13 @@ MountErrorType DiskManager::DoMount(const string& source_path,
   scoped_ptr<Mounter> mounter(CreateMounter(disk, *filesystem, mount_path,
                                             options));
   CHECK(mounter.get() != NULL) << "Failed to create a mounter";
-  return mounter->Mount();
+
+  MountErrorType error_type = mounter->Mount();
+  if (error_type == MOUNT_ERROR_NONE) {
+    ScheduleEjectOnUnmount(mount_path, disk);
+  }
+
+  return error_type;
 }
 
 MountErrorType DiskManager::DoUnmount(const string& path,
@@ -453,11 +459,7 @@ MountErrorType DiskManager::DoUnmount(const string& path,
     return MOUNT_ERROR_UNKNOWN;
   }
 
-  if (eject_device_on_unmount_) {
-    string source_path;
-    if (GetSourcePathFromCache(path, &source_path))
-      EjectDevice(source_path);
-  }
+  EjectDeviceOfMountPath(path);
 
   return MOUNT_ERROR_NONE;
 }
@@ -476,18 +478,34 @@ bool DiskManager::ShouldReserveMountPathOnError(
          error_type == MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
 }
 
-bool DiskManager::EjectDevice(const string& device_path) {
-  Disk disk;
-  if (!GetDiskByDevicePath(device_path, &disk) || !disk.is_optical_disk())
+bool DiskManager::ScheduleEjectOnUnmount(const string& mount_path,
+                                         const Disk& disk) {
+  if (!disk.is_optical_disk())
     return false;
 
-  string device_file = disk.device_file();
+  devices_to_eject_on_unmount_[mount_path] = disk.device_file();
+  return true;
+}
+
+bool DiskManager::EjectDeviceOfMountPath(const string& mount_path) {
+  map<string, string>::iterator device_iterator =
+      devices_to_eject_on_unmount_.find(mount_path);
+  if (device_iterator == devices_to_eject_on_unmount_.end())
+    return false;
+
+  string device_file = device_iterator->second;
+  devices_to_eject_on_unmount_.erase(device_iterator);
+
+  if (!eject_device_on_unmount_)
+    return false;
+
   LOG(INFO) << "Eject device '" << device_file << "'.";
   if (!device_ejector_->Eject(device_file)) {
     LOG(WARNING) << "Failed to eject media from optical device '"
                  << device_file << "'.";
     return false;
   }
+
   return true;
 }
 

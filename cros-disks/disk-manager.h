@@ -125,10 +125,16 @@ class DiskManager : public MountManager,
   void ProcessScsiDeviceEvents(struct udev_device* device, const char *action,
                                DeviceEventList* events);
 
-  // Ejects media from a device at |device_path| if the device still exists
-  // (in sysfs) and is an optical device. Returns true if the eject process
-  // has started.
-  bool EjectDevice(const std::string& device_path);
+  // If |disk| should be ejected on unmount, add |mount_path| and the device
+  // file of |disk| to |devices_to_eject_on_unmount_| and returns true. Returns
+  // false otherwise.
+  bool ScheduleEjectOnUnmount(const std::string& mount_path, const Disk& disk);
+
+  // Ejects media from a device mounted at |mount_path|. Return true if the
+  // eject process has started, or false if the |mount_path| is not in
+  // |devices_to_eject_on_unmount_| or |eject_device_on_unmount_| is set to
+  // false.
+  bool EjectDeviceOfMountPath(const std::string& mount_path);
 
   // Device ejector for ejecting media from optical devices.
   DeviceEjector* device_ejector_;
@@ -148,6 +154,10 @@ class DiskManager : public MountManager,
   // A set of device sysfs paths detected by the udev monitor.
   std::set<std::string> devices_detected_;
 
+  // A mapping from a mount path to the corresponding device file that should
+  // be ejected on unmount.
+  std::map<std::string, std::string> devices_to_eject_on_unmount_;
+
   // A mapping from a sysfs path of a disk, detected by the udev monitor,
   // to a set of sysfs paths of the immediate children of the disk.
   std::map<std::string, std::set<std::string> > disks_detected_;
@@ -162,8 +172,11 @@ class DiskManager : public MountManager,
   FRIEND_TEST(DiskManagerTest, RegisterFilesystem);
   FRIEND_TEST(DiskManagerTest, DoMountDiskWithNonexistentSourcePath);
   FRIEND_TEST(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions);
-  FRIEND_TEST(DiskManagerTest, EjectDeviceWithNonexistentDevicePath);
-  FRIEND_TEST(DiskManagerTest, EjectDeviceWithNonOpticalDiscDevice);
+  FRIEND_TEST(DiskManagerTest, ScheduleEjectOnUnmount);
+  FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPath);
+  FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPathWhenEjectFailed);
+  FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPathWhenExplicitlyDisabled);
+  FRIEND_TEST(DiskManagerTest, EjectDeviceOfMountPathWhenMountPathExcluded);
 
   DISALLOW_COPY_AND_ASSIGN(DiskManager);
 };
