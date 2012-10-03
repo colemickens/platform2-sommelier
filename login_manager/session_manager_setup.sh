@@ -110,9 +110,6 @@ mkdir -p ${LOGIN_PROFILE_DIR}
 chown ${USER}:${USER} ${LOGIN_PROFILE_DIR}
 
 CHROME="/opt/google/chrome/chrome"
-# Note: If this script is renamed, ChildJob::kWindowManagerSuffix needs to be
-# updated to contain the new name.  See http://crosbug.com/7901 for more info.
-WM_SCRIPT="/sbin/window-manager-session.sh"
 CONSENT_FILE="$DATA_DIR/Consent To Send Stats"
 
 # xdg-open is used to open downloaded files.
@@ -235,21 +232,17 @@ if use_flag_is_set is_desktop; then
 fi
 
 AURA_FLAGS=
-if use_flag_is_set aura; then
-  WM_SCRIPT=""
-
-  if ! use_flag_is_set new_power_button; then
-    AURA_FLAGS="$AURA_FLAGS --aura-legacy-power-button"
-  fi
-  if use_flag_is_set disable_login_animations; then
-    AURA_FLAGS="$AURA_FLAGS --disable-login-animations"
-    AURA_FLAGS="$AURA_FLAGS --disable-boot-animation"
-  fi
-  # TODO(dpolukhin): Remove this flag when animation issue fixed
-  # crbug.com/143148
-  if use_flag_is_set disable_oobe_animation; then
-    AURA_FLAGS="$AURA_FLAGS --disable-oobe-animation"
-  fi
+if ! use_flag_is_set new_power_button; then
+  AURA_FLAGS="$AURA_FLAGS --aura-legacy-power-button"
+fi
+if use_flag_is_set disable_login_animations; then
+  AURA_FLAGS="$AURA_FLAGS --disable-login-animations"
+  AURA_FLAGS="$AURA_FLAGS --disable-boot-animation"
+fi
+# TODO(dpolukhin): Remove this flag when animation issue fixed
+# crbug.com/143148
+if use_flag_is_set disable_oobe_animation; then
+  AURA_FLAGS="$AURA_FLAGS --disable-oobe-animation"
 fi
 
 # Setup GPU & acceleration flags which differ between x86/ARM SoC
@@ -395,5 +388,4 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
-            ${PPAPI_FLASH_FLAGS} \
-    ${WM_SCRIPT:+-- "${WM_SCRIPT}"}
+            ${PPAPI_FLASH_FLAGS}

@@ -207,21 +207,4 @@ TEST_F(ChildJobTest, CreateArgv) {
     EXPECT_EQ(argv[i], arg_array[i]);
 }
 
-// Test that we avoid killing the window manager job.
-TEST_F(ChildJobTest, AvoidKillingWindowManager) {
-  vector<string> wm_args;
-  wm_args.push_back(string("/sbin/") + ChildJob::kWindowManagerSuffix);
-  wm_args.push_back("--flag1");
-  wm_args.push_back("--flag2");
-  ChildJob wm_job(wm_args, &utils_);
-  EXPECT_TRUE(wm_job.ShouldNeverKill());
-
-  vector<string> chrome_args;
-  chrome_args.push_back("/opt/google/chrome/chrome");
-  chrome_args.push_back("--flag1");
-  chrome_args.push_back("--flag2");
-  ChildJob chrome_job(chrome_args, &utils_);
-  EXPECT_FALSE(chrome_job.ShouldNeverKill());
-}
-
 }  // namespace login_manager

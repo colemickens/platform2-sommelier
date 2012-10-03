@@ -29,10 +29,7 @@
 // mock I define, I will simply collect the constructors all here.
 
 namespace login_manager {
-MockChildJob::MockChildJob() {
-  EXPECT_CALL(*this, ShouldNeverKill())
-      .WillRepeatedly(::testing::Return(false));
-}
+MockChildJob::MockChildJob() {}
 MockChildJob::~MockChildJob() {}
 
 MockDevicePolicyService::MockDevicePolicyService()

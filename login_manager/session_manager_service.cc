@@ -1152,9 +1152,6 @@ void SessionManagerService::CleanupChildren(int timeout) {
       continue;
 
     ChildJobInterface* job = child_jobs_[i];
-    if (job->ShouldNeverKill())
-      continue;
-
     const uid_t uid = job->IsDesiredUidSet() ? job->GetDesiredUid() : getuid();
     pids_to_kill.push_back(make_pair(pid, uid));
     system_->kill(pid, uid, SIGTERM);
