@@ -311,6 +311,18 @@ struct FreeError {
 
 typedef ::scoped_ptr_malloc< ::GError, FreeError> ScopedError;
 
+// \brief ScopedArray holds a ::GArray* and deletes both the container and the
+// segment containing the elements on destruction.
+
+struct FreeArray {
+  void operator()(::GArray* x) const {
+    if (x)
+      ::g_array_free(x, TRUE);
+  }
+};
+
+typedef ::scoped_ptr_malloc< ::GArray, FreeArray> ScopedArray;
+
 // \brief ScopedPtrArray adapts ::GPtrArray* to conform to the standard
 //  container requirements.
 //
