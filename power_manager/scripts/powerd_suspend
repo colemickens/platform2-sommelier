@@ -131,6 +131,16 @@ rm -f /var/run/power_manager/hwclock-on-resume
 #CRYPTOHOME=/dev/mapper/cryptohome
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup suspend $CRYPTOHOME
 
+# - mute audio (if it is not already muted)
+amixer cget name='Master Playback Switch' | grep -q values=on
+if [ $? -eq 0 ]; then
+    PLAYBACK_WAS_ON=1
+    amixer cset name='Master Playback Switch' off > /dev/null
+else
+    PLAYBACK_WAS_ON=0
+fi
+
+
 log_msg "Explicit sync"
 sync
 
@@ -200,6 +210,11 @@ cleanup_for_resume
 #    while the system was suspended. Sleep a bit, though, to take care of
 #    racing with USB stack coming up.
 (sleep 10 && /usr/sbin/laptop_mode auto) > /dev/null &
+
+# - unmute audio (if we muted it before suspend)
+if [ $PLAYBACK_WAS_ON -eq 1 ]; then
+    amixer cset name='Master Playback Switch' on > /dev/null
+fi
 
 # - resumes cryptohome device
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup resume $CRYPTOHOME
