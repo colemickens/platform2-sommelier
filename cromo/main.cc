@@ -169,10 +169,14 @@ class MessageHandler : public DBus::Callback_Base<bool, const DBus::Message&> {
                           power_manager::kPowerStateChangedSignal)) {
         return PowerStateChanged(param);
       }
-      if (param.is_signal(power_manager::kPowerManagerInterface,
-                          power_manager::kSuspendDelay)) {
-        return SuspendDelay(param);
-      }
+
+      // shill now handles disconnect on suspend, so skip the suspend delay
+      // handling in cromo. See crosbug.com/30587 for details.
+      //
+      // if (param.is_signal(power_manager::kPowerManagerInterface,
+      //                     power_manager::kSuspendDelay)) {
+      //   return SuspendDelay(param);
+      // }
       return false;
     }
   private:

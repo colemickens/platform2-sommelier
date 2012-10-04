@@ -234,7 +234,10 @@ gboolean CromoServer::RegisterSuspendDelayCallback(gpointer arg) {
 }
 
 void CromoServer::RegisterSuspendDelay() {
-  g_idle_add(RegisterSuspendDelayCallback, this);
+  // shill now handles disconnect on suspend, so skip the suspend delay
+  // registration in cromo. See crosbug.com/30587 for details.
+
+  // g_idle_add(RegisterSuspendDelayCallback, this);
 }
 
 void CromoServer::CancelSuspendCompletionTimeout() {
