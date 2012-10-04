@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_SERVICE_
-#define SHILL_CELLULAR_SERVICE_
+#ifndef SHILL_CELLULAR_SERVICE_H_
+#define SHILL_CELLULAR_SERVICE_H_
 
 #include <map>
 #include <string>
@@ -90,7 +90,7 @@ class CellularService : public Service {
   void SetRoamingState(const std::string &state);
   const std::string &roaming_state() const { return roaming_state_; }
 
-  // Overrride Load and Save from parent Service class.  We will call
+  // Overrides Load and Save from parent Service class.  We will call
   // the parent method.
   virtual bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
@@ -100,6 +100,10 @@ class CellularService : public Service {
   virtual void SetLastGoodApn(const Stringmap &apn_info);
   virtual void ClearLastGoodApn();
 
+ protected:
+  // Overrides IsAutoConnectable from parent Service class.
+  virtual bool IsAutoConnectable(const char **reason) const;
+
  private:
   friend class CellularServiceTest;
   FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
@@ -108,6 +112,9 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, SetApn);
   FRIEND_TEST(CellularServiceTest, ClearApn);
   FRIEND_TEST(CellularServiceTest, LastGoodApn);
+  FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
+
+  static const char kAutoConnDeviceDisabled[];
 
   void HelpRegisterDerivedStringmap(
       const std::string &name,
@@ -157,4 +164,4 @@ class CellularService : public Service {
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_SERVICE_
+#endif  // SHILL_CELLULAR_SERVICE_H_

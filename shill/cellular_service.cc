@@ -18,6 +18,7 @@ using std::string;
 
 namespace shill {
 
+const char CellularService::kAutoConnDeviceDisabled[] = "device disabled";
 const char CellularService::kStorageAPN[] = "Cellular.APN";
 const char CellularService::kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 
@@ -26,7 +27,7 @@ namespace {
 const char kKeyOLPURL[] = "url";
 const char kKeyOLPMethod[] = "method";
 const char kKeyOLPPostData[] = "postdata";
-}  // namespace {}
+}  // namespace
 
 static bool GetNonEmptyField(const Stringmap &stringmap,
                              const string &fieldname,
@@ -115,6 +116,14 @@ CellularService::CellularService(ControlInterface *control_interface,
 }
 
 CellularService::~CellularService() { }
+
+bool CellularService::IsAutoConnectable(const char **reason) const {
+  if (!cellular_->running()) {
+    *reason = kAutoConnDeviceDisabled;
+    return false;
+  }
+  return Service::IsAutoConnectable(reason);
+}
 
 void CellularService::HelpRegisterDerivedStringmap(
     const string &name,

@@ -13,6 +13,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
+#include "shill/mock_store.h"
 #include "shill/nice_mock_control.h"
 #include "shill/proxy_factory.h"
 
@@ -305,6 +306,55 @@ TEST_F(CellularServiceTest, LastGoodApn) {
   Error error;
   service_->SetApn(userapn, &error);
   EXPECT_TRUE(service_->GetLastGoodApn() == NULL);
+}
+
+TEST_F(CellularServiceTest, IsAutoConnectable) {
+  const char *reason = NULL;
+
+  // Auto-connect should be suppressed if the device is not running.
+  device_->running_ = false;
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(CellularService::kAutoConnDeviceDisabled, reason);
+
+  device_->running_ = true;
+
+  // The following test cases are copied from ServiceTest.IsAutoConnectable
+
+  service_->set_connectable(true);
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+
+  // We should not auto-connect to a Service that a user has
+  // deliberately disconnected.
+  Error error;
+  service_->UserInitiatedDisconnect(&error);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnExplicitDisconnect, reason);
+
+  // But if the Service is reloaded, it is eligible for auto-connect
+  // again.
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(storage, ContainsGroup(service_->GetStorageIdentifier()))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(service_->Load(&storage));
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+
+  // A non-user initiated Disconnect doesn't change anything.
+  service_->Disconnect(&error);
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+
+  // A resume also re-enables auto-connect.
+  service_->UserInitiatedDisconnect(&error);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  service_->OnAfterResume();
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+
+  service_->SetState(Service::kStateConnected);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnConnected, reason);
+
+  service_->SetState(Service::kStateAssociating);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnConnecting, reason);
 }
 
 }  // namespace shill

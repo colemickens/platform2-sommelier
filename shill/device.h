@@ -145,6 +145,7 @@ class Device : public base::RefCounted<Device> {
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
   RTNLHandler *rtnl_handler() { return rtnl_handler_; }
+  bool running() const { return running_; }
 
   EventDispatcher *dispatcher() const { return dispatcher_; }
 
@@ -178,6 +179,7 @@ class Device : public base::RefCounted<Device> {
 
  protected:
   friend class base::RefCounted<Device>;
+  FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
@@ -336,7 +338,6 @@ class Device : public base::RefCounted<Device> {
   ControlInterface *control_interface() const { return control_interface_; }
   Metrics *metrics() const { return metrics_; }
   Manager *manager() const { return manager_; }
-  bool running() const { return running_; }
   const LinkMonitor *link_monitor() const { return link_monitor_.get(); }
   void set_link_monitor(LinkMonitor *link_monitor);
 

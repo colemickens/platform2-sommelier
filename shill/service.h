@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_SERVICE_
-#define SHILL_SERVICE_
+#ifndef SHILL_SERVICE_H_
+#define SHILL_SERVICE_H_
 
 #include <time.h>
 
@@ -505,6 +505,7 @@ class Service : public base::RefCounted<Service> {
   friend class WiFiServiceTest;
   friend class WiMaxServiceTest;
   FRIEND_TEST(AllMockServiceTest, AutoConnectWithFailures);
+  FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
   FRIEND_TEST(ServiceTest, CalculateState);
   FRIEND_TEST(ServiceTest, CalculateTechnology);
@@ -633,4 +634,4 @@ class Service : public base::RefCounted<Service> {
 
 }  // namespace shill
 
-#endif  // SHILL_SERVICE_
+#endif  // SHILL_SERVICE_H_
