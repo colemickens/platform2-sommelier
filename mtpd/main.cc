@@ -18,7 +18,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/syslog_logging.h>
 
-#include "mtpd/daemon.h"
+#include "daemon.h"
 
 using mtpd::Daemon;
 

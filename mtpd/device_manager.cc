@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "mtpd/device_manager.h"
+#include "device_manager.h"
 
 #include <libudev.h>
 
@@ -17,7 +17,7 @@
 #include <chromeos/callback.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "mtpd/device_event_delegate.h"
+#include "device_event_delegate.h"
 
 namespace {
 

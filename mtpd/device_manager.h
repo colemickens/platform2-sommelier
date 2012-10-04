@@ -15,8 +15,8 @@
 
 #include <base/basictypes.h>
 
-#include "mtpd/file_entry.h"
-#include "mtpd/storage_info.h"
+#include "file_entry.h"
+#include "storage_info.h"
 
 extern "C" {
 struct udev;

@@ -21,8 +21,7 @@ PC_DEPS = dbus-c++-1 glib-2.0 gthread-2.0 gobject-2.0 libmtp \
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CPPFLAGS += -I$(SRC)/include -I$(SRC)/.. -I$(SRC) -I$(OUT) \
-	-I$(OUT)mtpd_server $(PC_CFLAGS)
+CPPFLAGS += -I$(SRC)/include -I$(SRC) -I$(OUT) -I$(OUT)mtpd_server $(PC_CFLAGS)
 LDLIBS += -ludev $(PC_LIBS)
 
 ## protobuffer targets

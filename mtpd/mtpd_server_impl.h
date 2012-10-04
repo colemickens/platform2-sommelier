@@ -11,9 +11,9 @@
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 
-#include "mtpd/device_event_delegate.h"
-#include "mtpd/device_manager.h"
-#include "mtpd/file_entry.h"
+#include "device_event_delegate.h"
+#include "device_manager.h"
+#include "file_entry.h"
 #include "mtpd_server/mtpd_server.h"
 
 namespace mtpd {

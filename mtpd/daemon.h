@@ -7,7 +7,7 @@
 
 #include <base/basictypes.h>
 
-#include "mtpd/mtpd_server_impl.h"
+#include "mtpd_server_impl.h"
 
 namespace mtpd {
 
