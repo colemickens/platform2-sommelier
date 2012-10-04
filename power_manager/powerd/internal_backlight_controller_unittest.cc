@@ -27,8 +27,8 @@ namespace power_manager {
 
 namespace {
 
-const int64 kDefaultBrightnessLevel = 50;
-const int64 kMaxBrightnessLevel = 100;
+const int64 kDefaultBrightnessLevel = 512;
+const int64 kMaxBrightnessLevel = 1024;
 const double kPluggedBrightnessPercent = 70.0;
 const double kUnpluggedBrightnessPercent = 30.0;
 
@@ -253,14 +253,15 @@ TEST_F(InternalBacklightControllerTest, KeepBacklightOnAfterAutomatedChange) {
 
 TEST_F(InternalBacklightControllerTest, MinBrightnessLevel) {
   // Set a minimum visible backlight level and reinitialize to load it.
-  const int kMinLevel = 10;
+  const int kMinLevel = 100;
   prefs_.SetInt64(kMinVisibleBacklightLevelPref, kMinLevel);
   light_sensor_.ExpectAddObserver(&controller_);
   ASSERT_TRUE(controller_.Init());
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
 
-  const double kMinPercent = controller_.LevelToPercent(kMinLevel);
+  const double kMinPercent = InternalBacklightController::kMinVisiblePercent;
+  EXPECT_DOUBLE_EQ(kMinPercent, controller_.LevelToPercent(kMinLevel));
 
   // Increase the brightness and check that we hit the max.
   for (int i = 0; i < kStepsToHitLimit; ++i)
@@ -272,35 +273,43 @@ TEST_F(InternalBacklightControllerTest, MinBrightnessLevel) {
   for (int i = 0; i < kStepsToHitLimit; ++i)
     controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
   EXPECT_DOUBLE_EQ(kMinPercent, controller_.GetTargetBrightnessPercent());
+  EXPECT_EQ(kMinLevel, controller_.target_level_for_testing());
 
   // Decrease again with allow_off=true and check that we turn the backlight
   // off.
   for (int i = 0; i < kStepsToHitLimit; ++i)
     controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
   EXPECT_DOUBLE_EQ(0.0, controller_.GetTargetBrightnessPercent());
+  EXPECT_EQ(0, controller_.target_level_for_testing());
 
   // Increase again and check that we go to the minimum level.
   controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
   EXPECT_DOUBLE_EQ(kMinPercent, controller_.GetTargetBrightnessPercent());
+  EXPECT_EQ(kMinLevel, controller_.target_level_for_testing());
 
   // Now set a lower minimum visible level and check that we don't overshoot it
   // when increasing from the backlight-off state.
-  const int kNewMinLevel = 1;
+  const int kNewMinLevel = 10;
   prefs_.SetInt64(kMinVisibleBacklightLevelPref, kNewMinLevel);
   light_sensor_.ExpectAddObserver(&controller_);
   ASSERT_TRUE(controller_.Init());
-  const double kNewMinPercent = controller_.LevelToPercent(kNewMinLevel);
-  ASSERT_LT(kNewMinPercent, kMinPercent);
+
+  // The minimum level should be mapped to the same percentage as before.
+  EXPECT_DOUBLE_EQ(kMinPercent, controller_.LevelToPercent(kNewMinLevel));
   for (int i = 0; i < kStepsToHitLimit; ++i)
     controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
   EXPECT_DOUBLE_EQ(0.0, controller_.GetTargetBrightnessPercent());
+  EXPECT_EQ(0, controller_.target_level_for_testing());
+
   controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
-  EXPECT_DOUBLE_EQ(kNewMinPercent, controller_.GetTargetBrightnessPercent());
+  EXPECT_DOUBLE_EQ(kMinPercent, controller_.GetTargetBrightnessPercent());
+  EXPECT_EQ(kNewMinLevel, controller_.target_level_for_testing());
 
   // Sending another increase request should raise the brightness above the
   // minimum visible level.
   controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
-  EXPECT_GT(controller_.GetTargetBrightnessPercent(), kNewMinPercent);
+  EXPECT_GT(controller_.GetTargetBrightnessPercent(), kMinPercent);
+  EXPECT_GT(controller_.target_level_for_testing(), kNewMinLevel);
 }
 
 // Test the case where the minimum visible backlight level matches the maximum
@@ -418,8 +427,7 @@ TEST_F(InternalBacklightControllerTest, NonLinearMapping) {
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(false));
 
-  // Update the backlight to expose a tiny range of levels.  There should be a
-  // linear mapping between levels and percentages.
+  // Update the backlight to expose a tiny range of levels.
   const int64 kSmallMaxBrightnessLevel = 10;
   EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
       .WillRepeatedly(DoAll(SetArgumentPointee<0>(kSmallMaxBrightnessLevel),
@@ -430,8 +438,18 @@ TEST_F(InternalBacklightControllerTest, NonLinearMapping) {
 
   light_sensor_.ExpectAddObserver(&controller_);
   controller_.OnBacklightDeviceChanged();
-  for (int i = 0; i <= kSmallMaxBrightnessLevel; ++i) {
-    double percent = 100.0 * i / kSmallMaxBrightnessLevel;
+
+  EXPECT_DOUBLE_EQ(0, controller_.LevelToPercent(0));
+  EXPECT_EQ(static_cast<int64>(0), controller_.PercentToLevel(0.0));
+
+  // The minimum visible level should use the bottom brightness step's
+  // percentage, and above it, there should be a linear mapping between levels
+  // and percentages.
+  const double kMinVisiblePercent =
+      InternalBacklightController::kMinVisiblePercent;
+  for (int i = 1; i <= kSmallMaxBrightnessLevel; ++i) {
+    double percent = kMinVisiblePercent +
+        (100.0 - kMinVisiblePercent) * (i - 1) / (kSmallMaxBrightnessLevel - 1);
     EXPECT_DOUBLE_EQ(percent, controller_.LevelToPercent(i));
     EXPECT_EQ(static_cast<int64>(i), controller_.PercentToLevel(percent));
   }

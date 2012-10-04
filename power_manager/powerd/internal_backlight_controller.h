@@ -27,12 +27,17 @@ namespace power_manager {
 // brightness in the range [0, max-brightness-per-sysfs].
 class InternalBacklightController : public BacklightController {
  public:
+  // Percent corresponding to |min_visible_level_|, which takes the role of the
+  // lowest brightness step before the screen is turned off.  Exposed here for
+  // tests.
+  static const double kMinVisiblePercent;
+
   InternalBacklightController(BacklightInterface* backlight,
                               PowerPrefsInterface* prefs,
                               AmbientLightSensor* sensor);
   virtual ~InternalBacklightController();
 
-  double target_percent() const { return target_percent_; }
+  int64 target_level_for_testing() const { return target_level_; }
 
   // Converts between [0, 100] and [0, |max_level_|] brightness scales.
   double LevelToPercent(int64 level);

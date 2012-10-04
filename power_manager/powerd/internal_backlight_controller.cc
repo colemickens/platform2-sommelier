@@ -81,6 +81,10 @@ const double kMinLevelsForNonLinearMapping = 100;
 
 namespace power_manager {
 
+// static
+const double InternalBacklightController::kMinVisiblePercent =
+    kMaxPercent / kMaxBrightnessSteps;
+
 InternalBacklightController::InternalBacklightController(
     BacklightInterface* backlight,
     PowerPrefsInterface* prefs,
@@ -127,14 +131,34 @@ InternalBacklightController::~InternalBacklightController() {
 }
 
 double InternalBacklightController::LevelToPercent(int64 raw_level) {
-  return kMaxPercent *
-      pow(static_cast<double>(raw_level) / max_level_,
-          level_to_percent_exponent_);
+  // If the passed-in level is below the minimum visible level, just map it
+  // linearly into [0, kMinVisiblePercent).
+  if (raw_level < min_visible_level_)
+    return kMinVisiblePercent * raw_level / min_visible_level_;
+
+  // Since we're at or above the minimum level, we know that we're at 100% if
+  // the min and max are equal.
+  if (min_visible_level_ == max_level_)
+    return 100.0;
+
+  double linear_fraction =
+      static_cast<double>(raw_level - min_visible_level_) /
+      (max_level_ - min_visible_level_);
+  return kMinVisiblePercent + (kMaxPercent - kMinVisiblePercent) *
+      pow(linear_fraction, level_to_percent_exponent_);
 }
 
 int64 InternalBacklightController::PercentToLevel(double percent) {
-  return lround(pow(percent / kMaxPercent, 1.0 / level_to_percent_exponent_) *
-                max_level_);
+  if (percent < kMinVisiblePercent)
+    return lround(min_visible_level_ * percent / kMinVisiblePercent);
+
+  if (percent == kMaxPercent)
+    return max_level_;
+
+  double linear_fraction = (percent - kMinVisiblePercent) /
+                           (kMaxPercent - kMinVisiblePercent);
+  return lround(min_visible_level_ + (max_level_ - min_visible_level_) *
+      pow(linear_fraction, 1.0 / level_to_percent_exponent_));
 }
 
 bool InternalBacklightController::Init() {
@@ -491,8 +515,7 @@ void InternalBacklightController::OnAmbientLightChanged(
 }
 
 double InternalBacklightController::ClampPercentToVisibleRange(double percent) {
-  return std::min(kMaxPercent,
-                  std::max(LevelToPercent(min_visible_level_), percent));
+  return std::min(kMaxPercent, std::max(kMinVisiblePercent, percent));
 }
 
 void InternalBacklightController::ReadPrefs() {
