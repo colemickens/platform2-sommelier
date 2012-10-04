@@ -383,7 +383,13 @@ GobiModem::~GobiModem() {
   handler_->server().exit_ok_hooks().Del(hooks_name_);
   handler_->server().UnregisterStartSuspend(hooks_name_);
   handler_->server().suspend_ok_hooks().Del(hooks_name_);
+  handler_->server().on_suspended_hooks().Del(hooks_name_);
+  handler_->server().on_resumed_hooks().Del(hooks_name_);
+
   ApiDisconnect();
+  // TODO(armansito): APIDisconnect unregisters SDK callbacks, but there is a
+  // race condition that causes them to occasionally get called on a dealloc'd
+  // instance. See crosbug.com/35064
 }
 
 enum {
