@@ -32,6 +32,9 @@ usage_help() {
   wipe:      Message when starting to erase stateful partition.
              Arg #1: (optional) Image file to show.
 
+  power_wash: Message when users wants to wipe the stateful partition.
+              Arg: none
+
   self_repair: Message when starting to rebuild stateful partition.
 
   dev_fwcheck: Message when staring with developer firmware, to check if there
@@ -247,6 +250,21 @@ mode_wipe() {
   fi
 }
 
+# Prints messages before starting user-initiated wipe.
+mode_power_wash() {
+  show_assets_message_image "power_wash" ||
+  # The text by echo below is only fallback of localized assets message.
+  # Please sync with text there if you want to change the message.
+  echo "
+    Powerwash in progress. Do not switch off your device.
+
+    Powerwashes happen when critical errors are detected, or when you choose
+    to reset your device. This will reset Chrome OS to be just like new, and
+    you'll be back in operation in just a minute.
+  " >"$STDOUT"
+}
+
+
 # Prints message before starting to rebuild a corrupted stateful partition.
 mode_self_repair() {
   show_assets_message_image "self_repair" ||
@@ -343,7 +361,7 @@ main() {
 
   case "$mode" in
     "warn_dev" | "enter_dev" | "leave_dev" | "dev_fwcheck" | \
-      "update_firmware" | "wipe" | "self_repair" )
+      "update_firmware" | "wipe" | "power_wash" | "self_repair" )
       mode_"$mode" "$@"
       ;;
     * )
