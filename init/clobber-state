@@ -25,12 +25,28 @@ KEEPIMG=$(echo "$@" | grep -sq keepimg && echo "keepimg")
 SAFE_WIPE=$(echo "$@" | grep -sq safe && echo "safe")
 FACTORY_WIPE_FIRMWARE_PID=""
 
-# Files in the preserve directory that we must preserve for stateful wipe:
-PRESERVE_DIR="/mnt/stateful_partition/unencrypted/preserve"
-PRESERVED_FILES="attestation.epb"
+# List of files to preserve relative to /mnt/stateful_partition/
+PRESERVED_FILES="
+  unencrypted/preserve/attestation.epb
+  home/.shadow/install_attributes.pb
+"
 PRESERVED_TAR="/tmp/preserve.tar"
+STATE_PATH="/mnt/stateful_partition"
+PRESERVED_LIST=""
 if [ "$SAFE_WIPE" = "safe" ]; then
-  tar cf $PRESERVED_TAR -C $PRESERVE_DIR --no-recursion $PRESERVED_FILES
+  # We want to preserve permissions and recreate the directory structure
+  # for all of the files in the PRESERVED_FILES variable. In order to do
+  # so we run tar --no-recurison and specify the names of each of the
+  # parent directories. For example for home/.shadow/install_attributes.pb
+  # we pass to tar home home/.shadow home/.shadow/install_attributes.pb
+  for file in $PRESERVED_FILES; do
+    path=$file
+    while [ "$path" != '.' ]; do
+      PRESERVED_LIST="$path $PRESERVED_LIST"
+      path=$(dirname $path)
+    done
+  done
+  tar cf $PRESERVED_TAR -C $STATE_PATH --no-recursion $PRESERVED_LIST
 fi
 
 wipedev() {
@@ -91,7 +107,6 @@ factory_wipe_firmware() {
 # Kernel devs to go along with these are sda2, sda4 respectively.
 ROOT_DEV=$(rootdev -s)
 STATE_DEV=${ROOT_DEV%[0-9]*}1
-STATE_PATH="/mnt/stateful_partition"
 OTHER_ROOT_DEV=$(echo $ROOT_DEV | tr '35' '53')
 KERNEL_DEV=$(echo $ROOT_DEV | tr '35' '24')
 OTHER_KERNEL_DEV=$(echo $OTHER_ROOT_DEV | tr '35' '24')
@@ -205,8 +220,7 @@ mount -n -t ext4 "${STATE_DEV}" "${STATE_PATH}"
 
 # If /tmp/preserve.tar exists copy over its contents to the proper location.
 if [ "$SAFE_WIPE" = "safe" ]; then
-  mkdir -p -m 0755 $PRESERVE_DIR
-  tar xfp $PRESERVED_TAR -C $PRESERVE_DIR
+  tar xfp $PRESERVED_TAR -C $STATE_PATH
 fi
 
 # Restore the log file
