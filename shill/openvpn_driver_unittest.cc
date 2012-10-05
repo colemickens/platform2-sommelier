@@ -496,7 +496,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
       file_util::ReadFileToString(driver_->tls_auth_file_, &contents));
   EXPECT_EQ(kTLSAuthContents, contents);
   ExpectInFlags(options, "--pkcs11-id", kID);
-  ExpectInFlags(options, "--capath", OpenVPNDriver::kDefaultCACertificatesPath);
+  ExpectInFlags(options, "--ca", OpenVPNDriver::kDefaultCACertificates);
   ExpectInFlags(options, "--syslog");
   ExpectInFlags(options, "--auth-user-pass");
 }
@@ -532,7 +532,7 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   vector<string> options;
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
   EXPECT_TRUE(error.IsSuccess());
-  ExpectInFlags(options, "--capath", OpenVPNDriver::kDefaultCACertificatesPath);
+  ExpectInFlags(options, "--ca", OpenVPNDriver::kDefaultCACertificates);
 
   options.clear();
   SetArg(flimflam::kOpenVPNCaCertProperty, kCaCert);

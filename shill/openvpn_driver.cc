@@ -64,7 +64,8 @@ const char kVPNMTUProperty[] = "VPN.MTU";
 const char OpenVPNDriver::kOpenVPNCertProperty[] = "OpenVPN.Cert";
 const char OpenVPNDriver::kOpenVPNKeyProperty[] = "OpenVPN.Key";
 // static
-const char OpenVPNDriver::kDefaultCACertificatesPath[] = "/etc/ssl/certs";
+const char OpenVPNDriver::kDefaultCACertificates[] =
+    "/etc/ssl/certs/ca-certificates.crt";
 // static
 const char OpenVPNDriver::kOpenVPNPath[] = "/usr/sbin/openvpn";
 // static
@@ -619,14 +620,14 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
 }
 
 bool OpenVPNDriver::InitCAOptions(vector<string> *options, Error *error) {
+  options->push_back("--ca");
   string ca_cert =
       args()->LookupString(flimflam::kOpenVPNCaCertProperty, "");
   string ca_cert_nss =
       args()->LookupString(flimflam::kOpenVPNCaCertNSSProperty, "");
   if (ca_cert.empty() && ca_cert_nss.empty()) {
     // Use default CAs if no CA certificate is provided.
-    options->push_back("--capath");
-    options->push_back(kDefaultCACertificatesPath);
+    options->push_back(kDefaultCACertificates);
     return true;
   }
   if (!ca_cert.empty() && !ca_cert_nss.empty()) {
@@ -635,7 +636,6 @@ bool OpenVPNDriver::InitCAOptions(vector<string> *options, Error *error) {
                           "Can't specify both CACert and CACertNSS.");
     return false;
   }
-  options->push_back("--ca");
   if (!ca_cert_nss.empty()) {
     DCHECK(ca_cert.empty());
     const string &vpnhost = args()->GetString(flimflam::kProviderHostProperty);

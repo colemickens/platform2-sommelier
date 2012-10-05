@@ -113,7 +113,7 @@ class OpenVPNDriver : public VPNDriver,
   static const char kOpenVPNCertProperty[];
   static const char kOpenVPNKeyProperty[];
 
-  static const char kDefaultCACertificatesPath[];
+  static const char kDefaultCACertificates[];
 
   static const char kOpenVPNPath[];
   static const char kOpenVPNScript[];
