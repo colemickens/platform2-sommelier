@@ -25,7 +25,7 @@ LIBS = $(BASE_LIBS)
 
 BASE_VER = 125070
 PC_DEPS = dbus-c++-1 glib-2.0 gio-2.0 libchrome-$(BASE_VER) \
-	libchromeos-$(BASE_VER)
+	libchromeos-$(BASE_VER) ModemManager
 INCLUDE_DIRS := $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 LIB_DIRS := $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
@@ -180,6 +180,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	modem_gsm_network_proxy.o \
 	modem_info.o \
 	modem_manager.o \
+	modem_manager_1.o \
 	modem_manager_proxy.o \
 	modem_proxy.o \
 	modem_simple_proxy.o \

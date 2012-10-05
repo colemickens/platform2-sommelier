@@ -6,8 +6,7 @@
 
 #include <base/file_util.h>
 #include <base/stl_util.h>
-#include <ModemManager/ModemManager-enums.h>
-#include <ModemManager/ModemManager-names.h>
+#include <ModemManager/ModemManager.h>
 
 #include "shill/cellular.h"
 #include "shill/device_info.h"
