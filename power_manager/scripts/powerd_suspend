@@ -78,8 +78,9 @@ suspend_cancel() {
 #   0 - success
 #   1 - failure (in kernel)
 #   2 - cancelled
+#   3 - attempted
 send_uma_status() {
-  /usr/bin/metrics_client -e Power.SuspendStatus $1 3 &
+  /usr/bin/metrics_client -e Power.SuspendStatus $1 4 &
 }
 
 cleanup_for_resume() {
@@ -91,6 +92,8 @@ log_msg "Going to suspend-to-RAM state : args=$@"
 # Parse command line
 FLAGS "$@" || exit 1
 eval set -- "$FLAGS_ARGV"
+
+send_uma_status 3
 
 # - logs the time going to suspend (no-op if no RTC).
 cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
