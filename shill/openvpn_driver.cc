@@ -192,6 +192,7 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state) {
     service_->SetState(state);
     service_ = NULL;
   }
+  ip_properties_ = IPConfig::Properties();
 }
 
 bool OpenVPNDriver::SpawnOpenVPN() {
@@ -278,7 +279,6 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   device_ = new VPN(control_, dispatcher(), metrics_, manager(),
                     link_name, interface_index);
   device_->SetEnabled(true);
-  device_->SelectService(service_);
 
   rpc_task_.reset(new RPCTask(control_, this));
   if (!SpawnOpenVPN()) {
@@ -301,13 +301,10 @@ void OpenVPNDriver::Notify(const string &reason,
     device_->OnDisconnected();
     return;
   }
-  IPConfig::Properties properties;
-  if (device_->ipconfig()) {
-    // On restart/reconnect, update the existing IP configuration.
-    properties = device_->ipconfig()->properties();
-  }
-  ParseIPConfiguration(dict, &properties);
-  device_->UpdateIPConfig(properties);
+  // On restart/reconnect, update the existing IP configuration.
+  ParseIPConfiguration(dict, &ip_properties_);
+  device_->SelectService(service_);
+  device_->UpdateIPConfig(ip_properties_);
   StopConnectTimeout();
 }
 

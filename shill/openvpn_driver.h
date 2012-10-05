@@ -197,6 +197,7 @@ class OpenVPNDriver : public VPNDriver,
   std::string tunnel_interface_;
   VPNRefPtr device_;
   FilePath tls_auth_file_;
+  IPConfig::Properties ip_properties_;
 
   // The PID of the spawned openvpn process. May be 0 if no process has been
   // spawned yet or the process has died.

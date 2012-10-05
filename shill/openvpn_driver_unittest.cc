@@ -111,6 +111,10 @@ class OpenVPNDriverTest : public testing::Test,
     driver_->args()->RemoveString(arg);
   }
 
+  const ServiceRefPtr &GetSelectedService() {
+    return device_->selected_service();
+  }
+
   // Used to assert that a flag appears in the options.
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
@@ -241,19 +245,17 @@ MATCHER_P(IsIPAddress, address, "") {
 
 TEST_F(OpenVPNDriverTest, Notify) {
   map<string, string> config;
+  driver_->service_ = service_;
   driver_->device_ = device_;
   driver_->StartConnectTimeout();
   EXPECT_CALL(*device_,
               UpdateIPConfig(Field(&IPConfig::Properties::address, "")));
   driver_->Notify("up", config);
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
+  EXPECT_TRUE(GetSelectedService().get() == service_.get());
 
   // Tests that existing properties are reused if no new ones provided.
-  IPConfigRefPtr ipconfig(new IPConfig(&control_, device_->link_name()));
-  IPConfig::Properties props;
-  props.address = "1.2.3.4";
-  ipconfig->set_properties(props);
-  device_->set_ipconfig(ipconfig);
+  driver_->ip_properties_.address = "1.2.3.4";
   EXPECT_CALL(*device_,
               UpdateIPConfig(Field(&IPConfig::Properties::address, "1.2.3.4")));
   driver_->Notify("up", config);
@@ -764,6 +766,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->tunnel_interface_ = kInterfaceName;
   driver_->device_ = device_;
   driver_->service_ = service_;
+  driver_->ip_properties_.address = "1.2.3.4";
   driver_->StartConnectTimeout();
   FilePath tls_auth_file;
   EXPECT_TRUE(file_util::CreateTemporaryFile(&tls_auth_file));
@@ -789,6 +792,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_FALSE(driver_->service_);
   EXPECT_FALSE(file_util::PathExists(tls_auth_file));
   EXPECT_TRUE(driver_->tls_auth_file_.empty());
+  EXPECT_TRUE(driver_->ip_properties_.address.empty());
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
 }
 

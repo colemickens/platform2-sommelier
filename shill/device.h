@@ -342,12 +342,13 @@ class Device : public base::RefCounted<Device> {
   void set_link_monitor(LinkMonitor *link_monitor);
 
  private:
+  friend class CellularCapabilityTest;
+  friend class CellularTest;
   friend class DeviceAdaptorInterface;
   friend class DeviceByteCountTest;
   friend class DevicePortalDetectionTest;
   friend class DeviceTest;
-  friend class CellularTest;
-  friend class CellularCapabilityTest;
+  friend class OpenVPNDriverTest;
   friend class WiFiObjectTest;
 
   static const char kIPFlagTemplate[];
