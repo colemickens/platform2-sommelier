@@ -77,6 +77,10 @@ const char kSysClassInputPath[] = "/sys/class/input";
 const char kInputMatchPattern[] = "input*";
 const char kUsbMatchString[] = "usb";
 
+// Upper limit to accept for raw battery times, in seconds. If the time of
+// interest is above this level assume something is wrong.
+const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
+
 }  // namespace
 
 namespace power_manager {
@@ -1406,9 +1410,14 @@ gboolean Daemon::PollPowerSupply() {
 
 gboolean Daemon::HandlePollPowerSupply() {
   OnPowerEvent(this, power_status_);
-  UpdateAveragedTimes(&power_status_,
-                      &time_to_empty_average_,
-                      &time_to_full_average_);
+  if (!UpdateAveragedTimes(&power_status_,
+                           &time_to_empty_average_,
+                           &time_to_full_average_)) {
+    LOG(ERROR) << "Unable to get averaged times!";
+    ScheduleShortPollPowerSupply();
+    return FALSE;
+  }
+
   // Send a signal once the power supply status has been obtained.
   DBusMessage* message = dbus_message_new_signal(kPowerManagerServicePath,
                                                  kPowerManagerInterface,
@@ -1422,29 +1431,52 @@ gboolean Daemon::HandlePollPowerSupply() {
   return TRUE;
 }
 
-void Daemon::UpdateAveragedTimes(PowerStatus* status,
+bool Daemon::UpdateAveragedTimes(PowerStatus* status,
                                  RollingAverage* empty_average,
                                  RollingAverage* full_average) {
+  // Some devices give us bogus values for battery information right after boot
+  // or a power event. We attempt to avoid to do sampling at these times, but
+  // this guard is to save us when we do sample a bad value. After working out
+  // the time values, if we have a negative we know something is bad. If the
+  // time we are interested in (to empty or full) is beyond a day then we have a
+  // bad value since it is too high. For some devices the value for the
+  // uninteresting time, that we are not using, might be bizarre, so we cannot
+  // just check both times for overly high values.
+  if (status->battery_time_to_empty < 0 || status->battery_time_to_full < 0 ||
+      (status->battery_time_to_empty > kBatteryTimeMaxValidSec &&
+       !status->line_power_on) ||
+      (status->battery_time_to_full > kBatteryTimeMaxValidSec &&
+       status->line_power_on)) {
+    LOG(ERROR) << "Invalid raw times, time to empty = "
+               << status->battery_time_to_empty << ", and time to full = "
+               << status->battery_time_to_full;
+    power_status_.averaged_battery_time_to_empty = 0;
+    power_status_.averaged_battery_time_to_full = 0;
+    status->is_calculating_battery_time = true;
+    return false;
+  }
+
   int64 battery_time = 0;
   if (status->line_power_on) {
-    if (!status->is_calculating_battery_time)
-      full_average->AddSample(status->battery_time_to_full);
-    empty_average->Clear();
     battery_time = status->battery_time_to_full;
+    if (!status->is_calculating_battery_time)
+      full_average->AddSample(battery_time);
+    empty_average->Clear();
   } else {
-    if (!status->is_calculating_battery_time) {
-      // If the time threshold is set use it, otherwise determine the time
-      // equivalent of the percentage threshold
-      int64 time_threshold_s = low_battery_shutdown_time_s_ ?
-          low_battery_shutdown_time_s_ :
-          status->battery_time_to_empty
-          * (low_battery_shutdown_percent_
-             / status->battery_percentage);
-      empty_average->AddSample(status->battery_time_to_empty
-                               - time_threshold_s);
-    }
+    // If the time threshold is set use it, otherwise determine the time
+    // equivalent of the percentage threshold
+    int64 time_threshold_s = low_battery_shutdown_time_s_ ?
+        low_battery_shutdown_time_s_ :
+        status->battery_time_to_empty
+        * (low_battery_shutdown_percent_
+           / status->battery_percentage);
+    battery_time = status->battery_time_to_empty - time_threshold_s;
+    LOG_IF(WARNING, battery_time < 0)
+        << "Calculated invalid negative time to empty value, trimming to 0!";
+    battery_time = max(0, battery_time);
+    if (!status->is_calculating_battery_time)
+      empty_average->AddSample(battery_time);
     full_average->Clear();
-    battery_time = status->battery_time_to_empty;
   }
 
   if (!status->is_calculating_battery_time) {
@@ -1455,6 +1487,7 @@ void Daemon::UpdateAveragedTimes(PowerStatus* status,
   }
   status->averaged_battery_time_to_full = full_average->GetAverage();
   status->averaged_battery_time_to_empty = empty_average->GetAverage();
+  return true;
 }
 
 // For the rolling averages we want the window size to taper off in a linear

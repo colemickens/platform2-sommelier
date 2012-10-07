@@ -264,8 +264,9 @@ class Daemon : public BacklightControllerObserver,
   gboolean HandlePollPowerSupply();
 
   // Update the averaged values in |status| and add the battery time estimate
-  // values from |status| to the appropriate rolling averages.
-  void UpdateAveragedTimes(PowerStatus* status,
+  // values from |status| to the appropriate rolling averages. Returns false if
+  // the input to the function was invalid.
+  bool UpdateAveragedTimes(PowerStatus* status,
                            RollingAverage* empty_average,
                            RollingAverage* full_average);
 
