@@ -5,6 +5,11 @@
 #
 # A script to install from removable media to hard disk.
 
+# If we're not running as root, restart as root.
+if [ ${UID:-$(id -u)} -ne 0 ]; then
+  exec sudo "$0" "$@"
+fi
+
 # Load functions and constants for chromeos-install.
 . "$(dirname "$0")/chromeos-common.sh" || exit 1
 . /usr/share/misc/shflags || exit 1
