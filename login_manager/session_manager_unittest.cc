@@ -75,22 +75,15 @@ void SessionManagerTest::TearDown() {
   manager_ = NULL;
 }
 
-void SessionManagerTest::InitManager(MockChildJob* job1, MockChildJob* job2) {
-  std::vector<ChildJobInterface*> jobs;
-  EXPECT_CALL(*job1, GetName())
-      .WillRepeatedly(Return(std::string("job1")));
-  EXPECT_CALL(*job1, IsDesiredUidSet())
+void SessionManagerTest::InitManager(MockChildJob* job) {
+  EXPECT_CALL(*job, GetName())
+      .WillRepeatedly(Return(std::string("job")));
+  EXPECT_CALL(*job, IsDesiredUidSet())
       .WillRepeatedly(Return(false));
-  jobs.push_back(job1);
-  if (job2) {
-    EXPECT_CALL(*job2, GetName())
-        .WillRepeatedly(Return(std::string("job2")));
-    EXPECT_CALL(*job2, IsDesiredUidSet())
-        .WillRepeatedly(Return(false));
-    jobs.push_back(job2);
-  }
+  scoped_ptr<ChildJobInterface> job_ptr(job);
+
   ASSERT_TRUE(MessageLoop::current() == NULL);
-  manager_ = new SessionManagerService(jobs, 3, &real_utils_);
+  manager_ = new SessionManagerService(job_ptr.Pass(), 3, &real_utils_);
   manager_->set_file_checker(file_checker_);
   manager_->set_mitigator(mitigator_);
   manager_->test_api().set_exit_on_child_done(true);

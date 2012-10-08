@@ -155,7 +155,7 @@ class SessionManagerDBusTest : public SessionManagerTest {
   // Returns a pointer to the fake job for further mocking purposes.
   MockChildJob* CreateTrivialMockJob() {
     MockChildJob* job = new MockChildJob();
-    InitManager(job, NULL);
+    InitManager(job);
     EXPECT_CALL(*file_checker_, exists())
         .Times(AnyNumber())
         .WillOnce(Return(true));
@@ -165,7 +165,7 @@ class SessionManagerDBusTest : public SessionManagerTest {
   // Creates one job and initializes |manager_| with it, using the flag-file
   // mechanism to ensure that it only runs once.
   void TrivialInitManager() {
-    InitManager(new MockChildJob(), NULL);
+    InitManager(new MockChildJob());
     EXPECT_CALL(*file_checker_, exists())
         .Times(AnyNumber())
         .WillOnce(Return(true));
@@ -186,7 +186,7 @@ class SessionManagerDBusTest : public SessionManagerTest {
 
 TEST_F(SessionManagerDBusTest, SessionNotStartedCleanup) {
   TrivialInitManager();
-  manager_->test_api().set_child_pid(0, kDummyPid);
+  manager_->test_api().set_browser_pid(kDummyPid);
 
   int timeout = 3;
   EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGTERM))
@@ -200,7 +200,7 @@ TEST_F(SessionManagerDBusTest, SessionNotStartedCleanup) {
 
 TEST_F(SessionManagerDBusTest, SessionNotStartedSlowKillCleanup) {
   TrivialInitManager();
-  manager_->test_api().set_child_pid(0, kDummyPid);
+  manager_->test_api().set_browser_pid(kDummyPid);
 
   int timeout = 3;
   EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGTERM))
@@ -216,7 +216,7 @@ TEST_F(SessionManagerDBusTest, SessionNotStartedSlowKillCleanup) {
 
 TEST_F(SessionManagerDBusTest, SessionStartedCleanup) {
   MockChildJob* job = CreateTrivialMockJob();
-  manager_->test_api().set_child_pid(0, kDummyPid);
+  manager_->test_api().set_browser_pid(kDummyPid);
 
   gboolean out;
   gchar email[] = "user@somewhere";
@@ -244,7 +244,7 @@ TEST_F(SessionManagerDBusTest, SessionStartedCleanup) {
 
 TEST_F(SessionManagerDBusTest, SessionStartedSlowKillCleanup) {
   MockChildJob* job = CreateTrivialMockJob();
-  manager_->test_api().set_child_pid(0, kDummyPid);
+  manager_->test_api().set_browser_pid(kDummyPid);
 
   gboolean out;
   gchar email[] = "user@somewhere";
@@ -518,7 +518,7 @@ TEST_F(SessionManagerDBusTest, RetrieveUserPolicySessionStarted) {
 TEST_F(SessionManagerDBusTest, RestartJobUnknownPid) {
   TrivialInitManager();
   MockUtils();
-  manager_->test_api().set_child_pid(0, kDummyPid);
+  manager_->test_api().set_browser_pid(kDummyPid);
 
   gboolean out;
   gint pid = kDummyPid + 1;
@@ -533,7 +533,7 @@ TEST_F(SessionManagerDBusTest, RestartJobUnknownPid) {
 TEST_F(SessionManagerDBusTest, RestartJob) {
   MockChildJob* job = CreateTrivialMockJob();
   ExpectChildJobClearOneTimeArgument(job);
-  manager_->test_api().set_child_pid(0, kDummyPid);
+  manager_->test_api().set_browser_pid(kDummyPid);
   EXPECT_CALL(utils_, kill(-kDummyPid, getuid(), SIGKILL))
       .WillOnce(Return(0));
 
@@ -560,10 +560,10 @@ TEST_F(SessionManagerDBusTest, RestartJob) {
 
 TEST_F(SessionManagerDBusTest, RestartJobWrongPid) {
   TrivialInitManager();
-  manager_->test_api().set_child_pid(0, kDummyPid);
+  manager_->test_api().set_browser_pid(kDummyPid);
 
   gboolean out;
-  gint pid = kDummyPid;
+  gint pid = kDummyPid + 1;
   gchar arguments[] = "dummy";
   ScopedError error;
   EXPECT_EQ(FALSE, manager_->RestartJob(pid, arguments, &out,
@@ -574,7 +574,7 @@ TEST_F(SessionManagerDBusTest, RestartJobWrongPid) {
 
 TEST_F(SessionManagerDBusTest, RestartJobWithAuthBadCookie) {
   TrivialInitManager();
-  manager_->test_api().set_child_pid(0, kDummyPid);
+  manager_->test_api().set_browser_pid(kDummyPid);
 
   gboolean out;
   gint pid = kDummyPid;

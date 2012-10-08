@@ -8,9 +8,12 @@
 #include <unistd.h>
 
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 
 #include "chromeos/dbus/service_constants.h"
+#include "login_manager/child_job.h"
+#include "login_manager/mock_child_job.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_owner_key.h"
 #include "login_manager/mock_system_utils.h"
@@ -26,8 +29,8 @@ class RegenMitigatorTest : public ::testing::Test {
   virtual ~RegenMitigatorTest() {}
 
   virtual void SetUp() {
-    std::vector<ChildJobInterface*> jobs;
-    manager_ = new SessionManagerService(jobs, 3, &utils_);
+    scoped_ptr<ChildJobInterface> job(new MockChildJob());
+    manager_ = new SessionManagerService(job.Pass(), 3, &utils_);
   }
 
   virtual void TearDown() {

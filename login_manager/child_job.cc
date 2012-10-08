@@ -86,8 +86,6 @@ void ChildJob::Run() {
 // When user logs in we want to restart chrome in browsing mode with user
 // signed in. Hence we remove --login-manager flag and add --login-user
 // flag. If it's BWSI mode, we add the corresponding flag as well.
-// TODO(avayvod): Flags for jobs that correspond to all processes but
-// Chromium should not be modified.
 void ChildJob::StartSession(const std::string& email) {
   std::vector<std::string>::iterator to_erase =
       std::remove(arguments_.begin(),

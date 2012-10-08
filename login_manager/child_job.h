@@ -5,6 +5,7 @@
 #ifndef LOGIN_MANAGER_CHILD_JOB_H_
 #define LOGIN_MANAGER_CHILD_JOB_H_
 
+#include <glib.h>
 #include <gtest/gtest.h>
 #include <time.h>
 #include <unistd.h>
@@ -63,11 +64,11 @@ class ChildJobInterface {
   // Sets extra command line arguments for the job from a string vector.
   virtual void SetExtraArguments(const std::vector<std::string>& arguments) = 0;
 
-   // Adds a single extra argument that may be cleared once needed.
-   virtual void AddOneTimeArgument(const std::string& argument) = 0;
+  // Adds a single extra argument that may be cleared once needed.
+  virtual void AddOneTimeArgument(const std::string& argument) = 0;
 
-   // Clears one time extra argument.
-   virtual void ClearOneTimeArgument() = 0;
+  // Clears one time extra argument.
+  virtual void ClearOneTimeArgument() = 0;
 
   // Potential exit codes for Run().
   static const int kCantSetUid;
@@ -80,6 +81,19 @@ class ChildJobInterface {
 
 class ChildJob : public ChildJobInterface {
  public:
+  struct Spec {
+   public:
+    Spec() : job(NULL), pid(-1), watcher(0) {}
+    explicit Spec(scoped_ptr<ChildJobInterface> j)
+        : job(j.Pass()),
+          pid(-1),
+          watcher(0) {
+    }
+    scoped_ptr<ChildJobInterface> job;
+    pid_t pid;
+    guint watcher;
+  };
+
   ChildJob(const std::vector<std::string>& arguments, SystemUtils* utils);
   virtual ~ChildJob();
 

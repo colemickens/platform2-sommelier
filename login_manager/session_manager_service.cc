@@ -214,18 +214,17 @@ const char kMachineInfoFile[] = "/tmp/machine-info";
 void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
   session_manager_service_->message_loop_->PostTask(
       FROM_HERE,
-      base::Bind(&HandleChildExit,
+      base::Bind(&HandleBrowserExit,
                  pid,
                  status,
                  reinterpret_cast<void*>(session_manager_service_)));
 }
 
 SessionManagerService::SessionManagerService(
-    std::vector<ChildJobInterface*> child_jobs,
+    scoped_ptr<ChildJobInterface> child_job,
     int kill_timeout,
     SystemUtils* utils)
-    : child_jobs_(child_jobs.begin(), child_jobs.end()),
-      child_pids_(child_jobs.size(), -1),
+    : browser_(child_job.Pass()),
       exit_on_child_done_(false),
       kill_timeout_(kill_timeout),
       session_manager_(NULL),
@@ -233,7 +232,7 @@ SessionManagerService::SessionManagerService(
       dont_use_directly_(new MessageLoopForUI),
       message_loop_(base::MessageLoopProxy::current()),
       system_(utils),
-      gen_(new KeyGenerator(utils)),
+      key_gen_(new KeyGenerator(utils)),
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
       session_stopping_(false),
@@ -264,7 +263,6 @@ SessionManagerService::~SessionManagerService() {
   // Remove this in case it was added by StopSession().
   g_idle_remove_by_data(this);
   RevertHandlers();
-  STLDeleteElements(&child_jobs_);
 }
 
 bool SessionManagerService::Initialize() {
@@ -343,7 +341,7 @@ bool SessionManagerService::Register(
     const chromeos::dbus::BusConnection &connection) {
   if (!chromeos::dbus::AbstractDbusService::Register(connection))
     return false;
-  const std::string filter =
+  const string filter =
       StringPrintf("type='method_call', interface='%s'", service_interface());
   DBusConnection* conn =
       ::dbus_g_connection_get_connection(connection.g_connection());
@@ -416,10 +414,10 @@ bool SessionManagerService::Run() {
                       HandleKill,
                       this,
                       NULL);
-  if (ShouldRunChildren())
-    RunChildren();
+  if (ShouldRunBrowser())
+    RunBrowser();
   else
-    AllowGracefulExit();
+    AllowGracefulExit();  // Schedules a Shutdown() on current MessageLoop.
 
   // TODO(cmasone): A corrupted owner key means that the user needs to go
   //                to recovery mode.  How to tell them that from here?
@@ -433,7 +431,7 @@ bool SessionManagerService::Run() {
   return true;
 }
 
-bool SessionManagerService::ShouldRunChildren() {
+bool SessionManagerService::ShouldRunBrowser() {
   return !file_checker_.get() || !file_checker_->exists();
 }
 
@@ -459,24 +457,21 @@ bool SessionManagerService::Shutdown() {
   return true;
 }
 
-void SessionManagerService::RunChildren() {
+void SessionManagerService::RunBrowser() {
   bool first_boot = false;
   if (!file_util::PathExists(FilePath(LoginMetrics::kChromeUptimeFile)))
     first_boot = true;
 
   login_metrics_->RecordStats("chrome-exec");
-  for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
-    ChildJobInterface* child_job = child_jobs_[i_child];
-    if (first_boot)
-      child_job->AddOneTimeArgument(kFirstBootFlag);
-    LOG(INFO) << "Running child " << child_job->GetName() << "...";
-    child_pids_[i_child] = RunChild(child_job);
-  }
+  if (first_boot)
+    browser_.job->AddOneTimeArgument(kFirstBootFlag);
+  LOG(INFO) << "Running child " << browser_.job->GetName() << "...";
+  browser_.pid = RunChild(browser_.job.get());
 }
 
 int SessionManagerService::RunChild(ChildJobInterface* child_job) {
   child_job->RecordTime();
-  int pid = system_->fork();
+  pid_t pid = system_->fork();
   if (pid == 0) {
     if (setenv("CROS_SESSION_MANAGER_COOKIE", cookie_.c_str(), 1))
       exit(1);
@@ -485,12 +480,12 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
     exit(ChildJobInterface::kCantExec);  // Run() is not supposed to return.
   }
   child_job->ClearOneTimeArgument();
-  // TODO(cmasone): Remove the watcher when the child exits.
-  child_watchers_.push_back(g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
-                                                   pid,
-                                                   HandleChildExit,
-                                                   this,
-                                                   NULL));
+
+  browser_.watcher = g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
+                                            pid,
+                                            HandleBrowserExit,
+                                            this,
+                                            NULL);
   return pid;
 }
 
@@ -500,18 +495,29 @@ void SessionManagerService::KillChild(const ChildJobInterface* child_job,
   if (child_job->IsDesiredUidSet())
     to_kill_as = child_job->GetDesiredUid();
   system_->kill(-child_pid, to_kill_as, SIGKILL);
-  // Process will be reaped on the way into HandleChildExit.
+  // Process will be reaped on the way into HandleBrowserExit.
 }
 
-void SessionManagerService::AdoptChild(ChildJobInterface* child_job,
-                                       int child_pid) {
-  child_jobs_.push_back(child_job);
-  child_pids_.push_back(child_pid);
+void SessionManagerService::AdoptKeyGeneratorJob(
+    scoped_ptr<ChildJobInterface> job,
+    pid_t pid,
+    guint watcher) {
+  generator_.job.swap(job);
+  generator_.pid = pid;
+  generator_.watcher = watcher;
 }
 
-bool SessionManagerService::IsKnownChild(int pid) {
-  return std::find(child_pids_.begin(), child_pids_.end(), pid) !=
-      child_pids_.end();
+void SessionManagerService::AbandonKeyGeneratorJob() {
+  if (generator_.pid > 0) {
+    g_source_remove(generator_.watcher);
+    generator_.watcher = 0;
+  }
+  generator_.job.reset(NULL);
+  generator_.pid = -1;
+}
+
+bool SessionManagerService::IsKnownChild(pid_t pid) {
+  return pid == browser_.pid;
 }
 
 void SessionManagerService::AllowGracefulExit() {
@@ -580,33 +586,25 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
   // Delete testing channel file if it already exists.
   file_util::Delete(FilePath(chrome_testing_path_), false);
 
-  for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
-    ChildJobInterface* child_job = child_jobs_[i_child];
-    if (child_job->GetName() != "chrome")
-      continue;
+  // Kill Chrome.
+  KillChild(browser_.job.get(), browser_.pid);
 
-    // Kill Chrome.
-    KillChild(child_job, child_pids_[i_child]);
-
-    std::vector<std::string> extra_argument_vector;
-    // Create extra argument vector.
-    while (*extra_args != NULL) {
-      extra_argument_vector.push_back(*extra_args);
-      ++extra_args;
-    }
-    // Add testing channel argument to extra arguments.
-    std::string testing_argument = kTestingChannelFlag;
-    testing_argument.append(chrome_testing_path_);
-    extra_argument_vector.push_back(testing_argument);
-    // Add extra arguments to Chrome.
-    child_job->SetExtraArguments(extra_argument_vector);
-
-    // Run Chrome.
-    child_pids_[i_child] = RunChild(child_job);
-    return TRUE;
+  vector<string> extra_argument_vector;
+  // Create extra argument vector.
+  while (*extra_args != NULL) {
+    extra_argument_vector.push_back(*extra_args);
+    ++extra_args;
   }
+  // Add testing channel argument to extra arguments.
+  string testing_argument = kTestingChannelFlag;
+  testing_argument.append(chrome_testing_path_);
+  extra_argument_vector.push_back(testing_argument);
+  // Add extra arguments to Chrome.
+  browser_.job->SetExtraArguments(extra_argument_vector);
 
-  return FALSE;
+  // Run Chrome.
+  browser_.pid = RunChild(browser_.job.get());
+  return TRUE;
 }
 
 gboolean SessionManagerService::StartSession(gchar* email_address,
@@ -659,10 +657,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
           error);
 
   if (*OUT_done) {
-    for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
-      ChildJobInterface* child_job = child_jobs_[i_child];
-      child_job->StartSession(current_user_);
-    }
+    browser_.job->StartSession(current_user_);
     session_started_ = true;
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
     system_->BroadcastSignal(session_manager_,
@@ -671,7 +666,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     if (device_policy_->KeyMissing() &&
         !mitigator_->Mitigating() &&
         !current_user_is_incognito_) {
-      gen_->Start(set_uid_ ? uid_ : 0, this);
+      key_gen_->Start(set_uid_ ? uid_ : 0, this);
     }
     // Delete the machine-info file. It contains device-identifiable data such
     // as the serial number and shouldn't be around during a user session.
@@ -688,13 +683,11 @@ void SessionManagerService::HandleKeygenExit(GPid pid,
                                              gint status,
                                              gpointer data) {
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-  int i_child = manager->FindChildByPid(pid);
-  manager->child_pids_[i_child] = -1;
-  delete *(manager->child_jobs_.erase(manager->child_jobs_.begin() + i_child));
+  manager->AbandonKeyGeneratorJob();
 
   if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-    std::string key;
-    FilePath key_file(manager->gen_->temporary_key_filename());
+    string key;
+    FilePath key_file(manager->key_gen_->temporary_key_filename());
     file_util::ReadFileToString(key_file, &key);
     PLOG_IF(WARNING, !file_util::Delete(key_file, false)) << "Can't delete "
                                                           << key_file.value();
@@ -722,7 +715,7 @@ gboolean SessionManagerService::StopSession(gchar* unique_identifier,
   DeregisterChildWatchers();
   // TODO(cmasone): re-enable these when we try to enable logout without exiting
   //                the session manager
-  // child_job_->StopSession();
+  // browser_.job->StopSession();
   // user_policy_.reset();
   // session_started_ = false;
   return *OUT_done = TRUE;
@@ -830,14 +823,7 @@ gboolean SessionManagerService::RestartJob(gint pid,
                                            gchar* arguments,
                                            gboolean* OUT_done,
                                            GError** error) {
-  int child_pid = pid;
-  std::vector<int>::iterator child_pid_it =
-      std::find(child_pids_.begin(), child_pids_.end(), child_pid);
-  size_t child_index = child_pid_it - child_pids_.begin();
-
-  if (child_pid_it == child_pids_.end() ||
-      child_jobs_[child_index]->GetName() != "chrome") {
-    // If we didn't find the pid, or we don't think that job was chrome...
+  if (browser_.pid != static_cast<pid_t>(pid)) {
     *OUT_done = FALSE;
     const char msg[] = "Provided pid is unknown.";
     LOG(ERROR) << msg;
@@ -849,15 +835,15 @@ gboolean SessionManagerService::RestartJob(gint pid,
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  KillChild(child_jobs_[child_index], child_pid);
+  KillChild(browser_.job.get(), browser_.pid);
 
   char arguments_buffer[kMaxArgumentsSize + 1];
   snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);
   arguments_buffer[kMaxArgumentsSize] = '\0';
   string arguments_string(arguments_buffer);
 
-  child_jobs_[child_index]->SetArguments(arguments_string);
-  child_pids_[child_index] = RunChild(child_jobs_[child_index]);
+  browser_.job->SetArguments(arguments_string);
+  browser_.pid = RunChild(browser_.job.get());
 
   // To set "logged-in" state for BWSI mode.
   return StartSession(const_cast<gchar*>(kIncognitoUser), NULL,
@@ -933,9 +919,9 @@ bool SessionManagerService::IsValidSessionService(const gchar *name) {
 ///////////////////////////////////////////////////////////////////////////////
 // glib event handlers
 
-void SessionManagerService::HandleChildExit(GPid pid,
-                                            gint status,
-                                            gpointer data) {
+void SessionManagerService::HandleBrowserExit(GPid pid,
+                                              gint status,
+                                              gpointer data) {
   // If I could wait for descendants here, I would.  Instead, I kill them.
   kill(-pid, SIGKILL);
 
@@ -958,11 +944,8 @@ void SessionManagerService::HandleChildExit(GPid pid,
     return;
 
   ChildJobInterface* child_job = NULL;
-  int i_child = manager->FindChildByPid(pid);
-  if (i_child >= 0) {
-    child_job = manager->child_jobs_[i_child];
-    manager->child_pids_[i_child] = -1;
-  }
+  if (manager->IsKnownChild(pid))
+    child_job = manager->browser_.job.get();
 
   LOG(ERROR) << StringPrintf("Process %s(%d) exited.",
                              child_job ? child_job->GetName().c_str() : "",
@@ -977,11 +960,11 @@ void SessionManagerService::HandleChildExit(GPid pid,
     if (manager->ShouldStopChild(child_job)) {
       LOG(WARNING) << "Child stopped, shutting down";
       manager->SetExitAndServiceShutdown(CHILD_EXITING_TOO_FAST);
-    } else if (manager->ShouldRunChildren()) {
+    } else if (manager->ShouldRunBrowser()) {
       // TODO(cmasone): deal with fork failing in RunChild()
       LOG(INFO) << StringPrintf(
           "Running child %s again...", child_job->GetName().data());
-      manager->child_pids_[i_child] = manager->RunChild(child_job);
+      manager->browser_.pid = manager->RunChild(child_job);
     } else {
       LOG(INFO) << StringPrintf(
           "Should NOT run %s again...", child_job->GetName().data());
@@ -1139,35 +1122,31 @@ gboolean SessionManagerService::ValidateAndCacheUserEmail(
   return TRUE;
 }
 
-int SessionManagerService::FindChildByPid(int pid) {
-  for (vector<int>::size_type i = 0; i < child_pids_.size(); ++i) {
-    if (child_pids_[i] == pid)
-      return i;
-  }
-  return -1;
+void SessionManagerService::KillAndRemember(
+    const ChildJob::Spec& spec,
+    vector<std::pair<pid_t, uid_t> >* to_remember) {
+  const pid_t pid = spec.pid;
+  if (pid < 0)
+    return;
+
+  const uid_t uid = (spec.job->IsDesiredUidSet() ?
+                     spec.job->GetDesiredUid() : getuid());
+  system_->kill(pid, uid, SIGTERM);
+  to_remember->push_back(make_pair(pid, uid));
 }
 
 void SessionManagerService::CleanupChildren(int timeout) {
-  vector<pair<int, uid_t> > pids_to_kill;
+  vector<pair<int, uid_t> > pids_to_abort;
+  KillAndRemember(browser_, &pids_to_abort);
+  KillAndRemember(generator_, &pids_to_abort);
 
-  for (vector<int>::size_type i = 0; i < child_pids_.size(); ++i) {
-    const int pid = child_pids_[i];
-    if (pid < 0)
-      continue;
-
-    ChildJobInterface* job = child_jobs_[i];
-    const uid_t uid = job->IsDesiredUidSet() ? job->GetDesiredUid() : getuid();
-    pids_to_kill.push_back(make_pair(pid, uid));
-    system_->kill(pid, uid, SIGTERM);
-  }
-
-  for (vector<pair<int, uid_t> >::const_iterator it = pids_to_kill.begin();
-       it != pids_to_kill.end(); ++it) {
-    const int pid = it->first;
+  for (vector<pair<int, uid_t> >::const_iterator it = pids_to_abort.begin();
+       it != pids_to_abort.end(); ++it) {
+    const pid_t pid = it->first;
     const uid_t uid = it->second;
     if (!system_->ChildIsGone(pid, timeout)) {
       LOG(WARNING) << "Killing child process " << pid << " " << timeout
-                   << "seconds after sending KILL/TERM signal";
+                   << " seconds after sending TERM signal";
       system_->kill(pid, uid, SIGABRT);
     } else {
       DLOG(INFO) << "Cleaned up child " << pid;
@@ -1177,9 +1156,14 @@ void SessionManagerService::CleanupChildren(int timeout) {
 
 void SessionManagerService::DeregisterChildWatchers() {
   // Remove child exit handlers.
-  for (size_t i = 0; i < child_watchers_.size(); ++i)
-    g_source_remove(child_watchers_[i]);
-  child_watchers_.clear();
+  if (browser_.pid > 0) {
+    g_source_remove(browser_.watcher);
+    browser_.watcher = 0;
+  }
+  if (generator_.pid > 0) {
+    g_source_remove(generator_.watcher);
+    generator_.watcher = 0;
+  }
 }
 
 void SessionManagerService::SendSignal(const char signal_name[],
@@ -1188,31 +1172,18 @@ void SessionManagerService::SendSignal(const char signal_name[],
 }
 
 // static
-std::vector<std::vector<std::string> > SessionManagerService::GetArgLists(
-    std::vector<std::string> args) {
-  std::vector<std::string> arg_list;
-  std::vector<std::vector<std::string> > arg_lists;
-  for (size_t i_arg = 0; i_arg < args.size(); ++i_arg) {
-    if (args[i_arg] == "--") {
-      if (arg_list.size()) {
-        arg_lists.push_back(arg_list);
-        arg_list.clear();
-      }
-    } else {
-      arg_list.push_back(args[i_arg]);
-    }
-  }
-  if (arg_list.size()) {
-    arg_lists.push_back(arg_list);
-  }
-  return arg_lists;
+vector<string> SessionManagerService::GetArgList(const vector<string>& args) {
+  vector<string>::const_iterator start_arg = args.begin();
+  if (!args.empty() && *start_arg == "--")
+    ++start_arg;
+  return vector<string>(start_arg, args.end());
 }
 
 gboolean SessionManagerService::RetrievePolicyFromService(
     PolicyService* service,
     GArray** policy_blob,
     GError** error) {
-  std::vector<uint8> policy_data;
+  vector<uint8> policy_data;
   if (service->Retrieve(&policy_data)) {
     *policy_blob = g_array_sized_new(FALSE, FALSE, sizeof(uint8),
                                      policy_data.size());

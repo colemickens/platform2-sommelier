@@ -13,6 +13,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/scoped_temp_dir.h>
 
 #include "login_manager/mock_system_utils.h"
@@ -46,8 +47,7 @@ class SessionManagerTest : public ::testing::Test {
   // Instantiates |manager_| with the provided jobs. Mocks the file
   // checker, the key loss mitigator, the upstart signal emitter and
   // the device policy service.
-  // |job2| can be NULL.
-  void InitManager(MockChildJob* job1, MockChildJob* job2);
+  void InitManager(MockChildJob* job);
 
   // Creates a user policy service. This function handles calls to the mocked
   // user policy factory.

@@ -68,7 +68,7 @@ class SessionManagerService
     CHILD_EXITING_TOO_FAST = 2
   };
 
-  SessionManagerService(std::vector<ChildJobInterface*> child_jobs,
+  SessionManagerService(scoped_ptr<ChildJobInterface> child_job,
                         int kill_timeout,
                         SystemUtils* system);
   virtual ~SessionManagerService();
@@ -77,9 +77,9 @@ class SessionManagerService
   // any other methods on this class.
   class TestApi {
    public:
-    // Allows a test program to set the pid of a child.
-    void set_child_pid(int i_child, int pid) {
-      session_manager_service_->child_pids_[i_child] = pid;
+    // Allows a test program to set the pid of the watched browser process.
+    void set_browser_pid(pid_t pid) {
+      session_manager_service_->browser_.pid = pid;
     }
 
     void set_systemutils(SystemUtils* utils) {
@@ -95,7 +95,7 @@ class SessionManagerService
       session_manager_service_->upstart_signal_emitter_.reset(emitter);
     }
     void set_keygen(KeyGenerator* gen) {
-      session_manager_service_->gen_.reset(gen);
+      session_manager_service_->key_gen_.reset(gen);
     }
     void set_login_metrics(LoginMetrics* metrics) {
       session_manager_service_->login_metrics_.reset(metrics);
@@ -137,12 +137,11 @@ class SessionManagerService
     }
 
     // Sets whether the screen is locked.
-    // TODO(davemoore) Need to come up with a way to mock dbus so we can
-    // better test this functionality.
     void set_screen_locked(bool screen_locked) {
       session_manager_service_->screen_locked_ = screen_locked;
     }
 
+    // Cause handling of faked-out exit of a child process.
     void ScheduleChildExit(pid_t pid, int status);
 
    private:
@@ -211,21 +210,27 @@ class SessionManagerService
   // before invoking the inherited method.
   virtual bool Shutdown();
 
-  // Fork, then call child_job_->Run() in the child and set a
+  // Fork, then call browser_.job->Run() in the child and set a
   // babysitter in the parent's glib default context that calls
-  // HandleChildExit when the child is done.
-  void RunChildren();
+  // HandleBrowserExit when the child is done.
+  void RunBrowser();
 
-  // Run one of the children.
+  // Run() particular ChildJobInterface, specified by |child_job|.
   int RunChild(ChildJobInterface* child_job);
 
   // Kill one of the children.
   void KillChild(const ChildJobInterface* child_job, int child_pid);
 
-  bool IsKnownChild(int pid);
+  // Check if |pid| is the currently-managed browser process.
+  bool IsKnownChild(pid_t pid);
 
-  // Start tracking a new, potentially running child job.
-  void AdoptChild(ChildJobInterface* child_job, int child_pid);
+  // Start tracking a new, potentially running key generation job.
+  void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
+                            pid_t pid,
+                            guint watcher);
+
+  // Stop tracking key generation job.
+  void AbandonKeyGeneratorJob();
 
   // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
   void AllowGracefulExit();
@@ -253,14 +258,14 @@ class SessionManagerService
 
   // In addition to emitting "start-user-session" upstart signal and
   // "SessionStateChanged:started" D-Bus signal, this function will
-  // also call child_job_->StartSession(email_address).
+  // also call browser_.job->StartSession(email_address).
   gboolean StartSession(gchar* email_address,
                         gchar* unique_identifier,
                         gboolean* OUT_done,
                         GError** error);
 
   // In addition to emitting "stop-user-session", this function will
-  // also call child_job_->StopSession().
+  // also call browser_.job->StopSession().
   gboolean StopSession(gchar* unique_identifier,
                        gboolean* OUT_done,
                        GError** error);
@@ -359,14 +364,13 @@ class SessionManagerService
   // Perform very, very basic validation of |email_address|.
   static bool ValidateEmail(const std::string& email_address);
 
-  // Breaks |args| into separate arg lists, delimited by "--".
+  // Ensures |args| is in the correct format, stripping "--" if needed.
   // No initial "--" is needed, but is allowed.
   // ("a", "b", "c") => ("a", "b", "c")
-  // ("a", "b", "c", "--", "d", "e", "f") =>
-  //     ("a", "b", "c"), ("d", "e", "f").
+  // ("--", "a", "b", "c") => ("a", "b", "c").
   // Converts args from wide to plain strings.
-  static std::vector<std::vector<std::string> > GetArgLists(
-      std::vector<std::string> args);
+  static std::vector<std::string> GetArgList(
+      const std::vector<std::string>& args);
 
   // The flag to pass to chrome to open a named socket for testing.
   static const char kTestingChannelFlag[];
@@ -411,7 +415,7 @@ class SessionManagerService
                                          void* data);
 
   // |data| is a SessionManagerService*.
-  static void HandleChildExit(GPid pid, gint status, gpointer data);
+  static void HandleBrowserExit(GPid pid, gint status, gpointer data);
 
   // |data| is a SessionManagerService*.  This is a wrapper around
   // ServiceShutdown() so that we can register it as the callback for
@@ -446,9 +450,10 @@ class SessionManagerService
   gboolean ValidateAndCacheUserEmail(const gchar* email_address,
                                      GError** error);
 
-  // Searches through |child_pids_| for |pid|.  Returns index of child if
-  // found, -1 if not.
-  int FindChildByPid(int pid);
+  // Try to terminate the job represented by |spec|, but also remember it for
+  // later.
+  void KillAndRemember(const ChildJob::Spec& spec,
+                       std::vector<std::pair<pid_t, uid_t> >* to_remember);
 
   // Returns appropriate child-killing timeout, depending on flag file state.
   int GetKillTimeout();
@@ -469,7 +474,7 @@ class SessionManagerService
 
   void SendBooleanReply(DBusGMethodInvocation* context, bool succeeded);
 
-  bool ShouldRunChildren();
+  bool ShouldRunBrowser();
   // Returns true if |child_job| believes it should be stopped.
   // If the child believes it should be stopped (as opposed to not run anymore)
   // we actually exit the Service as well.
@@ -497,10 +502,9 @@ class SessionManagerService
 
   static const int kKillTimeoutCollectChrome;
   static const char kCollectChromeFile[];
-  // TODO(cmasone): consider tracking job, pid and watcher in one struct.
-  std::vector<ChildJobInterface*> child_jobs_;
-  std::vector<int> child_pids_;
-  std::vector<guint> child_watchers_;
+
+  ChildJob::Spec browser_;
+  ChildJob::Spec generator_;
   bool exit_on_child_done_;
   int kill_timeout_;
 
@@ -510,7 +514,7 @@ class SessionManagerService
   scoped_refptr<base::MessageLoopProxy> message_loop_;
 
   SystemUtils* system_;  // Owned by the caller.
-  scoped_ptr<KeyGenerator> gen_;
+  scoped_ptr<KeyGenerator> key_gen_;
   scoped_ptr<LoginMetrics> login_metrics_;
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 

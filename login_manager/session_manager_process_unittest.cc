@@ -79,14 +79,14 @@ class SessionManagerProcessTest : public SessionManagerTest {
   // Returns the job for further mocking.
   MockChildJob* CreateMockJobWithRestartPolicy(RestartPolicy child_runs) {
     MockChildJob* job = new MockChildJob();
-    InitManager(job, NULL);
+    InitManager(job);
     SetFileCheckerPolicy(child_runs);
     return job;
   }
 
   // Creates one job and a manager for it, running it |child_runs| times.
   void InitManagerWithRestartPolicy(RestartPolicy child_runs) {
-    InitManager(new MockChildJob(), NULL);
+    InitManager(new MockChildJob());
     SetFileCheckerPolicy(child_runs);
   }
 
@@ -113,7 +113,7 @@ TEST_F(SessionManagerProcessTest, BadExitChildFlagFileStop) {
   EXPECT_CALL(*job, RecordTime()).Times(1);
   EXPECT_CALL(*job, ShouldStop()).Times(1).WillOnce(Return(false));
   ExpectChildJobBoilerplate(job, 1);
-  InitManager(job, NULL);
+  InitManager(job);
 
   EXPECT_CALL(*file_checker_, exists())
       .WillOnce(Return(false))
@@ -133,7 +133,7 @@ TEST_F(SessionManagerProcessTest, BadExitChildOnSignal) {
   EXPECT_CALL(*job, RecordTime()).Times(1);
   EXPECT_CALL(*job, ShouldStop()).Times(1).WillOnce(Return(true));
   ExpectChildJobBoilerplate(job, 1);
-  InitManager(job, NULL);
+  InitManager(job);
   SetFileCheckerPolicy(ALWAYS);
 
   MockChildProcess proc(kDummyPid, PackSignal(SIGILL), manager_->test_api());
@@ -144,57 +144,24 @@ TEST_F(SessionManagerProcessTest, BadExitChildOnSignal) {
   SimpleRunManager();
 }
 
-TEST_F(SessionManagerProcessTest, BadExitChild1) {
+TEST_F(SessionManagerProcessTest, BadExitChild) {
   MockChildJob* job1 = new MockChildJob;
-  MockChildJob* job2 = new MockChildJob;
   ExpectChildJobBoilerplate(job1, 2);
-  ExpectChildJobBoilerplate(job2, 1);
-  InitManager(job1, job2);
+  InitManager(job1);
 
   SetFileCheckerPolicy(ALWAYS);
   EXPECT_CALL(*job1, RecordTime())
       .Times(2);
-  EXPECT_CALL(*job2, RecordTime())
-      .Times(1);
   EXPECT_CALL(*job1, ShouldStop())
       .WillOnce(Return(false))
       .WillOnce(Return(true));
 
   MockChildProcess proc(kDummyPid, PackStatus(kExit), manager_->test_api());
-  MockChildProcess proc2(kDummyPid2, PackStatus(kExit), manager_->test_api());
   EXPECT_CALL(utils_, fork())
       .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
                       Return(proc.pid())))
-      .WillOnce(Return(proc2.pid()))
       .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
                       Return(proc.pid())));
-  SimpleRunManager();
-}
-
-TEST_F(SessionManagerProcessTest, BadExitChild2) {
-  MockChildJob* job1 = new MockChildJob;
-  MockChildJob* job2 = new MockChildJob;
-  ExpectChildJobBoilerplate(job1, 1);
-  ExpectChildJobBoilerplate(job2, 2);
-  InitManager(job1, job2);
-
-  SetFileCheckerPolicy(ALWAYS);
-  EXPECT_CALL(*job1, RecordTime())
-      .Times(1);
-  EXPECT_CALL(*job2, RecordTime())
-      .Times(2);
-  EXPECT_CALL(*job2, ShouldStop())
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
-
-  MockChildProcess proc(kDummyPid, PackStatus(kExit), manager_->test_api());
-  MockChildProcess proc2(kDummyPid2, PackStatus(kExit), manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(Return(proc.pid()))
-      .WillOnce(DoAll(Invoke(&proc2, &MockChildProcess::ScheduleExit),
-                      Return(proc2.pid())))
-      .WillOnce(DoAll(Invoke(&proc2, &MockChildProcess::ScheduleExit),
-                      Return(proc2.pid())));
   SimpleRunManager();
 }
 
@@ -213,47 +180,16 @@ TEST_F(SessionManagerProcessTest, CleanExitChild) {
   SimpleRunManager();
 }
 
-TEST_F(SessionManagerProcessTest, CleanExitChild2) {
-  MockChildJob* job1 = new MockChildJob;
-  MockChildJob* job2 = new MockChildJob;
-  ExpectChildJobBoilerplate(job1, 1);
-  ExpectChildJobBoilerplate(job2, 1);
-  InitManager(job1, job2);
-  // Let the manager cause the clean exit.
-  manager_->test_api().set_exit_on_child_done(false);
-
-  SetFileCheckerPolicy(ALWAYS);
-  EXPECT_CALL(*job1, RecordTime())
-      .Times(1);
-  EXPECT_CALL(*job2, RecordTime())
-      .Times(1);
-  EXPECT_CALL(*job2, ShouldStop())
-      .WillOnce(Return(true));
-
-  MockChildProcess proc(kDummyPid, 0, manager_->test_api());
-  MockChildProcess proc2(kDummyPid2, 0, manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(Return(proc.pid()))
-      .WillOnce(DoAll(Invoke(&proc2, &MockChildProcess::ScheduleExit),
-                      Return(proc2.pid())));
-
-  SimpleRunManager();
-}
-
 TEST_F(SessionManagerProcessTest, LockedExit) {
   MockChildJob* job1 = new MockChildJob;
-  MockChildJob* job2 = new MockChildJob;
   ExpectChildJobBoilerplate(job1, 1);
-  ExpectChildJobBoilerplate(job2, 1);
-  InitManager(job1, job2);
+  InitManager(job1);
   // Let the manager cause the clean exit.
   manager_->test_api().set_exit_on_child_done(false);
 
   SetFileCheckerPolicy(ALWAYS);
 
   EXPECT_CALL(*job1, RecordTime())
-      .Times(1);
-  EXPECT_CALL(*job2, RecordTime())
       .Times(1);
   EXPECT_CALL(*job1, ShouldStop())
       .Times(0);
@@ -261,11 +197,9 @@ TEST_F(SessionManagerProcessTest, LockedExit) {
   manager_->test_api().set_screen_locked(true);
 
   MockChildProcess proc(kDummyPid, 0, manager_->test_api());
-  MockChildProcess proc2(kDummyPid2, 0, manager_->test_api());
   EXPECT_CALL(utils_, fork())
-      .WillOnce(Return(proc.pid()))
-      .WillOnce(DoAll(Invoke(&proc2, &MockChildProcess::ScheduleExit),
-                      Return(proc2.pid())));
+      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
+                      Return(proc.pid())));
   SimpleRunManager();
 }
 
@@ -285,8 +219,8 @@ TEST_F(SessionManagerProcessTest, MustStopChild) {
 
 TEST_F(SessionManagerProcessTest, KeygenExitTest) {
   MockChildJob* normal_job = new MockChildJob;
-  InitManager(normal_job, NULL);
-  manager_->test_api().set_child_pid(0, kDummyPid);
+  InitManager(normal_job);
+  manager_->test_api().set_browser_pid(kDummyPid);
 
   ScopedTempDir tmpdir;
   FilePath key_file_path;
@@ -328,7 +262,7 @@ TEST_F(SessionManagerProcessTest, StatsRecorded) {
 
 TEST_F(SessionManagerProcessTest, EnableChromeTesting) {
   MockChildJob* job = new MockChildJob;
-  InitManager(job, NULL);
+  InitManager(job);
   EXPECT_CALL(*job, GetName()).WillRepeatedly(Return("chrome"));
   EXPECT_CALL(*job, SetExtraArguments(_)).Times(1);
   EXPECT_CALL(*job, RecordTime()).Times(AnyNumber());
@@ -343,7 +277,7 @@ TEST_F(SessionManagerProcessTest, EnableChromeTesting) {
   // Initial config...one running process that'll get SIGKILL'd.
   MockChildProcess proc(kDummyPid, -SIGKILL, manager_->test_api());
   EXPECT_CALL(utils_, kill(-proc.pid(), getuid(), SIGKILL)).WillOnce(Return(0));
-  manager_->test_api().set_child_pid(0, proc.pid());
+  manager_->test_api().set_browser_pid(proc.pid());
 
   // Expect a new chrome process to get spawned.
   MockChildProcess proc2(kDummyPid + 1, -SIGKILL, manager_->test_api());

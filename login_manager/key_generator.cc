@@ -44,21 +44,22 @@ bool KeyGenerator::Start(uid_t uid,
 
   if (uid != 0)
     keygen_job_->SetDesiredUid(uid);
-  int pid = RunJob(keygen_job_.get());
+  pid_t pid = RunJob(keygen_job_.get());
   if (pid < 0)
     return false;
 
-  g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
-                         pid,
-                         SessionManagerService::HandleKeygenExit,
-                         manager,
-                         NULL);
-  manager->AdoptChild(keygen_job_.release(), pid);
+  guint watcher = g_child_watch_add_full(
+      G_PRIORITY_HIGH_IDLE,
+      pid,
+      SessionManagerService::HandleKeygenExit,
+      manager,
+      NULL);
+  manager->AdoptKeyGeneratorJob(keygen_job_.Pass(), pid, watcher);
   return true;
 }
 
 int KeyGenerator::RunJob(ChildJobInterface* job) {
-  int pid = utils_->fork();
+  pid_t pid = utils_->fork();
   if (pid == 0) {
     job->Run();
     exit(1);  // Run() is not supposed to return.

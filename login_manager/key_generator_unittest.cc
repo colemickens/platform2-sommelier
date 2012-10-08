@@ -8,11 +8,13 @@
 #include <base/file_util.h>
 #include <base/basictypes.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 #include <signal.h>
 #include <unistd.h>
 
+#include "login_manager/child_job.h"
 #include "login_manager/keygen_worker.h"
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_child_process.h"
@@ -36,8 +38,8 @@ class KeyGeneratorTest : public ::testing::Test {
 
   virtual void SetUp() {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    std::vector<ChildJobInterface*> jobs;
-    manager_ = new SessionManagerService(jobs, 3, &utils_);
+    scoped_ptr<ChildJobInterface> job(new MockChildJob());
+    manager_ = new SessionManagerService(job.Pass(), 3, &utils_);
   }
 
   virtual void TearDown() {
