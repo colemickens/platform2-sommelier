@@ -147,6 +147,13 @@ static gboolean delete_modem(gpointer p) {
   return FALSE;
 }
 
+static gboolean clear_idle_callbacks_and_delete(gpointer p) {
+  GobiModem *m = static_cast<GobiModem*>(p);
+  m->ClearIdleCallbacks();
+  g_idle_add(delete_modem, m);
+  return FALSE;
+}
+
 GobiModemHandler::ControlPathToModem::iterator
 GobiModemHandler::RemoveDeviceByIterator(ControlPathToModem::iterator p) {
   if (p == control_path_to_modem_.end()) {
@@ -163,7 +170,7 @@ GobiModemHandler::RemoveDeviceByIterator(ControlPathToModem::iterator p) {
   }
   server().DeviceRemoved(m->path());
   control_path_to_modem_.erase(p);
-  g_idle_add(delete_modem, m);
+  g_idle_add(clear_idle_callbacks_and_delete, m);
   return next;
 }
 

@@ -333,6 +333,7 @@ GobiModem::GobiModem(DBus::Connection& connection,
       suspending_(false),
       exiting_(false),
       device_resetting_(false),
+      getting_deallocated_(false),
       session_starter_in_flight_(false),
       disconnect_time_(METRIC_BASE_NAME "Disconnect", 0, 150000, 20),
       registration_time_(METRIC_BASE_NAME "Registration", 0, 150000, 20) {
@@ -374,6 +375,10 @@ void GobiModem::Init() {
 }
 
 GobiModem::~GobiModem() {
+  pthread_mutex_lock(&modem_mutex_.mutex_);
+  getting_deallocated_ = true;
+  pthread_mutex_unlock(&modem_mutex_.mutex_);
+
   if (pending_enable_ != NULL) {
     // Despite the imminent destruction of the modem, pretend that the
     // pending_enable succeeded.  It is a race anyway.
@@ -387,9 +392,6 @@ GobiModem::~GobiModem() {
   handler_->server().on_resumed_hooks().Del(hooks_name_);
 
   ApiDisconnect();
-  // TODO(armansito): APIDisconnect unregisters SDK callbacks, but there is a
-  // race condition that causes them to occasionally get called on a dealloc'd
-  // instance. See crosbug.com/35064
 }
 
 enum {
@@ -1064,6 +1066,12 @@ void GobiModem::ApiConnect(DBus::Error& error) {
   LOG(INFO) << "Connecting to QCWWAN";
   pthread_mutex_lock(&modem_mutex_.mutex_);
   connected_modem_ = this;
+  if (getting_deallocated_) {
+    LOG(INFO) << "Modem getting deallocated, not connecting";
+    pthread_mutex_unlock(&modem_mutex_.mutex_);
+    error.set(kErrorOperationNotAllowed, "Modem is getting deallocated");
+    return;
+  }
   pthread_mutex_unlock(&modem_mutex_.mutex_);
 
   ULONG rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
@@ -1380,6 +1388,15 @@ void GobiModem::InjectFault(const std::string& name,
   }
 }
 
+void GobiModem::ClearIdleCallbacks() {
+  for (std::set<guint>::iterator it = idle_callback_ids_.begin();
+       it != idle_callback_ids_.end();
+       ++it) {
+    g_source_remove(*it);
+  }
+  idle_callback_ids_.clear();
+}
+
 void GobiModem::SinkSdkError(const std::string& modem_path,
                              const std::string& sdk_function,
                              ULONG error) {
@@ -1406,14 +1423,12 @@ gboolean GobiModem::SignalStrengthCallback(gpointer data) {
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
   if (modem != NULL)
     modem->SignalStrengthHandler(args->signal_strength, args->radio_interface);
-  delete args;
   return FALSE;
 }
 
 gboolean GobiModem::PowerCallback(gpointer data) {
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
-  delete args;
   if (modem != NULL)
     modem->PowerModeHandler();
   return FALSE;
@@ -1424,14 +1439,12 @@ gboolean GobiModem::SessionStateCallback(gpointer data) {
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
   if (modem != NULL)
     modem->SessionStateHandler(args->state, args->session_end_reason);
-  delete args;
   return FALSE;
 }
 
 gboolean GobiModem::RegistrationStateCallback(gpointer data) {
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
-  delete args;
   if (modem != NULL)
     modem->RegistrationStateHandler();
   return FALSE;
@@ -1442,7 +1455,6 @@ gboolean GobiModem::DataCapabilitiesCallback(gpointer data) {
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
   if (modem != NULL)
     modem->DataCapabilitiesHandler(args->num_data_caps, args->data_caps);
-  delete args;
   return FALSE;
 }
 
@@ -1451,7 +1463,6 @@ gboolean GobiModem::DataBearerTechnologyCallback(gpointer data) {
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
   if (modem != NULL)
     modem->DataBearerTechnologyHandler(args->technology);
-  delete args;
   return FALSE;
 }
 

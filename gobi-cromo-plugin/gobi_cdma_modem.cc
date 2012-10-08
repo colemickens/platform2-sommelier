@@ -205,7 +205,6 @@ gboolean GobiCdmaModem::ActivationStatusCallback(gpointer data) {
           MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED);
     }
   }
-  delete args;
   return FALSE;
 }
 
@@ -240,7 +239,6 @@ gboolean GobiCdmaModem::OmadmStateCallback(gpointer data) {
     modem->ActivationFinished();
   }
 
-  delete args;
   return FALSE;
 }
 

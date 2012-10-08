@@ -208,7 +208,6 @@ gboolean GobiGsmModem::CheckDataCapabilities(gpointer data) {
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
   GobiGsmModem* modem =
       static_cast<GobiGsmModem *>(handler_->LookupByDbusPath(*args->path));
-  delete args;
   if (modem != NULL)
     modem->SendNetworkTechnologySignal(modem->GetMmAccessTechnology());
   return FALSE;

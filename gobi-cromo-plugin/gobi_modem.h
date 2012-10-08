@@ -14,6 +14,7 @@
 #include <gtest/gtest_prod.h>  // For FRIEND_TEST
 #include <map>
 #include <string>
+#include <set>
 
 #include <cromo/cromo_server.h>
 #include <cromo/modem.h>
@@ -206,6 +207,7 @@ class GobiModem
                            const int32_t &value,
                            DBus::Error& error);
 
+  void ClearIdleCallbacks();
 
  protected:
   struct SerialNumbers {
@@ -252,16 +254,47 @@ class GobiModem
     DISALLOW_COPY_AND_ASSIGN(CallbackArgs);
   };
 
+  struct CallbackArgsWrapper {
+    CallbackArgsWrapper() : callback(NULL), callback_id(0), args(NULL) { }
+    ~CallbackArgsWrapper() { delete args; }
+    GSourceFunc callback;
+    guint callback_id;
+    CallbackArgs *args;
+   private:
+    DISALLOW_COPY_AND_ASSIGN(CallbackArgsWrapper);
+  };
+
   static void PostCallbackRequest(GSourceFunc callback,
                                   CallbackArgs* args) {
     pthread_mutex_lock(&modem_mutex_.mutex_);
-    if (connected_modem_) {
+    if (connected_modem_ && !connected_modem_->getting_deallocated_) {
       args->path = new DBus::Path(connected_modem_->path());
-      g_idle_add(callback, args);
+      CallbackArgsWrapper *args_wrapper = new CallbackArgsWrapper();
+      args_wrapper->args = args;
+      args_wrapper->callback = callback;
+      args_wrapper->callback_id =
+          g_idle_add(ExecuteCallbackRequest, args_wrapper);
+      connected_modem_->idle_callback_ids_.insert(args_wrapper->callback_id);
     } else {
       delete args;
     }
     pthread_mutex_unlock(&modem_mutex_.mutex_);
+  }
+
+  static gboolean ExecuteCallbackRequest(gpointer data) {
+    CallbackArgsWrapper *args_wrapper =
+        reinterpret_cast<CallbackArgsWrapper*>(data);
+    bool run_callback = false;
+    pthread_mutex_lock(&modem_mutex_.mutex_);
+    if (connected_modem_ && !connected_modem_->getting_deallocated_) {
+      connected_modem_->idle_callback_ids_.erase(args_wrapper->callback_id);
+      run_callback = true;
+    }
+    pthread_mutex_unlock(&modem_mutex_.mutex_);
+    if (run_callback)
+      args_wrapper->callback(args_wrapper->args);
+    delete args_wrapper;
+    return FALSE;
   }
 
   struct SessionStateArgs : public CallbackArgs {
@@ -412,6 +445,9 @@ class GobiModem
   bool suspending_;
   bool exiting_;
   bool device_resetting_;
+  bool getting_deallocated_;
+
+  std::set<guint> idle_callback_ids_;
 
   bool session_starter_in_flight_;
   scoped_ptr<PendingEnable> pending_enable_;
