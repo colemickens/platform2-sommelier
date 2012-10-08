@@ -85,6 +85,9 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   void SetDebugTags(const std::string &tags, ::DBus::Error &error);
   std::string ListDebugTags(::DBus::Error &error);
 
+  std::map<std::string, ::DBus::Variant> GetNetworksForGeolocation(
+      ::DBus::Error &error);
+
  private:
   Manager *manager_;
   DISALLOW_COPY_AND_ASSIGN(ManagerDBusAdaptor);

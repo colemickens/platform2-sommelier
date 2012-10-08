@@ -291,4 +291,12 @@ std::string ManagerDBusAdaptor::ListDebugTags(::DBus::Error &/*error*/) {
   return ScopeLogger::GetInstance()->GetAllScopeNames();
 }
 
+map<string, ::DBus::Variant> ManagerDBusAdaptor::GetNetworksForGeolocation(
+    ::DBus::Error &/*error*/) {
+  SLOG(DBus, 2) << __func__;
+  map<string, ::DBus::Variant> networks;
+  NOTIMPLEMENTED();
+  return networks;
+}
+
 }  // namespace shill

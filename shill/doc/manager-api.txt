@@ -254,6 +254,12 @@ Methods		dict GetProperties()
 			will only have an effect if the active service
 			is currently in the portal state.
 
+		dict GetNetworksForGeolocation()
+
+		        Return a dictionary with information about visible
+			networks (e.g. BSSes) which may be then used for
+			Geolocation.
+
 
 Signals		PropertyChanged(string name, variant value)
 

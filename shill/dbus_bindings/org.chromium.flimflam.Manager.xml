@@ -88,6 +88,9 @@
 		<method name="ListDebugTags">
 			<arg type="s" direction="out"/>
 		</method>
+		<method name="GetNetworksForGeolocation">
+		        <arg type="a{sv}" direction="out"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>
