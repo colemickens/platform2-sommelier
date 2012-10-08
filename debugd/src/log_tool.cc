@@ -19,6 +19,7 @@ using std::vector;
 
 typedef vector<string> Strings;
 
+// TODO(ellyjones): sandbox. crosbug.com/35122
 string Run(const string& cmdline) {
   string output;
   ProcessWithOutput p;
@@ -49,6 +50,7 @@ static const Log common_logs[] = {
         "/usr/share/userfeedback/scripts/get_board_specific_info" },
   { "boot_times", "/bin/cat /tmp/boot-times-sent" },
   { "chrome_system_log", "/bin/cat /var/log/chrome/chrome" },
+  { "console-ramoops", "/bin/cat /dev/pstore/console-ramoops" },
   { "cpu", "/usr/bin/uname -p" },
   { "cpuinfo", "/bin/cat /proc/cpuinfo" },
   { "dmesg", "/bin/dmesg" },
