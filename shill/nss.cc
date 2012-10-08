@@ -21,7 +21,7 @@ namespace shill {
 namespace {
 base::LazyInstance<NSS> g_nss = LAZY_INSTANCE_INITIALIZER;
 const char kCertfileBasename[] = "/tmp/nss-cert.";
-const char kNSSGetCertScript[] = SCRIPTDIR "/nss-get-cert";
+const char kNSSGetCertScript[] = SHIMDIR "/nss-get-cert";
 }  // namespace
 
 NSS::NSS()
