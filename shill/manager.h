@@ -21,6 +21,7 @@
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/hook_table.h"
+#include "shill/metrics.h"
 #include "shill/modem_info.h"
 #include "shill/power_manager.h"
 #include "shill/property_store.h"
@@ -37,7 +38,6 @@ class DefaultProfile;
 class Error;
 class EventDispatcher;
 class ManagerAdaptorInterface;
-class Metrics;
 class Resolver;
 
 class Manager : public base::SupportsWeakPtr<Manager> {
@@ -238,10 +238,17 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Removes the action associtated with |name|.
   void RemoveTerminationAction(const std::string &name);
 
-  // Runs the termination actions.  If all actions complete within
+  // Runs the termination actions and notifies the metrics framework
+  // that the termination actions started running, only if any termination
+  // actions have been registered. |reason| specifies whether this method was
+  // called due to termination or suspend. If all actions complete within
   // |kTerminationActionsTimeoutMilliseconds|, |done| is called with a value of
-  // Error::kSuccess.  Otherwise, it is called with Error::kOperationTimeout.
-  void RunTerminationActions(const base::Callback<void(const Error &)> &done);
+  // Error::kSuccess. Otherwise, it is called with Error::kOperationTimeout.
+  //
+  // Returns true, if termination actions were run.
+  bool RunTerminationActionsAndNotifyMetrics(
+      const base::Callback<void(const Error &)> &done,
+      Metrics::TerminationActionReason reason);
 
   // Registers a |callback| that's invoked whenever the default service
   // changes. Returns a unique tag that can be used to deregister the
@@ -250,10 +257,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual void DeregisterDefaultServiceCallback(int tag);
 
  private:
+  friend class CellularTest;
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
   friend class WiFiObjectTest;
   friend class WiMaxProviderTest;
+
+  FRIEND_TEST(CellularTest, ConnectAddsTerminationAction);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, CalculateStateOffline);
   FRIEND_TEST(ManagerTest, CalculateStateOnline);
@@ -267,6 +277,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, NotifyDefaultServiceChanged);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
+  FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, StartupPortalList);
@@ -333,6 +344,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool MatchProfileWithService(const ServiceRefPtr &service);
 
   void NotifyDefaultServiceChanged(const ServiceRefPtr &service);
+
+  // Runs the termination actions.  If all actions complete within
+  // |kTerminationActionsTimeoutMilliseconds|, |done| is called with a value of
+  // Error::kSuccess.  Otherwise, it is called with Error::kOperationTimeout.
+  void RunTerminationActions(const base::Callback<void(const Error &)> &done);
 
   void OnPowerStateChanged(PowerManagerProxyDelegate::SuspendState power_state);
   void OnSuspendDelay(uint32 sequence_number);

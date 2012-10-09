@@ -87,8 +87,16 @@ const int Metrics::kMetricPortalAttemptsToOnlineNumBuckets = 10;
 
 const char Metrics::kMetricPortalResult[] = "Network.Shill.%s.PortalResult";
 
-const char Metrics::kMetricTerminationActionResult[] =
-    "Network.Shill.TerminationActionResult";
+const char Metrics::kMetricTerminationActionTimeOnTerminate[] =
+    "Network.Shill.TerminationActionTime.OnTerminate";
+const char Metrics::kMetricTerminationActionResultOnTerminate[] =
+    "Network.Shill.TerminationActionResult.OnTerminate";
+const char Metrics::kMetricTerminationActionTimeOnSuspend[] =
+    "Network.Shill.TerminationActionTime.OnSuspend";
+const char Metrics::kMetricTerminationActionResultOnSuspend[] =
+    "Network.Shill.TerminationActionResult.OnSuspend";
+const int Metrics::kMetricTerminationActionTimeMillisecondsMax = 10000;
+const int Metrics::kMetricTerminationActionTimeMillisecondsMin = 1;
 
 // static
 const uint16 Metrics::kWiFiBandwidth5MHz = 5;
@@ -151,6 +159,7 @@ Metrics::Metrics()
       time_online_timer_(new chromeos_metrics::Timer),
       time_to_drop_timer_(new chromeos_metrics::Timer),
       time_resume_to_ready_timer_(new chromeos_metrics::Timer),
+      time_termination_actions_timer(new chromeos_metrics::Timer),
       collect_bootstats_(true) {
   metrics_library_.Init();
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
@@ -419,6 +428,47 @@ void Metrics::NotifyPowerStateChange(PowerManager::SuspendState new_state) {
   } else {
     time_resume_to_ready_timer_->Reset();
   }
+}
+
+void Metrics::NotifyTerminationActionsStarted(
+    TerminationActionReason /*reason*/) {
+  if (time_termination_actions_timer->HasStarted())
+    return;
+  time_termination_actions_timer->Start();
+}
+
+void Metrics::NotifyTerminationActionsCompleted(
+    TerminationActionReason reason, bool success) {
+  if (!time_termination_actions_timer->HasStarted())
+    return;
+
+  int result = success ? kTerminationActionResultSuccess :
+                         kTerminationActionResultFailure;
+
+  base::TimeDelta elapsed_time;
+  time_termination_actions_timer->GetElapsedTime(&elapsed_time);
+  time_termination_actions_timer->Reset();
+  string time_metric, result_metric;
+  switch (reason) {
+  case kTerminationActionReasonSuspend:
+    time_metric = kMetricTerminationActionTimeOnSuspend;
+    result_metric = kMetricTerminationActionResultOnSuspend;
+    break;
+  case kTerminationActionReasonTerminate:
+    time_metric = kMetricTerminationActionTimeOnTerminate;
+    result_metric = kMetricTerminationActionResultOnTerminate;
+    break;
+  }
+
+  SendToUMA(time_metric,
+            elapsed_time.InMilliseconds(),
+            kMetricTerminationActionTimeMillisecondsMin,
+            kMetricTerminationActionTimeMillisecondsMax,
+            kTimerHistogramNumBuckets);
+
+  SendEnumToUMA(result_metric,
+                result,
+                kTerminationActionResultMax);
 }
 
 void Metrics::NotifyLinkMonitorFailure(

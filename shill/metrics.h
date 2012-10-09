@@ -140,9 +140,14 @@ class Metrics {
   };
 
   enum TerminationActionResult {
-    kTerminationActionSuccess,
-    kTerminationActionFailure,
+    kTerminationActionResultSuccess,
+    kTerminationActionResultFailure,
     kTerminationActionResultMax
+  };
+
+  enum TerminationActionReason {
+    kTerminationActionReasonSuspend,
+    kTerminationActionReasonTerminate
   };
 
   static const char kMetricDisconnect[];
@@ -220,7 +225,12 @@ class Metrics {
   static const char kMetricLinkApDisconnectType[];
 
   // Shill termination action statistics.
-  static const char kMetricTerminationActionResult[];
+  static const char kMetricTerminationActionTimeOnTerminate[];
+  static const char kMetricTerminationActionResultOnTerminate[];
+  static const char kMetricTerminationActionTimeOnSuspend[];
+  static const char kMetricTerminationActionResultOnSuspend[];
+  static const int kMetricTerminationActionTimeMillisecondsMax;
+  static const int kMetricTerminationActionTimeMillisecondsMin;
 
   Metrics();
   virtual ~Metrics();
@@ -267,6 +277,14 @@ class Metrics {
 
   // Notifies this object of a power management state change.
   void NotifyPowerStateChange(PowerManager::SuspendState new_state);
+
+  // Notifies this object that termination actions started executing.
+  void NotifyTerminationActionsStarted(TerminationActionReason reason);
+
+  // Notifies this object that termination actions have been completed.
+  // |success| is true, if the termination actions completed successfully.
+  void NotifyTerminationActionsCompleted(
+      TerminationActionReason reason, bool success);
 
   // Notifies this object of a failure in LinkMonitor.
   void NotifyLinkMonitorFailure(
@@ -354,6 +372,10 @@ class Metrics {
   void set_time_resume_to_ready_timer(chromeos_metrics::Timer *timer) {
     time_resume_to_ready_timer_.reset(timer);  // Passes ownership
   }
+  void set_time_termination_actions_timer(
+    chromeos_metrics::Timer *timer) {
+    time_termination_actions_timer.reset(timer);  // Passes ownership
+  }
 
   // |library_| points to |metrics_library_| when shill runs normally.
   // However, in order to allow for unit testing, we point |library_| to a
@@ -366,6 +388,7 @@ class Metrics {
   scoped_ptr<chromeos_metrics::Timer> time_online_timer_;
   scoped_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
   scoped_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
+  scoped_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
   bool collect_bootstats_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);

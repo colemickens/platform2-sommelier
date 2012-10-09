@@ -34,7 +34,6 @@
 #include "shill/hook_table.h"
 #include "shill/key_file_store.h"
 #include "shill/logging.h"
-#include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -61,7 +60,9 @@ const char Manager::kErrorNoDevice[] = "no wifi devices available";
 const char Manager::kErrorTypeRequired[] = "must specify service type";
 const char Manager::kErrorUnsupportedServiceType[] =
     "service type is unsupported";
-const int Manager::kTerminationActionsTimeoutMilliseconds = 3000;
+// This timeout should be less than the upstart job timeout, otherwise
+// stats for termination actions might be lost.
+const int Manager::kTerminationActionsTimeoutMilliseconds = 4500;
 const char Manager::kPowerManagerKey[] = "manager";
 
 Manager::Manager(ControlInterface *control_interface,
@@ -899,6 +900,17 @@ void Manager::RunTerminationActions(
   termination_actions_.Run(kTerminationActionsTimeoutMilliseconds, done);
 }
 
+bool Manager::RunTerminationActionsAndNotifyMetrics(
+        const base::Callback<void(const Error &)> &done,
+        Metrics::TerminationActionReason reason) {
+  if (termination_actions_.IsEmpty())
+    return false;
+
+  metrics_->NotifyTerminationActionsStarted(reason);
+  RunTerminationActions(done);
+  return true;
+}
+
 int Manager::RegisterDefaultServiceCallback(const ServiceCallback &callback) {
   default_service_callbacks_[++default_service_callback_tag_] = callback;
   return default_service_callback_tag_;
@@ -948,13 +960,19 @@ void Manager::OnPowerStateChanged(
 }
 
 void Manager::OnSuspendDelay(uint32 sequence_number) {
-  RunTerminationActions(
-      Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr(), sequence_number));
+  if (!RunTerminationActionsAndNotifyMetrics(
+       Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr(), sequence_number),
+       Metrics::kTerminationActionReasonSuspend)) {
+    LOG(INFO) << "No suspend actions were run.";
+    power_manager_->SuspendReady(sequence_number);
+  }
 }
 
 void Manager::OnSuspendActionsComplete(uint32 sequence_number,
                                        const Error &error) {
   LOG(INFO) << "Finished suspend actions.  Result: " << error;
+  metrics_->NotifyTerminationActionsCompleted(
+      Metrics::kTerminationActionReasonSuspend, error.IsSuccess());
   power_manager_->SuspendReady(sequence_number);
 }
 
