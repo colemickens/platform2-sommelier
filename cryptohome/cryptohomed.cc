@@ -48,6 +48,9 @@ int main(int argc, char **argv) {
   g_thread_init(NULL);
   dbus_threads_init_default();
 
+  // Initialize OpenSSL.
+  OpenSSL_add_all_algorithms();
+
   cryptohome::Platform platform;
   cryptohome::Service service;
   if (!service.Initialize()) {
