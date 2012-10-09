@@ -42,9 +42,11 @@ const char L2TPIPSecDriver::kPPPDPlugin[] = SCRIPTDIR "/libppp-plugin.so";
 const char L2TPIPSecDriver::kL2TPIPSecVPNPath[] = "/usr/sbin/l2tpipsec_vpn";
 // static
 const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
+  { flimflam::kL2tpIpsecAuthenticationType, 0 },
   { flimflam::kL2tpIpsecCaCertNssProperty, 0 },
   { flimflam::kL2tpIpsecClientCertIdProperty, 0 },
   { flimflam::kL2tpIpsecClientCertSlotProperty, 0 },
+  { flimflam::kL2tpIpsecIkeVersion, 0 },
   { flimflam::kL2tpIpsecPasswordProperty,
     Property::kCredential | Property::kWriteOnly },
   { flimflam::kL2tpIpsecPinProperty, Property::kCredential },
