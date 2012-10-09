@@ -362,7 +362,7 @@ bool ExternalBacklight::SendDisplayChangedSignal() {
   dbus_error_init(&error);
   DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
                                                 kPowerManagerInterface,
-                                                kExternalBacklightUpdate);
+                                                kExternalBacklightUpdateSignal);
   CHECK(signal);
   dbus_message_append_args(signal,
                            DBUS_TYPE_INT64, &current_level,

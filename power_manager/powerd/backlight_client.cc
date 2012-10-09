@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/external_backlight_client.h"
+#include "power_manager/powerd/backlight_client.h"
 
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
@@ -25,28 +25,33 @@
 #include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
-#include "power_manager/common/power_constants.h"
 
 namespace power_manager {
 
-bool ExternalBacklightClient::Init() {
+BacklightClient::BacklightClient(BacklightType type)
+    : type_(type) {
+}
+
+BacklightClient::~BacklightClient() {}
+
+bool BacklightClient::Init() {
   RegisterDBusMessageHandler();
   return GetActualBrightness(&level_, &max_level_);
 }
 
-bool ExternalBacklightClient::GetMaxBrightnessLevel(int64* max_level) {
+bool BacklightClient::GetMaxBrightnessLevel(int64* max_level) {
   CHECK(max_level);
   *max_level = max_level_;
   return true;
 }
 
-bool ExternalBacklightClient::GetCurrentBrightnessLevel(int64* current_level) {
+bool BacklightClient::GetCurrentBrightnessLevel(int64* current_level) {
   CHECK(current_level);
   *current_level = level_;
   return true;
 }
 
-bool ExternalBacklightClient::SetBrightnessLevel(int64 level) {
+bool BacklightClient::SetBrightnessLevel(int64 level) {
   if (level > max_level_ || level < 0) {
     LOG(ERROR) << "SetBrightness level " << level << " is invalid.";
     return false;
@@ -56,16 +61,16 @@ bool ExternalBacklightClient::SetBrightnessLevel(int64 level) {
       kRootPowerManagerServiceName,
       kPowerManagerServicePath,
       kRootPowerManagerInterface,
-      kExternalBacklightSetMethod);
+      kBacklightSetMethod);
   CHECK(message);
   dbus_message_append_args(message,
+                           DBUS_TYPE_INT32, &type_,
                            DBUS_TYPE_INT64, &level,
                            DBUS_TYPE_INVALID);
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   if (dbus_connection_send(connection, message, NULL) == FALSE) {
-    LOG(WARNING) << "Error sending " << kExternalBacklightSetMethod
-                 << " method call.";
+    LOG(WARNING) << "Error sending " << kBacklightSetMethod << " method call.";
     return false;
   }
   // Save the brightness locally.
@@ -73,16 +78,19 @@ bool ExternalBacklightClient::SetBrightnessLevel(int64 level) {
   return true;
 }
 
-bool ExternalBacklightClient::GetActualBrightness(int64* level,
-                                                  int64* max_level) {
+bool BacklightClient::GetActualBrightness(int64* level,
+                                          int64* max_level) {
   CHECK(level);
   CHECK(max_level);
   DBusMessage* message = dbus_message_new_method_call(
       kRootPowerManagerServiceName,
       kPowerManagerServicePath,
       kRootPowerManagerInterface,
-      kExternalBacklightGetMethod);
+      kBacklightGetMethod);
   CHECK(message);
+  dbus_message_append_args(message,
+                           DBUS_TYPE_INT32, &type_,
+                           DBUS_TYPE_INVALID);
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   DBusError error;
@@ -90,8 +98,8 @@ bool ExternalBacklightClient::GetActualBrightness(int64* level,
   DBusMessage* reply = dbus_connection_send_with_reply_and_block(
       connection, message, -1, &error);
   if (!reply) {
-    LOG(WARNING) << "Error sending " << kExternalBacklightGetMethod
-                 << " method call: " << error.message;
+    LOG(WARNING) << "Error sending " << kBacklightGetMethod << " method call: "
+                 << error.message;
     dbus_error_free(&error);
     return false;
   }
@@ -103,7 +111,7 @@ bool ExternalBacklightClient::GetActualBrightness(int64* level,
                             DBUS_TYPE_INT64, max_level,
                             DBUS_TYPE_BOOLEAN, &result,
                             DBUS_TYPE_INVALID) == FALSE) {
-    LOG(WARNING) << "Error reading reply from " << kExternalBacklightGetMethod
+    LOG(WARNING) << "Error reading reply from " << kBacklightGetMethod
                  << " method call.";
     return false;
   }
@@ -113,15 +121,20 @@ bool ExternalBacklightClient::GetActualBrightness(int64* level,
   return true;
 }
 
-DBusHandlerResult ExternalBacklightClient::DBusMessageHandler(
-    DBusConnection* /* connection */, DBusMessage* message, void* data) {
+DBusHandlerResult BacklightClient::DBusMessageHandler(
+    DBusConnection* /* connection */,
+    DBusMessage* message,
+    void* data) {
   if (!dbus_message_is_signal(message,
                               kPowerManagerInterface,
-                              kExternalBacklightUpdate))
+                              kExternalBacklightUpdateSignal))
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-  LOG(INFO) << "External backlight changed event";
-  ExternalBacklightClient* client = static_cast<ExternalBacklightClient*>(data);
+  BacklightClient* client = static_cast<BacklightClient*>(data);
+  if (client->type_ != BACKLIGHT_TYPE_DISPLAY)
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+  LOG(INFO) << "Backlight changed event";
   DBusError error;
   dbus_error_init(&error);
   if (!dbus_message_get_args(message, &error,
@@ -137,7 +150,7 @@ DBusHandlerResult ExternalBacklightClient::DBusMessageHandler(
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-void ExternalBacklightClient::RegisterDBusMessageHandler() {
+void BacklightClient::RegisterDBusMessageHandler() {
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(connection);

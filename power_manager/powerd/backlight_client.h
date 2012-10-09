@@ -2,23 +2,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_EXTERNAL_BACKLIGHT_CLIENT_H_
-#define POWER_MANAGER_POWERD_EXTERNAL_BACKLIGHT_CLIENT_H_
+#ifndef POWER_MANAGER_POWERD_BACKLIGHT_CLIENT_H_
+#define POWER_MANAGER_POWERD_BACKLIGHT_CLIENT_H_
 
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
 #include "power_manager/common/backlight_interface.h"
+#include "power_manager/common/power_constants.h"
 
 typedef int gboolean;  // Forward declaration of bool type used by glib.
 
 namespace power_manager {
 
-class ExternalBacklightClient : public BacklightInterface {
+// BacklightInterface implementation used by powerd that just forwards requests
+// over D-Bus to powerm.
+class BacklightClient : public BacklightInterface {
  public:
-  ExternalBacklightClient() {}
-  virtual ~ExternalBacklightClient() {}
+  explicit BacklightClient(BacklightType type);
+  virtual ~BacklightClient();
 
   // Initialize the backlight object.
   // On success, return true; otherwise return false.
@@ -37,12 +40,14 @@ class ExternalBacklightClient : public BacklightInterface {
                                               DBusMessage* message,
                                               void* data);
 
+  BacklightType type_;
+
   int64 level_;
   int64 max_level_;
 
-  DISALLOW_COPY_AND_ASSIGN(ExternalBacklightClient);
+  DISALLOW_COPY_AND_ASSIGN(BacklightClient);
 };
 
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_EXTERNAL_BACKLIGHT_CLIENT_H_
+#endif  // POWER_MANAGER_POWERD_BACKLIGHT_CLIENT_H_

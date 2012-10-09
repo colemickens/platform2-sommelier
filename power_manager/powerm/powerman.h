@@ -11,6 +11,7 @@
 #include "base/file_path.h"
 #include "base/time.h"
 #include "metrics/metrics_library.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/common/power_prefs.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/common/util_dbus_handler.h"
@@ -24,7 +25,8 @@ class PowerManDaemon {
  public:
   PowerManDaemon(PowerPrefs* prefs,
                  MetricsLibraryInterface* metrics_lib,
-                 BacklightInterface* backlight,
+                 BacklightInterface* display_backlight,
+                 BacklightInterface* keyboard_backlight,
                  const FilePath& run_dir);
   virtual ~PowerManDaemon();
 
@@ -69,6 +71,10 @@ class PowerManDaemon {
   // contains the new state of this input device.
   static void OnInputEvent(void* object, InputType type, int value);
 
+  // Returns the backlight of type |type|.  NULL may be returned if no backlight
+  // of the given type is present.
+  BacklightInterface* GetBacklight(BacklightType type);
+
   // Methods for handling input events.
   void HandlePowerButtonEvent(ButtonState value);
 
@@ -80,8 +86,8 @@ class PowerManDaemon {
   bool HandleRequestCleanShutdownSignal(DBusMessage* message);
   bool HandlePowerStateChangedSignal(DBusMessage* message);
   bool HandleSessionManagerStateChangedSignal(DBusMessage* message);
-  DBusMessage* HandleExternalBacklightGetMethod(DBusMessage* message);
-  DBusMessage* HandleExternalBacklightSetMethod(DBusMessage* message);
+  DBusMessage* HandleBacklightGetMethod(DBusMessage* message);
+  DBusMessage* HandleBacklightSetMethod(DBusMessage* message);
 
   bool CancelDBusRequest();
 
@@ -163,7 +169,8 @@ class PowerManDaemon {
   PowerPrefs* prefs_;
   LidState lidstate_;
   MetricsLibraryInterface* metrics_lib_;
-  BacklightInterface* backlight_;
+  BacklightInterface* display_backlight_;
+  BacklightInterface* keyboard_backlight_;
   int64 retry_suspend_ms_;
   int64 retry_suspend_attempts_;
   int retry_suspend_count_;

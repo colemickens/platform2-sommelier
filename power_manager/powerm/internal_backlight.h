@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_BACKLIGHT_H_
-#define POWER_MANAGER_POWERD_BACKLIGHT_H_
+#ifndef POWER_MANAGER_POWERM_INTERNAL_BACKLIGHT_H_
+#define POWER_MANAGER_POWERM_INTERNAL_BACKLIGHT_H_
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
@@ -13,10 +13,10 @@
 namespace power_manager {
 
 // Controls an LCD backlight via sysfs.
-class Backlight : public BacklightInterface {
+class InternalBacklight : public BacklightInterface {
  public:
-  Backlight();
-  virtual ~Backlight() {}
+  InternalBacklight();
+  virtual ~InternalBacklight() {}
 
   // Initialize the backlight object.
   //
@@ -58,9 +58,9 @@ class Backlight : public BacklightInterface {
   // Cached maximum brightness level.
   int64 max_brightness_level_;
 
-  DISALLOW_COPY_AND_ASSIGN(Backlight);
+  DISALLOW_COPY_AND_ASSIGN(InternalBacklight);
 };
 
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_BACKLIGHT_H_
+#endif  // POWER_MANAGER_POWERM_INTERNAL_BACKLIGHT_H_

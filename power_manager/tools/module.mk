@@ -4,17 +4,19 @@
 
 include common.mk
 
-BACKLIGHT-TOOL_OBJS = tools/backlight_tool.o
-CXX_BINARY(tools/backlight-tool): $(BACKLIGHT-TOOL_OBJS) \
-	CXX_STATIC_LIBRARY(powerd/libbacklight.pie.a) \
+CXX_BINARY(tools/backlight-tool): \
+	tools/backlight_tool.o \
+	CXX_STATIC_LIBRARY(powerm/libinternal_backlight.pie.a) \
 	CXX_STATIC_LIBRARY(powerm/libexternal_backlight.pie.a)
-CXX_BINARY(tools/backlight-tool): CPPFLAGS += $(BACKLIGHT_FLAGS)
-CXX_BINARY(tools/backlight-tool): LDLIBS += $(BACKLIGHT_LIBS)
+CXX_BINARY(tools/backlight-tool): \
+	CPPFLAGS += $(GLIB_FLAGS) $(DBUS_FLAGS)
+CXX_BINARY(tools/backlight-tool): \
+	LDLIBS += $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -ludev
 clean: CLEAN(tools/backlight-tool)
 all: CXX_BINARY(tools/backlight-tool)
 
-POWER-SUPPLY-INFO_OBJS = tools/power_supply_info.o
-CXX_BINARY(tools/power-supply-info): $(POWER-SUPPLY-INFO_OBJS) \
+CXX_BINARY(tools/power-supply-info): \
+	tools/power_supply_info.o \
 	CXX_STATIC_LIBRARY(powerd/libpower_supply.pie.a)
 CXX_BINARY(tools/power-supply-info): CPPFLAGS += $(POWERSUPPLY_FLAGS)
 CXX_BINARY(tools/power-supply-info): LDLIBS += $(POWERSUPPLY_LIBS)

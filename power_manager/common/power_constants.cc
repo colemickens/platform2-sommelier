@@ -55,8 +55,8 @@ const char kBatteryPollShortIntervalPref[] = "battery_poll_short_interval_ms";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
 
 // Miscellaneous constants.
-const char kBacklightPath[] = "/sys/class/backlight";
-const char kBacklightPattern[] = "*";
+const char kInternalBacklightPath[] = "/sys/class/backlight";
+const char kInternalBacklightPattern[] = "*";
 const char kKeyboardBacklightPath[] = "/sys/class/leds";
 const char kKeyboardBacklightPattern[] = "*:kbd_backlight";
 // Time to pin battery at full after going off AC.
@@ -68,18 +68,18 @@ const int64 kBatteryPercentTaperMs = 7 * 60 * 1000;
 const char kRootPowerManagerInterface[] = "org.chromium.RootPowerManager";
 const char kRootPowerManagerServiceName[] = "org.chromium.RootPowerManager";
 
-// powerd -> powerm signals.
+// powerd -> powerm messages.
 const char kCheckLidStateSignal[] = "CheckLidStateSignal";
 const char kRestartSignal[] = "RestartSignal";
 const char kRequestCleanShutdown[] = "RequestCleanShutdown";
 const char kSuspendSignal[] = "SuspendSignal";
 const char kShutdownSignal[] = "ShutdownSignal";
-const char kExternalBacklightGetMethod[] = "ExternalBacklightGet";
-const char kExternalBacklightSetMethod[] = "ExternalBacklightSet";
+const char kBacklightGetMethod[] = "BacklightGet";
+const char kBacklightSetMethod[] = "BacklightSet";
 
-// powerm -> powerd signals.
+// powerm -> powerd messages.
 const char kInputEventSignal[] = "InputEvent";
-const char kExternalBacklightUpdate[] = "ExternalBacklightUpdate";
+const char kExternalBacklightUpdateSignal[] = "ExternalBacklightUpdate";
 
 // Broadcast signals.
 const char kPowerStateChanged[] = "PowerStateChanged";

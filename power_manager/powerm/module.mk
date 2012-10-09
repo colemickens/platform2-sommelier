@@ -9,8 +9,16 @@ CXX_STATIC_LIBRARY(powerm/libexternal_backlight.pie.a): \
 CXX_STATIC_LIBRARY(powerm/libexternal_backlight.pie.a): \
 	CPPFLAGS += $(GLIB_FLAGS) $(DBUS_FLAGS)
 CXX_STATIC_LIBRARY(powerm/libexternal_backlight.pie.a): \
-	LDLIBS += $(GLIB_LIBS) $(DBUS_LIBS) -ludev
+	LDLIBS += $(GLIB_LIBS) $(DBUS_LIBS)
 clean: CLEAN(powerm/libexternal_backlight.pie.a)
+
+CXX_STATIC_LIBRARY(powerm/libinternal_backlight.pie.a): \
+	powerm/internal_backlight.o common/power_constants.o
+CXX_STATIC_LIBRARY(powerm/libinternal_backlight.pie.a): \
+	CPPFLAGS += $(GLIB_FLAGS)
+CXX_STATIC_LIBRARY(powerm/libinternal_backlight.pie.a): \
+	LDLIBS += $(GLIB_LIBS)
+clean: CLEAN(powerm/libinternal_backlight.pie.a)
 
 LIBPOWERMAN_DEPS = libchromeos-$(BASE_VER)
 LIBPOWERMAN_FLAGS = $(GLIB_FLAGS) $(DBUS_FLAGS) \
@@ -33,6 +41,7 @@ CXX_BINARY(powerm/powerm): $(POWERMAN_OBJS) \
 	CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a) \
 	CXX_STATIC_LIBRARY(powerm/libpowerman.pie.a) \
 	CXX_STATIC_LIBRARY(powerm/libexternal_backlight.pie.a) \
+	CXX_STATIC_LIBRARY(powerm/libinternal_backlight.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a)
 CXX_BINARY(powerm/powerm): CPPFLAGS += $(POWERMAN_FLAGS)
@@ -53,3 +62,16 @@ CXX_BINARY(powerm/powerman_unittest): CPPFLAGS += $(POWERMAN_UNITTEST_FLAGS)
 CXX_BINARY(powerm/powerman_unittest): LDLIBS += $(POWERMAN_UNITTEST_LIBS)
 clean: CXX_BINARY(powerm/powerman_unittest)
 tests: TEST(CXX_BINARY(powerm/powerman_unittest))
+
+CXX_BINARY(powerm/internal_backlight_unittest): \
+	powerm/internal_backlight_unittest.o \
+	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
+	CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a) \
+	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
+	CXX_STATIC_LIBRARY(powerm/libinternal_backlight.pie.a)
+CXX_BINARY(powerm/internal_backlight_unittest): CPPFLAGS += \
+	$(GLIB_FLAGS)
+CXX_BINARY(powerm/internal_backlight_unittest): LDLIBS += \
+	$(GLIB_LIBS) -lgmock -lgtest
+clean: CXX_BINARY(powerm/internal_backlight_unittest)
+tests: TEST(CXX_BINARY(powerm/internal_backlight_unittest))

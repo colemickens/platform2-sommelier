@@ -11,11 +11,9 @@
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
-#include "power_manager/powerm/powerman.h"
-
-#ifdef IS_DESKTOP
 #include "power_manager/powerm/external_backlight.h"
-#endif
+#include "power_manager/powerm/internal_backlight.h"
+#include "power_manager/powerm/powerman.h"
 
 using std::string;
 
@@ -79,18 +77,37 @@ int main(int argc, char* argv[]) {
   metrics_lib.Init();
 
 #ifdef IS_DESKTOP
-  power_manager::ExternalBacklight backlight;
-  backlight.Init();
+  scoped_ptr<power_manager::ExternalBacklight> display_backlight(
+      new power_manager::ExternalBacklight);
+  if (!display_backlight->Init()) {
+    LOG(WARNING) << "Cannot initialize external backlight";
+    display_backlight.reset();
+  }
+#else
+  scoped_ptr<power_manager::InternalBacklight> display_backlight(
+      new power_manager::InternalBacklight);
+  if (!display_backlight->Init(FilePath(power_manager::kInternalBacklightPath),
+                               power_manager::kInternalBacklightPattern)) {
+    LOG(WARNING) << "Cannot initialize internal backlight";
+    display_backlight.reset();
+  }
+#endif
+
+  scoped_ptr<power_manager::InternalBacklight> keyboard_backlight;
+#ifdef HAS_KEYBOARD_BACKLIGHT
+  keyboard_backlight.reset(new power_manager::InternalBacklight);
+  if (!keyboard_backlight->Init(FilePath(power_manager::kKeyboardBacklightPath),
+                                power_manager::kKeyboardBacklightPattern)) {
+    LOG(WARNING) << "Cannot initialize keyboard backlight";
+    keyboard_backlight.reset();
+  }
 #endif
 
   FilePath run_dir(FLAGS_run_dir);
   power_manager::PowerManDaemon daemon(&prefs,
                                        &metrics_lib,
-#ifdef IS_DESKTOP
-                                       &backlight,
-#else
-                                       NULL,
-#endif
+                                       display_backlight.get(),
+                                       keyboard_backlight.get(),
                                        run_dir);
   daemon.Init();
   daemon.Run();

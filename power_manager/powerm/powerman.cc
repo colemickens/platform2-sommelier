@@ -21,7 +21,6 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/backlight_interface.h"
-#include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/powerm/powerman.h"
@@ -41,14 +40,16 @@ namespace power_manager {
 
 PowerManDaemon::PowerManDaemon(PowerPrefs* prefs,
                                MetricsLibraryInterface* metrics_lib,
-                               BacklightInterface* backlight,
+                               BacklightInterface* display_backlight,
+                               BacklightInterface* keyboard_backlight,
                                const FilePath& run_dir)
     : loop_(NULL),
       use_input_for_lid_(1),
       prefs_(prefs),
       lidstate_(LID_STATE_OPENED),
       metrics_lib_(metrics_lib),
-      backlight_(backlight),
+      display_backlight_(display_backlight),
+      keyboard_backlight_(keyboard_backlight),
       retry_suspend_count_(0),
       suspend_pid_(0),
       lid_id_(0),
@@ -218,6 +219,18 @@ bool PowerManDaemon::CancelDBusRequest() {
   return cancel;
 }
 
+BacklightInterface* PowerManDaemon::GetBacklight(BacklightType type) {
+  switch (type) {
+    case BACKLIGHT_TYPE_DISPLAY:
+      return display_backlight_;
+    case BACKLIGHT_TYPE_KEYBOARD:
+      return keyboard_backlight_;
+    default:
+      LOG(ERROR) << "Unknown backlight type " << type;
+      return NULL;
+  }
+}
+
 bool PowerManDaemon::HandleCheckLidStateSignal(DBusMessage*) {  // NOLINT
   if (lidstate_ == LID_STATE_CLOSED)
     SendInputEventSignal(INPUT_LID, BUTTON_DOWN);
@@ -311,18 +324,31 @@ bool PowerManDaemon::HandleSessionManagerStateChangedSignal(
   return true;
 }
 
-DBusMessage* PowerManDaemon::HandleExternalBacklightGetMethod(
-    DBusMessage* message) {
-  int64 current_level = 0;
-  int64 max_level = 0;
-  dbus_bool_t result = FALSE;
-  if (backlight_) {
-    result = backlight_->GetCurrentBrightnessLevel(&current_level) &&
-             backlight_->GetMaxBrightnessLevel(&max_level);
+DBusMessage* PowerManDaemon::HandleBacklightGetMethod(DBusMessage* message) {
+  BacklightType type = BACKLIGHT_TYPE_DISPLAY;
+  DBusError error;
+  dbus_error_init(&error);
+  if (!dbus_message_get_args(message, &error,
+                             DBUS_TYPE_INT32, &type,
+                             DBUS_TYPE_INVALID)) {
+    LOG(WARNING) << "Unable to read " << kBacklightGetMethod << " args";
+    dbus_error_free(&error);
+    return NULL;
   }
 
+  BacklightInterface* backlight = GetBacklight(type);
+  if (!backlight) {
+    LOG(WARNING) << "Ignoring " << kBacklightGetMethod << " request for "
+                 << "nonexistent backlight of type " << type;
+    return NULL;
+  }
+
+  int64 current_level = 0;
+  int64 max_level = 0;
+  dbus_bool_t result = backlight->GetCurrentBrightnessLevel(&current_level) &&
+                       backlight->GetMaxBrightnessLevel(&max_level);
+
   DBusMessage* reply = util::CreateEmptyDBusReply(message);
-  CHECK(reply);
   dbus_message_append_args(reply,
                            DBUS_TYPE_INT64, &current_level,
                            DBUS_TYPE_INT64, &max_level,
@@ -331,21 +357,28 @@ DBusMessage* PowerManDaemon::HandleExternalBacklightGetMethod(
   return reply;
 }
 
-DBusMessage* PowerManDaemon::HandleExternalBacklightSetMethod(
-    DBusMessage* message) {
+DBusMessage* PowerManDaemon::HandleBacklightSetMethod(DBusMessage* message) {
+  BacklightType type = BACKLIGHT_TYPE_DISPLAY;
   int64 level = 0;
   DBusError error;
   dbus_error_init(&error);
-  if (dbus_message_get_args(message, &error,
-                            DBUS_TYPE_INT64, &level,
-                            DBUS_TYPE_INVALID)) {
-    if (backlight_)
-      backlight_->SetBrightnessLevel(level);
-  } else {
-    LOG(WARNING) << "Unable to read " << kExternalBacklightSetMethod << " args";
+  if (!dbus_message_get_args(message, &error,
+                             DBUS_TYPE_INT32, &type,
+                             DBUS_TYPE_INT64, &level,
+                             DBUS_TYPE_INVALID)) {
+    LOG(WARNING) << "Unable to read " << kBacklightSetMethod << " args";
     dbus_error_free(&error);
+    return NULL;
   }
-  return util::CreateEmptyDBusReply(message);
+
+  BacklightInterface* backlight = GetBacklight(type);
+  if (backlight) {
+    backlight->SetBrightnessLevel(level);
+  } else {
+    LOG(WARNING) << "Ignoring " << kBacklightSetMethod << " request for "
+                 << "nonexistent backlight of type " << type;
+  }
+  return NULL;
 }
 
 void PowerManDaemon::DBusNameOwnerChangedHandler(
@@ -417,13 +450,13 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
 
   dbus_handler_.AddDBusMethodHandler(
       kRootPowerManagerInterface,
-      kExternalBacklightGetMethod,
-      base::Bind(&PowerManDaemon::HandleExternalBacklightGetMethod,
+      kBacklightGetMethod,
+      base::Bind(&PowerManDaemon::HandleBacklightGetMethod,
                  base::Unretained(this)));
   dbus_handler_.AddDBusMethodHandler(
       kRootPowerManagerInterface,
-      kExternalBacklightSetMethod,
-      base::Bind(&PowerManDaemon::HandleExternalBacklightSetMethod,
+      kBacklightSetMethod,
+      base::Bind(&PowerManDaemon::HandleBacklightSetMethod,
                  base::Unretained(this)));
 
   dbus_handler_.Start();

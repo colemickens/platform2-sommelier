@@ -14,7 +14,7 @@
 #ifdef IS_DESKTOP
 #include "power_manager/powerm/external_backlight.h"
 #else
-#include "power_manager/powerd/backlight.h"
+#include "power_manager/powerm/internal_backlight.h"
 #endif
 
 DEFINE_bool(get_brightness, false, "Get current brightness level.");
@@ -36,9 +36,9 @@ int main(int argc, char* argv[]) {
   power_manager::ExternalBacklight backlight;
   CHECK(backlight.Init());
 #else
-  power_manager::Backlight backlight;
-  CHECK(backlight.Init(FilePath(power_manager::kBacklightPath),
-                       power_manager::kBacklightPattern));
+  power_manager::InternalBacklight backlight;
+  CHECK(backlight.Init(FilePath(power_manager::kInternalBacklightPath),
+                       power_manager::kInternalBacklightPattern));
 #endif
   if (FLAGS_get_brightness) {
     int64 level = 0;

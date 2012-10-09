@@ -21,7 +21,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/audio_detector.h"
-#include "power_manager/powerd/backlight.h"
+#include "power_manager/powerd/backlight_client.h"
 #include "power_manager/powerd/idle_detector.h"
 #include "power_manager/powerd/monitor_reconfigure.h"
 #include "power_manager/powerd/powerd.h"
@@ -29,7 +29,6 @@
 #include "system_api/dbus/service_constants.h"
 
 #ifdef IS_DESKTOP
-#include "power_manager/powerd/external_backlight_client.h"
 #include "power_manager/powerd/external_backlight_controller.h"
 #else
 #include "power_manager/powerd/internal_backlight_controller.h"
@@ -173,46 +172,42 @@ int main(int argc, char* argv[]) {
     LOG(WARNING) << "Cannot initialize light sensor";
 #endif
 
+  power_manager::BacklightClient display_backlight(
+      power_manager::BACKLIGHT_TYPE_DISPLAY);
+  if (!display_backlight.Init())
+    LOG(WARNING) << "Cannot initialize display backlight";
+
   power_manager::MonitorReconfigure monitor_reconfigure;
 #ifdef IS_DESKTOP
-  power_manager::ExternalBacklightClient backlight;
-  if (!backlight.Init())
-    LOG(WARNING) << "Cannot initialize backlight";
+  power_manager::ExternalBacklightController display_backlight_controller(
+      &display_backlight);
 #else
-  power_manager::Backlight backlight;
-  if (!backlight.Init(FilePath(power_manager::kBacklightPath),
-                      power_manager::kBacklightPattern))
-    LOG(WARNING) << "Cannot initialize backlight";
+  power_manager::InternalBacklightController display_backlight_controller(
+      &display_backlight, &prefs, als.get());
 #endif
+  display_backlight_controller.SetMonitorReconfigure(&monitor_reconfigure);
+  if (!display_backlight_controller.Init())
+    LOG(WARNING) << "Cannot initialize display backlight controller";
 
-#ifdef IS_DESKTOP
-  power_manager::ExternalBacklightController backlight_ctl(&backlight);
-#else
-  power_manager::InternalBacklightController backlight_ctl(&backlight,
-                                                           &prefs,
-                                                           als.get());
-#endif
-  backlight_ctl.SetMonitorReconfigure(&monitor_reconfigure);
-  if (!backlight_ctl.Init())
-    LOG(WARNING) << "Cannot initialize backlight controller";
-
-  scoped_ptr<power_manager::KeyboardBacklightController> keyboard_controller;
 #ifdef HAS_KEYBOARD_BACKLIGHT
-  scoped_ptr<power_manager::Backlight> keyboard_light(
-      new power_manager::Backlight());
-  if (!keyboard_light->Init(FilePath(power_manager::kKeyboardBacklightPath),
-                            power_manager::kKeyboardBacklightPattern)) {
+  scoped_ptr<power_manager::BacklightClient> keyboard_backlight(
+      new power_manager::BacklightClient(
+          power_manager::BACKLIGHT_TYPE_KEYBOARD));
+  if (!keyboard_backlight->Init()) {
     LOG(WARNING) << "Cannot initialize keyboard backlight!";
-    keyboard_light.reset(NULL);
+    keyboard_backlight.reset();
   }
-  if (keyboard_light.get()) {
-    keyboard_controller.reset(
-        new power_manager::KeyboardBacklightController(keyboard_light.get(),
-                                                       &prefs,
-                                                       als.get()));
-    if (!keyboard_controller->Init()) {
-      LOG(WARNING) << "Cannot initialize keyboard controller!";
-      keyboard_controller.reset(NULL);
+#endif
+  scoped_ptr<power_manager::KeyboardBacklightController>
+      keyboard_backlight_controller;
+#ifdef HAS_KEYBOARD_BACKLIGHT
+  if (keyboard_backlight.get()) {
+    keyboard_backlight_controller.reset(
+        new power_manager::KeyboardBacklightController(
+            keyboard_backlight.get(), &prefs, als.get()));
+    if (!keyboard_backlight_controller->Init()) {
+      LOG(WARNING) << "Cannot initialize keyboard backlight controller!";
+      keyboard_backlight_controller.reset();
     }
   }
 #endif
@@ -220,20 +215,20 @@ int main(int argc, char* argv[]) {
   MetricsLibrary metrics_lib;
   power_manager::VideoDetector video_detector;
   video_detector.Init();
-  if (keyboard_controller.get())
-    video_detector.AddObserver(keyboard_controller.get());
+  if (keyboard_backlight_controller.get())
+    video_detector.AddObserver(keyboard_backlight_controller.get());
   power_manager::AudioDetector audio_detector;
   audio_detector.Init();
   power_manager::IdleDetector idle;
   metrics_lib.Init();
   FilePath run_dir(FLAGS_run_dir);
-  power_manager::Daemon daemon(&backlight_ctl,
+  power_manager::Daemon daemon(&display_backlight_controller,
                                &prefs,
                                &metrics_lib,
                                &video_detector,
                                &audio_detector,
                                &idle,
-                               keyboard_controller.get(),
+                               keyboard_backlight_controller.get(),
                                als.get(),
                                run_dir);
 

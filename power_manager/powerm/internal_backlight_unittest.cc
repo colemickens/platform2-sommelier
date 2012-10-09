@@ -11,15 +11,15 @@
 
 #include "base/file_util.h"
 #include "base/logging.h"
-#include "power_manager/powerd/backlight.h"
+#include "power_manager/powerm/internal_backlight.h"
 
 using ::testing::Test;
 
 namespace power_manager {
 
-class BacklightTest : public Test {
+class InternalBacklightTest : public Test {
  public:
-  BacklightTest() {}
+  InternalBacklightTest() {}
 
   virtual void SetUp() {
     CHECK(file_util::CreateNewTempDirectory("backlight_unittest", &test_path_));
@@ -59,7 +59,7 @@ class BacklightTest : public Test {
 };
 
 // A basic test of functionality
-TEST_F(BacklightTest, BasicTest) {
+TEST_F(InternalBacklightTest, BasicTest) {
   FilePath this_test_path = test_path_.Append("basic_test");
   const int64 kBrightness = 128;
   const int64 kMaxBrightness = 255;
@@ -68,7 +68,7 @@ TEST_F(BacklightTest, BasicTest) {
   FilePath my_path = this_test_path.Append("pwm-backlight");
   PopulateBacklightDir(my_path, kBrightness, kMaxBrightness, kActualBrightness);
 
-  Backlight backlight;
+  InternalBacklight backlight;
   ASSERT_TRUE(backlight.Init(this_test_path, "*"));
 
   int64 level = 0;
@@ -81,7 +81,7 @@ TEST_F(BacklightTest, BasicTest) {
 }
 
 // Make sure things work OK when there is no actual_brightness file.
-TEST_F(BacklightTest, NoActualBrightnessTest) {
+TEST_F(InternalBacklightTest, NoActualBrightnessTest) {
   FilePath this_test_path = test_path_.Append("no_actual_brightness_test");
   const int64 kBrightness = 128;
   const int64 kMaxBrightness = 255;
@@ -89,7 +89,7 @@ TEST_F(BacklightTest, NoActualBrightnessTest) {
   FilePath my_path = this_test_path.Append("pwm-backlight");
   PopulateBacklightDir(my_path, kBrightness, kMaxBrightness, -1);
 
-  Backlight backlight;
+  InternalBacklight backlight;
   ASSERT_TRUE(backlight.Init(this_test_path, "*"));
 
   int64 level = 0;
@@ -102,7 +102,7 @@ TEST_F(BacklightTest, NoActualBrightnessTest) {
 }
 
 // Test that we pick the one with the greatest granularity
-TEST_F(BacklightTest, GranularityTest) {
+TEST_F(InternalBacklightTest, GranularityTest) {
   FilePath this_test_path = test_path_.Append("granularity_test");
 
   // Make sure the middle one is the most granular so we're not just
@@ -115,7 +115,7 @@ TEST_F(BacklightTest, GranularityTest) {
   FilePath c_path = this_test_path.Append("c");
   PopulateBacklightDir(c_path, 30, 63, 31);
 
-  Backlight backlight;
+  InternalBacklight backlight;
   ASSERT_TRUE(backlight.Init(this_test_path, "*"));
 
   int64 level = 0;
@@ -128,7 +128,7 @@ TEST_F(BacklightTest, GranularityTest) {
 }
 
 // Test ignore directories starting with a "."
-TEST_F(BacklightTest, NoDotDirsTest) {
+TEST_F(InternalBacklightTest, NoDotDirsTest) {
   FilePath this_test_path = test_path_.Append("no_dot_dirs_test");
 
   // We'll just create one dir and it will have a dot in it.  Then, we can
@@ -136,12 +136,12 @@ TEST_F(BacklightTest, NoDotDirsTest) {
   FilePath my_path = this_test_path.Append(".pwm-backlight");
   PopulateBacklightDir(my_path, 128, 255, 127);
 
-  Backlight backlight;
+  InternalBacklight backlight;
   EXPECT_FALSE(backlight.Init(this_test_path, "*"));
 }
 
 // Test that the glob is working correctly for searching for backlight dirs.
-TEST_F(BacklightTest, GlobTest) {
+TEST_F(InternalBacklightTest, GlobTest) {
   FilePath this_test_path = test_path_.Append("glob_test");
 
   // Purposely give my::kbd_backlight a lower "max_level" than
@@ -156,7 +156,7 @@ TEST_F(BacklightTest, GlobTest) {
   FilePath ignore2_path = this_test_path.Append(".no::kbd_backlight");
   PopulateBacklightDir(ignore2_path, 5, 6, -1);
 
-  Backlight backlight;
+  InternalBacklight backlight;
   ASSERT_TRUE(backlight.Init(this_test_path, "*:kbd_backlight"));
 
   int64 level = 0;

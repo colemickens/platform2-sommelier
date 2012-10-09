@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/backlight.h"
+#include "power_manager/powerm/internal_backlight.h"
 
 #include <dirent.h>
 #include <glib.h>
@@ -19,10 +19,10 @@
 
 namespace power_manager {
 
-Backlight::Backlight() : max_brightness_level_(0) {}
+InternalBacklight::InternalBacklight() : max_brightness_level_(0) {}
 
-bool Backlight::Init(const FilePath& base_path,
-                     const FilePath::StringType& pattern) {
+bool InternalBacklight::Init(const FilePath& base_path,
+                             const FilePath::StringType& pattern) {
   FilePath dir_path;
   file_util::FileEnumerator dir_enumerator(
       base_path, false, file_util::FileEnumerator::DIRECTORIES, pattern);
@@ -59,17 +59,17 @@ bool Backlight::Init(const FilePath& base_path,
   return true;
 }
 
-bool Backlight::GetMaxBrightnessLevel(int64* max_level) {
+bool InternalBacklight::GetMaxBrightnessLevel(int64* max_level) {
   DCHECK(max_level);
   *max_level = max_brightness_level_;
   return true;
 }
 
-bool Backlight::GetCurrentBrightnessLevel(int64* current_level) {
+bool InternalBacklight::GetCurrentBrightnessLevel(int64* current_level) {
   return ReadBrightnessLevelFromFile(actual_brightness_path_, current_level);
 }
 
-bool Backlight::SetBrightnessLevel(int64 level) {
+bool InternalBacklight::SetBrightnessLevel(int64 level) {
   if (brightness_path_.empty()) {
     LOG(ERROR) << "Cannot find backlight brightness file.";
     return false;
@@ -86,10 +86,10 @@ bool Backlight::SetBrightnessLevel(int64 level) {
 }
 
 // static
-void Backlight::GetBacklightFilePaths(const FilePath& dir_path,
-                                      FilePath* actual_brightness_path,
-                                      FilePath* brightness_path,
-                                      FilePath* max_brightness_path) {
+void InternalBacklight::GetBacklightFilePaths(const FilePath& dir_path,
+                                              FilePath* actual_brightness_path,
+                                              FilePath* brightness_path,
+                                              FilePath* max_brightness_path) {
   if (actual_brightness_path)
     *actual_brightness_path = dir_path.Append("actual_brightness");
   if (brightness_path)
@@ -99,7 +99,7 @@ void Backlight::GetBacklightFilePaths(const FilePath& dir_path,
 }
 
 // static
-int64 Backlight::CheckBacklightFiles(const FilePath& dir_path) {
+int64 InternalBacklight::CheckBacklightFiles(const FilePath& dir_path) {
   FilePath actual_brightness_path, brightness_path, max_brightness_path;
   GetBacklightFilePaths(dir_path,
                         &actual_brightness_path,
@@ -121,8 +121,8 @@ int64 Backlight::CheckBacklightFiles(const FilePath& dir_path) {
 }
 
 // static
-bool Backlight::ReadBrightnessLevelFromFile(const FilePath& path,
-                                            int64* level) {
+bool InternalBacklight::ReadBrightnessLevelFromFile(const FilePath& path,
+                                                    int64* level) {
   DCHECK(level);
 
   std::string level_str;

@@ -29,7 +29,8 @@ class PowerManDaemonTest : public Test {
  public:
   PowerManDaemonTest()
       : prefs_(FilePath("config")),
-        daemon_(&prefs_, &metrics_lib_, &backlight_, FilePath(".")) {}
+        daemon_(&prefs_, &metrics_lib_, &backlight_, NULL, FilePath(".")) {
+  }
 
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor.
