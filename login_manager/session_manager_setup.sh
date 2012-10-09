@@ -262,18 +262,7 @@ fi
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
   HIGHDPI_FLAGS="--allow-webui-compositing"
-  # TODO(flackr): Remove --enable-text-subpixel-positioning when chrome rolls
-  # past r154767 (See http://crbug.com/145020).
-  HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-text-subpixel-positioning"
   HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-webkit-text-subpixel-positioning"
-fi
-
-# If screensaver use isn't disabled, set screensaver.
-SCREENSAVERS_PATH=/usr/share/chromeos-assets/screensavers
-SCREENSAVER_FLAG=
-if [ -d "${SCREENSAVERS_PATH}" ]; then
-  SCREENSAVER_FLAG="--screen-saver-url=\
-file://${SCREENSAVERS_PATH}/default/index.htm"
 fi
 
 TOUCHUI_FLAGS=
@@ -281,7 +270,6 @@ if use_flag_is_set touchui; then
   TOUCHUI_FLAGS="
     --enable-touch-calibration
     --enable-touch-events
-    --disable-gesture-tap-highlight
   "
 fi
 
@@ -356,19 +344,15 @@ ply-image --clear 0x000000 &
 export PATH=/bin:/usr/bin:/usr/bin/X11
 
 exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
-    $CHROME --apps-gallery-title="Web Store" \
-            --apps-gallery-url="https://chrome.google.com/webstore/" \
+    $CHROME --apps-gallery-url="https://chrome.google.com/webstore/" \
             --compress-sys-feedback \
             --device-management-url="$DMSERVER" \
             --disable-seccomp-sandbox \
             --enable-accelerated-plugins \
             --enable-gview \
             --enable-logging \
-            --enable-mobile-dialog \
             --enable-partial-swap \
             --enable-smooth-scrolling \
-            --enable-sync-tabs \
-            --enable-sync-tabs-for-other-clients \
             --enable-threaded-compositing \
             --enable-ui-release-front-surface \
             --enterprise-enrollment-initial-modulus=5 \
@@ -394,7 +378,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             ${AURA_FLAGS} \
             ${FLASH_FLAGS} \
             ${HIGHDPI_FLAGS} \
-            ${SCREENSAVER_FLAG} \
             ${SHOW_VOLUME_STATUS_FLAG} \
             ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
