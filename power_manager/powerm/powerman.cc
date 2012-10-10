@@ -360,11 +360,13 @@ DBusMessage* PowerManDaemon::HandleBacklightGetMethod(DBusMessage* message) {
 DBusMessage* PowerManDaemon::HandleBacklightSetMethod(DBusMessage* message) {
   BacklightType type = BACKLIGHT_TYPE_DISPLAY;
   int64 level = 0;
+  int64 interval_internal = 0;
   DBusError error;
   dbus_error_init(&error);
   if (!dbus_message_get_args(message, &error,
                              DBUS_TYPE_INT32, &type,
                              DBUS_TYPE_INT64, &level,
+                             DBUS_TYPE_INT64, &interval_internal,
                              DBUS_TYPE_INVALID)) {
     LOG(WARNING) << "Unable to read " << kBacklightSetMethod << " args";
     dbus_error_free(&error);
@@ -373,7 +375,8 @@ DBusMessage* PowerManDaemon::HandleBacklightSetMethod(DBusMessage* message) {
 
   BacklightInterface* backlight = GetBacklight(type);
   if (backlight) {
-    backlight->SetBrightnessLevel(level);
+    backlight->SetBrightnessLevel(
+        level, base::TimeDelta::FromInternalValue(interval_internal));
   } else {
     LOG(WARNING) << "Ignoring " << kBacklightSetMethod << " request for "
                  << "nonexistent backlight of type " << type;

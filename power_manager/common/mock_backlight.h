@@ -10,6 +10,7 @@
 
 #include "power_manager/common/backlight_interface.h"
 
+using ::testing::_;
 using ::testing::DoAll;
 using ::testing::NotNull;
 using ::testing::Return;
@@ -37,10 +38,22 @@ class MockBacklight : public BacklightInterface {
                 .RetiresOnSaturation();
   }
 
-  MOCK_METHOD1(SetBrightnessLevel, bool(int64 level));
-  void ExpectSetBrightnessLevel(int64 level,
-                                bool ret_val) {
-    EXPECT_CALL(*this, SetBrightnessLevel(level))
+  MOCK_METHOD2(SetBrightnessLevel, bool(int64 level, base::TimeDelta interval));
+  void ExpectSetBrightnessLevel(int64 level, bool ret_val) {
+    EXPECT_CALL(*this, SetBrightnessLevel(level, _))
+                .WillOnce(Return(ret_val))
+                .RetiresOnSaturation();
+  }
+
+  void ExpectSetBrightnessLevelRepeatedly(int64 level, bool ret_val) {
+    EXPECT_CALL(*this, SetBrightnessLevel(level, _))
+                .WillRepeatedly(Return(ret_val));
+  }
+
+  void ExpectSetBrightnessLevelWithInterval(int64 level,
+                                            base::TimeDelta interval,
+                                            bool ret_val) {
+    EXPECT_CALL(*this, SetBrightnessLevel(level, interval))
                 .WillOnce(Return(ret_val))
                 .RetiresOnSaturation();
   }

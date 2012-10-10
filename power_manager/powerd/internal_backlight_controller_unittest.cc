@@ -57,7 +57,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
     EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightnessLevel),
                               Return(true)));
-    EXPECT_CALL(backlight_, SetBrightnessLevel(_))
+    EXPECT_CALL(backlight_, SetBrightnessLevel(_, _))
         .WillRepeatedly(Return(false));
     prefs_.SetDouble(kPluggedBrightnessOffsetPref, kPluggedBrightnessPercent);
     prefs_.SetDouble(kUnpluggedBrightnessOffsetPref,
@@ -370,9 +370,6 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   // display is turned off, but it should be set back to the active level (with
   // the screen still off) before suspending, so that the kernel driver can
   // restore that level after resuming.
-  // TODO(derat): We try to turn on the internal backlight in response to every
-  // non-zero brightness change but shouldn't.
-  monitor.ExpectRequest(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_ON);
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
   Mock::VerifyAndClearExpectations(&monitor);
 

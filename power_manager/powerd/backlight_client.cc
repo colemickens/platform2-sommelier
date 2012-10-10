@@ -6,22 +6,10 @@
 
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <dirent.h>
-#include <fcntl.h>
-#include <glib.h>
-#include <inttypes.h>
-#include <linux/i2c.h>
-#include <linux/i2c-dev.h>
-#include <sys/ioctl.h>
-#include <sys/types.h>
-#include <unistd.h>
 
 #include <string>
 
 #include "base/logging.h"
-#include "base/file_util.h"
-#include "base/string_number_conversions.h"
-#include "base/string_util.h"
 #include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
@@ -29,7 +17,9 @@
 namespace power_manager {
 
 BacklightClient::BacklightClient(BacklightType type)
-    : type_(type) {
+    : type_(type),
+      level_(0),
+      max_level_(0) {
 }
 
 BacklightClient::~BacklightClient() {}
@@ -51,7 +41,8 @@ bool BacklightClient::GetCurrentBrightnessLevel(int64* current_level) {
   return true;
 }
 
-bool BacklightClient::SetBrightnessLevel(int64 level) {
+bool BacklightClient::SetBrightnessLevel(int64 level,
+                                         base::TimeDelta interval) {
   if (level > max_level_ || level < 0) {
     LOG(ERROR) << "SetBrightness level " << level << " is invalid.";
     return false;
@@ -63,9 +54,11 @@ bool BacklightClient::SetBrightnessLevel(int64 level) {
       kRootPowerManagerInterface,
       kBacklightSetMethod);
   CHECK(message);
+  int64 interval_internal = interval.ToInternalValue();
   dbus_message_append_args(message,
                            DBUS_TYPE_INT32, &type_,
                            DBUS_TYPE_INT64, &level,
+                           DBUS_TYPE_INT64, &interval_internal,
                            DBUS_TYPE_INVALID);
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());

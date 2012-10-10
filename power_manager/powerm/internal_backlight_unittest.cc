@@ -11,6 +11,8 @@
 
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/string_number_conversions.h"
+#include "base/string_util.h"
 #include "power_manager/powerm/internal_backlight.h"
 
 using ::testing::Test;
@@ -31,27 +33,54 @@ class InternalBacklightTest : public Test {
 
   // Create files to make the given directory look like it is a sysfs backlight
   // dir.
-  void PopulateBacklightDir(const FilePath &path,
+  void PopulateBacklightDir(const FilePath& path,
                             int64 brightness,
                             int64 max_brightness,
                             int64 actual_brightness) {
     CHECK(file_util::CreateDirectory(path));
 
-    FILE* brightness_file = file_util::OpenFile(path.Append("brightness"), "w");
+    FILE* brightness_file = file_util::OpenFile(
+        path.Append(InternalBacklight::kBrightnessFilename), "w");
     fprintf(brightness_file, "%"PRId64"\n", brightness);
     file_util::CloseFile(brightness_file);
 
-    FILE* max_brightness_file =
-        file_util::OpenFile(path.Append("max_brightness"), "w");
+    FILE* max_brightness_file = file_util::OpenFile(
+        path.Append(InternalBacklight::kMaxBrightnessFilename), "w");
     fprintf(max_brightness_file, "%"PRId64"\n", max_brightness);
     file_util::CloseFile(max_brightness_file);
 
     if (actual_brightness >= 0) {
-      FILE* actual_brightness_file =
-          file_util::OpenFile(path.Append("actual_brightness"), "w");
+      FILE* actual_brightness_file = file_util::OpenFile(
+          path.Append(InternalBacklight::kActualBrightnessFilename), "w");
       fprintf(actual_brightness_file, "%"PRId64"\n", actual_brightness);
       file_util::CloseFile(actual_brightness_file);
     }
+  }
+
+  // Returns the value from the "brightness" file in |directory|.
+  // -1 is returned on error.
+  int64 ReadBrightness(const FilePath& directory) {
+    std::string data;
+    FilePath file = directory.Append(InternalBacklight::kBrightnessFilename);
+    if (!file_util::ReadFileToString(file, &data)) {
+      LOG(ERROR) << "Unable to read data from " << file.value();
+      return -1;
+    }
+    int64 level = 0;
+    TrimWhitespaceASCII(data, TRIM_TRAILING, &data);
+    if (!base::StringToInt64(data, &level)) {
+      LOG(ERROR) << "Unable to parse \"" << level << "\" from " << file.value();
+      return -1;
+    }
+    return level;
+  }
+
+  // Calls |backlight|'s GetCurrentBrightnessMethod().  Returns the current
+  // brightness or -1 on failure.
+  int64 GetCurrentBrightness(InternalBacklight* backlight) {
+    DCHECK(backlight);
+    int64 level = 0;
+    return backlight->GetCurrentBrightnessLevel(&level) ? level : -1;
   }
 
  protected:
@@ -166,6 +195,51 @@ TEST_F(InternalBacklightTest, GlobTest) {
   int64 max_level = 0;
   EXPECT_TRUE(backlight.GetMaxBrightnessLevel(&max_level));
   EXPECT_EQ(2, max_level);
+}
+
+TEST_F(InternalBacklightTest, Transitions) {
+  const int kMaxBrightness = 100;
+  FilePath backlight_dir = test_path_.Append("transitions_test");
+  PopulateBacklightDir(backlight_dir, 50, kMaxBrightness, 50);
+
+  InternalBacklight backlight;
+  const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(10000);
+  backlight.set_current_time_for_testing(kStartTime);
+  ASSERT_TRUE(backlight.Init(test_path_, "*"));
+
+  // An instant transition to the maximum level shouldn't use a timer.
+  backlight.SetBrightnessLevel(kMaxBrightness, base::TimeDelta());
+  EXPECT_FALSE(backlight.transition_timeout_is_set());
+  EXPECT_EQ(kMaxBrightness, ReadBrightness(backlight_dir));
+  EXPECT_EQ(kMaxBrightness, GetCurrentBrightness(&backlight));
+
+  // Start a transition to the backlight's halfway point.
+  const int64 kHalfBrightness = kMaxBrightness / 2;
+  const base::TimeDelta kDuration = base::TimeDelta::FromMilliseconds(1000);
+  backlight.SetBrightnessLevel(kHalfBrightness, kDuration);
+
+  // If the timeout fires at this point, we should still be at the maximum
+  // level.
+  EXPECT_TRUE(backlight.transition_timeout_is_set());
+  EXPECT_TRUE(backlight.TriggerTransitionTimeoutForTesting());
+  EXPECT_EQ(kMaxBrightness, ReadBrightness(backlight_dir));
+  EXPECT_EQ(kMaxBrightness, GetCurrentBrightness(&backlight));
+
+  // Let half of the transition duration pass.
+  const base::TimeTicks kMidpointTime = kStartTime + kDuration / 2;
+  backlight.set_current_time_for_testing(kMidpointTime);
+  EXPECT_TRUE(backlight.TriggerTransitionTimeoutForTesting());
+  const int64 kMidpointBrightness = (kMaxBrightness + kHalfBrightness) / 2;
+  EXPECT_EQ(kMidpointBrightness, ReadBrightness(backlight_dir));
+  EXPECT_EQ(kMidpointBrightness, GetCurrentBrightness(&backlight));
+
+  // At the end of the transition, we should return false to cancel the timeout.
+  const base::TimeTicks kEndTime = kStartTime + kDuration;
+  backlight.set_current_time_for_testing(kEndTime);
+  EXPECT_FALSE(backlight.TriggerTransitionTimeoutForTesting());
+  EXPECT_FALSE(backlight.transition_timeout_is_set());
+  EXPECT_EQ(kHalfBrightness, ReadBrightness(backlight_dir));
+  EXPECT_EQ(kHalfBrightness, GetCurrentBrightness(&backlight));
 }
 
 }  // namespace power_manager

@@ -98,7 +98,8 @@ bool ExternalBacklightController::SetCurrentBrightnessPercent(
     return false;
   // Always perform instant transitions; there's no guarantee about how quickly
   // an external display will respond to our requests.
-  if (!backlight_->SetBrightnessLevel(PercentToLevel(percent)))
+  if (!backlight_->SetBrightnessLevel(PercentToLevel(percent),
+                                      base::TimeDelta()))
     return false;
   if (cause == BRIGHTNESS_CHANGE_USER_INITIATED)
     num_user_adjustments_++;

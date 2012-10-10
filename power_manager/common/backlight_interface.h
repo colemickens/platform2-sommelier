@@ -7,6 +7,7 @@
 
 #include "base/basictypes.h"
 #include "base/logging.h"
+#include "base/time.h"
 
 namespace power_manager {
 
@@ -47,8 +48,9 @@ class BacklightInterface {
   // range).  Returns false on failure.
   virtual bool GetCurrentBrightnessLevel(int64* current_level) = 0;
 
-  // Set the backlight to |level|.  Returns false on failure.
-  virtual bool SetBrightnessLevel(int64 level) = 0;
+  // Set the backlight to |level| over |interval|.  Returns false on failure.
+  virtual bool SetBrightnessLevel(int64 level,
+                                  base::TimeDelta interval) = 0;
 
  protected:
   virtual ~BacklightInterface() {}

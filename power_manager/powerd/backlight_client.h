@@ -8,7 +8,6 @@
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include "base/basictypes.h"
-#include "base/file_path.h"
 #include "power_manager/common/backlight_interface.h"
 #include "power_manager/common/power_constants.h"
 
@@ -30,7 +29,7 @@ class BacklightClient : public BacklightInterface {
   // Overridden from BacklightInterface:
   virtual bool GetMaxBrightnessLevel(int64* max_level);
   virtual bool GetCurrentBrightnessLevel(int64* current_level);
-  virtual bool SetBrightnessLevel(int64 level);
+  virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval);
 
  private:
   bool GetActualBrightness(int64* level, int64* max);

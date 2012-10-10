@@ -36,9 +36,6 @@ class KeyboardBacklightController : public BacklightController,
   void set_current_time_for_testing(base::TimeTicks now) {
     current_time_for_testing_ = now;
   }
-  void set_disable_transitions_for_testing(bool disable) {
-    disable_transitions_for_testing_ = disable;
-  }
 
   // Implementation of BacklightController
   virtual bool Init() OVERRIDE;
@@ -123,20 +120,6 @@ class KeyboardBacklightController : public BacklightController,
   int64 PercentToLevel(double percent) const;
   double LevelToPercent(int64 level) const;
 
-  // Returns the actual brightness level that the backlight is currently
-  // expected to use.  This is just |current_level_| if we're not
-  // mid-transition; otherwise, the expected mid-transition level is returned.
-  int64 GetInstantaneousBrightnessLevel() const;
-
-  // Invoked periodically by |transition_timeout_id_|.  Calls
-  // WriteBrightnessLevel() and cancels itself when complete.
-  SIGNAL_CALLBACK_0(KeyboardBacklightController, gboolean, TransitionTimeout);
-
-  // Cancels |transition_timeout_id_| if non-zero.  |current_level_| is updated
-  // to contain the expected level at the point where the transition was
-  // interrupted.
-  void CancelTransition();
-
   bool is_initialized_;
 
   // Backlight used for dimming. Non-owned.
@@ -214,20 +197,6 @@ class KeyboardBacklightController : public BacklightController,
   // If non-null, used in place of base::TimeTicks::Now() when the current time
   // is needed.
   base::TimeTicks current_time_for_testing_;
-
-  // Set by tests to disable transitions.
-  bool disable_transitions_for_testing_;
-
-  // ID of GLib source that periodically invokes TransitionTimeout().  0 if we
-  // aren't currently in a transition.
-  guint transition_timeout_id_;
-
-  // Brightness level when the transition started.
-  int64 transition_start_level_;
-
-  // Start and end times for the transition.
-  base::TimeTicks transition_start_time_;
-  base::TimeTicks transition_end_time_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyboardBacklightController);
 };  // class KeyboardBacklightController

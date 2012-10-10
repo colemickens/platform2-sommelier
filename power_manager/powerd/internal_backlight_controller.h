@@ -110,26 +110,6 @@ class InternalBacklightController : public BacklightController {
   // to change brightness with smoothing effects.
   bool SetBrightness(int64 target_level, TransitionStyle style);
 
-  // Callback function to set backlight brightness through the backlight
-  // interface.  This is used by SetBrightness to change the brightness
-  // over a series of steps.
-  //
-  // Example:
-  //   Current brightness = 40
-  //   Want to set brightness to 60 over 5 steps, so the steps are:
-  //      40 -> 44 -> 48 -> 52 -> 56 -> 60
-  //   Thus, SetBrightnessStep() is invoked five times at regular intervals,
-  //   and it calls SetBrightnessHard(level, target_level) each time with args:
-  //      SetBrightnessHard(44, 60);
-  //      SetBrightnessHard(48, 60);
-  //      SetBrightnessHard(52, 60);
-  //      SetBrightnessHard(56, 60);
-  //      SetBrightnessHard(60, 60);
-  SIGNAL_CALLBACK_0(InternalBacklightController, gboolean, SetBrightnessStep);
-
-  // Sets the backlight brightness immediately.
-  void SetBrightnessHard(int64 level, int64 target_level);
-
   // Changes |selection|'s state to |state| after |delay|.  If another change
   // has already been scheduled, it will be aborted.
   void SetScreenPowerState(
@@ -148,9 +128,6 @@ class InternalBacklightController : public BacklightController {
 
   // Cancels |set_screen_power_state_timeout_id_| if set.
   void CancelSetScreenPowerStateTimeout();
-
-  // Cancels |gradual_transition_event_id_| if set.
-  void CancelGradualTransitionTimeout();
 
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;
@@ -250,22 +227,6 @@ class InternalBacklightController : public BacklightController {
 
   // Flag to indicate whether the state before suspended is idle off;
   bool suspended_through_idle_off_;
-
-  // Timestamp of the beginning of the current brightness transition.
-  base::TimeTicks gradual_transition_start_time_;
-
-  // Timestamp of the previous gradual transition step.
-  base::TimeTicks gradual_transition_last_step_time_;
-
-  // The total time that the current brightness transition should take.
-  // This is meant to be a prediction and may not match actual values.
-  base::TimeDelta gradual_transition_total_time_;
-
-  // Brightness level at start of the current transition.
-  int64 gradual_transition_start_level_;
-
-  // ID of adjustment timeout event source.
-  guint gradual_transition_event_id_;
 
   // Source ID for timeout that will run HandleSetScreenPowerStateTimeout(), or
   // 0 if no timeout is currently set.

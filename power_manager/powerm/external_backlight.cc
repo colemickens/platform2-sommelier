@@ -195,7 +195,8 @@ bool ExternalBacklight::GetCurrentBrightnessLevel(int64* current_level) {
   return ReadBrightnessLevels(current_level, NULL);
 }
 
-bool ExternalBacklight::SetBrightnessLevel(int64 level) {
+bool ExternalBacklight::SetBrightnessLevel(int64 level,
+                                           base::TimeDelta interval) {
   if (!HasValidHandle()) {
     LOG(ERROR) << "No valid display device handle available.";
     return false;

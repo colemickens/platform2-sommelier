@@ -34,7 +34,7 @@ class ExternalBacklight : public BacklightInterface {
   // Overridden from BacklightInterface:
   virtual bool GetMaxBrightnessLevel(int64* max_level);
   virtual bool GetCurrentBrightnessLevel(int64* current_level);
-  virtual bool SetBrightnessLevel(int64 level);
+  virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval);
 
  private:
   // This contains a set of i2c devices, represented as name-handle pairs.

@@ -9,6 +9,7 @@
 #include <cstdio>
 
 #include "base/logging.h"
+#include "base/time.h"
 #include "power_manager/common/power_constants.h"
 
 #ifdef IS_DESKTOP
@@ -50,8 +51,10 @@ int main(int argc, char* argv[]) {
     CHECK(backlight.GetMaxBrightnessLevel(&max_level));
     printf("%" PRIi64 "\n", max_level);
   }
-  if (FLAGS_set_brightness >= 0)
-    CHECK(backlight.SetBrightnessLevel(FLAGS_set_brightness));
+  if (FLAGS_set_brightness >= 0) {
+    CHECK(backlight.SetBrightnessLevel(FLAGS_set_brightness,
+                                       base::TimeDelta()));
+  }
   if (FLAGS_set_brightness_percent >= 0.0) {
     FLAGS_set_brightness_percent =
         std::min(FLAGS_set_brightness_percent, 100.0);
@@ -59,7 +62,7 @@ int main(int argc, char* argv[]) {
     CHECK(backlight.GetMaxBrightnessLevel(&max_level));
     int64 new_level = static_cast<int64>(
         roundl(FLAGS_set_brightness_percent * max_level / 100.0));
-    CHECK(backlight.SetBrightnessLevel(new_level));
+    CHECK(backlight.SetBrightnessLevel(new_level, base::TimeDelta()));
   }
   return 0;
 }

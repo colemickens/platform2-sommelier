@@ -4,12 +4,9 @@
 
 #include "power_manager/powerm/internal_backlight.h"
 
-#include <dirent.h>
 #include <glib.h>
-#include <inttypes.h>
-#include <sys/types.h>
-#include <unistd.h>
 
+#include <cmath>
 #include <string>
 
 #include "base/logging.h"
@@ -19,7 +16,29 @@
 
 namespace power_manager {
 
-InternalBacklight::InternalBacklight() : max_brightness_level_(0) {}
+namespace {
+
+// When animating a brightness level transition, amount of time in milliseconds
+// to wait between each update.
+const guint kTransitionIntervalMs = 30;
+
+}  // namespace
+
+const char InternalBacklight::kBrightnessFilename[] = "brightness";
+const char InternalBacklight::kMaxBrightnessFilename[] = "max_brightness";
+const char InternalBacklight::kActualBrightnessFilename[] = "actual_brightness";
+
+InternalBacklight::InternalBacklight()
+    : max_brightness_level_(0),
+      current_brightness_level_(0),
+      transition_timeout_id_(0),
+      transition_start_level_(0),
+      transition_end_level_(0) {
+}
+
+InternalBacklight::~InternalBacklight() {
+  CancelTransition();
+}
 
 bool InternalBacklight::Init(const FilePath& base_path,
                              const FilePath::StringType& pattern) {
@@ -56,7 +75,14 @@ bool InternalBacklight::Init(const FilePath& base_path,
     LOG(ERROR) << "Can't init backlight interface";
     return false;
   }
+
+  ReadBrightnessLevelFromFile(actual_brightness_path_,
+                              &current_brightness_level_);
   return true;
+}
+
+gboolean InternalBacklight::TriggerTransitionTimeoutForTesting() {
+  return HandleTransitionTimeout();
 }
 
 bool InternalBacklight::GetMaxBrightnessLevel(int64* max_level) {
@@ -66,22 +92,36 @@ bool InternalBacklight::GetMaxBrightnessLevel(int64* max_level) {
 }
 
 bool InternalBacklight::GetCurrentBrightnessLevel(int64* current_level) {
-  return ReadBrightnessLevelFromFile(actual_brightness_path_, current_level);
+  DCHECK(current_level);
+  *current_level = current_brightness_level_;
+  return true;
 }
 
-bool InternalBacklight::SetBrightnessLevel(int64 level) {
+bool InternalBacklight::SetBrightnessLevel(int64 level,
+                                           base::TimeDelta interval) {
   if (brightness_path_.empty()) {
     LOG(ERROR) << "Cannot find backlight brightness file.";
     return false;
   }
 
-  std::string buf = base::Int64ToString(level);
-  if (file_util::WriteFile(brightness_path_, buf.data(), buf.size()) == -1) {
-    LOG(ERROR) << "Unable to write brightness \"" << buf << "\" to "
-               << brightness_path_.value();
-    return false;
+  CancelTransition();
+
+  if (level == current_brightness_level_)
+    return true;
+
+  if (interval.InMilliseconds() <= kTransitionIntervalMs) {
+    if (!WriteBrightnessLevelToFile(brightness_path_, level))
+      return false;
+    current_brightness_level_ = level;
+    return true;
   }
 
+  transition_start_time_ = GetCurrentTime();
+  transition_end_time_ = transition_start_time_ + interval;
+  transition_start_level_ = current_brightness_level_;
+  transition_end_level_ = level;
+  transition_timeout_id_ =
+      g_timeout_add(kTransitionIntervalMs, HandleTransitionTimeoutThunk, this);
   return true;
 }
 
@@ -91,11 +131,11 @@ void InternalBacklight::GetBacklightFilePaths(const FilePath& dir_path,
                                               FilePath* brightness_path,
                                               FilePath* max_brightness_path) {
   if (actual_brightness_path)
-    *actual_brightness_path = dir_path.Append("actual_brightness");
+    *actual_brightness_path = dir_path.Append(kActualBrightnessFilename);
   if (brightness_path)
-    *brightness_path = dir_path.Append("brightness");
+    *brightness_path = dir_path.Append(kBrightnessFilename);
   if (max_brightness_path)
-    *max_brightness_path = dir_path.Append("max_brightness");
+    *max_brightness_path = dir_path.Append(kMaxBrightnessFilename);
 }
 
 // static
@@ -139,6 +179,60 @@ bool InternalBacklight::ReadBrightnessLevelFromFile(const FilePath& path,
   }
 
   return true;
+}
+
+// static
+bool InternalBacklight::WriteBrightnessLevelToFile(const FilePath& path,
+                                                   int64 level) {
+  std::string buf = base::Int64ToString(level);
+  if (file_util::WriteFile(path, buf.data(), buf.size()) == -1) {
+    LOG(ERROR) << "Unable to write brightness \"" << buf << "\" to "
+               << path.value();
+    return false;
+  }
+  return true;
+}
+
+base::TimeTicks InternalBacklight::GetCurrentTime() const {
+  return current_time_for_testing_.is_null() ?
+         base::TimeTicks::Now() :
+         current_time_for_testing_;
+}
+
+gboolean InternalBacklight::HandleTransitionTimeout() {
+  base::TimeTicks now = GetCurrentTime();
+  int64 new_level = 0;
+  gboolean should_repeat_timeout = TRUE;
+
+  if (now >= transition_end_time_) {
+    new_level = transition_end_level_;
+    transition_timeout_id_ = 0;
+    should_repeat_timeout = FALSE;
+  } else {
+    double transition_fraction =
+        (now - transition_start_time_).InMillisecondsF() /
+        (transition_end_time_ - transition_start_time_).InMillisecondsF();
+    int64 intermediate_amount = lround(
+        transition_fraction *
+        (transition_end_level_ - transition_start_level_));
+    new_level = transition_start_level_ + intermediate_amount;
+  }
+
+  if (WriteBrightnessLevelToFile(brightness_path_, new_level))
+    current_brightness_level_ = new_level;
+  return should_repeat_timeout;
+}
+
+void InternalBacklight::CancelTransition() {
+  if (!transition_timeout_id_)
+    return;
+
+  g_source_remove(transition_timeout_id_);
+  transition_timeout_id_ = 0;
+  transition_start_time_ = base::TimeTicks();
+  transition_end_time_ = base::TimeTicks();
+  transition_start_level_ = current_brightness_level_;
+  transition_end_level_ = current_brightness_level_;
 }
 
 }  // namespace power_manager

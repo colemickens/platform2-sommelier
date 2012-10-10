@@ -67,10 +67,7 @@ KeyboardBacklightController::KeyboardBacklightController(
       current_step_index_(0),
       video_timeout_timer_id_(0),
       num_als_adjustments_(0),
-      num_user_adjustments_(0),
-      disable_transitions_for_testing_(false),
-      transition_timeout_id_(0),
-      transition_start_level_(0) {
+      num_user_adjustments_(0) {
   DCHECK(backlight) << "Cannot create KeyboardBacklightController will NULL "
                     << "backlight!";
   if (light_sensor_)
@@ -83,7 +80,6 @@ KeyboardBacklightController::~KeyboardBacklightController() {
     light_sensor_ = NULL;
   }
   HaltVideoTimeout();
-  CancelTransition();
 }
 
 bool KeyboardBacklightController::Init() {
@@ -185,22 +181,8 @@ bool KeyboardBacklightController::SetCurrentBrightnessPercent(
   LOG(INFO) << "Changing Brightness, state = " << PowerStateToString(state_)
             << ", new level = " << new_level << ", transition style = "
             << TransitionStyleToString(style);
-  base::TimeDelta duration = disable_transitions_for_testing_ ?
-                             base::TimeDelta() :
-                             GetTransitionDuration(style);
-  if (duration < base::TimeDelta::FromMilliseconds(kTransitionUpdateMs)) {
-    current_level_ = new_level;
-    WriteBrightnessLevel(new_level);
-  } else {
-    CancelTransition();  // updates |current_level_|
-    transition_start_level_ = current_level_;
-    transition_start_time_ = GetCurrentTime();
-    transition_end_time_ = transition_start_time_ + duration;
-    current_level_ = new_level;
-    transition_timeout_id_ = g_timeout_add(
-        kTransitionUpdateMs, TransitionTimeoutThunk, this);
-  }
-
+  current_level_ = new_level;
+  backlight_->SetBrightnessLevel(new_level, GetTransitionDuration(style));
   if (observer_)
     observer_->OnBrightnessChanged(LevelToPercent(new_level), cause, this);
   return true;
@@ -462,10 +444,6 @@ void KeyboardBacklightController::UpdateBacklightEnabled() {
                               TRANSITION_SLOW);
 }
 
-void KeyboardBacklightController::WriteBrightnessLevel(int64 new_level) {
-  backlight_->SetBrightnessLevel(new_level);
-}
-
 void KeyboardBacklightController::HaltVideoTimeout() {
   if (video_timeout_timer_id_ == 0)
     return;
@@ -492,36 +470,6 @@ double KeyboardBacklightController::LevelToPercent(int64 level) const {
     return -1.0;
   level = std::max(std::min(level, max_level_), static_cast<int64>(0));
   return static_cast<double>(level) * 100.0 / max_level_;
-}
-
-int64 KeyboardBacklightController::GetInstantaneousBrightnessLevel() const {
-  if (!transition_timeout_id_)
-    return current_level_;
-
-  double fraction =
-      (GetCurrentTime() - transition_start_time_).InMillisecondsF() /
-      (transition_end_time_ - transition_start_time_).InMillisecondsF();
-  fraction = std::min(1.0, fraction);
-  return transition_start_level_ +
-      lround(fraction * (current_level_ - transition_start_level_));
-}
-
-gboolean KeyboardBacklightController::TransitionTimeout() {
-  WriteBrightnessLevel(GetInstantaneousBrightnessLevel());
-  if (GetCurrentTime() >= transition_end_time_) {
-    transition_timeout_id_ = 0;
-    return FALSE;
-  }
-  return TRUE;
-}
-
-void KeyboardBacklightController::CancelTransition() {
-  if (!transition_timeout_id_)
-    return;
-
-  current_level_ = GetInstantaneousBrightnessLevel();
-  g_source_remove(transition_timeout_id_);
-  transition_timeout_id_ = 0;
 }
 
 }  // namespace power_manager

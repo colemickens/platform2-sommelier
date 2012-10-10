@@ -58,7 +58,8 @@ class TestBacklight : public BacklightInterface {
     return true;
   }
 
-  virtual bool SetBrightnessLevel(int64 level) OVERRIDE {
+  virtual bool SetBrightnessLevel(int64 level,
+                                  base::TimeDelta interval) OVERRIDE {
     if (should_fail_)
       return false;
     current_level_ = level;
