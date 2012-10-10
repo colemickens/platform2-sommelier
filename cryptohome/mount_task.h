@@ -42,6 +42,8 @@ namespace cryptohome {
 extern const char* kMountTaskResultEventType;
 extern const char* kPkcs11InitResultEventType;
 
+class InstallAttributes;
+
 class MountTaskResult : public CryptohomeEventBase {
  public:
   MountTaskResult()
@@ -423,6 +425,22 @@ class MountTaskPkcs11Init : public MountTask {
  private:
   scoped_ptr<MountTaskResult> pkcs11_init_result_;
   DISALLOW_COPY_AND_ASSIGN(MountTaskPkcs11Init);
+};
+
+// Asynchronous install attr finalization. Not really a 'mount task' per se but
+// we want to use the thread.
+class MountTaskInstallAttrsFinalize : public MountTask {
+ public:
+  MountTaskInstallAttrsFinalize(MountTaskObserver* observer,
+                                InstallAttributes* attrs)
+      : MountTask(observer, NULL, UsernamePasskey()),
+        install_attrs_(attrs) { }
+  virtual ~MountTaskInstallAttrsFinalize() { }
+
+  virtual void Run();
+ private:
+  InstallAttributes *install_attrs_;
+  DISALLOW_COPY_AND_ASSIGN(MountTaskInstallAttrsFinalize);
 };
 
 }  // namespace cryptohome

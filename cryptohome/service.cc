@@ -781,8 +781,12 @@ gboolean Service::AsyncMount(const gchar *userid,
   }
 
   // See Mount for a relevant comment.
-  if (install_attrs_->is_first_install())
-    install_attrs_->Finalize();
+  if (install_attrs_->is_first_install()) {
+    MountTaskInstallAttrsFinalize *finalize =
+        new MountTaskInstallAttrsFinalize(NULL, install_attrs_);
+    mount_thread_.message_loop()->PostTask(FROM_HERE,
+        base::Bind(&MountTaskInstallAttrsFinalize::Run, finalize));
+  }
 
   timer_collection_->UpdateTimer(TimerCollection::kAsyncMountTimer, true);
   Mount::MountArgs mount_args;

@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "install_attributes.h"
 #include "mount_task.h"
 
 namespace cryptohome {
@@ -153,6 +154,10 @@ void MountTaskPkcs11Init::Run() {
     result()->set_return_status(1);
   }
   MountTask::Notify();
+}
+
+void MountTaskInstallAttrsFinalize::Run() {
+  install_attrs_->Finalize();
 }
 
 }  // namespace cryptohome
