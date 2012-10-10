@@ -15,6 +15,23 @@ log_msg() {
     logger -t "powerd_suspend[${PPID}]" $@
 }
 
+enable_debug() {
+    # On some systems (snow), disabling console_suspend does bad things if
+    # serial console is enabled. Check if console is non-null and bail out
+    # if so.
+    if egrep -q "console=\w+" /proc/cmdline; then
+        return
+    fi
+
+    # Enable debug info.
+    if [ -e /sys/module/printk/parameters/console_suspend ]; then
+        echo -n 'N' > /sys/module/printk/parameters/console_suspend
+    fi
+    if [ -e /sys/power/pm_print_times ]; then
+        echo -n '1' > /sys/power/pm_print_times
+    fi
+}
+
 is_lumpy() {
     crossystem hwid | grep -q "LUMPY"
 }
@@ -140,6 +157,7 @@ else
     PLAYBACK_WAS_ON=0
 fi
 
+enable_debug
 
 log_msg "Explicit sync"
 sync
