@@ -231,6 +231,12 @@ if use_flag_is_set is_desktop; then
   SHOW_VOLUME_STATUS_FLAG="--show-volume-status"
 fi
 
+# Enable natural scroll by default.
+TOUCHPAD_FLAGS=
+if use_flag_is_set natural_scroll_default; then
+  TOUCHPAD_FLAGS="--enable-natural-scroll-default"
+fi
+
 AURA_FLAGS=
 if ! use_flag_is_set new_power_button; then
   AURA_FLAGS="$AURA_FLAGS --aura-legacy-power-button"
@@ -378,6 +384,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             ${AURA_FLAGS} \
             ${FLASH_FLAGS} \
             ${HIGHDPI_FLAGS} \
+            ${TOUCHPAD_FLAGS} \
             ${SHOW_VOLUME_STATUS_FLAG} \
             ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
