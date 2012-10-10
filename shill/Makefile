@@ -24,10 +24,14 @@ BASE_VER = 125070
 COMMON_PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 SHILL_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1 gio-2.0 glib-2.0 ModemManager
 NSS_GET_CERT_PC_DEPS = $(COMMON_PC_DEPS) nss
+OPENVPN_SCRIPT_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
 INCLUDE_DIRS = \
 	-iquote.. \
 	-iquote $(BUILDDIR) \
-	$(shell $(PKG_CONFIG) --cflags $(NSS_GET_CERT_PC_DEPS) $(SHILL_PC_DEPS))
+	$(shell $(PKG_CONFIG) --cflags \
+		$(NSS_GET_CERT_PC_DEPS) \
+		$(OPENVPN_SCRIPT_PC_DEPS) \
+		$(SHILL_PC_DEPS))
 SHILL_LIBS = \
 	-lbootstat \
 	-lcares \
@@ -37,16 +41,19 @@ SHILL_LIBS = \
 	-lnl \
 	$(shell $(PKG_CONFIG) --libs $(SHILL_PC_DEPS))
 NSS_GET_CERT_LIBS = $(shell $(PKG_CONFIG) --libs $(NSS_GET_CERT_PC_DEPS))
+OPENVPN_SCRIPT_LIBS = $(shell $(PKG_CONFIG) --libs $(OPENVPN_SCRIPT_PC_DEPS))
 TEST_LIBS = $(SHILL_LIBS) $(NSS_GET_CERT_LIBS) -lgmock -lgtest
 
 DBUS_BINDINGS_DIR = dbus_bindings
 BUILD_DBUS_BINDINGS_DIR = $(BUILDDIR)/shill/$(DBUS_BINDINGS_DIR)
+BUILD_DBUS_BINDINGS_SHIMS_DIR = $(BUILD_DBUS_BINDINGS_DIR)/shims
 
 BUILD_SHIMS_DIR = $(BUILDDIR)/shims
 
 _CREATE_BUILDDIR := $(shell mkdir -p \
 	$(BUILDDIR) \
 	$(BUILD_DBUS_BINDINGS_DIR) \
+	$(BUILD_DBUS_BINDINGS_SHIMS_DIR) \
 	$(BUILD_SHIMS_DIR))
 
 DBUS_ADAPTOR_HEADERS :=
@@ -58,6 +65,7 @@ DBUS_PROXY_HEADERS = \
 	dhcpcd.h \
 	modem-gobi.h \
 	power_manager.h \
+	shims/flimflam-task.h \
 	supplicant-bss.h \
 	supplicant-interface.h \
 	supplicant-network.h \
@@ -397,6 +405,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	service_unittest.o \
 	shill_unittest.o \
 	shims/certificates_unittest.o \
+	shims/environment_unittest.o \
 	static_ip_parameters_unittest.o \
 	technology_unittest.o \
 	testrunner.o \
@@ -416,9 +425,18 @@ NSS_GET_CERT_OBJS = $(BUILD_SHIMS_DIR)/certificates.o
 NSS_GET_CERT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/nss_get_cert.o
 NSS_GET_CERT_BIN = $(BUILD_SHIMS_DIR)/nss-get-cert
 
+OPENVPN_SCRIPT_OBJS = $(addprefix $(BUILD_SHIMS_DIR)/, \
+	environment.o \
+	task_proxy.o \
+	)
+OPENVPN_SCRIPT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/openvpn_script.o
+OPENVPN_SCRIPT_BIN = $(BUILD_SHIMS_DIR)/openvpn-script
+
 OBJS = \
 	$(NSS_GET_CERT_MAIN_OBJ) \
 	$(NSS_GET_CERT_OBJS) \
+	$(OPENVPN_SCRIPT_MAIN_OBJ) \
+	$(OPENVPN_SCRIPT_OBJS) \
 	$(SHILL_MAIN_OBJ) \
 	$(SHILL_OBJS) \
 	$(TEST_OBJS)
@@ -427,7 +445,11 @@ OBJS = \
 
 all: $(SHILL_BIN) $(TEST_BIN) shims
 
-shims: $(NSS_GET_CERT_BIN)
+shims: $(NSS_GET_CERT_BIN) $(OPENVPN_SCRIPT_BIN)
+
+$(BUILD_DBUS_BINDINGS_SHIMS_DIR)/flimflam-task.xml: \
+	$(BUILD_DBUS_BINDINGS_DIR)/flimflam-task.xml
+	cp $< $@
 
 $(BUILD_DBUS_BINDINGS_DIR)/%.xml: $(DBUS_BINDINGS_DIR)/%.xml
 	cp $< $@
@@ -452,8 +474,15 @@ $(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_LIB)
 $(NSS_GET_CERT_BIN): $(NSS_GET_CERT_MAIN_OBJ) $(NSS_GET_CERT_OBJS) $(SHILL_LIB)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NSS_GET_CERT_LIBS) -o $@
 
+$(OPENVPN_SCRIPT_BIN): $(OPENVPN_SCRIPT_MAIN_OBJ) $(OPENVPN_SCRIPT_OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(OPENVPN_SCRIPT_LIBS) -o $@
+
 $(TEST_BIN): CPPFLAGS += -DUNIT_TEST -DSYSROOT=\"$(SYSROOT)\"
-$(TEST_BIN): $(TEST_OBJS) $(NSS_GET_CERT_OBJS) $(SHILL_LIB)
+$(TEST_BIN): \
+	$(TEST_OBJS) \
+	$(NSS_GET_CERT_OBJS) \
+	$(OPENVPN_SCRIPT_OBJS) \
+	$(SHILL_LIB)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(TEST_LIBS) -o $@
 
 clean:
