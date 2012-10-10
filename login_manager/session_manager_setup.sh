@@ -318,6 +318,12 @@ fi
 # enable logging for network state related changes.
 NETWORK_LOG_FLAGS="--vmodule=network_change_notifier*=1"
 
+# This flag is used to enable Encrypted Media Extension.
+ENCRYPTED_MEDIA_FLAG=
+if is_board daisy; then
+  ENCRYPTED_MEDIA_FLAG="--enable-encrypted-media"
+fi
+
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
 #
@@ -394,4 +400,5 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
             ${PPAPI_FLASH_FLAGS} \
-            ${NETWORK_LOG_FLAGS}
+            ${NETWORK_LOG_FLAGS} \
+            ${ENCRYPTED_MEDIA_FLAG}
