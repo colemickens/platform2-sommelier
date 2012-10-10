@@ -378,8 +378,17 @@ void WiFiService::Connect(Error *error) {
   if (!connectable()) {
     LOG(ERROR) << "Can't connect. Service " << friendly_name()
                << " is not connectable";
-    Error::PopulateAndLog(error, Error::kOperationFailed,
-      Error::GetDefaultMessage(Error::kOperationFailed));
+    Error::PopulateAndLog(error,
+                          Error::kOperationFailed,
+                          Error::GetDefaultMessage(Error::kOperationFailed));
+    return;
+  }
+  if (IsConnecting() || IsConnected()) {
+    LOG(WARNING) << "Can't connect.  Service " << friendly_name()
+                 << " is already connecting or connected.";
+    Error::PopulateAndLog(error,
+                          Error::kAlreadyConnected,
+                          Error::GetDefaultMessage(Error::kAlreadyConnected));
     return;
   }
 

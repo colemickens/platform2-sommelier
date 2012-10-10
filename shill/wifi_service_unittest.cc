@@ -18,6 +18,7 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_nss.h"
+#include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/mock_wifi.h"
@@ -370,6 +371,43 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
   wifi_service->Connect(NULL);
+}
+
+TEST_F(WiFiServiceTest, ConnectConditions) {
+  Error error;
+  vector<uint8_t> ssid(5);
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityNone,
+                                                   false);
+  scoped_refptr<MockProfile> mock_profile(
+      new NiceMock<MockProfile>(control_interface(), manager()));
+  wifi_service->set_profile(mock_profile);
+  // With nothing else going on, the service should attempt to connect.
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
+  wifi_service->Connect(&error);
+  Mock::VerifyAndClearExpectations(wifi());
+
+  // But if we're already "connecting" or "connected" then we shouldn't attempt
+  // again.
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), _)).Times(0);
+  wifi_service->SetState(Service::kStateAssociating);
+  wifi_service->Connect(&error);
+  wifi_service->SetState(Service::kStateConfiguring);
+  wifi_service->Connect(&error);
+  wifi_service->SetState(Service::kStateConnected);
+  wifi_service->Connect(&error);
+  wifi_service->SetState(Service::kStatePortal);
+  wifi_service->Connect(&error);
+  wifi_service->SetState(Service::kStateOnline);
+  wifi_service->Connect(&error);
+  Mock::VerifyAndClearExpectations(wifi());
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskPSK) {
