@@ -346,8 +346,13 @@ TEST_F(DeviceInfoTest, CreateDeviceWiMax) {
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
                                                     IsIPAddress(address)));
+  device_info_.infos_[kTestDeviceIndex].mac_address =
+      ByteString(kTestMACAddress, sizeof(kTestMACAddress));
   EXPECT_FALSE(CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kWiMax));
+  // The MAC address is clear such that it is obtained via
+  // GetMACAddressFromKernel() instead.
+  EXPECT_TRUE(device_info_.infos_[kTestDeviceIndex].mac_address.IsEmpty());
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceEthernet) {

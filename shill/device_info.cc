@@ -376,8 +376,8 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
                       << " -- notifying ModemInfo.";
 
       // The MAC address provided by RTNL is not reliable for Gobi 2K modems.
-      // Clear it here, and it will be fetched from the kernel is
-      // GetMacAddress().
+      // Clear it here, and it will be fetched from the kernel in
+      // GetMACAddress().
       infos_[interface_index].mac_address.Clear();
       manager_->modem_info()->OnDeviceInfoAvailable(link_name);
       break;
@@ -402,6 +402,12 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       SLOG(Device, 2) << "WiMax link " << link_name
                       << " at index " << interface_index
                       << " -- notifying WiMaxProvider.";
+      // The MAC address provided by RTNL may not be the final value as the
+      // WiMAX device may change the address after initialization. Clear it
+      // here, and it will be fetched from the kernel when
+      // WiMaxProvider::CreateDevice() is called after the WiMAX device DBus
+      // object is created by the WiMAX manager daemon.
+      infos_[interface_index].mac_address.Clear();
       manager_->wimax_provider()->OnDeviceInfoAvailable(link_name);
       break;
     case Technology::kPPP:
