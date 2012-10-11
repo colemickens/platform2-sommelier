@@ -36,6 +36,19 @@ is_board() {
   use_flag_is_set "board_use_$1"
 }
 
+# --vmodule=PATTERN1=LEVEL1,PATTERN2=LEVEL2 flag passed to Chrome to selectively
+# enable verbose logging for particular files.
+VMODULE_FLAG=
+
+# Appends a pattern to VMODULE_FLAG.
+add_vmodule_pattern() {
+  if [ -z "$VMODULE_FLAG" ]; then
+    VMODULE_FLAG="--vmodule=$1"
+  else
+    VMODULE_FLAG="$VMODULE_FLAG,$1"
+  fi
+}
+
 export USER=chronos
 export DATA_DIR=/home/${USER}
 export LOGIN_PROFILE_DIR=${DATA_DIR}/Default
@@ -307,16 +320,19 @@ if use_flag_is_set has_hdd; then
   KILL_TIMEOUT_FLAG="--kill-timeout=12"
 fi
 
-# This flag is used to selectively enable VLOG()s on network modules.
-# TODO(gauravsh): Remove this once we a have mechanism to dynamically
-# enable logging for network state related changes.
-NETWORK_LOG_FLAGS="--vmodule=network_change_notifier*=1"
-
 # This flag is used to enable Encrypted Media Extension.
 ENCRYPTED_MEDIA_FLAG=
 if is_board daisy; then
   ENCRYPTED_MEDIA_FLAG="--enable-encrypted-media"
 fi
+
+# TODO(gauravsh): Remove this once we a have mechanism to dynamically
+# enable logging for network state related changes.
+add_vmodule_pattern "network_change_notifier*=1"
+
+# TODO(derat): We're currently (2012Q4) swamped with locking-related bug
+# reports; remove this after they've been sorted out.
+add_vmodule_pattern "screen_locker=1,webui_screen_locker=1"
 
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
@@ -390,5 +406,5 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
             ${PPAPI_FLASH_FLAGS} \
-            ${NETWORK_LOG_FLAGS} \
+            ${VMODULE_FLAG} \
             ${ENCRYPTED_MEDIA_FLAG}
