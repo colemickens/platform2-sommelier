@@ -887,7 +887,12 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
 
 void WiFi::ClearCachedCredentialsTask() {
   try {
-    supplicant_interface_proxy_->ClearCachedCredentials();
+    // Supplicant may have disappeared by the time this task gets to run.
+    if (supplicant_interface_proxy_.get()) {
+      supplicant_interface_proxy_->ClearCachedCredentials();
+    } else {
+      SLOG(WiFi, 1) << "In " << __func__ << ": supplicant proxy is NULL.";
+    }
   } catch (const DBus::Error &e) {  // NOLINT
     LOG(WARNING) << "Clear of cached credentials failed.";
   }

@@ -2015,6 +2015,14 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
 }
 
 TEST_F(WiFiMainTest, ClearCachedCredentials) {
+  {
+    ClearCachedCredentials();
+    ScopedMockLog log;
+    EXPECT_CALL(log, Log(_, _, EndsWith("supplicant proxy is NULL.")));
+    // Also expect no crash due to supplicant interface proxy being NULL.
+    dispatcher_.DispatchPendingEvents();
+  }
+
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
 
