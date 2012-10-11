@@ -76,7 +76,8 @@ HELP_ADVANCED='
   A function that enables a predefined set of tags useful for
   debugging the specified device.
 
- network_diag
+ network_diag [--date] [--flimflam] [--link] [--show-macs] [--wifi] [--help]
+   [--wifi-monitor] <host>
   A function that performs a suite of network diagnostics.  Saves a copy
   of the output to your download directory.
 
