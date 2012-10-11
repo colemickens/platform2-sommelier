@@ -222,6 +222,11 @@ bool GdmDriver::GetDevices(vector<Device *> *devices) {
     GdmDevice *device =
         new(std::nothrow) GdmDevice(device_index, device_name, AsWeakPtr());
     CHECK(device);
+    // The WiMAX device changes its MAC address to the actual value after the
+    // firmware is loaded. Opening the device seems to be enough to trigger the
+    // update of the MAC address. So open the device here before
+    // Manager::ScanDevices() creates the device DBus objects.
+    device->Open();
     devices->push_back(device);
   }
   return true;

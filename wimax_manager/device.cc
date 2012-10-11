@@ -65,7 +65,8 @@ void Device::UpdateRFInfo() {
 
 void Device::SetMACAddress(const ByteIdentifier &mac_address) {
   mac_address_.CopyFrom(mac_address);
-  dbus_adaptor()->UpdateMACAddress();
+  if (dbus_adaptor())
+    dbus_adaptor()->UpdateMACAddress();
 }
 
 void Device::SetBaseStationId(const ByteIdentifier &base_station_id) {
