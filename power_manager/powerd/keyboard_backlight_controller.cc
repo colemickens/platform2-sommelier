@@ -31,9 +31,16 @@ const int kAlsHystResponse = 2;
 // messages ~5 seconds when video is playing.
 const int64 kVideoTimeoutIntervalMs = 7000;
 
+// Interval between brightness level updates during animated transitions, in
+// milliseconds.
+const int64 kTransitionUpdateMs = 30;
+
 }  // namespace
 
 namespace power_manager {
+
+const int64 KeyboardBacklightController::kFastTransitionMs = 200;
+const int64 KeyboardBacklightController::kSlowTransitionMs = 2000;
 
 KeyboardBacklightController::KeyboardBacklightController(
     BacklightInterface* backlight,
@@ -60,7 +67,10 @@ KeyboardBacklightController::KeyboardBacklightController(
       current_step_index_(0),
       video_timeout_timer_id_(0),
       num_als_adjustments_(0),
-      num_user_adjustments_(0) {
+      num_user_adjustments_(0),
+      disable_transitions_for_testing_(false),
+      transition_timeout_id_(0),
+      transition_start_level_(0) {
   DCHECK(backlight) << "Cannot create KeyboardBacklightController will NULL "
                     << "backlight!";
   if (light_sensor_)
@@ -73,6 +83,7 @@ KeyboardBacklightController::~KeyboardBacklightController() {
     light_sensor_ = NULL;
   }
   HaltVideoTimeout();
+  CancelTransition();
 }
 
 bool KeyboardBacklightController::Init() {
@@ -106,7 +117,7 @@ bool KeyboardBacklightController::Init() {
   SetCurrentBrightnessPercent(
       brightness_steps_[current_step_index_].target_percent,
       BRIGHTNESS_CHANGE_AUTOMATED,
-      TRANSITION_INSTANT);
+      TRANSITION_FAST);
 
   // Create a synthetic lux value that is inline with |current_step_index_|.
   lux_level_ = brightness_steps_[current_step_index_].decrease_threshold +
@@ -160,27 +171,39 @@ bool KeyboardBacklightController::SetCurrentBrightnessPercent(
       new_level = current_level_;
       break;
   };
+
   if (!user_enabled_ || !video_enabled_)
-    new_level = target_percent_min_;
-  if (new_level != current_level_) {
+    new_level = PercentToLevel(target_percent_min_);
+
+  if (new_level == current_level_)
+    return false;
+
+  base::TimeDelta duration = disable_transitions_for_testing_ ?
+                             base::TimeDelta() :
+                             GetTransitionDuration(style);
+  if (duration < base::TimeDelta::FromMilliseconds(kTransitionUpdateMs)) {
+    current_level_ = new_level;
     WriteBrightnessLevel(new_level);
-    if (observer_) {
-      observer_->OnBrightnessChanged(LevelToPercent(new_level),
-                                     cause,
-                                     this);
-    }
-    return true;
+  } else {
+    CancelTransition();  // updates |current_level_|
+    transition_start_level_ = current_level_;
+    transition_start_time_ = GetCurrentTime();
+    transition_end_time_ = transition_start_time_ + duration;
+    current_level_ = new_level;
+    transition_timeout_id_ = g_timeout_add(
+        kTransitionUpdateMs, TransitionTimeoutThunk, this);
   }
-  return false;
+
+  if (observer_)
+    observer_->OnBrightnessChanged(LevelToPercent(new_level), cause, this);
+  return true;
 }
 
 bool KeyboardBacklightController::IncreaseBrightness(
     BrightnessChangeCause cause) {
   if (!user_enabled_) {
     user_enabled_ = true;
-    SetCurrentBrightnessPercent(target_percent_,
-                                cause,
-                                TRANSITION_INSTANT);
+    SetCurrentBrightnessPercent(target_percent_, cause, TRANSITION_FAST);
     return true;
   }
   return false;
@@ -193,9 +216,7 @@ bool KeyboardBacklightController::DecreaseBrightness(
     LOG(WARNING) << "Received non-user DecreaseBrightness call, ignoring!";
   if (user_enabled_) {
     user_enabled_ = false;
-    SetCurrentBrightnessPercent(target_percent_,
-                                cause,
-                                TRANSITION_INSTANT);
+    SetCurrentBrightnessPercent(target_percent_, cause, TRANSITION_FAST);
     return true;
   }
   return false;
@@ -212,7 +233,7 @@ bool KeyboardBacklightController::SetPowerState(PowerState new_state) {
       state_ != BACKLIGHT_DIM) {
     SetCurrentBrightnessPercent(target_percent_,
                                 BRIGHTNESS_CHANGE_AUTOMATED,
-                                TRANSITION_INSTANT);
+                                TRANSITION_SLOW);
   }
   return true;
 }
@@ -309,7 +330,7 @@ void KeyboardBacklightController::OnAmbientLightChanged(
     SetCurrentBrightnessPercent(
         brightness_steps_[current_step_index_].target_percent,
         BRIGHTNESS_CHANGE_AUTOMATED,
-        TRANSITION_INSTANT);
+        TRANSITION_SLOW);
   }
 }
 
@@ -317,7 +338,7 @@ void KeyboardBacklightController::OnVideoDetectorEvent(
     base::TimeTicks last_activity_time,
     bool is_fullscreen) {
   int64 timeout_interval_ms = kVideoTimeoutIntervalMs -
-      (base::TimeTicks::Now() - last_activity_time).InMilliseconds();
+      (GetCurrentTime() - last_activity_time).InMilliseconds();
   if (timeout_interval_ms <= 0) {
     LOG(WARNING) << "Didn't get notification about video event before timeout "
                  << "interval was over!";
@@ -332,6 +353,28 @@ void KeyboardBacklightController::OnVideoDetectorEvent(
   video_timeout_timer_id_ = g_timeout_add(timeout_interval_ms,
                                           VideoTimeoutThunk,
                                           this);
+}
+
+// static
+base::TimeDelta KeyboardBacklightController::GetTransitionDuration(
+    TransitionStyle style) {
+  switch (style) {
+    case TRANSITION_INSTANT:
+      return base::TimeDelta();
+    case TRANSITION_FAST:
+      return base::TimeDelta::FromMilliseconds(kFastTransitionMs);
+    case TRANSITION_SLOW:
+      return base::TimeDelta::FromMilliseconds(kSlowTransitionMs);
+    default:
+      NOTREACHED() << "Unhandled transition style " << style;
+      return base::TimeDelta();
+  }
+}
+
+base::TimeTicks KeyboardBacklightController::GetCurrentTime() const {
+  return current_time_for_testing_.is_null() ?
+         base::TimeTicks::Now() :
+         current_time_for_testing_;
 }
 
 void KeyboardBacklightController::ReadPrefs() {
@@ -396,11 +439,10 @@ void KeyboardBacklightController::UpdateBacklightEnabled() {
   video_enabled_ = new_video_enabled;
   SetCurrentBrightnessPercent(target_percent_,
                               BRIGHTNESS_CHANGE_AUTOMATED,
-                              TRANSITION_INSTANT);
+                              TRANSITION_SLOW);
 }
 
 void KeyboardBacklightController::WriteBrightnessLevel(int64 new_level) {
-  current_level_ = new_level;
   backlight_->SetBrightnessLevel(new_level);
 }
 
@@ -430,6 +472,36 @@ double KeyboardBacklightController::LevelToPercent(int64 level) const {
     return -1.0;
   level = std::max(std::min(level, max_level_), static_cast<int64>(0));
   return static_cast<double>(level) * 100.0 / max_level_;
+}
+
+int64 KeyboardBacklightController::GetInstantaneousBrightnessLevel() const {
+  if (!transition_timeout_id_)
+    return current_level_;
+
+  double fraction =
+      (GetCurrentTime() - transition_start_time_).InMillisecondsF() /
+      (transition_end_time_ - transition_start_time_).InMillisecondsF();
+  fraction = std::min(1.0, fraction);
+  return transition_start_level_ +
+      lround(fraction * (current_level_ - transition_start_level_));
+}
+
+gboolean KeyboardBacklightController::TransitionTimeout() {
+  WriteBrightnessLevel(GetInstantaneousBrightnessLevel());
+  if (GetCurrentTime() >= transition_end_time_) {
+    transition_timeout_id_ = 0;
+    return FALSE;
+  }
+  return TRUE;
+}
+
+void KeyboardBacklightController::CancelTransition() {
+  if (!transition_timeout_id_)
+    return;
+
+  current_level_ = GetInstantaneousBrightnessLevel();
+  g_source_remove(transition_timeout_id_);
+  transition_timeout_id_ = 0;
 }
 
 }  // namespace power_manager

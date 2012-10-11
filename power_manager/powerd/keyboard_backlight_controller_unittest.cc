@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include <gtest/gtest.h>
+
+#include <cmath>
 #include <string>
 
 #include "base/memory/scoped_ptr.h"
@@ -49,6 +51,7 @@ class KeyboardBacklightControllerTest : public Test {
     controller_.reset(new KeyboardBacklightController(&backlight_,
                                                       &power_prefs_,
                                                       &light_sensor_));
+    controller_->set_disable_transitions_for_testing(true);
     controller_->user_enabled_ = true;
     controller_->state_ = BACKLIGHT_ACTIVE;
     controller_->max_level_ = kTestBrightnessMaxLevel;
@@ -306,7 +309,8 @@ TEST_F(KeyboardBacklightControllerTest, WriteBrightnessLevel) {
   controller_->current_level_ = 0;
   backlight_.ExpectSetBrightnessLevel(kTestCurrentLevel, true);
   controller_->WriteBrightnessLevel(kTestCurrentLevel);
-  EXPECT_EQ(kTestCurrentLevel, controller_->current_level_);
+  // The |current_level_| member should be unchanged by WriteBrightnessLevel().
+  EXPECT_EQ(0, controller_->current_level_);
   Mock::VerifyAndClearExpectations(&backlight_);
 }
 
@@ -443,6 +447,97 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightChanged) {
   CheckCurrentStep(kTestStepIndex - 1, kTestDecreaseLux);
   CheckHysteresisState(BacklightController::ALS_HYST_DOWN, 1);
   Mock::VerifyAndClearExpectations(&light_sensor_);
+  Mock::VerifyAndClearExpectations(&backlight_);
+}
+
+TEST_F(KeyboardBacklightControllerTest, Transitions) {
+  const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(10000);
+  controller_->set_current_time_for_testing(kStartTime);
+  controller_->set_disable_transitions_for_testing(false);
+
+  // An instant transition to the maximum level shouldn't use a timer.
+  backlight_.ExpectSetBrightnessLevel(kTestLevelMax, true);
+  controller_->SetCurrentBrightnessPercent(
+      kTestPercentMax,
+      BRIGHTNESS_CHANGE_USER_INITIATED,
+      TRANSITION_INSTANT);
+  ASSERT_EQ(0, controller_->transition_timeout_id_);
+  EXPECT_EQ(kTestLevelMax, controller_->current_level_);
+  Mock::VerifyAndClearExpectations(&backlight_);
+
+  // Start a slow transition to the dimmed level.  A timer should be created,
+  // but the brightness shouldn't be changed yet.
+  controller_->SetCurrentBrightnessPercent(
+      kTestPercentDim,
+      BRIGHTNESS_CHANGE_USER_INITIATED,
+      TRANSITION_SLOW);
+  ASSERT_GT(controller_->transition_timeout_id_, 0);
+  Mock::VerifyAndClearExpectations(&backlight_);
+
+  // Halfway through the total transition time, we should be between the two
+  // levels with the timer still active.
+  const double kHalf = 0.5;
+  const base::TimeTicks kMidpointTime = kStartTime +
+      base::TimeDelta::FromMilliseconds(
+          lround(kHalf * KeyboardBacklightController::kSlowTransitionMs));
+  controller_->set_current_time_for_testing(kMidpointTime);
+
+  const int64 kMidpointLevel = kTestLevelMax +
+      lround(kHalf * (kTestPercentDim - kTestLevelMax));
+  backlight_.ExpectSetBrightnessLevel(kMidpointLevel, true);
+
+  EXPECT_TRUE(controller_->TransitionTimeout());
+  ASSERT_GT(controller_->transition_timeout_id_, 0);
+  Mock::VerifyAndClearExpectations(&backlight_);
+
+  // At the end, the timer callback should set the final level and return false
+  // to remove the timer.
+  const base::TimeTicks kEndTime = kStartTime +
+      base::TimeDelta::FromMilliseconds(
+          KeyboardBacklightController::kSlowTransitionMs);
+  controller_->set_current_time_for_testing(kEndTime);
+  backlight_.ExpectSetBrightnessLevel(kTestPercentDim, true);
+  EXPECT_FALSE(controller_->TransitionTimeout());
+  EXPECT_EQ(controller_->transition_timeout_id_, 0);
+  Mock::VerifyAndClearExpectations(&backlight_);
+
+  // Start a fast transition back to the maximum level.
+  const base::TimeTicks kFastStartTime = kEndTime;
+  controller_->SetCurrentBrightnessPercent(
+      kTestPercentMax,
+      BRIGHTNESS_CHANGE_USER_INITIATED,
+      TRANSITION_FAST);
+  ASSERT_GT(controller_->transition_timeout_id_, 0);
+  const guint kFastTransitionTimeoutId = controller_->transition_timeout_id_;
+  Mock::VerifyAndClearExpectations(&backlight_);
+
+  // Halfway through the fast transition, let the timer fire once and then
+  // interrupt it with a new slow transition to the minimum level.
+  const base::TimeTicks kFastMidpointTime = kFastStartTime +
+      base::TimeDelta::FromMilliseconds(
+          lround(kHalf * KeyboardBacklightController::kFastTransitionMs));
+  controller_->set_current_time_for_testing(kFastMidpointTime);
+
+  const int64 kFastMidpointLevel = kTestLevelDim +
+      lround(kHalf * (kTestLevelMax - kTestLevelDim));
+  backlight_.ExpectSetBrightnessLevel(kFastMidpointLevel, true);
+  EXPECT_TRUE(controller_->TransitionTimeout());
+  Mock::VerifyAndClearExpectations(&backlight_);
+
+  controller_->SetCurrentBrightnessPercent(
+      kTestPercentMin,
+      BRIGHTNESS_CHANGE_USER_INITIATED,
+      TRANSITION_SLOW);
+
+  // Check that a new timer was created.
+  ASSERT_GT(controller_->transition_timeout_id_, 0);
+  EXPECT_NE(kFastTransitionTimeoutId, controller_->transition_timeout_id_);
+  Mock::VerifyAndClearExpectations(&backlight_);
+
+  // The new transition should start at the same level as where the previous
+  // transition was interrupted.
+  backlight_.ExpectSetBrightnessLevel(kFastMidpointLevel, true);
+  EXPECT_TRUE(controller_->TransitionTimeout());
   Mock::VerifyAndClearExpectations(&backlight_);
 }
 
