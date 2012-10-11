@@ -5,9 +5,9 @@
 #include "storage_info.h"
 
 #include <base/logging.h>
-#include <chromeos/dbus/service_constants.h>
 
 #include "mtp_storage_info.pb.h"
+#include "service_constants.h"
 #include "string_helpers.h"
 
 namespace mtpd {

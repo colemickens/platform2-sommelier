@@ -15,10 +15,13 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
-#include <chromeos/dbus/service_constants.h>
-#include <chromeos/syslog_logging.h>
 
 #include "daemon.h"
+#include "service_constants.h"
+
+#if defined(CROS_BUILD)
+#include <chromeos/syslog_logging.h>
+#endif
 
 using mtpd::Daemon;
 
@@ -26,7 +29,9 @@ using mtpd::Daemon;
 static const char kMinLogLevelSwitch[] = "minloglevel";
 
 void SetupLogging() {
+#if defined(CROS_BUILD)
   chromeos::InitLog(chromeos::kLogToSyslog);
+#endif
 
   std::string log_level_str =
       CommandLine::ForCurrentProcess()->GetSwitchValueASCII(kMinLogLevelSwitch);
