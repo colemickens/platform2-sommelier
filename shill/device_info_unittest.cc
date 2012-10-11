@@ -895,6 +895,11 @@ TEST_F(DeviceInfoTechnologyTest, QCUSB) {
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
+TEST_F(DeviceInfoTechnologyTest, CellularQmiWwan) {
+  CreateInfoSymLink("device/driver", "qmi_wwan");
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+}
+
 // Modem with absolute driver path with top-level tty file:
 //   /sys/class/net/dev0/device -> /sys/devices/virtual/0/00
 //   /sys/devices/virtual/0/00/driver -> /drivers/cdc_ether

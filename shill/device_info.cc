@@ -69,7 +69,8 @@ const char DeviceInfo::kInterfaceType[] = "type";
 const char *DeviceInfo::kModemDrivers[] = {
     "gobi",
     "QCUSBNet2k",
-    "GobiNet"
+    "GobiNet",
+    "qmi_wwan"
 };
 const char DeviceInfo::kTunDeviceName[] = "/dev/net/tun";
 const int DeviceInfo::kDelayedDeviceCreationSeconds = 5;
