@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/dash
 
 # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -32,7 +32,7 @@ rotate_logs() {
   for x in messages secure faillog session_manager; do
     rotate_file "/var/log/${x}"
   done
-  chown syslog /var/log/{messages,secure}
+  chown syslog /var/log/messages /var/log/secure
   sudo pkill -HUP rsyslogd
 }
 
