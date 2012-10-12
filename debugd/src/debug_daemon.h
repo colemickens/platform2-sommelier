@@ -92,10 +92,14 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   virtual void GetDebugLogs(const DBus::FileDescriptor& fd,
                             DBus::Error& error);
   virtual void SetDebugMode(const std::string& subsystem, DBus::Error& error);
-  virtual std::string GetLog(const std::string& name, DBus::Error& error); // NOLINT
-  virtual std::map<std::string, std::string> GetAllLogs(DBus::Error& error); // NOLINT
-  virtual std::map<std::string, std::string>
-      GetFeedbackLogs(DBus::Error& error); // NOLINT
+  virtual std::string GetLog(const std::string& name,
+                             DBus::Error& error); // NOLINT
+  virtual std::map<std::string, std::string> GetAllLogs(
+      DBus::Error& error); // NOLINT
+  virtual std::map<std::string, std::string> GetFeedbackLogs(
+      DBus::Error& error); // NOLINT
+  virtual std::map<std::string, std::string> GetUserLogFiles(
+      DBus::Error& error); // NOLINT
   virtual std::string GetExample(DBus::Error& error); // NOLINT
   virtual std::string GetInterfaces(DBus::Error& error); // NOLINT
   virtual std::string TestICMP(const std::string& host, DBus::Error& error); // NOLINT

@@ -196,6 +196,12 @@
       </tp:docstring>
       <arg name="logs" type="a{ss}" direction="out" />
     </method>
+    <method name="GetUserLogFiles">
+      <tp:docstring>
+        Returns list of User log file names that Chrome itself must collect.
+      </tp:docstring>
+      <arg name="user_log_files" type="a{ss}" direction="out" />
+    </method>
     <method name="GetExample">
       <tp:docstring>
         Example method. See /doc/hacking.md.

@@ -107,13 +107,6 @@ static const Log common_logs[] = {
   { "wifi_status", "/usr/bin/network_diagnostics --wifi --no-log" },
 
 
-  // Stuff pulled out of the original list because debugd is running under
-  // a VFS namespace and does not have access to later cryptohome mounts.
-  // This includes anything under /home/chronos/user/*
-  // { "chrome_log", "/bin/cat /home/chronos/user/log/chrome" },
-  // { "login-times", "/bin/cat /home/chronos/user/login-times" },
-  // { "logout-times", "/bin/cat /home/chronos/user/logout-times" },
-
   // Stuff pulled out of the original list. These need access to the running X
   // session, which we'd rather not give to debugd, or return info specific to
   // the current session (in the setsid(2) sense), which is not useful for
@@ -131,11 +124,21 @@ static const Log extra_logs[] = {
   { NULL, NULL }
 };
 
-static struct Log feedback_logs[] = {
+static const Log feedback_logs[] = {
   { "mm-status", "/usr/bin/modem status-feedback" },
   { "network-devices", "/usr/bin/connectivity show-feedback devices" },
   { "network-services", "/usr/bin/connectivity show-feedback services" },
   { NULL, NULL }
+};
+
+// List of log files that must directly be collected by Chrome. This is because
+// debugd is running under a VFS namespace and does not have access to later
+// cryptohome mounts.
+static const Log user_logs[] = {
+  {"chrome_user_log", "/home/chronos/user/log/chrome"},
+  {"login-times", "/home/chronos/user/login-times"},
+  {"logout-times", "/home/chronos/user/logout-times"},
+  { NULL, NULL}
 };
 
 LogTool::LogTool() { }
@@ -177,6 +180,13 @@ LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Error& error) { // NOLINT
   LogMap result;
   GetLogsFrom(common_logs, &result);
   GetLogsFrom(feedback_logs, &result);
+  return result;
+}
+
+LogTool::LogMap LogTool::GetUserLogFiles(DBus::Error& error) {  // NOLINT
+  LogMap result;
+  for (size_t i = 0; user_logs[i].name; ++i)
+    result[user_logs[i].name] = user_logs[i].command;
   return result;
 }
 

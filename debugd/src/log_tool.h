@@ -6,6 +6,7 @@
 #define LOG_TOOL_H
 
 #include <string>
+#include <map>
 
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
@@ -22,6 +23,7 @@ class LogTool {
   std::string GetLog(const std::string& name, DBus::Error& error); // NOLINT
   LogMap GetAllLogs(DBus::Error& error); // NOLINT
   LogMap GetFeedbackLogs(DBus::Error& error); // NOLINT
+  LogMap GetUserLogFiles(DBus::Error& error);  // NOLINT
  private:
   DISALLOW_COPY_AND_ASSIGN(LogTool);
 };
