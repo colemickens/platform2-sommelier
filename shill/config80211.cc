@@ -191,8 +191,10 @@ int Config80211::OnNlMessageReceived(struct nl_msg *raw_message,
   scoped_ptr<UserBoundNlMessage> message(
       UserBoundNlMessageFactory::CreateMessage(msg));
   if (message == NULL) {
+    SLOG(WiFi, 6) << __func__ << "(msg:NULL)";
     output.append("unknown event");
   } else {
+    SLOG(WiFi, 6) << __func__ << "(msg:" << msg->nlmsg_seq << ")";
     if (user_callback_object) {
       Config80211::Callback *bound_object =
           static_cast<Config80211::Callback *> (user_callback_object);
@@ -204,7 +206,6 @@ int Config80211::OnNlMessageReceived(struct nl_msg *raw_message,
   }
 
   SLOG(WiFi, 5) << output;
-
   return NL_SKIP;  // Skip current message, continue parsing buffer.
 }
 

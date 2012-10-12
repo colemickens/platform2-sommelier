@@ -14,25 +14,20 @@
 
 #include <base/basictypes.h>
 #include <base/bind.h>
-#include <base/lazy_instance.h>
+#include <base/memory/weak_ptr.h>
+
+#include "shill/config80211.h"
 
 namespace shill {
 
-class Config80211;
-class Metrics;
 class UserBoundNlMessage;
 
 // Example Config80211 callback object; the callback prints a description of
-// each message with its attributes.  You want to make it a singleton so that
-// its life isn't dependent on any other object (plus, since this handles
-// global events from msg80211, you only want/need one).
+// each message with its attributes.
 class Callback80211Object {
  public:
-  Callback80211Object();
+  explicit Callback80211Object(Config80211 *config80211);
   virtual ~Callback80211Object();
-
-  // Get a pointer to the singleton Callback80211Object.
-  static Callback80211Object *GetInstance();
 
   // Install ourselves as a callback.  Done automatically by constructor.
   bool InstallAsCallback();
@@ -40,29 +35,29 @@ class Callback80211Object {
   // Deinstall ourselves as a callback.  Done automatically by destructor.
   bool DeinstallAsCallback();
 
-  // Simple accessor.
-  void set_config80211(Config80211 *config80211) { config80211_ = config80211; }
-
-  // Simple accessor.
-  void set_metrics(Metrics *metrics) { metrics_ = metrics; }
+  // TODO(wdg): remove debug code:
+  void SetName(std::string name) { name_ = name;}
+  const std::string &GetName() { return name_; }
 
  protected:
-  friend struct base::DefaultLazyInstanceTraits<Callback80211Object>;
-
- private:
-  // When installed, this is the method Config80211 will call when it gets a
-  // message from the mac80211 drivers.
-  void Config80211MessageCallback(const UserBoundNlMessage &msg);
-
-  static const char kMetricLinkDisconnectCount[];
-
+  // This is the closure that contains *|this| and a pointer to the message
+  // handling callback, below.  It is used in |DeinstallAsCallback|.
+  Config80211::Callback callback_;
   Config80211 *config80211_;
 
-  Metrics *metrics_;
+ private:
+  // TODO(wdg): remove debug code:
+  std::string name_;
+
+  // When installed, this is the method Config80211 will call when it gets a
+  // message from the mac80211 drivers.
+  virtual void Config80211MessageCallback(const UserBoundNlMessage &msg);
 
   // Config80211MessageCallback method bound to this object to install as a
   // callback.
   base::WeakPtrFactory<Callback80211Object> weak_ptr_factory_;
+
+  DISALLOW_COPY_AND_ASSIGN(Callback80211Object);
 };
 
 }  // namespace shill
