@@ -11,11 +11,11 @@
 #include <chromeos/syslog_logging.h>
 #include <dbus-c++/eventloop-integration.h>
 
+#include "shill/rpc_task.h"
 #include "shill/shims/environment.h"
 #include "shill/shims/task_proxy.h"
 
 using shill::shims::Environment;
-using shill::shims::TaskProxy;
 using std::map;
 using std::string;
 
@@ -26,10 +26,8 @@ int main(int argc, char **argv) {
 
   Environment *environment = Environment::GetInstance();
   string service, path, reason;
-  // TODO(petkov): When switching shill to use this shim, rename the variables
-  // and maybe use shared kConsts. Also, get rid of CONNMAN_INTERFACE.
-  if (!environment->GetVariable("CONNMAN_BUSNAME", &service) ||
-      !environment->GetVariable("CONNMAN_PATH", &path) ||
+  if (!environment->GetVariable(shill::kRPCTaskServiceVariable, &service) ||
+      !environment->GetVariable(shill::kRPCTaskPathVariable, &path) ||
       !environment->GetVariable("script_type", &reason)) {
     LOG(ERROR) << "Environment variables not available.";
     return EXIT_FAILURE;
@@ -38,7 +36,7 @@ int main(int argc, char **argv) {
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   DBus::Connection connection(DBus::Connection::SystemBus());
-  TaskProxy proxy(&connection, path, service);
+  shill::shims::TaskProxy proxy(&connection, path, service);
   map<string, string> env = environment->AsMap();
   proxy.Notify(reason, env);
   return EXIT_SUCCESS;

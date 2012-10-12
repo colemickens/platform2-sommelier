@@ -13,6 +13,10 @@
 
 namespace shill {
 
+// Declared in the header to avoid linking unused code into shims.
+static const char kRPCTaskServiceVariable[] = "SHILL_TASK_SERVICE";
+static const char kRPCTaskPathVariable[] = "SHILL_TASK_PATH";
+
 class ControlInterface;
 class RPCTaskAdaptorInterface;
 

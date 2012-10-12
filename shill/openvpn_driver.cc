@@ -69,7 +69,7 @@ const char OpenVPNDriver::kDefaultCACertificates[] =
 // static
 const char OpenVPNDriver::kOpenVPNPath[] = "/usr/sbin/openvpn";
 // static
-const char OpenVPNDriver::kOpenVPNScript[] = SCRIPTDIR "/openvpn-script";
+const char OpenVPNDriver::kOpenVPNScript[] = SHIMDIR "/openvpn-script";
 // static
 const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { flimflam::kOpenVPNAuthNoCacheProperty, 0 },
@@ -205,7 +205,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   if (error.IsFailure()) {
     return false;
   }
-  SLOG(VPN, 2) << "OpenVPN process options: " << JoinString(options, ' ');
+  LOG(INFO) << "OpenVPN process options: " << JoinString(options, ' ');
 
   // TODO(petkov): This code needs to be abstracted away in a separate external
   // process module (crosbug.com/27131).
@@ -593,13 +593,10 @@ void OpenVPNDriver::InitOptions(vector<string> *options, Error *error) {
   // Setup openvpn-script options and RPC information required to send back
   // Layer 3 configuration.
   options->push_back("--setenv");
-  options->push_back("CONNMAN_BUSNAME");
+  options->push_back(kRPCTaskServiceVariable);
   options->push_back(rpc_task_->GetRpcConnectionIdentifier());
   options->push_back("--setenv");
-  options->push_back("CONNMAN_INTERFACE");
-  options->push_back(rpc_task_->GetRpcInterfaceIdentifier());
-  options->push_back("--setenv");
-  options->push_back("CONNMAN_PATH");
+  options->push_back(kRPCTaskPathVariable);
   options->push_back(rpc_task_->GetRpcIdentifier());
   options->push_back("--script-security");
   options->push_back("2");

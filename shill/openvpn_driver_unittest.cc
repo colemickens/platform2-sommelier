@@ -485,7 +485,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ("--client", options[0]);
   ExpectInFlags(options, "--remote", kHost);
-  ExpectInFlags(options, "CONNMAN_PATH", RPCTaskMockAdaptor::kRpcId);
+  ExpectInFlags(options, kRPCTaskPathVariable, RPCTaskMockAdaptor::kRpcId);
   ExpectInFlags(options, "--dev", kInterfaceName);
   ExpectInFlags(options, "--group", "openvpn");
   EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
