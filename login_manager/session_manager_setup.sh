@@ -238,12 +238,6 @@ if [ -n "$REGISTER_PLUGINS" ]; then
   REGISTER_PLUGINS="--register-pepper-plugins=$REGISTER_PLUGINS"
 fi
 
-# Desktop configurations may use keyboards without volume controls.
-SHOW_VOLUME_STATUS_FLAG=
-if use_flag_is_set is_desktop; then
-  SHOW_VOLUME_STATUS_FLAG="--show-volume-status"
-fi
-
 # Enable natural scroll by default.
 TOUCHPAD_FLAGS=
 if use_flag_is_set natural_scroll_default; then
@@ -401,7 +395,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             ${FLASH_FLAGS} \
             ${HIGHDPI_FLAGS} \
             ${TOUCHPAD_FLAGS} \
-            ${SHOW_VOLUME_STATUS_FLAG} \
             ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
