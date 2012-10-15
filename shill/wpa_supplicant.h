@@ -23,6 +23,7 @@ extern const char kDBusAddr[];
 extern const char kDBusPath[];
 extern const char kDriverNL80211[];
 extern const char kEnginePKCS11[];
+extern const char kErrorNetworkUnknown[];
 extern const char kErrorInterfaceExists[];
 extern const char kInterfacePropertyConfigFile[];
 extern const char kInterfacePropertyCurrentBSS[];

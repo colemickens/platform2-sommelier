@@ -394,7 +394,19 @@ bool WiFi::RemoveNetwork(const ::DBus::Path &network) {
   try {
     supplicant_interface_proxy_->RemoveNetwork(network);
   } catch (const DBus::Error &e) {  // NOLINT
-    return false;
+    // RemoveNetwork can fail with three different errors.
+    //
+    // If RemoveNetwork fails with a NetworkUnknown error, supplicant has
+    // already removed the network object, so return true as if
+    // RemoveNetwork removes the network object successfully.
+    //
+    // As shill always passes a valid network object path, RemoveNetwork
+    // should not fail with an InvalidArgs error. Return false in such case
+    // as something weird may have happened. Similarly, return false in case
+    // of an UnknownError.
+    if (strcmp(e.name(), wpa_supplicant::kErrorNetworkUnknown) != 0) {
+      return false;
+    }
   }
   return true;
 }

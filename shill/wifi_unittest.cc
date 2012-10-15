@@ -368,6 +368,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         security,
         false);
   }
+  bool RemoveNetwork(const ::DBus::Path &network) {
+    return wifi_->RemoveNetwork(network);
+  }
   void RemoveBSS(const ::DBus::Path &bss_path);
   void ReportBSS(const ::DBus::Path &bss_path,
                  const string &ssid,
@@ -772,6 +775,46 @@ TEST_F(WiFiMainTest, CleanStart) {
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   EXPECT_FALSE(GetScanTimer().IsCancelled());
+}
+
+TEST_F(WiFiMainTest, RemoveNetwork) {
+  DBus::Path network = "/test/path";
+  EXPECT_CALL(*supplicant_interface_proxy_, RemoveNetwork(network));
+  StartWiFi();
+  EXPECT_TRUE(RemoveNetwork(network));
+}
+
+TEST_F(WiFiMainTest, RemoveNetworkWhenSupplicantReturnsNetworkUnknown) {
+  DBus::Path network = "/test/path";
+  EXPECT_CALL(*supplicant_interface_proxy_, RemoveNetwork(network))
+      .WillRepeatedly(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.NetworkUnknown",
+              "test threw fi.w1.wpa_supplicant1.NetworkUnknown")));
+  StartWiFi();
+  EXPECT_TRUE(RemoveNetwork(network));
+}
+
+TEST_F(WiFiMainTest, RemoveNetworkWhenSupplicantReturnsInvalidArgs) {
+  DBus::Path network = "/test/path";
+  EXPECT_CALL(*supplicant_interface_proxy_, RemoveNetwork(network))
+      .WillRepeatedly(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.InvalidArgs",
+              "test threw fi.w1.wpa_supplicant1.InvalidArgs")));
+  StartWiFi();
+  EXPECT_FALSE(RemoveNetwork(network));
+}
+
+TEST_F(WiFiMainTest, RemoveNetworkWhenSupplicantReturnsUnknownError) {
+  DBus::Path network = "/test/path";
+  EXPECT_CALL(*supplicant_interface_proxy_, RemoveNetwork(network))
+      .WillRepeatedly(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.UnknownError",
+              "test threw fi.w1.wpa_supplicant1.UnknownError")));
+  StartWiFi();
+  EXPECT_FALSE(RemoveNetwork(network));
 }
 
 TEST_F(WiFiMainTest, Restart) {

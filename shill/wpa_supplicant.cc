@@ -22,6 +22,7 @@ const char kDBusAddr[]              = "fi.w1.wpa_supplicant1";
 const char kDBusPath[]              = "/fi/w1/wpa_supplicant1";
 const char kDriverNL80211[]         = "nl80211";
 const char kEnginePKCS11[]          = "pkcs11";
+const char kErrorNetworkUnknown[]   = "fi.w1.wpa_supplicant1.NetworkUnknown";
 const char kErrorInterfaceExists[]  = "fi.w1.wpa_supplicant1.InterfaceExists";
 const char kInterfacePropertyConfigFile[] = "ConfigFile";
 const char kInterfacePropertyCurrentBSS[] = "CurrentBSS";
