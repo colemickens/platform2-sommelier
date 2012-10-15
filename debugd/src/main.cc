@@ -4,6 +4,7 @@
 
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 
 #include <base/command_line.h>
@@ -85,9 +86,31 @@ void start() {
 }
 };  // namespace
 
+void wait_for_pstore() {
+  const char *kRoot = "/";
+  const char *kPstore = "/dev/pstore";
+  struct statfs root;
+  struct statfs pstore;
+
+  while (1) {
+    if (statfs(kRoot, &root)) {
+      PLOG(ERROR) << "statvfs(root) failed";
+    } else if (statfs(kPstore, &pstore)) {
+      PLOG(ERROR) << "statvfs(pstore) failed";
+    } else if (root.f_type == pstore.f_type) {
+      LOG(INFO) << "pstore not mounted: " << root.f_type;
+    } else {
+      LOG(INFO) << "pstore mounted: " << root.f_type << " " << pstore.f_type;
+      break;
+    }
+    sleep(1);
+  }
+}
+
 int __attribute__((visibility("default"))) main(int argc, char* argv[]) {
   CommandLine::Init(argc, argv);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  wait_for_pstore();
   enter_vfs_namespace();
   make_tmpfs();
   enter_sandbox();
