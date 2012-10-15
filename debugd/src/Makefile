@@ -6,7 +6,8 @@ BASE_VER = 85268
 
 DBUSXX_XML2CPP ?= dbusxx-xml2cpp
 PKG_CONFIG ?= pkg-config
-PC_DEPS = dbus-1 dbus-c++-1 libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
+PC_DEPS = dbus-1 dbus-c++-1 glib-2.0 libchrome-$(BASE_VER) \
+	libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 CXXFLAGS += $(PC_CFLAGS)

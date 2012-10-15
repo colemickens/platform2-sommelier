@@ -4,9 +4,13 @@
 
 #include "log_tool.h"
 
+#include <glib.h>
+
+#include <base/base64.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/string_split.h>
+#include <base/string_util.h>
 
 #include "process_with_output.h"
 
@@ -18,6 +22,23 @@ using std::string;
 using std::vector;
 
 typedef vector<string> Strings;
+
+// Returns |value| if |value| is a valid UTF-8 string or a base64-encoded
+// string of |value| otherwise.
+string EnsureUTF8String(const string& value) {
+  if (IsStringUTF8(value))
+    return value;
+
+  gchar* base64_value = g_base64_encode(
+      reinterpret_cast<const guchar*>(value.c_str()), value.length());
+  if (base64_value) {
+    string encoded_value = "<base64>: ";
+    encoded_value += base64_value;
+    g_free(base64_value);
+    return encoded_value;
+  }
+  return "<invalid>";
+}
 
 // TODO(ellyjones): sandbox. crosbug.com/35122
 string Run(const string& cmdline) {
@@ -33,7 +54,7 @@ string Run(const string& cmdline) {
   p.GetOutput(&output);
   if (!output.size())
     return "<empty>";
-  return output;
+  return EnsureUTF8String(output);
 }
 
 struct Log {
