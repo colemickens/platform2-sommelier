@@ -6,7 +6,8 @@
 
 #include <glib.h>
 #include <glib-object.h>
-#include <glib-unix.h>
+#include <signal.h>
+#include <sys/signalfd.h>
 
 #include <dbus-c++/glib-integration.h>
 
@@ -42,8 +43,8 @@ void SetupLogging() {
 
 // This callback will be invoked once there is a new device event that
 // should be processed by the Daemon::ProcessDeviceEvents().
-gboolean DeviceEventCallback(GIOChannel* source,
-                             GIOCondition condition,
+gboolean DeviceEventCallback(GIOChannel* /* source */,
+                             GIOCondition /* condition */,
                              gpointer data) {
   Daemon* daemon = reinterpret_cast<Daemon*>(data);
   daemon->ProcessDeviceEvents();
@@ -53,7 +54,9 @@ gboolean DeviceEventCallback(GIOChannel* source,
 }
 
 // This callback will be inovked when this process receives SIGINT or SIGTERM.
-gboolean TerminationSignalCallback(gpointer data) {
+gboolean TerminationSignalCallback(GIOChannel* /* source */,
+                                   GIOCondition /* condition */,
+                                   gpointer data) {
   LOG(INFO) << "Received a signal to terminate the daemon";
   GMainLoop* loop = reinterpret_cast<GMainLoop*>(data);
   g_main_loop_quit(loop);
@@ -78,10 +81,6 @@ int main(int argc, char** argv) {
   GMainLoop* loop = g_main_loop_new(g_main_context_default(), FALSE);
   CHECK(loop) << "Failed to create a GMainLoop";
 
-  // Set up a signal handler for handling SIGINT and SIGTERM.
-  g_unix_signal_add(SIGINT, TerminationSignalCallback, loop);
-  g_unix_signal_add(SIGTERM, TerminationSignalCallback, loop);
-
   LOG(INFO) << "Creating the D-Bus dispatcher";
   DBus::Glib::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
@@ -98,6 +97,24 @@ int main(int argc, char** argv) {
                       GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
                       DeviceEventCallback,
                       &daemon,
+                      NULL);
+
+  // TODO(thestig) Switch back to g_unix_signal_add() once Chromium no longer
+  // supports a Linux system with glib older than 2.30.
+  //
+  // Set up a signal socket and monitor it.
+  sigset_t signal_set;
+  CHECK_EQ(sigaddset(&signal_set, SIGINT), 0);
+  CHECK_EQ(sigaddset(&signal_set, SIGTERM), 0);
+  int signal_fd = signalfd(-1, &signal_set, 0);
+  PCHECK(signal_fd >= 0);
+
+  // Set up a monitor for |signal_fd|.
+  g_io_add_watch_full(g_io_channel_unix_new(signal_fd),
+                      G_PRIORITY_HIGH_IDLE,
+                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
+                      TerminationSignalCallback,
+                      loop,
                       NULL);
 
   g_main_loop_run(loop);
