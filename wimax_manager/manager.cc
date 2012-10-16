@@ -19,6 +19,7 @@ namespace {
 
 const int kMaxNumberOfDeviceScans = 15;
 const int kDefaultDeviceScanIntervalInSeconds = 1;
+const int kDeviceScanDelayAfterResumeInSeconds = 1;
 
 gboolean OnDeviceScanNeeded(gpointer data) {
   CHECK(data);
@@ -133,7 +134,10 @@ void Manager::Suspend() {
 }
 
 void Manager::Resume() {
-  ScanDevices();
+  // After resuming from suspend, the old device may not have been cleaned up.
+  // Delay the device scan to avoid getting the old device.
+  g_timeout_add_seconds(kDeviceScanDelayAfterResumeInSeconds,
+                        OnDeviceScanNeeded, this);
 }
 
 }  // namespace wimax_manager
