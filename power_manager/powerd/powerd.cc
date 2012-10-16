@@ -49,12 +49,6 @@ const char kPowerStatusPath[] = "/sys/class/power_supply";
 // Power supply subsystem for udev events.
 const char kPowerSupplyUdevSubsystem[] = "power_supply";
 
-// Time between battery polls, in milliseconds.
-const int64 kBatteryPollIntervalMs = 30000;
-
-// Time between battery event and next poll, in milliseconds.
-const int64 kBatteryPollShortIntervalMs = 5000;
-
 // How long after last known audio activity to consider audio not to be playing,
 // in milliseconds.
 const int64 kAudioActivityThresholdMs = 5000;
@@ -129,6 +123,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       taper_time_diff_s_(0),
       clean_shutdown_initiated_(false),
       low_battery_(false),
+      battery_poll_interval_ms_(0),
+      battery_poll_short_interval_ms_(0),
       enforce_lock_(false),
       plugged_state_(kPowerUnknown),
       file_tagger_(FilePath(kTaggedFilePath)),
@@ -231,6 +227,9 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->GetInt64(kUnpluggedOffMsPref, &unplugged_off_ms_));
   CHECK(prefs_->GetInt64(kReactMsPref, &react_ms_));
   CHECK(prefs_->GetInt64(kFuzzMsPref, &fuzz_ms_));
+  CHECK(prefs_->GetInt64(kBatteryPollIntervalPref, &battery_poll_interval_ms_));
+  CHECK(prefs_->GetInt64(kBatteryPollShortIntervalPref,
+                         &battery_poll_short_interval_ms_));
   CHECK(prefs_->GetInt64(kEnforceLockPref, &enforce_lock));
 
   ReadSuspendSettings();
@@ -294,6 +293,10 @@ void Daemon::ReadSettings() {
   taper_time_diff_s_ = taper_time_max_s_ - taper_time_min_s_;
   lock_ms_ = default_lock_ms_;
   enforce_lock_ = enforce_lock;
+
+  LOG(INFO) << "Using battery polling interval of " << battery_poll_interval_ms_
+            << " mS and short interval of " << battery_poll_short_interval_ms_
+            << " mS";
 
   // Check that timeouts are sane.
   CHECK(kMetricIdleMin >= fuzz_ms_);
@@ -1379,14 +1382,14 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
 
 void Daemon::ScheduleShortPollPowerSupply() {
   HaltPollPowerSupply();
-  poll_power_supply_timer_id_ = g_timeout_add(kBatteryPollShortIntervalMs,
+  poll_power_supply_timer_id_ = g_timeout_add(battery_poll_short_interval_ms_,
                                               ShortPollPowerSupplyThunk,
                                               this);
 }
 
 void Daemon::SchedulePollPowerSupply() {
   HaltPollPowerSupply();
-  poll_power_supply_timer_id_ = g_timeout_add(kBatteryPollIntervalMs,
+  poll_power_supply_timer_id_ = g_timeout_add(battery_poll_interval_ms_,
                                               PollPowerSupplyThunk,
                                               this);
 }

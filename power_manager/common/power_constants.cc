@@ -50,6 +50,8 @@ const char kKeyboardBacklightMinPercentPref[] =
 const char kKeyboardBacklightStepsPref[] = "keyboard_backlight_steps";
 const char kRequireUsbInputDeviceToSuspendPref[] =
     "require_usb_input_device_to_suspend";
+const char kBatteryPollIntervalPref[] = "battery_poll_interval_ms";
+const char kBatteryPollShortIntervalPref[] = "battery_poll_short_interval_ms";
 
 const char kBacklightPath[] = "/sys/class/backlight";
 const char kBacklightPattern[] = "*";

@@ -486,6 +486,8 @@ class Daemon : public BacklightControllerObserver,
   int64 suspend_ms_;
   int64 lock_ms_;
   int64 offset_ms_;
+  int64 battery_poll_interval_ms_;
+  int64 battery_poll_short_interval_ms_;
   bool enforce_lock_;
   bool lock_on_idle_suspend_;
   PluggedState plugged_state_;

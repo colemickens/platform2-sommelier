@@ -336,6 +336,8 @@ TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
   prefs_.SetInt64(kUnpluggedSuspendMsPref, kUnpluggedSuspendTimeMs);
   prefs_.SetInt64(kReactMsPref, 0);
   prefs_.SetInt64(kFuzzMsPref, 0);
+  prefs_.SetInt64(kBatteryPollIntervalPref, 0);
+  prefs_.SetInt64(kBatteryPollShortIntervalPref, 0);
   prefs_.SetInt64(kEnforceLockPref, 0);
   prefs_.SetInt64(kDisableIdleSuspendPref, 0);
   prefs_.SetInt64(kLockOnIdleSuspendPref, 1);
