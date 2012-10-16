@@ -139,13 +139,6 @@ class InternalBacklightController : public BacklightController {
   // multiplied by the factor to give a sysfs level to write to the Backlight.
   bool SetCurrentControllerLevel(int64 level);
 
-  // Add an ALS value (or really any "event" value) to the response log.
-  // This will give some idea of _why_ ALS changes the backlight.
-  void AppendAlsResponse(int val);
-
-  // Dump the ALS response log, most recent events first.
-  void DumpAlsResponses();
-
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;
 
@@ -180,11 +173,6 @@ class InternalBacklightController : public BacklightController {
 
   // Count of the number of adjustments that the user has caused
   int user_adjustment_count_;
-
-  // Provide a log of controller events (really ALS entries) to give
-  // some idea of why the backlight controller is changing the backlight.
-  int als_responses_[10];
-  size_t als_response_index_;
 
   // User adjustable brightness offset when AC plugged.
   double plugged_offset_percent_;

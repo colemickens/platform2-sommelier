@@ -100,7 +100,6 @@ InternalBacklightController::InternalBacklightController(
       als_temporal_state_(ALS_HYST_IMMEDIATE),
       als_adjustment_count_(0),
       user_adjustment_count_(0),
-      als_response_index_(0),
       plugged_offset_percent_(0.0),
       unplugged_offset_percent_(0.0),
       current_offset_percent_(&plugged_offset_percent_),
@@ -118,8 +117,6 @@ InternalBacklightController::InternalBacklightController(
       controller_factor_(0),
       suspended_through_idle_off_(false),
       gradual_transition_event_id_(0) {
-  for (size_t i = 0; i < arraysize(als_responses_); i++)
-    als_responses_[i] = 0;
   backlight_->set_observer(this);
 }
 
@@ -366,8 +363,8 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
 
   als_temporal_state_ = ALS_HYST_IMMEDIATE;
 
-  LOG(INFO) << util::PowerStateToString(old_state) << " -> "
-            << util::PowerStateToString(new_state);
+  LOG(INFO) << PowerStateToString(old_state) << " -> "
+            << PowerStateToString(new_state);
   return true;
 }
 
@@ -459,7 +456,7 @@ void InternalBacklightController::OnAmbientLightChanged(
     return;
   }
 
-  double percent = sensor->GetAmbientLightPercent();
+  double percent = light_sensor_->GetAmbientLightPercent();
   if (percent < 0.0) {
     LOG(WARNING) << "ALS doesn't have valid value after sending "
                  << "OnAmbientLightChanged";
@@ -482,12 +479,9 @@ void InternalBacklightController::OnAmbientLightChanged(
     als_temporal_state_ = ALS_HYST_IDLE;
     als_adjustment_count_++;
     LOG(INFO) << "Immediate ALS-triggered brightness adjustment.";
-    AppendAlsResponse(-1);
     WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
     return;
   }
-
-  AppendAlsResponse(lround(percent));
 
   // Apply level and temporal hysteresis to light sensor readings to reduce
   // backlight changes caused by minor and transient ambient light changes.
@@ -512,7 +506,8 @@ void InternalBacklightController::OnAmbientLightChanged(
     als_temporal_count_ = 0;
     als_adjustment_count_++;
     LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
-    DumpAlsResponses();
+    LOG(INFO) << "ALS history (most recent first): "
+              << light_sensor_->DumpPercentHistory();
     // ALS adjustment should not change brightness offset.
     WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_SLOW);
   }
@@ -799,27 +794,6 @@ bool InternalBacklightController::SetCurrentControllerLevel(int64 level) {
     level += controller_factor_ / 2;
   }
   return backlight_->SetBrightnessLevel(level);
-}
-
-void InternalBacklightController::AppendAlsResponse(int val) {
-  als_response_index_ = (als_response_index_ + 1) % arraysize(als_responses_);
-  als_responses_[als_response_index_] = val;
-}
-
-void InternalBacklightController::DumpAlsResponses() {
-  std::string buffer;
-  int response_index = als_response_index_;
-
-  for (unsigned int i = 0; i < arraysize(als_responses_); i++) {
-    if (!buffer.empty())
-      buffer += ", ";
-    buffer += StringPrintf("%d", als_responses_[response_index]);
-    response_index--;
-    if (response_index < 0)
-      response_index = arraysize(als_responses_) - 1;
-  }
-
-  LOG(INFO) << "ALS history (most recent first): " << buffer;
 }
 
 }  // namespace power_manager

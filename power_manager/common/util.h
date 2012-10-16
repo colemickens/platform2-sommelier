@@ -33,11 +33,6 @@ bool GetWakeupCount(unsigned int* value);
 // to unsigned ints.  So -10 => 4294967286
 bool GetUintFromFile(const char* filename, unsigned int* value);
 
-// String names for power states.
-// TODO(derat): Move this to BacklightController to eliminate powerd include
-// from common.
-const char* PowerStateToString(PowerState state);
-
 }  // namespace util
 }  // namespace power_manager
 

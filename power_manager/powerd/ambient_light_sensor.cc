@@ -15,6 +15,7 @@
 #include "base/logging.h"
 #include "base/file_util.h"
 #include "base/string_number_conversions.h"
+#include "base/stringprintf.h"
 #include "base/string_util.h"
 
 namespace power_manager {
@@ -31,6 +32,9 @@ static const int kLuxHi = 1000;
 // A positive kLuxOffset gives us a flatter curve, particularly at lower lux.
 // Alternatively, we could use a higher kLuxLo.
 static const int kLuxOffset = 4;
+
+// Max number of entries to have in the value histories.
+static size_t kHistorySizeMax = 10;
 
 AmbientLightSensor::AmbientLightSensor()
     : prefs_(NULL),
@@ -138,6 +142,30 @@ int AmbientLightSensor::GetAmbientLightLux() const {
   return lux_value_;
 }
 
+std::string AmbientLightSensor::DumpPercentHistory() const {
+  std::string buffer;
+  for (std::list<double>::const_iterator iter = percent_history_.begin();
+       iter != percent_history_.end();
+       ++iter) {
+    if (!buffer.empty())
+      buffer += ", ";
+    buffer += StringPrintf("%.1f", *iter);
+  }
+  return "[" + buffer + "]";
+}
+
+std::string AmbientLightSensor::DumpLuxHistory() const {
+  std::string buffer;
+  for (std::list<int>::const_iterator iter = lux_history_.begin();
+       iter != lux_history_.end();
+       ++iter) {
+    if (!buffer.empty())
+      buffer += ", ";
+    buffer += base::IntToString(*iter);
+  }
+  return "[" + buffer + "]";
+}
+
 gboolean AmbientLightSensor::ReadAls() {
   if (disable_polling_) {
     is_polling_ = false;
@@ -158,6 +186,13 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
   TrimWhitespaceASCII(data, TRIM_ALL, &trimmed_data);
   lux_value_ = -1;
   if (base::StringToInt(trimmed_data, &lux_value_)) {
+    // Update the history logs.
+    if (percent_history_.size() >= kHistorySizeMax)
+      percent_history_.pop_front();
+    percent_history_.push_back(Tsl2563LuxToPercent(lux_value_));
+    if (lux_history_.size() >= kHistorySizeMax)
+      lux_history_.pop_front();
+    lux_history_.push_back(lux_value_);
     FOR_EACH_OBSERVER(AmbientLightSensorObserver, observer_list_,
                       OnAmbientLightChanged(this));
   } else{

@@ -152,6 +152,7 @@ bool KeyboardBacklightController::SetCurrentBrightnessPercent(
     num_user_adjustments_++;
   target_percent_ = std::max(std::min(percent, target_percent_max_),
                              target_percent_min_);
+  LOG(INFO) << "target_percent_ set to " << target_percent_;
   int64 new_level;
   // Detemine if the target percent should be used or if the state overrides
   // that.
@@ -172,12 +173,18 @@ bool KeyboardBacklightController::SetCurrentBrightnessPercent(
       break;
   };
 
-  if (!user_enabled_ || !video_enabled_)
+  if (!user_enabled_ || !video_enabled_) {
     new_level = PercentToLevel(target_percent_min_);
+    LOG(INFO) << "Backlight disabled, minimizing backlight";
+  }
 
-  if (new_level == current_level_)
+  if (new_level == current_level_) {
+    LOG(INFO) << "No change in light level, so no transition";
     return false;
-
+  }
+  LOG(INFO) << "Changing Brightness, state = " << PowerStateToString(state_)
+            << ", new level = " << new_level << ", transition style = "
+            << TransitionStyleToString(style);
   base::TimeDelta duration = disable_transitions_for_testing_ ?
                              base::TimeDelta() :
                              GetTransitionDuration(style);
@@ -202,6 +209,7 @@ bool KeyboardBacklightController::SetCurrentBrightnessPercent(
 bool KeyboardBacklightController::IncreaseBrightness(
     BrightnessChangeCause cause) {
   if (!user_enabled_) {
+    LOG(INFO) << "Unblocking backlight at user's request";
     user_enabled_ = true;
     SetCurrentBrightnessPercent(target_percent_, cause, TRANSITION_FAST);
     return true;
@@ -212,9 +220,8 @@ bool KeyboardBacklightController::IncreaseBrightness(
 bool KeyboardBacklightController::DecreaseBrightness(
     bool allow_off,
     BrightnessChangeCause cause) {
-  if (cause != BRIGHTNESS_CHANGE_USER_INITIATED)
-    LOG(WARNING) << "Received non-user DecreaseBrightness call, ignoring!";
   if (user_enabled_) {
+    LOG(INFO) << "Blocking backlight at user's request";
     user_enabled_ = false;
     SetCurrentBrightnessPercent(target_percent_, cause, TRANSITION_FAST);
     return true;
@@ -226,8 +233,8 @@ bool KeyboardBacklightController::SetPowerState(PowerState new_state) {
   if (new_state == state_ || !is_initialized_)
     return false;
   CHECK(new_state != BACKLIGHT_UNINITIALIZED);
-  LOG(INFO) << util::PowerStateToString(state_) << " -> "
-            << util::PowerStateToString(new_state);
+  LOG(INFO) << PowerStateToString(state_) << " -> "
+            << PowerStateToString(new_state);
   state_ = new_state;
   if (current_level_ > PercentToLevel(target_percent_dim_) ||
       state_ != BACKLIGHT_DIM) {
@@ -292,6 +299,7 @@ void KeyboardBacklightController::OnAmbientLightChanged(
   const ssize_t num_steps = brightness_steps_.size();
   if (new_lux > lux_level_) {  // Brightness Increasing
     if (hysteresis_state_ != ALS_HYST_UP) {
+      LOG(INFO) << "ALS transitioned to brightness increasing";
       hysteresis_state_ = ALS_HYST_UP;
       hysteresis_count_ = 0;
     }
@@ -302,6 +310,7 @@ void KeyboardBacklightController::OnAmbientLightChanged(
     }
   } else {  // Brightness decreasing
     if (hysteresis_state_ != ALS_HYST_DOWN) {
+      LOG(INFO) << "ALS transitioned to brightness decreasing";
       hysteresis_state_ = ALS_HYST_DOWN;
       hysteresis_count_ = 0;
     }
@@ -323,7 +332,13 @@ void KeyboardBacklightController::OnAmbientLightChanged(
     return;
 
   hysteresis_count_++;
+  LOG(INFO) << "lux_level_ = " << lux_level_ << " and new_lux = " << new_lux;
+  LOG(INFO) << "Incremented hysteresis count to " << hysteresis_count_;
   if (hysteresis_count_ >= kAlsHystResponse) {
+    LOG(INFO) << "Hystersis overcome, transitioning step "
+              << current_step_index_ << " -> step " << i;
+    LOG(INFO) << "ALS history (most recent first): "
+              << light_sensor_->DumpLuxHistory();
     current_step_index_ = i;
     lux_level_ = new_lux;
     hysteresis_count_ = 1;
@@ -337,6 +352,8 @@ void KeyboardBacklightController::OnAmbientLightChanged(
 void KeyboardBacklightController::OnVideoDetectorEvent(
     base::TimeTicks last_activity_time,
     bool is_fullscreen) {
+  LOG(INFO) << "Received VideoDetectorEvent with fullscreen bit "
+            << (is_fullscreen ? "" : "not ") << "set";
   int64 timeout_interval_ms = kVideoTimeoutIntervalMs -
       (GetCurrentTime() - last_activity_time).InMilliseconds();
   if (timeout_interval_ms <= 0) {
@@ -433,9 +450,12 @@ void KeyboardBacklightController::ReadPrefs() {
 
 void KeyboardBacklightController::UpdateBacklightEnabled() {
   bool new_video_enabled = (!is_video_playing_ || !is_fullscreen_);
-  if (new_video_enabled == video_enabled_)
+  if (new_video_enabled == video_enabled_) {
+    LOG(INFO) << "video_enabled_ stays at " << video_enabled_;
     return;
-
+  }
+  LOG(INFO) << "video_enabled_ transitions " << video_enabled_ << " -> "
+            << new_video_enabled;
   video_enabled_ = new_video_enabled;
   SetCurrentBrightnessPercent(target_percent_,
                               BRIGHTNESS_CHANGE_AUTOMATED,

@@ -26,10 +26,11 @@ clean: CLEAN(powerd/libbacklight.pie.a)
 
 LIBBACKLIGHTCTRL_FLAGS = $(GLIB_FLAGS)
 LIBBACKLIGHTCTRL_LIBS = $(GLIB_LIBS)
+LIBBACKLIGHTCTRL_OBJS = powerd/backlight_controller.o
 ifeq ($(USE_IS_DESKTOP),)
-LIBBACKLIGHTCTRL_OBJS = powerd/internal_backlight_controller.o
+LIBBACKLIGHTCTRL_OBJS += powerd/internal_backlight_controller.o
 else
-LIBBACKLIGHTCTRL_OBJS = powerd/external_backlight_controller.o
+LIBBACKLIGHTCTRL_OBJS += powerd/external_backlight_controller.o
 endif
 CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a): \
 	$(LIBBACKLIGHTCTRL_OBJS)

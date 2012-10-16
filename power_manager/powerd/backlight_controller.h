@@ -74,6 +74,12 @@ class BacklightController : public BacklightInterfaceObserver,
   BacklightController() {}
   virtual ~BacklightController() {}
 
+  // String names for power states.
+  static const char* PowerStateToString(PowerState state);
+
+  // String names for transition styles.
+  static const char* TransitionStyleToString(TransitionStyle style);
+
   // Initialize the object.  Note that this method is also reinvoked when the
   // backlight device changes.
   virtual bool Init() = 0;

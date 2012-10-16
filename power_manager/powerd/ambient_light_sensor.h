@@ -6,6 +6,8 @@
 #define POWER_MANAGER_POWERD_AMBIENT_LIGHT_SENSOR_H_
 
 #include <glib.h>
+#include <list>
+#include <string>
 
 #include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
@@ -49,6 +51,13 @@ class AmbientLightSensor {
   // Used by observers in their callback to get the raw reading from the sensor
   // for the ambient light level. -1 is considered an error value.
   virtual int GetAmbientLightLux() const;
+
+  // Used by observers to get a recent log of adjustment percentages suggested
+  // by the current ambient levels.
+  virtual std::string DumpPercentHistory() const;
+
+  // Used by observers to get a recent log of raw readings from the sensor.
+  virtual std::string DumpLuxHistory() const;
 
  private:
   // Handler for a periodic event that reads the ambient light sensor.
@@ -98,6 +107,9 @@ class AmbientLightSensor {
   base::Callback<void(const std::string&)> read_cb_;
   base::Callback<void()> error_cb_;
 
+  // History logs for the user values
+  std::list<double> percent_history_;
+  std::list<int> lux_history_;
 
   DISALLOW_COPY_AND_ASSIGN(AmbientLightSensor);
 };
