@@ -28,6 +28,7 @@
 #include "shill/device.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/geolocation_info.h"
 #include "shill/key_value_store.h"
 #include "shill/ieee80211.h"
 #include "shill/link_monitor.h"
@@ -1325,6 +1326,26 @@ void WiFi::OnLinkMonitorFailure() {
     LOG(ERROR) << "In " << __func__ << "(): failed to call Reassociate().";
     return;
   }
+}
+
+vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
+  vector<GeolocationInfo> objects;
+  for (EndpointMap::const_iterator it = endpoint_by_rpcid_.begin();
+      it != endpoint_by_rpcid_.end();
+      ++it) {
+    GeolocationInfo geoinfo;
+    WiFiEndpointRefPtr endpoint = it->second;
+    geoinfo.AddField(kGeoMacAddressProperty, endpoint->bssid_string());
+    geoinfo.AddField(kGeoSignalStrengthProperty,
+                StringPrintf("%d", endpoint->signal_strength()));
+    geoinfo.AddField(
+        kGeoChannelProperty,
+        StringPrintf("%d",
+                     Metrics::WiFiFrequencyToChannel(endpoint->frequency())));
+    // TODO(gauravsh): Include age field. crosbug.com/35445
+    objects.push_back(geoinfo);
+  }
+  return objects;
 }
 
 void WiFi::HelpRegisterDerivedInt32(

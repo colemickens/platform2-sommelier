@@ -28,6 +28,7 @@
 
 #include "shill/dbus_adaptor.h"
 #include "shill/event_dispatcher.h"
+#include "shill/geolocation_info.h"
 #include "shill/ieee80211.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
@@ -2464,5 +2465,44 @@ TEST_F(WiFiMainTest, VerifyPaths) {
   TrimString(path, FilePath::kSeparators, &path);
   EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(path)));
 }
+
+struct BSS {
+  string bsspath;
+  string ssid;
+  string bssid;
+  int16_t signal_strength;
+  uint16 frequency;
+  const char* mode;
+};
+
+TEST_F(WiFiMainTest, GetGeolocationObjects) {
+  BSS bsses[] = {
+    {"bssid1", "ssid1", "00:00:00:00:00:00", 5, Metrics::kWiFiFrequency2412,
+     kNetworkModeInfrastructure},
+    {"bssid2", "ssid2", "01:00:00:00:00:00", 30, Metrics::kWiFiFrequency5170,
+     kNetworkModeInfrastructure},
+    // Same SSID but different BSSID is an additional geolocation object.
+    {"bssid3", "ssid1", "02:00:00:00:00:00", 100, 0,
+     kNetworkModeInfrastructure}
+  };
+  StartWiFi();
+  vector<GeolocationInfo> objects;
+  EXPECT_EQ(objects.size(), 0);
+
+  for (size_t i = 0; i < arraysize(bsses); ++i) {
+    ReportBSS(bsses[i].bsspath, bsses[i].ssid, bsses[i].bssid,
+              bsses[i].signal_strength, bsses[i].frequency, bsses[i].mode);
+    objects = wifi()->GetGeolocationObjects();
+    EXPECT_EQ(objects.size(), i + 1);
+
+    GeolocationInfo expected_info;
+    expected_info.AddField(kGeoMacAddressProperty, bsses[i].bssid);
+    expected_info.AddField(kGeoSignalStrengthProperty,
+                           StringPrintf("%d", bsses[i].signal_strength));
+    expected_info.AddField(kGeoChannelProperty, StringPrintf(
+        "%d", Metrics::WiFiFrequencyToChannel(bsses[i].frequency)));
+    EXPECT_TRUE(objects[i].Equals(expected_info));
+  };
+};
 
 }  // namespace shill

@@ -101,6 +101,7 @@
 namespace shill {
 
 class Error;
+class GeolocationInfo;
 class KeyValueStore;
 class ProxyFactory;
 class SupplicantInterfaceProxyInterface;
@@ -159,6 +160,9 @@ class WiFi : public Device {
 
   // Called by Linkmonitor (overriden from Device superclass).
   virtual void OnLinkMonitorFailure();
+
+  // Overriden from Device superclass
+  virtual std::vector<GeolocationInfo> GetGeolocationObjects() const;
 
  private:
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_

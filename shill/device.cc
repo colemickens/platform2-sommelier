@@ -25,6 +25,7 @@
 #include "shill/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/geolocation_info.h"
 #include "shill/http_proxy.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
@@ -270,6 +271,10 @@ string Device::GetStorageIdentifier() {
   id.replace(id.begin() + needle + 1, id.end(), hardware_address_);
   return id;
 }
+
+vector<GeolocationInfo> Device::GetGeolocationObjects() const {
+  return vector<GeolocationInfo>();
+};
 
 string Device::GetTechnologyString(Error */*error*/) {
   return Technology::NameFromIdentifier(technology());

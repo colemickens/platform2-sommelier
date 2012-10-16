@@ -19,6 +19,7 @@
 
 namespace shill {
 
+class WiFiMainTest;
 class WiFiService;
 
 class Metrics {
@@ -321,6 +322,7 @@ class Metrics {
   FRIEND_TEST(MetricsTest, TimeToPortal);
   FRIEND_TEST(MetricsTest, WiFiServiceChannel);
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
+  FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
   typedef ScopedVector<chromeos_metrics::TimerReporter> TimerReporters;
   typedef std::list<chromeos_metrics::TimerReporter *> TimerReportersList;

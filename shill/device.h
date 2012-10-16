@@ -33,6 +33,7 @@ class DeviceAdaptorInterface;
 class Endpoint;
 class Error;
 class EventDispatcher;
+class GeolocationInfo;
 class LinkMonitor;
 class Manager;
 class Metrics;
@@ -123,6 +124,11 @@ class Device : public base::RefCounted<Device> {
 
   std::string GetRpcIdentifier();
   std::string GetStorageIdentifier();
+
+  // Returns a list of Geolocation objects. Each object is multiple
+  // key-value pairs representing one entity that can be used for
+  // Geolocation.
+  virtual std::vector<GeolocationInfo> GetGeolocationObjects() const;
 
   const std::string &address() const { return hardware_address_; }
   const std::string &link_name() const { return link_name_; }

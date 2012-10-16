@@ -167,6 +167,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	ethernet.o \
 	ethernet_service.o \
 	event_dispatcher.o \
+	geolocation_info.o \
 	glib.o \
 	glib_io_ready_handler.o \
 	glib_io_input_handler.o \
