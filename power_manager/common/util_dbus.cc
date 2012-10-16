@@ -18,21 +18,16 @@ namespace power_manager {
 namespace util {
 
 bool IsSessionStarted() {
-  DBusGConnection* connection =
-      chromeos::dbus::GetSystemBusConnection().g_connection();
-  CHECK(connection);
-
-  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
-      connection,
-      login_manager::kSessionManagerServiceName,
-      login_manager::kSessionManagerServicePath,
-      login_manager::kSessionManagerInterface);
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              login_manager::kSessionManagerServiceName,
+                              login_manager::kSessionManagerServicePath,
+                              login_manager::kSessionManagerInterface);
 
   GError* error = NULL;
   gchar* state = NULL;
   gchar* user = NULL;
   bool result;
-  if (dbus_g_proxy_call(proxy,
+  if (dbus_g_proxy_call(proxy.gproxy(),
                         login_manager::kSessionManagerRetrieveSessionState,
                         &error,
                         G_TYPE_INVALID,
@@ -50,28 +45,20 @@ bool IsSessionStarted() {
     g_error_free(error);
     result = access("/var/run/state/logged-in", F_OK) == 0;
   }
-  g_object_unref(proxy);
   return result;
 }
 
 void SendSignalToSessionManager(const char* signal) {
-  DBusGConnection* connection;
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              login_manager::kSessionManagerServiceName,
+                              login_manager::kSessionManagerServicePath,
+                              login_manager::kSessionManagerInterface);
   GError* error = NULL;
-  connection = chromeos::dbus::GetSystemBusConnection().g_connection();
-  CHECK(connection);
-  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
-      connection,
-      login_manager::kSessionManagerServiceName,
-      login_manager::kSessionManagerServicePath,
-      login_manager::kSessionManagerInterface);
-  CHECK(proxy);
-  error = NULL;
-  if (!dbus_g_proxy_call(proxy, signal, &error, G_TYPE_INVALID,
+  if (!dbus_g_proxy_call(proxy.gproxy(), signal, &error, G_TYPE_INVALID,
                          G_TYPE_INVALID)) {
     LOG(ERROR) << "Error sending signal: " << error->message;
     g_error_free(error);
   }
-  g_object_unref(proxy);
 }
 
 void SendSignalToPowerM(const char* signal_name) {
