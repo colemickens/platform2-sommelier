@@ -1739,38 +1739,12 @@ void Daemon::HandleResume() {
 }
 
 void Daemon::RetrieveSessionState() {
-  DBusGConnection* connection =
-      chromeos::dbus::GetSystemBusConnection().g_connection();
-  CHECK(connection);
-
-  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
-      connection,
-      login_manager::kSessionManagerServiceName,
-      login_manager::kSessionManagerServicePath,
-      login_manager::kSessionManagerInterface);
-
-  GError* error = NULL;
-  gchar* state = NULL;
-  gchar* user = NULL;
-  if (dbus_g_proxy_call(proxy,
-                        login_manager::kSessionManagerRetrieveSessionState,
-                        &error,
-                        G_TYPE_INVALID,
-                        G_TYPE_STRING,
-                        &state,
-                        G_TYPE_STRING,
-                        &user,
-                        G_TYPE_INVALID)) {
-    LOG(INFO) << "Retrieved session state of " << state;
-    OnSessionStateChange(state, user);
-    g_free(state);
-    g_free(user);
-  } else {
-    LOG(ERROR) << "Unable to retrieve session state from session manager: "
-               << error->message;
-    g_error_free(error);
-  }
-  g_object_unref(proxy);
+  std::string state;
+  std::string user;
+  if (!util::GetSessionState(&state, &user))
+    return;
+  LOG(INFO) << "Retrieved session state of " << state;
+  OnSessionStateChange(state.c_str(), user.c_str());
 }
 
 void Daemon::AdjustIdleTimeoutsForProjection() {

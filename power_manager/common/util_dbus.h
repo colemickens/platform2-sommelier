@@ -19,6 +19,10 @@ namespace util {
 // session by logging into Chrome.
 bool IsSessionStarted();
 
+// Gets session state info.  Returns true if call to session manager was
+// successful.  |state| and |user| are both optional args and can be NULL.
+bool GetSessionState(std::string* state, std::string* user);
+
 // Sends a message |signal| to the session manager.
 void SendSignalToSessionManager(const char* signal);
 

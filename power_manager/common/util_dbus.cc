@@ -18,34 +18,42 @@ namespace power_manager {
 namespace util {
 
 bool IsSessionStarted() {
+  std::string state;
+  if (GetSessionState(&state, NULL))
+    return (state == "started");
+  return (access("/var/run/state/logged-in", F_OK) == 0);
+}
+
+bool GetSessionState(std::string* state, std::string* user) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               login_manager::kSessionManagerServiceName,
                               login_manager::kSessionManagerServicePath,
                               login_manager::kSessionManagerInterface);
 
   GError* error = NULL;
-  gchar* state = NULL;
-  gchar* user = NULL;
-  bool result;
+  gchar* state_arg = NULL;
+  gchar* user_arg = NULL;
   if (dbus_g_proxy_call(proxy.gproxy(),
                         login_manager::kSessionManagerRetrieveSessionState,
                         &error,
                         G_TYPE_INVALID,
                         G_TYPE_STRING,
-                        &state,
+                        &state_arg,
                         G_TYPE_STRING,
-                        &user,
+                        &user_arg,
                         G_TYPE_INVALID)) {
-    result = (strcmp(state, "started") == 0);
-    g_free(state);
-    g_free(user);
-  } else {
-    LOG(ERROR) << "Unable to retrieve session state from session manager: "
-               << error->message;
-    g_error_free(error);
-    result = access("/var/run/state/logged-in", F_OK) == 0;
+    if (state)
+      *state = state_arg;
+    if (user)
+      *user = user_arg;
+    g_free(state_arg);
+    g_free(user_arg);
+    return true;
   }
-  return result;
+  LOG(ERROR) << "Unable to retrieve session state from session manager: "
+             << error->message;
+  g_error_free(error);
+  return false;
 }
 
 void SendSignalToSessionManager(const char* signal) {
