@@ -10,47 +10,35 @@
 namespace power_manager {
 
 enum ScreenPowerState {
-    POWER_STATE_INVALID,
-    POWER_STATE_ON,
-    POWER_STATE_OFF,
+  POWER_STATE_INVALID,
+  POWER_STATE_ON,
+  POWER_STATE_OFF,
 };
 
 enum ScreenPowerOutputSelection {
-    OUTPUT_SELECTION_INVALID,
-    OUTPUT_SELECTION_ALL_DISPLAYS,
-    OUTPUT_SELECTION_INTERNAL_ONLY,
+  OUTPUT_SELECTION_INVALID,
+  OUTPUT_SELECTION_ALL_DISPLAYS,
+  OUTPUT_SELECTION_INTERNAL_ONLY,
 };
 
-// MonitorReconfigure is the class responsible for setting the external monitor
-// to the max resolution based on the modes supported by the native monitor and
-// the external monitor.
+// Sends messages to Chrome to turn displays on or off.
 class MonitorReconfigure {
  public:
   MonitorReconfigure();
   virtual ~MonitorReconfigure();
 
-  // Public interface for turning on/off all the screens (displays).
-  void SetScreenOn();
-  void SetScreenOff();
-
-  // Public interface for turning on/off the internal panel.
-  void SetInternalPanelOn();
-  void SetInternalPanelOff();
-
-  // Manually set the internal panel status flag, which is initialized to true
-  // by default, but that's not always the correct value.
+  // Manually sets the internal panel status flag, which is initialized to true
+  // by default.  The panel may be in a different state at startup.
   void set_is_internal_panel_enabled(bool enabled) {
     is_internal_panel_enabled_ = enabled;
   }
 
- private:
-  // Sends the DBus signal to set the screen power signal (which is caught by
-  // Chrome to enable/disable outputs).
-  // |power_state| If the state is to be set on or off.
-  // |output_selection| Either internal output or all.
-  void SendSetScreenPowerSignal(ScreenPowerState power_state,
-      ScreenPowerOutputSelection output_selection);
+  // Sends a D-Bus signal to Chrome telling to set the outputs described by
+  // |selection| to |state|.
+  void SetScreenPowerState(ScreenPowerOutputSelection selection,
+                           ScreenPowerState state);
 
+ private:
   // Whether the internal panel output is enabled.
   bool is_internal_panel_enabled_;
 

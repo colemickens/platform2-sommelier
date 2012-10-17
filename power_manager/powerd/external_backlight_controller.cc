@@ -136,10 +136,9 @@ bool ExternalBacklightController::SetPowerState(PowerState state) {
       state == BACKLIGHT_IDLE_OFF || state == BACKLIGHT_SUSPENDED;
   if (should_turn_off != currently_off_) {
     if (monitor_reconfigure_) {
-      if (should_turn_off )
-        monitor_reconfigure_->SetScreenOff();
-      else
-        monitor_reconfigure_->SetScreenOn();
+      monitor_reconfigure_->SetScreenPowerState(
+          OUTPUT_SELECTION_ALL_DISPLAYS,
+          should_turn_off ? POWER_STATE_OFF : POWER_STATE_ON);
     }
     currently_off_ = should_turn_off;
   }

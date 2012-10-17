@@ -318,8 +318,10 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
     // the system back to a non IDLE_OFF state, and we do nothing in this case.
     if (old_state == BACKLIGHT_IDLE_OFF ||
         (old_state == BACKLIGHT_SUSPENDED && suspended_through_idle_off_))
-      if (monitor_reconfigure_)
-        monitor_reconfigure_->SetScreenOn();
+      if (monitor_reconfigure_) {
+        monitor_reconfigure_->SetScreenPowerState(OUTPUT_SELECTION_ALL_DISPLAYS,
+                                                  POWER_STATE_ON);
+      }
 
     // If returning from suspend, force the backlight to zero to cancel out any
     // kernel driver behavior that sets it to some other value.  This allows
@@ -760,21 +762,26 @@ gboolean InternalBacklightController::SetBrightnessStep() {
 void InternalBacklightController::SetBrightnessHard(int64 level,
                                                     int64 target_level) {
   if (level != 0 && target_level != 0 && monitor_reconfigure_)
-    monitor_reconfigure_->SetInternalPanelOn();
+    monitor_reconfigure_->SetScreenPowerState(OUTPUT_SELECTION_INTERNAL_ONLY,
+                                              POWER_STATE_ON);
 
   if (!SetCurrentControllerLevel(level))
     DLOG(INFO) << "Could not set brightness to " << level;
 
   if (level == 0 && target_level == 0 && monitor_reconfigure_) {
-    // If it is in IDLE_OFF state, we call SetScreenOff() to turn off all the
-    // display outputs. We don't call SetScreenOff() if it is in SUSPENDED
-    // state since kernel driver will turn off the screen.
-    if (state_ == BACKLIGHT_IDLE_OFF)
-      monitor_reconfigure_->SetScreenOff();
-    // If backlight is 0 but we are in ACTIVE state, we turn off the internal
-    // panel only.
-    else if (state_ == BACKLIGHT_ACTIVE)
-      monitor_reconfigure_->SetInternalPanelOff();
+    if (state_ == BACKLIGHT_IDLE_OFF) {
+      // If it is in IDLE_OFF state, we call SetScreenOff() to turn off all the
+      // display outputs. We don't do anything in the SUSPENDED state since
+      // kernel driver will turn off the screen.
+      monitor_reconfigure_->SetScreenPowerState(OUTPUT_SELECTION_ALL_DISPLAYS,
+                                                POWER_STATE_OFF);
+    } else if (state_ == BACKLIGHT_ACTIVE) {
+      // If backlight is 0 but we are in ACTIVE state, we turn off the internal
+      // panel only -- the user might be using an external monitor and
+      // attempting to turn off just the internal backlight to conserve power.
+      monitor_reconfigure_->SetScreenPowerState(OUTPUT_SELECTION_INTERNAL_ONLY,
+                                                POWER_STATE_OFF);
+    }
   }
 }
 

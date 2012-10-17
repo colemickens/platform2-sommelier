@@ -14,6 +14,33 @@
 
 namespace power_manager {
 
+namespace {
+
+const char* ScreenPowerStateToString(ScreenPowerState state) {
+  switch (state) {
+    case POWER_STATE_ON:
+      return "on";
+    case POWER_STATE_OFF:
+      return "off";
+    default:
+      return "unknown";
+  }
+}
+
+const char* ScreenPowerOutputSelectionToString(
+    ScreenPowerOutputSelection selection) {
+  switch (selection) {
+    case OUTPUT_SELECTION_ALL_DISPLAYS:
+      return "all displays";
+    case OUTPUT_SELECTION_INTERNAL_ONLY:
+      return "internal display";
+    default:
+      return "unknown";
+  }
+}
+
+}  // namespace
+
 MonitorReconfigure::MonitorReconfigure()
     : is_internal_panel_enabled_(true) {
 }
@@ -21,46 +48,28 @@ MonitorReconfigure::MonitorReconfigure()
 MonitorReconfigure::~MonitorReconfigure() {
 }
 
-void MonitorReconfigure::SetScreenOn() {
-  LOG(INFO) << "MonitorReconfigure::SetScreenOn()";
-  SendSetScreenPowerSignal(POWER_STATE_ON, OUTPUT_SELECTION_ALL_DISPLAYS);
-}
+void MonitorReconfigure::SetScreenPowerState(
+    ScreenPowerOutputSelection selection,
+    ScreenPowerState state) {
+  dbus_bool_t is_all_displays = (selection == OUTPUT_SELECTION_ALL_DISPLAYS);
+  dbus_bool_t set_power_on = (state == POWER_STATE_ON);
 
-void MonitorReconfigure::SetScreenOff() {
-  LOG(INFO) << "MonitorReconfigure::SetScreenOff()";
-  SendSetScreenPowerSignal(POWER_STATE_OFF, OUTPUT_SELECTION_ALL_DISPLAYS);
-}
+  if (selection == OUTPUT_SELECTION_INTERNAL_ONLY) {
+    if (is_internal_panel_enabled_ == set_power_on)
+      return;
+    is_internal_panel_enabled_ = set_power_on;
+  }
 
-void MonitorReconfigure::SetInternalPanelOn() {
-  if (is_internal_panel_enabled_)
-    return;
+  LOG(INFO) << "Sending signal asking Chrome to turn "
+            << ScreenPowerOutputSelectionToString(selection) << " "
+            << ScreenPowerStateToString(state);
 
-  LOG(INFO) << "MonitorReconfigure::SetInternalPanelOn()";
-  is_internal_panel_enabled_ = true;
-  SendSetScreenPowerSignal(POWER_STATE_ON, OUTPUT_SELECTION_INTERNAL_ONLY);
-}
-
-void MonitorReconfigure::SetInternalPanelOff() {
-  if (!is_internal_panel_enabled_)
-    return;
-
-  LOG(INFO) << "MonitorReconfigure::SetInternalPanelOff()";
-  is_internal_panel_enabled_ = false;
-  SendSetScreenPowerSignal(POWER_STATE_OFF, OUTPUT_SELECTION_INTERNAL_ONLY);
-}
-
-void MonitorReconfigure::SendSetScreenPowerSignal(ScreenPowerState power_state,
-    ScreenPowerOutputSelection output_selection) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               kPowerManagerServicePath,
                               kPowerManagerInterface);
   DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
                                                 kPowerManagerInterface,
                                                 kSetScreenPowerSignal);
-  CHECK(NULL != signal);
-  dbus_bool_t set_power_on = (POWER_STATE_ON == power_state);
-  dbus_bool_t is_all_displays
-      = (OUTPUT_SELECTION_ALL_DISPLAYS == output_selection);
   dbus_message_append_args(signal,
                            DBUS_TYPE_BOOLEAN, &set_power_on,
                            DBUS_TYPE_BOOLEAN, &is_all_displays,
