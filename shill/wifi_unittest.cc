@@ -2050,10 +2050,14 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   InitiateConnect(service);
   ReportCurrentBSSChanged("ap");
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
-  ReportIPConfigComplete();
-  Mock::VerifyAndClearExpectations(service);
-
+  Mock::VerifyAndClearExpectations(dhcp_config_.get());
   EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(0);
+  // Simulate a rekeying event from the AP.  These show as transitions from
+  // completed->completed from wpa_supplicant.
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  ReportIPConfigComplete();
+  // Similarly, rekeying events after we have an IP don't trigger L3
+  // configuration.
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
 }
 

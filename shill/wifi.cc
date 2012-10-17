@@ -109,6 +109,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       need_bss_flush_(false),
       resumed_at_((struct timeval){0}),
       fast_scans_remaining_(kNumFastScanAttempts),
+      has_already_completed_(false),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_pending_(false),
@@ -542,6 +543,7 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   SLOG(WiFi, 3) << "WiFi " << link_name() << " CurrentBSS "
                 << supplicant_bss_ << " -> " << new_bss;
   supplicant_bss_ = new_bss;
+  has_already_completed_ = false;
 
   // Any change in CurrentBSS means supplicant is actively changing our
   // connectivity.  We no longer need to track any previously pending
@@ -1145,6 +1147,8 @@ void WiFi::StateChanged(const string &new_state) {
   if (new_state == wpa_supplicant::kInterfaceStateCompleted) {
     if (affected_service->IsConnected()) {
       StopReconnectTimer();
+    } else if (has_already_completed_) {
+      LOG(INFO) << link_name() << " L3 configuration already started.";
     } else if (AcquireIPConfigWithLeaseName(
                    affected_service->GetStorageIdentifier())) {
       LOG(INFO) << link_name() << " is up; started L3 configuration.";
@@ -1152,6 +1156,7 @@ void WiFi::StateChanged(const string &new_state) {
     } else {
       LOG(ERROR) << "Unable to acquire DHCP config.";
     }
+    has_already_completed_ = true;
   } else if (new_state == wpa_supplicant::kInterfaceStateAssociated) {
     affected_service->SetState(Service::kStateAssociating);
   } else if (new_state == wpa_supplicant::kInterfaceStateAuthenticating ||

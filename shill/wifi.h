@@ -337,6 +337,9 @@ class WiFi : public Device {
   base::CancelableClosure reconnect_timeout_callback_;
   // Number of remaining fast scans to be done during startup and disconnect.
   int fast_scans_remaining_;
+  // Indicates that the current BSS has reached the completed state according
+  // to supplicant.
+  bool has_already_completed_;
 
   // Properties
   std::string bgscan_method_;
