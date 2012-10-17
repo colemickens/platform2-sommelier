@@ -125,11 +125,15 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, StartAttemptRepeated);
   FRIEND_TEST(PortalDetectorTest, StartAttemptAfterDelay);
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
+  FRIEND_TEST(PortalDetectorTest, ReadBadHeadersRetry);
 
   // Minimum time between attempts to connect to server.
   static const int kMinTimeBetweenAttemptsSeconds;
   // Time to wait for request to complete.
   static const int kRequestTimeoutSeconds;
+  // Maximum number of failures in content phase before we stop attempting
+  // connections.
+  static const int kMaxFailuresInContentPhase;
 
   static const char kPhaseConnectionString[];
   static const char kPhaseDNSString[];
@@ -165,6 +169,7 @@ class PortalDetector {
   Sockets sockets_;
   Time *time_;
   HTTPURL url_;
+  int failures_in_content_phase_;
 
   DISALLOW_COPY_AND_ASSIGN(PortalDetector);
 };

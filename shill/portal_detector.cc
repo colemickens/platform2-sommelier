@@ -36,6 +36,7 @@ const char PortalDetector::kResponseExpected[] = "HTTP/?.? 204";
 const int PortalDetector::kMaxRequestAttempts = 3;
 const int PortalDetector::kMinTimeBetweenAttemptsSeconds = 3;
 const int PortalDetector::kRequestTimeoutSeconds = 10;
+const int PortalDetector::kMaxFailuresInContentPhase = 2;
 
 const char PortalDetector::kPhaseConnectionString[] = "Connection";
 const char PortalDetector::kPhaseDNSString[] = "DNS";
@@ -63,7 +64,8 @@ PortalDetector::PortalDetector(
       request_result_callback_(
           Bind(&PortalDetector::RequestResultCallback,
                weak_ptr_factory_.GetWeakPtr())),
-      time_(Time::GetInstance()) { }
+      time_(Time::GetInstance()),
+      failures_in_content_phase_(0) { }
 
 PortalDetector::~PortalDetector() {
   Stop();
@@ -86,6 +88,8 @@ bool PortalDetector::StartAfterDelay(const string &url_string,
 
   request_.reset(new HTTPRequest(connection_, dispatcher_, &sockets_));
   attempt_count_ = 0;
+  // If we're starting a new set of attempts, discard past failure history.
+  failures_in_content_phase_ = 0;
   StartAttempt(delay_seconds);
   return true;
 }
@@ -100,6 +104,7 @@ void PortalDetector::Stop() {
   start_attempt_.Cancel();
   StopAttempt();
   attempt_count_ = 0;
+  failures_in_content_phase_ = 0;
   request_.reset();
 }
 
@@ -139,17 +144,25 @@ const string PortalDetector::StatusToString(Status status) {
 
 void PortalDetector::CompleteAttempt(Result result) {
   LOG(INFO) << StringPrintf("Portal detection completed attempt %d with "
-                            "phase==%s, status==%s",
+                            "phase==%s, status==%s, failures in content==%d",
                             attempt_count_,
                             PhaseToString(result.phase).c_str(),
-                            StatusToString(result.status).c_str());
+                            StatusToString(result.status).c_str(),
+                            failures_in_content_phase_);
   StopAttempt();
-  if (result.status != kStatusSuccess && attempt_count_ < kMaxRequestAttempts) {
-    StartAttempt(0);
-  } else {
+
+  if (result.status == kStatusFailure &&
+      result.phase == kPhaseContent) {
+    failures_in_content_phase_++;
+  }
+  if (result.status == kStatusSuccess ||
+      attempt_count_ >= kMaxRequestAttempts ||
+      failures_in_content_phase_ >= kMaxFailuresInContentPhase) {
     result.num_attempts = attempt_count_;
     result.final = true;
     Stop();
+  } else {
+    StartAttempt(0);
   }
 
   portal_result_callback_.Run(result);

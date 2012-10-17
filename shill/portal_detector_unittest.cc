@@ -144,6 +144,7 @@ class PortalDetectorTest : public Test {
 
   void ExpectReset() {
     EXPECT_FALSE(portal_detector_->attempt_count_);
+    EXPECT_FALSE(portal_detector_->failures_in_content_phase_);
     EXPECT_TRUE(callback_target_.result_callback().
                 Equals(portal_detector_->portal_result_callback_));
     EXPECT_FALSE(portal_detector_->request_.get());
@@ -326,6 +327,64 @@ TEST_F(PortalDetectorTest, AttemptCount) {
 
   EXPECT_FALSE(portal_detector()->IsInProgress());
   ExpectReset();
+}
+
+// Exactly like AttemptCount, except that the termination conditions are
+// different because we're triggering a different sort of error.
+TEST_F(PortalDetectorTest, ReadBadHeadersRetry) {
+  EXPECT_FALSE(portal_detector()->IsInProgress());
+  // Expect the PortalDetector to immediately post a task for the each attempt.
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, 0))
+      .Times(PortalDetector::kMaxFailuresInContentPhase);
+  EXPECT_TRUE(StartPortalRequest(kURL));
+
+  EXPECT_FALSE(portal_detector()->IsInProgress());
+
+  // Expect that the request will be started -- return failure.
+  EXPECT_CALL(*http_request(), Start(_, _, _))
+      .Times(PortalDetector::kMaxFailuresInContentPhase)
+      .WillRepeatedly(Return(HTTPRequest::kResultInProgress));
+
+  // Each HTTP request that gets started will have a request timeout.
+  EXPECT_CALL(dispatcher(), PostDelayedTask(
+      _, PortalDetector::kRequestTimeoutSeconds * 1000))
+      .Times(PortalDetector::kMaxFailuresInContentPhase);
+  {
+    InSequence s;
+
+    // Expect non-final failures for all attempts but the last.
+    EXPECT_CALL(callback_target(),
+                ResultCallback(IsResult(
+                    PortalDetector::Result(
+                        PortalDetector::kPhaseContent,
+                        PortalDetector::kStatusFailure,
+                        kNumAttempts,
+                        false))))
+        .Times(PortalDetector::kMaxFailuresInContentPhase - 1);
+
+    // Expect a single final failure.
+    EXPECT_CALL(callback_target(),
+                ResultCallback(IsResult(
+                    PortalDetector::Result(
+                        PortalDetector::kPhaseContent,
+                        PortalDetector::kStatusFailure,
+                        kNumAttempts,
+                        true))))
+        .Times(1);
+  }
+
+  // Expect the PortalDetector to stop the current request each time, plus
+  // an extra time in PortalDetector::Stop().
+  EXPECT_CALL(*http_request(), Stop())
+      .Times(PortalDetector::kMaxFailuresInContentPhase + 1);
+  ByteString response_data("X", 1);
+
+  for (int i = 0; i < PortalDetector::kMaxFailuresInContentPhase; i++) {
+    portal_detector()->StartAttemptTask();
+    EXPECT_TRUE(portal_detector()->IsInProgress());
+    AdvanceTime(PortalDetector::kMinTimeBetweenAttemptsSeconds * 1000);
+    portal_detector()->RequestReadCallback(response_data);
+  }
 }
 
 TEST_F(PortalDetectorTest, ReadBadHeader) {
