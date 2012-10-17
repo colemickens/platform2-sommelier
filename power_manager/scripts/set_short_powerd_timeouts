@@ -1,0 +1,29 @@
+#! /bin/sh
+
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if [ "$1" = "--reset" ]; then
+    rm -f /var/lib/power_manager/*_ms
+    rm -f /var/lib/power_manager/disable_idle_suspend
+    exit 0
+elif [ "$1" = "--help" ]; then
+    echo "Usage: $0: [OPTION]"
+    echo "Sets short timeout values for the power manager."
+    echo "  --help   display this message"
+    echo "  --reset  reset to default timeout values"
+    exit 1
+fi
+
+echo 1000 > /var/lib/power_manager/react_ms
+
+echo 15000 > /var/lib/power_manager/plugged_dim_ms
+echo 20000 > /var/lib/power_manager/plugged_off_ms
+echo 25000 > /var/lib/power_manager/plugged_suspend_ms
+
+echo 5000 > /var/lib/power_manager/unplugged_dim_ms
+echo 10000 > /var/lib/power_manager/unplugged_off_ms
+echo 15000 > /var/lib/power_manager/unplugged_suspend_ms
+
+echo 0 > /var/lib/power_manager/disable_idle_suspend
