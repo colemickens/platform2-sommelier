@@ -265,10 +265,7 @@ else
   ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
-# Disable accelerated 2D canvas except on link
-# This acceleration should be enabled everywhere once the bugs are fixed,
-# or disabled in M23 before it goes stable (see http://crosbug.com/34278).
-if ! is_board link; then
+if ! use_flag_is_set accelerate_2d_canvas; then
   ACCELERATED_FLAGS="$ACCELERATED_FLAGS --disable-accelerated-2d-canvas"
 fi
 
