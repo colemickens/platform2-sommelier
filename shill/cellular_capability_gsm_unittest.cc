@@ -370,8 +370,10 @@ TEST_F(CellularCapabilityGSMTest, GetIMSI) {
   ResultCallback callback = Bind(&CellularCapabilityGSMTest::TestCallback,
                                  Unretained(this));
   EXPECT_TRUE(capability_->imsi_.empty());
+  EXPECT_FALSE(capability_->sim_present_);
   capability_->GetIMSI(callback);
   EXPECT_EQ(kIMSI, capability_->imsi_);
+  EXPECT_TRUE(capability_->sim_present_);
   capability_->imsi_.clear();
   InitProviderDB();
   capability_->GetIMSI(callback);
@@ -394,6 +396,7 @@ TEST_F(CellularCapabilityGSMTest, GetIMSIFails) {
   ResultCallback callback = Bind(&CellularCapabilityGSMTest::TestCallback,
                                  Unretained(this));
   EXPECT_TRUE(capability_->imsi_.empty());
+  EXPECT_FALSE(capability_->sim_present_);
 
   capability_->get_imsi_retries_ = 0;
   EXPECT_EQ(CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds,
@@ -408,6 +411,7 @@ TEST_F(CellularCapabilityGSMTest, GetIMSIFails) {
   EXPECT_EQ(CellularCapabilityGSM::kGetIMSIRetryLimit + 1,
             capability_->get_imsi_retries_);
   EXPECT_TRUE(capability_->imsi_.empty());
+  EXPECT_FALSE(capability_->sim_present_);
 }
 
 TEST_F(CellularCapabilityGSMTest, GetMSISDN) {

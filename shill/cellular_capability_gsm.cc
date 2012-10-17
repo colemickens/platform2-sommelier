@@ -61,7 +61,8 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
       get_imsi_retries_(0),
       get_imsi_retry_delay_milliseconds_(kGetIMSIRetryDelayMilliseconds),
       scanning_(false),
-      scan_interval_(0) {
+      scan_interval_(0),
+      sim_present_(false) {
   SLOG(Cellular, 2) << "Cellular capability constructed: GSM";
   PropertyStore *store = cellular->mutable_store();
   store->RegisterConstString(flimflam::kSelectedNetworkProperty,
@@ -72,6 +73,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
                            &provider_requires_roaming_);
   store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
   store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
+  store->RegisterConstBool(shill::kSIMPresentProperty, &sim_present_);
   HelpRegisterDerivedKeyValueStore(
       flimflam::kSIMLockStatusProperty,
       &CellularCapabilityGSM::SimLockStatusToProperty,
@@ -146,9 +148,9 @@ void CellularCapabilityGSM::InitProperties() {
   ResultCallback cb_ignore_error =
       Bind(&CellularCapabilityGSM::StepCompletedCallback,
            weak_ptr_factory_.GetWeakPtr(), ResultCallback(), true, tasks);
-  // Chrome uses IMSI to determine if a SIM is present before allowing the
-  // modem to be enabled, so shill needs to obtain IMSI even before the device
-  // is enabled.
+  // Chrome checks if a SIM is present before allowing the modem to be enabled,
+  // so shill needs to obtain IMSI, as an indicator of SIM presence, even
+  // before the device is enabled.
   tasks->push_back(Bind(&CellularCapabilityGSM::GetIMSI,
                         weak_ptr_factory_.GetWeakPtr(), cb_ignore_error));
   RunNextStep(tasks);
@@ -923,9 +925,11 @@ void CellularCapabilityGSM::OnGetIMSIReply(const ResultCallback &callback,
   if (error.IsSuccess()) {
     SLOG(Cellular, 2) << "IMSI: " << imsi;
     imsi_ = imsi;
+    sim_present_ = true;
     SetHomeProvider();
     callback.Run(error);
   } else {
+    sim_present_ = false;
     if (get_imsi_retries_++ < kGetIMSIRetryLimit) {
       SLOG(Cellular, 2) << "GetIMSI failed - " << error << ". Retrying";
       base::Callback<void(void)> retry_get_imsi_cb =

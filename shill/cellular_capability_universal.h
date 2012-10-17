@@ -133,6 +133,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
   FRIEND_TEST(CellularCapabilityUniversalTest, ScanFailure);
   FRIEND_TEST(CellularCapabilityUniversalTest, SetHomeProvider);
+  FRIEND_TEST(CellularCapabilityUniversalTest, SimPathChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, SimPropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, StartModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModem);
@@ -291,6 +292,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   SimLockStatus sim_lock_status_;
   Stringmaps apn_list_;
   std::string sim_path_;
+  bool sim_present_;
   DBus::Path bearer_path_;
 
   // If the modem is not in a state to be enabled when StartModem is called,

@@ -236,6 +236,7 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   bool scanning_;
   uint16 scan_interval_;
   SimLockStatus sim_lock_status_;
+  bool sim_present_;
   Stringmaps apn_list_;
 
   static unsigned int friendly_service_name_id_;

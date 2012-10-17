@@ -128,7 +128,8 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       provider_requires_roaming_(false),
       scanning_supported_(true),
       scanning_(false),
-      scan_interval_(0) {
+      scan_interval_(0),
+      sim_present_(false) {
   SLOG(Cellular, 2) << "Cellular capability constructed: Universal";
   PropertyStore *store = cellular->mutable_store();
 
@@ -160,6 +161,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       flimflam::kSIMLockStatusProperty,
       &CellularCapabilityUniversal::SimLockStatusToProperty,
       NULL);
+  store->RegisterConstBool(shill::kSIMPresentProperty, &sim_present_);
   store->RegisterConstStringmaps(flimflam::kCellularApnListProperty,
                                  &apn_list_);
 }
@@ -1029,9 +1031,11 @@ void CellularCapabilityUniversal::OnSimPathChanged(
     // Clear all data about the sim
     imsi_ = "";
     spn_ = "";
+    sim_present_ = false;
     OnSimIdentifierChanged("");
     OnOperatorIdChanged("");
   } else {
+    sim_present_ = true;
     scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
         proxy_factory()->CreateDBusPropertiesProxy(sim_path,
                                                    cellular()->dbus_owner()));

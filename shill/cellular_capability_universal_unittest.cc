@@ -488,6 +488,61 @@ TEST_F(CellularCapabilityUniversalTest, PropertiesChanged) {
                                        vector<string>());
 }
 
+TEST_F(CellularCapabilityUniversalTest, SimPathChanged) {
+  // Set up mock modem SIM properties
+  const char kImsi[] = "310100000001";
+  const char kSimIdentifier[] = "9999888";
+  const char kOperatorIdentifier[] = "310240";
+  const char kOperatorName[] = "Custom SPN";
+  DBusPropertiesMap sim_properties;
+  sim_properties[MM_SIM_PROPERTY_IMSI].writer().append_string(kImsi);
+  sim_properties[MM_SIM_PROPERTY_SIMIDENTIFIER].writer()
+      .append_string(kSimIdentifier);
+  sim_properties[MM_SIM_PROPERTY_OPERATORIDENTIFIER].writer()
+      .append_string(kOperatorIdentifier);
+  sim_properties[MM_SIM_PROPERTY_OPERATORNAME].writer()
+      .append_string(kOperatorName);
+
+  EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
+      .Times(1).WillOnce(Return(sim_properties));
+
+  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ("", capability_->sim_path_);
+  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", capability_->operator_id_);
+  EXPECT_EQ("", capability_->spn_);
+
+  capability_->OnSimPathChanged(kSimPath);
+  EXPECT_TRUE(capability_->sim_present_);
+  EXPECT_TRUE(capability_->sim_proxy_ != NULL);
+  EXPECT_EQ(kSimPath, capability_->sim_path_);
+  EXPECT_EQ(kImsi, capability_->imsi_);
+  EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
+  EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
+  EXPECT_EQ(kOperatorName, capability_->spn_);
+
+  // Changing to the same SIM path should be a no-op.
+  capability_->OnSimPathChanged(kSimPath);
+  EXPECT_TRUE(capability_->sim_present_);
+  EXPECT_TRUE(capability_->sim_proxy_ != NULL);
+  EXPECT_EQ(kSimPath, capability_->sim_path_);
+  EXPECT_EQ(kImsi, capability_->imsi_);
+  EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
+  EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
+  EXPECT_EQ(kOperatorName, capability_->spn_);
+
+  capability_->OnSimPathChanged("");
+  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ("", capability_->sim_path_);
+  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", capability_->operator_id_);
+  EXPECT_EQ("", capability_->spn_);
+}
+
 TEST_F(CellularCapabilityUniversalTest, SimPropertiesChanged) {
   // Set up mock modem properties
   DBusPropertiesMap modem_properties;
