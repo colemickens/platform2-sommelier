@@ -115,6 +115,7 @@ InternalBacklightController::InternalBacklightController(
       level_to_percent_exponent_(kDefaultLevelToPercentExponent),
       is_initialized_(false),
       target_level_(0),
+      controller_factor_(0),
       suspended_through_idle_off_(false),
       gradual_transition_event_id_(0) {
   for (size_t i = 0; i < arraysize(als_responses_); i++)
@@ -164,13 +165,16 @@ int64 InternalBacklightController::PercentToLevel(double percent) {
 bool InternalBacklightController::Init() {
   if (light_sensor_)
     light_sensor_->AddObserver(this);
-  if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
-      !backlight_->GetCurrentBrightnessLevel(&target_level_)) {
-    LOG(ERROR) << "Querying backlight during initialization failed";
+  if (!backlight_->GetMaxBrightnessLevel(&max_level_)) {
+    LOG(ERROR) << "Querying max backlight during initialization failed";
     return false;
   }
 
   ReadPrefs();
+  if (!GetCurrentControllerLevel(&target_level_)) {
+    LOG(ERROR) << "Querying current backlight during initialization failed";
+    return false;
+  }
   target_percent_ = LevelToPercent(target_level_);
 
   if (max_level_ == min_visible_level_ || kMaxBrightnessSteps == 1) {
@@ -223,7 +227,7 @@ double InternalBacklightController::GetTargetBrightnessPercent() {
 bool InternalBacklightController::GetCurrentBrightnessPercent(double* percent) {
   DCHECK(percent);
   int64 level = 0;
-  if (!backlight_->GetCurrentBrightnessLevel(&level))
+  if (!GetCurrentControllerLevel(&level))
     return false;
 
   *percent = LevelToPercent(level);
@@ -519,6 +523,24 @@ double InternalBacklightController::ClampPercentToVisibleRange(double percent) {
 }
 
 void InternalBacklightController::ReadPrefs() {
+  int64 controller_levels;
+  if (prefs_->GetInt64(kInternalBacklightControllerLevelsPref,
+                       &controller_levels) && controller_levels > 0) {
+    if (controller_levels > max_level_ / 2) {
+      LOG(WARNING) << "Unable to implement " << controller_levels <<
+                   " controller backlight levels with max_brightness " <<
+                   max_level_;
+    } else {
+      LOG(INFO) << "Using " << controller_levels <<
+                   " controller backlight levels with max_brightness " <<
+                   max_level_;
+      // Change max_level_ from sysfs context (ie, directly from the sysfs
+      // max_brightness file) to controller context (ie, from the prefs file).
+      controller_factor_ = max_level_ / controller_levels;
+      max_level_ = controller_levels - 1;
+    }
+  }
+
   if (!prefs_->GetInt64(kMinVisibleBacklightLevelPref, &min_visible_level_))
     min_visible_level_ = 1;
   min_visible_level_ = std::max(
@@ -622,7 +644,7 @@ bool InternalBacklightController::WriteBrightness(bool adjust_brightness_offset,
 bool InternalBacklightController::SetBrightness(int64 target_level,
                                                 TransitionStyle style) {
   int64 current_level = 0;
-  backlight_->GetCurrentBrightnessLevel(&current_level);
+  GetCurrentControllerLevel(&current_level);
   LOG(INFO) << "Setting brightness level to " << target_level
             << " (currently " << current_level << ", previous target was "
             << target_level_ << ")";
@@ -745,7 +767,7 @@ void InternalBacklightController::SetBrightnessHard(int64 level,
   if (level != 0 && target_level != 0 && monitor_reconfigure_)
     monitor_reconfigure_->SetInternalPanelOn();
 
-  if (!backlight_->SetBrightnessLevel(level))
+  if (!SetCurrentControllerLevel(level))
     DLOG(INFO) << "Could not set brightness to " << level;
 
   if (level == 0 && target_level == 0 && monitor_reconfigure_) {
@@ -759,6 +781,24 @@ void InternalBacklightController::SetBrightnessHard(int64 level,
     else if (state_ == BACKLIGHT_ACTIVE)
       monitor_reconfigure_->SetInternalPanelOff();
   }
+}
+
+bool InternalBacklightController::GetCurrentControllerLevel(int64* level) {
+  if (!backlight_->GetCurrentBrightnessLevel(level))
+    return false;
+  if (controller_factor_ > 0 && *level != 0) {
+    *level -= controller_factor_ / 2;
+    *level /= controller_factor_;
+  }
+  return true;
+}
+
+bool InternalBacklightController::SetCurrentControllerLevel(int64 level) {
+  if (controller_factor_ > 0 && level != 0) {
+    level *= controller_factor_;
+    level += controller_factor_ / 2;
+  }
+  return backlight_->SetBrightnessLevel(level);
 }
 
 void InternalBacklightController::AppendAlsResponse(int val) {

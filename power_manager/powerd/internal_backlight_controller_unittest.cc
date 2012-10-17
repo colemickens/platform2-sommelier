@@ -474,4 +474,50 @@ TEST_F(InternalBacklightControllerTest, NonLinearMapping) {
   EXPECT_EQ(kLargeMaxBrightnessLevel, controller_.PercentToLevel(100.0));
 }
 
+TEST_F(InternalBacklightControllerTest, SpecificLevels) {
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  ASSERT_TRUE(controller_.OnPlugEvent(false));
+
+  // Test various numbers of backlight steps.
+  std::vector<int> levels;
+  levels.push_back(256);
+  levels.push_back(16);
+  levels.push_back(kMaxBrightnessLevel);
+  levels.push_back(0);  // Test corner case of 0 as well.
+
+  std::vector<int>::const_iterator iter;
+  for (iter = levels.begin(); iter != levels.end(); ++iter) {
+    prefs_.SetInt64(kInternalBacklightControllerLevelsPref, *iter);
+    if (*iter > 0)
+      ASSERT_EQ(kMaxBrightnessLevel % *iter, 0);
+    backlight_.set_observer(NULL);
+    light_sensor_.ExpectAddObserver(&controller_);
+    CHECK(controller_.Init());
+    int step_size = *iter > 0 ? kMaxBrightnessLevel / *iter : 1;
+
+    int64 old_level;
+    int64 new_level;
+    for (int i = 0; i < kStepsToHitLimit; ++i) {
+      old_level =
+          controller_.PercentToLevel(controller_.GetTargetBrightnessPercent());
+      controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+      new_level =
+          controller_.PercentToLevel(controller_.GetTargetBrightnessPercent());
+      EXPECT_GE(new_level, old_level);
+      // TODO: Check that each level conforms to the expected constraints.
+    }
+    EXPECT_EQ((kMaxBrightnessLevel - step_size / 2) / step_size, new_level);
+
+    for (int i = 0; i < kStepsToHitLimit; ++i) {
+      old_level =
+          controller_.PercentToLevel(controller_.GetTargetBrightnessPercent());
+      controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
+      new_level =
+          controller_.PercentToLevel(controller_.GetTargetBrightnessPercent());
+      EXPECT_LE(new_level, old_level);
+    }
+    EXPECT_EQ(0, new_level);
+  }
+}
+
 }  // namespace power_manager

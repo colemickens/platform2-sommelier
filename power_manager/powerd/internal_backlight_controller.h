@@ -126,6 +126,19 @@ class InternalBacklightController : public BacklightController {
   // Sets the backlight brightness immediately.
   void SetBrightnessHard(int64 level, int64 target_level);
 
+  // Get the current brightness level in the range used by the
+  // InternalBacklightController.  The Backlight is queried for a sysfs
+  // level, then (if internal_controller_levels indicates) that value is
+  // divided by the controller_factor_.
+  // Returns false on failure.
+  bool GetCurrentControllerLevel(int64* level);
+
+  // Set the backlight to a level specified in the range used by the
+  // InternalBacklightController.  If the internal_controller_levels pref
+  // results in a reasonable controller_factor_, the level given here is
+  // multiplied by the factor to give a sysfs level to write to the Backlight.
+  bool SetCurrentControllerLevel(int64 level);
+
   // Add an ALS value (or really any "event" value) to the response log.
   // This will give some idea of _why_ ALS changes the backlight.
   void AppendAlsResponse(int val);
@@ -233,6 +246,17 @@ class InternalBacklightController : public BacklightController {
 
   // The destination hardware brightness used for brightness transitions.
   int64 target_level_;
+
+  // Usually the sysfs level given by the max_brightness file is adequate
+  // for use by the InternalBacklightController.  But the preference file
+  // internal_controller_levels can be used to restrict the range used
+  // by the controller.
+  // Conversion from sysfs to controller level (when getting the brightness
+  // value) is done dividing by controller_factor_.
+  // Conversion from controller to sysfs level (when setting the brightness
+  // value) is done multiplying by controller_factor_.  Then we avoid the
+  // transition boundaries by adding 1/2 of controller_factor_.
+  int64 controller_factor_;
 
   // Flag to indicate whether the state before suspended is idle off;
   bool suspended_through_idle_off_;
