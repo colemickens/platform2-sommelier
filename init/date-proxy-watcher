@@ -1,0 +1,81 @@
+#!/bin/sh
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+LOG="logger -t $UPSTART_JOB"
+
+PROXY_FILE="$1"
+EVENT_PIPE="$2"
+
+# Libcros D-Bus interface
+DEST=org.chromium.LibCrosService
+CROS_PATH=/org/chromium/LibCrosService
+IFACE=${DEST}Interface
+RESOLVE=${IFACE}.ResolveNetworkProxy
+# shill network event D-Bus interface
+SHILL_IFACE=org.chromium.flimflam.Manager
+SHILL_FILTER="interface=${SHILL_IFACE},member=PropertyChanged"
+# Custom interface to receive proxy configuration
+RCV_IFACE=org.chromium.ProxyInterface
+RCV_EVENT=ProxyChange
+RCV_FILTER="interface=${RCV_IFACE},type=signal,member=${RCV_EVENT}"
+
+
+URL="https://clients3.google.com"
+proxy=""
+proxy_current=""
+
+if [ ! -e "$PROXY_FILE" -o ! -e "$EVENT_PIPE" ]; then
+  echo "This script needs a proxy file and an event pipe."
+  exit 1
+fi
+
+$LOG "Start monitoring proxy changes..."
+
+request_proxy() {
+  # the browser interface gives a wrong answer (specifically, the proxy from
+  # before the update) if asked immediately. We can afford to wait quite a while
+  # before we restart tlsdated; in the worst case, we fail to fetch dates this
+  # time. This doesn't affect boot time, where tlsdate runs anyway whether or
+  # not there's a proxy set.
+  sleep 30
+  # Ask the browser to give us the proxy to use to access URL
+  dbus-send --system --type=method_call --dest=${DEST} ${CROS_PATH} \
+    ${RESOLVE} string:${URL} string:${RCV_IFACE} string:${RCV_EVENT}
+}
+
+monitor_net_change() {
+  # request initial settings
+  request_proxy
+  # check proxy on each connectivity change
+  dbus-monitor --system "${SHILL_FILTER}" |
+    grep --line-buffered -o "Default[A-Za-z]*" |
+    while read UNUSED_EVENT ; do
+      request_proxy
+    done
+}
+
+monitor_net_change &
+
+dbus-monitor --system "${RCV_FILTER}" |
+  grep --line-buffered -o -e DIRECT -e "PROXY [a-zA-Z0-9\-\.]\+:[0-9]\+" |
+  while read PROXY_SETTINGS ; do
+    case "${PROXY_SETTINGS}" in
+      DIRECT )
+        $LOG "direct connection"
+        proxy=""
+        ;;
+      PROXY* )
+        $LOG "proxy ${PROXY_SETTINGS}"
+        proxy="${PROXY_SETTINGS#PROXY }"
+        ;;
+    esac
+    if [ "${proxy}" != "${proxy_current}" ]; then
+      $LOG "proxy changing to '${proxy}'"
+      truncate -s 0 "$PROXY_FILE"
+      echo "${proxy}" > "$PROXY_FILE"
+      echo "${proxy}" > "$EVENT_PIPE"
+      proxy_current=${proxy}
+    fi
+  done
