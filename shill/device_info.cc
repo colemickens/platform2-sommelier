@@ -368,6 +368,11 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
   DeviceRefPtr device;
   delayed_devices_.erase(interface_index);
 
+  // temporary debug output
+  // TODO(jwerner@chromium.org): Remove after gathering data (crosbug 35479)
+  LOG(INFO) << "Creating new " << Technology::NameFromIdentifier(technology)
+      << " device(" << interface_index << "): " << link_name;
+
   switch (technology) {
     case Technology::kCellular:
       // Cellular devices are managed by ModemInfo.
