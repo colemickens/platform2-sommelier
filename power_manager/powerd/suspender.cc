@@ -234,20 +234,7 @@ void Suspender::RegisterDBusMessageHandler() {
     LOG(INFO) << "DBus monitoring started";
   }
 
-  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
-      chromeos::dbus::GetSystemBusConnection().g_connection(),
-      "org.freedesktop.DBus",
-      "/org/freedesktop/DBus",
-      "org.freedesktop.DBus");
-  if (NULL == proxy) {
-    LOG(ERROR) << "Failed to connect to freedesktop dbus server.";
-    NOTREACHED();
-  }
-  dbus_g_proxy_add_signal(proxy, "NameOwnerChanged",
-                          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
-                          G_TYPE_INVALID);
-  dbus_g_proxy_connect_signal(proxy, "NameOwnerChanged",
-                              G_CALLBACK(NameOwnerChangedHandler), this, NULL);
+  util::SetNameOwnerChangedHandler(NameOwnerChangedHandler, this);
 }
 
 void Suspender::Suspend() {

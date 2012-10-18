@@ -9,11 +9,17 @@
 
 #include "base/basictypes.h"
 
-struct DBusConnection;
 struct DBusMessage;
+
+struct _DBusGProxy;
+typedef struct _DBusGProxy DBusGProxy;
+typedef char gchar;
 
 namespace power_manager {
 namespace util {
+
+typedef void (*NameOwnerChangedHandler)(DBusGProxy*, const gchar*, const gchar*,
+                                        const gchar*, void*);
 
 // Queries session manager to see if any user (including guest) has started a
 // session by logging into Chrome.
@@ -59,6 +65,12 @@ DBusMessage* CreateDBusErrorReply(DBusMessage* message,
 
 // Parse out the error message and log it for debugging.
 void LogDBusError(DBusMessage* message);
+
+// Provide a callback for handling NamedOwnerChanged signal.
+void SetNameOwnerChangedHandler(NameOwnerChangedHandler callback, void* data);
+
+// Register the current process with dbus under the service name |name|.
+void RequestDBusServiceName(const char* name);
 
 }  // namespace util
 }  // namespace power_manager

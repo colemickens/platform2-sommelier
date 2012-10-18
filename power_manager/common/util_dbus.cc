@@ -217,5 +217,28 @@ void LogDBusError(DBusMessage* message) {
             << error_string;
 }
 
+void SetNameOwnerChangedHandler(NameOwnerChangedHandler callback, void* data) {
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              DBUS_SERVICE_DBUS,
+                              DBUS_PATH_DBUS,
+                              DBUS_INTERFACE_DBUS);
+  dbus_g_proxy_add_signal(proxy.gproxy(), "NameOwnerChanged", G_TYPE_STRING,
+                          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
+  dbus_g_proxy_connect_signal(proxy.gproxy(), "NameOwnerChanged",
+                              G_CALLBACK(callback), data, NULL);
+}
+
+void RequestDBusServiceName(const char* name) {
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  CHECK(connection);
+  DBusError error;
+  dbus_error_init(&error);
+  if (dbus_bus_request_name(connection, name, 0, &error) < 0) {
+    LOG(FATAL) << "Failed to register name \"" << name << "\": "
+               << (dbus_error_is_set(&error) ? error.message : "Unknown error");
+  }
+}
+
 }  // namespace util
 }  // namespace power_manager

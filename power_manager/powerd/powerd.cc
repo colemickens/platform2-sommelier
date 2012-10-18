@@ -5,7 +5,6 @@
 #include "power_manager/powerd/powerd.h"
 
 #include <cras_client.h>
-#include <glib-object.h>
 #include <libudev.h>
 #include <stdint.h>
 #include <sys/inotify.h>
@@ -19,8 +18,8 @@
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_util.h"
+#include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
-#include "chromeos/glib/object.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
@@ -824,22 +823,7 @@ void Daemon::RegisterUdevEventHandler() {
 }
 
 void Daemon::RegisterDBusMessageHandler() {
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-
-  DBusError error;
-  dbus_error_init(&error);
-  dbus_bus_request_name(connection,
-                        power_manager::kPowerManagerServiceName,
-                        0,
-                        &error);
-  if (dbus_error_is_set(&error)) {
-    LOG(DFATAL) << "Failed to register name \""
-                << power_manager::kPowerManagerServiceName << "\": "
-                << error.message;
-    dbus_error_free(&error);
-  }
+  util::RequestDBusServiceName(kPowerManagerServiceName);
 
   dbus_handler_.AddDBusSignalHandler(
       kPowerManagerInterface,

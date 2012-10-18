@@ -394,19 +394,7 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
 }
 
 void PowerManDaemon::RegisterDBusMessageHandler() {
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-  DBusError error;
-  dbus_error_init(&error);
-  if (dbus_bus_request_name(connection,
-                            kRootPowerManagerServiceName,
-                            0,
-                            &error) < 0) {
-    LOG(FATAL) << "Failed to register name \""
-               << kRootPowerManagerServiceName << "\": "
-               << (dbus_error_is_set(&error) ? error.message : "Unknown error");
-  }
+  util::RequestDBusServiceName(kRootPowerManagerServiceName);
 
   dbus_handler_.AddDBusSignalHandler(
       kRootPowerManagerInterface,
@@ -455,19 +443,7 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
 
   dbus_handler_.Start();
 
-  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
-      chromeos::dbus::GetSystemBusConnection().g_connection(),
-      DBUS_SERVICE_DBUS, DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
-
-  if (NULL == proxy) {
-    LOG(ERROR) << "Failed to connect to freedesktop dbus server.";
-    NOTREACHED();
-  }
-  dbus_g_proxy_add_signal(proxy, "NameOwnerChanged", G_TYPE_STRING,
-                          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
-  dbus_g_proxy_connect_signal(proxy, "NameOwnerChanged",
-                              G_CALLBACK(DBusNameOwnerChangedHandler),
-                              this, NULL);
+  util::SetNameOwnerChangedHandler(DBusNameOwnerChangedHandler, this);
 }
 
 void PowerManDaemon::SendButtonEventSignal(const std::string& button_name,

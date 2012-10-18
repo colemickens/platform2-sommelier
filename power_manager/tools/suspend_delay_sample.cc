@@ -25,44 +25,32 @@ using std::endl;
 unsigned int sequence_num = 0;
 
 void RegisterSuspendDelay() {
-  DBusGConnection* connection;
   GError* error = NULL;
   unsigned int delay_ms = 6000;
-  connection = chromeos::dbus::GetSystemBusConnection().g_connection();
-  CHECK(connection);
-  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
-      connection,
-      "org.chromium.PowerManager",
-      "/",
-      "org.chromium.PowerManager");
-  CHECK(proxy);
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              power_manager::kPowerManagerServiceName,
+                              "/",
+                              power_manager::kPowerManagerInterface);
   error = NULL;
-  if (!dbus_g_proxy_call(proxy, "RegisterSuspendDelay",
+  if (!dbus_g_proxy_call(proxy.gproxy(), "RegisterSuspendDelay",
                          &error, G_TYPE_UINT,
                          delay_ms, G_TYPE_INVALID, G_TYPE_INVALID)) {
     LOG(ERROR) << "Error Registering: " << error->message;
   }
-  g_object_unref(proxy);
 }
 
 void UnregisterSuspendDelay() {
-  DBusGConnection* connection;
   GError* error = NULL;
-  connection = chromeos::dbus::GetSystemBusConnection().g_connection();
-  CHECK(connection);
-  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
-      connection,
-      "org.chromium.PowerManager",
-      "/",
-      "org.chromium.PowerManager");
-  CHECK(proxy);
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              power_manager::kPowerManagerServiceName,
+                              "/",
+                              power_manager::kPowerManagerInterface);
   error = NULL;
-  if (!dbus_g_proxy_call(proxy, "UnregisterSuspendDelay",
+  if (!dbus_g_proxy_call(proxy.gproxy(), "UnregisterSuspendDelay",
                          &error,
                          G_TYPE_INVALID, G_TYPE_INVALID)) {
     LOG(ERROR) << "Error Registering: " << error->message;
   }
-  g_object_unref(proxy);
 }
 gboolean SendSuspendReady(gpointer) {
   const char* signal_name = "SuspendReady";
@@ -142,20 +130,15 @@ void RegisterDBusMessageHandler() {
     cout << "DBus monitoring started" << endl;
   }
 
-  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
-      chromeos::dbus::GetSystemBusConnection().g_connection(),
-      "org.freedesktop.DBus",
-      "/org/freedesktop/DBus",
-      "org.freedesktop.DBus");
-  if (NULL == proxy) {
-    cout << "Failed to connect to freedesktop dbus server." << endl;
-    NOTREACHED();
-  }
-    dbus_g_proxy_add_signal(proxy, "NameOwnerChanged",
-                            G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
-                            G_TYPE_INVALID);
-    dbus_g_proxy_connect_signal(proxy, "NameOwnerChanged",
-                                G_CALLBACK(signal_handler), NULL, NULL);
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              DBUS_SERVICE_DBUS,
+                              DBUS_PATH_DBUS,
+                              DBUS_INTERFACE_DBUS);
+  dbus_g_proxy_add_signal(proxy.gproxy(), "NameOwnerChanged",
+                          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
+                          G_TYPE_INVALID);
+  dbus_g_proxy_connect_signal(proxy.gproxy(), "NameOwnerChanged",
+                              G_CALLBACK(signal_handler), NULL, NULL);
 }
 
 int main(int argc, char* argv[]) {

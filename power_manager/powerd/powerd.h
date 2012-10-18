@@ -20,8 +20,6 @@
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
-#include "chromeos/dbus/dbus.h"
-#include "chromeos/glib/object.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/common/backlight_interface.h"
 #include "power_manager/common/inotify.h"
