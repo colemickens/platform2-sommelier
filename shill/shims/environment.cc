@@ -5,6 +5,7 @@
 #include "shill/shims/environment.h"
 
 #include <cstdlib>
+#include <unistd.h>
 
 using std::map;
 using std::string;
