@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include <base/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stringprintf.h>
@@ -2456,6 +2457,12 @@ TEST_F(WiFiMainTest, PendingScanDoesNotCrashAfterStop) {
   StartWiFi();
   StopWiFi();
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, VerifyPaths) {
+  string path = WiFi::kSupplicantConfPath;
+  TrimString(path, FilePath::kSeparators, &path);
+  EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(path)));
 }
 
 }  // namespace shill

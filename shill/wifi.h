@@ -173,12 +173,14 @@ class WiFi : public Device {
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsOpen);  // SuspectCredentials
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPANeverConnected);  // as above
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);  // ""
+  FRIEND_TEST(WiFiMainTest, VerifyPaths);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<WiFiService *, std::string> ReverseServiceMap;
 
+  static const char kSupplicantConfPath[];
   static const char *kDefaultBgscanMethod;
   static const uint16 kDefaultBgscanShortIntervalSeconds;
   static const int32 kDefaultBgscanSignalThresholdDbm;
