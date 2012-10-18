@@ -55,3 +55,6 @@ dup2: 1
 unlink: 1
 tgkill: 1
 _llseek: 1
+getresgid32: 1
+getresuid32: 1
+signalfd4: 1

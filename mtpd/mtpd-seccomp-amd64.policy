@@ -59,3 +59,6 @@ unlink: 1
 tgkill: 1
 gettimeofday: 1
 time: 1
+getresgid: 1
+getresuid: 1
+signalfd4: 1
