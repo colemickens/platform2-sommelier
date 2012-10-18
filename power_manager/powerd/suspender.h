@@ -13,6 +13,7 @@
 
 #include "base/file_path.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/common/util_dbus_handler.h"
 #include "power_manager/powerd/screen_locker.h"
 
 namespace power_manager {
@@ -48,13 +49,7 @@ class Suspender {
   // Handle SuspendReady Dbus Messages.
   void SuspendReady(DBusMessage* message);
 
-  // Standard handler for dbus messages. |data| contains a pointer to a
-  // Daemon object.
-  static DBusHandlerResult DBusMessageHandler(DBusConnection*,
-                                              DBusMessage* message,
-                                              void* data);
-
-  // Register the dbus message handler with appropriate dbus events.
+  // Register message handlers with dbus for Method calls and Signals.
   void RegisterDBusMessageHandler();
 
   // Suspend the computer. Before calling this method, the screen should
@@ -106,6 +101,9 @@ class Suspender {
 
   // Reference to the owning daemon, so that this class can callback to it
   Daemon* daemon_;
+
+  // This is the DBus helper object that dispatches DBus messages to handlers
+  util::DBusHandler dbus_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(Suspender);
 };

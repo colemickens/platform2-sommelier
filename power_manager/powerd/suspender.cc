@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include "base/bind.h"
 #include "base/file_path.h"
 #include "base/logging.h"
 #include "base/string_util.h"
@@ -184,55 +185,17 @@ DBusMessage* Suspender::UnregisterSuspendDelay(DBusMessage* message) {
   return reply;
 }
 
-DBusHandlerResult Suspender::DBusMessageHandler(
-    DBusConnection* conn, DBusMessage* message, void* data) {
-  Suspender* suspender = static_cast<Suspender*>(data);
-  if (dbus_message_is_method_call(message, kPowerManagerInterface,
-                                  kRegisterSuspendDelay)) {
-    LOG(INFO) << "Got " << kRegisterSuspendDelay << " method call";
-    DBusMessage* reply = suspender->RegisterSuspendDelay(message);
-    CHECK(dbus_connection_send(conn, reply, NULL));
-    dbus_message_unref(reply);
-  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
-                                         kUnregisterSuspendDelay)) {
-    LOG(INFO) << "Got " << kUnregisterSuspendDelay << " method call";
-    DBusMessage* reply = suspender->UnregisterSuspendDelay(message);
-    CHECK(dbus_connection_send(conn, reply, NULL));
-    dbus_message_unref(reply);
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kSuspendReady)) {
-    suspender->SuspendReady(message);
-  } else {
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  }
-  return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-// Register Message Handler with Dbus for Method calls and Signals.
 void Suspender::RegisterDBusMessageHandler() {
-  const std::string filter = StringPrintf("type='signal', interface='%s'",
-                                          kPowerManagerInterface);
-  const std::string objmethods = StringPrintf("type='method_call'");
-  DBusError error;
-  dbus_error_init(&error);
-  connection_ = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  dbus_bus_add_match(connection_, objmethods.c_str(), &error);
-  if (dbus_error_is_set(&error)) {
-    LOG(ERROR) << "Failed to add a filter: " << error.name << ": "
-               << error.message;
-    NOTREACHED();
-  }
-  dbus_bus_add_match(connection_, filter.c_str(), &error);
-  if (dbus_error_is_set(&error)) {
-    LOG(ERROR) << "Failed to add a filter:" << error.name << ", message="
-               << error.message;
-    NOTREACHED();
-  } else {
-    CHECK(dbus_connection_add_filter(connection_, &DBusMessageHandler, this,
-                                     NULL));
-    LOG(INFO) << "DBus monitoring started";
-  }
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kRegisterSuspendDelay,
+      base::Bind(&Suspender::RegisterSuspendDelay, base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kUnregisterSuspendDelay,
+      base::Bind(&Suspender::UnregisterSuspendDelay, base::Unretained(this)));
+
+  dbus_handler_.Start();
 
   util::SetNameOwnerChangedHandler(NameOwnerChangedHandler, this);
 }
