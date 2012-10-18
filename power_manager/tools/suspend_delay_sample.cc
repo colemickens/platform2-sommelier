@@ -8,21 +8,23 @@
 
 #include <iostream>
 
+#include "base/bind.h"
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
-
-// TODO(crosbug.com/30645): Use high-level wrappers to abstract away low-level
-// dbus code.  Create new functions if necessary.
+#include "power_manager/common/util_dbus.h"
+#include "power_manager/common/util_dbus_handler.h"
 
 using std::string;
 using std::cout;
 using std::endl;
 
 unsigned int sequence_num = 0;
+
+power_manager::util::DBusHandler dbus_handler;
 
 void RegisterSuspendDelay() {
   GError* error = NULL;
@@ -52,6 +54,7 @@ void UnregisterSuspendDelay() {
     LOG(ERROR) << "Error Registering: " << error->message;
   }
 }
+
 gboolean SendSuspendReady(gpointer) {
   const char* signal_name = "SuspendReady";
   dbus_uint32_t payload = sequence_num;
@@ -71,7 +74,7 @@ gboolean SendSuspendReady(gpointer) {
   return false;
 }
 
-void SuspendDelaySignaled(DBusMessage* message) {
+bool SuspendDelaySignaled(DBusMessage* message) {
   DBusError error;
   dbus_error_init(&error);
   if (!dbus_message_get_args(message, &error, DBUS_TYPE_UINT32, &sequence_num,
@@ -79,66 +82,31 @@ void SuspendDelaySignaled(DBusMessage* message) {
     cout << "Could not get args from SuspendDelay signal!" << endl;
     if (dbus_error_is_set(&error))
       dbus_error_free(&error);
-    return;
+    return true;
   }
   cout << "sequence num = " << sequence_num << endl;
   cout << "sleeping..." << endl;
   g_timeout_add(5000, SendSuspendReady, NULL);
+  return true;
 }
 
-DBusHandlerResult DBusMessageHandler(
-    DBusConnection*, DBusMessage* message, void*) {
-  cout << "[DBusMessageHandler] Sender : " << dbus_message_get_sender(message)
-       << endl;
-  if (dbus_message_is_signal(message, power_manager::kPowerManagerInterface,
-                             power_manager::kSuspendDelay)) {
-    cout << "Suspend Delayed event" << endl;
-    SuspendDelaySignaled(message);
-  } else {
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  }
-  return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-void signal_handler(DBusGProxy*,
-                    const gchar* name,
-                    const gchar* old_owner,
-                    const gchar* new_owner,
-                    gpointer) {
-    cout << "name : " << name << endl;
-    cout << "old_owner : " << old_owner << endl;
-    cout << "new owner : " << new_owner << endl;
-    if (0 == strlen(new_owner))
-      cout << "BALEETED!" << endl;
+void OnNameOwnerChanged(DBusGProxy*, const gchar* name, const gchar* old_owner,
+                        const gchar* new_owner, gpointer) {
+  cout << "name : " << name << endl;
+  cout << "old_owner : " << old_owner << endl;
+  cout << "new owner : " << new_owner << endl;
+  if (0 == strlen(new_owner))
+    cout << "BALEETED!" << endl;
 }
 
 void RegisterDBusMessageHandler() {
-  const string filter = StringPrintf("type='signal', interface='%s'",
-                                     power_manager::kPowerManagerInterface);
-  DBusError error;
-  dbus_error_init(&error);
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  dbus_bus_add_match(connection, filter.c_str(), &error);
-  if (dbus_error_is_set(&error)) {
-    cout << "Failed to add a filter:" << error.name << ", message="
-               << error.message << endl;
-    NOTREACHED();
-  } else {
-    CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, NULL,
-                                     NULL));
-    cout << "DBus monitoring started" << endl;
-  }
+  dbus_handler.AddDBusSignalHandler(
+      power_manager::kPowerManagerInterface,
+      power_manager::kSuspendDelay,
+      base::Bind(&SuspendDelaySignaled));
+  dbus_handler.Start();
 
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              DBUS_SERVICE_DBUS,
-                              DBUS_PATH_DBUS,
-                              DBUS_INTERFACE_DBUS);
-  dbus_g_proxy_add_signal(proxy.gproxy(), "NameOwnerChanged",
-                          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
-                          G_TYPE_INVALID);
-  dbus_g_proxy_connect_signal(proxy.gproxy(), "NameOwnerChanged",
-                              G_CALLBACK(signal_handler), NULL, NULL);
+  power_manager::util::SetNameOwnerChangedHandler(OnNameOwnerChanged, NULL);
 }
 
 int main(int argc, char* argv[]) {
@@ -152,5 +120,3 @@ int main(int argc, char* argv[]) {
   g_main_loop_run(loop);
   return 0;
 }
-
-

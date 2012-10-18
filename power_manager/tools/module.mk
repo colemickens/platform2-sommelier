@@ -52,7 +52,9 @@ all: CXX_BINARY(tools/backlight_dbus_tool)
 
 SUSPENDDELAYSAMPLE_FLAGS = $(LIBPOWERMAN_FLAGS)
 SUSPENDDELAYSAMPLE_LIBS = $(LIBPOWERMAN_LIBS) -lgflags
-SUSPENDDELAYSAMPLE_OBJS = tools/suspend_delay_sample.o
+SUSPENDDELAYSAMPLE_OBJS = tools/suspend_delay_sample.o \
+                          common/power_constants.o common/util_dbus.o \
+                          common/util_dbus_handler.o
 CXX_BINARY(tools/suspend_delay_sample): $(SUSPENDDELAYSAMPLE_OBJS)
 CXX_BINARY(tools/suspend_delay_sample): CPPFLAGS += $(SUSPENDDELAYSAMPLE_FLAGS)
 CXX_BINARY(tools/suspend_delay_sample): LDLIBS += $(SUSPENDDELAYSAMPLE_LIBS)
