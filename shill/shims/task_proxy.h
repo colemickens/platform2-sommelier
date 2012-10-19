@@ -23,6 +23,8 @@ class TaskProxy {
   void Notify(const std::string &reason,
               std::map<std::string, std::string> &dict);
 
+  bool GetSecret(std::string *username, std::string *password);
+
  private:
   class Proxy : public org::chromium::flimflam::Task_proxy,
                 public DBus::ObjectProxy {

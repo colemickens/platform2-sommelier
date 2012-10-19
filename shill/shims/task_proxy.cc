@@ -29,6 +29,17 @@ void TaskProxy::Notify(const string &reason, map<string, string> &dict) {
   }
 }
 
+bool TaskProxy::GetSecret(string *username, string *password) {
+  LOG(INFO) << __func__;
+  try {
+    proxy_.getsec(*username, *password);
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    return false;
+  }
+  return true;
+}
+
 TaskProxy::Proxy::Proxy(DBus::Connection *connection,
                         const std::string &path,
                         const std::string &service)

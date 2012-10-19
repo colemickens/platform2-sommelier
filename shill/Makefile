@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 AR ?= ar
+CC ?= gcc
 CXX ?= g++
 CXXFLAGS ?= -fno-strict-aliasing
 CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -Wno-unused-result \
@@ -25,12 +26,14 @@ COMMON_PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 SHILL_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1 gio-2.0 glib-2.0 ModemManager
 NSS_GET_CERT_PC_DEPS = $(COMMON_PC_DEPS) nss
 OPENVPN_SCRIPT_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
+PPPD_PLUGIN_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
 INCLUDE_DIRS = \
 	-iquote.. \
 	-iquote $(BUILDDIR) \
 	$(shell $(PKG_CONFIG) --cflags \
 		$(NSS_GET_CERT_PC_DEPS) \
 		$(OPENVPN_SCRIPT_PC_DEPS) \
+		$(PPPD_PLUGIN_PC_DEPS) \
 		$(SHILL_PC_DEPS))
 SHILL_LIBS = \
 	-lbootstat \
@@ -40,6 +43,7 @@ SHILL_LIBS = \
 	-lminijail \
 	-lnl \
 	$(shell $(PKG_CONFIG) --libs $(SHILL_PC_DEPS))
+PPPD_PLUGIN_LIBS = $(shell $(PKG_CONFIG) --libs $(PPPD_PLUGIN_PC_DEPS))
 NSS_GET_CERT_LIBS = $(shell $(PKG_CONFIG) --libs $(NSS_GET_CERT_PC_DEPS))
 OPENVPN_SCRIPT_LIBS = $(shell $(PKG_CONFIG) --libs $(OPENVPN_SCRIPT_PC_DEPS))
 TEST_LIBS = $(SHILL_LIBS) $(NSS_GET_CERT_LIBS) -lgmock -lgtest
@@ -423,6 +427,15 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	wimax_unittest.o \
 	)
 
+PPPD_PLUGIN_OBJS = $(addprefix $(BUILD_SHIMS_DIR)/, \
+	c_ppp.o \
+	environment.o \
+	ppp.o \
+	pppd_plugin.o \
+	task_proxy.o \
+	)
+PPPD_PLUGIN_SO = $(BUILD_SHIMS_DIR)/shill-pppd-plugin.so
+
 NSS_GET_CERT_OBJS = $(BUILD_SHIMS_DIR)/certificates.o
 NSS_GET_CERT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/nss_get_cert.o
 NSS_GET_CERT_BIN = $(BUILD_SHIMS_DIR)/nss-get-cert
@@ -441,6 +454,7 @@ OBJS = \
 	$(NSS_GET_CERT_OBJS) \
 	$(OPENVPN_SCRIPT_MAIN_OBJ) \
 	$(OPENVPN_SCRIPT_OBJS) \
+	$(PPPD_PLUGIN_OBJS) \
 	$(SHILL_MAIN_OBJ) \
 	$(SHILL_OBJS) \
 	$(TEST_OBJS)
@@ -449,7 +463,11 @@ OBJS = \
 
 all: $(SHILL_BIN) $(TEST_BIN) shims
 
-shims: $(NSS_GET_CERT_BIN) $(OPENVPN_SCRIPT_BIN) $(WPA_SUPPLICANT_CONF)
+shims: \
+	$(NSS_GET_CERT_BIN) \
+	$(OPENVPN_SCRIPT_BIN) \
+	$(PPPD_PLUGIN_SO) \
+	$(WPA_SUPPLICANT_CONF)
 
 $(BUILD_DBUS_BINDINGS_SHIMS_DIR)/flimflam-task.xml: \
 	$(BUILD_DBUS_BINDINGS_DIR)/flimflam-task.xml
@@ -464,6 +482,9 @@ $(DBUS_PROXY_BINDINGS): %.h: %.xml
 $(DBUS_ADAPTOR_BINDINGS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
 
+$(BUILDDIR)/%.o: %.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@
+
 $(BUILDDIR)/%.o: %.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@
 
@@ -474,6 +495,11 @@ $(SHILL_LIB): $(SHILL_OBJS)
 
 $(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_LIB)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(SHILL_LIBS) -o $@
+
+$(PPPD_PLUGIN_OBJS): $(DBUS_PROXY_BINDINGS)
+
+$(PPPD_PLUGIN_SO): $(PPPD_PLUGIN_OBJS)
+	$(CXX) $(LDFLAGS) -shared $^ $(PPPD_PLUGIN_LIBS) -o $@
 
 $(NSS_GET_CERT_BIN): $(NSS_GET_CERT_MAIN_OBJ) $(NSS_GET_CERT_OBJS) $(SHILL_LIB)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NSS_GET_CERT_LIBS) -o $@
