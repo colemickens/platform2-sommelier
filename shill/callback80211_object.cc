@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
+#include <base/stringprintf.h>
 
 #include "shill/config80211.h"
 #include "shill/ieee80211.h"
@@ -17,7 +18,7 @@
 #include "shill/user_bound_nlmessage.h"
 
 using base::Bind;
-using base::LazyInstance;
+using base::StringAppendF;
 using std::string;
 
 namespace shill {
@@ -32,33 +33,37 @@ Callback80211Object::~Callback80211Object() {
 
 void Callback80211Object::Config80211MessageCallback(
     const UserBoundNlMessage &message) {
-  SLOG(WiFi, 2) << "Received " << message.GetMessageTypeString()
-                << " (" << + message.GetMessageType() << ")";
-  scoped_ptr<UserBoundNlMessage::AttributeNameIterator> i;
+  // Show the simplified version of the message.
+  string output("@");
+  StringAppendF(&output, "%s", message.ToString().c_str());
+  SLOG(WiFi, 2) << output;
 
+  // Show the more complicated version of the message.
+  SLOG(WiFi, 3) << "Received " << message.GetMessageTypeString()
+                << " (" << + message.GetMessageType() << ")";
+
+  scoped_ptr<UserBoundNlMessage::AttributeNameIterator> i;
   for (i.reset(message.GetAttributeNameIterator()); !i->AtEnd(); i->Advance()) {
     string value = "<unknown>";
     message.GetAttributeString(i->GetName(), &value);
-    SLOG(WiFi, 2) << "   Attr:" << message.StringFromAttributeName(i->GetName())
+    SLOG(WiFi, 3) << "   Attr:" << message.StringFromAttributeName(i->GetName())
                   << "=" << value
                   << " Type:" << message.GetAttributeTypeString(i->GetName());
   }
 }
 
-bool Callback80211Object::InstallAsCallback() {
+bool Callback80211Object::InstallAsBroadcastCallback() {
   if (config80211_) {
-    Config80211::Callback callback =
-        Bind(&Callback80211Object::Config80211MessageCallback,
-             weak_ptr_factory_.GetWeakPtr());
-    config80211_->SetDefaultCallback(callback);
-    return true;
+    callback_ = Bind(&Callback80211Object::Config80211MessageCallback,
+                     weak_ptr_factory_.GetWeakPtr());
+    return config80211_->AddBroadcastCallback(callback_);
   }
   return false;
 }
 
 bool Callback80211Object::DeinstallAsCallback() {
   if (config80211_) {
-    config80211_->UnsetDefaultCallback();
+    config80211_->RemoveBroadcastCallback(callback_);
     return true;
   }
   return false;

@@ -26,6 +26,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <string.h>
 
 #include <net/if.h>
 #include <netlink/attr.h>
@@ -146,7 +147,8 @@ bool NetlinkSocket::GetMessages() {
   // NetlinkSocket::SetNetlinkCallback).
   int result = nl_recvmsgs_default(nl_sock_);
   if (result < 0) {
-    LOG(ERROR) << "Failed call to nl_recvmsgs_default: " << result;
+    LOG(ERROR) << "Failed call to nl_recvmsgs_default: " << strerror(-result)
+               << " (" << result << ")";
     return false;
   }
   return true;
@@ -159,7 +161,8 @@ bool NetlinkSocket::GetMessagesUsingCallback(
 
   int result = nl_recvmsgs(nl_sock_, on_netlink_data->cb_);
   if (result < 0) {
-    LOG(ERROR) << "Failed call to nl_recvmsgs: " << result;
+    LOG(ERROR) << "Failed call to nl_recvmsgs: " << strerror(-result)
+               << " (" << result << ")";
     return false;
   }
   return true;
@@ -175,7 +178,8 @@ bool NetlinkSocket::SetNetlinkCallback(nl_recvmsg_msg_cb_t on_netlink_data,
   int result = nl_socket_modify_cb(nl_sock_, NL_CB_VALID, NL_CB_CUSTOM,
                                    on_netlink_data, callback_parameter);
   if (result) {
-    LOG(ERROR) << "nl_socket_modify_cb returned " << result;
+    LOG(ERROR) << "nl_socket_modify_cb returned " << strerror(-result)
+               << " (" << result << ")";
     return false;
   }
   return true;

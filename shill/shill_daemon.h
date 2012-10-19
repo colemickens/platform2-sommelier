@@ -14,6 +14,7 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/sockets.h"
+#include "shill/callback80211_object.h"
 #include "shill/callback80211_metrics.h"
 
 namespace shill {
@@ -63,6 +64,7 @@ class Daemon {
   DHCPProvider *dhcp_provider_;
   Config80211 *config80211_;
   scoped_ptr<Manager> manager_;
+  Callback80211Object callback80211_output_;
   Callback80211Metrics callback80211_metrics_;
   EventDispatcher dispatcher_;
   Sockets sockets_;

@@ -29,6 +29,8 @@ Callback80211Metrics::Callback80211Metrics(Config80211 *config80211,
 
 void Callback80211Metrics::Config80211MessageCallback(
     const UserBoundNlMessage &message) {
+  SLOG(WiFi, 3) << "Received " << message.GetMessageTypeString()
+                << " (" << + message.GetMessageType() << ")";
   if (metrics_ && message.GetMessageType() == DeauthenticateMessage::kCommand) {
     Metrics::WiFiDisconnectByWhom by_whom =
         message.AttributeExists(NL80211_ATTR_DISCONNECTED_BY_AP) ?
@@ -49,12 +51,11 @@ void Callback80211Metrics::Config80211MessageCallback(
   }
 }
 
-bool Callback80211Metrics::InstallAsDefaultCallback() {
+bool Callback80211Metrics::InstallAsBroadcastCallback() {
   if (config80211_) {
     callback_ = Bind(&Callback80211Metrics::Config80211MessageCallback,
                      weak_ptr_factory_.GetWeakPtr());
-    config80211_->SetDefaultCallback(callback_);
-    return true;
+    return config80211_->AddBroadcastCallback(callback_);
   }
   return false;
 }

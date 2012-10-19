@@ -46,6 +46,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
                            config->GetUserStorageDirectoryFormat())),
+      callback80211_output_(config80211_),
       callback80211_metrics_(config80211_, &metrics_) {
 }
 
@@ -108,8 +109,9 @@ void Daemon::Start() {
       Config80211::kEventTypeRegulatory,
       Config80211::kEventTypeMlme };
 
-    // Install |callback80211_| in the Config80211 singleton.
-    callback80211_metrics_.InstallAsCallback();
+    // Install callbacks in the Config80211 singleton.
+    callback80211_output_.InstallAsBroadcastCallback();
+    callback80211_metrics_.InstallAsBroadcastCallback();
 
     for (size_t i = 0; i < arraysize(kEvents); i++) {
       config80211_->SubscribeToEvents(kEvents[i]);

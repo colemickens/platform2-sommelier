@@ -29,10 +29,10 @@ class Callback80211Object {
   explicit Callback80211Object(Config80211 *config80211);
   virtual ~Callback80211Object();
 
-  // Install ourselves as a callback.  Done automatically by constructor.
-  bool InstallAsCallback();
+  // Install ourselves as a callback.
+  virtual bool InstallAsBroadcastCallback();
 
-  // Deinstall ourselves as a callback.  Done automatically by destructor.
+  // Deinstall ourselves as a callback.
   bool DeinstallAsCallback();
 
   // TODO(wdg): remove debug code:

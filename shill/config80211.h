@@ -28,9 +28,9 @@
 //    This is a base::Callback object installed by the user and called by
 //    Config80211 for each message it receives.  More specifically, when the
 //    user calls Config80211::SubscribeToEvents, Config80211 installs
-//    OnNlMessageReceived as a netlink callback function (described below).
-//    OnNlMessageReceived, in turn, parses the message from cfg80211 and calls
-//    Config80211::Callback with the resultant UserBoundNlMessage.
+//    OnRawNlMessageReceived as a netlink callback function (described below).
+//    OnRawNlMessageReceived, in turn, parses the message from cfg80211 and
+//    calls Config80211::Callback with the resultant UserBoundNlMessage.
 //
 // Netlink Callback -
 //    Netlink callbacks are mechanisms installed by the user (well, by
@@ -62,6 +62,7 @@
 #define SHILL_CONFIG80211_H_
 
 #include <iomanip>
+#include <list>
 #include <map>
 #include <set>
 #include <string>
@@ -115,16 +116,21 @@ class Config80211 {
   // Returns the file descriptor of socket used to read wifi data.
   int GetFd() const { return (sock_ ? sock_->GetFd() : -1); }
 
-  // Install default Config80211 Callback.  The callback is a user-supplied
-  // object to be called by the system for user-bound messages that do not
-  // have a corresponding messaage-specific callback.  |SetDefaultCallback|
-  // should be called before |SubscribeToEvents| since the result of this call
-  // are used for that call.
-  void SetDefaultCallback(const Callback &callback) {
-    default_callback_ = callback; }
+  // Install a Config80211 Callback.  The callback is a user-supplied object
+  // to be called by the system for user-bound messages that do not have a
+  // corresponding messaage-specific callback.  |AddBroadcastCallback| should
+  // be called before |SubscribeToEvents| since the result of this call are
+  // used for that call.
+  bool AddBroadcastCallback(const Callback &callback);
 
-  // Uninstall default Config80211 Callback.
-  void UnsetDefaultCallback() { default_callback_.Reset(); }
+  // Uninstall a Config80211 Callback.
+  bool RemoveBroadcastCallback(const Callback &callback);
+
+  // Determines whether a callback is in the list of broadcast callbacks.
+  bool FindBroadcastCallback(const Callback &callback) const;
+
+  // Uninstall all Config80211 broadcast Callbacks.
+  void ClearBroadcastCallbacks();
 
   // TODO(wdg): Add 'SendMessage(KernelBoundNlMessage *message,
   //                             Config80211::Callback *callback);
@@ -161,17 +167,25 @@ class Config80211 {
   void HandleIncomingEvents(int fd);
 
   // This is a Netlink Callback.  libnl-80211 calls this method when it
-  // receives data from cfg80211.  This method parses those messages and logs
-  // them.
-  static int OnNlMessageReceived(struct nl_msg *msg, void *arg);
+  // receives data from cfg80211.  This method converts the 'struct nl_msg'
+  // which is passed to it (and is a complete fiction -- it's actually struct
+  // sk_buff, a data type to which we don't have access) to an nlmsghdr, a
+  // type that we _can_ examine, and passes it to |OnNlMessageReceived|.
+  static int OnRawNlMessageReceived(struct nl_msg *msg, void *arg);
+
+  // This method processes a message from |OnRawNlMessageReceived| by passing
+  // the message to either the Config80211 callback that matches the sequence
+  // number of the message or, if there isn't one, to all of the default
+  // Config80211 callbacks in |broadcast_callbacks_|.
+  int OnNlMessageReceived(nlmsghdr *msg);
 
   // Just for tests, this method turns off WiFi and clears the subscribed
   // events list.
   void Reset();
 
-  // Config80211 Callback, OnNlMessageReceived invokes this User-supplied
-  // callback object when _it_ gets called to read libnl data.
-  Callback default_callback_;
+  // Config80211 Callbacks, OnRawNlMessageReceived invokes each of these
+  // User-supplied callback object when _it_ gets called to read libnl data.
+  std::list<Callback> broadcast_callbacks_;
 
   // TODO(wdg): implement the following.
   // std::map<uint32_t, Callback> message_callback_;

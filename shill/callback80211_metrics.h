@@ -29,8 +29,8 @@ class Callback80211Metrics : public Callback80211Object {
  public:
   Callback80211Metrics(Config80211 *config80211, Metrics *metrics);
 
-  // Install ourselves as a callback.  Done automatically by constructor.
-  virtual bool InstallAsDefaultCallback();
+  // Install ourselves as a callback.
+  virtual bool InstallAsBroadcastCallback();
 
  private:
   // When installed, this is the method Config80211 will call when it gets a

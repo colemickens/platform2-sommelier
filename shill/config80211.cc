@@ -5,7 +5,6 @@
 #include "shill/config80211.h"
 
 #include <ctype.h>
-
 #include <netlink/msg.h>
 
 #include <map>
@@ -14,7 +13,6 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
-#include <base/stringprintf.h>
 
 #include "shill/io_handler.h"
 #include "shill/logging.h"
@@ -24,7 +22,7 @@
 
 using base::Bind;
 using base::LazyInstance;
-using base::StringAppendF;
+using std::list;
 using std::string;
 
 namespace shill {
@@ -58,6 +56,7 @@ Config80211 *Config80211::GetInstance() {
 void Config80211::Reset() {
   wifi_state_ = kWifiDown;
   subscribed_events_.clear();
+  ClearBroadcastCallbacks();
 }
 
 bool Config80211::Init(EventDispatcher *dispatcher) {
@@ -91,6 +90,50 @@ bool Config80211::Init(EventDispatcher *dispatcher) {
                                       dispatcher_callback_));
   }
   return true;
+}
+
+bool Config80211::AddBroadcastCallback(const Callback &callback) {
+  list<Callback>::iterator i;
+  if (FindBroadcastCallback(callback)) {
+    LOG(WARNING) << "Trying to re-add a callback";
+    return false;  // Should only be one copy in the list.
+  }
+  if (callback.is_null()) {
+    LOG(WARNING) << "Trying to add a NULL callback";
+    return false;
+  }
+  // And add the callback to the list.
+  SLOG(WiFi, 3) << "Config80211::" << __func__ << " - adding callback";
+  broadcast_callbacks_.push_back(callback);
+  return true;
+}
+
+bool Config80211::RemoveBroadcastCallback(const Callback &callback) {
+  list<Callback>::iterator i;
+  for (i = broadcast_callbacks_.begin(); i != broadcast_callbacks_.end(); ++i) {
+    if ((*i).Equals(callback)) {
+      broadcast_callbacks_.erase(i);
+      // Should only be one copy in the list so we don't have to continue
+      // looking for another one.
+      return true;
+    }
+  }
+  LOG(WARNING) << "Callback not found.";
+  return false;
+}
+
+bool Config80211::FindBroadcastCallback(const Callback &callback) const {
+  list<Callback>::const_iterator i;
+  for (i = broadcast_callbacks_.begin(); i != broadcast_callbacks_.end(); ++i) {
+    if ((*i).Equals(callback)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void Config80211::ClearBroadcastCallbacks() {
+  broadcast_callbacks_.clear();
 }
 
 // static
@@ -159,10 +202,8 @@ bool Config80211::ActuallySubscribeToEvents(EventType type) {
 
   // Install the global NetLink Callback for messages along with a parameter.
   // The Netlink Callback's parameter is passed to 'C' as a 'void *'.
-  if (!sock_->SetNetlinkCallback(OnNlMessageReceived,
-                                static_cast<void *>(
-                                    const_cast<Config80211::Callback *>(
-                                        &default_callback_)))) {
+  if (!sock_->SetNetlinkCallback(OnRawNlMessageReceived,
+                                 static_cast<void *>(this))) {
     return false;
   }
   return true;
@@ -174,38 +215,52 @@ void Config80211::HandleIncomingEvents(int unused_fd) {
 
 // NOTE: the "struct nl_msg" declaration, below, is a complete fabrication
 // (but one consistent with the nl_socket_modify_cb call to which
-// |OnNlMessageReceived| is a parameter).  |raw_message| is actually a
+// |OnRawNlMessageReceived| is a parameter).  |raw_message| is actually a
 // "struct sk_buff" but that data type is only visible in the kernel.  We'll
 // scrub this erroneous datatype with the "nlmsg_hdr" call, below, which
-// extracts an nlmsghdr pointer from |raw_message|.
-int Config80211::OnNlMessageReceived(struct nl_msg *raw_message,
-                                     void *user_callback_object) {
-  SLOG(WiFi, 6) << "\t  Entering " << __func__
-                << "( msg:" << raw_message
-                << ", cb:" << user_callback_object << ")";
+// extracts an nlmsghdr pointer from |raw_message|.  We'll, then, pass this to
+// a separate method, |OnNlMessageReceived|, to make testing easier.
 
-  string output("@");
+// static
+int Config80211::OnRawNlMessageReceived(struct nl_msg *raw_message,
+                                        void *void_config80211) {
+  if (!void_config80211) {
+    LOG(WARNING) << "NULL config80211 parameter";
+    return NL_SKIP;  // Skip current message, continue parsing buffer.
+  }
 
-  nlmsghdr *msg = nlmsg_hdr(raw_message);
+  Config80211 *config80211 = static_cast<Config80211 *>(void_config80211);
+  SLOG(WiFi, 3) << "  " << __func__ << " calling OnNlMessageReceived";
+  return config80211->OnNlMessageReceived(nlmsg_hdr(raw_message));
+}
 
+int Config80211::OnNlMessageReceived(nlmsghdr *msg) {
+  SLOG(WiFi, 3) << "\t  Entering " << __func__
+                << "( msg:" << msg->nlmsg_seq << ")";
   scoped_ptr<UserBoundNlMessage> message(
       UserBoundNlMessageFactory::CreateMessage(msg));
   if (message == NULL) {
-    SLOG(WiFi, 6) << __func__ << "(msg:NULL)";
-    output.append("unknown event");
+    SLOG(WiFi, 3) << __func__ << "(msg:NULL)";
   } else {
-    SLOG(WiFi, 6) << __func__ << "(msg:" << msg->nlmsg_seq << ")";
-    if (user_callback_object) {
-      Config80211::Callback *bound_object =
-          static_cast<Config80211::Callback *> (user_callback_object);
-      if (!bound_object->is_null()) {
-        bound_object->Run(*message);
+    SLOG(WiFi, 3) << __func__ << "(msg:" << msg->nlmsg_seq << ")";
+    list<Callback>::iterator i = broadcast_callbacks_.begin();
+    while (i != broadcast_callbacks_.end()) {
+      SLOG(WiFi, 3) << "    " << __func__ << " - found callback";
+      if (i->is_null()) {
+        // How did this get in here?
+        LOG(WARNING) << "Removing NULL callback from list";
+        list<Callback>::iterator temp = i;
+        ++temp;
+        broadcast_callbacks_.erase(i);
+        i = temp;
+      } else {
+        SLOG(WiFi, 3) << "      " << __func__ << " - calling callback";
+        i->Run(*message);
+        ++i;
       }
     }
-    StringAppendF(&output, "%s", message->ToString().c_str());
   }
 
-  SLOG(WiFi, 5) << output;
   return NL_SKIP;  // Skip current message, continue parsing buffer.
 }
 

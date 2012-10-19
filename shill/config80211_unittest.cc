@@ -11,22 +11,24 @@
 
 #include "shill/config80211.h"
 
+#include <list>
+#include <string>
+#include <vector>
+
+#include <base/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <netlink/attr.h>
 #include <netlink/netlink.h>
 
-#include <string>
-#include <vector>
-
-#include <base/bind.h>
-
+#include "shill/mock_callback80211_object.h"
 #include "shill/mock_nl80211_socket.h"
 #include "shill/nl80211_socket.h"
 #include "shill/user_bound_nlmessage.h"
 
 using base::Bind;
 using base::Unretained;
+using std::list;
 using std::string;
 using std::vector;
 using testing::_;
@@ -261,10 +263,10 @@ const unsigned char kNL80211_CMD_CONNECT[] = {
 // ff ff c0 3f 0e 77 e8 7f c0 3f 0e 77 e8 7f c0 0e 02 00]
 
 const unsigned char kDeauthenticateFrame[] = {
- 0xc0, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
- 0xff, 0xff, 0xc0, 0x3f, 0x0e, 0x77, 0xe8, 0x7f,
- 0xc0, 0x3f, 0x0e, 0x77, 0xe8, 0x7f, 0xc0, 0x0e,
- 0x02, 0x00
+  0xc0, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
+  0xff, 0xff, 0xc0, 0x3f, 0x0e, 0x77, 0xe8, 0x7f,
+  0xc0, 0x3f, 0x0e, 0x77, 0xe8, 0x7f, 0xc0, 0x0e,
+  0x02, 0x00
 };
 
 const unsigned char kNL80211_CMD_DEAUTHENTICATE[] = {
@@ -335,7 +337,7 @@ const unsigned char kNL80211_CMD_DISASSOCIATE[] = {
   0x03, 0x00, 0x00, 0x00,
 };
 
-}  // namespace {}
+}  // namespace
 
 class Config80211Test : public Test {
  public:
@@ -363,33 +365,34 @@ class TestCallbackObject {
   Config80211::Callback callback_;
 };
 
-MATCHER_P(IsEqualToCallback, callback, "") {
-  const Config80211::Callback *arg_cb =
-      reinterpret_cast<const Config80211::Callback *>(arg);
-  const Config80211::Callback *callback_cb =
-      reinterpret_cast<const Config80211::Callback *>(callback);
-  if (arg_cb == callback_cb)
-    return true;
-  if (arg_cb == reinterpret_cast<const Config80211::Callback *>(NULL))
+// Checks a config80211 parameter to make sure it contains |callback_arg|
+// in its list of broadcast callbacks.
+MATCHER_P(ContainsCallback, callback_arg, "") {
+  if (arg == reinterpret_cast<void *>(NULL)) {
+    LOG(WARNING) << "NULL parameter";
     return false;
-  if (callback_cb == reinterpret_cast<const Config80211::Callback *>(NULL))
-    return arg_cb->is_null();
-  return arg_cb->Equals(*callback_cb);
+  }
+  const Config80211 *config80211 = static_cast<Config80211 *>(arg);
+  const Config80211::Callback callback =
+      static_cast<const Config80211::Callback>(callback_arg);
+
+  return config80211->FindBroadcastCallback(callback);
 }
 
 TEST_F(Config80211Test, AddLinkTest) {
   SetupConfig80211Object();
 
-  // Create a default callback.
+  // Create a broadcast callback.
   TestCallbackObject callback_object;
 
   // Install the callback and subscribe to events using it, wifi down
-  // (shouldn't actually send the subscription request).
+  // (shouldn't actually send the subscription request until wifi comes up).
   EXPECT_CALL(socket_, AddGroupMembership(_)).Times(0);
   EXPECT_CALL(socket_, DisableSequenceChecking()).Times(0);
-  EXPECT_CALL(socket_, SetNetlinkCallback(_,_)).Times(0);
+  EXPECT_CALL(socket_, SetNetlinkCallback(_, _)).Times(0);
 
-  config80211_->SetDefaultCallback(callback_object.GetCallback());
+  EXPECT_TRUE(config80211_->AddBroadcastCallback(
+      callback_object.GetCallback()));
   Config80211::EventType scan_event = Config80211::kEventTypeScan;
   string scan_event_string;
   EXPECT_TRUE(Config80211::GetEventTypeString(scan_event, &scan_event_string));
@@ -401,14 +404,14 @@ TEST_F(Config80211Test, AddLinkTest) {
   EXPECT_CALL(socket_, DisableSequenceChecking())
       .WillOnce(Return(true));
   EXPECT_CALL(socket_, SetNetlinkCallback(
-      _, IsEqualToCallback(&callback_object.GetCallback())))
+      _, ContainsCallback(callback_object.GetCallback())))
       .WillOnce(Return(true));
   config80211_->SetWifiState(Config80211::kWifiUp);
 
   // Second subscribe, same event (should do nothing).
   EXPECT_CALL(socket_, AddGroupMembership(_)).Times(0);
   EXPECT_CALL(socket_, DisableSequenceChecking()).Times(0);
-  EXPECT_CALL(socket_, SetNetlinkCallback(_,_)).Times(0);
+  EXPECT_CALL(socket_, SetNetlinkCallback(_, _)).Times(0);
   EXPECT_TRUE(config80211_->SubscribeToEvents(scan_event));
 
   // Bring the wifi back down.
@@ -430,7 +433,7 @@ TEST_F(Config80211Test, AddLinkTest) {
       .Times(2)
       .WillRepeatedly(Return(true));
   EXPECT_CALL(socket_, SetNetlinkCallback(
-      _, IsEqualToCallback(&callback_object.GetCallback())))
+       _, ContainsCallback(callback_object.GetCallback())))
       .Times(2)
       .WillRepeatedly(Return(true));
   config80211_->SetWifiState(Config80211::kWifiUp);
