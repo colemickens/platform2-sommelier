@@ -44,10 +44,23 @@ Suspender::Suspender(ScreenLocker* locker, FileTagger* file_tagger)
       suspend_sequence_number_(0),
       wakeup_count_valid_(false) {}
 
+void Suspender::NameOwnerChangedHandler(DBusGProxy*,
+                                        const gchar* name,
+                                        const gchar*,
+                                        const gchar* new_owner,
+                                        gpointer data) {
+  Suspender* suspender = static_cast<Suspender*>(data);
+  if (!name || !new_owner) {
+    LOG(ERROR) << "NameOwnerChanged with Null name or new owner.";
+    return;
+  }
+  if (0 == strlen(new_owner) && suspender->CleanUpSuspendDelay(name))
+      LOG(INFO) << name << " deleted for dbus name change.";
+}
+
 void Suspender::Init(const FilePath& run_dir, Daemon* daemon) {
   daemon_ = daemon;
   user_active_file_ = run_dir.Append(kUserActiveFile);
-  RegisterDBusMessageHandler();
 }
 
 void Suspender::RequestSuspend() {
@@ -185,21 +198,6 @@ DBusMessage* Suspender::UnregisterSuspendDelay(DBusMessage* message) {
   return reply;
 }
 
-void Suspender::RegisterDBusMessageHandler() {
-  dbus_handler_.AddDBusMethodHandler(
-      kPowerManagerInterface,
-      kRegisterSuspendDelay,
-      base::Bind(&Suspender::RegisterSuspendDelay, base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
-      kPowerManagerInterface,
-      kUnregisterSuspendDelay,
-      base::Bind(&Suspender::UnregisterSuspendDelay, base::Unretained(this)));
-
-  dbus_handler_.Start();
-
-  util::SetNameOwnerChangedHandler(NameOwnerChangedHandler, this);
-}
-
 void Suspender::Suspend() {
   daemon_->HaltPollPowerSupply();
   util::RemoveStatusFile(user_active_file_);
@@ -220,21 +218,6 @@ gboolean Suspender::CheckSuspendTimeout(unsigned int sequence_num) {
   // We don't want this callback to be repeated, so we return false.
   return false;
 }
-
-void Suspender::NameOwnerChangedHandler(DBusGProxy*,
-                                        const gchar* name,
-                                        const gchar*,
-                                        const gchar* new_owner,
-                                        gpointer data) {
-  Suspender* suspender = static_cast<Suspender*>(data);
-  if (!name || !new_owner) {
-    LOG(ERROR) << "NameOwnerChanged with Null name or new owner.";
-    return;
-  }
-  if (0 == strlen(new_owner) && suspender->CleanUpSuspendDelay(name))
-      LOG(INFO) << name << " deleted for dbus name change.";
-}
-
 
 // Remove |client_name| from list of suspend delay callback clients.
 bool Suspender::CleanUpSuspendDelay(const char* client_name) {

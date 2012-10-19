@@ -824,6 +824,8 @@ void Daemon::RegisterUdevEventHandler() {
 
 void Daemon::RegisterDBusMessageHandler() {
   util::RequestDBusServiceName(kPowerManagerServiceName);
+  util::SetNameOwnerChangedHandler(&Suspender::NameOwnerChangedHandler,
+                                   &suspender_);
 
   dbus_handler_.AddDBusSignalHandler(
       kPowerManagerInterface,
@@ -940,6 +942,16 @@ void Daemon::RegisterDBusMessageHandler() {
       kPowerManagerInterface,
       kSetIsProjectingMethod,
       base::Bind(&Daemon::HandleSetIsProjectingMethod, base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kRegisterSuspendDelay,
+      base::Bind(&Suspender::RegisterSuspendDelay,
+                 base::Unretained(&suspender_)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kUnregisterSuspendDelay,
+      base::Bind(&Suspender::UnregisterSuspendDelay,
+                 base::Unretained(&suspender_)));
 
   dbus_handler_.Start();
 }

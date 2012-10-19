@@ -13,7 +13,6 @@
 
 #include "base/file_path.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/common/util_dbus_handler.h"
 #include "power_manager/powerd/screen_locker.h"
 
 namespace power_manager {
@@ -24,6 +23,12 @@ class FileTagger;
 class Suspender {
  public:
   Suspender(ScreenLocker* locker, FileTagger* file_tagger);
+
+  static void NameOwnerChangedHandler(DBusGProxy* proxy,
+                                      const gchar* name,
+                                      const gchar* old_owner,
+                                      const gchar* new_owner,
+                                      gpointer data);
 
   void Init(const FilePath& run_dir, Daemon* daemon);
 
@@ -49,9 +54,6 @@ class Suspender {
   // Handle SuspendReady Dbus Messages.
   void SuspendReady(DBusMessage* message);
 
-  // Register message handlers with dbus for Method calls and Signals.
-  void RegisterDBusMessageHandler();
-
   // Suspend the computer. Before calling this method, the screen should
   // be locked.
   void Suspend();
@@ -60,12 +62,6 @@ class Suspender {
   // Always returns false.
   SIGNAL_CALLBACK_PACKED_1(Suspender, gboolean, CheckSuspendTimeout,
                            unsigned int);
-
-  static void NameOwnerChangedHandler(DBusGProxy* proxy,
-                                      const gchar* name,
-                                      const gchar* old_owner,
-                                      const gchar* new_owner,
-                                      gpointer data);
 
   // Clean up suspend delay upon unregister or dbus name change.
   // Remove |client_name| from list of suspend delay callback clients.
@@ -101,9 +97,6 @@ class Suspender {
 
   // Reference to the owning daemon, so that this class can callback to it
   Daemon* daemon_;
-
-  // This is the DBus helper object that dispatches DBus messages to handlers
-  util::DBusHandler dbus_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(Suspender);
 };
