@@ -12,8 +12,10 @@ DEFINE_integer suspend_min 5 "Min seconds to suspend"
 DEFINE_integer wake_max 10 "Max seconds to stay awake for"
 DEFINE_integer wake_min 5 "Min seconds to stay awake for"
 DEFINE_boolean backup_rtc ${FLAGS_FALSE} "Use second rtc if present for backup"
-DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
 DEFINE_boolean dbus_suspend ${FLAGS_FALSE} "Use dbus signal to suspend"
+DEFINE_boolean bug_fatal ${FLAGS_TRUE} "Abort on BUG dmesg lines"
+DEFINE_boolean crc_fatal ${FLAGS_TRUE} "Abort on CRC error dmesg lines"
+DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
 
 get_failed_count() {
   awk '$1 == "fail:" { print $2 }' /sys/kernel/debug/suspend_stats
@@ -58,6 +60,8 @@ echo "  suspend: ${FLAGS_suspend_min}-${FLAGS_suspend_max} seconds"
 echo "  wake: ${FLAGS_wake_min}-${FLAGS_wake_max} seconds"
 echo "  backup_rtc: $(boolean_value ${FLAGS_backup_rtc})"
 echo "  errors_fatal: $(boolean_value ${FLAGS_errors_fatal})"
+echo "  bugs fatal:  $(boolean_value ${FLAGS_bug_fatal})"
+echo "  crcs fatal:  $(boolean_value ${FLAGS_crc_fatal})"
 echo "  suspend command: ${suspend_cmd}"
 
 initial_failed=$(get_failed_count)
@@ -87,21 +91,34 @@ while [ ${cur} -lt ${FLAGS_count} ]; do
 
   # look for errors in firmware log
   if [ -f /sys/firmware/log ] && grep ERROR /sys/firmware/log; then
-    echo "Firmware error found, stopping test."
+    echo "Firmware error found."
     : $(( firmware_errors += 1 ))
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
-      exit 5
+      break
     fi
   fi
   # Make sure suspend succeeded
   cur_failed=$(get_failed_count)
   if [ ${cur_failed} -gt ${last_failed} ]; then
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
-      echo "Suspend failed, stopping test."
-      exit 6
+      echo "Suspend failed."
+      break
     fi
     printf "(suspend failed, ignoring)"
     last_failed=${cur_failed}
+  fi
+  # For BUG and CRC errors counting existing occurrences in dmesg
+  # is not that useful as dmesg will wrap so we would need to account
+  # for the count shrinking over time.
+  # Break on BUG
+  if [ ${FLAGS_bug_fatal} -eq ${FLAGS_TRUE} ] && dmesg | grep BUG; then
+    echo "BUG found."
+    break
+  fi
+  # Break on CRC error
+  if [ ${FLAGS_bug_fatal} -eq ${FLAGS_TRUE} ] && dmesg | grep "CRC error"; then
+    echo "CRC error found."
+    break
   fi
 
   wake_time=$(( ( $(random) % wake_interval ) + FLAGS_wake_min ))
