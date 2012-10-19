@@ -6,37 +6,50 @@
 #define POWER_MANAGER_POWERD_MONITOR_RECONFIGURE_H_
 
 #include "base/basictypes.h"
+#include "base/compiler_specific.h"
 
 namespace power_manager {
 
-enum ScreenPowerState {
-  POWER_STATE_INVALID,
-  POWER_STATE_ON,
-  POWER_STATE_OFF,
-};
-
 enum ScreenPowerOutputSelection {
-  OUTPUT_SELECTION_INVALID,
   OUTPUT_SELECTION_ALL_DISPLAYS,
   OUTPUT_SELECTION_INTERNAL_ONLY,
 };
 
+enum ScreenPowerState {
+  POWER_STATE_ON,
+  POWER_STATE_OFF,
+};
+
+class MonitorReconfigureInterface {
+ public:
+  MonitorReconfigureInterface() {}
+  virtual ~MonitorReconfigureInterface() {}
+
+  // Manually sets the internal panel status flag, which is initialized to true
+  // by default.  The panel may be in a different state at startup.
+  virtual void set_is_internal_panel_enabled(bool enabled) = 0;
+
+  // Sends a D-Bus signal to Chrome telling to set the outputs described by
+  // |selection| to |state|.
+  virtual void SetScreenPowerState(ScreenPowerOutputSelection selection,
+                                   ScreenPowerState state) = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MonitorReconfigureInterface);
+};
+
 // Sends messages to Chrome to turn displays on or off.
-class MonitorReconfigure {
+class MonitorReconfigure : public MonitorReconfigureInterface {
  public:
   MonitorReconfigure();
   virtual ~MonitorReconfigure();
 
-  // Manually sets the internal panel status flag, which is initialized to true
-  // by default.  The panel may be in a different state at startup.
-  void set_is_internal_panel_enabled(bool enabled) {
+  // MonitorReconfigureInterface implementation:
+  virtual void set_is_internal_panel_enabled(bool enabled) OVERRIDE {
     is_internal_panel_enabled_ = enabled;
   }
-
-  // Sends a D-Bus signal to Chrome telling to set the outputs described by
-  // |selection| to |state|.
-  void SetScreenPowerState(ScreenPowerOutputSelection selection,
-                           ScreenPowerState state);
+  virtual void SetScreenPowerState(ScreenPowerOutputSelection selection,
+                                   ScreenPowerState state) OVERRIDE;
 
  private:
   // Whether the internal panel output is enabled.

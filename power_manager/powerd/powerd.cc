@@ -532,10 +532,6 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
   PowerState old_state = backlight_controller_->GetPowerState();
   if (idle_time_ms >= suspend_ms_ &&
       !state_control_->IsStateDisabled(kIdleSuspendDisabled)) {
-    // Note: currently this state doesn't do anything.  But it can be possibly
-    // useful in future development.  For example, if we want to implement
-    // fade from suspend, we would want to have this state to make sure the
-    // backlight is set to zero when suspended.
     SetPowerState(BACKLIGHT_SUSPENDED);
     audio_detector_->Disable();
     Suspend();

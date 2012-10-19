@@ -30,7 +30,7 @@ class ExternalBacklightController : public BacklightController {
   // BacklightController implementation:
   virtual bool Init() OVERRIDE;
   virtual void SetMonitorReconfigure(
-      MonitorReconfigure* monitor_reconfigure) OVERRIDE;
+      MonitorReconfigureInterface* monitor_reconfigure) OVERRIDE;
   virtual void SetObserver(BacklightControllerObserver* observer) OVERRIDE;
   virtual double GetTargetBrightnessPercent() OVERRIDE;
   virtual bool GetCurrentBrightnessPercent(double* percent) OVERRIDE;
@@ -69,7 +69,7 @@ class ExternalBacklightController : public BacklightController {
   void SendSoftwareDimmingSignal(int state);
 
   BacklightInterface* backlight_;  // not owned
-  MonitorReconfigure* monitor_reconfigure_;  // not owned
+  MonitorReconfigureInterface* monitor_reconfigure_;  // not owned
   BacklightControllerObserver* observer_;  // not owned
 
   PowerState power_state_;

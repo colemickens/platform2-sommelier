@@ -15,6 +15,7 @@
 #include "power_manager/powerd/internal_backlight_controller.h"
 #include "power_manager/powerd/mock_ambient_light_sensor.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
+#include "power_manager/powerd/mock_monitor_reconfigure.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -216,7 +217,6 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
                    observer.changes()[0].percent);
   EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].cause);
 
-#ifndef IS_DESKTOP
   // Dim the backlight.
   observer.Clear();
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
@@ -224,7 +224,6 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   EXPECT_DOUBLE_EQ(controller_.GetTargetBrightnessPercent(),
                    observer.changes()[0].percent);
   EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].cause);
-#endif
 }
 
 // Test that we don't drop the backlight level to 0 in response to automated
@@ -347,31 +346,55 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   controller_.OnAmbientLightChanged(&light_sensor_);
   Mock::VerifyAndClearExpectations(&light_sensor_);
 #endif
+
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
 
+  ::testing::StrictMock<MockMonitorReconfigure> monitor;
+  controller_.SetMonitorReconfigure(&monitor);
+
   // Test suspend and resume.
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_SUSPENDED));
+  EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
+                   controller_.GetTargetBrightnessPercent());
+  Mock::VerifyAndClearExpectations(&monitor);
+
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
+  Mock::VerifyAndClearExpectations(&monitor);
 
-#ifndef IS_DESKTOP
-  // This test is not done on desktops because the brightness does not get
-  // adjusted by SetPowerState() when idling.
-  // Test idling into suspend state.
+  // Test idling into suspend state.  The backlight should be at 0% after the
+  // display is turned off, but it should be set back to the active level (with
+  // the screen still off) before suspending, so that the kernel driver can
+  // restore that level after resuming.
+  // TODO(derat): We try to turn on the internal backlight in response to every
+  // non-zero brightness change but shouldn't.
+  monitor.ExpectRequest(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_ON);
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
+  Mock::VerifyAndClearExpectations(&monitor);
+
+  // We can't check that |monitor| is told to turn off all displays here, since
+  // we schedule an animated transition to 0 and don't turn the displays off
+  // until it's done. :-(
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_IDLE_OFF));
-  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_SUSPENDED));
   EXPECT_DOUBLE_EQ(0.0, controller_.GetTargetBrightnessPercent());
 
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_SUSPENDED));
+  EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
+                   controller_.GetTargetBrightnessPercent());
+  Mock::VerifyAndClearExpectations(&monitor);
+
   // Test resume.
+  monitor.ExpectRequest(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_ON);
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
-#endif  // !defined(IS_DESKTOP)
+  Mock::VerifyAndClearExpectations(&monitor);
+
+  controller_.SetMonitorReconfigure(NULL);
 }
 
 // Check that InternalBacklightController reinitializes itself correctly when

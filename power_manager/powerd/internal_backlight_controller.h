@@ -46,7 +46,7 @@ class InternalBacklightController : public BacklightController {
   // BacklightController implementation:
   virtual bool Init() OVERRIDE;
   virtual void SetMonitorReconfigure(
-      MonitorReconfigure* monitor_reconfigure) OVERRIDE;
+      MonitorReconfigureInterface* monitor_reconfigure) OVERRIDE;
   virtual void SetObserver(BacklightControllerObserver* observer) OVERRIDE;
   virtual double GetTargetBrightnessPercent() OVERRIDE;
   virtual bool GetCurrentBrightnessPercent(double* percent) OVERRIDE;
@@ -149,7 +149,7 @@ class InternalBacklightController : public BacklightController {
   AmbientLightSensor* light_sensor_;
 
   // Use MonitorReconfigure to turn on/off the display.
-  MonitorReconfigure* monitor_reconfigure_;
+  MonitorReconfigureInterface* monitor_reconfigure_;
 
   // Observer for changes to the brightness level.  Not owned by us.
   BacklightControllerObserver* observer_;

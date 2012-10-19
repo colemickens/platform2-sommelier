@@ -43,7 +43,7 @@ class KeyboardBacklightController : public BacklightController,
   // Implementation of BacklightController
   virtual bool Init() OVERRIDE;
   virtual void SetMonitorReconfigure(
-      MonitorReconfigure* monitor_reconfigure) OVERRIDE { };
+      MonitorReconfigureInterface* monitor_reconfigure) OVERRIDE {}
   virtual void SetObserver(BacklightControllerObserver* observer) OVERRIDE;
   virtual double GetTargetBrightnessPercent() OVERRIDE;
   virtual bool GetCurrentBrightnessPercent(double* percent) OVERRIDE;

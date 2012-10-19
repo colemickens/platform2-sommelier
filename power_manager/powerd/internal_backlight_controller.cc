@@ -208,7 +208,7 @@ bool InternalBacklightController::Init() {
 }
 
 void InternalBacklightController::SetMonitorReconfigure(
-    MonitorReconfigure* monitor_reconfigure) {
+    MonitorReconfigureInterface* monitor_reconfigure) {
   monitor_reconfigure_ = monitor_reconfigure;
 }
 
@@ -621,8 +621,13 @@ bool InternalBacklightController::WriteBrightness(bool adjust_brightness_offset,
       // below the minimum brightness.
       target_percent_ = ClampPercentToVisibleRange(target_percent_);
     }
-  } else if (state_ == BACKLIGHT_IDLE_OFF || state_ == BACKLIGHT_SUSPENDED) {
+  } else if (state_ == BACKLIGHT_IDLE_OFF) {
     target_percent_ = 0;
+  } else if (state_ == BACKLIGHT_SUSPENDED) {
+    // If we're about to suspend, restore the active backlight level so that the
+    // backlight driver will use it when it turns the display back on after
+    // resume.
+    target_percent_ = last_active_offset_percent_;
   }
 
   als_hysteresis_percent_ = als_offset_percent_;
@@ -761,9 +766,16 @@ gboolean InternalBacklightController::SetBrightnessStep() {
 
 void InternalBacklightController::SetBrightnessHard(int64 level,
                                                     int64 target_level) {
-  if (level != 0 && target_level != 0 && monitor_reconfigure_)
+  // TODO(derat): We should probably only be doing this when we're going from
+  // zero to non-zero.
+  if (level != 0 && target_level != 0 && state_ != BACKLIGHT_SUSPENDED &&
+      monitor_reconfigure_) {
+    // If we're about to suspend, don't turn the internal panel on -- we're just
+    // setting the brightness so that it'll be at the right level immediately
+    // after resuming.
     monitor_reconfigure_->SetScreenPowerState(OUTPUT_SELECTION_INTERNAL_ONLY,
                                               POWER_STATE_ON);
+  }
 
   if (!SetCurrentControllerLevel(level))
     DLOG(INFO) << "Could not set brightness to " << level;

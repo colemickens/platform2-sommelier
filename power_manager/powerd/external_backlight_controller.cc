@@ -62,7 +62,7 @@ bool ExternalBacklightController::Init() {
 }
 
 void ExternalBacklightController::SetMonitorReconfigure(
-    MonitorReconfigure* monitor_reconfigure) {
+    MonitorReconfigureInterface* monitor_reconfigure) {
   monitor_reconfigure_ = monitor_reconfigure;
 }
 
