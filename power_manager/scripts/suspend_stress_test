@@ -111,7 +111,8 @@ while [ ${cur} -lt ${FLAGS_count} ]; do
   # is not that useful as dmesg will wrap so we would need to account
   # for the count shrinking over time.
   # Break on BUG
-  if [ ${FLAGS_bug_fatal} -eq ${FLAGS_TRUE} ] && dmesg | grep BUG; then
+  if [ ${FLAGS_bug_fatal} -eq ${FLAGS_TRUE} ] &&
+        dmesg | grep -w BUG; then
     echo "BUG found."
     break
   fi
