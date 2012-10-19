@@ -13,6 +13,7 @@ DEFINE_integer wake_max 10 "Max seconds to stay awake for"
 DEFINE_integer wake_min 5 "Min seconds to stay awake for"
 DEFINE_boolean backup_rtc ${FLAGS_FALSE} "Use second rtc if present for backup"
 DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
+DEFINE_boolean dbus_suspend ${FLAGS_FALSE} "Use dbus signal to suspend"
 
 get_failed_count() {
   awk '$1 == "fail:" { print $2 }' /sys/kernel/debug/suspend_stats
@@ -46,11 +47,18 @@ if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ] &&
   FLAGS_backup_rtc=${FLAGS_FALSE}
 fi
 
+if [ ${FLAGS_dbus_suspend} -eq ${FLAGS_TRUE} ]; then
+  suspend_cmd=powerd_dbus_suspend
+else
+  suspend_cmd=powerd_suspend
+fi
+
 echo "Running ${FLAGS_count} iterations with:"
 echo "  suspend: ${FLAGS_suspend_min}-${FLAGS_suspend_max} seconds"
 echo "  wake: ${FLAGS_wake_min}-${FLAGS_wake_max} seconds"
 echo "  backup_rtc: $(boolean_value ${FLAGS_backup_rtc})"
 echo "  errors_fatal: $(boolean_value ${FLAGS_errors_fatal})"
+echo "  suspend command: ${suspend_cmd}"
 
 initial_failed=$(get_failed_count)
 suspend_interval=$(( FLAGS_suspend_max - FLAGS_suspend_min + 1 ))
@@ -61,6 +69,7 @@ trap dump_stats_and_exit INT
 cur=0
 firmware_errors=0
 last_failed=${initial_failed}
+
 while [ ${cur} -lt ${FLAGS_count} ]; do
   : $(( cur += 1 ))
   printf "Suspend ${cur} of ${FLAGS_count}: "
@@ -74,7 +83,7 @@ while [ ${cur} -lt ${FLAGS_count} ]; do
     echo "+$(( sus_time + 5 ))" > /sys/class/rtc/rtc1/wakealarm
   fi
 
-  powerd_suspend >/dev/null 2>&1
+  $suspend_cmd >/dev/null 2>&1
 
   # look for errors in firmware log
   if [ -f /sys/firmware/log ] && grep ERROR /sys/firmware/log; then
