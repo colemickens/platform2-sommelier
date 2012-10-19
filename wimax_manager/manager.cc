@@ -103,10 +103,10 @@ bool Manager::ScanDevices() {
     return true;
   }
 
-  LOG(INFO) << "No WiMAX devices detected. Rescan later.";
   // Some platforms may not have any WiMAX device, so instead of scanning
   // indefinitely, stop the device scan after a number of attempts.
   if (++num_device_scans_ < kMaxNumberOfDeviceScans) {
+    VLOG(1) << "No WiMAX devices detected. Rescan later.";
     device_scan_timeout_id_ = g_timeout_add_seconds(
         kDefaultDeviceScanIntervalInSeconds, OnDeviceScanNeeded, this);
   }

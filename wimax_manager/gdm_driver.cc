@@ -203,7 +203,7 @@ bool GdmDriver::GetDevices(vector<Device *> *devices) {
   if (ret != GCT_API_RET_SUCCESS)
     return false;
 
-  LOG(INFO) << "Number of devices: " << num_devices;
+  VLOG(1) << "Number of devices: " << num_devices;
   for (size_t i = 0; i < num_devices; ++i) {
     uint8 device_index = device_list[i].deviceIndex;
     string device_name;
@@ -215,9 +215,9 @@ bool GdmDriver::GetDevices(vector<Device *> *devices) {
       continue;
     }
 
-    LOG(INFO) << base::StringPrintf("Found device '%s': index = %d",
-                                    device_name.c_str(),
-                                    device_index);
+    VLOG(1) << base::StringPrintf("Found device '%s': index = %d",
+                                  device_name.c_str(),
+                                  device_index);
 
     GdmDevice *device =
         new(std::nothrow) GdmDevice(device_index, device_name, AsWeakPtr());
@@ -269,10 +269,10 @@ bool GdmDriver::GetDeviceStatus(GdmDevice *device) {
   device->SetStatus(ConvertDeviceStatus(device_status));
   device->set_connection_progress(connection_progress);
 
-  LOG(INFO) << "Device '" << device->name()
-            << "': status = '" << GetDeviceStatusDescription(device_status)
-            << "', connection progress = '"
-            << GetConnectionProgressDescription(connection_progress) << "'";
+  VLOG(1) << "Device '" << device->name()
+          << "': status = '" << GetDeviceStatusDescription(device_status)
+          << "', connection progress = '"
+          << GetConnectionProgressDescription(connection_progress) << "'";
   return true;
 }
 
