@@ -311,12 +311,6 @@ if use_flag_is_set has_hdd; then
   KILL_TIMEOUT_FLAG="--kill-timeout=12"
 fi
 
-# This flag is used to enable Encrypted Media Extension.
-ENCRYPTED_MEDIA_FLAG=
-if is_board daisy; then
-  ENCRYPTED_MEDIA_FLAG="--enable-encrypted-media"
-fi
-
 # TODO(gauravsh): Remove this once we a have mechanism to dynamically
 # enable logging for network state related changes.
 add_vmodule_pattern "network_change_notifier*=1"
@@ -362,6 +356,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             --device-management-url="$DMSERVER" \
             --disable-seccomp-sandbox \
             --enable-accelerated-plugins \
+            --enable-encrypted-media \
             --enable-gview \
             --enable-logging \
             --enable-partial-swap \
@@ -396,5 +391,4 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
             ${PPAPI_FLASH_FLAGS} \
-            ${VMODULE_FLAG} \
-            ${ENCRYPTED_MEDIA_FLAG}
+            ${VMODULE_FLAG}
