@@ -116,7 +116,7 @@ while [ ${cur} -lt ${FLAGS_count} ]; do
     break
   fi
   # Break on CRC error
-  if [ ${FLAGS_crc_fatal} -eq ${FLAGS_TRUE} ] && dmesg | grep "CRC error"; then
+  if [ ${FLAGS_crc_fatal} -eq ${FLAGS_TRUE} ] && dmesg | grep "CRC.*error"; then
     echo "CRC error found."
     break
   fi
