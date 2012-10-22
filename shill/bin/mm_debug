@@ -1,0 +1,123 @@
+#!/bin/bash
+#
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Script that turns on useful logging for modem managers.
+
+
+MM_LEVEL_LIST="err warn info debug"
+
+usage() {
+  echo "
+Usage: mm_debug <level>|--reset|--help|--list_valid_levels
+
+  mm_debug sets the log level of all running modem managers.
+
+  <level> : The log level of modem managers to set to. Valid log levels
+            can be viewed by using the --list_valid_levels option.
+
+            e.g. mm_debug err
+              Sets the log level of all running modem managers to 'err'.
+
+  --reset : Resets the log level of all running modem managers to 'info'.
+
+  --help : Displays this output.
+
+  --list_valid_levels: Displays all valid log levels.
+"
+}
+
+dbus_call() {
+  local dest=$1
+  local object_path=$2
+  local method=$3
+  shift 3
+  dbus-send --print-reply --fixed --system --dest=$dest \
+      "$object_path" "$method" "$@"
+}
+
+# Lists all valid log levels.
+list_valid_levels() {
+  echo "Valid levels are: ${MM_LEVEL_LIST// /, }"
+}
+
+# Returns whether or not $2 exists in $1 where $1 is a space-separated
+# list of log levels.
+is_valid_level() {
+  expr match " $1 " ".* $2 .*"> /dev/null
+}
+
+# Returns all modem managers that are currently running.
+get_all_modem_managers() {
+  dbus_call org.freedesktop.DBus /org/freedesktop/DBus \
+      org.freedesktop.DBus.ListNames | awk '/ModemManager/ { print $2 }'
+}
+
+# Sets the log level of the specified modem manager.
+set_modem_manager_logging() {
+  local manager=$1
+  local level=$2
+  local object_path=
+  local method=
+
+  case "$manager" in
+    org.chromium.ModemManager)
+      object_path=/org/chromium/ModemManager
+      method=org.freedesktop.ModemManager.SetLogging
+      if [[ "$level" == "err" ]]; then
+        level=error
+      fi
+      ;;
+    org.freedesktop.ModemManager)
+      object_path=/org/freedesktop/ModemManager
+      method=org.freedesktop.ModemManager.SetLogging
+      ;;
+    org.freedesktop.ModemManager1)
+      object_path=/org/freedesktop/ModemManager1
+      method=org.freedesktop.ModemManager1.SetLogging
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  dbus_call "$manager" "$object_path" "$method" "string:$level"
+}
+
+# Sets the log level of all modem managers that are currently running.
+set_all_modem_managers_logging() {
+  local level=$1
+
+  if ! is_valid_level "$MM_LEVEL_LIST" "$level"; then
+    echo "ERROR: '$level' is not a valid level."
+    list_valid_levels
+    return 1
+  fi
+
+  for manager in $(get_all_modem_managers); do
+    set_modem_manager_logging "$manager" "$level"
+  done
+}
+
+
+if [ $# -ne 1 ]; then
+  usage
+  exit 1
+fi
+
+case "$1" in
+  --reset)
+    set_all_modem_managers_logging "info"
+    ;;
+  --list_valid_levels)
+    list_valid_levels
+    ;;
+  --help|--*)
+    usage
+    ;;
+  *)
+    set_all_modem_managers_logging "$1"
+    ;;
+esac
