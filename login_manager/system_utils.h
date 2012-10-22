@@ -56,6 +56,10 @@ class SystemUtils {
   // Returns whether a file exists.
   virtual bool Exists(const FilePath& file);
 
+  // Generates a guaranteed-unique filename in a write-only temp dir.
+  // Returns false upon failure.
+  virtual bool GetUniqueFilenameInWriteOnlyTempDir(FilePath* temp_file_path);
+
   // Removes a file.
   virtual bool RemoveFile(const FilePath& filename);
 

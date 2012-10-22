@@ -530,7 +530,7 @@ class SessionManagerService
   bool session_stopping_;
   bool current_user_is_incognito_;
   std::string current_user_;
-  std::string chrome_testing_path_;
+  FilePath chrome_testing_path_;
 
   FilePath machine_info_file_;
 

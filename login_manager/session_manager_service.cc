@@ -563,35 +563,19 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
   bool already_enabled = !chrome_testing_path_.empty();
 
   if (!already_enabled) {
-    // Create a write-only temporary directory to put the testing channel in.
-    FilePath temp_dir_path;
-    if (!file_util::CreateNewTempDirectory(
-        FILE_PATH_LITERAL(""), &temp_dir_path))
+    FilePath temp_file_path;  // So we don't clobber chrome_testing_path_;
+    if (!system_->GetUniqueFilenameInWriteOnlyTempDir(&temp_file_path))
       return FALSE;
-
-    // Get a temporary filename in the temporary directory.
-    // TODO(cmasone): make this use safe functions.  http://crosbug.com/35231.
-    char* temp_path = tempnam(temp_dir_path.value().c_str(), "");
-    if (!temp_path) {
-      PLOG(ERROR) << "Can't get temp file name in " << temp_dir_path.value()
-                  << ": ";
-      return FALSE;
-    }
-
-    // Ensure no races with tempnam above.
-    if (chmod(temp_dir_path.value().c_str(), 0003))
-      return FALSE;
-    chrome_testing_path_ = temp_path;
-    free(temp_path);
+    chrome_testing_path_ = temp_file_path;
   }
 
-  *OUT_filepath = g_strdup(chrome_testing_path_.c_str());
+  *OUT_filepath = g_strdup(chrome_testing_path_.value().c_str());
 
   if (already_enabled && !force_relaunch)
     return TRUE;
 
   // Delete testing channel file if it already exists.
-  file_util::Delete(FilePath(chrome_testing_path_), false);
+  system_->RemoveFile(chrome_testing_path_);
 
   // Kill Chrome.
   KillChild(browser_.job.get(), browser_.pid);
@@ -604,7 +588,7 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
   }
   // Add testing channel argument to extra arguments.
   string testing_argument = kTestingChannelFlag;
-  testing_argument.append(chrome_testing_path_);
+  testing_argument.append(chrome_testing_path_.value());
   extra_argument_vector.push_back(testing_argument);
   // Add extra arguments to Chrome.
   browser_.job->SetExtraArguments(extra_argument_vector);

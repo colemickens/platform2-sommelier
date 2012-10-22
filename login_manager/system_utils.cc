@@ -113,6 +113,35 @@ bool SystemUtils::Exists(const FilePath& file) {
   return file_util::PathExists(file);
 }
 
+bool SystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
+    FilePath* temp_file_path) {
+  // Create a temporary directory to put the testing channel in.
+  // It will be made write-only below; we need to be able to read it
+  // when trying to create a unique name inside it.
+  FilePath temp_dir_path;
+  if (!file_util::CreateNewTempDirectory(
+          FILE_PATH_LITERAL(""), &temp_dir_path)) {
+    PLOG(ERROR) << "Can't create temp dir";
+    return false;
+  }
+  // Create a temporary file in the temporary directory, to be deleted later.
+  // This ensures a unique name.
+  if (!file_util::CreateTemporaryFileInDir(temp_dir_path, temp_file_path)) {
+    PLOG(ERROR) << "Can't get temp file name in " << temp_dir_path.value();
+    return false;
+  }
+  // Now, allow access to non-root processes.
+  if (chmod(temp_dir_path.value().c_str(), 0333)) {
+    PLOG(ERROR) << "Can't chmod " << temp_file_path->value() << " to 0333";
+    return false;
+  }
+  if (!RemoveFile(*temp_file_path)) {
+    PLOG(ERROR) << "Can't clear temp file in " << temp_file_path->value();
+    return false;
+  }
+  return true;
+}
+
 bool SystemUtils::RemoveFile(const FilePath& filename) {
   return file_util::Delete(filename, false);
 }
