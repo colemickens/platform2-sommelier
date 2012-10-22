@@ -228,6 +228,8 @@ Crypto::CryptoError Crypto::TpmErrorToCrypto(
       return Crypto::CE_TPM_COMM_ERROR;
     case Tpm::RetryDefendLock:
       return Crypto::CE_TPM_DEFEND_LOCK;
+    case Tpm::RetryReboot:
+      return Crypto::CE_TPM_REBOOT;
     default:
       return Crypto::CE_NONE;
   }

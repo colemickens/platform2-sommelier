@@ -927,6 +927,9 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
         case Crypto::CE_TPM_DEFEND_LOCK:
           *error = MOUNT_ERROR_TPM_DEFEND_LOCK;
           break;
+        case Crypto::CE_TPM_REBOOT:
+          *error = MOUNT_ERROR_TPM_NEEDS_REBOOT;
+          break;
         default:
           *error = MOUNT_ERROR_KEY_FAILURE;
           break;

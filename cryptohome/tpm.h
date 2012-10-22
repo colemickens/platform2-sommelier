@@ -38,7 +38,8 @@ class Tpm {
     RetryNone,
     RetryCommFailure,
     RetryDefendLock,
-    Fatal
+    Fatal,
+    RetryReboot
   };
 
   enum TpmOwnerDependency {

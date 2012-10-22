@@ -629,6 +629,7 @@ bool Tpm::IsTransient(TSS_RESULT result) {
     case ERROR_CODE(TPM_E_DEFEND_LOCK_RUNNING):
     // TODO(fes): We're considering this a transient failure for now
     case ERROR_CODE(TCS_E_KM_LOADFAILED):
+    case ERROR_CODE(TPM_E_FAIL):
       transient = true;
       break;
     default:
@@ -661,9 +662,13 @@ Tpm::TpmRetryAction Tpm::HandleError(TSS_RESULT result) {
                  << "attacks.";
       status = Tpm::RetryDefendLock;
       break;
-      // This error occurs on bad password
+    // This error occurs on bad password.
     case ERROR_CODE(TPM_E_DECRYPT_ERROR):
       status = Tpm::RetryNone;
+      break;
+    // This error code occurs when the TPM is in an error state.
+    case ERROR_CODE(TPM_E_FAIL):
+      status = Tpm::RetryReboot;
       break;
     default:
       break;
