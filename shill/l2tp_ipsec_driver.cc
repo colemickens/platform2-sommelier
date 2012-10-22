@@ -37,7 +37,7 @@ const char kL2TPIPSecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 }  // namespace
 
 // static
-const char L2TPIPSecDriver::kPPPDPlugin[] = SCRIPTDIR "/libppp-plugin.so";
+const char L2TPIPSecDriver::kPPPDPlugin[] = SHIMDIR "/shill-pppd-plugin.so";
 // static
 const char L2TPIPSecDriver::kL2TPIPSecVPNPath[] = "/usr/sbin/l2tpipsec_vpn";
 // static
@@ -202,12 +202,10 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
 }
 
 void L2TPIPSecDriver::InitEnvironment(vector<string> *environment) {
-  environment->push_back(
-      "CONNMAN_BUSNAME=" + rpc_task_->GetRpcConnectionIdentifier());
-  environment->push_back(
-      "CONNMAN_INTERFACE=" + rpc_task_->GetRpcInterfaceIdentifier());
-  environment->push_back(
-      "CONNMAN_PATH=" + rpc_task_->GetRpcIdentifier());
+  environment->push_back(string(kRPCTaskServiceVariable) + "=" +
+                         rpc_task_->GetRpcConnectionIdentifier());
+  environment->push_back(string(kRPCTaskPathVariable) + "=" +
+                         rpc_task_->GetRpcIdentifier());
 }
 
 bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
@@ -356,19 +354,19 @@ void L2TPIPSecDriver::ParseIPConfiguration(
     const string &key = it->first;
     const string &value = it->second;
     SLOG(VPN, 2) << "Processing: " << key << " -> " << value;
-    if (key == "INTERNAL_IP4_ADDRESS") {
+    if (key == kL2TPIPSecInternalIP4Address) {
       properties->address = value;
-    } else if (key == "EXTERNAL_IP4_ADDRESS") {
+    } else if (key == kL2TPIPSecExternalIP4Address) {
       properties->peer_address = value;
-    } else if (key == "GATEWAY_ADDRESS") {
+    } else if (key == kL2TPIPSecGatewayAddress) {
       properties->gateway = value;
-    } else if (key == "DNS1") {
+    } else if (key == kL2TPIPSecDNS1) {
       properties->dns_servers.insert(properties->dns_servers.begin(), value);
-    } else if (key == "DNS2") {
+    } else if (key == kL2TPIPSecDNS2) {
       properties->dns_servers.push_back(value);
-    } else if (key == "INTERNAL_IFNAME") {
+    } else if (key == kL2TPIPSecInterfaceName) {
       *interface_name = value;
-    } else if (key == "LNS_ADDRESS") {
+    } else if (key == kL2TPIPSecLNSAddress) {
       properties->trusted_ip = value;
     } else {
       SLOG(VPN, 2) << "Key ignored.";
@@ -385,7 +383,7 @@ void L2TPIPSecDriver::Notify(
     const string &reason, const map<string, string> &dict) {
   LOG(INFO) << "IP configuration received: " << reason;
 
-  if (reason != "connect") {
+  if (reason != kL2TPIPSecReasonConnect) {
     device_->OnDisconnected();
     return;
   }

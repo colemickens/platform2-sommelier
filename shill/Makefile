@@ -17,9 +17,8 @@ DBUSXX_XML2CPP = dbusxx-xml2cpp
 BUILDDIR = build
 
 LIBDIR = /usr/lib
-SCRIPTDIR = $(LIBDIR)/flimflam/scripts
 SHIMDIR = $(LIBDIR)/shill/shims
-CPPFLAGS += -DSCRIPTDIR=\"$(SCRIPTDIR)\" -DSHIMDIR=\"$(SHIMDIR)\"
+CPPFLAGS += -DSHIMDIR=\"$(SHIMDIR)\"
 
 BASE_VER = 125070
 COMMON_PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER)

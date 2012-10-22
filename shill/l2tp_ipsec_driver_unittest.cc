@@ -178,12 +178,12 @@ TEST_F(L2TPIPSecDriverTest, InitEnvironment) {
   vector<string> env;
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->InitEnvironment(&env);
-  ASSERT_EQ(3, env.size());
-  EXPECT_EQ(string("CONNMAN_BUSNAME=") + RPCTaskMockAdaptor::kRpcConnId,
-            env[0]);
-  EXPECT_EQ(string("CONNMAN_INTERFACE=") + RPCTaskMockAdaptor::kRpcInterfaceId,
+  ASSERT_EQ(2, env.size());
+  EXPECT_EQ(
+      string(kRPCTaskServiceVariable) + "=" + RPCTaskMockAdaptor::kRpcConnId,
+      env[0]);
+  EXPECT_EQ(string(kRPCTaskPathVariable) + "=" + RPCTaskMockAdaptor::kRpcId,
             env[1]);
-  EXPECT_EQ(string("CONNMAN_PATH=") + RPCTaskMockAdaptor::kRpcId, env[2]);
 }
 
 TEST_F(L2TPIPSecDriverTest, InitOptionsNoHost) {
@@ -363,10 +363,10 @@ TEST_F(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied) {
 
 namespace {
 MATCHER(CheckEnv, "") {
-  if (!arg || !arg[0] || !arg[1] || !arg[2] || arg[3]) {
+  if (!arg || !arg[0] || !arg[1] || arg[2]) {
     return false;
   }
-  return StartsWithASCII(arg[0], "CONNMAN_", true);
+  return StartsWithASCII(arg[0], "SHILL_TASK_", true);
 }
 }  // namespace
 
@@ -470,13 +470,13 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
 
 TEST_F(L2TPIPSecDriverTest, ParseIPConfiguration) {
   map<string, string> config;
-  config["INTERNAL_IP4_ADDRESS"] = "4.5.6.7";
-  config["EXTERNAL_IP4_ADDRESS"] = "33.44.55.66";
-  config["GATEWAY_ADDRESS"] = "192.168.1.1";
-  config["DNS1"] = "1.1.1.1";
-  config["DNS2"] = "2.2.2.2";
-  config["INTERNAL_IFNAME"] = "ppp0";
-  config["LNS_ADDRESS"] = "99.88.77.66";
+  config[kL2TPIPSecInternalIP4Address] = "4.5.6.7";
+  config[kL2TPIPSecExternalIP4Address] = "33.44.55.66";
+  config[kL2TPIPSecGatewayAddress] = "192.168.1.1";
+  config[kL2TPIPSecDNS1] = "1.1.1.1";
+  config[kL2TPIPSecDNS2] = "2.2.2.2";
+  config[kL2TPIPSecInterfaceName] = "ppp0";
+  config[kL2TPIPSecLNSAddress] = "99.88.77.66";
   config["foo"] = "bar";
   IPConfig::Properties props;
   string interface_name;
@@ -503,7 +503,7 @@ MATCHER_P(IsIPAddress, address, "") {
 
 TEST_F(L2TPIPSecDriverTest, Notify) {
   map<string, string> config;
-  config["INTERNAL_IFNAME"] = kInterfaceName;
+  config[kL2TPIPSecInterfaceName] = kInterfaceName;
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(*device_, SetEnabled(true));
@@ -511,7 +511,7 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   driver_->device_ = device_;
   FilePath psk_file = SetupPSKFile();
   driver_->StartConnectTimeout();
-  driver_->Notify("connect", config);
+  driver_->Notify(kL2TPIPSecReasonConnect, config);
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(driver_->psk_file_.empty());
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
@@ -522,7 +522,7 @@ TEST_F(L2TPIPSecDriverTest, NotifyFail) {
   driver_->device_ = device_;
   EXPECT_CALL(*device_, OnDisconnected());
   driver_->StartConnectTimeout();
-  driver_->Notify("fail", dict);
+  driver_->Notify(kL2TPIPSecReasonDisconnect, dict);
   EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
 }
 

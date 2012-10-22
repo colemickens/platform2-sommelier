@@ -18,6 +18,8 @@ extern "C" {
 #include <chromeos/syslog_logging.h>
 #include <dbus-c++/eventloop-integration.h>
 
+#include "shill/l2tp_ipsec_driver.h"
+#include "shill/rpc_task.h"
 #include "shill/shims/environment.h"
 #include "shill/shims/task_proxy.h"
 
@@ -67,25 +69,26 @@ void PPP::OnConnect(const string &ifname) {
     return;
   }
   map<string, string> dict;
-  // TODO(petkov): Switch to shared kConsts when shill starts using this plugin.
-  dict["INTERNAL_IFNAME"] = ifname;
-  dict["INTERNAL_IP4_ADDRESS"] = ConvertIPToText(&ipcp_gotoptions[0].ouraddr);
-  dict["EXTERNAL_IP4_ADDRESS"] = ConvertIPToText(&ipcp_hisoptions[0].hisaddr);
+  dict[kL2TPIPSecInterfaceName] = ifname;
+  dict[kL2TPIPSecInternalIP4Address] =
+      ConvertIPToText(&ipcp_gotoptions[0].ouraddr);
+  dict[kL2TPIPSecExternalIP4Address] =
+      ConvertIPToText(&ipcp_hisoptions[0].hisaddr);
   if (ipcp_gotoptions[0].default_route) {
-    dict["GATEWAY_ADDRESS"] = dict["EXTERNAL_IP4_ADDRESS"];
+    dict[kL2TPIPSecGatewayAddress] = dict[kL2TPIPSecExternalIP4Address];
   }
   if (ipcp_gotoptions[0].dnsaddr[0]) {
-    dict["DNS1"] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[0]);
+    dict[kL2TPIPSecDNS1] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[0]);
   }
   if (ipcp_gotoptions[0].dnsaddr[1]) {
-    dict["DNS2"] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[1]);
+    dict[kL2TPIPSecDNS2] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[1]);
   }
   string lns_address;
   if (Environment::GetInstance()->GetVariable("LNS_ADDRESS", &lns_address)) {
-    dict["LNS_ADDRESS"] = lns_address;
+    dict[kL2TPIPSecLNSAddress] = lns_address;
   }
   if (CreateProxy()) {
-    proxy_->Notify("connect", dict);
+    proxy_->Notify(kL2TPIPSecReasonConnect, dict);
     DestroyProxy();
   }
 }
@@ -94,7 +97,7 @@ void PPP::OnDisconnect() {
   LOG(INFO) << __func__;
   if (CreateProxy()) {
     map<string, string> dict;
-    proxy_->Notify("disconnect", dict);
+    proxy_->Notify(kL2TPIPSecReasonDisconnect, dict);
     DestroyProxy();
   }
 }
@@ -102,9 +105,8 @@ void PPP::OnDisconnect() {
 bool PPP::CreateProxy() {
   Environment *environment = Environment::GetInstance();
   string service, path;
-  // TODO(petkov): Switch to kConsts when shill starts using this plugin.
-  if (!environment->GetVariable("CONNMAN_BUSNAME", &service) ||
-      !environment->GetVariable("CONNMAN_PATH", &path)) {
+  if (!environment->GetVariable(shill::kRPCTaskServiceVariable, &service) ||
+      !environment->GetVariable(shill::kRPCTaskPathVariable, &path)) {
     LOG(ERROR) << "Environment variables not available.";
     return false;
   }
@@ -113,7 +115,7 @@ bool PPP::CreateProxy() {
   DBus::default_dispatcher = dispatcher_.get();
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
   proxy_.reset(new TaskProxy(connection_.get(), path, service));
-  LOG(INFO) << "Task proxy created.";
+  LOG(INFO) << "Task proxy created: " << service << " - " << path;
   return true;
 }
 

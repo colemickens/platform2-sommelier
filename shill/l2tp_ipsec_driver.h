@@ -19,6 +19,17 @@
 
 namespace shill {
 
+// Declared in the header to avoid linking unused code into shims.
+static const char kL2TPIPSecDNS1[] = "DNS1";
+static const char kL2TPIPSecDNS2[] = "DNS2";
+static const char kL2TPIPSecExternalIP4Address[] = "EXTERNAL_IP4_ADDRESS";
+static const char kL2TPIPSecGatewayAddress[] = "GATEWAY_ADDRESS";
+static const char kL2TPIPSecInterfaceName[] = "INTERNAL_IFNAME";
+static const char kL2TPIPSecInternalIP4Address[] = "INTERNAL_IP4_ADDRESS";
+static const char kL2TPIPSecLNSAddress[] = "LNS_ADDRESS";
+static const char kL2TPIPSecReasonConnect[] = "connect";
+static const char kL2TPIPSecReasonDisconnect[] = "disconnect";
+
 class ControlInterface;
 class DeviceInfo;
 class GLib;
