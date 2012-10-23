@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_COMMON_UTIL_H_
 #define POWER_MANAGER_COMMON_UTIL_H_
 
-#include "power_manager/powerd/backlight_controller.h"
-
 class FilePath;
 
 namespace power_manager {
