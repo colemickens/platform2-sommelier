@@ -114,17 +114,10 @@ HELP_ADVANCED='
 '
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
-
-if [ -f $CHROMEOS_INSTALL ]; then
-  # Install script exists.  Test if it thinks we booted from a removable
-  # device.  This is based on the knowledge that the install script checks
-  # that the root device is removable before validating its other arguments.
-  # Also, we expect that when it fails in this manner, it mentions the word
-  # "removable" on stdout.
-
-  if ! $CHROMEOS_INSTALL --dst=/dev/null | grep -q "removable"; then
-    REMOVABLE=1
-  fi
+. "/usr/sbin/chromeos-common.sh" || exit 1
+SRC=$(get_block_dev_from_partition_dev $(rootdev -s))
+if [ "$(cat /sys/block/${SRC#/dev/}/removable)" == "1" ]; then
+  REMOVABLE=1
 fi
 
 if [ "$(echo "$@" | grep -- "--usb")" -o "$REMOVABLE" = "1" ]; then
