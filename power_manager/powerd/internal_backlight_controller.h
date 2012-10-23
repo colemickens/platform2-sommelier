@@ -159,6 +159,9 @@ class InternalBacklightController : public BacklightController {
   // Cancels |set_screen_power_state_timeout_id_| if set.
   void CancelSetScreenPowerStateTimeout();
 
+  // Cancels |gradual_transition_event_id_| if set.
+  void CancelGradualTransitionTimeout();
+
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;
 

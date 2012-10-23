@@ -122,6 +122,7 @@ InternalBacklightController::InternalBacklightController(
 }
 
 InternalBacklightController::~InternalBacklightController() {
+  CancelGradualTransitionTimeout();
   CancelSetScreenPowerStateTimeout();
   backlight_->set_observer(NULL);
   if (light_sensor_) {
@@ -666,11 +667,7 @@ bool InternalBacklightController::SetBrightness(int64 target_level,
   // outstanding brightness transition to a different brightness.
   target_level_ = target_level;
 
-  // Stop existing gradual brightness transition if there is one.
-  if (gradual_transition_event_id_ > 0) {
-    g_source_remove(gradual_transition_event_id_);
-    gradual_transition_event_id_ = 0;
-  }
+  CancelGradualTransitionTimeout();
 
   // If the current brightness happens to be at the new target brightness,
   // do not start a new transition.
@@ -851,6 +848,13 @@ void InternalBacklightController::CancelSetScreenPowerStateTimeout() {
   if (set_screen_power_state_timeout_id_) {
     g_source_remove(set_screen_power_state_timeout_id_);
     set_screen_power_state_timeout_id_ = 0;
+  }
+}
+
+void InternalBacklightController::CancelGradualTransitionTimeout() {
+  if (gradual_transition_event_id_ > 0) {
+    g_source_remove(gradual_transition_event_id_);
+    gradual_transition_event_id_ = 0;
   }
 }
 
