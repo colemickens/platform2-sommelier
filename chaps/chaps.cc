@@ -26,7 +26,7 @@ static const CK_BYTE kChapsLibraryVersionMajor = 0;
 static const CK_BYTE kChapsLibraryVersionMinor = 1;
 
 // The global proxy instance. This is valid only when g_is_initialized is true.
-static scoped_ptr<chaps::ChapsInterface> g_proxy;
+static chaps::ChapsInterface* g_proxy = NULL;
 
 // Set to true when using a mock proxy.
 static bool g_is_using_mock = false;
@@ -37,12 +37,12 @@ static bool g_is_initialized = false;
 
 // This event is not signaled until C_Finalize is called and then becomes
 // signaled.
-static scoped_ptr<WaitableEvent> g_finalize_event;
+static WaitableEvent* g_finalize_event = NULL;
 
 // Tear down helper.
 static void TearDown() {
-  if (g_is_initialized && !g_is_using_mock)
-    g_proxy.reset();
+  if (g_is_initialized && !g_is_using_mock && g_proxy)
+    delete g_proxy;
   g_is_initialized = false;
 }
 
@@ -83,15 +83,14 @@ namespace chaps {
 
 // Helpers to support a mock proxy (useful in testing).
 EXPORT_SPEC void EnableMockProxy(ChapsInterface* proxy, bool is_initialized) {
-  g_proxy.reset(proxy);
+  g_proxy = proxy;
   g_is_using_mock = true;
   g_is_initialized = is_initialized;
 }
 
 EXPORT_SPEC void DisableMockProxy() {
-  // We want to release, not reset b/c we don't own the mock proxy.
-  ChapsInterface* ignore = g_proxy.release();
-  (void)ignore;
+  // We don't own the mock proxy.
+  g_proxy = NULL;
   g_is_using_mock = false;
   g_is_initialized = false;
 }
@@ -128,12 +127,14 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     CHECK(proxy.get());
     if (!proxy->Init())
       LOG_CK_RV_AND_RETURN(CKR_GENERAL_ERROR);
-    g_proxy.reset(proxy.release());
+    g_proxy = proxy.release();
   }
-  CHECK(g_proxy.get());
+  CHECK(g_proxy);
 
-  g_finalize_event.reset(new WaitableEvent(true, false));
-  CHECK(g_finalize_event.get());
+  if (g_finalize_event)
+    delete g_finalize_event;
+  g_finalize_event = new WaitableEvent(true, false);
+  CHECK(g_finalize_event);
 
   g_is_initialized = true;
   VLOG(1) << __func__ << " - CKR_OK";
@@ -145,7 +146,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
 CK_RV C_Finalize(CK_VOID_PTR pReserved) {
   LOG_CK_RV_AND_RETURN_IF(pReserved, CKR_ARGUMENTS_BAD);
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (g_finalize_event.get())
+  if (g_finalize_event)
     g_finalize_event->Signal();
   TearDown();
   VLOG(1) << __func__ << " - CKR_OK";
@@ -296,7 +297,7 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
   if (CKF_DONT_BLOCK & flags)
     return CKR_NO_EVENT;
   // Block until C_Finalize.
-  CHECK(g_finalize_event.get());
+  CHECK(g_finalize_event);
   g_finalize_event->Wait();
   return CKR_CRYPTOKI_NOT_INITIALIZED;
 }
