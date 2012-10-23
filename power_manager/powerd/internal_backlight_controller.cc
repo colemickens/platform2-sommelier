@@ -565,6 +565,11 @@ void InternalBacklightController::ReadPrefs() {
   prefs_->GetInt64(kInstantTransitionsBelowMinLevelPref,
                    &instant_transition_pref);
   instant_transitions_below_min_level_ = (instant_transition_pref != 0);
+
+  int64 turn_off_screen_timeout_ms = 0;
+  prefs_->GetInt64(kTurnOffScreenTimeoutMsPref, &turn_off_screen_timeout_ms);
+  turn_off_screen_timeout_ =
+      base::TimeDelta::FromMilliseconds(turn_off_screen_timeout_ms);
 }
 
 void InternalBacklightController::WritePrefs() {
@@ -792,7 +797,7 @@ void InternalBacklightController::SetBrightnessHard(int64 level,
       // panel only -- the user might be using an external monitor and
       // attempting to turn off just the internal backlight to conserve power.
       SetScreenPowerState(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_OFF,
-                          base::TimeDelta());
+                          turn_off_screen_timeout_);
     }
   }
 }

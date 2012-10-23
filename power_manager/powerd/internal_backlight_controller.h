@@ -289,6 +289,9 @@ class InternalBacklightController : public BacklightController {
   // 0 if no timeout is currently set.
   guint set_screen_power_state_timeout_id_;
 
+  // Screen off delay when user sets brightness to 0.
+  base::TimeDelta turn_off_screen_timeout_;
+
   DISALLOW_COPY_AND_ASSIGN(InternalBacklightController);
 };
 

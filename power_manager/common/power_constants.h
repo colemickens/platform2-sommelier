@@ -46,6 +46,7 @@ extern const char kRequireUsbInputDeviceToSuspendPref[];
 extern const char kBatteryPollIntervalPref[];
 extern const char kBatteryPollShortIntervalPref[];
 extern const char kInternalBacklightControllerLevelsPref[];
+extern const char kTurnOffScreenTimeoutMsPref[];
 
 // Miscellaneous constants.
 extern const char kBacklightPath[];
