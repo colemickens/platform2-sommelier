@@ -20,6 +20,7 @@
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
+#include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
 #include "shill/metrics.h"
 #include "shill/modem_info.h"
@@ -118,6 +119,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // called via RPC (e.g., from ManagerDBusAdaptor)
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
   ServiceRefPtr ConfigureService(const KeyValueStore &args, Error *error);
+  std::map<std::string, GeolocationInfos> GetNetworksForGeolocation();
 
   // Request portal detection checks on each registered device until a portal
   // detection attempt starts on one of them.

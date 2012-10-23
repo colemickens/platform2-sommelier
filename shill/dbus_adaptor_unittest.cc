@@ -27,6 +27,7 @@ using std::map;
 using std::string;
 using std::vector;
 using ::testing::_;
+using ::testing::ContainerEq;
 using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
@@ -74,6 +75,9 @@ class DBusAdaptorTest : public PropertyStoreTest {
 
     ex_stringmap_[ex_string_] = ex_string_;
     stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap_);
+
+    ex_stringmaps_.push_back(ex_stringmap_);
+    stringmaps_v_ = DBusAdaptor::StringmapsToVariant(ex_stringmaps_);
 
     ex_paths_.push_back(ex_path_);
     paths_v_ = DBusAdaptor::PathsToVariant(ex_paths_);
@@ -147,9 +151,13 @@ TEST_F(DBusAdaptorTest, Conversions) {
   EXPECT_EQ(string(""), PropertyStoreTest::kStringV.reader().get_string());
   EXPECT_EQ(ex_string_, string_v_.reader().get_string());
 
-  EXPECT_EQ(ex_stringmap_[ex_string_],
-            (stringmap_v_.operator map<string, string>()[ex_string_]));
-  EXPECT_EQ(ex_strings_[0], strings_v_.operator vector<string>()[0]);
+  EXPECT_THAT(ex_stringmap_,
+              ContainerEq(stringmap_v_.operator map<string, string>()));
+  EXPECT_THAT(ex_strings_,
+              ContainerEq(strings_v_.operator vector<string>()));
+  EXPECT_THAT(
+      ex_stringmaps_,
+      ContainerEq(stringmaps_v_.operator vector<map<string, string> >()));
 }
 
 TEST_F(DBusAdaptorTest, Signatures) {

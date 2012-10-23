@@ -4,7 +4,6 @@
 
 #include "shill/geolocation_info.h"
 
-#include <map>
 #include <string>
 
 namespace shill {
@@ -17,13 +16,13 @@ GeolocationInfo::GeolocationInfo() {
 GeolocationInfo::~GeolocationInfo() {
 }
 
-void GeolocationInfo::AddField(const std::string &key,
-                               const std::string &value) {
+void GeolocationInfo::AddField(const string &key,
+                               const string &value) {
   properties_[key] = value;
 }
 
-const std::string &GeolocationInfo::GetFieldValue(
-    const std::string &key) const {
+const string &GeolocationInfo::GetFieldValue(
+    const string &key) const {
   return properties_.find(key)->second;
 }
 

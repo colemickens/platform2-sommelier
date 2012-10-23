@@ -12,6 +12,7 @@
 
 #include "shill/device.h"
 #include "shill/error.h"
+#include "shill/geolocation_info.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -295,7 +296,18 @@ map<string, ::DBus::Variant> ManagerDBusAdaptor::GetNetworksForGeolocation(
     ::DBus::Error &/*error*/) {
   SLOG(DBus, 2) << __func__;
   map<string, ::DBus::Variant> networks;
-  NOTIMPLEMENTED();
+  map<string, GeolocationInfos> geoinfo_map =
+      manager_->GetNetworksForGeolocation();
+  for (map<string, GeolocationInfos>::iterator it = geoinfo_map.begin();
+       it != geoinfo_map.end(); ++it) {
+    Stringmaps value;
+    // Convert GeolocationInfos to their Stringmaps equivalent.
+    for(GeolocationInfos::const_iterator geoinfo_it = it->second.begin();
+        geoinfo_it != it->second.end(); ++geoinfo_it) {
+      value.push_back(geoinfo_it->properties());
+    }
+    networks[it->first] = StringmapsToVariant(value);
+  }
   return networks;
 }
 

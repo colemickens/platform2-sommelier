@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -23,6 +24,11 @@ class GeolocationInfo {
 
   void AddField(const std::string &key, const std::string &value);
   const std::string &GetFieldValue(const std::string &key) const;
+
+  const std::map<std::string, std::string> properties() const {
+    return properties_;
+  }
+
  private:
   FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
@@ -31,6 +37,8 @@ class GeolocationInfo {
 
   std::map<std::string, std::string> properties_;
 };
+
+typedef std::vector<GeolocationInfo> GeolocationInfos;
 
 }  // namespace shill
 

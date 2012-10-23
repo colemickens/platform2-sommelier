@@ -256,10 +256,15 @@ Methods		dict GetProperties()
 
 		dict GetNetworksForGeolocation()
 
-		        Return a dictionary with information about visible
-			networks (e.g. BSSes) which may be then used for
-			Geolocation.
-
+		        Returns an array of dictionaries containing information
+			about visible cellular and WiFi networks which may be
+			then used for Geolocation.
+			Each key is a string, and the value itself is an array
+			of dictionaries mapping string key-value pairs. Each of
+			these (sub) dictionaries contains information about
+			one single network for Geolocation.
+			For more details, see:
+			https://developers.google.com/maps/documentation/business/geolocation/
 
 Signals		PropertyChanged(string name, variant value)
 

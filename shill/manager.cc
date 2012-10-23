@@ -31,6 +31,7 @@
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
 #include "shill/key_file_store.h"
 #include "shill/logging.h"
@@ -1367,6 +1368,32 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
 
   return service;
 }
+
+map<string, GeolocationInfos> Manager::GetNetworksForGeolocation() {
+  map<string, GeolocationInfos> networks;
+  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    switch((*it)->technology()) {
+      // TODO(gauravsh): crosbug.com/35736 Need a strategy for combining
+      // geolocation objects from multiple devices of the same technolgy.
+      // Currently, we just pick the geolocation objects from the first found
+      // device of each supported technology type.
+      case Technology::kWifi:
+        if (!ContainsKey(networks, kGeoWifiAccessPointsProperty))
+          networks[kGeoWifiAccessPointsProperty] =
+              (*it)->GetGeolocationObjects();
+        break;
+      case Technology::kCellular:
+        if (!ContainsKey(networks, kGeoCellTowersProperty))
+          networks[kGeoCellTowersProperty] = (*it)->GetGeolocationObjects();
+        break;
+      default:
+        // Ignore other technologies.
+        break;
+    };
+  }
+  return networks;
+};
 
 void Manager::RecheckPortal(Error */*error*/) {
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();
