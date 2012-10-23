@@ -26,6 +26,7 @@ SHILL_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1 gio-2.0 glib-2.0 ModemManager
 NSS_GET_CERT_PC_DEPS = $(COMMON_PC_DEPS) nss
 OPENVPN_SCRIPT_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
 PPPD_PLUGIN_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
+SET_APN_HELPER_PC_DEPS = dbus-1
 INCLUDE_DIRS = \
 	-iquote.. \
 	-iquote $(BUILDDIR) \
@@ -33,6 +34,7 @@ INCLUDE_DIRS = \
 		$(NSS_GET_CERT_PC_DEPS) \
 		$(OPENVPN_SCRIPT_PC_DEPS) \
 		$(PPPD_PLUGIN_PC_DEPS) \
+		$(SET_APN_HELPER_PC_DEPS) \
 		$(SHILL_PC_DEPS))
 SHILL_LIBS = \
 	-lbootstat \
@@ -42,9 +44,10 @@ SHILL_LIBS = \
 	-lminijail \
 	-lnl \
 	$(shell $(PKG_CONFIG) --libs $(SHILL_PC_DEPS))
-PPPD_PLUGIN_LIBS = $(shell $(PKG_CONFIG) --libs $(PPPD_PLUGIN_PC_DEPS))
 NSS_GET_CERT_LIBS = $(shell $(PKG_CONFIG) --libs $(NSS_GET_CERT_PC_DEPS))
 OPENVPN_SCRIPT_LIBS = $(shell $(PKG_CONFIG) --libs $(OPENVPN_SCRIPT_PC_DEPS))
+PPPD_PLUGIN_LIBS = $(shell $(PKG_CONFIG) --libs $(PPPD_PLUGIN_PC_DEPS))
+SET_APN_HELPER_LIBS = $(shell $(PKG_CONFIG) --libs $(SET_APN_HELPER_PC_DEPS))
 TEST_LIBS = $(SHILL_LIBS) $(NSS_GET_CERT_LIBS) -lgmock -lgtest
 
 DBUS_BINDINGS_DIR = dbus_bindings
@@ -426,15 +429,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	wimax_unittest.o \
 	)
 
-PPPD_PLUGIN_OBJS = $(addprefix $(BUILD_SHIMS_DIR)/, \
-	c_ppp.o \
-	environment.o \
-	ppp.o \
-	pppd_plugin.o \
-	task_proxy.o \
-	)
-PPPD_PLUGIN_SO = $(BUILD_SHIMS_DIR)/shill-pppd-plugin.so
-
 NSS_GET_CERT_OBJS = $(BUILD_SHIMS_DIR)/certificates.o
 NSS_GET_CERT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/nss_get_cert.o
 NSS_GET_CERT_BIN = $(BUILD_SHIMS_DIR)/nss-get-cert
@@ -446,6 +440,18 @@ OPENVPN_SCRIPT_OBJS = $(addprefix $(BUILD_SHIMS_DIR)/, \
 OPENVPN_SCRIPT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/openvpn_script.o
 OPENVPN_SCRIPT_BIN = $(BUILD_SHIMS_DIR)/openvpn-script
 
+PPPD_PLUGIN_OBJS = $(addprefix $(BUILD_SHIMS_DIR)/, \
+	c_ppp.o \
+	environment.o \
+	ppp.o \
+	pppd_plugin.o \
+	task_proxy.o \
+	)
+PPPD_PLUGIN_SO = $(BUILD_SHIMS_DIR)/shill-pppd-plugin.so
+
+SET_APN_HELPER_MAIN_OBJ = $(BUILD_SHIMS_DIR)/set_apn_helper.o
+SET_APN_HELPER_BIN = $(BUILD_SHIMS_DIR)/set-apn-helper
+
 WPA_SUPPLICANT_CONF = $(BUILD_SHIMS_DIR)/wpa_supplicant.conf
 
 OBJS = \
@@ -454,6 +460,7 @@ OBJS = \
 	$(OPENVPN_SCRIPT_MAIN_OBJ) \
 	$(OPENVPN_SCRIPT_OBJS) \
 	$(PPPD_PLUGIN_OBJS) \
+	$(SET_APN_HELPER_MAIN_OBJ) \
 	$(SHILL_MAIN_OBJ) \
 	$(SHILL_OBJS) \
 	$(TEST_OBJS)
@@ -466,6 +473,7 @@ shims: \
 	$(NSS_GET_CERT_BIN) \
 	$(OPENVPN_SCRIPT_BIN) \
 	$(PPPD_PLUGIN_SO) \
+	$(SET_APN_HELPER_BIN) \
 	$(WPA_SUPPLICANT_CONF)
 
 $(BUILD_DBUS_BINDINGS_SHIMS_DIR)/flimflam-task.xml: \
@@ -495,11 +503,6 @@ $(SHILL_LIB): $(SHILL_OBJS)
 $(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_LIB)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(SHILL_LIBS) -o $@
 
-$(PPPD_PLUGIN_OBJS): $(DBUS_PROXY_BINDINGS)
-
-$(PPPD_PLUGIN_SO): $(PPPD_PLUGIN_OBJS)
-	$(CXX) $(LDFLAGS) -shared $^ $(PPPD_PLUGIN_LIBS) -o $@
-
 $(NSS_GET_CERT_BIN): $(NSS_GET_CERT_MAIN_OBJ) $(NSS_GET_CERT_OBJS) $(SHILL_LIB)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NSS_GET_CERT_LIBS) -o $@
 
@@ -508,6 +511,14 @@ $(OPENVPN_SCRIPT_MAIN_OBJ): $(DBUS_PROXY_BINDINGS)
 
 $(OPENVPN_SCRIPT_BIN): $(OPENVPN_SCRIPT_MAIN_OBJ) $(OPENVPN_SCRIPT_OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(OPENVPN_SCRIPT_LIBS) -o $@
+
+$(PPPD_PLUGIN_OBJS): $(DBUS_PROXY_BINDINGS)
+
+$(PPPD_PLUGIN_SO): $(PPPD_PLUGIN_OBJS)
+	$(CXX) $(LDFLAGS) -shared $^ $(PPPD_PLUGIN_LIBS) -o $@
+
+$(SET_APN_HELPER_BIN): $(SET_APN_HELPER_MAIN_OBJ)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(SET_APN_HELPER_LIBS) -o $@
 
 $(WPA_SUPPLICANT_CONF): shims/wpa_supplicant.conf.in
 	sed s,@libdir@,$(LIBDIR), $^ > $@
