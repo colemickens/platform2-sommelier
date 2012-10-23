@@ -249,7 +249,7 @@ void HTTPRequest::WriteToServer(int fd) {
   CHECK_EQ(server_socket_, fd);
   int ret = sockets_->Send(fd, request_data_.GetConstData(),
                            request_data_.GetLength(), 0);
-  CHECK(static_cast<size_t>(ret) <= request_data_.GetLength());
+  CHECK(ret < 0 || static_cast<size_t>(ret) <= request_data_.GetLength());
 
   SLOG(HTTP, 3) << "In " << __func__ << " wrote " << ret << " of "
                 << request_data_.GetLength();
