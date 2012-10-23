@@ -116,11 +116,13 @@ InternalBacklightController::InternalBacklightController(
       target_level_(0),
       controller_factor_(0),
       suspended_through_idle_off_(false),
-      gradual_transition_event_id_(0) {
+      gradual_transition_event_id_(0),
+      set_screen_power_state_timeout_id_(0) {
   backlight_->set_observer(this);
 }
 
 InternalBacklightController::~InternalBacklightController() {
+  CancelSetScreenPowerStateTimeout();
   backlight_->set_observer(NULL);
   if (light_sensor_) {
     light_sensor_->RemoveObserver(this);
@@ -317,11 +319,10 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
     // 2. System went to SUSPENDED state directly. Kernel driver will bring
     // the system back to a non IDLE_OFF state, and we do nothing in this case.
     if (old_state == BACKLIGHT_IDLE_OFF ||
-        (old_state == BACKLIGHT_SUSPENDED && suspended_through_idle_off_))
-      if (monitor_reconfigure_) {
-        monitor_reconfigure_->SetScreenPowerState(OUTPUT_SELECTION_ALL_DISPLAYS,
-                                                  POWER_STATE_ON);
-      }
+        (old_state == BACKLIGHT_SUSPENDED && suspended_through_idle_off_)) {
+      SetScreenPowerState(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_ON,
+                          base::TimeDelta());
+    }
 
     // If returning from suspend, force the backlight to zero to cancel out any
     // kernel driver behavior that sets it to some other value.  This allows
@@ -768,31 +769,30 @@ void InternalBacklightController::SetBrightnessHard(int64 level,
                                                     int64 target_level) {
   // TODO(derat): We should probably only be doing this when we're going from
   // zero to non-zero.
-  if (level != 0 && target_level != 0 && state_ != BACKLIGHT_SUSPENDED &&
-      monitor_reconfigure_) {
+  if (level != 0 && target_level != 0 && state_ != BACKLIGHT_SUSPENDED) {
     // If we're about to suspend, don't turn the internal panel on -- we're just
     // setting the brightness so that it'll be at the right level immediately
     // after resuming.
-    monitor_reconfigure_->SetScreenPowerState(OUTPUT_SELECTION_INTERNAL_ONLY,
-                                              POWER_STATE_ON);
+    SetScreenPowerState(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_ON,
+                        base::TimeDelta());
   }
 
   if (!SetCurrentControllerLevel(level))
     DLOG(INFO) << "Could not set brightness to " << level;
 
-  if (level == 0 && target_level == 0 && monitor_reconfigure_) {
+  if (level == 0 && target_level == 0) {
     if (state_ == BACKLIGHT_IDLE_OFF) {
       // If it is in IDLE_OFF state, we call SetScreenOff() to turn off all the
       // display outputs. We don't do anything in the SUSPENDED state since
       // kernel driver will turn off the screen.
-      monitor_reconfigure_->SetScreenPowerState(OUTPUT_SELECTION_ALL_DISPLAYS,
-                                                POWER_STATE_OFF);
+      SetScreenPowerState(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_OFF,
+                          base::TimeDelta());
     } else if (state_ == BACKLIGHT_ACTIVE) {
       // If backlight is 0 but we are in ACTIVE state, we turn off the internal
       // panel only -- the user might be using an external monitor and
       // attempting to turn off just the internal backlight to conserve power.
-      monitor_reconfigure_->SetScreenPowerState(OUTPUT_SELECTION_INTERNAL_ONLY,
-                                                POWER_STATE_OFF);
+      SetScreenPowerState(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_OFF,
+                          base::TimeDelta());
     }
   }
 }
@@ -813,6 +813,40 @@ bool InternalBacklightController::SetCurrentControllerLevel(int64 level) {
     level += controller_factor_ / 2;
   }
   return backlight_->SetBrightnessLevel(level);
+}
+
+void InternalBacklightController::SetScreenPowerState(
+    ScreenPowerOutputSelection selection,
+    ScreenPowerState state,
+    base::TimeDelta delay) {
+  if (!monitor_reconfigure_)
+    return;
+
+  CancelSetScreenPowerStateTimeout();
+  if (delay.InMilliseconds() == 0) {
+    monitor_reconfigure_->SetScreenPowerState(selection, state);
+  } else {
+    set_screen_power_state_timeout_id_ =
+        g_timeout_add(delay.InMilliseconds(),
+                      HandleSetScreenPowerStateTimeoutThunk,
+                      CreateHandleSetScreenPowerStateTimeoutArgs(
+                          this, selection, state));
+  }
+}
+
+gboolean InternalBacklightController::HandleSetScreenPowerStateTimeout(
+    ScreenPowerOutputSelection selection,
+    ScreenPowerState state) {
+  monitor_reconfigure_->SetScreenPowerState(selection, state);
+  set_screen_power_state_timeout_id_ = 0;
+  return FALSE;
+}
+
+void InternalBacklightController::CancelSetScreenPowerStateTimeout() {
+  if (set_screen_power_state_timeout_id_) {
+    g_source_remove(set_screen_power_state_timeout_id_);
+    set_screen_power_state_timeout_id_ = 0;
+  }
 }
 
 }  // namespace power_manager

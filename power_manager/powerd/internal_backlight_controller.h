@@ -12,6 +12,7 @@
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/backlight_controller.h"
+#include "power_manager/powerd/monitor_reconfigure.h"
 #include "power_manager/powerd/powerd.h"
 
 typedef int gboolean;
@@ -139,6 +140,25 @@ class InternalBacklightController : public BacklightController {
   // multiplied by the factor to give a sysfs level to write to the Backlight.
   bool SetCurrentControllerLevel(int64 level);
 
+  // Changes |selection|'s state to |state| after |delay|.  If another change
+  // has already been scheduled, it will be aborted.
+  void SetScreenPowerState(
+      ScreenPowerOutputSelection selection,
+      ScreenPowerState state,
+      base::TimeDelta delay);
+
+  // Timeout callback that sets the passed-in state, resets
+  // |set_screen_power_state_timeout_id_|, and returns FALSE to cancel the
+  // timeout.
+  SIGNAL_CALLBACK_PACKED_2(InternalBacklightController,
+                           gboolean,
+                           HandleSetScreenPowerStateTimeout,
+                           ScreenPowerOutputSelection,
+                           ScreenPowerState);
+
+  // Cancels |set_screen_power_state_timeout_id_| if set.
+  void CancelSetScreenPowerStateTimeout();
+
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;
 
@@ -264,6 +284,10 @@ class InternalBacklightController : public BacklightController {
 
   // ID of adjustment timeout event source.
   guint gradual_transition_event_id_;
+
+  // Source ID for timeout that will run HandleSetScreenPowerStateTimeout(), or
+  // 0 if no timeout is currently set.
+  guint set_screen_power_state_timeout_id_;
 
   DISALLOW_COPY_AND_ASSIGN(InternalBacklightController);
 };

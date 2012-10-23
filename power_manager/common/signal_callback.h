@@ -120,7 +120,7 @@
     METHOD ## Args* args = reinterpret_cast<METHOD ## Args*>(data);            \
     CLASS* obj = args->obj;                                                    \
     TYPE0 arg0 = args->arg0;                                                   \
-    TYPE0 arg1 = args->arg1;                                                   \
+    TYPE1 arg1 = args->arg1;                                                   \
     delete args;                                                               \
     return obj->METHOD(arg0, arg1);                                            \
   }                                                                            \
