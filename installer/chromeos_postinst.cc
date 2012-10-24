@@ -342,6 +342,26 @@ bool RunPostInstall(const string& install_dir,
     return false;
   }
 
+  // Log how we are configured.
+  printf("PostInstall Configured: (%s, %s, %s, %s)\n",
+         install_config.slot.c_str(),
+         install_config.root.device().c_str(),
+         install_config.kernel.device().c_str(),
+         install_config.boot.device().c_str());
+
+  // If we can read in the lsb-release we are updating FROM, log it.
+  string lsb_contents;
+  if (ReadFileToString("/etc/lsb-release", &lsb_contents)) {
+    printf("\nFROM:\n%s", lsb_contents.c_str());
+  }
+
+  // If we can read the lsb-release we are updating TO, log it
+  if (ReadFileToString(install_config.root.mount() + "/etc/lsb-release",
+                       &lsb_contents)) {
+    printf("\nTO:\n%s\n", lsb_contents.c_str());
+  }
+
+
   string src_version;
   if (!LsbReleaseValue("/etc/lsb-release",
                        "CHROMEOS_RELEASE_VERSION",
@@ -350,13 +370,6 @@ bool RunPostInstall(const string& install_dir,
     printf("Failed to read /etc/lsb-release\n");
     return false;
   }
-
-  // Log how we are configured.
-  printf("PostInstall Configured: (%s, %s, %s, %s)\n",
-         install_config.slot.c_str(),
-         install_config.root.device().c_str(),
-         install_config.kernel.device().c_str(),
-         install_config.boot.device().c_str());
 
   if (!ChromeosChrootPostinst(install_config, src_version)) {
     printf("PostInstall Failed\n");
