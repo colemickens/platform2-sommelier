@@ -1,0 +1,15 @@
+#!/bin/sh
+
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Pop user's network profile pushed in shill_login_user
+# NB: must quote ~chronos; don't want it expanded
+profile_name='~chronos/shill'
+script_name=$(basename $0)
+dbus-send --system --dest=org.chromium.flimflam --print-reply / \
+  org.chromium.flimflam.Manager.PopProfile string:$profile_name ||
+    logger -t "$script_name"  "Failed to pop shill profile $profile_name"
+rm -rf /var/run/shill/user_profiles
+
