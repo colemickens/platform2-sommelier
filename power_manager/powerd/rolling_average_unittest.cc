@@ -196,4 +196,4 @@ TEST_F(RollingAverageTest, IsFullOverflow) {
   EXPECT_TRUE(rolling_average_.IsFull());
 }
 
-};  // namespace power_manager
+}  // namespace power_manager

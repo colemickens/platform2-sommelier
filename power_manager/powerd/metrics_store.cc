@@ -304,5 +304,4 @@ void MetricsStore::ScrubStore() {
   unlink(kMetricsStorePath);
 }
 
-
-};  // namespace power_manager
+}  // namespace power_manager

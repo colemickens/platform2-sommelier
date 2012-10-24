@@ -310,4 +310,4 @@ TEST_F(StateControlTest, Protobuf) {
   }
 }
 
-};  // namespace power_manager
+}  // namespace power_manager

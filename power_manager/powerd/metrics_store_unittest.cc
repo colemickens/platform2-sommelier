@@ -347,4 +347,4 @@ TEST_F(MetricsStoreTest, GetMetricOverflow) {
       -1);
 }
 
-};  // namespace power_manager
+}  // namespace power_manager
