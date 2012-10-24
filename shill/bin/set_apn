@@ -32,7 +32,7 @@ LIBDIR=/usr/lib64
 if [ ! -d "${LIBDIR}" ]; then
   LIBDIR=/usr/lib
 fi
-SET_APN_HELPER=${LIBDIR}/flimflam/scripts/set_apn_helper
+SET_APN_HELPER=${LIBDIR}/shill/shims/set-apn-helper
 
 usage() {
   echo $*
