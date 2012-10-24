@@ -256,6 +256,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->SetEnabled(false);  // Stop(NULL, ResultCallback());
   }
 
+  // Needs to be public since it is called via Invoke().
+  void ThrowDBusError() {
+    throw DBus::Error("SomeDBusType", "A handy message");
+  }
+
   void UnloadService(const ServiceRefPtr &service) {
     service->Unload();
   }
@@ -752,7 +757,7 @@ TEST_F(WiFiMainTest, OnSupplicantVanishedWhileConnected) {
   WiFiService *service(SetupConnectedService(DBus::Path()));
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
                        EndsWith("silently resetting current_service_.")));
   EXPECT_CALL(*manager(), DeregisterDevice(_))
       .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::StopWiFi));
@@ -1177,6 +1182,20 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
   // |current_service_| should not change until supplicant reports
   // a BSS change.
   EXPECT_EQ(service, GetCurrentService());
+}
+
+TEST_F(WiFiMainTest, DisconnectCurrentServiceWithErrors) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+  WiFiService *service(SetupConnectedService(DBus::Path()));
+  EXPECT_CALL(supplicant_interface_proxy, Disconnect())
+      .WillOnce(InvokeWithoutArgs(this, (&WiFiMainTest::ThrowDBusError)));
+  InitiateDisconnect(service);
+
+  // We may sometimes fail to disconnect via supplicant, and we patch up some
+  // state when this happens.
+  EXPECT_EQ(NULL, GetCurrentService().get());
+  EXPECT_EQ(NULL, wifi()->selected_service().get());
 }
 
 TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {

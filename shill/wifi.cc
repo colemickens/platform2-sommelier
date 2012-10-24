@@ -362,9 +362,12 @@ void WiFi::DisconnectFrom(WiFiService *service) {
   StopReconnectTimer();
 
   if (!supplicant_present_) {
-    LOG(INFO) << "In " << __func__ << "(): "
-              << "wpa_supplicant is not present; silently resetting "
-              << "current_service_.";
+    LOG(ERROR) << "In " << __func__ << "(): "
+               << "wpa_supplicant is not present; silently resetting "
+               << "current_service_.";
+    if (current_service_ == selected_service()) {
+      DropConnection();
+    }
     current_service_ = NULL;
     return;
   }
@@ -375,7 +378,8 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     // supplicant notifies us that the CurrentBSS has changed.
   } catch (const DBus::Error &e) {  // NOLINT
     // Can't depend on getting a notification of CurrentBSS change.
-    // So effect changes immediately.
+    // So effect changes immediately.  For instance, this can happen when
+    // a disconnect is triggered by a BSS going away.
     ReverseServiceMap::const_iterator rpcid_it =
         rpcid_by_service_.find(service);
     DCHECK(rpcid_it != rpcid_by_service_.end());
@@ -385,6 +389,9 @@ void WiFi::DisconnectFrom(WiFiService *service) {
                    << "could not find supplicant network to disable.";
     } else {
       RemoveNetwork(rpcid_it->second);
+    }
+    if (service == selected_service()) {
+      DropConnection();
     }
     current_service_ = NULL;
   }
@@ -602,9 +609,10 @@ void WiFi::HandleDisconnect() {
     SLOG(WiFi, 2) << "WiFi " << link_name()
                   << " disconnected while not connected or connecting";
     return;
-  } else if (affected_service == selected_service()) {
+  }
+  if (affected_service == selected_service()) {
     // If our selected service has disconnected, destroy IP configuration state.
-    DestroyIPConfig();
+    DropConnection();
   }
 
   ReverseServiceMap::const_iterator rpcid_it =

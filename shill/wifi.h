@@ -168,6 +168,7 @@ class WiFi : public Device {
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
+  FRIEND_TEST(WiFiMainTest, DisconnectCurrentServiceWithErrors);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, LinkMonitorFailure);  // set_link_monitor()
