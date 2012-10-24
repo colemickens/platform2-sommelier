@@ -290,6 +290,14 @@ class ManagerTest : public PropertyStoreTest {
     manager()->OnSuspendActionsComplete(sequence_number, error);
   }
 
+  vector<string> EnumerateAvailableServices() {
+    return manager()->EnumerateAvailableServices(NULL);
+  }
+
+  vector<string> EnumerateWatchedServices() {
+    return manager()->EnumerateWatchedServices(NULL);
+  }
+
   MockServiceRefPtr MakeAutoConnectableService() {
     MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
                                                           dispatcher(),
@@ -2648,6 +2656,91 @@ TEST_F(ManagerTest, IgnoredSearchList) {
   EXPECT_EQ(kIgnoredSum, GetIgnoredDNSSearchPaths());
 
   SetResolver(Resolver::GetInstance());
+}
+
+TEST_F(ManagerTest, ServiceStateChangeEmitsServices) {
+  // Test to make sure that every service state-change causes the
+  // Manager to emit a new service list.
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  EXPECT_CALL(*mock_service, state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+
+  manager()->RegisterService(mock_service);
+  EXPECT_CALL(
+      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
+          flimflam::kServicesProperty, _)).Times(1);
+  EXPECT_CALL(
+      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
+          flimflam::kServiceWatchListProperty, _)).Times(1);
+  CompleteServiceSort();
+
+  Mock::VerifyAndClearExpectations(manager_adaptor_);
+  EXPECT_CALL(
+      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
+          flimflam::kServicesProperty, _)).Times(1);
+  EXPECT_CALL(
+      *manager_adaptor_, EmitRpcIdentifierArrayChanged(
+          flimflam::kServiceWatchListProperty, _)).Times(1);
+  manager()->UpdateService(mock_service.get());
+  CompleteServiceSort();
+
+  manager()->DeregisterService(mock_service);
+}
+
+TEST_F(ManagerTest, EnumerateServices) {
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  manager()->RegisterService(mock_service);
+
+  EXPECT_CALL(*mock_service, state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*mock_service, IsVisible())
+      .WillRepeatedly(Return(false));
+  EXPECT_TRUE(EnumerateAvailableServices().empty());
+  EXPECT_TRUE(EnumerateWatchedServices().empty());
+
+  EXPECT_CALL(*mock_service, state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_TRUE(EnumerateAvailableServices().empty());
+  EXPECT_TRUE(EnumerateWatchedServices().empty());
+
+  EXPECT_CALL(*mock_service, IsVisible())
+      .WillRepeatedly(Return(true));
+  Service::ConnectState unwatched_states[] = {
+      Service::kStateUnknown,
+      Service::kStateIdle,
+      Service::kStateFailure
+  };
+  for (size_t i = 0; i < arraysize(unwatched_states); ++i) {
+    EXPECT_CALL(*mock_service, state())
+        .WillRepeatedly(Return(unwatched_states[i]));
+    EXPECT_FALSE(EnumerateAvailableServices().empty());
+    EXPECT_TRUE(EnumerateWatchedServices().empty());
+  }
+
+  Service::ConnectState watched_states[] = {
+      Service::kStateAssociating,
+      Service::kStateConfiguring,
+      Service::kStateConnected,
+      Service::kStateDisconnected,
+      Service::kStatePortal,
+      Service::kStateOnline
+  };
+  for (size_t i = 0; i < arraysize(watched_states); ++i) {
+    EXPECT_CALL(*mock_service, state())
+        .WillRepeatedly(Return(watched_states[i]));
+    EXPECT_FALSE(EnumerateAvailableServices().empty());
+    EXPECT_FALSE(EnumerateWatchedServices().empty());
+  }
+
+  manager()->DeregisterService(mock_service);
 }
 
 }  // namespace shill

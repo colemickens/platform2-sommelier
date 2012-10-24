@@ -34,6 +34,7 @@ MockService::MockService(ControlInterface *control_interface,
   const string &id = UniqueName();
   EXPECT_CALL(*this, GetRpcIdentifier()).WillRepeatedly(Return(id));
   EXPECT_CALL(*this, GetStorageIdentifier()).WillRepeatedly(Return(id));
+  ON_CALL(*this, IsVisible()).WillByDefault(Return(true));
   ON_CALL(*this, state()).WillByDefault(Return(kStateUnknown));
   ON_CALL(*this, failure()).WillByDefault(Return(kFailureUnknown));
   ON_CALL(*this, technology()).WillByDefault(Return(Technology::kUnknown));

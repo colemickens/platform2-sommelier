@@ -1060,15 +1060,10 @@ void Manager::SortServicesTask() {
   }
   sort(services_.begin(), services_.end(), ServiceSorter(technology_order_));
 
-  vector<string> service_paths;
-  vector<ServiceRefPtr>::iterator it;
-  for (it = services_.begin(); it != services_.end(); ++it) {
-    if ((*it)->IsVisible()) {
-      service_paths.push_back((*it)->GetRpcIdentifier());
-    }
-  }
   adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty,
-                                          service_paths);
+                                          EnumerateAvailableServices(NULL));
+  adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kServiceWatchListProperty,
+                                          EnumerateWatchedServices(NULL));
 
   Error error;
   adaptor_->EmitStringsChanged(flimflam::kConnectedTechnologiesProperty,
@@ -1225,14 +1220,23 @@ vector<string> Manager::EnumerateAvailableServices(Error */*error*/) {
   for (vector<ServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
        ++it) {
-    service_rpc_ids.push_back((*it)->GetRpcIdentifier());
+    if ((*it)->IsVisible()) {
+      service_rpc_ids.push_back((*it)->GetRpcIdentifier());
+    }
   }
   return service_rpc_ids;
 }
 
-RpcIdentifiers Manager::EnumerateWatchedServices(Error *error) {
-  // TODO(cmasone): Filter this list for services in appropriate states.
-  return EnumerateAvailableServices(error);
+RpcIdentifiers Manager::EnumerateWatchedServices(Error */*error*/) {
+  vector<string> service_rpc_ids;
+  for (vector<ServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end();
+       ++it) {
+    if ((*it)->IsVisible() && (*it)->IsActive(NULL)) {
+      service_rpc_ids.push_back((*it)->GetRpcIdentifier());
+    }
+  }
+  return service_rpc_ids;
 }
 
 string Manager::GetActiveProfileRpcIdentifier(Error */*error*/) {

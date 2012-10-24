@@ -282,9 +282,9 @@ void Service::ActivateCellularModem(const string &/*carrier*/,
 }
 
 bool Service::IsActive(Error */*error*/) {
-  return state_ != kStateUnknown &&
-    state_ != kStateIdle &&
-    state_ != kStateFailure;
+  return state() != kStateUnknown &&
+    state() != kStateIdle &&
+    state() != kStateFailure;
 }
 
 void Service::SetState(ConnectState state) {

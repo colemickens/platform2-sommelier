@@ -412,26 +412,16 @@ Properties 	object ActiveProfile [readwrite]
 			List of service object paths that are in a
 			'non-idle' state.  This indicates the set of services
 			which are currently listed as associating, configuring,
-			or some other state other than idle.  This allows a
-			caller to use this property indication to track which
-			services should be monitored for state changes.
-
-			In particular, services in error states like "failure"
-			and "disconnect" are in the watchlist.
+			or some other state other than idle, failure or
+			unknown.  This allows a caller to use this property
+			indication to track which services should be monitored
+			for state changes.
 
 			The services are listed in the same service sorting
-			order as the "Services" property above, but this
-			property is not considered "changed" if the ordering
-			changes.
-
-			Changes to this list are batched up for small periods
-			of time, so that batches of changes are collected
-			into a single message containing the final state, and
-			ephemeral changes where the list returns to the
-			previous state are filtered out.
-
-			Note: Currently shill reports the entire service
-			list, unfiltered.
+			order as the "Services" property above, and a change
+			event for this service is emitted every time the
+			Service list is reordered, even if this list has not
+			changed.
 
 		string ShortDNSTimeoutTechnologies [readwrite]
 
