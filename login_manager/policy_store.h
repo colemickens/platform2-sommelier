@@ -13,7 +13,7 @@
 #include "login_manager/device_management_backend.pb.h"
 
 namespace login_manager {
-class OwnerKey;
+class PolicyKey;
 
 // This class holds policy settings and takes care of reading from and writing
 // it to a file on disk. The policy is represented as a PolicyFetchResponse

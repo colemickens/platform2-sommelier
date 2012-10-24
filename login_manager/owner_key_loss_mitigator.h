@@ -9,7 +9,7 @@
 
 namespace login_manager {
 
-class OwnerKey;
+class PolicyKey;
 
 // Sometimes, the user we believe to be the Owner will not be able to
 // demonstrate possession of the Owner private key.  This class defines the
@@ -23,7 +23,7 @@ class OwnerKeyLossMitigator {
   // Deal with loss of the owner's private key.
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
-  virtual bool Mitigate(OwnerKey* key) = 0;
+  virtual bool Mitigate(PolicyKey* key) = 0;
 
   virtual bool Mitigating() = 0;
 

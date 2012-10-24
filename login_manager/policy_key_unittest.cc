@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 
 #include <vector>
 
@@ -63,7 +63,7 @@ class OwnerKeyTest : public ::testing::Test {
 TEST_F(OwnerKeyTest, Equals) {
   // Set up an empty key
   StartUnowned();
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
@@ -85,7 +85,7 @@ TEST_F(OwnerKeyTest, Equals) {
 }
 
 TEST_F(OwnerKeyTest, LoadKey) {
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -95,7 +95,7 @@ TEST_F(OwnerKeyTest, LoadKey) {
 
 TEST_F(OwnerKeyTest, NoKeyToLoad) {
   StartUnowned();
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -109,7 +109,7 @@ TEST_F(OwnerKeyTest, EmptyKeyToLoad) {
   CheckPublicKeyUtilFactory factory(false);
   NssUtil::set_factory(&factory);
 
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_FALSE(key.PopulateFromDiskIfPossible());
@@ -119,7 +119,7 @@ TEST_F(OwnerKeyTest, EmptyKeyToLoad) {
 
 TEST_F(OwnerKeyTest, NoKeyOnDiskAllowSetting) {
   StartUnowned();
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -135,7 +135,7 @@ TEST_F(OwnerKeyTest, NoKeyOnDiskAllowSetting) {
 TEST_F(OwnerKeyTest, EnforceDiskCheckFirst) {
   std::vector<uint8> fake(1, 1);
 
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_FALSE(key.PopulateFromBuffer(fake));
@@ -146,7 +146,7 @@ TEST_F(OwnerKeyTest, EnforceDiskCheckFirst) {
 TEST_F(OwnerKeyTest, RefuseToClobberInMemory) {
   std::vector<uint8> fake(1, 1);
 
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
 
@@ -160,7 +160,7 @@ TEST_F(OwnerKeyTest, RefuseToClobberInMemory) {
 }
 
 TEST_F(OwnerKeyTest, RefuseToClobberOnDisk) {
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
 
@@ -176,7 +176,7 @@ TEST_F(OwnerKeyTest, RefuseToClobberOnDisk) {
 TEST_F(OwnerKeyTest, SignVerify) {
   NssUtil::set_factory(NULL);  // Use real NSS.
   StartUnowned();
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
 
   crypto::EnsureNSSInit();
   crypto::OpenPersistentNSSDB();
@@ -207,7 +207,7 @@ TEST_F(OwnerKeyTest, SignVerify) {
 TEST_F(OwnerKeyTest, RotateKey) {
   NssUtil::set_factory(NULL);  // Use real NSS.
   StartUnowned();
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
 
   crypto::EnsureNSSInit();
   crypto::OpenPersistentNSSDB();
@@ -226,7 +226,7 @@ TEST_F(OwnerKeyTest, RotateKey) {
   ASSERT_TRUE(key.IsPopulated());
   ASSERT_TRUE(key.Persist());
 
-  OwnerKey key2(tmpfile_);
+  PolicyKey key2(tmpfile_);
   ASSERT_TRUE(key2.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key2.HaveCheckedDisk());
   ASSERT_TRUE(key2.IsPopulated());
@@ -244,7 +244,7 @@ TEST_F(OwnerKeyTest, RotateKey) {
 }
 
 TEST_F(OwnerKeyTest, ClobberKey) {
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());
@@ -257,7 +257,7 @@ TEST_F(OwnerKeyTest, ClobberKey) {
 }
 
 TEST_F(OwnerKeyTest, ResetKey) {
-  OwnerKey key(tmpfile_);
+  PolicyKey key(tmpfile_);
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());

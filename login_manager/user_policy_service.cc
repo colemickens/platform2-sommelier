@@ -8,7 +8,7 @@
 #include <base/message_loop_proxy.h>
 
 #include "login_manager/device_management_backend.pb.h"
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
 
 namespace em = enterprise_management;
@@ -17,7 +17,7 @@ namespace login_manager {
 
 UserPolicyService::UserPolicyService(
     PolicyStore* policy_store,
-    OwnerKey* policy_key,
+    PolicyKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop)
     : PolicyService(policy_store, policy_key, main_loop) {
 }

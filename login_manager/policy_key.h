@@ -27,10 +27,10 @@ class SystemUtils;
 // present, we will allow the owner's key to be set programmatically,
 // and will persist it to disk upon request.  Attempts to set the key
 // before on-disk storage has been checked will be denied.
-class OwnerKey {
+class PolicyKey {
  public:
-  explicit OwnerKey(const FilePath& key_file);
-  virtual ~OwnerKey();
+  explicit PolicyKey(const FilePath& key_file);
+  virtual ~PolicyKey();
 
   virtual bool Equals(const std::string& key_der) const;
   virtual bool VEquals(const std::vector<uint8>& key_der) const;
@@ -101,7 +101,7 @@ class OwnerKey {
   std::vector<uint8> key_;
   scoped_ptr<SystemUtils> utils_;
 
-  DISALLOW_COPY_AND_ASSIGN(OwnerKey);
+  DISALLOW_COPY_AND_ASSIGN(PolicyKey);
 };
 }  // namespace login_manager
 

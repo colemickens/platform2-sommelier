@@ -16,7 +16,7 @@
 
 #include "chromeos/cryptohome.h"
 
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
 #include "login_manager/user_policy_service.h"
 
@@ -57,7 +57,7 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
 
   return new UserPolicyService(
       new PolicyStore(policy_dir.Append(kPolicyDataFile)),
-      new OwnerKey(policy_dir.Append(kPolicyKeyFile)),
+      new PolicyKey(policy_dir.Append(kPolicyKeyFile)),
       main_loop_);
 }
 

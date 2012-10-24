@@ -14,12 +14,12 @@
 
 #include "login_manager/keygen_worker.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/system_utils.h"
 
 using std::string;
 using login_manager::NssUtil;
-using login_manager::OwnerKey;
+using login_manager::PolicyKey;
 
 namespace switches {
 

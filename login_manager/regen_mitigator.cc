@@ -4,7 +4,7 @@
 
 #include "login_manager/regen_mitigator.h"
 
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/session_manager_service.h"
 
 namespace login_manager {
@@ -23,7 +23,7 @@ RegenMitigator::RegenMitigator(KeyGenerator* generator,
 
 RegenMitigator::~RegenMitigator() {}
 
-bool RegenMitigator::Mitigate(OwnerKey* key) {
+bool RegenMitigator::Mitigate(PolicyKey* key) {
   return mitigating_ = generator_->Start(set_uid_ ? uid_ : 0, manager_);
 }
 

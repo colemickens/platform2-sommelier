@@ -16,7 +16,7 @@
 #include <crypto/rsa_private_key.h>
 
 #include "login_manager/nss_util.h"
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
@@ -26,7 +26,7 @@ namespace keygen {
 int generate(const std::string& filename) {
   FilePath key_file(filename);
   scoped_ptr<NssUtil> nss(NssUtil::Create());
-  scoped_ptr<OwnerKey> key(new OwnerKey(key_file));
+  scoped_ptr<PolicyKey> key(new PolicyKey(key_file));
   if (!key->PopulateFromDiskIfPossible())
     LOG(FATAL) << "Corrupted key on disk at " << filename;
   if (key->IsPopulated())

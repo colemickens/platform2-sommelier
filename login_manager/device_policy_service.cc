@@ -14,7 +14,7 @@
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_store.h"
 
@@ -44,7 +44,7 @@ DevicePolicyService* DevicePolicyService::Create(
   return new DevicePolicyService(FilePath(kSerialRecoveryFlagFile),
                                  FilePath(kPolicyPath),
                                  new PolicyStore(FilePath(kPolicyPath)),
-                                 new OwnerKey(nss->GetOwnerKeyFilePath()),
+                                 new PolicyKey(nss->GetOwnerKeyFilePath()),
                                  main_loop,
                                  nss,
                                  metrics,
@@ -112,7 +112,7 @@ DevicePolicyService::DevicePolicyService(
     const FilePath& serial_recovery_flag_file,
     const FilePath& policy_file,
     PolicyStore* policy_store,
-    OwnerKey* policy_key,
+    PolicyKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
     NssUtil* nss,
     LoginMetrics* metrics,

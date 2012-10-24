@@ -137,7 +137,7 @@ class PolicyServiceTest : public testing::Test {
   }
 
   PolicyStore* store() { return service_->store(); }
-  OwnerKey* key() { return service_->key(); }
+  PolicyKey* key() { return service_->key(); }
 
   static const int kAllKeyFlags;
   static const char kSignalSuccess[];

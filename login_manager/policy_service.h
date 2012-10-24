@@ -26,7 +26,7 @@ class WaitableEvent;
 
 namespace login_manager {
 
-class OwnerKey;
+class PolicyKey;
 class PolicyStore;
 
 // Manages policy storage and retrieval from an underlying PolicyStore, thereby
@@ -78,7 +78,7 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
 
   // Takes ownership of |policy_store| and |policy_key|.
   PolicyService(PolicyStore* policy_store,
-                OwnerKey* policy_key,
+                PolicyKey* policy_key,
                 const scoped_refptr<base::MessageLoopProxy>& main_loop);
   virtual ~PolicyService();
 
@@ -115,7 +115,7 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
   friend class PolicyServiceTest;
 
   PolicyStore* store() { return policy_store_.get(); }
-  OwnerKey* key() { return policy_key_.get(); }
+  PolicyKey* key() { return policy_key_.get(); }
   const scoped_refptr<base::MessageLoopProxy>& main_loop() {
     return main_loop_;
   }
@@ -161,7 +161,7 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
 
  private:
   scoped_ptr<PolicyStore> policy_store_;
-  scoped_ptr<OwnerKey> policy_key_;
+  scoped_ptr<PolicyKey> policy_key_;
   scoped_refptr<base::MessageLoopProxy> main_loop_;
   Delegate* delegate_;
 

@@ -50,7 +50,7 @@ MockMetrics::~MockMetrics() {}
 MockMitigator::MockMitigator() {}
 MockMitigator::~MockMitigator() {}
 
-MockOwnerKey::MockOwnerKey() : OwnerKey(FilePath("")) {}
+MockOwnerKey::MockOwnerKey() : PolicyKey(FilePath("")) {}
 MockOwnerKey::~MockOwnerKey() {}
 
 MockPolicyService::MockPolicyService() : PolicyService(NULL, NULL, NULL) {}

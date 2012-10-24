@@ -30,7 +30,7 @@
 #include "login_manager/file_checker.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"

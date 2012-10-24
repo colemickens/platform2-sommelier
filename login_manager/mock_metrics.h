@@ -11,7 +11,7 @@
 #include <gmock/gmock.h>
 
 namespace login_manager {
-class OwnerKey;
+class PolicyKey;
 
 class MockMetrics : public LoginMetrics {
  public:

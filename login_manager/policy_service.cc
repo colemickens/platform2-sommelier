@@ -16,7 +16,7 @@
 
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
 #include "login_manager/system_utils.h"
 
@@ -48,7 +48,7 @@ PolicyService::Delegate::~Delegate() {
 
 PolicyService::PolicyService(
     PolicyStore* policy_store,
-    OwnerKey* policy_key,
+    PolicyKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop)
     : policy_store_(policy_store),
       policy_key_(policy_key),

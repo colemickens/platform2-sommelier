@@ -11,14 +11,14 @@
 
 namespace login_manager {
 
-class OwnerKey;
+class PolicyKey;
 class PolicyStore;
 
 // Policy service implementation for user policy.
 class UserPolicyService : public PolicyService {
  public:
   UserPolicyService(PolicyStore* policy_store,
-                    OwnerKey* policy_key,
+                    PolicyKey* policy_key,
                     const scoped_refptr<base::MessageLoopProxy>& main_loop);
   virtual ~UserPolicyService();
 

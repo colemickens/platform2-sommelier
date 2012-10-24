@@ -12,7 +12,7 @@
 namespace login_manager {
 
 class KeyGenerator;
-class OwnerKey;
+class PolicyKey;
 class SessionManagerService;
 
 // This class mitigates owner key loss by triggering the generation of a new
@@ -28,7 +28,7 @@ class RegenMitigator : public OwnerKeyLossMitigator {
   // Deal with loss of the owner's private key.
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
-  bool Mitigate(OwnerKey* key);
+  bool Mitigate(PolicyKey* key);
   bool Mitigating();
 
  private:

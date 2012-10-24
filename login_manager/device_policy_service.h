@@ -83,7 +83,7 @@ class DevicePolicyService : public PolicyService {
   DevicePolicyService(const FilePath& serial_recovery_flag_file,
                       const FilePath& policy_file,
                       PolicyStore* policy_store,
-                      OwnerKey* policy_key,
+                      PolicyKey* policy_key,
                       const scoped_refptr<base::MessageLoopProxy>& main_loop,
                       NssUtil* nss,
                       LoginMetrics* metrics,

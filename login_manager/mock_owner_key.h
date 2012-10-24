@@ -5,7 +5,7 @@
 #ifndef LOGIN_MANAGER_MOCK_OWNER_KEY_H_
 #define LOGIN_MANAGER_MOCK_OWNER_KEY_H_
 
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 
 #include <unistd.h>
 
@@ -16,7 +16,7 @@ class RSAPrivateKey;
 }
 
 namespace login_manager {
-class MockOwnerKey : public OwnerKey {
+class MockOwnerKey : public PolicyKey {
  public:
   MockOwnerKey();
   virtual ~MockOwnerKey();

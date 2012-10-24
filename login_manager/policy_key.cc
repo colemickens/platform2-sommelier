@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_key.h"
 
 #include <base/file_path.h>
 #include <base/file_util.h>
@@ -20,35 +20,35 @@ namespace login_manager {
 // with its parameters. This is defined in PKCS #1 v2.1 (RFC 3447).
 // It is encoding: { OID sha1WithRSAEncryption      PARAMETERS NULL }
 // static
-const uint8 OwnerKey::kAlgorithm[15] = {
+const uint8 PolicyKey::kAlgorithm[15] = {
   0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86,
   0xf7, 0x0d, 0x01, 0x01, 0x05, 0x05, 0x00
 };
 
-OwnerKey::OwnerKey(const FilePath& key_file)
+PolicyKey::PolicyKey(const FilePath& key_file)
     : key_file_(key_file),
       have_checked_disk_(false),
       have_replaced_(false),
       utils_(new SystemUtils) {
 }
 
-OwnerKey::~OwnerKey() {}
+PolicyKey::~PolicyKey() {}
 
-bool OwnerKey::Equals(const std::string& key_der) const {
+bool PolicyKey::Equals(const std::string& key_der) const {
   return VEquals(std::vector<uint8>(key_der.c_str(),
                                     key_der.c_str() + key_der.length()));
 }
 
-bool OwnerKey::VEquals(const std::vector<uint8>& key_der) const {
+bool PolicyKey::VEquals(const std::vector<uint8>& key_der) const {
   return ((key_.empty() == key_der.empty()) &&
           memcmp(&key_der[0], &key_[0], key_.size()) == 0);
 }
 
-bool OwnerKey::HaveCheckedDisk() const { return have_checked_disk_; }
+bool PolicyKey::HaveCheckedDisk() const { return have_checked_disk_; }
 
-bool OwnerKey::IsPopulated() const { return !key_.empty(); }
+bool PolicyKey::IsPopulated() const { return !key_.empty(); }
 
-bool OwnerKey::PopulateFromDiskIfPossible() {
+bool PolicyKey::PopulateFromDiskIfPossible() {
   have_checked_disk_ = true;
   if (!file_util::PathExists(key_file_)) {
     LOG(INFO) << "No owner key on disk.";
@@ -80,7 +80,7 @@ bool OwnerKey::PopulateFromDiskIfPossible() {
   return true;
 }
 
-bool OwnerKey::PopulateFromBuffer(const std::vector<uint8>& public_key_der) {
+bool PolicyKey::PopulateFromBuffer(const std::vector<uint8>& public_key_der) {
   if (!HaveCheckedDisk()) {
     LOG(WARNING) << "Haven't checked disk for owner key yet!";
     return false;
@@ -95,7 +95,7 @@ bool OwnerKey::PopulateFromBuffer(const std::vector<uint8>& public_key_der) {
   return true;
 }
 
-bool OwnerKey::PopulateFromKeypair(crypto::RSAPrivateKey* pair) {
+bool PolicyKey::PopulateFromKeypair(crypto::RSAPrivateKey* pair) {
   std::vector<uint8> public_key_der;
   if (pair && pair->ExportPublicKey(&public_key_der))
     return PopulateFromBuffer(public_key_der);
@@ -103,7 +103,7 @@ bool OwnerKey::PopulateFromKeypair(crypto::RSAPrivateKey* pair) {
   return false;
 }
 
-bool OwnerKey::Persist() {
+bool PolicyKey::Persist() {
   // It is a programming error to call this before checking for the key on disk.
   CHECK(have_checked_disk_) << "Haven't checked disk for owner key yet!";
   if (!have_replaced_ && file_util::PathExists(key_file_)) {
@@ -128,7 +128,7 @@ bool OwnerKey::Persist() {
   return true;
 }
 
-bool OwnerKey::Rotate(const std::vector<uint8>& public_key_der,
+bool PolicyKey::Rotate(const std::vector<uint8>& public_key_der,
                       const std::vector<uint8>& signature) {
   if (!IsPopulated()) {
     LOG(ERROR) << "Don't yet have an owner key!";
@@ -146,7 +146,8 @@ bool OwnerKey::Rotate(const std::vector<uint8>& public_key_der,
   return false;
 }
 
-bool OwnerKey::ClobberCompromisedKey(const std::vector<uint8>& public_key_der) {
+bool PolicyKey::ClobberCompromisedKey(
+    const std::vector<uint8>& public_key_der) {
   // It is a programming error to call this before checking for the key on disk.
   CHECK(have_checked_disk_) << "Haven't checked disk for owner key yet!";
   // It is a programming error to call this without a key already loaded.
@@ -156,7 +157,7 @@ bool OwnerKey::ClobberCompromisedKey(const std::vector<uint8>& public_key_der) {
   return have_replaced_ = true;
 }
 
-bool OwnerKey::Verify(const uint8* data,
+bool PolicyKey::Verify(const uint8* data,
                       uint32 data_len,
                       const uint8* signature,
                       uint32 sig_len) {
@@ -175,7 +176,7 @@ bool OwnerKey::Verify(const uint8* data,
   return true;
 }
 
-bool OwnerKey::Sign(const uint8* data,
+bool PolicyKey::Sign(const uint8* data,
                     uint32 data_len,
                     std::vector<uint8>* OUT_signature) {
   scoped_ptr<NssUtil> util(NssUtil::Create());
