@@ -1145,7 +1145,7 @@ DBusMessage* Daemon::HandleGetScreenBrightnessMethod(DBusMessage* message) {
     return util::CreateDBusErrorReply(message, DBUS_ERROR_FAILED,
                                       "Could not fetch Screen Brightness");
   }
-  DBusMessage* reply = dbus_message_new_method_return(message);
+  DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
   dbus_message_append_args(reply,
                            DBUS_TYPE_DOUBLE, &percent,
@@ -1169,7 +1169,7 @@ DBusMessage* Daemon::HandleIncreaseKeyboardBrightnessMethod(
 
 DBusMessage* Daemon::HandleGetIdleTimeMethod(DBusMessage* message) {
   int64 idle_time_ms = idle_->GetIdleTimeMs();
-  DBusMessage* reply = dbus_message_new_method_return(message);
+  DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
   dbus_message_append_args(reply,
                            DBUS_TYPE_INT64, &idle_time_ms,
@@ -1235,7 +1235,7 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
   protobuf.set_averaged_battery_time_to_full(
       status->averaged_battery_time_to_full);
 
-  DBusMessage* reply = dbus_message_new_method_return(message);
+  DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
   std::string serialized_proto;
   CHECK(protobuf.SerializeToString(&serialized_proto));
@@ -1263,7 +1263,7 @@ DBusMessage* Daemon::HandleStateOverrideRequestMethod(DBusMessage* message) {
     bool success = state_control_->StateOverrideRequest(
          data, size, &return_value);
     if (success) {
-      DBusMessage* reply = dbus_message_new_method_return(message);
+      DBusMessage* reply = util::CreateEmptyDBusReply(message);
       CHECK(reply);
       dbus_message_append_args(reply,
                                DBUS_TYPE_INT32, &return_value,

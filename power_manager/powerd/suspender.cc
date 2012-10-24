@@ -145,7 +145,7 @@ void Suspender::CancelSuspend() {
 }
 
 DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
-  DBusMessage* reply = dbus_message_new_method_return(message);
+  DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
 
   uint32 delay_ms = 0;
@@ -180,7 +180,7 @@ DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
 }
 
 DBusMessage* Suspender::UnregisterSuspendDelay(DBusMessage* message) {
-  DBusMessage* reply = dbus_message_new_method_return(message);
+  DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
 
   const char* client_name = dbus_message_get_sender(message);

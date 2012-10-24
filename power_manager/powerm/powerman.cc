@@ -336,7 +336,7 @@ DBusMessage* PowerManDaemon::HandleExternalBacklightGetMethod(
              backlight_->GetMaxBrightnessLevel(&max_level);
   }
 
-  DBusMessage* reply = dbus_message_new_method_return(message);
+  DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
   dbus_message_append_args(reply,
                            DBUS_TYPE_INT64, &current_level,
@@ -360,7 +360,7 @@ DBusMessage* PowerManDaemon::HandleExternalBacklightSetMethod(
     LOG(WARNING) << "Unable to read " << kExternalBacklightSetMethod << " args";
     dbus_error_free(&error);
   }
-  return dbus_message_new_method_return(message);
+  return util::CreateEmptyDBusReply(message);
 }
 
 void PowerManDaemon::DBusNameOwnerChangedHandler(
