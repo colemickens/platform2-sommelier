@@ -138,6 +138,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       state_control_(new StateControl(this)),
       poll_power_supply_timer_id_(0),
       is_projecting_(false),
+      cras_client_(NULL),
       connected_to_cras_(false),
       shutdown_reason_(kShutdownReasonUnknown),
       require_usb_input_device_to_suspend_(false) {
