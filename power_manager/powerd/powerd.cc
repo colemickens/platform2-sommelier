@@ -81,14 +81,6 @@ namespace power_manager {
 // Timeouts are multiplied by this factor when projecting to external display.
 static const int64 kProjectionTimeoutFactor = 2;
 
-// Constants for brightness adjustment metric reporting.
-enum {
-  kBrightnessDown,
-  kBrightnessUp,
-  kBrightnessAbsolute,
-  kBrightnessEnumMax ,
-};
-
 // Daemon: Main power manager. Adjusts device status based on whether the
 //         user is idle and on video activity indicator from Chrome.
 //         This daemon is responsible for dimming of the backlight, turning
@@ -175,8 +167,7 @@ void Daemon::Init() {
   power_supply_.Init();
   power_supply_.GetPowerStatus(&power_status_, false);
   OnPowerEvent(this, power_status_);
-  UpdateAveragedTimes(&power_status_,
-                      &time_to_empty_average_,
+  UpdateAveragedTimes(&time_to_empty_average_,
                       &time_to_full_average_);
   file_tagger_.Init();
   backlight_controller_->SetObserver(this);
@@ -1079,8 +1070,8 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
   bool changed = backlight_controller_->DecreaseBrightness(
       allow_off, BRIGHTNESS_CHANGE_USER_INITIATED);
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
-                               kBrightnessDown,
-                               kBrightnessEnumMax);
+                               kMetricBrightnessAdjustDown,
+                               kMetricBrightnessAdjustEnumMax);
   if (!changed) {
     SendBrightnessChangedSignal(
         backlight_controller_->GetTargetBrightnessPercent(),
@@ -1095,8 +1086,8 @@ DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
   bool changed = backlight_controller_->IncreaseBrightness(
       BRIGHTNESS_CHANGE_USER_INITIATED);
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
-                               kBrightnessUp,
-                               kBrightnessEnumMax);
+                               kMetricBrightnessAdjustUp,
+                               kMetricBrightnessAdjustEnumMax);
   if (!changed) {
     SendBrightnessChangedSignal(
         backlight_controller_->GetTargetBrightnessPercent(),
@@ -1135,8 +1126,9 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
   }
   backlight_controller_->SetCurrentBrightnessPercent(
       percent, BRIGHTNESS_CHANGE_USER_INITIATED, style);
-  SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessAbsolute,
-                               kBrightnessEnumMax);
+  SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
+                               kMetricBrightnessAdjustAbsolute,
+                               kMetricBrightnessAdjustEnumMax);
   return NULL;
 }
 
@@ -1406,8 +1398,7 @@ gboolean Daemon::PollPowerSupply() {
 
 gboolean Daemon::HandlePollPowerSupply() {
   OnPowerEvent(this, power_status_);
-  if (!UpdateAveragedTimes(&power_status_,
-                           &time_to_empty_average_,
+  if (!UpdateAveragedTimes(&time_to_empty_average_,
                            &time_to_full_average_)) {
     LOG(ERROR) << "Unable to get averaged times!";
     ScheduleShortPollPowerSupply();
@@ -1427,9 +1418,11 @@ gboolean Daemon::HandlePollPowerSupply() {
   return TRUE;
 }
 
-bool Daemon::UpdateAveragedTimes(PowerStatus* status,
-                                 RollingAverage* empty_average,
+bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
                                  RollingAverage* full_average) {
+  SendEnumMetric(kMetricBatteryInfoSampleName,
+                 kMetricBatteryInfoSampleRead,
+                 kMetricBatteryInfoSampleEnumMax);
   // Some devices give us bogus values for battery information right after boot
   // or a power event. We attempt to avoid to do sampling at these times, but
   // this guard is to save us when we do sample a bad value. After working out
@@ -1438,24 +1431,31 @@ bool Daemon::UpdateAveragedTimes(PowerStatus* status,
   // bad value since it is too high. For some devices the value for the
   // uninteresting time, that we are not using, might be bizarre, so we cannot
   // just check both times for overly high values.
-  if (status->battery_time_to_empty < 0 || status->battery_time_to_full < 0 ||
-      (status->battery_time_to_empty > kBatteryTimeMaxValidSec &&
-       !status->line_power_on) ||
-      (status->battery_time_to_full > kBatteryTimeMaxValidSec &&
-       status->line_power_on)) {
+  if (power_status_.battery_time_to_empty < 0 ||
+      power_status_.battery_time_to_full < 0 ||
+      (power_status_.battery_time_to_empty > kBatteryTimeMaxValidSec &&
+       !power_status_.line_power_on) ||
+      (power_status_.battery_time_to_full > kBatteryTimeMaxValidSec &&
+       power_status_.line_power_on)) {
     LOG(ERROR) << "Invalid raw times, time to empty = "
-               << status->battery_time_to_empty << ", and time to full = "
-               << status->battery_time_to_full;
+               << power_status_.battery_time_to_empty << ", and time to full = "
+               << power_status_.battery_time_to_full;
     power_status_.averaged_battery_time_to_empty = 0;
     power_status_.averaged_battery_time_to_full = 0;
-    status->is_calculating_battery_time = true;
+    power_status_.is_calculating_battery_time = true;
+    SendEnumMetric(kMetricBatteryInfoSampleName,
+                   kMetricBatteryInfoSampleBad,
+                   kMetricBatteryInfoSampleEnumMax);
     return false;
   }
+  SendEnumMetric(kMetricBatteryInfoSampleName,
+                 kMetricBatteryInfoSampleGood,
+                 kMetricBatteryInfoSampleEnumMax);
 
   int64 battery_time = 0;
-  if (status->line_power_on) {
-    battery_time = status->battery_time_to_full;
-    if (!status->is_calculating_battery_time)
+  if (power_status_.line_power_on) {
+    battery_time = power_status_.battery_time_to_full;
+    if (!power_status_.is_calculating_battery_time)
       full_average->AddSample(battery_time);
     empty_average->Clear();
   } else {
@@ -1463,26 +1463,30 @@ bool Daemon::UpdateAveragedTimes(PowerStatus* status,
     // equivalent of the percentage threshold
     int64 time_threshold_s = low_battery_shutdown_time_s_ ?
         low_battery_shutdown_time_s_ :
-        status->battery_time_to_empty
+        power_status_.battery_time_to_empty
         * (low_battery_shutdown_percent_
-           / status->battery_percentage);
-    battery_time = status->battery_time_to_empty - time_threshold_s;
+           / power_status_.battery_percentage);
+    battery_time = power_status_.battery_time_to_empty - time_threshold_s;
     LOG_IF(WARNING, battery_time < 0)
         << "Calculated invalid negative time to empty value, trimming to 0!";
     battery_time = max(0, battery_time);
-    if (!status->is_calculating_battery_time)
+    if (!power_status_.is_calculating_battery_time)
       empty_average->AddSample(battery_time);
     full_average->Clear();
   }
 
-  if (!status->is_calculating_battery_time) {
-    if (!status->line_power_on)
-      AdjustWindowSize(battery_time, empty_average, full_average);
+  if (!power_status_.is_calculating_battery_time) {
+    if (!power_status_.line_power_on)
+      AdjustWindowSize(battery_time,
+                       empty_average,
+                       full_average);
     else
       empty_average->ChangeWindowSize(sample_window_max_);
   }
-  status->averaged_battery_time_to_full = full_average->GetAverage();
-  status->averaged_battery_time_to_empty = empty_average->GetAverage();
+  power_status_.averaged_battery_time_to_full =
+      full_average->GetAverage();
+  power_status_.averaged_battery_time_to_empty =
+      empty_average->GetAverage();
   return true;
 }
 

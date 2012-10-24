@@ -153,6 +153,7 @@ class Daemon : public BacklightControllerObserver,
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndCalculating);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithSetThreshold);
+  FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithBadStatus);
   FRIEND_TEST(DaemonTest, TurnBacklightOnForPowerButton);
   FRIEND_TEST(DaemonTest, DetectUSBDevices);
 
@@ -261,11 +262,10 @@ class Daemon : public BacklightControllerObserver,
   // and generates related metrics.
   gboolean HandlePollPowerSupply();
 
-  // Update the averaged values in |status| and add the battery time estimate
-  // values from |status| to the appropriate rolling averages. Returns false if
-  // the input to the function was invalid.
-  bool UpdateAveragedTimes(PowerStatus* status,
-                           RollingAverage* empty_average,
+  // Update the averaged values in |power_status_| and add the battery time
+  // estimate values from |power_status_| to the appropriate rolling
+  // averages. Returns false if the input to the function was invalid.
+  bool UpdateAveragedTimes(RollingAverage* empty_average,
                            RollingAverage* full_average);
 
   // Given the current battery time estimate adjust the rolling

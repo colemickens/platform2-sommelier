@@ -67,6 +67,24 @@ extern const char kMetricThermalMultipleFanTurnOnName[];
 extern const char kMetricThermalMultipleFanFilename[];
 extern const char kMetricThermalTurnedOnFanFilename[];
 extern const time_t kMetricThermalIntervalMs;
+extern const char kMetricBatteryInfoSampleName[];
+
+// Enum for kMetricBrightnessAdjust.
+enum MetricBrightnessAdjustType {
+  kMetricBrightnessAdjustDown,
+  kMetricBrightnessAdjustUp,
+  kMetricBrightnessAdjustAbsolute,
+  kMetricBrightnessAdjustEnumMax,
+};
+
+// Enum for kMetricBatteryInfoSample.
+enum MetricBatteryInfoSampleResult {
+  kMetricBatteryInfoSampleRead,
+  kMetricBatteryInfoSampleGood,
+  kMetricBatteryInfoSampleBad,
+  kMetricBatteryInfoSampleEnumMax,
+};
+
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_POWERD_METRICS_CONSTANTS_H_

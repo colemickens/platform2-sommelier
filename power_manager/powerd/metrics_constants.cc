@@ -92,4 +92,7 @@ const char kMetricThermalMultipleFanFilename[] =
 const char kMetricThermalTurnedOnFanFilename[] =
     "/sys/kernel/debug/thermal/thermal_zone0/cdevs_turned_on";
 const time_t kMetricThermalIntervalMs = 15 * 60 * 1000;  // 15 minutes
+
+const char kMetricBatteryInfoSampleName[] = "Power.BatteryInfoSample";
+
 }  // namespace power_manager

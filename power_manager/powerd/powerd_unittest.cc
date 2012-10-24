@@ -58,6 +58,7 @@ static const int kSessionLength = 5;
 static const int kAdjustmentsOffset = 100;
 static const int kNumOfSessionsPerCharge = 100;
 static const int64 kBatteryTime = 23;
+static const int64 kBatteryTimeTooLarge = 72 * 60 * 60;  // 3 days of seconds
 static const int64 kThresholdTime = 7;
 static const int64 kAdjustedBatteryTime = kBatteryTime - kThresholdTime;
 static const unsigned int kSampleWindowMax = 10;
@@ -83,7 +84,8 @@ class DaemonTest : public Test {
         backlight_ctl_(&backlight_, &prefs_, NULL),
 #endif
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
-                &audio_detector_, &idle_, NULL, NULL, FilePath(".")) {}
+                &audio_detector_, &idle_, NULL, NULL, FilePath(".")),
+        status_(&daemon_.power_status_){}
 
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor.
@@ -103,7 +105,7 @@ class DaemonTest : public Test {
     backlight_ctl_.set_disable_dbus_for_testing(true);
 #endif
     CHECK(backlight_ctl_.Init());
-    ResetPowerStatus(&status_);
+    ResetPowerStatus(status_);
     // Setting up the window taper values, since they are needed in some of
     // the tests.
     daemon_.sample_window_max_ = kSampleWindowMax;
@@ -260,13 +262,35 @@ class DaemonTest : public Test {
                  kMetricNumOfSessionsPerChargeBuckets);
   }
 
+  // Adds metrics library mocks expectations for when a good sample has been
+  // pulled and is being processed.
+  void ExpectGoodBatteryInfoSample() {
+    ExpectEnumMetric(kMetricBatteryInfoSampleName,
+                     kMetricBatteryInfoSampleRead,
+                     kMetricBatteryInfoSampleEnumMax);
+    ExpectEnumMetric(kMetricBatteryInfoSampleName,
+                     kMetricBatteryInfoSampleGood,
+                     kMetricBatteryInfoSampleEnumMax);
+  }
+
+  // Adds metrics library mocks expectations for when a bad sample has been
+  // pulled and is being processed.
+  void ExpectBadBatteryInfoSample() {
+    ExpectEnumMetric(kMetricBatteryInfoSampleName,
+                     kMetricBatteryInfoSampleRead,
+                     kMetricBatteryInfoSampleEnumMax);
+    ExpectEnumMetric(kMetricBatteryInfoSampleName,
+                     kMetricBatteryInfoSampleBad,
+                     kMetricBatteryInfoSampleEnumMax);
+  }
+
+
   StrictMock<MockBacklight> backlight_;
   StrictMock<MockVideoDetector> video_detector_;
   StrictMock<MockActivityDetector> audio_detector_;
   StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;
   PowerPrefs prefs_;
-  PowerStatus status_;
 #ifdef IS_DESKTOP
   ExternalBacklightController backlight_ctl_;
 #else
@@ -280,6 +304,7 @@ class DaemonTest : public Test {
   StrictMock<MetricsLibraryMock> metrics_lib_;
   IdleDetector idle_;
   Daemon daemon_;
+  PowerStatus* status_;
 };
 
 TEST_F(DaemonTest, AdjustWindowSizeMax) {
@@ -408,63 +433,63 @@ TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetric) {
   daemon_.plugged_state_ = kPowerDisconnected;
-  status_.battery_energy_rate = 5.0;
+  status_->battery_energy_rate = 5.0;
   ExpectBatteryDischargeRateMetric(5000);
   EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, kMetricBatteryDischargeRateInterval));
+      *status_, kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(kMetricBatteryDischargeRateInterval,
             daemon_.battery_discharge_rate_metric_last_);
 
-  status_.battery_energy_rate = 4.5;
+  status_->battery_energy_rate = 4.5;
   ExpectBatteryDischargeRateMetric(4500);
   EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, kMetricBatteryDischargeRateInterval - 1));
+      *status_, kMetricBatteryDischargeRateInterval - 1));
   EXPECT_EQ(kMetricBatteryDischargeRateInterval - 1,
             daemon_.battery_discharge_rate_metric_last_);
 
-  status_.battery_energy_rate = 6.4;
+  status_->battery_energy_rate = 6.4;
   ExpectBatteryDischargeRateMetric(6400);
   EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, 2 * kMetricBatteryDischargeRateInterval));
+      *status_, 2 * kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(2 * kMetricBatteryDischargeRateInterval,
             daemon_.battery_discharge_rate_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricInterval) {
   daemon_.plugged_state_ = kPowerDisconnected;
-  status_.battery_energy_rate = 4.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(status_,
+  status_->battery_energy_rate = 4.0;
+  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(*status_,
                                                           /* now */ 0));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, kMetricBatteryDischargeRateInterval - 1));
+      *status_, kMetricBatteryDischargeRateInterval - 1));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricNotDisconnected) {
   EXPECT_EQ(kPowerUnknown, daemon_.plugged_state_);
 
-  status_.battery_energy_rate = 4.0;
+  status_->battery_energy_rate = 4.0;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, kMetricBatteryDischargeRateInterval));
+      *status_, kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
   daemon_.plugged_state_ = kPowerConnected;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, 2 * kMetricBatteryDischargeRateInterval));
+      *status_, 2 * kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive) {
   daemon_.plugged_state_ = kPowerDisconnected;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, kMetricBatteryDischargeRateInterval));
+      *status_, kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
-  status_.battery_energy_rate = -4.0;
+  status_->battery_energy_rate = -4.0;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, 2 * kMetricBatteryDischargeRateInterval));
+      *status_, 2 * kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
@@ -476,33 +501,33 @@ TEST_F(DaemonTest, GenerateBatteryInfoWhenChargeStartsMetric) {
                                          102.4, 111.6};
   size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
-  status_.battery_is_present = true;
+  status_->battery_is_present = true;
   plugged_state_ = kPowerDisconnected;
   daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
-                                                         status_);
+                                                    *status_);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   plugged_state_ = kPowerUnknown;
   daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
-                                                         status_);
+                                                    *status_);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  status_.battery_is_present = false;
+  status_->battery_is_present = false;
   plugged_state_ = kPowerConnected;
   daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
-                                                         status_);
+                                                    *status_);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  status_.battery_is_present = true;
-  status_.battery_charge_full_design = 100;
+  status_->battery_is_present = true;
+  status_->battery_charge_full_design = 100;
   for (size_t i = 0; i < num_percentages; i++) {
-    status_.battery_percentage = battery_percentages[i];
-    status_.battery_charge_full = battery_percentages[i];
-    int expected_percentage = round(status_.battery_percentage);
+    status_->battery_percentage = battery_percentages[i];
+    status_->battery_charge_full = battery_percentages[i];
+    int expected_percentage = round(status_->battery_percentage);
 
     ExpectBatteryInfoWhenChargeStartsMetric(expected_percentage);
     daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
-                                                           status_);
+                                                      *status_);
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
@@ -636,8 +661,8 @@ TEST_F(DaemonTest, HandleNumOfSessionsPerChargeOnSetPlugged) {
 }
 
 TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
-  status_.battery_percentage = 10.1;
-  int expected_percentage = round(status_.battery_percentage);
+  status_->battery_percentage = 10.1;
+  int expected_percentage = round(status_->battery_percentage);
   ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
 
 #ifndef IS_DESKTOP
@@ -657,7 +682,7 @@ TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
   base::Time start = now - base::TimeDelta::FromSeconds(kSessionLength);
   ExpectLengthOfSessionMetric(kSessionLength);
 
-  daemon_.GenerateEndOfSessionMetrics(status_,
+  daemon_.GenerateEndOfSessionMetrics(*status_,
                                       backlight_ctl_,
                                       now,
                                       start);
@@ -671,23 +696,23 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
   const size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
   for (size_t i = 0; i < num_percentages; i++) {
-    status_.battery_percentage = battery_percentages[i];
-    int expected_percentage = round(status_.battery_percentage);
+    status_->battery_percentage = battery_percentages[i];
+    int expected_percentage = round(status_->battery_percentage);
 
     daemon_.plugged_state_ = kPowerConnected;
     ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
     EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
-        status_));
+        *status_));
 
     daemon_.plugged_state_ = kPowerDisconnected;
     ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
     EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
-        status_));
+        *status_));
 
     daemon_.plugged_state_ = kPowerUnknown;
     ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
     EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
-        status_));
+        *status_));
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
@@ -700,23 +725,23 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
   const size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
   for (size_t i = 0; i < num_percentages; i++) {
-    status_.battery_percentage = battery_percentages[i];
-    int expected_percentage = round(status_.battery_percentage);
+    status_->battery_percentage = battery_percentages[i];
+    int expected_percentage = round(status_->battery_percentage);
 
     daemon_.plugged_state_ = kPowerConnected;
     ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
     EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
-        status_));
+        *status_));
 
     daemon_.plugged_state_ = kPowerDisconnected;
     ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
     EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
-        status_));
+        *status_));
 
     daemon_.plugged_state_ = kPowerUnknown;
     ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
     EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
-        status_));
+        *status_));
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
@@ -763,11 +788,11 @@ TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow) {
 
 TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
   daemon_.plugged_state_ = kPowerDisconnected;
-  status_.battery_energy_rate = 4.9;
-  status_.battery_percentage = 32.5;
-  status_.battery_time_to_empty = 10 * 60;
+  status_->battery_energy_rate = 4.9;
+  status_->battery_percentage = 32.5;
+  status_->battery_time_to_empty = 10 * 60;
   ExpectBatteryDischargeRateMetric(4900);
-  daemon_.GenerateMetricsOnPowerEvent(status_);
+  daemon_.GenerateMetricsOnPowerEvent(*status_);
   EXPECT_LT(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
@@ -841,54 +866,57 @@ TEST_F(DaemonTest, PowerButtonDownMetric) {
 }
 
 TEST_F(DaemonTest, UpdateAveragedTimesChargingAndCalculating) {
-  status_.line_power_on = true;
-  status_.is_calculating_battery_time = true;
+  status_->line_power_on = true;
+  status_->is_calculating_battery_time = true;
 
   empty_average_.ExpectClear();
   full_average_.ExpectGetAverage(kBatteryTime);
   empty_average_.ExpectGetAverage(0);
+  ExpectGoodBatteryInfoSample();
 
-  daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
+  daemon_.UpdateAveragedTimes(&empty_average_, &full_average_);
 
-  EXPECT_EQ(0, status_.averaged_battery_time_to_empty);
-  EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_full);
+  EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
+  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_full);
 }
 
 TEST_F(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating) {
-  status_.line_power_on = true;
-  status_.is_calculating_battery_time = false;
-  status_.battery_time_to_full = kBatteryTime;
+  status_->line_power_on = true;
+  status_->is_calculating_battery_time = false;
+  status_->battery_time_to_full = kBatteryTime;
 
   full_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
   empty_average_.ExpectClear();
   empty_average_.ExpectChangeWindowSize(10);
   full_average_.ExpectGetAverage(kBatteryTime);
   empty_average_.ExpectGetAverage(0);
+  ExpectGoodBatteryInfoSample();
 
-  daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
+  daemon_.UpdateAveragedTimes(&empty_average_, &full_average_);
 
-  EXPECT_EQ(0, status_.averaged_battery_time_to_empty);
-  EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_full);
+  EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
+  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_full);
 }
 
 TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndCalculating) {
-  status_.line_power_on = false;
-  status_.is_calculating_battery_time = true;
+  status_->line_power_on = false;
+  status_->is_calculating_battery_time = true;
 
   full_average_.ExpectClear();
   full_average_.ExpectGetAverage(0);
   empty_average_.ExpectGetAverage(kBatteryTime);
+  ExpectGoodBatteryInfoSample();
 
-  daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
+  daemon_.UpdateAveragedTimes(&empty_average_, &full_average_);
 
-  EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_empty);
-  EXPECT_EQ(0, status_.averaged_battery_time_to_full);
+  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_empty);
+  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
 }
 
 TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
-  status_.line_power_on = false;
-  status_.is_calculating_battery_time = false;
-  status_.battery_time_to_empty = kBatteryTime;
+  status_->line_power_on = false;
+  status_->is_calculating_battery_time = false;
+  status_->battery_time_to_empty = kBatteryTime;
   daemon_.low_battery_shutdown_time_s_ = kThresholdTime;
   daemon_.low_battery_shutdown_percent_ = 0.0;
 
@@ -897,17 +925,18 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
   empty_average_.ExpectChangeWindowSize(1);
   full_average_.ExpectGetAverage(0);
   empty_average_.ExpectGetAverage(kBatteryTime);
+  ExpectGoodBatteryInfoSample();
 
-  daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
+  daemon_.UpdateAveragedTimes(&empty_average_, &full_average_);
 
-  EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_empty);
-  EXPECT_EQ(0, status_.averaged_battery_time_to_full);
+  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_empty);
+  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
 }
 
 TEST_F(DaemonTest, UpdateAveragedTimesWithSetThreshold) {
-  status_.line_power_on = false;
-  status_.is_calculating_battery_time = false;
-  status_.battery_time_to_empty = kBatteryTime;
+  status_->line_power_on = false;
+  status_->is_calculating_battery_time = false;
+  status_->battery_time_to_empty = kBatteryTime;
   daemon_.low_battery_shutdown_time_s_ = kThresholdTime;
   daemon_.low_battery_shutdown_percent_ = 0.0;
 
@@ -916,11 +945,28 @@ TEST_F(DaemonTest, UpdateAveragedTimesWithSetThreshold) {
   empty_average_.ExpectChangeWindowSize(1);
   full_average_.ExpectGetAverage(0);
   empty_average_.ExpectGetAverage(kBatteryTime);
+  ExpectGoodBatteryInfoSample();
 
-  daemon_.UpdateAveragedTimes(&status_, &empty_average_, &full_average_);
+  daemon_.UpdateAveragedTimes(&empty_average_, &full_average_);
 
-  EXPECT_EQ(kBatteryTime, status_.averaged_battery_time_to_empty);
-  EXPECT_EQ(0, status_.averaged_battery_time_to_full);
+  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_empty);
+  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
+}
+
+TEST_F(DaemonTest, UpdateAveragedTimesWithBadStatus) {
+  status_->line_power_on = false;
+  status_->is_calculating_battery_time = false;
+  status_->battery_time_to_empty = kBatteryTimeTooLarge;
+  daemon_.low_battery_shutdown_time_s_ = kThresholdTime;
+  daemon_.low_battery_shutdown_percent_ = 0.0;
+
+  ExpectBadBatteryInfoSample();
+
+  daemon_.UpdateAveragedTimes(&empty_average_, &full_average_);
+
+  EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
+  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
+  EXPECT_TRUE(status_->is_calculating_battery_time);
 }
 
 // TODO: Replace MockBacklight with TestBacklight from
