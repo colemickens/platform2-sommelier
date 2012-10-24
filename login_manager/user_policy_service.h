@@ -17,8 +17,8 @@ class PolicyStore;
 // Policy service implementation for user policy.
 class UserPolicyService : public PolicyService {
  public:
-  UserPolicyService(PolicyStore* policy_store,
-                    PolicyKey* policy_key,
+  UserPolicyService(scoped_ptr<PolicyStore> policy_store,
+                    scoped_ptr<PolicyKey> policy_key,
                     const scoped_refptr<base::MessageLoopProxy>& main_loop);
   virtual ~UserPolicyService();
 
@@ -32,6 +32,10 @@ class UserPolicyService : public PolicyService {
                      int flags);
 
  private:
+  // UserPolicyService owns its PolicyKey, note that PolicyService just keeps a
+  // plain pointer.
+  scoped_ptr<PolicyKey> scoped_policy_key_;
+
   DISALLOW_COPY_AND_ASSIGN(UserPolicyService);
 };
 

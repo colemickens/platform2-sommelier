@@ -16,10 +16,11 @@ namespace em = enterprise_management;
 namespace login_manager {
 
 UserPolicyService::UserPolicyService(
-    PolicyStore* policy_store,
-    PolicyKey* policy_key,
+    scoped_ptr<PolicyStore> policy_store,
+    scoped_ptr<PolicyKey> policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop)
-    : PolicyService(policy_store, policy_key, main_loop) {
+    : PolicyService(policy_store.Pass(), policy_key.get(), main_loop),
+      scoped_policy_key_(policy_key.Pass()) {
 }
 
 UserPolicyService::~UserPolicyService() {

@@ -30,8 +30,8 @@
 #include "login_manager/file_checker.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
-#include "login_manager/policy_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/user_policy_service_factory.h"
@@ -522,6 +522,7 @@ class SessionManagerService
   scoped_refptr<base::MessageLoopProxy> message_loop_;
 
   SystemUtils* system_;  // Owned by the caller.
+  scoped_ptr<NssUtil> nss_;
   scoped_ptr<KeyGenerator> key_gen_;
   scoped_ptr<LoginMetrics> login_metrics_;
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
@@ -537,6 +538,7 @@ class SessionManagerService
   // D-Bus GLib signal ids.
   guint signals_[kNumSignals];
 
+  scoped_ptr<PolicyKey> owner_key_;
   scoped_refptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
   scoped_refptr<PolicyService> user_policy_;

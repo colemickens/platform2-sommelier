@@ -43,7 +43,9 @@ class UserPolicyServiceTest : public ::testing::Test {
     store_ = new StrictMock<MockPolicyStore>;
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
-    service_ = new UserPolicyService(store_, key_, message_loop);
+    service_ = new UserPolicyService(scoped_ptr<PolicyStore>(store_),
+                                     scoped_ptr<PolicyKey>(key_),
+                                     message_loop);
   }
 
   void InitPolicy(em::PolicyData::AssociationState state,

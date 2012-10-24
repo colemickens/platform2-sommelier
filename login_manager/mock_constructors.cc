@@ -34,7 +34,8 @@ MockChildJob::~MockChildJob() {}
 
 MockDevicePolicyService::MockDevicePolicyService()
     : DevicePolicyService(FilePath(""), FilePath(""),
-                          NULL, NULL, NULL, NULL, NULL, NULL) {}
+                          scoped_ptr<PolicyStore>(),
+                          NULL, NULL, NULL, NULL, NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
 
 MockFileChecker::MockFileChecker(std::string filename)
@@ -53,7 +54,8 @@ MockMitigator::~MockMitigator() {}
 MockPolicyKey::MockPolicyKey() : PolicyKey(FilePath("")) {}
 MockPolicyKey::~MockPolicyKey() {}
 
-MockPolicyService::MockPolicyService() : PolicyService(NULL, NULL, NULL) {}
+MockPolicyService::MockPolicyService()
+    : PolicyService(scoped_ptr<PolicyStore>(), NULL, NULL) {}
 MockPolicyService::~MockPolicyService() {}
 
 MockPolicyServiceCompletion::MockPolicyServiceCompletion() {}

@@ -76,8 +76,7 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
     virtual void OnKeyPersisted(bool success) = 0;
   };
 
-  // Takes ownership of |policy_store| and |policy_key|.
-  PolicyService(PolicyStore* policy_store,
+  PolicyService(scoped_ptr<PolicyStore> policy_store,
                 PolicyKey* policy_key,
                 const scoped_refptr<base::MessageLoopProxy>& main_loop);
   virtual ~PolicyService();
@@ -115,7 +114,7 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
   friend class PolicyServiceTest;
 
   PolicyStore* store() { return policy_store_.get(); }
-  PolicyKey* key() { return policy_key_.get(); }
+  PolicyKey* key() { return policy_key_; }
   const scoped_refptr<base::MessageLoopProxy>& main_loop() {
     return main_loop_;
   }
@@ -161,7 +160,7 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
 
  private:
   scoped_ptr<PolicyStore> policy_store_;
-  scoped_ptr<PolicyKey> policy_key_;
+  PolicyKey* policy_key_;
   scoped_refptr<base::MessageLoopProxy> main_loop_;
   Delegate* delegate_;
 

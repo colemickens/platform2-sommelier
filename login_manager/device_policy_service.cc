@@ -14,8 +14,8 @@
 #include "login_manager/key_generator.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/policy_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
+#include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
 
 namespace em = enterprise_management;
@@ -38,17 +38,19 @@ DevicePolicyService::~DevicePolicyService() {
 // static
 DevicePolicyService* DevicePolicyService::Create(
     LoginMetrics* metrics,
+    PolicyKey* owner_key,
     OwnerKeyLossMitigator* mitigator,
+    NssUtil* nss,
     const scoped_refptr<base::MessageLoopProxy>& main_loop) {
-  NssUtil* nss = NssUtil::Create();
   return new DevicePolicyService(FilePath(kSerialRecoveryFlagFile),
                                  FilePath(kPolicyPath),
-                                 new PolicyStore(FilePath(kPolicyPath)),
-                                 new PolicyKey(nss->GetOwnerKeyFilePath()),
+                                 scoped_ptr<PolicyStore>(
+                                     new PolicyStore(FilePath(kPolicyPath))),
+                                 owner_key,
                                  main_loop,
-                                 nss,
                                  metrics,
-                                 mitigator);
+                                 mitigator,
+                                 nss);
 }
 
 bool DevicePolicyService::CheckAndHandleOwnerLogin(
@@ -111,18 +113,18 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
 DevicePolicyService::DevicePolicyService(
     const FilePath& serial_recovery_flag_file,
     const FilePath& policy_file,
-    PolicyStore* policy_store,
+    scoped_ptr<PolicyStore> policy_store,
     PolicyKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
-    NssUtil* nss,
     LoginMetrics* metrics,
-    OwnerKeyLossMitigator* mitigator)
-    : PolicyService(policy_store, policy_key, main_loop),
+    OwnerKeyLossMitigator* mitigator,
+    NssUtil* nss)
+    : PolicyService(policy_store.Pass(), policy_key, main_loop),
       serial_recovery_flag_file_(serial_recovery_flag_file),
       policy_file_(policy_file),
-      nss_(nss),
       metrics_(metrics),
-      mitigator_(mitigator) {
+      mitigator_(mitigator),
+      nss_(nss) {
 }
 
 bool DevicePolicyService::KeyMissing() {

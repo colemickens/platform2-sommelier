@@ -47,10 +47,10 @@ PolicyService::Delegate::~Delegate() {
 }
 
 PolicyService::PolicyService(
-    PolicyStore* policy_store,
+    scoped_ptr<PolicyStore> policy_store,
     PolicyKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop)
-    : policy_store_(policy_store),
+    : policy_store_(policy_store.Pass()),
       policy_key_(policy_key),
       main_loop_(main_loop),
       delegate_(NULL) {

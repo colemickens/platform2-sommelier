@@ -232,6 +232,7 @@ SessionManagerService::SessionManagerService(
       dont_use_directly_(new MessageLoopForUI),
       message_loop_(base::MessageLoopProxy::current()),
       system_(utils),
+      nss_(NssUtil::Create()),
       key_gen_(new KeyGenerator(utils)),
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
@@ -326,8 +327,11 @@ bool SessionManagerService::Initialize() {
     return false;
   }
   login_metrics_.reset(new LoginMetrics(flag_file_dir));
+  owner_key_.reset(new PolicyKey(nss_->GetOwnerKeyFilePath()));
   device_policy_ = DevicePolicyService::Create(login_metrics_.get(),
+                                               owner_key_.get(),
                                                mitigator_.get(),
+                                               nss_.get(),
                                                message_loop_);
   device_policy_->set_delegate(this);
   user_policy_factory_.reset(

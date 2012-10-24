@@ -32,7 +32,9 @@ class DevicePolicyService : public PolicyService {
   // Instantiates a regular (non-testing) device policy service instance.
   static DevicePolicyService* Create(
       LoginMetrics* metrics,
+      PolicyKey* owner_key,
       OwnerKeyLossMitigator* mitigator,
+      NssUtil* nss,
       const scoped_refptr<base::MessageLoopProxy>& main_loop);
 
   // Checks whether the given |current_user| is the device owner. The result of
@@ -82,12 +84,12 @@ class DevicePolicyService : public PolicyService {
   // Takes ownership of |policy_store|, |policy_key|, |system_utils|, and |nss|.
   DevicePolicyService(const FilePath& serial_recovery_flag_file,
                       const FilePath& policy_file,
-                      PolicyStore* policy_store,
-                      PolicyKey* policy_key,
+                      scoped_ptr<PolicyStore> policy_store,
+                      PolicyKey* owner_key,
                       const scoped_refptr<base::MessageLoopProxy>& main_loop,
-                      NssUtil* nss,
                       LoginMetrics* metrics,
-                      OwnerKeyLossMitigator* mitigator);
+                      OwnerKeyLossMitigator* mitigator,
+                      NssUtil* nss);
 
   // Assuming the current user has access to the owner private key (read: is the
   // owner), this call whitelists |current_user| and sets a property indicating
@@ -110,9 +112,9 @@ class DevicePolicyService : public PolicyService {
 
   const FilePath serial_recovery_flag_file_;
   const FilePath policy_file_;
-  scoped_ptr<NssUtil> nss_;
   LoginMetrics* metrics_;
   OwnerKeyLossMitigator* mitigator_;
+  NssUtil* nss_;
 
   DISALLOW_COPY_AND_ASSIGN(DevicePolicyService);
 };

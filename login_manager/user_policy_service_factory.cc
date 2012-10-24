@@ -56,8 +56,9 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
   }
 
   return new UserPolicyService(
-      new PolicyStore(policy_dir.Append(kPolicyDataFile)),
-      new PolicyKey(policy_dir.Append(kPolicyKeyFile)),
+      scoped_ptr<PolicyStore>(
+          new PolicyStore(policy_dir.Append(kPolicyDataFile))),
+      scoped_ptr<PolicyKey>(new PolicyKey(policy_dir.Append(kPolicyKeyFile))),
       main_loop_);
 }
 
