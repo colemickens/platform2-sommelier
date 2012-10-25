@@ -5,6 +5,8 @@
 #ifndef WIMAX_MANAGER_POWER_MANAGER_H_
 #define WIMAX_MANAGER_POWER_MANAGER_H_
 
+#include <glib.h>
+
 #include <string>
 
 #include <base/basictypes.h>
@@ -24,16 +26,19 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
   void Initialize();
   void Finalize();
 
+  void ResumeOnSuspendTimedOut();
   void RegisterSuspendDelay(uint32 delay_ms);
   void UnregisterSuspendDelay();
   void OnSuspendDelay(uint32 sequence_number);
   void OnPowerStateChanged(const std::string &new_power_state);
 
  private:
+  void CancelSuspendTimeout();
   void SuspendReady(uint32 sequence_number);
 
   bool suspend_delay_registered_;
   bool suspended_;
+  guint suspend_timeout_id_;
   Manager *wimax_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerManager);
