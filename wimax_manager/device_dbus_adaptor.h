@@ -41,6 +41,11 @@ class DeviceDBusAdaptor : public org::chromium::WiMaxManager::Device_adaptor,
   NetworkRefPtr FindNetworkByDBusObjectPath(
       const DBus::Path &network_object_path) const;
 
+  // Overrides PropertiesAdaptor::on_set_property to handle
+  // org.freedesktop.DBus.Properties.Set calls.
+  virtual void on_set_property(DBus::InterfaceAdaptor& interface,
+      const std::string& property, const DBus::Variant& value);
+
   Device *device_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceDBusAdaptor);

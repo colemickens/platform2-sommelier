@@ -77,6 +77,8 @@ DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection *connection,
   RSSIs = device->rssi();
   Networks = vector<DBus::Path>();
   Status = device->status();
+  NetworkScanInterval = device->network_scan_interval();
+  StatusUpdateInterval = device->status_update_interval();
 }
 
 DeviceDBusAdaptor::~DeviceDBusAdaptor() {
@@ -171,6 +173,16 @@ NetworkRefPtr DeviceDBusAdaptor::FindNetworkByDBusObjectPath(
       return network_iterator->second;
   }
   return NULL;
+}
+
+void DeviceDBusAdaptor::on_set_property(
+    DBus::InterfaceAdaptor& interface,
+    const string& property, const DBus::Variant& value) {
+  if (property == "NetworkScanInterval") {
+    device_->SetNetworkScanInterval(value.reader().get_uint32());
+  } else if (property == "StatusUpdateInterval") {
+    device_->SetStatusUpdateInterval(value.reader().get_uint32());
+  }
 }
 
 }  // namespace wimax_manager

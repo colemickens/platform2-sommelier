@@ -18,8 +18,10 @@ const size_t kMACAddressLength = 6;
 const size_t kBaseStationIdLength = 6;
 
 // Default time interval, in seconds, between network scans.
-// TODO(benchan): Perform some measurements and fine tune this value.
-const int kDefaultScanIntervalInSeconds = 5;
+const int kDefaultNetworkScanIntervalInSeconds = 5;
+
+// Default time interval, in seconds, between status updates.
+const int kDefaultStatusUpdateIntervalInSeconds = 3;
 
 string GetDeviceStatusDescription(DeviceStatus device_status) {
   switch (device_status) {
@@ -47,7 +49,8 @@ Device::Device(uint8 index, const string &name)
       mac_address_(kMACAddressLength),
       base_station_id_(kBaseStationIdLength),
       frequency_(0),
-      scan_interval_(kDefaultScanIntervalInSeconds),
+      network_scan_interval_(kDefaultNetworkScanIntervalInSeconds),
+      status_update_interval_(kDefaultStatusUpdateIntervalInSeconds),
       status_(kDeviceStatusUninitialized),
       entering_suspend_mode_(false) {
 }
@@ -61,6 +64,20 @@ void Device::UpdateNetworks() {
 
 void Device::UpdateRFInfo() {
   dbus_adaptor()->UpdateRFInfo();
+}
+
+void Device::SetNetworkScanInterval(uint32 network_scan_interval) {
+  if (network_scan_interval_ != network_scan_interval) {
+    network_scan_interval_ = network_scan_interval;
+    UpdateNetworkScanInterval();
+  }
+}
+
+void Device::SetStatusUpdateInterval(uint32 status_update_interval) {
+  if (status_update_interval_ != status_update_interval) {
+    status_update_interval_ = status_update_interval;
+    UpdateStatusUpdateInterval();
+  }
 }
 
 void Device::SetMACAddress(const ByteIdentifier &mac_address) {

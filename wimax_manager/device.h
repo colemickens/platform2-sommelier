@@ -44,8 +44,11 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   const NetworkMap &networks() const { return networks_; }
   const DeviceStatus status() const { return status_; }
 
-  int scan_interval() const { return scan_interval_; }
-  void set_scan_interval(int scan_interval) { scan_interval_ = scan_interval; }
+  uint32 network_scan_interval() const { return network_scan_interval_; }
+  void SetNetworkScanInterval(uint32 network_scan_interval);
+
+  int status_update_interval() const { return status_update_interval_; }
+  void SetStatusUpdateInterval(uint32 status_update_interval);
 
   // TODO(benchan): Temporarily workaround for crosbug.com/p/10150.
   bool entering_suspend_mode() const { return entering_suspend_mode_; }
@@ -54,6 +57,9 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   }
 
  protected:
+  virtual void UpdateNetworkScanInterval() = 0;
+  virtual void UpdateStatusUpdateInterval() = 0;
+
   void UpdateNetworks();
   void UpdateRFInfo();
 
@@ -74,7 +80,8 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   std::vector<int> cinr_;
   std::vector<int> rssi_;
   NetworkMap networks_;
-  int scan_interval_;
+  uint32 network_scan_interval_;
+  uint32 status_update_interval_;
   DeviceStatus status_;
 
   // TODO(benchan): Temporarily workaround for crosbug.com/p/10150.

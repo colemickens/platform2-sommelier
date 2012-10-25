@@ -27,8 +27,6 @@ namespace wimax_manager {
 
 namespace {
 
-const int kStatusUpdateIntervalInSeconds = 3;
-
 string GetEAPUserIdentity(const DictionaryValue &parameters) {
   string user_identity;
   if (parameters.GetString(kEAPUserIdentity, &user_identity))
@@ -94,7 +92,7 @@ GdmDevice::GdmDevice(uint8 index, const string &name,
       driver_(driver),
       open_(false),
       connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging),
-      scan_timeout_id_(0),
+      network_scan_timeout_id_(0),
       status_update_timeout_id_(0),
       current_network_identifier_(Network::kInvalidIdentifier) {
 }
@@ -157,19 +155,19 @@ bool GdmDevice::Enable() {
     return false;
   }
 
-  // Set OnNetworkScan() to be called repeatedly at |scan_interval_| intervals
-  // to scan and update the list of networks via ScanNetworks().
+  // Set OnNetworkScan() to be called repeatedly at |network_scan_interval_|
+  // intervals to scan and update the list of networks via ScanNetworks().
   //
   // TODO(benchan): Refactor common functionalities like periodic network scan
   // to the Device base class.
-  if (scan_timeout_id_ == 0) {
-    scan_timeout_id_ =
-        g_timeout_add_seconds(scan_interval(), OnNetworkScan, this);
+  if (network_scan_timeout_id_ == 0) {
+    network_scan_timeout_id_ =
+        g_timeout_add_seconds(network_scan_interval(), OnNetworkScan, this);
   }
 
   if (status_update_timeout_id_ == 0) {
     status_update_timeout_id_ = g_timeout_add_seconds(
-        kStatusUpdateIntervalInSeconds, OnStatusUpdate, this);
+        status_update_interval(), OnStatusUpdate, this);
   }
 
   if (!driver_->GetDeviceStatus(this)) {
@@ -186,9 +184,9 @@ bool GdmDevice::Disable() {
   ClearCurrentConnectionProfile();
 
   // Cancel the periodic calls to OnNetworkScan().
-  if (scan_timeout_id_ != 0) {
-    g_source_remove(scan_timeout_id_);
-    scan_timeout_id_ = 0;
+  if (network_scan_timeout_id_ != 0) {
+    g_source_remove(network_scan_timeout_id_);
+    network_scan_timeout_id_ = 0;
   }
 
   // Cancel the periodic calls to OnStatusUpdate().
@@ -272,6 +270,26 @@ bool GdmDevice::UpdateStatus() {
     return false;
   }
   return true;
+}
+
+void GdmDevice::UpdateNetworkScanInterval() {
+  if (network_scan_timeout_id_ != 0) {
+    LOG(INFO) << "Update network scan interval to " << network_scan_interval()
+              << "s.";
+    g_source_remove(network_scan_timeout_id_);
+    network_scan_timeout_id_ =
+        g_timeout_add_seconds(network_scan_interval(), OnNetworkScan, this);
+  }
+}
+
+void GdmDevice::UpdateStatusUpdateInterval() {
+  if (status_update_timeout_id_ != 0) {
+    LOG(INFO) << "Update status update interval to " << status_update_interval()
+              << "s.";
+    g_source_remove(status_update_timeout_id_);
+    status_update_timeout_id_ = g_timeout_add_seconds(
+        status_update_interval(), OnStatusUpdate, this);
+  }
 }
 
 bool GdmDevice::Connect(const Network &network,

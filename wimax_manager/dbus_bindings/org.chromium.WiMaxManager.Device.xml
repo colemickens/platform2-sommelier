@@ -28,5 +28,7 @@
     <property name="RSSIs" type="ai" access="read" />
     <property name="Networks" type="ao" access="read" />
     <property name="Status" type="i" access="read" />
+    <property name="NetworkScanInterval" type="u" access="readwrite" />
+    <property name="StatusUpdateInterval" type="u" access="readwrite" />
   </interface>
 </node>
