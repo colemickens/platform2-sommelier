@@ -45,6 +45,14 @@ EthernetService::EthernetService(ControlInterface *control_interface,
 
 EthernetService::~EthernetService() { }
 
+void EthernetService::Connect(Error */*error*/) {
+  ethernet_->ConnectTo(this);
+}
+
+void EthernetService::Disconnect(Error */*error*/) {
+  ethernet_->DisconnectFrom(this);
+}
+
 std::string EthernetService::GetDeviceRpcId(Error */*error*/) {
   return ethernet_->GetRpcIdentifier();
 }

@@ -27,9 +27,10 @@ class Ethernet : public Device {
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
   virtual void LinkEvent(unsigned int flags, unsigned int change);
+  virtual void ConnectTo(EthernetService *service);
+  virtual void DisconnectFrom(EthernetService *service);
 
  private:
-  bool service_registered_;
   ServiceRefPtr service_;
   bool link_up_;
 

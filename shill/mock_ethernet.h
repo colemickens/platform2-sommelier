@@ -33,7 +33,8 @@ class MockEthernet : public Ethernet {
                            const EnabledStateChangedCallback &callback));
   MOCK_METHOD2(Stop, void(Error *error,
                           const EnabledStateChangedCallback &callback));
-
+  MOCK_METHOD1(ConnectTo, void(EthernetService *service));
+  MOCK_METHOD1(DisconnectFrom, void(EthernetService *service));
  private:
   DISALLOW_COPY_AND_ASSIGN(MockEthernet);
 };

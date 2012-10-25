@@ -69,4 +69,12 @@ TEST_F(EthernetServiceTest, AutoConnect) {
   EXPECT_TRUE(GetAutoConnect());
 }
 
+TEST_F(EthernetServiceTest, ConnectDisconnectDelegation) {
+  EXPECT_CALL(*ethernet_, ConnectTo(service_.get()));
+  service_->AutoConnect();
+  EXPECT_CALL(*ethernet_, DisconnectFrom(service_.get()));
+  Error error;
+  service_->Disconnect(&error);
+}
+
 }  // namespace shill

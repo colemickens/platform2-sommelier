@@ -27,6 +27,10 @@ class EthernetService : public Service {
                   const EthernetRefPtr &device);
   ~EthernetService();
 
+  // Inherited from Service.
+  virtual void Connect(Error *error);
+  virtual void Disconnect(Error *error);
+
   // ethernet_<MAC>
   virtual std::string GetStorageIdentifier() const;
   virtual bool IsAutoConnectByDefault() const { return true; }
