@@ -139,7 +139,26 @@ void Suspender::CancelSuspend() {
   if (suspend_requested_) {
     LOG(INFO) << "Suspend canceled mid flight.";
     daemon_->ResumePollPowerSupply();
+
+    // Send a PowerStateChanged "on" signal when suspend is canceled.
+    //
+    // TODO(benchan): Refactor this code and the code in the powerd_suspend
+    // script.
+    chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                                kPowerManagerServicePath,
+                                kPowerManagerInterface);
+    DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                  kPowerManagerInterface,
+                                                  kPowerStateChanged);
+    const char* power_state = "on";
+    int32 suspend_rc = -1;
+    dbus_message_append_args(signal, DBUS_TYPE_STRING, &power_state,
+                             DBUS_TYPE_INT32, &suspend_rc,
+                             DBUS_TYPE_INVALID);
+    dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+    dbus_message_unref(signal);
   }
+
   suspend_requested_ = false;
   suspend_delays_outstanding_ = 0;
 }
