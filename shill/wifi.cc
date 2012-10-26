@@ -179,6 +179,10 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
   if (config80211) {
     config80211->SetWifiState(Config80211::kWifiUp);
   }
+
+  // Ensure that hidden services are loaded from profiles.  The may have been
+  // removed with a previous call to Stop().
+  manager()->LoadDeviceFromProfiles(this);
 }
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {

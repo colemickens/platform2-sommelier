@@ -716,13 +716,7 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   }
   devices_.push_back(to_manage);
 
-  // We are applying device properties from the DefaultProfile, and adding the
-  // union of hidden services in all loaded profiles to the device.
-  for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
-       it != profiles_.end(); ++it) {
-    // Load device configuration, if any exists, as well as hidden services.
-    (*it)->ConfigureDevice(to_manage);
-  }
+  LoadDeviceFromProfiles(to_manage);
 
   // If |to_manage| is new, it needs to be persisted.
   UpdateDevice(to_manage);
@@ -751,6 +745,16 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
   }
   SLOG(Manager, 2) << __func__ << " unknown device: "
                    << to_forget->UniqueName();
+}
+
+void Manager::LoadDeviceFromProfiles(const DeviceRefPtr &device) {
+  // We are applying device properties from the DefaultProfile, and adding the
+  // union of hidden services in all loaded profiles to the device.
+  for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
+       it != profiles_.end(); ++it) {
+    // Load device configuration, if any exists, as well as hidden services.
+    (*it)->ConfigureDevice(device);
+  }
 }
 
 void Manager::EmitDeviceProperties() {

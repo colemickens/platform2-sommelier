@@ -777,6 +777,7 @@ TEST_F(WiFiMainTest, CleanStart) {
           DBus::Error(
               "fi.w1.wpa_supplicant1.InterfaceUnknown",
               "test threw fi.w1.wpa_supplicant1.InterfaceUnknown")));
+  EXPECT_CALL(*manager(), LoadDeviceFromProfiles(_));
   EXPECT_CALL(*supplicant_interface_proxy_, Scan(_));
   EXPECT_TRUE(GetScanTimer().IsCancelled());
   StartWiFi();

@@ -44,6 +44,7 @@ class MockManager : public Manager {
                      const std::string &entry_name));
   MOCK_CONST_METHOD0(GetDefaultService, ServiceRefPtr());
   MOCK_METHOD0(UpdateEnabledTechnologies, void());
+  MOCK_METHOD1(LoadDeviceFromProfiles, void(const DeviceRefPtr &device));
   MOCK_METHOD1(IsPortalDetectionEnabled, bool(Technology::Identifier tech));
   MOCK_CONST_METHOD1(IsServiceEphemeral,
                      bool(const ServiceConstRefPtr &service));

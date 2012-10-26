@@ -225,6 +225,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // ephemeral, it is moved to the current profile.
   void SaveServiceToProfile(const ServiceRefPtr &to_update);
 
+  // Configure the device with profile data from all current profiles.
+  virtual void LoadDeviceFromProfiles(const DeviceRefPtr &device);
+
   // Adds a closure to be executed when ChromeOS suspends or shill terminates.
   // |name| should be unique; otherwise, a previous closure by the same name
   // will be replaced.  |start| will be called when RunTerminationActions() is
