@@ -69,6 +69,7 @@ const int64 kCrasRetryConnectMs = 1000;
 const char kSysClassInputPath[] = "/sys/class/input";
 const char kInputMatchPattern[] = "input*";
 const char kUsbMatchString[] = "usb";
+const char kBluetoothMatchString[] = "bluetooth";
 
 // Upper limit to accept for raw battery times, in seconds. If the time of
 // interest is above this level assume something is wrong.
@@ -1841,6 +1842,10 @@ bool Daemon::USBInputDeviceConnected() const {
     if (!file_util::ReadSymbolicLink(path, &symlink_path))
       continue;
     const std::string& path_string = symlink_path.value();
+    // Skip bluetooth devices, which may be identified as USB devices.
+    if (path_string.find(kBluetoothMatchString) != std::string::npos)
+      continue;
+    // Now look for the USB devices that are not bluetooth.
     size_t position = path_string.find(kUsbMatchString);
     if (position == std::string::npos)
       continue;
