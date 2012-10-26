@@ -29,10 +29,10 @@
 #include "login_manager/device_policy_service.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/key_generator.h"
+#include "login_manager/liveness_checker.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_key.h"
-#include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/user_policy_service_factory.h"
 
@@ -49,6 +49,7 @@ class ChildJobInterface;
 class CommandLine;
 class NssUtil;
 class PolicyService;
+class SystemUtils;
 
 // Provides a wrapper for exporting SessionManagerInterface to
 // D-Bus and entering the glib run loop.
@@ -70,6 +71,7 @@ class SessionManagerService
 
   SessionManagerService(scoped_ptr<ChildJobInterface> child_job,
                         int kill_timeout,
+                        bool enable_liveness_checking,
                         SystemUtils* system);
   virtual ~SessionManagerService();
 
@@ -99,6 +101,9 @@ class SessionManagerService
     }
     void set_login_metrics(LoginMetrics* metrics) {
       session_manager_service_->login_metrics_.reset(metrics);
+    }
+    void set_liveness_checker(LivenessChecker* checker) {
+      session_manager_service_->liveness_checker_.reset(checker);
     }
     // Sets whether the the manager exits when a child finishes.
     void set_exit_on_child_done(bool do_exit) {
@@ -215,11 +220,8 @@ class SessionManagerService
   // HandleBrowserExit when the child is done.
   void RunBrowser();
 
-  // Run() particular ChildJobInterface, specified by |child_job|.
-  int RunChild(ChildJobInterface* child_job);
-
-  // Kill one of the children with signal.
-  void KillChild(const ChildJobInterface* child_job, int child_pid, int signal);
+  // Abort the browser process.
+  virtual void AbortBrowser();
 
   // Check if |pid| is the currently-managed browser process.
   bool IsKnownChild(pid_t pid);
@@ -331,6 +333,9 @@ class SessionManagerService
   // Intended to be called by Chromium. Updates canonical system-locked state,
   // and broadcasts ScreenIsUnlocked signal over DBus.
   gboolean HandleLockScreenDismissed(GError** error);
+
+  // Intended to be called by Chromium, to ack a liveness request signal.
+  gboolean HandleLivenessConfirmed(GError** error);
 
   // Restarts job with specified pid replacing its command line arguments
   // with provided.
@@ -484,6 +489,12 @@ class SessionManagerService
   // we actually exit the Service as well.
   bool ShouldStopChild(ChildJobInterface* child_job);
 
+  // Run() particular ChildJobInterface, specified by |child_job|.
+  int RunChild(ChildJobInterface* child_job);
+
+  // Kill one of the children using provided signal.
+  void KillChild(const ChildJobInterface* child_job, int child_pid, int signal);
+
   // Load the policy blob from |service| and write it to |policy_blob|. Returns
   // TRUE if the data is can be fetched, FALSE otherwise and sets |error|.
   gboolean RetrievePolicyFromService(PolicyService* service,
@@ -526,13 +537,17 @@ class SessionManagerService
   scoped_ptr<KeyGenerator> key_gen_;
   scoped_ptr<LoginMetrics> login_metrics_;
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
+  scoped_ptr<LivenessChecker> liveness_checker_;
 
   bool session_started_;
   bool session_stopping_;
   bool current_user_is_incognito_;
   std::string current_user_;
-  FilePath chrome_testing_path_;
+  bool screen_locked_;
+  uid_t uid_;
+  bool set_uid_;
 
+  FilePath chrome_testing_path_;
   FilePath machine_info_file_;
 
   // D-Bus GLib signal ids.
@@ -544,9 +559,6 @@ class SessionManagerService
   scoped_refptr<PolicyService> user_policy_;
   scoped_ptr<FileChecker> file_checker_;
   scoped_ptr<OwnerKeyLossMitigator> mitigator_;
-  bool screen_locked_;
-  uid_t uid_;
-  bool set_uid_;
 
   bool shutting_down_;
   bool shutdown_already_;

@@ -8,11 +8,13 @@
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
+#include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
+#include "login_manager/mock_session_manager_service.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
 
@@ -45,6 +47,9 @@ MockFileChecker::~MockFileChecker() {}
 MockKeyGenerator::MockKeyGenerator() : KeyGenerator(NULL) {}
 MockKeyGenerator::~MockKeyGenerator() {}
 
+MockLivenessChecker::MockLivenessChecker() {}
+MockLivenessChecker::~MockLivenessChecker() {}
+
 MockMetrics::MockMetrics() : LoginMetrics(FilePath("")) {}
 MockMetrics::~MockMetrics() {}
 
@@ -66,6 +71,10 @@ MockPolicyServiceDelegate::~MockPolicyServiceDelegate() {}
 
 MockPolicyStore::MockPolicyStore() : PolicyStore(FilePath("")) {}
 MockPolicyStore::~MockPolicyStore() {}
+
+MockSessionManagerService::MockSessionManagerService()
+    : SessionManagerService(scoped_ptr<ChildJobInterface>(), 0, false, NULL) {}
+MockSessionManagerService::~MockSessionManagerService() {}
 
 MockSystemUtils::MockSystemUtils() {}
 MockSystemUtils::~MockSystemUtils() {}

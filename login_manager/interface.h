@@ -77,6 +77,8 @@ gboolean session_manager_lock_screen(SessionManager *self,
                                      GError **error);
 gboolean session_manager_handle_lock_screen_shown(SessionManager *self,
                                                   GError **error);
+gboolean session_manager_handle_liveness_confirmed(SessionManager *self,
+                                                   GError **error);
 gboolean session_manager_restart_job(SessionManager *self,
                                      gint pid,
                                      gchar *arguments,

@@ -130,6 +130,10 @@ gboolean session_manager_handle_lock_screen_dismissed(SessionManager *self,
                                                       GError **error) {
   SESSION_MANAGER_WRAP_METHOD(HandleLockScreenDismissed, error);
 }
+gboolean session_manager_handle_liveness_confirmed(SessionManager *self,
+                                                   GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(HandleLivenessConfirmed, error);
+}
 gboolean session_manager_restart_job(SessionManager *self,
                                      gint pid,
                                      gchar *arguments,

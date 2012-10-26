@@ -23,6 +23,7 @@ namespace login_manager {
 class MockChildJob;
 class MockDevicePolicyService;
 class MockFileChecker;
+class MockLivenessChecker;
 class MockMetrics;
 class MockMitigator;
 class MockPolicyService;
@@ -69,12 +70,18 @@ class SessionManagerTest : public ::testing::Test {
   scoped_refptr<SessionManagerService> manager_;
   SystemUtils real_utils_;
   MockSystemUtils utils_;
+
+  // These are bare pointers, not scoped_ptrs, because we need to give them
+  // to a SessionManagerService instance, but also be able to set expectations
+  // on them after we hand them off.
   MockFileChecker* file_checker_;
+  MockLivenessChecker* liveness_checker_;
   MockMetrics* metrics_;
   MockMitigator* mitigator_;
   MockUpstartSignalEmitter* upstart_;
   MockDevicePolicyService* device_policy_service_;
   MockPolicyService* user_policy_service_;
+
   bool must_destroy_mocks_;
   ScopedTempDir tmpdir_;
 

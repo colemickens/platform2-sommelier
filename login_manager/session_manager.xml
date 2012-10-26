@@ -95,6 +95,9 @@
     <signal name="ScreenIsUnlocked">
       <!-- Broadcast that the browser unlocked the screen -->
     </signal>
+    <method name="HandleLivenessConfirmed">
+      <!-- Handle 'liveness' check ACK from the browser -->
+    </method>
     <method name="RestartJob">
       <!-- PID of the job to restart -->
       <arg type="i" name="pid" direction="in" />

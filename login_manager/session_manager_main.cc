@@ -37,9 +37,7 @@ using std::wstring;
 // processes specified as command line arguments separated with --.
 // Also listens over DBus for the commands specified in interface.h.
 // Usage:
-//   session_manager --uid=1000 --login --
-//     /path/to/command1 [arg1 [arg2 [ . . . ] ] ]
-//   [-- /path/to/command2 [arg1 [arg2 [ ... ]]]]
+//   session_manager --uid=1000 -- /path/to/command1 [arg1 [arg2 [ . . . ] ] ]
 
 namespace switches {
 
@@ -59,6 +57,10 @@ static const char kUid[] = "uid";
 static const char kKillTimeout[] = "kill-timeout";
 static const int kKillTimeoutDefault = 3;
 
+// Name of the flag specifying whether we should kill and restart chrome
+// if we detect that it has hung.
+static const char kEnableLivenessDetection[] = "enable-liveness-detection";
+
 // Flag that causes session manager to show the help message and exit.
 static const char kHelp[] = "help";
 // The help message shown if help flag is passed to the program.
@@ -71,10 +73,11 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "  --kill-timeout=[number in seconds]\n"
 "    Number of seconds to wait for children to exit gracefully before\n"
 "    killing them with a SIGABRT.\n"
+"  --enable-liveness-detection\n"
+"    Ping the browser over DBus periodically to determine if it's alive.\n"
+"    If it fails to respond, SIGABRT and restart it."
 "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
-"    Supplies the required program to execute and its arguments.\n"
-"    Multiple programs can be executed by delimiting them with addition --\n"
-"    as -- foo a b c -- bar d e f\n";
+    "    Supplies the required program to execute and its arguments.\n";
 
 }  // namespace switches
 
@@ -133,7 +136,11 @@ int main(int argc, char* argv[]) {
 
   ::g_type_init();
   scoped_refptr<SessionManagerService> manager =
-      new SessionManagerService(browser_job.Pass(), kill_timeout, &system);
+      new SessionManagerService(
+          browser_job.Pass(),
+          kill_timeout,
+          cl->HasSwitch(switches::kEnableLivenessDetection),
+          &system);
 
   string magic_chrome_file =
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);

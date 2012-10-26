@@ -17,6 +17,7 @@
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
+#include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_policy_service.h"
@@ -49,6 +50,7 @@ const pid_t SessionManagerTest::kDummyPid = 4;
 SessionManagerTest::SessionManagerTest()
     : manager_(NULL),
       file_checker_(new MockFileChecker(kCheckedFile)),
+      liveness_checker_(new MockLivenessChecker),
       metrics_(new MockMetrics),
       mitigator_(new MockMitigator),
       upstart_(new MockUpstartSignalEmitter),
@@ -60,6 +62,7 @@ SessionManagerTest::SessionManagerTest()
 SessionManagerTest::~SessionManagerTest() {
   if (must_destroy_mocks_) {
     delete file_checker_;
+    delete liveness_checker_;
     delete metrics_;
     delete mitigator_;
     delete upstart_;
@@ -83,10 +86,11 @@ void SessionManagerTest::InitManager(MockChildJob* job) {
   scoped_ptr<ChildJobInterface> job_ptr(job);
 
   ASSERT_TRUE(MessageLoop::current() == NULL);
-  manager_ = new SessionManagerService(job_ptr.Pass(), 3, &real_utils_);
+  manager_ = new SessionManagerService(job_ptr.Pass(), 3, false, &real_utils_);
   manager_->set_file_checker(file_checker_);
   manager_->set_mitigator(mitigator_);
   manager_->test_api().set_exit_on_child_done(true);
+  manager_->test_api().set_liveness_checker(liveness_checker_);
   manager_->test_api().set_upstart_signal_emitter(upstart_);
   manager_->test_api().set_device_policy_service(device_policy_service_);
   manager_->test_api().set_login_metrics(metrics_);

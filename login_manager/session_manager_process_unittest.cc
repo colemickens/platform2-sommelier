@@ -20,6 +20,7 @@
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
+#include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_system_utils.h"
 
@@ -30,6 +31,7 @@ using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::Sequence;
 using ::testing::StrEq;
 using ::testing::WithArgs;
 using ::testing::_;
@@ -54,12 +56,22 @@ class SessionManagerProcessTest : public SessionManagerTest {
     ALWAYS, NEVER
   };
 
-  void ExpectChildJobBoilerplate(MockChildJob* job) {
+  void ExpectLivenessChecking() {
+    EXPECT_CALL(*liveness_checker_, Start()).Times(AtLeast(1));
+    EXPECT_CALL(*liveness_checker_, Stop()).Times(AtLeast(1));
+  }
+
+  void ExpectOneTimeArgBoilerplate(MockChildJob* job) {
     EXPECT_CALL(*job, ClearOneTimeArgument()).Times(AtLeast(1));
     EXPECT_CALL(*metrics_, HasRecordedChromeExec())
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
         .Times(AnyNumber());
+  }
+
+  void ExpectChildJobBoilerplate(MockChildJob* job) {
+    ExpectOneTimeArgBoilerplate(job);
+    ExpectLivenessChecking();
   }
 
   // Configures |file_checker_| to allow child restarting according to
@@ -219,6 +231,29 @@ TEST_F(SessionManagerProcessTest, FirstBootFlagUsedOnce) {
       StrEq(SessionManagerService::kFirstBootFlag))).Times(1);
   EXPECT_CALL(*job, ClearOneTimeArgument()).Times(2);
 
+  ExpectLivenessChecking();
+  EXPECT_CALL(*job, RecordTime()).Times(2);
+  EXPECT_CALL(*job, ShouldStop())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+
+  MockChildProcess proc(kDummyPid, PackStatus(kExit), manager_->test_api());
+  EXPECT_CALL(utils_, fork())
+      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
+                      Return(proc.pid())))
+      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
+                      Return(proc.pid())));
+  SimpleRunManager();
+}
+
+TEST_F(SessionManagerProcessTest, LivenessCheckingStartStop) {
+  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+  ExpectOneTimeArgBoilerplate(job);
+  {
+    Sequence start_stop;
+    EXPECT_CALL(*liveness_checker_, Start()).Times(2);
+    EXPECT_CALL(*liveness_checker_, Stop()).Times(AtLeast(2));
+  }
   EXPECT_CALL(*job, RecordTime()).Times(2);
   EXPECT_CALL(*job, ShouldStop())
       .WillOnce(Return(false))

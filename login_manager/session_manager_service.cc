@@ -42,6 +42,7 @@
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/interface.h"
 #include "login_manager/key_generator.h"
+#include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_store.h"
@@ -224,6 +225,7 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
 SessionManagerService::SessionManagerService(
     scoped_ptr<ChildJobInterface> child_job,
     int kill_timeout,
+    bool enable_liveness_checking,
     SystemUtils* utils)
     : browser_(child_job.Pass()),
       exit_on_child_done_(false),
@@ -237,12 +239,18 @@ SessionManagerService::SessionManagerService(
       key_gen_(new KeyGenerator(utils)),
       login_metrics_(NULL),
       upstart_signal_emitter_(new UpstartSignalEmitter),
+      ALLOW_THIS_IN_INITIALIZER_LIST(
+          liveness_checker_(new LivenessCheckerImpl(this,
+                                                    utils,
+                                                    message_loop_,
+                                                    enable_liveness_checking))),
+
       session_started_(false),
       session_stopping_(false),
       current_user_is_incognito_(false),
-      machine_info_file_(kMachineInfoFile),
       screen_locked_(false),
       set_uid_(false),
+      machine_info_file_(kMachineInfoFile),
       shutting_down_(false),
       shutdown_already_(false),
       exit_code_(SUCCESS) {
@@ -453,6 +461,7 @@ bool SessionManagerService::ShouldStopChild(ChildJobInterface* child_job) {
 
 bool SessionManagerService::Shutdown() {
   DeregisterChildWatchers();
+  liveness_checker_->Stop();
   if (session_started_) {
     session_stopping_ = true;
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopping;
@@ -477,6 +486,7 @@ void SessionManagerService::RunBrowser() {
     browser_.job->AddOneTimeArgument(kFirstBootFlag);
   LOG(INFO) << "Running child " << browser_.job->GetName() << "...";
   browser_.pid = RunChild(browser_.job.get());
+  liveness_checker_->Start();
 }
 
 int SessionManagerService::RunChild(ChildJobInterface* child_job) {
@@ -497,6 +507,10 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
                                             this,
                                             NULL);
   return pid;
+}
+
+void SessionManagerService::AbortBrowser() {
+  KillChild(browser_.job.get(), browser_.pid, SIGABRT);
 }
 
 void SessionManagerService::KillChild(const ChildJobInterface* child_job,
@@ -817,6 +831,11 @@ gboolean SessionManagerService::HandleLockScreenDismissed(GError** error) {
   return TRUE;
 }
 
+gboolean SessionManagerService::HandleLivenessConfirmed(GError** error) {
+  liveness_checker_->HandleLivenessConfirmed();
+  return TRUE;
+}
+
 gboolean SessionManagerService::RestartJob(gint pid,
                                            gchar* arguments,
                                            gboolean* OUT_done,
@@ -955,6 +974,7 @@ void SessionManagerService::HandleBrowserExit(GPid pid,
   }
 
   if (child_job) {
+    manager->liveness_checker_->Stop();
     if (manager->ShouldStopChild(child_job)) {
       LOG(WARNING) << "Child stopped, shutting down";
       manager->SetExitAndServiceShutdown(CHILD_EXITING_TOO_FAST);
