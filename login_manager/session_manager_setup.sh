@@ -256,6 +256,7 @@ fi
 if use_flag_is_set disable_login_animations; then
   AURA_FLAGS="$AURA_FLAGS --disable-login-animations"
   AURA_FLAGS="$AURA_FLAGS --disable-boot-animation"
+  AURA_FLAGS="$AURA_FLAGS --ash-copy-host-background-at-boot"
 fi
 # TODO(dpolukhin): Remove this flag when animation issue fixed
 # crbug.com/143148
