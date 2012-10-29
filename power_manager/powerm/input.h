@@ -12,19 +12,13 @@
 #include <vector>
 
 #include "base/basictypes.h"
+#include "power_manager/common/power_constants.h"
 
 // Forward declarations of structs from libudev.h.
 struct udev;
 struct udev_monitor;
 
 namespace power_manager {
-
-enum InputType {
-  INPUT_LID,
-  INPUT_POWER_BUTTON,
-  INPUT_LOCK_BUTTON,
-  INPUT_UNHANDLED,
-};
 
 class Input {
  public:

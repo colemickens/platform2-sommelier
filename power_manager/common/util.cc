@@ -97,5 +97,21 @@ bool GetUintFromFile(const char* filename, unsigned int* value) {
   return false;
 }
 
+const char* InputTypeToString(InputType type) {
+  switch (type) {
+    case INPUT_LID:
+      return "input(LID)";
+    case INPUT_POWER_BUTTON:
+      return "input(POWER_BUTTON)";
+    case INPUT_LOCK_BUTTON:
+      return "input(LOCK_BUTTON)";
+    case INPUT_UNHANDLED:
+      return "input(UNHANDLED)";
+    default:
+      NOTREACHED();
+      return "";
+  }
+}
+
 }  // namespace util
 }  // namespace power_manager

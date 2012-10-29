@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_COMMON_UTIL_H_
 #define POWER_MANAGER_COMMON_UTIL_H_
 
+#include "power_manager/common/power_constants.h"
+
 class FilePath;
 
 namespace power_manager {
@@ -30,6 +32,9 @@ bool GetWakeupCount(unsigned int* value);
 // in the file well.  They are read in as signed values and then cast
 // to unsigned ints.  So -10 => 4294967286
 bool GetUintFromFile(const char* filename, unsigned int* value);
+
+// Returns a string describing |type|.
+const char* InputTypeToString(InputType type);
 
 }  // namespace util
 }  // namespace power_manager

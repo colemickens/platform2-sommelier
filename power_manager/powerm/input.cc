@@ -14,10 +14,13 @@
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
+#include "power_manager/common/util.h"
 
 using std::map;
 using std::string;
 using std::vector;
+
+namespace power_manager {
 
 namespace {
 
@@ -30,30 +33,23 @@ const char kInputBaseName[] = "input";
 const char kWakeupDisabled[] = "disabled";
 const char kWakeupEnabled[] = "enabled";
 
-power_manager::InputType GetInputType(const struct input_event& event) {
+InputType GetInputType(const struct input_event& event) {
   if (event.type == EV_KEY) {
     // For key events, only handle the keys listed below.
     switch (event.code) {
-      case KEY_POWER:     return power_manager::INPUT_POWER_BUTTON;
-      case KEY_F13:       return power_manager::INPUT_LOCK_BUTTON;
-      default:            return power_manager::INPUT_UNHANDLED;
+      case KEY_POWER:
+        return INPUT_POWER_BUTTON;
+      case KEY_F13:
+        return INPUT_LOCK_BUTTON;
+      default:
+        return INPUT_UNHANDLED;
     }
   }
   // For switch events, only handle events from the lid.
   if (event.type == EV_SW && event.code == SW_LID)
-    return power_manager::INPUT_LID;
+    return INPUT_LID;
 
-  return power_manager::INPUT_UNHANDLED;
-}
-
-const char* InputTypeToString(power_manager::InputType type) {
-  switch (type) {
-    case power_manager::INPUT_LID:            return "input(LID)";
-    case power_manager::INPUT_POWER_BUTTON:   return "input(POWER_BUTTON)";
-    case power_manager::INPUT_LOCK_BUTTON:    return "input(LOCK_BUTTON)";
-    case power_manager::INPUT_UNHANDLED:      return "input(UNHANDLED)";
-    default:                                  NOTREACHED(); return "";
-  }
+  return INPUT_UNHANDLED;
 }
 
 bool GetSuffixNumber(const char* name, const char* base_name, int* suffix) {
@@ -63,8 +59,6 @@ bool GetSuffixNumber(const char* name, const char* base_name, int* suffix) {
 }
 
 }  // namespace
-
-namespace power_manager {
 
 Input::Input()
     : handler_(NULL),
@@ -534,9 +528,9 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
     InputType input_type = GetInputType(events[i]);
     if (input_type == INPUT_UNHANDLED)
       continue;
-    LOG(INFO) << "Handling event: " << InputTypeToString(input_type);
+    LOG(INFO) << "Handling event: " << util::InputTypeToString(input_type);
     (*input->handler_)(input->handler_data_, input_type, events[i].value);
-    LOG(INFO) << "Input event handled: " << InputTypeToString(input_type);
+    LOG(INFO) << "Input event handled: " << util::InputTypeToString(input_type);
   }
   return true;
 }

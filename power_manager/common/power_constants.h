@@ -68,10 +68,7 @@ extern const char kExternalBacklightGetMethod[];
 extern const char kExternalBacklightSetMethod[];
 
 // powerm -> powerd constants.
-extern const char kLidClosed[];
-extern const char kLidOpened[];
-extern const char kPowerButtonDown[];
-extern const char kPowerButtonUp[];
+extern const char kInputEventSignal[];
 extern const char kExternalBacklightUpdate[];
 
 // Broadcast signals.
@@ -88,6 +85,14 @@ extern const char kShutdownReasonLidClosed[];
 extern const char kShutdownReasonIdle[];
 extern const char kShutdownReasonLowBattery[];
 extern const char kShutdownReasonSuspendFailed[];
+
+// Sources of input events.
+enum InputType {
+  INPUT_LID,
+  INPUT_POWER_BUTTON,
+  INPUT_LOCK_BUTTON,
+  INPUT_UNHANDLED,
+};
 
 }  // namespace power_manager
 

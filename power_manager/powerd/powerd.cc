@@ -134,7 +134,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       cras_client_(NULL),
       connected_to_cras_(false),
       shutdown_reason_(kShutdownReasonUnknown),
-      require_usb_input_device_to_suspend_(false) {
+      require_usb_input_device_to_suspend_(false),
+      disable_dbus_for_testing_(false) {
   idle_->AddObserver(this);
 }
 
@@ -822,16 +823,8 @@ void Daemon::RegisterDBusMessageHandler() {
       base::Bind(&Daemon::HandleRequestSuspendSignal, base::Unretained(this)));
   dbus_handler_.AddDBusSignalHandler(
       kPowerManagerInterface,
-      kLidClosed,
-      base::Bind(&Daemon::HandleLidClosedSignal, base::Unretained(this)));
-  dbus_handler_.AddDBusSignalHandler(
-      kPowerManagerInterface,
-      kLidOpened,
-      base::Bind(&Daemon::HandleLidOpenedSignal, base::Unretained(this)));
-  dbus_handler_.AddDBusSignalHandler(
-      kPowerManagerInterface,
-      kButtonEventSignal,
-      base::Bind(&Daemon::HandleButtonEventSignal, base::Unretained(this)));
+      kInputEventSignal,
+      base::Bind(&Daemon::HandleInputEventSignal, base::Unretained(this)));
   dbus_handler_.AddDBusSignalHandler(
       kPowerManagerInterface,
       kCleanShutdown,
@@ -950,37 +943,43 @@ bool Daemon::HandleRequestSuspendSignal(DBusMessage*) {  // NOLINT
   return true;
 }
 
-bool Daemon::HandleLidClosedSignal(DBusMessage*) {  // NOLINT
-  SetActive();
-  Suspend();
-  return true;
-}
-
-bool Daemon::HandleLidOpenedSignal(DBusMessage*) {  // NOLINT
-  SetActive();
-  suspender_.CancelSuspend();
-  return true;
-}
-
-bool Daemon::HandleButtonEventSignal(DBusMessage* message) {
+bool Daemon::HandleInputEventSignal(DBusMessage* message) {
   DBusError error;
   dbus_error_init(&error);
-  const char* button_name = NULL;
+  dbus_int32_t type_param = 0;
   dbus_bool_t down = FALSE;
-  dbus_int64_t timestamp = 0;
+  dbus_int64_t timestamp_internal = 0;
   if (!dbus_message_get_args(message, &error,
-                             DBUS_TYPE_STRING, &button_name,
+                             DBUS_TYPE_INT32, &type_param,
                              DBUS_TYPE_BOOLEAN, &down,
-                             DBUS_TYPE_INT64, &timestamp,
+                             DBUS_TYPE_INT64, &timestamp_internal,
                              DBUS_TYPE_INVALID)) {
-    LOG(ERROR) << "Unable to process button event: "
+    LOG(ERROR) << "Unable to process input event: "
                << error.name << " (" << error.message << ")";
     dbus_error_free(&error);
     return true;
   }
+  InputType type = static_cast<InputType>(type_param);
+  base::TimeTicks timestamp =
+      base::TimeTicks::FromInternalValue(timestamp_internal);
 
-  OnButtonEvent(
-      button_name, down, base::TimeTicks::FromInternalValue(timestamp));
+  switch (type) {
+    case INPUT_LID:
+      if (down) {
+        SetActive();
+        Suspend();
+      } else {
+        SetActive();
+        suspender_.CancelSuspend();
+      }
+      break;
+    case INPUT_POWER_BUTTON:
+    case INPUT_LOCK_BUTTON:
+      OnButtonEvent(type, down, timestamp);
+      break;
+    default:
+      LOG(ERROR) << "Unhandled input event of type " << type;
+  }
   return true;
 }
 
@@ -1415,6 +1414,7 @@ gboolean Daemon::HandlePollPowerSupply() {
       chromeos::dbus::GetSystemBusConnection().g_connection());
   if (!dbus_connection_send(connection, message, NULL))
     LOG(WARNING) << "Sending battery poll signal failed.";
+  dbus_message_unref(message);
   // Always repeat polling.
   return TRUE;
 }
@@ -1639,18 +1639,56 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
   current_session_state_ = state;
 }
 
-void Daemon::OnButtonEvent(const std::string& button_name,
+void Daemon::OnButtonEvent(InputType type,
                            bool down,
                            const base::TimeTicks& timestamp) {
-  if (button_name == kPowerButtonName) {
-    // If the user manually set the brightness to 0, increase it a bit:
-    // http://crosbug.com/32570
-    if (backlight_controller_->IsBacklightActiveOff()) {
-      backlight_controller_->IncreaseBrightness(
-          BRIGHTNESS_CHANGE_USER_INITIATED);
-    }
-    SendPowerButtonMetric(down, timestamp);
+  switch (type) {
+    case INPUT_POWER_BUTTON:
+      SendButtonEventSignal(kPowerButtonName, down, timestamp);
+
+      // If the user manually set the brightness to 0, increase it a bit:
+      // http://crosbug.com/32570
+      if (backlight_controller_->IsBacklightActiveOff()) {
+        backlight_controller_->IncreaseBrightness(
+            BRIGHTNESS_CHANGE_USER_INITIATED);
+      }
+
+      SendPowerButtonMetric(down, timestamp);
+      if (down) {
+        LOG(INFO) << "Syncing state due to power button down event";
+        util::Launch("sync");
+      }
+      break;
+    case INPUT_LOCK_BUTTON:
+      SendButtonEventSignal(kLockButtonName, down, timestamp);
+      break;
+    default:
+      LOG(ERROR) << "Unhandled button event of type " << type;
   }
+}
+
+void Daemon::SendButtonEventSignal(const std::string& button_name,
+                                   bool down,
+                                   base::TimeTicks timestamp) {
+  if (disable_dbus_for_testing_)
+    return;
+
+  const gchar* button_name_param = button_name.c_str();
+  dbus_bool_t down_param = down;
+  dbus_int64_t timestamp_param = timestamp.ToInternalValue();
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              kPowerManagerServicePath,
+                              kPowerManagerInterface);
+  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                kPowerManagerInterface,
+                                                kButtonEventSignal);
+  dbus_message_append_args(signal,
+                           DBUS_TYPE_STRING, &button_name_param,
+                           DBUS_TYPE_BOOLEAN, &down_param,
+                           DBUS_TYPE_INT64, &timestamp_param,
+                           DBUS_TYPE_INVALID);
+  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_message_unref(signal);
 }
 
 void Daemon::SendPowerButtonMetric(bool down,

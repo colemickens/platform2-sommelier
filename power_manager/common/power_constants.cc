@@ -75,8 +75,7 @@ const char kExternalBacklightGetMethod[] = "ExternalBacklightGet";
 const char kExternalBacklightSetMethod[] = "ExternalBacklightSet";
 
 // powerm -> powerd signals.
-const char kLidClosed[] = "LidClosed";
-const char kLidOpened[] = "LidOpened";
+const char kInputEventSignal[] = "InputEvent";
 const char kExternalBacklightUpdate[] = "ExternalBacklightUpdate";
 
 // Broadcast signals.

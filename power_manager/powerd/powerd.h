@@ -77,6 +77,10 @@ class Daemon : public BacklightControllerObserver,
 
   const std::string& current_user() const { return current_user_; }
 
+  void set_disable_dbus_for_testing(bool disable) {
+    disable_dbus_for_testing_ = disable;
+  }
+
   void Init();
   void Run();
   void SetActive();
@@ -206,9 +210,7 @@ class Daemon : public BacklightControllerObserver,
 
   // Callbacks for handling dbus messages.
   bool HandleRequestSuspendSignal(DBusMessage* message);
-  bool HandleLidClosedSignal(DBusMessage* message);
-  bool HandleLidOpenedSignal(DBusMessage* message);
-  bool HandleButtonEventSignal(DBusMessage* message);
+  bool HandleInputEventSignal(DBusMessage* message);
   bool HandleCleanShutdownSignal(DBusMessage* message);
   bool HandlePowerStateChangedSignal(DBusMessage* message);
   bool HandleSessionManagerSessionStateChangedSignal(DBusMessage* message);
@@ -296,9 +298,14 @@ class Daemon : public BacklightControllerObserver,
 
   // Handles notification from powerm that a button has been pressed or
   // released.
-  void OnButtonEvent(const std::string& button_name,
+  void OnButtonEvent(InputType type,
                      bool down,
                      const base::TimeTicks& timestamp);
+
+  // Emits a signal to tell Chrome that a button has been pressed or released.
+  void SendButtonEventSignal(const std::string& button_name,
+                             bool down,
+                             base::TimeTicks timestamp);
 
   // Sends metrics in response to the power button being pressed or released.
   // Called by HandleButtonEventSignal().
@@ -578,6 +585,9 @@ class Daemon : public BacklightControllerObserver,
   // Used by USBInputDeviceConnected() instead of the default input path, if
   // this string is non-empty.  Used for testing purposes.
   std::string sysfs_input_path_for_testing_;
+
+  // Set by tests to disable emitting D-Bus signals.
+  bool disable_dbus_for_testing_;
 };
 
 }  // namespace power_manager

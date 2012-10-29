@@ -85,9 +85,10 @@ class DaemonTest : public Test {
 #endif
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
                 &audio_detector_, &idle_, NULL, NULL, FilePath(".")),
-        status_(&daemon_.power_status_){}
+        status_(&daemon_.power_status_) {}
 
   virtual void SetUp() {
+    daemon_.set_disable_dbus_for_testing(true);
     // Tests initialization done by the daemon's constructor.
     EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
     EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
@@ -982,7 +983,7 @@ TEST_F(DaemonTest, TurnBacklightOnForPowerButton) {
       backlight_ctl_.SetCurrentBrightnessPercent(
           0.0, BRIGHTNESS_CHANGE_USER_INITIATED, TRANSITION_INSTANT));
   ASSERT_DOUBLE_EQ(0.0, backlight_ctl_.GetTargetBrightnessPercent());
-  daemon_.OnButtonEvent(kPowerButtonName, true, base::TimeTicks::Now());
+  daemon_.OnButtonEvent(INPUT_POWER_BUTTON, true, base::TimeTicks::Now());
   EXPECT_GT(backlight_ctl_.GetTargetBrightnessPercent(), 0.0);
 }
 #endif

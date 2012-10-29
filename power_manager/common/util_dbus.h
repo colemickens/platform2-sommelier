@@ -41,9 +41,6 @@ void SendSignalWithUintToPowerM(const char* signal, uint32 value);
 // Sends a message |signal| and |string| to the privileged power daemon.
 void SendSignalWithStringToPowerM(const char* signal_name, const char* string);
 
-// Sends a message |signal| to the unprivileged power daemon.
-void SendSignalToPowerD(const char* signal);
-
 // Sends a message |signal| and int32 to the unprivileged power daemon.
 void SendSignalWithIntToPowerD(const char* signal, int value);
 

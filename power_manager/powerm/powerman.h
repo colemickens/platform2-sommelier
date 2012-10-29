@@ -115,6 +115,9 @@ class PowerManDaemon {
   // Register the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 
+  // Sends a message to powerd informing it that |type| is in state |state|.
+  void SendInputEventSignal(InputType type, ButtonState state);
+
   // Generate UMA metrics on lid opening.
   void GenerateMetricsOnResumeEvent();
 

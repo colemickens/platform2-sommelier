@@ -180,7 +180,7 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
       if (daemon->lidstate_ == LID_STATE_CLOSED) {
         daemon->SetTouchDevices(false);
         daemon->input_.DisableWakeInputs();
-        util::SendSignalToPowerD(kLidClosed);
+        daemon->SendInputEventSignal(INPUT_LID, BUTTON_DOWN);
         // Check that powerd stuck around to act on  this event.  If not,
         // callback will assume suspend responsibilities.
         g_timeout_add_seconds(kCheckLidClosedSeconds, CheckLidClosedThunk,
@@ -191,15 +191,13 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
         daemon->SetTouchDevices(true);
         daemon->input_.EnableWakeInputs();
         util::CreateStatusFile(daemon->lid_open_file_);
-        util::SendSignalToPowerD(kLidOpened);
+        daemon->SendInputEventSignal(INPUT_LID, BUTTON_UP);
       }
       break;
     }
     case INPUT_POWER_BUTTON:
-      daemon->HandlePowerButtonEvent(GetButtonState(value));
-      break;
     case INPUT_LOCK_BUTTON:
-      daemon->SendButtonEventSignal(kLockButtonName, GetButtonState(value));
+      daemon->SendInputEventSignal(type, GetButtonState(value));
       break;
     default: {
       LOG(ERROR) << "Bad input type.";
@@ -220,22 +218,9 @@ bool PowerManDaemon::CancelDBusRequest() {
   return cancel;
 }
 
-void PowerManDaemon::HandlePowerButtonEvent(ButtonState value) {
-  // Forward the signal to be handled by powerd and chrome
-  SendButtonEventSignal(kPowerButtonName, value);
-
-  // On button down, since the user may be doing a long press to cause a
-  // hardware shutdown, sync our state.
-  if (value == BUTTON_DOWN) {
-    LOG(INFO) << "Syncing state due to power button down event";
-    util::Launch("sync");
-  }
-}
-
 bool PowerManDaemon::HandleCheckLidStateSignal(DBusMessage*) {  // NOLINT
-  if (lidstate_ == LID_STATE_CLOSED) {
-    util::SendSignalToPowerD(kLidClosed);
-  }
+  if (lidstate_ == LID_STATE_CLOSED)
+    SendInputEventSignal(INPUT_LID, BUTTON_DOWN);
   return true;
 }
 
@@ -384,7 +369,7 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
       if (daemon->use_input_for_lid_ &&
           daemon->lidstate_ == LID_STATE_CLOSED) {
         LOG(INFO) << "Lid is closed. Sending message to powerd on respawn.";
-        util::SendSignalToPowerD(kLidClosed);
+        daemon->SendInputEventSignal(INPUT_LID, BUTTON_DOWN);
       }
     } else {
       daemon->powerd_state_ = kPowerManagerUnknown;
@@ -446,16 +431,15 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
   util::SetNameOwnerChangedHandler(DBusNameOwnerChangedHandler, this);
 }
 
-void PowerManDaemon::SendButtonEventSignal(const std::string& button_name,
-                                           ButtonState state) {
+void PowerManDaemon::SendInputEventSignal(InputType type, ButtonState state) {
   if (state == BUTTON_REPEAT)
     return;
-  LOG(INFO) << "Sending button event signal: " << button_name << " is "
-            << (state == BUTTON_UP ? "up" : "down");
+  LOG(INFO) << "Sending input event signal: " << util::InputTypeToString(type)
+            << " is " << (state == BUTTON_UP ? "up" : "down");
 
   // This signal is used by both Chrome and powerd.
   // Both must be updated if it is changed.
-  const gchar* button_name_param = button_name.c_str();
+  dbus_int32_t type_param = type;
   dbus_bool_t down_param = (state == BUTTON_DOWN) ? TRUE : FALSE;
   dbus_int64_t timestamp_param = base::TimeTicks::Now().ToInternalValue();
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
@@ -463,10 +447,10 @@ void PowerManDaemon::SendButtonEventSignal(const std::string& button_name,
                               kPowerManagerInterface);
   DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
                                                 kPowerManagerInterface,
-                                                kButtonEventSignal);
+                                                kInputEventSignal);
   CHECK(signal);
   dbus_message_append_args(signal,
-                           DBUS_TYPE_STRING, &button_name_param,
+                           DBUS_TYPE_INT32, &type_param,
                            DBUS_TYPE_BOOLEAN, &down_param,
                            DBUS_TYPE_INT64, &timestamp_param,
                            DBUS_TYPE_INVALID);

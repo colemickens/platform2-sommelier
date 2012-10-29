@@ -108,19 +108,6 @@ void SendSignalWithStringToPowerM(const char* signal_name, const char* string) {
   dbus_message_unref(signal);
 }
 
-void SendSignalToPowerD(const char* signal_name) {
-  LOG(INFO) << "Sending signal '" << signal_name << "' to PowerManager";
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kPowerManagerInterface,
-                                                signal_name);
-  CHECK(signal);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  dbus_message_unref(signal);
-}
-
 void SendSignalWithIntToPowerD(const char* signal_name, int value) {
   LOG(INFO) << "Sending signal '" << signal_name << "' to PowerManager";
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
