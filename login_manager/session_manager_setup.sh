@@ -244,6 +244,11 @@ if use_flag_is_set natural_scroll_default; then
   TOUCHPAD_FLAGS="--enable-natural-scroll-default"
 fi
 
+KEYBOARD_FLAGS=
+if use_flag_is_set chromeos_keyboard; then
+  KEYBOARD_FLAGS="--has-chromeos-keyboard"
+fi
+
 AURA_FLAGS=
 if ! use_flag_is_set new_power_button; then
   AURA_FLAGS="$AURA_FLAGS --aura-legacy-power-button"
@@ -387,6 +392,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             ${FLASH_FLAGS} \
             ${HIGHDPI_FLAGS} \
             ${TOUCHPAD_FLAGS} \
+            ${KEYBOARD_FLAGS} \
             ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
