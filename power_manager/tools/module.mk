@@ -62,3 +62,15 @@ CXX_BINARY(tools/suspend_delay_sample): CPPFLAGS += $(SUSPENDDELAYSAMPLE_FLAGS)
 CXX_BINARY(tools/suspend_delay_sample): LDLIBS += $(SUSPENDDELAYSAMPLE_LIBS)
 clean: CXX_BINARY(tools/suspend_delay_sample)
 all: CXX_BINARY(tools/suspend_delay_sample)
+
+MEMORYSUSPENDTEST_DEPS = libchromeos-$(BASE_VER) libchrome-$(BASE_VER)
+MEMORYSUSPENDTEST_FLAGS = $(shell $(PKG_CONFIG) --cflags \
+                            $(MEMORYSUSPENDTEST_DEPS))
+MEMORYSUSPENDTEST_LIBS = -lgflags \
+                         $(shell $(PKG_CONFIG) --libs $(MEMORYSUSPENDTEST_DEPS))
+MEMORYSUSPENDTEST_OBJS = tools/memory_suspend_test.o
+CXX_BINARY(tools/memory_suspend_test): $(MEMORYSUSPENDTEST_OBJS)
+CXX_BINARY(tools/memory_suspend_test): CPPFLAGS +=  $(MEMORYSUSPENDTEST_FLAGS)
+CXX_BINARY(tools/memory_suspend_test): LDLIBS += $(MEMORYSUSPENDTEST_LIBS)
+clean: CXX_BINARY(tools/memory_suspend_test)
+all: CXX_BINARY(tools/memory_suspend_test)

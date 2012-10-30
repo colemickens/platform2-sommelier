@@ -17,6 +17,7 @@ DEFINE_boolean bug_fatal ${FLAGS_TRUE} "Abort on BUG dmesg lines"
 DEFINE_boolean crc_fatal ${FLAGS_TRUE} "Abort on CRC error dmesg lines"
 DEFINE_boolean warn_fatal ${FLAGS_FALSE} "Abort on WARNING dmesg lines"
 DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
+DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
 
 get_failed_count() {
   awk '$1 == "fail:" { print $2 }' /sys/kernel/debug/suspend_stats
@@ -38,6 +39,7 @@ dump_stats_and_exit() {
   echo ""
   echo "Finished ${cur} iterations."
   echo "Suspend_failures: $(( $(get_failed_count) - ${initial_failed} ))"
+  echo "Suspend command failures: ${suspend_cmd_failures}"
   echo "Firmware log errors: ${firmware_errors}"
   exit 0
 }
@@ -52,6 +54,12 @@ fi
 
 if [ ${FLAGS_dbus_suspend} -eq ${FLAGS_TRUE} ]; then
   suspend_cmd=powerd_dbus_suspend
+elif [ ${FLAGS_memory_check} -eq ${FLAGS_TRUE} ]; then
+  free_kb=$(grep MemFree: /proc/meminfo | awk '{ print $2}')
+  inactive_kb=$(grep Inactive: /proc/meminfo | awk '{ print $2}')
+  slack_kb=100000
+  bytes=$(((free_kb + inactive_kb - slack_kb) * 1024))
+  suspend_cmd="memory_suspend_test --size ${bytes}"
 else
   suspend_cmd=powerd_suspend
 fi
@@ -75,13 +83,15 @@ trap dump_stats_and_exit INT
 cur=0
 firmware_errors=0
 last_failed=${initial_failed}
+suspend_cmd_failures=0
+exit_loop=0
 
-while [ ${cur} -lt ${FLAGS_count} ]; do
+while true; do
   : $(( cur += 1 ))
-  printf "Suspend ${cur} of ${FLAGS_count}: "
+  printf "Suspend %5d of ${FLAGS_count}: " ${cur}
 
   sus_time=$(( ( $(random) % suspend_interval ) + FLAGS_suspend_min ))
-  printf "sleep for ${sus_time} seconds..."
+  printf "sleep for %2d seconds..." ${sus_time}
   echo 0 > /sys/class/rtc/rtc0/wakealarm
   echo "+${sus_time}" > /sys/class/rtc/rtc0/wakealarm
   if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ]; then
@@ -89,14 +99,20 @@ while [ ${cur} -lt ${FLAGS_count} ]; do
     echo "+$(( sus_time + 5 ))" > /sys/class/rtc/rtc1/wakealarm
   fi
 
-  $suspend_cmd >/dev/null 2>&1
+  if ! $suspend_cmd; then
+    echo "Suspend command failed"
+    : $(( suspend_cmd_failures += 1))
+    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+      exit_loop=1
+    fi
+  fi
 
   # look for errors in firmware log
   if [ -f /sys/firmware/log ] && grep ERROR /sys/firmware/log; then
     echo "Firmware error found."
     : $(( firmware_errors += 1 ))
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
-      break
+      exit_loop=1
     fi
   fi
   # Make sure suspend succeeded
@@ -104,7 +120,7 @@ while [ ${cur} -lt ${FLAGS_count} ]; do
   if [ ${cur_failed} -gt ${last_failed} ]; then
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
       echo "Suspend failed."
-      break
+      exit_loop=1
     fi
     printf "(suspend failed, ignoring)"
     last_failed=${cur_failed}
@@ -112,26 +128,30 @@ while [ ${cur} -lt ${FLAGS_count} ]; do
   # For BUG and CRC errors counting existing occurrences in dmesg
   # is not that useful as dmesg will wrap so we would need to account
   # for the count shrinking over time.
-  # Break on BUG
+  # Exit on BUG
   if [ ${FLAGS_bug_fatal} -eq ${FLAGS_TRUE} ] &&
         dmesg | grep -w BUG; then
     echo "BUG found."
-    break
+    exit_loop=1
   fi
-  # Break on WARNING
+  # Exit on WARNING
   if [ ${FLAGS_warn_fatal} -eq ${FLAGS_TRUE} ] &&
         dmesg | grep -w WARNING; then
     echo "WARNING found."
-    break
+    exit_loop=1
   fi
-  # Break on CRC error
+  # Exit on CRC error
   if [ ${FLAGS_crc_fatal} -eq ${FLAGS_TRUE} ] && dmesg | grep "CRC.*error"; then
     echo "CRC error found."
+    exit_loop=1
+  fi
+  # Exit the loop if requested from errors or done with iterations
+  if [ ${cur} -eq ${FLAGS_count} ] || [ ${exit_loop} -eq 1 ]; then
+    echo ""
     break
   fi
-
   wake_time=$(( ( $(random) % wake_interval ) + FLAGS_wake_min ))
-  printf " wake for ${wake_time} seconds..."
+  printf " wake for %2d seconds..." ${wake_time}
   sleep ${wake_time}
   echo ""
 done
