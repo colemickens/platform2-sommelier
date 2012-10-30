@@ -30,8 +30,9 @@ const base::TimeDelta kHysteresisTimeFast = base::TimeDelta::FromSeconds(10);
 // Allow three minutes before deciding on a new acceptable time.
 const base::TimeDelta kHysteresisTime = base::TimeDelta::FromMinutes(3);
 
-// If a battery is at >= 99% charge on AC with no current, report it as full.
-const double kDefaultFullFactor = 0.99;
+// Report batteries as full if they're at or above this level (out of a max of
+// 1.0).
+const double kDefaultFullFactor = 0.98;
 
 // Converts time from hours to seconds.
 inline double HoursToSecondsDouble(double num_hours) {
