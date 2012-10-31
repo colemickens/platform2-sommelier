@@ -5,6 +5,7 @@
 #ifndef LOGIN_MANAGER_MOCK_DEVICE_POLICY_SERVICE_H_
 #define LOGIN_MANAGER_MOCK_DEVICE_POLICY_SERVICE_H_
 
+#include "login_manager/chrome_device_policy.pb.h"
 #include "login_manager/device_policy_service.h"
 
 namespace login_manager {
@@ -12,8 +13,6 @@ class MockDevicePolicyService : public DevicePolicyService {
  public:
   MockDevicePolicyService();
   virtual ~MockDevicePolicyService();
-  MOCK_METHOD2(ReportPolicyFileMetrics, void(bool, bool));
-  MOCK_METHOD0(Initialize, bool(void));
   MOCK_METHOD4(Store, bool(const uint8*, uint32, Completion*, int));
   MOCK_METHOD1(Retrieve, bool(std::vector<uint8>*));
   MOCK_METHOD0(PersistKey, void(void));
@@ -25,6 +24,10 @@ class MockDevicePolicyService : public DevicePolicyService {
   MOCK_METHOD2(ValidateAndStoreOwnerKey, bool(const std::string&,
                                               const std::string&));
   MOCK_METHOD0(KeyMissing, bool(void));
+  MOCK_METHOD0(Initialize, bool(void));
+  MOCK_METHOD2(ReportPolicyFileMetrics, void(bool, bool));
+  MOCK_METHOD0(GetSettings,
+               const enterprise_management::ChromeDeviceSettingsProto&(void));
 };
 }  // namespace login_manager
 

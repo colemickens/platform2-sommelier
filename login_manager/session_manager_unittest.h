@@ -16,6 +16,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/scoped_temp_dir.h>
 
+#include "login_manager/chrome_device_policy.pb.h"
 #include "login_manager/mock_system_utils.h"
 
 namespace login_manager {
@@ -67,6 +68,7 @@ class SessionManagerTest : public ::testing::Test {
   // Sets up expecations for creating the user policy service.
   void ExpectUserPolicySetup();
 
+  enterprise_management::ChromeDeviceSettingsProto device_settings_;
   scoped_refptr<SessionManagerService> manager_;
   SystemUtils real_utils_;
   MockSystemUtils utils_;

@@ -39,6 +39,7 @@
 #include <chromeos/utility.h>
 
 #include "login_manager/child_job.h"
+#include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/interface.h"
 #include "login_manager/key_generator.h"
@@ -165,7 +166,7 @@ void SessionManagerService::SIGTERMHandler(int signal) {
   GracefulShutdownHandler(signal);
 }
 
-const uint32 SessionManagerService::kMaxEmailSize = 200;
+const uint32 SessionManagerService::kMaxGCharBufferSize = 200;
 const char SessionManagerService::kEmailSeparator = '@';
 const char SessionManagerService::kLegalCharacters[] =
     "abcdefghijklmnopqrstuvwxyz"
@@ -206,6 +207,10 @@ const int kMaxArgumentsSize = 1024 * 8;
 // File that contains world-readable machine statistics. Should be removed once
 // the user session starts.
 const char kMachineInfoFile[] = "/tmp/machine-info";
+
+// Device-local account state directory.
+const FilePath::CharType kDeviceLocalAccountStateDir[] =
+    FILE_PATH_LITERAL("/var/lib/device_local_accounts");
 
 }  // namespace
 
@@ -341,6 +346,10 @@ bool SessionManagerService::Initialize() {
       new UserPolicyServiceFactory(
           getuid(),
           loop_proxy_));
+  device_local_account_policy_.reset(
+      new DeviceLocalAccountPolicyService(FilePath(kDeviceLocalAccountStateDir),
+                                          owner_key_.get(),
+                                          loop_proxy_));
 
   liveness_checker_.reset(new LivenessCheckerImpl(this,
                                                   system_,
@@ -402,6 +411,8 @@ bool SessionManagerService::Reset() {
 void SessionManagerService::OnPolicyPersisted(bool success) {
   system_->SendStatusSignalToChromium(chromium::kPropertyChangeCompleteSignal,
                                       success);
+  device_local_account_policy_->UpdateDeviceSettings(
+      device_policy_->GetSettings());
 }
 
 void SessionManagerService::OnKeyPersisted(bool success) {
@@ -438,6 +449,8 @@ bool SessionManagerService::Run() {
     Shutdown();
     return false;
   }
+  device_local_account_policy_->UpdateDeviceSettings(
+      device_policy_->GetSettings());
 
   MessageLoop::current()->Run();
   CleanupChildren(GetKillTimeout());
@@ -749,9 +762,11 @@ gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
 
 gboolean SessionManagerService::RetrievePolicy(GArray** OUT_policy_blob,
                                                GError** error) {
-  return RetrievePolicyFromService(device_policy_.get(),
-                                   OUT_policy_blob,
-                                   error);
+  std::vector<uint8> policy_data;
+  return EncodeRetrievedPolicy(device_policy_->Retrieve(&policy_data),
+                               policy_data,
+                               OUT_policy_blob,
+                               error);
 }
 
 gboolean SessionManagerService::StoreUserPolicy(
@@ -774,15 +789,41 @@ gboolean SessionManagerService::StoreUserPolicy(
 gboolean SessionManagerService::RetrieveUserPolicy(GArray** OUT_policy_blob,
                                                    GError** error) {
   if (session_started_ && user_policy_.get()) {
-    return RetrievePolicyFromService(user_policy_.get(),
-                                     OUT_policy_blob,
-                                     error);
+    std::vector<uint8> policy_data;
+    return EncodeRetrievedPolicy(user_policy_->Retrieve(&policy_data),
+                                 policy_data,
+                                 OUT_policy_blob,
+                                 error);
   }
 
   const char msg[] = "Cannot retrieve user policy before session is started.";
   LOG(ERROR) << msg;
   system_->SetGError(error, CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, msg);
   return FALSE;
+}
+
+gboolean SessionManagerService::StoreDeviceLocalAccountPolicy(
+    gchar* account_id,
+    GArray* policy_blob,
+    DBusGMethodInvocation* context) {
+  return device_local_account_policy_->Store(
+      GCharToString(account_id),
+      reinterpret_cast<uint8*>(policy_blob->data),
+      policy_blob->len,
+      new DBusGMethodCompletion(context));
+}
+
+gboolean SessionManagerService::RetrieveDeviceLocalAccountPolicy(
+    gchar* account_id,
+    GArray** OUT_policy_blob,
+    GError** error) {
+  std::vector<uint8> policy_data;
+  return EncodeRetrievedPolicy(
+      device_local_account_policy_->Retrieve(GCharToString(account_id),
+                                             &policy_data),
+      policy_data,
+      OUT_policy_blob,
+      error);
 }
 
 gboolean SessionManagerService::RetrieveSessionState(gchar** OUT_state,
@@ -981,6 +1022,13 @@ bool SessionManagerService::ValidateEmail(const string& email_address) {
 }
 
 // static
+std::string SessionManagerService::GCharToString(const gchar* str) {
+  char buffer[kMaxGCharBufferSize + 1];
+  int len = snprintf(buffer, sizeof(buffer), "%s", str);
+  return std::string(buffer, len);
+}
+
+// static
 DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
                                                        DBusMessage* message,
                                                        void* data) {
@@ -1068,10 +1116,7 @@ gboolean SessionManagerService::ValidateAndCacheUserEmail(
     GError** error) {
   // basic validity checking; avoid buffer overflows here, and
   // canonicalize the email address a little.
-  char email[kMaxEmailSize + 1];
-  snprintf(email, sizeof(email), "%s", email_address);
-  email[kMaxEmailSize] = '\0';  // Just to be sure.
-  string email_string(email);
+  string email_string(GCharToString(email_address));
   bool user_is_incognito = ((email_string == kIncognitoUser) ||
       (email_string == kDemoUser));
   if (!user_is_incognito && !ValidateEmail(email_string)) {
@@ -1142,12 +1187,12 @@ vector<string> SessionManagerService::GetArgList(const vector<string>& args) {
   return vector<string>(start_arg, args.end());
 }
 
-gboolean SessionManagerService::RetrievePolicyFromService(
-    PolicyService* service,
+gboolean SessionManagerService::EncodeRetrievedPolicy(
+    bool success,
+    const vector<uint8>& policy_data,
     GArray** policy_blob,
     GError** error) {
-  vector<uint8> policy_data;
-  if (service->Retrieve(&policy_data)) {
+  if (success) {
     *policy_blob = g_array_sized_new(FALSE, FALSE, sizeof(uint8),
                                      policy_data.size());
     if (!*policy_blob) {

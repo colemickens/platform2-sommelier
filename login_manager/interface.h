@@ -4,8 +4,8 @@
 #ifndef LOGIN_MANAGER_INTERFACE_H_
 #define LOGIN_MANAGER_INTERFACE_H_
 
-#include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-bindings.h>
+#include <dbus/dbus-glib.h>
 #include <glib-object.h>
 #include <stdlib.h>
 
@@ -65,6 +65,16 @@ gboolean session_manager_store_user_policy(SessionManager *self,
 gboolean session_manager_retrieve_user_policy(SessionManager *self,
                                               GArray **OUT_policy_blob,
                                               GError **error);
+gboolean session_manager_store_device_local_account_policy(
+    SessionManager *self,
+    gchar* account_id,
+    GArray *policy_blob,
+    DBusGMethodInvocation* context);
+gboolean session_manager_retrieve_device_local_account_policy(
+    SessionManager *self,
+    gchar* account_id,
+    GArray **OUT_policy_blob,
+    GError **error);
 gboolean session_manager_retrieve_session_state(SessionManager *self,
                                                 gchar** OUT_state,
                                                 gchar** OUT_user);

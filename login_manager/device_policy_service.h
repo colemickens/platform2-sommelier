@@ -16,6 +16,10 @@
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_service.h"
 
+namespace enterprise_management {
+class ChromeDeviceSettingsProto;
+}
+
 namespace login_manager {
 class KeyGenerator;
 class LoginMetrics;
@@ -66,10 +70,15 @@ class DevicePolicyService : public PolicyService {
   // device policy, report the state of these files via |metrics_|.
   virtual void ReportPolicyFileMetrics(bool key_success, bool policy_success);
 
+  // Returns the currently active device settings.
+  virtual const enterprise_management::ChromeDeviceSettingsProto&
+      GetSettings();
+
+  // PolicyService:
   virtual bool Store(const uint8* policy_blob,
                      uint32 len,
                      Completion* completion,
-                     int flags);
+                     int flags) OVERRIDE;
 
   static const char kPolicyPath[];
   static const char kSerialRecoveryFlagFile[];
@@ -115,6 +124,11 @@ class DevicePolicyService : public PolicyService {
   LoginMetrics* metrics_;
   OwnerKeyLossMitigator* mitigator_;
   NssUtil* nss_;
+
+  // Cached copy of the decoded device settings. Decoding happens on first
+  // access, the cache is cleared whenever a new policy gets installed via
+  // Store().
+  scoped_ptr<enterprise_management::ChromeDeviceSettingsProto> settings_;
 
   DISALLOW_COPY_AND_ASSIGN(DevicePolicyService);
 };

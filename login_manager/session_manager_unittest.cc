@@ -30,6 +30,7 @@ using ::testing::AtMost;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::WithArgs;
 using ::testing::_;
 
@@ -95,6 +96,8 @@ void SessionManagerTest::InitManager(MockChildJob* job) {
   manager_->test_api().set_liveness_checker(liveness_checker_);
   manager_->test_api().set_upstart_signal_emitter(upstart_);
   manager_->test_api().set_device_policy_service(device_policy_service_);
+  manager_->test_api().set_device_local_account_policy_service(
+      new DeviceLocalAccountPolicyService(tmpdir_.path(), NULL, NULL));
   manager_->test_api().set_login_metrics(metrics_);
 }
 
@@ -131,6 +134,8 @@ void SessionManagerTest::ExpectPolicySetup() {
       .WillOnce(Return(true));
   EXPECT_CALL(*device_policy_service_, PersistPolicySync())
       .WillOnce(Return(true));
+  EXPECT_CALL(*device_policy_service_, GetSettings())
+      .WillRepeatedly(ReturnRef(device_settings_));
   if (user_policy_service_) {
     EXPECT_CALL(*user_policy_service_, PersistPolicySync())
         .WillOnce(Return(true));

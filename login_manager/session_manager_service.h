@@ -26,6 +26,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/child_job.h"
+#include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/key_generator.h"
@@ -92,6 +93,11 @@ class SessionManagerService
     }
     void set_user_policy_service_factory(UserPolicyServiceFactory* factory) {
       session_manager_service_->user_policy_factory_.reset(factory);
+    }
+    void set_device_local_account_policy_service(
+        DeviceLocalAccountPolicyService* device_local_account_policy) {
+      session_manager_service_->device_local_account_policy_.reset(
+          device_local_account_policy);
     }
     void set_upstart_signal_emitter(UpstartSignalEmitter* emitter) {
       session_manager_service_->upstart_signal_emitter_.reset(emitter);
@@ -286,8 +292,7 @@ class SessionManagerService
 
   // Similar to StorePolicy above, but for user policy. |policy_blob| is a
   // serialized PolicyFetchResponse protobuf which wraps the actual policy data
-  // along with an SHA1-RSA signature over the policy data. The policy data
-  // itself is another protobuf that specifies user policies. It's structure is
+  // along with an SHA1-RSA signature over the policy data. The policy data is
   // opaque to session manager, the exact definition is only relevant to client
   // code in Chrome.
   //
@@ -306,8 +311,33 @@ class SessionManagerService
   gboolean StoreUserPolicy(GArray* policy_blob, DBusGMethodInvocation* context);
 
   // Retrieves user policy for the currently logged in user and returns it in
-  // |policy_blob|. Returns TRUE if the data is can be fetched, FALSE otherwise.
+  // |policy_blob|. Returns TRUE if the policy is available, FALSE otherwise.
   gboolean RetrieveUserPolicy(GArray** OUT_policy_blob, GError** error);
+
+  // Similar to StorePolicy above, but for device-local accounts. |policy_blob|
+  // is a serialized PolicyFetchResponse protobuf which wraps the actual policy
+  // data along with an SHA1-RSA signature over the policy data. The policy data
+  // is opaque to session manager, the exact definition is only relevant to
+  // client code in Chrome.
+  //
+  // Calling this function attempts to persist |policy_blob| for the
+  // device-local account specified in the |account_id| parameter. Policy is
+  // stored in the root-owned /var/lib/device_local_accounts directory in the
+  // stateful partition. Signatures are checked against the owner key, key
+  // rotation is not allowed.
+  //
+  // Returns FALSE on immediate (synchronous) errors. Otherwise, returns TRUE
+  // and reports the final result of the call asynchronously through |context|.
+  gboolean StoreDeviceLocalAccountPolicy(gchar* account_id,
+                                         GArray* policy_blob,
+                                         DBusGMethodInvocation* context);
+
+  // Retrieves device-local account policy for the specified |account_id| and
+  // returns it in |policy_blob|. Returns TRUE if the policy is available, FALSE
+  // otherwise.
+  gboolean RetrieveDeviceLocalAccountPolicy(gchar* account_id,
+                                            GArray** OUT_policy_blob,
+                                            GError** error);
 
   // Get information about the current session.
   gboolean RetrieveSessionState(gchar** OUT_state, gchar** OUT_user);
@@ -367,6 +397,9 @@ class SessionManagerService
   // Converts args from wide to plain strings.
   static std::vector<std::string> GetArgList(
       const std::vector<std::string>& args);
+
+  // Safely converts a gchar* parameter from DBUS to a std::string.
+  static std::string GCharToString(const gchar* str);
 
   // The flag to pass to chrome to open a named socket for testing.
   static const char kTestingChannelFlag[];
@@ -488,11 +521,13 @@ class SessionManagerService
   // Kill one of the children using provided signal.
   void KillChild(const ChildJobInterface* child_job, int child_pid, int signal);
 
-  // Load the policy blob from |service| and write it to |policy_blob|. Returns
-  // TRUE if the data is can be fetched, FALSE otherwise and sets |error|.
-  gboolean RetrievePolicyFromService(PolicyService* service,
-                                     GArray** policy_blob,
-                                     GError** error);
+  // Encodes the result of a policy retrieve operation as specified in |success|
+  // and |policy_data| into |policy_blob| and |error|. Returns TRUE if
+  // successful, FALSE otherwise.
+  gboolean EncodeRetrievedPolicy(bool success,
+                                 const std::vector<uint8>& policy_data,
+                                 GArray** policy_blob,
+                                 GError** error);
 
   // Starts a 'Powerwash' of the device by touching a flag file, then
   // rebooting to allow early-boot code to wipe parts of stateful we
@@ -502,7 +537,7 @@ class SessionManagerService
 
   bool IsValidCookie(const char *cookie);
 
-  static const uint32 kMaxEmailSize;
+  static const uint32 kMaxGCharBufferSize;
   static const char kEmailSeparator;
   static const char kLegalCharacters[];
   static const char kIncognitoUser[];
@@ -551,6 +586,8 @@ class SessionManagerService
   scoped_refptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
   scoped_refptr<PolicyService> user_policy_;
+  scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy_;
+
   scoped_ptr<FileChecker> file_checker_;
   scoped_ptr<OwnerKeyLossMitigator> mitigator_;
 

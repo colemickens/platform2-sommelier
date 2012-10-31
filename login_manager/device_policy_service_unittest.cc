@@ -902,4 +902,36 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
 }
 
+TEST_F(DevicePolicyServiceTest, GetSettings) {
+  scoped_ptr<NssUtil> nss(new MockNssUtil);
+  InitService(nss.get());
+
+  // No policy blob should result in an empty settings protobuf.
+  em::ChromeDeviceSettingsProto settings;
+  EXPECT_CALL(*store_, Get()).WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_EQ(service_->GetSettings().SerializeAsString(),
+            settings.SerializeAsString());
+  Mock::VerifyAndClearExpectations(store_);
+
+  // Storing new policy should cause the settings to update as well.
+  settings.mutable_device_local_accounts()->add_account()->set_id(owner_);
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
+  EXPECT_CALL(key_, Verify(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Persist())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
+  EXPECT_CALL(*store_, Get())
+      .WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_CALL(completion_, Success()).Times(AnyNumber());
+  EXPECT_CALL(completion_, Failure(_)).Times(AnyNumber());
+  EXPECT_TRUE(
+      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
+                      policy_str_.size(), &completion_,
+                      PolicyService::KEY_CLOBBER));
+  loop_.RunAllPending();
+  EXPECT_EQ(service_->GetSettings().SerializeAsString(),
+            settings.SerializeAsString());
+}
+
 }  // namespace login_manager

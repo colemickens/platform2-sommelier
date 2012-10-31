@@ -151,8 +151,12 @@ bool DevicePolicyService::Store(const uint8* policy_blob,
                                 int flags) {
   bool result = PolicyService::Store(policy_blob, len, completion, flags);
 
-  if (result)
+  if (result) {
     UpdateSerialNumberRecoveryFlagFile();
+
+    // Flush the settings cache, the next read will decode the new settings.
+    settings_.reset();
+  }
 
   return result;
 }
@@ -189,6 +193,20 @@ void DevicePolicyService::ReportPolicyFileMetrics(bool key_success,
     status.defunct_prefs_file_state = LoginMetrics::GOOD;
 
   metrics_->SendPolicyFilesStatus(status);
+}
+
+const em::ChromeDeviceSettingsProto& DevicePolicyService::GetSettings() {
+  if (!settings_.get()) {
+    settings_.reset(new em::ChromeDeviceSettingsProto());
+
+    em::PolicyData policy_data;
+    if (!policy_data.ParseFromString(store()->Get().policy_data()) ||
+        !settings_->ParseFromString(policy_data.policy_value())) {
+      LOG(ERROR) << "Failed to parse device settings, using empty defaults.";
+    }
+  }
+
+  return *settings_;
 }
 
 bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
