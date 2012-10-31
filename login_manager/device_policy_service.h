@@ -58,8 +58,8 @@ class DevicePolicyService : public PolicyService {
   // Checks whether the key is missing.
   virtual bool KeyMissing();
 
-  // Overriden from PolicyService to check the serial number recovery flag.
-  // TODO(mnissler): Remove once bogus enterprise serials are fixed.
+  // Loads policy key and policy blob from disk. Returns true if at least the
+  // key can be loaded (policy may not be present yet, which is OK).
   virtual bool Initialize();
 
   // Given info about whether we were able to load the Owner key and the

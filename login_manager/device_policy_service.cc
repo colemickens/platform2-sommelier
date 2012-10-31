@@ -132,8 +132,13 @@ bool DevicePolicyService::KeyMissing() {
 }
 
 bool DevicePolicyService::Initialize() {
-  bool policy_success = true;
-  bool key_success = DoInitialize(&policy_success);
+  bool key_success = key()->PopulateFromDiskIfPossible();
+  if (!key_success)
+    LOG(ERROR) << "Failed to load device policy key from disk.";
+
+  bool policy_success = store()->LoadOrCreate();
+  if (!policy_success)
+    LOG(WARNING) << "Failed to load device policy data, continuing anyway.";
 
   ReportPolicyFileMetrics(key_success, policy_success);
   UpdateSerialNumberRecoveryFlagFile();

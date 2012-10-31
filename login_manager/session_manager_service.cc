@@ -648,8 +648,8 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   }
 
   // Initialize user policy.
-  user_policy_ = user_policy_factory_->Create(email_address);
-  if (!user_policy_.get() || !user_policy_->Initialize()) {
+  user_policy_ = user_policy_factory_->Create(current_user_);
+  if (!user_policy_.get()) {
     LOG(ERROR) << "User policy failed to initialize.";
     return *OUT_done = FALSE;
   }

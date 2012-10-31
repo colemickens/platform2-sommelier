@@ -81,10 +81,6 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
                 const scoped_refptr<base::MessageLoopProxy>& main_loop);
   virtual ~PolicyService();
 
-  // Reads policy key and data from disk.
-  // Returns false if policy key loading fails, which is fatal. True otherwise.
-  virtual bool Initialize();
-
   // Stores a new policy. Verifies the passed-in policy blob against the policy
   // key if it exists, takes care of key rotation if required and persists
   // everything to disk. The |flags| parameter determines what to do with a
@@ -118,12 +114,6 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
   const scoped_refptr<base::MessageLoopProxy>& main_loop() {
     return main_loop_;
   }
-
-  // Reads policy key and data from disk.
-  // Returns false if policy key loading fails, which is fatal. True otherwise.
-  // If policy file loading fails, |policy_success| will be set to false.
-  // It will be set to true otherwise, including if there is no file to read.
-  bool DoInitialize(bool* policy_success);
 
   // Schedules the key to be persisted.
   void PersistKey();

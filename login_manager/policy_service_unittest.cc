@@ -174,14 +174,6 @@ const int PolicyServiceTest::kAllKeyFlags = PolicyService::KEY_ROTATE |
 const char PolicyServiceTest::kSignalSuccess[] = "success";
 const char PolicyServiceTest::kSignalFailure[] = "failure";
 
-TEST_F(PolicyServiceTest, Initialize) {
-  EXPECT_CALL(key_, PopulateFromDiskIfPossible())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*store_, LoadOrCreate())
-      .WillOnce(Return(true));
-  EXPECT_TRUE(service_->Initialize());
-}
-
 TEST_F(PolicyServiceTest, Store) {
   InitPolicy(fake_data_, fake_sig_, "", "");
 

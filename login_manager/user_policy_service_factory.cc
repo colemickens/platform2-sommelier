@@ -55,11 +55,21 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
     return NULL;
   }
 
-  return new UserPolicyService(
-      scoped_ptr<PolicyStore>(
-          new PolicyStore(policy_dir.Append(kPolicyDataFile))),
-      scoped_ptr<PolicyKey>(new PolicyKey(policy_dir.Append(kPolicyKeyFile))),
-      main_loop_);
+  scoped_ptr<PolicyKey> key(
+      new PolicyKey(policy_dir.Append(kPolicyKeyFile)));
+  bool key_load_success = key->PopulateFromDiskIfPossible();
+  if (!key_load_success) {
+    LOG(ERROR) << "Failed to load user policy key from disk.";
+    return NULL;
+  }
+
+  scoped_ptr<PolicyStore> store(
+      new PolicyStore(policy_dir.Append(kPolicyDataFile)));
+  bool policy_success = store->LoadOrCreate();
+  if (!policy_success)  // Non-fatal, so log, and keep going.
+    LOG(WARNING) << "Failed to load user policy data, continuing anyway.";
+
+  return new UserPolicyService(store.Pass(), key.Pass(), main_loop_);
 }
 
 }  // namespace login_manager

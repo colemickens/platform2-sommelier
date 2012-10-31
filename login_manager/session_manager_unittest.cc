@@ -98,8 +98,6 @@ void SessionManagerTest::InitManager(MockChildJob* job) {
 
 PolicyService* SessionManagerTest::CreateUserPolicyService() {
   user_policy_service_ = new MockPolicyService();
-  EXPECT_CALL(*user_policy_service_, Initialize())
-      .WillOnce(Return(true));
   return user_policy_service_;
 }
 

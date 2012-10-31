@@ -93,6 +93,7 @@ class UserPolicyServiceTest : public ::testing::Test {
 
   scoped_refptr<UserPolicyService> service_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(UserPolicyServiceTest);
 };
 
