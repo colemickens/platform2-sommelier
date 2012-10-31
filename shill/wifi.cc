@@ -1332,7 +1332,12 @@ void WiFi::OnLinkMonitorFailure() {
   }
 
   try {
+    // This will force a transition out of connected, if we are actually
+    // connected.
     supplicant_interface_proxy_->Reassociate();
+    // If we don't eventually get a transition back into a connected state,
+    // there is something wrong.
+    StartReconnectTimer();
     LOG(INFO) << "In " << __func__ << "(): Called Reassociate().";
   } catch (const DBus::Error &e) {  // NOLINT
     LOG(ERROR) << "In " << __func__ << "(): failed to call Reassociate().";
