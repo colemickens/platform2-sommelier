@@ -19,7 +19,7 @@ namespace {
 
 const int kMaxNumberOfDeviceScans = 15;
 const int kDefaultDeviceScanIntervalInSeconds = 1;
-const int kDeviceScanDelayAfterResumeInSeconds = 1;
+const int kDeviceScanDelayAfterResumeInSeconds = 3;
 
 gboolean OnDeviceScanNeeded(gpointer data) {
   CHECK(data);
