@@ -52,7 +52,9 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   void SetProperty(const std::string& name,
                    const ::DBus::Variant& value,
                    ::DBus::Error &error);
-  void ClearProperty(const std::string& , ::DBus::Error &error);
+  void ClearProperty(const std::string&, ::DBus::Error &error);
+  std::vector<bool> ClearProperties(const std::vector<std::string>&,
+                                    ::DBus::Error &error);
   void Connect(::DBus::Error &error);
   void Disconnect(::DBus::Error &error);
   void Remove(::DBus::Error &error);

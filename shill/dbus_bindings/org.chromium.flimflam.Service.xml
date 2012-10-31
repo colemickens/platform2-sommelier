@@ -19,6 +19,10 @@
 		<method name="ClearProperty">
 			<arg type="s" direction="in"/>
 		</method>
+		<method name="ClearProperties">
+			<arg type="as" direction="in"/>
+			<arg type="ab" direction="out"/>
+		</method>
 		<method name="Connect"/>
 		<method name="Disconnect"/>
 		<method name="Remove"/>

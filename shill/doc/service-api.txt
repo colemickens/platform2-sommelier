@@ -32,6 +32,13 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.InvalidProperty
 
+		array{bool} ClearProperties(array{string} names)
+
+			Clear the value of the specified properties.  Calls
+			ClearProperty above on each of the property names
+			and returns an array of boolean values indicating
+			whether each ClearProperty attempt succeeded.
+
 		void Connect()
 
 			Initiate a connection for the specified service.

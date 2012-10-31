@@ -13,6 +13,7 @@
 
 using std::map;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -97,6 +98,19 @@ void ServiceDBusAdaptor::ClearProperty(const string &name,
   if (!error.is_set()) {
     service_->OnPropertyChanged(name);
   }
+}
+
+vector<bool> ServiceDBusAdaptor::ClearProperties(const vector<string> &names,
+                                                 ::DBus::Error &/*error*/) {
+  SLOG(DBus, 2) << __func__;
+  vector<bool> results;
+  vector<string>::const_iterator it;
+  for (it = names.begin(); it != names.end(); ++it) {
+    ::DBus::Error error;
+    ClearProperty(*it, error);
+    results.push_back(!error.is_set());
+  }
+  return results;
 }
 
 void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
