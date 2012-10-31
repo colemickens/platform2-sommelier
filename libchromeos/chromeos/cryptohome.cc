@@ -55,6 +55,9 @@ static bool EnsureSystemSaltIsLoaded() {
 }
 
 std::string SanitizeUserName(const std::string& username) {
+  if (!EnsureSystemSaltIsLoaded())
+    return std::string();
+
   unsigned char binmd[SHA_DIGEST_LENGTH];
   const char* name = username.c_str();
   SHA_CTX ctx;
