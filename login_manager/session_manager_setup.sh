@@ -271,10 +271,6 @@ else
   ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
-if ! use_flag_is_set accelerate_2d_canvas; then
-  ACCELERATED_FLAGS="$ACCELERATED_FLAGS --disable-accelerated-2d-canvas"
-fi
-
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
   HIGHDPI_FLAGS="--allow-webui-compositing"
