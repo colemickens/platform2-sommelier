@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_COMMON_POWER_CONSTANTS_H_
 #define POWER_MANAGER_COMMON_POWER_CONSTANTS_H_
 
+#include <base/basictypes.h>
+
 namespace power_manager {
 
 // Preference names.
@@ -52,6 +54,8 @@ extern const char kBacklightPath[];
 extern const char kBacklightPattern[];
 extern const char kKeyboardBacklightPath[];
 extern const char kKeyboardBacklightPattern[];
+extern const int64 kBatteryPercentPinMs;
+extern const int64 kBatteryPercentTaperMs;
 
 // Interface names.
 extern const char kRootPowerManagerInterface[];

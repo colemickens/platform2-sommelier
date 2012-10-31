@@ -5,6 +5,11 @@
 #include "power_manager/powerd/powerd.h"
 
 #include <cras_client.h>
+// cras_client.h includes cras_util.h which defines macros with the name min and
+// max. This causes all sorts of fun issues when trying to use the STL version.
+#undef min
+#undef max
+
 #include <libudev.h>
 #include <stdint.h>
 #include <sys/inotify.h>
@@ -30,12 +35,6 @@
 #include "power_manager/powerd/state_control.h"
 #include "power_supply_properties.pb.h"
 #include "video_activity_update.pb.h"
-
-using std::map;
-using std::max;
-using std::min;
-using std::string;
-using std::vector;
 
 namespace {
 
@@ -135,6 +134,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       connected_to_cras_(false),
       shutdown_reason_(kShutdownReasonUnknown),
       require_usb_input_device_to_suspend_(false),
+      battery_report_state_(BATTERY_REPORT_ADJUSTED),
       disable_dbus_for_testing_(false) {
   idle_->AddObserver(this);
 }
@@ -445,18 +445,18 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
   lock_ms_ = default_lock_ms_;
 
   // Protect against overflow
-  dim_ms_ = max(dim_ms_ + offset_ms, dim_ms_);
-  off_ms_ = max(off_ms_ + offset_ms, off_ms_);
-  suspend_ms_ = max(suspend_ms_ + offset_ms, suspend_ms_);
+  dim_ms_ = std::max(dim_ms_ + offset_ms, dim_ms_);
+  off_ms_ = std::max(off_ms_ + offset_ms, off_ms_);
+  suspend_ms_ = std::max(suspend_ms_ + offset_ms, suspend_ms_);
 
   if (enforce_lock_) {
     // Make sure that the screen turns off before it locks, and dims before
     // it turns off. This ensures the user gets a warning before we lock the
     // screen.
-    off_ms_ = min(off_ms_, lock_ms_ - react_ms_);
-    dim_ms_ = min(dim_ms_, lock_ms_ - 2 * react_ms_);
+    off_ms_ = std::min(off_ms_, lock_ms_ - react_ms_);
+    dim_ms_ = std::min(dim_ms_, lock_ms_ - 2 * react_ms_);
   } else {
-    lock_ms_ = max(lock_ms_ + offset_ms, lock_ms_);
+    lock_ms_ = std::max(lock_ms_ + offset_ms, lock_ms_);
   }
 
   // Only offset timeouts for states starting with idle state provided.
@@ -496,7 +496,7 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
     idle_->AddIdleTimeout(lock_ms_);
     idle_->AddIdleTimeout(suspend_ms_);
   } else {
-    idle_->AddIdleTimeout(max(lock_ms_, suspend_ms_));
+    idle_->AddIdleTimeout(std::max(lock_ms_, suspend_ms_));
   }
   // XIdle timeout events for idle notify status
   for (IdleThresholds::iterator iter = thresholds_.begin();
@@ -770,7 +770,8 @@ gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
               << udev_device_get_subsystem(dev)
               << ") Action "
               << udev_device_get_action(dev);
-    CHECK(string(udev_device_get_subsystem(dev)) == kPowerSupplyUdevSubsystem);
+    CHECK(std::string(udev_device_get_subsystem(dev)) ==
+          kPowerSupplyUdevSubsystem);
     udev_device_unref(dev);
 
     // Rescheduling the timer to fire 5s from now to make sure that it doesn't
@@ -1193,29 +1194,8 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
   protobuf.set_battery_voltage(status->battery_voltage);
   protobuf.set_battery_time_to_empty(status->battery_time_to_empty);
   protobuf.set_battery_time_to_full(status->battery_time_to_full);
-  // If we are using a percentage based threshold adjust the reported percentage
-  // to account for the bit being trimmed off. If we are using a time base
-  // threshold don't adjust the reported percentage. Adjusting the percentage
-  // due to a time threshold might break the monoticity of percentages since the
-  // time to empty/full is not guaranteed to be monotonic.
-  double battery_percentage;
-  if (low_battery_shutdown_time_s_) {
-    battery_percentage = status->battery_percentage;
-  } else if (status->battery_percentage <= low_battery_shutdown_percent_) {
-    battery_percentage = 0.0;
-  } else if (status->battery_percentage > 100.0) {
-    battery_percentage = 100.0;
-    LOG(WARNING) << "Before adjustment battery percentage was over 100%";
-  } else {
-    // x = current percentage
-    // y = adjusted percentage
-    // t = threshold percentage
-    // y = 100 *(x-t)/(100 - t)
-    battery_percentage = 100.0 * (status->battery_percentage
-                                  - low_battery_shutdown_percent_);
-    battery_percentage /= 100.0 - low_battery_shutdown_percent_;
-  }
-  protobuf.set_battery_percentage(battery_percentage);
+  UpdateBatteryReportState();
+  protobuf.set_battery_percentage(GetDisplayBatteryPercent());
   protobuf.set_battery_is_present(status->battery_is_present);
   protobuf.set_battery_is_charged(status->battery_state ==
                                   BATTERY_STATE_FULLY_CHARGED);
@@ -1467,7 +1447,7 @@ bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
     battery_time = power_status_.battery_time_to_empty - time_threshold_s;
     LOG_IF(WARNING, battery_time < 0)
         << "Calculated invalid negative time to empty value, trimming to 0!";
-    battery_time = max(0, battery_time);
+    battery_time = std::max(static_cast<int64>(0), battery_time);
     if (!power_status_.is_calculating_battery_time)
       empty_average->AddSample(battery_time);
     full_average->Clear();
@@ -1895,6 +1875,103 @@ bool Daemon::USBInputDeviceConnected() const {
       return true;
   }
   return false;
+}
+
+void Daemon::UpdateBatteryReportState() {
+  switch (power_status_.battery_state) {
+    case BATTERY_STATE_FULLY_CHARGED:
+      battery_report_state_ = BATTERY_REPORT_FULL;
+      break;
+    case BATTERY_STATE_DISCHARGING:
+      switch (battery_report_state_) {
+        case BATTERY_REPORT_FULL:
+          battery_report_state_ = BATTERY_REPORT_PINNED;
+          battery_report_pinned_start_ = base::TimeTicks::Now();
+          break;
+        case BATTERY_REPORT_TAPERED:
+          {
+            int64 tapered_delta_ms =
+                (base::TimeTicks::Now() -
+                 battery_report_tapered_start_).InMilliseconds();
+            if (tapered_delta_ms >= kBatteryPercentTaperMs)
+              battery_report_state_ = BATTERY_REPORT_ADJUSTED;
+          }
+          break;
+        case BATTERY_REPORT_PINNED:
+          if ((base::TimeTicks::Now() -
+               battery_report_pinned_start_).InMilliseconds()
+              >= kBatteryPercentPinMs) {
+            battery_report_state_ = BATTERY_REPORT_TAPERED;
+            battery_report_tapered_start_ = base::TimeTicks::Now();
+          }
+          break;
+        default:
+          break;
+      }
+      break;
+    default:
+      battery_report_state_ = BATTERY_REPORT_ADJUSTED;
+      break;
+  }
+}
+
+double Daemon::GetDisplayBatteryPercent() const {
+  double battery_percentage = GetUsableBatteryPercent();
+  switch (power_status_.battery_state) {
+    case BATTERY_STATE_FULLY_CHARGED:
+      battery_percentage = 100.0;
+      break;
+    case BATTERY_STATE_DISCHARGING:
+      switch (battery_report_state_) {
+        case BATTERY_REPORT_FULL:
+        case BATTERY_REPORT_PINNED:
+          battery_percentage = 100.0;
+          break;
+        case BATTERY_REPORT_TAPERED:
+          {
+            int64 tapered_delta_ms =
+                (base::TimeTicks::Now() -
+                 battery_report_tapered_start_).InMilliseconds();
+            double elapsed_fraction =
+                std::min(1.0, (static_cast<double>(tapered_delta_ms) /
+                               kBatteryPercentTaperMs));
+            battery_percentage = battery_percentage + (1.0 - elapsed_fraction) *
+                (100.0 - battery_percentage);
+          }
+          break;
+        default:
+          break;
+      }
+      break;
+    default:
+      break;
+  }
+  return battery_percentage;
+}
+
+double Daemon::GetUsableBatteryPercent() const {
+  // If we are using a percentage based threshold adjust the reported percentage
+  // to account for the bit being trimmed off. If we are using a time-based
+  // threshold don't adjust the reported percentage. Adjusting the percentage
+  // due to a time threshold might break the monoticity of percentages since the
+  // time to empty/full is not guaranteed to be monotonic.
+  if (power_status_.battery_percentage <= low_battery_shutdown_percent_) {
+    return  0.0;
+  } else if (power_status_.battery_percentage > 100.0) {
+    LOG(WARNING) << "Before adjustment battery percentage was over 100%";
+    return 100.0;
+  } else if (low_battery_shutdown_time_s_) {
+    return power_status_.battery_percentage;
+  } else {  // Using percentage threshold
+    // x = current percentage
+    // y = adjusted percentage
+    // t = threshold percentage
+    // y = 100 *(x-t)/(100 - t)
+    double battery_percentage = 100.0 * (power_status_.battery_percentage
+                                         - low_battery_shutdown_percent_);
+    battery_percentage /= 100.0 - low_battery_shutdown_percent_;
+    return battery_percentage;
+  }
 }
 
 }  // namespace power_manager

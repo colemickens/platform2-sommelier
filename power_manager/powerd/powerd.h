@@ -56,6 +56,28 @@ enum PluggedState {
   kPowerUnknown,
 };
 
+// The raw battery percentage value that we receive from the battery controller
+// is not fit for displaying to the user since it does not repersent the actual
+// usable percentage since we do a safe shutdown in low battery conditions and
+// the battery might not charge to full capacity under certain
+// circumstances. During regular operation we linearly scale the raw value so
+// that the low level cut off is 0%. This being done is indicated by
+// BATTERY_REPORT_ADJUSTED. Once the battery has ceased to charge and is marked
+// as full, 100% is displayed which is is indicated by the state
+// BATTERY_REPORT_FULL. When we start discharging from full the battery value is
+// held/pinned at 100% for a brief period to avoid an immediate drop in
+// percentage due to the difference between the adjusted/raw value and 100%,
+// which is indicated by BATTERY_REPORT_PINNED. After holding the percentage at
+// 100% is done the system linearly tapers from 100% to the true adjust value
+// over a period of time to eliminate any jumps, which is indicated by the state
+// BATTERY_REPORT_TAPERED.
+enum BatteryReportState {
+  BATTERY_REPORT_ADJUSTED,
+  BATTERY_REPORT_FULL,
+  BATTERY_REPORT_PINNED,
+  BATTERY_REPORT_TAPERED,
+};
+
 class Daemon : public BacklightControllerObserver,
                public IdleObserver {
  public:
@@ -160,6 +182,8 @@ class Daemon : public BacklightControllerObserver,
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithBadStatus);
   FRIEND_TEST(DaemonTest, TurnBacklightOnForPowerButton);
   FRIEND_TEST(DaemonTest, DetectUSBDevices);
+  FRIEND_TEST(DaemonTest, GetDisplayBatteryPercent);
+  FRIEND_TEST(DaemonTest, GetUsableBatteryPercent);
 
   enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
                    kIdleSuspend };
@@ -458,6 +482,22 @@ class Daemon : public BacklightControllerObserver,
   // devices whose paths contain "usb".
   bool USBInputDeviceConnected() const;
 
+  // Updates |battery_report_state_| to account for changes in the power state
+  // of the device and passage of time. This value is used to control the value
+  // we display to the user for battery time, so this should be called before
+  // making a call to GetDisplayBatteryPercent.
+  void UpdateBatteryReportState();
+
+  // Generates the battery percentage that will be sent to Chrome for display to
+  // the user. This value is an adjusted version of the raw value to be more
+  // useful to the end user.
+  double GetDisplayBatteryPercent() const;
+
+  // Generates an adjusted form of the raw battery percentage that accounts for
+  // the raw value being out of range and for the small bit lost due to low
+  // battery shutdown.
+  double GetUsableBatteryPercent() const;
+
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
@@ -585,6 +625,14 @@ class Daemon : public BacklightControllerObserver,
   // Used by USBInputDeviceConnected() instead of the default input path, if
   // this string is non-empty.  Used for testing purposes.
   std::string sysfs_input_path_for_testing_;
+
+  // Variables used for pinning and tapering the battery after we have adjusted
+  // it to account for being near full but not charging. The state value tells
+  // use what we should be doing with the value and time values are used for
+  // controlling when to transition states and calculate values.
+  BatteryReportState battery_report_state_;
+  base::TimeTicks battery_report_pinned_start_;
+  base::TimeTicks battery_report_tapered_start_;
 
   // Set by tests to disable emitting D-Bus signals.
   bool disable_dbus_for_testing_;

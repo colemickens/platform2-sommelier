@@ -54,10 +54,15 @@ const char kBatteryPollIntervalPref[] = "battery_poll_interval_ms";
 const char kBatteryPollShortIntervalPref[] = "battery_poll_short_interval_ms";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
 
+// Miscellaneous constants.
 const char kBacklightPath[] = "/sys/class/backlight";
 const char kBacklightPattern[] = "*";
 const char kKeyboardBacklightPath[] = "/sys/class/leds";
 const char kKeyboardBacklightPattern[] = "*:kbd_backlight";
+// Time to pin battery at full after going off AC.
+const int64 kBatteryPercentPinMs = 3 * 60 * 1000;
+// Time taken to taper from pinned percentage to actual percentage.
+const int64 kBatteryPercentTaperMs = 7 * 60 * 1000;
 
 // Interface names.
 const char kRootPowerManagerInterface[] = "org.chromium.RootPowerManager";
