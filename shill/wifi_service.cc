@@ -391,6 +391,15 @@ void WiFiService::Connect(Error *error) {
                           Error::GetDefaultMessage(Error::kAlreadyConnected));
     return;
   }
+  if (wifi_->IsCurrentService(this)) {
+    LOG(WARNING) << "Can't connect.  Service " << friendly_name()
+                 << " is the current service (but, in " << GetStateString()
+                 << " state, not connected.";
+    Error::PopulateAndLog(error,
+                          Error::kInProgress,
+                          Error::GetDefaultMessage(Error::kInProgress));
+    return;
+  }
 
   params[wpa_supplicant::kNetworkPropertyMode].writer().
       append_uint32(WiFiEndpoint::ModeStringToUint(mode_));

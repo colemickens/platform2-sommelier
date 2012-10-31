@@ -161,6 +161,10 @@ class WiFi : public Device {
   // Called by Linkmonitor (overriden from Device superclass).
   virtual void OnLinkMonitorFailure();
 
+  bool IsCurrentService(const WiFiServiceRefPtr service) {
+    return service.get() == current_service_.get();
+  }
+
   // Overriden from Device superclass
   virtual std::vector<GeolocationInfo> GetGeolocationObjects() const;
 
