@@ -21,7 +21,7 @@ using crypto::RSAPrivateKey;
 
 namespace {
 // This should match the same constant in Chrome tree:
-// chrome/browser/chromeos/login/owner_key_utils.cc
+// chrome/browser/chromeos/settings/owner_key_util.cc
 const char kOwnerKeyFile[] = "/var/lib/whitelist/owner.key";
 }  // namespace
 

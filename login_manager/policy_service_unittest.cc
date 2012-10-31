@@ -15,7 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "login_manager/device_management_backend.pb.h"
-#include "login_manager/mock_owner_key.h"
+#include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
 
@@ -61,7 +61,7 @@ class PolicyServiceTest : public testing::Test {
   }
 
   virtual void SetUp() {
-    key_ = new StrictMock<MockOwnerKey>;
+    key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
@@ -158,7 +158,7 @@ class PolicyServiceTest : public testing::Test {
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
-  StrictMock<MockOwnerKey>* key_;
+  StrictMock<MockPolicyKey>* key_;
   StrictMock<MockPolicyStore>* store_;
   MockPolicyServiceDelegate delegate_;
   MockPolicyServiceCompletion completion_;

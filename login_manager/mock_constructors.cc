@@ -10,7 +10,7 @@
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
-#include "login_manager/mock_owner_key.h"
+#include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
 #include "login_manager/mock_system_utils.h"
@@ -50,8 +50,8 @@ MockMetrics::~MockMetrics() {}
 MockMitigator::MockMitigator() {}
 MockMitigator::~MockMitigator() {}
 
-MockOwnerKey::MockOwnerKey() : PolicyKey(FilePath("")) {}
-MockOwnerKey::~MockOwnerKey() {}
+MockPolicyKey::MockPolicyKey() : PolicyKey(FilePath("")) {}
+MockPolicyKey::~MockPolicyKey() {}
 
 MockPolicyService::MockPolicyService() : PolicyService(NULL, NULL, NULL) {}
 MockPolicyService::~MockPolicyService() {}

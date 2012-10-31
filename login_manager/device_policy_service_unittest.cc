@@ -23,7 +23,7 @@
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_nss_util.h"
-#include "login_manager/mock_owner_key.h"
+#include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
 
@@ -117,7 +117,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   void InitService(NssUtil* nss) {
-    key_ = new StrictMock<MockOwnerKey>;
+    key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;
     metrics_.reset(new MockMetrics);
     mitigator_.reset(new MockMitigator);
@@ -317,7 +317,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
-  StrictMock<MockOwnerKey>* key_;
+  StrictMock<MockPolicyKey>* key_;
   StrictMock<MockPolicyStore>* store_;
   scoped_ptr<MockMetrics> metrics_;
   scoped_ptr<MockMitigator> mitigator_;

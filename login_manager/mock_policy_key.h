@@ -16,10 +16,10 @@ class RSAPrivateKey;
 }
 
 namespace login_manager {
-class MockOwnerKey : public PolicyKey {
+class MockPolicyKey : public PolicyKey {
  public:
-  MockOwnerKey();
-  virtual ~MockOwnerKey();
+  MockPolicyKey();
+  virtual ~MockPolicyKey();
   MOCK_CONST_METHOD1(Equals, bool(const std::string&));
   MOCK_CONST_METHOD1(VEquals, bool(const std::vector<uint8>&));
   MOCK_CONST_METHOD0(HaveCheckedDisk, bool());

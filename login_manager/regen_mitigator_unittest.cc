@@ -15,7 +15,7 @@
 #include "login_manager/child_job.h"
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_key_generator.h"
-#include "login_manager/mock_owner_key.h"
+#include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/session_manager_service.h"
 
@@ -47,7 +47,7 @@ class RegenMitigatorTest : public ::testing::Test {
 
 TEST_F(RegenMitigatorTest, Mitigate) {
   MockKeyGenerator gen;
-  MockOwnerKey key;
+  MockPolicyKey key;
   EXPECT_CALL(gen, Start(getuid(), manager_.get()))
       .WillOnce(Return(true));
   RegenMitigator mitigator(&gen, true, getuid(), manager_.get());
