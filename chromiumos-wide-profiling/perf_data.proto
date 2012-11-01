@@ -1,0 +1,111 @@
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+//
+// Stores information from a perf session generated via running:
+// "perf record"
+
+syntax = "proto2";
+
+option optimize_for = LITE_RUNTIME;
+
+message PerfDataProto {
+
+  message PerfEventAttr {
+    optional uint32 type = 1;
+    optional uint32 size = 2;
+    optional uint64 config = 3;
+
+    optional uint64 sample_period = 4;
+    optional uint64 sample_freq = 5;
+
+    optional uint64 sample_type = 6;
+    optional uint64 read_format = 7;
+
+    optional bool disabled = 8;
+    optional bool inherit = 9;
+    optional bool pinned = 10;
+    optional bool exclusive = 11;
+    optional bool exclude_user = 12;
+    optional bool exclude_kernel = 13;
+    optional bool exclude_hv = 14;
+    optional bool exclude_idle = 15;
+    optional bool mmap = 16;
+    optional bool comm = 17;
+    optional bool freq = 18;
+    optional bool inherit_stat = 19;
+    optional bool enable_on_exec = 20;
+    optional bool task = 21;
+    optional bool watermark = 22;
+    optional uint32 precise_ip = 23;
+    optional bool mmap_data = 24;
+    optional bool sample_id_all = 25;
+    optional bool exclude_host = 26;
+    optional bool exclude_guest = 27;
+
+    optional uint32 wakeup_events = 28;
+    optional uint32 wakeup_watermark = 29;
+
+    optional uint32 bp_type = 30;
+
+    optional uint64 bp_addr = 31;
+    optional uint64 config1 = 32;
+
+    optional uint64 bp_len = 33;
+    optional uint64 config2 = 34;
+
+    optional uint64 branch_sample_type = 35;
+  }
+
+  message PerfFileAttr {
+    optional PerfEventAttr attr = 1;
+    repeated uint64 ids = 2;
+  }
+
+  message CommEvent {
+    optional uint32 pid = 1;
+    optional uint32 tid = 2;
+    optional string comm = 3;
+    optional uint64 comm_md5_prefix = 4;
+  }
+
+  message MMapEvent {
+    optional uint32 pid = 1;
+    optional uint32 tid = 2;
+    optional uint64 start = 3;
+    optional uint64 len = 4;
+    optional uint64 pgoff = 5;
+    optional string filename = 6;
+    optional uint64 filename_md5_prefix = 7;
+  }
+
+  message SampleEvent {
+    optional uint64 ip = 1;
+    optional uint32 pid = 2;
+    optional uint32 tid = 3;
+    optional uint64 time = 4;
+    optional uint64 addr = 5;
+    optional uint64 id = 6;
+    optional uint64 stream_id = 7;
+    optional uint64 period = 8;
+    optional uint32 cpu = 9;
+    optional uint32 raw_size = 10;
+  }
+
+  message EventHeader {
+    optional uint32 type = 1;
+    optional uint32 misc = 2;
+    optional uint32 size = 3;
+  }
+
+  message PerfEvent {
+    optional EventHeader header = 1;
+
+    optional MMapEvent mmap_event = 2;
+    optional SampleEvent sample_event = 3;
+    optional CommEvent comm_event = 4;
+  }
+
+  repeated PerfFileAttr file_attrs = 1;
+  repeated PerfEvent events = 2;
+}

@@ -1,19 +1,27 @@
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+# TODO(asharif): Convert this to common.mk.
 CXX ?= g++
 
-CXXFLAGS += -g -Wall
-LDFLAGS = -ldl -lcurl -lz
+CXXFLAGS += -g -Wall -Iperf -Werror -Wall \
+	    $(shell pkg-config --cflags protobuf)
+LDFLAGS += $(shell pkg-config --libs protobuf) \
+	   $(shell pkg-config --libs openssl)
 TEST_LDFLAGS = $(LDFLAGS) -lgtest
 
 PROGRAM_SUFFIX = exe
 TEST_SUFFIX = test
 
 MAIN_SOURCES = quipper.cc
-TEST_SOURCES = quipper_unittest.cc
+TEST_SOURCES = perf_reader_test.cc perf_serializer_test.cc \
+	       perf_recorder_test.cc utils_test.cc
+GENERATED_SOURCES = perf_data.pb.cc
+GENERATED_HEADERS = $(GENERATED_SOURCES:.pb.cc=.pb.h)
 
-COMMON_SOURCES = profiler.cc uploader.cc parser.cc
+COMMON_SOURCES = utils.cc perf_protobuf_io.cc perf_reader.cc perf_recorder.cc \
+		 perf_serializer.cc $(GENERATED_SOURCES)
 COMMON_OBJECTS = $(COMMON_SOURCES:.cc=.o)
 
 PROGRAMS = $(MAIN_SOURCES:.cc=.$(PROGRAM_SUFFIX))
@@ -21,10 +29,12 @@ TESTS = $(TEST_SOURCES:.cc=.$(TEST_SUFFIX))
 
 ALL_SOURCES = $(MAIN_SOURCES) $(COMMON_SOURCES) $(TEST_SOURCES)
 
-all: $(PROGRAMS)
+all: $(PROGRAMS) $(TESTS)
 	@echo Sources compiled!
 
--include $(ALL_SOURCES:.cc=.d)
+ifneq ($(MAKECMDGOALS),clean)
+  -include $(ALL_SOURCES:.cc=.d)
+endif
 
 # Taken from:
 # http://www.gnu.org/software/make/manual/make.html#Automatic-Prerequisites
@@ -34,14 +44,19 @@ all: $(PROGRAMS)
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
 
+# Rule for compiling protobufs.
+%.pb.h %.pb.cc: %.proto
+	protoc --cpp_out=. $^
+
 %.exe: %.o $(COMMON_OBJECTS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $@ $^
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 %.test: %.o $(COMMON_OBJECTS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(TEST_LDFLAGS) -o $@ $^
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(TEST_LDFLAGS)
 
 check: $(TESTS)
 	for test in $(TESTS); do ./$$test || exit 1; done
 
 clean:
-	rm -f *.o .d *.a $(PROGRAMS) $(TESTS)
+	rm -f *.o *.d.* *.a $(PROGRAMS) $(TESTS) $(GENERATED_SOURCES) \
+		$(GENERATED_HEADERS)

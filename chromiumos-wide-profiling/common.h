@@ -2,16 +2,46 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef COMMON_H_
+#define COMMON_H_
 
-#define QUIPPER_SUCCESS 0
-#define QUIPPER_FAIL 1
-#define LOWEST_PRIORITY 19
-#define CHUNK 16384
-#define COMPRESSED_EXTENSION ".gz"
-#define PERF_OUTPUT_LINE_LEN 128
-#define UNKNOWN_MACHINE_DETAIL "Unknown"
+#include <iostream>
+#include <sstream>
+#include <stdint.h>
 
-#define GAE_SERVER "https://chromeoswideprofiling.appspot.com/upload"
-#endif
+typedef uint64_t uint64;
+
+// Simulate Chrome-like logging:
+
+enum LOG_LEVEL {
+  ERROR,
+  INFO,
+  WARNING,
+};
+
+class LOG {
+ public:
+  LOG(int level) {
+    level_ = level;
+  }
+
+  ~LOG() {
+    std::cerr << ss_.str() << std::endl;
+  }
+
+  template <class T> LOG & operator <<(const T &x) {
+    ss_ << x;
+    return *this;
+  }
+
+ private:
+  LOG() {}
+  std::ostringstream ss_;
+  int level_;
+};
+
+#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
+    TypeName(const TypeName&); \
+    void operator=(const TypeName&)
+
+#endif /*COMMON_H_*/
