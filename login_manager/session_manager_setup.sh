@@ -377,6 +377,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
             --scroll-pixels=3 \
             --ui-enable-partial-swap \
             --ui-enable-per-tile-painting \
+            --ui-enable-threaded-compositing \
             --ui-prioritize-in-gpu-process \
             --use-cras \
             --user-data-dir="$DATA_DIR" \
