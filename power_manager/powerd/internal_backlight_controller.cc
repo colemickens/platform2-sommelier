@@ -116,7 +116,8 @@ InternalBacklightController::InternalBacklightController(
       target_level_(0),
       suspended_through_idle_off_(false),
       gradual_transition_event_id_(0),
-      set_screen_power_state_timeout_id_(0) {
+      set_screen_power_state_timeout_id_(0),
+      last_transition_style_(TRANSITION_INSTANT) {
   backlight_->set_observer(this);
 }
 
@@ -471,6 +472,7 @@ void InternalBacklightController::OnAmbientLightChanged(
   if (state_ == BACKLIGHT_IDLE_OFF || IsBacklightActiveOff())
     return;
 
+  bool is_first_als_event = !has_seen_als_event_;
   als_offset_percent_ = percent;
   has_seen_als_event_ = true;
 
@@ -479,7 +481,8 @@ void InternalBacklightController::OnAmbientLightChanged(
     als_temporal_state_ = ALS_HYST_IDLE;
     als_adjustment_count_++;
     LOG(INFO) << "Immediate ALS-triggered brightness adjustment.";
-    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
+    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED,
+                    is_first_als_event ? TRANSITION_SLOW : TRANSITION_FAST);
     return;
   }
 
@@ -659,6 +662,8 @@ bool InternalBacklightController::SetBrightness(int64 target_level,
       instant_transitions_below_min_level_) {
     style = TRANSITION_INSTANT;
   }
+
+  last_transition_style_ = style;
 
   if (style == TRANSITION_INSTANT) {
     SetBrightnessHard(target_level, target_level);

@@ -39,6 +39,9 @@ class InternalBacklightController : public BacklightController {
   virtual ~InternalBacklightController();
 
   int64 target_level_for_testing() const { return target_level_; }
+  TransitionStyle last_transition_style_for_testing() const {
+    return last_transition_style_;
+  }
 
   // Converts between [0, 100] and [0, |max_level_|] brightness scales.
   double LevelToPercent(int64 level);
@@ -270,6 +273,9 @@ class InternalBacklightController : public BacklightController {
 
   // Screen off delay when user sets brightness to 0.
   base::TimeDelta turn_off_screen_timeout_;
+
+  // Last transition style used by SetBrightness().  Useful for tests.
+  TransitionStyle last_transition_style_;
 
   DISALLOW_COPY_AND_ASSIGN(InternalBacklightController);
 };

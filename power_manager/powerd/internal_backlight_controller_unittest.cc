@@ -497,4 +497,35 @@ TEST_F(InternalBacklightControllerTest, NonLinearMapping) {
   EXPECT_EQ(kLargeMaxBrightnessLevel, controller_.PercentToLevel(100.0));
 }
 
+#ifdef HAS_ALS
+TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  ASSERT_TRUE(controller_.OnPlugEvent(true));
+
+  // The controller should leave the initial brightness unchanged before it's
+  // received a reading from the ambient light sensor.
+  int64 initial_target_level = controller_.target_level_for_testing();
+  EXPECT_EQ(kDefaultBrightnessLevel, initial_target_level);
+
+  // After getting the first reading from the sensor, we should do a slow
+  // transition to a lower level.
+  light_sensor_.ExpectGetAmbientLightPercent(0.0);
+  controller_.OnAmbientLightChanged(&light_sensor_);
+  Mock::VerifyAndClearExpectations(&light_sensor_);
+  int64 updated_target_level = controller_.target_level_for_testing();
+  EXPECT_LT(updated_target_level, initial_target_level);
+  EXPECT_EQ(TRANSITION_SLOW, controller_.last_transition_style_for_testing());
+
+  // Pass a bunch of 100% readings and check that we slowly increase the
+  // brightness.
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i) {
+    light_sensor_.ExpectGetAmbientLightPercent(100.0);
+    controller_.OnAmbientLightChanged(&light_sensor_);
+    Mock::VerifyAndClearExpectations(&light_sensor_);
+  }
+  EXPECT_GT(controller_.target_level_for_testing(), updated_target_level);
+  EXPECT_EQ(TRANSITION_SLOW, controller_.last_transition_style_for_testing());
+}
+#endif
+
 }  // namespace power_manager
