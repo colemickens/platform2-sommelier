@@ -181,8 +181,8 @@ int Nl80211Socket::GetMulticastGroupId(const string &group) {
     return -1;
   }
 
-  if (!message.AddNetlinkHeader(NL_AUTO_PID, NL_AUTO_SEQ, GetFamilyId(), 0, 0,
-                                CTRL_CMD_GETFAMILY, 0))
+  if (!message.AddNetlinkHeader(this, NL_AUTO_PID, NL_AUTO_SEQ, GetFamilyId(),
+                                0, 0, CTRL_CMD_GETFAMILY, 0))
     return -1;
 
   int result = message.AddAttribute(CTRL_ATTR_FAMILY_NAME,

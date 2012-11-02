@@ -168,6 +168,18 @@ bool NetlinkSocket::GetMessagesUsingCallback(
   return true;
 }
 
+unsigned int NetlinkSocket::GetSequenceNumber() {
+  unsigned int number = nl_socket_use_seq(nl_sock_);
+  if (number == 0) {
+    number = nl_socket_use_seq(nl_sock_);
+  }
+  if (number == 0) {
+    LOG(WARNING) << "Couldn't get non-zero sequence number";
+    number = 1;
+  }
+  return number;
+}
+
 bool NetlinkSocket::SetNetlinkCallback(nl_recvmsg_msg_cb_t on_netlink_data,
                                        void *callback_parameter) {
   if (!nl_sock_) {

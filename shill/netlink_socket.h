@@ -116,9 +116,9 @@ class NetlinkSocket {
   // function if NULL).
   virtual bool GetMessagesUsingCallback(NetlinkSocket::Callback *callback);
 
-  virtual unsigned int GetSequenceNumber() {
-    return nl_socket_use_seq(nl_sock_);
-  }
+  // Get the next message sequence number for this socket.  Disallow zero so
+  // that we can use that as the 'broadcast' sequence number.
+  virtual unsigned int GetSequenceNumber();
 
   // This method is called |callback_function| to differentiate it from the
   // 'callback' method in KernelBoundNlMessage since they return different

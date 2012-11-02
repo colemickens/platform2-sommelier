@@ -61,6 +61,8 @@
 #ifndef SHILL_CONFIG80211_H_
 #define SHILL_CONFIG80211_H_
 
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
 #include <iomanip>
 #include <list>
 #include <map>
@@ -132,10 +134,16 @@ class Config80211 {
   // Uninstall all Config80211 broadcast Callbacks.
   void ClearBroadcastCallbacks();
 
-  // TODO(wdg): Add 'SendMessage(KernelBoundNlMessage *message,
-  //                             Config80211::Callback *callback);
-  // Config80211 needs to handle out-of-order responses using a
-  // map <sequence_number, callback> to match callback with message.
+  // Install a Config80211 Callback to handle the response to a specific
+  // message.
+  // TODO(wdg): Eventually, this should also include a timeout and a callback
+  // to call in case of timeout.
+  bool SetMessageCallback(const KernelBoundNlMessage &message,
+                          const Callback &callback);
+
+  // Uninstall a Config80211 Callback for a specific message using the
+  // message's sequence number.
+  bool UnsetMessageCallbackById(uint32_t sequence_number);
 
   // Return a string corresponding to the passed-in EventType.
   static bool GetEventTypeString(EventType type, std::string *value);
@@ -155,8 +163,11 @@ class Config80211 {
 
  private:
   friend class Config80211Test;
+  FRIEND_TEST(Config80211Test, BroadcastCallbackTest);
+  FRIEND_TEST(Config80211Test, MessageCallbackTest);
   typedef std::map<EventType, std::string> EventTypeStrings;
   typedef std::set<EventType> SubscribedEvents;
+  typedef std::map<uint32_t, Callback> MessageCallbacks;
 
   // Sign-up to receive and log multicast events of a specific type (assumes
   // wifi is up).
@@ -187,8 +198,8 @@ class Config80211 {
   // User-supplied callback object when _it_ gets called to read libnl data.
   std::list<Callback> broadcast_callbacks_;
 
-  // TODO(wdg): implement the following.
-  // std::map<uint32_t, Callback> message_callback_;
+  // Message-specific callbacks, mapped by message ID.
+  MessageCallbacks  message_callbacks_;
 
   static EventTypeStrings *event_types_;
 

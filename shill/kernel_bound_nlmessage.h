@@ -51,8 +51,9 @@ class KernelBoundNlMessage {
   uint32_t GetId() const;
 
   // Add a netlink header to the message.
-  bool AddNetlinkHeader(uint32_t port, uint32_t seq, int family_id, int hdrlen,
-                        int flags, uint8_t cmd, uint8_t version);
+  bool AddNetlinkHeader(NetlinkSocket *socket, uint32_t port, uint32_t seq,
+                        int family_id, int hdrlen, int flags, uint8_t cmd,
+                        uint8_t version);
 
   // Add a netlink attribute to the message.
   int AddAttribute(int attrtype, int attrlen, const void *data);

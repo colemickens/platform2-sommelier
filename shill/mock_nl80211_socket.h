@@ -29,7 +29,17 @@ class MockNl80211Socket : public Nl80211Socket {
   using Nl80211Socket::SetNetlinkCallback;
   MOCK_METHOD2(SetNetlinkCallback, bool(nl_recvmsg_msg_cb_t on_netlink_data,
                                         void *callback_parameter));
+  MOCK_METHOD0(GetSequenceNumber, unsigned int());
+
+  static unsigned int GetNextNumber() {
+    if (++number_ == 0)
+      number_ = 1;
+    return number_;
+  }
+
  private:
+  static unsigned int number_;
+
   DISALLOW_COPY_AND_ASSIGN(MockNl80211Socket);
 };
 

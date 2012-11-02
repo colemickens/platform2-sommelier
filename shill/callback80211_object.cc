@@ -24,7 +24,10 @@ using std::string;
 namespace shill {
 
 Callback80211Object::Callback80211Object(Config80211 *config80211)
-    : config80211_(config80211), weak_ptr_factory_(this) {
+    : weak_ptr_factory_(this),
+      callback_(Bind(&Callback80211Object::Config80211MessageCallback,
+                     weak_ptr_factory_.GetWeakPtr())),
+      config80211_(config80211) {
 }
 
 Callback80211Object::~Callback80211Object() {
@@ -54,8 +57,6 @@ void Callback80211Object::Config80211MessageCallback(
 
 bool Callback80211Object::InstallAsBroadcastCallback() {
   if (config80211_) {
-    callback_ = Bind(&Callback80211Object::Config80211MessageCallback,
-                     weak_ptr_factory_.GetWeakPtr());
     return config80211_->AddBroadcastCallback(callback_);
   }
   return false;

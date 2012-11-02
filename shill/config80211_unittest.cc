@@ -18,9 +18,13 @@
 #include <base/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net/if.h>
 #include <netlink/attr.h>
+#include <netlink/genl/genl.h>
+#include <netlink/msg.h>
 #include <netlink/netlink.h>
 
+#include "shill/kernel_bound_nlmessage.h"
 #include "shill/mock_callback80211_object.h"
 #include "shill/mock_nl80211_socket.h"
 #include "shill/nl80211_socket.h"
@@ -32,6 +36,7 @@ using std::list;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::Invoke;
 using testing::Return;
 using testing::Test;
 
@@ -339,6 +344,8 @@ const unsigned char kNL80211_CMD_DISASSOCIATE[] = {
 
 }  // namespace
 
+unsigned int MockNl80211Socket::number_ = 0;
+
 class Config80211Test : public Test {
  public:
   Config80211Test() : config80211_(Config80211::GetInstance()) {}
@@ -390,6 +397,8 @@ TEST_F(Config80211Test, AddLinkTest) {
   EXPECT_CALL(socket_, AddGroupMembership(_)).Times(0);
   EXPECT_CALL(socket_, DisableSequenceChecking()).Times(0);
   EXPECT_CALL(socket_, SetNetlinkCallback(_, _)).Times(0);
+  EXPECT_CALL(socket_, GetSequenceNumber())
+      .WillRepeatedly(Invoke(&MockNl80211Socket::GetNextNumber));
 
   EXPECT_TRUE(config80211_->AddBroadcastCallback(
       callback_object.GetCallback()));
@@ -437,6 +446,129 @@ TEST_F(Config80211Test, AddLinkTest) {
       .Times(2)
       .WillRepeatedly(Return(true));
   config80211_->SetWifiState(Config80211::kWifiUp);
+}
+
+TEST_F(Config80211Test, BroadcastCallbackTest) {
+  SetupConfig80211Object();
+
+  nlmsghdr *message = const_cast<nlmsghdr *>(
+        reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT));
+
+  MockCallback80211 callback1(config80211_);
+  MockCallback80211 callback2(config80211_);
+  EXPECT_CALL(socket_, GetSequenceNumber())
+      .WillRepeatedly(Invoke(&MockNl80211Socket::GetNextNumber));
+
+  // Simple, 1 callback, case.
+  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(1);
+  EXPECT_TRUE(callback1.InstallAsBroadcastCallback());
+  config80211_->OnNlMessageReceived(message);
+
+  // Add a second callback.
+  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(1);
+  EXPECT_CALL(callback2, Config80211MessageCallback(_)).Times(1);
+  EXPECT_TRUE(callback2.InstallAsBroadcastCallback());
+  config80211_->OnNlMessageReceived(message);
+
+  // Verify that a callback can't be added twice.
+  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(1);
+  EXPECT_CALL(callback2, Config80211MessageCallback(_)).Times(1);
+  EXPECT_FALSE(callback1.InstallAsBroadcastCallback());
+  config80211_->OnNlMessageReceived(message);
+
+  // Check that we can remove a callback.
+  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(0);
+  EXPECT_CALL(callback2, Config80211MessageCallback(_)).Times(1);
+  EXPECT_TRUE(callback1.DeinstallAsCallback());
+  config80211_->OnNlMessageReceived(message);
+
+  // Check that re-adding the callback goes smoothly.
+  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(1);
+  EXPECT_CALL(callback2, Config80211MessageCallback(_)).Times(1);
+  EXPECT_TRUE(callback1.InstallAsBroadcastCallback());
+  config80211_->OnNlMessageReceived(message);
+
+  // Check that ClearBroadcastCallbacks works.
+  config80211_->ClearBroadcastCallbacks();
+  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(0);
+  EXPECT_CALL(callback2, Config80211MessageCallback(_)).Times(0);
+  config80211_->OnNlMessageReceived(message);
+}
+
+TEST_F(Config80211Test, MessageCallbackTest) {
+  // Setup.
+  SetupConfig80211Object();
+
+  EXPECT_CALL(socket_, GetSequenceNumber())
+      .WillRepeatedly(Invoke(&MockNl80211Socket::GetNextNumber));
+
+  MockCallback80211 callback_broadcast(config80211_);
+  EXPECT_TRUE(callback_broadcast.InstallAsBroadcastCallback());
+
+  KernelBoundNlMessage sent_message_1;
+  MockCallback80211 callback_sent_1(config80211_);
+  EXPECT_TRUE(sent_message_1.Init());
+  EXPECT_TRUE(sent_message_1.AddNetlinkHeader(&socket_, 0, NL_AUTO_SEQ, 0, 0, 0,
+                                              CTRL_CMD_GETFAMILY, 0));
+  LOG(INFO) << "Message 1 id:" << sent_message_1.GetId();
+
+  KernelBoundNlMessage sent_message_2;
+  MockCallback80211 callback_sent_2(config80211_);
+  EXPECT_TRUE(sent_message_2.Init());
+  EXPECT_TRUE(sent_message_2.AddNetlinkHeader(&socket_, 0, NL_AUTO_SEQ, 0, 0, 0,
+                                              CTRL_CMD_GETFAMILY, 0));
+  LOG(INFO) << "Message 2 id:" << sent_message_2.GetId();
+
+  // This is more testing the test code than the code, itself.
+  EXPECT_NE(sent_message_1.GetId(), sent_message_2.GetId());
+
+  // Set up the received message as a response to sent_message_1.
+  scoped_array<unsigned char> message_memory(
+      new unsigned char[sizeof(kNL80211_CMD_DISCONNECT)]);
+  memcpy(message_memory.get(), kNL80211_CMD_DISCONNECT,
+         sizeof(kNL80211_CMD_DISCONNECT));
+  nlmsghdr *received_message =
+        reinterpret_cast<nlmsghdr *>(message_memory.get());
+  received_message->nlmsg_seq = sent_message_1.GetId();
+
+  // Now, we can start the actual test...
+
+  // Verify that generic callback gets called for a message when no
+  // message-specific callback has been installed.
+  EXPECT_CALL(callback_broadcast, Config80211MessageCallback(_)).Times(1);
+  config80211_->OnNlMessageReceived(received_message);
+
+  // Install message-based callback; verify that message callback gets called.
+  EXPECT_TRUE(config80211_->SetMessageCallback(sent_message_1,
+                                               callback_sent_1.GetCallback()));
+  EXPECT_CALL(callback_sent_1, Config80211MessageCallback(_)).Times(1);
+  config80211_->OnNlMessageReceived(received_message);
+
+  // Verify that broadcast callback is called for the message after the
+  // message-specific callback is called once.
+  EXPECT_CALL(callback_broadcast, Config80211MessageCallback(_)).Times(1);
+  config80211_->OnNlMessageReceived(received_message);
+
+  // Install and then uninstall message-specific callback; verify broadcast
+  // callback is called on message receipt.
+  EXPECT_TRUE(config80211_->SetMessageCallback(sent_message_1,
+                                               callback_sent_1.GetCallback()));
+  EXPECT_TRUE(config80211_->UnsetMessageCallbackById(sent_message_1.GetId()));
+  EXPECT_CALL(callback_broadcast, Config80211MessageCallback(_)).Times(1);
+  config80211_->OnNlMessageReceived(received_message);
+
+  // Install callback for different message; verify that broadcast callback is
+  // called for _this_ message.
+  EXPECT_TRUE(config80211_->SetMessageCallback(sent_message_2,
+                                               callback_sent_2.GetCallback()));
+  EXPECT_CALL(callback_broadcast, Config80211MessageCallback(_)).Times(1);
+  config80211_->OnNlMessageReceived(received_message);
+
+  // Change the ID for the message to that of the second callback; verify that
+  // the appropriate callback is called for _that_ message.
+  received_message->nlmsg_seq = sent_message_2.GetId();
+  EXPECT_CALL(callback_sent_2, Config80211MessageCallback(_)).Times(1);
+  config80211_->OnNlMessageReceived(received_message);
 }
 
 TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {

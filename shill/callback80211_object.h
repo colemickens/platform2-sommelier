@@ -39,12 +39,6 @@ class Callback80211Object {
   void SetName(std::string name) { name_ = name;}
   const std::string &GetName() { return name_; }
 
- protected:
-  // This is the closure that contains *|this| and a pointer to the message
-  // handling callback, below.  It is used in |DeinstallAsCallback|.
-  Config80211::Callback callback_;
-  Config80211 *config80211_;
-
  private:
   // TODO(wdg): remove debug code:
   std::string name_;
@@ -57,6 +51,13 @@ class Callback80211Object {
   // callback.
   base::WeakPtrFactory<Callback80211Object> weak_ptr_factory_;
 
+ protected:
+  // This is the closure that contains *|this| and a pointer to the message
+  // handling callback, below.  It is used in |DeinstallAsCallback|.
+  Config80211::Callback callback_;
+  Config80211 *config80211_;
+
+ private:
   DISALLOW_COPY_AND_ASSIGN(Callback80211Object);
 };
 

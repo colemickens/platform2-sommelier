@@ -136,6 +136,38 @@ void Config80211::ClearBroadcastCallbacks() {
   broadcast_callbacks_.clear();
 }
 
+bool Config80211::SetMessageCallback(const KernelBoundNlMessage &message,
+                                     const Callback &callback) {
+  LOG(INFO) << "Setting callback for message " << message.GetId();
+  uint32_t message_id = message.GetId();
+  if (message_id == 0) {
+    LOG(ERROR) << "Message ID 0 is reserved for broadcast callbacks.";
+    return false;
+  }
+
+  if (ContainsKey(message_callbacks_, message_id)) {
+    LOG(ERROR) << "Already a callback assigned for id " << message_id;
+    return false;
+  }
+
+  if (callback.is_null()) {
+    LOG(ERROR) << "Trying to add a NULL callback for id " << message_id;
+    return false;
+  }
+
+  message_callbacks_[message_id] = callback;
+  return true;
+}
+
+bool Config80211::UnsetMessageCallbackById(uint32_t message_id) {
+  if (!ContainsKey(message_callbacks_, message_id)) {
+    LOG(WARNING) << "No callback assigned for id " << message_id;
+    return false;
+  }
+  message_callbacks_.erase(message_id);
+  return true;
+}
+
 // static
 bool Config80211::GetEventTypeString(EventType type, string *value) {
   if (!value) {
@@ -243,20 +275,29 @@ int Config80211::OnNlMessageReceived(nlmsghdr *msg) {
     SLOG(WiFi, 3) << __func__ << "(msg:NULL)";
   } else {
     SLOG(WiFi, 3) << __func__ << "(msg:" << msg->nlmsg_seq << ")";
-    list<Callback>::iterator i = broadcast_callbacks_.begin();
-    while (i != broadcast_callbacks_.end()) {
-      SLOG(WiFi, 3) << "    " << __func__ << " - found callback";
-      if (i->is_null()) {
-        // How did this get in here?
-        LOG(WARNING) << "Removing NULL callback from list";
-        list<Callback>::iterator temp = i;
-        ++temp;
-        broadcast_callbacks_.erase(i);
-        i = temp;
+    // Call (then erase) any message-specific callback.
+    if (ContainsKey(message_callbacks_, message->GetId())) {
+      SLOG(WiFi, 3) << "found message-specific callback";
+      if (message_callbacks_[message->GetId()].is_null()) {
+        LOG(ERROR) << "Callback exists but is NULL for ID " << message->GetId();
       } else {
-        SLOG(WiFi, 3) << "      " << __func__ << " - calling callback";
-        i->Run(*message);
-        ++i;
+        message_callbacks_[message->GetId()].Run(*message);
+      }
+      UnsetMessageCallbackById(message->GetId());
+    } else {
+      list<Callback>::iterator i = broadcast_callbacks_.begin();
+      while (i != broadcast_callbacks_.end()) {
+        SLOG(WiFi, 3) << "found a broadcast callback";
+        if (i->is_null()) {
+          list<Callback>::iterator temp = i;
+          ++temp;
+          broadcast_callbacks_.erase(i);
+          i = temp;
+        } else {
+          SLOG(WiFi, 3) << "      " << __func__ << " - calling callback";
+          i->Run(*message);
+          ++i;
+        }
       }
     }
   }

@@ -50,7 +50,8 @@ uint32_t KernelBoundNlMessage::GetId() const {
   return header->nlmsg_seq;
 }
 
-bool KernelBoundNlMessage::AddNetlinkHeader(uint32_t port, uint32_t seq,
+bool KernelBoundNlMessage::AddNetlinkHeader(NetlinkSocket *socket,
+                                            uint32_t port, uint32_t seq,
                                             int family_id, int hdrlen,
                                             int flags, uint8_t cmd,
                                             uint8_t version) {
@@ -74,6 +75,12 @@ bool KernelBoundNlMessage::AddNetlinkHeader(uint32_t port, uint32_t seq,
       == NULL) {
     LOG(ERROR) << "genlmsg_put returned a NULL pointer.";
     return false;
+  }
+
+  // Manually set the sequence number if it's zero.
+  struct nlmsghdr *header = nlmsg_hdr(message_);
+  if (header != 0 && seq == NL_AUTO_SEQ && header->nlmsg_seq == 0) {
+    header->nlmsg_seq = socket->GetSequenceNumber();
   }
 
   return true;
@@ -100,12 +107,6 @@ bool KernelBoundNlMessage::Send(NetlinkSocket *socket) {
   if (!message_) {
     LOG(ERROR) << "NULL |message_|.";
     return -1;
-  }
-
-  // Manually set the sequence number -- seems to work.
-  struct nlmsghdr *header = nlmsg_hdr(message_);
-  if (header != 0) {
-    header->nlmsg_seq = socket->GetSequenceNumber();
   }
 
   // Complete AND SEND a message.

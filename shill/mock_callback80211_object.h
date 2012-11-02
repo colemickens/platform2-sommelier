@@ -8,6 +8,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/callback80211_object.h"
+#include "shill/config80211.h"
 
 
 namespace shill {
@@ -17,6 +18,8 @@ class UserBoundNlMessage;
 
 class MockCallback80211 : public Callback80211Object {
  public:
+  Config80211::Callback &GetCallback() { return callback_; }
+
   explicit MockCallback80211(Config80211 *config80211)
       : Callback80211Object(config80211) {}
   MOCK_METHOD1(Config80211MessageCallback, void(const UserBoundNlMessage &msg));
