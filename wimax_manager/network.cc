@@ -61,19 +61,49 @@ void Network::UpdateFrom(const Network &network) {
 }
 
 int Network::GetSignalStrength() const {
-  // According to IEEE 802.16, RSSI should be ranging from -123 to -40 dBm
-  // with 1 dBm increment.
-  int rssi = rssi_;
-  if (rssi < kMinRSSI)
-    rssi = kMinRSSI;
-  if (rssi > kMaxRSSI)
-    rssi = kMaxRSSI;
+  // TODO(benchan): Derive a RSSI/CINR to signal strength mapping equation
+  // with finer granularity.
 
-  // Mapping from [-123, -40] to [0, 100] using integer divison.
-  int range_size = kMaxRSSI - kMinRSSI;
-  int half_range_size = range_size / 2;
-  int offset = rssi - kMinRSSI;
-  return (offset * 100 + half_range_size) / range_size;
+  // RSSI \ CINR | [-10..-3] | (-3..0] | (0..3] | (3.10] | (10..15] | (15..53]
+  // ------------+-----------+---------+--------+--------+----------+---------
+  // [-123..-80] |     0     |    0    |    0   |    0   |     0    |     0
+  // ( -80..-75] |     0     |    0    |    0   |   20   |    20    |    40
+  // ( -75..-65] |     0     |    0    |   20   |   20   |    40    |    60
+  // ( -65..-55] |     0     |   20    |   20   |   40   |    60    |    80
+  // ( -55..-40] |     0     |   20    |   40   |   60   |    80    |   100
+  static const int kSignalStrengthTable[5][6] = {
+    { 0,  0,  0,  0,  0,   0 },
+    { 0,  0,  0, 20, 20,  40 },
+    { 0,  0, 20, 20, 40,  60 },
+    { 0, 20, 20, 40, 60,  80 },
+    { 0, 20, 40, 60, 80, 100 },
+  };
+
+  int row = 4;
+  if (rssi_ <= -80) {
+    row = 0;
+  } else if (rssi_ <= -75) {
+    row = 1;
+  } else if (rssi_ <= -65) {
+    row = 2;
+  } else if (rssi_ <= -55) {
+    row = 3;
+  }
+
+  int column = 5;
+  if (cinr_ <= -3) {
+    column = 0;
+  } else if (cinr_ <= 0) {
+    column = 1;
+  } else if (cinr_ <= 3) {
+    column = 2;
+  } else if (cinr_ <= 10) {
+    column = 3;
+  } else if (cinr_ <= 15) {
+    column = 4;
+  }
+
+  return kSignalStrengthTable[row][column];
 }
 
 }  // namespace wimax_manager

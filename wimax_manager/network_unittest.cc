@@ -36,28 +36,44 @@ TEST_F(NetworkTest, DecodeRSSI) {
 }
 
 TEST_F(NetworkTest, GetSignalStrength) {
-  static const int kExpectedStrengths[] = {
-    0, 1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 16, 17, 18, 19, 20, 22, 23, 24,
-    25, 27, 28, 29, 30, 31, 33, 34, 35, 36, 37, 39, 40, 41, 42, 43, 45, 46, 47,
-    48, 49, 51, 52, 53, 54, 55, 57, 58, 59, 60, 61, 63, 64, 65, 66, 67, 69, 70,
-    71, 72, 73, 75, 76, 77, 78, 80, 81, 82, 83, 84, 86, 87, 88, 89, 90, 92, 93,
-    94, 95, 96, 98, 99, 100
+  static const int kSignalStrengthTable[5][6] = {
+    { 0,  0,  0,  0,  0,   0 },
+    { 0,  0,  0, 20, 20,  40 },
+    { 0,  0, 20, 20, 40,  60 },
+    { 0, 20, 20, 40, 60,  80 },
+    { 0, 20, 40, 60, 80, 100 },
   };
-  ASSERT_EQ(Network::kMaxRSSI - Network::kMinRSSI + 1,
-            arraysize(kExpectedStrengths));
 
   for (int rssi = Network::kMinRSSI; rssi <= Network::kMaxRSSI; ++rssi) {
-    network_ = new Network(1, "", kNetworkHome, 0, rssi);
-    EXPECT_EQ(kExpectedStrengths[rssi - Network::kMinRSSI],
-              network_->GetSignalStrength());
+    for (int cinr = Network::kMinCINR; cinr <= Network::kMaxCINR; ++cinr) {
+      int row = 4;
+      if (rssi <= -80) {
+        row = 0;
+      } else if (rssi <= -75) {
+        row = 1;
+      } else if (rssi <= -65) {
+        row = 2;
+      } else if (rssi <= -55) {
+        row = 3;
+      }
+
+      int column = 5;
+      if (cinr <= -3) {
+        column = 0;
+      } else if (cinr <= 0) {
+        column = 1;
+      } else if (cinr <= 3) {
+        column = 2;
+      } else if (cinr <= 10) {
+        column = 3;
+      } else if (cinr <= 15) {
+        column = 4;
+      }
+      network_ = new Network(1, "", kNetworkHome, cinr, rssi);
+      EXPECT_EQ(kSignalStrengthTable[row][column],
+                network_->GetSignalStrength());
+    }
   }
-
-  network_ = new Network(1, "", kNetworkHome, 0, Network::kMinRSSI - 1);
-  EXPECT_EQ(kExpectedStrengths[0], network_->GetSignalStrength());
-
-  network_ = new Network(1, "", kNetworkHome, 0, Network::kMaxRSSI + 1);
-  EXPECT_EQ(kExpectedStrengths[arraysize(kExpectedStrengths) - 1],
-            network_->GetSignalStrength());
 }
 
 }  // namespace shill
