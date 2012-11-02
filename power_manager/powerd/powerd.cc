@@ -227,7 +227,8 @@ void Daemon::ReadSettings() {
 
   ReadSuspendSettings();
   ReadLockScreenSettings();
-  if (low_battery_shutdown_time_s >= 0) {
+  if ((low_battery_shutdown_time_s >= 0) &&
+      (low_battery_shutdown_time_s <= 8 * 3600)) {
     low_battery_shutdown_time_s_ = low_battery_shutdown_time_s;
   } else {
     LOG(INFO) << "Unreasonable low battery shutdown time threshold:"
@@ -235,13 +236,8 @@ void Daemon::ReadSettings() {
     LOG(INFO) << "Disabling time based low battery shutdown.";
     low_battery_shutdown_time_s_ = 0;
   }
-
-  if (low_battery_shutdown_percent > 100.0) {
-    LOG(INFO) << "Unreasonable high battery shutdown percent threshold:"
-                      << low_battery_shutdown_percent_;
-    LOG(INFO) << "Disabling percent based low battery shutdown.";
-    low_battery_shutdown_percent_ = 0.0;
-  } else if (low_battery_shutdown_percent >= 0.0) {
+  if ((low_battery_shutdown_percent >= 0.0) &&
+      (low_battery_shutdown_percent <= 100.0)) {
     low_battery_shutdown_percent_ = low_battery_shutdown_percent;
   } else {
     LOG(INFO) << "Unreasonable low battery shutdown percent threshold:"
@@ -251,12 +247,13 @@ void Daemon::ReadSettings() {
   }
 
   LOG_IF(WARNING, low_battery_shutdown_percent_ == 0.0 &&
-         low_battery_shutdown_time_s == 0) << "No low battery thresholds set!";
+         low_battery_shutdown_time_s_ == 0) << "No low battery thresholds set!";
   // We only want one of the thresholds to be in use
   CHECK(low_battery_shutdown_percent_ == 0.0 ||
-        low_battery_shutdown_time_s == 0) << "Both low battery thresholds set!";
+        low_battery_shutdown_time_s_ == 0)
+      << "Both low battery thresholds set!";
   LOG(INFO) << "Using low battery time threshold of "
-            << low_battery_shutdown_time_s
+            << low_battery_shutdown_time_s_
             << " secs and using low battery percent threshold of "
             << low_battery_shutdown_percent_;
 
