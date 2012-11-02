@@ -472,6 +472,7 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     SLOG(Service, 5) << "   " << bool_it->first;
     Error set_error;
     store_.SetBoolProperty(bool_it->first, bool_it->second, &set_error);
+    OnPropertyChanged(bool_it->first);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
@@ -487,6 +488,7 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     SLOG(Service, 5) << "   " << string_it->first;
     Error set_error;
     store_.SetStringProperty(string_it->first, string_it->second, &set_error);
+    OnPropertyChanged(string_it->first);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
@@ -502,6 +504,7 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
     SLOG(Service, 5) << "   " << int_it->first;
     Error set_error;
     store_.SetUint32Property(int_it->first, int_it->second, &set_error);
+    OnPropertyChanged(int_it->first);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }

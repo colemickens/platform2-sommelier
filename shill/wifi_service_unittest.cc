@@ -719,6 +719,36 @@ TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
   EXPECT_TRUE(service->need_passphrase_);
 }
 
+TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
+  string guid("legit_guid");
+  KeyValueStore args;
+  args.SetString(flimflam::kEapIdentityProperty, "legit_identity");
+  args.SetString(flimflam::kEapPasswordProperty, "legit_password");
+  args.SetString(flimflam::kEAPEAPProperty, "PEAP");
+  args.SetString(flimflam::kGuidProperty, guid);
+  Error error;
+  vector<uint8_t> ssid(5);
+  ssid.push_back(0xff);
+
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              metrics(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurity8021x,
+                                              false);
+  // Hack the GUID in so that we don't have to mess about with WiFi to regsiter
+  // our service.  This way, Manager will handle the lookup itself.
+  service->set_guid(guid);
+  manager()->RegisterService(service);
+  EXPECT_FALSE(service->connectable());
+  EXPECT_EQ(service.get(), manager()->GetService(args, &error).get());
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(service->connectable());
+}
+
 TEST_F(WiFiServiceTest, UnloadAndClearCacheWep) {
   vector<uint8_t> ssid(1, 'a');
   WiFiServiceRefPtr service = new WiFiService(control_interface(),
