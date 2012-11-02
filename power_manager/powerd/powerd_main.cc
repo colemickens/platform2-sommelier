@@ -17,6 +17,7 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
+#include "chromeos/dbus/dbus.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/audio_detector.h"
@@ -25,6 +26,7 @@
 #include "power_manager/powerd/monitor_reconfigure.h"
 #include "power_manager/powerd/powerd.h"
 #include "power_manager/powerd/video_detector.h"
+#include "system_api/dbus/service_constants.h"
 
 #ifdef IS_DESKTOP
 #include "power_manager/powerd/external_backlight_client.h"
@@ -48,9 +50,10 @@ DEFINE_string(log_dir, "",
 DEFINE_string(run_dir, "",
               "Directory to store stateful data for daemon.");
 
+namespace {
+
 // Returns true on success.
-static bool SetUpLogSymlink(const string& symlink_path,
-                            const string& log_basename) {
+bool SetUpLogSymlink(const string& symlink_path, const string& log_basename) {
   unlink(symlink_path.c_str());
   if (symlink(log_basename.c_str(), symlink_path.c_str()) == -1) {
     PLOG(ERROR) << "Unable to create symlink " << symlink_path
@@ -60,13 +63,70 @@ static bool SetUpLogSymlink(const string& symlink_path,
   return true;
 }
 
-static string GetTimeAsString(time_t utime) {
+string GetTimeAsString(time_t utime) {
   struct tm tm;
   CHECK_EQ(localtime_r(&utime, &tm), &tm);
   char str[16];
   CHECK_EQ(strftime(str, sizeof(str), "%Y%m%d-%H%M%S", &tm), 15UL);
   return string(str);
 }
+
+// Helper function for WaitForPowerM().  Inspects D-Bus NameOwnerChanged signals
+// and quits |data|, a GMainLoop*, when it sees one about powerm.
+void HandleDBusNameOwnerChanged(DBusGProxy* proxy,
+                                const gchar* name,
+                                const gchar* old_owner,
+                                const gchar* new_owner,
+                                void* data) {
+  LOG(INFO) << "Got signal about " << name << " ownership change "
+            << "(\"" << old_owner << "\" -> \"" << new_owner << "\")";
+  if (strcmp(name, power_manager::kRootPowerManagerServiceName) == 0)
+    g_main_loop_quit(static_cast<GMainLoop*>(data));
+}
+
+// Blocks until powerm has registered with D-Bus.
+void WaitForPowerM() {
+  // Listen for a D-Bus ownership change on powerm's name.
+  const char kNameOwnerChangedSignal[] = "NameOwnerChanged";
+  GMainLoop* loop = g_main_loop_new(NULL, false);
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              DBUS_SERVICE_DBUS,
+                              DBUS_PATH_DBUS,
+                              DBUS_INTERFACE_DBUS);
+  dbus_g_proxy_add_signal(proxy.gproxy(), kNameOwnerChangedSignal,
+                          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
+                          G_TYPE_INVALID);
+  dbus_g_proxy_connect_signal(proxy.gproxy(), kNameOwnerChangedSignal,
+                              G_CALLBACK(HandleDBusNameOwnerChanged),
+                              loop, NULL);
+
+  // Create a proxy to test if powerm is running.
+  // dbus_g_proxy_new_for_name_owner() is documented as returning NULL if the
+  // passed-in name has no owner.
+  GError* error = NULL;
+  DBusGProxy* powerm_proxy = dbus_g_proxy_new_for_name_owner(
+      chromeos::dbus::GetSystemBusConnection().g_connection(),
+      power_manager::kRootPowerManagerServiceName,
+      power_manager::kPowerManagerServicePath,
+      power_manager::kRootPowerManagerInterface,
+      &error);
+
+  if (powerm_proxy) {
+    LOG(ERROR) << "powerm is already running at \""
+               << dbus_g_proxy_get_bus_name(powerm_proxy) << "\"";
+    g_object_unref(powerm_proxy);
+  } else {
+    // If powerm isn't running yet, spin up an event loop that will run until we
+    // get notification that its name has been claimed.
+    g_error_free(error);
+    LOG(INFO) << "Waiting for " << kNameOwnerChangedSignal
+              << " signal indicating that powerm has started";
+    g_main_loop_run(loop);
+  }
+  g_main_loop_unref(loop);
+}
+
+}  // namespace
 
 int main(int argc, char* argv[]) {
   // Sadly we can't use LOG() here - we always want this message logged, even
@@ -103,6 +163,8 @@ int main(int argc, char* argv[]) {
   pref_paths.push_back(default_prefs_dir);
   power_manager::PowerPrefs prefs(pref_paths);
   g_type_init();
+
+  WaitForPowerM();
 
   scoped_ptr<power_manager::AmbientLightSensor> als;
 #ifndef IS_DESKTOP
