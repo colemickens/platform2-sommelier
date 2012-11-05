@@ -1,0 +1,12 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This file contains information about cellular operators.
+#
+
+# Verizon Wireless
+[311480]
+OLP.URL=https://quickaccess.verizonwireless.com/bbportal/chrome/start4g.do
+OLP.Method=POST
+OLP.PostData=oem=GOG3&iccid=${iccid}&imei=${imei}

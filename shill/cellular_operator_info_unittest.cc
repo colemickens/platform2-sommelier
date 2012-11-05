@@ -14,6 +14,9 @@ namespace shill {
 namespace {
 
 const char kTestInfoFileContent[] =
+    "#\n"
+    "# Comments\n"
+    "#\n"
     "[000001]\n"
     "OLP.URL=https://testurl\n"
     "OLP.Method=POST\n"
