@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MODEM_INFO_
-#define SHILL_MODEM_INFO_
+#ifndef SHILL_MODEM_INFO_H_
+#define SHILL_MODEM_INFO_H_
 
 #include <string>
 
+#include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -14,6 +15,7 @@ struct mobile_provider_db;
 
 namespace shill {
 
+class CellularOperatorInfo;
 class ControlInterface;
 class EventDispatcher;
 class GLib;
@@ -43,10 +45,6 @@ class ModemInfo {
 
   typedef ScopedVector<ModemManager> ModemManagers;
 
-  static const char kCromoService[];
-  static const char kCromoPath[];
-  static const char kMobileProviderDBPath[];
-
   // Register and start new ModemManagers
   template <class mm> void RegisterModemManager(const std::string &service,
                                                 const std::string &path);
@@ -58,6 +56,7 @@ class ModemInfo {
   Manager *manager_;
   GLib *glib_;
 
+  scoped_ptr<CellularOperatorInfo> cellular_operator_info_;
   std::string provider_db_path_;  // For testing.
   mobile_provider_db *provider_db_;  // Database instance owned by |this|.
 
@@ -66,4 +65,4 @@ class ModemInfo {
 
 }  // namespace shill
 
-#endif  // SHILL_MODEM_INFO_
+#endif  // SHILL_MODEM_INFO_H_

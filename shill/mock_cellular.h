@@ -27,6 +27,7 @@ class MockCellular : public Cellular {
                const std::string &owner,
                const std::string &service,
                const std::string &path,
+               CellularOperatorInfo *cellular_operator_info,
                mobile_provider_db *provider_db,
                ProxyFactory *proxy_factory);
   virtual ~MockCellular();

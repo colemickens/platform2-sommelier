@@ -13,9 +13,10 @@ MockModem::MockModem(const std::string &owner,
                      EventDispatcher *dispatcher,
                      Metrics *metrics,
                      Manager *manager,
+                     CellularOperatorInfo *cellular_operator_info,
                      mobile_provider_db *provider_db)
     : Modem(owner, service, path, control_interface, dispatcher, metrics,
-            manager, provider_db) {}
+            manager, cellular_operator_info, provider_db) {}
 
 MockModem::~MockModem() {}
 

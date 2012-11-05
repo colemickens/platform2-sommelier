@@ -20,11 +20,12 @@ MockCellular::MockCellular(ControlInterface *control_interface,
                            const std::string &owner,
                            const std::string &service,
                            const std::string &path,
+                           CellularOperatorInfo *cellular_operator_info,
                            mobile_provider_db *provider_db,
                            ProxyFactory *proxy_factory)
     : Cellular(control_interface, dispatcher, metrics, manager, link_name,
                address, interface_index, type, owner, service, path,
-               provider_db, proxy_factory) {}
+               cellular_operator_info, provider_db, proxy_factory) {}
 
 MockCellular::~MockCellular() {}
 

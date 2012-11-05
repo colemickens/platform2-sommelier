@@ -4,18 +4,15 @@
 
 #include "shill/modem_info.h"
 
+#include <base/file_path.h>
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
+#include "shill/cellular_operator_info.h"
 #include "shill/logging.h"
 #include "shill/modem_manager.h"
 
 using std::string;
-
-namespace shill {
-
-const char ModemInfo::kCromoService[] = "org.chromium.ModemManager";
-const char ModemInfo::kCromoPath[] = "/org/chromium/ModemManager";
 
 // TODO(rochberg): Fix modemmanager-next-interfaces ebuild to include
 // these so that we can simply include ModemManager.h and use these
@@ -23,8 +20,19 @@ const char ModemInfo::kCromoPath[] = "/org/chromium/ModemManager";
 #define MM_DBUS_PATH    "/org/freedesktop/ModemManager1"
 #define MM_DBUS_SERVICE "org.freedesktop.ModemManager1"
 
-const char ModemInfo::kMobileProviderDBPath[] =
+namespace shill {
+
+namespace {
+
+const char kCromoService[] = "org.chromium.ModemManager";
+const char kCromoPath[] = "/org/chromium/ModemManager";
+
+const char kCellularOperatorInfoPath[] =
+    "/usr/share/shill/cellular_operator_info";
+const char kMobileProviderDBPath[] =
     "/usr/share/mobile-broadband-provider-info/serviceproviders.bfd";
+
+}  // namespace
 
 ModemInfo::ModemInfo(ControlInterface *control_interface,
                      EventDispatcher *dispatcher,
@@ -44,6 +52,9 @@ ModemInfo::~ModemInfo() {
 }
 
 void ModemInfo::Start() {
+  cellular_operator_info_.reset(new CellularOperatorInfo(glib_));
+  cellular_operator_info_->Load(FilePath(kCellularOperatorInfoPath));
+
   // TODO(petkov): Consider initializing the mobile provider database lazily
   // only if a GSM modem needs to be registered.
   provider_db_ = mobile_provider_open_db(provider_db_path_.c_str());
@@ -56,6 +67,7 @@ void ModemInfo::Start() {
 }
 
 void ModemInfo::Stop() {
+  cellular_operator_info_.reset();
   mobile_provider_close_db(provider_db_);
   provider_db_ = NULL;
   modem_managers_.reset();
@@ -78,6 +90,7 @@ void ModemInfo::RegisterModemManager(const string &service,
                                  metrics_,
                                  manager_,
                                  glib_,
+                                 cellular_operator_info_.get(),
                                  provider_db_);
   modem_managers_.push_back(manager);  // Passes ownership.
   manager->Start();

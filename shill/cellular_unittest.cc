@@ -73,6 +73,7 @@ class CellularPropertyTest : public PropertyStoreTest {
                              "",
                              "",
                              NULL,
+                             NULL,
                              ProxyFactory::GetInstance())) {}
   virtual ~CellularPropertyTest() {}
 
@@ -139,6 +140,7 @@ class CellularTest : public testing::Test {
                              kDBusOwner,
                              kDBusService,
                              kDBusPath,
+                             NULL,
                              NULL,
                              &proxy_factory_)) {}
 

@@ -89,6 +89,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
                                "",
                                "",
                                NULL,
+                               NULL,
                                &proxy_factory_)),
         service_(new MockCellularService(&control_,
                                          &dispatcher_,
@@ -809,7 +810,7 @@ TEST_F(CellularCapabilityUniversalTest, GetTypeString) {
     MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_EVDOB,
     MM_MODEM_ACCESS_TECHNOLOGY_GSM | MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
   };
-  for(size_t i = 0; i < arraysize(gsm_technologies); ++i) {
+  for (size_t i = 0; i < arraysize(gsm_technologies); ++i) {
     capability_->access_technologies_ = gsm_technologies[i];
     ASSERT_EQ(capability_->GetTypeString(), flimflam::kTechnologyFamilyGsm);
   }
@@ -821,7 +822,7 @@ TEST_F(CellularCapabilityUniversalTest, GetTypeString) {
     MM_MODEM_ACCESS_TECHNOLOGY_EVDOB | MM_MODEM_ACCESS_TECHNOLOGY_EVDO0,
     MM_MODEM_ACCESS_TECHNOLOGY_1XRTT,
   };
-  for(size_t i = 0; i < arraysize(cdma_technologies); ++i) {
+  for (size_t i = 0; i < arraysize(cdma_technologies); ++i) {
     capability_->access_technologies_ = cdma_technologies[i];
     ASSERT_EQ(capability_->GetTypeString(), flimflam::kTechnologyFamilyCdma);
   }

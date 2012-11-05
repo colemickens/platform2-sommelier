@@ -72,6 +72,7 @@ class CellularCapabilityTest : public testing::Test {
                                "",
                                "",
                                NULL,
+                               NULL,
                                &proxy_factory_)) {}
 
   virtual ~CellularCapabilityTest() {

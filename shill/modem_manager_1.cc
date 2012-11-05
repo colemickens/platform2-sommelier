@@ -27,6 +27,7 @@ ModemManager1::ModemManager1(const string &service,
                              Metrics *metrics,
                              Manager *manager,
                              GLib *glib,
+                             CellularOperatorInfo *cellular_operator_info,
                              mobile_provider_db *provider_db)
     : ModemManager(service,
                    path,
@@ -35,6 +36,7 @@ ModemManager1::ModemManager1(const string &service,
                    metrics,
                    manager,
                    glib,
+                   cellular_operator_info,
                    provider_db),
       weak_ptr_factory_(this) {}
 
@@ -76,6 +78,7 @@ void ModemManager1::AddModem1(const string &path,
                                        dispatcher(),
                                        metrics(),
                                        manager(),
+                                       cellular_operator_info(),
                                        provider_db()));
   RecordAddedModem(modem1);
   InitModem1(modem1, properties);

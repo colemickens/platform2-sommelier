@@ -7,6 +7,7 @@
 #include <base/stl_util.h>
 #include <mm/mm-modem.h>
 
+#include "shill/cellular_operator_info.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/modem.h"
@@ -26,6 +27,7 @@ ModemManager::ModemManager(const string &service,
                            Metrics *metrics,
                            Manager *manager,
                            GLib *glib,
+                           CellularOperatorInfo *cellular_operator_info,
                            mobile_provider_db *provider_db)
     : proxy_factory_(ProxyFactory::GetInstance()),
       service_(service),
@@ -36,6 +38,7 @@ ModemManager::ModemManager(const string &service,
       metrics_(metrics),
       manager_(manager),
       glib_(glib),
+      cellular_operator_info_(cellular_operator_info),
       provider_db_(provider_db) {}
 
 ModemManager::~ModemManager() {
@@ -119,22 +122,25 @@ void ModemManager::OnDeviceInfoAvailable(const string &link_name) {
 }
 
 // ModemManagerClassic
-ModemManagerClassic::ModemManagerClassic(const string &service,
-                                         const string &path,
-                                         ControlInterface *control_interface,
-                                         EventDispatcher *dispatcher,
-                                         Metrics *metrics,
-                                         Manager *manager,
-                                         GLib *glib,
-                                         mobile_provider_db *provider_db) :
-    ModemManager(service,
-                 path,
-                 control_interface,
-                 dispatcher,
-                 metrics,
-                 manager,
-                 glib,
-                 provider_db) {}
+ModemManagerClassic::ModemManagerClassic(
+    const string &service,
+    const string &path,
+    ControlInterface *control_interface,
+    EventDispatcher *dispatcher,
+    Metrics *metrics,
+    Manager *manager,
+    GLib *glib,
+    CellularOperatorInfo *cellular_operator_info,
+    mobile_provider_db *provider_db)
+    : ModemManager(service,
+                   path,
+                   control_interface,
+                   dispatcher,
+                   metrics,
+                   manager,
+                   glib,
+                   cellular_operator_info,
+                   provider_db) {}
 
 ModemManagerClassic::~ModemManagerClassic() {}
 
@@ -161,6 +167,7 @@ void ModemManagerClassic::AddModemClassic(const string &path) {
                                                   dispatcher(),
                                                   metrics(),
                                                   manager(),
+                                                  cellular_operator_info(),
                                                   provider_db()));
   RecordAddedModem(modem);
   InitModemClassic(modem);

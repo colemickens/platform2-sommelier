@@ -23,6 +23,7 @@ struct mobile_provider_db;
 namespace shill {
 
 class CellularCapability;
+class CellularOperatorInfo;
 class Error;
 class ProxyFactory;
 
@@ -109,6 +110,7 @@ class Cellular : public Device {
            const std::string &owner,
            const std::string &service,
            const std::string &path,
+           CellularOperatorInfo *cellular_operator_info,
            mobile_provider_db *provider_db,
            ProxyFactory *proxy_factory);
   virtual ~Cellular();
@@ -150,6 +152,9 @@ class Cellular : public Device {
   bool IsModemRegistered() const;
   static bool IsEnabledModemState(ModemState state);
 
+  CellularOperatorInfo *cellular_operator_info() const {
+    return cellular_operator_info_;
+  }
   mobile_provider_db *provider_db() const { return provider_db_; }
 
   const std::string &dbus_owner() const { return dbus_owner_; }
@@ -306,6 +311,7 @@ class Cellular : public Device {
   const std::string dbus_service_;  // org.*.ModemManager*
   const std::string dbus_path_;  // ModemManager.Modem
 
+  CellularOperatorInfo *cellular_operator_info_;
   mobile_provider_db *provider_db_;
   ProxyFactory *proxy_factory_;
 

@@ -16,9 +16,11 @@ using std::string;
 namespace shill {
 
 namespace {
+
 // The default place where the system keeps symbolic links for network device
 const char kDefaultNetfilesPath[] = "/sys/class/net";
-} // namespace {}
+
+}  // namespace
 
 Modem1::Modem1(const string &owner,
                const string &service,
@@ -27,9 +29,10 @@ Modem1::Modem1(const string &owner,
                EventDispatcher *dispatcher,
                Metrics *metrics,
                Manager *manager,
+               CellularOperatorInfo *cellular_operator_info,
                mobile_provider_db *provider_db)
     : Modem(owner, service, path, control_interface, dispatcher, metrics,
-            manager, provider_db),
+            manager, cellular_operator_info, provider_db),
       netfiles_path_(kDefaultNetfilesPath) {
 }
 
@@ -63,7 +66,7 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
   // FileEnumerator warns that it is a blocking interface; that
   // shouldn't be a problem here.
   file_util::FileEnumerator netfiles(netfiles_path_,
-                                     false, // don't recurse
+                                     false,  // don't recurse
                                      file_util::FileEnumerator::DIRECTORIES);
   for (FilePath link = netfiles.Next(); !link.empty(); link = netfiles.Next()) {
     FilePath target;

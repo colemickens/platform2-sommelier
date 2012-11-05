@@ -22,6 +22,7 @@ struct mobile_provider_db;
 
 namespace shill {
 
+class CellularOperatorInfo;
 class ControlInterface;
 class EventDispatcher;
 class Manager;
@@ -42,8 +43,9 @@ class Modem {
         EventDispatcher *dispatcher,
         Metrics *metrics,
         Manager *manager,
+        CellularOperatorInfo *cellular_operator_info,
         mobile_provider_db *provider_db);
-  ~Modem();
+  virtual ~Modem();
 
   // Asynchronously initializes support for the modem.
   // If the |properties| are valid and the MAC address is present,
@@ -72,6 +74,9 @@ class Modem {
   EventDispatcher *dispatcher() const { return dispatcher_; }
   Manager *manager() const { return manager_; }
   Metrics *metrics() const { return metrics_; }
+  CellularOperatorInfo *cellular_operator_info() const {
+    return cellular_operator_info_;
+  }
   mobile_provider_db *provider_db() const { return provider_db_; }
 
   virtual Cellular *ConstructCellular(const std::string &link_name,
@@ -120,6 +125,7 @@ class Modem {
   EventDispatcher *dispatcher_;
   Metrics *metrics_;
   Manager *manager_;
+  CellularOperatorInfo *cellular_operator_info_;
   mobile_provider_db *provider_db_;
   std::string link_name_;
   Cellular::Type type_;
@@ -141,6 +147,7 @@ class ModemClassic : public Modem {
                EventDispatcher *dispatcher,
                Metrics *metrics,
                Manager *manager,
+               CellularOperatorInfo *cellular_operator_info,
                mobile_provider_db *provider_db);
   virtual ~ModemClassic();
 
@@ -165,6 +172,7 @@ class Modem1 : public Modem {
          EventDispatcher *dispatcher,
          Metrics *metrics,
          Manager *manager,
+         CellularOperatorInfo *cellular_operator_info,
          mobile_provider_db *provider_db);
   virtual ~Modem1();
 

@@ -41,6 +41,7 @@ class CellularServiceTest : public testing::Test {
                              "",
                              "",
                              NULL,
+                             NULL,
                              ProxyFactory::GetInstance())),
         service_(new CellularService(&control_, NULL, &metrics_, &manager_,
                                      device_)),

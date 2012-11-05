@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #ifndef SHILL_MOCK_MODEM_H_
-#define SHILL_MOCK_MODEM_H_ 1
+#define SHILL_MOCK_MODEM_H_
 
 #include <string>
 
@@ -22,6 +22,7 @@ class MockModem : public Modem {
             EventDispatcher *dispatcher,
             Metrics *metrics,
             Manager *manager,
+            CellularOperatorInfo *cellular_operator_info,
             mobile_provider_db *provider_db);
   virtual ~MockModem();
 

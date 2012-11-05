@@ -23,8 +23,8 @@ struct mobile_provider_db;
 
 namespace shill {
 
+class CellularOperatorInfo;
 class ControlInterface;
-
 class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxyInterface;
 class EventDispatcher;
@@ -46,6 +46,7 @@ class ModemManager {
                Metrics *metrics,
                Manager *manager,
                GLib *glib,
+               CellularOperatorInfo *cellular_operator_info_,
                mobile_provider_db *provider_db);
   virtual ~ModemManager();
 
@@ -69,6 +70,9 @@ class ModemManager {
   const std::string &service() const { return service_; }
   const std::string &path() const { return path_; }
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
+  CellularOperatorInfo *cellular_operator_info() const {
+    return cellular_operator_info_;
+  }
   mobile_provider_db *provider_db() const { return provider_db_; }
 
   // Connect/Disconnect to a modem manager service.
@@ -126,6 +130,7 @@ class ModemManager {
   Metrics *metrics_;
   Manager *manager_;
   GLib *glib_;
+  CellularOperatorInfo *cellular_operator_info_;
   mobile_provider_db *provider_db_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemManager);
@@ -140,6 +145,7 @@ class ModemManagerClassic : public ModemManager {
                       Metrics *metrics,
                       Manager *manager,
                       GLib *glib,
+                      CellularOperatorInfo *cellular_operator_info,
                       mobile_provider_db *provider_db);
 
   virtual ~ModemManagerClassic();
@@ -173,6 +179,7 @@ class ModemManager1 : public ModemManager {
                 Metrics *metrics,
                 Manager *manager,
                 GLib *glib,
+                CellularOperatorInfo *cellular_operator_info,
                 mobile_provider_db *provider_db);
 
   virtual ~ModemManager1();
