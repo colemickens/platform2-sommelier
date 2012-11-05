@@ -58,6 +58,11 @@ bool ReplaceInFile(const std::string& pattern,
                    const std::string& value,
                    const std::string& path);
 
+// Replace all instances of pattern in target with value
+void ReplaceAll(std::string& target,
+                const std::string& pattern,
+                const std::string& value);
+
 // See bug chromium-os:11517. This fixes an old FS corruption problem.
 bool R10FileSystemPatch(const std::string& dev_name);
 

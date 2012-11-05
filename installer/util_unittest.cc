@@ -405,3 +405,18 @@ TEST(UtilTest, IsReadonlyTest) {
   EXPECT_EQ(IsReadonly("/dev/dm-0"), true);
   EXPECT_EQ(IsReadonly("/dev/dm-1"), true);
 }
+
+TEST(UtilTest, ReplaceAllTest) {
+  string a = "abcdeabcde";
+  string b = a;
+  ReplaceAll(b, "xyz", "lmnop");
+  EXPECT_EQ(a, b);
+  ReplaceAll(b, "ea", "ea");
+  EXPECT_EQ(a, b);
+  ReplaceAll(b, "ea", "xyz");
+  EXPECT_EQ(b, "abcdxyzbcde");
+  ReplaceAll(b, "bcd", "rs");
+  EXPECT_EQ(b, "arsxyzrse");
+}
+
+

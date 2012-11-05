@@ -42,18 +42,8 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
 
   // The verity config from the kernel contains short hand symbols for
   // partition names that we can't get away with.
-
-  // payload=%U+1 -> payload=PARTUUID=XXX-YYY-ZZZ
-  if (!SetKernelArg("payload", root_uuid, &kernel_config_dm)) {
-    printf("Failed to find 'payload=' in kernel verity config.");
-    return false;
-  }
-
-  // hashtree=%U+1 -> hashtree=PARTUUID=XXX-YYY-ZZZ
-  if (!SetKernelArg("hashtree", root_uuid, &kernel_config_dm)) {
-    printf("Failed to find 'hashtree=' in kernel verity config.");
-    return false;
-  }
+  // %U+1 -> PARTUUID=XXX-YYY-ZZZ
+  ReplaceAll(kernel_config_dm, "%U+1", install_config.root.uuid());
 
   // Prepare the new default.cfg
 

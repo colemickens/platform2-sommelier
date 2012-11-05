@@ -384,6 +384,16 @@ bool ReplaceInFile(const string& pattern,
   return true;
 }
 
+void ReplaceAll(string& target, const string& pattern, const string& value) {
+  for (size_t offset = 0;;) {
+    offset = target.find(pattern, offset);
+    if (offset == string::npos)
+      return;
+    target.replace(offset, pattern.length(), value);
+    offset += pattern.length();
+  }
+}
+
 bool R10FileSystemPatch(const string& dev_name) {
   // See bug chromium-os:11517. This fixes an old FS corruption problem.
   const int offset = 1400;
