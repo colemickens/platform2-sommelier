@@ -20,14 +20,15 @@ class GLib;
 class CellularOperatorInfo {
  public:
   explicit CellularOperatorInfo(GLib *glib);
-  ~CellularOperatorInfo();
+  virtual ~CellularOperatorInfo();
 
   // Loads the operator info from |info_file_path|. Returns true on success.
-  bool Load(const FilePath &info_file_path);
+  virtual bool Load(const FilePath &info_file_path);
 
   // Gets the online payment portal info of the operator with ID |operator_id|.
   // Returns true if the info is found.
-  bool GetOLP(const std::string &operator_id, CellularService::OLP *olp);
+  virtual bool GetOLP(const std::string &operator_id,
+                      CellularService::OLP *olp);
 
  private:
   KeyFileStore info_file_;

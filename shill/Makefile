@@ -322,6 +322,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_arp_client.o \
 	mock_async_connection.o \
 	mock_cellular.o \
+	mock_cellular_operator_info.o \
 	mock_cellular_service.o \
 	mock_connection.o \
 	mock_control.o \

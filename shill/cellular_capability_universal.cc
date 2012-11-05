@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/cellular_operator_info.h"
 #include "shill/cellular_service.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
@@ -368,6 +369,8 @@ void CellularCapabilityUniversal::OnServiceCreated() {
         cellular()->address() + "_" + imsi_);
   }
   cellular()->service()->SetActivationState(
+      IsServiceActivationRequired() ?
+      flimflam::kActivationStateNotActivated :
       flimflam::kActivationStateActivated);
   UpdateServingOperator();
 }
@@ -628,6 +631,30 @@ void CellularCapabilityUniversal::InitAPNList() {
   } else {
     LOG(ERROR) << "Null RPC service adaptor.";
   }
+}
+
+bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
+  // If there is no online payment portal information, it's safer to assume
+  // the service does not require activation.
+  if (!cellular()->cellular_operator_info())
+    return false;
+
+  CellularService::OLP olp;
+  if (!cellular()->cellular_operator_info()->GetOLP(operator_id_, &olp))
+    return false;
+
+  // To avoid false positives, it's safer to assume the service does not
+  // require activation if MDN is not set.
+  if (mdn_.empty())
+    return false;
+
+  // If MDN contains only zeros ('+' and '-' characters are ignored),
+  // the service requires activation.
+  for (size_t i = 0; i < mdn_.size(); ++i) {
+    if (mdn_[i] != '0' && mdn_[i] != '-' && mdn_[i] != '+')
+      return false;
+  }
+  return true;
 }
 
 // always called from an async context

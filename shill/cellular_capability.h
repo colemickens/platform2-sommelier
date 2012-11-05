@@ -105,6 +105,10 @@ class CellularCapability {
   virtual void Activate(const std::string &carrier,
                         Error *error, const ResultCallback &callback) = 0;
 
+  // Returns true if service activation is required. Returns false by default
+  // in this base class.
+  virtual bool IsServiceActivationRequired() const;
+
   // Network registration.
   virtual void RegisterOnNetwork(const std::string &network_id,
                                  Error *error,

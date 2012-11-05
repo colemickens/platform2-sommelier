@@ -233,6 +233,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityUniversalTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
+  FRIEND_TEST(CellularCapabilityUniversalTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
   FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, CreateService);

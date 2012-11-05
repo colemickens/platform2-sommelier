@@ -73,6 +73,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void OnServiceCreated();
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void GetProperties();
+  virtual bool IsServiceActivationRequired() const;
   virtual void Register(const ResultCallback &callback);
 
   virtual void RegisterOnNetwork(const std::string &network_id,
@@ -129,6 +130,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalTest, DisconnectNoProxy);
   FRIEND_TEST(CellularCapabilityUniversalTest, GetTypeString);
+  FRIEND_TEST(CellularCapabilityUniversalTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
   FRIEND_TEST(CellularCapabilityUniversalTest, ScanFailure);

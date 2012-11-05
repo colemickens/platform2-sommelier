@@ -43,6 +43,10 @@ void CellularCapability::OnUnsupportedOperation(
   Error::PopulateAndLog(error, Error::kNotSupported, message);
 }
 
+bool CellularCapability::IsServiceActivationRequired() const {
+  return false;
+}
+
 void CellularCapability::RegisterOnNetwork(
     const string &/*network_id*/,
     Error *error, const ResultCallback &/*callback*/) {

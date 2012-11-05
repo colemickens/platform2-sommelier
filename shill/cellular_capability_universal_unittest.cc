@@ -20,6 +20,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_cellular_operator_info.h"
 #include "shill/mock_cellular_service.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_glib.h"
@@ -231,6 +232,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
   TestProxyFactory proxy_factory_;
   CellularCapabilityUniversal *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
+  MockCellularOperatorInfo cellular_operator_info_;
   mobile_provider_db *provider_db_;
   CellularRefPtr cellular_;
   MockCellularService *service_;  // owned by cellular_
@@ -932,6 +934,31 @@ TEST_F(CellularCapabilityUniversalTest, CreateFriendlyServiceName) {
   capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING;
   EXPECT_EQ(StringPrintf("%s | %s", kHomeProvider, kTestOperator),
             capability_->CreateFriendlyServiceName());
+}
+
+TEST_F(CellularCapabilityUniversalTest, IsServiceActivationRequired) {
+  capability_->mdn_ = "0000000000";
+  cellular_->cellular_operator_info_ = NULL;
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+
+  cellular_->cellular_operator_info_ = &cellular_operator_info_;
+  EXPECT_CALL(cellular_operator_info_, GetOLP(_, _))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+
+  capability_->mdn_ = "";
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+  capability_->mdn_ = "1234567890";
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+  capability_->mdn_ = "+1-234-567-890";
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+  capability_->mdn_ = "0000000000";
+  EXPECT_TRUE(capability_->IsServiceActivationRequired());
+  capability_->mdn_ = "0-000-000-000";
+  EXPECT_TRUE(capability_->IsServiceActivationRequired());
+  capability_->mdn_ = "+0-000-000-000";
+  EXPECT_TRUE(capability_->IsServiceActivationRequired());
 }
 
 }  // namespace shill
