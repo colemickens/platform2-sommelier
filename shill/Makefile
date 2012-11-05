@@ -9,6 +9,10 @@ CXXFLAGS ?= -fno-strict-aliasing
 CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -Wno-unused-result \
 	    -Wno-missing-field-initializers \
 	    -Werror -Wuninitialized -Woverloaded-virtual
+# TODO(petkov): This is needed for building pppd-plugin.so and fixes
+# crosbug.com/36032. Look into restricting the flag only to objects that get
+# linked into that .so.
+CXXFLAGS += -fPIC
 CXXFLAGS += $(EXTRA_CXXFLAGS)
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 PKG_CONFIG ?= pkg-config
