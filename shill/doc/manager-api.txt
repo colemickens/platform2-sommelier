@@ -315,6 +315,10 @@ Properties 	object ActiveProfile [readwrite]
 			it is defined if manually set or if it is discovered
 			through a service such as WiFi, Celluar, or GPS.
 
+		string DefaultService [readonly]
+
+			The current connected service with the default route.
+
 		string DefaultTechnology [readonly]
 
 			The current connected technology which holds the
