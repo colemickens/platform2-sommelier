@@ -221,6 +221,7 @@ bool Suspender::SuspendReady(DBusMessage* message) {
 
 void Suspender::Suspend() {
   daemon_->HaltPollPowerSupply();
+  daemon_->MarkPowerStatusStale();
   util::RemoveStatusFile(user_active_file_);
   file_tagger_->HandleSuspendEvent();
   if (wakeup_count_valid_) {

@@ -137,6 +137,13 @@ class Daemon : public BacklightControllerObserver,
   // battery state has settled.
   void ResumePollPowerSupply();
 
+  // Flags the current information about the power supply as stale, so that if a
+  // delayed request comes in for data, we know to poll the power supply
+  // again. This is used in the case of Suspend/Resume, since we may have told
+  // Chrome there is new information before suspending and Chrome requests it on
+  // resume before we have updated.
+  void MarkPowerStatusStale();
+
  private:
   friend class DaemonTest;
   FRIEND_TEST(DaemonTest, AdjustWindowSizeMax);
@@ -511,7 +518,7 @@ class Daemon : public BacklightControllerObserver,
   VideoDetector* video_detector_;
   IdleDetector* idle_;
   KeyboardBacklightController* keyboard_controller_;  // non-owned
-  AmbientLightSensor* light_sensor_; // non-owned
+  AmbientLightSensor* light_sensor_;  // non-owned
   int64 low_battery_shutdown_time_s_;
   double low_battery_shutdown_percent_;
   int64 sample_window_max_;
@@ -550,6 +557,7 @@ class Daemon : public BacklightControllerObserver,
   PowerSupply power_supply_;
   PowerState power_state_;
   base::TimeTicks session_start_;
+  bool is_power_status_stale_;
 
   // Timestamp the last generated battery discharge rate metric.
   time_t battery_discharge_rate_metric_last_;

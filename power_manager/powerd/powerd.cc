@@ -122,6 +122,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath), prefs),
       power_state_(BACKLIGHT_UNINITIALIZED),
+      is_power_status_stale_(true),
       battery_discharge_rate_metric_last_(0),
       current_session_state_("stopped"),
       udev_(NULL),
@@ -745,6 +746,10 @@ void Daemon::ResumePollPowerSupply() {
   EventPollPowerSupply();
 }
 
+void Daemon::MarkPowerStatusStale() {
+  is_power_status_stale_ = true;
+}
+
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
                                   GIOCondition /* condition */,
                                   gpointer data) {
@@ -1176,6 +1181,18 @@ DBusMessage* Daemon::HandleRequestIdleNotificationMethod(DBusMessage* message) {
 
 DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
     DBusMessage* message) {
+  if (is_power_status_stale_) {
+    // Poll the power supply for status, but don't clear the stale bit. This
+    // case is an exceptional one, so we can't guarantee we want to start
+    // polling again yet from this context. The stale bit should only be set
+    // near the beginning of a session or around Suspend/Resume, so we are
+    // assuming that the battery time is untrustworthy, hence the
+    // |is_calculating| is true.
+    power_supply_.GetPowerStatus(&power_status_, true);
+    HandlePollPowerSupply();
+    is_power_status_stale_ = true;
+  }
+
   PowerSupplyProperties protobuf;
   PowerStatus* status = &power_status_;
 
@@ -1383,6 +1400,7 @@ gboolean Daemon::HandlePollPowerSupply() {
   if (!dbus_connection_send(connection, message, NULL))
     LOG(WARNING) << "Sending battery poll signal failed.";
   dbus_message_unref(message);
+  is_power_status_stale_ = false;
   // Always repeat polling.
   return TRUE;
 }
