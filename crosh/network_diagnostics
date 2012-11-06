@@ -10,7 +10,7 @@ LSPCI=/usr/sbin/lspci
 IW=/usr/sbin/iw
 ARP=/sbin/arp
 ARPING=/sbin/arping
-HTPDATE=/usr/sbin/htpdate
+TLSDATE=/usr/sbin/tlsdate
 anonymize_macs=${ANONYMIZE_MACS-yes}
 default_run=yes
 
@@ -313,11 +313,12 @@ diag_date () {
   local host=$1
   fn_enter ${FUNCNAME} $*
   echo "Local time of day: $(date)"
-  date_error=$(${HTPDATE} -q ${host} 2>&1 >/dev/null)
-  offset=$(${HTPDATE} -q ${host} 2>&1 | awk -v 'FS=[. ]' '{print $2}')
-  if [ -n "${date_error}" ]; then
-    fail "Unable to get date via htpdate from ${host}: ${date_error}"
-  elif [ "${offset}" = time ] ; then
+  date_out=$(${TLSDATE} -nv -H ${host} 2>&1 >/dev/null)
+  date_exit=$?
+  offset=$(echo "$date_out" | grep 'difference is' | cut -f8 -d' ')
+  if [ "${date_exit}" != 0 ]; then
+    fail "Unable to get date via tlsdate from ${host}: ${date_out}"
+  elif [ "${offset}" = 0 ] ; then
     pass "Time appears to be correct"
   elif [ ${offset} -lt -3600 -o ${offset} -gt 3600 ] ; then
     fail "Time offset = ${offset}"
