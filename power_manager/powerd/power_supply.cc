@@ -55,7 +55,7 @@ PowerSupply::PowerSupply(const FilePath& power_supply_path, PowerPrefs* prefs)
       acceptable_variance_(kAcceptableVariance),
       hysteresis_time_(kHysteresisTimeFast),
       found_acceptable_time_range_(false),
-      time_now_func(base::Time::Now),
+      time_now_func(base::TimeTicks::Now),
       is_suspended_(false),
       full_factor_(kDefaultFullFactor) {}
 
@@ -344,7 +344,7 @@ double PowerSupply::GetLinearTimeToEmpty(const PowerStatus& status) {
 
 void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
   CHECK(time_now_func);
-  base::Time time_now = time_now_func();
+  base::TimeTicks time_now = time_now_func();
   // This function might be called due to a race condition between the suspend
   // process and the battery polling.  If that's the case, handle it gracefully
   // by updating the hysteresis times and suspend time.
@@ -394,9 +394,9 @@ void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
               status->battery_charge) / status->battery_current);
       // Reset the remaining-time-calculation state machine when AC plugged in.
       found_acceptable_time_range_ = false;
-      last_poll_time_ = base::Time();
-      discharge_start_time_ = base::Time();
-      last_acceptable_range_time_ = base::Time();
+      last_poll_time_ = base::TimeTicks();
+      discharge_start_time_ = base::TimeTicks();
+      last_acceptable_range_time_ = base::TimeTicks();
       // Make sure that when the system switches to battery power, the initial
       // hysteresis time will be very short, so it can find an acceptable
       // battery remaining time as quickly as possible.

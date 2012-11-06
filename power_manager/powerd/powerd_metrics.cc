@@ -131,8 +131,8 @@ void Daemon::GenerateBatteryInfoWhenChargeStartsMetric(
 
 void Daemon::GenerateEndOfSessionMetrics(const PowerStatus& info,
                                          const BacklightController& backlight,
-                                         const base::Time& now,
-                                         const base::Time& start) {
+                                         const base::TimeTicks& now,
+                                         const base::TimeTicks& start) {
   LOG_IF(ERROR,
          (!GenerateBatteryRemainingAtEndOfSessionMetric(info)))
       << "Session Stopped : Unable to generate battery remaining metric!";
@@ -208,8 +208,8 @@ bool Daemon::GenerateUserBrightnessAdjustmentsPerSessionMetric(
       kMetricUserBrightnessAdjustmentsPerSessionBuckets);
 }
 
-bool Daemon::GenerateLengthOfSessionMetric(const base::Time& now,
-                                           const base::Time& start) {
+bool Daemon::GenerateLengthOfSessionMetric(const base::TimeTicks& now,
+                                           const base::TimeTicks& start) {
   int session_length = (now - start).InSeconds();
   if (session_length < 0) {
     LOG(ERROR) << "Calculation for length of session returned a negative value";

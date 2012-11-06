@@ -568,16 +568,16 @@ TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow) {
 #endif  // !IS_DESKTOP
 
 TEST_F(DaemonTest, GenerateLengthOfSessionMetric) {
-  base::Time now = base::Time::Now();
-  base::Time start = now - base::TimeDelta::FromSeconds(kSessionLength);
+  base::TimeTicks now = base::TimeTicks::Now();
+  base::TimeTicks start = now - base::TimeDelta::FromSeconds(kSessionLength);
 
   ExpectLengthOfSessionMetric(kSessionLength);
   EXPECT_TRUE(daemon_.GenerateLengthOfSessionMetric(now, start));
 }
 
 TEST_F(DaemonTest, GenerateLengthOfSessionMetricOverflow) {
-  base::Time now = base::Time::Now();
-  base::Time start = now - base::TimeDelta::FromSeconds(
+  base::TimeTicks now = base::TimeTicks::Now();
+  base::TimeTicks start = now - base::TimeDelta::FromSeconds(
       kMetricLengthOfSessionMax + kSessionLength);
 
   ExpectLengthOfSessionMetric(kMetricLengthOfSessionMax);
@@ -585,8 +585,8 @@ TEST_F(DaemonTest, GenerateLengthOfSessionMetricOverflow) {
 }
 
 TEST_F(DaemonTest, GenerateLengthOfSessionMetricUnderflow) {
-  base::Time now = base::Time::Now();
-  base::Time start = now + base::TimeDelta::FromSeconds(kSessionLength);
+  base::TimeTicks now = base::TimeTicks::Now();
+  base::TimeTicks start = now + base::TimeDelta::FromSeconds(kSessionLength);
 
   EXPECT_FALSE(daemon_.GenerateLengthOfSessionMetric(now, start));
 }
@@ -681,8 +681,8 @@ TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
     backlight_ctl_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
   ExpectUserBrightnessAdjustmentsPerSessionMetric(kNumUserAdjustments);
 
-  base::Time now = base::Time::Now();
-  base::Time start = now - base::TimeDelta::FromSeconds(kSessionLength);
+  base::TimeTicks now = base::TimeTicks::Now();
+  base::TimeTicks start = now - base::TimeDelta::FromSeconds(kSessionLength);
   ExpectLengthOfSessionMetric(kSessionLength);
 
   daemon_.GenerateEndOfSessionMetrics(*status_,

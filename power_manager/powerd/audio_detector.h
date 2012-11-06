@@ -48,7 +48,7 @@ class AudioDetector : public ActivityDetectorInterface {
   bool IsPollingEnabled() const;
 
   // Timestamp of the last time audio was detected.
-  base::Time last_audio_time_;
+  base::TimeTicks last_audio_time_;
 
   // Flag that enables or disables audio detection polling.
   bool polling_enabled_;

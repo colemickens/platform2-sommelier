@@ -43,7 +43,7 @@ bool AudioDetector::GetActivity(int64 activity_threshold_ms,
   *is_active = false;
   if (!last_audio_time_.is_null()) {
     *time_since_activity_ms =
-        (base::Time::Now() - last_audio_time_).InMilliseconds();
+        (base::TimeTicks::Now() - last_audio_time_).InMilliseconds();
     *is_active = *time_since_activity_ms < activity_threshold_ms;
   }
   return true;
@@ -79,7 +79,7 @@ gboolean AudioDetector::Poll() {
 
 void AudioDetector::ReadCallback(const std::string& data) {
   if (data.find("state: RUNNING") != std::string::npos)
-    last_audio_time_ = base::Time::Now();
+    last_audio_time_ = base::TimeTicks::Now();
   // If the polling has been disabled, do not read again.
   if (IsPollingEnabled())
     g_timeout_add(kPollMs, PollThunk, this);

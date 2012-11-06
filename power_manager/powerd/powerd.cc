@@ -1594,7 +1594,7 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
       metrics_store_.IncrementNumOfSessionsPerChargeMetric();
 
     current_user_ = user;
-    session_start_ = base::Time::Now();
+    session_start_ = base::TimeTicks::Now();
 
     // Sending up the PowerSupply information, so that the display gets it as
     // soon as possible
@@ -1610,7 +1610,7 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
     if (current_session_state_ == "stopped")
       GenerateEndOfSessionMetrics(power_status_,
                                   *backlight_controller_,
-                                  base::Time::Now(),
+                                  base::TimeTicks::Now(),
                                   session_start_);
   }
   current_session_state_ = state;

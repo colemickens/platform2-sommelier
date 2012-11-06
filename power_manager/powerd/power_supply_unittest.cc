@@ -272,13 +272,13 @@ struct HysteresisTestData {
 // Poll the battery once per second.
 const int kPollIntervalMs = 1000;
 
-// This is used for mocking out base::Time::Now().  This setup allows a test
-// function to provide the desired time reading by setting current_time.  The
-// function GetCurrentTime() is a callback used for returning it.  It is passed
-// to PowerSupply to be used instead of base::Time::Now();
-base::Time start_time;
-base::Time current_time;
-base::Time GetCurrentTime() {
+// This is used for mocking out base::TimeTicks::Now().  This setup allows a
+// test function to provide the desired time reading by setting current_time.
+// The function GetCurrentTime() is a callback used for returning it.  It is
+// passed to PowerSupply to be used instead of base::TimeTicks::Now();
+base::TimeTicks start_time;
+base::TimeTicks current_time;
+base::TimeTicks GetCurrentTime() {
   return current_time;
 }
 
@@ -410,10 +410,11 @@ TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
 
   // Initialize the power supply object the first time around.
   power_supply_->Init();
-  // PowerSupply should use custom time function instead of base::Time::Now().
+  // PowerSupply should use custom time function instead of
+  // base::TimeTicks::Now().
   power_supply_->time_now_func = GetCurrentTime;
   // Save the starting time so it can be used for custom time readings.
-  start_time = base::Time::Now();
+  start_time = base::TimeTicks::Now();
 
   int num_entries = sizeof(value_table) / sizeof(value_table[0]);
   for (int i = 0; i < num_entries; ++i) {

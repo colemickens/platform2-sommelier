@@ -164,14 +164,15 @@ class PowerSupply {
   bool found_acceptable_time_range_;
   double acceptable_time_;
   base::TimeDelta time_outside_of_acceptable_range_;
-  base::Time last_acceptable_range_time_;
-  base::Time last_poll_time_;
-  base::Time discharge_start_time_;
-  // Use a function pointer to get the current time.  This way base::Time::Now()
-  // can be mocked out by inserting an alternate function.
-  base::Time (*time_now_func)();
+  base::TimeTicks last_acceptable_range_time_;
+  base::TimeTicks last_poll_time_;
+  base::TimeTicks discharge_start_time_;
+  // Use a function pointer to get the current time.  This way
+  // base::TimeTicks::Now() can be mocked out by inserting an alternate
+  // function.
+  base::TimeTicks (*time_now_func)();
 
-  base::Time suspend_time_;
+  base::TimeTicks suspend_time_;
   bool is_suspended_;
 
   // The fraction of full charge at which the battery can be considered "full"

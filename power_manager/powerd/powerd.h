@@ -372,8 +372,8 @@ class Daemon : public BacklightControllerObserver,
   // end of a session.
   void GenerateEndOfSessionMetrics(const PowerStatus& info,
                                    const BacklightController& backlight,
-                                   const base::Time& now,
-                                   const base::Time& start);
+                                   const base::TimeTicks& now,
+                                   const base::TimeTicks& start);
 
   // Generates a remaining battery charge at end of session UMA metric
   // sample. Returns true if a sample was sent to UMA, false otherwise.
@@ -397,8 +397,8 @@ class Daemon : public BacklightControllerObserver,
 
   // Generates length of session UMA metric sample. Returns true if a
   // sample was sent to UMA, false otherwise.
-  bool GenerateLengthOfSessionMetric(const base::Time& now,
-                                     const base::Time& start);
+  bool GenerateLengthOfSessionMetric(const base::TimeTicks& now,
+                                     const base::TimeTicks& start);
 
   // Generates number of sessions per charge UMA metric sample if the current
   // stored value is greater then 0. The stored value being 0 are spurious and
@@ -543,7 +543,7 @@ class Daemon : public BacklightControllerObserver,
   FilePath run_dir_;
   PowerSupply power_supply_;
   PowerState power_state_;
-  base::Time session_start_;
+  base::TimeTicks session_start_;
 
   // Timestamp the last generated battery discharge rate metric.
   time_t battery_discharge_rate_metric_last_;
