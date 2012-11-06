@@ -5,14 +5,16 @@
 AR ?= ar
 CC ?= gcc
 CXX ?= g++
+CFLAGS += \
+	-Wall \
+	-Werror \
+	-Wextra \
+	-Wno-missing-field-initializers \
+	-Wno-unused-parameter \
+	-Wno-unused-result \
+	-Wuninitialized
 CXXFLAGS ?= -fno-strict-aliasing
-CXXFLAGS += -Wall -Wextra -Wno-unused-parameter -Wno-unused-result \
-	    -Wno-missing-field-initializers \
-	    -Werror -Wuninitialized -Woverloaded-virtual
-# TODO(petkov): This is needed for building pppd-plugin.so and fixes
-# crosbug.com/36032. Look into restricting the flag only to objects that get
-# linked into that .so.
-CXXFLAGS += -fPIC
+CXXFLAGS += $(CFLAGS) -Woverloaded-virtual
 CXXFLAGS += $(EXTRA_CXXFLAGS)
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 PKG_CONFIG ?= pkg-config
@@ -448,11 +450,11 @@ OPENVPN_SCRIPT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/openvpn_script.o
 OPENVPN_SCRIPT_BIN = $(BUILD_SHIMS_DIR)/openvpn-script
 
 PPPD_PLUGIN_OBJS = $(addprefix $(BUILD_SHIMS_DIR)/, \
-	c_ppp.o \
-	environment.o \
-	ppp.o \
-	pppd_plugin.o \
-	task_proxy.o \
+	c_ppp.pic.o \
+	environment.pic.o \
+	ppp.pic.o \
+	pppd_plugin.pic.o \
+	task_proxy.pic.o \
 	)
 PPPD_PLUGIN_SO = $(BUILD_SHIMS_DIR)/shill-pppd-plugin.so
 
@@ -501,6 +503,12 @@ $(BUILDDIR)/%.o: %.c
 
 $(BUILDDIR)/%.o: %.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@
+
+$(BUILDDIR)/%.pic.o: %.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC $(INCLUDE_DIRS) -MMD -c $< -o $@
+
+$(BUILDDIR)/%.pic.o: %.cc
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -fPIC $(INCLUDE_DIRS) -MMD -c $< -o $@
 
 $(SHILL_OBJS): $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
 
