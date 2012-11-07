@@ -28,7 +28,14 @@ CPPFLAGS += -DSHIMDIR=\"$(SHIMDIR)\"
 
 BASE_VER = 125070
 COMMON_PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
-SHILL_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1 gio-2.0 glib-2.0 ModemManager
+SHILL_PC_DEPS = \
+	$(COMMON_PC_DEPS) \
+	dbus-c++-1 \
+	gio-2.0 \
+	glib-2.0 \
+	ModemManager \
+	$(shell $(PKG_CONFIG) --exists libnl-3.0 && echo libnl-3.0 || \
+		echo libnl-1)
 NSS_GET_CERT_PC_DEPS = $(COMMON_PC_DEPS) nss
 OPENVPN_SCRIPT_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
 PPPD_PLUGIN_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
@@ -48,7 +55,6 @@ SHILL_LIBS = \
 	-lmobile-provider \
 	-lmetrics \
 	-lminijail \
-	-lnl \
 	$(shell $(PKG_CONFIG) --libs $(SHILL_PC_DEPS))
 NSS_GET_CERT_LIBS = $(shell $(PKG_CONFIG) --libs $(NSS_GET_CERT_PC_DEPS))
 OPENVPN_SCRIPT_LIBS = $(shell $(PKG_CONFIG) --libs $(OPENVPN_SCRIPT_PC_DEPS))
