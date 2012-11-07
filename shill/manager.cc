@@ -1103,6 +1103,10 @@ bool Manager::MatchProfileWithService(const ServiceRefPtr &service) {
 }
 
 void Manager::AutoConnect() {
+  if (!running_) {
+    LOG(INFO) << "Auto-connect suppressed -- not running.";
+    return;
+  }
   if (power_manager_.get() &&
       power_manager_->power_state() != PowerManagerProxyDelegate::kOn &&
       power_manager_->power_state() != PowerManagerProxyDelegate::kUnknown) {

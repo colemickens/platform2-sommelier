@@ -134,6 +134,7 @@ void DeleteDBusControl(void* param) {
 }
 
 gboolean ExitSigHandler(gpointer data) {
+  LOG(INFO) << "Shutting down due to received signal.";
   shill::Daemon* daemon = reinterpret_cast<shill::Daemon*>(data);
   daemon->Quit();
   return TRUE;

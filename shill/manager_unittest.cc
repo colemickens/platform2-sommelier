@@ -111,6 +111,7 @@ class ManagerTest : public PropertyStoreTest {
                                                      "addr3",
                                                      3));
     manager()->connect_profiles_to_rpc_ = false;
+    SetRunning(true);
 
     // Replace the manager's adaptor with a quieter one, and one
     // we can do EXPECT*() against.  Passes ownership.
@@ -128,6 +129,10 @@ class ManagerTest : public PropertyStoreTest {
 
   void AdoptProfile(Manager *manager, ProfileRefPtr profile) {
     manager->profiles_.push_back(profile);
+  }
+
+  void SetRunning(bool running) {
+    manager()->running_ = running;
   }
 
   ProfileRefPtr GetEphemeralProfile(Manager *manager) {
@@ -2244,6 +2249,14 @@ TEST_F(ManagerTest, AutoConnectOnPowerStateUnknown) {
   SetPowerState(PowerManagerProxyDelegate::kUnknown);
   SetPowerManager();
   EXPECT_CALL(*service, AutoConnect());
+  manager()->RegisterService(service);
+  dispatcher()->DispatchPendingEvents();
+}
+
+TEST_F(ManagerTest, AutoConnectWhileNotRunning) {
+  SetRunning(false);
+  MockServiceRefPtr service = MakeAutoConnectableService();
+  EXPECT_CALL(*service, AutoConnect()).Times(0);
   manager()->RegisterService(service);
   dispatcher()->DispatchPendingEvents();
 }
