@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
+#include <base/threading/platform_thread.h>
 #include <base/time.h>
 #include <chromeos/syslog_logging.h>
 #include <openssl/rsa.h>
@@ -27,6 +28,8 @@
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
 
+using base::TimeDelta;
+using base::TimeTicks;
 using chaps::ConvertStringToByteBuffer;
 using std::string;
 using std::vector;
@@ -493,6 +496,33 @@ void PrintObjects(const vector<CK_OBJECT_HANDLE>& objects) {
   printf("\n");
 }
 
+class DigestTestThread : public base::PlatformThread::Delegate {
+ public:
+  DigestTestThread(CK_SLOT_ID slot) : slot_(slot) {}
+  void ThreadMain() {
+    const int kNumIterations = 100;
+    CK_BYTE data[1024] = {0};
+    CK_ULONG data_length = arraysize(data);
+    CK_BYTE digest[32];
+    CK_ULONG digest_length = arraysize(digest);
+    CK_MECHANISM mechanism = {CKM_SHA256, NULL, 0};
+    CK_SESSION_HANDLE session = OpenSession(slot_);
+    for (int i = 0; i < kNumIterations; ++i) {
+      TimeTicks start = TimeTicks::Now();
+      C_DigestInit(session, &mechanism);
+      C_DigestUpdate(session, data, data_length);
+      C_DigestFinal(session, digest, &digest_length);
+      TimeDelta delta = TimeTicks::Now() - start;
+      if (delta > TimeDelta::FromMilliseconds(500)) {
+        LOG(WARNING) << "Hash took long: " << delta.InMilliseconds();
+      }
+    }
+    C_CloseSession(session);
+  }
+ private:
+  CK_SLOT_ID slot_;
+};
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -514,8 +544,9 @@ int main(int argc, char** argv) {
       cl->HasSwitch("path") &&
       cl->HasSwitch("type") &&
       cl->HasSwitch("id");
+  bool digest_test = cl->HasSwitch("digest_test");
   if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup &&
-      !inject && !list_objects && !import) {
+      !inject && !list_objects && !import && !digest_test) {
     PrintHelp();
     return 0;
   }
@@ -597,6 +628,21 @@ int main(int argc, char** argv) {
     Sign(session2, label);
     PrintTicks(&start_ticks);
     C_CloseSession(session2);
+  }
+  if (digest_test) {
+    const int kNumThreads = 100;
+    scoped_ptr<DigestTestThread> threads[kNumThreads];
+    base::PlatformThreadHandle handles[kNumThreads];
+    for (int i = 0; i < kNumThreads; ++i) {
+      LOG(INFO) << "Creating thread " << i;
+      threads[i].reset(new DigestTestThread(slot));
+      if (!base::PlatformThread::Create(0, threads[i].get(), &handles[i]))
+        LOG(FATAL) << "Failed to create thread.";
+    }
+    for (int i = 0; i < kNumThreads; ++i) {
+      base::PlatformThread::Join(handles[i]);
+      LOG(INFO) << "Joined thread " << i;
+    }
   }
   if (cleanup)
     DeleteAllTestKeys(session);

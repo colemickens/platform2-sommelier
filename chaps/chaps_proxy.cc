@@ -10,6 +10,7 @@
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
 
+using base::AutoLock;
 using std::string;
 using std::vector;
 
@@ -46,6 +47,7 @@ bool ChapsProxyImpl::Init() {
 
 void ChapsProxyImpl::FireLoginEvent(const string& path,
                                     const vector<uint8_t>& auth_data) {
+  AutoLock lock(lock_);
   if (!proxy_.get()) {
     LOG(ERROR) << "Failed to fire event: proxy not initialized.";
     return;
@@ -58,6 +60,7 @@ void ChapsProxyImpl::FireLoginEvent(const string& path,
 }
 
 void ChapsProxyImpl::FireLogoutEvent(const string& path) {
+  AutoLock lock(lock_);
   if (!proxy_.get()) {
     LOG(ERROR) << "Failed to fire event: proxy not initialized.";
     return;
@@ -73,6 +76,7 @@ void ChapsProxyImpl::FireChangeAuthDataEvent(
     const string& path,
     const vector<uint8_t>& old_auth_data,
     const vector<uint8_t>& new_auth_data) {
+  AutoLock lock(lock_);
   if (!proxy_.get()) {
     LOG(ERROR) << "Failed to fire event: proxy not initialized.";
     return;
@@ -85,6 +89,7 @@ void ChapsProxyImpl::FireChangeAuthDataEvent(
 }
 
 void ChapsProxyImpl::SetLogLevel(const int32_t& level) {
+  AutoLock lock(lock_);
   if (!proxy_.get()) {
     LOG(ERROR) << "Failed to set logging level: proxy not initialized.";
     return;
@@ -98,6 +103,7 @@ void ChapsProxyImpl::SetLogLevel(const int32_t& level) {
 
 uint32_t ChapsProxyImpl::GetSlotList(bool token_present,
                                      vector<uint64_t>* slot_list) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!slot_list, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -118,6 +124,7 @@ uint32_t ChapsProxyImpl::GetSlotInfo(uint64_t slot_id,
                                      uint8_t* hardware_version_minor,
                                      uint8_t* firmware_version_major,
                                      uint8_t* firmware_version_minor) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!slot_description || !manufacturer_id || !flags ||
       !hardware_version_major || !hardware_version_minor ||
@@ -161,6 +168,7 @@ uint32_t ChapsProxyImpl::GetTokenInfo(uint64_t slot_id,
                                       uint8_t* hardware_version_minor,
                                       uint8_t* firmware_version_major,
                                       uint8_t* firmware_version_minor) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!label || !manufacturer_id || !model || !serial_number || !flags ||
       !max_session_count || !session_count || !max_session_count_rw ||
@@ -203,6 +211,7 @@ uint32_t ChapsProxyImpl::GetTokenInfo(uint64_t slot_id,
 uint32_t ChapsProxyImpl::GetMechanismList(
     uint64_t slot_id,
     vector<uint64_t>* mechanism_list) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!mechanism_list, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -220,6 +229,7 @@ uint32_t ChapsProxyImpl::GetMechanismInfo(uint64_t slot_id,
                                           uint64_t* min_key_size,
                                           uint64_t* max_key_size,
                                           uint64_t* flags) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!min_key_size || !max_key_size || !flags)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -241,6 +251,7 @@ uint32_t ChapsProxyImpl::GetMechanismInfo(uint64_t slot_id,
 uint32_t ChapsProxyImpl::InitToken(uint64_t slot_id,
                                    const string* so_pin,
                                    const vector<uint8_t>& label) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -256,6 +267,7 @@ uint32_t ChapsProxyImpl::InitToken(uint64_t slot_id,
 }
 
 uint32_t ChapsProxyImpl::InitPIN(uint64_t session_id, const string* pin) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -273,6 +285,7 @@ uint32_t ChapsProxyImpl::InitPIN(uint64_t session_id, const string* pin) {
 uint32_t ChapsProxyImpl::SetPIN(uint64_t session_id,
                                 const string* old_pin,
                                 const string* new_pin) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -293,6 +306,7 @@ uint32_t ChapsProxyImpl::SetPIN(uint64_t session_id,
 
 uint32_t ChapsProxyImpl::OpenSession(uint64_t slot_id, uint64_t flags,
                                      uint64_t* session_id) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!session_id, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -306,6 +320,7 @@ uint32_t ChapsProxyImpl::OpenSession(uint64_t slot_id, uint64_t flags,
 }
 
 uint32_t ChapsProxyImpl::CloseSession(uint64_t session_id) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -318,6 +333,7 @@ uint32_t ChapsProxyImpl::CloseSession(uint64_t session_id) {
 }
 
 uint32_t ChapsProxyImpl::CloseAllSessions(uint64_t slot_id) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -334,6 +350,7 @@ uint32_t ChapsProxyImpl::GetSessionInfo(uint64_t session_id,
                                         uint64_t* state,
                                         uint64_t* flags,
                                         uint64_t* device_error) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!slot_id || !state || !flags || !device_error)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -350,6 +367,7 @@ uint32_t ChapsProxyImpl::GetSessionInfo(uint64_t session_id,
 
 uint32_t ChapsProxyImpl::GetOperationState(uint64_t session_id,
                                            vector<uint8_t>* operation_state) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!operation_state, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -367,6 +385,7 @@ uint32_t ChapsProxyImpl::SetOperationState(
     const vector<uint8_t>& operation_state,
     uint64_t encryption_key_handle,
     uint64_t authentication_key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -384,6 +403,7 @@ uint32_t ChapsProxyImpl::SetOperationState(
 uint32_t ChapsProxyImpl::Login(uint64_t session_id,
                                uint64_t user_type,
                                const string* pin) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -399,6 +419,7 @@ uint32_t ChapsProxyImpl::Login(uint64_t session_id,
 }
 
 uint32_t ChapsProxyImpl::Logout(uint64_t session_id) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -413,6 +434,7 @@ uint32_t ChapsProxyImpl::Logout(uint64_t session_id) {
 uint32_t ChapsProxyImpl::CreateObject(uint64_t session_id,
                                       const vector<uint8_t>& attributes,
                                       uint64_t* new_object_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -432,6 +454,7 @@ uint32_t ChapsProxyImpl::CopyObject(uint64_t session_id,
                                     uint64_t object_handle,
                                     const vector<uint8_t>& attributes,
                                     uint64_t* new_object_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -450,6 +473,7 @@ uint32_t ChapsProxyImpl::CopyObject(uint64_t session_id,
 
 uint32_t ChapsProxyImpl::DestroyObject(uint64_t session_id,
                                        uint64_t object_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -464,6 +488,7 @@ uint32_t ChapsProxyImpl::DestroyObject(uint64_t session_id,
 uint32_t ChapsProxyImpl::GetObjectSize(uint64_t session_id,
                                        uint64_t object_handle,
                                        uint64_t* object_size) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!object_size, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -480,6 +505,7 @@ uint32_t ChapsProxyImpl::GetAttributeValue(uint64_t session_id,
                                            uint64_t object_handle,
                                            const vector<uint8_t>& attributes_in,
                                            vector<uint8_t>* attributes_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!attributes_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -499,6 +525,7 @@ uint32_t ChapsProxyImpl::GetAttributeValue(uint64_t session_id,
 uint32_t ChapsProxyImpl::SetAttributeValue(uint64_t session_id,
                                            uint64_t object_handle,
                                            const vector<uint8_t>& attributes) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -515,6 +542,7 @@ uint32_t ChapsProxyImpl::SetAttributeValue(uint64_t session_id,
 uint32_t ChapsProxyImpl::FindObjectsInit(
     uint64_t session_id,
     const vector<uint8_t>& attributes) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -529,6 +557,7 @@ uint32_t ChapsProxyImpl::FindObjectsInit(
 uint32_t ChapsProxyImpl::FindObjects(uint64_t session_id,
                                      uint64_t max_object_count,
                                      vector<uint64_t>* object_list) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!object_list || object_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -543,6 +572,7 @@ uint32_t ChapsProxyImpl::FindObjects(uint64_t session_id,
 }
 
 uint32_t ChapsProxyImpl::FindObjectsFinal(uint64_t session_id) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -559,6 +589,7 @@ uint32_t ChapsProxyImpl::EncryptInit(
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     uint64_t key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -578,6 +609,7 @@ uint32_t ChapsProxyImpl::Encrypt(uint64_t session_id,
                                  uint64_t max_out_length,
                                  uint64_t* actual_out_length,
                                  vector<uint8_t>* data_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -600,6 +632,7 @@ uint32_t ChapsProxyImpl::EncryptUpdate(uint64_t session_id,
                                        uint64_t max_out_length,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* data_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -621,6 +654,7 @@ uint32_t ChapsProxyImpl::EncryptFinal(uint64_t session_id,
                                       uint64_t max_out_length,
                                       uint64_t* actual_out_length,
                                       vector<uint8_t>* data_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -642,6 +676,7 @@ uint32_t ChapsProxyImpl::DecryptInit(
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     uint64_t key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -661,6 +696,7 @@ uint32_t ChapsProxyImpl::Decrypt(uint64_t session_id,
                                  uint64_t max_out_length,
                                  uint64_t* actual_out_length,
                                  vector<uint8_t>* data_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -683,6 +719,7 @@ uint32_t ChapsProxyImpl::DecryptUpdate(uint64_t session_id,
                                        uint64_t max_out_length,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* data_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -704,6 +741,7 @@ uint32_t ChapsProxyImpl::DecryptFinal(uint64_t session_id,
                                       uint64_t max_out_length,
                                       uint64_t* actual_out_length,
                                       vector<uint8_t>* data_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -724,6 +762,7 @@ uint32_t ChapsProxyImpl::DigestInit(
     uint64_t session_id,
     uint64_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -742,6 +781,7 @@ uint32_t ChapsProxyImpl::Digest(uint64_t session_id,
                                 uint64_t max_out_length,
                                 uint64_t* actual_out_length,
                                 vector<uint8_t>* digest) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -760,6 +800,7 @@ uint32_t ChapsProxyImpl::Digest(uint64_t session_id,
 
 uint32_t ChapsProxyImpl::DigestUpdate(uint64_t session_id,
                                       const vector<uint8_t>& data_in) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -773,6 +814,7 @@ uint32_t ChapsProxyImpl::DigestUpdate(uint64_t session_id,
 
 uint32_t ChapsProxyImpl::DigestKey(uint64_t session_id,
                                    uint64_t key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -788,6 +830,7 @@ uint32_t ChapsProxyImpl::DigestFinal(uint64_t session_id,
                                      uint64_t max_out_length,
                                      uint64_t* actual_out_length,
                                      vector<uint8_t>* digest) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -807,6 +850,7 @@ uint32_t ChapsProxyImpl::SignInit(uint64_t session_id,
                                   uint64_t mechanism_type,
                                   const vector<uint8_t>& mechanism_parameter,
                                   uint64_t key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -826,6 +870,7 @@ uint32_t ChapsProxyImpl::Sign(uint64_t session_id,
                               uint64_t max_out_length,
                               uint64_t* actual_out_length,
                               vector<uint8_t>* signature) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -844,6 +889,7 @@ uint32_t ChapsProxyImpl::Sign(uint64_t session_id,
 
 uint32_t ChapsProxyImpl::SignUpdate(uint64_t session_id,
                                     const vector<uint8_t>& data_part) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -859,6 +905,7 @@ uint32_t ChapsProxyImpl::SignFinal(uint64_t session_id,
                                    uint64_t max_out_length,
                                    uint64_t* actual_out_length,
                                    vector<uint8_t>* signature) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -879,6 +926,7 @@ uint32_t ChapsProxyImpl::SignRecoverInit(
       uint64_t mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
       uint64_t key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -898,6 +946,7 @@ uint32_t ChapsProxyImpl::SignRecover(uint64_t session_id,
                                      uint64_t max_out_length,
                                      uint64_t* actual_out_length,
                                      vector<uint8_t>* signature) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -918,6 +967,7 @@ uint32_t ChapsProxyImpl::VerifyInit(uint64_t session_id,
                                     uint64_t mechanism_type,
                                     const vector<uint8_t>& mechanism_parameter,
                                     uint64_t key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -935,6 +985,7 @@ uint32_t ChapsProxyImpl::VerifyInit(uint64_t session_id,
 uint32_t ChapsProxyImpl::Verify(uint64_t session_id,
                                 const vector<uint8_t>& data,
                                 const vector<uint8_t>& signature) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -948,6 +999,7 @@ uint32_t ChapsProxyImpl::Verify(uint64_t session_id,
 
 uint32_t ChapsProxyImpl::VerifyUpdate(uint64_t session_id,
                                       const vector<uint8_t>& data_part) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -961,6 +1013,7 @@ uint32_t ChapsProxyImpl::VerifyUpdate(uint64_t session_id,
 
 uint32_t ChapsProxyImpl::VerifyFinal(uint64_t session_id,
                                      const vector<uint8_t>& signature) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -977,6 +1030,7 @@ uint32_t ChapsProxyImpl::VerifyRecoverInit(
       uint64_t mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
       uint64_t key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -996,6 +1050,7 @@ uint32_t ChapsProxyImpl::VerifyRecover(uint64_t session_id,
                                        uint64_t max_out_length,
                                        uint64_t* actual_out_length,
                                        vector<uint8_t>* data) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -1018,6 +1073,7 @@ uint32_t ChapsProxyImpl::DigestEncryptUpdate(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1041,6 +1097,7 @@ uint32_t ChapsProxyImpl::DecryptDigestUpdate(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1063,6 +1120,7 @@ uint32_t ChapsProxyImpl::SignEncryptUpdate(uint64_t session_id,
                                            uint64_t max_out_length,
                                            uint64_t* actual_out_length,
                                            vector<uint8_t>* data_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1086,6 +1144,7 @@ uint32_t ChapsProxyImpl::DecryptVerifyUpdate(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* data_out) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1109,6 +1168,7 @@ uint32_t ChapsProxyImpl::GenerateKey(
     const vector<uint8_t>& mechanism_parameter,
     const vector<uint8_t>& attributes,
     uint64_t* key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1134,6 +1194,7 @@ uint32_t ChapsProxyImpl::GenerateKeyPair(
     const vector<uint8_t>& private_attributes,
     uint64_t* public_key_handle,
     uint64_t* private_key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!public_key_handle || !private_key_handle,
                           CKR_ARGUMENTS_BAD);
@@ -1163,6 +1224,7 @@ uint32_t ChapsProxyImpl::WrapKey(
     uint64_t max_out_length,
     uint64_t* actual_out_length,
     vector<uint8_t>* wrapped_key) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !wrapped_key,
                           CKR_ARGUMENTS_BAD);
@@ -1192,6 +1254,7 @@ uint32_t ChapsProxyImpl::UnwrapKey(
     const vector<uint8_t>& wrapped_key,
     const vector<uint8_t>& attributes,
     uint64_t* key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1218,6 +1281,7 @@ uint32_t ChapsProxyImpl::DeriveKey(
     uint64_t base_key_handle,
     const vector<uint8_t>& attributes,
     uint64_t* key_handle) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1238,6 +1302,7 @@ uint32_t ChapsProxyImpl::DeriveKey(
 
 uint32_t ChapsProxyImpl::SeedRandom(uint64_t session_id,
                                     const vector<uint8_t>& seed) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(seed.size() == 0, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
@@ -1253,6 +1318,7 @@ uint32_t ChapsProxyImpl::SeedRandom(uint64_t session_id,
 uint32_t ChapsProxyImpl::GenerateRandom(uint64_t session_id,
                                         uint64_t num_bytes,
                                         vector<uint8_t>* random_data) {
+  AutoLock lock(lock_);
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!random_data || num_bytes == 0, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_GENERAL_ERROR;
