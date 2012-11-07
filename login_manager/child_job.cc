@@ -7,11 +7,14 @@
 #include "login_manager/child_job.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <glib.h>
 #include <grp.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -73,7 +76,7 @@ void ChildJob::Run() {
   if (exit_code)
     exit(exit_code);
 
-  logging::CloseLogFile();  // So child does not inherit logging FD.
+  ResetFds();
 
   char const** argv = CreateArgv();
   execv(argv[0], const_cast<char* const*>(argv));
@@ -215,6 +218,22 @@ int ChildJob::SetIDs() {
   if (setsid() == -1)
     LOG(ERROR) << "can't setsid: " << strerror(errno);
   return to_return;
+}
+
+void ChildJob::ResetFds() {
+  logging::CloseLogFile();  // So child does not inherit logging FD.
+
+  // Ok to ignore errors here, we are only interested
+  // in making these FDs available for the subsequent open()s
+  // below.
+  close(STDIN_FILENO);
+  close(STDOUT_FILENO);
+  close(STDERR_FILENO);
+  // open() reuses the lowest available file descriptor, so this
+  // effectively remaps stdin, stdout and stderr to /dev/null.
+  open("/dev/null", O_RDONLY);
+  open("/dev/null", O_RDWR);
+  open("/dev/null", O_RDWR);
 }
 
 }  // namespace login_manager

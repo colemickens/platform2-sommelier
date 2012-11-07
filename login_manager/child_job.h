@@ -142,6 +142,10 @@ class ChildJob : public ChildJobInterface {
   // call fails.
   int SetIDs();
 
+  // Close any logging file descriptors and reset I/O file descriptors
+  // to /dev/null.
+  void ResetFds();
+
   // Arguments to pass to exec.
   std::vector<std::string> arguments_;
 
