@@ -336,7 +336,7 @@ diag_ip_collision () {
     fail "${ifc} does not have IP address"
     return 1
   fi
-  if ${ARPING} -c 3 -I ${ifc} -D ${ip}; then
+  if ! ${ARPING} -c 3 -I ${ifc} -D ${ip}; then
     fail "IP Address Collision Detected!"
     return 1
   fi
