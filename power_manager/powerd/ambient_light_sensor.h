@@ -81,6 +81,10 @@ class AmbientLightSensor {
   // Interface for saving preferences. Non-owned.
   PowerPrefsInterface* prefs_;
 
+  // Pref flag that disables ALS permanently.  Overrides any calls to enable or
+  // disable ALS.
+  bool fully_disable_als_;
+
   // Lux value read by the class. If this read did not succeed or no read has
   // occured yet this variable is set to -1.
   int lux_value_;

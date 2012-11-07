@@ -38,6 +38,7 @@ static size_t kHistorySizeMax = 10;
 
 AmbientLightSensor::AmbientLightSensor()
     : prefs_(NULL),
+      fully_disable_als_(false),
       is_polling_(false),
       disable_polling_(false),
       still_deferring_(false),
@@ -97,7 +98,9 @@ bool AmbientLightSensor::Init(PowerPrefsInterface* prefs) {
   // that allows polling ALS as usual but prevents backlight changes from
   // happening. This will be useful for power and system profiling.
   if (prefs_->GetInt64(kDisableALSPref, &disable_als) && disable_als) {
-    LOG(INFO) << "Not using ambient light sensor";
+    LOG(INFO) << "Completely disabling ambient light sensor.";
+    fully_disable_als_ = true;
+    disable_polling_ = true;
     return false;
   }
   return true;
@@ -112,6 +115,12 @@ void AmbientLightSensor::RemoveObserver(AmbientLightSensorObserver* observer) {
 }
 
 void AmbientLightSensor::EnableOrDisableSensor(bool enable) {
+  if (fully_disable_als_ && enable) {
+    LOG(INFO) << "Ignoring request to enable ALS since it has been disabled by"
+              << " the disable_als pref.";
+    return;
+  }
+
   if (!enable) {
     LOG(INFO) << "Disabling light sensor poll";
     disable_polling_ = true;
