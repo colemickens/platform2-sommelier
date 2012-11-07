@@ -13,7 +13,6 @@
 #include "shill/ieee80211.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
-#include "shill/metrics.h"
 #include "shill/scope_logger.h"
 #include "shill/user_bound_nlmessage.h"
 

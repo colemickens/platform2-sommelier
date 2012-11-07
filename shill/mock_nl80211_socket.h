@@ -22,8 +22,6 @@ class MockNl80211Socket : public Nl80211Socket {
   MockNl80211Socket() {}
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD1(AddGroupMembership, bool(const std::string &group_name));
-  using Nl80211Socket::DisableSequenceChecking;
-  MOCK_METHOD0(DisableSequenceChecking, bool());
   using Nl80211Socket::GetMessages;
   MOCK_METHOD0(GetMessages, bool());
   using Nl80211Socket::SetNetlinkCallback;

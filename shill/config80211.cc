@@ -15,6 +15,7 @@
 #include <base/stl_util.h>
 
 #include "shill/io_handler.h"
+#include "shill/kernel_bound_nlmessage.h"
 #include "shill/logging.h"
 #include "shill/nl80211_socket.h"
 #include "shill/scope_logger.h"
@@ -70,6 +71,15 @@ bool Config80211::Init(EventDispatcher *dispatcher) {
     if (!sock_->Init()) {
       return false;
     }
+
+    // Install the global NetLink Callback.
+    sock_->SetNetlinkCallback(OnRawNlMessageReceived,
+                              static_cast<void *>(this));
+
+    // Don't make libnl do the sequence checking (because it'll not like
+    // the broadcast messages for which we'll eventually ask).  We'll do all the
+    // sequence checking we need.
+    sock_->DisableSequenceChecking();
   }
 
   if (!event_types_) {
@@ -136,6 +146,20 @@ void Config80211::ClearBroadcastCallbacks() {
   broadcast_callbacks_.clear();
 }
 
+bool Config80211::SendMessage(KernelBoundNlMessage *message,
+                              const Callback &callback) {
+  if (!message) {
+    LOG(ERROR) << "Message is NULL.";
+    return false;
+  }
+  if (!SetMessageCallback(*message, callback)) {
+    return false;
+  }
+
+  message->Send(sock_);
+  return true;
+}
+
 bool Config80211::SetMessageCallback(const KernelBoundNlMessage &message,
                                      const Callback &callback) {
   LOG(INFO) << "Setting callback for message " << message.GetId();
@@ -193,9 +217,17 @@ void Config80211::SetWifiState(WifiState new_state) {
     return;
   }
 
+  if (!sock_) {
+    LOG(ERROR) << "Config80211::Init needs to be called before this";
+    return;
+  }
+
   // If we're newly-up, subscribe to all the event types that have been
   // requested.
   if (new_state == kWifiUp) {
+    // Install the global NetLink Callback.
+    sock_->SetNetlinkCallback(OnRawNlMessageReceived,
+                              static_cast<void *>(this));
     SubscribedEvents::const_iterator i;
     for (i = subscribed_events_.begin(); i != subscribed_events_.end(); ++i) {
       ActuallySubscribeToEvents(*i);
@@ -225,17 +257,6 @@ bool Config80211::ActuallySubscribeToEvents(EventType type) {
     return false;
   }
   if (!sock_->AddGroupMembership(group_name)) {
-    return false;
-  }
-  // No sequence checking for multicast messages.
-  if (!sock_->DisableSequenceChecking()) {
-    return false;
-  }
-
-  // Install the global NetLink Callback for messages along with a parameter.
-  // The Netlink Callback's parameter is passed to 'C' as a 'void *'.
-  if (!sock_->SetNetlinkCallback(OnRawNlMessageReceived,
-                                 static_cast<void *>(this))) {
     return false;
   }
   return true;

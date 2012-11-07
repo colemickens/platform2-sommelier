@@ -104,22 +104,10 @@ bool KernelBoundNlMessage::Send(NetlinkSocket *socket) {
     LOG(ERROR) << "NULL |socket| parameter";
     return false;
   }
-  if (!message_) {
-    LOG(ERROR) << "NULL |message_|.";
-    return -1;
-  }
-
-  // Complete AND SEND a message.
-  int result = nl_send_auto_complete(
-      const_cast<struct nl_sock *>(socket->GetConstNlSock()), message_);
 
   SLOG(WiFi, 6) << "NL Message " << GetId() << " ===>";
 
-  if (result < 0) {
-    LOG(ERROR) << "Failed call to 'nl_send_auto_complete': " << result;
-    return false;
-  }
-  return true;
+  return socket->Send(message_);
 }
 
 }  // namespace shill.

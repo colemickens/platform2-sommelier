@@ -40,7 +40,6 @@
 
 #include <base/logging.h>
 
-#include "shill/kernel_bound_nlmessage.h"
 #include "shill/scope_logger.h"
 
 namespace shill {
@@ -113,6 +112,26 @@ bool NetlinkSocket::Init() {
 
   return true;
 }
+
+bool NetlinkSocket::Send(struct nl_msg *message) {
+  if (!message) {
+    LOG(ERROR) << "NULL |message|.";
+    return false;
+  }
+
+  if (!nl_sock_) {
+    LOG(ERROR) << "Need to initialize the socket first.";
+    return false;
+  }
+
+  int result = nl_send_auto_complete(nl_sock_, message);
+  if (result < 0) {
+    LOG(ERROR) << "Failed call to 'nl_send_auto_complete': " << result;
+    return false;
+  }
+  return true;
+}
+
 
 bool NetlinkSocket::DisableSequenceChecking() {
   if (!nl_sock_) {

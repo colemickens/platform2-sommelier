@@ -37,8 +37,6 @@
 #include <base/bind.h>
 #include <base/logging.h>
 
-#include "shill/kernel_bound_nlmessage.h"
-
 enum nl_cb_kind;
 enum nl_cb_type;
 struct nl_msg;
@@ -100,6 +98,9 @@ class NetlinkSocket {
   // Non-trivial initialization.
   bool Init();
 
+  // Send a message.
+  virtual bool Send(struct nl_msg *message);
+
   // Disables sequence checking on the message stream.
   virtual bool DisableSequenceChecking();
 
@@ -128,8 +129,6 @@ class NetlinkSocket {
 
   // Returns the family name of the socket created by this type of object.
   virtual std::string GetSocketFamilyName() const = 0;
-
-  const struct nl_sock *GetConstNlSock() const { return nl_sock_; }
 
  protected:
   struct nl_sock *GetNlSock() { return nl_sock_; }

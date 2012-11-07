@@ -25,8 +25,6 @@
 #ifndef SHILL_KERNEL_BOUND_NLMESSAGE_H_
 #define SHILL_KERNEL_BOUND_NLMESSAGE_H_
 
-#include "shill/kernel_bound_nlmessage.h"
-
 #include <base/basictypes.h>
 #include <base/bind.h>
 

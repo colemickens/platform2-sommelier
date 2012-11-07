@@ -35,14 +35,7 @@ class Callback80211Object {
   // Deinstall ourselves as a callback.
   bool DeinstallAsCallback();
 
-  // TODO(wdg): remove debug code:
-  void SetName(std::string name) { name_ = name;}
-  const std::string &GetName() { return name_; }
-
  private:
-  // TODO(wdg): remove debug code:
-  std::string name_;
-
   // When installed, this is the method Config80211 will call when it gets a
   // message from the mac80211 drivers.
   virtual void Config80211MessageCallback(const UserBoundNlMessage &msg);
