@@ -140,6 +140,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, StartModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
+  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfo);
 
   // Methods used in starting a modem
@@ -157,6 +158,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Sets the upper level information about the home cellular provider from the
   // modem's IMSI and SPN.
   void SetHomeProvider();
+
+  // Updates the online payment portal information, if any, for the cellular
+  // provider.
+  void UpdateOLP();
 
   // Updates the Universal operator name and country based on a newly
   // obtained network id.

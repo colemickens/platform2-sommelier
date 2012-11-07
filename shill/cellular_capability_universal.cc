@@ -7,6 +7,7 @@
 #include <base/bind.h>
 #include <base/stl_util.h>
 #include <base/stringprintf.h>
+#include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mobile_provider.h>
 #include <ModemManager/ModemManager.h>
@@ -105,8 +106,8 @@ static string AccessTechnologyToTechnologyFamily(uint32 access_technologies) {
                              MM_MODEM_ACCESS_TECHNOLOGY_GSM))
     return flimflam::kTechnologyFamilyGsm;
   if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 |
-                              MM_MODEM_ACCESS_TECHNOLOGY_EVDOA |
-                              MM_MODEM_ACCESS_TECHNOLOGY_EVDOB |
+                             MM_MODEM_ACCESS_TECHNOLOGY_EVDOA |
+                             MM_MODEM_ACCESS_TECHNOLOGY_EVDOB |
                              MM_MODEM_ACCESS_TECHNOLOGY_1XRTT))
     return flimflam::kTechnologyFamilyCdma;
   return "";
@@ -373,6 +374,7 @@ void CellularCapabilityUniversal::OnServiceCreated() {
       flimflam::kActivationStateNotActivated :
       flimflam::kActivationStateActivated);
   UpdateServingOperator();
+  UpdateOLP();
 }
 
 // Create the list of APNs to try, in the following order:
@@ -550,6 +552,26 @@ void CellularCapabilityUniversal::SetHomeProvider() {
                     << oper.GetName() << ", " << oper.GetCountry()
                     << (provider_requires_roaming_ ? ", roaming required" : "");
   InitAPNList();
+}
+
+void CellularCapabilityUniversal::UpdateOLP() {
+  if (!cellular()->cellular_operator_info())
+    return;
+
+  CellularService::OLP olp;
+  if (!cellular()->cellular_operator_info()->GetOLP(operator_id_, &olp))
+    return;
+
+  string post_data = olp.GetPostData();
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}", esn_);
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${iccid}", sim_identifier_);
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${imei}", imei_);
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${imsi}", imsi_);
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}", mdn_);
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${meid}", meid_);
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${min}", min_);
+  olp.SetPostData(post_data);
+  cellular()->service()->SetOLP(olp);
 }
 
 void CellularCapabilityUniversal::UpdateOperatorInfo() {
@@ -1187,7 +1209,7 @@ void CellularCapabilityUniversal::OnSimLockStatusChanged() {
 void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
     const DBusPropertiesMap &properties,
     const vector<string> &/* invalidated_properties */) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   string imei;
   if (DBusProperties::GetString(properties,
                                 MM_MODEM_MODEM3GPP_PROPERTY_IMEI,
@@ -1271,7 +1293,7 @@ void CellularCapabilityUniversal::OnFacilityLocksChanged(uint32 locks) {
 void CellularCapabilityUniversal::OnSimPropertiesChanged(
     const DBusPropertiesMap &props,
     const vector<string> &/* invalidated_properties */) {
-  VLOG(2) << __func__;
+  SLOG(Cellular, 2) << __func__;
   string value;
   bool must_update_home_provider = false;
   if (DBusProperties::GetString(props, MM_SIM_PROPERTY_SIMIDENTIFIER, &value))
@@ -1299,6 +1321,7 @@ void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
 
 void CellularCapabilityUniversal::OnOperatorIdChanged(
     const string &operator_id) {
+  SLOG(Cellular, 2) << "Operator ID = '" << operator_id << "'";
   operator_id_ = operator_id;
 }
 

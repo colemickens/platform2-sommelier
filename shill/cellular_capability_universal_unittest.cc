@@ -42,6 +42,7 @@ using base::Unretained;
 using std::string;
 using std::vector;
 using testing::InSequence;
+using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -63,6 +64,23 @@ MATCHER_P(HasApn, expected_apn, "") {
                                     &apn) &&
           apn == expected_apn);
 }
+
+class MockCellularOperatorInfoGetOLPHelper {
+ public:
+  MockCellularOperatorInfoGetOLPHelper(const CellularService::OLP &olp) {
+    olp_.CopyFrom(olp);
+  }
+
+  ~MockCellularOperatorInfoGetOLPHelper() {}
+
+  bool GetOLP(const std::string &operator_id, CellularService::OLP *olp) {
+    olp->CopyFrom(olp_);
+    return true;
+  }
+
+ private:
+  CellularService::OLP olp_;
+};
 
 class CellularCapabilityUniversalTest : public testing::Test {
  public:
@@ -892,6 +910,38 @@ TEST_F(CellularCapabilityUniversalTest, SetHomeProvider) {
   EXPECT_EQ("", cellular_->home_provider().GetCode());
   ASSERT_TRUE(capability_->home_provider_);
   EXPECT_TRUE(capability_->provider_requires_roaming_);
+}
+
+TEST_F(CellularCapabilityUniversalTest, UpdateOLP) {
+  CellularService::OLP test_olp;
+  test_olp.SetURL("http://testurl");
+  test_olp.SetMethod("POST");
+  test_olp.SetPostData("esn=${esn}&imei=${imei}&imsi=${imsi}&mdn=${mdn}&"
+                       "meid=${meid}&min=${min}&iccid=${iccid}");
+
+  MockCellularOperatorInfoGetOLPHelper get_olp_helper(test_olp);
+
+  capability_->esn_ = "0";
+  capability_->imei_ = "1";
+  capability_->imsi_ = "2";
+  capability_->mdn_ = "3";
+  capability_->meid_= "4";
+  capability_->min_ = "5";
+  capability_->sim_identifier_ = "6";
+  capability_->operator_id_ = "123456";
+  cellular_->cellular_operator_info_ = &cellular_operator_info_;
+
+  EXPECT_CALL(cellular_operator_info_, GetOLP(capability_->operator_id_, _))
+      .WillOnce(Invoke(&get_olp_helper,
+                       &MockCellularOperatorInfoGetOLPHelper::GetOLP));
+
+  SetService();
+  capability_->UpdateOLP();
+  const CellularService::OLP &olp = cellular_->service()->olp();
+  EXPECT_EQ("http://testurl", olp.GetURL());
+  EXPECT_EQ("POST", olp.GetMethod());
+  EXPECT_EQ("esn=0&imei=1&imsi=2&mdn=3&meid=4&min=5&iccid=6",
+            olp.GetPostData());
 }
 
 TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfo) {
