@@ -15,6 +15,7 @@
 #include "shill/callback80211_metrics.h"
 #include "shill/config80211.h"
 #include "shill/dhcp_provider.h"
+#include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/nss.h"
@@ -99,6 +100,7 @@ void Daemon::Start() {
   rtnl_handler_->Start(&dispatcher_, &sockets_);
   routing_table_->Start();
   dhcp_provider_->Init(control_, &dispatcher_, &glib_);
+  DiagnosticsReporter::GetInstance()->Init(&dispatcher_);
 
   if (config80211_) {
     config80211_->Init(&dispatcher_);

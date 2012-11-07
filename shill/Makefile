@@ -178,6 +178,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	dhcp_config.o \
 	dhcp_provider.o \
 	dhcpcd_proxy.o \
+	diagnostics_reporter.o \
 	dns_client.o \
 	endpoint.o \
 	ephemeral_profile.o \
@@ -308,6 +309,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	device_unittest.o \
 	dhcp_config_unittest.o \
 	dhcp_provider_unittest.o \
+	diagnostics_reporter_unittest.o \
 	dns_client_unittest.o \
 	error_unittest.o \
 	ethernet_service_unittest.o \
