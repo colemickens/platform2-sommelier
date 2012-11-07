@@ -647,6 +647,10 @@ class Daemon : public BacklightControllerObserver,
 
   // Set by tests to disable emitting D-Bus signals.
   bool disable_dbus_for_testing_;
+
+  // Flag for devices where the display powers the audio output, such that the
+  // display must not be powered off if audio is playing.
+  bool keep_backlight_on_for_audio_;
 };
 
 }  // namespace power_manager

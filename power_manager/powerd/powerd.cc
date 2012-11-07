@@ -132,7 +132,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       shutdown_reason_(kShutdownReasonUnknown),
       require_usb_input_device_to_suspend_(false),
       battery_report_state_(BATTERY_REPORT_ADJUSTED),
-      disable_dbus_for_testing_(false) {
+      disable_dbus_for_testing_(false),
+      keep_backlight_on_for_audio_(false) {
   idle_->AddObserver(this);
 }
 
@@ -221,6 +222,8 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->GetInt64(kBatteryPollShortIntervalPref,
                          &battery_poll_short_interval_ms_));
   CHECK(prefs_->GetInt64(kEnforceLockPref, &enforce_lock));
+  CHECK(prefs_->GetBool(kKeepBacklightOnForAudioPref,
+                        &keep_backlight_on_for_audio_));
 
   ReadSuspendSettings();
   ReadLockScreenSettings();
@@ -611,6 +614,12 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   if (is_idle && backlight_controller_->GetPowerState() == BACKLIGHT_DIM &&
       !util::OOBECompleted()) {
     LOG(INFO) << "OOBE not complete. Delaying screenoff until done.";
+    SetIdleOffset(idle_time_ms, IDLE_STATE_SCREEN_OFF);
+  }
+  if (is_idle && backlight_controller_->GetPowerState() == BACKLIGHT_DIM &&
+      keep_backlight_on_for_audio_ && idle_time_ms  >= off_ms_ &&
+      IsAudioPlaying()) {
+    LOG(INFO) << "Backlight must stay on for audio. Delaying screenoff.";
     SetIdleOffset(idle_time_ms, IDLE_STATE_SCREEN_OFF);
   }
   if (is_idle &&

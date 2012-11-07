@@ -369,6 +369,7 @@ TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
   prefs_.SetInt64(kDisableIdleSuspendPref, 0);
   prefs_.SetInt64(kLockOnIdleSuspendPref, 1);
   prefs_.SetInt64(kLockMsPref, kLockTimeMs);
+  prefs_.SetInt64(kKeepBacklightOnForAudioPref, 0);
 
   // Check that the settings are loaded correctly.
   daemon_.is_projecting_ = false;
