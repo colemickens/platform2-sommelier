@@ -32,23 +32,23 @@ class StateControlTest : public Test {
 };  // class StateControlTest
 
 void StateControlTest::NothingDisabled() {
-  EXPECT_FALSE(state_control_.IsStateDisabled(kIdleDimDisabled));
-  EXPECT_FALSE(state_control_.IsStateDisabled(kIdleBlankDisabled));
-  EXPECT_FALSE(state_control_.IsStateDisabled(kIdleSuspendDisabled));
-  EXPECT_FALSE(state_control_.IsStateDisabled(kLidSuspendDisabled));
+  EXPECT_FALSE(state_control_.IsStateDisabled(STATE_CONTROL_IDLE_DIM));
+  EXPECT_FALSE(state_control_.IsStateDisabled(STATE_CONTROL_IDLE_BLANK));
+  EXPECT_FALSE(state_control_.IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND));
+  EXPECT_FALSE(state_control_.IsStateDisabled(STATE_CONTROL_LID_SUSPEND));
 }
 void StateControlTest::CheckDisabled(bool disable_idle_dim,
                                      bool disable_idle_blank,
                                      bool disable_idle_suspend,
                                      bool disable_lid_suspend) {
   EXPECT_EQ(disable_idle_dim,
-            state_control_.IsStateDisabled(kIdleDimDisabled));
+            state_control_.IsStateDisabled(STATE_CONTROL_IDLE_DIM));
   EXPECT_EQ(disable_idle_blank,
-               state_control_.IsStateDisabled(kIdleBlankDisabled));
+               state_control_.IsStateDisabled(STATE_CONTROL_IDLE_BLANK));
   EXPECT_EQ(disable_idle_suspend,
-               state_control_.IsStateDisabled(kIdleSuspendDisabled));
+               state_control_.IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND));
   EXPECT_EQ(disable_lid_suspend,
-               state_control_.IsStateDisabled(kLidSuspendDisabled));
+               state_control_.IsStateDisabled(STATE_CONTROL_LID_SUSPEND));
 }
 
 void StateControlTest::DisableAndCheck(bool disable_idle_dim,

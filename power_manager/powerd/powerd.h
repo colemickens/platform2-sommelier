@@ -51,9 +51,9 @@ class StateControl;
 typedef std::vector<int64> IdleThresholds;
 
 enum PluggedState {
-  kPowerDisconnected,
-  kPowerConnected,
-  kPowerUnknown,
+  PLUGGED_STATE_DISCONNECTED,
+  PLUGGED_STATE_CONNECTED,
+  PLUGGED_STATE_UNKNOWN,
 };
 
 // The raw battery percentage value that we receive from the battery controller
@@ -185,11 +185,19 @@ class Daemon : public BacklightControllerObserver,
   FRIEND_TEST(DaemonTest, GetDisplayBatteryPercent);
   FRIEND_TEST(DaemonTest, GetUsableBatteryPercent);
 
-  enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
-                   kIdleSuspend };
+  enum IdleState {
+    IDLE_STATE_UNKNOWN,
+    IDLE_STATE_NORMAL,
+    IDLE_STATE_DIM,
+    IDLE_STATE_SCREEN_OFF,
+    IDLE_STATE_SUSPEND
+  };
 
-  enum ShutdownState { kShutdownNone, kShutdownRestarting,
-                       kShutdownPowerOff };
+  enum ShutdownState {
+    SHUTDOWN_STATE_NONE,
+    SHUTDOWN_STATE_RESTARTING,
+    SHUTDOWN_STATE_POWER_OFF
+  };
 
   // Reads settings from disk
   void ReadSettings();

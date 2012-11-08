@@ -117,9 +117,9 @@ Daemon::Daemon(BacklightController* backlight_controller,
       battery_poll_interval_ms_(0),
       battery_poll_short_interval_ms_(0),
       enforce_lock_(false),
-      plugged_state_(kPowerUnknown),
+      plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(FilePath(kTaggedFilePath)),
-      shutdown_state_(kShutdownNone),
+      shutdown_state_(SHUTDOWN_STATE_NONE),
       suspender_(&locker_, &file_tagger_),
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath), prefs),
@@ -369,20 +369,21 @@ void Daemon::SetPlugged(bool plugged) {
 
   HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
                                            plugged ?
-                                           kPowerConnected :
-                                           kPowerDisconnected);
+                                           PLUGGED_STATE_CONNECTED :
+                                           PLUGGED_STATE_DISCONNECTED);
 
   // If we are moving from kPowerUknown then we don't know how long the device
   // has been on AC for and thus our metric would not tell us anything about the
   // battery state when the user decided to charge.
-  if (plugged_state_ != kPowerUnknown) {
+  if (plugged_state_ != PLUGGED_STATE_UNKNOWN) {
     GenerateBatteryInfoWhenChargeStartsMetric(
-        plugged ? kPowerConnected : kPowerDisconnected,
+        plugged ? PLUGGED_STATE_CONNECTED : PLUGGED_STATE_DISCONNECTED,
         power_status_);
   }
 
   LOG(INFO) << "Daemon : SetPlugged = " << plugged;
-  plugged_state_ = plugged ? kPowerConnected : kPowerDisconnected;
+  plugged_state_ = plugged ? PLUGGED_STATE_CONNECTED :
+      PLUGGED_STATE_DISCONNECTED;
   int64 idle_time_ms = idle_->GetIdleTimeMs();
   // If the screen is on, and the user plugged or unplugged the computer,
   // we should wait a bit before turning off the screen.
@@ -392,28 +393,28 @@ void Daemon::SetPlugged(bool plugged) {
   // we ignore any idle time from before powerd starts.
   if (backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE ||
       backlight_controller_->GetPowerState() == BACKLIGHT_DIM)
-    SetIdleOffset(idle_time_ms, kIdleNormal);
+    SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
   else if (backlight_controller_->GetPowerState() == BACKLIGHT_IDLE_OFF)
-    SetIdleOffset(idle_time_ms, kIdleSuspend);
+    SetIdleOffset(idle_time_ms, IDLE_STATE_SUSPEND);
   else if (backlight_controller_->GetPowerState() == BACKLIGHT_UNINITIALIZED)
-    SetIdleOffset(idle_time_ms, kIdleNormal);
+    SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
   else
-    SetIdleOffset(0, kIdleNormal);
+    SetIdleOffset(0, IDLE_STATE_NORMAL);
 
   backlight_controller_->OnPlugEvent(plugged);
   SetIdleState(idle_time_ms);
 }
 
 void Daemon::OnRequestRestart() {
-  if (shutdown_state_ == kShutdownNone) {
-    shutdown_state_ = kShutdownRestarting;
+  if (shutdown_state_ == SHUTDOWN_STATE_NONE) {
+    shutdown_state_ = SHUTDOWN_STATE_RESTARTING;
     StartCleanShutdown();
   }
 }
 
 void Daemon::OnRequestShutdown() {
-  if (shutdown_state_ == kShutdownNone) {
-    shutdown_state_ = kShutdownPowerOff;
+  if (shutdown_state_ == SHUTDOWN_STATE_NONE) {
+    shutdown_state_ = SHUTDOWN_STATE_POWER_OFF;
     StartCleanShutdown();
   }
 }
@@ -432,12 +433,12 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
   int64 prev_off_ms = off_ms_;
   LOG(INFO) << "offset_ms_ = " << offset_ms;
   offset_ms_ = offset_ms;
-  if (plugged_state_ == kPowerConnected) {
+  if (plugged_state_ == PLUGGED_STATE_CONNECTED) {
     dim_ms_ = plugged_dim_ms_;
     off_ms_ = plugged_off_ms_;
     suspend_ms_ = plugged_suspend_ms_;
   } else {
-    CHECK(plugged_state_ == kPowerDisconnected);
+    CHECK(plugged_state_ == PLUGGED_STATE_DISCONNECTED);
     dim_ms_ = unplugged_dim_ms_;
     off_ms_ = unplugged_off_ms_;
     suspend_ms_ = unplugged_suspend_ms_;
@@ -461,14 +462,14 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
 
   // Only offset timeouts for states starting with idle state provided.
   switch (state) {
-    case kIdleSuspend:
+    case IDLE_STATE_SUSPEND:
       off_ms_ = prev_off_ms;
-    case kIdleScreenOff:
+    case IDLE_STATE_SCREEN_OFF:
       dim_ms_ = prev_dim_ms;
-    case kIdleDim:
-    case kIdleNormal:
+    case IDLE_STATE_DIM:
+    case IDLE_STATE_NORMAL:
       break;
-    case kIdleUnknown:
+    case IDLE_STATE_UNKNOWN:
     default: {
       LOG(ERROR) << "SetIdleOffset : Improper Idle State";
       break;
@@ -515,23 +516,23 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
 void Daemon::SetActive() {
   idle_->HandleUserActivity(base::TimeTicks::Now());
   int64 idle_time_ms = idle_->GetIdleTimeMs();
-  SetIdleOffset(idle_time_ms, kIdleNormal);
+  SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
   SetIdleState(idle_time_ms);
 }
 
 void Daemon::SetIdleState(int64 idle_time_ms) {
   PowerState old_state = backlight_controller_->GetPowerState();
   if (idle_time_ms >= suspend_ms_ &&
-      !state_control_->IsStateDisabled(kIdleSuspendDisabled)) {
+      !state_control_->IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND)) {
     SetPowerState(BACKLIGHT_SUSPENDED);
     audio_detector_->Disable();
     Suspend();
   } else if (idle_time_ms >= off_ms_ &&
-             !state_control_->IsStateDisabled(kIdleBlankDisabled)) {
+             !state_control_->IsStateDisabled(STATE_CONTROL_IDLE_BLANK)) {
     if (util::IsSessionStarted())
       SetPowerState(BACKLIGHT_IDLE_OFF);
   } else if (idle_time_ms >= dim_ms_ &&
-             !state_control_->IsStateDisabled(kIdleDimDisabled)) {
+             !state_control_->IsStateDisabled(STATE_CONTROL_IDLE_DIM)) {
     SetPowerState(BACKLIGHT_DIM);
   } else if (backlight_controller_->GetPowerState() != BACKLIGHT_ACTIVE) {
     if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
@@ -606,23 +607,24 @@ void Daemon::BrightenScreenIfOff() {
 }
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
-  CHECK(plugged_state_ != kPowerUnknown);
+  CHECK(plugged_state_ != PLUGGED_STATE_UNKNOWN);
   if (is_idle && backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE &&
       dim_ms_ <= idle_time_ms && !locker_.is_locked()) {
     int64 video_time_ms = 0;
     bool video_is_playing = false;
-    int64 dim_timeout = kPowerConnected == plugged_state_ ? plugged_dim_ms_ :
-                                                            unplugged_dim_ms_;
+    int64 dim_timeout = (PLUGGED_STATE_CONNECTED == plugged_state_) ?
+        plugged_dim_ms_ :
+        unplugged_dim_ms_;
     CHECK(video_detector_->GetActivity(dim_timeout,
                                        &video_time_ms,
                                        &video_is_playing));
     if (video_is_playing)
-      SetIdleOffset(idle_time_ms - video_time_ms, kIdleNormal);
+      SetIdleOffset(idle_time_ms - video_time_ms, IDLE_STATE_NORMAL);
   }
   if (is_idle && backlight_controller_->GetPowerState() == BACKLIGHT_DIM &&
       !util::OOBECompleted()) {
     LOG(INFO) << "OOBE not complete. Delaying screenoff until done.";
-    SetIdleOffset(idle_time_ms, kIdleScreenOff);
+    SetIdleOffset(idle_time_ms, IDLE_STATE_SCREEN_OFF);
   }
   if (is_idle &&
       backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED &&
@@ -649,9 +651,10 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
       // Increase the suspend offset by the react time.  Since the offset is
       // calculated relative to the ORIGINAL [un]plugged_suspend_ms_ value, we
       // need to use that here.
-      int64 base_suspend_ms = (plugged_state_ == kPowerConnected) ?
+      int64 base_suspend_ms = (plugged_state_ == PLUGGED_STATE_CONNECTED) ?
                                plugged_suspend_ms_ : unplugged_suspend_ms_;
-      SetIdleOffset(suspend_ms_ - base_suspend_ms + react_ms_, kIdleSuspend);
+      SetIdleOffset(suspend_ms_ - base_suspend_ms + react_ms_,
+                    IDLE_STATE_SUSPEND);
       // This is the tricky part.  Since the audio detection happens |react_ms_|
       // ms before suspend time, and suspend timeout gets offset by |react_ms_|
       // ms each time there is audio, there is no time to disable and reenable
@@ -670,7 +673,7 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   }
   SetIdleState(idle_time_ms);
   if (!is_idle && offset_ms_ != 0)
-    SetIdleOffset(0, kIdleNormal);
+    SetIdleOffset(0, IDLE_STATE_NORMAL);
 
   // Notify once for each threshold.
   IdleThresholds::iterator iter = thresholds_.begin();
@@ -1068,8 +1071,8 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
   bool changed = backlight_controller_->DecreaseBrightness(
       allow_off, BRIGHTNESS_CHANGE_USER_INITIATED);
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
-                               kMetricBrightnessAdjustDown,
-                               kMetricBrightnessAdjustEnumMax);
+                               BRIGHTNESS_ADJUST_DOWN,
+                               BRIGHTNESS_ADJUST_MAX);
   if (!changed) {
     SendBrightnessChangedSignal(
         backlight_controller_->GetTargetBrightnessPercent(),
@@ -1084,8 +1087,8 @@ DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
   bool changed = backlight_controller_->IncreaseBrightness(
       BRIGHTNESS_CHANGE_USER_INITIATED);
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
-                               kMetricBrightnessAdjustUp,
-                               kMetricBrightnessAdjustEnumMax);
+                               BRIGHTNESS_ADJUST_UP,
+                               BRIGHTNESS_ADJUST_MAX);
   if (!changed) {
     SendBrightnessChangedSignal(
         backlight_controller_->GetTargetBrightnessPercent(),
@@ -1125,8 +1128,8 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
   backlight_controller_->SetCurrentBrightnessPercent(
       percent, BRIGHTNESS_CHANGE_USER_INITIATED, style);
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
-                               kMetricBrightnessAdjustAbsolute,
-                               kMetricBrightnessAdjustEnumMax);
+                               BRIGHTNESS_ADJUST_ABSOLUTE,
+                               BRIGHTNESS_ADJUST_MAX);
   return NULL;
 }
 
@@ -1399,8 +1402,8 @@ gboolean Daemon::HandlePollPowerSupply() {
 bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
                                  RollingAverage* full_average) {
   SendEnumMetric(kMetricBatteryInfoSampleName,
-                 kMetricBatteryInfoSampleRead,
-                 kMetricBatteryInfoSampleEnumMax);
+                 BATTERY_INFO_READ,
+                 BATTERY_INFO_MAX);
   // Some devices give us bogus values for battery information right after boot
   // or a power event. We attempt to avoid to do sampling at these times, but
   // this guard is to save us when we do sample a bad value. After working out
@@ -1422,13 +1425,13 @@ bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
     power_status_.averaged_battery_time_to_full = 0;
     power_status_.is_calculating_battery_time = true;
     SendEnumMetric(kMetricBatteryInfoSampleName,
-                   kMetricBatteryInfoSampleBad,
-                   kMetricBatteryInfoSampleEnumMax);
+                   BATTERY_INFO_BAD,
+                   BATTERY_INFO_MAX);
     return false;
   }
   SendEnumMetric(kMetricBatteryInfoSampleName,
-                 kMetricBatteryInfoSampleGood,
-                 kMetricBatteryInfoSampleEnumMax);
+                 BATTERY_INFO_GOOD,
+                 BATTERY_INFO_MAX);
 
   int64 battery_time = 0;
   if (power_status_.line_power_on) {
@@ -1502,7 +1505,7 @@ void Daemon::OnLowBattery(int64 time_threshold_s, int64 time_remaining_s,
     low_battery_ = false;
     return;
   }
-  if (kPowerDisconnected == plugged_state_ && !low_battery_ &&
+  if (PLUGGED_STATE_DISCONNECTED == plugged_state_ && !low_battery_ &&
       time_remaining_s <= time_threshold_s &&
       time_remaining_s > 0) {
     // Shut the system down when low battery condition is encountered.
@@ -1514,9 +1517,9 @@ void Daemon::OnLowBattery(int64 time_threshold_s, int64 time_remaining_s,
   } else if (time_remaining_s < 0) {
     LOG(INFO) << "Battery is at " << time_remaining_s << " seconds remaining, "
               << "may not be fully initialized yet.";
-  } else if (kPowerConnected == plugged_state_ ||
+  } else if (PLUGGED_STATE_CONNECTED == plugged_state_ ||
              time_remaining_s > time_threshold_s) {
-    if (kPowerConnected == plugged_state_) {
+    if (PLUGGED_STATE_CONNECTED == plugged_state_) {
       LOG(INFO) << "Battery condition is safe (" << battery_percentage
                 << "%).  AC is plugged.  "
                 << time_full_s << " seconds to full charge.";
@@ -1590,7 +1593,7 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
            (!GenerateBatteryRemainingAtStartOfSessionMetric(power_status_)))
         << "Start Started: Unable to generate battery remaining metric!";
 
-    if (plugged_state_ == kPowerDisconnected)
+    if (plugged_state_ == PLUGGED_STATE_DISCONNECTED)
       metrics_store_.IncrementNumOfSessionsPerChargeMetric();
 
     current_user_ = user;
@@ -1696,11 +1699,11 @@ void Daemon::SendPowerButtonMetric(bool down,
 }
 
 void Daemon::Shutdown() {
-  if (shutdown_state_ == kShutdownPowerOff) {
+  if (shutdown_state_ == SHUTDOWN_STATE_POWER_OFF) {
     LOG(INFO) << "Shutting down, reason: " << shutdown_reason_;
     util::SendSignalWithStringToPowerM(kShutdownSignal,
                                        shutdown_reason_.c_str());
-  } else if (shutdown_state_ == kShutdownRestarting) {
+  } else if (shutdown_state_ == SHUTDOWN_STATE_RESTARTING) {
     LOG(INFO) << "Restarting";
     util::SendSignalToPowerM(kRestartSignal);
   } else {
@@ -1737,11 +1740,11 @@ gboolean Daemon::PrefChangeHandler(const char* name,
   if (!strcmp(name, kLockOnIdleSuspendPref)) {
     daemon->ReadLockScreenSettings();
     daemon->locker_.Init(daemon->lock_on_idle_suspend_);
-    daemon->SetIdleOffset(0, kIdleNormal);
+    daemon->SetIdleOffset(0, IDLE_STATE_NORMAL);
   }
   if (!strcmp(name, kDisableIdleSuspendPref)) {
     daemon->ReadSuspendSettings();
-    daemon->SetIdleOffset(0, kIdleNormal);
+    daemon->SetIdleOffset(0, IDLE_STATE_NORMAL);
   }
   return TRUE;
 }

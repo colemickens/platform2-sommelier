@@ -70,19 +70,19 @@ extern const time_t kMetricThermalIntervalMs;
 extern const char kMetricBatteryInfoSampleName[];
 
 // Enum for kMetricBrightnessAdjust.
-enum MetricBrightnessAdjustType {
-  kMetricBrightnessAdjustDown,
-  kMetricBrightnessAdjustUp,
-  kMetricBrightnessAdjustAbsolute,
-  kMetricBrightnessAdjustEnumMax,
+enum BrightnessAdjustType {
+  BRIGHTNESS_ADJUST_DOWN,
+  BRIGHTNESS_ADJUST_UP,
+  BRIGHTNESS_ADJUST_ABSOLUTE,
+  BRIGHTNESS_ADJUST_MAX,
 };
 
 // Enum for kMetricBatteryInfoSample.
-enum MetricBatteryInfoSampleResult {
-  kMetricBatteryInfoSampleRead,
-  kMetricBatteryInfoSampleGood,
-  kMetricBatteryInfoSampleBad,
-  kMetricBatteryInfoSampleEnumMax,
+enum BatteryInfoSampleResult {
+  BATTERY_INFO_READ,
+  BATTERY_INFO_GOOD,
+  BATTERY_INFO_BAD,
+  BATTERY_INFO_MAX,
 };
 
 }  // namespace power_manager

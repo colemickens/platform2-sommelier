@@ -104,7 +104,7 @@ InternalBacklightController::InternalBacklightController(
       unplugged_offset_percent_(0.0),
       current_offset_percent_(&plugged_offset_percent_),
       state_(BACKLIGHT_UNINITIALIZED),
-      plugged_state_(kPowerUnknown),
+      plugged_state_(PLUGGED_STATE_UNKNOWN),
       target_percent_(0.0),
       max_level_(0),
       min_visible_level_(0),
@@ -374,13 +374,14 @@ PowerState InternalBacklightController::GetPowerState() const {
 }
 
 bool InternalBacklightController::OnPlugEvent(bool is_plugged) {
-  if ((is_plugged ? kPowerConnected : kPowerDisconnected) == plugged_state_ ||
+  if (((is_plugged ? PLUGGED_STATE_CONNECTED : PLUGGED_STATE_DISCONNECTED) ==
+       plugged_state_) ||
       !is_initialized_)
     return false;
-  bool is_first_time = (plugged_state_ == kPowerUnknown);
+  bool is_first_time = (plugged_state_ == PLUGGED_STATE_UNKNOWN);
   if (is_plugged) {
     current_offset_percent_ = &plugged_offset_percent_;
-    plugged_state_ = kPowerConnected;
+    plugged_state_ = PLUGGED_STATE_CONNECTED;
     // If unplugged brightness is set to greater than plugged brightness,
     // increase the plugged brightness so that it is not less than unplugged
     // brightness.  Otherwise there will be an unnatural decrease in brightness
@@ -395,7 +396,7 @@ bool InternalBacklightController::OnPlugEvent(bool is_plugged) {
     }
   } else {
     current_offset_percent_ = &unplugged_offset_percent_;
-    plugged_state_ = kPowerDisconnected;
+    plugged_state_ = PLUGGED_STATE_DISCONNECTED;
     // If plugged brightness is set to less than unplugged brightness, reduce
     // the unplugged brightness so that it is not greater than plugged
     // brightness.  Otherwise there will be an unnatural increase in brightness
@@ -557,9 +558,9 @@ void InternalBacklightController::ReadPrefs() {
 void InternalBacklightController::WritePrefs() {
   if (!is_initialized_)
     return;
-  if (plugged_state_ == kPowerConnected) {
+  if (plugged_state_ == PLUGGED_STATE_CONNECTED) {
     prefs_->SetDouble(kPluggedBrightnessOffsetPref, plugged_offset_percent_);
-  } else if (plugged_state_ == kPowerDisconnected) {
+  } else if (plugged_state_ == PLUGGED_STATE_DISCONNECTED) {
     prefs_->SetDouble(kUnpluggedBrightnessOffsetPref,
                       unplugged_offset_percent_);
   }

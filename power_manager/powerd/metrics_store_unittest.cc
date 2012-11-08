@@ -119,18 +119,20 @@ class MetricsStoreTest : public Test {
 
 // User facing tests, these are more like functional tests then true unittests
 TEST_F(MetricsStoreTest, ResetNumOfSessionsPerChargeMetric) {
-  fake_store_[MetricsStore::kNumOfSessionsPerChargeMetric] = kTestMetricValue;
+  fake_store_[MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE] =
+      kTestMetricValue;
   metrics_store_.ResetNumOfSessionsPerChargeMetric();
-  EXPECT_EQ(0, fake_store_[MetricsStore::kNumOfSessionsPerChargeMetric]);
+  EXPECT_EQ(0, fake_store_[MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE]);
 }
 
 TEST_F(MetricsStoreTest, IncrementNumOfSessionsPerChargeMetric) {
   metrics_store_.IncrementNumOfSessionsPerChargeMetric();
-  EXPECT_EQ(1, fake_store_[MetricsStore::kNumOfSessionsPerChargeMetric]);
+  EXPECT_EQ(1, fake_store_[MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE]);
 }
 
 TEST_F(MetricsStoreTest, GetNumOfSessionsPerChargeMetric) {
-  fake_store_[MetricsStore::kNumOfSessionsPerChargeMetric] = kTestMetricValue;
+  fake_store_[MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE] =
+      kTestMetricValue;
   EXPECT_EQ(kTestMetricValue,
             metrics_store_.GetNumOfSessionsPerChargeMetric());
 }
@@ -165,7 +167,7 @@ TEST_F(MetricsStoreTest, ConfigureStoreNoFile) {
   EXPECT_TRUE(metrics_store_.ConfigureStore(kTestFileName));
   struct stat st;
   EXPECT_EQ(0, lstat(kTestFileName, &st));
-  EXPECT_EQ(MetricsStore::kNumOfStoredMetrics * sizeof(int), st.st_size);
+  EXPECT_EQ(MetricsStore::STORED_METRIC_MAX * sizeof(int), st.st_size);
 }
 
 TEST_F(MetricsStoreTest, ConfigureStoreFileExists) {
@@ -173,7 +175,7 @@ TEST_F(MetricsStoreTest, ConfigureStoreFileExists) {
   EXPECT_TRUE(metrics_store_.ConfigureStore(kTestFileName));
   struct stat st;
   EXPECT_EQ(0, lstat(kTestFileName, &st));
-  EXPECT_EQ(MetricsStore::kNumOfStoredMetrics * sizeof(int), st.st_size);
+  EXPECT_EQ(MetricsStore::STORED_METRIC_MAX * sizeof(int), st.st_size);
 }
 
 TEST_F(MetricsStoreTest, OpenStoreFileNoFile) {
@@ -282,9 +284,10 @@ TEST_F(MetricsStoreTest, CloseStoreBadMap) {
 }
 
 TEST_F(MetricsStoreTest, ResetMetricSuccess) {
-  fake_store_[MetricsStore::kNumOfSessionsPerChargeMetric] = kTestMetricValue;
-  metrics_store_.ResetMetric(MetricsStore::kNumOfSessionsPerChargeMetric);
-  EXPECT_EQ(0, fake_store_[MetricsStore::kNumOfSessionsPerChargeMetric]);
+  fake_store_[MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE] =
+      kTestMetricValue;
+  metrics_store_.ResetMetric(MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE);
+  EXPECT_EQ(0, fake_store_[MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE]);
 }
 
 TEST_F(MetricsStoreTest, ResetMetricUnderflow) {
@@ -293,12 +296,13 @@ TEST_F(MetricsStoreTest, ResetMetricUnderflow) {
 }
 
 TEST_F(MetricsStoreTest, ResetMetricOverflow) {
-  metrics_store_.ResetMetric(MetricsStore::kNumOfStoredMetrics);
+  metrics_store_.ResetMetric(MetricsStore::STORED_METRIC_MAX);
 }
 
 TEST_F(MetricsStoreTest, IncrementMetricSuccess) {
-  metrics_store_.IncrementMetric(MetricsStore::kNumOfSessionsPerChargeMetric);
-  EXPECT_EQ(1, fake_store_[MetricsStore::kNumOfSessionsPerChargeMetric]);
+  metrics_store_.IncrementMetric(
+      MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE);
+  EXPECT_EQ(1, fake_store_[MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE]);
 }
 
 TEST_F(MetricsStoreTest, IncrementMetricUnderflow) {
@@ -307,14 +311,14 @@ TEST_F(MetricsStoreTest, IncrementMetricUnderflow) {
 }
 
 TEST_F(MetricsStoreTest, IncrementMetricOverflow) {
-  metrics_store_.IncrementMetric(MetricsStore::kNumOfStoredMetrics);
+  metrics_store_.IncrementMetric(MetricsStore::STORED_METRIC_MAX);
 }
 
 TEST_F(MetricsStoreTest, SetMetricSuccess) {
-  metrics_store_.SetMetric(MetricsStore::kNumOfSessionsPerChargeMetric,
+  metrics_store_.SetMetric(MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE,
                            kTestMetricValue);
   EXPECT_EQ(kTestMetricValue,
-            fake_store_[MetricsStore::kNumOfSessionsPerChargeMetric]);
+            fake_store_[MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE]);
 }
 
 TEST_F(MetricsStoreTest, SetMetricUnderflow) {
@@ -323,15 +327,16 @@ TEST_F(MetricsStoreTest, SetMetricUnderflow) {
 }
 
 TEST_F(MetricsStoreTest, SetMetricOverflow) {
-  metrics_store_.SetMetric(MetricsStore::kNumOfStoredMetrics,
+  metrics_store_.SetMetric(MetricsStore::STORED_METRIC_MAX,
                            kTestMetricValue);
 }
 
 TEST_F(MetricsStoreTest, GetMetricSuccess) {
-  fake_store_[MetricsStore::kNumOfSessionsPerChargeMetric] = kTestMetricValue;
+  fake_store_[MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE] =
+      kTestMetricValue;
   EXPECT_EQ(kTestMetricValue,
             metrics_store_.GetMetric(
-                MetricsStore::kNumOfSessionsPerChargeMetric));
+                MetricsStore::STORED_METRIC_SESSIONS_PER_CHARGE));
 }
 
 TEST_F(MetricsStoreTest, GetMetricUnderflow) {
@@ -343,7 +348,7 @@ TEST_F(MetricsStoreTest, GetMetricUnderflow) {
 TEST_F(MetricsStoreTest, GetMetricOverflow) {
   EXPECT_EQ(
       metrics_store_.GetMetric(static_cast<MetricsStore::StoredMetric>(
-          MetricsStore::kNumOfStoredMetrics)),
+          MetricsStore::STORED_METRIC_MAX)),
       -1);
 }
 

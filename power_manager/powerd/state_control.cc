@@ -255,18 +255,18 @@ bool StateControl::IsStateDisabled(StateControlStates state) {
   }
 
   switch (state) {
-  case kIdleDimDisabled:
+  case STATE_CONTROL_IDLE_DIM:
     LOG(INFO) << "Checking disable_idle_dim. Value = " << disable_idle_dim_;
     return(disable_idle_dim_);
-  case kIdleBlankDisabled:
+  case STATE_CONTROL_IDLE_BLANK:
     LOG(INFO) << "Checking disable_idle_blank. Value = "
               << disable_idle_blank_;
     return(disable_idle_blank_);
-  case kIdleSuspendDisabled:
+  case STATE_CONTROL_IDLE_SUSPEND:
     LOG(INFO) << "Checking disable_idle_suspend. Value = "
               << disable_idle_suspend_;
     return(disable_idle_suspend_);
-  case kLidSuspendDisabled:
+  case STATE_CONTROL_LID_SUSPEND:
     LOG(INFO) << "Checking disable_lid_suspend. Value = "
               << disable_lid_suspend_;
     return(disable_lid_suspend_);

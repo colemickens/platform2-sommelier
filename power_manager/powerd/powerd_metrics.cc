@@ -82,7 +82,7 @@ bool Daemon::GenerateBatteryDischargeRateMetric(const PowerStatus& info,
                                                 time_t now) {
   // The battery discharge rate metric is relevant and collected only
   // when running on battery.
-  if (plugged_state_ != kPowerDisconnected)
+  if (plugged_state_ != PLUGGED_STATE_DISCONNECTED)
     return false;
 
   // Converts the discharge rate from W to mW.
@@ -109,7 +109,7 @@ void Daemon::GenerateBatteryInfoWhenChargeStartsMetric(
     const PluggedState& plugged_state,
     const PowerStatus& power_status) {
   // Need to make sure that we are actually charging a battery
-  if (plugged_state != kPowerConnected)
+  if (plugged_state != PLUGGED_STATE_CONNECTED)
     return;
   if (!power_status.battery_is_present)
     return;
@@ -272,10 +272,10 @@ void Daemon::HandleNumOfSessionsPerChargeOnSetPlugged(
     MetricsStore* metrics_store,
     const PluggedState& plugged_state) {
   CHECK(metrics_store != NULL);
-  if (plugged_state == kPowerConnected) {
+  if (plugged_state == PLUGGED_STATE_CONNECTED) {
     LOG_IF(ERROR, !GenerateNumOfSessionsPerChargeMetric(metrics_store))
         << "Failed to send NumOfSessionsPerCharge metrics";
-  } else if (plugged_state == kPowerDisconnected) {
+  } else if (plugged_state == PLUGGED_STATE_DISCONNECTED) {
     int count = metrics_store->GetNumOfSessionsPerChargeMetric();
     switch (count) {
       case 1:
@@ -308,9 +308,9 @@ bool Daemon::SendEnumMetric(const std::string& name, int sample, int max) {
 bool Daemon::SendMetricWithPowerState(const std::string& name, int sample,
                                       int min, int max, int nbuckets) {
   std::string name_with_power_state = name;
-  if (plugged_state_ == kPowerDisconnected) {
+  if (plugged_state_ == PLUGGED_STATE_DISCONNECTED) {
     name_with_power_state += "OnBattery";
-  } else if (plugged_state_ == kPowerConnected) {
+  } else if (plugged_state_ == PLUGGED_STATE_CONNECTED) {
     name_with_power_state += "OnAC";
   } else {
     return false;
@@ -321,9 +321,9 @@ bool Daemon::SendMetricWithPowerState(const std::string& name, int sample,
 bool Daemon::SendEnumMetricWithPowerState(const std::string& name, int sample,
                                           int max) {
   std::string name_with_power_state = name;
-  if (plugged_state_ == kPowerDisconnected) {
+  if (plugged_state_ == PLUGGED_STATE_DISCONNECTED) {
     name_with_power_state += "OnBattery";
-  } else if (plugged_state_ == kPowerConnected) {
+  } else if (plugged_state_ == PLUGGED_STATE_CONNECTED) {
     name_with_power_state += "OnAC";
   } else {
     return false;

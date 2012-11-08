@@ -86,15 +86,15 @@ class PowerManDaemon {
   bool CancelDBusRequest();
 
   enum SessionManagerState {
-    kSessionStarted,
-    kSessionStopping,
-    kSessionStopped,
+    SESSION_MANAGER_STARTED,
+    SESSION_MANAGER_STOPPING,
+    SESSION_MANAGER_STOPPED,
   };
 
   enum PowerManagerState {
-    kPowerManagerUnknown,
-    kPowerManagerAlive,
-    kPowerManagerDead,
+    POWER_MANAGER_UNKNOWN,
+    POWER_MANAGER_ALIVE,
+    POWER_MANAGER_DEAD,
   };
 
   // Handler for NameOwnerChanged dbus messages.  See dbus-specification

@@ -53,8 +53,8 @@ PowerManDaemon::PowerManDaemon(PowerPrefs* prefs,
       suspend_pid_(0),
       lid_id_(0),
       powerd_id_(0),
-      session_state_(kSessionStopped),
-      powerd_state_(kPowerManagerUnknown),
+      session_state_(SESSION_MANAGER_STOPPED),
+      powerd_state_(POWER_MANAGER_UNKNOWN),
       run_dir_(run_dir),
       console_fd_(-1) {}
 
@@ -115,7 +115,7 @@ gboolean PowerManDaemon::CheckLidClosed(unsigned int lid_id,
   unsigned int wakeup_count;
   // Same lid closed event and powerd state has changed.
   if ((lidstate_ == LID_STATE_CLOSED) && (lid_id_ == lid_id) &&
-      ((powerd_state_ != kPowerManagerAlive) || (powerd_id_ != powerd_id))) {
+      ((powerd_state_ != POWER_MANAGER_ALIVE) || (powerd_id_ != powerd_id))) {
     LOG(INFO) << "Forced suspend, powerd unstable with pending suspend";
     if (!util::GetWakeupCount(&wakeup_count)) {
       LOG(ERROR) << "Could not get wakeup count trying to suspend";
@@ -167,11 +167,11 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
                 << (daemon->lidstate_ == LID_STATE_CLOSED ?
                     "closed." : "opened.")
                 << " powerd "
-                << (daemon->powerd_state_ == kPowerManagerDead ?
-                    "dead" : (daemon->powerd_state_ == kPowerManagerAlive ?
+                << (daemon->powerd_state_ == POWER_MANAGER_DEAD ?
+                    "dead" : (daemon->powerd_state_ == POWER_MANAGER_ALIVE ?
                               "alive" : "unknown"))
                 << ". session "
-                << (daemon->session_state_ == kSessionStarted ?
+                << (daemon->session_state_ == SESSION_MANAGER_STARTED ?
                     "started." : "stopped");
       if (!daemon->use_input_for_lid_) {
         LOG(INFO) << "Ignoring lid.";
@@ -295,11 +295,11 @@ bool PowerManDaemon::HandleSessionManagerStateChangedSignal(
                             DBUS_TYPE_STRING, &user,
                             DBUS_TYPE_INVALID)) {
     if (strcmp(state, "started") == 0)
-      session_state_ = kSessionStarted;
+      session_state_ = SESSION_MANAGER_STARTED;
     else if (strcmp(state, "stopping") == 0)
-      session_state_ = kSessionStopping;
+      session_state_ = SESSION_MANAGER_STOPPING;
     else if (strcmp(state, "stopped") == 0)
-      session_state_ = kSessionStopped;
+      session_state_ = SESSION_MANAGER_STOPPED;
     else
       LOG(WARNING) << "Unknown session state : " << state;
   } else {
@@ -361,10 +361,10 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
                << " new_owner:" << new_owner;
     daemon->powerd_id_++;
     if (strlen(new_owner) == 0) {
-      daemon->powerd_state_ = kPowerManagerDead;
+      daemon->powerd_state_ = POWER_MANAGER_DEAD;
       LOG(WARNING) << "Powerd has stopped";
     } else if (strlen(old_owner) == 0) {
-      daemon->powerd_state_ = kPowerManagerAlive;
+      daemon->powerd_state_ = POWER_MANAGER_ALIVE;
       LOG(INFO) << "Powerd has started";
       if (daemon->use_input_for_lid_ &&
           daemon->lidstate_ == LID_STATE_CLOSED) {
@@ -372,7 +372,7 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
         daemon->SendInputEventSignal(INPUT_LID, BUTTON_DOWN);
       }
     } else {
-      daemon->powerd_state_ = kPowerManagerUnknown;
+      daemon->powerd_state_ = POWER_MANAGER_UNKNOWN;
       LOG(WARNING) << "Unrecognized DBus NameOwnerChanged transition of powerd";
     }
   }

@@ -16,7 +16,7 @@ namespace power_manager {
 
 const char kMetricsStorePath[] = "/var/log/power_manager/powerd-metrics-store";
 const int kSizeOfStoredMetrics =
-    MetricsStore::kNumOfStoredMetrics * sizeof(int);
+    MetricsStore::STORED_METRIC_MAX * sizeof(int);
 const int kReadWriteFlags = S_IRUSR | S_IWUSR;
 
 MetricsStore::MetricsStore()
@@ -54,15 +54,15 @@ bool MetricsStore::Init() {
 }
 
 void MetricsStore::ResetNumOfSessionsPerChargeMetric() {
-  ResetMetric(kNumOfSessionsPerChargeMetric);
+  ResetMetric(STORED_METRIC_SESSIONS_PER_CHARGE);
 }
 
 void MetricsStore::IncrementNumOfSessionsPerChargeMetric() {
-  IncrementMetric(kNumOfSessionsPerChargeMetric);
+  IncrementMetric(STORED_METRIC_SESSIONS_PER_CHARGE);
 }
 
 int MetricsStore::GetNumOfSessionsPerChargeMetric() {
-  return GetMetric(kNumOfSessionsPerChargeMetric);
+  return GetMetric(STORED_METRIC_SESSIONS_PER_CHARGE);
 }
 
 bool MetricsStore::IsInitialized() const {
@@ -227,7 +227,7 @@ void MetricsStore::ResetMetric(const StoredMetric& metric) {
     return;
   }
 
-  if ((metric < 0) || (metric >= kNumOfStoredMetrics)) {
+  if ((metric < 0) || (metric >= STORED_METRIC_MAX)) {
     LOG(WARNING) << "ResetMetric: Metric index out of range, metric = "
                  << metric;
     return;
@@ -242,7 +242,7 @@ void MetricsStore::IncrementMetric(const StoredMetric& metric) {
     return;
   }
 
-  if ((metric < 0) || (metric >= kNumOfStoredMetrics)) {
+  if ((metric < 0) || (metric >= STORED_METRIC_MAX)) {
     LOG(WARNING) << "IncrementMetric: Metric index out of range, metric = "
                  << metric;
     return;
@@ -261,7 +261,7 @@ void MetricsStore::SetMetric(const StoredMetric& metric, const int& value) {
     return;
   }
 
-  if ((metric < 0) || (metric >= kNumOfStoredMetrics)) {
+  if ((metric < 0) || (metric >= STORED_METRIC_MAX)) {
     LOG(WARNING) << "SetMetric: Metric index out of range, metric = " << metric;
     return;
   }
@@ -276,7 +276,7 @@ int MetricsStore::GetMetric(const StoredMetric& metric) {
     return -1;
   }
 
-  if ((metric < 0) || (metric >= kNumOfStoredMetrics)) {
+  if ((metric < 0) || (metric >= STORED_METRIC_MAX)) {
     LOG(WARNING) << "GetMetric: Metric index out of range, metric = " << metric;
     return -1;
   }

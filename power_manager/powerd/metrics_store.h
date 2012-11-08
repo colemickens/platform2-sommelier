@@ -17,8 +17,8 @@ extern const int kReadWriteFlags;
 class MetricsStore {
  public:
   enum StoredMetric {
-    kNumOfSessionsPerChargeMetric = 0,
-    kNumOfStoredMetrics
+    STORED_METRIC_SESSIONS_PER_CHARGE = 0,
+    STORED_METRIC_MAX
   };
 
   MetricsStore();

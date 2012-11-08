@@ -26,9 +26,12 @@ struct StateControlInfo {
   bool disable_lid_suspend;
 };
 
-enum StateControlStates { kIdleDimDisabled, kIdleBlankDisabled,
-                          kIdleSuspendDisabled, kLidSuspendDisabled };
-
+enum StateControlStates {
+  STATE_CONTROL_IDLE_DIM,
+  STATE_CONTROL_IDLE_BLANK,
+  STATE_CONTROL_IDLE_SUSPEND,
+  STATE_CONTROL_LID_SUSPEND
+};
 
 // StateControl is used to manage requests from external sources to
 // disable parts of the state machine temporarily.  Applications send
