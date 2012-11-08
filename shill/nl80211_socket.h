@@ -66,29 +66,8 @@ class Nl80211Socket : public NetlinkSocket {
   }
 
  private:
-  struct HandlerArgs {
-    HandlerArgs() : group(NULL), id(0) {}
-    HandlerArgs(const char *group_arg, int id_arg) :
-      group(group_arg), id(id_arg) {}
-    const char *group;
-    int id;
-  };
-
-  // Contains 'nl80211', the family name of the netlink socket.
+  // The family name of this particular netlink socket.
   static const char kSocketFamilyName[];
-
-  // Method called by cfg80211 to acknowledge messages sent to cfg80211.
-  static int OnAck(nl_msg *unused_msg, void *arg);
-
-  // Method called by cfg80211 for message errors.
-  static int OnError(sockaddr_nl *unused_nla, nlmsgerr *err, void *arg);
-
-  // Netlink Callback for handling response to 'CTRL_CMD_GETFAMILY' message.
-  static int OnFamilyResponse(nl_msg *msg, void *arg);
-
-  // Gets an ID for a specified type of multicast messages sent from the
-  // cfg80211 module.
-  virtual int GetMulticastGroupId(const std::string &group);
 
   // The id returned by a call to 'genl_ctrl_resolve'.
   int nl80211_id_;
