@@ -27,6 +27,9 @@ namespace wimax_manager {
 
 namespace {
 
+// Timeout for connecting to a network.
+const int kConnectTimeoutInSeconds = 60;
+
 string GetEAPUserIdentity(const DictionaryValue &parameters) {
   string user_identity;
   if (parameters.GetString(kEAPUserIdentity, &user_identity))
@@ -84,6 +87,15 @@ gboolean OnDeferredStatusUpdate(gpointer data) {
   return FALSE;
 }
 
+gboolean OnConnectTimeout(gpointer data) {
+  CHECK(data);
+
+  reinterpret_cast<GdmDevice *>(data)->CancelConnectOnTimeout();
+
+  // Return FALSE as this is a one-shot update.
+  return FALSE;
+}
+
 }  // namespace
 
 GdmDevice::GdmDevice(uint8 index, const string &name,
@@ -92,6 +104,7 @@ GdmDevice::GdmDevice(uint8 index, const string &name,
       driver_(driver),
       open_(false),
       connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging),
+      connect_timeout_id_(0),
       network_scan_timeout_id_(0),
       status_update_timeout_id_(0),
       current_network_identifier_(Network::kInvalidIdentifier) {
@@ -265,6 +278,14 @@ bool GdmDevice::UpdateStatus() {
     LOG(ERROR) << "Failed to get status of device '" << name() << "'";
     return false;
   }
+
+  // Cancel the timeout for connect if the device is no longer in the
+  // 'connecting' state.
+  if (connect_timeout_id_ != 0 && status() != kDeviceStatusConnecting) {
+    g_source_remove(connect_timeout_id_);
+    connect_timeout_id_ = 0;
+  }
+
   if (!driver_->GetDeviceRFInfo(this)) {
     LOG(ERROR) << "Failed to get RF information of device '" << name() << "'";
     return false;
@@ -347,6 +368,11 @@ bool GdmDevice::Connect(const Network &network,
 
   current_network_identifier_ = network.identifier();
   current_user_identity_ = user_identity;
+
+  // Schedule a timeout to abort the connection attempt in case the device
+  // is stuck at the 'connecting' state.
+  connect_timeout_id_ =
+      g_timeout_add_seconds(kConnectTimeoutInSeconds, OnConnectTimeout, this);
   return true;
 }
 
@@ -366,6 +392,12 @@ bool GdmDevice::Disconnect() {
     return false;
   }
   return true;
+}
+
+void GdmDevice::CancelConnectOnTimeout() {
+  LOG(WARNING) << "Timed out connecting to the network.";
+  connect_timeout_id_ = 0;
+  Disconnect();
 }
 
 void GdmDevice::ClearCurrentConnectionProfile() {

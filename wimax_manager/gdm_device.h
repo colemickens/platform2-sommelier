@@ -36,6 +36,7 @@ class GdmDevice : public Device {
   virtual bool Connect(const Network &network,
                        const base::DictionaryValue &parameters);
   virtual bool Disconnect();
+  void CancelConnectOnTimeout();
 
  protected:
   virtual void UpdateNetworkScanInterval();
@@ -64,6 +65,7 @@ class GdmDevice : public Device {
   base::WeakPtr<GdmDriver> driver_;
   bool open_;
   WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress_;
+  guint connect_timeout_id_;
   guint network_scan_timeout_id_;
   guint status_update_timeout_id_;
   Network::Identifier current_network_identifier_;
