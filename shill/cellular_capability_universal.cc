@@ -490,6 +490,13 @@ void CellularCapabilityUniversal::GetProperties() {
 
 string CellularCapabilityUniversal::CreateFriendlyServiceName() {
   SLOG(Cellular, 2) << __func__ << ": " << GetRoamingStateString();
+
+  // If |serving_operator_| does not have an operator ID, call
+  // UpdateOperatorInfo() to use |operator_id_| as a fallback when appropriate.
+  if (serving_operator_.GetCode().empty()) {
+    UpdateOperatorInfo();
+  }
+
   string name = serving_operator_.GetName();
   string home_provider_name = cellular()->home_provider().GetName();
   if (!name.empty()) {
@@ -576,6 +583,17 @@ void CellularCapabilityUniversal::UpdateOLP() {
 
 void CellularCapabilityUniversal::UpdateOperatorInfo() {
   SLOG(Cellular, 2) << __func__;
+
+  // If service activation is required, |serving_operator_| may not have an
+  // operator ID. Use |operator_id_| as a fallback when available.
+  // |operator_id_| is retrieved from the SIM card.
+  if (IsServiceActivationRequired() && serving_operator_.GetCode().empty() &&
+      !operator_id_.empty()) {
+    SLOG(Cellular, 2) << "Assuming operator '" << operator_id_
+                      << "' as serving operator.";
+    serving_operator_.SetCode(operator_id_);
+  }
+
   const string &network_id = serving_operator_.GetCode();
   if (!network_id.empty()) {
     SLOG(Cellular, 2) << "Looking up network id: " << network_id;

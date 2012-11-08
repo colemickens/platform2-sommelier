@@ -142,6 +142,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfo);
+  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId);
 
   // Methods used in starting a modem
   void EnableModem(Error *error, const ResultCallback &callback);

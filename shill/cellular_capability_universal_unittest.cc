@@ -932,8 +932,8 @@ TEST_F(CellularCapabilityUniversalTest, UpdateOLP) {
   cellular_->cellular_operator_info_ = &cellular_operator_info_;
 
   EXPECT_CALL(cellular_operator_info_, GetOLP(capability_->operator_id_, _))
-      .WillOnce(Invoke(&get_olp_helper,
-                       &MockCellularOperatorInfoGetOLPHelper::GetOLP));
+      .WillRepeatedly(Invoke(&get_olp_helper,
+                             &MockCellularOperatorInfoGetOLPHelper::GetOLP));
 
   SetService();
   capability_->UpdateOLP();
@@ -963,10 +963,57 @@ TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfo) {
   EXPECT_EQ(kTestOperator, cellular_->service()->serving_operator().GetName());
 }
 
+TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId) {
+  static const char kOperatorName[] = "Swisscom";
+  static const char kOperatorId[] = "22801";
+  InitProviderDB();
+  capability_->serving_operator_.SetCode("");
+  SetService();
+  capability_->UpdateOperatorInfo();
+  EXPECT_EQ("", capability_->serving_operator_.GetName());
+  EXPECT_EQ("", capability_->serving_operator_.GetCountry());
+  EXPECT_EQ("", cellular_->service()->serving_operator().GetName());
+
+  capability_->operator_id_ = kOperatorId;
+
+  // Service activation is not needed
+  cellular_->cellular_operator_info_ = &cellular_operator_info_;
+  EXPECT_CALL(cellular_operator_info_, GetOLP(_, _))
+      .WillOnce(Return(false));
+  capability_->UpdateOperatorInfo();
+  EXPECT_EQ("", capability_->serving_operator_.GetName());
+  EXPECT_EQ("", capability_->serving_operator_.GetCountry());
+  EXPECT_EQ("", cellular_->service()->serving_operator().GetName());
+
+  // Service activation is needed
+  capability_->mdn_ = "0000000000";
+  cellular_->cellular_operator_info_ = &cellular_operator_info_;
+  EXPECT_CALL(cellular_operator_info_, GetOLP(_, _))
+      .WillOnce(Return(true));
+
+  capability_->UpdateOperatorInfo();
+  EXPECT_EQ(kOperatorId, capability_->serving_operator_.GetCode());
+  EXPECT_EQ(kOperatorName, capability_->serving_operator_.GetName());
+  EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
+  EXPECT_EQ(kOperatorName, cellular_->service()->serving_operator().GetName());
+}
+
 TEST_F(CellularCapabilityUniversalTest, CreateFriendlyServiceName) {
   CellularCapabilityUniversal::friendly_service_name_id_ = 0;
   EXPECT_EQ("GSMNetwork0", capability_->CreateFriendlyServiceName());
   EXPECT_EQ("GSMNetwork1", capability_->CreateFriendlyServiceName());
+
+  // Service activation is not needed
+  capability_->operator_id_ = "0123";
+  EXPECT_EQ("GSMNetwork2", capability_->CreateFriendlyServiceName());
+
+  // Service activation is needed
+  capability_->mdn_ = "0000000000";
+  cellular_->cellular_operator_info_ = &cellular_operator_info_;
+  EXPECT_CALL(cellular_operator_info_, GetOLP(_, _))
+      .WillOnce(Return(true));
+  EXPECT_EQ("cellular_0123", capability_->CreateFriendlyServiceName());
+  EXPECT_EQ("0123", capability_->serving_operator_.GetCode());
 
   capability_->serving_operator_.SetCode("1234");
   EXPECT_EQ("cellular_1234", capability_->CreateFriendlyServiceName());
