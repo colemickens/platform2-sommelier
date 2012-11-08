@@ -1977,7 +1977,7 @@ void UserBoundNlMessageDataCollector::CollectDebugData(
                << "k" << message.GetMessageTypeString()
                << "[] = {";
 
-    int payload_bytes = nlmsg_len(msg);
+    int payload_bytes = nlmsg_datalen(msg);
 
     size_t bytes = nlmsg_total_size(payload_bytes);
     unsigned char *rawdata = reinterpret_cast<unsigned char *>(msg);

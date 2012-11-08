@@ -43,20 +43,6 @@ struct nl_msg;
 
 namespace shill {
 
-// libnl 1.x compatibility code -- these functions provide libnl v2.x/v3.x
-// interfaces for systems that only have v1.x libraries.
-#if !defined(CONFIG_LIBNL20) && !defined(CONFIG_LIBNL30)
-#define nl_sock nl_handle
-static inline struct nl_handle *nl_socket_alloc(void) {
-  return nl_handle_alloc();
-}
-
-static inline void nl_socket_free(struct nl_sock *h) {
-  nl_handle_destroy(h);
-}
-#endif /* CONFIG_LIBNL20 && CONFIG_LIBNL30 */
-
-
 // Provides an abstraction to a netlink socket.  See
 // http://www.infradead.org/~tgr/libnl/ for documentation on how netlink
 // sockets work.

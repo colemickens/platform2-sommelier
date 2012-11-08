@@ -34,7 +34,8 @@ SHILL_PC_DEPS = \
 	gio-2.0 \
 	glib-2.0 \
 	ModemManager \
-	libnl-1
+	libnl-3.0 \
+	libnl-genl-3.0
 NSS_GET_CERT_PC_DEPS = $(COMMON_PC_DEPS) nss
 OPENVPN_SCRIPT_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
 PPPD_PLUGIN_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
