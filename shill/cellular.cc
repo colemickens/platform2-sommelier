@@ -343,6 +343,12 @@ void Cellular::Scan(Error *error) {
 
 void Cellular::HandleNewRegistrationState() {
   SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
+  if (capability_->IsServiceActivationRequired()) {
+    if (state_ == kStateEnabled && !service_.get()) {
+      CreateService();
+    }
+    return;
+  }
   if (!capability_->IsRegistered()) {
     DestroyService();
     if (state_ == kStateLinked ||
@@ -440,7 +446,7 @@ void Cellular::OnConnecting() {
 void Cellular::OnConnected() {
   SLOG(Cellular, 2) << __func__;
   if (state_ == kStateConnected || state_ == kStateLinked) {
-    VLOG(2) << "Already connected";
+    SLOG(Cellular, 2) << "Already connected";
     return;
   }
   Closure start_cb = Bind(&Cellular::StartTermination,

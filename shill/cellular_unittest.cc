@@ -10,15 +10,16 @@
 
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
-#include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
 #include "shill/cellular_capability_cdma.h"
 #include "shill/cellular_capability_classic.h"
 #include "shill/cellular_capability_gsm.h"
+#include "shill/cellular_capability_universal.h"
 #include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/mock_cellular_operator_info.h"
 #include "shill/mock_cellular_service.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
@@ -34,6 +35,10 @@
 #include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
+
+// mm/mm-modem.h must be included after cellular_capability_universal.h
+// in order to allow MM_MODEM_CDMA_* to be defined properly.
+#include <mm/mm-modem.h>
 
 using base::Bind;
 using base::Unretained;
@@ -376,8 +381,14 @@ class CellularTest : public testing::Test {
     return dynamic_cast<CellularCapabilityGSM *>(device_->capability_.get());
   }
 
+  CellularCapabilityUniversal *GetCapabilityUniversal() {
+    return dynamic_cast<CellularCapabilityUniversal *>(
+        device_->capability_.get());
+  }
+
   NiceMockControl control_interface_;
   EventDispatcher dispatcher_;
+  MockCellularOperatorInfo cellular_operator_info_;
   MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
@@ -671,6 +682,24 @@ TEST_F(CellularTest, ConnectFailureNoService) {
   GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
   Error error;
   device_->Connect(&error);
+}
+
+TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
+  SetCellularType(Cellular::kTypeUniversal);
+
+  // Service activation is needed
+  GetCapabilityUniversal()->mdn_ = "0000000000";
+  device_->cellular_operator_info_ = &cellular_operator_info_;
+  EXPECT_CALL(cellular_operator_info_, GetOLP(_, _))
+      .WillRepeatedly(Return(true));
+
+  device_->state_ = Cellular::kStateDisabled;
+  device_->HandleNewRegistrationState();
+  EXPECT_FALSE(device_->service_.get());
+
+  device_->state_ = Cellular::kStateEnabled;
+  device_->HandleNewRegistrationState();
+  EXPECT_TRUE(device_->service_.get());
 }
 
 TEST_F(CellularTest, ModemStateChangeEnable) {
