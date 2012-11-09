@@ -17,12 +17,12 @@ namespace power_manager {
 // periods.
 class ActivityDetectorInterface {
  public:
-  // Sets |is_active| to true if audio activity has been detected, otherwise
-  // sets |is_active| to false.  This is based on whether there has been any
+  // Sets |is_active| to true if activity has been detected, otherwise sets
+  // |is_active| to false.  This is based on whether there has been any
   // activity detected within the last |activity_threshold_ms| ms.
   //
-  // On success, returns true; Returns false if the audio state could not be
-  // determined or the audio file could not be read
+  // On success, returns true; Returns false if the activity state could not be
+  // determined.
   virtual bool GetActivity(int64 activity_threshold_ms,
                            int64* time_since_activity_ms,
                            bool* is_active) = 0;
@@ -32,8 +32,8 @@ class ActivityDetectorInterface {
   virtual void Enable() = 0;
   virtual void Disable() = 0;
 
-  // Called by external activity sources to notify detector of activity.
-  // This does not have to be implemented by classes using this interface, so it
+  // Called by external activity sources to notify detector of activity. This
+  // does not have to be implemented by classes using this interface, so it
   // is not a pure virtual function.
   virtual void HandleActivity(const base::TimeTicks& last_activity_time) {}
 

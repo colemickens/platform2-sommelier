@@ -87,7 +87,6 @@ class Daemon : public BacklightControllerObserver,
          PowerPrefs* prefs,
          MetricsLibraryInterface* metrics_lib,
          VideoDetector* video_detector,
-         ActivityDetectorInterface* audio_detector,
          IdleDetector* idle,
          KeyboardBacklightController* keyboard_controller,
          AmbientLightSensor* als,
@@ -510,7 +509,6 @@ class Daemon : public BacklightControllerObserver,
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
   VideoDetector* video_detector_;
-  ActivityDetectorInterface* audio_detector_;
   IdleDetector* idle_;
   KeyboardBacklightController* keyboard_controller_;  // non-owned
   AmbientLightSensor* light_sensor_; // non-owned

@@ -20,7 +20,6 @@
 #include "chromeos/dbus/dbus.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
-#include "power_manager/powerd/audio_detector.h"
 #include "power_manager/powerd/backlight_client.h"
 #include "power_manager/powerd/idle_detector.h"
 #include "power_manager/powerd/monitor_reconfigure.h"
@@ -217,8 +216,6 @@ int main(int argc, char* argv[]) {
   video_detector.Init();
   if (keyboard_backlight_controller.get())
     video_detector.AddObserver(keyboard_backlight_controller.get());
-  power_manager::AudioDetector audio_detector;
-  audio_detector.Init();
   power_manager::IdleDetector idle;
   metrics_lib.Init();
   FilePath run_dir(FLAGS_run_dir);
@@ -226,7 +223,6 @@ int main(int argc, char* argv[]) {
                                &prefs,
                                &metrics_lib,
                                &video_detector,
-                               &audio_detector,
                                &idle,
                                keyboard_backlight_controller.get(),
                                als.get(),

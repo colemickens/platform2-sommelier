@@ -43,7 +43,6 @@ LIBPOWERD_OBJS = power_state_control.pb.o \
                  power_supply_properties.pb.o \
                  powerd/ambient_light_sensor.o \
                  powerd/async_file_reader.o \
-                 powerd/audio_detector.o \
                  powerd/backlight_client.o \
                  powerd/file_tagger.o \
                  powerd/idle_detector.o \

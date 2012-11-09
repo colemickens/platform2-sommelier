@@ -87,7 +87,7 @@ class DaemonTest : public Test {
         backlight_ctl_(&backlight_, &prefs_, NULL),
 #endif
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
-                &audio_detector_, &idle_, NULL, NULL, FilePath(".")),
+                &idle_, NULL, NULL, FilePath(".")),
         status_(&daemon_.power_status_) {}
 
   virtual void SetUp() {
@@ -290,7 +290,6 @@ class DaemonTest : public Test {
 
   StrictMock<MockBacklight> backlight_;
   StrictMock<MockVideoDetector> video_detector_;
-  StrictMock<MockActivityDetector> audio_detector_;
   StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;
   PowerPrefs prefs_;

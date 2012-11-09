@@ -91,7 +91,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
                PowerPrefs* prefs,
                MetricsLibraryInterface* metrics_lib,
                VideoDetector* video_detector,
-               ActivityDetectorInterface* audio_detector,
                IdleDetector* idle,
                KeyboardBacklightController* keyboard_controller,
                AmbientLightSensor* als,
@@ -100,7 +99,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       prefs_(prefs),
       metrics_lib_(metrics_lib),
       video_detector_(video_detector),
-      audio_detector_(audio_detector),
       idle_(idle),
       keyboard_controller_(keyboard_controller),
       light_sensor_(als),
@@ -525,7 +523,6 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
   if (idle_time_ms >= suspend_ms_ &&
       !state_control_->IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND)) {
     SetPowerState(BACKLIGHT_SUSPENDED);
-    audio_detector_->Disable();
     Suspend();
   } else if (idle_time_ms >= off_ms_ &&
              !state_control_->IsStateDisabled(STATE_CONTROL_IDLE_BLANK)) {
@@ -546,7 +543,6 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     if (light_sensor_)
       light_sensor_->EnableOrDisableSensor(true);
     power_state_ = BACKLIGHT_ACTIVE;
-    audio_detector_->Disable();
   } else if (idle_time_ms < react_ms_ && locker_.is_locked()) {
     BrightenScreenIfOff();
   }
@@ -628,13 +624,6 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   }
   if (is_idle &&
       backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED &&
-      idle_time_ms >= suspend_ms_ - react_ms_) {
-    // Before suspending, make sure there is no audio playing for a period of
-    // time, so start polling for audio detection early.
-    audio_detector_->Enable();
-  }
-  if (is_idle &&
-      backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED &&
       idle_time_ms >= suspend_ms_) {
     bool audio_is_playing = IsAudioPlaying();
     bool delay_suspend = false;
@@ -655,12 +644,6 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
                                plugged_suspend_ms_ : unplugged_suspend_ms_;
       SetIdleOffset(suspend_ms_ - base_suspend_ms + react_ms_,
                     IDLE_STATE_SUSPEND);
-      // This is the tricky part.  Since the audio detection happens |react_ms_|
-      // ms before suspend time, and suspend timeout gets offset by |react_ms_|
-      // ms each time there is audio, there is no time to disable and reenable
-      // audio detection using an idle timeout.  So audio detection should stay
-      // on until either the system goes to suspend out the user comes out of
-      // idle.
     }
   }
 
