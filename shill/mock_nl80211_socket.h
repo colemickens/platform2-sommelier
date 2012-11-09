@@ -19,7 +19,7 @@ namespace shill {
 
 class MockNl80211Socket : public Nl80211Socket {
  public:
-  MockNl80211Socket() {}
+  MockNl80211Socket() : sequence_number_(1) {}
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD1(AddGroupMembership, bool(const std::string &group_name));
   using Nl80211Socket::GetMessages;
@@ -29,14 +29,12 @@ class MockNl80211Socket : public Nl80211Socket {
                                         void *callback_parameter));
   MOCK_METHOD0(GetSequenceNumber, unsigned int());
 
-  static unsigned int GetNextNumber() {
-    if (++number_ == 0)
-      number_ = 1;
-    return number_;
-  }
+  virtual uint32 Send(KernelBoundNlMessage *message);
+
+  uint32 GetLastSequenceNumber() const { return sequence_number_; }
 
  private:
-  static unsigned int number_;
+  uint32 sequence_number_;
 
   DISALLOW_COPY_AND_ASSIGN(MockNl80211Socket);
 };

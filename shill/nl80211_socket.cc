@@ -39,12 +39,9 @@
 #include <sstream>
 #include <string>
 
-#include <base/logging.h>
-
 #include "shill/kernel_bound_nlmessage.h"
 #include "shill/logging.h"
 #include "shill/netlink_socket.h"
-#include "shill/scope_logger.h"
 #include "shill/user_bound_nlmessage.h"
 
 using std::string;
@@ -84,6 +81,13 @@ bool Nl80211Socket::AddGroupMembership(const string &group_name) {
   }
   LOG(INFO) << " Group " << group_name << " added successfully";
   return true;
+}
+
+uint32 Nl80211Socket::Send(KernelBoundNlMessage *message) {
+  CHECK(message);
+  return NetlinkSocket::Send(message->message(),
+                             message->command(),
+                             GetFamilyId());
 }
 
 }  // namespace shill

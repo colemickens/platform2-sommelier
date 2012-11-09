@@ -38,9 +38,7 @@
 
 #include <iomanip>
 
-#include <base/logging.h>
-
-#include "shill/scope_logger.h"
+#include "shill/logging.h"
 
 namespace shill {
 
@@ -113,23 +111,46 @@ bool NetlinkSocket::Init() {
   return true;
 }
 
-bool NetlinkSocket::Send(struct nl_msg *message) {
+uint32 NetlinkSocket::Send(struct nl_msg *message,
+                           uint8 command,
+                           int32 family_id) {
   if (!message) {
     LOG(ERROR) << "NULL |message|.";
-    return false;
+    return 0;
   }
 
   if (!nl_sock_) {
     LOG(ERROR) << "Need to initialize the socket first.";
-    return false;
+    return 0;
   }
+
+  // Parameters to genlmsg_put:
+  //  @message: a pointer to a struct nl_msg *message.
+  //  @pid: netlink pid the message is addressed to.
+  //  @seq: sequence number.
+  //  @family: netlink socket family (NETLINK_GENERIC for us)
+  //  @flags netlink message flags.
+  //  @hdrlen: Length of a user header (which we don't use)
+  //  @cmd: netlink command.
+  //  @version: version of communication protocol.
+  // genlmsg_put returns a void * pointing to the user header but we don't
+  // want to encourage its use outside of this object.
+
+  uint32 sequence_number = GetSequenceNumber();
+  if (genlmsg_put(message, NL_AUTO_PID, sequence_number, family_id,
+                  0, 0, command, 0) == NULL) {
+    LOG(ERROR) << "genlmsg_put returned a NULL pointer.";
+    return 0;
+  }
+
+  SLOG(WiFi, 6) << "NL Message " << sequence_number << " ===>";
 
   int result = nl_send_auto_complete(nl_sock_, message);
   if (result < 0) {
     LOG(ERROR) << "Failed call to 'nl_send_auto_complete': " << result;
-    return false;
+    return 0;
   }
-  return true;
+  return sequence_number;
 }
 
 

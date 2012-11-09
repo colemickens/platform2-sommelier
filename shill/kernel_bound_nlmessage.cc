@@ -4,20 +4,11 @@
 
 #include "shill/kernel_bound_nlmessage.h"
 
-#include <net/if.h>
-#include <netlink/genl/genl.h>
 #include <netlink/msg.h>
-#include <netlink/netlink.h>
-
-#include <base/logging.h>
 
 #include "shill/logging.h"
-#include "shill/netlink_socket.h"
-#include "shill/scope_logger.h"
 
 namespace shill {
-
-const uint32_t KernelBoundNlMessage::kIllegalMessage = 0xFFFFFFFF;
 
 KernelBoundNlMessage::~KernelBoundNlMessage() {
   if (message_) {
@@ -37,55 +28,6 @@ bool KernelBoundNlMessage::Init() {
   return true;
 }
 
-uint32_t KernelBoundNlMessage::GetId() const {
-  if (!message_) {
-    LOG(ERROR) << "NULL |message_|";
-    return kIllegalMessage;
-  }
-  struct nlmsghdr *header = nlmsg_hdr(message_);
-  if (!header) {
-    LOG(ERROR) << "Couldn't make header";
-    return kIllegalMessage;
-  }
-  return header->nlmsg_seq;
-}
-
-bool KernelBoundNlMessage::AddNetlinkHeader(NetlinkSocket *socket,
-                                            uint32_t port, uint32_t seq,
-                                            int family_id, int hdrlen,
-                                            int flags, uint8_t cmd,
-                                            uint8_t version) {
-  if (!message_) {
-    LOG(ERROR) << "NULL |message_|";
-    return false;
-  }
-
-  // Parameters to genlmsg_put:
-  //  @message: struct nl_msg *message_.
-  //  @pid: netlink pid the message is addressed to.
-  //  @seq: sequence number (usually the one of the sender).
-  //  @family: generic netlink family.
-  //  @flags netlink message flags.
-  //  @cmd: netlink command.
-  //  @version: version of communication protocol.
-  // genlmsg_put returns a void * pointing to the header but we don't want to
-  // encourage its use outside of this object.
-
-  if (genlmsg_put(message_, port, seq, family_id, hdrlen, flags, cmd, version)
-      == NULL) {
-    LOG(ERROR) << "genlmsg_put returned a NULL pointer.";
-    return false;
-  }
-
-  // Manually set the sequence number if it's zero.
-  struct nlmsghdr *header = nlmsg_hdr(message_);
-  if (header != 0 && seq == NL_AUTO_SEQ && header->nlmsg_seq == 0) {
-    header->nlmsg_seq = socket->GetSequenceNumber();
-  }
-
-  return true;
-}
-
 int KernelBoundNlMessage::AddAttribute(int attrtype, int attrlen,
                                        const void *data) {
   if (!data) {
@@ -99,15 +41,11 @@ int KernelBoundNlMessage::AddAttribute(int attrtype, int attrlen,
   return nla_put(message_, attrtype, attrlen, data);
 }
 
-bool KernelBoundNlMessage::Send(NetlinkSocket *socket) {
-  if (!socket) {
-    LOG(ERROR) << "NULL |socket| parameter";
-    return false;
+uint32 KernelBoundNlMessage::sequence_number() const {
+  if (message_ && nlmsg_hdr(message_)) {
+    return nlmsg_hdr(message_)->nlmsg_seq;
   }
-
-  SLOG(WiFi, 6) << "NL Message " << GetId() << " ===>";
-
-  return socket->Send(message_);
+  return 0;
 }
 
 }  // namespace shill.

@@ -34,6 +34,7 @@
 #include <base/bind.h>
 
 #include "shill/netlink_socket.h"
+#include "shill/kernel_bound_nlmessage.h"
 
 struct nl_msg;
 struct sockaddr_nl;
@@ -64,6 +65,8 @@ class Nl80211Socket : public NetlinkSocket {
   std::string GetSocketFamilyName() const {
     return Nl80211Socket::kSocketFamilyName;
   }
+
+  virtual uint32 Send(KernelBoundNlMessage *message);
 
  private:
   // The family name of this particular netlink socket.

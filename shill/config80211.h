@@ -140,17 +140,8 @@ class Config80211 {
   // to call in case of timeout.
   bool SendMessage(KernelBoundNlMessage *message, const Callback &callback);
 
-  // Install a Config80211 Callback to handle the response to a specific
-  // message.
-  // TODO(wdg): Eventually, this should also include a timeout and a callback
-  // to call in case of timeout.
-  // TODO(wdg): maybe this should be private and only accessed by tests.
-  bool SetMessageCallback(const KernelBoundNlMessage &message,
-                          const Callback &callback);
-
-  // Uninstall a Config80211 Callback for a specific message using the
-  // message's sequence number.
-  bool UnsetMessageCallbackById(uint32_t sequence_number);
+  // Uninstall a Config80211 Callback for a specific message.
+  bool RemoveMessageCallback(const KernelBoundNlMessage &message);
 
   // Return a string corresponding to the passed-in EventType.
   static bool GetEventTypeString(EventType type, std::string *value);

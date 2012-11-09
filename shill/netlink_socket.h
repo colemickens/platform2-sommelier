@@ -84,9 +84,6 @@ class NetlinkSocket {
   // Non-trivial initialization.
   bool Init();
 
-  // Send a message.
-  virtual bool Send(struct nl_msg *message);
-
   // Disables sequence checking on the message stream.
   virtual bool DisableSequenceChecking();
 
@@ -117,6 +114,9 @@ class NetlinkSocket {
   virtual std::string GetSocketFamilyName() const = 0;
 
  protected:
+  // Send a message, returns 0 on error, or the sequence number (> 0).
+  uint32 Send(struct nl_msg *message, uint8 command, int32 family_id);
+
   struct nl_sock *GetNlSock() { return nl_sock_; }
 
  private:

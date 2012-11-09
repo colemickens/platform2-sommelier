@@ -26,12 +26,10 @@
 #define SHILL_KERNEL_BOUND_NLMESSAGE_H_
 
 #include <base/basictypes.h>
-#include <base/bind.h>
 
 struct nl_msg;
 
 namespace shill {
-struct NetlinkSocket;
 
 // TODO(wdg): eventually, KernelBoundNlMessage and UserBoundNlMessage should
 // be combined into a monolithic NlMessage.
@@ -39,29 +37,29 @@ struct NetlinkSocket;
 // Provides a wrapper around a netlink message destined for kernel-space.
 class KernelBoundNlMessage {
  public:
-  KernelBoundNlMessage() : message_(NULL) {}
+  // |command| is a type of command understood by the kernel, for instance:
+  // CTRL_CMD_GETFAMILY.
+  explicit KernelBoundNlMessage(uint8 command)
+      : command_(command),
+        message_(NULL) {};
   virtual ~KernelBoundNlMessage();
 
   // Non-trivial initialization.
   bool Init();
 
-  // Message ID is equivalent to the message's sequence number.
-  uint32_t GetId() const;
-
-  // Add a netlink header to the message.
-  bool AddNetlinkHeader(NetlinkSocket *socket, uint32_t port, uint32_t seq,
-                        int family_id, int hdrlen, int flags, uint8_t cmd,
-                        uint8_t version);
-
   // Add a netlink attribute to the message.
   int AddAttribute(int attrtype, int attrlen, const void *data);
 
-  // Sends |this| over the netlink socket.
-  virtual bool Send(NetlinkSocket *socket);
+  uint8 command() const { return command_; }
+  // TODO(wiley) It would be better if messages were bags of attributes which
+  //             the socket collapses into binary blobs at send time.
+  struct nl_msg *message() const { return message_; }
+  // Returns 0 when unsent, > 0 otherwise.
+  uint32 sequence_number() const;
 
  private:
-  static const uint32_t kIllegalMessage;
-
+  uint8 command_;
+  // TODO(wiley) Rename to |raw_message_| (message.message() looks silly).
   struct nl_msg *message_;
 
   DISALLOW_COPY_AND_ASSIGN(KernelBoundNlMessage);
