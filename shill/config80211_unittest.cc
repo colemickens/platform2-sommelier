@@ -565,7 +565,7 @@ TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_TRIGGER_SCAN)));
 
   EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
-  EXPECT_EQ(message->GetMessageType(), NL80211_CMD_TRIGGER_SCAN);
+  EXPECT_EQ(message->message_type(), NL80211_CMD_TRIGGER_SCAN);
 
   {
     uint8_t value;
@@ -612,7 +612,7 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_SCAN_RESULTS) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NEW_SCAN_RESULTS)));
 
   EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
-  EXPECT_EQ(message->GetMessageType(), NL80211_CMD_NEW_SCAN_RESULTS);
+  EXPECT_EQ(message->message_type(), NL80211_CMD_NEW_SCAN_RESULTS);
 
   {
     uint8_t value;
@@ -659,7 +659,7 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_STATION) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NEW_STATION)));
 
   EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
-  EXPECT_EQ(message->GetMessageType(), NL80211_CMD_NEW_STATION);
+  EXPECT_EQ(message->message_type(), NL80211_CMD_NEW_STATION);
 
   {
     uint32_t value;
@@ -691,7 +691,7 @@ TEST_F(Config80211Test, NL80211_CMD_AUTHENTICATE) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_AUTHENTICATE)));
 
   EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
-  EXPECT_EQ(message->GetMessageType(), NL80211_CMD_AUTHENTICATE);
+  EXPECT_EQ(message->message_type(), NL80211_CMD_AUTHENTICATE);
 
   {
     uint8_t value;
@@ -726,7 +726,7 @@ TEST_F(Config80211Test, NL80211_CMD_ASSOCIATE) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_ASSOCIATE)));
 
   EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
-  EXPECT_EQ(message->GetMessageType(), NL80211_CMD_ASSOCIATE);
+  EXPECT_EQ(message->message_type(), NL80211_CMD_ASSOCIATE);
 
   {
     uint8_t value;
@@ -761,7 +761,7 @@ TEST_F(Config80211Test, NL80211_CMD_CONNECT) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_CONNECT)));
 
   EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
-  EXPECT_EQ(message->GetMessageType(), NL80211_CMD_CONNECT);
+  EXPECT_EQ(message->message_type(), NL80211_CMD_CONNECT);
 
   {
     uint8_t value;
@@ -797,7 +797,7 @@ TEST_F(Config80211Test, NL80211_CMD_DEAUTHENTICATE) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DEAUTHENTICATE)));
 
   EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
-  EXPECT_EQ(message->GetMessageType(), NL80211_CMD_DEAUTHENTICATE);
+  EXPECT_EQ(message->message_type(), NL80211_CMD_DEAUTHENTICATE);
 
   {
     uint8_t value;
@@ -833,7 +833,7 @@ TEST_F(Config80211Test, NL80211_CMD_DISCONNECT) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT)));
 
   EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
-  EXPECT_EQ(message->GetMessageType(), NL80211_CMD_DISCONNECT);
+  EXPECT_EQ(message->message_type(), NL80211_CMD_DISCONNECT);
 
   {
     uint8_t value;
@@ -863,7 +863,7 @@ TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NOTIFY_CQM)));
 
   EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
-  EXPECT_EQ(message->GetMessageType(), NL80211_CMD_NOTIFY_CQM);
+  EXPECT_EQ(message->message_type(), NL80211_CMD_NOTIFY_CQM);
 
 
   {
@@ -916,7 +916,7 @@ TEST_F(Config80211Test, NL80211_CMD_DISASSOCIATE) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISASSOCIATE)));
 
   EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
-  EXPECT_EQ(message->GetMessageType(), NL80211_CMD_DISASSOCIATE);
+  EXPECT_EQ(message->message_type(), NL80211_CMD_DISASSOCIATE);
 
 
   {

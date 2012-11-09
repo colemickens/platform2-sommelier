@@ -41,8 +41,8 @@ void Callback80211Object::Config80211MessageCallback(
   SLOG(WiFi, 2) << output;
 
   // Show the more complicated version of the message.
-  SLOG(WiFi, 3) << "Received " << message.GetMessageTypeString()
-                << " (" << + message.GetMessageType() << ")";
+  SLOG(WiFi, 3) << "Received " << message.message_type_string()
+                << " (" << + message.message_type() << ")";
 
   scoped_ptr<UserBoundNlMessage::AttributeNameIterator> i;
   for (i.reset(message.GetAttributeNameIterator()); !i->AtEnd(); i->Advance()) {

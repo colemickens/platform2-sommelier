@@ -63,8 +63,6 @@ LazyInstance<UserBoundNlMessageDataCollector> g_datacollector =
     LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
-const uint8_t UserBoundNlMessage::kCommand = 0xff;
-const char UserBoundNlMessage::kCommandString[] = "<Unknown Message>";
 const char UserBoundNlMessage::kBogusMacAddress[]="XX:XX:XX:XX:XX:XX";
 
 const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
@@ -1968,13 +1966,13 @@ void UserBoundNlMessageDataCollector::CollectDebugData(
   bool doit = false;
 
   map<uint8_t, bool>::const_iterator node;
-  node = need_to_print.find(message.GetMessageType());
+  node = need_to_print.find(message.message_type());
   if (node != need_to_print.end())
     doit = node->second;
 
   if (doit) {
     LOG(INFO) << "@@const unsigned char "
-               << "k" << message.GetMessageTypeString()
+               << "k" << message.message_type_string()
                << "[] = {";
 
     int payload_bytes = nlmsg_datalen(msg);
@@ -1987,7 +1985,7 @@ void UserBoundNlMessageDataCollector::CollectDebugData(
                  << + rawdata[i] << ",";
     }
     LOG(INFO) << "};";
-    need_to_print[message.GetMessageType()] = false;
+    need_to_print[message.message_type()] = false;
   }
 }
 
