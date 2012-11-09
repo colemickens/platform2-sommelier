@@ -18,6 +18,7 @@ class MockConnection : public Connection {
   virtual ~MockConnection();
 
   MOCK_METHOD1(UpdateFromIPConfig, void(const IPConfigRefPtr &config));
+  MOCK_CONST_METHOD0(GetLowerConnection, ConnectionRefPtr());
   MOCK_CONST_METHOD0(is_default, bool());
   MOCK_METHOD1(SetIsDefault, void(bool is_default));
   MOCK_CONST_METHOD0(ipconfig_rpc_identifier, const std::string &());

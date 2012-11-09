@@ -624,6 +624,39 @@ TEST_F(ServiceTest, IsRemembered) {
   EXPECT_TRUE(service_->IsRemembered());
 }
 
+TEST_F(ServiceTest, IsDependentOn) {
+  EXPECT_FALSE(service_->IsDependentOn(NULL));
+
+  scoped_ptr<MockDeviceInfo> mock_device_info(
+      new NiceMock<MockDeviceInfo>(control_interface(), dispatcher(), metrics(),
+                                   &mock_manager_));
+  scoped_refptr<MockConnection> mock_connection0(
+      new NiceMock<MockConnection>(mock_device_info.get()));
+  scoped_refptr<MockConnection> mock_connection1(
+      new NiceMock<MockConnection>(mock_device_info.get()));
+
+  service_->connection_ = mock_connection0;
+  EXPECT_CALL(*mock_connection0.get(), GetLowerConnection())
+      .WillRepeatedly(Return(mock_connection1));
+  EXPECT_FALSE(service_->IsDependentOn(NULL));
+
+  scoped_refptr<ServiceUnderTest> service1 =
+      new ServiceUnderTest(control_interface(),
+                           dispatcher(),
+                           metrics(),
+                           &mock_manager_);
+  EXPECT_FALSE(service_->IsDependentOn(service1));
+
+  service1->connection_ = mock_connection0;
+  EXPECT_FALSE(service_->IsDependentOn(service1));
+
+  service1->connection_ = mock_connection1;
+  EXPECT_TRUE(service_->IsDependentOn(service1));
+
+  service_->connection_ = NULL;
+  service1->connection_ = NULL;
+}
+
 TEST_F(ServiceTest, OnPropertyChanged) {
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(control_interface(), manager()));

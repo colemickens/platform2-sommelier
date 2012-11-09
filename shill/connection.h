@@ -72,6 +72,11 @@ class Connection : public base::RefCounted<Connection> {
   // This will replace all previous state for this address family.
   virtual void UpdateFromIPConfig(const IPConfigRefPtr &config);
 
+  // Return the connection used by the lower binder.
+  virtual ConnectionRefPtr GetLowerConnection() const {
+    return lower_binder_.connection();
+  }
+
   // Sets the current connection as "default", i.e., routes and DNS entries
   // should be used by all system components that don't select explicitly.
   virtual bool is_default() const { return is_default_; }

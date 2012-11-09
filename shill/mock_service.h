@@ -37,6 +37,7 @@ class MockService : public Service {
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_CONST_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(IsConnecting, bool());
+  MOCK_CONST_METHOD1(IsDependentOn, bool(const ServiceRefPtr &b));
   MOCK_CONST_METHOD0(IsFailed, bool());
   MOCK_CONST_METHOD0(IsVisible, bool());
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));

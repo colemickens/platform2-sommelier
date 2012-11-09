@@ -219,6 +219,10 @@ class Service : public base::RefCounted<Service> {
     // state and |failed_time_|.
     return state() == kStateFailure || failed_time_ > 0;
   }
+
+  // Returns true if the connection for |this| depends on service |b|.
+  virtual bool IsDependentOn(const ServiceRefPtr &b) const;
+
   virtual bool IsPortalled() const {
     return state() == kStatePortal;
   }
@@ -516,6 +520,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, GetIPConfigRpcIdentifier);
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
+  FRIEND_TEST(ServiceTest, IsDependentOn);
   FRIEND_TEST(ServiceTest, RecheckPortal);
   FRIEND_TEST(ServiceTest, Save);
   FRIEND_TEST(ServiceTest, SaveString);
@@ -542,6 +547,7 @@ class Service : public base::RefCounted<Service> {
   static const char kServiceSortConnectable[];
   static const char kServiceSortFavorite[];
   static const char kServiceSortIsConnected[];
+  static const char kServiceSortDependency[];
   static const char kServiceSortIsConnecting[];
   static const char kServiceSortIsFailed[];
   static const char kServiceSortIsPortalled[];

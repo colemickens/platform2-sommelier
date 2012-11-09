@@ -53,6 +53,7 @@ const int Service::kPriorityNone = 0;
 
 const char Service::kServiceSortAutoConnect[] = "AutoConnect";
 const char Service::kServiceSortConnectable[] = "Connectable";
+const char Service::kServiceSortDependency[] = "Dependency";
 const char Service::kServiceSortFavorite[] = "Favorite";
 const char Service::kServiceSortIsConnected[] = "IsConnected";
 const char Service::kServiceSortIsConnecting[] = "IsConnecting";
@@ -515,6 +516,13 @@ bool Service::IsRemembered() const {
   return profile_ && !manager_->IsServiceEphemeral(this);
 }
 
+bool Service::IsDependentOn(const ServiceRefPtr &b) const {
+  if (!connection_ || !b) {
+    return false;
+  }
+  return connection_->GetLowerConnection() == b->connection();
+}
+
 void Service::MakeFavorite() {
   if (favorite_) {
     // We do not want to clobber the value of auto_connect_ (it may
@@ -737,6 +745,11 @@ bool Service::Compare(ServiceRefPtr a,
 
   if (DecideBetween(a->connectable(), b->connectable(), &ret)) {
     *reason = kServiceSortConnectable;
+    return ret;
+  }
+
+  if (DecideBetween(a->IsDependentOn(b), b->IsDependentOn(a), &ret)) {
+    *reason = kServiceSortDependency;
     return ret;
   }
 

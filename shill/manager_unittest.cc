@@ -1729,6 +1729,18 @@ TEST_F(ManagerTest, SortServices) {
   manager()->UpdateService(mock_service1);
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
+  // Test is-dependent-on.  It doesn't make sense to have this ranking compare
+  // to any of the others below, so we reset to the default state after
+  // testing.
+  EXPECT_CALL(*mock_service1.get(),
+              IsDependentOn(ServiceRefPtr(mock_service0.get())))
+      .WillOnce(Return(true))
+      .WillRepeatedly(Return(false));
+  manager()->UpdateService(mock_service1);
+  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+  manager()->UpdateService(mock_service0);
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+
   // Connectable.
   mock_service1->set_connectable(true);
   manager()->UpdateService(mock_service1);
