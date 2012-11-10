@@ -670,13 +670,38 @@ diag_connectivity () {
 }
 
 # Get information from flimflam about its state over D-Bus.
+dbus_get_object_properties () {
+  local entity=$1
+  local object_type=$2
+  local object_path=${3-/}
+  dbus-send --fixed --system --dest="${entity}" --print-reply \
+    ${object_path} ${entity}.${object_type}.GetProperties
+}
+
+dbus_get_object_list () {
+  local entity=$1
+  local parent=$2
+  local child=$3
+  local parent_path=${4-/}
+  # The child (property) we are looking for is something like "Devices"
+  # or "LinkMonitorResponseTime".  The sed manipulation below will return
+  # the list of values for each entry.  For example, with an output that
+  # looks like:
+  #   /8/Devices/0 /device/wlan0
+  #   /8/Devices/1 /device/eth1
+  #   /8/Devices/2 /device/eth0
+  # and a search for "Devices", we'd return a newline separated
+  # "/device/wlan0 /device/eth1 /device/eth0"
+  dbus_get_object_properties "${entity}" "${parent}" "${parent_path}" | \
+    awk '/^\/[0-9]+\/'${child}'[\/ ]/ { print $2 }'
+}
+
 diag_flimflam_dbus () {
   fn_enter_once ${FUNCNAME} $*
   local ff="org.chromium.flimflam"
   if [ -z "$1" ] ; then
     echo "Flimflam Manager:"
-    dbus-send --fixed --system --dest="${ff}" --print-reply / \
-      ${ff}.Manager.GetProperties | mac_anonymize
+    dbus_get_object_properties "${ff}" Manager / | mac_anonymize
     # For each Service defined on the Manager, list its properties
     diag_flimflam_dbus Manager Service
     # For each Device defined in the Manager, list its properties
@@ -685,12 +710,10 @@ diag_flimflam_dbus () {
     local parent=$1
     local child=$2
     local parent_path=${3-/}
-    for path in $(dbus-send --fixed --system --dest="${ff}" --print-reply \
-      ${parent_path} ${ff}.${parent}.GetProperties | \
-      awk '/^\/[0-9]*\/'${child}'s\// { print $2 }'); do
+    for path in \
+      $(dbus_get_object_list ${ff} ${parent} ${child}s ${parent_path}); do
       echo "${child} ${path}" | mac_anonymize
-      dbus-send --fixed --system --dest="${ff}" --print-reply ${path} \
-        ${ff}.${child}.GetProperties | mac_anonymize
+      dbus_get_object_properties "${ff}" "${child}" "${path}" | mac_anonymize
       if [ "${child}" = Device ] ; then
         # For each Network defined in each Device, list its properties
         diag_flimflam_dbus Device Network ${path}
@@ -795,6 +818,7 @@ diag_run () {
   local host=$1
   diag_webget ${host}
   diag_date ${host}
+  diag_gateway_latency ${host}
 }
 
 
@@ -917,18 +941,47 @@ diag_wifi_monitor () {
   done
 }
 
+diag_gateway_latency () {
+  local ff="org.chromium.flimflam"
+  local services=($(dbus_get_object_list ${ff} Manager Services /))
+  local service=${services[0]}
+  local latency_threshold=800  # milliseconds
+  if [ -z "${service}" ]; then
+    fail "Found no services."
+    return
+  fi
+  local device=$(dbus_get_object_list "${ff}" Service Device ${service})
+  if [ -z "${device}" ]; then
+    fail "Service ${service} does not have an associated Device."
+    return
+  fi
+  local monitor_val=$(dbus_get_object_list "${ff}" Device \
+                      LinkMonitorResponseTime ${device})
+  if [ -z "${monitor_val}" ]; then
+    echo "Service ${service} on device ${device} has no current latency value"
+    return
+  fi
+  message="Current LinkMonitor latency for ${device} is ${monitor_val}ms"
+  if [ ${monitor_val} -le ${latency_threshold} ]; then
+    pass $message
+  else
+    fail $message
+  fi
+}
+
 usage () {
   echo "Usage: $0 [--date|--flimflam|--link|--show-macs|--wifi|--help|"
   echo "           --wifi-monitor] <host>"
   echo "    --date:      Diagnose time-of-day"
   echo "    --flimflam:  Diagnose flimflam status"
   echo "    --interface: Diagnose interface status"
+  echo "    --latency:   Diagnose link-latency to default gateway"
   echo "    --link:      Diagnose all network links"
   echo "    --show-macs: Display full MAC addresses"
   echo "    --wifi:      Display driver-specific debugging information"
   echo "    --wifi-mon:  Monitor WiFi performance metrics"
   echo "    --help:      Display this message"
-  echo "    <host>       Hustname to perform web access test on"
+  echo "    <host>       Hostname to perform web access test on"
 }
 
 main () {
@@ -951,6 +1004,10 @@ main () {
         --interface)
           default_run=no
           diag_ifall
+          ;;
+        --latency)
+          default_run=no
+          diag_gateway_latency
           ;;
         --link)
           default_run=no
