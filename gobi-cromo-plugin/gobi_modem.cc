@@ -75,6 +75,9 @@ static const int kMinSignalStrengthDbm = -113;
 static const int kSignalStrengthNumLevels = 6;
 
 // static
+// Number of times to retry StartDataSession() when it fails due to lack of
+// service.
+const int GobiModem::kNumStartDataSessionRetries = 10;
 // Error message returned by SetCarrier() when an unknown carrier is specified.
 const char GobiModemHelper::kErrorUnknownCarrier[] = "Unknown carrier name";
 
@@ -115,14 +118,32 @@ class SessionStarter {
     // deallocated while this is in flight, we'll lose sdk_.  If this
     // is a problem, we'll need to refcount sdk_.
     LOG(INFO) << "Starter thread running";
-    return_value_ = sdk_->StartDataSession(
-        NULL,
-        apn_.get(),
-        NULL,  // Authentication
-        username_.get(),
-        password_.get(),
-        &session_id_,  // OUT: session ID
-        &failure_reason_);  // OUT: failure reason
+    for (int count = 0; count < GobiModem::kNumStartDataSessionRetries;
+         ++count) {
+      return_value_ = sdk_->StartDataSession(
+          NULL,
+          apn_.get(),
+          NULL,  // Authentication
+          username_.get(),
+          password_.get(),
+          &session_id_,  // OUT: session ID
+          &failure_reason_);  // OUT: failure reason
+      if (return_value_ != gobi::kCallFailed &&
+          failure_reason_ != gobi::kReasonNoService)
+        break;
+      gobi::RegistrationState reg_state =
+        GobiModem::GetRegistrationState(sdk_);
+      if (reg_state == gobi::kRegistrationDenied)
+        break;
+      sleep(1);
+    }
+    if (return_value_ == gobi::kOperationHasNoEffect) {
+      return_value_ = 0;
+      failure_reason_ = 0;
+    }
+    if (return_value_)
+      LOG(ERROR) << "StartDataSession failed with "
+                 << "(" << return_value_ << ", " << failure_reason_ << ")";
     connect_time_.Stop();
     if (fault_inject_sleep_time_ms_ > 0) {
       LOG(WARNING) << "Fault injection:  connect sleeping for "
@@ -720,6 +741,27 @@ void GobiModem::FinishEnable(const DBus::Error &error)
   scoped_ptr<PendingEnable> scoped_enable(pending_enable_.release());
   retry_disable_callback_source_.Remove();
   FinishDeferredCall(&scoped_enable->tag_, error);
+}
+
+gobi::RegistrationState GobiModem::GetRegistrationState(gobi::Sdk *sdk) {
+  ULONG rc = 0;
+  ULONG gobi_reg_state = gobi::kRegistrationStateUnknown;
+  ULONG roaming_state;
+  ULONG ran;
+  WORD mcc, mnc;
+  CHAR netname[32];
+  BYTE radio_interfaces[10];
+  BYTE num_radio_interfaces = arraysize(radio_interfaces);
+  rc = sdk->GetServingNetwork(&gobi_reg_state, &ran,
+                              &num_radio_interfaces,
+                              radio_interfaces, &roaming_state,
+                              &mcc, &mnc,
+                              sizeof(netname), netname);
+  if (rc) {
+    LOG(ERROR) << "Failed to get current registration state: " << rc;
+    return gobi::kRegistrationStateUnknown;
+  }
+  return static_cast<gobi::RegistrationState>(gobi_reg_state);
 }
 
 void GobiModem::PerformDeferredDisable() {

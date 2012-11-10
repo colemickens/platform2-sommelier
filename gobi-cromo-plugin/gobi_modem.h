@@ -216,6 +216,8 @@ class GobiModem
     std::string meid;
   };
 
+  static const int kNumStartDataSessionRetries;
+
   void ApiConnect(DBus::Error& error);
   ULONG ApiDisconnect(void);
   bool IsApiConnected() { return connected_modem_ != NULL; }
@@ -460,6 +462,8 @@ class GobiModem
                     const bool& user_initiated);
   void FinishEnable(const DBus::Error &error);
   void PerformDeferredDisable();
+
+  static gobi::RegistrationState GetRegistrationState(gobi::Sdk *sdk);
 
   friend class GobiModemTest;
 

@@ -284,6 +284,7 @@ enum SmsMessageTag {
 // Selected call failure reasons from table 2-4 "Call end reason codes"
 enum CallEndReason {
   kReasonClientEndedCall = 2,
+  kReasonNoService = 3,
   kReasonBadApn = 1013,
   kReasonNotSubscribed = 1018
 };
