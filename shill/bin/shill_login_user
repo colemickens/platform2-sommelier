@@ -27,10 +27,6 @@ set -e
 # user whose profile is being loaded.
 user=$1
 script_name=$(basename $0)
-if [ -z "$user" ] ; then
-  echo "Usage: $0 <user>"
-  exit 1
-fi
 
 # Reference to older connection manager profile.
 flimflam_profile_dir=~chronos/flimflam
@@ -45,14 +41,22 @@ profile_link_dir="$profile_link_root/$profile_user"
 old_profile_dir=~chronos/shill
 old_profile="$old_profile_dir/shill.profile"
 
-cryptohome_dir=$(cryptohome-path system ${user})
+if [ -n "$user" ] ; then
+  cryptohome_dir=$(cryptohome-path system ${user})
+  if [ ! -d "$cryptohome_dir" ] ; then
+    logger -t "$script_name" \
+      "User cryptohome dir $cryptohome_dir does not exist"
+    exit 1
+  fi
+else
+  # If no user is given, create a temporary profile directory which will
+  # be erased on logout.
+  cryptohome_dir="/var/run/shill/guest_user_profile"
+  rm -rf "$cryptohome_dir"
+fi
+
 cryptohome_profile_dir="$cryptohome_dir/shill"
 cryptohome_profile="$cryptohome_profile_dir/shill.profile"
-
-if [ ! -d "$cryptohome_dir" ] ; then
-  logger -t "$script_name" "User cryptohome dir $cryptohome_dir does not exist"
-  exit 1
-fi
 
 if [ ! -d "$cryptohome_profile_dir" ]; then
   if ! mkdir -p --mode=700 $cryptohome_profile_dir ; then

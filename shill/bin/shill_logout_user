@@ -11,5 +11,5 @@ script_name=$(basename $0)
 dbus-send --system --dest=org.chromium.flimflam --print-reply / \
   org.chromium.flimflam.Manager.PopProfile string:$profile_name ||
     logger -t "$script_name"  "Failed to pop shill profile $profile_name"
-rm -rf /var/run/shill/user_profiles
+rm -rf /var/run/shill/user_profiles /var/run/shill/guest_user_profile
 
