@@ -241,6 +241,7 @@ enum ReturnCode {
   kGeneralError = 1,
   kErrorSendingQmiRequest = 12,
   kErrorReceivingQmiRequest = 13,
+  kTimeoutReceivingQmiRequest = 15,
   kNoAvailableSignal = 29,
   kErrorNeedsReset = 34,
   kInvalidPinId = 1011,

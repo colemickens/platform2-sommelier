@@ -525,6 +525,11 @@ bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error,
       }
     }
     ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
+    if (rc == gobi::kErrorReceivingQmiRequest ||
+        rc == gobi::kTimeoutReceivingQmiRequest)
+      // SetPower() sometimes fail with one of these errors and retrying
+      // the call appears to succeed.
+      rc = sdk_->SetPower(gobi::kPersistentLowPower);
     if (rc != 0) {
       error.set(kSdkError, "SetPower");
       LOG(WARNING) << "SetPower failed : " << rc;
