@@ -37,6 +37,7 @@ class GdmDevice : public Device {
                        const base::DictionaryValue &parameters);
   virtual bool Disconnect();
   void CancelConnectOnTimeout();
+  void RestoreStatusUpdateInterval();
 
  protected:
   virtual void UpdateNetworkScanInterval();
@@ -51,6 +52,7 @@ class GdmDevice : public Device {
 
   bool Open();
   bool Close();
+  void CancelRestoreStatusUpdateIntervalTimeout();
   void ClearCurrentConnectionProfile();
 
   static bool ConstructEAPParameters(
@@ -68,6 +70,8 @@ class GdmDevice : public Device {
   guint connect_timeout_id_;
   guint network_scan_timeout_id_;
   guint status_update_timeout_id_;
+  guint restore_status_update_interval_timeout_id_;
+  uint32 saved_status_update_interval_;
   Network::Identifier current_network_identifier_;
   std::string current_user_identity_;
 

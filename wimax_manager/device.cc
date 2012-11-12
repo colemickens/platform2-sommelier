@@ -18,10 +18,10 @@ const size_t kMACAddressLength = 6;
 const size_t kBaseStationIdLength = 6;
 
 // Default time interval, in seconds, between network scans.
-const int kDefaultNetworkScanIntervalInSeconds = 5;
+const int kDefaultNetworkScanIntervalInSeconds = 10;
 
 // Default time interval, in seconds, between status updates.
-const int kDefaultStatusUpdateIntervalInSeconds = 3;
+const int kDefaultStatusUpdateIntervalInSeconds = 10;
 
 string GetDeviceStatusDescription(DeviceStatus device_status) {
   switch (device_status) {

@@ -29,6 +29,9 @@ namespace {
 
 // Timeout for connecting to a network.
 const int kConnectTimeoutInSeconds = 60;
+// Default time interval, in seconds, between status updates when the device
+// is connecting to a network.
+const int kStatusUpdateIntervalDuringConnectInSeconds = 1;
 
 string GetEAPUserIdentity(const DictionaryValue &parameters) {
   string user_identity;
@@ -96,6 +99,15 @@ gboolean OnConnectTimeout(gpointer data) {
   return FALSE;
 }
 
+gboolean OnDeferredRestoreStatusUpdateInterval(gpointer data) {
+  CHECK(data);
+
+  reinterpret_cast<GdmDevice *>(data)->RestoreStatusUpdateInterval();
+
+  // Return FALSE as this is a one-shot update.
+  return FALSE;
+}
+
 }  // namespace
 
 GdmDevice::GdmDevice(uint8 index, const string &name,
@@ -107,6 +119,8 @@ GdmDevice::GdmDevice(uint8 index, const string &name,
       connect_timeout_id_(0),
       network_scan_timeout_id_(0),
       status_update_timeout_id_(0),
+      restore_status_update_interval_timeout_id_(0),
+      saved_status_update_interval_(0),
       current_network_identifier_(Network::kInvalidIdentifier) {
 }
 
@@ -196,6 +210,8 @@ bool GdmDevice::Disable() {
 
   ClearCurrentConnectionProfile();
 
+  CancelRestoreStatusUpdateIntervalTimeout();
+
   // Cancel the periodic calls to OnNetworkScan().
   if (network_scan_timeout_id_ != 0) {
     g_source_remove(network_scan_timeout_id_);
@@ -274,6 +290,7 @@ bool GdmDevice::ScanNetworks() {
 }
 
 bool GdmDevice::UpdateStatus() {
+  DeviceStatus old_status = status();
   if (!driver_->GetDeviceStatus(this)) {
     LOG(ERROR) << "Failed to get status of device '" << name() << "'";
     return false;
@@ -284,6 +301,16 @@ bool GdmDevice::UpdateStatus() {
   if (connect_timeout_id_ != 0 && status() != kDeviceStatusConnecting) {
     g_source_remove(connect_timeout_id_);
     connect_timeout_id_ = 0;
+  }
+
+  DeviceStatus new_status = status();
+  if (old_status == kDeviceStatusConnecting &&
+      new_status != kDeviceStatusConnecting) {
+    CancelRestoreStatusUpdateIntervalTimeout();
+    if (saved_status_update_interval_ != 0) {
+      restore_status_update_interval_timeout_id_ =
+          g_timeout_add_seconds(1, OnDeferredRestoreStatusUpdateInterval, this);
+    }
   }
 
   if (!driver_->GetDeviceRFInfo(this)) {
@@ -311,6 +338,17 @@ void GdmDevice::UpdateStatusUpdateInterval() {
     status_update_timeout_id_ = g_timeout_add_seconds(
         status_update_interval(), OnStatusUpdate, this);
   }
+}
+
+void GdmDevice::RestoreStatusUpdateInterval() {
+  SetStatusUpdateInterval(saved_status_update_interval_);
+  saved_status_update_interval_ = 0;
+  restore_status_update_interval_timeout_id_ = 0;
+
+  // Restarts the network scan timeout source to be aligned with the status
+  // update timeout source, which helps increase the idle time of the device
+  // when both sources are fired and served by the device around the same time.
+  UpdateNetworkScanInterval();
 }
 
 bool GdmDevice::Connect(const Network &network,
@@ -359,6 +397,10 @@ bool GdmDevice::Connect(const Network &network,
     return false;
   }
 
+  saved_status_update_interval_ = status_update_interval();
+  CancelRestoreStatusUpdateIntervalTimeout();
+  SetStatusUpdateInterval(kStatusUpdateIntervalDuringConnectInSeconds);
+
   if (!driver_->ConnectDeviceToNetwork(this, network)) {
     LOG(ERROR) << "Failed to connect device '" << name()
                << "' to network '" << network.name() << "' ("
@@ -398,6 +440,13 @@ void GdmDevice::CancelConnectOnTimeout() {
   LOG(WARNING) << "Timed out connecting to the network.";
   connect_timeout_id_ = 0;
   Disconnect();
+}
+
+void GdmDevice::CancelRestoreStatusUpdateIntervalTimeout() {
+  if (restore_status_update_interval_timeout_id_ != 0) {
+    g_source_remove(restore_status_update_interval_timeout_id_);
+    restore_status_update_interval_timeout_id_ = 0;
+  }
 }
 
 void GdmDevice::ClearCurrentConnectionProfile() {
