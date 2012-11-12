@@ -935,13 +935,13 @@ void WiFi::BSSAddedTask(
   // lose.
   WiFiEndpointRefPtr endpoint(
       new WiFiEndpoint(proxy_factory_, this, path, properties));
-  LOG(INFO) << "Found endpoint. "
-            << "RPC path: " << path << ", "
-            << "ssid: " << endpoint->ssid_string() << ", "
-            << "bssid: " << endpoint->bssid_string() << ", "
-            << "signal: " << endpoint->signal_strength() << ", "
-            << "security: " << endpoint->security_mode() << ", "
-            << "frequency: " << endpoint->frequency();
+  SLOG(WiFi, 1) << "Found endpoint. "
+                << "RPC path: " << path << ", "
+                << "ssid: " << endpoint->ssid_string() << ", "
+                << "bssid: " << endpoint->bssid_string() << ", "
+                << "signal: " << endpoint->signal_strength() << ", "
+                << "security: " << endpoint->security_mode() << ", "
+                << "frequency: " << endpoint->frequency();
 
   if (endpoint->ssid_string().empty()) {
     // Don't bother trying to find or create a Service for an Endpoint
@@ -957,8 +957,8 @@ void WiFi::BSSAddedTask(
 
   WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
   if (service) {
-    LOG(INFO) << "Assigned endpoint " << endpoint->bssid_string()
-              << " to service " << service->friendly_name() << ".";
+    SLOG(WiFi, 1) << "Assigned endpoint " << endpoint->bssid_string()
+                  << " to service " << service->friendly_name() << ".";
     service->AddEndpoint(endpoint);
 
     if (manager()->HasService(service)) {
