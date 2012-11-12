@@ -82,6 +82,13 @@ class KeyboardBacklightController : public BacklightController,
   FRIEND_TEST(KeyboardBacklightControllerTest, PercentToLevel);
   FRIEND_TEST(KeyboardBacklightControllerTest, OnAmbientLightChanged);
   FRIEND_TEST(KeyboardBacklightControllerTest, Transitions);
+  FRIEND_TEST(KeyboardBacklightControllerTest, ReadLimitsPrefs);
+  FRIEND_TEST(KeyboardBacklightControllerTest, ReadAlsStepsPref);
+  FRIEND_TEST(KeyboardBacklightControllerTest, ReadUserStepsPref);
+  FRIEND_TEST(KeyboardBacklightControllerTest, InitializeUserStepIndex);
+  FRIEND_TEST(KeyboardBacklightControllerTest, GetNewLevel);
+  FRIEND_TEST(KeyboardBacklightControllerTest, IncreaseBrightness);
+  FRIEND_TEST(KeyboardBacklightControllerTest, DecreaseBrightness);
 
   // Contains the information about a brightness step for ALS adjustments. The
   // data for instances of this structure are read out of a prefs
@@ -105,6 +112,27 @@ class KeyboardBacklightController : public BacklightController,
 
   void ReadPrefs();
 
+  // Reads in the percentage limits for either the user control or the ALS
+  // control. Takes in the contents of the pref file to a string of the format
+  // "[<min target percent percent>\n<dim target percent>\n<max target
+  // percent>\n]" and parses it into corresponding arguments. If this fails the
+  // values of |min|, |dim|, and |max| are preserved.
+  void ReadLimitsPrefs(const char* prefs_file,
+                       double* min,
+                       double* dim,
+                       double* max);
+
+  // Get the control values for the steps that the ALS control can move
+  // in. Takes in the contents of the pref file to a string of the format
+  // "[<target percent> <decrease threshold> <increase threshold>\n]+" and
+  // parses it into a series of brightness steps.
+  void ReadAlsStepsPref(const char* prefs_file);
+
+  // Takes in the contents of the pref file to a string of the format "[<target
+  // percent>\n]+" and parses it into a vector of doubles to be used as steps
+  // that user commands change the keyboard brightness by.
+  void ReadUserStepsPref(const char* prefs_file);
+
   // The backlight level and enabledness are separate values so that the code
   // that sets the level does not need to be aware of the fact the light in
   // certain circumstances might be disabled and the disable/enable code doesn't
@@ -120,6 +148,18 @@ class KeyboardBacklightController : public BacklightController,
 
   int64 PercentToLevel(double percent) const;
   double LevelToPercent(int64 level) const;
+
+  // Until the user issues a command to set the backlight level
+  // |user_step_index_| is set to -1, which is used as a signal about whether to
+  // use |als_target_percent_| or |user_target_percent_|. To initialize this one
+  // has to determine what the closet step for the user brightness to the
+  // current level is and set the index appropriately.
+  void InitializeUserStepIndex();
+
+  // This method calculate from the current state of the system and values of
+  // als_target_percent_ and user_target_percent_ the level that the backlight
+  // should be set to.
+  int64 GetNewLevel() const;
 
   bool is_initialized_;
 
@@ -145,9 +185,7 @@ class KeyboardBacklightController : public BacklightController,
   bool is_video_playing_;
   bool is_fullscreen_;
 
-  // Control values for if the backlight is enabled by the user and the current
-  // video state.
-  bool user_enabled_;
+  // Control value for if the backlight is enabled by the current video state.
   bool video_enabled_;
 
   // Maximum brightness level exposed by the backlight driver.
@@ -159,16 +197,26 @@ class KeyboardBacklightController : public BacklightController,
   // backlight being disabled.
   int64 current_level_;
 
-  // Current percentage that is trying to be set, might not be set if backlight
-  // is disabled.
-  double target_percent_;
+  // Current percentage that is trying to be set by the ALS, might not be set if
+  // backlight is disabled.
+  double als_target_percent_;
 
-  // Control values used for setting the state of the backlight under special
-  // power conditions. These values are either set by prefs files to be inline
-  // with the values from the steps prefs or set to default values.
-  double target_percent_dim_;
-  double target_percent_max_;
-  double target_percent_min_;
+  // Current percentage that the user has defined.
+  double user_target_percent_;
+
+  // Control values used for defining the range that als control will set the
+  // target brightness percent and a special value for dimming the backlight
+  // when the device idles.
+  double als_target_percent_dim_;
+  double als_target_percent_max_;
+  double als_target_percent_min_;
+
+  // Control values used for defining the range that user control will set the
+  // target brightness percent and a special value for dimming the backlight
+  // when the device idles.
+  double user_target_percent_dim_;
+  double user_target_percent_max_;
+  double user_target_percent_min_;
 
   // Apply temporal hysteresis to ALS values.
   AlsHysteresisState hysteresis_state_;
@@ -178,14 +226,23 @@ class KeyboardBacklightController : public BacklightController,
   int lux_level_;
 
   // Current brightness step being used by the ALS.
-  ssize_t current_step_index_;
+  ssize_t als_step_index_;
 
   // Brightness step data that is read in from the prefs file. It is assumed
   // that this data is well formed, specifically for each entry in the file the
   // decrease thresholds are monotonically increasing and the increase
   // thresholds are monotonically decreasing. The value -1 is special and is
   // meant to indicate positive/negative infinity depending on the context.
-  std::vector<BrightnessStep> brightness_steps_;
+  std::vector<BrightnessStep> als_steps_;
+
+  // Current brightness step set by user, or -1 is |als_step_index_| should be
+  // used.
+  ssize_t user_step_index_;
+
+  // Set of percentages that the user can select from for setting the
+  // brightness. This is populated by either reading from a config value or
+  // dropping in target_percent [min, dim, max] in.
+  std::vector<double> user_steps_;
 
   // If true, we ignore readings from the ambient light sensor.  Controlled by
   // kDisableALSPref.

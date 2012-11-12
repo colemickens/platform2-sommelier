@@ -11,11 +11,28 @@ in userspace.  This repository contains the following directories:
   udev:    udev configuration files and scripts.
 
 Configs:
-  * keyboard_backlight_steps:
-    This file is used to specify the brightness steps that the keyboard
-    backlight will use in response to the ALS. If you don't want to use the
-    ALS to control this backlight, remove the file from the device. The file is
-    a series of lines in the format:
+    There are historically two forms of the KBC config files. Originally there
+    was a file, keyboard_backlight_steps, for all of the ALS steps that would be
+    used in the system and a series of files,
+    keyboard_backlight_{min,dim,max}_percent, that were used to specify the
+    range of the steps and the dim level.
+
+    With addition of finer user control these files have been significantly
+    changed and new ones adopted. keyboard_backlight_steps has become
+    keyboard_backlight_als_steps, with an additional
+    keyboard_backlight_user_steps file being used to specify the user control
+    steps. The three percent files have been rolled up into a single
+    keyboard_backlight_als_limits file and there is a new user control
+    equivalent called keyboard_backlight_user_limits.
+
+    New code should depend on the new steps and limits format, since the old
+    version has been deprecated and will be removed at some point.
+
+  * keyboard_backlight_steps/keyboard_backlight_als_steps:
+    This is the file that is used to specify the brightness steps that the
+    keyboard backlight will use in response to the ALS. If you don't want to use
+    the ALS to control this backlight, remove the file from the device. The file
+    is a series of lines in the format:
 
     <backlight percentage> <decrease threshold> <increase threshold>
 
@@ -57,3 +74,16 @@ KBL |                      |------------| E
     increase threshold. What ever the backlight percentage is for E should be
     the value that appears in keyboard_backlight_max_percent and the backlight
     percentage for F should appear in keyboard_backlight_min_percent.
+
+  * keyboard_backlight_user_steps:
+    This is the file that is used to specify the brightness steps that the
+    keyboard backlight will use in response to user commands. If this file is
+    not present the system will create three default steps: min, dim, and
+    max. This file is just a series of lines with a single decimal number
+    inclusively between 0.0 and 100.0. The steps should be ordered lowest to
+    highest to get the expected behaviour of Up increases and Down decreases.
+
+  * keyboard_backlight_{als,user}_limits:
+    This file lists the min, dim, and max limits to be used in each mode of
+    operation for the KBC. They are listed in that order, one per line, as
+    something like 20.0.
