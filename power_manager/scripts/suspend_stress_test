@@ -15,6 +15,7 @@ DEFINE_boolean backup_rtc ${FLAGS_FALSE} "Use second rtc if present for backup"
 DEFINE_boolean dbus_suspend ${FLAGS_FALSE} "Use dbus signal to suspend"
 DEFINE_boolean bug_fatal ${FLAGS_TRUE} "Abort on BUG dmesg lines"
 DEFINE_boolean crc_fatal ${FLAGS_TRUE} "Abort on CRC error dmesg lines"
+DEFINE_boolean warn_fatal ${FLAGS_FALSE} "Abort on WARNING dmesg lines"
 DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
 
 get_failed_count() {
@@ -61,6 +62,7 @@ echo "  wake: ${FLAGS_wake_min}-${FLAGS_wake_max} seconds"
 echo "  backup_rtc: $(boolean_value ${FLAGS_backup_rtc})"
 echo "  errors_fatal: $(boolean_value ${FLAGS_errors_fatal})"
 echo "  bugs fatal:  $(boolean_value ${FLAGS_bug_fatal})"
+echo "  warnings fatal:  $(boolean_value ${FLAGS_warn_fatal})"
 echo "  crcs fatal:  $(boolean_value ${FLAGS_crc_fatal})"
 echo "  suspend command: ${suspend_cmd}"
 
@@ -114,6 +116,12 @@ while [ ${cur} -lt ${FLAGS_count} ]; do
   if [ ${FLAGS_bug_fatal} -eq ${FLAGS_TRUE} ] &&
         dmesg | grep -w BUG; then
     echo "BUG found."
+    break
+  fi
+  # Break on WARNING
+  if [ ${FLAGS_warn_fatal} -eq ${FLAGS_TRUE} ] &&
+        dmesg | grep -w WARNING; then
+    echo "WARNING found."
     break
   fi
   # Break on CRC error
