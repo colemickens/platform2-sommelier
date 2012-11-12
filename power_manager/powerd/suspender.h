@@ -50,10 +50,10 @@ class Suspender {
   // sending the returned reply and freeing it with dbus_message_unref().
   DBusMessage* UnregisterSuspendDelay(DBusMessage* message);
 
- private:
-  // Handle SuspendReady Dbus Messages.
-  void SuspendReady(DBusMessage* message);
+  // Handle SuspendReady D-Bus signals.
+  bool SuspendReady(DBusMessage* message);
 
+ private:
   // Suspend the computer. Before calling this method, the screen should
   // be locked.
   void Suspend();

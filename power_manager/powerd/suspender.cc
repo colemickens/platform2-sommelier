@@ -105,36 +105,6 @@ void Suspender::CheckSuspend() {
   }
 }
 
-void Suspender::SuspendReady(DBusMessage* message) {
-  const char* client_name = dbus_message_get_sender(message);
-  if (!client_name) {
-    LOG(ERROR) << "dbus_message_get_sender returned NULL name.";
-    return;
-  }
-  LOG(INFO) << "SuspendReady, client : " << client_name;
-  SuspendList::iterator iter = suspend_delays_.find(client_name);
-  if (suspend_delays_.end() == iter) {
-    LOG(WARNING) << "Unregistered client attempting to ack SuspendReady!";
-    return;
-  }
-  DBusError error;
-  dbus_error_init(&error);
-  unsigned int sequence_num;
-  if (!dbus_message_get_args(message, &error, DBUS_TYPE_UINT32, &sequence_num,
-                             DBUS_TYPE_INVALID)) {
-    LOG(ERROR) << "Could not get args from SuspendReady signal!";
-    if (dbus_error_is_set(&error))
-      dbus_error_free(&error);
-    return;
-  }
-  if (sequence_num == suspend_sequence_number_) {
-    LOG(INFO) << "Suspend sequence number match! " << sequence_num;
-    CheckSuspend();
-  } else {
-    LOG(INFO) << "Out of sequence SuspendReady ack!";
-  }
-}
-
 void Suspender::CancelSuspend() {
   if (suspend_requested_) {
     LOG(INFO) << "Suspend canceled mid flight.";
@@ -215,6 +185,38 @@ DBusMessage* Suspender::UnregisterSuspendDelay(DBusMessage* message) {
     dbus_message_set_error_name(reply, errmsg.c_str());
   }
   return reply;
+}
+
+bool Suspender::SuspendReady(DBusMessage* message) {
+  const char* client_name = dbus_message_get_sender(message);
+  if (!client_name) {
+    LOG(ERROR) << "dbus_message_get_sender returned NULL name.";
+    return true;
+  }
+  LOG(INFO) << "SuspendReady, client : " << client_name;
+  SuspendList::iterator iter = suspend_delays_.find(client_name);
+  if (suspend_delays_.end() == iter) {
+    LOG(WARNING) << "Unregistered client attempting to ack SuspendReady!";
+    return true;
+  }
+  DBusError error;
+  dbus_error_init(&error);
+  unsigned int sequence_num;
+  if (!dbus_message_get_args(message, &error, DBUS_TYPE_UINT32, &sequence_num,
+                             DBUS_TYPE_INVALID)) {
+    LOG(ERROR) << "Could not get args from SuspendReady signal!";
+    if (dbus_error_is_set(&error))
+      dbus_error_free(&error);
+    return true;
+  }
+  if (sequence_num == suspend_sequence_number_) {
+    LOG(INFO) << "Suspend sequence number match! " << sequence_num;
+    CheckSuspend();
+  } else {
+    LOG(INFO) << "Out of sequence SuspendReady ack!";
+  }
+
+  return true;
 }
 
 void Suspender::Suspend() {
