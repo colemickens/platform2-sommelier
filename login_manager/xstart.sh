@@ -9,6 +9,8 @@ trap '' USR1 TTOU TTIN
 # Disables all the Ctrl-Alt-Fn shortcuts for switching between virtual terminals
 # if we're in verified boot mode. Otherwise, disables only Fn (n>=3) keys.
 MAXVT=0
+# If you are editing this if-condition, please also update
+# platform/init/hotkey-access.conf.
 if crossystem "cros_debug?1" ||
     grep -q '^chronos:[^*]' /etc/shadow; then
   # developer end-user
