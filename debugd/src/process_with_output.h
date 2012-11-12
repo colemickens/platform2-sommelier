@@ -9,18 +9,19 @@
 #include <vector>
 
 #include <base/file_path.h>
-#include <chromeos/process.h>
+
+#include "sandboxed_process.h"
 
 namespace debugd {
 
 // @brief Represents a process whose output can be collected.
 //
 // The process must be Run() to completion before its output can be collected.
-class ProcessWithOutput : public chromeos::ProcessImpl {
+class ProcessWithOutput : public SandboxedProcess {
  public:
   ProcessWithOutput();
   ~ProcessWithOutput();
-  bool Init();
+  virtual bool Init();
   bool GetOutput(std::string* output);
   bool GetOutputLines(std::vector<std::string>* output);
  private:

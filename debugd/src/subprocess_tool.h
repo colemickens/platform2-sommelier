@@ -20,7 +20,7 @@ class SubprocessTool {
   SubprocessTool();
   virtual ~SubprocessTool();
 
-  virtual ProcessWithId* CreateProcess();
+  virtual ProcessWithId* CreateProcess(bool sandbox);
   virtual void Stop(const std::string& handle, DBus::Error& error);
  private:
   std::map<std::string, ProcessWithId*> processes_;

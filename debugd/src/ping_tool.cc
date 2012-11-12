@@ -11,6 +11,7 @@
 
 namespace debugd {
 
+const char* kSetuidHack = "/usr/libexec/debugd/helpers/minijail-setuid-hack.sh";
 const char* kPing = "/bin/ping";
 
 PingTool::PingTool() : SubprocessTool() { }
@@ -21,9 +22,10 @@ std::string PingTool::Start(const DBus::FileDescriptor& outfd,
                             const std::map<std::string, DBus::Variant>&
                                 options,
                             DBus::Error& error) {
-  ProcessWithId* p = CreateProcess();
+  ProcessWithId* p = CreateProcess(true);
   if (!p)
     return "";
+  p->AddArg(kSetuidHack);
   p->AddArg(kPing);
   if (options.count("count") == 1) {
     // If we try to convert a non-int value to an int here, dbus-c++ will toss

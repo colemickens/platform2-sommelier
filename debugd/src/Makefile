@@ -27,7 +27,8 @@ tests: TEST(CXX_BINARY(testrunner))
 TOOLS := $(patsubst %,%_tool.o,anonymizer debug_logs debug_mode example icmp \
            log modem_status netif network_status ping route subprocess \
            systrace tracepath)
-OBJS := debug_daemon.o process_with_id.o process_with_output.o $(TOOLS)
+OBJS := debug_daemon.o process_with_id.o process_with_output.o \
+        sandboxed_process.o $(TOOLS)
 TESTOBJS := anonymizer_tool_test.o log_tool_test.o process_with_id_test.o
 
 CXX_BINARY(debugd): main.o $(OBJS)

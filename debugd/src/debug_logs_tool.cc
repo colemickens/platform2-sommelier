@@ -7,6 +7,7 @@
 #include <base/file_util.h>
 #include <chromeos/process.h>
 
+
 namespace debugd {
 
 const char* const kTar = "/bin/tar";
@@ -17,7 +18,7 @@ DebugLogsTool::~DebugLogsTool() { }
 
 void DebugLogsTool::GetDebugLogs(const DBus::FileDescriptor& fd,
                                  DBus::Error& error) {
-  chromeos::Process* p = new chromeos::ProcessImpl();
+  chromeos::ProcessImpl* p = new chromeos::ProcessImpl();
   p->AddArg(kTar);
   p->AddArg("-c");
   p->AddArg("-z");

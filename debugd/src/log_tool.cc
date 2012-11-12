@@ -41,11 +41,20 @@ string EnsureUTF8String(const string& value) {
   return "<invalid>";
 }
 
+struct Log {
+  const char *name;
+  const char *command;
+  const char *user;
+  const char *group;
+};
+
 // TODO(ellyjones): sandbox. crosbug.com/35122
-string Run(const string& cmdline) {
+string Run(const Log& log) {
   string output;
   ProcessWithOutput p;
-  string tailed_cmdline = cmdline + " | tail -c 256K";
+  string tailed_cmdline = std::string(log.command) + " | tail -c 256K";
+  if (log.user && log.group)
+    p.SandboxAs(log.user, log.group);
   if (!p.Init())
     return "<not available>";
   p.AddArg(kShell);
@@ -57,11 +66,6 @@ string Run(const string& cmdline) {
     return "<empty>";
   return EnsureUTF8String(output);
 }
-
-struct Log {
-  const char *name;
-  const char *command;
-};
 
 static const Log common_logs[] = {
   { "CLIENT_ID", "/bin/cat '/home/chronos/Consent To Send Stats'" },
@@ -160,7 +164,7 @@ bool GetNamedLogFrom(const string& name, const struct Log* logs,
                      string* result) {
   for (size_t i = 0; logs[i].name; i++) {
     if (name == logs[i].name) {
-      *result = Run(logs[i].command);
+      *result = Run(logs[i]);
       return true;
     }
   }
@@ -178,7 +182,7 @@ string LogTool::GetLog(const string& name, DBus::Error& error) { // NOLINT
 
 void GetLogsFrom(const struct Log* logs, LogTool::LogMap* map) {
   for (size_t i = 0; logs[i].name; i++)
-    (*map)[logs[i].name] = Run(logs[i].command);
+    (*map)[logs[i].name] = Run(logs[i]);
 }
 
 LogTool::LogMap LogTool::GetAllLogs(DBus::Error& error) { // NOLINT

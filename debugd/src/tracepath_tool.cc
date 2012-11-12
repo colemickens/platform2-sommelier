@@ -21,7 +21,7 @@ std::string TracePathTool::Start(const DBus::FileDescriptor& outfd,
                                  const std::map<std::string, DBus::Variant>&
                                      options,
                                  DBus::Error& error) {
-  ProcessWithId* p = CreateProcess();
+  ProcessWithId* p = CreateProcess(true);
   if (!p)
     return "";
   p->AddArg(kTracepath);

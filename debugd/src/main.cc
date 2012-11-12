@@ -29,21 +29,6 @@ void enter_vfs_namespace() {
   minijail_destroy(j);
 }
 
-// @brief Enter a minijail.
-//
-// We are already in a vfs namespace so that our tmpfs is only visible to us and
-// our descendants, and we don't want to be root. Note that minijail_enter()
-// exits the process if it can't succeed.
-void enter_sandbox() {
-  static const char* kDebugdUser = "debugd";
-  static const char* kDebugdGroup = "debugd";
-  struct minijail* j = minijail_new();
-  minijail_change_user(j, kDebugdUser);
-  minijail_change_group(j, kDebugdGroup);
-  minijail_enter(j);
-  minijail_destroy(j);
-}
-
 // @brief Sets up a tmpfs visible to this program and its descendants.
 //
 // The created tmpfs is mounted at /debugd.
@@ -90,7 +75,6 @@ int __attribute__((visibility("default"))) main(int argc, char* argv[]) {
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   enter_vfs_namespace();
   make_tmpfs();
-  enter_sandbox();
   setup_dirs();
   launch_helpers();
   start();

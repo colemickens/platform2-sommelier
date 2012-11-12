@@ -15,8 +15,6 @@
 
 namespace debugd {
 
-class ProcessWithId;
-
 class PingTool : public SubprocessTool {
  public:
   PingTool();

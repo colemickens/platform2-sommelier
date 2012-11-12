@@ -17,8 +17,10 @@ const char* kErrorNoSuchProcess =
 SubprocessTool::SubprocessTool() { }
 SubprocessTool::~SubprocessTool() { }
 
-ProcessWithId* SubprocessTool::CreateProcess() {
+ProcessWithId* SubprocessTool::CreateProcess(bool sandbox) {
   ProcessWithId* p = new ProcessWithId();
+  if (!sandbox)
+    p->DisableSandbox();
   if (!p->Init() || processes_.count(p->id()) == 1)
     return NULL;
   processes_[p->id()] = p;

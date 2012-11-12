@@ -20,6 +20,8 @@ ProcessWithOutput::~ProcessWithOutput() {
 }
 
 bool ProcessWithOutput::Init() {
+  if (!SandboxedProcess::Init())
+    return false;
   outfile_ = file_util::CreateAndOpenTemporaryFile(&outfile_path_);
   if (!outfile_)
     return false;

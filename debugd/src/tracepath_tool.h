@@ -15,8 +15,6 @@
 
 namespace debugd {
 
-class ProcessWithId;
-
 class TracePathTool : public SubprocessTool {
  public:
   TracePathTool();

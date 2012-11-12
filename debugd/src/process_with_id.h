@@ -5,7 +5,7 @@
 #ifndef PROCESS_WITH_ID_H
 #define PROCESS_WITH_ID_H
 
-#include <chromeos/process.h>
+#include "sandboxed_process.h"
 
 namespace debugd {
 
@@ -13,10 +13,10 @@ namespace debugd {
 //
 // The ID is random, unguessable, and may be given to other processes. It is a
 // null-terminated ASCII string.
-class ProcessWithId : public chromeos::ProcessImpl {
+class ProcessWithId : public SandboxedProcess {
  public:
   ProcessWithId();
-  bool Init();
+  virtual bool Init();
   std::string id() const { return id_; }
  private:
   bool generate_id();
