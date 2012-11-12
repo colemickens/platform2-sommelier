@@ -87,7 +87,7 @@ class DaemonTest : public Test {
         backlight_ctl_(&backlight_, &prefs_, NULL),
 #endif
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
-                &idle_, NULL, NULL, FilePath(".")),
+                &idle_, NULL, FilePath(".")),
         status_(&daemon_.power_status_) {}
 
   virtual void SetUp() {

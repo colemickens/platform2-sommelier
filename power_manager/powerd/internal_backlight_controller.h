@@ -34,7 +34,7 @@ class InternalBacklightController : public BacklightController {
   static const double kMinVisiblePercent;
 
   InternalBacklightController(BacklightInterface* backlight,
-                              PowerPrefsInterface* prefs,
+                              PowerPrefs* prefs,
                               AmbientLightSensor* sensor);
   virtual ~InternalBacklightController();
 
@@ -133,7 +133,7 @@ class InternalBacklightController : public BacklightController {
   BacklightInterface* backlight_;
 
   // Interface for saving preferences. Non-owned.
-  PowerPrefsInterface* prefs_;
+  PowerPrefs* prefs_;
 
   // Light sensor we need to register for updates from.  Non-owned.
   AmbientLightSensor* light_sensor_;
@@ -205,6 +205,10 @@ class InternalBacklightController : public BacklightController {
   // instant, i.e. the brightness may not smoothly transition between those
   // levels.
   bool instant_transitions_below_min_level_;
+
+  // If true, we ignore readings from the ambient light sensor.  Controlled by
+  // kDisableALSPref.
+  bool ignore_ambient_light_;
 
   // Percentage by which we offset the brightness in response to increase and
   // decrease requests.

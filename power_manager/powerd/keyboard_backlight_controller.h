@@ -19,13 +19,14 @@ namespace power_manager {
 
 class BacklightInterface;
 class KeyboardBacklightControllerTest;
+class PowerPrefs;
 
 // Controls the keyboard backlight for devices with such a backlight.
 class KeyboardBacklightController : public BacklightController,
                                     public VideoDetectorObserver {
  public:
   KeyboardBacklightController(BacklightInterface* backlight,
-                              PowerPrefsInterface* prefs,
+                              PowerPrefs* prefs,
                               AmbientLightSensor* sensor);
   virtual ~KeyboardBacklightController();
 
@@ -126,7 +127,7 @@ class KeyboardBacklightController : public BacklightController,
   BacklightInterface* backlight_;
 
   // Interface for saving preferences. Non-owned.
-  PowerPrefsInterface* prefs_;
+  PowerPrefs* prefs_;
 
   // Light sensor we need to register for updates from.  Non-owned.
   AmbientLightSensor* light_sensor_;
@@ -185,6 +186,10 @@ class KeyboardBacklightController : public BacklightController,
   // thresholds are monotonically decreasing. The value -1 is special and is
   // meant to indicate positive/negative infinity depending on the context.
   std::vector<BrightnessStep> brightness_steps_;
+
+  // If true, we ignore readings from the ambient light sensor.  Controlled by
+  // kDisableALSPref.
+  bool ignore_ambient_light_;
 
   // Value returned when we add a timer for the video timeout. This is
   // needed for reseting the timer when the next event occurs.

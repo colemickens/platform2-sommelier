@@ -164,11 +164,9 @@ int main(int argc, char* argv[]) {
 
   WaitForPowerM();
 
-  scoped_ptr<power_manager::AmbientLightSensor> als;
+  scoped_ptr<power_manager::AmbientLightSensor> light_sensor;
 #ifndef IS_DESKTOP
-  als.reset(new power_manager::AmbientLightSensor());
-  if (!als->Init(&prefs))
-    LOG(WARNING) << "Cannot initialize light sensor";
+  light_sensor.reset(new power_manager::AmbientLightSensor());
 #endif
 
   power_manager::BacklightClient display_backlight(
@@ -182,7 +180,7 @@ int main(int argc, char* argv[]) {
       &display_backlight);
 #else
   power_manager::InternalBacklightController display_backlight_controller(
-      &display_backlight, &prefs, als.get());
+      &display_backlight, &prefs, light_sensor.get());
 #endif
   display_backlight_controller.SetMonitorReconfigure(&monitor_reconfigure);
   if (!display_backlight_controller.Init())
@@ -203,7 +201,7 @@ int main(int argc, char* argv[]) {
   if (keyboard_backlight.get()) {
     keyboard_backlight_controller.reset(
         new power_manager::KeyboardBacklightController(
-            keyboard_backlight.get(), &prefs, als.get()));
+            keyboard_backlight.get(), &prefs, light_sensor.get()));
     if (!keyboard_backlight_controller->Init()) {
       LOG(WARNING) << "Cannot initialize keyboard backlight controller!";
       keyboard_backlight_controller.reset();
@@ -225,7 +223,6 @@ int main(int argc, char* argv[]) {
                                &video_detector,
                                &idle,
                                keyboard_backlight_controller.get(),
-                               als.get(),
                                run_dir);
 
   daemon.Init();

@@ -93,7 +93,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
                VideoDetector* video_detector,
                IdleDetector* idle,
                KeyboardBacklightController* keyboard_controller,
-               AmbientLightSensor* als,
                const FilePath& run_dir)
     : backlight_controller_(backlight_controller),
       prefs_(prefs),
@@ -101,7 +100,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       video_detector_(video_detector),
       idle_(idle),
       keyboard_controller_(keyboard_controller),
-      light_sensor_(als),
       low_battery_shutdown_time_s_(0),
       low_battery_shutdown_percent_(0.0),
       sample_window_max_(0),
@@ -541,8 +539,6 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     }
     if (keyboard_controller_)
       keyboard_controller_->SetPowerState(BACKLIGHT_ACTIVE);
-    if (light_sensor_)
-      light_sensor_->EnableOrDisableSensor(true);
     power_state_ = BACKLIGHT_ACTIVE;
   } else if (idle_time_ms < react_ms_ && locker_.is_locked()) {
     BrightenScreenIfOff();
@@ -1820,8 +1816,6 @@ void Daemon::SetPowerState(PowerState state) {
   if (keyboard_controller_)
     keyboard_controller_->SetPowerState(state);
 
-  if (light_sensor_ && power_state_ != state)
-    light_sensor_->EnableOrDisableSensor(state == BACKLIGHT_ACTIVE);
   power_state_ = state;
 }
 

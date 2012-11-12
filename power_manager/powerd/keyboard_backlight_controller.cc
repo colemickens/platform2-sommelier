@@ -11,6 +11,7 @@
 #include "base/string_number_conversions.h"
 #include "base/string_split.h"
 #include "power_manager/common/backlight_interface.h"
+#include "power_manager/common/power_prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
@@ -44,7 +45,7 @@ const int64 KeyboardBacklightController::kSlowTransitionMs = 2000;
 
 KeyboardBacklightController::KeyboardBacklightController(
     BacklightInterface* backlight,
-    PowerPrefsInterface* prefs,
+    PowerPrefs* prefs,
     AmbientLightSensor* sensor)
     : is_initialized_ (false),
       backlight_(backlight),
@@ -64,12 +65,13 @@ KeyboardBacklightController::KeyboardBacklightController(
       target_percent_min_(kTargetPercentMin),
       hysteresis_state_(ALS_HYST_IDLE),
       hysteresis_count_(0),
+      lux_level_(0),
       current_step_index_(0),
+      ignore_ambient_light_(false),
       video_timeout_timer_id_(0),
       num_als_adjustments_(0),
       num_user_adjustments_(0) {
-  DCHECK(backlight) << "Cannot create KeyboardBacklightController will NULL "
-                    << "backlight!";
+  DCHECK(backlight);
   if (light_sensor_)
     light_sensor_->AddObserver(this);
 }
@@ -260,10 +262,10 @@ void KeyboardBacklightController::OnAmbientLightChanged(
                << "Please check the platform ALS configuration.";
 #endif
 
-  if (light_sensor_ != sensor) {
-    LOG(WARNING) << "Received AmbientLightChange from unknown sensor";
+  DCHECK_EQ(sensor, light_sensor_);
+
+  if (ignore_ambient_light_)
     return;
-  }
 
   int new_lux = light_sensor_->GetAmbientLightLux();
   if (new_lux < 0) {
@@ -428,6 +430,8 @@ void KeyboardBacklightController::ReadPrefs() {
               << default_step.decrease_threshold << ", "
               << default_step.increase_threshold << ")";
   }
+
+  prefs_->GetBool(kDisableALSPref, &ignore_ambient_light_);
 }
 
 void KeyboardBacklightController::UpdateBacklightEnabled() {

@@ -9,7 +9,7 @@
 
 #include "base/memory/scoped_ptr.h"
 #include "power_manager/common/mock_backlight.h"
-#include "power_manager/common/mock_power_prefs_interface.h"
+#include "power_manager/common/mock_power_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
@@ -66,6 +66,7 @@ class KeyboardBacklightControllerTest : public Test {
                                  kTestPercentMin, true);
     power_prefs_.ExpectGetString(kKeyboardBacklightStepsPref,
                                  kTestStepsString, true);
+    power_prefs_.ExpectGetBool(kDisableALSPref, false, true);
     ASSERT_TRUE(controller_->Init());
   }
 
@@ -115,7 +116,7 @@ class KeyboardBacklightControllerTest : public Test {
  protected:
   StrictMock<MockAmbientLightSensor> light_sensor_;
   StrictMock<MockBacklight> backlight_;
-  StrictMock<MockPowerPrefsInterface> power_prefs_;
+  StrictMock<MockPowerPrefs> power_prefs_;
   scoped_ptr<KeyboardBacklightController> controller_;
 };  // class KeyboardBacklightControllerTest
 
@@ -379,11 +380,6 @@ TEST_F(KeyboardBacklightControllerTest, PercentToLevel) {
 TEST_F(KeyboardBacklightControllerTest, OnAmbientLightChanged) {
   controller_->observer_ = NULL;
   controller_->video_enabled_ = true;
-
-  // Incorrect sensor.
-  controller_->OnAmbientLightChanged(NULL);
-  CheckCurrentStep(kTestStepIndex, kTestSyntheticLux);
-  CheckHysteresisState(BacklightController::ALS_HYST_IDLE, 0);
 
   // ALS returns bad value.
   light_sensor_.ExpectGetAmbientLightLux(-1);

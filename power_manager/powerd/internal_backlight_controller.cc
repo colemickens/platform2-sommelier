@@ -15,7 +15,7 @@
 #include "base/stringprintf.h"
 
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/power_prefs_interface.h"
+#include "power_manager/common/power_prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/monitor_reconfigure.h"
@@ -74,7 +74,7 @@ const double InternalBacklightController::kMinVisiblePercent =
 
 InternalBacklightController::InternalBacklightController(
     BacklightInterface* backlight,
-    PowerPrefsInterface* prefs,
+    PowerPrefs* prefs,
     AmbientLightSensor* sensor)
     : backlight_(backlight),
       prefs_(prefs),
@@ -96,6 +96,7 @@ InternalBacklightController::InternalBacklightController(
       max_level_(0),
       min_visible_level_(0),
       instant_transitions_below_min_level_(false),
+      ignore_ambient_light_(false),
       step_percent_(1.0),
       idle_brightness_percent_(kIdleBrightnessFraction * 100.0),
       level_to_percent_exponent_(kDefaultLevelToPercentExponent),
@@ -437,11 +438,10 @@ void InternalBacklightController::OnAmbientLightChanged(
   LOG(WARNING) << "Got ALS reading from platform supposed to have no ALS. "
                << "Please check the platform ALS configuration.";
 #endif
+  DCHECK_EQ(sensor, light_sensor_);
 
-  if (light_sensor_ != sensor) {
-    LOG(WARNING) << "Received AmbientLightChange from unknown sensor";
+  if (ignore_ambient_light_)
     return;
-  }
 
   double percent = light_sensor_->GetAmbientLightPercent();
   if (percent < 0.0) {
@@ -529,10 +529,9 @@ void InternalBacklightController::ReadPrefs() {
   plugged_offset_percent_ = std::max(min_percent, plugged_offset_percent_);
   unplugged_offset_percent_ = std::max(min_percent, unplugged_offset_percent_);
 
-  int64 instant_transition_pref = false;
-  prefs_->GetInt64(kInstantTransitionsBelowMinLevelPref,
-                   &instant_transition_pref);
-  instant_transitions_below_min_level_ = (instant_transition_pref != 0);
+  prefs_->GetBool(kInstantTransitionsBelowMinLevelPref,
+                  &instant_transitions_below_min_level_);
+  prefs_->GetBool(kDisableALSPref, &ignore_ambient_light_);
 
   int64 turn_off_screen_timeout_ms = 0;
   prefs_->GetInt64(kTurnOffScreenTimeoutMsPref, &turn_off_screen_timeout_ms);

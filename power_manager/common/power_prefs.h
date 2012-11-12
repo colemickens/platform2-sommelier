@@ -12,25 +12,29 @@
 
 #include "base/file_path.h"
 #include "power_manager/common/inotify.h"
-#include "power_manager/common/power_prefs_interface.h"
 
 namespace power_manager {
 
-class PowerPrefs : public PowerPrefsInterface {
+class PowerPrefs {
  public:
   explicit PowerPrefs(const FilePath& pref_path);
   explicit PowerPrefs(const std::vector<FilePath>& pref_paths);
-  virtual ~PowerPrefs() {}
+  virtual ~PowerPrefs();
 
-  bool StartPrefWatching(Inotify::InotifyCallback callback, gpointer data);
+  // Starts watching for changes within the preference dir(s) on behalf of
+  // |callback|.
+  virtual bool StartPrefWatching(Inotify::InotifyCallback callback,
+                                 gpointer data);
 
-  // Overridden from PowerPrefsInterface:
+  // Reads settings from disk and returns true on success.
   virtual bool GetString(const char* name, std::string* value);
   virtual bool GetInt64(const char* name, int64* value);
-  virtual bool SetInt64(const char* name, int64 value);
   virtual bool GetDouble(const char* name, double* value);
-  virtual bool SetDouble(const char* name, double value);
   virtual bool GetBool(const char* name, bool* value);
+
+  // Writes settings to disk and returns true on success.
+  virtual bool SetInt64(const char* name, int64 value);
+  virtual bool SetDouble(const char* name, double value);
 
  private:
   // Result of a pref file read operation.
@@ -52,8 +56,10 @@ class PowerPrefs : public PowerPrefsInterface {
   // A value read from the first path will be used instead of values from the
   // other paths.
   std::vector<FilePath> pref_paths_;
+
   // For notification of updates to pref files.
   Inotify notifier_;
+
   DISALLOW_COPY_AND_ASSIGN(PowerPrefs);
 };
 

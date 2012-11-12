@@ -37,11 +37,7 @@ static const int kLuxOffset = 4;
 static size_t kHistorySizeMax = 10;
 
 AmbientLightSensor::AmbientLightSensor()
-    : prefs_(NULL),
-      fully_disable_als_(false),
-      is_polling_(false),
-      disable_polling_(false),
-      still_deferring_(false),
+    : still_deferring_(false),
       als_found_(false),
       read_cb_(base::Bind(&AmbientLightSensor::ReadCallback,
                           base::Unretained(this))),
@@ -53,6 +49,8 @@ AmbientLightSensor::AmbientLightSensor()
   double lo = kLuxLo + kLuxOffset;
   log_multiply_factor_ = 100 / log(hi / lo);
   log_subtract_factor_ = log(lo) * log_multiply_factor_;
+
+  g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
 }
 
 AmbientLightSensor::~AmbientLightSensor() {}
@@ -91,56 +89,12 @@ bool AmbientLightSensor::DeferredInit() {
   return false;
 }
 
-bool AmbientLightSensor::Init(PowerPrefsInterface* prefs) {
-  prefs_ = prefs;
-  int64 disable_als;
-  // TODO: In addition to disable_als, we should add another prefs file
-  // that allows polling ALS as usual but prevents backlight changes from
-  // happening. This will be useful for power and system profiling.
-  if (prefs_->GetInt64(kDisableALSPref, &disable_als) && disable_als) {
-    LOG(INFO) << "Completely disabling ambient light sensor.";
-    fully_disable_als_ = true;
-    disable_polling_ = true;
-    return false;
-  }
-  return true;
-}
-
 void AmbientLightSensor::AddObserver(AmbientLightSensorObserver* observer) {
   observer_list_.AddObserver(observer);
 }
 
 void AmbientLightSensor::RemoveObserver(AmbientLightSensorObserver* observer) {
   observer_list_.RemoveObserver(observer);
-}
-
-void AmbientLightSensor::EnableOrDisableSensor(bool enable) {
-  if (fully_disable_als_ && enable) {
-    LOG(INFO) << "Ignoring request to enable ALS since it has been disabled by"
-              << " the disable_als pref.";
-    return;
-  }
-
-  if (!enable) {
-    LOG(INFO) << "Disabling light sensor poll";
-    disable_polling_ = true;
-    return;
-  }
-
-  // We want to poll.
-  // There is a possible race between setting disable_polling_ = true above and
-  // now setting it false.  If powerd rapidly transitions the backlight into and
-  // out of dim, we might try to turn on polling when it is already on.
-  // is_polling_ resolves the race.  No locking is needed in this single
-  // threaded application.
-  disable_polling_ = false;
-  if (is_polling_)
-    return;  // already polling.
-
-  // Start polling.
-  LOG(INFO) << "Enabling light sensor poll";
-  is_polling_ = true;
-  g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
 }
 
 double AmbientLightSensor::GetAmbientLightPercent() const {
@@ -153,34 +107,29 @@ int AmbientLightSensor::GetAmbientLightLux() const {
 
 std::string AmbientLightSensor::DumpPercentHistory() const {
   std::string buffer;
-  for (std::list<double>::const_iterator iter = percent_history_.begin();
-       iter != percent_history_.end();
-       ++iter) {
+  for (std::list<double>::const_reverse_iterator it = percent_history_.rbegin();
+       it != percent_history_.rend();
+       ++it) {
     if (!buffer.empty())
       buffer += ", ";
-    buffer += StringPrintf("%.1f", *iter);
+    buffer += StringPrintf("%.1f", *it);
   }
   return "[" + buffer + "]";
 }
 
 std::string AmbientLightSensor::DumpLuxHistory() const {
   std::string buffer;
-  for (std::list<int>::const_iterator iter = lux_history_.begin();
-       iter != lux_history_.end();
-       ++iter) {
+  for (std::list<int>::const_reverse_iterator it = lux_history_.rbegin();
+       it != lux_history_.rend();
+       ++it) {
     if (!buffer.empty())
       buffer += ", ";
-    buffer += base::IntToString(*iter);
+    buffer += base::IntToString(*it);
   }
   return "[" + buffer + "]";
 }
 
 gboolean AmbientLightSensor::ReadAls() {
-  if (disable_polling_) {
-    is_polling_ = false;
-    return false;  // Returning false removes the timeout.
-  }
-
   // We really want to read the ambient light level.
   // Complete the deferred lux file open if necessary.
   if (!als_file_.HasOpenedFile() && !DeferredInit())
@@ -208,23 +157,12 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
     LOG(ERROR) << "Could not read lux value from ALS file contents: ["
                << trimmed_data << "]";
   }
-  // If the polling has been disabled, do not read again.
-  if (disable_polling_) {
-    is_polling_ = false;
-    return;
-  }
   // Schedule next poll.
   g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
 }
 
 void AmbientLightSensor::ErrorCallback() {
   LOG(ERROR) << "Error reading ALS file.";
-  // If the polling has been disabled, do not read again.
-  if (disable_polling_) {
-    is_polling_ = false;
-    return;
-  }
-  // Schedule next poll.
   g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
 }
 

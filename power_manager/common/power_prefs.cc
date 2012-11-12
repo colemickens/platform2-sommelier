@@ -15,13 +15,17 @@ using std::string;
 
 namespace power_manager {
 
-static const int kFileWatchMask = IN_MODIFY | IN_CREATE | IN_DELETE;
+namespace {
+const int kFileWatchMask = IN_MODIFY | IN_CREATE | IN_DELETE;
+}  // namespace
 
 PowerPrefs::PowerPrefs(const FilePath& pref_path)
     : pref_paths_(std::vector<FilePath>(1, pref_path)) {}
 
 PowerPrefs::PowerPrefs(const std::vector<FilePath>& pref_paths)
     : pref_paths_(pref_paths) {}
+
+PowerPrefs::~PowerPrefs() {}
 
 bool PowerPrefs::StartPrefWatching(Inotify::InotifyCallback callback,
                                    gpointer data) {
@@ -84,15 +88,6 @@ bool PowerPrefs::GetInt64(const char* name, int64* value) {
   return false;
 }
 
-bool PowerPrefs::SetInt64(const char* name, int64 value) {
-  CHECK(!pref_paths_.empty());
-  FilePath path = pref_paths_[0].Append(name);
-  string buf = base::Int64ToString(value);
-  int status = file_util::WriteFile(path, buf.data(), buf.size());
-  LOG_IF(ERROR, -1 == status) << "Failed to write to " << path.value();
-  return -1 != status;
-}
-
 bool PowerPrefs::GetDouble(const char* name, double* value) {
   std::vector<PrefReadResult> results;
   GetPrefStrings(name, true, &results);
@@ -108,6 +103,23 @@ bool PowerPrefs::GetDouble(const char* name, double* value) {
   return false;
 }
 
+bool PowerPrefs::GetBool(const char* name, bool* value) {
+  int64 int_value = 0;
+  if (!GetInt64(name, &int_value))
+    return false;
+  *value = int_value != 0;
+  return true;
+}
+
+bool PowerPrefs::SetInt64(const char* name, int64 value) {
+  CHECK(!pref_paths_.empty());
+  FilePath path = pref_paths_[0].Append(name);
+  string buf = base::Int64ToString(value);
+  int status = file_util::WriteFile(path, buf.data(), buf.size());
+  LOG_IF(ERROR, -1 == status) << "Failed to write to " << path.value();
+  return -1 != status;
+}
+
 bool PowerPrefs::SetDouble(const char* name, double value) {
   CHECK(!pref_paths_.empty());
   FilePath path = pref_paths_[0].Append(name);
@@ -115,14 +127,6 @@ bool PowerPrefs::SetDouble(const char* name, double value) {
   int status = file_util::WriteFile(path, buf.data(), buf.size());
   LOG_IF(ERROR, -1 == status) << "Failed to write to " << path.value();
   return -1 != status;
-}
-
-bool PowerPrefs::GetBool(const char* name, bool* value) {
-  int64 int_value = 0;
-  if (!GetInt64(name, &int_value))
-    return false;
-  *value = static_cast<bool>(int_value);
-  return true;
 }
 
 }  // namespace power_manager

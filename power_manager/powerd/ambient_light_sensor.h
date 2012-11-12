@@ -11,7 +11,6 @@
 
 #include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/power_prefs_interface.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/async_file_reader.h"
 
@@ -29,20 +28,9 @@ class AmbientLightSensor {
   AmbientLightSensor();
   virtual ~AmbientLightSensor();
 
-  // Initialize the AmbientLightSensor object.
-  // Open the lux file so we can read ambient light data.
-  // On success, return true; otherwise return false.
-  virtual bool Init(PowerPrefsInterface* prefs);
-
-  // Boilerplate Utility methods allowing observers to be registered and
-  // de-registered with the sensor.
+  // Adds or removes observers for sensor readings.
   virtual void AddObserver(AmbientLightSensorObserver* observer);
   virtual void RemoveObserver(AmbientLightSensorObserver* observer);
-
-  // The Daemon toggles the sensor on and off depending on the current power
-  // state of the backlights. This just turns off polling and does not require a
-  // reinitialization to come back from.
-  virtual void EnableOrDisableSensor(bool enable);
 
   // Used by observers in their callback to get the adjustment percentage
   // suggested by the current ambient light. -1.0 is considered an error value.
@@ -53,10 +41,12 @@ class AmbientLightSensor {
   virtual int GetAmbientLightLux() const;
 
   // Used by observers to get a recent log of adjustment percentages suggested
-  // by the current ambient levels.
+  // by the current ambient levels.  Returned values are in newest-to-oldest
+  // order.
   virtual std::string DumpPercentHistory() const;
 
   // Used by observers to get a recent log of raw readings from the sensor.
+  // Returned values are in newest-to-oldest order.
   virtual std::string DumpLuxHistory() const;
 
  private:
@@ -78,20 +68,9 @@ class AmbientLightSensor {
   // this sensor.
   ObserverList<AmbientLightSensorObserver> observer_list_;
 
-  // Interface for saving preferences. Non-owned.
-  PowerPrefsInterface* prefs_;
-
-  // Pref flag that disables ALS permanently.  Overrides any calls to enable or
-  // disable ALS.
-  bool fully_disable_als_;
-
   // Lux value read by the class. If this read did not succeed or no read has
   // occured yet this variable is set to -1.
   int lux_value_;
-
-  // These flags are used to turn on and off polling.
-  bool is_polling_;
-  bool disable_polling_;
 
   // Issue reasonable diagnostics about the deferred lux file open.
   // Flag indicating whether a valid ALS device lux value file has been found.
@@ -111,7 +90,7 @@ class AmbientLightSensor {
   base::Callback<void(const std::string&)> read_cb_;
   base::Callback<void()> error_cb_;
 
-  // History logs for the user values
+  // History logs for the user values in oldest-to-newest order.
   std::list<double> percent_history_;
   std::list<int> lux_history_;
 
