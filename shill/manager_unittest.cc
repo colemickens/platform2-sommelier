@@ -1264,6 +1264,11 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
   EXPECT_CALL(*s_will_not_remove1, Unload())
       .WillOnce(Return(false));
 
+  // Ignore calls to Profile::GetRpcIdentifier because of emitted changes of the
+  // profile list.
+  EXPECT_CALL(*profile0, GetRpcIdentifier()).Times(AnyNumber());
+  EXPECT_CALL(*profile1, GetRpcIdentifier()).Times(AnyNumber());
+
   // This will pop profile1, which should cause all our profiles to unload.
   manager()->PopProfileInternal();
   CompleteServiceSort();

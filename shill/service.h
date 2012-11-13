@@ -382,6 +382,15 @@ class Service : public base::RefCounted<Service> {
   // profile name as a property.  Can we store just the name, and then handle
   // setting the profile for this service via |manager_|?
   const ProfileRefPtr &profile() const;
+
+  // Sets the profile property of this service. Broadcasts the new value if it's
+  // not NULL. If the new value is NULL, the service will either be set to
+  // another profile afterwards or it will not be visible and not monitored
+  // anymore.
+  void SetProfile(const ProfileRefPtr &p);
+
+  // This is called from tests and shouldn't be called otherwise. Use SetProfile
+  // instead.
   void set_profile(const ProfileRefPtr &p);
 
   // Notification that occurs when a service now has profile data saved
@@ -577,6 +586,9 @@ class Service : public base::RefCounted<Service> {
 
   // Returns TCP port of service's HTTP proxy in host order.
   uint16 GetHTTPProxyPort(Error *error);
+
+  std::string GetProxyConfig(Error *error);
+  void SetProxyConfig(const std::string &proxy_config, Error *error);
 
   void ReEnableAutoConnectTask();
   // Disables autoconnect and posts a task to re-enable it after a cooldown.

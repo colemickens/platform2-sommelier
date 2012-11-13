@@ -210,7 +210,9 @@ Service::Service(ControlInterface *control_interface,
   HelpRegisterDerivedString(flimflam::kProfileProperty,
                             &Service::GetProfileRpcId,
                             &Service::SetProfileRpcId);
-  store_.RegisterString(flimflam::kProxyConfigProperty, &proxy_config_);
+  HelpRegisterDerivedString(flimflam::kProxyConfigProperty,
+                            &Service::GetProxyConfig,
+                            &Service::SetProxyConfig);
   store_.RegisterBool(flimflam::kSaveCredentialsProperty, &save_credentials_);
   HelpRegisterDerivedString(flimflam::kTypeProperty,
                             &Service::CalculateTechnology,
@@ -800,6 +802,19 @@ const ProfileRefPtr &Service::profile() const { return profile_; }
 
 void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
 
+void Service::SetProfile(const ProfileRefPtr &p) {
+  SLOG(Service, 2) << "SetProfile from "
+                   << (profile_ ? profile_->GetFriendlyName() : "")
+                   << " to " << (p ? p->GetFriendlyName() : "");
+  profile_ = p;
+  Error error;
+  string profile_rpc_id = GetProfileRpcId(&error);
+  if (!error.IsSuccess()) {
+    return;
+  }
+  adaptor_->EmitStringChanged(flimflam::kProfileProperty, profile_rpc_id);
+}
+
 void Service::OnPropertyChanged(const string &property) {
   if (Is8021x() &&
       (property == flimflam::kEAPCertIDProperty ||
@@ -1154,6 +1169,15 @@ uint16 Service::GetHTTPProxyPort(Error */*error*/) {
     return static_cast<uint16>(http_proxy_->proxy_port());
   }
   return 0;
+}
+
+string Service::GetProxyConfig(Error *error) {
+  return proxy_config_;
+}
+
+void Service::SetProxyConfig(const string &proxy_config, Error *error) {
+  proxy_config_ = proxy_config;
+  adaptor_->EmitStringChanged(flimflam::kProxyConfigProperty, proxy_config_);
 }
 
 void Service::SaveToProfile() {

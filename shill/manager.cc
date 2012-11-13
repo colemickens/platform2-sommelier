@@ -379,6 +379,10 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
 
   *path = profile->GetRpcIdentifier();
   SortServices();
+
+  Error unused_error;
+  adaptor_->EmitStringsChanged(flimflam::kProfilesProperty,
+                               EnumerateProfiles(&unused_error));
 }
 
 void Manager::PopProfileInternal() {
@@ -395,6 +399,10 @@ void Manager::PopProfileInternal() {
     }
   }
   SortServices();
+
+  Error unused_error;
+  adaptor_->EmitStringsChanged(flimflam::kProfilesProperty,
+                               EnumerateProfiles(&unused_error));
 }
 
 void Manager::PopProfile(const string &name, Error *error) {
@@ -802,7 +810,7 @@ void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
     if (to_forget->UniqueName() == (*it)->UniqueName()) {
       DCHECK(!(*it)->connection());
       (*it)->Unload();
-      (*it)->set_profile(NULL);
+      (*it)->SetProfile(NULL);
       services_.erase(it);
       SortServices();
       return;
@@ -816,7 +824,7 @@ bool Manager::UnloadService(vector<ServiceRefPtr>::iterator *service_iterator) {
   }
 
   DCHECK(!(**service_iterator)->connection());
-  (**service_iterator)->set_profile(NULL);
+  (**service_iterator)->SetProfile(NULL);
   *service_iterator = services_.erase(*service_iterator);
 
   return true;

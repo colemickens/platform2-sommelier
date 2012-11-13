@@ -137,7 +137,7 @@ bool DefaultProfile::ConfigureService(const ServiceRefPtr &service) {
     // so even if a new Ethernet service has no known configuration, accept
     // it anyway.
     UpdateService(service);
-    service->set_profile(this);
+    service->SetProfile(this);
     return true;
   }
   return false;

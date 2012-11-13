@@ -29,13 +29,13 @@ EphemeralProfile::~EphemeralProfile() {}
 bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
   SLOG(Profile, 2) << "Adding " << service->UniqueName()
                    << " to ephemeral profile.";
-  service->set_profile(this);
+  service->SetProfile(this);
   return true;
 }
 
 bool EphemeralProfile::AbandonService(const ServiceRefPtr &service) {
   if (service->profile() == this)
-    service->set_profile(NULL);
+    service->SetProfile(NULL);
   SLOG(Profile, 2) << "Removing " << service->UniqueName()
                    << " from ephemeral profile.";
   return true;

@@ -150,13 +150,13 @@ bool Profile::AdoptService(const ServiceRefPtr &service) {
   if (service->profile() == this) {
     return false;
   }
-  service->set_profile(this);
+  service->SetProfile(this);
   return service->Save(storage_.get()) && storage_->Flush();
 }
 
 bool Profile::AbandonService(const ServiceRefPtr &service) {
   if (service->profile() == this)
-    service->set_profile(NULL);
+    service->SetProfile(NULL);
   return storage_->DeleteGroup(service->GetStorageIdentifier()) &&
       storage_->Flush();
 }
@@ -168,7 +168,7 @@ bool Profile::UpdateService(const ServiceRefPtr &service) {
 bool Profile::ConfigureService(const ServiceRefPtr &service) {
   if (!ContainsService(service))
     return false;
-  service->set_profile(this);
+  service->SetProfile(this);
   return service->Load(storage_.get());
 }
 
