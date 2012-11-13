@@ -315,8 +315,7 @@ class Daemon : public BacklightControllerObserver,
                         RollingAverage* full_average);
 
   // Checks for extremely low battery condition.
-  void OnLowBattery(int64 time_threshold_s,
-                    int64 time_remaining_s,
+  void OnLowBattery(int64 time_remaining_s,
                     int64 time_full_s,
                     double battery_percentage);
 

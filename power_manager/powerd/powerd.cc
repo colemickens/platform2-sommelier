@@ -562,15 +562,9 @@ void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
   daemon->GenerateMetricsOnPowerEvent(info);
   // Do not emergency suspend if no battery exists.
   if (info.battery_is_present) {
-    // If the time threshold is set use it, otherwise determine the time
-    // equivalent of the percentage threshold
-    int64 time_threshold_s = daemon->low_battery_shutdown_time_s_ ?
-        daemon->low_battery_shutdown_time_s_ :
-        info.battery_time_to_empty
-        * (daemon->low_battery_shutdown_percent_
-           / info.battery_percentage);
-    daemon->OnLowBattery(time_threshold_s, info.battery_time_to_empty,
-                         info.battery_time_to_full, info.battery_percentage);
+    daemon->OnLowBattery(info.battery_time_to_empty,
+                         info.battery_time_to_full,
+                         info.battery_percentage);
   }
 }
 
@@ -1503,18 +1497,22 @@ void Daemon::AdjustWindowSize(int64 battery_time,
   empty_average->ChangeWindowSize(window_size);
 }
 
-void Daemon::OnLowBattery(int64 time_threshold_s, int64 time_remaining_s,
-                          int64 time_full_s, double battery_percentage) {
-  if (!time_threshold_s) {
+void Daemon::OnLowBattery(int64 time_remaining_s,
+                          int64 time_full_s,
+                          double battery_percentage) {
+  if (!low_battery_shutdown_time_s_ && !low_battery_shutdown_percent_) {
     LOG(INFO) << "Battery time remaining : "
               << time_remaining_s << " seconds";
     low_battery_ = false;
     return;
   }
   if (PLUGGED_STATE_DISCONNECTED == plugged_state_ && !low_battery_ &&
-      time_remaining_s <= time_threshold_s &&
-      time_remaining_s > 0) {
+      ((time_remaining_s <= low_battery_shutdown_time_s_ &&
+        time_remaining_s) ||
+       (battery_percentage <= low_battery_shutdown_percent_))) {
     // Shut the system down when low battery condition is encountered.
+    LOG(INFO) << "Time remaining: " << time_remaining_s << " seconds.";
+    LOG(INFO) << "Percent remaining: " << battery_percentage << "%.";
     LOG(INFO) << "Low battery condition detected. Shutting down immediately.";
     low_battery_ = true;
     file_tagger_.HandleLowBatteryEvent();
@@ -1524,7 +1522,7 @@ void Daemon::OnLowBattery(int64 time_threshold_s, int64 time_remaining_s,
     LOG(INFO) << "Battery is at " << time_remaining_s << " seconds remaining, "
               << "may not be fully initialized yet.";
   } else if (PLUGGED_STATE_CONNECTED == plugged_state_ ||
-             time_remaining_s > time_threshold_s) {
+             time_remaining_s > low_battery_shutdown_time_s_) {
     if (PLUGGED_STATE_CONNECTED == plugged_state_) {
       LOG(INFO) << "Battery condition is safe (" << battery_percentage
                 << "%).  AC is plugged.  "
