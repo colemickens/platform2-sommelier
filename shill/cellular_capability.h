@@ -62,6 +62,7 @@ class CellularCapability {
   static const int kTimeoutActivate;
   static const int kTimeoutConnect;
   static const int kTimeoutDefault;
+  static const int kTimeoutDisconnect;
   static const int kTimeoutEnable;
   static const int kTimeoutRegister;
   static const int kTimeoutScan;

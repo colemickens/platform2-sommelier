@@ -239,7 +239,7 @@ void CellularCapabilityClassic::Disconnect(Error *error,
                                     const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   if (proxy_.get())
-    proxy_->Disconnect(error, callback, kTimeoutDefault);
+    proxy_->Disconnect(error, callback, kTimeoutDisconnect);
 }
 
 void CellularCapabilityClassic::Activate(const string &/*carrier*/,

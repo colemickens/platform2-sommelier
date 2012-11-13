@@ -23,6 +23,7 @@ const char CellularCapability::kModemPropertyState[] = "State";
 const int CellularCapability::kTimeoutActivate = 120000;
 const int CellularCapability::kTimeoutConnect = 45000;
 const int CellularCapability::kTimeoutDefault = 5000;
+const int CellularCapability::kTimeoutDisconnect = 45000;
 const int CellularCapability::kTimeoutEnable = 15000;
 const int CellularCapability::kTimeoutRegister = 90000;
 const int CellularCapability::kTimeoutScan = 120000;

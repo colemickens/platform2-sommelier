@@ -349,7 +349,7 @@ TEST_F(CellularCapabilityTest, AllowRoaming) {
   EXPECT_TRUE(cellular_->GetAllowRoaming(NULL));
   EXPECT_EQ(Cellular::kStateConnected, cellular_->state_);
 
-  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularCapabilityTest::InvokeDisconnect));
   SetProxy();
   cellular_->state_ = Cellular::kStateConnected;
@@ -446,7 +446,7 @@ TEST_F(CellularCapabilityTest, TryApns) {
 }
 
 TEST_F(CellularCapabilityTest, StopModemDisconnectSuccess) {
-  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this,
                        &CellularCapabilityTest::InvokeDisconnect));
   EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutEnable))
@@ -462,7 +462,7 @@ TEST_F(CellularCapabilityTest, StopModemDisconnectSuccess) {
 }
 
 TEST_F(CellularCapabilityTest, StopModemDisconnectFail) {
-  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this,
                        &CellularCapabilityTest::InvokeDisconnectFail));
   EXPECT_CALL(*proxy_, Enable(_, _, _, CellularCapability::kTimeoutEnable))
@@ -480,7 +480,7 @@ TEST_F(CellularCapabilityTest, StopModemDisconnectFail) {
 TEST_F(CellularCapabilityTest, DisconnectNoProxy) {
   Error error;
   ResultCallback disconnect_callback;
-  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDefault))
+  EXPECT_CALL(*proxy_, Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .Times(0);
   ReleaseCapabilityProxies();
   capability_->Disconnect(&error, disconnect_callback);

@@ -611,7 +611,7 @@ TEST_F(CellularTest, Disconnect) {
 
   device_->state_ = Cellular::kStateConnected;
   EXPECT_CALL(*proxy_,
-              Disconnect(_, _, CellularCapability::kTimeoutDefault))
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   GetCapabilityClassic()->proxy_.reset(proxy_.release());
   device_->Disconnect(&error);
@@ -625,7 +625,7 @@ TEST_F(CellularTest, DisconnectFailure) {
   Error error;
   device_->state_ = Cellular::kStateConnected;
   EXPECT_CALL(*proxy_,
-              Disconnect(_, _, CellularCapability::kTimeoutDefault))
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
        .Times(2)
        .WillRepeatedly(Invoke(this, &CellularTest::InvokeDisconnectFail));
   GetCapabilityClassic()->proxy_.reset(proxy_.release());
@@ -704,7 +704,7 @@ TEST_F(CellularTest, ModemStateChangeEnable) {
 
 TEST_F(CellularTest, ModemStateChangeDisable) {
   EXPECT_CALL(*proxy_,
-              Disconnect(_, _, CellularCapability::kTimeoutDefault))
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   EXPECT_CALL(*proxy_,
               Enable(false, _, _, CellularCapability::kTimeoutEnable))
@@ -802,7 +802,7 @@ TEST_F(CellularTest, ConnectAddsTerminationAction) {
                       CellularCapability::kTimeoutConnect))
                 .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
   EXPECT_CALL(*proxy_,
-              Disconnect(_, _, CellularCapability::kTimeoutDefault))
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
 
   // TestCallback() will be called when the termination actions complete.  This

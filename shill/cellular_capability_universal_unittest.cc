@@ -390,7 +390,7 @@ TEST_F(CellularCapabilityUniversalTest, StopModemConnected) {
       Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
   EXPECT_CALL(*modem_simple_proxy,
               Disconnect(::DBus::Path("/"), _, _,
-                         CellularCapability::kTimeoutDefault))
+                         CellularCapability::kTimeoutDisconnect))
       .WillOnce(SaveArg<2>(&disconnect_callback));
   capability_->cellular()->modem_state_ = Cellular::kModemStateConnected;
   capability_->StopModem(&error, callback);
@@ -410,7 +410,7 @@ TEST_F(CellularCapabilityUniversalTest, DisconnectModemNoBearer) {
   Error error;
   ResultCallback disconnect_callback;
   EXPECT_CALL(*modem_simple_proxy_,
-              Disconnect(_, _, _, CellularCapability::kTimeoutDefault))
+              Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect))
       .Times(0);
   capability_->Disconnect(&error, disconnect_callback);
 }
@@ -420,7 +420,7 @@ TEST_F(CellularCapabilityUniversalTest, DisconnectNoProxy) {
   ResultCallback disconnect_callback;
   capability_->bearer_path_ = "/foo";
   EXPECT_CALL(*modem_simple_proxy_,
-              Disconnect(_, _, _, CellularCapability::kTimeoutDefault))
+              Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect))
       .Times(0);
   ReleaseCapabilityProxies();
   capability_->Disconnect(&error, disconnect_callback);

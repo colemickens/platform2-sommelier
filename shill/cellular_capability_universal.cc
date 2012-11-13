@@ -283,7 +283,7 @@ void CellularCapabilityUniversal::StopModem(Error *error,
         error,
         Bind(&CellularCapabilityUniversal::Stop_DisconnectCompleted,
              weak_ptr_factory_.GetWeakPtr(), callback),
-        kTimeoutDefault);
+        kTimeoutDisconnect);
     if (error->IsFailure())
       callback.Run(*error);
   } else {
@@ -343,7 +343,7 @@ void CellularCapabilityUniversal::Disconnect(Error *error,
     modem_simple_proxy_->Disconnect(bearer_path_,
                                     error,
                                     callback,
-                                    kTimeoutDefault);
+                                    kTimeoutDisconnect);
   }
 }
 
