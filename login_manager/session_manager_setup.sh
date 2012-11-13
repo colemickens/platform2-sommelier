@@ -263,9 +263,7 @@ if use_flag_is_set disable_login_animations; then
 fi
 
 # Setup GPU & acceleration flags which differ between x86/ARM SoC
-if [ "$(uname -m)" != "armv7l" ] ; then
-  ACCELERATED_FLAGS="--enable-accelerated-layers"
-else
+if [ "$(uname -m)" = "armv7l" ] ; then
   ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
@@ -278,7 +276,6 @@ fi
 
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
-  HIGHDPI_FLAGS="--allow-webui-compositing"
   HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-webkit-text-subpixel-positioning"
 fi
 
@@ -376,12 +373,12 @@ export PATH=/bin:/usr/bin:/usr/bin/X11
 
 exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
     ${HANG_DETECTION_FLAG} -- \
-    $CHROME --apps-gallery-url="https://chrome.google.com/webstore/" \
-            --compress-sys-feedback \
+    $CHROME --allow-webui-compositing \
+            --apps-gallery-url="https://chrome.google.com/webstore/" \
             --device-management-url="$DMSERVER" \
             --disable-seccomp-sandbox \
-            --enable-accelerated-plugins \
             --enable-encrypted-media \
+            --enable-gpu-sandbox \
             --enable-gview \
             --enable-logging \
             --enable-partial-swap \
@@ -391,22 +388,16 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --enterprise-enrollment-initial-modulus=5 \
             --enterprise-enrollment-modulus-limit=12 \
             --force-compositing-mode \
-            --load-opencryptoki \
             --log-level=1 \
             --login-manager \
             --login-profile=user \
-            --no-first-run \
-            --reload-killed-tabs \
-            --scroll-pixels=3 \
+            --no-protector \
             --ui-enable-partial-swap \
             --ui-enable-per-tile-painting \
             --ui-enable-threaded-compositing \
             --ui-prioritize-in-gpu-process \
             --use-cras \
             --user-data-dir="$DATA_DIR" \
-            --no-protector \
-            --enable-gpu-sandbox \
-            --allow-webui-compositing \
             "$REGISTER_PLUGINS" \
             ${ACCELERATED_FLAGS} \
             ${AURA_FLAGS} \
