@@ -9,4 +9,4 @@
 [311480]
 OLP.URL=https://quickaccess.verizonwireless.com/bbportal/chrome/start4g.do
 OLP.Method=POST
-OLP.PostData=oem=GOG3&iccid=${iccid}&imei=${imei}
+OLP.PostData=oem=GOG3&iccid=${iccid}&imei=${imei}&mdn=${mdn}
