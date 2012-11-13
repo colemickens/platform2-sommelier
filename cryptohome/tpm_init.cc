@@ -90,9 +90,10 @@ Tpm* TpmInit::get_tpm() {
 Attestation* TpmInit::get_attestation() {
   if (!attestation_.get()) {
     Tpm* tpm = get_tpm();
-    if (tpm && IsTpmReady())
+    if (tpm && IsTpmReady()) {
       attestation_.reset(new Attestation(tpm, platform_));
       attestation_->Initialize();
+    }
   }
   return attestation_.get();
 }
