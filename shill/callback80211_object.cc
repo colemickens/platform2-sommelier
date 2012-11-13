@@ -22,11 +22,10 @@ using std::string;
 
 namespace shill {
 
-Callback80211Object::Callback80211Object(Config80211 *config80211)
+Callback80211Object::Callback80211Object()
     : weak_ptr_factory_(this),
-      callback_(Bind(&Callback80211Object::Config80211MessageCallback,
-                     weak_ptr_factory_.GetWeakPtr())),
-      config80211_(config80211) {
+      callback_(Bind(&Callback80211Object::ReceiveConfig80211Message,
+                     weak_ptr_factory_.GetWeakPtr())) {
 }
 
 Callback80211Object::~Callback80211Object() {
@@ -55,18 +54,16 @@ void Callback80211Object::Config80211MessageCallback(
 }
 
 bool Callback80211Object::InstallAsBroadcastCallback() {
-  if (config80211_) {
-    return config80211_->AddBroadcastCallback(callback_);
-  }
-  return false;
+  return Config80211::GetInstance()->AddBroadcastCallback(callback_);
 }
 
 bool Callback80211Object::DeinstallAsCallback() {
-  if (config80211_) {
-    config80211_->RemoveBroadcastCallback(callback_);
-    return true;
-  }
-  return false;
+  return Config80211::GetInstance()->RemoveBroadcastCallback(callback_);
+}
+
+void Callback80211Object::ReceiveConfig80211Message(
+    const UserBoundNlMessage &msg) {
+  Config80211MessageCallback(msg);
 }
 
 }  // namespace shill.

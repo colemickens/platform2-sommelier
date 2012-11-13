@@ -4,27 +4,18 @@
 
 #include "shill/callback80211_metrics.h"
 
-#include <string>
-
-#include <base/memory/weak_ptr.h>
-
 #include "shill/config80211.h"
 #include "shill/ieee80211.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/scope_logger.h"
 #include "shill/user_bound_nlmessage.h"
-
-using base::Bind;
-using std::string;
 
 namespace shill {
 
-Callback80211Metrics::Callback80211Metrics(Config80211 *config80211,
-                                           Metrics *metrics)
-    : Callback80211Object(config80211), metrics_(metrics),
-      weak_ptr_factory_(this) {
+Callback80211Metrics::Callback80211Metrics(Metrics *metrics)
+    : Callback80211Object(),
+      metrics_(metrics) {
 }
 
 void Callback80211Metrics::Config80211MessageCallback(
@@ -50,15 +41,6 @@ void Callback80211Metrics::Config80211MessageCallback(
         static_cast<IEEE_80211::WiFiReasonCode>(reason);
     metrics_->Notify80211Disconnect(by_whom, reason_enum);
   }
-}
-
-bool Callback80211Metrics::InstallAsBroadcastCallback() {
-  if (config80211_) {
-    callback_ = Bind(&Callback80211Metrics::Config80211MessageCallback,
-                     weak_ptr_factory_.GetWeakPtr());
-    return config80211_->AddBroadcastCallback(callback_);
-  }
-  return false;
 }
 
 }  // namespace shill.

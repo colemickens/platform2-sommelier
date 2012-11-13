@@ -454,12 +454,12 @@ TEST_F(Config80211Test, BroadcastCallbackTest) {
   nlmsghdr *message = const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT));
 
-  MockCallback80211 callback1(config80211_);
-  MockCallback80211 callback2(config80211_);
+  MockCallback80211 callback1;
+  MockCallback80211 callback2;
 
   // Simple, 1 callback, case.
   EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(1);
-  EXPECT_TRUE(callback1.InstallAsBroadcastCallback());
+  callback1.InstallAsBroadcastCallback();
   config80211_->OnNlMessageReceived(message);
 
   // Add a second callback.
@@ -497,15 +497,15 @@ TEST_F(Config80211Test, MessageCallbackTest) {
   // Setup.
   SetupConfig80211Object();
 
-  MockCallback80211 callback_broadcast(config80211_);
+  MockCallback80211 callback_broadcast;
   EXPECT_TRUE(callback_broadcast.InstallAsBroadcastCallback());
 
   KernelBoundNlMessage sent_message_1(CTRL_CMD_GETFAMILY);
-  MockCallback80211 callback_sent_1(config80211_);
+  MockCallback80211 callback_sent_1;
   EXPECT_TRUE(sent_message_1.Init());
 
   KernelBoundNlMessage sent_message_2(CTRL_CMD_GETFAMILY);
-  MockCallback80211 callback_sent_2(config80211_);
+  MockCallback80211 callback_sent_2;
   EXPECT_TRUE(sent_message_2.Init());
 
   // Set up the received message as a response to sent_message_1.
@@ -525,7 +525,7 @@ TEST_F(Config80211Test, MessageCallbackTest) {
 
   // Send the message and give our callback.  Verify that we get called back.
   EXPECT_TRUE(config80211_->SendMessage(&sent_message_1,
-                                        callback_sent_1.GetCallback()));
+                                        callback_sent_1.callback()));
   // Make it appear that this message is in response to our sent message.
   received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
   EXPECT_CALL(callback_sent_1, Config80211MessageCallback(_)).Times(1);
@@ -539,7 +539,7 @@ TEST_F(Config80211Test, MessageCallbackTest) {
   // Install and then uninstall message-specific callback; verify broadcast
   // callback is called on message receipt.
   EXPECT_TRUE(config80211_->SendMessage(&sent_message_1,
-                                        callback_sent_1.GetCallback()));
+                                        callback_sent_1.callback()));
   received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
   EXPECT_TRUE(config80211_->RemoveMessageCallback(sent_message_1));
   EXPECT_CALL(callback_broadcast, Config80211MessageCallback(_)).Times(1);
@@ -548,7 +548,7 @@ TEST_F(Config80211Test, MessageCallbackTest) {
   // Install callback for different message; verify that broadcast callback is
   // called for _this_ message.
   EXPECT_TRUE(config80211_->SendMessage(&sent_message_2,
-                                        callback_sent_2.GetCallback()));
+                                        callback_sent_2.callback()));
   EXPECT_CALL(callback_broadcast, Config80211MessageCallback(_)).Times(1);
   config80211_->OnNlMessageReceived(received_message);
 

@@ -47,8 +47,8 @@ Daemon::Daemon(Config *config, ControlInterface *control)
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
                            config->GetUserStorageDirectoryFormat())),
-      callback80211_output_(config80211_),
-      callback80211_metrics_(config80211_, &metrics_) {
+      callback80211_output_(),
+      callback80211_metrics_(&metrics_) {
 }
 
 Daemon::~Daemon() { }

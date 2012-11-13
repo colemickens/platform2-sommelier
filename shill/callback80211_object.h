@@ -26,31 +26,24 @@ class UserBoundNlMessage;
 // each message with its attributes.
 class Callback80211Object {
  public:
-  explicit Callback80211Object(Config80211 *config80211);
+  Callback80211Object();
   virtual ~Callback80211Object();
 
-  // Install ourselves as a callback.
-  virtual bool InstallAsBroadcastCallback();
-
-  // Deinstall ourselves as a callback.
+  bool InstallAsBroadcastCallback();
   bool DeinstallAsCallback();
 
- private:
+  const Config80211::Callback &callback() const { return callback_; }
+ protected:
   // When installed, this is the method Config80211 will call when it gets a
   // message from the mac80211 drivers.
   virtual void Config80211MessageCallback(const UserBoundNlMessage &msg);
 
-  // Config80211MessageCallback method bound to this object to install as a
-  // callback.
-  base::WeakPtrFactory<Callback80211Object> weak_ptr_factory_;
-
- protected:
-  // This is the closure that contains *|this| and a pointer to the message
-  // handling callback, below.  It is used in |DeinstallAsCallback|.
-  Config80211::Callback callback_;
-  Config80211 *config80211_;
-
  private:
+  void ReceiveConfig80211Message(const UserBoundNlMessage &msg);
+
+  base::WeakPtrFactory<Callback80211Object> weak_ptr_factory_;
+  Config80211::Callback callback_;
+
   DISALLOW_COPY_AND_ASSIGN(Callback80211Object);
 };
 
