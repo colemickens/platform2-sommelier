@@ -24,11 +24,13 @@
 #include "login_manager/mock_system_utils.h"
 
 using ::testing::AnyNumber;
+using ::testing::AtLeast;
 using ::testing::AtMost;
 using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::StrEq;
 using ::testing::WithArgs;
 using ::testing::_;
 
@@ -52,10 +54,12 @@ class SessionManagerProcessTest : public SessionManagerTest {
     ALWAYS, NEVER
   };
 
-  void ExpectChildJobBoilerplate(MockChildJob* job, int clear_count) {
-    EXPECT_CALL(*job, ClearOneTimeArgument()).Times(clear_count);
-    EXPECT_CALL(*job, AddOneTimeArgument(
-        SessionManagerService::kFirstBootFlag)).Times(1);
+  void ExpectChildJobBoilerplate(MockChildJob* job) {
+    EXPECT_CALL(*job, ClearOneTimeArgument()).Times(AtLeast(1));
+    EXPECT_CALL(*metrics_, HasRecordedChromeExec())
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
+        .Times(AnyNumber());
   }
 
   // Configures |file_checker_| to allow child restarting according to
@@ -114,7 +118,7 @@ TEST_F(SessionManagerProcessTest, BadExitChildFlagFileStop) {
   MockChildJob* job = new MockChildJob();
   EXPECT_CALL(*job, RecordTime()).Times(1);
   EXPECT_CALL(*job, ShouldStop()).Times(1).WillOnce(Return(false));
-  ExpectChildJobBoilerplate(job, 1);
+  ExpectChildJobBoilerplate(job);
   InitManager(job);
 
   EXPECT_CALL(*file_checker_, exists())
@@ -134,7 +138,7 @@ TEST_F(SessionManagerProcessTest, BadExitChildOnSignal) {
   MockChildJob* job = new MockChildJob();
   EXPECT_CALL(*job, RecordTime()).Times(1);
   EXPECT_CALL(*job, ShouldStop()).Times(1).WillOnce(Return(true));
-  ExpectChildJobBoilerplate(job, 1);
+  ExpectChildJobBoilerplate(job);
   InitManager(job);
   SetFileCheckerPolicy(ALWAYS);
 
@@ -147,14 +151,13 @@ TEST_F(SessionManagerProcessTest, BadExitChildOnSignal) {
 }
 
 TEST_F(SessionManagerProcessTest, BadExitChild) {
-  MockChildJob* job1 = new MockChildJob;
-  ExpectChildJobBoilerplate(job1, 2);
-  InitManager(job1);
+  MockChildJob* job = new MockChildJob;
+  ExpectChildJobBoilerplate(job);
+  InitManager(job);
 
   SetFileCheckerPolicy(ALWAYS);
-  EXPECT_CALL(*job1, RecordTime())
-      .Times(2);
-  EXPECT_CALL(*job1, ShouldStop())
+  EXPECT_CALL(*job, RecordTime()).Times(2);
+  EXPECT_CALL(*job, ShouldStop())
       .WillOnce(Return(false))
       .WillOnce(Return(true));
 
@@ -173,7 +176,7 @@ TEST_F(SessionManagerProcessTest, CleanExitChild) {
       .Times(1);
   EXPECT_CALL(*job, ShouldStop())
       .WillOnce(Return(true));
-  ExpectChildJobBoilerplate(job, 1);
+  ExpectChildJobBoilerplate(job);
 
   MockChildProcess proc(kDummyPid, 0, manager_->test_api());
   EXPECT_CALL(utils_, fork())
@@ -183,17 +186,14 @@ TEST_F(SessionManagerProcessTest, CleanExitChild) {
 }
 
 TEST_F(SessionManagerProcessTest, LockedExit) {
-  MockChildJob* job1 = new MockChildJob;
-  ExpectChildJobBoilerplate(job1, 1);
-  InitManager(job1);
+  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+  ExpectChildJobBoilerplate(job);
   // Let the manager cause the clean exit.
   manager_->test_api().set_exit_on_child_done(false);
 
-  SetFileCheckerPolicy(ALWAYS);
-
-  EXPECT_CALL(*job1, RecordTime())
+  EXPECT_CALL(*job, RecordTime())
       .Times(1);
-  EXPECT_CALL(*job1, ShouldStop())
+  EXPECT_CALL(*job, ShouldStop())
       .Times(0);
 
   manager_->test_api().set_screen_locked(true);
@@ -205,9 +205,37 @@ TEST_F(SessionManagerProcessTest, LockedExit) {
   SimpleRunManager();
 }
 
+TEST_F(SessionManagerProcessTest, FirstBootFlagUsedOnce) {
+  // job should run, die, and get run again.  On its first run, it should
+  // have a one-time-flag.  That should get cleared and not used again.
+  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+
+  EXPECT_CALL(*metrics_, HasRecordedChromeExec())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
+      .Times(2);
+  EXPECT_CALL(*job, AddOneTimeArgument(
+      StrEq(SessionManagerService::kFirstBootFlag))).Times(1);
+  EXPECT_CALL(*job, ClearOneTimeArgument()).Times(2);
+
+  EXPECT_CALL(*job, RecordTime()).Times(2);
+  EXPECT_CALL(*job, ShouldStop())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+
+  MockChildProcess proc(kDummyPid, PackStatus(kExit), manager_->test_api());
+  EXPECT_CALL(utils_, fork())
+      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
+                      Return(proc.pid())))
+      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
+                      Return(proc.pid())));
+  SimpleRunManager();
+}
+
 TEST_F(SessionManagerProcessTest, MustStopChild) {
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
-  ExpectChildJobBoilerplate(job, 1);
+  ExpectChildJobBoilerplate(job);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
   EXPECT_CALL(*job, ShouldStop())
@@ -246,6 +274,10 @@ TEST_F(SessionManagerProcessTest, KeygenExitTest) {
 
 TEST_F(SessionManagerProcessTest, StatsRecorded) {
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+  ExpectChildJobBoilerplate(job);
+  // Override looser expectation from ExpectChildJobBoilerplate().
+  EXPECT_CALL(*metrics_, RecordStats("chrome-exec")).Times(1);
+
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
   EXPECT_CALL(*job, ShouldStop())
@@ -256,8 +288,6 @@ TEST_F(SessionManagerProcessTest, StatsRecorded) {
       .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
                       Return(proc.pid())));
 
-  EXPECT_CALL(*metrics_, RecordStats("chrome-exec")).Times(1);
-
   SimpleRunManager();
 }
 
@@ -265,7 +295,7 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
 
   // Expected to occur during manager_->Run().
-  ExpectChildJobBoilerplate(job, 1);
+  ExpectChildJobBoilerplate(job);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
   EXPECT_CALL(*device_policy_service_, Initialize())

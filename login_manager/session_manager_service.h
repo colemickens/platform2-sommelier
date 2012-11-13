@@ -218,8 +218,8 @@ class SessionManagerService
   // Run() particular ChildJobInterface, specified by |child_job|.
   int RunChild(ChildJobInterface* child_job);
 
-  // Kill one of the children.
-  void KillChild(const ChildJobInterface* child_job, int child_pid);
+  // Kill one of the children with signal.
+  void KillChild(const ChildJobInterface* child_job, int child_pid, int signal);
 
   // Check if |pid| is the currently-managed browser process.
   bool IsKnownChild(pid_t pid);

@@ -61,6 +61,10 @@ void LoginMetrics::RecordStats(const char* tag) {
   bootstat_log(tag);
 }
 
+bool LoginMetrics::HasRecordedChromeExec() {
+  return file_util::PathExists(FilePath(LoginMetrics::kChromeUptimeFile));
+}
+
 // static
 // Code for incognito, owner and any other user are 0, 1 and 2
 // respectively in normal mode. In developer mode they are 3, 4 and 5.

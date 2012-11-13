@@ -21,6 +21,7 @@ class MockMetrics : public LoginMetrics {
   MOCK_METHOD3(SendLoginUserType, void(bool, bool, bool));
   MOCK_METHOD1(SendPolicyFilesStatus, bool(const PolicyFilesStatus&));
   MOCK_METHOD1(RecordStats, void(const char*));
+  MOCK_METHOD0(HasRecordedChromeExec, bool());
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);
 };

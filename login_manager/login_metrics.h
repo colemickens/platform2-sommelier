@@ -12,11 +12,6 @@
 namespace login_manager {
 class LoginMetrics {
  public:
-  // Uptime stats file created when session_manager executes Chrome.
-  // For any case of reload after crash no stats are recorded.
-  // For any signout stats are recorded.
-  static const char kChromeUptimeFile[];
-
   enum PolicyFileState {
     GOOD = 0,
     MALFORMED = 1,
@@ -79,6 +74,9 @@ class LoginMetrics {
   // Record a stat called |tag| via the bootstat library.
   virtual void RecordStats(const char* tag);
 
+  // Return true if we have already recorded that Chrome has exec'd.
+  virtual bool HasRecordedChromeExec();
+
  private:
   friend class LoginMetricsTest;
   friend class UserTypeTest;
@@ -88,6 +86,11 @@ class LoginMetrics {
   static const int kMaxPolicyFilesValue;
 
   static const char kLoginMetricsFlagFile[];
+
+  // Uptime stats file created when session_manager executes Chrome.
+  // For any case of reload after crash no stats are recorded.
+  // For any signout stats are recorded.
+  static const char kChromeUptimeFile[];
 
   // Returns code to send to the metrics library based on the state of
   // several policy-related files on disk.

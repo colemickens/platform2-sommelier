@@ -45,6 +45,7 @@
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_store.h"
+#include "login_manager/system_utils.h"
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
 // modifying the files afterward.
@@ -234,6 +235,7 @@ SessionManagerService::SessionManagerService(
       system_(utils),
       nss_(NssUtil::Create()),
       key_gen_(new KeyGenerator(utils)),
+      login_metrics_(NULL),
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
       session_stopping_(false),
@@ -242,6 +244,7 @@ SessionManagerService::SessionManagerService(
       screen_locked_(false),
       set_uid_(false),
       shutting_down_(false),
+      shutdown_already_(false),
       exit_code_(SUCCESS) {
   int pipefd[2];
   PLOG_IF(DFATAL, pipe2(pipefd, O_CLOEXEC) < 0) << "Failed to create pipe";
@@ -427,6 +430,7 @@ bool SessionManagerService::Run() {
   // 'Powerwash', which reboots and then wipes most of the stateful partition.
   if (!device_policy_->Initialize()) {
     InitiateDeviceWipe();
+    Shutdown();
     return false;
   }
 
@@ -466,9 +470,7 @@ bool SessionManagerService::Shutdown() {
 }
 
 void SessionManagerService::RunBrowser() {
-  bool first_boot = false;
-  if (!file_util::PathExists(FilePath(LoginMetrics::kChromeUptimeFile)))
-    first_boot = true;
+  bool first_boot = !login_metrics_->HasRecordedChromeExec();
 
   login_metrics_->RecordStats("chrome-exec");
   if (first_boot)
@@ -498,11 +500,12 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
 }
 
 void SessionManagerService::KillChild(const ChildJobInterface* child_job,
-                                      int child_pid) {
+                                      int child_pid,
+                                      int signal) {
   uid_t to_kill_as = getuid();
   if (child_job->IsDesiredUidSet())
     to_kill_as = child_job->GetDesiredUid();
-  system_->kill(-child_pid, to_kill_as, SIGKILL);
+  system_->kill(-child_pid, to_kill_as, signal);
   // Process will be reaped on the way into HandleBrowserExit.
 }
 
@@ -582,7 +585,7 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
   system_->RemoveFile(chrome_testing_path_);
 
   // Kill Chrome.
-  KillChild(browser_.job.get(), browser_.pid);
+  KillChild(browser_.job.get(), browser_.pid, SIGKILL);
 
   vector<string> extra_argument_vector;
   // Create extra argument vector.
@@ -598,7 +601,7 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
   browser_.job->SetExtraArguments(extra_argument_vector);
 
   // Run Chrome.
-  browser_.pid = RunChild(browser_.job.get());
+  RunBrowser();
   return TRUE;
 }
 
@@ -830,7 +833,7 @@ gboolean SessionManagerService::RestartJob(gint pid,
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  KillChild(browser_.job.get(), browser_.pid);
+  KillChild(browser_.job.get(), browser_.pid, SIGKILL);
 
   char arguments_buffer[kMaxArgumentsSize + 1];
   snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);
@@ -838,7 +841,7 @@ gboolean SessionManagerService::RestartJob(gint pid,
   string arguments_string(arguments_buffer);
 
   browser_.job->SetArguments(arguments_string);
-  browser_.pid = RunChild(browser_.job.get());
+  RunBrowser();
 
   // To set "logged-in" state for BWSI mode.
   return StartSession(const_cast<gchar*>(kIncognitoUser), NULL,
@@ -956,10 +959,8 @@ void SessionManagerService::HandleBrowserExit(GPid pid,
       LOG(WARNING) << "Child stopped, shutting down";
       manager->SetExitAndServiceShutdown(CHILD_EXITING_TOO_FAST);
     } else if (manager->ShouldRunBrowser()) {
-      // TODO(cmasone): deal with fork failing in RunChild()
-      LOG(INFO) << StringPrintf(
-          "Running child %s again...", child_job->GetName().data());
-      manager->browser_.pid = manager->RunChild(child_job);
+      // TODO(cmasone): deal with fork failing in RunBrowser()
+      manager->RunBrowser();
     } else {
       LOG(INFO) << StringPrintf(
           "Should NOT run %s again...", child_job->GetName().data());
