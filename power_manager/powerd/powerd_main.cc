@@ -18,6 +18,7 @@
 #include "base/string_util.h"
 #include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
+#include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/backlight_client.h"
@@ -25,7 +26,6 @@
 #include "power_manager/powerd/monitor_reconfigure.h"
 #include "power_manager/powerd/powerd.h"
 #include "power_manager/powerd/video_detector.h"
-#include "system_api/dbus/service_constants.h"
 
 #ifdef IS_DESKTOP
 #include "power_manager/powerd/external_backlight_controller.h"
