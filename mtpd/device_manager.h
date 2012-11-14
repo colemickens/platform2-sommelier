@@ -123,6 +123,28 @@ class DeviceManager {
                          uint32_t file_id,
                          std::vector<uint8_t>* out);
 
+  // Reads the contents of |file_path| on |storage_name|.
+  // Reads |count| bytes starting at |offset|.
+  // On success, returns true and writes the file contents of |file_path| into
+  // |out|. Otherwise returns false.
+  bool ReadFileChunkByPath(const std::string& storage_name,
+                           const std::string& file_path,
+                           uint32_t offset,
+                           uint32_t count,
+                           std::vector<uint8_t>* out);
+
+  // Reads the contents of |file_id| on |storage_name|.
+  // Reads |count| bytes starting at |offset|.
+  // |file_id| is the unique identifier for a directory on |storage_name|.
+  // |file_id| should never refer to the root node.
+  // On success, returns true and writes the file contents of |file_id| into
+  // |out|. Otherwise returns false.
+  bool ReadFileChunkById(const std::string& storage_name,
+                         uint32_t file_id,
+                         uint32_t offset,
+                         uint32_t count,
+                         std::vector<uint8_t>* out);
+
   // Reads the metafile for |file_path| on |storage_name|.
   // On success, returns true and writes the metadata of |file_path| into
   // |out|. Otherwise returns false.
@@ -187,6 +209,18 @@ class DeviceManager {
   bool ReadFile(LIBMTP_mtpdevice_t* device,
                 uint32_t file_id,
                 std::vector<uint8_t>* out);
+
+  // Reads the contents of |file_id| from |device|.
+  // Reads |count| bytes starting at |offset|.
+  // |file_id| is the unique identifier for a file on the given storage.
+  // |file_id| should never refer to the root node.
+  // On success, returns true and writes the file contents of |file_id| into
+  // |out|. Otherwise returns false.
+  bool ReadFileChunk(LIBMTP_mtpdevice_t* device,
+                     uint32_t file_id,
+                     uint32_t offset,
+                     uint32_t count,
+                     std::vector<uint8_t>* out);
 
   // Reads the metadata of |file_id| from a storage on |device| with
   // |storage_id|.

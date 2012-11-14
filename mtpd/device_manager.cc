@@ -11,6 +11,7 @@
 #include <base/bind.h>
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
@@ -258,6 +259,36 @@ bool DeviceManager::ReadFileById(const std::string& storage_name,
   return ReadFile(mtp_device, file_id, out);
 }
 
+bool DeviceManager::ReadFileChunkByPath(const std::string& storage_name,
+                                        const std::string& file_path,
+                                        uint32_t offset,
+                                        uint32_t count,
+                                        std::vector<uint8_t>* out) {
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+
+  uint32_t file_id = 0;
+  if (!PathToFileId(mtp_device, storage_id, file_path,
+                    IsValidComponentInFilePath, &file_id)) {
+    return false;
+  }
+  return ReadFileChunk(mtp_device, file_id, offset, count, out);
+}
+
+bool DeviceManager::ReadFileChunkById(const std::string& storage_name,
+                                      uint32_t file_id,
+                                      uint32_t offset,
+                                      uint32_t count,
+                                      std::vector<uint8_t>* out) {
+  LIBMTP_mtpdevice_t* mtp_device = NULL;
+  uint32_t storage_id = 0;
+  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
+    return false;
+  return ReadFileChunk(mtp_device, file_id, offset, count, out);
+}
+
 bool DeviceManager::GetFileInfoByPath(const std::string& storage_name,
                                       const std::string& file_path,
                                       FileEntry* out) {
@@ -395,6 +426,35 @@ bool DeviceManager::ReadFile(LIBMTP_mtpdevice_t* device,
   }
   file_util::Delete(path, false);
   return ret;
+}
+
+bool DeviceManager::ReadFileChunk(LIBMTP_mtpdevice_t* device,
+                                  uint32_t file_id,
+                                  uint32_t offset,
+                                  uint32_t count,
+                                  std::vector<uint8_t>* out) {
+  // The root node is a virtual node and cannot be read from.
+  if (file_id == kRootFileId)
+    return false;
+
+  uint8_t* data = NULL;
+  uint32_t bytes_read = 0;
+  int transfer_status = LIBMTP_Get_File_Chunk(device,
+                                              file_id,
+                                              offset,
+                                              count,
+                                              &data,
+                                              &bytes_read);
+
+  // Own |data| in a scoper so it gets freed when this function returns.
+  scoped_ptr_malloc<uint8_t> scoped_data(data);
+
+  if (transfer_status != 0 || bytes_read != count)
+    return false;
+
+  for (size_t i = 0; i < count; ++i)
+    out->push_back(data[i]);
+  return true;
 }
 
 bool DeviceManager::GetFileInfo(LIBMTP_mtpdevice_t* device,

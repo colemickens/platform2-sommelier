@@ -75,6 +75,7 @@
       </arg>
     </method>
 
+    <!-- TODO(thestig) Remove this //-->
     <method name="ReadFileByPath">
       <arg name="handle" type="s" direction="in">
       <tp:docstring>
@@ -90,6 +91,7 @@
       </arg>
     </method>
 
+    <!-- TODO(thestig) Remove this //-->
     <method name="ReadFileById">
       <arg name="handle" type="s" direction="in">
       <tp:docstring>
@@ -97,6 +99,53 @@
       </tp:docstring>
       </arg>
       <arg name="fileId" type="u" direction="in">
+      </arg>
+      <arg name="data" type="ay" direction="out">
+      </arg>
+    </method>
+
+    <method name="ReadFileChunkByPath">
+      <arg name="handle" type="s" direction="in">
+      <tp:docstring>
+        Handle to the storage from OpenStorage.
+      </tp:docstring>
+      </arg>
+      <arg name="filePath" type="s" direction="in">
+      <tp:docstring>
+        Absolute path with root as the root of the storage.
+      </tp:docstring>
+      </arg>
+      <arg name="offset" type="u" direction="in">
+      <tp:docstring>
+        The offset into the file in bytes.
+      </tp:docstring>
+      </arg>
+      <arg name="count" type="u" direction="in">
+      <tp:docstring>
+        The number of bytes to read. At most 1 MiB.
+      </tp:docstring>
+      </arg>
+      <arg name="data" type="ay" direction="out">
+      </arg>
+    </method>
+
+    <method name="ReadFileChunkById">
+      <arg name="handle" type="s" direction="in">
+      <tp:docstring>
+        Handle to the storage from OpenStorage.
+      </tp:docstring>
+      </arg>
+      <arg name="fileId" type="u" direction="in">
+      </arg>
+      <arg name="offset" type="u" direction="in">
+      <tp:docstring>
+        The offset into the file in bytes.
+      </tp:docstring>
+      </arg>
+      <arg name="count" type="u" direction="in">
+      <tp:docstring>
+        The number of bytes to read. At most 1 MiB.
+      </tp:docstring>
       </arg>
       <arg name="data" type="ay" direction="out">
       </arg>

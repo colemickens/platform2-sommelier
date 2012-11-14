@@ -15,6 +15,11 @@ namespace mtpd {
 
 namespace {
 
+// Maximum number of bytes to read from the device at one time. This is set low
+// enough such that a reasonable device can read this much data before D-Bus
+// times out.
+const uint32_t kMaxReadCount = 1024 * 1024;
+
 const char kInvalidHandleErrorMessage[] = "Invalid handle ";
 
 void SetInvalidHandleError(const std::string& handle, DBus::Error* error) {
@@ -66,7 +71,7 @@ std::string MtpdServer::OpenStorage(const std::string& storageName,
   }
 
   std::string id;
-  uint32 random_data[4];
+  uint32_t random_data[4];
   do {
     base::RandBytes(random_data, sizeof(random_data));
     id = base::HexEncode(random_data, sizeof(random_data));
@@ -145,6 +150,51 @@ std::vector<uint8_t> MtpdServer::ReadFileById(const std::string& handle,
   std::vector<uint8_t> file_contents;
   if (!device_manager_.ReadFileById(storage_name, fileId, &file_contents)) {
     error.set(kMtpdServiceError, "ReadFileById failed");
+    return std::vector<uint8_t>();
+  }
+  return file_contents;
+}
+
+std::vector<uint8_t> MtpdServer::ReadFileChunkByPath(
+    const std::string& handle,
+    const std::string& filePath,
+    const uint32_t& offset,
+    const uint32_t& count,
+    DBus::Error& error) {
+  if (count > kMaxReadCount) {
+    error.set(kMtpdServiceError, "Invalid count for ReadFileChunkByPath");
+    return std::vector<uint8_t>();
+  }
+  std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty())
+    return InvalidHandle<std::vector<uint8_t> >(handle, &error);
+
+  std::vector<uint8_t> file_contents;
+  if (!device_manager_.ReadFileChunkByPath(storage_name, filePath, offset,
+                                           count, &file_contents)) {
+    error.set(kMtpdServiceError, "ReadFileChunkByPath failed");
+    return std::vector<uint8_t>();
+  }
+  return file_contents;
+}
+
+std::vector<uint8_t> MtpdServer::ReadFileChunkById(const std::string& handle,
+                                                   const uint32_t& fileId,
+                                                   const uint32_t& offset,
+                                                   const uint32_t& count,
+                                                   DBus::Error& error) {
+  if (count > kMaxReadCount) {
+    error.set(kMtpdServiceError, "Invalid count for ReadFileChunkById");
+    return std::vector<uint8_t>();
+  }
+  std::string storage_name = LookupHandle(handle);
+  if (storage_name.empty())
+    return InvalidHandle<std::vector<uint8_t> >(handle, &error);
+
+  std::vector<uint8_t> file_contents;
+  if (!device_manager_.ReadFileChunkById(storage_name, fileId, offset, count,
+                                         &file_contents)) {
+    error.set(kMtpdServiceError, "ReadFileChunkById failed");
     return std::vector<uint8_t>();
   }
   return file_contents;

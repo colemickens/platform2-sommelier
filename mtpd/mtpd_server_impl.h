@@ -59,6 +59,16 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   virtual std::vector<uint8_t> ReadFileById(const std::string& handle,
                                             const uint32_t& fileId,
                                             DBus::Error& error) OVERRIDE;
+  virtual std::vector<uint8_t> ReadFileChunkByPath(const std::string& handle,
+                                                   const std::string& filePath,
+                                                   const uint32_t& offset,
+                                                   const uint32_t& count,
+                                                   DBus::Error& error) OVERRIDE;
+  virtual std::vector<uint8_t> ReadFileChunkById(const std::string& handle,
+                                                 const uint32_t& fileId,
+                                                 const uint32_t& offset,
+                                                 const uint32_t& count,
+                                                 DBus::Error& error) OVERRIDE;
   virtual std::vector<uint8_t> GetFileInfoByPath(const std::string& handle,
                                                  const std::string& filePath,
                                                  DBus::Error& error) OVERRIDE;
