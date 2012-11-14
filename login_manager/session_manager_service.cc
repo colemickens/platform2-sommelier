@@ -239,12 +239,8 @@ SessionManagerService::SessionManagerService(
       key_gen_(new KeyGenerator(utils)),
       login_metrics_(NULL),
       upstart_signal_emitter_(new UpstartSignalEmitter),
-      ALLOW_THIS_IN_INITIALIZER_LIST(
-          liveness_checker_(new LivenessCheckerImpl(this,
-                                                    utils,
-                                                    message_loop_,
-                                                    enable_liveness_checking))),
-
+      liveness_checker_(NULL),
+      liveness_checking_enabled_(enable_liveness_checking),
       session_started_(false),
       session_stopping_(false),
       current_user_is_incognito_(false),
@@ -349,6 +345,11 @@ bool SessionManagerService::Initialize() {
       new UserPolicyServiceFactory(
           getuid(),
           message_loop_));
+
+  liveness_checker_.reset(new LivenessCheckerImpl(this,
+                                                  system_,
+                                                  message_loop_,
+                                                  liveness_checking_enabled_));
   return true;
 }
 

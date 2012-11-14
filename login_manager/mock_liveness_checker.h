@@ -20,6 +20,7 @@ class MockLivenessChecker : public LivenessChecker {
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(HandleLivenessConfirmed, void());
   MOCK_METHOD0(Stop, void());
+  MOCK_METHOD0(IsRunning, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockLivenessChecker);

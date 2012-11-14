@@ -31,11 +31,10 @@ class LivenessCheckerImplTest : public ::testing::Test {
 
   virtual void SetUp() {
     manager_ = new StrictMock<MockSessionManagerService>();
-    scoped_refptr<base::MessageLoopProxy> message_loop(
-        base::MessageLoopProxy::current());
+    message_loop_ = base::MessageLoopProxy::current();
     checker_.reset(new LivenessCheckerImpl(manager_.get(),
                                            &system_,
-                                           message_loop,
+                                           message_loop_,
                                            true));
   }
 
@@ -43,27 +42,42 @@ class LivenessCheckerImplTest : public ::testing::Test {
     MessageLoop::current()->PostTask(FROM_HERE, MessageLoop::QuitClosure());
   }
 
-  void ExpectLivenessPingAndQuit() {
-  EXPECT_CALL(system_,
-              SendSignalToChromium(StrEq(chromium::kLivenessRequestedSignal),
-                                   NULL))
-      .WillOnce(InvokeWithoutArgs(this,
-                                  &LivenessCheckerImplTest::ScheduleQuit));
+  void ExpectLivenessPing() {
+    EXPECT_CALL(system_,
+                SendSignalToChromium(StrEq(chromium::kLivenessRequestedSignal),
+                                     NULL))
+        .Times(1);
   }
 
-  void ExpectAndRespondToLivenessPingAndQuit() {
+  // Expect two pings, the first with a response.
+  void ExpectLivenessPingResponsePing() {
     EXPECT_CALL(system_,
                 SendSignalToChromium(StrEq(chromium::kLivenessRequestedSignal),
                                      NULL))
         .WillOnce(
             InvokeWithoutArgs(checker_.get(),
                               &LivenessCheckerImpl::HandleLivenessConfirmed))
-        .WillOnce(InvokeWithoutArgs(this,
-                                    &LivenessCheckerImplTest::ScheduleQuit));
+        .WillOnce(Return());
+  }
+
+  // Expect three runs through CheckAndSendLivenessPing():
+  // 1) No ping has been sent before, so expect initial ping and ACK it.
+  // 2) Last ping was ACK'd, so expect a no-op during this run.
+  // 3) Caller should expect action during this run; Quit after it.
+  void ExpectPingResponsePingCheckPingAndQuit() {
+    EXPECT_CALL(system_,
+                SendSignalToChromium(StrEq(chromium::kLivenessRequestedSignal),
+                                     NULL))
+        .WillOnce(
+            InvokeWithoutArgs(checker_.get(),
+                              &LivenessCheckerImpl::HandleLivenessConfirmed))
+        .WillOnce(Return())
+        .WillOnce(InvokeWithoutArgs(MessageLoop::current(),
+                                    &MessageLoop::QuitNow));
   }
 
   scoped_ptr<LivenessCheckerImpl> checker_;
-
+  scoped_refptr<base::MessageLoopProxy> message_loop_;
   scoped_refptr<StrictMock<MockSessionManagerService> > manager_;
   StrictMock<MockSystemUtils> system_;
 
@@ -72,37 +86,35 @@ class LivenessCheckerImplTest : public ::testing::Test {
 };
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
-  ExpectLivenessPingAndQuit();
+  ExpectLivenessPing();
   EXPECT_CALL(*manager_.get(), AbortBrowser()).Times(1);
   checker_->CheckAndSendLivenessPing(0);
-  MessageLoop::current()->Run();
-}
-
-TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPingNeutered) {
-  scoped_refptr<base::MessageLoopProxy> message_loop(
-      base::MessageLoopProxy::current());
-  checker_.reset(new LivenessCheckerImpl(manager_.get(),
-                                         &system_,
-                                         message_loop,
-                                         false));
-  ExpectAndRespondToLivenessPingAndQuit();
-  // Expect _no_ browser abort!
-  checker_->CheckAndSendLivenessPing(0);
-  MessageLoop::current()->Run();
+  MessageLoop::current()->RunAllPending();
 }
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
-  ExpectAndRespondToLivenessPingAndQuit();
+  ExpectLivenessPingResponsePing();
   EXPECT_CALL(*manager_.get(), AbortBrowser()).Times(1);
   checker_->CheckAndSendLivenessPing(0);
-  MessageLoop::current()->Run();
+  MessageLoop::current()->RunAllPending();
+}
+
+TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
+  checker_.reset(new LivenessCheckerImpl(manager_.get(),
+                                         &system_,
+                                         message_loop_,
+                                         false));
+  ExpectPingResponsePingCheckPingAndQuit();
+  // Expect _no_ browser abort!
+  checker_->CheckAndSendLivenessPing(0);
+  MessageLoop::current()->RunAllPending();
 }
 
 TEST_F(LivenessCheckerImplTest, StartStop) {
-  ExpectLivenessPingAndQuit();
   checker_->Start();
+  EXPECT_TRUE(checker_->IsRunning());
   checker_->Stop();  // Should cancel ping, so...
-  MessageLoop::current()->RunAllPending();  // ...there should be no tasks!
+  EXPECT_FALSE(checker_->IsRunning());
 }
 
 }  // namespace login_manager

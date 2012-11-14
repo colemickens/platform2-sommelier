@@ -538,6 +538,7 @@ class SessionManagerService
   scoped_ptr<LoginMetrics> login_metrics_;
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
   scoped_ptr<LivenessChecker> liveness_checker_;
+  const bool liveness_checking_enabled_;
 
   bool session_started_;
   bool session_stopping_;

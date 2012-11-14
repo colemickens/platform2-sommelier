@@ -38,9 +38,11 @@ class LivenessCheckerImpl : public LivenessChecker {
   void Start();
   void HandleLivenessConfirmed();
   void Stop();
+  bool IsRunning();
 
   // If a liveness check is outstanding, kills the browser and clears liveness
-  // tracking state.  If not, sends a liveness check to the browser over DBus,
+  // tracking state.  This instance will be stopped at that point in time.
+  // If no ping is outstanding, sends a liveness check to the browser over DBus,
   // then reschedules itself after interval_seconds.
   void CheckAndSendLivenessPing(uint32 interval_seconds);
 

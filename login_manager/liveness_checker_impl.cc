@@ -43,10 +43,18 @@ LivenessCheckerImpl::~LivenessCheckerImpl() {
 void LivenessCheckerImpl::Start() {
   Stop();  // To be certain.
   outstanding_liveness_ping_ = false;
-  CheckAndSendLivenessPing(kLivenessCheckIntervalSeconds);
+  liveness_check_.Reset(
+      base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
+                 weak_ptr_factory_.GetWeakPtr(),
+                 kLivenessCheckIntervalSeconds));
+  message_loop_->PostDelayedTask(
+      FROM_HERE,
+      liveness_check_.callback(),
+      base::TimeDelta::FromSeconds(kLivenessCheckIntervalSeconds));
 }
 
 void LivenessCheckerImpl::HandleLivenessConfirmed() {
+  LOG(INFO) << "Browser liveness confirmed.";
   outstanding_liveness_ping_ = false;
 }
 
@@ -55,24 +63,34 @@ void LivenessCheckerImpl::Stop() {
   liveness_check_.Cancel();
 }
 
+bool LivenessCheckerImpl::IsRunning() {
+  return !liveness_check_.IsCancelled();
+}
+
 void LivenessCheckerImpl::CheckAndSendLivenessPing(uint32 interval_seconds) {
   // If there's an un-acked ping, the browser needs to be taken down.
   if (outstanding_liveness_ping_) {
     LOG(WARNING) << "Browser hang detected!";
-    if (enable_aborting_)
+    if (enable_aborting_) {
+      LOG(WARNING) << "Aborting browser process.";
       manager_->AbortBrowser();
-    // HandleChildExit() will reap the process and restart if needed.
-  } else {
-    outstanding_liveness_ping_ = true;
-    system_->SendSignalToChromium(chromium::kLivenessRequestedSignal, NULL);
-    liveness_check_.Reset(
-        base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
-                   weak_ptr_factory_.GetWeakPtr(), interval_seconds));
-    message_loop_->PostDelayedTask(
-        FROM_HERE,
-        liveness_check_.callback(),
-        base::TimeDelta::FromSeconds(interval_seconds));
+      // HandleChildExit() will reap the process and restart if needed.
+      Stop();
+      return;
+    }
   }
+
+  LOG(INFO) << "Sending a liveness ping to the browser.";
+  outstanding_liveness_ping_ = true;
+  system_->SendSignalToChromium(chromium::kLivenessRequestedSignal, NULL);
+  LOG(INFO) << "Scheduling a liveness check in " << interval_seconds << "s.";
+  liveness_check_.Reset(
+      base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
+                 weak_ptr_factory_.GetWeakPtr(), interval_seconds));
+  message_loop_->PostDelayedTask(
+      FROM_HERE,
+      liveness_check_.callback(),
+      base::TimeDelta::FromSeconds(interval_seconds));
 }
 
 }  // namespace login_manager

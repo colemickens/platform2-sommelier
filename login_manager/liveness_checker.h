@@ -29,6 +29,9 @@ class LivenessChecker {
   // Must be idempotent.
   virtual void Stop() = 0;
 
+  // Returns true if this instance has been started and not yet stopped.
+  virtual bool IsRunning() = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(LivenessChecker);
 };
