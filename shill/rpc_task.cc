@@ -23,11 +23,11 @@ RPCTask::RPCTask(ControlInterface *control_interface, RPCTaskDelegate *delegate)
       unique_name_(base::UintToString(serial_number_++)),
       adaptor_(control_interface->CreateRPCTaskAdaptor(this)) {
   CHECK(delegate);
-  SLOG(Task, 2) << "RPCTask " + unique_name_ + " created.";
+  LOG(INFO) << "RPCTask " + unique_name_ + " created.";
 }
 
 RPCTask::~RPCTask() {
-  SLOG(Task, 2) << "RPCTask " + unique_name_ + " destroyed.";
+  LOG(INFO) << "RPCTask " + unique_name_ + " destroyed.";
 }
 
 void RPCTask::GetLogin(string *user, string *password) {

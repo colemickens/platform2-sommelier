@@ -48,7 +48,8 @@ class L2TPIPSecDriverTest : public testing::Test,
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)),
         device_(new MockVPN(&control_, &dispatcher_, &metrics_, &manager_,
-                            kInterfaceName, kInterfaceIndex)) {
+                            kInterfaceName, kInterfaceIndex)),
+        test_rpc_task_destroyed_(false) {
     driver_->nss_ = &nss_;
     driver_->process_killer_ = &process_killer_;
   }
@@ -65,6 +66,10 @@ class L2TPIPSecDriverTest : public testing::Test,
     driver_->device_ = NULL;
     driver_->service_ = NULL;
     ASSERT_TRUE(temp_dir_.Delete());
+  }
+
+  void set_test_rpc_task_destroyed(bool destroyed) {
+    test_rpc_task_destroyed_ = destroyed;
   }
 
  protected:
@@ -101,7 +106,32 @@ class L2TPIPSecDriverTest : public testing::Test,
   scoped_refptr<MockVPN> device_;
   MockNSS nss_;
   MockProcessKiller process_killer_;
+  bool test_rpc_task_destroyed_;
 };
+
+namespace {
+
+class TestRPCTask : public RPCTask {
+ public:
+  TestRPCTask(ControlInterface *control, L2TPIPSecDriverTest *test);
+  virtual ~TestRPCTask();
+
+ private:
+  L2TPIPSecDriverTest *test_;
+};
+
+TestRPCTask::TestRPCTask(ControlInterface *control, L2TPIPSecDriverTest *test)
+    : RPCTask(control, test),
+      test_(test) {
+  test_->set_test_rpc_task_destroyed(false);
+}
+
+TestRPCTask::~TestRPCTask() {
+  test_->set_test_rpc_task_destroyed(true);
+  test_ = NULL;
+}
+
+}  // namespace
 
 const char L2TPIPSecDriverTest::kInterfaceName[] = "ppp0";
 const int L2TPIPSecDriverTest::kInterfaceIndex = 123;
@@ -517,13 +547,20 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
 }
 
-TEST_F(L2TPIPSecDriverTest, NotifyFail) {
+TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   map<string, string> dict;
   driver_->device_ = device_;
+  driver_->rpc_task_.reset(new TestRPCTask(&control_, this));
+  EXPECT_FALSE(test_rpc_task_destroyed_);
   EXPECT_CALL(*device_, OnDisconnected());
-  driver_->StartConnectTimeout();
+  EXPECT_CALL(*device_, SetEnabled(false));
   driver_->Notify(kL2TPIPSecReasonDisconnect, dict);
-  EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
+  EXPECT_FALSE(driver_->device_);
+  EXPECT_FALSE(test_rpc_task_destroyed_);
+  EXPECT_FALSE(driver_->rpc_task_.get());
+  dispatcher_.PostTask(MessageLoop::QuitClosure());
+  dispatcher_.DispatchForever();
+  EXPECT_TRUE(test_rpc_task_destroyed_);
 }
 
 TEST_F(L2TPIPSecDriverTest, VerifyPaths) {

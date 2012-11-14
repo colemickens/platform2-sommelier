@@ -71,7 +71,7 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptionsNoHost);
   FRIEND_TEST(L2TPIPSecDriverTest, InitPSKOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, Notify);
-  FRIEND_TEST(L2TPIPSecDriverTest, NotifyFail);
+  FRIEND_TEST(L2TPIPSecDriverTest, NotifyDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnConnectionDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);
   FRIEND_TEST(L2TPIPSecDriverTest, ParseIPConfiguration);
@@ -120,6 +120,8 @@ class L2TPIPSecDriver : public VPNDriver,
   virtual void GetLogin(std::string *user, std::string *password);
   virtual void Notify(const std::string &reason,
                       const std::map<std::string, std::string> &dict);
+
+  static void DeleteRPCTask(RPCTask *rpc_task);
 
   ControlInterface *control_;
   Metrics *metrics_;

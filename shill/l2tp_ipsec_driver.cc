@@ -4,6 +4,7 @@
 
 #include "shill/l2tp_ipsec_driver.h"
 
+#include <base/bind.h>
 #include <base/file_util.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
@@ -17,6 +18,7 @@
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
+using base::Bind;
 using base::Closure;
 using std::map;
 using std::string;
@@ -384,7 +386,11 @@ void L2TPIPSecDriver::Notify(
   LOG(INFO) << "IP configuration received: " << reason;
 
   if (reason != kL2TPIPSecReasonConnect) {
-    device_->OnDisconnected();
+    DCHECK(reason == kL2TPIPSecReasonDisconnect);
+    // Avoid destroying the RPC task inside the adaptor callback by doing it
+    // from the main event loop.
+    dispatcher()->PostTask(Bind(&DeleteRPCTask, rpc_task_.release()));
+    Cleanup(Service::kStateFailure);
     return;
   }
 
@@ -412,6 +418,11 @@ void L2TPIPSecDriver::Notify(
   device_->SelectService(service_);
   device_->UpdateIPConfig(properties);
   StopConnectTimeout();
+}
+
+// static
+void L2TPIPSecDriver::DeleteRPCTask(RPCTask *rpc_task) {
+  delete rpc_task;
 }
 
 KeyValueStore L2TPIPSecDriver::GetProvider(Error *error) {
