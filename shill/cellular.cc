@@ -395,13 +395,13 @@ void Cellular::CreateService() {
 }
 
 void Cellular::DestroyService() {
-  LOG(INFO) << "Destroying service for device " << link_name();
-  DestroyIPConfig();
+  DropConnection();
   if (service_) {
+    LOG(INFO) << "Deregistering cellular service " << service_->friendly_name()
+              << " for device " << link_name();
     manager()->DeregisterService(service_);
     service_ = NULL;
   }
-  SelectService(NULL);
 }
 
 void Cellular::Connect(Error *error) {
