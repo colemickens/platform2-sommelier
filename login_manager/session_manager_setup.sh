@@ -72,6 +72,10 @@ if use_flag_is_set asan; then
   # Make nss use system malloc.
   export NSS_DISABLE_UNLOAD=1
 
+  # Make ASAN output to the file because
+  # Chrome stderr is /dev/null now (crbug.com/156308).
+  export ASAN_OPTIONS="log_path=/var/log/chrome/asan_log"
+
   # Disable sandboxing as it causes crashes in ASAN. crosbug.com/127536.
   ASAN_FLAGS="--no-sandbox"
 fi
