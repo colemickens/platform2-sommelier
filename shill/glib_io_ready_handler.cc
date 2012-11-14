@@ -4,8 +4,10 @@
 
 #include "shill/glib_io_ready_handler.h"
 
+#include <errno.h>
 #include <glib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/socket.h>
 
 #include "shill/logging.h"
@@ -18,11 +20,13 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
                                   GIOCondition cond,
                                   gpointer data) {
   GlibIOReadyHandler *handler = reinterpret_cast<GlibIOReadyHandler *>(data);
-
-  handler->callback().Run(g_io_channel_unix_get_fd(chan));
+  gint fd = g_io_channel_unix_get_fd(chan);
 
   if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
-    return FALSE;
+    LOG(FATAL) << "Unexpected GLib error condition " << cond << " on poll("
+               << fd << "): " << strerror(errno);
+
+  handler->callback().Run(fd);
 
   return TRUE;
 }

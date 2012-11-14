@@ -4,7 +4,9 @@
 
 #include "shill/glib_io_input_handler.h"
 
+#include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <glib.h>
 
 #include "shill/logging.h"
@@ -19,24 +21,30 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   GlibIOInputHandler *handler = reinterpret_cast<GlibIOInputHandler *>(data);
   unsigned char buf[4096];
   gsize len = 0;
-  gboolean ret = TRUE;
+  gint fd = g_io_channel_unix_get_fd(chan);
+  GError *err = 0;
 
   if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
-    return FALSE;
+    LOG(FATAL) << "Unexpected GLib error condition " << cond << " on poll("
+               << fd << "): " << strerror(errno);
 
   GIOStatus status = g_io_channel_read_chars(
-      chan, reinterpret_cast<gchar *>(buf), sizeof(buf), &len, NULL);
-  if (status != G_IO_STATUS_NORMAL) {
-    if (status == G_IO_STATUS_AGAIN)
-      return TRUE;
-    len = 0;
-    ret = FALSE;
+      chan, reinterpret_cast<gchar *>(buf), sizeof(buf), &len, &err);
+  if (err) {
+    LOG(WARNING) << "GLib error code " << err->domain << "/" << err->code
+                 << " (" << err->message << ") on read(" << fd << "):"
+                 << strerror(errno);
+    g_error_free(err);
   }
+  if (status == G_IO_STATUS_AGAIN)
+    return TRUE;
+  if (status != G_IO_STATUS_NORMAL)
+    LOG(FATAL) << "Unexpected GLib return status " << status;
 
   InputData input_data(buf, len);
   handler->callback().Run(&input_data);
 
-  return ret;
+  return TRUE;
 }
 
 GlibIOInputHandler::GlibIOInputHandler(
