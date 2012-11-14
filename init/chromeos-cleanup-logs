@@ -19,20 +19,27 @@ rotate_file() {
     # Avoid creating an empty file if it does not exist to begin with
     return
   fi
+  local basename="${file%%.*}"
+  local extension="${file#*.}"
+  if [ "${basename}" = "${extension}" ]; then
+    extension=""
+  else
+    extension=".${extension}"
+  fi
   echo Rotating "${file}"
   for i in $(seq ${NUM_DAYS_TO_PRESERVE} -1 2); do
-    mv -f "${file}.$((i - 1))" "${file}.$i"
+    mv -f "${basename}.$((i - 1))${extension}" "${basename}.$i${extension}"
   done
-  mv -f "${file}" "${file}.1"
-  touch "${file}"
+  mv -f "${basename}${extension}" "${basename}.1${extension}"
+  touch "${basename}${extension}"
 }
 
 rotate_logs() {
   echo Rotating rsyslogd logs
-  for x in messages secure faillog session_manager; do
+  for x in messages secure net.log faillog session_manager; do
     rotate_file "/var/log/${x}"
   done
-  chown syslog /var/log/messages /var/log/secure
+  chown syslog /var/log/messages /var/log/secure /var/log/net.log
   sudo pkill -HUP rsyslogd
 }
 
