@@ -3,10 +3,12 @@
 // found in the LICENSE file.
 
 #include <base/at_exit.h>
+#include <glib-object.h>
 #include <gtest/gtest.h>
 
 int main(int argc, char **argv) {
   base::AtExitManager exit_manager;
   ::testing::InitGoogleTest(&argc, argv);
+  ::g_type_init();
   return RUN_ALL_TESTS();
 }

@@ -49,7 +49,7 @@ class LivenessCheckerImpl : public LivenessChecker {
  private:
   SessionManagerService* manager_;
   SystemUtils* system_;
-  scoped_refptr<base::MessageLoopProxy> message_loop_;
+  scoped_refptr<base::MessageLoopProxy> loop_proxy_;
 
   bool enable_aborting_;
   bool outstanding_liveness_ping_;

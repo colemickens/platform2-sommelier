@@ -214,7 +214,7 @@ const char kMachineInfoFile[] = "/tmp/machine-info";
 }  // namespace
 
 void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
-  session_manager_service_->message_loop_->PostTask(
+  session_manager_service_->loop_proxy_->PostTask(
       FROM_HERE,
       base::Bind(&HandleBrowserExit,
                  pid,
@@ -231,9 +231,9 @@ SessionManagerService::SessionManagerService(
       exit_on_child_done_(false),
       kill_timeout_(kill_timeout),
       session_manager_(NULL),
-      main_loop_(g_main_loop_new(NULL, FALSE)),
-      dont_use_directly_(new MessageLoopForUI),
-      message_loop_(base::MessageLoopProxy::current()),
+      main_loop_(NULL),
+      dont_use_directly_(NULL),
+      loop_proxy_(NULL),
       system_(utils),
       nss_(NssUtil::Create()),
       key_gen_(new KeyGenerator(utils)),
@@ -339,16 +339,16 @@ bool SessionManagerService::Initialize() {
                                                owner_key_.get(),
                                                mitigator_.get(),
                                                nss_.get(),
-                                               message_loop_);
+                                               loop_proxy_);
   device_policy_->set_delegate(this);
   user_policy_factory_.reset(
       new UserPolicyServiceFactory(
           getuid(),
-          message_loop_));
+          loop_proxy_));
 
   liveness_checker_.reset(new LivenessCheckerImpl(this,
                                                   system_,
-                                                  message_loop_,
+                                                  loop_proxy_,
                                                   liveness_checking_enabled_));
   return true;
 }
@@ -399,7 +399,7 @@ bool SessionManagerService::Reset() {
   }
   dont_use_directly_.reset(NULL);
   dont_use_directly_.reset(new MessageLoopForUI);
-  message_loop_ = base::MessageLoopProxy::current();
+  loop_proxy_ = base::MessageLoopProxy::current();
   return true;
 }
 
@@ -474,7 +474,7 @@ bool SessionManagerService::Shutdown() {
   device_policy_->PersistPolicySync();
   if (user_policy_.get())
     user_policy_->PersistPolicySync();
-  message_loop_->PostTask(FROM_HERE, MessageLoop::QuitClosure());
+  loop_proxy_->PostTask(FROM_HERE, MessageLoop::QuitClosure());
   LOG(INFO) << "SessionManagerService quitting run loop";
   return true;
 }
@@ -550,7 +550,7 @@ void SessionManagerService::AllowGracefulExit() {
   shutting_down_ = true;
   if (exit_on_child_done_) {
     LOG(INFO) << "SessionManagerService set to exit on child done";
-    message_loop_->PostTask(
+    loop_proxy_->PostTask(
         FROM_HERE,
         base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown), this));
   }

@@ -30,7 +30,7 @@ LivenessCheckerImpl::LivenessCheckerImpl(
     bool enable_aborting)
     : manager_(manager),
       system_(utils),
-      message_loop_(loop),
+      loop_proxy_(loop),
       enable_aborting_(enable_aborting),
       outstanding_liveness_ping_(false),
       ALLOW_THIS_IN_INITIALIZER_LIST(weak_ptr_factory_(this)) {
@@ -47,7 +47,7 @@ void LivenessCheckerImpl::Start() {
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
                  weak_ptr_factory_.GetWeakPtr(),
                  kLivenessCheckIntervalSeconds));
-  message_loop_->PostDelayedTask(
+  loop_proxy_->PostDelayedTask(
       FROM_HERE,
       liveness_check_.callback(),
       base::TimeDelta::FromSeconds(kLivenessCheckIntervalSeconds));
@@ -87,7 +87,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(uint32 interval_seconds) {
   liveness_check_.Reset(
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
                  weak_ptr_factory_.GetWeakPtr(), interval_seconds));
-  message_loop_->PostDelayedTask(
+  loop_proxy_->PostDelayedTask(
       FROM_HERE,
       liveness_check_.callback(),
       base::TimeDelta::FromSeconds(interval_seconds));

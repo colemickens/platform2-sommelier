@@ -529,8 +529,9 @@ class SessionManagerService
 
   gobject::SessionManager* session_manager_;
   GMainLoop* main_loop_;
+  // All task posting should be done via the MessageLoopProxy in loop_proxy_.
   scoped_ptr<MessageLoop> dont_use_directly_;
-  scoped_refptr<base::MessageLoopProxy> message_loop_;
+  scoped_refptr<base::MessageLoopProxy> loop_proxy_;
 
   SystemUtils* system_;  // Owned by the caller.
   scoped_ptr<NssUtil> nss_;

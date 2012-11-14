@@ -31,10 +31,10 @@ class LivenessCheckerImplTest : public ::testing::Test {
 
   virtual void SetUp() {
     manager_ = new StrictMock<MockSessionManagerService>();
-    message_loop_ = base::MessageLoopProxy::current();
+    loop_proxy_ = base::MessageLoopProxy::current();
     checker_.reset(new LivenessCheckerImpl(manager_.get(),
                                            &system_,
-                                           message_loop_,
+                                           loop_proxy_,
                                            true));
   }
 
@@ -76,8 +76,9 @@ class LivenessCheckerImplTest : public ::testing::Test {
                                     &MessageLoop::QuitNow));
   }
 
+  MessageLoop loop_;
   scoped_ptr<LivenessCheckerImpl> checker_;
-  scoped_refptr<base::MessageLoopProxy> message_loop_;
+  scoped_refptr<base::MessageLoopProxy> loop_proxy_;
   scoped_refptr<StrictMock<MockSessionManagerService> > manager_;
   StrictMock<MockSystemUtils> system_;
 
@@ -102,7 +103,7 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   checker_.reset(new LivenessCheckerImpl(manager_.get(),
                                          &system_,
-                                         message_loop_,
+                                         loop_proxy_,
                                          false));
   ExpectPingResponsePingCheckPingAndQuit();
   // Expect _no_ browser abort!
