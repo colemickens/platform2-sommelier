@@ -415,28 +415,28 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
 }
 
 void PowerManDaemon::RegisterDBusMessageHandler() {
-  util::RequestDBusServiceName(kRootPowerManagerServiceName);
+  util::RequestDBusServiceName(kOldRootPowerManagerServiceName);
 
   dbus_handler_.AddDBusSignalHandler(
-      kRootPowerManagerInterface,
+      kOldRootPowerManagerInterface,
       kCheckLidStateSignal,
       base::Bind(&PowerManDaemon::HandleCheckLidStateSignal,
                  base::Unretained(this)));
   dbus_handler_.AddDBusSignalHandler(
-      kRootPowerManagerInterface,
+      kOldRootPowerManagerInterface,
       kSuspendSignal,
       base::Bind(&PowerManDaemon::HandleSuspendSignal, base::Unretained(this)));
   dbus_handler_.AddDBusSignalHandler(
-      kRootPowerManagerInterface,
+      kOldRootPowerManagerInterface,
       kShutdownSignal,
       base::Bind(&PowerManDaemon::HandleShutdownSignal,
                  base::Unretained(this)));
   dbus_handler_.AddDBusSignalHandler(
-      kRootPowerManagerInterface,
+      kOldRootPowerManagerInterface,
       kRestartSignal,
       base::Bind(&PowerManDaemon::HandleRestartSignal, base::Unretained(this)));
   dbus_handler_.AddDBusSignalHandler(
-      kRootPowerManagerInterface,
+      kOldRootPowerManagerInterface,
       kRequestCleanShutdown,
       base::Bind(&PowerManDaemon::HandleRequestCleanShutdownSignal,
                  base::Unretained(this)));
@@ -452,12 +452,12 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
                  base::Unretained(this)));
 
   dbus_handler_.AddDBusMethodHandler(
-      kRootPowerManagerInterface,
+      kOldRootPowerManagerInterface,
       kBacklightGetMethod,
       base::Bind(&PowerManDaemon::HandleBacklightGetMethod,
                  base::Unretained(this)));
   dbus_handler_.AddDBusMethodHandler(
-      kRootPowerManagerInterface,
+      kOldRootPowerManagerInterface,
       kBacklightSetMethod,
       base::Bind(&PowerManDaemon::HandleBacklightSetMethod,
                  base::Unretained(this)));

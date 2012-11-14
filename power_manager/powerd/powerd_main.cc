@@ -78,7 +78,7 @@ void HandleDBusNameOwnerChanged(DBusGProxy* proxy,
                                 void* data) {
   LOG(INFO) << "Got signal about " << name << " ownership change "
             << "(\"" << old_owner << "\" -> \"" << new_owner << "\")";
-  if (strcmp(name, power_manager::kRootPowerManagerServiceName) == 0)
+  if (strcmp(name, power_manager::kOldRootPowerManagerServiceName) == 0)
     g_main_loop_quit(static_cast<GMainLoop*>(data));
 }
 
@@ -104,9 +104,9 @@ void WaitForPowerM() {
   GError* error = NULL;
   DBusGProxy* powerm_proxy = dbus_g_proxy_new_for_name_owner(
       chromeos::dbus::GetSystemBusConnection().g_connection(),
-      power_manager::kRootPowerManagerServiceName,
+      power_manager::kOldRootPowerManagerServiceName,
       power_manager::kPowerManagerServicePath,
-      power_manager::kRootPowerManagerInterface,
+      power_manager::kOldRootPowerManagerInterface,
       &error);
 
   if (powerm_proxy) {

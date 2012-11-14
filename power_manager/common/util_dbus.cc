@@ -72,9 +72,9 @@ void SendSignalToSessionManager(const char* signal) {
 void SendSignalToPowerM(const char* signal_name) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               kPowerManagerServicePath,
-                              kRootPowerManagerInterface);
+                              kOldRootPowerManagerInterface);
   DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kRootPowerManagerInterface,
+                                                kOldRootPowerManagerInterface,
                                                 signal_name);
   CHECK(signal);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
@@ -84,9 +84,9 @@ void SendSignalToPowerM(const char* signal_name) {
 void SendSignalWithUintToPowerM(const char* signal_name, uint32 value) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               kPowerManagerServicePath,
-                              kRootPowerManagerInterface);
+                              kOldRootPowerManagerInterface);
   DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kRootPowerManagerInterface,
+                                                kOldRootPowerManagerInterface,
                                                 signal_name);
   CHECK(signal);
   dbus_message_append_args(signal, DBUS_TYPE_UINT32, &value, DBUS_TYPE_INVALID);
@@ -97,9 +97,9 @@ void SendSignalWithUintToPowerM(const char* signal_name, uint32 value) {
 void SendSignalWithStringToPowerM(const char* signal_name, const char* string) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               kPowerManagerServicePath,
-                              kRootPowerManagerInterface);
+                              kOldRootPowerManagerInterface);
   DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kRootPowerManagerInterface,
+                                                kOldRootPowerManagerInterface,
                                                 signal_name);
   CHECK(signal);
   dbus_message_append_args(signal, DBUS_TYPE_STRING, &string,

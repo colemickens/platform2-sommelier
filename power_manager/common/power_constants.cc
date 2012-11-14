@@ -66,8 +66,8 @@ const int64 kBatteryPercentPinMs = 3 * 60 * 1000;
 const int64 kBatteryPercentTaperMs = 7 * 60 * 1000;
 
 // Interface names.
-const char kRootPowerManagerInterface[] = "org.chromium.RootPowerManager";
-const char kRootPowerManagerServiceName[] = "org.chromium.RootPowerManager";
+const char kOldRootPowerManagerInterface[] = "org.chromium.RootPowerManager";
+const char kOldRootPowerManagerServiceName[] = "org.chromium.RootPowerManager";
 
 // powerd -> powerm messages.
 const char kCheckLidStateSignal[] = "CheckLidStateSignal";
