@@ -16,6 +16,7 @@
 #include <base/values.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
+#include <metrics/metrics_library.h>
 #include <openssl/rsa.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
@@ -664,6 +665,7 @@ class Tpm {
   static base::Lock singleton_lock_;
 
   Platform* platform_;
+  scoped_ptr<MetricsLibraryInterface> metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm);
 };
