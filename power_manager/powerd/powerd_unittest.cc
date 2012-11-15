@@ -985,7 +985,7 @@ TEST_F(DaemonTest, TurnBacklightOnForPowerButton) {
       backlight_ctl_.SetCurrentBrightnessPercent(
           0.0, BRIGHTNESS_CHANGE_USER_INITIATED, TRANSITION_INSTANT));
   ASSERT_DOUBLE_EQ(0.0, backlight_ctl_.GetTargetBrightnessPercent());
-  daemon_.OnButtonEvent(INPUT_POWER_BUTTON, true, base::TimeTicks::Now());
+  daemon_.OnPowerButtonEvent(true, base::TimeTicks::Now());
   EXPECT_GT(backlight_ctl_.GetTargetBrightnessPercent(), 0.0);
 }
 #endif

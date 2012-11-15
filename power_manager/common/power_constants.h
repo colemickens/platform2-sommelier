@@ -90,7 +90,6 @@ extern const char kShutdownReasonSuspendFailed[];
 enum InputType {
   INPUT_LID,
   INPUT_POWER_BUTTON,
-  INPUT_LOCK_BUTTON,
   INPUT_UNHANDLED,
 };
 

@@ -39,8 +39,6 @@ InputType GetInputType(const struct input_event& event) {
     switch (event.code) {
       case KEY_POWER:
         return INPUT_POWER_BUTTON;
-      case KEY_F13:
-        return INPUT_LOCK_BUTTON;
       default:
         return INPUT_UNHANDLED;
     }
@@ -390,8 +388,8 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     if (ioctl(fd, EVIOCGBIT(EV_KEY, KEY_MAX), keys) < 0) {
       LOG(ERROR) << "Error in powerm ioctl - key";
     }
-    if (IS_BIT_SET(KEY_POWER, keys) || IS_BIT_SET(KEY_F13, keys)) {
-      LOG(INFO) << "Watching this event for power/lock buttons!";
+    if (IS_BIT_SET(KEY_POWER, keys)) {
+      LOG(INFO) << "Watching this event for power button!";
       channel = g_io_channel_unix_new(fd);
       watch_id = g_io_add_watch(channel, G_IO_IN, &(Input::EventHandler), this);
       num_power_key_events_++;

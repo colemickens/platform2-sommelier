@@ -332,11 +332,9 @@ class Daemon : public BacklightControllerObserver,
   // SessionStateChanged D-Bus signals.
   void OnSessionStateChange(const char* state, const char* user);
 
-  // Handles notification from powerm that a button has been pressed or
+  // Handles notification from powerm that the power button has been pressed or
   // released.
-  void OnButtonEvent(InputType type,
-                     bool down,
-                     const base::TimeTicks& timestamp);
+  void OnPowerButtonEvent(bool down, const base::TimeTicks& timestamp);
 
   // Emits a signal to tell Chrome that a button has been pressed or released.
   void SendButtonEventSignal(const std::string& button_name,

@@ -197,7 +197,6 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
       break;
     }
     case INPUT_POWER_BUTTON:
-    case INPUT_LOCK_BUTTON:
       daemon->SendInputEventSignal(type, GetButtonState(value));
       break;
     default: {

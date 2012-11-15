@@ -103,8 +103,6 @@ const char* InputTypeToString(InputType type) {
       return "input(LID)";
     case INPUT_POWER_BUTTON:
       return "input(POWER_BUTTON)";
-    case INPUT_LOCK_BUTTON:
-      return "input(LOCK_BUTTON)";
     case INPUT_UNHANDLED:
       return "input(UNHANDLED)";
     default:

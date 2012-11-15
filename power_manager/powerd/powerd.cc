@@ -967,8 +967,7 @@ bool Daemon::HandleInputEventSignal(DBusMessage* message) {
       }
       break;
     case INPUT_POWER_BUTTON:
-    case INPUT_LOCK_BUTTON:
-      OnButtonEvent(type, down, timestamp);
+      OnPowerButtonEvent(down, timestamp);
       break;
     default:
       LOG(ERROR) << "Unhandled input event of type " << type;
@@ -1628,31 +1627,20 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
   current_session_state_ = state;
 }
 
-void Daemon::OnButtonEvent(InputType type,
-                           bool down,
-                           const base::TimeTicks& timestamp) {
-  switch (type) {
-    case INPUT_POWER_BUTTON:
-      SendButtonEventSignal(kPowerButtonName, down, timestamp);
+void Daemon::OnPowerButtonEvent(bool down, const base::TimeTicks& timestamp) {
+  SendButtonEventSignal(kPowerButtonName, down, timestamp);
 
-      // If the user manually set the brightness to 0, increase it a bit:
-      // http://crosbug.com/32570
-      if (backlight_controller_->IsBacklightActiveOff()) {
-        backlight_controller_->IncreaseBrightness(
-            BRIGHTNESS_CHANGE_USER_INITIATED);
-      }
+  // If the user manually set the brightness to 0, increase it a bit:
+  // http://crosbug.com/32570
+  if (backlight_controller_->IsBacklightActiveOff()) {
+    backlight_controller_->IncreaseBrightness(
+        BRIGHTNESS_CHANGE_USER_INITIATED);
+  }
 
-      SendPowerButtonMetric(down, timestamp);
-      if (down) {
-        LOG(INFO) << "Syncing state due to power button down event";
-        util::Launch("sync");
-      }
-      break;
-    case INPUT_LOCK_BUTTON:
-      SendButtonEventSignal(kLockButtonName, down, timestamp);
-      break;
-    default:
-      LOG(ERROR) << "Unhandled button event of type " << type;
+  SendPowerButtonMetric(down, timestamp);
+  if (down) {
+    LOG(INFO) << "Syncing state due to power button down event";
+    util::Launch("sync");
   }
 }
 

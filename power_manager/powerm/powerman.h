@@ -135,12 +135,6 @@ class PowerManDaemon {
   bool SendMetric(const std::string& name, int sample,
                   int min, int max, int nbuckets);
 
-  // Emits a D-Bus signal announcing that the power or lock button has been
-  // pressed or released.  |button_name| should be kPowerButtonName or
-  // kLockButtonName from service_constants.h.
-  void SendButtonEventSignal(const std::string& button_name,
-                             ButtonState state);
-
   // Restart, shutdown, and suspend the system.
   void Restart();
   // The |reason| parameter is passed as the SHUTDOWN_REASON parameter to
