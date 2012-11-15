@@ -58,13 +58,6 @@ extern const char kKeyboardBacklightPattern[];
 extern const int64 kBatteryPercentPinMs;
 extern const int64 kBatteryPercentTaperMs;
 
-// Interface names.
-// TODO(derat): Drop these and convert the rest of the code to use the versions
-// without "Old" in their names after those versions are provided by system_api:
-// http://crosbug.com/36380
-extern const char kOldRootPowerManagerInterface[];
-extern const char kOldRootPowerManagerServiceName[];
-
 // powerd -> powerm constants.
 extern const char kCheckLidStateSignal[];
 extern const char kRestartSignal[];

@@ -49,9 +49,9 @@ bool BacklightClient::SetBrightnessLevel(int64 level,
   }
 
   DBusMessage* message = dbus_message_new_method_call(
-      kOldRootPowerManagerServiceName,
+      kRootPowerManagerServiceName,
       kPowerManagerServicePath,
-      kOldRootPowerManagerInterface,
+      kRootPowerManagerInterface,
       kBacklightSetMethod);
   CHECK(message);
   int64 interval_internal = interval.ToInternalValue();
@@ -76,9 +76,9 @@ bool BacklightClient::GetActualBrightness(int64* level,
   CHECK(level);
   CHECK(max_level);
   DBusMessage* message = dbus_message_new_method_call(
-      kOldRootPowerManagerServiceName,
+      kRootPowerManagerServiceName,
       kPowerManagerServicePath,
-      kOldRootPowerManagerInterface,
+      kRootPowerManagerInterface,
       kBacklightGetMethod);
   CHECK(message);
   dbus_message_append_args(message,
