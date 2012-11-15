@@ -30,7 +30,7 @@ class MockRule : public Rule {
 
 class MockPermissionBroker : public PermissionBroker {
  public:
-  MockPermissionBroker() {}
+  MockPermissionBroker() : PermissionBroker(0) {}
   virtual ~MockPermissionBroker() {}
 
   MOCK_METHOD1(MockGrantAccess, bool(const string &path));

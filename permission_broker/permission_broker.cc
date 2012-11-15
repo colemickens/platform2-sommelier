@@ -8,9 +8,11 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <gflags/gflags.h>
 #include <glib.h>
+#include <grp.h>
 #include <libudev.h>
 #include <poll.h>
 #include <sys/inotify.h>
+#include <sys/types.h>
 
 #include <string>
 #include <vector>
@@ -22,8 +24,8 @@
 #include "chromeos/dbus/service_constants.h"
 #include "permission_broker/rule.h"
 
-DEFINE_int32(access_group, -1, "The group who is assigned as the group owner "
-             "of a path which access is allowed for");
+DEFINE_string(access_group, "", "The group which has resource access granted "
+              "to it. Must not be empty.");
 DEFINE_int32(poll_interval, 100, "The interval at which to poll for udev "
              "events");
 
@@ -32,8 +34,18 @@ using std::vector;
 
 namespace permission_broker {
 
+PermissionBroker::PermissionBroker(const gid_t access_group)
+    : udev_(udev_new()), access_group_(access_group) {}
+
 PermissionBroker::PermissionBroker() : udev_(udev_new()) {
   CHECK(udev_) << "Could not create udev context, is sysfs mounted?";
+  CHECK(!FLAGS_access_group.empty()) << "You must specify a group name via the "
+                                     << "--access_group flag.";
+
+  struct group *access_group = getgrnam(FLAGS_access_group.c_str());
+  CHECK(access_group) << "Could not resolve \"" << FLAGS_access_group << "\" "
+                      << "to a named group.";
+  access_group_ = access_group->gr_gid;
 }
 
 PermissionBroker::~PermissionBroker() {
@@ -42,11 +54,6 @@ PermissionBroker::~PermissionBroker() {
 }
 
 void PermissionBroker::Run() {
-  if (FLAGS_access_group < 0) {
-    LOG(FATAL) << "You must specify a valid access_group value.";
-    return;
-  }
-
   DBusConnection *const connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(connection) << "Cannot connect to system bus";
@@ -102,7 +109,7 @@ bool PermissionBroker::ProcessPath(const string &path) {
 }
 
 bool PermissionBroker::GrantAccess(const std::string &path) {
-  if (chown(path.c_str(), -1, FLAGS_access_group)) {
+  if (chown(path.c_str(), -1, access_group_)) {
     LOG(INFO) << "Could not grant access to " << path;
     return false;
   }
