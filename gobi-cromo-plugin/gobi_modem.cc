@@ -715,7 +715,9 @@ void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
                                                username,
                                                password);
   session_starter_in_flight_ = true;
-  SetMmState(MM_MODEM_STATE_CONNECTING, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+  if (mm_state_ == MM_MODEM_STATE_REGISTERED)
+    SetMmState(MM_MODEM_STATE_CONNECTING,
+               MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   starter->StartDataSession(error);
 
   return_later(&starter->continuation_tag_);

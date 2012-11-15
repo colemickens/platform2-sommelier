@@ -63,10 +63,24 @@ void GobiGsmModem::RegistrationStateHandler() {
         break;
       case MM_MODEM_GSM_NETWORK_REG_STATUS_HOME:
       case MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING:
-        mm_modem_state = MM_MODEM_STATE_REGISTERED;
+        // The modem may reregister with the network when starting the data
+        // session.  Ignore the state changes associated with the
+        // reregistration.
+        if ((mm_state() == MM_MODEM_STATE_REGISTERED ||
+             mm_state() == MM_MODEM_STATE_CONNECTING) &&
+            session_starter_in_flight_)
+          mm_modem_state = MM_MODEM_STATE_CONNECTING;
+        else
+          mm_modem_state = MM_MODEM_STATE_REGISTERED;
         break;
       case MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING:
-        mm_modem_state = MM_MODEM_STATE_SEARCHING;
+        // The modem may reregister with the network when starting the data
+        // session.  Ignore the state changes associated with the
+        // reregistration.
+        if (session_starter_in_flight_)
+          mm_modem_state = MM_MODEM_STATE_CONNECTING;
+        else
+          mm_modem_state = MM_MODEM_STATE_SEARCHING;
         break;
       case MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN:
         mm_modem_state = MM_MODEM_STATE_ENABLED; // ???
@@ -145,12 +159,21 @@ void GobiGsmModem::DataCapabilitiesHandler(BYTE num_data_caps,
   // a DataCapabilitiesHandler callback!
   GetGsmRegistrationInfo(&registration_status,
                          &operator_code, &operator_name, error);
+  // The modem may reregister with the network when starting the data
+  // session.  Ignore the state changes associated with the reregistration.
+  if (registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING &&
+      session_starter_in_flight_)
+    return;
   switch(registration_status) {
     case MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE:
-    case MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING:
     case MM_MODEM_GSM_NETWORK_REG_STATUS_DENIED:
       RegistrationInfo(registration_status, operator_code, operator_name);
       SetMmState(MM_MODEM_STATE_ENABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+      break;
+    case MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING:
+      RegistrationInfo(registration_status, operator_code, operator_name);
+      SetMmState(MM_MODEM_STATE_SEARCHING,
+                 MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
       break;
     case MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN:
       // Ignore the unknown state.  The registration state will
@@ -158,6 +181,13 @@ void GobiGsmModem::DataCapabilitiesHandler(BYTE num_data_caps,
       break;
     case MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING:
     case MM_MODEM_GSM_NETWORK_REG_STATUS_HOME:
+      // The modem may reregister with the network when starting the data
+      // session.  Ignore the state changes associated with the
+      // reregistration.
+      if (mm_state() == MM_MODEM_STATE_REGISTERED &&
+          session_starter_in_flight_)
+        SetMmState(MM_MODEM_STATE_CONNECTING,
+                   MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
       SendNetworkTechnologySignal(
           DataCapabilitiesToMmAccessTechnology(num_data_caps, data_caps));
       break;
