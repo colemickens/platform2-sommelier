@@ -6,6 +6,7 @@
 #define PERMISSION_BROKER_PERMISSION_BROKER_H_
 
 #include <dbus/dbus.h>
+#include <grp.h>
 #include <libudev.h>
 
 #include <string>
@@ -32,6 +33,10 @@ class PermissionBroker {
   // Adds |rule| to the end of the existing rule chain. Takes ownership of
   // |rule|.
   void AddRule(Rule *rule);
+
+ protected:
+  // This constructor is for use by test code only.
+  PermissionBroker(const gid_t access_group);
 
  private:
   friend class PermissionBrokerTest;
@@ -69,6 +74,7 @@ class PermissionBroker {
   DBusMessage *HandleRequestUsbAccessMethod(DBusMessage *message);
 
   struct udev *udev_;
+  gid_t access_group_;
   std::vector<Rule *> rules_;
 
   DISALLOW_COPY_AND_ASSIGN(PermissionBroker);
