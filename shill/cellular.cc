@@ -629,6 +629,10 @@ void Cellular::OnModemStateChanged(ModemState old_state,
   }
 }
 
+bool Cellular::IsActivating() const {
+  return capability_->IsActivating();
+}
+
 void Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
   SLOG(Cellular, 2) << __func__
                     << "(" << allow_roaming_ << "->" << value << ")";

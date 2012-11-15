@@ -92,4 +92,8 @@ void CellularCapability::SetCarrier(const std::string &/*carrier*/,
   OnUnsupportedOperation(__func__, error);
 }
 
+bool CellularCapability::IsActivating() const {
+  return false;
+}
+
 }  // namespace shill

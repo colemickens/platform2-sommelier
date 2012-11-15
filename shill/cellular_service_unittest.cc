@@ -6,6 +6,7 @@
 
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <mm/mm-modem.h>
 
 #include "shill/cellular_capability.h"
 #include "shill/cellular_capability_cdma.h"
@@ -318,6 +319,27 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   EXPECT_STREQ(CellularService::kAutoConnDeviceDisabled, reason);
 
   device_->running_ = true;
+
+  // If we're waiting on a disconnect before an activation, don't auto-connect.
+  GetCapabilityCDMA()->activation_starting_ = true;
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+
+  // If we're waiting on an activation, also don't auto-connect.
+  GetCapabilityCDMA()->activation_starting_ = false;
+  GetCapabilityCDMA()->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+
+  // But other activation states are fine.
+  GetCapabilityCDMA()->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+  GetCapabilityCDMA()->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+  GetCapabilityCDMA()->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED;
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // The following test cases are copied from ServiceTest.IsAutoConnectable
 

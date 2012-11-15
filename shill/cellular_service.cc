@@ -18,6 +18,7 @@ using std::string;
 
 namespace shill {
 
+const char CellularService::kAutoConnActivating[] = "activating";
 const char CellularService::kAutoConnDeviceDisabled[] = "device disabled";
 const char CellularService::kStorageAPN[] = "Cellular.APN";
 const char CellularService::kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
@@ -120,6 +121,10 @@ CellularService::~CellularService() { }
 bool CellularService::IsAutoConnectable(const char **reason) const {
   if (!cellular_->running()) {
     *reason = kAutoConnDeviceDisabled;
+    return false;
+  }
+  if (cellular_->IsActivating()) {
+    *reason = kAutoConnActivating;
     return false;
   }
   return Service::IsAutoConnectable(reason);

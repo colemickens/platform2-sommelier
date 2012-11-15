@@ -114,6 +114,7 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, LastGoodApn);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
 
+  static const char kAutoConnActivating[];
   static const char kAutoConnDeviceDisabled[];
 
   void HelpRegisterDerivedStringmap(

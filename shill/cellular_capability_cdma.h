@@ -30,6 +30,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void Activate(const std::string &carrier, Error *error,
                         const ResultCallback &callback);
+  virtual bool IsActivating() const;
   virtual bool IsRegistered();
   virtual void SetUnregistered(bool searching);
   virtual std::string CreateFriendlyServiceName();
@@ -61,6 +62,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityCDMATest, GetActivationStateString);
   FRIEND_TEST(CellularCapabilityCDMATest, GetActivationErrorString);
+  FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularTest, CreateService);
 
   static const char kPhoneNumber[];
@@ -97,6 +99,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   scoped_ptr<ModemCDMAProxyInterface> proxy_;
   base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
 
+  bool activation_starting_;
   uint32 activation_state_;
   uint32 registration_state_evdo_;
   uint32 registration_state_1x_;

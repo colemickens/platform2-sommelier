@@ -106,6 +106,10 @@ class CellularCapabilityCDMATest : public testing::Test {
   static const char kTestCarrier[];
   static const unsigned int kStrength;
 
+  bool IsActivationStarting() const {
+    return capability_->activation_starting_;
+  }
+
   void SetRegistrationStateEVDO(uint32 state) {
     capability_->registration_state_evdo_ = state;
   }
@@ -194,6 +198,30 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnected) {
   EXPECT_EQ(flimflam::kActivationStateActivating,
             cellular_->service()->activation_state());
   EXPECT_EQ("", cellular_->service()->error());
+  EXPECT_FALSE(IsActivationStarting());
+  EXPECT_TRUE(capability_->IsActivating());
+}
+
+TEST_F(CellularCapabilityCDMATest, MidActivateWhileConnected) {
+  SetDeviceState(Cellular::kStateConnected);
+  {
+    InSequence dummy;
+
+    EXPECT_CALL(*cellular_, DisconnectWithCallback(_,_))
+        .WillOnce(Invoke(cellular_.get(),
+                         &MockCellular::RealDisconnectWithCallback));
+    EXPECT_CALL(*classic_proxy_,
+                Disconnect(_, _, CellularCapability::kTimeoutDisconnect));
+  }
+  SetProxy();
+  SetService();
+  Error error;
+  capability_->Activate(kTestCarrier, &error,
+      Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
+  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
+            capability_->activation_state());
+  EXPECT_TRUE(IsActivationStarting());
+  EXPECT_TRUE(capability_->IsActivating());
 }
 
 TEST_F(CellularCapabilityCDMATest, ActivateWhileConnectedButFail) {
@@ -223,6 +251,8 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnectedButFail) {
             cellular_->service()->activation_state());
   EXPECT_EQ(flimflam::kErrorActivationFailed,
             cellular_->service()->error());
+  EXPECT_FALSE(IsActivationStarting());
+  EXPECT_FALSE(capability_->IsActivating());
 }
 
 TEST_F(CellularCapabilityCDMATest, ActivateError) {

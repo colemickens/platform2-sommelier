@@ -215,6 +215,8 @@ class Cellular : public Device {
 
   // accessor to read the allow roaming property
   bool allow_roaming_property() const { return allow_roaming_; }
+  // Is the underlying device in the process of activating?
+  bool IsActivating() const;
 
  private:
   friend class CellularTest;

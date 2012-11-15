@@ -32,6 +32,7 @@ CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
                                                ProxyFactory *proxy_factory)
     : CellularCapabilityClassic(cellular, proxy_factory),
       weak_ptr_factory_(this),
+      activation_starting_(false),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       registration_state_evdo_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       registration_state_1x_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
@@ -135,6 +136,8 @@ void CellularCapabilityCDMA::Activate(const string &carrier,
                                       Error *error,
                                       const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__ << "(" << carrier << ")";
+  // We're going to trigger something which leads to an activation.
+  activation_starting_ = true;
   if (cellular()->state() == Cellular::kStateEnabled ||
       cellular()->state() == Cellular::kStateRegistered) {
     ActivationResultCallback cb =
@@ -154,6 +157,7 @@ void CellularCapabilityCDMA::Activate(const string &carrier,
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           "Unable to activate in " +
                           Cellular::GetStateString(cellular()->state()));
+    activation_starting_ = false;
   }
 }
 
@@ -216,6 +220,11 @@ void CellularCapabilityCDMA::GetProperties(const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   // No properties.
   callback.Run(Error());
+}
+
+bool CellularCapabilityCDMA::IsActivating() const {
+  return activation_starting_ ||
+      activation_state_ == MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
 }
 
 bool CellularCapabilityCDMA::IsRegistered() {
@@ -290,6 +299,7 @@ void CellularCapabilityCDMA::UpdateServingOperator() {
 
 void CellularCapabilityCDMA::OnActivateReply(
     const ResultCallback &callback, uint32 status, const Error &error) {
+  activation_starting_ = false;
   if (error.IsSuccess()) {
     if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
       activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
@@ -314,6 +324,7 @@ void CellularCapabilityCDMA::OnDisconnectBeforeActivate(
     LOG(WARNING) << "Tried to disconnect before activating cellular service"
                  << " and failed.";
     HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN);
+    activation_starting_ = false;
   }
 }
 

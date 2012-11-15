@@ -181,6 +181,8 @@ class CellularCapability {
   // property.
   virtual bool AllowRoaming() = 0;
 
+  virtual bool IsActivating() const;
+
  protected:
   // Releases all proxies held by the object.  This is most useful
   // during unit tests.
