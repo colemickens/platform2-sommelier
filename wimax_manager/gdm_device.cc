@@ -212,6 +212,12 @@ bool GdmDevice::Disable() {
 
   CancelRestoreStatusUpdateIntervalTimeout();
 
+  // Cancel any pending connect timeout.
+  if (connect_timeout_id_ != 0) {
+    g_source_remove(connect_timeout_id_);
+    connect_timeout_id_ = 0;
+  }
+
   // Cancel the periodic calls to OnNetworkScan().
   if (network_scan_timeout_id_ != 0) {
     g_source_remove(network_scan_timeout_id_);
