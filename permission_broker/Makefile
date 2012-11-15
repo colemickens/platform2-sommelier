@@ -52,5 +52,6 @@ CXX_BINARY(permission_broker_unittest): \
   permission_broker_unittest.o \
   run_all_tests.o
 clean: CLEAN(permission_broker_unittest)
+tests: TEST(CXX_BINARY(permission_broker_unittest))
 
 all: CXX_BINARY(permission_broker) CXX_BINARY(permission_broker_unittest)
